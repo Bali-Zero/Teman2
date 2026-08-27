@@ -1274,8 +1274,12 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
             # (TEST/STAGING/PRODUCTION, migration 285's CHECK constraint),
             # distinct from `settings.environment` ("production"/"staging"/
             # "development"), never derived from it by string-casing alone.
-            garuda_environment = os.environ.get("GARUDA_ENVIRONMENT", "PRODUCTION").strip() or "PRODUCTION"
-            garuda_magic_link_store = PostgresMagicLinkStore(db_pool, environment=garuda_environment)
+            garuda_environment = (
+                os.environ.get("GARUDA_ENVIRONMENT", "PRODUCTION").strip() or "PRODUCTION"
+            )
+            garuda_magic_link_store = PostgresMagicLinkStore(
+                db_pool, environment=garuda_environment
+            )
 
             # `garuda_orders_router._require_magic_session_actor` reads this
             # directly off app.state (L3's file, LANES.md file-ownership —
@@ -1331,9 +1335,7 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
                 "⚠️ GARUDA VOA magic-link wiring failed (non-critical, L3/L4 fail closed): %s", e
             )
     else:
-        logger.warning(
-            "⚠️ GARUDA VOA magic-link wiring skipped: no db_pool (L3/L4 fail closed)"
-        )
+        logger.warning("⚠️ GARUDA VOA magic-link wiring skipped: no db_pool (L3/L4 fail closed)")
 
     # 5.6 GARUDA VOA — CheckStore wiring (L2). Unconditional, unlike the
     # order/payment wiring below: `PostgresCheckStore.create()` runs its
@@ -1420,7 +1422,24 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
     # success/failure split anyway (browser return is an OBSERVATION, not a
     # truth).
     garuda_xendit_secret_key = os.environ.get("GARUDA_XENDIT_SECRET_KEY", "").strip()
-    if db_pool is not None and garuda_xendit_secret_key:
+    garuda_xendit_callback_token = os.environ.get("GARUDA_XENDIT_CALLBACK_TOKEN", "").strip()
+    if garuda_xendit_secret_key and not garuda_xendit_callback_token:
+        # Named out loud, because this pair used to be armable by halves. The
+        # gate below required only the secret key while the callback token
+        # defaulted to `""` — which opens checkout and then makes EVERY Xendit
+        # callback answer 401 (`xendit.py::verify_signature`; measured
+        # 2026-08-27). The customer is really charged and the order never
+        # leaves `awaiting_payment`. `XenditPaymentProvider.__init__` now
+        # refuses that construction outright, so without this branch the whole
+        # order lane would fail closed with a ValueError swallowed by the
+        # `except Exception` below and one generic "wiring failed" line. This
+        # says WHICH half is missing instead.
+        logger.error(
+            "⛔ GARUDA VOA order lane NOT wired: GARUDA_XENDIT_SECRET_KEY is set but "
+            "GARUDA_XENDIT_CALLBACK_TOKEN is empty. Arming the key alone would open "
+            "checkout while rejecting every payment callback — set both or neither."
+        )
+    if db_pool is not None and garuda_xendit_secret_key and garuda_xendit_callback_token:
         try:
             import httpx as _garuda_httpx
 
@@ -1433,9 +1452,7 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
             garuda_payment_http_client = _garuda_httpx.AsyncClient(timeout=30.0)
             garuda_payment_provider = XenditPaymentProvider(
                 secret_key=garuda_xendit_secret_key,
-                callback_verification_token=os.environ.get(
-                    "GARUDA_XENDIT_CALLBACK_TOKEN", ""
-                ).strip(),
+                callback_verification_token=garuda_xendit_callback_token,
                 public_base_url=os.environ.get(
                     "GARUDA_PUBLIC_BASE_URL", "https://balizero.com"
                 ).strip(),
@@ -1470,7 +1487,6 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
             db_pool is not None,
             bool(garuda_xendit_secret_key),
         )
-
 
 
 async def initialize_services(app: FastAPI) -> None:
@@ -1695,9 +1711,7 @@ async def initialize_services(app: FastAPI) -> None:
             app.state.self_healing_task = asyncio.create_task(
                 healing_agent.monitoring_loop(), name="self_healing"
             )
-            service_registry.register(
-                "self_healing", ServiceStatus.HEALTHY, critical=False
-            )
+            service_registry.register("self_healing", ServiceStatus.HEALTHY, critical=False)
             logger.info("✅ Reduced self-healing agent: Active (GC-only, 5min, per-machine)")
         except Exception as e:
             service_registry.register(

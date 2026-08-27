@@ -53,18 +53,42 @@ route and `get_repository()` already answer with a fail-closed **503**. That is 
 
 Set these four on `nuzantara-rag`:
 
-| Variable                       | Read at                    | Note                                                                       |
-| ------------------------------ | -------------------------- | -------------------------------------------------------------------------- |
-| `GARUDA_XENDIT_SECRET_KEY`     | `service_initializer:1478` | **The gate.** Must start `xnd_development_` or startup raises ValueError.  |
-| `GARUDA_XENDIT_CALLBACK_TOKEN` | `service_initializer:1492` | Verifies the `x-callback-token` header on every webhook (`xendit.py:175`). |
-| `GARUDA_XENDIT_FEE_BPS`        | `service_initializer:1499` | **Defaults to `"0"`.**                                                     |
-| `GARUDA_XENDIT_FEE_FIXED_IDR`  | `service_initializer:1500` | **Defaults to `"0"`.**                                                     |
+| Variable                       | Read at                    | Note                                                                                                                     |
+| ------------------------------ | -------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `GARUDA_XENDIT_SECRET_KEY`     | `service_initializer:1478` | **The gate.** Must start `xnd_development_` or startup raises ValueError.                                                |
+| `GARUDA_XENDIT_CALLBACK_TOKEN` | `service_initializer` §5.7 | **Also a gate, as of 2026-08-27.** Verifies `x-callback-token` on every webhook. Empty is no longer armable — see below. |
+| `GARUDA_XENDIT_FEE_BPS`        | `service_initializer:1499` | **Defaults to `"0"`.**                                                                                                   |
+| `GARUDA_XENDIT_FEE_FIXED_IDR`  | `service_initializer:1500` | **Defaults to `"0"`.**                                                                                                   |
 
 Two more are already correct and need no action:
 
 - `GARUDA_PUBLIC_BASE_URL` — defaults to `https://balizero.com` (`service_initializer:1496`), the
   canonical apex. `www.` 308-redirects to it.
 - `GARUDA_ENVIRONMENT` — defaults to `"PRODUCTION"` (`service_initializer:1432`, `:1506`).
+
+⚠️ **The key and the token are ONE credential — arming half of it takes real money and delivers
+nothing.** Corrected 2026-08-27, after measuring it. `verify_signature` rejects on
+`not received or not hmac.compare_digest(received, token)`, so with an **empty configured token
+EVERY input is rejected** — including a header carrying an arbitrary value, because
+`compare_digest(x, "")` is False for any non-empty `x`. Nothing gets in, so this was never a
+security hole. It was a money hole: the arming gate required only `GARUDA_XENDIT_SECRET_KEY` while
+this token defaulted to `""`, so setting one variable and forgetting the other **opened checkout
+while making every legitimate Xendit callback answer 401**. The customer is really charged, the
+order never leaves `awaiting_payment`, and nothing surfaces to them — the only trace is a 401 in
+the Fly logs that nothing alerts on.
+
+That shape is now unreachable rather than merely documented:
+
+- `XenditPaymentProvider.__init__` refuses a blank `callback_verification_token` outright, next to
+  the existing sandbox-key guard — one place every caller must pass, so a future second call site
+  cannot reintroduce it.
+- §5.7 requires BOTH variables before it arms anything, and logs which half is missing by name
+  instead of letting a `ValueError` become one generic "wiring failed" line.
+- Guilt + innocence: `backend/tests/services/payments/test_xendit_callback_token_guard.py`. Removing
+  the constructor guard turns 5 of them red.
+
+So: **set both, or neither.** Setting only the key now fails closed with a named error, which is the
+correct outcome — but it is still a wasted deploy, so set them in the same `fly secrets set` call.
 
 ⚠️ **The two fee variables default to zero, silently.** Those figures must come from the actual
 Xendit contract — they are not in this repo and must not be guessed here. Leaving them at `0` does
