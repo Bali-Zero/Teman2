@@ -438,3 +438,85 @@ async def test_practice_received_raises_when_the_practice_row_is_missing(pool):
     finally:
         await client.aclose()
     assert rec.requests == []
+
+
+# --------------------------------------------------------------------------
+# PII tripwire — the logs, not the wire
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("handler_cls", "job_type", "state", "needs_practice", "payload"),
+    [
+        # checkout_ready is the one job whose payload is load-bearing: the
+        # handler raises without a `checkout_url` (see
+        # `test_checkout_ready_raises_without_a_checkout_url`), so a payload-less
+        # case here would fail on that instead of testing the logs.
+        (
+            CheckoutReadyEmailHandler,
+            "checkout_ready_email",
+            "awaiting_payment",
+            False,
+            {"checkout_url": "https://checkout.invalid/inv_specimen"},
+        ),
+        (PaymentFailedEmailHandler, "payment_failed_email", "failed", False, None),
+        (PaymentExpiredEmailHandler, "payment_expired_email", "expired", False, None),
+        (RefundEmailHandler, "refund_email", "refunded", False, None),
+        (PracticeReceivedEmailHandler, "practice_received_email", "paid", True, None),
+    ],
+)
+async def test_no_handler_writes_applicant_pii_into_a_log_line(
+    pool, caplog, handler_cls, job_type, state, needs_practice, payload
+):
+    """The bodies necessarily carry the customer's details; the LOGS must not.
+
+    Every handler here logs, and `logger.info("... for order %s")` is the shape
+    they are supposed to use. Nothing structural stops a future edit from
+    widening one of those calls to `%s` the whole `facts` object, or adding the
+    address "to make the log useful" — and by the time that ships, the value is
+    already in Fly's log stream and in Sentry, which is not a place PII can be
+    withdrawn from. Inspection caught this today; this test is what keeps
+    catching it.
+
+    Asserts on the SEEDED values rather than a regex for anything
+    email-shaped: a pattern search would also flag the notifications endpoint
+    URL and would miss the applicant NAME entirely, which is the field a
+    well-meaning "log who we emailed" edit is most likely to reach for.
+    """
+
+    marker_email = f"pii-tripwire-{uuid.uuid4().hex}@example.invalid"
+    order_id = await _seed_order(pool, state=state, email=marker_email)
+    if needs_practice:
+        await _seed_practice(pool, order_id)
+
+    recorder = _Recorder()
+    sender, client = _sender(recorder)
+    try:
+        with caplog.at_level(logging.DEBUG, logger=LOGGER_NAME):
+            await handler_cls(pool, sender)(_job(order_id, job_type, payload))
+    finally:
+        await client.aclose()
+
+    # Innocence first: if it did not send, the test below proves nothing.
+    assert len(recorder.requests) == 1, (
+        f"{handler_cls.__name__} did not send in state {state!r} — the PII assertion "
+        "below would pass vacuously"
+    )
+
+    logged = "\n".join(record.getMessage() for record in caplog.records)
+    assert logged.strip(), f"{handler_cls.__name__} logged nothing — nothing to check"
+
+    for label, secret in (
+        ("applicant email", marker_email),
+        ("applicant name", "SPECIMEN TRAVELLER"),
+        ("passport number", "X0000000"),
+        ("phone", "+000000000000"),
+    ):
+        assert secret not in logged, (
+            f"{handler_cls.__name__} wrote the {label} into a log line: {logged!r}"
+        )
+
+    # And the thing that SHOULD be there, so this is not satisfied by silence.
+    assert order_id in logged, (
+        f"{handler_cls.__name__} logged without the order id — the log is unusable"
+    )
