@@ -35,9 +35,12 @@ The codex leg runs IFF all of (spec 2.1 route decision):
      about to lose its send window never waits on a broker round-trip.
   4. The context package builds (``POST /api/wa-package/build``, the RAG
      process owns the retriever); unbuildable -> Gemini.
-  5. ``offer_job`` returns OFFERED — admission lock, gauge liveness,
+  5. ``offer_job`` returns OFFERED (a fresh job) or REATTACHED (a prior
+     leg for this row is still alive) — admission lock, gauge liveness,
      breaker, depth and the wa_outbox fence are all checked inside the
-     offer transaction; every other outcome -> Gemini.
+     offer transaction; every other outcome -> Gemini, including the
+     NAMED ``legs_exhausted`` (this row already spent its whole codex
+     retry budget — spec gradino 2/5).
 
 A consumed completion is NEVER returned raw: it runs through
 ``finalize_wa_answer(provider="codex")`` — the SHARED post-generation
@@ -366,7 +369,16 @@ async def _attempt(
             exc_name,
         )
         return CodexLegResult(fail=f"offer_uncertain:{exc_name}")
-    if offer.outcome is not wa_broker.OfferOutcome.OFFERED:
+    # OFFERED (a job was just created — first leg or a fresh retry leg) and
+    # REATTACHED (a prior leg for this outbox_id is still alive) both carry
+    # a job_id worth waiting on and are handled identically from here.
+    # Every other outcome is a certain non-durable fall-off (retry budget
+    # gradino 2/5) — including the now-NAMED LEGS_EXHAUSTED, distinct in
+    # the log/reason from the generic ALREADY_SPENT race fallback.
+    if offer.outcome not in (
+        wa_broker.OfferOutcome.OFFERED,
+        wa_broker.OfferOutcome.REATTACHED,
+    ):
         logger.info(
             "wa_codex_leg: offer fell off (outbox=%s outcome=%s)",
             outbox_id,
@@ -382,13 +394,42 @@ async def _attempt(
         )
         return CodexLegResult(fail=f"offer_uncertain:{type(release_exc).__name__}")
     if offer.job_id is None:
-        # OFFERED without an id is a broken transport contract over a
-        # possibly-durable job — falling off would run Gemini beside it
-        # with no way to ever wait/consume/discard (Codex r4 finding 1).
+        # OFFERED/REATTACHED without an id is a broken transport contract
+        # over a possibly-durable job — falling off would run Gemini
+        # beside it with no way to ever wait/consume/discard (Codex r4
+        # finding 1).
         logger.error(
-            "wa_codex_leg: OFFERED without job_id (outbox=%s)", outbox_id
+            "wa_codex_leg: %s without job_id (outbox=%s)",
+            offer.outcome.value,
+            outbox_id,
         )
         return CodexLegResult(fail="offer_contract_break:missing_job_id")
+    if offer.thread_epoch is None:
+        # Same contract-break class as a missing job_id — the post-
+        # completion drift check below has nothing safe to fence against.
+        logger.error(
+            "wa_codex_leg: %s without thread_epoch (outbox=%s job=%s)",
+            offer.outcome.value,
+            outbox_id,
+            offer.job_id,
+        )
+        return CodexLegResult(fail="offer_contract_break:missing_thread_epoch")
+    if offer.outcome is wa_broker.OfferOutcome.REATTACHED:
+        logger.info(
+            "wa_codex_leg: reattached to a still-alive prior leg "
+            "(outbox=%s job=%s)",
+            outbox_id,
+            offer.job_id,
+        )
+    # The epoch the SERVING job actually runs under — for a fresh OFFERED
+    # this equals the local `epoch` read above, but for REATTACHED it is
+    # the PRIOR leg's own frozen thread_epoch, which can predate this
+    # claim's own thread read (the prior leg may have been offered by an
+    # earlier, since-failed claim). The post-completion drift check below
+    # MUST fence against this value, not the local `epoch` — using the
+    # wrong one would silently defeat the thread-epoch-drift protocol on
+    # a reattach (spec 2.3).
+    serving_epoch = offer.thread_epoch
 
     # From here on an OFFERED job is DURABLE: an untyped failure can no
     # longer be an in-claim fall-off — the daemon may complete the job and
@@ -435,7 +476,10 @@ async def _attempt(
         # Drift check (spec 2.3), BEFORE consuming: a takeover — or a
         # takeover+release, which moves handling_version without leaving
         # human_handling true — during exec means this completion must
-        # never be sent AND must never trigger a fresh generation.
+        # never be sent AND must never trigger a fresh generation. Fenced
+        # against serving_epoch (the epoch the JOB actually ran under),
+        # not the local `epoch` — on a REATTACHED leg those two can
+        # differ (see serving_epoch's definition above).
         async with pool.acquire() as check_conn:
             fresh = await check_conn.fetchrow(
                 """
@@ -448,7 +492,7 @@ async def _attempt(
         if (
             fresh is None
             or bool(fresh["human_handling"])
-            or int(fresh["handling_version"]) != epoch
+            or int(fresh["handling_version"]) != serving_epoch
         ):
             # Stand-down is ATOMIC (Codex r2 finding 3): the drift verdict
             # terminalizes the outbox row, discards the completion and
