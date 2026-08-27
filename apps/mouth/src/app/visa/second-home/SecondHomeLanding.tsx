@@ -274,7 +274,7 @@ export function SecondHomeLanding() {
           data-testid="hero-fit-check-cta"
           style={{ ...fitCheckCtaStyle, justifySelf: "start" }}
         >
-          Start the fit-check
+          {t("secondHome.cta.fitCheck")}
         </Link>
         {price ? (
           <div
@@ -650,7 +650,7 @@ export function SecondHomeLanding() {
           data-testid="footer-fit-check-cta"
           style={fitCheckCtaStyle}
         >
-          Start the fit-check
+          {t("secondHome.cta.fitCheck")}
         </Link>
       </section>
 
