@@ -624,6 +624,12 @@ class TelegramStaffPageSender:
 
         text = err or "unknown error"
         if self._bot_token:
+            # The CHAT ID is deliberately not scrubbed. It is not a secret:
+            # `TELEGRAM_OWNER_CHAT_ID` is the owner's own chat id, recorded in
+            # this repo's own instructions, and knowing it grants nothing —
+            # sending to it requires the bot token, which is what this method
+            # exists to protect. Scrubbing it would only make a failed page
+            # harder for a human to trace back to a destination.
             bot_id, _, secret = self._bot_token.partition(":")
             # ONE pattern, then one literal — and that is ALL, because every
             # other form was measured DEAD. An exact `replace` of the whole
@@ -642,6 +648,13 @@ class TelegramStaffPageSender:
                 )
             if len(secret) >= 8:
                 text = text.replace(secret, "<redacted>")
+            elif not secret and len(self._bot_token) >= 8:
+                # No colon at all. The pattern above is anchored on `<id>:` and
+                # matches nothing, and there is no "secret half" to replace, so
+                # without this the whole token would survive. Telegram tokens
+                # always carry the colon, so this guards a FORMAT CHANGE rather
+                # than a shape that exists today — it costs one branch.
+                text = text.replace(self._bot_token, "<redacted>")
         return text
 
 
@@ -782,9 +795,20 @@ class _StaffPageHandler:
             # event's case or of a later one — either way, this page is about a
             # case a human has already handled. The triggering event's own name
             # is never `order.late_resolved`, so `>=` cannot match itself.
-            resolved_since = False
-            if event_row is not None:
-                resolved_since = bool(
+            if event_row is None:
+                # FAIL CLOSED. The journal is append-only, so a queued job whose
+                # triggering event does not exist is not a stale read — it is a
+                # contradiction, and every fact this page would carry
+                # (`second_charge_id`, `outcome`, and crucially whether THIS
+                # job's case is still open) is then unverifiable. The previous
+                # version left `resolved_since = False` and paged anyway, which
+                # is precisely the shape that renders the CURRENTLY open case's
+                # charge id under an older case's headline.
+                raise StaffPageOrderMissing(
+                    f"journal event {journal_event_id} not found for a queued "
+                    f"{self.job_type} page on order {order_id}"
+                )
+            resolved_since = bool(
                     await conn.fetchval(
                         """
                         SELECT EXISTS (
@@ -792,7 +816,18 @@ class _StaffPageHandler:
                              WHERE aggregate_type = 'order'
                                AND aggregate_id = $1
                                AND event_name = 'order.late_resolved'
-                               AND occurred_at >= $2
+                               -- STRICT '>' , not '>=' . There is no monotonic
+                               -- column on this journal (`event_id` is TEXT),
+                               -- so two events CAN in principle share an
+                               -- `occurred_at`. With '>=' a tie suppresses the
+                               -- page; with '>' it sends one. Suppressing is
+                               -- the worse direction by this lane's own rule —
+                               -- a money anomaly nobody is told about beats a
+                               -- duplicate page — so the tie is resolved
+                               -- toward paging. The triggering event's own name
+                               -- is never `order.late_resolved`, so strict '>'
+                               -- gives up nothing real.
+                               AND occurred_at > $2
                         )
                         """,
                         order_id,

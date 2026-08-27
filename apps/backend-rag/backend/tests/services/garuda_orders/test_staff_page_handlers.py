@@ -20,6 +20,7 @@ import os
 import uuid
 from urllib.parse import quote
 
+import asyncpg
 import httpx
 import pytest
 
@@ -1060,9 +1061,41 @@ def test_no_journal_detail_written_in_the_order_lane_names_applicant_data():
             if not isinstance(node, ast.Call):
                 continue
             for kw in node.keywords:
-                if kw.arg != "detail" or not isinstance(kw.value, ast.Dict):
+                if kw.arg != "detail":
                     continue
+                if isinstance(kw.value, ast.Constant) and kw.value.value is None:
+                    continue  # `detail=None` carries nothing.
+                if not isinstance(kw.value, ast.Dict):
+                    # A `detail=some_variable` defeats a static read entirely,
+                    # and SKIPPING it (what the first version of this test did)
+                    # is how a writer evades the check while the count floor
+                    # still passes. One name is allow-listed because it is a
+                    # pass-through, not a literal: a `detail=detail` parameter
+                    # forward. Anything else must be written as a literal here.
+                    if isinstance(kw.value, ast.Name) and kw.value.id == "detail":
+                        continue
+                    raise AssertionError(
+                        f"{path}:{kw.value.lineno} passes a non-literal `detail=` "
+                        f"({ast.dump(kw.value)[:80]}); this test cannot vouch for it, "
+                        "so write the literal here or extend the allow-list with a reason"
+                    )
                 checked += 1
+                # VALUES, not only keys. `detail={"second_charge_id":
+                # applicant_email}` has an innocent KEY and leaks — the first
+                # version of this test was green on exactly that edit.
+                for value_node in ast.walk(kw.value):
+                    name = None
+                    if isinstance(value_node, ast.Name):
+                        name = value_node.id
+                    elif isinstance(value_node, ast.Attribute):
+                        name = value_node.attr
+                    if not name:
+                        continue
+                    for word in forbidden:
+                        assert word not in name.lower(), (
+                            f"{path}:{value_node.lineno} puts {name!r} into a journal "
+                            "detail VALUE — the key looks innocent, the value is PII"
+                        )
                 for key in kw.value.keys:
                     if not isinstance(key, ast.Constant) or not isinstance(key.value, str):
                         # A computed key defeats a static read — fail loudly
@@ -1084,3 +1117,97 @@ def test_no_journal_detail_written_in_the_order_lane_names_applicant_data():
         f"only {checked} `detail=` dict literals found in the lane — either they "
         "moved or this walk is broken; a green run here would mean nothing"
     )
+
+
+async def test_a_job_pointing_at_an_event_that_does_not_exist_raises(pool):
+    """FAIL CLOSED. A queued job whose triggering journal event cannot be read
+    is a contradiction, and every fact the page would carry is then
+    unverifiable — including whether THIS job's case is still open. The first
+    version treated a missing event as "not resolved" and paged anyway, which
+    renders the CURRENTLY open case's charge id under an older case's headline:
+    exactly what the identity guard exists to prevent.
+
+    MEASURED WHILE WRITING THIS: `garuda_order_journal` has a DB trigger that
+    rejects DELETE and UPDATE outright ("append-only"), so the event behind a
+    normally-enqueued job CANNOT vanish. The reachable shape is therefore not a
+    deleted row but an outbox row that points at an id the journal never had —
+    a hand-inserted job, or a restore that brought back the outbox without the
+    journal. That is what this drives, and it is why the raise is worth having
+    even though the ordinary path cannot produce it.
+    """
+
+    order_id = await _seed_order(pool, state="refunded", late_case_open=True)
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE garuda_orders SET late_case_charge_id = 'ch_case_B' WHERE order_id = $1",
+            order_id,
+        )
+    phantom_event = "evt_" + uuid.uuid4().hex  # satisfies the event_id CHECK, exists nowhere
+
+    rec = _TgRecorder()
+    sender, client = _tg_sender(rec)
+    try:
+        with pytest.raises(StaffPageOrderMissing):
+            await StaffPageLatePaidAfterRefundHandler(pool, sender)(
+                _job(order_id, phantom_event, "staff_page_late_paid_after_refund")
+            )
+    finally:
+        await client.aclose()
+
+    assert rec.requests == [], "it paged with facts it could not verify"
+
+
+async def test_the_journal_rejects_update_and_delete_so_a_timestamp_tie_is_unreachable(pool):
+    """WHY THERE IS NO TEST FOR THE TIMESTAMP TIE.
+
+    `_load` compares `occurred_at` with strict `>` rather than `>=` precisely
+    because this journal has no monotonic column (`event_id` is TEXT), so in
+    principle two events could share an instant — and with `>=` a tie would
+    SUPPRESS a money-anomaly page, the worse direction by this lane's own rule
+    (nobody being told beats a duplicate page).
+
+    A test for that tie cannot be written honestly: the only ways to produce one
+    are an UPDATE of `occurred_at` or a multi-row INSERT, and this table rejects
+    UPDATE and DELETE, while every writer appends one row per statement and
+    `statement_timestamp()` advances between statements. So the tie is
+    unreachable, the strict `>` is free insurance, and this test pins the ONE
+    fact that makes it unreachable. If that guard is ever dropped, this goes red
+    and the tie becomes real.
+
+    This DRIVES the statements rather than grepping the migration for the words
+    "update" and "delete" — an earlier version of this test did exactly that and
+    would have passed on `updated_at` alone.
+    """
+
+    order_id = await _seed_order(pool, state="refunded", late_case_open=True)
+    async with pool.acquire() as conn, conn.transaction():
+        event_id = await journal.append_event(
+            conn,
+            event_name="payment.late_paid_after_refund",
+            aggregate_type="order",
+            aggregate_id=order_id,
+            transition_id="OP-F04",
+            customer_visible=False,
+            detail={"charge_id": "ch_probe"},
+        )
+
+    async with pool.acquire() as conn:
+        with pytest.raises(asyncpg.exceptions.PostgresError) as on_update:
+            await conn.execute(
+                "UPDATE garuda_order_journal SET occurred_at = now() WHERE event_id = $1",
+                event_id,
+            )
+        with pytest.raises(asyncpg.exceptions.PostgresError) as on_delete:
+            await conn.execute(
+                "DELETE FROM garuda_order_journal WHERE event_id = $1", event_id
+            )
+        # The row is still there — the guard rejected, it did not silently no-op.
+        still_there = await conn.fetchval(
+            "SELECT count(*) FROM garuda_order_journal WHERE event_id = $1", event_id
+        )
+
+    assert still_there == 1, "the journal row is gone — the append-only guard did not hold"
+    for label, caught in (("UPDATE", on_update), ("DELETE", on_delete)):
+        assert "append-only" in str(caught.value).lower(), (
+            f"{label} was rejected, but not by the append-only guard: {caught.value!r}"
+        )
