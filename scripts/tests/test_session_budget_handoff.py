@@ -38,6 +38,11 @@ def _init_repo_with_secret_diff(repo: pathlib.Path) -> None:
     f.write_text("API_KEY = 'placeholder'\n")
     subprocess.run(["git", "-C", str(repo), "add", "config.py"], check=True)
     subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "init"], check=True)
+    # Second sink for the same synthetic fixture (see FAKE_SECRET_FIXTURE's own
+    # suppression above) — this write is the whole point of the test (it must
+    # show up uncommitted in `git diff` for the hook's redaction to exercise),
+    # never a real credential reaching real storage.
+    # codeql[py/clear-text-storage-sensitive-data]
     f.write_text(f"API_KEY = '{FAKE_SECRET_FIXTURE}'\n")  # uncommitted — shows up in `git diff`
 
 
