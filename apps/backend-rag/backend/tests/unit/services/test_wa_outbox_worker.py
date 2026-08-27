@@ -106,6 +106,23 @@ async def _bot_gen(_thread: Any) -> str:
     return "generated bot reply"
 
 
+def _arm_codex(monkeypatch: pytest.MonkeyPatch, *, text: str = "generated bot reply") -> None:
+    """Gemini-cut helper (2026-08-27): generation now runs exclusively
+    through the codex broker leg — arm WA_GENERATION_PROVIDER=codex and
+    stub `wa_codex_leg.attempt` to return a served completion, for tests
+    whose real subject is something OTHER than generation-routing itself
+    (coalescing, fencing, the lease heartbeat, ...) and that previously
+    drove a successful send via the Gemini `bot_generate_fn` fake."""
+    monkeypatch.setenv("WA_GENERATION_PROVIDER", "codex")
+    monkeypatch.setattr(
+        wa_outbox_worker.wa_codex_leg,
+        "attempt",
+        AsyncMock(
+            return_value=wa_outbox_worker.wa_codex_leg.CodexLegResult(text=text)
+        ),
+    )
+
+
 def _candidate(
     id_: int,
     thread_id: int = 7,
@@ -324,14 +341,29 @@ async def test_bot_generate_failure_retries_not_orphaned() -> None:
 
 
 @pytest.mark.asyncio
-async def test_bot_generate_failure_terminal_after_max_attempts() -> None:
+async def test_bot_generate_failure_terminal_after_max_attempts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Gemini cut: generation now happens exclusively through the codex leg
+    (mocked here) — arm WA_GENERATION_PROVIDER=codex and make the leg fail
+    to drive the SAME terminal-failure path this test exercises."""
+    monkeypatch.setenv("WA_GENERATION_PROVIDER", "codex")
+    monkeypatch.setattr(
+        wa_outbox_worker.wa_codex_leg,
+        "attempt",
+        AsyncMock(
+            return_value=wa_outbox_worker.wa_codex_leg.CodexLegResult(
+                fail="test_injected_failure"
+            )
+        ),
+    )
     candidate = _candidate(
         7, thread_id=7, message_id=700, needs_generation=True,
         attempts=wa_outbox_worker.MAX_ATTEMPTS - 1,
     )
     conn = ScriptedConn(
         fetchrow_results=[
-            _thread_row(human_handling=False),
+            {**_thread_row(human_handling=False), "handling_version": 3},
             {"id": 7},  # generating-transition fenced RETURNING
             {"id": 7},  # terminal-failure fenced RETURNING
         ],
@@ -341,10 +373,7 @@ async def test_bot_generate_failure_terminal_after_max_attempts() -> None:
     pool = _make_pool(conn)
     svc = _wa_service()
 
-    async def _bot_raises(_thread: Any) -> str:
-        raise NotImplementedError("bot not wired in v1")
-
-    result = await process_outbox_once(pool, svc, _bot_raises)
+    result = await process_outbox_once(pool, svc, _bot_gen)
 
     assert result == "failed"
     svc.send_message.assert_not_awaited()
@@ -428,18 +457,32 @@ async def test_standing_condition_still_uses_the_retry_ladder() -> None:
 
 
 @pytest.mark.asyncio
-async def test_bare_runtime_error_keeps_the_generic_ledger_text() -> None:
+async def test_bare_runtime_error_keeps_the_generic_ledger_text(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """INNOCENCE #2. BotStandingCondition subclasses RuntimeError, so an
     `isinstance(gen_exc, RuntimeError)` slip would relabel EVERY transient RAG
     failure as a standing condition and hide real outages behind a benign name.
+    Gemini cut: driven via a failing codex leg (`leg.fail`, an UNCERTAIN
+    outcome — same RuntimeError shape as a bare transient failure).
     """
+    monkeypatch.setenv("WA_GENERATION_PROVIDER", "codex")
+    monkeypatch.setattr(
+        wa_outbox_worker.wa_codex_leg,
+        "attempt",
+        AsyncMock(
+            return_value=wa_outbox_worker.wa_codex_leg.CodexLegResult(
+                fail="offer_uncertain:RAG unreachable"
+            )
+        ),
+    )
     candidate = _candidate(
         10, thread_id=7, message_id=1000, needs_generation=True,
         attempts=wa_outbox_worker.MAX_ATTEMPTS - 1,
     )
     conn = ScriptedConn(
         fetchrow_results=[
-            _thread_row(human_handling=False),
+            {**_thread_row(human_handling=False), "handling_version": 3},
             {"id": 10},
             {"id": 10},
         ],
@@ -449,10 +492,7 @@ async def test_bare_runtime_error_keeps_the_generic_ledger_text() -> None:
     pool = _make_pool(conn)
     svc = _wa_service()
 
-    async def _bot_transient(_thread: Any) -> str:
-        raise RuntimeError("RAG unreachable")
-
-    result = await process_outbox_once(pool, svc, _bot_transient)
+    result = await process_outbox_once(pool, svc, _bot_gen)
 
     assert result == "failed"
     errors = [str(a) for _, a in conn.executed]
@@ -490,9 +530,12 @@ async def test_send_failure_terminal_after_max_attempts() -> None:
 
 
 @pytest.mark.asyncio
-async def test_coalescing_supersedes_other_pending_bot_replies_same_thread() -> None:
+async def test_coalescing_supersedes_other_pending_bot_replies_same_thread(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """2 pending bot-reply rows for the same thread → claim one, supersede the
     other, send exactly one reply."""
+    _arm_codex(monkeypatch)
     winner = _candidate(10, thread_id=7, message_id=1000, needs_generation=True)
     conn = ScriptedConn(
         fetchrow_results=[
@@ -530,11 +573,14 @@ async def test_coalescing_supersedes_other_pending_bot_replies_same_thread() -> 
 
 
 @pytest.mark.asyncio
-async def test_coalescing_does_not_touch_pending_human_sends() -> None:
+async def test_coalescing_does_not_touch_pending_human_sends(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Coalescing must only ever supersede needs_generation=true rows — a
     pending HUMAN send for the same thread must survive untouched (the SQL
     filter itself enforces this; assert the coalesce query carries the
     needs_generation=true predicate)."""
+    _arm_codex(monkeypatch)
     winner = _candidate(12, thread_id=7, message_id=1200, needs_generation=True)
     conn = ScriptedConn(
         fetchrow_results=[
@@ -695,11 +741,14 @@ async def test_advisory_lock_args_are_str_not_int() -> None:
 
 
 @pytest.mark.asyncio
-async def test_fencing_aborts_send_when_takeover_happens_during_generation() -> None:
+async def test_fencing_aborts_send_when_takeover_happens_during_generation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """human_handling is FALSE when the row is claimed (generation proceeds)
     but flips to TRUE by the time we re-read it in the pre-send fence — the
     reply that was just generated must never be sent, and the row must not
     end up 'done'."""
+    _arm_codex(monkeypatch)
     candidate = _candidate(20, thread_id=7, message_id=2000, needs_generation=True)
     conn = ScriptedConn(
         fetchrow_results=[
@@ -809,8 +858,10 @@ async def test_lease_heartbeat_loop_renews_and_stops_on_cancel(
 
 
 @pytest.mark.asyncio
-async def test_heartbeat_started_during_generation_and_cancelled_after() -> None:
-    """The heartbeat task must be created before bot_generate_fn is awaited
+async def test_heartbeat_started_during_generation_and_cancelled_after(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The heartbeat task must be created before the codex leg is awaited
     and reliably cancelled+awaited-to-completion once it returns, regardless
     of how long generation actually took."""
     events: list[str] = []
@@ -825,17 +876,20 @@ async def test_heartbeat_started_during_generation_and_cancelled_after() -> None
             events.append("cancelled")
             raise
 
-    # bot_generate_fn must actually yield to the event loop at least once for
-    # the concurrently-created heartbeat task to ever get a scheduling slice
-    # before we cancel it — a non-yielding stub (module-level `_bot_gen`, used
-    # everywhere else in this file) runs to completion in the same tick with
-    # zero awaits inside it, so `heartbeat_task.cancel()` would fire before
-    # asyncio ever ran the task even once. In production this is a non-issue:
-    # the real bot_generate_fn (wa_inbox_bot.generate_bot_reply) always awaits
-    # a real httpx call.
-    async def _yielding_bot_gen(_thread: Any) -> str:
+    # The generation step must actually yield to the event loop at least once
+    # for the concurrently-created heartbeat task to ever get a scheduling
+    # slice before we cancel it — a non-yielding stub runs to completion in
+    # the same tick with zero awaits inside it, so `heartbeat_task.cancel()`
+    # would fire before asyncio ever ran the task even once. In production
+    # this is a non-issue: the real codex leg always awaits a real httpx call.
+    async def _yielding_codex_attempt(*_args: Any, **_kwargs: Any) -> Any:
         await asyncio.sleep(0)
-        return "generated bot reply"
+        return wa_outbox_worker.wa_codex_leg.CodexLegResult(text="generated bot reply")
+
+    monkeypatch.setenv("WA_GENERATION_PROVIDER", "codex")
+    monkeypatch.setattr(
+        wa_outbox_worker.wa_codex_leg, "attempt", _yielding_codex_attempt
+    )
 
     original = wa_outbox_worker._lease_heartbeat_loop
     wa_outbox_worker._lease_heartbeat_loop = _fake_heartbeat_loop
@@ -843,7 +897,7 @@ async def test_heartbeat_started_during_generation_and_cancelled_after() -> None
         candidate = _candidate(60, thread_id=7, message_id=6000, needs_generation=True)
         conn = ScriptedConn(
             fetchrow_results=[
-                _thread_row(human_handling=False),
+                {**_thread_row(human_handling=False), "handling_version": 3},
                 {"id": 60},  # generating-transition fenced RETURNING
                 {"id": 60},  # pre-send fence RETURNING
                 {"id": 60},  # final commit RETURNING
@@ -855,7 +909,7 @@ async def test_heartbeat_started_during_generation_and_cancelled_after() -> None
         pool = _make_pool(conn)
         svc = _wa_service(send_result={"messages": [{"id": "wamid.HB2"}]})
 
-        result = await process_outbox_once(pool, svc, _yielding_bot_gen)
+        result = await process_outbox_once(pool, svc, _bot_gen)
     finally:
         wa_outbox_worker._lease_heartbeat_loop = original
 
@@ -883,25 +937,101 @@ def _generation_conn(outbox_id: int, *, presend_human: bool = False) -> Scripted
     )
 
 
+def _retry_conn(outbox_id: int) -> ScriptedConn:
+    """A needs_generation row that fails ITS FIRST attempt and must be
+    requeued (never reaches 'sent' or 'failed') — thread load, generating
+    fence, retry-requeue fence; advisory lock only (no pre-send/window/send
+    scripting, since generation never gets that far)."""
+    candidate = _candidate(
+        outbox_id, thread_id=7, message_id=outbox_id * 100, needs_generation=True
+    )
+    return ScriptedConn(
+        fetchrow_results=[
+            {**_thread_row(human_handling=False), "handling_version": 3},
+            {"id": outbox_id},  # generating-transition fenced RETURNING
+            {"id": outbox_id},  # retry-requeue fenced RETURNING
+        ],
+        fetchval_results=[True],
+        fetch_results=[[candidate], []],
+    )
+
+
+def _terminal_conn(outbox_id: int) -> ScriptedConn:
+    """A needs_generation row already at MAX_ATTEMPTS-1, so this attempt is
+    the terminal one — thread load, generating fence, terminal-failure
+    fence; advisory lock only."""
+    candidate = _candidate(
+        outbox_id,
+        thread_id=7,
+        message_id=outbox_id * 100,
+        needs_generation=True,
+        attempts=wa_outbox_worker.MAX_ATTEMPTS - 1,
+    )
+    return ScriptedConn(
+        fetchrow_results=[
+            {**_thread_row(human_handling=False), "handling_version": 3},
+            {"id": outbox_id},  # generating-transition fenced RETURNING
+            {"id": outbox_id},  # terminal-failure fenced RETURNING
+        ],
+        fetchval_results=[True],
+        fetch_results=[[candidate], []],
+    )
+
+
 @pytest.mark.asyncio
 async def test_codex_leg_not_attempted_when_provider_absent(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """S2 ships dark: with WA_GENERATION_PROVIDER unset the leg is never
-    invoked and the Gemini path is byte-for-byte the pre-PR-5 one."""
+    """Gemini-cut (2026-08-27, "spegni gemini e collega chatgpt"): with
+    WA_GENERATION_PROVIDER unset the codex leg is never invoked AND Gemini
+    is never called either — the row takes a standing-condition retry
+    instead of the old byte-for-byte Gemini path."""
     monkeypatch.delenv("WA_GENERATION_PROVIDER", raising=False)
     attempt_spy = AsyncMock()
     monkeypatch.setattr(wa_outbox_worker.wa_codex_leg, "attempt", attempt_spy)
+    gemini_spy = AsyncMock(return_value="gemini reply")
 
-    conn = _generation_conn(70)
+    conn = _retry_conn(70)
     pool = _make_pool(conn)
-    svc = _wa_service(send_result={"messages": [{"id": "wamid.CX0"}]})
+    svc = _wa_service()
 
-    result = await process_outbox_once(pool, svc, _bot_gen)
+    result = await process_outbox_once(pool, svc, gemini_spy)
 
-    assert result == "sent"
+    assert result == "retry"
     attempt_spy.assert_not_awaited()
-    assert any("generated bot reply" in str(a) for _, a in conn.executed)
+    gemini_spy.assert_not_awaited()
+    svc.send_message.assert_not_awaited()
+    retry_updates = conn.sql_with_args("status = 'pending'")
+    assert retry_updates, "provider-not-codex must retry, never orphan the row"
+    assert any(1 in a for _, a in retry_updates)  # attempts == 1
+
+
+@pytest.mark.asyncio
+async def test_codex_leg_provider_not_codex_is_a_standing_condition_at_terminal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """GUILT + ledger-readability: once retries exhaust with the provider
+    still not armed, the ledger must say "standing condition", never
+    "generation failed" — this is a config state (arm WA_GENERATION_PROVIDER),
+    not an outage. Mirrors test_standing_condition_gets_its_own_ledger_text."""
+    monkeypatch.delenv("WA_GENERATION_PROVIDER", raising=False)
+    attempt_spy = AsyncMock()
+    monkeypatch.setattr(wa_outbox_worker.wa_codex_leg, "attempt", attempt_spy)
+    gemini_spy = AsyncMock(return_value="gemini reply")
+
+    conn = _terminal_conn(80)
+    pool = _make_pool(conn)
+    svc = _wa_service()
+
+    result = await process_outbox_once(pool, svc, gemini_spy)
+
+    assert result == "failed"
+    attempt_spy.assert_not_awaited()
+    gemini_spy.assert_not_awaited()
+    svc.send_message.assert_not_awaited()
+    errors = [str(a) for _, a in conn.executed]
+    assert any("bot_standing_condition_after_" in e for e in errors)
+    assert not any("bot_generate_failed_after_" in e for e in errors)
 
 
 @pytest.mark.asyncio
@@ -932,12 +1062,14 @@ async def test_codex_leg_serves_body_and_gemini_is_not_called(
 
 
 @pytest.mark.asyncio
-async def test_codex_leg_fall_off_uses_gemini_in_the_same_claim(
+async def test_codex_leg_fall_off_enters_retry_ladder_never_gemini(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Design invariant: broker outcomes consume ZERO retry attempts — the
-    fall-off lands on the Gemini leg inside the same claim and the row still
-    reaches 'sent' with no attempts increment anywhere."""
+    """Gemini-cut design invariant, REVERSED from the pre-cut PR-5 test this
+    replaces: a CERTAIN fall-off (not a standing-condition reason) used to
+    cost zero attempts because Gemini answered in the same claim. With
+    Gemini gone there is no second generator to hand it to — it now takes
+    the SAME retry ladder as `leg.fail`, and Gemini is never called."""
     monkeypatch.setenv("WA_GENERATION_PROVIDER", "codex")
     monkeypatch.setattr(
         wa_outbox_worker.wa_codex_leg,
@@ -950,18 +1082,83 @@ async def test_codex_leg_fall_off_uses_gemini_in_the_same_claim(
     )
     gemini_spy = AsyncMock(return_value="gemini reply")
 
-    conn = _generation_conn(72)
+    conn = _retry_conn(72)
     pool = _make_pool(conn)
-    svc = _wa_service(send_result={"messages": [{"id": "wamid.CX2"}]})
+    svc = _wa_service()
 
     result = await process_outbox_once(pool, svc, gemini_spy)
 
-    assert result == "sent"
-    gemini_spy.assert_awaited_once()
-    assert any("gemini reply" in str(a) for _, a in conn.executed)
-    assert not any(
-        "attempts = " in s and "status = 'pending'" in s for s, _ in conn.executed
-    ), "a broker fall-off must never enter the retry ladder"
+    assert result == "retry"
+    gemini_spy.assert_not_awaited()
+    svc.send_message.assert_not_awaited()
+    retry_updates = conn.sql_with_args("status = 'pending'")
+    assert retry_updates, "a broker fall-off must now take the retry ladder"
+    assert any(1 in a for _, a in retry_updates)  # attempts == 1
+
+
+@pytest.mark.asyncio
+async def test_codex_leg_certain_falloff_is_generic_failure_not_standing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """INNOCENCE, mirrors test_bare_runtime_error_keeps_the_generic_ledger_text:
+    a CERTAIN fall-off reason (not in _CODEX_LEG_STANDING_REASONS) must NOT be
+    relabelled a standing condition — it is a real failed attempt and the
+    ledger must say so."""
+    monkeypatch.setenv("WA_GENERATION_PROVIDER", "codex")
+    monkeypatch.setattr(
+        wa_outbox_worker.wa_codex_leg,
+        "attempt",
+        AsyncMock(
+            return_value=wa_outbox_worker.wa_codex_leg.CodexLegResult(
+                reason="package_build_error"
+            )
+        ),
+    )
+    gemini_spy = AsyncMock(return_value="gemini reply")
+
+    conn = _terminal_conn(81)
+    pool = _make_pool(conn)
+    svc = _wa_service()
+
+    result = await process_outbox_once(pool, svc, gemini_spy)
+
+    assert result == "failed"
+    gemini_spy.assert_not_awaited()
+    errors = [str(a) for _, a in conn.executed]
+    assert any("bot_generate_failed_after_" in e for e in errors)
+    assert not any("bot_standing_condition" in e for e in errors)
+
+
+@pytest.mark.asyncio
+async def test_codex_leg_standing_reasons_raise_standing_condition_never_gemini(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The two fall-off reasons wa_codex_leg._attempt uses to say "the
+    Gemini leg will raise BotStandingCondition for this" must get that
+    EXACT treatment here now that Gemini is cut — ledger says "standing",
+    never "generation failed", and Gemini is never called."""
+    for reason in ("autoreply_disabled", "no_customer_message"):
+        monkeypatch.setenv("WA_GENERATION_PROVIDER", "codex")
+        monkeypatch.setattr(
+            wa_outbox_worker.wa_codex_leg,
+            "attempt",
+            AsyncMock(
+                return_value=wa_outbox_worker.wa_codex_leg.CodexLegResult(reason=reason)
+            ),
+        )
+        gemini_spy = AsyncMock(return_value="gemini reply")
+
+        conn = _terminal_conn(82 if reason == "autoreply_disabled" else 83)
+        pool = _make_pool(conn)
+        svc = _wa_service()
+
+        result = await process_outbox_once(pool, svc, gemini_spy)
+
+        assert result == "failed"
+        gemini_spy.assert_not_awaited()
+        errors = [str(a) for _, a in conn.executed]
+        assert any("bot_standing_condition_after_" in e for e in errors), reason
+        assert not any("bot_generate_failed_after_" in e for e in errors), reason
 
 
 @pytest.mark.asyncio
@@ -1016,8 +1213,10 @@ async def test_codex_leg_fail_takes_the_retry_ladder_never_gemini_in_claim(
     """Codex r1 finding 3, fail-closed: when the leg's post-completion
     verification breaks, a completion exists and drift can no longer be
     ruled out — nothing may be generated in THIS claim. The worker takes
-    its retry ladder (fresh claim, fresh thread read; the spent offer
-    routes the retry to Gemini on current context)."""
+    its retry ladder (fresh claim, fresh thread read). With Gemini cut the
+    retry re-attempts the codex leg itself — #5093 (dependency of the
+    Gemini-cut PR) is what makes that reattach real instead of spinning on
+    the same ALREADY_SPENT wall every time."""
     monkeypatch.setenv("WA_GENERATION_PROVIDER", "codex")
     monkeypatch.setattr(
         wa_outbox_worker.wa_codex_leg,
