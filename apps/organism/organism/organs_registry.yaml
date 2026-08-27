@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 61e5f3ec3cdee4afe694a13f7952ec76da5b081b8082872574e03e02343702d8
+checksum: 67f06a65588fdfbbcd70c50ce64a6102129e1d418b9d6d0bf5a9882158967ba8
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2666,6 +2666,26 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.kb_probe_history.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.queue_shepherd
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 900
+  owner_module: scripts/queue_shepherd.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.queue-shepherd
+  severity_on_silence: warning
+  notes: budgeted merge-queue auto-rearm + stale-run janitor (Merge-OS v3 Codex F7,
+    Zero GO 2026-08-27) — StartInterval 600s, writes an unconditional heartbeat on
+    both the success and failure path (genes imprinted post-birth, PR
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.queue_shepherd.json
     timestamp_field: ts
     status_field: status
 - id: army.chore_dispatch

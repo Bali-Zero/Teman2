@@ -819,3 +819,65 @@ verifying the first live receipt is a separate ALIGN-FLEET step tracked in
 `.claude/skills/modus/PENDING-ARMS.md`. Wave 1's own acceptance criterion — 7 consecutive
 daily records, each carrying billed/PR computed via the attribution rule above — cannot be
 satisfied until that arming happens.
+
+---
+
+## Queue Shepherd organ (Codex F7 disposition, Zero GO 2026-08-27)
+
+`scripts/queue_shepherd.py` is the launchd organ the council spec named but declared not yet
+built (`research/operations/2026-08-14-merge-os-v3-research-council.md` §5, row "Codex F7"):
+"a durable (PR, head SHA) retry budget or no autonomous rearm ... a launchd organ on Pro can
+own the counter file". It runs two independent actions every tick:
+
+**(a) Budgeted re-arm.** A PR counts as "armed by this repo's own convention" when its branch
+is under `agent/` (Agent PR Contract §6) or it carries a `harness/fable-gate`/`harness-floor`
+status. Among those, a PR is a candidate only when it is truly disarmed (per W111 above: BOTH
+`autoMergeRequest` and `mergeQueueEntry` null — either alone is ambiguous) and its
+`mergeStateStatus` is CLEAN/UNSTABLE, or BLOCKED with a green status-check rollup. For each
+candidate the organ reads the PR's own GraphQL timeline for its most recent
+`RemovedFromMergeQueueEvent` (the agy-F3 disposition: attribute from the PR timeline, never
+from a `merge_group` run's `actor`, which is always the queue's own service account) and
+classifies the reason:
+
+| class      | meaning                                                                           | action                                                                          |
+| ---------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `INFRA`    | `failed_checks` correlated to a cancelled/timed-out/setup-signature job           | re-arm, **≤3 per (PR, head SHA) per rolling 24h**                               |
+| `CODE`     | `failed_checks` with no infra signature (or unresolved — conservative default)    | **never** auto-rearm                                                            |
+| `CONFLICT` | `merge_conflict`                                                                  | never (needs a human/new head)                                                  |
+| `MANUAL`   | a human explicitly dequeued it                                                    | never — a human's call is not this organ's to override                          |
+| `UNKNOWN`  | no readable ejection reason at all, or a reason string this module has never seen | **fail-closed**, never re-armed; one Telegram alert, deduped per (PR, head SHA) |
+
+The budget is a JSON file keyed `(pr_number, head_sha)` — **not** the queue entry, which resets
+every time GitHub creates/destroys the entry and would let the counter reset itself. A new push
+(new head SHA) is a fresh key by construction: this **is** the council's "head moved = reset"
+rule, with no separate reset code path needed. Re-arm itself is `gh pr merge N --auto`
+**bare** — this repo's queue rejects every strategy flag, `--squash` included (§ Session
+discipline above).
+
+**(b) Stale-run janitor.** Cancels QUEUED (never in_progress/completed) Actions runs that can
+no longer build anything useful: a `pull_request`-event run whose `head_sha` is not the
+current head of any open PR, or a `merge_group`-event run whose `head_branch`
+(`gh-readonly-queue/main/pr-N-<sha>`) no longer exists. Liveness is re-verified with a fresh
+fetch **immediately before each cancel call**, never from the list used to discover the
+candidate — a run can flip from stale to live in the seconds a tick takes to walk its
+candidates (`scripts/tests/test_queue_shepherd.py::test_janitor_recheck_at_cancel_time_never_cancels_a_run_that_became_live`
+is the regression test for exactly this race).
+
+**Fail-closed discipline**: any `gh` fetch failure raises inside the fetch function and is
+caught at the pass level as CANNOT-VERIFY — a failed fetch is logged and the pass does zero
+actions that tick, never read as "nothing to do" (scar family #2/#9).
+
+**Files**: `scripts/queue_shepherd.py` (`--tick [--dry-run]`, `--report`) +
+`scripts/tests/test_queue_shepherd.py` +
+`infra/launchagents/com.nuzantara.queue-shepherd.10min.plist` (`StartInterval=600`, no
+`KeepAlive`, lint-clean per `scripts/lint_plist_keepalive.py`). State lives in
+`~/logs/queue-shepherd/rearm-budget.json` + `~/logs/queue-shepherd/alerted-unknown.json`;
+receipts in `~/logs/queue-shepherd.log`.
+
+**Kill switch**: `QUEUE_SHEPHERD_ENABLED=false` — every invocation still prints a receipt line
+(superscar #2: a silent cron reads as a dead cron).
+
+**Built, not armed** (scar family #2, same pattern as the baseline organ above): the plist
+ships in this PR but installing it on Pro (`launchctl bootstrap`) is a separate operator step —
+see `.claude/skills/modus/PENDING-ARMS.md`. Proof-of-armed is the first live `--tick` log line
+in `~/logs/queue-shepherd.log` after install.
