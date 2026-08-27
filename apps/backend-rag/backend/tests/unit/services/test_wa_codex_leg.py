@@ -3,7 +3,15 @@
 Chaos-table ownership (design s2-pr5 §7): rows 2 (ALREADY_SPENT -> Gemini),
 3-adjacent (fall-off semantics), 7 (typed failure -> fall-off), 9 (broker
 dark -> Gemini-only) live here; rows 1/4 are pinned by PR-2's broker suite,
-rows 5/6/8 by PR-6's daemon tests.
+rows 5/6/8 by PR-6's daemon tests. Retry-budget update (spec gradino 2/5,
+migration 296): row 2's ALREADY_SPENT still falls off (now a defensive
+race fallback, not the normal retry path), but a retry offer on a row
+with a STILL-ALIVE prior leg now returns REATTACHED — this leg proceeds
+to wait/consume the SAME job rather than falling off, and a terminal
+prior leg with budget left gets a fresh OFFERED leg instead of falling
+off at all. See test_offer_job_retry_* in test_wa_broker.py for the
+offer_job-side coverage; this file covers only wa_codex_leg.py's
+consumption of the new outcomes.
 
 Fake discipline: the real ``wa_broker`` enums travel through a stub
 namespace, so every ``is not OfferOutcome.OFFERED`` identity check in the
@@ -209,7 +217,15 @@ def _wire_stubs(
         offer_job=AsyncMock(
             return_value=offer
             if offer is not None
-            else OfferResult(OfferOutcome.OFFERED, job_id=uuid.uuid4())
+            else OfferResult(
+                OfferOutcome.OFFERED,
+                job_id=uuid.uuid4(),
+                # matches _thread()'s default handling_version=3 — most
+                # tests never touch the epoch and just need the drift
+                # check's `serving_epoch` to equal what `_thread()` hands
+                # back as `fresh["handling_version"]`.
+                thread_epoch=3,
+            )
         ),
         wait_for_job=AsyncMock(
             return_value=wait if wait is not None else WaitResult(WaitOutcome.COMPLETED)
@@ -348,13 +364,17 @@ async def test_build_contract_break_missing_wire_falls_off(
         OfferOutcome.QUEUE_FULL,
         OfferOutcome.ALREADY_SPENT,
         OfferOutcome.FENCE_LOST,
+        OfferOutcome.LEGS_EXHAUSTED,
     ],
 )
 async def test_every_non_offered_outcome_falls_off_without_waiting(
     monkeypatch: pytest.MonkeyPatch, outcome: OfferOutcome
 ) -> None:
     """Chaos rows 2/9: every admission refusal is a route decision, not an
-    error — straight to Gemini, no wait, no consume, no fold."""
+    error — straight to Gemini, no wait, no consume, no fold. LEGS_EXHAUSTED
+    (spec gradino 2/5) joins this set: named distinctly from ALREADY_SPENT
+    in the reason string, but the same fall-off shape until Gemini itself
+    is retired from this channel."""
     stubs = _wire_stubs(monkeypatch, offer=OfferResult(outcome))
     result = await _run()
     assert result.text is None and not result.stand_down
@@ -621,6 +641,100 @@ async def test_offered_without_job_id_is_a_contract_break_fail(
     assert result.fail == "offer_contract_break:missing_job_id"
     assert result.text is None and not result.stand_down
     stubs.wait_for_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_offered_without_thread_epoch_is_a_contract_break_fail(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Same contract-break class as a missing job_id (Codex r4 finding 1):
+    without thread_epoch the post-completion drift check has nothing safe
+    to fence against, so this must fail closed before ever waiting."""
+    stubs = _wire_stubs(
+        monkeypatch,
+        offer=OfferResult(OfferOutcome.OFFERED, job_id=uuid.uuid4(), thread_epoch=None),
+    )
+    result = await _run()
+    assert result.fail == "offer_contract_break:missing_thread_epoch"
+    assert result.text is None and not result.stand_down
+    stubs.wait_for_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_reattached_proceeds_to_wait_like_offered(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """REATTACHED is the fix for the historical bug: a retry offer on a
+    row whose prior codex leg is still alive gets that job's id back and
+    must wait/consume/finalize it exactly like a fresh OFFERED — never
+    fall off and lose it to Gemini."""
+    job_id = uuid.uuid4()
+    stubs = _wire_stubs(
+        monkeypatch,
+        offer=OfferResult(OfferOutcome.REATTACHED, job_id=job_id, thread_epoch=3),
+    )
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    result = await _run(conn=conn)
+    assert result.text == "the broker reply"
+    assert result.stand_down is False
+    stubs.wait_for_job.assert_awaited_once()
+    assert stubs.wait_for_job.await_args.args[1] == job_id
+    stubs.consume_result.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_reattach_drift_check_fences_on_the_jobs_own_epoch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The critical correctness case: a REATTACHED job's post-completion
+    drift check must compare against the PRIOR leg's own frozen
+    thread_epoch (offer.thread_epoch), never this claim's freshly-read
+    local epoch. Here the CURRENT claim's thread reads handling_version=5
+    (it started later than the original leg), the reattached job was
+    actually offered under epoch=3, and the thread's live handling_version
+    is STILL 3 (nothing moved since the original offer) — using the local
+    epoch (5) would wrongly declare drift and discard a perfectly valid
+    completion; using the job's own epoch (3) correctly finds none."""
+    job_id = uuid.uuid4()
+    stubs = _wire_stubs(
+        monkeypatch,
+        offer=OfferResult(OfferOutcome.REATTACHED, job_id=job_id, thread_epoch=3),
+    )
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    result = await _run(conn=conn, thread=_thread(handling_version=5))
+    assert result.text == "the broker reply"
+    assert result.stand_down is False
+    stubs.discard_completion.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_reattach_drift_check_still_catches_real_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """INNOCENCE for the above: if the thread's live handling_version has
+    actually moved PAST the reattached job's own frozen epoch, the drift
+    check must still fire — the fix narrows WHICH epoch is authoritative,
+    it does not disable the protocol."""
+    job_id = uuid.uuid4()
+    stubs = _wire_stubs(
+        monkeypatch,
+        offer=OfferResult(OfferOutcome.REATTACHED, job_id=job_id, thread_epoch=3),
+    )
+    conn = ScriptedConn(
+        fetchrow_results=[
+            {"human_handling": False, "handling_version": 4},  # moved past 3
+            {"id": 42},  # atomic stand-down abort: fenced RETURNING
+        ]
+    )
+    result = await _run(conn=conn, thread=_thread(handling_version=5))
+    assert result.stand_down is True
+    assert result.text is None
+    stubs.discard_completion.assert_awaited_once()
+    stubs.consume_result.assert_not_awaited()
 
 
 def test_stub_namespace_mirrors_the_real_module() -> None:

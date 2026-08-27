@@ -58,7 +58,6 @@ name: Prettier (changed files)
 
 on:
   pull_request:
-  merge_group:
 
 permissions:
   contents: read

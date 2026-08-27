@@ -1234,101 +1234,32 @@ async def initialize_channel_router(
         app.state.channel_router_init_error = str(e)
 
 
-async def initialize_services(app: FastAPI) -> None:
+async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
+    """Wire every `app.state.garuda_*` adapter. Called by BOTH init paths.
+
+    This function exists because these seven assignments used to live inline
+    in `initialize_services`, which ONLY the `rag` process runs — while all
+    four GARUDA routers are `process_groups=_API`, i.e. mounted ONLY on the
+    `api` process, which runs `initialize_services_light`. The two processes
+    were exactly inverted: `rag` wired the stores and mounted none of the
+    routes; `api` mounted every route and wired none of the stores.
+
+    The visible symptom was a 503 on the first action a real customer takes.
+    `POST /api/visa/voa/eligibility-checks` on balizero.com answered
+    `PERSISTENCE_POLICY_UNAVAILABLE`, which reads as a retention-policy fault
+    and is not one: `get_garuda_check_store` falls back to
+    `UnconfiguredCheckStore`, whose every method raises
+    `PersistencePolicyUnavailable("no garuda check store configured")`.
+    Measured 2026-08-27 against production, after ruling out — each by
+    measurement, not assumption — a missing policy row (exactly one active
+    GARUDA_CHECK/PRODUCTION row), a missing grant (`backend_rag_v2=r/...` in
+    the real `pg_class.relacl`, not the caller-filtered information_schema
+    view), RLS (`relrowsecurity=f`, zero policies) and a wrong database.
+
+    No test could see it: under pytest the app is a single process, so the
+    api/rag split does not exist. `test_api_process_wires_every_state_key_
+    its_routers_read` is the structural guard that now can.
     """
-    Initialize all ZANTARA RAG services with fail-fast for critical services.
-
-    Critical services (SearchService, ZantaraAIClient) must initialize successfully.
-    If any critical service fails, the application will raise RuntimeError to
-    prevent starting in a broken state.
-
-    Non-critical services will log errors and continue with degraded functionality.
-
-    Args:
-        app: FastAPI application instance
-    """
-    if getattr(app.state, "services_initialized", False):
-        return
-
-    logger.info("🚀 Initializing ZANTARA RAG services...")
-
-    # 0. RedisManager (must be first — all Redis consumers depend on it)
-    _initialize_redis_manager(app, "full")
-
-    # 0.1 KG cache proactive invalidation listener (HIGH-13).
-    # Subscribes to `zantara:kg:invalidate` and wipes local KG cache entries
-    # the moment a peer cell increments the KG version. Falls back to the
-    # existing lazy on-read check if Redis is down.
-    try:
-        from backend.services.rag.kg_cache import start_invalidation_listener
-
-        listener = await start_invalidation_listener()
-        app.state.kg_invalidate_listener = listener
-        logger.info("✅ KG cache invalidation listener started")
-    except Exception as e:
-        logger.warning(
-            "KG cache invalidation listener failed to start: %s — "
-            "falling back to lazy version check only",
-            e,
-        )
-
-    # 0.5 VASSAL Phase 3: ConfirmationService + ToolAuthorizer wiring.
-    # Must happen after RedisManager (the service depends on it) and
-    # before anything that calls execute_tool (which reads the module-level
-    # authorizer and confirmation service singletons).
-    try:
-        from backend.services.agents.confirmation_service import ConfirmationService
-        from backend.services.agents.tool_authorizer import ToolAuthorizer
-        from backend.services.rag.agentic.tool_executor import configure_tool_executor
-
-        redis_mgr = getattr(app.state, "redis_manager", None)
-        confirmation_service = ConfirmationService(redis_manager=redis_mgr)
-        await confirmation_service.start()
-        app.state.confirmation_service = confirmation_service
-
-        authorizer = ToolAuthorizer()
-        configure_tool_executor(
-            authorizer=authorizer,
-            confirmation_service=confirmation_service,
-        )
-        logger.info(
-            "✅ VASSAL Phase 3: ConfirmationService + ToolAuthorizer wired (Redis available=%s)",
-            getattr(redis_mgr, "available", False),
-        )
-    except Exception as e:
-        logger.warning(
-            "⚠️ VASSAL Phase 3: ConfirmationService wiring failed: %s — "
-            "confirmation gates will fail-closed (deny)",
-            e,
-        )
-
-    # 1. Critical services (fail-fast)
-    search_service, ai_client = await _init_critical_services(app)
-
-    # 2. Tool stack
-    tool_executor = await _init_tool_stack(app)
-
-    # 2.5 FAQ Cache (non-critical, graceful degradation)
-    await initialize_faq_cache_service(app)
-
-    # 3. RAG components (CulturalRAGService initialized inside _init_rag_components)
-    query_router = await _init_rag_components(app, search_service)
-    cultural_rag_service = app.state.cultural_rag  # Already set by _init_rag_components
-
-    # 4. Specialized agents
-    (
-        autonomous_research_service,
-        cross_oracle_synthesis_service,
-        client_journey_orchestrator,
-    ) = await _init_specialized_agents(app, search_service, ai_client, query_router)
-
-    # Store specialized agents in app.state for router access
-    app.state.cross_oracle_synthesis_service = cross_oracle_synthesis_service
-    app.state.autonomous_research_service = autonomous_research_service
-    app.state.client_journey_orchestrator = client_journey_orchestrator
-
-    # 5. Database services
-    db_pool = await initialize_database_services(app)
 
     # 5.5 GARUDA VOA — magic-link session verifier wiring (L4).
     # Non-critical: on failure the L3/L4 routes keep answering fail-closed
@@ -1524,6 +1455,109 @@ async def initialize_services(app: FastAPI) -> None:
             "(expected until Zero provisions a Xendit sandbox account — L3 fail closed)"
         )
 
+
+
+async def initialize_services(app: FastAPI) -> None:
+    """
+    Initialize all ZANTARA RAG services with fail-fast for critical services.
+
+    Critical services (SearchService, ZantaraAIClient) must initialize successfully.
+    If any critical service fails, the application will raise RuntimeError to
+    prevent starting in a broken state.
+
+    Non-critical services will log errors and continue with degraded functionality.
+
+    Args:
+        app: FastAPI application instance
+    """
+    if getattr(app.state, "services_initialized", False):
+        return
+
+    logger.info("🚀 Initializing ZANTARA RAG services...")
+
+    # 0. RedisManager (must be first — all Redis consumers depend on it)
+    _initialize_redis_manager(app, "full")
+
+    # 0.1 KG cache proactive invalidation listener (HIGH-13).
+    # Subscribes to `zantara:kg:invalidate` and wipes local KG cache entries
+    # the moment a peer cell increments the KG version. Falls back to the
+    # existing lazy on-read check if Redis is down.
+    try:
+        from backend.services.rag.kg_cache import start_invalidation_listener
+
+        listener = await start_invalidation_listener()
+        app.state.kg_invalidate_listener = listener
+        logger.info("✅ KG cache invalidation listener started")
+    except Exception as e:
+        logger.warning(
+            "KG cache invalidation listener failed to start: %s — "
+            "falling back to lazy version check only",
+            e,
+        )
+
+    # 0.5 VASSAL Phase 3: ConfirmationService + ToolAuthorizer wiring.
+    # Must happen after RedisManager (the service depends on it) and
+    # before anything that calls execute_tool (which reads the module-level
+    # authorizer and confirmation service singletons).
+    try:
+        from backend.services.agents.confirmation_service import ConfirmationService
+        from backend.services.agents.tool_authorizer import ToolAuthorizer
+        from backend.services.rag.agentic.tool_executor import configure_tool_executor
+
+        redis_mgr = getattr(app.state, "redis_manager", None)
+        confirmation_service = ConfirmationService(redis_manager=redis_mgr)
+        await confirmation_service.start()
+        app.state.confirmation_service = confirmation_service
+
+        authorizer = ToolAuthorizer()
+        configure_tool_executor(
+            authorizer=authorizer,
+            confirmation_service=confirmation_service,
+        )
+        logger.info(
+            "✅ VASSAL Phase 3: ConfirmationService + ToolAuthorizer wired (Redis available=%s)",
+            getattr(redis_mgr, "available", False),
+        )
+    except Exception as e:
+        logger.warning(
+            "⚠️ VASSAL Phase 3: ConfirmationService wiring failed: %s — "
+            "confirmation gates will fail-closed (deny)",
+            e,
+        )
+
+    # 1. Critical services (fail-fast)
+    search_service, ai_client = await _init_critical_services(app)
+
+    # 2. Tool stack
+    tool_executor = await _init_tool_stack(app)
+
+    # 2.5 FAQ Cache (non-critical, graceful degradation)
+    await initialize_faq_cache_service(app)
+
+    # 3. RAG components (CulturalRAGService initialized inside _init_rag_components)
+    query_router = await _init_rag_components(app, search_service)
+    cultural_rag_service = app.state.cultural_rag  # Already set by _init_rag_components
+
+    # 4. Specialized agents
+    (
+        autonomous_research_service,
+        cross_oracle_synthesis_service,
+        client_journey_orchestrator,
+    ) = await _init_specialized_agents(app, search_service, ai_client, query_router)
+
+    # Store specialized agents in app.state for router access
+    app.state.cross_oracle_synthesis_service = cross_oracle_synthesis_service
+    app.state.autonomous_research_service = autonomous_research_service
+    app.state.client_journey_orchestrator = client_journey_orchestrator
+
+    # 5. Database services
+    db_pool = await initialize_database_services(app)
+
+    # 5.5 GARUDA VOA — every `app.state.garuda_*` adapter, shared by both
+    # init paths. MUST stay a call to the shared function: inlining it here
+    # again is what left the `api` process (the only one that mounts these
+    # routers) with no stores at all.
+    await initialize_garuda_services(app, db_pool)
     # 6. CRM & Memory
     await initialize_crm_and_memory_services(app, ai_client, db_pool)
 
@@ -1991,6 +2025,11 @@ async def initialize_services_light(app: FastAPI) -> None:
                 )
         except Exception as e:
             logger.warning("⚠️ DLQ retry loop failed (light, non-critical): %s", e)
+
+    # 4c. GARUDA VOA — the SAME wiring the rag process does. This process is
+    # the one that actually mounts the GARUDA routers (`process_groups=_API`),
+    # so without this call every one of them fail-closes 503 by construction.
+    await initialize_garuda_services(app, db_pool)
 
     # 5. Mark RAG services as intentionally not-initialized (light mode)
     app.state.search_service = None
