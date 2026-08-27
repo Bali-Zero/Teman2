@@ -196,11 +196,40 @@ from `main` may be actively harmful on a branch that lacks the machinery `main`
 has.** Inherited rules travel with their enforcement or they travel as their own
 opposite.
 
+**Update 2026-08-27 — CHECK-half shipped, ARM-half still pending.**
+`scripts/ci/check_base_protected.py` + the `base-branch-protected` job in
+`.github/workflows/hot-zone-pr-gate.yml` now fail a PR whenever its base branch
+is not covered by an active ruleset carrying the main-equivalent minimum
+required checks (`infra/required.d/integration-branch-minimum-contexts.json`).
+Verified live at authoring time: exactly 2 rulesets exist, both scoped to
+`main`/`~DEFAULT_BRANCH` — nothing covered `refs/heads/feature/*`, and neither
+of those 2 carries a `required_status_checks` rule at all (main's own required
+checks live in classic branch protection, not in its ruleset — a corrected
+premise from the original design, see the script's own module docstring).
+Still open, and deliberately NOT done by this check (repo-settings mutation is
+an operator[control-plane] action): actually creating the `feature/*` ruleset
+— `scripts/ci/setup_merge_queue_ruleset.sh --branch-pattern 'feature/*'
+--apply` (print-only without `--apply`) — and confirming whether the CI job's
+own `gh api .../rulesets` call can authenticate at all with the ambient
+`GITHUB_TOKEN`. Corrected 2026-08-27 after a cross-family refuter round: the
+PR's first draft asserted this would "likely 403" because "administration"
+isn't a grantable Actions `permissions:` scope; the refuter countered that the
+real requirement is "Metadata: read", not Administration. Neither claim could
+be confirmed — GitHub's REST rulesets docs don't publish a permissions table
+for the endpoint, and "metadata" is ALSO absent from actionlint's own
+valid-scopes list, so whichever name is correct in GitHub's model, this job's
+`permissions:` block cannot express it either way. Left as an honestly
+UNTESTED open question (base==main never exercises this call, so this PR
+never observed it either succeed or 403) rather than a confident claim in
+either direction — the first real `feature/*` PR after the ARM-half lands
+will settle it empirically.
+
 ## Enforcement backlog (not yet armed — tracked, per superscar #2 "esiste ≠ armato")
 
 1. CI rule: PR touching only `docs/`/`research/` requires an explicit owner-initialed label
    (kills standalone ledger PRs at the gate, not by exhortation).
-2. Quarterly gate audit: **a gate that has never blocked anything is deleted.**
+2. Quarterly gate audit: **a gate that has never blocked anything is deleted.** — armed via X3 gate
+   lifecycle — see `docs/plans/2026-08-26-receptor-live/MANDATE.md` §3.
 3. Silence-on-output detection: an active lane with no merged PR in 48h escalates (replaces
    status reports and heartbeat chatter).
 4. Typed-contract toolchain (OpenAPI → TS client generation) wired into CI for the first

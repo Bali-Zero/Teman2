@@ -1,0 +1,100 @@
+brief_ref: evidence/brief.yml
+plan_ref: "PR #5056 — complete Damar workspace newsroom publication bridge"
+lanes:
+  - lane: damar-newsroom-bridge
+    role: build
+    seat: "Codex on Air-M5 worktree; implementation, fixes and verification"
+  - lane: damar-newsroom-bridge-redteam
+    role: review
+    seat: "independent bridge_code_redteam agent; focused SSRF and close-state review"
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  One build lane. The second lane is an independent reviewer, not another builder.
+diff:
+  net_lines: "19 files, 4011 additions and 243 deletions, net +3768, measured from origin/main...HEAD before evidence authoring."
+  behaviour_change: >-
+    Adds the end-to-end private publication bridge, strict publication state
+    machine, authenticated backend routes, atomic GitHub publication and homepage
+    placement, cover handling, public live confirmation, and Mouth hero support.
+receipts:
+  - claim: "The deterministic floor for the functional diff is Gear 3 and its measured size is net +3768 lines across 19 files."
+    cmd: "git diff --name-only origin/main...HEAD > /tmp/damar-bridge-changed.txt; git diff --numstat origin/main...HEAD > /tmp/damar-bridge-numstat.txt; apps/backend-rag/.venv/bin/python scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/damar-bridge-changed.txt; awk over /tmp/damar-bridge-numstat.txt"
+    result: "floor=3; added=4011; deleted=243; net=3768; files=19"
+    exit: 0
+    ts: "2026-08-27T01:52:56Z"
+    seat: "Codex on Air-M5"
+  - claim: "The complete backend, MCP, frontend and E2E test workflow passed on PR head 545bb2693d2aa4b230642399819ac997dd4edb77."
+    cmd: "gh run view 33030473134 --json jobs --jq '.jobs[] | [.name,.status,.conclusion] | @tsv'"
+    result: >-
+      Backend Static, all three Backend Shards, Backend Tests, MCP Server Tests,
+      Mouth frontend, admin frontend, Shared Core, Evaluator, E2E and Test Summary
+      completed success. Visa Oracle smoke was an explicitly advisory unrelated job.
+    exit: 0
+    ts: "2026-08-27T01:52:56Z"
+    seat: "GitHub Actions, read by Codex on Air-M5"
+  - claim: "All security scans relevant to this PR passed on the exact PR head."
+    cmd: "gh run view 33030473135 --json jobs --jq '.jobs[] | [.name,.status,.conclusion] | @tsv'"
+    result: >-
+      Detect Secrets, Bandit, Safety, Snyk Docker, Snyk Node, Snyk Python,
+      CodeQL Python, CodeQL JavaScript and Security Summary completed success.
+    exit: 0
+    ts: "2026-08-27T01:52:56Z"
+    seat: "GitHub Actions, read by Codex on Air-M5"
+  - claim: "Every required technical check passed; the sole failed required check was the Harness floor waiting for this evidence pair."
+    cmd: "gh pr checks 5056 --required --json name,state,bucket --jq '.[] | [.name,.state,.bucket] | @tsv'"
+    result: >-
+      Backend, frontend, E2E, both CodeQL jobs, guard, organ, actionlint,
+      antidotes and R1 all PASS; only Harness floor recompute was FAILURE.
+    exit: 0
+    ts: "2026-08-27T01:52:56Z"
+    seat: "Codex on Air-M5"
+  - claim: "The exact commit selected for merge was identical locally, on the remote branch and in PR #5056."
+    cmd: "git rev-parse HEAD; git rev-parse origin/agent/nuzantara/ops/damar-newsroom-publish; gh pr view 5056 --json headRefOid"
+    result: "545bb2693d2aa4b230642399819ac997dd4edb77 on all three surfaces"
+    exit: 0
+    ts: "2026-08-27T01:51:00Z"
+    seat: "Codex on Air-M5"
+pii_scan: clean
+dissent:
+  - seat: "independent bridge_code_redteam agent"
+    objection: >-
+      A Bali Zero hostname with a non-standard port could pass a hostname-only
+      allowlist and turn live confirmation into an SSRF-capable request.
+    status: CONFIRMED
+    note: >-
+      Fixed before final CI: the public URL guard now rejects non-standard ports
+      before creating the HTTP client, keeps redirects disabled, and has a direct
+      fault-injection test for https://balizero.com:444/.
+  - seat: "GitHub Actions Backend Tests, first failing run"
+    objection: >-
+      A legacy unit test still imported the removed update_homepage_layout helper,
+      contradicting the new atomic article-cover-layout publication contract.
+    status: CONFIRMED
+    note: >-
+      The obsolete helper contract was removed from the test suite; the complete
+      backend suite then progressed to the next independent security check.
+  - seat: "GitHub Actions mutating-route security census, second failing run"
+    objection: >-
+      Four new mutating workspace routes bypass HybridAuth through the public
+      endpoint registry but were not yet classified by the mechanical security census.
+    status: CONFIRMED
+    note: >-
+      All four routes are now registered as intentionally HybridAuth-bypassed but
+      protected by the exact dedicated API-key dependency; the full backend suite
+      and all security checks passed after the correction.
+tests:
+  - "Backend Tests (Python): PASS, including three shards and aggregate gate."
+  - "MCP Server Tests: PASS."
+  - "Frontend Tests (Mouth): PASS."
+  - "E2E Tests (Playwright): PASS."
+static:
+  - "CodeQL Python and JavaScript: PASS."
+  - "Detect Secrets, Bandit, Safety and all Snyk jobs: PASS."
+  - "git diff --check origin/main...HEAD: clean before evidence authoring."
+notes:
+  - >-
+    Owner directive in this session: skip further review and merge. This is a
+    scoped owner verdict for PR #5056, not a repository-wide harness disable.
+  - >-
+    Live availability is not asserted by this pack. Deployment and authenticated
+    production probing remain mandatory after the merge.

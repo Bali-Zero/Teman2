@@ -1,0 +1,45 @@
+task_id: damar-newsroom-publish-0827
+gear: 3
+l_level: L2
+gate_class: owner_override
+objective: |
+  Complete the private Damar workspace marketing bridge so the workspace agent
+  can retrieve the full Intel article inventory, edit and fact-gate selected
+  stories, attach a generated cover, publish article plus homepage placement
+  atomically, and verify the resulting public URL before closing the item.
+
+  The same change also makes the publication state explicit to the Mouth
+  frontend and protects every bridge route with the dedicated workspace API
+  key. The bridge is not claimed live by this PR alone: merge, deployment and a
+  positive authenticated production probe remain separate prove-live steps.
+constraints:
+  - "Every mutating workspace route remains protected by the exact dedicated bridge API-key dependency."
+  - "Publication must fail closed when the fact gate, cover, source URL, editorial fields or requested homepage position are incomplete."
+  - "Article content, cover metadata and homepage placement are committed atomically; partial publication is not accepted as success."
+  - "Live confirmation may probe only approved public Bali Zero URLs, without redirects or non-standard ports."
+  - "No client PII, credentials or secret values may appear in tools, logs, evidence or public content."
+  - "No claim that the Bridge is live until merge, deploy and an authenticated positive production probe all succeed."
+acceptance:
+  - "The complete backend, MCP, frontend and E2E CI suites pass on the exact PR head."
+  - "Python and JavaScript CodeQL plus secret, Bandit, Safety and Snyk scans pass on the exact PR head."
+  - "The dedicated route-key security registry accounts for all four mutating workspace routes."
+  - "Independent bridge red-team confirms the public-URL guard rejects non-standard ports before any HTTP client is created."
+  - "Local HEAD, remote branch HEAD and PR head are byte-identical immediately before merge."
+consumer_map:
+  - "Damar workspace agent -> nuzantara-mcp workspace-marketing tools -> authenticated backend workspace routes."
+  - "Backend publication transaction -> balizero.com article source plus homepage hero placement."
+  - "Mouth frontend -> publication metadata and selected homepage hero."
+risks:
+  - "The Bridge remains unavailable until the backend and frontend deployments complete after merge."
+  - "A successful publication transaction still requires a separate public-page confirmation and visual browser QA."
+  - "The repository-wide Harness floor cannot be bypassed by admin merge; this PR therefore carries its own truthful evidence pair and an explicit owner verdict instead of disabling enforcement globally."
+grader: |
+  The owner explicitly ordered further human review to be skipped and the PR
+  merged. That directive is recorded as the final owner verdict only after the
+  independent bridge red-team returned PASS and every required technical check
+  other than the missing-evidence harness itself completed successfully. No
+  repository-wide kill switch is used.
+budget: >-
+  One implementation lane, one independent bridge red-team lane, GitHub CI and
+  security scanning; no paid per-token API and no production mutation before merge.
+pii: none

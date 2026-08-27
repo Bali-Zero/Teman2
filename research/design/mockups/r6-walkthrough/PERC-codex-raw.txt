@@ -1,0 +1,35 @@
+Scale: **T/C/A: 5 = strongest; S: 5 = highest scam risk.**
+
+1. **PAGE-1 — T: 5/5.** Named specialist, photo, response window, case code, legal entity details, and clear agency/government separation create accountability.
+
+2. **PAGE-1 — S: 2/5.** The WhatsApp-first handoff resembles common SEA scam funnels, but the named owner, NPWP/registry link, privacy note, and “nothing submitted yet” materially reduce suspicion.
+
+3. **PAGE-1 — C: 5/5.** It identifies the exact trigger—past overstay—and explains what the specialist will verify before giving real options.
+
+4. **PAGE-1 — A: 5/5.** The applicant knows whom they will reach, expected response time, what context follows them, and how to revise answers.
+
+5. **PAGE-2 — T: 4/5.** The legal footer and concrete process remain strong, but “our visa team” feels less accountable and more generic than a named case owner.
+
+6. **PAGE-2 — S: 3/5.** A faceless team followed immediately by “Continue on WhatsApp” more closely resembles a lead-capture pattern, despite the strong footer safeguards.
+
+7. **PAGE-2 — C: 5/5.** The reason for human review and the next verification step are just as explicit as PAGE-1.
+
+8. **PAGE-2 — A: 4/5.** The channel and SLA are clear, but the applicant does not know who owns the case.
+
+9. **Forced choice: PAGE-1.** A first-time applicant worried about a past overstay would trust the named specialist more because the sensitive exception is visibly assigned to an accountable human rather than an anonymous team.
+
+10. **Potential dark pattern:** Making WhatsApp the only prominent forward action could pressure users into an off-page sales conversation before they see the specialist’s assessment. The understated “Review or change your answers” link only partially offsets this.
+
+11. **LAND-1 red perception: institutional-leaning, not scam-adjacent.** The controlled wine/structured red, navy text, restrained off-white ground, and non-governmental disclaimer make the palette feel deliberate rather than alarmist.
+
+12. **LAND-1 strongest mitigators:**  
+   **(a)** Verifiable PT, NPWP, and registry identity.  
+   **(b)** Explicit separation of roles: the agency prepares; immigration decides and issues.
+
+13. **LAND-2 red perception: institutional-leaning, but with greater scam adjacency than LAND-1.** The red CTA, price promise, application language, and WhatsApp option create a more transactional funnel; the surrounding accountability signals prevent it from reading as overtly fraudulent.
+
+14. **LAND-2 strongest mitigators:**  
+   **(a)** PT/NPWP/registry identity plus explicit agency-versus-authority separation.  
+   **(b)** Independent Google/Trustpilot review links—provided the production links resolve to genuine, consistent profiles.
+
+15. **Missing mitigation across both landings:** A visible physical office address or directly verifiable contact identity near the first CTA would make the Merah Putih treatment more decisively institutional.
