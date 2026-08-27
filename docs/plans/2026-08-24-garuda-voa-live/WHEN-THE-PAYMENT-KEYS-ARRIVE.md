@@ -189,29 +189,62 @@ and _watched_, rather than declared once the key is set.
 
 ## ⛔ The pre-arm blocker this document was missing — read before setting the keys
 
-> ### ✅ Corrected 2026-08-28 — eight of the thirteen are now routed, and the alarm design below was wrong
+> ### ✅ Corrected 2026-08-28 — it is FOURTEEN, not thirteen, and the fourteenth is why the alarm design cannot be simplified yet
 >
-> The section as written said **ten of thirteen** `job_type` values had no handler. Measured on
-> `origin/main` this turn, `build_handlers` registers **8**: `checkout_ready_email`,
-> `payment_paid_email`, `payment_failed_email`, `payment_expired_email`, `refund_email`,
-> `practice_release`, `practice_received_email`, `portal_invite`. The five customer emails landed
-> in **PR #5128** (`53efc00fab`). What is still unrouted is exactly the five `staff_page_*` money
-> anomalies, and they are in **PR #5129** — open and armed at the time of writing, not merged.
+> The section as written said **ten of thirteen** `job_type` values had no handler. Two things were
+> wrong with that, and the second is the one worth reading.
 >
-> **The alarm design in the last paragraph is retired, and its retirement is the point.** It asked
-> for an `unroutable` alarm _scoped to a declared-unbuilt allowlist_, because an unscoped
-> `unroutable > 0` would have fired forever for ten known-missing types. Once #5129 lands there is
-> no such category left: the allowlist is EMPTY, so the scoping mechanism has nothing to hold and
-> plain **`unroutable > 0`** becomes a true signal. A scoped alarm shipped now would be a mute
-> switch with no reason to exist — exactly the shape that silences a real signal (superscar #2).
-> The alarm itself is still UNBUILT; it belongs in the same `_run_garuda_outbox_scheduler` block
-> #5129 touches, so it is the change that follows it, tracked in the `modus` PENDING-ARMS outbox
-> row (#5132).
+> **Count of registered handlers.** Measured on `origin/main` this turn, `build_handlers` registers
+> **8**, in a flat unconditional dict: `checkout_ready_email`, `payment_paid_email`,
+> `payment_failed_email`, `payment_expired_email`, `refund_email`, `practice_release`,
+> `practice_received_email`, `portal_invite`. The five customer emails landed in **PR #5128**
+> (`53efc00fab`).
+>
+> **Count of enqueued types — this is the real correction.** Production code enqueues **fourteen**
+> distinct `job_type` values, not thirteen. The fourteenth is
+> **`late_refund_confirmation_email`**, at
+> `apps/backend-rag/backend/services/garuda_orders/repository.py:799-805`:
+>
+> ```python
+> job_type = (
+>     "practice_release"
+>     if resolution == "honoured"
+>     else "late_refund_confirmation_email"
+> )
+> await journal.enqueue_outbox(conn, order_id=..., journal_event_id=event_id, job_type=job_type)
+> ```
+>
+> It fires whenever a staff member resolves a late-payment case with any resolution other than
+> `honoured` — i.e. the customer's money is being given back — and it is live, wired code, reachable
+> from `garuda_orders_router.py:409`. It has existed since PR #4959 (2026-08-26), so it predates
+> every artifact that undercounted it.
+>
+> **Why three separate artifacts missed the same one.** Each of them counted by grepping
+> `job_type="` — a **literal**. This enqueue site passes a **variable**, computed two statements
+> earlier. The ledger row that recorded the previous undercount even prescribed the fix as _"grep
+> `job_type=\"` across ALL of `backend/services`"_ — and that prescription is itself an under-match
+> guard (superscar #3): it watches for one textual shape and goes quiet on the same fact expressed
+> differently. Broadening the _directory_ was never the missing half; broadening from **text to
+> syntax** is. Any test that pins this must read the call's `job_type=` argument from the AST and
+> **fail loudly on a non-literal value** rather than skipping it, or it will be blind in exactly the
+> way its three predecessors were.
+>
+> **What this does to the alarm design — it survives, narrowed.** The earlier version of this
+> correction claimed that once #5129 lands the allowlist is EMPTY and the alarm collapses to plain
+> `unroutable > 0`. That was wrong: #5129 routes only the five `staff_page_*` types, so **six** are
+> still unrouted after it (five staff pages → routed, plus `late_refund_confirmation_email` →
+> still not). A plain `unroutable > 0` armed at that point would fire on every drain pass, forever,
+> for one known-missing type — the same signal-muting failure the original design was written to
+> avoid (superscar #2), just with one leftover instead of ten. So: the scoped allowlist stays, now
+> holding exactly `{late_refund_confirmation_email}`, and it collapses to the plain predicate only
+> once that handler exists too. That handler is a small change of the same shape as
+> `RefundEmailHandler`, and it is the next one, not a someday.
 >
 > **What did NOT change:** every word about why this is latent today and live the instant you arm.
-> None of these thirteen jobs is produced while `GARUDA_XENDIT_SECRET_KEY` is unset, so **not one
-> of the eight routed handlers has ever delivered anything in production**. Routed is not armed.
-> The proof is a real sandbox purchase, not this table.
+> **Not one of the eight routed handlers has ever delivered anything in production**, because no job
+> of any type is produced while `GARUDA_XENDIT_SECRET_KEY` is unset — verified to hold for the portal
+> path too, since `practice_received_email` is only reachable through a practice gated on
+> `order_state == "paid"`, which only the OP-02 handler writes. Routed is not armed.
 
 **Historical record — the state on 2026-08-27, when this section was written:** production code
 enqueues **13** distinct types — twelve from `garuda_orders/repository.py`, plus
@@ -232,15 +265,19 @@ that is the exposure. The ten without a handler were:
 
 **Why this is latent today and live the instant you arm.** The whole order lane answers 503 while
 `GARUDA_XENDIT_SECRET_KEY` is unset, so none of these jobs is ever produced. Setting the key is
-exactly what starts producing them. The happy path is covered; **every unhappy path is not**, and
-the staff pages for money anomalies are the ones that matter most, because they are the mechanism by
+exactly what starts producing them. The happy path is covered; after #5128 the customer-facing
+unhappy path is too (declined, expired, refunded) — what is **not** covered is the internal
+staff-alert side of it, plus the late-case refund confirmation. The staff pages for money anomalies
+are the ones that matter most, because they are the mechanism by
 which a human finds out something went wrong with someone's money.
 
 Full detail, owners and the proof-of-armed criterion are in the `modus` PENDING-ARMS ledger. The
 minimum before a real (not sandbox) purchase, restated 2026-08-28: **PR #5129 landed** (the five
-staff pages, with `TELEGRAM_OWNER_CHAT_ID` as their decided destination) and a plain
-**`unroutable > 0`** alarm on the drain pass. The four customer emails and the practice-received
-notice are already done.
+staff pages, with `TELEGRAM_OWNER_CHAT_ID` as their decided destination), **a handler for
+`late_refund_confirmation_email`** (the fourteenth type, found on this very PR by an independent
+grader), and then the `unroutable` alarm on the drain pass — plain `> 0` once that handler exists,
+scoped to `{late_refund_confirmation_email}` if it is armed before it. The four customer emails and
+the practice-received notice are already done.
 
 ## The one test purchase that closes all of it
 
