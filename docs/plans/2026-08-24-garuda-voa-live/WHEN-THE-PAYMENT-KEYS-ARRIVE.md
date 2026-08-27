@@ -139,8 +139,27 @@ PERSISTENCE_POLICY_UNAVAILABLE`, indistinguishable from this document's own "key
      `json.dumps`. Double-encoded, the array landed as a JSONB scalar string, and migration 286's
      CHECK calls `jsonb_array_length()` on it: SQLSTATE 22023, escaping as a bare 500 for every
      payload shape. The integration suite passed 10/10 because its pools lacked the codec.
-- ⬜ **Nothing has ever been exercised**: `garuda_voa_check_results` = 0 rows,
-  `garuda_voa_check_idempotency` = 0 rows, `garuda_orders` = 0 rows, `garuda_order_outbox` = 0 rows.
+- ✅ **CORRECTED 2026-08-27 (later the same day): legs 1-2 have now been exercised, and they
+  work.** The "0 rows everywhere" line above this was true when written and is not any more. A live
+  walk as an anonymous visitor produced `201 {"verdict":"ACCEPT","reason_codes":[],
+"published_filing_deadline":"2026-09-26","price_idr":790000}`, a `Location: /visa/voa/<id>` and a
+  `garuda_result_session` cookie (`HttpOnly; Secure; SameSite=none; Domain=.balizero.com`), and a
+  subsequent GET with that cookie returned **200** with the byte-identical payload — so rows really
+  are persisted and readable. `garuda_orders` and `garuda_order_outbox` remain at zero, correctly,
+  because no order can be created without the payment key.
+  **This is the probe the retracted bullet above was missing**, and it can go red: the result id and
+  the session secret come from the response HEADERS (the 201 body carries neither), the same link
+  with **no** cookie and with a **forged** cookie both answer `404 RESULT_NOT_FOUND` — identical
+  shapes, so the error code does not even confirm the id exists — and replaying the same
+  `Idempotency-Key` returns the SAME result id rather than minting a second check. A missing
+  `Idempotency-Key` is rejected `400 IDEMPOTENCY_KEY_REQUIRED`: the header is mandatory on the
+  CHECK, not only on the order.
+- 🟡 **The tracker changed answer on 2026-08-27 and the new answer is the correct one.** It used to
+  return **503** — reading an order's status asked production for a payment credential it does not
+  need. PR #5112 decoupled them, and after the deploy the same request returns
+  **401 `SESSION_REQUIRED`**, measured with no cookie AND with a valid result-session cookie. So the
+  tracker is gated on the **magic-link portal session**, not on the result link — better than
+  assumed, and worth knowing before you read a 401 here as a fault.
 
 **Read this as the lesson it cost.** "Flag on" ≠ "wired" ≠ "works" ≠ "reachable by a visitor" —
 four different claims, and this product satisfied only the first for three days while every gate
@@ -167,6 +186,37 @@ What they cannot prove, and what the sandbox key will test for the first time:
 
 None of these is a reason to delay. They are the reason the first sandbox purchase must be made
 and _watched_, rather than declared once the key is set.
+
+## ⛔ The pre-arm blocker this document was missing — read before setting the keys
+
+**Ten of the thirteen `job_type` values this product enqueues have no handler.** Measured
+2026-08-27: production code enqueues **13** distinct types — twelve from
+`garuda_orders/repository.py`, plus `practice_received_email` from
+`garuda_portal/practice.py::mint_received_practice`, which is the one people miss because it is
+enqueued by the function that mints the practice rather than by the repository. `outbox_handlers.py`
+registers **3**: `payment_paid_email`, `practice_release`, `portal_invite`.
+
+The consumer handles the gap correctly — an unroutable type is counted, logged once per pass, and
+its attempt bump is rolled back so it never marches toward exhaustion. **Nothing pages on it**, and
+that is the exposure. The ten without a handler include:
+
+| Unhandled                                                                               | What it means the moment a real card is used                                                                                                                                                                                  |
+| --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `payment_failed_email`, `payment_expired_email`, `refund_email`, `checkout_ready_email` | a customer whose card is declined, whose invoice expires, or who is refunded is told nothing                                                                                                                                  |
+| the five `staff_page_*` jobs                                                            | duplicate charge, late-paid-after-refund, late-paid-after-terminal, payment failure, refund-out-of-order — **every money anomaly page reaches nobody**                                                                        |
+| `practice_received_email`                                                               | the practice-received notice. Not silence: `payment_paid_email` IS handled, so a customer who pays successfully does get their payment confirmation — this is a missing second notice, which is why it sits last in this list |
+
+**Why this is latent today and live the instant you arm.** The whole order lane answers 503 while
+`GARUDA_XENDIT_SECRET_KEY` is unset, so none of these jobs is ever produced. Setting the key is
+exactly what starts producing them. The happy path is covered; **every unhappy path is not**, and
+the staff pages for money anomalies are the ones that matter most, because they are the mechanism by
+which a human finds out something went wrong with someone's money.
+
+Full detail, owners and the proof-of-armed criterion are in the `modus` PENDING-ARMS ledger. The
+minimum before a real (not sandbox) purchase: handlers for the four customer emails, a decided
+destination for the five staff pages, and an `unroutable` alarm scoped to types OUTSIDE a
+declared-unbuilt allowlist — an unscoped `unroutable > 0` would fire forever for ten known types,
+which is how a real signal gets muted.
 
 ## The one test purchase that closes all of it
 
