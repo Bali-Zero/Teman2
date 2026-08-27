@@ -75,11 +75,14 @@ LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 # this extension against a real throwaway database, which is the empirical proof
 # that the sequence holds.
 #
-# NOTE: three files now encode "which migrations build a Visa Engine test DB"
+# NOTE: FOUR places now encode this list. Three are independent test-DB subsets
 # (this one, test_garuda_voa_retention.py, test_retention_binders_scope_to_
-# visa_decision.py). They are independent by necessity, not by accident — but
-# that means a new retention dependency has to be added to each. Grep
-# MIGRATION_NUMBERS before assuming one copy is authoritative.
+# visa_decision.py) — independent by necessity, since each needs a different
+# subset. The fourth is a GUARD: test_fullstack_smoke.py::
+# test_migration_set_is_exact_and_forward_only pins THIS tuple literally, so it
+# goes red the moment these two disagree. That guard is why the list cannot drift
+# silently a second time — update it in the same commit, deliberately, and let it
+# also re-check that every added migration carries a ROLLBACK section.
 MIGRATION_NUMBERS = (
     250,
     251,
