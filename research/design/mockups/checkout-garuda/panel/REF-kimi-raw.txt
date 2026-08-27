@@ -1,0 +1,67 @@
+• [Pro] Prima verifico le citazioni contro le fonti locali citate dal report, poi emetto i rilievi.
+
+• Ora verifico i riferimenti R7 (PNBP, amendment 3, §2.4) citati dal report.
+
+• Ultima verifica: il testo dell'emendamento §2.4 in R7.
+
+• Verification pass done against the named sources (R1, R4, R5, R7, CheckoutFlow.tsx, xendit.py all read). Findings below. Direct answer to the pointed question first: **yes, the report contradicts itself on Q6c's cardinality** — finding 2.
+
+  ---
+
+  **1. HIGH — "Adopted PNBP ruling" is fabricated authority; the cited source is an open question, and standing law forbids the line.**
+  Failing fragment (§3.2): *"the adopted PNBP line (R7 §5.1 ruling, standing 27/8)"*; doubled down in §Meta: *"the adopted PNBP ruling went from register row to rendered line in one lane."*
+  WHY: `2026-08-27-r7-doctrine-loop-closure.md` §5 is titled "**§5 Open-questions register** — consolidated for Zero (async, non-blocking)", and its item 1 is phrased as a question: *"may a single state-set 'government charges: IDR X (PNBP, set by the state)' line appear before payment inside ruling Q7's bundle-only frame — **or is bundle-only absolute?**"* The R7 §2 register gloss states explicitly: *"the pre-payment PNBP question **stays open** in §5.1."* Meanwhile standing law says the opposite of what B renders: R4:114 — *"The bundle never names the PNBP figure (charter guardrail)"*; `CheckoutFlow.tsx:11-12` — *"Owner decision 7(b): ONE all-inclusive price, never split into fee + PNBP anywhere the customer can see."* B renders a PNBP figure pre-payment, and none of the three §6 declarations covers it — so on the report's own doctrine (R7: *"a deviation is a declared amendment through a round-grade process — never a silent edit"*) this is an undeclared doctrine deviation on the funnel's highest-risk surface, dressed up as an adoption.
+
+  **2. HIGH — Q6c cardinality: §2-T1 says two places; §3.2/§3.6/§4 say three; neither flags the discrepancy.**
+  Failing fragments: T1 — *"R4's pricing law (Q6c) requires the exact bundle price at quoted verdicts AND at payment, verbatim-identical"* (accurate: R4:114 says *"verbatim-identical in those **two** places"*). Against: §3.2 *"Q6c rendering **2 of 3**"*, §3.6 *"Q6c rendering **3 of 3**"*, §4 *"the **three** Q6c places"*.
+  WHY: the report states the law as two surfaces, then designs and sets acceptance for three, without a declaration re-scoping the law. The upstream corpus genuinely disagrees with itself (R4: two places; R5:32/46 and the R7 backlog: "verbatim ×3") — reconciling or flagging that is exactly this report's job under its own amendment discipline. Worse, T1's chain "(verdict → checkout → CTA)" puts renderings 2 and 3 on the *same page*; the surface where payment actually happens (Xendit's hosted page, per §1/T2) gets no rendering at all — so the law as T1 quotes it ("at payment") is satisfied by nothing the design controls.
+
+  **3. HIGH — A7's carried demand is quoted with "refund"; the design contains no refund anywhere, and the report never says so.**
+  Failing fragment (§3.3): *"(A7's carried demand: 'total, inclusions, refund, time above the pay button' — R1:109)"*.
+  WHY: the quote is verbatim-accurate (R1:109 reads exactly *"carried to R5: total, inclusions, refund, time above the pay button"*) — which is precisely the problem. B contains zero refund copy (no occurrence in any module); the after-pay module delivers rails/receipt/processing/escalation; §4 has no refund acceptance criterion. A four-item demand on a 5-quits surface is quoted, then three items are delivered, silently.
+
+  **4. MED — DOM order: the talk-first card is INSIDE the trust block, not "BELOW" it.**
+  Failing fragment (§3.5): *"the talk-first WhatsApp card BELOW the trust block."*
+  WHY: in B, `<div class="talk">` is the last **child** of `<footer class="trust">` — it sits inside the footer's 2px-top-border region, inheriting the trust block's styling context. "Below" is load-bearing, not decorative: the R7 §2.4 verbatim is *"M1's talk-first card moves **below** the trust block."* B's own comment repeats the same false claim; the report transcribes it as fact instead of catching it.
+
+  **5. MED — §3.5 extends an explicitly M1-scoped amendment to checkout with no declaration.**
+  Failing fragment (§3.5): *"kimi's R6 scam-adjacency dissent answered on the page where the fear peaks."*
+  WHY: the R7 §2.4 gloss scopes the move: *"the talk-first move is scoped to **M1's** card … this register does not add one [general rule]."* M1 is the GARUDA upload screen. Applying talk-first-below-trust to checkout is a new surface decision; §6 declares the price, the rails, and the human module — not this.
+
+  **6. MED — price renderings ON THIS PAGE: three, not one; §3.2's "rendering 2 of 3" contains two instances of the same figure.**
+  Failing fragment (§3.2): *"The price card — Q6c rendering 2 of 3 … All figures masked; PricingTool remains the sole source (placeholders `{BUNDLE_EXACT}`)."*
+  WHY: B renders the bundle figure as `IDR 8XX.XXX` (price span), `{BUNDLE_EXACT}` (same line, same card: `IDR 8XX.XXX all-inclusive · {BUNDLE_EXACT}`), and `IDR 8XX.XXX` (CTA) — plus the PNBP figure once. At build time the price-card line resolves to the same rupiah figure twice in one breath. §4's acceptance ("string inequality across verdict/checkout/CTA fixtures") never defines which on-page instance is "checkout", and the parenthetical is internally sloppy: the price span is a hardcoded masked figure, not the `{BUNDLE_EXACT}` placeholder it claims.
+
+  **7. MED — T2 quote is not in B.**
+  Failing fragment (§2 T2): *"the promise ('you choose how — there')."*
+  WHY: B reads *"a secure payment page where you choose how:"* — the word "there" occurs nowhere in the mockup. Paraphrase presented as verbatim, in quotes.
+
+  **8. MED — "mobile-first 390px" appears nowhere in B.**
+  Failing fragment (§3 header): *"mobile-first 390px, light."*
+  WHY: B sets `.ck{max-width:26rem}` — 416px at a 16px root (390px would be 24.375rem). No 390px value, viewport meta, or media query exists in the file.
+
+  **9. MED — §3.7's rem claims overreach the CSS and the amendment.**
+  Failing fragment (§3.7): *"every size in rem over a 16px root, identical default rendering."*
+  WHY: (a) no `font-size:16px` or any root sizing is declared in B — the 16px root is an assumption, so "identical default rendering" holds only where the UA default happens to be 16px; (b) "every size in rem" is false as written — B uses px for `--radius:12px`, `--radius-nested:8px`, all borders (1px/2px/3px), box-shadows, and the focus outline. The amendment's own verbatim scope is narrower — *"**Type tokens** move to rem"* — and its sibling amendment 2 explicitly declares `--radius-nested: 8px` in px. §4 bullet 3 survives only because the font-sizes happen to be rem, not because "every size" is.
+
+  **10. MED — §4 bullet 2 demands conditional PNBP rendering that B cannot express.**
+  Failing fragment (§4): *"The PNBP line renders ONLY when the state figure is resolved for the case type; no figure, no line."*
+  WHY: B renders the line unconditionally — no conditional markup, hook, class, or comment; §3.2 describes it as flatly "adopted". The deliverable's only artifact contradicts its own acceptance criterion (and see finding 1: the conditionality hedge doesn't cure the missing declaration).
+
+  **11. LOW — §3.6 quote altered and silently truncated.**
+  Fragment: *"this total holds for {PAYMENT_WINDOW}"*. B: *"This total holds for {PAYMENT_WINDOW} — no price change while you decide."* Case changed, second clause dropped, no ellipsis, inside quotation marks.
+
+  **12. LOW — §3.4 quote drops words; module location never identified.**
+  Fragment: *"our team answers within {SLA}"*. B: *"Our team answers **on WhatsApp** within {SLA}"* (talk card); step 3 differs again (*"our team messages you on WhatsApp within {SLA}"*). The team promise appears twice in B; §3.4 presents "the module" as one thing and never says where it lives.
+
+  **13. LOW — "Sticky CTA" is `position:fixed`; the Flado parenthetical is unsourced.**
+  B: `.cta-wrap{position:fixed}` — fixed, not sticky (M5's CTA was genuinely `position:sticky`). And *"Flado exposes a 30-day window vs the official 120 minutes"* is a pinpoint factual contrast with no citation in the sources list.
+
+  **14. LOW — Edit links navigate to anchors that don't exist.**
+  §3.1: *"Edit→ links back to review."* B: `href="#review"` (×2) and guard `href="#upload"` — no element with either id exists in the document.
+
+  **15. LOW — citation line-slop (the quoted strings themselves check out).**
+  T1 cites `CheckoutFlow.tsx:14-18` for a string that starts at line 13; §1 cites R1:169 for guard-copy reachability when the copy string lives at R1:109. For the record, the load-bearing quotes I could verify are accurate: "the price only appears once, on the order tracker" ✓ (CheckoutFlow.tsx:13-14), "the browser return is an OBSERVATION, never a truth" ✓ (xendit.py:108), the 12% Baymard figure ✓ (R1:132), the A7 demand ✓ (R1:109), the PNBP line text ✓ (matches B exactly). The defects are in the pointers and in what the quotes are claimed to establish — not in transcription.
+
+  Net: finding 1 alone should block the panel — the deliverable's signature line rests on an authority the cited register explicitly leaves open, against two standing texts that forbid it, with no §6 declaration.
+
