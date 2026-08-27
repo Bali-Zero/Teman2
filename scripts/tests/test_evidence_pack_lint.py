@@ -29,17 +29,21 @@ from evidence_pack_lint import (  # noqa: E402
     FLOOR_SOURCE_SIZE,
     LANES_NON_ANTHROPIC_ENFORCEMENT_DATE,
     R9_R11_ENFORCEMENT_DATE,
+    SEAT_RULES_ENFORCEMENT_DATE,
     SIZE_GEAR2_THRESHOLD,
     SIZE_GEAR3_THRESHOLD,
     _is_anthropic_seat,
+    _seat_rule_verdict,
     _size_term_net_lines,
     check_brief_ref_exists,
     check_cheap_seat_floor,
     check_council_run_gear3,
     check_dissent_nonempty_on_gear3,
     check_gear_floor,
+    check_ground_truth_lane,
     check_lanes_build_seat_diversity,
     check_pack_not_at_deprecated_root,
+    check_pii_local_seat,
     check_pii_scan_clean,
     check_receipts_have_provenance,
     check_size_budget,
@@ -1318,6 +1322,425 @@ def test_lanes_gear3_opus5_sonnet5_flip_behavior():
     assert notice is None
 
 
+# --------------------------------------------------------- seat rules by path class (E3/R8-R11)
+#
+# Shared today= pins for the four rules' own flip date (distinct from D3's
+# LANES_NON_ANTHROPIC_ENFORCEMENT_DATE — this program never fired before,
+# so it gets its own clock).
+_PRE_FLIP = SEAT_RULES_ENFORCEMENT_DATE - datetime.timedelta(days=1)
+_POST_FLIP = SEAT_RULES_ENFORCEMENT_DATE
+
+
+def test_seat_rules_shared_phasing_helper_flip_behavior():
+    """Date-freeze test for the shared _seat_rule_verdict plumbing all four
+    seat rules build on: not-a-violation is always clean regardless of
+    date; a violation NOTICEs pre-flip and FAILS post-flip; an explicit
+    `seat_override` wins outright on EITHER side of the flip (a human call
+    is not a rollout clock) and is still reported, never silent."""
+    assert _seat_rule_verdict("r", False, "msg", {}, _POST_FLIP) == ([], None)
+
+    viol, notice = _seat_rule_verdict("r", True, "msg", {}, _PRE_FLIP)
+    assert viol == [] and notice == "r: msg"
+
+    viol, notice = _seat_rule_verdict("r", True, "msg", {}, _POST_FLIP)
+    assert viol == ["r: msg"] and notice is None
+
+    viol, notice = _seat_rule_verdict(
+        "r", True, "msg", {"seat_override": "verified by hand"}, _POST_FLIP
+    )
+    assert viol == []
+    assert notice == "r (overridden): msg — verified by hand"
+
+    # a blank/whitespace-only override is not an override (same "complete
+    # or it doesn't count" shape as rule 7's gear_override) — falls through
+    # to ordinary phasing instead of silently swallowing the violation.
+    viol, notice = _seat_rule_verdict(
+        "r", True, "msg", {"seat_override": "   "}, _POST_FLIP
+    )
+    assert viol == ["r: msg"] and notice is None
+
+
+# ---- R11 (compute_seat_floor / check_seat_floor_cheap_seat) and R9
+# (check_council_run_gear3) land in a follow-up PR — split per the
+# mandate's PR-size contract; this PR ships R8 + R10 only, reusing the
+# shared _seat_rule_verdict plumbing tested above.
+
+
+# ---- R8: check_ground_truth_lane -------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "apps/backend-rag/backend/kb/legal/uu_6_2011.md",
+        "apps/backend-rag/backend/services/visa_engine/flow.py",
+        "apps/backend-rag/backend/scripts/visa_engine/tools.py",
+        "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
+        "apps/mouth/data/kbli-gold-all.json",
+        "apps/mouth/data/KBLI-2025-master.json",
+        "apps/backend-rag/backend/data/bali_zero_official_prices_2026.json",
+        "apps/mouth/data/bali-zero-prices.json",
+        "research/regulatory/2026-08-26-delta.json",
+        "apps/mouth/src/app/visa/voa/page.tsx",
+        "apps/mouth/src/app/(visa-oracle)/visa-oracle/page.tsx",
+        "apps/mouth/src/app/kbli/page.tsx",
+        "apps/mouth/src/app/kbli-explorer/page.tsx",
+        "apps/mouth/src/app/taxes/page.tsx",
+        "apps/mouth/src/app/(tax-calendar)/page.tsx",
+        "apps/mouth/src/app/zoning/page.tsx",
+        "apps/mouth/src/app/property/page.tsx",
+    ],
+)
+def test_ground_truth_guilt_hit_no_lane_rejected_post_flip(path):
+    """GUILT: every real ground-truth path class, with no ground_truth
+    lane declared, is a violation on/after the flip."""
+    viol, notice = check_ground_truth_lane({"lanes": []}, [path], today=_POST_FLIP)
+    assert viol and "ground_truth" in viol[0]
+    assert notice is None
+
+
+def test_ground_truth_innocence_no_hit_skipped():
+    """INNOCENCE: a diff touching none of the ground-truth path classes is
+    not this rule's problem."""
+    viol, notice = check_ground_truth_lane(
+        {"lanes": []}, ["apps/backend-rag/backend/app/main.py"], today=_POST_FLIP
+    )
+    assert viol == [] and notice is None
+    viol, notice = check_ground_truth_lane({"lanes": []}, None, today=_POST_FLIP)
+    assert viol == [] and notice is None
+
+
+def test_ground_truth_guilt_kbli_filiera_dataset_rejected_post_flip():
+    """GUILT (regression, refuter round 1 2026-08-26): a real, on-disk KBLI
+    regulatory dataset outside data/source_documents/ — data/kbli-filiera/
+    perpres-foreign-caps.json — was an under-match: no pattern covered it."""
+    viol, notice = check_ground_truth_lane(
+        {"lanes": []},
+        ["data/kbli-filiera/perpres-foreign-caps.json"],
+        today=_POST_FLIP,
+    )
+    assert viol and "ground_truth" in viol[0]
+    assert notice is None
+
+
+def test_ground_truth_innocence_page_own_test_file_skipped():
+    """INNOCENCE (regression, refuter round 1 2026-08-26): fnmatch's `*`
+    crosses `/`, so `apps/mouth/src/app/kbli-explorer/*` also matched the
+    page's own test scaffolding — an innocuous UI test making no
+    regulatory claim of its own. `_is_test_path` excludes it; the page
+    file itself (test_ground_truth_guilt_hit_no_lane_rejected_post_flip)
+    is still covered directly."""
+    viol, notice = check_ground_truth_lane(
+        {"lanes": []},
+        ["apps/mouth/src/app/kbli-explorer/hooks/__tests__/useTypewriter.test.ts"],
+        today=_POST_FLIP,
+    )
+    assert viol == [] and notice is None
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "apps/mouth/src/app/kbli-explorer/loading.tsx",
+        "apps/mouth/src/app/kbli-explorer/error.tsx",
+    ],
+)
+def test_ground_truth_innocence_nextjs_framework_files_skipped(path):
+    """INNOCENCE (regression, refuter round 2 2026-08-26): loading.tsx and
+    error.tsx are Next.js App-Router-reserved special filenames — always
+    framework scaffolding (loading skeleton / error boundary), never page
+    content, by the framework's own naming contract. `_is_test_path`
+    excludes them via _NEXTJS_FRAMEWORK_BASENAMES."""
+    viol, notice = check_ground_truth_lane({"lanes": []}, [path], today=_POST_FLIP)
+    assert viol == [] and notice is None
+
+
+def test_ground_truth_guilt_claim_page_components_not_excluded_by_nextjs_fix():
+    """GUILT (proving the Next.js fix didn't over-reach): layout.tsx and a
+    real claim-rendering component under the same claim-page directory
+    are NOT excluded — only the 4 exact reserved framework basenames are.
+    RiskGauge.tsx renders the actual regulatory risk category; excluding
+    it would trade the loading.tsx/error.tsx over-match for a worse
+    under-match."""
+    for path in (
+        "apps/mouth/src/app/kbli-explorer/layout.tsx",
+        "apps/mouth/src/app/kbli-explorer/components/RiskGauge.tsx",
+    ):
+        viol, notice = check_ground_truth_lane({"lanes": []}, [path], today=_POST_FLIP)
+        assert viol and "ground_truth" in viol[0], path
+        assert notice is None
+
+
+def test_ground_truth_innocence_well_formed_lane_passes():
+    """INNOCENCE: a {role: ground_truth, seat, nb, query_hash} lane with
+    all three fields non-empty clears the rule."""
+    pack = {
+        "lanes": [
+            {"lane": "GT", "role": "ground_truth", "seat": "nlm",
+             "nb": "NB-1", "query_hash": "a1b2c3"},
+        ],
+    }
+    viol, notice = check_ground_truth_lane(
+        pack, ["apps/backend-rag/backend/kb/legal/foo.md"], today=_POST_FLIP
+    )
+    assert viol == [] and notice is None
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        {"lane": "GT", "role": "ground_truth", "seat": "nlm", "nb": "", "query_hash": "a1b2c3"},
+        {"lane": "GT", "role": "ground_truth", "seat": "nlm", "query_hash": "a1b2c3"},
+        {"lane": "GT", "role": "ground_truth", "seat": "", "nb": "NB-1", "query_hash": "a1b2c3"},
+    ],
+)
+def test_ground_truth_guilt_incomplete_lane_rejected(entry):
+    """GUILT: a ground_truth lane missing/emptying any of seat/nb/
+    query_hash is not well-formed — same "complete or it isn't evidence"
+    shape as rule 1's receipts."""
+    viol, notice = check_ground_truth_lane(
+        {"lanes": [entry]}, ["apps/backend-rag/backend/kb/legal/foo.md"], today=_POST_FLIP
+    )
+    assert viol
+    assert notice is None
+
+
+def test_ground_truth_innocence_seat_override_reports_not_fails():
+    """INNOCENCE: `seat_override` clears the violation and is reported."""
+    pack = {"lanes": [], "seat_override": "regulatory text unchanged, formatting only"}
+    viol, notice = check_ground_truth_lane(
+        pack, ["apps/backend-rag/backend/kb/legal/foo.md"], today=_POST_FLIP
+    )
+    assert viol == []
+    assert notice is not None and "(overridden)" in notice
+
+
+def test_ground_truth_innocence_pre_flip_notice_not_fail():
+    """INNOCENCE: the same guilty shape only NOTICEs before the flip."""
+    viol, notice = check_ground_truth_lane(
+        {"lanes": []}, ["apps/backend-rag/backend/kb/legal/foo.md"], today=_PRE_FLIP
+    )
+    assert viol == []
+    assert notice is not None and "ground_truth" in notice
+
+
+# ---- R10: check_pii_local_seat ----------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "apps/backend-rag/backend/services/intake/classifier.py",
+        "apps/backend-rag/backend/services/crm/service.py",
+        "apps/backend-rag/backend/services/crm_guardian/gate.py",
+        "apps/backend-rag/backend/channels/whatsapp/handler.py",
+        "scripts/yield_optimizer_pitch_gate.py",
+    ],
+)
+def test_pii_local_guilt_cloud_seat_on_pii_path_rejected_post_flip(path):
+    """GUILT: every real PII path class, with a non-`ollama-` build seat
+    and no cloud_ok+clean pair, is a violation on/after the flip."""
+    pack = {"lanes": [{"lane": "D1", "role": "build", "seat": "sonnet-5"}]}
+    viol, notice = check_pii_local_seat(pack, [path], today=_POST_FLIP)
+    assert viol and "pii_local" in viol[0]
+    assert notice is None
+
+
+def test_pii_local_innocence_no_hit_skipped():
+    """INNOCENCE: a diff touching none of the PII path classes is not this
+    rule's problem, regardless of seats."""
+    pack = {"lanes": [{"lane": "D1", "role": "build", "seat": "sonnet-5"}]}
+    viol, notice = check_pii_local_seat(
+        pack, ["apps/backend-rag/backend/app/main.py"], today=_POST_FLIP
+    )
+    assert viol == [] and notice is None
+    viol, notice = check_pii_local_seat(pack, None, today=_POST_FLIP)
+    assert viol == [] and notice is None
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "apps/backend-rag/backend/app/routers/crm_clients.py",
+        "apps/backend-rag/backend/app/routers/whatsapp_conversations.py",
+        "apps/backend-rag/backend/app/routers/admin_crm_kg.py",
+        "apps/backend-rag/backend/app/routers/admin_pii.py",
+        "apps/backend-rag/backend/app/routers/crm_guardian_drive.py",
+        "apps/backend-rag/backend/app/routers/intake_gate.py",
+    ],
+)
+def test_pii_local_guilt_router_layer_rejected_post_flip(path):
+    """GUILT (regression, refuter round 1 2026-08-26): the services/* PII
+    patterns missed the app/routers/* layer that actually exposes CRM/
+    WhatsApp/intake client data over HTTP — e.g. app/routers/crm_clients.py
+    and app/routers/whatsapp_conversations.py both read/serve phone
+    numbers and names, and matched neither pattern before this fix."""
+    pack = {"lanes": [{"lane": "D1", "role": "build", "seat": "sonnet-5"}]}
+    viol, notice = check_pii_local_seat(pack, [path], today=_POST_FLIP)
+    assert viol and "pii_local" in viol[0]
+    assert notice is None
+
+
+def test_pii_local_innocence_core_guardian_router_not_crm_guardian():
+    """INNOCENCE (regression, refuter round 2 2026-08-26): a bare
+    `app/routers/guardian.py` is Core Guardian (decision audit trail +
+    risk scores — an unrelated system-health/monitoring API, per its own
+    module docstring), NOT the CRM-Guardian feature. It was briefly a
+    false-positive PII_PATH_PATTERNS entry; removed. The real CRM-Guardian
+    router, crm_guardian_drive.py, stays covered via the crm_*.py glob
+    (see test_pii_local_guilt_router_layer_rejected_post_flip)."""
+    pack = {"lanes": [{"lane": "D1", "role": "build", "seat": "sonnet-5"}]}
+    viol, notice = check_pii_local_seat(
+        pack, ["apps/backend-rag/backend/app/routers/guardian.py"], today=_POST_FLIP
+    )
+    assert viol == [] and notice is None
+
+
+def test_pii_local_innocence_all_ollama_seats_passes():
+    """INNOCENCE: every lane on an `ollama-*` seat clears the rule."""
+    pack = {
+        "lanes": [
+            {"lane": "D1", "role": "build", "seat": "ollama-qwen3.5:9b"},
+            {"lane": "D2", "role": "review", "seat": "ollama-qwen2.5vl:7b"},
+        ],
+    }
+    viol, notice = check_pii_local_seat(
+        pack, ["apps/backend-rag/backend/services/crm/service.py"], today=_POST_FLIP
+    )
+    assert viol == [] and notice is None
+
+
+def test_pii_local_innocence_cloud_ok_and_clean_passes():
+    """INNOCENCE: a non-local seat is fine when the pack ALSO carries a
+    non-empty `cloud_ok` AND `pii_scan: clean` — BOTH are required, this
+    rule reads rule 3's field rather than re-deriving PII status."""
+    pack = {
+        "lanes": [{"lane": "D1", "role": "build", "seat": "sonnet-5"}],
+        "pii_scan": "clean",
+        "cloud_ok": "DPA-2026-08-consent-ref-17",
+    }
+    viol, notice = check_pii_local_seat(
+        pack, ["apps/backend-rag/backend/services/crm/service.py"], today=_POST_FLIP
+    )
+    assert viol == [] and notice is None
+
+
+def test_pii_local_guilt_cloud_ok_without_clean_still_rejected():
+    """GUILT: `cloud_ok` alone, without `pii_scan: clean`, is NOT the
+    escape — both fields are required."""
+    pack = {
+        "lanes": [{"lane": "D1", "role": "build", "seat": "sonnet-5"}],
+        "cloud_ok": "DPA-2026-08-consent-ref-17",
+        "pii_scan": "dirty",
+    }
+    viol, notice = check_pii_local_seat(
+        pack, ["apps/backend-rag/backend/services/crm/service.py"], today=_POST_FLIP
+    )
+    assert viol
+    assert notice is None
+
+
+def test_pii_local_innocence_pre_flip_notice_not_fail():
+    """INNOCENCE: the same guilty shape only NOTICEs before the flip."""
+    pack = {"lanes": [{"lane": "D1", "role": "build", "seat": "sonnet-5"}]}
+    viol, notice = check_pii_local_seat(
+        pack, ["apps/backend-rag/backend/services/crm/service.py"], today=_PRE_FLIP
+    )
+    assert viol == []
+    assert notice is not None and "pii_local" in notice
+
+
+@pytest.mark.parametrize("pack", [{}, {"lanes": []}, {"lanes": None}])
+def test_pii_local_guilt_lanes_absent_or_empty_rejected_post_flip(pack):
+    """GUILT (refuter finding #7, 2026-08-27): a PII-path hit with NO
+    `lanes` declared at all — or an empty list — used to return ([], None)
+    silently: `offending` is only ever populated by iterating `lanes`, so
+    nothing to iterate meant nothing to flag, not even a NOTICE. Since
+    D3/rule-8 already lets a Gear-1 pack omit `lanes` entirely, this was a
+    silent bypass: a Gear-1 PII-touching diff got zero R10 signal. A pack
+    that cannot show ANY seat touched the PII path is now itself the
+    violation."""
+    viol, notice = check_pii_local_seat(
+        pack, ["apps/backend-rag/backend/services/crm/service.py"], today=_POST_FLIP
+    )
+    assert viol and "pii_local" in viol[0]
+    assert notice is None
+
+
+def test_pii_local_innocence_lanes_absent_but_cloud_ok_clean_still_passes():
+    """INNOCENCE: the cloud_ok+pii_scan escape does not require `lanes` at
+    all — a pack can assert "reviewed clean, DPA on file" with zero lanes
+    declared, and that still clears the rule."""
+    pack = {"pii_scan": "clean", "cloud_ok": "DPA-2026-08-consent-ref-17"}
+    viol, notice = check_pii_local_seat(
+        pack, ["apps/backend-rag/backend/services/crm/service.py"], today=_POST_FLIP
+    )
+    assert viol == [] and notice is None
+
+
+def test_pii_local_innocence_lanes_absent_pre_flip_notice_not_fail():
+    """INNOCENCE: the lanes-absent guilty shape only NOTICEs before the
+    flip, same phasing as every other seat-rule violation."""
+    viol, notice = check_pii_local_seat(
+        {}, ["apps/backend-rag/backend/services/crm/service.py"], today=_PRE_FLIP
+    )
+    assert viol == []
+    assert notice is not None and "pii_local" in notice
+
+
+# ---- R9 (check_council_run_gear3) lands in a follow-up PR alongside R11,
+# same reasoning as the R11 note above.
+
+
+# ---- end-to-end: lint() wires the seat rules through one call site --------
+
+
+def test_seat_rules_end_to_end_through_lint(tmp_repo):
+    """End-to-end: lint() surfaces a seat-rule violation (R8, ground_truth)
+    for a real pack+brief tree via the public entry point, not just the
+    unit-level check_* functions."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=3)
+    write_pack(
+        lanes=[{"lane": "D1", "role": "build", "seat": "codex"}],
+        dissent=[{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
+    )
+    rc, viol = lint(
+        tmp_path / "evidence" / "pack.yml", tmp_path,
+        ["apps/backend-rag/backend/kb/legal/foo.md"],
+    )
+    # NOTE: `today` is not injectable through the public lint() entry point
+    # (it always reads the real wall-clock date), so this end-to-end check
+    # only proves WIRING (the violation reaches lint()'s return value) —
+    # whether it is a NOTICE or a FAIL depends on whichever side of
+    # SEAT_RULES_ENFORCEMENT_DATE the suite actually runs on.
+    if datetime.datetime.now(datetime.timezone.utc).date() < SEAT_RULES_ENFORCEMENT_DATE:
+        assert rc == 0
+    else:
+        assert rc == 1
+        assert any("ground_truth" in v for v in viol)
+
+
+def test_seat_rules_end_to_end_notice_prints_to_stderr(tmp_repo, capsys):
+    """End-to-end (refuter finding #5, 2026-08-27): every other seat-rule
+    end-to-end test only asserts on lint()'s RETURN value — a NOTICE print
+    statement silently deleted from the source would not be caught by any
+    of them. This one captures real stderr via capsys and proves the
+    ground_truth NOTICE text actually reaches the operator, pre-flip."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=3)
+    write_pack(
+        lanes=[{"lane": "D1", "role": "build", "seat": "codex"}],
+        dissent=[{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
+    )
+    lint(
+        tmp_path / "evidence" / "pack.yml", tmp_path,
+        ["apps/backend-rag/backend/kb/legal/foo.md"],
+    )
+    captured = capsys.readouterr()
+    if datetime.datetime.now(datetime.timezone.utc).date() < SEAT_RULES_ENFORCEMENT_DATE:
+        assert "ground_truth" in captured.err
+        assert "NOTICE" in captured.err
 # ============================================================================
 # PR-B: R11 cheap-seat floor for mechanical diffs + R9 Gear-3 council_run
 # (2026-08-26-PIANO-SPEC-receptor-live.md §8). Self-contained on this branch

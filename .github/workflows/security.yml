@@ -32,7 +32,19 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: security-${{ github.ref }}
+  # Dependabot addition (Agent PR Contract rule 5, 2026-08-27): ALL Dependabot
+  # PRs share one group per workflow (not per-ref), bounding concurrent
+  # Dependabot runs of this ~20-billed-minute job to <=2 instead of unbounded
+  # parallel. cancel-in-progress:false (below) protects whichever run is
+  # RUNNING; GitHub keeps only one PENDING per group, so a 3rd+
+  # near-simultaneous Dependabot arrival cancels the pending run rather than
+  # queuing behind it — visible in the PR's checks tab (never silent),
+  # recoverable with `gh run rerun` (confirmed: docs.github.com/en/actions/
+  # using-jobs/using-concurrency + kimi-code/k3 refuter round on PR #5043).
+  # The non-Dependabot branch below is the pre-existing expression verbatim —
+  # the comment trail beneath it about main-vs-PR asymmetry and merge_group
+  # safety is untouched and still governs that branch exactly.
+  group: ${{ github.actor == 'dependabot[bot]' && format('dependabot-lockfile-{0}', github.workflow) || format('security-{0}', github.ref) }}
   # Cancel superseded runs on PR branches; NEVER on main.
   #
   # This was a flat `false` since #770 (the bulk "add concurrency groups to 21
@@ -79,7 +91,7 @@ concurrency:
   # onto the existing expression rather than replacing it, so the PR-vs-main
   # asymmetry above is preserved byte-for-byte; only the merge_group case is
   # forced to false.
-  cancel-in-progress: ${{ (github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
+  cancel-in-progress: ${{ github.actor != 'dependabot[bot]' && (github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
 
 jobs:
   # Path-aware gating (2026-08-20). Before this job existed, all 8 jobs below
