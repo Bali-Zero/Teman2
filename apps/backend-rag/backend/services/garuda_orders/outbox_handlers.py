@@ -104,6 +104,12 @@ class OrderEmailFacts:
     case_type: str
     price_idr: int
     state: str
+    # OP-F04/OP-F05: a late `paid` webhook on a terminal order raises this flag
+    # and leaves `state` UNCHANGED (migration 284, repository.py:487/517). So a
+    # `failed`/`expired` reading alone does NOT mean "no money was taken" — the
+    # two handlers that say so in as many words must read this too. No default:
+    # a `_load` that forgets the column must fail loudly, not send a lie.
+    late_case_open: bool
 
 
 class BrevoEmailSender:
@@ -210,7 +216,7 @@ class PaymentPaidEmailHandler:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT order_id, applicant_email, case_type, price_idr, state
+                SELECT order_id, applicant_email, case_type, price_idr, state, late_case_open
                   FROM garuda_orders
                  WHERE order_id = $1
                 """,
@@ -224,6 +230,7 @@ class PaymentPaidEmailHandler:
             case_type=row["case_type"],
             price_idr=row["price_idr"],
             state=row["state"],
+            late_case_open=row["late_case_open"],
         )
 
     @staticmethod
@@ -241,6 +248,391 @@ class PaymentPaidEmailHandler:
             "progress at any time here:<br><br>"
             f'<a href="{tracker}">Track my application</a><br><br>'
             "We'll email you again when there is news.<br><br>"
+            "— Bali Zero"
+        )
+
+
+class CheckoutReadyEmailHandler:
+    """Sends one "your payment link is ready" email per `checkout_ready_email` job.
+
+    ENQUEUED FROM. `repository.py`'s OP-01 transition (`created -> awaiting_payment`)
+    enqueues this in the SAME transaction that writes the `checkout_url` into the
+    outbox `payload` — the URL is a provider capability, never persisted on
+    `garuda_orders` itself (see that call site's own comment), so the payload is
+    the ONLY place this handler can read it from.
+
+    STATE GUARD, AND WHY IT DIFFERS FROM THE PAID HANDLER'S. A checkout link is
+    true only while the order is still, in fact, awaiting payment: the session
+    it points at is provider-side and time-boxed (`checkout_expires_at`), and if
+    the order has already moved on — paid, failed, expired, refunded — the link
+    is either redundant (a `payment_paid_email` job for the same order is on its
+    way) or actively wrong (offering to pay something that can no longer be
+    paid). Unlike `PaymentPaidEmailHandler`, whose guard names the ONE state the
+    email is a durable receipt of, this guard names the ONE state during which
+    the invitation is still live.
+    """
+
+    _STATES_WORTH_LINKING = frozenset({"awaiting_payment"})
+
+    def __init__(self, pool: asyncpg.Pool, sender: BrevoEmailSender) -> None:
+        self._pool = pool
+        self._sender = sender
+
+    async def __call__(self, job: OutboxJob) -> None:
+        facts = await self._load(job.order_id)
+        if facts is None:
+            raise EmailSendFailed(f"order {job.order_id} not found for a queued checkout link")
+
+        if facts.state not in self._STATES_WORTH_LINKING:
+            logger.warning(
+                "outbox checkout_ready_email resolved WITHOUT sending: order %s is in state %r, "
+                "not %s — the checkout link is no longer live",
+                facts.order_id,
+                facts.state,
+                sorted(self._STATES_WORTH_LINKING),
+            )
+            return
+
+        checkout_url = (job.payload or {}).get("checkout_url")
+        if not checkout_url:
+            # The enqueue call always carries this key (repository.py OP-01).
+            # Its absence means the payload was written or read wrong — raise
+            # rather than send a customer an email with no way to pay.
+            raise EmailSendFailed(
+                f"checkout_ready_email job for order {job.order_id} carries no checkout_url"
+            )
+
+        await self._sender.send(
+            to=facts.email,
+            subject="Your Bali Zero Visa on Arrival — complete your payment",
+            html_body=self._body(facts, checkout_url),
+        )
+        logger.info("outbox checkout_ready_email sent for order %s", facts.order_id)
+
+    async def _load(self, order_id: str) -> OrderEmailFacts | None:
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT order_id, applicant_email, case_type, price_idr, state, late_case_open
+                  FROM garuda_orders
+                 WHERE order_id = $1
+                """,
+                order_id,
+            )
+        if row is None:
+            return None
+        return OrderEmailFacts(
+            order_id=row["order_id"],
+            email=row["applicant_email"],
+            case_type=row["case_type"],
+            price_idr=row["price_idr"],
+            state=row["state"],
+            late_case_open=row["late_case_open"],
+        )
+
+    @staticmethod
+    def _body(facts: OrderEmailFacts, checkout_url: str) -> str:
+        base = os.getenv(TRACKER_BASE_URL_ENV, DEFAULT_TRACKER_BASE_URL).rstrip("/")
+        tracker = f"{base}/{facts.order_id}"
+        amount = f"IDR {facts.price_idr:,}".replace(",", ".")
+        return (
+            "Hello,<br><br>"
+            "Your Bali Zero Visa on Arrival application "
+            f"({facts.case_type}) is ready for payment.<br><br>"
+            f"<b>Amount due: {amount}</b><br><br>"
+            f'<a href="{checkout_url}">Complete my payment</a><br><br>'
+            "You can also follow this order's status here:<br><br>"
+            f'<a href="{tracker}">Track my application</a><br><br>'
+            "— Bali Zero"
+        )
+
+
+class PaymentFailedEmailHandler:
+    """Sends one "your payment did not go through" email per `payment_failed_email` job.
+
+    STATE GUARD. `handle_failure_event` (repository.py) writes `state = 'failed'`
+    only from `awaiting_payment`, and nothing in this codebase ever moves an
+    order OUT of `failed` again (a late webhook that pays a failed order sets
+    `late_case_open` on the SAME `failed`/`expired` state — see OP-F05 — it
+    never flips `state` back).
+
+    CORRECTED after a cross-family gate on this same commit: the paragraph above
+    is true and was the WRONG conclusion to draw from it. Precisely BECAUSE a
+    late `paid` leaves `state = 'failed'`, the state alone cannot distinguish
+    "never charged" from "charged late" — and this email's body says "Amount not
+    charged" in as many words. The state guard is therefore not sufficient on
+    its own; `late_case_open` is the second, load-bearing half of it.
+
+    CUSTOMER ACTION COPY. The payload carries `customer_action` — one of the
+    three values `services/payments/terminal_taxonomy.py::CustomerAction`
+    classifies every failure into. This handler renders that closed vocabulary
+    into a short next step; an unrecognised value (schema drift, a future enum
+    member) falls back to the same generic guidance rather than raising, since
+    a slightly generic email is better than a lost one.
+    """
+
+    _STATES_WORTH_EXPLAINING = frozenset({"failed"})
+
+    _CUSTOMER_ACTION_COPY: dict[str, str] = {
+        "TRY_A_DIFFERENT_CARD": "Please try again with a different card or payment method.",
+        "TRY_AGAIN_LATER": "Please try again later.",
+        "NONE_ORDER_CLOSED": (
+            "This order is now closed. If you still need a Visa on Arrival, "
+            "please start a new application."
+        ),
+    }
+    _DEFAULT_ACTION_COPY = "Please try again, or start a new application if the issue continues."
+
+    def __init__(self, pool: asyncpg.Pool, sender: BrevoEmailSender) -> None:
+        self._pool = pool
+        self._sender = sender
+
+    async def __call__(self, job: OutboxJob) -> None:
+        facts = await self._load(job.order_id)
+        if facts is None:
+            raise EmailSendFailed(f"order {job.order_id} not found for a queued failure email")
+
+        if facts.state not in self._STATES_WORTH_EXPLAINING:
+            logger.warning(
+                "outbox payment_failed_email resolved WITHOUT sending: order %s is in state %r, "
+                "not %s — a failure notice would be stale",
+                facts.order_id,
+                facts.state,
+                sorted(self._STATES_WORTH_EXPLAINING),
+            )
+            return
+
+        if facts.late_case_open:
+            # OP-F05: a late `paid` webhook arrived on this terminal order. The
+            # customer WAS charged; `state` stays `failed` by design. Sending
+            # "your payment did not go through / Amount not charged" here tells
+            # a paying customer their money was not taken. Staff already hold
+            # this case (`staff_page_late_paid_after_terminal`) and close it via
+            # resolveLateOrder, which sends its own notice — so this job resolves
+            # silently rather than racing that with a contradiction.
+            logger.warning(
+                "outbox payment_failed_email resolved WITHOUT sending: order %s has an OPEN "
+                "late-payment case — the customer was charged, a failure notice would be false",
+                facts.order_id,
+            )
+            return
+
+        customer_action = (job.payload or {}).get("customer_action")
+        guidance = self._CUSTOMER_ACTION_COPY.get(customer_action, self._DEFAULT_ACTION_COPY)
+
+        await self._sender.send(
+            to=facts.email,
+            subject="Your Bali Zero Visa on Arrival — payment did not go through",
+            html_body=self._body(facts, guidance),
+        )
+        logger.info("outbox payment_failed_email sent for order %s", facts.order_id)
+
+    async def _load(self, order_id: str) -> OrderEmailFacts | None:
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT order_id, applicant_email, case_type, price_idr, state, late_case_open
+                  FROM garuda_orders
+                 WHERE order_id = $1
+                """,
+                order_id,
+            )
+        if row is None:
+            return None
+        return OrderEmailFacts(
+            order_id=row["order_id"],
+            email=row["applicant_email"],
+            case_type=row["case_type"],
+            price_idr=row["price_idr"],
+            state=row["state"],
+            late_case_open=row["late_case_open"],
+        )
+
+    @staticmethod
+    def _body(facts: OrderEmailFacts, guidance: str) -> str:
+        base = os.getenv(TRACKER_BASE_URL_ENV, DEFAULT_TRACKER_BASE_URL).rstrip("/")
+        tracker = f"{base}/{facts.order_id}"
+        amount = f"IDR {facts.price_idr:,}".replace(",", ".")
+        return (
+            "Hello,<br><br>"
+            "We were unable to process your payment for your Bali Zero Visa on "
+            f"Arrival ({facts.case_type}).<br><br>"
+            f"<b>Amount not charged: {amount}</b><br><br>"
+            f"{guidance}<br><br>"
+            "You can follow this order's status here:<br><br>"
+            f'<a href="{tracker}">Track my application</a><br><br>'
+            "— Bali Zero"
+        )
+
+
+class PaymentExpiredEmailHandler:
+    """Sends one "your payment session expired" email per `payment_expired_email` job.
+
+    STATE GUARD. `expire_if_unpaid` (repository.py, reconciliation-driven OP-04)
+    writes `state = 'expired'` only from `awaiting_payment`, and — same as
+    `failed` above — nothing in this codebase ever moves an order back out of
+    `expired` (a late payment after expiry sets `late_case_open`, never
+    `state`) — which is exactly why the state guard alone is not enough here
+    either: this body says "no payment was taken". `late_case_open` is checked
+    for the same reason, and with the same consequence, as in
+    `PaymentFailedEmailHandler`.
+    """
+
+    _STATES_WORTH_EXPLAINING = frozenset({"expired"})
+
+    def __init__(self, pool: asyncpg.Pool, sender: BrevoEmailSender) -> None:
+        self._pool = pool
+        self._sender = sender
+
+    async def __call__(self, job: OutboxJob) -> None:
+        facts = await self._load(job.order_id)
+        if facts is None:
+            raise EmailSendFailed(f"order {job.order_id} not found for a queued expiry email")
+
+        if facts.state not in self._STATES_WORTH_EXPLAINING:
+            logger.warning(
+                "outbox payment_expired_email resolved WITHOUT sending: order %s is in state %r, "
+                "not %s — an expiry notice would be stale",
+                facts.order_id,
+                facts.state,
+                sorted(self._STATES_WORTH_EXPLAINING),
+            )
+            return
+
+        if facts.late_case_open:
+            # OP-F05, same as the failure handler above: the late `paid` webhook
+            # left `state = 'expired'` and raised this flag. The body below says
+            # "no payment was taken" — for this order that is untrue.
+            logger.warning(
+                "outbox payment_expired_email resolved WITHOUT sending: order %s has an OPEN "
+                "late-payment case — the customer was charged, an expiry notice would be false",
+                facts.order_id,
+            )
+            return
+
+        await self._sender.send(
+            to=facts.email,
+            subject="Your Bali Zero Visa on Arrival — payment session expired",
+            html_body=self._body(facts),
+        )
+        logger.info("outbox payment_expired_email sent for order %s", facts.order_id)
+
+    async def _load(self, order_id: str) -> OrderEmailFacts | None:
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT order_id, applicant_email, case_type, price_idr, state, late_case_open
+                  FROM garuda_orders
+                 WHERE order_id = $1
+                """,
+                order_id,
+            )
+        if row is None:
+            return None
+        return OrderEmailFacts(
+            order_id=row["order_id"],
+            email=row["applicant_email"],
+            case_type=row["case_type"],
+            price_idr=row["price_idr"],
+            state=row["state"],
+            late_case_open=row["late_case_open"],
+        )
+
+    @staticmethod
+    def _body(facts: OrderEmailFacts) -> str:
+        base = os.getenv(TRACKER_BASE_URL_ENV, DEFAULT_TRACKER_BASE_URL).rstrip("/")
+        tracker = f"{base}/{facts.order_id}"
+        return (
+            "Hello,<br><br>"
+            "The payment session for your Bali Zero Visa on Arrival application "
+            f"({facts.case_type}) expired before it was completed, so no payment "
+            "was taken.<br><br>"
+            "If you still need a Visa on Arrival, please start a new "
+            "application.<br><br>"
+            "You can follow this order's status here:<br><br>"
+            f'<a href="{tracker}">Track my application</a><br><br>'
+            "— Bali Zero"
+        )
+
+
+class RefundEmailHandler:
+    """Sends one "your payment was refunded" email per `refund_email` job.
+
+    STATE GUARD. `handle_refund_event` (repository.py) writes `state =
+    'refunded'` from either `awaiting_payment` (OP-05, refunded out of order)
+    or `paid` (OP-06). Once `refunded`, nothing in this codebase moves the
+    state again — a late paid webhook after a refund (OP-F04) sets
+    `late_case_open`/`late_case_charge_id`, never `state`. So, as with the
+    failed/expired handlers above, `refunded` is a stable terminal reading, and
+    the guard is still named rather than assumed.
+    """
+
+    _STATES_WORTH_CONFIRMING = frozenset({"refunded"})
+
+    def __init__(self, pool: asyncpg.Pool, sender: BrevoEmailSender) -> None:
+        self._pool = pool
+        self._sender = sender
+
+    async def __call__(self, job: OutboxJob) -> None:
+        facts = await self._load(job.order_id)
+        if facts is None:
+            raise EmailSendFailed(f"order {job.order_id} not found for a queued refund email")
+
+        if facts.state not in self._STATES_WORTH_CONFIRMING:
+            logger.warning(
+                "outbox refund_email resolved WITHOUT sending: order %s is in state %r, "
+                "not %s — a refund confirmation would be untrue",
+                facts.order_id,
+                facts.state,
+                sorted(self._STATES_WORTH_CONFIRMING),
+            )
+            return
+
+        await self._sender.send(
+            to=facts.email,
+            subject="Your Bali Zero Visa on Arrival — payment refunded",
+            html_body=self._body(facts),
+        )
+        logger.info("outbox refund_email sent for order %s", facts.order_id)
+
+    async def _load(self, order_id: str) -> OrderEmailFacts | None:
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT order_id, applicant_email, case_type, price_idr, state, late_case_open
+                  FROM garuda_orders
+                 WHERE order_id = $1
+                """,
+                order_id,
+            )
+        if row is None:
+            return None
+        return OrderEmailFacts(
+            order_id=row["order_id"],
+            email=row["applicant_email"],
+            case_type=row["case_type"],
+            price_idr=row["price_idr"],
+            state=row["state"],
+            late_case_open=row["late_case_open"],
+        )
+
+    @staticmethod
+    def _body(facts: OrderEmailFacts) -> str:
+        # NO AMOUNT LINE, deliberately. `price_idr` is the ORDER price, not a
+        # refunded amount — nothing in `garuda_orders` records what the provider
+        # actually returned, and OP-05 refunds an order that reached `refunded`
+        # from `awaiting_payment`, i.e. one this flow never marked as charged.
+        # Printing `price_idr` here would assert a figure the code cannot know.
+        base = os.getenv(TRACKER_BASE_URL_ENV, DEFAULT_TRACKER_BASE_URL).rstrip("/")
+        tracker = f"{base}/{facts.order_id}"
+        return (
+            "Hello,<br><br>"
+            "We've refunded your payment for your Bali Zero Visa on Arrival "
+            f"({facts.case_type}).<br><br>"
+            "The refund goes back to the payment method you used, and follows "
+            "your card provider's own timeline to appear on your statement.<br><br>"
+            "You can follow this order's status here:<br><br>"
+            f'<a href="{tracker}">Track my application</a><br><br>'
             "— Bali Zero"
         )
 
@@ -515,6 +907,123 @@ class PortalInviteHandler:
             invite_url=f"{self._portal_base_url}{invitation['invite_url']}",
             db_pool=self._pool,
             client_id=client_id,
+        )
+
+
+class PracticeReceivedEmailHandler:
+    """Sends one "your application is now with the team" email per
+    `practice_received_email` job.
+
+    ENQUEUED FROM A DIFFERENT MODULE THAN THE OTHER FOUR. This job is written
+    by `garuda_portal/practice.py::mint_received_practice`, not
+    `garuda_orders/repository.py` — either from L3's eager path (inside the
+    SAME transaction as `payment.paid`, OP-02) or from the lazy PR-01
+    fallback on a customer's first tracker read. Either way, by the time this
+    handler is claimable the `garuda_practices` row it announces is already
+    committed: the outbox row and the practice row are written in the same
+    transaction (`journal.enqueue_outbox` right after the `INSERT ...
+    RETURNING practice_id`), so "queued but no practice row" is the same
+    "something deleted state out from under a queued job" shape the other
+    handlers in this module raise on, never a race to tolerate.
+
+    NO STATE GUARD ON THE *PRACTICE's* STATE. `garuda_practices.state` only
+    ever moves FORWARD from `Received` (module docstring: no PR-02..PR-11
+    transition code ships yet, and even once it does the enum has no path
+    back to "never happened"). The message here is a receipt of intake, not
+    a claim about current PROCESSING status — "we received your application"
+    stays true whatever the practice's own state becomes later, the same way
+    a shipping "we received your order" notice does not need retracting once
+    the order ships.
+
+    THE GUARD IS ON THE *ORDER's* STATE INSTEAD, AND ONLY ON `refunded`'S
+    NEIGHBOURHOOD. A practice, once created, is never deleted by anything in
+    this codebase — `handle_refund_event` only ever touches `garuda_orders`,
+    never `garuda_practices` — so the row this handler reads about is real
+    and permanent regardless of what happens to the order next. But telling a
+    customer "your application is now open with our team" right after they
+    were refunded is a different kind of false than the practice row itself:
+    it is not a fact about intake, it reads as an active-service promise, and
+    that promise is exactly what a refund closes out. Since a paid order that
+    later refunds moves through `paid -> refunded` and never back (same
+    terminal-once-reached shape the failed/expired/refunded handlers above
+    rely on), the guard names the one state — `paid` — during which the
+    "we're on it" framing is still honest, mirroring
+    `PaymentPaidEmailHandler`'s own `_STATES_WORTH_CONFIRMING` rather than
+    reusing its frozenset object.
+    """
+
+    _STATES_WORTH_NOTIFYING = frozenset({"paid"})
+
+    def __init__(self, pool: asyncpg.Pool, sender: BrevoEmailSender) -> None:
+        self._pool = pool
+        self._sender = sender
+
+    async def __call__(self, job: OutboxJob) -> None:
+        facts = await self._load(job.order_id)
+        if facts is None:
+            # Covers both a missing order and a missing practice row — either
+            # way something the outbox row's own transaction should have
+            # guaranteed is gone. Raise, exhaust visibly, never mark delivered.
+            raise EmailSendFailed(
+                f"order {job.order_id} (or its practice) not found for a queued "
+                "receipt confirmation"
+            )
+
+        if facts.state not in self._STATES_WORTH_NOTIFYING:
+            logger.warning(
+                "outbox practice_received_email resolved WITHOUT sending: order %s is in "
+                "state %r, not %s — the application-is-with-the-team framing is no longer "
+                "honest",
+                facts.order_id,
+                facts.state,
+                sorted(self._STATES_WORTH_NOTIFYING),
+            )
+            return
+
+        await self._sender.send(
+            to=facts.email,
+            subject="Your Bali Zero Visa on Arrival — application received",
+            html_body=self._body(facts),
+        )
+        # order id only — never the address, the name or the passport number.
+        logger.info("outbox practice_received_email sent for order %s", facts.order_id)
+
+    async def _load(self, order_id: str) -> OrderEmailFacts | None:
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT o.order_id, o.applicant_email, o.case_type, o.price_idr, o.state,
+                       o.late_case_open
+                  FROM garuda_orders o
+                  JOIN garuda_practices p ON p.order_id = o.order_id
+                 WHERE o.order_id = $1
+                """,
+                order_id,
+            )
+        if row is None:
+            return None
+        return OrderEmailFacts(
+            order_id=row["order_id"],
+            email=row["applicant_email"],
+            case_type=row["case_type"],
+            price_idr=row["price_idr"],
+            state=row["state"],
+            late_case_open=row["late_case_open"],
+        )
+
+    @staticmethod
+    def _body(facts: OrderEmailFacts) -> str:
+        base = os.getenv(TRACKER_BASE_URL_ENV, DEFAULT_TRACKER_BASE_URL).rstrip("/")
+        tracker = f"{base}/{facts.order_id}"
+        return (
+            "Hello,<br><br>"
+            "Your Bali Zero Visa on Arrival application "
+            f"({facts.case_type}) has been received and is now open with our "
+            "team.<br><br>"
+            "You can follow its progress at any time here:<br><br>"
+            f'<a href="{tracker}">Track my application</a><br><br>'
+            "We'll email you again when there is news.<br><br>"
+            "— Bali Zero"
         )
 
 
@@ -1050,11 +1559,19 @@ def build_handlers(
 ) -> dict[str, object]:
     """The registry `drain_once` consumes.
 
-    Three job types are always routed: `payment_paid_email` (what the customer
-    sees), `practice_release` (what the team sees) and `portal_invite` (how
-    the customer gets IN). All three are enqueued by the SAME transaction in
-    `repository.py` when a payment is confirmed, and routing only the first is
-    what produced a paying customer with a confirmation email and no work item.
+    THIRTEEN job types are routed, which is every type the repository and the
+    portal enqueue — after this function, nothing reaches `unroutable` any more.
+    Eight always: `checkout_ready_email` and `payment_paid_email` (what the
+    customer sees while paying), `payment_failed_email` and
+    `payment_expired_email` (what the customer sees when paying goes wrong),
+    `refund_email` (what the customer sees when money comes back),
+    `practice_release` (what the team sees), `portal_invite` (how the customer
+    gets IN) and `practice_received_email` (what the customer sees once their
+    application is open with the team). `payment_paid_email`,
+    `practice_release` and `portal_invite` are enqueued by the SAME transaction
+    in `repository.py` when a payment is confirmed; routing only the first of
+    those three is what originally produced a paying customer with a
+    confirmation email and no work item.
 
     THE ROUTER IMPORT IS LAZY ON PURPOSE. `send_portal_invite_email` lives in
     `app/routers/portal_invite.py` — the canonical sender, reused whole rather
@@ -1063,19 +1580,19 @@ def build_handlers(
     the function, keeps the dependency at call time where it is harmless.
 
     THE FIVE `staff_page_*` JOB TYPES ARE ROUTED ONLY WHEN `staff_page_sender`
-    IS GIVEN. It defaults to `None` so every existing caller of this function
-    — including the exact-set assertion in `test_build_handlers_routes_
-    practice_release` — keeps working unchanged. Pass a `TelegramStaffPageSender`
-    (e.g. from `_run_garuda_outbox_scheduler` in `main_api.py`, reusing the
-    SAME injected `httpx.AsyncClient` the email sender already owns) to arm
-    them.
+    IS GIVEN — the remaining five of the thirteen, the money anomalies (OP-08
+    duplicate charge, OP-F04/OP-F05 late payment, OP-03 failure, OP-05
+    out-of-order refund). It defaults to `None` so a caller that does not wire
+    it keeps the previous behaviour exactly: those five report as `unroutable`,
+    are logged by name, keep their full attempt budget, and are picked up
+    unharmed once a sender is passed. Pass a `TelegramStaffPageSender` (e.g.
+    from `_run_garuda_outbox_scheduler` in `main_api.py`, reusing the SAME
+    injected `httpx.AsyncClient` the email sender already owns) to arm them.
 
-    Every other job_type the repository enqueues — `refund_email`,
-    `payment_failed_email`, `checkout_ready_email` and `payment_expired_email`
-    — deliberately has NO entry, so the consumer reports them as `unroutable`
-    and logs them by name rather than pretending they were delivered. That is
-    the intended state, not an oversight: an unrouted job keeps its full
-    attempt budget and is picked up unharmed when its handler is written.
+    So there is no longer a category of job type this module deliberately
+    leaves unhandled. If `unroutable` is non-zero in production with the staff
+    sender wired, that is a NEW job type nobody routed — worth an alarm, which
+    is a separate change.
     """
 
     from backend.app.core.config import settings
@@ -1086,8 +1603,13 @@ def build_handlers(
         crm_writer=PostgresCrmWriter(pool),
     )
     handlers: dict[str, object] = {
+        "checkout_ready_email": CheckoutReadyEmailHandler(pool, sender),
         "payment_paid_email": PaymentPaidEmailHandler(pool, sender),
+        "payment_failed_email": PaymentFailedEmailHandler(pool, sender),
+        "payment_expired_email": PaymentExpiredEmailHandler(pool, sender),
+        "refund_email": RefundEmailHandler(pool, sender),
         "practice_release": PracticeReleaseHandler(pool, handoff),
+        "practice_received_email": PracticeReceivedEmailHandler(pool, sender),
         "portal_invite": PortalInviteHandler(
             pool,
             profiles=PortalProfileService(pool),
@@ -1122,16 +1644,21 @@ def build_handlers(
 __all__ = [
     "INVITE_CREATED_BY",
     "BrevoEmailSender",
+    "CheckoutReadyEmailHandler",
     "CrmPracticeNotWrittenYet",
     "EmailSendFailed",
     "OrderAnomalyFacts",
     "OrderEmailFacts",
+    "PaymentExpiredEmailHandler",
+    "PaymentFailedEmailHandler",
     "PaymentPaidEmailHandler",
     "PortalInviteHandler",
     "PortalInviteUndeliverable",
     "PortalProfileNotCreated",
     "PracticeNotMinted",
+    "PracticeReceivedEmailHandler",
     "PracticeReleaseHandler",
+    "RefundEmailHandler",
     "StaffPageDuplicateChargeHandler",
     "StaffPageLatePaidAfterRefundHandler",
     "StaffPageLatePaidAfterTerminalHandler",

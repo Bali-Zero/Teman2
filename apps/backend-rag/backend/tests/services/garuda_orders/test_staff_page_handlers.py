@@ -638,10 +638,23 @@ def test_build_handlers_routes_all_five_when_given_a_staff_page_sender() -> None
         handlers = build_handlers(pool=None, sender=None, staff_page_sender=staff_sender)
     finally:
         pass  # client intentionally left open; this test never sends
+    # THIRTEEN — and thirteen is every job type the repository and the portal
+    # enqueue, so with the staff sender wired nothing reaches `unroutable` any
+    # more. The five customer-email types joined this set when #5128 merged
+    # (this branch was cut before it); the exactness is the point, so that
+    # adding a route is always a deliberate edit here and losing one can never
+    # pass unnoticed.
     expected = {
+        # eight, always routed
+        "checkout_ready_email",
         "payment_paid_email",
+        "payment_failed_email",
+        "payment_expired_email",
+        "refund_email",
         "practice_release",
+        "practice_received_email",
         "portal_invite",
+        # five, routed only because a staff_page_sender was passed
         "staff_page_duplicate_charge",
         "staff_page_late_paid_after_refund",
         "staff_page_late_paid_after_terminal",
@@ -649,6 +662,7 @@ def test_build_handlers_routes_all_five_when_given_a_staff_page_sender() -> None
         "staff_page_refund_out_of_order",
     }
     assert set(handlers) == expected
+    assert len(expected) == 13
 
 
 async def test_draining_a_queued_staff_page_sends_and_marks_it_dispatched(pool):

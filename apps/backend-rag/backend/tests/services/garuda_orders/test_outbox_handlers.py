@@ -169,6 +169,11 @@ def _facts(**over) -> OrderEmailFacts:
         "case_type": "issuance",
         "price_idr": 790000,
         "state": "paid",
+        # OP-F04/OP-F05 flag. Required on the dataclass on purpose: a `_load`
+        # that forgets the column must fail loudly rather than default to
+        # "no late payment" and let a terminal notice go out to a charged
+        # customer. This factory's default is the ordinary case.
+        "late_case_open": False,
     }
     base.update(over)
     return OrderEmailFacts(**base)
@@ -420,11 +425,12 @@ async def test_a_retry_after_a_transient_failure_delivers(pool):
 async def test_unrouted_job_types_are_reported_not_delivered(pool):
     """A job type with no registered handler must show as unroutable.
 
-    This used to assert on `practice_release`, which acquired a handler when
-    the CRM weld landed. The specimen is now `refund_email` — still enqueued by
-    `repository.py`, still deliberately unrouted. Repointing rather than
-    deleting keeps the property under test: `build_handlers` must report what
-    it cannot route instead of consuming it.
+    This used to assert on `practice_release`, then on `refund_email` — both
+    acquired handlers as the outbox drain grew. The specimen is now
+    `staff_page_duplicate_charge`, one of the five `staff_page_*` jobs
+    `build_handlers` deliberately never routes (module docstring). Repointing
+    rather than deleting keeps the property under test: `build_handlers` must
+    report what it cannot route instead of consuming it.
     """
 
     order_id = await _seed_order(pool)
@@ -438,7 +444,10 @@ async def test_unrouted_job_types_are_reported_not_delivered(pool):
             customer_visible=True,
         )
         await journal.enqueue_outbox(
-            conn, order_id=order_id, journal_event_id=event_id, job_type="refund_email"
+            conn,
+            order_id=order_id,
+            journal_event_id=event_id,
+            job_type="staff_page_duplicate_charge",
         )
 
     rec = _Recorder()
@@ -450,7 +459,7 @@ async def test_unrouted_job_types_are_reported_not_delivered(pool):
         await client.aclose()
 
     assert stats.unroutable == 1
-    assert "refund_email" in stats.unroutable_types
+    assert "staff_page_duplicate_charge" in stats.unroutable_types
     assert rec.requests == []
 
 
@@ -473,8 +482,18 @@ def test_build_handlers_routes_practice_release() -> None:
     # The set is EXACT on purpose: adding a route must be a deliberate edit
     # here, and removing one can never pass unnoticed. `portal_invite` joined
     # it when a paid order started producing a portal account as well as a
-    # practice.
-    assert set(handlers) == {"payment_paid_email", "practice_release", "portal_invite"}
+    # practice; the five customer-email jobs joined when the outbox grew to
+    # cover checkout/failure/expiry/refund/receipt.
+    assert set(handlers) == {
+        "checkout_ready_email",
+        "payment_paid_email",
+        "payment_failed_email",
+        "payment_expired_email",
+        "refund_email",
+        "practice_release",
+        "practice_received_email",
+        "portal_invite",
+    }
     assert isinstance(handlers["practice_release"], PracticeReleaseHandler)
 
 
