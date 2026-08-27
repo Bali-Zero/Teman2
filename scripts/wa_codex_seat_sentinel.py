@@ -77,6 +77,10 @@ AUTH_DEATH_MSG: Final[str] = (
     "CODEX_HOME=/Users/zantara-codex/.codex HOME=/Users/zantara-codex "
     "/opt/homebrew/bin/codex login"
 )
+QUOTA_EXHAUSTED_MSG: Final[str] = (
+    "codex seat QUOTA EXHAUSTED — no operator re-login fixes this; the seat's "
+    "usage window must reset on its own (B2b, distinct from auth_death)"
+)
 PROBE_SILENT_MSG: Final[str] = "seat probe silent (not armed, or its daemon died)"
 BREAKER_MSG: Final[str] = (
     "codex leg failing — cause is named only in the daemon log: "
@@ -115,12 +119,16 @@ def _probe_side(
         probe_verdict = probe_status.get("verdict")
         if probe_verdict == "auth_death":
             verdicts.append(Verdict(RED, "auth_death", AUTH_DEATH_MSG))
+        elif probe_verdict == "quota_exhausted":
+            # B2b: dedicated RED, not the generic WARN "other_failure" a
+            # quota-dead seat used to fall into — distinct condition string
+            # so it dedups and pages separately from a genuine crash.
+            verdicts.append(Verdict(RED, "quota_exhausted", QUOTA_EXHAUSTED_MSG))
         elif probe_verdict != "ok":
             # other_failure, probe_error, AND any vocabulary this reader does
-            # not know yet (a future probe adding e.g. "quota_exhausted" must
-            # fall somewhere VISIBLE, never into silence — W116: an unmapped
-            # finale that lands in the healthy bucket is how the next real
-            # signal gets lost).
+            # not know yet fall somewhere VISIBLE, never into silence — W116:
+            # an unmapped finale that lands in the healthy bucket is how the
+            # next real signal gets lost.
             verdicts.append(
                 Verdict(
                     WARN,
