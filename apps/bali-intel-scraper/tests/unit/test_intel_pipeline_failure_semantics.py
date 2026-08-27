@@ -180,18 +180,19 @@ def test_unhandled_step_exception_is_fatal_and_preserves_latest(
     assert latest.read_text(encoding="utf-8") == '{"sentinel":"last-known-good"}'
 
 
-def test_qwen_filter_forces_non_thinking_json_and_reports_actual_model(
+def test_qwen_filter_forces_exact_non_thinking_json_schema_and_reports_model(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
     pipeline = _pipeline(tmp_path, min_score=30)
     pipeline.state["articles"] = [
         {
-            "title": "Indonesia updates investor rules",
+            "title": f"Indonesia investor update {article_id}",
             "content": "An official Indonesian policy update for foreign investors.",
             "source": "Official source",
             "tier": "T1",
         }
+        for article_id in range(1, 4)
     ]
     observed_payloads: list[dict[str, object]] = []
 
@@ -209,15 +210,31 @@ def test_qwen_filter_forces_non_thinking_json_and_reports_actual_model(
         payload = kwargs["json"]
         assert isinstance(payload, dict)
         observed_payloads.append(payload)
-        return FakeResponse({"response": json.dumps([{"id": 1, "s": 88}])})
+        return FakeResponse(
+            {
+                "response": json.dumps(
+                    [
+                        {"id": 1, "s": 88},
+                        {"id": 2, "s": 77},
+                        {"id": 3, "s": 66},
+                    ]
+                )
+            }
+        )
 
     monkeypatch.setattr(httpx, "get", fake_get)
     monkeypatch.setattr(httpx, "post", fake_post)
 
     assert pipeline.step_qwen_filter() is True
     assert observed_payloads[0]["think"] is False
-    assert observed_payloads[0]["format"] == "json"
+    response_schema = observed_payloads[0]["format"]
+    assert isinstance(response_schema, dict)
+    assert response_schema["type"] == "array"
+    assert response_schema["minItems"] == 3
+    assert response_schema["maxItems"] == 3
+    assert response_schema["items"]["required"] == ["id", "s"]
     step = pipeline.state["steps"]["2.5_qwen_filter"]
     assert step["data"]["errors"] == 0
     assert step["data"]["method"] == "qwen3.5:9b"
     assert pipeline.state["articles"][0]["quality_score"] == 88
+    assert pipeline.state["articles"][2]["quality_score"] == 66
