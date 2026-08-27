@@ -586,6 +586,102 @@ async def test_fall_off_reason_recording_failure_never_blocks_the_result(
     stubs.rag_client.post.assert_not_awaited()
 
 
+def test_fall_off_reason_map_covers_every_reason_the_module_can_emit() -> None:
+    """The map must not be able to rot in silence — which is exactly what
+    this PR exists to prevent. `_normalize_fall_off_reason` maps anything
+    it does not recognise to "unknown" (correct runtime behaviour: it must
+    never raise), which means a NEW ``CodexLegResult(fail="something_new:...")``
+    added later, with nobody teaching `_FALL_OFF_REASON_PREFIX_MAP` its
+    head, goes red NOWHERE at import or unit-test time — the column just
+    quietly fills with "unknown", and "why didn't ChatGPT answer this one?"
+    is unanswered again, this time disguised as a populated column.
+
+    So this test extracts, from the SOURCE (not a hand-copied list, which
+    would itself be a proof that cannot fail when it drifts from the code),
+    every reason head the module's ``CodexLegResult(...)`` call sites can
+    actually produce, plus the one literal `raw_reason=` the worker passes
+    directly (the sole condition the leg itself never sees), and asserts
+    each one is a real key in the map.
+    """
+    import ast
+    from pathlib import Path
+
+    from backend.services.integrations import wa_outbox_worker
+
+    def _head_of(value: ast.expr) -> str:
+        """The exact head `_normalize_fall_off_reason` would compute at
+        runtime for the literal (or literal-prefixed f-string) this AST
+        node represents — mirroring `raw.split(":", 1)[0]` on the STATIC
+        leading text, since every interpolation in this module's reason
+        strings comes after the first literal segment (never inside it)."""
+        if isinstance(value, ast.Constant) and isinstance(value.value, str):
+            return value.value.split(":", 1)[0]
+        if isinstance(value, ast.JoinedStr) and value.values:
+            first = value.values[0]
+            if isinstance(first, ast.Constant) and isinstance(first.value, str):
+                return first.value.split(":", 1)[0]
+        raise AssertionError(
+            f"cannot statically extract a reason head from {ast.dump(value)} "
+            "— teach this helper the new shape before trusting the coverage "
+            "assertion below"
+        )
+
+    assert wa_codex_leg.__file__ is not None
+    tree = ast.parse(Path(wa_codex_leg.__file__).read_text(encoding="utf-8"))
+
+    heads: set[str] = set()
+    result_calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "CodexLegResult"
+    ]
+    assert result_calls, "the module no longer constructs CodexLegResult — retarget this guard"
+    for call in result_calls:
+        by_kw = {kw.arg: kw.value for kw in call.keywords if kw.arg is not None}
+        if "text" in by_kw:
+            # The ONE success shape (`text=result.text, reason="completed"`)
+            # — never written to the DB (attempt() only records when
+            # result.text is None), so "completed" is deliberately excluded
+            # from the coverage requirement below.
+            continue
+        for kw_name in ("reason", "fail"):
+            if kw_name in by_kw:
+                heads.add(_head_of(by_kw[kw_name]))
+
+    assert wa_outbox_worker.__file__ is not None
+    worker_tree = ast.parse(Path(wa_outbox_worker.__file__).read_text(encoding="utf-8"))
+    worker_calls = [
+        node
+        for node in ast.walk(worker_tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "record_fall_off_reason"
+    ]
+    assert worker_calls, (
+        "the worker no longer calls record_fall_off_reason directly — "
+        "retarget this guard (condition 2, provider_not_codex, is the ONE "
+        "reason the leg itself never emits)"
+    )
+    for call in worker_calls:
+        by_kw = {kw.arg: kw.value for kw in call.keywords if kw.arg is not None}
+        if "raw_reason" in by_kw and isinstance(by_kw["raw_reason"], ast.Constant):
+            heads.add(_head_of(by_kw["raw_reason"]))
+        # A non-literal raw_reason (the wrapper's own `result.fail or
+        # result.reason` call inside wa_codex_leg.py) contributes nothing
+        # NEW here — its possible values are already the CodexLegResult
+        # heads collected above.
+
+    assert heads, "extraction found nothing — the AST walk is broken, not the coverage"
+    missing = {h for h in heads if h not in wa_codex_leg._FALL_OFF_REASON_PREFIX_MAP}
+    assert not missing, (
+        f"these reason heads are emitted by the module but have no entry in "
+        f"_FALL_OFF_REASON_PREFIX_MAP — they would silently normalize to "
+        f"'unknown': {sorted(missing)}"
+    )
+
+
 # ── the offer boundary is fail-closed (Codex r3) ────────────────────────────
 
 

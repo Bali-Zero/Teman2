@@ -202,12 +202,18 @@ _FALL_OFF_REASON_PREFIX_MAP: dict[str, str] = {
 def _normalize_fall_off_reason(raw: str) -> str:
     """Map an open-ended raw reason string to a bounded DB-safe category.
 
-    Longest-prefix match on ':' — e.g. "offer_contract_break:missing_job_id"
-    matches the "offer_contract_break" entry, not the shorter "offer"
-    entry (dict lookup by exact prefix, tried before the bare split, so
-    multi-underscore prefixes are not shadowed by a shorter one that is
-    also a valid key). Anything unrecognised (a future reason string this
-    map has not been taught) maps to "unknown" rather than raising — this
+    Splits ``raw`` once on the first ':' and looks the result up in
+    ``_FALL_OFF_REASON_PREFIX_MAP`` by EXACT match — e.g.
+    "offer_contract_break:missing_job_id" head-splits to
+    "offer_contract_break", a distinct dict key from the shorter "offer"
+    (itself the head of "offer:legs_exhausted" etc.); there is only ever
+    one lookup, so no key can shadow another. Coverage (every head this
+    module can actually emit is a key here) is enforced by
+    ``test_fall_off_reason_map_covers_every_reason_the_module_can_emit`` in
+    ``test_wa_codex_leg.py``, not by this function. Anything unrecognised
+    (a future reason string that test has not yet been taught either — the
+    CI gate this test backs is what should catch that BEFORE this branch
+    ever fires in prod) maps to "unknown" rather than raising — this
     function backs a best-effort write and must never be the thing that
     turns a fall-off into a second, unrelated failure.
     """
@@ -225,11 +231,17 @@ async def record_fall_off_reason(
     Runs on its OWN connection from the pool — never the caller's claim
     connection (same discipline as the rest of this module: the worker's
     lease heartbeat may be running concurrently on that connection).
-    Deliberately swallows every exception: recording why nothing was sent
-    must never become a second reason nothing was sent (mandate constraint
-    4). A failure here is logged at WARNING and otherwise invisible to the
-    caller — callers do not await this for correctness, only for the
-    write's best-effort completion before the row moves on.
+    Catches ``Exception`` (DB errors, a bad pool, etc.): recording why
+    nothing was sent must never become a second reason nothing was sent
+    (mandate constraint 4). A failure here is logged at WARNING and
+    otherwise invisible to the caller — callers do not await this for
+    correctness, only for the write's best-effort completion before the
+    row moves on. NOT caught: ``BaseException`` (cancellation). A
+    cancelled write propagates, same as every other acquire in this
+    module (see the module docstring's "attempt() never raises... except
+    cancellation") — swallowing it here would be the wrong kind of
+    best-effort, since it would hide asyncio shutdown from the caller
+    instead of merely hiding a DB hiccup.
     """
     reason = _normalize_fall_off_reason(raw_reason)
     try:
@@ -341,9 +353,11 @@ async def attempt(
     Before returning, records a durable fall-off reason (migration 290) for
     every outcome that is NOT a served completion — including a stand_down,
     since that too means nothing was generated in this claim. The record is
-    best-effort (``record_fall_off_reason`` never raises) and runs on its
-    own connection, so it can never turn a successful completion late in
-    this function into a failure, nor mask the real outcome being returned.
+    best-effort on its own connection (``record_fall_off_reason`` swallows
+    every ordinary ``Exception``, same cancellation exception as this
+    function's own contract above), so it can never turn a successful
+    completion late in this function into a failure, nor mask the real
+    outcome being returned.
     """
     try:
         result = await _attempt(
