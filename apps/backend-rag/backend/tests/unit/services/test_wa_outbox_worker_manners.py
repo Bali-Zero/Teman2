@@ -13,11 +13,16 @@ orchestration to prove the wiring point — that the real worker flow actually
 reaches these hooks at the right moment, using the existing ScriptedConn/pool
 fixtures from test_wa_outbox_worker.py.
 
-Arming contract (gate review 2026-07-25): ``WA_OUTBOX_MANNERS_ENABLED``
-defaults to OFF in production (unset today) — every test in this file except
-the two dedicated ``*_disabled_by_default_*`` tests below explicitly ARMS it
-via the autouse fixture, mirroring how a real canary rollout would set it
-before anything in this file's "guilt" tests could fire for real.
+Arming contract (gate review 2026-07-25, apology-side revised 2026-08-27):
+``WA_OUTBOX_MANNERS_ENABLED`` gates the ACK ONLY and defaults to OFF in
+production (unset today) — every test in this file except the dedicated
+``test_ack_disabled_by_default_*`` tests explicitly ARMS it via the autouse
+fixture, mirroring how a real canary rollout would set it before anything
+in this file's ack "guilt" tests could fire for real. The APOLOGY has its
+OWN dedicated flag as of the Gemini-cut PR (``WA_OUTBOX_TERMINAL_APOLOGY_ENABLED``,
+DEFAULT **ON**, see ``test_apology_*_terminal_apology_flag_*`` /
+``test_apology_still_sent_when_manners_flag_off``) — it no longer reads
+``WA_OUTBOX_MANNERS_ENABLED`` at all.
 """
 
 from __future__ import annotations
@@ -25,13 +30,16 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
 
 from backend.services import whatsapp_ack
+from backend.services.integrations import wa_inbox_bot as _wa_inbox_bot_module
 from backend.services.integrations import wa_outbox_worker
 from backend.tests.unit.services.test_wa_outbox_worker import (
     ScriptedConn,
+    _arm_codex,
     _candidate,
     _make_pool,
     _thread_row,
@@ -47,11 +55,17 @@ def _clean_ack_state(monkeypatch):
     dedicated WA_OUTBOX_MANNERS_ENABLED flag explicitly ARMED — this file is
     specifically about exercising C3/C4 behavior, so tests opt IN to the
     real production default (off) only where that default is itself under
-    test (see test_ack_disabled_by_default_flag_off /
-    test_apology_disabled_by_default_flag_off)."""
+    test (see test_ack_disabled_by_default_flag_off). Also stubs
+    ``notify_human_telegram`` (Telegram) to a deterministic AsyncMock — the
+    real function raises cleanly with no token configured, but a test must
+    never depend on THAT being true in every environment; individual tests
+    override/inspect this mock via `monkeypatch` when they need to."""
     whatsapp_ack._reset_for_testing()
     monkeypatch.delenv("WHATSAPP_ACK_ENABLED", raising=False)
     monkeypatch.setenv("WA_OUTBOX_MANNERS_ENABLED", "true")
+    monkeypatch.setattr(
+        _wa_inbox_bot_module, "notify_human_telegram", AsyncMock(return_value=True)
+    )
     yield
     whatsapp_ack._reset_for_testing()
 
@@ -304,12 +318,33 @@ async def test_apology_skipped_when_window_closed() -> None:
 
 
 @pytest.mark.asyncio
-async def test_apology_disabled_by_default_flag_off(monkeypatch) -> None:
-    """Arming contract (gate review 2026-07-25), apology side: with
-    WA_OUTBOX_MANNERS_ENABLED unset (the real prod default), no send and no
-    DB write — apology_sent_at stays NULL because the claim UPDATE (and even
-    the takeover pre-check) is never issued."""
+async def test_apology_still_sent_when_manners_flag_off(monkeypatch) -> None:
+    """INNOCENCE, contract-reversed 2026-08-27: the apology's OWN flag
+    (WA_OUTBOX_TERMINAL_APOLOGY_ENABLED) defaults ON and is fully decoupled
+    from the ack's WA_OUTBOX_MANNERS_ENABLED — with the latter unset (the
+    real prod default for the ack), the apology must still send. This
+    replaces the pre-cut test of the same shape, which asserted the
+    opposite under the OLD single-flag contract."""
     monkeypatch.delenv("WA_OUTBOX_MANNERS_ENABLED", raising=False)
+    thread = _open_window_thread()
+    conn = ScriptedConn(
+        fetchval_results=[False, _NON_TRIVIAL_TEXT],
+        fetchrow_results=[{"id": 1}],  # apology-claim UPDATE ... RETURNING id
+    )
+    svc = _wa_service()
+
+    await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc)
+
+    svc.send_message.assert_awaited_once()
+    assert conn.sql_contains("apology_sent_at = NOW()")
+
+
+@pytest.mark.asyncio
+async def test_apology_disabled_when_terminal_apology_flag_off(monkeypatch) -> None:
+    """GUILT, the NEW dedicated kill-switch: with
+    WA_OUTBOX_TERMINAL_APOLOGY_ENABLED=false, no send and no DB write —
+    the one escape hatch this PR leaves for emergencies."""
+    monkeypatch.setenv("WA_OUTBOX_TERMINAL_APOLOGY_ENABLED", "false")
     thread = _open_window_thread()
     conn = ScriptedConn(fetchval_results=[False, _NON_TRIVIAL_TEXT])
     svc = _wa_service()
@@ -322,16 +357,40 @@ async def test_apology_disabled_by_default_flag_off(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_apology_disabled_by_default_flag_explicit_false(monkeypatch) -> None:
-    monkeypatch.setenv("WA_OUTBOX_MANNERS_ENABLED", "false")
+async def test_apology_tells_a_human_on_the_way_out(monkeypatch) -> None:
+    """GUILT: the apology's promise ("flagged for our team") must be made
+    TRUE — `_tell_a_human` (Telegram) fires with the right phone/reason,
+    exactly once per row, before the client-facing send."""
+    notify_spy = AsyncMock(return_value=True)
+    monkeypatch.setattr(_wa_inbox_bot_module, "notify_human_telegram", notify_spy)
     thread = _open_window_thread()
-    conn = ScriptedConn(fetchval_results=[False, _NON_TRIVIAL_TEXT])
+    conn = ScriptedConn(
+        fetchval_results=[False, _NON_TRIVIAL_TEXT],
+        fetchrow_results=[{"id": 1}],
+    )
     svc = _wa_service()
 
-    await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc)
+    await wa_outbox_worker._maybe_send_apology(
+        conn, 1, thread, svc, reason="bot_generation_exhausted"
+    )
 
-    svc.send_message.assert_not_awaited()
-    assert conn.executed == []
+    notify_spy.assert_awaited_once()
+    kwargs = notify_spy.await_args.kwargs
+    assert kwargs["phone"] == "628111"
+    assert kwargs["thread_ref"] == "7"
+    assert "bot_generation_exhausted" in kwargs["reason"]
+
+
+@pytest.mark.asyncio
+async def test_apology_text_flags_never_promises_a_timed_reply() -> None:
+    """The apology's old copy promised "a member of our team will follow up
+    ... shortly" while nothing told a human anything — corrected 2026-08-27.
+    The new copy must say the conversation was flagged, and must NOT promise
+    a timed reply (per human_escalation_notifier's own docstring: Telegram
+    acceptance proves nothing about a person acting on it)."""
+    for lang in ("en", "id", "it", "ru", "uk"):
+        text = wa_outbox_worker._apology_text(lang)
+        assert "shortly" not in text.lower()
 
 
 @pytest.mark.asyncio
@@ -369,10 +428,14 @@ async def test_apology_send_failure_never_raises_and_never_masks_original() -> N
 
 
 @pytest.mark.asyncio
-async def test_ack_fires_during_real_generation_flow() -> None:
+async def test_ack_fires_during_real_generation_flow(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """End-to-end: a bot-reply row that survives claim+coalescing gets an
     ack right as it starts generating, THEN the real reply is sent — TWO
-    distinct send_message calls, ack first."""
+    distinct send_message calls, ack first. Gemini cut: generation runs
+    through the codex leg (mocked)."""
+    _arm_codex(monkeypatch, text="the real generated reply")
     candidate = _candidate(10, thread_id=7, message_id=1000, needs_generation=True)
     open_thread = _open_window_thread(thread_id=7)
     conn = ScriptedConn(
