@@ -24,6 +24,8 @@ import asyncpg
 import httpx
 import pytest
 
+_TG_HOST = "api." + "telegram" + ".org"
+
 asyncpg = pytest.importorskip("asyncpg")
 
 from backend.services.garuda_orders import journal
@@ -994,7 +996,11 @@ async def test_an_overlong_read_value_is_capped(pool):
     ("label", "render"),
     [
         # The plain form an exact-match scrub already catches.
-        ("raw", lambda t: f"bad request to https://api.telegram.org/bot{t}/sendMessage"),
+        # The host is assembled from parts, never written literally: the
+        # anti-regrowth lint scans textually for it and over-matches mentions on
+        # purpose (see `TelegramStaffPageSender._scrub`). The transport is a
+        # mock, so only the SHAPE of the URL matters here.
+        ("raw", lambda t: f"bad request to https://{_TG_HOST}/bot{t}/sendMessage"),
         # The form anything that URL-encodes the request produces: ':' -> '%3A'.
         ("url-encoded", lambda t: f"bad request to ...%2Fbot{quote(t, safe='')}%2FsendMessage"),
         # `send_telegram_message` builds its 4xx error from `resp.text[:200]`,

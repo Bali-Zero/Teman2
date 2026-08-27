@@ -1118,7 +1118,11 @@ class TelegramStaffPageSender:
         durable text.
 
         `send_telegram_message` builds its URL as
-        `https://api.telegram.org/bot<TOKEN>/sendMessage` and its error strings
+        `<telegram-api-host>/bot<TOKEN>/sendMessage` — the host is written as a
+        placeholder ON PURPOSE: `lint_tg_direct_senders.py` scans TEXTUALLY for
+        the real host string and deliberately over-matches a mention in a
+        comment, because its rule is "keep that string out of non-gateway files
+        entirely" — and its error strings
         from `f"{type(e).__name__}: {e}"` and `resp.text[:200]`. Measured on the
         installed httpx, none of the exceptions that path can raise put the URL
         in their `str()`, and Telegram's own 4xx bodies do not echo the token —
