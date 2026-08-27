@@ -490,7 +490,23 @@ jobs:
           # path-sourced floor==2 (compute_floor_source()'s docstring proves
           # today's floor==2 can only be source=="size", but the explicit
           # check stays correct even if that ever changes).
-          SOURCE=$(python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file /tmp/changed-files.txt "${EXTRA_ARGS[@]}")
+          # BOOTSTRAP (same shape as the netlines probe above, and the
+          # --source-path probe added to the Gear-3 pack-validation step):
+          # this job's checkout is BASE, not HEAD, so the evidence_pack_lint.py
+          # invoked here is whatever origin/main carried at PR-open/sync time.
+          # --print-floor-source is a brand-new flag THIS PR (#5049) is
+          # teaching the script -- base's copy legitimately does not
+          # recognize it yet. Missing FLAG degrades to SOURCE=unknown (never
+          # equals 'size', so the SIZE_GEAR2_ENFORCEMENT_DATE grace-period
+          # branch below is simply not granted -- conservative, not a
+          # fail-open); FLOOR itself is unaffected since --print-floor above
+          # never depended on this flag.
+          if python3 scripts/evidence_pack_lint.py --help 2>&1 | grep -q -- '--print-floor-source'; then
+            SOURCE=$(python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file /tmp/changed-files.txt "${EXTRA_ARGS[@]}")
+          else
+            SOURCE="unknown"
+            echo "::notice::the evidence_pack_lint.py copy in use (checked out from base) does not support --print-floor-source yet — floor_source reported as 'unknown' this run (no SIZE-term grace period granted); self-consistent once this PR merges and base's copy is updated"
+          fi
           echo "source=$SOURCE" >> "$GITHUB_OUTPUT"
           echo "deterministic floor source for this diff: $SOURCE"
           # STEP SUMMARY (S2, 2026-08-27, gate round 2 on PR #5049): the same
