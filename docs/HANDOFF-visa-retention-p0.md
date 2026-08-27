@@ -1,6 +1,12 @@
-# HANDOFF — Visa Oracle retention scope P0 (chiuso 2026-08-27 ~04:00 WITA, Pro)
+# HANDOFF — Visa Oracle retention scope P0 (aperto 2026-08-27 ~04:00 WITA, Pro)
 
 Consegna della sessione `nuzantara-46`. Tutto pushato, worktree pulito, niente in volo.
+
+> ⚠️ **AGGIORNATO 2026-08-27 (sessione successiva) — tre affermazioni di questo file sono cadute.**
+> Zero ha autorizzato l'apply (verbatim: _«e puoi cominciare la migrazione»_), **la 289 è stata
+> applicata in produzione** come `flypgadmin` e verificata sul catalogo vivo, e il divieto di
+> mergiare #5059 da solo è quindi **decaduto**. Le sezioni interessate portano una nota in linea.
+> Il resto del file — protocollo di sweep, trappole già pagate, difetto del runner — resta valido.
 
 ## Dove sta la roba
 
@@ -43,7 +49,15 @@ sollevare. Siccome una migrazione che declina viene comunque registrata `APPLIED
 `binder:retention-policy-scoped` in `operational_preflight.py`, che legge il corpo **vivo** da
 `pg_proc`: non si soddisfa mergiando la PR, solo con la 289 realmente eseguita.
 
-## ⚠️ LA DECISIONE CHE ASPETTA ZERO (Legge 5 — non aggirarla)
+## ✅ LA DECISIONE CHE ASPETTAVA ZERO — ARRIVATA E ESEGUITA (2026-08-27)
+
+> **Zero ha autorizzato** (_«e puoi cominciare la migrazione»_). La 289 è stata applicata a mano in
+> produzione come `flypgadmin` e **verificata sul catalogo vivo**: entrambi i binder risolvono ora
+> 1:1 (una sola lookup `effective_period @>`, un predicato `policy_scope` ciascuno), con owner,
+> `SECURITY DEFINER` e `search_path` preservati. Chiuso anche il buco che il subagente non poteva
+> chiudere: nessuna delle 4 funzioni di purge legge `visa_decision_retention_policies` — cancellano
+> per marcatura di riga, quindi non esiste rischio di cancellazione cross-scope in nessuno stato.
+> Il testo qui sotto è conservato come **storia del vincolo**, non come istruzione viva.
 
 **Anche dopo il merge, la 289 declinerà in produzione.** Per farla mordere serve un apply da
 `flypgadmin` / `postgres` / `repmgr` — cioè una **scrittura diretta sul DB di produzione**, che è
@@ -68,7 +82,13 @@ PYTHONPATH=. python -m pytest \
 
 `-o addopts=` è **obbligatorio**: senza, `-q` diventa `-qq` e la riga `N passed` sparisce.
 
-## 🛑 SEQUENZA VINCOLATA — leggere prima di mergiare qualunque cosa (2026-08-27)
+## ✅ SEQUENZA VINCOLATA — VINCOLO SCIOLTO (2026-08-27)
+
+> **Il divieto è decaduto perché la sua premessa è caduta**: l'apply è stato autorizzato ed
+> eseguito **prima** del merge, quindi i due binder in produzione sono già scoped. La metà Python
+> non arriva più su un trigger cieco — arriva su un trigger curato, che è esattamente l'ordine che
+> questa sezione chiedeva. Il ragionamento sotto resta la spiegazione di **perché** l'ordine
+> contava, e va riletto tale e quale se un domani si ripete la sequenza su un altro binder.
 
 **Non mergiare #5059 finché Zero non autorizza l'apply superuser della 289. Merge e apply stanno
 nella STESSA finestra.**
