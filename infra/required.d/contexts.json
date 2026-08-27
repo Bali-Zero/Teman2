@@ -1,6 +1,6 @@
 {
   "_doc": "Advisory snapshot of main's required-status-check contexts (Merge-OS v2 Wave 0, research/operations/2026-08-10-merge-os-v2-submission-system.md §4). Read by scripts/ci/check_required_workflow_conformance.py. Drift vs live branch protection is expected and cured by REGEN, never hand-edit — see regen_command below.",
-  "generated_at": "2026-08-11",
+  "generated_at": "2026-08-27",
   "source": "api",
   "derived_from_pr": null,
   "repo": "Bali-Zero/Teman2",

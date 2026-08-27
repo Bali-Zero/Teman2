@@ -97,6 +97,74 @@ the specific race the queue closes** — not a separate future improvement, the 
 
 ---
 
+## 2bis. Required vs advisory checks — reinstatement rule
+
+Zero ruled on 2026-08-27 that main's required status checks be cut from 27 to 9 — applied live the
+same day. Within the hour the reinstatement rule fired twice, on two real catches, bringing live
+required back to **11**:
+
+- `actionlint — workflow schema + expression gate` — reinstated after PR #5050 shipped a new job
+  with `timeout-minutes: 5`, under the repo's own 10-minute checkout-budget floor
+  (`scripts/lint_workflow_timeout_floor.py`). Only a required actionlint run would have caught this
+  before merge.
+- `Every guard proves guilt AND innocence` — reinstated after PR #5045 registered 3 new hooks that
+  were never entered into `infra/guard-conformance/registry.json` (superscar family #3's own C1
+  discipline: no guard without a guilt+innocence pair on record).
+
+**The rule**: a check demoted from required to advisory on 2026-08-27 is reinstated to required —
+by anyone, no further ruling needed — the moment either of two things happens:
+
+1. **Main Red Breaker** — the advisory workflow goes red on `main` itself (not merely on a PR).
+2. **A real catch** — the advisory check is the one that would have (or did) stop a genuine defect
+   from landing, the way actionlint and guard-conformance just did.
+
+Everything else stays advisory (non-required, non-blocking, still runs and still reports) for **30
+days from 2026-08-27, through 2026-09-26**. At that date each surviving advisory context gets an
+explicit call: reinstate, or rule it advisory-permanent. Ledger: `.claude/skills/modus/PENDING-ARMS.md`
+(opened 2026-08-27, "16 advisory contexts under 30-day reinstatement watch").
+
+As with §2 above: **do not hand-copy the live required-context list into this doc.** The count here
+(11, up from the 9 first applied) is already the second number this rule has produced in one day —
+re-measure with the query in §2, or read `infra/required.d/contexts.json`
+(`scripts/ci/snapshot_required_contexts.py` regenerates it).
+
+**Re-adding a context to required** (the reinstatement mechanism, whether triggered by this rule or
+by any future ruling):
+
+```bash
+gh api -X PATCH repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks \
+  --input <file>
+```
+
+`<file>` is a JSON body using the `checks` form, one object per context:
+
+```json
+{
+  "strict": false,
+  "checks": [
+    {
+      "context": "actionlint — workflow schema + expression gate",
+      "app_id": -1
+    }
+  ]
+}
+```
+
+`app_id: -1` matches any app reporting that context name (GitHub Actions included) — this repo does
+not pin a specific app id here. After the PATCH lands, regenerate the snapshot
+(`python3 scripts/ci/snapshot_required_contexts.py --branch main --out infra/required.d/contexts.json`)
+in the same PR so the checked-in file and live protection never drift apart.
+
+**Trap, measured 2026-08-27**: `--input <file>` reads `<file>` from the **filesystem of the machine
+running `gh`**, not from wherever the JSON was drafted. Zero's first attempt at this PATCH from M5
+failed with `unexpected end of JSON input` — the body file existed on Pro, not on M5, so `gh` read an
+empty/nonexistent path and sent an empty body. Same class as cicatrix-superscar #1 (HOME-fork drift):
+the payload has to be physically present on the machine issuing the command, `scp`/sync it over first
+or write it fresh on that machine — do not assume a path is shared across the fleet just because the
+repo is.
+
+---
+
 ## 3. Whitelist: auto-merge eligible patterns
 
 The workflow `.github/workflows/auto-merge-whitelist.yml` auto-enables

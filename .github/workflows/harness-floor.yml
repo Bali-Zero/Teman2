@@ -170,8 +170,14 @@ name: Harness floor recompute
 #   -> 27 contexts; "Harness floor recompute" present (app_id 15368, GitHub Actions);
 #      "harness/fable-gate" absent; strict: false
 #
-# and the repo's tracked snapshot infra/required.d/contexts.json agrees (generated 2026-08-11,
-# i.e. before the unblock task existed). That is precisely WHY the redesign above works: it moved
+# (UPDATE 2026-08-27: Zero's ruling cut required contexts 27 -> 9, then the
+# 30-day reinstatement rule brought it to 11 within the hour on real catches
+# unrelated to this job — "Harness floor recompute" stayed required through
+# both changes; docs/runbooks/merge-queue-discipline.md "Required vs advisory
+# checks — reinstatement rule".)
+#
+# and the repo's tracked snapshot infra/required.d/contexts.json agrees (regenerated 2026-08-27,
+# 11 contexts, source=api). That is precisely WHY the redesign above works: it moved
 # enforcement onto a job branch protection already demanded, instead of onto a hand-posted status
 # that would have had to be promoted. So this file's enforcement went live the moment the redesign
 # merged — no flag was ever waiting to be flipped.
@@ -212,8 +218,18 @@ on:
     # HEAD_SHA/BASE_SHA fallback chain below now includes.
 
 concurrency:
-  group: harness-floor-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+  # Dependabot branch: ALL Dependabot PRs share one group per workflow (not
+  # per-ref), bounding concurrent Dependabot runs of THIS workflow to <=2
+  # (Agent PR Contract rule 5) instead of unbounded parallel.
+  # cancel-in-progress:false protects whichever run is RUNNING; GitHub keeps
+  # only one PENDING per group, so a 3rd+ near-simultaneous arrival cancels
+  # the pending run rather than queuing behind it — visible in the PR's
+  # checks tab (never silent), recoverable with `gh run rerun` (confirmed:
+  # docs.github.com/en/actions/using-jobs/using-concurrency + kimi-code/k3
+  # refuter round on PR #5043). Non-Dependabot branch is byte-for-byte the
+  # pre-existing expression — untouched.
+  group: ${{ github.actor == 'dependabot[bot]' && format('dependabot-lockfile-{0}', github.workflow) || format('harness-floor-{0}', github.event.pull_request.number || github.ref) }}
+  cancel-in-progress: ${{ github.actor != 'dependabot[bot]' && github.event_name != 'merge_group' }}
 
 permissions:
   contents: read
