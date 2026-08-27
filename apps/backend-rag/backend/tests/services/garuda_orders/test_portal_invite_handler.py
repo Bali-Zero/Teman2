@@ -30,6 +30,7 @@ from backend.services.garuda_orders.outbox_handlers import (
     PortalInviteUndeliverable,
     PortalProfileNotCreated,
 )
+from backend.tests.fixtures.prod_shaped_pool import create_prod_shaped_pool
 
 pytestmark = pytest.mark.asyncio
 
@@ -48,7 +49,7 @@ EMAIL = "voa.applicant@example.invalid"
 @pytest.fixture
 async def pool():
     try:
-        p = await asyncpg.create_pool(_DSN, min_size=1, max_size=4)
+        p = await create_prod_shaped_pool(_DSN, min_size=1, max_size=4)
     except (OSError, asyncpg.PostgresError) as exc:
         if os.environ.get("CI"):
             pytest.fail(f"no reachable Postgres in CI at {_DSN}: {exc}")

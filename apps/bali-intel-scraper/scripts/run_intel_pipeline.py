@@ -586,19 +586,35 @@ class IntelPipeline:
                 article_lines.append(f"{j}. {title} [{source}] {text}")
 
             articles_text = "\n".join(article_lines)
-            # Pre-build expected output shape
-            example_items = ",".join(
-                f'{{"id":{j + 1},"s":__}}' for j in range(min(2, len(batch)))
-            )
+            expected_ids = ", ".join(str(j) for j in range(1, len(batch) + 1))
 
             prompt = (
                 f"Score each article 0-100: relevance for foreign investors/expats in Bali, Indonesia.\n"
                 f"Criteria: Indonesia/Bali focus(0-30), Expat relevance(0-25), Actionability(0-20), Timeliness(0-15), Quality(0-10).\n"
                 f"IMPORTANT: Articles about OTHER countries (India, Thailand, Malaysia, etc.) that do NOT affect Indonesia MUST score 0-10.\n"
-                f"Reply JSON array only. No explanations.\n"
+                f"Reply with exactly {len(batch)} objects, one per article, using every id once: {expected_ids}.\n"
+                f"Each object must contain only integer fields id and s. No explanations.\n"
                 f"{articles_text}\n"
-                f"[{example_items},...]"
             )
+
+            response_schema = {
+                "type": "array",
+                "minItems": len(batch),
+                "maxItems": len(batch),
+                "items": {
+                    "type": "object",
+                    "required": ["id", "s"],
+                    "properties": {
+                        "id": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": len(batch),
+                        },
+                        "s": {"type": "integer", "minimum": 0, "maximum": 100},
+                    },
+                    "additionalProperties": False,
+                },
+            }
 
             try:
                 resp = _httpx.post(
@@ -607,6 +623,8 @@ class IntelPipeline:
                         "model": ollama_model,
                         "prompt": prompt,
                         "stream": False,
+                        "think": False,
+                        "format": response_schema,
                         "options": {"temperature": 0.0, "num_predict": 40 * len(batch)},
                     },
                     timeout=90
@@ -751,7 +769,7 @@ class IntelPipeline:
                 "filtered": len(filtered),
                 "avg_score": round(avg_score, 1),
                 "errors": errors,
-                "method": "qwen3.5_27b",
+                "method": ollama_model,
             },
         )
         return True

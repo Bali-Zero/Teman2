@@ -1878,8 +1878,27 @@ async def initialize_services_light(app: FastAPI) -> None:
             discount_log: rows landed as '"{\"discount_log\":[...]}"' instead
             of '{"discount_log":[...]}', breaking `metadata ? 'discount_log'`
             and any jsonb_path_* query). With the codec active the
-            application-level json.dumps() becomes redundant and the
-            existing `$N::jsonb` casts are harmless.
+            application-level json.dumps() becomes WRONG, not merely redundant:
+            asyncpg serializes a SECOND time and the value lands as a JSONB
+            scalar string. Any caller that still pre-serializes is broken by
+            this codec, not protected by it.
+
+            CORRECTED 2026-08-27 — this docstring used to say "the existing
+            `$N::jsonb` casts are harmless". They are not, and nothing had ever
+            checked. Measured with a real INSERT against a real Postgres, with
+            this codec registered: `VALUES ($1)` and `VALUES ($1::jsonb)` given
+            the same pre-serialized string BOTH store `jsonb_typeof = string`.
+            The cast does not route around the codec, so it cannot be used as
+            an escape hatch. Cost of the false claim: `check_store.py` kept its
+            `json.dumps` on the strength of it, and GARUDA VOA's first customer
+            action answered HTTP 500 on every request in production until
+            2026-08-27 (migration 286's CHECK calls `jsonb_array_length` on the
+            value, which raises SQLSTATE 22023 on a scalar).
+
+            Still-unfixed callers of the same anti-pattern are ledgered in
+            `.claude/skills/modus/PENDING-ARMS.md`; they are NOT one-line fixes,
+            because this encoder is bare `json.dumps` with no `default=str`
+            while `garuda_orders/journal.py` relies on `default=str`.
 
             Aligns the api pool with the existing full-init pool
             (`init_db_connection` ~line 459) which has always used the same
