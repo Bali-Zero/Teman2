@@ -1,4 +1,9 @@
-brief_ref: evidence/2026-08/agent-air-m5-ops-garuda-staff-pages-0828-e3080f8d/brief.yml
+# brief_ref MUST be the CANONICAL evidence/brief.yml, never this pack's real per-task path.
+# harness-floor.yml stages BOTH files into a synthetic tree under the canonical names and
+# resolves brief_ref against THAT root (its own comment says so in as many words), so the
+# per-task value is the one that fails CI while passing the local lint — two probes that
+# contradict, both correct in their own frame.
+brief_ref: evidence/brief.yml
 council_run: council-journal.jsonl
 plan_ref:
   "PR #5129 (agent/air-m5/ops/garuda-staff-pages-0828) — route the five staff_page_* money-anomaly
