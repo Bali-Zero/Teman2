@@ -1379,11 +1379,24 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
     # which is `get_repository()`/the webhook route's existing fail-closed
     # 503 — the exact same shape as before this PR. The moment Zero
     # provisions a sandbox account and sets the four env vars below, this
-    # starts working with no further code change. A persistent
-    # `httpx.AsyncClient` (Golden Rule #10 — never per-request) is stored
-    # under `garuda_payment_http_client` so `app_factory.py`'s generic
-    # "close anything with `client`/`service` in its attribute name"
-    # shutdown loop closes it — no new cleanup plumbing needed.
+    # starts working with no further code change — but ONLY because this
+    # block now runs on the `api` process too. Until this PR it lived solely
+    # in `initialize_services`, which the process that mounts these routers
+    # never runs, so setting the env vars alone would have changed nothing.
+    # A persistent `httpx.AsyncClient` (Golden Rule #10 — never per-request)
+    # is stored under `garuda_payment_http_client`.
+    #
+    # NOT closed on shutdown, and deliberately so — measured 2026-08-27, this
+    # comment used to claim the opposite. `app_factory.py`'s generic "close
+    # anything with `client`/`service` in its name" loop cannot reach ANY
+    # client, ours included, for two independent reasons: `httpx.AsyncClient`
+    # exposes `aclose()` and not `close()`, and the loop iterates
+    # `app.state.__dict__`, which for a Starlette `State` is the single key
+    # `_state` wrapping the real dict. That loop is dead code for every client
+    # in this app — a pre-existing, repo-wide defect that is NOT this PR's
+    # concern and is ledgered separately. The practical exposure here is one
+    # client per process lifetime, reclaimed at process exit; do not "fix" it
+    # by adding a bespoke close here while the generic loop still lies.
     #
     # `GARUDA_PUBLIC_BASE_URL` (single base, no success/failure split —
     # Dissent #3, 2026-08-25 review of PR #4920): the return route lives on
@@ -1451,8 +1464,11 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
             )
     else:
         logger.info(
-            "ℹ️ GARUDA VOA order/payment wiring skipped: GARUDA_XENDIT_SECRET_KEY not set "
-            "(expected until Zero provisions a Xendit sandbox account — L3 fail closed)"
+            "ℹ️ GARUDA VOA order/payment wiring skipped (L3 fail closed): db_pool=%s "
+            "xendit_secret_key_set=%s. Naming BOTH because this line used to blame "
+            "the missing key unconditionally, and a missing pool reads identically.",
+            db_pool is not None,
+            bool(garuda_xendit_secret_key),
         )
 
 
@@ -1898,6 +1914,19 @@ async def initialize_services_light(app: FastAPI) -> None:
             pool_kwargs["ssl"] = ssl_ctx
         db_pool = await asyncpg.create_pool(**pool_kwargs)
         app.state.db_pool = db_pool
+        # 4c. GARUDA VOA — wired HERE, on the very next statement after the pool
+        # is published, and NOT later with the background workers. `/health/ready`
+        # declares this process ready the moment `app.state.db_pool` exists
+        # (health.py, light branch) and `fly.toml`'s `[[http_service.checks]]`
+        # routes traffic on exactly that path — so every `await` between the pool
+        # assignment and this call is a window in which Fly sends a real customer
+        # to a process that reports ready and still answers 503. Placed after
+        # Timesheet/Olympus/DLQ (the first draft) that window was three awaits
+        # wide. `initialize_garuda_services` contains ZERO awaits, so from here
+        # the event loop cannot interleave a readiness probe at all: the window
+        # is not narrowed, it is closed.
+        # `test_no_await_separates_the_pool_from_the_garuda_wiring` pins this.
+        await initialize_garuda_services(app, db_pool)
         service_registry.register("database", ServiceStatus.HEALTHY)
         logger.info("✅ DB pool initialized (light)")
     except Exception as e:
@@ -2025,11 +2054,6 @@ async def initialize_services_light(app: FastAPI) -> None:
                 )
         except Exception as e:
             logger.warning("⚠️ DLQ retry loop failed (light, non-critical): %s", e)
-
-    # 4c. GARUDA VOA — the SAME wiring the rag process does. This process is
-    # the one that actually mounts the GARUDA routers (`process_groups=_API`),
-    # so without this call every one of them fail-closes 503 by construction.
-    await initialize_garuda_services(app, db_pool)
 
     # 5. Mark RAG services as intentionally not-initialized (light mode)
     app.state.search_service = None
