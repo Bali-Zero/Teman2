@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -42,8 +43,8 @@ def _json_result(provider: str) -> subprocess.CompletedProcess[str]:
     return subprocess.CompletedProcess([], 0, json.dumps(_payload(provider)), "")
 
 
-def _provider(command: list[str]) -> str:
-    return "ollama" if "ollama" in command[0] else "claude"
+def _provider(_command: list[str]) -> str:
+    return "claude"
 
 
 def test_timeout_opens_batch_circuit_and_falls_back_to_local() -> None:
@@ -53,11 +54,17 @@ def test_timeout_opens_batch_circuit_and_falls_back_to_local() -> None:
     def fake_run(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
         provider = _provider(command)
         calls.append(provider)
-        if provider == "claude":
-            raise subprocess.TimeoutExpired(command, 150)
-        return _json_result(provider)
+        raise subprocess.TimeoutExpired(command, 150)
 
-    with patch.object(enricher.subprocess, "run", side_effect=fake_run):
+    def fake_ollama(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append("ollama")
+        return _json_result("ollama")
+
+    with (
+        patch.dict(os.environ, {}, clear=True),
+        patch.object(enricher.subprocess, "run", side_effect=fake_run),
+        patch.object(enricher, "_run_ollama_generation", side_effect=fake_ollama),
+    ):
         first = enricher.enrich_article_claude_cli({"title": "One"}, circuit_open=circuit)
         second = enricher.enrich_article_claude_cli({"title": "Two"}, circuit_open=circuit)
 
@@ -74,11 +81,17 @@ def test_invalid_or_error_json_opens_circuit_and_falls_through() -> None:
     def fake_run(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
         provider = _provider(command)
         calls.append(provider)
-        if provider == "claude":
-            return subprocess.CompletedProcess([], 0, '{"error":"quota"}', "")
-        return _json_result(provider)
+        return subprocess.CompletedProcess([], 0, '{"error":"quota"}', "")
 
-    with patch.object(enricher.subprocess, "run", side_effect=fake_run):
+    def fake_ollama(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append("ollama")
+        return _json_result("ollama")
+
+    with (
+        patch.dict(os.environ, {}, clear=True),
+        patch.object(enricher.subprocess, "run", side_effect=fake_run),
+        patch.object(enricher, "_run_ollama_generation", side_effect=fake_ollama),
+    ):
         first = enricher.enrich_article_claude_cli({"title": "One"}, circuit_open=circuit)
         second = enricher.enrich_article_claude_cli({"title": "Two"}, circuit_open=circuit)
 
@@ -99,7 +112,11 @@ def test_partial_and_empty_objects_never_count_as_enrichment() -> None:
             enricher.subprocess,
             "run",
             return_value=subprocess.CompletedProcess([], 0, output, ""),
-        ):
+        ), patch.object(
+            enricher,
+            "_run_ollama_generation",
+            return_value=subprocess.CompletedProcess([], 0, output, ""),
+        ), patch.dict(os.environ, {}, clear=True):
             result = enricher.enrich_article_claude_cli({"title": "Invalid"})
         assert result["success"] is False
 
@@ -107,6 +124,8 @@ def test_partial_and_empty_objects_never_count_as_enrichment() -> None:
 def test_provider_contract_is_subscription_local_only_and_secret_minimal(
     monkeypatch,
 ) -> None:
+    for seat in range(1, 7):
+        monkeypatch.delenv(f"CLAUDE_CODE_OAUTH_TOKEN_{seat}", raising=False)
     monkeypatch.setenv("OPENAI_API_KEY", "must-not-leak")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-leak")
     monkeypatch.setenv("DATABASE_URL", "must-not-leak")
@@ -127,6 +146,7 @@ def test_provider_contract_is_subscription_local_only_and_secret_minimal(
     assert "Public title" not in command
     assert "--tools" in command and command[command.index("--tools") + 1] == ""
     assert "--no-session-persistence" in command
+    assert "--safe-mode" in command
     assert kwargs["cwd"] == "/tmp"
     assert kwargs["timeout"] == 150
     assert kwargs["input"] and "Public title" in str(kwargs["input"])
@@ -143,11 +163,38 @@ def test_provider_contract_is_subscription_local_only_and_secret_minimal(
         assert secret_name not in child_env
 
 
+def test_local_fallback_disables_thinking_and_forces_bounded_json() -> None:
+    observed: dict[str, object] = {}
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, str]:
+            return {"response": json.dumps(_payload("ollama"))}
+
+    def fake_post(*_args: object, **kwargs: object) -> FakeResponse:
+        observed.update(kwargs)
+        return FakeResponse()
+
+    with patch.object(enricher.httpx, "post", side_effect=fake_post):
+        result = enricher._run_ollama_generation("public prompt", timeout=120)
+
+    assert result.returncode == 0
+    request_json = observed["json"]
+    assert isinstance(request_json, dict)
+    assert request_json["think"] is False
+    assert request_json["format"] == "json"
+    assert request_json["keep_alive"] == "5m"
+    assert request_json["options"] == {"temperature": 0, "num_predict": 2300}
+    assert observed["timeout"] == 120
+
+
 def test_batch_seat_token_is_mapped_to_canonical_child_name(monkeypatch) -> None:
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_3", "batch-seat-oauth")
 
-    child_env = enricher._provider_env("claude")
+    child_env = enricher._provider_env("claude_3")
 
     assert child_env["CLAUDE_CODE_OAUTH_TOKEN"] == "batch-seat-oauth"
     assert "CLAUDE_CODE_OAUTH_TOKEN_3" not in child_env
@@ -159,14 +206,83 @@ def test_batch_circuit_resets_between_batches() -> None:
     def fake_run(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
         provider = _provider(command)
         calls.append(provider)
-        if provider == "claude":
-            raise subprocess.TimeoutExpired(command, 150)
-        return _json_result(provider)
+        raise subprocess.TimeoutExpired(command, 150)
 
-    with patch.object(enricher.subprocess, "run", side_effect=fake_run):
+    def fake_ollama(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append("ollama")
+        return _json_result("ollama")
+
+    with (
+        patch.dict(os.environ, {}, clear=True),
+        patch.object(enricher.subprocess, "run", side_effect=fake_run),
+        patch.object(enricher, "_run_ollama_generation", side_effect=fake_ollama),
+    ):
         first = enricher.batch_enrich_articles([{"title": "One"}])
         second = enricher.batch_enrich_articles([{"title": "Two"}])
 
     assert first[0]["enrichment_provider"] == "ollama"
     assert second[0]["enrichment_provider"] == "ollama"
     assert calls == ["claude", "ollama", "claude", "ollama"]
+
+
+def test_capped_seat_rotates_to_next_oauth_seat_before_ollama() -> None:
+    used_seats: list[str] = []
+
+    def fake_run(
+        _command: list[str],
+        **kwargs: object,
+    ) -> subprocess.CompletedProcess[str]:
+        child_env = kwargs["env"]
+        assert isinstance(child_env, dict)
+        seat = str(child_env["CLAUDE_CODE_OAUTH_TOKEN"])
+        used_seats.append(seat)
+        if seat == "capped-seat":
+            return subprocess.CompletedProcess([], 1, "weekly limit", "")
+        return _json_result("claude_4")
+
+    with (
+        patch.dict(
+            os.environ,
+            {
+                "CLAUDE_CODE_OAUTH_TOKEN_3": "capped-seat",
+                "CLAUDE_CODE_OAUTH_TOKEN_4": "working-seat",
+            },
+            clear=True,
+        ),
+        patch.object(enricher.subprocess, "run", side_effect=fake_run),
+        patch.object(enricher, "_run_ollama_generation") as ollama,
+    ):
+        result = enricher.enrich_article_claude_cli({"title": "Rotation"})
+
+    assert result["provider"] == "claude_4"
+    assert used_seats == ["capped-seat", "working-seat"]
+    ollama.assert_not_called()
+
+
+def test_prompt_uses_scraper_text_summary_and_published_fallbacks() -> None:
+    prompts: list[str] = []
+
+    def fake_cascade(prompt: str, **_kwargs: object) -> tuple[dict[str, object], str, str, list[str]]:
+        prompts.append(prompt)
+        payload = _payload("claude")
+        return payload, json.dumps(payload), "claude", []
+
+    with patch.object(enricher, "_run_generation_cascade", side_effect=fake_cascade):
+        text_result = enricher.enrich_article_claude_cli(
+            {
+                "title": "Text article",
+                "text": "Full scraped text marker",
+                "summary": "Summary marker",
+                "published": "2026-08-27T09:00:00+08:00",
+            }
+        )
+        summary_result = enricher.enrich_article_claude_cli(
+            {"title": "Summary article", "summary": "Only summary marker"}
+        )
+
+    assert text_result["success"] is True
+    assert summary_result["success"] is True
+    assert "Full scraped text marker" in prompts[0]
+    assert "Summary marker" not in prompts[0]
+    assert "Published: 2026-08-27T09:00:00+08:00" in prompts[0]
+    assert "Only summary marker" in prompts[1]

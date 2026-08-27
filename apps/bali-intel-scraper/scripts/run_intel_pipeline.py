@@ -607,6 +607,8 @@ class IntelPipeline:
                         "model": ollama_model,
                         "prompt": prompt,
                         "stream": False,
+                        "think": False,
+                        "format": "json",
                         "options": {"temperature": 0.0, "num_predict": 40 * len(batch)},
                     },
                     timeout=90
@@ -751,7 +753,7 @@ class IntelPipeline:
                 "filtered": len(filtered),
                 "avg_score": round(avg_score, 1),
                 "errors": errors,
-                "method": "qwen3.5_27b",
+                "method": ollama_model,
             },
         )
         return True
