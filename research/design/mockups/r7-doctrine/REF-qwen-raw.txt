@@ -1,0 +1,13 @@
+Based only on supplied claims C1–C6:
+
+1. **Critical / Contradiction (C1)** — Doctrine bans proxy results from setting human-gate production state, yet its amendment register flips production default (`named→control`) because of an LLM-proxy outcome.
+
+2. **Medium / Unsupported leap (C2)** — Future rounds are bound to a 4-seat cross-family panel with filesystem refuter despite one seat failing in 2 of 5 rounds and recovering only on minimal payloads.
+
+3. **High / Contradiction (C3)** — Register claims 5 amendment payloads are “verbatim,” but at least one (`rem`) is a derived consequence/declaration, not source amendment text.
+
+4. **High / Unsupported closure (C4)** — Loop closes with no R8 while register §5 still lists 5 open questions and §4 lists 6 unbuilt items.
+
+5. **High / Self-undermining evidence rule (C5)** — Evidence ladder ranks cited memory lowest and requires re-verification, yet doctrine §1 narrative and §6 counts partly rely on loop memory blocks.
+
+6. **Critical / Contradiction (C6)** — Doctrine forbids silent edits to R4 while making amendments binding immediately before they physically land in R4 text.
