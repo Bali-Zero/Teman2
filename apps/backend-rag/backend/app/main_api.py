@@ -182,9 +182,32 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
         # Same injected client as the email sender (Golden Rule #10) — a
         # Telegram POST is just another HTTPS call, no reason for a second
         # long-lived client here.
-        handlers = build_handlers(
-            pool, BrevoEmailSender(client), TelegramStaffPageSender(client)
-        )
+        #
+        # WRAPPED, because this runs OUTSIDE the per-tick try below and a failure
+        # here killed the whole drain in silence (cross-family seat, Kimi K3,
+        # 2026-08-28). `build_handlers` lazily imports `settings` and the portal
+        # router at call time, so an import drift or a renamed settings
+        # attribute raises HERE — after "scheduler started" was already logged,
+        # and before the loop whose except could have reported it. Nothing
+        # awaits this task until shutdown, where the exception is swallowed by a
+        # bare `except (CancelledError, Exception): pass`. Net effect: the entire
+        # GARUDA outbox — customer payment emails included — permanently dead
+        # behind a green startup log, which is superscar #2 exactly.
+        #
+        # The task still dies (there is no safe way to drain without handlers),
+        # but it dies LOUDLY: one CRITICAL naming the cause, then the re-raise.
+        try:
+            handlers = build_handlers(
+                pool, BrevoEmailSender(client), TelegramStaffPageSender(client)
+            )
+        except Exception:
+            logger.critical(
+                "GARUDA outbox scheduler CANNOT START — build_handlers failed; "
+                "the queue will accumulate and NOTHING will be dispatched "
+                "(customer emails and staff money-anomaly pages both)",
+                exc_info=True,
+            )
+            raise
         while True:
             try:
                 async with pool.acquire() as conn:

@@ -1127,12 +1127,24 @@ class TelegramStaffPageSender:
         installed httpx, none of the exceptions that path can raise put the URL
         in their `str()`, and Telegram's own 4xx bodies do not echo the token —
         so this is not a leak being fixed, it is a class being closed. The
-        reason it is worth one method: unlike every OTHER caller of that
-        function (which only logs), this one's message becomes the outbox job's
-        `last_error` COLUMN — durable, world-readable to anyone with DB read,
-        and surviving long after the log rotates. A future httpx or a future
-        error string is exactly the kind of change nobody would think to
-        re-audit from here.
+        reason it is worth one method: this message does not stay in memory. It
+        travels as the raised `StaffPageSendFailed`, `drain_once` catches it and
+        calls `logger.exception`, and the traceback — message included — lands in
+        the process's log stream, which on Fly is retained and readable by anyone
+        with log access.
+
+        CORRECTED 2026-08-28 (cross-family seat, Kimi K3, then verified against
+        migration 284): an earlier version of this paragraph said the message
+        "becomes the outbox job's `last_error` COLUMN — durable, world-readable
+        to anyone with DB read". **There is no such column.**
+        `garuda_order_outbox` has exactly `id, order_id, journal_event_id,
+        job_type, payload, created_at, dispatched_at, attempts`, and `drain_once`
+        writes no error text to the row at all — it only logs. The requirement
+        this method serves is unchanged and the durable surface is real; the
+        justification named a database column that does not exist, which is the
+        worse kind of wrong, because the next reader would have gone looking for
+        it. A future httpx or a future error string is still exactly the kind of
+        change nobody would think to re-audit from here.
         """
 
         text = err or "unknown error"
@@ -1226,6 +1238,19 @@ def _detail_scalar(detail: dict, key: str) -> str:
     if value is None or isinstance(value, (dict, list)):
         return "—"
     text = str(value)
+    # A BACKTICK IN THE VALUE ENDS THE CODE SPAN THAT WRAPS IT (cross-family
+    # seat, Kimi K3, 2026-08-28). Every caller interpolates this into
+    # `` `{value}` `` on the theory that Markdown V1 does not re-parse inside a
+    # code span — true, but only while the value contains no backtick of its
+    # own. One backtick closes the span early, Telegram re-parses the tail,
+    # answers 400 "can't parse entities", and `send_telegram_message` treats
+    # 4xx as NON-retryable: the handler raises every attempt until the job
+    # exhausts, so the page NEVER goes out. That inverts this function's own
+    # stated purpose — "an id that is not an id is itself the anomaly worth
+    # seeing" — because the malformed value is precisely what makes it unseeable.
+    # Stripped, not escaped: a visible marker keeps the anomaly legible while
+    # making a breakout structurally impossible.
+    text = text.replace("`", "<backtick>")
     return text[:120] if len(text) <= 120 else text[:120] + "…"
 
 
@@ -1383,6 +1408,24 @@ class StaffPageDuplicateChargeHandler(_StaffPageHandler):
     writes `late_case_charge_id` — only `late_case_open`. The second charge id
     lives ONLY in this event's journal `detail` (`second_charge_id`), which is
     why `_StaffPageHandler._load` reads the journal at all.
+
+    WHY THIS PAGE WARNS AGAINST THE CLOSE PATH (cross-family seat, Kimi K3,
+    2026-08-28 — confirmed on disk). An earlier version of this copy said
+    "refund the duplicate charge, then close via resolveLateOrder". That
+    instruction is actively harmful for OP-08: `resolveLateOrder`'s
+    `refunded_in_full` resolution calls the provider against
+    `late_case_charge_id`, this branch never writes it, and `resolveLateOrder`
+    does not CLEAR it when closing a case — so on a duplicate charge that column
+    is NULL (fresh order) or a STALE, already-refunded id from a previous
+    OP-F04/OP-F05 case. Following the instruction refunded the wrong money or
+    nothing at all.
+
+    The page therefore names the charge and says the automated refund path must
+    not be used here. That is the honest thing a page can do; the underlying gap
+    is a PRODUCT gap — OP-08 has no complete remediation path, because neither
+    `honoured` (semantically "we kept it") nor `refunded_in_full` (refunds the
+    wrong id) is a correct close for a duplicate charge. It is ledgered, not
+    papered over with copy.
     """
 
     job_type = "staff_page_duplicate_charge"
@@ -1400,9 +1443,39 @@ class StaffPageDuplicateChargeHandler(_StaffPageHandler):
             f"Amount already paid once: {_amount(facts.price_idr)}\n"
             f"Second (duplicate) charge id: `{second_charge}`\n\n"
             "A second successful payment landed on an order already marked "
-            "paid. Refund the duplicate charge, then close via resolveLateOrder.\n\n"
+            "paid. Refund the charge named above.\n\n"
+            "DO NOT close this one with resolveLateOrder's refund resolution. "
+            "It refunds the order's `late_case_charge_id`, and OP-08 never "
+            "writes that column — it is either empty or still holds an "
+            "already-refunded charge from an earlier case. Refunding through it "
+            "would target the wrong money.\n\n"
             f"Order: {self._tracker_link(facts.order_id)}"
         )
+
+
+def _late_charge_lines(facts: OrderAnomalyFacts) -> str:
+    """The charge id of the EVENT that triggered this job, plus a divergence
+    warning when the order row records a different one.
+
+    `late_case_charge_id` is ONE column and OP-F04/OP-F05's UPDATE is guarded by
+    `AND late_case_open = FALSE`, so a second late payment on the same order
+    leaves the column holding the FIRST charge while writing its own event and
+    its own page job. Rendering the column alone therefore misidentifies which
+    money to give back — see StaffPageLatePaidAfterRefundHandler's docstring.
+    """
+
+    event_charge = _detail_scalar(facts.detail, "charge_id")
+    row_charge = facts.late_case_charge_id or "—"
+    lines = f"Late charge id (this event): `{event_charge}`\n"
+    if event_charge != "—" and row_charge != event_charge:
+        lines += (
+            f"Open case on the order records: `{row_charge}`\n\n"
+            "TWO LATE CHARGES. The open remediation case was opened by an "
+            "EARLIER late payment, and resolveLateOrder refunds the id it "
+            "recorded — so it will NOT refund the charge named above. Refund "
+            "that one separately."
+        )
+    return lines
 
 
 class StaffPageLatePaidAfterRefundHandler(_StaffPageHandler):
@@ -1416,8 +1489,25 @@ class StaffPageLatePaidAfterRefundHandler(_StaffPageHandler):
     `late_case_charge_id` is used from the ORDER ROW, not the journal detail
     — `repository.py`'s OP-F04 branch writes it there specifically because it
     is NOT `provider_charge_id` (which, on a refunded order, still names the
-    ORIGINAL already-refunded charge). Reading the order row keeps this page
-    and `resolveLateOrder`'s refund path pointed at the exact same id.
+    ORIGINAL already-refunded charge).
+
+    WHY THIS PAGE RENDERS **TWO** IDS (cross-family seat, Kimi K3, 2026-08-28 —
+    confirmed on disk). An earlier version rendered only the ORDER ROW's
+    `late_case_charge_id`, arguing that it kept the page and
+    `resolveLateOrder`'s refund path pointed at the same id. That argument is
+    exactly backwards for the second late payment on the same order.
+    `repository.py`'s OP-F04 UPDATE carries `AND late_case_open = FALSE`, so a
+    SECOND late `paid` webhook does NOT overwrite the column — but it still
+    appends its own journal event (`detail.charge_id` = the second charge) and
+    still enqueues its own page job. That job would then have rendered the
+    FIRST case's charge id: staff refund a charge already being handled, the
+    second charge is never refunded, and the job is marked dispatched so it
+    never pages again. Money kept, nobody ever told the right id.
+
+    So the page names the charge of the EVENT THAT TRIGGERED IT (the only place
+    the second charge is recorded) and, when that differs from the order row,
+    says so and names the consequence — because `resolveLateOrder` refunds the
+    ROW's id, so a divergence means its automated refund will miss this charge.
     """
 
     job_type = "staff_page_late_paid_after_refund"
@@ -1427,13 +1517,12 @@ class StaffPageLatePaidAfterRefundHandler(_StaffPageHandler):
         return facts.late_case_open and not facts.case_resolved_since_trigger
 
     def _compose(self, facts: OrderAnomalyFacts) -> str:
-        charge_id = facts.late_case_charge_id or "—"
         return (
             "LATE PAYMENT AFTER REFUND\n\n"
             f"Order: `{facts.order_id}`\n"
             f"Case: {_escape_markdown(facts.case_type)}\n"
             f"Amount: {_amount(facts.price_idr)}\n"
-            f"Late charge id: `{charge_id}`\n\n"
+            f"{_late_charge_lines(facts)}\n\n"
             "This order was already refunded when a payment for it succeeded. "
             "The customer paid for something already refunded — refund this "
             "late charge too, then close via resolveLateOrder.\n\n"
@@ -1456,14 +1545,13 @@ class StaffPageLatePaidAfterTerminalHandler(_StaffPageHandler):
         return facts.late_case_open and not facts.case_resolved_since_trigger
 
     def _compose(self, facts: OrderAnomalyFacts) -> str:
-        charge_id = facts.late_case_charge_id or "—"
         return (
             "LATE PAYMENT AFTER TERMINAL STATE\n\n"
             f"Order: `{facts.order_id}`\n"
             f"Case: {_escape_markdown(facts.case_type)}\n"
             f"Order state: {_escape_markdown(facts.state)}\n"
             f"Amount: {_amount(facts.price_idr)}\n"
-            f"Late charge id: `{charge_id}`\n\n"
+            f"{_late_charge_lines(facts)}\n\n"
             "This order was already failed/expired when a payment for it "
             "succeeded. The customer paid for a checkout the system had "
             "already given up on — decide whether to honour it or refund via "

@@ -341,3 +341,103 @@ dissent:
       dropped the sibling's file. The lesson is that a clean git merge with no conflict markers is not
       evidence that nothing was lost — the diff-scope list against origin/main is, and reading it is what
       found both."
+  - seat: kimi-code/k3 (cross-family council seat, round 1)
+    objection:
+      The two late-payment pages render the ORDER ROW's late_case_charge_id. OP-F04/OP-F05's UPDATE
+      carries AND late_case_open = FALSE, so a SECOND late payment on the same order does not overwrite
+      that column while still writing its own event and its own page job — so job B's page names case A's
+      charge. Staff refund money already being handled, B's charge is never refunded, and B's job is marked
+      dispatched so it never pages again.
+    status: CONFIRMED
+    resolution:
+      "Confirmed on disk at repository.py:484-492 and 506-536 before changing anything. The page
+      now names the charge of the EVENT THAT TRIGGERED IT — the only place the second charge is recorded
+      — and, when that differs from the row, shows the row's id too and states the consequence (resolveLateOrder
+      refunds the ROW's id, so it will NOT refund this charge). Showing both matters: hiding the row's
+      id would leave the human unable to see WHY the automated path is wrong. The pre-existing test that
+      claimed to pin this ('..._uses_the_order_rows_charge_id') seeded BOTH sources to the same value,
+      so it could never distinguish them and survived the switch without a flicker; it is renamed with that
+      fact written into it, and two new tests separate the sources — divergent (warning present) and identical
+      (warning ABSENT, so an ordinary page does not carry a permanent alarm). Mutation-proven: rendering
+      the row id again goes RED, and suppressing only the warning while keeping both ids also goes RED."
+  - seat: kimi-code/k3 (cross-family council seat, round 1)
+    objection:
+      The duplicate-charge page said 'refund the duplicate charge, then close via resolveLateOrder'.
+      resolveLateOrder's refunded_in_full resolution refunds late_case_charge_id, OP-08 never writes that
+      column, and resolveLateOrder never clears it — so on a duplicate charge it is NULL or holds a stale
+      already-refunded id from an earlier case. The instruction refunded the wrong money or nothing.
+    status: CONFIRMED
+    resolution:
+      "Confirmed on disk: repository.py:465-468 (OP-08 sets only the flag) and 773-785 (resolveLateOrder
+      does not clear late_case_charge_id). The copy now names the charge and says the automated refund resolution
+      must NOT be used here, with the reason. The underlying gap is a PRODUCT gap, not a copy gap, and is
+      declared rather than papered over: OP-08 has no correct close, because 'honoured' means we kept
+      the money and 'refunded_in_full' refunds the wrong id. It is ledgered."
+  - seat: kimi-code/k3 (cross-family council seat, round 1)
+    objection:
+      An id containing a backtick closes the code span that wraps it; Telegram answers 400 "can't
+      parse entities", send_telegram_message treats 4xx as non-retryable, and the job exhausts — so the
+      page never goes out. This inverts _detail_scalar's own stated purpose, since the malformed value is
+      exactly what makes the anomaly unseeable.
+    status: CONFIRMED
+    resolution:
+      "_detail_scalar now replaces a backtick with a visible <backtick> marker: stripped rather
+      than escaped, so a breakout is structurally impossible while the anomaly stays legible. The test asserts
+      the marker AND that the page's backtick count is EVEN — a structural check, since an odd count is
+      what a breakout looks like and what Telegram rejects. Mutation-proven: removing the replacement goes
+      RED."
+  - seat: kimi-code/k3 (cross-family council seat, round 1)
+    objection:
+      build_handlers runs OUTSIDE the per-tick try in _run_garuda_outbox_scheduler and lazily imports
+      settings and the portal router. An exception there kills the task AFTER 'scheduler started' is logged;
+      nothing awaits it until shutdown, where a bare except swallows it. The whole GARUDA outbox — customer
+      emails included — would be permanently dead behind a green startup log.
+    status: CONFIRMED
+    resolution:
+      "The construction is now wrapped: one logger.critical naming the consequence (queue accumulates,
+      nothing dispatched, both classes), exc_info=True, then a re-raise. The task still dies — there is
+      no safe way to drain without handlers — but it dies loudly instead of silently, which is the whole
+      distinction superscar #2 is about. The shutdown-path bare except is pre-existing and shared with the
+      WA scheduler; not widened here."
+  - seat: kimi-code/k3 (cross-family council seat, round 1)
+    objection:
+      "A Telegram outage of roughly 90 seconds permanently kills every anomaly page: a failed job
+      is eligible again on the very next pass, the loop sleeps only the poll interval when nothing dispatched,
+      and send_telegram_message's own backoff is ~11s — so attempts 1 through 5 burn in well under two
+      minutes, after which the row is never claimable again. The only residue is an exhausted count that
+      nothing alarms on."
+    status: PLAUSIBLE
+    resolution:
+      "Left standing and DECLARED rather than fixed here. The retry economics belong to outbox_consumer.py's
+      attempt model and the poll cadence, neither of which this PR authors, and changing them is a behaviour
+      change for all thirteen routed types at once — a separate concern under rule 1. Recorded in the ledger
+      alongside the unroutable alarm, because the two are the same missing organ: nothing yet watches the
+      drain's own outcome. Not counted as done."
+  - seat: kimi-code/k3 (cross-family council seat, round 1)
+    objection:
+      "_scrub misses an interior window of the token's secret half: the regex is anchored on the
+      bot id and the literal replacement needs the whole secret, so a 4xx body echoing only a middle slice
+      survives into the raised message and from there into drain_once's logger.exception."
+    status: PLAUSIBLE
+    resolution:
+      Accurate and left standing, with the reason stated rather than the finding dismissed. Closing
+      it means scrubbing every >=8-character substring of the secret, which would also redact innocent text
+      that happens to collide — a real cost against a shape Telegram does not produce (its 4xx bodies are
+      its own JSON errors and echo neither the URL nor fragments of it). The method already closes the four
+      shapes that can actually occur, each proven by every window of eight or more characters. Declared,
+      not silently accepted.
+  - seat: session (gate, on its own diff)
+    objection:
+      The scrub's justification cited 'the outbox job's last_error COLUMN — durable, world-readable
+      to anyone with DB read'. There is no such column.
+    status: CONFIRMED
+    resolution:
+      "Verified against migration 284:347-357: garuda_order_outbox has exactly id, order_id, journal_event_id,
+      job_type, payload, created_at, dispatched_at, attempts — and drain_once writes no error text to the
+      row at all. Surfaced by the same cross-family seat, which noticed the premise did not match the consumer
+      it was reading. The requirement is unchanged and the durable surface is real — drain_once calls logger.exception,
+      so the message lands in the process's log stream, retained and readable by anyone with Fly log access
+      — but the justification named a database column that does not exist, which is worse than vague because
+      the next reader would have gone looking for it. Corrected in three places: the method's docstring,
+      this lane's test comment, and the sibling comment in test_outbox_customer_emails.py that #5128 shipped
+      with the same false claim."

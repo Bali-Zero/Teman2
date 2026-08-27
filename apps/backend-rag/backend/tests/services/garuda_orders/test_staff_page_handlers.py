@@ -301,7 +301,16 @@ async def test_duplicate_charge_is_resolved_without_paging_once_case_is_closed(p
     assert any("WITHOUT paging" in r.getMessage() for r in caplog.records)
 
 
-async def test_late_paid_after_refund_pages_and_uses_the_order_rows_charge_id(pool):
+async def test_late_paid_after_refund_pages_and_names_the_charge(pool):
+    """RENAMED 2026-08-28. This was `..._uses_the_order_rows_charge_id`, and it
+    could never have shown that: it seeds `late_case_charge_id` and
+    `detail["charge_id"]` to the SAME value, so both sources render identically
+    and the assertion passes whichever one the code reads. It survived the
+    switch from the row to the event detail without a flicker — which is what
+    made it worth renaming rather than deleting. The two tests below are the
+    ones that actually separate the sources.
+    """
+
     order_id = await _seed_order(
         pool, state="refunded", late_case_open=True, late_case_charge_id="ch_late_refund_1"
     )
@@ -721,10 +730,21 @@ async def test_draining_a_queued_staff_page_sends_and_marks_it_dispatched(pool):
 
 # --- the bot token must not become durable text -------------------------------
 #
-# Every OTHER caller of `send_telegram_message` only LOGS its error string.
-# This one puts it in `StaffPageSendFailed`, which the outbox worker writes to
-# the job's `last_error` COLUMN — durable, readable by anyone with DB read, and
-# outliving log rotation. `@zantara0bot`'s predecessor is the scar: its token
+# This message does not stay in memory: it travels as `StaffPageSendFailed`,
+# `drain_once` catches it and calls `logger.exception`, and the traceback —
+# message included — lands in the process's log stream, retained and readable by
+# anyone with log access on Fly.
+#
+# CORRECTED 2026-08-28: this comment used to say the worker "writes it to the
+# job's `last_error` COLUMN — durable, readable by anyone with DB read". There
+# is no such column. `garuda_order_outbox` (migration 284:347-357) has exactly
+# id / order_id / journal_event_id / job_type / payload / created_at /
+# dispatched_at / attempts, and `drain_once` writes no error text to the row at
+# all. The requirement is unchanged and the durable surface is real; the
+# justification cited a database column that does not exist, which is worse than
+# vague, because the next reader would have gone looking for it.
+#
+# `@zantara0bot`'s predecessor is the scar: its token
 # sat in cleartext on the default branch of a PUBLIC repo, cannot be revoked
 # (BotFather answers only to an account nobody can reach any more) and is
 # therefore valid forever in the hands of whoever reads git history.
@@ -1287,3 +1307,122 @@ async def test_the_journal_rejects_update_and_delete_so_a_timestamp_tie_is_unrea
         assert "append-only" in str(caught.value).lower(), (
             f"{label} was rejected, but not by the append-only guard: {caught.value!r}"
         )
+
+
+# --- the page must name the charge of ITS OWN event ----------------------------
+#
+# `late_case_charge_id` is ONE column, and OP-F04/OP-F05's UPDATE carries
+# `AND late_case_open = FALSE` (repository.py:484-492), so a SECOND late payment
+# on the same order does NOT overwrite it — while still writing its own journal
+# event and its own page job. A page that rendered the column alone therefore
+# named the FIRST charge: staff refund money already being handled, the second
+# charge is never refunded, and the job is marked dispatched so it never pages
+# again. Found by a cross-family seat (Kimi K3, 2026-08-28) and confirmed on disk.
+
+
+async def test_the_page_names_the_charge_of_ITS_OWN_event_not_the_open_cases(pool):
+    """The divergent case: the order row holds case A's charge, this job's event
+    carries case B's. The page must name B — the only place B is recorded — and
+    say that resolveLateOrder will not refund it.
+    """
+
+    order_id = await _seed_order(
+        pool, state="refunded", late_case_open=True, late_case_charge_id="ch_case_A"
+    )
+    row_id, event_id = await _enqueue_staff_page(
+        pool,
+        order_id,
+        job_type="staff_page_late_paid_after_refund",
+        event_name="payment.late_paid_after_refund",
+        transition_id="OP-F04",
+        detail={"charge_id": "ch_case_B"},
+    )
+    rec = _TgRecorder()
+    sender, client = _tg_sender(rec)
+    try:
+        await StaffPageLatePaidAfterRefundHandler(pool, sender)(
+            _job(order_id, event_id, "staff_page_late_paid_after_refund")
+        )
+    finally:
+        await client.aclose()
+    text = _last_text(rec)
+    # B is named, and named as THIS event's charge.
+    assert "ch_case_B" in text
+    # A is still shown, because resolveLateOrder will act on it — hiding it
+    # would leave the human unable to see WHY the automated path is wrong.
+    assert "ch_case_A" in text
+    # And the consequence is stated, not left to be inferred.
+    assert "TWO LATE CHARGES" in text
+    assert "will NOT refund" in text
+
+
+async def test_no_divergence_warning_when_the_two_ids_agree(pool):
+    """Innocence. One late payment, one case: the row and the event name the
+    same charge, so there is nothing to warn about and the warning must be
+    ABSENT — otherwise every ordinary page carries an alarm and the alarm stops
+    meaning anything.
+    """
+
+    order_id = await _seed_order(
+        pool, state="failed", late_case_open=True, late_case_charge_id="ch_only_one"
+    )
+    row_id, event_id = await _enqueue_staff_page(
+        pool,
+        order_id,
+        job_type="staff_page_late_paid_after_terminal",
+        event_name="payment.late_paid_after_terminal",
+        transition_id="OP-F05",
+        detail={"charge_id": "ch_only_one"},
+    )
+    rec = _TgRecorder()
+    sender, client = _tg_sender(rec)
+    try:
+        await StaffPageLatePaidAfterTerminalHandler(pool, sender)(
+            _job(order_id, event_id, "staff_page_late_paid_after_terminal")
+        )
+    finally:
+        await client.aclose()
+    text = _last_text(rec)
+    assert "ch_only_one" in text
+    assert "TWO LATE CHARGES" not in text
+    assert "will NOT refund" not in text
+
+
+# --- a backtick in a rendered id must not break the code span ------------------
+#
+# Every id is interpolated into a `` `code span` `` on the theory that Markdown
+# V1 does not re-parse inside one. True — until the value contains a backtick of
+# its own, which closes the span early. Telegram then answers 400 "can't parse
+# entities", `send_telegram_message` treats 4xx as NON-retryable, and the handler
+# raises on every attempt until the job exhausts: the page NEVER goes out. That
+# inverts `_detail_scalar`'s stated purpose, since the malformed value is exactly
+# what makes the anomaly unseeable. Cross-family seat (Kimi K3, 2026-08-28).
+
+
+async def test_a_backtick_in_a_rendered_id_cannot_break_the_code_span(pool):
+    order_id = await _seed_order(pool, state="paid", late_case_open=True)
+    row_id, event_id = await _enqueue_staff_page(
+        pool,
+        order_id,
+        job_type="staff_page_duplicate_charge",
+        event_name="payment.duplicate_charge_detected",
+        transition_id="OP-08",
+        detail={"second_charge_id": "ch_bad`*_[evil"},
+    )
+    rec = _TgRecorder()
+    sender, client = _tg_sender(rec)
+    try:
+        await StaffPageDuplicateChargeHandler(pool, sender)(
+            _job(order_id, event_id, "staff_page_duplicate_charge")
+        )
+    finally:
+        await client.aclose()
+    text = _last_text(rec)
+    # The value's own backtick is gone, replaced by a visible marker — the
+    # anomaly stays legible, the span cannot be closed from inside.
+    assert "ch_bad" in text
+    assert "<backtick>" in text
+    # Structural check, not a spelling check: every backtick in the page belongs
+    # to a span the composer opened, so they come in pairs. An odd count is what
+    # a breakout looks like, and it is what Telegram rejects.
+    assert text.count("`") % 2 == 0
