@@ -496,6 +496,44 @@ _AUTH_DEATH_RE: re.Pattern[str] = re.compile(
 # "limit of stay" or an investor/worker "quota" (RPTKA), so every
 # alternative below requires the specific multi-word framing actually
 # observed, never a lone word (cicatrix family #3 discipline).
+#
+# Adversarial review (Kimi K3, fresh context, 2026-08-27) flagged
+# `usage\s+limit` as unanchored to codex/ChatGPT and cited
+# `scripts/army/spark_lane.sh`'s own quota-cicatrix as precedent for
+# over-match. Verified by hand: that cicatrix was about a classifier
+# grepping the MODEL'S OWN OUTPUT even on a SUCCESSFUL run
+# (`exit_code == 0`) — its own fix note states the rule this file already
+# follows: "a successful run whose TEXT happens to mention quota is
+# innocent; only a failed run whose text names the reason is guilty." This
+# scan is already on the guilty side: stderr-only, `exit_code != 0` only,
+# with prompt/stdout lines stripped first (see `generate()` below). The
+# repo's OWN existing codex-quota classifier
+# (`scripts/codex_tri_llm_review.py:258-261`) additionally scans bare
+# `"rate limit"` with no codex-specific anchor at all — this pattern is
+# narrower than that established precedent, not looser. Known residual,
+# declared rather than hidden: a FAILED codex run whose stderr happens to
+# carry the raw error body of a THIRD-PARTY API call the job itself was
+# making (e.g. a 429 response node.js/python fetched and printed
+# verbatim) could still false-positive here if that body's wording
+# happens to say "usage limit"/"weekly limit"/"quota exceeded". No such
+# case has been observed; if it ever is, narrow the match to codex's own
+# `ERROR:`-prefixed framing rather than widening `_AUTH_DEATH_RE`'s
+# sibling discipline further.
+#
+# GAP NOTO (Kimi K3, same review): `quota\s+(?:exceeded|exhausted)` does
+# NOT match the word-order-inverted canonical OpenAI-family forms
+# ("You exceeded your current quota", "insufficient_quota") — searched
+# for a real attestation of either string in this repo
+# (`git grep -iE 'insufficient_quota|exceeded your current quota'`) and in
+# the installed `openai` SDK package under `apps/backend-rag/.venv`
+# (2026-08-27: package version 2.38.0) — NEITHER string appears anywhere
+# in either surface; the SDK does not embed API error-body text at all
+# (it comes from the live HTTP response, never from client source). Per
+# this file's own no-invented-pattern discipline, the inverted form is
+# therefore NOT added: a message using it falls into the generic
+# `CodexExecProcessError` bucket today. If a real `codex exec` transcript
+# ever surfaces this wording, add it with a cited source and its own
+# guilt+innocence tests — do not pattern-match it from memory.
 _QUOTA_RE: re.Pattern[str] = re.compile(
     r"\b(?:"
     r"usage\s+limit|"
@@ -540,7 +578,7 @@ class CodexExecQuotaError(RuntimeError):
     `CodexExecProcessError` (a caller can page a DEDICATED, time-bound
     condition for THIS class instead of folding it into an undifferentiated
     CLI failure — see `wa_codex_daemon.py`'s `error_class="quota_exhausted"`
-    mapping and `scripts/wa_codex_seat_probe.py`'s `VERDICT_QUOTA_DEAD`).
+    mapping and `scripts/wa_codex_seat_probe.py`'s `VERDICT_QUOTA_EXHAUSTED`).
     """
 
 
@@ -1169,6 +1207,21 @@ class CodexExecClient:
                 # own transcript echoes both), and `_auth_death_detected`
                 # scans its argument(s) independently rather than joining
                 # them — see that helper's docstring.
+                #
+                # KNOWN RESIDUAL, documented not fixed (Kimi K3 adversarial
+                # review, 2026-08-27; out of scope for this change):
+                # `_strip_known_lines` matches by WHOLE-LINE EQUALITY. If
+                # `codex exec` ever wraps a long echoed prompt across
+                # multiple stderr lines — plausible for the long, often
+                # Italian, free-text prompts real WA client messages
+                # produce — no single wrapped line equals the whole
+                # original prompt line, the strip silently no-ops on it,
+                # and the client's own words survive into the auth/quota
+                # regex scan below. The "prompt echoes as a single line"
+                # assumption is load-bearing here and is unproven for real
+                # WA traffic specifically (only proven for the short,
+                # inert probe/test prompts this module's own fixtures
+                # use).
                 stripped_stderr = _strip_known_lines(stderr, prompt, stdout)
                 if _auth_death_detected(stripped_stderr):
                     logger.warning(
