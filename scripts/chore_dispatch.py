@@ -63,12 +63,17 @@ from __future__ import annotations
 import argparse
 import fcntl
 import json
+import logging
 import os
 import re
 import subprocess
 import sys
 import time
 from pathlib import Path
+
+logger = logging.getLogger("army.chore_dispatch")
+
+ORGAN_ID = "army.chore_dispatch"
 
 VALID_SEATS = ("jules", "spark", "haiku", "luna")
 VALID_STATUSES = (
@@ -102,6 +107,30 @@ class Paths:
         self.jules_dispatch_script = _env_path(
             "CHORE_JULES_DISPATCH_SCRIPT", self.repo / "scripts" / "jules_dispatch.py"
         )
+        self.sidecar_dir = _env_path(
+            "CHORE_SIDECAR_DIR", Path.home() / ".organism" / "last_seen"
+        )
+
+
+# --------------------------------------------------------------- heartbeat
+def heartbeat(paths: "Paths", status: str, note: str) -> None:
+    """Sidecar every exit path of the daily --dispatch-next organ (Esiste!=Armato:
+    prove life, every run) — same shape as scripts/army/jules_lane.py's heartbeat().
+
+    Best-effort: a heartbeat failure must never break the caller.
+    """
+    try:
+        paths.sidecar_dir.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "status": status,
+            "note": note[:500],
+        }
+        tmp = paths.sidecar_dir / f"{ORGAN_ID}.json.tmp.{os.getpid()}"
+        tmp.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+        tmp.replace(paths.sidecar_dir / f"{ORGAN_ID}.json")
+    except Exception as exc:  # noqa: BLE001 — heartbeat must never crash the caller
+        logger.warning("heartbeat write failed (non-fatal): %s", exc)
 
 
 # --------------------------------------------------------------- chore I/O
@@ -420,7 +449,21 @@ def main(argv: list[str] | None = None) -> int:
     if args.harvest:
         return cmd_harvest(paths)
     if args.dispatch_next:
-        return cmd_dispatch_next(paths, args.dry_run)
+        # G5 kill switch — the daily launchd organ's ONLY invocation path
+        # (scripts/army/chore_dispatch_wrapper.sh calls --dispatch-next).
+        if os.environ.get("CHORE_DISPATCH_ENABLED", "true").strip().lower() in (
+            "false", "0", "no", "off",
+        ):
+            logger.info("kill switch CHORE_DISPATCH_ENABLED=false — exiting")
+            heartbeat(paths, "disabled", "kill switch")
+            return 0
+        try:
+            rc = cmd_dispatch_next(paths, args.dry_run)
+        except Exception as exc:  # noqa: BLE001 — G2: heartbeat the failure path too, then re-raise
+            heartbeat(paths, "error", str(exc))
+            raise
+        heartbeat(paths, "ok" if rc == 0 else "error", f"dispatch-next rc={rc}")
+        return rc
 
     parser.print_help()
     return 3

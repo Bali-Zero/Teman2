@@ -11,6 +11,7 @@ untouched), not merely that the caller survives (W107 discipline).
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -30,6 +31,7 @@ def make_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> "cd.Paths":
     monkeypatch.setenv("CHORE_QUEUE_DIR", str(tmp_path / "chore-queue"))
     monkeypatch.setenv("CHORE_SPARK_QUEUE_DIR", str(tmp_path / "spark-queue"))
     monkeypatch.setenv("CHORE_JULES_DISPATCH_SCRIPT", str(repo / "scripts" / "jules_dispatch.py"))
+    monkeypatch.setenv("CHORE_SIDECAR_DIR", str(tmp_path / "sidecar"))
     paths = cd.Paths()
     paths.queue_dir.mkdir(parents=True, exist_ok=True)
     return paths
@@ -279,6 +281,40 @@ class TestStatusTransition:
         rc = cd.cmd_dispatch_next(paths, dry_run=False)
 
         assert rc == 0
+
+
+class TestOrganGenes:
+    """G2_heartbeat + G5_kill_switch, wired into main()'s --dispatch-next
+    branch — the only path the daily launchd organ (chore_dispatch_wrapper.sh)
+    actually invokes. Guilt+innocence per superscar #3: prove the heartbeat
+    fires on BOTH the disabled path and the real-work path, not merely that
+    main() survives either call."""
+
+    def test_kill_switch_writes_a_disabled_heartbeat_not_silence(self, tmp_path, monkeypatch):
+        paths = make_paths(tmp_path, monkeypatch)
+        monkeypatch.setenv("CHORE_DISPATCH_ENABLED", "false")
+
+        def never_called(*_a, **_k):
+            raise AssertionError("must not touch the queue when disabled")
+
+        monkeypatch.setattr(cd, "load_chores", never_called)
+
+        rc = cd.main(["--dispatch-next"])
+
+        assert rc == 0
+        hb = json.loads((paths.sidecar_dir / f"{cd.ORGAN_ID}.json").read_text())
+        assert hb["status"] == "disabled"
+        assert "kill switch" in hb["note"]
+
+    def test_dispatch_next_via_main_writes_ok_heartbeat_on_empty_queue(self, tmp_path, monkeypatch):
+        paths = make_paths(tmp_path, monkeypatch)
+        write_chore(paths, "chore-q", seat="jules", status="completed")
+
+        rc = cd.main(["--dispatch-next"])
+
+        assert rc == 0
+        hb = json.loads((paths.sidecar_dir / f"{cd.ORGAN_ID}.json").read_text())
+        assert hb["status"] == "ok"
 
 
 class TestListAndParsing:
