@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 95717ca1541cc59c979473e4971630a31112487a6d9c01ffe2fc05d058711c67
+checksum: 61e5f3ec3cdee4afe694a13f7952ec76da5b081b8082872574e03e02343702d8
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2666,6 +2666,28 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.kb_probe_history.json
+    timestamp_field: ts
+    status_field: status
+- id: army.chore_dispatch
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 86400
+  owner_module: scripts/army/chore_dispatch_wrapper.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.chore-dispatch.daily
+  severity_on_silence: warning
+  notes: receptor-live PART B — daily 05:30 WITA tick, scripts/chore_dispatch.py --dispatch-next
+    picks the oldest status=pending chore from infra/army/chore-queue/*.md and dispatches
+    it to its own declared seat (jules/spark today; haiku/luna catalog-only). Never
+    lands anything — same contract as the Armata H24 lanes it reuses. Genes imprinted
+    post-birth (PR
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/army.chore_dispatch.json
     timestamp_field: ts
     status_field: status
 - id: pro.seat_mix_report
