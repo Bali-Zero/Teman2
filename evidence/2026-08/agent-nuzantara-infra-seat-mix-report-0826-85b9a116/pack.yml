@@ -13,18 +13,23 @@ lanes:
     seat: kimi-code/k3 (cross-family refuter on the real shipping PR diff, gh pr diff 5047)
 
 diff:
-  files: 6
-  net_lines: 1533
+  files: 7
+  net_lines: 1721
   measured_at: c89706c69
   note: >-
-    git diff --no-renames --numstat against merge-base 63bfa19ec5872519 (origin/main
-    at dispatch time), cumulative across all 3 commits on this branch (feature +
-    evidence pack + refuter-fix round): docs/factory/SEAT-MIX.md +190,
-    evidence/.../brief.yml +83, evidence/.../pack.yml +193 (this file, self-counted
-    per the existing convention), infra/launchagents/com.nuzantara.seat-mix.daily.plist
-    +25, scripts/seat_mix_report.py +595, scripts/tests/test_seat_mix_report.py +447
-    -- 0 net deletions (every file is new relative to origin/main, so intra-branch
-    edits collapse to pure addition against the merge-base).
+    UPDATED 2026-08-27 by the queue-shepherd sweep (organ-genes follow-up
+    fix) -- re-measured for real, not incremented by estimate:
+    `git diff --no-renames --numstat $(git merge-base origin/main HEAD) --
+    .` against merge-base 63bfa19ec5872519 (unchanged, origin/main at
+    original dispatch time): apps/organism/organism/organs_registry.yaml
+    +22/-1 (NEW file for this diff -- the pro.seat_mix_report entry added
+    tonight), docs/factory/SEAT-MIX.md +190, evidence/.../brief.yml +83,
+    evidence/.../pack.yml +316 (this file, self-counted per the existing
+    convention -- grew from the tonight's-fix receipt/dissent/notes
+    additions), infra/launchagents/com.nuzantara.seat-mix.daily.plist +25,
+    scripts/seat_mix_report.py +639 (was +595 -- +44 for the heartbeat
+    helper + kill switch + main() wiring), scripts/tests/test_seat_mix_report.py
+    +447 -- files 6->7, net 1533->1721 (+188 for the organ-genes fix).
 
 pii_scan: clean
 
@@ -160,6 +165,37 @@ receipts:
     ts: 2026-08-27T00:39Z
     seat: session (Pro, implementer lane)
 
+  - claim: >-
+      SAME-NIGHT FOLLOW-UP (queue-shepherd sweep, post-push CI): "Every
+      organ is born with its genes" failed on the pushed head --
+      infra/launchagents/com.nuzantara.seat-mix.daily.plist was a NEW organ
+      missing genes G1_registry, G2_heartbeat, G5_kill_switch. Fixed:
+      SEAT_MIX_REPORT_ENABLED kill switch + _write_heartbeat() (atomic
+      tmp+replace to ~/.organism/last_seen/pro.seat_mix_report.json,
+      status ok/error/disabled, wrapped so a heartbeat write can never
+      raise) wired into scripts/seat_mix_report.py's main(); an
+      `id: pro.seat_mix_report` entry added to
+      apps/organism/organism/organs_registry.yaml (registry checksum
+      regenerated via --update-checksum). No regression: existing test
+      suite and organ-conformance gate both re-run green after the fix.
+    cmd: >-
+      python3 -m py_compile scripts/seat_mix_report.py &&
+      python3 infra/organ-conformance/check_organ_conformance.py &&
+      apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_seat_mix_report.py -q
+    result: >-
+      py_compile: silent success, exit 0. organ-conformance: "✓ organ
+      conformance: 182 plists scanned, 121 grandfathered (report-only), 0
+      regressions, 0 non-conformant births" (no seat-mix mention -- prior
+      run before this fix printed "✗ NEW organ without genes:
+      infra/launchagents/com.nuzantara.seat-mix.daily.plist missing
+      ['G1_registry', 'G2_heartbeat', 'G5_kill_switch']" and exit 1; this
+      run is exit 0). pytest: "52 passed in 0.28s" -- identical count to
+      the pre-fix baseline above, confirming zero regression from the
+      heartbeat/kill-switch addition.
+    exit: 0
+    ts: 2026-08-27T07:45Z
+    seat: session (queue-shepherd sweep, implementer lane)
+
 dissent:
   - seat: session self-refutation (own test suite, caught before any external review)
     objection: >-
@@ -226,6 +262,36 @@ dissent:
       session before the refuter ran -- recorded as external, not
       self-refutation, unlike the two entries above.
 
+  - seat: agy (Gemini 3.1 Pro, cross-family refuter, same-night follow-up fix)
+    objection: >-
+      "launchd ignores user shell exports. Setting SEAT_MIX_REPORT_ENABLED
+      requires updating the plist or running launchctl setenv. A file-based
+      kill switch is far more reliable." Plus 3 related points: hangs/OOM/
+      SIGKILL never reach the heartbeat's error-write path; a pre-init
+      crash (syntax/import/interpreter-lookup error) fails before the
+      heartbeat wrapper ever executes; and the healer must explicitly
+      respect status=disabled, not just timestamp freshness.
+    status: CONFIRMED
+    note: >-
+      All 4 real. Grepped this repo's own launchagents (`grep -l _ENABLED
+      infra/launchagents/*.plist`, then checked EnvironmentVariables blocks
+      by hand): zero plists declare their own kill-switch var inline --
+      every organ using this `<SCOPE>_ENABLED` pattern (e.g.
+      scripts/queue_shepherd.py's QUEUE_SHEPHERD_ENABLED) relies on an
+      operator setting it externally (launchctl setenv, an edited
+      EnvironmentVariables block, or a wrapper). So point 1 is real but is
+      the EXISTING repo-wide convention this fix reused verbatim, not a
+      defect this PR introduced -- fixing it properly (a file-based switch)
+      is a cross-organ design change out of this single PR's scope. Points
+      2+3 are the inherent limit of any heartbeat-on-exit design: this is
+      exactly what genes.json's bridge_source `expected_hb_seconds`
+      staleness check exists to catch (a hung/killed/crashed-before-init
+      organ shows as a STALE heartbeat, not a missing one) -- not a gap in
+      this fix, the designed failure mode of the whole heartbeat mechanism.
+      Point 4 is real and out of scope: this PR ships the ORGAN's own
+      genes (G2/G5), not the healer's read-side logic that consumes them;
+      recorded here as a residual limit, not silently dropped.
+
 tests:
   - "scripts/tests/test_seat_mix_report.py -- 52 collected, 52 passed, rc=0 (backend-rag venv python)."
 
@@ -248,3 +314,8 @@ notes:
     join key) -- not Agent/Bash/Workflow dispatch counts joined to PRs. The two are
     complementary, not duplicative; docs/factory/SEAT-MIX.md says so explicitly so a
     future reader doesn't try to merge them."
+  - "The organ-genes fix (G1/G2/G5) above and its dissent entry were authored by
+    tonight's queue-shepherd sweep session, NOT the original PR author -- a same-night
+    follow-up after the pushed head tripped the pre-existing 'Every organ is born with
+    its genes' gate: the new plist itself was never birthed with a registry entry,
+    heartbeat, or kill switch, which the original authoring pass missed."

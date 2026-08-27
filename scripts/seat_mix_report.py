@@ -56,6 +56,37 @@ from typing import Callable, Optional
 
 WITA = timezone(timedelta(hours=8))
 
+# Organism genes (organ-conformance G2/G5, born 2026-08-27): this organ must
+# prove its own liveness every run (heartbeat on BOTH success and failure —
+# superscar #2, esiste != armato) and honor an operator kill switch that
+# leaves a "disabled" heartbeat behind so the healer never resurrects an
+# intentionally-stopped organ (genes.json G5's own stated reason). Same
+# convention as scripts/queue_shepherd.py's SEAT_MIX_REPORT_ENABLED /
+# ORGAN_ID / _write_heartbeat shape.
+SEAT_MIX_REPORT_ENABLED = os.environ.get("SEAT_MIX_REPORT_ENABLED", "true")
+ORGANISM_DIR = Path(os.path.expanduser("~/.organism/last_seen"))
+ORGAN_ID = "pro.seat_mix_report"
+
+
+def _enabled() -> bool:
+    return SEAT_MIX_REPORT_ENABLED.strip().lower() not in ("false", "0", "no", "off")
+
+
+def _write_heartbeat(status: str, metadata: dict) -> None:
+    """Unconditional organism heartbeat sidecar — never raises (a heartbeat
+    write must never break the run it is reporting on). Atomic tmp+replace."""
+    try:
+        ORGANISM_DIR.mkdir(parents=True, exist_ok=True)
+        organ_path = ORGANISM_DIR / f"{ORGAN_ID}.json"
+        organ_tmp = organ_path.with_suffix(f".json.tmp.{os.getpid()}")
+        organ_tmp.write_text(
+            json.dumps({"ts": time.time(), "status": status, "organ_id": ORGAN_ID, "metadata": metadata})
+        )
+        organ_tmp.replace(organ_path)
+    except Exception as exc:  # noqa: BLE001 — heartbeat must never break the run
+        print(f"[seat-mix] organ heartbeat emit failed: {exc}", file=sys.stderr)
+
+
 # ---------------------------------------------------------------------------
 # PII / output guard
 # ---------------------------------------------------------------------------
@@ -553,41 +584,54 @@ def main(argv=None) -> int:
     )
     args = ap.parse_args(argv)
 
-    since_epoch = time.time() - args.since * 3600.0
-    max_file_bytes = int(args.max_file_mb * 1024 * 1024)
+    if not _enabled():
+        # G5 kill switch: leave a "disabled" heartbeat so the healer never
+        # tries to resurrect an intentionally-stopped organ, and still print
+        # a receipt line (superscar #2: a mute cron reads as a dead cron).
+        _write_heartbeat("disabled", {"reason": "SEAT_MIX_REPORT_ENABLED=false"})
+        print("[seat-mix] SEAT_MIX_REPORT_ENABLED=false -- no-op run (receipt line, superscar #2)", file=sys.stderr)
+        return 0
 
-    pr_lookup: Optional[PrLookup] = None
-    if args.map_prs and shutil.which("gh"):
-        pr_lookup = gh_pr_lookup
+    try:
+        since_epoch = time.time() - args.since * 3600.0
+        max_file_bytes = int(args.max_file_mb * 1024 * 1024)
 
-    report = build_report(
-        Path(os.path.expanduser(args.projects_root)),
-        since_epoch=since_epoch,
-        max_file_bytes=max_file_bytes,
-        pr_lookup=pr_lookup,
-    )
-    report["window_hours"] = args.since
+        pr_lookup: Optional[PrLookup] = None
+        if args.map_prs and shutil.which("gh"):
+            pr_lookup = gh_pr_lookup
 
-    assert_all_strings_safe(report)
+        report = build_report(
+            Path(os.path.expanduser(args.projects_root)),
+            since_epoch=since_epoch,
+            max_file_bytes=max_file_bytes,
+            pr_lookup=pr_lookup,
+        )
+        report["window_hours"] = args.since
 
-    date_str = datetime.now(WITA).strftime("%Y-%m-%d")
-    default_dir = Path.home() / "logs" / "seat-mix"
+        assert_all_strings_safe(report)
 
-    json_path = (
-        Path(os.path.expanduser(args.json_out)) if args.json_out else default_dir / f"{date_str}.json"
-    )
-    md_path = Path(os.path.expanduser(args.md_out)) if args.md_out else default_dir / f"{date_str}.md"
+        date_str = datetime.now(WITA).strftime("%Y-%m-%d")
+        default_dir = Path.home() / "logs" / "seat-mix"
 
-    json_path.parent.mkdir(parents=True, exist_ok=True)
-    md_path.parent.mkdir(parents=True, exist_ok=True)
+        json_path = (
+            Path(os.path.expanduser(args.json_out)) if args.json_out else default_dir / f"{date_str}.json"
+        )
+        md_path = Path(os.path.expanduser(args.md_out)) if args.md_out else default_dir / f"{date_str}.md"
 
-    json_path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    md_text = render_markdown(report)
-    md_path.write_text(md_text, encoding="utf-8")
+        json_path.parent.mkdir(parents=True, exist_ok=True)
+        md_path.parent.mkdir(parents=True, exist_ok=True)
+
+        json_path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        md_text = render_markdown(report)
+        md_path.write_text(md_text, encoding="utf-8")
+    except Exception as exc:  # noqa: BLE001 — G2: heartbeat the failure path too, then re-raise
+        _write_heartbeat("error", {"error": str(exc)})
+        raise
 
     print(md_text)
     print(f"[seat-mix] json -> {json_path}", file=sys.stderr)
     print(f"[seat-mix] md   -> {md_path}", file=sys.stderr)
+    _write_heartbeat("ok", {"json_path": str(json_path), "md_path": str(md_path)})
     return 0
 
 
