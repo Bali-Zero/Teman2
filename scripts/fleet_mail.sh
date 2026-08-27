@@ -4,12 +4,22 @@
 #
 # Usage:
 #   fleet_mail.sh <host> --list
-#   fleet_mail.sh <host> <session_id|broadcast> "<message text>"
-#   fleet_mail.sh <host> <session_id|broadcast> -        # message on stdin
+#   fleet_mail.sh <host> <session_id|broadcast> [--key <k>] [--ttl <hours>] "<message text>"
+#   fleet_mail.sh <host> <session_id|broadcast> [--key <k>] [--ttl <hours>] -   # message on stdin
 #
 # <host> is local|pro|mini|air. local runs directly; the rest go via
 # `ssh -o BatchMode=yes <host>`. Exits non-zero with a one-line reason on
 # any failure. Honors NUZ_MAILBOX_DIR (mailbox root override) for tests.
+#
+# --key/--ttl (S3, 2026-08-27): write `key:`/`expires:` front-matter lines
+# that infra/claude-hooks/mailbox_inject.py's collector reads to keep only
+# the newest message per key and drop anything past its TTL. --ttl is
+# integer hours, default 48. A broadcast sent without --key gets one
+# derived automatically as sha1(first line of the message) — this is what
+# lets a repeated page (e.g. queue_unstick's DIRTY-PR notices) supersede its
+# own predecessor instead of piling up forever; a direct message without
+# --key stays keyless (never deduped against another). Flags may appear
+# anywhere after <session_id|broadcast>.
 #
 # `air` is M5. The fleet has been three nodes since 2026-05-31, and this
 # allowlist was still two — so no Pro or Mini session could reach M5 with the
@@ -40,6 +50,21 @@ case "$HOST" in
     *) die "unknown host '$HOST' (want local|pro|mini|air)" ;;
 esac
 shift || die "missing <host>"
+
+# Extract optional --key/--ttl anywhere in the remaining args (order-
+# independent, both take a value) BEFORE any positional parsing below, so
+# `--list`, <session_id|broadcast> and <message> parsing are unaffected.
+MSG_KEY=""
+MSG_TTL_HOURS="48"
+_rest=()
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --key) MSG_KEY="${2:-}"; shift 2 || die "--key needs a value" ;;
+        --ttl) MSG_TTL_HOURS="${2:-}"; shift 2 || die "--ttl needs a value" ;;
+        *) _rest+=("$1"); shift ;;
+    esac
+done
+set -- "${_rest[@]}"
 
 # Resolve <host> to an ssh target that actually answers. The primary alias may
 # be mDNS-backed and unresolvable when the peer is off-LAN (see CORRECTION
@@ -145,6 +170,21 @@ fi
 # Sanitize FROM label to a safe charset before it is embedded in remote command text.
 RAW_FROM="$(hostname -s 2>/dev/null || echo unknown):${FLEET_MAIL_FROM:-fleet-watch}"
 FROM_LABEL="$(printf '%s' "$RAW_FROM" | tr -cd 'A-Za-z0-9:_.-')"
+
+# S3 state-keyed front matter: a broadcast with no explicit --key gets one
+# derived from its own content (sha1 of the first line) so a repeated page
+# about the same subject (e.g. queue_unstick's "PR #N is DIRTY") supersedes
+# its predecessor instead of piling up; a direct message stays keyless
+# unless --key was given. Sanitized to a safe charset for the same reason
+# FROM_LABEL is — it is embedded unquoted in the remote command text below.
+if [ -z "$MSG_KEY" ] && [ "$SESSION" = "broadcast" ]; then
+    FIRST_LINE="${BODY%%$'\n'*}"
+    MSG_KEY="$(printf '%s' "$FIRST_LINE" | shasum -a 1 | awk '{print $1}')"
+fi
+MSG_KEY="$(printf '%s' "$MSG_KEY" | tr -cd 'A-Za-z0-9:_./-')"
+[[ "$MSG_TTL_HOURS" =~ ^[0-9]+$ ]] || die "invalid --ttl '$MSG_TTL_HOURS' (want integer hours)"
+MSG_EXPIRES="$(date -u -v+"${MSG_TTL_HOURS}"H +%Y-%m-%dT%H:%M:%SZ)"
+
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 FILENAME="${TS}-$(printf '%04x' $((RANDOM % 65536))).md"
 
@@ -159,6 +199,8 @@ read -r -d '' PY_SEND <<'PYEOF' || true
 import os, sys
 root = os.environ.get("NUZ_MAILBOX_DIR") or os.path.expanduser("~/.nuzantara-mailbox")
 session, filename, from_label = sys.argv[1], sys.argv[2], sys.argv[3]
+msg_key = sys.argv[4] if len(sys.argv) > 4 else ""
+msg_expires = sys.argv[5] if len(sys.argv) > 5 else ""
 # Owner-only root is the whole security story (messages become assistant-
 # visible context) -- create it 0700, and re-tighten it if some earlier
 # run left it wider (os.makedirs' mode is not honored on every platform).
@@ -176,14 +218,20 @@ for d in (root, target):  # owner-only: the root dir IS the security boundary
         pass
 body = sys.stdin.buffer.read()
 tmp = os.path.join(root, ".tmp-" + filename + "." + str(os.getpid()))
+header = "from: " + from_label + "\n"
+if msg_key:
+    header += "key: " + msg_key + "\n"
+if msg_expires:
+    header += "expires: " + msg_expires + "\n"
+header += "\n"
 with open(tmp, "wb") as fh:
-    fh.write(("from: " + from_label + "\n\n").encode())
+    fh.write(header.encode())
     fh.write(body)
 os.replace(tmp, os.path.join(target, filename))
 PYEOF
 
 if [ "$HOST" = "local" ]; then
-    printf '%s' "$BODY" | python3 -c "$PY_SEND" "$SESSION" "$FILENAME" "$FROM_LABEL" \
+    printf '%s' "$BODY" | python3 -c "$PY_SEND" "$SESSION" "$FILENAME" "$FROM_LABEL" "$MSG_KEY" "$MSG_EXPIRES" \
         || die "local delivery to $SESSION failed"
 else
     # Remote command is built as ONE argv string for ssh (never `-s`/stdin),
@@ -194,7 +242,7 @@ else
     # them is safe — none can contain a single quote).
     B64="$(printf '%s' "$PY_SEND" | base64 | tr -d '\n')"
     POP_AND_EXEC='import base64,sys;b=sys.argv.pop(1);exec(base64.b64decode(b).decode())'
-    REMOTE_CMD="python3 -c \"$POP_AND_EXEC\" '$B64' '$SESSION' '$FILENAME' '$FROM_LABEL'"
+    REMOTE_CMD="python3 -c \"$POP_AND_EXEC\" '$B64' '$SESSION' '$FILENAME' '$FROM_LABEL' '$MSG_KEY' '$MSG_EXPIRES'"
     SSH_HOST="$(ssh_target "$HOST")" \
         || die "no reachable ssh route for '$HOST' (tried '$HOST' and '$(ssh_fallback_for "$HOST")')"
     printf '%s' "$BODY" | ssh -o BatchMode=yes -o ConnectTimeout=8 "$SSH_HOST" "$REMOTE_CMD" \

@@ -96,8 +96,18 @@ on:
 # every other branch (a direct run against main stays false, PR refs and
 # schedule keep cancelling) and forces false only for the new merge_group case.
 concurrency:
-  group: tests-${{ github.event_name == 'schedule' && 'schedule-main' || github.ref }}
-  cancel-in-progress: ${{ (github.event_name == 'schedule' || github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
+  # Dependabot branch: ALL Dependabot PRs share one group per workflow (not
+  # per-ref), bounding concurrent Dependabot runs of THIS workflow to <=2
+  # (Agent PR Contract rule 5) instead of unbounded parallel.
+  # cancel-in-progress:false protects whichever run is RUNNING; GitHub keeps
+  # only one PENDING per group, so a 3rd+ near-simultaneous arrival cancels
+  # the pending run rather than queuing behind it — visible in the PR's
+  # checks tab (never silent), recoverable with `gh run rerun` (confirmed:
+  # docs.github.com/en/actions/using-jobs/using-concurrency + kimi-code/k3
+  # refuter round on PR #5043). Non-Dependabot branch is byte-for-byte the
+  # pre-existing expression — untouched.
+  group: ${{ github.actor == 'dependabot[bot]' && format('dependabot-lockfile-{0}', github.workflow) || format('tests-{0}', github.event_name == 'schedule' && 'schedule-main' || github.ref) }}
+  cancel-in-progress: ${{ github.actor != 'dependabot[bot]' && (github.event_name == 'schedule' || github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
 
 # S11: the coverage-collection decision lives HERE, once, and nowhere else.
 # It used to be a per-shard step that wrote its answer to a file the fan-in read
@@ -511,7 +521,10 @@ jobs:
   #
   # WHY THE THIRD JOB EXISTS AT ALL (do not "simplify" it away)
   # `Backend Tests (Python)` is a REQUIRED context in classic branch protection
-  # (27 contexts, verified 2026-08-23). A matrix renames its check runs to
+  # (27 contexts verified 2026-08-23; cut to 9 then reinstated to 11 by Zero's
+  # 2026-08-27 ruling — this context stayed required throughout, see
+  # docs/runbooks/merge-queue-discipline.md "Required vs advisory checks —
+  # reinstatement rule"). A matrix renames its check runs to
   # "... (1)", "... (2)" — the bare required context would then never report
   # again, every queue entry would wait out `checkResponseTimeout` and fail.
   # That is superscar #2 / W69 (required-checks silently disarmed). So the fan-in
@@ -1040,8 +1053,10 @@ jobs:
 
   # ── THE REQUIRED CONTEXT ─────────────────────────────────────────────────────
   # This job's `name:` is load-bearing infrastructure, not a label. "Backend
-  # Tests (Python)" is one of the 27 required status contexts in classic branch
-  # protection on `main`. Rename it, matrix it, or delete it and every merge
+  # Tests (Python)" is one of the required status contexts in classic branch
+  # protection on `main` (11 as of Zero's 2026-08-27 ruling, down from 27 —
+  # docs/runbooks/merge-queue-discipline.md "Required vs advisory checks —
+  # reinstatement rule"). Rename it, matrix it, or delete it and every merge
   # queue entry from that moment on waits out `checkResponseTimeout` (5400s) and
   # fails with nothing red to fix — superscar #2 / W69. It reports the verdict;
   # the three shards and the static job do the work.

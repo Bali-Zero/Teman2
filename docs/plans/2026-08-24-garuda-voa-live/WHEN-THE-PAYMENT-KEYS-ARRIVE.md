@@ -53,18 +53,42 @@ route and `get_repository()` already answer with a fail-closed **503**. That is 
 
 Set these four on `nuzantara-rag`:
 
-| Variable                       | Read at                    | Note                                                                       |
-| ------------------------------ | -------------------------- | -------------------------------------------------------------------------- |
-| `GARUDA_XENDIT_SECRET_KEY`     | `service_initializer:1478` | **The gate.** Must start `xnd_development_` or startup raises ValueError.  |
-| `GARUDA_XENDIT_CALLBACK_TOKEN` | `service_initializer:1492` | Verifies the `x-callback-token` header on every webhook (`xendit.py:175`). |
-| `GARUDA_XENDIT_FEE_BPS`        | `service_initializer:1499` | **Defaults to `"0"`.**                                                     |
-| `GARUDA_XENDIT_FEE_FIXED_IDR`  | `service_initializer:1500` | **Defaults to `"0"`.**                                                     |
+| Variable                       | Read at                    | Note                                                                                                                     |
+| ------------------------------ | -------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `GARUDA_XENDIT_SECRET_KEY`     | `service_initializer:1478` | **The gate.** Must start `xnd_development_` or startup raises ValueError.                                                |
+| `GARUDA_XENDIT_CALLBACK_TOKEN` | `service_initializer` §5.7 | **Also a gate, as of 2026-08-27.** Verifies `x-callback-token` on every webhook. Empty is no longer armable — see below. |
+| `GARUDA_XENDIT_FEE_BPS`        | `service_initializer:1499` | **Defaults to `"0"`.**                                                                                                   |
+| `GARUDA_XENDIT_FEE_FIXED_IDR`  | `service_initializer:1500` | **Defaults to `"0"`.**                                                                                                   |
 
 Two more are already correct and need no action:
 
 - `GARUDA_PUBLIC_BASE_URL` — defaults to `https://balizero.com` (`service_initializer:1496`), the
   canonical apex. `www.` 308-redirects to it.
 - `GARUDA_ENVIRONMENT` — defaults to `"PRODUCTION"` (`service_initializer:1432`, `:1506`).
+
+⚠️ **The key and the token are ONE credential — arming half of it takes real money and delivers
+nothing.** Corrected 2026-08-27, after measuring it. `verify_signature` rejects on
+`not received or not hmac.compare_digest(received, token)`, so with an **empty configured token
+EVERY input is rejected** — including a header carrying an arbitrary value, because
+`compare_digest(x, "")` is False for any non-empty `x`. Nothing gets in, so this was never a
+security hole. It was a money hole: the arming gate required only `GARUDA_XENDIT_SECRET_KEY` while
+this token defaulted to `""`, so setting one variable and forgetting the other **opened checkout
+while making every legitimate Xendit callback answer 401**. The customer is really charged, the
+order never leaves `awaiting_payment`, and nothing surfaces to them — the only trace is a 401 in
+the Fly logs that nothing alerts on.
+
+That shape is now unreachable rather than merely documented:
+
+- `XenditPaymentProvider.__init__` refuses a blank `callback_verification_token` outright, next to
+  the existing sandbox-key guard — one place every caller must pass, so a future second call site
+  cannot reintroduce it.
+- §5.7 requires BOTH variables before it arms anything, and logs which half is missing by name
+  instead of letting a `ValueError` become one generic "wiring failed" line.
+- Guilt + innocence: `backend/tests/services/payments/test_xendit_callback_token_guard.py`. Removing
+  the constructor guard turns 5 of them red.
+
+So: **set both, or neither.** Setting only the key now fails closed with a named error, which is the
+correct outcome — but it is still a wasted deploy, so set them in the same `fly secrets set` call.
 
 ⚠️ **The two fee variables default to zero, silently.** Those figures must come from the actual
 Xendit contract — they are not in this repo and must not be guessed here. Leaving them at `0` does
@@ -115,8 +139,27 @@ PERSISTENCE_POLICY_UNAVAILABLE`, indistinguishable from this document's own "key
      `json.dumps`. Double-encoded, the array landed as a JSONB scalar string, and migration 286's
      CHECK calls `jsonb_array_length()` on it: SQLSTATE 22023, escaping as a bare 500 for every
      payload shape. The integration suite passed 10/10 because its pools lacked the codec.
-- ⬜ **Nothing has ever been exercised**: `garuda_voa_check_results` = 0 rows,
-  `garuda_voa_check_idempotency` = 0 rows, `garuda_orders` = 0 rows, `garuda_order_outbox` = 0 rows.
+- ✅ **CORRECTED 2026-08-27 (later the same day): legs 1-2 have now been exercised, and they
+  work.** The "0 rows everywhere" line above this was true when written and is not any more. A live
+  walk as an anonymous visitor produced `201 {"verdict":"ACCEPT","reason_codes":[],
+"published_filing_deadline":"2026-09-26","price_idr":790000}`, a `Location: /visa/voa/<id>` and a
+  `garuda_result_session` cookie (`HttpOnly; Secure; SameSite=none; Domain=.balizero.com`), and a
+  subsequent GET with that cookie returned **200** with the byte-identical payload — so rows really
+  are persisted and readable. `garuda_orders` and `garuda_order_outbox` remain at zero, correctly,
+  because no order can be created without the payment key.
+  **This is the probe the retracted bullet above was missing**, and it can go red: the result id and
+  the session secret come from the response HEADERS (the 201 body carries neither), the same link
+  with **no** cookie and with a **forged** cookie both answer `404 RESULT_NOT_FOUND` — identical
+  shapes, so the error code does not even confirm the id exists — and replaying the same
+  `Idempotency-Key` returns the SAME result id rather than minting a second check. A missing
+  `Idempotency-Key` is rejected `400 IDEMPOTENCY_KEY_REQUIRED`: the header is mandatory on the
+  CHECK, not only on the order.
+- 🟡 **The tracker changed answer on 2026-08-27 and the new answer is the correct one.** It used to
+  return **503** — reading an order's status asked production for a payment credential it does not
+  need. PR #5112 decoupled them, and after the deploy the same request returns
+  **401 `SESSION_REQUIRED`**, measured with no cookie AND with a valid result-session cookie. So the
+  tracker is gated on the **magic-link portal session**, not on the result link — better than
+  assumed, and worth knowing before you read a 401 here as a fault.
 
 **Read this as the lesson it cost.** "Flag on" ≠ "wired" ≠ "works" ≠ "reachable by a visitor" —
 four different claims, and this product satisfied only the first for three days while every gate
@@ -143,6 +186,98 @@ What they cannot prove, and what the sandbox key will test for the first time:
 
 None of these is a reason to delay. They are the reason the first sandbox purchase must be made
 and _watched_, rather than declared once the key is set.
+
+## ⛔ The pre-arm blocker this document was missing — read before setting the keys
+
+> ### ✅ Corrected 2026-08-28 — it is FOURTEEN, not thirteen, and the fourteenth is why the alarm design cannot be simplified yet
+>
+> The section as written said **ten of thirteen** `job_type` values had no handler. Two things were
+> wrong with that, and the second is the one worth reading.
+>
+> **Count of registered handlers.** Measured on `origin/main` this turn, `build_handlers` registers
+> **8**, in a flat unconditional dict: `checkout_ready_email`, `payment_paid_email`,
+> `payment_failed_email`, `payment_expired_email`, `refund_email`, `practice_release`,
+> `practice_received_email`, `portal_invite`. The five customer emails landed in **PR #5128**
+> (`53efc00fab`).
+>
+> **Count of enqueued types — this is the real correction.** Production code enqueues **fourteen**
+> distinct `job_type` values, not thirteen. The fourteenth is
+> **`late_refund_confirmation_email`**, at
+> `apps/backend-rag/backend/services/garuda_orders/repository.py:799-805`:
+>
+> ```python
+> job_type = (
+>     "practice_release"
+>     if resolution == "honoured"
+>     else "late_refund_confirmation_email"
+> )
+> await journal.enqueue_outbox(conn, order_id=..., journal_event_id=event_id, job_type=job_type)
+> ```
+>
+> It fires whenever a staff member resolves a late-payment case with any resolution other than
+> `honoured` — i.e. the customer's money is being given back — and it is live, wired code, reachable
+> from `garuda_orders_router.py:409`. It has existed since PR #4959 (2026-08-26), so it predates
+> every artifact that undercounted it.
+>
+> **Why three separate artifacts missed the same one.** Each of them counted by grepping
+> `job_type="` — a **literal**. This enqueue site passes a **variable**, computed two statements
+> earlier. The ledger row that recorded the previous undercount even prescribed the fix as _"grep
+> `job_type=\"` across ALL of `backend/services`"_ — and that prescription is itself an under-match
+> guard (superscar #3): it watches for one textual shape and goes quiet on the same fact expressed
+> differently. Broadening the _directory_ was never the missing half; broadening from **text to
+> syntax** is. Any test that pins this must read the call's `job_type=` argument from the AST and
+> **fail loudly on a non-literal value** rather than skipping it, or it will be blind in exactly the
+> way its three predecessors were.
+>
+> **What this does to the alarm design — it survives, narrowed.** The earlier version of this
+> correction claimed that once #5129 lands the allowlist is EMPTY and the alarm collapses to plain
+> `unroutable > 0`. That was wrong: #5129 routes only the five `staff_page_*` types, so **six** are
+> still unrouted after it (five staff pages → routed, plus `late_refund_confirmation_email` →
+> still not). A plain `unroutable > 0` armed at that point would fire on every drain pass, forever,
+> for one known-missing type — the same signal-muting failure the original design was written to
+> avoid (superscar #2), just with one leftover instead of ten. So: the scoped allowlist stays, now
+> holding exactly `{late_refund_confirmation_email}`, and it collapses to the plain predicate only
+> once that handler exists too. That handler is a small change of the same shape as
+> `RefundEmailHandler`, and it is the next one, not a someday.
+>
+> **What did NOT change:** every word about why this is latent today and live the instant you arm.
+> **Not one of the eight routed handlers has ever delivered anything in production**, because no job
+> of any type is produced while `GARUDA_XENDIT_SECRET_KEY` is unset — verified to hold for the portal
+> path too, since `practice_received_email` is only reachable through a practice gated on
+> `order_state == "paid"`, which only the OP-02 handler writes. Routed is not armed.
+
+**Historical record — the state on 2026-08-27, when this section was written:** production code
+enqueues **13** distinct types — twelve from `garuda_orders/repository.py`, plus
+`practice_received_email` from `garuda_portal/practice.py::mint_received_practice`, which is the one
+people miss because it is enqueued by the function that mints the practice rather than by the
+repository. `outbox_handlers.py` registered **3**: `payment_paid_email`, `practice_release`,
+`portal_invite`.
+
+The consumer handles the gap correctly — an unroutable type is counted, logged once per pass, and
+its attempt bump is rolled back so it never marches toward exhaustion. **Nothing pages on it**, and
+that is the exposure. The ten without a handler were:
+
+| Then unhandled                                                                          | What it means the moment a real card is used                                                                                                                                                                                  | Now                  |
+| --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| `payment_failed_email`, `payment_expired_email`, `refund_email`, `checkout_ready_email` | a customer whose card is declined, whose invoice expires, or who is refunded is told nothing                                                                                                                                  | routed — PR #5128    |
+| the five `staff_page_*` jobs                                                            | duplicate charge, late-paid-after-refund, late-paid-after-terminal, payment failure, refund-out-of-order — **every money anomaly page reaches nobody**                                                                        | PR #5129, not merged |
+| `practice_received_email`                                                               | the practice-received notice. Not silence: `payment_paid_email` IS handled, so a customer who pays successfully does get their payment confirmation — this is a missing second notice, which is why it sits last in this list | routed — PR #5128    |
+
+**Why this is latent today and live the instant you arm.** The whole order lane answers 503 while
+`GARUDA_XENDIT_SECRET_KEY` is unset, so none of these jobs is ever produced. Setting the key is
+exactly what starts producing them. The happy path is covered; after #5128 the customer-facing
+unhappy path is too (declined, expired, refunded) — what is **not** covered is the internal
+staff-alert side of it, plus the late-case refund confirmation. The staff pages for money anomalies
+are the ones that matter most, because they are the mechanism by
+which a human finds out something went wrong with someone's money.
+
+Full detail, owners and the proof-of-armed criterion are in the `modus` PENDING-ARMS ledger. The
+minimum before a real (not sandbox) purchase, restated 2026-08-28: **PR #5129 landed** (the five
+staff pages, with `TELEGRAM_OWNER_CHAT_ID` as their decided destination), **a handler for
+`late_refund_confirmation_email`** (the fourteenth type, found on this very PR by an independent
+grader), and then the `unroutable` alarm on the drain pass — plain `> 0` once that handler exists,
+scoped to `{late_refund_confirmation_email}` if it is armed before it. The four customer emails and
+the practice-received notice are already done.
 
 ## The one test purchase that closes all of it
 

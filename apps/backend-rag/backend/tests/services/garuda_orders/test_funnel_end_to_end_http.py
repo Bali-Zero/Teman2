@@ -81,9 +81,18 @@ _DSN = (
     or "postgresql://localhost:5432/nuzantara_test"
 )
 
-_TODAY = garuda_today()
-_ENTRY_DATE = _TODAY + timedelta(days=7)
-_PASSPORT_EXPIRY = _ENTRY_DATE + timedelta(days=200)
+# Deliberately NOT module-level constants. `garuda_today()` at import time
+# freezes an answer the backend recomputes per request from Asia/Makassar, so
+# an import just before midnight WITA and requests just after would evaluate
+# the fixture against a different "today" than it was built for.
+#
+# Measured 2026-08-27 before choosing the offset: this payload ACCEPTs at every
+# entry offset from +1 to +89 days (price 790.000 throughout), so a one-day
+# drift cannot flip the verdict either way. The per-call derivation below is
+# therefore about removing the stale-clock SHAPE, not about a live flake — and
+# the +14 offset sits far from both ends of that measured range on purpose.
+_ENTRY_OFFSET_DAYS = 14
+_PASSPORT_VALID_DAYS = 400
 
 _CALLBACK_TOKEN = "test-callback-token-not-a-secret"
 _FAKE_INVOICE_ID = "inv_e2e_fake_0000000001"
@@ -108,11 +117,13 @@ def _check_payload() -> dict[str, object]:
     Measured live against production 2026-08-27 (the probe that proved #5108
     fixed): this exact shape answers 201 ACCEPT at 790.000 IDR.
     """
+    today = garuda_today()  # fresh per call; see _ENTRY_OFFSET_DAYS above
+    entry_date = today + timedelta(days=_ENTRY_OFFSET_DAYS)
     return {
         "case_type": "issuance",
         "nationality": "ITA",
-        "entry_date": _ENTRY_DATE.isoformat(),
-        "passport_expiry_date": _PASSPORT_EXPIRY.isoformat(),
+        "entry_date": entry_date.isoformat(),
+        "passport_expiry_date": (entry_date + timedelta(days=_PASSPORT_VALID_DAYS)).isoformat(),
         "purpose": "tourism",
         "travellers": 1,
         "self_pay": True,
@@ -489,34 +500,32 @@ class TestTheFunnelAVisitorActuallyWalks:
             f"documents (got {sorted(job_types)})"
         )
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "OPEN, ledgered in .claude/skills/modus/PENDING-ARMS.md: journal.py:53,78 "
-            "pre-serialize with json.dumps(default=str) against a pool codec whose "
-            "encoder is a BARE json.dumps, so every outbox payload lands as a jsonb "
-            "SCALAR STRING. Not fixable by dropping the dumps call -- the codec has no "
-            "default=str and would raise TypeError on the first datetime/Decimal. The "
-            "cure is a decision about the CODEC, which is why this is xfail and not a "
-            "one-line patch. Flips green the day that lands; strict=True so it also "
-            "goes red if someone 'fixes' it by adding a ::jsonb cast, which was "
-            "measured NOT to dodge the codec (PR #5108)."
-        ),
-    )
-    async def test_outbox_payloads_are_stored_as_json_objects_not_strings(
+    async def test_outbox_payloads_are_currently_json_strings_pinning_an_open_defect(
         self, client: AsyncClient, app: FastAPI, pool
     ) -> None:
-        """The latent half of #5108, on the funnel's own delivery path.
+        """Pins the latent half of #5108 as it ACTUALLY is today.
 
-        Nothing is broken TODAY -- `outbox_consumer.py:165` reads
-        `json.loads(raw) if isinstance(raw, str)`, so the single current reader
-        absorbs the double encoding. That compensation is itself asserted in
-        `test_the_only_current_reader_absorbs_the_double_encoding` below, so
-        this test's red does not mean the customer is being dropped.
+        This was an `xfail(strict=True)` naming the codec defect as its reason.
+        An adversarial review falsified that encoding: `xfail` without `raises=`
+        treats ANY failure as expected, and it demonstrated the test still
+        reporting `xfailed` when the feature flag was off -- i.e. for a 404
+        routing failure, not the defect the reason named. A probe that cannot
+        distinguish its own cause is not a probe.
 
-        It still matters: `payload->>'k'` in SQL returns NULL against a scalar
-        string, and the next reader written against the declared jsonb type
-        gets a `str` where its annotation promises `dict[str, Any]`.
+        So it is a characterization test instead: the funnel walk below is
+        asserted NORMALLY (a routing or wiring break is a real red, named), and
+        the storage shape is pinned as `string`. When the codec decision lands
+        (`.claude/skills/modus/PENDING-ARMS.md`: `journal.py:53,78` pre-serialize
+        with `json.dumps(default=str)` against a codec whose encoder is a bare
+        `json.dumps`), THIS test goes red and says so -- invert it to `object`
+        and delete this paragraph.
+
+        Nothing is broken TODAY: `outbox_consumer.py:165` reads
+        `json.loads(raw) if isinstance(raw, str)`, and that compensation is
+        itself asserted in the test below. It still matters:
+        `payload->>'k'` in SQL returns NULL against a scalar string, and the
+        next reader written against the declared jsonb type gets a `str` where
+        its annotation promises `dict[str, Any]`.
         """
         result_id, body, _ = await _accepted_check(client)
         app.state._e2e_actor = result_id
@@ -551,8 +560,11 @@ class TestTheFunnelAVisitorActuallyWalks:
                 )
             ]
         assert kinds, "no outbox rows to judge"
-        assert all(k == "object" for k in kinds), (
-            f"outbox payloads have jsonb_typeof {kinds}, expected all 'object'"
+        assert all(k == "string" for k in kinds), (
+            f"outbox payloads have jsonb_typeof {kinds}. If they are now 'object', the "
+            "codec double-encoding is FIXED: flip this assertion to 'object', drop the "
+            "PENDING-ARMS row, and remove the compensating read this file pins below. "
+            "Any other value means something new."
         )
 
     async def test_the_only_current_reader_absorbs_the_double_encoding(
@@ -616,9 +628,17 @@ class TestTheFunnelAVisitorActuallyWalks:
     async def test_an_invalid_callback_token_changes_nothing(
         self, client: AsyncClient, pool
     ) -> None:
-        """The guard's guilt case. Innocence is covered above; without this,
-        'the webhook accepted it' and 'the webhook verified it' are the same
-        observation."""
+        """The guard's guilt case.
+
+               Near-sibling, kept deliberately: `test_webhook_router.py`'s
+               `test_invalid_signature_is_rejected_before_any_state_change` covers the
+               same endpoint and the same 401, but asserts on `garuda_orders.state`
+               while this one asserts on `garuda_payment_inbox`. Neither is the
+               other's superset -- an unauthenticated caller must move NEITHER table,
+               and deleting "the duplicate" silently drops one of those two halves.
+        Innocence is covered above; without this,
+               'the webhook accepted it' and 'the webhook verified it' are the same
+               observation."""
         rejected = await client.post(
             "/api/visa/voa/webhooks/payment",
             content=json.dumps(

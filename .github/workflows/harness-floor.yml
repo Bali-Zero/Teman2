@@ -170,8 +170,14 @@ name: Harness floor recompute
 #   -> 27 contexts; "Harness floor recompute" present (app_id 15368, GitHub Actions);
 #      "harness/fable-gate" absent; strict: false
 #
-# and the repo's tracked snapshot infra/required.d/contexts.json agrees (generated 2026-08-11,
-# i.e. before the unblock task existed). That is precisely WHY the redesign above works: it moved
+# (UPDATE 2026-08-27: Zero's ruling cut required contexts 27 -> 9, then the
+# 30-day reinstatement rule brought it to 11 within the hour on real catches
+# unrelated to this job — "Harness floor recompute" stayed required through
+# both changes; docs/runbooks/merge-queue-discipline.md "Required vs advisory
+# checks — reinstatement rule".)
+#
+# and the repo's tracked snapshot infra/required.d/contexts.json agrees (regenerated 2026-08-27,
+# 11 contexts, source=api). That is precisely WHY the redesign above works: it moved
 # enforcement onto a job branch protection already demanded, instead of onto a hand-posted status
 # that would have had to be promoted. So this file's enforcement went live the moment the redesign
 # merged — no flag was ever waiting to be flipped.
@@ -212,8 +218,18 @@ on:
     # HEAD_SHA/BASE_SHA fallback chain below now includes.
 
 concurrency:
-  group: harness-floor-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+  # Dependabot branch: ALL Dependabot PRs share one group per workflow (not
+  # per-ref), bounding concurrent Dependabot runs of THIS workflow to <=2
+  # (Agent PR Contract rule 5) instead of unbounded parallel.
+  # cancel-in-progress:false protects whichever run is RUNNING; GitHub keeps
+  # only one PENDING per group, so a 3rd+ near-simultaneous arrival cancels
+  # the pending run rather than queuing behind it — visible in the PR's
+  # checks tab (never silent), recoverable with `gh run rerun` (confirmed:
+  # docs.github.com/en/actions/using-jobs/using-concurrency + kimi-code/k3
+  # refuter round on PR #5043). Non-Dependabot branch is byte-for-byte the
+  # pre-existing expression — untouched.
+  group: ${{ github.actor == 'dependabot[bot]' && format('dependabot-lockfile-{0}', github.workflow) || format('harness-floor-{0}', github.event.pull_request.number || github.ref) }}
+  cancel-in-progress: ${{ github.actor != 'dependabot[bot]' && github.event_name != 'merge_group' }}
 
 permissions:
   contents: read
@@ -353,16 +369,101 @@ jobs:
           echo "resolved evidence paths — brief: $BRIEF_PATH — pack: $PACK_PATH"
 
       # -----------------------------------------------------------------
+      # Step 2c — measured net lines for the SIZE TERM of both the floor
+      # (compute_floor()'s S1 addendum, 2026-08-27 — a large enough diff
+      # floors Gear regardless of hot-zone path) and rule 7's gear ceiling,
+      # merge-base anchored (never a two-dot diff against the live base tip
+      # — the exact W102 lie the changed-files enumeration above already
+      # avoids). MOVED here from its original position after Step 6
+      # (gearcheck) — it used to feed ONLY the Gear-3 ceiling (Step 7b) and
+      # was gated on brief-present + gear==3; the floor at Step 3 needs it
+      # UNCONDITIONALLY (same reasoning as the floor itself being computed
+      # before a brief is even known to exist — see that step's own
+      # comment), so this step now runs right before it instead. BEST-
+      # EFFORT and non-blocking: if the merge-base can't be resolved, this
+      # step just skips emitting --numstat-file — evidence_pack_lint.py
+      # then falls back to a path-only floor / pack-declared `net_lines:`
+      # (each with its own NOTICE), it never treats "couldn't measure" as
+      # "measured zero" (that would be a false small-shape signal on a
+      # large diff).
+      # -----------------------------------------------------------------
+      - name: Compute measured net lines (merge-base anchored, best-effort)
+        if: steps.kill_switch.outputs.disabled != 'true'
+        id: netlines
+        env:
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || 'main' }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -u
+          # This job's checkout (Step 1) is BASE, not HEAD — the "grader
+          # self-protects" pattern. scripts/evidence_pack_lint.py as it
+          # exists in THIS run is therefore whatever origin/main carried at
+          # PR-open/sync time — legitimately missing --numstat-file support
+          # if a PR teaching the script that flag hasn't merged yet (feature
+          # absence, not file absence). But the FILE itself is not new (see
+          # Step 3's corrected comment on the same false-safety claim, Kimi
+          # K3 finding #3) — its total absence means it was deleted from
+          # main, not a bootstrap window. Distinguish the two: missing FILE
+          # fails closed; missing FLAG degrades gracefully (this step exists
+          # specifically to probe the flag before promising it).
+          if [[ ! -f scripts/evidence_pack_lint.py ]]; then
+            echo "::error::scripts/evidence_pack_lint.py is missing from the base checkout — not a legitimate bootstrap window (see Step 3's comment). Failing closed rather than silently skipping net-lines measurement."
+            exit 1
+          fi
+          if ! python3 scripts/evidence_pack_lint.py --help 2>&1 | grep -q -- '--numstat-file'; then
+            echo "::notice::the evidence_pack_lint.py copy in use (checked out from base $BASE_SHA) does not support --numstat-file yet — net-lines measurement skipped for this run; self-consistent once this PR merges and base's copy is updated"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          MERGE_BASE="$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || true)"
+          if [[ -z "$MERGE_BASE" ]]; then
+            echo "::notice::merge-base not resolvable — net-lines measurement skipped for this run (evidence_pack_lint falls back to a path-only floor / pack-declared net_lines with a NOTICE, or asserts nothing)"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # CORRECTED 2026-08-27 (adversarial review, codex-sol, PR #5049):
+          # this line used to run unguarded under `set -u` only (no `-e`
+          # override needed in THIS repo's default shell — GH Actions'
+          # bash runs -eo pipefail already — but relying on that implicit
+          # default for a security-relevant guarantee is exactly the kind
+          # of thing a future shell/runner change silently breaks). Made
+          # explicit: a failed `git diff` must degrade to available=false,
+          # never fall through to "available=true" over a truncated/empty
+          # file — an empty numstat reads as net_lines=0, a false SMALL
+          # shape signal on what could be the largest diff in the run.
+          if ! git diff --no-renames --numstat "$MERGE_BASE" "$HEAD_SHA" > /tmp/net-lines-numstat.txt; then
+            echo "::notice::git diff --numstat failed (merge-base $MERGE_BASE) — net-lines measurement skipped for this run"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "available=true" >> "$GITHUB_OUTPUT"
+          echo "measured net-lines numstat (merge-base $MERGE_BASE):"
+          cat /tmp/net-lines-numstat.txt
+
+      # -----------------------------------------------------------------
       # Step 3 — compute the deterministic floor UNCONDITIONALLY (brief or
       # not). Adversarial-review finding 2026-08-10: the first cut only
       # computed this INSIDE the "brief present" branch, so a hot-zone diff
       # with no evidence/brief.yml at all skipped the floor check entirely
       # and fell through to the "not applicable, publish success" default —
       # precisely the downgrade-below-floor this rule exists to catch.
+      #
+      # SIZE TERM (S1, 2026-08-27): the floor is now hot-zone-path OR
+      # blast-radius-size, whichever is higher — compute_floor()'s own
+      # docstring has the full contract. Step 2c (just above, moved here
+      # from its old post-gearcheck position for exactly this reason) has
+      # already produced /tmp/net-lines-numstat.txt on a best-effort basis;
+      # when it is not available (merge-base unresolvable, or the base
+      # checkout's copy of the script predates --numstat-file) the floor
+      # falls back to path-only, exactly as it behaved before this term
+      # existed — never a hard failure over a measurement that could not be
+      # taken.
       # -----------------------------------------------------------------
       - name: Compute deterministic floor from diff
         if: steps.kill_switch.outputs.disabled != 'true'
         id: detfloor
+        env:
+          NETLINES_AVAILABLE: ${{ steps.netlines.outputs.available }}
         run: |
           set -u
           # CORRECTED 2026-08-21 (independent cross-family review, Kimi K3,
@@ -386,9 +487,54 @@ jobs:
             echo "::error::scripts/evidence_pack_lint.py is missing from the base checkout — this script is not new (it predates this workflow's own bootstrap), so its absence means it was deleted from main, not that we are in a legitimate bootstrap window. Failing closed rather than silently defaulting the floor to 1."
             exit 1
           fi
-          FLOOR=$(python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/changed-files.txt)
+          EXTRA_ARGS=()
+          if [[ "$NETLINES_AVAILABLE" == "true" ]]; then
+            EXTRA_ARGS+=(--numstat-file /tmp/net-lines-numstat.txt)
+          else
+            echo "::notice::no measured net-lines for this run — floor computed from hot-zone paths only (size term skipped, same as before this term existed)"
+          fi
+          FLOOR=$(python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/changed-files.txt "${EXTRA_ARGS[@]}")
           echo "floor=$FLOOR" >> "$GITHUB_OUTPUT"
           echo "deterministic floor for this diff: $FLOOR"
+          # SOURCE (S2, 2026-08-27, gate round 2 on PR #5049): WHY the floor
+          # is what it is, not just the number — "none"/"path"/"size"/"both".
+          # Same EXTRA_ARGS as the floor call above, so it reads the exact
+          # same inputs; the two calls can never disagree about what they
+          # were computed from. Consumed by Step 5b to grant the
+          # SIZE_GEAR2_ENFORCEMENT_DATE grace period ONLY to a floor==2 diff
+          # that got there via the size term, never to a hypothetical
+          # path-sourced floor==2 (compute_floor_source()'s docstring proves
+          # today's floor==2 can only be source=="size", but the explicit
+          # check stays correct even if that ever changes).
+          # BOOTSTRAP (same shape as the netlines probe above, and the
+          # --source-path probe added to the Gear-3 pack-validation step):
+          # this job's checkout is BASE, not HEAD, so the evidence_pack_lint.py
+          # invoked here is whatever origin/main carried at PR-open/sync time.
+          # --print-floor-source is a brand-new flag THIS PR (#5049) is
+          # teaching the script -- base's copy legitimately does not
+          # recognize it yet. Missing FLAG degrades to SOURCE=unknown (never
+          # equals 'size', so the SIZE_GEAR2_ENFORCEMENT_DATE grace-period
+          # branch below is simply not granted -- conservative, not a
+          # fail-open); FLOOR itself is unaffected since --print-floor above
+          # never depended on this flag.
+          if python3 scripts/evidence_pack_lint.py --help 2>&1 | grep -q -- '--print-floor-source'; then
+            SOURCE=$(python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file /tmp/changed-files.txt "${EXTRA_ARGS[@]}")
+          else
+            SOURCE="unknown"
+            echo "::notice::the evidence_pack_lint.py copy in use (checked out from base) does not support --print-floor-source yet — floor_source reported as 'unknown' this run (no SIZE-term grace period granted); self-consistent once this PR merges and base's copy is updated"
+          fi
+          echo "source=$SOURCE" >> "$GITHUB_OUTPUT"
+          echo "deterministic floor source for this diff: $SOURCE"
+          # STEP SUMMARY (S2, 2026-08-27, gate round 2 on PR #5049): the same
+          # floor/source pair also lands on the job summary page, not just in
+          # $GITHUB_OUTPUT and the raw log line above — so a human looking at
+          # the check run (not grepping outputs) can see floor_source without
+          # opening this step's log.
+          {
+            echo "### Harness floor"
+            echo "- floor: \`$FLOOR\`"
+            echo "- floor_source: \`$SOURCE\` (none/path/size/both)"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # -----------------------------------------------------------------
       # Step 4 — does THIS PR'S OWN DIFF carry evidence/brief.yml? FAIL
@@ -509,31 +655,101 @@ jobs:
           esac
 
       # -----------------------------------------------------------------
-      # Step 5a — no brief, and the diff does NOT hit the floor: genuinely
-      # not a harness task. Nothing to publish any more (see redesign note
-      # in the file header) — this job's own `exit 0` here IS the passing
-      # check-run, on whatever SHA it is running against.
+      # Step 5a — no brief, and the diff does NOT hit ANY floor (floor==1,
+      # plain Gear-1 shape): genuinely not a harness task. Nothing to
+      # publish any more (see redesign note in the file header) — this
+      # job's own `exit 0` here IS the passing check-run, on whatever SHA
+      # it is running against.
+      #
+      # CORRECTED 2026-08-27 (adversarial review, codex-sol, PR #5049,
+      # finding 1 HIGH): this condition used to be `floor != '3'`, which
+      # silently passed a floor==2 diff (400-1827 net lines on plain
+      # paths, S1's own size term) straight through as "not a harness
+      # task" — the exact bypass a bare non-hot-zone size-only diff would
+      # take to dodge Gear-2. floor==1 is the ONLY value that means
+      # genuinely-small; floor==2 and floor==3 both mean "the deterministic
+      # floor requires a brief" and both belong in Step 5b/5c below.
       # -----------------------------------------------------------------
-      - name: Not a harness task (no brief, floor < 3 — not applicable)
+      - name: Not a harness task (no brief, floor == 1 — not applicable)
         if: |
           steps.kill_switch.outputs.disabled != 'true' &&
           steps.brief.outputs.present != 'true' &&
-          steps.detfloor.outputs.floor != '3'
-        run: echo "::notice::not a harness task (no evidence/brief.yml, floor below Gear-3) — passing"
+          steps.detfloor.outputs.floor == '1'
+        run: echo "::notice::not a harness task (no evidence/brief.yml, floor == 1) — passing"
 
       # -----------------------------------------------------------------
-      # Step 5b — no brief, but the diff DOES hit the deterministic floor
-      # (hot-zone path touched): this is the downgrade-below-floor case.
-      # FAIL — do not default to success just because no brief exists to
-      # compare against (adversarial-review finding 2026-08-10).
+      # Step 5b — GRACE PERIOD (S2, 2026-08-27, gate round 2 on PR #5049):
+      # no brief, floor==2, and that floor came from the SIZE term ALONE
+      # (steps.detfloor.outputs.source == 'size' — never 'path'/'both',
+      # which get no grace and fall through to Step 5c below unconditionally).
+      #
+      # WHY this exists at all (finding from the Gear-3 gate review of the
+      # round-1 fix, not the codex-sol adversarial round): Step 5c below
+      # used to FAIL every floor==2 diff outright the moment it merged.
+      # Measured baseline (170 merged PRs, same sample S1 itself was
+      # calibrated on): only 10/29 (34%) of PRs >400 net lines historically
+      # carried a brief — so an immediate hard-FAIL would turn a required
+      # check red on ~2 of every 3 mid-size PRs fleet-wide (every lane, every
+      # machine), none of them ever warned this was coming. That violates
+      # this mandate's own gate lifecycle (E7: a new gate starts as NOTICE
+      # for a grace window, THEN FAIL) and is exactly the "spring a new hard
+      # gate on the fleet with zero warning" pattern the 2026-08-26 retro
+      # flagged. SIZE_GEAR2_ENFORCEMENT_DATE is the flip point, lives in
+      # code (not a ledger) so it is enforced mechanically, same pattern as
+      # LANES_NON_ANTHROPIC_ENFORCEMENT_DATE in evidence_pack_lint.py.
+      #
+      # Floor==3 gets NO such grace, from either source (path OR
+      # size>=1828): that floor value already existed before this PR (the
+      # hot-zone/path case) and the fleet has long since adapted to it, so
+      # there is nothing new to warn about there — only the SIZE term's
+      # NEW floor==2 bucket is a genuinely new gate.
       # -----------------------------------------------------------------
-      - name: FAIL — hot-zone diff with no evidence/brief.yml
+      - name: "NOTICE (grace period) then FAIL — floor==2 via the SIZE term alone, no evidence/brief.yml"
         if: |
           steps.kill_switch.outputs.disabled != 'true' &&
           steps.brief.outputs.present != 'true' &&
-          steps.detfloor.outputs.floor == '3'
+          steps.detfloor.outputs.floor == '2' &&
+          steps.detfloor.outputs.source == 'size'
+        env:
+          SIZE_GEAR2_ENFORCEMENT_DATE: "2026-09-02"
         run: |
-          echo "::error::this diff touches a hot-zone path (deterministic floor 3) but carries no evidence/brief.yml — a Gear-3-floor diff requires a brief+pack (harness-v2-teman2.md §1/§5), it cannot silently pass as 'not a harness task'"
+          set -u
+          TODAY="$(date -u +%F)"
+          # ISO-8601 (YYYY-MM-DD) strings compare lexicographically in the
+          # same order as chronologically — safe as a plain bash string
+          # comparison inside [[ ]], no date-arithmetic library needed.
+          if [[ "$TODAY" < "$SIZE_GEAR2_ENFORCEMENT_DATE" ]]; then
+            echo "::warning::this diff's deterministic floor is 2, reached via the SIZE term ALONE (churn >= 400 net lines on non-hot-zone paths — see evidence_pack_lint.py's compute_floor()/compute_floor_source()), and carries no evidence/brief.yml. NOTICE ONLY until $SIZE_GEAR2_ENFORCEMENT_DATE (today: $TODAY — E7 gate lifecycle: a new gate starts as NOTICE, then FAIL) — starting that date this becomes a required-check FAIL. Baseline measured 2026-08-27: only 10/29 (34%) of PRs >400 net lines historically carried a brief; this grace period gives the fleet — every lane, every machine — time to adapt before the check goes hard."
+            exit 0
+          fi
+          echo "::error::this diff's deterministic floor is 2, reached via the SIZE term alone, and carries no evidence/brief.yml — the SIZE_GEAR2_ENFORCEMENT_DATE grace period ($SIZE_GEAR2_ENFORCEMENT_DATE) has passed (today: $TODAY) — a floor==2 diff now requires at minimum a brief declaring gear>=2"
+          exit 1
+
+      # -----------------------------------------------------------------
+      # Step 5c — no brief, and the diff meets a deterministic floor that
+      # gets NO grace period: floor==3 from any source (path and/or size
+      # >=1828), or the currently-unreachable-but-structurally-possible
+      # case of a path-sourced/both-sourced floor==2 (see
+      # compute_floor_source()'s docstring — today's floor==2 can only be
+      # source=='size', but this condition stays correct even if a future
+      # HOTZONE_PATTERNS change ever made another floor==2 source
+      # possible). FAIL — do not default to success just because no brief
+      # exists to compare against (adversarial-review finding 2026-08-10;
+      # widened from floor==3-only to floor>=2 on 2026-08-27, then carved
+      # out the size-only-floor==2 grace period into Step 5b above,
+      # 2026-08-27 gate round 2).
+      # -----------------------------------------------------------------
+      - name: FAIL — floor >= 2 diff with no evidence/brief.yml (no grace period applies)
+        if: |
+          steps.kill_switch.outputs.disabled != 'true' &&
+          steps.brief.outputs.present != 'true' &&
+          steps.detfloor.outputs.floor != '1' &&
+          !(steps.detfloor.outputs.floor == '2' && steps.detfloor.outputs.source == 'size')
+        env:
+          FLOOR: ${{ steps.detfloor.outputs.floor }}
+          SOURCE: ${{ steps.detfloor.outputs.source }}
+        run: |
+          echo "::error::this diff's deterministic floor is $FLOOR (source: $SOURCE — hot-zone path and/or blast-radius size, see evidence_pack_lint.py's compute_floor()) but carries no evidence/brief.yml — a floor>=2 diff requires at minimum a brief declaring gear>=$FLOOR (Gear 3 additionally requires a pack + gate verdict, Step 7b/7c below); it cannot silently pass as 'not a harness task'"
           exit 1
 
       # -----------------------------------------------------------------
@@ -561,7 +777,7 @@ jobs:
           fi
           echo "gear=$GEAR" >> "$GITHUB_OUTPUT"
           if (( GEAR < FLOOR )); then
-            echo "::error::declared gear $GEAR is BELOW the deterministic floor $FLOOR (hot-zone hit) — the brief must declare gear>=$FLOOR"
+            echo "::error::declared gear $GEAR is BELOW the deterministic floor $FLOOR (hot-zone path and/or blast-radius size — see evidence_pack_lint.py's compute_floor()) — the brief must declare gear>=$FLOOR"
             exit 1
           fi
 
@@ -583,60 +799,6 @@ jobs:
         run: echo "::notice::gear ${GEAR} — fable-gate is Gear-3 only, not applicable — passing"
 
       # -----------------------------------------------------------------
-      # Step 7a5 — measured net lines for evidence_pack_lint's rule 7
-      # (gear ceiling), merge-base anchored (never a two-dot diff against
-      # the live base tip — the exact W102 lie the changed-files
-      # enumeration above already avoids). BEST-EFFORT and non-blocking:
-      # if the merge-base can't be resolved, this step just skips emitting
-      # --numstat-file — evidence_pack_lint.py then falls back to the
-      # pack's own self-declared `net_lines:` (with its own NOTICE) or
-      # asserts nothing, it never treats "couldn't measure" as "measured
-      # zero" (that would be a false small-shape signal on a large diff).
-      # Gated the same as Step 7b — it only feeds that step.
-      # -----------------------------------------------------------------
-      - name: Compute measured net lines (merge-base anchored, best-effort)
-        if: |
-          steps.kill_switch.outputs.disabled != 'true' &&
-          steps.brief.outputs.present == 'true' &&
-          steps.gearcheck.outputs.gear == '3'
-        id: netlines
-        env:
-          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || 'main' }}
-          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha || github.sha }}
-        run: |
-          set -u
-          # This job's checkout (Step 1) is BASE, not HEAD — the "grader
-          # self-protects" pattern. scripts/evidence_pack_lint.py as it
-          # exists in THIS run is therefore whatever origin/main carried at
-          # PR-open/sync time — legitimately missing --numstat-file support
-          # if a PR teaching the script that flag hasn't merged yet (feature
-          # absence, not file absence). But the FILE itself is not new (see
-          # Step 3's corrected comment on the same false-safety claim, Kimi
-          # K3 finding #3) — its total absence means it was deleted from
-          # main, not a bootstrap window. Distinguish the two: missing FILE
-          # fails closed; missing FLAG degrades gracefully (this step exists
-          # specifically to probe the flag before promising it).
-          if [[ ! -f scripts/evidence_pack_lint.py ]]; then
-            echo "::error::scripts/evidence_pack_lint.py is missing from the base checkout — not a legitimate bootstrap window (see Step 3's comment). Failing closed rather than silently skipping net-lines measurement."
-            exit 1
-          fi
-          if ! python3 scripts/evidence_pack_lint.py --help 2>&1 | grep -q -- '--numstat-file'; then
-            echo "::notice::the evidence_pack_lint.py copy in use (checked out from base $BASE_SHA) does not support --numstat-file yet — net-lines measurement skipped for this run; self-consistent once this PR merges and base's copy is updated"
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          MERGE_BASE="$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || true)"
-          if [[ -z "$MERGE_BASE" ]]; then
-            echo "::notice::merge-base not resolvable — net-lines measurement skipped for this run (evidence_pack_lint falls back to pack-declared net_lines with a NOTICE, or asserts nothing)"
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          git diff --no-renames --numstat "$MERGE_BASE" "$HEAD_SHA" > /tmp/net-lines-numstat.txt
-          echo "available=true" >> "$GITHUB_OUTPUT"
-          echo "measured net-lines numstat (merge-base $MERGE_BASE):"
-          cat /tmp/net-lines-numstat.txt
-
-      # -----------------------------------------------------------------
       # Step 7b — Gear-3, floor satisfied: validate the ACTUAL Evidence
       # Pack (evidence/pack.yml), not just the brief's declared gear field.
       # Adversarial-review finding 2026-08-10: the first cut of this
@@ -646,9 +808,10 @@ jobs:
       # + pack.yml at the SAME relative layout the linter expects
       # (brief_ref: "evidence/brief.yml" resolves against --repo-root), so
       # this reuses the exact same check_* rules a local run would.
-      # --numstat-file (Step 7a5) is passed only when it was actually
-      # produced — never a bare/empty arg that could read as "0 net lines
-      # measured" (adversarial-review finding 2026-08-21).
+      # --numstat-file (Step 2c, moved earlier 2026-08-27 so the floor can
+      # consume it too) is passed only when it was actually produced —
+      # never a bare/empty arg that could read as "0 net lines measured"
+      # (adversarial-review finding 2026-08-21).
       #
       # CORRECTED 2026-08-21 (independent Gear-3 review, F1/F4 symmetric
       # fix): same tree-presence-vs-diff-membership defect as Step 4, on the
@@ -748,6 +911,34 @@ jobs:
           EXTRA_ARGS=()
           if [[ "$NETLINES_AVAILABLE" == "true" ]]; then
             EXTRA_ARGS+=(--numstat-file /tmp/net-lines-numstat.txt)
+          fi
+          # --source-path is THIS PR's own real pack path (evpaths' PACK_PATH,
+          # resolved above BEFORE staging) — not the staged file we just
+          # wrote it to. Rule 9 (evidence root deprecation) judges THAT
+          # path; without this flag it would default to the staged
+          # positional argument, which is always the canonical
+          # evidence/pack.yml regardless of where the real file lives, and
+          # every PR — migrated or not — would misjudge as root.
+          #
+          # BOOTSTRAP (same shape as the netlines step above, and Step 3's
+          # --numstat-file probe): this job's checkout is BASE, not HEAD, so
+          # scripts/evidence_pack_lint.py as it exists in THIS run is
+          # whatever origin/main carried at PR-open/sync time — the very PR
+          # that TEACHES the script --source-path (this one) has not merged
+          # yet, so base's copy legitimately does not support it. Missing
+          # FLAG degrades gracefully (fall back to the staged positional
+          # path, same as a direct/local invocation with no --source-path —
+          # Rule 9 then judges the canonical staged path instead of the real
+          # one, a strictly narrower check, never a fail-open); missing FILE
+          # still fails closed per Step 3's convention.
+          if [[ ! -f scripts/evidence_pack_lint.py ]]; then
+            echo "::error::scripts/evidence_pack_lint.py is missing from the base checkout — not a legitimate bootstrap window (see Step 3's comment). Failing closed rather than silently skipping pack validation."
+            exit 1
+          fi
+          if python3 scripts/evidence_pack_lint.py --help 2>&1 | grep -q -- '--source-path'; then
+            EXTRA_ARGS+=(--source-path "$PACK_PATH")
+          else
+            echo "::notice::the evidence_pack_lint.py copy in use (checked out from base) does not support --source-path yet — Rule 9 (evidence root deprecation) will judge the staged canonical path instead of this PR's real per-PR path this run; self-consistent once this PR merges and base's copy is updated"
           fi
           python3 scripts/evidence_pack_lint.py \
             /tmp/evidence-check/evidence/pack.yml \

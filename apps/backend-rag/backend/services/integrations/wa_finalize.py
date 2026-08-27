@@ -21,13 +21,16 @@ Behavior contract:
       internal-monologue leak — including inside a grounded abstain answer,
       scaffold-only output, empty after strip/format, oversized output,
       pricing veto, secret-egress hit) returns ``DEFECT`` WITHOUT serving a stub
-      and WITHOUT telling a human — the caller fails off to the Gemini leg,
-      which regenerates and re-enters this pipeline, so the client still gets
-      an answer and the silent-client alarm stays with the leg that owns it
-      (spec §2.3 TEXT_DEFECT). The abstain-label branch is the one POLICY
-      branch: its verdict derives from the frozen evidence, not from who wrote
-      the text, so it behaves identically on both providers (stub + tell a
-      human — failing off could not change the verdict, spec §2.3 POLICY).
+      and WITHOUT telling a human — the caller (``wa_codex_leg.attempt``) falls
+      off into the WORKER's retry ladder, not to a second generator (Gemini was
+      retired from this worker 2026-08-27, Zero: "spegni gemini e collega
+      chatgpt"): a LATER codex-leg attempt against a fresh claim re-enters this
+      same pipeline, so the client still gets an answer once a clean attempt
+      lands, and the silent-client alarm stays with the leg that owns it (spec
+      §2.3 TEXT_DEFECT). The abstain-label branch is the one POLICY branch:
+      its verdict derives from the frozen evidence, not from who wrote the
+      text, so it behaves identically on both providers (stub + tell a human —
+      failing off could not change the verdict, spec §2.3 POLICY).
 
 Codex-only egress vetoes (inert on the Gemini leg by construction):
     * Pricing veto — every currency-marked amount in the answer must appear in
@@ -488,8 +491,10 @@ async def finalize_wa_answer(
         tell_a_human: REQUIRED one-argument async callable ``(reason)``. The
             pipeline calls it exactly where the pre-extraction code called
             ``_tell_a_human`` — stub paths on both providers, defect paths on
-            the Gemini provider only (a codex defect fails off to the Gemini
-            leg, which still owes the client an answer and re-enters here).
+            the Gemini provider only (a codex defect falls off into the
+            WORKER's retry ladder instead — see the module docstring's
+            2026-08-27 correction — so the client still owes an answer from a
+            LATER attempt, not from Gemini re-entering here).
             Required rather than defaulted (review MAJOR-9): an optional
             notifier makes "forgot to wire it" indistinguishable from "chose
             silence", which is the exact contract inversion the 2026-08-12
@@ -654,7 +659,8 @@ async def finalize_wa_answer(
             # retry ladder below cannot rescue this — it only spends attempts
             # and ends in silence. Tell a human BEFORE the raise, because the
             # raise is precisely what makes this silent. (Gemini leg only: a
-            # codex defect fails off to the Gemini leg, which still answers.)
+            # codex defect falls off into the worker's OWN retry ladder
+            # instead — see the module docstring's 2026-08-27 correction.)
             if provider is FinalizeProvider.GEMINI:
                 await _tell("empty_rag_answer")
             return FinalizeResult(
@@ -665,9 +671,11 @@ async def finalize_wa_answer(
 
         if _starts_with_internal_monologue_leak(answer):
             if provider is FinalizeProvider.CODEX:
-                # TEXT_DEFECT (spec §2.3): a different generator can
-                # legitimately cure a defective text — fail off instead of
-                # serving the stub the Gemini leg would serve.
+                # TEXT_DEFECT (spec §2.3): fail off into the worker's
+                # retry ladder instead of serving the stub the Gemini
+                # branch below would serve — a LATER codex-leg attempt can
+                # legitimately cure a defective text (no second generator
+                # to hand this off to since the 2026-08-27 Gemini cut).
                 return FinalizeResult(
                     outcome=FinalizeOutcome.DEFECT,
                     defect_reason="internal_monologue_leak",
@@ -728,8 +736,9 @@ async def finalize_wa_answer(
         answer = _strip_kg_workflow_scaffold(answer)
         if not answer:
             if provider is FinalizeProvider.CODEX:
-                # TEXT_DEFECT: scaffold-only output is a broken text, and the
-                # Gemini leg can produce a real answer — fail off.
+                # TEXT_DEFECT: scaffold-only output is a broken text — fail
+                # off into the worker's retry ladder so a LATER codex-leg
+                # attempt can produce a real answer.
                 return FinalizeResult(
                     outcome=FinalizeOutcome.DEFECT,
                     defect_reason="workflow_only_output",
@@ -791,10 +800,10 @@ async def finalize_wa_answer(
 
     if provider is FinalizeProvider.CODEX and post_format_len > _WHATSAPP_HARD_SEND_LIMIT:
         # TEXT_DEFECT (spec §2.3 "malformed/oversized output"): on the codex
-        # leg an oversized answer fails off to the Gemini leg instead of
-        # being cut mid-content by the sender's hard limit — a truncated
-        # answer can lose its disclaimer or conclusion, and a different
-        # generator can legitimately produce one that fits.
+        # leg an oversized answer falls off into the worker's retry ladder
+        # instead of being cut mid-content by the sender's hard limit — a
+        # truncated answer can lose its disclaimer or conclusion, and a
+        # LATER codex-leg attempt can legitimately produce one that fits.
         return FinalizeResult(
             outcome=FinalizeOutcome.DEFECT,
             defect_reason="oversized_output",
