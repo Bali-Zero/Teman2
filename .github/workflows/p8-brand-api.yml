@@ -16,6 +16,22 @@ on:
   pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
   workflow_dispatch:
 
+# Dependabot branch: ALL Dependabot PRs share one group per workflow (not
+# per-run), bounding concurrent Dependabot runs of THIS workflow to <=2
+# (Agent PR Contract rule 5) instead of unbounded parallel.
+# cancel-in-progress:false protects whichever run is RUNNING; GitHub keeps
+# only one PENDING per group, so a 3rd+ near-simultaneous arrival cancels the
+# pending run rather than queuing behind it — visible in the PR's checks tab
+# (never silent), recoverable with `gh run rerun` (confirmed:
+# docs.github.com/en/actions/using-jobs/using-concurrency + kimi-code/k3
+# refuter round on PR #5043). Non-Dependabot branch is suffixed by
+# github.run_id, which is unique per run and therefore never collides — the
+# prior no-concurrency-block behavior (every run fully independent) is
+# preserved exactly.
+concurrency:
+  group: ${{ github.actor == 'dependabot[bot]' && format('dependabot-lockfile-{0}', github.workflow) || format('p8-brand-api-{0}-{1}', github.ref, github.run_id) }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
 

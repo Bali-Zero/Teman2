@@ -1,0 +1,82 @@
+task_id: dependabot-serial-0826
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Arm CLAUDE.md Agent PR Contract rule 5 ("Serialize Dependabot PRs that
+  share a lockfile. Arm them one at a time.") — it had no machinery. 13
+  Dependabot PRs arrived as a batch on 2026-08-24 (oldest three within a
+  2-minute window, all 13 within 13 minutes) and ran every required check
+  in full N-way parallel.
+
+  Add a Dependabot-only branch to the `concurrency.group` (and, where the
+  original expression needs it, `cancel-in-progress`) of every workflow
+  that is BOTH (a) unconditional on `pull_request:` — no `paths:` filter,
+  so it fires on every one of the 13 regardless of ecosystem — and (b) a
+  required status check on main. All Dependabot runs of a given workflow
+  share one group; the non-Dependabot branch of every ternary is the
+  pre-existing expression, byte-for-byte, so ordinary PRs are unaffected.
+
+  Gear 3 by PATH, not by blast radius: `.github/workflows/**` is Gear-3 by
+  construction (deterministic floor recomputed from this PR's 21-file
+  changed set = 3, confirmed via `evidence_pack_lint.py --print-floor`).
+constraints:
+  - "Only touch workflows that are BOTH always-triggering on pull_request
+    AND a required status check on main (verified via `gh api
+    repos/Bali-Zero/Teman2/branches/main/protection`, not assumed from job
+    names) — narrows 30 always-trigger candidates to 21, keeping the diff
+    to a single mechanical concern instead of a repo-wide sweep."
+  - "The non-Dependabot branch of every changed expression must be
+    byte-for-byte the pre-existing behavior — this PR must not change what
+    happens to a single ordinary (non-Dependabot) PR."
+  - "No secrets, no PII — pure CI-workflow YAML."
+acceptance:
+  - "actionlint clean (rc=0) on all 21 changed files."
+  - "All 21 changed files parse as valid YAML with `concurrency.group`
+    referencing `dependabot[bot]`."
+  - "Deterministic gear floor recomputed from the real changed-file set is
+    3, and this brief declares gear 3 — never below it."
+  - "An independent cross-family adversarial review (generator != grader)
+    ran on the actual diff, and any CONFIRMED finding was either fixed in
+    a follow-up commit or explicitly accepted as a documented trade-off."
+consumer_map:
+  - "The 21 workflow files themselves — GitHub Actions reads `concurrency:`
+    directly; no other file in the repo references these expressions."
+  - "Dependabot PRs (opened weekly, `.github/dependabot.yml`, 3 ecosystems)
+    are the intended beneficiary — every future batch, starting with the
+    2026-08-31 run, is the first live test of the mechanism."
+risks:
+  - "GitHub Actions concurrency groups hold at most one RUNNING + one
+    PENDING run per group (confirmed: docs.github.com/en/actions/
+    using-jobs/using-concurrency). `cancel-in-progress: false` protects
+    only the running job. A 3rd+ near-simultaneous Dependabot arrival on
+    one workflow cancels the pending run rather than queuing behind it —
+    visible in the PR's checks tab, recoverable with `gh run rerun`, never
+    silent. This bounds the mechanism to <=2 concurrent per workflow, not
+    unbounded serial drain. Found by the adversarial-review round; fixed
+    by correcting the claim in all 21 files' comments (no logic change —
+    `cancel-in-progress: false` remains the right choice; `true` would
+    additionally kill the RUNNING job on every new arrival)."
+  - "`github.actor` is the triggering actor, not the PR author — a human
+    re-run or a maintainer push to a Dependabot branch escapes the shared
+    group for that one run. Low-frequency, does not cross-cancel anything,
+    accepted rather than engineered around (a PR-author-based
+    discriminator adds complexity for a rare case)."
+  - "Cannot live-test the drain mechanism today: all 13 Dependabot PRs that
+    motivated this mandate were closed 2026-08-26T16:17-16:18Z, before
+    this session started and not by this PR. Next batch ~2026-08-31."
+grader: |
+  generator != grader. Cross-family refuter seat kimi-code/k3 (Kimi K3,
+  non-Anthropic) reviewed the actual PR diff (`gh pr diff`) in round 1 of a
+  max-2-round budget. One real, CONFIRMED finding (the "drain serially"
+  overclaim, detailed in risks above) was fixed in a second commit on the
+  same PR, re-verified with actionlint + YAML parse after the fix. Two
+  further CONFIRMED-but-informational findings (actor-identity edge case;
+  cosmetic group-name nit) were accepted as documented trade-offs rather
+  than driving further code changes, per the reasoning in the PR's
+  Adversarial review section.
+budget: |
+  Single-lane infra fix. Flat-subscription seats only (Claude Code Opus 5
+  session for the build + Kimi K3 flat-quota for the refuter round); no
+  metered API spend.
+pii: none
