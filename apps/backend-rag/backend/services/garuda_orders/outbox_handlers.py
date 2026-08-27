@@ -623,8 +623,25 @@ class TelegramStaffPageSender:
         """
 
         text = err or "unknown error"
-        if self._bot_token and self._bot_token in text:
-            text = text.replace(self._bot_token, "<redacted>")
+        if self._bot_token:
+            bot_id, _, secret = self._bot_token.partition(":")
+            # ONE pattern, then one literal — and that is ALL, because every
+            # other form was measured DEAD. An exact `replace` of the whole
+            # token and a `quote()` replace of its URL-encoded form were both
+            # here; removing either changed no test, because this pattern
+            # already matches the raw token, the '%3A' form, and a token cut in
+            # half by `resp.text[:200]`. What it does NOT match is a body that
+            # echoes only the half after the colon — the pattern is anchored on
+            # the bot id, which is public and may simply be absent. That is the
+            # literal below, and it is the half that actually matters.
+            if len(bot_id) >= 8:
+                text = re.sub(
+                    re.escape(bot_id) + r"(?::|%3A)[A-Za-z0-9_%-]*",
+                    "<redacted>",
+                    text,
+                )
+            if len(secret) >= 8:
+                text = text.replace(secret, "<redacted>")
         return text
 
 
@@ -655,7 +672,35 @@ class OrderAnomalyFacts:
     state: str
     late_case_open: bool
     late_case_charge_id: str | None
+    #: TRUE when an `order.late_resolved` event exists at or after the event
+    #: that triggered THIS job. `late_case_open` is ONE boolean per order and
+    #: the contract allows a SECOND case to open after the first is closed
+    #: (migration 284: "exactly one open case per order AT A TIME"), so the
+    #: flag alone cannot tell "my case is still open" from "my case was closed
+    #: and a different one is open now" — and in the second reading a delayed
+    #: retry of this job would page about case A while rendering case B's
+    #: `late_case_charge_id`. This is derived from the append-only journal, so
+    #: it needs no new column and cannot drift from what actually happened.
+    case_resolved_since_trigger: bool
     detail: dict[str, Any] = field(default_factory=dict)
+
+
+def _detail_scalar(detail: dict, key: str) -> str:
+    """Render ONE named key of a journal `detail` as a bounded scalar.
+
+    Reading named keys stops an UNREAD key from reaching a page; it does not
+    bound what a READ key contains. `str()` of a dict or a list serialises the
+    whole structure, so a nested object under `second_charge_id` would go to
+    Telegram in full — and `detail` is JSONB, which admits any shape. This
+    refuses non-scalars outright and caps the length: a page is for a human to
+    act on, and an id that is not an id is itself the anomaly worth seeing.
+    """
+
+    value = detail.get(key)
+    if value is None or isinstance(value, (dict, list)):
+        return "—"
+    text = str(value)
+    return text[:120] if len(text) <= 120 else text[:120] + "…"
 
 
 def _amount(price_idr: int) -> str:
@@ -695,11 +740,13 @@ class _StaffPageHandler:
 
         if not self._should_page(facts):
             logger.warning(
-                "outbox %s resolved WITHOUT paging: order %s late_case_open=%s — "
-                "the case behind this page was already closed",
+                "outbox %s resolved WITHOUT paging: order %s late_case_open=%s "
+                "resolved_since_trigger=%s — the case behind this page was already "
+                "closed (a second case may be open now; this job is not about it)",
                 self.job_type,
                 facts.order_id,
                 facts.late_case_open,
+                facts.case_resolved_since_trigger,
             )
             return
 
@@ -727,9 +774,31 @@ class _StaffPageHandler:
             if order_row is None:
                 return None
             event_row = await conn.fetchrow(
-                "SELECT detail FROM garuda_order_journal WHERE event_id = $1",
+                "SELECT detail, occurred_at FROM garuda_order_journal WHERE event_id = $1",
                 journal_event_id,
             )
+            # Was THIS job's case already closed? A resolution recorded at or
+            # after the triggering event can only be the resolution OF that
+            # event's case or of a later one — either way, this page is about a
+            # case a human has already handled. The triggering event's own name
+            # is never `order.late_resolved`, so `>=` cannot match itself.
+            resolved_since = False
+            if event_row is not None:
+                resolved_since = bool(
+                    await conn.fetchval(
+                        """
+                        SELECT EXISTS (
+                            SELECT 1 FROM garuda_order_journal
+                             WHERE aggregate_type = 'order'
+                               AND aggregate_id = $1
+                               AND event_name = 'order.late_resolved'
+                               AND occurred_at >= $2
+                        )
+                        """,
+                        order_id,
+                        event_row["occurred_at"],
+                    )
+                )
         raw_detail = event_row["detail"] if event_row is not None else None
         detail = json.loads(raw_detail) if isinstance(raw_detail, str) else (raw_detail or {})
         return OrderAnomalyFacts(
@@ -740,6 +809,7 @@ class _StaffPageHandler:
             late_case_open=order_row["late_case_open"],
             late_case_charge_id=order_row["late_case_charge_id"],
             detail=detail,
+            case_resolved_since_trigger=resolved_since,
         )
 
     @staticmethod
@@ -770,10 +840,11 @@ class StaffPageDuplicateChargeHandler(_StaffPageHandler):
     job_type = "staff_page_duplicate_charge"
 
     def _should_page(self, facts: OrderAnomalyFacts) -> bool:
-        return facts.late_case_open
+        # BOTH halves, not just the flag — see `case_resolved_since_trigger`.
+        return facts.late_case_open and not facts.case_resolved_since_trigger
 
     def _compose(self, facts: OrderAnomalyFacts) -> str:
-        second_charge = str(facts.detail.get("second_charge_id") or "—")
+        second_charge = _detail_scalar(facts.detail, "second_charge_id")
         return (
             "DUPLICATE CHARGE\n\n"
             f"Order: `{facts.order_id}`\n"
@@ -804,7 +875,8 @@ class StaffPageLatePaidAfterRefundHandler(_StaffPageHandler):
     job_type = "staff_page_late_paid_after_refund"
 
     def _should_page(self, facts: OrderAnomalyFacts) -> bool:
-        return facts.late_case_open
+        # BOTH halves, not just the flag — see `case_resolved_since_trigger`.
+        return facts.late_case_open and not facts.case_resolved_since_trigger
 
     def _compose(self, facts: OrderAnomalyFacts) -> str:
         charge_id = facts.late_case_charge_id or "—"
@@ -832,7 +904,8 @@ class StaffPageLatePaidAfterTerminalHandler(_StaffPageHandler):
     job_type = "staff_page_late_paid_after_terminal"
 
     def _should_page(self, facts: OrderAnomalyFacts) -> bool:
-        return facts.late_case_open
+        # BOTH halves, not just the flag — see `case_resolved_since_trigger`.
+        return facts.late_case_open and not facts.case_resolved_since_trigger
 
     def _compose(self, facts: OrderAnomalyFacts) -> str:
         charge_id = facts.late_case_charge_id or "—"
@@ -869,11 +942,19 @@ class StaffPagePaymentFailureHandler(_StaffPageHandler):
     job_type = "staff_page_payment_failure"
 
     def _should_page(self, facts: OrderAnomalyFacts) -> bool:
+        # ALWAYS. A cross-family gate read this as a missing suppression
+        # ("no mechanism to stop paging after a human closes the case") and it
+        # is a misreading worth writing down so it is not re-opened: these two
+        # pages report an event that HAPPENED, not a case that is OPEN. There
+        # is no closure flag for them to consult — `late_case_open` belongs to
+        # the OP-F04/OP-F05/OP-08 remediation cases only — and the outbox marks
+        # a job dispatched on success, so a second page can only follow a
+        # FAILED send, which is precisely when a human still has not been told.
         return True
 
     def _compose(self, facts: OrderAnomalyFacts) -> str:
-        outcome = _escape_markdown(str(facts.detail.get("outcome") or "—"))
-        customer_action = _escape_markdown(str(facts.detail.get("customer_action") or "—"))
+        outcome = _escape_markdown(_detail_scalar(facts.detail, "outcome"))
+        customer_action = _escape_markdown(_detail_scalar(facts.detail, "customer_action"))
         return (
             "PAYMENT FAILURE\n\n"
             f"Order: `{facts.order_id}`\n"
@@ -902,10 +983,18 @@ class StaffPageRefundOutOfOrderHandler(_StaffPageHandler):
     job_type = "staff_page_refund_out_of_order"
 
     def _should_page(self, facts: OrderAnomalyFacts) -> bool:
+        # ALWAYS. A cross-family gate read this as a missing suppression
+        # ("no mechanism to stop paging after a human closes the case") and it
+        # is a misreading worth writing down so it is not re-opened: these two
+        # pages report an event that HAPPENED, not a case that is OPEN. There
+        # is no closure flag for them to consult — `late_case_open` belongs to
+        # the OP-F04/OP-F05/OP-08 remediation cases only — and the outbox marks
+        # a job dispatched on success, so a second page can only follow a
+        # FAILED send, which is precisely when a human still has not been told.
         return True
 
     def _compose(self, facts: OrderAnomalyFacts) -> str:
-        refund_id = str(facts.detail.get("refund_id") or "—")
+        refund_id = _detail_scalar(facts.detail, "refund_id")
         return (
             "REFUND OUT OF ORDER\n\n"
             f"Order: `{facts.order_id}`\n"

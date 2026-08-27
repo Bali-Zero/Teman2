@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 import os
 import uuid
+from urllib.parse import quote
 
 import httpx
 import pytest
@@ -497,45 +498,42 @@ async def test_a_failed_send_raises_and_does_not_mark_delivered(pool):
 # --------------------------------------------------------------------------
 
 
-async def test_no_page_carries_applicant_pii():
-    """One order, every handler, one shared assertion.
+def test_the_facts_a_page_is_built_from_carry_no_applicant_field():
+    """REPLACES a vacuous test. The previous version built an
+    `OrderAnomalyFacts` by hand and asserted the five `_compose` outputs
+    contained no applicant email/name/passport — but that dataclass has no
+    applicant field to put there, so the assertion could not fail for any
+    edit to `_compose`. It tested nothing.
 
-    Uses `_compose` directly (no network) against a facts object built from a
-    real seeded row's shape — this is the fastest way to exercise all five
-    without five separate Postgres fixtures, and `_compose` is exactly where
-    a PII leak would first appear if a future edit widened what a handler
-    reads into the message.
+    The property that ACTUALLY makes `_compose` unable to leak is structural:
+    a page is composed only from facts that carry no applicant data. So assert
+    that, on the dataclass itself, where it is falsifiable — adding
+    `applicant_email` to `OrderAnomalyFacts` (the realistic first step of a
+    leak, since `_load`'s SELECT would then have somewhere to put it) fails
+    here immediately, before any `_compose` is even written.
     """
 
     from backend.services.garuda_orders.outbox_handlers import OrderAnomalyFacts
 
-    facts = OrderAnomalyFacts(
-        order_id="ord_pii_probe",
-        case_type="issuance",
-        price_idr=790000,
-        state="paid",
-        late_case_open=True,
-        late_case_charge_id="ch_pii_probe",
-        detail={
-            "second_charge_id": "ch_pii_probe_2",
-            "charge_id": "ch_pii_probe",
-            "refund_id": "rfnd_pii_probe",
-            "outcome": "PROVIDER_UNAVAILABLE",
-            "customer_action": "TRY_AGAIN_LATER",
-        },
-    )
-    handlers = [
-        StaffPageDuplicateChargeHandler(pool=None, sender=None),
-        StaffPageLatePaidAfterRefundHandler(pool=None, sender=None),
-        StaffPageLatePaidAfterTerminalHandler(pool=None, sender=None),
-        StaffPagePaymentFailureHandler(pool=None, sender=None),
-        StaffPageRefundOutOfOrderHandler(pool=None, sender=None),
-    ]
-    forbidden = (APPLICANT_EMAIL, APPLICANT_NAME, APPLICANT_PASSPORT)
-    for handler in handlers:
-        text = handler._compose(facts)
-        for value in forbidden:
-            assert value not in text, f"{type(handler).__name__} leaked {value!r}"
+    fields = set(OrderAnomalyFacts.__dataclass_fields__)
+    # The exact shape, not a substring scan: a new field must be a deliberate
+    # edit here, and one that carries applicant data can never pass.
+    assert fields == {
+        "order_id",
+        "case_type",
+        "price_idr",
+        "state",
+        "late_case_open",
+        "late_case_charge_id",
+        "case_resolved_since_trigger",
+        "detail",
+    }, f"OrderAnomalyFacts changed shape: {sorted(fields)}"
+    for field_name in fields:
+        for forbidden in ("applicant", "email", "passport", "phone", "name"):
+            assert forbidden not in field_name, (
+                f"OrderAnomalyFacts.{field_name} looks like applicant data — a staff "
+                "page is composed only from order/journal facts, never from the person"
+            )
 
 
 async def test_no_log_line_carries_applicant_pii(pool, caplog):
@@ -777,6 +775,24 @@ async def test_a_poisoned_journal_detail_does_not_reach_a_page(pool):
             "OP-05",
             {"refund_id": "rfnd_poison_1", **poison},
         ),
+        # The two late-payment pages were missing from the first version of
+        # this test — the handlers whose page renders `late_case_charge_id`
+        # from the ORDER ROW rather than the detail, i.e. the ones where the
+        # detail is read for nothing and a fold would be pure leak.
+        (
+            StaffPageLatePaidAfterRefundHandler,
+            "staff_page_late_paid_after_refund",
+            "payment.late_paid_after_refund",
+            "OP-F04",
+            {"charge_id": "ch_poison_late_1", **poison},
+        ),
+        (
+            StaffPageLatePaidAfterTerminalHandler,
+            "staff_page_late_paid_after_terminal",
+            "payment.late_paid_after_terminal",
+            "OP-F05",
+            {"charge_id": "ch_poison_late_2", **poison},
+        ),
     ]
     for cls, job_type, event_name, transition_id, detail in cases:
         _row_id, event_id = await _enqueue_staff_page(
@@ -808,3 +824,263 @@ async def test_a_poisoned_journal_detail_does_not_reach_a_page(pool):
         # key it is supposed to read — otherwise a handler that composed an
         # empty string would satisfy the assertions above.
         assert order_id in text, f"{cls.__name__} paged without naming the order"
+
+
+# --- a page must belong to the case it is about --------------------------------
+
+
+async def test_a_page_is_withheld_once_ITS_OWN_case_was_resolved(pool):
+    """`late_case_open` is ONE boolean per order, and the contract permits a
+    SECOND case to open after the first is closed (migration 284: "exactly one
+    open case per order AT A TIME"). So the flag alone cannot distinguish "my
+    case is still open" from "my case was closed and a different one is open
+    now" — and in the second reading a delayed retry of the FIRST job pages
+    about case A while rendering case B's `late_case_charge_id`, which is the
+    id a human would then go and refund.
+
+    Sequence: case A opens and enqueues a page; a human resolves A
+    (`order.late_resolved`); a second late payment reopens the flag. The
+    still-queued page for A must resolve WITHOUT paging.
+    """
+
+    order_id = await _seed_order(pool, state="refunded", late_case_open=True)
+    _row_a, event_a = await _enqueue_staff_page(
+        pool,
+        order_id,
+        job_type="staff_page_late_paid_after_refund",
+        event_name="payment.late_paid_after_refund",
+        transition_id="OP-F04",
+        detail={"charge_id": "ch_case_A"},
+    )
+
+    # A human closes case A. The flag would then go FALSE...
+    async with pool.acquire() as conn, conn.transaction():
+        await journal.append_event(
+            conn,
+            event_name="order.late_resolved",
+            aggregate_type="order",
+            aggregate_id=order_id,
+            transition_id="OP-F05",
+            customer_visible=True,
+            detail={"resolution": "refunded_in_full"},
+        )
+        # ...and a SECOND late payment raises it again, with a different id.
+        await conn.execute(
+            "UPDATE garuda_orders SET late_case_open = TRUE, late_case_charge_id = $2 "
+            "WHERE order_id = $1",
+            order_id,
+            "ch_case_B",
+        )
+
+    rec = _TgRecorder()
+    sender, client = _tg_sender(rec)
+    try:
+        await StaffPageLatePaidAfterRefundHandler(pool, sender)(
+            _job(order_id, event_a, "staff_page_late_paid_after_refund")
+        )
+    finally:
+        await client.aclose()
+
+    assert rec.requests == [], (
+        "case A's page went out after A was resolved — and it would have carried "
+        f"case B's charge id: {_last_text(rec) if rec.requests else ''!r}"
+    )
+
+
+async def test_a_page_still_goes_out_when_its_own_case_is_untouched(pool):
+    """The innocence half of the test above: with no resolution recorded, the
+    page must still go out. A guard that withheld everything would satisfy the
+    guilt half alone."""
+
+    order_id = await _seed_order(pool, state="refunded", late_case_open=True)
+    _row, event_id = await _enqueue_staff_page(
+        pool,
+        order_id,
+        job_type="staff_page_late_paid_after_refund",
+        event_name="payment.late_paid_after_refund",
+        transition_id="OP-F04",
+        detail={"charge_id": "ch_untouched"},
+    )
+    rec = _TgRecorder()
+    sender, client = _tg_sender(rec)
+    try:
+        await StaffPageLatePaidAfterRefundHandler(pool, sender)(
+            _job(order_id, event_id, "staff_page_late_paid_after_refund")
+        )
+    finally:
+        await client.aclose()
+
+    assert len(rec.requests) == 1, "an unresolved money anomaly was not paged"
+    assert order_id in _last_text(rec)
+
+
+# --- a non-scalar under a READ key must not be serialised ----------------------
+
+
+async def test_a_structure_hidden_under_a_read_key_is_not_serialised(pool):
+    """Reading NAMED keys stops an unread key leaking; it does not bound what a
+    READ key holds, and `detail` is JSONB — any shape fits. `str()` of a dict
+    would put the whole structure in the page. `_detail_scalar` refuses
+    non-scalars and caps length."""
+
+    order_id = await _seed_order(pool, state="paid", late_case_open=True)
+    _row, event_id = await _enqueue_staff_page(
+        pool,
+        order_id,
+        job_type="staff_page_duplicate_charge",
+        event_name="payment.duplicate_charge_detected",
+        transition_id="OP-08",
+        detail={"second_charge_id": {"nested": APPLICANT_EMAIL, "more": APPLICANT_PASSPORT}},
+    )
+    rec = _TgRecorder()
+    sender, client = _tg_sender(rec)
+    try:
+        await StaffPageDuplicateChargeHandler(pool, sender)(
+            _job(order_id, event_id, "staff_page_duplicate_charge")
+        )
+    finally:
+        await client.aclose()
+
+    text = _last_text(rec)
+    assert APPLICANT_EMAIL not in text, f"a nested structure was serialised: {text!r}"
+    assert APPLICANT_PASSPORT not in text, f"a nested structure was serialised: {text!r}"
+    # Innocence: the page still went out and still names the order — a human
+    # must learn that a duplicate charge happened even if the id is unusable.
+    assert order_id in text
+
+
+async def test_an_overlong_read_value_is_capped(pool):
+    order_id = await _seed_order(pool, state="paid", late_case_open=True)
+    _row, event_id = await _enqueue_staff_page(
+        pool,
+        order_id,
+        job_type="staff_page_duplicate_charge",
+        event_name="payment.duplicate_charge_detected",
+        transition_id="OP-08",
+        detail={"second_charge_id": "ch_" + ("x" * 5000)},
+    )
+    rec = _TgRecorder()
+    sender, client = _tg_sender(rec)
+    try:
+        await StaffPageDuplicateChargeHandler(pool, sender)(
+            _job(order_id, event_id, "staff_page_duplicate_charge")
+        )
+    finally:
+        await client.aclose()
+
+    text = _last_text(rec)
+    assert "x" * 5000 not in text, "an unbounded value went into a Telegram page"
+    assert len(text) < 1200, f"page grew to {len(text)} chars"
+
+
+@pytest.mark.parametrize(
+    ("label", "render"),
+    [
+        # The plain form an exact-match scrub already catches.
+        ("raw", lambda t: f"bad request to https://api.telegram.org/bot{t}/sendMessage"),
+        # The form anything that URL-encodes the request produces: ':' -> '%3A'.
+        ("url-encoded", lambda t: f"bad request to ...%2Fbot{quote(t, safe='')}%2FsendMessage"),
+        # `send_telegram_message` builds its 4xx error from `resp.text[:200]`,
+        # which can cut a token in half. Half a token is still half a secret,
+        # and an exact-match scrub does not see it at all.
+        ("truncated", lambda t: f"HTTP 400 non-retryable: ...bot{t[: len(t) // 2]}"),
+        # The one form no bot-id-anchored pattern can match: a body echoing
+        # ONLY the half after the colon. The bot id is public; this half is the
+        # secret, and it can travel without it.
+        ("secret-half only", lambda t: f'HTTP 400: {{"description":"token {t.split(":", 1)[1]} rejected"}}'),
+    ],
+)
+async def test_no_form_of_the_bot_token_survives_into_the_durable_error(label, render):
+    token = "8847435604:AA-a-token-shaped-string-nobody-should-ever-see"
+
+    def _echo(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(400, text=render(token))
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(_echo))
+    sender = TelegramStaffPageSender(client, bot_token=token, chat_id="12345")
+    try:
+        with pytest.raises(StaffPageSendFailed) as raised:
+            await sender.send(text="DUPLICATE CHARGE")
+    finally:
+        await client.aclose()
+
+    message = str(raised.value)
+    secret_half = token.split(":", 1)[1]
+    assert token not in message, f"[{label}] the whole token survived: {message!r}"
+    assert quote(token, safe="") not in message, (
+        f"[{label}] the url-encoded token survived: {message!r}"
+    )
+    # The bot id (before the colon) is public; it is the half AFTER it that
+    # must not survive in whole OR in part.
+    for cut in (len(secret_half), len(secret_half) // 2, 8):
+        fragment = secret_half[:cut]
+        if len(fragment) >= 8:
+            assert fragment not in message, (
+                f"[{label}] a {len(fragment)}-char fragment of the secret half "
+                f"survived: {message!r}"
+            )
+    assert "<redacted>" in message, (
+        f"[{label}] nothing was redacted — this test may be passing because the "
+        f"token never made it into the error at all: {message!r}"
+    )
+
+
+# --- the WRITERS are where `detail` stays PII-free ----------------------------
+
+
+def test_no_journal_detail_written_in_the_order_lane_names_applicant_data():
+    """The reader can only drop keys it does not name; it cannot make a key it
+    DOES name safe. `_detail_scalar` bounds the shape and the length of a read
+    value, but if a transition ever writes an applicant field into
+    `second_charge_id` itself, that value is what a page is FOR and it goes out.
+
+    So the real constraint lives on the WRITE side, where
+    `284_garuda_orders.sql` states it as prose: "No PII in detail -- enums/ids/
+    amounts/dates only." This turns that comment into a test. It walks the AST
+    of every module that appends to the journal in this lane and checks the KEYS
+    of every `detail={...}` literal — not the values, which are runtime data,
+    but the names, which are the author's intent made visible.
+    """
+
+    import ast
+    import pathlib
+
+    lane = [
+        pathlib.Path("backend/services/garuda_orders/repository.py"),
+        pathlib.Path("backend/services/garuda_orders/journal.py"),
+        pathlib.Path("backend/services/garuda_portal/practice.py"),
+        pathlib.Path("backend/services/garuda_orders/outbox_handlers.py"),
+    ]
+    forbidden = ("applicant", "email", "passport", "phone", "address", "full_name")
+    checked = 0
+    for path in lane:
+        assert path.exists(), f"{path} moved — this test is now blind, fix the list"
+        tree = ast.parse(path.read_text())
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            for kw in node.keywords:
+                if kw.arg != "detail" or not isinstance(kw.value, ast.Dict):
+                    continue
+                checked += 1
+                for key in kw.value.keys:
+                    if not isinstance(key, ast.Constant) or not isinstance(key.value, str):
+                        # A computed key defeats a static read — fail loudly
+                        # rather than pass silently over something unreadable.
+                        raise AssertionError(
+                            f"{path}:{key.lineno} builds a journal detail key "
+                            "dynamically; this test cannot vouch for it"
+                        )
+                    for word in forbidden:
+                        assert word not in key.value.lower(), (
+                            f"{path}:{key.lineno} writes journal detail key "
+                            f"{key.value!r} — `garuda_order_journal.detail` is "
+                            "PII-free by contract, and every staff page is composed "
+                            "from it"
+                        )
+    # Not an absence assertion: if the walk found nothing, the test proved
+    # nothing. The lane has nine `detail=` literals today.
+    assert checked >= 8, (
+        f"only {checked} `detail=` dict literals found in the lane — either they "
+        "moved or this walk is broken; a green run here would mean nothing"
+    )
