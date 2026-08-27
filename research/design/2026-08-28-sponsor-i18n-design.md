@@ -463,6 +463,25 @@ used "sponsor" for the compiler is corrected in §1 (ground quotes, marked as un
 and the mockup's design copy (marked as declared edits, per the "Retitled subject" note
 after this file's title) — never silently.
 
+## Adversarial review
+
+Joint round-grade panel over items 4+5 (this file and the delegate-flow lane, run
+2026-08-28): **codex gpt-5.6-sol xhigh** (filesystem — 13 findings), **kimi k3**
+(filesystem — 15, including the Screen-4 CRITICAL: the mockup promised a deletion right to
+an actor the session model cannot reach), **agy gemini-3.1-pro** (inline — 12, including
+the "atas nama" legal-proxy objection that overturned this file's own recommended
+Indonesian banner), **qwen3.8-max** (inline — 17, including the "wisatawan"→"pemohon"
+register correction and the key-set coverage gap toward item 4). Where seats conflicted
+(qwen's counter-proposal reused "atas nama"; agy showed it implies power-of-attorney) the
+least-claim wording won. Tally: **57 raw findings, deduped to 27 joint register rows — 23
+applied, 3 partial (R11, R12, R21), 1 with an embedded reject (R21.v: kimi's
+"delegate-i18n.html does not exist" was a panel-setup artifact — the file ships on this
+branch)** (computed from the register); dispositions in
+`mockups/sponsor-i18n/adversarial.json`, the register and the four seats' raw verdict
+extracts in `mockups/sponsor-i18n/panel/`. Surviving objections: none unresolved — the
+native-speaker review this file's Indonesian copy still needs is now §4's own acceptance
+item (R16.ix), not an open finding.
+
 ## §Meta
 
 This lane's honest position is that it designed language for a screen nobody has built yet,
