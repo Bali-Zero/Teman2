@@ -1,0 +1,35 @@
+### TASK A — Page Evaluation & Comparison
+
+*(Ratings on a 1–5 scale: 5 = optimal / high trust / low scam risk; 1 = critical failure / high scam risk)*
+
+1. **PAGE-1 Breakdown**
+   * **T (Trust / Institutional perception): 3.5/5** — Solid statutory footer (`PT`, `NPWP`, `Ditjen Imigrasi` disclaimer), but the generic "Our visa team" feels like an anonymous agency call-center.
+   * **S (Scam Signal Risk): 3.0/5** — Combining red accents with an un-personalized WhatsApp jump closely mimics generic Southeast Asian visa-broker lead-funnels.
+   * **C (Status Clarity): 5.0/5** — Clear explanation that a past overstay requires manual checking of settled-fine records, explicitly reassuring "That's not a no" and explaining why no price is shown yet.
+   * **A (Actionability): 4.5/5** — Immediate next step via WhatsApp with context preserved (`BZ-7Q4K`), plus an escape hatch to edit answers.
+
+2. **PAGE-2 Breakdown**
+   * **T (Trust / Institutional perception): 4.5/5** — Adding a named specialist (`{NAMED_AGENT}`), avatar, and office-hour constraints shifts perception from an anonymous aggregator to an accountable local practice.
+   * **S (Scam Signal Risk): 4.5/5 (Very Low Risk)** — De-anonymizing the consultant alongside the privacy reassurance ("no personal facts in the link") breaks the scam-broker pattern.
+   * **C (Status Clarity): 5.0/5** — Identical to Page 1: exceptional transparency regarding overstay record verification and conditional pricing.
+   * **A (Actionability): 4.5/5** — Seamless handoff to a specific human reviewer with case code continuity and review options.
+
+3. **Forced Choice: PAGE-2**
+   * **Single Strongest Reason:** For an anxious applicant with an overstay record, assigning a **named, pictured human specialist** removes the fear of sending sensitive immigration infractions into an anonymous WhatsApp inbox.
+
+4. **Dark Pattern Audit**
+   * **None.** The pages actively reject dark patterns: pricing is withheld rather than estimated misleadingly, answers can be edited before any binding submission ("nothing is submitted yet"), and link payloads explicitly exclude private data.
+
+---
+
+### TASK B — Red Palette Perception & Mitigating Marks
+
+5. **Institutional vs. Scam-Adjacent Perception**
+   * The declared scheme reads **INSTITUTIONAL / STATE-ADJACENT**.
+   * *Rationale:* Grounding the Indonesian *Merah Putih* red (`#C8102E` / `#D01033`) on warm archival paper (`#f7f6f2` `--carta`) with deep navy text (`#16213a` `--ink`) evokes official administrative stationery rather than commercial sales banners. Crucially, reserving muted wine (`#a83a44`) for conditional notices avoids high-alarm scarlet scam cues.
+
+6. **Mitigating Mark 1 (Present) — Explicit Jurisdictional Demarcation & Entity ID**
+   * The trust line (`"We prepare your application; Ditjen Imigrasi decides and issues"`) paired with statutory registration (`PT {PT_LEGAL_NAME} · NPWP {NPWP}`) prevents red-color confusion with government impersonation while proving commercial legitimacy.
+
+7. **Mitigating Mark 2 (Present) — Upfront Pricing & Anti-Bait-and-Switch Commitments**
+   * Microcopy explicitly guaranteeing exact fees ("Find out before you pay anything", "to the rupiah", "No price is shown... until your exact case has one") directly neutralizes the predatory "free check / hidden extortion" patterns common in SEA visa scams.
