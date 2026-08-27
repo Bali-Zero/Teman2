@@ -1,4 +1,4 @@
-brief_ref: evidence/2026-08/agent-nuzantara-infra-dependabot-serialize-concu-d0e8e846/brief.yml
+brief_ref: evidence/brief.yml
 plan_ref: >-
   PR #5043 (agent/nuzantara/infra/dependabot-serialize-concurrency -> main) —
   arms CLAUDE.md Agent PR Contract rule 5. Mandate from the orchestrating
