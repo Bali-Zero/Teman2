@@ -240,11 +240,12 @@ async def test_ack_send_failure_never_raises() -> None:
 @pytest.mark.asyncio
 async def test_apology_sent_on_terminal_failure() -> None:
     """Guilt: window open, no human takeover, not-yet-apologized row → the
-    apology is claimed durably AND actually sent."""
+    apology is claimed durably (AFTER a successful send, 2026-08-27 finding
+    minore) AND actually sent."""
     thread = _open_window_thread()
     conn = ScriptedConn(
-        fetchval_results=[False, _NON_TRIVIAL_TEXT],  # human_handling_now, latest inbound
-        fetchrow_results=[{"id": 1}],  # apology-claim UPDATE ... RETURNING id
+        # human_handling_now, apology_sent_at read (None = not yet), latest inbound
+        fetchval_results=[False, None, _NON_TRIVIAL_TEXT],
     )
     svc = _wa_service()
 
@@ -260,10 +261,7 @@ async def test_apology_sent_on_terminal_failure() -> None:
 @pytest.mark.asyncio
 async def test_apology_localized_to_detected_language() -> None:
     thread = _open_window_thread()
-    conn = ScriptedConn(
-        fetchval_results=[False, _BAHASA_TEXT],
-        fetchrow_results=[{"id": 1}],
-    )
+    conn = ScriptedConn(fetchval_results=[False, None, _BAHASA_TEXT])
     svc = _wa_service()
 
     await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc)
@@ -277,10 +275,7 @@ async def test_apology_never_leaks_internal_error_text() -> None:
     exception content (the caller passes gen_exc/exc only to the internal
     ledger error column, never anywhere near this function)."""
     thread = _open_window_thread()
-    conn = ScriptedConn(
-        fetchval_results=[False, _NON_TRIVIAL_TEXT],
-        fetchrow_results=[{"id": 1}],
-    )
+    conn = ScriptedConn(fetchval_results=[False, None, _NON_TRIVIAL_TEXT])
     svc = _wa_service()
 
     await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc)
@@ -306,15 +301,27 @@ async def test_apology_skipped_when_human_took_over() -> None:
 
 
 @pytest.mark.asyncio
-async def test_apology_skipped_when_window_closed() -> None:
+async def test_apology_skipped_when_window_closed_but_a_human_is_still_told(
+    monkeypatch,
+) -> None:
+    """GUILT (2026-08-27 Kimi K3 adversarial finding, MAGGIORE): the Meta
+    24h window gates the CLIENT-facing send only. A row that sat unanswered
+    long enough to exhaust retries AND close the window is exactly the case
+    a human is needed most — the previous ordering put `_tell_a_human`
+    AFTER the window check, so this exact case got no client apology
+    (unavoidable) AND no human alert (avoidable). `_tell_a_human` must
+    still fire even though nothing can be sent to the client."""
+    notify_spy = AsyncMock(return_value=True)
+    monkeypatch.setattr(_wa_inbox_bot_module, "notify_human_telegram", notify_spy)
     thread = _closed_window_thread()
-    conn = ScriptedConn()
+    conn = ScriptedConn(fetchval_results=[False])  # human_handling_now only
     svc = _wa_service()
 
     await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc)
 
-    svc.send_message.assert_not_awaited()
-    assert conn.executed == []
+    svc.send_message.assert_not_awaited()  # window closed — nothing sendable
+    notify_spy.assert_awaited_once()  # but a human WAS told, unconditionally
+    assert not conn.sql_contains("apology_sent_at")
 
 
 @pytest.mark.asyncio
@@ -327,10 +334,7 @@ async def test_apology_still_sent_when_manners_flag_off(monkeypatch) -> None:
     opposite under the OLD single-flag contract."""
     monkeypatch.delenv("WA_OUTBOX_MANNERS_ENABLED", raising=False)
     thread = _open_window_thread()
-    conn = ScriptedConn(
-        fetchval_results=[False, _NON_TRIVIAL_TEXT],
-        fetchrow_results=[{"id": 1}],  # apology-claim UPDATE ... RETURNING id
-    )
+    conn = ScriptedConn(fetchval_results=[False, None, _NON_TRIVIAL_TEXT])
     svc = _wa_service()
 
     await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc)
@@ -346,7 +350,9 @@ async def test_apology_disabled_when_terminal_apology_flag_off(monkeypatch) -> N
     the one escape hatch this PR leaves for emergencies."""
     monkeypatch.setenv("WA_OUTBOX_TERMINAL_APOLOGY_ENABLED", "false")
     thread = _open_window_thread()
-    conn = ScriptedConn(fetchval_results=[False, _NON_TRIVIAL_TEXT])
+    # fetchval_results is never consumed: the flag check is the function's
+    # FIRST statement, before any conn call.
+    conn = ScriptedConn(fetchval_results=[False, None, _NON_TRIVIAL_TEXT])
     svc = _wa_service()
 
     await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc)
@@ -364,10 +370,7 @@ async def test_apology_tells_a_human_on_the_way_out(monkeypatch) -> None:
     notify_spy = AsyncMock(return_value=True)
     monkeypatch.setattr(_wa_inbox_bot_module, "notify_human_telegram", notify_spy)
     thread = _open_window_thread()
-    conn = ScriptedConn(
-        fetchval_results=[False, _NON_TRIVIAL_TEXT],
-        fetchrow_results=[{"id": 1}],
-    )
+    conn = ScriptedConn(fetchval_results=[False, None, _NON_TRIVIAL_TEXT])
     svc = _wa_service()
 
     await wa_outbox_worker._maybe_send_apology(
@@ -381,25 +384,49 @@ async def test_apology_tells_a_human_on_the_way_out(monkeypatch) -> None:
     assert "bot_generation_exhausted" in kwargs["reason"]
 
 
+# Real per-language timed-reply promise words/phrases — the actual
+# regression surface (2026-08-27 Kimi K3 adversarial review, coordinator-
+# weighted MAGGIORE): the first correction only REWORDED the promise
+# ("someone will get back to you as soon as they can" / "akan segera
+# ditindaklanjuti" / "che ti risponderà appena possibile" / "как только
+# смогут" / "щойно зможуть") while a same-day test only ever checked the
+# English word "shortly" — a check that could never fail against the other
+# four languages no matter what they said.
+_APOLOGY_PROMISE_WORDS: dict[str, tuple[str, ...]] = {
+    "en": ("shortly", "soon", "as soon as"),
+    "id": ("segera", "secepatnya", "sesegera mungkin"),
+    "it": ("appena possibile", "presto", "a breve", "quanto prima"),
+    "ru": ("как только смогут", "скоро", "в ближайшее время"),
+    "uk": ("щойно зможуть", "скоро", "найближчим часом"),
+}
+
+
 @pytest.mark.asyncio
-async def test_apology_text_flags_never_promises_a_timed_reply() -> None:
-    """The apology's old copy promised "a member of our team will follow up
-    ... shortly" while nothing told a human anything — corrected 2026-08-27.
-    The new copy must say the conversation was flagged, and must NOT promise
-    a timed reply (per human_escalation_notifier's own docstring: Telegram
-    acceptance proves nothing about a person acting on it)."""
-    for lang in ("en", "id", "it", "ru", "uk"):
-        text = wa_outbox_worker._apology_text(lang)
-        assert "shortly" not in text.lower()
+async def test_apology_texts_never_promise_a_timed_reply() -> None:
+    """The apology's copy must say the conversation was flagged, and must
+    NOT promise a timed reply in ANY of the 5 languages (per
+    human_escalation_notifier's own docstring: Telegram acceptance proves
+    nothing about a person acting on it, let alone on a timescale nobody
+    can guarantee). Derived from a real per-language promise-word list —
+    see `test_apology_promise_word_regex_catches_a_reinserted_promise` for
+    the mutation proof that this actually fails when it should."""
+    for lang, promise_words in _APOLOGY_PROMISE_WORDS.items():
+        text = wa_outbox_worker._apology_text(lang).lower()
+        for word in promise_words:
+            assert word not in text, (
+                f"{lang!r} apology text still promises a timed reply via {word!r}: {text!r}"
+            )
 
 
 @pytest.mark.asyncio
 async def test_apology_not_resent_when_already_claimed() -> None:
-    """Idempotency: never two apologies for one row."""
+    """Idempotency: never two apologies for one row — a non-NULL
+    ``apology_sent_at`` read (a prior attempt already succeeded) skips the
+    send entirely, before any further conn calls."""
     thread = _open_window_thread()
     conn = ScriptedConn(
-        fetchval_results=[False, _NON_TRIVIAL_TEXT],
-        fetchrow_results=[None],  # WHERE apology_sent_at IS NULL matched nothing
+        # human_handling_now, apology_sent_at (non-None = already sent)
+        fetchval_results=[False, "2026-08-20T10:00:00+00:00"],
     )
     svc = _wa_service()
 
@@ -410,11 +437,12 @@ async def test_apology_not_resent_when_already_claimed() -> None:
 
 @pytest.mark.asyncio
 async def test_apology_send_failure_never_raises_and_never_masks_original() -> None:
+    """GUILT (2026-08-27 Kimi K3 adversarial finding, minore): the durable
+    claim happens AFTER a successful send, never before — a failed send
+    must leave the row eligible for a future apology attempt, not
+    permanently suppressed by a flag that was set before the send even ran."""
     thread = _open_window_thread()
-    conn = ScriptedConn(
-        fetchval_results=[False, _NON_TRIVIAL_TEXT],
-        fetchrow_results=[{"id": 1}],
-    )
+    conn = ScriptedConn(fetchval_results=[False, None, _NON_TRIVIAL_TEXT])
     svc = _wa_service(raise_exc=RuntimeError("graph down"))
 
     # Must not raise — the caller has already recorded the real failure by
@@ -422,6 +450,8 @@ async def test_apology_send_failure_never_raises_and_never_masks_original() -> N
     await wa_outbox_worker._maybe_send_apology(conn, 1, thread, svc)
 
     svc.send_message.assert_awaited_once()
+    # The durable claim must NEVER have been written on a failed send.
+    assert not conn.sql_contains("apology_sent_at = NOW()")
 
 
 # ── Wiring: prove process_outbox_once reaches these hooks at the right time ─
@@ -476,8 +506,17 @@ async def test_ack_fires_during_real_generation_flow(
 
 @pytest.mark.asyncio
 async def test_apology_fires_after_bot_generation_exhausts_retries() -> None:
-    """End-to-end: bot generation fails permanently → the ledger records the
-    real failure AND a best-effort apology goes out — never a real reply."""
+    """End-to-end: WA_GENERATION_PROVIDER is NOT armed codex in this test
+    (``_arm_codex`` deliberately not called) → generation raises a plain
+    ``BotStandingCondition`` (``provider_not_codex``), not a
+    ``SilentStandingCondition`` — per the 2026-08-27 finding (BLOCCANTE)
+    this ONE standing-condition reason DOES deserve the apology, unlike
+    ``autoreply_disabled``/``no_customer_message`` (see
+    ``test_wa_outbox_worker.py``'s silence tests for those). ``_bot_raises``
+    is passed only for the (unused, back-compat-only) ``bot_generate_fn``
+    signature slot — it is never actually invoked post-Gemini-cut. The
+    ledger records the standing condition AND a best-effort apology goes
+    out — never a real reply."""
     candidate = _candidate(
         20,
         thread_id=7,
@@ -494,12 +533,12 @@ async def test_apology_fires_after_bot_generation_exhausts_retries() -> None:
             # returns False — too short — so _maybe_send_ack short-circuits
             # BEFORE ever calling conn.fetchrow, consuming zero fetchrow slots)
             {"id": 20},  # terminal gen-failure fenced RETURNING
-            {"id": 20},  # apology-claim UPDATE RETURNING id
         ],
         fetchval_results=[
             True,  # advisory lock
             "hi",  # _latest_inbound_text for the ack → trivial, ack skipped
             False,  # human_handling_now (apology takeover check)
+            None,  # apology_sent_at read (not yet sent)
             _NON_TRIVIAL_TEXT,  # _latest_inbound_text for the apology
         ],
         fetch_results=[[candidate], []],
@@ -516,3 +555,85 @@ async def test_apology_fires_after_bot_generation_exhausts_retries() -> None:
     svc.send_message.assert_awaited_once()  # apology only, never a real reply
     assert svc.send_message.await_args.kwargs["text"] == wa_outbox_worker._apology_text("en")
     assert conn.sql_contains("apology_sent_at = NOW()")
+
+
+def _terminal_conn_open_window(outbox_id: int) -> ScriptedConn:
+    """Same shape as ``test_wa_outbox_worker._terminal_conn`` (needs_generation
+    row already at MAX_ATTEMPTS-1, terminal this attempt) but with an OPEN
+    Meta window and an inbound message present — deliberately NOT the
+    closed-window default: a closed window makes ``_maybe_send_apology``
+    return before ever reaching the client-send or (pre-2026-08-27-finding-2)
+    even the Telegram call, which would make a silence assertion pass
+    whether or not the silence GUARD itself works. This fixture supplies
+    every fetchval slot the WORST case (guard removed, apology runs to
+    completion) would consume, so a mutation that removes the guard is
+    actually caught rather than masked by an unrelated early-return."""
+    candidate = _candidate(
+        outbox_id,
+        thread_id=7,
+        message_id=outbox_id * 100,
+        needs_generation=True,
+        attempts=wa_outbox_worker.MAX_ATTEMPTS - 1,
+    )
+    open_thread = _open_window_thread(thread_id=7)
+    return ScriptedConn(
+        fetchrow_results=[
+            open_thread,  # thread load
+            {"id": outbox_id},  # generating-transition fenced RETURNING
+            {"id": outbox_id},  # terminal-failure fenced RETURNING
+        ],
+        fetchval_results=[
+            True,  # advisory lock
+            "hi",  # _latest_inbound_text for the ack → trivial, ack skipped
+            # The next 3 are consumed ONLY if the silence guard is broken
+            # and _maybe_send_apology runs to completion:
+            False,  # human_handling_now (apology takeover check)
+            None,  # apology_sent_at read (not yet sent)
+            _NON_TRIVIAL_TEXT,  # _latest_inbound_text for the apology
+        ],
+        fetch_results=[[candidate], []],
+    )
+
+
+@pytest.mark.asyncio
+async def test_silent_standing_conditions_get_no_apology_and_no_telegram(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """GUILT (2026-08-27 Kimi K3 adversarial review, coordinator-weighted
+    BLOCCANTE): switch off (``autoreply_disabled``) or no customer message
+    in the loaded window (``no_customer_message``), WITH an inbound message
+    present on the thread AND an open Meta window (so a broken guard would
+    have every opportunity to actually fire) — the row still exhausts
+    retries, but NEITHER the client apology NOR the Telegram human alert may
+    fire for either reason. These two mirror ``generate_bot_reply``'s own
+    two silent exits, which by pre-existing, documented contract
+    (``_tell_a_human``'s own docstring) notify nobody — the first draft of
+    the Gemini-cut PR inverted that contract by firing the apology for
+    EVERY standing condition, including these two."""
+    notify_spy = AsyncMock(return_value=True)
+    monkeypatch.setattr(_wa_inbox_bot_module, "notify_human_telegram", notify_spy)
+
+    for reason in ("autoreply_disabled", "no_customer_message"):
+        monkeypatch.setenv("WA_GENERATION_PROVIDER", "codex")
+        monkeypatch.setattr(
+            wa_outbox_worker.wa_codex_leg,
+            "attempt",
+            AsyncMock(
+                return_value=wa_outbox_worker.wa_codex_leg.CodexLegResult(
+                    reason=reason
+                )
+            ),
+        )
+        gemini_spy = AsyncMock(return_value="gemini reply")
+        conn = _terminal_conn_open_window(84 if reason == "autoreply_disabled" else 85)
+        pool = _make_pool(conn)
+        svc = _wa_service()
+
+        result = await wa_outbox_worker.process_outbox_once(pool, svc, gemini_spy)
+
+        assert result == "failed", reason
+        errors = [str(a) for _, a in conn.executed]
+        assert any("bot_standing_condition_after_" in e for e in errors), reason
+        svc.send_message.assert_not_awaited()
+        notify_spy.assert_not_awaited()
+        notify_spy.reset_mock()

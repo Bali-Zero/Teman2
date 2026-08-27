@@ -117,7 +117,10 @@ from typing import Any
 import asyncpg
 
 from backend.services.integrations import wa_codex_leg
-from backend.services.integrations.wa_bot_outcomes import BotStandingCondition
+from backend.services.integrations.wa_bot_outcomes import (
+    BotStandingCondition,
+    SilentStandingCondition,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -234,21 +237,34 @@ def _terminal_apology_enabled() -> bool:
 # whatsapp_ack.ack_text()'s pattern. Deliberately NOT a new translation
 # subsystem: five short strings, same shape as _ACK_TEXTS.
 #
-# Corrected 2026-08-27 (Gemini-cut PR): the previous EN/IT copy promised "a
-# member of our team will follow up with you shortly" while no code path
-# ever told a human anything — `_maybe_send_apology` now DOES flag the
-# conversation for the team (`wa_inbox_bot._tell_a_human`, Telegram), but
-# per that notifier's own docstring the one thing it proves is that
-# Telegram ACCEPTED the alert, never that a person is on shift or will act
-# on it "shortly". The copy below says the conversation was flagged, not
-# that a reply is guaranteed or timed — consultant tone, no price, no
-# regulation, nothing technical.
+# Corrected 2026-08-27 (Gemini-cut PR, first pass): the previous EN/IT copy
+# promised "a member of our team will follow up with you shortly" while no
+# code path ever told a human anything.
+#
+# Corrected AGAIN 2026-08-27, same day (Kimi K3 adversarial review,
+# coordinator-weighted MAGGIORE): the first pass above only REWORDED the
+# promise instead of removing it — "someone will get back to you as soon
+# as they can" (EN), "akan segera ditindaklanjuti" (ID, literally "will
+# soon be followed up"), "che ti risponderà appena possibile" (IT), "как
+# только смогут"/"щойно зможуть" (RU/UK) are all still timed-reply
+# promises in 4 of 5 languages, and the regression test meant to catch
+# this only checked the English word "shortly" — vacuous, since that word
+# could never appear in the other four languages regardless of whether the
+# promise was removed. `_tell_a_human`'s own docstring is the actual
+# contract: the boolean it returns proves Telegram ACCEPTED the alert,
+# never that a person is on shift or will act on it AT ALL, let alone on a
+# timescale ("shortly" / "segera" / "appena possibile" / etc.) nobody can
+# guarantee. The copy below states only what is TRUE right now — the
+# message was received and flagged — and commits to nothing about when or
+# whether a human replies. See `test_apology_texts_never_promise_a_timed_reply`
+# (derived from a real per-language promise-word list, not one English
+# token) for the regression this now actually catches.
 _APOLOGY_TEXTS = {
-    "en": "Sorry — we're having a technical hiccup on our end. We've flagged this conversation for our team, and someone will get back to you as soon as they can.",
-    "id": "Maaf, sistem kami sedang ada kendala teknis. Percakapan ini sudah kami tandai untuk tim kami, dan akan segera ditindaklanjuti.",
-    "it": "Ci scusiamo — abbiamo un problema tecnico momentaneo. Abbiamo segnalato questa conversazione al nostro team, che ti risponderà appena possibile.",
-    "ru": "Извините — у нас временные технические неполадки. Мы передали этот разговор нашей команде, и с вами свяжутся, как только смогут.",
-    "uk": "Вибачте — у нас тимчасові технічні проблеми. Ми передали цю розмову нашій команді, і з вами зв'яжуться, щойно зможуть.",
+    "en": "Sorry — we're having a technical hiccup on our end. We've received your message and flagged this conversation for our team.",
+    "id": "Maaf, sistem kami sedang mengalami kendala teknis. Pesan Anda sudah kami terima dan percakapan ini sudah kami tandai untuk tim kami.",
+    "it": "Ci scusiamo — abbiamo un problema tecnico momentaneo. Abbiamo ricevuto il tuo messaggio e segnalato questa conversazione al nostro team.",
+    "ru": "Извините — у нас временные технические неполадки. Мы получили ваше сообщение и передали этот разговор нашей команде.",
+    "uk": "Вибачте — у нас тимчасові технічні проблеми. Ми отримали ваше повідомлення і передали цю розмову нашій команді.",
 }
 
 
@@ -400,23 +416,29 @@ async def _maybe_send_apology(
     'failed' is a terminal wa_outbox status no other code path resets back
     to 'pending' (the stale-claim reclaimer only touches 'claimed'/
     'generating'; coalescing only touches 'pending'), so in practice this
-    can only be entered once per row — the
-    ``WHERE apology_sent_at IS NULL`` guard is kept as defense-in-depth
-    against future code paths, not because a race is currently reachable.
-    The human notification piggybacks on that SAME guard (it sits right
-    after the claim succeeds), so it also fires at most once per row —
-    on top of that, `_tell_a_human`'s own 30-minute per-thread dedup covers
-    the case where MULTIPLE rows in the same thread all exhaust retries.
+    can only be entered once per row. As of 2026-08-27 (Kimi K3 adversarial
+    finding, minore) the durable claim is taken AFTER a successful
+    client-facing send, not before — a read-only
+    ``SELECT apology_sent_at`` guards against re-sending, and the post-send
+    ``WHERE apology_sent_at IS NULL`` update is kept as defense-in-depth
+    against a genuine concurrent re-entry, not because one is expected in
+    practice. The human notification (`_tell_a_human`) is NOT gated by this
+    column at all — it is independent of the client-send claim, and relies
+    entirely on its own 30-minute per-thread dedup, which also covers the
+    case where MULTIPLE rows in the same thread all exhaust retries.
 
     Takeover-aware: does a FRESH human_handling read (unlike the ack, which
     reuses the caller's just-verified value) — a terminal failure can be
     reached long after the original human_handling check (bot generation
     can run for minutes, and Graph-send retries backoff for several more),
     so the value the caller loaded at claim time may be stale. If a human
-    now owns the thread, they are already the one following up — skip.
+    now owns the thread, they are already the one following up — skip (this
+    gates BOTH the human alert and the client apology).
 
-    Window-aware: skips if the Meta 24h window is closed (nothing could be
-    sent anyway).
+    Window-aware for the CLIENT SEND ONLY (2026-08-27 Kimi K3 adversarial
+    finding, MAGGIORE): the Meta 24h window governs what can be sent TO the
+    client, not the internal Telegram alert — see the call-site comment on
+    `_tell_a_human` below for why that call now happens BEFORE this check.
 
     Armed by ``_terminal_apology_enabled()`` (``WA_OUTBOX_TERMINAL_APOLOGY_ENABLED``,
     default **ON**, 2026-08-27) — a DEDICATED flag, deliberately NOT
@@ -433,8 +455,6 @@ async def _maybe_send_apology(
 
         if not _terminal_apology_enabled():
             return
-        if not _window_open_locally(thread):
-            return
 
         human_handling_now = await conn.fetchval(
             "SELECT human_handling FROM meta_inbox_threads WHERE thread_id = $1",
@@ -443,32 +463,55 @@ async def _maybe_send_apology(
         if human_handling_now:
             return
 
-        claimed = await conn.fetchrow(
-            """
-            UPDATE wa_outbox SET apology_sent_at = NOW()
-            WHERE id = $1 AND apology_sent_at IS NULL
-            RETURNING id
-            """,
-            outbox_id,
-        )
-        if claimed is None:
-            return  # already apologized
-
-        # Make the apology's promise true: actually flag the conversation
-        # for the team BEFORE (best-effort, independent of) the client-facing
-        # send below — never raises (see its own docstring), so a Telegram
-        # outage cannot suppress the apology itself.
+        # Tell a human BEFORE the Meta-window check (2026-08-27 Kimi K3
+        # adversarial finding, MAGGIORE): Telegram is an internal alert, not
+        # a WhatsApp send — it is not bound by the 24h customer-care window
+        # at all. The previous ordering put this call after the window
+        # check, so a row that sat unanswered long enough to exhaust its
+        # retries AND close the window got no client apology (unavoidable —
+        # nothing can be sent) AND no human alert (avoidable, and exactly
+        # the case a human is needed most: nobody else will ever see it).
+        # _tell_a_human never raises and carries its own 30-min per-thread
+        # dedup, so calling it here — independent of the client-send claim
+        # below — is safe even across multiple rows in the same thread.
         await _tell_a_human(
             phone=thread["counterpart_phone"],
             reason=f"terminal_apology:{reason}",
             thread_id=thread["thread_id"],
         )
 
+        if not _window_open_locally(thread):
+            return
+
+        already_sent = await conn.fetchval(
+            "SELECT apology_sent_at FROM wa_outbox WHERE id = $1", outbox_id
+        )
+        if already_sent is not None:
+            return  # already apologized
+
         latest_inbound = await _latest_inbound_text(conn, thread["thread_id"])
         detected_language = detect_language(latest_inbound)
         await whatsapp_service.send_message(
             phone=thread["counterpart_phone"],
             text=_apology_text(detected_language),
+        )
+
+        # Claim ONLY after a successful send (2026-08-27 Kimi K3 adversarial
+        # finding, minore): claiming apology_sent_at before attempting the
+        # send meant a failed send was swallowed by the except-Exception
+        # below while the durable flag was already set — permanently
+        # suppressing every future apology attempt for this row, with no
+        # recovery path (unlike the retry ladder for generation). The
+        # `WHERE apology_sent_at IS NULL` guard is kept as defense-in-depth
+        # against a genuine concurrent re-entry, not because one is expected
+        # in practice (see this function's own docstring on why this is
+        # normally entered once per row).
+        await conn.execute(
+            """
+            UPDATE wa_outbox SET apology_sent_at = NOW()
+            WHERE id = $1 AND apology_sent_at IS NULL
+            """,
+            outbox_id,
         )
         logger.info(
             "wa_outbox: apology sent (outbox=%s thread=%s reason=%s)",
@@ -944,7 +987,11 @@ async def _process_claimed_row(
                     "wa_outbox: codex leg served outbox=%s", outbox_id
                 )
             elif leg.reason in _CODEX_LEG_STANDING_REASONS:
-                raise BotStandingCondition(
+                # SilentStandingCondition, not the plain BotStandingCondition:
+                # these two mirror the Gemini leg's OWN silent exits (flag off /
+                # no customer message) — must notify NOBODY, client or human
+                # (2026-08-27 Kimi K3 adversarial finding, BLOCCANTE).
+                raise SilentStandingCondition(
                     f"wa-inbox bot: codex leg standing ({leg.reason})"
                 )
             else:
@@ -1040,18 +1087,27 @@ async def _process_claimed_row(
                         gen_exc,
                     )
                 # Apology (C4) — best-effort, never masks the failure above
-                # (already recorded on both ledgers by this point). Fires for a
-                # STANDING condition too, deliberately: `_maybe_send_ack` above
-                # does NOT consult WA_INBOX_BOT_AUTOREPLY, so with manners armed
-                # a client can already have received "checking on this…" before
-                # the generator ever declined. Suppressing the apology there
-                # would leave that promise hanging in permanent silence — an
-                # adversarial review caught exactly that path in the first draft
-                # of this change.
-                await _maybe_send_apology(
-                    conn, outbox_id, thread, whatsapp_service,
-                    reason="bot_standing_condition" if standing else "bot_generation_exhausted",
-                )
+                # (already recorded on both ledgers by this point). A real
+                # failure, or `provider_not_codex` (WA_GENERATION_PROVIDER
+                # unarmed — a misconfiguration that needs fixing regardless),
+                # DOES get the apology + human alert. A `SilentStandingCondition`
+                # (`autoreply_disabled` / `no_customer_message`) explicitly does
+                # NOT — those two mirror wa_inbox_bot.generate_bot_reply's own
+                # two silent exits, which by pre-existing, documented contract
+                # notify nobody (see `_tell_a_human`'s docstring and
+                # `SilentStandingCondition`'s own): "the bot is intentionally
+                # off right now" or "nothing to answer" is not an incident, and
+                # an apology/Telegram alert firing for it would invert that
+                # contract — a "switch it off" flag that produces client-facing
+                # messages is not a switch (2026-08-27 Kimi K3 adversarial
+                # review, coordinator-weighted BLOCCANTE — the first draft of
+                # this change fired the apology for every standing condition,
+                # which is exactly the regression this comment used to defend).
+                if not isinstance(gen_exc, SilentStandingCondition):
+                    await _maybe_send_apology(
+                        conn, outbox_id, thread, whatsapp_service,
+                        reason="bot_standing_condition" if standing else "bot_generation_exhausted",
+                    )
                 return "failed"
 
             backoff = RETRY_BACKOFF_BASE_SECONDS * (2 ** (attempts - 1))
