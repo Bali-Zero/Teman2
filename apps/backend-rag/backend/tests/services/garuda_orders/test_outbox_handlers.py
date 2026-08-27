@@ -39,6 +39,7 @@ from backend.services.garuda_orders.outbox_handlers import (
     PracticeReleaseHandler,
     build_handlers,
 )
+from backend.tests.fixtures.prod_shaped_pool import create_prod_shaped_pool
 
 # `_seed_full_case` is imported rather than re-implemented ON PURPOSE. Seeding a
 # usable case means check -> order -> journal -> practice PLUS an active
@@ -66,7 +67,7 @@ RECIPIENT = "traveller@example.invalid"
 @pytest.fixture
 async def pool():
     try:
-        p = await asyncpg.create_pool(_DSN, min_size=1, max_size=4)
+        p = await create_prod_shaped_pool(_DSN, min_size=1, max_size=4)
     except (OSError, asyncpg.PostgresError) as exc:
         if os.environ.get("CI"):
             pytest.fail(f"no reachable Postgres in CI at {_DSN}: {exc}")
@@ -469,7 +470,11 @@ def test_build_handlers_routes_practice_release() -> None:
     """
 
     handlers = build_handlers(pool=None, sender=None)  # type: ignore[arg-type]
-    assert set(handlers) == {"payment_paid_email", "practice_release"}
+    # The set is EXACT on purpose: adding a route must be a deliberate edit
+    # here, and removing one can never pass unnoticed. `portal_invite` joined
+    # it when a paid order started producing a portal account as well as a
+    # practice.
+    assert set(handlers) == {"payment_paid_email", "practice_release", "portal_invite"}
     assert isinstance(handlers["practice_release"], PracticeReleaseHandler)
 
 

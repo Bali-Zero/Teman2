@@ -1,0 +1,135 @@
+task_id: floor-size-term-0826
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  S1 (blast-radius term in the gear floor): `scripts/evidence_pack_lint.py`'s
+  `compute_floor(changed_files)` was PATH-ONLY — 15 hot-zone globs floored a
+  diff at Gear 3, anything else floored at Gear 1, regardless of size.
+  Measured: PR #4959 (24,582 net lines), #4960 (4,979 lines / 40 files, the
+  public funnel UI rewrite), #4797 (10,107 net lines) and #4898 (1,618-line
+  PII-in-logs cure) all floored at Gear 1 and got no evidence brief, none of
+  them touched .github/workflows/* or the other hot-zone globs.
+
+  This PR gives `compute_floor` an optional SIZE term: `compute_floor(changed_files,
+  numstat=None)` computes churn (added+deleted, Σ over non-generated/non-vendored/
+  non-lockfile/non-binary files) and floors at Gear 3 when it clears
+  SIZE_GEAR3_THRESHOLD (measured churn p90 over the 170 most recently merged PRs,
+  clamped >=1500 — 1828), or raises the floor to at least Gear 2 past
+  SIZE_GEAR2_THRESHOLD (400, the Agent PR Contract's own net-line target).
+  `harness-floor.yml`'s numstat computation step is moved earlier (before the
+  floor step, not after) so the size term is available unconditionally, with the
+  bootstrap-guard fallback semantics (missing file -> path-only floor + NOTICE)
+  preserved exactly. `--print-floor` gains `--numstat-file` to accept the same
+  numstat format the workflow already produces for the ceiling.
+
+  SECOND PASS (same PR, same session): cross-family adversarial review
+  (codex-sol, gpt-5.6-sol, read-only sandbox) on the first cut found 3 HIGH +
+  2 MEDIUM real gaps before this ever reached CI. All 5 are fixed here, in one
+  follow-up commit, findings recorded in the PR body per the Agent PR Contract's
+  "fix real findings" instruction:
+    1. HIGH — a floor==2 diff with no evidence/brief.yml passed the workflow's
+       "not a harness task" step silently (it only guarded floor==3). Fixed:
+       Step 5a/5b's condition is now floor==1 (pass) vs floor!=1 (fail without
+       a brief), so floor==2 is no longer a free bypass.
+    2. HIGH — the size term's per-file formula was `abs(added-deleted)`,
+       cancelable by a balanced in-place rewrite (2000 added + 2000 deleted in
+       ONE file netted to 0). Fixed: switched to churn (added+deleted), which
+       cannot cancel this way; SIZE_GEAR3_THRESHOLD recalibrated to the
+       churn-based p90 (1828, was 1790 on the old metric, same 170-PR sample).
+    3. HIGH — the workflow's `git diff --numstat > file` line ran unguarded
+       under `set -u` only. Fixed: explicit `if ! git diff ...` guard, failing
+       to `available=false` rather than risking `available=true` over a
+       truncated/empty file.
+    4. MEDIUM — no vendored-directory exclusion (this repo has a real
+       `vendor/evoskill` tree). Fixed: added vendor/vendored/node_modules/
+       dist/build to the exclusion list.
+    5. MEDIUM — the lockfile exclusion was a blanket `*.lock` suffix match,
+       which would also exempt this repo's own hand-written `agent_lock:
+       <resource>` coordination-pattern files. Fixed: narrowed to the named
+       package-manager lockfile list only.
+constraints:
+  - "Change confined to `compute_floor` and the `--print-floor` CLI path —
+    lane L8 is concurrently appending new seat-rule functions at the END of
+    the same file plus one call site in the main check loop; this PR does not
+    touch either, to minimize merge conflict."
+  - "No paid API. The refuter round used `codex exec` (ChatGPT Pro, flat
+    subscription, unmetered) — zero metered spend."
+  - "No PII. This PR touches only CI governance code (a linter + a workflow)
+    and its own test suite; nothing here processes client data."
+  - "The bootstrap-guard fallback semantics in harness-floor.yml (missing
+    numstat -> path-only floor + NOTICE, never a hard fail) are preserved
+    exactly through the step reorder — verified by the fallback test and by
+    actionlint."
+acceptance:
+  - "`apps/backend-rag/.venv/bin/python3 -m pytest scripts/tests/test_evidence_pack_lint.py -q`
+    — 110/110 pass (97 pre-existing + 13 new: 10 for the size term itself,
+    3 added in the refuter-fix round)."
+  - "`python3 scripts/evidence_pack_lint.py --selftest` — SELFTEST PASS, exit 0."
+  - "`actionlint .github/workflows/harness-floor.yml` — zero output, exit 0."
+  - "Guilt: 2,000-net-line diff on plain paths -> floor 3; 500-line -> floor 2.
+    Innocence: 100-line docs diff -> floor 1; 5,000-line fixtures-only diff ->
+    unchanged path floor. Fallback: numstat missing -> path-only floor. All
+    present and passing, plus the 3 refuter-driven regression tests (balanced
+    same-file rewrite, vendored-dir exclusion, named-vs-blanket lockfile)."
+  - "PR body states BEFORE (5/12 commits with net>1500 carried a brief [42%];
+    10/29 for net>400 [34%]) and AFTER (this rule makes it 12/12 and 29/29, or
+    an explicit gear_override) per the original mandate."
+consumer_map:
+  - "`scripts/evidence_pack_lint.py::compute_floor/_size_term_net_lines/
+    _is_size_term_excluded` — the size term itself; consumed by
+    `check_gear_floor` and `lint()`, both of which gained a `numstat`/
+    `numstat_text` passthrough parameter."
+  - "`.github/workflows/harness-floor.yml` Step 2c (`id: netlines`, moved
+    earlier) -> Step 3 (`id: detfloor`, `--numstat-file` wired) -> Step 5a/5b
+    (floor==1 vs floor!=1 split, corrected) -> Step 6 (`gearcheck`, already
+    floor-generic via numeric `GEAR < FLOOR`, unaffected) -> Step 7b (Gear-3
+    pack validation, unaffected — stays Gear-3-only by design)."
+  - "`scripts/tests/test_evidence_pack_lint.py` — the guilt/innocence/fallback
+    corpus and the 3 refuter-regression tests, run in CI's own test suite and
+    locally via the venv interpreter (system python3 lacks pytest)."
+risks:
+  - "SIZE_GEAR3_THRESHOLD (1828) is a POINT-IN-TIME snapshot (churn p90 over
+    170 PRs merged as of 2026-08-27). No auto-recalibration cron exists yet —
+    if the fleet's typical PR shape drifts meaningfully, this constant will
+    need a manual re-measure. Out of scope for this PR (S1 only asks for the
+    initial calibration methodology, not an ongoing recalibration mechanism)."
+  - "The generated/fixtures directory-name exemption remains AUTHOR-CONTROLLED
+    — a PR could name a directory `generated/` to dodge the size term. Same
+    trust boundary evidence/brief.yml itself already carries (a PR author can
+    also just declare a false gear); narrowing this further was flagged by the
+    refuter as a real but separate, larger change and is not attempted here."
+  - "`--no-renames` amplifies a pure file move into a full add+delete pair in
+    the numstat, inflating churn for a rename-only diff. Accepted deliberately
+    — a rename still shows real diff volume to review, and `--no-renames`
+    matches `sum_numstat()`'s own existing convention (no new inconsistency
+    introduced)."
+grader: |
+  generator != grader, twice over. Round 1 (the size-term feature): cross-family
+  adversarial review via `codex exec --sandbox read-only --skip-git-repo-check
+  -m gpt-5.6-sol -c model_reasoning_effort="high"` against the real PR diff
+  (`gh pr diff 5049`), producing 3 HIGH + 2 MEDIUM findings — all addressed in
+  the round-2 commit, with two sub-findings explicitly triaged and left
+  unchanged (reasoning recorded above under risks). One refuter claim was
+  independently checked rather than trusted at face value: the refuter's stated
+  mechanism for Finding 3 (an unguarded `git diff` leaving `available=true` over
+  a truncated file) was tested live in an isolated bash invocation matching GH
+  Actions' actual default shell (`bash --noprofile --norc -eo pipefail`) — the
+  underlying risk was real, but the refuter's exact described failure mode was
+  not (GH Actions' implicit `-e` already aborts the step on that failure); the
+  fix implemented reflects the corrected mechanism, not the refuter's literal
+  claim.
+
+  Round 2 (the refuter-fix commit itself): independently re-verified by a
+  `backend-verifier` subagent on fresh context, read-only, before this pack was
+  written — re-ran the full test suite, the selftest, and actionlint from
+  scratch, and independently confirmed each of the 3 HIGH fixes both by reading
+  the diff and by re-executing the exact behavioral case that exposed the bug
+  (e.g. the balanced-rewrite regression). Verdict: CLEAN, all 8 checks pass.
+budget: |
+  Flat-subscription only, ~15 minutes wall across both rounds. This session
+  (Claude MAX OAuth) for the implementation; `codex exec` (ChatGPT Pro, gpt-5.6-sol,
+  unmetered) for the round-1 refuter pass; one `backend-verifier` subagent
+  (same Claude MAX OAuth pool) for round-2 independent re-verification. Zero
+  metered API spend.
+pii: none

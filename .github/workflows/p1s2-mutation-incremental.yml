@@ -30,7 +30,6 @@ name: P1 STRATO-2 incremental mutation gate
 # The push trigger keeps its paths filter (push only fires when work is needed).
 on:
   pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
-  merge_group:
   push:
     branches:
       - main

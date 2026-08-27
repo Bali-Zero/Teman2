@@ -20,7 +20,21 @@ export default function NotFound() {
         <Link href="/" className={buttonVariants({ variant: "default" })}>
           Return Home
         </Link>
-        <Link href="/chat" className={buttonVariants({ variant: "outline" })}>
+        {/* `prefetch={false}` is load-bearing, not a tuning knob: `/chat` is
+            301'd cross-origin to kita.balizero.com by the Vercel Dashboard, and
+            Next's default RSC prefetch (`/chat?_rsc=…`) therefore becomes a
+            cross-origin request that CORS blocks — two console errors and one
+            failed request on every render of this page (measured live
+            2026-08-27). apps/mouth/CLAUDE.md documents the middleware
+            RSC→204 remedy for this class, but this app has no middleware:
+            the redirect lives in the Vercel Dashboard, which cannot detect a
+            prefetch. Not prefetching is the fix that is actually available
+            here; the click-through is unaffected. */}
+        <Link
+          href="/chat"
+          prefetch={false}
+          className={buttonVariants({ variant: "outline" })}
+        >
           Go to Chat
         </Link>
       </div>

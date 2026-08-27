@@ -1253,7 +1253,24 @@ Trenta minuti dopo, `gh pr merge 4658 --auto` ha risposto **«already queued to 
 if: github.event.pull_request.draft == false
 ```
 
-`synchronize` = ogni push al branch della PR. Quindi **ogni push a una PR non-draft la ri-arma**, entro ~6 minuti. Nella stessa lista di run, i branch in draft risultano `skipped`, i non-draft `success` — coerente con la condizione dichiarata, non con un'inferenza.
+`synchronize` = ogni push al branch della PR. Nella stessa lista di run, i branch in draft risultano `skipped`, i non-draft `success`.
+
+**⚠️ CORREZIONE (2026-08-27, Pro — letta su `origin/main`, non dedotta). La conclusione originale di questa cicatrice era «ogni push a una PR non-draft la ri-arma»: è FALSA per i branch che questa flotta usa.** `draft == false` è il cancello del *job*, non l'unica condizione. L'armamento passa da **tre step in cascata**, e il primo è il BRANCH:
+
+```yaml
+# auto-merge-whitelist.yml — step "Check branch whitelist"
+[[ "$BRANCH" =~ ^docs/auto-sync- ]] || [[ "$BRANCH" =~ ^dependabot/(pip|npm_and_yarn)/ ]] || [[ "$BRANCH" =~ ^chore/fmt- ]]
+```
+
+poi l'author allowlist (`dependabot[bot]` | `github-actions[bot]` | `Balizero1987`), poi l'assenza di path CODEOWNERS Tier-1. Solo se tutti e tre passano si arriva allo step `Enable auto-merge`.
+
+`#4658` viveva su `agent/nuzantara/wr3/p03-required-ledger`: **non matcha nessuno dei tre pattern** ⇒ `match=false` allo step 1 ⇒ il workflow non ha mai raggiunto lo step che arma. Lo stesso vale per **ogni** branch `agent/<host>/<lane>/…`, cioè per la totalità delle PR di lane.
+
+**Come l'evidenza è stata mal letta — è la parte riusabile.** La prova citata sopra è `10:12:43Z run auto-merge-whitelist.yml -> success`. Ma un job che esce `match=false` allo step 1 esce **anch'esso `success`**: `success` dice che il job non è fallito, non che ha armato. E «i draft `skipped`, i non-draft `success`» è compatibile con entrambe le tesi, quindi non ne distingue nessuna. **Un run verde non è la prova di un'azione**: la prova è l'effetto (`autoMergeRequest` / `isInMergeQueue`) o il log dello step che la esegue.
+
+**Cosa resta vero, cosa resta ignoto.** Resta vero che alle `10:18:37Z` #4658 è stata armata da qualcuno che non era la lane, e che l'`actor` del timeline non lo distingue (GOTCHA (a), intatto). Resta vero che il DRAFT è il freno più robusto. **Non è noto chi abbia armato:** `auto-merge-whitelist.yml` è l'unico workflow del repo che abilita auto-merge (verificato 2026-08-27, grep su `.github/workflows/`), e per quel branch non può essere stato lui. La causa non è stata determinata e non va inventata.
+
+**Conseguenza operativa, opposta a quella che si leggeva prima.** Su una PR di lane (`agent/*`), **disarmare È un hold che sopravvive ai push**, perché nessun workflow la ri-arma. Chi ha letto questa cicatrice come «tanto si ri-arma da sola» ha rinunciato a un freno che aveva in mano. Il draft resta comunque preferibile — per la ragione di W126, e perché non dipende da questa analisi.
 
 **Perché costa.** «Hold arms» è un protocollo di coordinamento che la flotta usa spesso, e chi lo onora disarmando crede di aver pagato un costo che non ha pagato. Il danno non è la PR accodata — nel mio caso era perfino desiderabile — è che **un impegno preso con altre lane decade in silenzio**, e le lane a valle pianificano sopra un fatto che non è più vero. Peggiora perché il gesto sembra durevole: nessun errore, nessun avviso, e la PR resta apparentemente com'era finché non la si interroga.
 
@@ -1324,7 +1341,7 @@ git show "HEAD:evidence/pack.yml" | diff -q - evidence/pack.yml   # deve essere 
 
 Vuoto = ho davvero tenuto il mio. Non vuoto = qualcosa è entrato dalla porta di servizio, e adesso lo vedo.
 
-**GOTCHA.** «Byte-identico all'HEAD pre-merge» vale per questa CLASSE di file (interamente miei), non per un merge qualunque: in un merge normale il contenuto altrui DEVE entrare, e un diff vuoto sarebbe il bug. Prima di applicare la cura, chiediti se il file ha un solo proprietario. E la vigilanza non è la cura strutturale: quella è togliere i path fissi — `scripts/ci/evidence_paths.py` è già su `main` (#4678) ma non ancora adottato dai produttori dei pack, e finché non lo è la finestra si riapre a ogni PR Gear≥2.
+**GOTCHA.** «Byte-identico all'HEAD pre-merge» vale per questa CLASSE di file (interamente miei), non per un merge qualunque: in un merge normale il contenuto altrui DEVE entrare, e un diff vuoto sarebbe il bug. Prima di applicare la cura, chiediti se il file ha un solo proprietario. E la vigilanza non è la cura strutturale: quella è togliere i path fissi — `scripts/ci/evidence_paths.py` è già su `main` (#4678) e dal 2026-08-27 `evidence_pack_lint.py` (rule 9) spinge l'adozione lato-scrittura con NOTICE oggi, FAIL da `EVIDENCE_ROOT_DEPRECATION_DATE` (2026-09-05) — finché la data non passa, e finché un produttore non migra davvero, la finestra resta aperta a ogni PR Gear≥2.
 
 ---
 
@@ -1344,7 +1361,7 @@ _Scoperto 2026-08-23 su PR #4681, leggendo la timeline API di GitHub dopo che un
 
 Il draft era reale e il hold era stato applicato; non aveva però rimosso l'entry che la coda aveva già accettato. `gh pr ready --undo` cambia `isDraft` in `true` e non cambia la queued entry.
 
-**MECCANISMO.** `.github/workflows/auto-merge-whitelist.yml` controlla `draft == false` quando decide se armare una PR. La merge queue non riconsulta quel campo per un'entry già accettata. W123 dice quindi la verità solo prima dell'ingresso in coda: il draft impedisce al workflow di ri-armare una PR non ancora accodata, ma non è un eject della coda.
+**MECCANISMO.** `.github/workflows/auto-merge-whitelist.yml` controlla `draft == false` quando decide se armare una PR — ma è solo il primo dei suoi cancelli, e per un branch `agent/*` il workflow si ferma prima di armare comunque (vedi la CORREZIONE 2026-08-27 dentro W123: la whitelist di branch copre solo `docs/auto-sync-*`, `dependabot/{pip,npm_and_yarn}/*`, `chore/fmt-*`). La merge queue non riconsulta quel campo per un'entry già accettata. W123 dice quindi la verità solo prima dell'ingresso in coda: il draft impedisce al workflow di ri-armare una PR non ancora accodata, ma non è un eject della coda.
 
 **IL VERO ERRORE È TEMPORALE.** `isInMergeQueue` era stato letto verso le 13:05 e valeva `false`. Era il campo giusto e la misura era vera in quell'istante. Alle 13:16 è diventato `true`; nessuno l'ha riletto, e il draft delle 13:21 è stato applicato sulla forza di un dato vecchio di sedici minuti. Non il campo sbagliato: **il campo giusto al momento sbagliato** — gemello temporale dell'errore registrato la stessa mattina da wr3/P03, dove il dato giusto era in mano ma veniva letto l'altro campo.
 

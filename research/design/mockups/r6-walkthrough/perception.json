@@ -1,0 +1,121 @@
+{
+ "method": {
+  "design": "blind counterbalanced LLM-proxy panel \u2014 NOT user data. 4 seats judged FULL pages M4a (named human) vs M4b (team control) relabeled PAGE-1/PAGE-2; study comments stripped; order counterbalanced 2+2 (codex,qwen: P1=M4a \u00b7 kimi,agy: P1=M4b). Seats read markup+copy+declared palette, not pixels. qwen: copy-only minimal payload, TASK A only.",
+  "rubric": "T trust/institutional 1-5 \u00b7 S scam-signal risk \u00b7 C status clarity \u00b7 A actionability \u00b7 forced choice + dark-pattern audit; TASK B red perception on M7/M1 landings (codex,kimi,agy only)",
+  "scale_note": "agy self-inverted the S scale (5=low risk, declared in his output); normalized in the table below to RISK direction (5=highest risk)."
+ },
+ "mapping": {
+  "codex": {
+   "PAGE-1": "M4a-named",
+   "PAGE-2": "M4b-control"
+  },
+  "kimi": {
+   "PAGE-1": "M4b-control",
+   "PAGE-2": "M4a-named"
+  },
+  "agy": {
+   "PAGE-1": "M4b-control",
+   "PAGE-2": "M4a-named"
+  },
+  "qwen": {
+   "P1": "M4a-named",
+   "P2": "M4b-control"
+  }
+ },
+ "task_a": {
+  "codex": {
+   "order": "P1=M4a",
+   "named": {
+    "T": 5,
+    "S_risk": 2,
+    "C": 5,
+    "A": 5
+   },
+   "control": {
+    "T": 4,
+    "S_risk": 3,
+    "C": 5,
+    "A": 4
+   },
+   "choice": "named",
+   "reason": "sensitive exception visibly assigned to an accountable human, not an anonymous team",
+   "dark_pattern": "WhatsApp as the only prominent forward action pressures toward off-page chat; review link only partially offsets"
+  },
+  "kimi": {
+   "order": "P1=M4b",
+   "named": {
+    "T": "4 (3 for the skeptical)",
+    "S_risk": 3,
+    "C": 5,
+    "A": 4
+   },
+   "control": {
+    "T": 4,
+    "S_risk": 2,
+    "C": 5,
+    "A": 4
+   },
+   "choice": "control",
+   "reason": "DISSENT: overstay applicants burned by calo/broker culture trust institutional verifiability over a face; named person+photo+WhatsApp is the SEA agent-scam trust prop; case-file framing (code + SLA-bound team + state line) anchors to the state, not to one individual's goodwill",
+   "dark_pattern": "none; watch-item: {FOTO}+{NAMED_AGENT} becomes deceptive IF stock/fictional \u2014 only clean if real"
+  },
+  "agy": {
+   "order": "P1=M4b",
+   "named": {
+    "T": 4.5,
+    "S_risk": 1.5,
+    "C": 5,
+    "A": 4.5
+   },
+   "control": {
+    "T": 3.5,
+    "S_risk": 3,
+    "C": 5,
+    "A": 4.5
+   },
+   "choice": "named",
+   "reason": "a named, pictured specialist removes the fear of sending immigration infractions into an anonymous WhatsApp inbox",
+   "dark_pattern": "none; pages actively reject dark patterns (price withheld honestly, editable answers, PII-free links)"
+  },
+  "qwen": {
+   "order": "P1=M4a",
+   "named": {
+    "T": 4.5,
+    "S_risk": 2
+   },
+   "control": {
+    "T": 4.0,
+    "S_risk": 1
+   },
+   "choice": "named",
+   "reason": "a named human taking responsibility reassures the anxious applicant",
+   "dark_pattern": "none overt; risk = fake/stock agent authority or unclear WA handoff"
+  }
+ },
+ "task_a_verdict": {
+  "split": "3-1 plurality for M4a named (codex, agy, qwen vs kimi) — qwen on a copy-only stimulus, so 2-1 among full-page seats plus one copy-level vote",
+  "order_bias_check": "order NOT ruled out: named-first seats 2/2 named, control-first 1-1; agy's cross-over only shows order is not the sole deterministic cause (n=2 per condition)",
+  "verifiability_condition": "stated by TWO seats (kimi watch-item: deceptive if stock/fictional; qwen: fake/stock agent authority risk); codex's genuine-profiles caveat is about review links, agy attaches no condition; NO seat scored an unverifiable-named scenario, so 'below control' has no tabulated basis — the first tabulation claimed unanimity, refuter-killed",
+  "wa_forward_residual": "codex names WhatsApp-only forward action a dark-pattern risk; kimi and agy flag it inside scam-risk rationales; qwen flags the handoff if unclear; agy's formal dark-pattern audit returns None — three risk-rationale flags + one dark-pattern flag, NOT unanimous"
+ },
+ "task_b": {
+  "verdict": "3/3 INSTITUTIONAL with graded scam-adjacency (codex on M1: 'greater scam adjacency than LAND-1' verbatim)",
+  "demand_note": "the rubric named the institutional-vs-scam dichotomy and supplied the palette mechanism lines — TASK B convergence is coherence with the frame, not independent discovery",
+  "codex": {
+   "m7": "institutional-leaning",
+   "m1": "institutional but more transactional/scam-adjacent than M7 (red CTA + price promise + WA)",
+   "missing": "visible physical office address / directly verifiable contact identity near the first CTA"
+  },
+  "kimi": {
+   "core": "red as STRUCTURE not alarm = state-document register; urgency-scam register floods backgrounds/banners/countdowns with red \u2014 this palette does the opposite; errors wine never bright red",
+   "weak_points": "icon-only WA entry + red CTA = one structural overlap with scam anatomy; M1's 'prefer to talk first' card near the price = most scam-adjacent block; masked price IDR 1.5XX.XXX reads slightly teaser (neutralized by the to-the-rupiah line)"
+  },
+  "agy": {
+   "core": "Merah Putih red on warm archival paper with navy ink evokes official administrative stationery; wine for conditional notices avoids high-alarm scarlet"
+  },
+  "convergent_mitigators": [
+   "role-separation line 'We prepare your application; Ditjen Imigrasi decides and issues' \u2014 disclaims the power scammers claim",
+   "PT legal name + NPWP + registry link (what scam pages omit)"
+  ]
+ }
+}
