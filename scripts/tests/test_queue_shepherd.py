@@ -14,6 +14,7 @@ same entity, never inferred from a single guilt case.
 from __future__ import annotations
 
 import datetime as _dt
+import json
 import sys
 from pathlib import Path
 
@@ -353,6 +354,22 @@ def test_kill_switch_env_var_makes_tick_a_noop(monkeypatch):
     monkeypatch.setattr(qs, "fetch_queued_runs", never_called)
     rc = qs.tick(dry_run=False)
     assert rc == 0
+
+
+def test_kill_switch_writes_a_disabled_heartbeat_not_silence(monkeypatch, tmp_path):
+    # G5: alive-but-idle must be observable as "disabled", never indistinguishable
+    # from a dead organ (agy cross-family review, PR #5071).
+    monkeypatch.setenv("QUEUE_SHEPHERD_ENABLED", "false")
+    monkeypatch.setattr(qs, "ORGANISM_DIR", tmp_path)
+    monkeypatch.setattr(qs, "fetch_rearm_candidate_prs", lambda *_a, **_k: (_ for _ in ()).throw(AssertionError))
+    monkeypatch.setattr(qs, "fetch_queued_runs", lambda *_a, **_k: (_ for _ in ()).throw(AssertionError))
+
+    rc = qs.tick(dry_run=False)
+
+    assert rc == 0
+    hb = json.loads((tmp_path / f"{qs.ORGAN_ID}.json").read_text())
+    assert hb["status"] == "disabled"
+    assert "QUEUE_SHEPHERD_ENABLED" in hb["metadata"]["reason"]
 
 
 # ── rearm pass: end-to-end with monkeypatched I/O ───────────────────────────

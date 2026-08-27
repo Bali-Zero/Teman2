@@ -87,6 +87,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -108,6 +109,13 @@ ALERTED_FILE = Path(
 LOG_FILE = Path(
     os.environ.get("QUEUE_SHEPHERD_LOG_FILE", os.path.expanduser("~/logs/queue-shepherd.log"))
 )
+
+# Organism heartbeat sidecar (organ-conformance G2, born 2026-08-27): the organ must prove its
+# own liveness every run, on BOTH the success and failure path (superscar #2, esiste != armato —
+# a launchd job with KeepAlive/StartInterval "green" tells you nothing about whether its last
+# tick actually did anything). Mirrors dlq_autopilot.py's unconditional-heartbeat pattern.
+ORGANISM_DIR = Path(os.path.expanduser("~/.organism/last_seen"))
+ORGAN_ID = "pro.queue_shepherd"
 
 INFRA_BUDGET_MAX = 3
 BUDGET_WINDOW_HOURS = 24
@@ -909,16 +917,48 @@ def run_janitor_pass(dry_run: bool) -> int:
     return cancelled
 
 
+def _write_heartbeat(status: str, metadata: dict[str, Any]) -> None:
+    """Unconditional organism heartbeat sidecar — never raises (a heartbeat write must never
+    break the run it is reporting on). Atomic write via tmp+replace, same pattern as
+    dlq_autopilot.py's organ heartbeat."""
+    try:
+        ORGANISM_DIR.mkdir(parents=True, exist_ok=True)
+        organ_path = ORGANISM_DIR / f"{ORGAN_ID}.json"
+        organ_tmp = organ_path.with_suffix(f".json.tmp.{os.getpid()}")
+        organ_tmp.write_text(
+            json.dumps(
+                {
+                    "ts": time.time(),
+                    "status": status,
+                    "organ_id": ORGAN_ID,
+                    "metadata": metadata,
+                }
+            )
+        )
+        organ_tmp.replace(organ_path)
+    except Exception as exc:  # noqa: BLE001 — heartbeat must never break the run
+        logger.warning("organ heartbeat emit failed: %s", exc)
+
+
 def tick(dry_run: bool) -> int:
     if not _enabled():
         logger.info("QUEUE_SHEPHERD_ENABLED=false — no-op tick (receipt line, superscar #2)")
+        # G5: a kill-switched organ is alive-but-idle, not silent — write an explicit
+        # disabled heartbeat so the staleness monitor never mistakes this for a dead
+        # organ (agy cross-family review, PR #5071: "disabled state is ambiguous").
+        _write_heartbeat("disabled", {"reason": "QUEUE_SHEPHERD_ENABLED=false"})
         return 0
     now = _now()
-    rearmed = run_rearm_pass(dry_run, now)
-    cancelled = run_janitor_pass(dry_run)
+    try:
+        rearmed = run_rearm_pass(dry_run, now)
+        cancelled = run_janitor_pass(dry_run)
+    except Exception as exc:  # noqa: BLE001 — G2: heartbeat the failure path too, then re-raise
+        _write_heartbeat("error", {"error": str(exc), "dry_run": dry_run})
+        raise
     logger.info(
         "tick complete: rearmed=%s cancelled=%s dry_run=%s", rearmed, cancelled, dry_run
     )
+    _write_heartbeat("ok", {"rearmed": rearmed, "cancelled": cancelled, "dry_run": dry_run})
     return 0
 
 
