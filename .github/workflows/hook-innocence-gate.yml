@@ -29,7 +29,6 @@ name: Hook innocence gate (vaccine)
 
 on:
   pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
-  merge_group:
   push:
     branches: [main]
     paths:

@@ -1,110 +1,34 @@
-task_id: push-main-dedupe-0827
+task_id: queue-slim-0827
 gear: 3
 l_level: L1
 gate_class: opus
 objective: |
-  Execute Zero's 2026-08-27 GO order for Merge-OS v3 build order step 2
-  (research/operations/2026-08-14-merge-os-v3-research-council.md §6): remove the
-  "third payment" — a `push: main` trigger on `tests.yml`/`security.yml` that
-  re-runs the heavy suite on a commit `merge_group` already tested seconds earlier.
+  Zero's direct order 2026-08-27 ("fallo andare in prod come primo, così la
+  coda diventa velocissima"): stop advisory workflows from running on
+  merge_group so each merge-queue entry spawns only the workflows that back
+  the 11 required contexts. 24 workflows lose their merge_group trigger; the
+  8 that emit the 11 required contexts keep it. Measured motivation: during
+  the 2026-08-26 Actions outage recovery, ~50 runs per queue entry saturated
+  runner capacity (500+ queued runs, 5-13 in progress) and entries died on
+  the 90-minute check_response_timeout (#5052 ejected checks_timed_out at
+  19:34Z) while the queue only ever waits on the 11 required.
 
-  GROUND-TRUTH FINDING THAT CHANGED THE SHAPE OF THIS WORK: the literal removal
-  already happened, 11-12 days before this GO order. `tests.yml`'s entire `push:`
-  block was dropped in #4210 (2026-08-15); `security.yml`'s `on.push.branches`
-  was narrowed from `[main, develop]` to `[develop]` in #4218 (2026-08-16), each
-  gated on its own schedule producing a first green run first, exactly per the
-  council's ordering. Both preconditions the mandate asked to re-verify (ruleset:
-  no bypass actors, direct pushes blocked; tests.yml 2-hourly schedule green;
-  security.yml daily 19:17Z schedule green since before 2026-08-14) are STILL
-  true today — re-verified live, receipts below — but they were already
-  satisfied when #4210/#4218 shipped; there was nothing left to remove.
-
-  What was actually still wrong, and is what this PR ships: the `on:` block
-  comments in BOTH files, and one PENDING-ARMS.md ledger row, kept narrating
-  the removal as *future* work ("Prerequisite for a later PR to remove this
-  workflow's `push: main` trigger") for 11-12 days after it landed. A second
-  PENDING-ARMS row (opened 2026-08-23, an adversarial refuter finding on #4647)
-  named the tests.yml half of this exact drift and left it open, owner "session
-  (any lane touching tests.yml triggers)" — this session is that lane. A stale
-  comment describing already-completed work as pending is indistinguishable,
-  to the next reader, from work that is genuinely still open — which is the
-  most credible root cause for why Zero re-issued a GO order for a step already
-  shipped (cicatrix-superscar.md #9 / W106: "a cure anchored to a frozen
-  measurement of the world is wrong by construction"). This PR: (1) corrects
-  both comments to state what actually happened and when, (2) removes the two
-  now-provably-stale PENDING-ARMS rows (live proof of arming below, not
-  assumed), (3) adds a regression tripwire so the underlying fact — no
-  push:main on either file — is machine-checked going forward, not only
-  narrated in prose that can go stale again silently.
-
-  Gear 3 by PATH, not by blast radius: `.github/workflows/*` is
-  `HOTZONE_PATTERNS` in `scripts/evidence_pack_lint.py` — the floor is a
-  deterministic lower bound on two comment-only workflow edits, never the
-  author's choice. No trigger, schedule, or concurrency semantics change.
+  Gear 3 by PATH: `.github/workflows/*` is hot-zone (`HOTZONE_PATTERNS` in
+  scripts/evidence_pack_lint.py) — deterministic floor, not author's choice.
+  This pack was added in a follow-up commit after "Harness floor recompute"
+  correctly failed the original head (hot-zone diff, no evidence/brief.yml).
 constraints:
-  - "No change to any trigger, schedule, or concurrency expression in either
-    workflow file — verified line-by-line in the diff and by re-parsing both
-    files' `on:` blocks structurally (receipts below). Comment-only in both."
-  - "Do not re-litigate whether the removal was correct — that decision and
-    its preconditions were already made and verified in #4210/#4218; this PR
-    only corrects the record of when/whether it happened."
-  - "Only remove a PENDING-ARMS row with live proof it is armed (git history +
-    current file state), never on the row's own say-so or on inference."
+  - "DEADLOCK INVARIANT: every one of the 11 required contexts must still
+    report on merge_group — a required context that never reports deadlocks
+    the queue at the 90-minute timeout. KEEP set provably complete."
+  - "No job logic changed anywhere — trigger-block edits only."
+  - "Queue-mechanics watchers (merge-queue-watch, merge-gate-integrity-watch,
+    main-push-failure-watch, main-red-breaker) untouched — none trigger on
+    merge_group today."
 acceptance:
-  - "tests.yml: `on:` block still contains `pull_request`, `merge_group`,
-    `workflow_dispatch`, `schedule` and NO `push` key, both before and after
-    this PR (unchanged by construction — comment-only)."
-  - "security.yml: `on.push.branches` still equals `[develop]` (no `main`),
-    `schedule` still carries the daily 19:17 UTC + weekly Sunday crons,
-    unchanged by construction."
-  - "actionlint clean on both modified workflow files."
-  - "The new tripwire test (`scripts/tests/test_no_push_main_trigger_on_heavy_suites.py`)
-    passes against the current (correct) state and is proven to fail against
-    a simulated regression (push:main re-added) — guilt AND innocence, not
-    innocence alone."
-  - "`scripts/ci/check_required_workflow_conformance.py` stays clean (0
-    violations) — this PR does not touch required-context wiring."
-  - "Both stale PENDING-ARMS rows removed only after independent re-verification
-    that the work they describe is actually done (not on the row's claim)."
-consumer_map:
-  - "`.github/workflows/tests.yml` — comment-only edit inside the `concurrency:`
-    block's preamble (lines ~42-55). No `push` trigger existed before or after;
-    `concurrency.group`/`concurrency.cancel-in-progress` expressions unchanged."
-  - "`.github/workflows/security.yml` — comment-only edit inside the `schedule:`
-    trigger's preamble (lines ~9-25). `on.push.branches`, both cron strings, and
-    `workflow_dispatch` unchanged."
-  - "`.github/workflows/main-red-breaker.yml` and `.github/workflows/main-push-failure-watch.yml`
-    — both ALREADY encode 'tests.yml has no push trigger' correctly in their own
-    comments/logic (verified by grep, receipts below); neither consumes the
-    comment text this PR corrects, and neither needs a change."
-  - "`.claude/skills/modus/PENDING-ARMS.md` — two rows removed (security.yml
-    push:main removal row opened 2026-08-15; tests.yml stale-comment row opened
-    2026-08-23). No other row references either topic (grep-verified)."
-  - "No `workflow_run`/badge/`workflow_dispatch` consumer reacts to these two
-    files' PUSH-triggered runs specifically, because neither file has emitted a
-    push-triggered run to main since 2026-08-15/16 — any consumer that depended
-    on one would already be broken, and none is (both watcher workflows
-    explicitly branch on schedule/merge_group instead, per their own comments)."
-risks:
-  - "None to runtime CI behavior — this PR changes zero YAML keys that affect
-    trigger/schedule/concurrency semantics, only comment text plus a new,
-    independent test file plus two ledger-row deletions."
-  - "The new test asserts on exact YAML structure (`on:` parses to key `True`
-    under PyYAML's YAML-1.1 loader) — documented inline and cross-checked
-    against the proof-of-armed command already on file in the PENDING-ARMS row
-    this PR removes, so the convention is not newly invented here."
-grader: |
-  Independent verification by this session: git-history-first (never trusted
-  the mandate's premise that push:main still existed — found via `git log -p`
-  on both files that it was already removed, then cross-checked against
-  PENDING-ARMS.md and found the two stale rows explaining the mandate's
-  premise). Every trigger claim re-parsed from the actual current file content
-  this turn, not recalled. Non-Anthropic refuter (agy / Gemini) dispatched
-  against the diff in background; verdict recorded in pack.yml `dissent:` and
-  in the PR body (ships either way — "Refuted by" line is honest about
-  availability, per the mandate's own instruction).
-budget:
-  1 session, no council — a 2-comment-block correction + 1 ledger cleanup +
-  1 new regression test, no runtime behavior change, floored to Gear 3 purely
-  by touching `.github/workflows/*`.
-pii: none
+  - "All 8 KEEP workflows still contain merge_group in on: at this head."
+  - "None of the 24 slimmed workflows emits any of the 11 required contexts."
+  - "check_required_workflow_conformance.py: 11 checked, 0 violations."
+  - "scripts/tests/test_advisory_workflows_no_merge_group.py green (deadlock
+    tripwire: parses YAML, asserts the 8 required-context workflows keep
+    merge_group)."

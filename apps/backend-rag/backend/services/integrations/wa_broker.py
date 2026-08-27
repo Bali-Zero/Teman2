@@ -105,6 +105,7 @@ ALLOWED_ERROR_CLASSES = frozenset(
     {
         "exec_timeout",  # codex subprocess exceeded its budget
         "cli_failure",  # codex CLI exited non-zero / unparseable output
+        "quota_exhausted",  # codex seat's usage window is exhausted (B2b)
         "cli_version_mismatch",  # daemon version pin refused to exec (chaos row 8)
         "spawn_failure",  # subprocess could not be started
         "oversized_output",  # result exceeded the transport bound (chaos row 7)
