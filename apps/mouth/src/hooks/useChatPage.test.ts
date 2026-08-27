@@ -68,6 +68,11 @@ const mocks = vi.hoisted(() => {
       abortStream: vi.fn(),
     },
     chatSendOptions: null as Record<string, unknown> | null,
+    // Both hooks below call authenticated-only endpoints; these capture what
+    // `useChatPage` allows them to do, so an anonymous visitor firing a 401 is
+    // caught here rather than in production. See the comment at the gate.
+    snapshotOptions: null as Record<string, unknown> | null,
+    conversationsArgs: null as unknown[] | null,
   };
 });
 
@@ -95,7 +100,10 @@ vi.mock("./useChatSidebar", () => ({
   useChatSidebar: () => mocks.sidebar,
 }));
 vi.mock("./useConversations", () => ({
-  useConversations: () => mocks.conversations,
+  useConversations: (...args: unknown[]) => {
+    mocks.conversationsArgs = args;
+    return mocks.conversations;
+  },
 }));
 vi.mock("./useTeamStatus", () => ({
   useTeamStatus: () => mocks.teamStatus,
@@ -104,7 +112,10 @@ vi.mock("./useConversationPersistence", () => ({
   useConversationPersistence: () => mocks.persistence,
 }));
 vi.mock("./useChatSnapshot", () => ({
-  useChatSnapshot: () => mocks.snapshot,
+  useChatSnapshot: (options: Record<string, unknown>) => {
+    mocks.snapshotOptions = options;
+    return mocks.snapshot;
+  },
 }));
 vi.mock("./useChatSend", () => ({
   useChatSend: (options: Record<string, unknown>) => {
@@ -159,6 +170,8 @@ beforeEach(() => {
   mocks.snapshot.isRevalidating = false;
   mocks.chatSend.isStreaming = false;
   mocks.chatSendOptions = null;
+  mocks.snapshotOptions = null;
+  mocks.conversationsArgs = null;
   Object.defineProperty(window, "innerWidth", {
     configurable: true,
     value: 1024,
@@ -180,6 +193,34 @@ describe("useChatPage", () => {
     });
     expect(mocks.conversations.loadConversationList).not.toHaveBeenCalled();
     expect(mocks.teamStatus.loadClockStatus).not.toHaveBeenCalled();
+
+    // The two assertions above only cover the MANUAL refetch inside
+    // `loadInitialData`. The data hooks fetch on their own — a React Query
+    // mount fetch and an effect — and neither consults the auth check that
+    // produced the redirect above. Measured live on 2026-08-27: every
+    // anonymous pageview of the public `/chat` collected a 401 from
+    // `conversations/list` AND `conversations/history`, and the caught history
+    // error went to Sentry (logger.warn forwards unconditionally in prod),
+    // which answered 429 — dropping events. So this test's own promise,
+    // "without loading private chat data", needs these two lines to be true.
+    expect(mocks.snapshotOptions?.enabled).toBe(false);
+    expect(mocks.conversationsArgs?.[0]).toBe(false);
+  });
+
+  it("lets an authenticated visitor load private chat data", async () => {
+    // Innocence half of the pair above: the gate must not cost a logged-in
+    // user their sidebar and history. If this goes red, the fix has broken
+    // the very thing `/chat` exists to do.
+    mocks.api.isAuthenticated.mockReturnValue(true);
+
+    renderHook(() => useChatPage());
+
+    await waitFor(() => {
+      expect(mocks.snapshotOptions).not.toBeNull();
+    });
+    expect(mocks.snapshotOptions?.enabled).toBe(true);
+    expect(mocks.conversationsArgs?.[0]).toBe(true);
+    expect(mocks.router.push).not.toHaveBeenCalledWith("/login");
   });
 
   it("guards empty sends and sends a trimmed message with optimistic state", async () => {

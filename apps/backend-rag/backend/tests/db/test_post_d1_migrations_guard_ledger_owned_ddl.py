@@ -98,12 +98,15 @@ change nothing in any database and would bury the eight that matter.
 
 SCOPE, DELIBERATELY NARROW
 ---------------------------
-Only `ALTER TABLE` is checked. `CREATE TRIGGER` needs the TRIGGER privilege and
-`CREATE INDEX` needs ownership too, and post-D1 migrations that do either against
-these tables would very likely fail as well — but no such statement exists today,
-so including them would be a rule asserted rather than measured. A guard that
-invents a target is as bad as one that misses it. Widen this when there is an
-observation to widen it with.
+`ALTER TABLE` and function DDL (`CREATE OR REPLACE FUNCTION` / `DROP FUNCTION` /
+bare `ALTER FUNCTION`) are checked — see the "FUNCTION DDL" section further down
+this file for the function side, added once production confirmed `visa_ledger_owner`
+also owns a set of trigger/utility functions, not only tables. `CREATE TRIGGER`
+needs the TRIGGER privilege and `CREATE INDEX` needs ownership too, and post-D1
+migrations that do either against these tables would very likely fail as well —
+but no such statement exists today, so including them would be a rule asserted
+rather than measured. A guard that invents a target is as bad as one that misses
+it. Widen this when there is an observation to widen it with.
 """
 
 from __future__ import annotations
@@ -765,3 +768,390 @@ def test_the_corpus_is_actually_being_scanned() -> None:
     assert len(files) >= 160, f"only {len(files)} migration files found at {_MIG_DIR}"
     post_d1 = [p for p in files if _migration_number(p) > D1_BOUNDARY]
     assert post_d1, "no post-D1 migrations found — the rule above would test nothing"
+
+
+# ==============================================================================
+# FUNCTION DDL: the same hazard, past ALTER TABLE
+# ==============================================================================
+#
+# WHY THIS EXTENSION EXISTS
+# ------------------------------------------------------------------------------
+# Everything above guards `ALTER TABLE`. Postgres applies the identical
+# ownership check -- the session must be the object's owner, or hold membership
+# in the owning role -- to `CREATE OR REPLACE FUNCTION`, `DROP FUNCTION`, and a
+# bare `ALTER FUNCTION` on a function that already exists. The D1
+# least-privilege repair did not stop at tables: 268's own header already
+# records that it moved ownership of several FUNCTIONS to `visa_ledger_owner`
+# too ("...moved ownership of the Visa Oracle ledger tables (and several
+# already-`SECURITY DEFINER` functions)..."). Measured directly against the
+# production leader (2026-08-27, read-only, `pg_get_userbyid(proowner)` over
+# `pg_proc` joined to `pg_namespace`), `visa_ledger_owner` owns every function
+# named in NON_APP_OWNED_FUNCTIONS below -- `backend_rag_v2` can no more
+# `CREATE OR REPLACE` or `DROP` one of them than it can `ALTER TABLE` one of
+# the tables above, for the identical reason.
+#
+# Migration 289 (`289_visa_retention_binders_scope_to_visa_decision.sql`, this
+# branch) is the first migration written after this specific gap -- function
+# DDL, not table DDL -- was understood: both its `CREATE OR REPLACE FUNCTION`
+# statements sit inside a `DO $guardN$` block that checks
+# `pg_has_role(current_user, proowner, 'USAGE')` against the LIVE catalog and
+# `RETURN`s before attempting the replace if the connecting role cannot. That
+# is the function-DDL equivalent of the `information_schema.columns` catalog
+# guard the table section documents above for `ALTER TABLE ... ADD COLUMN` --
+# same shape, same reason: a guard must be able to DECLINE to run the
+# statement, not merely sit inside a pair of `$$`.
+#
+# THE SAME TRAP INSIDE THE TRAP
+# ------------------------------------------------------------------------------
+# `DROP FUNCTION IF EXISTS <owned-elsewhere>` looks safe -- IF EXISTS should
+# make a missing function a clean no-op -- and fails exactly like
+# `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` already does above: Postgres
+# checks ownership BEFORE the existence short-circuit, so a function that
+# already exists and is owned by someone else still raises
+# `must be owner of function`, `IF EXISTS` or not. The two ROLLBACK sections
+# this rule newly convicts (281, 286 -- see FUNCTION_GRANDFATHERED below) are
+# exactly that shape.
+#
+# SCOPE
+# ------------------------------------------------------------------------------
+# Bare `CREATE FUNCTION` (no `OR REPLACE`) is deliberately NOT convicted: it
+# only succeeds when the function does not yet exist, which needs CREATE
+# privilege on the schema, never ownership of the function -- it is how every
+# one of these functions was born in the first place (281's own forward
+# section creates seven of them exactly this way, immediately before its own
+# best-effort `ALTER FUNCTION ... OWNER TO visa_ledger_owner` transfer at the
+# end of that same migration). Convicting a bare `CREATE FUNCTION` would be a
+# rule invented, not measured -- the same discipline the table section already
+# applies to `CREATE TRIGGER` / `CREATE INDEX`.
+
+# Functions production does NOT let `backend_rag_v2` own.
+#
+# PROVENANCE: measured on the production leader on 2026-08-27, read-only, with
+#
+#   SELECT p.proname, pg_get_userbyid(p.proowner) AS owner
+#     FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+#    WHERE n.nspname = 'public'
+#      AND pg_get_userbyid(p.proowner) <> 'backend_rag_v2'
+#    ORDER BY 1;
+#
+# Every function below came back owned by `visa_ledger_owner`. Same caveat as
+# NON_APP_OWNED_TABLES above: this is a snapshot, not a live query -- a floor,
+# not a ceiling.
+NON_APP_OWNED_FUNCTIONS: frozenset[str] = frozenset(
+    {
+        # owner: visa_ledger_owner (the D1 least-privilege repair; 268's own
+        # header names this same role for functions, not only tables)
+        "bind_visa_decision_retention_policy",
+        "bind_visa_evaluate_idempotency_retention_policy",
+        "bind_visa_decision_payload_retention",
+        "bind_garuda_voa_check_retention_policy",
+        "bind_garuda_voa_check_result_retention_policy",
+        "bind_legacy_garuda_voa_checks_retention_policy",
+        "purge_visa_decisions",
+        "purge_visa_evaluate_idempotency",
+        "purge_garuda_voa_checks",
+        "purge_garuda_voa_check_results",
+        "erase_visa_decision_for_dsr",
+        "visa_activate_rule_pack",
+        "visa_replace_activation_set",
+        "prepare_visa_evaluate_idempotency_reservation",
+        "set_visa_decision_legal_hold",
+        "set_garuda_voa_check_legal_hold",
+        "reject_visa_activation_insert",
+        "reject_visa_activation_mutation",
+        "reject_visa_immutable_mutation",
+        "reject_visa_pack_payload_mismatch",
+        "guard_garuda_voa_check_legal_hold_events_mutation",
+        "guard_garuda_voa_checks_retention_mutation",
+        "visa_decision_retention_evidence",
+        "visa_idempotency_retention_evidence",
+        "visa_idempotency_key_usage_evidence",
+        "garuda_voa_check_retention_evidence",
+    }
+)
+
+# Migrations whose ROLLBACK section drops one of the functions above without a
+# catalog guard, and are FROZEN that way on purpose -- same rationale as
+# GRANDFATHERED for tables above: the file's on-disk text is a checksummed,
+# already-applied record, and editing it now would only diverge the file from
+# that checksum for a codepath nothing exercises (`migration_base.py`'s runner
+# extracts only the FORWARD section at apply time; a real rollback reads
+# `rollback_sql` captured in `_schema_versions` at apply time, per 289's own
+# header, not this file).
+#
+# Kept as a SEPARATE dict from the table GRANDFATHERED above, deliberately:
+# the two convict for independently-true reasons on different statements, and
+# 285 -- grandfathered above for an ALTER TABLE finding -- has NO function-DDL
+# finding at all (none of the functions its rollback drops appear in
+# NON_APP_OWNED_FUNCTIONS). Folding it into one shared dict would either
+# grandfather 285 here for nothing, or force this file to explain an entry
+# that never actually violates the function rule.
+FUNCTION_GRANDFATHERED: dict[int, str] = {
+    281: (
+        "rollback section (after `-- === ROLLBACK ===`) bare-DROPs the seven "
+        "functions 281's own forward section creates and then best-effort "
+        "transfers to visa_ledger_owner (lines ~820-859) -- same shape and "
+        "root cause as 281's ALTER TABLE entry in GRANDFATHERED above, just "
+        "on the function side of the same migration"
+    ),
+    286: (
+        "rollback section bare-DROPs purge_garuda_voa_check_results and "
+        "bind_garuda_voa_check_result_retention_policy, both transferred to "
+        "visa_ledger_owner by 286's own forward-section best-effort transfer "
+        "(lines ~394-427) -- identical shape to 281's, on a migration that "
+        "has no ALTER TABLE finding of its own and so is not already in the "
+        "table GRANDFATHERED dict above"
+    ),
+}
+
+# Statement types that need FUNCTION ownership. Bare `CREATE FUNCTION` (no
+# `OR REPLACE`) is deliberately absent -- see SCOPE above.
+_FUNCTION_DDL_TOP = re.compile(
+    r"^(?:CREATE\s+OR\s+REPLACE\s+FUNCTION|DROP\s+FUNCTION(?:\s+IF\s+EXISTS)?|ALTER\s+FUNCTION)\b",
+    re.IGNORECASE,
+)
+# The function actually targeted: its name immediately followed by its
+# argument-list opening paren (every function signature has one, even a
+# zero-arg function -- `f()`).
+_FUNCTION_TARGET = re.compile(
+    r"^(?:CREATE\s+OR\s+REPLACE\s+FUNCTION|DROP\s+FUNCTION(?:\s+IF\s+EXISTS)?|ALTER\s+FUNCTION)\s+"
+    r'(?:public\s*\.\s*)?"?(?P<name>[A-Za-z_][A-Za-z0-9_]*)"?\s*\(',
+    re.IGNORECASE,
+)
+# Same statement, matched anywhere rather than anchored at the front -- for
+# the `EXECUTE 'CREATE OR REPLACE FUNCTION ...'` shape inside a DO block, same
+# reason `_ALTER_ANYWHERE` exists above.
+_FUNCTION_ANYWHERE = re.compile(
+    r"(?:CREATE\s+OR\s+REPLACE\s+FUNCTION|DROP\s+FUNCTION(?:\s+IF\s+EXISTS)?|ALTER\s+FUNCTION)\s+"
+    r'(?:public\s*\.\s*)?"?(?P<name>[A-Za-z_][A-Za-z0-9_]*)"?\s*\(',
+    re.IGNORECASE,
+)
+
+
+def find_unguarded_function_ddl(sql: str) -> list[tuple[int, str, str, str]]:
+    """Return (line_no, function_name, kind, statement) for each top-level
+    CREATE OR REPLACE FUNCTION / DROP FUNCTION / ALTER FUNCTION naming a
+    ledger-owned function.
+
+    Deliberately reuses the exact lexer (`_executable_text`) and the exact
+    DO-block discipline `find_unguarded_alters` above uses for tables: a
+    dollar-quoted body is exempt from scanning unless it is a `DO` block (a
+    routine's own `AS $$ ... $$` body is never convicted -- that is precisely
+    where 268/281/286's ownership-transfer cure and 289's guard live) AND
+    contains no conditional at all (`END IF` anywhere is read as "this block
+    CAN decline" -- the same coarse, false-positive-free heuristic the table
+    detector already uses, for the same reason: proving the ALTER/DROP/REPLACE
+    sits *inside* that conditional needs real PL/pgSQL control-flow analysis,
+    which does not belong in a test file).
+
+    This is what acquits migration 289 with NO special case written for it:
+    each of its `DO $guardN$` bodies contains
+    `IF NOT pg_has_role(...) THEN RAISE NOTICE ...; RETURN; END IF;` before
+    the `EXECUTE $ddl$ CREATE OR REPLACE FUNCTION ...`, so `_HAS_CONDITIONAL`
+    matches and the body is never scanned for a function-DDL finding at all --
+    same mechanism, not a carve-out.
+    """
+    chars, origin, bodies = _executable_text(sql)
+    findings: list[tuple[int, str, str, str]] = []
+
+    start = 0
+    for end in [idx for idx, c in enumerate(chars) if c == ";"] + [len(chars)]:
+        segment = "".join(chars[start:end])
+        head = len(segment) - len(segment.lstrip())
+        collapsed = " ".join(segment.split())
+        at = start + head
+        start = end + 1
+        if not collapsed or not _FUNCTION_DDL_TOP.match(collapsed):
+            continue
+        lineno = origin[at] if at < len(origin) else (origin[-1] if origin else 1)
+        target_match = _FUNCTION_TARGET.match(collapsed)
+        target = target_match.group("name").lower() if target_match else None
+        if target in NON_APP_OWNED_FUNCTIONS:
+            findings.append((lineno, target, "owner", collapsed[:110]))
+
+    # A dollar-quoted body is exempt only if it is actually a GUARD -- same
+    # rule, same reasoning as the table detector's identical block above.
+    for body_lineno, body, is_do in bodies:
+        if not is_do or _HAS_CONDITIONAL.search(body):
+            continue
+        for m in _FUNCTION_ANYWHERE.finditer(body):
+            target = m.group("name").lower()
+            if target not in NON_APP_OWNED_FUNCTIONS:
+                continue
+            findings.append((
+                body_lineno + body.count("\n", 0, m.start()),
+                target,
+                "unguarded-do",
+                " ".join(body[m.start() : m.start() + 110].split()),
+            ))
+            break
+
+    return sorted(findings)
+
+
+def test_no_post_d1_migration_replaces_a_function_the_app_role_cannot_own() -> None:
+    """The function-DDL analogue of the real ALTER TABLE assertion above."""
+    offenders: list[str] = []
+    for path in sorted(_MIG_DIR.glob("*.sql")):
+        number = _migration_number(path)
+        if number <= D1_BOUNDARY or number in FUNCTION_GRANDFATHERED:
+            continue
+        for lineno, name, kind, statement in find_unguarded_function_ddl(path.read_text()):
+            if kind == "unguarded-do":
+                offenders.append(
+                    f"{path.name}:{lineno} runs function DDL on `{name}` inside a `DO` block "
+                    f"that contains no conditional at all -- so it EXECUTEs unconditionally and "
+                    f"fails in production exactly like a bare statement. Being inside `$$` is not "
+                    f"a guard; being able to DECLINE is.\n    {statement}\n"
+                    f"    Wrap it the way migration 289 does -- see the fix below."
+                )
+                continue
+            offenders.append(
+                f"{path.name}:{lineno} runs unguarded function DDL on `{name}`, which production "
+                f"does not let `backend_rag_v2` own -- this fails in prod "
+                f"(`must be owner of function`) and passes in CI.\n"
+                f"    {statement}\n"
+                f"    Wrap it in a catalog guard, the way migration 289 does:\n"
+                f"        DO $guardN$ BEGIN\n"
+                f"          IF NOT pg_catalog.pg_has_role(current_user,\n"
+                f"                 (SELECT proowner FROM pg_catalog.pg_proc\n"
+                f"                   WHERE oid = 'public.{name}(...)'::regprocedure), 'USAGE') THEN\n"
+                f"            RAISE NOTICE 'cannot replace {name} -- % is neither owner nor "
+                f"member', current_user;\n"
+                f"            RETURN;\n"
+                f"          END IF;\n"
+                f"          EXECUTE $ddl$ ... $ddl$;\n"
+                f"        END $guardN$;\n"
+                f"    `DROP FUNCTION IF EXISTS` does NOT save you either: the ownership check\n"
+                f"    runs before the IF-EXISTS short-circuit, same trap as ALTER TABLE above."
+            )
+    assert not offenders, "\n\n".join(offenders)
+
+
+def test_the_function_grandfathered_entries_really_do_still_violate_the_rule() -> None:
+    """An exemption for something that stopped violating is a lie in the config.
+
+    Mirrors `test_the_grandfathered_pair_really_does_still_violate_the_rule`
+    above, for FUNCTION_GRANDFATHERED instead of GRANDFATHERED.
+    """
+    for number in FUNCTION_GRANDFATHERED:
+        matches = list(_MIG_DIR.glob(f"{number}_*.sql"))
+        assert len(matches) == 1, f"expected exactly one migration {number}, got {matches}"
+        findings = find_unguarded_function_ddl(matches[0].read_text())
+        assert findings, (
+            f"migration {number} is on FUNCTION_GRANDFATHERED but no longer contains an "
+            f"unguarded function DDL statement. Remove its entry."
+        )
+
+
+def test_migration_289_is_acquitted_by_the_function_detector() -> None:
+    """289 is the migration that INTRODUCED the catalog-guard shape this
+    detector enforces -- both its `CREATE OR REPLACE FUNCTION` statements
+    replace ledger-owned functions from inside a `DO $guardN$` block that
+    checks `pg_has_role` and can decline. If the detector convicts 289, the
+    detector is wrong, not 289: do not "fix" 289 to satisfy a broken rule.
+    """
+    matches = list(_MIG_DIR.glob("289_*.sql"))
+    assert len(matches) == 1, f"expected exactly one migration 289, got {matches}"
+    findings = find_unguarded_function_ddl(matches[0].read_text())
+    assert not findings, f"289 should be catalog-guarded and innocent, got: {findings}"
+
+
+# --------------------------------------------------------------------------
+# guilt and innocence for the function detector itself
+# --------------------------------------------------------------------------
+
+_LEDGER_FN = "purge_visa_decisions"
+
+FUNCTION_GUILTY = [
+    pytest.param(
+        f"CREATE OR REPLACE FUNCTION public.{_LEDGER_FN}(p_limit INTEGER, p_requested_by TEXT)\n"
+        f"RETURNS INTEGER LANGUAGE plpgsql AS $$\nBEGIN\n  RETURN 0;\nEND;\n$$;\n",
+        id="bare-create-or-replace",
+    ),
+    pytest.param(
+        f"DROP FUNCTION IF EXISTS public.{_LEDGER_FN}(INTEGER, TEXT);\n",
+        id="drop-function-if-exists-does-not-save-you",
+    ),
+    pytest.param(
+        f"ALTER FUNCTION public.{_LEDGER_FN}(INTEGER, TEXT) SECURITY DEFINER;\n",
+        id="bare-alter-function",
+    ),
+    pytest.param(
+        f"drop function {_LEDGER_FN}(integer, text);\n",
+        id="lowercase-and-unqualified",
+    ),
+    pytest.param(
+        "DO $$ BEGIN\n"
+        f"  EXECUTE 'CREATE OR REPLACE FUNCTION public.{_LEDGER_FN}(p_limit INTEGER, "
+        f"p_requested_by TEXT) RETURNS INTEGER LANGUAGE sql AS $body$ SELECT 0 $body$';\n"
+        "END $$;\n",
+        id="unconditional-EXECUTE-in-a-DO-block-is-not-a-guard",
+    ),
+    pytest.param(
+        f"DO $blk$ BEGIN NULL;\nDROP FUNCTION IF EXISTS public.{_LEDGER_FN}(INTEGER, TEXT);\n",
+        id="unterminated-body-must-not-blind-the-tail",
+    ),
+]
+
+FUNCTION_INNOCENT = [
+    pytest.param(
+        f"CREATE FUNCTION public.{_LEDGER_FN}(p_limit INTEGER, p_requested_by TEXT)\n"
+        f"RETURNS INTEGER LANGUAGE plpgsql AS $$\nBEGIN\n  RETURN 0;\nEND;\n$$;\n",
+        id="bare-create-no-or-replace-is-how-they-are-all-born",
+    ),
+    pytest.param(
+        "DO $guard1$\nBEGIN\n"
+        "  IF NOT pg_catalog.pg_has_role(current_user,\n"
+        f"         (SELECT proowner FROM pg_catalog.pg_proc WHERE oid = "
+        f"'public.{_LEDGER_FN}(integer, text)'::regprocedure), 'USAGE') THEN\n"
+        f"    RAISE NOTICE 'cannot replace {_LEDGER_FN} -- % is neither owner nor member', "
+        "current_user;\n"
+        "    RETURN;\n"
+        "  END IF;\n"
+        "  EXECUTE $ddl$\n"
+        f"CREATE OR REPLACE FUNCTION public.{_LEDGER_FN}(p_limit INTEGER, p_requested_by TEXT)\n"
+        "RETURNS INTEGER LANGUAGE plpgsql AS $fn$\nBEGIN\n  RETURN 0;\nEND;\n$fn$;\n"
+        "    $ddl$;\n"
+        "END;\n"
+        "$guard1$;\n",
+        id="catalog-guarded-like-migration-289",
+    ),
+    pytest.param(
+        f"-- DROP FUNCTION IF EXISTS public.{_LEDGER_FN}(INTEGER, TEXT); (discussed in prose)\n",
+        id="comment-only",
+    ),
+    pytest.param(
+        "CREATE OR REPLACE FUNCTION public.guard_garuda_order_state_transition()\n"
+        "RETURNS trigger LANGUAGE plpgsql AS $$\nBEGIN\n  RETURN NEW;\nEND;\n$$;\n",
+        id="app-owned-function-is-none-of-our-business",
+    ),
+    pytest.param(
+        f"CREATE FUNCTION f() RETURNS void AS $$\nBEGIN\n"
+        f"  EXECUTE 'DROP FUNCTION IF EXISTS public.{_LEDGER_FN}(integer, text)';\n"
+        "END;\n$$ LANGUAGE plpgsql;\n",
+        id="inside-a-function-body-is-not-a-DO-block",
+    ),
+    pytest.param(
+        "DO $g$ BEGIN\n"
+        f"  IF to_regclass('public.some_marker') IS NOT NULL THEN\n"
+        f"    EXECUTE 'DROP FUNCTION IF EXISTS public.{_LEDGER_FN}(integer, text)';\n"
+        "  END IF;\n"
+        "END $g$;\n",
+        id="conditional-EXECUTE-in-a-TAGGED-do-block",
+    ),
+    pytest.param(
+        f"SELECT 'DROP FUNCTION IF EXISTS public.{_LEDGER_FN}(integer, text)';\n",
+        id="named-only-inside-a-string-literal",
+    ),
+]
+
+
+@pytest.mark.parametrize("sql", FUNCTION_GUILTY)
+def test_function_detector_convicts(sql: str) -> None:
+    assert find_unguarded_function_ddl(sql), "detector missed an unguarded function DDL statement"
+
+
+@pytest.mark.parametrize("sql", FUNCTION_INNOCENT)
+def test_function_detector_acquits(sql: str) -> None:
+    assert not find_unguarded_function_ddl(sql), f"detector produced a false positive on:\n{sql}"

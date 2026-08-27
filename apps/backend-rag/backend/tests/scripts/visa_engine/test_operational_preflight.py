@@ -75,8 +75,34 @@ class FakePreflightConnection:
         }
         self.memberships: set[tuple[str, str]] = set()
         self.dual_capability_login: str | None = None
+        # Live bodies of the two binders migration 289 re-scopes. Default to
+        # the POST-289 shape so the pre-existing least-privilege tests -- which
+        # are about grants, not about 289 -- keep describing a healthy database.
+        # The 289-specific tests below mutate this dict on purpose.
+        # `fromkeys` shares one value across the keys, which is safe only
+        # because the value is an immutable str and the tests below REBIND a
+        # key rather than mutating what it points at.
+        self.binder_bodies: dict[str, str] = dict.fromkeys(
+            operational_preflight.SCOPE_BOUND_RETENTION_BINDERS,
+            "BEGIN\n"
+            "    SELECT id INTO STRICT policy\n"
+            "      FROM public.visa_decision_retention_policies\n"
+            "     WHERE environment = NEW.environment\n"
+            "       AND policy_scope = 'VISA_DECISION'\n"
+            "       AND effective_period @> NEW.evaluated_at\n"
+            "     FOR SHARE;\n"
+            "    RETURN NEW;\n"
+            "END;",
+        )
 
     async def fetch(self, query: str, *args: Any) -> list[dict[str, Any]]:
+        if "FROM pg_catalog.pg_proc" in query and "prosrc" in query:
+            requested = args[0]
+            return [
+                {"proname": name, "prosrc": self.binder_bodies[name]}
+                for name in requested
+                if name in self.binder_bodies
+            ]
         if "FROM pg_roles WHERE rolname = ANY" not in query:
             raise AssertionError(f"unexpected fetch query: {query}")
         requested_roles = args[0]
@@ -246,3 +272,424 @@ async def test_pack_writer_activation_combination_still_fails() -> None:
     )
 
     assert checks["membership:no-pack-writer-activation-combination"].ok is False
+
+
+async def _scoped_binder_check(connection: FakePreflightConnection):
+    checks = _by_name(
+        await operational_preflight.collect_preflight_checks(
+            connection,  # type: ignore[arg-type]
+            runtime_role=RUNTIME_ROLE,
+        )
+    )
+    return checks["binder:retention-policy-scoped"]
+
+
+@pytest.mark.asyncio
+async def test_scoped_binder_check_passes_when_289_is_really_live() -> None:
+    """INNOCENCE. The fake's default bodies carry the predicate 289 installs."""
+
+    assert (await _scoped_binder_check(FakePreflightConnection())).ok is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("binder", operational_preflight.SCOPE_BOUND_RETENTION_BINDERS)
+async def test_scoped_binder_check_fails_when_289_declined_for_either_binder(
+    binder: str,
+) -> None:
+    """GUILT. Parameterised per binder: 289's catalog guard skips them one at a
+    time, and a check that only noticed the FIRST unscoped binder would leave
+    the second one silently broken -- which is the whole failure mode."""
+
+    connection = FakePreflightConnection()
+    # The pre-289 body: identical but for the missing scope predicate. This is
+    # what the database really holds when the guard declines.
+    connection.binder_bodies[binder] = (
+        "BEGIN\n"
+        "    SELECT id INTO STRICT policy\n"
+        "      FROM public.visa_decision_retention_policies\n"
+        "     WHERE environment = NEW.environment\n"
+        "       AND effective_period @> NEW.evaluated_at\n"
+        "     FOR SHARE;\n"
+        "    RETURN NEW;\n"
+        "END;"
+    )
+
+    check = await _scoped_binder_check(connection)
+    assert check.ok is False
+    assert binder in check.detail
+    assert "visa_ledger_owner" in check.detail
+
+
+@pytest.mark.asyncio
+async def test_scoped_binder_check_fails_when_a_binder_is_absent_entirely() -> None:
+    """A missing function must not read as a satisfied predicate. `.get()`
+    returning None is exactly the shape that silently passes if unhandled."""
+
+    connection = FakePreflightConnection()
+    del connection.binder_bodies["bind_visa_decision_retention_policy"]
+
+    check = await _scoped_binder_check(connection)
+    assert check.ok is False
+    assert "bind_visa_decision_retention_policy(absent)" in check.detail
+
+
+@pytest.mark.asyncio
+async def test_scoped_binder_check_is_not_satisfied_by_a_comment() -> None:
+    """Scar #3, guard-over-match, in its UNDER-match twin: a body that merely
+    MENTIONS the predicate in a comment is still scope-blind at runtime, and a
+    bare-substring probe would call it healthy."""
+
+    connection = FakePreflightConnection()
+    connection.binder_bodies["bind_visa_decision_retention_policy"] = (
+        "BEGIN\n"
+        "    -- migration 289 would add: policy_scope = 'VISA_DECISION'\n"
+        "    SELECT id INTO STRICT policy\n"
+        "      FROM public.visa_decision_retention_policies\n"
+        "     WHERE environment = NEW.environment\n"
+        "       AND effective_period @> NEW.evaluated_at\n"
+        "     FOR SHARE;\n"
+        "    RETURN NEW;\n"
+        "END;"
+    )
+
+    check = await _scoped_binder_check(connection)
+    assert check.ok is False, (
+        "a commented-out predicate satisfied the probe -- the check is matching "
+        "the bare token, not the WHERE clause"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Adversarial coverage of the two pure helpers behind `binder:retention-policy-scoped`.
+#
+# NOTE (2026-08-27): as of this file's writing the live implementation exposes
+# `operational_preflight._noise_mask(body) -> list[bool]` (a per-character noise
+# mask covering `--`/`/* */` comments and `'...'`/`$tag$...$tag$` string
+# literals) plus `operational_preflight._active_lookups_are_scoped(body) -> bool`
+# built on top of it. An EARLIER shape of this same guard, seen mid-session
+# while these tests were being written, instead exposed a
+# `_strip_sql_noise(body) -> str` that BLANKED string literals into spaces
+# before regex-matching `policy_scope = 'VISA_DECISION'` against the blanked
+# copy -- which is self-defeating (the predicate's own `'VISA_DECISION'` is a
+# string literal, so blanking it made every genuinely-scoped body register as
+# unscoped: reproduced live, `_active_lookups_are_scoped` returned False on the
+# exact healthy default body in `FakePreflightConnection.binder_bodies`). That
+# function no longer exists in this file. These tests exercise the CURRENT
+# mask-based pair; if `_strip_sql_noise` reappears, its false-red-by-design
+# defect needs its own case, not a silent revert of this file.
+def _lookup_and_predicate_share_a_line() -> str:
+    return (
+        "BEGIN\n"
+        "    SELECT id INTO STRICT policy FROM public.visa_decision_retention_policies"
+        " WHERE environment = NEW.environment AND policy_scope = 'VISA_DECISION' AND"
+        " effective_period @> NEW.evaluated_at FOR SHARE;\n"
+        "    RETURN NEW;\n"
+        "END;"
+    )
+
+
+def _predicate_exactly_at_window_boundary(distance: int) -> str:
+    """Predicate `distance` lines above the lookup. `distance == _SCOPE_WINDOW_LINES`
+    (10) must still count (`<=`); `distance == 11` must not."""
+
+    lines = ["BEGIN", "    IF policy_scope = 'VISA_DECISION' THEN NULL; END IF;"]
+    for i in range(distance - 1):
+        lines.append(f"    PERFORM pg_sleep(0); -- pad {i}")
+    lines.append(
+        "    SELECT id INTO STRICT policy FROM public.visa_decision_retention_policies"
+        " WHERE environment = NEW.environment AND effective_period @> NEW.evaluated_at"
+        " FOR SHARE;"
+    )
+    lines.append("    RETURN NEW;")
+    lines.append("END;")
+    return "\n".join(lines)
+
+
+def _count_satisfied_but_second_lookup_isolated() -> str:
+    """2 lookups, 2 predicates (satisfies the COUNT rule: predicates >= lookups),
+    but BOTH predicates sit next to the FIRST lookup and neither is within
+    `_SCOPE_WINDOW_LINES` of the second. If the guard only checked the total
+    count it would wrongly call this scoped; it must also check per-lookup
+    proximity (Rule 2 in `_active_lookups_are_scoped`)."""
+
+    lines = [
+        "BEGIN",
+        "    SELECT id INTO STRICT policy",
+        "      FROM public.visa_decision_retention_policies",
+        "     WHERE environment = NEW.environment AND policy_scope = 'VISA_DECISION'",
+        "       AND effective_period @> NEW.evaluated_at",
+        "     FOR SHARE;",
+        "    IF policy_scope = 'VISA_DECISION' THEN NULL; END IF;",
+    ]
+    lines.extend(f"    PERFORM pg_sleep(0); -- pad {i}" for i in range(15))
+    lines.extend(
+        [
+            "    SELECT id INTO STRICT other",
+            "      FROM public.visa_decision_retention_policies",
+            "     WHERE environment = NEW.environment",
+            "       AND effective_period @> NEW.evaluated_at",
+            "     FOR SHARE;",
+            "    RETURN NEW;",
+            "END;",
+        ]
+    )
+    return "\n".join(lines)
+
+
+_ADVERSARIAL_SCOPE_CASES: tuple[tuple[str, str, bool], ...] = (
+    (
+        "false_green_predicate_inside_dollar_quoted_raise_notice",
+        "BEGIN\n"
+        "    RAISE NOTICE $msg$policy_scope = 'VISA_DECISION'$msg$;\n"
+        "    SELECT id INTO STRICT policy\n"
+        "      FROM public.visa_decision_retention_policies\n"
+        "     WHERE environment = NEW.environment\n"
+        "       AND effective_period @> NEW.evaluated_at\n"
+        "     FOR SHARE;\n"
+        "    RETURN NEW;\n"
+        "END;",
+        False,
+    ),
+    (
+        "false_red_dashdash_in_string_literal_before_real_predicate",
+        "BEGIN\n"
+        "    SELECT id INTO STRICT policy, 'range x--y' AS debug_note\n"
+        "      FROM public.visa_decision_retention_policies\n"
+        "     WHERE environment = NEW.environment\n"
+        "       AND policy_scope = 'VISA_DECISION'\n"
+        "       AND effective_period @> NEW.evaluated_at\n"
+        "     FOR SHARE;\n"
+        "    RETURN NEW;\n"
+        "END;",
+        True,
+    ),
+    (
+        "false_red_dashdash_string_and_predicate_share_a_line",
+        "BEGIN\n"
+        "    SELECT id INTO STRICT policy\n"
+        "      FROM public.visa_decision_retention_policies\n"
+        "     WHERE environment = NEW.environment AND policy_scope = 'VISA_DECISION'"
+        " AND notes = 'range x--y'\n"
+        "       AND effective_period @> NEW.evaluated_at\n"
+        "     FOR SHARE;\n"
+        "    RETURN NEW;\n"
+        "END;",
+        True,
+    ),
+    (
+        "escaped_doubled_single_quote_then_dashdash_then_real_predicate",
+        "BEGIN\n"
+        "    SELECT id INTO STRICT policy, 'it''s -- not a comment' AS note\n"
+        "      FROM public.visa_decision_retention_policies\n"
+        "     WHERE environment = NEW.environment AND policy_scope = 'VISA_DECISION'\n"
+        "       AND effective_period @> NEW.evaluated_at\n"
+        "     FOR SHARE;\n"
+        "    RETURN NEW;\n"
+        "END;",
+        True,
+    ),
+    (
+        "dollar_quote_nested_different_tags_hides_predicate",
+        "BEGIN\n"
+        "    RAISE NOTICE $outer$ inner text $inner$ policy_scope = 'VISA_DECISION'"
+        " $inner$ still outer $outer$;\n"
+        "    SELECT id INTO STRICT policy\n"
+        "      FROM public.visa_decision_retention_policies\n"
+        "     WHERE environment = NEW.environment\n"
+        "       AND effective_period @> NEW.evaluated_at\n"
+        "     FOR SHARE;\n"
+        "    RETURN NEW;\n"
+        "END;",
+        False,
+    ),
+    (
+        "anonymous_dollar_quote_hides_predicate",
+        "BEGIN\n"
+        "    RAISE NOTICE $$policy_scope = 'VISA_DECISION'$$;\n"
+        "    SELECT id INTO STRICT policy\n"
+        "      FROM public.visa_decision_retention_policies\n"
+        "     WHERE environment = NEW.environment\n"
+        "       AND effective_period @> NEW.evaluated_at\n"
+        "     FOR SHARE;\n"
+        "    RETURN NEW;\n"
+        "END;",
+        False,
+    ),
+    (
+        "multiline_block_comment_hides_predicate",
+        "BEGIN\n"
+        "    /* TODO: eventually add\n"
+        "       policy_scope = 'VISA_DECISION'\n"
+        "       here */\n"
+        "    SELECT id INTO STRICT policy\n"
+        "      FROM public.visa_decision_retention_policies\n"
+        "     WHERE environment = NEW.environment\n"
+        "       AND effective_period @> NEW.evaluated_at\n"
+        "     FOR SHARE;\n"
+        "    RETURN NEW;\n"
+        "END;",
+        False,
+    ),
+    (
+        "dashdash_inside_dollar_quoted_string_does_not_start_a_comment",
+        "BEGIN\n"
+        "    RAISE NOTICE $msg$ this -- looks like a comment $msg$;\n"
+        "    SELECT id INTO STRICT policy\n"
+        "      FROM public.visa_decision_retention_policies\n"
+        "     WHERE environment = NEW.environment AND policy_scope = 'VISA_DECISION'\n"
+        "       AND effective_period @> NEW.evaluated_at\n"
+        "     FOR SHARE;\n"
+        "    RETURN NEW;\n"
+        "END;",
+        True,
+    ),
+    (
+        "unclosed_dollar_quote_tail_still_scoped",
+        "BEGIN\n"
+        "    RAISE NOTICE $unterminated$ this never closes\n"
+        "    SELECT id INTO STRICT policy\n"
+        "      FROM public.visa_decision_retention_policies\n"
+        "     WHERE environment = NEW.environment AND policy_scope = 'VISA_DECISION'\n"
+        "       AND effective_period @> NEW.evaluated_at\n"
+        "     FOR SHARE;\n"
+        "    RETURN NEW;\n"
+        "END;",
+        True,
+    ),
+    (
+        "unclosed_dollar_quote_tail_still_genuinely_unscoped",
+        "BEGIN\n"
+        "    RAISE NOTICE $unterminated$ whoops forgot to close\n"
+        "    SELECT id INTO STRICT policy\n"
+        "      FROM public.visa_decision_retention_policies\n"
+        "     WHERE environment = NEW.environment\n"
+        "       AND effective_period @> NEW.evaluated_at\n"
+        "     FOR SHARE;\n"
+        "    RETURN NEW;\n"
+        "END;",
+        False,
+    ),
+    (
+        "two_lookups_only_one_carries_the_predicate",
+        "BEGIN\n"
+        "    SELECT id INTO STRICT policy\n"
+        "      FROM public.visa_decision_retention_policies\n"
+        "     WHERE environment = NEW.environment AND policy_scope = 'VISA_DECISION'\n"
+        "       AND effective_period @> NEW.evaluated_at\n"
+        "     FOR SHARE;\n"
+        "    SELECT id INTO STRICT other_policy\n"
+        "      FROM public.visa_decision_retention_policies\n"
+        "     WHERE environment = NEW.environment\n"
+        "       AND effective_period @> NEW.evaluated_at\n"
+        "     FOR SHARE;\n"
+        "    RETURN NEW;\n"
+        "END;",
+        False,
+    ),
+    ("zero_lookups_is_vacuously_scoped", "BEGIN\n    RETURN NEW;\nEND;", True),
+    ("empty_body_is_vacuously_scoped", "", True),
+    (
+        "predicate_exactly_at_window_boundary_ten_lines_still_counts",
+        _predicate_exactly_at_window_boundary(10),
+        True,
+    ),
+    (
+        "predicate_one_line_past_window_boundary_does_not_count",
+        _predicate_exactly_at_window_boundary(11),
+        False,
+    ),
+    (
+        "new_dot_effective_period_alone_is_not_a_lookup",
+        "BEGIN\n"
+        "    IF NEW.effective_period @> NEW.evaluated_at THEN\n"
+        "        RETURN NEW;\n"
+        "    END IF;\n"
+        "    RETURN NEW;\n"
+        "END;",
+        True,
+    ),
+    (
+        "word_boundary_excludes_suffixed_identifier",
+        "BEGIN\n"
+        "    SELECT id INTO STRICT policy\n"
+        "      FROM public.visa_decision_retention_policies\n"
+        "     WHERE old_effective_period @> NEW.evaluated_at\n"
+        "     FOR SHARE;\n"
+        "    RETURN NEW;\n"
+        "END;",
+        True,
+    ),
+    (
+        "predicate_faked_inside_escaped_string_literal_does_not_count",
+        "BEGIN\n"
+        "    SELECT id INTO STRICT policy, 'debug: policy_scope = ''VISA_DECISION''"
+        " fake' AS note\n"
+        "      FROM public.visa_decision_retention_policies\n"
+        "     WHERE environment = NEW.environment\n"
+        "       AND effective_period @> NEW.evaluated_at\n"
+        "     FOR SHARE;\n"
+        "    RETURN NEW;\n"
+        "END;",
+        False,
+    ),
+    (
+        "one_predicate_cannot_scope_two_close_lookups",
+        "BEGIN\n"
+        "    SELECT id INTO STRICT policy\n"
+        "      FROM public.visa_decision_retention_policies\n"
+        "     WHERE environment = NEW.environment AND policy_scope = 'VISA_DECISION'\n"
+        "       AND effective_period @> NEW.evaluated_at\n"
+        "     FOR SHARE;\n"
+        "    SELECT id INTO STRICT other\n"
+        "      FROM public.visa_decision_retention_policies\n"
+        "     WHERE environment = NEW.environment\n"
+        "       AND effective_period @> NEW.evaluated_at\n"
+        "     FOR SHARE;\n"
+        "    RETURN NEW;\n"
+        "END;",
+        False,
+    ),
+    (
+        "count_satisfied_but_second_lookup_isolated_beyond_window",
+        _count_satisfied_but_second_lookup_isolated(),
+        False,
+    ),
+    (
+        "predicate_and_lookup_share_the_same_line",
+        _lookup_and_predicate_share_a_line(),
+        True,
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    "body, expected",
+    [(body, expected) for _, body, expected in _ADVERSARIAL_SCOPE_CASES],
+    ids=[case_id for case_id, _, _ in _ADVERSARIAL_SCOPE_CASES],
+)
+def test_active_lookups_are_scoped_resists_adversarial_bodies(
+    body: str, expected: bool
+) -> None:
+    assert operational_preflight._active_lookups_are_scoped(body) is expected
+
+
+def test_noise_mask_covers_line_comment_but_not_the_newline_or_surrounding_code() -> None:
+    body = "SELECT 1; -- a comment\nSELECT 2;"
+    mask = operational_preflight._noise_mask(body)
+    assert len(mask) == len(body)
+    dash_dash = body.index("--")
+    newline = body.index("\n")
+    assert all(mask[dash_dash:newline])  # the whole comment body is masked
+    assert mask[newline] is False  # the newline itself ends the comment
+    assert not any(mask[: dash_dash - 1])  # "SELECT 1;" before it is real code
+    assert not any(mask[newline + 1 :])  # "SELECT 2;" after it is real code
+
+
+def test_noise_mask_covers_a_single_quoted_string_including_its_quotes() -> None:
+    body = "before 'a literal' after"
+    mask = operational_preflight._noise_mask(body)
+    start = body.index("'")
+    end = body.rindex("'")
+    assert all(mask[start : end + 1])
+    assert not any(mask[:start])
+    assert not any(mask[end + 1 :])
