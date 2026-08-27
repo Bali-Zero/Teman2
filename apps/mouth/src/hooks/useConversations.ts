@@ -17,12 +17,21 @@ export const conversationsKeys = {
 /**
  * Hook for listing conversations with React Query
  */
-export function useConversationsList(limit: number = 20, offset: number = 0) {
+export function useConversationsList(
+  limit: number = 20,
+  offset: number = 0,
+  // Defaults to true so every existing caller keeps its current behaviour.
+  // `/chat` passes the visitor's auth state: this endpoint is authenticated,
+  // and firing it while logged out earns a 401 on every anonymous pageview
+  // of a PUBLIC page — see the comment at the call site in `useChatPage.ts`.
+  enabled: boolean = true,
+) {
   return useQuery({
     queryKey: [...conversationsKeys.list(), limit, offset],
     queryFn: () => api.listConversations(limit, offset),
     staleTime: 1000 * 30, // 30 seconds
     select: (data) => data.conversations,
+    enabled,
   });
 }
 
@@ -87,7 +96,7 @@ export function useConversationMutations() {
  * Combined hook with local state for current conversation selection
  * Maintains backward compatibility with the original API
  */
-export function useConversations() {
+export function useConversations(enabled: boolean = true) {
   const [currentConversationId, setCurrentConversationId] = useState<
     number | null
   >(null);
@@ -96,7 +105,7 @@ export function useConversations() {
     data: conversations = [],
     isLoading,
     refetch: loadConversationList,
-  } = useConversationsList();
+  } = useConversationsList(20, 0, enabled);
 
   const {
     deleteConversation: deleteConversationMutation,

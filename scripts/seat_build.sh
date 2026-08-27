@@ -30,6 +30,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/lib/seat_watchdog.sh
 source "$SCRIPT_DIR/lib/seat_watchdog.sh"
+source "$SCRIPT_DIR/seat_build_tp1.sh"
 
 quota_output_exhausted() {
     local output_file="$1"
@@ -325,6 +326,15 @@ main() {
             # would otherwise leak into telemetry/routing downstream).
             TIER=""
             ;;
+        tp1)
+            binary_name="$(tp1_binary_path)"; MODEL="${TP1_MODEL:-$TP1_DEFAULT_MODEL}"
+            # Forward-compatible with PR #5044's tier system (codex/kimi/agy
+            # sol/terra/luna-style tiers): tp1 has no tiers of its own — one
+            # OpenAI-compatible door per model slug — so clear (not just
+            # ignore) a stray --tier the same way qwen's arm does, so the
+            # report never claims a tier tp1 never used.
+            TIER=""
+            ;;
         "") refuse 64 "missing --seat" ;;
         *) refuse 64 "unknown seat: $SEAT" ;;
     esac
@@ -384,6 +394,7 @@ main() {
         kimi) seat_argv=("$seat_binary" -p "$task_text" -m "$MODEL"); task_index=2 ;;
         agy) seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --print-timeout 8m); task_index=2 ;;
         qwen) seat_argv=("$seat_binary" -p "$task_text"); task_index=2 ;;  # unchanged
+        tp1) seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --effort "$EFFORT"); task_index=2 ;;
     esac
     strip_env_args=()
     stripped_names=()

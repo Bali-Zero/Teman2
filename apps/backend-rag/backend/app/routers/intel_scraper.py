@@ -16,7 +16,6 @@ from datetime import datetime, timezone
 from pathlib import Path as PathLib
 from typing import Any
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from backend.app.core.config import settings
@@ -29,7 +28,6 @@ from backend.app.metrics import (
 )
 from backend.app.routers.intel import (
     INTEL_COLLECTIONS,
-    VALID_HOMEPAGE_POSITIONS,
     PublishToSiteRequest,
     RegisterNotificationRequest,
     ScraperSubmission,
@@ -57,55 +55,6 @@ def _require_publish_admin(user: dict[str, Any]) -> None:
     """
     if not is_crm_admin(user):
         raise HTTPException(status_code=403, detail="Publish requires admin")
-
-
-async def update_homepage_layout(slug: str, position: str) -> None:
-    """
-    Update homepage-layout.json in the GitHub repo.
-
-    Reads the current file, updates the requested position, and commits the
-    change via a pull request with auto-merge. A direct commit to ``main`` is
-    rejected (HTTP 422) because the branch is protected by required status
-    checks, so the change is routed through the shared ``github_publisher``
-    PR path (same mechanism used to publish article MDX).
-    """
-    from backend.services.integrations.github_publisher import github_publisher
-
-    github_token = os.getenv("GITHUB_TOKEN")
-    github_owner = os.getenv("GITHUB_OWNER", "Balizero1987")
-    github_repo = os.getenv("GITHUB_REPO", "Teman2")
-    file_path = "apps/mouth/src/content/homepage-layout.json"
-
-    if not github_token:
-        raise ValueError("GITHUB_TOKEN not configured")
-
-    if position not in VALID_HOMEPAGE_POSITIONS:
-        raise ValueError(f"Invalid position: {position}")
-
-    headers = {
-        "Authorization": f"token {github_token}",
-        "Accept": "application/vnd.github.v3+json",
-    }
-
-    # Read current layout (read-only GET is allowed on a protected branch).
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        url = f"https://api.github.com/repos/{github_owner}/{github_repo}/contents/{file_path}"
-        resp = await client.get(url, headers=headers)
-        resp.raise_for_status()
-        file_data = resp.json()
-        current_content = base64.b64decode(file_data["content"]).decode("utf-8")
-
-    layout = json.loads(current_content)
-    layout[position] = slug
-    new_content = json.dumps(layout, indent=2) + "\n"
-
-    # Commit via PR + auto-merge (protected branch safe).
-    await github_publisher.create_commit_with_files(
-        files=[{"path": file_path, "content": new_content}],
-        message=f"feat(layout): set {position} to {slug}",
-        pull_request=True,
-        pr_branch_prefix="auto-layout",
-    )
 
 
 # --- CONVERSION FUNCTIONS ---
@@ -311,6 +260,9 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
         "source": source_name,
         "source_url": source_url,
         "enriched_at": datetime.now(timezone.utc).isoformat(),
+        "seo_title": staging_data.get("seo_title"),
+        "seo_description": staging_data.get("seo_description"),
+        "cover_image_alt": staging_data.get("cover_image_alt"),
     }
 
 
@@ -497,9 +449,9 @@ async def submit_from_scraper(
             "detected_at": datetime.now(timezone.utc).isoformat(),
             "live_news_score": _live_news_score,
             "liveness_tier": _liveness_tier,
-            "live_news_reasons": [
-                r.strip()[:200] for r in (submission.live_news_reasons or [])
-            ][:3],
+            "live_news_reasons": [r.strip()[:200] for r in (submission.live_news_reasons or [])][
+                :3
+            ],
             # WR2 enrichment passthrough (scar family #9): carry the full
             # structured enricher object into staging so it survives to
             # wr2_topic_selector via list_pending_items' projection. Default
@@ -704,6 +656,7 @@ async def publish_staging_item(
         body=body,
         request=request,
         actor=(current_user.get("email") or "unknown"),
+        allow_generated_cover=True,
     )
 
 
@@ -711,6 +664,8 @@ async def publish_staging_item_internal(
     intel_type: str,
     item_id: str,
     actor: str,
+    allow_generated_cover: bool = True,
+    position: str = "latest",
 ) -> dict[str, Any]:
     """Publish path for internal callers that carry their own authorization.
 
@@ -722,9 +677,10 @@ async def publish_staging_item_internal(
     return await _publish_staging_item(
         type=intel_type,
         item_id=item_id,
-        body=None,
+        body=PublishToSiteRequest(position=position),
         request=None,
         actor=actor,
+        allow_generated_cover=allow_generated_cover,
     )
 
 
@@ -734,6 +690,7 @@ async def _publish_staging_item(
     body: PublishToSiteRequest | None,
     request: Request | None,
     actor: str,
+    allow_generated_cover: bool = True,
 ) -> dict[str, Any]:
     """Publish implementation. Callers are responsible for authorization."""
     # Single funnel-in for both callers (the admin HTTP endpoint and the Telegram
@@ -832,6 +789,7 @@ async def _publish_staging_item(
         github_commit_sha = None
         mdx_path = None
         article_slug = item_id  # fallback: use item_id if GitHub publish fails
+        publish_result = None
 
         try:
             from backend.app.routers.article_composer import (
@@ -863,6 +821,9 @@ async def _publish_staging_item(
                 source=enriched_dict["source"],
                 source_url=enriched_dict["source_url"],
                 enriched_at=enriched_dict["enriched_at"],
+                seo_title=enriched_dict.get("seo_title"),
+                seo_description=enriched_dict.get("seo_description"),
+                cover_image_alt=enriched_dict.get("cover_image_alt"),
             )
 
             # Prepare cover image if available
@@ -939,9 +900,15 @@ async def _publish_staging_item(
                         },
                     )
 
-            # Priority 3: Generate on-demand via Fireworks.ai Flux.1 Dev
-            # Triggered at approval time — only for articles without a pre-generated cover
-            if not cover_image_base64:
+            # Priority 3: Generate on-demand via Fireworks.ai Flux.1 Dev.
+            # The Damar workspace route disables this fallback so its static images
+            # remain native-ImageGen assets prepared before publication.
+            if not cover_image_base64 and not allow_generated_cover:
+                raise HTTPException(
+                    status_code=409,
+                    detail="A readable pre-generated cover image is required",
+                )
+            if not cover_image_base64 and allow_generated_cover:
                 fireworks_key = os.environ.get("FIREWORKS_API_KEY", "")
                 if fireworks_key:
                     try:
@@ -1033,6 +1000,8 @@ async def _publish_staging_item(
                 cover_image_base64=cover_image_base64,
                 cover_image_filename=cover_image_filename,
                 position=body.position if body else "latest",
+                slug=data.get("slug"),
+                publication_key=item_id,
             )
 
             # This path is already admin-gated at the endpoint above, so it calls
@@ -1067,27 +1036,6 @@ async def _publish_staging_item(
                     },
                 )
 
-                # Update homepage-layout.json if a position was specified
-                publish_position = body.position if body else "latest"
-                if publish_position != "latest" and publish_position in VALID_HOMEPAGE_POSITIONS:
-                    try:
-                        await update_homepage_layout(
-                            slug=article_slug,
-                            position=publish_position,
-                        )
-                        logger.info(
-                            "✅ Homepage layout updated",
-                            extra={
-                                "position": publish_position,
-                                "slug": article_slug,
-                            },
-                        )
-                    except Exception as layout_err:
-                        logger.warning(
-                            "⚠️ Failed to update homepage layout: %s",
-                            layout_err,
-                            extra={"position": publish_position},
-                        )
             else:
                 logger.error(
                     f"⚠️ Failed to publish to GitHub/Vercel: {publish_result.error}",
@@ -1096,6 +1044,8 @@ async def _publish_staging_item(
                 # Don't block publication if GitHub fails
                 # Article is already in Qdrant
 
+        except HTTPException:
+            raise
         except ImportError as e:
             logger.warning(
                 "⚠️ Article composer not available - skipping GitHub publish: %s",
@@ -1201,26 +1151,45 @@ async def _publish_staging_item(
         except Exception as e:
             logger.warning("Failed to enqueue post-processing (non-blocking): %s", e)
 
-        # Step 5: Update staging file with publish timestamp and persist to disk
-        data["published_at"] = datetime.now(timezone.utc).isoformat()
-        data["published_url"] = published_url
-        data["status"] = "published"
-        if github_commit_sha:
-            data["github_commit_sha"] = github_commit_sha
-        if mdx_path:
-            data["mdx_path"] = mdx_path
-
-        # Persist updated status to staging file so news-room shows "Published" ribbon
-        try:
-            staging_dir = staging_service.get_staging_dir(type)
-            staging_file = staging_dir / f"{item_id}.json"
-            if staging_file.exists():
-                staging_file.write_text(json.dumps(data, indent=2, default=str))
-                logger.info("✅ Staging file updated with published status: %s", item_id)
-        except Exception as e:
-            logger.warning("Failed to update staging file (non-blocking): %s", e)
-
+        # Step 5: Persist the publication attempt without turning a failed
+        # GitHub write into an unretryable, falsely-published staging item.
         github_published = bool(github_commit_sha)
+        attempt_at = datetime.now(timezone.utc).isoformat()
+        if github_published:
+            data["publication_requested_at"] = attempt_at
+            data["published_url"] = published_url
+            data["status"] = "publication_pending"
+            data["publish_position"] = body.position if body else "latest"
+            data["github_commit_sha"] = github_commit_sha
+            if publish_result is not None:
+                data["pull_request_number"] = publish_result.pull_request_number
+                data["auto_merge_enabled"] = publish_result.auto_merge_enabled
+            if mdx_path:
+                data["mdx_path"] = mdx_path
+            if publish_result is not None and publish_result.image_path:
+                data["published_cover_path"] = publish_result.image_path
+            data.pop("last_publication_failed_at", None)
+            data.pop("publication_lease_until", None)
+        else:
+            data["status"] = "pending"
+            data["last_publication_failed_at"] = attempt_at
+            data.pop("published_at", None)
+            data.pop("published_url", None)
+            data.pop("publication_requested_at", None)
+            data.pop("publication_lease_until", None)
+
+        # Persist the honest intermediate state. The external live verifier is
+        # the only component allowed to transition this item to ``published``.
+        try:
+            staging_service.save_staging_item(type, item_id, data)
+            logger.info("Staging publication state updated: %s", item_id)
+        except Exception as e:
+            logger.error("Failed to persist publication state: %s", e)
+            raise HTTPException(
+                status_code=500,
+                detail="Publication request opened but staging state could not be persisted",
+            ) from e
+
         if github_published:
             logger.info(
                 "✅ Publish completed (article PR opened, merges after CI passes)",
@@ -1263,10 +1232,14 @@ async def _publish_staging_item(
             "id": item_id,
             "title": title,
             "published_url": published_url if github_published else None,
-            "published_at": data["published_at"],
+            "published_at": None,
+            "publication_requested_at": data.get("publication_requested_at"),
             "collection": "visa_oracle" if type == "visa" else "bali_intel_bali_news",
             "github_commit_sha": github_commit_sha,
+            "pull_request_number": data.get("pull_request_number"),
+            "auto_merge_enabled": data.get("auto_merge_enabled"),
             "mdx_path": mdx_path,
+            "published_cover_path": data.get("published_cover_path"),
         }
 
     except HTTPException:

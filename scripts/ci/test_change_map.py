@@ -10,6 +10,7 @@ import unittest
 from pathlib import Path
 
 import change_map as cm
+import security_gate_flags as sgf
 
 
 class ChangeMapTests(unittest.TestCase):
@@ -215,6 +216,84 @@ class ChangeMapTests(unittest.TestCase):
         self.assertTrue(result["domains"]["docs_content_data"])
         self.assertEqual(result["suggested_jobs"], [])
         self.assertEqual(result["would_skip"], list(cm.TEST_JOBS))
+
+    def test_innocence_evidence_pack_alone_skips_product_test_jobs(self) -> None:
+        # Zero's order 2026-08-27: docs-only PRs must stop paying the 5 heavy
+        # required checks. BEFORE the "evidence/" DOC_PREFIXES entry, these
+        # two exact paths matched no rule at all and fell through to
+        # `unknown_paths`, which forces run_all=True — so the mandatory
+        # evidence-pack ceremony (evidence_pack_lint.py / harness-floor.yml,
+        # written by every agent-produced PR) silently defeated L5's own
+        # docs-lane fast path for the single most common PR shape. This is
+        # the guilt case that motivated the fix: revert the "evidence/" line
+        # in change_map.py's DOC_PREFIXES and this test goes red with
+        # unknown_paths == ["evidence/brief.yml", "evidence/pack.yml"].
+        result = cm.classify(["evidence/pack.yml", "evidence/brief.yml"])
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["unknown_paths"], [])
+        self.assertTrue(result["domains"]["docs_content_data"])
+        self.assertEqual(result["suggested_jobs"], [])
+        self.assertEqual(result["would_skip"], list(cm.TEST_JOBS))
+
+    def test_innocence_nested_evidence_archive_paths_also_route_to_docs(self) -> None:
+        # evidence/<YYYY-MM>/<task-slug>/{pack,brief}.yml is the archived
+        # form (see the repo's own evidence/2026-08/ tree) — a prefix match,
+        # not just the two root-level paths above.
+        result = cm.classify(
+            [
+                "evidence/2026-08/agent-x-ops-docs-fastlane-abc12345/pack.yml",
+                "evidence/2026-08/agent-x-ops-docs-fastlane-abc12345/brief.yml",
+            ]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["unknown_paths"], [])
+        self.assertTrue(result["domains"]["docs_content_data"])
+        self.assertEqual(result["suggested_jobs"], [])
+
+    def test_innocence_docs_pr_with_its_mandatory_evidence_pack_still_fast_paths(
+        self,
+    ) -> None:
+        # The realistic shape: a genuinely docs-only PR that also carries
+        # the evidence pack every agent-produced PR writes. This is the
+        # actual mandate proof — not the synthetic evidence-only case above.
+        result = cm.classify(
+            [
+                "docs/runbooks/ci.md",
+                "research/operations/2026-08-27-note.md",
+                "evidence/pack.yml",
+                "evidence/brief.yml",
+            ]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["unknown_paths"], [])
+        self.assertEqual(result["suggested_jobs"], [])
+        self.assertEqual(result["would_skip"], list(cm.TEST_JOBS))
+        # End-to-end with security.yml's flag math too — this is the full
+        # mandate proof: a docs-only PR with its mandatory evidence pack
+        # pays for none of the 5 heavy required checks (3 in tests.yml via
+        # suggested_jobs above, 2 CodeQL legs in security.yml via these
+        # flags), through the SAME classifier both workflows already share.
+        flags = sgf.compute_flags(result, js_manifest=False)
+        self.assertFalse(flags["run_codeql_python"])
+        self.assertFalse(flags["run_codeql_js"])
+
+    def test_guilt_evidence_pack_never_masks_a_real_code_domain(self) -> None:
+        # The evidence pack routing to docs_content_data must be additive,
+        # never a way to launder a real change past the classifier: a PR
+        # that also touches product code keeps exactly the job set that
+        # code earns, union'd with (never narrowed by) evidence/*.yml.
+        result = cm.classify(
+            [
+                "evidence/pack.yml",
+                "evidence/brief.yml",
+                "apps/backend-rag/backend/app/main.py",
+            ]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["backend_python"])
+        self.assertTrue(result["domains"]["docs_content_data"])
+        self.assertIn("backend-tests", result["suggested_jobs"])
+        self.assertNotEqual(result["suggested_jobs"], [])
 
     def test_guilt_one_code_file_among_fifty_docs_still_forces_its_suite(
         self,
