@@ -170,8 +170,14 @@ name: Harness floor recompute
 #   -> 27 contexts; "Harness floor recompute" present (app_id 15368, GitHub Actions);
 #      "harness/fable-gate" absent; strict: false
 #
-# and the repo's tracked snapshot infra/required.d/contexts.json agrees (generated 2026-08-11,
-# i.e. before the unblock task existed). That is precisely WHY the redesign above works: it moved
+# (UPDATE 2026-08-27: Zero's ruling cut required contexts 27 -> 9, then the
+# 30-day reinstatement rule brought it to 11 within the hour on real catches
+# unrelated to this job — "Harness floor recompute" stayed required through
+# both changes; docs/runbooks/merge-queue-discipline.md "Required vs advisory
+# checks — reinstatement rule".)
+#
+# and the repo's tracked snapshot infra/required.d/contexts.json agrees (regenerated 2026-08-27,
+# 11 contexts, source=api). That is precisely WHY the redesign above works: it moved
 # enforcement onto a job branch protection already demanded, instead of onto a hand-posted status
 # that would have had to be promoted. So this file's enforcement went live the moment the redesign
 # merged — no flag was ever waiting to be flipped.
