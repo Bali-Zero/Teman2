@@ -13,6 +13,8 @@ from datetime import datetime, timezone
 from typing import Any
 import logging
 
+import httpx
+
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
@@ -135,6 +137,30 @@ _TIER_TO_SCORE = {"breaking": 90, "developing": 60, "evergreen": 0}
 # truncated mid-thought — but bounded well below the old 200, which let a
 # reason balloon into a near-paragraph.
 _REASON_MAX_CHARS = 120
+
+
+def _claude_provider_ids() -> list[str]:
+    """Return configured OAuth seats once each, without exposing token values."""
+
+    # Seat 3 is assigned to this batch; 4-6 are the immediate quota fallback.
+    candidates = [
+        *(f"CLAUDE_CODE_OAUTH_TOKEN_{seat}" for seat in (3, 4, 5, 6, 1, 2)),
+        "CLAUDE_CODE_OAUTH_TOKEN",
+    ]
+    providers: list[str] = []
+    seen_tokens: set[str] = set()
+    for env_name in candidates:
+        token = os.environ.get(env_name, "").strip()
+        if not token or token in seen_tokens:
+            continue
+        seen_tokens.add(token)
+        suffix = env_name.removeprefix("CLAUDE_CODE_OAUTH_TOKEN")
+        providers.append(f"claude{suffix.lower()}")
+    # Interactive sessions may authenticate through Claude's config without
+    # exporting a token, so retain that sanctioned path when no seat is set.
+    return providers or ["claude"]
+
+
 def _provider_attempts(prompt: str) -> list[tuple[str, list[str], str | None, int]]:
     """Return the subscription-first text-generation cascade.
 
@@ -146,36 +172,37 @@ def _provider_attempts(prompt: str) -> list[tuple[str, list[str], str | None, in
 
     claude_bin = shutil.which("claude") or "/Users/nuzantara/.local/bin/claude"
     ollama_bin = shutil.which("ollama") or "/opt/homebrew/bin/ollama"
-    return [
-        (
-            "claude",
-            [
-                claude_bin,
-                "--print",
-                "--model",
-                "claude-sonnet-4-6",
-                "--tools",
-                "",
-                "--disable-slash-commands",
-                "--no-session-persistence",
-            ],
-            prompt,
-            150,
-        ),
+    claude_command = [
+        claude_bin,
+        "--print",
+        "--model",
+        "claude-sonnet-4-6",
+        "--tools",
+        "",
+        "--disable-slash-commands",
+        "--no-session-persistence",
+        "--safe-mode",
+    ]
+    attempts = [
+        (provider, list(claude_command), prompt, 150)
+        for provider in _claude_provider_ids()
+    ]
+    attempts.append(
         (
             "ollama",
             [ollama_bin, "run", "qwen3.5:9b"],
             prompt,
-            240,
-        ),
-    ]
+            120,
+        )
+    )
+    return attempts
 
 
 def _provider_env(provider: str) -> dict[str, str]:
     """Return the smallest environment needed by one subscription/local seat."""
 
     allowed = {"HOME", "LANG", "LC_ALL", "PATH", "TMPDIR"}
-    if provider == "claude":
+    if provider.startswith("claude"):
         allowed.update(
             {
                 "CLAUDE_CONFIG_DIR",
@@ -188,16 +215,49 @@ def _provider_env(provider: str) -> dict[str, str]:
     env = {key: value for key, value in os.environ.items() if key in allowed}
     path_prefix = "/Users/nuzantara/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
     env["PATH"] = f"{path_prefix}:{env.get('PATH', '')}"
-    if provider == "claude" and not env.get("CLAUDE_CODE_OAUTH_TOKEN"):
-        # The nightly LaunchAgent owns the A3/batch seat under the suffixed
-        # variable.  Map that one credential to the canonical child-process
-        # name without forwarding the source name or any neighbouring secret.
-        batch_oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN_3", "").strip()
-        if batch_oauth_token:
-            env["CLAUDE_CODE_OAUTH_TOKEN"] = batch_oauth_token
+    if provider.startswith("claude"):
+        suffix = provider.removeprefix("claude")
+        source_name = f"CLAUDE_CODE_OAUTH_TOKEN{suffix.upper()}"
+        seat_token = os.environ.get(source_name, "").strip()
+        if seat_token:
+            # Forward one selected seat under the canonical child-process name.
+            env["CLAUDE_CODE_OAUTH_TOKEN"] = seat_token
     if provider == "ollama":
         env["OLLAMA_NOHISTORY"] = "1"
     return env
+
+
+def _run_ollama_generation(
+    prompt: str,
+    *,
+    timeout: int,
+) -> subprocess.CompletedProcess[str]:
+    """Generate bounded JSON through local Ollama with reasoning disabled."""
+
+    response = httpx.post(
+        "http://127.0.0.1:11434/api/generate",
+        json={
+            "model": "qwen3.5:9b",
+            "prompt": prompt,
+            "stream": False,
+            "think": False,
+            "format": "json",
+            "keep_alive": "5m",
+            "options": {"temperature": 0, "num_predict": 2300},
+        },
+        timeout=timeout,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    output = payload.get("response") if isinstance(payload, dict) else None
+    if not isinstance(output, str) or not output.strip():
+        raise ValueError("Ollama returned no JSON response")
+    return subprocess.CompletedProcess(
+        args=["ollama-http", "qwen3.5:9b"],
+        returncode=0,
+        stdout=output,
+        stderr="",
+    )
 
 
 def _run_generation_cascade(
@@ -215,17 +275,26 @@ def _run_generation_cascade(
             continue
         logger.info("Calling %s enrichment provider...", provider)
         try:
-            result = subprocess.run(
-                command,
-                input=stdin_text,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                check=False,
-                env=_provider_env(provider),
-                cwd="/tmp",
-            )
-        except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+            if provider == "ollama":
+                result = _run_ollama_generation(prompt, timeout=timeout)
+            else:
+                result = subprocess.run(
+                    command,
+                    input=stdin_text,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                    check=False,
+                    env=_provider_env(provider),
+                    cwd="/tmp",
+                )
+        except (
+            FileNotFoundError,
+            subprocess.TimeoutExpired,
+            httpx.HTTPError,
+            json.JSONDecodeError,
+            ValueError,
+        ) as exc:
             batch_circuit.add(provider)
             errors.append(f"{provider}:{type(exc).__name__}")
             logger.warning(
@@ -453,8 +522,21 @@ def enrich_article_claude_cli(
         category=_escape_for_prompt(
             article.get("qwen_category", article.get("category", "general"))
         ),
-        published_date=_escape_for_prompt(article.get("published_date", "Unknown")),
-        content=_escape_for_prompt(str(article.get("content") or "")[:4000]),
+        published_date=_escape_for_prompt(
+            str(
+                article.get("published_date")
+                or article.get("published")
+                or "Unknown"
+            )
+        ),
+        content=_escape_for_prompt(
+            str(
+                article.get("content")
+                or article.get("text")
+                or article.get("summary")
+                or ""
+            )[:4000]
+        ),
         nlm_legal_basis=nlm_legal,
         nlm_web_findings=nlm_web,
         as_of=as_of,

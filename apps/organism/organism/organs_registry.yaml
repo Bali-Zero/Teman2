@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 103b14904c66c1fee58a288274362fe6a0a7d33b93d8c04784aa1e0b26a84a2a
+checksum: b4feb1d10a93396e11e67e08bcb456277d2738ef4af2f7098f1b5937816203c0
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2686,5 +2686,26 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.queue_shepherd.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.seat_mix_report
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 108000
+  owner_module: scripts/seat_mix_report.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.seat-mix.daily
+  severity_on_silence: info
+  notes: A7/R12 daily seat-mix telemetry (Agent dispatch model mix + non-Anthropic
+    shell-call mix, joined to PRs), StartCalendarInterval 06:30 WITA. Honors SEAT_MIX_REPORT_ENABLED
+    kill switch (writes status=disabled heartbeat) and an unconditional heartbeat
+    on both the success and failure path (genes imprinted post-birth, PR
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.seat_mix_report.json
     timestamp_field: ts
     status_field: status

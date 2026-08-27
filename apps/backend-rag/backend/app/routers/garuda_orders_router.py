@@ -216,7 +216,9 @@ async def create_order_from_check(
         # and it keeps "wrong owner" and "no such result" indistinguishable
         # to the caller, closing the enumeration oracle a distinct status
         # code would open.
-        raise HTTPException(status_code=404, detail={"code": "RESULT_NOT_FOUND", "retryable": False})
+        raise HTTPException(
+            status_code=404, detail={"code": "RESULT_NOT_FOUND", "retryable": False}
+        )
     try:
         applicant = Applicant(
             full_name=applicant_raw["full_name"],
@@ -275,8 +277,29 @@ async def get_order_and_practice(
     order_id: str,
     request: Request,
     response: Response,
-    repository: GarudaOrderRepository = Depends(get_repository),
 ) -> dict:
+    """Read-only tracker. Deliberately NOT `Depends(get_repository)`.
+
+    It used to declare that dependency and never reference it: the handler
+    answers entirely from `PracticeRepository(pool)` below. FastAPI resolves a
+    parameter dependency before the handler body runs, so the declaration was
+    not inert -- `get_repository` 503s whenever
+    `app.state.garuda_order_repository` is unset, and that object is only ever
+    constructed when `GARUDA_XENDIT_SECRET_KEY` is present
+    (`service_initializer.py` §5.7). Net effect: a customer who had ALREADY
+    PAID could not see their own order the moment the payment credential was
+    absent, rotated badly, or the provider wiring raised -- on a route whose
+    real work needs nothing but the database pool.
+
+    Measured in production 2026-08-27, before the Xendit sandbox account
+    exists: `GET /api/visa/voa/orders/{id}` answered `503
+    SERVICE_UNAVAILABLE`, indistinguishable from the checkout routes that
+    genuinely do need the provider. An availability coupling that buys nothing
+    is the whole defect; removing the parameter is the whole fix.
+
+    The `pool is None` guard below still 503s, correctly: that IS this route's
+    only real dependency.
+    """
     _privacy_headers(response)
     actor = await _require_magic_session_actor(request)
     pool = getattr(request.app.state, "garuda_db_pool", None)
