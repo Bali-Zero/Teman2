@@ -564,6 +564,62 @@ async def test_no_log_line_carries_applicant_pii(pool, caplog):
     assert order_id in rendered, "the log must still identify WHICH order (positive control)"
 
 
+async def test_no_outgoing_page_carries_applicant_pii_through_the_real_load_path(pool):
+    """`test_no_page_carries_applicant_pii` exercises `_compose` against a
+    hand-built `OrderAnomalyFacts` and would NOT catch a leak introduced in
+    `_StaffPageHandler._load` itself (e.g. a SQL edit that widens what column
+    gets read into `case_type` or `detail`). This one runs every handler
+    through a REAL seeded order, with real applicant email/name/passport on
+    the row, and inspects the literal bytes that would go out over the wire —
+    the same thing `test_the_sender_posts_to_the_configured_chat` inspects,
+    just for content instead of destination.
+    """
+
+    order_id = await _seed_order(pool, state="paid", late_case_open=True)
+    cases = [
+        (
+            StaffPageDuplicateChargeHandler,
+            "staff_page_duplicate_charge",
+            "payment.duplicate_charge_detected",
+            "OP-08",
+            {"second_charge_id": "ch_pii_real_1"},
+        ),
+        (
+            StaffPagePaymentFailureHandler,
+            "staff_page_payment_failure",
+            "payment.failed",
+            "OP-03",
+            {"outcome": "PROVIDER_UNAVAILABLE", "customer_action": "TRY_AGAIN_LATER"},
+        ),
+        (
+            StaffPageRefundOutOfOrderHandler,
+            "staff_page_refund_out_of_order",
+            "payment.refunded_out_of_order",
+            "OP-05",
+            {"refund_id": "rfnd_pii_real_1"},
+        ),
+    ]
+    for cls, job_type, event_name, transition_id, detail in cases:
+        row_id, event_id = await _enqueue_staff_page(
+            pool,
+            order_id,
+            job_type=job_type,
+            event_name=event_name,
+            transition_id=transition_id,
+            detail=detail,
+        )
+        rec = _TgRecorder()
+        sender, client = _tg_sender(rec)
+        try:
+            await cls(pool, sender)(_job(order_id, event_id, job_type))
+        finally:
+            await client.aclose()
+        text = _last_text(rec)
+        assert APPLICANT_EMAIL not in text, f"{cls.__name__} leaked the applicant email"
+        assert APPLICANT_NAME not in text, f"{cls.__name__} leaked the applicant name"
+        assert APPLICANT_PASSPORT not in text, f"{cls.__name__} leaked the passport number"
+
+
 # --------------------------------------------------------------------------
 # build_handlers wiring + end-to-end through drain_once
 # --------------------------------------------------------------------------
