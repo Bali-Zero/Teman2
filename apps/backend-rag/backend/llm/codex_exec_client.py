@@ -1,4 +1,8 @@
-"""Codex-exec subscription provider — OFFLINE, standalone provider adapter.
+"""Codex-exec subscription provider — OFFLINE relative to
+`backend/services/rag/agentic/` (the live request-serving RAG path never
+reaches it), but see the CORRECTED, B2b note below for what IS live:
+`wa_codex_daemon.py` is a real, in-repo importer and instantiator of
+`CodexExecClient`.
 
 Owner credential-path ruling recorded by this client (2026-08-15, Zero,
 direct, Legge 5 — see
@@ -14,12 +18,35 @@ credential) is not provisioned under this ruling; that client stays in-tree
 as a DORMANT, reviewed alternative — this module does not import it, replace
 it, or delete it.
 
-⚠️ THIS FILE HAS ZERO WIRING. Nothing in `backend/services/rag/agentic/` or
-any other live module imports it. No config flag, no gateway branch, no
-hot-path reference exists anywhere in this repo — grep it yourself before
-trusting this comment. Any live use still requires a separate runtime design,
-security/privacy review, context-parity evidence, and explicit activation
-authorization; none is supplied by this file or ruling.
+⚠️ CORRECTED, B2b (2026-08-25) — the claim below this line used to read
+"THIS FILE HAS ZERO WIRING" and was false. `backend/services/rag/agentic/`
+still has no reference to it — but `wa_codex_daemon.py` imports this module
+and is the payload of `com.balizero.wa-codex-broker`, a LaunchDaemon
+installed on Pro (login-less `zantara-codex` user, `KeepAlive`) and RUNNING
+as of 2026-08-25. It executes from a root-owned deployed copy at
+`/usr/local/lib/wa-codex-broker/`, NOT from a git checkout — so a change
+here is inert until that copy is re-promoted, and live from the moment it
+is. CORRECTED (team-lead review of PR #5028, 2026-08-26, by direct
+`grep` against this branch's `infra/home-fork/declared-pairs.json`): this
+paragraph used to claim that copy's `backend/**` tree was NOT declared
+there. That was false. Both `wa_codex_daemon.py` and this module ARE
+declared (entries dated 2026-08-25, sha256-verified at declaration time),
+alongside the wrapper and seat probe already covered — `lint_home_fork.py`
+does watch the whole payload for drift. Its exception-type coupling to
+this module is real either way: a
+constructor-signature change here (this round: `CodexExecAuthError`/
+`CodexExecQuotaError`/`CodexExecPolicyBlockedError` now require
+`confidence=`; `CodexExecOutputShapeError` now requires `reason=`) breaks
+it on the next promotion — verified safe THIS round only because the
+daemon's production code catches by type with an `except Exception:`
+catch-all already swallowing every unnamed exception (`backend/tests/unit/
+services/test_wa_codex_daemon.py`'s own `TestErrorMapping` proves it maps
+every unnamed type, including the new `CodexExecAmbiguousError`, to the
+same `"cli_failure"` it always did) — re-verify this on every future
+signature change here, do not assume it holds. Any FURTHER live use beyond
+what `wa_codex_daemon.py` already does still requires a separate runtime
+design, security/privacy review, context-parity evidence, and explicit
+activation authorization; none is supplied by this file or ruling.
 
 Design mirrors `openai_responses_client.py`'s discipline (read that module's
 docstring first): a property-based `available` that never raises on
@@ -174,7 +201,9 @@ Binding invariants (R24-1, mandate 2026-08-15):
     transcript echoes the ANSWER too when one was produced before a late
     failure, not only the prompt, so stripping the prompt alone left that
     second echo scannable) for a bounded set of auth-failure word classes —
-    see `_AUTH_DEATH_RE` for the exact, context-anchored
+    see `_AUTH_STRUCTURED_RE`/`_AUTH_PROSE_RE` (B2b split, superseding the
+    single `_AUTH_DEATH_RE` this paragraph originally named) for the exact,
+    context-anchored
     patterns (bare `401` was REMOVED after R25-3 found it false-positived on
     ordinary text like "completed after 401 ms"; only `401` in explicit
     auth-shaped context — `401 unauthorized`, `error 401`, `http 401` —
@@ -245,25 +274,30 @@ Binding invariants (R24-1, mandate 2026-08-15):
     you are unauthorized until renewal (401 on the portal)." with a clean,
     unrelated stderr would still false-page, because that sentence was never
     stripped from ITSELF. Worse, the `"\\n"` join between the two
-    independently-stripped streams was itself a seam `_AUTH_DEATH_RE`'s
-    `\\s+` alternatives can bridge across (every alternative uses `\\s+`,
-    which matches a newline too). Fix, UNIFIED — one design closing both
-    this finding and the R26-2 mangle finding above, not two overlapping
-    patches: (a) the scan reads STDERR ONLY now — stdout is no longer part
-    of the scanned text at all. Declared, not silently assumed: no measured
-    evidence (point 7) places `codex exec`'s own diagnostics on stdout —
-    every measured and constructed auth-shaped fixture is stderr-only — and
-    dropping stdout from the scan surface is also the only way to stop a
-    legitimate partial answer that happens to discuss the CLIENT's own
-    "expired"/"unauthorized" situation from paging on itself, the exact
-    guard-over-match this point's success-path stderr scoping already avoids
-    elsewhere. (b) stderr is still stripped of known prompt/stdout LINES via
-    `_strip_known_lines` (R26-2, unchanged mechanism) before scanning — still
-    necessary because stderr's own transcript echoes both. (c) the scan
-    itself now goes through `_auth_death_detected(*texts)`, which searches
-    each argument SEPARATELY and never joins them with a separator first —
-    removing the concatenation seam structurally, not only for today's
-    single-argument call site. See `_auth_death_detected`'s own docstring
+    independently-stripped streams was itself a seam the (then single)
+    `_AUTH_DEATH_RE`'s `\\s+` alternatives could bridge across (every
+    alternative uses `\\s+`, which matches a newline too). Fix, UNIFIED —
+    one design closing both this finding and the R26-2 mangle finding
+    above, not two overlapping patches: (a) the scan reads STDERR ONLY now
+    — stdout is no longer part of the scanned text at all. Declared, not
+    silently assumed: no measured evidence (point 7) places `codex exec`'s
+    own diagnostics on stdout — every measured and constructed auth-shaped
+    fixture is stderr-only — and dropping stdout from the scan surface is
+    also the only way to stop a legitimate partial answer that happens to
+    discuss the CLIENT's own "expired"/"unauthorized" situation from paging
+    on itself, the exact guard-over-match this point's success-path stderr
+    scoping already avoids elsewhere. (b) stderr is still stripped of known
+    prompt/stdout LINES via `_strip_known_lines` (R26-2, unchanged
+    mechanism) before scanning — still necessary because stderr's own
+    transcript echoes both. (c) the scan itself, as of B2b (2026-08-25),
+    goes through `_classify_stderr` (superseding this paragraph's original
+    `_auth_death_detected(*texts)`, which the B2b redesign folded into the
+    same per-line, multi-class engine that now also covers quota/policy —
+    see the block comment above `MatchConfidence`), which still classifies
+    each STDERR LINE independently and never joins lines with a separator
+    first — the concatenation seam this paragraph describes stays closed
+    structurally, not only for the auth word class or today's
+    single-argument call site. See `_classify_stderr`'s own docstring
     and `TestAuthDeathDetection`'s R26-addendum tests (late-failure-partial-
     answer innocence, and a direct boundary-formation guilt test on the
     helper itself).
@@ -343,6 +377,7 @@ import signal
 import tempfile
 import time
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -399,58 +434,196 @@ _FIXED_ARGV_PREFIX: tuple[str, ...] = (
 # from stdin.") — never the prompt text itself (point 2 above).
 _STDIN_SENTINEL = "-"
 
-# Auth-death word classes — see point 5's docstring for provenance and the
-# `exit_code != 0`-only scoping rationale. Mirrors (does not import, to keep
-# this module's own failure taxonomy independent per point 6's "no cross-file
-# assumptions") `claude_oauth_client.py::_AUTH_DIAGNOSTIC_PATTERN`, widened
-# with the measured `codex login status` phrase "not logged in" plus
-# constructed, plausible `codex exec` phrases including "login required" and
-# "run codex login". Additional phrasings R25-4 (2026-08-15 THAW round)
-# flagged as plausible wording that the original list under-matched: "token
-# has expired", "you need to sign in", "session invalidated", "sign-in
-# required". Only "not logged in" is measured; the rest remains constructed
-# until a controlled real auth-death is observed.
+# ---------------------------------------------------------------------------
+# B2b (2026-08-25) — REDESIGNED per
+# docs/plans/2026-08-25-due-bot-live/SPEC-codex-error-classification.md.
+# SUPERSEDES B2a's fixed-order, first-match-wins design (commit 0590b1ce3).
 #
-# R25-3 correction (same round): bare `401` was REMOVED — it false-positived
-# on ordinary non-auth text containing the digits "401" (measured example:
-# "completed after 401 ms"). `401` now only counts in explicit auth-shaped
-# context (`401 unauthorized`, `error 401`, `http 401`, `401 error`) — the
-# bare standalone `unauthorized` alternative below still catches a genuine
-# "unauthorized" failure without needing the number at all.
+# B2a's own in-file comment (now deleted) claimed the three word classes
+# "are independent vocabularies by construction — a stderr line cannot
+# legitimately match more than one" and used that to license a fixed
+# auth -> quota -> policy-blocked check order. A fenced cross-family
+# refuter (gpt-5.6-sol, xhigh) reproduced 12 findings proving that claim
+# FALSE — see
+# `docs/plans/2026-08-25-due-bot-live/evidence/b2a-refuter-gpt56sol.txt`.
+# The flagship one: `Error: token has expired; refresh failed with 429 too
+# many requests` matches AUTH (prose "token has expired") AND QUOTA
+# (structured "429 too many requests") on the SAME line — a realistic
+# causal chain (expired token -> refresh attempt -> refresh rate-limited),
+# not a constructed edge case. Fixed check order silently picked AUTH and
+# sent an operator to `codex login` for something login cannot fix.
 #
-# Every phrase here is deliberately SPECIFIC (word-boundary AND multi-word
-# where the single word alone is common in ordinary text) — e.g. "token has
-# expired" not bare "expired" (which appears in perfectly normal WA traffic:
-# "my passport expired last month"), "sign in"/"sign-in" not bare "sign"
-# (which appears in "please sign the form"). This guard pages a human on a
-# match, so both an under-match (a real auth failure nobody hears about) and
-# an over-match (a false page on ordinary visa-vocabulary text) cost real
-# operator time — see R25-4's paired guilt/innocence tests.
+# This design closes the defect with four properties (SPEC P1-P4), not by
+# tuning alternatives (SPEC: "[t]uning the alternatives closes those and
+# widens the over-match surface at the same time. That trade has no good
+# side."):
 #
-# R26-3 fix (2026-08-15 THAW round): the group used to close with a plain
-# `\b` after the whole alternation, including the LAST alternative's
-# optional trailing backtick (`` `?``) — a genuine word boundary requires a
-# word-char/non-word-char TRANSITION, and a backtick followed by a space (or
-# end of string) is non-word on both sides, so `\b` there is unsatisfied
-# for the branch that consumed the backtick. `(?!\w)` replaces it: a
-# negative lookahead for "not immediately followed by a word character",
-# which is satisfied at end-of-string and after ANY non-word character
-# (including a lone trailing backtick) without requiring a same-position
-# transition — correct after both a word ending (`...login`) and a
-# non-word ending (`...login\``). The LEADING `\b` is untouched: every
-# alternative starts with a word character, so the original mid-word-start
-# guard is unaffected. A dedicated fixture isolates the backtick clause
-# alone (no co-occurring vocabulary from any other alternative) both with
-# and without backticks — see `TestAuthDeathDetection`'s R26-3 tests.
-_AUTH_DEATH_RE: re.Pattern[str] = re.compile(
+#   P1 — every class is evaluated, never just the first hit. Two classes
+#        matching one payload is a DEFINED outcome (AMBIGUOUS,
+#        `CodexExecAmbiguousError`), not a silent precedence — UNLESS a
+#        stated reason justifies resolving it (P3 below), in which case the
+#        code says so and the suppressed candidate(s) survive on the raised
+#        exception (`.suppressed`), never silently dropped.
+#   P2 — classification happens PER LINE, never across the whole blob. A
+#        stderr is split on `\n` before any pattern ever runs (see
+#        `_classify_stderr`); no pattern can bridge two records. This kills
+#        the newline-bridging class of finding (`quota\nexceeded`,
+#        `content\npolicy`) by construction, not by pattern care.
+#   P3 — every word class is split into a STRUCTURED tier (an error code,
+#        an HTTP-status-shaped token, another machine-readable marker) and
+#        a PROSE tier (natural-language phrasing). When multiple classes
+#        match and exactly one of them matched at the STRUCTURED tier, that
+#        one wins — machine-readable evidence outranks a guess about
+#        ordinary prose. This is the ONLY precedence rule in this module,
+#        fully stated here, applied in exactly one place
+#        (`_classify_stderr`).
+#   P4 — confidence (`MatchConfidence.HIGH` for a structured-tier hit,
+#        `.LOW` for a prose-tier-only hit) travels with the result, all the
+#        way onto the raised exception (`confidence=` kwarg). CORRECTED
+#        (team-lead review of PR #5028, 2026-08-26): this used to cite a
+#        "`codex_broker_wire.py`'s detail field" that does not exist
+#        anywhere in this repo (`find` returns nothing). Confidence does
+#        NOT reach a wire-level detail field today — `wa_codex_daemon.py`
+#        maps every one of these exceptions onto the coarse,
+#        confidence-blind `wa_broker.ALLOWED_ERROR_CLASSES` (the real
+#        closed 7-member vocabulary the router validates against, in
+#        `apps/backend-rag/backend/services/integrations/wa_broker.py`) —
+#        mostly `"cli_failure"` regardless of confidence, per that daemon
+#        module's own error-mapping arms. An unmeasured prose guess and a
+#        matched error code are never presented as the same fact WITHIN
+#        this module — that claim stands; the wire-transmission clause
+#        did not.
+#
+# P5 ("unknown stays unknown") and P6 (guilt AND innocence per class) are
+# enforced by the pattern content itself and by
+# `backend/tests/llm/test_codex_exec_client.py` respectively — not by this
+# module's structure. P7 (disjointness, if claimed, is TESTED on realistic
+# COMPOSITE payloads) is what this comment block's predecessor got wrong:
+# the pre-B2b `TestWordClassDisjointness` tested each vocabulary's own
+# alternatives in isolation and reported the payload-level claim settled —
+# that was the weaker test the B2a landing commit's own narrative names.
+# The corrected tests construct the SAME composite strings the refuter
+# used.
+#
+# The SPEC's "Arming condition" (nothing here is trusted until a REAL codex
+# exec quota event and a REAL policy block are observed) is expressed
+# structurally, not just by comment: POLICY_BLOCKED has NO structured tier
+# at all (nobody has ever seen what `codex exec` prints on a policy block —
+# there is no machine-readable anchor to give it one), so every
+# `CodexExecPolicyBlockedError` this module can ever raise carries
+# `confidence=MatchConfidence.LOW` by construction. A caller that treats
+# LOW confidence as advisory-only (never an irreversible action) honors the
+# arming condition without needing to re-read this comment to know it.
+# ---------------------------------------------------------------------------
+
+
+class MatchConfidence(StrEnum):
+    """How a matched word class was recognised. `HIGH` — a STRUCTURED,
+    machine-readable token (an HTTP-status-shaped phrase, a `snake_case`
+    error-code identifier) fired. `LOW` — only a PROSE, natural-language
+    phrase fired. SPEC P3/P4: never presented as the same fact; see the
+    B2b block comment above for the one place this drives a decision."""
+
+    HIGH = "HIGH"
+    LOW = "LOW"
+
+
+class _WireWordClass(StrEnum):
+    """The stderr word classes this module recognises. CORRECTED (team-lead
+    review of PR #5028, 2026-08-26): this used to describe these as "a
+    strict SUBSET of F3's closed wire vocabulary (`codex_broker_wire.py`)"
+    — that file does not exist anywhere in this repo (`find` returns
+    nothing), and the claim was not a literal subset-by-name even under the
+    real closed vocabulary that DOES exist,
+    `wa_broker.ALLOWED_ERROR_CLASSES` (7 members:
+    `exec_timeout`/`cli_failure`/`cli_version_mismatch`/`spawn_failure`/
+    `oversized_output`/`empty_output`/`policy_refusal`, in
+    `apps/backend-rag/backend/services/integrations/wa_broker.py`) — none
+    of `_WireWordClass`'s own members share a name with any of those seven.
+    What IS true, verified against `wa_codex_daemon.py`'s actual exception
+    mapping: every exception this module raises from one of these word
+    classes gets COLLAPSED by the daemon onto that coarser 7-member
+    vocabulary (mostly the generic `"cli_failure"` bucket), never passed
+    through by name. `TIMEOUT`/`HOST_OFFLINE`-shaped failures (a wall-clock
+    deadline, a missing binary) are determined structurally and never come
+    from stderr-pattern matching at all, so neither has a member here;
+    `OUTPUT_OVERSIZED` is this module's own name for the empty-stdout/
+    oversized-output shapes (Ruling A — see `OutputShapeReason`), not a
+    borrowed name from elsewhere."""
+
+    AUTH_DEATH = "AUTH_DEATH"
+    QUOTA = "QUOTA"
+    POLICY_BLOCKED = "POLICY_BLOCKED"
+    OUTPUT_OVERSIZED = "OUTPUT_OVERSIZED"
+
+
+# Auth-death word class — mirrors (does not import, per point 6's "no
+# cross-file assumptions") `claude_oauth_client.py::_AUTH_DIAGNOSTIC_PATTERN`.
+# Only "not logged in" is measured (`codex login status`); the rest is
+# constructed, plausible wording — see point 5's docstring (module header)
+# for the full R24-R28 provenance history, which is otherwise unchanged by
+# this round: the auth vocabulary's CONTENT is not what the refuter found
+# defective, only its participation in the old fixed-order dispatch was.
+#
+# STRUCTURED (HIGH): HTTP-status-shaped phrases and `snake_case`
+# error-code identifiers. The digit-anchored alternatives keep `\b`/
+# `(?!\w)` word boundaries (a stray "3401" must not match); the underscored
+# identifiers do NOT require a WORD boundary at either edge — a namespaced/
+# suffixed compound identifier like `token_revoked` needs to survive both
+# `openai_insufficient_quota` (leading `_`) and `insufficient_quota_error`
+# (trailing `_`), and `\b` fails on both since `_` is a word character
+# (see `_QUOTA_STRUCTURED_RE`'s comment below for the reproduced finding
+# that makes this concrete for the sibling quota token).
+#
+# CORRECTED (team-lead review of PR #5028, 2026-08-26, by direct
+# execution, not by reading the pattern): "carries essentially zero
+# over-match risk ... regardless of what precedes or follows it" — the
+# claim this paragraph used to make — was FALSE. Compiling this exact
+# pattern and running it live found real false positives with no boundary
+# involved at all:
+#   'refresh_tokenizer'        -> MATCH (an ordinary English word contains
+#                                 "refresh_token" as a substring)
+#   'token_revoked_at=false'   -> MATCH
+#   '"token_revoked": false'   -> MATCH (a JSON diagnostic explicitly
+#                                 reporting the token is NOT revoked)
+# A missing WORD boundary is not the same claim as "no over-match risk at
+# all" — the token can still collide with a longer English word, or be
+# quoted as a FIELD NAME whose VALUE negates it. Two trailing, zero-width
+# lookaheads close both without reintroducing the `\b`/`(?!\w)` under-match
+# R28-1 fixed: `(?![A-Za-z])` blocks a continuing letter run (the
+# `tokenizer` collision — underscore is still allowed, so
+# `insufficient_quota_error` is unaffected); the second lookahead blocks
+# an immediate JSON/log-style negated-value assignment (`: false`,
+# `=false`, an optional `_suffix` and/or quote before the separator, then
+# `false`/`null`/`none`/`ok`) without requiring a WORD boundary either, so
+# `openai_insufficient_quota` and `insufficient_quota_error` (both already
+# pinned as GUILT fixtures) still match. `\x22` is `"` written as a regex
+# hex-escape rather than a literal quote character INSIDE an `r"..."`
+# literal on purpose: `scripts/tests/test_wa_codex_seat_probe.py`'s
+# byte-identity guard (fixed the same round, PR #5028) deliberately flags
+# an embedded `"` as a possible truncated-extraction defect — see that
+# test's own comment for why a raw string CAN legally carry one but this
+# guard cannot tell a legitimate one from a truncation, so the guard
+# treats any embedded quote as suspicious by design.
+_AUTH_STRUCTURED_RE: re.Pattern[str] = re.compile(
+    r"(?:\b401\s+unauthorized\b|\berror\s+401\b|\b401\s+error\b|\bhttp\s+401\b|"
+    r"token_revoked|refresh_token(?:_reused|_revoked|_expired)?)"
+    r"(?![A-Za-z])"
+    r"(?![\w]*\x22?[:=\s]+(?:false|null|none|ok)\b)",
+    re.IGNORECASE,
+)
+
+# PROSE (LOW): natural-language phrasing. Every phrase is deliberately
+# SPECIFIC (word-boundary AND multi-word where the single word alone is
+# common in ordinary text) — e.g. "token has expired" not bare "expired"
+# (which appears in perfectly normal WA traffic: "my passport expired last
+# month"), "sign in"/"sign-in" not bare "sign" (which appears in "please
+# sign the form"). This guard pages a human on a match, so both an
+# under-match (a real auth failure nobody hears about) and an over-match (a
+# false page on ordinary visa-vocabulary text) cost real operator time.
+_AUTH_PROSE_RE: re.Pattern[str] = re.compile(
     r"\b(?:"
-    r"401\s+unauthorized|"
-    r"error\s+401\b|"
-    r"401\s+error\b|"
-    r"http\s+401\b|"
     r"unauthorized|"
-    r"token_revoked|"
-    r"refresh_token(?:_reused|_revoked|_expired)?|"
     r"token\s+has\s+expired|"
     r"not\s+logged\s+in|"
     r"login\s+required|"
@@ -462,6 +635,189 @@ _AUTH_DEATH_RE: re.Pattern[str] = re.compile(
     r")(?!\w)",
     re.IGNORECASE,
 )
+
+# Quota-exhaustion word class — F3 (docs/plans/2026-08-25-due-bot-live/MANDATE.md):
+# "Closed wire error vocabulary: AUTH_DEAD | QUOTA | TIMEOUT | ... — auth and
+# quota MUST be distinct (today they collapse; split before arming)."
+#
+# UNVERIFIED HYPOTHESIS (see the B2b block comment's Arming Condition
+# paragraph above): this pattern has never been validated against a real
+# `codex exec` quota-exhaustion event. The vocabulary is CROSS-REFERENCED
+# from a DIFFERENT CLI's cascade-detection grep (`~/.claude/CLAUDE.md`
+# §Multi-LLM cascade) plus standard OpenAI/Codex-CLI quota/rate-limit
+# diagnostic tokens, never measured against this specific CLI's actual
+# stderr. A green test proves the code path reachable, not that the
+# pattern fires on real `codex exec` output.
+#
+# R28-1 correction (2026-08-25, this round — NARROWS B2a's vocabulary,
+# never widens it, per the reproduced over-match findings §2 of the
+# evidence file above):
+#   - The underscored `insufficient_quota` STRUCTURED token no longer
+#     requires a `\b`/`(?!\w)` boundary at either edge — B2a's version
+#     required both, and both fail next to a `_` (`_` is a word character,
+#     so `openai_insufficient_quota` defeats the leading `\b` and
+#     `insufficient_quota_error` defeats the trailing `(?!\w)`) —
+#     reproduced findings §4.
+#   - Bare "too many requests" (no leading "429") DROPPED: over-matches
+#     ordinary consultancy prose ("the officer made too many requests for
+#     the same document" — reproduced finding §2). The `429`-anchored
+#     structured phrase remains, and stays exactly as specific as the
+#     R25-3 lesson that bare `401` false-positived on "completed after 401
+#     ms" warns against for bare `429`.
+#   - `resource_exhausted` DROPPED entirely: the reproduced finding showed
+#     it firing on `RESOURCE_EXHAUSTED: received message larger than max
+#     (...)` — a payload-SIZE failure, not account quota (reproduced
+#     finding §2). That shape is now its own class,
+#     `_WireWordClass.OUTPUT_OVERSIZED` below (Ruling A — this maps onto
+#     F3's `OUTPUT_INVALID`, not `QUOTA`). Bare `RESOURCE_EXHAUSTED` with
+#     no size-qualifying context is genuinely ambiguous between the two
+#     meanings (gRPC/Google API convention uses this status for BOTH) with
+#     no anchor either way for this CLI — SPEC P5, "unknown stays unknown",
+#     applies: deliberately left unmatched rather than guessed.
+#   - Bare "quota exceeded"/"quota is exceeded" DROPPED: the reproduced
+#     finding ("Your sponsor's quota exceeded this year's KITAS
+#     allocation" — reproduced finding §2) shows this phrase is
+#     domain-overloaded in an immigration-consultancy corpus specifically —
+#     "quota" is ordinary KITAS/RPTKA-sponsor vocabulary here, not just
+#     generic English. A narrower anchor ("your current quota",
+#     billing/plan-shaped) is kept below instead of excepting every
+#     possessive that could precede the bare phrase — whack-a-mole the
+#     SPEC explicitly warns against ("[t]uning the alternatives ... widens
+#     the over-match surface at the same time").
+#   - Added per the reproduced UNDER-match findings §3: `rate_limit_exceeded`
+#     (structured), "rate limit reached", "exceeded your current quota",
+#     "monthly credits exhausted"/"credits exhausted" (prose — "credits"
+#     and "current quota"/billing framing are not plausible immigration
+#     vocabulary, unlike bare "quota").
+# Bare "exhausted"/"limit" remain deliberately excluded as standalone
+# alternatives — both are plausible ordinary WA-immigration vocabulary (a
+# KITAS sponsor "quota limit", "I am exhausted from the process").
+#
+# CORRECTED (team-lead review of PR #5028, 2026-08-26, by direct
+# execution): the boundary-free `insufficient_quota`/`rate_limit_exceeded`
+# this R28-1 note describes has the SAME over-match class as
+# `_AUTH_STRUCTURED_RE` above (see its comment for the full account) —
+# reproduced live:
+#   '"insufficient_quota": false'   -> MATCH (negated JSON field)
+#   'insufficient_quota_check ok'   -> MATCH (a health-check field name
+#                                      reporting the check PASSED, i.e.
+#                                      quota is NOT insufficient)
+# Same two trailing lookaheads as the auth pattern, same reasoning: a
+# continuing-letter guard (harmless here — no bare English word contains
+# "insufficient_quota" or "rate_limit_exceeded" as a substring the way
+# "tokenizer" contains "token", but applied for symmetry/defense-in-depth
+# against the identical failure class) and a negated-value guard that adds
+# `ok`/`okay` to the false/null/none vocabulary specifically for the
+# "_check ok"-style self-report shape. `\x22` is `"` as a regex hex-escape,
+# not a literal quote character inside an `r"..."` literal — same reason
+# as `_AUTH_STRUCTURED_RE`'s comment: the probe's byte-identity guard
+# treats an embedded `"` as a possible truncated-extraction defect.
+_QUOTA_STRUCTURED_RE: re.Pattern[str] = re.compile(
+    r"(?:\b429\s+too\s+many\s+requests\b|insufficient_quota|rate_limit_exceeded)"
+    r"(?![A-Za-z])"
+    r"(?![\w]*\x22?[:=\s]+(?:false|null|none|ok)\b)",
+    re.IGNORECASE,
+)
+_QUOTA_PROSE_RE: re.Pattern[str] = re.compile(
+    r"\b(?:"
+    r"rate[- ]limit(?:ed)?\s+exceeded|"
+    r"rate\s+limit\s+reached|"
+    r"usage\s+limit(?:\s+reached)?|"
+    r"exceeded\s+your\s+current\s+quota|"
+    r"monthly\s+credits\s+exhausted|"
+    r"credits\s+exhausted|"
+    r"out\s+of\s+extra\s+usage"
+    r")(?!\w)",
+    re.IGNORECASE,
+)
+
+# Payload/output-too-large word class (Ruling A, orchestrator mandate
+# 2026-08-25): NOT an F3 vocabulary member on its own — it maps onto the
+# PRE-EXISTING `OUTPUT_INVALID` member alongside the empty-stdout-on-exit-0
+# path, via `OutputShapeReason` (see `CodexExecOutputShapeError` below). F3
+# collapses "the model produced too much" and "the model produced nothing"
+# into one bucket, but their retry semantics are OPPOSITE: an oversized
+# response reproduces on the same prompt (retrying wastes a call; the fix
+# is truncation or a reprompt), while an empty response on exit 0 is the
+# classic transient (retry is exactly right). No new F3 member is added —
+# the distinction lives in the required `reason` detail, per the
+# orchestrator's ruling that F3's vocabulary stays closed. This specific
+# pattern is STRUCTURED-only (no prose tier): it is a reproduced over-match
+# FIX (this exact string was previously misread as `QUOTA` via bare
+# `resource_exhausted` above), grounded in the reproduced finding itself,
+# not a guess.
+_OUTPUT_OVERSIZED_STRUCTURED_RE: re.Pattern[str] = re.compile(
+    r"received\s+message\s+larger\s+than\s+max",
+    re.IGNORECASE,
+)
+
+# Content-policy-refusal word class — F3's `POLICY_BLOCKED` member. EVEN
+# WEAKER precedent than quota (see the B2b block comment's Arming Condition
+# paragraph above): nobody has ever seen what `codex exec` prints on a
+# policy block, and this class has no structured tier at all — every
+# alternative below is prose, so every match is `MatchConfidence.LOW` by
+# construction.
+#
+# R28-2 correction (2026-08-25, this round — NARROWS, never widens, per the
+# reproduced over-match findings §2):
+#   - "cannot assist with" DROPPED bare, replaced with
+#     `can(?:not|'t)\s+assist\s+with\s+(?:this|that)\s+request`: the
+#     reproduced over-match ("We cannot assist with the visa extension
+#     until your sponsor sends the missing passport scan") has no "this/
+#     that request" object — it is conditional business prose about a
+#     named service, not a model refusing a request. The narrower anchor
+#     ALSO closes the reproduced under-match ("I can't assist with that
+#     request").
+#   - "refused to answer"/"refused to respond" DROPPED bare, replaced with
+#     `refused\s+to\s+respond\s+to\s+(?:this|that|the)\s+request`: the
+#     reproduced over-match ("The applicant refused to answer the
+#     immigration officer's question") is about a THIRD PARTY (the
+#     applicant), not the model.
+#   - the "violates ... policy" alternative now REQUIRES "usage": the
+#     reproduced over-match ("Submitting duplicate visa applications
+#     violates the policy and may delay approval") never says "usage". The
+#     narrower anchor also closes the reproduced under-match ("this
+#     request may violate our usage policy").
+#   - "safety system" DROPPED, replaced with "safety filter": the
+#     reproduced over-match ("The office fire safety system is under
+#     maintenance") is ordinary facilities prose; "safety filter" is not
+#     plausible outside a content-moderation context and closes the
+#     reproduced under-match ("blocked by the safety filter") at the same
+#     time.
+_POLICY_PROSE_RE: re.Pattern[str] = re.compile(
+    r"\b(?:"
+    r"content\s+policy|"
+    r"safety\s+filter|"
+    r"can(?:not|'t)\s+assist\s+with\s+(?:this|that)\s+request|"
+    r"refused\s+to\s+respond\s+to\s+(?:this|that|the)\s+request|"
+    r"violat(?:es?|ing)\s+(?:(?:the|our)\s+)?usage\s+polic(?:y|ies)|"
+    r"moderation\s+block(?:ed)?"
+    r")(?!\w)",
+    re.IGNORECASE,
+)
+
+# One table, one place: every `_WireWordClass` maps to its (HIGH, LOW)
+# pattern pair — `None` where a tier does not exist (POLICY_BLOCKED has no
+# structured tier; OUTPUT_OVERSIZED has no prose tier). `_classify_stderr`
+# is the sole reader.
+_PATTERNS: dict[_WireWordClass, dict[MatchConfidence, re.Pattern[str] | None]] = {
+    _WireWordClass.AUTH_DEATH: {
+        MatchConfidence.HIGH: _AUTH_STRUCTURED_RE,
+        MatchConfidence.LOW: _AUTH_PROSE_RE,
+    },
+    _WireWordClass.QUOTA: {
+        MatchConfidence.HIGH: _QUOTA_STRUCTURED_RE,
+        MatchConfidence.LOW: _QUOTA_PROSE_RE,
+    },
+    _WireWordClass.POLICY_BLOCKED: {
+        MatchConfidence.HIGH: None,
+        MatchConfidence.LOW: _POLICY_PROSE_RE,
+    },
+    _WireWordClass.OUTPUT_OVERSIZED: {
+        MatchConfidence.HIGH: _OUTPUT_OVERSIZED_STRUCTURED_RE,
+        MatchConfidence.LOW: None,
+    },
+}
 
 
 class CodexExecUnavailableError(RuntimeError):
@@ -482,11 +838,116 @@ class CodexExecAuthError(RuntimeError):
     docstring previously said "(prompt-stripped) output", stale against the
     stderr-only, line-based design point 5 now describes — stdout is never
     scanned at all, and stderr is line-stripped, not the whole "output")
-    — matched a known auth-failure word class (see point 5). Operator
-    re-login (`codex login`) is needed. Distinct from
-    `CodexExecProcessError` so a caller can page a human for THIS class and
-    silently retry-later for a generic failure.
+    — matched the auth-failure word class (see point 5 / the B2b block
+    comment near `_AUTH_STRUCTURED_RE`). Operator re-login (`codex login`)
+    is needed. Distinct from `CodexExecProcessError` so a caller can page a
+    human for THIS class and silently retry-later for a generic failure.
+
+    `confidence` (SPEC P4) is `MatchConfidence.HIGH` when a STRUCTURED
+    token fired (`_AUTH_STRUCTURED_RE`) or `.LOW` when only PROSE fired
+    (`_AUTH_PROSE_RE`). `suppressed` (SPEC P1) names any OTHER
+    `_WireWordClass` that also matched this stderr but lost to this one
+    under P3's machine-readable-evidence precedence — empty when AUTH_DEATH
+    was the only class that matched at all.
     """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        confidence: MatchConfidence,
+        suppressed: frozenset[str] = frozenset(),
+    ) -> None:
+        self.confidence = confidence
+        self.suppressed = suppressed
+        super().__init__(message)
+
+
+class CodexExecQuotaError(RuntimeError):
+    """The subprocess exited non-zero and its stderr (line-stripped of
+    echoed prompt/stdout, per `CodexExecAuthError`'s discipline) matched
+    the quota-exhaustion word class (`_QUOTA_STRUCTURED_RE`/
+    `_QUOTA_PROSE_RE`). Distinct from `CodexExecAuthError` — F3 (MANDATE.md)
+    explicitly requires auth and quota to be distinguishable outcomes,
+    never collapsed into one bucket. Distinct from `CodexExecProcessError`
+    so a caller can apply quota-specific backoff/fallback (e.g. route to a
+    different seat) instead of a generic retry-later.
+
+    `confidence`/`suppressed` — see `CodexExecAuthError`'s docstring; same
+    contract.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        confidence: MatchConfidence,
+        suppressed: frozenset[str] = frozenset(),
+    ) -> None:
+        self.confidence = confidence
+        self.suppressed = suppressed
+        super().__init__(message)
+
+
+class CodexExecPolicyBlockedError(RuntimeError):
+    """The subprocess exited non-zero and its stderr (line-stripped)
+    matched the content-policy-refusal word class (`_POLICY_PROSE_RE`).
+    Distinct from `CodexExecProcessError` so a caller can classify this as
+    a policy outcome (F3's `POLICY_BLOCKED`) rather than a transient
+    failure worth retrying.
+
+    `confidence` is ALWAYS `MatchConfidence.LOW` — this class has no
+    structured tier (see the B2b block comment near `_POLICY_PROSE_RE`),
+    which is itself how the SPEC's Arming Condition is enforced
+    structurally rather than by convention. `suppressed` — see
+    `CodexExecAuthError`'s docstring; same contract.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        confidence: MatchConfidence,
+        suppressed: frozenset[str] = frozenset(),
+    ) -> None:
+        self.confidence = confidence
+        self.suppressed = suppressed
+        super().__init__(message)
+
+
+class CodexExecAmbiguousError(RuntimeError):
+    """The subprocess exited non-zero and its stderr (line-stripped, then
+    classified PER LINE per SPEC P2) matched more than one F3-adjacent word
+    class with no principled winner — SPEC P1: "If two classes match one
+    payload, that is a defined outcome ... not a silent precedence."
+
+    Raised ONLY when P3's machine-readable-evidence precedence rule cannot
+    resolve the collision by itself: zero, or more than one, class matched
+    at `MatchConfidence.HIGH`. A HIGH-vs-LOW collision (e.g. the flagship
+    reproduced finding, `token has expired` (AUTH, LOW) + `429 too many
+    requests` (QUOTA, HIGH) in one stderr) resolves to the HIGH class
+    instead (`CodexExecQuotaError` in that example, with `AUTH_DEATH` on
+    its `.suppressed`) and never reaches this exception.
+
+    `candidates` carries `_WireWordClass` string values only — never raw
+    stderr content (point 6). CORRECTED (team-lead review of PR #5028,
+    2026-08-26): this used to say it "Maps onto F3's `INTERNAL` in
+    `codex_broker_wire.py`" — that file does not exist anywhere in this
+    repo, and the real closed wire vocabulary
+    (`wa_broker.ALLOWED_ERROR_CLASSES`, 7 members) has no `INTERNAL`
+    member either. Verified against `wa_codex_daemon.py`'s actual
+    exception handling: this exception is not caught by any of its
+    type-specific `except` clauses, so it falls to the generic
+    `except Exception:` catch-all like every other unnamed type and maps
+    to the same `"cli_failure"` bucket — no dedicated AMBIGUOUS slot
+    exists anywhere on the wire today; this module's own `candidates`
+    field (naming the classes rather than guessing one) is where that
+    detail actually lives.
+    """
+
+    def __init__(self, message: str, *, candidates: frozenset[str]) -> None:
+        self.candidates = candidates
+        super().__init__(message)
 
 
 class CodexExecTimeoutError(RuntimeError):
@@ -504,11 +965,36 @@ class CodexExecCommunicationError(RuntimeError):
     """
 
 
+class OutputShapeReason(StrEnum):
+    """Ruling A (orchestrator mandate 2026-08-25): F3's `OUTPUT_INVALID`
+    member collapses two conditions with OPPOSITE retry semantics —
+    `EMPTY` (`exit_code == 0` but stdout was empty/whitespace-only, the
+    classic transient; retrying is likely to help) and `OVERSIZED` (a
+    payload/output-too-large failure; the SAME prompt reproduces it, so
+    retrying wastes a call — the fix is truncation or a reprompt). F3's
+    vocabulary stays closed and unchanged; the distinction lives here,
+    required on every `CodexExecOutputShapeError`."""
+
+    EMPTY = "empty"
+    OVERSIZED = "oversized"
+
+
 class CodexExecOutputShapeError(RuntimeError):
-    """`exit_code == 0` but stdout was empty/whitespace-only, or otherwise
-    did not match the measured output contract (point 4) — never a
-    best-effort empty answer.
+    """`exit_code == 0` but stdout was empty/whitespace-only
+    (`reason=OutputShapeReason.EMPTY`, point 4), OR `exit_code != 0` with
+    stderr matching the payload/output-too-large structured pattern
+    (`reason=OutputShapeReason.OVERSIZED`, Ruling A — see
+    `OutputShapeReason`'s docstring and `_OUTPUT_OVERSIZED_STRUCTURED_RE`).
+    Never a best-effort empty answer. `reason` is a required keyword-only
+    argument, not a default — every raise site must declare which
+    condition this is, by design (F3 exists because an earlier
+    undistinguished bucket is exactly how AUTH_DEAD and QUOTA collapsed
+    into one).
     """
+
+    def __init__(self, message: str, *, reason: OutputShapeReason) -> None:
+        self.reason = reason
+        super().__init__(message)
 
 
 class CodexExecProcessError(RuntimeError):
@@ -650,7 +1136,9 @@ def _strip_known_lines(text: str, *known: str) -> str:
     fail-open bug, symmetric to the mangle case R26-2 fixed: a GENUINE,
     UNRELATED diagnostic stderr line that happens to be textually contained
     in the prompt or stdout gets silently dropped before it ever reaches
-    `_AUTH_DEATH_RE`. Measured example: prompt = "why am I not logged in
+    the auth word-class patterns (`_AUTH_STRUCTURED_RE`/`_AUTH_PROSE_RE`,
+    B2b split — originally named `_AUTH_DEATH_RE` when this paragraph was
+    written). Measured example: prompt = "why am I not logged in
     after midnight, is this urgent?" and stderr independently contains the
     exact diagnostic line "not logged in" (unrelated to the prompt's own
     wording, a real auth failure) — the old containment check saw
@@ -670,8 +1158,8 @@ def _strip_known_lines(text: str, *known: str) -> str:
     unsafe when a candidate is short or a common substring: a one-word
     stdout answer like `"in"` would strip every `"in"` occurrence from
     stderr — including the one INSIDE the genuine diagnostic phrase
-    `"not logged in"`, mangling it to `"not logged "` and making
-    `_AUTH_DEATH_RE` go silent exactly when it must page (a fail-OPEN
+    `"not logged in"`, mangling it to `"not logged "` and making the auth
+    word-class patterns go silent exactly when it must page (a fail-OPEN
     regression the R25-3 round introduced while fixing a different
     problem). This rewrite operates on WHOLE LINES only: split `text` and
     every `known` string on `\\n`, and for each line of `text`, KEEP it
@@ -734,26 +1222,125 @@ def _strip_known_lines(text: str, *known: str) -> str:
     return "\n".join(kept)
 
 
-def _auth_death_detected(*texts: str) -> bool:
-    """Search each `texts` argument for `_AUTH_DEATH_RE` INDEPENDENTLY —
-    never concatenate multiple texts before searching. Joining with any
-    separator (a newline, empty string, or otherwise) risks the regex's
-    `\\s+` alternatives bridging two otherwise-innocent fragments across the
-    seam into a false match — the exact class of bug the R26 GLM addendum's
-    F26-4 finding raised against this module's prior two-stream-
-    concatenation shape (2026-08-15 THAW round; see point 5's docstring for
-    the full disposition). Today's one call site passes a single, already
-    line-stripped stderr string (point 5(a): stdout is never part of the
-    scanned text at all) — this function's contract holds regardless of how
-    many arguments a future caller passes."""
-    return any(_AUTH_DEATH_RE.search(t) for t in texts if t)
+@dataclass(frozen=True)
+class StderrVerdict:
+    """The outcome of classifying one already-line-stripped stderr blob
+    against F3's word-class vocabulary (SPEC P1/P2/P3/P4). Exactly one of
+    three shapes:
+
+    - No class matched: `winner is None` and `ambiguous_classes` is empty
+      (SPEC P5, "unknown stays unknown" — the caller falls through to the
+      generic residual bucket).
+    - Exactly one class matched, OR more than one matched but P3's
+      machine-readable-evidence precedence resolved it: `winner` is set,
+      `confidence` is set, `suppressed` names any OTHER class that also
+      matched but lost (empty when only one class matched at all).
+    - More than one class matched with NO principled winner (zero, or more
+      than one, class at `MatchConfidence.HIGH`): `winner is None` again,
+      but `ambiguous_classes` is non-empty this time (SPEC P1, "an
+      AMBIGUOUS result carrying both — not a silent precedence") — the
+      caller must raise `CodexExecAmbiguousError`, never guess.
+
+    `matched_tags` is always populated when anything matched at all (safe,
+    fixed-vocabulary `"<CLASS>:<CONFIDENCE>"` literals — never raw stderr
+    text, point 6) — useful for logging/detail regardless of which of the
+    three shapes above resulted.
+    """
+
+    winner: _WireWordClass | None
+    confidence: MatchConfidence | None
+    matched_tags: frozenset[str]
+    suppressed: frozenset[_WireWordClass]
+    ambiguous_classes: frozenset[_WireWordClass]
+
+
+def _classify_stderr(stderr: str) -> StderrVerdict:
+    """Classify an already-line-stripped stderr blob against every
+    `_WireWordClass` in `_PATTERNS`, per SPEC P1-P4 (see the B2b block
+    comment above `MatchConfidence` for the full statement of each
+    property). Supersedes the pre-B2b `_auth_death_detected`/
+    `_quota_detected`/`_policy_blocked_detected` trio and the fixed
+    auth -> quota -> policy check order in `generate()` that consumed them.
+
+    P2 (per-record, never cross-blob): `stderr` is split on `\\n` FIRST;
+    every pattern is then searched within ONE line only, so no pattern can
+    bridge two records — this is what makes the newline-bridging class of
+    finding (`quota\\nexceeded`, `content\\npolicy`) structurally
+    impossible rather than merely patched.
+
+    Aggregation: for each line, every class's BEST confidence on that line
+    is recorded (`HIGH` beats `LOW` if both tiers fire on the same line);
+    those per-line best-confidences are then unioned across the WHOLE
+    stderr — a class that matched on any line at all is "matched" for
+    precedence purposes, at its best confidence anywhere.
+
+    P1/P3 (precedence): with 0 classes matched, the result is UNKNOWN. With
+    exactly 1, that class wins outright. With >1, a lone class at
+    `MatchConfidence.HIGH` (with every other matched class only at `.LOW`)
+    wins — P3, machine-readable evidence outranks a prose guess — and the
+    others land on `.suppressed`. Any other multi-match shape (a genuine
+    tie: 0 or >=2 classes at HIGH) has no principled winner and is reported
+    via `ambiguous_classes` instead of guessed — P1.
+    """
+    per_class_confidence: dict[_WireWordClass, MatchConfidence] = {}
+    per_class_tags: dict[_WireWordClass, set[str]] = {}
+
+    for line in stderr.split("\n"):
+        stripped_line = line.strip()
+        if not stripped_line:
+            continue
+        for word_class, tiers in _PATTERNS.items():
+            best_on_this_line: MatchConfidence | None = None
+            # `tiers` is built as `{HIGH: ..., LOW: ...}` (see `_PATTERNS`
+            # above) — dict order is insertion order (Python 3.7+), so HIGH
+            # is always checked before LOW here; once found, nothing can
+            # beat it, so the loop breaks rather than continuing to search.
+            for confidence, pattern in tiers.items():
+                if best_on_this_line is MatchConfidence.HIGH:
+                    break
+                if pattern is not None and pattern.search(stripped_line):
+                    best_on_this_line = confidence
+            if best_on_this_line is None:
+                continue
+            per_class_tags.setdefault(word_class, set()).add(
+                f"{word_class.value}:{best_on_this_line.value}"
+            )
+            existing = per_class_confidence.get(word_class)
+            if existing is None or (
+                existing is MatchConfidence.LOW and best_on_this_line is MatchConfidence.HIGH
+            ):
+                per_class_confidence[word_class] = best_on_this_line
+
+    if not per_class_confidence:
+        return StderrVerdict(None, None, frozenset(), frozenset(), frozenset())
+
+    all_tags = frozenset(tag for tags in per_class_tags.values() for tag in tags)
+
+    if len(per_class_confidence) == 1:
+        ((winner, confidence),) = per_class_confidence.items()
+        return StderrVerdict(winner, confidence, all_tags, frozenset(), frozenset())
+
+    high_classes = {wc for wc, conf in per_class_confidence.items() if conf is MatchConfidence.HIGH}
+    if len(high_classes) == 1:
+        (winner,) = high_classes
+        suppressed = frozenset(per_class_confidence) - {winner}
+        return StderrVerdict(winner, MatchConfidence.HIGH, all_tags, suppressed, frozenset())
+
+    return StderrVerdict(None, None, all_tags, frozenset(), frozenset(per_class_confidence))
 
 
 class CodexExecClient:
     """Thin async wrapper spawning `codex exec` as a subprocess.
 
-    OFFLINE, NO-WIRING (see module docstring). There is no live caller of
-    this class in this repo today. Never instantiate this expecting a
+    OFFLINE relative to `backend/services/rag/agentic/` (see module
+    docstring) — but NOT uncalled. CORRECTED (team-lead review of PR
+    #5028, 2026-08-26): this used to say "there is no live caller of this
+    class in this repo today", contradicting the module docstring's own
+    B2b note two paragraphs above it. `wa_codex_daemon.py` imports and
+    instantiates this class directly (`self._codex = codex_client or
+    CodexExecClient(...)`), promoted as a deployed copy at
+    `/usr/local/lib/wa-codex-broker/` outside this repo checkout — a real,
+    in-repo caller either way. Never instantiate this expecting a
     persistent resource to manage — unlike `OpenAIResponsesClient`, there is
     no persistent connection object; every `generate()` call spawns and
     reaps its own subprocess and its own temp `cwd`.
@@ -931,12 +1518,22 @@ class CodexExecClient:
             CodexExecCommunicationError: subprocess stdin/stdout/stderr
                 communication failed outside timeout/cancellation; the child
                 was killed and reaped and the raw exception was suppressed.
-            CodexExecAuthError: the subprocess exited non-zero with output
-                matching a known auth-failure word class (point 5).
-            CodexExecProcessError: the subprocess exited non-zero for any
-                other reason.
+            CodexExecAuthError: the subprocess exited non-zero and stderr
+                matched the auth-failure word class (point 5 / B2b).
+            CodexExecQuotaError: the subprocess exited non-zero and stderr
+                matched the quota-exhaustion word class (B2b).
+            CodexExecPolicyBlockedError: the subprocess exited non-zero and
+                stderr matched the content-policy-refusal word class (B2b).
+            CodexExecAmbiguousError: the subprocess exited non-zero and
+                stderr matched more than one word class with no principled
+                machine-readable-evidence winner (SPEC P1, B2b).
+            CodexExecProcessError: the subprocess exited non-zero and
+                stderr matched no known word class.
             CodexExecOutputShapeError: `exit_code == 0` but stdout was
-                empty/whitespace-only.
+                empty/whitespace-only (`reason=OutputShapeReason.EMPTY`),
+                or `exit_code != 0` with stderr matching the
+                payload/output-too-large pattern
+                (`reason=OutputShapeReason.OVERSIZED`, Ruling A).
         """
         if not prompt or not prompt.strip():
             raise ValueError("prompt must be non-empty")
@@ -1096,24 +1693,89 @@ class CodexExecClient:
                 # R26-2 shape) still let a partial ANSWER that happened to
                 # discuss the client's own "expired"/"unauthorized"
                 # situation false-page on itself, and the "\n" join between
-                # two independently-stripped streams was its own seam
-                # `_AUTH_DEATH_RE`'s `\s+` alternatives could bridge across.
-                # stderr is still stripped of known prompt/stdout LINES,
-                # WHOLE-LINE-ONLY (R25-3 finding, R26-2 mechanism — stderr's
-                # own transcript echoes both), and `_auth_death_detected`
-                # scans its argument(s) independently rather than joining
-                # them — see that helper's docstring.
+                # two independently-stripped streams was its own seam a
+                # `\s+` alternative could bridge across. stderr is still
+                # stripped of known prompt/stdout LINES, WHOLE-LINE-ONLY
+                # (R25-3 finding, R26-2 mechanism — stderr's own transcript
+                # echoes both).
                 stripped_stderr = _strip_known_lines(stderr, prompt, stdout)
-                if _auth_death_detected(stripped_stderr):
+                # B2b (2026-08-25) — see the block comment above
+                # `MatchConfidence` for the full design this replaces
+                # (B2a's fixed auth -> quota -> policy check order, which a
+                # fenced refuter proved unsound in 12 reproduced ways).
+                # `_classify_stderr` evaluates EVERY word class (SPEC P1),
+                # per line (P2), tiered by machine-readable-evidence
+                # confidence (P3/P4), and returns one of three shapes.
+                verdict = _classify_stderr(stripped_stderr)
+
+                if verdict.ambiguous_classes:
+                    candidate_names = frozenset(wc.value for wc in verdict.ambiguous_classes)
                     logger.warning(
-                        "codex_exec: auth-death detected (exit_code=%d, model=%s) — "
-                        "operator re-login needed",
+                        "codex_exec: ambiguous failure (exit_code=%d, model=%s, "
+                        "candidates=%s) — no machine-readable-evidence winner, refusing "
+                        "to guess (SPEC P1)",
                         exit_code,
                         resolved_model,
+                        sorted(candidate_names),
+                    )
+                    raise CodexExecAmbiguousError(
+                        "codex exec failed with a stderr matching more than one word class "
+                        f"with no clear machine-readable-evidence winner: {sorted(candidate_names)}",
+                        candidates=candidate_names,
+                    )
+
+                if verdict.winner is _WireWordClass.AUTH_DEATH:
+                    logger.warning(
+                        "codex_exec: auth-death detected (exit_code=%d, model=%s, "
+                        "confidence=%s) — operator re-login needed",
+                        exit_code,
+                        resolved_model,
+                        verdict.confidence.value if verdict.confidence else None,
                     )
                     raise CodexExecAuthError(
                         "codex exec reported an authentication failure — operator re-login "
                         "(`codex login`) needed",
+                        confidence=verdict.confidence,
+                        suppressed=frozenset(wc.value for wc in verdict.suppressed),
+                    )
+                if verdict.winner is _WireWordClass.QUOTA:
+                    logger.warning(
+                        "codex_exec: quota exhaustion detected (exit_code=%d, model=%s, "
+                        "confidence=%s)",
+                        exit_code,
+                        resolved_model,
+                        verdict.confidence.value if verdict.confidence else None,
+                    )
+                    raise CodexExecQuotaError(
+                        "codex exec reported quota/rate-limit exhaustion — distinct from an "
+                        "auth failure, needs quota-specific backoff or fallback",
+                        confidence=verdict.confidence,
+                        suppressed=frozenset(wc.value for wc in verdict.suppressed),
+                    )
+                if verdict.winner is _WireWordClass.POLICY_BLOCKED:
+                    logger.warning(
+                        "codex_exec: policy-blocked detected (exit_code=%d, model=%s, "
+                        "confidence=%s)",
+                        exit_code,
+                        resolved_model,
+                        verdict.confidence.value if verdict.confidence else None,
+                    )
+                    raise CodexExecPolicyBlockedError(
+                        "codex exec reported a content-policy refusal — no usable text",
+                        confidence=verdict.confidence,
+                        suppressed=frozenset(wc.value for wc in verdict.suppressed),
+                    )
+                if verdict.winner is _WireWordClass.OUTPUT_OVERSIZED:
+                    logger.warning(
+                        "codex_exec: oversized output detected (exit_code=%d, model=%s) — "
+                        "Ruling A: same prompt would reproduce this, retrying is wasted",
+                        exit_code,
+                        resolved_model,
+                    )
+                    raise CodexExecOutputShapeError(
+                        "codex exec reported a payload/output-too-large failure — the same "
+                        "prompt would reproduce it; truncate or reprompt, do not blind-retry",
+                        reason=OutputShapeReason.OVERSIZED,
                     )
                 logger.warning(
                     "codex_exec: process failed (exit_code=%d, model=%s)",
@@ -1126,6 +1788,7 @@ class CodexExecClient:
             if not text:
                 raise CodexExecOutputShapeError(
                     "codex exec exited 0 but stdout was empty/whitespace-only",
+                    reason=OutputShapeReason.EMPTY,
                 )
 
             logger.info(

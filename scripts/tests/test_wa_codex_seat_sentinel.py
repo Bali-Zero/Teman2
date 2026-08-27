@@ -18,6 +18,7 @@ from types import ModuleType
 import pytest
 
 _MODULE_PATH = Path(__file__).parents[1] / "wa_codex_seat_sentinel.py"
+_PROBE_MODULE_PATH = Path(__file__).parents[1] / "wa_codex_seat_probe.py"
 NOW = datetime(2026, 8, 20, 12, 0, tzinfo=timezone.utc)
 
 
@@ -30,7 +31,25 @@ def _load() -> ModuleType:
     return module
 
 
+def _load_probe() -> ModuleType:
+    """Loaded under a name distinct from both `wa_codex_seat_probe.py`'s
+    own test file (`wa_codex_seat_probe`) and the dotted
+    `scripts.wa_codex_seat_probe` the sentinel module imports internally
+    — an independent module object, purely so this test can assert the
+    sentinel's imported constants EQUAL the probe's own, not merely that
+    they are the same Python object by import-caching accident."""
+    spec = importlib.util.spec_from_file_location(
+        "wa_codex_seat_probe_coupling_check", _PROBE_MODULE_PATH
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 wa = _load()
+probe = _load_probe()
 
 
 def _gauge(
@@ -61,6 +80,73 @@ def test_guilt_auth_death_is_red_with_the_relogin_command() -> None:
     assert v.condition == "auth_death"
     assert "codex login" in v.message
     assert "sudo -u zantara-codex" in v.message
+
+
+def test_guilt_quota_exhausted_is_red_and_distinct_from_auth_death() -> None:
+    """S1.5 (2026-08-26), owner packet item 13: the probe's new
+    `quota_exhausted` verdict must reach the same severity as `auth_death`
+    (the OpenAI/Codex leg is fully blocked either way) but through its own
+    condition and its own message — never collapsed into `auth_death`'s
+    dedup key or its re-login wording, which is actively WRONG advice for
+    a quota-exhausted seat."""
+    verdicts = wa.evaluate(_probe("quota_exhausted", 0, 1), 10.0, _gauge(), NOW)
+    assert len(verdicts) == 1
+    v = verdicts[0]
+    assert v.level == wa.RED
+    assert v.condition == "quota_exhausted"
+    assert v.condition != "auth_death"
+    assert "QUOTA EXHAUSTED" in v.message
+    assert "codex login" not in v.message
+    assert "do not re-login" in v.message
+
+
+def test_guilt_quota_exhausted_message_names_wait_or_switch_not_relogin() -> None:
+    """The remedy is the whole point of distinguishing this verdict: waiting
+    for the usage window or switching seats, never `codex login` (that IS
+    the auth_death remedy, and applying it to a healthy-but-quota-exhausted
+    seat wastes an operator's time chasing the wrong fix)."""
+    verdicts = wa.evaluate(_probe("quota_exhausted", 0, 1), 10.0, _gauge(), NOW)
+    assert "wait" in verdicts[0].message.lower() or "switch" in verdicts[0].message.lower()
+
+
+def test_guilt_probe_module_verdict_constants_still_drive_red() -> None:
+    """Round-4 addendum (team-lead review of PR #5028, 2026-08-26): the
+    writer (scripts/wa_codex_seat_probe.py) emits `verdict` via named
+    `Final[str]` constants; this reader used to compare against bare
+    string literals — a rename on the write side would have silently
+    stopped matching (RED degrades to WARN, zero visible signal). The
+    sentinel module now imports the SAME constants
+    (`from scripts.wa_codex_seat_probe import VERDICT_AUTH_DEATH,
+    VERDICT_OK, VERDICT_QUOTA_EXHAUSTED`) instead of hardcoding the
+    strings, so this test feeds the PROBE's own constants — loaded as an
+    independent module, not typed as literals here — through the
+    sentinel's real `evaluate()` and asserts the RED classification
+    still fires for both. This is the behavioral half of the fix; the
+    import itself is the structural half (a rename now raises
+    ImportError in this module rather than drifting silently)."""
+    verdicts = wa.evaluate(_probe(probe.VERDICT_AUTH_DEATH, 1, 1), 10.0, _gauge(), NOW)
+    assert len(verdicts) == 1
+    assert verdicts[0].level == wa.RED
+    assert verdicts[0].condition == probe.VERDICT_AUTH_DEATH
+
+    verdicts = wa.evaluate(_probe(probe.VERDICT_QUOTA_EXHAUSTED, 0, 1), 10.0, _gauge(), NOW)
+    assert len(verdicts) == 1
+    assert verdicts[0].level == wa.RED
+    assert verdicts[0].condition == probe.VERDICT_QUOTA_EXHAUSTED
+
+    # And the healthy value produces no verdict at all — proves the
+    # coupling isn't accidentally satisfied by a permissive `!=` on
+    # every branch.
+    verdicts = wa.evaluate(_probe(probe.VERDICT_OK, 0, 0), 10.0, _gauge(), NOW)
+    assert verdicts == []
+
+    # The sentinel module's OWN imported names must be the identical
+    # values the probe module defines — not a re-typed guess that
+    # happens to match today. If either side is ever renamed without
+    # the other, this equality (or the import at module load) breaks.
+    assert wa.VERDICT_AUTH_DEATH == probe.VERDICT_AUTH_DEATH
+    assert wa.VERDICT_QUOTA_EXHAUSTED == probe.VERDICT_QUOTA_EXHAUSTED
+    assert wa.VERDICT_OK == probe.VERDICT_OK
 
 
 def test_guilt_missing_probe_file_is_red_naming_probe_silent() -> None:
@@ -118,11 +204,33 @@ def test_guilt_other_failure_verdict_is_warn_not_red() -> None:
 
 def test_guilt_unrecognized_probe_verdict_falls_visibly_as_warn_never_silent() -> None:
     """W116: un finale non mappato (un probe futuro che scrive p.es.
-    "quota_exhausted") deve cadere VISIBILE, mai nel secchio sano."""
-    verdicts = wa.evaluate(_probe("quota_exhausted", 0, 1), 10.0, _gauge(), NOW)
+    "policy_blocked", non ancora conosciuto da questo reader) deve cadere
+    VISIBILE, mai nel secchio sano.
+
+    S1.5 (2026-08-26): "quota_exhausted" used to be THIS test's example of
+    an unmapped verdict — it has since graduated to its own explicit branch
+    (see test_guilt_quota_exhausted_is_red_and_distinct_from_auth_death)
+    and no longer exercises this generic fallback path, so the example had
+    to change or this test would silently stop testing the fallback at
+    all and start testing the new specific branch instead — a genuinely
+    unmapped token is required here to prove the FORWARD-compat contract:
+    a status file from a probe newer than this sentinel (naming a verdict
+    this reader has never heard of) must still degrade to a visible WARN,
+    never to silence and never to a crash."""
+    verdicts = wa.evaluate(_probe("policy_blocked", 0, 1), 10.0, _gauge(), NOW)
     assert len(verdicts) == 1
     assert verdicts[0].level == wa.WARN
-    assert "quota_exhausted" in verdicts[0].message
+    assert verdicts[0].condition == "other_failure"
+    assert "policy_blocked" in verdicts[0].message
+
+
+def test_innocence_quota_exhausted_no_longer_reaches_the_generic_fallback() -> None:
+    """Companion to the test above: `quota_exhausted` must NOT also produce
+    a second, generic `other_failure` verdict alongside its own — `evaluate`
+    returns exactly one verdict for it, from the new explicit branch."""
+    verdicts = wa.evaluate(_probe("quota_exhausted", 0, 1), 10.0, _gauge(), NOW)
+    assert len(verdicts) == 1
+    assert verdicts[0].condition == "quota_exhausted"
 
 
 def test_guilt_never_seen_daemon_null_staleness_parses_to_daemon_silent() -> None:

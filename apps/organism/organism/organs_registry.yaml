@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: a64d11324088872cfa252e95f6cdc536be66f31e8cec32c111323d75b1329997
+checksum: a757bb7c3bb90e05d7159c9d1e235ccc7caa0517fb7d1f3e35e7fe20224e66a8
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2042,14 +2042,16 @@ organs:
   notes: 'WA codex seat probe (BOT-V4 S3 Piece A, spec research/operations/2026-08-19-bot-chatgpt-provider-broker-spec.md
     section 4.4). One-shot LaunchDAEMON (StartInterval 6h + RunAtLoad, UserName demotion
     to zantara-codex): codex login status + 1-token synthetic exec, classified with
-    the daemon''s _AUTH_DEATH_RE, enum-only verdict written to /usr/local/var/wa-codex-broker/seat-status.json
-    (0640 group staff - nuzantara reads via the group bit). Liveness ground truth
-    is that STATUS FILE: scripts/wa_codex_seat_sentinel.py (Piece B, cron-runner as
-    nuzantara) pages probe_silent when the file is missing or older than 2x the probe
-    interval - hence expected_hb_seconds 0 here, like the broker: the sidecar is written
-    only at start and on refusal exits, and lives in the zantara-codex home, unreadable
-    to other users by design. Kill switch WA_CODEX_SEAT_PROBE_ENABLED=false in the
-    shared env file (clean exit; the probe never reads WA_BROKER_KEY).'
+    the daemon''s _AUTH_STRUCTURED_RE/_AUTH_PROSE_RE (B2b split, 2026-08-25 - replaces
+    the old combined _AUTH_DEATH_RE, per team-lead review of PR #5028), enum-only
+    verdict written to /usr/local/var/wa-codex-broker/seat-status.json (0640 group
+    staff - nuzantara reads via the group bit). Liveness ground truth is that STATUS
+    FILE: scripts/wa_codex_seat_sentinel.py (Piece B, cron-runner as nuzantara) pages
+    probe_silent when the file is missing or older than 2x the probe interval - hence
+    expected_hb_seconds 0 here, like the broker: the sidecar is written only at start
+    and on refusal exits, and lives in the zantara-codex home, unreadable to other
+    users by design. Kill switch WA_CODEX_SEAT_PROBE_ENABLED=false in the shared env
+    file (clean exit; the probe never reads WA_BROKER_KEY).'
   cicatrix_refs: []
 - id: pro.wr2_daily_carousel
   runtime: pro_launchd

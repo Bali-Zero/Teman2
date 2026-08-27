@@ -57,6 +57,39 @@ sys.path.insert(0, str(REPO))
 
 from scripts.tg_gateway_verdict import extract_gateway_verdict  # noqa: E402
 
+# S1.5 addendum (2026-08-26, team-lead review of PR #5028): the WRITE side
+# (scripts/wa_codex_seat_probe.py) emits `verdict` via named `Final[str]`
+# constants; this reader used to compare against bare string literals
+# (`"auth_death"`, `"quota_exhausted"`, `"ok"`) instead of importing those
+# same constants — the identical protocol-drift shape as the private-symbol
+# import that started this whole PR, one layer up (a rename on the write
+# side would silently stop matching here, degrading a RED seat-death alarm
+# to a WARN "other_failure" with zero visible signal that anything broke).
+# Importing the probe module is safe at IMPORT time — the user-boundary
+# concern in the probe's own docstring is about RUNTIME execution
+# (`codex login status` runs as zantara-codex), not about reading its
+# Final[str] constants, which are plain module attributes with no I/O.
+#
+# Note 2 (team-lead review of PR #5028, 2026-08-26): this import reads
+# the REPO CHECKOUT's copy of wa_codex_seat_probe.py — but the thing that
+# ACTUALLY WRITES `verdict` into seat-status.json at runtime is the
+# DEPLOYED copy at /usr/local/lib/wa-codex-broker/seat_probe.py, a
+# different path under a different user (zantara-codex). This import
+# being SAFE — i.e. these constants matching whatever string the deployed
+# probe actually emits — depends on those two copies not drifting. That
+# dependency is not an accident: `scripts/wa_codex_seat_probe.py` <->
+# `/usr/local/lib/wa-codex-broker/seat_probe.py` IS a declared pair in
+# infra/home-fork/declared-pairs.json (verified: repo="scripts/
+# wa_codex_seat_probe.py", live="/usr/local/lib/wa-codex-broker/
+# seat_probe.py"), so `lint_home_fork.py` DOES watch this specific pair
+# for drift. If that declaration is ever removed, this import stops being
+# safe by construction and starts being safe only by accident.
+from scripts.wa_codex_seat_probe import (  # noqa: E402
+    VERDICT_AUTH_DEATH,
+    VERDICT_OK,
+    VERDICT_QUOTA_EXHAUSTED,
+)
+
 _ENV_STATUS_FILE: Final[str] = "WA_CODEX_SEAT_STATUS_FILE"
 _DEFAULT_STATUS_FILE: Final[str] = "/usr/local/var/wa-codex-broker/seat-status.json"
 _ENV_PROBE_INTERVAL_S: Final[str] = "WA_CODEX_PROBE_INTERVAL_S"
@@ -83,6 +116,19 @@ BREAKER_MSG: Final[str] = (
     "sudo grep 'AUTH DEATH' /Users/zantara-codex/logs/wa-codex-broker.err"
 )
 DAEMON_SILENT_MSG: Final[str] = "daemon silent (dead / version-pin pause / host down)"
+# S1.5 (2026-08-26), owner packet item 13 — twin of AUTH_DEATH_MSG for the
+# probe's `quota_exhausted` verdict (scripts/wa_codex_seat_probe.py). The
+# remedy differs (wait, or switch seats — never "re-login"), which is
+# exactly why this is its own message and its own dedup condition rather
+# than reusing AUTH_DEATH_MSG's wording or BREAKER_MSG's sudo-grep hint (the
+# daemon's own AUTH DEATH/QUOTA EXHAUSTED log lines live in the same
+# cron-unreadable file — see wa_codex_daemon.py's B2b arm — so this message
+# does not point there either; the probe's own status file already carries
+# the actionable verdict without needing that file read).
+QUOTA_EXHAUSTED_MSG: Final[str] = (
+    "codex seat QUOTA EXHAUSTED — wait for the usage window to reset, or "
+    "switch seats (this is not an auth failure — do not re-login)"
+)
 
 
 @dataclass(frozen=True)
@@ -113,14 +159,25 @@ def _probe_side(
         verdicts.append(Verdict(RED, "probe_silent", PROBE_SILENT_MSG))
     else:
         probe_verdict = probe_status.get("verdict")
-        if probe_verdict == "auth_death":
-            verdicts.append(Verdict(RED, "auth_death", AUTH_DEATH_MSG))
-        elif probe_verdict != "ok":
+        if probe_verdict == VERDICT_AUTH_DEATH:
+            verdicts.append(Verdict(RED, VERDICT_AUTH_DEATH, AUTH_DEATH_MSG))
+        elif probe_verdict == VERDICT_QUOTA_EXHAUSTED:
+            # S1.5 (2026-08-26): distinct from auth_death (fix = re-login)
+            # and from the generic other_failure bucket below (fix = wait /
+            # switch seats) — twin, on the read side, of the daemon's own
+            # CodexExecQuotaError arm (wa_codex_daemon.py B2b). RED, same
+            # severity as auth_death: either way the OpenAI/Codex leg is
+            # fully blocked for every subsequent job, even though the
+            # remedy differs.
+            verdicts.append(Verdict(RED, VERDICT_QUOTA_EXHAUSTED, QUOTA_EXHAUSTED_MSG))
+        elif probe_verdict != VERDICT_OK:
             # other_failure, probe_error, AND any vocabulary this reader does
-            # not know yet (a future probe adding e.g. "quota_exhausted" must
-            # fall somewhere VISIBLE, never into silence — W116: an unmapped
-            # finale that lands in the healthy bucket is how the next real
-            # signal gets lost).
+            # not know yet (e.g. a future probe adding a POLICY_BLOCKED
+            # verdict) must fall somewhere VISIBLE, never into silence —
+            # W116: an unmapped finale that lands in the healthy bucket is
+            # how the next real signal gets lost. "quota_exhausted" used to
+            # be the example named here; it graduated to its own branch
+            # above (S1.5) and no longer reaches this one.
             verdicts.append(
                 Verdict(
                     WARN,
@@ -132,7 +189,8 @@ def _probe_side(
                     ),
                 )
             )
-        # probe_verdict == "ok": the only value that produces no verdict.
+        # probe_verdict == VERDICT_OK ("ok"): the only value that produces
+        # no verdict.
     return verdicts
 
 
