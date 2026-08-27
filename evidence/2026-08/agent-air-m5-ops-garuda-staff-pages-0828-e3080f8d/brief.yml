@@ -7,7 +7,7 @@ objective: |
   about — so a human is paged when a GARUDA VOA payment goes wrong in a way only a human can
   fix.
 
-  `outbox_handlers.py::build_handlers` registered 3 of the 13 job types the repository and the
+  `outbox_handlers.py::build_handlers` registered 3 of the 14 job types the repository and the
   portal enqueue. The other ten fell to the consumer's `unroutable` bucket on every drain pass,
   forever. Five of the ten are the customer emails, routed by #5128 (merged 2026-08-27,
   `53efc00fab`). The other five are these: OP-08 duplicate charge (a SECOND successful charge on
@@ -77,6 +77,16 @@ consumer_map:
   - "`.claude/skills/modus/PENDING-ARMS.md` — its outbox row is corrected in a SEPARATE PR
     (#5132), deliberately, to keep this diff one concern."
 risks:
+  - 'CORRECTED AT THE GATE, 2026-08-28: this brief and the handler docstring both said THIRTEEN
+    enqueued types and that routing five more closed the set. There are FOURTEEN. The
+    fourteenth is `late_refund_confirmation_email` (`repository.py:799-805`), enqueued when a
+    staff member resolves a late-payment case by refunding it, and it is NOT routed by this PR.
+    Every prior count was taken by grepping `job_type="`, a LITERAL, while that call site
+    passes a VARIABLE — three artifacts missed the same item for the same reason. The
+    consequence is that `unroutable` does NOT reach zero after this PR and a plain
+    `unroutable > 0` alarm would fire forever for one known type; the scoped allowlist
+    survives, narrowed to a single entry. The false claim is corrected in the docstring, the
+    test comment, and by a named UNROUTED_BY_DESIGN assertion that fails the day it is routed.'
   - "This branch was cut before #5128 and both touch `build_handlers`. Merged rather than rebased,
     and the five conflict hunks were resolved BY MEANING not by side: three of them were
     docstrings that each described a world that no longer exists, so picking either side would

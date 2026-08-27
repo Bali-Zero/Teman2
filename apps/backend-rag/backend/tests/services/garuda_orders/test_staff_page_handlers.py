@@ -640,12 +640,14 @@ def test_build_handlers_routes_all_five_when_given_a_staff_page_sender() -> None
         handlers = build_handlers(pool=None, sender=None, staff_page_sender=staff_sender)
     finally:
         pass  # client intentionally left open; this test never sends
-    # THIRTEEN — and thirteen is every job type the repository and the portal
-    # enqueue, so with the staff sender wired nothing reaches `unroutable` any
-    # more. The five customer-email types joined this set when #5128 merged
-    # (this branch was cut before it); the exactness is the point, so that
-    # adding a route is always a deliberate edit here and losing one can never
-    # pass unnoticed.
+    # THIRTEEN routed — which is NOT every type production enqueues. There are
+    # FOURTEEN; the fourteenth is named in UNROUTED_BY_DESIGN below and asserted
+    # to be absent, so this file states the gap instead of implying there is
+    # none. An earlier version of this comment claimed thirteen was all of them.
+    # The five customer-email types joined this set when #5128 merged (this
+    # branch was cut before it); the exactness is the point, so that adding a
+    # route is always a deliberate edit here and losing one can never pass
+    # unnoticed.
     expected = {
         # eight, always routed
         "checkout_ready_email",
@@ -665,6 +667,18 @@ def test_build_handlers_routes_all_five_when_given_a_staff_page_sender() -> None
     }
     assert set(handlers) == expected
     assert len(expected) == 13
+
+    # The fourteenth type, declared rather than silently missing. It is computed
+    # at repository.py:799-805 — `"practice_release" if resolution == "honoured"
+    # else "late_refund_confirmation_email"` — when a staff member resolves a
+    # late-payment case by refunding it. Every prior count of these types was
+    # taken by grepping `job_type="`, a LITERAL, and this one call site passes a
+    # VARIABLE, which is how three separate artifacts missed it. Asserting it
+    # ABSENT (rather than leaving the set silently short) means the day someone
+    # routes it, this assertion fails and forces the count and the comment above
+    # to be corrected in the same edit.
+    UNROUTED_BY_DESIGN = {"late_refund_confirmation_email"}
+    assert UNROUTED_BY_DESIGN.isdisjoint(set(handlers))
 
 
 async def test_draining_a_queued_staff_page_sends_and_marks_it_dispatched(pool):

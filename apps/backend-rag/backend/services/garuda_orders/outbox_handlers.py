@@ -1563,8 +1563,17 @@ def build_handlers(
 ) -> dict[str, object]:
     """The registry `drain_once` consumes.
 
-    THIRTEEN job types are routed, which is every type the repository and the
-    portal enqueue — after this function, nothing reaches `unroutable` any more.
+    THIRTEEN job types are routed. That is NOT all of them — production
+    enqueues FOURTEEN, and the fourteenth still has no handler:
+    `late_refund_confirmation_email`, computed at `repository.py:799-805`
+    (`"practice_release" if resolution == "honoured" else
+    "late_refund_confirmation_email"`) when a staff member resolves a late-payment
+    case by giving the money back. An earlier draft of this docstring said
+    thirteen was every type; that was wrong, and it was wrong for an instructive
+    reason — every count of these types so far was taken by grepping `job_type="`,
+    a LITERAL, and that one call site passes a VARIABLE. Broadening the search
+    DIRECTORY was never the missing half; broadening from text to syntax is.
+    So `unroutable` does NOT reach zero after this function.
     Eight always: `checkout_ready_email` and `payment_paid_email` (what the
     customer sees while paying), `payment_failed_email` and
     `payment_expired_email` (what the customer sees when paying goes wrong),
@@ -1593,10 +1602,14 @@ def build_handlers(
     from `_run_garuda_outbox_scheduler` in `main_api.py`, reusing the SAME
     injected `httpx.AsyncClient` the email sender already owns) to arm them.
 
-    So there is no longer a category of job type this module deliberately
-    leaves unhandled. If `unroutable` is non-zero in production with the staff
-    sender wired, that is a NEW job type nobody routed — worth an alarm, which
-    is a separate change.
+    So the category of deliberately-unhandled job types shrinks to exactly ONE:
+    `{late_refund_confirmation_email}`. An `unroutable > 0` alarm armed today
+    would therefore fire on EVERY drain pass, forever, for that one known type —
+    an unroutable job is never dispatched and its attempt bump is rolled back, so
+    it is re-claimed every pass. That is how a real signal gets muted (superscar
+    #2), so the alarm stays scoped to that single-entry allowlist until the
+    fourteenth handler lands, at which point it collapses to the plain predicate.
+    Both are separate changes; neither is this one.
     """
 
     from backend.app.core.config import settings
