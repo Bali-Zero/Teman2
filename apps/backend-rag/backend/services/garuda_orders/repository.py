@@ -435,6 +435,15 @@ class GarudaOrderRepository:
                 await journal.enqueue_outbox(
                     conn, order_id=order_id, journal_event_id=event_id, job_type="practice_release"
                 )
+                # The customer's way IN. Enqueued in this same transaction, and
+                # deliberately NOT ordered after `practice_release`: the outbox
+                # gives no inter-job ordering (SKIP LOCKED claims whatever is
+                # free), so `PortalInviteHandler` keys on the practice row and
+                # raises until it exists. Ordering enforced by the handler, not
+                # by the enqueue sequence — see that class's docstring.
+                await journal.enqueue_outbox(
+                    conn, order_id=order_id, journal_event_id=event_id, job_type="portal_invite"
+                )
                 # PR-01, eagerly, in the SAME transaction as the payment.paid
                 # event above -- see this module's own docstring for why
                 # (team-lead directive: a paid order must never depend on the
