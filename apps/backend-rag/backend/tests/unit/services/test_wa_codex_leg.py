@@ -317,6 +317,31 @@ async def test_no_customer_message_falls_off_before_http(
 
 
 @pytest.mark.asyncio
+async def test_no_customer_message_records_a_durable_fall_off_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Migration 290 — the exact shape measured live 2026-08-27 (outbox row
+    346: generation_route stayed NULL, no broker_jobs row was ever created,
+    because the fall-off happened at one of the PRE-OFFER conditions). This
+    pins that a pre-offer fall-off writes a normalized, bounded reason to
+    wa_outbox — not just an in-memory CodexLegResult that a log line loses
+    a minute later. Without the write in attempt()'s wrapper this test
+    fails: no execute() call ever mentions the column."""
+    conn = ScriptedConn()
+    stubs = _wire_stubs(monkeypatch, query="")
+    result = await _run(conn=conn)
+    assert result.reason == "no_customer_message"
+    assert conn.sql_contains("generation_fall_off_reason")
+    [written] = [
+        args
+        for sql, args in conn.executed
+        if "generation_fall_off_reason" in sql
+    ]
+    assert written == (42, "standing_no_customer_message")
+    stubs.rag_client.post.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_unbuildable_falls_off_offer_never_called(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -382,6 +407,30 @@ async def test_every_non_offered_outcome_falls_off_without_waiting(
     stubs.wait_for_job.assert_not_awaited()
     stubs.consume_result.assert_not_awaited()
     stubs.record_breaker_result.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_legs_exhausted_offer_refusal_records_a_durable_fall_off_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Migration 290, offer-refusal half of the mandate (as opposed to the
+    pre-offer half pinned above): LEGS_EXHAUSTED is named distinctly in the
+    log/CodexLegResult.reason (spec gradino 2/5) but normalizes to the same
+    bounded 'offer_refused' category as every other non-OFFERED/REATTACHED
+    outcome — the DB column is a small closed vocabulary, not a mirror of
+    every offer outcome string. Without the write this test fails: no
+    execute() call ever mentions the column."""
+    conn = ScriptedConn()
+    stubs = _wire_stubs(monkeypatch, offer=OfferResult(OfferOutcome.LEGS_EXHAUSTED))
+    result = await _run(conn=conn)
+    assert result.reason == "offer:legs_exhausted"
+    [written] = [
+        args
+        for sql, args in conn.executed
+        if "generation_fall_off_reason" in sql
+    ]
+    assert written == (42, "offer_refused")
+    stubs.wait_for_job.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -516,6 +565,25 @@ async def test_attempt_never_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     result = await _run()
     assert result.text is None and not result.stand_down and not result.fail
     assert result.reason == "internal_error:RuntimeError"
+
+
+@pytest.mark.asyncio
+async def test_fall_off_reason_recording_failure_never_blocks_the_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Mandate constraint 4: writing the durable reason must never be able
+    to fail the send. A DB acquire that raises on the record-write's own
+    connection must not surface — attempt() still returns the SAME
+    fall-off result it would have returned had the write succeeded."""
+    stubs = _wire_stubs(monkeypatch, query="")
+    # window_margin/no_customer_message do zero pool.acquire() calls of
+    # their own before returning — the record write is the FIRST and ONLY
+    # acquire on this path, so `enter_exc_on_acquire=1` targets exactly it.
+    pool = _FakePool(ScriptedConn(), enter_exc_on_acquire=1)
+    result = await _run(pool=pool)
+    assert result.text is None and not result.stand_down and not result.fail
+    assert result.reason == "no_customer_message"
+    stubs.rag_client.post.assert_not_awaited()
 
 
 # ── the offer boundary is fail-closed (Codex r3) ────────────────────────────

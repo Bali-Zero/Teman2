@@ -6,6 +6,16 @@ research/operations/2026-08-19-bot-chatgpt-provider-broker-spec.md, section
 2.1). The leg runs INSIDE the worker's claim. ``attempt`` NEVER raises; it
 answers in exactly one of four shapes:
 
+Durable fall-off reason (2026-08-28, migration 290): every outcome below
+that is NOT a served completion writes a bounded, non-PII reason code to
+``wa_outbox.generation_fall_off_reason`` (+ ``generation_fall_off_at``) —
+see ``record_fall_off_reason`` and ``_normalize_fall_off_reason`` below.
+This is a SEPARATE, independently-written column from ``generation_route``
+(the offer-time CAS fence half — never touched here) and the write is
+always best-effort: it can never fail the send, because a failure to
+record WHY nothing was sent must not become a second reason nothing was
+sent.
+
   text        — a consumed, finalized completion: the worker sends it.
   stand_down  — drift verdict: the leg has ALREADY terminalized the row
                 atomically; the worker generates nothing.
@@ -112,10 +122,12 @@ from backend.services.integrations.wa_finalize import (
 
 # Same-package deliberate reuse of the bot leg's lazy-singleton RAG client,
 # thread-context loader, notifier and kill switch: ONE persistent HTTP
-# client per process (Golden Rule #10) serving both legs, the codex leg
-# answers from the SAME query/history the Gemini leg would see (two loaders
-# would drift — W114), the human-notification wiring stays in the one
-# module whose tests patch it, and the autoreply switch keeps ONE owner.
+# client per process (Golden Rule #10), the thread-context loader stays the
+# SINGLE owner of what "the query/history" means for a claimed row (two
+# loaders would drift — W114; retained even though the Gemini leg it once
+# shared this contract with was cut 2026-08-27), the human-notification
+# wiring stays in the one module whose tests patch it, and the autoreply
+# switch keeps ONE owner.
 from backend.services.integrations.wa_inbox_bot import (
     _get_rag_client,
     _load_thread_context,
@@ -127,6 +139,118 @@ from backend.services.rag.agentic.wa_dlp import restore_text
 logger = logging.getLogger(__name__)
 
 CUSTOMER_WINDOW_HOURS = 24
+
+# Bounded, non-PII vocabulary for wa_outbox.generation_fall_off_reason
+# (migration 290's CHECK constraint mirrors this set verbatim — keep the
+# two in sync by hand; there is no single source both can import from,
+# since the migration is SQL and this is Python read at a different time).
+_KNOWN_FALL_OFF_REASONS: frozenset[str] = frozenset(
+    {
+        "provider_not_codex",
+        "standing_autoreply_disabled",
+        "standing_no_customer_message",
+        "window_margin",
+        "package_build_error",
+        "package_unbuildable",
+        "build_contract_break",
+        "offer_acquire_error",
+        "offer_uncertain",
+        "offer_refused",
+        "offer_contract_break",
+        "wait_error",
+        "wait_failed",
+        "stand_down_drift",
+        "stand_down_fence_lost",
+        "post_completion_error",
+        "consume_lost",
+        "finalize_defect",
+        "internal_error",
+        "unknown",
+    }
+)
+
+# Maps the PREFIX (text before the first ':') of a CodexLegResult.reason /
+# .fail raw string, or a worker-level raw string, to one of the category
+# codes above. The raw strings themselves are never PII (built only from
+# fixed literals, typed exception class names, and typed enum values — see
+# wa_codex_leg's own PII-discipline paragraph) but they ARE open-ended
+# (an exception class name is not drawn from a closed set), so every raw
+# string is normalized through this map before it ever reaches the DB.
+_FALL_OFF_REASON_PREFIX_MAP: dict[str, str] = {
+    "provider_not_codex": "provider_not_codex",
+    "autoreply_disabled": "standing_autoreply_disabled",
+    "no_customer_message": "standing_no_customer_message",
+    "window_margin": "window_margin",
+    "package_build_error": "package_build_error",
+    "unbuildable": "package_unbuildable",
+    "build_contract_break": "build_contract_break",
+    "offer_acquire_error": "offer_acquire_error",
+    "offer_uncertain": "offer_uncertain",
+    "offer": "offer_refused",
+    "offer_contract_break": "offer_contract_break",
+    "wait_error": "wait_error",
+    "wait": "wait_failed",
+    "drift": "stand_down_drift",
+    "stand_down_fence_lost": "stand_down_fence_lost",
+    "post_completion": "post_completion_error",
+    "consume_lost": "consume_lost",
+    "finalize": "finalize_defect",
+    "internal_error": "internal_error",
+}
+
+
+def _normalize_fall_off_reason(raw: str) -> str:
+    """Map an open-ended raw reason string to a bounded DB-safe category.
+
+    Longest-prefix match on ':' — e.g. "offer_contract_break:missing_job_id"
+    matches the "offer_contract_break" entry, not the shorter "offer"
+    entry (dict lookup by exact prefix, tried before the bare split, so
+    multi-underscore prefixes are not shadowed by a shorter one that is
+    also a valid key). Anything unrecognised (a future reason string this
+    map has not been taught) maps to "unknown" rather than raising — this
+    function backs a best-effort write and must never be the thing that
+    turns a fall-off into a second, unrelated failure.
+    """
+    if not raw:
+        return "unknown"
+    head = raw.split(":", 1)[0]
+    return _FALL_OFF_REASON_PREFIX_MAP.get(head, "unknown")
+
+
+async def record_fall_off_reason(
+    pool: asyncpg.Pool, *, outbox_id: int, raw_reason: str
+) -> None:
+    """Best-effort, non-blocking write of a normalized fall-off reason.
+
+    Runs on its OWN connection from the pool — never the caller's claim
+    connection (same discipline as the rest of this module: the worker's
+    lease heartbeat may be running concurrently on that connection).
+    Deliberately swallows every exception: recording why nothing was sent
+    must never become a second reason nothing was sent (mandate constraint
+    4). A failure here is logged at WARNING and otherwise invisible to the
+    caller — callers do not await this for correctness, only for the
+    write's best-effort completion before the row moves on.
+    """
+    reason = _normalize_fall_off_reason(raw_reason)
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE wa_outbox
+                SET generation_fall_off_reason = $2, generation_fall_off_at = NOW()
+                WHERE id = $1
+                """,
+                outbox_id,
+                reason,
+            )
+    except Exception as exc:  # best-effort — never propagate (constraint 4)
+        logger.warning(
+            "wa_codex_leg: failed to record fall-off reason (outbox=%s "
+            "reason=%s): %s",
+            outbox_id,
+            reason,
+            type(exc).__name__,
+        )
 
 
 class _StandDownFenceLost(Exception):
@@ -213,9 +337,16 @@ async def attempt(
     propagate: swallowing it would break asyncio shutdown semantics, and
     every acquire in this module is a real async-with, so a cancelled leg
     leaks no connection.
+
+    Before returning, records a durable fall-off reason (migration 290) for
+    every outcome that is NOT a served completion — including a stand_down,
+    since that too means nothing was generated in this claim. The record is
+    best-effort (``record_fall_off_reason`` never raises) and runs on its
+    own connection, so it can never turn a successful completion late in
+    this function into a failure, nor mask the real outcome being returned.
     """
     try:
-        return await _attempt(
+        result = await _attempt(
             pool,
             outbox_id=outbox_id,
             thread_id=thread_id,
@@ -230,7 +361,13 @@ async def attempt(
             outbox_id,
             type(exc).__name__,
         )
-        return CodexLegResult(reason=f"internal_error:{type(exc).__name__}")
+        result = CodexLegResult(reason=f"internal_error:{type(exc).__name__}")
+
+    if result.text is None:
+        await record_fall_off_reason(
+            pool, outbox_id=outbox_id, raw_reason=result.fail or result.reason
+        )
+    return result
 
 
 async def _attempt(
