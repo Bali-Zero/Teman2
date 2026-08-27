@@ -25,6 +25,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
@@ -167,6 +168,9 @@ class EnrichedArticle(BaseModel):
     source: str
     source_url: str | None
     enriched_at: str
+    seo_title: str | None = None
+    seo_description: str | None = None
+    cover_image_alt: str | None = None
 
 
 class ComposeResponse(BaseModel):
@@ -555,6 +559,12 @@ class PublishRequest(BaseModel):
         default=None,
         description="Custom slug, auto-generated if not provided",
     )
+    publication_key: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+        description="Stable internal identity used to resume the same publication PR",
+    )
 
 
 class PublishResponse(BaseModel):
@@ -566,6 +576,8 @@ class PublishResponse(BaseModel):
     mdx_path: str | None = None
     image_path: str | None = None
     commit_sha: str | None = None
+    pull_request_number: int | None = None
+    auto_merge_enabled: bool | None = None
     error: str | None = None
 
 
@@ -604,12 +616,29 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
     }
     category_slug = category_map.get(article.category, article.category)
 
+    def mdx_safe_markdown(text: str) -> str:
+        """Keep editorial Markdown while neutralizing executable MDX syntax."""
+
+        safe = str(text).replace("<", "&lt;").replace(">", "&gt;")
+        safe = safe.replace("{", "&#123;").replace("}", "&#125;")
+        safe = re.sub(
+            r"(?im)^(\s*)(import|export)(?=\s)",
+            lambda match: (
+                f"{match.group(1)}{match.group(2)[0]}"
+                f"&#{ord(match.group(2)[1])};{match.group(2)[2:]}"
+            ),
+            safe,
+        )
+        return re.sub(
+            r"\]\(\s*(?:javascript|data|vbscript)\s*:",
+            "](#blocked-protocol-",
+            safe,
+            flags=re.IGNORECASE,
+        )
+
     # Generate reading time estimate (avg 200 words per minute)
     word_count = len(article.facts.split()) + len(article.bali_zero_take.our_analysis.split())
     reading_time = max(3, word_count // 200 + 1)
-
-    # Build tags string for frontmatter
-    tags_str = ", ".join([f'"{tag}"' for tag in article.ai_tags])
 
     # Convert next steps to JSON strings for components
     expat_steps_json = json_module.dumps(article.next_steps.expat)
@@ -631,15 +660,23 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
     if has_bzt:
         bali_zero_take_section = "\n---\n\n## Bali Zero Take\n"
         if article.bali_zero_take.hidden_insight.strip():
-            bali_zero_take_section += (
-                f"\n### The Hidden Insight\n\n{article.bali_zero_take.hidden_insight}\n"
+            bali_zero_take_section += "\n### The Hidden Insight\n\n"
+            bali_zero_take_section += mdx_safe_markdown(
+                article.bali_zero_take.hidden_insight
             )
+            bali_zero_take_section += "\n"
         if article.bali_zero_take.our_analysis.strip():
-            bali_zero_take_section += (
-                f"\n### Our Analysis\n\n{article.bali_zero_take.our_analysis}\n"
+            bali_zero_take_section += "\n### Our Analysis\n\n"
+            bali_zero_take_section += mdx_safe_markdown(
+                article.bali_zero_take.our_analysis
             )
+            bali_zero_take_section += "\n"
         if article.bali_zero_take.our_advice.strip():
-            bali_zero_take_section += f"\n### Our Advice\n\n{article.bali_zero_take.our_advice}\n"
+            bali_zero_take_section += "\n### Our Advice\n\n"
+            bali_zero_take_section += mdx_safe_markdown(
+                article.bali_zero_take.our_advice
+            )
+            bali_zero_take_section += "\n"
 
     next_steps_section = ""
     has_steps = article.next_steps.expat or article.next_steps.investor
@@ -676,11 +713,45 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
 
     safe_headline = yaml_safe(article.headline, 200)
     safe_excerpt = yaml_safe(article.ai_summary, 280)
-    safe_seo_desc = yaml_safe(article.ai_summary, 155)
-    safe_seo_title = yaml_safe(article.headline, 60)
+    safe_seo_desc = yaml_safe(article.seo_description or article.ai_summary, 155)
+    safe_seo_title = yaml_safe(article.seo_title or article.headline, 60)
+    safe_cover_alt = yaml_safe(article.cover_image_alt or article.headline, 160)
     safe_answer = yaml_safe(answer_snippet, 300)
     safe_question = yaml_safe(primary_question, 150)
     safe_source = yaml_safe(article.source, 100)
+    safe_source_markdown = mdx_safe_markdown(article.source)[:200]
+    safe_source_url = ""
+    if article.source_url:
+        try:
+            parsed_source = urlsplit(article.source_url.strip())
+        except ValueError:
+            parsed_source = None
+        if (
+            parsed_source is not None
+            and parsed_source.scheme == "https"
+            and parsed_source.hostname
+            and not parsed_source.username
+            and not parsed_source.password
+        ):
+            # Query strings from scraped links can contain tracking or access
+            # material. Public citations use the canonical origin/path only.
+            safe_source_url = urlunsplit(
+                (
+                    parsed_source.scheme,
+                    parsed_source.netloc,
+                    parsed_source.path,
+                    "",
+                    "",
+                )
+            )
+    # JSON arrays are valid YAML and correctly escape quotes/newlines in tags.
+    tags_json = json_module.dumps(article.ai_tags, ensure_ascii=False)
+    safe_should_worry = json_module.dumps(article.tldr.should_worry, ensure_ascii=False)
+    safe_risk_level = json_module.dumps(article.tldr.risk_level, ensure_ascii=False)
+    safe_who = json_module.dumps(article.tldr.who, ensure_ascii=False)
+    safe_when = json_module.dumps(article.tldr.when, ensure_ascii=False)
+    safe_tldr_what = mdx_safe_markdown(article.tldr.what)
+    safe_facts = mdx_safe_markdown(article.facts)
 
     # Entity mentions from enrichment
     entity_mentions_yaml = ""
@@ -690,7 +761,10 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
         for ent in entities[:5]:
             name = ent.get("name", "") if isinstance(ent, dict) else str(ent)
             etype = ent.get("type", "Organization") if isinstance(ent, dict) else "Organization"
-            entity_lines.append(f"    - name: {name}\n      type: {etype}")
+            entity_lines.append(
+                f'    - name: "{yaml_safe(name, 120)}"\n'
+                f'      type: "{yaml_safe(etype, 80)}"'
+            )
         entity_mentions_yaml = "  entityMentions:\n" + "\n".join(entity_lines)
 
     return f'''---
@@ -699,9 +773,9 @@ slug: "{slug}"
 excerpt: "{safe_excerpt}"
 coverImage: "{cover_img}"
 cardImage: "{card_img}"
-coverImageAlt: "{safe_headline}"
+coverImageAlt: "{safe_cover_alt}"
 category: "{category_slug}"
-tags: [{tags_str}]
+tags: {tags_json}
 publishedAt: "{datetime.now(timezone.utc).strftime("%Y-%m-%d")}"
 author:
   name: "{safe_source}"
@@ -725,21 +799,25 @@ aiOptimization:
 <InfoCard
   title="Quick Summary"
   items={{[
-    {{ label: "Should I Worry?", value: "{article.tldr.should_worry}" }},
-    {{ label: "Risk Level", value: "{article.tldr.risk_level}" }},
-    {{ label: "Who's Affected", value: "{article.tldr.who}" }},
-    {{ label: "When", value: "{article.tldr.when}" }},
+    {{ label: "Should I Worry?", value: {safe_should_worry} }},
+    {{ label: "Risk Level", value: {safe_risk_level} }},
+    {{ label: "Who's Affected", value: {safe_who} }},
+    {{ label: "When", value: {safe_when} }},
   ]}}
 />
 
-**{article.tldr.what}**
+**{safe_tldr_what}**
 
 ---
 
 ## The Facts
 
-{article.facts}
+{safe_facts}
 {bali_zero_take_section}{next_steps_section}
+## Primary Source
+
+{f'[{safe_source_markdown}]({safe_source_url})' if safe_source_url else 'Source URL unavailable.'}
+
 ---
 
 <AskZantara
@@ -837,7 +915,32 @@ async def publish_article_internal(request: PublishRequest) -> PublishResponse:
         mdx_content = generate_mdx_content(request.article, slug, cover_image_path)
         mdx_git_path = f"apps/mouth/src/content/articles/{category_folder}/{slug}.mdx"
 
+        # Never overwrite an existing public article. Idempotent News Room
+        # retries must reach the publisher first: an
+        # earlier attempt may already have merged its deterministic PR while
+        # the local process crashed before saving state. New keyed operations
+        # still cannot collide because ``must_not_exist_paths`` is asserted on
+        # the publisher's exact base SHA below.
+        if not request.publication_key and await github_publisher.check_file_exists(
+            mdx_git_path, branch="main"
+        ):
+            return PublishResponse(
+                success=False,
+                message="Article slug already exists",
+                error=f"Public article already exists at {mdx_git_path}",
+            )
+
         files_to_commit.append({"path": mdx_git_path, "content": mdx_content})
+
+        # Homepage placement belongs to the same atomic tree as the MDX and
+        # cover. A PR must never contain the article while silently losing the
+        # position Damar selected.
+        hero_positions = {"hero_main", "hero_2", "hero_3", "hero_4", "hero_5"}
+        layout_updates = (
+            {"apps/mouth/src/content/homepage-layout.json": {request.position: slug}}
+            if request.position in hero_positions
+            else None
+        )
 
         # 3. Commit files to GitHub via pull request + auto-merge.
         # The target branch (main) is protected (required status checks), so a
@@ -849,6 +952,9 @@ async def publish_article_internal(request: PublishRequest) -> PublishResponse:
             files=files_to_commit,
             message=commit_message,
             pull_request=True,
+            idempotency_key=request.publication_key,
+            must_not_exist_paths=[mdx_git_path],
+            json_object_updates=layout_updates,
         )
 
         # Build article URL
@@ -888,8 +994,6 @@ async def publish_article_internal(request: PublishRequest) -> PublishResponse:
         try:
             google_credentials = os.getenv("GOOGLE_INDEXING_CREDENTIALS")
             if google_credentials:
-                import json
-
                 from google.auth.transport.requests import Request
                 from google.oauth2 import service_account
 
@@ -926,7 +1030,9 @@ async def publish_article_internal(request: PublishRequest) -> PublishResponse:
                 "It auto-merges once CI checks pass, then Vercel deploys (~a few minutes)."
             )
         else:
-            publish_message = "Article published successfully. Vercel will auto-deploy in ~1 minute."
+            publish_message = (
+                "Article published successfully. Vercel will auto-deploy in ~1 minute."
+            )
 
         return PublishResponse(
             success=True,
@@ -935,6 +1041,8 @@ async def publish_article_internal(request: PublishRequest) -> PublishResponse:
             mdx_path=mdx_git_path,
             image_path=cover_image_path,
             commit_sha=result.get("commit_sha"),
+            pull_request_number=result.get("pull_request_number"),
+            auto_merge_enabled=result.get("auto_merge_enabled"),
         )
 
     except GitHubPublisherError as e:

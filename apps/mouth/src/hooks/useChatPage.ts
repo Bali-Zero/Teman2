@@ -134,10 +134,22 @@ export function useChatPage(): UseChatPageReturn {
   // then revalidates against the DB in the background (DB stays SSOT). See
   // docs in `useChatSnapshot.ts`.
   const userEmail = api.getUserProfile()?.email ?? null;
+  // `/chat` is reachable anonymously (the auth check below redirects, but only
+  // after mount), and BOTH data hooks here call authenticated-only endpoints.
+  // Without this gate every anonymous pageview fired `conversations/list` and
+  // `conversations/history` and collected a 401 from each — measured live on
+  // 2026-08-27. The history 401 is caught by `logger.warn`, and `logger.warn`
+  // forwards to Sentry unconditionally in production (`logger.ts`), so a public
+  // page was posting one Sentry event per anonymous visitor. Sentry answered
+  // 429: it was DROPPING events, which means real errors could be lost behind
+  // this noise. Gating the fetches removes the cause rather than silencing the
+  // symptom. Read during render, like `getUserProfile()` directly above: it
+  // changes no markup, only whether a query is allowed to run.
+  const isAuthenticated = api.isAuthenticated();
   const chatSnapshot = useChatSnapshot({
     sessionId,
     userEmail,
-    enabled: !!sessionId && !isSessionLoading,
+    enabled: !!sessionId && !isSessionLoading && isAuthenticated,
   });
 
   // Seed `messages` from snapshot whenever it changes and we haven't started
@@ -186,7 +198,8 @@ export function useChatPage(): UseChatPageReturn {
   // Custom Hooks
   const chatInput = useChatInput();
   const sidebar = useChatSidebar();
-  const conversations = useConversations();
+  // Same gate as the snapshot above: this hook's list query is authenticated.
+  const conversations = useConversations(isAuthenticated);
   const teamStatus = useTeamStatus();
 
   // Setup toast callbacks

@@ -43,20 +43,36 @@ on:
 # main — back-to-back merges were cancelling the in-flight main run, so
 # commits landed on main UNTESTED and a future auto-revert guardian could
 # not attribute a green→red window to a single commit. PR refs keep
-# cancelling (newest push wins); every main push now runs to completion.
+# cancelling (newest push wins).
 #
-# Task #37 addendum: a schedule-triggered run must NOT share a group with
-# push-triggered main runs. `github.ref` is `refs/heads/main` for BOTH a
-# push-to-main and a schedule run (schedule always fires against the
+# CORRECTED 2026-08-27 (PENDING-ARMS row opened 2026-08-23 by an
+# adversarial refuter on #4647, closed by this change): this paragraph
+# used to end "every main push now runs to completion" — describing a
+# `push:` trigger that has not existed on this workflow since #4210
+# (2026-08-15, Merge-OS v3 step 2). The property the paragraph is actually
+# about — main never landing on an untested commit — is held today by
+# `merge_group` (pre-merge, required) and the `schedule` run below
+# (post-merge proof-of-health against main's current head), not by a push
+# run. `github.ref != 'refs/heads/main'` below still does real work for a
+# manual `workflow_dispatch` fired against main: that event CAN land on
+# `refs/heads/main` even though `push` cannot, and it should get the same
+# "let an in-flight main run finish" treatment the old push case did.
+#
+# Task #37 addendum: a schedule-triggered run must NOT share a group with a
+# run landing directly on `refs/heads/main` outside the queue (see the
+# CORRECTED note above: today that means a `workflow_dispatch` fired
+# against main; a `push` cannot). `github.ref` is `refs/heads/main` for
+# BOTH that case and a schedule run (schedule always fires against the
 # default branch) — grouping on `github.ref` alone would put the scheduled
-# run back in direct contention with push-triggered runs for the same
-# runner slot, reproducing the exact starvation this run exists to work
-# around. Scheduled runs get a dedicated, ref-independent group instead.
+# run back in direct contention with such runs for the same runner slot,
+# reproducing the exact starvation this run exists to work around.
+# Scheduled runs get a dedicated, ref-independent group instead.
 #
 # cancel-in-progress is the OPPOSITE value for the scheduled group,
-# deliberately: `false` is what protects a push-triggered main run (a
-# started verdict should always get to report, and cancelling it on the
-# next push is what silently starved main in the first place). `true` is
+# deliberately: `false` is what protects a run landing directly on
+# `refs/heads/main` (a started verdict should always get to report, and
+# cancelling it on the next such trigger is what silently starved main in
+# the first place). `true` is
 # correct for the scheduled group for the mirror-image reason — if a new
 # scheduled run starts while the previous is still going (job overrunning
 # the 2h cadence under load), the older run is testing a `main` that no
@@ -77,8 +93,8 @@ on:
 # used on the other 13 required-context workflows: that blanket replacement
 # would have discarded the schedule-vs-push asymmetry documented above. AND-ing
 # `github.event_name != 'merge_group'` onto the existing expression preserves
-# every other branch (push-to-main stays false, PR refs and schedule keep
-# cancelling) and forces false only for the new merge_group case.
+# every other branch (a direct run against main stays false, PR refs and
+# schedule keep cancelling) and forces false only for the new merge_group case.
 concurrency:
   group: tests-${{ github.event_name == 'schedule' && 'schedule-main' || github.ref }}
   cancel-in-progress: ${{ (github.event_name == 'schedule' || github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
