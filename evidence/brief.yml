@@ -1,0 +1,80 @@
+task_id: visa-oracle-retention-scope-p0-0826
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Restore the Visa Oracle's retention gate, which has been refusing every evaluation since
+  a foreign-scope policy became active in production.
+
+  Migration 264 built `public.visa_decision_retention_policies` with one active row per
+  environment and an exclusion constraint to match. Four readers were written against that
+  guarantee and resolve "the" active policy with nothing but
+  `environment = <env> AND effective_period @> <clock>`.
+
+  Migration 281 (GARUDA VOA) made that table the single retention authority for four data
+  classes: it added `policy_scope` and widened the exclusion constraint to
+  `(environment WITH =, policy_scope WITH =, effective_period WITH &&)`. The invariant became
+  one active row per (environment, scope). 281 taught every GARUDA-side reader to filter by
+  scope and never revisited the four Visa Oracle readers, which stayed correct only while the
+  table held no foreign-scope row. The first GARUDA policy activated 2026-08-26 04:40:27Z.
+
+  Gear 3 by PATH, deterministically: `apps/backend-rag/backend/db/migrations_v2/**` is hot-zone,
+  so the floor is 3 regardless of the diff being 4 files and +538/-2. Recomputed from the actual
+  changed-file list — receipt in the pack.
+constraints:
+  - "Fix the FAMILY, not the instance. Four readers are unscoped; a fix that repairs one and
+    leaves three is a fix that converts a graceful outage into a different failure."
+  - "`CREATE OR REPLACE FUNCTION` must restate SECURITY DEFINER and SET search_path verbatim.
+    Replace preserves owner and ACL but takes those attributes from the statement — omitting
+    them silently demotes both binders to SECURITY INVOKER and re-opens the 2026-08-07 prod
+    incident that migration 268 closed."
+  - "No behaviour change beyond the scope predicate. Both function bodies are
+    `pg_get_functiondef()` of the LIVE functions plus one added line each, so the diff is
+    auditable against production rather than against 264's source."
+  - "No migration-number collision (W40). 289 is verified free across main and every open
+    remote branch."
+  - "Do not weaken any check. The one red this PR drew (`Harness floor recompute`) is answered
+    by supplying this pack, never by touching the gate."
+acceptance:
+  - "`active_policy_available` returns True in production's actual policy configuration
+    (1 VISA_DECISION + 3 GARUDA active) instead of False."
+  - "Both SQL binders resolve the VISA_DECISION policy and bind to ITS id, not a GARUDA one,
+    with a foreign-scope policy concurrently active."
+  - "289's forward half applies on top of the real main chain; its ROLLBACK half restores 264's
+    unscoped bodies verbatim, SECURITY DEFINER included."
+  - "The structural tripwire is red on origin/main and green here, and its historical exemption
+    for 264 is re-derived from the migration chain rather than asserted."
+  - "`Detect duplicate prefixes` and `Detect missing ROLLBACK markers` both green."
+consumer_map:
+  - "`services/visa_engine/evaluate_path.py:140,280,1466,1708` — imports and calls
+    `active_policy_available` at BOTH call sites, ungated on SHADOW vs ENFORCE. This is the
+    surface the outage is visible on."
+  - "`public.visa_decisions` — BEFORE INSERT trigger runs `bind_visa_decision_retention_policy`.
+    Every durable decision write passes through the predicate this PR changes."
+  - "`public.visa_evaluate_idempotency` — same, via
+    `bind_visa_evaluate_idempotency_retention_policy`. The table currently holds 0 rows."
+  - "`scripts/visa_engine/retention_worker.py` — the bounded purge worker. Broken by the same
+    cause; currently has nothing to purge (receipt below), so the repair is pre-emptive."
+  - "GARUDA VOA — `services/garuda_flow/retention.py`,
+    `active_garuda_magic_link_policy_available`, migration 284's order-policy function. All
+    three already filter their own scope and are NOT touched by this PR. Verified, not assumed."
+  - "`bind_visa_decision_payload_retention` — deliberately NOT touched: it resolves its parent
+    by `visa_decisions.id`, never by active-policy lookup."
+risks:
+  - "A migration PR is auto-merge-OFF class per CLAUDE.md §2. Merged by the session after gates
+    are green and the Gear-3 verdict is posted, never armed with --auto."
+  - "The two binders are owned by `visa_ledger_owner`, and no role is a member of it. CREATE OR
+    REPLACE therefore requires the migration runner to be superuser — which it demonstrably is,
+    since 281 successfully ALTERed this same visa_ledger_owner-owned table on 2026-08-26."
+  - "Rolling 289 back re-arms the outage on any database that has applied 281 and activated a
+    GARUDA policy. Documented in the ROLLBACK section: it is only meaningful together with
+    rolling back 281."
+  - "This PR does NOT restore the client experience. Production runs SHADOW and the frontend's
+    public rendering boundary withholds the decision regardless — an unrelated, designed state.
+    What this PR restores is the shadow-evidence ledger the go-live gate accumulates."
+grader: |
+  Independent verification by this session against production's live catalog (read-only role)
+  and against the repo's own linters. Two adversarial subagents were dispatched WITHOUT this
+  brief: one to attack the diagnosis (it killed the timeline claim — see dissent), one to prove
+  the fix red-then-green on a throwaway Postgres. Generator != grader: the session that wrote
+  the diff does not post the Gear-3 verdict.
