@@ -24,7 +24,6 @@ name: prepush-guards
 
 on:
   pull_request: # NO paths: — always trigger, always report
-  merge_group:
   push:
     branches: [main]
     # One entry per corpus this job actually runs, plus the surfaces they read.

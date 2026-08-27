@@ -38,7 +38,6 @@ name: runbook section numbers are unique
 
 on:
   pull_request:
-  merge_group:
   push:
     branches: [main]
 

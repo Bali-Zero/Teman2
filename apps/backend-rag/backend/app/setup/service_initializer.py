@@ -1234,101 +1234,32 @@ async def initialize_channel_router(
         app.state.channel_router_init_error = str(e)
 
 
-async def initialize_services(app: FastAPI) -> None:
+async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
+    """Wire every `app.state.garuda_*` adapter. Called by BOTH init paths.
+
+    This function exists because these seven assignments used to live inline
+    in `initialize_services`, which ONLY the `rag` process runs — while all
+    four GARUDA routers are `process_groups=_API`, i.e. mounted ONLY on the
+    `api` process, which runs `initialize_services_light`. The two processes
+    were exactly inverted: `rag` wired the stores and mounted none of the
+    routes; `api` mounted every route and wired none of the stores.
+
+    The visible symptom was a 503 on the first action a real customer takes.
+    `POST /api/visa/voa/eligibility-checks` on balizero.com answered
+    `PERSISTENCE_POLICY_UNAVAILABLE`, which reads as a retention-policy fault
+    and is not one: `get_garuda_check_store` falls back to
+    `UnconfiguredCheckStore`, whose every method raises
+    `PersistencePolicyUnavailable("no garuda check store configured")`.
+    Measured 2026-08-27 against production, after ruling out — each by
+    measurement, not assumption — a missing policy row (exactly one active
+    GARUDA_CHECK/PRODUCTION row), a missing grant (`backend_rag_v2=r/...` in
+    the real `pg_class.relacl`, not the caller-filtered information_schema
+    view), RLS (`relrowsecurity=f`, zero policies) and a wrong database.
+
+    No test could see it: under pytest the app is a single process, so the
+    api/rag split does not exist. `test_api_process_wires_every_state_key_
+    its_routers_read` is the structural guard that now can.
     """
-    Initialize all ZANTARA RAG services with fail-fast for critical services.
-
-    Critical services (SearchService, ZantaraAIClient) must initialize successfully.
-    If any critical service fails, the application will raise RuntimeError to
-    prevent starting in a broken state.
-
-    Non-critical services will log errors and continue with degraded functionality.
-
-    Args:
-        app: FastAPI application instance
-    """
-    if getattr(app.state, "services_initialized", False):
-        return
-
-    logger.info("🚀 Initializing ZANTARA RAG services...")
-
-    # 0. RedisManager (must be first — all Redis consumers depend on it)
-    _initialize_redis_manager(app, "full")
-
-    # 0.1 KG cache proactive invalidation listener (HIGH-13).
-    # Subscribes to `zantara:kg:invalidate` and wipes local KG cache entries
-    # the moment a peer cell increments the KG version. Falls back to the
-    # existing lazy on-read check if Redis is down.
-    try:
-        from backend.services.rag.kg_cache import start_invalidation_listener
-
-        listener = await start_invalidation_listener()
-        app.state.kg_invalidate_listener = listener
-        logger.info("✅ KG cache invalidation listener started")
-    except Exception as e:
-        logger.warning(
-            "KG cache invalidation listener failed to start: %s — "
-            "falling back to lazy version check only",
-            e,
-        )
-
-    # 0.5 VASSAL Phase 3: ConfirmationService + ToolAuthorizer wiring.
-    # Must happen after RedisManager (the service depends on it) and
-    # before anything that calls execute_tool (which reads the module-level
-    # authorizer and confirmation service singletons).
-    try:
-        from backend.services.agents.confirmation_service import ConfirmationService
-        from backend.services.agents.tool_authorizer import ToolAuthorizer
-        from backend.services.rag.agentic.tool_executor import configure_tool_executor
-
-        redis_mgr = getattr(app.state, "redis_manager", None)
-        confirmation_service = ConfirmationService(redis_manager=redis_mgr)
-        await confirmation_service.start()
-        app.state.confirmation_service = confirmation_service
-
-        authorizer = ToolAuthorizer()
-        configure_tool_executor(
-            authorizer=authorizer,
-            confirmation_service=confirmation_service,
-        )
-        logger.info(
-            "✅ VASSAL Phase 3: ConfirmationService + ToolAuthorizer wired (Redis available=%s)",
-            getattr(redis_mgr, "available", False),
-        )
-    except Exception as e:
-        logger.warning(
-            "⚠️ VASSAL Phase 3: ConfirmationService wiring failed: %s — "
-            "confirmation gates will fail-closed (deny)",
-            e,
-        )
-
-    # 1. Critical services (fail-fast)
-    search_service, ai_client = await _init_critical_services(app)
-
-    # 2. Tool stack
-    tool_executor = await _init_tool_stack(app)
-
-    # 2.5 FAQ Cache (non-critical, graceful degradation)
-    await initialize_faq_cache_service(app)
-
-    # 3. RAG components (CulturalRAGService initialized inside _init_rag_components)
-    query_router = await _init_rag_components(app, search_service)
-    cultural_rag_service = app.state.cultural_rag  # Already set by _init_rag_components
-
-    # 4. Specialized agents
-    (
-        autonomous_research_service,
-        cross_oracle_synthesis_service,
-        client_journey_orchestrator,
-    ) = await _init_specialized_agents(app, search_service, ai_client, query_router)
-
-    # Store specialized agents in app.state for router access
-    app.state.cross_oracle_synthesis_service = cross_oracle_synthesis_service
-    app.state.autonomous_research_service = autonomous_research_service
-    app.state.client_journey_orchestrator = client_journey_orchestrator
-
-    # 5. Database services
-    db_pool = await initialize_database_services(app)
 
     # 5.5 GARUDA VOA — magic-link session verifier wiring (L4).
     # Non-critical: on failure the L3/L4 routes keep answering fail-closed
@@ -1448,11 +1379,24 @@ async def initialize_services(app: FastAPI) -> None:
     # which is `get_repository()`/the webhook route's existing fail-closed
     # 503 — the exact same shape as before this PR. The moment Zero
     # provisions a sandbox account and sets the four env vars below, this
-    # starts working with no further code change. A persistent
-    # `httpx.AsyncClient` (Golden Rule #10 — never per-request) is stored
-    # under `garuda_payment_http_client` so `app_factory.py`'s generic
-    # "close anything with `client`/`service` in its attribute name"
-    # shutdown loop closes it — no new cleanup plumbing needed.
+    # starts working with no further code change — but ONLY because this
+    # block now runs on the `api` process too. Until this PR it lived solely
+    # in `initialize_services`, which the process that mounts these routers
+    # never runs, so setting the env vars alone would have changed nothing.
+    # A persistent `httpx.AsyncClient` (Golden Rule #10 — never per-request)
+    # is stored under `garuda_payment_http_client`.
+    #
+    # NOT closed on shutdown, and deliberately so — measured 2026-08-27, this
+    # comment used to claim the opposite. `app_factory.py`'s generic "close
+    # anything with `client`/`service` in its name" loop cannot reach ANY
+    # client, ours included, for two independent reasons: `httpx.AsyncClient`
+    # exposes `aclose()` and not `close()`, and the loop iterates
+    # `app.state.__dict__`, which for a Starlette `State` is the single key
+    # `_state` wrapping the real dict. That loop is dead code for every client
+    # in this app — a pre-existing, repo-wide defect that is NOT this PR's
+    # concern and is ledgered separately. The practical exposure here is one
+    # client per process lifetime, reclaimed at process exit; do not "fix" it
+    # by adding a bespoke close here while the generic loop still lies.
     #
     # `GARUDA_PUBLIC_BASE_URL` (single base, no success/failure split —
     # Dissent #3, 2026-08-25 review of PR #4920): the return route lives on
@@ -1520,10 +1464,116 @@ async def initialize_services(app: FastAPI) -> None:
             )
     else:
         logger.info(
-            "ℹ️ GARUDA VOA order/payment wiring skipped: GARUDA_XENDIT_SECRET_KEY not set "
-            "(expected until Zero provisions a Xendit sandbox account — L3 fail closed)"
+            "ℹ️ GARUDA VOA order/payment wiring skipped (L3 fail closed): db_pool=%s "
+            "xendit_secret_key_set=%s. Naming BOTH because this line used to blame "
+            "the missing key unconditionally, and a missing pool reads identically.",
+            db_pool is not None,
+            bool(garuda_xendit_secret_key),
         )
 
+
+
+async def initialize_services(app: FastAPI) -> None:
+    """
+    Initialize all ZANTARA RAG services with fail-fast for critical services.
+
+    Critical services (SearchService, ZantaraAIClient) must initialize successfully.
+    If any critical service fails, the application will raise RuntimeError to
+    prevent starting in a broken state.
+
+    Non-critical services will log errors and continue with degraded functionality.
+
+    Args:
+        app: FastAPI application instance
+    """
+    if getattr(app.state, "services_initialized", False):
+        return
+
+    logger.info("🚀 Initializing ZANTARA RAG services...")
+
+    # 0. RedisManager (must be first — all Redis consumers depend on it)
+    _initialize_redis_manager(app, "full")
+
+    # 0.1 KG cache proactive invalidation listener (HIGH-13).
+    # Subscribes to `zantara:kg:invalidate` and wipes local KG cache entries
+    # the moment a peer cell increments the KG version. Falls back to the
+    # existing lazy on-read check if Redis is down.
+    try:
+        from backend.services.rag.kg_cache import start_invalidation_listener
+
+        listener = await start_invalidation_listener()
+        app.state.kg_invalidate_listener = listener
+        logger.info("✅ KG cache invalidation listener started")
+    except Exception as e:
+        logger.warning(
+            "KG cache invalidation listener failed to start: %s — "
+            "falling back to lazy version check only",
+            e,
+        )
+
+    # 0.5 VASSAL Phase 3: ConfirmationService + ToolAuthorizer wiring.
+    # Must happen after RedisManager (the service depends on it) and
+    # before anything that calls execute_tool (which reads the module-level
+    # authorizer and confirmation service singletons).
+    try:
+        from backend.services.agents.confirmation_service import ConfirmationService
+        from backend.services.agents.tool_authorizer import ToolAuthorizer
+        from backend.services.rag.agentic.tool_executor import configure_tool_executor
+
+        redis_mgr = getattr(app.state, "redis_manager", None)
+        confirmation_service = ConfirmationService(redis_manager=redis_mgr)
+        await confirmation_service.start()
+        app.state.confirmation_service = confirmation_service
+
+        authorizer = ToolAuthorizer()
+        configure_tool_executor(
+            authorizer=authorizer,
+            confirmation_service=confirmation_service,
+        )
+        logger.info(
+            "✅ VASSAL Phase 3: ConfirmationService + ToolAuthorizer wired (Redis available=%s)",
+            getattr(redis_mgr, "available", False),
+        )
+    except Exception as e:
+        logger.warning(
+            "⚠️ VASSAL Phase 3: ConfirmationService wiring failed: %s — "
+            "confirmation gates will fail-closed (deny)",
+            e,
+        )
+
+    # 1. Critical services (fail-fast)
+    search_service, ai_client = await _init_critical_services(app)
+
+    # 2. Tool stack
+    tool_executor = await _init_tool_stack(app)
+
+    # 2.5 FAQ Cache (non-critical, graceful degradation)
+    await initialize_faq_cache_service(app)
+
+    # 3. RAG components (CulturalRAGService initialized inside _init_rag_components)
+    query_router = await _init_rag_components(app, search_service)
+    cultural_rag_service = app.state.cultural_rag  # Already set by _init_rag_components
+
+    # 4. Specialized agents
+    (
+        autonomous_research_service,
+        cross_oracle_synthesis_service,
+        client_journey_orchestrator,
+    ) = await _init_specialized_agents(app, search_service, ai_client, query_router)
+
+    # Store specialized agents in app.state for router access
+    app.state.cross_oracle_synthesis_service = cross_oracle_synthesis_service
+    app.state.autonomous_research_service = autonomous_research_service
+    app.state.client_journey_orchestrator = client_journey_orchestrator
+
+    # 5. Database services
+    db_pool = await initialize_database_services(app)
+
+    # 5.5 GARUDA VOA — every `app.state.garuda_*` adapter, shared by both
+    # init paths. MUST stay a call to the shared function: inlining it here
+    # again is what left the `api` process (the only one that mounts these
+    # routers) with no stores at all.
+    await initialize_garuda_services(app, db_pool)
     # 6. CRM & Memory
     await initialize_crm_and_memory_services(app, ai_client, db_pool)
 
@@ -1828,8 +1878,27 @@ async def initialize_services_light(app: FastAPI) -> None:
             discount_log: rows landed as '"{\"discount_log\":[...]}"' instead
             of '{"discount_log":[...]}', breaking `metadata ? 'discount_log'`
             and any jsonb_path_* query). With the codec active the
-            application-level json.dumps() becomes redundant and the
-            existing `$N::jsonb` casts are harmless.
+            application-level json.dumps() becomes WRONG, not merely redundant:
+            asyncpg serializes a SECOND time and the value lands as a JSONB
+            scalar string. Any caller that still pre-serializes is broken by
+            this codec, not protected by it.
+
+            CORRECTED 2026-08-27 — this docstring used to say "the existing
+            `$N::jsonb` casts are harmless". They are not, and nothing had ever
+            checked. Measured with a real INSERT against a real Postgres, with
+            this codec registered: `VALUES ($1)` and `VALUES ($1::jsonb)` given
+            the same pre-serialized string BOTH store `jsonb_typeof = string`.
+            The cast does not route around the codec, so it cannot be used as
+            an escape hatch. Cost of the false claim: `check_store.py` kept its
+            `json.dumps` on the strength of it, and GARUDA VOA's first customer
+            action answered HTTP 500 on every request in production until
+            2026-08-27 (migration 286's CHECK calls `jsonb_array_length` on the
+            value, which raises SQLSTATE 22023 on a scalar).
+
+            Still-unfixed callers of the same anti-pattern are ledgered in
+            `.claude/skills/modus/PENDING-ARMS.md`; they are NOT one-line fixes,
+            because this encoder is bare `json.dumps` with no `default=str`
+            while `garuda_orders/journal.py` relies on `default=str`.
 
             Aligns the api pool with the existing full-init pool
             (`init_db_connection` ~line 459) which has always used the same
@@ -1864,6 +1933,19 @@ async def initialize_services_light(app: FastAPI) -> None:
             pool_kwargs["ssl"] = ssl_ctx
         db_pool = await asyncpg.create_pool(**pool_kwargs)
         app.state.db_pool = db_pool
+        # 4c. GARUDA VOA — wired HERE, on the very next statement after the pool
+        # is published, and NOT later with the background workers. `/health/ready`
+        # declares this process ready the moment `app.state.db_pool` exists
+        # (health.py, light branch) and `fly.toml`'s `[[http_service.checks]]`
+        # routes traffic on exactly that path — so every `await` between the pool
+        # assignment and this call is a window in which Fly sends a real customer
+        # to a process that reports ready and still answers 503. Placed after
+        # Timesheet/Olympus/DLQ (the first draft) that window was three awaits
+        # wide. `initialize_garuda_services` contains ZERO awaits, so from here
+        # the event loop cannot interleave a readiness probe at all: the window
+        # is not narrowed, it is closed.
+        # `test_no_await_separates_the_pool_from_the_garuda_wiring` pins this.
+        await initialize_garuda_services(app, db_pool)
         service_registry.register("database", ServiceStatus.HEALTHY)
         logger.info("✅ DB pool initialized (light)")
     except Exception as e:

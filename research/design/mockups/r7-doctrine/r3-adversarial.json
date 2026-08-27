@@ -1,0 +1,126 @@
+{
+ "refuters": [
+  {
+   "seat": "codex gpt-5.6-sol xhigh",
+   "scope": "red-team: severity, evidence anchors, missed defects, axis table, contrast, measured-vs-judgment",
+   "findings_total": 32,
+   "applied": 31,
+   "rejected": 0,
+   "open": 0,
+   "note": "finding 26 was a confirmation (contrast arithmetic recomputes correctly) - no change required"
+  },
+  {
+   "seat": "kimi-k3",
+   "scope": "full-file refutation with R0/R1/R2 cross-checks; recomputed all 22 contrast values (exact)",
+   "findings_total": 23,
+   "applied": 22,
+   "rejected": 1,
+   "open": 0,
+   "note": "rejected: finding 17 (the 19-screen count) - the count is sourced from the declared local recapture index (frontmatter source), which lives in the session scratchpad, not the worktrees kimi searched"
+  },
+  {
+   "seat": "agy gemini-3.1-pro",
+   "scope": "constructive width: missing defect classes (a11y/WCAG 2.2, SEA mobile), routing corrections, red-structure risks",
+   "findings_total": 14,
+   "applied": 13,
+   "rejected": 0,
+   "open": 1,
+   "note": "open: finding 7 (sponsor/EA compiler persona) - carried to R4 as a persona-scope question under ruling Q4, recorded in autopsy.json open_to_r4"
+  },
+  {
+   "seat": "qwen3.8-max (TP1)",
+   "scope": "reduced-scope retry after first-pass timeout: severity-consistency + axis-consistency audit on the disposed inventory",
+   "findings_total": 10,
+   "applied": 7,
+   "rejected": 3,
+   "open": 0,
+   "note": "rejected 6/7/10 - each already carries its stated reason in the inventory (D-G1 rebuild-scope, D-V2 paper-nearly-there note, D-M1 doctrine-level observed collision)"
+  }
+ ],
+ "dispositions": [
+  {
+   "severity": "HIGH",
+   "claim": "four severity-4 defects were inflated (D-G1/D-V1/D-V3/D-V9) - no anchor for 'catastrophic-for-conversion'",
+   "verdict": "APPLIED",
+   "note": "D-V1/D-V3/D-V9 demoted to 3; scale renamed 'worst-class: full-rebuild axis gap or blocking defect'; D-G1 keeps 4 as rebuild-scope, stated in the row"
+  },
+  {
+   "severity": "HIGH",
+   "claim": "UNKNOWN 3 was false: my public login WAS measured in R0",
+   "verdict": "APPLIED",
+   "note": "UNKNOWN 3 rewritten - what was never observed is the logged-in portal and the paid transition"
+  },
+  {
+   "severity": "HIGH",
+   "claim": "Q2/Q7 rulings contradict the citable R0/R2 recommendations and no source was quoted",
+   "verdict": "APPLIED",
+   "note": "frontmatter now cites the loop memory with Q2 verbatim and declares both overrides (R0 §7.2 navy, R2 §9.1 separation)"
+  },
+  {
+   "severity": "HIGH",
+   "claim": "Q7 axis cells asserted for unreached checkout states",
+   "verdict": "APPLIED",
+   "note": "GARUDA and VO Q7 cells set to unassessable; P1 reworded as promise-only"
+  },
+  {
+   "severity": "HIGH",
+   "claim": "missed defects: VO sponsor-branch progress, DOB minimisation, upload-heading contrast",
+   "verdict": "APPLIED",
+   "note": "D-V11, D-V12, D-G10 added"
+  },
+  {
+   "severity": "HIGH",
+   "claim": "D-M2 asserted a seam never captured; hypothesis at severity 3",
+   "verdict": "APPLIED",
+   "note": "reworded HYPOTHESIS + severity capped at 2 by evidence class (method line added)"
+  },
+  {
+   "severity": "HIGH",
+   "claim": "Meta-pattern and Solo-operatore made false claims (Nielsen invisibility, arithmetic axis cells, per-row evidence)",
+   "verdict": "APPLIED",
+   "note": "both sections rewritten; axis cells declared expert judgment; evidence lives in the machine inventory"
+  },
+  {
+   "severity": "MED",
+   "claim": "contrast reading underqualified (large-text band, 'both funnels', headroom fraction, missing a83a44/ff2d4c)",
+   "verdict": "APPLIED",
+   "note": "§3 table extended and reading fully qualified; Q-R3.2 scoped to the six reds measured"
+  },
+  {
+   "severity": "MED",
+   "claim": "axis cells contradicted the defect list (Q8, Q6, VO Q5, my Q5/Q8)",
+   "verdict": "APPLIED",
+   "note": "reconciliation stated per cell; my non-applicable axes set to unassessable"
+  },
+  {
+   "severity": "MED",
+   "claim": "routing corrections (D-G1→R4+R5, D-V3→R5, D-V6→R5b, D-G8→R5+ENG, D-V5→H7)",
+   "verdict": "APPLIED",
+   "note": "routes and heuristic tags updated per row"
+  },
+  {
+   "severity": "MED",
+   "claim": "severity pairs without stated reasons (D-G5 vs D-V12, D-V4/V6 vs D-V12, D-X1 vs D-G10)",
+   "verdict": "APPLIED",
+   "note": "stakes-based reasons stated in the rows; evidence-class principle added to the method"
+  },
+  {
+   "severity": "MED",
+   "claim": "kimi 17: the 19-screen count is unsourced",
+   "verdict": "REJECTED",
+   "note": "count comes from the declared local recapture index (session scratchpad), cited in frontmatter"
+  },
+  {
+   "severity": "MED",
+   "claim": "qwen 6/7/10: remaining severity/axis pairs inconsistent",
+   "verdict": "REJECTED",
+   "note": "each already carries its stated reason (rebuild-scope; paper-nearly-there; doctrine-level collision)"
+  },
+  {
+   "severity": "LOW",
+   "claim": "agy 7: sponsor/EA compiler persona missing",
+   "verdict": "OPEN",
+   "note": "carried to R4 as a persona-scope question under ruling Q4 (open_to_r4)"
+  }
+ ]
+}

@@ -387,6 +387,7 @@ async def test_publish_article_with_cover_image(
     """Test publishing article with cover image (base64)"""
     # Setup mock — publish goes via PR + auto-merge (protected branch path)
     mock_publisher.is_configured = True
+    mock_publisher.check_file_exists = AsyncMock(return_value=False)
     mock_publisher.create_commit_with_files = AsyncMock(
         return_value={
             "success": True,
@@ -425,6 +426,7 @@ async def test_publish_article_with_cover_image(
     call_args = mock_publisher.create_commit_with_files.call_args
     assert len(call_args[1]["files"]) == 2  # MDX + image
     assert call_args[1]["pull_request"] is True
+    assert call_args[1]["must_not_exist_paths"] == [call_args[1]["files"][1]["path"]]
 
 
 @pytest.mark.asyncio
@@ -437,6 +439,7 @@ async def test_publish_article_without_cover_image(
     """Test publishing article without cover image (single MDX file, PR path)"""
     # Setup mock — even a single file goes via the PR path now
     mock_publisher.is_configured = True
+    mock_publisher.check_file_exists = AsyncMock(return_value=False)
     mock_publisher.create_commit_with_files = AsyncMock(
         return_value={
             "success": True,
@@ -464,6 +467,76 @@ async def test_publish_article_without_cover_image(
     call_args = mock_publisher.create_commit_with_files.call_args
     assert len(call_args[1]["files"]) == 1  # MDX only
     assert call_args[1]["pull_request"] is True
+    assert call_args[1]["must_not_exist_paths"] == [call_args[1]["files"][0]["path"]]
+
+
+@pytest.mark.asyncio
+@patch("backend.services.integrations.github_publisher.github_publisher")
+async def test_hero_publication_commits_article_cover_and_layout_atomically(
+    mock_publisher,
+    test_client,
+    sample_enriched_article,
+):
+    mock_publisher.is_configured = True
+    mock_publisher.check_file_exists = AsyncMock(return_value=False)
+    mock_publisher.create_commit_with_files = AsyncMock(
+        return_value={
+            "commit_sha": "hero123",
+            "pull_request_number": 88,
+            "auto_merge_enabled": True,
+        }
+    )
+    image_base64 = base64.b64encode(b"fake-image-data").decode("utf-8")
+    request = PublishRequest(
+        article=sample_enriched_article,
+        cover_image_base64=image_base64,
+        cover_image_filename="hero.jpg",
+        position="hero_main",
+        slug="new-hero-story",
+    )
+
+    response = test_client.post("/api/articles/publish", json=request.model_dump())
+
+    assert response.status_code == 200
+    assert response.json()["success"] is True
+    files = mock_publisher.create_commit_with_files.await_args.kwargs["files"]
+    paths = {entry["path"] for entry in files}
+    assert paths == {
+        "apps/mouth/public/static/news/hero.jpg",
+        "apps/mouth/src/content/articles/immigration/new-hero-story.mdx",
+    }
+    assert mock_publisher.create_commit_with_files.await_args.kwargs[
+        "json_object_updates"
+    ] == {
+        "apps/mouth/src/content/homepage-layout.json": {
+            "hero_main": "new-hero-story"
+        }
+    }
+
+
+@pytest.mark.asyncio
+@patch("backend.services.integrations.github_publisher.github_publisher")
+async def test_existing_public_slug_is_never_overwritten(
+    mock_publisher,
+    test_client,
+    sample_enriched_article,
+):
+    mock_publisher.is_configured = True
+    mock_publisher.check_file_exists = AsyncMock(return_value=True)
+    mock_publisher.create_commit_with_files = AsyncMock()
+
+    response = test_client.post(
+        "/api/articles/publish",
+        json=PublishRequest(
+            article=sample_enriched_article,
+            slug="existing-story",
+        ).model_dump(),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["success"] is False
+    assert "already exists" in response.json()["message"].lower()
+    mock_publisher.create_commit_with_files.assert_not_awaited()
 
 
 @patch("backend.services.integrations.github_publisher.github_publisher")
@@ -491,6 +564,7 @@ async def test_publish_article_github_error(mock_publisher, test_client, sample_
     from backend.services.integrations.github_publisher import GitHubPublisherError
 
     mock_publisher.is_configured = True
+    mock_publisher.check_file_exists = AsyncMock(return_value=False)
     mock_publisher.create_commit_with_files = AsyncMock(
         side_effect=GitHubPublisherError("GitHub API error"),
     )
@@ -582,6 +656,40 @@ def test_generate_mdx_content_json_serialization(sample_enriched_article):
     assert "## Next Steps" in mdx
 
 
+def test_generate_mdx_content_yaml_escapes_untrusted_tags(sample_enriched_article):
+    """Title-derived quotes must not corrupt the publication frontmatter."""
+    import yaml
+
+    sample_enriched_article.ai_tags = ["business", '"golden', "rule: update"]
+    mdx = generate_mdx_content(sample_enriched_article, "safe-tags", None)
+    frontmatter = mdx.split("---", 2)[1]
+
+    parsed = yaml.safe_load(frontmatter)
+    assert parsed["tags"] == ["business", '"golden', "rule: update"]
+
+
+def test_generate_mdx_content_neutralizes_executable_mdx(sample_enriched_article):
+    """Public editorial copy must remain text, never executable MDX/JSX."""
+    attack = (
+        '<script dangerouslySetInnerHTML={{__html:"window.__DAMAR_PROBE__=1"}} />\n'
+        "export const injected = true\n"
+        "[unsafe](javascript:alert(1))"
+    )
+    sample_enriched_article.facts = attack
+    sample_enriched_article.tldr.what = attack
+    sample_enriched_article.bali_zero_take.our_analysis = attack
+
+    mdx = generate_mdx_content(sample_enriched_article, "safe-mdx", None)
+
+    assert "<script" not in mdx
+    assert "{{__html" not in mdx
+    assert "\nexport const injected" not in mdx
+    assert "javascript:alert" not in mdx
+    assert "&lt;script" in mdx
+    assert "e&#120;port const injected" in mdx
+    assert "](#blocked-protocol-alert(1))" in mdx
+
+
 def test_generate_mdx_content_cover_image_path(sample_enriched_article):
     """Test MDX content uses provided cover image path"""
     slug = "test-article"
@@ -589,6 +697,21 @@ def test_generate_mdx_content_cover_image_path(sample_enriched_article):
     mdx = generate_mdx_content(sample_enriched_article, slug, cover_path)
 
     assert f'coverImage: "{cover_path}"' in mdx
+
+
+def test_generate_mdx_content_includes_canonical_primary_source(
+    sample_enriched_article,
+):
+    sample_enriched_article.source = "Official Indonesian source"
+    sample_enriched_article.source_url = (
+        "https://example.go.id/regulation?access_token=private#internal"
+    )
+
+    mdx = generate_mdx_content(sample_enriched_article, "source-citation", None)
+
+    assert "## Primary Source" in mdx
+    assert "[Official Indonesian source](https://example.go.id/regulation)" in mdx
+    assert "access_token" not in mdx
 
 
 def test_generate_mdx_content_card_image_derived(sample_enriched_article):
@@ -664,6 +787,7 @@ def test_full_compose_and_publish_flow(
     """Integration test: compose article then publish it (DeepSeek-backed)."""
     mock_call.return_value = mock_llm_response
     mock_publisher.is_configured = True
+    mock_publisher.check_file_exists = AsyncMock(return_value=False)
     mock_publisher.create_commit_with_files = AsyncMock(
         return_value={
             "success": True,
