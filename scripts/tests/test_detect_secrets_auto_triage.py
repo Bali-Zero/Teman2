@@ -267,8 +267,8 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # trail are derived from the live registry post-merge, not summed by
     # hand (team-lead's call: a rule appears once in the trail regardless of
     # how many PRs tried to add it).
-    assert len(CONTENT_KEYED_RULES) == 19, (
-        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 19. "
+    assert len(CONTENT_KEYED_RULES) == 20, (
+        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 20. "
         "If you just ADDED a rule: bump this number AND append a `# +1: <what> "
         "(<date>, PR #NNNN)` line below, matching the existing trail's format — "
         "that comment IS the audit record this assert exists to force. "
@@ -289,6 +289,7 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # +1: fold_pack_seq13_source.py seq-12 chain anchor exact-value pin (2026-08-23, #4667)
     # +1: research/visa/doctrine-factory/e5/inc8-pack-edits/d12-active-stay-permit-rule-and-source.json content_sha256 (2026-08-24, #4719)
     # +1: fold_pack_seq14.py seq-13 chain anchor exact-value pin (2026-08-24, #4797)
+    # +1: evidence/<month>/<slug>/pack.yml diff.measured_at git SHA (2026-08-27, #5054)
     #
     # Note (2026-08-23): "appended last" is no longer a constraint. It was
     # true only because this test and the two Google-OAuth tests below
@@ -1498,3 +1499,71 @@ def test_google_oauth_selftest_fragment_rule_registered() -> None:
     # A bare 64-char assignment without the ref_body assembly shape stays flagged.
     bare = '    token = "defghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-abcd"'
     assert content_pat.match(bare) is None
+
+
+# --- Evidence Pack diff.measured_at (2026-08-27, found live on PR #5054's own pack) ---
+
+EVIDENCE_PACK_MEASURED_AT_REASON = "Evidence Pack diff.measured_at"
+
+
+def test_evidence_pack_measured_at_rule_registered_and_scoped() -> None:
+    """Path-keyed to per-task pack.yml under evidence/<month>/<slug>/ only —
+    never brief.yml (untouched by this rule) and never a pack.yml sitting
+    directly at evidence/ root (the old fixed-path convention)."""
+    path_pat, _content_pat, reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_MEASURED_AT_REASON
+    )
+    assert path_pat.search(
+        "evidence/2026-08/agent-nuzantara-infra-pack-lint-seat-rules-0826-414c0166/pack.yml"
+    )
+    assert not path_pat.search("evidence/2026-08/some-slug/brief.yml")
+    assert not path_pat.search("evidence/pack.yml")
+    assert "credential" in reason
+
+
+def test_guilt_evidence_pack_measured_at_short_sha_approved() -> None:
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_MEASURED_AT_REASON
+    )
+    assert content_pat.match("  measured_at: 63bfa19ec")
+
+
+def test_guilt_evidence_pack_measured_at_full_sha_approved() -> None:
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_MEASURED_AT_REASON
+    )
+    assert content_pat.match("  measured_at: " + "a" * 40)
+
+
+def test_innocence_evidence_pack_measured_at_too_short_not_approved() -> None:
+    """Below 7 hex chars is not a git SHA prefix this repo's tooling ever
+    prints (git's own minimum abbreviation is 7) — stays flagged rather than
+    silently widening the approved shape."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_MEASURED_AT_REASON
+    )
+    assert content_pat.match("  measured_at: abc123") is None
+
+
+def test_innocence_evidence_pack_measured_at_uppercase_not_approved() -> None:
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_MEASURED_AT_REASON
+    )
+    assert content_pat.match("  measured_at: 63BFA19EC") is None
+
+
+def test_innocence_evidence_pack_measured_at_ride_along_not_approved() -> None:
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_MEASURED_AT_REASON
+    )
+    assert content_pat.match("  measured_at: 63bfa19ec  # extra trailing note") is None
+
+
+def test_innocence_evidence_pack_other_key_not_approved() -> None:
+    """A different key holding the same hex shape (e.g. a real secret
+    smuggled under an unrelated field on the SAME line_number in a future
+    edit) must not ride the measured_at name through."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_MEASURED_AT_REASON
+    )
+    assert content_pat.match("  api_key: 63bfa19ec") is None

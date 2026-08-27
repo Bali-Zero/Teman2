@@ -499,10 +499,21 @@ def send_dirty_signal(
     sha = pr.get("head_sha") or "unknown"
     short_sha = sha[:12] if sha and sha != "unknown" else "unknown"
 
+    # S3 (2026-08-27): a state key, not the SHA/fingerprint the LOCAL
+    # dirty_seen dedup (below, in main()) already uses. This is a SEPARATE,
+    # complementary dedup at the mailbox layer: dirty_seen only guards
+    # sends from THIS machine's own state file, so if queue_unstick ever
+    # runs as a cron on more than one machine (or the state file is lost),
+    # each sender's local fingerprint check can't see the others' sends —
+    # the mailbox-side `key: queue_unstick:<PR>` still collapses them to
+    # the newest, fleet-wide, regardless of which host sent it.
+    mailbox_key = f"queue_unstick:{number}"
+
     if dry_run:
         return True, (
             f"[dry-run] would signal DIRTY PR #{number} at {short_sha} "
-            f"(conflicting files not computed in dry-run) via fleet_mail.sh {FLEET_MAIL_HOST} broadcast"
+            f"(conflicting files not computed in dry-run) via fleet_mail.sh {FLEET_MAIL_HOST} "
+            f"broadcast --key {mailbox_key}"
         )
 
     if files_desc is None:
@@ -514,7 +525,9 @@ def send_dirty_signal(
     fleet_mail = repo_root / "scripts" / "fleet_mail.sh"
     if not fleet_mail.is_file():
         return False, f"signal FAILED PR #{number}: fleet_mail.sh not found at {fleet_mail}"
-    rc, out, err = _run(["bash", str(fleet_mail), FLEET_MAIL_HOST, "broadcast", msg], timeout=30)
+    rc, out, err = _run(
+        ["bash", str(fleet_mail), FLEET_MAIL_HOST, "broadcast", "--key", mailbox_key, msg], timeout=30
+    )
     if rc != 0:
         return False, f"signal FAILED PR #{number} rc={rc}: {err.strip()[:300]}"
     return True, f"signal OK PR #{number}: {out.strip() or 'sent'}"

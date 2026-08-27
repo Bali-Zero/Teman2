@@ -1341,7 +1341,7 @@ git show "HEAD:evidence/pack.yml" | diff -q - evidence/pack.yml   # deve essere 
 
 Vuoto = ho davvero tenuto il mio. Non vuoto = qualcosa è entrato dalla porta di servizio, e adesso lo vedo.
 
-**GOTCHA.** «Byte-identico all'HEAD pre-merge» vale per questa CLASSE di file (interamente miei), non per un merge qualunque: in un merge normale il contenuto altrui DEVE entrare, e un diff vuoto sarebbe il bug. Prima di applicare la cura, chiediti se il file ha un solo proprietario. E la vigilanza non è la cura strutturale: quella è togliere i path fissi — `scripts/ci/evidence_paths.py` è già su `main` (#4678) ma non ancora adottato dai produttori dei pack, e finché non lo è la finestra si riapre a ogni PR Gear≥2.
+**GOTCHA.** «Byte-identico all'HEAD pre-merge» vale per questa CLASSE di file (interamente miei), non per un merge qualunque: in un merge normale il contenuto altrui DEVE entrare, e un diff vuoto sarebbe il bug. Prima di applicare la cura, chiediti se il file ha un solo proprietario. E la vigilanza non è la cura strutturale: quella è togliere i path fissi — `scripts/ci/evidence_paths.py` è già su `main` (#4678) e dal 2026-08-27 `evidence_pack_lint.py` (rule 9) spinge l'adozione lato-scrittura con NOTICE oggi, FAIL da `EVIDENCE_ROOT_DEPRECATION_DATE` (2026-09-05) — finché la data non passa, e finché un produttore non migra davvero, la finestra resta aperta a ogni PR Gear≥2.
 
 ---
 
