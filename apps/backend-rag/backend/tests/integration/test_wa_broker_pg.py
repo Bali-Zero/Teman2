@@ -20,6 +20,7 @@ family #2).
 
 from __future__ import annotations
 
+import asyncio
 import datetime
 import os
 import uuid
@@ -56,6 +57,7 @@ _BROKER_MIGRATIONS = (
     _MIGRATIONS_DIR / "272_wa_broker_package_text.sql",
     _MIGRATIONS_DIR / "273_wa_broker_completion_digest.sql",
     _MIGRATIONS_DIR / "274_wa_broker_completed_at_check.sql",
+    _MIGRATIONS_DIR / "296_wa_broker_jobs_live_only_unique.sql",
 )
 
 _SCHEMA = "wa_broker_it"
@@ -207,24 +209,146 @@ async def test_full_lifecycle_offer_claim_complete_consume(
     assert await wa_broker.consume_result(conn, offered.job_id) is None
 
 
-async def test_second_offer_on_same_row_is_already_spent(
+async def test_retry_after_terminal_prior_leg_admits_a_new_job(
     conn: asyncpg.Connection,
 ) -> None:
+    """THE FIX (spec gradino 2/5, migration 296): the historical version of
+    this test proved the OLD 'ever' invariant — a durable generation_route
+    marker permanently refusing any second leg, even a recoverable one.
+    That is exactly what made every recoverable codex failure a silent
+    Gemini fall-off. Now: terminalize the first leg WITHOUT deleting it
+    (a real reaper/complete_job transition never deletes — only the 7-day
+    sweep does), re-offer on the SAME claim, and require a FRESH OFFERED
+    with a NEW job_id — both rows persist, proving the live-only unique
+    index (not row deletion) is what makes the second INSERT succeed."""
     await _seed_alive_gauge(conn)
     outbox_id, thread_id, claim = await _outbox_row(conn)
     first = await _offer(conn, outbox_id, thread_id, claim)
     assert first.outcome is OfferOutcome.OFFERED
-    # Terminalize the live job so depth admits, then re-offer: the DURABLE
-    # marker (generation_route) must refuse the second leg.
     await conn.execute(
         "UPDATE broker_jobs SET state = 'expired', package = NULL, "
         "evidence_inputs = NULL, result_text = NULL, outcome = 'expired_leased' "
         "WHERE job_id = $1",
         first.job_id,
     )
-    await conn.execute("DELETE FROM broker_jobs WHERE job_id = $1", first.job_id)
+
     second = await _offer(conn, outbox_id, thread_id, claim)
-    assert second.outcome is OfferOutcome.ALREADY_SPENT
+
+    assert second.outcome is OfferOutcome.OFFERED
+    assert second.job_id is not None
+    assert second.job_id != first.job_id
+    # BOTH rows persist — the first terminal leg is history, not deleted.
+    rows = await conn.fetch(
+        "SELECT job_id, state FROM broker_jobs WHERE outbox_id = $1 ORDER BY created_at",
+        outbox_id,
+    )
+    assert [r["job_id"] for r in rows] == [first.job_id, second.job_id]
+    assert rows[0]["state"] == "expired"
+    assert rows[1]["state"] == "offered"
+    # The durable marker stays 'codex' throughout (it now means "this row
+    # has ever touched codex", not "spent" — the per-row leg count is what
+    # actually gates a retry).
+    assert (
+        await conn.fetchval("SELECT generation_route FROM wa_outbox WHERE id = $1", outbox_id)
+        == "codex"
+    )
+
+
+async def test_retry_while_prior_leg_still_alive_reattaches(
+    conn: asyncpg.Connection,
+) -> None:
+    """A retry offered while the row's OWN prior leg is still 'leased'
+    (mid-exec) must REATTACH to it, not fall behind the depth cap — the
+    depth query excludes THIS outbox_id's own live job precisely so a
+    reattach never competes with itself for the one global admission
+    slot (a live DB proof that the exclusion in offer_job's depth query
+    actually works, not just the unit-mocked shape)."""
+    await _seed_alive_gauge(conn)
+    outbox_id, thread_id, claim = await _outbox_row(conn)
+    first = await _offer(conn, outbox_id, thread_id, claim)
+    assert first.outcome is OfferOutcome.OFFERED
+    # Simulate the broker having claimed it (still non-terminal).
+    await conn.execute(
+        "UPDATE broker_jobs SET state = 'leased', fence_token = gen_random_uuid(), "
+        "leased_at = now() WHERE job_id = $1",
+        first.job_id,
+    )
+
+    second = await _offer(conn, outbox_id, thread_id, claim)
+
+    assert second.outcome is OfferOutcome.REATTACHED
+    assert second.job_id == first.job_id
+    # No second row was created.
+    count = await conn.fetchval(
+        "SELECT count(*) FROM broker_jobs WHERE outbox_id = $1", outbox_id
+    )
+    assert count == 1
+
+
+async def test_retry_budget_exhausts_after_max_codex_legs(
+    conn: asyncpg.Connection,
+) -> None:
+    """INNOCENCE for the budget cap: MAX_CODEX_LEGS terminal legs are all
+    admitted (proving the cap is >=, not off-by-one), and the very NEXT
+    retry gets the NAMED LEGS_EXHAUSTED — never a silent fall-off
+    conflated with a different cause."""
+    await _seed_alive_gauge(conn)
+    outbox_id, thread_id, claim = await _outbox_row(conn)
+
+    job_ids: list[uuid.UUID] = []
+    for _ in range(wa_broker.MAX_CODEX_LEGS):
+        offered = await _offer(conn, outbox_id, thread_id, claim)
+        assert offered.outcome is OfferOutcome.OFFERED
+        job_ids.append(offered.job_id)
+        await conn.execute(
+            "UPDATE broker_jobs SET state = 'failed', package = NULL, "
+            "evidence_inputs = NULL, result_text = NULL, outcome = 'broker_failed' "
+            "WHERE job_id = $1",
+            offered.job_id,
+        )
+
+    assert len(set(job_ids)) == wa_broker.MAX_CODEX_LEGS  # every leg was distinct
+
+    exhausted = await _offer(conn, outbox_id, thread_id, claim)
+    assert exhausted.outcome is OfferOutcome.LEGS_EXHAUSTED
+    assert exhausted.job_id is None
+    total_rows = await conn.fetchval(
+        "SELECT count(*) FROM broker_jobs WHERE outbox_id = $1", outbox_id
+    )
+    assert total_rows == wa_broker.MAX_CODEX_LEGS  # the exhausted call created nothing
+
+
+async def test_two_concurrent_offers_on_the_same_row_never_create_two_live_jobs(
+    conn: asyncpg.Connection, pool: asyncpg.Pool
+) -> None:
+    """INNOCENCE, real concurrency: two workers racing an offer for the
+    SAME outbox row (same claim_token+status — the realistic shape of a
+    worker retry racing a slow-to-reclaim sibling) must never both create
+    a live job. The advisory xact lock serializes them; whichever runs
+    second must see the first's job (REATTACHED if still live) rather
+    than a second INSERT — this is exactly what uq_broker_jobs_serve_outbox_live
+    plus the advisory lock are for, and only a real DB proves it (a mock
+    cannot manufacture a genuine UniqueViolation race)."""
+    await _seed_alive_gauge(conn)
+    outbox_id, thread_id, claim = await _outbox_row(conn)
+
+    async def _one_offer() -> wa_broker.OfferResult:
+        async with pool.acquire() as c:
+            return await _offer(c, outbox_id, thread_id, claim)
+
+    results = await asyncio.gather(_one_offer(), _one_offer())
+    outcomes = sorted(r.outcome.value for r in results)
+    # Exactly one OFFERED (the winner) and one REATTACHED (the loser
+    # catching the winner's still-live job) — never two OFFERED.
+    assert outcomes == ["offered", "reattached"]
+    job_ids = {r.job_id for r in results}
+    assert len(job_ids) == 1  # both results point at the SAME job
+    live_count = await conn.fetchval(
+        "SELECT count(*) FROM broker_jobs WHERE outbox_id = $1 "
+        "AND state IN ('offered', 'leased', 'completed_pending_consume')",
+        outbox_id,
+    )
+    assert live_count == 1
 
 
 async def test_offer_depth_cap_and_fence_lost(conn: asyncpg.Connection) -> None:
@@ -257,18 +381,25 @@ async def test_unique_violation_savepoint_repairs_the_marker(
     conn: asyncpg.Connection,
 ) -> None:
     """Finding 2: UniqueViolationError must NOT roll back the historical
-    'spent' fence. Pre-insert a serve job WITHOUT the marker (the
-    compatibility scenario), offer, and require BOTH the ALREADY_SPENT
+    'spent' fence. Pre-insert a LIVE serve job WITHOUT the marker (the
+    compatibility/defensive scenario — a write inconsistency the code
+    never expects but the DB, as the invariant's owner, must still be
+    honored against) and offer: the retry-lookup branch never runs
+    (route_before is NULL, since the marker was bypassed), so this drives
+    the INSERT straight into uq_broker_jobs_serve_outbox_live's REAL
+    UniqueViolationError — not merely a terminal row, which migration 296
+    deliberately no longer blocks (see test_retry_after_terminal_prior_
+    leg_admits_a_new_job for that case). Requires BOTH the ALREADY_SPENT
     verdict AND a persisted generation_route."""
     await _seed_alive_gauge(conn)
     outbox_id, thread_id, claim = await _outbox_row(conn)
-    # A terminal serve job that spent the leg but never set the marker.
+    # A LIVE serve job that already holds the leg but never set the marker.
     await conn.execute(
         """
         INSERT INTO broker_jobs
             (outbox_id, thread_id, mode, state, package_hash, thread_epoch,
-             deadline_at, outcome)
-        VALUES ($1, $2, 'serve', 'expired', 'h', 1, now(), 'expired_leased')
+             deadline_at)
+        VALUES ($1, $2, 'serve', 'offered', 'h', 1, now() + interval '1 minute')
         """,
         outbox_id,
         thread_id,
