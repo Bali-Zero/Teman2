@@ -146,6 +146,43 @@ WHAT IT VALIDATES (an Evidence Pack YAML, default path evidence/pack.yml):
                         cautiously over-declares `gear: 2` on a Gear-1-
                         shaped diff owes a `lanes:` block post-flip.
 
+  9. evidence root path deprecation (S12/C6 follow-through) — the fixed
+                        root path `evidence/pack.yml` is deprecated. Two
+                        Gear>=2 PRs writing that one path can never coexist
+                        cleanly in the merge queue: whichever merges first
+                        rewrites the file wholesale and every other open PR
+                        carrying it goes DIRTY, by construction — measured
+                        2026-08-27 on #5069/#4640/#5037/#5059, all four
+                        DIRTY on the same pair within one hour of one
+                        merge. `scripts/ci/evidence_paths.py` (S12/C6,
+                        2026-08-23) gives every PR a collision-free
+                        per-task directory instead
+                        (`evidence/<YYYY-MM>/<task-slug>-<8hex>/`), and
+                        harness-floor.yml has resolved through it
+                        end-to-end since that date — this rule is what
+                        actually moves pack producers off the root path.
+                        Same phased shape as rule 8: before
+                        `EVIDENCE_ROOT_DEPRECATION_DATE` (2026-09-05) a
+                        root-path pack NOTICEs; on/after, it is a
+                        violation. This rule judges THIS PR's own
+                        diff-relative pack path (`--source-path`), never
+                        the path the pack was actually read from — under
+                        CI staging (see rule 5's brief_ref note) that is
+                        always the canonical `evidence/pack.yml`
+                        regardless of where the real file lives, so
+                        checking the read path would flag every PR,
+                        migrated or not. Skipped (no notice, no violation)
+                        for a Python caller of lint()/
+                        check_pack_not_at_deprecated_root() that supplies
+                        no source_path info at all — same "skip, don't
+                        guess" shape as rules 6/7 without
+                        `--changed-files-file`. NOTE: via the CLI this is
+                        NOT the same as omitting `--source-path` — the
+                        flag defaults to the PACK_PATH positional argument
+                        itself when absent, so a bare local invocation
+                        (`evidence_pack_lint.py evidence/pack.yml`) is
+                        actively judged, never silently skipped.
+
 Floor check is SKIPPED (not silently passed — an explicit NOTICE on stderr)
 when --changed-files-file is not supplied: not every invocation of this linter
 has PR-diff context (e.g. a spot-check of a pack on a laptop). The CI workflow
@@ -165,11 +202,20 @@ a lint that scanned nothing must not report clean):
 CLI:
   python3 scripts/evidence_pack_lint.py [PACK_PATH] [--repo-root DIR]
       [--changed-files-file PATH] [--net-lines INT] [--numstat-file PATH]
-      [--print-floor] [--print-floor-source] [--effort-for GEAR] [--json]
-      [--selftest]
+      [--source-path PATH] [--print-floor] [--print-floor-source]
+      [--effort-for GEAR] [--json] [--selftest]
 
   PACK_PATH        defaults to evidence/pack.yml (relative to --repo-root)
   --repo-root      defaults to the git top-level, else cwd
+  --source-path    THIS PR's own diff-relative pack path (rule 9) — e.g.
+                    the output of `evidence_paths.py --resolve pack`,
+                    BEFORE any CI staging copies it to a canonical name.
+                    Defaults to PACK_PATH itself, which is correct for a
+                    direct/local invocation (the path you point the linter
+                    at IS the real path) but MUST be passed explicitly by
+                    a caller that stages the pack under a different name
+                    (harness-floor.yml's Gear-3 step) — otherwise rule 9
+                    always sees the staged literal and misjudges every PR.
   --changed-files-file  newline-delimited changed-path list (the output of
                         scripts/ci/hotzone_changed_files.sh) — enables rules
                         6 (floor) and 7 (ceiling)
@@ -281,6 +327,18 @@ LANES_NON_ANTHROPIC_ENFORCEMENT_DATE = datetime.date(2026, 8, 24)
 #: cases, which pin `today` on both sides of the flip and are unaffected by this.
 _SELFTEST_LANES = [{"lane": "D1", "role": "build", "seat": "codex"}]
 VALID_LANE_ROLES = ("build", "review", "read")
+
+# Rule 9 (evidence root path deprecation, S12/C6 follow-through) — same
+# "flip date lives in code, not a ledger" reasoning as
+# LANES_NON_ANTHROPIC_ENFORCEMENT_DATE above. ~9 days of grace from the date
+# this rule shipped (2026-08-27) for in-flight PRs to migrate their pack to a
+# per-task directory before the root path starts failing the gate outright.
+EVIDENCE_ROOT_DEPRECATION_DATE = datetime.date(2026, 9, 5)
+
+#: The literal root path this rule deprecates — matches the fallback
+#: `resolve_evidence_path()` returns in scripts/ci/evidence_paths.py when a
+#: PR's diff touches neither a root nor a per-task evidence/pack.yml.
+EVIDENCE_ROOT_PACK_PATH = "evidence/pack.yml"
 
 
 # --------------------------------------------------------------------- utils
@@ -1203,6 +1261,117 @@ def check_council_run_gear3(
     return _r9_r11_verdict("council_run", not has_quorum, message, pack, today)
 
 
+def _pack_source_relpath(source_path: str, repo_root: Path) -> str:
+    """POSIX-style, dot-segment-normalized repo-relative form of
+    `source_path`, for comparing against EVIDENCE_ROOT_PACK_PATH. An
+    absolute path outside repo_root falls back to its own normalized POSIX
+    string rather than raising — this is a NOTICE-vs-violation classifier,
+    not a path-confinement boundary (that job belongs to
+    check_brief_ref_exists).
+
+    Cross-family review (agy, 2026-08-27) on this PR's own diff caught a
+    real gap the initial version had: a RELATIVE path was returned as-is,
+    unnormalized, so a value like "evidence/x/../pack.yml" would never
+    textually equal the literal "evidence/pack.yml" and silently pass as
+    per-task even though it names the exact same file. `PurePosixPath`'s
+    `.` component collapsing plus manual `..` resolution below closes that
+    — os.path.normpath is NOT used here because it is platform-dependent
+    (backslash handling on Windows) for a value that is always POSIX-style
+    in this repo's evidence/ paths."""
+    p = Path(source_path)
+    if p.is_absolute():
+        try:
+            # Resolve BOTH sides before relative_to — an unresolved absolute
+            # path (e.g. built from a tmp_path fixture through /tmp on
+            # macOS, a symlink to /private/tmp) can fail relative_to()
+            # against a resolved repo_root even when they name the same
+            # file, a false-negative this rule must not produce.
+            p = p.resolve().relative_to(repo_root.resolve())
+        except ValueError:
+            return _normalize_posix_segments(p.as_posix())
+    return _normalize_posix_segments(p.as_posix())
+
+
+def _normalize_posix_segments(posix_path: str) -> str:
+    """Collapses `.`/`..` segments in a POSIX-style relative path string
+    WITHOUT touching the filesystem (no symlink resolution, unlike
+    Path.resolve() — the value being normalized here is frequently a
+    string that names nothing on disk yet, e.g. a per-task path this
+    linter never writes to). Pure string/segment logic: a leading `..`
+    that would escape above the root simply stays as a literal `..`
+    segment (this function classifies, it does not confine — path
+    confinement is check_brief_ref_exists's job)."""
+    segments: list[str] = []
+    for part in posix_path.split("/"):
+        if part in ("", "."):
+            continue
+        if part == "..":
+            if segments and segments[-1] != "..":
+                segments.pop()
+            else:
+                segments.append(part)
+            continue
+        segments.append(part)
+    return "/".join(segments) if segments else "."
+
+
+def check_pack_not_at_deprecated_root(
+    source_path: str | None,
+    repo_root: Path,
+    today: datetime.date | None = None,
+) -> tuple[list[str], str | None]:
+    """Rule 9 — deprecates the fixed root path `evidence/pack.yml`
+    (EVIDENCE_ROOT_PACK_PATH). `source_path` must be THIS PR's own
+    diff-relative pack path (e.g. `evidence_paths.py --resolve pack`'s
+    stdout), resolved BEFORE any CI staging renames the file — see the
+    module docstring rule 9 and scripts/ci/evidence_paths.py's `brief_ref`
+    contract note for why the path a pack was actually READ from is the
+    wrong signal here (under CI staging it is always the canonical
+    `evidence/pack.yml`, whether the real file lives at root or in a
+    per-task directory).
+
+    `source_path` is `None` or empty (`""`) when the caller has no diff
+    context — same "skip, don't guess" shape as check_gear_floor/
+    compute_ceiling when --changed-files-file is absent: returns clean, no
+    notice, rather than presuming guilt or innocence. NOTE (corrected
+    2026-08-27, agy cross-family review of this PR's own diff): via the
+    CLI this branch is in practice UNREACHABLE — `main()` defaults
+    `--source-path` to the `pack_path` positional argument itself when the
+    flag is omitted, precisely so a direct/local invocation (`python3
+    evidence_pack_lint.py evidence/pack.yml`) is judged, not silently
+    skipped. The `None`/`""` shape exists for OTHER Python callers of
+    `lint()`/this function directly that don't thread source_path info
+    through at all (every pre-rule-9 test in this file, for backward
+    compatibility) — not for a CLI invocation with a bare `--source-path`
+    flag and no value, which argparse rejects as a usage error before this
+    function ever runs.
+
+    Returns (violations, notice): before EVIDENCE_ROOT_DEPRECATION_DATE a
+    root-path pack NOTICEs (exit 0); on/after, it is a violation (exit 1).
+    A per-task-directory pack (any path other than the literal root one,
+    dot-segments collapsed — see _normalize_posix_segments) is clean at
+    any date — this function does not itself validate the per-task path's
+    shape, that's evidence_paths.py's job. `today` overridable for tests
+    without monkeypatching date.today()."""
+    if not source_path:
+        return [], None
+    if _pack_source_relpath(source_path, repo_root) != EVIDENCE_ROOT_PACK_PATH:
+        return [], None
+    message = (
+        f"{EVIDENCE_ROOT_PACK_PATH} is deprecated — write per-task evidence "
+        "to evidence/<YYYY-MM>/<task-slug>-<8hex>/pack.yml instead "
+        "(scripts/ci/evidence_paths.py resolves the path for you: "
+        "--ref <branch>). The root path makes any two Gear>=2 PRs mutually "
+        "exclusive in the merge queue by construction — see "
+        "scripts/ci/evidence_paths.py's module docstring."
+    )
+    if today is None:
+        today = datetime.datetime.now(datetime.timezone.utc).date()
+    if today < EVIDENCE_ROOT_DEPRECATION_DATE:
+        return [], f"evidence_root_deprecated: {message}"
+    return [f"evidence_root_deprecated: {message}"], None
+
+
 # ------------------------------------------------------------------- lint()
 
 
@@ -1212,6 +1381,7 @@ def lint(
     changed_files: list[str] | None,
     measured_net_lines: int | None = None,
     numstat_text: str | None = None,
+    source_path: str | None = None,
 ) -> tuple[int, list[str]]:
     """Returns (exit_code, violations). exit_code: 0 clean, 1 guilty, 2 blind.
 
@@ -1264,6 +1434,11 @@ def lint(
     violations += lane_violations
     if lane_notice:
         print(f"evidence_pack_lint: NOTICE — {lane_notice}", file=sys.stderr)
+
+    root_violations, root_notice = check_pack_not_at_deprecated_root(source_path, repo_root)
+    violations += root_violations
+    if root_notice:
+        print(f"evidence_pack_lint: NOTICE — {root_notice}", file=sys.stderr)
 
     if changed_files is None:
         # Self-contained notice (not folded into the shared "no
@@ -1780,6 +1955,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--changed-files-file", default=None)
     parser.add_argument("--net-lines", type=int, default=None, metavar="INT")
     parser.add_argument("--numstat-file", default=None, metavar="PATH")
+    parser.add_argument("--source-path", default=None, metavar="PATH")
     parser.add_argument("--print-floor", action="store_true")
     parser.add_argument("--print-floor-source", action="store_true")
     parser.add_argument("--effort-for", type=int, default=None, metavar="GEAR")
@@ -1860,8 +2036,17 @@ def main(argv: list[str] | None = None) -> int:
     if measured_net_lines is None and numstat_text is not None:
         measured_net_lines = sum_numstat(numstat_text)
 
+    # Rule 9 default: a direct/local invocation with no --source-path names
+    # the path it was pointed at as the real one (args.pack_path — the
+    # RAW CLI argument, not the possibly-repo-root-joined `pack_path`
+    # above, since both are equally valid repo-relative forms and joining
+    # first would just make an already-relative default absolute for no
+    # reason). A caller staging the pack under a different name (CI) must
+    # pass --source-path explicitly — see that flag's help text.
+    source_path = args.source_path if args.source_path is not None else args.pack_path
+
     exit_code, violations = lint(
-        pack_path, repo_root, changed_files, measured_net_lines, numstat_text
+        pack_path, repo_root, changed_files, measured_net_lines, numstat_text, source_path
     )
 
     if args.json:
