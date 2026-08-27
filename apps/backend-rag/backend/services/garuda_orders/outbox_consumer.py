@@ -9,14 +9,27 @@ wired in `app/main_api.py` (see `drain_once`'s import there) behind
 docstring that denies its own module's existence is precisely the shape that
 misleads the next repo-wide ground pass, so it is stated positively now.
 
-What is TRUE, and is the live gap: `journal.enqueue_outbox` has ten callers in
-`repository.py` (checkout_ready_email, payment_paid_email, payment_failed_email,
-refund_email, practice_release and the five staff_page_* jobs) plus portal_invite
-— twelve job types enqueued — while `outbox_handlers.py` registers THREE
-handlers: `payment_paid_email`, `practice_release`, `portal_invite`. The other
-nine are enqueued, routed to `unroutable`, and keep their full attempt budget
-until a handler is written (this consumer handles that correctly). Nothing pages
-on a non-empty `unroutable` set; that gap is ledgered, not fixed here.
+What is TRUE, and is the live gap: **THIRTEEN distinct `job_type` values are
+enqueued by production code, and `outbox_handlers.py` registers THREE handlers**
+(`payment_paid_email`, `practice_release`, `portal_invite`). Twelve of the
+thirteen come from `repository.py` (checkout_ready_email, payment_paid_email,
+payment_failed_email, payment_expired_email, refund_email, practice_release,
+portal_invite and the five staff_page_* jobs). **The thirteenth is enqueued
+somewhere easy to miss**: `garuda_portal/practice.py::mint_received_practice`
+enqueues `practice_received_email` — the customer's confirmation that their
+practice was received — from the same function that mints the practice row. It
+has no handler either, so the count of unhandled types is TEN, not nine, and the
+tenth is customer-facing.
+
+Corrected 2026-08-27 in the same PR that wrote it: the first version of this
+paragraph said twelve/nine, having counted only `repository.py`. Anyone
+recounting must grep `job_type="` across ALL of `backend/services`, not just the
+repository module.
+
+The ten unhandled types are enqueued, routed to `unroutable`, and keep their full
+attempt budget until a handler is written (this consumer handles that correctly).
+Nothing pages on a non-empty `unroutable` set; that gap is ledgered, not fixed
+here.
 
 WHY THE LOCK IS HELD ACROSS THE HANDLER (the one design decision that matters).
 `UNIQUE (journal_event_id, job_type)` makes "email once" structural on the WRITE
