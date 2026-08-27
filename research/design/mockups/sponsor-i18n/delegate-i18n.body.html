@@ -1,0 +1,364 @@
+<!-- Sponsor i18n — build-lane design deliverable (post-loop, R7 §4 item 5). DRAFT: §6 of the
+     dossier (research/design/2026-08-28-sponsor-i18n-design.md) is PROPOSED, not adopted — no
+     round-grade panel has run on this file yet (the conductor runs it, per the mandate).
+     This mockup designs language for a surface that does not exist as product code — the
+     delegate flow lives only in R5b's prototype (mockups/r5b-tree-as-journey/journey.html);
+     this file is the key-set + pattern for item 4's build lane, not a fix to a live screen.
+     Side-by-side EN|ID comparison layout (unlike the single-column shipped-surface mockups)
+     because THIS study's purpose is bilingual comparison, not one screen state. Same tokens
+     as checkout.html/a4-dates-consent.html (R4 Merah Putih law) for visual identity match.
+     Masked/placeholder figures only. GARUDA_PUBLIC_ENABLED untouched — study only. -->
+<style>
+  :root{
+    --carta:#f7f6f2; --elevated:#ffffff; --ink:#16213a; --ink-soft:#475372;
+    --border-input:#7a8093; --hairline:#e3e1da;
+    --merah:#C8102E; --merah-action:#D01033; --merah-pressed:#c40020;
+    --state-error:#a83a44; --state-ok:#2f6f4f;
+    --radius:12px; --radius-nested:8px; --radius-pill:9999px; --motion:220ms;
+    --font-display:"Cormorant Garamond",Georgia,serif;
+    --font-ui:"Inter",system-ui,sans-serif;
+    --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+    --t-body:1rem; --t-small:.8125rem; --t-label:.875rem; --t-h1:1.5rem; --t-h2:1.125rem; --t-h3:1rem;
+  }
+  .spi{background:var(--carta);color:var(--ink);font-family:var(--font-ui);font-size:var(--t-body);
+      line-height:1.55;max-width:64rem;margin:0 auto;padding:1rem 1rem 3rem}
+  /* Identity header — R4:108 law, slim carta variant; the EN/ID control mirrors
+     LanguageToggle.tsx's aria-pressed EN/ID pair (_components/LanguageToggle.tsx:46-56) —
+     never a third or fifth option inside this perimeter (§3.6). */
+  .spi .idh{display:flex;justify-content:space-between;align-items:center;min-height:2.75rem;
+      margin-bottom:.5rem}
+  .spi .idh .wm{font-family:var(--font-display);font-weight:600;font-size:var(--t-h2);
+      letter-spacing:.08em;color:var(--ink);text-decoration:none}
+  .spi .idh .langtoggle{display:inline-flex;border:1px solid var(--border-input);
+      border-radius:var(--radius-pill);overflow:hidden}
+  .spi .idh .langtoggle button{font:600 var(--t-small) var(--font-ui);border:0;background:var(--elevated);
+      color:var(--ink-soft);padding:.4rem .9rem;min-height:2.75rem;cursor:default}
+  .spi .idh .langtoggle button[aria-pressed="true"]{background:var(--merah-action);color:#fff}
+
+  .spi h1{font-family:var(--font-display);font-size:var(--t-h1);font-weight:600;margin:.25rem 0 .25rem}
+  .spi > p.lede{color:var(--ink-soft);font-size:var(--t-label);max-width:42rem;margin:0 0 1.5rem}
+
+  .spi .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  @media (max-width:44rem){ .spi .grid2{grid-template-columns:1fr} }
+  .spi .col-head{font:600 var(--t-small) var(--font-ui);text-transform:uppercase;letter-spacing:.08em;
+      color:var(--ink-soft);margin:0 0 .5rem}
+  .spi .col-head.en::before{content:"EN · ";color:var(--merah-action)}
+  .spi .col-head.id::before{content:"ID · ";color:var(--merah-action)}
+
+  .spi section.screen{margin-bottom:2rem}
+  .spi section.screen > h2{font-size:var(--t-h2);font-weight:600;margin:0 0 .25rem}
+  .spi section.screen > p.why-context{font-size:var(--t-small);color:var(--ink-soft);margin:0 0 .75rem}
+
+  .spi .card{background:var(--elevated);border:1px solid var(--border-input);border-radius:var(--radius);
+      box-shadow:0 1px 3px rgba(22,33,58,.08);padding:1rem;height:100%}
+  .spi .card h3{font-size:var(--t-h3);font-weight:600;margin:0 0 .25rem}
+  .spi .card .why{font-size:var(--t-small);color:var(--ink-soft);margin:.25rem 0 .75rem}
+  .spi .card .subprogress{display:inline-block;font-size:var(--t-small);color:var(--ink-soft);
+      border:1px solid var(--hairline);border-radius:var(--radius-pill);padding:.125rem .625rem;
+      margin-bottom:.5rem}
+  .spi .options{display:flex;flex-direction:column;gap:.5rem}
+  .spi .option{display:flex;align-items:center;gap:.5rem;min-height:2.75rem;width:100%;text-align:left;
+      border:1px solid var(--border-input);border-radius:var(--radius-nested);background:var(--elevated);
+      color:var(--ink);font:inherit;font-size:var(--t-label);padding:.5rem .75rem;cursor:default}
+  .spi .option .tick{width:1rem;color:var(--hairline)}
+
+  /* Custody component — consent-placement §6.1 pattern, HIGH-sensitivity tier (the delegate
+     banner discloses who sees the answer, the same reason A6/checkout/interview-start earned
+     the full module in that lane). */
+  .spi .custody{border-left:3px solid var(--merah);background:var(--elevated);
+      border:1px solid var(--border-input);border-radius:var(--radius-nested);
+      padding:.75rem 1rem;font-size:var(--t-label);margin-top:.75rem}
+  .spi .custody b{color:var(--ink)}
+  .spi .custody .ph{font-family:var(--font-mono);color:var(--ink-soft)}
+
+  .spi .hint-compact{border:1px solid var(--hairline);border-radius:var(--radius-nested);
+      background:var(--elevated);padding:.625rem .875rem;font-size:var(--t-small);color:var(--ink-soft)}
+  .spi .hint-compact .mono{font-family:var(--font-mono);color:var(--ink)}
+
+  .spi .trust{border-top:2px solid var(--ink);padding-top:.75rem;font-size:var(--t-small);color:var(--ink-soft)}
+  .spi .trust .role{color:var(--ink);font-weight:600}
+
+  .spi .talk{border:1px solid var(--border-input);border-radius:var(--radius);padding:.75rem 1rem;
+      font-size:var(--t-label);background:var(--elevated);box-shadow:0 1px 2px rgba(22,33,58,.06)}
+
+  /* Translation-strategy comparison panel (§3.4) */
+  .spi .strategy{background:var(--elevated);border:1px solid var(--border-input);border-radius:var(--radius);
+      padding:1.25rem;margin-top:1rem}
+  .spi .strategy h2{font-size:var(--t-h2);margin:0 0 .25rem}
+  .spi .strategy .row{display:grid;grid-template-columns:8rem 1fr;gap:.75rem;padding:.625rem 0;
+      border-top:1px solid var(--hairline)}
+  .spi .strategy .row:first-of-type{border-top:0}
+  .spi .strategy .row .label{font:600 var(--t-small) var(--font-ui);color:var(--ink-soft);
+      text-transform:uppercase;letter-spacing:.06em}
+  .spi .strategy .row.rejected .label{color:var(--state-error)}
+  .spi .strategy .row.recommended .label{color:var(--state-ok)}
+  .spi .strategy .row p{margin:0;font-size:var(--t-label)}
+  .spi .strategy .row .gloss{font-size:var(--t-small);color:var(--ink-soft);margin-top:.25rem}
+
+  .spi .pronoun-note{background:var(--elevated);border:1px dashed var(--border-input);
+      border-radius:var(--radius);padding:1rem;margin-top:1rem;font-size:var(--t-label)}
+  .spi .pronoun-note code{font-family:var(--font-mono);font-size:var(--t-small);
+      background:var(--carta);border-radius:4px;padding:.1rem .35rem}
+
+  .spi .findings{border-top:2px solid var(--ink);margin-top:2rem;padding-top:1rem;
+      font-size:var(--t-small);color:var(--ink-soft)}
+  .spi .findings li{margin-bottom:.5rem}
+</style>
+
+<div class="spi">
+  <!-- ══ Identity header — R4:108, EN/ID toggle rendered as the funnel's real two-option
+       control (LanguageToggle.tsx pattern). Shown once here; every screen below inherits it. ══ -->
+  <header class="idh">
+    <a class="wm" href="{HOME_LINK}">BALI ZERO</a>
+    <span class="langtoggle" role="group" aria-label="Switch language">
+      <button type="button" aria-pressed="true">EN</button>
+      <button type="button" aria-pressed="false">ID</button>
+    </span>
+  </header>
+
+  <h1>Sponsor i18n — the delegate flow, side by side</h1>
+  <p class="lede">R7 §4 item 5. This surface is prospective — R5b's prototype only, not
+  product code (§1 of the dossier). Every string below is authored per-locale, never derived
+  by pronoun substitution (§3.1) — compare against journey.html's <code>pron()</code>, which
+  this design replaces for any locale beyond English.</p>
+
+  <!-- ══ Screen 1 — who_answers (meta, fires before anything else) ══ -->
+  <section class="screen">
+    <h2>Screen 1 — who is answering</h2>
+    <p class="why-context">Meta question, fires first (journey.html:199). Symmetric in both
+    languages — nobody is "the delegate" yet at this point, so there is no pronoun-layer
+    decision to make here; §3.2's neutral-noun rule starts at Screen 2.</p>
+    <div class="grid2">
+      <div>
+        <p class="col-head en">Self / delegate branch</p>
+        <div class="card">
+          <h3>Who is filling this in?</h3>
+          <p class="why">If someone is helping — a sponsor, a family member, an assistant — we
+          adapt the wording. The answers must still be the traveller's facts.</p>
+          <div class="options">
+            <div class="option"><span class="tick">○</span>I'm the traveller</div>
+            <div class="option"><span class="tick">○</span>I'm helping someone else</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="col-head id">Cabang mandiri / diwakilkan</p>
+        <div class="card">
+          <h3>Siapa yang mengisi formulir ini?</h3>
+          <p class="why">Jika ada yang membantu — sponsor, anggota keluarga, atau asisten —
+          kami menyesuaikan cara bertanya. Namun jawabannya harus tetap fakta milik wisatawan.</p>
+          <div class="options">
+            <div class="option"><span class="tick">○</span>Saya sendiri yang bepergian</div>
+            <div class="option"><span class="tick">○</span>Saya membantu orang lain</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ Screen 2 — delegate_confirm (delegate-only authorization checkpoint) ══ -->
+  <section class="screen">
+    <h2>Screen 2 — authorization checkpoint (delegate path only)</h2>
+    <p class="why-context">journey.html:200, delegateOnly. Direct formal address to the
+    sponsor ("Anda") + third-person "wisatawan" for the traveller — never "dia" (§3.2). This is
+    the register split T1 exists to justify.</p>
+    <div class="grid2">
+      <div>
+        <p class="col-head en">Answering for the traveller</p>
+        <div class="card">
+          <h3>Answering for the traveller</h3>
+          <p class="why">Their immigration history is theirs to share. Confirm they asked you
+          to do this — and if you don't know an answer, say so instead of guessing.</p>
+          <div class="options">
+            <div class="option"><span class="tick">○</span>The traveller asked me to fill this
+            in, and I'll check with them when unsure</div>
+            <div class="option"><span class="tick">○</span>Actually, I'll let the traveller do it</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="col-head id">Menjawab atas nama wisatawan</p>
+        <div class="card">
+          <h3>Menjawab atas nama wisatawan</h3>
+          <p class="why">Riwayat keimigrasian adalah miliknya untuk dibagikan. Pastikan
+          wisatawan sudah meminta Anda mengisi ini — dan jika Anda tidak yakin akan suatu
+          jawaban, katakan saja daripada menebak.</p>
+          <div class="options">
+            <div class="option"><span class="tick">○</span>Wisatawan sudah meminta saya mengisi
+            ini, dan saya akan mengonfirmasi dengannya jika ragu</div>
+            <div class="option"><span class="tick">○</span>Sebenarnya, biar wisatawan yang
+            mengisi sendiri</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ Screen 3 — the delegate banner + custody disclosure, HIGH-sensitivity tier ══ -->
+  <section class="screen">
+    <h2>Screen 3 — the delegate banner (custody component, full density)</h2>
+    <p class="why-context">journey.html:156-157, shown once delegate_confirm is "confirmed"
+    (:444). This is the RECOMMENDED reformulated ID string (§3.4) — see the strategy panel
+    below for the literal version this was rejected in favor of.</p>
+    <div class="grid2">
+      <div>
+        <p class="col-head en">Custody disclosure banner</p>
+        <div class="custody">
+          <b>You're answering for someone else.</b> Their case, their facts — answer as the
+          traveller would. Who sees what: <span class="ph">{CUSTODY_WHO_SEES}</span>.
+        </div>
+      </div>
+      <div>
+        <p class="col-head id">Panel pengungkapan kustodi</p>
+        <div class="custody">
+          <b>Anda sedang menjawab atas nama wisatawan.</b> Jawablah sesuai fakta miliknya,
+          bukan pendapat Anda sendiri — siapa yang dapat melihat jawaban ini:
+          <span class="ph">{CUSTODY_WHO_SEES}</span>.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ Screen 4 — custody hint, low-sensitivity compact tier (retention/deletion) ══ -->
+  <section class="screen">
+    <h2>Screen 4 — compact custody hint (retention + deletion right)</h2>
+    <p class="why-context">Adapted from the consent-placement lane's compact-tier pattern
+    (a4-dates-consent.html) to the delegate context — the traveller, not the sponsor, is named
+    as the one who can delete. Faithful/literal translation (§3.3) — this is procedural,
+    legal-adjacent copy, not persuasion.</p>
+    <div class="grid2">
+      <div>
+        <p class="col-head en">Retention + deletion</p>
+        <div class="hint-compact">These answers decide which visa paths are open for the
+        traveller. Kept for <span class="mono">{RETENTION_WINDOW}</span> · the traveller can
+        delete this check at any time. Who sees what:
+        <span class="mono">{CUSTODY_WHO_SEES}</span>.</div>
+      </div>
+      <div>
+        <p class="col-head id">Retensi + hak hapus</p>
+        <div class="hint-compact">Jawaban ini menentukan jalur visa mana yang terbuka bagi
+        wisatawan. Disimpan selama <span class="mono">{RETENTION_WINDOW}</span> · wisatawan
+        dapat menghapus pemeriksaan ini kapan saja. Siapa yang melihat:
+        <span class="mono">{CUSTODY_WHO_SEES}</span>.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ Screen 5 — trust footer + talk-first card (funnel-wide law, R7 §2 amendment 4) ══ -->
+  <section class="screen">
+    <h2>Screen 5 — trust footer + talk-first card</h2>
+    <p class="why-context">Reused verbatim pattern from the checkout lane. Statutory terms
+    (Ditjen Imigrasi, PT, NPWP) preserved byte-identical across both columns (§3.7) — they are
+    not translated in the English copy either.</p>
+    <div class="grid2">
+      <div>
+        <p class="col-head en">Trust footer</p>
+        <footer class="trust">
+          <p class="role">We prepare your application; Ditjen Imigrasi decides and issues.</p>
+          <p>PT <span class="ph">{PT_LEGAL_NAME}</span> · NPWP <span class="ph">{NPWP}</span> ·
+          <a href="{REGISTRY_LINK}">registry entry</a><br>
+          <span class="ph">{OFFICE_STREET_ADDRESS}</span>, Bali — <span class="ph">{OFFICE_HOURS}</span></p>
+        </footer>
+        <div class="talk" style="margin-top:.75rem">Prefer to talk it through first? Our team
+        answers on WhatsApp within <span class="ph">{SLA}</span> — before you pay, not after.
+        <a href="{WA_LINK}">Message us →</a></div>
+      </div>
+      <div>
+        <p class="col-head id">Footer kepercayaan</p>
+        <footer class="trust">
+          <p class="role">Kami menyiapkan permohonan Anda; Ditjen Imigrasi yang memutuskan dan
+          menerbitkan.</p>
+          <p>PT <span class="ph">{PT_LEGAL_NAME}</span> · NPWP <span class="ph">{NPWP}</span> ·
+          <a href="{REGISTRY_LINK}">tautan pendaftaran</a><br>
+          <span class="ph">{OFFICE_STREET_ADDRESS}</span>, Bali — <span class="ph">{OFFICE_HOURS}</span></p>
+        </footer>
+        <div class="talk" style="margin-top:.75rem">Ingin bicara dulu? Tim kami merespons di
+        WhatsApp dalam <span class="ph">{SLA}</span> — sebelum Anda membayar, bukan sesudahnya.
+        <a href="{WA_LINK}">Kirim pesan →</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ Translation-strategy panel (§3.3-§3.4) — the split, made falsifiable ══ -->
+  <div class="strategy">
+    <h2>Translation strategy — why the split, shown not asserted</h2>
+    <div class="row rejected">
+      <span class="label">Rejected</span>
+      <div>
+        <p>Literal: <em>"Anda sedang menjawab untuk orang lain. Kasus mereka, fakta mereka —
+        jawablah seperti wisatawan akan menjawab. Siapa yang melihat apa:
+        {CUSTODY_WHO_SEES}."</em></p>
+        <p class="gloss">Word-for-word render of the English chiasmus ("their case, their
+        facts"). Reads as translated-not-written; "mereka" (they/them) under-specifies a
+        single named relation the flow usually already knows; "seperti wisatawan akan
+        menjawab" is a hypothetical construction where Indonesian prefers a direct instruction.</p>
+      </div>
+    </div>
+    <div class="row recommended">
+      <span class="label">Recommended</span>
+      <div>
+        <p>Reformulated: <em>"Anda sedang menjawab atas nama wisatawan. Jawablah sesuai fakta
+        miliknya, bukan pendapat Anda sendiri — siapa yang dapat melihat jawaban ini:
+        {CUSTODY_WHO_SEES}."</em></p>
+        <p class="gloss">Keeps every regulatory-honesty commitment of the English (answer as
+        the fact-holder, not a guesser; disclose who sees the answer) in the dictionary's own
+        existing direct-instruction register — compare <code>framing.body</code>: "Jawab
+        dengan jujur, termasuk 'Saya tidak tahu.'" (i18n.ts:831).</p>
+      </div>
+    </div>
+    <div class="row">
+      <span class="label">Contrast</span>
+      <div>
+        <p>The custody hint (Screen 4) took the OPPOSITE call — faithful/literal — because it
+        is procedural/legal-adjacent copy where R4 §5's "no invented reassurance, no dropped
+        nuance" constraint outweighs rhetorical smoothness. The split is by copy TYPE, not a
+        single blanket policy (§3.3).</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Pronoun-layer sequencing note (§3.2, §5.3) ══ -->
+  <div class="pronoun-note">
+    <p><strong>Sequencing — before vs. after <code>family_relation</code> resolves.</strong>
+    <code>who_answers</code> and <code>delegate_confirm</code> both fire BEFORE
+    <code>family_relation</code> (journey.html:199-200 vs. :211) — at that point the specific
+    relation (spouse/parent/child) is not yet known, so both languages default to the neutral
+    noun: EN "the traveller", ID "wisatawan". Once <code>family_relation</code> resolves (e.g.
+    "spouse"), a downstream screen COULD narrow to the relation noun — EN "your spouse", ID
+    "pasangan Anda" — but no such string exists in the current prototype (R5b's own downstream
+    six-question sponsor sub-flow was not re-read for pronoun content this round). This is a
+    recommendation to item 4's build lane (§5.3 of the dossier), not a measured requirement.</p>
+    <p style="margin-top:.5rem"><strong>Branch note example</strong> — <code>family_relation</code>'s
+    own label (journey.html:211, template <code>"@Your@ sponsor — 6 questions"</code>):
+    EN self "Your sponsor — 6 questions" / EN delegate "The traveller's sponsor — 6
+    questions" · ID self "Sponsor Anda — 6 pertanyaan" / ID delegate "Sponsor milik
+    wisatawan — 6 pertanyaan". Sub-progress badge: EN "Sponsor {i} of {n}" / ID "Sponsor
+    ke-{i} dari {n}" (Indonesian ordinal marker, not a literal "dari" repetition — §5.5).</p>
+  </div>
+
+  <!-- ══ Not-sure escape (delegate mode) ══ -->
+  <div class="strategy" style="margin-top:1rem">
+    <h2>Not-sure escape, delegate mode (journey.html:396)</h2>
+    <div class="row">
+      <span class="label">EN</span>
+      <p>"Not sure? Asking doesn't decide the case — check with the traveller, or hand this to
+      a person."</p>
+    </div>
+    <div class="row">
+      <span class="label">ID</span>
+      <p>"Tidak yakin? Bertanya tidak menentukan hasil kasus — konfirmasi dengan wisatawan,
+      atau serahkan ke tim kami."</p>
+    </div>
+  </div>
+
+  <ul class="findings">
+    <li><strong>Zero live infrastructure to bind this to</strong> — the delegate flow exists
+    only in R5b's prototype (§1); GARUDA checkout's own mockup renders an EN/ID toggle with no
+    dictionary behind it at all (CheckoutFlow.tsx, 192 lines, zero i18n references). See dossier
+    §5.1 for the finding that matters most from this round.</li>
+    <li>This mockup is a study comparison layout (wide, two-column) — NOT the shipped
+    single-column mobile shape the checkout/consent lanes used, because bilingual comparison
+    was this round's own purpose. Item 4's actual build inherits the mobile-first single-column
+    contract those lanes already established, not this layout.</li>
+  </ul>
+</div>
