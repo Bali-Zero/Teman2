@@ -511,6 +511,24 @@ choice that precedes it is declared not drawn, §3.1)
    generalize to Indonesian's pronoun set — the winning, joint mechanism is authored per-mode
    copy keys, §3.5).
 
+## Adversarial review
+
+Joint round-grade panel over items 4+5 (this file and the sponsor-i18n lane, run
+2026-08-28): **codex gpt-5.6-sol xhigh** (filesystem — 13 findings, including the
+gate-mapping kill: the third gate option was NOT equivalent to NOT_SELF_PAY ∪ GROUP_CASE),
+**kimi k3** (filesystem — 15, including the §6 governance contradiction and the "excluded
+from pilot" overcount), **agy gemini-3.1-pro** (inline — 12, including the early-exit
+routing ownership challenge), **qwen3.8-max** (inline — 17, including the
+pronoun-mechanism conflict and the delegate payer-attestation recast). Tally: **57 raw
+findings, deduped to 27 joint register rows — 23 applied, 3 partial (R11, R12, R21), 1
+with an embedded reject (R21.v)** (computed from the register); dispositions in
+`mockups/delegate-flow/adversarial.json`, the register and the four seats' raw verdict
+extracts in `mockups/delegate-flow/panel/`. An independent Explore verification pass
+re-ran 10 load-bearing claims before disposition (8 TRUE, 1 IMPRECISE, 1
+FALSE-by-letter). Surviving objections: none unresolved — the two things the panel could
+not settle are owner decisions, not defects (early-exit routing activation;
+traveller-reachable deletion path), recorded in the register's closing section for Zero.
+
 ## §Meta
 
 R5b proved the mechanics were buildable — a pronoun function, a meta question, an escape
