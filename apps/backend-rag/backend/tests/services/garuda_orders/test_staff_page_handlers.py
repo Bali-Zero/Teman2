@@ -530,7 +530,9 @@ def test_the_facts_a_page_is_built_from_carry_no_applicant_field():
         "detail",
     }, f"OrderAnomalyFacts changed shape: {sorted(fields)}"
     for field_name in fields:
-        for forbidden in ("applicant", "email", "passport", "phone", "name"):
+        # Same list shape as the writer test, and for the same reason NOT the
+        # bare word "name" — see there.
+        for forbidden in ("applicant", "email", "passport", "phone", "full_name"):
             assert forbidden not in field_name, (
                 f"OrderAnomalyFacts.{field_name} looks like applicant data — a staff "
                 "page is composed only from order/journal facts, never from the person"
@@ -1052,7 +1054,20 @@ def test_no_journal_detail_written_in_the_order_lane_names_applicant_data():
         pathlib.Path("backend/services/garuda_portal/practice.py"),
         pathlib.Path("backend/services/garuda_orders/outbox_handlers.py"),
     ]
-    forbidden = ("applicant", "email", "passport", "phone", "address", "full_name")
+    # NOT the bare word "name". `detail={"outcome": event.failure.outcome.name}`
+    # is the ordinary way to serialise an enum, and a bare-substring guard on
+    # "name" rejects it — an over-match that makes a guard a nuisance someone
+    # eventually disables. The compound forms are what identify a person.
+    forbidden = (
+        "applicant",
+        "email",
+        "passport",
+        "phone",
+        "address",
+        "full_name",
+        "surname",
+        "fullname",
+    )
     checked = 0
     for path in lane:
         assert path.exists(), f"{path} moved — this test is now blind, fix the list"
@@ -1084,17 +1099,26 @@ def test_no_journal_detail_written_in_the_order_lane_names_applicant_data():
                 # applicant_email}` has an innocent KEY and leaks — the first
                 # version of this test was green on exactly that edit.
                 for value_node in ast.walk(kw.value):
-                    name = None
+                    identifier = None
                     if isinstance(value_node, ast.Name):
-                        name = value_node.id
+                        identifier = value_node.id
                     elif isinstance(value_node, ast.Attribute):
-                        name = value_node.attr
-                    if not name:
+                        identifier = value_node.attr
+                    elif isinstance(value_node, ast.Constant) and isinstance(
+                        value_node.value, str
+                    ):
+                        # A subscript hides the identifier in a STRING:
+                        # `payload["applicant_email"]` has no Name or Attribute
+                        # naming the field, so a Name/Attribute-only walk (what
+                        # the previous version did) was green on exactly that.
+                        identifier = value_node.value
+                    if not identifier:
                         continue
                     for word in forbidden:
-                        assert word not in name.lower(), (
-                            f"{path}:{value_node.lineno} puts {name!r} into a journal "
-                            "detail VALUE — the key looks innocent, the value is PII"
+                        assert word not in identifier.lower(), (
+                            f"{path}:{value_node.lineno} puts {identifier!r} into a "
+                            "journal detail VALUE — the key can look innocent while "
+                            "the value names the person"
                         )
                 for key in kw.value.keys:
                     if not isinstance(key, ast.Constant) or not isinstance(key.value, str):
