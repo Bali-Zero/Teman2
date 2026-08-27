@@ -565,6 +565,8 @@ const en = {
   "question.invalid_country_codes":
     "Choose a country from the verified list, or select Not listed.",
   "question.country_picker.placeholder": "Choose a country",
+  "question.country_picker.search": "Search countries",
+  "question.country_picker.search_placeholder": "Type a country name…",
   "question.country_picker.not_listed": "Other / not listed",
   "question.country_picker.add": "Add country",
   "question.country_picker.selected": "Selected countries",
@@ -591,7 +593,7 @@ const en = {
   "tree.nationalities": "Passports",
   "tree.birth_date": "Age check",
   "tree.category": "Category",
-  "tree.trip_scope": "Purpose overlap",
+  "tree.trip_scope": "Trip purpose",
   "tree.entry_pattern": "Entry pattern",
   "tree.sponsor_category": "Sponsor category",
   "tree.business_activity": "Business activity",
@@ -641,8 +643,9 @@ const en = {
   "tree.sr_status.pending": "not yet reached",
   "tree.sr_status.pruned": "different interview branch",
 
-  "paths.counter.label": "{{count}} interview branches",
-  "paths.counter.aria": "{{count}} interview branches remaining",
+  "paths.counter.label": "{{count}} interview {{plural:branch|branches}}",
+  "paths.counter.aria":
+    "{{count}} interview {{plural:branch|branches}} remaining",
 
   "confirmation.title": "Here’s what you told us",
   "confirmation.your_answers": "Your answers",
@@ -653,7 +656,8 @@ const en = {
   "confirmation.group.review": "Review signals",
   "confirmation.assumptions_title": "Assumptions we made",
   "confirmation.edit": "Edit",
-  "confirmation.paths_remaining": "{{count}} interview branches remain",
+  "confirmation.paths_remaining":
+    "{{count}} interview {{plural:branch|branches}} remaining",
   "confirmation.price_preview":
     "If a supported Bali Zero service has verified pricing, it will appear as one all-inclusive amount.",
   "confirmation.cta": "See my options",
@@ -1375,6 +1379,8 @@ const id: Record<Keys, string> = {
   "question.invalid_country_codes":
     "Pilih negara dari daftar terverifikasi, atau pilih Tidak tercantum.",
   "question.country_picker.placeholder": "Pilih negara",
+  "question.country_picker.search": "Cari negara",
+  "question.country_picker.search_placeholder": "Ketik nama negara…",
   "question.country_picker.not_listed": "Lainnya / tidak tercantum",
   "question.country_picker.add": "Tambah negara",
   "question.country_picker.selected": "Negara terpilih",
@@ -1401,7 +1407,7 @@ const id: Record<Keys, string> = {
   "tree.nationalities": "Paspor",
   "tree.birth_date": "Pemeriksaan usia",
   "tree.category": "Kategori",
-  "tree.trip_scope": "Tujuan tumpang tindih",
+  "tree.trip_scope": "Tujuan perjalanan",
   "tree.entry_pattern": "Pola masuk",
   "tree.sponsor_category": "Kategori sponsor",
   "tree.business_activity": "Kegiatan bisnis",
@@ -1643,8 +1649,19 @@ export const dict = { en, id };
  * hardcoding the EN ordering everywhere. */
 export const BODY_FIRST: Record<Language, boolean> = { en: false, id: true };
 
-/** Simple `{{var}}` interpolation — no ICU pluralization needed at this
- * scale. Missing keys return the raw key (visibly broken, never silent). */
+/** Matches `{{plural:singular|plural}}` markers — see `translate()` below.
+ * Kept as a plain literal-string marker (not a `{{count}}`-style var) so an
+ * English string can carry the ONE irregular plural it needs ("branch" →
+ * "branches") without a second interpolation pass at every call site. */
+const PLURAL_MARKER_RE = /\{\{plural:([^|{}]*)\|([^{}]*)\}\}/g;
+
+/** Simple `{{var}}` interpolation, plus one narrow pluralization escape
+ * hatch: `{{plural:singular|plural}}` resolves to `singular` when
+ * `vars.count === 1`, else `plural` — still not full ICU pluralization
+ * (this file does not need that at its current scale), just enough to stop
+ * "1 interview branches" reading as a typo. Bahasa Indonesia does not
+ * inflect nouns for number, so ID strings simply never use the marker.
+ * Missing keys return the raw key (visibly broken, never silent). */
 export function translate(
   language: Language,
   key: Keys,
@@ -1655,6 +1672,14 @@ export function translate(
   if (vars) {
     for (const [name, v] of Object.entries(vars)) {
       value = value.replaceAll(`{{${name}}}`, String(v));
+    }
+    if (typeof vars.count === "number") {
+      const count = vars.count;
+      value = value.replace(
+        PLURAL_MARKER_RE,
+        (_match, singular: string, plural: string) =>
+          count === 1 ? singular : plural,
+      );
     }
   }
   return value;
