@@ -1,0 +1,109 @@
+task_id: garuda-staff-page-handlers-0828
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Route the five `staff_page_*` outbox job types — the money anomalies nobody was being told
+  about — so a human is paged when a GARUDA VOA payment goes wrong in a way only a human can
+  fix.
+
+  `outbox_handlers.py::build_handlers` registered 3 of the 13 job types the repository and the
+  portal enqueue. The other ten fell to the consumer's `unroutable` bucket on every drain pass,
+  forever. Five of the ten are the customer emails, routed by #5128 (merged 2026-08-27,
+  `53efc00fab`). The other five are these: OP-08 duplicate charge (a SECOND successful charge on
+  an already-paid order), OP-F04 late-paid-after-refund, OP-F05 late-paid-after-terminal, OP-03
+  payment failure, OP-05 refund-out-of-order.
+
+  The consumer was never at fault: an unroutable type is counted, logged once per type per pass,
+  and its attempt bump is ROLLED BACK so it never marches toward exhaustion. No DLQ corpses. The
+  gap was five unwritten handlers.
+
+  Gear 3 by SIZE, deterministically: `--print-floor` with the path list alone returns 1 (no
+  hot-zone path in this diff); adding the numstat returns 3, source `size`. Churn is 1907
+  against the `SIZE_GEAR3_THRESHOLD = 1828` measured-p90 clamp — 79 lines over. Roughly 1257 of
+  those lines are the test file. Trimming tests to slide under a review-burden threshold would be
+  the exact gaming the clamp exists to prevent, so the pack is supplied instead.
+constraints:
+  - "No applicant PII may reach a Telegram message, a log line, or any DURABLE error string.
+    Telegram is a third-party cloud surface and the outbox worker persists a handler's raised
+    exception message into the job's `last_error` column."
+  - "No secret may reach durable text. The bot token is a path segment of the Telegram API URL,
+    and `@zantara0bot`'s predecessor is the scar: its token sat in cleartext on the default
+    branch of a PUBLIC repo and CANNOT be revoked, because BotFather answers only to an account
+    nobody can reach any more."
+  - "Destination from env only. No hardcoded fallback chat id — 119 hardcoded fallbacks were
+    writing to a mailbox nobody can open until 2026-08-13."
+  - "A failed send must RAISE. A handler that swallows a failure marks the job delivered and the
+    page is lost behind a green log line (superscar #2)."
+  - "A money anomaly nobody is told about is WORSE than a duplicate page. Where a guard's
+    direction is ambiguous, it must fail toward paging."
+  - "One all-inclusive price figure, never split into service fee vs government PNBP, no
+    arithmetic on the amount."
+  - "Do not weaken any check. The three reds this PR drew — `Harness floor recompute`,
+    `gateway (anti-regrowth lint)`, `guard-pins-pytest` — are answered by supplying this pack and
+    by removing the literal API host string from two files, never by touching a gate or adding
+    an exemption."
+acceptance:
+  - "All five `staff_page_*` types are registered when a `TelegramStaffPageSender` is passed, and
+    NONE is registered when it is not, so no existing caller changes behaviour."
+  - "A page for case A is withheld once case A has been resolved, even while a case B is open —
+    proven with a real journal sequence, not asserted."
+  - "A job whose triggering journal event cannot be read RAISES rather than paging with facts it
+    cannot verify."
+  - "No applicant field reaches a page even when the journal `detail` is POISONED with every
+    applicant field, across all five handlers."
+  - "No window of eight or more characters of the bot token's secret half survives into the
+    raised exception, across four error shapes (raw URL, URL-encoded, truncated mid-token,
+    secret-half-only)."
+  - "`lint_tg_direct_senders.py` reports clean, and `scripts/tests/test_tg_gateway.py` passes,
+    without any new grandfather entry or allowlist edit."
+  - "Full `garuda_orders` + `garuda_portal` suites green on the merged file."
+consumer_map:
+  - "`backend/app/main_api.py::_run_garuda_outbox_scheduler` — the only production caller. It now
+    constructs `TelegramStaffPageSender` with the SAME injected `httpx.AsyncClient` the email
+    sender already owns (Golden Rule #10), so the five types are armed in the api process."
+  - "`outbox_consumer.py::drain_once` — routes by `job_type` against the dict `build_handlers`
+    returns. Its `unroutable`/`unroutable_types` counters drop from 5 to 0 for this class once
+    this lands. Not modified by this PR."
+  - "`garuda_orders/repository.py` — enqueues all five of these job types across OP-03, OP-05,
+    OP-08, OP-F04 and OP-F05. Not modified by this PR; read for the enqueue sites and the
+    late-case semantics."
+  - "`wa_copilot/telegram_notifier.py::send_telegram_message` — REUSED, not re-implemented, and
+    already entry 1 of `infra/tg-gateway/grandfathered.json`. Not modified."
+  - "`TELEGRAM_OWNER_CHAT_ID` / `TELEGRAM_BOT_TOKEN` — read from env at sender construction. The
+    destination is Zero's `@balizero` chat with `@zantara0bot`."
+  - "The five customer-email handlers from #5128 — they share `build_handlers` and the same
+    module. Touched only by the merge resolution, which unions both sides."
+  - "`.claude/skills/modus/PENDING-ARMS.md` — its outbox row is corrected in a SEPARATE PR
+    (#5132), deliberately, to keep this diff one concern."
+risks:
+  - "This branch was cut before #5128 and both touch `build_handlers`. Merged rather than rebased,
+    and the five conflict hunks were resolved BY MEANING not by side: three of them were
+    docstrings that each described a world that no longer exists, so picking either side would
+    have shipped a false comment."
+  - "With this landed there is no longer a category of deliberately-unhandled job type, so the
+    scoped-allowlist alarm design in the ledger row is obsolete and `unroutable > 0` becomes a
+    real signal. That alarm is NOT in this PR (it touches the same
+    `_run_garuda_outbox_scheduler` block) — it is the next change, recorded in #5132."
+  - "The pages are UNPROVEN LIVE and cannot be proven until the payment key lands: with
+    `GARUDA_XENDIT_SECRET_KEY` unset the whole order lane answers 503, so none of these five job
+    types is produced yet. Merged is not armed."
+  - "`_detail_scalar` caps a rendered value at 120 characters. If a provider ever returns a
+    legitimately longer charge id, the page shows it truncated with an ellipsis rather than in
+    full. Accepted: a page is for a human to act on, and the tracker link carries the order."
+grader: |
+  Independent adversarial verification by a cross-family seat that never saw the code being
+  written — `codex exec -m gpt-5.6-sol` at `model_reasoning_effort=high`, sandbox read-only,
+  five rounds, each given the diff and an explicit instruction not to re-litigate the previous
+  round's dispositions. Seventeen findings across the two lanes; thirteen accepted and fixed,
+  four refuted BY MEASUREMENT rather than by argument (see dissent).
+
+  Generator != grader in the direction that matters here: an external builder subagent wrote the
+  first draft of the handlers, this session verified it independently and found two of its stated
+  guarantees unpinned, and the cross-family seat then attacked what this session had written. No
+  seat graded its own output at any stage.
+
+  The final verdict is this session's, and it OVERRULES round 5's REJECT on one of its two
+  findings — the third repetition of a claim about a regex character class that is false, and is
+  now settled by a mutation rather than by debate. The other finding was accepted and fixed. Both
+  are recorded in dissent with their measurements.

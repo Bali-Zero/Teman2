@@ -1,0 +1,317 @@
+brief_ref: evidence/2026-08/agent-air-m5-ops-garuda-staff-pages-0828-e3080f8d/brief.yml
+council_run: council-journal.jsonl
+plan_ref:
+  "PR #5129 (agent/air-m5/ops/garuda-staff-pages-0828) — route the five staff_page_* money-anomaly
+  outbox jobs, 2026-08-28. Governing mandate docs/plans/2026-08-24-garuda-voa-live/MANDATE.md. Sibling
+  that landed first — #5128, the five customer emails."
+lanes:
+  - lane: garuda-staff-pages-build
+    role: build
+    seat:
+      claude-sonnet-5 (external builder subagent) — wrote the first draft of the five handlers,
+      the sender and the initial test file; never graded its own output and never armed, merged or deployed
+      anything
+  - lane: garuda-staff-pages-verify
+    role: review
+    seat:
+      claude-opus-5 (conducting session) — independent verification of the builder's diff on disk,
+      found two of its stated guarantees UNPINNED, wrote the token-scrub tripwire, the poisoned-detail
+      test, the identity-tied case guard, the AST writer test and this pack
+  - lane: garuda-staff-pages-gate
+    role: review
+    seat:
+      gpt-5.6-sol at model_reasoning_effort=high, sandbox read-only — cross-family adversarial gate,
+      five rounds, each dispatched with the diff and told not to re-litigate the previous round's dispositions;
+      it never saw this pack or the brief
+seat_diversity: satisfied
+seat_diversity_note:
+  Three seats, two families. The gate is deliberately cross-family because the
+  questions that decide this diff are judgement calls about what a customer-facing message CLAIMS
+  and about whether a test can fail, and a same-family grader shares the priors that produced the
+  code. It earned its place — round 1 found the defect that mattered most (a charged customer told
+  their money was not taken) and round 5 found a real prefix-only weakness in this session's own tripwire.
+  It also produced four findings that measurement refuted, which is why every disposition below carries
+  its receipt.
+diff:
+  net_lines:
+    3 files, +1891/-16 (churn 1907) measured by git diff --numstat origin/main...HEAD. One
+    production module +624, one new test file +1257, one wiring line group in main_api.py +8/-1. Zero
+    migrations, zero workflows, zero frontend.
+  behaviour_change:
+    build_handlers gains an OPTIONAL third parameter; passing it registers five previously
+    unrouted job_type values, and omitting it changes nothing for any caller. The api process's outbox
+    scheduler passes it, so five money anomalies that previously produced only a logger.error line
+    now produce a Telegram page to the owner chat. No table is created, altered or read differently;
+    no customer-facing surface changes.
+receipts:
+  - claim:
+      The deterministic gear floor for THIS diff is 3 and its source is SIZE, not path — matching
+      the declared gear and the Harness floor recompute FAIL that demanded this pack
+    cmd:
+      git diff --name-only origin/main...HEAD > /tmp/sp-changed.txt && git diff --numstat origin/main...HEAD
+      > /tmp/sp-numstat.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file
+      /tmp/sp-changed.txt --numstat-file /tmp/sp-numstat.txt, then the same with --print-floor-source
+    result:
+      floor=3, source=size. With the path list ALONE (no numstat) the same command returns floor=1,
+      source=none — nothing in this diff is a hot-zone path and the whole floor is churn, 1907 against
+      SIZE_GEAR3_THRESHOLD=1828.
+    exit: 0
+    ts: 2026-08-28T19:05Z
+    seat: session (M5)
+  - claim:
+      THE CENTRAL FINDING, and it was in what the code SAID to a customer rather than in what it
+      did. OP-F05 leaves a late-paid order in its TERMINAL state and only raises late_case_open, so
+      a payment_failed_email job draining at that moment reads failed, passes the state guard, and tells
+      a customer who WAS charged that the amount was not charged
+    cmd:
+      read backend/db/migrations_v2/284_garuda_orders.sql lines 74-104 (the late_case_open column
+      and its comment) and repository.py lines 487 and 517 (the two OP-F04/OP-F05 branches), then read
+      the terminal email bodies for what they assert
+    result:
+      "Confirmed on disk — both OP-F04 and OP-F05 write late_case_open = TRUE and never touch
+      state, while the failure body says Amount not charged and the expiry body says no payment was
+      taken. Cured in the sibling PR #5128 by making late_case_open the second half of both terminal
+      guards; recorded here because this PR's OP-F05 page is the other half of the same event."
+    exit: 0
+    ts: 2026-08-28T18:10Z
+    seat: gpt-5.6-sol (gate round 1), verified independently by session before accepting
+  - claim:
+      The PII pin did not pin anything — all three no-applicant-field-reaches-a-page tests passed
+      whether each _compose read NAMED keys or folded the whole detail dict into the message
+    cmd:
+      mutation — replaced a page body's header line with an f-string of facts.detail on each of the
+      three pages the tests covered, ran pytest test_staff_page_handlers.py, reverted
+    result:
+      GREEN on all three. The tests seeded a PII-FREE detail, so the property they named was not
+      the property they measured. Cured by test_a_poisoned_journal_detail_does_not_reach_a_page, which
+      writes every applicant field INTO a real journal detail; the same mutation now goes RED on all
+      three, and the test was extended from 3 handlers to all 5.
+    exit: 0
+    ts: 2026-08-28T18:40Z
+    seat: session (M5)
+  - claim:
+      A page could belong to a DIFFERENT case than the one it reports. late_case_open is ONE boolean
+      per order and the contract permits a second case to open once the first closes, so a delayed retry
+      of case A's job would page about A while rendering case B's charge id — the id a human would then
+      go and refund
+    cmd:
+      read migration 284's own comment (exactly one open case per order AT A TIME) and repository.py
+      resolve_late_order, then wrote a test driving the real sequence — case A opens and enqueues, a
+      human resolves A, a second late payment reopens the flag with a different charge id, and A's still-queued
+      page drains
+    result:
+      Cured. _load derives case_resolved_since_trigger from an order.late_resolved journal event
+      strictly after the triggering event, so it needs no new column and no migration and cannot drift
+      from what happened. Mutation — reverting all three guards to the bare flag turns the test RED.
+    exit: 0
+    ts: 2026-08-28T19:20Z
+    seat: gpt-5.6-sol (gate round 2, finding) plus session (cure and proof)
+  - claim:
+      A missing triggering journal event failed OPEN — read as no resolution recorded, and paged
+      anyway with facts it could not verify
+    cmd:
+      wrote the test, and discovered while writing it that garuda_order_journal has an append-only
+      trigger — UPDATE and DELETE both raise CheckViolationError naming it
+    result:
+      Cured, it now raises. The DISCOVERY changed the test — the event behind a normally-enqueued
+      job CANNOT vanish, so the reachable shape is an outbox row pointing at an id the journal never
+      had, and that is what the test drives. Mutation — restoring the fail-open branch turns it RED.
+    exit: 0
+    ts: 2026-08-28T19:35Z
+    seat: session (M5)
+  - claim:
+      The bot token could become DURABLE text, and no window of eight or more characters of its
+      secret half now survives, across four error shapes
+    cmd:
+      drove the real TelegramStaffPageSender._scrub (not a re-typed copy of its regex) on a deliberately
+      hyphen-rich token against raw-URL, URL-encoded, truncated-mid-token and secret-half-only error
+      strings, checking EVERY substring window of 8 or more characters
+    result:
+      Zero leaks in all four. Unlike every other caller of send_telegram_message, which only logs,
+      this one's message becomes the outbox job's last_error COLUMN — durable, readable by anyone with
+      DB read, and outliving log rotation.
+    exit: 0
+    ts: 2026-08-28T20:05Z
+    seat: session (M5)
+  - claim:
+      The scrub contains NO dead code — every surviving branch is individually load-bearing, and
+      two branches that were not were deleted
+    cmd:
+      four mutations, each applied, run and reverted — drop the bot-id-anchored pattern; drop the
+      secret-half literal; drop the hyphen from the character class, which is the state a disputed finding
+      claimed already existed; and earlier, drop the exact replace and the quote() replace
+    result:
+      pattern dropped RED. secret-half literal dropped RED. hyphen dropped from the class RED,
+      after the window assertion landed — it was GREEN before, which is why that claim could keep returning.
+      The exact replace and the quote() replace were each GREEN when removed, i.e. subsumed by the pattern,
+      so they were DELETED rather than kept as reassurance.
+    exit: 0
+    ts: 2026-08-28T20:10Z
+    seat: session (M5)
+  - claim:
+      The writer-side constraint that actually protects this surface is now a test, and it sees
+      VALUES and NON-LITERALS, not only keys
+    cmd:
+      five mutations against repository.py, each reverted — a PII key in a detail literal; a PII
+      value under an innocent key; a subscript-hidden value; a non-literal detail= argument; and one
+      INNOCENCE mutation, a legitimate enum .name serialisation
+    result:
+      PII key RED. PII value RED. subscript-hidden RED. non-literal RED. legitimate .name GREEN.
+      The first version of this test was key-only and passed the value and subscript cases, and a bare
+      name in its forbidden list rejected the legitimate enum — which is how a guard becomes a nuisance
+      someone disables.
+    exit: 0
+    ts: 2026-08-28T20:00Z
+    seat: gpt-5.6-sol (gate rounds 3 and 4, findings) plus session (cures and proofs)
+  - claim:
+      A vacuous test was REPLACED rather than patched — the previous one could not fail for any
+      edit
+    cmd:
+      read test_no_page_carries_applicant_pii — it built an OrderAnomalyFacts by hand and asserted
+      no applicant email, name or passport appeared in the five _compose outputs
+    result:
+      That dataclass has NO applicant field, so there was nothing to leak and no edit to _compose
+      could have turned it red. Replaced by a structural test on the dataclass shape, where the property
+      IS falsifiable — adding applicant_email to OrderAnomalyFacts turns it RED, mutation run.
+    exit: 0
+    ts: 2026-08-28T19:45Z
+    seat: session (M5)
+  - claim:
+      The anti-regrowth Telegram lint is clean WITHOUT any new grandfather entry, allowlist edit
+      or exemption
+    cmd:
+      python3 scripts/lint_tg_direct_senders.py and python3 -m pytest scripts/tests/test_tg_gateway.py
+      -q --no-header
+    result:
+      "lint_tg clean, 9440 files scanned, 144 grandfathered; 6 passed. It had failed with 2 NEW
+      direct Telegram senders — correctly, because the lint scans TEXTUALLY and its own header declares
+      that over-match deliberate: keep the URL string out of non-gateway files entirely. Neither file
+      sends anything; the hits were a docstring naming the URL shape and a MockTransport fixture. The
+      host is now a placeholder in the docstring and assembled from parts in the test, and telegram_notifier.py,
+      the module actually reused, is already entry 1 of the grandfather list."
+    exit: 0
+    ts: 2026-08-28T19:55Z
+    seat: session (M5)
+  - claim:
+      The merge with main preserved BOTH sides — 13 handlers registered with a staff sender and
+      8 without, and no docstring left claiming a world that no longer exists
+    cmd:
+      resolved by git checkout origin/main -- FILE then git apply -3 of this branch's own patch,
+      then five hunks by hand; then pytest over backend/tests/services/garuda_orders/ and backend/tests/services/garuda_portal/
+    result:
+      Green. The exact-set assertion went 8 to 13 in this file's test, while its sibling in test_outbox_handlers.py
+      calls build_handlers WITHOUT a staff sender and correctly still expects 8. Three of the five hunks
+      were docstrings — both sides claimed a category of deliberately-unhandled job types, which no
+      longer exists, so neither side was taken.
+    exit: 0
+    ts: 2026-08-28T19:50Z
+    seat: session (M5)
+  - claim: Full suites green on the final merged state
+    cmd:
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python -m pytest backend/tests/services/garuda_orders/
+      backend/tests/services/garuda_portal/ -p no:cacheprovider -q
+    result: exit 0
+    exit: 0
+    ts: 2026-08-28T20:12Z
+    seat: session (M5)
+pii_scan: clean
+pii_scan_note:
+  Nothing in this diff, brief or pack transcribes client data. The tests seed a synthetic
+  applicant (SPECIMEN TRAVELLER, X0000000, a placeholder phone, addresses at example.invalid) whose
+  whole purpose is to be searched FOR in outgoing pages and log lines. The bot token used in the scrub
+  tests is a fabricated token-shaped string; the real one appears nowhere in this repository, this
+  pack, or any log quoted here. The production destination is named by env var only.
+dissent:
+  - seat: gpt-5.6-sol (gate rounds 1, 3 and 5 — the same claim, three times)
+    objection:
+      The scrub regex omits the hyphen, which is valid in Telegram token secrets, so it redacts
+      only through the first hyphen and then the literal secret replacement cannot match because its
+      prefix was already removed, leaving most of the secret durable.
+    status: RETRACTED
+    resolution:
+      "A hyphen in FINAL position inside a character class is a LITERAL, not a range, so the
+      class does include it. Driven against the REAL _scrub on a deliberately hyphen-rich token across
+      all four error shapes, checking every window of 8 or more characters of the secret half — zero
+      survive in all four. Rejecting a finding three times is not a resolution, so the third round was
+      answered STRUCTURALLY instead: dropping the hyphen from the class, i.e. making the code behave
+      the way the finding claimed it already behaved, now turns the tripwire RED. It stayed GREEN before,
+      which is exactly why the claim could keep returning. The dispute is settled by a mutation rather
+      than by whoever argues last."
+  - seat: gpt-5.6-sol (gate round 5)
+    objection:
+      test_no_form_of_the_bot_token_survives_into_the_durable_error checks only secret fragments
+      beginning at the secret's FIRST character, so it passes while the suffix leaks.
+    status: CONFIRMED
+    resolution:
+      Accepted in full — a real weakness in this session's own tripwire, and the same shape
+      of defect this session had found in the builder's tests two rounds earlier. It now checks every
+      window of eight or more characters, with a floor on the size of the window set so a broken comprehension
+      cannot pass as a clean run. This is also what made the structural answer to the finding above
+      possible.
+  - seat: gpt-5.6-sol (gate round 2)
+    objection:
+      The payment-failure and refund-out-of-order handlers always return True and so have no
+      mechanism to suppress a retry after a human closes the case.
+    status: RETRACTED
+    resolution:
+      They report an event that HAPPENED, not a case that is OPEN. There is no closure flag
+      for them to consult — late_case_open belongs to the OP-08/OP-F04/OP-F05 remediation cases only
+      — and the outbox marks a job dispatched on success, so a second page can only follow a FAILED
+      send, which is precisely when a human still has not been told. Written as a comment at both _should_page
+      methods so the next reader does not re-open it.
+  - seat: gpt-5.6-sol (gate round 3)
+    objection: _scrub never removes the chat id; a provider error echoing it reaches last_error.
+    status: RETRACTED
+    resolution:
+      The chat id is not a secret — it is the owner's own chat id, recorded in this repo's
+      own instructions, and sending to it requires the bot token, which is what the method exists to
+      protect. Scrubbing it would only make a failed page harder for a human to trace back to a destination.
+      Written in place.
+  - seat: gpt-5.6-sol (gate round 3)
+    objection:
+      "Timestamp alone does not establish case ordering: a resolution sharing an occurred_at
+      with a later trigger satisfies >= and wrongly SUPPRESSES the later case's page."
+    status: PLAUSIBLE
+    resolution:
+      "Accepted as free insurance and DECLARED UNPINNED rather than dressed up as coverage.
+      The comparison is now strict greater-than, so a tie resolves toward PAGING — suppressing is the
+      worse direction by this lane's own rule. Reverting it to >= leaves every test GREEN and the PR
+      says so: the tie is unreachable because the append-only trigger forbids the UPDATE that would
+      create one, and each writer appends one row per statement while statement_timestamp() advances
+      between statements. What IS pinned is that trigger, by a test that DRIVES an UPDATE and a DELETE
+      and asserts the append-only guard rejects both — an earlier version grepped the migration for
+      the words update and delete and would have passed on updated_at alone."
+  - seat: gpt-5.6-sol (gate round 2)
+    objection:
+      PracticeReceivedEmailHandler silently returns unless the order state is paid, so a late-paid
+      failed or expired order with a real practice loses a valid customer notice.
+    status: RETRACTED
+    resolution:
+      practice_received_email is enqueued ONLY inside mint_received_practice, which requires
+      an OP-02 payment.paid journal event. An OP-F05 late payment emits payment.late_paid_after_terminal,
+      never OP-02, so no such job can exist for a failed or expired order and the guard cannot drop
+      a valid notice. Read on disk before rejecting — the honoured resolution path enqueues practice_release,
+      a different job.
+  - seat: session (declared limit, unresolved)
+    objection:
+      Not one of these five pages has ever been DELIVERED. Every proof here is a test or a
+      mutation; the live path is unexercised because with GARUDA_XENDIT_SECRET_KEY unset the order lane
+      answers 503 and none of these job types is produced.
+    status: PLAUSIBLE
+    resolution:
+      "Left standing and labelled rather than quietly counted as done. Merged is not armed
+      (superscar #2). The ledger row in #5132 keeps this open with an explicit proof-of-armed — a real
+      duplicate-charge callback putting one page in the owner chat. The one gesture that is not this
+      session's is fly secrets set for the two Xendit values."
+  - seat: session (declared limit, unresolved)
+    objection:
+      This PR routes the five staff pages to a GRANDFATHERED direct sender rather than through
+      scripts/tg_notify.py, the gateway the anti-regrowth lint points at, so it does not advance the
+      migration that lint exists to drive.
+    status: PLAUSIBLE
+    resolution:
+      Deliberate and declared. The gateway is an argparse CLI with a spool directory, dedup
+      keys and mute windows; no backend-rag production code uses it, and reaching it from an async FastAPI
+      worker means a subprocess per page. Migrating telegram_notifier.py's cohort is the lint's own
+      stated plan and a separate change. What this PR does NOT do is grow the family the lint shrinks
+      — it adds no new direct sender and needed no grandfather entry.

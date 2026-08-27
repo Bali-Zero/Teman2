@@ -1,0 +1,1 @@
+{"seat":"codex-gpt-5.6-sol","role":"review","ok":true,"ts":"2026-08-27T19:18:59Z","note":"five adversarial rounds on this diff, sandbox read-only, model_reasoning_effort=high; 17 findings across the two lanes, 13 accepted, 4 refuted by measurement"}
