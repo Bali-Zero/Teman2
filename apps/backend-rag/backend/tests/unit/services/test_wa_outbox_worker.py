@@ -1007,6 +1007,34 @@ async def test_codex_leg_not_attempted_when_provider_absent(
 
 
 @pytest.mark.asyncio
+async def test_provider_not_codex_records_a_durable_fall_off_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Migration 290, condition-2 half of the mandate: this is the ONE
+    fall-off condition wa_codex_leg.attempt() never sees (it is not even
+    called), so the worker must record its own reason before raising —
+    otherwise this exact shape (provider unarmed) would leave the same
+    unrecoverable gap the mandate opened with. Without the worker-side
+    write this test fails: no execute() call ever mentions the column."""
+    monkeypatch.delenv("WA_GENERATION_PROVIDER", raising=False)
+    attempt_spy = AsyncMock()
+    monkeypatch.setattr(wa_outbox_worker.wa_codex_leg, "attempt", attempt_spy)
+    gemini_spy = AsyncMock(return_value="gemini reply")
+
+    conn = _retry_conn(70)
+    pool = _make_pool(conn)
+    svc = _wa_service()
+
+    result = await process_outbox_once(pool, svc, gemini_spy)
+
+    assert result == "retry"
+    attempt_spy.assert_not_awaited()
+    written = conn.sql_with_args("generation_fall_off_reason")
+    assert written, "provider_not_codex must be recorded as a durable reason"
+    assert written[0][1] == (70, "provider_not_codex")
+
+
+@pytest.mark.asyncio
 async def test_codex_leg_provider_not_codex_is_a_standing_condition_at_terminal(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

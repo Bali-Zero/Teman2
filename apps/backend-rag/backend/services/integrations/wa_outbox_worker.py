@@ -964,6 +964,15 @@ async def _process_claimed_row(
                 # every claim, so arming the switch mid-backoff rescues the
                 # row on the very next attempt — same recovery shape as the
                 # WA_INBOX_BOT_AUTOREPLY flag below.
+                #
+                # This is the ONE fall-off condition the codex leg itself
+                # never sees (the leg is not even called), so it is the
+                # one place outside wa_codex_leg.attempt() that must record
+                # its own durable reason (migration 290) — best-effort,
+                # same as every reason attempt() records internally.
+                await wa_codex_leg.record_fall_off_reason(
+                    pool, outbox_id=outbox_id, raw_reason="provider_not_codex"
+                )
                 raise BotStandingCondition(
                     "wa-inbox bot: gemini generation retired for whatsapp "
                     "(WA_GENERATION_PROVIDER != 'codex')"
