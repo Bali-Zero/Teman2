@@ -1,193 +1,53 @@
 brief_ref: evidence/brief.yml
-plan_ref: "Zero GO 2026-08-27, relayed by team-lead: execute Merge-OS v3 build order step 2 (research/operations/2026-08-14-merge-os-v3-research-council.md §6) — remove the push:main trigger from tests.yml/security.yml. Ground-truth check found the literal removal already shipped (#4210, #4218, 2026-08-15/16); this pack covers what was actually still wrong (stale comments + a stale PENDING-ARMS row) and a new regression tripwire."
+plan_ref: "Zero order 2026-08-27 (queue acceleration): advisory workflows off merge_group; queue waits only on the 11 required contexts. Conductor's independent deadlock verification + Gear-3 PWC published on 0c0ba49b1 before this pack (harness/fable-gate commit status)."
 lanes:
-  - lane: push-main-dedupe
+  - lane: queue-slim
     role: build
-    seat: "claude-opus-5 (conducting session — ground-truth investigation, comment fixes, new test, ledger cleanup)"
-  - lane: push-main-dedupe-refute
+    seat: "claude-sonnet-5 (L17 subagent in .worktrees/ci-queue-slim — PyYAML trigger analysis, 24 slims, tripwire test)"
+  - lane: queue-slim-verify
     role: review
-    seat: "agy (Gemini 3.1 Pro via Antigravity CLI, non-Anthropic) — adversarial review of the full diff, dispatched in background"
+    seat: "claude-opus-5 (conducting session) — independent deadlock check: fetched all 24 slimmed files at head 0c0ba49b1 (none emits a required context) and all 8 kept files (merge_group present in each); cross-family refuters unreachable (codex+kimi TIMEOUT), declared in the PR body and in the published PASS-WITH-CONDITIONS verdict"
 seat_diversity: not_applicable
 seat_diversity_note: >-
-  Single build lane — the D3 seat-diversity floor (>=2 build lanes, at least
-  one non-Anthropic) does not fire with only one build lane declared. The
-  review lane is non-Anthropic (agy/Gemini) regardless, and its findings are
-  the `dissent:` entries below, all addressed in the diff before this pack
-  was written — not appended after the fact.
+  Single build lane; review lane is same-family by necessity tonight
+  (codex/kimi TIMEOUT during the Actions outage recovery) — declared, not
+  hidden: the published gate verdict on 0c0ba49b1 is PASS-WITH-CONDITIONS
+  with the condition that the first post-merge queue entry must show all 11
+  required contexts reporting before the change is declared live.
 diff:
-  net_lines: >-
-    4 files vs origin/main (`git diff origin/main --numstat`): PENDING-ARMS.md
-    -0/+2 removed (two stale rows deleted, no lines added), security.yml
-    +20/-7, tests.yml +28/-12, scripts/tests/test_no_push_main_trigger_on_heavy_suites.py
-    +204/-0 (new file). Net +231/-21 across 4 files.
+  net_lines: "26 files: 24 workflow on:-block edits (merge_group trigger removed, no job logic), infra/required.d/contexts.json regenerated to the live 11, scripts/tests/test_advisory_workflows_no_merge_group.py new, 2-test relaxation in test_probe_merge_gate_integrity.py (>=20 -> >=5 truncation tripwire, same fix #5063 carries)."
   behaviour_change: >-
-    ZERO change to any GitHub Actions trigger, schedule, or concurrency
-    expression in either workflow file — verified by structural re-parse of
-    both files' `on:` blocks before and after (receipts below), not by eye.
-    Every workflow-file edit is inside a `#`-comment block. The only new
-    executable content is the tripwire test (pure Python + PyYAML, no CI
-    wiring change) and two PENDING-ARMS.md row deletions (markdown ledger,
-    not code).
+    Advisory workflows stop running on merge-queue merge commits; they still
+    run on pull_request. The 11 required contexts keep reporting on both
+    events. No required check is weakened; no job logic changes.
 receipts:
-  - claim: "Deterministic gear floor recomputed from THIS PR's actual diff is 3 — `.github/workflows/*` is hot-zone by path, regardless of the comment-only nature of the change"
-    cmd: 'python3 -c "import sys; sys.path.insert(0,''scripts''); import evidence_pack_lint as e; print(e.compute_floor([''.github/workflows/tests.yml'', ''.github/workflows/security.yml'', ''scripts/tests/test_no_push_main_trigger_on_heavy_suites.py'', ''.claude/skills/modus/PENDING-ARMS.md'']))"'
-    result: "3"
+  - claim: "None of the 24 slimmed workflows emits any of the 11 required contexts (deadlock invariant, slim side)"
+    cmd: "for f in <24 slimmed>: gh api contents/<f>?ref=0c0ba49b1 | grep -E 'name:' | grep -iE '<11 required context names>'"
+    result: "0 hits across all 24 files"
     exit: 0
-    ts: "2026-08-27T00:00Z"
-    seat: "session (Pro, push-main-dedupe task)"
-  - claim: "GROUND-TRUTH FINDING (this pack's central claim): tests.yml's entire push: trigger was already removed 2026-08-15 via #4210, not something this session needed to remove"
-    cmd: "git --no-pager log -p --follow -- .github/workflows/tests.yml | grep -n -B3 -A3 'chore(ci): remove push:main trigger from tests.yml'"
-    result: "commit 3a6c45d456b56d223a7073de9071295e0540daae, 'chore(ci): remove push:main trigger from tests.yml — merge-queue proof + 2-hourly schedule are the backstop (Merge-OS v3 step 2, canary 21 PRs clean) (#4210)', Sat Aug 15 05:54:16 2026 +0000 — diff removes the entire `push: branches: [main, develop]` block."
+    ts: "2026-08-26T19:2xZ"
+    seat: "conducting session (independent, not the build lane)"
+  - claim: "All 8 KEEP workflows still carry merge_group at head 0c0ba49b1 (deadlock invariant, keep side)"
+    cmd: "for f in tests security harness-floor adversarial-review-gate organ-conformance immune-enforcement actionlint guard-conformance: gh api contents/.github/workflows/<f>.yml?ref=0c0ba49b1 | grep -c '^\\s*merge_group:'"
+    result: "merge_group=1 for all 8"
     exit: 0
-    ts: "2026-08-27T00:01Z"
-    seat: "session (Pro, push-main-dedupe task)"
-  - claim: "GROUND-TRUTH FINDING: security.yml's push.branches was already narrowed to exclude main 2026-08-16 via #4218, gated on the daily schedule (added #4184, 2026-08-14) producing a first green run"
-    cmd: "git --no-pager log -p --follow -- .github/workflows/security.yml | grep -n -B3 -A6 'chore(ci): remove push:main from security.yml'"
-    result: "commit 4e2d8367e21b996610a4a8bbcbb86f32dd95247c, 'chore(ci): remove push:main from security.yml — DRAFT, gated on first green scheduled run (Merge-OS v3 step 2 final) (#4218)', Sun Aug 16 13:49:48 2026 +0000 — diff narrows `branches: [main, develop]` to `branches: [develop]`."
-    exit: 0
-    ts: "2026-08-27T00:02Z"
-    seat: "session (Pro, push-main-dedupe task)"
-  - claim: "Precondition (a) — main's merge-queue ruleset has no bypass actors, enforcement active"
-    cmd: "gh api repos/Bali-Zero/Teman2/rulesets/19779175 --jq '{bypass_actors, enforcement, rules:[.rules[].type]}'; gh api repos/Bali-Zero/Teman2/branches/main/protection --jq '{enforce_admins:.enforce_admins.enabled, allow_force_pushes:.allow_force_pushes.enabled}'"
-    result: "merge-queue-main: bypass_actors=[], enforcement=active, rules=[merge_queue]. Second ruleset (Copilot review, id 20608865): bypass_actors=[], enforcement=active, rules=[deletion, non_fast_forward, copilot_code_review]. Classic branch protection: enforce_admins=true, allow_force_pushes=false."
-    exit: 0
-    ts: "2026-08-27T00:03Z"
-    seat: "session (Pro, push-main-dedupe task)"
-  - claim: "Precondition (b) — tests.yml's 2-hourly scheduled run has recent GREEN runs (still true today, independent of the #4210 removal 12 days ago)"
-    cmd: "gh api 'repos/Bali-Zero/Teman2/actions/workflows/tests.yml/runs?event=schedule&per_page=5' --jq '.workflow_runs[] | {conclusion, created_at}'"
-    result: "4 of the 5 most recent scheduled runs (2026-08-26) are success; the 5th is cancelled (superseded run, not a failure)."
-    exit: 0
-    ts: "2026-08-27T00:04Z"
-    seat: "session (Pro, push-main-dedupe task)"
-  - claim: "Precondition (c) — security.yml's daily 19:17Z schedule has been GREEN every day since before 2026-08-14 (still true today)"
-    cmd: "gh api 'repos/Bali-Zero/Teman2/actions/workflows/security.yml/runs?event=schedule&per_page=10' --jq '.workflow_runs[] | {conclusion, created_at}'"
-    result: "10/10 most recent scheduled runs, 2026-08-17 through 2026-08-25, all success."
-    exit: 0
-    ts: "2026-08-27T00:05Z"
-    seat: "session (Pro, push-main-dedupe task)"
-  - claim: "The tests.yml stale-comment PENDING-ARMS row (opened 2026-08-23) exactly matches the defect this PR fixes — confirms this session is the named owner, not inventing scope"
-    cmd: 'grep -n "opened 2026-08-23 (Pro, S11 backend-test sharding, session)" .claude/skills/modus/PENDING-ARMS.md'
-    result: "Row found, owner 'session (any lane touching tests.yml triggers)', names tests.yml:42-46's stale 'every main push now runs to completion' claim verbatim — the exact sentence this PR's comment fix removes."
-    exit: 0
-    ts: "2026-08-27T00:06Z"
-    seat: "session (Pro, push-main-dedupe task)"
-  - claim: "The security.yml PENDING-ARMS row (opened 2026-08-15) is provably stale before removal — describes #4218 as still an open draft when git history shows it merged 2026-08-16"
-    cmd: "grep -n '\\[2026-08-15\\] security.yml push:main removal' .claude/skills/modus/PENDING-ARMS.md; gh pr view 4218 --json state,mergedAt 2>/dev/null || git log --format='%H %ci' -1 4e2d8367e21b996610a4a8bbcbb86f32dd95247c"
-    result: "Row read 'PR OPEN AS DRAFT, DO-NOT-ARM until first green scheduled run' — but commit 4e2d8367e (the PR's own merge commit per git log --follow above) has commit date 2026-08-16, 11 days before this task."
-    exit: 0
-    ts: "2026-08-27T00:07Z"
-    seat: "session (Pro, push-main-dedupe task)"
-  - claim: "New tripwire test passes against current (correct) repo state — innocence"
-    cmd: "apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_no_push_main_trigger_on_heavy_suites.py -v"
-    result: "2 passed in 0.20s"
-    exit: 0
-    ts: "2026-08-27T00:20Z"
-    seat: "session (Pro, push-main-dedupe task)"
-  - claim: "New tripwire test FAILS against a simulated regression (push:main re-added to both files) — guilt, proven via mocked file content, not merely inferred from the assertion's shape"
-    cmd: "python3 script mocking pathlib.Path.read_text to return a push:main-bearing tests.yml/security.yml, then calling both test functions directly (see session transcript for the exact harness)"
-    result: "Both raise AssertionError with the expected 'third payment' message — tests.yml: 're-grown a push: trigger'; security.yml: 're-grown main in its branches: list'."
-    exit: 0
-    ts: "2026-08-27T00:21Z"
-    seat: "session (Pro, push-main-dedupe task)"
-  - claim: 'Edge cases raised by the non-Anthropic refuter (agy) are each individually fixed and re-verified: scalar branches value does not false-positive on substring ''main'' inside ''maintenance''; push:None does not crash; a schedule missing the specific backstop cron fails (not a vacuous truthy check); a quoted "on": key is handled'
-    cmd: 'python3 harness calling _push_branches({''push'':{''branches'':''maintenance''}}), _push_branches({''push'':None}), _cron_strings([{''cron'':''0 0 * * 0''}]) against SECURITY_DAILY_BACKSTOP_CRON, and yaml.safe_load on a quoted ''"on":'' document (see session transcript)'
-    result: "'maintenance' normalizes to ['maintenance'], 'main' in it is False (no false positive); push:None -> [] (no crash); weekly-only crons -> daily backstop present is False (correctly fails, not vacuous); quoted on: parses to string key 'on', handled by the on/True fallback."
-    exit: 0
-    ts: "2026-08-27T00:22Z"
-    seat: "session (Pro, push-main-dedupe task)"
-  - claim: "actionlint accepts both modified workflow files"
-    cmd: "actionlint .github/workflows/tests.yml .github/workflows/security.yml"
-    result: "no output (clean)"
-    exit: 0
-    ts: "2026-08-27T00:23Z"
-    seat: "session (Pro, push-main-dedupe task)"
-  - claim: "Required-workflow conformance check is unaffected (this PR does not touch required-context wiring)"
+    ts: "2026-08-26T19:2xZ"
+    seat: "conducting session"
+  - claim: "Required-workflow conformance green against the regenerated 11-context snapshot"
     cmd: "python3 scripts/ci/check_required_workflow_conformance.py"
-    result: "27 required context(s) checked, 0 violation(s)"
+    result: "11 required context(s) checked, 0 violations"
     exit: 0
-    ts: "2026-08-27T00:24Z"
-    seat: "session (Pro, push-main-dedupe task)"
-  - claim: "No remaining stale 'push-to-main'/'push-triggered main' phrasing anywhere in tests.yml outside the deliberate historical quote inside this PR's own CORRECTED note"
-    cmd: "grep -n 'push-to-main\\|push-triggered main\\|every main push now runs' .github/workflows/tests.yml"
-    result: "Only line 50, inside the CORRECTED paragraph, quoting the OLD text in quotation marks for the historical record — not a live claim."
+    ts: "2026-08-26T19:2xZ"
+    seat: "L17 build lane"
+  - claim: "Deadlock tripwire + suite green"
+    cmd: "pytest scripts/tests/test_advisory_workflows_no_merge_group.py scripts/ci/test_check_required_workflow_conformance.py scripts/ci/test_required_context_map.py scripts/tests/test_probe_merge_gate_integrity.py -q"
+    result: "55 passed"
     exit: 0
-    ts: "2026-08-27T00:25Z"
-    seat: "session (Pro, push-main-dedupe task)"
-  - claim: "Consumer audit: main-red-breaker.yml and main-push-failure-watch.yml already correctly encode 'tests.yml has no push trigger' — no repointing needed by this PR"
-    cmd: "grep -n 'tests\\.yml' .github/workflows/main-red-breaker.yml .github/workflows/main-push-failure-watch.yml"
-    result: "main-red-breaker.yml:21 states outright 'Tests & Coverage (tests.yml) has NO push: trigger at all'; main-push-failure-watch.yml branches explicitly on schedule/merge_group conclusions, never push, for both files. No workflow_run/badge consumer found reacting to a push-triggered run of either file."
-    exit: 0
-    ts: "2026-08-27T00:26Z"
-    seat: "session (Pro, push-main-dedupe task)"
-  - claim: "PENDING-ARMS format/report tooling stays clean after the two row deletions"
-    cmd: "apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_organism_digest_pending_arms.py scripts/tests/test_pending_arms_ref.py scripts/tests/test_pending_arms_report.py -q; python3 scripts/pending_arms_report.py"
-    result: "115 passed. pending_arms_report.py: '## MALFORMED / none', exit 0."
-    exit: 0
-    ts: "2026-08-27T00:27Z"
-    seat: "session (Pro, push-main-dedupe task)"
+    ts: "2026-08-26T19:2xZ"
+    seat: "L17 build lane"
 pii_scan: clean
 dissent:
-  - seat: "agy (Gemini 3.1 Pro via Antigravity CLI) — non-Anthropic adversarial refuter, dispatched against the pre-fix diff"
-    objection: >-
-      Six findings against the first draft: (1) inverted logic in a tripwire
-      error message ("proves main untested" should read the opposite); (2)
-      the "Task #37 addendum" comment paragraph in tests.yml was left with
-      the identical stale "push-triggered main runs" phrasing the PR was
-      opened to fix; (3) `doc[True]` in `_load_triggers` crashes with an
-      unhandled KeyError if a formatter ever quotes `"on":`; (4) `main()`
-      only caught `AssertionError`, so a KeyError/AttributeError from a
-      malformed workflow would crash with a raw traceback instead of a
-      clean FAIL line; (5) `assert schedule` in the security.yml test only
-      checks truthiness — a schedule narrowed to just the weekly Sunday cron
-      would pass vacuously while the actual daily backstop the removal was
-      gated on silently disappeared; (6) treating `branches:` as always a
-      list risks a substring false-positive ("main" in "maintenance") if it
-      is ever written as a scalar, and `push:` being bare/None would crash
-      the naive `.get("branches", [])` call.
-    status: CONFIRMED
-    note: >-
-      All six independently reproduced before accepting (findings 3, 5, 6
-      reproduced live via harness calls proving the exact failure mode agy
-      described, not accepted on the review's prose alone — see the
-      dedicated receipts above). All six fixed in the diff this pack
-      describes: (1) corrected to "keeps main from landing untested"; (2)
-      AND a third occurrence agy did not flag (the `cancel-in-progress`
-      paragraph's own "push-triggered main run" and the merge_group-
-      readiness paragraph's "push-to-main stays false") were found by
-      re-grepping the whole file after fixing (1) and (2) — all now say "a
-      direct run against main" or reference the CORRECTED note above rather
-      than repeating the historical claim in three more places; (3) added
-      an `"on" in doc` fallback; (4) broadened to `except Exception`; (5)
-      replaced with an explicit check that the specific backstop cron
-      string is present in the parsed schedule list; (6) added `_push_branches()`
-      which normalizes scalar-or-list-or-None to a list of strings before
-      any membership test, and `_cron_strings()` with the same defensive
-      shape. Re-ran the full verification suite (receipts above) after
-      every fix — did not ship on agy's say-so alone, this session's own
-      mocked-regression harness proves each fix closes the exact gap
-      described.
-tests:
-  - "scripts/tests/test_no_push_main_trigger_on_heavy_suites.py::test_tests_yml_has_no_push_trigger_at_all — PASS on current state, FAIL (correctly) on a mocked push:main-restored tests.yml."
-  - "scripts/tests/test_no_push_main_trigger_on_heavy_suites.py::test_security_yml_push_trigger_excludes_main — PASS on current state, FAIL (correctly) on a mocked push:main-restored security.yml, and on a mocked weekly-only schedule missing the daily backstop cron."
-  - "scripts/tests/test_organism_digest_pending_arms.py, test_pending_arms_ref.py, test_pending_arms_report.py — 115 passed, confirming the two PENDING-ARMS row deletions did not break ledger tooling."
-static:
-  - "actionlint .github/workflows/tests.yml .github/workflows/security.yml -> clean"
-  - "scripts/ci/check_required_workflow_conformance.py -> 27 required contexts, 0 violations"
-  - "python3 scripts/pending_arms_report.py -> 0 MALFORMED rows"
-notes:
-  - >-
-    This PR's central finding reframes the mandate: Zero's 2026-08-27 GO
-    order asked to remove a trigger that had already been removed 11-12
-    days earlier (#4210, #4218). The most credible root cause, found by
-    reading the file this session was told to edit before editing it: both
-    files' own `on:` block comments, and a matching PENDING-ARMS.md row,
-    still narrated the removal as pending work. This PR ships the honest
-    correction (comment fixes + ledger cleanup + a machine-checked
-    regression tripwire) rather than a no-op "confirmed, nothing to do" —
-    per CLAUDE.md's ship-lifecycle-ownership rule, a session does not park
-    a surprising finding, it fixes what is actually still broken.
-  - >-
-    codex and kimi were probed for cross-family review this session and
-    both timed out (per team-lead's own note at dispatch); agy served as
-    the available non-Anthropic refuter seat and found six real issues in
-    the first draft, all fixed and re-verified above — see `dissent:`.
+  - seat: "conducting session (self-declared gap, claude-opus-5)"
+    objection: "No cross-family refuter pass ran on this diff (codex+kimi TIMEOUT all night); same-family review only."
+    status: "CONFIRMED"
+    mitigation: "conductor's independent two-sided deadlock check (receipts above) + PASS-WITH-CONDITIONS verdict on 0c0ba49b1: the first post-merge queue entry must show all 11 required contexts reporting before the change is declared live"

@@ -12,7 +12,6 @@ name: P9 Cost Breaker (GOVERN)
 # "Did relevant paths change?" step; on a path-miss PR the job ENDS success.
 on:
   pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
-  merge_group:
   push:
     branches:
       - main
