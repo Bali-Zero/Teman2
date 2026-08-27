@@ -125,6 +125,11 @@ async def pool():
                 f"silently pass by skipping."
             )
         pytest.skip(f"no local Postgres reachable at {_DSN}: {exc}")
+        # Unreachable in practice: pytest.fail/skip are NoReturn, so `p` is
+        # always bound below. CodeQL can't see that through the pytest API;
+        # this `raise` terminates the branch provably and re-raises the
+        # connection error if that assumption ever stops being true.
+        raise
     async with p.acquire() as conn:
         await conn.execute(
             "TRUNCATE garuda_practices, garuda_order_outbox, garuda_order_journal, "

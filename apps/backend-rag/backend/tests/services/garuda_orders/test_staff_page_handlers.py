@@ -70,6 +70,11 @@ async def pool():
         if os.environ.get("CI"):
             pytest.fail(f"no reachable Postgres in CI at {_DSN}: {exc}")
         pytest.skip(f"no reachable Postgres at {_DSN}: {exc}")
+        # Unreachable in practice: pytest.fail/skip are NoReturn, so `p` is
+        # always bound below. CodeQL can't see that through the pytest API;
+        # this `raise` terminates the branch provably and re-raises the
+        # connection error if that assumption ever stops being true.
+        raise
     try:
         async with p.acquire() as conn:
             await conn.execute(
