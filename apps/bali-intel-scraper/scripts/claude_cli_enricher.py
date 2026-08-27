@@ -6,13 +6,16 @@ Uses Claude Code CLI (subprocess) - Max quota, no browser automation
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timezone
 from typing import Any
 import logging
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -125,13 +128,196 @@ RULES:
 """
 
 
-_TIER_TO_SCORE = {'breaking': 90, 'developing': 60, 'evergreen': 0}
+_TIER_TO_SCORE = {"breaking": 90, "developing": 60, "evergreen": 0}
 
 # F5 (Codex red-team, 2026-07-18): buffer above the prompt's ≤80-char
 # instruction for live_news_reasons, so minor model overshoot doesn't get
 # truncated mid-thought — but bounded well below the old 200, which let a
 # reason balloon into a near-paragraph.
 _REASON_MAX_CHARS = 120
+def _provider_attempts(prompt: str) -> list[tuple[str, list[str], str | None, int]]:
+    """Return the subscription-first text-generation cascade.
+
+    Scraped text is untrusted. Claude therefore runs with no tools and no
+    session persistence. The only fallback is local Ollama, which has no tool
+    surface or cloud credential. Agentic CLIs with filesystem tools are not
+    eligible for this stage.
+    """
+
+    claude_bin = shutil.which("claude") or "/Users/nuzantara/.local/bin/claude"
+    ollama_bin = shutil.which("ollama") or "/opt/homebrew/bin/ollama"
+    return [
+        (
+            "claude",
+            [
+                claude_bin,
+                "--print",
+                "--model",
+                "claude-sonnet-4-6",
+                "--tools",
+                "",
+                "--disable-slash-commands",
+                "--no-session-persistence",
+            ],
+            prompt,
+            150,
+        ),
+        (
+            "ollama",
+            [ollama_bin, "run", "qwen3.5:9b"],
+            prompt,
+            240,
+        ),
+    ]
+
+
+def _provider_env(provider: str) -> dict[str, str]:
+    """Return the smallest environment needed by one subscription/local seat."""
+
+    allowed = {"HOME", "LANG", "LC_ALL", "PATH", "TMPDIR"}
+    if provider == "claude":
+        allowed.update(
+            {
+                "CLAUDE_CONFIG_DIR",
+                "CLAUDE_CODE_OAUTH_TOKEN",
+                "ANTHROPIC_AUTH_TOKEN",
+            }
+        )
+    elif provider == "ollama":
+        allowed.add("OLLAMA_HOST")
+    env = {key: value for key, value in os.environ.items() if key in allowed}
+    path_prefix = "/Users/nuzantara/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+    env["PATH"] = f"{path_prefix}:{env.get('PATH', '')}"
+    if provider == "claude" and not env.get("CLAUDE_CODE_OAUTH_TOKEN"):
+        # The nightly LaunchAgent owns the A3/batch seat under the suffixed
+        # variable.  Map that one credential to the canonical child-process
+        # name without forwarding the source name or any neighbouring secret.
+        batch_oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN_3", "").strip()
+        if batch_oauth_token:
+            env["CLAUDE_CODE_OAUTH_TOKEN"] = batch_oauth_token
+    if provider == "ollama":
+        env["OLLAMA_NOHISTORY"] = "1"
+    return env
+
+
+def _run_generation_cascade(
+    prompt: str,
+    *,
+    circuit_open: set[str] | None = None,
+) -> tuple[dict[str, Any] | None, str | None, str, list[str]]:
+    """Return the first valid JSON completion plus raw text, provider and safe errors."""
+
+    batch_circuit = circuit_open if circuit_open is not None else set()
+    errors: list[str] = []
+
+    for provider, command, stdin_text, timeout in _provider_attempts(prompt):
+        if provider in batch_circuit:
+            continue
+        logger.info("Calling %s enrichment provider...", provider)
+        try:
+            result = subprocess.run(
+                command,
+                input=stdin_text,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                check=False,
+                env=_provider_env(provider),
+                cwd="/tmp",
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+            batch_circuit.add(provider)
+            errors.append(f"{provider}:{type(exc).__name__}")
+            logger.warning(
+                "%s enrichment provider unavailable; opening batch circuit", provider
+            )
+            continue
+
+        if result.returncode != 0:
+            batch_circuit.add(provider)
+            errors.append(f"{provider}:rc={result.returncode}")
+            logger.warning(
+                "%s enrichment provider returned rc=%s; opening batch circuit",
+                provider,
+                result.returncode,
+            )
+            continue
+        output = (result.stdout or "").strip()
+        if output:
+            try:
+                return _parse_enrichment_output(output), output, provider, errors
+            except (json.JSONDecodeError, ValueError):
+                batch_circuit.add(provider)
+                errors.append(f"{provider}:invalid_json")
+                logger.warning(
+                    "%s enrichment provider returned invalid output; opening batch circuit",
+                    provider,
+                )
+                continue
+        batch_circuit.add(provider)
+        errors.append(f"{provider}:empty")
+
+    return None, None, "", errors
+
+
+def _parse_enrichment_output(output: str) -> dict[str, Any]:
+    """Extract and normalize the JSON object returned by any cascade seat."""
+
+    cleaned = output.strip()
+    if "```json" in cleaned:
+        cleaned = cleaned.split("```json", 1)[1].split("```", 1)[0].strip()
+    elif "```" in cleaned:
+        cleaned = cleaned.split("```", 1)[1].split("```", 1)[0].strip()
+    json_start = cleaned.find("{")
+    json_end = cleaned.rfind("}") + 1
+    if json_start < 0 or json_end <= json_start:
+        raise ValueError("No valid JSON in response")
+    payload = json.loads(cleaned[json_start:json_end])
+    if not isinstance(payload, dict):
+        raise ValueError("Enrichment response must be an object")
+    _validate_enrichment_contract(payload)
+    return _normalize_live_news_fields(payload)
+
+
+def _validate_enrichment_contract(payload: dict[str, Any]) -> None:
+    """Reject error envelopes and partial JSON before it can look truthy downstream."""
+
+    if "error" in payload:
+        raise ValueError("Enrichment response is an error envelope")
+    for field in ("headline", "the_facts", "bali_zero_take", "in_practice", "next_steps"):
+        value = payload.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"Enrichment field {field} is missing or invalid")
+
+    brief = payload.get("thirty_second_brief")
+    if not isinstance(brief, dict):
+        raise ValueError("Enrichment brief is missing or invalid")
+    for field in ("what", "why_it_matters", "who"):
+        value = brief.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"Enrichment brief field {field} is missing or invalid")
+    if brief.get("risk_level") not in {"low", "medium", "high"}:
+        raise ValueError("Enrichment risk level is invalid")
+
+    faq = payload.get("faq")
+    if not isinstance(faq, list) or not faq:
+        raise ValueError("Enrichment FAQ is missing or invalid")
+    for item in faq:
+        if not isinstance(item, dict) or not all(
+            isinstance(item.get(field), str) and item[field].strip()
+            for field in ("question", "answer")
+        ):
+            raise ValueError("Enrichment FAQ item is invalid")
+
+    metadata = payload.get("metadata")
+    if not isinstance(metadata, dict):
+        raise ValueError("Enrichment metadata is missing or invalid")
+    if metadata.get("priority") not in {"high", "medium", "low"}:
+        raise ValueError("Enrichment priority is invalid")
+    if not isinstance(metadata.get("tags"), list):
+        raise ValueError("Enrichment tags are invalid")
+    if payload.get("liveness_tier") not in _TIER_TO_SCORE:
+        raise ValueError("Enrichment liveness tier is invalid")
 
 
 def _derive_tier_from_score(raw_score: Any) -> str:
@@ -149,13 +335,13 @@ def _derive_tier_from_score(raw_score: Any) -> str:
     try:
         score = int(round(float(raw_score)))
     except (TypeError, ValueError):
-        return 'evergreen'
+        return "evergreen"
     score = max(0, min(100, score))
     if score >= 80:
-        return 'breaking'
+        return "breaking"
     elif score >= 40:
-        return 'developing'
-    return 'evergreen'
+        return "developing"
+    return "evergreen"
 
 
 def _normalize_live_news_fields(enriched: dict[str, Any]) -> dict[str, Any]:
@@ -193,56 +379,65 @@ def _normalize_live_news_fields(enriched: dict[str, Any]) -> dict[str, Any]:
     safe defaults (tier="evergreen", score=0, reasons=[]) so downstream
     code never has to handle KeyError.
     """
-    raw_tier = enriched.get('liveness_tier')
-    tier_candidate = raw_tier.strip().lower() if isinstance(raw_tier, str) else ''
+    raw_tier = enriched.get("liveness_tier")
+    tier_candidate = raw_tier.strip().lower() if isinstance(raw_tier, str) else ""
     if tier_candidate in _TIER_TO_SCORE:
         tier = tier_candidate
     else:
-        tier = _derive_tier_from_score(enriched.get('live_news_score'))
+        tier = _derive_tier_from_score(enriched.get("live_news_score"))
     score = _TIER_TO_SCORE[tier]
 
-    raw_reasons = enriched.get('live_news_reasons', [])
+    raw_reasons = enriched.get("live_news_reasons", [])
     if not isinstance(raw_reasons, list):
         raw_reasons = []
     reasons: list[str] = []
     for r in raw_reasons[:3]:
         if isinstance(r, str) and r.strip():
             reasons.append(r.strip()[:_REASON_MAX_CHARS])
-    if tier == 'evergreen':
+    if tier == "evergreen":
         reasons = []
 
-    enriched['live_news_score'] = score
-    enriched['liveness_tier'] = tier
-    enriched['live_news_reasons'] = reasons
+    enriched["live_news_score"] = score
+    enriched["liveness_tier"] = tier
+    enriched["live_news_reasons"] = reasons
     return enriched
 
 
-def enrich_article_claude_cli(article: dict[str, Any]) -> dict[str, Any]:
+def enrich_article_claude_cli(
+    article: dict[str, Any],
+    *,
+    circuit_open: set[str] | None = None,
+) -> dict[str, Any]:
     """
     Enrich article using Claude Code CLI (subprocess call).
     Uses Claude Max subscription quota.
-    
+
     Args:
         article: Dict with keys: title, source, category, published_date, content
-        
+
     Returns:
         Dict with enrichment data
     """
     logger.info(f"Enriching: {article.get('title', 'Unknown')[:50]}...")
 
     # Extract NLM context if available (from step 2.9)
-    nlm_ctx = article.get('nlm_context') or {}
-    nlm_legal = nlm_ctx.get('legal_basis', '')
-    nlm_web = nlm_ctx.get('web_findings', '')
+    nlm_ctx = article.get("nlm_context") or {}
+    nlm_legal = nlm_ctx.get("legal_basis", "")
+    nlm_web = nlm_ctx.get("web_findings", "")
     # nlm_legal and nlm_web default to '' from .get() above — no extra guard needed
 
     def _escape_for_prompt(s: str) -> str:
         """Escape curly braces (for str.format) and XML tag chars (prevent tag injection)."""
-        return s.replace('{', '{{').replace('}', '}}').replace('<', '&lt;').replace('>', '&gt;')
+        return (
+            s.replace("{", "{{")
+            .replace("}", "}}")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        )
 
     # Escape NLM output and article content for safe prompt injection
-    nlm_legal = _escape_for_prompt(str(nlm_legal or '')[:3000])
-    nlm_web = _escape_for_prompt(str(nlm_web or '')[:2000])
+    nlm_legal = _escape_for_prompt(str(nlm_legal or "")[:3000])
+    nlm_web = _escape_for_prompt(str(nlm_web or "")[:2000])
 
     # F4 (Codex red-team, 2026-07-18): AS OF anchors the LIVENESS TIER "last
     # ~48h" judgment to the real current date instead of nothing — system
@@ -251,110 +446,59 @@ def enrich_article_claude_cli(article: dict[str, Any]) -> dict[str, Any]:
 
     # Build prompt — ALL article fields escaped to prevent XML tag spoofing
     prompt = ENRICHMENT_PROMPT_TEMPLATE.format(
-        title=_escape_for_prompt(str(article.get('title') or 'Unknown')[:300]),
-        source=_escape_for_prompt(article.get('source_name', article.get('source', 'Unknown'))),
-        category=_escape_for_prompt(article.get('qwen_category', article.get('category', 'general'))),
-        published_date=_escape_for_prompt(article.get('published_date', 'Unknown')),
-        content=_escape_for_prompt(str(article.get('content') or '')[:4000]),
+        title=_escape_for_prompt(str(article.get("title") or "Unknown")[:300]),
+        source=_escape_for_prompt(
+            article.get("source_name", article.get("source", "Unknown"))
+        ),
+        category=_escape_for_prompt(
+            article.get("qwen_category", article.get("category", "general"))
+        ),
+        published_date=_escape_for_prompt(article.get("published_date", "Unknown")),
+        content=_escape_for_prompt(str(article.get("content") or "")[:4000]),
         nlm_legal_basis=nlm_legal,
         nlm_web_findings=nlm_web,
         as_of=as_of,
     )
 
     try:
-        # Call Claude Code CLI
-        logger.info("Calling Claude Code CLI...")
-
-        # Remove ANTHROPIC_API_KEY from environment to use OAuth
-        env = os.environ.copy()
-        env.pop('ANTHROPIC_API_KEY', None)
-
-        # Use absolute path so launchd (limited PATH) can find claude
-        import shutil
-        claude_bin = shutil.which('claude') or '/Users/nuzantara/.local/bin/claude'
-
-        result = subprocess.run(
-            [claude_bin, '--print', '--model', 'claude-sonnet-4-6', prompt],
-            capture_output=True,
-            text=True,
-            timeout=180,  # 180s timeout
-            check=True,
-            env=env
+        enriched, output, provider, errors = _run_generation_cascade(
+            prompt,
+            circuit_open=circuit_open,
         )
-
-        output = result.stdout.strip()
-        logger.info(f"Claude response: {len(output)} chars")
-
-        # Parse JSON from response
-        # Claude might wrap in markdown code blocks, strip those
-        if '```json' in output:
-            output = output.split('```json')[1].split('```')[0].strip()
-        elif '```' in output:
-            output = output.split('```')[1].split('```')[0].strip()
-
-        # Try to find JSON object
-        json_start = output.find('{')
-        json_end = output.rfind('}') + 1
-
-        if json_start >= 0 and json_end > json_start:
-            json_str = output[json_start:json_end]
-            enriched = json.loads(json_str)
-
-            # Normalize live_news fields: clamp score, derive tier from score,
-            # cap reasons. Defensive — Claude follows the prompt 95% of the
-            # time but the other 5% lands the project on a slide that says
-            # "live_news_score: 250" or returns the tier as a paragraph.
-            enriched = _normalize_live_news_fields(enriched)
-
-            logger.info("✅ Enrichment successful")
+        if enriched is None or output is None:
             return {
-                'success': True,
-                'enrichment': enriched,
-                'raw_response': output
+                "success": False,
+                "error": "No enrichment provider available: " + ", ".join(errors),
             }
-        else:
-            logger.warning("No JSON found in response")
-            return {
-                'success': False,
-                'error': 'No valid JSON in response',
-                'raw_response': output
-            }
-
-    except subprocess.TimeoutExpired:
-        logger.error("Claude CLI timeout (180s)")
+        logger.info("Enrichment successful via %s", provider)
         return {
-            'success': False,
-            'error': 'Timeout after 180s'
+            "success": True,
+            "enrichment": enriched,
+            "provider": provider,
+            "raw_response": output,
         }
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Claude CLI error: {e.stderr}")
-        return {
-            'success': False,
-            'error': f'Claude CLI failed: {e.stderr}'
-        }
-    except json.JSONDecodeError as e:
+    except (json.JSONDecodeError, ValueError) as e:
         logger.error(f"JSON parse error: {e}")
         return {
-            'success': False,
-            'error': f'Invalid JSON: {e}',
-            'raw_response': output if 'output' in locals() else None
+            "success": False,
+            "error": f"Invalid JSON: {e}",
+            "raw_response": output if "output" in locals() else None,
         }
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
-        return {
-            'success': False,
-            'error': str(e)
-        }
+        return {"success": False, "error": str(e)}
 
 
-def batch_enrich_articles(articles: list[dict[str, Any]], max_articles: int = None) -> list[dict[str, Any]]:
+def batch_enrich_articles(
+    articles: list[dict[str, Any]], max_articles: int = None
+) -> list[dict[str, Any]]:
     """
     Batch enrich multiple articles.
-    
+
     Args:
         articles: List of article dicts
         max_articles: Limit number of articles (for testing)
-        
+
     Returns:
         List of enriched articles
     """
@@ -366,31 +510,36 @@ def batch_enrich_articles(articles: list[dict[str, Any]], max_articles: int = No
     enriched_articles = []
     success_count = 0
     error_count = 0
+    batch_circuit: set[str] = set()
 
     for i, article in enumerate(articles, 1):
-        logger.info(f"\n[{i}/{len(articles)}] Processing: {article.get('title', 'Unknown')[:50]}")
+        logger.info(
+            f"\n[{i}/{len(articles)}] Processing: {article.get('title', 'Unknown')[:50]}"
+        )
 
-        result = enrich_article_claude_cli(article)
+        result = enrich_article_claude_cli(article, circuit_open=batch_circuit)
 
-        if result['success']:
+        if result["success"]:
             success_count += 1
-            enriched_articles.append({
-                **article,
-                'enrichment': result['enrichment']
-            })
+            enriched_articles.append(
+                {
+                    **article,
+                    "enrichment": result["enrichment"],
+                    "enrichment_provider": result["provider"],
+                }
+            )
         else:
             error_count += 1
             logger.error(f"Failed: {result.get('error')}")
-            enriched_articles.append({
-                **article,
-                'enrichment_error': result.get('error')
-            })
+            enriched_articles.append(
+                {**article, "enrichment_error": result.get("error")}
+            )
 
-    logger.info(f"\n{'='*60}")
+    logger.info(f"\n{'=' * 60}")
     logger.info("BATCH COMPLETE")
     logger.info(f"  Success: {success_count}/{len(articles)}")
     logger.info(f"  Errors:  {error_count}/{len(articles)}")
-    logger.info(f"{'='*60}")
+    logger.info(f"{'=' * 60}")
 
     return enriched_articles
 
@@ -398,31 +547,31 @@ def batch_enrich_articles(articles: list[dict[str, Any]], max_articles: int = No
 if __name__ == "__main__":
     # Test with sample article
     test_article = {
-        'title': 'Indonesia Extends Digital Nomad Visa to 5 Years',
-        'source': 'Jakarta Post',
-        'category': 'immigration',
-        'published_date': '2026-02-20',
-        'content': '''The Indonesian government announced today that the B211A digital nomad visa 
-        will be extended from 1 year to 5 years validity, effective March 2026. This makes Indonesia 
-        one of the most attractive destinations for remote workers in Southeast Asia. The visa allows 
-        foreigners to live and work remotely from Indonesia while earning income from abroad. 
+        "title": "Indonesia Extends Digital Nomad Visa to 5 Years",
+        "source": "Jakarta Post",
+        "category": "immigration",
+        "published_date": "2026-02-20",
+        "content": """The Indonesian government announced today that the B211A digital nomad visa
+        will be extended from 1 year to 5 years validity, effective March 2026. This makes Indonesia
+        one of the most attractive destinations for remote workers in Southeast Asia. The visa allows
+        foreigners to live and work remotely from Indonesia while earning income from abroad.
         Immigration officials stated this change aims to attract high-skilled foreign talent and 
-        boost the digital economy.'''
+        boost the digital economy.""",
     }
 
-    print("="*60)
+    print("=" * 60)
     print("TEST: Claude CLI Enricher")
-    print("="*60)
+    print("=" * 60)
     print()
 
     result = enrich_article_claude_cli(test_article)
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("RESULT:")
-    print("="*60)
+    print("=" * 60)
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
-    if result['success']:
+    if result["success"]:
         print("\n🎉 TEST PASSED")
         sys.exit(0)
     else:

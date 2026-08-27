@@ -6,7 +6,6 @@ on:
     # attempts that slip past pre-commit (e.g. someone commits with --no-verify).
     # The JOB is not: see the timeout note below — the script's runtime is not
     # the job's floor, and reading it as one is what set the budget too low.
-  merge_group:
   push:
     branches: [main]
 
