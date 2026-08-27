@@ -20,10 +20,24 @@ second migration, but this file only ever writes `Received`.
 
 **Why PR-01 is lazily materialized on READ rather than by an async worker.**
 L3's `handle_paid_event` (repository.py) already enqueues a
-`practice_release` job onto `garuda_order_outbox` at OP-02 -- but no
-production code anywhere in this repository consumes `garuda_order_outbox`
-for ANY job_type yet (checked: `payment_paid_email` and
-`staff_page_duplicate_charge` are equally unconsumed). Building a
+`practice_release` job onto `garuda_order_outbox` at OP-02.
+
+CORRECTED 2026-08-27: the rationale below used to rest on "no production
+code anywhere in this repository consumes `garuda_order_outbox` for ANY
+job_type yet (checked: `payment_paid_email` and
+`staff_page_duplicate_charge` are equally unconsumed)". Half of that is now
+false: `outbox_handlers.py` registers real handlers for `practice_release`
+AND `payment_paid_email` (only the `staff_page_*` half of the parenthetical
+still holds -- those nine job types remain unhandled). **So a
+`Received` practice now has TWO independent producers: this lazy read, and
+`PracticeReleaseHandler` draining the job.** They are believed to agree --
+`_create_received_practice`'s idempotency is what makes the pair safe -- but
+believed is the operative word: no test crosses both paths, so nothing in
+the suite would notice if they diverged. Do not read the design note below
+as evidence that they agree; read it as the reason only one path used to
+exist.
+
+The original reasoning, kept because it still explains the shape: building a
 dedicated outbox dispatcher is cross-cutting infrastructure that belongs to
 whoever owns the outbox contract as a whole, not a decision this lane
 should make unilaterally by building one worker for one job_type. Instead,
