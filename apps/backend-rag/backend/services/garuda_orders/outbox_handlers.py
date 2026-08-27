@@ -30,16 +30,31 @@ MONEY SHAPE. `price_idr` is rendered as ONE all-inclusive figure, exactly as
 stored. This product must never show a customer a fee/PNBP split (SM-G04: the
 price is written once at OP-00 and never recomputed or decomposed), so there is
 deliberately no arithmetic anywhere in this file.
+
+THE FIVE `staff_page_*` HANDLERS (added after the email/CRM/portal weld). Every
+money-anomaly page — a duplicate charge, a payment arriving after the order
+was already refunded or already terminal, a payment failure worth a human's
+attention, a refund issued before any charge existed — goes to **Telegram, to
+`TELEGRAM_OWNER_CHAT_ID`**, never WhatsApp. That is not a style choice: SYMBIOSIS
+Law 2's one named WhatsApp-to-assigned-team-member derogation caps its payload
+at name+initial, `client_id` and a deadline, and a money-anomaly page needs an
+order id, an amount and a provider charge id — it does not fit inside that cap.
+Telegram to the owner chat carries none of that name+initial shape and needs no
+derogation at all. See `_StaffPageHandler` below for the shared load/guard/send
+shape and each subclass's docstring for its own paging condition.
 """
 
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import os
+import re
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from typing import Any
 
 import asyncpg
 import httpx
@@ -53,6 +68,7 @@ from backend.services.garuda_ops.ports import EventEnvelope, IdempotencyIdentity
 from backend.services.garuda_orders.outbox_consumer import OutboxJob
 from backend.services.portal.invite_service import InviteService
 from backend.services.portal.portal_profile_service import PortalProfileService
+from backend.services.wa_copilot.telegram_notifier import send_telegram_message
 
 logger = logging.getLogger("garuda.orders.outbox_handlers")
 
@@ -64,6 +80,11 @@ DEFAULT_TRACKER_BASE_URL = "https://balizero.com/visa/voa/orders"
 EMAIL_API_URL_ENV = "INTERNAL_EMAIL_API_URL"
 DEFAULT_EMAIL_API_URL = "https://nuzantara-rag.fly.dev/api/notifications/send-email"
 EMAIL_API_KEY_ENV = "NUZANTARA_API_KEY"
+
+#: Same env pair `infra/eventbus/meta_dispatcher.py` and this repo's other
+#: Telegram alerters already use — no new secret name to provision.
+TELEGRAM_BOT_TOKEN_ENV = "TELEGRAM_BOT_TOKEN"
+TELEGRAM_OWNER_CHAT_ID_ENV = "TELEGRAM_OWNER_CHAT_ID"
 
 #: States in which a "we received your payment" email is still the truth.
 #: An order that has since been refunded must not be told its payment
@@ -497,12 +518,381 @@ class PortalInviteHandler:
         )
 
 
-def build_handlers(pool: asyncpg.Pool, sender: BrevoEmailSender) -> dict[str, object]:
+# ---------------------------------------------------------------------------
+# staff_page_* — money-anomaly pages, Telegram to the owner chat
+# ---------------------------------------------------------------------------
+
+
+class StaffPageSendFailed(RuntimeError):
+    """The page did not reach Telegram. Raised so the outbox records the attempt."""
+
+
+class StaffPageOrderMissing(RuntimeError):
+    """The outbox row has an FK to `garuda_orders`; its absence means something
+    removed an order out from under a queued page. Raised, never swallowed."""
+
+
+#: Telegram Markdown V1 (the same `parse_mode` `telegram_notifier.py` uses)
+#: reserves these four characters. Free-text enum values below (`outcome`,
+#: `customer_action`) are machine-generated SCREAMING_SNAKE_CASE and may
+#: contain `_`, which an un-escaped message turns into a "can't parse
+#: entities" 400 from Telegram — a page that would then fail for a
+#: formatting reason having nothing to do with whether Telegram is reachable.
+#: NOT applied to order/charge/refund ids below: those are wrapped in
+#: backtick code spans instead, and Markdown V1 does not re-parse entities
+#: inside a code span — escaping there would only print a stray backslash.
+#: Same char set as `telegram_notifier._MARKDOWN_ESCAPE_RE`, reimplemented as
+#: a two-line regex rather than imported: that helper is named `_md_escape`
+#: (leading underscore, module-private) and the thing worth reusing whole
+#: from that module is its retry loop, not this one-liner.
+_MARKDOWN_ESCAPE_RE = re.compile(r"([_*`\[])")
+
+
+def _escape_markdown(text: str) -> str:
+    return _MARKDOWN_ESCAPE_RE.sub(r"\\\1", text)
+
+
+class TelegramStaffPageSender:
+    """Posts one money-anomaly page to `TELEGRAM_OWNER_CHAT_ID`. Raises on any
+    failure — same invariant as `BrevoEmailSender` next door, for the same
+    reason: a handler behind the outbox that swallows a failed send marks the
+    job delivered and the page is lost with a green log line.
+
+    WHY `send_telegram_message` IS REUSED, NOT RE-IMPLEMENTED. `wa_copilot/
+    telegram_notifier.py::send_telegram_message` already is the exact
+    primitive this needs: an injected `httpx.AsyncClient` (Golden Rule #10 —
+    built once by whoever wires the worker, never per call), the W55 3-attempt
+    backoff (1s/3s/7s), 4xx-no-retry / 5xx-retry semantics, and a plain
+    `(bool, error)` return with no side effects. Copying that loop into this
+    file would drift the two send paths apart the first time one gets a
+    bugfix the other doesn't.
+
+    WHY THE REST OF THAT MODULE IS **NOT** REUSED. `telegram_notifier.py` is a
+    scheduled CLI: it SELECTs `action_queue` JOIN `team_members`, dedups
+    through Redis, and fans out one DM per owner across many rows in one run.
+    None of that fits here — a `staff_page_*` handler is ONE outbox job, ONE
+    fixed destination (`TELEGRAM_OWNER_CHAT_ID`, not a per-owner lookup), and
+    its failure contract is the *opposite* of that module's sibling
+    `owner_cashout/telegram_alert.py::send_alert`, which is explicitly
+    "best-effort... never raises". Importing the whole module and only using
+    its low-level send function is the correct amount of reuse; wiring this
+    handler through its CLI/DB/Redis machinery would be adopting a shape
+    built for a different job.
+    """
+
+    def __init__(
+        self,
+        client: httpx.AsyncClient,
+        *,
+        bot_token: str | None = None,
+        chat_id: str | None = None,
+    ) -> None:
+        self._client = client
+        self._bot_token = bot_token if bot_token is not None else os.getenv(TELEGRAM_BOT_TOKEN_ENV, "")
+        self._chat_id = chat_id if chat_id is not None else os.getenv(TELEGRAM_OWNER_CHAT_ID_ENV, "")
+
+    async def send(self, *, text: str) -> None:
+        if not self._bot_token or not self._chat_id:
+            # Raising beats sending nowhere: an unset destination is a
+            # deployment fault that should surface as an exhausted job, not
+            # as silence — same posture as `BrevoEmailSender`'s empty-key check.
+            raise StaffPageSendFailed(
+                f"{TELEGRAM_BOT_TOKEN_ENV}/{TELEGRAM_OWNER_CHAT_ID_ENV} not both set; "
+                "refusing to page nowhere"
+            )
+        ok, err = await send_telegram_message(self._client, self._bot_token, self._chat_id, text)
+        if not ok:
+            raise StaffPageSendFailed(f"telegram send failed: {err}")
+
+
+@dataclass(frozen=True, slots=True)
+class OrderAnomalyFacts:
+    """What a staff page is built from. `detail` is the triggering journal
+    event's own `detail` JSONB — `garuda_order_journal.detail` is documented
+    PII-free by construction (284_garuda_orders.sql: "only enums, ids,
+    amounts, and dates that are already public per the contract... never
+    applicant fields"), so it is safe to fold verbatim into a Telegram message."""
+
+    order_id: str
+    case_type: str
+    price_idr: int
+    state: str
+    late_case_open: bool
+    late_case_charge_id: str | None
+    detail: dict[str, Any] = field(default_factory=dict)
+
+
+def _amount(price_idr: int) -> str:
+    # One figure, no split, no arithmetic — see this module's docstring.
+    return f"IDR {price_idr:,}".replace(",", ".")
+
+
+class _StaffPageHandler:
+    """Shared load → guard → compose → send shape for all five `staff_page_*`
+    handlers. Every subclass overrides `_should_page` (the state-guard
+    question) and `_compose` (the message), and carries its own docstring
+    explaining both.
+
+    THE ROW NEVER HAS A PAYLOAD. `repository.py` enqueues every one of the
+    five with `journal.enqueue_outbox(..., job_type="staff_page_...")` and no
+    `payload=` argument, so `job.payload` is always `{}`. Every fact a page
+    needs — the amount, the case type, the second/late charge id, the failure
+    outcome — is read here from `garuda_orders` (current, mutable state) and
+    `garuda_order_journal` (the immutable event that triggered THIS job).
+    """
+
+    #: The `job_type` this instance was registered under — used only for
+    #: log lines, so a subclass never has to repeat its own name in every
+    #: log call.
+    job_type: str = ""
+
+    def __init__(self, pool: asyncpg.Pool, sender: TelegramStaffPageSender) -> None:
+        self._pool = pool
+        self._sender = sender
+
+    async def __call__(self, job: OutboxJob) -> None:
+        facts = await self._load(job.order_id, job.journal_event_id)
+        if facts is None:
+            raise StaffPageOrderMissing(
+                f"order {job.order_id} not found for a queued {self.job_type} page"
+            )
+
+        if not self._should_page(facts):
+            logger.warning(
+                "outbox %s resolved WITHOUT paging: order %s late_case_open=%s — "
+                "the case behind this page was already closed",
+                self.job_type,
+                facts.order_id,
+                facts.late_case_open,
+            )
+            return
+
+        await self._sender.send(text=self._compose(facts))
+        # order id only — never the applicant, the address or the passport.
+        logger.info("outbox %s paged for order %s", self.job_type, facts.order_id)
+
+    def _should_page(self, facts: OrderAnomalyFacts) -> bool:  # pragma: no cover - overridden
+        raise NotImplementedError
+
+    def _compose(self, facts: OrderAnomalyFacts) -> str:  # pragma: no cover - overridden
+        raise NotImplementedError
+
+    async def _load(self, order_id: str, journal_event_id: str) -> OrderAnomalyFacts | None:
+        async with self._pool.acquire() as conn:
+            order_row = await conn.fetchrow(
+                """
+                SELECT order_id, case_type, price_idr, state,
+                       late_case_open, late_case_charge_id
+                  FROM garuda_orders
+                 WHERE order_id = $1
+                """,
+                order_id,
+            )
+            if order_row is None:
+                return None
+            event_row = await conn.fetchrow(
+                "SELECT detail FROM garuda_order_journal WHERE event_id = $1",
+                journal_event_id,
+            )
+        raw_detail = event_row["detail"] if event_row is not None else None
+        detail = json.loads(raw_detail) if isinstance(raw_detail, str) else (raw_detail or {})
+        return OrderAnomalyFacts(
+            order_id=order_row["order_id"],
+            case_type=order_row["case_type"],
+            price_idr=order_row["price_idr"],
+            state=order_row["state"],
+            late_case_open=order_row["late_case_open"],
+            late_case_charge_id=order_row["late_case_charge_id"],
+            detail=detail,
+        )
+
+    @staticmethod
+    def _tracker_link(order_id: str) -> str:
+        # Same tracker the customer email points to (`PaymentPaidEmailHandler.
+        # _body`) — there is no separate staff-only order surface in this
+        # codebase yet. If one is built, point this at it instead.
+        base = os.getenv(TRACKER_BASE_URL_ENV, DEFAULT_TRACKER_BASE_URL).rstrip("/")
+        return f"{base}/{order_id}"
+
+
+class StaffPageDuplicateChargeHandler(_StaffPageHandler):
+    """OP-08: a SECOND successful charge landed on an order already `paid`.
+
+    GUARD: `late_case_open`. `repository.py`'s OP-08 branch sets it TRUE the
+    same transaction this job is enqueued in; `resolveLateOrder` is the only
+    thing that ever sets it back to FALSE. If it is already FALSE by the time
+    this job drains, a human already closed the case (through this same page,
+    most plausibly) — paging again would be re-reporting a solved problem,
+    not lying, but still noise a human learns to ignore. RESOLVED, NOT SENT.
+
+    WHAT IS NOT ON THE ORDER ROW. Unlike OP-F04/OP-F05, the OP-08 branch never
+    writes `late_case_charge_id` — only `late_case_open`. The second charge id
+    lives ONLY in this event's journal `detail` (`second_charge_id`), which is
+    why `_StaffPageHandler._load` reads the journal at all.
+    """
+
+    job_type = "staff_page_duplicate_charge"
+
+    def _should_page(self, facts: OrderAnomalyFacts) -> bool:
+        return facts.late_case_open
+
+    def _compose(self, facts: OrderAnomalyFacts) -> str:
+        second_charge = str(facts.detail.get("second_charge_id") or "—")
+        return (
+            "DUPLICATE CHARGE\n\n"
+            f"Order: `{facts.order_id}`\n"
+            f"Case: {_escape_markdown(facts.case_type)}\n"
+            f"Amount already paid once: {_amount(facts.price_idr)}\n"
+            f"Second (duplicate) charge id: `{second_charge}`\n\n"
+            "A second successful payment landed on an order already marked "
+            "paid. Refund the duplicate charge, then close via resolveLateOrder.\n\n"
+            f"Order: {self._tracker_link(facts.order_id)}"
+        )
+
+
+class StaffPageLatePaidAfterRefundHandler(_StaffPageHandler):
+    """OP-F04: a `paid` webhook arrived for an order that had already moved to
+    `refunded` (a late Xendit delivery racing a refund, most plausibly).
+
+    GUARD: `late_case_open`, same reasoning as duplicate-charge — the case
+    is opened by this same transaction and closed only by `resolveLateOrder`.
+    If already closed, RESOLVED, NOT SENT.
+
+    `late_case_charge_id` is used from the ORDER ROW, not the journal detail
+    — `repository.py`'s OP-F04 branch writes it there specifically because it
+    is NOT `provider_charge_id` (which, on a refunded order, still names the
+    ORIGINAL already-refunded charge). Reading the order row keeps this page
+    and `resolveLateOrder`'s refund path pointed at the exact same id.
+    """
+
+    job_type = "staff_page_late_paid_after_refund"
+
+    def _should_page(self, facts: OrderAnomalyFacts) -> bool:
+        return facts.late_case_open
+
+    def _compose(self, facts: OrderAnomalyFacts) -> str:
+        charge_id = facts.late_case_charge_id or "—"
+        return (
+            "LATE PAYMENT AFTER REFUND\n\n"
+            f"Order: `{facts.order_id}`\n"
+            f"Case: {_escape_markdown(facts.case_type)}\n"
+            f"Amount: {_amount(facts.price_idr)}\n"
+            f"Late charge id: `{charge_id}`\n\n"
+            "This order was already refunded when a payment for it succeeded. "
+            "The customer paid for something already refunded — refund this "
+            "late charge too, then close via resolveLateOrder.\n\n"
+            f"Order: {self._tracker_link(facts.order_id)}"
+        )
+
+
+class StaffPageLatePaidAfterTerminalHandler(_StaffPageHandler):
+    """OP-F05: a `paid` webhook arrived for an order already `failed` or
+    `expired` — the customer completed a checkout the system had already
+    given up on.
+
+    GUARD: `late_case_open`, identical reasoning to the two handlers above.
+    """
+
+    job_type = "staff_page_late_paid_after_terminal"
+
+    def _should_page(self, facts: OrderAnomalyFacts) -> bool:
+        return facts.late_case_open
+
+    def _compose(self, facts: OrderAnomalyFacts) -> str:
+        charge_id = facts.late_case_charge_id or "—"
+        return (
+            "LATE PAYMENT AFTER TERMINAL STATE\n\n"
+            f"Order: `{facts.order_id}`\n"
+            f"Case: {_escape_markdown(facts.case_type)}\n"
+            f"Order state: {_escape_markdown(facts.state)}\n"
+            f"Amount: {_amount(facts.price_idr)}\n"
+            f"Late charge id: `{charge_id}`\n\n"
+            "This order was already failed/expired when a payment for it "
+            "succeeded. The customer paid for a checkout the system had "
+            "already given up on — decide whether to honour it or refund via "
+            "resolveLateOrder.\n\n"
+            f"Order: {self._tracker_link(facts.order_id)}"
+        )
+
+
+class StaffPagePaymentFailureHandler(_StaffPageHandler):
+    """OP-03: `repository.py` pages only when `event.failure.should_page` is
+    true (a subset of failures worth a human's attention, decided upstream in
+    `handle_failure_event` — not this handler's call to second-guess).
+
+    NO GUARD — always pages. `handle_failure_event` only fires for an order in
+    `awaiting_payment`, moves it to `failed`, and nothing in this repository
+    ever moves an order OUT of `failed` again (the DB trigger
+    `guard_garuda_order_state_transition` forbids every transition out of a
+    terminal state; a late `paid` webhook for a `failed` order takes the
+    SEPARATE `staff_page_late_paid_after_terminal` path and never touches
+    `state`). There is no "already resolved" reading of this state to guard
+    against — the order cannot have moved on.
+    """
+
+    job_type = "staff_page_payment_failure"
+
+    def _should_page(self, facts: OrderAnomalyFacts) -> bool:
+        return True
+
+    def _compose(self, facts: OrderAnomalyFacts) -> str:
+        outcome = _escape_markdown(str(facts.detail.get("outcome") or "—"))
+        customer_action = _escape_markdown(str(facts.detail.get("customer_action") or "—"))
+        return (
+            "PAYMENT FAILURE\n\n"
+            f"Order: `{facts.order_id}`\n"
+            f"Case: {_escape_markdown(facts.case_type)}\n"
+            f"Amount: {_amount(facts.price_idr)}\n"
+            f"Outcome: {outcome}\n"
+            f"Customer action: {customer_action}\n\n"
+            "This failure was flagged as worth a human look.\n\n"
+            f"Order: {self._tracker_link(facts.order_id)}"
+        )
+
+
+class StaffPageRefundOutOfOrderHandler(_StaffPageHandler):
+    """OP-05: a refund event arrived for an order still `awaiting_payment` —
+    a refund with no successful charge behind it on our side.
+
+    NO GUARD — always pages. `handle_refund_event`'s OP-05 branch does NOT set
+    `late_case_open` (unlike OP-08/OP-F04/OP-F05): there is no charge on this
+    order to refund, so `resolveLateOrder`'s refund path has nothing to do
+    here and never touches this case. The order moves to `refunded`, which
+    `guard_garuda_order_state_transition` treats as a dead end (no transition
+    out of `refunded` is ever permitted), so there is nothing for this page to
+    have gone stale against.
+    """
+
+    job_type = "staff_page_refund_out_of_order"
+
+    def _should_page(self, facts: OrderAnomalyFacts) -> bool:
+        return True
+
+    def _compose(self, facts: OrderAnomalyFacts) -> str:
+        refund_id = str(facts.detail.get("refund_id") or "—")
+        return (
+            "REFUND OUT OF ORDER\n\n"
+            f"Order: `{facts.order_id}`\n"
+            f"Case: {_escape_markdown(facts.case_type)}\n"
+            f"Amount: {_amount(facts.price_idr)}\n"
+            f"Refund id: `{refund_id}`\n\n"
+            "A refund was issued for an order that was still awaiting "
+            "payment — there was no successful charge on our side to refund. "
+            "Reconcile with the provider before treating this order as closed.\n\n"
+            f"Order: {self._tracker_link(facts.order_id)}"
+        )
+
+
+def build_handlers(
+    pool: asyncpg.Pool,
+    sender: BrevoEmailSender,
+    staff_page_sender: TelegramStaffPageSender | None = None,
+) -> dict[str, object]:
     """The registry `drain_once` consumes.
 
-    Three job types are routed: `payment_paid_email` (what the customer sees),
-    `practice_release` (what the team sees) and `portal_invite` (how the
-    customer gets IN). All three are enqueued by the SAME transaction in
+    Three job types are always routed: `payment_paid_email` (what the customer
+    sees), `practice_release` (what the team sees) and `portal_invite` (how
+    the customer gets IN). All three are enqueued by the SAME transaction in
     `repository.py` when a payment is confirmed, and routing only the first is
     what produced a paying customer with a confirmation email and no work item.
 
@@ -512,13 +902,20 @@ def build_handlers(pool: asyncpg.Pool, sender: BrevoEmailSender) -> dict[str, ob
     invites an import cycle through the router package. Binding it here, inside
     the function, keeps the dependency at call time where it is harmless.
 
+    THE FIVE `staff_page_*` JOB TYPES ARE ROUTED ONLY WHEN `staff_page_sender`
+    IS GIVEN. It defaults to `None` so every existing caller of this function
+    — including the exact-set assertion in `test_build_handlers_routes_
+    practice_release` — keeps working unchanged. Pass a `TelegramStaffPageSender`
+    (e.g. from `_run_garuda_outbox_scheduler` in `main_api.py`, reusing the
+    SAME injected `httpx.AsyncClient` the email sender already owns) to arm
+    them.
+
     Every other job_type the repository enqueues — `refund_email`,
-    `payment_failed_email`, `checkout_ready_email`, `payment_expired_email` and
-    the five `staff_page_*` — deliberately has NO entry, so the consumer
-    reports them as `unroutable` and logs them by name rather than pretending
-    they were delivered. That is the intended state, not an oversight: an
-    unrouted job keeps its full attempt budget and is picked up unharmed when
-    its handler is written.
+    `payment_failed_email`, `checkout_ready_email` and `payment_expired_email`
+    — deliberately has NO entry, so the consumer reports them as `unroutable`
+    and logs them by name rather than pretending they were delivered. That is
+    the intended state, not an oversight: an unrouted job keeps its full
+    attempt budget and is picked up unharmed when its handler is written.
     """
 
     from backend.app.core.config import settings
@@ -528,7 +925,7 @@ def build_handlers(pool: asyncpg.Pool, sender: BrevoEmailSender) -> dict[str, ob
         order_snapshots=PostgresOrderSnapshotProvider(pool),
         crm_writer=PostgresCrmWriter(pool),
     )
-    return {
+    handlers: dict[str, object] = {
         "payment_paid_email": PaymentPaidEmailHandler(pool, sender),
         "practice_release": PracticeReleaseHandler(pool, handoff),
         "portal_invite": PortalInviteHandler(
@@ -539,6 +936,27 @@ def build_handlers(pool: asyncpg.Pool, sender: BrevoEmailSender) -> dict[str, ob
             portal_base_url=settings.frontend_portal_url,
         ),
     }
+    if staff_page_sender is not None:
+        handlers.update(
+            {
+                "staff_page_duplicate_charge": StaffPageDuplicateChargeHandler(
+                    pool, staff_page_sender
+                ),
+                "staff_page_late_paid_after_refund": StaffPageLatePaidAfterRefundHandler(
+                    pool, staff_page_sender
+                ),
+                "staff_page_late_paid_after_terminal": StaffPageLatePaidAfterTerminalHandler(
+                    pool, staff_page_sender
+                ),
+                "staff_page_payment_failure": StaffPagePaymentFailureHandler(
+                    pool, staff_page_sender
+                ),
+                "staff_page_refund_out_of_order": StaffPageRefundOutOfOrderHandler(
+                    pool, staff_page_sender
+                ),
+            }
+        )
+    return handlers
 
 
 __all__ = [
@@ -546,6 +964,7 @@ __all__ = [
     "BrevoEmailSender",
     "CrmPracticeNotWrittenYet",
     "EmailSendFailed",
+    "OrderAnomalyFacts",
     "OrderEmailFacts",
     "PaymentPaidEmailHandler",
     "PortalInviteHandler",
@@ -553,5 +972,13 @@ __all__ = [
     "PortalProfileNotCreated",
     "PracticeNotMinted",
     "PracticeReleaseHandler",
+    "StaffPageDuplicateChargeHandler",
+    "StaffPageLatePaidAfterRefundHandler",
+    "StaffPageLatePaidAfterTerminalHandler",
+    "StaffPageOrderMissing",
+    "StaffPagePaymentFailureHandler",
+    "StaffPageRefundOutOfOrderHandler",
+    "StaffPageSendFailed",
+    "TelegramStaffPageSender",
     "build_handlers",
 ]

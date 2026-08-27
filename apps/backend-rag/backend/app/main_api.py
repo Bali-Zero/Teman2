@@ -171,6 +171,7 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
     from backend.services.garuda_orders.outbox_consumer import drain_once
     from backend.services.garuda_orders.outbox_handlers import (
         BrevoEmailSender,
+        TelegramStaffPageSender,
         build_handlers,
     )
 
@@ -178,7 +179,12 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
     pool = app.state.db_pool
     logger.info("✅ GARUDA outbox scheduler started (poll=%ss)", interval)
     async with httpx.AsyncClient(timeout=30.0) as client:
-        handlers = build_handlers(pool, BrevoEmailSender(client))
+        # Same injected client as the email sender (Golden Rule #10) — a
+        # Telegram POST is just another HTTPS call, no reason for a second
+        # long-lived client here.
+        handlers = build_handlers(
+            pool, BrevoEmailSender(client), TelegramStaffPageSender(client)
+        )
         while True:
             try:
                 async with pool.acquire() as conn:
