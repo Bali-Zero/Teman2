@@ -226,9 +226,14 @@ class TestHelperFunctions:
             endpoint.prefix for endpoint in PUBLIC_ENDPOINTS if endpoint.requires_route_auth
         }
         assert route_auth_prefixes == {
+            "/api/workspace-marketing/capabilities",
             "/api/workspace-marketing/news/pending",
             "/api/workspace-marketing/news/{item_id}",
+            "/api/workspace-marketing/news/{item_id}/editorial",
+            "/api/workspace-marketing/news/{item_id}/cover",
             "/api/workspace-marketing/news/{item_id}/publish",
+            "/api/workspace-marketing/news/{item_id}/publication-status",
+            "/api/workspace-marketing/news/{item_id}/confirm-live",
         }
         pending_entry = next(
             endpoint

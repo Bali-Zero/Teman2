@@ -71,6 +71,44 @@ async def test_workspace_backend_rejects_non_read_or_non_newsroom_endpoint() -> 
         )
     with pytest.raises(RuntimeError, match="endpoint is not allowed"):
         await workspace_backend.call("/api/clients", method="GET")
+    with pytest.raises(RuntimeError, match="endpoint is not allowed"):
+        await workspace_backend.call(
+            "/api/workspace-marketing/news/pending",
+            method="PUT",
+        )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("GET", "/api/workspace-marketing/capabilities"),
+        ("GET", "/api/workspace-marketing/news/news_1/publication-status"),
+        ("PUT", "/api/workspace-marketing/news/news_1/editorial"),
+        ("POST", "/api/workspace-marketing/news/news_1/cover"),
+        ("POST", "/api/workspace-marketing/news/news_1/confirm-live"),
+    ],
+)
+async def test_workspace_backend_allows_exact_editorial_actions(
+    monkeypatch,
+    method: str,
+    path: str,
+) -> None:
+    monkeypatch.setenv("NUZANTARA_WORKSPACE_MARKETING_API_KEY", "workspace-route-key")
+    request = httpx.Request(method, f"https://nuzantara-rag.fly.dev{path}")
+    response = httpx.Response(200, request=request, json={"success": True})
+
+    class FakeClient:
+        is_closed = False
+
+        async def request(self, **_kwargs):
+            return response
+
+    monkeypatch.setattr(workspace_backend, "_get_client", lambda: FakeClient())
+
+    result = await workspace_backend.call(path, method=method, json={})
+
+    assert result == {"success": True}
 
 
 @pytest.mark.asyncio
