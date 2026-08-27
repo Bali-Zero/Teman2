@@ -3,52 +3,72 @@
 Route decision + offer + wait + consume + finalize for ONE claimed
 ``wa_outbox`` row (spec
 research/operations/2026-08-19-bot-chatgpt-provider-broker-spec.md, section
-2.1). The leg runs INSIDE the worker's claim, before the Gemini generation
-call. ``attempt`` NEVER raises; it answers in exactly one of four shapes:
+2.1). The leg runs INSIDE the worker's claim. ``attempt`` NEVER raises; it
+answers in exactly one of four shapes:
 
   text        — a consumed, finalized completion: the worker sends it.
   stand_down  — drift verdict: the leg has ALREADY terminalized the row
                 atomically; the worker generates nothing.
   fall-off    — a CERTAIN pre-durable outcome (gates, load, build, offer
                 admission refusals, typed FAILED/DEADLINE waits, consume
-                lost, finalize DEFECT): the Gemini leg answers in the SAME
-                claim, consuming zero retry attempts.
+                lost, finalize DEFECT). Corrected 2026-08-27 (Zero:
+                "spegni gemini e collega chatgpt" — Gemini is retired from
+                this worker, full stop): this NO LONGER falls off to a
+                Gemini leg answering in the same claim — there is no
+                second generator to hand it to. The caller
+                (``wa_outbox_worker._process_claimed_row``) raises into
+                its OWN retry ladder instead, EXCEPT the two fall-off
+                reasons that are standing conditions in disguise
+                (``autoreply_disabled`` / ``no_customer_message`` — see
+                ``_CODEX_LEG_STANDING_REASONS`` there), which raise
+                ``SilentStandingCondition`` and notify nobody, exactly as
+                ``generate_bot_reply``'s own two silent exits always did.
   fail        — an UNCERTAIN outcome at or after a durable boundary
                 (``offer_uncertain`` / ``offer_contract_break`` /
                 ``wait_error`` / ``post_completion`` /
-                ``stand_down_fence_lost``): the worker raises into its
-                retry ladder — generating in THIS claim could run Gemini
-                beside a durable job or a completion whose drift was
-                never ruled out. The retry re-claims with a fresh thread
-                read; a durable offer answers it ``ALREADY_SPENT`` and the
-                Gemini leg answers from CURRENT context.
+                ``stand_down_fence_lost``): the worker raises into the
+                SAME retry ladder as fall-off above — as of the Gemini cut
+                there is no longer a distinct cost difference between the
+                two ("fall-off costs zero attempts, fail costs one") since
+                neither can hand off to a second generator anymore. The
+                retry re-claims with a fresh thread read; a durable offer
+                answers it ``ALREADY_SPENT`` (see #5093, this leg's retry
+                budget dependency) rather than a fresh generation.
 
 The codex leg runs IFF all of (spec 2.1 route decision):
   1. ``is_bot_autoreply_enabled()`` — the SAME ``WA_INBOX_BOT_AUTOREPLY``
-     kill switch the Gemini leg honors as its first statement. The leg
-     steps aside when it is off so ``generate_bot_reply`` raises its
-     ``BotStandingCondition`` exactly as today — the switch keeps ONE
-     owner and the codex route cannot out-live it.
+     kill switch ``generate_bot_reply`` honors as its first statement
+     (that function is retained for back-compat shape only — see
+     ``wa_outbox_worker``'s module docstring — but the flag semantics it
+     defines are still the ones this leg's caller mirrors via
+     ``SilentStandingCondition`` on ``autoreply_disabled``). The leg steps
+     aside when it is off so the caller raises the same silent standing
+     condition ``generate_bot_reply`` always raised for this case.
   2. ``WA_GENERATION_PROVIDER == "codex"`` — env, read live per claim;
-     absent -> Gemini. S2 ships dark.
+     absent means the caller raises a (non-silent) standing condition —
+     see ``wa_outbox_worker``'s ``provider_is_codex()`` check — never a
+     fall back to Gemini. S2 ships dark.
   3. The 24h customer-care window has >= 2 x T_exec of margin left — a row
      about to lose its send window never waits on a broker round-trip.
   4. The context package builds (``POST /api/wa-package/build``, the RAG
-     process owns the retriever); unbuildable -> Gemini.
+     process owns the retriever); unbuildable -> fall-off (retry ladder).
   5. ``offer_job`` returns OFFERED (a fresh job) or REATTACHED (a prior
      leg for this row is still alive) — admission lock, gauge liveness,
      breaker, depth and the wa_outbox fence are all checked inside the
-     offer transaction; every other outcome -> Gemini, including the
-     NAMED ``legs_exhausted`` (this row already spent its whole codex
-     retry budget — spec gradino 2/5).
+     offer transaction; every other outcome -> fall-off (retry ladder),
+     including the NAMED ``legs_exhausted`` (this row already spent its
+     whole codex retry budget — spec gradino 2/5), kept distinct in the
+     log/reason from the generic ``ALREADY_SPENT`` race fallback.
 
 A consumed completion is NEVER returned raw: it runs through
 ``finalize_wa_answer(provider="codex")`` — the SHARED post-generation
-pipeline both legs use (abstain policy from the FROZEN evidence, monologue
-leak, scaffold strip, channel formatting, size cap, pricing veto against
-the frozen package's price sources, secret-egress scan). A text DEFECT
-falls off to the Gemini leg, which regenerates and re-enters the same
-pipeline (spec 2.3 TEXT_DEFECT).
+pipeline both the codex leg and the (retained, not WA-reachable)
+``generate_bot_reply`` path use (abstain policy from the FROZEN evidence,
+monologue leak, scaffold strip, channel formatting, size cap, pricing veto
+against the frozen package's price sources, secret-egress scan). A text
+DEFECT falls off into the SAME retry ladder as any other fall-off above
+(spec 2.3 TEXT_DEFECT) — it no longer regenerates via Gemini in the same
+claim.
 
 Connection discipline: this module NEVER touches the worker's claim
 connection — every DB statement runs on a connection acquired from the
@@ -138,7 +158,9 @@ def _canary_tokens() -> tuple[str, ...]:
 
 
 def provider_is_codex() -> bool:
-    """Env-read live on every claim; absent/anything-else -> Gemini leg."""
+    """Env-read live on every claim; absent/anything-else -> the caller
+    raises a (non-silent) standing condition — never a Gemini fallback,
+    retired 2026-08-27 (Zero: "spegni gemini e collega chatgpt")."""
     return os.getenv("WA_GENERATION_PROVIDER", "").strip().lower() == "codex"
 
 
@@ -162,8 +184,12 @@ def _window_margin_ok(thread: Any, *, margin_s: float) -> bool:
 class CodexLegResult:
     """Exactly one of four shapes: text (send it), stand_down (abort the
     row, do NOT generate), fail (worker raises -> retry ladder, nothing
-    may be generated in THIS claim), or none of those (fall off to the
-    Gemini leg in the same claim)."""
+    may be generated in THIS claim), or none of those (fall off — as of
+    the 2026-08-27 Gemini cut this ALSO raises into the worker's retry
+    ladder, except the two standing-condition reasons in
+    ``wa_outbox_worker._CODEX_LEG_STANDING_REASONS``, which raise
+    ``SilentStandingCondition`` and notify nobody — never a second
+    generator in the same claim)."""
 
     text: str | None = None
     stand_down: bool = False
@@ -200,8 +226,7 @@ async def attempt(
         )
     except Exception as exc:  # any escape = fall off, never the retry ladder
         logger.warning(
-            "wa_codex_leg: internal error, falling off to Gemini "
-            "(outbox=%s): %s",
+            "wa_codex_leg: internal error, falling off (outbox=%s): %s",
             outbox_id,
             type(exc).__name__,
         )
@@ -219,9 +244,13 @@ async def _attempt(
     thread: Any,
 ) -> CodexLegResult:
     if not is_bot_autoreply_enabled():
-        # The Gemini leg raises BotStandingCondition for this as its FIRST
-        # statement; the route steps aside so that owner still says so —
-        # a provider switch must never out-rank the kill switch.
+        # generate_bot_reply (retained for back-compat shape, not
+        # WA-reachable — see wa_outbox_worker's module docstring) raises
+        # BotStandingCondition for this as its FIRST statement; the route
+        # steps aside so the SAME reason surfaces here — the worker turns
+        # it into SilentStandingCondition (notifies nobody, exactly as
+        # generate_bot_reply's own silent exit always did). A provider
+        # switch must never out-rank the kill switch.
         return CodexLegResult(reason="autoreply_disabled")
 
     margin_s = 2.0 * wa_broker.deadline_seconds()
@@ -230,8 +259,10 @@ async def _attempt(
 
     query, history = await _load_thread_context(pool, thread_id)
     if not query:
-        # The Gemini leg raises BotStandingCondition for this; the ROUTE
-        # decision just steps aside and lets it say so.
+        # generate_bot_reply raises BotStandingCondition for this too; the
+        # ROUTE decision just steps aside and lets the same reason surface
+        # — the worker turns it into SilentStandingCondition, same as
+        # autoreply_disabled above.
         return CodexLegResult(reason="no_customer_message")
 
     epoch = int(thread["handling_version"])
@@ -395,9 +426,9 @@ async def _attempt(
         return CodexLegResult(fail=f"offer_uncertain:{type(release_exc).__name__}")
     if offer.job_id is None:
         # OFFERED/REATTACHED without an id is a broken transport contract
-        # over a possibly-durable job — falling off would run Gemini
-        # beside it with no way to ever wait/consume/discard (Codex r4
-        # finding 1).
+        # over a possibly-durable job — an ordinary fall-off has no way to
+        # ever wait/consume/discard it (Codex r4 finding 1), so this is
+        # classified `fail` (retry ladder), never treated as recoverable.
         logger.error(
             "wa_codex_leg: %s without job_id (outbox=%s)",
             offer.outcome.value,
@@ -465,13 +496,15 @@ async def _attempt(
     # Post-completion section — FAIL-CLOSED. A completion now exists; if
     # the drift verification (or the discard/consume it commands) breaks,
     # this claim may neither serve nor regenerate: classifying such a
-    # failure as an ordinary fall-off would let the Gemini leg answer from
-    # the pre-drift thread snapshot with the drift check silently skipped.
-    # ``fail`` sends the worker down its retry ladder instead — the retry
-    # re-claims with a fresh thread read, and the spent offer routes it to
-    # Gemini on CURRENT context. The unconsumed completion is reaped by
-    # the dead-consumer grace (its ``completed_at`` anchor is guaranteed
-    # by migration 274).
+    # failure as an ordinary fall-off risks answering from the pre-drift
+    # thread snapshot with the drift check silently skipped. ``fail``
+    # sends the worker down its retry ladder instead — the retry re-claims
+    # with a fresh thread read, and the spent offer answers it
+    # ``ALREADY_SPENT`` (see #5093) on the NEXT codex-leg attempt against
+    # CURRENT context, rather than any generator re-answering blind from
+    # this stale one. The unconsumed completion is reaped by the
+    # dead-consumer grace (its ``completed_at`` anchor is guaranteed by
+    # migration 274).
     try:
         # Drift check (spec 2.3), BEFORE consuming: a takeover — or a
         # takeover+release, which moves handling_version without leaving
@@ -622,12 +655,12 @@ async def _attempt(
         canary_tokens=_canary_tokens(),
     )
     if result.outcome is FinalizeOutcome.DEFECT or not result.text.strip():
-        # TEXT_DEFECT (spec 2.3): a different generator can legitimately
-        # cure a defective text — fall off so the Gemini leg regenerates
-        # and re-enters the same pipeline. The blank-text guard is
-        # defensive: SEND promises non-empty text, and a blank slipping
-        # through would otherwise cascade into a Gemini generation AFTER
-        # a consumed completion.
+        # TEXT_DEFECT (spec 2.3): fall off into the worker's retry ladder
+        # so a LATER codex-leg attempt can regenerate and re-enter the
+        # same pipeline (no second generator to hand this off to since the
+        # 2026-08-27 Gemini cut). The blank-text guard is defensive: SEND
+        # promises non-empty text, and a blank slipping through would
+        # otherwise be sent to the client as an empty message.
         logger.info(
             "wa_codex_leg: finalize rejected completion (outbox=%s job=%s "
             "reason=%s)",

@@ -146,7 +146,39 @@ WHAT IT VALIDATES (an Evidence Pack YAML, default path evidence/pack.yml):
                         cautiously over-declares `gear: 2` on a Gear-1-
                         shaped diff owes a `lanes:` block post-flip.
 
-  9. evidence root path deprecation (S12/C6 follow-through) — the fixed
+  9. seat rules by path class (E3/R8-R11, 2026-08-26 seat-rules program)
+                        — phased rules, each a NOTICE before SEAT_RULES_
+                        ENFORCEMENT_DATE (2026-09-02) and a violation
+                        on/after, each honoring one shared, ALWAYS-
+                        reported escape (`seat_override: <non-empty
+                        reason>`, mirroring rule 7's `gear_override`).
+                        Two ship here; two more (R11 cheap-seat floor,
+                        R9 Gear-3 council) land in a follow-up PR on the
+                        same module/phasing — not documented as live
+                        until their own code does (a doctrine describing
+                        a state that does not exist is worse than none):
+                          (b) R8 ground-truth lane — a diff touching a
+                              ground-truth path (backend KB, visa_engine,
+                              a KBLI dataset, an official pricing table,
+                              research/regulatory, or a mouth claim page
+                              for visa/KBLI/tax/zoning/property) must
+                              declare a lane {role: ground_truth, seat,
+                              nb, query_hash} — `ground_truth` is a new
+                              VALID_LANE_ROLES member so it coexists with
+                              rule 8's own lane-shape check.
+                          (c) R10 PII-local seat — a diff touching a PII
+                              path (document intake, CRM/CRM-guardian,
+                              the WhatsApp channel, the yield-optimizer
+                              pitch gate) requires every lane's seat to
+                              start with `ollama-`, unless the pack also
+                              carries `cloud_ok: <DPA ref>` AND
+                              `pii_scan: clean` (reads that existing
+                              field, never re-derives PII status — same
+                              boundary as rule 3).
+                        Both are skipped, same convention as rules 6/7,
+                        when there is no --changed-files-file.
+
+  10. evidence root path deprecation (S12/C6 follow-through) — the fixed
                         root path `evidence/pack.yml` is deprecated. Two
                         Gear>=2 PRs writing that one path can never coexist
                         cleanly in the merge queue: whichever merges first
@@ -326,7 +358,14 @@ LANES_NON_ANTHROPIC_ENFORCEMENT_DATE = datetime.date(2026, 8, 24)
 #: own guilt/innocence lives in the dedicated `check_lanes_build_seat_diversity`
 #: cases, which pin `today` on both sides of the flip and are unaffected by this.
 _SELFTEST_LANES = [{"lane": "D1", "role": "build", "seat": "codex"}]
-VALID_LANE_ROLES = ("build", "review", "read")
+VALID_LANE_ROLES = ("build", "review", "read", "ground_truth")
+#: "ground_truth" added 2026-08-26 (E3/R8, seat-rules program) so a pack can
+#: carry a {role: ground_truth, seat: nlm, ...} lane on a KB/visa_engine/
+#: KBLI/pricing/regulatory-claim path WITHOUT tripping rule 8 (D3)'s own
+#: "role must be one of VALID_LANE_ROLES" shape check on the same `lanes:`
+#: list — the two rules share the list, not fight it. A ground_truth-role
+#: entry is never counted toward D3's build-lane seat-diversity math (only
+#: role=="build" is), so this extension changes no existing rule-8 verdict.
 
 # Rule 9 (evidence root path deprecation, S12/C6 follow-through) — same
 # "flip date lives in code, not a ledger" reasoning as
@@ -1048,6 +1087,280 @@ def check_lanes_build_seat_diversity(
     return [message], None
 
 
+# ---------------------------------------------------------------------------
+# Seat rules by path class (E3/R8-R11 — 2026-08-26 seat-rules program, spec
+# §8 in 2026-08-26-PIANO-SPEC-receptor-live.md). Two rules ship here (R8
+# ground-truth, R10 PII-local); two more (R11 cheap-seat floor, R9 Gear-3
+# council) land in a follow-up PR on this same module, reusing the shared
+# plumbing below — split per the mandate's own PR-size contract (4 rules
+# in one module exceeded ~400 net lines together). All four reuse rule 8
+# (D3)'s own NOTICE-before/FAIL-on-or-after shape against their OWN flip
+# date (this program never fired before, so it gets its own clock rather
+# than borrowing D3's — same "a ledger line nobody reads cannot gate a
+# merge" reasoning as LANES_NON_ANTHROPIC_ENFORCEMENT_DATE). Each also
+# honors ONE shared, ALWAYS-reported escape — a pack-level `seat_override:
+# <non-empty reason>` — mirroring rule 7's `gear_override`: a deliberate,
+# named human call, never a silent pass, reported so X3 (ASSEMBLY-LINE.md
+# gate-lifecycle ledger) can count how often it fires.
+# ---------------------------------------------------------------------------
+SEAT_RULES_ENFORCEMENT_DATE = datetime.date(2026, 9, 2)
+
+#: R8 — ground-truth path classes: backend KB, visa_engine (any depth —
+#: services/scripts/tests alike, fnmatch's `*` already crosses `/`), the
+#: real on-disk KBLI datasets (grepped 2026-08-26: data/source_documents/
+#: and apps/mouth/data/, both casings — kbli-gold-all.json is lowercase,
+#: KBLI_2025_FINAL_CLEAN.json is not), PricingTool's own official-prices
+#: JSON (apps/backend-rag/backend/services/pricing/pricing_service.py:29
+#: `_PRICING_FILENAME`) plus its apps/mouth mirror, research/regulatory,
+#: and the mouth "claim pages" — public content asserting a SPECIFIC
+#: regulated fact (visa eligibility/cost, a KBLI code, a tax deadline, a
+#: zoning/property rule) as opposed to account/UI/marketing surfaces
+#: (login, chat, portal, blog, terms, ...), which make no such claim.
+GROUND_TRUTH_PATH_PATTERNS: tuple[str, ...] = (
+    "apps/backend-rag/backend/kb/*",
+    "*/visa_engine/*",
+    "data/source_documents/KBLI*.json",
+    "data/kbli-filiera/*",
+    "apps/mouth/data/KBLI*.json",
+    "apps/mouth/data/kbli*.json",
+    "apps/backend-rag/backend/data/bali_zero_official_prices_*.json",
+    "apps/mouth/data/bali-zero-prices.json",
+    "research/regulatory/*",
+    "apps/mouth/src/app/visa/*",
+    "apps/mouth/src/app/(visa-oracle)/*",
+    "apps/mouth/src/app/kbli/*",
+    "apps/mouth/src/app/kbli-explorer/*",
+    "apps/mouth/src/app/taxes/*",
+    "apps/mouth/src/app/(tax-calendar)/*",
+    "apps/mouth/src/app/zoning/*",
+    "apps/mouth/src/app/property/*",
+)
+
+#: R8/R10 shared guard — `fnmatch`'s `*` crosses `/`, so every
+#: `.../<claim-page-dir>/*` pattern above also matches that page's own test
+#: scaffolding (found live 2026-08-26 by the R8/R10 refuter round 1: the
+#: `apps/mouth/src/app/kbli-explorer/*` pattern matches
+#: `apps/mouth/src/app/kbli-explorer/hooks/__tests__/useTypewriter.test.ts`,
+#: an innocuous UI test with no regulatory claim of its own). A test file
+#: makes no public claim by itself — the page it tests does, and the page
+#: file is still covered directly. Family #3 (guard-over-match) doctrine:
+#: narrow the trigger to entities/intent, never leave a bare glob to decide.
+_TEST_PATH_MARKERS: tuple[str, ...] = ("__tests__/", "/tests/", ".test.", ".spec.")
+
+#: R8 only (folded into the same exclusion helper — harmless for R10's
+#: Python-only patterns, which never look like a `.tsx` filename) — the
+#: exact, Next.js-App-Router-reserved special filenames that are ALWAYS
+#: framework scaffolding, never page content, by the framework's own
+#: naming contract (found live 2026-08-26 by refuter round 2:
+#: `.../kbli-explorer/loading.tsx` and `.../error.tsx` also matched the
+#: claim-page glob, and neither can ever render a regulatory claim — Next
+#: invokes them only for the loading-skeleton / error-boundary slot).
+#: Deliberately NOT excluded: `layout.tsx` (can carry a persistent
+#: claim-adjacent banner) and every component/hook under the page
+#: directory (KBLIInspector.tsx, RiskGauge.tsx, ComparisonModal.tsx etc.
+#: DO render the substantive claim data) — narrowing further would trade
+#: this over-match for a worse under-match, the failure mode family #3
+#: warns against preferring one direction's cure over the other's.
+_NEXTJS_FRAMEWORK_BASENAMES: frozenset[str] = frozenset({
+    "loading.tsx", "error.tsx", "not-found.tsx", "global-error.tsx",
+})
+
+
+def _is_test_path(path: str) -> bool:
+    """True for test scaffolding nested under a matched directory (see
+    _TEST_PATH_MARKERS) or a reserved Next.js framework special file (see
+    _NEXTJS_FRAMEWORK_BASENAMES) — both make no claim/carry no PII of
+    their own, whatever directory they sit in. Matches on the lowercased
+    full path (path separators are always `/` in git-diff-style
+    changed-files lists) plus a `test_`-prefixed basename (pytest
+    convention). Name kept as `_is_test_path` (not renamed to something
+    broader) since the Next.js exception is a second, narrow addition to
+    the same "this file itself carries no claim" exclusion, not a second
+    concept."""
+    lowered = path.lower()
+    if any(marker in lowered for marker in _TEST_PATH_MARKERS):
+        return True
+    basename = lowered.rsplit("/", 1)[-1]
+    return basename.startswith("test_") or basename in _NEXTJS_FRAMEWORK_BASENAMES
+
+#: R8 — the lane role this rule requires; a member of VALID_LANE_ROLES
+#: (above) so it coexists with rule 8's own lane-shape check on the same
+#: `lanes:` list rather than fighting it.
+GROUND_TRUTH_LANE_ROLE = "ground_truth"
+GROUND_TRUTH_LANE_REQUIRED_FIELDS = ("seat", "nb", "query_hash")
+
+#: R10 — PII path classes: document intake, CRM + CRM-guardian client-data
+#: services, the WhatsApp channel, and the yield-optimizer pitch gate
+#: (grepped 2026-08-26: scripts/yield_optimizer_pitch_gate.py is the real
+#: script — there is no bare yield_optimizer.py).
+#: The `services/*` layer above is where the PII-bearing logic lives, but
+#: the FastAPI `app/routers/*` layer that exposes it over HTTP was missing
+#: entirely (found live 2026-08-26 by the same refuter round:
+#: `app/routers/crm_clients.py` and `app/routers/whatsapp_conversations.py`
+#: — both read/serve client phone numbers and names — matched neither
+#: pattern). Router filenames verified on disk against the real tree
+#: (`ls apps/backend-rag/backend/app/routers/`), not guessed.
+#: NOTE (refuter round 2, 2026-08-26): the router layer does NOT include a
+#: standalone `guardian.py` entry — that file is Core Guardian (decision
+#: audit trail + risk scores, `app/routers/guardian.py`'s own docstring),
+#: an unrelated system-health/monitoring API, not the CRM-Guardian
+#: feature. The real CRM-Guardian router is `crm_guardian_drive.py`,
+#: already covered by the `crm_*.py` glob below — adding bare
+#: `guardian.py` would have been a false-positive AND redundant.
+PII_PATH_PATTERNS: tuple[str, ...] = (
+    "apps/backend-rag/backend/services/intake/*",
+    "apps/backend-rag/backend/services/crm/*",
+    "apps/backend-rag/backend/services/crm_guardian/*",
+    "apps/backend-rag/backend/channels/whatsapp/*",
+    "apps/backend-rag/backend/app/routers/crm_*.py",
+    "apps/backend-rag/backend/app/routers/admin_crm_kg.py",
+    "apps/backend-rag/backend/app/routers/admin_pii.py",
+    "apps/backend-rag/backend/app/routers/intake_*.py",
+    "apps/backend-rag/backend/app/routers/whatsapp_*.py",
+    "scripts/yield_optimizer_pitch_gate.py",
+)
+
+
+def _any_path_matches(changed_files: list[str], patterns: tuple[str, ...]) -> bool:
+    """True if ANY changed file matches ANY pattern — the trigger shape for
+    R8/R10 (a single hit is enough to require the lane/seat discipline).
+    Test scaffolding is excluded first (see _is_test_path) — a test asserts
+    behavior, it does not itself carry a regulatory claim or client PII."""
+    return any(
+        fnmatch.fnmatchcase(f, pat)
+        for f in changed_files
+        if not _is_test_path(f)
+        for pat in patterns
+    )
+
+
+def _seat_rule_verdict(
+    rule: str,
+    is_violation: bool,
+    message: str,
+    pack: dict[str, Any],
+    today: datetime.date | None,
+) -> tuple[list[str], str | None]:
+    """Shared phasing+override plumbing for the seat rules (R8-R11 — R8/
+    R10 land here, R11/R9 reuse this same helper in a follow-up PR): not
+    a violation -> clean; else an explicit pack-level `seat_override:
+    <non-empty reason>` wins outright (reported, never failed, and
+    reported even after the flip — an override is a human call, not a
+    rollout clock); else NOTICE before SEAT_RULES_ENFORCEMENT_DATE, hard
+    violation on/after. `today` is overridable for tests, same convention
+    as check_lanes_build_seat_diversity's own `today` parameter."""
+    if not is_violation:
+        return [], None
+    override = pack.get("seat_override")
+    if isinstance(override, str) and override.strip():
+        return [], f"{rule} (overridden): {message} — {override.strip()}"
+    if today is None:
+        today = datetime.datetime.now(datetime.timezone.utc).date()
+    if today < SEAT_RULES_ENFORCEMENT_DATE:
+        return [], f"{rule}: {message}"
+    return [f"{rule}: {message}"], None
+
+
+def check_ground_truth_lane(
+    pack: dict[str, Any],
+    changed_files: list[str] | None,
+    today: datetime.date | None = None,
+) -> tuple[list[str], str | None]:
+    """R8: a diff touching a GROUND_TRUTH_PATH_PATTERNS hit must declare a
+    lane {role: ground_truth, seat, nb, query_hash} (all three non-empty
+    strings — the same "complete or it's not evidence" shape as rule 1's
+    receipts). GUILT: hit, no such lane, no override -> phased violation.
+    INNOCENCE: no hit (skipped outright); hit with a well-formed
+    ground_truth lane; hit with `seat_override`."""
+    if not changed_files or not _any_path_matches(changed_files, GROUND_TRUTH_PATH_PATTERNS):
+        return [], None
+    lanes = pack.get("lanes")
+    has_ground_truth_lane = False
+    if isinstance(lanes, list):
+        for entry in lanes:
+            if not isinstance(entry, dict):
+                continue
+            if str(entry.get("role", "")).strip().lower() != GROUND_TRUTH_LANE_ROLE:
+                continue
+            if all(
+                isinstance(entry.get(f), str) and entry.get(f).strip()
+                for f in GROUND_TRUTH_LANE_REQUIRED_FIELDS
+            ):
+                has_ground_truth_lane = True
+                break
+    message = (
+        "diff touches a ground-truth path (backend KB / visa_engine / KBLI "
+        "dataset / official pricing table / research-regulatory / a mouth "
+        "claim page) but declares no well-formed {role: ground_truth, "
+        "seat, nb, query_hash} lane"
+    )
+    return _seat_rule_verdict(
+        "ground_truth", not has_ground_truth_lane, message, pack, today
+    )
+
+
+def check_pii_local_seat(
+    pack: dict[str, Any],
+    changed_files: list[str] | None,
+    today: datetime.date | None = None,
+) -> tuple[list[str], str | None]:
+    """R10: a diff touching a PII_PATH_PATTERNS hit requires EVERY lane's
+    seat (any role — build/review/read/ground_truth alike) to start with
+    `ollama-`, unless the pack ALSO carries a non-empty `cloud_ok: <DPA
+    ref>` AND `pii_scan: clean` (reads that existing rule-3 field rather
+    than re-deriving PII status — same boundary the module docstring
+    states for rule 3). GUILT: hit, >=1 non-`ollama-` seat, no cloud_ok+
+    clean pair -> phased violation naming the offending seats. Also GUILT
+    (refuter finding #7, 2026-08-27): hit, `lanes` absent/empty, no
+    cloud_ok+clean pair -> phased violation — a pack with no lanes at all
+    cannot demonstrate ANY seat was local, and D3/rule-8 already lets a
+    Gear-1 pack omit `lanes` entirely, so without this branch a Gear-1
+    diff could touch CRM/WhatsApp/intake code, declare no lanes, and get
+    zero R10 signal (not even a NOTICE) — a silent bypass, not a coverage
+    hole. Mirrors how check_ground_truth_lane already treats a missing/
+    non-list `lanes` as "no matching lane found" by construction; R10 had
+    the asymmetric shortcut because `offending` only ever grew from an
+    actual iteration. INNOCENCE: no hit; every seat is `ollama-*`;
+    cloud_ok+clean is present (still the escape even with zero lanes: a
+    pack can assert "reviewed clean, DPA on file" without a lane list).
+    Known, documented simplification: a lane whose job is not LLM
+    inference over PII (e.g. an `nlm` ground-truth query, or the
+    orchestrating `session` itself) is not exempted by role — a pack
+    mixing a PII hit with a ground-truth hit in the same diff needs
+    `cloud_ok` for its `nlm` lane too. Not fixed here: the spec names no
+    role carve-out, and this rule ships NOTICE-only."""
+    if not changed_files or not _any_path_matches(changed_files, PII_PATH_PATTERNS):
+        return [], None
+    if pack.get("pii_scan") == "clean":
+        cloud_ok = pack.get("cloud_ok")
+        if isinstance(cloud_ok, str) and cloud_ok.strip():
+            return [], None
+    lanes = pack.get("lanes")
+    if not isinstance(lanes, list) or not lanes:
+        message = (
+            "diff touches a PII path (intake / CRM / CRM-guardian / "
+            "WhatsApp channel / yield-optimizer) but declares no `lanes` "
+            "at all — cannot confirm any seat that touched it was local, "
+            "and no `cloud_ok: <DPA ref>` + `pii_scan: clean` pair either"
+        )
+        return _seat_rule_verdict("pii_local", True, message, pack, today)
+    offending: list[str] = []
+    for entry in lanes:
+        if not isinstance(entry, dict):
+            continue
+        seat = entry.get("seat")
+        if not isinstance(seat, str) or not seat.strip():
+            continue
+        if not seat.strip().lower().startswith("ollama-"):
+            offending.append(seat.strip())
+    message = (
+        "diff touches a PII path (intake / CRM / CRM-guardian / WhatsApp "
+        f"channel / yield-optimizer) — non-local seat(s) {offending} "
+        "declared, and no `cloud_ok: <DPA ref>` + `pii_scan: clean` pair"
+    )
+    return _seat_rule_verdict("pii_local", bool(offending), message, pack, today)
+
+
 # --------------------------------------------------------------------------
 # R11/R9 — cheap-seat floor for mechanical diffs + Gear-3 council_run.
 #
@@ -1435,6 +1748,19 @@ def lint(
     if lane_notice:
         print(f"evidence_pack_lint: NOTICE — {lane_notice}", file=sys.stderr)
 
+    # E3/R8-R11 seat rules (2026-08-26 program) — one call site. R8/R10
+    # land here; R11 (seat_floor) and R9 (council_run) join this same
+    # tuple in a follow-up PR (split per the mandate's PR-size contract),
+    # reusing _seat_rule_verdict already defined above. Each is
+    # independently phased+overridable, see their own docstrings.
+    for _viol, _notice in (
+        check_ground_truth_lane(pack, changed_files),
+        check_pii_local_seat(pack, changed_files),
+    ):
+        violations += _viol
+        if _notice:
+            print(f"evidence_pack_lint: NOTICE — {_notice}", file=sys.stderr)
+
     root_violations, root_notice = check_pack_not_at_deprecated_root(source_path, repo_root)
     violations += root_violations
     if root_notice:
@@ -1461,7 +1787,8 @@ def lint(
 
     if changed_files is None:
         print("evidence_pack_lint: NOTICE — no --changed-files-file supplied, "
-              "gear-floor check (rule 6) skipped for this run", file=sys.stderr)
+              "gear-floor/ceiling/ground-truth/pii-local checks "
+              "(rules 6, 7, 9b-c) skipped for this run", file=sys.stderr)
     else:
         # Ceiling (rule 7 — see compute_ceiling() docstring): only the BARE
         # "ceiling: " prefix is a violation. Any parenthetical-qualified
