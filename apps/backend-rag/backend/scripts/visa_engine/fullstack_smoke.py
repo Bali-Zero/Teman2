@@ -53,6 +53,33 @@ DEFAULT_ADMIN_DSN = "postgresql://nuzantara@127.0.0.1:5432/postgres"
 DATABASE_PREFIX = "visa_oracle_smoke_"
 DATABASE_NAME_RE = re.compile(r"^visa_oracle_smoke_[a-z0-9_]{8,80}$")
 LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+# ORDER IS LOAD-BEARING: `_migration_paths()` walks this tuple literally and does
+# NOT re-sort it, so a dependency must appear before the migration that needs it.
+# Keep it ascending and the dependency edges hold for free.
+#
+# 261/276/281/289 added 2026-08-27. The earlier omission was NOT an oversight:
+# the full migrations_v2 chain is not standalone-applicable to an empty database
+# (108/132 and others assume the legacy baseline that real CI builds separately
+# via scripts/ci_bootstrap_schema.py), so this tuple is a deliberately curated
+# self-contained Visa Engine subset. Skipping 258-261 was correct — right up to
+# the moment the retention readers began querying `policy_scope`.
+#
+# That column is created by 281, which ALTERs `garuda_voa_checks` (created by
+# 261). With neither applied, the disposable smoke DB lacked the column and the
+# evaluate path raised `UndefinedColumnError` — raw PG: `column "policy_scope"
+# does not exist`. The failure was invisible because this job is advisory AND was
+# already red on main for an unrelated reason.
+#
+# 261 (standalone CREATE TABLE) and 276 (comment-only) are harmless additions to
+# the self-contained set — test_garuda_voa_retention.py already applies exactly
+# this extension against a real throwaway database, which is the empirical proof
+# that the sequence holds.
+#
+# NOTE: three files now encode "which migrations build a Visa Engine test DB"
+# (this one, test_garuda_voa_retention.py, test_retention_binders_scope_to_
+# visa_decision.py). They are independent by necessity, not by accident — but
+# that means a new retention dependency has to be added to each. Grep
+# MIGRATION_NUMBERS before assuming one copy is authoritative.
 MIGRATION_NUMBERS = (
     250,
     251,
@@ -62,6 +89,7 @@ MIGRATION_NUMBERS = (
     255,
     256,
     257,
+    261,
     262,
     263,
     264,
@@ -69,6 +97,9 @@ MIGRATION_NUMBERS = (
     266,
     267,
     268,
+    276,
+    281,
+    289,
 )
 TEST_RULE_PACK_ID = "8a57d996-c7f2-5abc-9c31-4128a29ed848"
 
