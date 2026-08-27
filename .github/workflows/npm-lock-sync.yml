@@ -32,7 +32,6 @@ name: npm lock sync
 
 on:
   pull_request:
-  merge_group:
   push:
     branches: [main]
 

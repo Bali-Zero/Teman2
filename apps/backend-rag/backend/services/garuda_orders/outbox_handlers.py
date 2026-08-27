@@ -243,16 +243,19 @@ class PracticeReleaseHandler:
     beside it was routed. Superscar #2 exactly: every part built, the last one
     never armed.
 
-    STATED PLAINLY, BECAUSE THE OBVIOUS READING OF THE ABOVE IS WRONG: this does
-    NOT yet mean a real customer gets a CRM practice. Measured across the whole
-    repository — every `.py`, `.sh`, `.plist`, `.yml`, `.toml` — the ONLY
-    references to `drain_once` / `build_handlers` are this module,
-    `outbox_consumer.py` and their tests. No cron, no LaunchAgent, no worker and
-    no router invokes the drain, so `garuda_order_outbox` is not consumed in
-    production AT ALL, and the confirmation email is as undelivered as the
-    practice was. Registering this handler removes the last MISSING PART; it
-    does not START the machine. Arming a scheduler is a separate, deliberate
-    act, and `is_consumer_enabled()` fails closed so that act stays explicit.
+    STATED PLAINLY, BECAUSE THE OBVIOUS READING OF THE ABOVE IS WRONG — and
+    corrected 2026-08-27, because the previous version of this paragraph had
+    itself gone stale and misled a repo-wide ground pass that day: registering
+    this handler removes the last MISSING PART; it does not START the machine.
+    Until #5035 (63bfa19ec) nothing in the repository invoked the drain at all.
+    Since #5035 the machine EXISTS: the api lifespan defines
+    `_run_garuda_outbox_scheduler` (`backend/app/main_api.py`) and spawns it
+    with `asyncio.create_task` at startup — but it ships DARK.
+    `is_consumer_enabled()` fails closed on anything but the exact string
+    "true" in `GARUDA_OUTBOX_CONSUMER_ENABLED`, so with the variable unset the
+    scheduler exits disarmed and `garuda_order_outbox` is still not consumed in
+    production. Arming is a separate, deliberate act — one env var, set on
+    purpose — and that explicitness is the design, not an accident.
 
     IDENTITY, AND WHY IT IS NOT THE ORDER ID. `garuda_practices.
     source_paid_journal_event_id` is UNIQUE and holds the very

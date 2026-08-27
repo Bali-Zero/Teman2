@@ -22,11 +22,19 @@ SCRIPTS = REPO / "scripts"
 
 sys.path.insert(0, str(SCRIPTS))
 from evidence_pack_lint import (  # noqa: E402
+    EVIDENCE_ROOT_DEPRECATION_DATE,
+    FLOOR_SOURCE_BOTH,
+    FLOOR_SOURCE_NONE,
+    FLOOR_SOURCE_PATH,
+    FLOOR_SOURCE_SIZE,
     LANES_NON_ANTHROPIC_ENFORCEMENT_DATE,
     R9_R11_ENFORCEMENT_DATE,
     SEAT_RULES_ENFORCEMENT_DATE,
+    SIZE_GEAR2_THRESHOLD,
+    SIZE_GEAR3_THRESHOLD,
     _is_anthropic_seat,
     _seat_rule_verdict,
+    _size_term_net_lines,
     check_brief_ref_exists,
     check_cheap_seat_floor,
     check_council_run_gear3,
@@ -34,12 +42,14 @@ from evidence_pack_lint import (  # noqa: E402
     check_gear_floor,
     check_ground_truth_lane,
     check_lanes_build_seat_diversity,
+    check_pack_not_at_deprecated_root,
     check_pii_local_seat,
     check_pii_scan_clean,
     check_receipts_have_provenance,
     check_size_budget,
     compute_ceiling,
     compute_floor,
+    compute_floor_source,
     compute_seat_floor,
     effort_for_gear,
     lint,
@@ -322,6 +332,26 @@ def test_gear_floor_guilt_float_type_rejected():
     assert "int" in violations[0]
 
 
+def test_gear_floor_guilt_size_term_below_floor_rejected():
+    """GUILT (S1): brief declares gear 1 on a diff that touches no hot-zone
+    path but whose numstat clears SIZE_GEAR3_THRESHOLD — the size term
+    alone must reject it, same as a hot-zone hit would."""
+    changed = ["apps/some/plain/module.py"]
+    numstat = f"{SIZE_GEAR3_THRESHOLD}\t0\tapps/some/plain/module.py\n"
+    violations = check_gear_floor({"gear": 1}, changed, numstat)
+    assert violations
+    assert "floor" in violations[0]
+
+
+def test_gear_floor_innocence_size_term_below_threshold_passes():
+    """INNOCENCE (S1): the same non-hot-zone diff with a numstat below
+    SIZE_GEAR2_THRESHOLD passes at gear 1 — the size term does not fire
+    below its own threshold."""
+    changed = ["apps/some/plain/module.py"]
+    numstat = f"{SIZE_GEAR2_THRESHOLD - 1}\t0\tapps/some/plain/module.py\n"
+    assert check_gear_floor({"gear": 1}, changed, numstat) == []
+
+
 # --------------------------------------------------------- compute_ceiling (pure fn)
 
 
@@ -568,6 +598,213 @@ def test_compute_floor_innocence_ordinary_files_return_one():
     assert compute_floor([]) == 1
 
 
+# --------------------------------------------------------- compute_floor size term (S1)
+
+
+def test_compute_floor_guilt_large_plain_diff_floors_three():
+    """GUILT: a diff net >= SIZE_GEAR3_THRESHOLD on ordinary (non-hot-zone)
+    paths floors at Gear 3 on size alone."""
+    numstat = f"{SIZE_GEAR3_THRESHOLD}\t0\tapps/some/plain/module.py\n"
+    assert compute_floor(["apps/some/plain/module.py"], numstat) == 3
+
+
+def test_compute_floor_guilt_medium_plain_diff_floors_two():
+    """GUILT: a diff net >= SIZE_GEAR2_THRESHOLD but below the Gear-3
+    threshold raises the floor to (at least) Gear 2 — the one path by which
+    compute_floor can return 2 at all (the path term alone never does)."""
+    numstat = f"{SIZE_GEAR2_THRESHOLD}\t0\tapps/some/plain/module.py\n"
+    assert compute_floor(["apps/some/plain/module.py"], numstat) == 2
+
+
+def test_compute_floor_innocence_small_diff_stays_one():
+    """INNOCENCE: a diff net below SIZE_GEAR2_THRESHOLD on ordinary paths
+    stays at the path-only floor (1) — the size term does not fire."""
+    numstat = f"{SIZE_GEAR2_THRESHOLD - 1}\t0\tdocs/notes.md\n"
+    assert compute_floor(["docs/notes.md"], numstat) == 1
+
+
+def test_compute_floor_innocence_large_fixtures_only_diff_unchanged():
+    """INNOCENCE: a large diff confined to excluded paths (fixtures/) does
+    NOT inflate the size term — floor stays at whatever the path term alone
+    gives, even though the raw numstat would clear SIZE_GEAR3_THRESHOLD by
+    a wide margin."""
+    numstat = f"{SIZE_GEAR3_THRESHOLD * 2}\t0\ttests/fixtures/huge.json\n"
+    assert compute_floor(["tests/fixtures/huge.json"], numstat) == 1
+
+
+def test_compute_floor_fallback_numstat_none_is_path_only():
+    """FALLBACK: omitting numstat entirely (the default) reproduces the
+    exact pre-S1 path-only behavior, even for a changed-file set that WOULD
+    floor at 3 on size if a numstat were supplied — compute_floor has no
+    way to know the diff is large without one, and must not guess."""
+    assert compute_floor(["apps/some/plain/module.py"]) == 1
+    assert compute_floor(["apps/some/plain/module.py"], numstat=None) == 1
+
+
+def test_compute_floor_hotzone_hit_wins_over_small_size():
+    """Path term and size term are independent — a hot-zone hit still
+    floors at 3 even when the accompanying numstat is tiny."""
+    numstat = "3\t1\tfly.toml\n"
+    assert compute_floor(["fly.toml"], numstat) == 3
+
+
+# --------------------------------------------------------- compute_floor_source (S2)
+# S2, 2026-08-27 (Gear-3 gate review round 2, PR #5049): compute_floor_source()
+# exposes WHY the floor is what it is, so harness-floor.yml's Step 5b can grant
+# the SIZE_GEAR2_ENFORCEMENT_DATE grace period ONLY to a floor==2 diff that got
+# there via the size term. See _compute_floor_with_source()'s docstring for the
+# full contract and the "both means both INDEPENDENTLY sufficient, not merely
+# both present" tie-break rule the two subtle cases below exercise.
+
+
+def test_compute_floor_source_innocence_hotzone_only_is_path():
+    """INNOCENCE: a hot-zone hit with no numstat at all -> source == 'path'."""
+    assert compute_floor_source(["fly.toml"], None) == FLOOR_SOURCE_PATH
+    assert compute_floor(["fly.toml"], None) == 3
+
+
+def test_compute_floor_source_innocence_size_gear3_only_is_size():
+    """INNOCENCE: no hot-zone hit, size term alone clears SIZE_GEAR3_THRESHOLD
+    -> source == 'size', floor == 3 (source distinguishes THIS from a hot-zone
+    floor==3, both read floor==3 but only one is 'path')."""
+    numstat = f"{SIZE_GEAR3_THRESHOLD}\t0\tapps/some/plain/module.py\n"
+    assert compute_floor_source(["apps/some/plain/module.py"], numstat) == FLOOR_SOURCE_SIZE
+    assert compute_floor(["apps/some/plain/module.py"], numstat) == 3
+
+
+def test_compute_floor_source_innocence_size_gear2_only_is_size():
+    """INNOCENCE: no hot-zone hit, size term clears SIZE_GEAR2_THRESHOLD but
+    NOT SIZE_GEAR3_THRESHOLD -> source == 'size', floor == 2. This is the
+    ONLY way floor==2 is reachable — see the invariant test below."""
+    numstat = f"{SIZE_GEAR2_THRESHOLD}\t0\tapps/some/plain/module.py\n"
+    assert compute_floor_source(["apps/some/plain/module.py"], numstat) == FLOOR_SOURCE_SIZE
+    assert compute_floor(["apps/some/plain/module.py"], numstat) == 2
+
+
+def test_compute_floor_source_innocence_neither_term_is_none():
+    """INNOCENCE: no hot-zone hit, numstat=None entirely -> source == 'none',
+    floor == 1 (mirrors compute_floor()'s own fallback behavior)."""
+    assert compute_floor_source(["docs/notes.md"], None) == FLOOR_SOURCE_NONE
+    assert compute_floor(["docs/notes.md"], None) == 1
+
+
+def test_compute_floor_source_innocence_neither_term_below_thresholds_is_none():
+    """INNOCENCE: no hot-zone hit, numstat present but below even
+    SIZE_GEAR2_THRESHOLD -> source == 'none', not 'size' (the size term never
+    fired at all, it isn't that it fired weakly)."""
+    numstat = f"{SIZE_GEAR2_THRESHOLD - 1}\t0\tdocs/notes.md\n"
+    assert compute_floor_source(["docs/notes.md"], numstat) == FLOOR_SOURCE_NONE
+    assert compute_floor(["docs/notes.md"], numstat) == 1
+
+
+def test_compute_floor_source_guilt_both_terms_independently_sufficient_is_both():
+    """GUILT-shaped (the subtle case): a hot-zone hit AND churn that
+    INDEPENDENTLY clears SIZE_GEAR3_THRESHOLD -> source == 'both'. Removing
+    either term alone would still leave the diff at floor 3 on the other."""
+    numstat = f"{SIZE_GEAR3_THRESHOLD}\t0\tfly.toml\n"
+    assert compute_floor_source(["fly.toml"], numstat) == FLOOR_SOURCE_BOTH
+    assert compute_floor(["fly.toml"], numstat) == 3
+
+
+def test_compute_floor_source_guilt_hotzone_plus_gear2_only_size_is_path_not_both():
+    """GUILT-shaped (the tie-break rule, the one non-obvious part of the
+    'both' semantics): a hot-zone hit alongside churn that clears
+    SIZE_GEAR2_THRESHOLD but NOT SIZE_GEAR3_THRESHOLD is source == 'path',
+    NOT 'both' — the path term is doing all the real work here (floor stays
+    3 with or without the size signal, which never independently cleared the
+    Gear-3 bar on its own). 'both' means both terms are independently
+    SUFFICIENT for floor==3, not merely both present."""
+    numstat = f"{SIZE_GEAR2_THRESHOLD}\t0\tfly.toml\n"
+    assert compute_floor_source(["fly.toml"], numstat) == FLOOR_SOURCE_PATH
+    assert compute_floor(["fly.toml"], numstat) == 3
+
+
+def test_compute_floor_source_invariant_floor_two_implies_source_size():
+    """PROVABLE INVARIANT (see _compute_floor_with_source()'s docstring):
+    floor==2 is reachable ONLY via source=='size' — swept across a small
+    grid of hot-zone/no-hot-zone x below/at/above-each-threshold cases,
+    every single one that lands on floor==2 must report source=='size', and
+    none of the hot-zone cases ever lands on floor==2 at all (they jump
+    straight to 3, per compute_floor()'s own docstring)."""
+    hotzone_files = ["fly.toml"]
+    plain_files = ["apps/some/plain/module.py"]
+    churns = [0, SIZE_GEAR2_THRESHOLD - 1, SIZE_GEAR2_THRESHOLD, SIZE_GEAR3_THRESHOLD - 1, SIZE_GEAR3_THRESHOLD]
+    for files in (hotzone_files, plain_files):
+        for churn in churns:
+            numstat = f"{churn}\t0\t{files[0]}\n"
+            floor = compute_floor(files, numstat)
+            source = compute_floor_source(files, numstat)
+            if floor == 2:
+                assert source == FLOOR_SOURCE_SIZE, (files, churn, floor, source)
+            if files is hotzone_files:
+                assert floor != 2, (files, churn, floor, source)  # hot-zone never lands on exactly 2
+
+
+def test_size_term_net_lines_sums_churn_not_global_net():
+    """The size term's Σ(added+deleted) CHURN does NOT cancel across files
+    the way sum_numstat()'s plain global net would — two files that
+    individually net +10000/-10000 sum to 20000 here, not 0."""
+    numstat = "10000\t0\ta/big_add.py\n0\t10000\tb/big_del.py\n"
+    assert _size_term_net_lines(numstat) == 20000
+    assert sum_numstat(numstat) == 0  # the pre-existing global-net function, for contrast
+
+
+def test_size_term_net_lines_balanced_same_file_rewrite_does_not_cancel():
+    """REGRESSION (adversarial review, codex-sol, PR #5049, finding 2 HIGH):
+    an earlier cut of _size_term_net_lines() summed the PER-FILE ABSOLUTE
+    net (`abs(added-deleted)`), which a balanced in-place rewrite of a
+    SINGLE file could cancel to (near) zero — 2000 added + 2000 deleted in
+    the same file netted to 0, hiding a full-file rewrite from the floor
+    entirely. CHURN (added+deleted) cannot cancel this way: it must report
+    4000, not 0."""
+    numstat = "2000\t2000\tapps/x/rewritten_module.py\n"
+    assert _size_term_net_lines(numstat) == 4000
+
+
+def test_size_term_net_lines_excludes_generated_lockfile_minified_and_binary():
+    numstat = (
+        "9999\t0\tpackage-lock.json\n"
+        "9999\t0\tapps/x/generated/schema.py\n"
+        "9999\t0\tassets/hero.png\n"
+        "9999\t0\tbundle.min.js\n"
+        "-\t-\tapps/x/binary.bin\n"
+        "50\t10\tapps/x/real_code.py\n"
+    )
+    assert _size_term_net_lines(numstat) == 60  # only real_code.py counts (churn: 50+10)
+
+
+def test_size_term_net_lines_excludes_vendored_directories():
+    """A real vendored tree exists in this repo (vendor/evoskill) — a
+    routine vendor bump must not false-floor at Gear 2/3 on churn volume
+    alone (adversarial review, codex-sol, PR #5049, finding 4 MEDIUM)."""
+    numstat = (
+        "9999\t9999\tvendor/evoskill/lib.js\n"
+        "9999\t9999\tnode_modules/left-pad/index.js\n"
+        "9999\t9999\tapps/web/dist/bundle.js\n"
+        "50\t10\tapps/x/real_code.py\n"
+    )
+    assert _size_term_net_lines(numstat) == 60  # only real_code.py counts (churn: 50+10)
+
+
+def test_size_term_net_lines_named_lockfile_excluded_but_other_dot_lock_counts():
+    """The lockfile exclusion is a NAMED list of well-known package-manager
+    lockfiles, deliberately NOT a blanket `*.lock` suffix match (adversarial
+    review, codex-sol, PR #5049, finding 4 MEDIUM): this repo's own
+    coordination primitives use `.lock`-suffixed names for real hand-written
+    state (CLAUDE.md's `agent_lock:<resource>` pattern) — a blanket suffix
+    match would exempt a diff touching real lock-coordination code."""
+    numstat = "9999\t0\tpackage-lock.json\n50\t10\tinfra/coordination/custom.lock\n"
+    assert _size_term_net_lines(numstat) == 60  # custom.lock counts (churn: 50+10), package-lock.json excluded
+
+
+def test_size_term_net_lines_innocence_not_fixtures_directory_not_excluded():
+    """INNOCENCE (guard-over-match, superscar #3): a directory whose name
+    merely CONTAINS "fixtures" as a substring (not an exact path segment)
+    is NOT excluded — only a genuine `fixtures/` component is."""
+    numstat = "100\t0\tapps/x/not_fixtures/real.py\n"
+    assert _size_term_net_lines(numstat) == 100
+
+
 # --------------------------------------------------------- end-to-end lint()
 
 
@@ -637,6 +874,59 @@ def test_print_floor_cli_matches_compute_floor(tmp_path):
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert int(proc.stdout.strip()) == compute_floor(["fly.toml", "docs/readme.md"]) == 3
+
+
+def test_print_floor_cli_honors_numstat_file_size_term(tmp_path):
+    """--print-floor also accepts --numstat-file (S1) and must agree with
+    compute_floor() called directly with the same numstat text — the size
+    term is reachable through the CLI, not just the Python API."""
+    changed = tmp_path / "changed.txt"
+    changed.write_text("apps/some/plain/module.py\n", encoding="utf-8")
+    numstat_text = f"{SIZE_GEAR3_THRESHOLD}\t0\tapps/some/plain/module.py\n"
+    numstat_file = tmp_path / "numstat.txt"
+    numstat_file.write_text(numstat_text, encoding="utf-8")
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPTS / "evidence_pack_lint.py"),
+         "--print-floor", "--changed-files-file", str(changed),
+         "--numstat-file", str(numstat_file)],
+        capture_output=True, text=True, timeout=30, cwd=str(REPO),
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert int(proc.stdout.strip()) == compute_floor(
+        ["apps/some/plain/module.py"], numstat_text
+    ) == 3
+
+
+def test_print_floor_source_cli_matches_compute_floor_source(tmp_path):
+    """--print-floor-source (S2) and the pure compute_floor_source() function
+    must agree — harness-floor.yml's Step 5b consumes this exact CLI mode to
+    decide whether the SIZE_GEAR2_ENFORCEMENT_DATE grace period applies."""
+    changed = tmp_path / "changed.txt"
+    changed.write_text("apps/some/plain/module.py\n", encoding="utf-8")
+    numstat_text = f"{SIZE_GEAR2_THRESHOLD}\t0\tapps/some/plain/module.py\n"
+    numstat_file = tmp_path / "numstat.txt"
+    numstat_file.write_text(numstat_text, encoding="utf-8")
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPTS / "evidence_pack_lint.py"),
+         "--print-floor-source", "--changed-files-file", str(changed),
+         "--numstat-file", str(numstat_file)],
+        capture_output=True, text=True, timeout=30, cwd=str(REPO),
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert proc.stdout.strip() == compute_floor_source(
+        ["apps/some/plain/module.py"], numstat_text
+    ) == FLOOR_SOURCE_SIZE
+
+
+def test_print_floor_source_cli_requires_changed_files_file(tmp_path):
+    """GUILT: --print-floor-source without --changed-files-file is a usage
+    error (exit 3), mirroring --print-floor's own guard — never silently
+    prints a source computed from an empty/undefined changed-files set."""
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPTS / "evidence_pack_lint.py"), "--print-floor-source"],
+        capture_output=True, text=True, timeout=30, cwd=str(REPO),
+    )
+    assert proc.returncode == 3, proc.stdout + proc.stderr
 
 
 def test_effort_for_cli_matches_effort_for_gear():
@@ -1747,3 +2037,203 @@ def test_council_run_end_to_end_through_lint(tmp_repo):
     else:
         assert rc == 1
         assert any("council_run" in v for v in viol)
+
+
+# ---- rule 9: check_pack_not_at_deprecated_root -----------------------------
+
+_ROOT_PRE_FLIP = EVIDENCE_ROOT_DEPRECATION_DATE - datetime.timedelta(days=1)
+_ROOT_POST_FLIP = EVIDENCE_ROOT_DEPRECATION_DATE
+
+
+def test_evidence_root_guilt_root_path_post_flip_rejected(tmp_path):
+    viol, notice = check_pack_not_at_deprecated_root(
+        "evidence/pack.yml", tmp_path, today=_ROOT_POST_FLIP
+    )
+    assert notice is None
+    assert any("evidence_root_deprecated" in v for v in viol)
+    assert any("evidence/pack.yml is deprecated" in v for v in viol)
+
+
+def test_evidence_root_guilt_absolute_root_path_post_flip_rejected(tmp_path):
+    """An absolute path resolving to repo_root/evidence/pack.yml is judged
+    the same as its repo-relative form — the resolution helper, not just a
+    literal-string match, must catch it."""
+    absolute = tmp_path / "evidence" / "pack.yml"
+    viol, notice = check_pack_not_at_deprecated_root(
+        str(absolute), tmp_path, today=_ROOT_POST_FLIP
+    )
+    assert notice is None
+    assert any("evidence_root_deprecated" in v for v in viol)
+
+
+def test_evidence_root_innocence_pre_flip_notice_not_fail(tmp_path):
+    viol, notice = check_pack_not_at_deprecated_root(
+        "evidence/pack.yml", tmp_path, today=_ROOT_PRE_FLIP
+    )
+    assert viol == []
+    assert notice is not None
+    assert "evidence_root_deprecated" in notice
+
+
+def test_evidence_root_innocence_per_task_dir_clean_both_sides():
+    """A per-task directory pack is clean on EITHER side of the flip date —
+    this rule only ever judges the literal root path, never the per-task
+    shape (that belongs to scripts/ci/evidence_paths.py)."""
+    for today in (_ROOT_PRE_FLIP, _ROOT_POST_FLIP):
+        viol, notice = check_pack_not_at_deprecated_root(
+            "evidence/2026-08/ops-evidence-pertask-a0adff64/pack.yml",
+            Path("/repo"),
+            today=today,
+        )
+        assert viol == [] and notice is None
+
+
+def test_evidence_root_innocence_no_source_path_skipped(tmp_path):
+    """source_path=None (no --source-path supplied) skips the rule outright
+    — same 'skip, don't guess' shape as rules 6/7 without
+    --changed-files-file, never presumed guilt or innocence."""
+    viol, notice = check_pack_not_at_deprecated_root(None, tmp_path, today=_ROOT_POST_FLIP)
+    assert viol == [] and notice is None
+
+
+def test_evidence_root_innocence_empty_source_path_skipped(tmp_path):
+    """source_path="" is treated the same as None — an empty string is
+    'no info', not a path that resolves to '.' and slips past the literal
+    comparison as clean-by-accident (regression: agy cross-family review,
+    2026-08-27, on this PR's own diff)."""
+    viol, notice = check_pack_not_at_deprecated_root("", tmp_path, today=_ROOT_POST_FLIP)
+    assert viol == [] and notice is None
+
+
+def test_evidence_root_guilt_dot_segments_normalize_to_root_post_flip(tmp_path):
+    """A relative source_path with dot-segments that textually collapses to
+    the literal root path IS caught — not left to slip through unnormalized
+    (regression: agy cross-family review, 2026-08-27, on this PR's own
+    diff: 'evidence/x/../pack.yml' never equalled 'evidence/pack.yml' by
+    bare string comparison even though it names the exact same file)."""
+    viol, notice = check_pack_not_at_deprecated_root(
+        "evidence/x/../pack.yml", tmp_path, today=_ROOT_POST_FLIP
+    )
+    assert notice is None
+    assert any("evidence_root_deprecated" in v for v in viol)
+
+
+def test_evidence_root_innocence_dot_segments_normalize_to_per_task_clean():
+    """The same normalization must not FALSE-POSITIVE a per-task path whose
+    dot-segments happen to collapse to itself — only a collapse to the
+    literal root path is guilty."""
+    viol, notice = check_pack_not_at_deprecated_root(
+        "evidence/./2026-08/some-task-a0adff64/pack.yml",
+        Path("/repo"),
+        today=_ROOT_POST_FLIP,
+    )
+    assert viol == [] and notice is None
+
+
+# ---- end-to-end: lint() wires rule 9 through --source-path -----------------
+
+
+def test_evidence_root_end_to_end_notice_pre_flip_does_not_fail(tmp_repo):
+    """End-to-end: lint() wires rule 9 through the public entry point's
+    `source_path` parameter, using the REAL current date (2026-08-27, before
+    EVIDENCE_ROOT_DEPRECATION_DATE) — lint() never threads a `today`
+    override through any phased check, matching rules 8/9/11's existing
+    convention, so this exercises the notice branch without pinning it."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack()
+    rc, viol = lint(
+        tmp_path / "evidence" / "pack.yml",
+        tmp_path,
+        None,
+        source_path="evidence/pack.yml",
+    )
+    if datetime.datetime.now(datetime.timezone.utc).date() < EVIDENCE_ROOT_DEPRECATION_DATE:
+        assert rc == 0
+        assert not any("evidence_root_deprecated" in v for v in viol)
+    else:
+        assert rc == 1
+        assert any("evidence_root_deprecated" in v for v in viol)
+
+
+def test_evidence_root_end_to_end_per_task_source_path_clean(tmp_repo):
+    """End-to-end innocence: a per-task --source-path never trips rule 9,
+    regardless of where lint() actually READ the staged pack from — this is
+    the CI staging shape (harness-floor.yml's Gear-3 step lints a copy
+    staged at the canonical evidence/pack.yml name, but passes the real
+    per-task PACK_PATH as --source-path)."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack()
+    rc, viol = lint(
+        tmp_path / "evidence" / "pack.yml",
+        tmp_path,
+        None,
+        source_path="evidence/2026-08/some-task-a0adff64/pack.yml",
+    )
+    assert rc == 0
+    assert not any("evidence_root_deprecated" in v for v in viol)
+
+
+def test_evidence_root_end_to_end_no_source_path_default_clean(tmp_repo):
+    """lint() called with no source_path at all (the pre-existing call
+    shape every other test in this file uses) never trips rule 9 — this is
+    the backward-compatibility guarantee: adding rule 9 must not change the
+    verdict of any caller that doesn't opt in via --source-path."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack()
+    rc, viol = lint(tmp_path / "evidence" / "pack.yml", tmp_path, None)
+    assert rc == 0
+    assert not any("evidence_root_deprecated" in v for v in viol)
+
+
+def test_evidence_root_cli_source_path_defaults_to_pack_path_argument(tmp_repo):
+    """CLI contract: with no --source-path flag, main() defaults source_path
+    to the PACK_PATH positional argument itself — the correct default for a
+    direct/local invocation, where the path you point the linter at IS the
+    real path. Exercised via subprocess so this pins the actual CLI wiring,
+    not just the Python-level default."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack()
+    result = subprocess.run(
+        [
+            sys.executable, str(SCRIPTS / "evidence_pack_lint.py"),
+            "evidence/pack.yml", "--repo-root", str(tmp_path), "--json",
+        ],
+        capture_output=True, text=True, timeout=30,
+    )
+    import json as _json
+
+    payload = _json.loads(result.stdout)
+    if datetime.datetime.now(datetime.timezone.utc).date() < EVIDENCE_ROOT_DEPRECATION_DATE:
+        assert payload["exit"] == 0
+    else:
+        assert payload["exit"] == 1
+        assert any("evidence_root_deprecated" in v for v in payload["violations"])
+
+
+def test_evidence_root_cli_explicit_source_path_overrides_default(tmp_repo):
+    """CLI contract: an explicit --source-path PER-TASK value overrides the
+    positional-argument default even though the positional PACK_PATH itself
+    is the root literal — this is exactly the CI staging shape (the staged
+    file always lives at the canonical evidence/pack.yml name, but
+    --source-path names the real per-task path)."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack()
+    result = subprocess.run(
+        [
+            sys.executable, str(SCRIPTS / "evidence_pack_lint.py"),
+            "evidence/pack.yml", "--repo-root", str(tmp_path),
+            "--source-path", "evidence/2026-08/some-task-a0adff64/pack.yml",
+            "--json",
+        ],
+        capture_output=True, text=True, timeout=30,
+    )
+    import json as _json
+
+    payload = _json.loads(result.stdout)
+    assert payload["exit"] == 0
+    assert not any("evidence_root_deprecated" in v for v in payload["violations"])

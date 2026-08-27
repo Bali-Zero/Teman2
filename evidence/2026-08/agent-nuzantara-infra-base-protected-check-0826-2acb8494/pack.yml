@@ -1,0 +1,368 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR #5050 (agent/nuzantara/infra/base-protected-check-0826 -> main) — S5
+  check-half per the 2026-08-26 retro's ADOPT table and
+  docs/factory/ASSEMBLY-LINE.md's "protect the integration branch" section.
+
+lanes:
+  - lane: base-protected-check-build
+    role: build
+    seat: claude-sonnet-5 (this session — implementer lane, CLAUDE.md §5 default)
+  - lane: base-protected-check-refuter
+    role: review
+    seat: codex (gpt-5.6-sol, high effort, read-only sandbox) — cross-family,
+      never the same seat as the build lane
+
+diff:
+  files: 6
+  net_lines: 1015
+  measured_at: 469569ae0
+  note: >-
+    Measured at the initial commit (469569ae0), before the refuter-driven fix
+    commit that follows. `git diff --no-renames --numstat $(git merge-base
+    origin/main HEAD) HEAD` cross-checked against `git diff --stat`'s own file
+    count (6) — they agree.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      Exactly 2 GitHub rulesets exist in Bali-Zero/Teman2, both scoped to
+      main/~DEFAULT_BRANCH, and NEITHER carries a required_status_checks
+      rule — main's real required checks live in classic branch protection,
+      not in any ruleset. This falsifies the original design's assumption
+      (read ruleset 19779175's own .rules to find the minimum contexts).
+    cmd: >-
+      gh api repos/Bali-Zero/Teman2/rulesets ;
+      gh api repos/Bali-Zero/Teman2/rulesets/19779175 ;
+      gh api repos/Bali-Zero/Teman2/rulesets/20608865 ;
+      gh api repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks
+    result: >-
+      2 rulesets (merge-queue-main id 19779175 -> refs/heads/main, rules=[merge_queue]
+      only; Copilot review for default branch id 20608865 -> ~DEFAULT_BRANCH,
+      rules=[deletion, non_fast_forward, copilot_code_review]). Classic branch
+      protection on main lists 27 required_status_checks contexts. Neither
+      ruleset's .rules contains a required_status_checks entry.
+    exit: 0
+    ts: 2026-08-27T00:20Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      The 5 pinned minimum-contexts strings in
+      infra/required.d/integration-branch-minimum-contexts.json are
+      byte-for-byte identical to 5 of the 27 real live required_status_checks
+      contexts (not re-typed from memory).
+    cmd: >-
+      python3 -c "import json,subprocess; live=set(json.loads(subprocess.run(['gh','api',
+      'repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks'],
+      capture_output=True,text=True,check=True).stdout)['contexts']);
+      pinned=json.load(open('infra/required.d/integration-branch-minimum-contexts.json'))['minimum_contexts'];
+      [print(repr(p), p in live) for p in pinned]"
+    result: "5/5 EXACT MATCH, including both em-dash ('—') strings."
+    exit: 0
+    ts: 2026-08-27T00:22Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      The deterministic gear floor recomputed from THIS PR's own changed-file
+      set is 3, matching the declared gear (`.github/workflows/hot-zone-pr-gate.yml`
+      is touched).
+    cmd: >-
+      git diff --no-renames --name-only $(git merge-base origin/main HEAD) HEAD >
+      L14-changed.txt && python3 scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file L14-changed.txt
+    result: "3"
+    exit: 0
+    ts: 2026-08-27T00:35Z
+    seat: session (Pro, implementer lane)
+
+  - claim: The modified workflow file passes actionlint.
+    cmd: actionlint .github/workflows/hot-zone-pr-gate.yml
+    result: >-
+      FIRST run (before fix): rejected the job's `permissions: administration: read`
+      — `administration` is not in actionlint's own list of grantable Actions
+      permission scopes at all (full list: actions, artifact-metadata,
+      attestations, checks, contents, deployments, discussions, id-token,
+      issues, models, packages, pages, pull-requests, repository-projects,
+      security-events, statuses). Removed the invalid line and re-ran: exit 0.
+    exit: 0
+    ts: 2026-08-27T00:41Z
+    seat: session (Pro, implementer lane)
+
+  - claim: check_base_protected.py's own test suite passes, including the four
+      fixtures the mandate specifies verbatim, across all three fix rounds
+      (refuter-driven, then a self-caught main() ordering bug).
+    cmd: apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_check_base_protected.py -q
+    result: "Before refuter fixes: 34 passed. After refuter fixes (fnmatch
+      path-boundary, refs/heads/main-literal-branch, remediation-command
+      default, +8 new guilt/innocence cases): 42 passed. After adding 1 more
+      guilt case (fetch_live_rulesets partial-failure) and strengthening the
+      default-branch CLI test to prove 'no network call' via monkeypatch: 1
+      FAILED (see next receipt — a real bug, not a flaky test). After the
+      main()-ordering fix: 43 passed, 0 failed."
+    exit: 0
+    ts: 2026-08-27T01:10Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      `main()` violated the module's OWN documented SCOPE invariant ("the
+      base==default-branch case always exits 0 without ever calling `gh api
+      rulesets`", docstring lines 54-57 verbatim) — it called
+      fetch_live_rulesets()/read --rulesets-json UNCONDITIONALLY before ever
+      checking whether the base was the default branch, so a PR into `main`
+      itself paid an avoidable API call and could go BLIND on a transient
+      `gh` failure for the one case that never needed the network at all.
+    cmd: >-
+      A test-authoring subagent (claude-sonnet-5, dispatched to add 2 more
+      guilt/innocence cases) strengthened
+      test_main_cli_exits_zero_for_the_default_branch_with_no_network_call to
+      monkeypatch `_gh` to raise if ever called, then ran
+      `apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_check_base_protected.py -q`; separately, after the
+      fix, `time python3 scripts/ci/check_base_protected.py --base-ref main
+      --repo Bali-Zero/Teman2 --default-branch main` against the REAL `gh`
+      binary (not a mock).
+    result: >-
+      Subagent's run: "1 failed, 42 passed" — `AssertionError: _gh() was
+      called for the default-branch base: ['api',
+      'repos/Bali-Zero/Teman2/rulesets']`, proving the claim false as shipped.
+      Fixed by hoisting the `normalize_ref(...) == default_branch` check in
+      `main()` to before the rulesets-fetch block, reusing `evaluate()`
+      verbatim (called with an empty rulesets list, which it never inspects
+      on this path) so the OK message keeps one source of truth. Re-ran:
+      43 passed, 0 failed. Real end-to-end confirmation against the live `gh`
+      CLI: `OK: base 'main' is the default branch...`, exit 0, wall time
+      0.049s total (a real `gh api` round-trip measured earlier in this same
+      session took several hundred ms+ — 0.049s is consistent with zero
+      network calls, not just the mocked test's say-so).
+    exit: 0
+    ts: 2026-08-27T01:25Z
+    seat: claude-sonnet-5 (test-authoring subagent) discovered; session (Pro,
+      implementer lane) fixed and independently re-verified against the real
+      `gh` binary
+
+  - claim: >-
+      `setup_merge_queue_ruleset.sh --branch-pattern 'feature/*'` (no --apply)
+      is genuinely read-only and prints a well-formed ruleset body with all
+      5 pinned contexts.
+    cmd: bash scripts/ci/setup_merge_queue_ruleset.sh --branch-pattern 'feature/*'
+    result: >-
+      Prints a POST body to repos/Bali-Zero/Teman2/rulesets with
+      conditions.ref_name.include=["refs/heads/feature/*"] and 5/5 pinned
+      contexts under a required_status_checks rule. No `gh api --method POST/PUT`
+      call executed (dry-run branch returns before reaching the mutating call).
+      Re-ran after the enforcement-default fix: body now shows "enforcement":
+      "active" (was "disabled" before the refuter caught the asymmetry).
+    exit: 0
+    ts: 2026-08-27T00:38Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      Cross-family adversarial review ran on the real PR diff (#5050), not a
+      draft or a synthetic sample.
+    cmd: >-
+      gh pr diff 5050 > L14-diff.txt ; cd scratchpad && codex exec --sandbox
+      read-only --skip-git-repo-check -m gpt-5.6-sol -c
+      model_reasoning_effort="high" "Critically review this CI check: ..." </dev/null
+    result: >-
+      exit 0, 1316-line transcript, non-empty structured verdict ("changes
+      requested", 9 numbered findings). No fallback to Kimi K3 needed.
+    exit: 0
+    ts: 2026-08-27T00:55Z
+    seat: session (Pro, implementer lane) — dispatching codex-gpt-5.6-sol
+
+  - claim: >-
+      Two of Codex's findings were independently re-verified against GitHub's
+      own documentation before being accepted, rather than trusted on
+      assertion (the refuter itself can hallucinate — superscar #6).
+    cmd: >-
+      WebFetch https://docs.github.com/.../managing-rulesets/creating-rulesets-for-a-repository
+      re: qa/* vs qa/foo/bar pattern semantics
+    result: >-
+      CONFIRMED verbatim: "qa/* will match all branches beginning with qa/ and
+      containing a single slash, but will not match qa/foo/bar" — Python's
+      fnmatch.fnmatchcase (the original implementation) does NOT have this
+      property; fixed via a hand-written FNM_PATHNAME-style translator,
+      verified against both of GitHub's own documented examples
+      (single-star and qa/**/*-style double-star) in the test suite.
+    exit: 0
+    ts: 2026-08-27T01:00Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      Whether the 5 pinned-context-producing workflows would fail to trigger
+      on a PR into a non-default base (the Codex-F12 trap
+      check_required_workflow_conformance.py exists to catch elsewhere in
+      this repo) was checked, not assumed.
+    cmd: >-
+      python3 -c "import yaml; [print(f, (yaml.safe_load(open('.github/workflows/'+f))
+      .get(True) or {}).get('pull_request')) for f in ['tests.yml','harness-floor.yml',
+      'adversarial-review-gate.yml','security.yml','actionlint.yml']]"
+    result: >-
+      0/5 carry a `branches:` restriction under `on.pull_request` — 3 have
+      `types: [opened, synchronize, reopened]` with no branch filter, 2 have a
+      bare `pull_request:` (same effective scope). All 5 fire on a PR into
+      feature/* exactly as into main.
+    exit: 0
+    ts: 2026-08-27T01:02Z
+    seat: session (Pro, implementer lane)
+
+dissent:
+  - seat: codex-gpt-5.6-sol (cross-family refuter, PR #5050 diff)
+    objection: >-
+      A single fnmatch `*` in `_pattern_matches` crosses `/`, so a ruleset
+      scoped to `refs/heads/feature/*` was falsely reported as covering a
+      nested branch `feature/a/b` — a false OK on a branch GitHub itself
+      would not apply that ruleset to.
+    status: CONFIRMED
+    note: >-
+      Re-verified against GitHub's own docs (qa/* does not match qa/foo/bar,
+      verbatim) before fixing. Replaced with a hand-written FNM_PATHNAME-style
+      translator; 3 new tests assert both of GitHub's own documented examples
+      plus the originally-reported false-positive case.
+
+  - seat: codex-gpt-5.6-sol (cross-family refuter, PR #5050 diff)
+    objection: >-
+      `normalize_ref` strips a `refs/heads/` prefix from ANY input containing
+      it, so a branch literally NAMED `refs/heads/main` (git permits slashes
+      in branch names) would be silently treated as the default branch and
+      exempted from every check.
+    status: CONFIRMED
+    note: >-
+      Fixed by removing the guess entirely: `normalize_ref`/`evaluate` now
+      take an explicit `is_full_ref` keyword the CALLER must assert (true only
+      for merge_group's base_ref, which GitHub always populates as a full
+      ref); the CI job passes `PR_BASE_REF` and `MERGE_GROUP_BASE_REF` as two
+      separate fields (never OR-merged) so the decision is made by whichever
+      GHA context field is actually populated, never guessed downstream from
+      string content. 3 new tests cover both directions.
+
+  - seat: codex-gpt-5.6-sol (cross-family refuter, PR #5050 diff)
+    objection: >-
+      The check's own printed remediation command
+      (`setup_merge_queue_ruleset.sh --branch-pattern '<pattern>' --apply`)
+      created the new ruleset with `enforcement=disabled`, so an operator who
+      ran the EXACT command shown would find the PR still red, with no
+      further instruction in the message.
+    status: CONFIRMED
+    note: >-
+      Fixed: `--branch-pattern ... --apply` now creates a NEW integration
+      ruleset `enforcement=active` immediately (deliberately NOT mirroring
+      the main ruleset's "disabled by default" caution, which exists for a
+      different reason — reconciling drift on an ALREADY-active, always-on
+      object must never silently flip it; here the operator explicitly asked
+      to arm THIS pattern, and arming is the entire point of the command).
+      Reconciling an EXISTING ruleset still preserves its current enforcement.
+
+  - seat: codex-gpt-5.6-sol (cross-family refuter, PR #5050 diff)
+    objection: >-
+      The PR's original framing asserted the ambient GITHUB_TOKEN would 403
+      on the rulesets API because "Administration" scope isn't grantable, and
+      proposed an admin-scoped PAT as the fix — Codex countered that GET
+      rulesets requires "Metadata: read", not Administration, so the PAT
+      proposal is unjustified and would introduce an unnecessarily privileged
+      secret.
+    status: PLAUSIBLE
+    note: >-
+      Neither claim could be fully confirmed: WebFetch against GitHub's REST
+      rulesets docs page did not surface a permissions table for either
+      endpoint, and separately, "metadata" is ALSO not in actionlint's own
+      list of grantable Actions `permissions:` scope names (same as
+      "administration") — so whichever name is "correct" in GitHub's own REST
+      docs, neither is expressible in this job's `permissions:` block either
+      way. Corrected the PR's framing from a confident (and disputed) claim to
+      an honestly-hedged one: removed the `administration: read` line
+      entirely (already required by actionlint's rejection), replaced the
+      workflow comment with "untested, unconfirmed either way, base==main
+      never exercises this path, the first real feature/* PR after the
+      arm-half lands will settle it" — and did NOT introduce an admin PAT.
+
+  - seat: codex-gpt-5.6-sol (cross-family refuter, PR #5050 diff)
+    objection: >-
+      A repository-rulesets list call is not paginated; beyond ~30 rulesets a
+      real covering ruleset on a later page would be silently missed.
+    status: CONFIRMED
+    note: >-
+      Real, but NOT fixed in this PR: this repo has exactly 2 rulesets today
+      (verified live), so the gap is currently inert, and `gh api`'s exact
+      multi-page JSON-array-concatenation shape (`--paginate` vs `--slurp`,
+      which nests rather than flattens) could not be verified against a real
+      multi-page response — guessing wrong risked breaking the working
+      2-ruleset case to guard a case that doesn't exist yet. Declared as a
+      residual limit in the module's own docstring rather than silently
+      dropped.
+
+  - seat: codex-gpt-5.6-sol (cross-family refuter, PR #5050 diff)
+    objection: >-
+      The `base-branch-protected` job is not a required status check, so a
+      red run does not actually block a merge today; renaming a base branch
+      (e.g. `staging/x` instead of `feature/x`) sidesteps the future
+      feature/* ruleset entirely; a branch protected via CLASSIC branch
+      protection (rather than a ruleset) is reported UNPROTECTED regardless.
+    status: CONFIRMED
+    note: >-
+      All three are real and ALL THREE are the explicitly declared scope of
+      this PR, stated before the refuter ran, not discovered by it: this is
+      the CHECK-half only. Making the job required (or covering arbitrary
+      base-branch renames, or querying classic protection for arbitrary
+      branch names) is repo-settings/scope work this lane's own mandate
+      forbids ("never mutate repo settings/rulesets — this lane ships the
+      CHECK-half only"). Not a defect to fix here; recorded because the
+      refuter is right that today's net effect is a visible signal, not an
+      enforced gate, and that gap should not be allowed to read as closed.
+
+  - seat: codex-gpt-5.6-sol (cross-family refuter, PR #5050 diff)
+    objection: >-
+      Whether the 5 pinned-context workflows actually trigger on PRs into a
+      non-default base (the Codex-F12 trap) is unproven.
+    status: RETRACTED
+    note: >-
+      Investigated and does not hold — retracted, not merely disputed.
+      Checked, not assumed: none of the 5 workflows' `on.pull_request` blocks
+      carry a `branches:` restriction (3 have `types: [...]` with no branch
+      filter, 2 have a bare `pull_request:` — same effective scope). All 5
+      fire on a PR into `feature/*` exactly as into `main`. Receipt recorded
+      above.
+
+  - seat: claude-sonnet-5 (test-authoring subagent, dispatched post-refuter to
+      add 2 more guilt/innocence cases — NOT the cross-family refuter; a
+      self-caught finding via strengthening a test's own claim)
+    objection: >-
+      `main()`'s existing test
+      `test_main_cli_exits_zero_for_the_default_branch_with_no_network_call`
+      asserted "no network call" only in its docstring, never in its body —
+      it called the real `gh` CLI and passed on live data without actually
+      proving the claim. Strengthening it to monkeypatch `_gh` to raise if
+      called failed immediately: `main()` called `fetch_live_rulesets()`
+      unconditionally, before ever checking whether the base was the default
+      branch — directly contradicting this module's own docstring SCOPE
+      section ("the base==default-branch case always exits 0 without ever
+      calling `gh api rulesets`").
+    status: CONFIRMED
+    note: >-
+      Fixed: hoisted the `normalize_ref(...) == default_branch` short-circuit
+      in `main()` to before the rulesets-fetch block (both the
+      `--rulesets-json` and live-`gh` paths), reusing `evaluate()` verbatim
+      with an empty rulesets list (never inspected on this path) so the OK
+      message keeps one source of truth. Re-verified two ways: the
+      monkeypatched test now passes (43/43 total), and a real end-to-end run
+      against the live `gh` binary for base=main completed in 0.049s wall
+      time — consistent with zero network calls, not just the mock's say-so.
+      This also closes a real fail-closed risk the refuter never flagged: a
+      PR into `main` itself could previously go BLIND on a transient `gh`
+      rate-limit/outage for a case that never needed the network.
+
+tests:
+  - "scripts/tests/test_check_base_protected.py — 43 passed, 0 failed (rc=0, venv python)."
+
+static:
+  - "actionlint .github/workflows/hot-zone-pr-gate.yml — clean (caught and fixed one real defect: invalid `administration` permission scope)."
+  - "bash -n scripts/ci/setup_merge_queue_ruleset.sh — clean."
+  - "python3 -m py_compile scripts/ci/check_base_protected.py — clean."
+  - "Pre-commit hooks (lease-check, anti-reward-hacking lint, secret scan, python lint, off-limits check) passed on both commits."
+  - "Pre-push quickcheck (prettier, actionlint) passed on both pushes."
+
+notes:
+  - "This lane never mutated repo settings/rulesets/branch-protection at any point — `--branch-pattern` was only ever run WITHOUT `--apply` in this session (dry-run/print-only), verified by inspecting its own printed output rather than trusting the code path."
+  - "The ARM-half (creating the refs/heads/feature/* ruleset with --apply) is deliberately NOT performed by this PR — that is the named operator[control-plane] follow-up."
+  - "The permission-scope framing was corrected mid-flight after the refuter disputed it and independent verification came back genuinely inconclusive (not because the refuter was simply right) — the PR body and code comments now state the honest 'unconfirmed, will be settled by the first real feature/* PR' posture instead of either confident claim."

@@ -1,0 +1,233 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR #5049 (agent/nuzantara/infra/floor-size-term-0826 -> main) — S1
+  blast-radius term in the gear floor, per team-lead mandate 2026-08-26/27.
+  Single-lane implementer task, not a multi-lane campaign: one build pass
+  (the size-term feature), one cross-family adversarial review round, one
+  fix-of-findings commit, one independent re-verification.
+
+lanes:
+  - lane: floor-size-term-build
+    role: build
+    seat: claude-sonnet-5 (implementer session — compute_floor size term,
+      harness-floor.yml step reorder, both commits including the
+      refuter-fix round)
+  - lane: floor-size-term-review
+    role: review
+    seat: gpt-5.6-sol (codex exec --sandbox read-only, ChatGPT Pro,
+      non-Anthropic — adversarial review of the round-1 diff; kimi-code/k3
+      was the documented fallback for empty output, not triggered since
+      codex returned substantive findings)
+  - lane: floor-size-term-independent-verify
+    role: review
+    seat: claude-sonnet-5 (backend-verifier subagent, fresh context,
+      read-only — independently re-ran tests/selftest/actionlint and
+      re-confirmed each round-2 fix behaviorally before this pack was written)
+
+diff:
+  files: 3
+  net_lines: 621
+  measured_at: f91f166c6
+  note: >-
+    Churn (added+deleted) summed across the 3 changed files at the commit named
+    above: .github/workflows/harness-floor.yml (128+73), scripts/evidence_pack_lint.py
+    (228+33), scripts/tests/test_evidence_pack_lint.py (159+0) = 621. Merge-base
+    against origin/main (fetched fresh: fa6fbcc53c) is unchanged at 63bfa19ec —
+    this branch has not been rebased since fork; CI supplies the authoritative
+    numstat via --numstat-file at merge time and prefers it over this
+    self-declared value, per the linter's ceiling rule.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      The full test suite for the modified linter passes, including the size
+      term's guilt/innocence/fallback corpus and the 3 refuter-regression tests
+      added in round 2.
+    cmd: apps/backend-rag/.venv/bin/python3 -m pytest scripts/tests/test_evidence_pack_lint.py -q
+    result: "110 passed in 0.82s (venv python — system python3 lacks pytest)."
+    exit: 0
+    ts: 2026-08-27T00:56Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      The script's own embedded guilt+innocence selftest corpus (all rules,
+      not just the size term) still passes end to end.
+    cmd: apps/backend-rag/.venv/bin/python3 scripts/evidence_pack_lint.py --selftest
+    result: "every case printed 'ok', zero FAIL lines, final line 'SELFTEST PASS'."
+    exit: 0
+    ts: 2026-08-27T00:57Z
+    seat: session (Pro, implementer lane)
+
+  - claim: The modified workflow is syntactically and semantically valid per actionlint.
+    cmd: actionlint .github/workflows/harness-floor.yml
+    result: "zero output."
+    exit: 0
+    ts: 2026-08-27T00:59Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      Finding 2 (balanced same-file rewrite cancelling to a false-small size
+      term) is actually fixed, not just claimed — a 2000-added/2000-deleted
+      single-file diff now floors at Gear 3.
+    cmd: >-
+      printf "2000\t2000\tapps/some/plain/module.py\n" > /tmp/n.txt &&
+      python3 scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file /tmp/c.txt --numstat-file /tmp/n.txt
+    result: "prints 3 (was 1 before the fix — abs(2000-2000)=0 net under the old formula)."
+    exit: 0
+    ts: 2026-08-27T01:02Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      Finding 4 (no vendored-directory exclusion) is fixed — a vendor/
+      diff no longer inflates the size term.
+    cmd: >-
+      printf "9999\t9999\tvendor/evoskill/lib.js\n" > /tmp/n.txt &&
+      python3 scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file /tmp/c.txt --numstat-file /tmp/n.txt
+    result: "prints 1 (excluded, stays Gear 1) — vendor/evoskill is a real tree in this repo."
+    exit: 0
+    ts: 2026-08-27T01:02Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      Finding 5 (blanket *.lock exclusion) is fixed — only the named
+      package-manager lockfiles are excluded now, a hand-written custom.lock
+      file still counts toward the size term.
+    cmd: >-
+      printf "9999\t0\tpackage-lock.json\n250\t250\tinfra/coordination/custom.lock\n" > /tmp/n.txt &&
+      python3 scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file /tmp/c.txt --numstat-file /tmp/n.txt
+    result: "prints 2 — package-lock.json's 9999 excluded, custom.lock's 500 churn counted, crosses SIZE_GEAR2_THRESHOLD (400)."
+    exit: 0
+    ts: 2026-08-27T01:03Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      Round-2 fix independently re-verified end to end by a fresh-context
+      subagent, not just by the session that wrote the fix.
+    cmd: >-
+      Agent(subagent_type=backend-verifier) — 8-point checklist covering all
+      3 HIGH findings by both static read and behavioral re-execution
+    result: >-
+      CLEAN — 8/8 pass. One process note flagged and correctly self-resolved
+      (the checklist's "uncommitted" premise was stale by dispatch time since
+      the round-2 fix had been committed mid-flight; the subagent judged scope
+      by diff CONTENT against origin/main instead of the literal working-tree
+      description, confirming exactly the 3 expected files and nothing else).
+    exit: 0
+    ts: 2026-08-27T01:05Z
+    seat: backend-verifier subagent (fresh context, read-only)
+
+dissent:
+  - seat: gpt-5.6-sol (codex-sol, cross-family refuter)
+    objection: >-
+      A floor==2 diff (400-1789 net lines/churn, non-hot-zone) with no
+      evidence/brief.yml passes harness-floor.yml's Step 5a silently — the
+      step's condition only guarded floor==3, so omitting the brief entirely
+      dodges the new Gear-2 floor completely.
+    status: CONFIRMED
+    note: >-
+      Fixed: Step 5a's condition changed from `floor != '3'` to `floor ==
+      '1'`, and Step 5b's from `floor == '3'` to `floor != '1'` — floor==2 now
+      routes through the FAIL step exactly like floor==3 does (both require at
+      minimum a brief). Re-verified via actionlint + independent subagent read.
+
+  - seat: gpt-5.6-sol (codex-sol, cross-family refuter)
+    objection: >-
+      `_size_term_net_lines()` summed the per-file ABSOLUTE net
+      (abs(added-deleted)), not churn — a balanced in-place rewrite (2000
+      added + 2000 deleted in the SAME file) nets to zero, hiding a
+      genuinely full-file rewrite from the floor entirely. Pure deletions
+      counted correctly; the bug was specific to balanced same-file diffs.
+    status: CONFIRMED
+    note: >-
+      Fixed: formula changed to added+deleted (churn), which cannot cancel
+      this way. SIZE_GEAR3_THRESHOLD recalibrated to the churn-based p90 over
+      the same 170-PR sample (1828, was 1790 on the old |add-del| metric).
+      Regression test added; behaviorally re-verified (receipt above).
+
+  - seat: gpt-5.6-sol (codex-sol, cross-family refuter)
+    objection: >-
+      Step 2c's `git diff --no-renames --numstat ... > file` runs under
+      `set -u` only, with no exit-status check — a failure could in
+      principle leave `available=true` emitted over a truncated/empty file,
+      which the linter would read as net_lines=0 (a false-small signal on
+      what could be the run's largest diff).
+    status: CONFIRMED
+    note: >-
+      Fixed: the `git diff` line is now wrapped in an explicit `if ! git diff
+      ...; then ... available=false; exit 0; fi` guard, independent of the
+      runner's implicit `-e` default. Separately, the refuter's STATED
+      MECHANISM for how this manifests was checked empirically (a live bash
+      test matching GH Actions' real default shell, `-eo pipefail`) and found
+      NOT to match — the runner's implicit errexit already aborts the step on
+      such a failure, it does not fall through to `available=true`. The
+      underlying gap (relying on an implicit default for a security-relevant
+      guarantee) was real and is fixed regardless; the fix reflects the
+      corrected mechanism, not the refuter's literal claim.
+
+  - seat: gpt-5.6-sol (codex-sol, cross-family refuter)
+    objection: >-
+      Exclusions and threshold are not fully robust: (a) generated/fixtures
+      directory names are author-controlled labels; (b) any *.lock is
+      excluded even if hand-written; (c) vendor/node_modules/dist/build are
+      NOT excluded, and this repo has a real vendor/evoskill tree; (d)
+      --no-renames amplifies a move into add+delete; (e) the threshold was
+      calibrated on a different metric (|total add - total del|) than what
+      the runtime computed (per-file absolute net).
+    status: CONFIRMED
+    note: >-
+      (c) and (e) fixed directly: vendor/vendored/node_modules/dist/build
+      added to the exclusion list; threshold recalibrated on the churn metric
+      the (now-fixed) runtime actually computes. (b) fixed by narrowing to the
+      named package-manager lockfile list, closing the hand-written-.lock gap
+      the refuter named. (a) and (d) triaged and left unchanged, with reasoning
+      recorded in brief.yml's risks section — both are real but separate,
+      larger changes than this PR's scope (a author-controlled-label trust
+      boundary already exists at the brief.yml level; --no-renames matches
+      sum_numstat()'s own existing convention).
+
+  - seat: gpt-5.6-sol (codex-sol, cross-family refuter)
+    objection: >-
+      Tests prove guilt/innocence only at the helper level; missing coverage
+      for no-brief-at-floor-2, balanced same-file rewrite, deletion-only,
+      real code under generated/fixtures, vendored directories, rename-only,
+      git-diff failure/partial output, the workflow's bootstrap/missing-flag/
+      merge-group matrix, and a true end-to-end lint() run with numstat_text.
+    status: PLAUSIBLE
+    note: >-
+      Partially addressed: 3 new unit tests added (balanced-rewrite
+      regression, vendored-dir exclusion, named-vs-blanket lockfile). NOT
+      added: workflow-level integration tests (bootstrap/missing-flag/
+      merge-group matrix) and a dedicated end-to-end lint()+numstat_text test
+      — the existing check_gear_floor size-term tests already exercise
+      numstat threading through check_gear_floor, and actionlint + the live
+      manual --print-floor checks (receipts above) cover the workflow-level
+      behavior this PR's scope reaches; a full YAML-execution integration
+      harness for harness-floor.yml is a separate, larger investment than one
+      focused fix commit, left for a future PR if warranted.
+
+tests:
+  - "scripts/tests/test_evidence_pack_lint.py — 110 passed, 0 failed (venv python)."
+  - "scripts/evidence_pack_lint.py --selftest — SELFTEST PASS, rc=0."
+
+static:
+  - "actionlint .github/workflows/harness-floor.yml — rc=0, zero output."
+  - "python3 -m py_compile scripts/evidence_pack_lint.py scripts/tests/test_evidence_pack_lint.py — rc=0."
+  - "pre-commit hooks passed on both commits (lease-check, anti-reward-hacking
+    test lint, secret scan, python lint, off-limits check)."
+
+notes:
+  - "Scope discipline: this PR touches ONLY compute_floor/_size_term_net_lines/
+    _is_size_term_excluded and the --print-floor CLI path in
+    evidence_pack_lint.py, plus harness-floor.yml's numstat step and the
+    floor-gated workflow steps — never the seat-rule functions lane L8 is
+    concurrently appending at the end of the same file, per the coordination
+    constraint in the original mandate."
+  - "Two commits: a8be9eb41 (round 1, the size-term feature) and f91f166c6
+    (round 2, the 5 refuter findings fixed in one commit, per the Agent PR
+    Contract's 'fix real findings, <=1 commit' instruction)."
+  - "gh pr merge --auto will be armed NAKED (no strategy flag) per repo
+    doctrine — the merge queue rejects strategy flags."
