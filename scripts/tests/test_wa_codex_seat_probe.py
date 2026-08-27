@@ -54,6 +54,20 @@ def test_guilt_nonzero_without_auth_signature_is_other_failure() -> None:
     assert verdict == probe.VERDICT_OTHER_FAILURE
 
 
+def test_guilt_exec_usage_limit_on_stderr_is_quota_exhausted() -> None:
+    """B2b: closes the gap this module's docstring used to declare open —
+    quota exhaustion now gets its own verdict, not `other_failure`."""
+    verdict = probe.classify(
+        0, "Logged in using ChatGPT\n", "", 1, "", "ERROR: You've hit your usage limit."
+    )
+    assert verdict == probe.VERDICT_QUOTA_EXHAUSTED
+
+
+def test_guilt_exec_quota_exceeded_on_stderr_is_quota_exhausted() -> None:
+    verdict = probe.classify(0, "Logged in using ChatGPT\n", "", 1, "", "quota exceeded")
+    assert verdict == probe.VERDICT_QUOTA_EXHAUSTED
+
+
 # --------------------------------------------------------------- INNOCENCE
 
 
@@ -80,6 +94,31 @@ def test_innocence_healthy_login_status_output_does_not_match() -> None:
     """Misurato live 2026-08-20: da loggato stampa "Logged in using ChatGPT"
     con rc=0 — e comunque un rc=0 non viene scansionato."""
     assert probe.classify(0, "Logged in using ChatGPT\n", "", 0, "pong", "") == probe.VERDICT_OK
+
+
+def test_innocence_healthy_run_answer_discussing_rptka_quota_is_ok() -> None:
+    """Over-match guard (cicatrix family #3): a SUCCESSFUL exec whose
+    answer discusses a client's real RPTKA quota / KITAS limit of stay is
+    ordinary Bali Zero domain vocabulary — a rc=0 output is never scanned
+    at all, so this must never classify quota_exhausted."""
+    answer = "Your company's RPTKA quota and KITAS limit of stay are both current."
+    verdict = probe.classify(0, "Logged in using ChatGPT\n", "", 0, answer, "")
+    assert verdict == probe.VERDICT_OK
+
+
+def test_innocence_failed_exec_bare_quota_word_is_other_failure_not_quota() -> None:
+    """Over-match guard: a failed exec whose stderr mentions "quota" without
+    the "exceeded"/"exhausted" framing (or "limit" without "usage"/"weekly")
+    must not be misclassified as quota_exhausted."""
+    verdict = probe.classify(
+        0,
+        "Logged in using ChatGPT\n",
+        "",
+        1,
+        "",
+        "boom: could not resolve the RPTKA quota against the KITAS limit of stay",
+    )
+    assert verdict == probe.VERDICT_OTHER_FAILURE
 
 
 def test_fallback_regex_is_byte_identical_to_the_daemon_detector() -> None:
@@ -116,5 +155,34 @@ def test_fallback_regex_is_byte_identical_to_the_daemon_detector() -> None:
     )
     # Flags too (Kimi r1 m9): dropping re.IGNORECASE on either side keeps the
     # bodies identical while the detectors diverge on case.
+    assert "re.IGNORECASE" in match.group(1), "daemon regex lost re.IGNORECASE"
+    assert "re.IGNORECASE" in probe_match.group(1), "probe fallback lost re.IGNORECASE"
+
+
+def test_fallback_quota_regex_is_byte_identical_to_the_daemon_detector() -> None:
+    """Same superscar #1 discipline as the auth-death parity test above,
+    applied to `_QUOTA_RE` / the probe's fallback `QUOTA_RE` copy."""
+    daemon_src = (
+        Path(__file__).parents[2]
+        / "apps"
+        / "backend-rag"
+        / "backend"
+        / "llm"
+        / "codex_exec_client.py"
+    )
+    import re as _re
+
+    text = daemon_src.read_text()
+    match = _re.search(r"_QUOTA_RE[^=]*= re\.compile\((.*?)\n\)", text, _re.DOTALL)
+    assert match is not None, "daemon _QUOTA_RE definition not found"
+    daemon_body = "".join(_re.findall(r'r"([^"]*)"', match.group(1)))
+    probe_text = _MODULE_PATH.read_text()
+    probe_match = _re.search(r"QUOTA_RE = re\.compile\((.*?)\n    \)", probe_text, _re.DOTALL)
+    assert probe_match is not None, "probe fallback QUOTA_RE definition not found"
+    probe_body = "".join(_re.findall(r'r"([^"]*)"', probe_match.group(1)))
+    assert probe_body == daemon_body, (
+        "the probe's fallback regex drifted from the daemon's _QUOTA_RE — "
+        "update the copy in scripts/wa_codex_seat_probe.py"
+    )
     assert "re.IGNORECASE" in match.group(1), "daemon regex lost re.IGNORECASE"
     assert "re.IGNORECASE" in probe_match.group(1), "probe fallback lost re.IGNORECASE"

@@ -31,6 +31,7 @@ from backend.llm.codex_exec_client import (
     CodexExecModelNotAllowedError,
     CodexExecOutputShapeError,
     CodexExecProcessError,
+    CodexExecQuotaError,
     CodexExecResult,
     CodexExecTimeoutError,
     CodexExecUnavailableError,
@@ -88,6 +89,37 @@ _MEASURED_SUCCESS_STDERR = (
 # ---------------------------------------------------------------------------
 _CONSTRUCTED_AUTH_FAIL_STDERR = b"Error: Not logged in. Run `codex login` to authenticate.\n"
 _CONSTRUCTED_GENERIC_FAIL_STDERR = b"Error: network request failed (connect timeout)\n"
+
+# ---------------------------------------------------------------------------
+# MEASURED quota fixtures — real `codex exec` transcripts captured elsewhere
+# in this repo (never invented; see `_QUOTA_RE`'s own docstring in
+# codex_exec_client.py for the full source list).
+# ---------------------------------------------------------------------------
+_MEASURED_QUOTA_STDERR_1 = (
+    b"ERROR: You've hit your usage limit. Upgrade to Plus to continue using "
+    b"Codex (https://chatgpt.com/explore/plus), or try again at Apr 13th, 2026 1:46 PM.\n"
+)  # docs/design-palettes/funnels/research/tax-codex-brainstorm.md
+_MEASURED_QUOTA_STDERR_2 = (
+    b"ERROR: You've hit your usage limit for GPT-5.3-Codex-Spark. Switch to "
+    b"another model now, or try again at Aug 31st, 2026 8:06 PM.\n"
+)  # scripts/army/spark_lane.sh, measured live 2026-08-26/27
+# CONSTRUCTED quota fixtures — not measured word-for-word from a codex
+# transcript, but each word class is attested elsewhere for codex/CLI quota
+# specifically (see `_QUOTA_RE`'s docstring): "weekly limit" is what this
+# repo's own `scripts/codex_tri_llm_review.py` scans a `codex` reviewer
+# subprocess's output for; "quota exceeded"/"exhausted" is the fleet's own
+# codex-specific cascade grep in `~/scripts/regulatory-watcher-run.sh` tier 3.
+_CONSTRUCTED_WEEKLY_LIMIT_STDERR = b"Error: you've hit your weekly limit, resets Monday 9am\n"
+_CONSTRUCTED_QUOTA_EXCEEDED_STDERR = b"Error: quota exceeded for this account\n"
+# INNOCENT-but-plausible: real Bali Zero domain vocabulary that must NOT
+# false-positive — RPTKA (foreign-worker permit) "quota" and a KITAS "limit
+# of stay" are ordinary immigration/business words, not diagnostics, and
+# neither pairs "quota"/"limit" with the specific framing `_QUOTA_RE`
+# requires (cicatrix family #3: guard must not decide on a bare substring).
+_INNOCENT_QUOTA_WORD_STDERR = (
+    b"boom: could not resolve the client's annual RPTKA quota against the "
+    b"KITAS limit of stay on file\n"
+)
 
 
 class _FakeProcess:
@@ -993,6 +1025,132 @@ class TestAuthDeathDetection:
             await client.generate("hello")
 
 
+class TestQuotaDetection:
+    """B2b — closes the gap `scripts/wa_codex_seat_probe.py` used to name as
+    'S1.5 owns sharpening that bucket': quota exhaustion used to fold into
+    the same generic `CodexExecProcessError` as any other crash."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "stderr_text",
+        [
+            _MEASURED_QUOTA_STDERR_1,
+            _MEASURED_QUOTA_STDERR_2,
+            _CONSTRUCTED_WEEKLY_LIMIT_STDERR,
+            _CONSTRUCTED_QUOTA_EXCEEDED_STDERR,
+        ],
+    )
+    async def test_guilt_quota_phrasings_raise_distinct_error(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+        stderr_text: bytes,
+    ) -> None:
+        client = _make_available_client(tmp_path)
+        fake_exec.queue(_FakeProcess(b"", stderr_text, 1))
+
+        with pytest.raises(CodexExecQuotaError):
+            await client.generate("hello")
+
+    @pytest.mark.asyncio
+    async def test_guilt_generic_failure_still_raises_process_error_not_quota(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+    ) -> None:
+        client = _make_available_client(tmp_path)
+        fake_exec.queue(_FakeProcess(b"", _CONSTRUCTED_GENERIC_FAIL_STDERR, 1))
+
+        with pytest.raises(CodexExecProcessError) as exc_info:
+            await client.generate("hello")
+        assert exc_info.value.exit_code == 1
+
+    @pytest.mark.asyncio
+    async def test_guilt_auth_failure_still_raises_auth_not_quota(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+    ) -> None:
+        """Auth and quota vocabularies are disjoint, but the scan ORDER
+        (auth checked first in `generate()`) must still resolve an
+        auth-shaped failure to `CodexExecAuthError`, never `CodexExecQuotaError`."""
+        client = _make_available_client(tmp_path)
+        fake_exec.queue(_FakeProcess(b"", _CONSTRUCTED_AUTH_FAIL_STDERR, 1))
+
+        with pytest.raises(CodexExecAuthError):
+            await client.generate("hello")
+
+    @pytest.mark.asyncio
+    async def test_innocence_rptka_and_kitas_quota_talk_does_not_page(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+    ) -> None:
+        """Over-match guard (cicatrix family #3): a failure message that
+        happens to mention an RPTKA "quota" or a KITAS "limit of stay" —
+        ordinary Bali Zero domain vocabulary — must not be misclassified as
+        THIS client's own quota exhaustion. Neither word pairs with the
+        specific framing `_QUOTA_RE` requires."""
+        client = _make_available_client(tmp_path)
+        fake_exec.queue(_FakeProcess(b"", _INNOCENT_QUOTA_WORD_STDERR, 1))
+
+        with pytest.raises(CodexExecProcessError):
+            await client.generate("hello")
+
+    @pytest.mark.asyncio
+    async def test_innocence_success_path_never_scanned_for_quota_words(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+    ) -> None:
+        """Mirrors `TestAuthDeathDetection`'s equivalent innocence test:
+        `exit_code == 0` never triggers the quota scan at all, so a
+        legitimate answer discussing a client's RPTKA quota/usage limit
+        topic must not misclassify."""
+        client = _make_available_client(tmp_path)
+        answer = (
+            b"Your company's RPTKA usage limit was reached last quarter; "
+            b"the quota exceeded threshold triggers a BKPM review."
+        )
+        fake_exec.queue(_FakeProcess(answer, b"", 0))
+
+        result = await client.generate("what happens when the RPTKA quota is exceeded")
+
+        assert "quota" in result.text.lower()
+
+    @pytest.mark.asyncio
+    async def test_innocence_echoed_prompt_quota_words_do_not_false_positive(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+    ) -> None:
+        """A failing run whose stderr echoes a client prompt that itself
+        contains quota-shaped words must not be misclassified as THIS
+        client's own quota exhaustion — only genuine wording OUTSIDE the
+        echoed prompt should trigger `CodexExecQuotaError`."""
+        client = _make_available_client(tmp_path)
+        prompt = "explain what happens when the RPTKA usage limit is exceeded"
+        stderr = b"user\n" + prompt.encode() + b"\nsome unrelated network error\n"
+        fake_exec.queue(_FakeProcess(b"", stderr, 1))
+
+        with pytest.raises(CodexExecProcessError):
+            await client.generate(prompt)
+
+    @pytest.mark.asyncio
+    async def test_guilt_quota_word_outside_echoed_prompt_still_detected(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+    ) -> None:
+        client = _make_available_client(tmp_path)
+        prompt = "tell me about visa renewal"
+        stderr = b"user\n" + prompt.encode() + b"\nError: quota exceeded\n"
+        fake_exec.queue(_FakeProcess(b"", stderr, 1))
+
+        with pytest.raises(CodexExecQuotaError):
+            await client.generate(prompt)
+
+
 # ---------------------------------------------------------------------------
 # Timeout — wall-clock kill + reap (F26-6 fix, R26 GLM addendum,
 # 2026-08-15: this is a deadline/output-shape behavior, NOT one of the
@@ -1275,6 +1433,23 @@ class TestSanitizedErrors:
         message = str(exc_info.value)
         assert prompt not in message
         assert "Not logged in" not in message  # raw stderr never echoed into the message
+
+    @pytest.mark.asyncio
+    async def test_innocence_quota_error_message_excludes_prompt_and_raw_output(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+    ) -> None:
+        prompt = "my super secret client PII that must never appear in an exception"
+        client = _make_available_client(tmp_path)
+        fake_exec.queue(_FakeProcess(b"", _MEASURED_QUOTA_STDERR_1, 1))
+
+        with pytest.raises(CodexExecQuotaError) as exc_info:
+            await client.generate(prompt)
+
+        message = str(exc_info.value)
+        assert prompt not in message
+        assert "usage limit" not in message  # raw stderr never echoed into the message
 
 
 # ---------------------------------------------------------------------------
