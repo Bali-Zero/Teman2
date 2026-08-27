@@ -24,6 +24,7 @@ asyncpg = pytest.importorskip("asyncpg")
 from backend.services.garuda_orders import journal
 from backend.services.garuda_orders.outbox_consumer import KILL_SWITCH_ENV, OutboxJob
 from backend.services.garuda_orders.outbox_handlers import (
+    BrevoEmailSender,
     CheckoutReadyEmailHandler,
     EmailSendFailed,
     PaymentExpiredEmailHandler,
@@ -95,7 +96,9 @@ def _sender(recorder: _Recorder):
     return BrevoEmailSender(client, api_url="https://notifications.invalid/send"), client
 
 
-async def _seed_order(pool, *, state: str, email: str = RECIPIENT) -> str:
+async def _seed_order(
+    pool, *, state: str, email: str = RECIPIENT, late_case_open: bool = False
+) -> str:
     order_id = f"ord_{uuid.uuid4().hex}"
     async with pool.acquire() as conn:
         await conn.execute(
@@ -103,15 +106,16 @@ async def _seed_order(pool, *, state: str, email: str = RECIPIENT) -> str:
             INSERT INTO garuda_orders
                 (order_id, result_id_ref, case_type, applicant_full_name,
                  applicant_email, applicant_phone, applicant_passport_number,
-                 price_idr, price_catalogue_key, state)
+                 price_idr, price_catalogue_key, state, late_case_open)
             VALUES ($1, $2, 'issuance', 'SPECIMEN TRAVELLER', $3,
                     '+000000000000', 'X0000000', 790000,
-                    'B1 Visa on Arrival (VOA)', $4)
+                    'B1 Visa on Arrival (VOA)', $4, $5)
             """,
             order_id,
             f"chk_{uuid.uuid4().hex}",
             email,
             state,
+            late_case_open,
         )
     return order_id
 
@@ -324,7 +328,19 @@ async def test_payment_expired_raises_on_a_missing_order(pool):
 # --------------------------------------------------------------------------
 
 
-async def test_refund_sends_while_refunded(pool):
+async def test_refund_sends_while_refunded_and_quotes_NO_amount(pool):
+    """CORRECTED after a cross-family gate: the first version of this test
+    asserted `"790.000" in body`, i.e. it REQUIRED the handler to state a
+    refunded amount — and `price_idr` is the ORDER price, not a refunded one.
+    Nothing in `garuda_orders` records what the provider actually returned, and
+    OP-05 reaches `refunded` from `awaiting_payment`, an order this flow never
+    marked as charged. So the assertion is inverted: the refund email confirms
+    the refund and names the order, and quotes no figure at all.
+
+    This is NOT the fee/PNBP split rule (that forbids BREAKING the one price
+    into components) — it is the narrower "do not assert a number the code
+    cannot establish"."""
+
     order_id = await _seed_order(pool, state="refunded")
     rec = _Recorder()
     sender, client = _sender(rec)
@@ -335,7 +351,12 @@ async def test_refund_sends_while_refunded(pool):
     assert len(rec.requests) == 1
     body = rec.requests[0].read().decode()
     assert RECIPIENT in body
-    assert "790.000" in body
+    assert order_id in body
+    for rendering in ("790.000", "790,000", "790000"):
+        assert rendering not in body, (
+            f"the refund email quoted {rendering!r} — that is the order price, "
+            "not a refunded amount the code can establish"
+        )
 
 
 async def test_refund_resolves_without_sending_when_still_paid(pool, caplog):
@@ -520,3 +541,156 @@ async def test_no_handler_writes_applicant_pii_into_a_log_line(
     assert order_id in logged, (
         f"{handler_cls.__name__} logged without the order id — the log is unusable"
     )
+
+
+# --- OP-F05: a late `paid` webhook leaves the terminal state in place ----------
+#
+# `handle_late_paid_event` sets `late_case_open = TRUE` and does NOT move
+# `state` (repository.py:487/517, migration 284). A `payment_failed_email` or
+# `payment_expired_email` job already sitting in the outbox therefore still
+# reads `failed`/`expired` — and both bodies tell the customer no money was
+# taken. It was. These two tests are the guilt half of that guard; the two
+# below them are its innocence half, so the guard cannot be satisfied by
+# refusing to send at all.
+
+
+@pytest.mark.parametrize(
+    ("handler_cls", "job_type", "state"),
+    [
+        (PaymentFailedEmailHandler, "payment_failed_email", "failed"),
+        (PaymentExpiredEmailHandler, "payment_expired_email", "expired"),
+    ],
+)
+async def test_terminal_notice_is_withheld_when_a_late_payment_case_is_open(
+    pool, caplog, handler_cls, job_type, state
+):
+    order_id = await _seed_order(pool, state=state, late_case_open=True)
+    recorder = _Recorder()
+    sender, client = _sender(recorder)
+    try:
+        with caplog.at_level(logging.WARNING, logger=LOGGER_NAME):
+            await handler_cls(pool, sender)(_job(order_id, job_type))
+    finally:
+        await client.aclose()
+
+    assert recorder.requests == [], (
+        f"{handler_cls.__name__} told a CHARGED customer no payment was taken "
+        f"(order in state {state!r} with an open late-payment case)"
+    )
+    logged = "\n".join(record.getMessage() for record in caplog.records)
+    assert "late-payment case" in logged, (
+        f"{handler_cls.__name__} withheld the email but left no trail naming why: {logged!r}"
+    )
+    assert order_id in logged
+
+
+@pytest.mark.parametrize(
+    ("handler_cls", "job_type", "state"),
+    [
+        (PaymentFailedEmailHandler, "payment_failed_email", "failed"),
+        (PaymentExpiredEmailHandler, "payment_expired_email", "expired"),
+    ],
+)
+async def test_terminal_notice_is_still_sent_when_no_late_payment_case_is_open(
+    pool, handler_cls, job_type, state
+):
+    order_id = await _seed_order(pool, state=state, late_case_open=False)
+    recorder = _Recorder()
+    sender, client = _sender(recorder)
+    try:
+        await handler_cls(pool, sender)(_job(order_id, job_type))
+    finally:
+        await client.aclose()
+
+    assert len(recorder.requests) == 1, (
+        f"{handler_cls.__name__} withheld a LEGITIMATE notice — the late-payment "
+        "guard must narrow the send, not replace it"
+    )
+
+
+# --- PII tripwire, second and third branches ----------------------------------
+#
+# The tripwire above only exercises the SUCCESSFUL send. Two other branches log
+# and were uncovered: the stale-state early return, and a sender failure. A
+# well-meaning "log who we failed to email" edit lands in exactly those two.
+
+
+@pytest.mark.parametrize(
+    ("handler_cls", "job_type"),
+    [
+        (PaymentFailedEmailHandler, "payment_failed_email"),
+        (PaymentExpiredEmailHandler, "payment_expired_email"),
+        (RefundEmailHandler, "refund_email"),
+    ],
+)
+async def test_the_stale_state_branch_logs_no_applicant_pii(
+    pool, caplog, handler_cls, job_type
+):
+    marker_email = f"pii-stale-{uuid.uuid4().hex}@example.invalid"
+    # `paid` warrants none of these three notices, so each takes its stale-state
+    # early return.
+    order_id = await _seed_order(pool, state="paid", email=marker_email)
+    recorder = _Recorder()
+    sender, client = _sender(recorder)
+    try:
+        with caplog.at_level(logging.DEBUG, logger=LOGGER_NAME):
+            await handler_cls(pool, sender)(_job(order_id, job_type))
+    finally:
+        await client.aclose()
+
+    assert recorder.requests == [], f"{handler_cls.__name__} sent a stale notice"
+    logged = "\n".join(record.getMessage() for record in caplog.records)
+    assert order_id in logged, f"{handler_cls.__name__} returned silently — no trail"
+    for label, secret in (
+        ("applicant email", marker_email),
+        ("applicant name", "SPECIMEN TRAVELLER"),
+        ("passport number", "X0000000"),
+        ("phone", "+000000000000"),
+    ):
+        assert secret not in logged, (
+            f"{handler_cls.__name__} wrote the {label} into its stale-state log line: {logged!r}"
+        )
+
+
+async def test_a_sender_failure_leaks_no_applicant_pii_into_its_error(pool, caplog):
+    """The failure path logs NOTHING — so a caplog-only assertion here would be
+    satisfied by silence and prove nothing. The surface that actually carries
+    text out of this path is the raised `EmailSendFailed` MESSAGE: the outbox
+    worker persists it as the job's `last_error` and logs it. `send` keeps the
+    response body out of that message on purpose ("it can echo the recipient");
+    this is the tripwire on that comment.
+    """
+
+    marker_email = f"pii-senderr-{uuid.uuid4().hex}@example.invalid"
+    order_id = await _seed_order(pool, state="expired", email=marker_email)
+
+    def _boom(request: httpx.Request) -> httpx.Response:
+        # A provider that echoes the request back — the realistic worst case.
+        return httpx.Response(500, json={"error": "rejected", "echo": request.read().decode()})
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(_boom))
+    sender = BrevoEmailSender(client, api_url="https://notifications.invalid/send")
+    try:
+        with caplog.at_level(logging.DEBUG, logger=LOGGER_NAME):
+            with pytest.raises(EmailSendFailed) as raised:
+                await PaymentExpiredEmailHandler(pool, sender)(
+                    _job(order_id, "payment_expired_email")
+                )
+    finally:
+        await client.aclose()
+
+    surfaced = str(raised.value) + "\n".join(r.getMessage() for r in caplog.records)
+    assert surfaced.strip(), "the failure surfaced no text at all — nothing to diagnose from"
+    assert "500" in surfaced, (
+        "the error names neither the status nor anything else actionable: "
+        f"{surfaced!r}"
+    )
+    for label, secret in (
+        ("applicant email", marker_email),
+        ("applicant name", "SPECIMEN TRAVELLER"),
+        ("passport number", "X0000000"),
+        ("phone", "+000000000000"),
+    ):
+        assert secret not in surfaced, (
+            f"the sender-failure path surfaced the {label}: {surfaced!r}"
+        )

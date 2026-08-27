@@ -83,6 +83,12 @@ class OrderEmailFacts:
     case_type: str
     price_idr: int
     state: str
+    # OP-F04/OP-F05: a late `paid` webhook on a terminal order raises this flag
+    # and leaves `state` UNCHANGED (migration 284, repository.py:487/517). So a
+    # `failed`/`expired` reading alone does NOT mean "no money was taken" — the
+    # two handlers that say so in as many words must read this too. No default:
+    # a `_load` that forgets the column must fail loudly, not send a lie.
+    late_case_open: bool
 
 
 class BrevoEmailSender:
@@ -189,7 +195,7 @@ class PaymentPaidEmailHandler:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT order_id, applicant_email, case_type, price_idr, state
+                SELECT order_id, applicant_email, case_type, price_idr, state, late_case_open
                   FROM garuda_orders
                  WHERE order_id = $1
                 """,
@@ -203,6 +209,7 @@ class PaymentPaidEmailHandler:
             case_type=row["case_type"],
             price_idr=row["price_idr"],
             state=row["state"],
+            late_case_open=row["late_case_open"],
         )
 
     @staticmethod
@@ -285,7 +292,7 @@ class CheckoutReadyEmailHandler:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT order_id, applicant_email, case_type, price_idr, state
+                SELECT order_id, applicant_email, case_type, price_idr, state, late_case_open
                   FROM garuda_orders
                  WHERE order_id = $1
                 """,
@@ -299,6 +306,7 @@ class CheckoutReadyEmailHandler:
             case_type=row["case_type"],
             price_idr=row["price_idr"],
             state=row["state"],
+            late_case_open=row["late_case_open"],
         )
 
     @staticmethod
@@ -325,12 +333,14 @@ class PaymentFailedEmailHandler:
     only from `awaiting_payment`, and nothing in this codebase ever moves an
     order OUT of `failed` again (a late webhook that pays a failed order sets
     `late_case_open` on the SAME `failed`/`expired` state — see OP-F05 — it
-    never flips `state` back). So unlike the checkout-link guard above, this one
-    names a state that, once reached, does not un-become true; it is kept as an
-    explicit guard rather than assumed, because "no code path currently changes
-    it" is not the same invariant as "no code path ever will", and the WARNING
-    log is the same honest trail the payment-paid handler leaves for its own
-    now-false branch.
+    never flips `state` back).
+
+    CORRECTED after a cross-family gate on this same commit: the paragraph above
+    is true and was the WRONG conclusion to draw from it. Precisely BECAUSE a
+    late `paid` leaves `state = 'failed'`, the state alone cannot distinguish
+    "never charged" from "charged late" — and this email's body says "Amount not
+    charged" in as many words. The state guard is therefore not sufficient on
+    its own; `late_case_open` is the second, load-bearing half of it.
 
     CUSTOMER ACTION COPY. The payload carries `customer_action` — one of the
     three values `services/payments/terminal_taxonomy.py::CustomerAction`
@@ -344,7 +354,7 @@ class PaymentFailedEmailHandler:
 
     _CUSTOMER_ACTION_COPY: dict[str, str] = {
         "TRY_A_DIFFERENT_CARD": "Please try again with a different card or payment method.",
-        "TRY_AGAIN_LATER": "Please try again in a few minutes.",
+        "TRY_AGAIN_LATER": "Please try again later.",
         "NONE_ORDER_CLOSED": (
             "This order is now closed. If you still need a Visa on Arrival, "
             "please start a new application."
@@ -371,6 +381,21 @@ class PaymentFailedEmailHandler:
             )
             return
 
+        if facts.late_case_open:
+            # OP-F05: a late `paid` webhook arrived on this terminal order. The
+            # customer WAS charged; `state` stays `failed` by design. Sending
+            # "your payment did not go through / Amount not charged" here tells
+            # a paying customer their money was not taken. Staff already hold
+            # this case (`staff_page_late_paid_after_terminal`) and close it via
+            # resolveLateOrder, which sends its own notice — so this job resolves
+            # silently rather than racing that with a contradiction.
+            logger.warning(
+                "outbox payment_failed_email resolved WITHOUT sending: order %s has an OPEN "
+                "late-payment case — the customer was charged, a failure notice would be false",
+                facts.order_id,
+            )
+            return
+
         customer_action = (job.payload or {}).get("customer_action")
         guidance = self._CUSTOMER_ACTION_COPY.get(customer_action, self._DEFAULT_ACTION_COPY)
 
@@ -385,7 +410,7 @@ class PaymentFailedEmailHandler:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT order_id, applicant_email, case_type, price_idr, state
+                SELECT order_id, applicant_email, case_type, price_idr, state, late_case_open
                   FROM garuda_orders
                  WHERE order_id = $1
                 """,
@@ -399,6 +424,7 @@ class PaymentFailedEmailHandler:
             case_type=row["case_type"],
             price_idr=row["price_idr"],
             state=row["state"],
+            late_case_open=row["late_case_open"],
         )
 
     @staticmethod
@@ -425,8 +451,10 @@ class PaymentExpiredEmailHandler:
     writes `state = 'expired'` only from `awaiting_payment`, and — same as
     `failed` above — nothing in this codebase ever moves an order back out of
     `expired` (a late payment after expiry sets `late_case_open`, never
-    `state`). The guard is still named explicitly rather than assumed, for the
-    same reason `PaymentFailedEmailHandler`'s is.
+    `state`) — which is exactly why the state guard alone is not enough here
+    either: this body says "no payment was taken". `late_case_open` is checked
+    for the same reason, and with the same consequence, as in
+    `PaymentFailedEmailHandler`.
     """
 
     _STATES_WORTH_EXPLAINING = frozenset({"expired"})
@@ -450,6 +478,17 @@ class PaymentExpiredEmailHandler:
             )
             return
 
+        if facts.late_case_open:
+            # OP-F05, same as the failure handler above: the late `paid` webhook
+            # left `state = 'expired'` and raised this flag. The body below says
+            # "no payment was taken" — for this order that is untrue.
+            logger.warning(
+                "outbox payment_expired_email resolved WITHOUT sending: order %s has an OPEN "
+                "late-payment case — the customer was charged, an expiry notice would be false",
+                facts.order_id,
+            )
+            return
+
         await self._sender.send(
             to=facts.email,
             subject="Your Bali Zero Visa on Arrival — payment session expired",
@@ -461,7 +500,7 @@ class PaymentExpiredEmailHandler:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT order_id, applicant_email, case_type, price_idr, state
+                SELECT order_id, applicant_email, case_type, price_idr, state, late_case_open
                   FROM garuda_orders
                  WHERE order_id = $1
                 """,
@@ -475,6 +514,7 @@ class PaymentExpiredEmailHandler:
             case_type=row["case_type"],
             price_idr=row["price_idr"],
             state=row["state"],
+            late_case_open=row["late_case_open"],
         )
 
     @staticmethod
@@ -538,7 +578,7 @@ class RefundEmailHandler:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT order_id, applicant_email, case_type, price_idr, state
+                SELECT order_id, applicant_email, case_type, price_idr, state, late_case_open
                   FROM garuda_orders
                  WHERE order_id = $1
                 """,
@@ -552,20 +592,24 @@ class RefundEmailHandler:
             case_type=row["case_type"],
             price_idr=row["price_idr"],
             state=row["state"],
+            late_case_open=row["late_case_open"],
         )
 
     @staticmethod
     def _body(facts: OrderEmailFacts) -> str:
+        # NO AMOUNT LINE, deliberately. `price_idr` is the ORDER price, not a
+        # refunded amount — nothing in `garuda_orders` records what the provider
+        # actually returned, and OP-05 refunds an order that reached `refunded`
+        # from `awaiting_payment`, i.e. one this flow never marked as charged.
+        # Printing `price_idr` here would assert a figure the code cannot know.
         base = os.getenv(TRACKER_BASE_URL_ENV, DEFAULT_TRACKER_BASE_URL).rstrip("/")
         tracker = f"{base}/{facts.order_id}"
-        amount = f"IDR {facts.price_idr:,}".replace(",", ".")
         return (
             "Hello,<br><br>"
             "We've refunded your payment for your Bali Zero Visa on Arrival "
             f"({facts.case_type}).<br><br>"
-            f"<b>Amount refunded: {amount}</b><br><br>"
-            "The refund follows your card provider's own timeline to appear on "
-            "your statement.<br><br>"
+            "The refund goes back to the payment method you used, and follows "
+            "your card provider's own timeline to appear on your statement.<br><br>"
             "You can follow this order's status here:<br><br>"
             f'<a href="{tracker}">Track my application</a><br><br>'
             "— Bali Zero"
@@ -927,7 +971,8 @@ class PracticeReceivedEmailHandler:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT o.order_id, o.applicant_email, o.case_type, o.price_idr, o.state
+                SELECT o.order_id, o.applicant_email, o.case_type, o.price_idr, o.state,
+                       o.late_case_open
                   FROM garuda_orders o
                   JOIN garuda_practices p ON p.order_id = o.order_id
                  WHERE o.order_id = $1
@@ -942,6 +987,7 @@ class PracticeReceivedEmailHandler:
             case_type=row["case_type"],
             price_idr=row["price_idr"],
             state=row["state"],
+            late_case_open=row["late_case_open"],
         )
 
     @staticmethod

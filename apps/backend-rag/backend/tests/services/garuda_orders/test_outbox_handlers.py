@@ -169,6 +169,11 @@ def _facts(**over) -> OrderEmailFacts:
         "case_type": "issuance",
         "price_idr": 790000,
         "state": "paid",
+        # OP-F04/OP-F05 flag. Required on the dataclass on purpose: a `_load`
+        # that forgets the column must fail loudly rather than default to
+        # "no late payment" and let a terminal notice go out to a charged
+        # customer. This factory's default is the ordinary case.
+        "late_case_open": False,
     }
     base.update(over)
     return OrderEmailFacts(**base)
