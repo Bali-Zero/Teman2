@@ -78,11 +78,12 @@ def test_all_canonical_personas_map_to_the_real_wire_model() -> None:
 
         assert validated.assessment_id == driver._persona_assessment_id(persona.id)
         assert set(payload["facts"]) == expected_fact_aliases
-        # 44, not 41 (2026-08-23 vocabulary extension, PR #4650): the count
+        # 45, not 41 (2026-08-23 vocabulary extension, PR #4650; 44→45
+        # 2026-08-24 F4/PR #4719 adds `immigration.renewal_paid`): the count
         # is derived structurally above from `ApplicantFactsData.model_fields`
         # aliases, so this literal is a redundant pin, not the source of
         # truth — bump it in lockstep whenever that model gains a field.
-        assert len(payload["facts"]) == 44
+        assert len(payload["facts"]) == 45
         assert payload["disclosed_review_flags"] == []
 
 
@@ -232,6 +233,46 @@ def test_offline_replay_uses_highest_signed_pack_without_claiming_it_is_active()
         driver.evaluate_path.PUBLIC_POLICY_ADAPTER_NAMES
     )
     assert "active_database_binding" in report["pack_source"]["runtime_operations_excluded"]
+
+
+def test_offline_replay_match_count_does_not_regress_below_measured_floor() -> None:
+    """G-b regression floor for the offline gold-persona replay.
+
+    Measured 2026-08-23 (independently reproduced while wiring this gate):
+    ``python -m backend.scripts.visa_engine.gold_replay_driver --offline``
+    against the highest-sequence signed PRODUCTION pack then in the
+    repository (``rulepack-prod-012.signed.json``, sequence=12) replayed
+    the 20 canonical gold personas and matched exactly 4/20, with 16
+    unexplained divergences. That count was NOT previously asserted by any
+    test — the driver's other offline-mode test above checks the report's
+    *structure* (mode, persona_count, pack identity) but never its *content*,
+    so a regression in the match count could land on main with every check
+    green.
+
+    4 is a FLOOR to raise as divergences get cured, never a target to hold
+    steady at and never something to lower back down to make this test pass
+    again. This test exists to catch the count going DOWN (a real engine or
+    pack regression), not to celebrate it staying flat — if a fix legitimately
+    raises the match count, bump the floor below (and the mirrored
+    ``unexplained_divergences`` ceiling) up to the newly measured value in the
+    same PR as the fix, with a fresh timestamp/measurement in this docstring.
+    A future signed PRODUCTION pack landing (sequence > 12) will also replay
+    here, since ``build_offline_report`` always selects the highest sequence
+    present on disk — if that changes the count, re-measure and move the
+    floor, do not just widen the assertion.
+    """
+
+    report = driver.build_offline_report(generated_at=_OFFLINE_AT)
+
+    summary = report["summary"]
+    assert summary["personas_total"] == 20
+    assert summary["personas_match"] >= 4, (
+        f"gold-persona offline replay regressed below the measured floor: "
+        f"{summary['personas_match']}/20 matched (floor=4), "
+        f"{summary['unexplained_divergences']} unexplained divergences "
+        f"(ceiling=16) against pack sequence={report['pack']['sequence']}"
+    )
+    assert summary["unexplained_divergences"] <= 16
 
 
 @pytest.mark.parametrize(

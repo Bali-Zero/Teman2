@@ -40,6 +40,15 @@ function startOffshore(category?: string): FlowState {
   let state = initialFlowState("en");
   state = reduce(state, { type: "ADVANCE" });
   state = answer(state, "in_indonesia", "no");
+  // Offshore now asks a single permit-status gate question before
+  // converging (fixed 2026-08-24, D12 offshore-reachability P0, then
+  // re-fixed same day after a funnel-cost review — see `computeNextNode`'s
+  // `in_indonesia`/`holds_stay_permit` cases). "no" here converges
+  // straight to `overstay_days` with no further questions (the fact
+  // resolves from this answer alone via `fact-mapper.ts`'s synthesized
+  // `NO_STAY_PERMIT`) — preserved here to keep every downstream test's
+  // original intent (none of them are about permit status).
+  state = answer(state, "holds_stay_permit", "no");
   state = answer(state, "overstay_days", "0");
   state = answer(state, "nationalities", "IT");
   state = answer(state, "birth_date", "1990-02-03");
@@ -319,13 +328,56 @@ describe("onshore/offshore canonical fact collection", () => {
     });
   });
 
-  it("asks active overstay offshore but skips onshore-only status fields", () => {
+  it("offshore + holds a permit: gates on holds_stay_permit first, then asks the full chain, then converges", () => {
+    // Fixed 2026-08-24 (D12 offshore-reachability P0, then re-fixed same
+    // day after a funnel-cost review): before the P0 fix, "no" skipped
+    // straight to overstay_days, so an offshore applicant's
+    // current-status/permit facts could never be collected — including
+    // the exact person the D12 owner ruling names (someone abroad holding
+    // an unlapsed KITAS). The first fix mirrored the onshore order
+    // unconditionally (permit_expiry asked before knowing whether the
+    // applicant even holds a permit); this version gates on
+    // holds_stay_permit FIRST for offshore instead, to avoid paying the
+    // full chain for applicants who don't hold one (see the sibling test
+    // below). wants_onshore_conversion/application_channel remain
+    // onshore-only, unchanged by this fix.
     let state = initialFlowState("en");
     state = reduce(state, { type: "ADVANCE" });
     state = answer(state, "in_indonesia", "no");
+    expectQuestion(state, "holds_stay_permit");
+    state = answer(state, "holds_stay_permit", "yes");
+    expectQuestion(state, "permit_expiry");
+    state = answer(state, "permit_expiry", "2026-09-01");
+    expectQuestion(state, "stay_permit_code");
+    state = answer(state, "stay_permit_code", "E28A");
     expectQuestion(state, "overstay_days");
     state = answer(state, "overstay_days", "0");
     expectQuestion(state, "nationalities");
+    expect(state.facts.stay_permit_code).toBe("E28A");
+    expect(state.facts.application_channel).toBeUndefined();
+  });
+
+  it("offshore + no permit: converges on overstay_days after exactly one gate question, no code/expiry asked", () => {
+    // The funnel-cost half of the same 2026-08-24 fix: an offshore
+    // applicant who does not hold a permit pays exactly ONE extra
+    // question (holds_stay_permit itself), not the full 3-question
+    // chain — permit_expiry/stay_permit_code/current_status_code are
+    // never reached at all. Reachability of
+    // derived.has_active_stay_permit from this path (the synthesized
+    // NO_STAY_PERMIT sentinel resolving to a definite False) is proven
+    // at the backend in fact-mapper.test.ts and
+    // test_d12_active_stay_permit_exclusion.py, not here — this test
+    // only proves the frontend never asks the redundant questions.
+    let state = initialFlowState("en");
+    state = reduce(state, { type: "ADVANCE" });
+    state = answer(state, "in_indonesia", "no");
+    expectQuestion(state, "holds_stay_permit");
+    state = answer(state, "holds_stay_permit", "no");
+    expectQuestion(state, "overstay_days");
+    state = answer(state, "overstay_days", "0");
+    expectQuestion(state, "nationalities");
+    expect(state.facts.permit_expiry).toBeUndefined();
+    expect(state.facts.stay_permit_code).toBeUndefined();
     expect(state.facts.current_status_code).toBeUndefined();
     expect(state.facts.application_channel).toBeUndefined();
   });
@@ -370,6 +422,69 @@ describe("onshore/offshore canonical fact collection", () => {
       kind: "question",
       questionId: "holds_stay_permit",
     });
+  });
+});
+
+describe("renewal_paid gating (F4, 2026-08-24 owner ruling)", () => {
+  it("is reached for an onshore expired-permit path", () => {
+    let state = initialFlowState("en");
+    state = reduce(state, { type: "ADVANCE" });
+    state = answer(state, "in_indonesia", "yes");
+    state = answer(state, "permit_expiry", "2020-01-01");
+    state = answer(state, "holds_stay_permit", "yes");
+    state = answer(state, "stay_permit_code", "E28A");
+    expectQuestion(state, "renewal_paid");
+    state = answer(state, "renewal_paid", "yes");
+    expectQuestion(state, "overstay_days");
+    expect(state.facts.renewal_paid).toBe("yes");
+  });
+
+  it("is reached for an onshore not-sure-expiry path", () => {
+    let state = initialFlowState("en");
+    state = reduce(state, { type: "ADVANCE" });
+    state = answer(state, "in_indonesia", "yes");
+    state = answer(state, "permit_expiry", "unsure");
+    state = answer(state, "holds_stay_permit", "yes");
+    state = answer(state, "stay_permit_code", "E28A");
+    expectQuestion(state, "renewal_paid");
+  });
+
+  it("is reached for an offshore expired-permit path", () => {
+    let state = initialFlowState("en");
+    state = reduce(state, { type: "ADVANCE" });
+    state = answer(state, "in_indonesia", "no");
+    state = answer(state, "holds_stay_permit", "yes");
+    state = answer(state, "permit_expiry", "2020-01-01");
+    state = answer(state, "stay_permit_code", "E28A");
+    expectQuestion(state, "renewal_paid");
+  });
+
+  it("is NOT reached for a known-current permit (onshore)", () => {
+    const next = computeNextNode(
+      { kind: "question", questionId: "stay_permit_code" },
+      {
+        in_indonesia: "yes",
+        permit_expiry: "2099-01-01",
+        holds_stay_permit: "yes",
+        stay_permit_code: "E28A",
+      },
+      new Date(2026, 7, 24),
+    );
+    expect(next).toEqual({ kind: "question", questionId: "overstay_days" });
+  });
+
+  it("is NOT reached when no stay permit is held (current_status_code branch never routes here)", () => {
+    const next = computeNextNode(
+      { kind: "question", questionId: "current_status_code" },
+      {
+        in_indonesia: "yes",
+        permit_expiry: "2020-01-01",
+        holds_stay_permit: "no",
+        current_status_code: "C1",
+      },
+      new Date(2026, 7, 24),
+    );
+    expect(next).toEqual({ kind: "question", questionId: "overstay_days" });
   });
 });
 
@@ -638,7 +753,18 @@ describe("editing, pruning and branch projection", () => {
     expectQuestion(state, "trip_scope");
   });
 
-  it("editing in_indonesia prunes every onshore descendant", () => {
+  it("editing in_indonesia prunes stale answers and re-enters the (now shared, differently-ordered) permit-status chain", () => {
+    // Renamed and updated 2026-08-24 (D12 offshore-reachability P0 fix,
+    // then re-fixed same day after a funnel-cost review): the fact is no
+    // longer onshore-only-reachable — both branches can reach it now —
+    // but the OFFSHORE order gates on holds_stay_permit first (funnel-cost
+    // minimization: a "no" answer converges immediately, see the
+    // dedicated tests above), so switching to "no" re-enters a
+    // differently-shaped chain, not the identical onshore one.
+    // application_channel remains genuinely onshore-only (only reachable
+    // after wants_onshore_conversion, which stays gated on
+    // in_indonesia==="yes"), so it is still correctly pruned and
+    // unreachable here.
     let state = initialFlowState("en");
     state = reduce(state, { type: "ADVANCE" });
     state = answer(state, "in_indonesia", "yes");
@@ -654,7 +780,17 @@ describe("editing, pruning and branch projection", () => {
     expect(state.facts.permit_expiry).toBeUndefined();
     expect(state.facts.current_status_code).toBeUndefined();
     expect(state.facts.application_channel).toBeUndefined();
+    expectQuestion(state, "holds_stay_permit");
+
+    // Prove the chain is genuinely reachable now, not just present in
+    // history — answer it through to convergence via BOTH offshore
+    // sub-branches are covered by the dedicated tests above; here, prove
+    // re-entry specifically converges correctly on the "no" path.
+    state = answer(state, "holds_stay_permit", "no");
     expectQuestion(state, "overstay_days");
+    expect(state.facts.permit_expiry).toBeUndefined();
+    expect(state.facts.current_status_code).toBeUndefined();
+    expect(state.facts.application_channel).toBeUndefined();
   });
 
   it("back is a real history step and prunes the removed answer", () => {
@@ -765,6 +901,47 @@ describe("editing, pruning and branch projection", () => {
 });
 
 describe("resume snapshot validation", () => {
+  it("replays date-sensitive routing against the snapshot's OWN save-time, not the resume-time wall clock (P1, 2026-08-24)", () => {
+    // Reproduces the exact scenario from the adversarial grade on this PR:
+    // save while the permit is still current (the renewal_paid gate skips,
+    // history reaches past `overstay_days`), then resume after the permit
+    // has since expired in real wall-clock time. Before this fix, replay
+    // recomputed `shouldAskRenewalPaid` against the RESUME-time clock,
+    // diverged from the saved `overstay_days` next-node, and truncated
+    // history right there — silently dropping the already-answered
+    // `overstay_days` fact even though nothing about the saved answers was
+    // ever invalid.
+    let state = initialFlowState("en");
+    state = reduce(state, { type: "ADVANCE" });
+    state = answer(state, "in_indonesia", "yes");
+    state = answer(state, "permit_expiry", "2026-09-01");
+    state = answer(state, "holds_stay_permit", "yes");
+    state = answer(state, "stay_permit_code", "E28A");
+    // At save-time (2026-08-24) the permit is still 8 days from expiry, so
+    // the gate skips `renewal_paid` and goes straight to `overstay_days`.
+    expectQuestion(state, "overstay_days");
+    state = answer(state, "overstay_days", "0");
+    expectQuestion(state, "wants_onshore_conversion");
+    expect(state.facts.overstay_days).toBe("0");
+
+    const snapshot = createInterviewSnapshot(
+      state,
+      new Date("2026-08-24T00:00:00Z"),
+    );
+
+    // Resume 22 days later: the permit is now expired in real wall-clock
+    // time — this is the moment the bug's clock (`restoreToday`) reads.
+    const restored = restoreInterviewSnapshot(
+      snapshot,
+      "en",
+      new Date("2026-09-15T00:00:00Z"),
+    );
+
+    expect(restored?.history).toEqual(state.history);
+    expect(restored?.facts).toEqual(state.facts);
+    expect(restored?.facts.overstay_days).toBe("0");
+  });
+
   it("serializes language-neutral facts and restores in a different language", () => {
     const state = startOffshore("tourism");
     const snapshot = createInterviewSnapshot(

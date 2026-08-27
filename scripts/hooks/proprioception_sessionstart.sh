@@ -89,8 +89,26 @@ other_div = [p for p in div if p is not self_finding]
 
 
 def _print_finding(p: dict) -> None:
-    ev = p["evidence"][0] if p.get("evidence") else f"{p.get('n_findings', '?')} findings"
-    print(f"  !! [{p.get('severity')}] {p.get('id')} (as of {report_time}, {age_h:.1f}h ago — re-verify before acting): {ev}")
+    # W97 again, one level DOWN from where it was cured. The [:4] probe cap above
+    # was fixed on 2026-07-26 so a truncated list of PROBES could not read as
+    # complete — but the single line each probe prints still truncated its own
+    # FINDINGS to evidence[0], with nothing on the line saying so. Both caps are
+    # the same defect at two depths; curing only the outer one is the "curato 1
+    # wrapper su 5" shape the outer fix was written against.
+    #
+    # MEASURED 2026-08-26 on Pro, live: launchagent_canon carried 55 findings and
+    # printed one; launchd_liveness 22, printed one; organs_heartbeat 7, printed
+    # one; worktree_gate_shim 4, printed one. That last one is not hypothetical
+    # damage — the line was read as "one worktree pushes with no gate", so the
+    # other three stayed ungated until a hand census found them.
+    #
+    # The count goes next to the id, not appended after the evidence: the evidence
+    # string is truncated to 160 chars upstream (run_wrap), so anything trailing
+    # can be the part that falls off.
+    n = p.get("n_findings")
+    ev = p["evidence"][0] if p.get("evidence") else f"{n if n is not None else '?'} findings"
+    more = f" [1 of {n}]" if p.get("evidence") and isinstance(n, int) and n > 1 else ""
+    print(f"  !! [{p.get('severity')}] {p.get('id')}{more} (as of {report_time}, {age_h:.1f}h ago — re-verify before acting): {ev}")
     print(f"     fix: {p.get('fix_hint', '')}")
 
 

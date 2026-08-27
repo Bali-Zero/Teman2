@@ -1,0 +1,23 @@
+{
+  "synthetic": true,
+  "fixture_category": "contradiction",
+  "adversarial_case_ref": "02-p04-adapter-mapping.md gap G4 — worked example of the aggregate-status derivation this bundle recommends but does not implement",
+  "expected_behavior": "Three evidence items: two support, one contradicts, on the same claim. The recommended derivation in 02-p04-adapter-mapping.md ('some contradicts present -> contradicted; all support, high confidence -> supported; mixed/thin -> inconclusive') would resolve this to 'contradicted' because at least one contradicting stance is present, even though a majority-vote heuristic (2 supports vs 1 contradicts) would wrongly resolve it to 'supported'. This fixture exists to make that policy choice explicit and testable, not to claim the policy is finalized — see 02-p04-adapter-mapping.md G4 for the open flag.",
+  "claim": {
+    "claim_id": "b2f1a000-0000-4000-8000-000000000031",
+    "claim_family_id": "b2f1a000-0000-4000-8000-0000000000f5",
+    "statement": {
+      "subject_ref": { "object_kind": "regulation", "object_id": "permenkumham-synth-09-2026", "object_hash": "6666666666666666666666666666666666666666666666666666666666666666" },
+      "predicate": "naga.processing_time.days",
+      "object_ref_or_value": 14,
+      "unit": "business_days"
+    },
+    "status": "contradicted",
+    "confidence": { "score": 0.5, "method": "naga.claim_scorer.v1" }
+  },
+  "evidence": [
+    { "evidence_id": "b2f1a000-0000-4000-8000-0000000000e4", "stance": "supports", "document_id": "https://example.go.id/synth-processing-time-notice", "note": "SYNTHETIC primary source states 14 business days." },
+    { "evidence_id": "b2f1a000-0000-4000-8000-0000000000e5", "stance": "supports", "document_id": "https://example-consultant.org/synth-summary", "note": "SYNTHETIC secondary source repeats 14 business days, likely syndicated from the primary — see evidence_independence fixture for why repetition should not count as independent corroboration." },
+    { "evidence_id": "b2f1a000-0000-4000-8000-0000000000e6", "stance": "contradicts", "document_id": "https://example-forum.org/synth-user-report", "note": "SYNTHETIC — a user-reported case took 28 business days in practice. Lower source_tier, but a real contradiction of the stated processing time, not noise to be outvoted." }
+  ]
+}

@@ -1,0 +1,287 @@
+# kb/topics/immigration.yaml — Lane A (immigration & visa), KB current-live campaign
+# MANDATE.md (docs/plans/2026-08-25-kb-current-live/) §2, first artifact.
+#
+# Scope per MANDATE.md §5: UU 6/2011 + amendments, Permenkumham / Permen Imipas,
+# stay-permit types, circulars. Every instrument below was measured against
+# PRODUCTION Qdrant (legal_unified, physical legal_unified_hybrid_hybrid) on
+# 2026-08-25 by lane A directly — not inherited from another lane's file without
+# re-verification, per the orchestrator's brief ("do not re-derive, but DO
+# re-verify before acting"). Cross-checked where noted against peraturan.go.id /
+# peraturan.bpk.go.id / kemenimipas.go.id via live web search + one direct fetch.
+
+schema_version: 1
+lane: A
+topic: immigration
+
+instruments:
+  # ── The core statute and its live amendment ─────────────────────────────────
+  - id: UU_6_2011
+    declared_identity: "UU 6/2011 — Keimigrasian"
+    verified_identity: "UU 6/2011 — Keimigrasian"
+    identity_verdict: consistent
+    status: amended
+    superseded_by: null
+    source_url: "https://peraturan.go.id/id/uu-no-6-tahun-2011"
+    source_verified: true
+    note: >-
+      Cross-verified via web search: peraturan.go.id confirms this exact title and
+      that it has been amended three times, most recently by UU 63/2024. `status:
+      amended` (not `in_force`) because the base articles are still valid law but
+      several have been rewritten by the amendment below — an answer built only on
+      this document_id without checking UU_63_2024 can quote a superseded article.
+      413 points in legal_unified, ALL shape `modern_full` (document_id + chunk_key
+      + section) — this is one of the two documents (with UU_40_2007) repaired by
+      Work Item Zero on 2026-08-25; lane A did not re-derive that repair, only
+      re-confirmed the live count (413, matching) and sampled two points directly.
+
+  - id: UU_63_2024
+    declared_identity: "UU 63/2024 — Perubahan Ketiga atas UU 6/2011 tentang Keimigrasian"
+    verified_identity: "UU 63/2024 — Perubahan Ketiga atas UU 6/2011 tentang Keimigrasian"
+    identity_verdict: consistent
+    status: in_force
+    superseded_by: null
+    source_url: "https://peraturan.go.id/id/uu-no-63-tahun-2024"
+    source_verified: true
+    note: >-
+      Content cross-check, not just title: web search independently describes this
+      amendment as capping Pencegahan (prevention/exit-ban) at 6 months (renewable
+      once) and Penangkalan (entry-ban/deportation) at 10 years (renewable once,
+      with a lifetime option for national-security threats) — and the points sampled
+      directly from legal_unified say the identical thing verbatim ("Jangka waktu
+      Pencegahan berlaku paling lama 6 (enam) bulan dan dapat diperpanjang paling
+      lama 6 (enam) bulan"; "Jangka waktu Penangkalan berlaku paling lama 10 (sepuluh)
+      tahun..."). Two independent sources agreeing on specific numbers, not just a
+      title match. 38 points total in legal_unified, split across TWO ingestion
+      generations for the same law: 10 points shape `modern_id_only` (document_id
+      present, no chunk_key) + 28 points shape `legacy_metadata_text` (CONTEXT-header
+      form, identity only in metadata.document_id) — recorded as an inventory
+      finding, not repaired here (out of lane A's G4 scope: repair is a parser fix,
+      not a topic-lane task per MANDATE.md §5's Lane P carve-out).
+
+  # ── Current visa & stay-permit regulation (Golden Visa lives here) ─────────
+  - id: Permen_22_2023
+    declared_identity: "Permenkumham 22/2023 — Visa dan Izin Tinggal"
+    verified_identity: "Permenkumham 22/2023 — Visa dan Izin Tinggal"
+    identity_verdict: consistent
+    status: amended
+    superseded_by: null
+    source_url: "https://peraturan.go.id/id/permenkumham-no-22-tahun-2023"
+    source_verified: true
+    note: >-
+      Directly fetched (not just searched) 2026-08-25: peraturan.go.id serves this
+      exact title, establishment date 22 Aug 2023, official YASONNA H. LAOLY, Berita
+      Negara No.651/2023 — genuine content, not the 74KB HTML error page MANDATE.md
+      §4.3 warns about. The same page states this regulation "Mencabut" (revokes) two
+      prior regulations and is "Diubah Oleh" (amended by) a 2024 regulation — cross-
+      confirmed by a second search naming the two revoked regulations as Permenkumham
+      16/2018 and Permenkumham 29/2021 (see Permen_29_2021 below), and the 2024
+      amendment as Permen_11_2024 (below). `status: amended`, not `in_force` alone,
+      for the same reason as UU_6_2011. 402 points in legal_unified, shape
+      `modern_id_only`. This is the instrument that actually carries the Golden Visa
+      provisions: BAB VI Pasal 198 (holder re-evaluation duty) and BAB V Pasal 184
+      (the "Golden Visa merupakan pengelompokan terhadap Visa Tinggal terbatas..."
+      definition) — confirmed present verbatim in legal_unified's own copy, not only
+      in the separate immigration_circulars collection. See kb/journeys — journey 1.
+      SECOND PASS (2026-08-25, same day, per OWNER-SWITCHBOARD.md §1.3/§1.4): a
+      targeted scroll of all 402 points also found Pasal 185/186's "rumah kedua"
+      (second-home) visa category genuinely present, with an explicit 60-plus
+      "Orang Asing lanjut usia" (retirement) sub-clause and a separate Pasal 33
+      "pekerja jarak jauh (remote worker)" visa (US$60,000/year income floor) — real
+      grounding for journeys 10/11. The SAME scroll found the literal alphanumeric
+      visa index codes real clients use (C1/C5/D12/E33 etc.) NOWHERE in these 402
+      points or in Permen_11_2024's 345 — recorded as LANE-A-5, not fabricated into
+      a journey. `hak pakai` (property tenure) is also absent — LANE-A-6.
+
+  - id: Permen_11_2024
+    declared_identity: "Permenkumham 11/2024 — Perubahan atas Permenkumham 22/2023 tentang Visa dan Izin Tinggal"
+    verified_identity: "Permenkumham 11/2024 — Perubahan atas Permenkumham 22/2023 tentang Visa dan Izin Tinggal"
+    identity_verdict: consistent
+    status: in_force
+    superseded_by: null
+    source_url: "https://peraturan.go.id/id/permenkumham-no-11-tahun-2024"
+    source_verified: true
+    note: >-
+      Cross-verified: named by peraturan.bpk.go.id search result under this exact
+      number/title, and independently named by Permen_22_2023's own official page as
+      the 2024 regulation that amends it. legal_unified's own points open with
+      `[CONTEXT: Permen - NO 11 - TAHUN 2024 - TENTANG PERUBAHAN ATAS ... NOMOR 22
+      TAHUN 2023 ...]`, matching. 345 points in legal_unified, shape `modern_id_only`.
+      No journey targets it directly in this pass (it amends specific articles rather
+      than restating them; a journey against its cross-references is future lane-A
+      work, recorded as a gap, not fabricated here).
+
+  # ── Core implementing regulation ────────────────────────────────────────────
+  - id: PP_31_2013
+    declared_identity: "PP 31/2013 — Peraturan Pelaksanaan UU 6/2011 tentang Keimigrasian"
+    verified_identity: "PP 31/2013 — Peraturan Pelaksanaan UU 6/2011 tentang Keimigrasian"
+    identity_verdict: consistent
+    status: amended
+    superseded_by: null
+    source_url: "https://peraturan.go.id/id/pp-no-31-tahun-2013"
+    source_verified: true
+    note: >-
+      Confirmed via web search as the standing implementing regulation for UU
+      6/2011, and — important, found while verifying, NOT chased further — a search
+      snippet independently states PP 31/2013 has been amended four times, most
+      recently by PP 40/2023, because "Permenkumham 29/2021 dinilai belum optimal
+      mengakomodir perubahan terbaru dalam PP No. 40 Tahun 2023 (Perubahan Keempat PP
+      No. 31 Tahun 2013)". Lane A did NOT verify whether legal_unified's 324 points
+      reflect the article text AS AMENDED THROUGH PP 40/2023, or only the 2013
+      original — the sampled points (procedural detail: immigration checkpoints,
+      travel-document issuance authority) are consistent with either version, so this
+      is a genuine open question, not a hedge. `status: amended` records that a
+      newer text may exist; UNDETERMINED whether the corpus content matches it.
+      324 points, shape `legacy_metadata_text` only — legacy generation, no modern
+      copy exists for this instrument at all.
+
+  # ── Superseded predecessor (canary target, journey 4) ───────────────────────
+  - id: Permen_29_2021
+    declared_identity: "Permenkumham 29/2021 — Visa dan Izin Tinggal"
+    verified_identity: "Permenkumham 29/2021 — Visa dan Izin Tinggal"
+    identity_verdict: consistent
+    status: superseded
+    superseded_by: Permen_22_2023
+    source_url: "https://peraturan.bpk.go.id/Details/203695/permenkumham-no-29-tahun-2021"
+    source_verified: true
+    note: >-
+      The identity is NOT the problem here — its own text and metadata agree with
+      each other, so `identity_verdict: consistent`. The problem is standing:
+      confirmed by TWO independent web sources that Permenkumham 22/2023 replaced
+      (menggantikan) both Permenkumham 16/2018 AND Permenkumham 29/2021, and by
+      Permen_22_2023's own official page ("Mencabut" two prior regulations). Yet 340
+      points of this superseded text are still live in legal_unified, shape
+      `modern_id_only`, with no `status` field on the point itself to say so. MANDATE
+      §7 decision 5 names exactly this class: "an amended article still answering
+      with its old text is worse than silence". Journey 4 is the canary — does an
+      ITAS-duration question surface THIS document's numbers instead of, or beside,
+      Permen_22_2023's current ones?
+
+  # ── The two poisoned identities (canary targets, journeys 2 and 8) ─────────
+  - id: Permen_35_2012
+    declared_identity: "Permenkumham 11/2024 — Golden Visa C-318"
+    verified_identity: "Peraturan bernomor 35/2012 mengenai tata naskah dinas di lingkungan Pemerintah Kabupaten Tegal (korespondensi resmi kantor) — bukan instrumen keimigrasian"
+    identity_verdict: contradictory
+    status: unknown
+    superseded_by: null
+    source_url: "https://peraturan.go.id/id/permen-pan-rb-no-35-tahun-2012"
+    source_verified: false
+    note: >-
+      This identity is what was already found (and correctly kept OUT of legal_unified)
+      by the retired-collection triage in kb/inventory/legal_unified_2026.yaml —
+      lane A re-verified rather than re-derived: 1) directly re-measured presence in
+      legal_unified TODAY via both `document_id` and `metadata.document_id` filters —
+      0/0, confirmed absent; 2) `verified_identity` is quoted from the instrument's
+      own title block as already extracted in that file ("Permen - NO 35 - TAHUN 2012
+      - TENTANG TATA NASKAH DINAS DI LINGKUNGAN PEMERINTAH KABUPATEN TEGAL"); 3) web
+      search for "Permen 35 2012" found a real, DIFFERENT Permenpan-RB 35/2012 (SOP
+      guideline for government agencies, national-level) — so the number 35/2012 is
+      not even uniquely identifying at the national level, and the ingested text's
+      own subject (a Kabupaten Tegal correspondence-procedure manual) matches
+      NEITHER the Golden Visa label NOR the national Permenpan-RB regulation of the
+      same number. `source_url` above is the closest verifiable match for the
+      DECLARED identity's number/type and was NOT independently fetched this session
+      (`source_verified: false`) — it almost certainly is not the source of the
+      ingested text either, which is the entire point: three candidate identities,
+      zero agreement. `status: unknown` is deliberate — no defensible in-force claim
+      can be made about an instrument whose true identity was never established.
+      This is the "sad path" instrument the orchestrator named directly: does a
+      Golden Visa question ever retrieve this municipal letterhead content?
+      Journey 2 answers that, against production, today.
+
+  - id: UU_14_2024
+    declared_identity: "Permenkumham 22/2023 — Visa Dan Izin Tinggal"
+    verified_identity: "Standar Harga Satuan Barang dan Jasa Pemerintah Kabupaten Klaten Tahun Anggaran 2025 (regency unit-price schedule) — bukan undang-undang dan bukan instrumen keimigrasian"
+    identity_verdict: contradictory
+    status: unknown
+    superseded_by: null
+    source_url: "https://peraturan.go.id/id/uu-no-14-tahun-2024"
+    source_verified: true
+    note: >-
+      Three-way mismatch, all independently confirmed this session, not inherited
+      un-checked: 1) the ingested text's own title block says "UU - NO 14 - TAHUN
+      2024 - TENTANG STANDAR HARGA SATUAN BARANG DAN JASA PEMERINTAH KABUPATEN
+      KLATEN TAHUN ANGGARAN 2025" — a Kabupaten-level annual price-standard document,
+      not federal statute at all; 2) the ingest's metadata DECLARES it as
+      "Permenkumham 22/2023 — Visa Dan Izin Tinggal", which it plainly is not;
+      3) web search for the REAL, officially registered UU No. 14 Tahun 2024 finds a
+      law "concerning Langkat Regency in North Sumatera Province" (an administrative/
+      territorial law) — a THIRD, unrelated subject. So the label, the text, and the
+      real official instrument bearing that number are three different things, and
+      none of them is Permenkumham 22/2023. `source_url` above is the real, verified
+      UU 14/2024 (Langkat Regency) fetched via search — recorded for completeness,
+      explicitly NOT the source of the ingested text. Directly re-measured presence
+      in legal_unified TODAY: 0/0 (both `document_id` and `metadata.document_id`),
+      confirmed absent — must stay that way. Journey 8 is the second canary.
+
+  # ── Revoked, partial — catalogue-only, no journey ───────────────────────────
+  - id: PP_45_2024
+    declared_identity: "PP 45/2024 — Jenis dan Tarif atas Jenis PNBP pada Kementerian Hukum dan HAM"
+    verified_identity: "PP 45/2024 — Jenis dan Tarif atas Jenis PNBP pada Kementerian Hukum dan HAM"
+    identity_verdict: consistent
+    status: revoked
+    superseded_by: null
+    source_url: "https://peraturan.go.id/id/pp-no-45-tahun-2024"
+    source_verified: false
+    note: >-
+      Identity is sound (own text and metadata agree, `legal_status: dicabut` was
+      already recorded by the retired-collection triage) but only 12 points ever
+      existed for it anywhere, and it is confirmed absent from legal_unified today
+      (0/0, re-measured). Not `revoked` as a decoration: it names PNBP (government
+      fee) tariffs, and Bali Zero's fee-facing answers must never cite a repealed
+      tariff schedule as current. No journey targets it — 12 points cannot be a
+      whole PNBP tariff table (§4.5), so there is nothing complete enough to probe
+      for; it is a catalogue entry, not a retrieval target.
+
+  # ── Present but suspiciously thin — inventory finding, no journey ──────────
+  - id: Permen_27_2021
+    declared_identity: "Permenkumham 27/2021 — Tata Cara Pemberian, Perpanjangan, Penolakan, Pembatalan, dan Pencabutan Visa"
+    verified_identity: "Permenkumham 27/2021 — Tata Cara Pemberian, Perpanjangan, Penolakan, Pembatalan, dan Pencabutan Visa"
+    identity_verdict: consistent
+    status: unknown
+    superseded_by: null
+    source_url: "https://peraturan.go.id/id/permenkumham-no-27-tahun-2021"
+    source_verified: false
+    note: >-
+      Identity checks out against the sampled text (closing clause names Menteri
+      Hukum dan HAM YASONNA H. LAOLY, dated 19 Jul 2021, and revokes Permenkumham
+      26/2020) — but only 6 points exist in legal_unified, against 402/345/340/324
+      for peer Permenkumham/PP instruments of comparable scope. That is not "a short
+      regulation": it is the shape of a damaged or partially-read ingest (§4.5). No
+      journey built on it (nothing here is verified whole enough to promise a client
+      an answer from), and no re-ingest attempted (out of lane A's scope per §5 —
+      repair belongs to Lane P / the parser-capability lane if the root cause is
+      structural, or to a re-acquisition if the source file itself is short).
+
+# ── Questions this topic must never get wrong (G0, MANDATE.md §3/§7#1) ───────
+# Owed by Zero; nothing blocks on them. Drafted here from what lane A actually
+# measured today, not from a generic checklist — every one maps to a verified
+# fact or a verified gap above.
+questions_must_never_get_wrong:
+  - "What counts as a Golden Visa in Indonesia, and what ongoing condition must a holder meet?"
+  - "Is the current Visa dan Izin Tinggal regulation Permenkumham 22/2023, and has it been amended?"
+  - "How long can a foreigner be subject to Pencegahan (exit ban) or Penangkalan (entry ban), under the law as it stands after the 2024 amendment?"
+  - "Does asking about a current visa/stay-permit topic ever surface a superseded regulation's numbers (Permen 29/2021) as if current?"
+  - "Does asking about Golden Visa ever surface unrelated municipal correspondence rules (the Permen_35_2012 poison)?"
+  - "Does asking about Visa dan Izin Tinggal ever surface an unrelated regency price schedule (the UU_14_2024 poison)?"
+  - "What are the requirements to extend a limited stay permit (ITAS)?"
+  - "What is a re-entry permit (Izin Masuk Kembali) and how long is it valid relative to the stay permit it attaches to?"
+  - "Where is immigration supervision (pengawasan keimigrasian) legally conducted?"
+  - "Can Bali Zero quote a PNBP (government fee) figure from PP 45/2024? (It must not — revoked.)"
+  - "If an investor asks about their visa and their PT PMA in the same breath, does the answer connect the investor-visa provisions to company formation (Lane B), or silently answer only the immigration half?"
+  - "Does a retiree asking about a second-home visa while also buying/renting property get an answer that at least reaches the immigration eligibility rule (Pasal 185/186), even before the property-tenure half (Lane D) is addressed?"
+  - "Does a remote-worker/digital-nomad question in English reach the actual Pasal 33 remote-worker visa provision, or only the KITAS-family provisions a Bahasa Indonesia question reaches?"
+
+# ── Primary metric, guardrails, kill criterion (G0 gate) ────────────────────
+primary_metric: >-
+  Every journey in kb/journeys/immigration.yaml measures green against legal_unified
+  in production, and stays green for 48h under the scheduled probe (MANDATE.md §8).
+guardrails:
+  - "A poisoned identity (Permen_35_2012, UU_14_2024) must never re-enter legal_unified under a visa/Golden-Visa question — the two canary journeys must never flip to green."
+  - "A superseded instrument (Permen_29_2021) must not be promoted or repaired in place; a fuller/correct answer means Permen_22_2023 out-ranks it, not that 29/2021 is edited."
+  - "Never write onto a document_id already held by a different source (identity guard, MANDATE.md §4.4) — none of this topic's repairs are 'in place' edits."
+kill_criterion: >-
+  If a canary journey (2 or 8) measures green against production at any point, halt
+  all lane A promotion work immediately and escalate — that state means a poisoned
+  identity has entered the collection every legal query reads.
+
+owner_decisions_log: []

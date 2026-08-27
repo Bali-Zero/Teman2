@@ -18,8 +18,8 @@
       }
     ]
   },
-  "model_count": 80,
-  "endpoint_count": 81,
+  "model_count": 75,
+  "endpoint_count": 75,
   "models": [
     {
       "model_card_id": "aisingapore-qwen-sea-lion-v4-32b-it-q4-k-m",
@@ -429,67 +429,6 @@
       ]
     },
     {
-      "model_card_id": "glm-4.5",
-      "family": "glm",
-      "kind": "language",
-      "routing_status": "investigation_required",
-      "automated_routing": false,
-      "evidence": [
-        {
-          "level": "probed",
-          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
-          "observed_at": "2026-08-21"
-        }
-      ]
-    },
-    {
-      "model_card_id": "glm-4.7",
-      "family": "glm",
-      "kind": "language",
-      "routing_status": "investigation_required",
-      "automated_routing": false,
-      "evidence": [
-        {
-          "level": "probed",
-          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
-          "observed_at": "2026-08-21"
-        },
-        {
-          "level": "declared",
-          "ref": "https://help.aliyun.com/en/model-studio/coding-plan-faq | FAQ | accessed 2026-08-21 | Exact claim: glm-4.7 has a 202,752-token context length.",
-          "observed_at": "2026-08-21"
-        }
-      ]
-    },
-    {
-      "model_card_id": "glm-4",
-      "family": "glm",
-      "kind": "language",
-      "routing_status": "investigation_required",
-      "automated_routing": false,
-      "evidence": [
-        {
-          "level": "probed",
-          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
-          "observed_at": "2026-08-21"
-        }
-      ]
-    },
-    {
-      "model_card_id": "glm-5.1",
-      "family": "glm",
-      "kind": "language",
-      "routing_status": "denied",
-      "automated_routing": false,
-      "evidence": [
-        {
-          "level": "probed",
-          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
-          "observed_at": "2026-08-21"
-        }
-      ]
-    },
-    {
       "model_card_id": "glm-5.2",
       "family": "glm",
       "kind": "language",
@@ -497,32 +436,13 @@
       "automated_routing": false,
       "evidence": [
         {
-          "level": "declared",
-          "ref": "MODEL_ROSTER.md#z.ai",
-          "observed_at": "2026-08-21"
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
         },
         {
           "level": "declared",
           "ref": "https://help.aliyun.com/en/model-studio/newly-released-models | Newly released models | accessed 2026-08-21 | Exact claim: glm-5.2 documents a 1M-token context and long-horizon reasoning, text generation, and coding capabilities.",
-          "observed_at": "2026-08-21"
-        }
-      ]
-    },
-    {
-      "model_card_id": "glm-5",
-      "family": "glm",
-      "kind": "language",
-      "routing_status": "denied",
-      "automated_routing": false,
-      "evidence": [
-        {
-          "level": "probed",
-          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
-          "observed_at": "2026-08-21"
-        },
-        {
-          "level": "declared",
-          "ref": "https://help.aliyun.com/en/model-studio/coding-plan-faq | FAQ | accessed 2026-08-21 | Exact claim: glm-5 has a 202,752-token context length.",
           "observed_at": "2026-08-21"
         }
       ]
@@ -1604,108 +1524,6 @@
         {
           "level": "declared",
           "ref": "MODEL_ROSTER.md#Anthropic",
-          "observed_at": "2026-08-21"
-        }
-      ]
-    },
-    {
-      "endpoint_id": "claude-glm-glm-4.5",
-      "model_card_id": "glm-4.5",
-      "engine": "claude-glm",
-      "model_identifier": "glm-4.5",
-      "auth_surface": "unknown",
-      "routing_status": "investigation_required",
-      "automated_routing": false,
-      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
-      "evidence": [
-        {
-          "level": "probed",
-          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
-          "observed_at": "2026-08-21"
-        }
-      ]
-    },
-    {
-      "endpoint_id": "claude-glm-glm-4.7",
-      "model_card_id": "glm-4.7",
-      "engine": "claude-glm",
-      "model_identifier": "glm-4.7",
-      "auth_surface": "unknown",
-      "routing_status": "investigation_required",
-      "automated_routing": false,
-      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
-      "evidence": [
-        {
-          "level": "probed",
-          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
-          "observed_at": "2026-08-21"
-        }
-      ]
-    },
-    {
-      "endpoint_id": "claude-glm-glm-4",
-      "model_card_id": "glm-4",
-      "engine": "claude-glm",
-      "model_identifier": "glm-4",
-      "auth_surface": "unknown",
-      "routing_status": "investigation_required",
-      "automated_routing": false,
-      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
-      "evidence": [
-        {
-          "level": "probed",
-          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
-          "observed_at": "2026-08-21"
-        }
-      ]
-    },
-    {
-      "endpoint_id": "claude-glm-glm-5.1",
-      "model_card_id": "glm-5.1",
-      "engine": "claude-glm",
-      "model_identifier": "glm-5.1",
-      "auth_surface": "unknown",
-      "routing_status": "denied",
-      "automated_routing": false,
-      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
-      "evidence": [
-        {
-          "level": "probed",
-          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
-          "observed_at": "2026-08-21"
-        }
-      ]
-    },
-    {
-      "endpoint_id": "claude-glm-glm-5.2",
-      "model_card_id": "glm-5.2",
-      "engine": "claude-glm",
-      "model_identifier": "glm-5.2",
-      "auth_surface": "unknown",
-      "routing_status": "eligible",
-      "automated_routing": true,
-      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
-      "evidence": [
-        {
-          "level": "declared",
-          "ref": "MODEL_ROSTER.md#z.ai",
-          "observed_at": "2026-08-21"
-        }
-      ]
-    },
-    {
-      "endpoint_id": "claude-glm-glm-5",
-      "model_card_id": "glm-5",
-      "engine": "claude-glm",
-      "model_identifier": "glm-5",
-      "auth_surface": "unknown",
-      "routing_status": "denied",
-      "automated_routing": false,
-      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
-      "evidence": [
-        {
-          "level": "probed",
-          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
           "observed_at": "2026-08-21"
         }
       ]

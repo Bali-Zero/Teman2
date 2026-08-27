@@ -830,6 +830,18 @@
       "_note": "S3 seat-probe payload (Piece A) that the wrapper above execs, installed root-owned alongside the daemon's own runtime tree (same /usr/local/lib/wa-codex-broker RUNTIME_DIR, same fresh-copy-every-run discipline as the daemon code in step 3 — a merge alone never updates this live copy, W107 delivery gotcha). Imports backend.llm.codex_exec_client._AUTH_DEATH_RE from the sibling `backend/` package that step 3 already installs into this same directory tree — the two payloads share one runtime root by design, so they cannot disagree about the auth-death regex without both copies being re-provisioned together."
     },
     {
+      "live": "/usr/local/lib/wa-codex-broker/backend/services/integrations/wa_codex_daemon.py",
+      "repo": "apps/backend-rag/backend/services/integrations/wa_codex_daemon.py",
+      "machines": ["pro"],
+      "_note": "The daemon's OWN entry-point module — undeclared until this entry despite the wrapper (above) and the seat-probe payload (above) that ships in the same RUNTIME_DIR both already being declared: superscar #1 wearing #2's costume, the pair list said 'wa-codex-broker' so it read as covered while the only file that can actually change the daemon's behaviour went unwatched. STRUCTURALLY INVISIBLE to --discover by construction, same shape as the cron-agent-python/agent_job.py entry above: the wrapper's ProgramArguments names only /usr/local/libexec/wa-codex-broker-wrapper.sh (already declared) — the `exec $VENV_PY -m backend.services.integrations.wa_codex_daemon` line that actually runs this module lives inside the wrapper's shell body, one level removed from anything --discover parses (plist Program/ProgramArguments + crontab), so no amount of re-running --discover would ever surface this gap; only an explicit declaration does. Installed by scripts/provision_zantara_codex.sh (`install -o root -g wheel -m 0644` from ${BACKEND_SRC}/services/integrations/wa_codex_daemon.py) — re-run provisioning after changing the repo twin, a merge alone never updates the live copy (W107 delivery gotcha). Verified sha256-identical to the repo twin at declaration time (2026-08-25): bf16046863168d7c1f2c2cedbc49ae1334f2ee73673d1b8da693c26a5a8fd416 both sides, so this entry adds coverage, not a red build. Its only local import is backend.llm.codex_exec_client (declared as the next pair below) — no other repo module is pulled into this runtime tree, verified by grepping every `from backend`/`import backend` line and by listing RUNTIME_DIR/backend on disk (6 files total: this module, codex_exec_client.py, and 4 empty __init__.py)."
+    },
+    {
+      "live": "/usr/local/lib/wa-codex-broker/backend/llm/codex_exec_client.py",
+      "repo": "apps/backend-rag/backend/llm/codex_exec_client.py",
+      "machines": ["pro"],
+      "_note": "Sibling payload to wa_codex_daemon.py (declared above) — the Codex-exec wrapper module the daemon imports for every LLM round-trip (also the module seat_probe.py imports _AUTH_DEATH_RE from, per that pair's own note). Same gap, same cause, same fix: undeclared until now although two OTHER files in this exact RUNTIME_DIR were already declared. Installed by scripts/provision_zantara_codex.sh (`install -o root -g wheel -m 0644` from ${BACKEND_SRC}/llm/codex_exec_client.py); re-run provisioning after changing the repo twin (W107). Verified sha256-identical at declaration time (2026-08-25): a972ac1b7e802fe4b4326e297a13c5e05be4fefa22e422a41859090fcf3918ea both sides. DELIBERATELY NOT declared alongside these two: the 4 `__init__.py` files in this same RUNTIME_DIR/backend tree (backend/__init__.py, backend/llm/__init__.py, backend/services/__init__.py, backend/services/integrations/__init__.py). provision_zantara_codex.sh creates them with a bare `touch` (its own comment: `[ -f \"$init\" ] || { touch \"$init\"; ... }`) as empty namespace-package markers, NOT as copies of the repo's __init__.py — the repo counterparts are real files with content (3/56/12/17 lines respectively, package-level imports and docstrings). A sha256 pair declared against those would report DIVERGED on every future --check run forever, a permanent false breach the provisioning script's own design guarantees, not a drift anyone could fix by realigning either side. Left undeclared on purpose; if a future provisioning change starts copying real __init__.py content into this tree, these four become a legitimate pair and should be added then."
+    },
+    {
       "live": "~/scripts/mini-secrets-perms-sweep.sh",
       "repo": "infra/launchagents/wrappers/mini-secrets-perms-sweep.sh",
       "machines": ["mini"]
@@ -892,6 +904,38 @@
       "repo": "infra/claude-hooks/mailbox_inject.py",
       "_note": "Context-only PostToolUse/Stop hook (fleet mailbox reader) added 2026-08-23. Installed by infra/claude-hooks/install_mailbox_hook.sh (self-verifying vaccine, same pattern as install_worktree_hooks.sh). Never blocks a command — no guilt/innocence contract, registered in guard-conformance registry.json command_hooks.exempt like dispatch_nudge.py, not entries. Declared at PR-open, before any machine has installed it: --check will report the live copy ABSENT on all three machines until install_mailbox_hook.sh runs there — expected, not drift.",
       "machines": ["all"]
+    },
+    {
+      "live": "~/scripts/pro-iqoo-radar-relay.sh",
+      "repo": "infra/launchagents/wrappers/pro-iqoo-radar-relay.sh",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.iqoo-radar-relay.plist",
+      "repo": "infra/launchagents/com.nuzantara.iqoo-radar-relay.plist",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/mini-iqoo-radar-relay.sh",
+      "repo": "infra/launchagents/wrappers/mini-iqoo-radar-relay.sh",
+      "machines": ["mini"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.mini-iqoo-radar-relay.plist",
+      "repo": "infra/launchagents/com.nuzantara.mini-iqoo-radar-relay.plist",
+      "machines": ["mini"]
+    },
+    {
+      "live": "~/scripts/pro-kb-probe-history.sh",
+      "repo": "infra/launchagents/wrappers/pro-kb-probe-history.sh",
+      "machines": ["pro"],
+      "_note": "Born with pro.kb_probe_history via scripts/organ_birth.py (2026-08-26). Pro-resident: the probe reads the legal KB from the Pro checkout, so the live pair exists on Pro only — declaring 'all' would make --check chase a pair that is not there on M5/Mini, the exact mistake the fly_pg_tunnel_supervisor entry above already records."
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.kb-probe-history.6h.plist",
+      "repo": "infra/launchagents/com.nuzantara.kb-probe-history.6h.plist",
+      "machines": ["pro"],
+      "_note": "The plist twin of the pair above; installed on Pro only."
     }
   ],
   "allow": [

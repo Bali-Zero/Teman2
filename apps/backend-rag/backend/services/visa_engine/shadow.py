@@ -228,14 +228,15 @@ def _resolve_nationality_alpha2(nationality: str) -> str | None:
 
 
 def _default_unknown_facts() -> dict[str, UnknownFact]:
-    """The 44 applicant-collected fact paths (widened 2026-08-23 — three
+    """The 45 applicant-collected fact paths (widened 2026-08-23 — three
     optional/defaulted `family.stepchild_*`/`family.sponsor_permit_basis`
-    keys joined the vocabulary; this function derives its key set from
-    ``APPLICANT_FACT_PATHS`` structurally, so it required no code change),
-    each defaulted to ``UnknownFact(reason=NOT_ASKED)`` — a Match wizard
-    submission never asked the other 41 facts a full visa_oracle interview
-    would. Sharing one frozen ``UnknownFact`` instance across every key is
-    safe (immutable model, no per-key state).
+    keys — and again 2026-08-24, `immigration.renewal_paid`, F4; this
+    function derives its key set from ``APPLICANT_FACT_PATHS`` structurally,
+    so it required no code change), each defaulted to
+    ``UnknownFact(reason=NOT_ASKED)`` — a Match wizard submission never asked
+    the other 42 facts a full visa_oracle interview would. Sharing one frozen
+    ``UnknownFact`` instance across every key is safe (immutable model, no
+    per-key state).
     """
 
     default = UnknownFact(status="UNKNOWN", reason=UnknownReason.NOT_ASKED)

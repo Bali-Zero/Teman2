@@ -1,0 +1,61 @@
+task_id: research-os-p04-d5-truncate-guard-0824
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Research OS v1.0.0 hardening: migration 279 (`279_research_os_contract_core.sql`) declares
+  `public.research_os_objects` append-only and enforces it with a ROW-level
+  `BEFORE UPDATE OR DELETE ... FOR EACH ROW` trigger calling
+  `reject_research_os_objects_mutation()`. PostgreSQL never fires row-level triggers on
+  `TRUNCATE` (it is a statement-level operation with no per-row event), so any role holding
+  TRUNCATE privilege on this table could wipe the entire evidence substrate in one statement
+  with the append-only guarantee never engaged. `grep -ci truncate` on 279 returns 0.
+
+  This PR adds migration 280, `research_os_objects_truncate_guard`: one new
+  STATEMENT-level trigger, `research_os_objects_no_wipe`, `BEFORE TRUNCATE`, reusing 279's
+  existing `reject_research_os_objects_mutation()` function VERBATIM -- no companion function,
+  no `TG_OP` branch, no `ALTER`/`CREATE OR REPLACE FUNCTION`. The function body only ever
+  references the built-in `TG_TABLE_NAME` trigger variable, never `NEW`/`OLD`, so it is already
+  valid for statement-level invocation with zero code change. This is the identical, established
+  convention already applied to the visa engine's write substrate in migrations 250/251
+  (`reject_visa_immutable_mutation`), 252/253 (`reject_visa_write_substrate_mutation`), and 264.
+
+  Additive only. Does not touch 279's table, columns, constraints, indexes, function, or
+  existing row-level trigger.
+constraints:
+  - "Additive only: one new migration file (280) + one new test file. Touches zero existing
+    file. Does not modify packages/research-os-core/ or any domain model."
+  - "Migration integer 280 must be free on origin/main at commit time (re-verified this
+    session: highest present is 279, and no other open PR touches migrations_v2/ except this
+    one)."
+  - "No PII: every proof row uses a synthetic object_id/object_hash, no real Magazine/research-os
+    row is read, pasted, or referenced."
+acceptance:
+  - "INSERT still succeeds after the guard is added (innocence)."
+  - "UPDATE/DELETE remain rejected by 279's existing row-level trigger, unchanged (innocence,
+    proves this PR does not regress 279)."
+  - "TRUNCATE is rejected by the NEW statement-level trigger where it previously succeeded
+    silently (the fix)."
+  - "Guilt-arm: applying migration 280's own ROLLBACK section restores TRUNCATE to succeeding
+    again, and re-applying 280's forward section rejects it again -- proving the NEW trigger,
+    not something else, is what blocks TRUNCATE."
+  - "PYTHONPATH=. pytest backend/tests/db/test_migration_280_research_os_objects_truncate_guard.py
+    -v exits 0 (8 tests: 6 static file-content assertions + 2 live-DB integration tests
+    covering innocence + the guilt-arm sequence)."
+  - "Squawk lint clean under this repo's exact CI exclude list (migration-lint.yml)."
+consumer_map:
+  - "No runtime consumer yet: 279's table has zero application-level readers/writers in this
+    repo as of this PR (Research OS v1.0.0 adapters write via other paths not yet wired to
+    Postgres). This migration protects the table's own integrity invariant regardless of
+    consumer wiring status -- it is infrastructure hardening, not a feature with a call site."
+risks:
+  - "This migration does not, and does not claim to, close every statement-level bypass of
+    append-only (e.g. DROP+recreate of the table, superuser/role-level bypass, ALTER TABLE
+    RENAME games). It closes the one specific gap 279 left open: bare TRUNCATE with
+    row-level-only enforcement. Documented as residual risk in the pack, not silently
+    understated."
+sources:
+  - "279_research_os_contract_core.sql, read in full to confirm the existing function's body
+    never references NEW/OLD (a precondition for reusing it unmodified at statement level)."
+  - "Migrations 250/251/252/253/264 (visa engine write substrate) as the established
+    statement-level-trigger-reusing-a-row-level-trigger's-function convention this PR follows."

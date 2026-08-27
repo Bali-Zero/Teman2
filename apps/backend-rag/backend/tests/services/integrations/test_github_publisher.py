@@ -12,6 +12,7 @@ Covers:
 """
 
 import base64
+import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -154,7 +155,8 @@ class TestClose:
     async def test_close_safe_when_no_client(self):
         pub = _make_publisher()
         pub._client = None
-        await pub.close()  # must not raise
+        await pub.close()
+        assert pub._client is None
 
 
 # ---------------------------------------------------------------------------
@@ -202,6 +204,41 @@ class TestCheckFileExists:
         pub = _make_publisher(token="")
         with pytest.raises(GitHubPublisherError, match="not configured"):
             await pub.check_file_exists("content/foo.mdx")
+
+
+class TestGetFileContent:
+    @pytest.mark.asyncio
+    async def test_decodes_utf8_base64_content(self):
+        pub = _make_publisher()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "content": base64.b64encode(b'{"hero_main":"story"}\n').decode()
+        }
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_resp)
+        mock_client.is_closed = False
+        pub._client = mock_client
+
+        content = await pub.get_file_content(
+            "apps/mouth/src/content/homepage-layout.json"
+        )
+
+        assert content == '{"hero_main":"story"}\n'
+
+    @pytest.mark.asyncio
+    async def test_non_200_is_an_error(self):
+        pub = _make_publisher()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        mock_resp.text = "not found"
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_resp)
+        mock_client.is_closed = False
+        pub._client = mock_client
+
+        with pytest.raises(GitHubPublisherError, match="Failed to read"):
+            await pub.get_file_content("missing.json")
 
 
 # ---------------------------------------------------------------------------
@@ -327,3 +364,133 @@ class TestCreateCommitWithFiles:
         pub = _make_publisher(token="")
         with pytest.raises(GitHubPublisherError, match="not configured"):
             await pub.create_commit_with_files([{"path": "a.mdx", "content": "x"}], "msg")
+
+    @pytest.mark.asyncio
+    async def test_idempotent_publication_resumes_existing_pr_without_new_commit(self):
+        pub = _make_publisher()
+        existing = {
+            "success": True,
+            "commit_sha": "existing-sha",
+            "pull_request_number": 91,
+            "idempotent": True,
+        }
+        pub._resume_publication_pull_request = AsyncMock(return_value=existing)
+
+        result = await pub.create_commit_with_files(
+            [{"path": "content/story.mdx", "content": "story"}],
+            "feat(article): story",
+            pull_request=True,
+            idempotency_key="news_20260827_story",
+        )
+
+        assert result == existing
+        pub._resume_publication_pull_request.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_long_distinct_idempotency_keys_use_distinct_branch_hashes(self):
+        pub = _make_publisher()
+        pub._resume_publication_pull_request = AsyncMock(
+            return_value={"success": True, "idempotent": True}
+        )
+        common = "x" * 110
+
+        await pub.create_commit_with_files(
+            [{"path": "content/story.mdx", "content": "story"}],
+            "feat(article): story",
+            pull_request=True,
+            idempotency_key=common + "a",
+        )
+        await pub.create_commit_with_files(
+            [{"path": "content/story.mdx", "content": "story"}],
+            "feat(article): story",
+            pull_request=True,
+            idempotency_key=common + "b",
+        )
+
+        branches = {
+            call.kwargs["head_branch"]
+            for call in pub._resume_publication_pull_request.await_args_list
+        }
+        assert len(branches) == 2
+
+    @pytest.mark.asyncio
+    async def test_absence_check_uses_same_parent_sha_and_blocks_collision(self):
+        pub = _make_publisher()
+
+        def response(status: int, payload: dict, text: str = "") -> MagicMock:
+            item = MagicMock()
+            item.status_code = status
+            item.json.return_value = payload
+            item.text = text
+            return item
+
+        mock_client = AsyncMock()
+        mock_client.is_closed = False
+        mock_client.get = AsyncMock(
+            side_effect=[
+                response(200, {"object": {"sha": "base-after-concurrent-merge"}}),
+                response(200, {"tree": {"sha": "tree-after-concurrent-merge"}}),
+                response(200, {"sha": "article-that-now-exists"}),
+            ]
+        )
+        mock_client.post = AsyncMock()
+        pub._client = mock_client
+
+        with pytest.raises(GitHubPublisherError, match="already exists"):
+            await pub.create_commit_with_files(
+                [{"path": "content/story.mdx", "content": "replacement"}],
+                "feat(article): story",
+                must_not_exist_paths=["content/story.mdx"],
+            )
+
+        collision_call = mock_client.get.await_args_list[2]
+        assert collision_call.kwargs["params"] == {
+            "ref": "base-after-concurrent-merge"
+        }
+        mock_client.post.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_json_update_reads_document_from_exact_parent_sha(self):
+        pub = _make_publisher()
+
+        def response(status: int, payload: dict, text: str = "") -> MagicMock:
+            item = MagicMock()
+            item.status_code = status
+            item.json.return_value = payload
+            item.text = text
+            return item
+
+        layout = base64.b64encode(b'{"hero_2":"newer-concurrent-story"}\n').decode()
+        mock_client = AsyncMock()
+        mock_client.is_closed = False
+        mock_client.get = AsyncMock(
+            side_effect=[
+                response(200, {"object": {"sha": "new-main-parent"}}),
+                response(200, {"tree": {"sha": "new-main-tree"}}),
+                response(200, {"content": layout}),
+            ]
+        )
+        mock_client.post = AsyncMock(
+            return_value=response(500, {}, "stop after same-parent proof")
+        )
+        pub._client = mock_client
+
+        with pytest.raises(GitHubPublisherError, match="Failed to create blob"):
+            await pub.create_commit_with_files(
+                [],
+                "feat(article): story",
+                json_object_updates={
+                    "apps/mouth/src/content/homepage-layout.json": {
+                        "hero_3": "story"
+                    }
+                },
+            )
+
+        layout_read = mock_client.get.await_args_list[2]
+        assert layout_read.kwargs["params"] == {"ref": "new-main-parent"}
+        blob_payload = mock_client.post.await_args_list[-1].kwargs["json"]
+        resolved = json.loads(base64.b64decode(blob_payload["content"]).decode())
+        assert resolved == {
+            "hero_2": "newer-concurrent-story",
+            "hero_3": "story",
+        }

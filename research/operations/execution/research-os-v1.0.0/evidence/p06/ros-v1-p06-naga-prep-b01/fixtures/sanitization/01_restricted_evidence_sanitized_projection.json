@@ -1,0 +1,31 @@
+{
+  "synthetic": true,
+  "fixture_category": "sanitization",
+  "adversarial_case_ref": "04-golden-set-and-adversarial-plan.md adversarial case 6: 'Evidence is restricted and only a sanitized projection is permitted'",
+  "added_2026_08_26": "This fixture did NOT ship with the original bundle. A cross-family adversarial review (Kimi K3) found that case 6 was named in the case list, acknowledged as needing to stay schematic, and then simply not delivered -- leaving the ONE category where a missing negative control is most expensive (the PII/sanitization boundary) with no fixture at all. Contains no real restricted content of any kind: every field below is invented.",
+  "expected_behavior": "A consumer whose clearance does not cover classification.sensitivity=CLIENT_PII must receive the SANITIZED projection and never the raw evidence. The projection must (a) preserve the fields needed to judge the claim -- source_tier, stance, document_version_id, times -- and (b) replace source_span.text with a redaction marker, never with a paraphrase, a summary, or a truncation. A test asserts the raw text is absent from the projection AND that the projection still validates as Evidence.",
+  "evidence_restricted": {
+    "evidence_id": "b2f1a000-0000-4000-8000-0000000000f1",
+    "document_id": "synth-client-file-0001",
+    "source_tier": "primary",
+    "stance": "supports",
+    "classification": { "risk_class": "AMBER", "sensitivity": "CLIENT_PII", "rights": "internal-only" },
+    "source_span": { "text": "SYNTHETIC PLACEHOLDER -- stands in for a passage that would carry client PII. No real passage exists in this bundle.", "start": 0, "end": 118 }
+  },
+  "expected_sanitized_projection": {
+    "evidence_id": "b2f1a000-0000-4000-8000-0000000000f1",
+    "document_id": "synth-client-file-0001",
+    "source_tier": "primary",
+    "stance": "supports",
+    "classification": { "risk_class": "AMBER", "sensitivity": "CLIENT_PII", "rights": "internal-only" },
+    "source_span": { "text": "[REDACTED: CLIENT_PII]", "start": 0, "end": 118 },
+    "projection_note": "Offsets are PRESERVED deliberately so a cleared reader can still locate the span in the source document; only the text is withheld."
+  },
+  "must_not_happen": [
+    "raw source_span.text reaching a consumer below CLIENT_PII clearance",
+    "silent omission of the whole evidence object (the claim would then look unsupported rather than restricted -- a false ABSTAIN)",
+    "substituting an LLM-written paraphrase or summary for the redacted span",
+    "sending the restricted text to any external model for summarisation (SYMBIOSIS Law 2 / UU PDP)"
+  ],
+  "note": "SYNTHETIC illustrative shape only -- required schema fields (object_hash, evidence_family_id, provenance, review_state, retention, times, source_event_ref, document_content_hash) are omitted here because this is a behaviour spec, not a schema-valid instance. See 04-golden-set-and-adversarial-plan.md."
+}

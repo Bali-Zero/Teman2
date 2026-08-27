@@ -205,21 +205,30 @@ def extract_text_from_pdf(
                     # Last resort: try vision model (skip if already in async context)
                     logger.info("OCR failed, trying vision model as last resort...")
                     try:
-                        import asyncio
-
-                        from backend.services.multimodal.pdf_vision_service import PDFVisionService
+                        from backend.services.multimodal.pdf_vision_service import (
+                            IncompleteTranscriptionError,
+                            PDFVisionService,
+                        )
 
                         vision_service = PDFVisionService()
-                        with open(file_path, "rb") as f:
-                            pdf_bytes = f.read()
                         # Check if we're in an async context
                         try:
                             asyncio.get_running_loop()
                             # We're in async context, can't use asyncio.run()
                             logger.warning("Cannot use vision model in async context - OCR skipped")
                         except RuntimeError:
-                            # No running loop, safe to use asyncio.run()
-                            vision_text = asyncio.run(vision_service.extract_text(pdf_bytes))
+                            # No running loop, safe to use asyncio.run().
+                            # CORRECTED 2026-08-25: this used to call
+                            # `vision_service.extract_text(pdf_bytes)`, which is
+                            # declared "(for test compatibility)" and re-reads
+                            # the PDF with PyMuPDF -- the step that had just
+                            # returned nothing. It never rendered a page and
+                            # never reached a vision model, so no scanned PDF
+                            # could ever be read, and the failure was reported
+                            # as "even with OCR/Vision".
+                            vision_text = asyncio.run(
+                                vision_service.transcribe_scanned_pdf(file_path),
+                            )
                             if vision_text and vision_text.strip():
                                 logger.info(
                                     f"Vision extraction successful: {len(vision_text)} characters",
@@ -227,6 +236,13 @@ def extract_text_from_pdf(
                                 if return_page_markers:
                                     return vision_text, []
                                 return vision_text
+                    except IncompleteTranscriptionError as vision_err:
+                        # A partially transcribed document must not fall through
+                        # to the generic "No text extracted" below: that message
+                        # would report the opposite of what happened and hide
+                        # which pages are missing.
+                        logger.error("%s", vision_err)
+                        raise DocumentParseError(str(vision_err)) from vision_err
                     except Exception as vision_err:
                         logger.warning("Vision extraction failed: %s", vision_err)
 
@@ -255,68 +271,35 @@ def extract_text_from_pdf(
 
 
 async def extract_text_from_pdf_ocr_async(file_path: str) -> str:
+    """Async OCR for a scanned PDF, local Ollama vision first.
+
+    CORRECTED 2026-08-25. This function used to gate itself on
+    ``PDFVisionService._available``, a property that consults the GEMINI client
+    only. With cloud vision unconfigured -- the default posture, since
+    cross-border vision is gated under UU PDP Art. 56 -- it returned "" without
+    ever asking the local Ollama engine, which was armed and working. It also
+    appended whatever ``analyze_page`` returned, and that method reports failure
+    by returning a STRING ("Error analyzing page: ..."), so a failed page could
+    enter the corpus as the document's own text.
+
+    Both problems are gone by delegating to the one real implementation.
     """
-    Async version of OCR extraction for use in async contexts.
-    Uses Google Gemini Vision to extract text from scanned PDF pages.
-    Processes each page individually for best OCR quality.
-    """
+    from backend.services.multimodal.pdf_vision_service import (
+        IncompleteTranscriptionError,
+        PDFVisionService,
+    )
+
     try:
-        import fitz  # PyMuPDF
-
-        from backend.services.multimodal.pdf_vision_service import PDFVisionService
-
-        vision_service = PDFVisionService()
-        if not vision_service._available:
-            logger.warning("Vision service not available for OCR")
-            return ""
-
-        # Open PDF and get page count
-        doc = fitz.open(file_path)
-        total_pages = len(doc)
-        doc.close()
-
-        logger.info("Processing %s pages with Gemini Vision OCR...", total_pages)
-
-        # OCR prompt optimized for text extraction
-        ocr_prompt = """Extract all text from this page.
-Preserve the original formatting, line breaks, paragraphs, and structure.
-Return only the extracted text, no descriptions or explanations.
-If the page contains tables, preserve the table structure.
-If the page is blank or contains no text, return an empty string."""
-
-        text_parts = []
-        for page_num in range(1, total_pages + 1):
-            try:
-                logger.info("OCR processing page %s/%s...", page_num, total_pages)
-                page_text = await vision_service.analyze_page(
-                    pdf_path=file_path,
-                    page_number=page_num,
-                    prompt=ocr_prompt,
-                    is_drive_file=False,
-                )
-                if page_text and page_text.strip():
-                    text_parts.append(page_text)
-                    logger.info(f"✅ Page {page_num}: extracted {len(page_text)} characters")
-                else:
-                    logger.warning("⚠️ Page %s: no text extracted", page_num)
-
-                # Rate limiting for Gemini Vision (Free Tier: 15 RPM)
-                # 4s delay = 15 RPM
-                await asyncio.sleep(4.0)
-            except Exception as page_error:
-                logger.warning("Error processing page %s: %s", page_num, page_error)
-                continue
-
-        full_text = "\n\n".join(text_parts)
-
-        if full_text.strip():
-            logger.info(
-                f"✅ Gemini Vision OCR successful: {len(full_text)} characters from {len(text_parts)} pages",
-            )
-            return full_text
-        logger.warning("No text extracted from any page")
-        return ""
-
+        text = await PDFVisionService().transcribe_scanned_pdf(file_path)
+        return text or ""
+    except IncompleteTranscriptionError as e:
+        # ADDED 2026-08-25. Everything else here degrades to "" on purpose, and
+        # that is right for a page we could not read at all. It is WRONG for a
+        # document we read in part: returning "" would report "nothing found"
+        # while returning the survivors would store an amputated law as if it
+        # were whole. Only a typed refusal carries the truth upward.
+        logger.error("%s", e)
+        raise DocumentParseError(str(e)) from e
     except Exception as e:
         logger.error("Vision OCR extraction failed: %s", e)
         return ""

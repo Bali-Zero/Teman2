@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getCopy } from "@/lib/secondhome-studio/copy";
 import type { PlanState } from "@/lib/secondhome-studio/types";
 
@@ -18,17 +18,107 @@ function optionLabel(base: string, value: string | null): string {
   return getCopy(`${base}.options.${value}`);
 }
 
-function familySummary(plan: PlanState): string {
+function familySummary(plan: PlanState): { text: string; isKnown: boolean } {
   const parts: string[] = [];
   if (plan.family.spouse) parts.push("Spouse");
   if (plan.family.children > 0) parts.push("Children");
   if (plan.family.parents > 0) parts.push("Parents");
-  return parts.length > 0 ? parts.join(", ") : "—";
+  return parts.length > 0
+    ? { text: parts.join(", "), isKnown: true }
+    : { text: "—", isKnown: false };
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+interface RowItem {
+  id: string;
+  label: string;
+  value: string;
+  isKnown: boolean;
+}
+
+function buildRows(plan: PlanState): RowItem[] {
+  const family = familySummary(plan);
+  const rows: RowItem[] = [
+    {
+      id: "age",
+      label: "Age",
+      value: optionLabel("wizard.age", plan.age),
+      isKnown: plan.age !== null,
+    },
+    {
+      id: "route",
+      label: "Route",
+      value: optionLabel("wizard.route", plan.route),
+      isKnown: plan.route !== null,
+    },
+  ];
+
+  if (plan.route === "property") {
+    rows.push({
+      id: "property",
+      label: "Property",
+      value: optionLabel("wizard.property", plan.property),
+      isKnown: plan.property !== null,
+    });
+  } else {
+    rows.push({
+      id: "capital",
+      label: "Capital",
+      value: optionLabel("wizard.capital", plan.capital),
+      isKnown: plan.capital !== null,
+    });
+  }
+
+  if (plan.age !== null && plan.age !== "under_55") {
+    rows.push({
+      id: "seniorFunding",
+      label: "Senior funding",
+      value: optionLabel("wizard.seniorFunding", plan.seniorFunding),
+      isKnown: plan.seniorFunding !== null,
+    });
+  }
+
+  rows.push(
+    {
+      id: "family",
+      label: "Family",
+      value: family.text,
+      isKnown: family.isKnown,
+    },
+    {
+      id: "horizon",
+      label: "Timeline",
+      value: optionLabel("wizard.horizon", plan.horizon),
+      isKnown: plan.horizon !== null,
+    },
+    {
+      id: "location",
+      label: "Location",
+      value: optionLabel("wizard.location", plan.location),
+      isKnown: plan.location !== null,
+    },
+  );
+
+  return rows;
+}
+
+function Row({
+  label,
+  value,
+  isKnown,
+  isNew,
+  testId,
+}: {
+  label: string;
+  value: string;
+  isKnown: boolean;
+  isNew: boolean;
+  testId: string;
+}) {
   return (
     <div
+      data-testid={testId}
+      data-known={isKnown}
+      className={isNew ? "bz-shs-memo-row-enter" : undefined}
       style={{
         display: "flex",
         justifyContent: "space-between",
@@ -36,9 +126,18 @@ function Row({ label, value }: { label: string; value: string }) {
         fontSize: "var(--text-sm, 0.85rem)",
       }}
     >
-      <dt style={{ color: "var(--color-text-muted)" }}>{label}</dt>
+      <dt style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>
+        {label}
+      </dt>
       <dd
-        style={{ margin: 0, color: "var(--text-primary)", textAlign: "right" }}
+        style={{
+          margin: 0,
+          textAlign: "right",
+          color: isKnown ? "var(--text-primary)" : "var(--color-text-muted)",
+          fontWeight: isKnown ? 500 : 300,
+          opacity: isKnown ? 1 : 0.55,
+          fontStyle: isKnown ? "normal" : "italic",
+        }}
       >
         {value}
       </dd>
@@ -86,9 +185,46 @@ function useIsDesktopStatic(): boolean {
  *  rail (P2-5: non-interactive — no focusable/keyboard-togglable toggle).
  *  Mobile: a native collapsible (spec §4 "collapsible on mobile") —
  *  implemented as one <details> whose disclosure toggle is neutralised via
- *  CSS at desktop widths rather than duplicating markup per breakpoint. */
+ *  CSS at desktop widths rather than duplicating markup per breakpoint.
+ *
+ *  P2-5b: rows enter with a short fade-and-rise when they first become
+ *  known; a thin left spine grows with the answered rows to read as a
+ *  receipt filling in. `prefers-reduced-motion: reduce` disables all
+ *  movement. */
 export function MemoPreview({ plan }: MemoPreviewProps) {
   const isDesktopStatic = useIsDesktopStatic();
+  const rows = useMemo(() => buildRows(plan), [plan]);
+
+  // Track which rows have already been seen with a known value so only
+  // freshly-known rows animate. We deliberately do NOT remove ids when a
+  // row becomes unknown again (user goes back and clears an answer); if it
+  // later becomes known again we treat it as an update, not a birth, which
+  // matches the product brief: "in that case the row updates, it is not
+  // born". The initial mount is excluded from animation so mounting with
+  // a partially-filled plan does not flash every row at once.
+  const seenRowsRef = useRef<Set<string>>(new Set());
+  const isInitialMountRef = useRef(true);
+
+  const newRowIds = useMemo(() => {
+    if (isInitialMountRef.current) return new Set<string>();
+    const ids = new Set<string>();
+    for (const row of rows) {
+      if (row.isKnown && !seenRowsRef.current.has(row.id)) {
+        ids.add(row.id);
+      }
+    }
+    return ids;
+  }, [rows]);
+
+  useEffect(() => {
+    for (const row of rows) {
+      if (row.isKnown) seenRowsRef.current.add(row.id);
+    }
+    isInitialMountRef.current = false;
+  }, [rows]);
+
+  const knownCount = rows.filter((r) => r.isKnown).length;
+  const spineProgress = rows.length > 0 ? (knownCount / rows.length) * 100 : 0;
 
   return (
     <details
@@ -106,52 +242,70 @@ export function MemoPreview({ plan }: MemoPreviewProps) {
         aria-hidden={isDesktopStatic ? true : undefined}
         style={{
           cursor: "pointer",
-          fontWeight: 600,
-          fontSize: "var(--text-sm, 0.88rem)",
-          letterSpacing: "0.05em",
-          textTransform: "uppercase",
-          color: "var(--color-text-muted)",
+          fontFamily: "var(--font-serif, Georgia, serif)",
+          fontSize: "var(--text-sm, 0.9rem)",
+          fontWeight: 500,
+          color: "var(--text-primary)",
         }}
       >
         Your plan so far
       </summary>
-      <dl
+      <div
         style={{
-          display: "grid",
-          gap: "var(--space-2, 0.5rem)",
-          margin: "var(--space-2, 0.5rem) 0 0",
+          position: "relative",
+          marginTop: "var(--space-2, 0.5rem)",
+          paddingLeft: "var(--space-3, 1rem)",
         }}
       >
-        <Row label="Age" value={optionLabel("wizard.age", plan.age)} />
-        <Row label="Route" value={optionLabel("wizard.route", plan.route)} />
-        {plan.route === "property" ? (
-          <Row
-            label="Property"
-            value={optionLabel("wizard.property", plan.property)}
-          />
-        ) : (
-          <Row
-            label="Capital"
-            value={optionLabel("wizard.capital", plan.capital)}
-          />
-        )}
-        {plan.age !== null && plan.age !== "under_55" ? (
-          <Row
-            label="Senior funding"
-            value={optionLabel("wizard.seniorFunding", plan.seniorFunding)}
-          />
-        ) : null}
-        <Row label="Family" value={familySummary(plan)} />
-        <Row
-          label="Timeline"
-          value={optionLabel("wizard.horizon", plan.horizon)}
+        <div
+          aria-hidden="true"
+          className="bz-shs-memo-spine"
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 2,
+            height: `${spineProgress}%`,
+            background: "var(--color-border-subtle)",
+            borderRadius: 1,
+          }}
         />
-        <Row
-          label="Location"
-          value={optionLabel("wizard.location", plan.location)}
-        />
-      </dl>
+        <dl
+          style={{
+            display: "grid",
+            gap: "var(--space-2, 0.5rem)",
+            margin: 0,
+          }}
+        >
+          {rows.map((row) => (
+            <Row
+              key={row.id}
+              testId={`memo-row-${row.id}`}
+              label={row.label}
+              value={row.value}
+              isKnown={row.isKnown}
+              isNew={newRowIds.has(row.id)}
+            />
+          ))}
+        </dl>
+      </div>
       <style>{`
+        @keyframes bz-shs-memo-row-enter {
+          from {
+            opacity: 0;
+            transform: translateY(-4px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .bz-shs-memo-row-enter {
+          animation: bz-shs-memo-row-enter 180ms ease-out forwards;
+        }
+        .bz-shs-memo-spine {
+          transition: height 180ms ease-out;
+        }
         @media (min-width: 900px) {
           .bz-shs-memo > summary {
             pointer-events: none;
@@ -159,6 +313,14 @@ export function MemoPreview({ plan }: MemoPreviewProps) {
           }
           .bz-shs-memo > summary::-webkit-details-marker {
             display: none;
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .bz-shs-memo-row-enter {
+            animation: none !important;
+          }
+          .bz-shs-memo-spine {
+            transition: none !important;
           }
         }
       `}</style>

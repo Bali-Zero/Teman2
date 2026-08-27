@@ -273,7 +273,7 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
                 { label: "Package", value: selectedPackage.name },
               ]}
               utm={{ page: `/services/${slug}` }}
-              className="flex items-center justify-center gap-2 w-full px-6 py-4 rounded-xl bg-[#25D366] text-white font-medium hover:bg-[#20BD5A] transition-colors mb-3"
+              className="flex items-center justify-center gap-2 w-full px-6 py-4 rounded-xl bg-[#25D366] text-[var(--accent-whatsapp-ink)] font-medium hover:bg-[#20BD5A] transition-colors mb-3"
             >
               <Phone className="w-5 h-5" />
               Chat on WhatsApp

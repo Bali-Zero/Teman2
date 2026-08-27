@@ -1,0 +1,205 @@
+brief_ref: evidence/brief.yml
+plan_ref: "P04-D3 Magazine action-chain adapters, slice 1 of 3 (infra + ActionItem), 2026-08-23/24"
+diff:
+  net_lines: >-
+    +801/-0, 9 files (all new: __init__.py, _core_path.py, loss_report.py, legacy_magazine.py,
+    synthesis.py, action_item_adapter.py under backend/services/research_os/, plus __init__.py,
+    conftest.py, test_action_item_adapter.py under backend/tests/services/research_os/).
+    Measured this session via `git diff --cached --numstat` against this branch's own base
+    (origin/main @ c6d424c82fa90db0618a4498b0347ff5feb5da4a, this branch's own merge-base --
+    identical to origin/main's current tip, zero drift). ActionIntent/OperationalReceipt/shadow/
+    parity modules exist in this same worktree but are deliberately NOT staged in this diff (see
+    brief.yml constraints -- staged as follow-up branches instead).
+  behaviour_change: >-
+    Purely additive: two new directories, zero existing file touched, zero existing runtime path
+    changed. Nothing in this repo imports backend.services.research_os yet (grepped this
+    session), so this PR has no live consumer and changes zero observable behaviour anywhere.
+receipts:
+  - claim: "Base SHA re-measured fresh in this session, not copied from any document/prompt"
+    cmd: "git fetch origin main && git rev-parse origin/main"
+    exit: 0
+    ts: "2026-08-23T21:11:00Z"
+    seat: "session (pro)"
+  - claim: "This branch's merge-base with origin/main is identical to origin/main's own tip -- zero drift, no rebase needed"
+    cmd: "git merge-base origin/main HEAD"
+    exit: 0
+    ts: "2026-08-23T22:05:12Z"
+    seat: "session (pro)"
+  - claim: "Staged diff is exactly +801/-0 across the 9 declared files, nothing else"
+    cmd: "git diff --cached --numstat"
+    exit: 0
+    ts: "2026-08-23T22:06:03Z"
+    seat: "session (pro)"
+  - claim: "All 31 tests in the new backend/tests/services/research_os/ suite pass (7 of which are this PR's own test_action_item_adapter.py; the other 24 belong to PR 2/3's not-yet-staged files present in this worktree, included here for full-worktree honesty)"
+    cmd: "PYTHONPATH=. .venv/bin/python3 -m pytest backend/tests/services/research_os/ -q --no-header"
+    exit: 0
+    ts: "2026-08-23T22:03:40Z"
+    seat: "session (pro)"
+  - claim: "This PR's own test file passes standalone (isolated from the not-yet-staged sibling adapters)"
+    cmd: "PYTHONPATH=. .venv/bin/python3 -m pytest backend/tests/services/research_os/test_action_item_adapter.py -q --no-header"
+    exit: 0
+    ts: "2026-08-23T21:58:02Z"
+    seat: "session (pro)"
+  - claim: "The pre-existing packages/research-os-core test suite (backend/tests/unit/research_os/, 21 files) is untouched by this PR and still passes in full"
+    cmd: "PYTHONPATH=. .venv/bin/python3 -m pytest backend/tests/unit/research_os/ -q --no-header"
+    exit: 0
+    ts: "2026-08-23T21:50:16Z"
+    seat: "session (pro)"
+  - claim: "ruff reports zero issues on every new file after auto-fixing import order"
+    cmd: "python3 -m ruff check backend/services/research_os/ backend/tests/services/research_os/"
+    exit: 0
+    ts: "2026-08-23T22:04:20Z"
+    seat: "session (pro)"
+  - claim: "Zero hardcoded secrets/tokens/passwords in the new diff (golden rule 6)"
+    cmd: "git diff --cached | grep -iE 'api[_-]?key|secret|password|token\\s*=' | grep -v <legitimate-field-name-allowlist>"
+    exit: 0
+    ts: "2026-08-23T22:04:55Z"
+    seat: "session (pro)"
+  - claim: "This PR's evidence-path slug matches scripts/ci/evidence_paths.py's own fresh computation for this exact branch name"
+    cmd: "python3 scripts/ci/evidence_paths.py --ref agent/nuzantara/backend-rag/ros-v1-p04-d3-adapters"
+    exit: 0
+    ts: "2026-08-23T21:15:30Z"
+    seat: "session (pro)"
+  - claim: "This diff touches zero HOTZONE_PATTERNS path (migrations_v2, auth, core/config.py, invoicing, pricing, launchagents, .github/workflows, CODEOWNERS, fly.toml) -- floor is 1, not 3, verified against evidence_pack_lint.py's own pattern list, not assumed from the packet's general Gear-3 framing"
+    cmd: "grep -n 'HOTZONE_PATTERNS' -A25 scripts/evidence_pack_lint.py"
+    exit: 0
+    ts: "2026-08-23T21:40:10Z"
+    seat: "session (pro)"
+  - claim: "backend.services.research_os has zero consumers anywhere in the repo outside its own tests (confirms brief.yml's 'no live consumer' claim)"
+    cmd: "git grep -rn 'services.research_os' -- apps/backend-rag/backend | grep -v /tests/"
+    exit: 1
+    ts: "2026-08-23T22:07:00Z"
+    seat: "session (pro)"
+    # exit 1 = grep found zero matches outside tests/ -- the TRUTHFUL result of a
+    # confirmed-absence check, not a failed command.
+  - claim: "PR #4740 (D2 contract-core persistence migration 279) is genuinely MERGED on origin/main, not assumed from the packet narrative -- and the migration file itself is present at that path"
+    cmd: "gh pr view 4740 --json state,mergedAt,title ; git cat-file -e origin/main:apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql"
+    exit: 0
+    ts: "2026-08-23T22:06:40Z"
+    seat: "session (pro)"
+  - claim: >-
+      Independent adversarial review of the SYNTHESIZED_UNBACKED ref design (4 concerns
+      probed), conducted by a cross-family seat -- generator != grader
+    cmd: 'kimi -p "<adversarial-review prompt, 4 numbered concerns>" -m kimi-code/k3'
+    exit: 0
+    ts: "2026-08-23T22:10:30Z"
+    seat: "kimi-code/k3"
+  - claim: >-
+      Independent re-verification (separate reader dispatch, not self-graded) that no
+      ApprovalReceipt-shaped object (subject=action_intent) or Action-Inbox-style queue exists
+      anywhere in the repo outside research_os's own tests -- the finding this PR's exclusion of
+      ExecutionAttempt/ApprovalReceipt rests on. Result: CONFIRMED, with exact counts -- grep 1
+      (action_inbox|containment_action|nexus_action in apps/backend-rag) 0 hits; grep 2
+      (approval_receipt in apps/backend-rag apps/mouth apps/bali-zero-magazine) 8 hits, ALL in
+      apps/backend-rag/backend/tests/unit/research_os/test_decision_chain.py, zero in
+      apps/mouth or apps/bali-zero-magazine; grep 3 (ops_intents in apps/bali-zero-magazine)
+      ~60 hits, none referencing approval_receipt or research_os. Magazine's actual gate on
+      ops_intents execution (operations-repository.ts:1219-1342) uses its own `authorization`
+      object (operatorActorKeys/policyVersion/effectiveRole='operator'), structurally unrelated
+      to ApprovalReceipt.
+    cmd: 'git grep -n -iE "action_inbox|containment_action|nexus_action" origin/main -- apps/backend-rag ; git grep -n -iE "approval_receipt" origin/main -- apps/backend-rag apps/mouth apps/bali-zero-magazine ; git grep -n "ops_intents" origin/main -- apps/bali-zero-magazine'
+    exit: 1
+    ts: "2026-08-23T22:11:00Z"
+    seat: "sonnet (reader dispatch, agent acd5c051fba83f7c2)"
+    # exit 1 = grep found zero action_inbox/containment_action/nexus_action hits -- confirmed
+    # absence, dispatched independently rather than re-asserted from this lane's own earlier
+    # reading. Full result received and folded in above before this pack was finalized.
+tests:
+  - "backend/tests/services/research_os/test_action_item_adapter.py -- 7 tests, this PR's own coverage (accept path, full-field-ledger completeness, priority/decision_packet_ref loss disclosure, every legacy status value adapts, unrecognized status rejected with full ledger, clock-skew row rejected, and a deliberately-truncated loss report is caught by the completeness guard)."
+  - "backend/tests/services/research_os/ (full, 31 tests incl. PR 2/3's not-yet-staged files) -- exit 0, listed for full-worktree honesty per the mandate's per-step reporting request."
+  - "backend/tests/unit/research_os/ (pre-existing packages/research-os-core suite, untouched) -- exit 0, proves this PR did not regress the core contracts it depends on."
+static:
+  - "ruff check: 0 issues after --fix (import-order only, auto-fixed; re-verified clean afterward)."
+  - "py_compile on every new file: 0 syntax errors."
+  - "Manual grep for hardcoded secrets: 0 hits (receipt above)."
+runtime_proof:
+  - >-
+    No live runtime path exists yet -- by design (brief.yml: zero consumers, confirmed by
+    grep receipt above). The functional proof is the adapter's own round-trip: a synthetic
+    ops_intents row -> ActionItem -> re-verified against the SAME row by
+    assert_every_legacy_field_accounted_for AND the field-level test assertions above. Not a
+    live-traffic proof; this deliverable's own scoping note says there is no live legacy write
+    path to shadow yet (matches Deliverable 4's shadow-and-rollback acceptance test, which lands
+    in PR 3).
+dissent:
+  - seat: "kimi-code/k3 (cross-family adversarial review, this session)"
+    objection: >-
+      A disclosed dangling reference is only as safe as every consumer's handling of a
+      resolution failure -- if any future consumer does `get(ref) or default`, the "loud
+      failure" this design relies on silently degrades into a wrong default instead. Safety is
+      conditional on consumer behaviour this PR does not and cannot control.
+    status: CONFIRMED
+    # Accepted as a real, unresolved risk -- recorded verbatim in brief.yml's risks section
+    # rather than argued away. No live consumer exists yet (this PR's own grep receipt), so the
+    # exposure is latent, not active; it is the conductor's call whether Deliverable 5's future
+    # repository needs an enforced check before this can be trusted un-audited.
+  - seat: "kimi-code/k3 (cross-family adversarial review, this session)"
+    objection: >-
+      A loss report + docstring is documentation, not a machine-checkable contract -- frozen,
+      hash-validated canonical models exist precisely so consumers can trust fields WITHOUT
+      reading docs first. The SYNTHESIZED_UNBACKED disclosure needed a programmatic signal, not
+      only prose.
+    status: CONFIRMED
+    # ACTED ON, not merely noted: added `unbacked_refs_extension()` (synthesis.py) writing a
+    # reverse-DNS-namespaced, semver-versioned extensions entry
+    # (`com.balizero.research-os-adapters` -> `{unbacked_refs: [...]}`) to every adapter output
+    # that carries one, plus a dedicated test
+    # (test_unbacked_refs_are_machine_checkable_not_only_prose) asserting it round-trips. This
+    # is the sanctioned mechanism CONTRACTS.md itself provides for exactly this shape of
+    # flexibility (Deliverable 1: "explicit extension maps where flexibility is required") --
+    # not a new field bolted onto the frozen core model, which would have violated rule 1.11.
+  - seat: "kimi-code/k3 (cross-family adversarial review, this session)"
+    objection: >-
+      uuid5(seed) collision is not the real risk (probability is negligible) -- the real risk is
+      SEMANTIC collision: a future real DecisionPacket minted with the same seed source
+      (intent_id) under the same uuid5 namespace would be indistinguishable from this adapter's
+      placeholder. Recommended a namespace no real minting path could ever share.
+    status: CONFIRMED
+    # Already true of the shipped design, verified rather than newly fixed: `_ADAPTER_NAMESPACE`
+    # in synthesis.py is `uuid5(NAMESPACE_URL, "https://balizero.com/research-os/adapters/v1")`
+    # -- a URL string dedicated to this adapter package, distinct from any real object-minting
+    # scheme anywhere else in the repo (grepped: this exact string appears nowhere else).
+    # Strengthened synthesis.py's own comment to state this guarantee explicitly per the
+    # reviewer's ask, since the prior version left it implicit.
+  - seat: "kimi-code/k3 (cross-family adversarial review, this session)"
+    objection: >-
+      The two-pass model_construct-then-object_hash construction trick could desync if a future
+      contract version changes HASH_OMISSION_FIELDS to cover more keys than just object_hash.
+    status: RETRACTED
+    # Kimi's own analysis concluded this is a generic contract-versioning hazard already handled
+    # by research_os.hashing's own per-contract-version HASH_OMISSION_FIELDS mapping -- not
+    # specific to this adapter's two-pass trick, and not actionable here without touching the
+    # frozen core package (out of this deliverable's file-ownership boundary). Recorded as
+    # RETRACTED per Kimi's own "NOT AN ISSUE" verdict, not silently dropped.
+lanes:
+  - lane: "p04-d3-magazine-action-chain-adapters"
+    role: build
+    seat: "claude-sonnet-5"
+  - lane: "p04-d3-adversarial-review"
+    role: review
+    seat: "kimi-code/k3"
+residual_risks:
+  - >-
+    Two more slices of this same deliverable (ActionIntent; OperationalReceipt+shadow+parity)
+    are written, tested, and passing in this worktree but not yet PRs -- staged as follow-up
+    branches per the fleet's own serialization practice, to be opened once this slice lands.
+  - >-
+    ExecutionAttempt and ApprovalReceipt (subject=action_intent) are deliberately excluded from
+    this whole deliverable's first pass: ApprovalReceipt has zero legacy source at all (matrix
+    §1.3/§2.0, independently re-confirmed this session by a separate reader dispatch, not
+    self-graded), and ExecutionAttempt's own required approval_receipt_ref would have to point
+    at that non-existent kind. Left for a ruling, not silently worked around.
+  - >-
+    The SYNTHESIZED_UNBACKED ref pattern (decision_packet_ref, requested_action_spec_ref) is a
+    disclosed adapter-author judgment call, not a packet ruling -- flagged explicitly to the
+    conductor per CONTRACTS.md's own instruction to stop and propose rather than silently
+    reinterpret a frozen invariant, rather than treated as already-decided.
+sources:
+  - "packages/research-os-core/research_os/models/action_item.py, action_intent.py, operational_receipt.py, decision_packet.py, requested_action_spec.py, execution_attempt.py (read in full, this session -- required-field claims are from direct reads, not the compatibility matrix)"
+  - "apps/bali-zero-magazine/db/schema.ts:839-946 (opsIntents/opsReceipts table definitions, read in full this session)"
+  - "research/operations/specs/evidence-to-action-freeze-2026-08-15/work-packets/04-canonical-contracts.md (packet spec, read in full this session)"
+  - "/private/tmp/claude-501/.../scratchpad/d3-compatibility-matrix.md (D3 compatibility matrix -- treated as leads, re-grepped rather than trusted verbatim per the conductor's own instruction)"
+  - "Fresh gate/test runs in this worktree, this session (receipts above) -- not recalled from memory or an earlier turn"
+pii_scan: clean
+# ESTIMATE per fleet-order-spec.md §5 convention: raw bytes / 4.
+size_tokens: 2700

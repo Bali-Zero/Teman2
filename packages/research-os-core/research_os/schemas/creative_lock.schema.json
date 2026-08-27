@@ -1,0 +1,426 @@
+{
+  "$defs": {
+    "AssetRef": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "minLength": 1,
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "content_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        }
+      },
+      "required": ["asset_id", "content_hash"],
+      "title": "AssetRef",
+      "type": "object"
+    },
+    "ChannelIntent": {
+      "additionalProperties": false,
+      "description": "``channel_intent: [{surface, objective, cta}]`` -- named keys, so\n(unlike ``tone``/``narrative_arc``/``must_keep``/``must_avoid`` below)\nthis one is a direct extraction, not an invention.",
+      "properties": {
+        "cta": {
+          "minLength": 1,
+          "title": "Cta",
+          "type": "string"
+        },
+        "objective": {
+          "minLength": 1,
+          "title": "Objective",
+          "type": "string"
+        },
+        "surface": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Surface",
+          "type": "string"
+        }
+      },
+      "required": ["surface", "objective", "cta"],
+      "title": "ChannelIntent",
+      "type": "object"
+    },
+    "Classification": {
+      "additionalProperties": false,
+      "properties": {
+        "risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/Sensitivity"
+        }
+      },
+      "required": ["risk_class", "sensitivity"],
+      "title": "Classification",
+      "type": "object"
+    },
+    "CreativeLockRef": {
+      "additionalProperties": false,
+      "properties": {
+        "creative_lock_id": {
+          "format": "uuid",
+          "title": "Creative Lock Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["creative_lock_id", "object_hash"],
+      "title": "CreativeLockRef",
+      "type": "object"
+    },
+    "ExtensionValue": {
+      "additionalProperties": false,
+      "properties": {
+        "extension_version": {
+          "title": "Extension Version",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        }
+      },
+      "required": ["extension_version", "payload"],
+      "title": "ExtensionValue",
+      "type": "object"
+    },
+    "LockState": {
+      "enum": ["current", "stale", "superseded"],
+      "title": "LockState",
+      "type": "string"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["name", "version"],
+      "title": "Producer",
+      "type": "object"
+    },
+    "ReferenceAsset": {
+      "additionalProperties": false,
+      "description": "``{asset_ref: {asset_id, content_hash}, purpose, rights_state, risk_class, sensitivity}``.\n\nINTERPRETATION: ``rights_state`` has no entry in section 3's closed enum\nregistry -- unlike every other ``*_state``/``state`` field in this\ncontract family (``LockState``, ``PublicationState``, ...), which IS\nlisted there. Modeled as an open ``RegisteredName`` (the same\nopen-vocabulary idiom as a ``reason_code``) rather than fabricating a\nclosed ``Literal`` set the freeze never wrote down. If a closed\nvocabulary was intended, it is missing from section 3 and needs a\nfreeze-change addition -- not an invented enum here.",
+      "properties": {
+        "asset_ref": {
+          "$ref": "#/$defs/AssetRef"
+        },
+        "purpose": {
+          "minLength": 1,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "rights_state": {
+          "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+          "title": "Rights State",
+          "type": "string"
+        },
+        "risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        },
+        "sensitivity": {
+          "$ref": "#/$defs/Sensitivity"
+        }
+      },
+      "required": [
+        "asset_ref",
+        "purpose",
+        "rights_state",
+        "risk_class",
+        "sensitivity"
+      ],
+      "title": "ReferenceAsset",
+      "type": "object"
+    },
+    "RequiredWorkflowLineage": {
+      "additionalProperties": false,
+      "description": "``lineage: {workflow_run_ref: {workflow_run_id, object_hash}, input_hashes: []}``.\n\nSections 8.1, 8.2, and 8.3 all spell this exact two-field shape\nverbatim, with ``workflow_run_ref`` MANDATORY -- unlike\n``primitives.Lineage``, whose ``workflow_run_ref`` is optional for kinds\nthat may run outside a workflow. TopicLock, CreativeLock, and\nRequestedActionSpec import this type rather than each redefining it.",
+      "properties": {
+        "input_hashes": {
+          "items": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Input Hashes",
+          "type": "array"
+        },
+        "workflow_run_ref": {
+          "$ref": "#/$defs/WorkflowRunRef"
+        }
+      },
+      "required": ["workflow_run_ref", "input_hashes"],
+      "title": "RequiredWorkflowLineage",
+      "type": "object"
+    },
+    "Retention": {
+      "additionalProperties": false,
+      "properties": {
+        "legal_hold": {
+          "title": "Legal Hold",
+          "type": "boolean"
+        },
+        "retain_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retain Until"
+        },
+        "retention_class": {
+          "enum": ["public_record", "operational", "audit", "restricted"],
+          "title": "Retention Class",
+          "type": "string"
+        },
+        "rights_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Expires At"
+        }
+      },
+      "required": ["retention_class", "legal_hold"],
+      "title": "Retention",
+      "type": "object"
+    },
+    "RiskClass": {
+      "enum": ["green", "amber", "red"],
+      "title": "RiskClass",
+      "type": "string"
+    },
+    "Sensitivity": {
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted_osint",
+        "client_pii"
+      ],
+      "title": "Sensitivity",
+      "type": "string"
+    },
+    "TopicLockRef": {
+      "additionalProperties": false,
+      "description": "``{topic_lock_id, object_hash}`` -- also the pointer CreativeLock\n(section 8.2) binds back to its exact selected Topic Lock revision.",
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "topic_lock_id": {
+          "format": "uuid",
+          "title": "Topic Lock Id",
+          "type": "string"
+        }
+      },
+      "required": ["topic_lock_id", "object_hash"],
+      "title": "TopicLockRef",
+      "type": "object"
+    },
+    "WorkflowRunRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "workflow_run_id": {
+          "format": "uuid",
+          "title": "Workflow Run Id",
+          "type": "string"
+        }
+      },
+      "required": ["workflow_run_id", "object_hash"],
+      "title": "WorkflowRunRef",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "channel_intent": {
+      "items": {
+        "$ref": "#/$defs/ChannelIntent"
+      },
+      "title": "Channel Intent",
+      "type": "array"
+    },
+    "classification": {
+      "$ref": "#/$defs/Classification"
+    },
+    "contract_version": {
+      "const": "research-os/v1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "creative_lock_family_id": {
+      "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+      "title": "Creative Lock Family Id",
+      "type": "string"
+    },
+    "creative_lock_id": {
+      "format": "uuid",
+      "title": "Creative Lock Id",
+      "type": "string"
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtensionValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extensions"
+    },
+    "lineage": {
+      "$ref": "#/$defs/RequiredWorkflowLineage"
+    },
+    "lock_version": {
+      "minimum": 1,
+      "title": "Lock Version",
+      "type": "integer"
+    },
+    "must_avoid": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Must Avoid",
+      "type": "array"
+    },
+    "must_keep": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Must Keep",
+      "type": "array"
+    },
+    "narrative_arc": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Narrative Arc",
+      "type": "array"
+    },
+    "object_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Object Hash",
+      "type": "string"
+    },
+    "producer": {
+      "$ref": "#/$defs/Producer"
+    },
+    "promise": {
+      "minLength": 1,
+      "title": "Promise",
+      "type": "string"
+    },
+    "recorded_at": {
+      "format": "date-time",
+      "pattern": "(?:Z|\\+00:00)$",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "reference_assets": {
+      "items": {
+        "$ref": "#/$defs/ReferenceAsset"
+      },
+      "title": "Reference Assets",
+      "type": "array"
+    },
+    "retention": {
+      "$ref": "#/$defs/Retention"
+    },
+    "state": {
+      "$ref": "#/$defs/LockState"
+    },
+    "supersedes_creative_lock_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CreativeLockRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "tenant": {
+      "const": "bali-zero",
+      "title": "Tenant",
+      "type": "string"
+    },
+    "tone": {
+      "additionalProperties": true,
+      "title": "Tone",
+      "type": "object"
+    },
+    "topic_lock_ref": {
+      "$ref": "#/$defs/TopicLockRef"
+    }
+  },
+  "required": [
+    "creative_lock_id",
+    "creative_lock_family_id",
+    "contract_version",
+    "tenant",
+    "topic_lock_ref",
+    "promise",
+    "tone",
+    "narrative_arc",
+    "must_keep",
+    "must_avoid",
+    "channel_intent",
+    "reference_assets",
+    "classification",
+    "lock_version",
+    "state",
+    "recorded_at",
+    "producer",
+    "lineage",
+    "retention",
+    "object_hash"
+  ],
+  "title": "CreativeLock",
+  "type": "object"
+}

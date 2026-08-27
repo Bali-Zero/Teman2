@@ -1,0 +1,69 @@
+{
+  "_comment": "E5 increment 8 (drafted 2026-08-23, author v2-d12). Staged for a seq-14 fold that chains off seq-13's SIGNED payload. UPDATED 2026-08-24: seq-13 is now signed, activated, and LIVE in production (payload_sha256 b9edb809930ab486e49a4af7804fbae7f072caa3b6459b78a94ecb7f6bfe14f8, independently re-verified against origin/main) -- the chain anchor exists, that blocker is gone. DO NOT FOLD YET regardless: a Kimi refuter finding (P0) shows offshore applicants can never reach the questions this rule's fact depends on (fix in progress, PR #4727). UPDATED 2026-08-24: Zero has ruled on both open questions -- KITAP-widening is RESOLVED (the rule's breadth as drafted is correct, see the companion .md's VERIFIED section for the exact ruling), renewal-pending is RULED but its derivation-logic implementation has not yet landed in fact_registry.py (tracked in PENDING-ARMS) -- so this fold is still blocked on two things: the offshore-reachability fix and the renewal-pending derivation change, neither guessed at here. insertions: 1 new source_record (BALI_ZERO_POLICY, first use of this authority_type in the pack) + 1 new rule (hf.d12-active-stay-permit-excluded, HARD_FILTER/EXCLUDE). Zero other rule/product/source in the pack is touched by this increment -- D12's existing 7 rules (6 el.d12-* + hf.d12-onshore-conversion-excluded) are unaffected, this is a pure addition. product_version_ids below use D12's existing stable id (63f64a7e-2bff-5a48-8c3b-7ad5349e8c91, confirmed unchanged through seq-13's real source file, not merely seq-12) -- re-verify against whatever sequence the fold actually targets before applying, in case D12's product_version_id is ever rotated after seq-13. source_record_id below is uuid5(NAMESPACE_URL, 'https://balizero.com/visa-oracle/source/BALI_ZERO_POLICY/d12-active-stay-permit-exclusion-2026-08-23') -- a deterministic, URL-shaped naming convention chosen to mirror fold_pack_seq11.py's own rule_pack_id derivation (uuid5(NAMESPACE_URL, <url-shaped-name>)), NOT a claim that this URL is fetchable; the fold author may regenerate under a different convention if house style has moved since this draft, but should not silently pick a random uuid4 in its place without noting the departure.",
+  "source_record": {
+    "source_record_id": "ad24b643-7e69-5598-b924-7f93199f1e8d",
+    "source_key": "bali-zero-policy.d12.active-stay-permit-exclusion.2026-08-23",
+    "version": 1,
+    "authority_type": "BALI_ZERO_POLICY",
+    "status": "VERIFIED",
+    "jurisdiction": "ID",
+    "title": "Bali Zero owner ruling — D12 (Pre-Investment Multiple Entry) excludes applicants with an active stay permit",
+    "publisher": "Bali Zero",
+    "canonical_url": "research/visa/doctrine-factory/e5/inc8-pack-edits/d12-active-stay-permit-policy-2026-08-23.md",
+    "language": "en",
+    "document_number": null,
+    "locators": [
+      {
+        "kind": "SECTION",
+        "value": "What is VERIFIED"
+      }
+    ],
+    "content_sha256": "061ead2f840752e4c906657e7c92d645f50798dc32f09ff5d78c181a10c9eaef",
+    "legal_period": {
+      "from": "2026-08-23T00:00:00Z",
+      "to": null
+    },
+    "recorded_period": {
+      "from": "2026-08-23T00:00:00Z",
+      "to": null
+    },
+    "retrieved_at": "2026-08-23T00:00:00Z",
+    "verified_at": "2026-08-23T00:00:00Z",
+    "verified_by": "agent.m5.v2-d12",
+    "supersedes_source_record_id": null,
+    "freshness_policy": null,
+    "_note": "canonical_url is a repo-relative path, not an external URL -- deliberate, see the companion .md's 'First use of BALI_ZERO_POLICY' section: a repo-tracked file's content_sha256 (raw-bytes sha256, NOT a git blob id -- corrected 2026-08-24, Kimi refuter finding F6: git blob ids hash the 'blob <len>\\0' framing and this repo's objects are SHA-1 anyway, so the earlier 'exactly the git blob hash' phrasing here was wrong even though the underlying reproducibility claim is still true for raw bytes) is reproducible by any verifier reading the same commit, unlike an OFFICIAL_PORTAL page with a per-request CSRF token -- but only while the file itself does not change; this file has already been revised multiple times, and content_sha256 above has been kept in sync each time. freshness_policy is null because a repo file has no external re-verification clock to run against (MAX_AGE_SINCE_VERIFIED_AT would be meaningless here). Schema-level optionality IS verified (test_draft_source_record_and_rule_are_schema_valid parses this exact draft with freshness_policy=null with no coercion), and so is the downstream behavior it produces: test_draft_source_record_freshness_is_unknown_not_defined asserts evaluate_path._evaluate_source_freshness returns UNKNOWN/FRESHNESS_POLICY_NOT_DEFINED for this exact source, not merely assumed."
+  },
+  "rule_insertion": {
+    "rule_id": "hf.d12-active-stay-permit-excluded",
+    "stage": "HARD_FILTER",
+    "scope": "PRODUCTS",
+    "priority": 100,
+    "valid_period": {
+      "from": "2026-08-23T00:00:00Z",
+      "to": null
+    },
+    "when": {
+      "fact": "derived.has_active_stay_permit",
+      "op": "eq",
+      "value": true
+    },
+    "effect": {
+      "type": "EXCLUDE",
+      "reason_code": "D12_ACTIVE_STAY_PERMIT_EXCLUDED"
+    },
+    "on_unknown": "NEEDS_INPUT",
+    "required_facts": [
+      "derived.has_active_stay_permit"
+    ],
+    "source_refs": [
+      "ad24b643-7e69-5598-b924-7f93199f1e8d"
+    ],
+    "explanation_key": "explain.hf.d12-active-stay-permit-excluded",
+    "safety_critical": false,
+    "product_version_ids": [
+      "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
+    ],
+    "_note": "on_unknown=NEEDS_INPUT mirrors the sibling hf.d12-onshore-conversion-excluded and the fact's own derivation docstring (fact_registry.py: guessing False on an UNKNOWN input would wrongly ADMIT an applicant with an undisclosed active permit -- fail-closed by construction). safety_critical=false is NOT a convention-mirroring choice -- the sibling hf.d12-onshore-conversion-excluded actually has safety_critical=true in seq-13 (verified against the live source file), so an earlier draft of this note that claimed to match it was simply wrong. The real, load-bearing reason true is unavailable here: evaluate_path._apply_safety_critical_source_hold walks every active safety_critical rule pack-wide and forces decision.state=HUMAN_REVIEW_REQUIRED on every otherwise-conclusive decision in the WHOLE pack unless every one of that rule source_refs passes _source_is_authoritative_and_applicable. That function requires authority_type in _PRIMARY_AUTHORITY_TYPES (PRIMARY_LAW / IMPLEMENTING_REGULATION / OFFICIAL_PORTAL / OFFICIAL_CIRCULAR) AND canonical_url on the pinned https government-host allowlist in _has_official_source_url. This source_record fails BOTH: authority_type is BALI_ZERO_POLICY (not a member of that frozenset) and canonical_url is a repo-relative path (no https scheme at all). freshness_policy=null adds a third, independent failure mode (_evaluate_source_freshness returns UNKNOWN/FRESHNESS_POLICY_NOT_DEFINED). Setting safety_critical=true on this rule would therefore trigger a pack-wide HUMAN_REVIEW_REQUIRED override -- a production outage -- the instant it activates in a signed pack. Verified by reading models.py:480-490, evaluate_path.py _apply_safety_critical_source_hold/_source_is_authoritative_and_applicable/_PRIMARY_AUTHORITY_TYPES/_has_official_source_url in full, and cross-checked against the already-passing test_safety_source_hold_applies_when_safety_rules_are_in_force in test_evaluate_endpoint.py, which proves the downstream HRR-override mechanism generically on the gold pack. Do not flip this to true to match the sibling -- that would be the mistake this note exists to prevent."
+  }
+}

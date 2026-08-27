@@ -13,6 +13,7 @@ import {
   CATEGORY_KEYS,
   QUESTIONS,
   REVIEW_GATE_ITEMS,
+  daysRemaining,
   parseIsoDateUtc,
   type CategoryKey,
   type OracleFacts,
@@ -91,7 +92,13 @@ export interface UseOracleFlowOptions {
   onSnapshot?: (snapshot: InterviewSnapshot) => void;
   /** Clock injection for deterministic tests and storage adapters. */
   snapshotNow?: () => Date;
-  /** Replays date-sensitive routing against this clock during hydration. */
+  /**
+   * Fed to `restoreInterviewSnapshot` as its `today` argument, which that
+   * function uses only as a defensive fallback (see its docstring) — NOT to
+   * replay date-sensitive routing, which is keyed on the snapshot's own
+   * save-time (`updatedAtIso`) instead. This is the resume-moment wall
+   * clock, not an "as-of" override for replay.
+   */
   restoreToday?: Date;
 }
 
@@ -205,9 +212,28 @@ function isValidFactValue(questionId: string, value: string): boolean {
 
 /**
  * Hydrate by replaying the saved path, not by trusting its history/facts.
- * Any impossible node, invalid answer or branch that changed with the current
- * assessment clock is truncated at the last valid frontier; descendants are
- * discarded by construction. Completely malformed payloads return `null`.
+ * Any impossible node, invalid answer, or branch whose real graph has since
+ * changed (e.g. a live deploy between save and resume) is truncated at the
+ * last valid frontier; descendants are discarded by construction. Completely
+ * malformed payloads return `null`.
+ *
+ * Date-sensitive routing during replay (`computeNextNode`'s `today` —
+ * currently only `shouldAskRenewalPaid`, F4 2026-08-24) is evaluated
+ * against the snapshot's OWN `updatedAtIso` — the moment it was SAVED —
+ * never against the `today` parameter below/the caller's resume-time clock.
+ * `updatedAtIso` is required and parse-validated earlier in this function,
+ * so it is always available by the time replay runs; `today` is kept only
+ * as an unreachable-in-practice defensive fallback for that parse. Replaying
+ * against wall-clock-at-resume instead would make a SAVED answer's routing
+ * depend on WHEN the browser tab happens to be reopened: a stay permit that
+ * was still current the moment `overstay_days` was answered and saved, but
+ * has since expired by the time the user resumes days later, would
+ * recompute `shouldAskRenewalPaid` as `true`, diverge from the saved next
+ * node, and TRUNCATE history right there — silently dropping every
+ * already-answered fact past that point (`overstay_days` included), even
+ * though nothing about the saved answers was ever invalid. `today` stays
+ * real wall-clock for every NEW answer recorded from here on — `ANSWER`/
+ * `SKIP` still default their own `today` to `new Date()` in `flowReducer`.
  */
 export function restoreInterviewSnapshot(
   value: unknown,
@@ -229,6 +255,13 @@ export function restoreInterviewSnapshot(
   ) {
     return null;
   }
+  // Date-sensitive routing replays against the moment this snapshot was
+  // SAVED, never against `today` (the resume-time clock) — see this
+  // function's docstring. The parse is guaranteed finite by the check just
+  // above; `today` is kept only as a defensive fallback for the
+  // unreachable case where it were not.
+  const savedAtMs = Date.parse(value.updatedAtIso);
+  const savedAt = Number.isFinite(savedAtMs) ? new Date(savedAtMs) : today;
   if (
     !Array.isArray(value.history) ||
     value.history.length === 0 ||
@@ -280,7 +313,7 @@ export function restoreInterviewSnapshot(
       }
       facts = { ...facts, [current.questionId]: answer };
     }
-    const expected = computeNextNode(current, facts, today);
+    const expected = computeNextNode(current, facts, savedAt);
     const savedNext = value.history[index];
     history.push(expected);
     if (!sameNode(expected, savedNext)) break;
@@ -396,6 +429,25 @@ export function channelConflictsWithOnshoreIntent(
 }
 
 /**
+ * Gate for the `renewal_paid` question (F4, 2026-08-24): asked only when
+ * the applicant holds a stay permit (`holds_stay_permit === "yes"`, the
+ * only route that reaches `stay_permit_code`) AND `permit_expiry` is
+ * either KNOWN-and-in-the-past or itself UNKNOWN — a known-current permit
+ * skips it. Reuses `daysRemaining` (tree.ts) so "in the past" and "unknown"
+ * share the exact same parsing/validity rules the rest of the interview
+ * already relies on: an invalid/missing/"unsure" `permit_expiry` yields
+ * `null`, which this treats as unknown (ask), never as current (skip).
+ */
+export function shouldAskRenewalPaid(
+  facts: OracleFacts,
+  today: Date = new Date(),
+): boolean {
+  if (facts.holds_stay_permit !== "yes") return false;
+  const remaining = daysRemaining(facts.permit_expiry ?? "", today);
+  return remaining === null || remaining < 0;
+}
+
+/**
  * The flow graph, pure function of the current node + facts so far. This
  * is the single source of truth for "what comes next" — used by the
  * reducer, by tests, and by `getTreeSteps` below to project the path.
@@ -405,7 +457,6 @@ export function computeNextNode(
   facts: OracleFacts,
   today: Date = new Date(),
 ): OracleNode {
-  void today; // kept injectable for snapshot/API compatibility
   if (current.kind === "framing") {
     return { kind: "question", questionId: "in_indonesia" };
   }
@@ -418,18 +469,70 @@ export function computeNextNode(
 
   switch (current.questionId) {
     case "in_indonesia": {
-      if (facts.in_indonesia === "yes") {
-        return { kind: "question", questionId: "permit_expiry" };
-      }
-      return { kind: "question", questionId: "overstay_days" };
+      // Fixed 2026-08-24 (Kimi refuter P0 finding on the D12
+      // offshore-reachability gap, then re-fixed same day after a
+      // team-lead funnel-cost review rejected the first version): before
+      // the P0 fix, `"no"` skipped straight to `overstay_days`, so
+      // `permit_expiry`/`holds_stay_permit`/`stay_permit_code`/
+      // `current_status_code` were structurally unreachable for every
+      // offshore applicant — D12's own target population, including the
+      // exact person the owner's D12 ruling names (someone abroad holding
+      // an unlapsed KITAS). #4695 fixed the codes on offer but never the
+      // reachability of the gate itself.
+      //
+      // The FIRST fix mirrored the onshore chain unconditionally (ask
+      // `permit_expiry` first, same as onshore) — team-lead measured that
+      // as a flat 3-question cost added to EVERY offshore applicant of
+      // EVERY product (~38), to serve exactly one product's rule (grepped
+      // the live signed pack: no product other than D12 reads these facts
+      // for an offshore applicant — the only other consumer, `BRIDGING`,
+      // is itself onshore-only). This version instead asks
+      // `holds_stay_permit` FIRST for offshore — a single gate question —
+      // and only expands into the full `permit_expiry`/`stay_permit_code`
+      // chain on "yes". A "no" answer converges straight to
+      // `overstay_days`: `fact-mapper.ts::mapCurrentStatusCode` derives
+      // `immigration.current_status_code` directly from that "no" (the
+      // synthesized `NO_STAY_PERMIT` sentinel — see its docstring and
+      // `fact_registry.py`'s `_VISIT_CLASS_STATUS_CODES`), so the fact
+      // still resolves definitely without a redundant extra question.
+      // Onshore is completely unchanged — see the `permit_expiry` and
+      // `holds_stay_permit` cases below for how the two orders coexist
+      // without looping.
+      return facts.in_indonesia === "yes"
+        ? { kind: "question", questionId: "permit_expiry" }
+        : { kind: "question", questionId: "holds_stay_permit" };
     }
     case "permit_expiry":
-      return { kind: "question", questionId: "holds_stay_permit" };
-    case "holds_stay_permit":
+      // Onshore always arrives here FIRST (before `holds_stay_permit`,
+      // the pre-existing order — deliberately not redesigned by this fix).
+      // Offshore arrives here ONLY after `holds_stay_permit === "yes"`
+      // (see that case below), so routing offshore straight to
+      // `stay_permit_code` here — instead of back to `holds_stay_permit` —
+      // is required to avoid an infinite loop, not an inconsistency.
+      return facts.in_indonesia === "yes"
+        ? { kind: "question", questionId: "holds_stay_permit" }
+        : { kind: "question", questionId: "stay_permit_code" };
+    case "holds_stay_permit": {
+      if (facts.in_indonesia === "yes") {
+        // Onshore: unchanged pre-existing behavior.
+        return facts.holds_stay_permit === "yes"
+          ? { kind: "question", questionId: "stay_permit_code" }
+          : { kind: "question", questionId: "current_status_code" };
+      }
+      // Offshore: this is the gate question itself (asked before
+      // `permit_expiry`, unlike onshore). "yes" still needs the real
+      // code+expiry chain; "no" converges directly — see the
+      // `fact-mapper.ts` comment above for why no further question is
+      // needed to resolve the fact.
       return facts.holds_stay_permit === "yes"
-        ? { kind: "question", questionId: "stay_permit_code" }
-        : { kind: "question", questionId: "current_status_code" };
+        ? { kind: "question", questionId: "permit_expiry" }
+        : { kind: "question", questionId: "overstay_days" };
+    }
     case "stay_permit_code":
+      return shouldAskRenewalPaid(facts, today)
+        ? { kind: "question", questionId: "renewal_paid" }
+        : { kind: "question", questionId: "overstay_days" };
+    case "renewal_paid":
       return { kind: "question", questionId: "overstay_days" };
     case "current_status_code":
       return { kind: "question", questionId: "overstay_days" };
@@ -911,31 +1014,61 @@ export function getTreeSteps(
   current: OracleNode,
   facts: OracleFacts,
 ): { trunk: TreeStep[]; categoryLeaves: TreeCategoryLeaf[] | null } {
+  // The permit-status chain has TWO distinct shapes depending on
+  // `in_indonesia` (fixed 2026-08-24 — see `computeNextNode`'s
+  // `in_indonesia`/`permit_expiry`/`holds_stay_permit` cases for the
+  // routing this mirrors, and the funnel-cost review that produced it).
+  // Onshore always shows the full 3-node chain in the pre-existing order
+  // (`permit_expiry` → `holds_stay_permit` → one of the two code
+  // questions) the moment `in_indonesia` has a value. Offshore shows
+  // `holds_stay_permit` FIRST, alone, until it too has a value — a "no"
+  // answer converges with NO further permit-chain steps (the fact
+  // resolves from that answer alone, see `fact-mapper.ts`), a "yes"
+  // answer then adds `permit_expiry` + `stay_permit_code`.
+  const renewalPaidStep: { id: string; labelI18nKey: string }[] =
+    facts.holds_stay_permit === "yes" && shouldAskRenewalPaid(facts)
+      ? [{ id: "renewal_paid", labelI18nKey: "tree.renewal_paid" }]
+      : [];
+
+  const permitChainSteps: { id: string; labelI18nKey: string }[] =
+    facts.in_indonesia === "yes"
+      ? [
+          { id: "permit_expiry", labelI18nKey: "tree.permit_expiry" },
+          { id: "holds_stay_permit", labelI18nKey: "tree.holds_stay_permit" },
+          facts.holds_stay_permit === "yes"
+            ? { id: "stay_permit_code", labelI18nKey: "tree.stay_permit_code" }
+            : {
+                id: "current_status_code",
+                labelI18nKey: "tree.current_status_code",
+              },
+          ...renewalPaidStep,
+        ]
+      : facts.in_indonesia === "no"
+        ? [
+            {
+              id: "holds_stay_permit",
+              labelI18nKey: "tree.holds_stay_permit",
+            },
+            ...(facts.holds_stay_permit === "yes"
+              ? [
+                  {
+                    id: "permit_expiry",
+                    labelI18nKey: "tree.permit_expiry",
+                  },
+                  {
+                    id: "stay_permit_code",
+                    labelI18nKey: "tree.stay_permit_code",
+                  },
+                  ...renewalPaidStep,
+                ]
+              : []),
+          ]
+        : [];
+
   const order = [
     { id: "framing", labelI18nKey: "tree.framing" },
     { id: "in_indonesia", labelI18nKey: "tree.in_indonesia" },
-    ...(facts.in_indonesia === "yes"
-      ? [
-          { id: "permit_expiry", labelI18nKey: "tree.permit_expiry" },
-          {
-            id: "holds_stay_permit",
-            labelI18nKey: "tree.holds_stay_permit",
-          },
-          ...(facts.holds_stay_permit === "yes"
-            ? [
-                {
-                  id: "stay_permit_code",
-                  labelI18nKey: "tree.stay_permit_code",
-                },
-              ]
-            : [
-                {
-                  id: "current_status_code",
-                  labelI18nKey: "tree.current_status_code",
-                },
-              ]),
-        ]
-      : []),
+    ...permitChainSteps,
     { id: "overstay_days", labelI18nKey: "tree.overstay_days" },
     ...(facts.in_indonesia === "yes"
       ? [

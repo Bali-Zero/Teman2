@@ -18,10 +18,6 @@ import textwrap
 import time
 from pathlib import Path
 from types import ModuleType
-from typing import Optional
-
-import pytest
-
 MODULE_PATH = Path(__file__).resolve().parent.parent / "arsenal_probe.py"
 
 
@@ -122,28 +118,28 @@ def test_benign_oauth_token_mention_is_not_auth_dead():
     assert status == ap.UNKNOWN_ERR
 
 
-def test_glm_1211_classifies_model_err_never_shed():
+def test_bracketed_1211_classifies_model_err_never_shed():
     ev = 'HTTP 400 {"error": {"code": 1211, "message": "Unknown Model"}}'
-    status = ap.classify_generic(ev, live_signal=False, seat="glm", ssh_context=False)
+    status = ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False)
     assert status == ap.MODEL_ERR
     assert status != ap.SHED
 
 
 def test_unknown_model_text_classifies_model_err():
-    ev = "Unknown Model requested: glm-99"
-    assert ap.classify_generic(ev, live_signal=False, seat="glm", ssh_context=False) == ap.MODEL_ERR
+    ev = "Unknown Model requested: missing-model"
+    assert ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False) == ap.MODEL_ERR
 
 
 def test_529_classifies_shed_never_model_err():
     ev = "HTTP 529 the server is overloaded, please retry"
-    status = ap.classify_generic(ev, live_signal=False, seat="glm", ssh_context=False)
+    status = ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False)
     assert status == ap.SHED
     assert status != ap.MODEL_ERR
 
 
 def test_overloaded_text_classifies_shed():
     ev = "service overloaded right now"
-    assert ap.classify_generic(ev, live_signal=False, seat="glm", ssh_context=False) == ap.SHED
+    assert ap.classify_generic(ev, live_signal=False, seat="codex", ssh_context=False) == ap.SHED
 
 
 def test_402_classifies_balance_dead():
@@ -337,7 +333,7 @@ def test_keychain_locked_returns_cred_unavailable_reason(monkeypatch):
 
     monkeypatch.setattr(ap.subprocess, "run", fake_run)
     monkeypatch.setattr(ap.shutil, "which", lambda name: "/usr/bin/security" if name == "security" else None)
-    token, note = ap.load_keychain_token("glm-coding-plan-token")
+    token, note = ap.load_keychain_token("test-service")
     assert token is None
     assert note is not None
     assert "36" in note or "locked" in note.lower() or "absent" in note.lower()
@@ -351,14 +347,14 @@ def test_keychain_success_returns_token_never_in_note(monkeypatch):
 
     monkeypatch.setattr(ap.subprocess, "run", lambda cmd, **kwargs: FakeCompleted())
     monkeypatch.setattr(ap.shutil, "which", lambda name: "/usr/bin/security" if name == "security" else None)
-    token, note = ap.load_keychain_token("glm-coding-plan-token")
+    token, note = ap.load_keychain_token("test-service")
     assert token == "supersecrettoken123"
     assert note is None
 
 
 def test_keychain_binary_absent_is_cred_unavailable(monkeypatch):
     monkeypatch.setattr(ap.shutil, "which", lambda name: None)
-    token, note = ap.load_keychain_token("glm-coding-plan-token")
+    token, note = ap.load_keychain_token("test-service")
     assert token is None
     assert note is not None
 
@@ -455,7 +451,7 @@ def test_http_post_json_200_returns_scrubbed_evidence(monkeypatch):
 
     monkeypatch.setattr(ap.urllib.request, "urlopen", fake_urlopen)
     status, full, tail = ap.http_post_json(
-        "https://api.z.ai/x", {"Authorization": "Bearer secrettoken12345678901234"}, {}, 10, ["secrettoken12345678901234"]
+        "https://example.invalid/x", {"Authorization": "Bearer secrettoken12345678901234"}, {}, 10, ["secrettoken12345678901234"]
     )
     assert status == 200
     assert "glm-5.2" in full
@@ -478,7 +474,7 @@ def test_http_post_json_full_body_is_untruncated_past_160_chars(monkeypatch):
         return _FakeHTTPResponse(200, long_body)
 
     monkeypatch.setattr(ap.urllib.request, "urlopen", fake_urlopen)
-    status, full, tail = ap.http_post_json("https://api.z.ai/x", {}, {}, 10, [])
+    status, full, tail = ap.http_post_json("https://example.invalid/x", {}, {}, 10, [])
     assert status == 200
     assert '"model": "glm-5.2"' in full  # present in the untruncated body
     assert '"model": "glm-5.2"' not in tail  # and absent from the 160-char tail
@@ -486,17 +482,20 @@ def test_http_post_json_full_body_is_untruncated_past_160_chars(monkeypatch):
 
 
 def test_http_post_json_error_never_leaks_authorization_value(monkeypatch):
+    import io
     import urllib.error
 
     def fake_urlopen(req, timeout):
         # simulate a server that echoes the request headers back in the error body
         # (worst case scenario the redaction must survive)
-        body = f'{{"error": "unauthorized", "your_header_was": "Bearer secrettoken12345678901234"}}'.encode()
-        raise urllib.error.HTTPError(req.full_url, 401, "Unauthorized", {}, None)
+        body = b'{"error": "unauthorized", "your_header_was": "Bearer secrettoken12345678901234"}'
+        raise urllib.error.HTTPError(
+            req.full_url, 401, "Unauthorized", {}, io.BytesIO(body)
+        )
 
     monkeypatch.setattr(ap.urllib.request, "urlopen", fake_urlopen)
     status, full, tail = ap.http_post_json(
-        "https://api.z.ai/x", {"Authorization": "Bearer secrettoken12345678901234"}, {}, 10, ["secrettoken12345678901234"]
+        "https://example.invalid/x", {"Authorization": "Bearer secrettoken12345678901234"}, {}, 10, ["secrettoken12345678901234"]
     )
     assert status == 401
     assert "secrettoken12345678901234" not in full
@@ -511,7 +510,7 @@ def test_http_post_json_url_error_is_scrubbed(monkeypatch):
 
     monkeypatch.setattr(ap.urllib.request, "urlopen", fake_urlopen)
     status, full, tail = ap.http_post_json(
-        "https://api.z.ai/x", {}, {}, 10, ["secrettoken12345678901234"]
+        "https://example.invalid/x", {}, {}, 10, ["secrettoken12345678901234"]
     )
     assert status is None
     assert "secrettoken12345678901234" not in full
@@ -660,68 +659,6 @@ def test_probe_claude_pong_mentioning_login_stays_live(monkeypatch):
     assert status == ap.LIVE
 
 
-def test_probe_glm_cred_unavailable_when_keychain_locked(monkeypatch):
-    monkeypatch.setattr(ap, "load_keychain_token", lambda service, timeout=10: (None, "keychain locked"))
-    status, ev, latency = ap.probe_glm(timeout=5)
-    assert status == ap.CRED_UNAVAILABLE
-    assert ap.is_strict_fail(status) is False
-
-
-def test_probe_glm_live_on_200_with_model(monkeypatch):
-    monkeypatch.setattr(ap, "load_keychain_token", lambda service, timeout=10: ("tok123456789012345678901", None))
-    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, '{"model": "glm-5.2"}', '{"model": "glm-5.2"}'))
-    status, ev, latency = ap.probe_glm(timeout=5)
-    assert status == ap.LIVE
-
-
-def test_probe_glm_live_when_model_marker_only_survives_in_full_body(monkeypatch):
-    # GUILT case (2026-08-21 scar): a genuinely LIVE 200 response whose "model" field
-    # sits before the 160-char tail must still classify LIVE — this is exactly the
-    # shape z.ai's Anthropic-compatible envelope produces (model near the start,
-    # content/usage padding pushes it out of any tail window). Before the fix this
-    # read UNKNOWN_ERR — a live seat silently misread as dead.
-    monkeypatch.setattr(ap, "load_keychain_token", lambda service, timeout=10: ("tok123456789012345678901", None))
-    full_body = '{"model": "glm-5.2", "id": "abc", "content": "' + ("y" * 300) + '"}'
-    tail_only = full_body[-160:]
-    assert '"model"' not in tail_only  # premise: the marker really is outside the tail
-    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, full_body, tail_only))
-    status, ev, latency = ap.probe_glm(timeout=5)
-    assert status == ap.LIVE
-
-
-def test_probe_glm_not_live_when_model_absent_from_full_body(monkeypatch):
-    # INNOCENCE case: a genuinely dead/malformed 200 with no "model" field anywhere
-    # (not even truncated away) must NOT read LIVE — the fix widens WHERE the check
-    # looks, it must not widen WHAT counts as a positive marker.
-    monkeypatch.setattr(ap, "load_keychain_token", lambda service, timeout=10: ("tok123456789012345678901", None))
-    full_body = '{"id": "abc", "content": "' + ("y" * 300) + '"}'
-    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, full_body, full_body[-160:]))
-    status, ev, latency = ap.probe_glm(timeout=5)
-    assert status != ap.LIVE
-
-
-def test_probe_glm_model_err_on_1211(monkeypatch):
-    monkeypatch.setattr(ap, "load_keychain_token", lambda service, timeout=10: ("tok123456789012345678901", None))
-    body = '{"error": {"code": 1211, "message": "Unknown Model"}}'
-    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (400, body, body))
-    status, ev, latency = ap.probe_glm(timeout=5)
-    assert status == ap.MODEL_ERR
-
-
-def test_probe_glm_never_leaks_token_in_evidence(monkeypatch):
-    token = "leaktoken1234567890123456"
-    monkeypatch.setattr(ap, "load_keychain_token", lambda service, timeout=10: (token, None))
-
-    def fake_http(url, headers, body, timeout, secret_values):
-        assert token in secret_values  # the probe must pass its own secret for scrubbing
-        scrubbed = ap.evidence_tail(f"unauthorized, saw {token}", secret_values)
-        return 401, scrubbed, scrubbed
-
-    monkeypatch.setattr(ap, "http_post_json", fake_http)
-    status, ev, latency = ap.probe_glm(timeout=5)
-    assert token not in ev
-
-
 def _tp1_live_body(model: str, content: str = "PONG") -> str:
     return json.dumps(
         {
@@ -851,7 +788,7 @@ def test_probe_tp1_content_mentioning_api_key_phrase_stays_live(monkeypatch):
 def test_probe_tp1_never_leaks_token_in_evidence(monkeypatch):
     """Kimi round-2 finding #3: every other TP1 test mocks http_post_json
     entirely, so the real scrub()/redaction path for THIS door was never
-    exercised — in the shape of test_probe_glm_never_leaks_token_in_evidence."""
+    exercised — this test keeps the real TP1 redaction path pinned."""
     token = "tp1-leaktoken1234567890123456"
     monkeypatch.setattr(
         ap,
@@ -997,7 +934,11 @@ def test_tp1_probe_max_tokens_budget_is_at_least_256():
 
 def test_probe_agy_pong_is_live(monkeypatch):
     monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/agy", True))
-    monkeypatch.setattr(ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(0, "PONG\n", ""))
+    # Patched at run_probe_cmd, not subprocess.run: since 2026-08-26 probe_agy captures
+    # via FILES (the grandchild-holds-the-pipe cure), so a fake that only fills a
+    # _FakeProc's .stdout attribute would be read back from an empty temp file and this
+    # test would fail for a reason that has nothing to do with agy's liveness.
+    monkeypatch.setattr(ap, "run_probe_cmd", lambda *a, **k: ap.ProbeResult(0, "PONG\n", ""))
     status, ev, latency = ap.probe_agy(timeout=5)
     assert status == ap.LIVE
 
@@ -1375,7 +1316,7 @@ def test_compute_transitions_no_prev_report_is_empty():
 
 def test_compute_transitions_new_seat_not_in_prev_is_not_a_transition():
     prev = {"seats": [{"seat": "codex", "status": "LIVE"}]}
-    current = [{"seat": "codex", "status": "LIVE"}, {"seat": "glm", "status": "AUTH_DEAD"}]
+    current = [{"seat": "codex", "status": "LIVE"}, {"seat": "agy", "status": "AUTH_DEAD"}]
     transitions = ap.compute_transitions(prev, current)
     assert transitions == []
 
@@ -1468,7 +1409,7 @@ def test_read_last_filters_to_non_ok_seats(tmp_path, monkeypatch):
         "context": {},
         "seats": [
             {"seat": "claude", "status": "LIVE", "healthy": True, "latency_ms": 1, "evidence": "", "required": True},
-            {"seat": "glm", "status": "QUOTA_DEAD", "healthy": False, "latency_ms": 1, "evidence": "", "required": True},
+            {"seat": "agy", "status": "QUOTA_DEAD", "healthy": False, "latency_ms": 1, "evidence": "", "required": True},
             {"seat": "codex", "status": "AUTH_DEAD", "healthy": False, "latency_ms": 1, "evidence": "", "required": True},
         ],
         "transitions": [],
@@ -1478,7 +1419,7 @@ def test_read_last_filters_to_non_ok_seats(tmp_path, monkeypatch):
     result = ap.read_last()
     assert result == {
         "findings": [
-            {"seat": "glm", "status": "QUOTA_DEAD"},
+            {"seat": "agy", "status": "QUOTA_DEAD"},
             {"seat": "codex", "status": "AUTH_DEAD"},
         ]
     }
@@ -1509,15 +1450,15 @@ def test_read_last_seats_filter_applies(tmp_path, monkeypatch):
         "ts": "x",
         "context": {},
         "seats": [
-            {"seat": "glm", "status": "AUTH_DEAD", "healthy": False, "latency_ms": 1, "evidence": "", "required": True},
+            {"seat": "agy", "status": "AUTH_DEAD", "healthy": False, "latency_ms": 1, "evidence": "", "required": True},
             {"seat": "codex", "status": "AUTH_DEAD", "healthy": False, "latency_ms": 1, "evidence": "", "required": True},
         ],
         "transitions": [],
         "summary": {"live": 0, "dead_strict": 2, "context_limited": 0, "transient": 0},
     }
     ap._atomic_write_json(tmp_path / "last.json", fixture)
-    result = ap.read_last(seats_filter=["glm"])
-    assert result == {"findings": [{"seat": "glm", "status": "AUTH_DEAD"}]}
+    result = ap.read_last(seats_filter=["agy"])
+    assert result == {"findings": [{"seat": "agy", "status": "AUTH_DEAD"}]}
 
 
 def test_read_last_corrupted_report_treated_as_never_ran(tmp_path, monkeypatch):
@@ -1608,9 +1549,9 @@ def test_run_computes_summary_counts(tmp_path, monkeypatch):
     monkeypatch.setattr(ap, "REPORT_DIR", tmp_path)
     monkeypatch.setitem(ap.PROBE_FUNCS, "claude", lambda timeout: (ap.LIVE, "PONG", 10))
     monkeypatch.setitem(ap.PROBE_FUNCS, "codex", lambda timeout: (ap.AUTH_DEAD, "401", 10))
-    monkeypatch.setitem(ap.PROBE_FUNCS, "glm", lambda timeout: (ap.CRED_UNAVAILABLE, "locked", 5))
+    monkeypatch.setitem(ap.PROBE_FUNCS, "kimi", lambda timeout: (ap.CRED_UNAVAILABLE, "locked", 5))
     monkeypatch.setitem(ap.PROBE_FUNCS, "agy", lambda timeout: (ap.QUOTA_DEAD, "429", 5))
-    report = ap.run(seats=["claude", "codex", "glm", "agy"], timeout_mult=1.0, live_gen=False, machine="m5")
+    report = ap.run(seats=["claude", "codex", "kimi", "agy"], timeout_mult=1.0, live_gen=False, machine="m5")
     summ = report["summary"]
     assert summ["live"] == 1
     assert summ["dead_strict"] == 1
@@ -1636,7 +1577,7 @@ def test_run_preserves_requested_seat_order(tmp_path, monkeypatch):
     monkeypatch.setattr(ap, "REPORT_DIR", tmp_path)
     for seat in ap.ALL_SEATS:
         monkeypatch.setitem(ap.PROBE_FUNCS, seat, (lambda s: (lambda timeout: (ap.LIVE, "ok", 1)))(seat))
-    requested = ["ollama", "claude", "nlm", "glm"]
+    requested = ["ollama", "claude", "nlm", "tp1-glm-5.2"]
     report = ap.run(seats=requested, timeout_mult=1.0, live_gen=False, machine="m5")
     assert [s["seat"] for s in report["seats"]] == requested
 
@@ -1737,12 +1678,13 @@ def test_main_report_never_contains_secret_after_full_run(tmp_path, monkeypatch,
     monkeypatch.setattr(ap, "HEARTBEAT_DIR", tmp_path)
     secret = "sk-verysecretvaluethatmustnotleak"
 
-    def fake_glm(timeout):
+    def fake_tp1_glm(timeout):
         # simulate a probe that saw the secret internally but must not report it
         return ap.AUTH_DEAD, ap.evidence_tail(f"401 saw {secret}", [secret]), 5
 
-    monkeypatch.setitem(ap.PROBE_FUNCS, "glm", fake_glm)
-    code = ap.main(["--seats", "glm", "--json"])
+    monkeypatch.setitem(ap.PROBE_FUNCS, "tp1-glm-5.2", fake_tp1_glm)
+    code = ap.main(["--seats", "tp1-glm-5.2", "--json"])
+    assert code == 0
     out = capsys.readouterr().out
     assert secret not in out
     report_on_disk = (tmp_path / "last.json").read_text()
@@ -1783,10 +1725,10 @@ def test_main_selftest_flag_routes_to_selftest(capsys):
 # ---- request-id digit-run innocence (scar #3, added at Fable review) ----------
 
 def test_request_id_digit_run_never_false_matches_numeric_codes():
-    # z.ai request ids are long digit runs; one minted at 12:11 embeds "1211",
+    # Provider request ids are long digit runs; one minted at 12:11 embeds "1211",
     # one at 14:01 embeds "401", one at 04:29 embeds "429". None may classify.
     ev = "API Error: 529 overloaded [20260706121155c8877b89100e44a6]"
-    assert ap.classify_generic(ev, False, "glm", False) == ap.SHED
+    assert ap.classify_generic(ev, False, "codex", False) == ap.SHED
 
     ev2 = "temporary failure [2026070614015500aa] retry later"
     assert ap.classify_generic(ev2, False, "codex", False) == ap.UNKNOWN_ERR
@@ -1796,8 +1738,8 @@ def test_request_id_digit_run_never_false_matches_numeric_codes():
 
 
 def test_bracketed_numeric_codes_still_match():
-    assert ap.classify_generic("HTTP 400 [1211] Unknown Model", False, "glm", False) == ap.MODEL_ERR
-    assert ap.classify_generic("HTTP 401 Authentication Failed", False, "glm", False) == ap.AUTH_DEAD
+    assert ap.classify_generic("HTTP 400 [1211] Unknown Model", False, "codex", False) == ap.MODEL_ERR
+    assert ap.classify_generic("HTTP 401 Authentication Failed", False, "codex", False) == ap.AUTH_DEAD
     assert ap.classify_generic("HTTP 429 too many requests", False, "codex", False) == ap.QUOTA_DEAD
 
 
@@ -2037,6 +1979,7 @@ def test_main_output_never_empty_even_with_every_seat_dead(tmp_path, monkeypatch
     for seat in ap.ALL_SEATS:
         monkeypatch.setitem(ap.PROBE_FUNCS, seat, lambda timeout: (ap.UNKNOWN_ERR, "dead", 1))
     code = ap.main([])
+    assert code == 0
     out, err = capsys.readouterr()
     assert (out + err).strip() != ""
     assert f"0 of {len(ap.ALL_SEATS)} seats OK" in out
@@ -2054,6 +1997,7 @@ def test_main_header_printed_even_if_every_probe_crashes(tmp_path, monkeypatch, 
     for seat in ap.ALL_SEATS:
         monkeypatch.setitem(ap.PROBE_FUNCS, seat, boom)
     code = ap.main([])
+    assert code == 0
     err = capsys.readouterr().err
     assert f"probing {len(ap.ALL_SEATS)} seat(s)" in err
 
@@ -2076,14 +2020,14 @@ def test_render_table_includes_n_of_m_seats_ok_line():
 def test_summary_line_includes_n_of_m_seats_ok():
     report = {
         "machine": "pro",
-        "seats": [{"seat": "claude"}, {"seat": "codex"}, {"seat": "glm"}],
+        "seats": [{"seat": "claude"}, {"seat": "codex"}, {"seat": "tp1-glm-5.2"}],
         "summary": {"live": 1, "dead_strict": 1, "context_limited": 1, "transient": 0},
     }
     line = ap.summary_line(report)
     assert "1 of 3 seats OK" in line
 
 
-def test_probe_claude_strips_glm_session_env(monkeypatch):
+def test_probe_claude_strips_custom_anthropic_session_env(monkeypatch):
     captured_env = {}
 
     def fake_run(cmd, timeout, env=None, stdin_devnull=True):
@@ -2093,10 +2037,169 @@ def test_probe_claude_strips_glm_session_env(monkeypatch):
     monkeypatch.setattr(ap, "run_probe_cmd", fake_run)
     monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/fake/claude", True))
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-paid-key-must-die")
-    monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "glm-token-must-die")
-    monkeypatch.setenv("ANTHROPIC_BASE_URL", "https://api.z.ai/api/anthropic")
+    monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "custom-token-must-die")
+    monkeypatch.setenv("ANTHROPIC_BASE_URL", "https://custom-endpoint.invalid")
     status, _, _ = ap.probe_claude(timeout=5)
     assert status == ap.LIVE
     assert "ANTHROPIC_API_KEY" not in captured_env
     assert "ANTHROPIC_AUTH_TOKEN" not in captured_env
     assert "ANTHROPIC_BASE_URL" not in captured_env
+
+
+# ---------------------------------------------------------------------------
+# 2026-08-26 — the probe was lying about three LIVE seats. These cover the two
+# lies that were defects IN THE INSTRUMENT (the third, nlm, was a stale record,
+# not a code fault).
+#
+# DELIBERATE EXCEPTION to this module's "every subprocess boundary is
+# monkeypatched" rule, and it is load-bearing: the pipe-leak pair below spawns a
+# REAL local `/bin/sh` (no network, no LLM, no credentials). A monkeypatched
+# subprocess cannot reproduce a detached grandchild holding an inherited stdout
+# fd — the fake and the code would share the same imagination (scar W114) and
+# the test would pass against the very bug it exists to catch.
+# ---------------------------------------------------------------------------
+
+
+def test_run_probe_cmd_via_files_captures_what_a_pipe_would_lose():
+    """GUILT: a child that leaves a grandchild holding stdout.
+
+    Through a pipe, `communicate()` never sees EOF: the call burns its whole
+    timeout and hands back EMPTY stdout even though the answer was written
+    immediately. That is what made the fleet digest report `agy TIMEOUT` for a
+    seat answering in 11 s — and what silently defeated the "judge the REPLY"
+    mitigation, since the reply is exactly what the pipe withholds.
+    """
+    module = _load_module()
+    # Writes the answer at once, then leaves a background sleeper holding stdout.
+    # The direct child exits immediately; only the grandchild keeps the fd.
+    cmd = ["/bin/sh", "-c", "echo PONG; sleep 30 & exit 0"]
+    budget = 3.0
+
+    t0 = time.monotonic()
+    piped = module.run_probe_cmd(cmd, timeout=budget)
+    piped_wall = time.monotonic() - t0
+
+    # THE DEFECT, as a falsifiable property: through a pipe the call CANNOT return
+    # before its own timeout, because EOF never arrives — the answer was on disk in
+    # milliseconds but the probe still burns its entire budget and reports timed_out.
+    # (Whether the buffered bytes are also recoverable afterwards is platform-dependent
+    # and NOT the invariant: on Pro 2026-08-26 the real agy call returned nothing at all
+    # and hung past 120 s. The timeout is the part that is always true, so it is the
+    # part asserted here.)
+    assert piped.timed_out, (
+        "the pipe path did not time out — the grandchild-holds-the-fd defect is not "
+        "being reproduced on this platform, so the paired assertion below proves nothing"
+    )
+    assert piped_wall >= budget * 0.9
+
+    t0 = time.monotonic()
+    via_files = module.run_probe_cmd(cmd, timeout=budget, capture_via_files=True)
+    files_wall = time.monotonic() - t0
+
+    assert "PONG" in via_files.stdout
+    assert not via_files.timed_out
+    assert files_wall < budget * 0.5, (
+        f"file capture took {files_wall:.2f}s of a {budget}s budget — it should return "
+        "as soon as the DIRECT child exits, regardless of the lingering grandchild"
+    )
+
+
+def test_run_probe_cmd_via_files_is_transparent_for_an_ordinary_command():
+    """INNOCENCE: file capture must not change the reading of a well-behaved
+    child — same stdout, same stderr, same returncode, no timeout."""
+    module = _load_module()
+    cmd = ["/bin/sh", "-c", "echo PONG; echo noise >&2; exit 0"]
+
+    piped = module.run_probe_cmd(cmd, timeout=10)
+    via_files = module.run_probe_cmd(cmd, timeout=10, capture_via_files=True)
+
+    assert via_files.stdout.strip() == piped.stdout.strip() == "PONG"
+    assert "noise" in via_files.stderr and "noise" in piped.stderr
+    assert via_files.returncode == piped.returncode == 0
+    assert not via_files.timed_out and not piped.timed_out
+
+
+def _qwen_harness(monkeypatch, module, *, keychain, stdout, stderr=""):
+    """Wire probe_qwen_cloud_code to a fake CLI and capture the env it is handed."""
+    seen: dict = {}
+    monkeypatch.setattr(module, "resolve_bin", lambda *a, **k: ("/fake/qwen", True))
+    monkeypatch.setattr(
+        module, "load_keychain_token", lambda *a, **k: (keychain, "not found")
+    )
+
+    def fake_run(cmd, timeout, env=None, **kwargs):
+        seen["env"] = env or {}
+        return module.ProbeResult(0, stdout, stderr)
+
+    monkeypatch.setattr(module, "run_probe_cmd", fake_run)
+    return seen
+
+
+def test_probe_qwen_does_not_inject_the_keychain_token_into_the_child_env(monkeypatch):
+    """The bug, stated as an assertion: the probe used to OVERRIDE the credential
+    the CLI reads for itself from ~/.qwen/settings.json. On Pro the Keychain copy
+    answered `401 Invalid API-key` while the un-overridden CLI answered PONG — so
+    the probe was measuring its own credential, not the seat."""
+    module = _load_module()
+    monkeypatch.delenv("BAILIAN_TOKEN_PLAN_API_KEY", raising=False)
+    seen = _qwen_harness(monkeypatch, module, keychain="stale-keychain-value", stdout="PONG")
+
+    status, _ev, _ms = module.probe_qwen_cloud_code(15)
+
+    assert status == module.LIVE
+    assert seen["env"].get("BAILIAN_TOKEN_PLAN_API_KEY") != "stale-keychain-value"
+
+
+def test_probe_qwen_unreadable_keychain_no_longer_forces_auth_dead(monkeypatch):
+    """A locked/absent Keychain is a fact about THIS HOST, never a verdict on the
+    seat. It used to return AUTH_DEAD without invoking the CLI at all."""
+    module = _load_module()
+    seen = _qwen_harness(monkeypatch, module, keychain=None, stdout="PONG")
+
+    status, ev, _ms = module.probe_qwen_cloud_code(15)
+
+    assert status == module.LIVE
+    assert seen["env"] is not None
+    assert "keychain" in ev.lower(), "the Keychain miss must survive as a breadcrumb"
+
+
+def test_probe_qwen_still_reports_auth_dead_when_the_seat_itself_401s(monkeypatch):
+    """GUILT pair for the two tests above: loosening the Keychain gate must not
+    make this probe blind to a REAL credential failure. The string is the verbatim
+    one Alibaba returned on 2026-08-25."""
+    module = _load_module()
+    _qwen_harness(
+        monkeypatch,
+        module,
+        keychain=None,
+        stdout="",
+        stderr="[API Error: 401 Invalid API-key provided.]",
+    )
+
+    status, _ev, _ms = module.probe_qwen_cloud_code(15)
+
+    assert status == module.AUTH_DEAD
+
+
+def test_probe_agy_asks_for_file_capture_not_a_pipe(monkeypatch):
+    """Without this, nothing stops probe_agy silently going back to a pipe.
+
+    `test_probe_agy_pong_is_live` patches run_probe_cmd itself, and the pipe-leak
+    pair exercises run_probe_cmd directly — so both stay green if this seat's
+    call loses the flag. This is the only assertion that fails on that
+    regression, which is exactly the bug that produced `agy TIMEOUT` in the fleet
+    digest for a seat answering in 11 s.
+    """
+    module = _load_module()
+    seen: dict = {}
+    monkeypatch.setattr(module, "resolve_bin", lambda *a, **k: ("/fake/agy", True))
+
+    def fake_run(cmd, timeout, env=None, **kwargs):
+        seen.update(kwargs)
+        return module.ProbeResult(0, "PONG\n", "")
+
+    monkeypatch.setattr(module, "run_probe_cmd", fake_run)
+    status, _ev, _ms = module.probe_agy(timeout=15)
+
+    assert status == module.LIVE
+    assert seen.get("capture_via_files") is True

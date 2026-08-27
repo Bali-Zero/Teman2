@@ -256,6 +256,34 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.stay_permit_code" },
     notSure: { mode: "human-review" },
   },
+  // Gated in flow.ts (`computeNextNode`'s `stay_permit_code` case): asked
+  // only when the applicant holds a stay permit (`holds_stay_permit ===
+  // "yes"`) AND `permit_expiry` is either KNOWN-and-in-the-past or itself
+  // UNKNOWN ("not sure") — never for a known-current permit. F4, 2026-08-24
+  // (owner ruling): payment, not filing, is the determinant — "il rinnovo
+  // si considera depositato se c'e stato pagamento". A renewal-in-process
+  // holder stays on the permit they extended and is excluded from D12 the
+  // same as any other active-permit holder. "Not sure" resolves to an
+  // UnknownFact via the shared `notSure`/`booleanFact` path (never a
+  // guessed `false`) — see fact-mapper.ts's `"immigration.renewal_paid"`
+  // mapping.
+  renewal_paid: {
+    id: "renewal_paid",
+    i18nKey: "q.renewal_paid",
+    kind: "branch",
+    group: "location",
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["immigration.renewal_paid"],
+    },
+    sensitive: true,
+    options: [
+      { key: "yes", labelI18nKey: "q.boolean.yes" },
+      { key: "no", labelI18nKey: "q.boolean.no" },
+    ],
+    whyWeAsk: { i18nKey: "why.renewal_paid" },
+    notSure: { mode: "human-review" },
+  },
   overstay_days: {
     id: "overstay_days",
     i18nKey: "q.overstay_days",
