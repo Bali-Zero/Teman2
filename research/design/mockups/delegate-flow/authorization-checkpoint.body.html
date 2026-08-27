@@ -1,0 +1,179 @@
+<!-- Delegate flow — the AUTHORIZATION CHECKPOINT screen (delegate-flow lane, R7 §4 item 4;
+     §3.2/§3.3 declarations). This is the SECOND meta screen — it renders after the who-answers
+     gate's middle option ("I'm helping one traveller who'll answer for themselves"). The gate's
+     own branch-choice screen is declared NOT DRAWN (§3.1): it is R5b's own who_answers shape,
+     unchanged in kind (only the option set and destinations differ — R5b's binary self/delegate
+     becomes a three-way traveller/delegate-for-solo-self-payer/arranging-for-someone-else fork;
+     the third option routes straight to the existing WhatsApp decline copy, declineEducation.ts,
+     and is not a screen this lane draws either).
+
+     Modeled on the LIVE guardian-consent shape (ConsentHandoff.tsx:32,44,46,245,296,317,328-329
+     — guardianConsentRequired/guardianFirst: a standing-to-act gate that renders and blocks
+     BEFORE the general consent line, not folded into it). The statement copy is R5b's own,
+     carried over verbatim (journey.html:200) because it already passed that round's panel. The
+     SCOPE-LIMIT line is new here — R5b's tree-only context never had to face eligibility.py's
+     NOT_SELF_PAY decline (§1/§2 T1); naming the payment boundary here is cheaper than the
+     visitor discovering it after finishing the wizard.
+
+     No numeric counter on this screen — R5b's own convention hides the progress zone during the
+     meta path (journey.html: $("progressZone").hidden = inMeta); this is a meta step, not
+     question N of Y.
+
+     The dashed PREVIEW panel at the bottom is NOT a second screen — it is a labeled inset
+     showing what persists (R5b's delegateBanner, journey.html:156-158,444) and one concrete
+     example of the pronoun layer (§3.5) rewriting page.tsx's own "I am paying for this
+     application myself" checkbox into third person. {CUSTODY_WHO_SEES} stays an HONEST
+     placeholder — it resolves only through the consent-placement lane's §3.8 audit, never
+     invented here (R4 §5).
+
+     Identity header (R4:108), trust footer (R7 §2 am. 4 — funnel-wide law), rem type tokens,
+     44px tap targets — same law the checkout/consent-placement mockups already carry. -->
+<style>
+  :root{
+    --carta:#f7f6f2; --elevated:#ffffff; --ink:#16213a; --ink-soft:#475372;
+    --border-input:#7a8093; --hairline:#e3e1da;
+    --merah:#C8102E; --merah-action:#D01033; --merah-pressed:#c40020;
+    --radius:12px; --radius-nested:8px; --motion:220ms;
+    --font-display:"Cormorant Garamond",Georgia,serif;
+    --font-ui:"Inter",system-ui,sans-serif;
+    --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+    --t-body:1rem; --t-small:.8125rem; --t-label:.875rem; --t-h1:1.5rem; --t-h2:1.125rem;
+    --t-eyebrow:.75rem;
+  }
+  .dg{background:var(--carta);color:var(--ink);font-family:var(--font-ui);font-size:var(--t-body);
+      line-height:1.55;max-width:26rem;margin:0 auto;padding:1rem 1rem 2rem}
+  .dg .idh{display:flex;justify-content:space-between;align-items:center;min-height:2.75rem;margin-bottom:.25rem}
+  .dg .idh .wm{font-family:var(--font-display);font-weight:600;font-size:var(--t-h2);
+      letter-spacing:.08em;color:var(--ink);text-decoration:none;display:inline-flex;
+      align-items:center;min-height:2.75rem}
+  .dg .idh .idh-right{display:flex;gap:.5rem}
+  .dg .idh .idh-right a{display:inline-flex;align-items:center;min-height:2.75rem;
+      padding:0 .5rem;font-size:var(--t-small);color:var(--ink);text-decoration:none}
+  .dg .idh .idh-right a.wa{color:var(--merah-action);text-decoration:underline}
+  .dg .eyebrow{font-size:var(--t-eyebrow);text-transform:uppercase;letter-spacing:.08em;
+      color:var(--ink-soft);margin:0 0 .375rem}
+  .dg .mirror{font-size:var(--t-small);color:var(--ink-soft);margin:0 0 .75rem;
+      display:flex;justify-content:space-between;align-items:baseline;gap:.5rem;flex-wrap:wrap}
+  .dg .mirror a{display:inline-flex;align-items:center;min-height:2.75rem;padding:0 .25rem;
+      margin:-.5rem -.25rem;color:var(--merah-action);white-space:nowrap}
+  .dg h1{font-family:var(--font-display);font-size:var(--t-h1);font-weight:600;margin:.125rem 0 .75rem}
+  /* ══ Compact custody hint (§6.1 lineage, consent-placement lane) — low-sensitivity ask: a
+        role declaration, no PII collected on this screen yet. ══ */
+  .dg .custody{border-left:3px solid var(--ink);padding:.375rem .75rem;margin-bottom:1rem;
+      font-size:var(--t-small);color:var(--ink-soft)}
+  .dg .custody .mono{font-family:var(--font-mono);color:var(--ink)}
+  .dg .custody a{display:inline-flex;align-items:center;min-height:2.75rem;padding:0 .25rem;
+      margin:-.5rem 0;color:var(--merah-action)}
+  /* ══ Authorization statement — the checkpoint itself (§3.2/§3.3). Modeled on
+        ConsentHandoff.tsx's guardianConsentRequired/guardianFirst shape: a standing-to-act
+        confirmation gated BEFORE anything downstream can proceed. ══ */
+  .dg .authblock{border:1px solid var(--hairline);border-radius:var(--radius);
+      background:var(--elevated);padding:1rem;margin:0 0 .875rem}
+  .dg .authblock .stmt{display:flex;gap:.625rem;align-items:flex-start;min-height:2.75rem}
+  .dg .authblock input[type=checkbox]{width:1.25rem;height:1.25rem;flex:0 0 auto;margin-top:.2rem}
+  .dg .authblock label{font-weight:600;font-size:var(--t-label);line-height:1.5;cursor:pointer}
+  /* Scope-limit line — a STATED FACT, not a checkbox: the funnel's payment boundary, named up
+     front instead of discovered at the decline screen (§2 T1, §3.2). */
+  .dg .scopelimit{margin:.75rem 0 0;padding:.625rem .75rem;border-radius:var(--radius-nested);
+      background:#fbeceF;border:1px solid #f0c9ce;font-size:var(--t-small);color:var(--ink)}
+  .dg .scopelimit b{color:var(--merah)}
+  .dg .cta{display:flex;justify-content:center;width:100%;min-height:2.75rem;
+      background:var(--merah-action);color:#fff;border:0;border-radius:var(--radius);
+      font:600 var(--t-body) var(--font-ui);padding:.75rem 1rem;cursor:pointer;
+      transition:background var(--motion);margin-top:.25rem}
+  .dg .cta:active{background:var(--merah-pressed)}
+  .dg .cta-secondary{display:flex;justify-content:center;width:100%;min-height:2.75rem;
+      background:transparent;color:var(--ink-soft);border:1px solid var(--hairline);
+      border-radius:var(--radius);font:600 var(--t-label) var(--font-ui);padding:.625rem 1rem;
+      cursor:pointer;margin-top:.5rem}
+  .dg .escape{margin:.75rem 0 0;font-size:var(--t-small);color:var(--ink-soft);text-align:center}
+  .dg .escape a{display:inline-flex;align-items:center;min-height:2.75rem;padding:0 .25rem;
+      color:var(--merah-action)}
+  /* ══ Preview inset — NOT a second screen. Dashed border marks it explicitly as a labeled
+        preview of persistent/downstream behavior (§3.4/§3.5), never live content on this
+        screen. ══ */
+  .dg .preview{margin-top:1.5rem;border:1px dashed var(--border-input);border-radius:var(--radius);
+      padding:.875rem .875rem .75rem;background:var(--carta)}
+  .dg .preview .plabel{font-size:var(--t-eyebrow);text-transform:uppercase;letter-spacing:.08em;
+      color:var(--ink-soft);margin:0 0 .5rem;font-weight:600}
+  .dg .preview .banner{border:1px solid var(--hairline);border-radius:var(--radius-nested);
+      background:var(--elevated);padding:.625rem .75rem;font-size:var(--t-small);
+      color:var(--ink-soft);margin-bottom:.625rem}
+  .dg .preview .banner b{color:var(--ink)}
+  .dg .preview .rewrite{font-size:var(--t-small);color:var(--ink-soft)}
+  .dg .preview .rewrite .was{text-decoration:line-through;opacity:.65}
+  .dg .preview .rewrite .now{color:var(--ink);font-weight:600;display:block;margin-top:.25rem}
+  .dg .trust{border-top:2px solid var(--ink);margin-top:1.25rem;padding-top:.75rem;
+      font-size:var(--t-small);color:var(--ink-soft)}
+  .dg .trust .role{color:var(--ink);font-weight:600}
+  .dg .trust a{display:inline-flex;align-items:center;min-height:2.75rem;padding:0 .25rem;
+      margin:-.5rem 0;color:var(--merah-action)}
+  @media (prefers-reduced-motion: reduce){ .dg .cta{transition:none} }
+</style>
+
+<div class="dg">
+  <header class="idh">
+    <a class="wm" href="{HOME_LINK}">BALI ZERO</a>
+    <span class="idh-right"><a href="{LANG_TOGGLE}" aria-label="Ganti bahasa">EN · ID</a><a class="wa" href="{WA_HEADER_LINK}">WhatsApp</a></span>
+  </header>
+
+  <p class="eyebrow">Before we start</p>
+
+  <!-- Mirror line — same pattern as R1/checkout's mirror copy: state back what was just
+       declared, with an edit path, never silently assume it. -->
+  <p class="mirror">You said: I'm helping one traveller who'll answer for themselves.
+    <a href="{BACK_TO_GATE}">Change →</a></p>
+
+  <h1>Answering for the traveller</h1>
+
+  <!-- ══ Compact custody hint — before ANY PII is asked (this screen only confirms a role).
+       {CUSTODY_WHO_SEES} is an HONEST placeholder: it resolves only through the
+       consent-placement lane's audit, never invented here (R4 §5). The second line states what
+       is ALREADY true today (session-bound access, §5.2 finding) — not a future promise. ══ -->
+  <aside class="custody" aria-label="How this is handled">
+    This confirms who's operating the form — it doesn't collect the traveller's answers yet.
+    Who sees what: <span class="mono">{CUSTODY_WHO_SEES}</span>.
+    This browser controls this result — viewing or deleting it later needs this same device
+    and session, not a login. <a href="{PRIVACY_LINK}">How we handle data →</a>
+  </aside>
+
+  <!-- ══ Authorization checkpoint — modeled on ConsentHandoff.tsx's guardianConsentRequired
+       shape. Statement copy is R5b's own (journey.html:200), carried verbatim. ══ -->
+  <div class="authblock">
+    <div class="stmt">
+      <input id="dg-auth" type="checkbox">
+      <label for="dg-auth">The traveller asked me to fill this in, and I'll check with them
+        when unsure.</label>
+    </div>
+    <!-- Scope-limit — a STATED FACT, not a checkbox. Names the funnel's real boundary
+         (eligibility.py's NOT_SELF_PAY decline, §1/§2 T1) before the wizard, not after. -->
+    <p class="scopelimit"><b>This does not authorize payment on the traveller's behalf.</b>
+      At checkout, payment still has to come from the traveller's own card.</p>
+  </div>
+
+  <button class="cta" type="button">Continue as delegate →</button>
+  <button class="cta-secondary" type="button">Actually, I'll let the traveller do this themselves</button>
+
+  <!-- Check-with-the-traveller escape — R5b's own phrasing (journey.html:396), ported. -->
+  <p class="escape">Not sure the traveller wants this shared?
+    <a href="{WA_CHECK_WITH_TRAVELLER}">Check with them first, or hand this to a person →</a></p>
+
+  <!-- ══ Preview inset — labeled, dashed, NOT a live screen. Shows what persists once
+       authorized: the delegate banner (journey.html:156-158,444) and the pronoun layer (§3.5)
+       rewriting page.tsx's real "I am paying myself" checkbox. ══ -->
+  <div class="preview">
+    <p class="plabel">Preview — appears on every screen from here</p>
+    <p class="banner"><b>You're answering for someone else.</b> Their case, their facts —
+      answer as the traveller would. Who sees what: <span class="mono">{CUSTODY_WHO_SEES}</span>.</p>
+    <p class="rewrite">Example — the "About you" step's payer question:<br>
+      <span class="was">"I am paying for this application myself"</span>
+      <span class="now">"The traveller will pay for this application themselves"</span></p>
+  </div>
+
+  <!-- ══ Trust footer — R7 §2 am. 4 funnel-wide law, unchanged from checkout/consent-placement. ══ -->
+  <footer class="trust">
+    <p class="role">We prepare your application; Ditjen Imigrasi decides and issues.</p>
+    <p>Controller: PT {PT_LEGAL_NAME} · NPWP {NPWP} · <a href="{REGISTRY_LINK}">registry entry</a><br>
+    {OFFICE_STREET_ADDRESS}, Bali — {OFFICE_HOURS}</p>
+  </footer>
+</div>
