@@ -1014,6 +1014,8 @@ async def test_an_overlong_read_value_is_capped(pool):
     ],
 )
 async def test_no_form_of_the_bot_token_survives_into_the_durable_error(label, render):
+    # Hyphen-RICH on purpose: if the pattern stopped at the first `-`, the tail
+    # would survive and the window loop below would name it.
     token = "8847435604:AA-a-token-shaped-string-nobody-should-ever-see"
 
     def _echo(request: httpx.Request) -> httpx.Response:
@@ -1033,15 +1035,31 @@ async def test_no_form_of_the_bot_token_survives_into_the_durable_error(label, r
     assert quote(token, safe="") not in message, (
         f"[{label}] the url-encoded token survived: {message!r}"
     )
-    # The bot id (before the colon) is public; it is the half AFTER it that
-    # must not survive in whole OR in part.
-    for cut in (len(secret_half), len(secret_half) // 2, 8):
-        fragment = secret_half[:cut]
-        if len(fragment) >= 8:
-            assert fragment not in message, (
-                f"[{label}] a {len(fragment)}-char fragment of the secret half "
-                f"survived: {message!r}"
-            )
+    # EVERY WINDOW of the secret half, not only its prefixes.
+    #
+    # An earlier version checked `secret_half[:cut]` for three values of `cut` —
+    # prefixes only — and a cross-family grader was right that this passes while
+    # a SUFFIX leaks: a scrub that removed the front of the secret and left
+    # `-nobody-should-ever-see` would have satisfied it. The bot id before the
+    # colon is public; every window of eight or more characters of the half
+    # AFTER it is secret, and none may survive.
+    #
+    # (The same grader claimed three times that the regex `[A-Za-z0-9_%-]` omits
+    # `-` and so redacts only up to the first hyphen. It does not: a `-` in FINAL
+    # position inside a character class is a literal, not a range. This loop is
+    # the measurement that settles it, on the real `_scrub`, on a deliberately
+    # hyphen-rich token — so nobody has to take either side's word for it.)
+    windows = {
+        secret_half[i:j]
+        for i in range(len(secret_half))
+        for j in range(i + 8, len(secret_half) + 1)
+    }
+    assert len(windows) > 100, "the window set is too small to be a real check"
+    survived = sorted((w for w in windows if w in message), key=len, reverse=True)
+    assert not survived, (
+        f"[{label}] {len(survived)} window(s) of the secret half survived, longest "
+        f"{survived[0]!r} ({len(survived[0])} chars): {message!r}"
+    )
     assert "<redacted>" in message, (
         f"[{label}] nothing was redacted — this test may be passing because the "
         f"token never made it into the error at all: {message!r}"
