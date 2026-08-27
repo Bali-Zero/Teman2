@@ -655,8 +655,14 @@ async def test_the_stale_state_branch_logs_no_applicant_pii(
 async def test_a_sender_failure_leaks_no_applicant_pii_into_its_error(pool, caplog):
     """The failure path logs NOTHING — so a caplog-only assertion here would be
     satisfied by silence and prove nothing. The surface that actually carries
-    text out of this path is the raised `EmailSendFailed` MESSAGE: the outbox
-    worker persists it as the job's `last_error` and logs it. `send` keeps the
+    text out of this path is the raised `EmailSendFailed` MESSAGE: `drain_once`
+    catches it and calls `logger.exception`, so the message lands in the
+    process's log stream. (Corrected 2026-08-28: this said the worker "persists
+    it as the job's `last_error`". There is no `last_error` column —
+    `garuda_order_outbox`, migration 284:347-357, has only id / order_id /
+    journal_event_id / job_type / payload / created_at / dispatched_at /
+    attempts. The tripwire is unchanged; the named surface was wrong.) `send`
+    keeps the
     response body out of that message on purpose ("it can echo the recipient");
     this is the tripwire on that comment.
     """
