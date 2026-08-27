@@ -39,6 +39,7 @@ from backend.services.payments.port import (
     NormalizedRefundEvent,
 )
 from backend.services.payments.terminal_taxonomy import FailureOutcome, classify
+from backend.tests.fixtures.prod_shaped_pool import create_prod_shaped_pool
 
 _DSN = (
     os.environ.get("GARUDA_L3_TEST_DSN")
@@ -219,7 +220,7 @@ async def _close_garuda_order_test_policy(conn: asyncpg.Connection, policy_versi
 @pytest.fixture
 async def pool():
     try:
-        p = await asyncpg.create_pool(dsn=_DSN, min_size=1, max_size=2)
+        p = await create_prod_shaped_pool(_DSN, min_size=1, max_size=2)
     except (OSError, asyncpg.PostgresError) as exc:
         if os.environ.get("CI"):
             # A skip in a gate is a fail-open (gate finding, round 3): every
