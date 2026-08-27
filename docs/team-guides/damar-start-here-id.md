@@ -7,6 +7,8 @@
 **Zona waktu:** WITA
 **Manual lengkap:** `damar-editorial-director-playbook-id.md`
 
+> **Status aktivasi 27 Agustus 2026: BRIDGE DOWN.** Publikasi website oleh agent dimulai hanya setelah Bridge v2 sudah merged, deployed, dan positive health probe production lulus. Sampai saat itu agent boleh membantu riset/draft, tetapi tidak boleh mengklaim action publish tersedia.
+
 ---
 
 ## Peran Damar
@@ -27,20 +29,14 @@ Agent melakukan riset, verifikasi, draft, SEO, ImageGen, caption, asset, folder,
 
 ---
 
-## Status sistem hari ini
-
-### SEKARANG
+## Aturan operasional
 
 - Agent dapat membaca daftar dan isi artikel News Room.
-- Agent menyiapkan copy, SEO, cover ImageGen, caption, sumber, dan QA.
-- **Damar menerbitkan artikel melalui News Room UI.**
+- Setelah Bridge v2 aktif, agent menyiapkan copy, SEO, cover ImageGen, caption, sumber, dan QA, lalu menerbitkan artikel website setelah konfirmasi final Damar.
 - **Damar menerbitkan carousel/video social secara manual hanya setelah approval eksplisit Antonello.**
-- Agent memeriksa hasil live, tetapi tidak boleh mengatakan `live` sebelum benar-benar membukanya.
+- Agent harus memeriksa `workspace_health` sebelum action website. Bila write actions tidak `ready`, agent melaporkan `BRIDGE DOWN` dan berhenti; News Room UI hanya jalur darurat, bukan workflow normal.
+- Agent tidak boleh mengatakan `published` atau `live` sebelum URL, `/news`, posisi, dan OG image benar-benar diperiksa.
 - Saved Character Zantara dipilih di Flow UI; action Character belum tersedia end-to-end melalui workspace agent.
-
-### TARGET — jangan dipakai sebelum Bridge terbukti live
-
-Setelah Damar memilih dan mengonfirmasi artikel, agent akan dapat meng-update, memasang cover, memilih posisi, menerbitkan, dan memverifikasi website live. PR, preview, atau tool yang masih diuji bukan bukti bahwa fungsi ini aktif.
 
 Publikasi social tetap manual oleh Damar berdasarkan aturan sekarang.
 
@@ -48,17 +44,17 @@ Publikasi social tetap manual oleh Damar berdasarkan aturan sekarang.
 
 ## Jadwal harian
 
-| Jam       | Hasil                                                                 |
-| --------- | --------------------------------------------------------------------- |
-| 08:30     | Daftar artikel dibuka.                                                |
-| 09:15     | Artikel dan posisi dipilih; artikel lemah tidak dipaksa terbit.       |
-| 09:45     | Topik carousel dan content lock selesai.                              |
-| 10:00     | Arah cover dipilih. Pada hari video, regia juga dipilih.              |
-| 11:15     | Pilot video EN/ID lulus atau jalur video disederhanakan/dihentikan.   |
-| 13:00     | Carousel dilindungi sebagai prioritas.                                |
-| 14:15     | QA final. Video yang belum siap dipindahkan ke slot berikutnya.       |
-| **15:00** | Satu paket dikirim ke Antonello.                                      |
-| **17:00** | Damar publish manual hanya bila deliverable sudah menerima `APPROVE`. |
+| Jam       | Hasil                                                                                    |
+| --------- | ---------------------------------------------------------------------------------------- |
+| 08:30     | Daftar artikel dibuka.                                                                   |
+| 09:15     | Inventaris, ranking, dan keputusan awal selesai; agent memberi ETA per artikel terpilih. |
+| 09:45     | Topik carousel dan content lock selesai.                                                 |
+| 10:00     | Arah cover dipilih. Pada hari video, regia juga dipilih.                                 |
+| 11:15     | Pilot video EN/ID lulus atau jalur video disederhanakan/dihentikan.                      |
+| 13:00     | Carousel dilindungi sebagai prioritas.                                                   |
+| 14:15     | QA final. Video yang belum siap dipindahkan ke slot berikutnya.                          |
+| **15:00** | Satu paket dikirim ke Antonello.                                                         |
+| **17:00** | Damar publish social manual hanya bila deliverable menerima `APPROVE`.                   |
 
 Default hari video: Senin, Rabu, Jumat. Target minimum: tiga video yang **lulus QA** per minggu.
 
@@ -68,9 +64,17 @@ Default hari video: Senin, Rabu, Jumat. Target minimum: tiga video yang **lulus 
 
 Kirim:
 
-> **Tampilkan lima artikel terkuat yang tersedia hari ini. Baca isi lengkap dan sumber asli setiap kandidat. Jelaskan singkat apa yang terjadi, mengapa penting sekarang, siapa audiensnya, risiko editorial, posisi website, dan ide cover. Kelompokkan sebagai PUBLISH TODAY, HOLD, atau VERIFY FIRST. Tulis juga jumlah artikel pending lainnya. Jangan publish apa pun.**
+> **Periksa kesehatan Intel Scraper, lalu tampilkan SELURUH artikel yang tersedia hari ini — bukan lima terbaik dan bukan shortlist. Sebutkan total artikel dan jangan sembunyikan sisanya. Untuk setiap artikel, baca isi lengkap dan sumber asli; jelaskan singkat apa yang terjadi, mengapa penting sekarang, siapa audiensnya, risiko editorial, posisi website, dan ide cover. Kelompokkan sebagai PUBLISH TODAY, HOLD, atau VERIFY FIRST. Jangan publish apa pun sebelum pilihan dan konfirmasi final saya.**
 
-Agent harus memberi lima kandidat terbaik, bukan sekadar lima terbaru. Tidak wajib menerbitkan bila tidak ada artikel yang cukup kuat.
+Agent harus mengikuti halaman berikutnya sampai `complete=true` dan memberi seluruh daftar. Damar bebas memilih 15, 2, 1, atau 0 artikel; agent tidak menetapkan kuota editorial.
+
+Sebelum menampilkan daftar, agent menjalankan `workspace_health` dan `intel_editorial_health`, lalu melaporkan `INTEL HEALTH`: waktu run terakhir, jumlah artikel yang ditemukan, berhasil diperkaya, dan benar-benar masuk News Room, tanggal artikel terbaru, serta status `HEALTHY`, `STALE`, atau `DOWN`. Status pipeline tidak boleh dinilai hanya dari exit code. `0 enriched` atau `0 submitted` berarti `DOWN` dan memicu PLAN B.
+
+Jika tidak ada artikel baru hari itu, run terakhir gagal menghasilkan artikel, atau daftar terbaru berumur lebih dari 72 jam, agent langsung menjalankan **PLAN B**: deep research atas news paling berdampak bagi Bali Zero yang terbit atau berkembang dalam 2–3 hari terakhir. Riset memakai sumber primer/resmi dan media tepercaya, lalu menghasilkan seluruh daftar kandidat yang lolos batas relevansi — bukan lima terbaik.
+
+Setelah Damar memilih topik, agent menulis artikel lengkap dalam gaya Bali Zero, membuat source ledger, dan meminta dua pemeriksaan: reviewer independen yang bukan penulis dan NotebookLM domain yang terdampak. Klaim hukum, pajak, visa, company, atau property tidak boleh lolos tanpa status `PASS` dari notebook terkait.
+
+Aturan itu berlaku juga untuk artikel yang berasal dari Intel normal, bukan hanya PLAN B. Setiap artikel terpilih wajib `newsroom_fact_gate: PASS`; perubahan pada copy, angka, source, SEO, slug, alt, atau cover setelah PASS membatalkan gate dan memicu pemeriksaan ulang.
 
 Damar memilih dengan jawaban sederhana:
 
@@ -103,9 +107,9 @@ Sebelum mengganti Hero, agent/UI menunjukkan artikel yang sekarang menempati slo
 
 Kirim:
 
-> **FINAL DISETUJUI. Jangan publish melalui agent. Tampilkan langkah News Room yang harus saya lakukan, lalu verifikasi URL, posisi, cover, dan SEO live setelah saya selesai.**
+> **FINAL DISETUJUI. Publikasikan artikel #1 di Hero Main dan artikel #3 di Hero 3. Jangan ubah copy atau cover. Gunakan request key unik untuk setiap artikel. Setelah proses internal selesai, verifikasi URL, /news, posisi homepage, OG image, desktop, dan mobile. Laporkan `LIVE VERIFIED` hanya jika semua check lulus.**
 
-Konfirmasi publikasi harus menyebut artikel, posisi, cover, dan preview. `Oke`, `lanjut`, atau pilihan artikel bukan konfirmasi publish.
+Konfirmasi publikasi harus menyebut artikel, posisi, cover, dan preview. `Oke`, `lanjut`, atau pilihan artikel bukan konfirmasi publish. Status `queued_for_publication` atau `publication_pending` belum berarti live. `newsroom_verify_live` yang lulus memberi `MECHANICAL LIVE VERIFIED`; sesudah itu agent wajib screenshot/browser QA desktop dan mobile. Status final adalah `LIVE VERIFIED + VISUAL QA PASS`, atau `LIVE — VISUAL FIX REQUIRED` bila proof mesin lulus tetapi tampilan gagal.
 
 ---
 

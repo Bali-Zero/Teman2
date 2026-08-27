@@ -5,7 +5,9 @@
 **Versi:** 2.0
 **Tanggal:** 27 Agustus 2026
 **Zona waktu:** WITA
-**Status:** Panduan internal Bali Zero
+**Status:** Panduan internal Bali Zero — workflow website aktif hanya setelah Bridge v2 lulus deploy dan health probe
+
+> **Status aktivasi 27 Agustus 2026: BRIDGE DOWN.** Contract v2 masih berada pada tahap PR/review. Jangan menyerahkan action publikasi agentik ini kepada Damar sebagai fitur live sampai `workspace_health` production mengembalikan contract v2, seluruh write action `ready`, dan satu positive probe aman lulus. Selama status ini belum berubah, agent tetap dapat membantu riset/draft tetapi tidak boleh mengklaim dapat menerbitkan website.
 
 ---
 
@@ -21,11 +23,11 @@ Damar bukan operator yang hanya mengikuti output AI. **Damar adalah Editorial Di
 
 ### Tiga peran yang tidak boleh tertukar
 
-| Peran         | Tanggung jawab utama                                                                                                                                                                                                                                    |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Agent**     | Mencari, membaca, membandingkan, memverifikasi, memberi rekomendasi, menulis, membuat gambar dengan ImageGen, menyiapkan SEO/caption/alt text, menyiapkan prompt Flow, menyusun paket, dan menjalankan QA. Agent tidak memicu publikasi social.         |
-| **Damar**     | Memilih artikel dan posisi website, memilih topik dan angle carousel, memilih arah visual, menyempurnakan di Canva bila perlu, menyutradarai video, menyerahkan paket final pukul 15:00, dan menerbitkan carousel/video secara manual setelah approval. |
-| **Antonello** | Memberi approval atau revisi untuk carousel dan video sebelum publikasi pukul 17:00.                                                                                                                                                                    |
+| Peran         | Tanggung jawab utama                                                                                                                                                                                                                                                                                  |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Agent**     | Mencari, membaca, membandingkan, memverifikasi, memberi rekomendasi, menulis, membuat gambar dengan ImageGen, menyiapkan SEO/caption/alt text, menyiapkan prompt Flow, menyusun paket, menjalankan QA, dan menerbitkan artikel website setelah konfirmasi Damar. Agent tidak memicu publikasi social. |
+| **Damar**     | Memilih artikel dan posisi website, memilih topik dan angle carousel, memilih arah visual, menyempurnakan di Canva bila perlu, menyutradarai video, menyerahkan paket final pukul 15:00, dan menerbitkan carousel/video secara manual setelah approval.                                               |
+| **Antonello** | Memberi approval atau revisi untuk carousel dan video sebelum publikasi pukul 17:00.                                                                                                                                                                                                                  |
 
 ### Prinsip utama
 
@@ -39,21 +41,13 @@ Damar bukan operator yang hanya mengikuti output AI. **Damar adalah Editorial Di
 
 # KOKPIT HARIAN DAMAR — BACA INI SETIAP PAGI
 
-## Status operasional hari ini
+## Kontrak operasional
 
-**SEKARANG — yang benar-benar dapat dilakukan:**
-
-- Agent membaca dan menilai artikel News Room, menyiapkan copy final, SEO, cover dengan ImageGen, caption, sumber, dan QA.
-- **Damar menerbitkan artikel melalui News Room.** Agent kemudian memeriksa URL, cover, SEO, dan posisi yang terlihat di website live.
+- Agent membaca seluruh daftar artikel News Room, menyiapkan copy final, SEO, cover dengan ImageGen, caption, sumber, dan QA.
+- Setelah Bridge v2 aktif dan Damar memberi konfirmasi final presisi, **agent meng-update artikel, memasang cover, memilih posisi, menerbitkan, dan memverifikasi website live.**
 - **Damar menerbitkan carousel dan video secara manual pukul 17:00 hanya setelah approval eksplisit Antonello.** Bila approval belum ada, statusnya `HOLD`; diam bukan approval.
-- Agent tidak boleh mengatakan `live` sebelum halaman atau post yang benar sudah dibuka dan diperiksa.
-
-**TARGET — hanya setelah Bridge dinyatakan aktif, diuji, dan terbukti live:**
-
-- Setelah keputusan dan konfirmasi final Damar, agent meng-update artikel, memasang cover, memilih posisi, menerbitkan, dan memverifikasi website live.
-- Approval Antonello sebelum carousel/video pukul 17:00 tetap wajib. Sampai aturan dan action social-publish berubah secara resmi, tombol publish sosial tetap ditekan Damar.
-
-> Jangan memakai mode TARGET hanya karena sebuah fitur sedang dibuat atau sebuah PR sudah ada. Agent harus dapat membuktikan action tersedia dan lolos uji live pada hari itu.
+- Sebelum action website, agent wajib memeriksa `workspace_health`. Bila write actions tidak `ready`, agent melaporkan `BRIDGE DOWN` dan berhenti. News Room UI adalah fallback insiden, bukan workflow normal.
+- Agent tidak boleh mengatakan `published` atau `live` hanya karena request, PR, merge, atau deploy dimulai. Bukti wajib berasal dari halaman publik yang benar.
 
 ## Lima keputusan Damar
 
@@ -69,35 +63,29 @@ Agent mengerjakan riset, verifikasi, draft, asset, folder, penamaan file, captio
 
 ## Jadwal satu layar
 
-| Jam       | Keputusan / hasil                                                                                   |
-| --------- | --------------------------------------------------------------------------------------------------- |
-| 08:30     | Damar meminta daftar artikel.                                                                       |
-| 09:15     | Artikel dan posisi dipilih; yang tidak cukup kuat tidak dipaksa terbit.                             |
-| 09:45     | Topik carousel dan content lock selesai.                                                            |
-| 10:00     | Arah cover dipilih; pada hari video, Director Card juga dipilih.                                    |
-| 11:15     | Pilot video EN/ID harus lulus atau disederhanakan satu kali.                                        |
-| 13:00     | Carousel dilindungi sebagai prioritas; video yang tertinggal tidak boleh merusak deadline carousel. |
-| 14:15     | QA final. Video yang belum siap dipindahkan ke hari video berikutnya.                               |
-| **15:00** | Agent menyusun satu paket; Damar mengirim satu link dan satu pesan kepada Antonello.                |
-| **17:00** | Damar publish manual hanya bila approval Antonello sudah eksplisit. Jika tidak: `HOLD`.             |
+| Jam       | Keputusan / hasil                                                                                           |
+| --------- | ----------------------------------------------------------------------------------------------------------- |
+| 08:30     | Damar meminta daftar artikel.                                                                               |
+| 09:15     | Inventaris lengkap, ranking, dan keputusan awal selesai. Produksi artikel berlanjut dengan ETA per artikel. |
+| 09:45     | Topik carousel dan content lock selesai.                                                                    |
+| 10:00     | Arah cover dipilih; pada hari video, Director Card juga dipilih.                                            |
+| 11:15     | Pilot video EN/ID harus lulus atau disederhanakan satu kali.                                                |
+| 13:00     | Carousel dilindungi sebagai prioritas; video yang tertinggal tidak boleh merusak deadline carousel.         |
+| 14:15     | QA final. Video yang belum siap dipindahkan ke hari video berikutnya.                                       |
+| **15:00** | Agent menyusun satu paket; Damar mengirim satu link dan satu pesan kepada Antonello.                        |
+| **17:00** | Damar publish social manual hanya bila approval Antonello eksplisit. Jika tidak: `HOLD`.                    |
 
 ## Command Card — salin dan kirim
 
 ### 1 — Minta daftar artikel
 
-> **Tampilkan lima artikel terkuat yang tersedia hari ini. Baca isi lengkap dan sumber asli setiap kandidat. Jelaskan singkat apa yang terjadi, mengapa penting sekarang, siapa audiensnya, risiko editorial, posisi website, dan ide cover. Kelompokkan sebagai PUBLISH TODAY, HOLD, atau VERIFY FIRST. Tulis juga jumlah artikel pending lainnya. Jangan publish apa pun.**
+> **Periksa kesehatan Intel Scraper, lalu tampilkan SELURUH artikel yang tersedia hari ini — bukan lima terbaik dan bukan shortlist. Sebutkan total artikel dan jangan sembunyikan sisanya. Untuk setiap artikel, baca isi lengkap dan sumber asli; jelaskan singkat apa yang terjadi, mengapa penting sekarang, siapa audiensnya, risiko editorial, posisi website, dan ide cover. Kelompokkan sebagai PUBLISH TODAY, HOLD, atau VERIFY FIRST. Jangan publish apa pun sebelum pilihan dan konfirmasi final saya.**
 
 ### 2 — Pilih artikel
 
 > **Pilih artikel #1 untuk Hero Main dan #3 untuk Hero 3. Artikel #2 tetap HOLD. Siapkan preview final lengkap, SEO, cover, alt text, dan sumber untuk keputusan saya. JANGAN publish dulu.**
 
 ### 3 — Konfirmasi artikel
-
-**Mode SEKARANG:**
-
-> **FINAL DISETUJUI. Jangan publish melalui agent. Tampilkan langkah News Room yang harus saya lakukan, lalu verifikasi URL, posisi, cover, dan SEO live setelah saya selesai.**
-
-**Mode TARGET, hanya setelah agent membuktikan Bridge aktif:**
 
 > **FINAL DISETUJUI. Publikasikan artikel #1 di Hero Main dan artikel #3 di Hero 3. Jangan ubah copy atau cover. Setelah selesai, verifikasi URL, /news, homepage, OG image, desktop, dan mobile.**
 
@@ -171,18 +159,19 @@ Damar tidak memperbaiki Bridge, tidak men-debug model, tidak mengelola deploymen
 
 Jam mulai dapat menyesuaikan jadwal kantor. Dua deadline tidak berubah: **15:00 untuk penyerahan** dan **17:00 untuk publikasi setelah approval**.
 
-| Waktu rekomendasi | Pekerjaan                          | Hasil yang harus ada                                                                                                                                                                   |
-| ----------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 08:30–09:15       | Artikel website                    | Shortlist, keputusan Damar, paket artikel final, posisi website, dan publikasi/operasi News Room. Artikel sudah berupa draft pending; sesi ini bukan menulis artikel panjang dari nol. |
-| 09:15–09:45       | Shortlist topik harian             | Maksimum lima kandidat; tiga kandidat kuat; satu keputusan Damar.                                                                                                                      |
-| 09:45–10:15       | Content lock                       | Tesis, fakta, angle, audiens, struktur, dan CTA dikunci.                                                                                                                               |
-| 10:15–12:30       | Produksi carousel                  | Copy, cover, slide, hero image, daftar sumber dan klaim, serta caption.                                                                                                                |
-| 10:15–14:40       | Produksi video pada hari video     | Berjalan paralel segera setelah content lock.                                                                                                                                          |
-| 12:30–14:15       | Canva dan finishing                | Layout final, thumbnail test, copy check, dan export.                                                                                                                                  |
-| 14:15–14:50       | QA dan packaging                   | Paket lengkap dan konsisten.                                                                                                                                                           |
-| **15:00**         | Penyerahan ke Antonello            | Satu paket lengkap, bukan pesan atau file terpisah-pisah.                                                                                                                              |
-| 15:00–16:40       | Revisi                             | Hanya revisi yang diminta; ulangi QA pada bagian yang berubah.                                                                                                                         |
-| **17:00**         | Publikasi social manual oleh Damar | Hanya deliverable yang sudah disetujui eksplisit.                                                                                                                                      |
+| Waktu rekomendasi | Pekerjaan                          | Hasil yang harus ada                                                                                                                                        |
+| ----------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 08:30–09:15       | Inventaris artikel                 | Seluruh daftar pending, ranking, keputusan Damar, dan posisi yang diminta. Bila PLAN B aktif, daftar kandidat riset harus tersedia.                         |
+| 09:15–berjalan    | Produksi artikel terpilih          | Agent memberi ETA per artikel; writer, fact gate, cover, preview, publish, dan proof diproses per item tanpa menjanjikan 15 artikel selesai dalam 45 menit. |
+| 09:15–09:45       | Shortlist topik harian             | Maksimum lima kandidat; tiga kandidat kuat; satu keputusan Damar.                                                                                           |
+| 09:45–10:15       | Content lock                       | Tesis, fakta, angle, audiens, struktur, dan CTA dikunci.                                                                                                    |
+| 10:15–12:30       | Produksi carousel                  | Copy, cover, slide, hero image, daftar sumber dan klaim, serta caption.                                                                                     |
+| 10:15–14:40       | Produksi video pada hari video     | Berjalan paralel segera setelah content lock.                                                                                                               |
+| 12:30–14:15       | Canva dan finishing                | Layout final, thumbnail test, copy check, dan export.                                                                                                       |
+| 14:15–14:50       | QA dan packaging                   | Paket lengkap dan konsisten.                                                                                                                                |
+| **15:00**         | Penyerahan ke Antonello            | Satu paket lengkap, bukan pesan atau file terpisah-pisah.                                                                                                   |
+| 15:00–16:40       | Revisi                             | Hanya revisi yang diminta; ulangi QA pada bagian yang berubah.                                                                                              |
+| **17:00**         | Publikasi social manual oleh Damar | Hanya deliverable yang sudah disetujui eksplisit.                                                                                                           |
 
 ### Hari video
 
@@ -196,12 +185,12 @@ Default: **Senin, Rabu, dan Jumat**. Hari dapat dipindahkan bila topik terbaik m
 
 Damar membuka `Nuzantara — Bali Zero Desk` dan mengirim:
 
-> **Tampilkan artikel yang tersedia hari ini. Untuk setiap artikel, baca isi lengkap dan sumber aslinya, lalu jelaskan dalam dua kalimat: apa yang terjadi dan mengapa penting sekarang. Urutkan dari yang paling layak dipublikasikan. Sertakan audiens, kualitas sumber, risiko editorial, posisi website yang disarankan, dan ide cover. Kelompokkan sebagai PUBLISH TODAY, HOLD, atau REJECT / VERIFY FIRST. Jangan hanya membaca judul.**
+> **Periksa kesehatan Intel Scraper, lalu tampilkan SELURUH artikel yang tersedia hari ini. Sebutkan totalnya dan lanjutkan otomatis sampai item terakhir. Untuk setiap artikel, baca isi lengkap dan sumber aslinya, lalu jelaskan dalam dua kalimat: apa yang terjadi dan mengapa penting sekarang. Urutkan dari yang paling layak dipublikasikan. Sertakan audiens, kualitas sumber, risiko editorial, posisi website yang disarankan, dan ide cover. Kelompokkan sebagai PUBLISH TODAY, HOLD, atau REJECT / VERIFY FIRST. Jangan hanya membaca judul.**
 
 Agent harus terlebih dahulu:
 
-1. memeriksa koneksi workspace;
-2. mengambil daftar artikel pending;
+1. memeriksa `workspace_health` dan `intel_editorial_health`;
+2. mengambil artikel pending per halaman dan terus mengikuti `next_offset` sampai `complete=true`;
 3. membuka isi lengkap setiap kandidat yang dinilai;
 4. memeriksa tanggal, sumber asli, klaim, dan kemungkinan duplikasi;
 5. membandingkan artikel dengan kebutuhan audiens Bali Zero;
@@ -209,7 +198,35 @@ Agent harus terlebih dahulu:
 
 ## 4. Bentuk jawaban wajib dari agent
 
-Agent memberikan **lima artikel terkuat** pada layar pertama dan menulis `Artikel pending lainnya: N`. Damar dapat meminta halaman kedua. Tidak ada artikel yang disembunyikan atau dihapus.
+Agent memberikan **seluruh artikel yang tersedia**. Bila daftar panjang, agent boleh membaginya menjadi beberapa pesan bernomor, tetapi harus menyebut total di awal dan melanjutkan otomatis sampai item terakhir. Damar tidak perlu meminta halaman kedua. Tidak ada artikel yang disembunyikan atau dihapus.
+
+Damar bebas memilih jumlah publikasi sesuai nilai editorial hari itu: 15, 2, 1, atau 0. Agent tidak menetapkan kuota dan tidak mengubah daftar penuh menjadi “top five”.
+
+## 4A. Health-check Intel dan PLAN B 72 jam
+
+Sebelum daftar artikel, agent menampilkan:
+
+- waktu mulai dan selesai run Intel terakhir;
+- jumlah kandidat yang ditemukan;
+- jumlah artikel yang benar-benar masuk News Room;
+- tanggal/waktu item terbaru di News Room;
+- status `HEALTHY`, `STALE`, atau `DOWN`, beserta penyebab bila diketahui.
+
+Exit code `0` atau label `completed` bukan bukti cukup. `HEALTHY` hanya boleh dipakai bila ada output nyata atau kondisi “tidak ada berita baru” dibuktikan secara jujur.
+
+Run berstatus `completed` tetapi menghasilkan `0 enriched` atau `0 submitted` harus dilaporkan sebagai `DOWN`, bukan sebagai sukses. Agent langsung beralih ke PLAN B tanpa meminta Damar men-debug pipeline.
+
+**PLAN B otomatis:** bila tidak ada artikel baru hari itu, run tidak menghasilkan artikel, atau item terbaru berumur lebih dari 72 jam, agent melakukan deep research news Bali/Indonesia paling berdampak bagi layanan Bali Zero yang terbit atau berkembang dalam 2–3 hari terakhir. Gunakan sumber primer/resmi lebih dulu, lalu media tepercaya dan signal trend hanya sebagai discovery. Tampilkan seluruh kandidat yang lolos relevansi, bukan lima terbaik.
+
+Setelah Damar memilih satu atau lebih topik Plan B, agent:
+
+1. menulis artikel lengkap dengan gaya dan struktur editorial Bali Zero;
+2. menyusun source ledger per klaim;
+3. meminta reviewer independen yang bukan penulis untuk mencari kesalahan dan kontradiksi;
+4. meminta NotebookLM domain terkait memverifikasi klaim dan angka;
+5. memperbaiki semua finding sebelum preview final;
+6. membuat cover ImageGen, SEO, alt text, slug, dan rekomendasi posisi;
+7. menunggu konfirmasi publish presisi dari Damar.
 
 | Prioritas | Artikel | Penjelasan singkat | Mengapa hari ini | Audience | Sumber | Risiko | Posisi yang disarankan | Ide cover |
 | --------: | ------- | ------------------ | ---------------- | -------- | ------ | ------ | ---------------------- | --------- |
@@ -289,9 +306,11 @@ Setelah Damar memilih, agent harus menyiapkan satu preview final untuk setiap ar
 - label `FACT`, `INFERENCE`, `IDEA`, atau `UNKNOWN` untuk setiap hal yang berisiko;
 - blocker yang masih tersisa.
 
+Setiap artikel terpilih — baik berasal dari Intel normal maupun PLAN B — wajib menjalankan `newsroom_fact_gate`. Gate harus memuat dua penilai berbeda: NotebookLM domain yang relevan dan reviewer independen yang bukan penulis. Hasil yang boleh maju hanya `PASS` dengan sedikitnya satu klaim benar-benar diperiksa. Setiap perubahan setelah PASS pada title, body, angka, tanggal, caveat, source, SEO, alt text, slug, atau cover membatalkan fingerprint gate dan mewajibkan pemeriksaan ulang.
+
 Damar memeriksa paket tersebut dan menjawab:
 
-> **FINAL DISETUJUI. Gunakan command Mode SEKARANG atau Mode TARGET pada Kokpit sesuai status Bridge yang sudah dibuktikan hari ini.**
+> **FINAL DISETUJUI. Jalankan publikasi agentik sesuai konfirmasi presisi di bawah. Bila `workspace_health` tidak `ready`, laporkan `BRIDGE DOWN` dan jangan mengklaim publikasi berhasil.**
 
 Keputusan memilih artikel tidak sama dengan konfirmasi final publish. Konfirmasi final hanya diberikan setelah preview lengkap terlihat.
 
@@ -363,25 +382,9 @@ Agent harus mengerjakan dan memeriksa, bukan hanya menerima metadata otomatis:
 - [ ] tidak ada prompt, internal reasoning, atau label sistem yang bocor;
 - [ ] preview search dapat dibaca manusia.
 
-## 10. Dua mode publikasi artikel
+## 10. Publikasi artikel oleh agent
 
-### Mode sekarang — sampai Bridge lengkap aktif di production
-
-Agent dapat membaca, menilai, menyusun paket, dan membuat cover. Damar kemudian memakai News Room di:
-
-`https://kita.balizero.com/intelligence/news-room`
-
-untuk:
-
-1. edit content bila diperlukan;
-2. upload cover;
-3. memilih posisi;
-4. menekan publish;
-5. memulai pemeriksaan live bersama agent.
-
-### Mode target — setelah Bridge lengkap aktif
-
-Alur yang diinginkan adalah:
+Alur normal adalah:
 
 1. Damar memilih artikel dan posisi;
 2. agent menyiapkan preview lengkap;
@@ -395,7 +398,13 @@ Alur yang diinginkan adalah:
 
 Agent tidak boleh mengklaim artikel live hanya karena tombol publish atau API call berhasil.
 
+### Fallback insiden
+
+Bila `workspace_health` menyatakan write actions tidak `ready`, agent berhenti dan memberi satu status jujur: `BRIDGE DOWN`. News Room UI di `https://kita.balizero.com/intelligence/news-room` hanya digunakan bila Damar atau owner secara eksplisit memilih jalur darurat. Gangguan Bridge tidak mengubah standar preview, cover, SEO, konfirmasi, atau verifikasi live.
+
 ## 11. Verifikasi live artikel
+
+`newsroom_verify_live` menghasilkan **MECHANICAL LIVE VERIFIED**: bukti mesin bahwa URL, metadata, source, cover, listing, dan posisi telah terpasang sesuai contract. Ini bukan pengganti pemeriksaan rupa akhir.
 
 - [ ] proses publikasi internal selesai;
 - [ ] versi website terbaru sudah tersedia;
@@ -411,6 +420,8 @@ Agent tidak boleh mengklaim artikel live hanya karena tombol publish atau API ca
 - [ ] bila dipilih Hero, artikel terlihat pada slot yang tepat;
 - [ ] desktop dan mobile preview baik;
 - [ ] tidak ada card atau image 404.
+
+Setelah mechanical proof lulus, agent membuka halaman publik desktop dan mobile dan menjalankan **VISUAL QA PASS** melalui screenshot/browser: crop cover, hierarchy, line break, card position, overlap, clipping, font, dan readability diperiksa secara visual. Status akhir boleh disebut `LIVE VERIFIED + VISUAL QA PASS` hanya bila kedua lapisan lulus. Bila visual gagal tetapi mechanical proof lulus, artikel tetap dilaporkan `LIVE — VISUAL FIX REQUIRED`, bukan dianggap sempurna.
 
 ---
 
@@ -1178,7 +1189,7 @@ Untuk setiap pekerjaan editorial, agent wajib:
 1. mencari source, bukan mengandalkan memory;
 2. membaca isi, bukan hanya headline;
 3. memisahkan `FACT`, `INFERENCE`, `IDEA`, dan `UNKNOWN`;
-4. memberikan maksimum lima pilihan yang sudah disaring;
+4. memberikan seluruh daftar artikel website; untuk carousel saja, maksimum lima pilihan yang sudah disaring;
 5. menjelaskan alasan, risiko, dan trade-off;
 6. memberi rekomendasi tetapi menyerahkan keputusan kreatif kepada Damar;
 7. menggunakan ImageGen native untuk still image;
@@ -1207,36 +1218,26 @@ Jika agent workspace dikunci pada satu effort, pilih **Extra High**. Damar tidak
 
 Sebelum onboarding Damar, owner workspace memeriksa dan menyimpan konfigurasi tersebut satu kali di Agent Builder. Damar tidak perlu mengubah model atau effort sepanjang hari.
 
-## 42. Status teknis yang harus dipahami
+## 42. Kontrak teknis yang harus dipahami
 
-Panduan ini menjelaskan tujuan operasional lengkap, tetapi tidak boleh menyembunyikan kondisi sistem.
+Damar tidak mengoperasikan Bridge. Agent melakukan health-check dan memakai action yang tepat.
 
-Agent Damar sudah tersedia untuk digunakan di workspace. Ini **tidak berarti** fungsi website publishing sudah live.
+| Kemampuan                              | Action agent                     | Gate wajib                                                            |
+| -------------------------------------- | -------------------------------- | --------------------------------------------------------------------- |
+| Memeriksa backend publication Bridge   | `workspace_health`               | contract v2, staging, publisher, dan semua write action `ready`       |
+| Memeriksa Intel harian                 | `intel_editorial_health`         | output nyata; bukan exit code saja                                    |
+| Membaca seluruh artikel pending        | `newsroom_list_pending`          | ulangi `next_offset` sampai `complete=true`                           |
+| Membaca detail artikel                 | `newsroom_get_article`           | item masih pending                                                    |
+| Edit artikel, slug, alt text, dan SEO  | `newsroom_update_article`        | preview final sudah disetujui                                         |
+| Attach cover ImageGen                  | `newsroom_attach_cover`          | JPEG/PNG/WebP final, bukan placeholder                                |
+| Grounding dan review independen        | `newsroom_fact_gate`             | Notebook relevan + reviewer = PASS                                    |
+| Memilih posisi dan meminta publikasi   | `newsroom_publish(position=...)` | konfirmasi presisi + request key unik                                 |
+| Membuktikan dan mencatat hasil live    | `newsroom_verify_live`           | desktop/mobile, SEO, alt, cover, URL, `/news`, dan posisi semuanya OK |
+| Saved Character Zantara + native voice | Flow UI                          | Damar memilih Character, regia, dan pilot                             |
 
-| Kemampuan                                 | Status        | Surface      | Operator hari ini                                          |
-| ----------------------------------------- | ------------- | ------------ | ---------------------------------------------------------- |
-| Membaca daftar artikel pending            | `LIVE`        | Damar agent  | Agent                                                      |
-| Membaca detail artikel                    | `LIVE`        | Damar agent  | Agent                                                      |
-| Menulis arah cover dengan ImageGen        | `LIVE`        | Damar agent  | Agent                                                      |
-| Edit artikel dan SEO                      | `MANUAL ONLY` | News Room UI | Damar, dipandu agent                                       |
-| Attach cover ImageGen                     | `MANUAL ONLY` | News Room UI | Damar                                                      |
-| Memilih posisi homepage                   | `MANUAL ONLY` | News Room UI | Damar                                                      |
-| Agent publish artikel                     | `NOT LIVE`    | Bridge       | Tidak ada                                                  |
-| Agent live verification end-to-end        | `NOT BUILT`   | Bridge       | Agent melakukan browser check manual setelah Damar publish |
-| Saved Character Zantara + native voice    | `MANUAL FLOW` | Flow UI      | Damar + agent guidance                                     |
-| Character Zantara melalui workspace agent | `NOT BUILT`   | Bridge       | Tidak ada                                                  |
+`workspace_health` membuktikan kesiapan backend publication Bridge saja; ia tidak membuktikan bahwa NotebookLM, reviewer independen, ImageGen, atau browser visual QA sedang tersedia. Sebelum batch pertama, agent menjalankan preflight terpisah untuk keempat dependency tersebut dan fail closed bila salah satunya wajib tetapi tidak tersedia.
 
-Sampai fungsi target dinyatakan `LIVE IN PRODUCTION` dan dibuktikan, Damar memakai UI News Room dan Flow. Agent tetap mempersiapkan dan memeriksa seluruh pekerjaan. PR, preview, atau tool yang masih diuji bukan bukti fungsi live.
-
-### Target minimum Bridge berikutnya
-
-- `newsroom_update_article`;
-- `newsroom_attach_cover`;
-- `newsroom_publish(position=...)`;
-- post-deploy live verification;
-- `flow_generate_zantara_character_video` dengan Character Zantara fixed, EN/ID, confirmation, call cap, dan automatic download.
-
-Setelah target tersebut live, pengalaman Damar seharusnya tetap sama: memilih, mengarahkan, dan mengonfirmasi. Kompleksitas teknis tetap ditangani agent.
+Write action website hanya boleh dijalankan bila `workspace_health` melaporkan `ready` dan preflight editorial lulus. `newsroom_publish` hanya menghasilkan status `queued_for_publication`/`publication_pending`; status itu **belum live**. Hanya `newsroom_verify_live` yang lulus seluruh mechanical proof lalu mencatat status `published`; sesudahnya masih wajib visual QA browser desktop/mobile. Bila health tidak ready, statusnya `BRIDGE DOWN`; jangan menyamakan PR, queue, commit, merge, atau deploy dengan artikel live. Character Zantara masih dijalankan melalui Flow UI; gambar still tetap memakai ImageGen native.
 
 ---
 
@@ -1244,19 +1245,13 @@ Setelah target tersebut live, pengalaman Damar seharusnya tetap sama: memilih, m
 
 Gunakan **Kokpit Harian Damar** di awal dokumen untuk operasi sehari-hari. Bagian di bawah Kokpit adalah manual referensi saat agent atau Damar memerlukan aturan rinci.
 
-### Mode sekarang — website
+### Website setiap pagi
 
-1. Agent memberi shortlist artikel.
-2. Damar memilih artikel dan posisi.
-3. Agent menyiapkan preview, SEO, cover, dan sumber.
-4. Damar menerbitkan melalui News Room UI.
-5. Agent memeriksa hasil live.
-
-### Mode target — website, hanya setelah Bridge live
-
-1. Agent memberi shortlist artikel.
-2. Damar memilih dan memberi konfirmasi presisi per artikel.
-3. Agent meng-update, memasang cover, menerbitkan, dan memverifikasi live.
+1. Agent memeriksa Intel dan memberi seluruh daftar artikel.
+2. Damar memilih jumlah artikel bebas dan posisi masing-masing.
+3. Agent menulis/memperbaiki artikel, meminta review independen + NotebookLM domain, lalu menyiapkan preview, SEO, cover, dan sumber.
+4. Damar memberi konfirmasi presisi per artikel.
+5. Agent meng-update, memasang cover, menerbitkan, dan memverifikasi live.
 
 ### Carousel harian
 
