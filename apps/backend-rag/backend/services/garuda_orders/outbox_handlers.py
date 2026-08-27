@@ -602,7 +602,30 @@ class TelegramStaffPageSender:
             )
         ok, err = await send_telegram_message(self._client, self._bot_token, self._chat_id, text)
         if not ok:
-            raise StaffPageSendFailed(f"telegram send failed: {err}")
+            raise StaffPageSendFailed(f"telegram send failed: {self._scrub(err)}")
+
+    def _scrub(self, err: str | None) -> str:
+        """Strip the bot token out of a borrowed error string before it becomes
+        durable text.
+
+        `send_telegram_message` builds its URL as
+        `https://api.telegram.org/bot<TOKEN>/sendMessage` and its error strings
+        from `f"{type(e).__name__}: {e}"` and `resp.text[:200]`. Measured on the
+        installed httpx, none of the exceptions that path can raise put the URL
+        in their `str()`, and Telegram's own 4xx bodies do not echo the token —
+        so this is not a leak being fixed, it is a class being closed. The
+        reason it is worth one method: unlike every OTHER caller of that
+        function (which only logs), this one's message becomes the outbox job's
+        `last_error` COLUMN — durable, world-readable to anyone with DB read,
+        and surviving long after the log rotates. A future httpx or a future
+        error string is exactly the kind of change nobody would think to
+        re-audit from here.
+        """
+
+        text = err or "unknown error"
+        if self._bot_token and self._bot_token in text:
+            text = text.replace(self._bot_token, "<redacted>")
+        return text
 
 
 @dataclass(frozen=True, slots=True)
@@ -611,7 +634,20 @@ class OrderAnomalyFacts:
     event's own `detail` JSONB — `garuda_order_journal.detail` is documented
     PII-free by construction (284_garuda_orders.sql: "only enums, ids,
     amounts, and dates that are already public per the contract... never
-    applicant fields"), so it is safe to fold verbatim into a Telegram message."""
+    applicant fields").
+
+    That documented guarantee is NOT what makes this safe, and the handlers do
+    not rely on it: each `_compose` reads NAMED keys out of `detail`
+    (`second_charge_id`, `outcome`, `customer_action`, ...) and never folds the
+    dict itself into the message. So a future transition that puts an applicant
+    field in `detail` — the one way that SQL comment could stop being true —
+    cannot reach a Telegram message through here without someone also adding
+    the key by hand. `test_a_poisoned_journal_detail_does_not_reach_a_page`
+    pins exactly that, and pins it the only way it can be pinned: by writing
+    applicant fields INTO a real journal `detail` and asserting they do not
+    come out the other end. The three PII tests that came before it all seeded
+    a PII-FREE `detail`, so folding the whole dict into a page left every one
+    of them green — measured, not supposed."""
 
     order_id: str
     case_type: str

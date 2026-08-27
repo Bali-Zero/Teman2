@@ -686,3 +686,125 @@ async def test_draining_a_queued_staff_page_sends_and_marks_it_dispatched(pool):
             )
             is not None
         )
+
+
+# --- the bot token must not become durable text -------------------------------
+#
+# Every OTHER caller of `send_telegram_message` only LOGS its error string.
+# This one puts it in `StaffPageSendFailed`, which the outbox worker writes to
+# the job's `last_error` COLUMN — durable, readable by anyone with DB read, and
+# outliving log rotation. `@zantara0bot`'s predecessor is the scar: its token
+# sat in cleartext on the default branch of a PUBLIC repo, cannot be revoked
+# (BotFather answers only to an account nobody can reach any more) and is
+# therefore valid forever in the hands of whoever reads git history.
+#
+# On the installed httpx no exception from that path puts the URL in its
+# `str()`, so this closes a class rather than fixing a leak — which is exactly
+# why it has to be a test and not a comment: the next httpx, or the next error
+# string, is what nobody would re-audit.
+
+
+async def test_a_failed_send_never_puts_the_bot_token_in_the_durable_error():
+    token = "8847435604:AA-a-token-shaped-string-nobody-should-ever-see"
+
+    # A provider that echoes the request URL back in its body — the shape that
+    # WOULD leak, since the token is a path segment of that URL.
+    def _echo_the_url(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(400, text=f'{{"ok":false,"description":"bad request to {request.url}"}}')
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(_echo_the_url))
+    sender = TelegramStaffPageSender(client, bot_token=token, chat_id="12345")
+    try:
+        with pytest.raises(StaffPageSendFailed) as raised:
+            await sender.send(text="DUPLICATE CHARGE")
+    finally:
+        await client.aclose()
+
+    message = str(raised.value)
+    # Innocence: the error must still be diagnosable, or scrubbing everything
+    # would pass this test while destroying the only signal a human gets.
+    assert "400" in message, f"the error names no status — undiagnosable: {message!r}"
+    assert token not in message, (
+        f"the bot token reached the durable job error: {message!r}"
+    )
+    assert "<redacted>" in message, (
+        "the token was absent but so was any trace of the redaction — this test "
+        f"may be passing for the wrong reason: {message!r}"
+    )
+
+
+async def test_a_poisoned_journal_detail_does_not_reach_a_page(pool):
+    """The three PII tests above all seed a PII-FREE `detail`, so they pass
+    whether the handlers read NAMED keys out of it or fold the whole dict into
+    the message. Measured: replacing a `_compose` body with `f"{facts.detail}"`
+    left every one of them green. So none of them pins the property that
+    actually protects this surface.
+
+    `garuda_order_journal.detail` is documented PII-free by construction
+    (284_garuda_orders.sql: "never applicant fields") and all nine `detail=`
+    writes in the lane honour it today — provider ids, amounts and enums only.
+    That is a convention in a SQL comment, not a constraint: the day a
+    transition writes an applicant field there, the ONLY thing standing between
+    it and the owner's Telegram chat is that each `_compose` names the keys it
+    wants. This test poisons `detail` with every applicant field and pins that.
+    """
+
+    order_id = await _seed_order(pool, state="paid", late_case_open=True)
+    poison = {
+        "applicant_email": APPLICANT_EMAIL,
+        "applicant_full_name": APPLICANT_NAME,
+        "applicant_passport_number": APPLICANT_PASSPORT,
+    }
+    cases = [
+        (
+            StaffPageDuplicateChargeHandler,
+            "staff_page_duplicate_charge",
+            "payment.duplicate_charge_detected",
+            "OP-08",
+            {"second_charge_id": "ch_poison_1", **poison},
+        ),
+        (
+            StaffPagePaymentFailureHandler,
+            "staff_page_payment_failure",
+            "payment.failed",
+            "OP-03",
+            {"outcome": "PROVIDER_UNAVAILABLE", "customer_action": "TRY_AGAIN_LATER", **poison},
+        ),
+        (
+            StaffPageRefundOutOfOrderHandler,
+            "staff_page_refund_out_of_order",
+            "payment.refunded_out_of_order",
+            "OP-05",
+            {"refund_id": "rfnd_poison_1", **poison},
+        ),
+    ]
+    for cls, job_type, event_name, transition_id, detail in cases:
+        _row_id, event_id = await _enqueue_staff_page(
+            pool,
+            order_id,
+            job_type=job_type,
+            event_name=event_name,
+            transition_id=transition_id,
+            detail=detail,
+        )
+        rec = _TgRecorder()
+        sender, client = _tg_sender(rec)
+        try:
+            await cls(pool, sender)(_job(order_id, event_id, job_type))
+        finally:
+            await client.aclose()
+        text = _last_text(rec)
+        # Guilt: the poison must not appear.
+        for label, secret in (
+            ("applicant email", APPLICANT_EMAIL),
+            ("applicant name", APPLICANT_NAME),
+            ("passport number", APPLICANT_PASSPORT),
+        ):
+            assert secret not in text, (
+                f"{cls.__name__} carried the {label} from a poisoned journal detail "
+                f"into a Telegram page: {text!r}"
+            )
+        # Innocence: it must still have paged, and still carry the ONE detail
+        # key it is supposed to read — otherwise a handler that composed an
+        # empty string would satisfy the assertions above.
+        assert order_id in text, f"{cls.__name__} paged without naming the order"
