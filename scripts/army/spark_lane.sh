@@ -164,6 +164,75 @@ telegram() {  # $1 tier, $2 dedup-key, $3 text — through the ONE gateway
         --dedup-key "$key" -- "$text" 2>&1 | tail -1)"
 }
 
+# Item 13 (2026-08-27 repair — see git log for the mandate): a fixed
+# BACKOFF_HOURS blind-retries every tick against a quota wall the reply
+# ITSELF names a real clear time for. Measured live 2026-08-26/27: the
+# gpt-5.3-codex-spark bucket answered "ERROR: You've hit your usage limit
+# for GPT-5.3-Codex-Spark. Switch to another model now, or try again at
+# Aug 31st, 2026 8:06 PM." for 8 straight days while this lane kept
+# retrying every 12h — every retry rediscovered the same wall, burned a
+# tick, and re-sent the same deduped alert, with zero chance of success
+# before the real reset. Parses codex's own reply for a reset time and
+# uses it INSTEAD of the fixed backoff, but only to EXTEND the wait, never
+# to shorten it below BACKOFF_HOURS — a parse of a near/garbled time must
+# not cause a tighter retry loop than the safe default already gives.
+# Capped at 7 days so a parser misfire (or a provider that starts quoting
+# absurd future dates) cannot wedge the lane open-endedly.
+#
+# Codex's own timestamps are the operator's local wall clock (WITA,
+# UTC+8, no DST) — this repo's own convention for "now" elsewhere in this
+# file (wita_date/wita_hour) is never ambient system TZ, and there is no
+# reason codex's reply would be the one exception, so the naive
+# Y-M-D-H:M is interpreted as UTC+8 rather than guessed from the runner's
+# TZ. Prints an epoch on a successful parse, prints nothing otherwise —
+# callers MUST treat empty as "no usable reset time", never as epoch 0.
+parse_quota_reset_epoch() {  # $1 = path to codex's raw output
+    [ -n "$PY3" ] || return 0
+    "$PY3" - "$1" <<'PYEOF'
+import calendar
+import re
+import sys
+
+path = sys.argv[1]
+try:
+    with open(path, "r", encoding="utf-8", errors="replace") as fh:
+        text = fh.read()
+except OSError:
+    sys.exit(0)
+
+# Observed verbatim 2026-08-26: "...or try again at Aug 31st, 2026 8:06 PM."
+# Tolerate st/nd/rd/th, an optional comma, and a missing leading zero.
+m = re.search(
+    r"try again at\s+([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+"
+    r"(\d{4})\s+(\d{1,2}):(\d{2})\s*([AaPp][Mm])",
+    text,
+)
+if not m:
+    sys.exit(0)
+
+month_name, day, year, hour, minute, ampm = m.groups()
+months = {name: i for i, name in enumerate(
+    ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], 1)}
+month = months.get(month_name[:3].title())
+if not month:
+    sys.exit(0)
+
+hour_i = int(hour) % 12
+if ampm.upper() == "PM":
+    hour_i += 12
+
+try:
+    epoch_wita = calendar.timegm(
+        (int(year), month, int(day), hour_i, int(minute), 0, 0, 0, 0)
+    )
+except (ValueError, OverflowError):
+    sys.exit(0)
+
+print(epoch_wita - 8 * 3600)  # WITA (UTC+8) -> UTC epoch
+PYEOF
+}
+
 # ── G4 node guard — this lane is Pro-only by design (M5 = no cron, per
 #    CLAUDE.md; Mini would be active-active with Pro on the same queue,
 #    superscar #10). A wrong-node tick exits immediately — not my machine,
@@ -549,16 +618,28 @@ if [ "$SHOULD_WORK" = "1" ]; then
             # so gating on rc!=0 does not blind this branch to a real quota
             # hit.
             if [ "$CODEX_RC" -ne 0 ] && grep -qiE 'out of extra usage|usage limit|quota exceeded|rate.limit|429|weekly limit' "$OUT_TMP" 2>/dev/null; then
-                new_backoff=$((now_epoch + BACKOFF_HOURS * 3600))
+                quota_line="$(grep -iE 'out of extra usage|usage limit|quota exceeded|rate.limit|429|weekly limit' "$OUT_TMP" 2>/dev/null | head -1 | tr -s ' \t' ' ')"
+                parsed_reset="$(parse_quota_reset_epoch "$OUT_TMP" 2>/dev/null | tr -d '[:space:]')"
+                case "$parsed_reset" in ''|*[!0-9]*) parsed_reset="" ;; esac
+                min_backoff=$((now_epoch + BACKOFF_HOURS * 3600))
+                max_backoff=$((now_epoch + 7 * 86400))
+                if [ -n "$parsed_reset" ] && [ "$parsed_reset" -gt "$min_backoff" ] && [ "$parsed_reset" -le "$max_backoff" ]; then
+                    new_backoff="$parsed_reset"
+                    backoff_source="parsed reset time in codex's reply"
+                else
+                    new_backoff="$min_backoff"
+                    backoff_source="fixed ${BACKOFF_HOURS}h (no in-range reset time in codex's reply)"
+                fi
                 echo "$new_backoff" > "$BACKOFF_FILE"
                 echo 0 > "$CONSEC_FAIL_FILE"   # quota is a distinct, correctly-classified state
-                log "quota marker detected — backoff until epoch $new_backoff (${BACKOFF_HOURS}h)"
+                log "quota marker detected — backoff until epoch $new_backoff (${backoff_source}) — codex said: ${quota_line:0:200}"
                 RUN_STATUS_HB="degraded"
                 RUN_STATUS_RICH="quota"
-                RUN_NOTE="quota: backoff ${BACKOFF_HOURS}h"
+                RUN_NOTE="quota until epoch $new_backoff (${backoff_source}): ${quota_line:0:160}"
                 append_attempt "$TASK_SHA" "$(basename "$TASK_FILE")" "quota" "-"
+                backoff_human="$(date -r "$new_backoff" '+%Y-%m-%d %H:%M UTC' 2>/dev/null || date -u -d "@$new_backoff" '+%Y-%m-%d %H:%M UTC' 2>/dev/null || echo "epoch $new_backoff")"
                 telegram digest "army-spark:quota" \
-                    "🐢 army.spark_lane: bucket gpt-5.3-codex-spark in quota — backoff ${BACKOFF_HOURS}h. Task NON consumato: $(basename "$TASK_FILE")"
+                    "🐢 army.spark_lane: bucket gpt-5.3-codex-spark in quota — backoff until ${backoff_human} (${backoff_source}). Task NON consumato: $(basename "$TASK_FILE"). Codex: ${quota_line:0:200}"
             elif [ "$CODEX_RC" -eq 0 ]; then
                 report_date="$(wita_date)"
                 head_sha="$(cd "$REPO" && git rev-parse HEAD 2>/dev/null || echo unknown)"
