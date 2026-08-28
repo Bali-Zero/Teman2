@@ -1,0 +1,54 @@
+# The tailnet ACL must stay deny-by-default, and must keep naming the shell it fences.
+#
+# `scripts/tests/` is swept in CI with continue-on-error, so a test file there does NOT gate a PR
+# unless a workflow runs it explicitly. This is that workflow.
+#
+# What it protects: infra/tailscale/policy.hujson replaced a draft that granted
+# `antonellosiano@gmail.com -> antonellosiano@gmail.com:*` — a blanket that reads as "the fleet
+# keeps talking to itself" and means "every port on every owned device", including the port
+# carrying the unauthenticated writable ttyd shell on Pro. That widening looked tidy in review.
+# The guard makes the next one fail the build instead.
+#
+# NON-REQUIRED by design, same posture as check-cicatrix-scar-pointers.yml: a new signal observes
+# for a review cycle before it can block. Promoting it to a required branch-protection check is a
+# separate, later, operator action (CLAUDE.md §13).
+#
+# Path-scoped: runs only when the policy, the guard, its fixtures, or this workflow change.
+name: check-tailnet-acl
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "infra/tailscale/policy.hujson"
+      - "scripts/tests/test_tailnet_acl_deny_by_default.py"
+      - "scripts/tests/fixtures/tailnet_acl/**"
+      - ".github/workflows/check-tailnet-acl.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-tailnet-acl-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-tailnet-acl:
+    name: check-tailnet-acl
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install pytest
+        run: python -m pip install --quiet pytest
+
+      - name: ACL is deny-by-default and names the shell route (guilt AND innocence)
+        run: |
+          set -euo pipefail
+          python -m pytest scripts/tests/test_tailnet_acl_deny_by_default.py -q
