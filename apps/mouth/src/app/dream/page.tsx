@@ -72,7 +72,7 @@ import {
   LucideIcon,
   Maximize2,
 } from "lucide-react";
-import { api } from "@/lib/api";
+import { ApiError } from "@/lib/api";
 import { dreamApi } from "@/lib/api/dream.api";
 import { logger } from "@/lib/logger";
 import { safeHtml } from "@/lib/utils/safe-html";
@@ -995,27 +995,41 @@ const ArticleComposer = () => {
       };
       store.setState(newState);
 
-      // Persist to backend — ONLY when authenticated.
+      // Persist to backend. This autosave fires 2s after every keystroke-driven
+      // change; `/dream` is reachable anonymously while `/api/dream/state`
+      // requires auth, so for a visitor who is not logged in every tick 401s.
       //
-      // This autosave fires 2s after every keystroke-driven change. `/dream` is
-      // reachable anonymously, and `/api/dream/state` requires auth, so for an
-      // anonymous visitor every debounce tick earned a 401 → `logger.error` →
-      // Sentry. `logger.error` forwards unconditionally in production, so a
-      // visitor merely typing on a public page generated a continuous stream of
-      // expected-failure events; measured 2026-08-28, Sentry answers 429 and
-      // starts dropping REAL events.
+      // The call is deliberately NOT gated on `api.isAuthenticated()`: that
+      // reads the localStorage token only, while this app's auth is
+      // cookie-PRIMARY (ApiClientBase docstring). Gating on it would silently
+      // stop syncing for a genuinely logged-in user whose cookie is valid but
+      // whose local token is absent or expired — a silent data-sync failure,
+      // strictly worse than the log noise being cured here.
       //
-      // The cure is to not produce the expected error — never to silence the
-      // logger, which would keep the noise and blind us to genuine failures.
-      // The local save above still runs, so an anonymous visitor keeps working.
-      if (api.isAuthenticated()) {
-        dreamApi
-          .saveState("current-user", newState)
-          .then(() => {
-            // Cloud save successful - logged by analytics service
-          })
-          .catch((err) => logger.error("Save failed", {}, err as Error));
-      }
+      // Instead the expected 401 is classified, not silenced: `logger.error`
+      // forwards to Sentry unconditionally in production, and a visitor merely
+      // typing on a public page produced one such event every 2 seconds
+      // (measured 2026-08-28 — Sentry answers 429 and drops REAL events).
+      // The matching cure for the ejection-to-login half lives in
+      // `dream.api.ts` (`redirectOnUnauthorized: false`).
+      dreamApi
+        .saveState("current-user", newState)
+        .then(() => {
+          // Cloud save successful - logged by analytics service
+        })
+        .catch((err) => {
+          const context = { component: "DreamRoom", action: "autosave" };
+          if (err instanceof ApiError && err.statusCode === 401) {
+            // Expected: anonymous visitor. The local save above already kept
+            // their work, so nothing is lost and nobody needs paging.
+            logger.debug(
+              "Autosave skipped — visitor not authenticated",
+              context,
+            );
+            return;
+          }
+          logger.error("Save failed", context, err as Error);
+        });
     }, 2000);
     return () => clearTimeout(timer);
   }, [title, content, outline, currentId]); // Added dependencies to ensure latest state is captured
