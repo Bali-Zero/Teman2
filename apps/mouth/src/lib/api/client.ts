@@ -1,5 +1,9 @@
 import { UserProfile } from "@/types";
-import type { IApiClient, ApiRequestOptions } from "./types/api-client.types";
+import type {
+  IApiClient,
+  ApiRequestOptions,
+  SessionState,
+} from "./types/api-client.types";
 import { safeStorage } from "@/lib/utils/storage";
 import { isTokenExpired } from "@/lib/utils/token";
 import { logger } from "@/lib/logger";
@@ -41,6 +45,11 @@ export class ApiClientBase implements IApiClient {
   protected token: string | null = null;
   protected csrfToken: string | null = null; // CSRF token for cookie-based auth
   protected userProfile: UserProfile | null = null;
+  // Memoized cookie-only session probe (see hasSession()/probeSession()
+  // below). N components asking "am I logged in?" at once collapse into one
+  // fetch. Invalidated by setToken()/clearToken() so a login/logout never
+  // leaves a stale verdict behind for the rest of the page's life.
+  private sessionProbe: Promise<SessionState> | null = null;
   // Superuser impersonation: when set, every portal/lkpm API call adds
   // ?as_client=<id>. Seeded from localStorage and kept in sync by the
   // AdminImpersonationContext (contexts/AdminImpersonationContext.tsx).
@@ -79,6 +88,10 @@ export class ApiClientBase implements IApiClient {
 
   setToken(token: string) {
     this.token = token;
+    // A fresh token invalidates any cached probe verdict — a stale
+    // "anonymous" from before login must never be replayed to a gate that
+    // asks right after.
+    this.sessionProbe = null;
     if (typeof window !== "undefined") {
       const success = safeStorage.setItem("auth_token", token);
       if (!success) {
@@ -116,6 +129,10 @@ export class ApiClientBase implements IApiClient {
     this.token = null;
     this.csrfToken = null;
     this.userProfile = null;
+    // Same reasoning as setToken(): logout (or the 401 handler below, which
+    // calls this) must not leave a pre-logout "authenticated" verdict
+    // sitting in cache for the login page's own gate to read.
+    this.sessionProbe = null;
     // Reset superuser impersonation together with the session. Without this,
     // logging out (or a token-expiry 401, below) leaves the in-memory
     // portalImpersonationClientId set AND the localStorage key that
@@ -208,10 +225,77 @@ export class ApiClientBase implements IApiClient {
     return this.userProfile;
   }
 
+  /**
+   * Positive-only signal: a local token proves a session exists, but its
+   * ABSENCE does NOT mean the visitor is anonymous — auth here is
+   * cookie-PRIMARY (see the class docstring above), and the httpOnly cookie
+   * this app actually relies on is invisible to a check like this one. A
+   * gate that redirects to /login on a `false` here is wrong for a
+   * cookie-only session (no local token, still logged in). Use
+   * `hasSession()` / `useSessionState()` instead — they ask the server
+   * before concluding "anonymous".
+   */
   isAuthenticated(): boolean {
     // Check token dynamically to ensure we have the latest state
     const token = this.getToken();
     return token !== null && token.length > 0;
+  }
+
+  /**
+   * Cookie-primary session check (auth-gates-cookie-primary). Resolves to
+   * "authenticated" | "anonymous" | "unknown" — the third value is the
+   * point: a network hiccup or an ambiguous status is NOT proof the visitor
+   * is anonymous, so callers that redirect on "anonymous" alone stay
+   * correct even when the probe itself is inconclusive.
+   */
+  async hasSession(): Promise<SessionState> {
+    // Fast path: a local token is already a sufficient POSITIVE signal (see
+    // the docstring on the method above) — no need to ask the server.
+    if (this.isAuthenticated()) return "authenticated";
+    if (!this.sessionProbe) {
+      this.sessionProbe = this.probeSession().then((result) => {
+        // "unknown" is not a verdict — never cache it, so the next gate that
+        // asks gets a fresh attempt instead of being stuck behind one
+        // transient failure for the rest of the page's life.
+        if (result === "unknown") this.sessionProbe = null;
+        return result;
+      });
+    }
+    return this.sessionProbe;
+  }
+
+  /**
+   * The actual cookie-only network probe behind hasSession(). Deliberately a
+   * NAKED fetch, never this.request(): request() auto-redirects to /login
+   * and calls clearToken() on a 401, and a background "am I logged in?"
+   * check must never itself log a visitor out or bounce the page — side
+   * effects here would turn a read into a surprise action.
+   *
+   * Endpoint choice: `/api/auth/check` would be the obvious pick, but that
+   * router (`routers/auth.py`) authenticates with its own strict
+   * `HTTPBearer` dependency — a cookie-only request passes the app's
+   * middleware and then gets a 403 from THIS route specifically, so it
+   * cannot tell "no session" apart from "session, but no bearer token".
+   * `/api/bali-zero/conversations/stats` instead goes through the central
+   * `get_current_user` dependency, which reads `request.state.user` set by
+   * the cookie-aware middleware — it works cookie-only, is GET/side-effect
+   * free, and is available to any authenticated role. Borrowed on purpose;
+   * migrate to `/api/auth/check` once that router accepts cookies too
+   * (residual, tracked in PENDING-ARMS).
+   */
+  private async probeSession(): Promise<SessionState> {
+    if (typeof window === "undefined") return "unknown";
+    try {
+      const res = await fetch(
+        `${this.baseUrl}/api/bali-zero/conversations/stats`,
+        { credentials: "include", cache: "no-store" },
+      );
+      if (res.ok) return "authenticated";
+      if (res.status === 401) return "anonymous";
+      return "unknown";
+    } catch {
+      return "unknown";
+    }
   }
 
   isAdmin(): boolean {

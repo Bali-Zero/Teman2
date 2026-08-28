@@ -7,11 +7,21 @@ const mocks = vi.hoisted(() => {
   return {
     router: { push: vi.fn() },
     api: {
-      isAuthenticated: vi.fn(),
+      // Pre-cure production code still calls this directly (class-audit
+      // gate #10/#11, not yet migrated at RED time) — fixed `true` and
+      // never the thing a test asserts against, so it stays harmless
+      // straight through the GREEN cutover. See `sessionState` below for
+      // the value that actually drives the gate post-cure.
+      isAuthenticated: vi.fn().mockReturnValue(true),
       getUserProfile: vi.fn(),
       getProfile: vi.fn(),
       getConversation: vi.fn(),
     },
+    // Drives the mocked `useSessionState()` below. Auth here is
+    // cookie-PRIMARY (client.ts docstring): the gate now asks the session
+    // probe, not a local-token-only `api.isAuthenticated()`.
+    sessionState: "authenticated" as
+      "pending" | "authenticated" | "anonymous" | "unknown",
     sonnerToast,
     logger: {
       debug: vi.fn(),
@@ -84,7 +94,15 @@ vi.mock("uuid", () => ({
   v4: () => "uuid-fixed",
 }));
 
-vi.mock("@/lib/api", () => ({ api: mocks.api }));
+vi.mock("@/lib/api", async () => {
+  const { ApiError } = await vi.importActual<
+    typeof import("@/lib/api/error-handler")
+  >("@/lib/api/error-handler");
+  return { ApiError, api: mocks.api };
+});
+vi.mock("./useSessionState", () => ({
+  useSessionState: () => mocks.sessionState,
+}));
 vi.mock("sonner", () => ({ toast: mocks.sonnerToast }));
 vi.mock("@/lib/logger", () => ({ logger: mocks.logger }));
 vi.mock("@/lib/metrics", () => ({ chatMetrics: mocks.chatMetrics }));
@@ -124,6 +142,7 @@ vi.mock("./useChatSend", () => ({
   },
 }));
 
+import { ApiError } from "@/lib/api";
 import { useChatPage } from "./useChatPage";
 
 function getSendCallback<T extends (...args: never[]) => unknown>(
@@ -146,7 +165,7 @@ async function renderChatPage() {
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
-  mocks.api.isAuthenticated.mockReturnValue(true);
+  mocks.sessionState = "authenticated";
   mocks.api.getUserProfile.mockReturnValue({
     email: "operator@example.test",
     name: "Operator",
@@ -184,7 +203,7 @@ afterEach(() => {
 
 describe("useChatPage", () => {
   it("redirects unauthenticated users without loading private chat data", async () => {
-    mocks.api.isAuthenticated.mockReturnValue(false);
+    mocks.sessionState = "anonymous";
 
     renderHook(() => useChatPage());
 
@@ -211,7 +230,7 @@ describe("useChatPage", () => {
     // Innocence half of the pair above: the gate must not cost a logged-in
     // user their sidebar and history. If this goes red, the fix has broken
     // the very thing `/chat` exists to do.
-    mocks.api.isAuthenticated.mockReturnValue(true);
+    mocks.sessionState = "authenticated";
 
     renderHook(() => useChatPage());
 
@@ -220,6 +239,34 @@ describe("useChatPage", () => {
     });
     expect(mocks.snapshotOptions?.enabled).toBe(true);
     expect(mocks.conversationsArgs?.[0]).toBe(true);
+    expect(mocks.router.push).not.toHaveBeenCalledWith("/login");
+  });
+
+  it("does not load or redirect while the session is still pending", async () => {
+    mocks.sessionState = "pending";
+
+    renderHook(() => useChatPage());
+
+    await waitFor(() => {
+      expect(mocks.snapshotOptions).not.toBeNull();
+    });
+    expect(mocks.snapshotOptions?.enabled).toBe(false);
+    expect(mocks.conversationsArgs?.[0]).toBe(false);
+    expect(mocks.conversations.loadConversationList).not.toHaveBeenCalled();
+    expect(mocks.router.push).not.toHaveBeenCalledWith("/login");
+  });
+
+  it("does not load or redirect when the session probe is inconclusive (unknown)", async () => {
+    mocks.sessionState = "unknown";
+
+    renderHook(() => useChatPage());
+
+    await waitFor(() => {
+      expect(mocks.snapshotOptions).not.toBeNull();
+    });
+    expect(mocks.snapshotOptions?.enabled).toBe(false);
+    expect(mocks.conversationsArgs?.[0]).toBe(false);
+    expect(mocks.conversations.loadConversationList).not.toHaveBeenCalled();
     expect(mocks.router.push).not.toHaveBeenCalledWith("/login");
   });
 
@@ -569,5 +616,59 @@ describe("useChatPage", () => {
     expect(mountedRef.current).toBe(true);
     unmount();
     expect(mountedRef.current).toBe(false);
+  });
+
+  describe("profile-load classification (auth-gates-cookie-primary round 2)", () => {
+    beforeEach(() => {
+      // Force the fallback path: no cached profile, so getProfile() is awaited.
+      mocks.api.getUserProfile.mockReturnValue(null);
+    });
+
+    it("calls getProfile with redirectOnUnauthorized: false — the session gate above decides the redirect, not getProfile's own 401 handler", async () => {
+      mocks.api.getProfile.mockRejectedValue(
+        new ApiError("Authentication required", 401),
+      );
+
+      renderHook(() => useChatPage());
+
+      await waitFor(() => {
+        expect(mocks.api.getProfile).toHaveBeenCalledWith({
+          redirectOnUnauthorized: false,
+        });
+      });
+    });
+
+    it("classifies an anonymous/cookie-only profile load (401) at debug, never at error", async () => {
+      mocks.api.getProfile.mockRejectedValue(
+        new ApiError("Authentication required", 401),
+      );
+
+      renderHook(() => useChatPage());
+
+      await waitFor(() => {
+        expect(mocks.logger.debug).toHaveBeenCalled();
+      });
+      expect(mocks.logger.error).not.toHaveBeenCalledWith(
+        "Failed to load user profile",
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+
+    it("still logs a genuine profile-load failure at error", async () => {
+      mocks.api.getProfile.mockRejectedValue(
+        new ApiError("Server exploded", 500),
+      );
+
+      renderHook(() => useChatPage());
+
+      await waitFor(() => {
+        expect(mocks.logger.error).toHaveBeenCalledWith(
+          "Failed to load user profile",
+          expect.objectContaining({ component: "useChatPage" }),
+          expect.anything(),
+        );
+      });
+    });
   });
 });

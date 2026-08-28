@@ -15,7 +15,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { toast as sonnerToast } from "sonner";
 import { logger } from "@/lib/logger";
 import { chatMetrics } from "@/lib/metrics";
@@ -28,6 +28,7 @@ import { useConversations } from "./useConversations";
 import { useTeamStatus } from "./useTeamStatus";
 import { useConversationPersistence } from "./useConversationPersistence";
 import { useChatSnapshot } from "./useChatSnapshot";
+import { useSessionState } from "./useSessionState";
 import type { ChatMessage } from "@/app/chat/actions";
 import type { Source } from "@/types";
 import type { AgentStep } from "@/types";
@@ -143,9 +144,12 @@ export function useChatPage(): UseChatPageReturn {
   // page was posting one Sentry event per anonymous visitor. Sentry answered
   // 429: it was DROPPING events, which means real errors could be lost behind
   // this noise. Gating the fetches removes the cause rather than silencing the
-  // symptom. Read during render, like `getUserProfile()` directly above: it
-  // changes no markup, only whether a query is allowed to run.
-  const isAuthenticated = api.isAuthenticated();
+  // symptom. Now cookie-primary (auth-gates-cookie-primary): the gate is the
+  // server-resolved session state, not the local token — queries stay off
+  // while it's "pending"/"unknown" and enable only on "authenticated", so a
+  // cookie-only session gets its data instead of being treated as anonymous.
+  const session = useSessionState();
+  const isAuthenticated = session === "authenticated";
   const chatSnapshot = useChatSnapshot({
     sessionId,
     userEmail,
@@ -359,7 +363,7 @@ export function useChatPage(): UseChatPageReturn {
         if (storedProfile.avatar) setUserAvatar(storedProfile.avatar);
         return;
       }
-      const profile = await api.getProfile();
+      const profile = await api.getProfile({ redirectOnUnauthorized: false });
       if (isMountedRef.current) {
         if (!profile || !profile.email) {
           setUserName("User");
@@ -372,11 +376,29 @@ export function useChatPage(): UseChatPageReturn {
         if (profile.avatar) setUserAvatar(profile.avatar);
       }
     } catch (error) {
-      logger.error(
-        "Failed to load user profile",
-        { component: "useChatPage", action: "loadUserProfile" },
-        error instanceof Error ? error : new Error(String(error)),
-      );
+      // A confirmed 401 here is an anonymous or cookie-only visitor — `/chat`
+      // is reachable anonymously by design, and `/api/auth/profile` is
+      // bearer-only (FastAPI 0.141.1's HTTPBearer answers 401 with no
+      // Authorization header, even for a valid cookie session). Either way
+      // this call only wants a display name; the session gate above
+      // (`session`/`useSessionState()`) is what decides whether to redirect.
+      // Logging that at ERROR would repeat the Sentry-flood measured
+      // 2026-08-28 (#5143 classification — statusCode, never a message
+      // substring).
+      const isAnonymous401 =
+        error instanceof ApiError && error.statusCode === 401;
+      if (isAnonymous401) {
+        logger.debug("Profile unavailable — anonymous or cookie-only visitor", {
+          component: "useChatPage",
+          action: "loadUserProfile",
+        });
+      } else {
+        logger.error(
+          "Failed to load user profile",
+          { component: "useChatPage", action: "loadUserProfile" },
+          error instanceof Error ? error : new Error(String(error)),
+        );
+      }
       // Set default user name on error
       if (isMountedRef.current) {
         setUserName("User");
@@ -412,12 +434,21 @@ export function useChatPage(): UseChatPageReturn {
     [showToast],
   );
 
-  // Initial data load
+  // Initial data load — gated on the cookie-primary session, not the local
+  // token (auth-gates-cookie-primary). `initialLoadStartedRef` preserves the
+  // original run-once-against-the-infinite-loop guard: `session` transitions
+  // "pending" -> a terminal state exactly once per mount, but the ref also
+  // protects against a second effect firing (e.g. React Strict Mode's
+  // mount/unmount/remount in development) re-triggering the load.
+  const initialLoadStartedRef = useRef(false);
   useEffect(() => {
-    if (!api.isAuthenticated()) {
+    if (session === "anonymous") {
       router.push("/login");
       return;
     }
+    if (session !== "authenticated") return;
+    if (initialLoadStartedRef.current) return;
+    initialLoadStartedRef.current = true;
 
     const loadInitialData = async () => {
       setIsInitialLoading(true);
@@ -439,7 +470,7 @@ export function useChatPage(): UseChatPageReturn {
     };
     loadInitialData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // ← Run only once on mount to avoid infinite loop
+  }, [session]); // ← session-gated; ref above still guards against a double-run
 
   // Load avatar from localStorage
   useEffect(() => {
