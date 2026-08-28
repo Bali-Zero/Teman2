@@ -444,3 +444,61 @@ async def test_a_lock_held_by_another_machine_skips_the_sweep(monkeypatch) -> No
 
     assert called == []
     assert conn.calls == ["lock"], "no unlock: we never held it"
+
+
+async def test_a_hanging_sweep_is_cut_off_and_gives_the_drain_back(
+    monkeypatch, caplog
+) -> None:
+    """THE BLOCKER an adversarial review found in the first draft of this
+    wiring (2026-08-28).
+
+    The sweep runs INLINE in the single drain coroutine, and
+    `reconcile_expired_checkouts` walks up to 200 rows strictly sequentially,
+    each an HTTPS round trip on a 30s-timeout client. Its per-row
+    `except Exception: continue` does not cut a bad pass short — it GUARANTEES
+    the worst case: ~100 minutes with `drain_once` not running, so no customer
+    email and no staff money-anomaly page leaves the queue for that whole
+    window, behind a perfectly green log.
+
+    Red without the `asyncio.wait_for`: this test would hang instead of
+    finishing, which is precisely the production symptom.
+    """
+    monkeypatch.setattr(main_api, "_OP04_SWEEP_TIMEOUT_SECONDS", 0.01)
+
+    async def sweep(pool, repository, **kw):
+        # NOT `asyncio.sleep`: the harness replaces it with a no-op, so a sleep
+        # would return instantly and prove nothing. An Event nobody sets hangs
+        # for real, and only the timeout can end it.
+        await asyncio.Event().wait()
+
+    conn = _LockConn()
+    with caplog.at_level("WARNING"):
+        await _drive_one_tick(monkeypatch, repository=object(), conn=conn, sweep=sweep)
+
+    assert conn.calls == ["lock", "unlock"], "a cut-off pass must still unlock"
+    assert any("was cut off" in r.getMessage() for r in caplog.records), (
+        "the cut-off needs its OWN line: 'the provider is slow' and 'the sweep "
+        "is broken' call for different answers"
+    )
+
+
+async def test_a_pass_that_fills_its_own_limit_says_the_backlog_is_not_drained(
+    monkeypatch, caplog
+) -> None:
+    """A sweep that returns exactly `_OP04_SWEEP_LIMIT` candidates almost
+    certainly has more behind it. Without this line a growing backlog is
+    invisible until a customer sees a stale `awaiting_payment` tracker.
+    """
+
+    async def sweep(pool, repository, *, limit, **kw):
+        # The limit is asserted here, not assumed: the warning compares against
+        # `_OP04_SWEEP_LIMIT`, so the call must be the thing that used it.
+        assert limit == main_api._OP04_SWEEP_LIMIT
+        return SimpleNamespace(candidates=limit, expired=limit, left_for_webhook=0)
+
+    with caplog.at_level("WARNING"):
+        await _drive_one_tick(
+            monkeypatch, repository=object(), conn=_LockConn(), sweep=sweep
+        )
+
+    assert any("backlog not drained" in r.getMessage() for r in caplog.records)

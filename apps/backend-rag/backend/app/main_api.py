@@ -138,6 +138,25 @@ _ALARM_PERIOD_SECONDS = 300.0
 #: `FOR UPDATE SKIP LOCKED` the way the drain's claim does.
 _OP04_SWEEP_LOCK = "garuda-op04-checkout-expiry-sweep"
 
+#: Hard bound on ONE sweep pass. It runs INLINE in the single drain coroutine,
+#: and `reconcile_expired_checkouts` walks up to `limit` (200) rows strictly
+#: sequentially, each one an HTTPS round trip to the payment provider on a
+#: client built with `timeout=30.0`. Its per-row `except Exception: continue`
+#: means a degraded provider does not cut the pass short — it GUARANTEES the
+#: worst case instead: 200 x 30s is roughly 100 minutes with `drain_once` not
+#: running, so no customer email and no staff money-anomaly page leaves the
+#: queue for that whole window. Exactly the "green log, dead queue" shape the
+#: alarm-send beside it is bounded against. A cut-off pass loses nothing: each
+#: row commits on its own and the next tick re-selects whatever is left.
+_OP04_SWEEP_TIMEOUT_SECONDS = 60.0
+
+#: Rows per sweep pass. Passed EXPLICITLY rather than left to
+#: `reconcile_expired_checkouts`'s own default, so the backlog warning below
+#: compares against the number this call actually used — comparing against a
+#: default we merely assume it kept would be an assertion about someone else's
+#: code. Its validator accepts 1..1000.
+_OP04_SWEEP_LIMIT = 200
+
 #: Hard ceiling on one alarm delivery. `send_telegram_message` makes 3 attempts
 #: with 1s/3s backoff against a 30s-timeout client, so left unbounded it can hold
 #: the drain for ~94s. Being late with a page is acceptable; stalling customer
@@ -354,18 +373,42 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
                             async with pool.acquire() as lock_conn:
                                 # Lock and unlock on the SAME connection:
                                 # `pg_try_advisory_lock` is SESSION-scoped, so
-                                # unlocking from a different pooled connection
-                                # silently succeeds without releasing anything
-                                # and strands the lock for that session's life —
-                                # after which no machine ever sweeps again.
+                                # unlocking from a DIFFERENT pooled connection
+                                # silently succeeds while releasing nothing.
+                                # CORRECTED (adversarial review): that is a
+                                # correctness bug in the unlock, not a permanent
+                                # outage — asyncpg's reset query on release
+                                # includes `SELECT pg_advisory_unlock_all()`
+                                # (verified in asyncpg 0.31.0), so the lock
+                                # cannot outlive this connection's next return
+                                # to the pool. The explicit unlock is still the
+                                # right shape: it frees the lock for the NEXT
+                                # tick instead of for whenever the pool happens
+                                # to recycle the connection.
                                 acquired = await lock_conn.fetchval(
                                     "SELECT pg_try_advisory_lock(hashtext($1)::bigint)",
                                     _OP04_SWEEP_LOCK,
                                 )
                                 if acquired:
+                                    summary = None
                                     try:
-                                        summary = await reconcile_expired_checkouts(
-                                            pool, repository
+                                        summary = await asyncio.wait_for(
+                                            reconcile_expired_checkouts(
+                                                pool, repository, limit=_OP04_SWEEP_LIMIT
+                                            ),
+                                            timeout=_OP04_SWEEP_TIMEOUT_SECONDS,
+                                        )
+                                    except TimeoutError:
+                                        # Its OWN line, not the generic handler
+                                        # below: "the provider is slow" and "the
+                                        # sweep is broken" need different
+                                        # answers, and a backlog that times out
+                                        # every tick is a standing condition
+                                        # rather than an incident.
+                                        logger.warning(
+                                            "GARUDA OP-04 sweep exceeded %.0fs and was cut off; "
+                                            "the drain is free again and the next tick resumes it",
+                                            _OP04_SWEEP_TIMEOUT_SECONDS,
                                         )
                                     finally:
                                         await lock_conn.fetchval(
@@ -375,7 +418,7 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
                                     # Quiet when there is nothing to do: this
                                     # fires every 300s forever, and a line per
                                     # tick would bury the ones that matter.
-                                    if summary.candidates:
+                                    if summary is not None and summary.candidates:
                                         logger.info(
                                             "GARUDA OP-04 sweep: %d candidate(s), %d expired, "
                                             "%d left for the webhook",
@@ -383,6 +426,16 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
                                             summary.expired,
                                             summary.left_for_webhook,
                                         )
+                                        if summary.candidates >= _OP04_SWEEP_LIMIT:
+                                            # The pass filled its own limit, so
+                                            # there is almost certainly more
+                                            # behind it. Visible BEFORE a
+                                            # customer notices a stale tracker.
+                                            logger.warning(
+                                                "GARUDA OP-04 sweep hit its %d-row limit — "
+                                                "backlog not drained this tick",
+                                                _OP04_SWEEP_LIMIT,
+                                            )
                         except Exception:
                             # Same rule as the alarm above: this is upkeep, the
                             # drain is the product.
