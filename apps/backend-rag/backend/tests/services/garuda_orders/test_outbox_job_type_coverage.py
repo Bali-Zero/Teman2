@@ -78,8 +78,51 @@ def _constant_strings(node: ast.expr) -> list[str] | None:
     return None
 
 
+def _rebinds(node: ast.AST, name: str) -> bool:
+    """Does this node bind `name` in a way `_resolve_name` cannot evaluate?
+
+    FOUND BY ATTACKING THIS CHECKER, not by reviewing it. The first version
+    looked only at `ast.Assign`, so `jt = "a"` followed by `jt += "b"` resolved
+    to `["a"]` — SILENTLY, and with the wrong value: at runtime that call
+    enqueues `"ab"`. Had `"a"` happened to have a handler and `"ab"` not, this
+    checker would have gone green over precisely the defect it exists to catch.
+
+    That is the one direction that must never happen. OVER-reporting is safe: an
+    extra value merely demands a handler that is not needed, and fails loudly.
+    UNDER-reporting a value the code really produces is the silent miss.
+
+    So every binding form this module cannot evaluate is treated as "cannot
+    decide": augmented assignment, annotated assignment, the walrus operator,
+    `for` targets, `with ... as`, and comprehension targets. None of them appear
+    at any call site today — the point is that if one ever does, this checker
+    says so instead of guessing.
+    """
+
+    if isinstance(node, (ast.AugAssign, ast.AnnAssign, ast.NamedExpr)):
+        target = node.target
+        return isinstance(target, ast.Name) and target.id == name
+    if isinstance(node, (ast.For, ast.AsyncFor, ast.comprehension)):
+        return any(
+            isinstance(n, ast.Name) and n.id == name for n in ast.walk(node.target)
+        )
+    if isinstance(node, ast.withitem):
+        var = node.optional_vars
+        return var is not None and any(
+            isinstance(n, ast.Name) and n.id == name for n in ast.walk(var)
+        )
+    return False
+
+
 def _resolve_name(name: str, scope: ast.AST) -> list[str] | None:
-    """Values assigned to `name` inside `scope`, if all are decidable strings."""
+    """Values assigned to `name` inside `scope`, if ALL of them are decidable.
+
+    Returns None — meaning "the caller must fail, loudly" — when any binding of
+    this name uses a form this checker cannot evaluate. See `_rebinds`.
+    """
+
+    for node in ast.walk(scope):
+        if _rebinds(node, name):
+            return None
 
     found: list[str] = []
     for node in ast.walk(scope):
@@ -194,6 +237,43 @@ def test_checker_refuses_shapes_it_cannot_prove(source: str) -> None:
     call = _enqueue_calls(tree)[0]
     arg = next(kw.value for kw in call.keywords if kw.arg == "job_type")
     assert _constant_strings(arg) is None
+
+
+UNEVALUABLE_SHAPES = [
+    # THE ONE THAT WAS SILENTLY WRONG. `jt = "a"; jt += "b"` enqueues "ab"; the
+    # first version of `_resolve_name` reported ["a"] and accepted it.
+    'async def f():\n    jt = "a"\n    jt += "b"\n    await j.enqueue_outbox(c, job_type=jt)\n',
+    # Walrus, for-target, with-as, annotated assignment. None appear at a call
+    # site today; each must be UNRESOLVABLE rather than guessed.
+    'async def f():\n    await j.enqueue_outbox(c, job_type=(jt := "w"))\n',
+    'async def f():\n    for jt in ("a", "b"):\n        await j.enqueue_outbox(c, job_type=jt)\n',
+    'async def f():\n    with ctx() as jt:\n        await j.enqueue_outbox(c, job_type=jt)\n',
+    'async def f():\n    jt: str = compute()\n    await j.enqueue_outbox(c, job_type=jt)\n',
+    # A single undecidable assignment poisons the whole name.
+    'async def f():\n    jt = compute()\n    jt = "a"\n    await j.enqueue_outbox(c, job_type=jt)\n',
+]
+
+
+@pytest.mark.parametrize("source", UNEVALUABLE_SHAPES)
+def test_a_name_this_checker_cannot_evaluate_is_never_guessed(source: str) -> None:
+    """The ONLY unacceptable outcome is a confident WRONG value.
+
+    Over-reporting is safe — an extra value demands a handler that is not needed
+    and fails loudly. Under-reporting a value the code can actually produce is
+    the silent miss this whole file exists to prevent, and the augmented
+    assignment case above did exactly that until the checker was attacked.
+    """
+
+    tree = ast.parse(source)
+    call = _enqueue_calls(tree)[0]
+    arg = next(kw.value for kw in call.keywords if kw.arg == "job_type")
+    values = _constant_strings(arg)
+    if values is None and isinstance(arg, ast.Name):
+        values = _resolve_name(arg.id, _enclosing_function(tree, call))
+    assert values is None, (
+        f"resolved to {values!r} — a value this checker cannot prove the code "
+        f"produces. It must report unresolvable and fail loudly instead."
+    )
 
 
 @pytest.mark.parametrize(
