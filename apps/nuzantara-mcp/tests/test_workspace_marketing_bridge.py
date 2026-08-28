@@ -811,6 +811,39 @@ async def test_flow_prompt_to_video_resumes_without_double_generation(
 
 
 @pytest.mark.asyncio
+async def test_real_fastmcp_dispatch_runs_prompt_to_video_composition(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+
+    async def fake_flowkit(args: list[str], *, timeout_s: int) -> dict[str, Any]:
+        if args == ["health"]:
+            return {"ok": True, "ready": True}
+        if args[0] == "generate-image":
+            return {"ok": True, "media_id": "media/start-2"}
+        if args[0] == "generate-video":
+            return {"ok": True, "video_media_id": "media/video-2"}
+        raise AssertionError(args)
+
+    monkeypatch.setattr(marketing, "_run_flowkit_cli", fake_flowkit)
+    async with Client(mcp) as client:
+        result = await client.call_tool(
+            "flow_generate_video_from_prompt",
+            {
+                "start_image_prompt": "Detailed public Bali Zero studio portrait.",
+                "video_prompt": "0-8s: subtle editorial camera movement.",
+                "request_key": "flow-fastmcp-combined-1",
+                "confirmation": "SETUJU",
+            },
+            raise_on_error=False,
+        )
+
+    assert result.is_error is False
+    assert "media/video-2" in str(result)
+
+
+@pytest.mark.asyncio
 async def test_flow_media_delivery_filters_non_google_urls(monkeypatch) -> None:
     responses = [
         {
