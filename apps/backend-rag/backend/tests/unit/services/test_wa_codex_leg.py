@@ -682,6 +682,32 @@ def test_fall_off_reason_map_covers_every_reason_the_module_can_emit() -> None:
     )
 
 
+def test_normalize_fall_off_reason_unrecognized_head_defaults_to_unknown() -> None:
+    """The coverage guard above proves every head the module CAN emit today
+    has a map entry — it says nothing about what happens the day a NEW,
+    not-yet-catalogued head shows up (a genuinely new failure mode, or a
+    caller that got the string wrong). That path is this function's
+    `.get(head, "unknown")` fallback, and nothing else in this file drives
+    it: `_normalize_fall_off_reason` itself is never called directly
+    anywhere in the suite. Left uncovered, a mutation of that literal
+    default (e.g. to some other bounded-looking string) would leave all
+    138 tests in this file's suite green while the DB CHECK constraint on
+    ``generation_fall_off_reason`` (exactly 20 allowed values, see the
+    module docstring) started rejecting every genuinely-new reason instead
+    of gracefully bucketing it under "unknown" — silently reintroducing
+    the blindness this column exists to end.
+    """
+    # A colon-delimited head that is not a key in the map.
+    assert wa_codex_leg._normalize_fall_off_reason("totally_unheard_of_reason:detail") == "unknown"
+    # No colon at all — the whole string is the head, still unrecognized.
+    assert wa_codex_leg._normalize_fall_off_reason("totally_unheard_of_reason") == "unknown"
+    # Falsy input takes the function's earlier explicit `if not raw` branch
+    # rather than reaching the map lookup at all — cover it too so the
+    # function's full return contract (never raises, always "unknown" for
+    # anything it cannot place) is proven, not just the map-lookup tail.
+    assert wa_codex_leg._normalize_fall_off_reason("") == "unknown"
+
+
 # ── the offer boundary is fail-closed (Codex r3) ────────────────────────────
 
 
