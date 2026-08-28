@@ -33,7 +33,8 @@ import {
  *
  * A route handler runs no layout, loads no script and returns no document.
  * The token URL therefore produces no analytics beacon and nothing in the
- * DOM; the page the customer sees carries only `result_id`. That closes the
+ * DOM; the URL the customer's browser then shows carries NOTHING at all.
+ * That closes the
  * same hole for any future third-party tag and for the client Sentry SDK,
  * instead of patching one vendor.
  *

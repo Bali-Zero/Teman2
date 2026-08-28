@@ -120,8 +120,13 @@ export const FAILURE_LOCATION = "/visa/voa/auth/continue?error=invalid";
  * IPv6 entry was missing here, which fails CLOSED (a `Secure` cookie the
  * `http://[::1]` dev server cannot store) rather than open, but it broke
  * local dev over IPv6 and this file claims to mirror the backend.
- * `new URL("http://[::1]:3000").hostname` returns the BRACKETED form, so
- * both spellings are accepted — measured, not assumed.
+ * Both spellings of the IPv6 entry are listed, but MEASURED 2026-08-28 they
+ * are unreachable on this path: `new NextRequest("http://[::1]:3000/…")`
+ * normalises the hostname to `localhost` (plain `new URL(...)` does NOT — it
+ * keeps the bracketed `[::1]`, which is what made the first version of this
+ * look testable). They are kept as defensive parity with the backend list,
+ * and deliberately carry NO test, because a test written against them passes
+ * whether or not they are present — which is worse than no test.
  */
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 

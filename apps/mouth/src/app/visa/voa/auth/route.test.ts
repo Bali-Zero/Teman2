@@ -90,9 +90,9 @@ describe("GET /visa/voa/auth", () => {
   it.each([
     ["localhost", "http://localhost:3000"],
     ["127.0.0.1", "http://127.0.0.1:3000"],
-    // URL.hostname yields the BRACKETED form here; the backend's
-    // `_LOOPBACK_HOSTS` lists `::1` and this mirror was missing it.
-    ["IPv6 [::1]", "http://[::1]:3000"],
+    // No IPv6 case: NextRequest normalises `http://[::1]:3000` to hostname
+    // `localhost`, so such a test passes with or without the `::1` entry in
+    // LOOPBACK_HOSTS. Measured 2026-08-28 by mutation — it did not bite.
   ])(
     "omits Secure on %s so local dev can accept the cookie",
     async (_label, origin) => {

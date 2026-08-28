@@ -116,15 +116,19 @@ receipts:
     ts: 2026-08-28T09:38Z
     seat: session (M5)
   - claim:
-      Frontend suites green, and PROVEN TO BITE — seven source mutations each turn them red, restored
-      green, including the two that matter most (token back in the redirect URL; cookie length check in
-      place of the NAME check)
-    cmd: npx vitest --run src/app/visa/voa/auth (per mutation, scripted mutate/run/revert)
+      Frontend suites green and PROVEN TO BITE — seven source mutations, each one ASSERTING it was
+      actually applied before the run (see below for why that assertion is not ceremony)
+    cmd: scripted mutate/assert-applied/run/restore over src/app/visa/voa/auth, `npx vitest run` per mutation
     result:
-      61 passed (40) clean; mutations -> 2/1/1/1/1/1/1/4/1 failures respectively; restored -> 61
-      passed (40)
+      "baseline 60 passed. result_id-from-form -> 4 red; no same-origin gate -> 5; flag-off 404
+      skips the cookie clear -> 1; hasAccountSession back to .some(startsWith) -> 3; bare 404 on the landing
+      -> 1; result_id back in the continuation URL -> 1; permissive decodePending -> 2. Restored -> 60
+      passed, tsc exit 0. SUPERSEDES an earlier receipt on this row that read '40 passed (40) ... 2/1/1/1/1/1/1/4/1':
+      those were nine mutations measured against the 40-test tree of the first commit, and a later edit
+      rewrote only its headline numbers instead of re-measuring — corrupting a record of a past measurement
+      rather than replacing it. Re-measured at HEAD."
     exit: 0
-    ts: 2026-08-28T09:47Z
+    ts: 2026-08-28T11:40Z
     seat: session (M5)
   - claim:
       The emailed-link default is pinned by a test that bites — reverting it to the old placeholder
@@ -212,9 +216,13 @@ dissent:
       an unauthenticated visitor is redirected onto the authenticated upload page.
     status: CONFIRMED
     resolution:
-      "ACCEPTED and fixed: now `forwarded.some(c => c.startsWith('garuda_session='))`, with
-      a test that sends a 204 carrying only an unrelated cookie and asserts the failure redirect. The
-      mutation swapping the name check back for a length check turns that test red."
+      "ACCEPTED. This resolution described `forwarded.some(c => c.startsWith('garuda_session='))`
+      for two gate rounds — the exact implementation the diff went on to REJECT. What ships (`contract.ts:91-110`,
+      `hasAccountSession`) resolves the LAST matching `Set-Cookie` and then requires a non-empty value,
+      DQUOTEs stripped: RFC 6265 lets a later header replace an earlier one, so `[session, deletion]`
+      leaves the browser with nothing while `.some()` would call it a sign-in. Two tests pin the real
+      behaviour (`exchange/route.test.ts` — last-cookie-wins, and quoted-empty). Mutating it back to `.some(startsWith)`
+      turns 3 tests red."
   - seat: claude-sonnet-5 (spalla-review refuter)
     objection:
       SUGGESTION — sentry.server.config.ts / edge.config.ts have no query scrubbing, and it could
@@ -394,4 +402,18 @@ dissent:
       stating plainly: the cross-family review requirement is currently UNENFORCED in CI — it passed here
       because two seats really did review, evidenced by journal.jsonl and by the findings they produced,
       not because a gate compelled it. Recorded for its own PR."
+  - seat: claude-opus-5 (conducting session, self-caught by mutation)
+    objection:
+      "A test this session added and counted as evidence was VACUOUS: 'omits Secure on IPv6
+      [::1]' passed whether or not `::1` was in LOOPBACK_HOSTS."
+    status: CONFIRMED
+    resolution:
+      "REMOVED, and the cause recorded because it is the more useful half. `NextRequest` NORMALISES
+      `http://[::1]:3000` to hostname `localhost` — measured; plain `new URL(...)` does not, it keeps
+      the bracketed `[::1]`, which is exactly what made the test look sound when it was written against
+      the plain-URL behaviour. So the IPv6 entries are unreachable on this path. They are kept as defensive
+      parity with the backend's `_LOOPBACK_HOSTS` and now carry NO test, with the reason in the comment.
+      Found only because the mutation harness was rebuilt to ASSERT that each mutation actually applied:
+      the first version silently failed to apply one, printed no failures, and that empty result was indistinguishable
+      from 'the test does not bite'. Test count 61 -> 60."
 council_run: journal.jsonl
