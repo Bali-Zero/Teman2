@@ -2526,7 +2526,7 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         annotations={
             "readOnlyHint": False,
             "destructiveHint": True,
-            "idempotentHint": False,
+            "idempotentHint": True,
             "openWorldHint": True,
         }
     )

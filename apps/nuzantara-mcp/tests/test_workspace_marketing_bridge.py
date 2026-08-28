@@ -109,6 +109,7 @@ async def test_server_is_exact_fail_closed_allowlist() -> None:
     assert by_name["wr2_request_rerender"].annotations.idempotentHint is True
     assert by_name["wr2_get_delivery"].annotations.readOnlyHint is True
     assert by_name["flow_generate_video"].annotations.openWorldHint is True
+    assert by_name["flow_generate_video"].annotations.idempotentHint is True
     assert by_name["flow_get_media"].annotations.readOnlyHint is True
     assert by_name["flow_generate_video_from_prompt"].annotations.idempotentHint is True
     assert {name for name in names if "publish" in name} == {"newsroom_publish"}
