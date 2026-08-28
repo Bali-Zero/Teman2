@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { AppSidebar } from "@/components/workspace/AppSidebar";
 import { Header } from "@/components/workspace/Header";
 import { ToastProvider } from "@/components/ui/toast";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import type { GateStatus } from "@/lib/api";
 import GateScreen from "./GateScreen";
 // useTeamStatus removed — PANOPTICON auto-clock-in from login (2026-04-14)
@@ -132,11 +132,44 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         hoursToday: undefined,
       });
     } catch (error) {
-      logger.error(
-        "Failed to load profile",
-        { component: "WorkspaceLayout", action: "loadProfile" },
-        error instanceof Error ? error : new Error(String(error)),
-      );
+      // A 401 here is NOT a fault — it is this gate working. An anonymous
+      // visitor reaching a workspace route gets 401, and the re-throw below
+      // sends them to login, which is the intended flow.
+      //
+      // Logging that at ERROR made every anonymous hit a Sentry event (the
+      // logger forwards unconditionally in production). Measured 2026-08-28 on
+      // /whatsapp: Sentry answers 429 to the flood, which means it is DROPPING
+      // REAL events — an expected outcome was blinding us to genuine ones.
+      //
+      // This is classification, not silencing: a genuine failure (5xx, network,
+      // malformed profile) still logs at ERROR and still reaches Sentry. Only
+      // the "you are not logged in" case is demoted. Detection uses
+      // ApiError.statusCode, never a substring of the message — this class's own
+      // docstring records the scar from callers that sniffed `error.message`.
+      //
+      // It must be `debug`, NOT `warn`: logger.warn calls sendToSentry on the
+      // exact same `!isDevelopment` branch as logger.error (logger.ts:153-159 vs
+      // :168-169), so demoting to warn would have changed the label and fixed
+      // nothing. `debug` returns early in production (logger.ts:143) — the event
+      // stays visible while developing and stops manufacturing Sentry traffic in
+      // production. That is defensible here precisely because "an anonymous
+      // visitor reached a protected route" is not diagnostic: it happens on
+      // every such visit, and the login redirect is already the observable.
+      const isUnauthenticated =
+        error instanceof ApiError && error.statusCode === 401;
+      const context = { component: "WorkspaceLayout", action: "loadProfile" };
+      if (isUnauthenticated) {
+        logger.debug(
+          "Profile unavailable — visitor is not authenticated",
+          context,
+        );
+      } else {
+        logger.error(
+          "Failed to load profile",
+          context,
+          error instanceof Error ? error : new Error(String(error)),
+        );
+      }
       throw error; // Re-throw so caller can redirect to login
     }
   }, []);
