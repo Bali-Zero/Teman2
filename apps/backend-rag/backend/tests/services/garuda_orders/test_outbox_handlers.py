@@ -488,13 +488,21 @@ def test_build_handlers_routes_practice_release() -> None:
     # here, and removing one can never pass unnoticed. `portal_invite` joined
     # it when a paid order started producing a portal account as well as a
     # practice; the five customer-email jobs joined when the outbox grew to
-    # cover checkout/failure/expiry/refund/receipt.
+    # cover checkout/failure/expiry/refund/receipt;
+    # `late_refund_confirmation_email` joined last — the type three separate
+    # counts missed because its call site passes `job_type` as a VARIABLE and
+    # every count was a `job_type="` grep.
+    #
+    # This hand-maintained set is a SECOND opinion. The primary check is
+    # `test_outbox_job_type_coverage.py`, which reads the enqueued types out of
+    # the AST — the only shape that can see a non-literal argument.
     assert set(handlers) == {
         "checkout_ready_email",
         "payment_paid_email",
         "payment_failed_email",
         "payment_expired_email",
         "refund_email",
+        "late_refund_confirmation_email",
         "practice_release",
         "practice_received_email",
         "portal_invite",
