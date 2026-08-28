@@ -908,6 +908,35 @@ jobs:
           # writing a new pack will actually be looking.
           git show "$HEAD_SHA:${PACK_PATH}" > /tmp/evidence-check/evidence/pack.yml
           cp /tmp/brief.yml /tmp/evidence-check/evidence/brief.yml
+          # THE council_run CONTRACT (measured 2026-08-29) — the brief_ref
+          # contract above, one level deeper. R9
+          # (evidence_pack_lint.py::check_council_run_gear3) does NOT resolve
+          # against --repo-root; it resolves the pack's `council_run:`
+          # against the PACK'S OWN directory, and the staged pack dir holds
+          # only the two files written above. So a pack whose council
+          # journal IS committed next to it in the real tree still lints
+          # here as "declares no council_run journal with >=2 distinct
+          # review seats" — a NOTICE today, a hard FAIL for EVERY Gear-3 PR
+          # from 2026-09-02 (R9_R11_ENFORCEMENT_DATE), by construction and
+          # independent of the diff. The journal travels with the pack, so
+          # it is staged too. What the script deliberately declines to stage
+          # (absent / absolute / `..`-escaping / not-at-HEAD) is documented
+          # in its own docstring; every such case leaves R9 to judge the
+          # pack unaided, which is strictly stricter, never a fail-open.
+          #
+          # BOOTSTRAP, same shape as the --source-path probe below: this
+          # job's checkout is BASE, so the script this PR ADDS is not there
+          # on this PR's own run. Missing script -> stage nothing and say so
+          # (R9's phased verdict is unchanged from today's behavior);
+          # self-consistent from the first run after this PR merges.
+          if [[ -f scripts/ci/stage_council_journal.py ]]; then
+            python3 scripts/ci/stage_council_journal.py \
+              --staged-pack /tmp/evidence-check/evidence/pack.yml \
+              --source-path "$PACK_PATH" \
+              --head-sha "$HEAD_SHA"
+          else
+            echo "::notice::scripts/ci/stage_council_journal.py is not in the base checkout yet — the pack's council_run journal is not staged this run, so R9 judges the pack without it (NOTICE before 2026-09-02, violation on/after); self-consistent once this PR merges"
+          fi
           EXTRA_ARGS=()
           if [[ "$NETLINES_AVAILABLE" == "true" ]]; then
             EXTRA_ARGS+=(--numstat-file /tmp/net-lines-numstat.txt)
