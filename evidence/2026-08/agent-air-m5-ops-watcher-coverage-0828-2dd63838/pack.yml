@@ -1,0 +1,106 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  "PR #5158 (agent/air-m5/ops/watcher-coverage-0828) — cure the watcher-coverage self-conformance
+  red that pre-exists on origin/main, 2026-08-28. Split out of PR #5157, where it surfaced as an unrelated
+  required-check failure."
+lanes:
+  - lane: watcher-coverage-build
+    role: build
+    seat:
+      claude-sonnet-5 (dispatched implementer — diagnosed the two list-membership problems against
+      the guard's own parsing, made the edit, and ran the red/green/mutation cycle)
+  - lane: watcher-coverage-verify
+    role: review
+    seat:
+      claude-opus-5 (conducting session — re-verified every claim independently rather than accepting
+      the implementer's report. It re-read the guard to confirm it keys by the workflow name field,
+      read the added workflow's own name, confirmed the removed entry has no live .yml, and re-ran the
+      guard in the branch worktree reading the exit code directly)
+seat_diversity: not_applicable
+seat_diversity_note:
+  "Two Anthropic seats, and here that genuinely costs nothing: every load-bearing
+  question is settled by a parser and an exit code, not by judgement. The guard either exits 0 or
+  it does not, and the entry either matches a workflow's declared name byte-for-byte or it does not
+  — a cross-family seat would be asked to agree with grep. Deliberately NO council was convened: a
+  one-file, +1/-1 diff is Gear-1-shaped by blast radius and reaches Gear 3 only because of the hot-zone
+  PATH, so spending a council on it is exactly the ceremony this repo's own ceiling rule exists to
+  prevent."
+diff:
+  net_lines:
+    1 file, +1/-1 (plus this pack and brief). One entry added to the watcher's on.workflow_run.workflows
+    set, one stale entry removed. No script, no logic, no other workflow.
+  behaviour_change:
+    "main-push-failure-watch.yml now also triggers on check-skills-canonical completing
+    on main, and no longer names a workflow that does not exist. The required `check` job stops failing
+    on every PR in the repo. Nothing else changes: no guard is relaxed, no threshold moves."
+receipts:
+  - claim:
+      Deterministic gear floor recomputed from this PR's changed-file list is 3 — hot-zone by path,
+      despite a +1/-1 diff
+    cmd:
+      git diff --name-only origin/main...HEAD > /tmp/_wc_changed.txt && python3 scripts/evidence_pack_lint.py
+      --print-floor --changed-files-file /tmp/_wc_changed.txt
+    result: 3 — .github/workflows/** is hot-zone by path
+    exit: 0
+    ts: 2026-08-28T10:12Z
+    seat: session (M5)
+  - claim:
+      THE CENTRAL RECEIPT — the guard is red on origin/main ITSELF, so this is a pre-existing fleet-wide
+      block, not a defect introduced by any PR
+    cmd:
+      python3 scripts/check_watcher_coverage.py in a detached worktree at origin/main, exit code
+      read DIRECTLY and never through a pipe (a pipe returns the pipe's status, not the script's)
+    result: origin/main exit=1 · the branch under review exit=0
+    exit: 0
+    ts: 2026-08-28T09:41Z
+    seat: session (M5)
+  - claim: The guard bites on this specific edit — removing the added entry returns it to red
+    cmd: remove the check-skills-canonical entry, re-run the guard, restore it, re-run
+    result: exit 0 -> 1 -> 0
+    exit: 0
+    ts: 2026-08-28T09:39Z
+    seat: claude-sonnet-5 (implementer lane)
+  - claim:
+      The added entry matches what the guard actually keys by — the workflow's declared name, not
+      its filename
+    cmd:
+      grep -m1 for the name field in .github/workflows/check-skills-canonical.yml, read against the
+      guard's own live_workflow_names() which keys by the parsed name
+    result: the file declares exactly check-skills-canonical — identical to the added entry
+    exit: 0
+    ts: 2026-08-28T10:08Z
+    seat: session (M5, independent of the implementer)
+  - claim:
+      The removed entry really is dead — AI PR review (advisory) has no live workflow, only a deliberately
+      disabled file
+    cmd: grep -rl for that name across .github/workflows/, plus ls of the ai-pr-review filename
+    result:
+      the only match is ai-pr-review.yml.disabled-2026-08-20-zero-value-ci-trust-gate — a .disabled-*
+      file, which the guard does not read as a live workflow
+    exit: 0
+    ts: 2026-08-28T10:08Z
+    seat: session (M5, independent of the implementer)
+  - claim: actionlint clean on the edited workflow, and no other file touched
+    cmd: actionlint .github/workflows/main-push-failure-watch.yml; gh pr view 5158 --json files
+    result: actionlint clean; files -> exactly one path
+    exit: 0
+    ts: 2026-08-28T10:07Z
+    seat: session (M5)
+pii_scan: clean
+pii_scan_note:
+  The diff contains two workflow-name strings and nothing else. No identifier, address,
+  token, path under a user's home, or client reference appears in it or in this pack.
+dissent:
+  - seat: session (self-observation, not an objection to the diff)
+    objection:
+      "A two-line DATA fix to a CI guard requires a Gear-3 brief, pack and gate verdict purely
+      because the file lives under .github/workflows/ — the same ceremony an architectural change pays.
+      That cost is plausibly WHY this red survived on main long enough to block every open PR: the cheapest
+      correct cure is expensive, so the incentive is to route around it."
+    status: PLAUSIBLE
+    resolution:
+      "Recorded, NOT acted on. The floor was obeyed exactly as written rather than dodged
+      by splitting the file out or arguing the diff down to Gear 1 — a task cannot be talked into a
+      lower gear than its diff declares, and that rule is worth more than this PR's convenience. Whether
+      the floor should distinguish a workflow's DATA from its LOGIC is a doctrine question for the
+      owner: raised here, and left there."
