@@ -1,0 +1,54 @@
+# Zantara Video Factory State
+
+- objective: Build and operate one resumable, thin WR3-based Zantara Video Factory; first execution ends at the complete Season 01 topic approval gate.
+- machine: Air-M5; heavy work route is `ssh pro`.
+- branch: `agent/air-m5/wr3/zantara-video-factory-v3`
+- worktree: `/Users/balizero/nuzantara/.worktrees/wr3-zantara-video-factory-v3`
+- origin_main_commit: `f8c158e198b1908e71c35bba4803360af883fbd4`
+- factory_phase: `BOOT_AUDIT`
+- approved_topic_ids: none
+- episode_queue: empty
+- verified_repository_facts:
+  - No pre-existing `FACTORY_STATE.md`, reuse matrix, Season 01 ledger, matching factory worktree, or matching factory branch was found on Air-M5, Pro, or fetched origin refs during this execution.
+  - The isolated worktree HEAD exactly matches the fetched `origin/main` commit recorded above.
+  - The smallest existing extension point is `docs/wr3/`; factory control and editorial artifacts live under `docs/wr3/factory/`.
+- verified_platform_facts: none; no platform capability is claimed from authentication, documentation, or memory alone.
+- completed_gates:
+  - machine identified
+  - origin fetched
+  - existing factory state discovery completed
+  - isolated worktree created from current `origin/main`
+  - safety switches initialized to zero
+- earliest_open_gate: `BOOT_AUDIT`
+- next_reads:
+  - `scripts/wr3_supervisor.py`
+  - `scripts/wr3_flowkit_client.py`
+  - `scripts/wr3_episode_manifest.py`
+  - `FLEET_TOPOLOGY.json:role_chains.strategy_panel`
+  - `MODEL_ROSTER.md`
+- last_verification_commands:
+  - `git fetch origin --prune`
+  - `git worktree list --porcelain`
+  - `rg --files -uu | rg 'FACTORY_STATE\\.md$|REUSE_MATRIX\\.md$|season-01\\.(json|md)$|originality-ledger\\.json$|wardrobe-ledger\\.json$'`
+  - `git status --short --branch && git rev-parse HEAD && git rev-parse origin/main`
+- last_verification_results:
+  - `origin/main` fetched successfully.
+  - No existing factory state or lane was found.
+  - Worktree branch is clean and aligned with `origin/main` at `f8c158e198b1908e71c35bba4803360af883fbd4`.
+- model_topology_version: `FLEET_TOPOLOGY.json` version 1.4; exact artifact hashes pending audit capture.
+- editorial_output_paths: pending
+- open_blockers: none
+- safety_switch_values:
+  - `ALLOW_FLOW_SPEND=0`
+  - `ALLOW_REAL_RENDER=0`
+  - `ALLOW_YOUTUBE_UPLOAD=0`
+  - `ALLOW_EXTERNAL_PUBLISH=0`
+  - `ALLOW_DEPLOY=0`
+- next_bounded_action: Complete the measured reuse audit and persist the reuse matrix plus thin-wrapper architecture decision.
+- definition_of_done_checklist:
+  - current-origin audit
+  - reuse matrix and architecture decision
+  - independent editorial quorum
+  - 20 recommended topics and 10 reserves with lineage and deterministic scores
+  - compact persisted state at `TOPIC_APPROVAL_REQUIRED`
+  - zero Flow credits, renders, uploads, publications, external sends, and deployments
