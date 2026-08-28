@@ -1,80 +1,88 @@
-task_id: visa-oracle-retention-scope-p0-0826
+task_id: garuda-magic-link-consume-0828
 gear: 3
 l_level: L2
 gate_class: opus
 objective: |
-  Restore the Visa Oracle's retention gate, which has been refusing every evaluation since
-  a foreign-scope policy became active in production.
+  Make the GARUDA VOA passwordless account reachable. `POST /api/visa/voa/auth/sessions` —
+  the exchange that mints the `garuda_session` account cookie — had ZERO callers anywhere in
+  `apps/mouth`, while `upload/api-client.ts` and `orders/api-client.ts` both assume that
+  cookie already exists. The entire authenticated half of the funnel (document upload, order,
+  tracker — steps 3-6 of the VOA mandate) was therefore gated behind a cookie no code path
+  could produce.
 
-  Migration 264 built `public.visa_decision_retention_policies` with one active row per
-  environment and an exclusion constraint to match. Four readers were written against that
-  guarantee and resolve "the" active policy with nothing but
-  `environment = <env> AND effective_period @> <clock>`.
+  The emailed link was worse than merely absent. `GARUDA_MAGIC_LINK_BASE_URL` is set nowhere
+  on Fly, so the placeholder default applied and every link ever sent delivered its recipient
+  to `/visa/voa` — the funnel's FIRST page, which reads neither `result_id` nor `magic_token`
+  — with an unread single-use credential trailing in the URL.
 
-  Migration 281 (GARUDA VOA) made that table the single retention authority for four data
-  classes: it added `policy_scope` and widened the exclusion constraint to
-  `(environment WITH =, policy_scope WITH =, effective_period WITH &&)`. The invariant became
-  one active row per (environment, scope). 281 taught every GARUDA-side reader to filter by
-  scope and never revisited the four Visa Oracle readers, which stayed correct only while the
-  table held no foreign-scope row. The first GARUDA policy activated 2026-08-26 04:40:27Z.
-
-  Gear 3 by PATH, deterministically: `apps/backend-rag/backend/db/migrations_v2/**` is hot-zone,
-  so the floor is 3 regardless of the diff being 4 files and +538/-2. Recomputed from the actual
-  changed-file list — receipt in the pack.
+  Gear 3 by PATH, deterministically: `.github/workflows/**` is hot-zone, so the floor is 3
+  regardless of the diff's size. Recomputed from the actual changed-file list — receipt in
+  the pack. The workflow file is in scope and cannot be split out to dodge the floor: it
+  hardcoded the same placeholder base URL, so correcting only the code default would have
+  been a no-op the arming workflow overwrites.
 constraints:
-  - "Fix the FAMILY, not the instance. Four readers are unscoped; a fix that repairs one and
-    leaves three is a fix that converts a graceful outage into a different failure."
-  - "`CREATE OR REPLACE FUNCTION` must restate SECURITY DEFINER and SET search_path verbatim.
-    Replace preserves owner and ACL but takes those attributes from the statement — omitting
-    them silently demotes both binders to SECURITY INVOKER and re-opens the 2026-08-07 prod
-    incident that migration 268 closed."
-  - "No behaviour change beyond the scope predicate. Both function bodies are
-    `pg_get_functiondef()` of the LIVE functions plus one added line each, so the diff is
-    auditable against production rather than against 264's source."
-  - "No migration-number collision (W40). 289 is verified free across main and every open
-    remote branch."
-  - "Do not weaken any check. The one red this PR drew (`Harness floor recompute`) is answered
-    by supplying this pack, never by touching the gate."
+  - "The token is SINGLE-USE and the replay path returns 204 with NO second `Set-Cookie`
+    (`garuda_portal_auth.py:381-450`). Nothing may redeem it on a GET: mail clients and link
+    scanners issue unsolicited GETs on emailed links, and a scanner that redeems first leaves
+    the customer with an invalid link."
+  - "The token must not reach any third party. This is a URL-shaped exposure, not a
+    per-vendor one: it must be answered structurally, not by patching the vendors this
+    session happens to think of."
+  - "Route handlers do NOT run layouts, so `visa/voa/layout.tsx`'s `notFound()` dark-launch
+    gate does not cover them. Every new route handler re-checks `GARUDA_PUBLIC_ENABLED`
+    itself or it is the one VOA surface alive in production while the funnel is dark."
+  - "The account cookie's attributes are the backend's runtime choice
+    (`get_cookie_domain()` / `get_samesite_policy()`). Forward the upstream `Set-Cookie`
+    verbatim; never reconstruct it, which is a copy that silently goes stale."
+  - "Fix the FAMILY: the base URL lives in the code default AND in `garuda-arm.yml`. One
+    without the other is a no-op."
+  - "Do not weaken any check. The reds this PR drew are answered by supplying evidence and by
+    declaring the new routes to the sitemap guard, never by touching a gate."
 acceptance:
-  - "`active_policy_available` returns True in production's actual policy configuration
-    (1 VISA_DECISION + 3 GARUDA active) instead of False."
-  - "Both SQL binders resolve the VISA_DECISION policy and bind to ITS id, not a GARUDA one,
-    with a foreign-scope policy concurrently active."
-  - "289's forward half applies on top of the real main chain; its ROLLBACK half restores 264's
-    unscoped bodies verbatim, SECURITY DEFINER included."
-  - "The structural tripwire is red on origin/main and green here, and its historical exemption
-    for 264 is re-derived from the migration chain rather than asserted."
-  - "`Detect duplicate prefixes` and `Detect missing ROLLBACK markers` both green."
+  - "A human clicking the emailed link ends up authenticated on `/visa/voa/upload/{resultId}`
+    with a `garuda_session` cookie the backend minted."
+  - "No rendered document ever has the token in its URL or its markup — so neither Google
+    Analytics nor the client Sentry SDK can observe it."
+  - "A GET on the emailed link redeems nothing; only a POST from a human gesture does."
+  - "A 204 without an account cookie NEVER results in a redirect to an authenticated page."
+  - "With `GARUDA_PUBLIC_ENABLED` unset or 'false', every new surface 404s — including the
+    two route handlers, which no layout protects."
+  - "The pending-token cookie is expired on every path out of the exchange."
 consumer_map:
-  - "`services/visa_engine/evaluate_path.py:140,280,1466,1708` — imports and calls
-    `active_policy_available` at BOTH call sites, ungated on SHADOW vs ENFORCE. This is the
-    surface the outage is visible on."
-  - "`public.visa_decisions` — BEFORE INSERT trigger runs `bind_visa_decision_retention_policy`.
-    Every durable decision write passes through the predicate this PR changes."
-  - "`public.visa_evaluate_idempotency` — same, via
-    `bind_visa_evaluate_idempotency_retention_policy`. The table currently holds 0 rows."
-  - "`scripts/visa_engine/retention_worker.py` — the bounded purge worker. Broken by the same
-    cause; currently has nothing to purge (receipt below), so the repair is pre-emptive."
-  - "GARUDA VOA — `services/garuda_flow/retention.py`,
-    `active_garuda_magic_link_policy_available`, migration 284's order-policy function. All
-    three already filter their own scope and are NOT touched by this PR. Verified, not assumed."
-  - "`bind_visa_decision_payload_retention` — deliberately NOT touched: it resolves its parent
-    by `visa_decisions.id`, never by active-policy lookup."
+  - "`apps/mouth/src/app/visa/voa/upload/api-client.ts` and `orders/api-client.ts` — the two
+    surfaces that ASSUME `garuda_session` exists. They are the reason this PR exists; neither
+    is modified."
+  - "`apps/mouth/src/app/api/[...path]/route.ts` — the same-origin proxy the exchange is
+    called through. Measured (receipt) to forward upstream `Set-Cookie` verbatim for every
+    path except `/api/auth/login`."
+  - "`apps/mouth/src/app/layout.tsx:289` + `components/analytics/RouteChangeTracker.tsx:33` —
+    the GA surfaces that made a PAGE at the token URL a leak. NOT modified: the fix removes
+    the page rather than special-casing the vendor."
+  - "`apps/backend-rag/backend/services/garuda_portal/magic_link_store.py` — builds the
+    emailed link; its default base now names the redeeming route."
+  - "`.github/workflows/garuda-arm.yml` — writes `GARUDA_MAGIC_LINK_BASE_URL` to Fly. Same
+    correction, or the code default is overwritten at arming time."
+  - "`apps/mouth/src/app/sitemap.test.ts` — enumerates static `/visa/**` routes from the tree
+    and demands each be listed or named. Three new routes declared unlisted."
+  - "`apps/backend-rag/backend/app/routers/garuda_portal_auth.py` — the contract consumed.
+    NOT modified."
 risks:
-  - "A migration PR is auto-merge-OFF class per CLAUDE.md §2. Merged by the session after gates
-    are green and the Gear-3 verdict is posted, never armed with --auto."
-  - "The two binders are owned by `visa_ledger_owner`, and no role is a member of it. CREATE OR
-    REPLACE therefore requires the migration runner to be superuser — which it demonstrably is,
-    since 281 successfully ALTERed this same visa_ledger_owner-owned table on 2026-08-26."
-  - "Rolling 289 back re-arms the outage on any database that has applied 281 and activated a
-    GARUDA policy. Documented in the ROLLBACK section: it is only meaningful together with
-    rolling back 281."
-  - "This PR does NOT restore the client experience. Production runs SHADOW and the frontend's
-    public rendering boundary withholds the decision regardless — an unrelated, designed state.
-    What this PR restores is the shadow-evidence ledger the go-live gate accumulates."
+  - "This PR does NOT make the product live. `GARUDA_PUBLIC_ENABLED` is off on Vercel, so the
+    whole `/visa/voa` subtree still 404s to visitors by design. What lands is a correct
+    surface, not a flipped launch."
+  - "Residual and deliberately NOT claimed closed: the token is in the URL of one first-party
+    GET, so it can appear in Vercel's access log and in a server-side Sentry transaction.
+    Inherent to any emailed link. `sentry.server.config.ts` was NOT audited for query
+    scrubbing — declared, not silently assumed clean."
+  - "A `.github/workflows/` diff is CODEOWNERS-TIER1 and auto-merge-OFF class. Merged by the
+    session after gates are green and the Gear-3 verdict is posted, never armed with --auto."
+  - "The end-to-end journey has NOT been walked in a browser, because the funnel is dark on
+    Vercel and this session cannot flip that flag. Every claim here is a unit/mutation proof
+    or a live API probe, never a rendered-page proof."
 grader: |
-  Independent verification by this session against production's live catalog (read-only role)
-  and against the repo's own linters. Two adversarial subagents were dispatched WITHOUT this
-  brief: one to attack the diagnosis (it killed the timeline claim — see dissent), one to prove
-  the fix red-then-green on a throwaway Postgres. Generator != grader: the session that wrote
-  the diff does not post the Gear-3 verdict.
+  Independent verification by this session against production endpoints and against the repo's
+  own linters, plus one adversarial subagent (spalla-review) dispatched to BREAK the diff. That
+  refuter found the Google Analytics leak in the design this session had already committed and
+  called safe, and a second real defect (a cookie-presence check where a cookie-NAME check was
+  required). Both are fixed in commit 2 of this PR; both are recorded in dissent. Generator !=
+  grader: the session that wrote the diff does not post the Gear-3 verdict.
