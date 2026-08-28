@@ -1481,3 +1481,37 @@ _Scoperto 2026-08-26 in produzione, sul `release_command` di Fly. Famiglia **#2 
 **NOTA DI MANUTENZIONE.** Questa cicatrice **non ha una riga in `cicatrix-superscar.md`**: quel file è a 13.963 byte su un tetto CI di 14.000, cioè 37 byte liberi — non ci sta nemmeno la riga più corta. La saturazione dell'indice è essa stessa un reperto: il registro che ogni sessione legge non può più accettare membri nuovi, e la potatura è una concern separata da questa PR.
 
 **Famiglia: #2 (esiste ≠ armato)**, con un secondo #2 annidato dentro (il checksum mai riletto) e un sapore di #9 (lo stato di proprietà è cambiato e il flusso delle migrazioni non l'ha saputo).
+
+---
+
+### 🐛 W131 (2026-08-28): tre probe xdist clonavano il proprio database scratch dal database VIVO del worker, perché un solo nome serviva sia da namespace sia da sorgente del TEMPLATE
+
+_Scoperto 2026-08-28 sul job CI 98762263195, mentre bloccava una PR che non c'entrava nulla (#5147). Famiglia **#9 (state-schema mutation drift)**: `pytest_configure` MUTA uno stato condiviso — `TEST_DATABASE_URL` — e tre lettori a valle non sono stati allineati. Curata in #5150._
+
+**TRAUMA, misurato non dedotto.** `Backend Shard 2` rosso su una PR che tocca `main_api.py` e `outbox_alarm.py`, cioè nessuno dei file coinvolti:
+
+```
+asyncpg.exceptions.ObjectInUseError: source database "nuzantara_test_gw1"
+  is being accessed by other users
+DETAIL:  There are 2 other sessions using the database.
+```
+
+Sollevato dal **SETUP** di `test_old_shape_templating_off_a_live_worker_database_fails`, cioè dall'errore che quel probe esiste per dimostrare — ma **fuori** dal suo `pytest.raises`, quindi come fallimento e non come asserzione.
+
+**MECCANISMO.** Ogni probe faceva `base_db = _base_db_name(os.environ["TEST_DATABASE_URL"])` e usava quell'unico nome per due mestieri incompatibili: il **NAMESPACE** in cui battezzare i database scratch, e la **SORGENTE** da cui clonarli. Sotto xdist `pytest_configure` ha già ri-puntato quella variabile sul clone privato del worker, quindi la sorgente diventava `nuzantara_test_gw1` — il database in cui il worker sta girando i propri test. Postgres rifiuta `CREATE DATABASE … TEMPLATE` da un database con sessioni aperte.
+
+**GOTCHA (a) — non è un flake, e sembrarlo è il punto.** Diventa rosso solo quando il worker, in quell'istante, tiene una sessione aperta sul proprio database: verde in locale su un file solo, rosso in CI su uno shard pieno. Il segnale c'era e nessuno lo leggeva: `test_old_shape_` durava **36 secondi**, cioè il retry-loop di `_xdist_clone_worker_database` (3 tentativi, `sleep(2)`) che perdeva la stessa lotta a ogni run. **Una durata assurda è un sintomo, non una caratteristica.**
+
+**GOTCHA (b) — `maxfail` nasconde la FAMIGLIA.** `test_new_shape_clones_succeed_while_a_sibling_worker_is_busy` e `test_template_build_is_race_free_under_concurrent_workers` avevano lo stesso difetto, via `_xdist_ensure_template_database` che fa lo stesso `CREATE DATABASE … TEMPLATE base_db`. Non si vedevano perché lo shard si fermava al primo rosso. Dopo aver trovato una causa, cerca i fratelli **nello stesso file** prima di dichiarare curato.
+
+**GOTCHA (c) — la cura ovvia è peggiore della malattia.** Spostare *entrambi* i ruoli sulla base pristina fa diventare lo scratch `nuzantara_test_gw0`, cioè **il database vivo di un worker fratello**, che il `finally` poi droppa: famiglia #5 al posto della #9. Il namespace **deve** restare worker-derivato — è ciò che rende i nomi annidati (`nuzantara_test_gw1_gw0`) e quindi impossibili da confondere con uno slot reale. Si muove **solo** la sorgente.
+
+**GOTCHA (d) — `_XDIST_WORKER_DB_NAME_RE` vieta la scorciatoia.** Il regex `^[A-Za-z0-9_]+_gw\d+$` impedisce nomi scratch tipo `_probe<pid>` senza allargare una guardia di sicurezza. Il namespace annidato non è stile: è l'unica forma che passa la guardia **e** non collide.
+
+**CURA.** `_scratch_source_db()` restituisce `_base_db_name(_pristine_dsn())`, usata **soltanto** come sorgente; il probe di guilt clona il proprio scratch attraverso un template privato connectionless invece che da un database vivo.
+
+**CURA, gotcha (e) — un probe ancorato all'helper sotto test fallisce per il motivo sbagliato.** La precondizione era `namespace != _scratch_source_db()`: revertendo la cura scattava **quell'assert** e il test non arrivava mai al clone. Ri-ancorata a `_pristine_dsn()` **direttamente**, il revert fallisce con la stringa esatta del CI. Rosso in entrambi i casi, ma solo il secondo insegna qualcosa.
+
+**CURA, prova.** 6 passed sotto `-n 2 --dist loadfile`; seriale invariato (il probe nuovo salta, gli altri passano). Mutazione: revertendo `_scratch_source_db` a leggere `TEST_DATABASE_URL`, il probe fallisce con `ObjectInUseError: source database "nuzantara_test_gw1" is being accessed by other users`. Costo CI del probe: 1.04s (la prima stesura ne costava 35, perché ri-provava ciò che `test_old_shape_` già prova).
+
+**Famiglia: #9 (state-schema mutation drift)**, con la #3 (under-match) sul confine: la cura di #5111 era già stata applicata a un call site — `_pristine_dsn()` esisteva, ed era usata alla riga 186 — e lasciata sui fratelli.
