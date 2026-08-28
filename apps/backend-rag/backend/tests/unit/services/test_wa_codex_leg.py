@@ -1418,3 +1418,288 @@ async def test_absent_reversal_map_passes_completion_through_byte_identical(
     )
     result = await _run(conn=conn)
     assert result.text == original
+
+
+# --- migration 297: finalize sub-reasons ---------------------------------
+#
+# Same shape of blindness migration 291 cured one row up in the map, and
+# the same shape of proof. Measured cost: outbox row 363
+# (2026-08-28T21:43:52Z) had THREE successful codex generations
+# (`consumed_ok`, 9711/10137/8521 ms) discarded by the finalize stage, and
+# every one recorded the same "finalize_defect" — the STAGE, never the
+# CAUSE.
+
+
+@pytest.mark.parametrize(
+    ("defect_reason", "expected_stored"),
+    [
+        ("internal_monologue_leak", "finalize_internal_monologue_leak"),
+        ("pricing_outside_package", "finalize_pricing_outside_package"),
+        ("empty_rag_answer", "finalize_empty_rag_answer"),
+        ("persona_escalate_marker", "finalize_persona_escalate_marker"),
+        ("empty_after_escalate_strip", "finalize_empty_after_escalate_strip"),
+        ("workflow_only_output", "finalize_workflow_only_output"),
+        ("empty_after_channel_format", "finalize_empty_after_channel_format"),
+        ("oversized_output", "finalize_oversized_output"),
+        ("rag_abstain", "finalize_rag_abstain"),
+        ("blank_send_text", "finalize_blank_send_text"),
+    ],
+)
+def test_finalize_sub_reason_normalizes_distinctly(
+    defect_reason: str, expected_stored: str
+) -> None:
+    """Every finalize DEFECT branch must land in its OWN DB value.
+
+    Guilt, not innocence: each of these returned "finalize_defect" before
+    migration 297, so this parametrization goes red on the pre-297 code.
+    """
+    assert (
+        wa_codex_leg._normalize_fall_off_reason(f"finalize:{defect_reason}")
+        == expected_stored
+    )
+
+
+def test_finalize_unrecognized_sub_reason_falls_back_to_generic_bucket() -> None:
+    """A future defect_reason nobody has taught this module yet must still
+    land in a value that says "the finalize stage refused" — never in the
+    module-wide "unknown" bucket a genuinely uncatalogued HEAD gets. The
+    head here is perfectly well known; only the sub-reason is new."""
+    assert (
+        wa_codex_leg._normalize_fall_off_reason("finalize:some_future_defect")
+        == "finalize_defect"
+    )
+
+
+def test_finalize_secret_egress_never_stores_the_pattern_name() -> None:
+    """`secret_egress:<pattern-name>` is the ONE finalize reason with a
+    variable suffix. The stored value must be the bare bucket: the suffix
+    names which scanner pattern hit — this column is read by dashboards and
+    pasted into reports, and an unbounded suffix would also defeat the
+    CHECK constraint that exists to keep this vocabulary closed."""
+    for pattern in ("anthropic_key", "canary_token", "some_future_pattern"):
+        stored = wa_codex_leg._normalize_fall_off_reason(
+            f"finalize:secret_egress:{pattern}"
+        )
+        assert stored == "finalize_secret_egress"
+        assert pattern not in stored
+
+
+def test_finalize_sub_reason_map_covers_every_defect_reason_wa_finalize_can_emit() -> None:
+    """The map must not be able to rot in silence.
+
+    Read the SOURCE of ``wa_finalize.py`` — never a hand-copied list, which
+    would be a proof that cannot fail once it drifts from the code — and
+    assert every ``defect_reason`` that module can actually produce is a
+    key here. A new DEFECT branch added later with nobody teaching this map
+    would otherwise fill the column with the generic bucket again, and
+    "why was this answer discarded?" would be unanswerable a third time.
+
+    A ``defect_reason=`` whose value this helper cannot resolve statically
+    is a FAILURE, never a skip: an un-analysable node is exactly where a
+    new shape would hide.
+    """
+    import ast
+    from pathlib import Path
+
+    from backend.services.integrations import wa_finalize
+
+    assert wa_finalize.__file__ is not None
+    tree = ast.parse(Path(wa_finalize.__file__).read_text(encoding="utf-8"))
+
+    def _literal(node: ast.expr) -> str | None:
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return node.value
+        if isinstance(node, ast.JoinedStr) and node.values:
+            first = node.values[0]
+            if isinstance(first, ast.Constant) and isinstance(first.value, str):
+                # e.g. f"secret_egress:{hit}" -> the static leading segment
+                return first.value
+        return None
+
+    # (a) every literal bound to a name the DEFECT sites forward verbatim,
+    #     plus (b) the veto function's own returned tuples.
+    #
+    # An assignment to one of those names that this helper cannot resolve to
+    # a literal is a FAILURE, not a skip. Waving it through was a real hole
+    # (found by the adversarial review of this PR): a future dict-dispatch
+    # refactor writing `human_reason = _LOOKUP["x"]` would forward a value
+    # this scan never sees, `missing` would stay empty, and the guard would
+    # pass while the map rotted — precisely what it exists to prevent.
+    forwarded = {"reason", "veto", "human_reason"}
+    indirect: set[str] = set()
+
+    def _collect(node: ast.expr, where: str) -> None:
+        lit = _literal(node)
+        if lit is not None:
+            indirect.add(lit)
+            return
+        if isinstance(node, ast.BoolOp):
+            for operand in node.values:
+                _collect(operand, where)
+            return
+        # `reason = "x" if cond else None` — a real shape in this module
+        # (the strict resolver above found it; the permissive first draft
+        # of this test walked straight past it). Both arms count.
+        if isinstance(node, ast.IfExp):
+            _collect(node.body, where)
+            _collect(node.orelse, where)
+            return
+        # An explicit `None` is "no reason yet", not an unresolved shape.
+        if isinstance(node, ast.Constant) and node.value is None:
+            return
+        # `reason = human_reason or "..."` legitimately references a name
+        # whose own literal sources this same scan collects elsewhere.
+        if isinstance(node, ast.Name) and node.id in forwarded:
+            return
+        # `veto = _codex_egress_veto(...)` binds the veto helper's return
+        # value, and that helper's own returned tuples are collected by the
+        # ast.Return branch below — so the call itself needs no resolving.
+        # Any OTHER call bound to these names does, hence the name check.
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "_codex_egress_veto"
+        ):
+            return
+        raise AssertionError(
+            f"cannot statically resolve {where} = {ast.dump(node)} — teach "
+            "this helper the new shape before trusting the coverage "
+            "assertion below"
+        )
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id in forwarded:
+                    _collect(node.value, target.id)
+        elif isinstance(node, ast.Return) and isinstance(node.value, ast.Tuple):
+            if node.value.elts:
+                lit = _literal(node.value.elts[0])
+                if lit is not None:
+                    indirect.add(lit)
+
+    # (c) the direct `defect_reason=` keywords.
+    #
+    # KEYWORD-ONLY BY CONVENTION, enforced here (second hole found by the
+    # adversarial review): `FinalizeResult` is a plain frozen dataclass, so
+    # `FinalizeResult(FinalizeOutcome.DEFECT, "", None, "new_defect", ...)`
+    # is legal Python and completely invisible to a scan that reads only
+    # `node.keywords`. Rather than teach the scan to count positions — which
+    # silently breaks the day a field is inserted — require the call site to
+    # keep naming its arguments.
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "FinalizeResult"
+            and node.args
+        ):
+            raise AssertionError(
+                "FinalizeResult(...) is constructed with positional "
+                f"argument(s) at line {node.lineno} of wa_finalize.py — a "
+                "positional defect_reason is invisible to the coverage scan "
+                "below. Pass every field by keyword."
+            )
+
+    direct: set[str] = set()
+    defect_calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        for kw in node.keywords
+        if kw.arg == "defect_reason"
+    ]
+    assert defect_calls, (
+        "wa_finalize no longer passes defect_reason= — retarget this guard"
+    )
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        for kw in node.keywords:
+            if kw.arg != "defect_reason":
+                continue
+            lit = _literal(kw.value)
+            if lit is not None:
+                direct.add(lit)
+                continue
+            # Not a literal: it must be one of the names whose literal
+            # sources (a)/(b) above already collected. Anything else is a
+            # shape this helper has not been taught — fail loudly.
+            if isinstance(kw.value, ast.Name) and kw.value.id in forwarded:
+                continue
+            if (
+                isinstance(kw.value, ast.Subscript)
+                and isinstance(kw.value.value, ast.Name)
+                and kw.value.value.id in forwarded
+            ):
+                continue
+            raise AssertionError(
+                "cannot statically resolve defect_reason="
+                f"{ast.dump(kw.value)} — teach this helper the new shape "
+                "before trusting the coverage assertion below"
+            )
+
+    emitted = direct | indirect
+    # The leg's own defensive fallback, which wa_finalize never emits.
+    emitted.add("blank_send_text")
+
+    known = set(wa_codex_leg._FINALIZE_SUB_REASON_MAP) | {
+        wa_codex_leg._FINALIZE_EGRESS_SCAN_HEAD
+    }
+    missing = {
+        reason
+        for reason in emitted
+        if reason.partition(":")[0] not in known
+    }
+    assert not missing, (
+        f"wa_finalize can emit defect_reason(s) {sorted(missing)} that "
+        "_FINALIZE_SUB_REASON_MAP does not know — they would silently "
+        "collapse into the generic 'finalize_defect' bucket again"
+    )
+
+
+def test_every_stored_fall_off_value_is_allowed_by_the_live_check_constraint() -> None:
+    """Code and DB must agree on the closed vocabulary.
+
+    A value this module can WRITE that the CHECK constraint REJECTS is not
+    a mislabel — it is an exception on the write path, i.e. a second reason
+    nothing was recorded. Parse the newest migration that (re-)defines the
+    constraint and assert it admits every value the maps can produce.
+    """
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[4]
+    migrations = root / "backend" / "db" / "migrations_v2"
+    assert migrations.is_dir(), f"migrations dir not found at {migrations}"
+    # Sort by the leading INTEGER, never by filename: lexicographically
+    # "1000_..." sorts BEFORE "999_...", so a filename sort silently starts
+    # validating against a stale constraint the day this repo passes
+    # migration 999 (third finding of this PR's adversarial review; same
+    # "a proxy is not the content" class as superscar #9).
+    defining = sorted(
+        (
+            p
+            for p in migrations.glob("*.sql")
+            if "wa_outbox_generation_fall_off_reason_check"
+            in p.read_text(encoding="utf-8")
+        ),
+        key=lambda p: int(p.name.split("_", 1)[0]),
+    )
+    assert defining, "no migration defines the fall-off-reason CHECK constraint"
+    newest = defining[-1]
+    # The UP block only — the file's ROLLBACK section restores the older,
+    # narrower vocabulary on purpose.
+    up = newest.read_text(encoding="utf-8").split("=== ROLLBACK ===")[0]
+    allowed = set(re.findall(r"'([a-z_]+)'", up))
+
+    produced = (
+        set(wa_codex_leg._FALL_OFF_REASON_PREFIX_MAP.values())
+        | set(wa_codex_leg._UNBUILDABLE_SUB_REASON_MAP.values())
+        | set(wa_codex_leg._FINALIZE_SUB_REASON_MAP.values())
+        | {"finalize_secret_egress", "unknown"}
+    )
+    assert produced <= allowed, (
+        f"{sorted(produced - allowed)} can be written by the code but is "
+        f"rejected by the CHECK constraint in {newest.name}"
+    )
