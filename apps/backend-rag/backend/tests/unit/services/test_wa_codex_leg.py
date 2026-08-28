@@ -1585,7 +1585,7 @@ def test_finalize_sub_reason_map_covers_every_defect_reason_wa_finalize_can_emit
     emitted.add("blank_send_text")
 
     known = set(wa_codex_leg._FINALIZE_SUB_REASON_MAP) | {
-        wa_codex_leg._FINALIZE_SECRET_EGRESS_PREFIX
+        wa_codex_leg._FINALIZE_EGRESS_SCAN_HEAD
     }
     missing = {
         reason
