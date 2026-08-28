@@ -29,7 +29,41 @@ back into the next editorial decision. Growth = the standing loop in §4.
 **Legge 5 (absolute)**: publishing to Instagram is Zero's act. The pipeline stops at `drafted`
 in the review queue. No session ever publishes autonomously.
 
-## 1. LIVE STATE (last update 2026-07-19 — keep current)
+## 1. LIVE STATE (last update 2026-08-28 — RE-GROUND misurato; keep current)
+
+**RE-GROUND 2026-08-28 (growth-loop kaiser, misurato non dedotto — le sezioni sotto questa
+riga fotografano luglio e valgono come storia).** Stato live della macchina:
+
+- **Label launchd: 32 caricate + 2 che erano DISABLED** (`html-apply`, `plist-watchdog` —
+  `launchctl disable` persistente, disarmo NON attribuito: nessuna riga a ledger/memoria; ipotesi
+  più coerente = disarmo durante la crisi quota vision del 20/8, mai ri-armato dopo che il fix
+  #4431 è atterrato lo stesso giorno). **Ri-abilitate + bootstrap 2026-08-28 21:26 WITA** — la
+  lane render è VIVA: primo pickup `962f8c99 → rendering` con lease; poi vision-QA in cooldown
+  chain-wide (~50 min) → il draft torna in coda SENZA bruciare attempt (streak 2/3, #4431 come da
+  progetto); gli 8 deck `drafts_imaged_checked` (fermi dal 20/8) drenano da soli a quota riaperta.
+- **Ferita principale (CURATA, PR #5176): dal 20/8 il draft-generator falliva 3/3 su OGNI draft**
+  — il `claude -p` del planner ereditava il config-dir interattivo `~/.claude`, il cui Stop-hook
+  `mailbox_inject.py` inietta la posta cross-machine fleet a fine turno: la sessione one-shot
+  rispondeva alla posta turno dopo turno e `-p` stampa l'ULTIMO turno → il client riceveva chatter
+  fleet al posto del DeckPlan JSON (che era CORRETTO al turno 1, provato dal transcript
+  `c68e9228`). 12 topic buoni bruciati a `rejected` (24-28/8), ~3 chiamate opus multi-minuto
+  sprecate per draft per ora. Cura: `_build_env` pinna `CLAUDE_CONFIG_DIR` a un dir sterile
+  (`~/.claude-oauth-headless`) + `--no-session-persistence`. Scar W132.
+- **DB (misurato 21:20 WITA)**: ultimo `rendered` = **9 agosto**; `rejected`=37 (newest oggi);
+  `drafts_imaged_checked`=8 (20/8); `render_failed`=27 · `missed`=17 · `fact_check_failed`=17 ·
+  `image_failed`=8 · `rendered_shadow`=7. Zero `briefed` al momento della misura (il topic-selector
+  briefa ~18:01 e il generator brucia/fallisce in giornata).
+- **Coda review (SSOT Pro)**: 96 entry — **43 `drafted` in attesa di Zero**, 51 published,
+  2 rejected. La pipeline ha prodotto; il collo è la review umana + i 19 giorni di stallo render.
+- **IG metrics**: scrape Graph quotidiano VIVO (05:00, `wr2-ig-metrics-scrape.log` fresco);
+  analyst settimanale girato lu 24/8; daily-metrics 06:00 vivo, `stuck_drafts: []`.
+  **`ig-scraper.daily` (Playwright/shortcode discovery) ROSSO exit 1** — crash Chrome
+  (`TargetClosedError` + `kill EPERM`, profilo `balizero0-ig`) — ferita aperta, non presa.
+- **Altri rossi aperti**: `dossier-compiler` exit 2 (log path non trovato in `~/logs`, diagnosi
+  da fare). Supervisor/watchdog/queue-server/pg-proxy/deploy-puller/pg-queue-sync tutti vivi
+  (log <1h); deploy checkout `~/nuzantara-deploy` fresco (pull orario OK).
+
+**Sezioni sotto = fotografia luglio 2026 (storia utile, non stato):**
 
 **Shipped & proven (July 16-17 arc):** **typed Carousel IR + shadow-replay harness SHIPPED +
 GATE PASSED (#2942, 2026-07-21, editorial-intelligence Phase 1)** — pydantic 11-kind discriminated
@@ -241,16 +275,16 @@ forbidden phrase 'unlock'` (deterministic content-gate `ValueError`, `composer.p
 `~/.openclaw/bin/wr2/wr2-script-wrapper.sh` → `REPO_ROOT=${WR2_REPO_ROOT:-~/nuzantara-deploy}`
 — deploy = pull BOTH `~/Desktop/nuzantara` AND `~/nuzantara-deploy`, scar #1):**
 
-| Stage         | Script                                                                                            | launchd          | Notes                                                                                                                                                                                                                                                                              |
+| Stage | Script | launchd | Notes |
 | ------------- | ------------------------------------------------------------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------ |
-| Topic pick    | `scripts/wr2_topic_selector.py`                                                                   | topic-selector   | scores staging items, writes `war_room_drafts` (status `briefed`) with brief_json = article_summary[:2000] + enrichment + source_url; RAG grounding via `scripts/wr2_grounding.py` (citation injection + `_grounding_injected_only` marker + `is_citations_only_the_facts()` SSOT) |
-| Compose       | `scripts/wr2_draft_generator.py`                                                                  | draft-generator  | **facts-first prompt** (article leads, enriched brief supports); park backstop (news-shaped + no usable source → `parked`, never composed); tri-state outcome `success                                                                                                             | parked | failed`, exit 0 unless real failures |
-| Hero images   | `scripts/wr2_image_generator.py`                                                                  | image-generator  | Codex $imagegen primary, FlowKit fallback; CAS lease on `lease_owner`, stale-sweep TTL 40min                                                                                                                                                                                       |
-| Facts         | `scripts/wr2_fact_extractor.py`                                                                   | fact-extractor   | gates on `fact_check_json IS NULL`                                                                                                                                                                                                                                                 |
-| Check         | fact-checker lane                                                                                 | fact-checker     | writes `fact_check_status` (currently degraded pipeline-wide)                                                                                                                                                                                                                      |
-| Render        | `scripts/wr2_html_render_apply.py` + `apps/backend-rag/backend/services/canva_renderer_v2/_pg.py` | html-apply       | HTML/CSS→PNG Playwright; fetch gates on `drive_url IS NULL` + `lease_owner IS NULL`; official re-render verb: `_pg.requeue_draft_for_rerender`                                                                                                                                     |
-| Orchestration | `scripts/wr2_supervisor.py` + `scripts/wr2_supervisor_watchdog.py`                                | supervisor       | TRANSITIONS maps (from,to)→launchd label; TERMINAL_STATUSES includes `parked`                                                                                                                                                                                                      |
-| Reconcile     | `scripts/wr2_daily_reconciler.py`                                                                 | daily-reconciler | slides-dir resolution 3-level, `--repair-false-incomplete`, `--backfill-completeness`                                                                                                                                                                                              |
+| Topic pick | `scripts/wr2_topic_selector.py` | topic-selector | scores staging items, writes `war_room_drafts` (status `briefed`) with brief_json = article_summary[:2000] + enrichment + source_url; RAG grounding via `scripts/wr2_grounding.py` (citation injection + `_grounding_injected_only` marker + `is_citations_only_the_facts()` SSOT) |
+| Compose | `scripts/wr2_draft_generator.py` | draft-generator | **facts-first prompt** (article leads, enriched brief supports); park backstop (news-shaped + no usable source → `parked`, never composed); tri-state outcome `success                                                                                                             | parked | failed`, exit 0 unless real failures |
+| Hero images | `scripts/wr2_image_generator.py` | image-generator | Codex $imagegen primary, FlowKit fallback; CAS lease on `lease_owner`, stale-sweep TTL 40min |
+| Facts | `scripts/wr2_fact_extractor.py` | fact-extractor | gates on `fact_check_json IS NULL` |
+| Check | fact-checker lane | fact-checker | writes `fact_check_status` (currently degraded pipeline-wide) |
+| Render | `scripts/wr2_html_render_apply.py` + `apps/backend-rag/backend/services/canva_renderer_v2/_pg.py` | html-apply | HTML/CSS→PNG Playwright; fetch gates on `drive_url IS NULL` + `lease_owner IS NULL`; official re-render verb: `_pg.requeue_draft_for_rerender` |
+| Orchestration | `scripts/wr2_supervisor.py` + `scripts/wr2_supervisor_watchdog.py` | supervisor | TRANSITIONS maps (from,to)→launchd label; TERMINAL_STATUSES includes `parked` |
+| Reconcile | `scripts/wr2_daily_reconciler.py` | daily-reconciler | slides-dir resolution 3-level, `--repair-false-incomplete`, `--backfill-completeness` |
 
 **DB**: `war_room_drafts` on nuzantara-postgres. Status machine (CHECK constraint, migration 245):
 briefed → drafts → drafts_imaged → drafts_imaged_facted → drafts_imaged_checked → rendering →
