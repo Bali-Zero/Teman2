@@ -1518,22 +1518,60 @@ def test_finalize_sub_reason_map_covers_every_defect_reason_wa_finalize_can_emit
 
     # (a) every literal bound to a name the DEFECT sites forward verbatim,
     #     plus (b) the veto function's own returned tuples.
+    #
+    # An assignment to one of those names that this helper cannot resolve to
+    # a literal is a FAILURE, not a skip. Waving it through was a real hole
+    # (found by the adversarial review of this PR): a future dict-dispatch
+    # refactor writing `human_reason = _LOOKUP["x"]` would forward a value
+    # this scan never sees, `missing` would stay empty, and the guard would
+    # pass while the map rotted — precisely what it exists to prevent.
+    forwarded = {"reason", "veto", "human_reason"}
     indirect: set[str] = set()
+
+    def _collect(node: ast.expr, where: str) -> None:
+        lit = _literal(node)
+        if lit is not None:
+            indirect.add(lit)
+            return
+        if isinstance(node, ast.BoolOp):
+            for operand in node.values:
+                _collect(operand, where)
+            return
+        # `reason = "x" if cond else None` — a real shape in this module
+        # (the strict resolver above found it; the permissive first draft
+        # of this test walked straight past it). Both arms count.
+        if isinstance(node, ast.IfExp):
+            _collect(node.body, where)
+            _collect(node.orelse, where)
+            return
+        # An explicit `None` is "no reason yet", not an unresolved shape.
+        if isinstance(node, ast.Constant) and node.value is None:
+            return
+        # `reason = human_reason or "..."` legitimately references a name
+        # whose own literal sources this same scan collects elsewhere.
+        if isinstance(node, ast.Name) and node.id in forwarded:
+            return
+        # `veto = _codex_egress_veto(...)` binds the veto helper's return
+        # value, and that helper's own returned tuples are collected by the
+        # ast.Return branch below — so the call itself needs no resolving.
+        # Any OTHER call bound to these names does, hence the name check.
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "_codex_egress_veto"
+        ):
+            return
+        raise AssertionError(
+            f"cannot statically resolve {where} = {ast.dump(node)} — teach "
+            "this helper the new shape before trusting the coverage "
+            "assertion below"
+        )
+
     for node in ast.walk(tree):
         if isinstance(node, ast.Assign):
             for target in node.targets:
-                if isinstance(target, ast.Name) and target.id in {
-                    "human_reason",
-                    "reason",
-                }:
-                    lit = _literal(node.value)
-                    if lit is not None:
-                        indirect.add(lit)
-                    elif isinstance(node.value, ast.BoolOp):
-                        for operand in node.value.values:
-                            lit = _literal(operand)
-                            if lit is not None:
-                                indirect.add(lit)
+                if isinstance(target, ast.Name) and target.id in forwarded:
+                    _collect(node.value, target.id)
         elif isinstance(node, ast.Return) and isinstance(node.value, ast.Tuple):
             if node.value.elts:
                 lit = _literal(node.value.elts[0])
@@ -1541,8 +1579,29 @@ def test_finalize_sub_reason_map_covers_every_defect_reason_wa_finalize_can_emit
                     indirect.add(lit)
 
     # (c) the direct `defect_reason=` keywords.
+    #
+    # KEYWORD-ONLY BY CONVENTION, enforced here (second hole found by the
+    # adversarial review): `FinalizeResult` is a plain frozen dataclass, so
+    # `FinalizeResult(FinalizeOutcome.DEFECT, "", None, "new_defect", ...)`
+    # is legal Python and completely invisible to a scan that reads only
+    # `node.keywords`. Rather than teach the scan to count positions — which
+    # silently breaks the day a field is inserted — require the call site to
+    # keep naming its arguments.
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "FinalizeResult"
+            and node.args
+        ):
+            raise AssertionError(
+                "FinalizeResult(...) is constructed with positional "
+                f"argument(s) at line {node.lineno} of wa_finalize.py — a "
+                "positional defect_reason is invisible to the coverage scan "
+                "below. Pass every field by keyword."
+            )
+
     direct: set[str] = set()
-    forwarded = {"reason", "veto", "human_reason"}
     defect_calls = [
         node
         for node in ast.walk(tree)
@@ -1613,10 +1672,19 @@ def test_every_stored_fall_off_value_is_allowed_by_the_live_check_constraint() -
     root = Path(__file__).resolve().parents[4]
     migrations = root / "backend" / "db" / "migrations_v2"
     assert migrations.is_dir(), f"migrations dir not found at {migrations}"
+    # Sort by the leading INTEGER, never by filename: lexicographically
+    # "1000_..." sorts BEFORE "999_...", so a filename sort silently starts
+    # validating against a stale constraint the day this repo passes
+    # migration 999 (third finding of this PR's adversarial review; same
+    # "a proxy is not the content" class as superscar #9).
     defining = sorted(
-        p
-        for p in migrations.glob("*.sql")
-        if "wa_outbox_generation_fall_off_reason_check" in p.read_text(encoding="utf-8")
+        (
+            p
+            for p in migrations.glob("*.sql")
+            if "wa_outbox_generation_fall_off_reason_check"
+            in p.read_text(encoding="utf-8")
+        ),
+        key=lambda p: int(p.name.split("_", 1)[0]),
     )
     assert defining, "no migration defines the fall-off-reason CHECK constraint"
     newest = defining[-1]
