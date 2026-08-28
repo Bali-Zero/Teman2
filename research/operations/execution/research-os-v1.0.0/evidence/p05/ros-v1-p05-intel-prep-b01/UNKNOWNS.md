@@ -8,6 +8,10 @@ adversarial_review: kimi-k3
 
 ## 1. Live database access was unavailable this session — no live counts anywhere in this bundle
 
+> **Superseded in part 2026-08-26 — see §1.1.** The counts were obtained the next session and the
+> cause attributed below turned out to be wrong. This section is kept verbatim, not rewritten:
+> what it got wrong is the useful part.
+
 `mcp__postgres-nuzantara-local__query` returned `Command failed with no output` on three
 successive attempts, including the trivial `SELECT 1;`. This is a tool/infrastructure failure,
 not a "no rows" result — per this repo's own anti-hallucination discipline ("a grep that returns
@@ -25,6 +29,91 @@ failed at the tool layer.
 Whoever picks this up next should retry the same MCP tool (it may be a transient session issue)
 or fall back to a direct `psql`/`fly ssh` read-only session — this bundle does not diagnose why
 the tool failed beyond confirming it failed identically on a query with zero table dependency.
+
+### 1.1 CLOSED 2026-08-26 — measured directly, and the attributed cause was WRONG
+
+This gap was closed the next session by connecting with `psql` on `127.0.0.1:5432` (never 15432 —
+that is a `flyctl` proxy to PRODUCTION). Two corrections to §1 above, then the numbers.
+
+**Correction A — the database was never down.** §1 reads as though live data was unreachable.
+All four preconditions measured healthy: database `nuzantara_dev` exists, role
+`nuzantara_dev_readonly` exists with `rolcanlogin=t`, the macOS Keychain entry resolves
+(exit 0, non-empty), and a direct connection as that role runs `SELECT 1` successfully. The MCP's
+own launch command, reproduced by hand with a full JSON-RPC handshake, also answered correctly.
+The failure was in the TOOL, not the data layer — exactly the distinction §1 was right to insist
+on, applied one layer deeper than §1 applied it.
+
+**Correction B — RETRACTED 2026-08-26, same day. The root cause is UNKNOWN.**
+An earlier revision of this section stated that the likely cause was an `npx` cold start on a
+deprecated package overrunning the MCP handshake timeout, and called it "a standing fragility"
+that "will keep producing silent, contentless failures." **That was reasoning presented as a
+finding, and measuring it refuted it.** Two measured facts:
+
+- `@modelcontextprotocol/server-postgres` IS npm-flagged **"Package no longer supported"**
+  (registry, v`0.6.2`) and is NOT installed globally. That much stands, and it is a genuine
+  standing fragility: an orphaned upstream dependency on this tool's only read path.
+- But it is **already cached** — two resolved copies under `~/.npm/_npx/` — and the server's
+  time-to-first-JSON-RPC-response measures **~2 s**. That is not a handshake-timeout-scale
+  stall, so the deprecation does **not** explain the observed failure.
+
+What is established: the database, the role, the Keychain entry and a direct `psql` connection
+are all healthy and MEASURED. The MCP failure was **not reproducible** at any layer — the
+launch command reproduced by hand answered, and so did the live registered tool. **Why the
+original three calls returned "Command failed with no output" is unknown**, and it is recorded
+as unknown rather than closed with a plausible story.
+
+*How this correction was reached* is the part worth carrying forward. The wrong cause did not
+come from a bad measurement; it came from a **relay**. The investigating subagent wrote
+"since I could not reproduce the failure now, this points to a **transient** condition ...
+**not a persistent break**." Compressing that into this document dropped both hedges and
+promoted an unreproduced hypothesis into a finding. No adversarial review would have caught it:
+a reviewer reads the artefact, not the subagent's report, so the discrepancy lived on a boundary
+no check crosses. **A cause you have not reproduced is not written as a cause.**
+
+*What a future session can do that this one did not*: capture the MCP subprocess's own stderr at
+the moment of failure instead of reasoning backwards from the client's empty result. That is now
+possible — `scripts/mcp/postgres-local-mcp.sh` (added the same day) tees the server's stderr to
+`~/logs/mcp-postgres-local.log` and turns a failed or empty Keychain lookup into a loud, named
+exit instead of an empty password. The old inline form could not express that failure at all: a
+command substitution in an assignment prefix discards its exit status.
+
+**Measured baseline (aggregates only — no row content, per SYMBIOSIS Law 2):**
+
+| Measure | Value |
+|---|---|
+| Non-template local databases | **89** (67 `my_portal_qa%` + 1 `acc_recon%` throwaways; 21 real) |
+| `nuzantara_dev` — the CONFIGURED LIVE TARGET | full `intel_*` schema, **0 rows in every table** |
+| `nuzantara_prod_snapshot` (static snapshot, NOT live) | `intel_items`=964, `intel_observations`=1600, `intel_lake_audit_log`=3403, `intel_item_nb_pushes`=278, `intel_radar_findings`=2 |
+| Data window (snapshot) | `first_seen_at` / `observed_at` span 2026-05-13 → 2026-07-18; `expires_at` has no non-null values |
+| `routing_status` (enum-like, 4) | `needs_review`=484, `nb-intel`=278, `blog`=171, `archive`=31 |
+| `jurisdiction` (enum-like, 3+null) | `ID-national`=651, `ID-bali`=225, `test`=47, null=41 |
+| `language` (2+null) | `id`=876, `en`=47, null=41 |
+| `is_probe_sandbox` | false=923, true=41 |
+| `source_domain` | 330 distinct — high-cardinality, **count only, values withheld** |
+| `producer_name` | 33 distinct — count only |
+
+**The load-bearing result, and it changes the packet's premise: the live local baseline is EMPTY.**
+The packet's "Live baseline to refresh" section presumes there is a live local corpus to measure.
+There is not — the configured target holds schema and no rows. The only data-bearing copy is a
+static production SNAPSHOT, which can support schema and distribution reasoning but is NOT a live
+baseline and must never be cited as one. Anyone asked to "refresh the live baseline" must first
+settle WHERE it is supposed to live; that question is open, and it is upstream of the counts.
+
+**Two bundle claims re-checked against live schema, both confirmed:**
+
+- "Intel Lake's schema has zero sensitivity/classification column today" — **TRUE**. A schema-wide
+  search for `%sensitiv%`, `%classif%`, `%risk_class%`, `%pii%` matches only unrelated tables
+  (WhatsApp staging, CRM cache); neither `intel_items` nor `intel_observations` has one.
+- "The full producer registry could not be enumerated" — **TRUE, and structurally so.**
+  `intel_observations.producer_name` is free-standing text with **no foreign key** to any
+  registry; its only FK is `item_id → intel_items`. Three loosely-related source tables exist
+  (`regulatory_source_status`=3 rows, `collective_memory_sources`=0, `naga_sources`=637 in the
+  snapshot) and none is wired to Intel Lake. There is no canonical producer registry to
+  enumerate — the gap is a missing relation, not a missing query.
+
+**Still open after this measurement:** the producer registry OUTSIDE the monorepo (`~/scripts/`
+on live Pro), and where the live baseline is meant to live (above). Those remain unknown, and
+unknown still is not zero.
 
 ## 2. Not checked, deliberately, given the read-only/no-implementation scope of this lane
 
@@ -114,6 +203,12 @@ without it.
 
 
 ## Adversarial review
+
+> **Scope note added 2026-08-26.** The Kimi K3 review recorded below covers this bundle as it
+> stood at head `2807f50e9`. **§1.1 was added afterwards and is NOT covered by it** — it is a
+> direct measurement (psql on `127.0.0.1:5432`, aggregates only) by the session that gated this
+> bundle, and it CONTRADICTS §1's attributed cause. Its evidence is the commands it names, not a
+> review verdict; do not read the stamp above as vouching for it.
 
 **Seat:** Kimi K3 (`kimi -m kimi-code/k3`), cross-family — neither the model that wrote this
 bundle nor the session that gated it. Run 2026-08-26 against a FROZEN diff (head `2807f50e9`):

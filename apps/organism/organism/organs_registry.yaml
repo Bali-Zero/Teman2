@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: a64d11324088872cfa252e95f6cdc536be66f31e8cec32c111323d75b1329997
+checksum: 67f06a65588fdfbbcd70c50ce64a6102129e1d418b9d6d0bf5a9882158967ba8
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2666,5 +2666,68 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.kb_probe_history.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.queue_shepherd
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 900
+  owner_module: scripts/queue_shepherd.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.queue-shepherd
+  severity_on_silence: warning
+  notes: budgeted merge-queue auto-rearm + stale-run janitor (Merge-OS v3 Codex F7,
+    Zero GO 2026-08-27) — StartInterval 600s, writes an unconditional heartbeat on
+    both the success and failure path (genes imprinted post-birth, PR
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.queue_shepherd.json
+    timestamp_field: ts
+    status_field: status
+- id: army.chore_dispatch
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 86400
+  owner_module: scripts/army/chore_dispatch_wrapper.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.chore-dispatch.daily
+  severity_on_silence: warning
+  notes: receptor-live PART B — daily 05:30 WITA tick, scripts/chore_dispatch.py --dispatch-next
+    picks the oldest status=pending chore from infra/army/chore-queue/*.md and dispatches
+    it to its own declared seat (jules/spark today; haiku/luna catalog-only). Never
+    lands anything — same contract as the Armata H24 lanes it reuses. Genes imprinted
+    post-birth (PR
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/army.chore_dispatch.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.seat_mix_report
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 108000
+  owner_module: scripts/seat_mix_report.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.seat-mix.daily
+  severity_on_silence: info
+  notes: A7/R12 daily seat-mix telemetry (Agent dispatch model mix + non-Anthropic
+    shell-call mix, joined to PRs), StartCalendarInterval 06:30 WITA. Honors SEAT_MIX_REPORT_ENABLED
+    kill switch (writes status=disabled heartbeat) and an unconditional heartbeat
+    on both the success and failure path (genes imprinted post-birth, PR
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.seat_mix_report.json
     timestamp_field: ts
     status_field: status

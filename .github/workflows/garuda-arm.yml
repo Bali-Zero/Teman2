@@ -62,14 +62,25 @@ on:
       garuda_environment:
         description: >-
           GARUDA_ENVIRONMENT (domain-vocabulary string read by
-          magic_link_store.py / check_store.py / GarudaOrderRepository;
-          code default is PRODUCTION, we want SANDBOX while the Xendit
-          account is a sandbox account).
+          magic_link_store.py / check_store.py / GarudaOrderRepository and
+          persisted verbatim into an `environment TEXT CHECK (environment
+          IN ('TEST','STAGING','PRODUCTION'))` column). This tags ROWS
+          with the deployment they belong to — it does NOT select payment
+          mode. Xendit sandbox-ness is carried entirely by
+          `GARUDA_XENDIT_SECRET_KEY` (the provider itself refuses any key
+          not prefixed `xnd_development_`), so a dark launch against the
+          Xendit sandbox still writes real rows for real people on the
+          production database, and PRODUCTION is the correct tag for that
+          even while payments are sandboxed. "SANDBOX" is NOT a value the
+          schema accepts — arming with it would violate the CHECK
+          constraint on the very first magic-link/eligibility-check write
+          and break the funnel on first use while /health stays green.
         required: true
-        default: "SANDBOX"
+        default: "PRODUCTION"
         type: choice
         options:
-          - "SANDBOX"
+          - "TEST"
+          - "STAGING"
           - "PRODUCTION"
       stage_only:
         description: >-

@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "fixture_category": "evidence_independence",
+  "adversarial_case_ref": "packet 06-naga-claim-ledger.md, 'Golden set and adversarial cases': 'translated passages'",
+  "expected_behavior": "The evidence is a translation, not the original-language document. independence_class must be 'translated', and the claim built from it should carry lower confidence than an equivalent claim sourced from the original Bahasa Indonesia text, because translation introduces an additional lossy step the scorer must account for. A scorer that assigns identical confidence to a translated-passage claim and an original-language claim is not modeling this risk.",
+  "evidence": {
+    "evidence_id": "b2f1a000-0000-4000-8000-0000000000ed2",
+    "document_id": "https://example-translation-service.org/synth-en-translation-of-permenkumham-14",
+    "independence_class": "translated",
+    "original_language": "id",
+    "translation_language": "en",
+    "note": "SYNTHETIC — an English-language translation of a (fictional) Bahasa Indonesia regulation, published by a third-party translation service, not the government itself. The translation may have mistranslated a legal term of art (e.g. 'paling lambat' vs 'paling cepat' -- a real, previously-documented confusion pattern in this repo's own visa-deadline research, referenced here only as the SHAPE of the risk, not this fixture's content)."
+  }
+}

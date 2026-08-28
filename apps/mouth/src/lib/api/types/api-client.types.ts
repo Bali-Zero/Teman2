@@ -10,6 +10,20 @@ import { UserProfile } from "@/types";
  */
 export interface ApiRequestOptions extends Omit<RequestInit, "headers"> {
   headers?: Record<string, string>;
+  /**
+   * Whether a 401 on this request may navigate the browser to the login page.
+   *
+   * Defaults to `true`, which is right for a call the user is waiting on: if
+   * their session died, sending them to log in again is the useful thing to do.
+   *
+   * Set it to `false` for a BACKGROUND call made from a page a visitor may
+   * legitimately be reading while logged out — an autosave, a poll, a
+   * prefetch. Such a call must never take the page away from under them.
+   * Measured 2026-08-28: `/dream` is public, its autosave hits an
+   * authenticated endpoint, and an anonymous visitor who typed one character
+   * was ejected to `kita.balizero.com/login?expired=true` within seconds.
+   */
+  redirectOnUnauthorized?: boolean;
 }
 
 /**

@@ -161,6 +161,7 @@ on:
       - Content lint — reasoning-leak in published MDX
       - Lint Cross-Import
       - Golden Rule
+      - Lint — GARUDA_ENVIRONMENT workflow value matches DB schema
       - Lint i18n providers
       - Migration number uniqueness lint
       - Migration ROLLBACK marker lint

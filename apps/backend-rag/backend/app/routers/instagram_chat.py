@@ -182,6 +182,12 @@ def _verify_instagram_signature(body: bytes, signature_header: str | None) -> bo
     ``research/operations/2026-07-17-mutating-routes-authz-ledger.md``'s
     PENDING-ARMS entry for that gap.
 
+    The app secret is read via ``settings.effective_instagram_app_secret``,
+    not the raw ``instagram_app_secret`` field: WhatsApp and Instagram share
+    ONE Meta app (Zero's ruling, 2026-08-26), so absent an explicit
+    ``INSTAGRAM_APP_SECRET`` this falls back to ``WHATSAPP_APP_SECRET``,
+    which is already live in production.
+
     Args:
         body: Raw request body bytes.
         signature_header: Value of X-Hub-Signature-256 header (format: "sha256=<hex>").
@@ -189,19 +195,20 @@ def _verify_instagram_signature(body: bytes, signature_header: str | None) -> bo
     Returns:
         True if the signature is valid, or verification was skipped because
         no app secret is configured (dev mode) AND
-        ``settings.meta_webhook_require_signature`` is False (the default).
+        ``settings.meta_webhook_require_signature`` is False.
         False on any verification failure, including a missing secret when
-        ``meta_webhook_require_signature`` has been explicitly set True.
+        ``meta_webhook_require_signature`` is True (the default since
+        2026-08-26).
     """
-    app_secret = settings.instagram_app_secret
+    app_secret = settings.effective_instagram_app_secret
     if not app_secret and not settings.meta_webhook_require_signature:
         # Fail-open is still the configured policy and no secret exists —
         # skip verification (dev mode), but LOUDLY: a production deploy
         # must never sit in this state quietly.
         logger.warning(
-            "⚠️ Instagram webhook: INSTAGRAM_APP_SECRET not configured — "
-            "signature verification SKIPPED (fail-open). Set "
-            "INSTAGRAM_APP_SECRET to enable it, or "
+            "⚠️ Instagram webhook: no app secret resolved (INSTAGRAM_APP_SECRET "
+            "and WHATSAPP_APP_SECRET both unset) — signature verification "
+            "SKIPPED (fail-open). Set either secret to enable it, or "
             "META_WEBHOOK_REQUIRE_SIGNATURE=true to reject instead."
         )
         return True

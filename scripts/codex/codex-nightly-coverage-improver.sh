@@ -328,7 +328,18 @@ if [ "$COMMITS_AHEAD" -eq 0 ]; then
 fi
 
 # Sanity check: only test files modified
-NON_TEST_CHANGES=$(git diff --name-only "main..${BRANCH_NAME}" | grep -v "/tests/" | wc -l | tr -d ' ')
+#
+# 2026-08-27 repair: under `set -o pipefail` (line 10), `grep -v` exiting 1
+# because it found NO non-test files — the EXPECTED, GOOD outcome, since
+# this improver only ever asks Codex to touch tests/ — poisoned the whole
+# pipeline's exit status and `set -e` killed the script right here, before
+# it ever reached push/PR-create. Confirmed live: 9 of the 10 most recent
+# nightly runs logged "Codex completed" and then nothing else ever again —
+# no push, no PR, no error — because every one of those 9 runs had Codex
+# behave correctly (test-only diff), which is exactly the input that used
+# to crash this line. `{ ... || true; }` absorbs grep's "nothing matched"
+# so a real non-test change (grep finds >=1 line, exits 0) is unaffected.
+NON_TEST_CHANGES=$(git diff --name-only "main..${BRANCH_NAME}" | { grep -v "/tests/" || true; } | wc -l | tr -d ' ')
 if [ "$NON_TEST_CHANGES" -gt 0 ]; then
     log "Codex modified non-test files (${NON_TEST_CHANGES}). Rejecting."
     codex_state blocked path_constraint "Codex modified non-test files" "$BRANCH_NAME" "$REPO_ROOT"

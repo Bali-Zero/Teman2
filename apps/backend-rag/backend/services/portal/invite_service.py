@@ -97,7 +97,15 @@ class InviteService:
                 created_by,
             )
 
-            logger.info("Created invitation for client %s (%s) by %s", client_id, email, created_by)
+            # The address is deliberately NOT interpolated here. This line pre-dates
+            # the outbox: it was written for the human-triggered
+            # `/api/portal/invite/send` endpoint, where a staff member already had
+            # the address on screen. It now also fires UNATTENDED on every paid
+            # GARUDA order, which turns it into a steady stream of client PII into
+            # a persisted log (SYMBIOSIS Law 2 / UU PDP) that no Sentry scrubber
+            # touches — `_before_send` filters events, not log sinks. `client_id`
+            # identifies the row for anyone debugging; the address adds nothing.
+            logger.info("Created invitation for client %s by %s", client_id, created_by)
 
             return {
                 "invitation_id": invitation["id"],

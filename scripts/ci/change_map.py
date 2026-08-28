@@ -277,6 +277,27 @@ DOC_PREFIXES = (
     ".claude/rules/",
     ".claude/commands/",
     ".claude/agents/",
+    # Zero's order 2026-08-27: docs-only PRs must stop paying the 5 heavy
+    # required checks. Every agent-produced PR writes evidence/brief.yml +
+    # evidence/pack.yml (the modus GROUND/CAPTURE ceremony — see
+    # evidence_pack_lint.py, harness-floor.yml) as fixed root-level paths,
+    # regardless of what the PR's real change is. Before this line,
+    # "evidence/" matched no EXACT_RULES/REGEX_RULES/PREFIX_RULES entry and
+    # fell through to `unknown_paths`, which forces run_all=True (the
+    # fail-open default) — so a purely-documentary PR that still carries its
+    # mandatory evidence pack paid for all six heavy jobs anyway, silently
+    # defeating the domain classifier for the single most common PR shape.
+    # Routing it into docs_content_data (same as this tuple's other
+    # ceremony/metadata prefixes) is correct, not a loophole: this module's
+    # `_suggested_jobs()` never grants docs_content_data any of the six
+    # heavy jobs, and evidence/*.yml is read by nothing under
+    # apps/backend-rag/, apps/mouth/, apps/admin-dashboard*/, apps/wa-mirror/,
+    # apps/nuzantara-mcp*/, apps/evaluator/, or packages/core/ (verified by
+    # grep, 2026-08-27) — so it cannot mask a real regression. A PR that
+    # ALSO changes real code keeps whatever domain that code earns; this
+    # only stops evidence/*.yml from being the one unclassified path that
+    # forces run_all=True on top of a genuinely narrow diff.
+    "evidence/",
 )
 DOC_SUFFIXES = (
     ".md",

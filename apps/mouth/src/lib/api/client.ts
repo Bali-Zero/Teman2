@@ -345,6 +345,15 @@ export class ApiClientBase implements IApiClient {
 
       // Handle 401 Unauthorized (token expired or invalid)
       if (response.status === 401) {
+        // Did a session ever exist? A visitor who never logged in gets 401
+        // from any authenticated endpoint, and calling that "expired" is wrong
+        // twice: the message is false, and the event is not worth an alert.
+        // Auth here is cookie-PRIMARY (see the class docstring), so a live
+        // session can exist with no local token — hence the profile check.
+        // Read this BEFORE clearToken(), which erases the evidence.
+        const hadSession =
+          this.getToken() !== null || this.userProfile !== null;
+
         // Clear token and redirect to login
         this.clearToken();
 
@@ -361,12 +370,35 @@ export class ApiClientBase implements IApiClient {
           const alreadyOnLogin =
             currentPath === loginPath ||
             (isPortal && currentPath === "/portal/login");
-          if (!alreadyOnLogin && !currentPath.startsWith("/api/")) {
-            logger.warn("Token expired or invalid, redirecting to login", {
+          // A background call on a public page opts out of the navigation
+          // entirely (see ApiRequestOptions.redirectOnUnauthorized).
+          const mayRedirect = options.redirectOnUnauthorized !== false;
+          if (
+            mayRedirect &&
+            !alreadyOnLogin &&
+            !currentPath.startsWith("/api/")
+          ) {
+            // Level, not silence: a session that DIED is worth seeing, a
+            // visitor who never had one is not. `logger.warn` forwards to
+            // Sentry on the same branch as `logger.error` (logger.ts), so
+            // logging every anonymous 401 at warn burned the Sentry quota —
+            // measured 2026-08-28, Sentry answers 429 and drops REAL events.
+            const context = {
               component: "ApiClient",
               action: "auth_redirect",
               metadata: { currentPath, target: loginPath },
-            });
+            };
+            if (hadSession) {
+              logger.warn(
+                "Token expired or invalid, redirecting to login",
+                context,
+              );
+            } else {
+              logger.debug(
+                "Unauthenticated visitor on a protected route, sending to login",
+                context,
+              );
+            }
             // Use replace to avoid adding to history
             const loginParams = new URLSearchParams({
               expired: "true",
