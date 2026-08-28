@@ -215,6 +215,23 @@ describe("visa clock — a stay that already ended", () => {
     expect(rows).toContainEqual({ label: "Days overstayed", value: "65" });
   });
 
+  it("captures the lead under a source the backend actually accepts", async () => {
+    await renderWithExpiry(-65);
+
+    // `source` is validated server-side against PublicLeadSource. A value that
+    // enum lacks returns 422, AppWhatsAppCTA swallows it, and the visitor is
+    // redirected to the BARE wa.me link — no prefilled message, no lead row.
+    // An earlier draft of this page shipped `visa_clock_overstay`, which the
+    // backend does not define; the cross-stack tripwire caught it. The overstay
+    // is a branch of the Visa Clock funnel, so it captures as `visa_clock` and
+    // carries its discriminator in `context` instead.
+    expect(ctaProps.current?.source).toBe("visa_clock");
+    expect(ctaProps.current?.context).toMatchObject({
+      overstay: true,
+      days_overstayed: 65,
+    });
+  });
+
   it("invents no fine, threshold or penalty — those are domain facts, not ours", async () => {
     await renderWithExpiry(-65);
 
@@ -254,5 +271,9 @@ describe("visa clock — a stay that is still valid (control)", () => {
     }[];
     expect(rows).toContainEqual({ label: "Days left", value: "45" });
     expect(rows.map((r) => r.label)).not.toContain("Days overstayed");
+    // Innocence half of the pair: a running stay is captured under the same
+    // funnel source, and must NOT be flagged as an overstay in context.
+    expect(ctaProps.current?.source).toBe("visa_clock");
+    expect(ctaProps.current?.context).not.toHaveProperty("overstay");
   });
 });

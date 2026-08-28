@@ -122,8 +122,18 @@ export default function VisaClockResultPage({
           Please talk to our visa team today, not in a few days. Bring your
           passport and your entry stamp.
         </p>
+        {/* `source` names the FUNNEL APP, and the overstay is a branch of the
+            Visa Clock, not a seventh app — its human_name and result_url_path
+            would be identical. A value the backend PublicLeadSource enum does
+            not carry is rejected with 422, the capture silently falls back to
+            the bare wa.me link, and the visitor arrives with no prefilled
+            message at all: no visa type, no expiry, no overstay count. That is
+            the homepage_hero bug (#2495, 10 days of unlogged leads) and it
+            would land on precisely the person least able to absorb it. The
+            overstay discriminator therefore travels in `context`, which is
+            free-form. */}
         <AppWhatsAppCTA
-          source="visa_clock_overstay"
+          source="visa_clock"
           headline="Talk to our visa team today"
           description="Send us the message below and we will pick it up — this is the kind of case that gets harder to fix the longer it waits."
           resultHash={data.hash}
@@ -131,6 +141,8 @@ export default function VisaClockResultPage({
             visa_type: data.visa_type,
             entry_date: data.entry_date,
             expiry_date: data.expiry_date,
+            overstay: true,
+            days_overstayed: daysOverstayed,
           }}
           whatsappContext={[
             { label: "Visa", value: data.visa_type },
