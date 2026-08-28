@@ -18,26 +18,34 @@ const FAILURE = "/visa/voa/auth/continue?error=invalid";
 const ACCOUNT_COOKIE =
   "garuda_session=opaque-secret; Domain=.balizero.com; HttpOnly; Path=/; SameSite=none; Secure";
 
+/**
+ * `pending` is the RAW cookie value, so a test can hand over a malformed pair
+ * (the shape a second tab or a tampering client actually produces). `formBody`
+ * exists only to prove the handler ignores it.
+ */
 function makePost({
-  token = TOKEN,
-  resultId = RESULT_ID,
+  pending = `${RESULT_ID}.${TOKEN}`,
   origin = "https://balizero.com",
+  secFetchSite = "same-origin",
+  originHeader = null,
+  formBody = {},
 }: {
-  token?: string | null;
-  resultId?: string | null;
+  pending?: string | null;
   origin?: string;
+  secFetchSite?: string | null;
+  originHeader?: string | null;
+  formBody?: Record<string, string>;
 } = {}): NextRequest {
   const headers: Record<string, string> = {
     "content-type": "application/x-www-form-urlencoded",
   };
-  if (token !== null) headers.cookie = `${PENDING_COOKIE}=${token}`;
-  const body = new URLSearchParams(
-    resultId === null ? {} : { result_id: resultId },
-  );
+  if (pending !== null) headers.cookie = `${PENDING_COOKIE}=${pending}`;
+  if (secFetchSite !== null) headers["sec-fetch-site"] = secFetchSite;
+  if (originHeader !== null) headers.origin = originHeader;
   return new NextRequest(`${origin}/visa/voa/auth/exchange`, {
     method: "POST",
     headers,
-    body: body.toString(),
+    body: new URLSearchParams(formBody).toString(),
   });
 }
 
@@ -113,7 +121,7 @@ describe("POST /visa/voa/auth/exchange", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const { POST } = await import("./route");
-    const res = await POST(makePost({ token: null }));
+    const res = await POST(makePost({ pending: null }));
 
     expect(res.headers.get("location")).toBe(FAILURE);
     expect(fetchMock).not.toHaveBeenCalled();
@@ -254,25 +262,177 @@ describe("POST /visa/voa/auth/exchange", () => {
   it("expires the pending cookie even when the form is malformed", async () => {
     vi.stubGlobal("fetch", vi.fn());
     const { POST } = await import("./route");
-    const res = await POST(makePost({ resultId: null }));
+    const res = await POST(makePost({ pending: RESULT_ID }));
 
     expect(res.headers.get("location")).toBe(FAILURE);
     expect(cleared(res)).toBe(true);
   });
 
   it.each([
-    ["token one char too short", { token: "t".repeat(31) }],
-    ["result_id one char too short", { resultId: "R".repeat(21) }],
-    ["result_id with a path traversal", { resultId: "../../etc" }],
-    ["result_id with an absolute URL", { resultId: "https://evil.example" }],
-  ])("rejects %s without calling the backend", async (_label, over) => {
+    ["no separator at all", TOKEN],
+    ["an empty result id", `.${TOKEN}`],
+    ["a token one char too short", `${RESULT_ID}.${"t".repeat(31)}`],
+    ["a result id one char too short", `${"R".repeat(21)}.${TOKEN}`],
+    ["a result id with a path traversal", `../../etc.${TOKEN}`],
+    ["a result id that is an absolute URL", `https://evil.example.${TOKEN}`],
+  ])(
+    "rejects a pending cookie with %s, without calling the backend",
+    async (_label, pending) => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { POST } = await import("./route");
+      const res = await POST(makePost({ pending }));
+
+      expect(res.headers.get("location")).toBe(FAILURE);
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
+  // ---- council findings, 2026-08-28 (Codex sol + Kimi K3) ----
+
+  it("ignores a forged result_id in the form body — the cookie decides", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => upstream(204, [ACCOUNT_COOKIE])),
+    );
+    const { POST } = await import("./route");
+    const res = await POST(
+      makePost({ formBody: { result_id: "V".repeat(24) } }),
+    );
+
+    expect(res.headers.get("location")).toBe(`/visa/voa/upload/${RESULT_ID}`);
+  });
+
+  it("keeps token and result id together when a second tab overwrites the cookie", async () => {
+    const other = "Z".repeat(24);
+    const otherToken = "z".repeat(40);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(upstream(204, [ACCOUNT_COOKIE]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { POST } = await import("./route");
+    // Tab A's form is submitted, but link B has already replaced the cookie.
+    const res = await POST(
+      makePost({
+        pending: `${other}.${otherToken}`,
+        formBody: { result_id: RESULT_ID },
+      }),
+    );
+
+    // The redeemed token and the upload page MUST name the same application.
+    const body = JSON.parse(String(fetchMock.mock.calls[0][1].body));
+    expect(body.token).toBe(otherToken);
+    expect(res.headers.get("location")).toBe(`/visa/voa/upload/${other}`);
+  });
+
+  it.each([
+    ["absent with no Origin at all", null],
+    ["cross-site", "cross-site"],
+    ["same-site (a sibling subdomain)", "same-site"],
+    ["none (a typed URL or mail-client open)", "none"],
+  ])(
+    "refuses when Sec-Fetch-Site is %s, without calling the backend",
+    async (_label, secFetchSite) => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { POST } = await import("./route");
+      const res = await POST(makePost({ secFetchSite }));
+
+      expect(res.headers.get("location")).toBe(FAILURE);
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it("refuses an absent Sec-Fetch-Site whose Origin is a SIBLING subdomain", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
     const { POST } = await import("./route");
-    const res = await POST(makePost(over));
+    const res = await POST(
+      makePost({
+        secFetchSite: null,
+        originHeader: "https://kita.balizero.com",
+      }),
+    );
 
+    // Same SITE, different ORIGIN — which is the whole vector.
     expect(res.headers.get("location")).toBe(FAILURE);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts an absent Sec-Fetch-Site when the Origin matches exactly", async () => {
+    // Safari < 16.4 and some in-app mail webviews send no Fetch Metadata. An
+    // emailed link is exactly what opens in a webview, so refusing on absence
+    // alone would tell real customers their link is invalid.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(upstream(204, [ACCOUNT_COOKIE])),
+    );
+    const { POST } = await import("./route");
+    const res = await POST(
+      makePost({ secFetchSite: null, originHeader: "https://balizero.com" }),
+    );
+
+    expect(res.headers.get("location")).toBe(`/visa/voa/upload/${RESULT_ID}`);
+  });
+
+  it("reads the LAST account cookie, not any — a later deletion wins in the jar", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          upstream(204, [
+            ACCOUNT_COOKIE,
+            "garuda_session=; Path=/; Max-Age=0; HttpOnly",
+          ]),
+        ),
+    );
+    const { POST } = await import("./route");
+    const res = await POST(makePost());
+
+    // The browser ends up with no session, so the visitor must not be sent to
+    // the authenticated page.
+    expect(res.headers.get("location")).toBe(FAILURE);
+    expect(cleared(res)).toBe(true);
+  });
+
+  it('rejects a quoted-empty account cookie (garuda_session="")', async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(upstream(204, ['garuda_session=""; Path=/'])),
+    );
+    const { POST } = await import("./route");
+    const res = await POST(makePost());
+
+    expect(res.headers.get("location")).toBe(FAILURE);
+  });
+
+  it("clears the pending cookie even on the flag-off 404", async () => {
+    process.env.GARUDA_PUBLIC_ENABLED = "false";
+    vi.stubGlobal("fetch", vi.fn());
+
+    const { POST } = await import("./route");
+    const res = await POST(makePost());
+
+    expect(res.status).toBe(404);
+    expect(cleared(res)).toBe(true);
+  });
+
+  it("rejects an account cookie whose value is EMPTY (that is a deletion)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        upstream(204, ["garuda_session=; Path=/; Max-Age=0; HttpOnly"]),
+      ),
+    );
+    const { POST } = await import("./route");
+    const res = await POST(makePost());
+
+    expect(res.headers.get("location")).toBe(FAILURE);
+    expect(cleared(res)).toBe(true);
   });
 });

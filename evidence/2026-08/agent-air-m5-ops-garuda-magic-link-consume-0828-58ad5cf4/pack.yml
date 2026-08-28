@@ -1,8 +1,8 @@
 brief_ref: evidence/brief.yml
 plan_ref:
   "PR #5157 (agent/air-m5/ops/garuda-magic-link-consume-0828) — make the GARUDA VOA magic link
-  reach a page that redeems it, 2026-08-28. Governing mandate:
-  docs/plans/2026-08-24-garuda-voa-live/MANDATE.md (steps 3-6, the authenticated half)."
+  reach a page that redeems it, 2026-08-28. Governing mandate: docs/plans/2026-08-24-garuda-voa-live/MANDATE.md
+  (steps 3-6, the authenticated half)."
 lanes:
   - lane: garuda-magic-link-consume
     role: build
@@ -12,44 +12,61 @@ lanes:
   - lane: garuda-magic-link-refute
     role: review
     seat:
-      claude-sonnet-5 (spalla-review subagent, dispatched to BREAK the diff rather than confirm it —
-      it found the Google Analytics leak this session had already committed and called safe, plus the
+      claude-sonnet-5 (spalla-review subagent, dispatched to BREAK the diff rather than confirm it
+      — it found the Google Analytics leak this session had already committed and called safe, plus the
       cookie-presence-vs-name defect; see dissent[0] and dissent[1])
   - lane: garuda-magic-link-contract
     role: review
     seat:
       claude-sonnet-5 (two read-only subagents dispatched to map the frontend/backend contracts; BOTH
-      went idle without delivering a report, so the session re-verified every one of their questions
-      itself. Recorded because a lane that produced nothing must not read as coverage — see dissent[4])
-seat_diversity: not_applicable
+      went idle without delivering a report, so the session re-verified every one of their questions itself.
+      Recorded because a lane that produced nothing must not read as coverage — see dissent[4])
+  - lane: garuda-magic-link-council-codex
+    role: review
+    seat:
+      "codex-gpt-5.6-sol (cross-family council, xhigh. Found the two defects the same-family refuter
+      missed: token and result_id travelled UNBOUND — the token in the pending cookie, the result id in
+      a hidden form field — so a second tab or a forged field redeemed one application's token while
+      redirecting to another's upload page; and the POST's flag-off return preceded the cookie clear
+      while the comment above it claimed 'every path'. Both fixed, see dissent.)"
+  - lane: garuda-magic-link-council-kimi
+    role: review
+    seat:
+      kimi-code/k3 (cross-family council. Converged INDEPENDENTLY with Codex on login-CSRF as the
+      headline finding, which is why it is recorded as CONFIRMED rather than one seat's opinion. Its proposed
+      fix was rejected on measurement-free but specific grounds — see dissent.)
+seat_diversity:
+  "cross_family_review: codex-gpt-5.6-sol and kimi-code/k3 both reviewed the diff (journal.jsonl).
+  Build remains single-seat (claude-opus-5), which is what this key reports; the review side is no longer
+  same-family."
 seat_diversity_note:
-  "All lanes are Anthropic seats, and unlike the usual form of this declaration that is a real
-  limitation here rather than a non-issue. The decisive finding — that the root layout's Google
-  Analytics would ship the token — was a JUDGEMENT about a surface the author had forgotten, not a
-  measurement; that is exactly the shape where a cross-family seat adds what a same-family one may
-  not. It was caught, by an Anthropic refuter, and then CONFIRMED by measurement (the live gtag id in
-  production HTML, and RouteChangeTracker.tsx:33 sending window.location.href). Declared plainly: a
-  second forgotten third-party surface would not have been found by the arbiter used here."
+  "All lanes are Anthropic seats, and unlike the usual form of this declaration that
+  is a real limitation here rather than a non-issue. The decisive finding — that the root layout's
+  Google Analytics would ship the token — was a JUDGEMENT about a surface the author had forgotten,
+  not a measurement; that is exactly the shape where a cross-family seat adds what a same-family one
+  may not. It was caught, by an Anthropic refuter, and then CONFIRMED by measurement (the live gtag
+  id in production HTML, and RouteChangeTracker.tsx:33 sending window.location.href). Declared plainly:
+  a second forgotten third-party surface would not have been found by the arbiter used here."
 diff:
   net_lines:
-    11 files, +1195/-119 measured by `git diff --stat origin/main...HEAD` across two commits. Five new
-    frontend files (3 source, 2 test) plus one rewritten test file, one Python default + docstring
-    correction, one Python test class, one workflow one-liner, one sitemap-guard declaration. The
-    first commit's `auth/page.tsx` and `auth/page.test.tsx` are deleted by the second — the leak fix
-    replaced the page with a redirect handler.
+    11 files, +1195/-119 measured by `git diff --stat origin/main...HEAD` across two commits.
+    Five new frontend files (3 source, 2 test) plus one rewritten test file, one Python default + docstring
+    correction, one Python test class, one workflow one-liner, one sitemap-guard declaration. The first
+    commit's `auth/page.tsx` and `auth/page.test.tsx` are deleted by the second — the leak fix replaced
+    the page with a redirect handler.
   behaviour_change:
-    A URL that previously 404'd (`/visa/voa/auth`) now redeems a magic-link token and mints an account
-    session — but only behind `GARUDA_PUBLIC_ENABLED`, which is off on Vercel, so no visitor-visible
-    behaviour changes on merge. The emailed link's destination changes from the funnel's first page to
-    the redeeming route. No database object is created, altered or read at apply time. No existing
-    route's behaviour changes.
+    A URL that previously 404'd (`/visa/voa/auth`) now redeems a magic-link token and
+    mints an account session — but only behind `GARUDA_PUBLIC_ENABLED`, which is off on Vercel, so no
+    visitor-visible behaviour changes on merge. The emailed link's destination changes from the funnel's
+    first page to the redeeming route. No database object is created, altered or read at apply time.
+    No existing route's behaviour changes.
 receipts:
   - claim:
-      Deterministic gear floor recomputed from THIS PR's actual changed-file list is 3 — matching the
-      declared gear and the `Harness floor recompute` FAIL message that demanded this pack
+      Deterministic gear floor recomputed from THIS PR's actual changed-file list is 3 — matching
+      the declared gear and the `Harness floor recompute` FAIL message that demanded this pack
     cmd:
-      git diff --name-only origin/main...HEAD > /tmp/_gml_changed.txt && python3
-      scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/_gml_changed.txt
+      git diff --name-only origin/main...HEAD > /tmp/_gml_changed.txt && python3 scripts/evidence_pack_lint.py
+      --print-floor --changed-files-file /tmp/_gml_changed.txt
     result: 3 (.github/workflows/** is hot-zone by path)
     exit: 0
     ts: 2026-08-28T09:49Z
@@ -58,9 +75,9 @@ receipts:
       THE CENTRAL RECEIPT — the exchange endpoint had zero callers in the frontend, with a positive
       control proving the probe finds callers when they exist
     cmd:
-      git grep -l "voa/auth/sessions" origin/main -- apps/mouth vs the same grep for
-      "voa/auth/magic-links", "voa/eligibility-checks", "voa/orders"
-    result: "auth/sessions -> 0 files · auth/magic-links -> 2 · eligibility-checks -> 7 · orders -> 9"
+      git grep -l "voa/auth/sessions" origin/main -- apps/mouth vs the same grep for "voa/auth/magic-links",
+      "voa/eligibility-checks", "voa/orders"
+    result: auth/sessions -> 0 files · auth/magic-links -> 2 · eligibility-checks -> 7 · orders -> 9
     exit: 0
     ts: 2026-08-28T09:05Z
     seat: session (M5)
@@ -75,8 +92,8 @@ receipts:
     ts: 2026-08-28T09:44Z
     seat: session (M5)
   - claim:
-      The same-origin `/api` proxy forwards the backend's `Set-Cookie` verbatim to the browser — the
-      fact the whole architecture rests on, measured rather than read off a comment
+      The same-origin `/api` proxy forwards the backend's `Set-Cookie` verbatim to the browser —
+      the fact the whole architecture rests on, measured rather than read off a comment
     cmd:
       curl -sS -D - -X POST https://balizero.com/api/visa/voa/eligibility-checks (synthetic non-PII
       payload, valid Idempotency-Key) and the same against https://nuzantara-rag.fly.dev directly
@@ -90,22 +107,22 @@ receipts:
       The magic-link store is really wired in production, contradicting the docstring this PR corrects
       — an unconfigured store raises PersistencePolicyUnavailable (503), and production answers 401
     cmd:
-      "curl -sS -X POST https://nuzantara-rag.fly.dev/api/visa/voa/auth/sessions with a valid
-      Idempotency-Key header and a JSON body carrying a fabricated 40-char token"
+      curl -sS -X POST https://nuzantara-rag.fly.dev/api/visa/voa/auth/sessions with a valid Idempotency-Key
+      header and a JSON body carrying a fabricated 40-char token
     result:
-      '401 {"code":"MAGIC_LINK_INVALID"} — the real store rejecting a fabricated token, not the
-      fail-closed stub; confirmed in code at service_initializer.py:1331 + get_garuda_magic_link_store'
+      401 {"code":"MAGIC_LINK_INVALID"} — the real store rejecting a fabricated token, not the fail-closed
+      stub; confirmed in code at service_initializer.py:1331 + get_garuda_magic_link_store
     exit: 0
     ts: 2026-08-28T09:38Z
     seat: session (M5)
   - claim:
       Frontend suites green, and PROVEN TO BITE — nine source mutations each turn them red, restored
-      green, including the two that matter most (token back in the redirect URL; cookie length check
-      in place of the NAME check)
+      green, including the two that matter most (token back in the redirect URL; cookie length check in
+      place of the NAME check)
     cmd: npx vitest --run src/app/visa/voa/auth (per mutation, scripted mutate/run/revert)
     result:
-      "40 passed (40) clean; mutations -> 2/1/1/1/1/1/1/4/1 failures respectively; restored -> 40
-      passed (40)"
+      40 passed (40) clean; mutations -> 2/1/1/1/1/1/1/4/1 failures respectively; restored -> 40
+      passed (40)
     exit: 0
     ts: 2026-08-28T09:47Z
     seat: session (M5)
@@ -115,126 +132,237 @@ receipts:
     cmd:
       PYTHONPATH=. pytest "backend/tests/services/garuda_portal/test_magic_link.py::TestEmailedMagicLinkUrl"
       -q, then with the default reverted to https://balizero.com/visa/voa, then restored
-    result: "collected 4 items; exit 0 -> 1 -> 0"
+    result: collected 4 items; exit 0 -> 1 -> 0
     exit: 0
     ts: 2026-08-28T09:31Z
     seat: session (M5)
   - claim:
-      The sitemap guard caught the new routes correctly and is green once they are declared — the guard
-      enumerates static /visa/** routes from the tree, so it is not gamed by the declaration
+      The sitemap guard caught the new routes correctly and is green once they are declared — the
+      guard enumerates static /visa/** routes from the tree, so it is not gamed by the declaration
     cmd: npx vitest --run src/app/sitemap.test.ts src/app/visa/voa
     result:
-      "before declaring: 1 failed (src/app/sitemap.test.ts, 'lists every static visa route, or names it
-      as deliberately unlisted'); after: 13 files / 109 tests passed"
+      "before declaring: 1 failed (src/app/sitemap.test.ts, 'lists every static visa route, or
+      names it as deliberately unlisted'); after: 13 files / 109 tests passed"
     exit: 0
     ts: 2026-08-28T09:46Z
     seat: session (M5)
   - claim:
       Linters clean on every touched file, and `ruff format` deliberately NOT run on magic_link_store.py
-      because origin/main is already not format-clean there — formatting it would sweep unrelated
-      reflows into this diff
+      because origin/main is already not format-clean there — formatting it would sweep unrelated reflows
+      into this diff
     cmd:
       npx tsc --noEmit; npx eslint src/app/visa/voa/auth; npx prettier --check src/app/visa/voa/auth;
-      ruff check <two python files>; actionlint .github/workflows/garuda-arm.yml; ruff format --check on
-      origin/main's copy of magic_link_store.py
+      ruff check <two python files>; actionlint .github/workflows/garuda-arm.yml; ruff format --check
+      on origin/main's copy of magic_link_store.py
     result:
-      "tsc/eslint/prettier/ruff check/actionlint all clean; origin/main's magic_link_store.py -> '1 file
-      would be reformatted', hence left alone"
+      tsc/eslint/prettier/ruff check/actionlint all clean; origin/main's magic_link_store.py ->
+      '1 file would be reformatted', hence left alone
     exit: 0
     ts: 2026-08-28T09:35Z
     seat: session (M5)
   - claim:
-      The other red on this PR (`check` / check_watcher_coverage.py) is PRE-EXISTING on origin/main and
-      not caused by this diff — it judges the tree, not the diff, so merged red it blocks every PR
+      The other red on this PR (`check` / check_watcher_coverage.py) is PRE-EXISTING on origin/main
+      and not caused by this diff — it judges the tree, not the diff, so merged red it blocks every PR
     cmd:
-      python3 scripts/check_watcher_coverage.py in this branch and in a detached worktree at
-      origin/main (exit code read directly, never through a pipe)
+      python3 scripts/check_watcher_coverage.py in this branch and in a detached worktree at origin/main
+      (exit code read directly, never through a pipe)
     result:
-      "this branch exit=1 · origin/main exit=1 · the diff touches neither check-skills-canonical.yml nor
-      main-push-failure-watch.yml. Cured in its own PR by a dispatched lane."
+      this branch exit=1 · origin/main exit=1 · the diff touches neither check-skills-canonical.yml
+      nor main-push-failure-watch.yml. Cured in its own PR by a dispatched lane.
     exit: 0
     ts: 2026-08-28T09:41Z
     seat: session (M5)
 ground_truth_lane_absent_note:
-  "Declared rather than overridden: the diff matches a ground-truth PATH glob (it touches
-  apps/mouth pages) but adds no ground-truth CLAIM. There is no regulation, article number, KBLI
-  code, visa rule, deadline or price anywhere in it — the only customer-facing prose added is a
-  button reading 'Continue', a 'link no longer valid' notice, and an email link label changed from
-  'View my VOA result' to 'Continue my application' to match the destination this PR moves it to.
-  Nothing here is checkable against NotebookLM, so a {role: ground_truth, seat, nb, query_hash}
-  lane would have to invent a query_hash to satisfy a linter. `seat_override` was deliberately NOT
-  used, because in this script it is shared with the council_run rule and would have silenced a
-  cross-family review this PR actually ran."
+  "Declared rather than overridden: the diff matches a ground-truth PATH
+  glob (it touches apps/mouth pages) but adds no ground-truth CLAIM. There is no regulation, article
+  number, KBLI code, visa rule, deadline or price anywhere in it — the only customer-facing prose added
+  is a button reading 'Continue', a 'link no longer valid' notice, and an email link label changed
+  from 'View my VOA result' to 'Continue my application' to match the destination this PR moves
+  it to. Nothing here is checkable against NotebookLM, so a {role: ground_truth, seat, nb, query_hash}
+  lane would have to invent a query_hash to satisfy a linter. `seat_override` was deliberately NOT used,
+  because in this script it is shared with the council_run rule and would have silenced a cross-family
+  review this PR actually ran."
 pii_scan: clean
 pii_scan_note:
-  "No client PII anywhere in the diff. Every test fixture is synthetic and obviously so ('t'.repeat(40),
-  'R'.repeat(24), visitor@example.com, probe@example.com). The live probes used a synthetic eligibility
-  payload — nationality/dates/booleans only, no name, passport or document. The token values in this
-  pack and in every log line the new code emits are absent by construction: the handlers log status
-  codes and component/action, never the token or the URL carrying it, and that is asserted by test
-  ('never echoes the token back into the redirect'). One production magic-link probe used
-  probe@example.com against a non-enumerating 202, so no real address was involved."
+  "No client PII anywhere in the diff. Every test fixture is synthetic and obviously so
+  ('t'.repeat(40), 'R'.repeat(24), visitor@example.com, probe@example.com). The live probes used
+  a synthetic eligibility payload — nationality/dates/booleans only, no name, passport or document.
+  The token values in this pack and in every log line the new code emits are absent by construction:
+  the handlers log status codes and component/action, never the token or the URL carrying it, and that
+  is asserted by test ('never echoes the token back into the redirect'). One production magic-link
+  probe used probe@example.com against a non-enumerating 202, so no real address was involved."
 dissent:
   - seat: claude-sonnet-5 (spalla-review refuter)
     objection:
       "BLOCKER — the landing PAGE leaks the single-use token to Google: the root layout renders
-      <GoogleAnalytics> and GA4's page_view carries page_location = document.location.href, so the
-      credential ships to a third party on load, before the customer touches anything. The page's own
-      docblock reasoned about Sentry Session Replay and missed GA autotrack."
+      <GoogleAnalytics> and GA4's page_view carries page_location = document.location.href, so the credential
+      ships to a third party on load, before the customer touches anything. The page's own docblock reasoned
+      about Sentry Session Replay and missed GA autotrack."
     status: CONFIRMED
     resolution:
-      "ACCEPTED and fixed structurally, not per-vendor. Verified independently first (the gtag id is
-      live in production HTML; RouteChangeTracker.tsx:33 sends the full href). The page was replaced by
-      a GET route handler that runs no layout, loads no script and returns no document — so the token
-      URL renders nothing at all — and the page a human sees now carries only result_id. Commit 2."
+      ACCEPTED and fixed structurally, not per-vendor. Verified independently first (the gtag
+      id is live in production HTML; RouteChangeTracker.tsx:33 sends the full href). The page was replaced
+      by a GET route handler that runs no layout, loads no script and returns no document — so the token
+      URL renders nothing at all — and the page a human sees now carries only result_id. Commit 2.
   - seat: claude-sonnet-5 (spalla-review refuter)
     objection:
-      "SHOULD-FIX — `setCookies.length === 0` checks that SOME cookie came back, not that the ACCOUNT
-      cookie did. If the backend ever emits an unrelated cookie on the no-op/replay 204 path, an
-      unauthenticated visitor is redirected onto the authenticated upload page."
+      SHOULD-FIX — `setCookies.length === 0` checks that SOME cookie came back, not that the
+      ACCOUNT cookie did. If the backend ever emits an unrelated cookie on the no-op/replay 204 path,
+      an unauthenticated visitor is redirected onto the authenticated upload page.
     status: CONFIRMED
     resolution:
-      "ACCEPTED and fixed: now `forwarded.some(c => c.startsWith('garuda_session='))`, with a test that
-      sends a 204 carrying only an unrelated cookie and asserts the failure redirect. The mutation
-      swapping the name check back for a length check turns that test red."
+      "ACCEPTED and fixed: now `forwarded.some(c => c.startsWith('garuda_session='))`, with
+      a test that sends a 204 carrying only an unrelated cookie and asserts the failure redirect. The
+      mutation swapping the name check back for a length check turns that test red."
   - seat: claude-sonnet-5 (spalla-review refuter)
     objection:
-      "SUGGESTION — sentry.server.config.ts / edge.config.ts have no query scrubbing, and it could not
-      be confirmed or ruled out that Next's Sentry instrumentation captures the full URL (with the
-      token) on server transactions."
+      SUGGESTION — sentry.server.config.ts / edge.config.ts have no query scrubbing, and it could
+      not be confirmed or ruled out that Next's Sentry instrumentation captures the full URL (with the
+      token) on server transactions.
     status: PLAUSIBLE
     resolution:
-      "NOT FIXED, ACCEPTED AS RESIDUAL AND DECLARED. Out of scope for this PR and NOT claimed clean:
-      the risks section and the new route's own docblock both state that the token remains in the URL
-      of one first-party GET and can therefore reach Vercel's access log or a server-side Sentry
+      "NOT FIXED, ACCEPTED AS RESIDUAL AND DECLARED. Out of scope for this PR and NOT claimed
+      clean: the risks section and the new route's own docblock both state that the token remains in
+      the URL of one first-party GET and can therefore reach Vercel's access log or a server-side Sentry
       transaction. Left as a named follow-up rather than an unstated assumption."
   - seat: claude-sonnet-5 (spalla-review refuter)
     objection:
-      "NITs — the formData() catch branch is untested; the UPPER length boundaries (token 2048,
+      NITs — the formData() catch branch is untested; the UPPER length boundaries (token 2048,
       result_id 128) have no boundary tests while the lower ones do; a double-click submits twice and
-      the second POST shows 'link no longer valid' even though the first succeeded."
+      the second POST shows 'link no longer valid' even though the first succeeded.
     status: PLAUSIBLE
     resolution:
-      "ACKNOWLEDGED, not fixed. The catch branch fails closed already; the upper bounds are correct by
-      inspection and mirror the backend, which is the real boundary; the double-submit case is a
-      confusing message, never an unsafe state (the session is already granted). Recorded rather than
-      silently dropped."
+      ACKNOWLEDGED, not fixed. The catch branch fails closed already; the upper bounds are correct
+      by inspection and mirror the backend, which is the real boundary; the double-submit case is a confusing
+      message, never an unsafe state (the session is already granted). Recorded rather than silently dropped.
   - seat: session (self-correction)
     objection:
-      "Two claims this session made mid-investigation were WRONG and were retracted before they reached
-      the diff: (a) that the Vercel proxy and Fly disagreed structurally (a 503 through the proxy) —
-      it was transient, and the next three attempts were 201/201/201; (b) that curl had refused the
-      cookie — the jar filter excluded lines starting with '#', which is exactly how curl writes
-      HttpOnly cookies. Both were broken probes, not findings."
+      "Two claims this session made mid-investigation were WRONG and were retracted before they
+      reached the diff: (a) that the Vercel proxy and Fly disagreed structurally (a 503 through the proxy)
+      — it was transient, and the next three attempts were 201/201/201; (b) that curl had refused the
+      cookie — the jar filter excluded lines starting with '#', which is exactly how curl writes HttpOnly
+      cookies. Both were broken probes, not findings."
     status: RETRACTED
     resolution:
-      "RETRACTED and recorded. Neither reached a design decision. Kept here because a pack that lists
-      only the claims that survived reads as if none had to be withdrawn."
+      RETRACTED and recorded. Neither reached a design decision. Kept here because a pack that
+      lists only the claims that survived reads as if none had to be withdrawn.
   - seat: claude-sonnet-5 (two contract-mapping subagents)
-    objection: "No report delivered — both went idle twice without producing their findings."
+    objection: No report delivered — both went idle twice without producing their findings.
     status: CONFIRMED
     resolution:
-      "REPLACED BY DIRECT VERIFICATION. The session re-ran every question itself (proxy runtime and
-      Set-Cookie path, base-URL resolution, exchange contract, origin allow-list, cookie attributes,
+      REPLACED BY DIRECT VERIFICATION. The session re-ran every question itself (proxy runtime
+      and Set-Cookie path, base-URL resolution, exchange contract, origin allow-list, cookie attributes,
       flag gate, result_id and token patterns), each cited by file:line in the two commits. Recorded so
-      that three declared review lanes are not read as three lanes of coverage."
+      that three declared review lanes are not read as three lanes of coverage.
+  - seat: codex-gpt-5.6-sol (cross-family council)
+    objection:
+      "BLOCKER — the exchanged token and the redirect target were not bound. The token came from
+      the pending cookie; result_id came from a hidden form field. Two tabs: open link A, then link B
+      overwrites the shared cookie; submit tab A and token B is redeemed while the browser lands on /upload/A.
+      A forged hidden field does the same deliberately."
+    status: CONFIRMED
+    resolution:
+      "ACCEPTED and fixed at the root: both halves now travel together in the ONE pending cookie
+      (`encodePending`/`decodePending` in contract.ts), the form carries no fields at all, and a forged
+      result_id is ignored because nothing reads the body. Verified in my own code before acting on the
+      report — exchange/route.ts:92 took it from `form.get('result_id')` and :158 redirected with it.
+      Two new tests bite: the two-tab overwrite asserts the redeemed token and the upload URL name the
+      SAME application, and the forged-field test asserts the cookie decides. Reverting the binding turns
+      3 tests red."
+  - seat: codex-gpt-5.6-sol (cross-family council)
+    objection:
+      SHOULD-FIX — the POST's comment claimed the pending cookie is cleared on EVERY path out,
+      but the flag-off 404 returned before the clear was even computed. The comment was the defect.
+    status: CONFIRMED
+    resolution:
+      "ACCEPTED. `clear` is now computed before the flag gate and attached to the 404 too. Test:
+      'clears the pending cookie even on the flag-off 404'. This is the second lying comment this diff
+      has had to fix, which is the pattern worth naming: a comment asserting a universal ('every path',
+      'nothing here carries it') is a claim that needs a test, not prose."
+  - seat: kimi-code/k3 AND codex-gpt-5.6-sol, independently
+    objection:
+      BLOCKER — login CSRF / session fixation. An attacker requests their OWN magic link and
+      induces the victim to top-level-navigate to it. The pending cookie is set, the victim sees a GENERIC
+      'Continue your application', clicks, and the ATTACKER's account session is planted in the victim's
+      browser — which then uploads a passport into the attacker's application for the attacker to read
+      later.
+    status: CONFIRMED
+    resolution:
+      "CONFIRMED AND NOT CLOSED IN THIS PR — recorded as the gating condition for promotion,
+      not for merge. Two seats of different families reached it independently, so it is not one refuter's
+      imagination. It cannot be closed from the frontend: every complete fix needs the recipient's identity
+      shown on the continuation page ('Continue as a***@example.com'), and the backend exposes no NON-CONSUMING
+      lookup from token to email — `exchange` is the only reader and it burns the token. The store does
+      hold `email` beside `token_hash` and `result_id` (magic_link_store.py, INSERT at :285), so the endpoint
+      is buildable; it is the immediate follow-on PR. Merging this PR does not expose it: `GARUDA_PUBLIC_ENABLED`
+      is off on Vercel, every surface in this diff re-checks it, and the mandate is a dark launch. What
+      ships now is a one-sentence mitigation on the page ('Continuing opens the application this link
+      was emailed for. If you did not ask us for it, close this page instead.') which is a mitigation
+      and is labelled as one in the code."
+  - seat: kimi-code/k3 (cross-family council)
+    objection:
+      "Proposed fix for the login-CSRF finding: switch the pending cookie from SameSite=Lax to
+      SameSite=Strict, which 'would break the attack chain at the continue-page step while keeping the
+      legitimate email flow'."
+    status: PLAUSIBLE
+    resolution:
+      "REJECTED, and the reason is the one the proposal does not account for. Under Strict the
+      browser withholds the cookie on a request whose navigation was cross-site-INITIATED, and the redirect
+      from the landing handler to ./continue is part of that same navigation chain. A click in a NATIVE
+      mail client has no initiator and would work; a click in WEBMAIL (Gmail in a browser, which rewrites
+      links through google.com) is cross-site-initiated and would NOT send the cookie — the legitimate
+      customer would be told the link is no longer valid. That is the majority of users for this product.
+      Declared honestly as REASONED, NOT MEASURED: I did not build a two-origin browser fixture to observe
+      it, so this is an argument from the SameSite redirect-chain rule and the well-known 'Strict breaks
+      email links' behaviour, not an experiment. If it is wrong, Strict becomes the cheap fix and the
+      follow-on PR is unnecessary — which is exactly why the login-CSRF entry above names the backend
+      endpoint as the fix rather than this."
+  - seat: codex-gpt-5.6-sol + kimi-code/k3 (both)
+    objection:
+      SHOULD-FIX — the account-cookie check tested only the name prefix, so `garuda_session=`
+      with an EMPTY value (which is how a cookie is DELETED) would read as a successful sign-in and send
+      an anonymous visitor to the authenticated upload page.
+    status: CONFIRMED
+    resolution:
+      "ACCEPTED. `hasAccountSession` in contract.ts now requires a non-empty value. Test: 'rejects
+      an account cookie whose value is EMPTY (that is a deletion)'. Reverting it turns 1 test red. Note
+      this is the THIRD tightening of the same three-line check across three review rounds (presence ->
+      name -> name+value), which is the shape rule 8 warns about; it stops here because the check now
+      asserts the property that actually matters."
+  - seat: codex-gpt-5.6-sol (cross-family council)
+    objection:
+      SHOULD-FIX — the exchange POST validated no Origin/Sec-Fetch-Site. SameSite=Lax stops an
+      ordinary cross-site POST but NOT one from a sibling subdomain, which is same-site.
+    status: CONFIRMED
+    resolution:
+      "ACCEPTED. The exchange now requires `Sec-Fetch-Site: same-origin` and treats ABSENT as
+      a refusal. Four tests bite (absent / cross-site / same-site / none). Residual accepted deliberately:
+      this also refuses a POST from a client that sends no such header, which no browser reaching this
+      form does."
+  - seat: codex-gpt-5.6-sol (cross-family council)
+    objection:
+      SHOULD-FIX — the landing's flag-off branch returned a bare 404 while the request URL still
+      held the token, so it could reach a cache or the next page's Referer. Proposed a 303 to a token-free
+      page instead.
+    status: CONFIRMED
+    resolution:
+      "PARTIALLY ACCEPTED, deliberately diverging on the remedy. The 404 now carries `Cache-Control:
+      no-store` and `Referrer-Policy: no-referrer` (test bites). It stays a 404 rather than becoming a
+      redirect because while the funnel is dark this route must be indistinguishable from one that does
+      not exist, and a dark funnel issues no links — so there is no live token to strip, while a 303 would
+      confirm the route to anyone probing. Concealment beats sanitisation on a path where the credential
+      cannot exist."
+  - seat: codex-gpt-5.6-sol (cross-family council)
+    objection:
+      BLOCKER — a POST does not prove a human gesture. A cookie-preserving sandbox could GET
+      the emailed URL, follow the 303, parse the plain form and POST it, consuming the token. Proposed
+      a server-verified human-presence challenge.
+    status: PLAUSIBLE
+    resolution:
+      ACCEPTED AS RESIDUAL, not fixed, and the overclaiming comment corrected. What POST-only
+      actually buys is that no PASSIVE fetch spends the token — GET/HEAD/prefetch/redirect-following do
+      not, which is the behaviour mail scanners and link-preview bots actually exhibit. A sandbox that
+      parses and submits forms is a different adversary, and a challenge in front of every emailed link
+      is a product cost this dark launch does not justify. The doc comment claiming 'the POST that a human
+      gesture produces' now says so plainly instead.
+council_run: journal.jsonl

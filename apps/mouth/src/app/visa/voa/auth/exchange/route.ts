@@ -2,13 +2,11 @@ import { NextRequest } from "next/server";
 import { isGarudaVoaPublicEnabled } from "../../flag";
 import { logger } from "@/lib/logger";
 import {
-  ACCOUNT_COOKIE_PREFIX,
   FAILURE_LOCATION,
   PENDING_COOKIE,
   PENDING_COOKIE_PATH,
-  RESULT_ID_PATTERN,
-  TOKEN_MAX_LENGTH,
-  TOKEN_MIN_LENGTH,
+  decodePending,
+  hasAccountSession,
   isLoopback,
 } from "../contract";
 
@@ -21,8 +19,13 @@ import {
  * saw ever held it (see that file for why — the root layout's Google
  * Analytics reads `window.location.href` on every page).
  *
- * Reached only by the form's POST, never a GET, so a mail scanner's
- * unsolicited prefetch of the emailed link cannot burn the single-use token.
+ * Only `POST` is exported, so a mail scanner's unsolicited GET/HEAD/prefetch
+ * of the emailed link cannot burn the single-use token. A POST is NOT proof
+ * of a human gesture, though — a cookie-preserving sandbox that follows the
+ * 303 and submits the form would redeem it (council finding, Codex sol
+ * 2026-08-28, accepted as residual: the alternative is a challenge in front
+ * of every emailed link). What it does buy is that no PASSIVE fetch spends
+ * the token.
  *
  * THE FLAG IS RE-CHECKED HERE ON PURPOSE. `../../layout.tsx` gates every PAGE
  * under `/visa/voa/**` with `notFound()`, but Next does not run layouts for
@@ -70,36 +73,57 @@ function seeOther(location: string, cookies: string[]): Response {
 }
 
 export async function POST(request: NextRequest): Promise<Response> {
-  if (!isGarudaVoaPublicEnabled()) {
-    return new Response(null, { status: 404 });
-  }
-
   const secure = !isLoopback(new URL(request.url).hostname);
   // The token is spent (or was never valid) by the time we answer, so the
   // pending cookie is cleared on EVERY path out of here — success, refusal,
-  // and malformed alike. Leaving it behind would keep a live credential in
-  // the browser after the one gesture it existed for.
+  // malformed, AND flag-off. This is computed before the flag gate on
+  // purpose: an earlier version returned 404 first and left a live credential
+  // sitting in the browser, while the comment above it claimed "every path"
+  // (council finding, Codex sol 2026-08-28 — the comment was the bug).
   const clear = expirePending(secure);
 
-  const magicToken = request.cookies.get(PENDING_COOKIE)?.value;
+  if (!isGarudaVoaPublicEnabled()) {
+    return new Response(null, {
+      status: 404,
+      headers: { "Cache-Control": "no-store", "set-cookie": clear },
+    });
+  }
 
-  let form: FormData;
-  try {
-    form = await request.formData();
-  } catch {
+  // The POST must be provably same-origin. `SameSite=Lax` on the pending
+  // cookie stops an ordinary cross-site POST but NOT one from a sibling
+  // subdomain, which is same-site — and this app shares `balizero.com` with
+  // several.
+  //
+  // `Sec-Fetch-Site` is browser-set and unforgeable by page JS, so it is the
+  // primary signal. ABSENT is not treated as same-origin, but it is not an
+  // automatic refusal either: Safari only shipped the header in 16.4, and some
+  // in-app mail webviews still omit it — and an EMAILED link is exactly the
+  // entry point that lands in a webview, so refusing on absence alone would
+  // silently tell real customers their link is invalid (adversarial review
+  // 2026-08-28). Those clients do send `Origin` on a POST, and a sibling
+  // subdomain's `Origin` is a DIFFERENT origin, so the fallback closes the
+  // same vector without the false refusals.
+  const site = request.headers.get("sec-fetch-site");
+  const originHeader = request.headers.get("origin");
+  const sameOrigin =
+    site === "same-origin" ||
+    (site === null && originHeader === new URL(request.url).origin);
+  if (!sameOrigin) {
+    logger.info("[garuda-voa-auth] exchange refused: not same-origin", {
+      component: "AUTO",
+      action: "denied",
+    });
     return seeOther(FAILURE_LOCATION, [clear]);
   }
-  const resultId = form.get("result_id");
 
-  if (
-    typeof magicToken !== "string" ||
-    magicToken.length < TOKEN_MIN_LENGTH ||
-    magicToken.length > TOKEN_MAX_LENGTH ||
-    typeof resultId !== "string" ||
-    !RESULT_ID_PATTERN.test(resultId)
-  ) {
+  // BOTH halves come from the one cookie, and the form body is not read at
+  // all — it carries no fields. See `../contract.ts` on why the result id
+  // stopped being a hidden input.
+  const pending = decodePending(request.cookies.get(PENDING_COOKIE)?.value);
+  if (pending === null) {
     return seeOther(FAILURE_LOCATION, [clear]);
   }
+  const { resultId, token: magicToken } = pending;
 
   // `Idempotency-Key` is mandatory on the exchange and must match
   // `^[A-Za-z0-9._~-]{16,200}$`. `randomUUID()` satisfies that charset. A
@@ -142,12 +166,13 @@ export async function POST(request: NextRequest): Promise<Response> {
   // stores none of them correctly.
   const forwarded = upstream.headers.getSetCookie();
 
-  // Check the NAME, not merely that SOME cookie came back (adversarial
-  // review, 2026-08-28). A 204 with no session cookie is the documented
-  // replay outcome, and if the backend ever adds an unrelated cookie on that
-  // path a length check would pass it and land an unauthenticated visitor on
-  // the authenticated upload page.
-  if (!forwarded.some((c) => c.startsWith(ACCOUNT_COOKIE_PREFIX))) {
+  // Check the NAME *and* a non-empty VALUE (adversarial review 2026-08-28,
+  // then both council seats independently). A 204 with no session cookie is
+  // the documented replay outcome; an unrelated cookie would satisfy a mere
+  // length check; and `garuda_session=` with an empty value is a DELETION
+  // that satisfies a name-prefix check. All three would land an
+  // unauthenticated visitor on the authenticated upload page.
+  if (!hasAccountSession(forwarded)) {
     logger.warn(
       "[garuda-voa-auth] exchange returned 204 with no account session cookie",
       { component: "AUTO", action: "warn" },

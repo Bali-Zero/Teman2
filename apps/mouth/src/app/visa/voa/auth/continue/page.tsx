@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { isGarudaVoaPublicEnabled } from "../../flag";
-import { PENDING_COOKIE, RESULT_ID_PATTERN } from "../contract";
+import { PENDING_COOKIE, decodePending } from "../contract";
 
 /**
  * `/visa/voa/auth/continue` — the one page of the magic-link flow a human
@@ -17,11 +17,25 @@ import { PENDING_COOKIE, RESULT_ID_PATTERN } from "../contract";
  * with no second `Set-Cookie`, so whoever arrives second gets no session
  * either way. Mail scanners (Gmail, Safe Links, chat preview bots) routinely
  * GET an emailed link before any human clicks — and they follow redirects, so
- * this page is reachable by a scanner too. The exchange therefore runs only
- * on the POST that a human gesture produces.
+ * this page is reachable by a scanner too. Redemption happens only on the
+ * POST. That is not the same as proof of a human gesture (see
+ * `exchange/route.ts`); what it guarantees is that no PASSIVE fetch spends
+ * the token.
  *
- * The form is plain HTML with no client component on purpose: there is no
- * value for JavaScript to read, and none to leak.
+ * The form carries NO fields: both the token and the result id it was issued
+ * for live in the one HttpOnly cookie, bound together. It is plain HTML with
+ * no client component on purpose — there is no value for JavaScript to read,
+ * and none to leak.
+ *
+ * KNOWN RESIDUAL, tracked, not closed here: this page does not say WHOSE
+ * application it is about to open. Both council seats (Codex sol and Kimi K3,
+ * independently, 2026-08-28) reached the same conclusion — a generic
+ * "Continue" plus an unbound landing GET is login CSRF: an attacker mails a
+ * victim their OWN link, the victim clicks Continue, and the attacker's
+ * session is planted in the victim's browser, which then uploads a passport
+ * into the attacker's application. Closing it needs a non-consuming
+ * recipient-identity lookup the backend does not expose yet, so the sentence
+ * below is a mitigation and NOT a fix. The funnel is dark while this stands.
  */
 
 function firstValue(v: string | string[] | undefined): string | undefined {
@@ -40,20 +54,13 @@ export default async function GarudaVoaAuthContinuePage({
     notFound();
   }
 
-  const sp = await searchParams;
-  const resultId = firstValue(sp.result_id);
-  const failed = firstValue(sp.error) !== undefined;
+  const failed = firstValue((await searchParams).error) !== undefined;
 
-  // The cookie is the only thing that proves a token is in flight. Without
-  // it there is nothing to submit, so offering the button would be a lie.
-  const pending = (await cookies()).get(PENDING_COOKIE)?.value;
-
-  const ready =
-    !failed &&
-    typeof pending === "string" &&
-    pending.length > 0 &&
-    typeof resultId === "string" &&
-    RESULT_ID_PATTERN.test(resultId);
+  // The cookie is the only thing that proves a token is in flight, and it
+  // must decode to a well-formed pair. Without that there is nothing to
+  // submit, so offering the button would be a lie.
+  const pending = decodePending((await cookies()).get(PENDING_COOKIE)?.value);
+  const ready = !failed && pending !== null;
 
   if (!ready) {
     return (
@@ -73,9 +80,11 @@ export default async function GarudaVoaAuthContinuePage({
       <p className="text-gray-600">
         You&apos;re one step from uploading your documents.
       </p>
+      <p className="text-sm text-gray-500">
+        Continuing opens the application this link was emailed for. If you did
+        not ask us for it, close this page instead.
+      </p>
       <form method="post" action="/visa/voa/auth/exchange">
-        {/* Only the result id. The token stays in the HttpOnly cookie. */}
-        <input type="hidden" name="result_id" value={resultId} />
         <button
           type="submit"
           className="rounded-md bg-black px-6 py-3 text-white"

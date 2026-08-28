@@ -70,10 +70,14 @@ describe("GET /visa/voa/auth", () => {
     // THE point of this route: the next URL the browser renders — the one GA
     // will report as page_location — carries no credential.
     expect(location).not.toContain(TOKEN);
-    expect(location).toBe(`/visa/voa/auth/continue?result_id=${RESULT_ID}`);
+    // And NOTHING else either: the result id moved into the cookie too, bound
+    // to the token it was issued with (council finding, 2026-08-28).
+    expect(location).toBe("/visa/voa/auth/continue");
+    expect(location).not.toContain(RESULT_ID);
 
     const cookie = pendingCookie(res);
     expect(cookie).toContain(TOKEN);
+    expect(cookie).toContain(`${PENDING_COOKIE}=${RESULT_ID}.${TOKEN}`);
     expect(cookie).toContain("HttpOnly");
     expect(cookie).toContain("Secure");
     expect(cookie).toContain("SameSite=Lax");
@@ -83,15 +87,41 @@ describe("GET /visa/voa/auth", () => {
     expect(cookie).toMatch(/Max-Age=\d+/);
   });
 
-  it("omits Secure on loopback so local dev can accept the cookie", async () => {
+  it.each([
+    ["localhost", "http://localhost:3000"],
+    ["127.0.0.1", "http://127.0.0.1:3000"],
+    // URL.hostname yields the BRACKETED form here; the backend's
+    // `_LOOPBACK_HOSTS` lists `::1` and this mirror was missing it.
+    ["IPv6 [::1]", "http://[::1]:3000"],
+  ])(
+    "omits Secure on %s so local dev can accept the cookie",
+    async (_label, origin) => {
+      const { GET } = await import("./route");
+      const res = await GET(makeGet(undefined, origin));
+      expect(pendingCookie(res)).not.toContain("Secure");
+    },
+  );
+
+  it("still sets Secure on a real host", async () => {
     const { GET } = await import("./route");
-    const res = await GET(makeGet(undefined, "http://localhost:3000"));
-    expect(pendingCookie(res)).not.toContain("Secure");
+    expect(pendingCookie(await GET(makeGet()))).toContain("Secure");
   });
 
   it("asks the browser not to pass this URL on as a referrer", async () => {
     const { GET } = await import("./route");
     const res = await GET(makeGet());
+    expect(res.headers.get("referrer-policy")).toBe("no-referrer");
+  });
+
+  it("does not leak the token via cache or referrer on the flag-off 404", async () => {
+    process.env.GARUDA_PUBLIC_ENABLED = "false";
+    const { GET } = await import("./route");
+    const res = await GET(makeGet());
+
+    expect(res.status).toBe(404);
+    // The request URL holds a token even on this path; a bare 404 with no
+    // headers would let it reach a cache or the next page's Referer.
+    expect(res.headers.get("cache-control")).toBe("no-store");
     expect(res.headers.get("referrer-policy")).toBe("no-referrer");
   });
 

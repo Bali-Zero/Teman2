@@ -42,7 +42,7 @@ describe("/visa/voa/auth/continue", () => {
   beforeEach(() => {
     notFoundMock.mockClear();
     process.env.GARUDA_PUBLIC_ENABLED = "true";
-    cookieStore.value = TOKEN;
+    cookieStore.value = `${RESULT_ID}.${TOKEN}`;
     vi.stubGlobal("fetch", vi.fn());
   });
 
@@ -53,7 +53,7 @@ describe("/visa/voa/auth/continue", () => {
   });
 
   it("renders the form and redeems nothing at render time", async () => {
-    const { container } = render(await renderPage({ result_id: RESULT_ID }));
+    const { container } = render(await renderPage({}));
 
     expect(fetch).not.toHaveBeenCalled();
     const form = container.querySelector("form");
@@ -64,8 +64,8 @@ describe("/visa/voa/auth/continue", () => {
     ).toBeInTheDocument();
   });
 
-  it("puts NO token anywhere in the document", async () => {
-    const { container } = render(await renderPage({ result_id: RESULT_ID }));
+  it("puts NO token and NO field of any kind in the document", async () => {
+    const { container } = render(await renderPage({}));
 
     // The whole reason ../route.ts redirects instead of rendering: this
     // markup is what Google Analytics' page_view sits alongside.
@@ -74,18 +74,15 @@ describe("/visa/voa/auth/continue", () => {
       container.querySelector(`input[name="${PENDING_COOKIE}"]`),
     ).toBeNull();
     expect(container.querySelector('input[name="magic_token"]')).toBeNull();
-    // Only the result id is submitted.
-    const hidden = container.querySelector<HTMLInputElement>(
-      'input[name="result_id"]',
-    );
-    expect(hidden?.getAttribute("value")).toBe(RESULT_ID);
+    // The form submits NOTHING. A hidden result_id was forgeable and unbound
+    // from the token; both halves now ride in the cookie (council, 2026-08-28).
+    expect(container.querySelector("input")).toBeNull();
+    expect(container.innerHTML).not.toContain(RESULT_ID);
   });
 
   it("404s when the dark-launch flag is off", async () => {
     delete process.env.GARUDA_PUBLIC_ENABLED;
-    await expect(renderPage({ result_id: RESULT_ID })).rejects.toThrow(
-      "NEXT_NOT_FOUND",
-    );
+    await expect(renderPage({})).rejects.toThrow("NEXT_NOT_FOUND");
     expect(notFoundMock).toHaveBeenCalled();
   });
 
@@ -93,24 +90,35 @@ describe("/visa/voa/auth/continue", () => {
     // Nothing to submit — a scanner that followed the redirect, or a stale
     // bookmark. Showing the button would be a lie.
     cookieStore.value = undefined;
-    const { container } = render(await renderPage({ result_id: RESULT_ID }));
+    const { container } = render(await renderPage({}));
 
     expect(container.querySelector("form")).toBeNull();
     expect(screen.getByText(/no longer valid/i)).toBeInTheDocument();
   });
 
   it.each([
-    ["a malformed result_id", { result_id: "../.." }],
-    ["no result_id", {}],
     ["an error marker from a refused exchange", { error: "invalid" }],
-    [
-      "an error marker even alongside a valid result_id",
-      { error: "invalid", result_id: RESULT_ID },
-    ],
+    ["an error marker with any other value", { error: "" }],
   ])("offers no form for %s", async (_label, sp) => {
     const { container } = render(
       await renderPage(sp as Record<string, string>),
     );
+
+    expect(container.querySelector("form")).toBeNull();
+    expect(screen.getByText(/no longer valid/i)).toBeInTheDocument();
+  });
+
+  it.each([
+    ["holds a token but no result id", TOKEN],
+    ["holds a result id but no token", RESULT_ID],
+    ["has an empty result-id half", `.${TOKEN}`],
+    ["has a malformed result id", `../...${TOKEN}`],
+    ["has a token below the backend minimum", `${RESULT_ID}.short`],
+  ])("offers no form when the pending cookie %s", async (_label, value) => {
+    // The page must not promise a button the exchange will refuse: the
+    // cookie has to decode to a WELL-FORMED pair, not merely be present.
+    cookieStore.value = value;
+    const { container } = render(await renderPage({}));
 
     expect(container.querySelector("form")).toBeNull();
     expect(screen.getByText(/no longer valid/i)).toBeInTheDocument();

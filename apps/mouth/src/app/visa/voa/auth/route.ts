@@ -8,6 +8,7 @@ import {
   RESULT_ID_PATTERN,
   TOKEN_MAX_LENGTH,
   TOKEN_MIN_LENGTH,
+  encodePending,
   isLoopback,
 } from "./contract";
 
@@ -61,7 +62,20 @@ function seeOther(location: string, cookie?: string): Response {
 
 export async function GET(request: NextRequest): Promise<Response> {
   if (!isGarudaVoaPublicEnabled()) {
-    return new Response(null, { status: 404 });
+    // A BARE 404, deliberately, not a redirect to a token-free page: while
+    // the funnel is dark this route must be indistinguishable from one that
+    // does not exist. It still carries `no-store` and `no-referrer`, because
+    // the request URL holds a token even on this path -- the council (Codex
+    // sol, 2026-08-28) asked for the redirect instead; concealment wins here
+    // because a dark funnel issues no links, so there is no live token to
+    // strip, while a 303 would confirm the route to anyone probing.
+    return new Response(null, {
+      status: 404,
+      headers: {
+        "Cache-Control": "no-store",
+        "Referrer-Policy": "no-referrer",
+      },
+    });
   }
 
   const url = new URL(request.url);
@@ -80,7 +94,7 @@ export async function GET(request: NextRequest): Promise<Response> {
   }
 
   const cookie = [
-    `${PENDING_COOKIE}=${encodeURIComponent(magicToken)}`,
+    `${PENDING_COOKIE}=${encodeURIComponent(encodePending(resultId, magicToken))}`,
     "HttpOnly",
     `Path=${PENDING_COOKIE_PATH}`,
     `Max-Age=${PENDING_COOKIE_MAX_AGE_SECONDS}`,
@@ -88,8 +102,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     ...(isLoopback(url.hostname) ? [] : ["Secure"]),
   ].join("; ");
 
-  return seeOther(
-    `/visa/voa/auth/continue?result_id=${encodeURIComponent(resultId)}`,
-    cookie,
-  );
+  // No `result_id` in the query: it rides in the cookie, bound to the token
+  // it was issued with. The continuation URL therefore carries NOTHING.
+  return seeOther("/visa/voa/auth/continue", cookie);
 }
