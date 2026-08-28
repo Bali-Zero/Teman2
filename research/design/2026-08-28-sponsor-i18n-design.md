@@ -13,7 +13,7 @@ sources:
   - consent-placement lane (custody component, two-density pattern reused here) — research/design/2026-08-27-consent-placement-design.md; mockups/consent-placement/a4-dates-consent.html
   - live surfaces read this round — apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/i18n.ts, _components/LanguageToggle.tsx, apps/mouth/src/app/visa/voa/checkout/[resultId]/CheckoutFlow.tsx, apps/mouth/src/i18n/ (global provider, locales/{en,id,it,fr,ru}.json), apps/mouth/src/app/visa/second-home/[locale]/
 adversarial_review: codex
-adversarial_review_detail: joint round-grade panel with the delegate-flow (item 4) dossier, run 2026-08-28 — codex gpt-5.6-sol xhigh filesystem (13) · kimi k3 filesystem (15) · agy gemini-3.1-pro inline (12) · qwen3.8-max inline (17) = 57 raw findings, deduped to 27 register rows (23 apply / 3 partial / embedded rejects on R11's second-field proposal and R21.v) + 1 independent Explore verification pass (10 load-bearing claims: 8 true, 1 imprecise, 1 false-by-letter); register and raw seat outputs archived in mockups/sponsor-i18n/panel/; dispositions in mockups/sponsor-i18n/adversarial.json. This file's earlier "PROPOSED, panel pending" framing (2026-08-28 draft) is superseded — see §6.
+adversarial_review_detail: joint round-grade panel with the delegate-flow (item 4) dossier, run 2026-08-28 — codex gpt-5.6-sol xhigh filesystem (13) · kimi k3 filesystem (15) · agy gemini-3.1-pro inline (12) · qwen3.8-max inline (17) = 57 raw findings, deduped to 27 register rows (23 apply / 3 partial / embedded rejects on R11's second-field proposal and R21.v) + 1 independent Explore verification pass (10 load-bearing claims: 8 true, 1 imprecise, 1 false-by-letter); raw seat outputs archived in mockups/sponsor-i18n/panel/ (the joint register's canonical archived copy ships with the delegate lane: research/design/mockups/delegate-flow/panel/disposition-register.md); dispositions in mockups/sponsor-i18n/adversarial.json. This file's earlier "PROPOSED, panel pending" framing (2026-08-28 draft) is superseded — see §6.
 ---
 
 # Sponsor i18n — designing language for a surface that doesn't exist yet
@@ -477,8 +477,9 @@ least-claim wording won. Tally: **57 raw findings, deduped to 27 joint register 
 applied, 3 partial (R11, R12, R21), 1 with an embedded reject (R21.v: kimi's
 "delegate-i18n.html does not exist" was a panel-setup artifact — the file ships on this
 branch)** (computed from the register); dispositions in
-`mockups/sponsor-i18n/adversarial.json`, the register and the four seats' raw verdict
-extracts in `mockups/sponsor-i18n/panel/`. Surviving objections: none unresolved — the
+`mockups/sponsor-i18n/adversarial.json`, the four seats' raw verdict extracts in
+`mockups/sponsor-i18n/panel/` (the joint register's canonical archived copy ships with
+the delegate lane: `mockups/delegate-flow/panel/disposition-register.md`). Surviving objections: none unresolved — the
 native-speaker review this file's Indonesian copy still needs is now §4's own acceptance
 item (R16.ix), not an open finding.
 
