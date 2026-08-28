@@ -22,7 +22,7 @@ macos-icon-screen-color = #1e1e2e,#1e2f24
 # One real defect fixed, measured not guessed: palette 8 was #4A423A, which is
 # 1.97:1 against this background — bright black is the colour every TUI uses
 # for dimmed/secondary text, so half of Claude Code's chrome was invisible.
-# It is now #7E7A6B (4.7:1). The rest of the palette was already sound on dark
+# It is now #8B8676 (5.1:1). The rest of the palette was already sound on dark
 # and is only nudged for evenness.
 # Blur off for the same reason as the other two: macos-glass-regular keeps the
 # window translucent on macOS 26 even at opacity 1.0.
@@ -42,7 +42,7 @@ palette = 4=#82A8CB
 palette = 5=#C793B0
 palette = 6=#8DC2B5
 palette = 7=#CFC5AF
-palette = 8=#7E7A6B
+palette = 8=#8B8676
 palette = 9=#F09A88
 palette = 10=#B6EFAF
 palette = 11=#F7CE7E

@@ -11,9 +11,9 @@ working-directory = /Users/nuzantara/nuzantara
 # Cursor darkened from #fab387 on 2026-08-29: that peach was picked against a
 # dark background and sits at ~1.5:1 on the light paper below. The Dock icon
 # keeps the pastel — it is drawn on the icon's own dark screen.
-cursor-color = #B4530A
+cursor-color = #A0500A
 cursor-text = #E3ECF6
-split-divider-color = #B4530A
+split-divider-color = #A0500A
 
 macos-icon = custom-style
 macos-icon-frame = aluminum
