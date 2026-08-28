@@ -236,14 +236,39 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     gesture: "done — ratified and executed live, see state block"
   - id: 4
     decision: legacy_garuda_voa_checks_rows
-    state: measured-proposal-ready
-    # Measured against production 2026-08-24, counts and dates only (no row contents):
-    # 25 rows, all between 2026-07-27T00:21Z and 2026-07-28T01:26Z, 14 ACCEPT / 11 DECLINE.
-    # Pilot traffic from the build day; nothing written since the 2026-08-21 withdrawal.
+    state: ratified
+    # RATIFIED + EXECUTED 2026-08-28. Zero delegated the final call the same day
+    # (verbatim "fai tu"); the adopted disposition is the standing proposal below:
+    # purge all 25, keep the monthly count. Executed via the SANCTIONED primitives —
+    # never a bare DELETE (the mutation guard vetoes that by design) — from Zero's
+    # own terminal (superuser), in one transaction:
+    #   (1) retroactive CLOSED policy `garuda-check-privacy-v0-legacy` (30d, CREATED_AT)
+    #       over [2026-07-01, 2026-08-26T04:40:27.189958Z) — upper bound bit-identical
+    #       to v1's lower bound, so the scoped EXCLUDE sees adjacency, not overlap;
+    #   (2) bind_legacy_garuda_voa_checks_retention_policy(1000,'zero') -> 25 bound;
+    #   (3) purge_garuda_voa_checks(1000,'zero') -> 25 purged; append-only evidence
+    #       batch "25 | postgres:zero" in visa_decision_retention_batches keeps the count;
+    #   (4) independently verified via the readonly proxy: count(*)=0, policy chain
+    #       v0-legacy(closed) -> v1(closed) -> v2(open, 90d) with no gap or overlap.
+    # PREREQUISITE CURE, same ceremony: both primitives were broken in production by
+    # construction — SECURITY DEFINER functions owned by visa_ledger_owner acting on a
+    # table owned by backend_rag_v2, so inside them current_user failed both the table
+    # privileges AND the guard's own current_user=table_owner DELETE gate, and EXECUTE
+    # was granted to nobody the runtime connects as (garuda_flow/retention.py died at
+    # the call). Ownership of both functions moved to backend_rag_v2 (the state a fresh
+    # environment converges to when 281's best-effort transfer cannot run) plus
+    # GRANT INSERT on visa_decision_retention_batches. The three sister primitives with
+    # the same defect — purge_garuda_voa_check_results (the LIVE flow's GC),
+    # set_garuda_voa_check_legal_hold, garuda_voa_check_retention_evidence — were repaired
+    # the same day (second superuser ceremony, 12:19Z; evidence probe answered 0|0|0
+    # where it previously died on permission denied). All five verified owned by
+    # backend_rag_v2 via the readonly proxy. The visa-ledger primitives are NOT
+    # affected: their table is owned by visa_ledger_owner, the pattern is coherent there.
     measured_rows: 25
     measured_window: "2026-07-27 .. 2026-07-28"
     proposal: "purge all 25 as the first act of the signed retention policy; keep the monthly count"
-    gesture: "yes/no on the proposed disposition"
+    disposition: "all 25 purged 2026-08-28 via the bind->purge primitives; monthly count preserved in the evidence batch"
+    gesture: "done — executed and verified, see state block"
   - id: 5
     decision: visual_identity
     state: ratified
