@@ -5,9 +5,9 @@
 **Versi:** 2.0
 **Tanggal:** 27 Agustus 2026
 **Zona waktu:** WITA
-**Status:** Panduan internal Bali Zero — workflow website aktif hanya setelah Bridge v2 lulus deploy dan health probe
+**Status:** Referensi teknis internal — publikasi website melalui agent sudah aktif
 
-> **Status aktivasi 27 Agustus 2026: BRIDGE DOWN.** Contract v2 masih berada pada tahap PR/review. Jangan menyerahkan action publikasi agentik ini kepada Damar sebagai fitur live sampai `workspace_health` production mengembalikan contract v2, seluruh write action `ready`, dan satu positive probe aman lulus. Selama status ini belum berubah, agent tetap dapat membantu riset/draft tetapi tidak boleh mengklaim dapat menerbitkan website.
+> **Mulai dari panduan sederhana:** `docs/team-guides/damar-start-here-id.md`. Dokumen panjang ini hanya menjadi referensi teknis jika agent perlu memeriksa detail workflow. Publikasi website melalui agent aktif, tetapi tetap hanya berjalan setelah perintah final Damar dan wajib diverifikasi pada halaman publik.
 
 ---
 
@@ -44,7 +44,7 @@ Damar bukan operator yang hanya mengikuti output AI. **Damar adalah Editorial Di
 ## Kontrak operasional
 
 - Agent membaca seluruh daftar artikel News Room, menyiapkan copy final, SEO, cover dengan ImageGen, caption, sumber, dan QA.
-- Setelah Bridge v2 aktif dan Damar memberi konfirmasi final presisi, **agent meng-update artikel, memasang cover, memilih posisi, menerbitkan, dan memverifikasi website live.**
+- Setelah Damar memberi konfirmasi final presisi, **agent meng-update artikel, memasang cover, memilih posisi, menerbitkan, dan memverifikasi website live.**
 - **Damar menerbitkan carousel dan video secara manual pukul 17:00 hanya setelah approval eksplisit Antonello.** Bila approval belum ada, statusnya `HOLD`; diam bukan approval.
 - Sebelum action website, agent wajib memeriksa `workspace_health`. Bila write actions tidak `ready`, agent melaporkan `BRIDGE DOWN` dan berhenti. News Room UI adalah fallback insiden, bukan workflow normal.
 - Agent tidak boleh mengatakan `published` atau `live` hanya karena request, PR, merge, atau deploy dimulai. Bukti wajib berasal dari halaman publik yang benar.

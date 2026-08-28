@@ -1,292 +1,348 @@
-# Damar — Start Here
+# Panduan Harian Damar — Versi Final
 
-## Kokpit Harian Bali Zero
+**Peran Damar:** Editorial Director Bali Zero
 
-**Versi:** 1.0
-**Tanggal:** 27 Agustus 2026
+**Untuk video:** Damar adalah sutradara
+
 **Zona waktu:** WITA
-**Manual lengkap:** `damar-editorial-director-playbook-id.md`
 
-> **Status aktivasi 27 Agustus 2026: BRIDGE DOWN.** Publikasi website oleh agent dimulai hanya setelah Bridge v2 sudah merged, deployed, dan positive health probe production lulus. Sampai saat itu agent boleh membantu riset/draft, tetapi tidak boleh mengklaim action publish tersedia.
+**Status:** Agent sudah dapat menerbitkan artikel di website
 
----
+> Damar memutuskan. Agent mengerjakan, memeriksa, dan menerbitkan.
 
-## Peran Damar
-
-Damar adalah **Editorial Director**. Untuk video, Damar adalah **sutradara**.
-
-Damar memutuskan:
-
-1. artikel mana yang terbit dan posisinya di website;
-2. topik carousel harian;
-3. headline dan arah visual cover;
-4. setting, outfit, lighting, camera, dan performance Zantara;
-5. apakah paket final layak dikirim ke Antonello.
-
-Agent melakukan riset, verifikasi, draft, SEO, ImageGen, caption, asset, folder, file naming, dan QA. Damar tidak perlu mengurus prompt panjang, item ID, request key, Bridge, branch, atau deployment.
-
-> Cover harus kuat dan langsung dipahami. Tidak boleh cryptic. Tidak ada placeholder. Tidak ada silent reuse.
+Panduan ini adalah panduan utama Damar. Tidak perlu memikirkan Bridge, ID artikel, model AI, prompt teknis, atau proses di belakang layar.
 
 ---
 
-## Aturan operasional
+## Jadwal setiap hari
 
-- Agent dapat membaca daftar dan isi artikel News Room.
-- Setelah Bridge v2 aktif, agent menyiapkan copy, SEO, cover ImageGen, caption, sumber, dan QA, lalu menerbitkan artikel website setelah konfirmasi final Damar.
-- **Damar menerbitkan carousel/video social secara manual hanya setelah approval eksplisit Antonello.**
-- Agent harus memeriksa `workspace_health` sebelum action website. Bila write actions tidak `ready`, agent melaporkan `BRIDGE DOWN` dan berhenti; News Room UI hanya jalur darurat, bukan workflow normal.
-- Agent tidak boleh mengatakan `published` atau `live` sebelum URL, `/news`, posisi, dan OG image benar-benar diperiksa.
-- Saved Character Zantara dipilih di Flow UI; action Character belum tersedia end-to-end melalui workspace agent.
+| Waktu                   | Pekerjaan                                      |
+| ----------------------- | ---------------------------------------------- |
+| Pagi                    | Pilih dan terbitkan artikel website            |
+| Setelah artikel         | Pilih topik dan buat carousel                  |
+| Minimal 3 kali seminggu | Buat video Zantara dari topik carousel         |
+| Pukul 15:00             | Kirim carousel dan video kepada Antonello      |
+| Pukul 17:00             | Publikasikan media sosial yang sudah disetujui |
 
-Publikasi social tetap manual oleh Damar berdasarkan aturan sekarang.
-
----
-
-## Jadwal harian
-
-| Jam       | Hasil                                                                                    |
-| --------- | ---------------------------------------------------------------------------------------- |
-| 08:30     | Daftar artikel dibuka.                                                                   |
-| 09:15     | Inventaris, ranking, dan keputusan awal selesai; agent memberi ETA per artikel terpilih. |
-| 09:45     | Topik carousel dan content lock selesai.                                                 |
-| 10:00     | Arah cover dipilih. Pada hari video, regia juga dipilih.                                 |
-| 11:15     | Pilot video EN/ID lulus atau jalur video disederhanakan/dihentikan.                      |
-| 13:00     | Carousel dilindungi sebagai prioritas.                                                   |
-| 14:15     | QA final. Video yang belum siap dipindahkan ke slot berikutnya.                          |
-| **15:00** | Satu paket dikirim ke Antonello.                                                         |
-| **17:00** | Damar publish social manual hanya bila deliverable menerima `APPROVE`.                   |
-
-Default hari video: Senin, Rabu, Jumat. Target minimum: tiga video yang **lulus QA** per minggu.
+Artikel website boleh diterbitkan pada pagi hari setelah Damar memberi perintah final. Carousel dan video menunggu persetujuan Antonello.
 
 ---
 
-## 1. Artikel website — selalu pekerjaan pertama
+# 1. Artikel website pada pagi hari
 
-Kirim:
+## Langkah 1 — Minta seluruh daftar
 
-> **Periksa kesehatan Intel Scraper, lalu tampilkan SELURUH artikel yang tersedia hari ini — bukan lima terbaik dan bukan shortlist. Sebutkan total artikel dan jangan sembunyikan sisanya. Untuk setiap artikel, baca isi lengkap dan sumber asli; jelaskan singkat apa yang terjadi, mengapa penting sekarang, siapa audiensnya, risiko editorial, posisi website, dan ide cover. Kelompokkan sebagai PUBLISH TODAY, HOLD, atau VERIFY FIRST. Jangan publish apa pun sebelum pilihan dan konfirmasi final saya.**
+Kirim pesan ini kepada agent:
 
-Agent harus mengikuti halaman berikutnya sampai `complete=true` dan memberi seluruh daftar. Damar bebas memilih 15, 2, 1, atau 0 artikel; agent tidak menetapkan kuota editorial.
+> Tampilkan seluruh artikel yang tersedia di News Room hari ini. Jangan pilih hanya lima terbaik dan jangan sembunyikan artikel apa pun. Untuk setiap artikel, beri nomor, judul, penjelasan singkat, alasan penting bagi Bali Zero, target pembaca, tingkat kepastian fakta, saran posisi di website, dan ide cover. Periksa juga apakah sumber berita hari ini lengkap dan terbaru.
 
-Sebelum menampilkan daftar, agent menjalankan `workspace_health` dan `intel_editorial_health`, lalu melaporkan `INTEL HEALTH`: waktu run terakhir, jumlah artikel yang ditemukan, berhasil diperkaya, dan benar-benar masuk News Room, tanggal artikel terbaru, serta status `HEALTHY`, `STALE`, atau `DOWN`. Status pipeline tidak boleh dinilai hanya dari exit code. `0 enriched` atau `0 submitted` berarti `DOWN` dan memicu PLAN B.
+Agent harus menampilkan **seluruh daftar**. Damar bebas memilih 2, 5, 15, semuanya, atau tidak memilih apa pun.
 
-Jika tidak ada artikel baru hari itu, run terakhir gagal menghasilkan artikel, atau daftar terbaru berumur lebih dari 72 jam, agent langsung menjalankan **PLAN B**: deep research atas news paling berdampak bagi Bali Zero yang terbit atau berkembang dalam 2–3 hari terakhir. Riset memakai sumber primer/resmi dan media tepercaya, lalu menghasilkan seluruh daftar kandidat yang lolos batas relevansi — bukan lima terbaik.
+Agent juga harus memeriksa bahwa pengumpul berita otomatis benar-benar menghasilkan artikel baru pada hari itu. Status “berjalan” saja tidak cukup. Jika tidak ada artikel baru atau artikel terbaru sudah berumur lebih dari 72 jam, agent langsung memakai rencana cadangan di bawah.
 
-Setelah Damar memilih topik, agent menulis artikel lengkap dalam gaya Bali Zero, membuat source ledger, dan meminta dua pemeriksaan: reviewer independen yang bukan penulis dan NotebookLM domain yang terdampak. Klaim hukum, pajak, visa, company, atau property tidak boleh lolos tanpa status `PASS` dari notebook terkait.
+## Jika daftar kosong atau berita sudah lama
 
-Aturan itu berlaku juga untuk artikel yang berasal dari Intel normal, bukan hanya PLAN B. Setiap artikel terpilih wajib `newsroom_fact_gate: PASS`; perubahan pada copy, angka, source, SEO, slug, alt, atau cover setelah PASS membatalkan gate dan memicu pemeriksaan ulang.
+Damar tidak perlu mencari sendiri. Agent otomatis menjalankan rencana cadangan:
 
-Damar memilih dengan jawaban sederhana:
+1. mencari berita paling berdampak untuk Bali Zero;
+2. hanya memakai berita dari 2–3 hari terakhir;
+3. memeriksa sumber asli dan sumber pembanding;
+4. memeriksa NotebookLM yang sesuai;
+5. menandai fakta yang belum pasti;
+6. menyusun artikel baru dengan gaya Bali Zero.
 
-> **Pilih artikel #1 untuk Hero Main dan #3 untuk Hero 3. Artikel #2 tetap HOLD. Siapkan preview final lengkap, SEO, cover, alt text, dan sumber. JANGAN publish dulu.**
+## Langkah 2 — Damar memilih
 
-Sebelum mengganti Hero, agent/UI menunjukkan artikel yang sekarang menempati slot tersebut dan alasan penggantiannya.
+Contoh jawaban:
 
-### Preview wajib sebelum publish
+> Terbitkan artikel 2 dan 6. Artikel 2 menjadi artikel utama. Artikel 6 di bagian Tax. Jangan terbitkan yang lain.
 
-- title dan two-line summary;
-- category dan slug;
-- SEO title, description, excerpt, tags;
-- cover final dan alt text;
-- sumber asli dan tanggal;
-- posisi website;
-- URL yang diperkirakan;
-- `FACT / INFERENCE / IDEA / UNKNOWN`;
-- blocker yang masih ada.
+Atau:
 
-### Cover artikel
+> Saya pilih artikel 1, 3, 4, 7, dan 9. Tunjukkan susunan website yang paling masuk akal sebelum diterbitkan.
 
-- dibuat dengan **ImageGen native**, bukan Flow;
-- satu scene yang berhubungan langsung dengan artikel;
-- tanpa headline/logo/watermark di dalam gambar;
-- bukan stock corporate, skyline generik, handshake, server room, atau placeholder;
-- subject tetap jelas di card kecil;
-- OG image dan public cover harus sama dengan versi yang disetujui.
+Damar menentukan:
 
-### Publikasi hari ini
+- artikel yang diterbitkan;
+- urutan atau posisi di website;
+- artikel utama;
+- artikel yang ditunda atau ditolak.
 
-Kirim:
+## Langkah 3 — Agent menyiapkan semuanya
 
-> **FINAL DISETUJUI. Publikasikan artikel #1 di Hero Main dan artikel #3 di Hero 3. Jangan ubah copy atau cover. Gunakan request key unik untuk setiap artikel. Setelah proses internal selesai, verifikasi URL, /news, posisi homepage, OG image, desktop, dan mobile. Laporkan `LIVE VERIFIED` hanya jika semua check lulus.**
+Untuk setiap artikel terpilih, agent harus:
 
-Konfirmasi publikasi harus menyebut artikel, posisi, cover, dan preview. `Oke`, `lanjut`, atau pilihan artikel bukan konfirmasi publish. Status `queued_for_publication` atau `publication_pending` belum berarti live. `newsroom_verify_live` yang lulus memberi `MECHANICAL LIVE VERIFIED`; sesudah itu agent wajib screenshot/browser QA desktop dan mobile. Status final adalah `LIVE VERIFIED + VISUAL QA PASS`, atau `LIVE — VISUAL FIX REQUIRED` bila proof mesin lulus tetapi tampilan gagal.
+- memeriksa ulang semua fakta, tanggal, nama, angka, dan aturan;
+- meminta pemeriksaan tambahan dari pemeriksa kedua yang sesuai;
+- memeriksa NotebookLM yang relevan bila ada klaim hukum, visa, pajak, perusahaan, properti, atau regulasi;
+- menulis ulang artikel dengan gaya Bali Zero;
+- membuat judul yang jelas dan kuat;
+- membuat SEO title dan SEO description;
+- membuat URL yang bersih;
+- membuat cover dengan ImageGen;
+- menulis alt text gambar;
+- memasang kategori dan posisi website;
+- memastikan tidak ada placeholder;
+- menunjukkan preview singkat kepada Damar.
 
----
+**ImageGen dipakai untuk cover artikel. Flow tidak dipakai untuk gambar artikel.**
 
-## 2. Carousel harian
+Cover harus terlihat berkelas, relevan dengan berita, dan langsung dapat dipahami. Jangan memakai gambar kantor, pantai, sunset, dokumen, atau orang berjas secara generik bila tidak benar-benar menceritakan isi artikel.
 
-Kirim:
+Artikel website ditulis dalam Bahasa Inggris. Nama aturan dan istilah resmi Indonesia tetap ditulis dengan benar, lalu dijelaskan dalam Bahasa Inggris bila perlu.
 
-> **Siapkan maksimum lima kandidat carousel Bali Zero hari ini, idealnya tiga yang benar-benar kuat. Gunakan News Room, sumber resmi, media tepercaya, Google Trends Indonesia, TikTok Creative Center, signal social, dan arsip Bali Zero. Pisahkan FACT, INFERENCE, IDEA, dan UNKNOWN. Nilai audiens, perkembangan baru, consequence, novelty, saturation, save/share potential, visual/video potential, dan risiko. Social trend adalah signal, bukan bukti.**
+## Langkah 4 — Perintah final untuk menerbitkan
 
-Topik harus:
+Jika semua sudah benar, Damar menulis:
 
-- benar dan dapat dibuktikan;
-- penting bagi audiens Bali Zero;
-- memiliki perkembangan atau hook yang benar-benar aktual;
-- belum terlalu jenuh;
-- memiliki consequence atau tindakan yang konkret;
-- dapat divisualkan tanpa stock generik.
+> Saya setujui versi final. Terbitkan artikel yang saya pilih dengan cover, SEO, alt text, kategori, dan posisi yang sudah disepakati. Setelah terbit, periksa halaman publik di komputer dan telepon lalu kirimkan link serta hasil pemeriksaannya.
 
-Untuk visa, tax, company, property, regulation, deadline, biaya, threshold, dan angka penting, writer tidak boleh menilai dirinya sendiri. Verifier berbeda memeriksa sumber primer dan NotebookLM/domain ground truth. Hasil wajib: `LEGAL CHECK: PASS` atau `BLOCK`.
+Agent kemudian menerbitkan artikel di website dan memeriksa:
 
-Jika tidak ada trend yang lolos, gunakan evergreen reserve yang sudah diverifikasi. Jangan membuat urgensi palsu.
+- halaman dapat dibuka;
+- judul dan isi benar;
+- cover tampil dengan benar;
+- SEO dan alt text terpasang;
+- posisi artikel sesuai;
+- tampilan komputer dan telepon baik.
 
-### Content lock
-
-Sebelum menulis slide, lengkapi:
-
-> **Carousel ini harus membuat [AUDIENS] memahami bahwa [FACT/CHANGE], karena [CONSEQUENCE], sehingga sekarang mereka harus [ACTION].**
-
-Kunci audiens, tesis, angka, caveat, sumber, urutan cerita, conclusion, dan CTA. `UNKNOWN` yang mengubah cerita harus kosong.
-
-### Cover
-
-Kirim:
-
-> **Buat tiga Direction Card cover yang benar-benar berbeda. Setiap route harus memiliki satu headline, satu empirical anchor, satu scene yang koheren, dan alasan mengapa dapat dipahami dalam satu sampai lima detik. Jangan generate image sebelum saya memilih route.**
-
-Cover lolos bila:
-
-- satu detik: subject/conflict langsung terlihat;
-- lima detik: orang paham apa yang terjadi dan mengapa penting;
-- headline tidak cryptic;
-- ada anchor konkret: angka, tanggal, tempat, regulation code, atau verdict;
-- gambar dan headline menceritakan fakta yang sama;
-- tidak mengubah proposal menjadi keputusan final;
-- terbaca sebagai thumbnail ponsel;
-- memakai ImageGen native dan bukan placeholder.
-
-Setelah route dipilih:
-
-> **Route B disetujui. Bangun carousel final delapan slide berdasarkan content lock. Gunakan ImageGen native untuk cover dan hero. Tidak boleh ada placeholder, silent reuse, atau visual yang lebih samar daripada headline. Sertakan caption, alt text, serta daftar sumber dan klaim.**
-
-Default: delapan slide. Damar boleh menyempurnakan layout di Canva. Bila Damar mengubah klaim, angka, tanggal, code, atau caveat, agent melakukan fact check ulang.
-
-Bahasa artikel, carousel, dan caption adalah English. Istilah resmi Indonesia tetap verbatim dan diberi English assist pada penggunaan pertama bila perlu.
+Jika ada kegagalan, agent tidak boleh mengatakan “sudah live”. Agent harus menjelaskan masalahnya, memperbaikinya, lalu memeriksa ulang.
 
 ---
 
-## 3. Video Zantara — minimum tiga kali seminggu
+# 2. Carousel harian
 
-Mulai segera setelah content lock; jangan menunggu Canva selesai.
+## Langkah 1 — Pilih topik terbaik
 
-Kirim:
+Kirim pesan ini:
 
-> **Hari ini adalah hari video. Gunakan content lock carousel yang sama. Berikan Director Card A/B/C untuk setting, outfit, lighting, camera rhythm, dan performance mood. Saya yang memilih direction. Jangan membuka Flow dulu.**
+> Sekarang cari topik carousel hari ini. Gunakan berita terbaru, data tren, News Room, sumber resmi, NotebookLM, dan percakapan “Trend News in Bali” sebagai referensi kualitas editorial. Berikan beberapa pilihan terbaik, bukan ide generik. Untuk setiap pilihan jelaskan: mengapa penting sekarang, siapa audiensnya, kekuatan faktanya, potensi visual, potensi dibagikan, dan apakah cocok menjadi video Zantara.
 
-Damar bebas menentukan regia dan outfit. Bila outfit belum tersedia sebagai Character/reference yang benar, agent menyiapkan reference terlebih dahulu. Prompt teks saja tidak dapat dipercaya untuk mengganti pakaian Character.
+Agent memberi beberapa pilihan yang sudah diurutkan. Damar memilih satu topik atau meminta arah baru.
 
-### Format cepat
+## Langkah 2 — Kunci isi utama
 
-`Damar Direct` adalah mode editorial manual di Flow UI untuk tim Damar, bukan contract pipeline WR3 otomatis. Jangan mengirim output 35–42 detik ini ke validator WR3 yang memiliki contract berbeda tanpa perubahan contract yang disetujui owner.
+Sebelum membuat desain, Damar dan agent harus sepakat pada satu kalimat:
 
-- default 5 adegan, 35–42 detik, vertical 9:16;
-- satu setting dominan dan satu outfit;
-- satu clip = satu subject, satu action, satu camera move, satu spoken line;
-- dialog sekitar lima detik per clip;
-- Zantara memakai saved Character di Flow;
-- voice selalu native dari Flow; tidak ada external TTS;
-- teks, angka, logo, chart, source badge, dan subtitle dibuat di post.
+> Setelah melihat carousel ini, orang harus memahami bahwa ________.
 
-### Dua master terpisah
+Kalimat ini menjadi inti carousel dan video. Jangan mulai produksi sebelum inti cerita jelas.
 
-- TikTok: Zantara berbicara Bahasa Indonesia + subtitle terjemahan English.
-- Instagram, Threads, Facebook, WhatsApp Channel/Story: Zantara berbicara English + subtitle English.
+## Langkah 3 — Buat cover yang kuat
 
-Keduanya memakai story, order, facts, duration, grade, overlay, dan intention yang sama. Performance dibuat terpisah di Flow; bukan dubbing.
+Agent harus memberi tiga arah cover. Setiap arah berisi:
 
-### Pilot dan batas generation
+- headline;
+- ide visual;
+- alasan cover itu kuat;
+- fakta atau ketegangan utama yang langsung terlihat.
 
-1. Generate Scene 1 EN dan ID sebagai pilot final.
-2. Lanjut hanya bila identity, outfit, voice, pronunciation, lipsync, framing, dan crop lulus.
-3. Pilot termasuk dalam baseline.
-4. Mode normal: 10 baseline + maksimum 2 alternative hook/close + maksimum 2 targeted retry = cap 14.
-5. Extended mode 6 adegan/hard cap 20 hanya setelah persetujuan Damar.
-6. Regenerate hanya clip yang gagal, bukan seluruh video.
-7. Setelah dua retry gagal: `VIDEO DEFERRED — NOT COUNTED`; pindahkan ke hari kerja berikutnya.
+Damar memilih satu arah.
 
-Cap ini berlaku untuk produksi manual di Flow UI. Workspace Bridge saat ini tidak menyediakan jalur Character Zantara end-to-end untuk seluruh batch tersebut.
+Cover wajib:
 
-Hard stop:
+- langsung dapat dipahami;
+- kuat secara visual dan isi;
+- memakai bahasa konkret;
+- berhubungan langsung dengan fakta utama;
+- membuat orang ingin membuka slide berikutnya;
+- memakai gambar asli untuk topik itu.
 
-- 11:15 pilot belum lulus: satu penyederhanaan, lalu stop;
-- 13:00 batch belum selesai: lindungi carousel;
-- 14:15 video belum siap QA: kirim carousel dan defer video.
+Cover dilarang:
 
-### Disclosure AI wajib
+- terlalu misterius atau puitis;
+- memakai placeholder;
+- memakai gambar lama yang tidak relevan;
+- memakai visual generik hanya karena terlihat cantik;
+- menyembunyikan inti berita;
+- menjanjikan daftar atau angka yang tidak dijelaskan di slide berikutnya.
 
-- TikTok: aktifkan `AI-generated content`.
-- Instagram/Facebook/Threads: aktifkan `AI info` atau self-disclosure setara bila tersedia.
-- WhatsApp: gunakan disclosure caption yang disetujui bila platform tidak memberi toggle.
-- Jangan membuat Zantara tampak sebagai manusia nyata, saksi, pejabat, atau narasumber nyata.
-- Periksa label/disclosure kembali pada post live.
+Gunakan ImageGen untuk membuat visual yang khusus bagi topik tersebut. Jangan memasukkan headline, logo, atau watermark ke dalam gambar kecuali memang diperlukan oleh konsep yang sudah disetujui; teks carousel ditambahkan pada layout.
 
-Referensi resmi: [TikTok AI-generated content](https://support.tiktok.com/id/using-tiktok/creating-videos/ai-generated-content) dan [Meta AI labeling](https://about.fb.com/news/2024/04/metas-approach-to-labeling-ai-generated-content-and-manipulated-media/).
+Tes sederhana:
 
----
+- Dalam 1 detik: orang melihat subjek utama.
+- Dalam 5 detik: orang memahami topik dan alasan topik itu penting.
 
-## Paket pukul 15:00
+## Langkah 4 — Agent membuat paket carousel
 
-Agent membuat satu folder versi final. Damar mengirim satu link dan satu pesan:
+Agent menyiapkan:
 
-> **DAILY EDITORIAL PACKAGE — [TANGGAL]**
-> **Carousel:** [judul]
-> **Mengapa dipilih:** [satu kalimat]
-> **Audiens:** [audiens]
-> **Canva/export:** [link folder]
-> **Caption:** [file/link]
-> **Sources:** [file/link] — LEGAL CHECK PASS
-> **Video:** [EN] / [ID] / DEFERRED / N/A
-> **Open issue:** none / [jelaskan]
-> **Requested action:** APPROVE CAROUSEL / APPROVE VIDEO EN / APPROVE VIDEO ID
+- cover final;
+- seluruh slide dengan alur yang jelas;
+- caption;
+- ajakan bertindak;
+- sumber;
+- teks alternatif bila diperlukan;
+- versi yang mudah dilanjutkan di Canva.
 
-Approval berlaku per deliverable. Tanpa `APPROVE` eksplisit, statusnya `WAITING APPROVAL`. Revisi yang tidak sempat melewati QA penuh menjadwalkan ulang publikasi.
+Struktur yang disarankan:
 
-Setelah approval, file tidak diubah. Perubahan membuat versi baru dan memerlukan approval baru.
+1. Cover — fakta atau ketegangan utama.
+2. Konteks — apa yang terjadi.
+3. Penjelasan — mengapa ini penting.
+4. Bukti — angka, aturan, atau fakta.
+5. Dampak — siapa yang terpengaruh.
+6. Tindakan — apa yang perlu dilakukan pembaca.
+7. Penutup — kesimpulan yang berguna dan jelas.
 
----
+Jumlah slide mengikuti kebutuhan cerita. Jangan menambah slide hanya untuk membuat carousel terlihat panjang.
 
-## Publish pukul 17:00
+Damar boleh menyelesaikan warna, layout, tipografi, atau detail visual di Canva.
 
-Damar publish manual hanya deliverable yang disetujui.
-
-Sebelum publish:
-
-- account, platform, bahasa, file, caption, cover/poster, subtitle, dan disclosure benar;
-- tidak ada draft lama yang terpilih;
-- carousel/video sama dengan versi yang disetujui.
-
-Dalam sepuluh menit setelah publish, Damar dan agent memeriksa:
-
-- post ada di account yang benar;
-- crop, cover, safe zone, caption, bahasa, audio, dan subtitle benar;
-- disclosure AI terlihat;
-- tidak ada black frame atau kompresi merusak;
-- URL dan screenshot proof disimpan.
+Bahasa carousel dan caption adalah Bahasa Inggris. Istilah resmi Indonesia boleh tetap dipakai dengan penjelasan singkat dalam Bahasa Inggris.
 
 ---
 
-## Jika agent mulai berputar-putar
+# 3. Video Zantara — minimal 3 kali seminggu
 
-> **STOP. Ringkas keputusan yang sudah dikunci, masalah yang nyata, dan satu next action. Jangan ulangi riset yang sudah selesai.**
+Video dimulai segera setelah isi carousel sudah dikunci. Tidak perlu menunggu carousel selesai didesain.
 
-> **Jangan buat ulang seluruh carousel/video. Perbaiki hanya asset atau clip yang gagal.**
+Isi video mengikuti inti carousel, tetapi video bukan pembacaan slide. Video harus terasa seperti cerita yang disutradarai.
 
-> **Jika tool atau signal tidak tersedia, tulis UNAVAILABLE. Jangan menebak trend, status publish, atau hasil generation.**
+## Pembagian tugas
+
+**Damar menentukan:**
+
+- lokasi atau setting;
+- outfit Zantara;
+- suasana;
+- gerakan kamera;
+- cara Zantara berbicara;
+- ritme dan gaya penyutradaraan.
+
+**Agent mengerjakan:**
+
+- naskah dua bahasa;
+- pembagian adegan;
+- prompt Flow;
+- kesinambungan karakter dan visual;
+- pembuatan video;
+- subtitle;
+- pemeriksaan audio, gambar, fakta, dan durasi;
+- perbaikan pada bagian yang gagal.
+
+> Damar adalah sutradara. Agent adalah tim produksi.
+
+## Aturan produksi
+
+- Selalu gunakan karakter Zantara yang sudah tersimpan di Flow.
+- Gunakan suara yang dibuat langsung di Flow.
+- Jangan membuat suara dengan alat eksternal.
+- Buat adegan pertama sebagai tes.
+- Setelah adegan pertama disetujui, lanjutkan adegan lain.
+- Jika satu adegan gagal, perbaiki hanya adegan itu.
+- Jangan mengulang seluruh video tanpa alasan.
+
+Jika Flow meminta pemilihan karakter melalui layar, Damar cukup memilih karakter Zantara yang tersimpan. Setelah itu agent melanjutkan pekerjaan.
+
+## Dua versi wajib
+
+### Versi TikTok
+
+- Zantara berbicara dalam Bahasa Indonesia.
+- Subtitle dalam Bahasa Inggris.
+
+### Versi Instagram dan kanal lain
+
+- Zantara berbicara dalam Bahasa Inggris.
+- Subtitle dalam Bahasa Inggris.
+- Dipakai untuk Instagram, Threads, Facebook, WhatsApp Channel, dan WhatsApp Story.
+
+Kedua versi memakai cerita dan arah visual yang sama, tetapi dialog direkam sebagai dua penampilan terpisah agar gerak bibir dan suara alami.
+
+Tiga video per minggu berarti tiga video yang sudah lulus pemeriksaan, bukan tiga percobaan. Jika video belum siap pada pukul 14:15, lindungi kualitas carousel, laporkan status video dengan jujur, dan lanjutkan video pada slot produksi berikutnya.
 
 ---
 
-## Model dan effort
+# 4. Pengiriman pukul 15:00
 
-Konfigurasi yang disarankan: **GPT-5.6 Sol + Extra High**. Owner workspace memeriksa dan menyimpan konfigurasi satu kali di Agent Builder; Damar tidak perlu mengganti effort sepanjang hari. Nama model/effort yang sedang aktif tidak boleh ditebak dari nama agent atau dari Bridge.
+Paling lambat pukul 15:00, Damar mengirim kepada Antonello:
 
-OpenAI menjelaskan bahwa creator workspace agent dapat memilih model dan reasoning effort; pilihan yang tersedia dapat bergantung pada workspace. Referensi: [Workspace agents](https://help.openai.com/en/articles/20001143) dan [ChatGPT Business models](https://help.openai.com/en/articles/12003714-chatgpt-business-models-and-limits).
+## Paket carousel
+
+- file atau link Canva;
+- cover final;
+- seluruh slide;
+- caption;
+- sumber;
+- catatan singkat bila ada fakta yang perlu diperhatikan.
+
+## Paket video
+
+- versi Bahasa Indonesia;
+- versi Bahasa Inggris;
+- subtitle;
+- caption;
+- cover video;
+- sumber;
+- catatan singkat bila ada bagian yang perlu diperhatikan.
+
+Gunakan pesan ini:
+
+> Paket hari ini siap untuk persetujuan. Carousel: [judul dan link]. Video ID: [link]. Video EN: [link]. Sumber dan caption sudah disertakan. Target publikasi: pukul 17:00 WITA.
+
+Diam bukan persetujuan. Jika belum ada persetujuan Antonello, statusnya **HOLD**.
 
 ---
 
-## Kalimat yang harus diingat
+# 5. Publikasi pukul 17:00
 
-> **Damar memutuskan. Agent menyelidiki, membangun, dan memeriksa. Antonello menyetujui.**
+Pada pukul 17:00, hanya konten media sosial yang sudah disetujui yang boleh dipublikasikan.
 
-> **Tidak ada cover cryptic. Tidak ada placeholder. Tidak ada publish tanpa proof.**
+Setelah publikasi, periksa:
+
+- posting dapat dibuka;
+- urutan slide benar;
+- cover benar;
+- caption lengkap;
+- subtitle benar;
+- audio aktif;
+- tidak ada file sementara atau placeholder;
+- link dan tampilan sesuai.
+
+Aktifkan label konten AI pada TikTok, Instagram, Facebook, dan Threads bila tersedia. Untuk WhatsApp, gunakan keterangan AI yang sudah disetujui bila diperlukan. Jangan menampilkan Zantara seolah-olah ia manusia nyata, pejabat, saksi, atau narasumber nyata.
+
+Kirim bukti publikasi kepada Antonello.
+
+---
+
+# 6. Perintah singkat saat agent terlalu rumit
+
+Jika agent membuat proses terlalu panjang:
+
+> STOP. Jelaskan hanya keputusan yang harus saya ambil sekarang. Kerjakan sendiri semua bagian teknis.
+
+Jika agent memberi terlalu sedikit pilihan artikel:
+
+> Tampilkan seluruh daftar. Jangan membuat shortlist.
+
+Jika agent membuat cover yang generik:
+
+> Tolak cover ini. Buat cover yang langsung menjelaskan fakta utama, khusus untuk topik ini, tanpa placeholder dan tanpa visual generik.
+
+Jika agent mengulang seluruh pekerjaan karena satu kesalahan:
+
+> Perbaiki hanya bagian yang gagal. Jangan ulang bagian yang sudah benar.
+
+Jika fakta belum cukup kuat:
+
+> Jangan menebak. Cari sumber asli, periksa NotebookLM yang sesuai, dan tandai dengan jelas apa yang belum terverifikasi.
+
+Jika agent mengklaim sudah terbit:
+
+> Berikan link publik dan bukti pemeriksaan komputer serta telepon. Jika belum dapat dibuka, jangan sebut live.
+
+---
+
+# 7. Tujuh aturan yang harus selalu diingat
+
+1. Pagi hari, minta seluruh daftar artikel.
+2. Damar bebas memilih berapa pun jumlah artikel dan menentukan posisinya.
+3. Agent menulis, memverifikasi, membuat cover, mengerjakan SEO, menerbitkan, dan memeriksa website.
+4. Cover harus jelas, kuat, relevan, dan tidak pernah memakai placeholder.
+5. ImageGen untuk gambar; Flow untuk video.
+6. Video memakai Zantara dan suara asli Flow, dengan dua versi bahasa.
+7. Carousel dan video dikirim pukul 15:00 dan dipublikasikan pukul 17:00 hanya setelah persetujuan.
+
+> Pilih dengan tajam. Buat dengan jelas. Periksa sebelum menyebut selesai.
