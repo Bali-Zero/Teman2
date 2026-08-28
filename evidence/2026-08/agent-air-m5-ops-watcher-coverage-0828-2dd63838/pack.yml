@@ -13,26 +13,27 @@ lanes:
     role: review
     seat:
       claude-opus-5 (conducting session — re-verified every claim independently rather than accepting
-      the implementer's report. It re-read the guard to confirm it keys by the workflow name field,
-      read the added workflow's own name, confirmed the removed entry has no live .yml, and re-ran the
-      guard in the branch worktree reading the exit code directly)
+      the implementer's report. It re-read the guard to confirm it keys by the workflow name field, read
+      the added workflow's own name, confirmed the removed entry has no live .yml, and re-ran the guard
+      in the branch worktree reading the exit code directly)
 seat_diversity: not_applicable
 seat_diversity_note:
   "Two Anthropic seats, and here that genuinely costs nothing: every load-bearing
-  question is settled by a parser and an exit code, not by judgement. The guard either exits 0 or
-  it does not, and the entry either matches a workflow's declared name byte-for-byte or it does not
-  — a cross-family seat would be asked to agree with grep. Deliberately NO council was convened: a
-  one-file, +1/-1 diff is Gear-1-shaped by blast radius and reaches Gear 3 only because of the hot-zone
-  PATH, so spending a council on it is exactly the ceremony this repo's own ceiling rule exists to
-  prevent."
+  question is settled by a parser and an exit code, not by judgement. The guard either exits 0 or it
+  does not, and the entry either matches a workflow's declared name byte-for-byte or it does not —
+  a cross-family seat would be asked to agree with grep. Deliberately NO council was convened: a one-file,
+  +1/-1 diff is Gear-1-shaped by blast radius and reaches Gear 3 only because of the hot-zone PATH,
+  so spending a council on it is exactly the ceremony this repo's own ceiling rule exists to prevent."
 diff:
   net_lines:
     1 file, +1/-1 (plus this pack and brief). One entry added to the watcher's on.workflow_run.workflows
     set, one stale entry removed. No script, no logic, no other workflow.
   behaviour_change:
-    "main-push-failure-watch.yml now also triggers on check-skills-canonical completing
-    on main, and no longer names a workflow that does not exist. The required `check` job stops failing
-    on every PR in the repo. Nothing else changes: no guard is relaxed, no threshold moves."
+    "main-push-failure-watch.yml now LISTS check-skills-canonical, and no longer names
+    a workflow that does not exist. It does NOT gain paging for it: that workflow is `pull_request`-only,
+    so its `workflow_run.head_branch` is a PR head branch and never `main`, and the watcher's trigger
+    carries `branches: [main]` — the run is never even created. What changes is that the watcher-coverage
+    guard stops failing. Nothing is relaxed, no threshold moves."
 receipts:
   - claim:
       Deterministic gear floor recomputed from this PR's changed-file list is 3 — hot-zone by path,
@@ -45,11 +46,14 @@ receipts:
     ts: 2026-08-28T10:12Z
     seat: session (M5)
   - claim:
-      THE CENTRAL RECEIPT — the guard is red on origin/main ITSELF, so this is a pre-existing fleet-wide
-      block, not a defect introduced by any PR
+      "THE CENTRAL RECEIPT — the guard is red on origin/main ITSELF, so the red is pre-existing and
+      not introduced by any PR. SCOPE CORRECTED after the Gear-3 gate measured it: this is NOT a fleet-wide
+      block. `Watcher coverage` is not among main's 11 required contexts, and watcher-coverage.yml is
+      paths-filtered to `.github/workflows/*.yml` — so it is an advisory red, appearing only on PRs that
+      touch a workflow file."
     cmd:
-      python3 scripts/check_watcher_coverage.py in a detached worktree at origin/main, exit code
-      read DIRECTLY and never through a pipe (a pipe returns the pipe's status, not the script's)
+      python3 scripts/check_watcher_coverage.py in a detached worktree at origin/main, exit code read
+      DIRECTLY and never through a pipe (a pipe returns the pipe's status, not the script's)
     result: origin/main exit=1 · the branch under review exit=0
     exit: 0
     ts: 2026-08-28T09:41Z
@@ -99,8 +103,8 @@ dissent:
       correct cure is expensive, so the incentive is to route around it."
     status: PLAUSIBLE
     resolution:
-      "Recorded, NOT acted on. The floor was obeyed exactly as written rather than dodged
-      by splitting the file out or arguing the diff down to Gear 1 — a task cannot be talked into a
-      lower gear than its diff declares, and that rule is worth more than this PR's convenience. Whether
-      the floor should distinguish a workflow's DATA from its LOGIC is a doctrine question for the
-      owner: raised here, and left there."
+      "Recorded, NOT acted on. The floor was obeyed exactly as written rather than dodged by
+      splitting the file out or arguing the diff down to Gear 1 — a task cannot be talked into a lower
+      gear than its diff declares, and that rule is worth more than this PR's convenience. Whether the
+      floor should distinguish a workflow's DATA from its LOGIC is a doctrine question for the owner:
+      raised here, and left there."

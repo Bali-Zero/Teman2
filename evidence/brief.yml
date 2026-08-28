@@ -2,60 +2,69 @@ task_id: watcher-coverage-0828
 gear: 3
 l_level: L1
 gate_class: opus
-objective: |
-  `scripts/check_watcher_coverage.py` exits 1 on `origin/main` itself. It is the required check
-  named `check`, and it judges the TREE rather than the diff — so merged red it is red on EVERY
-  open PR in the repo regardless of that PR's contents. Two list-membership problems:
-
-  1. VIOLATION — `check-skills-canonical` (a live workflow whose `name:` is exactly that) is
-     absent from `main-push-failure-watch.yml`'s `on.workflow_run.workflows:` set.
-  2. Stale WARNING — that same set still names `AI PR review (advisory)`, whose workflow was
-     deliberately disabled on 2026-08-20 (the file is `ai-pr-review.yml.disabled-2026-08-20-...`,
-     not a live `.yml`).
-
-  Gear 3 by PATH, deterministically: `.github/workflows/**` is hot-zone, so the floor is 3 even
-  though the diff is one file, +1/-1. Recomputed from the actual changed-file list — receipt in
-  the pack. Named plainly because it is the reason this red survived on main: curing a
-  fleet-blocking two-line CI defect costs the same ceremony as an architectural change.
+objective:
+  "`scripts/check_watcher_coverage.py` exits 1 on `origin/main` itself. It judges the TREE\
+  \ rather\nthan the diff, so merged red it is red on every open PR that REACHES it, regardless of\
+  \ that PR's\ncontents. Scope, measured against live branch protection rather than assumed: it surfaces\
+  \ as the\n`check` job of watcher-coverage.yml, which is NOT one of main's 11 required contexts and\
+  \ is\npaths-filtered to `.github/workflows/*.yml`. So it blocks no merge queue and never runs on\
+  \ a PR\nthat touches no workflow file — an advisory red on workflow-touching PRs, which is still\
+  \ worth\ncuring because it is red on this repo's own main. Two list-membership problems:\n\n1. VIOLATION\
+  \ — `check-skills-canonical` (a live workflow whose `name:` is exactly that) is\n   absent from\
+  \ `main-push-failure-watch.yml`'s `on.workflow_run.workflows:` set.\n2. Stale WARNING — that same\
+  \ set still names `AI PR review (advisory)`, whose workflow was\n   deliberately disabled on 2026-08-20\
+  \ (the file is `ai-pr-review.yml.disabled-2026-08-20-...`,\n   not a live `.yml`).\n\nGear 3 by\
+  \ PATH, deterministically: `.github/workflows/**` is hot-zone, so the floor is 3 even\nthough the\
+  \ diff is one file, +1/-1. Recomputed from the actual changed-file list — receipt in\nthe pack.\
+  \ Named plainly because it is the reason this red survived on main: curing a\nfleet-blocking two-line\
+  \ CI defect costs the same ceremony as an architectural change.\n"
 constraints:
-  - "Two list edits and nothing else. The script's logic is correct — it is the data that is
-    stale, and 'while I am here' changes to a guard everyone depends on are how a small cure
-    becomes an outage."
-  - "Match on what the script actually keys by. It parses each workflow with PyYAML and keys
-    live workflows by `doc.get('name')`, so the entry must be the workflow's `name:` field
-    verbatim, not its filename."
-  - "Do not weaken the guard to make it pass. Removing the coverage requirement, or the stale
-    entry's warning, would silence the very sentinel this repairs."
+  - Two list edits and nothing else. The script's logic is correct — it is the data that is stale, and
+    'while I am here' changes to a guard everyone depends on are how a small cure becomes an outage.
+  - Match on what the script actually keys by. It parses each workflow with PyYAML and keys live workflows
+    by `doc.get('name')`, so the entry must be the workflow's `name:` field verbatim, not its filename.
+  - Do not weaken the guard to make it pass. Removing the coverage requirement, or the stale entry's
+    warning, would silence the very sentinel this repairs.
 acceptance:
   - "`python3 scripts/check_watcher_coverage.py` exits 0 on this branch and 1 on origin/main."
-  - "Removing the added entry returns it to exit 1 — the guard bites on the specific change."
+  - Removing the added entry returns it to exit 1 — the guard bites on the specific change.
   - "`actionlint` clean on the edited workflow."
-  - "No file other than `.github/workflows/main-push-failure-watch.yml` is touched."
+  - No file other than `.github/workflows/main-push-failure-watch.yml` is touched.
 consumer_map:
-  - "`.github/workflows/main-push-failure-watch.yml` — the watcher itself; its
-    `on.workflow_run.workflows:` set is the edited data."
+  - "`.github/workflows/main-push-failure-watch.yml` — the watcher itself; its `on.workflow_run.workflows:`
+    set is the edited data."
   - "`scripts/check_watcher_coverage.py` — the guard that reads it. NOT modified."
-  - "`.github/workflows/check-skills-canonical.yml` — the workflow now listed; its `name:` was
-    read directly to get the entry right. NOT modified. It is `pull_request`-only, which is
-    why the entry buys CONFORMANCE and not paging — see the risks section."
-  - "Every open PR in the repo — all of them carry this red today, which is what makes this
-    worth its own PR rather than a line inside someone else's."
+  - "`.github/workflows/check-skills-canonical.yml` — the workflow now listed; its `name:` was read
+    directly to get the entry right. NOT modified. It is `pull_request`-only, which is why the entry
+    buys CONFORMANCE and not paging — see the risks section."
+  - Every open PR in the repo — all of them carry this red today, which is what makes this worth its
+    own PR rather than a line inside someone else's.
 risks:
-  - "A `.github/workflows/` diff is CODEOWNERS-TIER1 and auto-merge-OFF class. Merged by the
-    session after gates are green and the Gear-3 verdict is posted."
-  - 'CORRECTED after the Gear-3 gate flagged this exact overstatement: adding
-    `check-skills-canonical` to the watcher''s set does NOT create paging coverage. That workflow
-    triggers on `pull_request` only, so it never emits the `push`/`schedule` `workflow_run` event
-    the watcher''s `alert` job requires. The guard''s own header says so (`check_watcher_coverage.py`
-    lines 33-45: the membership rule is "deliberately over-inclusive so adding a workflow never
-    requires a push-vs-pull_request judgment call" and "green here is narrower than it sounds").
-    What the entry actually buys is self-conformance with that over-inclusive rule — which is the
-    whole point, because the guard is a REQUIRED check that today fails every PR in the repo.'
-grader: |
-  The diff was produced by a dispatched implementer lane and then verified INDEPENDENTLY by the
+  - A `.github/workflows/` diff is CODEOWNERS-TIER1 and auto-merge-OFF class. Merged by the session
+    after gates are green and the Gear-3 verdict is posted.
+  - 'CORRECTED after the Gear-3 gate flagged this exact overstatement: adding `check-skills-canonical`
+    to the watcher''s set does NOT create paging coverage. That workflow triggers on `pull_request`
+    only, so it never emits the `push`/`schedule` `workflow_run` event the watcher''s `alert` job requires.
+    The guard''s own header says so (`check_watcher_coverage.py` lines 32-45: the membership rule is
+    "deliberately over-inclusive so adding a workflow never requires a push-vs-pull_request judgment
+    call" and "green here is narrower than it looks"). What the entry actually buys is self-conformance
+    with that over-inclusive rule — worth doing because the guard is red on main ITSELF — not because
+    it is required. Measured against live branch protection: it is NOT one of main''s 11 required contexts,
+    and its paths filter means it only ever reaches PRs that touch `.github/workflows/*.yml`.'
+grader:
+  "The diff was produced by a dispatched implementer lane and then verified INDEPENDENTLY by
+  the
+
   conducting session, which re-read the guard to confirm it keys by `name:`, confirmed
+
   `check-skills-canonical.yml`'s `name:` field matches the added entry verbatim, confirmed
+
   `AI PR review (advisory)` has no live `.yml` (only a `.disabled-*` file), and re-ran the guard
+
   in the branch's own worktree reading the exit code directly. Generator != grader twice over:
+
   the implementer does not grade its diff, and the session that verified it does not post the
+
   Gear-3 verdict.
+
+  "
