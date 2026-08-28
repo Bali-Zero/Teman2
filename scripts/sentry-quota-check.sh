@@ -1,6 +1,26 @@
 #!/usr/bin/env bash
 #
-# sentry-quota-check.sh — guard against burning the Sentry free-tier quota.
+# sentry-quota-check.sh — guard against CONFIG that burns the Sentry quota.
+#
+# ⚠️ WHAT THIS DOES NOT DO (2026-08-28): it does NOT measure the quota. It never
+# calls the Sentry API — the only outbound request in this file goes to Telegram.
+# It reads the app's own runtime config via `flyctl ssh` and judges whether that
+# config is likely to burn quota. It is a CONFIG-DRIFT LINTER placed upstream of
+# the problem, not a detector of the problem.
+#
+# This matters because the failure it guards against ALREADY HAPPENED while this
+# check ran green every day: on 2026-08-28 the org-level error bucket was found
+# exhausted — `x-sentry-rate-limits: ...:organization:error_usage_exceeded` — i.e.
+# Sentry is dropping real production errors right now. This script could not have
+# seen it, by construction, and did not. A green run here says "the config is not
+# obviously reckless", never "the quota is healthy".
+#
+# Reading this name in a briefing as "quota is fine" is the exact misreading it
+# invites. Detecting real exhaustion needs an authenticated Sentry API call
+# (org-scope), which needs SENTRY_AUTH_TOKEN — currently flagged for rotation, so
+# that half is deliberately NOT wired here. Tracked in PENDING-ARMS.
+#
+# Until then the only real signal is the Sentry dashboard, read by a human.
 #
 # The free tier is 5,000 events/month shared across errors AND transactions.
 # A traces_sample_rate above ~2% on a real-traffic deploy exhausts the quota
@@ -18,7 +38,7 @@
 #   - From cron (Air, daily):  0 9 * * *  bash ~/Projects/nuzantara/scripts/sentry-quota-check.sh
 #
 # Exit codes:
-#   0  OK
+#   0  config is not obviously quota-reckless (NOT "quota is healthy" — see above)
 #   1  quota-risk config detected (traces_sample_rate > threshold)
 #   2  PII bypass detected (SENTRY_SEND_DEFAULT_PII truthy)
 #   3  could not read config
