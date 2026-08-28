@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-this-file-IS-the-panel-output-the-joint-disposition-register-not-a-reviewed-research-deliverable
+---
+
 # Joint disposition register — items 4+5 panel (2026-08-28)
 
 Panel: 4 cross-family seats (codex gpt-5.6-sol xhigh filesystem 13 · kimi k3 filesystem 15 ·
