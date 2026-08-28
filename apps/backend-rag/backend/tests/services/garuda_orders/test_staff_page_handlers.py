@@ -654,16 +654,19 @@ def test_build_handlers_routes_all_five_when_given_a_staff_page_sender() -> None
         handlers = build_handlers(pool=None, sender=None, staff_page_sender=staff_sender)
     finally:
         pass  # client intentionally left open; this test never sends
-    # THIRTEEN routed — which is NOT every type production enqueues. There are
-    # FOURTEEN; the fourteenth is named in UNROUTED_BY_DESIGN below and asserted
-    # to be absent, so this file states the gap instead of implying there is
-    # none. An earlier version of this comment claimed thirteen was all of them.
-    # The five customer-email types joined this set when #5128 merged (this
-    # branch was cut before it); the exactness is the point, so that adding a
-    # route is always a deliberate edit here and losing one can never pass
-    # unnoticed.
+    # FOURTEEN routed, which is now every type production enqueues. The
+    # fourteenth, `late_refund_confirmation_email`, joined when its handler
+    # landed; before that this test asserted it ABSENT, precisely so that the
+    # day someone routed it this assertion would fail and force the count to be
+    # corrected in the same edit. It did, and this is that edit.
+    #
+    # The exactness is the point: adding a route must always be a deliberate
+    # change here, and losing one can never pass unnoticed. This set is a
+    # SECOND opinion, not the primary one — `test_outbox_job_type_coverage.py`
+    # derives the enqueued types from the AST, which is the only check that can
+    # see a `job_type=` passed as a variable. A hand-maintained set cannot.
     expected = {
-        # eight, always routed
+        # nine, always routed
         "checkout_ready_email",
         "payment_paid_email",
         "payment_failed_email",
@@ -671,6 +674,7 @@ def test_build_handlers_routes_all_five_when_given_a_staff_page_sender() -> None
         "refund_email",
         "practice_release",
         "practice_received_email",
+        "late_refund_confirmation_email",
         "portal_invite",
         # five, routed only because a staff_page_sender was passed
         "staff_page_duplicate_charge",
@@ -680,19 +684,16 @@ def test_build_handlers_routes_all_five_when_given_a_staff_page_sender() -> None
         "staff_page_refund_out_of_order",
     }
     assert set(handlers) == expected
-    assert len(expected) == 13
+    assert len(expected) == 14
 
-    # The fourteenth type, declared rather than silently missing. It is computed
-    # at repository.py:799-805 — `"practice_release" if resolution == "honoured"
-    # else "late_refund_confirmation_email"` — when a staff member resolves a
-    # late-payment case by refunding it. Every prior count of these types was
-    # taken by grepping `job_type="`, a LITERAL, and this one call site passes a
-    # VARIABLE, which is how three separate artifacts missed it. Asserting it
-    # ABSENT (rather than leaving the set silently short) means the day someone
-    # routes it, this assertion fails and forces the count and the comment above
-    # to be corrected in the same edit.
-    UNROUTED_BY_DESIGN = {"late_refund_confirmation_email"}
-    assert UNROUTED_BY_DESIGN.isdisjoint(set(handlers))
+    # The type that made the count wrong three times, pinned by name. It is
+    # computed at repository.py:799-805 — `"practice_release" if resolution ==
+    # "honoured" else "late_refund_confirmation_email"` — when a staff member
+    # resolves a late-payment case by refunding it. Every prior count was taken
+    # by grepping `job_type="`, a LITERAL, and that call site passes a VARIABLE.
+    # Naming it here means a future edit that drops the route fails on the
+    # specific key rather than on an opaque set difference.
+    assert "late_refund_confirmation_email" in handlers
 
 
 async def test_draining_a_queued_staff_page_sends_and_marks_it_dispatched(pool):

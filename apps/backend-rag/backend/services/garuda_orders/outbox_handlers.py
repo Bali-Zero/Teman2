@@ -637,6 +637,194 @@ class RefundEmailHandler:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class LateRefundFacts:
+    """What the late-refund confirmation is built from.
+
+    `resolution` comes from the TRIGGERING journal event, never from
+    `garuda_orders.late_case_resolution`. That column is ONE value per order
+    and migration 284 allows a second case to open once the first is closed
+    ("exactly one open case per order AT A TIME"), so a delayed retry of case
+    A's job would read case B's resolution and tell the customer about money
+    that is not theirs. The journal is append-only, so the event this job was
+    enqueued from cannot drift.
+    """
+
+    order_id: str
+    email: str
+    case_type: str
+    resolution: str
+
+
+class LateRefundConfirmationEmailHandler:
+    """Sends one "the extra payment came back" email per
+    `late_refund_confirmation_email` job — the FOURTEENTH job type, and the
+    last one production enqueued with no handler.
+
+    WHY IT WAS MISSED THREE TIMES, which is the part worth keeping. Every
+    count of these job types was taken by grepping ``job_type="`` — a LITERAL.
+    This one is enqueued at `repository.py:799-805` as
+
+        job_type = ("practice_release" if resolution == "honoured"
+                    else "late_refund_confirmation_email")
+        await journal.enqueue_outbox(..., job_type=job_type)
+
+    a VARIABLE, invisible to any literal-shaped search. The ledger's own
+    prescribed antidote said to widen the search DIRECTORY, and widening the
+    directory finds nothing here: the missing half was widening from TEXT to
+    SYNTAX (superscar #3, under-match). The coverage test that ships with this
+    handler therefore reads the `job_type=` argument from the AST and FAILS
+    LOUDLY on a non-literal rather than skipping it.
+
+    NOT A COPY OF `RefundEmailHandler`, and the difference is the guard.
+    `RefundEmailHandler` keys on `state == 'refunded'`. `resolve_late_order`
+    sets `late_case_open = FALSE` and `late_case_resolution` and leaves `state`
+    UNCHANGED, so the order behind this job may be `refunded`, `failed` or
+    `expired` — a state guard would be reading a column this transition never
+    writes.
+
+    WHAT THIS MAIL MAY AND MAY NOT SAY. Three transitions open a late-payment
+    case, and they are not the same story: OP-08 (a real duplicate charge on an
+    already-`paid` order), OP-F04 (a payment arriving after the order was
+    REFUNDED) and OP-F05 (a payment arriving on a `failed`/`expired` order,
+    which has NO earlier successful payment — see that branch's own comment,
+    "`provider_charge_id` is NULL here"). The triggering `order.late_resolved`
+    event carries only `{"resolution": ...}`, so this handler cannot tell them
+    apart. The copy is therefore written to be true on all three and claims
+    nothing it cannot know — in particular it does NOT say "a second payment",
+    which the first draft did and which is false for OP-F05.
+
+    FAIL-CLOSED, AND DELIBERATELY IN THE OPPOSITE DIRECTION FROM THE STAFF
+    PAGES. A missing triggering event RAISES: the journal is append-only, so a
+    job whose event does not exist is a contradiction, not a stale read, and
+    the one fact this mail asserts would be unverifiable. A resolution that is
+    not `refunded_in_full` resolves WITHOUT sending and logs at WARNING naming
+    the value read. For a staff page the ambiguous direction is "page anyway"
+    — a money anomaly nobody hears about is worse. For a customer email that
+    ASSERTS money moved it is the reverse: withholding is the safe side, so
+    the log line is the thing that has to be loud.
+
+    NO AMOUNT, for a harder reason than `RefundEmailHandler`'s. There the
+    objection was that `price_idr` is the ORDER price rather than a refunded
+    amount. Here the sum returned is the EXTRA charge, and nothing in
+    `garuda_orders` records what that charge was — `late_case_charge_id` is a
+    provider id, not a figure. Naming `price_idr` would name a number that is
+    wrong rather than merely unproven.
+    """
+
+    _RESOLUTION_WORTH_CONFIRMING = "refunded_in_full"
+
+    def __init__(self, pool: asyncpg.Pool, sender: BrevoEmailSender) -> None:
+        self._pool = pool
+        self._sender = sender
+
+    async def __call__(self, job: OutboxJob) -> None:
+        facts = await self._load(job.order_id, job.journal_event_id)
+        if facts is None:
+            raise EmailSendFailed(
+                f"order {job.order_id} not found for a queued late refund confirmation"
+            )
+
+        if facts.resolution != self._RESOLUTION_WORTH_CONFIRMING:
+            logger.warning(
+                "outbox late_refund_confirmation_email resolved WITHOUT sending: "
+                "order %s, triggering event %s recorded resolution %r, not %r — "
+                "a refund confirmation would be untrue",
+                facts.order_id,
+                job.journal_event_id,
+                facts.resolution,
+                self._RESOLUTION_WORTH_CONFIRMING,
+            )
+            return
+
+        await self._sender.send(
+            to=facts.email,
+            # Subject carries the same constraint as the body: it may not
+            # commit to "extra"/"second"/"duplicate", which is false on the
+            # OP-F05 path (a payment on a failed/expired order, where no
+            # earlier one exists). The first draft said "the extra payment"
+            # here while the body had already been corrected — the guard
+            # test reads the whole request, which is how that was caught.
+            subject="Your Bali Zero Visa on Arrival — a payment has been returned",
+            html_body=self._body(facts),
+        )
+        logger.info(
+            "outbox late_refund_confirmation_email sent for order %s", facts.order_id
+        )
+
+    async def _load(self, order_id: str, journal_event_id: str) -> LateRefundFacts | None:
+        async with self._pool.acquire() as conn:
+            order_row = await conn.fetchrow(
+                """
+                SELECT order_id, applicant_email, case_type
+                  FROM garuda_orders
+                 WHERE order_id = $1
+                """,
+                order_id,
+            )
+            if order_row is None:
+                return None
+            event_row = await conn.fetchrow(
+                "SELECT detail FROM garuda_order_journal WHERE event_id = $1",
+                journal_event_id,
+            )
+        if event_row is None:
+            raise EmailSendFailed(
+                f"journal event {journal_event_id} not found for a queued late "
+                f"refund confirmation on order {order_id}"
+            )
+        raw_detail = event_row["detail"]
+        detail = json.loads(raw_detail) if isinstance(raw_detail, str) else (raw_detail or {})
+        resolution = detail.get("resolution")
+        return LateRefundFacts(
+            order_id=order_row["order_id"],
+            email=order_row["applicant_email"],
+            case_type=order_row["case_type"],
+            # Not `str(resolution)`: a dict/list under the key would serialise
+            # whole and then merely fail the equality check below — same class
+            # of shape `_detail_scalar` refuses for the staff pages. Anything
+            # that is not a string is not the sentinel, and "" never equals it.
+            resolution=resolution if isinstance(resolution, str) else "",
+        )
+
+    @staticmethod
+    def _body(facts: LateRefundFacts) -> str:
+        base = os.getenv(TRACKER_BASE_URL_ENV, DEFAULT_TRACKER_BASE_URL).rstrip("/")
+        tracker = f"{base}/{facts.order_id}"
+        # "A SECOND PAYMENT" WOULD BE FALSE ON ONE OF THE THREE PATHS, and the
+        # first draft of this copy said exactly that. Three transitions open a
+        # late-payment case (repository.py): OP-08, a genuine duplicate charge
+        # on an already-`paid` order; OP-F04, a payment landing after the order
+        # was REFUNDED; and OP-F05, a payment landing on a `failed`/`expired`
+        # order. That third one has NO earlier successful payment at all — the
+        # branch's own comment says so, "`provider_charge_id` is NULL here (a
+        # failed/expired order never reached OP-02)". Telling that customer a
+        # second payment was taken asserts something untrue about their money.
+        #
+        # The handler cannot tell the three apart: it is triggered by the
+        # `order.late_resolved` event, whose `detail` carries only
+        # `{"resolution": ...}`, not which case was opened. So the copy is
+        # written to be true on ALL THREE rather than guessing — "a payment
+        # that should not have been taken" holds for a duplicate, for one after
+        # a refund, and for one on a closed order.
+        #
+        # It also does NOT say "your application is not affected". True for
+        # OP-08; misleading for OP-F05, where the application really is failed
+        # or expired and the tracker is the honest place to look.
+        return (
+            "Hello,<br><br>"
+            "A payment was taken for your Bali Zero Visa on Arrival "
+            f"({facts.case_type}) that should not have been, and we have "
+            "returned it.<br><br>"
+            "The money goes back to the payment method you used, and follows "
+            "your card provider's own timeline to appear on your "
+            "statement.<br><br>"
+            "You can follow this order's status here:<br><br>"
+            f'<a href="{tracker}">Track my application</a><br><br>'
+            "— Bali Zero"
+        )
+
+
 class PracticeNotMinted(RuntimeError):
     """No `garuda_practices` row for this payment event. Raised, never swallowed."""
 
@@ -1651,24 +1839,32 @@ def build_handlers(
 ) -> dict[str, object]:
     """The registry `drain_once` consumes.
 
-    THIRTEEN job types are routed. That is NOT all of them — production
-    enqueues FOURTEEN, and the fourteenth still has no handler:
-    `late_refund_confirmation_email`, computed at `repository.py:799-805`
-    (`"practice_release" if resolution == "honoured" else
-    "late_refund_confirmation_email"`) when a staff member resolves a late-payment
-    case by giving the money back. An earlier draft of this docstring said
-    thirteen was every type; that was wrong, and it was wrong for an instructive
-    reason — every count of these types so far was taken by grepping `job_type="`,
-    a LITERAL, and that one call site passes a VARIABLE. Broadening the search
-    DIRECTORY was never the missing half; broadening from text to syntax is.
-    So `unroutable` does NOT reach zero after this function.
-    Eight always: `checkout_ready_email` and `payment_paid_email` (what the
+    ALL FOURTEEN job types production enqueues are routed. The fourteenth,
+    `late_refund_confirmation_email`, lands here with this change; it is
+    computed at `repository.py:799-805` (`"practice_release" if resolution ==
+    "honoured" else "late_refund_confirmation_email"`) when a staff member
+    resolves a late-payment case by giving the money back.
+
+    THE COUNT IN THIS DOCSTRING WAS WRONG TWICE, and the reason is load-bearing
+    for whoever changes it next. Every count of these types was taken by
+    grepping `job_type="`, a LITERAL, and that one call site passes a VARIABLE
+    — invisible to any literal-shaped search, in three separate artifacts. The
+    ledger's own prescribed antidote said to widen the search DIRECTORY, which
+    finds nothing here: the missing half was widening from TEXT to SYNTAX
+    (superscar #3, under-match). Do not re-derive this number with a grep.
+    `test_every_enqueued_job_type_has_a_handler` reads the `job_type=` argument
+    from the AST and fails loudly on a non-literal, and that test is the only
+    thing entitled to assert the count.
+
+    Nine always: `checkout_ready_email` and `payment_paid_email` (what the
     customer sees while paying), `payment_failed_email` and
     `payment_expired_email` (what the customer sees when paying goes wrong),
     `refund_email` (what the customer sees when money comes back),
-    `practice_release` (what the team sees), `portal_invite` (how the customer
-    gets IN) and `practice_received_email` (what the customer sees once their
-    application is open with the team). `payment_paid_email`,
+    `late_refund_confirmation_email` (what the customer sees when a SECOND
+    charge comes back), `practice_release` (what the team sees),
+    `portal_invite` (how the customer gets IN) and `practice_received_email`
+    (what the customer sees once their application is open with the team).
+    `payment_paid_email`,
     `practice_release` and `portal_invite` are enqueued by the SAME transaction
     in `repository.py` when a payment is confirmed; routing only the first of
     those three is what originally produced a paying customer with a
@@ -1690,14 +1886,23 @@ def build_handlers(
     from `_run_garuda_outbox_scheduler` in `main_api.py`, reusing the SAME
     injected `httpx.AsyncClient` the email sender already owns) to arm them.
 
-    So the category of deliberately-unhandled job types shrinks to exactly ONE:
-    `{late_refund_confirmation_email}`. An `unroutable > 0` alarm armed today
-    would therefore fire on EVERY drain pass, forever, for that one known type —
-    an unroutable job is never dispatched and its attempt bump is rolled back, so
-    it is re-claimed every pass. That is how a real signal gets muted (superscar
-    #2), so the alarm stays scoped to that single-entry allowlist until the
-    fourteenth handler lands, at which point it collapses to the plain predicate.
-    Both are separate changes; neither is this one.
+    THE CATEGORY OF DELIBERATELY-UNHANDLED JOB TYPES IS NOW EMPTY, and that is
+    what finally makes the alarm simple. While one known type was unrouted, an
+    `unroutable > 0` alarm would have fired on EVERY drain pass forever for it
+    — an unroutable job is never dispatched and its attempt bump is rolled
+    back, so it is re-claimed every pass, which is how a real signal gets muted
+    (superscar #2). With nothing left on the allowlist the predicate collapses
+    to plain `unroutable > 0`, meaning "a NEW job_type nobody routed". Arming
+    it is a separate change in `_run_garuda_outbox_scheduler`; it is not this
+    one. Note the ordering claim carefully: EMPTY here is asserted by the AST
+    coverage test, not by this sentence.
+
+    A ROUTED HANDLER IS STILL NOT AN ARMED ONE. `_run_garuda_outbox_scheduler`
+    only spawns if `GARUDA_OUTBOX_CONSUMER_ENABLED` is exactly the string
+    "true" (`outbox_consumer.is_consumer_enabled`), and it spawns via
+    `asyncio.create_task`, so a failure inside it kills the task alone and
+    leaves `/health` answering 200. Nothing routed here is observable from
+    outside the process until that changes.
     """
 
     from backend.app.core.config import settings
@@ -1713,6 +1918,9 @@ def build_handlers(
         "payment_failed_email": PaymentFailedEmailHandler(pool, sender),
         "payment_expired_email": PaymentExpiredEmailHandler(pool, sender),
         "refund_email": RefundEmailHandler(pool, sender),
+        "late_refund_confirmation_email": LateRefundConfirmationEmailHandler(
+            pool, sender
+        ),
         "practice_release": PracticeReleaseHandler(pool, handoff),
         "practice_received_email": PracticeReceivedEmailHandler(pool, sender),
         "portal_invite": PortalInviteHandler(
@@ -1752,6 +1960,8 @@ __all__ = [
     "CheckoutReadyEmailHandler",
     "CrmPracticeNotWrittenYet",
     "EmailSendFailed",
+    "LateRefundConfirmationEmailHandler",
+    "LateRefundFacts",
     "OrderAnomalyFacts",
     "OrderEmailFacts",
     "PaymentExpiredEmailHandler",

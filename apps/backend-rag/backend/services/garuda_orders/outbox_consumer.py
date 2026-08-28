@@ -9,27 +9,41 @@ wired in `app/main_api.py` (see `drain_once`'s import there) behind
 docstring that denies its own module's existence is precisely the shape that
 misleads the next repo-wide ground pass, so it is stated positively now.
 
-What is TRUE, and is the live gap: **THIRTEEN distinct `job_type` values are
-enqueued by production code, and `outbox_handlers.py` registers THREE handlers**
-(`payment_paid_email`, `practice_release`, `portal_invite`). Twelve of the
-thirteen come from `repository.py` (checkout_ready_email, payment_paid_email,
-payment_failed_email, payment_expired_email, refund_email, practice_release,
-portal_invite and the five staff_page_* jobs). **The thirteenth is enqueued
-somewhere easy to miss**: `garuda_portal/practice.py::mint_received_practice`
-enqueues `practice_received_email` — the customer's confirmation that their
-practice was received — from the same function that mints the practice row. It
-has no handler either, so the count of unhandled types is TEN, not nine, and the
-tenth is customer-facing.
+**FOURTEEN distinct `job_type` values are enqueued by production code, and as of
+2026-08-28 `outbox_handlers.build_handlers` registers a handler for all
+fourteen.** Thirteen come from `repository.py`; the fourteenth,
+`practice_received_email`, is enqueued by
+`garuda_portal/practice.py::mint_received_practice`.
 
-Corrected 2026-08-27 in the same PR that wrote it: the first version of this
-paragraph said twelve/nine, having counted only `repository.py`. Anyone
-recounting must grep `job_type="` across ALL of `backend/services`, not just the
-repository module.
+THIS NUMBER WAS WRONG THREE TIMES, and how it was wrong matters more than the
+number. Successive versions of this paragraph said twelve, then thirteen. Every
+one of those counts came from grepping ``job_type="`` — a LITERAL — and
+`repository.py:799-805` passes a VARIABLE:
 
-The ten unhandled types are enqueued, routed to `unroutable`, and keep their full
-attempt budget until a handler is written (this consumer handles that correctly).
-Nothing pages on a non-empty `unroutable` set; that gap is ledgered, not fixed
-here.
+    job_type = ("practice_release" if resolution == "honoured"
+                else "late_refund_confirmation_email")
+
+so `late_refund_confirmation_email` was invisible to all of them. The correction
+prescribed after the second miss was "grep across ALL of `backend/services`,
+not just the repository module" — and that antidote carried the same defect it
+was curing: widening the DIRECTORY finds nothing when the shape being matched is
+the wrong one. Widening from TEXT to SYNTAX is the fix (superscar #3,
+under-match).
+
+So: do NOT re-derive this count with a grep, and do not trust this paragraph over
+the test. `test_every_enqueued_job_type_has_a_handler` walks the AST of every
+`enqueue_outbox` call under `backend/services`, reads the `job_type=` argument,
+and FAILS LOUDLY on a non-literal rather than skipping it. That test is the only
+thing entitled to assert the count; this prose is a convenience that has now
+misled three readers.
+
+ROUTED IS NOT ARMED, AND NOT OBSERVABLE. `_run_garuda_outbox_scheduler` spawns
+only when `GARUDA_OUTBOX_CONSUMER_ENABLED` is exactly `"true"`, and it spawns
+via `asyncio.create_task` — a failure inside it kills that task alone while
+`/health` keeps answering 200. Nothing pages on a non-empty `unroutable` set,
+and `count_undrained` below has no non-test caller, so the queue's state is not
+visible from outside the process at all. Both gaps are ledgered, neither is
+fixed here.
 
 WHY THE LOCK IS HELD ACROSS THE HANDLER (the one design decision that matters).
 `UNIQUE (journal_event_id, job_type)` makes "email once" structural on the WRITE
