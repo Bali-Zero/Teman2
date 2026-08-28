@@ -288,3 +288,217 @@ def test_the_lifespan_ITSELF_still_spawns_the_drain() -> None:
     assert "await garuda_task" in src, (
         "the drain task is cancelled but not awaited, so its `finally` never runs"
     )
+
+
+# --------------------------------------------------------------------------
+# OP-04 checkout-expiry sweep — the SECOND job that had no caller
+# --------------------------------------------------------------------------
+
+
+class _LockConn:
+    """A conn that answers the advisory-lock round trip and records it."""
+
+    def __init__(self, *, grant: bool = True) -> None:
+        self.grant = grant
+        self.calls: list[str] = []
+
+    async def fetchval(self, sql, *args):
+        if "pg_try_advisory_lock" in sql:
+            self.calls.append("lock")
+            return self.grant
+        if "pg_advisory_unlock" in sql:
+            self.calls.append("unlock")
+            return True
+        raise AssertionError(f"unexpected query in the sweep block: {sql!r}")
+
+
+class _LockPool:
+    def __init__(self, conn: _LockConn) -> None:
+        self.conn = conn
+
+    def acquire(self):
+        conn = self.conn
+
+        class _Ctx:
+            async def __aenter__(self):
+                return conn
+
+            async def __aexit__(self, *exc):
+                return False
+
+        return _Ctx()
+
+
+async def _drive_one_tick(monkeypatch, *, repository, conn, sweep):
+    """One drain pass with the periodic block armed, then CancelledError.
+
+    `next_alarm_check` starts at 0.0, so the FIRST iteration always enters the
+    periodic block — one scripted pass is enough to exercise the sweep.
+    """
+    monkeypatch.setenv("GARUDA_OUTBOX_POLL_SECONDS", "5")
+    script = [DrainStats(claimed=0)]
+
+    async def fake_drain(c, handlers, **kw):
+        if not script:
+            raise asyncio.CancelledError
+        return script.pop(0)
+
+    async def fake_count_undrained(c, **kw):
+        # Not under test here; keep the alarm half silent so a failure in the
+        # sweep half cannot be mistaken for the alarm's.
+        return {"exhausted": 0}
+
+    async def fake_sleep(seconds):
+        return None
+
+    monkeypatch.setattr(
+        "backend.services.garuda_orders.outbox_consumer.drain_once", fake_drain
+    )
+    monkeypatch.setattr(
+        "backend.services.garuda_orders.outbox_consumer.count_undrained",
+        fake_count_undrained,
+    )
+    monkeypatch.setattr(
+        "backend.services.garuda_orders.reconciliation.reconcile_expired_checkouts", sweep
+    )
+    monkeypatch.setattr(main_api.asyncio, "sleep", fake_sleep)
+
+    app = SimpleNamespace(state=SimpleNamespace(db_pool=_LockPool(conn)))
+    if repository is not None:
+        app.state.garuda_order_repository = repository
+    with pytest.raises(asyncio.CancelledError):
+        await main_api._run_garuda_outbox_scheduler(app)
+
+
+async def test_the_periodic_tick_calls_the_op04_sweep_once_the_order_lane_is_wired(
+    monkeypatch,
+) -> None:
+    """THE arming assertion. `reconcile_expired_checkouts` shipped with exactly
+    one file naming it — its own definition — while its docstring claimed an
+    "intended cadence". This is that cadence. Red if the call is ever removed.
+    """
+    called: list[tuple] = []
+
+    async def sweep(pool, repository, **kw):
+        called.append((pool, repository))
+        return SimpleNamespace(candidates=0, expired=0, left_for_webhook=0)
+
+    conn = _LockConn()
+    repo = object()
+    await _drive_one_tick(monkeypatch, repository=repo, conn=conn, sweep=sweep)
+
+    assert len(called) == 1, "the sweep must run exactly once per periodic tick"
+    assert called[0][1] is repo
+    assert conn.calls == ["lock", "unlock"]
+
+
+async def test_the_sweep_is_skipped_while_the_order_lane_answers_503(monkeypatch) -> None:
+    """No `garuda_order_repository` means Xendit is unarmed and no order can
+    exist. Sweeping then would be a query per 300s forever for nothing — and,
+    worse, would take the advisory lock on a system with nothing to reconcile.
+    """
+    called: list[tuple] = []
+
+    async def sweep(pool, repository, **kw):
+        called.append((pool, repository))
+        return SimpleNamespace(candidates=0, expired=0, left_for_webhook=0)
+
+    conn = _LockConn()
+    await _drive_one_tick(monkeypatch, repository=None, conn=conn, sweep=sweep)
+
+    assert called == []
+    assert conn.calls == [], "the lock must not even be requested"
+
+
+async def test_the_advisory_lock_is_released_when_the_sweep_raises(monkeypatch) -> None:
+    """The lock is SESSION-scoped: a sweep that raises without unlocking would
+    strand it for the life of that pooled connection, after which no machine
+    ever sweeps again — a silent, permanent outage of the thing being armed.
+    """
+
+    async def sweep(pool, repository, **kw):
+        raise RuntimeError("provider unreachable")
+
+    conn = _LockConn()
+    # The loop must SURVIVE it (the drain is the product) and still reach its
+    # scripted CancelledError rather than dying on the sweep's exception.
+    await _drive_one_tick(monkeypatch, repository=object(), conn=conn, sweep=sweep)
+
+    assert conn.calls == ["lock", "unlock"]
+
+
+async def test_a_lock_held_by_another_machine_skips_the_sweep(monkeypatch) -> None:
+    """`pg_try_advisory_lock` returning false means a sibling is already
+    sweeping. Running anyway would select the SAME candidate rows -- the sweep's
+    query has no `FOR UPDATE SKIP LOCKED`, unlike the drain's claim -- and make
+    duplicate provider calls for one order.
+    """
+    called: list[tuple] = []
+
+    async def sweep(pool, repository, **kw):
+        called.append((pool, repository))
+        return SimpleNamespace(candidates=0, expired=0, left_for_webhook=0)
+
+    conn = _LockConn(grant=False)
+    await _drive_one_tick(monkeypatch, repository=object(), conn=conn, sweep=sweep)
+
+    assert called == []
+    assert conn.calls == ["lock"], "no unlock: we never held it"
+
+
+async def test_a_hanging_sweep_is_cut_off_and_gives_the_drain_back(
+    monkeypatch, caplog
+) -> None:
+    """THE BLOCKER an adversarial review found in the first draft of this
+    wiring (2026-08-28).
+
+    The sweep runs INLINE in the single drain coroutine, and
+    `reconcile_expired_checkouts` walks up to 200 rows strictly sequentially,
+    each an HTTPS round trip on a 30s-timeout client. Its per-row
+    `except Exception: continue` does not cut a bad pass short — it GUARANTEES
+    the worst case: ~100 minutes with `drain_once` not running, so no customer
+    email and no staff money-anomaly page leaves the queue for that whole
+    window, behind a perfectly green log.
+
+    Red without the `asyncio.wait_for`: this test would hang instead of
+    finishing, which is precisely the production symptom.
+    """
+    monkeypatch.setattr(main_api, "_OP04_SWEEP_TIMEOUT_SECONDS", 0.01)
+
+    async def sweep(pool, repository, **kw):
+        # NOT `asyncio.sleep`: the harness replaces it with a no-op, so a sleep
+        # would return instantly and prove nothing. An Event nobody sets hangs
+        # for real, and only the timeout can end it.
+        await asyncio.Event().wait()
+
+    conn = _LockConn()
+    with caplog.at_level("WARNING"):
+        await _drive_one_tick(monkeypatch, repository=object(), conn=conn, sweep=sweep)
+
+    assert conn.calls == ["lock", "unlock"], "a cut-off pass must still unlock"
+    assert any("was cut off" in r.getMessage() for r in caplog.records), (
+        "the cut-off needs its OWN line: 'the provider is slow' and 'the sweep "
+        "is broken' call for different answers"
+    )
+
+
+async def test_a_pass_that_fills_its_own_limit_says_the_backlog_is_not_drained(
+    monkeypatch, caplog
+) -> None:
+    """A sweep that returns exactly `_OP04_SWEEP_LIMIT` candidates almost
+    certainly has more behind it. Without this line a growing backlog is
+    invisible until a customer sees a stale `awaiting_payment` tracker.
+    """
+
+    async def sweep(pool, repository, *, limit, **kw):
+        # The limit is asserted here, not assumed: the warning compares against
+        # `_OP04_SWEEP_LIMIT`, so the call must be the thing that used it.
+        assert limit == main_api._OP04_SWEEP_LIMIT
+        return SimpleNamespace(candidates=limit, expired=limit, left_for_webhook=0)
+
+    with caplog.at_level("WARNING"):
+        await _drive_one_tick(
+            monkeypatch, repository=object(), conn=_LockConn(), sweep=sweep
+        )
+
+    assert any("backlog not drained" in r.getMessage() for r in caplog.records)
