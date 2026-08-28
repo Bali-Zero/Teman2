@@ -38,11 +38,17 @@ EXPECTED_TOOLS = {
     "newsroom_verify_live",
     "wr2_list_review_queue",
     "wr2_get_review_item",
+    "wr2_get_delivery",
+    "wr2_request_rerender",
+    "wr2_rerender_status",
     "wr2_prepare_with_sol",
     "wr2_job_status",
     "flow_workspace_health",
+    "flow_get_media",
+    "flow_operation_status",
     "flow_generate_image",
     "flow_generate_video",
+    "flow_generate_video_from_prompt",
 }
 
 FORBIDDEN_TOOL_TERMS = {
@@ -100,9 +106,19 @@ async def test_server_is_exact_fail_closed_allowlist() -> None:
     assert by_name["newsroom_verify_live"].annotations.destructiveHint is True
     assert by_name["wr2_prepare_with_sol"].annotations.readOnlyHint is False
     assert by_name["wr2_prepare_with_sol"].annotations.destructiveHint is True
+    assert by_name["wr2_request_rerender"].annotations.idempotentHint is True
+    assert by_name["wr2_get_delivery"].annotations.readOnlyHint is True
     assert by_name["flow_generate_video"].annotations.openWorldHint is True
+    assert by_name["flow_get_media"].annotations.readOnlyHint is True
+    assert by_name["flow_generate_video_from_prompt"].annotations.idempotentHint is True
     assert {name for name in names if "publish" in name} == {"newsroom_publish"}
     assert mcp._mask_error_details is True
+
+
+def test_workspace_server_instructions_route_news_room_and_flow_correctly() -> None:
+    assert "News Room covers use native ImageGen" in mcp.instructions
+    assert "Confirmed Flow image and video generation remain available" in mcp.instructions
+    assert "Flow is video-only" not in mcp.instructions
 
 
 def test_workspace_server_never_imports_full_server_or_admin_client() -> None:
@@ -651,6 +667,175 @@ async def test_wr2_queue_never_returns_local_paths(tmp_path: Path, monkeypatch) 
 
 
 @pytest.mark.asyncio
+async def test_wr2_delivery_only_returns_allowlisted_drive_url(
+    tmp_path: Path, monkeypatch
+) -> None:
+    queue_path = tmp_path / "queue.json"
+    queue_path.write_text(
+        json.dumps(
+            [
+                {
+                    "item_id": "safe",
+                    "topic": "Safe delivery",
+                    "state": "drafted",
+                    "drive_url": "https://drive.google.com/drive/folders/abc?usp=sharing",
+                },
+                {
+                    "item_id": "unsafe",
+                    "topic": "Unsafe delivery",
+                    "state": "drafted",
+                    "drive_url": "https://evil.example/drive/folders/abc",
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("WR2_QUEUE_PATH", str(queue_path))
+    tools, _ = _capture_tools(AsyncMock())
+
+    safe = await tools["wr2_get_delivery"]("safe")
+    unsafe = await tools["wr2_get_delivery"]("unsafe")
+
+    assert safe["ok"] is True
+    assert safe["delivery_url"].startswith("https://drive.google.com/")
+    assert unsafe["ok"] is False
+    assert unsafe["delivery_url"] == ""
+
+
+@pytest.mark.asyncio
+async def test_wr2_rerender_is_prepublish_and_idempotent(
+    tmp_path: Path, monkeypatch
+) -> None:
+    queue_path = tmp_path / "queue.json"
+    draft_id = "12345678-1234-5678-1234-567812345678"
+    queue_path.write_text(
+        json.dumps(
+            [
+                {
+                    "item_id": "draft-safe",
+                    "draft_id": draft_id,
+                    "topic": "Draft",
+                    "state": "drafted",
+                },
+                {
+                    "item_id": "already-live",
+                    "draft_id": "87654321-4321-8765-4321-876543218765",
+                    "topic": "Live",
+                    "state": "published",
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("WR2_QUEUE_PATH", str(queue_path))
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    runner = AsyncMock()
+    monkeypatch.setattr(marketing, "_run_wr2_rerender", runner)
+    tools, _ = _capture_tools(AsyncMock())
+
+    first = await tools["wr2_request_rerender"](
+        "draft-safe", "wr2-rerender-safe-1", "SETUJU"
+    )
+    second = await tools["wr2_request_rerender"](
+        "draft-safe", "wr2-rerender-safe-1", "SETUJU"
+    )
+    status = await tools["wr2_rerender_status"]("wr2-rerender-safe-1")
+
+    assert first == second
+    assert first["status"] == "queued_for_renderer"
+    assert status["ok"] is True
+    runner.assert_awaited_once_with(draft_id)
+    with pytest.raises(ValueError, match="pre-publication"):
+        await tools["wr2_request_rerender"](
+            "already-live", "wr2-rerender-live-1", "SETUJU"
+        )
+
+
+@pytest.mark.asyncio
+async def test_flow_prompt_to_video_resumes_without_double_generation(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    calls: list[list[str]] = []
+
+    async def fake_flowkit(args: list[str], *, timeout_s: int) -> dict[str, Any]:
+        calls.append(args)
+        if args == ["health"]:
+            return {"ok": True, "ready": True}
+        if args[0] == "generate-image":
+            return {"ok": True, "media_id": "media-start-1"}
+        if args[0] == "generate-video":
+            assert args[-1] == "media-start-1"
+            return {
+                "ok": True,
+                "video_media_id": "media-video-1",
+                "project_id": "project-1",
+                "scene_id": "scene-1",
+            }
+        raise AssertionError(args)
+
+    monkeypatch.setattr(marketing, "_run_flowkit_cli", fake_flowkit)
+    tools, _ = _capture_tools(AsyncMock())
+    arguments = (
+        "Editorial portrait of Zantara in a Bali Zero studio, clean and modern.",
+        "0-8s: subtle editorial dolly while Zantara explains the public update.",
+        "flow-combined-safe-1",
+        "SETUJU",
+    )
+
+    first = await tools["flow_generate_video_from_prompt"](*arguments)
+    calls_after_first = list(calls)
+    second = await tools["flow_generate_video_from_prompt"](*arguments)
+    status = await tools["flow_operation_status"](
+        "flow-combined-safe-1", "video_from_prompt"
+    )
+
+    assert first == second
+    assert first["video_media_id"] == "media-video-1"
+    assert calls == calls_after_first
+    assert [call[0] for call in calls] == [
+        "health",
+        "generate-image",
+        "health",
+        "generate-video",
+    ]
+    assert status["ok"] is True
+
+
+@pytest.mark.asyncio
+async def test_flow_media_delivery_filters_non_google_urls(monkeypatch) -> None:
+    responses = [
+        {
+            "ok": True,
+            "media_id": "media-safe-1",
+            "ready": True,
+            "fife_url": "https://lh3.googleusercontent.com/media/video.mp4?sig=abc",
+        },
+        {
+            "ok": True,
+            "media_id": "media-unsafe-1",
+            "ready": True,
+            "fife_url": "https://evil.example/video.mp4?sig=abc",
+        },
+    ]
+
+    async def fake_flowkit(args: list[str], *, timeout_s: int) -> dict[str, Any]:
+        assert args[0] == "media-info"
+        return responses.pop(0)
+
+    monkeypatch.setattr(marketing, "_run_flowkit_cli", fake_flowkit)
+    tools, _ = _capture_tools(AsyncMock())
+
+    safe = await tools["flow_get_media"]("media-safe-1")
+    unsafe = await tools["flow_get_media"]("media-unsafe-1")
+
+    assert safe["download_url"].startswith("https://lh3.googleusercontent.com/")
+    assert "download_url" not in unsafe
+
+
+@pytest.mark.asyncio
 async def test_write_tools_are_fail_closed_until_armed(monkeypatch) -> None:
     monkeypatch.delenv("WORKSPACE_MARKETING_WRITES_ENABLED", raising=False)
     tools, _ = _capture_tools(AsyncMock())
@@ -673,6 +858,19 @@ async def test_write_tools_are_fail_closed_until_armed(monkeypatch) -> None:
             "Public Bali Zero motion treatment",
             "media-safe-1",
             "flow-disarmed-video-1",
+            "SETUJU",
+        )
+    with pytest.raises(RuntimeError, match="not armed"):
+        await tools["flow_generate_video_from_prompt"](
+            "A detailed public start image prompt",
+            "A detailed public motion prompt",
+            "flow-disarmed-combined-1",
+            "SETUJU",
+        )
+    with pytest.raises(RuntimeError, match="not armed"):
+        await tools["wr2_request_rerender"](
+            "wr2-does-not-matter",
+            "wr2-disarmed-rerender-1",
             "SETUJU",
         )
     with pytest.raises(RuntimeError, match="not armed"):
