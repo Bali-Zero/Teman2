@@ -1,0 +1,72 @@
+{
+  "artifact_type": "wr3_editorial_wave_lineage",
+  "artifact_version": "1.0",
+  "wave": 2,
+  "evidence_date": "2026-08-29",
+  "blind_independence": {
+    "preserved": true,
+    "composed_prompt_sha256": "8deadc7faaaf363c85f72113ebeae0578f08f9eddc5c4c1c297938539b5beee7",
+    "prompt_path": "docs/wr3/factory/editorial/prompts/wave2-blind.md",
+    "schema_path": "docs/wr3/factory/editorial/schemas/wave2.schema.json",
+    "same_shortlist_and_reports_sent_to_each_reviewer": true,
+    "reviewers_saw_other_scores": false
+  },
+  "reviewers": [
+    {
+      "model_family": "anthropic",
+      "model_identifier": "claude-opus-5",
+      "reasoning_effort": "max",
+      "raw_path": "docs/wr3/factory/editorial/raw/wave2/claude-opus-5.json",
+      "raw_sha256": "f25ac452c3e9565b58bb2a4fd6ca4e00ceec05b47a54bbe375a11d319d1529f3",
+      "wrapper_path": "docs/wr3/factory/editorial/raw/wave2/claude-opus-5.wrapper.json",
+      "wrapper_sha256": "d3df062821d751798cb2c34233a19d28069886daa5acce316858918ea0b075ab",
+      "scorecard_count": 40
+    },
+    {
+      "model_family": "google",
+      "topology_target": "gemini-deepthink",
+      "topology_target_status": "declarative-only",
+      "model_identifier": "gemini-3.1-pro",
+      "substitution_scope": "same-family executable substitute",
+      "reasoning_effort": "high",
+      "raw_path": "docs/wr3/factory/editorial/raw/wave2/gemini-3.1-pro.json",
+      "raw_sha256": "9498c1c39961a0d8560ecb73af545924bdf80dd142716e81f594bc7aec1b9afa",
+      "wrapper_path": "docs/wr3/factory/editorial/raw/wave2/gemini-3.1-pro.wrapper.json",
+      "wrapper_sha256": "3504e4d45cc92eadc1bf7b5baa3e5ab982b5f35943f36ca9ee8e411a7bd15b8c",
+      "scorecard_count": 40
+    }
+  ],
+  "consensus": {
+    "path": "docs/wr3/factory/editorial/normalized/consensus-ranking.json",
+    "sha256": "69b79593f30fb0e99a19ba7fffb239057eeaffcb6455dc565a92cd2b37c3b117",
+    "algorithm": {
+      "criteria_total": "sum of the nine bounded criterion scores, maximum 100",
+      "penalty_total": "sum of the four bounded penalties, maximum 60",
+      "reviewer_net": "criteria_total - penalty_total",
+      "consensus_net": "arithmetic mean of reviewer_net across the two independent families",
+      "tie_break": "candidate_id ascending",
+      "editorial_judgment_applied": false
+    },
+    "candidate_count": 40
+  },
+  "final_curation": {
+    "model_identifier": "gpt-5.6-sol",
+    "reasoning_effort": "ultra",
+    "sandbox": "read-only",
+    "ephemeral": true,
+    "composed_prompt_sha256": "ab0f644867e924bd9988ff33eeb30bf498e824703d3dccab068791cbed749456",
+    "prompt_path": "docs/wr3/factory/editorial/prompts/final-curation-codex.md",
+    "schema_path": "docs/wr3/factory/editorial/schemas/final-curation.schema.json",
+    "output_path": "docs/wr3/factory/editorial/curation/gpt-5.6-sol.json",
+    "output_sha256": "07911ea4f2410c34e65f6e994f72500dc660f801de7453e71ebba8ade22249e7",
+    "recommended_count": 20,
+    "reserve_count": 10
+  },
+  "season_artifacts": {
+    "canonical_json_path": "docs/wr3/factory/editorial/season-01.json",
+    "canonical_json_sha256": "4eba3b650c05d2926f8976e9458816565568abae490c2da43624b495249765e4",
+    "readable_markdown_path": "docs/wr3/factory/editorial/season-01.md",
+    "readable_markdown_sha256": "60f14313a64266afdc25aef48e813ad91fc35a35615a1e8080e1a7a2963a9230",
+    "terminal_status": "TOPIC_APPROVAL_REQUIRED"
+  }
+}

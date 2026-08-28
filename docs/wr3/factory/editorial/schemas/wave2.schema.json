@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scorecards"],
+  "properties": {
+    "scorecards": {
+      "type": "array",
+      "minItems": 40,
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "candidate_id",
+          "criteria",
+          "penalties",
+          "short_reason",
+          "veto"
+        ],
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "pattern": "^C[0-4][0-9]$"
+          },
+          "criteria": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "evergreen_durability",
+              "audience_tension",
+              "bali_zero_relevance",
+              "narrative_promise",
+              "search_information_intent",
+              "visual_world_potential",
+              "sourceability",
+              "multilingual_universality",
+              "trust_building_value"
+            ],
+            "properties": {
+              "evergreen_durability": {"type": "integer", "minimum": 0, "maximum": 20},
+              "audience_tension": {"type": "integer", "minimum": 0, "maximum": 15},
+              "bali_zero_relevance": {"type": "integer", "minimum": 0, "maximum": 15},
+              "narrative_promise": {"type": "integer", "minimum": 0, "maximum": 15},
+              "search_information_intent": {"type": "integer", "minimum": 0, "maximum": 10},
+              "visual_world_potential": {"type": "integer", "minimum": 0, "maximum": 10},
+              "sourceability": {"type": "integer", "minimum": 0, "maximum": 5},
+              "multilingual_universality": {"type": "integer", "minimum": 0, "maximum": 5},
+              "trust_building_value": {"type": "integer", "minimum": 0, "maximum": 5}
+            }
+          },
+          "penalties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "banality",
+              "existing_content_overlap",
+              "regulatory_fragility",
+              "clickbait_without_substance"
+            ],
+            "properties": {
+              "banality": {"type": "integer", "minimum": 0, "maximum": 15},
+              "existing_content_overlap": {"type": "integer", "minimum": 0, "maximum": 15},
+              "regulatory_fragility": {"type": "integer", "minimum": 0, "maximum": 15},
+              "clickbait_without_substance": {"type": "integer", "minimum": 0, "maximum": 15}
+            }
+          },
+          "short_reason": {"type": "string", "minLength": 1, "maxLength": 280},
+          "veto": {"type": ["string", "null"], "maxLength": 180}
+        }
+      }
+    }
+  }
+}

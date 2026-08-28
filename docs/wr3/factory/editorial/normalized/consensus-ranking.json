@@ -1,0 +1,1668 @@
+{
+  "schema_version": "editorial-consensus-v1",
+  "execution_date": "2026-08-29",
+  "algorithm": {
+    "criteria_total": "sum of the nine bounded criterion scores, maximum 100",
+    "penalty_total": "sum of the four bounded penalties, maximum 60",
+    "reviewer_net": "criteria_total - penalty_total",
+    "consensus_net": "arithmetic mean of reviewer_net across the two independent families",
+    "tie_break": "candidate_id ascending",
+    "editorial_judgment_applied": false
+  },
+  "input_artifacts": [
+    {
+      "path": "docs/wr3/factory/editorial/normalized/shortlist-40.json",
+      "sha256": "c8d9a02f79d3a2b8084df4e64dbd1bd255edd6ddff6992704fa24f12cf7ea8df"
+    },
+    {
+      "path": "docs/wr3/factory/editorial/corpus/overlap-report.json",
+      "sha256": "2581cd7a0d929a18c544b19cd238eeba658fc1ae1af49595c71eab7530e468a0"
+    },
+    {
+      "path": "docs/wr3/factory/editorial/corpus/sourceability-report.json",
+      "sha256": "07b2624b6ef315a139794ce97bb346ef1ca116b3eab51b6f648925900b5ca843"
+    },
+    {
+      "model_family": "anthropic",
+      "model_identifier": "claude-opus-5",
+      "path": "docs/wr3/factory/editorial/raw/wave2/claude-opus-5.json",
+      "sha256": "f25ac452c3e9565b58bb2a4fd6ca4e00ceec05b47a54bbe375a11d319d1529f3"
+    },
+    {
+      "model_family": "google",
+      "model_identifier": "gemini-3.1-pro",
+      "path": "docs/wr3/factory/editorial/raw/wave2/gemini-3.1-pro.json",
+      "sha256": "9498c1c39961a0d8560ecb73af545924bdf80dd142716e81f594bc7aec1b9afa"
+    }
+  ],
+  "reviewer_count": 2,
+  "candidate_count": 40,
+  "candidates": [
+    {
+      "candidate_id": "C34",
+      "domain": "property",
+      "working_title": "A Promise to Extend Is Not a Right to Extend",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 92,
+          "penalty_total": 7,
+          "net_score": 85,
+          "veto": null,
+          "short_reason": "Right versus discretionary consent is a permanent legal distinction, the leverage-shifts-as-the-clock-runs insight is genuinely fresh, corpus overlap is negligible, and routing marks volatility low. Strong on every axis."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 86,
+          "penalty_total": 9,
+          "net_score": 77,
+          "veto": null,
+          "short_reason": "Exposes the dangerous assumption that a contractual option guarantees leverage during lease renewal."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 89.0,
+        "penalty_average": 8.0,
+        "net_average": 81.0,
+        "net_spread": 8
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0404,
+      "sourceability": "medium",
+      "regulatory_volatility": "low",
+      "source_ids": [
+        "PROP-01",
+        "PROP-02",
+        "PROP-03"
+      ],
+      "rank": 1
+    },
+    {
+      "candidate_id": "C11",
+      "domain": "company",
+      "working_title": "Director Liability: The Buck Stops Here",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 90,
+          "penalty_total": 10,
+          "net_score": 80,
+          "veto": null,
+          "short_reason": "Near-zero corpus coverage on a foundational, low-volatility doctrine that many clients are personally exposed to without knowing. Title-versus-exposure is a strong, durable frame that needs no thresholds."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 90,
+          "penalty_total": 10,
+          "net_score": 80,
+          "veto": null,
+          "short_reason": "Pierces the veil of limited liability. High stakes, extreme tension, deeply durable corporate truth."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 90.0,
+        "penalty_average": 10.0,
+        "net_average": 80.0,
+        "net_spread": 0
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0532,
+      "sourceability": "high",
+      "regulatory_volatility": "medium",
+      "source_ids": [
+        "COM-03"
+      ],
+      "rank": 2
+    },
+    {
+      "candidate_id": "C17",
+      "domain": "company",
+      "working_title": "The Agreement That Cannot Be Enforced",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 92,
+          "penalty_total": 10,
+          "net_score": 82,
+          "veto": null,
+          "short_reason": "The self-sealing trap — you can only defend it by revealing it — is the sharpest tension in the slate, and the corpus is effectively empty here. Enforceability itself needs legal grounding, so the stress-test framing must carry it."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 87,
+          "penalty_total": 9,
+          "net_score": 78,
+          "veto": null,
+          "short_reason": "Brilliant deconstruction of paper shields. The self-sealing trap of private side agreements is universally dangerous."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 89.5,
+        "penalty_average": 9.5,
+        "net_average": 80.0,
+        "net_spread": 4
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0277,
+      "sourceability": "medium",
+      "regulatory_volatility": "medium",
+      "source_ids": [
+        "COM-01",
+        "COM-03"
+      ],
+      "rank": 3
+    },
+    {
+      "candidate_id": "C15",
+      "domain": "company",
+      "working_title": "Who Can Actually Stop You?",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 91,
+          "penalty_total": 8,
+          "net_score": 83,
+          "veto": null,
+          "short_reason": "Maps power rather than paperwork, which is both rarer and more durable than any procedure. The control map — who acts, who blocks, who undoes — is a deliverable artifact, and the corpus does not have it."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 86,
+          "penalty_total": 10,
+          "net_score": 76,
+          "veto": null,
+          "short_reason": "Excellent practical mapping of corporate power dynamics rather than just theoretical structures."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 88.5,
+        "penalty_average": 9.0,
+        "net_average": 79.5,
+        "net_spread": 7
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0662,
+      "sourceability": "high",
+      "regulatory_volatility": "medium",
+      "source_ids": [
+        "COM-03"
+      ],
+      "rank": 4
+    },
+    {
+      "candidate_id": "C09",
+      "domain": "immigration",
+      "working_title": "Permission to Be Here Is Not Permission to Do That",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 91,
+          "penalty_total": 11,
+          "net_score": 80,
+          "veto": null,
+          "short_reason": "Separating duration of stay from permitted activity is structural in every system, and the corpus barely touches it. Delivering a portable two-question test survives permit renaming and needs no rule quoted to be useful."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 88,
+          "penalty_total": 14,
+          "net_score": 74,
+          "veto": null,
+          "short_reason": "Foundational conceptual shift separating stay rights from activity rights. High volatility but essential framing."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 89.5,
+        "penalty_average": 12.5,
+        "net_average": 77.0,
+        "net_spread": 6
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0632,
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "IMM-01",
+        "IMM-02",
+        "IMM-03",
+        "IMM-04",
+        "IMM-05"
+      ],
+      "rank": 5
+    },
+    {
+      "candidate_id": "C33",
+      "domain": "property",
+      "working_title": "Check the Seller, Not Just the Land",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 93,
+          "penalty_total": 11,
+          "net_score": 82,
+          "veto": null,
+          "short_reason": "Heirs, co-owners and unproven authority are a social reality no registry reform erases, so it barely ages. Best visual world in the slate, low volatility, and the corpus covers land types rather than who may sell."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 85,
+          "penalty_total": 13,
+          "net_score": 72,
+          "veto": null,
+          "short_reason": "Shifts focus from land validity to human entitlement, catching the most expensive real estate failures."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 89.0,
+        "penalty_average": 12.0,
+        "net_average": 77.0,
+        "net_spread": 10
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.1153,
+      "sourceability": "high",
+      "regulatory_volatility": "medium",
+      "source_ids": [
+        "PROP-01",
+        "PROP-02",
+        "PROP-03"
+      ],
+      "rank": 6
+    },
+    {
+      "candidate_id": "C25",
+      "domain": "tax",
+      "working_title": "Someone Files in Your Name",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 87,
+          "penalty_total": 8,
+          "net_score": 79,
+          "veto": null,
+          "short_reason": "Delegated compliance with retained responsibility is permanent, the private shame is a real and unspoken tension, and the corpus is empty here. Low search intent, but the artifacts-to-demand promise is concrete and self-implicating."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 83,
+          "penalty_total": 9,
+          "net_score": 74,
+          "veto": null,
+          "short_reason": "Addresses the immense anxiety of delegated compliance without true visibility or control."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 85.0,
+        "penalty_average": 8.5,
+        "net_average": 76.5,
+        "net_spread": 5
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0316,
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "TAX-04"
+      ],
+      "rank": 7
+    },
+    {
+      "candidate_id": "C06",
+      "domain": "immigration",
+      "working_title": "When the Relationship Changes, So Does the Permit",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 91,
+          "penalty_total": 11,
+          "net_score": 80,
+          "veto": null,
+          "short_reason": "The strongest emotional tension in the immigration set and almost untouched by the corpus: nobody asks because asking sounds like planning to fail. Derived status is durable architecture, and the promise is holdable knowledge, not procedure."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 86,
+          "penalty_total": 14,
+          "net_score": 72,
+          "veto": null,
+          "short_reason": "Highly emotional, under-discussed vulnerability of derived status. Exceptional narrative promise."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 88.5,
+        "penalty_average": 12.5,
+        "net_average": 76.0,
+        "net_spread": 8
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0955,
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "IMM-01",
+        "IMM-02",
+        "IMM-03",
+        "IMM-05"
+      ],
+      "rank": 8
+    },
+    {
+      "candidate_id": "C24",
+      "domain": "tax",
+      "working_title": "'I Already Paid Tax at Home'",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 89,
+          "penalty_total": 13,
+          "net_score": 76,
+          "veto": null,
+          "short_reason": "Converts a vague comfort into a concrete chain and shows where it breaks — the mechanism is durable even as forms change. Corpus covers treaties descriptively; the relief-is-a-procedure angle is a different audience problem."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 88,
+          "penalty_total": 13,
+          "net_score": 75,
+          "veto": null,
+          "short_reason": "Excellent procedural breakdown converting vague treaty comfort into actionable administrative defense."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 88.5,
+        "penalty_average": 13.0,
+        "net_average": 75.5,
+        "net_spread": 1
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.1361,
+      "sourceability": "high",
+      "regulatory_volatility": "medium",
+      "source_ids": [
+        "TAX-01",
+        "TAX-02",
+        "TAX-03"
+      ],
+      "rank": 9
+    },
+    {
+      "candidate_id": "C35",
+      "domain": "property",
+      "working_title": "You Did Not Buy the Land, You Bought a Clock",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 95,
+          "penalty_total": 20,
+          "net_score": 75,
+          "veto": null,
+          "short_reason": "The single most consequential misunderstanding in this market, with the highest search intent. Familiar territory and several corpus pieces circle it, but right-holder-end-date is a sharper instrument than what-can-foreigners-buy."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 90,
+          "penalty_total": 15,
+          "net_score": 75,
+          "veto": null,
+          "short_reason": "A masterclass in reframing property 'ownership' as a decaying, time-limited instrument."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 92.5,
+        "penalty_average": 17.5,
+        "net_average": 75.0,
+        "net_spread": 0
+      },
+      "overlap_level": "medium",
+      "top_lexical_cosine": 0.1614,
+      "sourceability": "high",
+      "regulatory_volatility": "medium",
+      "source_ids": [
+        "PROP-01",
+        "PROP-02",
+        "PROP-03"
+      ],
+      "rank": 10
+    },
+    {
+      "candidate_id": "C12",
+      "domain": "company",
+      "working_title": "The Notary's True Role",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 85,
+          "penalty_total": 9,
+          "net_score": 76,
+          "veto": null,
+          "short_reason": "A structural civil-law versus common-law gap that will never close, essentially absent from the corpus, and highly filmable. Lower search volume and lower novelty for civil-law readers, but exceptional trust value."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 82,
+          "penalty_total": 10,
+          "net_score": 72,
+          "veto": null,
+          "short_reason": "Corrects a dangerous structural assumption about civil law notaries versus common law counsel."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 83.5,
+        "penalty_average": 9.5,
+        "net_average": 74.0,
+        "net_spread": 4
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.061,
+      "sourceability": "medium",
+      "regulatory_volatility": "low",
+      "source_ids": [
+        "COM-02",
+        "COM-03"
+      ],
+      "rank": 11
+    },
+    {
+      "candidate_id": "C20",
+      "domain": "company",
+      "working_title": "Whoever Holds the Logins Holds the Company",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 84,
+          "penalty_total": 9,
+          "net_score": 75,
+          "veto": null,
+          "short_reason": "Practical control versus legal ownership is an unowned angle with rising relevance as processes move onto credentialed systems. Almost no search intent and thin official sourcing, but very low fragility and high trust payoff."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 84,
+          "penalty_total": 11,
+          "net_score": 73,
+          "veto": null,
+          "short_reason": "Exposes the modern reality that credential custody trumps legal ownership on a day-to-day basis."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 84.0,
+        "penalty_average": 10.0,
+        "net_average": 74.0,
+        "net_spread": 2
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0601,
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "COM-01",
+        "COM-02"
+      ],
+      "rank": 12
+    },
+    {
+      "candidate_id": "C27",
+      "domain": "tax",
+      "working_title": "How Do You Stop Being a Taxpayer Here?",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 88,
+          "penalty_total": 12,
+          "net_score": 76,
+          "veto": null,
+          "short_reason": "Everyone plans entry and nobody plans exit — a real gap in the corpus and in most people's thinking. Exit-as-process with a paper trail is durable framing; only the specific deregistration steps carry volatility."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 82,
+          "penalty_total": 11,
+          "net_score": 71,
+          "veto": null,
+          "short_reason": "Rare and highly valuable focus on the exit process, which most expats completely ignore until it's too late."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 85.0,
+        "penalty_average": 11.5,
+        "net_average": 73.5,
+        "net_spread": 5
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0715,
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "TAX-01"
+      ],
+      "rank": 13
+    },
+    {
+      "candidate_id": "C36",
+      "domain": "property",
+      "working_title": "The Landlocked Lease: Right of Way Nightmares",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 83,
+          "penalty_total": 11,
+          "net_score": 72,
+          "veto": null,
+          "short_reason": "A wall across the driveway is the strongest single image available, and neighbour disputes over access are timeless and low-volatility. Narrow search demand and parcel-specific evidence limit it, but overlap is near zero."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 85,
+          "penalty_total": 10,
+          "net_score": 75,
+          "veto": null,
+          "short_reason": "Highly visual, practical warning about physical access rights versus land lease boundaries."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 84.0,
+        "penalty_average": 10.5,
+        "net_average": 73.5,
+        "net_spread": 3
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0964,
+      "sourceability": "medium",
+      "regulatory_volatility": "medium",
+      "source_ids": [
+        "PROP-01",
+        "PROP-02",
+        "PROP-03"
+      ],
+      "rank": 14
+    },
+    {
+      "candidate_id": "C39",
+      "domain": "property",
+      "working_title": "You Inherit the Building's Sins",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 91,
+          "penalty_total": 17,
+          "net_score": 74,
+          "veto": null,
+          "short_reason": "Attacks a near-universal visual heuristic — it stands, therefore it was allowed — which is exactly what video can dramatise. Permit regimes and enforcement move fast, so it must test the question rather than assert the answer."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 85,
+          "penalty_total": 13,
+          "net_score": 72,
+          "veto": null,
+          "short_reason": "Dismantles the heuristic that a standing building is a legal building, exposing buyers to massive risk."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 88.0,
+        "penalty_average": 15.0,
+        "net_average": 73.0,
+        "net_spread": 2
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.1053,
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "PROP-04",
+        "PROP-05",
+        "PROP-06"
+      ],
+      "rank": 15
+    },
+    {
+      "candidate_id": "C40",
+      "domain": "property",
+      "working_title": "Legal Land, Illegal Plan",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 91,
+          "penalty_total": 18,
+          "net_score": 73,
+          "veto": null,
+          "short_reason": "Splits two questions buyers fuse into one, and commitment-before-verification is a durable human sequencing failure. Use-restriction detail is the most volatile and site-specific material here, so the value must sit in the sequence."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 88,
+          "penalty_total": 15,
+          "net_score": 73,
+          "veto": null,
+          "short_reason": "Crucial distinction between holding land and executing intended use. High volatility in spatial rules but structurally evergreen."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 89.5,
+        "penalty_average": 16.5,
+        "net_average": 73.0,
+        "net_spread": 0
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.1154,
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "PROP-04",
+        "PROP-05",
+        "PROP-06"
+      ],
+      "rank": 16
+    },
+    {
+      "candidate_id": "C01",
+      "domain": "immigration",
+      "working_title": "Sponsor Leverage: The Hidden Power Dynamic",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 85,
+          "penalty_total": 15,
+          "net_score": 70,
+          "veto": null,
+          "short_reason": "Structural dependency theme that outlives any permit name; hits the exact fear of sponsored residents. Routing covers the framework but not remedies, so the payoff must stay at the level of protective posture rather than procedure."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 86,
+          "penalty_total": 11,
+          "net_score": 75,
+          "veto": null,
+          "short_reason": "Explores a severe structural imbalance crucial to sponsored expats. High tension and durable premise."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 85.5,
+        "penalty_average": 13.0,
+        "net_average": 72.5,
+        "net_spread": 5
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.122,
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "IMM-01",
+        "IMM-02",
+        "IMM-03",
+        "IMM-05"
+      ],
+      "rank": 17
+    },
+    {
+      "candidate_id": "C31",
+      "domain": "property",
+      "working_title": "The Nominee Trap: Trust vs. Legal Reality",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 91,
+          "penalty_total": 24,
+          "net_score": 67,
+          "veto": null,
+          "short_reason": "Maximum tension and search pull, and the audience problem is unquestionably central. But it is the most-covered subject in the market, three corpus pieces sit on it, enforcement is live, and enforceability needs legal grounding."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 89,
+          "penalty_total": 11,
+          "net_score": 78,
+          "veto": null,
+          "short_reason": "The quintessential, eternal real estate warning for foreigners. Absolute necessity despite familiarity."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 90.0,
+        "penalty_average": 17.5,
+        "net_average": 72.5,
+        "net_spread": 11
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.1127,
+      "sourceability": "medium",
+      "regulatory_volatility": "medium",
+      "source_ids": [
+        "PROP-01",
+        "PROP-02",
+        "PROP-03"
+      ],
+      "rank": 18
+    },
+    {
+      "candidate_id": "C37",
+      "domain": "property",
+      "working_title": "Who Will Buy It From You?",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 84,
+          "penalty_total": 11,
+          "net_score": 73,
+          "veto": null,
+          "short_reason": "Asking the exit question first is a genuinely fresh inversion, and liquidity rather than legality is what decides outcomes. Weakest official sourcing in the property set — this is market judgement, so it must be argued, not cited."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 81,
+          "penalty_total": 9,
+          "net_score": 72,
+          "veto": null,
+          "short_reason": "Forces property investors to consider exit liquidity and decaying rights before emotional entry."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 82.5,
+        "penalty_average": 10.0,
+        "net_average": 72.5,
+        "net_spread": 1
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0828,
+      "sourceability": "medium",
+      "regulatory_volatility": "medium",
+      "source_ids": [
+        "PROP-01",
+        "PROP-02",
+        "PROP-03"
+      ],
+      "rank": 19
+    },
+    {
+      "candidate_id": "C13",
+      "domain": "company",
+      "working_title": "The Local Partner Paradox",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 86,
+          "penalty_total": 20,
+          "net_score": 66,
+          "veto": null,
+          "short_reason": "Alignment under structural asymmetry is a durable partnership problem, but the promise of structural protections drifts toward sector-participation questions the routing flags as volatile and ungrounded. Needs discipline to stay conceptual."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 88,
+          "penalty_total": 10,
+          "net_score": 78,
+          "veto": null,
+          "short_reason": "Timeless exploration of control and alignment in cross-cultural joint ventures. High human tension."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 87.0,
+        "penalty_average": 15.0,
+        "net_average": 72.0,
+        "net_spread": 12
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.1465,
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "COM-01",
+        "COM-02",
+        "COM-03"
+      ],
+      "rank": 20
+    },
+    {
+      "candidate_id": "C07",
+      "domain": "immigration",
+      "working_title": "What Your Residency Permit Does Not Come With",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 87,
+          "penalty_total": 13,
+          "net_score": 74,
+          "veto": null,
+          "short_reason": "Maps a false mental model rather than a rule, and the unbundling of status from property, banking and tax is permanent everywhere. Naturally spans every service line without needing a single number to work."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 83,
+          "penalty_total": 14,
+          "net_score": 69,
+          "veto": null,
+          "short_reason": "Unpacks the bundle fallacy clearly and efficiently. Crucial expectation management for new residents."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 85.0,
+        "penalty_average": 13.5,
+        "net_average": 71.5,
+        "net_spread": 5
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.084,
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "IMM-01",
+        "IMM-02",
+        "IMM-03",
+        "IMM-04",
+        "IMM-05"
+      ],
+      "rank": 21
+    },
+    {
+      "candidate_id": "C18",
+      "domain": "company",
+      "working_title": "You Are Also Buying Its Past",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 84,
+          "penalty_total": 11,
+          "net_score": 73,
+          "veto": null,
+          "short_reason": "Successor liability is structural, and the insight that the attraction is the risk is clean. Low corpus overlap, low fragility, and the pre-transfer checklist is deliverable without any figure."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 81,
+          "penalty_total": 11,
+          "net_score": 70,
+          "veto": null,
+          "short_reason": "Highlights the invisible liabilities of shelf companies, countering the appeal of administrative shortcuts."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 82.5,
+        "penalty_average": 11.0,
+        "net_average": 71.5,
+        "net_spread": 3
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0813,
+      "sourceability": "medium",
+      "regulatory_volatility": "medium",
+      "source_ids": [
+        "COM-01",
+        "COM-02",
+        "COM-03"
+      ],
+      "rank": 22
+    },
+    {
+      "candidate_id": "C30",
+      "domain": "tax",
+      "working_title": "Profitable and Broke",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 84,
+          "penalty_total": 13,
+          "net_score": 71,
+          "veto": null,
+          "short_reason": "Ties an abstract compliance topic to the most visceral business moment — payroll week. Timing mismatches are structural, corpus coverage is nil, and the reserve-discipline promise works without a single rate."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 85,
+          "penalty_total": 14,
+          "net_score": 71,
+          "veto": null,
+          "short_reason": "Brilliantly connects abstract tax timing to visceral cash flow crises in service businesses."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 84.5,
+        "penalty_average": 13.5,
+        "net_average": 71.0,
+        "net_spread": 0
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0502,
+      "sourceability": "medium",
+      "regulatory_volatility": "medium",
+      "source_ids": [
+        "TAX-04"
+      ],
+      "rank": 23
+    },
+    {
+      "candidate_id": "C22",
+      "domain": "tax",
+      "working_title": "Tax Residency: The Physical Presence Reality",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 87,
+          "penalty_total": 24,
+          "net_score": 63,
+          "veto": null,
+          "short_reason": "Best sourcing and highest search intent in the tax set, and the facts-not-labels principle is durable. Heavily trodden though: two corpus pieces already own it, and the day-count that makes it concrete is a number we cannot state."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 89,
+          "penalty_total": 12,
+          "net_score": 77,
+          "veto": null,
+          "short_reason": "Brutally clarifies the mechanical nature of tax residency, shattering the digital nomad illusion."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 88.0,
+        "penalty_average": 18.0,
+        "net_average": 70.0,
+        "net_spread": 14
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0851,
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "TAX-01",
+        "TAX-02",
+        "TAX-03"
+      ],
+      "rank": 24
+    },
+    {
+      "candidate_id": "C04",
+      "domain": "immigration",
+      "working_title": "Agent Accountability: When Outsourcing Goes Wrong",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 86,
+          "penalty_total": 16,
+          "net_score": 70,
+          "veto": null,
+          "short_reason": "Principal-agent risk is permanent and this is self-implicating in the best way for a provider. Existing agent-vs-DIY piece is a cost comparison, not a liability question, so the audience problem differs enough to survive."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 85,
+          "penalty_total": 17,
+          "net_score": 68,
+          "veto": null,
+          "short_reason": "Vital reality check on principal-agent liability. Deeply resonant pain point for foreigners trusting third parties."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 85.5,
+        "penalty_average": 16.5,
+        "net_average": 69.0,
+        "net_spread": 2
+      },
+      "overlap_level": "medium",
+      "top_lexical_cosine": 0.1968,
+      "sourceability": "medium",
+      "regulatory_volatility": "medium",
+      "source_ids": [
+        "IMM-01",
+        "IMM-02",
+        "IMM-03"
+      ],
+      "rank": 25
+    },
+    {
+      "candidate_id": "C21",
+      "domain": "tax",
+      "working_title": "The Lifestyle Expense Trap",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 83,
+          "penalty_total": 20,
+          "net_score": 63,
+          "veto": null,
+          "short_reason": "The company-versus-personal boundary is perennial and unusually filmable. But deductibility and audit treatment are explicitly outside the bounded sources, and the criminal-audit promise oversells what can be responsibly shown."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 83,
+          "penalty_total": 10,
+          "net_score": 73,
+          "veto": null,
+          "short_reason": "Direct attack on a common, naive founder behavior. Highly durable audit reality."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 83.0,
+        "penalty_average": 15.0,
+        "net_average": 68.0,
+        "net_spread": 10
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0705,
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "TAX-04"
+      ],
+      "rank": 26
+    },
+    {
+      "candidate_id": "C14",
+      "domain": "company",
+      "working_title": "Paid-up Capital: The Paper Trail Problem",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 81,
+          "penalty_total": 23,
+          "net_score": 58,
+          "veto": null,
+          "short_reason": "The paper-trail-years-later angle is genuinely good, but the subject is capital requirements and two corpus guides already cover them. Tellable only if it stays entirely on evidence and consequence, never on amounts."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 86,
+          "penalty_total": 11,
+          "net_score": 75,
+          "veto": null,
+          "short_reason": "Addresses a pervasive founders' lie that creates permanent structural vulnerability and audit risk."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 83.5,
+        "penalty_average": 17.0,
+        "net_average": 66.5,
+        "net_spread": 17
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.1442,
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "COM-01",
+        "COM-02",
+        "COM-03"
+      ],
+      "rank": 27
+    },
+    {
+      "candidate_id": "C32",
+      "domain": "property",
+      "working_title": "Subleasing Secrets: The Hospitality Assumption",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 81,
+          "penalty_total": 23,
+          "net_score": 58,
+          "veto": null,
+          "short_reason": "Lease terms versus commercial exploitation is a durable landlord-tenant tension, but short-stay rules are among the fastest-moving areas here and a recent corpus piece sits on them. 'Secrets' in the title is a clickbait tell."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 84,
+          "penalty_total": 12,
+          "net_score": 72,
+          "veto": null,
+          "short_reason": "Explores a massive blind spot for amateur hospitality investors operating on long-term residential leases."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 82.5,
+        "penalty_average": 17.5,
+        "net_average": 65.0,
+        "net_spread": 14
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0849,
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "PROP-01",
+        "PROP-04",
+        "PROP-05",
+        "PROP-06"
+      ],
+      "rank": 28
+    },
+    {
+      "candidate_id": "C19",
+      "domain": "company",
+      "working_title": "Closing the Doors: The Dissolution Nightmare",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 79,
+          "penalty_total": 19,
+          "net_score": 60,
+          "veto": null,
+          "short_reason": "Abandoned entities are a real recurring problem, but 'closing is harder than opening' is a worn line and a dedicated dissolution guide already exists. The compounding-liability framing is the only differentiator."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 81,
+          "penalty_total": 13,
+          "net_score": 68,
+          "veto": null,
+          "short_reason": "A sober warning about the asymmetric difficulty of corporate dissolution versus incorporation."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 80.0,
+        "penalty_average": 16.0,
+        "net_average": 64.0,
+        "net_spread": 8
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0901,
+      "sourceability": "high",
+      "regulatory_volatility": "medium",
+      "source_ids": [
+        "COM-01",
+        "COM-02",
+        "COM-03"
+      ],
+      "rank": 29
+    },
+    {
+      "candidate_id": "C38",
+      "domain": "property",
+      "working_title": "The Handover Trap: Construction Quality Control",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 78,
+          "penalty_total": 18,
+          "net_score": 60,
+          "veto": null,
+          "short_reason": "Superb visual world and a universal dispute, but retention-against-defects is standard construction advice everywhere and sits furthest from the advisory remit. The guaranteed-return promise overclaims what a clause can do."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 79,
+          "penalty_total": 13,
+          "net_score": 66,
+          "veto": null,
+          "short_reason": "Universal construction tension, highly relevant but conceptually standard. Retention strategy is a solid hook."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 78.5,
+        "penalty_average": 15.5,
+        "net_average": 63.0,
+        "net_spread": 6
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0869,
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "PROP-04"
+      ],
+      "rank": 30
+    },
+    {
+      "candidate_id": "C05",
+      "domain": "immigration",
+      "working_title": "The Overstay Slippery Slope",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 79,
+          "penalty_total": 24,
+          "net_score": 55,
+          "veto": null,
+          "short_reason": "High search pull but the most saturated expat subject there is, and three corpus pieces already own it. The compounding-lapse angle is the only fresh part; the consequences that make it land are precisely the figures we cannot state."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 84,
+          "penalty_total": 14,
+          "net_score": 70,
+          "veto": null,
+          "short_reason": "Universal psychological trap where minor delays become catastrophic. Extremely durable evergreen topic."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 81.5,
+        "penalty_average": 19.0,
+        "net_average": 62.5,
+        "net_spread": 15
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0765,
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "IMM-01",
+        "IMM-02",
+        "IMM-05"
+      ],
+      "rank": 31
+    },
+    {
+      "candidate_id": "C23",
+      "domain": "tax",
+      "working_title": "The Zero-Reporting Mirage",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 77,
+          "penalty_total": 24,
+          "net_score": 53,
+          "veto": null,
+          "short_reason": "The compliance-debt core is sound, but the question as framed asks how long detection can be avoided, and audit-trigger claims are unsourceable speculation. Survivable only if rebuilt as accumulating exposure, not evasion timing."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 80,
+          "penalty_total": 11,
+          "net_score": 69,
+          "veto": null,
+          "short_reason": "Reveals the counterintuitive risk that reporting zero income actively attracts automated audit scrutiny."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 78.5,
+        "penalty_average": 17.5,
+        "net_average": 61.0,
+        "net_spread": 16
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0926,
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "TAX-04"
+      ],
+      "rank": 32
+    },
+    {
+      "candidate_id": "C16",
+      "domain": "company",
+      "working_title": "Employee or Contractor: The Control Test",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 83,
+          "penalty_total": 25,
+          "net_score": 58,
+          "veto": null,
+          "short_reason": "Real and expensive misconception, but the severance article already sits close, and the promise of back-pay exposure depends on classification tests and consequences the routing leaves unvalidated. Reframe away from the sue-you hook."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 79,
+          "penalty_total": 17,
+          "net_score": 62,
+          "veto": null,
+          "short_reason": "Critical friction point between Western gig expectations and protective local labor laws."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 81.0,
+        "penalty_average": 21.0,
+        "net_average": 60.0,
+        "net_spread": 4
+      },
+      "overlap_level": "medium",
+      "top_lexical_cosine": 0.2164,
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "COM-04"
+      ],
+      "rank": 33
+    },
+    {
+      "candidate_id": "C02",
+      "domain": "immigration",
+      "working_title": "The Investor Visa Facade",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 74,
+          "penalty_total": 21,
+          "net_score": 53,
+          "veto": null,
+          "short_reason": "Real and common trap, but the premise leans on a loophole framing the bounded sources cannot validate, and the compliance burden it hinges on is exactly the volatile detail the Season cannot state. Strong client relevance carries it."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 79,
+          "penalty_total": 14,
+          "net_score": 65,
+          "veto": null,
+          "short_reason": "Addresses widespread misuse of corporate structures for residency, exposing compliance time bombs."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 76.5,
+        "penalty_average": 17.5,
+        "net_average": 59.0,
+        "net_spread": 12
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.1084,
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "IMM-03",
+        "IMM-04",
+        "IMM-05",
+        "COM-01"
+      ],
+      "rank": 34
+    },
+    {
+      "candidate_id": "C10",
+      "domain": "immigration",
+      "working_title": "The Definition of Work: Meetings vs. Labor",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 82,
+          "penalty_total": 27,
+          "net_score": 55,
+          "veto": null,
+          "short_reason": "Enormous anxiety and search pull, but the question as posed asks for an exact legal line the routing says is not established. Conceptual framing is possible; promising the precise point where email becomes labour is not."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 82,
+          "penalty_total": 20,
+          "net_score": 62,
+          "veto": null,
+          "short_reason": "Tackles the digital nomad gray area directly. High search intent despite some content overlap."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 82.0,
+        "penalty_average": 23.5,
+        "net_average": 58.5,
+        "net_spread": 7
+      },
+      "overlap_level": "medium",
+      "top_lexical_cosine": 0.152,
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "IMM-01",
+        "IMM-02",
+        "IMM-03",
+        "IMM-04",
+        "COM-04"
+      ],
+      "rank": 35
+    },
+    {
+      "candidate_id": "C08",
+      "domain": "immigration",
+      "working_title": "Dependent Traps: The Trailing Spouse",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 79,
+          "penalty_total": 25,
+          "net_score": 54,
+          "veto": null,
+          "short_reason": "Genuine household tension, but two existing articles answer the dependent-work question directly and the payoff depends on stating what a dependent may or may not do — a permission boundary the routing explicitly leaves ungrounded."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 79,
+          "penalty_total": 18,
+          "net_score": 61,
+          "veto": null,
+          "short_reason": "Exposes hidden restrictions on trailing spouses. Practical and highly relevant to expat families."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 79.0,
+        "penalty_average": 21.5,
+        "net_average": 57.5,
+        "net_spread": 7
+      },
+      "overlap_level": "medium",
+      "top_lexical_cosine": 0.246,
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "IMM-01",
+        "IMM-02",
+        "IMM-03",
+        "IMM-04",
+        "IMM-05"
+      ],
+      "rank": 36
+    },
+    {
+      "candidate_id": "C26",
+      "domain": "tax",
+      "working_title": "Withholding Tax: The Unpaid Collector",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 78,
+          "penalty_total": 27,
+          "net_score": 51,
+          "veto": null,
+          "short_reason": "Operationally important and genuinely surprising to newcomers, but three dedicated corpus guides already cover it and the mechanism is inseparable from rates we cannot state. The most conventional tax topic in the slate."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 79,
+          "penalty_total": 16,
+          "net_score": 63,
+          "veto": null,
+          "short_reason": "Accurately frames the frustrating reality of withholding tax mechanics for naive business operators."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 78.5,
+        "penalty_average": 21.5,
+        "net_average": 57.0,
+        "net_spread": 12
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.1476,
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "TAX-04"
+      ],
+      "rank": 37
+    },
+    {
+      "candidate_id": "C28",
+      "domain": "tax",
+      "working_title": "Compliance Debt: The Bookkeeping Avalanche",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 73,
+          "penalty_total": 23,
+          "net_score": 50,
+          "veto": null,
+          "short_reason": "The debt metaphor is the only distinctive element; underneath it this is keep-your-books-tidy, which every advisory site on earth already says. Weakest tension in the tax set and no specific misconception being corrected."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 74,
+          "penalty_total": 14,
+          "net_score": 60,
+          "veto": null,
+          "short_reason": "True but slightly dry treatment of bookkeeping delays, redeemed by the compounding cost angle."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 73.5,
+        "penalty_average": 18.5,
+        "net_average": 55.0,
+        "net_spread": 10
+      },
+      "overlap_level": "low",
+      "top_lexical_cosine": 0.0742,
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "TAX-04"
+      ],
+      "rank": 38
+    },
+    {
+      "candidate_id": "C03",
+      "domain": "immigration",
+      "working_title": "The Permanent Residency Mirage",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 76,
+          "penalty_total": 26,
+          "net_score": 50,
+          "veto": null,
+          "short_reason": "Belonging versus perpetual guest status is a genuine tension, but the corpus already answers who qualifies, and 'mirage' overstates a status that demonstrably exists. Needs a sharper problem than fatalism to justify a slot."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 74,
+          "penalty_total": 17,
+          "net_score": 57,
+          "veto": null,
+          "short_reason": "Corrects common misconceptions about permanent stay security, though faces some existing content overlap."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 75.0,
+        "penalty_average": 21.5,
+        "net_average": 53.5,
+        "net_spread": 7
+      },
+      "overlap_level": "medium",
+      "top_lexical_cosine": 0.2543,
+      "sourceability": "high",
+      "regulatory_volatility": "medium",
+      "source_ids": [
+        "IMM-01",
+        "IMM-02",
+        "IMM-05",
+        "IMM-06"
+      ],
+      "rank": 39
+    },
+    {
+      "candidate_id": "C29",
+      "domain": "tax",
+      "working_title": "VAT Registration: The Success Penalty",
+      "reviewer_scores": [
+        {
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "criteria_total": 76,
+          "penalty_total": 31,
+          "net_score": 45,
+          "veto": null,
+          "short_reason": "The growth-shock framing is real, but the topic is a threshold and a rate, and the pricing payoff cannot be delivered without both. Three corpus pieces already cover registration. Highest fragility in the tax set."
+        },
+        {
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "criteria_total": 79,
+          "penalty_total": 19,
+          "net_score": 60,
+          "veto": null,
+          "short_reason": "Good cautionary piece for growing businesses, despite some overlap and standard topic appeal."
+        }
+      ],
+      "consensus": {
+        "criteria_average": 77.5,
+        "penalty_average": 25.0,
+        "net_average": 52.5,
+        "net_spread": 15
+      },
+      "overlap_level": "medium",
+      "top_lexical_cosine": 0.158,
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": [
+        "TAX-04"
+      ],
+      "rank": 40
+    }
+  ]
+}

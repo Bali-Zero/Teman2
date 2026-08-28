@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "recommended_sequence",
+    "reserves",
+    "rejected_topic_clusters",
+    "panel_disagreements",
+    "model_vetoes",
+    "coverage_gaps",
+    "coverage_decision",
+    "curation_summary"
+  ],
+  "properties": {
+    "recommended_sequence": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["episode_number", "candidate_id", "curation_reason"],
+        "properties": {
+          "episode_number": {"type": "integer", "minimum": 1, "maximum": 20},
+          "candidate_id": {"type": "string", "pattern": "^C[0-4][0-9]$"},
+          "curation_reason": {"type": "string", "minLength": 1, "maxLength": 280}
+        }
+      }
+    },
+    "reserves": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["reserve_number", "candidate_id", "curation_reason"],
+        "properties": {
+          "reserve_number": {"type": "integer", "minimum": 1, "maximum": 10},
+          "candidate_id": {"type": "string", "pattern": "^C[0-4][0-9]$"},
+          "curation_reason": {"type": "string", "minLength": 1, "maxLength": 280}
+        }
+      }
+    },
+    "rejected_topic_clusters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cluster_label", "candidate_ids", "reason"],
+        "properties": {
+          "cluster_label": {"type": "string", "minLength": 1},
+          "candidate_ids": {"type": "array", "items": {"type": "string", "pattern": "^C[0-4][0-9]$"}},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 400}
+        }
+      }
+    },
+    "panel_disagreements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["candidate_id", "net_spread", "summary"],
+        "properties": {
+          "candidate_id": {"type": "string", "pattern": "^C[0-4][0-9]$"},
+          "net_spread": {"type": "number", "minimum": 0},
+          "summary": {"type": "string", "minLength": 1, "maxLength": 300}
+        }
+      }
+    },
+    "model_vetoes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["candidate_id", "model_identifier", "veto"],
+        "properties": {
+          "candidate_id": {"type": "string", "pattern": "^C[0-4][0-9]$"},
+          "model_identifier": {"type": "string", "minLength": 1},
+          "veto": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "coverage_gaps": {"type": "array", "items": {"type": "string"}},
+    "coverage_decision": {"type": "string", "minLength": 1, "maxLength": 500},
+    "curation_summary": {"type": "string", "minLength": 1, "maxLength": 1000}
+  }
+}

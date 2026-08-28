@@ -1,54 +1,69 @@
-# Zantara Video Factory State
-
-- objective: Build and operate one resumable, thin WR3-based Zantara Video Factory; first execution ends at the complete Season 01 topic approval gate.
-- machine: Air-M5; heavy work route is `ssh pro`.
+- objective: Build and operate one resumable, thin WR3-based Zantara Video Factory; the first execution ends with a complete Season 01 slate at the human topic-approval gate.
+- machine: `Air-M5`; heavy production work routes to Pro and was not invoked during this execution.
 - branch: `agent/air-m5/wr3/zantara-video-factory-v3`
 - worktree: `/Users/balizero/nuzantara/.worktrees/wr3-zantara-video-factory-v3`
-- origin_main_commit: `f8c158e198b1908e71c35bba4803360af883fbd4`
-- factory_phase: `BOOT_AUDIT`
-- approved_topic_ids: none
-- episode_queue: empty
+- origin_main_commit: `a6cdf49db64aa322e84a81bb97995e98b38c5a8c`
+- factory_phase: `TOPIC_APPROVAL_REQUIRED`
+- approved_topic_ids: `[]`
+- episode_queue: `[]`; recommendations are not approved episodes and have not entered production.
 - verified_repository_facts:
-  - No pre-existing `FACTORY_STATE.md`, reuse matrix, Season 01 ledger, matching factory worktree, or matching factory branch was found on Air-M5, Pro, or fetched origin refs during this execution.
-  - The isolated worktree HEAD exactly matches the fetched `origin/main` commit recorded above.
-  - The smallest existing extension point is `docs/wr3/`; factory control and editorial artifacts live under `docs/wr3/factory/`.
-- verified_platform_facts: none; no platform capability is claimed from authentication, documentation, or memory alone.
+  - The isolated branch is based on the recorded current `origin/main`; audited WR3 and model-topology surfaces did not change between the original audit baseline `f8c158e198b1908e71c35bba4803360af883fbd4` and that origin commit.
+  - `REUSE_MATRIX.md` and `ADR-001-thin-wr3-factory-wrapper.md` preserve existing WR3 responsibilities and limit the first execution to a documentation/editorial control plane.
+  - The public canonical English article corpus contains 797 indexed articles; the consolidated shortlist contains exactly 40 candidates, 10 per domain.
+  - The sourceability pass routes every candidate to official-source families and retains the exact warning `TO VERIFY against source`; it is not post-approval legal grounding.
+  - No production implementation, plot, setting, wardrobe, script, shot pack, video prompt, or media artifact was created.
+- verified_platform_facts:
+  - `claude-opus-5`, the same-family executable Google substitute `gemini-3.1-pro`, and `gpt-5.6-sol` returned successful measured health responses captured in `audits/platform-health.json`.
+  - The declared Google target `gemini-deepthink` is declarative-only; no claim of executable DeepThink access is made.
+  - `qwen3.8-max` returned exact failure `HTTP 429 weekly token quota`, produced no output, and received no synthetic replacement; the required two-family editorial quorum was still met by Anthropic and Google.
+  - FlowKit, Flow/Veo, ArcFace, audio generation, ffmpeg assembly, uploads, publishing, deployment, and outbound messaging were intentionally not invoked; no production-readiness claim is made.
+  - The recorded first-execution boundary counters are all zero, including Flow jobs, Flow credits, renders, uploads, publications, deployments, and outbound messages.
 - completed_gates:
-  - machine identified
-  - origin fetched
-  - existing factory state discovery completed
-  - isolated worktree created from current `origin/main`
-  - safety switches initialized to zero
-- earliest_open_gate: `BOOT_AUDIT`
+  - `BOOT_AUDIT`
+  - `EDITORIAL_COUNCIL_WAVE_1`
+  - `EDITORIAL_CONSOLIDATION`
+  - `EDITORIAL_SOURCE_PASS`
+  - `EDITORIAL_COUNCIL_WAVE_2`
+  - `EDITORIAL_FINAL_CURATION`
+- earliest_open_gate: `TOPIC_APPROVAL_REQUIRED`
 - next_reads:
-  - `scripts/wr3_supervisor.py`
-  - `scripts/wr3_flowkit_client.py`
-  - `scripts/wr3_episode_manifest.py`
-  - `FLEET_TOPOLOGY.json:role_chains.strategy_panel`
-  - `MODEL_ROSTER.md`
+  - `docs/wr3/factory/editorial/season-01.json`
+  - `docs/wr3/factory/editorial/season-01.md`
+  - `docs/wr3/factory/editorial/manifests/wave2-lineage.json`
 - last_verification_commands:
-  - `git fetch origin --prune`
-  - `git worktree list --porcelain`
-  - `rg --files -uu | rg 'FACTORY_STATE\\.md$|REUSE_MATRIX\\.md$|season-01\\.(json|md)$|originality-ledger\\.json$|wardrobe-ledger\\.json$'`
-  - `git status --short --branch && git rev-parse HEAD && git rev-parse origin/main`
+  - `git fetch origin --prune && git rebase origin/main`
+  - `jq` structural and set-partition assertions over the Season, curation, consensus, and lineage artifacts
+  - `apps/backend-rag/.venv/bin/python` JSON-schema validation for both independent Wave 2 scorecards and final curation
+  - `git -c core.whitespace=-blank-at-eof diff --check origin/main...HEAD` and scoped changed-file inspection; the only disabled whitespace rule preserves a hash-bound raw model response byte-for-byte
+  - `shasum -a 256` over persisted audit, lineage, ranking, curation, and Season artifacts
 - last_verification_results:
-  - `origin/main` fetched successfully.
-  - No existing factory state or lane was found.
-  - Worktree branch is clean and aligned with `origin/main` at `f8c158e198b1908e71c35bba4803360af883fbd4`.
-- model_topology_version: `FLEET_TOPOLOGY.json` version 1.4; exact artifact hashes pending audit capture.
-- editorial_output_paths: pending
-- open_blockers: none
+  - Exactly 20 recommendations, 10 reserves, and 10 rejected candidates form a complete, duplicate-free partition of the 40-candidate shortlist.
+  - Recommended coverage is exactly 5 immigration, 5 company, 5 tax, and 5 property topics; model veto count is zero.
+  - Both blind Wave 2 scorecards contain 40 unique candidate IDs, pass the shared schema, and preserve independent lineage; deterministic consensus precedes Codex curation.
+  - Canonical Season status is `TOPIC_APPROVAL_REQUIRED`, `approved_topic_ids` is empty, every safety switch is zero, and every prohibited-action counter is zero.
+- model_topology_version: `FLEET_TOPOLOGY.json` version `1.4`, SHA-256 `ec52f59d2d5268279c8b66ad6c901a68bcc1190e8105a799d99440ea17f102b0`; `MODEL_ROSTER.md` SHA-256 `1d08dbf1c44c21f963669b3c898a1dc04c36ba88a93f39851b72196153c48df0`.
+- editorial_output_paths:
+  - platform audit: `docs/wr3/factory/audits/platform-health.json` (`50ee2614a59331b18ba3cb8647557d8c6abc3d9de8d9dcc61a4adad5cdd7dafe`)
+  - Wave 1 lineage: `docs/wr3/factory/editorial/manifests/wave1-lineage.json` (`ccc16dfa0d3f8b2d2a374f1b3b3e5acc1892b13f5925b2bd7981b860d243090c`)
+  - shortlist: `docs/wr3/factory/editorial/normalized/shortlist-40.json` (`c8d9a02f79d3a2b8084df4e64dbd1bd255edd6ddff6992704fa24f12cf7ea8df`)
+  - consensus: `docs/wr3/factory/editorial/normalized/consensus-ranking.json` (`69b79593f30fb0e99a19ba7fffb239057eeaffcb6455dc565a92cd2b37c3b117`)
+  - final curation: `docs/wr3/factory/editorial/curation/gpt-5.6-sol.json` (`07911ea4f2410c34e65f6e994f72500dc660f801de7453e71ebba8ade22249e7`)
+  - Wave 2 lineage: `docs/wr3/factory/editorial/manifests/wave2-lineage.json` (`a65a0f7670540af37fadaad865f114311971feb4839e9b7a3090f56ea194b5e8`)
+  - canonical Season JSON: `docs/wr3/factory/editorial/season-01.json` (`4eba3b650c05d2926f8976e9458816565568abae490c2da43624b495249765e4`)
+  - readable Season Markdown: `docs/wr3/factory/editorial/season-01.md` (`60f14313a64266afdc25aef48e813ad91fc35a35615a1e8080e1a7a2963a9230`)
+- open_blockers: Explicit human approval of a complete 20-topic slate is the sole active gate; all downstream Factory implementation and production-readiness work remains intentionally deferred.
 - safety_switch_values:
   - `ALLOW_FLOW_SPEND=0`
   - `ALLOW_REAL_RENDER=0`
   - `ALLOW_YOUTUBE_UPLOAD=0`
   - `ALLOW_EXTERNAL_PUBLISH=0`
   - `ALLOW_DEPLOY=0`
-- next_bounded_action: Complete the measured reuse audit and persist the reuse matrix plus thin-wrapper architecture decision.
+- next_bounded_action: Stop and wait for `APPROVE ALL 20`, a complete replacement set, or explicit rework instructions; do not enter `SEASON_BIBLE` in this execution.
 - definition_of_done_checklist:
-  - current-origin audit
-  - reuse matrix and architecture decision
-  - independent editorial quorum
-  - 20 recommended topics and 10 reserves with lineage and deterministic scores
-  - compact persisted state at `TOPIC_APPROVAL_REQUIRED`
-  - zero Flow credits, renders, uploads, publications, external sends, and deployments
+  - `[x]` current-origin and reuse audit persisted
+  - `[x]` independent Wave 1, consolidation, public-corpus overlap, and official-sourceability pass persisted
+  - `[x]` two-family blind Wave 2 quorum, deterministic consensus, and strongest Codex final curation persisted
+  - `[x]` exactly 20 recommendations and 10 reserves persisted in canonical JSON and readable Markdown
+  - `[x]` compact state stopped at `TOPIC_APPROVAL_REQUIRED`
+  - `[x]` zero spend, Flow jobs, renders, uploads, publications, deployments, outbound messages, and production artifacts
+  - `[ ]` explicit human approval of a complete 20-topic slate
