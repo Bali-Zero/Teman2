@@ -1,0 +1,228 @@
+# NOTE: brief_ref is the CANONICAL name, not this pack's own directory — the
+# harness-floor.yml CI workflow copies both discovered per-PR files into
+# /tmp/evidence-check/evidence/{brief,pack}.yml under these exact names
+# before validating, so brief_ref must always read "evidence/brief.yml".
+brief_ref: evidence/brief.yml
+plan_ref: PR #5151 — agent/air-m5/backend-rag/preserve-fall-off-sub-reason
+# Diff stats below are the LITERAL output of the command in the matching
+# receipt (git diff --numstat origin/main...HEAD), summed by hand ONLY as
+# 107+42+65=214 / 0+3+0=3 -- the per-file rows are the transcription of the
+# command's own stdout, not a re-estimate.
+diff:
+  files: 3
+  insertions: 214
+  deletions: 3
+  hotzone_hits:
+    - apps/backend-rag/backend/db/migrations_v2/291_wa_outbox_fall_off_reason_unbuildable_sub_reasons.sql
+
+lanes:
+  - lane: build
+    role: build
+    seat: sonnet-5
+  - lane: review
+    role: review
+    seat: opus-5 orchestrator (team-lead, direct dispatch review)
+
+receipts:
+  - claim: "Deterministic floor for this diff is 3 (hot-zone migration path: apps/backend-rag/backend/db/migrations_v2/291_wa_outbox_fall_off_reason_unbuildable_sub_reasons.sql)."
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/changed_files_291.txt"
+    exit: 0
+    ts: "2026-08-28T06:15:10Z"
+    seat: sonnet-5
+  - claim: "Migration 291 is squawk-clean under the repo's standard exclusion set."
+    cmd: "squawk --pg-version=15.0 --exclude=require-concurrent-index-creation --exclude=require-timeout-settings --exclude=require-concurrent-index-deletion --exclude=ban-drop-table --exclude=ban-drop-column --exclude=ban-char-field --exclude=prefer-bigint-over-smallint --exclude=prefer-text-field --exclude=prefer-robust-stmts --exclude=constraint-missing-not-valid --exclude=prefer-bigint-over-int --exclude=prefer-identity --exclude=disallowed-unique-constraint apps/backend-rag/backend/db/migrations_v2/291_wa_outbox_fall_off_reason_unbuildable_sub_reasons.sql"
+    exit: 0
+    ts: "2026-08-28T06:15:40Z"
+    seat: sonnet-5
+  - claim: "The migration carries exactly one ROLLBACK marker."
+    cmd: "grep -c '^-- === ROLLBACK ===$' apps/backend-rag/backend/db/migrations_v2/291_wa_outbox_fall_off_reason_unbuildable_sub_reasons.sql"
+    exit: 0
+    ts: "2026-08-28T06:15:45Z"
+    seat: sonnet-5
+  - claim: "Queried the full open-PR set (not just origin/main) for migration-number claims, re-checked fresh immediately before commit: no open PR claims 291 or 292. #5072 claims 289_practice_status_log.sql, which COLLIDES with 289_visa_retention_binders_scope_to_visa_decision.sql already merged on origin/main -- a real, pre-existing collision on a different PR, not introduced or touched by this one. #5037 claims 293/294/295 -- no overlap. This PR (#5151) claims 291."
+    cmd: "gh pr list --state open --limit 300 --json number,files -q '.[] | .number as $n | .files[]?.path | select(test(\"migrations_v2/[0-9]+_\")) | \"\\($n): \\(.)\"'"
+    exit: 0
+    ts: "2026-08-28T06:15:55Z"
+    seat: sonnet-5
+  - claim: "wa_package_builder.py has exactly 3 PackageUnbuildable raise sites (greeting_domain line 515, no_collections line 517, dlp_error line 582) -- the sub-map covers all of them, no fourth site is silently missed."
+    cmd: "grep -n 'raise PackageUnbuildable' backend/services/rag/agentic/wa_package_builder.py"
+    exit: 0
+    ts: "2026-08-28T06:17:05Z"
+    seat: sonnet-5
+  - claim: "ruff check is clean on both touched Python files (the migration .sql is not a ruff target)."
+    cmd: "ruff check backend/services/integrations/wa_codex_leg.py backend/tests/unit/services/test_wa_codex_leg.py"
+    exit: 0
+    ts: "2026-08-28T06:16:10Z"
+    seat: sonnet-5
+  - claim: "Literal git diff --numstat origin/main...HEAD over the 3 touched files, transcribed verbatim: migration 291 107/0, wa_codex_leg.py 42/3, test_wa_codex_leg.py 65/0. Totals: 3 files, 214 insertions, 3 deletions."
+    cmd: "git diff --numstat origin/main...HEAD"
+    exit: 0
+    ts: "2026-08-28T06:14:50Z"
+    seat: sonnet-5
+  - claim: "test_wa_codex_leg.py is green: 58 passed, 0 failed (54 pre-existing + 4 new: 3 parametrized sub-reason durability tests + 1 unrecognized-sub-reason-falls-back-to-generic-bucket test)."
+    cmd: "PYTHONPATH=. pytest backend/tests/unit/services/test_wa_codex_leg.py"
+    exit: 0
+    ts: "2026-08-28T06:16:30Z"
+    seat: sonnet-5
+  - claim: "Regression: test_wa_codex_leg.py + test_wa_outbox_worker.py together stay green: 89 passed, 0 failed."
+    cmd: "PYTHONPATH=. pytest backend/tests/unit/services/test_wa_codex_leg.py backend/tests/unit/services/test_wa_outbox_worker.py"
+    exit: 0
+    ts: "2026-08-28T06:16:45Z"
+    seat: sonnet-5
+  - claim: "The AST-based coverage guard test_fall_off_reason_map_covers_every_reason_the_module_can_emit still passes unmodified -- the 'unbuildable' key stays in _FALL_OFF_REASON_PREFIX_MAP (required for its static extraction), the sub-reason dispatch layered on top does not remove or shadow it."
+    cmd: "PYTHONPATH=. pytest backend/tests/unit/services/test_wa_codex_leg.py -k test_fall_off_reason_map_covers_every_reason_the_module_can_emit"
+    exit: 0
+    ts: "2026-08-28T06:16:50Z"
+    seat: sonnet-5
+  - claim: "Guilt test: mutated the SOURCE (_UNBUILDABLE_SUB_REASON_MAP['dlp_error']'s VALUE, not a test helper) to point at the wrong stored value. Result: exactly 1 of 3 parametrized cases went RED (dlp_error), the other 2 (greeting_domain, no_collections) stayed green -- proves the test discriminates per sub-reason, not just 'some string got written'. Restored via targeted Edit; re-ran full suite green (58 passed) and git diff on the touched file empty (matches the committed state exactly)."
+    cmd: "PYTHONPATH=. pytest backend/tests/unit/services/test_wa_codex_leg.py -k test_unbuildable_sub_reason_recorded_distinctly -v"
+    exit: 1
+    ts: "2026-08-28T06:11:30Z"
+    seat: sonnet-5
+  - claim: "_KNOWN_FALL_OFF_REASONS (Python-side mirror) and migration 291's widened CHECK IN-list are set-EQUAL: 23 values on both sides, verified programmatically (set equality), not eyeballed."
+    cmd: "PYTHONPATH=. python3 -c \"import re; from backend.services.integrations.wa_codex_leg import _KNOWN_FALL_OFF_REASONS; sql=open('backend/db/migrations_v2/291_wa_outbox_fall_off_reason_unbuildable_sub_reasons.sql').read(); m=re.search(r'generation_fall_off_reason IN \\((.*?)\\)\\);', sql, re.DOTALL); cv=set(re.findall(r\\\"'([a-z_]+)'\\\", m.group(1))); print('EQUAL:', _KNOWN_FALL_OFF_REASONS==cv)\""
+    exit: 0
+    ts: "2026-08-28T06:16:55Z"
+    seat: sonnet-5
+  - claim: "Migration round-trip against a scratch local Postgres (initdb/pg_ctl on a private throwaway data dir, stopped and dropped after): built a wa_outbox-shaped table, applied 290's forward DDL then 291's forward DDL cleanly. Inserted all pre-existing values and all 3 new sub-reason values -- accepted. Inserted an invalid value ('bogus_value_not_in_check') -- rejected by the widened CHECK with the exact constraint-violation error. Rolled back 291 -- constraint reverts to the exact 290-narrow set (new sub-reason now rejected, old values still accepted). Rolled back 290 -- final \\d wa_outbox schema is byte-identical (diff empty) to the pre-migration baseline."
+    cmd: 'psql -h /tmp -p 55291 -U postgres -d postgres -f forward_290.sql && psql ... -f forward_291.sql && psql ... -c "INSERT ... VALUES (''bogus_value_not_in_check'');" ; psql ... -f rollback_291.sql && psql ... -f rollback_290.sql && diff baseline_schema.txt final_schema.txt'
+    exit: 0
+    ts: "2026-08-28T06:09:40Z"
+    seat: sonnet-5
+
+tests:
+  cmd: "PYTHONPATH=. pytest backend/tests/unit/services/test_wa_codex_leg.py backend/tests/unit/services/test_wa_outbox_worker.py"
+  passed: 89
+  failed: 0
+static:
+  lint: ok
+  typecheck: n/a-python-uses-mypy-elsewhere-not-in-touched-files
+  build: n/a
+
+runtime_proof: []
+
+dissent:
+  - seat: opus-5 orchestrator (team-lead)
+    objection: >
+      Naming risk: reusing the exact PackageUnbuildable reason strings
+      verbatim as the DB value suffix (package_unbuildable_greeting_domain
+      / _no_collections / _dlp_error) makes these three enum values
+      noticeably longer than migration 290's other 19 entries. Is there
+      an existing shorter naming convention in this vocabulary this
+      should have followed instead?
+    status: RETRACTED
+    repro: >
+      Re-read all 20 pre-existing values in migration 290's CHECK: they
+      already mix short (window_margin, consume_lost) and longer,
+      multi-word compound names (standing_autoreply_disabled,
+      stand_down_fence_lost, post_completion_error) -- there is no single
+      short-form convention to violate. Verbatim reuse of the raise
+      site's own reason string is the more traceable choice: a future
+      reader can grep the DB value directly against
+      wa_package_builder.py's raise sites with no intermediate
+      abbreviation table to keep in sync.
+  - seat: opus-5 orchestrator (team-lead)
+    objection: >
+      Does the new _UNBUILDABLE_SUB_REASON_MAP special-case in
+      _normalize_fall_off_reason risk breaking the AST-based coverage
+      guard (test_fall_off_reason_map_covers_every_reason_the_module_can_emit),
+      which extracts heads from CodexLegResult(...) call sites and checks
+      each is a key in _FALL_OFF_REASON_PREFIX_MAP -- does the new
+      two-level dispatch remove or shadow the "unbuildable" key that
+      guard depends on?
+    status: RETRACTED
+    repro: >
+      Ran the guard test in isolation after the change (receipt above):
+      passes unmodified. _FALL_OFF_REASON_PREFIX_MAP["unbuildable"] is
+      untouched ("package_unbuildable", same as before) -- the new
+      _UNBUILDABLE_SUB_REASON_MAP is consulted BEFORE the prefix map only
+      when head == "unbuildable", and falls back to
+      _FALL_OFF_REASON_PREFIX_MAP["unbuildable"] when the sub-reason is
+      unrecognized, so the key the AST guard needs is both present and
+      still semantically meaningful as the generic bucket.
+  - seat: opus-5 orchestrator (team-lead)
+    objection: >
+      The old test test_unbuildable_falls_off_offer_never_called uses the
+      literal sub-reason string "greeting" (not the real "greeting_domain"
+      wa_package_builder.py actually emits) -- did this PR's change alter
+      what that pre-existing test asserts, silently changing its meaning?
+    status: RETRACTED
+    repro: >
+      Re-ran test_unbuildable_falls_off_offer_never_called in isolation
+      after the change: still passes, asserting only
+      result.reason == "unbuildable:greeting" -- it never inspects the
+      persisted DB value (no ScriptedConn / conn.executed assertion in
+      that test), so it is untouched by the new sub-map regardless of
+      whether "greeting" is a real production sub-reason. Confirms the
+      new behavior is additive on top of, not a replacement for, this
+      test's exact input.
+  - seat: opus-5 orchestrator (team-lead)
+    objection: >
+      Ownership/grant risk on the ALTER TABLE ... ADD CONSTRAINT against
+      wa_outbox -- this repo has a live scar (migration runner uses the
+      RUNTIME role, not a migration-specific role) where a DDL against an
+      object owned by a different role aborted a deploy invisibly to CI.
+    status: RETRACTED
+    repro: >
+      Grepped every migration touching wa_outbox (206, 260, 270, 283, 290,
+      296) for OWNER/GRANT statements -- none exists anywhere in this
+      table's migration history. Migration 290 already ran the identical
+      DROP CONSTRAINT IF EXISTS / ADD CONSTRAINT pair against the same
+      table under the runtime role, cleanly (its own PR's verification
+      section confirms this). No role/grant statement needed for 291.
+  - seat: opus-5 orchestrator (team-lead)
+    objection: >
+      Could the widened CHECK constraint accidentally accept a value the
+      Python normalizer could never produce, or vice versa, silently
+      drifting the two vocabularies apart?
+    status: RETRACTED
+    repro: >
+      Verified programmatically (receipt above): _KNOWN_FALL_OFF_REASONS
+      and migration 291's CHECK IN-list are set-EQUAL today, 23 values on
+      both sides. Same residual as migration 290 declared (no single
+      shared source of truth between SQL and Python) -- recorded below as
+      a residual risk, not claimed as structurally impossible to drift.
+  - seat: opus-5 orchestrator (team-lead)
+    objection: >
+      Does the migration's rollback correctly narrow the constraint back
+      to exactly 290's shape, or could it leave a partially-widened or
+      broken constraint behind on rollback?
+    status: RETRACTED
+    repro: >
+      Full round-trip on a scratch local Postgres (receipt above):
+      forward 290+291 -> insert all values (old+new) succeeds, invalid
+      value rejected -> rollback 291 -> new sub-reason value now REJECTED,
+      old values still accepted (constraint is verified byte-for-byte
+      291's rollback CHECK IN-list, which is 290's original 20-value set)
+      -> rollback 290 -> final schema diff-empty against the
+      pre-migration baseline.
+
+residual_risks:
+  - "No independent cross-family review seat was invoked for this
+    dispatch -- a single implementer (sonnet-5) under direct team-lead
+    (opus-5 orchestrator) review, per the mandate's own dispatch shape.
+    The dissent above was performed by the team-lead reviewing this PR's
+    actual diff, not by a second-family seat running independently."
+  - "_KNOWN_FALL_OFF_REASONS and migration 291's CHECK IN-list have no
+    single shared source of truth (SQL vs Python) and must be kept in
+    sync BY HAND -- same residual migration 290 already declared,
+    inherited unchanged by this PR's widening. Verified identical today
+    (receipt above); a future change to only one side would degrade
+    silently to a mismatched 'unknown' write rather than an outright DB
+    error, per 290's own documented failure-mode analysis."
+  - "This PR does not add a mechanism to detect future PackageUnbuildable
+    reasons that are NOT yet in _UNBUILDABLE_SUB_REASON_MAP -- they will
+    correctly fall back to the generic package_unbuildable bucket (not
+    silently misclassified, not 'unknown'), but no test fails to flag
+    that a fourth sub-reason has appeared and could be given its own
+    value. Symmetrical with migration 290's own accepted residual for
+    the module-wide 'unknown' bucket."
+  - "Whether the added granularity actually gets consumed by any
+    dashboard, alert, or investigation tooling is unmeasured this round
+    -- this PR only makes the stored value more specific; it does not
+    change what (if anything) reads generation_fall_off_reason today
+    beyond what migration 290 already wired up."
+
+sources: []
+pii_scan: clean
+size_tokens: 5400
