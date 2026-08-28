@@ -1,0 +1,227 @@
+brief_ref: evidence/2026-08/agent-air-m5-backend-rag-finalize-subreason-4d17969c/brief.yml
+pii_scan: clean
+pii_scan_note:
+  "Every probe run for this pack was restricted to ids, counts, statuses, timestamps, routes
+  and durations. No message body, phone number or client identifier was selected, and none
+  appears in the diff, the tests, the migration or this pack. The one place a secret COULD
+  have reached a durable column — the secret-egress scanner's pattern name — is deliberately
+  dropped before the value is stored (see the migration header and its dedicated test)."
+plan_ref:
+  "PR #5187 (agent/air-m5/backend-rag/finalize-subreason) — live-bot-test-loop cycle 355,
+  2026-08-28. Governing mandate: the owner's 2026-08-27 live-bot-test-loop ruling (continuous
+  live tests on both bots; Zantara WA answers exclusively via ChatGPT), FASE 6 CURE."
+lanes:
+  - lane: finalize-subreason-build
+    role: build
+    seat:
+      claude-opus-5 (conducting session — measured the incident against production read-only,
+      authored migration 297, the sub-reason map and the four tests)
+  - lane: finalize-defect-rootcause
+    role: review
+    seat:
+      claude-sonnet-5 (subagent dispatched WITHOUT a proposed cause and told to explain the
+      incident from the code — it REFUTED the conducting session's first diagnosis, see dissent[0])
+  - lane: refuter-5187
+    role: review
+    seat:
+      claude-sonnet-5 (adversarial subagent on fresh context, given the five claims to falsify
+      one by one — returned SHIP on the claims and three holes in the new guard, dissent[1..3])
+seat_diversity: not_applicable
+seat_diversity_note:
+  "One build lane; the two review lanes are Anthropic seats. Declared rather than left to read
+  as satisfied: every load-bearing question here is settled by a command — a set difference over
+  two parsed SQL blocks, a pytest exit code, a scanner re-run against the same baseline, an AST
+  walk. The arbiter is the probe, not an opinion, and a cross-family seat adds nothing here that
+  a second judgement could contribute. D3 (>=2 build lanes all-Anthropic) does not apply."
+diff:
+  net_lines:
+    3 files, +291/-8 measured by `git diff --stat origin/main...HEAD`. One new .sql migration,
+    one Python module (a new dict, a branch in one function, docstrings), one test file. Zero
+    frontend, zero workflow, no table created/altered/dropped beyond one CHECK constraint.
+  behaviour_change:
+    A fall-off that previously stored the single value `finalize_defect` now stores one of
+    eleven distinct values naming the branch that refused. No row is read, written or deleted at
+    apply time; no send decision, retry ladder or generation path changes. The observable change
+    is the granularity of one diagnostic column.
+receipts:
+  - claim:
+      Deterministic gear floor recomputed from THIS PR's changed-file list is 3 — matching the
+      declared gear and the `Harness floor recompute` FAIL that demanded this pack
+    cmd: the workflow's own run on this PR head (job "Harness floor recompute")
+    result: "FLOOR: 3, SOURCE: path (migrations_v2/** is hot-zone)"
+    exit: 1
+    ts: 2026-08-28T22:15:39Z
+    seat: github-actions (run 33216033610)
+  - claim:
+      THE CENTRAL RECEIPT — row 363 had THREE SUCCESSFUL generations discarded by the finalize
+      stage, which is why a stage-level bucket is not enough
+    cmd:
+      read-only SELECT against production (`broker_jobs` joined on outbox_id=363, and wa_outbox
+      row 363) via `flyctl ssh console --machine 1781e5eda03438` with the sha256 of the uploaded
+      probe verified before execution — ids, states, timings only, never message bodies
+    result:
+      "3 broker jobs, all state=consumed / outcome=consumed_ok / error_class=NULL, exec_ms
+      9711, 10137, 8521. Row 363: status=failed, attempts=3, generation_route=codex,
+      generation_fall_off_reason=finalize_defect, apology_sent_at=NULL."
+    exit: 0
+    ts: 2026-08-28T21:48Z
+    seat: session (M5, read-only against production)
+  - claim:
+      The eleven values are the COMPLETE closed vocabulary `wa_finalize.py` can emit — read
+      from the source, not recalled
+    cmd:
+      grep -nE "defect_reason|DEFECT" on wa_finalize.py plus grep of every `human_reason =`
+      assignment, then reading each dynamic site (veto[0] at 609/775, `reason` at 728/794)
+    result:
+      "internal_monologue_leak, pricing_outside_package, secret_egress:<hit>, empty_rag_answer,
+      persona_escalate_marker, empty_after_escalate_strip, workflow_only_output,
+      empty_after_channel_format, oversized_output, rag_abstain, plus the leg's own
+      blank_send_text fallback."
+    exit: 0
+    ts: 2026-08-28T22:02Z
+    seat: session (M5)
+  - claim: Migration 297 loses NO value the pre-297 CHECK admitted, and adds exactly eleven
+    cmd:
+      awk over the ADD CONSTRAINT block of 291 and of 297's UP half, grep -oE "'[a-z_]+'",
+      sort -u, then `comm -23` (lost) and `comm -13` (added)
+    result: "lost: (empty) · added: the 11 finalize_* codes · UP total 34"
+    exit: 0
+    ts: 2026-08-28T22:05Z
+    seat: session (M5)
+  - claim:
+      GUILT — the new cases fail on the pre-change source with the tests in place, so this is
+      a proof and not a restatement
+    cmd: restore wa_codex_leg.py to origin/main with the new tests present, run
+      `pytest backend/tests/unit/services/test_wa_codex_leg.py`, then restore
+    result:
+      "13 failed, 59 passed — the ten parametrized branches, the secret-egress case, and both
+      guards. Every failure reads `assert 'finalize_defect' == 'finalize_<branch>'`."
+    exit: 1
+    ts: 2026-08-28T22:10Z
+    seat: refuter-5187 (independent re-run; the build lane measured the same 13 separately)
+  - claim: The suite is green with the change, counted rather than assumed
+    cmd: "cd apps/backend-rag && PYTHONPATH=. python -m pytest
+      backend/tests/unit/services/test_wa_codex_leg.py -v --tb=short --color=no -p no:cacheprovider"
+    result:
+      "72 passed. Recorded with -v deliberately: under this repo's -q addopts, pytest 9.0.3
+      prints no summary line at all — which is how an earlier commit message on this branch came
+      to carry an unmeasured count. The instrument, not the world, was the reason a number was
+      missing."
+    exit: 0
+    ts: 2026-08-28T22:33Z
+    seat: session (M5)
+  - claim:
+      The Detect Secrets red was the CODE, not a flaky gate — reproduced locally against the
+      same baseline before touching anything
+    cmd:
+      "detect-secrets scan --baseline <copy of .secrets.baseline> <the three changed files>,
+      then inspect the baseline for entries with no is_secret decision"
+    result:
+      "1 unaudited finding: wa_codex_leg.py:262, type 'Secret Keyword' — the constant
+      _FINALIZE_SECRET_EGRESS_PREFIX, flagged for its NAME. After renaming to
+      _FINALIZE_EGRESS_SCAN_HEAD the same scan reports zero unaudited findings. Renaming
+      REMOVES the finding; a pragma would only annotate it."
+    exit: 0
+    ts: 2026-08-28T22:26Z
+    seat: session (M5)
+  - claim:
+      The closed holes are really closed — verified by replaying the exact shapes that defeated
+      the guard, not by reasoning about the patch
+    cmd:
+      "append each probe shape as dead code to wa_finalize.py, run only the coverage test, restore
+      the file, then confirm `git diff --stat` empty"
+    result:
+      "dict-lookup forwarded through human_reason -> 1 failed · positional FinalizeResult
+      argument -> 1 failed · baseline with no probe -> 1 passed. File byte-identical after each."
+    exit: 0
+    ts: 2026-08-28T22:31Z
+    seat: session (M5)
+  - claim: Making the resolver strict immediately found a real shape the permissive draft walked past
+    cmd: the strict resolver's own AssertionError on the first run
+    result:
+      "`reason = 'persona_escalate_marker' if escalate_in_substantive else None` — a ternary the
+      first scan never resolved. Both arms are now collected."
+    exit: 1
+    ts: 2026-08-28T22:29Z
+    seat: session (M5)
+  - claim: Migration number 297 does not collide (W40)
+    cmd: the .husky pre-commit migration-number uniqueness lint on the staged migration
+    result:
+      "migration-numbers lint: 175 files, all unique prefixes · migration-rollback lint: 170
+      post-cutoff migrations, all have ROLLBACK marker · ruff: all checks passed · FastAPI import
+      chain OK. Main's highest pre-existing number is 296."
+    exit: 0
+    ts: 2026-08-28T22:20Z
+    seat: session (M5)
+dissent:
+  - seat: finalize-defect-rootcause (subagent, REFUTED the conducting session)
+    objection:
+      "The conducting session's first public diagnosis said the 2026-08-27 Gemini cut had removed
+      the fall-off target, and that this was why row 363 died mute. False on both counts: a
+      finalize defect today re-enters the SAME codex leg on the next claim, never Gemini (the
+      test named `test_finalize_defect_falls_off_to_gemini` is a stale label, its body asserts
+      only the leg-local return shape); and row 363 did not die of its fall-offs at all — it was
+      at attempts 3 of MAX_ATTEMPTS(5) and was force-failed by `_coalesce_thread_bursts`."
+    status: CONFIRMED
+    resolution:
+      "Accepted and corrected to the owner in the same turn, before any code was written. The
+      `finalize_defect` on row 363 is therefore a STALE artifact of its third attempt, not the
+      cause of death — which makes the case for this PR stronger, not weaker: the column named
+      the wrong stage AND the wrong granularity. The coalescing defect is out of scope here and
+      is PR #5188."
+  - seat: refuter-5187 (adversarial, fresh context)
+    objection:
+      "The new AST coverage guard can be defeated by a value forwarded through `human_reason`
+      from a non-literal source — e.g. a future dict-dispatch refactor writing
+      `human_reason = _LOOKUP['x']`. The name allowlist waved it through, the value never entered
+      the emitted set, and the guard passed while the map went blind. Demonstrated: 1 passed, no
+      error."
+    status: CONFIRMED
+    resolution:
+      "Closed. Resolution of assignments to those names is now strict — an unresolvable value is
+      a FAILURE, never a skip, the same rule the `defect_reason=` scan already applied. Two
+      bindings are explicitly legal and documented as such (`veto = _codex_egress_veto(...)`,
+      whose returns are collected elsewhere, and a plain None). Re-verified by replaying the
+      exact probe: 1 failed."
+  - seat: refuter-5187 (adversarial, fresh context)
+    objection: "`FinalizeResult` is a plain frozen dataclass, not kw_only, so
+      `FinalizeResult(FinalizeOutcome.DEFECT, '', None, 'new_defect', ...)` is legal Python and
+      completely invisible to a scan reading only `node.keywords`. Demonstrated: 1 passed, no
+      error, no AssertionError at all."
+    status: CONFIRMED
+    resolution:
+      "Closed by rejecting ANY positional argument to that constructor rather than by teaching
+      the scan to count positions — counting would itself break silently the day a field is
+      inserted. Re-verified by replaying the exact probe: 1 failed."
+  - seat: refuter-5187 (adversarial, fresh context)
+    objection:
+      "The migration cross-check picks the newest migration with `sorted(glob(...))[-1]`, which
+      is lexicographic: '1000_...' sorts BEFORE '999_...'. Past migration 999 the test would
+      silently validate against a stale constraint definition."
+    status: CONFIRMED
+    resolution:
+      "Closed — sorted by the leading integer. Not exploitable today (the repo is at 297), but it
+      is the same 'a proxy is not the content' class as superscar #9, and the fix costs one line."
+  - seat: session (declared limit, unresolved)
+    objection:
+      "This PR does not say WHY row 363's three answers were rejected. The per-attempt
+      defect_reason for that incident is gone — Fly's log window had closed before anyone looked,
+      and the subagent's own log fetch returned only 21:49:26-21:49:59Z, entirely after the
+      incident."
+    status: PLAUSIBLE
+    resolution:
+      "Left standing and labelled rather than quietly upgraded. It is precisely the gap this PR
+      exists to close for the NEXT occurrence; it cannot close it retroactively. Whether the
+      cause was the pricing veto (structurally doomed against a frozen package, so all three
+      retries were hopeless) or a phrasing-dependent branch (where a retry could have cleared)
+      is unknowable from the surviving data, and the pack does not pretend otherwise."
+  - seat: session (self-correction, RESOLVED)
+    objection:
+      "An earlier commit message on this branch asserted '74 passed' — a number nobody measured.
+      Under this repo's -q addopts pytest 9.0.3 prints no summary line, and the gap was filled by
+      hand instead of by changing the instrument."
+    status: CONFIRMED
+    resolution:
+      "The real count is 72, measured with -v and independently reproduced by the refuter. The
+      pushed commit is not rewritten (never amend a pushed commit); the correction is recorded
+      here and in the message of the commit that followed it."
