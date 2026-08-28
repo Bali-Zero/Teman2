@@ -105,7 +105,6 @@ on:
       - actionlint
       - alarm/cure alignment (log-size watchdog vs rotator)
       - adversarial-review-gate
-      - AI PR review (advisory)
       - asyncpg-lint
       - Auto-merge whitelist
       - Agent worktree broker hygiene
@@ -117,6 +116,7 @@ on:
       - "catF: WA bridge guard-chain + HOME-fork notice"
       - check-cicatrix-scar-pointers
       - check-kbli-dataset-sync
+      - check-skills-canonical
       - check-ledger-no-silent-loss
       - cron - codex autofix reaper (autonomous reap every 48h)
       - Contract Tests (Schemathesis)
