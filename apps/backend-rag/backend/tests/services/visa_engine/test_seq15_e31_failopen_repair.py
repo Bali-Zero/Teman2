@@ -148,6 +148,39 @@ class TestFoldIntegrity:
         for rule in e31b_rules:
             assert not has_known_on_sponsor_status(rule["when"]), rule["rule_id"]
 
+    def test_e31b_sponsor_status_terminal_is_a_closed_stay_permit_set(
+        self, seq15_source: dict[str, Any]
+    ) -> None:
+        """Round-2 shape (after the round-1 grader proved `neq NONE` still
+        admitted tourist-visa sponsors): the terminal must be `op:in` over the
+        catalog's own E-prefix stay-permit codes — no visit/entry visa (A/B/C/D
+        prefix) and no "NONE" may appear in the set."""
+
+        def find_sponsor_terminals(node: Any, acc: list[dict[str, Any]]) -> None:
+            if isinstance(node, dict):
+                if node.get("fact") == "family.sponsor_status_code":
+                    acc.append(node)
+                for value in node.values():
+                    find_sponsor_terminals(value, acc)
+            elif isinstance(node, list):
+                for item in node:
+                    find_sponsor_terminals(item, acc)
+
+        catalog_stay_permits = {
+            p["product_code"] for p in seq15_source["products"] if p["product_code"].startswith("E")
+        }
+        for rule in seq15_source["rules"]:
+            if not rule["rule_id"].startswith("el.e31b"):
+                continue
+            terminals: list[dict[str, Any]] = []
+            find_sponsor_terminals(rule["when"], terminals)
+            assert terminals, rule["rule_id"]
+            for term in terminals:
+                assert term["op"] == "in", (rule["rule_id"], term)
+                values = set(term["values"])
+                assert values == catalog_stay_permits, (rule["rule_id"], values)
+                assert "NONE" not in values and "C1" not in values and "B1" not in values
+
     def test_e31d_support_requires_the_evidence_facts(self, seq15_source: dict[str, Any]) -> None:
         e31d_support = [
             r
@@ -159,6 +192,7 @@ class TestFoldIntegrity:
         assert set(rule["required_facts"]) == {
             "intent.purposes",
             "family.relation_to_sponsor",
+            "family.sponsor_confirmed",
             "family.stepchild_birth_certificate_confirmed",
             "family.stepchild_marriage_certificate_confirmed",
         }
@@ -252,6 +286,36 @@ class TestGuilt:
         )
         assert "E31D" not in candidates
 
+    def test_tourist_visa_sponsor_no_longer_supports_e31b(
+        self, seq15: compiler.CompiledRulePack
+    ) -> None:
+        """Round-1 grader counterexample (gpt-5.6-sol, REJECT): with the first
+        revision's `neq "NONE"`, a sponsor holding a C1 tourist visa still
+        yielded E31B. The closed stay-permit set must reject it — and B1 too."""
+        for visit_code in ("C1", "B1"):
+            state, candidates = _evaluate(
+                seq15, {**_SPOUSE_BASE, "family.sponsor_status_code": _known(visit_code)}
+            )
+            assert "E31B" not in candidates, visit_code
+
+    def test_unconfirmed_sponsor_never_supports_e31d(
+        self, seq15: compiler.CompiledRulePack
+    ) -> None:
+        """Round-1 grader's second blocker: a stepchild with both certificates
+        but a wholly unconfirmed sponsor was still supported. sponsor_confirmed
+        is false in the gold baseline, and explicitly false here."""
+        state, candidates = _evaluate(
+            seq15,
+            {
+                "intent.purposes": _known(["FAMILY"]),
+                "family.relation_to_sponsor": _known("STEPCHILD"),
+                "family.sponsor_confirmed": _known(False),
+                "family.stepchild_birth_certificate_confirmed": _known(True),
+                "family.stepchild_marriage_certificate_confirmed": _known(True),
+            },
+        )
+        assert "E31D" not in candidates
+
 
 class TestInnocence:
     def test_spouse_of_a_real_itas_holder_keeps_e31b(
@@ -271,6 +335,7 @@ class TestInnocence:
             {
                 "intent.purposes": _known(["FAMILY"]),
                 "family.relation_to_sponsor": _known("STEPCHILD"),
+                "family.sponsor_confirmed": _known(True),
                 "family.stepchild_birth_certificate_confirmed": _known(True),
                 "family.stepchild_marriage_certificate_confirmed": _known(True),
             },

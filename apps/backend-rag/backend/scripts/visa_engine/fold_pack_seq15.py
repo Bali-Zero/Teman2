@@ -23,15 +23,21 @@ it is superseded, not edited.
 1. ``el.e31b-spouse-itas-support`` — the terminal predicate
    ``{"fact": "family.sponsor_status_code", "op": "known"}`` accepted ANY
    answered value, ``"NONE"`` (sponsor holds no status at all) included.
-   It becomes ``{"op": "neq", "value": "NONE"}``: a sponsor with no stay
-   permit no longer supports a dependent permit, an UNKNOWN status keeps
-   Kleene-UNKNOWN → ``on_unknown: NEEDS_INPUT`` (never support), and no
-   specific visa-code enumeration is introduced — the refuter decision
-   package's Q1 (WHICH codes qualify as ITAS/ITAP for sponsorship) remains
-   an open owner decision; this fold closes only the measured fail-open,
-   exactly as the acceptance criteria in ``research/visa/
-   2026-08-15-gold-family-refuter.md`` (§Acceptance criteria) are written:
-   "With sponsor permit class ``NONE``, persona 7 must not return E31B."
+   It becomes ``{"op": "in", "values": [<the pack's own stay-permit
+   codes>]}`` — the closed set is DERIVED at fold time from the seq-13
+   catalog itself (every product code with the ``E`` stay-permit prefix;
+   A/B/C/D codes are visit/entry visas), not hand-authored. This is the
+   rule's own name (``itas``) made mechanical: the sponsor must hold one
+   of the stay permits this catalog defines, so ``"NONE"`` AND a visit
+   visa (``C1``, ``B1`` — the round-1 grader's counterexamples) both fail;
+   an UNKNOWN status keeps Kleene-UNKNOWN → ``on_unknown: NEEDS_INPUT``.
+   A first revision used ``neq "NONE"`` and the cross-family grader
+   (gpt-5.6-sol, REJECT) proved it still fail-open for tourist-visa
+   sponsors. Deliberately NOT decided here: KITAP representation —
+   ``family.sponsor_status_code`` is ``product_code``-typed and this
+   catalog carries no KITAP product, so a KITAP sponsor is inexpressible
+   today; that is part of Zero's already-pending KITAP-widening ruling
+   (refuter decision package Q1), not this fold's call.
 
 2. ``el.e31b-sponsor-itas-itap`` — same terminal clause, same swap.
 
@@ -41,8 +47,15 @@ it is superseded, not edited.
    purpose ∧ ``relation_to_sponsor == STEPCHILD`` ∧ both stepchild evidence
    facts confirmed (``stepchild_birth_certificate_confirmed``,
    ``stepchild_marriage_certificate_confirmed`` — registered FactPaths that
-   no rule referenced before this fold). ``required_facts`` widens to match,
-   so any UNKNOWN evidence yields NEEDS_INPUT, never support.
+   no rule referenced before this fold) ∧ ``sponsor_confirmed == true``
+   (added on the round-1 grader's second blocker: without it the rule never
+   asked anything about the SPONSOR at all, and a stepchild with documents
+   but a wholly unconfirmed sponsor was still supported). WHICH person may
+   sponsor (the WNI parent vs the WNA step-parent) is decision-package Q2 —
+   an owner call this fold does not make; ``sponsor_confirmed`` is the
+   catalog's existing sponsor-identity gate, not a new semantic.
+   ``required_facts`` widens to match, so any UNKNOWN evidence yields
+   NEEDS_INPUT, never support.
 
 4. ``el.e31d-step-parent-relation`` and ``el.e31d-sponsor-mixed-marriage``
    are REMOVED. Both were byte-duplicates of the intent-only predicate
@@ -141,11 +154,19 @@ _EXPECTED_EDITED_RULE_IDS = (
 
 _SPONSOR_STATUS_FACT = "family.sponsor_status_code"
 
+#: Stay-permit prefix in this catalog's product-code vocabulary: every ``E``
+#: code is a KITAS-class stay permit; A/B/C/D codes are visit/entry visas.
+#: The E31B closed set is derived from the pack's OWN product list at fold
+#: time (see docstring point 1) — never hand-authored, so a catalog change
+#: flows through on refold instead of drifting.
+_STAY_PERMIT_PREFIX = "E"
+
 _E31D_REPAIRED_WHEN: dict[str, Any] = {
     "op": "all",
     "args": [
         {"fact": "intent.purposes", "op": "intersects", "values": ["FAMILY"]},
         {"fact": "family.relation_to_sponsor", "op": "eq", "value": "STEPCHILD"},
+        {"fact": "family.sponsor_confirmed", "op": "eq", "value": True},
         {"fact": "family.stepchild_birth_certificate_confirmed", "op": "eq", "value": True},
         {"fact": "family.stepchild_marriage_certificate_confirmed", "op": "eq", "value": True},
     ],
@@ -154,6 +175,7 @@ _E31D_REPAIRED_WHEN: dict[str, Any] = {
 _E31D_REPAIRED_REQUIRED_FACTS = [
     "intent.purposes",
     "family.relation_to_sponsor",
+    "family.sponsor_confirmed",
     "family.stepchild_birth_certificate_confirmed",
     "family.stepchild_marriage_certificate_confirmed",
 ]
@@ -198,24 +220,47 @@ def _verify_chain(seq13_source: dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _swap_sponsor_known_for_neq_none(node: Any, *, rule_id: str) -> int:
+def _stay_permit_codes(payload: dict[str, Any]) -> list[str]:
+    """The catalog's own stay-permit product codes (``E`` prefix), sorted.
+
+    This is the E31B closed sponsor-status set: derived from the pack being
+    folded, never hand-authored. A/B/C/D codes are visit/entry visas and are
+    exactly what the round-1 grader proved the ``neq "NONE"`` revision still
+    admitted (C1, B1).
+    """
+    codes = sorted(
+        p["product_code"]
+        for p in payload["products"]
+        if p["product_code"].startswith(_STAY_PERMIT_PREFIX)
+    )
+    if not codes:
+        raise FoldPackError("no stay-permit (E-prefix) product codes found in the pack")
+    return codes
+
+
+def _swap_sponsor_known_for_closed_set(node: Any, *, stay_permit_codes: list[str]) -> int:
     """Recursively replace the fail-open terminal
     ``{"fact": family.sponsor_status_code, "op": "known"}`` with
-    ``{"op": "neq", "value": "NONE"}`` on the same fact. Returns how many
-    terminals were swapped; the caller asserts the expected count so a pack
-    whose shape drifted cannot be silently half-repaired.
+    ``{"op": "in", "values": <the catalog's stay-permit codes>}`` on the
+    same fact. Returns how many terminals were swapped; the caller asserts
+    the expected count so a pack whose shape drifted cannot be silently
+    half-repaired.
     """
     swapped = 0
     if isinstance(node, dict):
         if node.get("op") == "known" and node.get("fact") == _SPONSOR_STATUS_FACT:
             node.clear()
-            node.update({"fact": _SPONSOR_STATUS_FACT, "op": "neq", "value": "NONE"})
+            node.update(
+                {"fact": _SPONSOR_STATUS_FACT, "op": "in", "values": list(stay_permit_codes)}
+            )
             return 1
         for value in node.values():
-            swapped += _swap_sponsor_known_for_neq_none(value, rule_id=rule_id)
+            swapped += _swap_sponsor_known_for_closed_set(
+                value, stay_permit_codes=stay_permit_codes
+            )
     elif isinstance(node, list):
         for item in node:
-            swapped += _swap_sponsor_known_for_neq_none(item, rule_id=rule_id)
+            swapped += _swap_sponsor_known_for_closed_set(item, stay_permit_codes=stay_permit_codes)
     return swapped
 
 
@@ -235,9 +280,12 @@ def _apply_edits(payload: dict[str, Any]) -> None:
         if rule_id not in rules_by_id:
             raise FoldPackError(f"rule {rule_id!r} not found — cannot edit")
 
+    stay_permit_codes = _stay_permit_codes(payload)
     for rule_id in ("el.e31b-spouse-itas-support", "el.e31b-sponsor-itas-itap"):
         rule = rules_by_id[rule_id]
-        swapped = _swap_sponsor_known_for_neq_none(rule["when"], rule_id=rule_id)
+        swapped = _swap_sponsor_known_for_closed_set(
+            rule["when"], stay_permit_codes=stay_permit_codes
+        )
         if swapped < 1:
             raise FoldPackError(
                 f"{rule_id}: expected >=1 fail-open `op:known` terminal on "
