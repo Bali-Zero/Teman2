@@ -560,6 +560,22 @@
             "test_evidence_root_cli_source_path_defaults_to_pack_path_argument",
             "test_evidence_root_cli_explicit_source_path_overrides_default"
           ]
+        },
+        "check_countable_claims": {
+          "scar": ["#6-anti-hallucination-blindness", "PR-5157-2026-08-28"],
+          "guilt": [
+            "test_countable_guilt_wrong_diff_stats_rejected",
+            "test_countable_guilt_wrong_commit_count_rejected_digit_and_word",
+            "test_countable_guilt_unsubstantiated_test_count_rejected",
+            "test_countable_end_to_end_red_pack_fails_and_green_pack_passes"
+          ],
+          "innocence": [
+            "test_countable_innocence_accurate_numbers_pass",
+            "test_countable_innocence_unmeasured_notices_never_convicts",
+            "test_countable_innocence_dissent_and_receipts_out_of_scope",
+            "test_countable_innocence_binary_file_downgrades_line_counts_to_notice",
+            "test_countable_end_to_end_red_pack_fails_and_green_pack_passes"
+          ]
         }
       }
     },
