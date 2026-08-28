@@ -1,0 +1,44 @@
+{
+  "expected_candidates": ["E30"],
+  "expected_state": "SUPPORTED_CANDIDATES",
+  "label": "22-year-old French undergraduate with confirmed admission and university sponsor letter for a Bali campus, applying offshore for a 12-month study stay",
+  "overrides": {
+    "intent.desired_entry_date": {
+      "status": "KNOWN",
+      "value": "2026-09-01"
+    },
+    "intent.entry_pattern": {
+      "status": "KNOWN",
+      "value": "MULTIPLE"
+    },
+    "intent.purposes": {
+      "status": "KNOWN",
+      "value": ["STUDY"]
+    },
+    "intent.stay_days": {
+      "status": "KNOWN",
+      "value": 365
+    },
+    "person.birth_date": {
+      "status": "KNOWN",
+      "value": "2004-03-14"
+    },
+    "sponsor.type": {
+      "status": "KNOWN",
+      "value": "EDUCATION"
+    },
+    "study.admission_confirmed": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "study.level": {
+      "status": "KNOWN",
+      "value": "UNDERGRADUATE"
+    },
+    "study.sponsor_confirmed": {
+      "status": "KNOWN",
+      "value": true
+    }
+  },
+  "product_code": "E30"
+}
