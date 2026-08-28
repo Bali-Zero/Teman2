@@ -20,7 +20,7 @@ import re
 from pathlib import Path
 
 from backend.core import embeddings
-from backend.services.lead_capture.source import LeadSource
+from backend.services.lead_capture.source import LeadSource, PublicLeadSource
 
 
 def _repo_root() -> Path:
@@ -70,10 +70,40 @@ def _frontend_lead_sources() -> dict[str, str]:
     return found
 
 
-def test_frontend_lead_sources_are_all_valid_enum_values() -> None:
-    """A frontend source the backend enum lacks = 422 on every click, silent.
+def test_public_lead_source_is_a_subset_of_lead_source() -> None:
+    """Every public value must decode to a persisted one, or capture 500s.
+
+    ``PublicLeadSource.to_persisted()`` does ``LeadSource(self.value)``: a public
+    member with no ``LeadSource`` twin raises ValueError at request time, AFTER
+    validation has passed. It is also what makes the tripwire below sufficient —
+    checking the public enum alone covers the persistence enum only while this
+    containment holds.
+    """
+    missing = {s.value for s in PublicLeadSource} - {s.value for s in LeadSource}
+    assert not missing, (
+        f"PublicLeadSource members with no LeadSource twin: {sorted(missing)}. "
+        "to_persisted() raises ValueError on these — a 500 after a valid request."
+    )
+
+
+def test_frontend_lead_sources_are_accepted_by_the_public_capture_api() -> None:
+    """A frontend source the PUBLIC enum lacks = 422 on every click, silent.
 
     This is the exact gap that hid the homepage_hero bug for 10 days (#2495).
+
+    Renamed and re-pointed 2026-08-28. It previously compared against
+    ``LeadSource``, which is NOT the enum the route validates:
+    ``LeadCaptureRequest.source`` is typed ``PublicLeadSource``, and the two
+    differ. So a value present in ``LeadSource`` but absent from
+    ``PublicLeadSource`` passed this tripwire green while still 422'ing in
+    production — and the test's own failure message ("add the value to the
+    enum") walked the reader into exactly that trap: following it literally
+    turned the test green and left the POST broken.
+
+    That was not hypothetical. ``garuda_voa`` sat in precisely that gap between
+    2026-08-25 and this commit, armed to bite on the VOA funnel's go-live day
+    (see PublicLeadSource's docstring). The guard now measures the thing that
+    actually rejects the request.
     """
     found = _frontend_lead_sources()
 
@@ -88,14 +118,20 @@ def test_frontend_lead_sources_are_all_valid_enum_values() -> None:
         "before trusting a green."
     )
 
-    valid = {s.value for s in LeadSource}
-    unknown = {v: f for v, f in found.items() if v not in valid}
+    accepted = {s.value for s in PublicLeadSource}
+    unknown = {v: f for v, f in found.items() if v not in accepted}
     assert not unknown, (
-        "Frontend sends lead source(s) the backend LeadSource enum does not "
-        f"define → POST /api/lead/capture returns 422 and the lead is never "
-        f"written: {unknown}. Add the value to "
-        "apps/backend-rag/backend/services/lead_capture/source.py (with its two "
-        "@property entries) or fix the frontend."
+        "Frontend sends lead source(s) the public capture API does not accept "
+        "→ POST /api/lead/capture returns 422, AppWhatsAppCTA swallows it, and "
+        "the visitor lands on the BARE wa.me link with no prefilled message and "
+        f"no lead row: {unknown}.\n"
+        "Fix in apps/backend-rag/backend/services/lead_capture/source.py — the "
+        "value must be in PublicLeadSource (what the route validates) AND in "
+        "LeadSource with its two @property entries (what persists it). Adding "
+        "it to LeadSource ALONE turns this test green while the POST keeps "
+        "422'ing — that is the bug this message used to cause.\n"
+        "Or fix the frontend: if the CTA is a branch of an existing funnel, "
+        "reuse that funnel's source and carry the distinction in `context`."
     )
 
 
