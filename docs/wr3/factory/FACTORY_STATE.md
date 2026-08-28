@@ -43,7 +43,7 @@
   - Canonical Season status is `TOPIC_APPROVAL_REQUIRED`, `approved_topic_ids` is empty, every safety switch is zero, and every prohibited-action counter is zero.
 - model_topology_version: `FLEET_TOPOLOGY.json` version `1.4`, SHA-256 `ec52f59d2d5268279c8b66ad6c901a68bcc1190e8105a799d99440ea17f102b0`; `MODEL_ROSTER.md` SHA-256 `1d08dbf1c44c21f963669b3c898a1dc04c36ba88a93f39851b72196153c48df0`.
 - editorial_output_paths:
-  - platform audit: `docs/wr3/factory/audits/platform-health.json` (`50ee2614a59331b18ba3cb8647557d8c6abc3d9de8d9dcc61a4adad5cdd7dafe`)
+  - platform audit: `docs/wr3/factory/audits/platform-health.json` (`ac09112aef3ab7cb4cbe35f64912b10f91a2e0b32c4f7d2155172bbd240207fe`)
   - Wave 1 lineage: `docs/wr3/factory/editorial/manifests/wave1-lineage.json` (`ccc16dfa0d3f8b2d2a374f1b3b3e5acc1892b13f5925b2bd7981b860d243090c`)
   - shortlist: `docs/wr3/factory/editorial/normalized/shortlist-40.json` (`c8d9a02f79d3a2b8084df4e64dbd1bd255edd6ddff6992704fa24f12cf7ea8df`)
   - consensus: `docs/wr3/factory/editorial/normalized/consensus-ranking.json` (`69b79593f30fb0e99a19ba7fffb239057eeaffcb6455dc565a92cd2b37c3b117`)

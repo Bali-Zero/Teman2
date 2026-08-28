@@ -55,7 +55,7 @@
     }
   },
   "artifact_creation_constraints": {
-    "models_invoked": false,
+    "models_invoked": true,
     "flow_or_render_credits_used": false,
     "uploads_or_publication_performed": false,
     "tests_invoked": false,
