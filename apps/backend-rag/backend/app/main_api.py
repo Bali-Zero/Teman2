@@ -11,6 +11,7 @@ Run via: uvicorn backend.app.main_api:app --host 0.0.0.0 --port 8080
 import asyncio
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -124,6 +125,54 @@ def _garuda_outbox_poll_seconds() -> float:
     return seconds
 
 
+#: How often the drain loop asks `count_undrained` whether anything is stuck.
+#: Five minutes: often enough that a burned job is seen the same hour it burns,
+#: rare enough that it costs one aggregate query per five minutes rather than
+#: one per 100ms pass.
+_ALARM_PERIOD_SECONDS = 300.0
+
+#: Hard ceiling on one alarm delivery. `send_telegram_message` makes 3 attempts
+#: with 1s/3s backoff against a 30s-timeout client, so left unbounded it can hold
+#: the drain for ~94s. Being late with a page is acceptable; stalling customer
+#: emails behind it is not.
+_ALARM_SEND_TIMEOUT_SECONDS = 20.0
+
+
+async def _send_outbox_alarm(client: "httpx.AsyncClient", text: str) -> None:  # noqa: F821
+    """Best-effort page to the owner chat. NEVER raises.
+
+    DESTINATION, and why it needs no SYMBIOSIS Law 2 derogation.
+    `TELEGRAM_OWNER_CHAT_ID` is Zero's own chat — the same destination the five
+    `staff_page_*` handlers already use. Nothing here carries applicant data:
+    the message names counts and `job_type` strings, never an order id, an
+    address or a name. That is not a promise this docstring makes on its own;
+    `test_the_page_names_only_counts_and_job_types` pins the shape.
+
+    A missing token or chat id is logged and swallowed. The caller is the drain
+    loop, and an unreachable Telegram must never stop customer emails going out.
+
+    The annotation is a STRING because `httpx` is imported inside the scheduler
+    rather than at module scope — `test_no_httpx_violators_outside_http_files`
+    only sanctions the `async with httpx.AsyncClient(...)` shape outside
+    `*_http.py`, and a module-level import here would be a new violation.
+    """
+
+    from backend.services.wa_copilot.telegram_notifier import send_telegram_message
+
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.getenv("TELEGRAM_OWNER_CHAT_ID", "")
+    if not token or not chat_id:
+        logger.error(
+            "GARUDA outbox alarm has something to report and NO WAY TO SEND IT: "
+            "TELEGRAM_BOT_TOKEN/TELEGRAM_OWNER_CHAT_ID unset. The log line above "
+            "is the only record."
+        )
+        return
+    ok, err = await send_telegram_message(client, token, chat_id, text)
+    if not ok:
+        logger.error("GARUDA outbox alarm could not be delivered: %s", err)
+
+
 async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
     """Drain `garuda_order_outbox` by calling `drain_once` in a loop.
 
@@ -168,7 +217,8 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
 
     import httpx
 
-    from backend.services.garuda_orders.outbox_consumer import drain_once
+    from backend.services.garuda_orders.outbox_alarm import OutboxAlarm
+    from backend.services.garuda_orders.outbox_consumer import count_undrained, drain_once
     from backend.services.garuda_orders.outbox_handlers import (
         BrevoEmailSender,
         TelegramStaffPageSender,
@@ -208,10 +258,71 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
                 exc_info=True,
             )
             raise
+        # THE PROBE THAT HAD NO CALLER. `count_undrained` was written as "the
+        # numbers a probe needs to go red" and, measured 2026-08-28 on main, had
+        # ZERO non-test callers — its only two non-test mentions in the whole
+        # tree were COMMENTS promising a failure would "be visible in
+        # count_undrained". A comment is not a caller (superscar #2, one stage
+        # earlier than W120: there the sentinel read a key the reporter never
+        # emitted; here the reporter was never asked). This loop is that caller.
+        #
+        # NOT ON EVERY PASS: the loop cycles every 100ms while work is flowing,
+        # and an extra aggregate query at that rate is a self-inflicted load
+        # problem. The cadence is wall-clock from a MONOTONIC source, so a system
+        # clock adjustment cannot postpone the check indefinitely.
+        alarm = OutboxAlarm()
+        next_alarm_check = 0.0
+        seen_unroutable: frozenset[str] = frozenset()
         while True:
             try:
                 async with pool.acquire() as conn:
                     stats = await drain_once(conn, handlers)
+
+                # `unroutable_types` is PER PASS and the alarm runs far less
+                # often, so the UNION since the last check is what it must see.
+                # Reading only the latest pass would let a type that appeared
+                # once and then had no row left to claim vanish unreported.
+                seen_unroutable |= stats.unroutable_types
+
+                now = time.monotonic()
+                if now >= next_alarm_check:
+                    next_alarm_check = now + _ALARM_PERIOD_SECONDS
+                    # EVERY failure in here is swallowed on purpose. This block
+                    # is observability; the drain is the product. An alarm that
+                    # can kill the queue it watches is worse than no alarm.
+                    try:
+                        async with pool.acquire() as conn:
+                            undrained = await count_undrained(conn)
+                        page = alarm.decide(
+                            exhausted=undrained.get("exhausted", 0),
+                            unroutable_types=seen_unroutable,
+                            now=now,
+                        )
+                        seen_unroutable = frozenset()
+                        if page is not None:
+                            # The log line goes out FIRST and unconditionally:
+                            # it is the record that survives an unreachable
+                            # Telegram.
+                            logger.error(
+                                "GARUDA outbox alarm: %s", page.replace(chr(10), " | ")
+                            )
+                            # BOUNDED, because `send_telegram_message` retries 3
+                            # times with 1s/3s backoff against a client whose
+                            # timeout is 30s — a worst case of roughly 94
+                            # seconds with the drain stopped behind it. The
+                            # alarm may be late; the queue may not be blocked.
+                            await asyncio.wait_for(
+                                _send_outbox_alarm(client, page),
+                                timeout=_ALARM_SEND_TIMEOUT_SECONDS,
+                            )
+                            # Only NOW does the suppression window start. A page
+                            # that never landed must not silence the next hour.
+                            alarm.confirm_sent(time.monotonic())
+                    except Exception:
+                        logger.exception(
+                            "GARUDA outbox alarm check failed; the DRAIN is unaffected"
+                        )
+
                 # Keep draining while the last pass did real work; back off once
                 # it did not. `dispatched` and not `claimed` is the right signal:
                 # a pass that only ever claims unroutable or failing rows has
