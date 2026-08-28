@@ -226,6 +226,41 @@ _UNBUILDABLE_SUB_REASON_MAP: dict[str, str] = {
     "dlp_error": "package_unbuildable_dlp_error",
 }
 
+# Migration 297: the SAME blindness 291 cured for "unbuildable", one row
+# down in the map above. `finalize:<defect_reason>` names WHICH of
+# `wa_finalize.py`'s DEFECT branches refused to let the text leave, and
+# collapsing all of them into "finalize_defect" records the STAGE while
+# hiding the CAUSE — a pricing veto, an oversized output, a monologue leak
+# and a secret-egress hit are four different defects with four different
+# cures. Measured cost: outbox row 363 (2026-08-28T21:43:52Z) had THREE
+# successful codex generations (`consumed_ok`, 9711/10137/8521 ms) thrown
+# away by this stage, and the durable record could not say why; the
+# per-attempt reason lived only in a Fly log line with ~60s retention.
+#
+# Keyed on the EXACT string after the first ':', with ONE prefix case:
+# `secret_egress:<pattern-name>` (wa_finalize's `_codex_egress_veto`) is
+# stored as the bare "finalize_secret_egress" — the suffix is unbounded,
+# which would defeat the CHECK constraint, and it names a scanner pattern
+# that this column (read by dashboards, pasted into reports) has no
+# business carrying. Anything unrecognised falls through to the generic
+# "finalize_defect" bucket rather than "unknown", so a real finalize
+# outcome never looks indistinguishable from an uncatalogued reason head.
+_FINALIZE_SUB_REASON_MAP: dict[str, str] = {
+    "internal_monologue_leak": "finalize_internal_monologue_leak",
+    "pricing_outside_package": "finalize_pricing_outside_package",
+    "empty_rag_answer": "finalize_empty_rag_answer",
+    "persona_escalate_marker": "finalize_persona_escalate_marker",
+    "empty_after_escalate_strip": "finalize_empty_after_escalate_strip",
+    "workflow_only_output": "finalize_workflow_only_output",
+    "empty_after_channel_format": "finalize_empty_after_channel_format",
+    "oversized_output": "finalize_oversized_output",
+    "rag_abstain": "finalize_rag_abstain",
+    "blank_send_text": "finalize_blank_send_text",
+}
+
+# The one sub-reason whose raw form carries a variable suffix.
+_FINALIZE_SECRET_EGRESS_PREFIX = "secret_egress"
+
 
 def _normalize_fall_off_reason(raw: str) -> str:
     """Map an open-ended raw reason string to a bounded DB-safe category.
@@ -245,12 +280,16 @@ def _normalize_fall_off_reason(raw: str) -> str:
     function backs a best-effort write and must never be the thing that
     turns a fall-off into a second, unrelated failure.
 
-    ONE exception to "the head alone decides the category" (migration
-    291): when the head is "unbuildable", the text AFTER the colon is
-    itself a second, closed-vocabulary signal (which PackageUnbuildable
-    reason fired) and is looked up in ``_UNBUILDABLE_SUB_REASON_MAP``
-    before falling back to the generic "package_unbuildable" bucket — see
-    that map's own docstring.
+    TWO exceptions to "the head alone decides the category". When the head
+    is "unbuildable" (migration 291) or "finalize" (migration 297), the
+    text AFTER the colon is itself a second, closed-vocabulary signal —
+    which PackageUnbuildable call site refused, or which wa_finalize DEFECT
+    branch refused — and is looked up in ``_UNBUILDABLE_SUB_REASON_MAP`` /
+    ``_FINALIZE_SUB_REASON_MAP`` before falling back to the generic
+    "package_unbuildable" / "finalize_defect" bucket. The finalize case has
+    one raw form with a variable suffix, ``secret_egress:<pattern-name>``,
+    which is matched by its own head and stored WITHOUT the suffix — see
+    those maps' own docstrings.
     """
     if not raw:
         return "unknown"
@@ -258,6 +297,15 @@ def _normalize_fall_off_reason(raw: str) -> str:
     if head == "unbuildable":
         return _UNBUILDABLE_SUB_REASON_MAP.get(
             rest, _FALL_OFF_REASON_PREFIX_MAP["unbuildable"]
+        )
+    if head == "finalize":
+        # `secret_egress:<pattern-name>` is the one raw form with a
+        # variable suffix — match on its head and DROP the suffix, never
+        # store it (see _FINALIZE_SUB_REASON_MAP's docstring).
+        if rest.partition(":")[0] == _FINALIZE_SECRET_EGRESS_PREFIX:
+            return "finalize_secret_egress"
+        return _FINALIZE_SUB_REASON_MAP.get(
+            rest, _FALL_OFF_REASON_PREFIX_MAP["finalize"]
         )
     return _FALL_OFF_REASON_PREFIX_MAP.get(head, "unknown")
 
