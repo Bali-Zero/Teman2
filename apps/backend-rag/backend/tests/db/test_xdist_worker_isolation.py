@@ -342,16 +342,17 @@ async def test_old_shape_templating_off_a_live_worker_database_fails(
     # so it can never be a sibling's, sourced from the pristine base so the
     # setup cannot die of the very error the assertion below is for.
     scratch_template = conftest._xdist_template_db_name(namespace)
-    await conftest._xdist_ensure_template_database(
-        admin_dsn, _scratch_source_db(), scratch_template
-    )
-
     busy_worker_db = f"{namespace}_gw0"
-    await conftest._xdist_clone_worker_database(admin_dsn, scratch_template, busy_worker_db)
-
-    busy_dsn = conftest._xdist_swap_db(os.environ["TEST_DATABASE_URL"], busy_worker_db)
-    busy_conn = await asyncpg.connect(busy_dsn)
+    busy_conn = None
     try:
+        await conftest._xdist_ensure_template_database(
+            admin_dsn, _scratch_source_db(), scratch_template
+        )
+        await conftest._xdist_clone_worker_database(admin_dsn, scratch_template, busy_worker_db)
+
+        busy_dsn = conftest._xdist_swap_db(os.environ["TEST_DATABASE_URL"], busy_worker_db)
+        busy_conn = await asyncpg.connect(busy_dsn)
+
         # This is the OLD call shape: templating off a worker's own live
         # database (`busy_worker_db`), exactly what a wrong `base_db`
         # re-derivation would have handed to `_xdist_clone_worker_database`.
@@ -360,7 +361,8 @@ async def test_old_shape_templating_off_a_live_worker_database_fails(
                 admin_dsn, busy_worker_db, f"{busy_worker_db}_gw1"
             )
     finally:
-        await busy_conn.close()
+        if busy_conn is not None:
+            await busy_conn.close()
         await conftest._xdist_drop_worker_database(admin_dsn, busy_worker_db)
         await conftest._xdist_drop_worker_database(admin_dsn, f"{busy_worker_db}_gw1")
         await conftest._xdist_drop_template_database(admin_dsn, scratch_template)
