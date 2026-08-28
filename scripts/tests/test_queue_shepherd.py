@@ -246,10 +246,11 @@ def test_select_functions_ignore_the_other_events_event_isolation():
     assert qs.select_stale_pull_request_runs(runs, {"dead"}) == []  # innocence: live head
 
 
-def test_janitor_recheck_at_cancel_time_never_cancels_a_run_that_became_live(monkeypatch):
+def test_janitor_recheck_at_cancel_time_never_cancels_a_run_that_became_live(monkeypatch, tmp_path):
     """End-to-end of run_janitor_pass with every gh call monkeypatched: a run discovered stale
     on the FIRST fetch but reported live on the RECHECK fetch (the fresh call immediately
     before cancel) must never be cancelled. This is the literal 'not from a stale list' mandate."""
+    monkeypatch.setattr(qs, "UNCANCELLABLE_FILE", tmp_path / "uncancellable.json")
     calls = {"cancel": []}
 
     discovery_heads = {"other_live_sha"}  # run's head_sha="flaky_sha" is stale here...
@@ -270,7 +271,7 @@ def test_janitor_recheck_at_cancel_time_never_cancels_a_run_that_became_live(mon
 
     def fake_cancel_run(repo, run_id):
         calls["cancel"].append(run_id)
-        return True
+        return True, "cancelled"
 
     monkeypatch.setattr(qs, "fetch_queued_runs", fake_fetch_queued_runs)
     monkeypatch.setattr(qs, "fetch_open_pr_heads", fake_fetch_open_pr_heads)
@@ -283,7 +284,8 @@ def test_janitor_recheck_at_cancel_time_never_cancels_a_run_that_became_live(mon
     assert calls["cancel"] == []
 
 
-def test_janitor_recheck_still_cancels_a_run_that_stays_stale_on_recheck(monkeypatch):
+def test_janitor_recheck_still_cancels_a_run_that_stays_stale_on_recheck(monkeypatch, tmp_path):
+    monkeypatch.setattr(qs, "UNCANCELLABLE_FILE", tmp_path / "uncancellable.json")
     calls = {"cancel": []}
 
     def fake_fetch_queued_runs(repo=qs.REPO):
@@ -297,7 +299,7 @@ def test_janitor_recheck_still_cancels_a_run_that_stays_stale_on_recheck(monkeyp
 
     def fake_cancel_run(repo, run_id):
         calls["cancel"].append(run_id)
-        return True
+        return True, "cancelled"
 
     monkeypatch.setattr(qs, "fetch_queued_runs", fake_fetch_queued_runs)
     monkeypatch.setattr(qs, "fetch_open_pr_heads", fake_fetch_open_pr_heads)
@@ -331,9 +333,10 @@ def test_cancel_run_409_falls_back_to_force_cancel_and_counts_as_cancelled(monke
         )
 
     monkeypatch.setattr(qs, "_run", fake_run)
-    result = qs.cancel_run("Bali-Zero/Teman2", 3221000123)
+    ok, outcome = qs.cancel_run("Bali-Zero/Teman2", 3221000123)
 
-    assert result is True
+    assert ok is True
+    assert outcome == "cancelled"
     assert len(calls) == 2
     assert calls[0][-1].endswith("/actions/runs/3221000123/cancel")
     assert calls[1][-1].endswith("/actions/runs/3221000123/force-cancel")
@@ -355,9 +358,10 @@ def test_cancel_run_409_then_force_cancel_also_fails_is_warning_not_crash(monkey
 
     monkeypatch.setattr(qs, "_run", fake_run)
     with caplog.at_level("WARNING"):
-        result = qs.cancel_run("Bali-Zero/Teman2", 3221000456)
+        ok, outcome = qs.cancel_run("Bali-Zero/Teman2", 3221000456)
 
-    assert result is False
+    assert ok is False
+    assert outcome == "failed"  # a 500, not a 409 -> must NOT classify as uncancellable_409
     assert "force-cancel fallback also failed" in caplog.text
 
 
@@ -372,11 +376,162 @@ def test_cancel_run_non_409_failure_never_attempts_force_cancel(monkeypatch):
         return 1, "", "gh: Internal Server Error (HTTP 500)"
 
     monkeypatch.setattr(qs, "_run", fake_run)
-    result = qs.cancel_run("Bali-Zero/Teman2", 999)
+    ok, outcome = qs.cancel_run("Bali-Zero/Teman2", 999)
 
-    assert result is False
+    assert ok is False
+    assert outcome == "failed"
     assert len(calls) == 1  # only the plain cancel — no force-cancel call made
     assert calls[0][-1].endswith("/actions/runs/999/cancel")
+
+
+def test_cancel_run_409_on_force_cancel_is_uncancellable_409_class(monkeypatch):
+    """Both endpoints answer 409 -> GitHub cannot resolve this run's state through either one.
+    This is the ONLY class run_janitor_pass should ever persist to the skip-list."""
+
+    def fake_run(cmd, timeout=30):
+        return (
+            1,
+            "",
+            "gh: Cannot cancel a workflow run that has not been queued yet. (HTTP 409)",
+        )
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    ok, outcome = qs.cancel_run("Bali-Zero/Teman2", 32217208723)
+
+    assert ok is False
+    assert outcome == "uncancellable_409"
+
+
+# ── janitor uncancellable skip-list ─────────────────────────────────────────
+
+
+def test_janitor_uncancellable_409_persisted_and_skipped_next_tick(monkeypatch, tmp_path, caplog):
+    """(a) Guilt: 409-on-force-cancel -> id persisted, and the VERY NEXT tick skips it (no
+    cancel_run call at all for that id) with a one-line INFO summary naming the skip count."""
+    uncancellable_path = tmp_path / "uncancellable.json"
+    monkeypatch.setattr(qs, "UNCANCELLABLE_FILE", uncancellable_path)
+
+    def fake_fetch_queued_runs(repo=qs.REPO):
+        return [
+            {"id": 32217208723, "event": "pull_request", "head_sha": "dead", "head_branch": None, "name": "CI"}
+        ]
+
+    def fake_fetch_open_pr_heads(repo=qs.REPO):
+        return set()  # stale on discovery AND on every recheck
+
+    def fake_fetch_live_queue_branches(repo=qs.REPO):
+        return set()
+
+    monkeypatch.setattr(qs, "fetch_queued_runs", fake_fetch_queued_runs)
+    monkeypatch.setattr(qs, "fetch_open_pr_heads", fake_fetch_open_pr_heads)
+    monkeypatch.setattr(qs, "fetch_live_queue_branches", fake_fetch_live_queue_branches)
+
+    # Tick 1: cancel_run reports the both-endpoints-409 class.
+    monkeypatch.setattr(qs, "cancel_run", lambda repo, run_id: (False, "uncancellable_409"))
+    cancelled_1 = qs.run_janitor_pass(dry_run=False)
+    assert cancelled_1 == 0
+    saved = qs._load_json(uncancellable_path)
+    assert "32217208723" in saved
+
+    # Tick 2: cancel_run must NEVER be invoked again for this id.
+    def never_called(repo, run_id):
+        raise AssertionError(f"cancel_run must not be re-invoked for known-uncancellable id {run_id}")
+
+    monkeypatch.setattr(qs, "cancel_run", never_called)
+    with caplog.at_level("INFO"):
+        cancelled_2 = qs.run_janitor_pass(dry_run=False)
+
+    assert cancelled_2 == 0
+    assert "skipping 1 known-uncancellable runs" in caplog.text
+
+
+def test_janitor_transient_failure_not_persisted_retried_next_tick(monkeypatch, tmp_path):
+    """(b) Innocence: a transient failure (e.g. HTTP 500 on force-cancel) must NOT enter the
+    skip-list — the run is re-attempted (cancel_run called again) on the very next tick."""
+    monkeypatch.setattr(qs, "UNCANCELLABLE_FILE", tmp_path / "uncancellable.json")
+
+    def fake_fetch_queued_runs(repo=qs.REPO):
+        return [{"id": 555, "event": "pull_request", "head_sha": "dead", "head_branch": None, "name": "CI"}]
+
+    def fake_fetch_open_pr_heads(repo=qs.REPO):
+        return set()
+
+    def fake_fetch_live_queue_branches(repo=qs.REPO):
+        return set()
+
+    calls = []
+
+    def fake_cancel_run(repo, run_id):
+        calls.append(run_id)
+        return False, "failed"  # a transient 500 — never the 409-on-both-endpoints class
+
+    monkeypatch.setattr(qs, "fetch_queued_runs", fake_fetch_queued_runs)
+    monkeypatch.setattr(qs, "fetch_open_pr_heads", fake_fetch_open_pr_heads)
+    monkeypatch.setattr(qs, "fetch_live_queue_branches", fake_fetch_live_queue_branches)
+    monkeypatch.setattr(qs, "cancel_run", fake_cancel_run)
+
+    qs.run_janitor_pass(dry_run=False)
+    qs.run_janitor_pass(dry_run=False)
+
+    assert calls == [555, 555]  # retried on both ticks — never skip-listed
+
+
+def test_janitor_gc_drops_uncancellable_id_no_longer_a_candidate(monkeypatch, tmp_path):
+    """(c) Self-cleaning: an id sitting in the skip-list from a past tick that no longer appears
+    among THIS tick's stale candidates (its queued run aged out, its PR closed, GitHub finally
+    resolved it, ...) must be dropped — the file cannot grow unbounded."""
+    uncancellable_path = tmp_path / "uncancellable.json"
+    qs._save_json(uncancellable_path, {"999999": {"recorded_at": "2026-08-01T00:00:00Z"}})
+    monkeypatch.setattr(qs, "UNCANCELLABLE_FILE", uncancellable_path)
+
+    def fake_fetch_queued_runs(repo=qs.REPO):
+        return []  # 999999 no longer shows up as a queued run at all
+
+    def fake_fetch_open_pr_heads(repo=qs.REPO):
+        return set()
+
+    def fake_fetch_live_queue_branches(repo=qs.REPO):
+        return set()
+
+    monkeypatch.setattr(qs, "fetch_queued_runs", fake_fetch_queued_runs)
+    monkeypatch.setattr(qs, "fetch_open_pr_heads", fake_fetch_open_pr_heads)
+    monkeypatch.setattr(qs, "fetch_live_queue_branches", fake_fetch_live_queue_branches)
+
+    qs.run_janitor_pass(dry_run=False)
+
+    assert qs._load_json(uncancellable_path) == {}
+
+
+def test_janitor_corrupt_uncancellable_file_fails_closed_no_cancel(monkeypatch, tmp_path):
+    """(d) A torn/corrupt skip-list file must fail closed — same posture as
+    test_rearm_pass_corrupt_budget_file_fails_closed_no_rearm: CANNOT-VERIFY, zero action this
+    tick, and the corrupt file is left exactly as-is (never silently overwritten with a fresh
+    empty state, which would just as silently re-open every known-uncancellable id)."""
+    uncancellable_path = tmp_path / "uncancellable.json"
+    uncancellable_path.write_text("{not json", encoding="utf-8")
+    monkeypatch.setattr(qs, "UNCANCELLABLE_FILE", uncancellable_path)
+
+    def fake_fetch_queued_runs(repo=qs.REPO):
+        return [{"id": 777, "event": "pull_request", "head_sha": "dead", "head_branch": None, "name": "CI"}]
+
+    def fake_fetch_open_pr_heads(repo=qs.REPO):
+        return set()
+
+    def fake_fetch_live_queue_branches(repo=qs.REPO):
+        return set()
+
+    def never_called(repo, run_id):
+        raise AssertionError("cancel_run must never be called when skip-list state is unreadable")
+
+    monkeypatch.setattr(qs, "fetch_queued_runs", fake_fetch_queued_runs)
+    monkeypatch.setattr(qs, "fetch_open_pr_heads", fake_fetch_open_pr_heads)
+    monkeypatch.setattr(qs, "fetch_live_queue_branches", fake_fetch_live_queue_branches)
+    monkeypatch.setattr(qs, "cancel_run", never_called)
+
+    cancelled = qs.run_janitor_pass(dry_run=False)
+
+    assert cancelled == 0
+    assert uncancellable_path.read_text(encoding="utf-8") == "{not json"
 
 
 def test_janitor_dry_run_never_calls_cancel_run(monkeypatch):

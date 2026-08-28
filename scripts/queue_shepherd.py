@@ -106,6 +106,12 @@ ALERTED_FILE = Path(
         os.path.expanduser("~/logs/queue-shepherd/alerted-unknown.json"),
     )
 )
+UNCANCELLABLE_FILE = Path(
+    os.environ.get(
+        "QUEUE_SHEPHERD_UNCANCELLABLE_FILE",
+        os.path.expanduser("~/logs/queue-shepherd/uncancellable.json"),
+    )
+)
 LOG_FILE = Path(
     os.environ.get("QUEUE_SHEPHERD_LOG_FILE", os.path.expanduser("~/logs/queue-shepherd.log"))
 )
@@ -309,6 +315,19 @@ def gc_budget_state(budget_state: dict[str, Any], now: _dt.datetime) -> dict[str
         if parsed and max(parsed) >= cutoff:
             kept[key] = entry
     return kept
+
+
+def gc_uncancellable_state(
+    uncancellable_state: dict[str, Any], candidate_ids: set[str]
+) -> dict[str, Any]:
+    """Pure: drop any recorded run id that is no longer present in THIS TICK's candidate query
+    (the janitor's own stale-run discovery, before skip-list filtering) — the run stopped showing
+    up as a stale-queued candidate (GitHub finally resolved it, it aged past the queued-run query
+    window, or the PR/queue branch it belonged to is simply gone), so remembering it forever would
+    let the file grow unbounded. Presence-based, not time-based (unlike gc_budget_state): there is
+    no useful TTL for "GitHub told us twice it cannot cancel this" — the only trustworthy signal
+    that it is safe to forget an id is that the janitor no longer sees it at all."""
+    return {run_id: entry for run_id, entry in uncancellable_state.items() if run_id in candidate_ids}
 
 
 def decide_rearm(
@@ -708,31 +727,42 @@ def rearm_pr(repo: str, number: int) -> bool:
     return True
 
 
-def cancel_run(repo: str, run_id: int) -> bool:
-    """Cancels a queued Actions run. Post-outage (and on very old runs), GitHub's plain cancel
-    endpoint answers HTTP 409 "Cannot cancel a workflow run that has not been queued yet" for a
-    run whose real state has already moved past QUEUED — the janitor's own discovery-to-cancel
-    gap, or GitHub settling state after an incident. On EXACTLY that 409 class, falls back once
-    to the force-cancel endpoint, which GitHub accepts regardless of the run's current state.
-    Force-cancel is deliberately NOT the default path — only the 409 fallback — because it is a
-    stronger, less-reversible instrument than plain cancel and unconditional use would widen this
-    guard past what the janitor's mandate (cancel stale QUEUED runs) actually needs.
+def cancel_run(repo: str, run_id: int) -> tuple[bool, str]:
+    """Cancels a queued Actions run. Returns (cancelled, outcome), outcome one of:
+      "cancelled"          — cancelled via the plain endpoint, or the force-cancel fallback.
+      "uncancellable_409"  — BOTH the plain cancel AND the force-cancel fallback answered HTTP
+                              409 ("not been queued yet") — a run whose real state GitHub itself
+                              cannot resolve through either endpoint (measured live: post-outage
+                              orphans left `status=queued` for 2-9 days). The caller may persist
+                              this id to a skip-list; the run will never cancel by retrying —
+                              GitHub's own two cancellation endpoints both refuse it.
+      "failed"              — any other failure (non-409 on the first attempt, or the
+                              force-cancel fallback failing with something other than 409, e.g.
+                              the HTTP 500s seen on very old 3221xxxx runs). MUST NEVER enter the
+                              skip-list — a transient error may simply succeed on a later tick.
 
-    Any other failure class (a non-409 error, or the force-cancel fallback itself failing — e.g.
-    the HTTP 500s seen on very old 3221xxxx runs) is a single WARNING and this function returns
-    False. No retry loop lives here: superscar #2 (exist != armed) is exactly a "still working"
-    façade that quietly burns a tick's time budget on a run that will never cancel — the janitor's
-    own 10-min tick cadence is the retry, not this call."""
+    Post-outage (and on very old runs), GitHub's plain cancel endpoint answers HTTP 409 "Cannot
+    cancel a workflow run that has not been queued yet" for a run whose real state has already
+    moved past QUEUED — the janitor's own discovery-to-cancel gap, or GitHub settling state after
+    an incident. On EXACTLY that 409 class, falls back once to the force-cancel endpoint, which
+    GitHub accepts regardless of the run's current state. Force-cancel is deliberately NOT the
+    default path — only the 409 fallback — because it is a stronger, less-reversible instrument
+    than plain cancel and unconditional use would widen this guard past what the janitor's mandate
+    (cancel stale QUEUED runs) actually needs.
+
+    No retry loop lives here: superscar #2 (exist != armed) is exactly a "still working" façade
+    that quietly burns a tick's time budget on a run that will never cancel — the janitor's own
+    10-min tick cadence is the retry, not this call."""
     owner, name = repo.split("/", 1)
     rc, out, err = _run(
         ["gh", "api", "-X", "POST", f"repos/{owner}/{name}/actions/runs/{run_id}/cancel"],
         timeout=30,
     )
     if rc == 0:
-        return True
+        return True, "cancelled"
     if "HTTP 409" not in err:
         logger.warning("cancel_run(%s) failed rc=%s err=%s", run_id, rc, err.strip()[:200])
-        return False
+        return False, "failed"
 
     logger.info(
         "cancel_run(%s): plain cancel got HTTP 409 (not queued yet) — falling back to force-cancel",
@@ -742,13 +772,20 @@ def cancel_run(repo: str, run_id: int) -> bool:
         ["gh", "api", "-X", "POST", f"repos/{owner}/{name}/actions/runs/{run_id}/force-cancel"],
         timeout=30,
     )
-    if fc_rc != 0:
+    if fc_rc == 0:
+        return True, "cancelled"
+    if "HTTP 409" in fc_err:
         logger.warning(
-            "cancel_run(%s): force-cancel fallback also failed rc=%s err=%s",
-            run_id, fc_rc, fc_err.strip()[:200],
+            "cancel_run(%s): force-cancel ALSO got HTTP 409 — GitHub cannot resolve this run's "
+            "state through either endpoint, marking uncancellable",
+            run_id,
         )
-        return False
-    return True
+        return False, "uncancellable_409"
+    logger.warning(
+        "cancel_run(%s): force-cancel fallback also failed rc=%s err=%s",
+        run_id, fc_rc, fc_err.strip()[:200],
+    )
+    return False, "failed"
 
 
 def send_telegram(message: str, dedup_key: str = "") -> bool:
@@ -922,8 +959,27 @@ def run_janitor_pass(dry_run: bool) -> int:
         queued_runs, live_branches
     )
 
+    # Fail-closed on state corruption (same posture as run_rearm_pass's budget-file guard): a
+    # torn/corrupt uncancellable skip-list must never be silently read as "nothing known
+    # uncancellable" — that would burn this whole tick re-hammering ids GitHub has already told us
+    # twice it cannot cancel. `_load_json` raises on a parse failure (vs. a simply-missing file,
+    # which is normal and returns {}); this pass treats that as CANNOT-VERIFY and cancels NOTHING
+    # this tick — placed AFTER the discovery fetches above so a corrupt skip-list never masks a
+    # genuine "CANNOT-VERIFY queued runs" fetch failure as the same zero-action outcome.
+    try:
+        uncancellable_state = {} if dry_run else _load_json(UNCANCELLABLE_FILE)
+    except RuntimeError as exc:
+        logger.error("CANNOT-VERIFY uncancellable skip-list: %s", exc)
+        return 0
+
+    skip_ids = set(uncancellable_state.keys())
+    to_process = [run for run in stale if str(run["id"]) not in skip_ids]
+    skipped_count = len(stale) - len(to_process)
+    if skipped_count:
+        logger.info("skipping %s known-uncancellable runs", skipped_count)
+
     cancelled = 0
-    for run in stale:
+    for run in to_process:
         # Re-verify liveness AT CANCEL TIME with a fresh fetch — never trust the list above,
         # which may already be stale by the time this specific run is reached (mandate: "not
         # from a stale list").
@@ -942,9 +998,17 @@ def run_janitor_pass(dry_run: bool) -> int:
             logger.info("[dry-run] would cancel run %s (%s, event=%s)", run["id"], run.get("name"), run["event"])
             cancelled += 1
             continue
-        if cancel_run(REPO, run["id"]):
+        ok, outcome = cancel_run(REPO, run["id"])
+        if ok:
             logger.info("cancelled stale run %s (%s, event=%s)", run["id"], run.get("name"), run["event"])
             cancelled += 1
+        elif outcome == "uncancellable_409":
+            uncancellable_state[str(run["id"])] = {"recorded_at": _now().strftime("%Y-%m-%dT%H:%M:%SZ")}
+
+    if not dry_run:
+        candidate_ids = {str(run["id"]) for run in stale}
+        uncancellable_state = gc_uncancellable_state(uncancellable_state, candidate_ids)
+        _save_json(UNCANCELLABLE_FILE, uncancellable_state)
     return cancelled
 
 
