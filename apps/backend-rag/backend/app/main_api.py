@@ -131,6 +131,13 @@ def _garuda_outbox_poll_seconds() -> float:
 #: one per 100ms pass.
 _ALARM_PERIOD_SECONDS = 300.0
 
+#: Advisory-lock name for the OP-04 checkout-expiry sweep. Exactly ONE `api`
+#: machine runs the drain loop today (measured 2026-08-28: process group `api`
+#: has one machine), which is a scaling accident and not a contract — two would
+#: select the SAME candidate rows, because that sweep's query has no
+#: `FOR UPDATE SKIP LOCKED` the way the drain's claim does.
+_OP04_SWEEP_LOCK = "garuda-op04-checkout-expiry-sweep"
+
 #: Hard ceiling on one alarm delivery. `send_telegram_message` makes 3 attempts
 #: with 1s/3s backoff against a 30s-timeout client, so left unbounded it can hold
 #: the drain for ~94s. Being late with a page is acceptable; stalling customer
@@ -223,6 +230,9 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
         BrevoEmailSender,
         TelegramStaffPageSender,
         build_handlers,
+    )
+    from backend.services.garuda_orders.reconciliation import (
+        reconcile_expired_checkouts,
     )
 
     interval = _garuda_outbox_poll_seconds()
@@ -322,6 +332,63 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
                         logger.exception(
                             "GARUDA outbox alarm check failed; the DRAIN is unaffected"
                         )
+
+                    # SECOND JOB THAT HAD NO CALLER, same tick. On origin/main
+                    # `git grep -l reconcile_expired_checkouts` outside tests
+                    # returned exactly ONE path: its own definition. Its
+                    # docstring says "Intended cadence: a scheduled job, not a
+                    # request-path call" and no scheduler ever existed
+                    # (superscar #2 — built is not armed; a docstring naming a
+                    # cadence is not a cadence).
+                    #
+                    # Harmless TODAY only because the order lane answers 503
+                    # until GARUDA_XENDIT_SECRET_KEY is set, and a landmine the
+                    # moment it is: OP-04 commits ONLY from here, so an order
+                    # whose checkout window elapsed would sit in
+                    # `awaiting_payment` forever — no expiry mail, no terminal
+                    # state, and a customer looking at a dead tracker. Arming it
+                    # BEFORE the keys land is the whole point.
+                    repository = getattr(app.state, "garuda_order_repository", None)
+                    if repository is not None:
+                        try:
+                            async with pool.acquire() as lock_conn:
+                                # Lock and unlock on the SAME connection:
+                                # `pg_try_advisory_lock` is SESSION-scoped, so
+                                # unlocking from a different pooled connection
+                                # silently succeeds without releasing anything
+                                # and strands the lock for that session's life —
+                                # after which no machine ever sweeps again.
+                                acquired = await lock_conn.fetchval(
+                                    "SELECT pg_try_advisory_lock(hashtext($1)::bigint)",
+                                    _OP04_SWEEP_LOCK,
+                                )
+                                if acquired:
+                                    try:
+                                        summary = await reconcile_expired_checkouts(
+                                            pool, repository
+                                        )
+                                    finally:
+                                        await lock_conn.fetchval(
+                                            "SELECT pg_advisory_unlock(hashtext($1)::bigint)",
+                                            _OP04_SWEEP_LOCK,
+                                        )
+                                    # Quiet when there is nothing to do: this
+                                    # fires every 300s forever, and a line per
+                                    # tick would bury the ones that matter.
+                                    if summary.candidates:
+                                        logger.info(
+                                            "GARUDA OP-04 sweep: %d candidate(s), %d expired, "
+                                            "%d left for the webhook",
+                                            summary.candidates,
+                                            summary.expired,
+                                            summary.left_for_webhook,
+                                        )
+                        except Exception:
+                            # Same rule as the alarm above: this is upkeep, the
+                            # drain is the product.
+                            logger.exception(
+                                "GARUDA OP-04 checkout-expiry sweep failed; the DRAIN is unaffected"
+                            )
 
                 # Keep draining while the last pass did real work; back off once
                 # it did not. `dispatched` and not `claimed` is the right signal:
