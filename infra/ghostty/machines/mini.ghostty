@@ -16,6 +16,41 @@ macos-icon-frame = plastic
 macos-icon-ghost-color = #a6e3a1
 macos-icon-screen-color = #1e1e2e,#1e2f24
 
+# ─── Window colour: "Verde notte" — dark (Zero, 2026-08-29) ────────────────
+# Mini stays DARK: it is the H24 server, glanced at rather than read for hours,
+# and dark is what tells it apart from the two light workstations at a glance.
+# One real defect fixed, measured not guessed: palette 8 was #4A423A, which is
+# 1.97:1 against this background — bright black is the colour every TUI uses
+# for dimmed/secondary text, so half of Claude Code's chrome was invisible.
+# It is now #7E7A6B (4.7:1). The rest of the palette was already sound on dark
+# and is only nudged for evenness.
+# Blur off for the same reason as the other two: macos-glass-regular keeps the
+# window translucent on macOS 26 even at opacity 1.0.
+background-opacity = 1.0
+background-blur = false
+
+background = #11140F
+foreground = #D7E4CE
+selection-background = #2E3A26
+selection-foreground = #F2ECDC
+
+palette = 0=#1C2118
+palette = 1=#E4796A
+palette = 2=#9CC194
+palette = 3=#EAB75C
+palette = 4=#82A8CB
+palette = 5=#C793B0
+palette = 6=#8DC2B5
+palette = 7=#CFC5AF
+palette = 8=#7E7A6B
+palette = 9=#F09A88
+palette = 10=#B6EFAF
+palette = 11=#F7CE7E
+palette = 12=#A3C7EC
+palette = 13=#E0B4CE
+palette = 14=#ADDFD3
+palette = 15=#F2ECDC
+
 # Measured 2026-08-18: this machine has NO Nerd Font installed, so the fleet's
 # font-family falls back to plain "JetBrains Mono" and powerline/devicon glyphs
 # in the starship prompt render as tofu. Fix by installing the font

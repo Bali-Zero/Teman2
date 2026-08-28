@@ -11,14 +11,65 @@ working-directory = /Users/balizero/nuzantara
 font-size = 15
 
 # Identity: BLUE. M5 is the primary seat.
-cursor-color = #89b4fa
-cursor-text = #1e1e2e
-split-divider-color = #89b4fa
+# Darkened from #89b4fa on 2026-08-29: that pastel was chosen against a dark
+# Catppuccin background and sits at ~1.9:1 on the ivory paper below — the block
+# cursor was hard to FIND on the line. The Dock-icon blue is left pastel: it is
+# drawn on the icon's own dark screen, not on the terminal background.
+cursor-color = #1B62D6
+cursor-text = #F6EFE1
+split-divider-color = #1B62D6
 
 macos-icon = custom-style
 macos-icon-frame = chrome
 macos-icon-ghost-color = #89b4fa
 macos-icon-screen-color = #1e1e2e,#1e2a3a
+
+# ─── Window colour: "Avorio" — warm light paper (Zero, 2026-08-29) ─────────
+# Rewritten after the 2026-08-28 ivory was reported illegible. TWO causes, both
+# measured on this machine, not deduced:
+#
+#  1. `background-blur = macos-glass-regular` (set in fleet.ghostty) keeps the
+#     window TRANSLUCENT on macOS 26 even at background-opacity = 1.0 — the
+#     earlier note here assumed opacity alone would stop the bleed and it does
+#     not. `ghostty +show-config` confirmed opacity was already 1.0 while the
+#     wallpaper was still washing the ivory orange. Blur is therefore turned OFF
+#     here, not just neutralised.
+#  2. The palette was a DARK-background palette (neon pastels: #FFD93D yellow,
+#     #4CD97B green, #6BEEDD cyan) painted on paper — those sit at ~1.5:1
+#     against #FDF6EC, i.e. invisible. Every colour below is picked to clear
+#     4.5:1 on this background, INCLUDING palette 8 (bright black), which is the
+#     colour every TUI uses for dimmed/secondary text and is the single line
+#     that decides whether a light theme reads or not.
+#
+# Companion change, in the same breath: ~/.claude/settings.json theme = light.
+# Claude Code's own dim greys are authored for a dark terminal; no palette here
+# can rescue them. Terminal light + Claude Code dark is unreadable by design.
+# Needs a full Ghostty QUIT+relaunch, not just cmd+shift+comma.
+background-opacity = 1.0
+background-blur = false
+unfocused-split-opacity = 0.95
+
+background = #F6EFE1
+foreground = #2A2520
+selection-background = #F0DCB0
+selection-foreground = #2A2520
+
+palette = 0=#3B342B
+palette = 1=#C0392B
+palette = 2=#1E7A44
+palette = 3=#A16207
+palette = 4=#1F5FD0
+palette = 5=#8B2FC9
+palette = 6=#0E7490
+palette = 7=#4F4739
+palette = 8=#756B5C
+palette = 9=#A32E22
+palette = 10=#15693A
+palette = 11=#855206
+palette = 12=#1A4FB0
+palette = 13=#76259F
+palette = 14=#0B6076
+palette = 15=#2A2520
 
 # 24 GB and a full interactive load — keep scrollback at the fleet default.
 window-width = 124
