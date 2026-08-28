@@ -105,6 +105,15 @@ async def test_server_is_exact_fail_closed_allowlist() -> None:
     assert mcp._mask_error_details is True
 
 
+def test_workspace_server_instructions_route_news_room_and_flow_correctly() -> None:
+    assert "News Room covers use native ImageGen" in mcp.instructions
+    assert (
+        "Confirmed Flow image and video generation remain available"
+        in mcp.instructions
+    )
+    assert "Flow is video-only" not in mcp.instructions
+
+
 def test_workspace_server_never_imports_full_server_or_admin_client() -> None:
     source = inspect.getsource(server_workspace_marketing)
     marketing_source = inspect.getsource(marketing)
