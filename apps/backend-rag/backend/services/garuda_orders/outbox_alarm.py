@@ -53,9 +53,14 @@ class OutboxAlarm:
     not die because an alarm had an opinion.
     """
 
-    #: Signature of the last condition reported, or None when last seen clean.
+    #: Signature of the last condition SUCCESSFULLY DELIVERED, or None when the
+    #: last delivered message was a recovery notice.
     _last_signature: tuple[int, frozenset[str]] | None = None
     _last_sent_at: float = field(default=0.0)
+    #: What `decide` last returned and is waiting on `confirm_sent` for. Held
+    #: separately BECAUSE A PAGE THAT WAS NEVER DELIVERED MUST NOT COUNT AS
+    #: REPORTED — see `confirm_sent`.
+    _pending: tuple[tuple[int, frozenset[str]] | None, float] | None = None
 
     def decide(
         self,
@@ -80,8 +85,7 @@ class OutboxAlarm:
         if exhausted == 0 and not types:
             if self._last_signature is None:
                 return None
-            self._last_signature = None
-            self._last_sent_at = now
+            self._pending = (None, now)
             return "GARUDA outbox recovered: no exhausted jobs, no unrouted job types."
 
         signature = (exhausted, types)
@@ -90,9 +94,32 @@ class OutboxAlarm:
         if not changed and not stale:
             return None
 
-        self._last_signature = signature
-        self._last_sent_at = now
+        self._pending = (signature, now)
         return self._compose(exhausted, types, repeat=not changed)
+
+    def confirm_sent(self, now: float) -> None:
+        """Commit the last `decide` result — call ONLY after the page landed.
+
+        WHY THIS IS NOT DONE INSIDE `decide`. The first version committed
+        `_last_signature`/`_last_sent_at` at decision time, so a page that the
+        transport then FAILED to deliver still consumed the hour-long
+        suppression window: the alarm went quiet for an hour precisely because
+        it had just failed to reach anyone. That is the exact disease this
+        module exists to cure, reintroduced one level down.
+
+        With the commit split out, an undelivered page leaves the state
+        untouched, `decide` sees the same unchanged-and-unreported condition on
+        the next check, and it re-fires five minutes later instead of sixty.
+        """
+
+        if self._pending is None:
+            return
+        signature, _decided_at = self._pending
+        self._last_signature = signature
+        # `now`, not the decision time: the suppression window starts when the
+        # human could actually have seen it.
+        self._last_sent_at = now
+        self._pending = None
 
     @staticmethod
     def _compose(exhausted: int, types: frozenset[str], *, repeat: bool) -> str:

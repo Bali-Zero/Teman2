@@ -30,6 +30,7 @@ def test_an_exhausted_job_pages_once_and_says_nothing_else_will_notice():
 def test_the_same_condition_does_not_page_again_within_the_hour():
     alarm = OutboxAlarm()
     assert alarm.decide(exhausted=2, unroutable_types=frozenset(), now=0.0) is not None
+    alarm.confirm_sent(0.0)
     for t in (1.0, 60.0, REALERT_SECONDS - 1):
         assert alarm.decide(exhausted=2, unroutable_types=frozenset(), now=t) is None, (
             f"re-paged at t={t} for an unchanged condition — this is how a real "
@@ -40,6 +41,7 @@ def test_the_same_condition_does_not_page_again_within_the_hour():
 def test_a_standing_condition_is_re_reported_after_the_window():
     alarm = OutboxAlarm()
     alarm.decide(exhausted=2, unroutable_types=frozenset(), now=0.0)
+    alarm.confirm_sent(0.0)
     again = alarm.decide(exhausted=2, unroutable_types=frozenset(), now=REALERT_SECONDS)
     assert again is not None, "a broken row stays broken; one page that scrolls away is none"
     assert "STILL" in again
@@ -48,7 +50,9 @@ def test_a_standing_condition_is_re_reported_after_the_window():
 def test_a_changed_condition_pages_immediately_even_inside_the_window():
     alarm = OutboxAlarm()
     alarm.decide(exhausted=2, unroutable_types=frozenset(), now=0.0)
+    alarm.confirm_sent(0.0)
     assert alarm.decide(exhausted=3, unroutable_types=frozenset(), now=1.0) is not None
+    alarm.confirm_sent(1.0)
     assert (
         alarm.decide(exhausted=3, unroutable_types=frozenset({"x"}), now=2.0) is not None
     )
@@ -57,10 +61,12 @@ def test_a_changed_condition_pages_immediately_even_inside_the_window():
 def test_recovery_is_announced_exactly_once():
     alarm = OutboxAlarm()
     alarm.decide(exhausted=1, unroutable_types=frozenset(), now=0.0)
+    alarm.confirm_sent(0.0)
     recovered = alarm.decide(exhausted=0, unroutable_types=frozenset(), now=10.0)
     assert recovered is not None and "recovered" in recovered, (
         "without a recovery line a reader cannot tell 'resolved' from 'the alarm died'"
     )
+    alarm.confirm_sent(10.0)
     assert alarm.decide(exhausted=0, unroutable_types=frozenset(), now=20.0) is None
 
 
@@ -122,3 +128,55 @@ def test_the_page_names_only_counts_and_job_types():
             f"the alarm text contains {applicant_shaped!r} from somewhere other than "
             f"its arguments — it has grown a lookup it must not have"
         )
+
+
+# --------------------------------------------------------------------------
+# an UNDELIVERED page must not consume the suppression window
+# --------------------------------------------------------------------------
+
+
+def test_a_page_that_was_never_delivered_does_not_silence_the_next_hour():
+    """The first version committed the state inside `decide`, so a page the
+    transport then failed to deliver still burned the hour — the alarm went
+    quiet for sixty minutes precisely because it had just failed to reach
+    anyone. That is this module's own disease, one level down.
+
+    Without `confirm_sent`, the condition is still unreported, so the very next
+    check must page again.
+    """
+
+    alarm = OutboxAlarm()
+    first = alarm.decide(exhausted=1, unroutable_types=frozenset(), now=0.0)
+    assert first is not None
+    # delivery failed -> no confirm_sent
+    retry = alarm.decide(exhausted=1, unroutable_types=frozenset(), now=300.0)
+    assert retry is not None, (
+        "an undelivered page consumed the suppression window — the alarm is now "
+        "silent for an hour because it failed to send"
+    )
+
+
+def test_confirm_sent_without_a_pending_decision_is_a_no_op():
+    """The caller only confirms after a non-None `decide`, but a future refactor
+    must not be able to corrupt the window by confirming nothing."""
+
+    alarm = OutboxAlarm()
+    alarm.confirm_sent(0.0)
+    assert alarm.decide(exhausted=1, unroutable_types=frozenset(), now=1.0) is not None
+
+
+def test_the_window_starts_when_the_page_LANDED_not_when_it_was_decided():
+    """`confirm_sent(now)` uses the delivery time. A send that took a long time
+    must not shorten the next suppression window."""
+
+    alarm = OutboxAlarm()
+    assert alarm.decide(exhausted=1, unroutable_types=frozenset(), now=0.0) is not None
+    alarm.confirm_sent(100.0)  # delivery finished 100s after the decision
+    assert (
+        alarm.decide(exhausted=1, unroutable_types=frozenset(), now=100.0 + REALERT_SECONDS - 1)
+        is None
+    )
+    assert (
+        alarm.decide(exhausted=1, unroutable_types=frozenset(), now=100.0 + REALERT_SECONDS)
+        is not None
+    )

@@ -131,6 +131,12 @@ def _garuda_outbox_poll_seconds() -> float:
 #: one per 100ms pass.
 _ALARM_PERIOD_SECONDS = 300.0
 
+#: Hard ceiling on one alarm delivery. `send_telegram_message` makes 3 attempts
+#: with 1s/3s backoff against a 30s-timeout client, so left unbounded it can hold
+#: the drain for ~94s. Being late with a page is acceptable; stalling customer
+#: emails behind it is not.
+_ALARM_SEND_TIMEOUT_SECONDS = 20.0
+
 
 async def _send_outbox_alarm(client: "httpx.AsyncClient", text: str) -> None:  # noqa: F821
     """Best-effort page to the owner chat. NEVER raises.
@@ -294,10 +300,24 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
                         )
                         seen_unroutable = frozenset()
                         if page is not None:
+                            # The log line goes out FIRST and unconditionally:
+                            # it is the record that survives an unreachable
+                            # Telegram.
                             logger.error(
                                 "GARUDA outbox alarm: %s", page.replace(chr(10), " | ")
                             )
-                            await _send_outbox_alarm(client, page)
+                            # BOUNDED, because `send_telegram_message` retries 3
+                            # times with 1s/3s backoff against a client whose
+                            # timeout is 30s — a worst case of roughly 94
+                            # seconds with the drain stopped behind it. The
+                            # alarm may be late; the queue may not be blocked.
+                            await asyncio.wait_for(
+                                _send_outbox_alarm(client, page),
+                                timeout=_ALARM_SEND_TIMEOUT_SECONDS,
+                            )
+                            # Only NOW does the suppression window start. A page
+                            # that never landed must not silence the next hour.
+                            alarm.confirm_sent(time.monotonic())
                     except Exception:
                         logger.exception(
                             "GARUDA outbox alarm check failed; the DRAIN is unaffected"
