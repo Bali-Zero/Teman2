@@ -35,15 +35,22 @@ consumer_map:
   - "`.github/workflows/main-push-failure-watch.yml` — the watcher itself; its
     `on.workflow_run.workflows:` set is the edited data."
   - "`scripts/check_watcher_coverage.py` — the guard that reads it. NOT modified."
-  - "`.github/workflows/check-skills-canonical.yml` — the workflow now covered; its `name:` was
-    read directly to get the entry right. NOT modified."
+  - "`.github/workflows/check-skills-canonical.yml` — the workflow now listed; its `name:` was
+    read directly to get the entry right. NOT modified. It is `pull_request`-only, which is
+    why the entry buys CONFORMANCE and not paging — see the risks section."
   - "Every open PR in the repo — all of them carry this red today, which is what makes this
     worth its own PR rather than a line inside someone else's."
 risks:
   - "A `.github/workflows/` diff is CODEOWNERS-TIER1 and auto-merge-OFF class. Merged by the
     session after gates are green and the Gear-3 verdict is posted."
-  - "Adding a workflow to the watcher's set means main-push failures for
-    `check-skills-canonical` now page. That is the intent, not a side effect."
+  - 'CORRECTED after the Gear-3 gate flagged this exact overstatement: adding
+    `check-skills-canonical` to the watcher''s set does NOT create paging coverage. That workflow
+    triggers on `pull_request` only, so it never emits the `push`/`schedule` `workflow_run` event
+    the watcher''s `alert` job requires. The guard''s own header says so (`check_watcher_coverage.py`
+    lines 33-45: the membership rule is "deliberately over-inclusive so adding a workflow never
+    requires a push-vs-pull_request judgment call" and "green here is narrower than it sounds").
+    What the entry actually buys is self-conformance with that over-inclusive rule — which is the
+    whole point, because the guard is a REQUIRED check that today fails every PR in the repo.'
 grader: |
   The diff was produced by a dispatched implementer lane and then verified INDEPENDENTLY by the
   conducting session, which re-read the guard to confirm it keys by `name:`, confirmed
