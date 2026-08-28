@@ -11,25 +11,22 @@ sources:
   - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/personas/*.json (18 synthetic personas, this PR)
   - research/visa/2026-08-15-gold-divergence-disposition.md (seq-7 disposition matrix, anchor for delta)
   - research/visa/2026-08-15-gold-family-refuter.md (E31B/E31D repair acceptance criteria, lines 177-195)
-adversarial_review: >
-  Twin-lane (generator≠grader) adjudication ran 66 of 98 planned lanes before two
-  consecutive session-window caps; the 9 cross-family tie-breaks (codex/kimi) and the
-  5 realism batches did NOT complete. Per-lane verdict artifacts were subsequently
-  lost to a /tmp cleanup. Every number in this report was re-derived deterministically
-  from the repo on 2026-08-29 (commands in §8); cause labels in §2 are this session's
-  proposals informed by the 2026-08-15 disposition, not twin-agreed verdicts.
+adversarial_review: kimi-k3
 status: PROPOSED — no divergence accepted, no pack changed, no expectation edited
 ---
 
 # Visa Oracle — gold coverage & divergence adjudication (offline, pack seq-13)
 
 **TL;DR.** Replayed offline (verify → compile → evaluate → public-policy adapters), the
-highest signed pack in the repo (seq-13, v2026.8.23) matches only **4 of the 20 canonical
-gold personas**. Of the 16 divergences, most measure **expectation drift** — the gold
-expectations were authored against the 5-product FIXTURE pack, not this 38-product
-catalogue — but two are **confirmed pack defects that fail open** (E31B accepts a sponsor
-with *no* status; three E31D SUPPORT rules fire on FAMILY intent alone), unchanged since
-seq-7. Separately, this work adds the first **engine-proven synthetic gold corpus**: 18 of
+highest signed pack in the repo (seq-13, v2026.8.23 — assumption: production activation
+not checked, see §1) matches only **4 of the 20 canonical gold personas**. Of the 16
+divergences, most measure **expectation drift** — the gold expectations were authored
+against the 5-product FIXTURE pack, not this 38-product catalogue — and two are
+**machine-confirmed fail-open behaviors** (E31B accepts a sponsor with *no* status; three
+E31D SUPPORT rules fire on FAMILY intent alone), predicate-identical from seq-6 through
+the seq-14 draft. Calling them *defects to repair* is this report's proposal — the
+classification, like every divergence acceptance, stays an owner act (§5, §6).
+Separately, this work adds the first **engine-proven synthetic gold corpus**: 18 of
 the 25 SUPPORT-reachable-but-never-expected products now have a committed persona that the
 replay proves SUPPORTED, behind a fail-closed floor test.
 
@@ -134,9 +131,12 @@ across the three suites (independently re-run with `-v`; note: `pytest-testmon` 
 
 ## 5. Findings for the pack owner (fix_owner = pack)
 
-Both confirmed on seq-13 source by rule inspection **and** by live offline probes
-(2026-08-29); both byte-identical since seq-7; repair acceptance criteria already written
-in `research/visa/2026-08-15-gold-family-refuter.md:177-195`.
+The *behaviors* below are machine-confirmed on the seq-13 source by rule inspection
+**and** by live offline probes (2026-08-29); the five `el.e31b-*`/`el.e31d-*` rule bodies
+are predicate-identical from seq-6 through the seq-14 draft (sha-256 over the sorted rule
+JSON: `66b2829c02a0` on every sequence 6–14; command in §8). The *classification* of
+these behaviors as defects to repair is proposed, not accepted — repair acceptance
+criteria already written in `research/visa/2026-08-15-gold-family-refuter.md:177-195`.
 
 1. **`el.e31b-spouse-itas-support` accepts a sponsor with no status.** Its predicate ends
    with `{"fact": "family.sponsor_status_code", "op": "known"}` — any KNOWN value passes,
@@ -212,8 +212,12 @@ the pack.
   completed 66/98 lanes across two session windows, then hit the account cap twice; the
   per-lane JSON artifacts were later destroyed by a /tmp scratch cleanup. Surviving
   machine facts used here: the 9 cause-disagreement ids, the achieved-coverage lists, and
-  the committed corpus itself. **Not done: cross-family tie-breaks (codex/kimi) and
-  realism refutation.** Cause labels in §2 are single-session proposals.
+  the committed corpus itself. **The lane counts (66/98) and the agreement split (7 of 16)
+  are unverifiable by construction** — they come from the destroyed run's engine state and
+  logs, and no command below can reproduce them; treat them as testimony, not measurement.
+  **Not done: cross-family tie-breaks per disagreement persona and realism refutation.**
+  Cause labels in §2 are single-session proposals. (A whole-report adversarial review by a
+  cross-family seat WAS completed — see §Adversarial review.)
 - **Reproduce every number** (from `apps/backend-rag`, venv active, `PYTHONPATH=.`):
   - 20-persona replay: import `PERSONAS` from
     `backend.tests.services.visa_engine.test_evaluator_gold`, evaluate each via
@@ -227,3 +231,23 @@ the pack.
     no SUPPORT rule (named or GLOBAL→named) is blocked → the 9 codes.
   - Corpus floor: `pytest backend/tests/services/visa_engine/test_gold_coverage_floor.py
     backend/tests/scripts/visa_engine/ -q` → 11 passed.
+  - Predicate stability across sequences: for each `rulepack-prod-*.source.json`, filter
+    rules whose `rule_id` starts with `el.e31b`/`el.e31d` and sha-256 the sorted JSON —
+    digest `66b2829c02a0` on every sequence 6 through 14 (seq 1–5 predate the 5-rule
+    family: 2 rules, different digests).
+
+## Adversarial review
+
+Seat: **Kimi K3** (`kimi -m kimi-code/k3`, clean env, 2026-08-29), briefed to attack this
+report against the pack source. Verdict: **CONFIRMED-WITH-FINDINGS** — the seat
+independently re-quoted both fail-open predicates from the pack JSON, re-ran the
+persona-7/8 evaluations itself (rows reproduce exactly: p7 → `[C1, E31A, E31B, E31D]`,
+p8 → `[C1, E31D]`, empty `missing_facts`), and re-confirmed 38/111/29/9 and the two
+zero-rule stepchild facts. Findings, all addressed in this revision: (1) the TL;DR/§5
+called the fail-opens "confirmed pack defects" while §2/§8 correctly scope causes as
+proposals — now split into machine-confirmed *behavior* vs proposed *classification*;
+(2) the TL;DR stated "highest signed pack" as bare fact — the §1 assumption caveat now
+travels with it; (3) "66/98 lanes" and "7 of 16 agreed" are unverifiable by construction
+— now labeled testimony; (4) "byte-identical since seq-7" had no reproduction path —
+replaced with a measured digest over every pack sequence in the repo (stronger: identical
+from seq-6 through the seq-14 draft) and its command.
