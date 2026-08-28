@@ -1,0 +1,186 @@
+{
+  "schema_version": "wave1-consolidation-report-v1",
+  "execution_date": "2026-08-29",
+  "input_candidate_count": 60,
+  "exact_duplicate_count": 0,
+  "conceptual_duplicate_cluster_count": 16,
+  "representative_count_before_domain_cap": 44,
+  "shortlist_count": 40,
+  "shortlist_domain_counts": {
+    "immigration": 10,
+    "company": 10,
+    "tax": 10,
+    "property": 10
+  },
+  "algorithm": {
+    "text": "Unicode NFKC, trim, collapse whitespace",
+    "domain": "lowercase canonical enum",
+    "pre_score": "sourceability + (100 - regulatory_volatility) + (100 - banality_risk)",
+    "representative": "highest pre_score, then lexical candidate_id",
+    "shortlist": "top 10 representatives per domain by pre_score, then lexical candidate_id"
+  },
+  "algorithm_rules_path": "docs/wr3/factory/editorial/consolidation-rules.json",
+  "algorithm_rules_sha256": "f5122b795329de772f9d9f3fc6ad28cf081d254d0815a97ad0f3a92b1c01974e",
+  "rejections": [
+    {
+      "original_candidate_id": "A02",
+      "domain": "immigration",
+      "working_title": "Your Status Belongs to Someone Else",
+      "cluster_id": "D01",
+      "representative_original_candidate_id": "G08",
+      "reason": "Conceptual duplicate; lineage retained under the higher deterministic pre_score representative."
+    },
+    {
+      "original_candidate_id": "A03",
+      "domain": "immigration",
+      "working_title": "The Agent Who Knows More About Your Status Than You Do",
+      "cluster_id": "D02",
+      "representative_original_candidate_id": "G09",
+      "reason": "Conceptual duplicate; lineage retained under the higher deterministic pre_score representative."
+    },
+    {
+      "original_candidate_id": "A04",
+      "domain": "immigration",
+      "working_title": "'Everyone Does It' Is Not a Legal Category",
+      "cluster_id": null,
+      "representative_original_candidate_id": "A04",
+      "reason": "Valid representative below the deterministic top-10 pre_score cutoff for its domain."
+    },
+    {
+      "original_candidate_id": "A05",
+      "domain": "immigration",
+      "working_title": "Small Status Errors Do Not Stay Small",
+      "cluster_id": "D03",
+      "representative_original_candidate_id": "G11",
+      "reason": "Conceptual duplicate; lineage retained under the higher deterministic pre_score representative."
+    },
+    {
+      "original_candidate_id": "A07",
+      "domain": "immigration",
+      "working_title": "Where Does Your Work Actually Happen?",
+      "cluster_id": "D04",
+      "representative_original_candidate_id": "G07",
+      "reason": "Conceptual duplicate; lineage retained under the higher deterministic pre_score representative."
+    },
+    {
+      "original_candidate_id": "A11",
+      "domain": "company",
+      "working_title": "Your Licence Describes a Business You May Not Be Running",
+      "cluster_id": "D06",
+      "representative_original_candidate_id": "A11",
+      "reason": "Valid representative below the deterministic top-10 pre_score cutoff for its domain."
+    },
+    {
+      "original_candidate_id": "A12",
+      "domain": "company",
+      "working_title": "A Company You Stopped Using Is Still Alive",
+      "cluster_id": "D07",
+      "representative_original_candidate_id": "G23",
+      "reason": "Conceptual duplicate; lineage retained under the higher deterministic pre_score representative."
+    },
+    {
+      "original_candidate_id": "A13",
+      "domain": "company",
+      "working_title": "Where the Corporate Shield Leaks",
+      "cluster_id": "D08",
+      "representative_original_candidate_id": "G13",
+      "reason": "Conceptual duplicate; lineage retained under the higher deterministic pre_score representative."
+    },
+    {
+      "original_candidate_id": "A16",
+      "domain": "company",
+      "working_title": "The Handshake Hire Becomes a Legal Relationship",
+      "cluster_id": "D09",
+      "representative_original_candidate_id": "G18",
+      "reason": "Conceptual duplicate; lineage retained under the higher deterministic pre_score representative."
+    },
+    {
+      "original_candidate_id": "A17",
+      "domain": "tax",
+      "working_title": "Your Passport Does Not Decide Where You Pay Tax",
+      "cluster_id": "D10",
+      "representative_original_candidate_id": "G20",
+      "reason": "Conceptual duplicate; lineage retained under the higher deterministic pre_score representative."
+    },
+    {
+      "original_candidate_id": "A20",
+      "domain": "tax",
+      "working_title": "One Wallet, Two Lives",
+      "cluster_id": "D12",
+      "representative_original_candidate_id": "G21",
+      "reason": "Conceptual duplicate; lineage retained under the higher deterministic pre_score representative."
+    },
+    {
+      "original_candidate_id": "A23",
+      "domain": "tax",
+      "working_title": "The Assumption That Nobody Is Looking",
+      "cluster_id": null,
+      "representative_original_candidate_id": "A23",
+      "reason": "Valid representative below the deterministic top-10 pre_score cutoff for its domain."
+    },
+    {
+      "original_candidate_id": "A30",
+      "domain": "property",
+      "working_title": "The Notary Is Not Your Lawyer",
+      "cluster_id": "D16",
+      "representative_original_candidate_id": "G19",
+      "reason": "Conceptual duplicate; lineage retained under the higher deterministic pre_score representative."
+    },
+    {
+      "original_candidate_id": "G02",
+      "domain": "property",
+      "working_title": "Zoning Blindness: The Green Zone Villa",
+      "cluster_id": "D14",
+      "representative_original_candidate_id": "A27",
+      "reason": "Conceptual duplicate; lineage retained under the higher deterministic pre_score representative."
+    },
+    {
+      "original_candidate_id": "G05",
+      "domain": "property",
+      "working_title": "Off-Plan Promises: Developer Due Diligence",
+      "cluster_id": null,
+      "representative_original_candidate_id": "G05",
+      "reason": "Valid representative below the deterministic top-10 pre_score cutoff for its domain."
+    },
+    {
+      "original_candidate_id": "G06",
+      "domain": "property",
+      "working_title": "Hak Pakai vs Leasehold: The Long-Term Illusion",
+      "cluster_id": "D13",
+      "representative_original_candidate_id": "A24",
+      "reason": "Conceptual duplicate; lineage retained under the higher deterministic pre_score representative."
+    },
+    {
+      "original_candidate_id": "G14",
+      "domain": "company",
+      "working_title": "Commissioner's Dilemma: Oversight or Ignorance",
+      "cluster_id": "D05",
+      "representative_original_candidate_id": "A10",
+      "reason": "Conceptual duplicate; lineage retained under the higher deterministic pre_score representative."
+    },
+    {
+      "original_candidate_id": "G15",
+      "domain": "company",
+      "working_title": "The Activity Code Straitjacket: Outgrowing Your Purpose",
+      "cluster_id": "D06",
+      "representative_original_candidate_id": "A11",
+      "reason": "Conceptual duplicate; lineage retained under the higher deterministic pre_score representative."
+    },
+    {
+      "original_candidate_id": "G26",
+      "domain": "property",
+      "working_title": "The Building Permit Illusion",
+      "cluster_id": "D15",
+      "representative_original_candidate_id": "A28",
+      "reason": "Conceptual duplicate; lineage retained under the higher deterministic pre_score representative."
+    },
+    {
+      "original_candidate_id": "G28",
+      "domain": "tax",
+      "working_title": "Double Taxation Agreements: The Exemption Myth",
+      "cluster_id": "D11",
+      "representative_original_candidate_id": "A18",
+      "reason": "Conceptual duplicate; lineage retained under the higher deterministic pre_score representative."
+    }
+  ]
+}

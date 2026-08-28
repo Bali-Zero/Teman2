@@ -1,0 +1,1495 @@
+{
+  "schema_version": "existing-content-overlap-v2",
+  "execution_date": "2026-08-29",
+  "candidate_count": 40,
+  "method": "Deterministic domain-scoped TF-IDF cosine over candidate title, normalized topic, evergreen question, and narrative promise versus public article title, description, excerpt, primaryQuestion, and slug.",
+  "domain_category_routing": {
+    "immigration": [
+      "immigration",
+      "digital-nomad"
+    ],
+    "company": [
+      "business",
+      "business_regulations"
+    ],
+    "tax": [
+      "tax",
+      "tax-legal",
+      "business_regulations"
+    ],
+    "property": [
+      "property",
+      "business_regulations"
+    ]
+  },
+  "canonical_corpus_count": 797,
+  "corpus_snapshot_sha256": "33322eb5c32924bb6f9ea15c2c026f5c0858a23f4948f1d3f162a7765f2809c7",
+  "overlap_level_thresholds": {
+    "high": ">= 0.35",
+    "medium": ">= 0.15 and < 0.35",
+    "low": "< 0.15"
+  },
+  "overlap_level_counts": {
+    "high": 0,
+    "medium": 7,
+    "low": 33
+  },
+  "candidates": [
+    {
+      "candidate_id": "C01",
+      "domain": "immigration",
+      "working_title": "Sponsor Leverage: The Hidden Power Dynamic",
+      "eligible_article_categories": [
+        "immigration",
+        "digital-nomad"
+      ],
+      "eligible_article_count": 314,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.122,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/immigration/kitas-transfer-change-sponsor.mdx",
+          "title": "KITAS Transfer 2026: How to Change Your Sponsor Company in Indonesia",
+          "category": "immigration",
+          "cosine": 0.122,
+          "sha256": "1082e3eda5df0cc0a5e374faa828a1755e18fdd84ea7c75376a4b1d85f00342d"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/immigration/changing-address-or-sponsor-on-kitas-timelines-offices.mdx",
+          "title": "Changing Address or Sponsor on KITAS: Timelines, Offices  … ",
+          "category": "immigration",
+          "cosine": 0.1137,
+          "sha256": "85c3158a58ccde01dcdc9f8c0b9fb8949138ae68107b075c7d433a88cbe43cdc"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/immigration/indonesia-golden-visa-2025-no-sponsor-no-merp-usd-25m-minimum.mdx",
+          "title": "Indonesia Golden Visa 2025: No Sponsor, No MERP, USD 2.5M Minimum",
+          "category": "immigration",
+          "cosine": 0.0985,
+          "sha256": "da71e94058a95af8466dc4b183e40416cf7fb520f2ad7158cb6e4b28e74cb123"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C02",
+      "domain": "immigration",
+      "working_title": "The Investor Visa Facade",
+      "eligible_article_categories": [
+        "immigration",
+        "digital-nomad"
+      ],
+      "eligible_article_count": 314,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.1084,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/immigration/e28a-investor-kitas-guide.mdx",
+          "title": "E28A Investor KITAS 2026: Passive Investment Visa for Indonesia - Requirements and Costs",
+          "category": "immigration",
+          "cosine": 0.1084,
+          "sha256": "634643902b1f6df0807adac52143b05e89d6641096cb831eb13aeac410409c27"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/immigration/indonesias-golden-visa-the-350k-ticket-to-long-term-residency.mdx",
+          "title": "Indonesia's Golden Visa: The $350K Ticket to Long-Term Residency",
+          "category": "immigration",
+          "cosine": 0.0863,
+          "sha256": "7c4830a7a7b53f4916161bfd4cc15fa98b3cdc017e65929f23ef2d51275ac168"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/immigration/indonesia-visa-landscape-what-every-foreign-visitor-and-investor-needs-to-know.mdx",
+          "title": "Indonesia Visa Landscape: What Every Foreign Visitor and Investor Needs to Know",
+          "category": "immigration",
+          "cosine": 0.0809,
+          "sha256": "6a0f360fb6f8719b6f4710669f426835cdb223d85e60e2bedb12ce9fce5fbf91"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C03",
+      "domain": "immigration",
+      "working_title": "The Permanent Residency Mirage",
+      "eligible_article_categories": [
+        "immigration",
+        "digital-nomad"
+      ],
+      "eligible_article_count": 314,
+      "lexical_overlap_level": "medium",
+      "top_lexical_cosine": 0.2543,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/immigration/kitap-in-2026-who-actually-qualifies-for-permanent-residency-in-indonesia.mdx",
+          "title": "KITAP in 2026: Who Actually Qualifies for Permanent Residency in Indonesia",
+          "category": "immigration",
+          "cosine": 0.2543,
+          "sha256": "3a6876cbb4cec67012ed6ba6eb7a34e524604bca8e26a3ce9c4b5d1e41906904"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/immigration/kitap-permanent-residence-guide.mdx",
+          "title": "KITAP 2026: Complete Guide to Permanent Residence in Indonesia",
+          "category": "immigration",
+          "cosine": 0.1031,
+          "sha256": "bf4e4ff2ebf315033f86695ba5a66388621dcdd44384e49b555b70f48d1e8a5d"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/immigration/indonesias-retirement-kitap-the-permanent-stay-option-most-expats-miss.mdx",
+          "title": "Indonesia's Retirement KITAP: The Permanent Stay Option Most Expats Miss",
+          "category": "immigration",
+          "cosine": 0.0888,
+          "sha256": "e9d713680c0ec386d77df592901ecc5c6781ca9aecd34d8a82499384e6d87b86"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C04",
+      "domain": "immigration",
+      "working_title": "Agent Accountability: When Outsourcing Goes Wrong",
+      "eligible_article_categories": [
+        "immigration",
+        "digital-nomad"
+      ],
+      "eligible_article_count": 314,
+      "lexical_overlap_level": "medium",
+      "top_lexical_cosine": 0.1968,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/immigration/visa-agent-vs-diy-indonesia.mdx",
+          "title": "Visa Agent vs DIY in Indonesia 2026: When to Hire Help and When to Save Money",
+          "category": "immigration",
+          "cosine": 0.1968,
+          "sha256": "80b72d7277662e056101daabbb51f719c82dc887212921a01f9c949a438019ee"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/immigration/immigration-checks-documents-carry-indonesia.mdx",
+          "title": "Immigration Checks and Documents to Carry in Indonesia 2026: Complete Guide",
+          "category": "immigration",
+          "cosine": 0.0404,
+          "sha256": "826e136e1ff0673fc1dd73903a22de2f55029ff197e2a3efd733706c9244550b"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/immigration/emergency-visa-procedures-indonesia-guide.mdx",
+          "title": "Emergency Visa Procedures Indonesia 2026: What to Do When Everything Goes Wrong",
+          "category": "immigration",
+          "cosine": 0.0384,
+          "sha256": "ee604af68148c5871cc5da857818babb5be4edeaeb4f781862fd1b5740f3fc5d"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C05",
+      "domain": "immigration",
+      "working_title": "The Overstay Slippery Slope",
+      "eligible_article_categories": [
+        "immigration",
+        "digital-nomad"
+      ],
+      "eligible_article_count": 314,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0765,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/immigration/overstay-case-studies-resolution.mdx",
+          "title": "Overstay in Indonesia: Real Case Studies and How They Were Resolved",
+          "category": "immigration",
+          "cosine": 0.0765,
+          "sha256": "4cf36170b87d50c6c3ba477395842ecbd667ebe9a3e54b2ab87160f4581b2f0e"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/immigration/visa-overstay-penalties-indonesia-guide.mdx",
+          "title": "Visa Overstay Indonesia 2026: Penalties, Fines, Detention, and Resolution",
+          "category": "immigration",
+          "cosine": 0.0668,
+          "sha256": "b652eae0fad3cc924684ede8bbf461188b0d8223a2a88f07e9b7b8ef4c704f24"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/immigration/immigration-fines-penalties-complete.mdx",
+          "title": "Indonesia Immigration Fines and Penalties 2026: Complete Guide to Overstay, Violations, and Deportation",
+          "category": "immigration",
+          "cosine": 0.0637,
+          "sha256": "eb2be3c22d0273a0e40d1fd223ac663fc83b21992dd5f18b48c7cccc05566a28"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C06",
+      "domain": "immigration",
+      "working_title": "When the Relationship Changes, So Does the Permit",
+      "eligible_article_categories": [
+        "immigration",
+        "digital-nomad"
+      ],
+      "eligible_article_count": 314,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0955,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/immigration/indonesia-family-kitas-2026-what-spouses-and-dependents-must-know.mdx",
+          "title": "Indonesia Family KITAS 2026: What Spouses and Dependents Must Know",
+          "category": "immigration",
+          "cosine": 0.0955,
+          "sha256": "b330e688611b6f0b463403f70f7d0f49f6fdfea177aae8d98129015b45408d10"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/immigration/indonesias-family-sponsored-kitas-e31-what-spouses-and-dependents-must-know.mdx",
+          "title": "Indonesia's Family Sponsored KITAS E31: What Spouses and Dependents Must Know",
+          "category": "immigration",
+          "cosine": 0.0841,
+          "sha256": "ef8fb267038fb7572c44a5ace78547fa59ec139a55b7df891caf8049cfcdabdb"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/immigration/work-permit-timeline.mdx",
+          "title": "Work Permit Processing Time in Indonesia 2026",
+          "category": "immigration",
+          "cosine": 0.0463,
+          "sha256": "6622ff5ceebc31d8a6bac2e0d02bd36fdf6645aa8695eb01d74c6d147bb56ee7"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C07",
+      "domain": "immigration",
+      "working_title": "What Your Residency Permit Does Not Come With",
+      "eligible_article_categories": [
+        "immigration",
+        "digital-nomad"
+      ],
+      "eligible_article_count": 314,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.084,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/immigration/indonesia-scraps-fast-track-residency-permits-for-foreigners-minister-says.mdx",
+          "title": "Indonesia Scraps Fast-Track Residency Permits for Foreigners, Minister Says",
+          "category": "immigration",
+          "cosine": 0.084,
+          "sha256": "d5590b001624140e6a00ebd6013741531cd1239c6ba626d4552dc64a63715d01"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/immigration/indonesias-golden-visa-the-350k-ticket-to-long-term-residency.mdx",
+          "title": "Indonesia's Golden Visa: The $350K Ticket to Long-Term Residency",
+          "category": "immigration",
+          "cosine": 0.0822,
+          "sha256": "7c4830a7a7b53f4916161bfd4cc15fa98b3cdc017e65929f23ef2d51275ac168"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/immigration/bali-residency-in-2025-2026-which-visa-actually-works-for-you.mdx",
+          "title": "Bali Residency in 2025-2026: Which Visa Actually Works for You?",
+          "category": "immigration",
+          "cosine": 0.0752,
+          "sha256": "0dd48a9918259148ffbe3bb245cd5071d34d373b43ffe872fec4b225158d3e7b"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C08",
+      "domain": "immigration",
+      "working_title": "Dependent Traps: The Trailing Spouse",
+      "eligible_article_categories": [
+        "immigration",
+        "digital-nomad"
+      ],
+      "eligible_article_count": 314,
+      "lexical_overlap_level": "medium",
+      "top_lexical_cosine": 0.246,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/immigration/spouse-dependent-work-rights.mdx",
+          "title": "E33F Spouse Dependent KITAS: Can Your Spouse Work in Indonesia?",
+          "category": "immigration",
+          "cosine": 0.246,
+          "sha256": "50409e56b7d4ce664ce749b7a39f871bace0fe2ebc2b6fc32ed1c1273a6b6535"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/immigration/e31b-spouse-dependent-kitas-guide.mdx",
+          "title": "E31B Spouse Dependent KITAS 2026: Complete Guide for Married Couples in Indonesia",
+          "category": "immigration",
+          "cosine": 0.2264,
+          "sha256": "f5773e5c025657a3ba075aab6b2bb6307e4248d5317b3454bc5488ce516deb08"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/immigration/indonesias-golden-visa-now-covers-spouses-what-e31b-means-for-expat-families.mdx",
+          "title": "Indonesia's Golden Visa Now Covers Spouses: What E31B Means for Expat Families",
+          "category": "immigration",
+          "cosine": 0.11,
+          "sha256": "a6840991657fbaa61cce3aef1a47dc200d5fbc4671ca6d3b840886ad9a5b2dea"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C09",
+      "domain": "immigration",
+      "working_title": "Permission to Be Here Is Not Permission to Do That",
+      "eligible_article_categories": [
+        "immigration",
+        "digital-nomad"
+      ],
+      "eligible_article_count": 314,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0632,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/immigration/indonesia-seeks-to-attract-more-tourists-but-challenges-remain.mdx",
+          "title": "Indonesia seeks to attract more tourists but challenges remain",
+          "category": "immigration",
+          "cosine": 0.0632,
+          "sha256": "eaf63516ad607d9993ed1116f7493121b82691da615c16b7c0bf4f928a2a3910"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/immigration/choose-the-right-bali-visa-stay-in-bali-long-term-in-2026.mdx",
+          "title": "Choose The Right Bali Visa: Stay In Bali Long-Term In 2026",
+          "category": "immigration",
+          "cosine": 0.0543,
+          "sha256": "1f0dc7278a75ff603c289b8d491568933b71aace6ffe83089883e54bb993b778"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/immigration/director-vs-employee-kitas.mdx",
+          "title": "Director vs Employee KITAS: Key Differences in Indonesia 2026",
+          "category": "immigration",
+          "cosine": 0.031,
+          "sha256": "43f2fc986a5c3d00a3769ca5e185876d08b5cf3803881800cb764b474c9c12e1"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C10",
+      "domain": "immigration",
+      "working_title": "The Definition of Work: Meetings vs. Labor",
+      "eligible_article_categories": [
+        "immigration",
+        "digital-nomad"
+      ],
+      "eligible_article_count": 314,
+      "lexical_overlap_level": "medium",
+      "top_lexical_cosine": 0.152,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/immigration/business-visit-vs-work-visa-indonesia-guide.mdx",
+          "title": "Business Visit Visa vs Work Visa Indonesia 2026: When You Need Each",
+          "category": "immigration",
+          "cosine": 0.152,
+          "sha256": "4c56d96157732f6df356af7fa362dfcb217f743fc142db88aa56d215511108c3"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/immigration/indonesia-deports-25-foreigners-caught-doing-illegal-photography-work.mdx",
+          "title": "Indonesia Deports 25 Foreigners Caught Doing Illegal Photography Work",
+          "category": "immigration",
+          "cosine": 0.0659,
+          "sha256": "68ad044709cc448142da22378d702e4af8b9e178121e0be680daf460f276990d"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/immigration/spouse-dependent-work-rights.mdx",
+          "title": "E33F Spouse Dependent KITAS: Can Your Spouse Work in Indonesia?",
+          "category": "immigration",
+          "cosine": 0.0655,
+          "sha256": "50409e56b7d4ce664ce749b7a39f871bace0fe2ebc2b6fc32ed1c1273a6b6535"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C11",
+      "domain": "company",
+      "working_title": "Director Liability: The Buck Stops Here",
+      "eligible_article_categories": [
+        "business",
+        "business_regulations"
+      ],
+      "eligible_article_count": 239,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0532,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/business_regulations/bank-indonesia-stops-publishing-weekly-rupiah-stability-indicators-news-entempoco.mdx",
+          "title": "Bank Indonesia Stops Publishing Weekly Rupiah Stability Indicators - News En.tempo.co",
+          "category": "business_regulations",
+          "cosine": 0.0532,
+          "sha256": "29b913c996117485ed4033e50c5bbe381ba406ec10b0964c7014645de6bcfaca"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business/bali-rice-field-conversion-criminalization-perda-4-2026.mdx",
+          "title": "Bali Criminalizes Rice Field Conversions: New Perda 4/2026 Targets Illegal Villas and Nominee Agreements",
+          "category": "business",
+          "cosine": 0.0312,
+          "sha256": "a3fe1871f4d7dde2eab965ac26fe632b5a12eb254e662d87e29b55a5bfe770d7"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business/indonesia-launches-bali-investment-desk-after-623-enforcement-actions.mdx",
+          "title": "Indonesia Launches Bali Investment Desk After 623 Enforcement Actions",
+          "category": "business",
+          "cosine": 0.0312,
+          "sha256": "8dd03aa78dff5d09b3a2520095d2319b64a337ac97488945f847724baeb971db"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C12",
+      "domain": "company",
+      "working_title": "The Notary's True Role",
+      "eligible_article_categories": [
+        "business",
+        "business_regulations"
+      ],
+      "eligible_article_count": 239,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.061,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/business_regulations/the-content-creators-real-kbli-in-2025.mdx",
+          "title": "The Content Creator's Real KBLI in 2025",
+          "category": "business_regulations",
+          "cosine": 0.061,
+          "sha256": "09b21dca889f9a5c0b807c7539ae9ab7c859209d49332be24c92f5e36d57ad6e"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business/intellectual-property-indonesia.mdx",
+          "title": "Intellectual Property in Indonesia 2026: Protection Guide",
+          "category": "business",
+          "cosine": 0.048,
+          "sha256": "aa5c04bae203d156dcff775f3b698685eaf54f3939e24b004ae014f050d515ee"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business/bali-property-2026-what-the-investment-numbers-actually-tell-you.mdx",
+          "title": "Bali Property 2026: What the Investment Numbers Actually Tell You",
+          "category": "business",
+          "cosine": 0.0226,
+          "sha256": "549717e1206b004677e8f592ac5ec7119900a93337cef0117d250ff92a7bed47"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C13",
+      "domain": "company",
+      "working_title": "The Local Partner Paradox",
+      "eligible_article_categories": [
+        "business",
+        "business_regulations"
+      ],
+      "eligible_article_count": 239,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.1465,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/business_regulations/pt-pma-vs-nominee-the-math-of-the-bet.mdx",
+          "title": "PT PMA vs Nominee: The Math of the Bet",
+          "category": "business_regulations",
+          "cosine": 0.1465,
+          "sha256": "1d8e62d06f9f3eaee8424f024d44d4b23fc6dca5086d79b20a2d0b4e8cc03334"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business/audit-requirements-indonesia.mdx",
+          "title": "Audit Requirements for PT PMA in Indonesia 2026: When, Who & How Much",
+          "category": "business",
+          "cosine": 0.0475,
+          "sha256": "80e29babb5183d13a18c69e4e3b1ea791e55cb8ef52156673dd5c01cc3b23508"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business/indonesia-political-regulatory-risk-intelligence-guide.mdx",
+          "title": "The Archipelago of Information: A Field Guide to Political and Regulatory Risk Intelligence in Indonesia",
+          "category": "business",
+          "cosine": 0.0381,
+          "sha256": "3e1e15c982fdc14df7301913d5a55be11b212309c73e86b611720ccf4d431c12"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C14",
+      "domain": "company",
+      "working_title": "Paid-up Capital: The Paper Trail Problem",
+      "eligible_article_categories": [
+        "business",
+        "business_regulations"
+      ],
+      "eligible_article_count": 239,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.1442,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/business/capital-requirements-guide.mdx",
+          "title": "PT PMA Capital Requirements Indonesia 2026: Investment Guide",
+          "category": "business",
+          "cosine": 0.1442,
+          "sha256": "d8a35964be400fa1e967b58f933c0017b49e442690eba5502ad8c4d2699d34c7"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business/kbli-2025-capital-investment-requirements.mdx",
+          "title": "KBLI 2025 Capital Requirements: Investment Minimums by Sector for PT PMA",
+          "category": "business",
+          "cosine": 0.1256,
+          "sha256": "2a236c60f387e13fd07c7271d9abba7e5b04868a3ddb7df26ffac785e4d9da44"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business/bkpm-regulation-5-2025-fdi.mdx",
+          "title": "The Silent Earthquake: Indonesia's FDI Overhaul Under BKPM Regulation No. 5 of 2025",
+          "category": "business",
+          "cosine": 0.0834,
+          "sha256": "f74693007742ca058d09eca8d03b0fd79a852c5e93b44f010bacf17559020911"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C15",
+      "domain": "company",
+      "working_title": "Who Can Actually Stop You?",
+      "eligible_article_categories": [
+        "business",
+        "business_regulations"
+      ],
+      "eligible_article_count": 239,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0662,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/business/kbli-klu-fiscal-control-2025.mdx",
+          "title": "The Hidden Architecture of Fiscal Control: KBLI Meets KLU in Indonesia's 2025 Tax Landscape",
+          "category": "business",
+          "cosine": 0.0662,
+          "sha256": "ebd6a004d82d198a95bd440fec7eca024176e7dde65f6d615092c7d1572b22f6"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business_regulations/setting-up-a-company-in-indonesia-what-foreign-investors-actually-face.mdx",
+          "title": "Setting Up a Company in Indonesia: What Foreign Investors Actually Face",
+          "category": "business_regulations",
+          "cosine": 0.0602,
+          "sha256": "8141f44ae074cdd00c3198f5b7778a387748ab1f5f177e407264f43d22e3ad68"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business_regulations/the-honest-map-blocked-bali-codes.mdx",
+          "title": "The Honest Map: Nearly a Third of Bali Business Codes Are Blocked for PMA",
+          "category": "business_regulations",
+          "cosine": 0.0454,
+          "sha256": "a344a3dae34f4cfc99dde3896de6d788d73b9eff622ae4fa38828bfdf8aba2c7"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C16",
+      "domain": "company",
+      "working_title": "Employee or Contractor: The Control Test",
+      "eligible_article_categories": [
+        "business",
+        "business_regulations"
+      ],
+      "eligible_article_count": 239,
+      "lexical_overlap_level": "medium",
+      "top_lexical_cosine": 0.2164,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/business/termination-severance.mdx",
+          "title": "Employee Termination & Severance Indonesia 2026",
+          "category": "business",
+          "cosine": 0.2164,
+          "sha256": "bc3d1aa527467368c0d7366aed74eeb9e69542f5b3029e501ad480c7ae994f69"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business/bpjs-kesehatan-employer-guide.mdx",
+          "title": "BPJS Kesehatan Employer Guide 2026: PT PMA Health Insurance Obligations & Enrollment",
+          "category": "business",
+          "cosine": 0.0664,
+          "sha256": "191b45f1a7de33a2c97ad6704cdb90dc57603b7fd2d0c6eacea33045ba97604e"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business/bpjs-ketenagakerjaan-employer-guide.mdx",
+          "title": "BPJS Ketenagakerjaan Employer Guide 2026: 4 Programs, Rates & Foreign Worker Rules",
+          "category": "business",
+          "cosine": 0.0519,
+          "sha256": "4668d06f8b62fa6accb17d069a28cd8eda3ce7fad4891c0d70b206c8a313dad9"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C17",
+      "domain": "company",
+      "working_title": "The Agreement That Cannot Be Enforced",
+      "eligible_article_categories": [
+        "business",
+        "business_regulations"
+      ],
+      "eligible_article_count": 239,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0277,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/business/foreign-property-ownership-in-indonesia-what-the-law-actually-allows.mdx",
+          "title": "Foreign Property Ownership in Indonesia: What the Law Actually Allows",
+          "category": "business",
+          "cosine": 0.0277,
+          "sha256": "4689ca399e8022459a1ce6460628e5d29af8c44e121a8fba16124ddeed4446d2"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business/the-convergence-of-early-life-stress-and-autism-spectrum-disorder-on-the-epigenetics-of-genes-key-to-the-hpa-axis.mdx",
+          "title": "The Convergence of Early-Life Stress and Autism Spectrum Disorder on the Epigenetics of Genes Key to the HPA Axis",
+          "category": "business",
+          "cosine": 0.0269,
+          "sha256": "53c813b5245ec983a21de5598fba3c79ca2cad0d9962b8a85c9318070097879e"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business/indonesias-183-day-tax-residency-rule-what-expats-get-wrong-in-2026.mdx",
+          "title": "Indonesia's 183-Day Tax Residency Rule: What Expats Get Wrong in 2026",
+          "category": "business",
+          "cosine": 0.0266,
+          "sha256": "732e86156e9ba9b8cb63d256d4acfd3873c59113c9ba4728f896c4abf529ad21"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C18",
+      "domain": "company",
+      "working_title": "You Are Also Buying Its Past",
+      "eligible_article_categories": [
+        "business",
+        "business_regulations"
+      ],
+      "eligible_article_count": 239,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0813,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/business/buying-property-in-bali-as-a-foreigner-whats-legal-whats-not.mdx",
+          "title": "Buying Property in Bali as a Foreigner: What's Legal, What's Not",
+          "category": "business",
+          "cosine": 0.0813,
+          "sha256": "8bd91905e9df6324178abe455122696621a3bfc0293f709535d0399b842c9492"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business/bali-property-2026-whos-really-buying-and-what-could-go-wrong.mdx",
+          "title": "Bali Property 2026: Who's Really Buying, and What Could Go Wrong",
+          "category": "business",
+          "cosine": 0.0747,
+          "sha256": "c3694801f615c0dbfb958b3aa79f6702bf1c522687469b59c4a3b51d361a1e57"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business/investing-in-bali-2026-all-you-need-to-know-before-buying-bali.mdx",
+          "title": "Investing In Bali 2026: All You Need To Know Before Buying Bali  … ",
+          "category": "business",
+          "cosine": 0.0747,
+          "sha256": "c8d6144cd085c8372fb3644d48af020a6352433396cec85d706c34a83c7d0bec"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C19",
+      "domain": "company",
+      "working_title": "Closing the Doors: The Dissolution Nightmare",
+      "eligible_article_categories": [
+        "business",
+        "business_regulations"
+      ],
+      "eligible_article_count": 239,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0901,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/business/pt-pma-closure-dissolution.mdx",
+          "title": "PT PMA Closure & Dissolution 2026: Complete Liquidation Process, Timeline & Costs",
+          "category": "business",
+          "cosine": 0.0901,
+          "sha256": "190e2a1e7128b668817fc49827abdb2888950114488e27395fbc2cacb618cd73"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business_regulations/wellness-and-aesthetics-an-open-door.mdx",
+          "title": "Wellness & Aesthetics: One of the Open Doors — and a Hidden Wall (86105 vs 96220)",
+          "category": "business_regulations",
+          "cosine": 0.0424,
+          "sha256": "5b39f3af9330ed1f2ed1f1b175f854da20aeeb2463ade39c839ff4d09c5654c7"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business/business-bank-account.mdx",
+          "title": "Business Bank Account Indonesia 2026: PT PMA Banking Guide",
+          "category": "business",
+          "cosine": 0.0411,
+          "sha256": "bed38d880a312e94d6acbda05ee243b26b25fdf4afbfda8eacf51216573b893e"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C20",
+      "domain": "company",
+      "working_title": "Whoever Holds the Logins Holds the Company",
+      "eligible_article_categories": [
+        "business",
+        "business_regulations"
+      ],
+      "eligible_article_count": 239,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0601,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/business/company-domicile-guide.mdx",
+          "title": "Company Domicile: Setting Up Your Business Address in Indonesia 2026",
+          "category": "business",
+          "cosine": 0.0601,
+          "sha256": "bf5fa98a929db2e1664b351c09c74582284176c3f9fa662a6551bcaa9463f590"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business_regulations/how-to-set-up-a-company-in-indonesia-2026-complete-guide.mdx",
+          "title": "How to Set Up a Company in Indonesia: 2026 Complete Guide",
+          "category": "business_regulations",
+          "cosine": 0.0538,
+          "sha256": "57db01329c65e4becd91b7f0ca80fe6579023894caf56ec22978a53161e85401"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business_regulations/pt-pma-vs-nominee-the-math-of-the-bet.mdx",
+          "title": "PT PMA vs Nominee: The Math of the Bet",
+          "category": "business_regulations",
+          "cosine": 0.0524,
+          "sha256": "1d8e62d06f9f3eaee8424f024d44d4b23fc6dca5086d79b20a2d0b4e8cc03334"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C21",
+      "domain": "tax",
+      "working_title": "The Lifestyle Expense Trap",
+      "eligible_article_categories": [
+        "tax",
+        "tax-legal",
+        "business_regulations"
+      ],
+      "eligible_article_count": 189,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0705,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/tax/corporate-income-tax.mdx",
+          "title": "Corporate Income Tax Indonesia 2026: Complete Guide",
+          "category": "tax",
+          "cosine": 0.0705,
+          "sha256": "3ccace2371c376670f6252c38c31484090ab1c9fecb3d484043736f3a750bbf2"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/tax-legal/worldwide-personal-tax-and-immigration-guide.mdx",
+          "title": "Worldwide Personal Tax and Immigration Guide",
+          "category": "tax-legal",
+          "cosine": 0.0508,
+          "sha256": "220487c23f62ce35a189b1767234d63f6bfa1895f6ca46c7166070ca6f2c366a"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/tax/tax-audit-indonesia.mdx",
+          "title": "Tax Audit Indonesia 2026: What Businesses Need to Know",
+          "category": "tax",
+          "cosine": 0.0459,
+          "sha256": "1013faf3505a2446c76945a1b6733f3119655a661bd3cb4d2c3fc7220766b731"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C22",
+      "domain": "tax",
+      "working_title": "Tax Residency: The Physical Presence Reality",
+      "eligible_article_categories": [
+        "tax",
+        "tax-legal",
+        "business_regulations"
+      ],
+      "eligible_article_count": 189,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0851,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/tax/indonesia-tax-guide-for-foreigners.mdx",
+          "title": "Indonesia Tax Guide for Foreigners 2026",
+          "category": "tax",
+          "cosine": 0.0851,
+          "sha256": "a84c25db5cbf1778278f31a9fbe3c418b28c0cb6fab9c1d6a86e66d784414d3c"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/tax-legal/indonesia-tax-recap-digital-levy-wealth-tax-spt-deadlines-in-focus.mdx",
+          "title": "Indonesia Tax Recap: Digital Levy, Wealth Tax & SPT Deadlines in Focus",
+          "category": "tax-legal",
+          "cosine": 0.0748,
+          "sha256": "a807230d5ea5bd32fac32642ae96c41a5e1d70338ecdccc38d71960d5727077a"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/tax/tax-residency-indonesia.mdx",
+          "title": "Tax Residency in Indonesia: What Every Expat and KITAS Holder Needs to Know",
+          "category": "tax",
+          "cosine": 0.0746,
+          "sha256": "094cbd6f2884b1432085955c3d016a21111ad720ccb28ab700fa91892f3fced7"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C23",
+      "domain": "tax",
+      "working_title": "The Zero-Reporting Mirage",
+      "eligible_article_categories": [
+        "tax",
+        "tax-legal",
+        "business_regulations"
+      ],
+      "eligible_article_count": 189,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0926,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/tax/tax-audit-indonesia.mdx",
+          "title": "Tax Audit Indonesia 2026: What Businesses Need to Know",
+          "category": "tax",
+          "cosine": 0.0926,
+          "sha256": "1013faf3505a2446c76945a1b6733f3119655a661bd3cb4d2c3fc7220766b731"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/tax/coretax-spt-tahunan-2025-panduan-bali-zero.mdx",
+          "title": "CoreTax DJP 2025: Panduan SPT Tahunan untuk Klien Bali Zero",
+          "category": "tax",
+          "cosine": 0.0598,
+          "sha256": "d75989a5482a5d999dc2f562052005c26fcc288d9ff06350f2822ee10f5bb49f"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/tax/corporate-income-tax.mdx",
+          "title": "Corporate Income Tax Indonesia 2026: Complete Guide",
+          "category": "tax",
+          "cosine": 0.0557,
+          "sha256": "3ccace2371c376670f6252c38c31484090ab1c9fecb3d484043736f3a750bbf2"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C24",
+      "domain": "tax",
+      "working_title": "'I Already Paid Tax at Home'",
+      "eligible_article_categories": [
+        "tax",
+        "tax-legal",
+        "business_regulations"
+      ],
+      "eligible_article_count": 189,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.1361,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/tax/tax-treaties-explained.mdx",
+          "title": "Tax Treaties: Avoiding Double Taxation in Indonesia 2026",
+          "category": "tax",
+          "cosine": 0.1361,
+          "sha256": "b1643b147c2e772d4ac9702408c0b335e1791aace05f437bcb939ea94d8a3be6"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/tax/double-tax-agreement-claiming-benefits.mdx",
+          "title": "Double Tax Agreement Indonesia 2026: How to Claim Treaty Benefits Step by Step",
+          "category": "tax",
+          "cosine": 0.0939,
+          "sha256": "c2f41e617259c207bf2fc1c83126960cfb8371fb9dd2be35b0ffce66c3e81570"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/tax/double-taxation-treaties.mdx",
+          "title": "Double Taxation Treaties Indonesia 2026: Complete Guide",
+          "category": "tax",
+          "cosine": 0.0661,
+          "sha256": "a0a6056323cca319dbf91028e3412031ed656b21a6b1f4f386ce1ae3c0074af6"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C25",
+      "domain": "tax",
+      "working_title": "Someone Files in Your Name",
+      "eligible_article_categories": [
+        "tax",
+        "tax-legal",
+        "business_regulations"
+      ],
+      "eligible_article_count": 189,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0316,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/tax/tax-payment-methods-indonesia.mdx",
+          "title": "Tax Payment Methods Indonesia 2026: MPN G3, e-Billing, Channels & NTPN Guide",
+          "category": "tax",
+          "cosine": 0.0316,
+          "sha256": "4d5bc2ca8646a9572bb5c501df3f830e381117680218de4e33d2fcb5409ce77c"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/tax/tax-penalties-interest-indonesia.mdx",
+          "title": "Indonesia Tax Penalties and Interest Rates 2026: Complete Guide to Fines, Underpayment, and Voluntary Disclosure",
+          "category": "tax",
+          "cosine": 0.0287,
+          "sha256": "d67a2ff37a289dd566fff90fe0cc4f592ce45459b8b63e5893e9dac6c5cee849"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/tax/pph-26-foreign-withholding-tax.mdx",
+          "title": "PPh 26 Foreign Withholding Tax Guide: Rates, Treaties, and Compliance 2026",
+          "category": "tax",
+          "cosine": 0.0261,
+          "sha256": "fd5db0ff403d568e4025623db838c181fd5abb5f7e648b7c2879e3e7eb579743"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C26",
+      "domain": "tax",
+      "working_title": "Withholding Tax: The Unpaid Collector",
+      "eligible_article_categories": [
+        "tax",
+        "tax-legal",
+        "business_regulations"
+      ],
+      "eligible_article_count": 189,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.1476,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/tax/withholding-tax-guide.mdx",
+          "title": "Withholding Tax Indonesia 2026: Complete PPh Guide",
+          "category": "tax",
+          "cosine": 0.1476,
+          "sha256": "08f3a9fc18609eaae8e2ceb80cf42891fbcb75f16bfb46c4c20ce50de18ff886"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/tax/pph-23-withholding-tax-guide.mdx",
+          "title": "PPh 23 Withholding Tax Complete Guide: Rates, Filing, and Compliance 2026",
+          "category": "tax",
+          "cosine": 0.1375,
+          "sha256": "55873216ae7d06c060a2f77554a45878da3811b258bcfabf6f67b993a6765237"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/tax/pph-26-foreign-withholding-tax.mdx",
+          "title": "PPh 26 Foreign Withholding Tax Guide: Rates, Treaties, and Compliance 2026",
+          "category": "tax",
+          "cosine": 0.1128,
+          "sha256": "fd5db0ff403d568e4025623db838c181fd5abb5f7e648b7c2879e3e7eb579743"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C27",
+      "domain": "tax",
+      "working_title": "How Do You Stop Being a Taxpayer Here?",
+      "eligible_article_categories": [
+        "tax",
+        "tax-legal",
+        "business_regulations"
+      ],
+      "eligible_article_count": 189,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0715,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/tax-legal/indonesias-tax-authority-reshuffles-taxpayer-rolls-in-south-jakarta-region-from-july-2026.mdx",
+          "title": "Indonesia's Tax Authority Reshuffles Taxpayer Rolls in South Jakarta Region from July 2026",
+          "category": "tax-legal",
+          "cosine": 0.0715,
+          "sha256": "c49b9b84d9d3b5ca3104639ab15d6c68ac6c455f9ef7d74c6fb602298d2f80fa"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/tax-legal/pmk-44-2026-indonesia-tax-proxy-skt-rules-2027.mdx",
+          "title": "PMK 44/2026: New SKT Rules for Taxpayer Proxies Take Full Effect in 2027",
+          "category": "tax-legal",
+          "cosine": 0.0658,
+          "sha256": "169fbd22c2e6b924dc2d2eb4adbe180c8360298b327de7bb8eb7350997073ecc"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/tax-legal/indonesias-15-global-minimum-tax-the-end-of-the-tax-holiday-era.mdx",
+          "title": "Indonesia's 15% Global Minimum Tax: The End of the Tax Holiday Era?",
+          "category": "tax-legal",
+          "cosine": 0.0643,
+          "sha256": "6a08152f53eabae81f7f8a54e041f16971ed6e6f850cbc4e20235001df35d481"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C28",
+      "domain": "tax",
+      "working_title": "Compliance Debt: The Bookkeeping Avalanche",
+      "eligible_article_categories": [
+        "tax",
+        "tax-legal",
+        "business_regulations"
+      ],
+      "eligible_article_count": 189,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0742,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/tax/thin-capitalization-indonesia.mdx",
+          "title": "Thin Capitalization Indonesia 2026: 4:1 Debt-to-Equity Rule, PMK 169/2015, and PT PMA Financing",
+          "category": "tax",
+          "cosine": 0.0742,
+          "sha256": "db475368bc8e6ca10cdfccfb1b1e98d8b91d3105ecbe2fc6fac03b6e93530693"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/tax/tax-audit-indonesia.mdx",
+          "title": "Tax Audit Indonesia 2026: What Businesses Need to Know",
+          "category": "tax",
+          "cosine": 0.0688,
+          "sha256": "1013faf3505a2446c76945a1b6733f3119655a661bd3cb4d2c3fc7220766b731"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/tax/corporate-income-tax.mdx",
+          "title": "Corporate Income Tax Indonesia 2026: Complete Guide",
+          "category": "tax",
+          "cosine": 0.0431,
+          "sha256": "3ccace2371c376670f6252c38c31484090ab1c9fecb3d484043736f3a750bbf2"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C29",
+      "domain": "tax",
+      "working_title": "VAT Registration: The Success Penalty",
+      "eligible_article_categories": [
+        "tax",
+        "tax-legal",
+        "business_regulations"
+      ],
+      "eligible_article_count": 189,
+      "lexical_overlap_level": "medium",
+      "top_lexical_cosine": 0.158,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/tax/vat-ppn-guide.mdx",
+          "title": "VAT (PPN) Indonesia 2026: 12% Rate, Registration & Compliance Guide",
+          "category": "tax",
+          "cosine": 0.158,
+          "sha256": "5969ebbf2d96bd694b98964d4425f1b3ed00260ac944b89bd80424955491501f"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/tax/e-faktur-vat-invoice-guide.mdx",
+          "title": "E-Faktur VAT Invoice Guide 2026: Registration, Issuance, and Reconciliation",
+          "category": "tax",
+          "cosine": 0.1011,
+          "sha256": "fe8a0adab12e23260ac5437a351d42432ea63952b59023e755313ef47d734d88"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/tax-legal/indonesias-vat-relief-scheme-what-the-12-increase-actually-costs-you.mdx",
+          "title": "Indonesia's VAT Relief Scheme: What the 12% Increase Actually Costs You",
+          "category": "tax-legal",
+          "cosine": 0.0844,
+          "sha256": "8987b7c760a474a0fbc0a78b9a4b801d6a33131581234a81a82ee5fb3620e5ab"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C30",
+      "domain": "tax",
+      "working_title": "Profitable and Broke",
+      "eligible_article_categories": [
+        "tax",
+        "tax-legal",
+        "business_regulations"
+      ],
+      "eligible_article_count": 189,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0502,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/business_regulations/the-honest-map-blocked-bali-codes.mdx",
+          "title": "The Honest Map: Nearly a Third of Bali Business Codes Are Blocked for PMA",
+          "category": "business_regulations",
+          "cosine": 0.0502,
+          "sha256": "a344a3dae34f4cfc99dde3896de6d788d73b9eff622ae4fa38828bfdf8aba2c7"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/tax/withholding-tax-guide.mdx",
+          "title": "Withholding Tax Indonesia 2026: Complete PPh Guide",
+          "category": "tax",
+          "cosine": 0.0454,
+          "sha256": "08f3a9fc18609eaae8e2ceb80cf42891fbcb75f16bfb46c4c20ce50de18ff886"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/tax-legal/global-minimum-tax-arrives-in-indonesia-what-investors-need-to-know.mdx",
+          "title": "Global Minimum Tax Arrives in Indonesia: What Investors Need to Know",
+          "category": "tax-legal",
+          "cosine": 0.0342,
+          "sha256": "b1c9d709a80f3cbd7d4c618c74f3e0899d41d521e49cf30deda070c516bda958"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C31",
+      "domain": "property",
+      "working_title": "The Nominee Trap: Trust vs. Legal Reality",
+      "eligible_article_categories": [
+        "property",
+        "business_regulations"
+      ],
+      "eligible_article_count": 109,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.1127,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/business_regulations/pt-pma-vs-nominee-the-math-of-the-bet.mdx",
+          "title": "PT PMA vs Nominee: The Math of the Bet",
+          "category": "business_regulations",
+          "cosine": 0.1127,
+          "sha256": "1d8e62d06f9f3eaee8424f024d44d4b23fc6dca5086d79b20a2d0b4e8cc03334"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/property/badung-seizes-12-villas-in-major-nominee-crackdown.mdx",
+          "title": "Badung Seizes 12 Villas in Major Nominee Crackdown",
+          "category": "property",
+          "cosine": 0.0916,
+          "sha256": "3dd50dd63b2bfb8d4c821f30dc73c150bfa992bc3b20e8041f6d56c6a25075b4"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/property/property-disputes-indonesia.mdx",
+          "title": "Property Disputes in Indonesia 2026: Common Issues, Resolution Methods, and Prevention Guide",
+          "category": "property",
+          "cosine": 0.0668,
+          "sha256": "aad921019ce0517f18fceba5599fedd6e0dc5fe771b5bb75065bb73277fbdf3f"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C32",
+      "domain": "property",
+      "working_title": "Subleasing Secrets: The Hospitality Assumption",
+      "eligible_article_categories": [
+        "property",
+        "business_regulations"
+      ],
+      "eligible_article_count": 109,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0849,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/business_regulations/balis-airbnb-era-under-pressure-what-the-2026-rules-mean-for-short-stay-rentals.mdx",
+          "title": "Bali's Airbnb Era Under Pressure: What the 2026 Rules Mean for Short-Stay Rentals",
+          "category": "business_regulations",
+          "cosine": 0.0849,
+          "sha256": "5e92ac78673af76c28147fdd30116a7dcaafc03044dfbb6ac4748cb2d07c84ba"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business_regulations/pt-pma-in-bali-the-legal-vehicle-hospitality-investors-must-understand.mdx",
+          "title": "PT PMA in Bali: The Legal Vehicle Hospitality Investors Must Understand",
+          "category": "business_regulations",
+          "cosine": 0.0649,
+          "sha256": "dbce83037aaca02679bae3de471e37417cf7ea61b91ffbebfbf89c4537b4c3ac"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/property/rental-income-tax.mdx",
+          "title": "Rental Income Tax in Indonesia 2026: Landlord Guide",
+          "category": "property",
+          "cosine": 0.0568,
+          "sha256": "d98d9cfd345adf7f6475136cf78ad41ea1dab97cf646b94e3fb76ebfc923d362"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C33",
+      "domain": "property",
+      "working_title": "Check the Seller, Not Just the Land",
+      "eligible_article_categories": [
+        "property",
+        "business_regulations"
+      ],
+      "eligible_article_count": 109,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.1153,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/property/land-ownership-indonesia.mdx",
+          "title": "Land Ownership in Indonesia 2026: Rules for Foreigners",
+          "category": "property",
+          "cosine": 0.1153,
+          "sha256": "7ef776771c39752db115fe9f81c9b5eccae5bb1e2a2db2d09f75e79747b9ecf9"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/property/land-ownership-rules.mdx",
+          "title": "Land Ownership Rules Indonesia 2026: Foreigner Guide",
+          "category": "property",
+          "cosine": 0.0914,
+          "sha256": "85c7c2941c95982eaf2e41e83ec114edf82b3ac7819f5b6738b0e69e2e271ad2"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/property/land-certificates-indonesia-guide.mdx",
+          "title": "Indonesian Land Certificate Types Explained: SHM, SHGB, SHP, SHSRS, and AJB",
+          "category": "property",
+          "cosine": 0.0573,
+          "sha256": "677ce45c9f6c44006b05b35648fd82e55789ccb47f431bed376a39ab6249f8d8"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C34",
+      "domain": "property",
+      "working_title": "A Promise to Extend Is Not a Right to Extend",
+      "eligible_article_categories": [
+        "property",
+        "business_regulations"
+      ],
+      "eligible_article_count": 109,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0404,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/business_regulations/the-price-isnt-right-oil-spike-fuels-risks-in-south-east-asias-tech-scene-the-business-times.mdx",
+          "title": "The price isn't right: Oil spike fuels risks in South-east Asia's tech scene - The Business Times",
+          "category": "business_regulations",
+          "cosine": 0.0404,
+          "sha256": "e79dbc89a516a6308561e370d7e3b82ce30bcd54d36f8f306415b89896ae1041"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/property/land-certificates-indonesia-guide.mdx",
+          "title": "Indonesian Land Certificate Types Explained: SHM, SHGB, SHP, SHSRS, and AJB",
+          "category": "property",
+          "cosine": 0.0322,
+          "sha256": "677ce45c9f6c44006b05b35648fd82e55789ccb47f431bed376a39ab6249f8d8"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business_regulations/the-it-escape-route.mdx",
+          "title": "The IT Escape Route",
+          "category": "business_regulations",
+          "cosine": 0.031,
+          "sha256": "6c7426b1a1bc1e897f40e705d06ce00c674a99c75a450d08609b7091d5d3eb64"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C35",
+      "domain": "property",
+      "working_title": "You Did Not Buy the Land, You Bought a Clock",
+      "eligible_article_categories": [
+        "property",
+        "business_regulations"
+      ],
+      "eligible_article_count": 109,
+      "lexical_overlap_level": "medium",
+      "top_lexical_cosine": 0.1614,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/business_regulations/starting-a-business-in-indonesia-as-a-foreigner-what-actually-works.mdx",
+          "title": "Starting a Business in Indonesia as a Foreigner: What Actually Works",
+          "category": "business_regulations",
+          "cosine": 0.1614,
+          "sha256": "72499c505b5820e7e39aff052cf8dcf93ce38d81ae36bb6166d590cebd3b6bcb"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/property/buying-apartment-indonesia.mdx",
+          "title": "Buying an Apartment in Indonesia 2026: Foreigner's Guide",
+          "category": "property",
+          "cosine": 0.0798,
+          "sha256": "3d945b51898e7f44cd4300f683b9f9203bc110e318db28f4f2e4e2cf7d3c208f"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/property/buying-property-bali-foreigners-guide.mdx",
+          "title": "Buying Property in Bali: What Foreigners Can (and Can't) Do",
+          "category": "property",
+          "cosine": 0.0776,
+          "sha256": "d6be77a1f8b25c044153652273dbd3382799c15346b92de031a9233e8dfa03e9"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C36",
+      "domain": "property",
+      "working_title": "The Landlocked Lease: Right of Way Nightmares",
+      "eligible_article_categories": [
+        "property",
+        "business_regulations"
+      ],
+      "eligible_article_count": 109,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0964,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/business_regulations/the-it-escape-route.mdx",
+          "title": "The IT Escape Route",
+          "category": "business_regulations",
+          "cosine": 0.0964,
+          "sha256": "6c7426b1a1bc1e897f40e705d06ce00c674a99c75a450d08609b7091d5d3eb64"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/property/land-certificates-indonesia-guide.mdx",
+          "title": "Indonesian Land Certificate Types Explained: SHM, SHGB, SHP, SHSRS, and AJB",
+          "category": "property",
+          "cosine": 0.0546,
+          "sha256": "677ce45c9f6c44006b05b35648fd82e55789ccb47f431bed376a39ab6249f8d8"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/property/land-ownership-indonesia.mdx",
+          "title": "Land Ownership in Indonesia 2026: Rules for Foreigners",
+          "category": "property",
+          "cosine": 0.0507,
+          "sha256": "7ef776771c39752db115fe9f81c9b5eccae5bb1e2a2db2d09f75e79747b9ecf9"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C37",
+      "domain": "property",
+      "working_title": "Who Will Buy It From You?",
+      "eligible_article_categories": [
+        "property",
+        "business_regulations"
+      ],
+      "eligible_article_count": 109,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0828,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/property/property-investment-guide.mdx",
+          "title": "Property Investment in Indonesia 2026: Complete Guide for Foreigners",
+          "category": "property",
+          "cosine": 0.0828,
+          "sha256": "02ceaada5847131bd075eb913032d56f0ce1c9c6adb598f269045a1c31be4fdd"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/property/buying-apartment-indonesia.mdx",
+          "title": "Buying an Apartment in Indonesia 2026: Foreigner's Guide",
+          "category": "property",
+          "cosine": 0.0795,
+          "sha256": "3d945b51898e7f44cd4300f683b9f9203bc110e318db28f4f2e4e2cf7d3c208f"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/property/buying-property-bali-foreigners-guide.mdx",
+          "title": "Buying Property in Bali: What Foreigners Can (and Can't) Do",
+          "category": "property",
+          "cosine": 0.071,
+          "sha256": "d6be77a1f8b25c044153652273dbd3382799c15346b92de031a9233e8dfa03e9"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C38",
+      "domain": "property",
+      "working_title": "The Handover Trap: Construction Quality Control",
+      "eligible_article_categories": [
+        "property",
+        "business_regulations"
+      ],
+      "eligible_article_count": 109,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.0869,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/property/construction-costs-bali-2026.mdx",
+          "title": "Construction Costs in Bali 2026: Price Per Sqm, Permits, and Complete Building Guide",
+          "category": "property",
+          "cosine": 0.0869,
+          "sha256": "4044dbc421cc0eb62c5718d8cb2836fd63d4132b5911138e0dd746bf19635c13"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business_regulations/starting-a-business-in-indonesia-as-a-foreigner-what-actually-works.mdx",
+          "title": "Starting a Business in Indonesia as a Foreigner: What Actually Works",
+          "category": "business_regulations",
+          "cosine": 0.0173,
+          "sha256": "72499c505b5820e7e39aff052cf8dcf93ce38d81ae36bb6166d590cebd3b6bcb"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/property/property-investment-guide.mdx",
+          "title": "Property Investment in Indonesia 2026: Complete Guide for Foreigners",
+          "category": "property",
+          "cosine": 0.017,
+          "sha256": "02ceaada5847131bd075eb913032d56f0ce1c9c6adb598f269045a1c31be4fdd"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C39",
+      "domain": "property",
+      "working_title": "You Inherit the Building's Sins",
+      "eligible_article_categories": [
+        "property",
+        "business_regulations"
+      ],
+      "eligible_article_count": 109,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.1053,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/property/construction-costs-bali-2026.mdx",
+          "title": "Construction Costs in Bali 2026: Price Per Sqm, Permits, and Complete Building Guide",
+          "category": "property",
+          "cosine": 0.1053,
+          "sha256": "4044dbc421cc0eb62c5718d8cb2836fd63d4132b5911138e0dd746bf19635c13"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/property/property-green-zone-alert.mdx",
+          "title": "Property Alert: Green Zone Crackdown and the End of Easy Villa Permits",
+          "category": "property",
+          "cosine": 0.0938,
+          "sha256": "062dcc3266a99e062b692d25b020bd55ebe7a916ddc46adcc6d78f27315abf49"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/business_regulations/the-banjar-is-the-real-authority.mdx",
+          "title": "The Banjar Is the Real Authority",
+          "category": "business_regulations",
+          "cosine": 0.0508,
+          "sha256": "d8a887a45911ba7398dcf915dc2901ffe14ee285c285017bd562ea8892b35305"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    },
+    {
+      "candidate_id": "C40",
+      "domain": "property",
+      "working_title": "Legal Land, Illegal Plan",
+      "eligible_article_categories": [
+        "property",
+        "business_regulations"
+      ],
+      "eligible_article_count": 109,
+      "lexical_overlap_level": "low",
+      "top_lexical_cosine": 0.1154,
+      "top_existing_articles": [
+        {
+          "path": "apps/mouth/src/content/articles/property/land-ownership-indonesia.mdx",
+          "title": "Land Ownership in Indonesia 2026: Rules for Foreigners",
+          "category": "property",
+          "cosine": 0.1154,
+          "sha256": "7ef776771c39752db115fe9f81c9b5eccae5bb1e2a2db2d09f75e79747b9ecf9"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/property/land-ownership-rules.mdx",
+          "title": "Land Ownership Rules Indonesia 2026: Foreigner Guide",
+          "category": "property",
+          "cosine": 0.0923,
+          "sha256": "85c7c2941c95982eaf2e41e83ec114edf82b3ac7819f5b6738b0e69e2e271ad2"
+        },
+        {
+          "path": "apps/mouth/src/content/articles/property/land-certificates-indonesia-guide.mdx",
+          "title": "Indonesian Land Certificate Types Explained: SHM, SHGB, SHP, SHSRS, and AJB",
+          "category": "property",
+          "cosine": 0.0914,
+          "sha256": "677ce45c9f6c44006b05b35648fd82e55789ccb47f431bed376a39ab6249f8d8"
+        }
+      ],
+      "interpretation": "Lexical duplication signal only; a familiar subject may survive when the audience problem or narrative promise differs."
+    }
+  ],
+  "limitations": [
+    "The canonical corpus inventory remains all 797 English articles; domain routing limits only each candidate's lexical comparison set.",
+    "Lexical similarity does not prove semantic duplication.",
+    "No current engagement conclusion is inferred from the dated aggregate GSC snapshot.",
+    "Official-source routing is stored separately and is not legal grounding or validation."
+  ]
+}

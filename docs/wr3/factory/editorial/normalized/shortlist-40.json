@@ -1,0 +1,1589 @@
+{
+  "schema_version": "season-topic-shortlist-v1",
+  "execution_date": "2026-08-29",
+  "algorithm_version": "wave1-consolidation-v1",
+  "algorithm_rules_sha256": "f5122b795329de772f9d9f3fc6ad28cf081d254d0815a97ad0f3a92b1c01974e",
+  "input_outputs": [
+    {
+      "model_identifier": "claude-opus-5",
+      "model_family": "anthropic",
+      "path": "wr3/factory/editorial/raw/wave1/claude-opus-5.json",
+      "sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+      "candidate_count": 30
+    },
+    {
+      "model_identifier": "gemini-3.1-pro",
+      "model_family": "google",
+      "path": "wr3/factory/editorial/raw/wave1/gemini-3.1-pro.json",
+      "sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "candidate_count": 30
+    }
+  ],
+  "candidates": [
+    {
+      "banality_risk": 25,
+      "candidate_id": "C01",
+      "core_evergreen_question": "What happens to your life when your relationship with your visa sponsor sours?",
+      "domain": "immigration",
+      "narrative_promise": "You will understand how to protect your residency if your sponsor suddenly decides to weaponize their position.",
+      "recurring_human_tension": "The realization that your legal right to remain is entirely dependent on another person's continued goodwill.",
+      "regulatory_volatility": 20,
+      "sourceability": 85,
+      "target_audience": "Foreigners on sponsored work, spouse, or investor visas.",
+      "why_intriguing": "It exposes the extreme vulnerability of foreigners who falsely believe they are fully independent residents.",
+      "why_still_relevant_in_three_years": "Sponsorship-based immigration systems inherently create structural power imbalances that can be abused.",
+      "working_title": "Sponsor Leverage: The Hidden Power Dynamic",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 240,
+      "duplicate_cluster": "D01",
+      "normalized_topic": "Sponsor dependence and loss of immigration status",
+      "lineage": [
+        {
+          "candidate_id": "G08",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 240
+        },
+        {
+          "candidate_id": "A02",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 213
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "representative_reason": "Highest deterministic pre_score in conceptual duplicate cluster; lexical candidate_id breaks ties.",
+      "original_candidate_id": "G08"
+    },
+    {
+      "banality_risk": 30,
+      "candidate_id": "C02",
+      "core_evergreen_question": "Is setting up a corporate shell exclusively to obtain a residency permit a viable long-term life strategy?",
+      "domain": "immigration",
+      "narrative_promise": "You will see the compounding true cost of using a foreign investment company solely as a personal visa vehicle.",
+      "recurring_human_tension": "The desire for cheap, uninterrupted residency vs. the heavy, ongoing compliance burden of a corporation.",
+      "regulatory_volatility": 30,
+      "sourceability": 90,
+      "target_audience": "Foreigners looking for long-term stay options without being formally employed by a third party.",
+      "why_intriguing": "Many expats are sitting on a ticking time bomb of corporate non-compliance just to avoid visa runs.",
+      "why_still_relevant_in_three_years": "Governments will continuously refine methods to crack down on immigration loopholes masking as foreign direct investment.",
+      "working_title": "The Investor Visa Facade",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 230,
+      "duplicate_cluster": null,
+      "normalized_topic": "The Investor Visa Facade",
+      "lineage": [
+        {
+          "candidate_id": "G10",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 230
+        }
+      ],
+      "originating_models": [
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "G10"
+    },
+    {
+      "banality_risk": 40,
+      "candidate_id": "C03",
+      "core_evergreen_question": "Why is true, unconditional permanent residency practically impossible for most foreigners to achieve?",
+      "domain": "immigration",
+      "narrative_promise": "You will understand why you must maintain a defensive immigration strategy no matter how many decades you have stayed.",
+      "recurring_human_tension": "The emotional desire to permanently belong vs. the state's view of foreigners as perpetually temporary guests.",
+      "regulatory_volatility": 20,
+      "sourceability": 85,
+      "target_audience": "Long-term expats seeking ultimate stability and retirement security.",
+      "why_intriguing": "Even the highest tier of permanent stay permit holders face renewal hurdles and arbitrary cancellation risks.",
+      "why_still_relevant_in_three_years": "The state's fundamental posture towards foreign settlement is deeply historical and highly unlikely to shift.",
+      "working_title": "The Permanent Residency Mirage",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 225,
+      "duplicate_cluster": null,
+      "normalized_topic": "The Permanent Residency Mirage",
+      "lineage": [
+        {
+          "candidate_id": "G29",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 225
+        }
+      ],
+      "originating_models": [
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "G29"
+    },
+    {
+      "banality_risk": 45,
+      "candidate_id": "C04",
+      "core_evergreen_question": "Who is ultimately liable when your visa agent submits fabricated documents on your behalf?",
+      "domain": "immigration",
+      "narrative_promise": "You will discover why you cannot simply outsource your legal liability to a smiling consultant.",
+      "recurring_human_tension": "Paying for administrative convenience while unknowingly accepting severe, non-transferable legal risks.",
+      "regulatory_volatility": 15,
+      "sourceability": 75,
+      "target_audience": "Anyone using a third-party agent to process or renew their stay permits.",
+      "why_intriguing": "Foreigners instinctively blame the agent when caught, but the legal system exclusively punishes the foreigner.",
+      "why_still_relevant_in_three_years": "The principal-agent problem is universal in complex bureaucratic systems heavily reliant on intermediaries.",
+      "working_title": "Agent Accountability: When Outsourcing Goes Wrong",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 215,
+      "duplicate_cluster": "D02",
+      "normalized_topic": "Personal accountability when an immigration agent controls the file",
+      "lineage": [
+        {
+          "candidate_id": "G09",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 215
+        },
+        {
+          "candidate_id": "A03",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 210
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "representative_reason": "Highest deterministic pre_score in conceptual duplicate cluster; lexical candidate_id breaks ties.",
+      "original_candidate_id": "G09"
+    },
+    {
+      "banality_risk": 55,
+      "candidate_id": "C05",
+      "core_evergreen_question": "Why do minor administrative delays frequently escalate into catastrophic deportation risks?",
+      "domain": "immigration",
+      "narrative_promise": "You will learn why casually saying 'I will fix it next week' is the most dangerous phrase in immigration.",
+      "recurring_human_tension": "Human procrastination vs. the unforgiving, automated nature of a hard legal deadline.",
+      "regulatory_volatility": 10,
+      "sourceability": 80,
+      "target_audience": "Expats who are disorganized or habitually push bureaucratic deadlines to the very last minute.",
+      "why_intriguing": "It explores the psychology of expats who treat absolute immigration law as a mere administrative suggestion.",
+      "why_still_relevant_in_three_years": "Passports expire, portals go offline, and people will always procrastinate on paperwork.",
+      "working_title": "The Overstay Slippery Slope",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 215,
+      "duplicate_cluster": "D03",
+      "normalized_topic": "How small immigration lapses compound",
+      "lineage": [
+        {
+          "candidate_id": "G11",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 215
+        },
+        {
+          "candidate_id": "A05",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 196
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "representative_reason": "Highest deterministic pre_score in conceptual duplicate cluster; lexical candidate_id breaks ties.",
+      "original_candidate_id": "G11"
+    },
+    {
+      "candidate_id": "C06",
+      "working_title": "When the Relationship Changes, So Does the Permit",
+      "domain": "immigration",
+      "core_evergreen_question": "What happens to residency built on a family relationship when that relationship ends, changes, or is questioned?",
+      "target_audience": "Foreign spouses, mixed-nationality families, dependent children, and partners considering marriage in Indonesia",
+      "recurring_human_tension": "Legal status entangled with love: asking the practical questions feels like an accusation, so nobody asks until it is an emergency.",
+      "why_intriguing": "It is the most emotionally loaded category in immigration and the least discussed, because raising it sounds like planning to fail.",
+      "why_still_relevant_in_three_years": "Derived and dependent status is a permanent architecture in immigration law; the human consequences of dependency do not change with the form number.",
+      "narrative_promise": "What each partner should understand and hold independently while things are good, and how derived status can be made less fragile.",
+      "regulatory_volatility": 45,
+      "sourceability": 76,
+      "banality_risk": 18,
+      "source_model": "claude-opus-5",
+      "source_family": "anthropic",
+      "source_output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+      "pre_score": 213,
+      "duplicate_cluster": null,
+      "normalized_topic": "When the Relationship Changes, So Does the Permit",
+      "lineage": [
+        {
+          "candidate_id": "A06",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 213
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "A06"
+    },
+    {
+      "candidate_id": "C07",
+      "working_title": "What Your Residency Permit Does Not Come With",
+      "domain": "immigration",
+      "core_evergreen_question": "Which rights do foreigners wrongly assume are bundled into a residency status, and which must be obtained separately?",
+      "target_audience": "New residents, retirees, investors, and anyone who believes a long-stay permit unlocks property, banking, work, and tax outcomes automatically",
+      "recurring_human_tension": "The permit arrives and feels like citizenship-lite; the discovery that it is a narrow key, not a master key, comes later and usually mid-transaction.",
+      "why_intriguing": "It maps a specific and very common false mental model — the bundle fallacy — rather than reciting one rule.",
+      "why_still_relevant_in_three_years": "Immigration status, commercial rights, property rights, and tax status are governed by separate regimes everywhere; the unbundling is permanent.",
+      "narrative_promise": "A clean separation of what residency grants, what it merely enables, and what it has nothing to do with.",
+      "regulatory_volatility": 40,
+      "sourceability": 80,
+      "banality_risk": 28,
+      "source_model": "claude-opus-5",
+      "source_family": "anthropic",
+      "source_output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+      "pre_score": 212,
+      "duplicate_cluster": null,
+      "normalized_topic": "What Your Residency Permit Does Not Come With",
+      "lineage": [
+        {
+          "candidate_id": "A08",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 212
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "A08"
+    },
+    {
+      "banality_risk": 40,
+      "candidate_id": "C08",
+      "core_evergreen_question": "What are the absolute legal limits of what a trailing spouse can do on a dependent visa?",
+      "domain": "immigration",
+      "narrative_promise": "You will find out exactly what your partner can and cannot do while sponsored on your primary permit.",
+      "recurring_human_tension": "The expectation of maintaining a modern dual-income household vs. the reality of restrictive dependent rights.",
+      "regulatory_volatility": 25,
+      "sourceability": 75,
+      "target_audience": "Married expat couples relocating or residing together in Indonesia.",
+      "why_intriguing": "A spouse casually volunteering or selling crafts online can accidentally ruin the entire family's legal residency.",
+      "why_still_relevant_in_three_years": "The trailing spouse dilemma is a fundamental, structural feature of international family relocation.",
+      "working_title": "Dependent Traps: The Trailing Spouse",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 210,
+      "duplicate_cluster": null,
+      "normalized_topic": "Dependent Traps: The Trailing Spouse",
+      "lineage": [
+        {
+          "candidate_id": "G12",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 210
+        }
+      ],
+      "originating_models": [
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "G12"
+    },
+    {
+      "candidate_id": "C09",
+      "working_title": "Permission to Be Here Is Not Permission to Do That",
+      "domain": "immigration",
+      "core_evergreen_question": "How does a foreigner tell the difference between the right to remain in Indonesia and the right to perform a specific activity while there?",
+      "target_audience": "Newly arrived foreigners, visitors drifting toward residency, remote workers, and anyone who was told their permit 'covers everything'",
+      "recurring_human_tension": "The relief of an approved permit collides with the quiet dread of being asked, by an official or a competitor, what exactly you are allowed to do with it.",
+      "why_intriguing": "Almost every foreigner conflates stay rights with activity rights, and the conflation is invisible until someone tests it — usually at the worst possible moment.",
+      "why_still_relevant_in_three_years": "Every immigration system separates duration of stay from permitted activity as a structural matter; only the permit names, portals, and categories change.",
+      "narrative_promise": "A two-question test — what am I permitted to do, and who decided that — that can be applied to any permit, in any year, before acting on it.",
+      "regulatory_volatility": 55,
+      "sourceability": 85,
+      "banality_risk": 22,
+      "source_model": "claude-opus-5",
+      "source_family": "anthropic",
+      "source_output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+      "pre_score": 208,
+      "duplicate_cluster": null,
+      "normalized_topic": "Permission to Be Here Is Not Permission to Do That",
+      "lineage": [
+        {
+          "candidate_id": "A01",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 208
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "A01"
+    },
+    {
+      "banality_risk": 35,
+      "candidate_id": "C10",
+      "core_evergreen_question": "At what exact point does answering an email become illegal labor on a visit visa?",
+      "domain": "immigration",
+      "narrative_promise": "You will learn how immigration authorities conceptually separate generating local income from merely existing with a laptop.",
+      "recurring_human_tension": "The modern reality of being 'always-on' for work vs. rigid, territorial immigration laws.",
+      "regulatory_volatility": 40,
+      "sourceability": 80,
+      "target_audience": "Digital nomads, remote workers, and traveling executives operating in gray areas.",
+      "why_intriguing": "Almost everyone operates with a false sense of security, hoping they don't cross an invisible line.",
+      "why_still_relevant_in_three_years": "Technology outpaces immigration law; physical borders will continually struggle to define and police remote digital work.",
+      "working_title": "The Definition of Work: Meetings vs. Labor",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 205,
+      "duplicate_cluster": "D04",
+      "normalized_topic": "The legal boundary between presence and work",
+      "lineage": [
+        {
+          "candidate_id": "G07",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 205
+        },
+        {
+          "candidate_id": "A07",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 172
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "representative_reason": "Highest deterministic pre_score in conceptual duplicate cluster; lexical candidate_id breaks ties.",
+      "original_candidate_id": "G07"
+    },
+    {
+      "banality_risk": 30,
+      "candidate_id": "C11",
+      "core_evergreen_question": "When exactly can a foreign director be held personally liable for their company's debts or crimes?",
+      "domain": "company",
+      "narrative_promise": "You will learn the specific operational actions that permanently erase your limited liability protection.",
+      "recurring_human_tension": "The ego and prestige of the Director title vs. the terrifying reality of personal corporate liability.",
+      "regulatory_volatility": 10,
+      "sourceability": 85,
+      "target_audience": "Foreigners formally acting as Directors in a foreign investment company.",
+      "why_intriguing": "Many act as nominee Directors for friends without realizing their personal global assets are legally on the hook.",
+      "why_still_relevant_in_three_years": "The legal doctrine of piercing the corporate veil is a permanent, foundational fixture of company law.",
+      "working_title": "Director Liability: The Buck Stops Here",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 245,
+      "duplicate_cluster": "D08",
+      "normalized_topic": "When limited liability stops protecting a director",
+      "lineage": [
+        {
+          "candidate_id": "G13",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 245
+        },
+        {
+          "candidate_id": "A13",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 225
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "representative_reason": "Highest deterministic pre_score in conceptual duplicate cluster; lexical candidate_id breaks ties.",
+      "original_candidate_id": "G13"
+    },
+    {
+      "banality_risk": 35,
+      "candidate_id": "C12",
+      "core_evergreen_question": "Does the notary actually protect your personal interests, or just ensure the paper looks official?",
+      "domain": "company",
+      "narrative_promise": "You will realize why you desperately need independent legal advice even if a state notary drafts the deed.",
+      "recurring_human_tension": "The assumption that you have retained legal counsel vs. the reality of dealing with a neutral public official.",
+      "regulatory_volatility": 10,
+      "sourceability": 90,
+      "target_audience": "Anyone forming a company, making a contract, or buying property.",
+      "why_intriguing": "Foreigners blindly assume notaries are their lawyers, leading to catastrophic contractual blind spots.",
+      "why_still_relevant_in_three_years": "The civil law notary system is fundamentally different from common law lawyers, and this structural gap will never close.",
+      "working_title": "The Notary's True Role",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 245,
+      "duplicate_cluster": "D16",
+      "normalized_topic": "What a notary does and does not protect",
+      "lineage": [
+        {
+          "candidate_id": "G19",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 245
+        },
+        {
+          "candidate_id": "A30",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 235
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "representative_reason": "Highest deterministic pre_score in conceptual duplicate cluster; lexical candidate_id breaks ties.",
+      "original_candidate_id": "G19"
+    },
+    {
+      "banality_risk": 30,
+      "candidate_id": "C13",
+      "core_evergreen_question": "How do you align incentives with a local partner when the law inherently limits your control?",
+      "domain": "company",
+      "narrative_promise": "You will discover structural ways to protect your capital when a local partner holds all the legal cards.",
+      "recurring_human_tension": "Needing local expertise and legal standing vs. the extreme fear of losing total control of the capital.",
+      "regulatory_volatility": 10,
+      "sourceability": 85,
+      "target_audience": "Foreigners entering joint ventures or taking on local co-founders.",
+      "why_intriguing": "It explores the fragile trust dynamics of partnerships where the law fundamentally favors one partner over the other.",
+      "why_still_relevant_in_three_years": "Cross-cultural business partnerships will always face profound alignment and control challenges.",
+      "working_title": "The Local Partner Paradox",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 245,
+      "duplicate_cluster": null,
+      "normalized_topic": "The Local Partner Paradox",
+      "lineage": [
+        {
+          "candidate_id": "G27",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 245
+        }
+      ],
+      "originating_models": [
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "G27"
+    },
+    {
+      "banality_risk": 25,
+      "candidate_id": "C14",
+      "core_evergreen_question": "What are the long-term consequences of declaring investment capital that you never actually injected into the bank?",
+      "domain": "company",
+      "narrative_promise": "You will understand how a missing bank transfer today can destroy your company during an audit years later.",
+      "recurring_human_tension": "The steep barrier to entry vs. the extreme temptation to simply lie on official incorporation documents.",
+      "regulatory_volatility": 20,
+      "sourceability": 85,
+      "target_audience": "Founders setting up a new foreign investment company.",
+      "why_intriguing": "It is the most common lie told by foreign founders, and it creates a permanent, undeniable vulnerability.",
+      "why_still_relevant_in_three_years": "Capital requirements are a core, enduring tool for governments to filter out low-value foreign investment.",
+      "working_title": "Paid-up Capital: The Paper Trail Problem",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 240,
+      "duplicate_cluster": null,
+      "normalized_topic": "Paid-up Capital: The Paper Trail Problem",
+      "lineage": [
+        {
+          "candidate_id": "G16",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 240
+        }
+      ],
+      "originating_models": [
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "G16"
+    },
+    {
+      "candidate_id": "C15",
+      "working_title": "Who Can Actually Stop You?",
+      "domain": "company",
+      "core_evergreen_question": "Which roles in an Indonesian company hold which powers, and how does a foreign founder end up with the title but not the control?",
+      "target_audience": "Foreign founders, joint-venture partners, minority investors, and anyone accepting a corporate role they did not choose",
+      "recurring_human_tension": "Relief at a structure that looks clean on the certificate, followed by the discovery of a veto, signature, or approval you handed away without noticing.",
+      "why_intriguing": "It maps power rather than paperwork — who can block a bank transfer, a licence change, or your own removal.",
+      "why_still_relevant_in_three_years": "The separation of ownership, management, and supervision is a durable feature of company law; the titles persist even as procedures digitize.",
+      "narrative_promise": "A control map to draw before signing: for each critical action, who can do it, who can block it, and who can undo it.",
+      "regulatory_volatility": 30,
+      "sourceability": 86,
+      "banality_risk": 21,
+      "source_model": "claude-opus-5",
+      "source_family": "anthropic",
+      "source_output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+      "pre_score": 235,
+      "duplicate_cluster": "D05",
+      "normalized_topic": "Company titles, duties, and actual control",
+      "lineage": [
+        {
+          "candidate_id": "A10",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 235
+        },
+        {
+          "candidate_id": "G14",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 230
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "representative_reason": "Highest deterministic pre_score in conceptual duplicate cluster; lexical candidate_id breaks ties.",
+      "original_candidate_id": "A10"
+    },
+    {
+      "banality_risk": 30,
+      "candidate_id": "C16",
+      "core_evergreen_question": "When exactly does a casual freelancer legally transform into a protected employee with severance rights?",
+      "domain": "company",
+      "narrative_promise": "You will discover how independent contractors can successfully sue you for years of back pay and severance.",
+      "recurring_human_tension": "The founder's desire for flexible labor costs vs. the profound worker protections embedded in local labor law.",
+      "regulatory_volatility": 25,
+      "sourceability": 85,
+      "target_audience": "Business owners and managers hiring local talent.",
+      "why_intriguing": "Foreigners constantly project Western gig-economy norms onto a highly protective, pro-labor legal system.",
+      "why_still_relevant_in_three_years": "The fundamental friction between capital flexibility and labor security is a timeless economic and political struggle.",
+      "working_title": "Employee or Contractor: The Control Test",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 230,
+      "duplicate_cluster": "D09",
+      "normalized_topic": "When an informal worker becomes an employee",
+      "lineage": [
+        {
+          "candidate_id": "G18",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 230
+        },
+        {
+          "candidate_id": "A16",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 206
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "representative_reason": "Highest deterministic pre_score in conceptual duplicate cluster; lexical candidate_id breaks ties.",
+      "original_candidate_id": "G18"
+    },
+    {
+      "candidate_id": "C17",
+      "working_title": "The Agreement That Cannot Be Enforced",
+      "domain": "company",
+      "core_evergreen_question": "What is a private side agreement actually worth when it contradicts what the public record says about ownership?",
+      "target_audience": "Foreign investors, would-be owners using local names, and anyone reassured that 'the lawyer wrote it, so it is protected'",
+      "recurring_human_tension": "You paid for something you can only defend by revealing the arrangement that may make it unenforceable — the trap is self-sealing.",
+      "why_intriguing": "It explains why the strongest-looking document folder can be the weakest position, and why the paperwork often exists to comfort the buyer rather than protect them.",
+      "why_still_relevant_in_three_years": "The structural conflict between a public register and a contradicting private promise is permanent in any system with registered ownership.",
+      "narrative_promise": "A stress test for any structure: name the bad day, then trace who would have to do what, in front of whom, for you to recover.",
+      "regulatory_volatility": 35,
+      "sourceability": 80,
+      "banality_risk": 16,
+      "source_model": "claude-opus-5",
+      "source_family": "anthropic",
+      "source_output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+      "pre_score": 229,
+      "duplicate_cluster": null,
+      "normalized_topic": "The Agreement That Cannot Be Enforced",
+      "lineage": [
+        {
+          "candidate_id": "A09",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 229
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "A09"
+    },
+    {
+      "candidate_id": "C18",
+      "working_title": "You Are Also Buying Its Past",
+      "domain": "company",
+      "core_evergreen_question": "What does a buyer inherit when acquiring an existing Indonesian company instead of forming a new one?",
+      "target_audience": "Acquirers, buyers of 'ready-made' or shelf entities, and founders tempted by a shortcut to being operational",
+      "recurring_human_tension": "Speed and impatience meeting an unknown history, sold with a smile by someone who knows exactly what is in it.",
+      "why_intriguing": "The attraction — it already exists, it is already licensed — is precisely the source of the risk.",
+      "why_still_relevant_in_three_years": "Successor liability and the inheritance of an entity's history are structural features of buying a legal person rather than starting one.",
+      "narrative_promise": "The buried-liability checklist, and what to insist on seeing before the shares move rather than after.",
+      "regulatory_volatility": 30,
+      "sourceability": 79,
+      "banality_risk": 20,
+      "source_model": "claude-opus-5",
+      "source_family": "anthropic",
+      "source_output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+      "pre_score": 229,
+      "duplicate_cluster": null,
+      "normalized_topic": "You Are Also Buying Its Past",
+      "lineage": [
+        {
+          "candidate_id": "A15",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 229
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "A15"
+    },
+    {
+      "banality_risk": 45,
+      "candidate_id": "C19",
+      "core_evergreen_question": "Why is it infinitely more difficult and expensive to close an Indonesian company than to open one?",
+      "domain": "company",
+      "narrative_promise": "You will learn why you absolutely must formally kill a dead business before it kills you financially.",
+      "recurring_human_tension": "The psychological desire to walk away from a failure vs. the state's relentless demand for final tax clearance.",
+      "regulatory_volatility": 15,
+      "sourceability": 80,
+      "target_audience": "Entrepreneurs with failed ventures or historically dormant companies.",
+      "why_intriguing": "People casually abandon companies, not realizing the tax liabilities and penalties continue to compound indefinitely.",
+      "why_still_relevant_in_three_years": "Governments will always systematically ensure they get their final audit and clearance before letting an entity die.",
+      "working_title": "Closing the Doors: The Dissolution Nightmare",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 220,
+      "duplicate_cluster": null,
+      "normalized_topic": "Closing the Doors: The Dissolution Nightmare",
+      "lineage": [
+        {
+          "candidate_id": "G17",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 220
+        }
+      ],
+      "originating_models": [
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "G17"
+    },
+    {
+      "candidate_id": "C20",
+      "working_title": "Whoever Holds the Logins Holds the Company",
+      "domain": "company",
+      "core_evergreen_question": "Who really controls a company when licensing, tax, and banking access sits in someone else's hands?",
+      "target_audience": "Foreign owners relying on local staff, accountants, or agents to operate official systems on their behalf",
+      "recurring_human_tension": "Administrative convenience hardening into dependency, and the discomfort of asking for credentials from someone you have trusted for years.",
+      "why_intriguing": "It shows that control is practical as well as legal — you can own a company on paper and still be locked out of it in practice.",
+      "why_still_relevant_in_three_years": "Official processes will keep moving onto credentialed systems; whoever holds authentication will keep holding operational leverage.",
+      "narrative_promise": "A credential-custody checklist: what an owner should always hold, what can be delegated, and how to test access before you need it.",
+      "regulatory_volatility": 18,
+      "sourceability": 60,
+      "banality_risk": 27,
+      "source_model": "claude-opus-5",
+      "source_family": "anthropic",
+      "source_output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+      "pre_score": 215,
+      "duplicate_cluster": null,
+      "normalized_topic": "Whoever Holds the Logins Holds the Company",
+      "lineage": [
+        {
+          "candidate_id": "A14",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 215
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "A14"
+    },
+    {
+      "banality_risk": 30,
+      "candidate_id": "C21",
+      "core_evergreen_question": "Why can't you aggressively expense your villa and lifestyle dinners to your corporate entity?",
+      "domain": "tax",
+      "narrative_promise": "You will see how aggressive expensing transforms a small corporate tax saving into a criminal audit.",
+      "recurring_human_tension": "The desire to minimize personal tax by hiding living costs within the corporate structure.",
+      "regulatory_volatility": 10,
+      "sourceability": 85,
+      "target_audience": "Foreign business owners running lifestyle businesses or consultancies.",
+      "why_intriguing": "The tax office knows exactly how to spot disguised dividends and personal expenses; founders think they are being clever.",
+      "why_still_relevant_in_three_years": "The boundary between corporate utility and personal benefit is perpetually the most audited area of small business.",
+      "working_title": "The Lifestyle Expense Trap",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 245,
+      "duplicate_cluster": "D12",
+      "normalized_topic": "The boundary between company and personal money",
+      "lineage": [
+        {
+          "candidate_id": "G21",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 245
+        },
+        {
+          "candidate_id": "A20",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 223
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "representative_reason": "Highest deterministic pre_score in conceptual duplicate cluster; lexical candidate_id breaks ties.",
+      "original_candidate_id": "G21"
+    },
+    {
+      "banality_risk": 40,
+      "candidate_id": "C22",
+      "core_evergreen_question": "At what point does sheer physical presence give Indonesia the right to tax your worldwide income?",
+      "domain": "tax",
+      "narrative_promise": "You will learn how your passport stamps alone can trigger a massive tax bill on foreign-earned wealth.",
+      "recurring_human_tension": "Enjoying the infrastructure of a place without wanting to contribute to its tax base.",
+      "regulatory_volatility": 15,
+      "sourceability": 95,
+      "target_audience": "Digital nomads, long-term tourists, and frequent business visitors.",
+      "why_intriguing": "Many fiercely believe their tourist visa shields them from the tax office. It absolutely doesn't.",
+      "why_still_relevant_in_three_years": "Physical presence tests are the immovable bedrock of international taxation regardless of digital nomad trends.",
+      "working_title": "Tax Residency: The Physical Presence Reality",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 240,
+      "duplicate_cluster": "D10",
+      "normalized_topic": "Tax residence follows facts, not nationality or visa labels",
+      "lineage": [
+        {
+          "candidate_id": "G20",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 240
+        },
+        {
+          "candidate_id": "A17",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 225
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "representative_reason": "Highest deterministic pre_score in conceptual duplicate cluster; lexical candidate_id breaks ties.",
+      "original_candidate_id": "G20"
+    },
+    {
+      "banality_risk": 35,
+      "candidate_id": "C23",
+      "core_evergreen_question": "How long can a dormant company report zero income before triggering a devastating tax audit?",
+      "domain": "tax",
+      "narrative_promise": "You will discover why repeatedly telling the tax office you made absolutely nothing is riskier than declaring a small loss.",
+      "recurring_human_tension": "The hope of flying completely under the radar vs. the algorithmic detection of obvious financial anomalies.",
+      "regulatory_volatility": 15,
+      "sourceability": 80,
+      "target_audience": "Founders maintaining empty corporate shells for visas or future use.",
+      "why_intriguing": "Filing nil returns feels like playing it safe, but it is often a massive, glowing red flag to the tax authority.",
+      "why_still_relevant_in_three_years": "Tax authorities increasingly rely on automated data matching to instantly identify false zero-reporting patterns.",
+      "working_title": "The Zero-Reporting Mirage",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 230,
+      "duplicate_cluster": "D07",
+      "normalized_topic": "Dormant companies and accumulating compliance debt",
+      "lineage": [
+        {
+          "candidate_id": "G23",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 230
+        },
+        {
+          "candidate_id": "A12",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 223
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "representative_reason": "Highest deterministic pre_score in conceptual duplicate cluster; lexical candidate_id breaks ties.",
+      "original_candidate_id": "G23"
+    },
+    {
+      "candidate_id": "C24",
+      "working_title": "'I Already Paid Tax at Home'",
+      "domain": "tax",
+      "core_evergreen_question": "Why does having paid tax in another country not automatically prevent a claim in Indonesia, and what must a person do to turn a treaty into actual relief?",
+      "target_audience": "Dual-country earners, employees of foreign companies, and owners of income-producing assets abroad",
+      "recurring_human_tension": "A powerful fairness instinct — I already paid, this is double — running into relief that exists only as a procedure someone has to perform.",
+      "why_intriguing": "It converts a vague comfort ('there's a treaty') into a concrete chain of documents, and shows where that chain usually breaks.",
+      "why_still_relevant_in_three_years": "Treaty relief has always been claim-based and evidence-based; the specific certificates and forms change, the mechanism does not.",
+      "narrative_promise": "The paperwork chain that turns a treaty from a reassuring idea into a reduction you can actually defend.",
+      "regulatory_volatility": 40,
+      "sourceability": 84,
+      "banality_risk": 17,
+      "source_model": "claude-opus-5",
+      "source_family": "anthropic",
+      "source_output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+      "pre_score": 227,
+      "duplicate_cluster": "D11",
+      "normalized_topic": "Why tax treaties do not apply themselves",
+      "lineage": [
+        {
+          "candidate_id": "A18",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 227
+        },
+        {
+          "candidate_id": "G28",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 225
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "representative_reason": "Highest deterministic pre_score in conceptual duplicate cluster; lexical candidate_id breaks ties.",
+      "original_candidate_id": "A18"
+    },
+    {
+      "candidate_id": "C25",
+      "working_title": "Someone Files in Your Name",
+      "domain": "tax",
+      "core_evergreen_question": "When a third party handles your filings and payments, what should you always be able to see, verify, and keep?",
+      "target_audience": "Foreigners and business owners using accountants, agents, or office staff for compliance they never review",
+      "recurring_human_tension": "Trust combined with opacity, plus the private shame of not understanding a return that carries your name and your responsibility.",
+      "why_intriguing": "The person who signs is not always the person who answers for it, and most people never learn which one they are.",
+      "why_still_relevant_in_three_years": "Delegated compliance with retained personal responsibility is a permanent arrangement wherever procedures are technical and local.",
+      "narrative_promise": "Three artifacts to demand every cycle, and how to confirm that a payment reached the state rather than an intermediary.",
+      "regulatory_volatility": 24,
+      "sourceability": 68,
+      "banality_risk": 22,
+      "source_model": "claude-opus-5",
+      "source_family": "anthropic",
+      "source_output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+      "pre_score": 222,
+      "duplicate_cluster": null,
+      "normalized_topic": "Someone Files in Your Name",
+      "lineage": [
+        {
+          "candidate_id": "A22",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 222
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "A22"
+    },
+    {
+      "banality_risk": 50,
+      "candidate_id": "C26",
+      "core_evergreen_question": "Why are you legally and financially responsible for paying someone else's income taxes?",
+      "domain": "tax",
+      "narrative_promise": "You will understand why paying invoices exactly as written by a vendor can be a remarkably costly mistake.",
+      "recurring_human_tension": "The immense administrative burden of calculating and remitting taxes on behalf of vendors who refuse to do it themselves.",
+      "regulatory_volatility": 20,
+      "sourceability": 90,
+      "target_audience": "Company directors, founders, and finance managers.",
+      "why_intriguing": "If you pay a vendor their full invoice, you frequently have to pay their tax out of your own pocket later.",
+      "why_still_relevant_in_three_years": "Withholding tax is the most efficient, durable way for the state to enforce compliance on the broader economy.",
+      "working_title": "Withholding Tax: The Unpaid Collector",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 220,
+      "duplicate_cluster": null,
+      "normalized_topic": "Withholding Tax: The Unpaid Collector",
+      "lineage": [
+        {
+          "candidate_id": "G22",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 220
+        }
+      ],
+      "originating_models": [
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "G22"
+    },
+    {
+      "candidate_id": "C27",
+      "working_title": "How Do You Stop Being a Taxpayer Here?",
+      "domain": "tax",
+      "core_evergreen_question": "What does it actually take to end tax obligations in Indonesia, and what happens to people who simply leave?",
+      "target_audience": "Departing residents, founders closing a business, and anyone treating relocation as a clean break",
+      "recurring_human_tension": "The fantasy of walking away versus the fear of what waits if you ever come back — a fear people manage by not looking.",
+      "why_intriguing": "Everyone plans the entry into a system and almost nobody plans the exit, which is where the unpleasant surprises accumulate.",
+      "why_still_relevant_in_three_years": "Deregistration as a documented process, rather than an event that happens automatically on departure, is a durable design in tax administration.",
+      "narrative_promise": "Exit treated as a process with a paper trail — what to close, in what order, and what evidence to keep afterwards.",
+      "regulatory_volatility": 43,
+      "sourceability": 77,
+      "banality_risk": 15,
+      "source_model": "claude-opus-5",
+      "source_family": "anthropic",
+      "source_output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+      "pre_score": 219,
+      "duplicate_cluster": null,
+      "normalized_topic": "How Do You Stop Being a Taxpayer Here?",
+      "lineage": [
+        {
+          "candidate_id": "A21",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 219
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "A21"
+    },
+    {
+      "banality_risk": 60,
+      "candidate_id": "C28",
+      "core_evergreen_question": "What is the true, compounding cost of deliberately delaying your corporate bookkeeping?",
+      "domain": "tax",
+      "narrative_promise": "You will realize why cheap accounting today guarantees an incredibly expensive, stressful tax audit tomorrow.",
+      "recurring_human_tension": "Focusing exclusively on revenue generation today vs. the compounding cost of completely disorganized records.",
+      "regulatory_volatility": 5,
+      "sourceability": 75,
+      "target_audience": "Entrepreneurs who view basic accounting as a tedious afterthought.",
+      "why_intriguing": "It frames bad bookkeeping not as a simple mistake, but as high-interest debt owed directly to the government.",
+      "why_still_relevant_in_three_years": "Startups will always systematically deprioritize back-office functions until a crisis forces their hand.",
+      "working_title": "Compliance Debt: The Bookkeeping Avalanche",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 210,
+      "duplicate_cluster": null,
+      "normalized_topic": "Compliance Debt: The Bookkeeping Avalanche",
+      "lineage": [
+        {
+          "candidate_id": "G25",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 210
+        }
+      ],
+      "originating_models": [
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "G25"
+    },
+    {
+      "banality_risk": 55,
+      "candidate_id": "C29",
+      "core_evergreen_question": "What happens to your margins when your revenue abruptly crosses the mandatory VAT threshold?",
+      "domain": "tax",
+      "narrative_promise": "You will learn how to prepare your pricing strategy long before the government forces you to collect VAT.",
+      "recurring_human_tension": "The joy of rapid business growth vs. the sudden shock of becoming an unpaid tax collector for the state.",
+      "regulatory_volatility": 25,
+      "sourceability": 85,
+      "target_audience": "Growing businesses nearing the taxable entrepreneur threshold.",
+      "why_intriguing": "Crossing the threshold forces a business to suddenly raise prices by double digits or eat a massive margin loss overnight.",
+      "why_still_relevant_in_three_years": "Value Added Tax systems inherently and permanently penalize the transition from small to medium enterprise.",
+      "working_title": "VAT Registration: The Success Penalty",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 205,
+      "duplicate_cluster": null,
+      "normalized_topic": "VAT Registration: The Success Penalty",
+      "lineage": [
+        {
+          "candidate_id": "G24",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 205
+        }
+      ],
+      "originating_models": [
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "G24"
+    },
+    {
+      "candidate_id": "C30",
+      "working_title": "Profitable and Broke",
+      "domain": "tax",
+      "core_evergreen_question": "Why do foreign-owned businesses in Indonesia run out of cash while showing a profit, and how do withholding and payment timing create the gap?",
+      "target_audience": "Founders and operators of small and mid-sized businesses, especially service and hospitality",
+      "recurring_human_tension": "The spreadsheet says yes and the bank account says no, and the owner assumes it is a bookkeeping mistake rather than structure.",
+      "why_intriguing": "It connects an abstract compliance topic to the most visceral business experience there is — not being able to pay people this month.",
+      "why_still_relevant_in_three_years": "Withholding, prepayment, and timing mismatches between recognition and cash are permanent features of tax systems.",
+      "narrative_promise": "A timing map of when money leaves before it arrives, and the reserve discipline that keeps a profitable business alive.",
+      "regulatory_volatility": 46,
+      "sourceability": 74,
+      "banality_risk": 27,
+      "source_model": "claude-opus-5",
+      "source_family": "anthropic",
+      "source_output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+      "pre_score": 201,
+      "duplicate_cluster": null,
+      "normalized_topic": "Profitable and Broke",
+      "lineage": [
+        {
+          "candidate_id": "A19",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 201
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "A19"
+    },
+    {
+      "banality_risk": 30,
+      "candidate_id": "C31",
+      "core_evergreen_question": "Who truly controls a property when a foreigner uses a local nominee?",
+      "domain": "property",
+      "narrative_promise": "You will understand why your supposedly bulletproof nominee contract might be legally unenforceable in an Indonesian court.",
+      "recurring_human_tension": "The intense desire for permanent ownership vs. the immense risk of unenforceable side agreements.",
+      "regulatory_volatility": 10,
+      "sourceability": 80,
+      "target_audience": "Foreigners attempting to acquire freehold land in Indonesia through local proxies.",
+      "why_intriguing": "It touches on betrayal, legal loopholes, and the false sense of security many expats harbor about their life savings.",
+      "why_still_relevant_in_three_years": "Human nature and the desire to circumvent foreign ownership restrictions will persist regardless of specific policy tweaks.",
+      "working_title": "The Nominee Trap: Trust vs. Legal Reality",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 240,
+      "duplicate_cluster": null,
+      "normalized_topic": "The Nominee Trap: Trust vs. Legal Reality",
+      "lineage": [
+        {
+          "candidate_id": "G01",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 240
+        }
+      ],
+      "originating_models": [
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "G01"
+    },
+    {
+      "banality_risk": 30,
+      "candidate_id": "C32",
+      "core_evergreen_question": "Does your long-term residential lease actually allow you to operate a commercial short-term rental?",
+      "domain": "property",
+      "narrative_promise": "You will learn how a single missing clause in a lease can destroy your entire ROI projection.",
+      "recurring_human_tension": "The entrepreneur's urge to aggressively monetize an asset vs. the landlord's restrictive contract.",
+      "regulatory_volatility": 20,
+      "sourceability": 85,
+      "target_audience": "Foreigners looking to generate passive income from long-term leaseholds.",
+      "why_intriguing": "Many investors are operating illegal hospitality businesses without realizing their underlying lease strictly forbids it.",
+      "why_still_relevant_in_three_years": "Landlords will always eventually want a cut or control over the commercial exploitation of their underlying assets.",
+      "working_title": "Subleasing Secrets: The Hospitality Assumption",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 235,
+      "duplicate_cluster": null,
+      "normalized_topic": "Subleasing Secrets: The Hospitality Assumption",
+      "lineage": [
+        {
+          "candidate_id": "G04",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 235
+        }
+      ],
+      "originating_models": [
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "G04"
+    },
+    {
+      "candidate_id": "C33",
+      "working_title": "Check the Seller, Not Just the Land",
+      "domain": "property",
+      "core_evergreen_question": "How do you verify that the person offering land is actually entitled to offer it, and who else might hold a claim?",
+      "target_audience": "Buyers, lessees, developers, and anyone negotiating with a confident intermediary rather than a documented owner",
+      "recurring_human_tension": "Charm, confidence, and community standing substituting for entitlement — and the awkwardness of asking a friendly person to prove who they are.",
+      "why_intriguing": "The most expensive property failures are rarely about the land itself; they are about heirs, co-owners, and authority that was never checked.",
+      "why_still_relevant_in_three_years": "Family, inheritance, and communal claims over land are a durable social reality that no registry reform fully erases.",
+      "narrative_promise": "The entitlement chain to trace before money moves, and the specific people who should be in the room when it does.",
+      "regulatory_volatility": 24,
+      "sourceability": 83,
+      "banality_risk": 25,
+      "source_model": "claude-opus-5",
+      "source_family": "anthropic",
+      "source_output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+      "pre_score": 234,
+      "duplicate_cluster": null,
+      "normalized_topic": "Check the Seller, Not Just the Land",
+      "lineage": [
+        {
+          "candidate_id": "A26",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 234
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "A26"
+    },
+    {
+      "candidate_id": "C34",
+      "working_title": "A Promise to Extend Is Not a Right to Extend",
+      "domain": "property",
+      "core_evergreen_question": "What is a future renewal worth when it depends on the consent of someone whose leverage grows as your term shortens?",
+      "target_audience": "Leaseholders, long-term tenants, business operators on rented land, and buyers of rights with years already used",
+      "recurring_human_tension": "Optimism at signing, when everyone is agreeable, versus the imbalance at renewal, when you have built something you cannot move.",
+      "why_intriguing": "It exposes an option most people treat as a certainty, and shows that the negotiating position was set years earlier.",
+      "why_still_relevant_in_three_years": "The difference between a contractual right and a discretionary consent is a permanent legal distinction, independent of term lengths.",
+      "narrative_promise": "How to convert a promise into something enforceable — or, failing that, how to price the uncertainty honestly and plan the exit.",
+      "regulatory_volatility": 28,
+      "sourceability": 76,
+      "banality_risk": 19,
+      "source_model": "claude-opus-5",
+      "source_family": "anthropic",
+      "source_output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+      "pre_score": 229,
+      "duplicate_cluster": null,
+      "normalized_topic": "A Promise to Extend Is Not a Right to Extend",
+      "lineage": [
+        {
+          "candidate_id": "A25",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 229
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "A25"
+    },
+    {
+      "candidate_id": "C35",
+      "working_title": "You Did Not Buy the Land, You Bought a Clock",
+      "domain": "property",
+      "core_evergreen_question": "What does a foreigner actually acquire when they 'buy' property in Indonesia — which right, held by whom, and for how long?",
+      "target_audience": "Villa buyers, retirees, lifestyle investors, and anyone told they can own property here in the ordinary sense of the word",
+      "recurring_human_tension": "The emotional weight of the word 'ownership' against the specific, time-limited instrument actually in hand.",
+      "why_intriguing": "It replaces the most consequential misunderstanding in the market with three concrete questions anyone can ask in a first meeting.",
+      "why_still_relevant_in_three_years": "Tiered land rights with different holders, durations, and transferability are a permanent structure of Indonesian land law.",
+      "narrative_promise": "Translate any offer, brochure, or verbal promise into the right, the holder, and the end date — before emotion sets the price.",
+      "regulatory_volatility": 38,
+      "sourceability": 87,
+      "banality_risk": 21,
+      "source_model": "claude-opus-5",
+      "source_family": "anthropic",
+      "source_output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+      "pre_score": 228,
+      "duplicate_cluster": "D13",
+      "normalized_topic": "What property right a foreigner actually acquires",
+      "lineage": [
+        {
+          "candidate_id": "A24",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 228
+        },
+        {
+          "candidate_id": "G06",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 175
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "representative_reason": "Highest deterministic pre_score in conceptual duplicate cluster; lexical candidate_id breaks ties.",
+      "original_candidate_id": "A24"
+    },
+    {
+      "banality_risk": 25,
+      "candidate_id": "C36",
+      "core_evergreen_question": "Do you actually have legally enforceable access to the property you just leased?",
+      "domain": "property",
+      "narrative_promise": "You will realize why the road leading to your villa is just as critical as the land it sits on.",
+      "recurring_human_tension": "Assuming physical access equates to a permanent legal right of way.",
+      "regulatory_volatility": 15,
+      "sourceability": 65,
+      "target_audience": "Property investors, off-plan buyers, and long-term leaseholders.",
+      "why_intriguing": "Neighbors can literally build a wall and block your entrance if access isn't legally secured on paper.",
+      "why_still_relevant_in_three_years": "Neighbor disputes and informal road agreements are a timeless feature of community real estate.",
+      "working_title": "The Landlocked Lease: Right of Way Nightmares",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 225,
+      "duplicate_cluster": null,
+      "normalized_topic": "The Landlocked Lease: Right of Way Nightmares",
+      "lineage": [
+        {
+          "candidate_id": "G03",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 225
+        }
+      ],
+      "originating_models": [
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "G03"
+    },
+    {
+      "candidate_id": "C37",
+      "working_title": "Who Will Buy It From You?",
+      "domain": "property",
+      "core_evergreen_question": "Before acquiring a right in Indonesian property, how do you assess whether and how you can convert it back into money?",
+      "target_audience": "Investors treating property as savings, buyers of shortening rights, and anyone planning to leave eventually",
+      "recurring_human_tension": "Entry is crowded, celebratory, and well-advised; exit is quiet, lonely, and improvised years later under time pressure.",
+      "why_intriguing": "It asks the last question first, and reveals that liquidity — not legality — is what determines whether the investment worked.",
+      "why_still_relevant_in_three_years": "Transferability, buyer pools, and the decay of time-limited rights are structural realities independent of market cycles.",
+      "narrative_promise": "An exit test to run before entry: who the future buyer is, what they will be buying, and what will be left of it by then.",
+      "regulatory_volatility": 22,
+      "sourceability": 64,
+      "banality_risk": 20,
+      "source_model": "claude-opus-5",
+      "source_family": "anthropic",
+      "source_output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+      "pre_score": 222,
+      "duplicate_cluster": null,
+      "normalized_topic": "Who Will Buy It From You?",
+      "lineage": [
+        {
+          "candidate_id": "A29",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 222
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "A29"
+    },
+    {
+      "banality_risk": 50,
+      "candidate_id": "C38",
+      "core_evergreen_question": "How do you legally hold a contractor accountable when the final milestone payment is due?",
+      "domain": "property",
+      "narrative_promise": "You will learn the retention payment strategy that ensures your contractor actually returns to fix their mistakes.",
+      "recurring_human_tension": "The utter exhaustion of the build process vs. the absolute necessity of strict defect enforcement.",
+      "regulatory_volatility": 5,
+      "sourceability": 70,
+      "target_audience": "Foreigners building villas, commercial spaces, or undertaking major renovations.",
+      "why_intriguing": "Contractors strategically rely on the owner's project fatigue to push through substandard finishes at handover.",
+      "why_still_relevant_in_three_years": "Construction disputes and the principal-agent problem in building are universal, eternal realities.",
+      "working_title": "The Handover Trap: Construction Quality Control",
+      "source_model": "gemini-3.1-pro",
+      "source_family": "google",
+      "source_output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+      "pre_score": 215,
+      "duplicate_cluster": null,
+      "normalized_topic": "The Handover Trap: Construction Quality Control",
+      "lineage": [
+        {
+          "candidate_id": "G30",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 215
+        }
+      ],
+      "originating_models": [
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [],
+      "representative_reason": "Only member of its normalized concept cluster.",
+      "original_candidate_id": "G30"
+    },
+    {
+      "candidate_id": "C39",
+      "working_title": "You Inherit the Building's Sins",
+      "domain": "property",
+      "core_evergreen_question": "What does a buyer take on when acquiring a structure whose permits were never obtained, or never matched what was actually built?",
+      "target_audience": "Buyers of finished villas, existing businesses, and turnkey properties marketed as 'ready to operate'",
+      "recurring_human_tension": "A beautiful completed building feels like proof that everything was done correctly, when it is evidence of nothing at all.",
+      "why_intriguing": "It attacks a visual heuristic — it exists, therefore it was allowed — that is almost universally trusted and frequently wrong.",
+      "why_still_relevant_in_three_years": "The gap between what is built and what was permitted, and the way that gap transfers to buyers, is a durable structural risk.",
+      "narrative_promise": "How to test whether what stands was ever allowed to stand, and what a mismatch costs the person holding it at the wrong moment.",
+      "regulatory_volatility": 47,
+      "sourceability": 78,
+      "banality_risk": 18,
+      "source_model": "claude-opus-5",
+      "source_family": "anthropic",
+      "source_output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+      "pre_score": 213,
+      "duplicate_cluster": "D15",
+      "normalized_topic": "A building permit does not prove the building matches it",
+      "lineage": [
+        {
+          "candidate_id": "A28",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 213
+        },
+        {
+          "candidate_id": "G26",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 210
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "representative_reason": "Highest deterministic pre_score in conceptual duplicate cluster; lexical candidate_id breaks ties.",
+      "original_candidate_id": "A28"
+    },
+    {
+      "candidate_id": "C40",
+      "working_title": "Legal Land, Illegal Plan",
+      "domain": "property",
+      "core_evergreen_question": "Why can perfectly valid land still be unable to host the building or business you intend, and when should you discover that?",
+      "target_audience": "Buyers planning villas, restaurants, retreats, and rental operations on land they have already fallen in love with",
+      "recurring_human_tension": "Commitment to a location precedes verification of what it permits, and by the time the answer arrives, retreat feels like failure.",
+      "why_intriguing": "It separates two questions people fuse into one — can I hold this land, and can I do my thing on it — with very different answers.",
+      "why_still_relevant_in_three_years": "Spatial planning and use-based restrictions are permanent instruments of land governance, however the zones are drawn or renamed.",
+      "narrative_promise": "A sequence that puts use-verification before deposit, and the questions to ask about a plot's intended purpose rather than its view.",
+      "regulatory_volatility": 52,
+      "sourceability": 79,
+      "banality_risk": 23,
+      "source_model": "claude-opus-5",
+      "source_family": "anthropic",
+      "source_output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+      "pre_score": 204,
+      "duplicate_cluster": "D14",
+      "normalized_topic": "Valid land does not guarantee a lawful intended use",
+      "lineage": [
+        {
+          "candidate_id": "A27",
+          "model_family": "anthropic",
+          "model_identifier": "claude-opus-5",
+          "output_sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+          "pre_score": 204
+        },
+        {
+          "candidate_id": "G02",
+          "model_family": "google",
+          "model_identifier": "gemini-3.1-pro",
+          "output_sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+          "pre_score": 190
+        }
+      ],
+      "originating_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "supporting_models": [
+        "claude-opus-5",
+        "gemini-3.1-pro"
+      ],
+      "representative_reason": "Highest deterministic pre_score in conceptual duplicate cluster; lexical candidate_id breaks ties.",
+      "original_candidate_id": "A27"
+    }
+  ]
+}

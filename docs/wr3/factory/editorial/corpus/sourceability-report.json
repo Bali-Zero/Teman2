@@ -1,0 +1,578 @@
+{
+  "schema_version": "official-primary-source-routing-v1",
+  "execution_date": "2026-08-29",
+  "purpose": "Route every editorial candidate to a bounded set of official primary sources before scoring. This artifact does not ground, validate, or approve any legal or regulatory claim.",
+  "candidate_count": 40,
+  "official_primary_sources": [
+    {
+      "source_id": "IMM-01",
+      "domain": "immigration",
+      "authority": "BPK RI",
+      "source_label": "UU 6/2011 status page",
+      "url": "https://peraturan.bpk.go.id/Details/39140/uu",
+      "accessed_on": "2026-08-29"
+    },
+    {
+      "source_id": "IMM-02",
+      "domain": "immigration",
+      "authority": "BPK RI",
+      "source_label": "PP 48/2021 status page",
+      "url": "https://peraturan.bpk.go.id/Details/161984/pp",
+      "accessed_on": "2026-08-29"
+    },
+    {
+      "source_id": "IMM-03",
+      "domain": "immigration",
+      "authority": "BPK RI",
+      "source_label": "Permenkumham 22/2023 status page",
+      "url": "https://peraturan.bpk.go.id/Details/272044/permenkumham-no-22-tahun-",
+      "accessed_on": "2026-08-29"
+    },
+    {
+      "source_id": "IMM-04",
+      "domain": "immigration",
+      "authority": "Kantor Imigrasi Kelas I Non TPI Jakarta Pusat",
+      "source_label": "Visa Republik Indonesia service information",
+      "url": "https://jakartapusat.imigrasi.go.id/layanan/warga-negara-asing-wna/visa-republik-indonesia",
+      "accessed_on": "2026-08-29"
+    },
+    {
+      "source_id": "IMM-05",
+      "domain": "immigration",
+      "authority": "Kantor Imigrasi Kelas I Non TPI Jakarta Pusat",
+      "source_label": "Izin Tinggal Keimigrasian service information",
+      "url": "https://jakartapusat.imigrasi.go.id/index.php/layanan/warga-negara-asing-wna/izin-tinggal-keimigrasian",
+      "accessed_on": "2026-08-29"
+    },
+    {
+      "source_id": "IMM-06",
+      "domain": "immigration",
+      "authority": "Kantor Imigrasi Kelas I Non TPI Jakarta Pusat",
+      "source_label": "Alih Status ITAS-ITAP service information",
+      "url": "https://jakartapusat.imigrasi.go.id/index.php/layanan/warga-negara-asing-wna/izin-tinggal-keimigrasian/alih-status-itas-itap",
+      "accessed_on": "2026-08-29"
+    },
+    {
+      "source_id": "COM-01",
+      "domain": "company",
+      "authority": "OSS Indonesia",
+      "source_label": "OSS official portal",
+      "url": "https://oss.go.id/en",
+      "accessed_on": "2026-08-29"
+    },
+    {
+      "source_id": "COM-02",
+      "domain": "company",
+      "authority": "OSS Indonesia",
+      "source_label": "OSS official guides",
+      "url": "https://oss.go.id/id/panduan?lang=id",
+      "accessed_on": "2026-08-29"
+    },
+    {
+      "source_id": "COM-03",
+      "domain": "company",
+      "authority": "BPK RI",
+      "source_label": "UU 40/2007 status page",
+      "url": "https://peraturan.bpk.go.id/Details/39965",
+      "accessed_on": "2026-08-29"
+    },
+    {
+      "source_id": "COM-04",
+      "domain": "company",
+      "authority": "BPK RI",
+      "source_label": "PP 35/2021 status page",
+      "url": "https://peraturan.bpk.go.id/Details/161904/pp-no-35-tahun-2021",
+      "accessed_on": "2026-08-29"
+    },
+    {
+      "source_id": "TAX-01",
+      "domain": "tax",
+      "authority": "Direktorat Jenderal Pajak",
+      "source_label": "Tax-subject residency regulation page",
+      "url": "https://www.pajak.go.id/id/peraturan/penentuan-subjek-pajak-dalam-negeri-dan-subjek-pajak-luar-negeri-0",
+      "accessed_on": "2026-08-29"
+    },
+    {
+      "source_id": "TAX-02",
+      "domain": "tax",
+      "authority": "Direktorat Jenderal Pajak",
+      "source_label": "P3B application regulation page",
+      "url": "https://www.pajak.go.id/id/peraturan/tata-cara-penerapan-persetujuan-penghindaran-pajak-berganda-2",
+      "accessed_on": "2026-08-29"
+    },
+    {
+      "source_id": "TAX-03",
+      "domain": "tax",
+      "authority": "Direktorat Jenderal Pajak",
+      "source_label": "Tax treaty information page",
+      "url": "https://pajak.go.id/en/node/34280",
+      "accessed_on": "2026-08-29"
+    },
+    {
+      "source_id": "TAX-04",
+      "domain": "tax",
+      "authority": "Direktorat Jenderal Pajak",
+      "source_label": "Pengusaha and PKP information page",
+      "url": "https://pajak.go.id/id/pengusaha",
+      "accessed_on": "2026-08-29"
+    },
+    {
+      "source_id": "PROP-01",
+      "domain": "property",
+      "authority": "BPK RI",
+      "source_label": "PP 18/2021 status page",
+      "url": "https://peraturan.bpk.go.id/Details/161848/pp-no-",
+      "accessed_on": "2026-08-29"
+    },
+    {
+      "source_id": "PROP-02",
+      "domain": "property",
+      "authority": "Kementerian ATR/BPN",
+      "source_label": "UU 5/1960 official PDF",
+      "url": "https://jdih.atrbpn.go.id/peraturan/download/32/UU_05_1960.pdf",
+      "accessed_on": "2026-08-29"
+    },
+    {
+      "source_id": "PROP-03",
+      "domain": "property",
+      "authority": "BPK RI",
+      "source_label": "Permen ATR/BPN 18/2021 status page",
+      "url": "https://peraturan.bpk.go.id/Details/209828/permen-agrariakepala-bpn-",
+      "accessed_on": "2026-08-29"
+    },
+    {
+      "source_id": "PROP-04",
+      "domain": "property",
+      "authority": "Kementerian PUPR",
+      "source_label": "SIMBG official portal",
+      "url": "https://simbg.pu.go.id/",
+      "accessed_on": "2026-08-29"
+    },
+    {
+      "source_id": "PROP-05",
+      "domain": "property",
+      "authority": "OSS Indonesia",
+      "source_label": "KKPR official guide",
+      "url": "https://oss.go.id/id/panduan/6912a8491840c90a6543f398",
+      "accessed_on": "2026-08-29"
+    },
+    {
+      "source_id": "PROP-06",
+      "domain": "property",
+      "authority": "OSS Indonesia",
+      "source_label": "RDTR official service page",
+      "url": "https://oss.go.id/id/lokasi-usaha?path=rdtr",
+      "accessed_on": "2026-08-29"
+    }
+  ],
+  "candidates": [
+    {
+      "candidate_id": "C01",
+      "domain": "immigration",
+      "working_title": "Sponsor Leverage: The Hidden Power Dynamic",
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": ["IMM-01", "IMM-02", "IMM-03", "IMM-05"],
+      "coverage_note": "Official framework and stay-permit routing is available; sponsor-specific procedure and remedies require later specialist grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C02",
+      "domain": "immigration",
+      "working_title": "The Investor Visa Facade",
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": ["IMM-03", "IMM-04", "IMM-05", "COM-01"],
+      "coverage_note": "Official visa and company-system routing is available; the editorial premise extends beyond what this bounded source set can validate.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C03",
+      "domain": "immigration",
+      "working_title": "The Permanent Residency Mirage",
+      "sourceability": "high",
+      "regulatory_volatility": "medium",
+      "source_ids": ["IMM-01", "IMM-02", "IMM-05", "IMM-06"],
+      "coverage_note": "Official immigration framework, stay-permit, and status-conversion routing is available; eligibility detail requires later specialist grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C04",
+      "domain": "immigration",
+      "working_title": "Agent Accountability: When Outsourcing Goes Wrong",
+      "sourceability": "medium",
+      "regulatory_volatility": "medium",
+      "source_ids": ["IMM-01", "IMM-02", "IMM-03"],
+      "coverage_note": "Official immigration framework routing is available; allocation of responsibility and remedies is not established by this routing pass.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C05",
+      "domain": "immigration",
+      "working_title": "The Overstay Slippery Slope",
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": ["IMM-01", "IMM-02", "IMM-05"],
+      "coverage_note": "Official immigration framework and stay-permit routing is available; any consequence or procedure must be grounded separately.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C06",
+      "domain": "immigration",
+      "working_title": "When the Relationship Changes, So Does the Permit",
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": ["IMM-01", "IMM-02", "IMM-03", "IMM-05"],
+      "coverage_note": "Official immigration framework and stay-permit routing is available; relationship-specific status changes require later specialist grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C07",
+      "domain": "immigration",
+      "working_title": "What Your Residency Permit Does Not Come With",
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": ["IMM-01", "IMM-02", "IMM-03", "IMM-04", "IMM-05"],
+      "coverage_note": "Official visa and stay-permit routing is available; the boundary between statuses and activities requires later specialist grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C08",
+      "domain": "immigration",
+      "working_title": "Dependent Traps: The Trailing Spouse",
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": ["IMM-01", "IMM-02", "IMM-03", "IMM-04", "IMM-05"],
+      "coverage_note": "Official visa and stay-permit routing is available; dependent-category permissions require later specialist grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C09",
+      "domain": "immigration",
+      "working_title": "Permission to Be Here Is Not Permission to Do That",
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": ["IMM-01", "IMM-02", "IMM-03", "IMM-04", "IMM-05"],
+      "coverage_note": "Official visa and stay-permit routing is available; permission boundaries require later specialist grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C10",
+      "domain": "immigration",
+      "working_title": "The Definition of Work: Meetings vs. Labor",
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": ["IMM-01", "IMM-02", "IMM-03", "IMM-04", "COM-04"],
+      "coverage_note": "Official immigration and employment-framework routing is available; activity-specific boundaries are not validated in this pass.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C11",
+      "domain": "company",
+      "working_title": "Director Liability: The Buck Stops Here",
+      "sourceability": "high",
+      "regulatory_volatility": "medium",
+      "source_ids": ["COM-03"],
+      "coverage_note": "Official company-law routing is available; liability triggers and fact-specific outcomes require later specialist grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C12",
+      "domain": "company",
+      "working_title": "The Notary's True Role",
+      "sourceability": "medium",
+      "regulatory_volatility": "low",
+      "source_ids": ["COM-02", "COM-03"],
+      "coverage_note": "Official company-formation routing is available; professional duties and client-interest questions exceed this bounded source set.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C13",
+      "domain": "company",
+      "working_title": "The Local Partner Paradox",
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": ["COM-01", "COM-02", "COM-03"],
+      "coverage_note": "Official licensing and company-law routing is available; sector-specific participation and control questions require later specialist grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C14",
+      "domain": "company",
+      "working_title": "Paid-up Capital: The Paper Trail Problem",
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": ["COM-01", "COM-02", "COM-03"],
+      "coverage_note": "Official company-law and licensing-system routing is available; all applicable requirements and evidence details require later specialist grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C15",
+      "domain": "company",
+      "working_title": "Who Can Actually Stop You?",
+      "sourceability": "high",
+      "regulatory_volatility": "medium",
+      "source_ids": ["COM-03"],
+      "coverage_note": "Official company-law routing is available; deed-specific power allocation and governance outcomes require later specialist grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C16",
+      "domain": "company",
+      "working_title": "Employee or Contractor: The Control Test",
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": ["COM-04"],
+      "coverage_note": "Official employment-framework routing is available; classification tests and case-specific consequences are not validated in this pass.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C17",
+      "domain": "company",
+      "working_title": "The Agreement That Cannot Be Enforced",
+      "sourceability": "medium",
+      "regulatory_volatility": "medium",
+      "source_ids": ["COM-01", "COM-03"],
+      "coverage_note": "Official company-record and company-law routing is available; enforceability of private agreements requires separate legal grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C18",
+      "domain": "company",
+      "working_title": "You Are Also Buying Its Past",
+      "sourceability": "medium",
+      "regulatory_volatility": "medium",
+      "source_ids": ["COM-01", "COM-02", "COM-03"],
+      "coverage_note": "Official company-record, licensing, and company-law routing is available; transaction-specific inherited exposure requires later specialist grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C19",
+      "domain": "company",
+      "working_title": "Closing the Doors: The Dissolution Nightmare",
+      "sourceability": "high",
+      "regulatory_volatility": "medium",
+      "source_ids": ["COM-01", "COM-02", "COM-03"],
+      "coverage_note": "Official company-law and licensing-system routing is available; current sequence and administrative handling require later specialist grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C20",
+      "domain": "company",
+      "working_title": "Whoever Holds the Logins Holds the Company",
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": ["COM-01", "COM-02"],
+      "coverage_note": "Official licensing-system routing is available; access control, delegation, and recovery workflows require current operational verification.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C21",
+      "domain": "tax",
+      "working_title": "The Lifestyle Expense Trap",
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": ["TAX-04"],
+      "coverage_note": "Official taxpayer and PKP routing is available, but this bounded source set does not establish deductibility or audit treatment.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C22",
+      "domain": "tax",
+      "working_title": "Tax Residency: The Physical Presence Reality",
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": ["TAX-01", "TAX-02", "TAX-03"],
+      "coverage_note": "Official tax-residency and treaty routing is available; any personal outcome requires later specialist grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C23",
+      "domain": "tax",
+      "working_title": "The Zero-Reporting Mirage",
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": ["TAX-04"],
+      "coverage_note": "Official taxpayer and PKP routing is available, but filing behavior and audit treatment are not established by this bounded source set.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C24",
+      "domain": "tax",
+      "working_title": "'I Already Paid Tax at Home'",
+      "sourceability": "high",
+      "regulatory_volatility": "medium",
+      "source_ids": ["TAX-01", "TAX-02", "TAX-03"],
+      "coverage_note": "Official residency, treaty-application, and treaty-information routing is available; relief and evidence requirements require later specialist grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C25",
+      "domain": "tax",
+      "working_title": "Someone Files in Your Name",
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": ["TAX-04"],
+      "coverage_note": "Official taxpayer-system routing is available; current filing, payment, and verification workflows require operational verification.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C26",
+      "domain": "tax",
+      "working_title": "Withholding Tax: The Unpaid Collector",
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": ["TAX-04"],
+      "coverage_note": "Official taxpayer and PKP routing is available, but the bounded source set does not establish withholding scope or treatment.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C27",
+      "domain": "tax",
+      "working_title": "How Do You Stop Being a Taxpayer Here?",
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": ["TAX-01"],
+      "coverage_note": "Official tax-subject routing is available; exit procedures and evidence requirements require later specialist grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C28",
+      "domain": "tax",
+      "working_title": "Compliance Debt: The Bookkeeping Avalanche",
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": ["TAX-04"],
+      "coverage_note": "Official taxpayer and PKP routing is available, but bookkeeping obligations and audit treatment are not established by this bounded source set.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C29",
+      "domain": "tax",
+      "working_title": "VAT Registration: The Success Penalty",
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": ["TAX-04"],
+      "coverage_note": "Official entrepreneur and PKP routing is available; current applicability, registration, and administrative detail require later specialist grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C30",
+      "domain": "tax",
+      "working_title": "Profitable and Broke",
+      "sourceability": "medium",
+      "regulatory_volatility": "medium",
+      "source_ids": ["TAX-04"],
+      "coverage_note": "Official taxpayer and PKP routing is available, but business cash-flow effects are not established by this bounded source set.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C31",
+      "domain": "property",
+      "working_title": "The Nominee Trap: Trust vs. Legal Reality",
+      "sourceability": "medium",
+      "regulatory_volatility": "medium",
+      "source_ids": ["PROP-01", "PROP-02", "PROP-03"],
+      "coverage_note": "Official land-rights routing is available; nominee arrangements and enforceability require separate legal grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C32",
+      "domain": "property",
+      "working_title": "Subleasing Secrets: The Hospitality Assumption",
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": ["PROP-01", "PROP-04", "PROP-05", "PROP-06"],
+      "coverage_note": "Official land, building, and spatial-use routing is available; lease terms and activity-specific permissions require later specialist grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C33",
+      "domain": "property",
+      "working_title": "Check the Seller, Not Just the Land",
+      "sourceability": "high",
+      "regulatory_volatility": "medium",
+      "source_ids": ["PROP-01", "PROP-02", "PROP-03"],
+      "coverage_note": "Official land-rights and registration routing is available; parcel-specific entitlement and competing claims require independent verification.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C34",
+      "domain": "property",
+      "working_title": "A Promise to Extend Is Not a Right to Extend",
+      "sourceability": "medium",
+      "regulatory_volatility": "low",
+      "source_ids": ["PROP-01", "PROP-02", "PROP-03"],
+      "coverage_note": "Official land-rights routing is available; enforceability of a particular renewal promise requires separate legal grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C35",
+      "domain": "property",
+      "working_title": "You Did Not Buy the Land, You Bought a Clock",
+      "sourceability": "high",
+      "regulatory_volatility": "medium",
+      "source_ids": ["PROP-01", "PROP-02", "PROP-03"],
+      "coverage_note": "Official land-rights routing is available; right type, holder, duration, and parcel facts require later specialist grounding.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C36",
+      "domain": "property",
+      "working_title": "The Landlocked Lease: Right of Way Nightmares",
+      "sourceability": "medium",
+      "regulatory_volatility": "medium",
+      "source_ids": ["PROP-01", "PROP-02", "PROP-03"],
+      "coverage_note": "Official land-rights and registration routing is available; access rights and parcel-specific evidence require independent verification.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C37",
+      "domain": "property",
+      "working_title": "Who Will Buy It From You?",
+      "sourceability": "medium",
+      "regulatory_volatility": "medium",
+      "source_ids": ["PROP-01", "PROP-02", "PROP-03"],
+      "coverage_note": "Official land-rights routing is available; liquidity, marketability, and transaction-specific constraints exceed this bounded source set.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C38",
+      "domain": "property",
+      "working_title": "The Handover Trap: Construction Quality Control",
+      "sourceability": "medium",
+      "regulatory_volatility": "high",
+      "source_ids": ["PROP-04"],
+      "coverage_note": "Official building-system routing is available, but contractor accountability and contractual remedies are not established by this bounded source set.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C39",
+      "domain": "property",
+      "working_title": "You Inherit the Building's Sins",
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": ["PROP-04", "PROP-05", "PROP-06"],
+      "coverage_note": "Official building and spatial-use routing is available; structure-specific permit status and consequences require independent verification.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    },
+    {
+      "candidate_id": "C40",
+      "domain": "property",
+      "working_title": "Legal Land, Illegal Plan",
+      "sourceability": "high",
+      "regulatory_volatility": "high",
+      "source_ids": ["PROP-04", "PROP-05", "PROP-06"],
+      "coverage_note": "Official building, KKPR, and RDTR routing is available; site-specific permitted use requires current independent verification.",
+      "implementation_detail_warning": "TO VERIFY against source"
+    }
+  ],
+  "limitations": [
+    "This is a source-routing artifact, not claim grounding, legal validation, or regulatory advice.",
+    "A source ID means the official page is relevant to later research; it does not mean the candidate premise is correct.",
+    "No fee, rate, amount, threshold, duration, deadline, penalty, procedure, or current implementation detail is established here.",
+    "High sourceability describes the availability of relevant official material, not confidence in an editorial claim.",
+    "Medium sourceability identifies topics that extend beyond this bounded official-source set and require additional specialist grounding after human slate approval.",
+    "All implementation-sensitive details remain marked TO VERIFY against source."
+  ]
+}

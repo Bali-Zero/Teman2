@@ -1,0 +1,97 @@
+{
+  "artifact_type": "wr3_editorial_wave_lineage",
+  "artifact_version": "1.0",
+  "wave": 1,
+  "evidence_date": "2026-08-29",
+  "platform_health_manifest": "docs/wr3/factory/audits/platform-health.json",
+  "output_contract": {
+    "schema_path": "docs/wr3/factory/editorial/schemas/wave1.schema.json",
+    "schema_sha256": "06b5fdce2c63ded2cb11aa8945621e0b128071e67132c367f438a97818669061",
+    "required_candidate_count_per_seat": 30
+  },
+  "blind_independence": {
+    "preserved": true,
+    "other_seat_candidates_visible_during_generation": false,
+    "tools_or_web_available_to_seats": false,
+    "repository_or_client_data_available_to_seats": false,
+    "replacement_output_synthesized_for_failed_seat": false,
+    "statement": "Each seat received its own prewritten blind brief and had no access to another seat's candidates."
+  },
+  "json_schema_wrapper_retry_invariance": {
+    "wrapper_retries_occurred": true,
+    "prompt_briefs_modified": false,
+    "prompt_hashes_modified": false,
+    "statement": "JSON-schema wrapper retries changed execution mechanics only; they did not alter any Wave 1 prompt brief or its SHA-256 hash."
+  },
+  "seats": [
+    {
+      "seat": "claude",
+      "provider_family": "anthropic",
+      "topology_target": "claude-opus-5",
+      "executed_model": "claude-opus-5",
+      "prompt": {
+        "path": "docs/wr3/factory/editorial/prompts/wave1-claude.md",
+        "sha256": "d054051338b030017a9964b17ea2aad58ef33955296c14225af77d53acb216ee"
+      },
+      "execution_wrapper_sha256": "8b7c817147a5c7a64e8aabc8ad2eacba32572e1367586cd8ee11f762ffd94562",
+      "result": {
+        "status": "success",
+        "raw_path": "docs/wr3/factory/editorial/raw/wave1/claude-opus-5.json",
+        "sha256": "e27eb950dd74919e837780112dc819fe15af0515619ab23a70c6087df7da2bd7",
+        "candidate_count": 30,
+        "candidate_id_first": "A01",
+        "candidate_id_last": "A30",
+        "candidate_ids_unique": true
+      }
+    },
+    {
+      "seat": "google",
+      "provider_family": "google",
+      "topology_target": "gemini-deepthink",
+      "topology_target_status": "declarative-only",
+      "executed_model": "gemini-3.1-pro",
+      "substitution_scope": "same-family executable substitute",
+      "prompt": {
+        "path": "docs/wr3/factory/editorial/prompts/wave1-google.md",
+        "sha256": "b15c28dbbb2c0038faa481ad273c9397fbd31d127ced17ae4c029fff4a271c14"
+      },
+      "execution_wrapper_sha256": "6c426f53fd77960b9d0f220b352b5c9c943e920a8ee8d150b6c0faec639f0d27",
+      "result": {
+        "status": "success",
+        "raw_path": "docs/wr3/factory/editorial/raw/wave1/gemini-3.1-pro.json",
+        "sha256": "678dd49b173472f3e86ff134a79af36b4fa1b83be52d687577956652c080475a",
+        "wrapper_envelope_path": "docs/wr3/factory/editorial/raw/wave1/gemini-3.1-pro.wrapper.json",
+        "wrapper_envelope_sha256": "5a51a37f2a81c1a8f476919bb79590ce88b10992abebc251927b4cb86594116c",
+        "candidate_count": 30,
+        "candidate_id_first": "G01",
+        "candidate_id_last": "G30",
+        "candidate_ids_unique": true
+      }
+    },
+    {
+      "seat": "qwen",
+      "provider_family": "qwen",
+      "topology_target": "qwen3.8-max",
+      "executed_model": "qwen3.8-max",
+      "prompt": {
+        "path": "docs/wr3/factory/editorial/prompts/wave1-qwen.md",
+        "sha256": "1c4d6d69188b73e7fe6b3525131af91d7312360c7f5dfc8358f85d1b331fa060"
+      },
+      "result": {
+        "status": "failed",
+        "failure_exact": "HTTP 429 weekly token quota",
+        "raw_output_present": false,
+        "raw_path": null,
+        "sha256": null,
+        "candidate_count": 0
+      }
+    }
+  ],
+  "wave_summary": {
+    "planned_family_count": 3,
+    "successful_family_count": 2,
+    "failed_family_count": 1,
+    "raw_candidate_count": 60,
+    "missing_voice": "qwen3.8-max"
+  }
+}

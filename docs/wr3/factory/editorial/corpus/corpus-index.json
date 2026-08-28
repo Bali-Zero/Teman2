@@ -1,0 +1,54 @@
+{
+  "schema_version": "editorial-corpus-index-v1",
+  "execution_date": "2026-08-29",
+  "privacy_boundary": "Public repository editorial content and aggregate performance data only; no CRM, WhatsApp, OSINT mirror, client rows, or identifiable examples.",
+  "canonical_english_articles": {
+    "root": "apps/mouth/src/content/articles",
+    "selection_rule": "Include .mdx files whose basename does not end in a two-letter locale suffix.",
+    "count": 797,
+    "counts_by_directory": {
+      "bali_news": 2,
+      "business": 160,
+      "business_regulations": 79,
+      "digital-nomad": 5,
+      "emerging_trends": 25,
+      "immigration": 309,
+      "lifestyle": 53,
+      "news": 2,
+      "property": 30,
+      "social_media": 2,
+      "tax": 50,
+      "tax-legal": 60,
+      "tech": 20
+    },
+    "snapshot_sha256": "33322eb5c32924bb6f9ea15c2c026f5c0858a23f4948f1d3f162a7765f2809c7"
+  },
+  "tracked_wr2_carousels": {
+    "count": 2,
+    "paths_and_hashes": [
+      {
+        "path": "docs/wr2/manual-assets/2026-06-13-june-deadlines/slides.json",
+        "sha256": "2c8e8b8cc79d389091c5ef502b5aa1d513cdd46d78f1e17bd57a55792694449c"
+      },
+      {
+        "path": "docs/wr2/manual-assets/2026-06-13-pp20-tax/slides.json",
+        "sha256": "99f523460b23be82981f15affdc4bd79f0566ae2281f6c42df21f6a2b1cba751"
+      }
+    ],
+    "snapshot_sha256": "f8d649167bb46f89b0644138bc1fcc490f1c1cd11ca54e3a1a58d755dbb628ba"
+  },
+  "tracked_wr3_scripts_or_episode_manifests": {
+    "count": 0,
+    "note": "No tracked script.json or episode_manifest.json artifact was found outside excluded .git/.worktrees paths in the bounded audit."
+  },
+  "aggregate_search_context": {
+    "path": "research/marketing/gsc-keyword-mining-2026-07-14.md",
+    "sha256": "deebb2511c8cf95b08b75aca127681d7d5dffb57066c3e82131f6a21dbec73cf",
+    "data_window": "April-July 2026; export dated 2026-07-12",
+    "safe_use": "Aggregate information-intent context only; stale for current performance claims."
+  },
+  "recurring_public_questions": {
+    "source": "Article frontmatter primaryQuestion fields and public article titles; no client-question corpus used."
+  },
+  "notebooklm_boundary": "Authorized WR3 specialist grounding remains deferred until a complete slate is human-approved."
+}

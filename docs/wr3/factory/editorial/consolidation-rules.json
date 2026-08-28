@@ -1,0 +1,96 @@
+{
+  "algorithm_version": "wave1-consolidation-v1",
+  "inputs": [
+    "raw/wave1/claude-opus-5.json",
+    "raw/wave1/gemini-3.1-pro.json"
+  ],
+  "normalization": {
+    "text": "Unicode NFKC, trim, collapse whitespace",
+    "domain": "lowercase canonical enum",
+    "pre_score": "sourceability + (100 - regulatory_volatility) + (100 - banality_risk)",
+    "representative": "highest pre_score, then lexical candidate_id",
+    "shortlist": "top 10 representatives per domain by pre_score, then lexical candidate_id"
+  },
+  "conceptual_duplicate_clusters": [
+    {
+      "cluster_id": "D01",
+      "member_ids": ["A02", "G08"],
+      "normalized_topic": "Sponsor dependence and loss of immigration status"
+    },
+    {
+      "cluster_id": "D02",
+      "member_ids": ["A03", "G09"],
+      "normalized_topic": "Personal accountability when an immigration agent controls the file"
+    },
+    {
+      "cluster_id": "D03",
+      "member_ids": ["A05", "G11"],
+      "normalized_topic": "How small immigration lapses compound"
+    },
+    {
+      "cluster_id": "D04",
+      "member_ids": ["A07", "G07"],
+      "normalized_topic": "The legal boundary between presence and work"
+    },
+    {
+      "cluster_id": "D05",
+      "member_ids": ["A10", "G14"],
+      "normalized_topic": "Company titles, duties, and actual control"
+    },
+    {
+      "cluster_id": "D06",
+      "member_ids": ["A11", "G15"],
+      "normalized_topic": "Business activity drift beyond registered licences"
+    },
+    {
+      "cluster_id": "D07",
+      "member_ids": ["A12", "G23"],
+      "normalized_topic": "Dormant companies and accumulating compliance debt"
+    },
+    {
+      "cluster_id": "D08",
+      "member_ids": ["A13", "G13"],
+      "normalized_topic": "When limited liability stops protecting a director"
+    },
+    {
+      "cluster_id": "D09",
+      "member_ids": ["A16", "G18"],
+      "normalized_topic": "When an informal worker becomes an employee"
+    },
+    {
+      "cluster_id": "D10",
+      "member_ids": ["A17", "G20"],
+      "normalized_topic": "Tax residence follows facts, not nationality or visa labels"
+    },
+    {
+      "cluster_id": "D11",
+      "member_ids": ["A18", "G28"],
+      "normalized_topic": "Why tax treaties do not apply themselves"
+    },
+    {
+      "cluster_id": "D12",
+      "member_ids": ["A20", "G21"],
+      "normalized_topic": "The boundary between company and personal money"
+    },
+    {
+      "cluster_id": "D13",
+      "member_ids": ["A24", "G06"],
+      "normalized_topic": "What property right a foreigner actually acquires"
+    },
+    {
+      "cluster_id": "D14",
+      "member_ids": ["A27", "G02"],
+      "normalized_topic": "Valid land does not guarantee a lawful intended use"
+    },
+    {
+      "cluster_id": "D15",
+      "member_ids": ["A28", "G26"],
+      "normalized_topic": "A building permit does not prove the building matches it"
+    },
+    {
+      "cluster_id": "D16",
+      "member_ids": ["A30", "G19"],
+      "normalized_topic": "What a notary does and does not protect"
+    }
+  ]
+}

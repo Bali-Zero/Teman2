@@ -1,0 +1,64 @@
+{
+  "artifact_type": "wr3_factory_platform_health",
+  "artifact_version": "1.0",
+  "evidence_date": "2026-08-29",
+  "authoritative_inputs": {
+    "fleet_topology": {
+      "path": "FLEET_TOPOLOGY.json",
+      "version": "1.4",
+      "sha256": "ec52f59d2d5268279c8b66ad6c901a68bcc1190e8105a799d99440ea17f102b0"
+    },
+    "model_roster": {
+      "path": "MODEL_ROSTER.md",
+      "sha256": "1d08dbf1c44c21f963669b3c898a1dc04c36ba88a93f39851b72196153c48df0"
+    },
+    "health_prompt": {
+      "path": "docs/wr3/factory/editorial/prompts/health-check.txt",
+      "sha256": "cf26e4e57e73a01ab4bf20fbbd46df1526ed4d1a83bb58db65fd1fd48c4c7fa7"
+    }
+  },
+  "platforms": {
+    "claude": {
+      "topology_target": "claude-opus-5",
+      "executed_model": "claude-opus-5",
+      "health_status": "ok",
+      "health_response_exact": "{\"status\":\"ok\"}",
+      "execution_wrapper_sha256": "8b7c817147a5c7a64e8aabc8ad2eacba32572e1367586cd8ee11f762ffd94562",
+      "authorization_route": "OAuth subscription",
+      "paid_api_key_used": false
+    },
+    "google": {
+      "topology_target": "gemini-deepthink",
+      "topology_target_status": "declarative-only",
+      "executed_model": "gemini-3.1-pro",
+      "substitution_scope": "same-family executable substitute",
+      "health_status": "ok",
+      "health_response_exact": "{\"status\":\"ok\"}",
+      "execution_wrapper_sha256": "6c426f53fd77960b9d0f220b352b5c9c943e920a8ee8d150b6c0faec639f0d27"
+    },
+    "qwen": {
+      "topology_target": "qwen3.8-max",
+      "executed_model": "qwen3.8-max",
+      "health_status": "failed",
+      "failure_exact": "HTTP 429 weekly token quota",
+      "output_produced": false,
+      "output_sha256": null
+    },
+    "codex": {
+      "topology_target": "gpt-5.6-sol",
+      "executed_model": "gpt-5.6-sol",
+      "health_status": "ok",
+      "health_response_exact": "{\"status\":\"ok\"}",
+      "stdout_sha256": "a29ee2b15c494311c52521766e44af56a3ad2248e7a8ab465e5206463c13d288",
+      "stdout_note": "The successful health-check stdout also contained nonblocking cache and hook warnings.",
+      "warnings_blocking": false
+    }
+  },
+  "artifact_creation_constraints": {
+    "models_invoked": false,
+    "flow_or_render_credits_used": false,
+    "uploads_or_publication_performed": false,
+    "tests_invoked": false,
+    "pii_included": false
+  }
+}
