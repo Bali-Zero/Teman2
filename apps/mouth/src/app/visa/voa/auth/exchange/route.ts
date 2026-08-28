@@ -1,32 +1,45 @@
 import { NextRequest } from "next/server";
 import { isGarudaVoaPublicEnabled } from "../../flag";
 import { logger } from "@/lib/logger";
+import {
+  ACCOUNT_COOKIE_PREFIX,
+  FAILURE_LOCATION,
+  PENDING_COOKIE,
+  PENDING_COOKIE_PATH,
+  RESULT_ID_PATTERN,
+  TOKEN_MAX_LENGTH,
+  TOKEN_MIN_LENGTH,
+  isLoopback,
+} from "../contract";
 
 /**
  * `POST /visa/voa/auth/exchange` — the only place in this app that redeems a
  * GARUDA VOA magic-link token.
  *
- * It is reached by the plain HTML form on `../page.tsx`, never by a GET, so a
- * mail scanner's unsolicited prefetch cannot burn the single-use token (see
- * that page's header for why that matters).
+ * The token arrives in the HttpOnly `garuda_magic_pending` cookie that
+ * `../route.ts` set, NOT in the form body: nothing in the page the customer
+ * saw ever held it (see that file for why — the root layout's Google
+ * Analytics reads `window.location.href` on every page).
  *
- * THE FLAG IS RE-CHECKED HERE ON PURPOSE. `../layout.tsx` gates every PAGE
+ * Reached only by the form's POST, never a GET, so a mail scanner's
+ * unsolicited prefetch of the emailed link cannot burn the single-use token.
+ *
+ * THE FLAG IS RE-CHECKED HERE ON PURPOSE. `../../layout.tsx` gates every PAGE
  * under `/visa/voa/**` with `notFound()`, but Next does not run layouts for
  * route handlers — without this check, this handler would be the one VOA
  * surface alive in production while the whole funnel is meant to be dark.
  *
  * IT CALLS THE BACKEND THROUGH THIS APP'S OWN `/api` PROXY, not the Fly host
  * directly. Two reasons, both measured: (1) the proxy at
- * `src/app/api/[...path]/route.ts` already forwards the upstream
+ * `src/app/api/[...path]/route.ts:421,449,510` forwards the upstream
  * `Set-Cookie` verbatim for every path except `/api/auth/login` — verified
  * live on 2026-08-28, `garuda_result_session` arrives at the browser through
  * `balizero.com` — so the account cookie needs no re-derivation here and
  * cannot drift from the attributes the backend intends
  * (`_set_account_session_cookie` reads `get_cookie_domain()` and
- * `get_samesite_policy()` at runtime; anything reconstructed client-side
- * would be a copy that silently goes stale). (2) It avoids duplicating the
- * proxy's backend-base resolution, whose `normalizeBackendBaseUrl` strips a
- * trailing `/api` — so the browser-facing default `NEXT_PUBLIC_API_URL=/api`
+ * `get_samesite_policy()` at runtime). (2) It avoids duplicating the proxy's
+ * backend-base resolution, whose `normalizeBackendBaseUrl` strips a trailing
+ * `/api` — so the browser-facing default `NEXT_PUBLIC_API_URL=/api`
  * normalises to the empty string, which is fine for the proxy (it always has
  * `NUZANTARA_API_URL` in prod) and would be an unfetchable relative URL here.
  */
@@ -34,25 +47,25 @@ import { logger } from "@/lib/logger";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const RESULT_ID_PATTERN = /^[A-Za-z0-9_-]{22,128}$/;
-const TOKEN_MIN_LENGTH = 32;
-const TOKEN_MAX_LENGTH = 2048;
+/** Clears the pending cookie. Same Path, or the browser keeps the old one. */
+function expirePending(secure: boolean): string {
+  return [
+    `${PENDING_COOKIE}=`,
+    "HttpOnly",
+    `Path=${PENDING_COOKIE_PATH}`,
+    "Max-Age=0",
+    "SameSite=Lax",
+    ...(secure ? ["Secure"] : []),
+  ].join("; ");
+}
 
-/** Landing page for every failure. Deliberately uniform: the backend answers
- * one non-enumerating 401 for invalid / expired / already-used tokens
- * (DECISIONS.md Q1), and this handler must not re-introduce the distinction
- * the backend went out of its way to erase. The token is NOT echoed back into
- * the redirect — that is the whole point of getting it out of the URL. */
-const FAILURE_LOCATION = "/visa/voa/auth?error=invalid";
-
-function seeOther(location: string, setCookies: string[] = []): Response {
+function seeOther(location: string, cookies: string[]): Response {
   const headers = new Headers({
     Location: location,
     "Cache-Control": "no-store",
+    "Referrer-Policy": "no-referrer",
   });
-  for (const cookie of setCookies) {
-    headers.append("set-cookie", cookie);
-  }
+  for (const c of cookies) headers.append("set-cookie", c);
   return new Response(null, { status: 303, headers });
 }
 
@@ -61,14 +74,21 @@ export async function POST(request: NextRequest): Promise<Response> {
     return new Response(null, { status: 404 });
   }
 
+  const secure = !isLoopback(new URL(request.url).hostname);
+  // The token is spent (or was never valid) by the time we answer, so the
+  // pending cookie is cleared on EVERY path out of here — success, refusal,
+  // and malformed alike. Leaving it behind would keep a live credential in
+  // the browser after the one gesture it existed for.
+  const clear = expirePending(secure);
+
+  const magicToken = request.cookies.get(PENDING_COOKIE)?.value;
+
   let form: FormData;
   try {
     form = await request.formData();
   } catch {
-    return seeOther(FAILURE_LOCATION);
+    return seeOther(FAILURE_LOCATION, [clear]);
   }
-
-  const magicToken = form.get("magic_token");
   const resultId = form.get("result_id");
 
   if (
@@ -78,15 +98,14 @@ export async function POST(request: NextRequest): Promise<Response> {
     typeof resultId !== "string" ||
     !RESULT_ID_PATTERN.test(resultId)
   ) {
-    return seeOther(FAILURE_LOCATION);
+    return seeOther(FAILURE_LOCATION, [clear]);
   }
 
   // `Idempotency-Key` is mandatory on the exchange and must match
   // `^[A-Za-z0-9._~-]{16,200}$`. `randomUUID()` satisfies that charset. A
-  // FRESH key per submission is correct here: a same-key replay returns 204
-  // with no `Set-Cookie`, so reusing one would hand back a redirect with no
-  // session — the exact silent failure this route exists to prevent.
-  const idempotencyKey = crypto.randomUUID();
+  // FRESH key per submission is correct: a same-key replay returns 204 with
+  // no `Set-Cookie`, so reusing one would hand back a redirect with no
+  // session — the silent failure this route exists to prevent.
   const target = new URL("/api/visa/voa/auth/sessions", request.url);
 
   let upstream: Response;
@@ -95,7 +114,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Idempotency-Key": idempotencyKey,
+        "Idempotency-Key": crypto.randomUUID(),
       },
       body: JSON.stringify({ token: magicToken }),
       cache: "no-store",
@@ -106,7 +125,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       component: "AUTO",
       action: "error",
     });
-    return seeOther(FAILURE_LOCATION);
+    return seeOther(FAILURE_LOCATION, [clear]);
   }
 
   if (upstream.status !== 204) {
@@ -115,28 +134,29 @@ export async function POST(request: NextRequest): Promise<Response> {
       action: "denied",
       metadata: { status: upstream.status },
     });
-    return seeOther(FAILURE_LOCATION);
+    return seeOther(FAILURE_LOCATION, [clear]);
   }
 
   // `getSetCookie()` — NOT `get("set-cookie")`. A single-value read folds
   // multiple cookies into one comma-joined string and the browser then
   // stores none of them correctly.
-  const setCookies = upstream.headers.getSetCookie();
-  if (setCookies.length === 0) {
-    // A 204 with no cookie is the documented replay outcome. It is not a
-    // signed-in state, so it must not look like one.
+  const forwarded = upstream.headers.getSetCookie();
+
+  // Check the NAME, not merely that SOME cookie came back (adversarial
+  // review, 2026-08-28). A 204 with no session cookie is the documented
+  // replay outcome, and if the backend ever adds an unrelated cookie on that
+  // path a length check would pass it and land an unauthenticated visitor on
+  // the authenticated upload page.
+  if (!forwarded.some((c) => c.startsWith(ACCOUNT_COOKIE_PREFIX))) {
     logger.warn(
-      "[garuda-voa-auth] exchange returned 204 with no session cookie",
-      {
-        component: "AUTO",
-        action: "warn",
-      },
+      "[garuda-voa-auth] exchange returned 204 with no account session cookie",
+      { component: "AUTO", action: "warn" },
     );
-    return seeOther(FAILURE_LOCATION);
+    return seeOther(FAILURE_LOCATION, [clear]);
   }
 
-  return seeOther(
-    `/visa/voa/upload/${encodeURIComponent(resultId)}`,
-    setCookies,
-  );
+  return seeOther(`/visa/voa/upload/${encodeURIComponent(resultId)}`, [
+    ...forwarded,
+    clear,
+  ]);
 }
