@@ -1,4 +1,9 @@
-brief_ref: evidence/2026-08/agent-air-m5-backend-rag-finalize-subreason-4d17969c/brief.yml
+# brief_ref names the file as harness-floor.yml STAGES it, not as it lives in the repo.
+# Step 7b copies pack+brief into a synthetic /tmp/evidence-check/ tree under the CANONICAL
+# root names and lints there; a per-PR path here resolves to nothing on that disk and the
+# gate fails with 'does not resolve to a file on disk' — measured on this PR's own run
+# 33217529648 after the files were moved to the per-task directory.
+brief_ref: evidence/brief.yml
 pii_scan: clean
 pii_scan_note:
   "Every probe run for this pack was restricted to ids, counts, statuses, timestamps, routes
