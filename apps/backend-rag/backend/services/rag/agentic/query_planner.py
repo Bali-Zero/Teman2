@@ -440,8 +440,28 @@ class QueryPlanner:
             if kw in query_lower:
                 scores[QueryDomain.NEWS] += 1
 
-        # Pick highest scoring domain
+        # Pick highest scoring domain. GREETING must never outrank a
+        # substantive domain: its +3 weight exists to win a BARE greeting
+        # ("Halo!") against near-zero noise, not to erase a real question
+        # that happens to open with "Halo, ..." — a greeting prefix must
+        # not overwrite the correct classification of the substance that
+        # follows it (client-facing incident 2026-08-27, wa_outbox #348:
+        # "Halo, saya butuh bantuan untuk urus visa dan pajak bisnis saya"
+        # classified GREETING, got zero collections, and hard-failed after
+        # 5 identical-cause retries). If any non-greeting domain scored
+        # above zero, GREETING is excluded from the max — a bare greeting
+        # (no other domain scoring) is unaffected and still wins GREETING.
         best_domain = max(scores, key=lambda d: scores[d])
+        if best_domain == QueryDomain.GREETING:
+            non_greeting_scores = {
+                d: s for d, s in scores.items() if d != QueryDomain.GREETING
+            }
+            best_non_greeting = max(
+                non_greeting_scores, key=lambda d: non_greeting_scores[d]
+            )
+            if non_greeting_scores[best_non_greeting] > 0:
+                best_domain = best_non_greeting
+
         if scores[best_domain] > 0:
             return best_domain
 
