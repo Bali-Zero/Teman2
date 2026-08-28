@@ -144,13 +144,25 @@ _EXPECTED_REMOVED_RULE_IDS = (
     "el.e31d-sponsor-mixed-marriage",
 )
 
-#: Rules whose predicates this fold EDITS (docstring points 1-3). Any other
-#: rule drifting a byte fails the invariance sweep.
-_EXPECTED_EDITED_RULE_IDS = (
+#: Rules whose predicates this fold EDITS. The eight ``*-itas-*`` sponsor
+#: rules all carried the same fail-open ``op:known`` terminal (the round-2
+#: grader found the class survives on E31E/E31H/E31J after round 1 repaired
+#: only E31B) — the sweep below swaps the terminal wherever it appears and
+#: asserts the swapped set is EXACTLY these, so a pack drift cannot silently
+#: widen or narrow the edit. Any other rule drifting a byte fails the
+#: invariance sweep.
+_EXPECTED_SPONSOR_TERMINAL_RULE_IDS = (
     "el.e31b-spouse-itas-support",
     "el.e31b-sponsor-itas-itap",
-    "el.e31d-stepchild-support",
+    "el.e31e-child-itas-support",
+    "el.e31e-sponsor-itas-itap",
+    "el.e31h-parent-itas-child-support",
+    "el.e31h-sponsor-itas-itap",
+    "el.e31j-sibling-itas-support",
+    "el.e31j-sponsor-itas-itap",
+    "el.e31j-dependency-age",
 )
+_EXPECTED_EDITED_RULE_IDS = _EXPECTED_SPONSOR_TERMINAL_RULE_IDS + ("el.e31d-stepchild-support",)
 
 _SPONSOR_STATUS_FACT = "family.sponsor_status_code"
 
@@ -281,17 +293,19 @@ def _apply_edits(payload: dict[str, Any]) -> None:
             raise FoldPackError(f"rule {rule_id!r} not found — cannot edit")
 
     stay_permit_codes = _stay_permit_codes(payload)
-    for rule_id in ("el.e31b-spouse-itas-support", "el.e31b-sponsor-itas-itap"):
-        rule = rules_by_id[rule_id]
+    swapped_rule_ids = set()
+    for rule in payload["rules"]:
         swapped = _swap_sponsor_known_for_closed_set(
             rule["when"], stay_permit_codes=stay_permit_codes
         )
-        if swapped < 1:
-            raise FoldPackError(
-                f"{rule_id}: expected >=1 fail-open `op:known` terminal on "
-                f"{_SPONSOR_STATUS_FACT} to swap, found none — the pack shape "
-                "drifted from what this fold was authored against"
-            )
+        if swapped:
+            swapped_rule_ids.add(rule["rule_id"])
+    if swapped_rule_ids != set(_EXPECTED_SPONSOR_TERMINAL_RULE_IDS):
+        raise FoldPackError(
+            "fail-open `op:known` terminal sweep drifted from the declared set: "
+            f"swapped {sorted(swapped_rule_ids)} != "
+            f"{sorted(_EXPECTED_SPONSOR_TERMINAL_RULE_IDS)}"
+        )
 
     e31d = rules_by_id["el.e31d-stepchild-support"]
     e31d["when"] = copy.deepcopy(_E31D_REPAIRED_WHEN)

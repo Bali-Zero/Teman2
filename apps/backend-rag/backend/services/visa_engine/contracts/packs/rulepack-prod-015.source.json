@@ -4644,7 +4644,38 @@
           },
           {
             "fact": "family.sponsor_status_code",
-            "op": "known"
+            "op": "in",
+            "values": [
+              "E23",
+              "E23U",
+              "E23V",
+              "E28A",
+              "E28B",
+              "E28C",
+              "E28D",
+              "E28F",
+              "E30",
+              "E30A",
+              "E30B",
+              "E30E",
+              "E30F",
+              "E31A",
+              "E31B",
+              "E31C",
+              "E31D",
+              "E31E",
+              "E31F",
+              "E31G",
+              "E31H",
+              "E31J",
+              "E33",
+              "E33A",
+              "E33B",
+              "E33C",
+              "E33E",
+              "E33F",
+              "E33G"
+            ]
           },
           {
             "fact": "derived.age_years",
@@ -4721,7 +4752,38 @@
               },
               {
                 "fact": "family.sponsor_status_code",
-                "op": "known"
+                "op": "in",
+                "values": [
+                  "E23",
+                  "E23U",
+                  "E23V",
+                  "E28A",
+                  "E28B",
+                  "E28C",
+                  "E28D",
+                  "E28F",
+                  "E30",
+                  "E30A",
+                  "E30B",
+                  "E30E",
+                  "E30F",
+                  "E31A",
+                  "E31B",
+                  "E31C",
+                  "E31D",
+                  "E31E",
+                  "E31F",
+                  "E31G",
+                  "E31H",
+                  "E31J",
+                  "E33",
+                  "E33A",
+                  "E33B",
+                  "E33C",
+                  "E33E",
+                  "E33F",
+                  "E33G"
+                ]
               },
               {
                 "fact": "derived.age_years",
@@ -4957,7 +5019,38 @@
           },
           {
             "fact": "family.sponsor_status_code",
-            "op": "known"
+            "op": "in",
+            "values": [
+              "E23",
+              "E23U",
+              "E23V",
+              "E28A",
+              "E28B",
+              "E28C",
+              "E28D",
+              "E28F",
+              "E30",
+              "E30A",
+              "E30B",
+              "E30E",
+              "E30F",
+              "E31A",
+              "E31B",
+              "E31C",
+              "E31D",
+              "E31E",
+              "E31F",
+              "E31G",
+              "E31H",
+              "E31J",
+              "E33",
+              "E33A",
+              "E33B",
+              "E33C",
+              "E33E",
+              "E33F",
+              "E33G"
+            ]
           }
         ]
       },
@@ -5022,7 +5115,38 @@
               },
               {
                 "fact": "family.sponsor_status_code",
-                "op": "known"
+                "op": "in",
+                "values": [
+                  "E23",
+                  "E23U",
+                  "E23V",
+                  "E28A",
+                  "E28B",
+                  "E28C",
+                  "E28D",
+                  "E28F",
+                  "E30",
+                  "E30A",
+                  "E30B",
+                  "E30E",
+                  "E30F",
+                  "E31A",
+                  "E31B",
+                  "E31C",
+                  "E31D",
+                  "E31E",
+                  "E31F",
+                  "E31G",
+                  "E31H",
+                  "E31J",
+                  "E33",
+                  "E33A",
+                  "E33B",
+                  "E33C",
+                  "E33E",
+                  "E33F",
+                  "E33G"
+                ]
               }
             ]
           }
@@ -5071,7 +5195,38 @@
           },
           {
             "fact": "family.sponsor_status_code",
-            "op": "known"
+            "op": "in",
+            "values": [
+              "E23",
+              "E23U",
+              "E23V",
+              "E28A",
+              "E28B",
+              "E28C",
+              "E28D",
+              "E28F",
+              "E30",
+              "E30A",
+              "E30B",
+              "E30E",
+              "E30F",
+              "E31A",
+              "E31B",
+              "E31C",
+              "E31D",
+              "E31E",
+              "E31F",
+              "E31G",
+              "E31H",
+              "E31J",
+              "E33",
+              "E33A",
+              "E33B",
+              "E33C",
+              "E33E",
+              "E33F",
+              "E33G"
+            ]
           }
         ]
       },
@@ -5136,7 +5291,38 @@
               },
               {
                 "fact": "family.sponsor_status_code",
-                "op": "known"
+                "op": "in",
+                "values": [
+                  "E23",
+                  "E23U",
+                  "E23V",
+                  "E28A",
+                  "E28B",
+                  "E28C",
+                  "E28D",
+                  "E28F",
+                  "E30",
+                  "E30A",
+                  "E30B",
+                  "E30E",
+                  "E30F",
+                  "E31A",
+                  "E31B",
+                  "E31C",
+                  "E31D",
+                  "E31E",
+                  "E31F",
+                  "E31G",
+                  "E31H",
+                  "E31J",
+                  "E33",
+                  "E33A",
+                  "E33B",
+                  "E33C",
+                  "E33E",
+                  "E33F",
+                  "E33G"
+                ]
               }
             ]
           }
@@ -5208,7 +5394,38 @@
               },
               {
                 "fact": "family.sponsor_status_code",
-                "op": "known"
+                "op": "in",
+                "values": [
+                  "E23",
+                  "E23U",
+                  "E23V",
+                  "E28A",
+                  "E28B",
+                  "E28C",
+                  "E28D",
+                  "E28F",
+                  "E30",
+                  "E30A",
+                  "E30B",
+                  "E30E",
+                  "E30F",
+                  "E31A",
+                  "E31B",
+                  "E31C",
+                  "E31D",
+                  "E31E",
+                  "E31F",
+                  "E31G",
+                  "E31H",
+                  "E31J",
+                  "E33",
+                  "E33A",
+                  "E33B",
+                  "E33C",
+                  "E33E",
+                  "E33F",
+                  "E33G"
+                ]
               }
             ]
           }
