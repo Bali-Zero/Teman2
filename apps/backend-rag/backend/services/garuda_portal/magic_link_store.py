@@ -127,11 +127,21 @@ async def _default_send_magic_link_email(*, email: str, result_id: str, raw_toke
     never raise into the request path -- a send failure is logged, never
     surfaced to the enumeration-safe 202.
 
-    `GARUDA_MAGIC_LINK_BASE_URL` default is a placeholder pending frontend
-    confirmation (ARCHITECTURE.md does not yet name a canonical result-page
-    URL) -- this is a call made explicit here, not asserted as final.
+    `GARUDA_MAGIC_LINK_BASE_URL` now defaults to the page that actually
+    REDEEMS the token, `/visa/voa/auth` (`apps/mouth/src/app/visa/voa/auth/`).
+    The previous default, `/visa/voa`, was a placeholder chosen before any
+    frontend consumed the token, and it pointed at the funnel's FIRST page --
+    which reads neither query parameter. So every link this function has ever
+    sent delivered its recipient to a form asking the questions they had
+    already answered, with an unread credential trailing in the URL.
+
+    It is deliberately NOT the result page `/visa/voa/{hash}`: that surface
+    authenticates with `garuda_result_session`, a different cookie, and would
+    not accept the account session this token mints.
     """
-    base = os.getenv("GARUDA_MAGIC_LINK_BASE_URL", "https://balizero.com/visa/voa").rstrip("/")
+    base = os.getenv(
+        "GARUDA_MAGIC_LINK_BASE_URL", "https://balizero.com/visa/voa/auth"
+    ).rstrip("/")
     link_url = f"{base}?result_id={result_id}&magic_token={raw_token}"
     api_url = os.getenv(
         "INTERNAL_EMAIL_API_URL",
@@ -140,9 +150,9 @@ async def _default_send_magic_link_email(*, email: str, result_id: str, raw_toke
     api_key = os.getenv("NUZANTARA_API_KEY", "")
     html_body = (
         "Hello,<br><br>"
-        "Use the secure link below to view your GARUDA VOA eligibility result. "
+        "Use the secure link below to continue your GARUDA VOA application. "
         f"This link works once and expires in {MAGIC_LINK_TTL_MINUTES} minutes.<br><br>"
-        f'<a href="{link_url}">View my VOA result</a><br><br>'
+        f'<a href="{link_url}">Continue my application</a><br><br>'
         "If you didn't request this, you can safely ignore this email.<br><br>"
         "— Bali Zero"
     )
@@ -164,13 +174,20 @@ class PostgresMagicLinkStore:
 
     `verify_session` (below) is wired onto `app.state.garuda_magic_
     session_verifier` in `service_initializer.py` -- that is the seam
-    `garuda_orders_router._require_magic_session_actor` reads. `issue`/
-    `exchange` themselves are NOT yet wired via
-    `app.dependency_overrides[get_garuda_magic_link_store]` in
-    `garuda_portal_auth.py` -- until that lands, the mounted magic-link
-    router keeps answering fail-closed via `UnconfiguredMagicLinkStore`,
-    exactly as it does today; only the session-verification read path is
-    live.
+    `garuda_orders_router._require_magic_session_actor` reads.
+
+    CORRECTED 2026-08-28: this docstring used to say `issue`/`exchange` were
+    "NOT yet wired" and that the mounted router "keeps answering fail-closed
+    via `UnconfiguredMagicLinkStore`". Both statements are false and had
+    become the kind of note a later reader builds a wrong plan on.
+    `service_initializer.py:1331` sets `app.state.garuda_magic_link_store` to
+    THIS store, and `garuda_portal_auth.get_garuda_magic_link_store` reads
+    exactly that slot (falling back to unconfigured only when it is absent) --
+    so minting is live. Probed against production the same day: the exchange
+    answers `401 MAGIC_LINK_INVALID` to a fabricated token, which is the real
+    store rejecting it. The stale wording also described
+    `app.dependency_overrides` as the wiring mechanism; that was deliberately
+    abandoned on 2026-08-25 for the reason both sites now document at length.
     """
 
     def __init__(
