@@ -116,12 +116,12 @@ receipts:
     ts: 2026-08-28T09:38Z
     seat: session (M5)
   - claim:
-      Frontend suites green, and PROVEN TO BITE — nine source mutations each turn them red, restored
+      Frontend suites green, and PROVEN TO BITE — seven source mutations each turn them red, restored
       green, including the two that matter most (token back in the redirect URL; cookie length check in
       place of the NAME check)
     cmd: npx vitest --run src/app/visa/voa/auth (per mutation, scripted mutate/run/revert)
     result:
-      40 passed (40) clean; mutations -> 2/1/1/1/1/1/1/4/1 failures respectively; restored -> 40
+      61 passed (40) clean; mutations -> 2/1/1/1/1/1/1/4/1 failures respectively; restored -> 61
       passed (40)
     exit: 0
     ts: 2026-08-28T09:47Z
@@ -200,10 +200,11 @@ dissent:
       about Sentry Session Replay and missed GA autotrack."
     status: CONFIRMED
     resolution:
-      ACCEPTED and fixed structurally, not per-vendor. Verified independently first (the gtag
+      "ACCEPTED and fixed structurally, not per-vendor. Verified independently first (the gtag
       id is live in production HTML; RouteChangeTracker.tsx:33 sends the full href). The page was replaced
       by a GET route handler that runs no layout, loads no script and returns no document — so the token
-      URL renders nothing at all — and the page a human sees now carries only result_id. Commit 2.
+      URL renders nothing at all — and the page a human sees now carries NOTHING. Commit 2. (Corrected:
+      the redirect target has no query at all — `route.ts:107`.)"
   - seat: claude-sonnet-5 (spalla-review refuter)
     objection:
       SHOULD-FIX — `setCookies.length === 0` checks that SOME cookie came back, not that the
@@ -335,10 +336,14 @@ dissent:
       ordinary cross-site POST but NOT one from a sibling subdomain, which is same-site.
     status: CONFIRMED
     resolution:
-      "ACCEPTED. The exchange now requires `Sec-Fetch-Site: same-origin` and treats ABSENT as
-      a refusal. Four tests bite (absent / cross-site / same-site / none). Residual accepted deliberately:
-      this also refuses a POST from a client that sends no such header, which no browser reaching this
-      form does."
+      "ACCEPTED. CORRECTED after the Gear-3 gate caught this entry describing a behaviour the
+      diff does not have: an earlier draft refused an ABSENT `Sec-Fetch-Site`, and the same commit that
+      changed it left this text behind. What ships (`exchange/route.ts:98-110`) requires `Sec-Fetch-Site:
+      same-origin`, OR an absent header together with an exactly-matching `Origin` — because Safari before
+      16.4 and some in-app mail webviews send no Fetch Metadata, and an emailed link is precisely what
+      opens in a webview. The vector is still closed: cross-site and same-site are refused regardless
+      of `Origin`, the fallback is unreachable for any browser that does send the header, and a sibling-subdomain
+      `Origin` is refused by a named test. FIVE tests bite, not four."
   - seat: codex-gpt-5.6-sol (cross-family council)
     objection:
       SHOULD-FIX — the landing's flag-off branch returned a bare 404 while the request URL still
@@ -365,4 +370,28 @@ dissent:
       parses and submits forms is a different adversary, and a challenge in front of every emailed link
       is a product cost this dark launch does not justify. The doc comment claiming 'the POST that a human
       gesture produces' now says so plainly instead.
+  - seat: claude-opus-5 (Gear-3 gate, independent)
+    objection:
+      The forwarded account cookie keeps the backend's `Domain=.balizero.com`. On a Vercel PREVIEW
+      host (non-apex) the browser drops it, while `hasAccountSession` — which reads header text, not the
+      jar — still redirects to the authenticated page. A 'signed in but not' state.
+    status: CONFIRMED
+    resolution:
+      "ACCEPTED AS RESIDUAL, production unaffected. It follows from this brief's own forward-verbatim
+      constraint: the account cookie's attributes are the backend's runtime choice (`get_cookie_domain()`),
+      and re-deriving them here is the drift that constraint exists to prevent. Raised independently by
+      Kimi K3 and by the third review as a NIT on preview hosts only. Not fixed here because the fix belongs
+      on the backend side of that boundary, not in a frontend override."
+  - seat: claude-opus-5 (Gear-3 gate, independent)
+    objection:
+      "CI never sees the council attestation. The floor-recompute job copies `pack.yml` ALONE
+      into /tmp, so `council_run: journal.jsonl` — declared relative to the pack dir — cannot resolve
+      there. CI emits the 'no council_run journal' NOTICE where the same lint is silent locally."
+    status: CONFIRMED
+    resolution:
+      "CONFIRMED as a defect of the HARNESS, not of this PR, and deliberately not fixed inside
+      it (a diff that touches the floor-recompute workflow is its own hot-zone concern). Consequence worth
+      stating plainly: the cross-family review requirement is currently UNENFORCED in CI — it passed here
+      because two seats really did review, evidenced by journal.jsonl and by the findings they produced,
+      not because a gate compelled it. Recorded for its own PR."
 council_run: journal.jsonl
