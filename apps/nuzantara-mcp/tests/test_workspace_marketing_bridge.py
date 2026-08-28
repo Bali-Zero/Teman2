@@ -150,6 +150,12 @@ def test_public_sanitizer_removes_spaced_indonesian_identifiers() -> None:
     assert cleaned.count("[identifier removed]") == 3
 
 
+def test_flow_media_id_accepts_opaque_names_but_rejects_traversal() -> None:
+    assert marketing._validated_media_id("media/video-1") == "media/video-1"
+    with pytest.raises(ValueError, match="Invalid Flow media id"):
+        marketing._validated_media_id("media/../secret")
+
+
 @pytest.mark.asyncio
 async def test_masked_tool_errors_never_return_local_queue_path(
     tmp_path: Path,

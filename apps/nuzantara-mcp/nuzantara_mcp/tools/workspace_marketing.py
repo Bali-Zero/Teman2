@@ -57,7 +57,7 @@ FLOW_OPERATION_KINDS = {
 }
 JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 ITEM_ID_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,158}[A-Za-z0-9])?$")
-MEDIA_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,256}$")
+MEDIA_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]+(?:/[A-Za-z0-9_.:-]+)*$")
 REQUEST_KEY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{7,63}$")
 CONFIRMATION_WORDS = frozenset({"CONFIRM", "CONFERMO", "SETUJU"})
 NEWSROOM_CONTRACT = "newsroom-publication-v2"
@@ -324,7 +324,13 @@ def _validated_media_id(media_id: str, *, required: bool = True) -> str:
     candidate = str(media_id or "").strip()
     if not candidate and not required:
         return ""
-    if candidate.startswith("-") or not MEDIA_ID_RE.fullmatch(candidate):
+    segments = candidate.split("/")
+    if (
+        len(candidate) > 256
+        or candidate.startswith("-")
+        or not MEDIA_ID_RE.fullmatch(candidate)
+        or any(segment in {".", ".."} for segment in segments)
+    ):
         raise ValueError("Invalid Flow media id")
     return candidate
 
@@ -2194,7 +2200,7 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         annotations={
             "readOnlyHint": False,
             "destructiveHint": True,
-            "idempotentHint": False,
+            "idempotentHint": True,
             "openWorldHint": True,
         }
     )
@@ -2418,7 +2424,7 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         annotations={
             "readOnlyHint": False,
             "destructiveHint": True,
-            "idempotentHint": False,
+            "idempotentHint": True,
             "openWorldHint": True,
         }
     )
