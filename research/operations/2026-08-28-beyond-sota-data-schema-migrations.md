@@ -8,6 +8,8 @@ status: complete
 sections_done: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 sources: 13
 repo_files_verified: 31
+adversarial_review: kimi-k3
+model_selection: "manual — Zero's order of 2026-08-28 for this one panel; pinned by the orchestrating session, not routed by any script, cron or doctrine (Fable 5 has no automated role, ruling 2026-08-20)"
 ---
 
 # Beyond-SOTA 12/13 — Data, schema & migration engineering
@@ -170,3 +172,24 @@ This lane's territory is the densest scar field in the repo after CI itself. Sup
 11. vitabaks — `pgbackrest_auto` (GitHub) — https://github.com/vitabaks/pgbackrest_auto · accessed 2026-08-28 · working open-source automation of restore-and-validate incl. corruption checks.
 12. Ariga — *Atlas: schema-as-code, migration analyzers, drift detection* — https://atlasgo.io/versioned/drift-detection · accessed 2026-08-28 · official docs; the drift-detection blocking semantics referenced in R1.
 13. dbt Labs — *Model contracts* — https://docs.getdbt.com/docs/mesh/govern/model-contracts · accessed 2026-08-28 · official docs for producer-side enforced contracts + breaking-change detection.
+
+## Adversarial review
+
+Blind cross-family review (generator ≠ grader), 2026-08-29. The refuters received the full document and the panel's hard rules, nothing else; path existence had already been verified on disk by the orchestrator's gate, so they attack logic, numbers, rule-compliance and the SOTA claims. Dispositions by the orchestrator (claude-fable-5, Zero's manual selection): **survives** = recorded as a standing caveat, not fixed in this PR; **rejected** = the objection misreads the document or the rules (reason given); **accepted** = fixed in the text.
+Tally: 8 raised · 5 survive · 1 rejected · 2 accepted.
+
+**Reviewer: `kimi-k3`** — Moonshot Kimi K3 via Kimi CLI (read-only snapshot of the repo). 8 raised.
+
+| # | sev | objection (refuter's words) | disposition |
+|---|---|---|---|
+| 1 | HIGH | "`_schema_versions.applied_by` writes the literal string `system` for every row" — contradicts §4/R3's "unrecorded anywhere": the applies WERE recorded with degraded provenance, so R3's premise misstates the defect (missing provenance quality, not missing records). | accepted — the applies were recorded with `applied_by='system'`; R3's premise is degraded provenance, not missing records (wording erratum) |
+| 2 | HIGH | "model: claude-fable-5 (pinned lane)" — a "pinned lane" is doctrine-level routing of Fable 5, which the hard rule (manual selection only, Fable out of the workflow) forbids; the header itself evidences the violation. | rejected — the lane ran under Zero's explicit manual order for this one panel (2026-08-28: "lancia per ognuna un fable 5 max effort"), pinned by the orchestrating session, not by any script, cron or doctrine; the frontmatter now carries `model_selection:` stating this |
+| 3 | HIGH | "reconcile against live (the 2026-07-05 runbook's table is the worklist: 14 dead definitions, 8 undefined live)" — R6's "6/20 → 20/20" metric presupposes deleting/renaming client-serving collections that §7.2 itself defers as needs-ruling; the report schedules a business decision it says only Zero can make. | accepted — R6's reconciliation of client-serving collections is gated behind the §7.2 ruling; the 6/20→20/20 metric is conditional on it |
+| 4 | MED | "runs `apply-all` **as `backend_rag_v2`**" — R1's CI would permanently red on the migration class whose own sanctioned path is the temporary-GRANT ceremony (policy_scope widening), and no exception mechanism is specified; it trades one failure class for another. | survives — a CI apply-all as `backend_rag_v2` would go red on the temporary-GRANT migration class; R1 needs a declared exception path |
+| 5 | MED | "no surveyed SOTA system (Neon, Atlas, dbt) covers this either — it is an industry blind spot" — an absolute negative drawn from a 3-tool sample; catalog/ACL drift detection exists elsewhere, so the "beyond-SOTA" framing rests on an unsupported claim. | survives — a universal negative cannot be established from a 10–20 source survey; the INDEX now scopes every 'no equivalent' claim to the lane's surveyed set |
+| 6 | MED | "broken code passed 10/10 against a real Postgres" — unexplained denominator; §2 says "six integration-test files" built codec-less pools, and 10≠6 with no suite named, so the scar's headline metric is unverifiable as stated. | survives — the 10/10 denominator is not named; the scar's headline metric is unverifiable as stated |
+| 7 | MED | "5-level model" sourced to a single OneUptime blog post (and crypto-shredding to Wikipedia) — presented as the canonical grading framework for restore testing; blog taxonomy cited as SOTA, possibly unverifiable, over-weighted in §3/§4/§5. | survives — the 5-level restore model is a blog taxonomy, over-weighted as SOTA |
+| 8 | LOW | "changing it 'invalidates 93,283 vectors'" vs "14 live collections / 113,818 docs" — two unreconciled corpus sizes in adjacent sections; R6's ceremony sizing depends on which is stale. | survives — 93,283 vectors vs 113,818 docs are two corpus sizes measured at different times; R6's sizing must name which |
+
+Refuter's verdict: Let it stand only after fixing the applied_by contradiction, removing or re-justifying the Fable pinned lane, and gating R6's reconciliation behind the §7.2 ruling — the engineering analysis is strong but three of its load-bearing claims are internally inconsistent or rule-breaking as written.
+

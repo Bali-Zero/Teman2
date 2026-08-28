@@ -8,6 +8,8 @@ sources: 16
 repo_files_verified: 28
 status: complete
 sections_done: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+adversarial_review: codex
+model_selection: "manual — Zero's order of 2026-08-28 for this one panel; pinned by the orchestrating session, not routed by any script, cron or doctrine (Fable 5 has no automated role, ruling 2026-08-20)"
 ---
 
 # BEYOND-SOTA 7/13 — Deploy, release & prove-live
@@ -175,3 +177,24 @@ All URLs re-verified via web search in this session, accessed 2026-08-28.
 16. Flagger — https://docs.flagger.app/ — progressive-delivery operator (traffic-shifted canary with conformance gates); mechanism reference for the flag-ladder translation in §5.
 
 *Honesty note:* §3's table also names an engineering.fb.com 2017 post on Meta's release cadence; its URL was not re-verified in this session, so it is not numbered here — the OSDI '23 Conveyor paper (#3) is the primary for every Meta claim this report makes.
+
+## Adversarial review
+
+Blind cross-family review (generator ≠ grader), 2026-08-29. The refuters received the full document and the panel's hard rules, nothing else; path existence had already been verified on disk by the orchestrator's gate, so they attack logic, numbers, rule-compliance and the SOTA claims. Dispositions by the orchestrator (claude-fable-5, Zero's manual selection): **survives** = recorded as a standing caveat, not fixed in this PR; **rejected** = the objection misreads the document or the rules (reason given); **accepted** = fixed in the text.
+Tally: 8 raised · 4 survive · 0 rejected · 4 accepted.
+
+**Reviewer: `codex`** — OpenAI GPT-5.6 sol at effort high via Codex CLI (read-only sandbox on the repo snapshot). 8 raised.
+
+| # | sev | objection (refuter's words) | disposition |
+|---|---|---|---|
+| 1 | HIGH | "15/15 successful in the last two days, ≥8 on 2026-08-28 alone" — This is GitHub control-plane evidence, not content-level proof that new images served; the report itself says green runs can lie, so this cannot establish elite deployment performance. | survives — the report's own §1 says green runs can lie; the 15/15 figure is control-plane evidence and is labelled as such in the INDEX |
+| 2 | HIGH | "exceed what Google/AWS/Netflix publish about verifying a release" — AWS’s alarm-wired bake/rollback and Kayenta’s data-plane metric comparison explicitly verify release behavior; absence of an identical 401 probe is not evidence of superiority. | accepted — the superiority claim is narrowed: the organism's probe answers a question AWS bake/rollback and Kayenta answer differently, not better |
+| 3 | HIGH | "auto-rollback ~2min" — Ten 30-second health attempts permit roughly five minutes before rollback even starts, excluding workflow and rollback latency; no observed two-minute measurement is supplied. | survives — the ~2 min figure is unverified against the health-check schedule the refuter computed (~5 min); to be measured, not asserted |
+| 4 | HIGH | "time-to-detect a dead public funnel: currently unbounded (a human notices) → <20 min" — A 15-minute probe plus 15-minute silence threshold yields nearly 30 minutes worst-case before actuation; colocating probe and dead-man on Mini also leaves machine-level failure undetected. | accepted — worst-case actuation is ~30 min with a 15-min probe and a 15-min silence threshold; the target sentence overstated it, and probe/dead-man colocation on Mini is a single failure domain |
+| 5 | HIGH | "served `?dpl=` must change after bundle-path merges" — An unrelated deployment can change the ID without containing the target commit; conversely deduplication may preserve it. This weaker signal cannot replace the existing ancestry check, and 91-minute scheduler latency contradicts the claimed sub-hour detection. | survives — `?dpl=` is a weaker signal than the ancestry check and cannot replace it; recorded as a design constraint on R2 |
+| 6 | HIGH | "any CRITICAL fixture delta → the existing rollback step" — Without versioned expected deltas and deterministic fixtures, intended releases trigger rollback while regressions outside selected fields pass; stateful responses and latency are nondeterministic, and the proposed scratch-branch production guilt test is operationally unsafe. | survives — versioned expected deltas and deterministic fixtures are prerequisites; the scratch-branch production guilt test is withdrawn as unsafe |
+| 7 | HIGH | "making the deploy-abort class statically unreachable" — Expand/contract classification addresses compatibility, not runtime-role ownership, missing privileges, SQL correctness, or W122’s SIGINT; therefore neither cited abort class becomes statically unreachable. | accepted — 'statically unreachable' overclaims: expand/contract classification does not cover role ownership, privileges or SIGINT |
+| 8 | MED | "All URLs re-verified via web search in this session" — The honesty note admits engineering.fb was not re-verified, while unnumbered GrowthBook/Unleash, Spinnaker, and Datadog material also supports table claims; the declared verification and source count are incomplete. | accepted — the verification claim is incomplete (engineering.fb not re-verified; unnumbered sources support table rows) |
+
+Refuter's verdict: I would not let this report stand as evidence until production measurements are independently reproduced, superiority claims narrowed, and R1/R2/R4/R5 redesigned with falsifiable, failure-domain-aware tests.
+

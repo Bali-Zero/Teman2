@@ -8,6 +8,8 @@ status: complete
 sections_done: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 sources: 19
 repo_files_verified: 24
+adversarial_review: kimi-k3
+model_selection: "manual — Zero's order of 2026-08-28 for this one panel; pinned by the orchestrating session, not routed by any script, cron or doctrine (Fable 5 has no automated role, ruling 2026-08-20)"
 ---
 
 # Beyond-SOTA 6/13 — CI, merge queue & the ship pipeline
@@ -222,3 +224,24 @@ One defective belief generates most of this lane's findings: **"the unit of coor
 17. GitHub Docs, "About rulesets" — https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets — accessed 2026-08-28. Layerable rulesets vs classic protection; drift reduction; official.
 18. Swissquote Engineering, "GitHub Rulesets" (Medium, org-scale enforcement experience) — https://medium.com/swissquote-engineering/github-rulesets-because-two-reviewers-are-better-than-a-hotfix-9f03124f1110 — accessed 2026-08-28.
 19. Bazel/Nx monorepo CI guides (cache-hit norms 85–95%; `nx affected` case: 80% tasks skipped) — https://oneuptime.com/blog/post/2026-07-28-monorepo-bazel-pants-nx-turborepo-readiness/view — accessed 2026-08-28. Practitioner-primary norms for graph-based CI.
+
+## Adversarial review
+
+Blind cross-family review (generator ≠ grader), 2026-08-29. The refuters received the full document and the panel's hard rules, nothing else; path existence had already been verified on disk by the orchestrator's gate, so they attack logic, numbers, rule-compliance and the SOTA claims. Dispositions by the orchestrator (claude-fable-5, Zero's manual selection): **survives** = recorded as a standing caveat, not fixed in this PR; **rejected** = the objection misreads the document or the rules (reason given); **accepted** = fixed in the text.
+Tally: 8 raised · 4 survive · 0 rejected · 4 accepted.
+
+**Reviewer: `kimi-k3`** — Moonshot Kimi K3 via Kimi CLI (read-only snapshot of the repo). 8 raised.
+
+| # | sev | objection (refuter's words) | disposition |
+|---|---|---|---|
+| 1 | HIGH | "`min_entries_to_merge 1→3`" — The cited audit later measured 85% re-entry for size-3 groups and explicitly downgraded L1 to “do not flip”; R1 revives a rejected lever and invents “60%+ eligible” from overlapping categories. | accepted — the prior audit measured 85% re-entry for size-3 groups and said 'do not flip'; R1 is demoted from 'ship' to 'measure with the symmetric sentinel first' |
+| 2 | HIGH | "Detect Secrets: 19 min full-tree scan of 18,967 files per PR." — `security.yml` already diff-scopes Detect Secrets on PR/merge_group and keeps full scans scheduled; npm audit is advisory-only. §4/R5 present shipped cures as current gaps and re-propose them. | accepted — Detect Secrets is already diff-scoped on PR/merge_group in security.yml; the row presents a shipped cure as a gap (erratum) |
+| 3 | HIGH | "auto-file a PR adding the test to `infra/merge-os/quarantine.d/`" — Auto-quarantine weakens an existing gate without a §7 ruling, and omits established safeguards: ≥5 failures, ≥50 runs, 2% suite cap, expiry/SLA. “One masked regression” is post-harm, not prevention. | accepted — auto-quarantine weakens a gate and needs a ruling plus the established safeguards (≥5 failures, ≥50 runs, 2% suite cap, expiry); added to the needs-ruling list |
+| 4 | HIGH | "every PR pays Backend Tests ~2.5×" — The evidence counts `tests.yml` workflow runs, including skipped Backend jobs, and the report itself says 13% of queue runs skip; therefore neither “every PR” nor “~2.5× Backend executions” is supported. | survives — the ~2.5× figure counts workflow runs including skipped jobs; the ratio must be re-derived on executed jobs |
+| 5 | MED | "only add/add hunks in overlapping windows force serialization" — That rule was specific to `merge=union`/PENDING-ARMS; modify/modify, delete/modify, generated-registry, and semantic conflicts remain invisible. An advisory linter cannot substantiate DIRTY 39%→<10%. | survives — the add/add rule was specific to `merge=union`; modify/modify and semantic conflicts stay invisible to the proposed linter, so 39%→<10% is unsupported |
+| 6 | MED | "Spotify 4.5%→0.4% flake rate in 3 months" — Spotify’s primary engineering report says visibility tooling reduced flakiness 6%→4% in two months; the claimed figures appear only in later secondary summaries, not primary evidence. | survives — the Spotify figures may come from secondary summaries; to be re-sourced to the primary report |
+| 7 | MED | "uber/submitqueue (GitHub, open-sourced 2025)" — GitHub metadata dates the repository to 2026-01-12, with public open-source coverage in August 2026; the 2025 paper is not evidence of a 2025 open-source release. | survives — the SubmitQueue open-source date is disputed by the refuter; the row's date is unverified |
+| 8 | LOW | "ALLGREEN queue live 13 months of scars ago" — The same report dates activation to 2026-07-27 and itself to 2026-08-28: one month, not thirteen; the malformed chronology invalidates that row’s “AT” evidence as written. | accepted — '13 months of scars ago' is a chronology error: ALLGREEN went live 2026-07-27, one month before the report |
+
+Refuter's verdict: Do not let this report stand as evidence until R1/R5 are rebased to current repository state, R4 receives an explicit safeguarded ruling, and the central cost and SOTA measurements are re-derived.
+

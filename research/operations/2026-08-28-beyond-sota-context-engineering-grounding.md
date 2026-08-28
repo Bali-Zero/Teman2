@@ -8,6 +8,8 @@ sources: 16
 repo_files_verified: 41
 status: complete
 sections_done: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+adversarial_review: codex
+model_selection: "manual — Zero's order of 2026-08-28 for this one panel; pinned by the orchestrating session, not routed by any script, cron or doctrine (Fable 5 has no automated role, ruling 2026-08-20)"
 ---
 
 # Beyond-SOTA 2/13 — Context engineering & grounding
@@ -555,3 +557,24 @@ memory* as a monitored organ, not as a property of files.
 14. Answer.AI / Jeremy Howard — *The /llms.txt file* (Sep 2024) — https://llmstxt.org — docs-as-context convention; ~10% adoption per SE Ranking's 300K-domain study.
 15. Anthropic — *Prompt caching* platform docs (2024-26) — https://platform.claude.com/docs/en/build-with-claude/prompt-caching — 0.1× cache reads, TTL-refresh-on-read, cache reads excluded from rate limits: why the boot tax is an attention problem, not a quota problem.
 16. Claude Code docs — memory hierarchy (CLAUDE.md scopes, auto-memory, MEMORY.md index; subagent context separation) — https://code.claude.com/docs/en/memory — the platform's native convergence toward the MOS design.
+
+## Adversarial review
+
+Blind cross-family review (generator ≠ grader), 2026-08-29. The refuters received the full document and the panel's hard rules, nothing else; path existence had already been verified on disk by the orchestrator's gate, so they attack logic, numbers, rule-compliance and the SOTA claims. Dispositions by the orchestrator (claude-fable-5, Zero's manual selection): **survives** = recorded as a standing caveat, not fixed in this PR; **rejected** = the objection misreads the document or the rules (reason given); **accepted** = fixed in the text.
+Tally: 8 raised · 4 survive · 1 rejected · 3 accepted.
+
+**Reviewer: `codex`** — OpenAI GPT-5.6 sol at effort high via Codex CLI (read-only sandbox on the repo snapshot). 8 raised.
+
+| # | sev | objection (refuter's words) | disposition |
+|---|---|---|---|
+| 1 | HIGH | "model: claude-fable-5 (pinned lane)" — A pinned panel lane implies scripted routing unless manual selection is evidenced; none is. That conflicts directly with the manual-only Fable rule. | rejected — the lane ran under Zero's explicit manual order for this one panel (2026-08-28: "lancia per ognuna un fable 5 max effort"), pinned by the orchestrating session, not by any script, cron or doctrine; the frontmatter now carries `model_selection:` stating this |
+| 2 | HIGH | "logs what it WOULD inject for 2 weeks without injecting" — Shadow logs and later transcript injection lack mandatory redaction or sensitivity gates, so mandate-linked memory content could persist, violating the PII/OSINT output boundary. | survives — valid: any shadow-log or transcript-side attestation must pass a redaction gate before persisting; recorded as a constraint on R1's build PR |
+| 3 | HIGH | "PR-1 `chore(context): scar re-cold-storage + injected-surface attestation` (R1)" — R1’s 120 KB budget is explicitly needs-ruling, yet the roadmap schedules implementation unconditionally. R5 repeats this mistake with public doctrine migration. | accepted — the 120 KB figure is a §E ruling; the INDEX's F1 now reads '≤ the ruled budget' and the roadmap's PR-1 is conditional on it |
+| 4 | HIGH | "a CI test that assembles the exact set of files the harness injects" — CI reconstructs expected files; it cannot observe the delivered prompt or hidden harness behavior. A SessionStart byte-sum has the same limitation, so this cannot catch the claimed no-repo-diff drift. | survives — valid: a CI reconstruction cannot observe the delivered prompt; the receptor must read the session-side transcript, which is what the INDEX's move #1 now calls 'read-side attestation' |
+| 5 | MED | "Seven days later the injected surface is ~5× larger" — The earlier baseline includes MEMORY.md but excludes both scar bodies; the new total does the reverse. These are different surfaces, so the 5× temporal comparison is invalid. | survives — the two surfaces are not identical; the 5× figure is directional until re-measured on one definition |
+| 6 | MED | "a headless seat lane can reach 0 of the 1,681 memory files" — The report itself reads and counts the canonical corpus, disproving zero reachability. What was measured is zero seat-local or auto-loaded files, not zero accessible files. | accepted (wording) — the measurement is zero seat-local/auto-loaded files, not zero accessible files |
+| 7 | MED | "squarely inside the rot zone" — The cited onset is 300–400K tokens, while boot is estimated at 190–220K and historical average at 290K. That is approaching the lower bound, not squarely inside it. | accepted (wording) — 'approaching the onset' is the supportable phrase; 'squarely inside' overstated it |
+| 8 | MED | "the benchmark existing IS the metric" — Existence is not a correctness metric. TRAUMA-derived queries risk copying lexical answers from their gold scars, while model, trials, scoring protocol, and contamination controls remain unspecified. | survives — ScarBench needs a scoring protocol and contamination controls before its existence counts as a metric |
+
+Refuter's verdict: I would not let this report stand as evidence until delivery is measured externally, comparisons use identical surfaces, hard-rule violations are removed, and ScarBench is independently validated.
+

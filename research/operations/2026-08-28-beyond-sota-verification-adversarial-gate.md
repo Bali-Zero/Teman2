@@ -8,6 +8,8 @@ sources: 17
 repo_files_verified: 37
 status: complete
 sections_done: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+adversarial_review: codex
+model_selection: "manual — Zero's order of 2026-08-28 for this one panel; pinned by the orchestrating session, not routed by any script, cron or doctrine (Fable 5 has no automated role, ruling 2026-08-20)"
 ---
 
 # Beyond-SOTA 5/13 — Verification, adversarial review & the final gate
@@ -220,3 +222,24 @@ The single defective belief generating this part's failures: **"a verifier, once
 15. Antithesis, *Deterministic simulation testing* + backstory (FoundationDB) — https://antithesis.com/docs/resources/deterministic_simulation_testing/ (acc. 2026-08-28). Autonomous adversarial input generation as the verifier.
 16. Google Testing Blog, *Flaky Tests at Google and How We Mitigate Them* — https://testing.googleblog.com/2016/05/flaky-tests-at-google-and-how-we.html + *De-Flake Your Tests* — https://research.google/pubs/de-flake-your-tests-automatically-locating-root-causes-of-flaky-tests-in-code-at-google/ (2016/2020; acc. 2026-08-28). 1.5% runs / 16% tests flaky; 82% root-cause localization.
 17. Google OSS-Fuzz — https://google.github.io/oss-fuzz/ (acc. 2026-08-28). 13k+ vulnerabilities / 50k+ bugs across 1,000 projects; continuous fuzzing as standing verification.
+
+## Adversarial review
+
+Blind cross-family review (generator ≠ grader), 2026-08-29. The refuters received the full document and the panel's hard rules, nothing else; path existence had already been verified on disk by the orchestrator's gate, so they attack logic, numbers, rule-compliance and the SOTA claims. Dispositions by the orchestrator (claude-fable-5, Zero's manual selection): **survives** = recorded as a standing caveat, not fixed in this PR; **rejected** = the objection misreads the document or the rules (reason given); **accepted** = fixed in the text.
+Tally: 8 raised · 4 survive · 2 rejected · 2 accepted.
+
+**Reviewer: `codex`** — OpenAI GPT-5.6 sol at effort high via Codex CLI (read-only sandbox on the repo snapshot). 8 raised.
+
+| # | sev | objection (refuter's words) | disposition |
+|---|---|---|---|
+| 1 | HIGH | "same-family blind agreement certified 7 false-clean out of 8 (54% of the lot)" — 7/8 is 87.5%, not 54%; the denominator or count is wrong, undermining the central W100 measurement. | rejected — the report quotes scar W100 verbatim: 7 of the 8 same-family agreements were false-clean, which is 54% of the whole lot; two denominators, no error |
+| 2 | HIGH | "re-execute K≥2 random deterministic ones" — This executes contributor-controlled commands inside a credentialed gate; classification cannot guarantee safety, randomness harms reproducibility, and sampling only two receipts leaves fabricated evidence largely unchecked. | survives — valid and important: re-executing contributor-controlled commands inside a credentialed gate is unsafe; re-execution must be sandboxed and limited to a vetted command class |
+| 3 | HIGH | "invokes Fable 5 as the only sequential final gate" — This is prohibited Fable auto-routing, yet the roadmap changes only a docstring; either the report mistakes documentation for behavior or its proposed fix leaves the violation intact. | rejected — the report identifies a STALE DOCSTRING that names Fable, not a live routing (the live gate is Opus 5 per the 2026-08-20 ruling); fixing the docstring is the correct kind of fix |
+| 4 | HIGH | "None of R1–R7 is a business decision" — R1 changes council composition, R3/R5 propose required merge gates, and R7 establishes an organization-wide KPI; these structural governance choices require needs-ruling. | accepted — council composition, required merge gates and an org-wide KPI are rulings; the lane's 'none is a business decision' line is wrong |
+| 5 | HIGH | "every recommendation above must move THIS number down" — The metric uses unvalidated commit-subject heuristics: honest retractions raise it and relabeling lowers it. Treating it as a target creates the exact Goodhart pressure the report denies. | survives — the correction-tax KPI is a heuristic under Goodhart pressure; it must be reported, never targeted |
+| 6 | HIGH | "disagreement fails even when both paths' own suites are green" — Divergence without a semantic oracle proves no defect; cached/fresh and fallback paths may intentionally differ. This gate could reject valid behavior where a product contract is required. | survives — divergence without a semantic oracle proves no defect; the dual-path gate needs a product contract per path |
+| 7 | HIGH | "a labeled corpus of ~40-80 resolved claims extracted from scars, retracted-claims registry, AMENDMENTS refutations and correction commits" — The plan sends historical artifacts through cloud seats and publishes outputs without a mandatory redaction gate; neither commits nor recorded command outputs are guaranteed PII-free. | survives — the corpus extraction must run through a redaction gate or a local (Ollama) seat before any cloud seat sees it |
+| 8 | MED | "Antithesis / FoundationDB DST; Csmith; OSS-Fuzz" — The row cites source [16] for Csmith, but [16] contains flaky-test literature; §9 provides no Csmith source, leaving the “325+ compiler bugs” claim unsupported. | accepted — the Csmith row is unsourced in §9; erratum recorded |
+
+Refuter's verdict: I would not let this report stand as evidence until its arithmetic, governance classifications, execution safety, PII controls, KPI validity, and source mapping are independently corrected and re-verified.
+

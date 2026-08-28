@@ -8,6 +8,8 @@ sources: 16
 repo_files_verified: 35
 status: complete
 sections_done: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+adversarial_review: kimi-k3
+model_selection: "manual — Zero's order of 2026-08-28 for this one panel; pinned by the orchestrating session, not routed by any script, cron or doctrine (Fable 5 has no automated role, ruling 2026-08-20)"
 ---
 
 # Beyond-SOTA 13/13 — Security, secrets & PII engineering
@@ -199,3 +201,24 @@ Second-order pattern, honestly stated: **antidotes inherit the scope of the inci
 14. Tailscale Docs, "Grants" / "Manage permissions using ACLs" — https://tailscale.com/docs/features/access-control/grants (accessed 2026-08-28). First-party deny-by-default grants model.
 15. Microsoft Presidio — https://github.com/microsoft/presidio (accessed 2026-08-28). Reference open-source PII detection/anonymization architecture.
 16. LINDDUN privacy threat modeling (via PTMF survey, arXiv:2510.21601) — https://arxiv.org/pdf/2510.21601 (accessed 2026-08-28). The privacy-specific STRIDE analogue.
+
+## Adversarial review
+
+Blind cross-family review (generator ≠ grader), 2026-08-29. The refuters received the full document and the panel's hard rules, nothing else; path existence had already been verified on disk by the orchestrator's gate, so they attack logic, numbers, rule-compliance and the SOTA claims. Dispositions by the orchestrator (claude-fable-5, Zero's manual selection): **survives** = recorded as a standing caveat, not fixed in this PR; **rejected** = the objection misreads the document or the rules (reason given); **accepted** = fixed in the text.
+Tally: 8 raised · 4 survive · 1 rejected · 3 accepted.
+
+**Reviewer: `kimi-k3`** — Moonshot Kimi K3 via Kimi CLI (read-only snapshot of the repo). 8 raised.
+
+| # | sev | objection (refuter's words) | disposition |
+|---|---|---|---|
+| 1 | HIGH | "model: claude-fable-5 (pinned lane)" — A pinned lane inside a 13-part panel run is doctrine-level auto-routing of Fable 5, which the hard rules reserve for manual selection only (and fleet ruling removes Fable from workflows entirely). | rejected — the lane ran under Zero's explicit manual order for this one panel (2026-08-28: "lancia per ognuna un fable 5 max effort"), pinned by the orchestrating session, not by any script, cron or doctrine; the frontmatter now carries `model_selection:` stating this |
+| 2 | HIGH | "Opus 4.5: successful browser injections → ~1%" — Anthropic's published Claude-for-Chrome figures were 23.6%→11.2%; ~1% is unsupported, and source 6 admits it comes "via press coverage," not a primary citation. | survives — the ~1% browser-injection figure rests on press coverage; to be re-sourced to Anthropic's published numbers or retracted |
+| 3 | HIGH | "count of `*(TOKEN\|KEY\|SECRET\|PASSWORD)*` env names visible to a probe child. Baseline measured 2026-08-18: ≥3" — §1.5 names exactly two session-env secrets (the Telegram token came via `launchctl`, not session env), and the glob-style pattern is not valid `grep -E`; the headline metric is both inconsistent and unexecutable as written. | accepted — the metric names ≥3 secret-shaped env names while §1.5 enumerates two, and the glob pattern is not valid `grep -E`; the metric must be restated executably |
+| 4 | MED | "Top-3 moves: (1) **R1 Seat Broker** … (2) **R3 tailnet apply+drift receptor** … (3) **R4 rotation SLA**" — TL;DR's top-3 skips R2, which §5 ranks second by the report's own impact×confidence/cost ordering; prioritization contradicts itself. | accepted — the TL;DR's top-3 skips R2, which §5 ranks second (erratum) |
+| 5 | MED | "detection latency for a recorder-class process: measured baseline ~2 days (found by accident); target <1 proprioception cycle" — accidental discovery time is not a measured latency, and PR-4's static `ps`-fixture test never exercises live detection, so the target is unfalsifiable. | survives — accidental discovery time is not a latency measurement, and a static `ps` fixture does not exercise live detection |
+| 6 | MED | "if the census shows <3 full-trifecta lanes, downgrade to a doc, not a lint" — the kill criterion can fire precisely when the lint is unneeded *because it worked*, and the fixture-based acceptance tests only prove the lint agrees with its own fixtures. | survives — the kill criterion can fire because the lint worked; it needs a counterfactual control |
+| 7 | MED | "~94% detection of active creds; kills alert fatigue" — TruffleHog publishes no such figure; the only cited basis is source 8, "Decryption Digest," a content-farm-class blog, yet the number is presented as measured SOTA evidence for R-adjacent claims. | survives — the ~94% TruffleHog figure comes from a low-quality secondary source; to be re-sourced or dropped |
+| 8 | LOW | "A ledger that ages loudly is what no surveyed system has, because no surveyed system HAS a PENDING-ARMS ledger" — circular novelty: the "beyond-SOTA" claim for R4 rests on the org's own invention being absent elsewhere, which is trivially true and proves nothing. | accepted — a novelty claim that rests on the organism's own invention being absent elsewhere proves nothing |
+
+Refuter's verdict: Let it stand as evidence only after the Fable-lane authorship is re-attributed to a lawful seat, the R1 metric/regex is made executable and reconciled with §1.5, and the ~1% and 94% figures are re-sourced or retracted; the mechanism findings (§1–§2) are otherwise well-grounded.
+

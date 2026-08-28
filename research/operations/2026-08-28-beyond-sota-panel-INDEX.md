@@ -5,6 +5,8 @@ panel: beyond-sota-2026-08-28
 type: index+synthesis
 status: complete
 lanes_complete: 13/13
+adversarial_review: kimi-k3
+model_selection: "manual — Zero's order of 2026-08-28 for this one panel; pinned by the orchestrating session, not routed by any script, cron or doctrine (Fable 5 has no automated role, ruling 2026-08-20)"
 ---
 
 # BEYOND-SOTA PANEL — index & cross-lane synthesis
@@ -39,7 +41,7 @@ recommends how to go BEYOND the state of the art. Protocol: `2026-08-28-beyond-s
 | 1 (22:2x WITA) | 5 `fork` subagents on Fable 5 (inherit ~90K tokens of session context each) | all 5 died on the account session limit within ~2 min; 0 bytes on disk |
 | 2 (22:35) | 5 fresh-context lanes pinned `model: fable`, tmux panes, second seat | all 5 died the same way within ~3 min; 0 bytes on disk |
 | 3 (22:58) | 2 pinned lanes (3, 4) on a third seat measured at 3% of 5h / 91% weekly | alive and productive (4.4K/4.6K words, §1-4 in ~12 min) — stopped by the orchestrator on a false "blocked" belief; their files carried over |
-| 4 (23:10) | 13 headless `claude -p` processes, one OAuth seat per lane (≤2 lanes/seat), `--allowedTools` whitelist, `--effort max`, incremental+resumable reports, quota rotation | see per-lane status above; seat pings at launch: slot 1 weekly limit (reset 30/8 09:00), 5 session limit (01:40), 6 Team limit (03:30), 4 alive, 2/3 slow-boot |
+| 4 (23:10) | 13 headless `claude -p` processes, one OAuth seat per lane (≤2 concurrent lanes per seat), `--allowedTools` whitelist, `--effort max`, incremental+resumable reports, quota rotation | see per-lane status above; seat pings at launch: slot 1 weekly limit (reset 30/8 09:00), 5 session limit (01:40), 6 Team limit (03:30), 4 alive, 2/3 slow-boot |
 
 Lessons already captured: memory `discovery_fable_fan_out_burns_a_seat_in_minutes_headless_multi_seat_is_the_shape_2026_08_28`,
 AMENDMENTS 2026-08-28 entry, protocol §4bis.
@@ -56,15 +58,15 @@ any organ gets built and kept alive. Delivery on the M5 Desktop keeps them side 
 `~/Desktop/beyond-sota-2026-08-28/` (B-lanes at the root) and
 `~/Desktop/beyond-sota-2026-08-28/engineering-craft-13-lanes/` (this panel).
 
-## Final on-disk gate (orchestrator, Fable 5 interactive — never delegated)
+## Panel-internal on-disk gate (run by the orchestrating session, which Zero had put on Fable 5 by hand for this one panel — never delegated; the repository's final on-disk gate is untouched: Opus 5, ruling 2026-08-20)
 
 Per report: all 10 sections present · ≥10 distinct external URLs · every repo path cited as
 "exists today" re-checked on disk (paths under §5/§6 are proposed artifacts, not claims) · no
-email/phone/secret-shaped strings. Gate script: scratchpad `panel/gate.py` (throwaway).
+email/phone/secret-shaped strings. Gate script: scratchpad `panel/gate.py` (a session script, not versioned — a defect the refuters flagged; its checks are restated as receipts in the evidence pack, and a versioned `scripts/research_gate.py` is the follow-up).
 
 ## Cross-lane synthesis (13/13 lanes — panel closed 2026-08-29 00:00 WITA, ≈85,044 words across the 13 reports)
 
-### A. Where the organism is genuinely AHEAD of the surveyed world (each claim is measured in its lane)
+### A. Where the organism is genuinely AHEAD of the surveyed world (each claim is measured in its lane; "no equivalent" means none found in that lane's surveyed set, not a universal negative)
 
 - Intake classification and grounding: a CI-recomputed gear floor+ceiling and an entry gate that never blocks judgment — no equivalent in Spec Kit, Kiro, Anthropic practice or the change-risk literature (lane 1).
 - How a decision is *argued*: cross-family asymmetric councils, a CI lint that rejects unwarranted deliberation, per-finding adversarial dispositions (lane 3).
@@ -77,7 +79,7 @@ email/phone/secret-shaped strings. Gate script: scratchpad `panel/gate.py` (thro
 - Deciding what a design should be: adversarially-refuted design study loop, constitutional WR2 critic, computed-contrast token contract (lane 11).
 - Migration authoring: 97.7% rollback coverage, migration-as-ADR headers, 5 CI gates, lint-enforced durability doctrine (lane 12).
 - The Law-2 PII output boundary, the insider/RBAC model and the incident memory (lane 13); the typed, integrity-linted, family-compressed scar corpus (lane 2).
-- Capture and compression of lessons: a push-injected, CI-budgeted, guilt/innocence-guarded scar corpus is a working industrial instance of what the field has only *named* ("system prompt learning") and the structural inverse of the NASA-LLIS graveyard — 70% of 164 scars carry an executable antidote, 49% cite an earlier scar (lane 10).
+- Capture and compression of lessons: a push-injected, CI-budgeted, guilt/innocence-guarded scar corpus is a working industrial instance of what the field has only *named* ("system prompt learning") and the structural inverse of the NASA-LLIS graveyard — 70% of 164 scars name an executable antidote (whether it is still wired is lane 5's finding: 2 of 66 gates armed), 49% cite an earlier scar (lane 10).
 
 ### B. The meta-disease — one belief, twelve costumes
 
@@ -112,8 +114,8 @@ The organism already owns the antidote shape — the receptor, the tripwire, the
 ### D. Top-10 beyond-SOTA moves across lanes (de-duplicated, ranked by impact × confidence / cost)
 
 1. **Read-side attestation + scar cold storage** (L2) — 774 KB → ≤120 KB injected; a receptor that measures what a real session receives at turn 1. Urgent: every session currently boots at the edge of the measured context-rot zone.
-2. **Production journey sentinels derived from scars + dead-man that flips the flag OFF** (L11 + L7) — every cured UX defect becomes a scheduled production probe with guilt+innocence self-test; probe silence flips `GARUDA_PUBLIC_ENABLED` off via the existing allowlist actuator. Would have caught 2–3 of the 5 defects of 2026-08-28.
-3. **Seat = trust unit + budget unit** (L13 + L9) — `with_seat` broker (minimal env per external CLI dispatch; secret-shaped env names per child ≥3→1) and a seat-state ledger with pre-dispatch budget check in OAuth-window currency; `fleet_burst` (account-sharded headless fan-out, ≤3 spawns, incremental outputs) as a first-class command.
+2. **Production journey sentinels derived from scars + dead-man that flips the flag OFF** (L11 + L7) — every cured UX defect becomes a scheduled production probe with guilt+innocence self-test; probe silence flips `GARUDA_PUBLIC_ENABLED` off via the existing allowlist actuator. Would have caught 2–3 of the five defects on lane 7's list (lane 11 counts six on its own list; the two lists overlap on four) — an estimate, not a replay.
+3. **Seat = trust unit + budget unit** (L13 + L9) — `with_seat` broker (minimal env per external CLI dispatch; secret-shaped env names per child ≥3→1) and a seat-state ledger with pre-dispatch budget check in OAuth-window currency; `fleet_burst` (account-sharded headless fan-out, ≤3 spawns, incremental outputs) as a first-class command, model pinned by doctrine (Fable never auto-routed).
 4. **Meter every declared contract** (L1 + L4) — acceptance-bullet→probe lint and an enforced `appetite:` field at the pack-lint door; per-lane outcome telemetry (correction-chain rate, time-to-green, builder attribution from the branch namespace); check-gated stop (`.lane-check.json` consumed by all four termination surfaces).
 5. **Verify the verifiers** (L5) — quarterly grader scorecards on a labeled corpus extracted from adjudicated scars/retractions; sampled receipt re-execution at the verdict gate; a re-qualification calendar for every required check; **antidote-liveness lint** — a cure a scar names must still exist AND still be wired into a workflow (L10).
 6. **Queue economics** (L6) — batch 1→3 with a symmetric path sentinel + trigger-symmetry lint (runner-min/PR 121–138 → <80; median 61 → ≤40 min); conflict-by-construction linter at PR-open (DIRTY 39% → <10%); the `mq state` oracle encoding the 19 traps.
@@ -122,7 +124,7 @@ The organism already owns the antidote shape — the receptor, the tripwire, the
 9. **Decision afterlife** (L3) — a decision registry with a status machine and a revisit receptor (findability 6 locations → 1 query); council-yield instrument; doctrine citation-integrity lint (≤150 lines, zero phantom sources in the law).
 10. **Deploy parity as receptors** (L7 + L9) — served `?dpl=` must change after bundle-path merges; every live `*.balizero.com` surface names its repo source; `flags.yaml` as the two-platform flag SSOT with lint; conductor calibrations distilled from shipped Evidence-Pack outcomes.
 
-### E. Needs-ruling (consolidated — only Legge-5 / credential / GUI items)
+### E. Needs-ruling (consolidated — Legge-5 business and product decisions, credential and GUI actions)
 
 - **Governance**: who decides structure — SYMBIOSIS Law 5 vs CLAUDE.md §2 give opposite answers (L3) · the context budget number (L2; precedent: the ruled 17 KB MEMORY.md target) · whether an exceeded `appetite` suspends by default (L1) · registry bindingness and blind-gate default (L3) · effort default per gear floor (L9, already ledgered as `operator[business]`) · whitelist-vs-CODEOWNERS intent for the 24/73-red orphan test (L6) · harvester promotion policy — who may turn a shadow proposal into an enforced gate, even one rule at a time (L10) · batch-retirement semantics for PENDING-ARMS rows (a signed WON'T-ARM rule in the ledger header) (L10) · monthly FixIt-sweep quota, feature velocity vs debt burndown (L10) · cadence and format of the "decided autonomously" digest (L10).
 - **Spend / resources**: Antigravity arm-or-retire (L4) · Pro disk headroom for hermetic caches (L4) · Sentry quota purchase (L8) · TP1 credit thresholds for burst use (L9) · team tailnet expansion GO/NO-GO (L13) · advisory-DB snapshot in the blocking security path + Detect Secrets diff-scoping (L6).
@@ -131,8 +133,8 @@ The organism already owns the antidote shape — the receptor, the tripwire, the
 
 ### F. Proposed first wave (three PRs, three organs, one cure — ready to open on GO)
 
-1. `feat(context): read-side attestation of the injected surface + scar bodies back to cold storage` (L2 R1) — Gear 2, ≤400 lines; acceptance: a fresh headless session reports the delivered surface ≤120 KB and the attestation receptor goes RED on a synthetic 200 KB injection.
-2. `feat(probes): production journey sentinel for the VOA funnel, dry-run dead-man` (L11 R1 / L7 R1) — Gear 2; acceptance: the probe fails RED on each of the five 2026-08-28 defect fixtures replayed, and stays GREEN on prod today; dead-man in dry-run + Telegram until Zero's real-fire GO.
+1. `feat(context): read-side attestation of the injected surface + scar bodies back to cold storage` (L2 R1) — Gear 2, ≤400 lines; acceptance: a fresh headless session reports the delivered surface ≤ the ruled budget (lane 2 proposes 120 KB; the number itself is a §E ruling) and the attestation receptor goes RED on a synthetic 200 KB injection.
+2. `feat(probes): production journey sentinel for the VOA funnel, dry-run dead-man` (L11 R1 / L7 R1) — Gear 2; acceptance: the probe fails RED on each of lane 11's six 2026-08-28 defect fixtures replayed, and stays GREEN on prod today; dead-man in dry-run + Telegram until Zero's real-fire GO.
 3. `feat(fleet): with_seat broker — minimal per-seat env for external LLM dispatch` (L13 R1) — Gear 2; acceptance: `env` observed by a codex/agy/kimi child under the broker carries exactly the seat's own credential; a fixture lane with a leaked PAT turns the lint RED.
 
 ### G. The numbers this panel measured tonight (for the ledger)
@@ -141,7 +143,7 @@ The organism already owns the antidote shape — the receptor, the tripwire, the
 
 ### H. First-PR candidates per lane (extracted from each report's §6 — or §5 where §6 points there; leads, not commitments)
 
-Rows for lanes 1-9 and 11-13 were extracted by a separate read-only lane and spot-checked against the reports by the orchestrator (12 title fragments grepped, all present); lane 10's rows were taken by the orchestrator directly from its §6. The files named are the *report's* proposals — most do not exist yet; the acceptance column is the report's own falsifiable test. Lane numbering follows the partition table above.
+Rows for lanes 1-9 and 11-13 were extracted by a separate read-only lane and spot-checked against the reports by the orchestrator (12 title fragments grepped, all present); lane 10's rows were taken by the orchestrator directly from its §6. The files named are the *report's* proposals — most do not exist yet; the acceptance column is the report's own falsifiable test; "—" means the report gave none for that PR — a defect of the report, recorded here rather than invented. Lane numbering follows the partition table above.
 
 | lane | PR title (as written in the report) | files (≤3) | gear | acceptance test | wave |
 |---|---|---|---|---|---|
@@ -184,3 +186,39 @@ Rows for lanes 1-9 and 11-13 were extracted by a separate read-only lane and spo
 | 13 | PR-1 `feat(security): seat broker — exec-time minimal env for external LLM dispatch` | `scripts/with_seat.sh`, `infra/llm-credentials/seat-env.json`, `scripts/tests/test_with_seat_env_minimization.sh` | 2 | Guilt: unwrapped child sees planted fake token; innocence: wrapped child's env = exactly declared names, planted name ABSENT | 1 |
 | 13 | PR-2 `feat(proprioception): tailnet policy drift receptor` | `scripts/tailnet_policy_drift.py`, receptor wiring, tests w/ recorded netmap fixtures | 2 | RED on 2026-08-11 allow-all fixture; GREEN on policy.hujson-matching fixture; BLIND → exit 2, never CLEAN | 1 |
 | 13 | PR-3 `feat(ledger): operator[secret] ager + weekly digest` | `scripts/pending_arms_report.py` (extend) + test | 1 | Digest lists ≥3 open rotation rows by fingerprint+age from ledger fixture; closed row does not appear | 1 |
+
+## Adversarial review
+
+Blind cross-family review (generator ≠ grader), 2026-08-29. The refuters received the full document and the panel's hard rules, nothing else; path existence had already been verified on disk by the orchestrator's gate, so they attack logic, numbers, rule-compliance and the SOTA claims. Dispositions by the orchestrator (claude-fable-5, Zero's manual selection): **survives** = recorded as a standing caveat, not fixed in this PR; **rejected** = the objection misreads the document or the rules (reason given); **accepted** = fixed in the text.
+Tally: 16 raised · 4 survive · 3 rejected · 9 accepted.
+
+**Reviewer: `kimi-k3`** — Moonshot Kimi K3 via Kimi CLI (read-only snapshot of the repo). 8 raised.
+
+| # | sev | objection (refuter's words) | disposition |
+|---|---|---|---|
+| 1 | HIGH | "run one Fable-5 max-effort lane per part" / "pinned `model: fable`" / "Final on-disk gate (orchestrator, Fable 5 interactive — never delegated)" — The protocol and tmux pinning auto-route Fable 5 by doctrine and script, violating hard rule (d); it also contradicts the standing 2026-08-20 ruling assigning the on-disk gate to Opus 5 xhigh with Fable fully out of the workflow. | accepted (wording) — the gate line now reads 'panel-internal on-disk gate … which Zero had put on Fable 5 by hand for this one panel; the repository's final on-disk gate is untouched (Opus 5, ruling 2026-08-20)'; rejected (substance) — Fable ran under Zero's explicit manual order for this panel, and nothing in this diff or in the repo routes to it afterwards |
+| 2 | HIGH | "0 of 6 measured 2026-08-28 production defects caught by the 53-spec e2e suite" vs "Would have caught 2–3 of the 5 defects of 2026-08-28" — Defect count is 6 in sections B and G but 5 in D2 and F2 ("the five defect fixtures"); a core measured number is used inconsistently across findings, recommendations, and acceptance tests. | accepted — the INDEX now uses lane 11's six consistently and names lane 7's separate five-item list where that figure is quoted |
+| 3 | HIGH | "the context budget number (L2…)" listed under Needs-ruling, yet "acceptance: a fresh headless session reports the delivered surface ≤120 KB" — Section E declares the budget a business decision requiring Zero's ruling, while F hardcodes ≤120 KB into a PR declared "ready to open on GO" — the report de facto decides a ruled-reserved decision. | accepted — F1 acceptance now reads '≤ the ruled budget (lane 2 proposes 120 KB; the number itself is a §E ruling)' |
+| 4 | MED | "Where the organism is genuinely AHEAD of the surveyed world (each claim is measured in its lane)" — Negative SOTA claims ("no equivalent in Spec Kit, Kiro…", "a queue-trap corpus nobody has published") are unfalsifiable survey assertions, not measurements; the measured-evidence framing is unsupported by the panel's own method. | accepted (wording) — §A now states that 'no equivalent' means none found in the lane's surveyed set, not a universal negative |
+| 5 | MED | "Gate script: scratchpad `panel/gate.py` (throwaway)" — The final evidence gate is an unversioned throwaway script, contradicting the panel's own central doctrine (verify-the-verifiers, cures must persist and stay wired); a skeptical engineer cannot reproduce or audit the gating this index claims. | survives — true: the gate is a session script; its checks are restated as receipts in the evidence pack and a versioned scripts/research_gate.py is the follow-up |
+| 6 | MED | "the acceptance column is the report's own falsifiable test" — Two first-PR rows (lane 8 PR-3 ".bak purge", lane 11 R3 "critic conformance corpus") ship with acceptance "—", i.e., no falsifiable test, violating the panel's stated extraction rule and its own anti-tautology doctrine. | accepted — §H now states that '—' means the report gave no falsifiable test for that PR: a defect of the report, recorded rather than invented |
+| 7 | MED | "70% of 164 scars carry an executable antidote" — Touted as ahead-of-world in A, but B reports "66 scar gates, 2 armed" and D5 proposes an antidote-liveness lint precisely because named cures may not exist or be wired; "executable" is asserted, not demonstrated, and contradicted by the arming data. | rejected — different denominators: 70% of scars NAME an executable antidote (lane 10's measure) while 2 of 66 GATES are wired (lane 5's); §A now says so explicitly |
+| 8 | LOW | "Would have caught 2–3 of the 5 defects of 2026-08-28" — A speculative counterfactual (untested probes vs. historical defects) is used as quantitative impact justification for rank #2; presented with measured-number confidence despite no replay evidence existing yet. | survives — D2 now labels the 2–3 figure an estimate, not a replay |
+
+Refuter's verdict: Not as-is — the hard-rule (d) Fable 5 auto-routing and the 6-vs-5 numerical inconsistency must be corrected and the ≤120 KB budget deferred to Zero's ruling before this report can stand as evidence of anything beyond its own section-B measurements.
+
+**Reviewer: `qwen-3.8-max`** — Alibaba Qwen3.8 Max via TP1 (API, thinking on, no repository access). 8 raised.
+
+| # | sev | objection (refuter's words) | disposition |
+|---|---|---|---|
+| 1 | HIGH | "13 headless `claude -p` processes, one OAuth seat per lane (≤2 lanes/seat), `--allowedTools` whitelist, `--effort max`, incremental+resumable reports, quota rotation" — This automated fan-out executes the mandated Fable-5 lanes, violating the hard rule that Fable 5 may only be manually selected. | rejected — the fan-out ran under Zero's manual selection of Fable for this one panel (order of 2026-08-28); no script, cron or doctrine in the repo routes to Fable; the run-record wording was tightened to say so |
+| 2 | HIGH | "seat pings at launch: slot 1 weekly limit (reset 30/8 09:00), 5 session limit (01:40), 6 Team limit (03:30), 4 alive, 2/3 slow-boot" — Only six seats are accounted, while 13 lanes at ≤2 lanes/seat require at least seven seats and one-per-lane requires thirteen. | rejected — '≤2 lanes/seat' was a concurrency cap (now worded '≤2 concurrent lanes per seat'); the 13 lanes ran sequentially over whichever seats were alive, the last five on a single seat |
+| 3 | HIGH | "Would have caught 2–3 of the 5 defects of 2026-08-28." — The report elsewhere measures six production defects that day, and the counterfactual catch claim has no supporting evidence. | accepted — counts harmonized (lane 11's six; lane 7's five named as a separate list) and the catch figure labelled an estimate |
+| 4 | HIGH | "no email/phone/secret-shaped strings" — String-shape checks do not enforce the PII/OSINT boundary; semantic client/prospect data can pass, and the report itself mentions investor-routing details. | survives — a string-shape scan is necessary, not sufficient; the reports contain no client data (the investor-routing item is a product rule, not a person), but the caveat stands |
+| 5 | MED | "Needs-ruling (consolidated — only Legge-5 / credential / GUI items)" — The section then lists Product items such as `/dream`, `/prime`, and `/exclusive`, contradicting the stated limiting scope. | accepted — the heading now reads 'Legge-5 business and product decisions, credential and GUI actions' |
+| 6 | MED | "no equivalent in Spec Kit, Kiro, Anthropic practice or the change-risk literature" — Sweeping absence/SOTA claim with no survey, citations, or method; a negative across multiple ecosystems is not falsifiable as written. | accepted (wording) — as kimi-k3 #4 |
+| 7 | MED | "`fleet_burst` (account-sharded headless fan-out, ≤3 spawns, incremental outputs) as a first-class command." — Recommends automated fan-out without barring Fable 5 auto-routing or requiring manual model selection, recreating the forbidden automation pattern. | accepted — D3 now says 'model pinned by doctrine (Fable never auto-routed)' |
+| 8 | MED | "batch 1→3 with a symmetric path sentinel + trigger-symmetry lint (runner-min/PR 121–138 → <80; median 61 → ≤40 min)" — Batching increases coupling/waiting; no mechanism shows it reduces both runner-minutes per PR and median open-to-merge time. | survives — lane 6's mechanism (fewer requeues, shared merge-ref builds) is argued, not yet measured; recorded as the caveat on move #6 |
+
+Refuter's verdict: I would not let this report stand as evidence until the Fable-5 automation/seat contradictions, defect-count mismatch, PII-gate insufficiency, and unfalsifiable SOTA claims are corrected and independently re-gated.
+

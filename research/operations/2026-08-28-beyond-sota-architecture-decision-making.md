@@ -8,6 +8,8 @@ sources: 15
 repo_files_verified: 34
 status: complete
 sections_done: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+adversarial_review: glm-5.2
+model_selection: "manual — Zero's order of 2026-08-28 for this one panel; pinned by the orchestrating session, not routed by any script, cron or doctrine (Fable 5 has no automated role, ruling 2026-08-20)"
 ---
 
 # 3/13 — Architecture & design decision-making
@@ -173,7 +175,7 @@ members W65 → W90 → W100 → W113:
 |---|---|---|
 | **W65** refuter falso-refuta | the grader hallucinated a refutation | yes — line continues |
 | **W90** (2026-07-02) | ground-truth verifier (NB-3) "confirmed" pre-resolution numbers from a stale snapshot — *the verifier is also a lead* | yes |
-| **W100** (2026-07-18) | same-family blind agreement certified **7 FALSE-clean of 8 (54%)**; antibody: cross-family mandatory, never cite an IAA without declaring seat kinship | yes — the 2026-08-24 panel finding #1 is the same shape (an LLM number promoted to doctrine) |
+| **W100** (2026-07-18) | same-family blind agreement certified **7 FALSE-clean of 8 agreements (54% of the whole lot)**; antibody: cross-family mandatory, never cite an IAA without declaring seat kinship | yes — the 2026-08-24 panel finding #1 is the same shape (an LLM number promoted to doctrine) |
 | **W113** | "la frase che scrivo MENTRE ritratto è un claim nuovo, e nessun round adversariale la guarda" — the disposition step is itself ungraded | open by nature |
 
 **AMENDMENTS.md** (52 KB, **42 entries over 17 dates**, only **2 mention "council"**) — the
@@ -500,3 +502,24 @@ existence/abstract seen in search results only.
 15. **[S15]** ⚠ Newcombe et al., *How Amazon Web Services Uses Formal Methods*, CACM 58(4)
     (2015) — https://cacm.acm.org/research/how-amazon-web-services-uses-formal-methods/ — fetch
     403; the canonical industry formal-methods report (TLA+ at AWS).
+
+## Adversarial review
+
+Blind cross-family review (generator ≠ grader), 2026-08-29. The refuters received the full document and the panel's hard rules, nothing else; path existence had already been verified on disk by the orchestrator's gate, so they attack logic, numbers, rule-compliance and the SOTA claims. Dispositions by the orchestrator (claude-fable-5, Zero's manual selection): **survives** = recorded as a standing caveat, not fixed in this PR; **rejected** = the objection misreads the document or the rules (reason given); **accepted** = fixed in the text.
+Tally: 8 raised · 4 survive · 4 rejected · 0 accepted.
+
+**Reviewer: `glm-5.2`** — Zhipu GLM 5.2 via TP1 (API, no repository access). 8 raised.
+
+| # | sev | objection (refuter's words) | disposition |
+|---|---|---|---|
+| 1 | HIGH | "7 FALSE-clean of 8 (54%)" — 7/8 = 87.5%, not 54%; the TL;DR's "7/8 false-clean" contradicts the in-table percentage; a senior engineer would reject the metric as stated. | rejected (wording clarified) — the report quotes scar W100 verbatim: 7 of the 8 same-family agreements were false-clean, which is 54% of the whole lot; the text now reads 'of 8 agreements (54% of the whole lot)' |
+| 2 | HIGH | "ADR-001 marked superseded-by" (W1-PR1 acceptance) — declaring the "Gemini primary LLM" ADR superseded is a business ruling on which LLM is primary; hard rule (c) forbids the report deciding business decisions, yet R1 ships it as an acceptance criterion. | rejected — marking ADR-001 'superseded-by' records the status of a decision already replaced by later rulings (2026-07-25, 2026-08-20); it records, it does not decide |
+| 3 | HIGH | "the gate reads blind; identities unblind only in the recorded disposition" — does not satisfy [S3]'s requirement that the judge be independent of both debaters; stripping labels from Opus reviews of an Opus-orchestrated design still leaves same-family self-enhancement, the exact gap §3/§4 cites R4 as closing. | survives — valid: a blind same-family judge still carries family bias; the cross-family judge is the stronger form and R4 should say so |
+| 4 | MED | "Kill: 0 flips and 0 rank changes after 20 decisions → blind mode for Gear 3 only" — unfalsifiable acceptance test: the kill condition narrows scope rather than reverting, so the recommendation ships regardless of measured effect. | survives — the kill criterion narrows instead of reverting; recorded as a defect of R1's kill clause |
+| 5 | MED | "error costs > ~15× tokens" — dimensional nonsense (error costs in tokens?); the §3 transfer of Anthropic's 15× chat-token figure is being reused as a gate threshold with the wrong unit. | survives — '15× tokens' is the modus TRIAGE rule's own wording (error cost vs token cost); the unit sloppiness is inherited and recorded |
+| 6 | MED | "Ratio: ~30 research-file and ~15 memory decisions per ADR-formatted one" — §1.4 counts 161+545+57 = 763 memory decision files vs ~12 ADRs, i.e. ~64:1, not ~15:1; the ratio is misstated. | rejected — the ratio uses the 161 decision-typed memory files against ~12 ADR-formatted ones (~13–15:1); 545 and 57 are discovery- and lesson-typed files, not decisions |
+| 7 | MED | "exactly three external seats" (§1.1) vs "4-LLM panel mandatory" with "optional NB-1" (§1.2) — the panel size is stated inconsistently; "exactly three" and "4-LLM mandatory" cannot both be the canonical composition. | rejected — two different instruments: the council caps external chairs at three; the 4-LLM pre-approval panel counts the orchestrator's own seat plus an optional NotebookLM verifier |
+| 8 | LOW | "one edit to the skill's line 11-12 (cite this report)" — creates a circular citation: doctrine lints resolve, the doctrine's cure cites the very dossier that reports the doctrine defect, so R3's green-post-cure acceptance is self-fulfilling rather than evidence of integrity. | survives — the circularity is real; the cure PR should cite the ruling, not this dossier |
+
+Refuter's verdict: No — the report cannot stand as evidence until the W100 percentage, the R1 business-ruling violation, and R4's logical gap against its own cited SOTA are corrected; fix those three and the rest is shippable as a panel finding.
+

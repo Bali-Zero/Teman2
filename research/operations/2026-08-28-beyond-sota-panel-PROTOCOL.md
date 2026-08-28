@@ -4,6 +4,8 @@ domain: operations
 panel: beyond-sota-2026-08-28
 type: protocol
 mandated_by: Zero (interactive Pro session, /model claude-fable-5, max effort)
+adversarial_review: kimi-k3
+model_selection: "manual — Zero's order of 2026-08-28 for this one panel; pinned by the orchestrating session, not routed by any script, cron or doctrine (Fable 5 has no automated role, ruling 2026-08-20)"
 ---
 
 # BEYOND-SOTA PANEL — protocol for the 13 Fable-5 lanes
@@ -18,9 +20,9 @@ report on the M5 Desktop, plus this repo under `research/operations/`.
 
 Fable 5 is normally out of the automated workflow (CLAUDE.md §5, RULED 2026-08-20). This panel
 runs on Fable because Zero selected it manually in this interactive session — the one sanctioned
-path (Legge 5). The lanes run with the model PINNED to `claude-fable-5` (fresh context — the 5 fork lanes of the
-first launch inherited ~90K tokens of session context each and exhausted the account window in
-minutes; pinned fresh-context lanes are how the panel completes). Each lane executes directly and
+path (Legge 5). The lanes run with the model PINNED to `claude-fable-5` under Zero's manual selection for this one panel (order of 2026-08-28; this protocol is a run record, not standing doctrine — nothing in it or in the repo routes to Fable afterwards) (fresh context — the 5 fork lanes of the
+first launch inherited ~90K tokens of session context each and hit the seat's WEEKLY cap (91% when probed) within
+minutes; pinned fresh-context lanes ALSO died on the second seat — see §4bis; headless `claude -p` lanes, one OAuth seat each, are how the panel completed). Each lane executes directly and
 never re-delegates (no Agent, no Workflow).
 
 **Repo root for every lane = the panel worktree**
@@ -157,7 +159,7 @@ session/weekly limit within minutes and left NOTHING on disk. Therefore:
 1. **Write early, append often.** Immediately after method step A (GROUND) — before any web
    call — write the output file with the frontmatter and sections §1 and §2 complete. After
    step B write §3. After step C write §4. Then §5–§9 one at a time, each appended as soon as it
-   is complete (`cat >> file <<'EOF'` or the Edit tool). A window death must leave every
+   is complete (`cat >> file <<'EOF'` or the Edit tool (the lane's own output file is the one write target §3 allows)). A window death must leave every
    finished section on disk. Never hold the whole report in memory until the end.
 2. **Resume mode.** On start, `ls` your output file. If it exists: read it, list which of §0–§9
    are present and complete, and CONTINUE from the first missing/incomplete section — do not
@@ -172,7 +174,7 @@ session/weekly limit within minutes and left NOTHING on disk. Therefore:
 
 ## 5. Final message to the orchestrator (≤250 words)
 
-Report path · word count · source count · top-5 recommendations (one line each) · the single
+Report path · word count · source count · top-3 recommendations (one line each) · the single
 biggest gap · needs-ruling items (if any) · anything you could not verify. Nothing else — the
 report is the deliverable, the message is the receipt.
 
@@ -181,3 +183,39 @@ report is the deliverable, the message is the receipt.
 Index + synthesis at `research/operations/2026-08-28-beyond-sota-panel-INDEX.md`; copy of all
 reports to `air:/Users/balizero/Desktop/beyond-sota-2026-08-28/` (M5 Desktop, per Zero); PR
 `docs(research): beyond-SOTA panel, 13 lanes` with auto-merge armed per CLAUDE.md §2.
+
+## Adversarial review
+
+Blind cross-family review (generator ≠ grader), 2026-08-29. The refuters received the full document and the panel's hard rules, nothing else; path existence had already been verified on disk by the orchestrator's gate, so they attack logic, numbers, rule-compliance and the SOTA claims. Dispositions by the orchestrator (claude-fable-5, Zero's manual selection): **survives** = recorded as a standing caveat, not fixed in this PR; **rejected** = the objection misreads the document or the rules (reason given); **accepted** = fixed in the text.
+Tally: 16 raised · 5 survive · 5 rejected · 6 accepted.
+
+**Reviewer: `kimi-k3`** — Moonshot Kimi K3 via Kimi CLI (read-only snapshot of the repo). 8 raised.
+
+| # | sev | objection (refuter's words) | disposition |
+|---|---|---|---|
+| 1 | HIGH | "pinned fresh-context lanes are how the panel completes" — §4bis measures the opposite: "two launches (5 fork lanes, then 5 pinned lanes) died… within minutes and left NOTHING on disk." The doc's own data refutes its central completion mechanism; the fix is asserted, not demonstrated. | accepted — §0 now says the pinned lanes also died and that headless per-seat lanes are how the panel completed |
+| 2 | HIGH | "The lanes run with the model PINNED to `claude-fable-5`" — a written protocol (doctrine) that pins and re-launches Fable lanes, including orchestrator-driven resume mode, is auto-routing by doctrine; "Zero selected it manually" covers one session start, not scripted relaunches. | accepted (wording) — §0 now scopes the pin to Zero's manual selection for this one panel and states the protocol is a run record, not standing doctrine; rejected (substance) — no relaunch was automated by any script or cron |
+| 3 | MED | "6 OAuth seats + cross-family council" — the fleet roster maps 4 Anthropic OAuth accounts (A1/A2/A3/AZ) plus 2 ChatGPT seats (O1/O2); OpenAI seats are not OAuth seats, so the claimed asymmetry is inflated and misdescribed. | rejected — FLEET_TOPOLOGY.json and CLAUDE.md list six Claude OAuth seats (five MAX x20 + one Team premium); the reviewer's 4+2 roster is not this repository's |
+| 4 | MED | "≤20 file reads… ≤12 web fetches… ≤35 minutes wall-clock" — incompatible with the mandate: ~15 named doctrine files plus scars, memory hits, and prior panels exceed 20 reads, and 10 required primary sources plus searches consume nearly all 12 fetches; minimums are mutually exclusive. | survives — the caps were set to fit the seat windows; the lanes met the ≥10-source floor by grepping rather than reading whole files, but the tension is real and recorded |
+| 5 | MED | "inherited ~90K tokens of session context each and exhausted the account window in minutes" — 90K inherited tokens per lane cannot alone exhaust an account window "in minutes"; presented as measured but the causal attribution is implausible and unsupported by any usage figure. | rejected (wording fixed) — the measured cause was the seat's WEEKLY cap (91% when probed), not the 5-hour window; §0 now says so |
+| 6 | MED | "`cat >> file <<'EOF'` or the Edit tool" — §3 restricts Bash to an explicitly read-only whitelist (`ls`, `grep`, `cat`, `sed -n`…); instructing lanes to append via shell heredoc contradicts the read-only command discipline written three sections earlier. | accepted — §4bis now notes the lane's own output file is the one write target §3 allows |
+| 7 | LOW | "top-5 recommendations (one line each)" — §4's TL;DR mandates "the top-3 moves" while §5's receipt demands top-5; inconsistent required counts across the same output contract. | accepted — §5 receipt now asks for top-3, matching §4 |
+| 8 | LOW | "no test-suite runs (machine saturation)" paired with "first PRs (…acceptance test)" — lanes must specify acceptance tests for PRs they are forbidden to execute or validate, so the acceptance criteria are authored unverified by construction. | survives — by design: research lanes specify acceptance tests they cannot execute; the tests are falsified when the PR is built |
+
+Refuter's verdict: Let it stand as evidence only after §4bis is reconciled with §0 (the pinned-lane failure acknowledged and the completion mechanism re-justified), the read/fetch budgets are made consistent with the mandatory grounding list, and Fable pinning is explicitly scoped to Zero's manual per-launch selection; as written its core claim is self-refuting.
+
+**Reviewer: `qwen-3.8-max`** — Alibaba Qwen3.8 Max via TP1 (API, thinking on, no repository access). 8 raised.
+
+| # | sev | objection (refuter's words) | disposition |
+|---|---|---|---|
+| 1 | HIGH | "The lanes run with the model PINNED to `claude-fable-5`" — Pinning Fable across lanes and referring to launches/orchestrator turns Fable into routed doctrine; hard rule permits only manual interactive selection. | rejected — as kimi-k3 #2: manual selection by Zero for this one panel; wording tightened |
+| 2 | HIGH | "pinned fresh-context lanes are how the panel completes" — Later measured that pinned lanes died within minutes; fresh-context pinning did not overcome account limits, so claim is contradicted. | accepted — as kimi-k3 #1 |
+| 3 | HIGH | "≤12 web fetches (search results count as one), ≤35 minutes wall-clock." — Required 10 primary sources, path verification, and 2,500–6,000 words make this budget implausible; it incentivizes shallow/fabricated evidence. | survives — as kimi-k3 #4 |
+| 4 | HIGH | "`client_id`/placeholders." — Client identifiers are client data; allowing them in reports conflicts with the absolute rule that no client data appear in outputs/artifacts. | rejected — `client_id` placeholders are the sanctioned pseudonymous form under SYMBIOSIS Law 2; no report contains any client reference at all |
+| 5 | MED | "do not redo the grounding it already reflects (spot-verify 3 of its cited paths, then move on)." — This allows resumed reports to retain prior claims without full current-session verification, contradicting the requirement that every claim be verified now. | survives — resume mode traded full re-verification for seat economy; the orchestrator's gate then re-checked every cited path on disk, which is why the caveat is recorded rather than fixed |
+| 6 | MED | "no surveyed system does it, or it composes known pieces into something none of them has" — A universal negative cannot be established by 10 sources/12 fetches; the criterion is unfalsifiable and would let speculative claims pass. | accepted (wording) — the beyond-SOTA criterion is scoped to the surveyed set in the INDEX; the protocol keeps its original text as the run record |
+| 7 | MED | "Read from it, write into it." — The protocol also requires reading memory bodies outside the declared panel worktree, making the read scope inconsistent and potentially ungoverned. | rejected — §3 explicitly allows read-only access to the memory directory; the write scope is the output file only |
+| 8 | MED | "Grep the scar corpus and the ledger for your area" — Scar/ledger/memory likely contain client incidents; broad grep without mandatory redaction/filter checks risks client data entering logs/reports despite absolute boundary. | survives — the scar corpus is PII-free by rule and the outputs were scanned; the risk of a grep surfacing an incident detail is real and recorded |
+
+Refuter's verdict: I would not let this report stand as evidence until the Fable-routing, failed pinned-lane, impossible-budget, and client-data boundary defects are corrected.
+

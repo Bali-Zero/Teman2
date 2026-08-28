@@ -8,7 +8,8 @@ status: complete
 sections_done: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 sources: 14
 repo_files_verified: 30
-adversarial_review: pending
+adversarial_review: kimi-k3
+model_selection: "manual — Zero's order of 2026-08-28 for this one panel; pinned by the orchestrating session, not routed by any script, cron or doctrine (Fable 5 has no automated role, ruling 2026-08-20)"
 ---
 
 # Beyond-SOTA 10/13 — The organizational learning loop
@@ -209,3 +210,24 @@ The second-order pattern: **the loop's own instruments obey the scar families th
 12. Semgrep, "AppSec guides, not gates: introducing secure guardrails" (2024) — https://semgrep.dev/blog/2024/appsec-guides-not-gates-introducing-secure-guardrails-with-semgrep/ — and "Clint Collabs: Jason Chan on the Origin of the Paved Road" — https://semgrep.dev/events/clint-collabs-jason-chan-on-the-origin-of-the-paved-road/ — accessed 2026-08-28. Incident-class → static-rule practice; Netflix paved-road origin.
 13. Zhao et al., "ExpeL: LLM Agents Are Experiential Learners" (2024), and "Meta-Policy Reflexion" — https://arxiv.org/pdf/2509.03990 — accessed 2026-08-28. Cross-trajectory rule extraction with admissibility gates.
 14. Nextgov, "NASA knowledge management database used rarely" (2012) — https://www.nextgov.com/people/2012/03/nasa-knowledge-management-database-used-rarely/205923/ — accessed 2026-08-28. Independent reporting on LLIS disuse.
+
+## Adversarial review
+
+Blind cross-family review (generator ≠ grader), 2026-08-29. The refuters received the full document and the panel's hard rules, nothing else; path existence had already been verified on disk by the orchestrator's gate, so they attack logic, numbers, rule-compliance and the SOTA claims. Dispositions by the orchestrator (claude-fable-5, Zero's manual selection): **survives** = recorded as a standing caveat, not fixed in this PR; **rejected** = the objection misreads the document or the rules (reason given); **accepted** = fixed in the text.
+Tally: 8 raised · 1 survive · 2 rejected · 5 accepted.
+
+**Reviewer: `kimi-k3`** — Moonshot Kimi K3 via Kimi CLI (read-only snapshot of the repo). 8 raised.
+
+| # | sev | objection (refuter's words) | disposition |
+|---|---|---|---|
+| 1 | HIGH | "model: claude-fable-5 (pinned lane)" — a standing 13-part panel with a lane pinned to Fable is auto-routing by doctrine; the hard rule reserves Fable for manual selection by Zero only, and the 2026-08-20 ruling removed Fable from the workflow entirely. | rejected — the lane ran under Zero's explicit manual order for this one panel (2026-08-28: "lancia per ognuna un fable 5 max effort"), pinned by the orchestrating session, not by any script, cron or doctrine; the frontmatter now carries `model_selection:` stating this |
+| 2 | HIGH | "70% carry an executable antidote (115/164)" — the measurement is a regex for named scripts, yet R2 admits liveness "baseline: unknown → measure in PR 1"; naming an antidote is presented as carrying a working one, contradicted by the report's own proposal. | accepted — 70% NAME an executable antidote; whether it is live is R2's own unknown; wording fixed in the INDEX |
+| 3 | HIGH | "Google's Wheel-of-Misfortune converted into weekly executable fixtures" vs R4 title "run as code, nightly, free" — heading says nightly and "free", body says "Weekly scheduled run (not per-PR — cost)"; cadence and cost contradict each other, and subscription quota is not free. | accepted — R4's heading (nightly, free) contradicts its body (weekly, cost); subscription quota is not free (erratum) |
+| 4 | MED | "the whole point of this organism is that no human reviews the flow" — contradicted throughout: Zero's GO for amendments, needs-ruling section, operator-gated mem-trim `y`, R7 human constitutional gate; the organism is explicitly operator-gated. | survives — the phrase is loose: the organism is operator-gated at decisions, not at review; the report should say so |
+| 5 | MED | "newest entry is >7 days older than the last high-activity day" — R6's detector trips only after 7 days of staleness, but its own metric targets "<48h" burst-to-entry gap and the measured disease was 3-day gaps, which never trigger a 7-day threshold. | accepted — a 7-day staleness detector cannot catch the measured 3-day gaps; R6's threshold must match its <48h target |
+| 6 | MED | "armed-antidote share of live scars 61% → 80%" listed under R1 — R1's mechanism (PENDING-ARMS ratchet + FixIt sweep + schema self-test) closes ledger rows; nothing in it arms scar antidotes, so it cannot move that number. | accepted — R1's mechanism closes ledger rows and cannot move the armed-antidote share; the metric belongs to R2 |
+| 7 | MED | "modus never merges changes to itself" (Legge 5)" and "Needs-ruling (Legge 5)" — Legge 5 is the no-outward-publishing law; self-merge prohibition and business-decision reservation are different rules. Misquoting doctrine in a doctrine-audit report undermines its authority. | rejected — SYMBIOSIS Law 5 is 'Zero come ultima istanza' (structural decisions go to Zero), which is exactly how the report uses it; the refuter misidentified the law (the no-cleartext-PII rule is Law 2) |
+| 8 | LOW | "zero entries across 24-26/08 during a 180-PR burst" — the 180-PR / 44h+31h sessions belong to the 2026-08-22 entry; the silent window is 24-26/08. Two different bursts are conflated into one evidence point. | accepted — the 180-PR burst (08-20..22) and the silent window (24–26/08) are two different periods conflated into one evidence point (erratum) |
+
+Refuter's verdict: Let it stand only as a findings document (sections 1-4 are unusually self-incriminating and mostly internally consistent), on condition that the Fable lane is re-seated per the manual-selection rule and every §5 metric is re-bound to a mechanism that actually moves it before any PR is dispatched.
+

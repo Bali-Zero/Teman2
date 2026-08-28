@@ -8,6 +8,8 @@ sources: 15
 repo_files_verified: 26
 status: complete
 sections_done: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+adversarial_review: codex
+model_selection: "manual — Zero's order of 2026-08-28 for this one panel; pinned by the orchestrating session, not routed by any script, cron or doctrine (Fable 5 has no automated role, ruling 2026-08-20)"
 ---
 
 # Beyond-SOTA 1/13 — Intake, triage & specification
@@ -482,3 +484,24 @@ block the *thinking*.
 15. **S15** — Tessl blog, "A look at Spec Kit":
     https://tessl.io/blog/a-look-at-spec-kit-githubs-spec-driven-software-development-toolkit —
     accessed 2026-08-28. The spec-as-source ecosystem view.
+
+## Adversarial review
+
+Blind cross-family review (generator ≠ grader), 2026-08-29. The refuters received the full document and the panel's hard rules, nothing else; path existence had already been verified on disk by the orchestrator's gate, so they attack logic, numbers, rule-compliance and the SOTA claims. Dispositions by the orchestrator (claude-fable-5, Zero's manual selection): **survives** = recorded as a standing caveat, not fixed in this PR; **rejected** = the objection misreads the document or the rules (reason given); **accepted** = fixed in the text.
+Tally: 8 raised · 6 survive · 1 rejected · 1 accepted.
+
+**Reviewer: `codex`** — OpenAI GPT-5.6 sol at effort high via Codex CLI (read-only sandbox on the repo snapshot). 8 raised.
+
+| # | sev | objection (refuter's words) | disposition |
+|---|---|---|---|
+| 1 | HIGH | "model: claude-fable-5 (pinned lane)" — A pinned panel lane implies automatic routing, directly violating the hard rule that Fable 5 is manual-selection-only. | rejected — the lane ran under Zero's explicit manual order for this one panel (2026-08-28: "lancia per ognuna un fable 5 max effort"), pinned by the orchestrating session, not by any script, cron or doctrine; the frontmatter now carries `model_selection:` stating this |
+| 2 | HIGH | "pack's `receipts:` must carry each probe's observed outcome" — A stored outcome is not proof the probe ran. Without CI executing and authenticating probes, R1 merely creates forgeable claims while presenting acceptance as mechanically bound. | survives — valid: a stored outcome is forgeable; the probe must be executed by CI, not recorded by the author — constraint on R1's build |
+| 3 | HIGH | "here it converts the 2026-08-22 class... into an in-flight breaker" — PR timestamps do not measure session runtime, and a post-hoc lint acknowledgment does not interrupt spending. R2 cannot prevent the cited 44-hour blowup as designed. | survives — PR timestamps do not measure session runtime; R2 as designed cannot interrupt a 44-hour session, only account for it afterwards |
+| 4 | HIGH | "Nothing else in §5 requires a business decision" — R2 sets spending ceilings and override policy; R3 chooses exempt business surfaces; R4 encodes operational invariants. Those governance choices require needs-ruling, not report-level decisions. | accepted — spending ceilings, exempt surfaces and operational invariants are rulings; the INDEX's §E carries the appetite item and the lane's 'nothing else' line is wrong |
+| 5 | MED | "if a PR's changed files overlap ≥50% with a `fix:`-typed PR" — The report itself says path cadence only suspects chains. Overlap and title prefixes cannot establish recidivism, while a GitHub-dependent CI query adds nondeterminism and operational failure modes. | survives — overlap + `fix:` prefix only suspects a chain; the metric is a heuristic and must be labelled so |
+| 6 | MED | "ahead of every surveyed system on classification and grounding" — The survey is narrow and provides no equivalent implementation audit of competitors. Absence from selected documentation cannot establish that no equal mechanism exists. | survives — a universal negative cannot be established from a 10–20 source survey; the INDEX now scopes every 'no equivalent' claim to the lane's surveyed set |
+| 7 | MED | "Anthropic-cited ~33% unguided success on non-trivial tasks" — No supporting experiment is identified, and S6 is a best-practices page rather than the stated measurement source. The table presents an untraceable secondary statistic as measured effect. | survives — the ~33% figure is an untraceable secondary statistic; to be re-sourced or dropped |
+| 8 | MED | "corrective-commit share 13.5% → <5% by day 90" — The 13.5% forensic sample is not attributed specifically to budget overruns, so R2 has no demonstrated causal path to this target; windows and classification methodology also differ. | survives — the 13.5% baseline is not attributed to budget overruns; the <5% target has no demonstrated causal path |
+
+Refuter's verdict: I would not let this report stand as evidence until Fable routing, probe execution, governance rulings, measurement provenance, and causal acceptance metrics are corrected and independently re-verified.
+

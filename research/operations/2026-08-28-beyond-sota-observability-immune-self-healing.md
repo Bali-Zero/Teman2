@@ -8,6 +8,8 @@ sources: 12
 repo_files_verified: 31
 status: complete
 sections_done: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+adversarial_review: codex
+model_selection: "manual — Zero's order of 2026-08-28 for this one panel; pinned by the orchestrating session, not routed by any script, cron or doctrine (Fable 5 has no automated role, ruling 2026-08-20)"
 ---
 
 # Beyond-SOTA 8/13 — Observability, immune system & self-healing
@@ -524,3 +526,24 @@ what burn-rate receptors and the precision ledger enforce.
 10. Sentry docs, "Dynamic Sampling" — https://docs.sentry.io/organization/dynamic-sampling/ (acc. 2026-08-28). Server-side retention priorities; deprioritizing health-check noise; metrics computed on all received events.
 11. PagerDuty, "PagerDuty for AI: How the SRE Agent Triages AI Incidents" + H2-2025 release notes — https://www.pagerduty.com/eng/pagerduty-for-ai-how-the-sre-agent-triages-ai-incidents/ · https://www.pagerduty.com/blog/product/product-launch-2025-h2/ (acc. 2026-08-28). The 2025 commercial state of agentic incident response.
 12. incident.io, "5 best AI-powered incident management platforms" (2026 ed.) — https://incident.io/blog/5-best-ai-powered-incident-management-platforms-2026 (acc. 2026-08-28). Investigations ("~80% of response automated") — vendor-primary for the competing claim.
+
+## Adversarial review
+
+Blind cross-family review (generator ≠ grader), 2026-08-29. The refuters received the full document and the panel's hard rules, nothing else; path existence had already been verified on disk by the orchestrator's gate, so they attack logic, numbers, rule-compliance and the SOTA claims. Dispositions by the orchestrator (claude-fable-5, Zero's manual selection): **survives** = recorded as a standing caveat, not fixed in this PR; **rejected** = the objection misreads the document or the rules (reason given); **accepted** = fixed in the text.
+Tally: 8 raised · 5 survive · 1 rejected · 2 accepted.
+
+**Reviewer: `codex`** — OpenAI GPT-5.6 sol at effort high via Codex CLI (read-only sandbox on the repo snapshot). 8 raised.
+
+| # | sev | objection (refuter's words) | disposition |
+|---|---|---|---|
+| 1 | HIGH | "model: claude-fable-5 (pinned lane)" — A pinned lane implies doctrinal or automated routing, expressly forbidden for Fable 5. The report needs invocation evidence proving a manual, one-off selection. | rejected — the lane ran under Zero's explicit manual order for this one panel (2026-08-28: "lancia per ognuna un fable 5 max effort"), pinned by the orchestrating session, not by any script, cron or doctrine; the frontmatter now carries `model_selection:` stating this |
+| 2 | HIGH | "Classes under 50% acted for 4 consecutive weeks are proposed for demotion to `digest` tier" — This lets an auto-merging healer initiate alert suppression without an operator ruling. The inference may be wrong, and demotion can conceal critical incidents. | accepted — demoting an alert class is a ruling, never an auto-merging healer's inference; added to the needs-ruling list |
+| 3 | HIGH | "MTTD and MTTR per incident, joined from detection events and cure events over one stream" — The proposed schema has no incident or correlation identifier. Separate node-local JSONL files and non-atomic dual writes cannot reliably pair detection with cure. | survives — valid: MTTD/MTTR need an incident correlation id and an atomic write; the schema as proposed cannot pair detection with cure |
+| 4 | HIGH | "the *derivative* still carries all of them" — A derivative loses standing-stock severity. Burn-rate-only receptors can remain quiet while hundreds of critical rows stay unresolved; the proposed metrics reward changing output and hiding old debt. | survives — valid: a burn-rate derivative hides standing stock; the receptor must carry both the derivative and the level |
+| 5 | HIGH | "594 lines start `- opened`, of which only **244 parse**" — The report then says 366 other rows carry noncanonical parentheticals. Since strict and noncanonical rows are disjoint, 244+366=610, exceeding the stated 594 total. | accepted — 244 + 366 = 610 ≠ 594; the parse census must be re-run with disjoint categories |
+| 6 | MED | "roughly 100 live jobs have no repo canon" — Subtracting 156 committed templates from 255 live plists does not establish set difference; committed-but-unloaded templates and 19 acknowledged third-party jobs invalidate the inference. | survives — 255 − 156 is not a set difference; the canon-less count must be computed by name matching |
+| 7 | MED | "today ≈20/156 ≈ 13%" — The numerator counts tested wrappers while the denominator counts committed plists. One wrapper may serve multiple plists, so this is not a valid coverage rate. | survives — wrappers and plists are different denominators; the 13% coverage figure is not a rate |
+| 8 | MED | "no surveyed system applies error-budget calculus to a tech-debt ledger" — Twelve selected sources cannot establish absence or uniqueness, and SLO/error-budget methods are not inherently request-only. “Beyond SOTA” is unsupported without a reproducible broader search. | survives — a universal negative cannot be established from a 10–20 source survey; the INDEX now scopes every 'no equivalent' claim to the lane's surveyed set |
+
+Refuter's verdict: I would not let this report stand as engineering evidence until the prohibited routing is disproved, arithmetic and denominators are corrected, and R1/R5/R6 receive falsifiable designs plus operator rulings.
+

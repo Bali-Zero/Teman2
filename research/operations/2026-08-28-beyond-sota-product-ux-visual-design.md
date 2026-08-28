@@ -8,6 +8,8 @@ sources: 18
 repo_files_verified: 35
 status: complete
 sections_done: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+adversarial_review: codex
+model_selection: "manual — Zero's order of 2026-08-28 for this one panel; pinned by the orchestrating session, not routed by any script, cron or doctrine (Fable 5 has no automated role, ruling 2026-08-20)"
 ---
 
 # Beyond-SOTA — Part 11/13: Product, UX & visual design craft
@@ -557,3 +559,24 @@ extended to experience.
 18. Trust UX reference (proof, guarantees, risk) —
     https://www.userintuition.ai/reference-guides/trust-ux-proof-guarantees-and-signals-that-reduce-risk
     (2026-08-28) — decision-moment trust signals; field-level trust measurement.
+
+## Adversarial review
+
+Blind cross-family review (generator ≠ grader), 2026-08-29. The refuters received the full document and the panel's hard rules, nothing else; path existence had already been verified on disk by the orchestrator's gate, so they attack logic, numbers, rule-compliance and the SOTA claims. Dispositions by the orchestrator (claude-fable-5, Zero's manual selection): **survives** = recorded as a standing caveat, not fixed in this PR; **rejected** = the objection misreads the document or the rules (reason given); **accepted** = fixed in the text.
+Tally: 8 raised · 3 survive · 1 rejected · 4 accepted.
+
+**Reviewer: `codex`** — OpenAI GPT-5.6 sol at effort high via Codex CLI (read-only sandbox on the repo snapshot). 8 raised.
+
+| # | sev | objection (refuter's words) | disposition |
+|---|---|---|---|
+| 1 | HIGH | "the magic-link dead end are the first three probes" — A magic-link journey processes authentication tokens; traces, videos, URLs, and logs may persist them. “Anonymous context only” is contradictory unless synthetic identities, artifact redaction, retention, and token-scrubbing are specified. | survives — valid: a magic-link probe handles tokens; synthetic identities, artifact redaction and retention limits are prerequisites, recorded on R1 |
+| 2 | HIGH | "Migration is surface-by-surface (funnels first per R4 §6)" — This operationalizes Merah Putih as the production identity, a business decision, yet §7 does not list that identity choice as needs-ruling. An unshipped research contract is not owner authorization. | accepted — adopting Merah Putih as the production identity is a business decision; added to the needs-ruling list |
+| 3 | HIGH | "5 of 6 mechanically catchable; 0 of 6 were caught" — The denominator is invalid: `/exclusive` is explicitly only PARTIAL and a product question, while `/agents` is retracted. The report alternates among five, six, and additional defects without a stable inventory. | accepted — the report's own inventory settles on six after retracting /agents; the INDEX now uses six and names lane 7's separate five-item list |
+| 4 | HIGH | "model: claude-fable-5 (pinned lane)" — “Pinned lane” provides no evidence that Fable was manually selected. If panel routing selected it automatically, this directly violates the manual-only Fable rule; invocation provenance is required. | rejected — the lane ran under Zero's explicit manual order for this one panel (2026-08-28: "lancia per ognuna un fable 5 max effort"), pinned by the orchestrating session, not by any script, cron or doctrine; the frontmatter now carries `model_selection:` stating this |
+| 5 | HIGH | "ahead of world SOTA at deciding what the design should be" — An 18-source convenience survey, dominated by vendor documentation and internal comparisons, cannot establish world-SOTA superiority or absence of equivalent practices. This is an unsupported universal claim presented as measured. | survives — a universal negative cannot be established from a 10–20 source survey; the INDEX now scopes every 'no equivalent' claim to the lane's surveyed set |
+| 6 | HIGH | "critic false-PASS rate on W99-class seeded defects: 100% then" — One historical carousel pass does not establish a 100% rate. The unit, denominator, labels, and corpus do not yet exist; W99’s 6/9 affected slides cannot support this baseline. | accepted — one historical carousel does not establish a 100% false-PASS rate; the baseline is 'unmeasured' until the corpus exists |
+| 7 | HIGH | "CUPED (or its Bayesian cousins) is what makes A/B on a low-traffic funnel feasible at all" — CUPED helps only with sufficiently predictive pre-exposure covariates and adequate traffic. The report recommends infrastructure before calculating power, baseline variance, covariate correlation, or achievable MDE. | survives — CUPED needs predictive pre-exposure covariates and traffic; power and MDE must be computed before any experimentation infrastructure |
+| 8 | MED | "MLLM-as-UI-Judge / PerceptUI / UXBench / CritiqueCrew" — The bibliography omits CritiqueCrew and arXiv 2602.01796 despite citing them in §3. The bundled mechanism and failure-mode claims therefore cannot be audited from the declared 18 sources. | accepted — CritiqueCrew and arXiv 2602.01796 are cited in §3 but missing from §9; erratum recorded |
+
+Refuter's verdict: I would not let this report stand as evidence until its defect inventory and metrics are rebuilt, sources verified, Fable provenance documented, and privacy-sensitive or business-deciding recommendations moved behind explicit rulings.
+

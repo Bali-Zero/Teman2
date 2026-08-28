@@ -8,6 +8,8 @@ sources: 19
 repo_files_verified: 40
 status: complete
 sections_done: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+adversarial_review: kimi-k3
+model_selection: "manual — Zero's order of 2026-08-28 for this one panel; pinned by the orchestrating session, not routed by any script, cron or doctrine (Fable 5 has no automated role, ruling 2026-08-20)"
 ---
 
 # 4/13 — Implementation craft (BUILD): how code actually gets written in this organism
@@ -232,3 +234,24 @@ All accessed 2026-08-28. Entries 3, 6, 7, 9, 15 (companion), 16, 17, 18, 19 were
 17. Cloud Security Alliance — research note "Vibe Coding's Security Debt: The AI-Generated CVE Surge" (2026). https://labs.cloudsecurityalliance.org/research/csa-research-note-ai-generated-code-vulnerability-surge-2026/. Industry security-body aggregation behind the ~45 % failure-rate figure and the AI-linked CVE tracking.
 18. OX Security — "Vibe Coding Security: Why 62 % of AI-Generated Code Ships With Vulnerabilities" (2025-10). https://www.ox.security/blog/vibe-coding-security/. 300+-repo vendor study ("Army of Juniors" anti-patterns) behind the 62 % figure.
 19. "The Productivity-Reliability Paradox: Specification-Driven Governance for AI-Augmented Software Development" (arXiv 2605.01160, 2026-05-01). https://arxiv.org/abs/2605.01160. Synthesis arguing spec governance, not model capability, is the binding constraint (re-verified by fetch this run; reports +98 % code output vs +91 % review time, flat delivery).
+
+## Adversarial review
+
+Blind cross-family review (generator ≠ grader), 2026-08-29. The refuters received the full document and the panel's hard rules, nothing else; path existence had already been verified on disk by the orchestrator's gate, so they attack logic, numbers, rule-compliance and the SOTA claims. Dispositions by the orchestrator (claude-fable-5, Zero's manual selection): **survives** = recorded as a standing caveat, not fixed in this PR; **rejected** = the objection misreads the document or the rules (reason given); **accepted** = fixed in the text.
+Tally: 8 raised · 7 survive · 1 rejected · 0 accepted.
+
+**Reviewer: `kimi-k3`** — Moonshot Kimi K3 via Kimi CLI (read-only snapshot of the repo). 8 raised.
+
+| # | sev | objection (refuter's words) | disposition |
+|---|---|---|---|
+| 1 | HIGH | "model: claude-fable-5 (pinned lane)" — the 2026-08-20 ruling bars Fable from any doctrine/script-routed work; a systematically spawned 13-part panel "pinned" to Fable is exactly auto-routed Fable spend unless Zero hand-selected it, which the report never states. | rejected — the lane ran under Zero's explicit manual order for this one panel (2026-08-28: "lancia per ognuna un fable 5 max effort"), pinned by the orchestrating session, not by any script, cron or doctrine; the frontmatter now carries `model_selection:` stating this |
+| 2 | HIGH | "\"The SWE-Bench Illusion…\" (arXiv 2506.17208, 2025-06)" — 2506.17208 is "Dissecting the SWE-Bench Leaderboards"; the Illusion paper is arXiv 2506.12286. The claimed "re-confirmed by search/fetch" verification is demonstrably false for this entry. | survives — the refuter disputes the arXiv identifier (claims 2506.12286 for the Illusion paper); not re-verified here, so the row's citation is marked unverified |
+| 3 | HIGH | "Sonnet 5 is the implementer default" vs "85.8 % Sonnet dispatches against a workhorse-first ruling" — the report cites Zero's 2026-08-14 ruling making Sonnet the implementer default, then condemns the meter against the 08-15 ruling, never reconciling which binds; the 85.8% may be compliant. | survives — a real tension between the 2026-08-14 (Sonnet default) and 2026-08-15 (workhorse-first) rulings; the 85.8% figure may be compliant; candidate for the needs-ruling list |
+| 4 | MED | "non-exempt merges >400 net: 26/100 → <10/100" — §1.6 says the largest over-400s are docs/design drops the taxonomy would exempt; the 26/100 baseline is not "non-exempt", so PR-3 classifying ≥20 of 26 could hit the target by relabeling alone. | survives — the 26/100 baseline includes exemptible docs/design drops; PR-3 could hit the target by relabeling, so the metric must be defined on the non-exempt class first |
+| 5 | MED | "measured by grepping AMENDMENTS + task reports" — R1's "→0" metric relies on a file the report itself documents silently recording zero entries for three days, twice; plus the ≥7 baseline is cumulative all-time, not a per-30-day rate. | survives — a metric read from a file that records zero entries during bursts measures the file, not the world; the baseline is cumulative, not a rate |
+| 6 | MED | "the quota pool (14 % of Kimi's month in one day)" — §8 names quota a core interference channel yet no recommendation brokers it; R5 raises workhorse calls 1/48h→>20/week with no quota guardrail, re-arming the exact incident that triggered the doctrine. | survives — R5 raises workhorse calls without a quota broker; the broker is lane 9/13's R1 and must land first |
+| 7 | MED | "agent_start.py can still CREATE the nested worktree the hook fix now lets you remove" — R3 builds --hermetic (gear 3) into a broker with this open upstream scar and the still-open unattributed revert (L209); no recommendation fixes them first. | survives — the nested-worktree creation path and the unattributed revert are open upstream scars R3 depends on |
+| 8 | LOW | "it reproduces the hand-measured 27/200 window within ±3" — the automated heuristic (fix-prefix + same-file within 7 days) measures a different construct than the hand judgment "existed only to correct a claim"; ±3 agreement would be coincidence, not validation. | survives — the heuristic and the hand judgment measure different constructs; ±3 agreement would not validate it |
+
+Refuter's verdict: Let it stand as evidence only after correcting citation #10, documenting that the Fable lane was manually selected by Zero, and reconciling the 08-14/08-15 routing rulings — the disk-probed findings (§1–2) are solid, but §5's baselines and metrics need rework before acting on them.
+
