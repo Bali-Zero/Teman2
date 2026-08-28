@@ -1,7 +1,7 @@
 """Pro-only FlowKit runner for the private marketing workspace MCP.
 
 This module is deliberately independent from ``nuzantara_mcp.tools.flowkit``
-and the full MCP catalog. It accepts only the three closed argv shapes emitted
+and the full MCP catalog. It accepts only the closed argv shapes emitted
 by ``tools.workspace_marketing`` and never invokes a shell or remote staging.
 """
 
@@ -30,6 +30,13 @@ def _valid_value(value: str) -> bool:
 
 def _validate_args(args: list[str]) -> None:
     if args == ["health"]:
+        return
+    if (
+        len(args) == 3
+        and args[0] == "media-info"
+        and args[1] == "--media-id"
+        and _valid_value(args[2])
+    ):
         return
     if len(args) == 9 and args[0] == "generate-image":
         expected = ("--prompt", "--orientation", "--project", "--paygate-tier")
