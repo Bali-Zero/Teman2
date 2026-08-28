@@ -445,12 +445,17 @@ class QueryPlanner:
         # ("Halo!") against near-zero noise, not to erase a real question
         # that happens to open with "Halo, ..." — a greeting prefix must
         # not overwrite the correct classification of the substance that
-        # follows it (client-facing incident 2026-08-27, wa_outbox #348:
-        # "Halo, saya butuh bantuan untuk urus visa dan pajak bisnis saya"
-        # classified GREETING, got zero collections, and hard-failed after
-        # 5 identical-cause retries). If any non-greeting domain scored
-        # above zero, GREETING is excluded from the max — a bare greeting
-        # (no other domain scoring) is unaffected and still wins GREETING.
+        # follows it. Client-facing incident 2026-08-28: wa_outbox #348
+        # fell off with package_unbuildable(reason="greeting_domain"),
+        # retried 5 times against this same deterministic classifier, and
+        # hard-failed into the terminal apology. The message text itself
+        # was never read (client data); the mechanism was reproduced with
+        # SYNTHETIC strings — a greeting prefix in front of generic domain
+        # words with no entity code (KITAS/NPWP/PT PMA/...) classifies
+        # GREETING, which maps to zero collections. If any non-greeting
+        # domain scored above zero, GREETING is excluded from the max — a
+        # bare greeting (no other domain scoring) is unaffected and still
+        # wins GREETING.
         best_domain = max(scores, key=lambda d: scores[d])
         if best_domain == QueryDomain.GREETING:
             non_greeting_scores = {

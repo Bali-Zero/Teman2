@@ -125,9 +125,10 @@ class TestQueryPlanner:
     def test_greeting_prefix_does_not_outrank_visa_substance_indonesian(
         self,
     ) -> None:
-        """Live incident 2026-08-27 (wa_outbox id=348): this exact shape of
-        message was classified GREETING, got zero collections, and hard-
-        failed 5 retries before firing the client-facing apology."""
+        """Live incident 2026-08-28 (wa_outbox id=348) failed this way —
+        greeting_domain, retried 5x, terminal apology. The real message
+        text was never read (client data); this string is SYNTHETIC,
+        written only to reproduce the classifier mechanism."""
         plan = self.planner.plan(
             "Halo, saya butuh bantuan untuk urus visa dan pajak bisnis saya"
         )
