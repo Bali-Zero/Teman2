@@ -141,8 +141,8 @@ logger = logging.getLogger(__name__)
 CUSTOMER_WINDOW_HOURS = 24
 
 # Bounded, non-PII vocabulary for wa_outbox.generation_fall_off_reason
-# (migration 290's CHECK constraint mirrors this set verbatim — keep the
-# two in sync by hand; there is no single source both can import from,
+# (migrations 290+291's CHECK constraint mirrors this set verbatim — keep
+# the two in sync by hand; there is no single source both can import from,
 # since the migration is SQL and this is Python read at a different time).
 _KNOWN_FALL_OFF_REASONS: frozenset[str] = frozenset(
     {
@@ -151,7 +151,16 @@ _KNOWN_FALL_OFF_REASONS: frozenset[str] = frozenset(
         "standing_no_customer_message",
         "window_margin",
         "package_build_error",
+        # "package_unbuildable" stays reachable as the fallback bucket for
+        # a future, not-yet-catalogued PackageUnbuildable reason (migration
+        # 291) — the three KNOWN sub-reasons below get their own distinct
+        # value instead of colliding into this one (2026-08-28: row 348
+        # fell off "package_unbuildable" and the sub-reason was already
+        # gone from the ~60s Fly log retention by the time anyone looked).
         "package_unbuildable",
+        "package_unbuildable_greeting_domain",
+        "package_unbuildable_no_collections",
+        "package_unbuildable_dlp_error",
         "build_contract_break",
         "offer_acquire_error",
         "offer_uncertain",
@@ -198,6 +207,25 @@ _FALL_OFF_REASON_PREFIX_MAP: dict[str, str] = {
     "internal_error": "internal_error",
 }
 
+# Migration 291: the package-builder leg's "unbuildable" head carries a
+# SECOND, genuinely distinct piece of information after its colon — WHICH
+# of `wa_package_builder.PackageUnbuildable`'s call sites refused
+# ("greeting_domain" / "no_collections" / "dlp_error"). Collapsing all
+# three into the single "package_unbuildable" bucket (the pre-291
+# behaviour) is exactly the blindness this map exists to end, one level
+# down from what migration 290 already fixed. Keyed on the EXACT string
+# after the first ':' (never a prefix match — the three known values never
+# collide with each other or with a future one); anything not in this
+# sub-map falls through to `_FALL_OFF_REASON_PREFIX_MAP["unbuildable"]`
+# (the generic "package_unbuildable" bucket) rather than "unknown" — a
+# real PackageUnbuildable outcome should never look indistinguishable from
+# a genuinely uncatalogued reason head.
+_UNBUILDABLE_SUB_REASON_MAP: dict[str, str] = {
+    "greeting_domain": "package_unbuildable_greeting_domain",
+    "no_collections": "package_unbuildable_no_collections",
+    "dlp_error": "package_unbuildable_dlp_error",
+}
+
 
 def _normalize_fall_off_reason(raw: str) -> str:
     """Map an open-ended raw reason string to a bounded DB-safe category.
@@ -216,10 +244,21 @@ def _normalize_fall_off_reason(raw: str) -> str:
     ever fires in prod) maps to "unknown" rather than raising — this
     function backs a best-effort write and must never be the thing that
     turns a fall-off into a second, unrelated failure.
+
+    ONE exception to "the head alone decides the category" (migration
+    291): when the head is "unbuildable", the text AFTER the colon is
+    itself a second, closed-vocabulary signal (which PackageUnbuildable
+    reason fired) and is looked up in ``_UNBUILDABLE_SUB_REASON_MAP``
+    before falling back to the generic "package_unbuildable" bucket — see
+    that map's own docstring.
     """
     if not raw:
         return "unknown"
-    head = raw.split(":", 1)[0]
+    head, _sep, rest = raw.partition(":")
+    if head == "unbuildable":
+        return _UNBUILDABLE_SUB_REASON_MAP.get(
+            rest, _FALL_OFF_REASON_PREFIX_MAP["unbuildable"]
+        )
     return _FALL_OFF_REASON_PREFIX_MAP.get(head, "unknown")
 
 

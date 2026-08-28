@@ -355,6 +355,71 @@ async def test_unbuildable_falls_off_offer_never_called(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("unbuildable_reason", "expected_stored"),
+    [
+        ("greeting_domain", "package_unbuildable_greeting_domain"),
+        ("no_collections", "package_unbuildable_no_collections"),
+        ("dlp_error", "package_unbuildable_dlp_error"),
+    ],
+)
+async def test_unbuildable_sub_reason_recorded_distinctly(
+    monkeypatch: pytest.MonkeyPatch,
+    unbuildable_reason: str,
+    expected_stored: str,
+) -> None:
+    """Migration 291: the codex leg's three PackageUnbuildable sub-reasons
+    must each land in their own DB value, not collapse into the single
+    "package_unbuildable" bucket the way they did before this migration
+    (2026-08-27, measured live: wa_outbox row 348 fell off
+    "package_unbuildable" and the sub-reason — WHICH of greeting_domain /
+    no_collections / dlp_error fired — was already gone from Fly's ~60s
+    log retention by the time anyone looked, twice)."""
+    conn = ScriptedConn()
+    _wire_stubs(
+        monkeypatch,
+        build={
+            "package_wire": None,
+            "package_hash": None,
+            "unbuildable": unbuildable_reason,
+        },
+    )
+    result = await _run(conn=conn)
+    assert result.reason == f"unbuildable:{unbuildable_reason}"
+    [written] = [
+        args for sql, args in conn.executed if "generation_fall_off_reason" in sql
+    ]
+    assert written == (42, expected_stored)
+
+
+@pytest.mark.asyncio
+async def test_unbuildable_unrecognized_sub_reason_falls_back_to_generic_bucket(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A PackageUnbuildable reason not yet in `_UNBUILDABLE_SUB_REASON_MAP`
+    (a future sub-reason nobody has taught this module yet) must still
+    land somewhere DISTINCTLY LABELED as "an unbuildable package", not in
+    the module-wide "unknown" bucket a genuinely uncatalogued reason HEAD
+    gets — the head here ("unbuildable") is perfectly well known, only the
+    sub-reason is new."""
+    conn = ScriptedConn()
+    _wire_stubs(
+        monkeypatch,
+        build={
+            "package_wire": None,
+            "package_hash": None,
+            "unbuildable": "some_future_reason",
+        },
+    )
+    result = await _run(conn=conn)
+    assert result.reason == "unbuildable:some_future_reason"
+    [written] = [
+        args for sql, args in conn.executed if "generation_fall_off_reason" in sql
+    ]
+    assert written == (42, "package_unbuildable")
+
+
+@pytest.mark.asyncio
 async def test_build_http_error_falls_off(monkeypatch: pytest.MonkeyPatch) -> None:
     stubs = _wire_stubs(monkeypatch, build_exc=RuntimeError("conn refused"))
     result = await _run()
