@@ -286,6 +286,34 @@ def _admin_dsn(dsn: str) -> str:
     return dsn.rsplit("/", 1)[0] + "/postgres"
 
 
+def _scratch_source_db() -> str:
+    """The database these probes may safely name as a CREATE DATABASE TEMPLATE.
+
+    SCAR (2026-08-28, job 98762263195): every probe below derived ONE name
+    from `TEST_DATABASE_URL` and then used it for two incompatible jobs --
+    the NAMESPACE its scratch databases are named in, and the SOURCE they are
+    cloned from. Under xdist `pytest_configure` has already repointed that
+    variable at the worker's OWN clone, so the source became
+    `nuzantara_test_gw1`: the database the worker is running its tests in.
+    Postgres refuses `CREATE DATABASE ... TEMPLATE` off a database holding
+    live sessions, so the probe died in its own SETUP with the very
+    `ObjectInUseError` it exists to demonstrate -- outside any
+    `pytest.raises`, so as a failure and not as the assertion.
+
+    It stayed green whenever the worker happened to hold no open session at
+    that instant, which is why this reads as a flake and is not one. The
+    35s runtime of the old shape was `_xdist_clone_worker_database`'s bounded
+    retry loop already losing the same fight.
+
+    The namespace must STAY worker-derived: that is what keeps a probe's
+    scratch names from colliding with a live sibling worker's database, whose
+    `finally` would then DROP it out from under a running sibling. Only the
+    SOURCE moves, to the pristine base the whole run started from -- the one
+    database no worker ever connects to.
+    """
+    return _base_db_name(_pristine_dsn())
+
+
 async def test_old_shape_templating_off_a_live_worker_database_fails(
     _require_local_postgres,
 ) -> None:
@@ -306,15 +334,25 @@ async def test_old_shape_templating_off_a_live_worker_database_fails(
     same `ObjectInUseError` CI hit.
     """
     conftest = _load_conftest_module()
-    base_db = _base_db_name(os.environ["TEST_DATABASE_URL"])
+    namespace = _base_db_name(os.environ["TEST_DATABASE_URL"])
     admin_dsn = _admin_dsn(os.environ["TEST_DATABASE_URL"])
 
-    busy_worker_db = f"{base_db}_gw0"
-    await conftest._xdist_clone_worker_database(admin_dsn, base_db, busy_worker_db)
-
-    busy_dsn = conftest._xdist_swap_db(os.environ["TEST_DATABASE_URL"], busy_worker_db)
-    busy_conn = await asyncpg.connect(busy_dsn)
+    # The database this probe is about to make busy is itself cloned through a
+    # private connectionless template -- named inside THIS worker's namespace
+    # so it can never be a sibling's, sourced from the pristine base so the
+    # setup cannot die of the very error the assertion below is for.
+    scratch_template = conftest._xdist_template_db_name(namespace)
+    busy_worker_db = f"{namespace}_gw0"
+    busy_conn = None
     try:
+        await conftest._xdist_ensure_template_database(
+            admin_dsn, _scratch_source_db(), scratch_template
+        )
+        await conftest._xdist_clone_worker_database(admin_dsn, scratch_template, busy_worker_db)
+
+        busy_dsn = conftest._xdist_swap_db(os.environ["TEST_DATABASE_URL"], busy_worker_db)
+        busy_conn = await asyncpg.connect(busy_dsn)
+
         # This is the OLD call shape: templating off a worker's own live
         # database (`busy_worker_db`), exactly what a wrong `base_db`
         # re-derivation would have handed to `_xdist_clone_worker_database`.
@@ -323,9 +361,11 @@ async def test_old_shape_templating_off_a_live_worker_database_fails(
                 admin_dsn, busy_worker_db, f"{busy_worker_db}_gw1"
             )
     finally:
-        await busy_conn.close()
+        if busy_conn is not None:
+            await busy_conn.close()
         await conftest._xdist_drop_worker_database(admin_dsn, busy_worker_db)
         await conftest._xdist_drop_worker_database(admin_dsn, f"{busy_worker_db}_gw1")
+        await conftest._xdist_drop_template_database(admin_dsn, scratch_template)
 
 
 async def test_new_shape_clones_succeed_while_a_sibling_worker_is_busy(
@@ -339,14 +379,14 @@ async def test_new_shape_clones_succeed_while_a_sibling_worker_is_busy(
     dedicated template.
     """
     conftest = _load_conftest_module()
-    base_db = _base_db_name(os.environ["TEST_DATABASE_URL"])
+    namespace = _base_db_name(os.environ["TEST_DATABASE_URL"])
     admin_dsn = _admin_dsn(os.environ["TEST_DATABASE_URL"])
-    template_db = conftest._xdist_template_db_name(base_db)
+    template_db = conftest._xdist_template_db_name(namespace)
 
-    await conftest._xdist_ensure_template_database(admin_dsn, base_db, template_db)
+    await conftest._xdist_ensure_template_database(admin_dsn, _scratch_source_db(), template_db)
 
-    worker0_db = f"{base_db}_gw0"
-    worker1_db = f"{base_db}_gw1"
+    worker0_db = f"{namespace}_gw0"
+    worker1_db = f"{namespace}_gw1"
     await conftest._xdist_clone_worker_database(admin_dsn, template_db, worker0_db)
 
     worker0_dsn = conftest._xdist_swap_db(os.environ["TEST_DATABASE_URL"], worker0_db)
@@ -384,9 +424,9 @@ async def test_template_build_is_race_free_under_concurrent_workers(
     import asyncio
 
     conftest = _load_conftest_module()
-    base_db = _base_db_name(os.environ["TEST_DATABASE_URL"])
+    namespace = _base_db_name(os.environ["TEST_DATABASE_URL"])
     admin_dsn = _admin_dsn(os.environ["TEST_DATABASE_URL"])
-    template_db = conftest._xdist_template_db_name(base_db)
+    template_db = conftest._xdist_template_db_name(namespace)
 
     conn = await asyncpg.connect(admin_dsn)
     try:
@@ -397,7 +437,9 @@ async def test_template_build_is_race_free_under_concurrent_workers(
     try:
         results = await asyncio.gather(
             *[
-                conftest._xdist_ensure_template_database(admin_dsn, base_db, template_db)
+                conftest._xdist_ensure_template_database(
+                    admin_dsn, _scratch_source_db(), template_db
+                )
                 for _ in range(8)
             ],
             return_exceptions=True,
@@ -419,3 +461,55 @@ async def test_template_build_is_race_free_under_concurrent_workers(
             await conn.execute(f'DROP DATABASE IF EXISTS "{template_db}" WITH (FORCE)')
         finally:
             await conn.close()
+
+
+async def test_probe_setup_survives_live_sessions_on_the_workers_own_database(
+    _require_local_postgres,
+) -> None:
+    """GUILT for `_scratch_source_db` (2026-08-28, job 98762263195).
+
+    CI died with `ObjectInUseError: source database "nuzantara_test_gw1" is
+    being accessed by other users -- There are 2 other sessions using the
+    database`, raised out of the SETUP of the probes above rather than out of
+    their assertions, because they cloned their scratch database off the
+    worker's own live database. Locally a worker often holds no open session
+    at that instant, so the defect hid as an intermittent red; this pins the
+    condition open instead of waiting for it.
+
+    What makes this a probe and not a restatement: revert `_scratch_source_db`
+    to reading `TEST_DATABASE_URL` and this test goes red, because the two
+    sessions it holds are open against exactly the database the old shape
+    would name as its template.
+    """
+    if not os.environ.get("PYTEST_XDIST_WORKER"):
+        pytest.skip("only meaningful once conftest has repointed TEST_DATABASE_URL")
+
+    conftest = _load_conftest_module()
+    namespace = _base_db_name(os.environ["TEST_DATABASE_URL"])
+    admin_dsn = _admin_dsn(os.environ["TEST_DATABASE_URL"])
+    scratch_template = conftest._xdist_template_db_name(namespace)
+    # Nested under this worker's own name, so it can never be a real worker
+    # slot -- `nuzantara_test_gw1_gw9`, never `nuzantara_test_gw9`.
+    scratch_db = f"{namespace}_gw9"
+
+    assert namespace != _base_db_name(_pristine_dsn()), (
+        "under xdist the worker's database must differ from the pristine base; "
+        "if they are equal this probe proves nothing"
+    )
+
+    held = [await asyncpg.connect(os.environ["TEST_DATABASE_URL"]) for _ in range(2)]
+    try:
+        # Revert `_scratch_source_db` to the repointed variable and this line
+        # is the CI failure again: `namespace` is what those two sessions are
+        # open against. Deliberately NOT re-proving that the old shape fails --
+        # `test_old_shape_templating_off_a_live_worker_database_fails` already
+        # does, and its ~36s is the retry loop losing that fight once per run.
+        await conftest._xdist_ensure_template_database(
+            admin_dsn, _scratch_source_db(), scratch_template
+        )
+        await conftest._xdist_clone_worker_database(admin_dsn, scratch_template, scratch_db)
+    finally:
+        for conn in held:
+            await conn.close()
+        await conftest._xdist_drop_worker_database(admin_dsn, scratch_db)
+        await conftest._xdist_drop_template_database(admin_dsn, scratch_template)
