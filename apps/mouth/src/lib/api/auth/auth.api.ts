@@ -1,4 +1,4 @@
-import type { IApiClient } from "../types/api-client.types";
+import type { IApiClient, ApiRequestOptions } from "../types/api-client.types";
 import { UserProfile } from "@/types";
 import type { BackendLoginResponse, LoginResponse } from "./auth.types";
 import { logger } from "@/lib/logger";
@@ -138,8 +138,20 @@ export class AuthApi {
     await serverInvalidation;
   }
 
-  async getProfile(): Promise<UserProfile> {
-    const profile = await this.client.request<UserProfile>("/api/auth/profile");
+  /**
+   * auth-gates-cookie-primary round 2: `/api/auth/profile` is bearer-only
+   * (FastAPI 0.141.1's HTTPBearer answers 401 — not 403 — to a request with
+   * no Authorization header, even one carrying a VALID cookie session).
+   * Callers that plan to classify that failure themselves (the workspace
+   * layout, useChatPage, the analytics founder gate) pass
+   * `{ redirectOnUnauthorized: false }` so request()'s own 401 handler does
+   * not act on their behalf before they get a chance to ask hasSession().
+   */
+  async getProfile(options?: ApiRequestOptions): Promise<UserProfile> {
+    const profile = await this.client.request<UserProfile>(
+      "/api/auth/profile",
+      options ?? {},
+    );
     this.client.setUserProfile(profile);
     return profile;
   }

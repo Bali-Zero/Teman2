@@ -810,7 +810,8 @@
       "live": "~/.config/ghostty/machine.ghostty",
       "repo": "infra/ghostty/machines/mini.ghostty",
       "machines": ["mini"],
-      "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. See the pro entry for why this live path appears three times."
+      "live_may_extend_repo": true,
+      "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. See the pro entry for why this live path appears three times. 2026-08-28: this live copy may carry a host-local trailer on top of repo content (e.g. Zero's live-only colour override, marked in the dotfile itself) — proprioception's home_fork_scripts probe verifies repo is a byte-exact prefix of live before treating it as reconciled; a genuine mid-file drift still reports DIVERGED normally."
     },
     {
       "live": "~/scripts/login-healthcheck.sh",
