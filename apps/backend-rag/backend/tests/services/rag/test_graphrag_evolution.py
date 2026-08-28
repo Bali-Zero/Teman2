@@ -125,10 +125,12 @@ class TestQueryPlanner:
     def test_greeting_prefix_does_not_outrank_visa_substance_indonesian(
         self,
     ) -> None:
-        """Live incident 2026-08-28 (wa_outbox id=348) failed this way —
-        greeting_domain, retried 5x, terminal apology. The real message
-        text was never read (client data); this string is SYNTHETIC,
-        written only to reproduce the classifier mechanism."""
+        """Live incident 2026-08-28 (wa_outbox id=348) fell off with
+        package_unbuildable (the specific sub-reason was not recoverable —
+        the log line naming it had already expired), retried 5x, terminal
+        apology. The real message text was never read (client data); this
+        string is SYNTHETIC, written only to reproduce the classifier
+        mechanism plausibly responsible."""
         plan = self.planner.plan(
             "Halo, saya butuh bantuan untuk urus visa dan pajak bisnis saya"
         )
