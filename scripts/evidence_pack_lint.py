@@ -215,6 +215,27 @@ WHAT IT VALIDATES (an Evidence Pack YAML, default path evidence/pack.yml):
                         (`evidence_pack_lint.py evidence/pack.yml`) is
                         actively judged, never silently skipped.
 
+  11. countable claims (2026-08-29) — a number the pack states ABOUT ITSELF
+                        and a machine can derive is DERIVED, not trusted.
+                        Changed-file count and +insertions/-deletions are
+                        recomputed from the same `git diff --numstat` blob
+                        rule 6's size term already consumes; the commit
+                        count is read from the GitHub event payload
+                        (GITHUB_EVENT_PATH, so no workflow change is
+                        needed) or from `--commit-count`; a test count
+                        narrated in `diff`/`lanes` must be substantiated by
+                        a receipt in the same pack, since a linter cannot
+                        run the suite itself. Scanned subtrees are ONLY
+                        `diff` and `lanes` — `dissent` and `receipts` are
+                        judgment prose where a number legitimately
+                        describes something other than this diff. An
+                        unavailable measurement NOTICEs, never convicts.
+                        `--print-measured` prints the canonical sentence to
+                        paste, so the value need not be narrated by hand at
+                        all. This removes an avoidable arithmetic-miss
+                        class from the gate; it lowers no bar and rejects
+                        nothing the rules above accepted.
+
 Floor check is SKIPPED (not silently passed — an explicit NOTICE on stderr)
 when --changed-files-file is not supplied: not every invocation of this linter
 has PR-diff context (e.g. a spot-check of a pack on a laptop). The CI workflow
@@ -304,6 +325,8 @@ import argparse
 import datetime
 import fnmatch
 import json
+import os
+import re
 import subprocess
 import sys
 from pathlib import Path, PurePosixPath
@@ -1695,6 +1718,7 @@ def lint(
     measured_net_lines: int | None = None,
     numstat_text: str | None = None,
     source_path: str | None = None,
+    measured_commits: int | None = None,
 ) -> tuple[int, list[str]]:
     """Returns (exit_code, violations). exit_code: 0 clean, 1 guilty, 2 blind.
 
@@ -1803,6 +1827,18 @@ def lint(
             else:
                 print(f"evidence_pack_lint: NOTICE — {reason}", file=sys.stderr)
 
+    # The countable-claims rule runs LAST, and deliberately independent of every
+    # branch above: it needs no changed-files list, and it re-uses the SAME
+    # numstat blob the floor's size term already consumes, so a pack's stated
+    # diff stats are judged against the very measurement the gear floor was
+    # computed from rather than against a second, possibly-divergent one.
+    countable_violations, countable_notices = check_countable_claims(
+        pack, numstat_text, measured_commits
+    )
+    violations += countable_violations
+    for notice in countable_notices:
+        print(f"evidence_pack_lint: NOTICE — {notice}", file=sys.stderr)
+
     return (1 if violations else 0), violations
 
 
@@ -1844,6 +1880,301 @@ def sum_numstat(text: str) -> int:
         except ValueError:
             continue
     return net
+
+
+# ---------------------------------------------------------------------------
+# COUNTABLE CLAIMS rule (2026-08-29). Every rule above judges the pack's
+# SHAPE; none of them ever read a NUMBER the pack states about itself. PR #5157
+# was BLOCKed three consecutive rounds and suspended under Agent-PR-Contract
+# rule 8 without a single finding against its code: the gate kept catching
+# arithmetic in the prose — "11 files, +1195/-119 across two commits" where the
+# cited command returns 14 files, +1860/-83 and `rev-list --count` returns 6;
+# "the 44 tests" where the branch has 64. Rule 8's own remedy applies ("if the
+# correction is itself wrong, the surface is under-specified — write the spec"),
+# and this is that spec in code: a number that a machine can derive is derived,
+# never trusted.
+#
+# This is NOT a softening. It removes an avoidable class of miss from the human
+# side of the gate so the adjudicator spends its rounds on judgment — dissent,
+# risk framing, whether the fix is right — which stay judged exactly as they
+# were. Nothing here lets a pack through that a previous rule rejected.
+#
+# THREE claim families, each with a DIFFERENT source of truth:
+#   (a) diff stats  — recomputed from the same `git diff --numstat` blob CI
+#                     already passes via --numstat-file (merge-base anchored,
+#                     never a two-dot diff: W102).
+#   (b) commit count — read from the GitHub event payload's
+#                     `pull_request.commits`, which needs NO workflow change:
+#                     GITHUB_EVENT_PATH is set for every Actions run. A local
+#                     run passes --commit-count instead.
+#   (c) test counts  — NOT recomputable by a linter (it does not run the
+#                     suite), so the rule is SUBSTANTIATION: a test count
+#                     narrated in `diff`/`lanes` must appear in some receipt in
+#                     the same pack. This is deliberately lenient (any receipt
+#                     whose claim/result contains that integer satisfies it) —
+#                     it catches a number with no basis anywhere, which is the
+#                     #5157 shape, and cannot convict a substantiated one.
+#
+# NEVER FAILS ON AN UNTAKEN MEASUREMENT (same discipline as the floor's size
+# term): no numstat -> the diff-stat claims NOTICE, they do not convict. A pack
+# that narrates no countable number is silent under this rule entirely.
+#
+# NO GRACE DATE, deliberately — and this is NOT a break with the E7 gate
+# lifecycle (NOTICE, then FAIL) that rules 8/9/10 each honor. Those three ask
+# authors to ADD something that does not exist yet (a `lanes:` block, a
+# ground-truth lane, a per-task evidence directory), so a flip date buys the
+# fleet time to adopt. This rule asks for nothing new: it can only convict a
+# pack that states a number the repo contradicts, and every correct pack — and
+# every pack stating no number at all — is clean on day one. A grace period
+# here would protect nothing except inaccuracy.
+#
+# SCOPE IS DELIBERATELY NARROW (superscar #3, guard-over-match): only the
+# `diff` and `lanes` subtrees are scanned. `dissent` and `receipts` are prose
+# where numbers legitimately describe other things ("one test goes red where
+# three do" is an argument, not a self-report), and the mandate that produced
+# this rule says judgment stays judged.
+# ---------------------------------------------------------------------------
+COUNTABLE_SUBTREES: tuple[str, ...] = ("diff", "lanes")
+
+#: Word forms that state a count. "both" is included because that is exactly
+#: how #5157's `lanes[0]` narrated a 6-commit branch ("both commits").
+_COUNT_WORDS: dict[str, int] = {
+    "both": 2, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+}
+_COUNT_WORD_ALT = "|".join(_COUNT_WORDS)
+
+_FILES_CLAIM_RE = re.compile(r"\b(\d{1,5})\s+files?\b", re.IGNORECASE)
+#: "+1195/-119", "+1195 / -119", "+1195/−119" (U+2212 minus, seen in prose).
+_DIFFSTAT_CLAIM_RE = re.compile(r"\+\s?(\d{1,7})\s*/\s*[-−]\s?(\d{1,7})\b")
+_COMMITS_CLAIM_RE = re.compile(
+    rf"\b(\d{{1,4}}|{_COUNT_WORD_ALT})\s+commits?\b", re.IGNORECASE
+)
+_TESTS_CLAIM_RE = re.compile(r"\b(\d{1,5})\s+tests?\b", re.IGNORECASE)
+_INTEGER_RE = re.compile(r"\d{1,7}")
+
+_NUMSTAT_CMD = "git diff --numstat $(git merge-base origin/main HEAD)..HEAD"
+_COMMITS_CMD = "git rev-list --count $(git merge-base origin/main HEAD)..HEAD"
+
+
+def parse_numstat_totals(text: str | None) -> tuple[int, int, int, bool] | None:
+    """`git diff --numstat` -> (files, insertions, deletions, has_binary).
+
+    Returns None when there is no usable row at all (None/empty input, or every
+    line malformed) — "could not measure", never "measured zero" (a zero here
+    would be a false SMALL signal on what may be the largest diff in the run).
+    Binary rows ("-\\t-\\tpath") COUNT as a changed file but contribute no
+    line counts, and set has_binary so the caller can downgrade an
+    insertions/deletions mismatch to a notice rather than convict on a total it
+    knows is incomplete.
+    """
+    if not text:
+        return None
+    files = insertions = deletions = 0
+    has_binary = False
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split("\t")
+        if len(parts) < 3 or not parts[2]:
+            continue
+        added_s, deleted_s = parts[0], parts[1]
+        if added_s == "-" or deleted_s == "-":
+            files += 1
+            has_binary = True
+            continue
+        try:
+            added, deleted = int(added_s), int(deleted_s)
+        except ValueError:
+            continue
+        files += 1
+        insertions += added
+        deletions += deleted
+    if files == 0:
+        return None
+    return files, insertions, deletions, has_binary
+
+
+def measured_commit_count(
+    explicit: int | None = None, event_path: str | None = None
+) -> int | None:
+    """The PR's commit count, or None when it cannot be measured.
+
+    `explicit` (the --commit-count flag) always wins. Otherwise the GitHub
+    Actions event payload is read from GITHUB_EVENT_PATH — present on every
+    Actions run with no workflow change needed, which is why this rule can
+    enforce commit counts today. A `merge_group` payload carries no
+    `pull_request` key, an unreadable/garbled file carries nothing: both
+    degrade to None (notice, never a violation).
+    """
+    if explicit is not None:
+        return explicit if explicit >= 0 else None
+    path = event_path if event_path is not None else os.environ.get("GITHUB_EVENT_PATH")
+    if not path:
+        return None
+    try:
+        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    pr = payload.get("pull_request")
+    if not isinstance(pr, dict):
+        return None
+    commits = pr.get("commits")
+    return commits if type(commits) is int and commits >= 0 else None
+
+
+def _iter_countable_scalars(pack: dict[str, Any]) -> list[tuple[str, str]]:
+    """(dotted-path, text) for every string under COUNTABLE_SUBTREES."""
+    out: list[tuple[str, str]] = []
+
+    def walk(node: Any, path: str) -> None:
+        if isinstance(node, dict):
+            for key, value in node.items():
+                walk(value, f"{path}.{key}" if path else str(key))
+        elif isinstance(node, list):
+            for idx, value in enumerate(node):
+                walk(value, f"{path}[{idx}]")
+        elif isinstance(node, str):
+            out.append((path, node))
+
+    for subtree in COUNTABLE_SUBTREES:
+        if subtree in pack:
+            walk(pack[subtree], subtree)
+    return out
+
+
+def _receipt_integers(pack: dict[str, Any]) -> set[int]:
+    """Every integer appearing in the receipts' `claim`/`result` prose.
+
+    `cmd` and `ts` are excluded on purpose: a timestamp ("17:44Z") or a path
+    fragment would substantiate a count it never measured.
+    """
+    found: set[int] = set()
+    receipts = pack.get("receipts")
+    if not isinstance(receipts, list):
+        return found
+    for entry in receipts:
+        if not isinstance(entry, dict):
+            continue
+        for field in ("claim", "result"):
+            value = entry.get(field)
+            if isinstance(value, str):
+                found.update(int(m) for m in _INTEGER_RE.findall(value))
+    return found
+
+
+def check_countable_claims(
+    pack: dict[str, Any],
+    numstat_text: str | None = None,
+    commits: int | None = None,
+) -> tuple[list[str], list[str]]:
+    """The countable-claims rule — see the block comment above. Returns (violations, notices)."""
+    violations: list[str] = []
+    notices: list[str] = []
+    if not isinstance(pack, dict):
+        return violations, notices
+
+    scalars = _iter_countable_scalars(pack)
+    totals = parse_numstat_totals(numstat_text)
+    receipt_ints = _receipt_integers(pack)
+
+    for field, text in scalars:
+        # ---- (a) diff stats -------------------------------------------
+        file_claims = [int(m) for m in _FILES_CLAIM_RE.findall(text)]
+        stat_claims = [(int(a), int(d)) for a, d in _DIFFSTAT_CLAIM_RE.findall(text)]
+        if file_claims or stat_claims:
+            if totals is None:
+                notices.append(
+                    f"countable claim (countable-claims rule): {field} narrates diff stats but no "
+                    f"`git diff --numstat` was supplied (--numstat-file) — not verified "
+                    f"this run"
+                )
+            else:
+                files, insertions, deletions, has_binary = totals
+                for claimed in file_claims:
+                    if claimed != files:
+                        violations.append(
+                            f"countable claim (countable-claims rule): {field} narrates "
+                            f"\"{claimed} files\" but the diff changes {files} — "
+                            f"computed from `{_NUMSTAT_CMD}`. Correct the pack to the "
+                            f"computed value or drop the number."
+                        )
+                for claimed_ins, claimed_del in stat_claims:
+                    if (claimed_ins, claimed_del) == (insertions, deletions):
+                        continue
+                    message = (
+                        f"countable claim (countable-claims rule): {field} narrates "
+                        f"\"+{claimed_ins}/-{claimed_del}\" but the diff is "
+                        f"+{insertions}/-{deletions} — computed from `{_NUMSTAT_CMD}`. "
+                        f"Correct the pack to the computed value or drop the number."
+                    )
+                    if has_binary:
+                        notices.append(
+                            message + " (NOTICE only: this diff contains a binary file, "
+                            "whose line counts numstat cannot report — the computed "
+                            "totals are a lower bound.)"
+                        )
+                    else:
+                        violations.append(message)
+
+        # ---- (b) commit count -----------------------------------------
+        for token in _COMMITS_CLAIM_RE.findall(text):
+            claimed = _COUNT_WORDS.get(token.lower())
+            if claimed is None:
+                claimed = int(token)
+            if commits is None:
+                notices.append(
+                    f"countable claim (countable-claims rule): {field} narrates \"{token} commits\" "
+                    f"but no commit count was measurable (no --commit-count and no "
+                    f"pull_request event payload) — not verified this run"
+                )
+            elif claimed != commits:
+                violations.append(
+                    f"countable claim (countable-claims rule): {field} narrates \"{token} commits\" "
+                    f"(={claimed}) but the branch has {commits} — computed from "
+                    f"`{_COMMITS_CMD}` (in CI, the pull_request event payload's "
+                    f"`commits`). Correct the pack to the computed value or drop the "
+                    f"number."
+                )
+
+        # ---- (c) test counts, substantiation --------------------------
+        for token in _TESTS_CLAIM_RE.findall(text):
+            claimed = int(token)
+            if claimed not in receipt_ints:
+                violations.append(
+                    f"countable claim (countable-claims rule): {field} narrates \"{claimed} tests\" "
+                    f"but no receipt in this pack reports that number — a test count "
+                    f"must come from a receipt whose cmd actually ran the suite (e.g. "
+                    f"`pytest -q` reporting \"N passed\"), never from prose. Add the "
+                    f"receipt or drop the number."
+                )
+
+    return violations, notices
+
+
+def format_measured_claims(
+    numstat_text: str | None = None, commits: int | None = None
+) -> str:
+    """The canonical, machine-derived sentence an author should PASTE into
+    `diff.net_lines` instead of counting by hand — the generate half of
+    the countable-claims rule (`--print-measured`). Unmeasurable parts say so rather than
+    guessing."""
+    totals = parse_numstat_totals(numstat_text)
+    if totals is None:
+        stats = "diff stats unmeasured (no --numstat-file)"
+    else:
+        files, insertions, deletions, has_binary = totals
+        stats = f"{files} files, +{insertions}/-{deletions}"
+        if has_binary:
+            stats += " (line counts exclude binary files)"
+    commit_part = (
+        f"{commits} commits" if commits is not None
+        else "commit count unmeasured (no --commit-count, no pull_request payload)"
+    )
+    return f"{stats}, {commit_part}"
 
 
 def selftest() -> int:
@@ -2262,6 +2593,48 @@ def selftest() -> int:
         check("innocence: opusculum/claude_ish are non-Anthropic by word-aware match",
               viol_trap == [] and notice_trap is None)
 
+        # ---- countable claims (guilt + innocence) ------------------------------
+        cc_numstat = "1800\t60\ta.py\n60\t23\tb.py\n"
+        cc_receipts = [{"claim": "suite", "result": "64 passed", "cmd": "pytest -q",
+                        "exit": 0, "ts": "2026-08-29T00:00:00Z", "seat": "sonnet-5"}]
+        cc_bad = {
+            "diff": {"net_lines": "11 files, +1195/-119 across two commits"},
+            "lanes": [{"lane": "D1", "role": "build", "seat": "codex",
+                       "note": "both commits, the 44 tests"}],
+            "receipts": cc_receipts,
+        }
+        cc_viol, _ = check_countable_claims(cc_bad, cc_numstat, commits=6)
+        check("countable claims: guilt — wrong file count convicted",
+              any('"11 files"' in v and "changes 2" in v for v in cc_viol))
+        check("countable claims: guilt — wrong +ins/-del convicted",
+              any('"+1195/-119"' in v and "+1860/-83" in v for v in cc_viol))
+        check("countable claims: guilt — wrong commit count convicted (digit and word form)",
+              sum(1 for v in cc_viol if "commits" in v) == 2)
+        check("countable claims: guilt — unsubstantiated test count convicted",
+              any('"44 tests"' in v for v in cc_viol))
+        cc_good = {
+            "diff": {"net_lines": "2 files, +1860/-83 across 6 commits"},
+            "lanes": [{"lane": "D1", "role": "build", "seat": "codex",
+                       "note": "64 tests pass"}],
+            "receipts": cc_receipts,
+        }
+        check("countable claims: innocence — accurate numbers pass",
+              check_countable_claims(cc_good, cc_numstat, commits=6) == ([], []))
+        cc_unmeasured_viol, cc_unmeasured_notes = check_countable_claims(
+            cc_bad, None, commits=None
+        )
+        check("countable claims: innocence — unmeasured never convicts on diff stats/commits",
+              not any("files" in v or "commits" in v for v in cc_unmeasured_viol)
+              and bool(cc_unmeasured_notes))
+        check("countable claims: innocence — dissent prose is out of scope",
+              check_countable_claims(
+                  {"dissent": [{"objection": "3 files, +1/-1, two commits, 44 tests"}],
+                   "receipts": cc_receipts},
+                  cc_numstat, commits=6,
+              ) == ([], []))
+        check("countable claims: --print-measured emits the pasteable sentence",
+              format_measured_claims(cc_numstat, 6) == "2 files, +1860/-83, 6 commits")
+
         # ---- blind-scan guard: pack file missing -------------------------------
         rc, viol = lint(root / "evidence" / "nope.yml", root, None)
         check("blind-scan guard: missing pack -> exit 2", rc == 2)
@@ -2283,6 +2656,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--net-lines", type=int, default=None, metavar="INT")
     parser.add_argument("--numstat-file", default=None, metavar="PATH")
     parser.add_argument("--source-path", default=None, metavar="PATH")
+    # Countable-claims rule: the PR's commit count. Optional — in CI it is read from the
+    # pull_request event payload automatically (see measured_commit_count()),
+    # so no workflow change is needed; this flag is for local runs and tests.
+    parser.add_argument("--commit-count", type=int, default=None, metavar="INT")
+    parser.add_argument("--print-measured", action="store_true")
     parser.add_argument("--print-floor", action="store_true")
     parser.add_argument("--print-floor-source", action="store_true")
     parser.add_argument("--effort-for", type=int, default=None, metavar="GEAR")
@@ -2359,6 +2737,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"evidence_pack_lint: --numstat-file unreadable: {exc}", file=sys.stderr)
             return 3
 
+    measured_commits = measured_commit_count(args.commit_count)
+
+    if args.print_measured:
+        print(format_measured_claims(numstat_text, measured_commits))
+        return 0
+
     measured_net_lines: int | None = args.net_lines
     if measured_net_lines is None and numstat_text is not None:
         measured_net_lines = sum_numstat(numstat_text)
@@ -2373,7 +2757,8 @@ def main(argv: list[str] | None = None) -> int:
     source_path = args.source_path if args.source_path is not None else args.pack_path
 
     exit_code, violations = lint(
-        pack_path, repo_root, changed_files, measured_net_lines, numstat_text, source_path
+        pack_path, repo_root, changed_files, measured_net_lines, numstat_text,
+        source_path, measured_commits,
     )
 
     if args.json:
