@@ -310,6 +310,75 @@ def test_janitor_recheck_still_cancels_a_run_that_stays_stale_on_recheck(monkeyp
     assert calls["cancel"] == [43]
 
 
+# ── cancel_run: 409 "not queued yet" force-cancel fallback ─────────────────
+
+
+def test_cancel_run_409_falls_back_to_force_cancel_and_counts_as_cancelled(monkeypatch):
+    """Guilt: a plain-cancel HTTP 409 ('Cannot cancel a workflow run that has not been queued
+    yet') must trigger exactly one force-cancel attempt, and a SUCCESSFUL force-cancel must be
+    reported as cancelled (cancel_run returns True) — the shape measured live post-outage on Pro
+    (~20 phantom runs retried every tick forever before this fix)."""
+    calls = []
+
+    def fake_run(cmd, timeout=30):
+        calls.append(cmd)
+        if cmd[-1].endswith("/force-cancel"):
+            return 0, "", ""
+        return (
+            1,
+            "",
+            "gh: Cannot cancel a workflow run that has not been queued yet. (HTTP 409)",
+        )
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    result = qs.cancel_run("Bali-Zero/Teman2", 3221000123)
+
+    assert result is True
+    assert len(calls) == 2
+    assert calls[0][-1].endswith("/actions/runs/3221000123/cancel")
+    assert calls[1][-1].endswith("/actions/runs/3221000123/force-cancel")
+
+
+def test_cancel_run_409_then_force_cancel_also_fails_is_warning_not_crash(monkeypatch, caplog):
+    """Guilt (part 2): when the force-cancel fallback ALSO fails (e.g. the HTTP 500s seen on
+    very old 3221xxxx runs), cancel_run must return False — a single warning, not an exception,
+    and not counted as cancelled — so the caller's per-run loop simply continues to the next run."""
+
+    def fake_run(cmd, timeout=30):
+        if cmd[-1].endswith("/force-cancel"):
+            return 1, "", "gh: Internal Server Error (HTTP 500)"
+        return (
+            1,
+            "",
+            "gh: Cannot cancel a workflow run that has not been queued yet. (HTTP 409)",
+        )
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    with caplog.at_level("WARNING"):
+        result = qs.cancel_run("Bali-Zero/Teman2", 3221000456)
+
+    assert result is False
+    assert "force-cancel fallback also failed" in caplog.text
+
+
+def test_cancel_run_non_409_failure_never_attempts_force_cancel(monkeypatch):
+    """Innocence: a failure that is NOT the 409 'not queued yet' class (e.g. a plain HTTP 500 on
+    the first cancel attempt, or a network error) must never trigger force-cancel — force-cancel
+    is deliberately not the default path, only the 409 fallback."""
+    calls = []
+
+    def fake_run(cmd, timeout=30):
+        calls.append(cmd)
+        return 1, "", "gh: Internal Server Error (HTTP 500)"
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    result = qs.cancel_run("Bali-Zero/Teman2", 999)
+
+    assert result is False
+    assert len(calls) == 1  # only the plain cancel — no force-cancel call made
+    assert calls[0][-1].endswith("/actions/runs/999/cancel")
+
+
 def test_janitor_dry_run_never_calls_cancel_run(monkeypatch):
     def fake_fetch_queued_runs(repo=qs.REPO):
         return [{"id": 44, "event": "pull_request", "head_sha": "dead", "head_branch": None, "name": "CI"}]

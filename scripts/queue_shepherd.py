@@ -709,13 +709,44 @@ def rearm_pr(repo: str, number: int) -> bool:
 
 
 def cancel_run(repo: str, run_id: int) -> bool:
+    """Cancels a queued Actions run. Post-outage (and on very old runs), GitHub's plain cancel
+    endpoint answers HTTP 409 "Cannot cancel a workflow run that has not been queued yet" for a
+    run whose real state has already moved past QUEUED — the janitor's own discovery-to-cancel
+    gap, or GitHub settling state after an incident. On EXACTLY that 409 class, falls back once
+    to the force-cancel endpoint, which GitHub accepts regardless of the run's current state.
+    Force-cancel is deliberately NOT the default path — only the 409 fallback — because it is a
+    stronger, less-reversible instrument than plain cancel and unconditional use would widen this
+    guard past what the janitor's mandate (cancel stale QUEUED runs) actually needs.
+
+    Any other failure class (a non-409 error, or the force-cancel fallback itself failing — e.g.
+    the HTTP 500s seen on very old 3221xxxx runs) is a single WARNING and this function returns
+    False. No retry loop lives here: superscar #2 (exist != armed) is exactly a "still working"
+    façade that quietly burns a tick's time budget on a run that will never cancel — the janitor's
+    own 10-min tick cadence is the retry, not this call."""
     owner, name = repo.split("/", 1)
     rc, out, err = _run(
         ["gh", "api", "-X", "POST", f"repos/{owner}/{name}/actions/runs/{run_id}/cancel"],
         timeout=30,
     )
-    if rc != 0:
+    if rc == 0:
+        return True
+    if "HTTP 409" not in err:
         logger.warning("cancel_run(%s) failed rc=%s err=%s", run_id, rc, err.strip()[:200])
+        return False
+
+    logger.info(
+        "cancel_run(%s): plain cancel got HTTP 409 (not queued yet) — falling back to force-cancel",
+        run_id,
+    )
+    fc_rc, fc_out, fc_err = _run(
+        ["gh", "api", "-X", "POST", f"repos/{owner}/{name}/actions/runs/{run_id}/force-cancel"],
+        timeout=30,
+    )
+    if fc_rc != 0:
+        logger.warning(
+            "cancel_run(%s): force-cancel fallback also failed rc=%s err=%s",
+            run_id, fc_rc, fc_err.strip()[:200],
+        )
         return False
     return True
 
