@@ -469,7 +469,10 @@ def load_declared_fork_pairs(root: Path, machine: str) -> list[dict]:
     for pair in data.get("pairs", []):
         machines = pair.get("machines", ["all"])
         if ("all" in machines or machine in machines) and "live" in pair and "repo" in pair:
-            out.append({"live": pair["live"], "repo": pair["repo"]})
+            entry = {"live": pair["live"], "repo": pair["repo"]}
+            if pair.get("live_may_extend_repo"):
+                entry["live_may_extend_repo"] = True
+            out.append(entry)
     return out
 
 
@@ -494,6 +497,50 @@ def origin_main_sha(root: Path, rel: str) -> str | None:
     except (OSError, subprocess.TimeoutExpired, TypeError, ValueError, AttributeError):
         # A probe that raises takes the whole proprioception run with it.
         return None
+
+
+def _live_extends_repo_verbatim(live: Path, repo: Path) -> bool:
+    """True iff repo's bytes appear whole in live, split into one prefix and
+    one suffix, with exactly one contiguous span of NEW content inserted
+    between them (also covers the degenerate append-only/prepend-only cases,
+    where the other span is empty).
+
+    A pure `live.startswith(repo)` prefix check is too narrow: the real first
+    case (2026-08-28, a live-only Ghostty colour override on Mini, marked in
+    the dotfile itself as "live dotfile only") turned out to be a MID-FILE
+    insertion — the fleet installer places new upstream sections before an
+    existing trailing comment block, so a host-local addition lands in the
+    middle, not appended at the end. A file that merely happens to be longer
+    is not proof of anything; the proof is the longest-common-prefix plus the
+    longest-common-suffix, measured independently from each end, together
+    accounting for the ENTIRE repo file byte-for-byte. Any genuine drift —
+    a changed value, a removed line, a reordering — breaks the prefix match
+    or the suffix match (or both) at the point of the change, so
+    prefix_len + suffix_len falls short of len(repo) and this correctly
+    returns False, reporting DIVERGED normally. This is the structural test
+    for the declared-pairs.json `live_may_extend_repo` flag, distinct from
+    CHECKOUT-STALE (live matches origin/main, the checkout is behind): here
+    repo agrees with what it should say and live legitimately carries MORE,
+    never less, changed, or reordered.
+    """
+    try:
+        repo_bytes = repo.read_bytes()
+        if not repo_bytes:
+            return False  # an empty repo file prefix/suffix-matches anything — refuse to trust it
+        live_bytes = live.read_bytes()
+    except OSError:
+        return False
+    if len(live_bytes) <= len(repo_bytes):
+        return False
+    cap = len(repo_bytes)  # never let prefix+suffix search past repo's own length
+    prefix_len = 0
+    while prefix_len < cap and live_bytes[prefix_len] == repo_bytes[prefix_len]:
+        prefix_len += 1
+    suffix_len = 0
+    max_suffix = cap - prefix_len  # the two spans must not overlap within repo
+    while suffix_len < max_suffix and live_bytes[-1 - suffix_len] == repo_bytes[-1 - suffix_len]:
+        suffix_len += 1
+    return prefix_len + suffix_len == cap
 
 
 def probe_home_fork_scripts(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
@@ -551,6 +598,8 @@ def probe_home_fork_scripts(root: Path, args: dict, timeout: int) -> tuple[str, 
         live_sha, repo_sha = sha256_file(live), sha256_file(repo)
         if live_sha == repo_sha:
             continue
+        if pair.get("live_may_extend_repo") and _live_extends_repo_verbatim(live, repo):
+            continue  # declared + verified: repo is a verbatim prefix, the rest is a local addition
         upstream = origin_main_sha(root, pair["repo"])
         if upstream is not None and live_sha == upstream:
             ev.append(
