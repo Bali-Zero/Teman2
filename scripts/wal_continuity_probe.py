@@ -455,15 +455,29 @@ def observation_is_blind(obs: dict) -> bool:
     return all(obs.get(k) in (None, "") for k in ARCHIVER_FIELDS)
 
 
-def classify(previous: dict | None, current: dict, now: datetime | None = None,
+def classify(previous: dict | None, current: dict,
              state_status: str = STATE_OK, first_run_count: int = 0,
              carried_pressure: int = 0) -> Verdict:
     """The whole judgment, as a pure function. Every RED path is reachable from here.
 
     Order matters only for which code names the dedup key; ALL findings are collected
     so an alert never hides a second fault behind the first.
+
+    There is deliberately NO `now` parameter. This function reads no wall clock: every
+    temporal judgment it makes is RELATIVE — `last_archived_time` against
+    `last_failed_time`, this run's counters and LSN against the previous run's. It used
+    to take `now: datetime | None = None` and immediately do `now = now or
+    datetime.now(...)` without ever reading the result again (CodeQL: "Variable now is
+    not used"), which advertised an injectable clock that governed nothing: the first
+    test to pin time through it would have been green and proved nothing. That is W129
+    with the polarity reversed — there the injected clock was real and a caller dropped
+    it, here the seam never had anything to govern. W129's cure (a test pinning the SAME
+    fixture at two injected instants, so no wall clock satisfies both) is the right guard
+    when the code SHOULD read the clock; it is not this case, so the seam is removed
+    rather than wired. Adding an ABSOLUTE staleness check ("nothing archived for N
+    hours") would be a new RED path and wants its own adjudication, not a silent
+    resurrection of this parameter.
     """
-    now = now or datetime.now(timezone.utc)
     findings: list[Finding] = []
     notes: list[Finding] = []
     # Starts at what the last run carried; only the stall branch below moves it. Every
@@ -834,6 +848,24 @@ def _as_int(value: Any, default: int) -> int:
         return default
 
 
+def cannot_verify_tier(streak: int) -> str:
+    """digest while the blindness is fresh, p0 once it has persisted.
+
+    This exists so no caller has to hold the tier in a LOCAL that may or may not be
+    bound. The two CANNOT_VERIFY senders used to each compute `tier = "p0" if streak >=
+    ... else "digest"`, and in `run()` that binding lived in only ONE arm of an
+    if/else while the send read it from a LATER `elif` — safe today purely because both
+    branches happen to test the same `verdict.exit_code`, an invisible correlation
+    nothing in the code states (CodeQL, error severity: "Local variable 'tier' may be
+    used before it is initialized"). Widening that `elif` by one value — an entirely
+    ordinary edit — turns the paging branch into an `UnboundLocalError`: the p0 computed
+    and never sent. Deriving the tier at the point of use removes the variable, and with
+    it the possibility; a plain default before the branch would NOT, because it would
+    silently pick a tier for a state nobody considered.
+    """
+    return "p0" if streak >= CANNOT_VERIFY_P0_STREAK else "digest"
+
+
 def state_path() -> Path:
     """Read the env at CALL time, never at import: tests must be able to redirect it.
 
@@ -1120,7 +1152,6 @@ def run(args: argparse.Namespace) -> int:
 
     if cannot_verify_reason:
         streak = _as_int(state.get("cannot_verify_streak"), 0) + 1
-        tier = "p0" if streak >= CANNOT_VERIFY_P0_STREAK else "digest"
         verdict = Verdict(
             verdict=V_CANNOT_VERIFY, exit_code=EXIT_CANNOT_VERIFY,
             findings=[Finding(V_CANNOT_VERIFY,
@@ -1128,7 +1159,8 @@ def run(args: argparse.Namespace) -> int:
         )
         log(f"CANNOT_VERIFY (streak {streak}): {cannot_verify_reason}")
         if not args.dry_run:
-            delivered = send_alert(format_message(verdict, obs), "cannot-verify", tier)
+            delivered = send_alert(format_message(verdict, obs), "cannot-verify",
+                                   cannot_verify_tier(streak))
             if not delivered:
                 log("ALERT NOT DELIVERED: the CANNOT_VERIFY alert did not leave the "
                     "machine.")
@@ -1160,7 +1192,6 @@ def run(args: argparse.Namespace) -> int:
     # re-baseline forever at a polite digest tier.
     if verdict.exit_code == EXIT_CANNOT_VERIFY:
         streak = _as_int(state.get("cannot_verify_streak"), 0) + 1
-        tier = "p0" if streak >= CANNOT_VERIFY_P0_STREAK else "digest"
         condition = "+".join(sorted(n.code for n in verdict.notes
                                     if n.code in EVIDENCE_ERASING_NOTES)).lower()
         verdict.findings.append(Finding(
@@ -1183,8 +1214,11 @@ def run(args: argparse.Namespace) -> int:
             delivered = send_alert(format_message(verdict, obs),
                                    verdict.verdict.lower(), "p0")
         elif verdict.exit_code == EXIT_CANNOT_VERIFY:
+            # `streak` is bound in BOTH arms above; the tier is derived here rather than
+            # carried in a local that only one arm binds. See `cannot_verify_tier`.
             delivered = send_alert(format_message(verdict, obs),
-                                   condition or "cannot-verify", tier)
+                                   condition or "cannot-verify",
+                                   cannot_verify_tier(streak))
         elif voided_codes := [n.code for n in verdict.notes if n.code in VOIDING_NOTES]:
             # A run where a check was SKIPPED is not the same as a run where it passed,
             # and the difference must leave the machine. A timeline switch or a
