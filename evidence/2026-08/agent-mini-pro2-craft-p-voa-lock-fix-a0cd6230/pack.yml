@@ -98,4 +98,4 @@ residual_risks:
   - "No timeout bounds the probe process. Declared above; the dead-man is protected by the two-heartbeat design, not by this."
   - "The non-regular-path guard does not cover symlinks to regular files."
   - "The corpus cannot prove the lock is HELD for the probe's duration."
-  - "Kimi K3, the mandated first refuter seat for a non-prod-flag diff, is dead on this machine. One cross-family seat was reached, not two. Recorded rather than papered over."
+  - "TWO of the three allowed cross-family seats were attempted and MEASURED unusable, so this pack carries ONE reviewer, not the gear-3 council's preferred two. Kimi K3 (the mandated first seat for a non-prod-flag diff) returns an empty body. tp1-qwen3.8-max was re-probed after the stale session-start QUOTA_DEAD reading and had genuinely recovered (LIVE, HTTP 200 in 1970ms) — but timed out at 550s with zero bytes on the real 325-line brief. A one-token ping proves REACHABILITY, not CAPACITY. Recorded rather than papered over; the council NOTICE stands unsilenced."
