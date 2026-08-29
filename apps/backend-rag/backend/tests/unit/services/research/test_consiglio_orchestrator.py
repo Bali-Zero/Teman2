@@ -13,7 +13,7 @@ def test_claim_agreement_count():
     c = ConsiglioClaim(
         key="cadence_instagram_posts_per_day",
         value=1.0,
-        votes={"claude": True, "gemini": True, "deepseek": True, "notebooklm": False},
+        votes={"claude": True, "gemini": True, "kimi": True, "notebooklm": False},
     )
     assert c.agreement_count() == 3
     assert c.is_disputed() is False
@@ -23,7 +23,7 @@ def test_claim_disputed_when_below_3():
     c = ConsiglioClaim(
         key="format_linkedin_authority_tecnico",
         value="long_post",
-        votes={"claude": True, "gemini": True, "deepseek": False, "notebooklm": False},
+        votes={"claude": True, "gemini": True, "kimi": False, "notebooklm": False},
     )
     assert c.agreement_count() == 2
     assert c.is_disputed() is True
@@ -34,7 +34,7 @@ def test_claim_is_disputed_respects_custom_threshold():
     c = ConsiglioClaim(
         key="x",
         value="y",
-        votes={"claude": True, "deepseek": True},  # gemini + notebooklm missing
+        votes={"claude": True, "kimi": True},  # gemini + notebooklm missing
     )
     # With 2 present votes + both True → agreement=2. Default threshold
     # is 3, so this is disputed. But lowered to 2, it's not.
@@ -48,12 +48,12 @@ def test_result_gate_6_passes_when_all_claims_reach_quorum():
         ConsiglioClaim(
             key="k1",
             value="v",
-            votes={"claude": True, "gemini": True, "deepseek": True, "notebooklm": True},
+            votes={"claude": True, "gemini": True, "kimi": True, "notebooklm": True},
         ),
         ConsiglioClaim(
             key="k2",
             value="v",
-            votes={"claude": True, "gemini": True, "deepseek": True, "notebooklm": False},
+            votes={"claude": True, "gemini": True, "kimi": True, "notebooklm": False},
         ),
     ]
     result = ConsiglioResult(claims=claims, meta={})
@@ -65,12 +65,12 @@ def test_result_gate_6_fails_if_any_claim_disputed():
         ConsiglioClaim(
             key="k1",
             value="v",
-            votes={"claude": True, "gemini": True, "deepseek": True, "notebooklm": False},
+            votes={"claude": True, "gemini": True, "kimi": True, "notebooklm": False},
         ),
         ConsiglioClaim(
             key="k2",
             value="v",
-            votes={"claude": True, "gemini": False, "deepseek": False, "notebooklm": False},
+            votes={"claude": True, "gemini": False, "kimi": False, "notebooklm": False},
         ),
     ]
     result = ConsiglioResult(claims=claims, meta={})
@@ -84,12 +84,12 @@ def test_result_gate_6_adapts_to_available_voters():
         ConsiglioClaim(
             key="k1",
             value="v",
-            votes={"claude": True, "deepseek": True},
+            votes={"claude": True, "kimi": True},
         ),
         ConsiglioClaim(
             key="k2",
             value="v",
-            votes={"claude": True, "deepseek": False},
+            votes={"claude": True, "kimi": False},
         ),
     ]
     result = ConsiglioResult(claims=claims, meta={"active_llms": 2})
