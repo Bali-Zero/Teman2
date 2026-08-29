@@ -36,6 +36,7 @@ from evidence_pack_lint import (  # noqa: E402
     _seat_rule_verdict,
     _size_term_net_lines,
     check_acceptance_probe_pairing,
+    check_appetite_acknowledgment,
     check_assumptions_register,
     check_brief_ref_exists,
     check_cheap_seat_floor,
@@ -2846,3 +2847,356 @@ def test_assumptions_end_to_end_notice_reaches_stderr(tmp_repo, capsys):
     captured = capsys.readouterr()
     assert "assumptions:" in captured.err
     assert "NOTICE" in captured.err
+
+
+# --------------------------------------------------------- check_appetite_acknowledgment
+
+
+def test_appetite_guilt_over_wall_clock_hours_no_ack_violation():
+    """GUILT: a single declared ceiling (wall_clock_hours), observed spend
+    strictly over it, and no `appetite_exceeded:` — the ONLY rule in this
+    lane that fails."""
+    brief = {"appetite": {"wall_clock_hours": 4}}
+    pack = {"spend": {"wall_clock_hours": 11}}
+    violations, notices = check_appetite_acknowledgment(brief, pack)
+    assert violations
+    assert notices == []
+    assert "appetite_exceeded" in violations[0]
+
+
+def test_appetite_guilt_over_adversarial_rounds_names_both_numbers():
+    """GUILT: the violation message names BOTH the declared ceiling and the
+    observed value for the breached dimension, so the reader can act."""
+    brief = {"appetite": {"adversarial_rounds": 2}}
+    pack = {"spend": {"adversarial_rounds": 5}}
+    violations, _notices = check_appetite_acknowledgment(brief, pack)
+    assert violations
+    assert "adversarial_rounds" in violations[0]
+    assert "declared 2" in violations[0]
+    assert "observed 5" in violations[0]
+
+
+def test_appetite_guilt_over_two_dimensions_names_both():
+    """GUILT: two breached dimensions in one pack — the message names
+    both, not just the first one found."""
+    brief = {"appetite": {"wall_clock_hours": 4, "adversarial_rounds": 2}}
+    pack = {"spend": {"wall_clock_hours": 11, "adversarial_rounds": 5}}
+    violations, _notices = check_appetite_acknowledgment(brief, pack)
+    assert len(violations) == 1
+    assert "wall_clock_hours" in violations[0]
+    assert "adversarial_rounds" in violations[0]
+
+
+def test_appetite_guilt_whitespace_only_ack_is_not_an_acknowledgment():
+    """GUILT: `appetite_exceeded: "   "` is whitespace-only — mirrors
+    `gear_override`'s `.strip()` truthiness discipline exactly; a blank
+    string must not launder a real overrun into silence."""
+    brief = {"appetite": {"wall_clock_hours": 4}}
+    pack = {"spend": {"wall_clock_hours": 11}, "appetite_exceeded": "   "}
+    violations, _notices = check_appetite_acknowledgment(brief, pack)
+    assert violations
+
+
+def test_appetite_guilt_non_str_ack_is_not_an_acknowledgment():
+    """GUILT: `appetite_exceeded: 42` (non-str) is not an acknowledgment —
+    only a genuine `str` can carry a reason."""
+    brief = {"appetite": {"wall_clock_hours": 4}}
+    pack = {"spend": {"wall_clock_hours": 11}, "appetite_exceeded": 42}
+    violations, _notices = check_appetite_acknowledgment(brief, pack)
+    assert violations
+
+
+def test_appetite_innocence_acknowledged_overrun_reports_not_fails():
+    """INNOCENCE: the SAME overrun as the first guilt test, but WITH a
+    real, non-empty `appetite_exceeded:` — 0 violations, 1 notice, mirrors
+    `gear_override`'s "reported, not failed" posture."""
+    brief = {"appetite": {"wall_clock_hours": 4}}
+    pack = {
+        "spend": {"wall_clock_hours": 11},
+        "appetite_exceeded": "hotfix under active incident, verified live",
+    }
+    violations, notices = check_appetite_acknowledgment(brief, pack)
+    assert violations == []
+    assert len(notices) == 1
+    assert "acknowledged" in notices[0]
+    assert "hotfix under active incident, verified live" in notices[0]
+
+
+def test_appetite_innocence_absent_block_silent():
+    """INNOCENCE: no `appetite:` key at all in the brief — SILENT,
+    `([], [])`."""
+    assert check_appetite_acknowledgment({"gear": 1}, {}) == ([], [])
+
+
+def test_appetite_innocence_real_corpus_string_shape_silent():
+    """INNOCENCE, the CRITICAL case: on disk right now (measured
+    2026-08-29) `appetite:` appears in 1 of 53 briefs and its value is
+    this exact free-text STRING, not a mapping —
+    evidence/2026-08/agent-nuzantara-docs-craft-wave-specs-8455f4c0/
+    brief.yml. A string declares no machine-readable ceiling and has
+    nothing to exceed, so it must ALSO stay silent, or this rule would
+    crash or falsely convict on the only real instance in the corpus."""
+    brief = {"appetite": 'one session; two adversarial rounds (Kimi, then Codex on the fixes); no third round — leftover objections become spec caveats, not rewrites.'}
+    assert check_appetite_acknowledgment(brief, {}) == ([], [])
+
+
+def test_appetite_innocence_spend_absent_unmeasured_notice():
+    """INNOCENCE: a ceiling IS declared but the pack records no `spend:`
+    at all — 0 violations, 1 "not verified this run" notice. An
+    unmeasured ceiling is not a breached one."""
+    brief = {"appetite": {"wall_clock_hours": 4}}
+    violations, notices = check_appetite_acknowledgment(brief, {})
+    assert violations == []
+    assert len(notices) == 1
+    assert "not verified this run" in notices[0]
+
+
+def test_appetite_innocence_spend_equal_to_ceiling_not_a_breach():
+    """INNOCENCE: comparison is `observed > declared` — spend EQUAL to the
+    ceiling is not a breach, SILENT."""
+    brief = {"appetite": {"wall_clock_hours": 4}}
+    pack = {"spend": {"wall_clock_hours": 4}}
+    assert check_appetite_acknowledgment(brief, pack) == ([], [])
+
+
+def test_appetite_innocence_spend_under_ceiling_silent():
+    """INNOCENCE: spend strictly under the declared ceiling is SILENT."""
+    brief = {"appetite": {"wall_clock_hours": 4}}
+    pack = {"spend": {"wall_clock_hours": 1}}
+    assert check_appetite_acknowledgment(brief, pack) == ([], [])
+
+
+def test_appetite_innocence_empty_mapping_silent():
+    """INNOCENCE: `appetite: {}` declares no recognised numeric ceiling at
+    all — SILENT, same as absence."""
+    assert check_appetite_acknowledgment({"appetite": {}}, {}) == ([], [])
+
+
+def test_appetite_innocence_bool_ceiling_not_numeric():
+    """INNOCENCE: `appetite: {wall_clock_hours: true}` — a bool is not a
+    numeric ceiling (`type(True) is int` is False, `type(True) is bool`).
+    `type(v) is int or type(v) is float` rejects it without needing a
+    separate `isinstance(v, bool)` guard."""
+    brief = {"appetite": {"wall_clock_hours": True}}
+    pack = {"spend": {"wall_clock_hours": 99}}
+    assert check_appetite_acknowledgment(brief, pack) == ([], [])
+
+
+def test_appetite_innocence_brief_none_pack_none_does_not_crash():
+    """INNOCENCE: `brief=None` and `pack=None` simultaneously must not
+    raise — this rule can FAIL a pack, but it must never crash a run."""
+    assert check_appetite_acknowledgment(None, None) == ([], [])
+
+
+def test_appetite_innocence_non_mapping_spend_does_not_crash():
+    """INNOCENCE: `spend:` shaped as a str, a list, or an int must not
+    crash — each is treated exactly like `spend:` absent, so it produces
+    the same "not verified this run" notice, never a violation."""
+    brief = {"appetite": {"wall_clock_hours": 4}}
+    for bad_spend in ("eleven hours", [1, 2, 3], 11):
+        violations, notices = check_appetite_acknowledgment(
+            brief, {"spend": bad_spend}
+        )
+        assert violations == []
+        assert len(notices) == 1
+        assert "not verified this run" in notices[0]
+
+
+def test_appetite_end_to_end_violation_reaches_lint_and_rc1(tmp_repo):
+    """End-to-end (same 'wiring, not just return value' pattern as
+    test_assumptions_end_to_end_notice_reaches_stderr): this is the ONE
+    rule in the lane that can fail, so the end-to-end proof is that a
+    genuine breach with no acknowledgment reaches lint()'s RETURNED
+    violations list and flips the exit code to 1 — not just a stderr
+    notice."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1, appetite={"wall_clock_hours": 4})
+    write_pack(spend={"wall_clock_hours": 11})
+    rc, violations = lint(tmp_path / "evidence" / "pack.yml", tmp_path, None)
+    assert rc == 1
+    assert any("appetite" in v and "appetite_exceeded" in v for v in violations)
+
+
+
+# ---------------------------------------------------------------------------
+# Rule 14 — defects found by the ORCHESTRATOR's on-disk gate (not by the
+# implementer, not by the refuter). Each test carries the measurement that
+# found it, so the next reader knows why the case exists rather than
+# guessing it was written for symmetry.
+# ---------------------------------------------------------------------------
+
+
+def test_appetite_guilt_acknowledgment_reason_is_sanitized_before_stderr():
+    """MEASURED on this branch before the fix: an `appetite_exceeded:` reason
+    containing a newline produced a notice that SPLIT ACROSS TWO stderr lines,
+    and an ESC/BEL travelled to the terminal verbatim.
+
+    That is the identical defect blind adversarial review found in rule 13 one
+    PR earlier (Kimi K3, finding 1) — the sanitiser existed, and rule 14 simply
+    did not call it. The cure was to extract it into a shared, named
+    `_sanitize_notice_text`: a sanitiser that lives inside one rule's formatter
+    is a sanitiser the next rule forgets."""
+    violations, notices = check_appetite_acknowledgment(
+        {"appetite": {"wall_clock_hours": 4}},
+        {
+            "spend": {"wall_clock_hours": 11},
+            "appetite_exceeded": "line1\nline2\x1b[31mRED\x07 tail",
+        },
+    )
+    assert violations == []
+    assert len(notices) == 1
+    assert "\n" not in notices[0]
+    assert all(ch.isprintable() or ch == " " for ch in notices[0])
+
+
+def test_appetite_guilt_control_bytes_only_reason_is_not_an_acknowledgment():
+    """Emptiness is judged AFTER sanitising. Judged before, three invisible
+    bytes would acknowledge any overrun and buy a silent pass — the exact
+    shape of a bypass, on the lane's only failing rule."""
+    violations, notices = check_appetite_acknowledgment(
+        {"appetite": {"wall_clock_hours": 4}},
+        {"spend": {"wall_clock_hours": 11}, "appetite_exceeded": "\x1b\x07"},
+    )
+    assert len(violations) == 1
+    assert notices == []
+
+
+def test_appetite_innocence_non_ascii_reason_survives_sanitizing():
+    """The sanitiser drops NON-PRINTABLES, not merely-non-ASCII text. Without
+    this the over-match twin would be silent data loss: a reason written in
+    Italian or Indonesian arriving at the reader mangled."""
+    violations, notices = check_appetite_acknowledgment(
+        {"appetite": {"tokens": 10}},
+        {"spend": {"tokens": 99}, "appetite_exceeded": "café naïve — sforato"},
+    )
+    assert violations == []
+    assert "café naïve — sforato" in notices[0]
+
+
+def test_appetite_innocence_over_long_reason_is_capped():
+    """A reason is prose, so it is capped generously (200) rather than at the
+    60 an acceptance bullet gets — but it IS capped: an unbounded field must
+    not be able to emit an unbounded stderr line."""
+    violations, notices = check_appetite_acknowledgment(
+        {"appetite": {"tokens": 10}},
+        {"spend": {"tokens": 99}, "appetite_exceeded": "x" * 400},
+    )
+    assert violations == []
+    # The reason is rendered QUOTED, so the ellipsis sits inside the quotes.
+    assert '..."' in notices[0]
+    assert len(notices[0]) < 400
+
+
+def test_appetite_partial_coverage_breach_and_unmeasured_coexist():
+    """Flagged by the implementer as pinned by NO specified case, and correct:
+    with three independent dimensions a pack can breach one while leaving
+    another unmeasured in the same call. The spec's prose decides it — a
+    declared ceiling with no matching spend contributes to the unmeasured
+    notice, "never to a violation" — so the two facts are independent and BOTH
+    must be reported. Untested, a later refactor could silently fold one into
+    the other and no case would notice."""
+    violations, notices = check_appetite_acknowledgment(
+        {"appetite": {"wall_clock_hours": 4, "tokens": 100}},
+        {"spend": {"wall_clock_hours": 11}},
+    )
+    assert len(violations) == 1
+    assert "wall_clock_hours" in violations[0]
+    assert "tokens" not in violations[0]
+    assert len(notices) == 1
+    assert "tokens" in notices[0]
+    assert "not verified this run" in notices[0]
+
+
+def test_appetite_nan_and_inf_spend_are_UNMEASURED_not_silent():
+    """THIS TEST WAS WRONG WHEN FIRST WRITTEN, AND THAT IS WHY IT IS HERE.
+
+    The orchestrator's gate found NaN, checked that it "never convicts", and
+    pinned `([], [])` — total silence — as correct, reasoning that fail-open on
+    the lane's only convicting rule is the safe direction. Half right. Fail-open
+    on the VIOLATION is safe; fail-open on the NOTICE is a BYPASS: `type(nan) is
+    float` admitted NaN as a MEASUREMENT, so it never entered `unmeasured`, and
+    a pack could report any overrun as `spend: {tokens: .nan}` and the rule
+    would say nothing at all. It also contradicted the rule's own docstring,
+    which promises a notice for a dimension with "no comparable numeric value".
+
+    Caught pre-merge by blind cross-family review (Kimi K3, finding F4), which
+    is the whole argument for generator != grader: the author had already
+    examined this exact input and pinned the wrong half of it.
+
+    NaN is not a measurement, it is the ABSENCE of one — so it must produce the
+    unmeasured NOTICE, and still never convict."""
+    for bad in (float("nan"), float("inf"), float("-inf"), -5):
+        violations, notices = check_appetite_acknowledgment(
+            {"appetite": {"tokens": 1000}}, {"spend": {"tokens": bad}}
+        )
+        assert violations == [], f"{bad!r} must never convict"
+        assert len(notices) == 1, f"{bad!r} must be reported as unmeasured, not silent"
+        assert "not verified this run" in notices[0]
+
+
+def test_appetite_innocence_nonsense_ceiling_is_not_a_ceiling():
+    """A negative or non-finite CEILING is a typo, not a declaration. Before
+    the fix, `appetite: {adversarial_rounds: -1}` was admitted as genuine and
+    an honest `spend: 0` convicted (`0 > -1`) — a false positive on the one
+    rule whose false positive costs an unrelated squad its merge (Kimi K3,
+    finding F3). Now it declares nothing, so there is nothing to exceed."""
+    for bad in (-1, float("nan"), float("inf")):
+        assert check_appetite_acknowledgment(
+            {"appetite": {"adversarial_rounds": bad}},
+            {"spend": {"adversarial_rounds": 0}},
+        ) == ([], []), f"{bad!r} must not be a ceiling"
+
+
+def test_appetite_innocence_zero_is_a_real_value_on_both_sides():
+    """The over-correction twin of the two tests above (W94: curing an
+    over-match births the under-match). The bound is `>= 0`, NOT `> 0` —
+    `wall_clock_hours: 0` is a real, harsh declaration and a real observation,
+    and a fix that excluded zero would silently disarm both."""
+    assert check_appetite_acknowledgment(
+        {"appetite": {"wall_clock_hours": 0}}, {"spend": {"wall_clock_hours": 0}}
+    ) == ([], [])
+    violations, _ = check_appetite_acknowledgment(
+        {"appetite": {"wall_clock_hours": 0}}, {"spend": {"wall_clock_hours": 1}}
+    )
+    assert len(violations) == 1
+
+
+def test_appetite_guilt_non_str_acknowledgment_message_does_not_lie():
+    """`appetite_exceeded: yes` parses as the BOOL True under YAML 1.1. The
+    conviction is CORRECT and unchanged — this field mirrors `gear_override`,
+    where the reason IS the artifact, and accepting a bare `yes` would turn the
+    lane's only failing rule into a one-token bypass. What was defective was
+    the MESSAGE: it told the author there was "no `appetite_exceeded:`
+    acknowledgment" when they had plainly written one, sending them to grep for
+    a field sitting right there (Kimi K3, finding F1, ranked HIGH). The message
+    now names the type."""
+    import yaml
+
+    pack = yaml.safe_load("spend: {tokens: 1500}\nappetite_exceeded: yes")
+    assert pack["appetite_exceeded"] is True  # premise: YAML really does this
+    violations, notices = check_appetite_acknowledgment(
+        {"appetite": {"tokens": 1000}}, pack
+    )
+    assert len(violations) == 1
+    assert "bool" in violations[0]
+    assert "not a reason" in violations[0]
+    assert "no `appetite_exceeded:` acknowledgment" not in violations[0]
+
+    int_violations, _ = check_appetite_acknowledgment(
+        {"appetite": {"tokens": 1000}}, {"spend": {"tokens": 1500}, "appetite_exceeded": 42}
+    )
+    assert len(int_violations) == 1
+    assert "int" in int_violations[0]
+
+
+def test_appetite_innocence_missing_acknowledgment_message_is_unchanged():
+    """Innocence twin of the test above: the ORIGINAL message must still be
+    what a genuinely-absent acknowledgment gets. A fix that routed every
+    conviction through the new branch would make the common case read as if
+    the author had written something."""
+    violations, _ = check_appetite_acknowledgment(
+        {"appetite": {"tokens": 1000}}, {"spend": {"tokens": 1500}}
+    )
+    assert len(violations) == 1
+    assert "no `appetite_exceeded:` acknowledgment" in violations[0]
+    assert "not a reason" not in violations[0]

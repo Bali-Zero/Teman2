@@ -482,7 +482,9 @@
             "test_assumptions_guilt_status_typo_fires_n2_not_n1",
             "test_assumptions_guilt_bare_string_entry_fires_n2",
             "test_assumptions_guilt_missing_status_key_fires_n2",
-            "test_assumptions_guilt_unverified_without_probe_fires_n1_and_n3"
+            "test_assumptions_guilt_unverified_without_probe_fires_n1_and_n3",
+            "test_assumptions_guilt_whitespace_only_probe_is_not_a_probe",
+            "test_assumptions_guilt_bare_string_entry_names_itself"
           ],
           "innocence": [
             "test_assumptions_innocence_all_verified_silent",
@@ -493,7 +495,41 @@
             "test_assumptions_innocence_status_tolerates_whitespace_and_case",
             "test_assumptions_innocence_unverified_with_probe_fires_n1_not_n3",
             "test_assumptions_innocence_examples_sanitize_quotes_and_newlines",
-            "test_assumptions_end_to_end_notice_reaches_stderr"
+            "test_assumptions_end_to_end_notice_reaches_stderr",
+            "test_assumptions_innocence_control_bytes_never_reach_a_notice"
+          ]
+        },
+        "check_appetite_acknowledgment": {
+          "scar": ["#2-esiste-non-armato"],
+          "guilt": [
+            "test_appetite_guilt_over_wall_clock_hours_no_ack_violation",
+            "test_appetite_guilt_over_adversarial_rounds_names_both_numbers",
+            "test_appetite_guilt_over_two_dimensions_names_both",
+            "test_appetite_guilt_whitespace_only_ack_is_not_an_acknowledgment",
+            "test_appetite_guilt_non_str_ack_is_not_an_acknowledgment",
+            "test_appetite_guilt_acknowledgment_reason_is_sanitized_before_stderr",
+            "test_appetite_guilt_control_bytes_only_reason_is_not_an_acknowledgment",
+            "test_appetite_partial_coverage_breach_and_unmeasured_coexist",
+            "test_appetite_guilt_non_str_acknowledgment_message_does_not_lie",
+            "test_appetite_nan_and_inf_spend_are_UNMEASURED_not_silent"
+          ],
+          "innocence": [
+            "test_appetite_innocence_acknowledged_overrun_reports_not_fails",
+            "test_appetite_innocence_absent_block_silent",
+            "test_appetite_innocence_real_corpus_string_shape_silent",
+            "test_appetite_innocence_spend_absent_unmeasured_notice",
+            "test_appetite_innocence_spend_equal_to_ceiling_not_a_breach",
+            "test_appetite_innocence_spend_under_ceiling_silent",
+            "test_appetite_innocence_empty_mapping_silent",
+            "test_appetite_innocence_bool_ceiling_not_numeric",
+            "test_appetite_innocence_brief_none_pack_none_does_not_crash",
+            "test_appetite_innocence_non_mapping_spend_does_not_crash",
+            "test_appetite_end_to_end_violation_reaches_lint_and_rc1",
+            "test_appetite_innocence_non_ascii_reason_survives_sanitizing",
+            "test_appetite_innocence_over_long_reason_is_capped",
+            "test_appetite_innocence_nonsense_ceiling_is_not_a_ceiling",
+            "test_appetite_innocence_zero_is_a_real_value_on_both_sides",
+            "test_appetite_innocence_missing_acknowledgment_message_is_unchanged"
           ]
         },
         "check_lanes_build_seat_diversity": {
