@@ -1,4 +1,5 @@
 import { test, expect, type Route } from "@playwright/test";
+import { installNoWriteGuard } from "./_support/no-write-context";
 
 /**
  * REGRESSION GUARD for the visa-clock overstay defect (#5170, cured via
@@ -23,13 +24,7 @@ import { test, expect, type Route } from "@playwright/test";
  *   counting checks created will silently include probe traffic"). Here
  *   it's worse: an overstay case is fabricated CLIENT DATA (a visa type +
  *   dates implying a real person is 370+ days overstayed), not just an
- *   idempotency-ledger row, and it would also emit a real
- *   `POST /api/analytics/funnel-event` (app_form_submitted /
- *   app_result_viewed) that could skew this funnel's real conversion
- *   metrics. A cron running this suite on a schedule would create ONE such
- *   row PER TICK forever — exactly the "cron that writes unbounded rows to
- *   production every run" the build brief explicitly forbids shipping
- *   quietly.
+ *   idempotency-ledger row.
  *
  *   So this test drives the REAL, deployed production page and REAL,
  *   deployed production JavaScript bundle (the actual regression surface
@@ -38,8 +33,21 @@ import { test, expect, type Route } from "@playwright/test";
  *   calls the journey makes and returns a synthetic overstay `ClockResponse`
  *   payload — matching the PR-1 spec's own framing of this acceptance
  *   criterion: "an overstay-date PAYLOAD renders an overstay branch, never
- *   'Valid until'". Zero rows written to production. Zero analytics
- *   pollution.
+ *   'Valid until'". Zero rows written to production.
+ *
+ *   CORRECTED (refutation round 1, cicatrix-superscar.md family #6): the
+ *   original version of this comment claimed "zero analytics pollution" on
+ *   the strength of reading THIS component's source. That was false —
+ *   watching the actual network traffic this page issues (not just the
+ *   visa-clock component) showed `apps/mouth/src/app/visa/layout.tsx`
+ *   mounts `<SessionInit funnel="visa">`, which POSTs
+ *   `/api/funnel/session/touch` (a real `funnel_sessions` row, 90-day
+ *   retention, carrying THIS run's IP hash) on every load, and GA/Sentry
+ *   beacons fire independently of anything this spec stubs. `_support/
+ *   no-write-context.ts` (`installNoWriteGuard`, installed below, BEFORE
+ *   `page.goto`) blocks that whole class and self-proves nothing else
+ *   unblocked reached our own origins — a claim earned by a running
+ *   assertion, not by re-reading source a second time.
  *
  *   UNRESOLVED (reported, not guessed): a true full-stack regression guard
  *   (real POST, real DB round-trip) would need either (a) a probe-sandbox
@@ -108,23 +116,31 @@ test("an overstay payload on /visa/clock/[hash] renders the overstay branch, nev
   const payload = buildOverstayPayload();
   const { daysOverstayedForAssertion, ...clockResponseShape } = payload;
 
+  // Blocks funnel-session/analytics/Sentry/GA before the first navigation —
+  // see file header + _support/no-write-context.ts for what this replaced
+  // (a false "zero analytics pollution" claim) and why it's a route, not a
+  // sentence in a commit message. `/api/visa/clock` is allowlisted here
+  // (NOT left to fail the self-proving check below) because the two
+  // `page.route` calls right after this ARE the block for it — a spec's
+  // own mock intercepting a URL is exactly as safe as the guard's generic
+  // ones, and pretending otherwise would make this assertion cry wolf on
+  // every run (found empirically: the first version of this test failed
+  // its own `unexpectedWrites()` check on the mocked POST it was already
+  // fulfilling itself).
+  const guard = await installNoWriteGuard(page, {
+    allowedWritePathPrefixes: ["/api/visa/clock"],
+  });
+
   // Intercept BOTH network calls the journey makes. Never let either reach
-  // the real backend (see file header for why).
+  // the real backend (see file header for why). The guard above already
+  // fulfills `/api/analytics/funnel-event` generically; these two are the
+  // visa-clock-specific calls it does NOT know about.
   await page.route("**/api/visa/clock", async (route) => {
     if (route.request().method() !== "POST") return route.continue();
     await fulfillJson(route, clockResponseShape, 201);
   });
   await page.route(`**/api/visa/clock/${SENTINEL_HASH}`, async (route) => {
     await fulfillJson(route, clockResponseShape, 200);
-  });
-  // Analytics is fire-and-forget from the page's perspective; stub it so
-  // this synthetic journey never writes a funnel_events row either.
-  await page.route("**/api/analytics/funnel-event", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: "{}",
-    });
   });
 
   await page.goto("/visa/clock", { waitUntil: "load" });
@@ -156,4 +172,12 @@ test("an overstay payload on /visa/clock/[hash] renders the overstay branch, nev
   const bodyText = await page.locator("body").innerText();
   expect(bodyText).not.toContain("Valid until");
   expect(bodyText).toContain(`${daysOverstayedForAssertion} days ago`);
+
+  // Self-proving "leaves no trace": not "we blocked the known list", but
+  // "nothing non-idempotent reached our own origins during this run" —
+  // derived from the actual request stream, not the blocklist's say-so.
+  expect(
+    guard.unexpectedWrites().map((r) => `${r.method()} ${r.url()}`),
+    "an unblocked write reached production — see _support/no-write-context.ts",
+  ).toEqual([]);
 });

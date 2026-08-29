@@ -34,10 +34,23 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 15_000 },
 
-  // Never retry-hide a real production defect (prime-maps.spec.ts is SUPPOSED
-  // to fail today — retries would just re-confirm the same red, at 2x cost,
-  // and could mask a genuinely flaky assertion as "eventually green").
-  retries: 0,
+  // ONE retry, for CONFIRMATION, not for hiding a real defect (refutation
+  // round 2 — the concern above was empirically overtaken: retries=0 means
+  // a single DNS/TLS/CDN/Wi-Fi blip on ANY of these journeys is an
+  // immediate P0. Measured live building this suite: a full 5-test run
+  // failed prime-maps.spec.ts's own SDK-loaded assertion on ONE run and
+  // passed cleanly on the very next, identical, run — a transient network
+  // hiccup, not a code or credential regression. Playwright's own
+  // pass-after-retry semantics are exactly the right tool here: a test
+  // that fails once then passes is reported `flaky`, NOT `expected` — it
+  // still shows up in the JSON report and can be surfaced later if it
+  // becomes a pattern — while a test that fails on BOTH attempts (like
+  // prime-maps.spec.ts's real, persistent ExpiredKeyMapError) is reported
+  // `unexpected` exactly as before. One retry therefore does not "mask a
+  // genuinely flaky assertion as eventually green" — it turns single-blip
+  // noise into a `flaky` result instead of a false P0, while a
+  // consistently-reproducing defect still reads `unexpected` on every run.
+  retries: 1,
   workers: 1,
   fullyParallel: false,
   forbidOnly: true,

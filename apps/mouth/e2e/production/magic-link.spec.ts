@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { installNoWriteGuard } from "./_support/no-write-context";
 
 /**
  * REGRESSION GUARD for the "magic-link dead end" defect. Measured cured
@@ -22,6 +23,12 @@ import { test, expect } from "@playwright/test";
 test("magic-link entry point is reachable on its real host and renders the sign-in form", async ({
   page,
 }) => {
+  // Measured: this page fires Sentry + GA4 beacons on load like every other
+  // page in the suite, even without any form interaction. See
+  // _support/no-write-context.ts for why source-reading alone is never
+  // trusted for this claim again.
+  const guard = await installNoWriteGuard(page);
+
   const response = await page.goto("https://balizero.com/portal/magic-link", {
     waitUntil: "domcontentloaded",
   });
@@ -58,4 +65,9 @@ test("magic-link entry point is reachable on its real host and renders the sign-
 
   // Explicitly NOT calling submitButton.click() / form submit — no real
   // email is sent by this sentinel.
+
+  expect(
+    guard.unexpectedWrites().map((r) => `${r.method()} ${r.url()}`),
+    "an unblocked write reached production — see _support/no-write-context.ts",
+  ).toEqual([]);
 });

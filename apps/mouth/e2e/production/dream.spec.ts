@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { installNoWriteGuard } from "./_support/no-write-context";
 
 /**
  * REGRESSION GUARD for the "dream ejection" defect (#5181/#5189, cured
@@ -23,10 +24,34 @@ import { test, expect } from "@playwright/test";
  * states — L11-PR1 spec, PR-1 acceptance criteria). Guilt case: on a
  * scratch branch reverting #5181/#5189, this test goes red naming the
  * `login?expired=true` ejection; run against current prod it is green.
+ *
+ * PROVE THE GUARDED PATH WAS ACTUALLY EXERCISED (refutation round 2). The
+ * original version of this test only checked the URL after a fixed wait —
+ * with dead hydration (React never attached to the SSR'd `<input>`, so the
+ * debounced autosave `useEffect` never fires) `pressSequentially` still
+ * types into the raw DOM node, the URL never changes, and this test PASSED
+ * having exercised nothing. It now `waitForResponse`s the real
+ * `POST .../api/dream/state` and asserts it is 401 — if that response never
+ * arrives within the timeout, `waitForResponse` throws and the test FAILS,
+ * which is the correct outcome for "the guard was never exercised".
+ *
+ * `/api/dream/state` is explicitly allowlisted in `installNoWriteGuard`
+ * (not blocked like the rest of the write surface): a 401 means the
+ * backend's auth gate rejected the request BEFORE any handler ran, so
+ * nothing is persisted — observing the real 401 is the entire point of
+ * this test, not a side effect to suppress.
  */
 test("typing on /dream never ejects an anonymous visitor to the login page", async ({
   page,
 }) => {
+  // Sentry fires on every keystroke's console.error here (see dream/page.tsx
+  // — "a visitor merely typing... produced one such event every 2 seconds").
+  // /api/dream/state itself is the one write this test needs to observe for
+  // real, so it's allowlisted rather than blocked.
+  const guard = await installNoWriteGuard(page, {
+    allowedWritePathPrefixes: ["/api/dream/state"],
+  });
+
   await page.goto("/dream");
 
   // The composer hydrates client-side from localStorage/initial state — wait
@@ -37,12 +62,26 @@ test("typing on /dream never ejects an anonymous visitor to the login page", asy
   // Real typing (not `.fill()`), matching the spec's "real typing where the
   // defect involved autosave/debounce" requirement — the autosave effect is
   // keyed off React state changes driven by actual input events.
+  const autosavePromise = page.waitForResponse(
+    (resp) =>
+      resp.url().includes("/api/dream/state") &&
+      resp.request().method() === "POST",
+    { timeout: 15_000 },
+  );
   await titleInput.pressSequentially("S", { delay: 50 });
 
-  // The autosave fires 2000ms after the last keystroke (ArticleComposer's
-  // `useEffect` debounce). Wait past it plus margin for the fetch+catch to
-  // resolve and for a (would-be) redirect's navigation to actually land.
-  await page.waitForTimeout(4_000);
+  // If hydration is dead this throws (timeout) instead of silently passing
+  // — that IS the failure mode this guard exists to catch.
+  const autosaveResponse = await autosavePromise;
+  expect(
+    autosaveResponse.status(),
+    "autosave did not answer 401 for an anonymous visitor — either auth " +
+      "state changed or the endpoint stopped gating correctly",
+  ).toBe(401);
+
+  // Give the (expected-401, classify-and-swallow) catch handler + a
+  // (would-be) redirect's navigation time to actually land.
+  await page.waitForTimeout(1_000);
 
   const url = page.url();
   expect(url, `visitor was ejected — landed on ${url}`).not.toContain(
@@ -53,4 +92,10 @@ test("typing on /dream never ejects an anonymous visitor to the login page", asy
   );
   // Positive assertion, not just "didn't eject": still on /dream.
   expect(new URL(url).pathname).toBe("/dream");
+
+  expect(
+    guard.unexpectedWrites().map((r) => `${r.method()} ${r.url()}`),
+    "an unblocked write (other than the allowlisted autosave 401) reached " +
+      "production — see _support/no-write-context.ts",
+  ).toEqual([]);
 });
