@@ -1,0 +1,123 @@
+brief_ref: evidence/2026-08/agent-nuzantara-craft-e-assumptions-register-ece48074/brief.yml
+plan_ref: docs/plans/2026-08-29-beyond-sota-craft-wave/L01-intake-triage-specification.md
+lanes:
+  - lane: E1
+    role: build
+    seat: sonnet-5
+  - lane: E2
+    role: review
+    seat: kimi-k3
+  - lane: E3
+    role: review
+    seat: opus-5
+seat_diversity:
+  "Build and grade are separated by FAMILY, not only by instance: the diff
+  was built by Sonnet 5 and refuted by Kimi K3, which never saw the tests or the PR
+  framing. The final on-disk gate is the orchestrating Opus 5 session, which re-ran every
+  measurement itself rather than accepting either subordinate's report — and caught two
+  of its OWN probe errors doing so (recorded in notes)."
+diff:
+  files: 6
+  added: 777
+  deleted: 2
+  net: 775
+pii_scan: clean
+pii_scan_note:
+  "A CI lint script, its hermetic test corpus, a JSON registry entry, one
+  doctrine paragraph, and this pack. No client data, no credentials, no external
+  identifiers anywhere in the diff."
+receipts:
+  - claim: "The linter's embedded hermetic corpus passes with the 18 new rule-13 fixtures included: 96 checks ok, 0 FAIL, exit 0."
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3 scripts/evidence_pack_lint.py --selftest"
+    exit: 0
+    ts: "2026-08-29T08:13:35Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "The full pytest wrapper passes: 262 tests, up from 244 on origin/main. Run with bytecode writing OFF and the pytest cache disabled, because a mutation loop over cached bytecode measures the filesystem rather than the corpus (W121)."
+    cmd: "PYTHONDONTWRITEBYTECODE=1 apps/backend-rag/.venv/bin/python3 -m pytest scripts/tests/test_evidence_pack_lint.py -q -p no:cacheprovider"
+    exit: 0
+    ts: "2026-08-29T08:13:35Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "guard-conformance reports 0 violations; the evidence-pack-lint census moved 14 -> 15, matching the one new check_* def. Every test name in the new registry entry resolves — no phantoms."
+    cmd: "python3 infra/guard-conformance/check_guard_conformance.py"
+    exit: 0
+    ts: "2026-08-29T08:13:35Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "ruff is clean on both changed Python files. Measured with the real binary at /opt/homebrew/bin/ruff: this shell's python3 has no ruff module, so an earlier probe reported a false red on a green step."
+    cmd: "/opt/homebrew/bin/ruff check scripts/evidence_pack_lint.py scripts/tests/test_evidence_pack_lint.py"
+    exit: 0
+    ts: "2026-08-29T08:13:35Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "MUTATION 12/12 KILLED, baseline green. Ten mutants of rule 13 (each notice class suppressed, the elif widened to else, status normalisation dropped, the blank-probe test loosened, the non-dict text collapsed, the examples helper bypassed, both type guards deleted) plus two of the sanitiser fix. Two of the twelve SURVIVED the first corpus and are the reason the sweep was worth running: the tests were fixed, not the code."
+    cmd: "for each mutant: sed the anchor, re-run --selftest and pytest, restore"
+    exit: 0
+    ts: "2026-08-29T08:13:35Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "ZERO NEW REDS across all 50 packs, swept TWICE — once after the build and again after the shared-helper hardening, because that helper is rule 12's too. Each pack linted under this tree and under origin/main's copy of the linter: 2 non-zero under each, 0 exit-code deltas. The two failures are pre-existing and provably not mine."
+    cmd: 'python3 scripts/evidence_pack_lint.py "$p" vs /tmp/e_pr2_main/evidence_pack_lint.py "$p" for every pack, comparing returncode'
+    exit: 0
+    ts: "2026-08-29T08:13:35Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "Rule 13 emits 0 notices across all 50 briefs on disk. None carries the block, so any notice would have been a false positive. This is the measured baseline the ASSEMBLY-LINE paragraph states."
+    cmd: "check_assumptions_register over evidence/*/*/brief.yml + evidence/brief.yml"
+    exit: 0
+    ts: "2026-08-29T08:13:35Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "33 hostile input shapes -> 0 crashes. None/scalars/ints/bools as brief; assumptions as null/dict/str/int; entries as None/int/list/empty-dict; text and status and probe each null/int/list; a 5000-char text; a 200-entry register; combining marks, emoji and a zero-width space. Every return a list[str], never more than 3 notices, no notice containing a newline."
+    cmd: "python3 - <<PY (33 shapes through check_assumptions_register, asserting shape, count and newline-freedom) PY"
+    exit: 0
+    ts: "2026-08-29T08:13:35Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "The declared Gear 2 is the RECOMPUTED FLOOR, not a choice: --print-floor -> 2, --print-floor-source -> size, --print-measured -> 4 files, +536/-2. The first floor probe returned 1/none because it was run without --numstat-file, so the size term had nothing to read; the floor is only meaningful when it is given what it measures."
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <files> --numstat-file <numstat>"
+    exit: 0
+    ts: "2026-08-29T08:13:35Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "SANITISER ASSUMPTION SETTLED, not registered as a guess: 1,024,530 characters across all 100 brief and pack files scanned for non-printable non-whitespace code points. Result NONE, so the isprintable() filter drops nothing that legitimately occurs in this repo's evidence prose. Verified emoji and accents survive; ESC/BEL/NUL do not."
+    cmd: "python3 - <<PY (scan every evidence brief/pack for non-printable chars) PY"
+    exit: 0
+    ts: "2026-08-29T08:13:35Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "REFUTER FINDING REPRODUCED BEFORE DISPOSITION, not taken on trust (W65). Kimi's finding 1 was confirmed by printing the raw notice: ESC, BEL and NUL all present in a stderr-bound string. Its two LOW findings were also reproduced, then declined with reasons. Its four clean categories were spot-checked, including the zero-width-space case it claimed falls to N2 — it does."
+    cmd: "python3 - <<PY (re-run each Kimi finding against the live function before accepting) PY"
+    exit: 0
+    ts: "2026-08-29T08:13:35Z"
+    seat: "opus-5 (orchestrator, Pro)"
+  - claim: "DOGFOOD, and deliberately NOT the silent kind. This pack's own brief carries the corpus's first assumptions: register — 4 entries, 2 verified with probes and 2 honestly unverified with the probes that would settle them. Rule 13 therefore emits its N1 on the very artifact that introduces it, while N2 and N3 stay silent on a well-formed register. PR-1 proved its rule's innocence on its own pack; this one proves its rule is ARMED on a live pack rather than only green in a fixture, which is the distinction superscar #2 exists to catch."
+    cmd: 'python3 scripts/evidence_pack_lint.py "$p"  # with p = this pack; exit 0, one assumptions NOTICE on stderr'
+    exit: 0
+    ts: "2026-08-29T08:13:35Z"
+    seat: "opus-5 (orchestrator, Pro)"
+dissent:
+  - seat: kimi-k3
+    objection: "_acceptance_examples collapses whitespace and swaps double quotes, but ESC/BEL/NUL are not whitespace, so a control byte in a text reaches stderr verbatim while the helper's docstring claims 'Every item is SANITIZED first' — a terminal-injection shape and a docstring that promises more than the code delivers."
+    status: CONFIRMED
+  - seat: kimi-k3
+    objection: "text[:60] truncates by code point and can split a grapheme cluster, leaving a dangling combining mark or half a flag emoji inside the quotes."
+    status: PLAUSIBLE
+  - seat: kimi-k3
+    objection: "A text-less entry renders as '<non-text bullet>' — rule-12 vocabulary leaking into a rule-13 notice via the shared helper; a neutral '<non-text entry>' would read better."
+    status: PLAUSIBLE
+  - seat: kimi-k3
+    objection: "Under-match: no input found where an unverified assumption escapes all three notices. Coverage is total by construction — every entry lands in exactly one of verified(silent) / N1 / N2 — and entry.get('probe') is reachable only from the dict branch, so it cannot raise. The only escape is a literal status: verified lie, which the docstring already disclaims."
+    status: RETRACTED
+  - seat: kimi-k3
+    objection: "Raise: no input found. Every access is guarded — isinstance before .get, before iteration, before .strip()/.lower(), and _acceptance_examples only ever receives str."
+    status: RETRACTED
+  - seat: kimi-k3
+    objection: "Over-match: no input found. status: verified in any case or whitespace variant is silent; absent, non-list and empty blocks are silent; N2 firing on 'pending' and on the 'unverfied' typo is the documented intent."
+    status: RETRACTED
+  - seat: kimi-k3
+    objection: "Counting: no contradiction found. N1 and N2 partition the non-verified entries, N3 is a subset of N1, total = len(assumptions), and the helper's 60+3=63 truncation math matches its own docstring."
+    status: RETRACTED
+tests:
+  - "scripts/tests/test_evidence_pack_lint.py — 18 rule-13 tests (8 guilt, 9 innocence, 1 end-to-end through lint()), all named in the guard-conformance registry entry."
+  - "scripts/evidence_pack_lint.py --selftest — 18 hermetic rule-13 fixtures inside the embedded corpus."
+static:
+  - "ruff check on both changed Python files — All checks passed (RC=0, real binary at /opt/homebrew/bin/ruff)."
+  - "python3 -c 'import json; json.load(...)' on registry.json — valid; the entry was inserted TEXTUALLY (22 added / 0 deleted). PR-1 had reformatted this file to 337/98 with a json.dumps round-trip and had to revert it: a full rewrite is unreviewable (W109)."
+notes:
+  - "SHARED-SURFACE CHANGE, declared: _acceptance_examples is called by rule 12 as well, so hardening it moves PR-1's landed output for any bullet carrying a control byte. Accepted knowingly because the alternative was a docstring that lies, and measured rather than assumed — full suite re-run (262 passed, rule 12's own tests green) and the zero-new-reds sweep re-run after the change."
+  - "TWO OF MY OWN PROBES WERE WRONG, and both are recorded because they are the instructive part. (1) I read ${PIPESTATUS[0]} after piping through tail, so three commands reported an EMPTY exit code — I measured the pipe, not the command (W97, whose own entry in this file notes it as a fifth recurrence). (2) The same probe said 'No module named ruff' while the implementer had reported ruff green: both true, different binaries. Had I trusted my probe I would have called a green step red; had I trusted the report I would never have known which binary answered."
+  - "A THIRD MUTANT 'SURVIVED' AND TAUGHT NOTHING: my mutation re-implemented the guard it claimed to delete, so it was semantically equivalent. Re-cut as a true deletion, it kills. A surviving mutant is a claim about the corpus only when the mutation actually changes behaviour."
+  - "Diff is 775 net lines against the contract's ~400 target, and 241 of those are this evidence pack. It is one concern (rule 13) and splitting it would ship a lint rule apart from the corpus that proves it is not vacuous. The executable body of the new function is roughly 45 lines; the rest is the house's documented style, the guilt+innocence corpus, and this pack."
+  - "Two needs-ruling items from the lane spec are NOT decided here and are not touched by this PR: appetite auto-suspend (spec item 1) and default appetite ceiling values (spec item 3). They belong to PR-3."

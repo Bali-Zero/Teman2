@@ -676,6 +676,20 @@ async def test_paid_event_with_wrong_amount_is_quarantined_never_marks_paid(pool
     state = await pool.fetchval("SELECT state FROM garuda_orders WHERE order_id = $1", order_id)
     assert state == "awaiting_payment"  # never flipped to paid on a mismatched amount
 
+    # ... and the REASON is on the record, not just the refusal (migration 298).
+    # RED IF: `_quarantine` stops recording a cause, or records the wrong one.
+    # Without this, the alarm that reads these rows can only say "1 event
+    # quarantined, cause unknown" — and an amount mismatch, an unknown checkout
+    # session and an unbound order are three different incidents with three
+    # different cures.
+    quarantine = await pool.fetchrow(
+        "SELECT outcome, quarantine_reason FROM garuda_payment_inbox "
+        "WHERE provider = 'xendit' AND provider_event_id = $1",
+        "evt-wrong-amount-1",
+    )
+    assert quarantine["outcome"] == "quarantined"
+    assert quarantine["quarantine_reason"] == "amount_mismatch"
+
 
 @pytest.mark.asyncio
 async def test_two_orders_for_the_same_check_are_rejected_at_the_db_layer(pool):

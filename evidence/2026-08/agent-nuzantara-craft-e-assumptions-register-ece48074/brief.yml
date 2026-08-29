@@ -1,0 +1,118 @@
+task_id: craft-e-assumptions-register
+gear: 2
+l_level: L2
+gate_class: opus
+objective: |
+  L01/PR-2 of the beyond-SOTA craft wave: give a pack somewhere to WRITE DOWN what it is
+  standing on, and make the un-settled entries visible — at the door that already exists
+  (`scripts/evidence_pack_lint.py`), adding no new ceremony.
+
+  Rule 13: `evidence/brief.yml` may carry an optional `assumptions:` list, each entry a
+  mapping {text, status, probe} with status in {verified, unverified} and probe naming
+  the check that would settle it. The lint emits up to three AGGREGATE NOTICEs — entries
+  still `unverified` (N1), entries declaring no recognised status (N2), unverified
+  entries with no probe to settle them (N3) — and can never return a violation.
+
+  Gear 2 is the DETERMINISTIC FLOOR recomputed from this PR's own changed-file list and
+  numstat (`--print-floor` -> 2, `--print-floor-source` -> size). Receipt below. Not a
+  choice.
+constraints:
+  - "NOTICE-only, unconditionally, with no phased flip date — same posture as rule 12.
+    The lane spec says 'never a fail' in as many words, and a violations list that is
+    always empty would be dead code on the only path it exists for (W116)."
+  - "NOT gear-gated, a deliberate divergence from rule 12. Rule 12 gates on Gear>=2
+    because ITS Build clause said so; this clause says only 'a zero-assumption brief
+    passes silently'. Absence is already silent and adoption is 0/50, so the block is
+    opt-in by construction — gating it would be a bypass, not a safeguard."
+  - "Aggregate, never per-entry, at most 3 lines per pack — mirroring the
+    `seat_diversity_note` UX the lane spec names, and the scale lesson rule 12 already
+    paid for."
+  - "No change to compute_floor, compute_ceiling, or any existing check_*. One new
+    function, one new call site in lint(), one module-docstring entry. The ONE shared
+    surface touched is `_acceptance_examples`, hardened in response to a refuter
+    finding — see the assumptions register below."
+  - "The honest limit is in the code, not only the PR body: `status: verified` is
+    SELF-REPORTED prose. This rule checks the SHAPE of a declaration, never its truth."
+assumptions:
+  - text:
+      "WHEN a non-printable code point is dropped by the hardened sanitiser, no glyph
+      that legitimately occurs in this repo's evidence prose SHALL be lost."
+    status: verified
+    probe: "scan all 100 brief/pack files for non-printable non-whitespace chars"
+  - text:
+      "WHERE rule 13 is applied to every brief on disk, it SHALL be silent — no brief
+      carries the block, so any notice here would be a false positive."
+    status: verified
+    probe: "check_assumptions_register over all 50 briefs -> 0 notices"
+  - text:
+      "IF the `assumptions:` block degenerates to boilerplate in more than 80% of briefs
+      by 2026-10-28, THEN the register is not earning its keep and is a day-60 review
+      item."
+    status: unverified
+    probe: "census assumptions: blocks across evidence/*/*/brief.yml on 2026-10-28"
+  - text:
+      "WHILE adoption stays at zero, the claim that three aggregate notices remain
+      READABLE at corpus scale SHALL be untested against a real multi-entry register."
+    status: unverified
+    probe: "re-read CI stderr once >=10 briefs carry an assumptions: block"
+acceptance:
+  - text:
+      "WHEN the rule ships, the linter's own hermetic corpus SHALL pass with the new
+      guilt+innocence fixtures included."
+    probe: "scripts/evidence_pack_lint.py --selftest"
+  - text:
+      "WHEN the full pytest wrapper runs, every test in the evidence-pack suite SHALL
+      pass, the 18 new rule-13 proofs included."
+    probe: "pytest scripts/tests/test_evidence_pack_lint.py"
+  - text:
+      "WHERE a new check_* function is censused, guard-conformance SHALL report zero
+      violations — no phantom test references."
+    probe: "infra/guard-conformance/check_guard_conformance.py"
+  - text:
+      "IF any of the twelve mutations of rule 13 and its sanitiser fix is applied, the
+      corpus SHALL turn red — proving the tests are not vacuous."
+    probe: "pytest scripts/tests/test_evidence_pack_lint.py"
+  - text:
+      "WHILE the rule is live, no evidence pack in the repo SHALL acquire a NEW non-zero
+      exit: the two that fail must fail identically under origin/main's linter."
+    probe: 'scripts/evidence_pack_lint.py "$p"'
+consumer_map:
+  - "`scripts/evidence_pack_lint.py` — one new check_ function, one new call site in
+    lint(), module docstring rule 13, and one hardening line inside the SHARED
+    `_acceptance_examples` helper (which rule 12 also calls)."
+  - "`scripts/tests/test_evidence_pack_lint.py` — the sole guilt+innocence corpus rule 13
+    is graded against, and the file guard-conformance resolves its test names in."
+  - "`infra/guard-conformance/registry.json` — one new guards entry, keeping census
+    parity with the one new check_* def (census.method = ast-def-prefix, prefix check_)."
+  - "`.github/workflows/harness-floor.yml` — unchanged, but it is the live consumer: it
+    resolves this PR's pack via evidence_paths.py and runs the lint against it."
+  - "RULE 12, transitively: hardening the shared helper changes rule 12's notice text for
+    any bullet carrying a control byte. Swept — zero exit-code deltas across 50 packs."
+  - "Every future brief under evidence/**/brief.yml — rule 13 grades it, in notice mode,
+    from the moment this lands on origin/main."
+risks:
+  - "N2 treats an unrecognised status as unadjudicated rather than as verified. That is
+    the deliberate direction: matching only the literal `unverified` would let
+    `status: pending` and the typo `status: unverfied` launder an open question into
+    silence — the under-match gemello of superscar #3."
+  - "The shared-helper hardening reaches rule 12, which this lane already merged. Blast
+    radius accepted knowingly and measured, not assumed: full suite re-run (262 passed)
+    and the zero-new-reds sweep re-run after the change, both green."
+  - "Notice-only means nothing is blocked. Until a brief actually adopts the block the
+    rule is silent everywhere, which is correct but also means its real-world behaviour
+    is evidenced by this pack's own register and by fixtures, not by a corpus."
+grader: |
+  Blind cross-family refutation by Kimi K3 (kimi-code/k3), which did not build this diff
+  and was given the rule plus the helper it calls, with no tests and no PR framing. One
+  dispatch, RC=0, seven findings. One CONFIRMED and fixed (the sanitiser), two
+  acknowledged and deliberately not fixed with the reasons recorded, four categories
+  returned explicitly clean — including a branch-table walk that independently re-derived
+  the design's own honest limit. Every finding was REPRODUCED on disk before disposition.
+  Final on-disk gate: the orchestrating Opus 5 session, empirically, in the same turn as
+  this pack.
+budget: |
+  1 Sonnet 5 implementer dispatch, 1 refuter dispatch (Kimi K3), 1 orchestrator gate,
+  2 mutation sweeps (12 mutants), 2 zero-new-reds sweeps. Wall clock ~1h.
+pii:
+  none — this PR touches a CI lint script, its test corpus, the guard-conformance
+  registry, and one doctrine paragraph. No client data anywhere in the diff.
