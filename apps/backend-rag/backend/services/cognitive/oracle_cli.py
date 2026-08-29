@@ -7,9 +7,28 @@ Two modes:
 Context is assembled by re-using :class:`StrategosContextBuilder`.
 
 Kimi voice (K3, replaces the retired DeepSeek HTTP voice — Zero
-2026-07-19) requires the ``kimi`` CLI binary. If missing we fall back
-to a 3-voice council (claude+gemini+ollama) — ``degraded=True`` in result.
-Ollama voice requires a running local Ollama with ``gemma4:26b`` pulled.
+2026-07-19) requires the ``kimi`` CLI binary. There is no Ollama voice
+today: ``_build_proponents()`` only ever wires claude/gemini/kimi — the
+comment in that function names Ollama as a future addition, not a live
+one.
+
+There is also no 3-voice fallback. ``_build_proponents()``'s try/except
+wraps only each runner's *constructor* (which never validates a binary
+path — it just resolves a string), so a missing CLI binary is invisible
+until :meth:`OracleCouncil._round_propose` actually calls ``run()``
+inside an ``asyncio.TaskGroup``. There, one proponent's
+:class:`~backend.services.council.cli_runners.CLIRunnerError` cancels
+every sibling task and the group raises an ``ExceptionGroup`` that
+propagates out of :meth:`OracleCouncil.deliberate` uncaught — there is
+no partial/degraded council, only "all voices ran" or "none did." The
+only backstop is :meth:`OracleOrchestrator.run_once`'s outer
+``try/except``, which returns an ``OracleResult`` whose ``proposals``
+list was never populated. Because ``OracleResult.degraded`` is derived
+from ``self.proposals`` (``len(ok) < len(all)``), a total council wipeout
+compares ``0 < 0`` and reports ``degraded=False`` — the one week Oracle
+produces nothing looks, by this field alone, identical to a clean run.
+``errors_count`` in this CLI's JSON output is the only surviving signal.
+Ledgered as a PENDING-ARMS row (not fixed here — out of this PR's scope).
 """
 
 from __future__ import annotations
