@@ -180,6 +180,60 @@ STALE_LOCK_SECONDS=1200
 # healthy" about something that was never production.
 ALLOWED_BASE_URLS="https://balizero.com https://www.balizero.com https://my.balizero.com"
 
+# S9: heartbeat-note budget, in UTF-8 BYTES, not characters. Gate-round-2
+# finding: scripts/lib/heartbeat.sh's tr sanitiser runs on RAW BYTES under
+# LC_ALL=C (measured: `A — B` publishes as `A     B` -- the em dash's 3
+# UTF-8 bytes each become their own space byte), and its truncation to 500
+# chars runs AFTER that pass -- so heartbeat.sh's real ceiling, measured
+# against the note as WE hand it over, is 500 UTF-8 BYTES, not 500
+# characters. Budgeting on python's len() (character count) let a
+# heavily-non-ASCII note pass this wrapper's own check while still
+# overflowing heartbeat.sh's byte ceiling downstream: a fixture with dense
+# em dashes produced a builder output of 297 python chars / 829 UTF-8
+# bytes, whose own honestly-emitted "+2 more (see log)" marker survived in
+# the builder's output but landed past byte 500 once actually published --
+# heartbeat.sh's blind cut silently removed it, defeating this fix's own
+# promise that truncation is always marked, never silent.
+#
+# Non-ASCII reaching this code is NOT a contrived edge case: the live
+# prime-maps defect's own title already carries an em dash, and this
+# wrapper's own SKIPPED-path title ("... [SKIPPED -- never actually ran]")
+# embeds a second one on a path that fires on every skipped spec.
+#
+# Fix chosen: budget on len(s.encode("utf-8")) throughout (see blen() in
+# the NOTE_TAIL builder below) -- EXACT, because after heartbeat.sh's tr
+# pass one byte IS one character, so this is the same arithmetic
+# heartbeat.sh itself will perform, not an approximation of it. Two
+# alternatives considered and rejected: (a) stripping non-ASCII to spaces
+# in THIS wrapper before budgeting would make the units agree too, but it
+# duplicates a sanitisation responsibility heartbeat.sh already owns
+# correctly, and would gratuitously mangle content that fits comfortably
+# and was never going to be truncated at all; (b) shrinking NOTE_MAX_TOTAL
+# to <=125 chars would be provably safe even at the worst-case 4-byte
+# UTF-8 expansion, but throws away the large majority of the budget for
+# the common case (mostly-ASCII titles/summaries) to cover a codepoint
+# width Playwright spec text essentially never produces.
+#
+# The three constants below are therefore BYTE ceilings: 400 leaves >100
+# bytes of margin under heartbeat.sh's own 500-byte ceiling for whatever
+# else (its own JSON escaping) happens downstream.
+#
+# Declared failure posture, not a gap: this wrapper has no `set -e` (see
+# G9_fail_visible at the top of this file), so if the NOTE_TAIL construction
+# below ever crashes (python3 missing, an encoding failure -- malformed
+# $VERDICT_JSON itself is already caught upstream at the PARSE_ERROR check,
+# grep this file for PARSE_ERROR=, and never reaches here), `NOTE_TAIL=$(...)`
+# simply degrades to an empty string and execution continues. The published
+# note then reads "$FAILURE_COUNT real journey failure(s): " -- count
+# intact, entries lost. This is intentional: FAILURE_COUNT and the
+# per-failure Telegram alerts (already sent above, before NOTE_TAIL is ever
+# built) carry the load-bearing signal; the note's per-entry detail is
+# deliberately the least valuable field to lose to a bug in its own
+# construction.
+NOTE_MAX_TOTAL=400
+NOTE_MAX_TITLE=150
+NOTE_MAX_SUMMARY=120
+
 mkdir -p "$(dirname "$LOG")"
 echo "" >> "$LOG"
 echo "=== Journey Sentinel — $(date '+%Y-%m-%d %H:%M:%S %Z') ===" >> "$LOG"
@@ -600,10 +654,8 @@ for f in data['real_failures']:
 " "$VERDICT_JSON")
     echo "[journey-sentinel] $FAILURE_COUNT real journey failure(s):" >> "$LOG"
     echo "$FAILURES_TSV" >> "$LOG"
-    ALL_TITLES=""
     while IFS=$'\t' read -r title fingerprint error_summary; do
         [ -z "$title" ] && continue
-        ALL_TITLES="$ALL_TITLES;$title"
         key="journey-sentinel:$(echo "$title" | tr -cs 'a-zA-Z0-9' '-' | cut -c1-32)-$fingerprint"
         text="journey-sentinel: '$title' FAILED on $(hostname -s) production"
         if [ -n "$error_summary" ]; then
@@ -612,7 +664,135 @@ for f in data['real_failures']:
         text="$text. See $LOG for the full error (screenshots in output/playwright/production-artifacts/)."
         alert "$key" "$text"
     done <<< "$FAILURES_TSV"
-    heartbeat "degraded" "$FAILURE_COUNT real journey failure(s): $ALL_TITLES"
+
+    # S9: the heartbeat NOTE, built straight from $VERDICT_JSON (never from
+    # bash string concatenation over the alert loop's variables) so a title
+    # containing ';' can never be confused with our own separator. Two
+    # failure modes this closes, both measured on the live note before this
+    # fix (`;/prime Google Maps key is valid (currently RED     see file
+    # header, needs-ruling item 1)` -- a RED organ publishing a note that
+    # reads as its own opposite, with a stray leading ';' from using the
+    # join separator as a prefix):
+    #   1. every spec TITLE is conventionally phrased as the DESIRED
+    #      property ("Google Maps key is valid") -- a bare title list makes
+    #      that note ambiguous on its own, with only the sidecar's `status`
+    #      field to disambiguate. Every entry is now prefixed "FAILED: " so
+    #      the note text itself cannot be misread standalone.
+    #   2. the Telegram alert above already carries $error_summary -- the
+    #      concrete, useful signal (e.g. "Maps SDK script itself failed",
+    #      not just "key is valid" negated) -- and the old note threw it
+    #      away. It rides along now, each occurrence capped at
+    #      NOTE_MAX_SUMMARY so ONE long summary cannot crowd its siblings
+    #      out of the shared budget. When not every failure fits inside
+    #      NOTE_MAX_TOTAL, a trailing "+N more (see log)" marker says so --
+    #      the reader is told fewer failures are shown, never left to
+    #      believe fewer occurred (see NOTE_MAX_TOTAL's own comment above
+    #      for why the budget below is measured in UTF-8 BYTES).
+    #
+    # `python3 - <args> <<'PYEOF'` (heredoc with a QUOTED delimiter), never
+    # `python3 -c "..."`: this payload's own comments legitimately quote
+    # code fragments in backticks (e.g. the join-then-append example a few
+    # lines below) -- inside a double-quoted `-c "..."` string, bash
+    # performs command substitution on backtick pairs BEFORE python ever
+    # sees them, so those comments were silently executed as shell commands
+    # on every RED run (4 lines of "syntax error near unexpected token"
+    # noise on stderr, on exactly the path someone reads while diagnosing a
+    # real failure) -- and a future backticked VALID command in a comment
+    # here would have run for real, hourly, in production. A single-quoted
+    # heredoc delimiter disables ALL bash expansion inside it -- variables,
+    # command substitution, backticks -- so this payload is read completely
+    # literally. Matches the VERDICT_JSON construction above.
+    NOTE_TAIL=$(python3 - "$VERDICT_JSON" "$NOTE_MAX_TOTAL" "$NOTE_MAX_TITLE" "$NOTE_MAX_SUMMARY" <<'PYEOF'
+import json, sys
+
+max_total = int(sys.argv[2])
+max_title = int(sys.argv[3])
+max_summary = int(sys.argv[4])
+
+
+def blen(s):
+    # heartbeat.sh's tr sanitiser runs on RAW BYTES under LC_ALL=C, turning
+    # every non-ASCII byte into its own space BEFORE its own truncation at
+    # 500 -- so its real ceiling, measured against what we hand it, is 500
+    # UTF-8 BYTES. Budgeting on python's len() (character count) let a
+    # heavily-non-ASCII note pass every check here while still overflowing
+    # that byte ceiling downstream -- see NOTE_MAX_TOTAL's comment above.
+    return len(s.encode('utf-8'))
+
+
+def clip(s, limit):
+    # limit is a BYTE budget (blen() above). A character-slice can still
+    # overshoot it by up to 3 bytes for a trailing multibyte character, so
+    # trim whole characters -- never split a UTF-8 sequence -- until the
+    # ENCODED result fits, then append the 3 ascii bytes of '...'.
+    if blen(s) <= limit:
+        return s
+    if limit <= 3:
+        return s.encode('utf-8')[:limit].decode('utf-8', errors='ignore')
+    keep = limit - 3
+    trimmed = s
+    while trimmed and blen(trimmed) > keep:
+        trimmed = trimmed[:-1]
+    return trimmed + '...'
+
+
+data = json.loads(sys.argv[1])
+failures = data['real_failures']
+n = len(failures)
+
+entries = []
+for f in failures:
+    entry = 'FAILED: ' + clip(f.get('title', ''), max_title)
+    summary = clip(f.get('error_summary', ''), max_summary)
+    if summary:
+        entry += ' :: ' + summary
+    entries.append(entry)
+
+prefix_len = blen(str(n) + ' real journey failure(s): ')
+budget = max(max_total - prefix_len, 0)
+
+
+def marker_suffix(k):
+    return '+{} more (see log)'.format(k) if k > 0 else ''
+
+
+# Joined with '; ' as a real SEPARATOR between parts, never glued on as a
+# prefix -- a naive join-then-append still produced a leading separator
+# glued onto the marker when shown==0 during this fix's own development (a
+# tiny max_total on 3 short titles printed a marker prefixed with the join
+# separator). Every fit check below is in BYTES (blen), the same unit
+# heartbeat.sh enforces -- this is what makes the marker's inclusion EXACT:
+# a candidate is only accepted once the WHOLE thing (entries shown, plus
+# the marker for the rest) is proven, in that unit, to fit.
+tail = None
+for shown in range(n, -1, -1):
+    parts = list(entries[:shown])
+    m = marker_suffix(n - shown)
+    if m:
+        parts.append(m)
+    candidate = '; '.join(parts)
+    if blen(candidate) <= budget:
+        tail = candidate
+        break
+
+if tail is None and n > 0:
+    # Pathological only: even shown=0 plus its own marker did not fit.
+    # Force a hard-clipped signal for the first failure rather than publish
+    # nothing for a real one. Declared best-effort -- not expected in
+    # practice at NOTE_MAX_TOTAL=400 bytes with realistic Playwright
+    # titles.
+    m = marker_suffix(n - 1)
+    reserve = (blen(m) + 2) if m else 0
+    parts = [clip(entries[0], max(budget - reserve, 4))]
+    if m:
+        parts.append(m)
+    tail = '; '.join(parts)
+
+print(tail or '')
+PYEOF
+)
+
+    heartbeat "degraded" "$FAILURE_COUNT real journey failure(s): $NOTE_TAIL"
     exit 1
 fi
 
