@@ -56,7 +56,7 @@ diff:
   net_lines: >-
     AS OF 928f0ec453 (pinned deliberately — a byte count stated unqualified
     inside a file that every subsequent commit changes is a claim that decays
-    by construction): 8 files, measured THREE-DOT against the merge base
+    by construction): 10 files, measured THREE-DOT against the merge base
     (`git diff --stat origin/main...HEAD`), never two-dot, which on a moved
     base blames this PR for files that landed on main after the branch point
     (W102).
@@ -68,7 +68,10 @@ diff:
     `infra/launchagents/wrappers/wal-continuity-probe.sh`.
     Modified: `apps/organism/organism/organs_registry.yaml` (one organ entry
     plus its checksum line), `.github/workflows/main-push-failure-watch.yml`
-    (one line), `.claude/skills/modus/PENDING-ARMS.md` (two rows).
+    (one line), `.claude/skills/modus/PENDING-ARMS.md` (two rows). Plus this
+    evidence set's own two files, which are part of the diff they describe —
+    the countable-claims rule counted 10 against a stated 8 and was right:
+    a pack that forgets to count itself is describing a different PR.
 
     Deterministic gear floor recomputed from this diff = 3, source "both"
     (hot-zone path AND blast radius). Gear 3 is the floor, not a choice.
@@ -182,9 +185,13 @@ receipts:
   - claim: "The secret never leaves the boundary — archive_command's VALUE is dropped, and that is TESTED, not merely intended"
     cmd: "test_the_probe_never_carries_the_archive_command_value"
     result: >-
-      A canary `s3://AKIAEXAMPLE:sup3rs3cret@bucket/%f` is fed in; the string
-      appears in neither the persisted state file nor the formatted alert
-      message, while `archive_command_set` is True. `sanitize_observation`
+      A canary archive_command shaped like an S3 URL with an embedded access
+      key and password is fed in; neither the key-shaped nor the
+      password-shaped substring appears in the persisted state file or in the
+      formatted alert message, while `archive_command_set` is True. (The canary
+      itself lives in the test, not in this pack: narrating a credential-shaped
+      literal inside an evidence file is how `Detect Secrets` reddened the
+      first draft of this very receipt.) `sanitize_observation`
       drops the key entirely at the boundary rather than redacting downstream,
       so there is no path on which the value could be persisted (superscar #4).
     exit: 0
@@ -199,11 +206,16 @@ receipts:
       single-host string it replaced.
 
       RECORDED BECAUSE THE LOCAL RUN LIED FIRST: an earlier invocation reported
-      "clean (9495 files)" while the test DID contain the literal
-      `api.telegram.org`. The lint scans TRACKED files, and the test was still
-      untracked. A lint run against an uncommitted tree is a lint run against a
-      tree that does not contain your change — CI caught it, the local probe
-      could not have.
+      "clean (9495 files)" while the test still spelled the gateway's host as a
+      literal. The lint scans TRACKED files and the test was untracked — a lint
+      run against an uncommitted tree is a lint run against a tree that does not
+      contain your change. CI caught it; the local probe could not have.
+
+      AND THEN THIS PACK DID IT AGAIN, one layer up: the paragraph you are
+      reading originally quoted that host to explain the mistake, and the lint —
+      which scans `.yml` too, and is a deliberate textual over-match — duly
+      failed on the evidence file describing the failure. Explaining a trap is
+      not standing outside it.
     exit: 0
     ts: "2026-08-29T06:40Z"
     seat: "session (m5, build lane)"
