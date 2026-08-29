@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 826adb6d5f403d01d57e95d852bfb7705ca36f5c94917507a0eee27930f3962b
+checksum: 84c4ff32c813cf269f0103f07296474c099a0b9d913848ec1b34e1b2dfd0142d
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2624,6 +2624,36 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/mini.voa_probe.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.voa_deadman
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 450
+  owner_module: infra/launchagents/wrappers/voa-deadman-wrapper.sh
+  dependencies:
+  - mini.voa_probe
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.voa-deadman
+  severity_on_silence: warning
+  notes: 'L07-PR3 dead-man receptor: watches mini.voa_probe''s OWN heartbeat file
+    (VOA_PROBE_HEARTBEAT, NOT the probe process -- silence and a reported fail verdict
+    are different states this organ tells apart) every 300s. Fires (dry-run ONLY --
+    no `gh workflow run` invocation exists anywhere in scripts/probes/voa_deadman.py,
+    real-fire needs Zero''s explicit go per Needs-ruling item 2) on verdict=fail or
+    on the heartbeat going silent/stale/malformed past a 900s threshold; NEVER fires
+    on verdict=dark (the pre-launch NORMAL state) or verdict=unknown (unattributable
+    transport failure). Every fire logs the FULL blast radius of a real garuda-arm.yml
+    dispatch (8 Fly secrets + a restart, see PR-3 GROUND FINDING in that script''s
+    docstring) and sends one real Telegram P0 through scripts/tg_notify.py. severity
+    is warning, matching mini.voa_probe''s own reasoning: this organ''s silence starts
+    mattering once the funnel is actually live, not during the pre-launch dark period.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.voa_deadman.json
     timestamp_field: ts
     status_field: status
 - id: pro.wa_bot_throughput_sentinel
