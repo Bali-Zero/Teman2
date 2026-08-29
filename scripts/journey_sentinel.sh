@@ -180,6 +180,21 @@ STALE_LOCK_SECONDS=1200
 # healthy" about something that was never production.
 ALLOWED_BASE_URLS="https://balizero.com https://www.balizero.com https://my.balizero.com"
 
+# S9: heartbeat-note budget. scripts/lib/heartbeat.sh silently byte-truncates
+# any note at 500 chars (measured: `HOME=<tmp> bash scripts/lib/heartbeat.sh
+# id degraded "$(python3 -c 'print("A"*600)')"` publishes exactly 500 'A's,
+# with no marker that anything was cut) and its own JSON-safety pass maps
+# EVERY non-ASCII byte to a space under `LC_ALL=C tr` (measured: `A — B`
+# publishes as `A     B` -- the em dash's 3 UTF-8 bytes each become their own
+# space). Both are correct for that library (it must stay provably valid
+# JSON in any locale) but neither is a truncation MARKER this wrapper can
+# rely on -- so the note is capped here, deliberately, ASCII-only, and the
+# cap always says when it fired. 400 leaves >100 chars of margin under
+# heartbeat.sh's own 500-char ceiling for whatever else happens downstream.
+NOTE_MAX_TOTAL=400
+NOTE_MAX_TITLE=150
+NOTE_MAX_SUMMARY=120
+
 mkdir -p "$(dirname "$LOG")"
 echo "" >> "$LOG"
 echo "=== Journey Sentinel — $(date '+%Y-%m-%d %H:%M:%S %Z') ===" >> "$LOG"
@@ -600,10 +615,8 @@ for f in data['real_failures']:
 " "$VERDICT_JSON")
     echo "[journey-sentinel] $FAILURE_COUNT real journey failure(s):" >> "$LOG"
     echo "$FAILURES_TSV" >> "$LOG"
-    ALL_TITLES=""
     while IFS=$'\t' read -r title fingerprint error_summary; do
         [ -z "$title" ] && continue
-        ALL_TITLES="$ALL_TITLES;$title"
         key="journey-sentinel:$(echo "$title" | tr -cs 'a-zA-Z0-9' '-' | cut -c1-32)-$fingerprint"
         text="journey-sentinel: '$title' FAILED on $(hostname -s) production"
         if [ -n "$error_summary" ]; then
@@ -612,7 +625,98 @@ for f in data['real_failures']:
         text="$text. See $LOG for the full error (screenshots in output/playwright/production-artifacts/)."
         alert "$key" "$text"
     done <<< "$FAILURES_TSV"
-    heartbeat "degraded" "$FAILURE_COUNT real journey failure(s): $ALL_TITLES"
+
+    # S9: the heartbeat NOTE, built straight from $VERDICT_JSON (never from
+    # bash string concatenation over the alert loop's variables) so a title
+    # containing ';' can never be confused with our own separator. Two
+    # failure modes this closes, both measured on the live note before this
+    # fix (`;/prime Google Maps key is valid (currently RED     see file
+    # header, needs-ruling item 1)` -- a RED organ publishing a note that
+    # reads as its own opposite, with a stray leading ';' from using the
+    # join separator as a prefix):
+    #   1. every spec TITLE is conventionally phrased as the DESIRED
+    #      property ("Google Maps key is valid") -- a bare title list makes
+    #      that note ambiguous on its own, with only the sidecar's `status`
+    #      field to disambiguate. Every entry is now prefixed "FAILED: " so
+    #      the note text itself cannot be misread standalone.
+    #   2. the Telegram alert above already carries $error_summary -- the
+    #      concrete, useful signal (e.g. "Maps SDK script itself failed",
+    #      not just "key is valid" negated) -- and the old note threw it
+    #      away. It rides along now, each occurrence capped at
+    #      NOTE_MAX_SUMMARY so ONE long summary cannot crowd its siblings
+    #      out of the shared budget. When not every failure fits inside
+    #      NOTE_MAX_TOTAL, a trailing "+N more (see log)" marker says so --
+    #      the reader is told fewer failures are shown, never left to
+    #      believe fewer occurred.
+    NOTE_TAIL=$(python3 -c "
+import json, sys
+
+max_total = int(sys.argv[2])
+max_title = int(sys.argv[3])
+max_summary = int(sys.argv[4])
+
+
+def clip(s, limit):
+    if len(s) <= limit:
+        return s
+    if limit <= 3:
+        return s[:limit]
+    return s[: limit - 3] + '...'
+
+
+data = json.loads(sys.argv[1])
+failures = data['real_failures']
+n = len(failures)
+
+entries = []
+for f in failures:
+    entry = 'FAILED: ' + clip(f.get('title', ''), max_title)
+    summary = clip(f.get('error_summary', ''), max_summary)
+    if summary:
+        entry += ' :: ' + summary
+    entries.append(entry)
+
+prefix_len = len(str(n)) + len(' real journey failure(s): ')
+budget = max(max_total - prefix_len, 0)
+
+
+def marker_suffix(k):
+    return '+{} more (see log)'.format(k) if k > 0 else ''
+
+
+# Joined with '; ' as a real SEPARATOR between parts, never glued on as a
+# prefix -- a naive `'; '.join(entries[:shown]) + marker(...)` (the first
+# draft here) still produced a leading '; +N more (see log)' when shown==0,
+# the exact separator-as-prefix mistake this fix exists to remove. Measured
+# before this correction: `build_note(..., max_total=50)` on 3 short titles
+# printed '; +3 more (see log)'.
+tail = None
+for shown in range(n, -1, -1):
+    parts = list(entries[:shown])
+    m = marker_suffix(n - shown)
+    if m:
+        parts.append(m)
+    candidate = '; '.join(parts)
+    if len(candidate) <= budget:
+        tail = candidate
+        break
+
+if tail is None and n > 0:
+    # Pathological only: even shown=0 plus its own marker did not fit.
+    # Force a hard-clipped signal for the first failure rather than publish
+    # nothing for a real one. Declared best-effort -- not expected in
+    # practice at NOTE_MAX_TOTAL=400 with realistic Playwright titles.
+    m = marker_suffix(n - 1)
+    reserve = (len(m) + 2) if m else 0
+    parts = [clip(entries[0], max(budget - reserve, 4))]
+    if m:
+        parts.append(m)
+    tail = '; '.join(parts)
+
+print(tail or '')
+" "$VERDICT_JSON" "$NOTE_MAX_TOTAL" "$NOTE_MAX_TITLE" "$NOTE_MAX_SUMMARY")
+
+    heartbeat "degraded" "$FAILURE_COUNT real journey failure(s): $NOTE_TAIL"
     exit 1
 fi
 
