@@ -35,6 +35,7 @@ from evidence_pack_lint import (  # noqa: E402
     _is_anthropic_seat,
     _seat_rule_verdict,
     _size_term_net_lines,
+    check_acceptance_probe_pairing,
     check_brief_ref_exists,
     check_cheap_seat_floor,
     check_council_run_gear3,
@@ -2423,3 +2424,217 @@ def test_print_measured_emits_pasteable_sentence(tmp_path):
     assert result.returncode == 0
     assert result.stdout.strip() == "2 files, +1860/-83, 6 commits"
     assert format_measured_claims(CC_NUMSTAT, 6) == "2 files, +1860/-83, 6 commits"
+
+
+# --------------------------------------------------------- check_acceptance_probe_pairing
+
+CAP_RECEIPT_FOO = {"claim": "foo test", "cmd": "pytest -k foo", "exit": 0,
+                    "ts": "2026-08-10T00:00:00Z", "seat": "sonnet-5"}
+CAP_RECEIPT_DRAIN = {"claim": "drain test", "cmd": "pytest -k drain", "exit": 0,
+                      "ts": "2026-08-10T00:00:00Z", "seat": "sonnet-5"}
+CAP_RECEIPT_BAR = {"claim": "bar test", "cmd": "pytest -k bar", "exit": 0,
+                    "ts": "2026-08-10T00:00:00Z", "seat": "sonnet-5"}
+CAP_RECEIPT_BAZ = {"claim": "baz test", "cmd": "pytest -k baz", "exit": 0,
+                    "ts": "2026-08-10T00:00:00Z", "seat": "sonnet-5"}
+CAP_RECEIPT_SHA = {"claim": "sha256 verified against source manifest",
+                    "cmd": "python3 verify.py", "exit": 0,
+                    "ts": "2026-08-10T00:00:00Z", "seat": "sonnet-5"}
+
+
+def test_acceptance_probe_guilt_legacy_bullets_notice():
+    """GUILT: a Gear-2 brief with two legacy (bare-string) acceptance
+    bullets — a legacy bullet can never carry a `probe:` — pins exactly
+    one N1 (probe-coverage) notice naming both as uncovered. Both bullets
+    carry SHALL so N3 (EARS shape) stays silent, isolating the assertion
+    to N1 alone."""
+    brief = {
+        "acceptance": [
+            "WHEN a client submits the form THE system SHALL confirm receipt.",
+            "WHILE the queue is draining THE worker SHALL not double-process an item.",
+        ],
+    }
+    notices = check_acceptance_probe_pairing(brief, {}, 2)
+    assert len(notices) == 1
+    assert notices[0].startswith("acceptance-probe: 2 of 2")
+
+
+def test_acceptance_probe_guilt_unbound_probe_notice():
+    """GUILT: a declared probe ("pytest -k foo") that appears in no
+    receipt's claim/cmd — GOOD_RECEIPT's cmd is "pytest -q", which
+    contains neither substring in either direction — fires N2 (receipt
+    binding), naming the outcome unrecorded."""
+    brief = {
+        "acceptance": [
+            {"text": "WHEN the suite runs THE gate SHALL report the exit code.",
+             "probe": "pytest -k foo"},
+        ],
+    }
+    notices = check_acceptance_probe_pairing(brief, {"receipts": [GOOD_RECEIPT]}, 2)
+    assert any("unrecorded" in n for n in notices)
+
+
+def test_acceptance_probe_guilt_non_ears_text_notice():
+    """GUILT: a bullet's text carries no EARS keyword at all, even though
+    its probe is declared and bound to a receipt (isolating the
+    assertion to N3 — N1/N2 stay silent)."""
+    brief = {
+        "acceptance": [
+            {"text": "the deploy finishes and the health check returns green",
+             "probe": "pytest -k bar"},
+        ],
+    }
+    notices = check_acceptance_probe_pairing(brief, {"receipts": [CAP_RECEIPT_BAR]}, 2)
+    assert any("not EARS-shaped" in n for n in notices)
+
+
+def test_acceptance_probe_guilt_lowercase_ears_words_do_not_count():
+    """GUILT (case-sensitivity, the real point of this fixture): a bullet
+    reading "the check is green if the migration applies when run" has
+    lowercase "if"/"when" — ordinary prose, not an EARS clause — so N3
+    fires exactly as if no keyword were present at all. Probe is
+    declared and bound, isolating the assertion to N3."""
+    brief = {
+        "acceptance": [
+            {"text": "the check is green if the migration applies when run",
+             "probe": "pytest -k baz"},
+        ],
+    }
+    notices = check_acceptance_probe_pairing(brief, {"receipts": [CAP_RECEIPT_BAZ]}, 2)
+    assert any("not EARS-shaped" in n for n in notices)
+
+
+def test_acceptance_probe_innocence_fully_probed_pack_silent():
+    """INNOCENCE: every bullet declares a probe, every probe's stripped
+    text is a verbatim substring of a receipt's cmd, and every text
+    carries SHALL — all three notice classes stay silent."""
+    brief = {
+        "acceptance": [
+            {"text": "WHEN the suite runs THE gate SHALL report the exit code.",
+             "probe": "pytest -k foo"},
+            {"text": "WHILE the queue is draining THE worker SHALL not double-process.",
+             "probe": "pytest -k drain"},
+        ],
+    }
+    pack = {"receipts": [CAP_RECEIPT_FOO, CAP_RECEIPT_DRAIN]}
+    assert check_acceptance_probe_pairing(brief, pack, 2) == []
+
+
+def test_acceptance_probe_innocence_gear1_out_of_scope():
+    """INNOCENCE: the exact guilty shape from
+    test_acceptance_probe_guilt_legacy_bullets_notice (two uncovered
+    legacy bullets, which fires N1 at gear>=2) is silent at gear=1 — the
+    same `type(gear) is int and gear >= 2` scope guard check_gear_floor
+    itself uses."""
+    brief = {
+        "acceptance": [
+            "WHEN a client submits the form THE system SHALL confirm receipt.",
+            "WHILE the queue is draining THE worker SHALL not double-process an item.",
+        ],
+    }
+    assert check_acceptance_probe_pairing(brief, {}, 1) == []
+
+
+def test_acceptance_probe_innocence_absent_block_silent():
+    """INNOCENCE: a brief with no `acceptance:` key at all (an empty
+    mapping) is not this rule's problem at any gear >= 2."""
+    assert check_acceptance_probe_pairing({}, {}, 2) == []
+
+
+def test_acceptance_probe_innocence_probe_bound_via_claim():
+    """INNOCENCE: a probe bound via a receipt's `claim` field, not its
+    `cmd` — CAP_RECEIPT_SHA's claim contains the probe's exact text while
+    its cmd ("python3 verify.py") does not — still counts as bound (N2
+    scans BOTH fields, per rule 12's docstring)."""
+    brief = {
+        "acceptance": [
+            {"text": "WHEN the case closes THE report SHALL cite the sha.",
+             "probe": "sha256 verified against source"},
+        ],
+    }
+    assert check_acceptance_probe_pairing(brief, {"receipts": [CAP_RECEIPT_SHA]}, 2) == []
+
+
+def test_acceptance_probe_guilt_probe_not_bound_inside_longer_word():
+    """GUILT: a probe must bind as a whole token, not as a bare substring.
+    Before the 2026-08-29 adversarial fix, probe `ls` was considered BOUND by
+    a receipt reading "run the tools suite" — the under-match direction of
+    superscar #3: the notice that should have said "this probe has no
+    receipt" said nothing at all."""
+    brief = {"gear": 2, "acceptance": [{"text": "SHALL run", "probe": "ls"}]}
+    notices = check_acceptance_probe_pairing(
+        brief, {"receipts": [{"cmd": "run the tools suite"}]}, 2
+    )
+    assert any("unrecorded" in n for n in notices)
+
+
+def test_acceptance_probe_innocence_probe_binds_as_whole_token():
+    """INNOCENCE (the other half of the same fix): the boundary must not make
+    a genuine probe unbindable. `ls` IS bound by `ls -la`, and a probe whose
+    receipt carries extra flags still binds."""
+    brief = {"gear": 2, "acceptance": [{"text": "SHALL run", "probe": "ls"}]}
+    assert not any(
+        "unrecorded" in n
+        for n in check_acceptance_probe_pairing(brief, {"receipts": [{"cmd": "ls -la"}]}, 2)
+    )
+    flagged = {"gear": 2, "acceptance": [{"text": "SHALL t", "probe": "pytest -k foo"}]}
+    assert not any(
+        "unrecorded" in n
+        for n in check_acceptance_probe_pairing(
+            flagged, {"receipts": [{"cmd": "pytest -k foo --verbose"}]}, 2
+        )
+    )
+
+
+def test_acceptance_probe_innocence_duplicate_probes_counted_once():
+    """INNOCENCE: two bullets naming the SAME probe are one probe to bind.
+    Counting per-bullet made the notice overstate the gap ("2 declared
+    probe(s)" for a single string)."""
+    brief = {"gear": 2, "acceptance": [
+        {"text": "SHALL a", "probe": "same-probe"},
+        {"text": "SHALL b", "probe": "same-probe"},
+    ]}
+    notices = check_acceptance_probe_pairing(brief, {"receipts": []}, 2)
+    assert any("1 declared probe(s)" in n for n in notices)
+
+
+def test_acceptance_probe_innocence_examples_sanitize_quotes_and_newlines():
+    """INNOCENCE: acceptance text arrives from YAML block scalars and
+    legitimately carries newlines and quotes. Un-sanitised, ONE notice spanned
+    several stderr lines and its `"..."` delimiters never closed — a
+    grep-hostile message (reproduced before the fix)."""
+    notices = check_acceptance_probe_pairing(
+        {"gear": 2, "acceptance": ['he said "go"\nsecond line']}, {}, 2
+    )
+    assert notices
+    for n in notices:
+        assert "\n" not in n
+        assert '"go"' not in n
+    assert any("'go'" in n for n in notices)
+
+
+def test_acceptance_probe_innocence_non_mapping_pack_does_not_crash():
+    """INNOCENCE: a NOTICE-only rule must never be able to fail a run. Called
+    directly with `pack=None` it raised AttributeError before the fix; it now
+    treats the absent pack as carrying no receipts."""
+    brief = {"gear": 2, "acceptance": [{"text": "SHALL x", "probe": "p"}]}
+    assert any("unrecorded" in n for n in check_acceptance_probe_pairing(brief, None, 2))
+
+
+def test_acceptance_probe_end_to_end_notice_reaches_stderr(tmp_repo, capsys):
+    """End-to-end (same 'wiring, not just return value' pattern as
+    test_seat_rules_end_to_end_notice_prints_to_stderr): rule 12 is
+    NOTICE-only UNCONDITIONALLY (no phased flip date, unlike rules 8-10)
+    — lint() must return rc == 0 on a Gear-2 pack with uncovered legacy
+    acceptance bullets, and the operator must still see the
+    "acceptance-probe" text on stderr."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=2, acceptance=[
+        "WHEN a client submits the form THE system SHALL confirm receipt.",
+    ])
+    write_pack()
+    rc, viol = lint(tmp_path / "evidence" / "pack.yml", tmp_path, None)
+    assert rc == 0
+    assert viol == []
+    captured = capsys.readouterr()
+    assert "acceptance-probe" in captured.err
+    assert "NOTICE" in captured.err

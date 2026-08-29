@@ -236,6 +236,25 @@ WHAT IT VALIDATES (an Evidence Pack YAML, default path evidence/pack.yml):
                         class from the gate; it lowers no bar and rejects
                         nothing the rules above accepted.
 
+  12. acceptance-probe pairing (2026-08-29) — an `acceptance:` bullet may
+                        now be a mapping `{text, probe}` instead of a bare
+                        string, where `probe:` names the command, test id,
+                        or check that would prove the criterion true.
+                        NOTICE-only, always (this rule never returns a
+                        violation): names bullets with no declared probe,
+                        declared probes absent from every receipt's
+                        `claim`/`cmd` (an unrecorded outcome), and bullets
+                        whose text carries none of the EARS keywords
+                        WHEN/WHILE/IF/WHERE/SHALL as a whole UPPERCASE
+                        word (case-sensitive — lowercase "if"/"when" in
+                        ordinary prose does not count, or this very
+                        docstring's own prose would trip it). HONEST
+                        LIMIT, stated so it is never read as more than it
+                        is: this checks FIELD PRESENCE ONLY — a receipt
+                        claiming a probe ran is self-reported prose, not
+                        proof of execution, until a CI step actually runs
+                        it (see ASSEMBLY-LINE.md's enforcement backlog).
+
 Floor check is SKIPPED (not silently passed — an explicit NOTICE on stderr)
 when --changed-files-file is not supplied: not every invocation of this linter
 has PR-diff context (e.g. a spot-check of a pack on a laptop). The CI workflow
@@ -985,6 +1004,220 @@ def check_gear_floor(
         return [f"brief.gear: declared {gear} is BELOW the deterministic floor {floor} "
                 f"computed from the changed-file set (hot-zone path and/or blast-radius size)"]
     return []
+
+
+# ---------------------------------------------------------------------------
+# Rule 12 (acceptance-probe pairing, 2026-08-29 — module docstring rule 12).
+# `_EARS_KEYWORD_RE` is deliberately NOT `re.IGNORECASE`: an ordinary
+# sentence routinely contains lowercase "if"/"when" that states no
+# falsifiable condition at all ("we'll ship if the tests pass" reads fine
+# in prose but is not an EARS clause) — matching those would be exactly the
+# superscar #3 over-match this rule exists to avoid. Uppercase
+# WHEN/WHILE/IF/WHERE/SHALL, matched as a whole word, is the deliberate
+# authoring convention (EARS — Easy Approach to Requirements Syntax) this
+# rule rewards, not a stylistic accident it happens to detect.
+# ---------------------------------------------------------------------------
+_EARS_KEYWORD_RE = re.compile(r"\b(?:WHEN|WHILE|IF|WHERE|SHALL)\b")
+
+
+def _probe_is_bound(probe: str, receipt_text: str) -> bool:
+    """A declared probe counts as bound when it occurs in a receipt's
+    `claim`/`cmd` as a WHOLE token run, not merely as a substring.
+
+    Plain `probe in receipt_text` bound `ls` to "run the tools suite"
+    (verified before this fix) — a false silence, the under-match
+    direction of superscar #3: the notice that should have said "this
+    probe has no receipt" said nothing. The boundary is applied only on
+    the side where the probe's own edge character is itself a word
+    character, so a probe ending in punctuation (`make test;`) is not
+    made artificially unbindable, while `ls` can no longer hide inside
+    `tools`. Deliberately still a LITERAL match with no fuzzy/semantic
+    step: a probe naming extra flags the receipt lacks stays unbound,
+    and matching by meaning is exactly the over-match this rule refuses
+    (see `_EARS_KEYWORD_RE`'s note)."""
+    if not probe:
+        return False
+    pattern = re.escape(probe)
+    if probe[0].isalnum() or probe[0] == "_":
+        pattern = r"(?<!\w)" + pattern
+    if probe[-1].isalnum() or probe[-1] == "_":
+        pattern = pattern + r"(?!\w)"
+    return re.search(pattern, receipt_text) is not None
+
+
+def _acceptance_examples(items: list[str], limit: int = 3) -> str:
+    """Shared truncate/quote/join helper for rule 12's three NOTICE
+    messages so all of them share one implementation — up to `limit`
+    items, each carrying at most 60 characters OF CONTENT followed by an
+    ellipsis when it was cut (so the rendered field is <= 63 chars, not
+    60 — spelled out because "truncated to 60 chars" read two ways in
+    adversarial review), each wrapped in double quotes, joined by "; ".
+    An empty string (a mapping bullet whose declared `text:` is missing
+    or non-string) renders as `"<non-text bullet>"` rather than a bare,
+    confusing pair of quotes a reader could mistake for a real, empty
+    acceptance criterion.
+
+    Every item is SANITIZED first: interior whitespace (newlines
+    included) collapses to single spaces and any double quote becomes a
+    single quote. Acceptance text routinely arrives from a YAML block
+    scalar and legitimately contains both; without this, one NOTICE
+    would span several stderr lines and its `"..."` delimiters would not
+    close — a `grep`-hostile message, and a real defect found by
+    adversarial review 2026-08-29 (verified: a bullet containing a
+    newline produced a two-line notice before this)."""
+    rendered: list[str] = []
+    for item in items[:limit]:
+        text = " ".join(item.split()).replace('"', "'") if item else ""
+        if not text:
+            text = "<non-text bullet>"
+        elif len(text) > 60:
+            text = text[:60] + "..."
+        rendered.append(f'"{text}"')
+    return "; ".join(rendered)
+
+
+def check_acceptance_probe_pairing(
+    brief: dict[str, Any] | None,
+    pack: dict[str, Any],
+    gear: int | None,
+) -> list[str]:
+    """Rule 12 — NOTICE-only BY DESIGN: this function NEVER returns a
+    violation, only advisory strings the caller prints to stderr (an
+    always-empty `violations` list is not tracked here at all — dead code
+    on the only path it would exist for).
+
+    GUILT (what it flags, each as a NOTICE, never a fail):
+      N1 (probe coverage)   — a bullet with no declared `probe:` (a
+                               command, test id, or check name).
+      N2 (receipt binding)  — a declared `probe:` whose stripped text is
+                               not a verbatim substring of any receipt's
+                               `claim` or `cmd` — the outcome it names is
+                               unrecorded. Silent when zero probes are
+                               declared (nothing to bind).
+      N3 (EARS shape)       — a bullet whose text carries none of the
+                               EARS keywords WHEN/WHILE/IF/WHERE/SHALL as
+                               a whole UPPERCASE word, matched
+                               case-SENSITIVELY (`_EARS_KEYWORD_RE`) —
+                               lowercase "if"/"when" in ordinary prose
+                               does not count.
+    Emits AT MOST THREE notices total, one aggregate per class above
+    (never one per bullet — a real pack can carry dozens of acceptance
+    bullets; per-bullet output would be unusable), each naming up to 3
+    example bullets via `_acceptance_examples()`.
+
+    INNOCENCE (silent, `[]`): `brief` is None or not a dict (rule 6's
+    check_brief_ref_exists already flagged that); `gear` is not a genuine
+    `int` >= 2 (same `type(gear) is int` discipline as check_gear_floor —
+    a bool/float never coerces in, and Gear 1 is out of scope entirely);
+    `brief.get("acceptance")` is missing, not a list, or an empty list; a
+    fully mapping-shaped acceptance block whose every bullet declares a
+    probe, every declared probe is bound to a receipt, and every text is
+    EARS-shaped emits nothing.
+
+    A bullet is the MAPPING form when `isinstance(bullet, dict)`: its
+    text is `bullet.get("text")` if that is a `str`, else `""`; its
+    probe is `bullet.get("probe").strip()` when that is a non-empty
+    `str`, else absent. A `str` bullet is the LEGACY form: text = the
+    string itself, probe absent (a legacy string bullet can never
+    declare a probe — it has nowhere to put one). Any other type: text =
+    `""`, probe absent.
+
+    HONEST LIMIT, stated so it is never mistaken for more than it is:
+    this rule checks FIELD PRESENCE ONLY. A `receipts:` entry is
+    self-reported prose — an author can write `probe: "pytest -k foo"`
+    and a receipt claiming that exact string ran, without any CI step
+    having actually executed it. A stored outcome is FORGEABLE until a
+    CI step runs the probe and the receipt is machine-generated rather
+    than hand-typed; this rule cannot see that difference and does not
+    pretend to. It exists to make the GAP visible — which bullets carry
+    no probe at all, which declared probes have no matching receipt,
+    which bullets are not even shaped as a falsifiable condition — so a
+    later change can flip NOTICE to FAIL once real execution is wired in
+    (see ASSEMBLY-LINE.md's enforcement backlog)."""
+    if not isinstance(brief, dict):
+        return []
+    if type(gear) is not int or gear < 2:
+        return []
+    acceptance = brief.get("acceptance")
+    if not isinstance(acceptance, list) or not acceptance:
+        return []
+
+    total = len(acceptance)
+    texts: list[str] = []
+    probes: list[str | None] = []
+    for bullet in acceptance:
+        if isinstance(bullet, dict):
+            raw_text = bullet.get("text")
+            text = raw_text if isinstance(raw_text, str) else ""
+            raw_probe = bullet.get("probe")
+            probe = (
+                raw_probe.strip()
+                if isinstance(raw_probe, str) and raw_probe.strip()
+                else None
+            )
+        elif isinstance(bullet, str):
+            text = bullet
+            probe = None
+        else:
+            text = ""
+            probe = None
+        texts.append(text)
+        probes.append(probe)
+
+    notices: list[str] = []
+
+    # N1 — probe coverage: bullets that declare no probe at all.
+    uncovered = [t for t, p in zip(texts, probes) if p is None]
+    if uncovered:
+        notices.append(
+            f"acceptance-probe: {len(uncovered)} of {total} Gear-{gear} acceptance "
+            f"bullet(s) carry no 'probe:' (a command, test id, or check name). "
+            f"e.g. {_acceptance_examples(uncovered)}. This rule lints FIELD "
+            f"PRESENCE only — a recorded outcome is not an executed probe."
+        )
+
+    # N2 — receipt binding: only over bullets that DO declare a probe.
+    # De-duplicated, order-preserving: two bullets naming the SAME probe are
+    # one probe to bind, and counting it twice made the notice overstate the
+    # gap ("2 declared probe(s)" for one string — adversarial review
+    # 2026-08-29, verified before accepting).
+    declared = list(dict.fromkeys(p for p in probes if p is not None))
+    if declared:
+        # `lint()` guarantees a mapping, but this function is also called
+        # directly (selftest + pytest, and any future caller): a bare
+        # `pack.get` raised AttributeError on `pack=None` — a crash inside a
+        # NOTICE-only rule, which must never be able to fail a run.
+        receipts = pack.get("receipts") if isinstance(pack, dict) else None
+        receipt_texts: list[str] = []
+        if isinstance(receipts, list):
+            for entry in receipts:
+                if not isinstance(entry, dict):
+                    continue
+                for field in ("claim", "cmd"):
+                    value = entry.get(field)
+                    if isinstance(value, str):
+                        receipt_texts.append(value)
+        unbound = [
+            p for p in declared
+            if not any(_probe_is_bound(p, rt) for rt in receipt_texts)
+        ]
+        if unbound:
+            notices.append(
+                f"acceptance-probe: {len(unbound)} declared probe(s) appear in no "
+                f"receipt's claim/cmd — the outcome is unrecorded. "
+                f"e.g. {_acceptance_examples(unbound)}."
+            )
+
+    # N3 — EARS shape: over EVERY bullet, mapping and legacy string alike.
+    non_ears = [t for t in texts if not _EARS_KEYWORD_RE.search(t)]
+    if non_ears:
+        notices.append(
+            f"acceptance-probe: {len(non_ears)} of {total} acceptance bullet(s) "
+            f"are not EARS-shaped (no WHEN/WHILE/IF/WHERE/SHALL keyword). "
+            f"e.g. {_acceptance_examples(non_ears)}."
+        )
+
+    return notices
 
 
 def _is_anthropic_seat(seat: Any) -> bool:
@@ -1766,6 +1999,8 @@ def lint(
     violations += brief_violations
     violations += check_dissent_nonempty_on_gear3(pack, gear)
     violations += check_gear_floor(brief, changed_files, numstat_text)
+    for _notice in check_acceptance_probe_pairing(brief, pack, gear):
+        print(f"evidence_pack_lint: NOTICE — {_notice}", file=sys.stderr)
 
     lane_violations, lane_notice = check_lanes_build_seat_diversity(pack, gear)
     violations += lane_violations
@@ -2634,6 +2869,121 @@ def selftest() -> int:
               ) == ([], []))
         check("countable claims: --print-measured emits the pasteable sentence",
               format_measured_claims(cc_numstat, 6) == "2 files, +1860/-83, 6 commits")
+
+        # ---- acceptance-probe pairing (rule 12, guilt + innocence) ------------
+        cap_receipt_foo = {"claim": "foo test", "cmd": "pytest -k foo", "exit": 0,
+                            "ts": "2026-08-10T00:00:00Z", "seat": "sonnet-5"}
+        cap_receipt_drain = {"claim": "drain test", "cmd": "pytest -k drain", "exit": 0,
+                              "ts": "2026-08-10T00:00:00Z", "seat": "sonnet-5"}
+        cap_receipt_bar = {"claim": "bar test", "cmd": "pytest -k bar", "exit": 0,
+                            "ts": "2026-08-10T00:00:00Z", "seat": "sonnet-5"}
+        cap_receipt_baz = {"claim": "baz test", "cmd": "pytest -k baz", "exit": 0,
+                            "ts": "2026-08-10T00:00:00Z", "seat": "sonnet-5"}
+        cap_receipt_sha = {"claim": "sha256 verified against source manifest",
+                            "cmd": "python3 verify.py", "exit": 0,
+                            "ts": "2026-08-10T00:00:00Z", "seat": "sonnet-5"}
+
+        cap_legacy_brief = {
+            "acceptance": [
+                "WHEN a client submits the form THE system SHALL confirm receipt.",
+                "WHILE the queue is draining THE worker SHALL not double-process an item.",
+            ],
+        }
+        cap_legacy_notices = check_acceptance_probe_pairing(cap_legacy_brief, {}, 2)
+        check("acceptance-probe: guilt — gear-2 legacy string bullets emit coverage notice",
+              len(cap_legacy_notices) == 1
+              and cap_legacy_notices[0].startswith("acceptance-probe: 2 of 2"))
+        check("acceptance-probe: innocence — gear 1 is out of scope",
+              check_acceptance_probe_pairing(cap_legacy_brief, {}, 1) == [])
+
+        cap_unbound_brief = {
+            "acceptance": [
+                {"text": "WHEN the suite runs THE gate SHALL report the exit code.",
+                 "probe": "pytest -k foo"},
+            ],
+        }
+        cap_unbound_notices = check_acceptance_probe_pairing(
+            cap_unbound_brief, {"receipts": [good_receipt]}, 2
+        )
+        check("acceptance-probe: guilt — declared probe bound to no receipt notices",
+              any("unrecorded" in n for n in cap_unbound_notices))
+
+        cap_non_ears_brief = {
+            "acceptance": [
+                {"text": "the deploy finishes and the health check returns green",
+                 "probe": "pytest -k bar"},
+            ],
+        }
+        cap_non_ears_notices = check_acceptance_probe_pairing(
+            cap_non_ears_brief, {"receipts": [cap_receipt_bar]}, 2
+        )
+        check("acceptance-probe: guilt — non-EARS bullet text notices",
+              any("not EARS-shaped" in n for n in cap_non_ears_notices))
+
+        cap_lowercase_brief = {
+            "acceptance": [
+                {"text": "the check is green if the migration applies when run",
+                 "probe": "pytest -k baz"},
+            ],
+        }
+        cap_lowercase_notices = check_acceptance_probe_pairing(
+            cap_lowercase_brief, {"receipts": [cap_receipt_baz]}, 2
+        )
+        check("acceptance-probe: guilt — lowercase ears words do not count",
+              any("not EARS-shaped" in n for n in cap_lowercase_notices))
+
+        cap_clean_brief = {
+            "acceptance": [
+                {"text": "WHEN the suite runs THE gate SHALL report the exit code.",
+                 "probe": "pytest -k foo"},
+                {"text": "WHILE the queue is draining THE worker SHALL not double-process.",
+                 "probe": "pytest -k drain"},
+            ],
+        }
+        check("acceptance-probe: innocence — fully probed + bound + EARS pack is silent",
+              check_acceptance_probe_pairing(
+                  cap_clean_brief, {"receipts": [cap_receipt_foo, cap_receipt_drain]}, 2
+              ) == [])
+
+        check("acceptance-probe: innocence — absent acceptance block is silent",
+              check_acceptance_probe_pairing({}, {}, 2) == [])
+
+        cap_claim_bound_brief = {
+            "acceptance": [
+                {"text": "WHEN the case closes THE report SHALL cite the sha.",
+                 "probe": "sha256 verified against source"},
+            ],
+        }
+        check("acceptance-probe: innocence — probe bound via receipt claim (not only cmd)",
+              check_acceptance_probe_pairing(
+                  cap_claim_bound_brief, {"receipts": [cap_receipt_sha]}, 2
+              ) == [])
+
+        # ---- rule 12 regressions from adversarial review 2026-08-29 ----------
+        # Each pins a defect a refuter found and this session REPRODUCED before
+        # accepting it; without these the four fixes are unarmed (superscar #2).
+        substring_brief = {"gear": 2,
+                           "acceptance": [{"text": "SHALL run", "probe": "ls"}]}
+        check("acceptance-probe: guilt — probe does not bind inside a longer word",
+              any("unrecorded" in n for n in check_acceptance_probe_pairing(
+                  substring_brief, {"receipts": [{"cmd": "run the tools suite"}]}, 2)))
+        check("acceptance-probe: innocence — probe binds as a whole token",
+              not any("unrecorded" in n for n in check_acceptance_probe_pairing(
+                  substring_brief, {"receipts": [{"cmd": "ls -la"}]}, 2)))
+        dupe_brief = {"gear": 2, "acceptance": [
+            {"text": "SHALL a", "probe": "same-probe"},
+            {"text": "SHALL b", "probe": "same-probe"}]}
+        check("acceptance-probe: innocence — one probe named twice counts once",
+              any("1 declared probe(s)" in n for n in check_acceptance_probe_pairing(
+                  dupe_brief, {"receipts": []}, 2)))
+        messy = check_acceptance_probe_pairing(
+            {"gear": 2, "acceptance": ['he said "go"\nsecond line']}, {}, 2)
+        check("acceptance-probe: innocence — a notice never spans stderr lines",
+              all("\n" not in n and '"go"' not in n for n in messy))
+        check("acceptance-probe: innocence — a non-mapping pack cannot crash the rule",
+              any("unrecorded" in n for n in check_acceptance_probe_pairing(
+                  {"gear": 2, "acceptance": [{"text": "SHALL x", "probe": "p"}]},
+                  None, 2)))
 
         # ---- blind-scan guard: pack file missing -------------------------------
         rc, viol = lint(root / "evidence" / "nope.yml", root, None)
