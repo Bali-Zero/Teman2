@@ -34,8 +34,20 @@ seat_diversity_note: |
   a previous session had honestly recorded only one reachable seat. A stale probe reporting a seat
   dead is indistinguishable from a dead seat until you call it.
 diff: |
-  `.github/workflows/restore-drill.yml` (+145/-32) and `scripts/tests/test_restore_drill_workflow_wiring.py`
-  (+148, new). Net 261 against the 400 contract.
+  +1396/-32 total, computed from `git diff --numstat $(git merge-base origin/main HEAD)..HEAD` —
+  the workflow, a new blocking executor for the corpora, the corpus itself, the suspension spec, and
+  this evidence pack. CORRECTED: this line previously carried the two-file figure measured before
+  either fix round and left unchanged through both. The countable-claims rule caught it — the third
+  stale number this PR produced and the first one a gate found before a human did.
+
+  The first correction was itself rejected, and the reason is worth more than the number: it QUOTED
+  the superseded figure in order to retract it, and the rule reads a quoted `+N/-M` as a claim. That
+  is the W108 shape exactly — a guard firing on prose that CITES the pattern it hunts — met here in
+  the retraction of a stale measurement, by the session that had flagged the same shape in three
+  other artifacts hours earlier. The superseded value is therefore described, not written.
+
+  Code-class net +223 of 400 (scripts/pr_size_taxonomy.py); tests +595, the exempt class this repo
+  mandates.
 
   NO PRODUCTION CODE CHANGES. `scripts/ci/restore_drill_verify.py` is untouched here — it landed in
   #5260 and is on main. This PR's whole payload is the workflow's exit-code wiring and the corpus

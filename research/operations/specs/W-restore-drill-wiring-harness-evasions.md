@@ -2,6 +2,7 @@
 date: 2026-08-30
 domain: operations
 lane: craft-w L12-PR3b (restore-drill wiring)
+adversarial_review: codex-gpt-5.6-sol + kimi-code/k3 (round 2 — both DO-NOT-SHIP; this spec IS their findings)
 status: SPEC — SUSPENDED under the depth-1 rule, not abandoned
 ---
 
