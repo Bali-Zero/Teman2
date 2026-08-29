@@ -22,9 +22,9 @@ lanes:
       real cross-machine flows so the matrix is evidence-backed rather than guessed
 
 diff:
-  files: 21
-  net_lines: 1179
-  measured_at: PENDING
+  files: 24
+  net_lines: 1275
+  measured_at: 7d059287fd
   note: >-
     git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD. The hand-authored
     surface is the ACL, the guard, the runbook and 14 guilt fixtures; there is no generated
