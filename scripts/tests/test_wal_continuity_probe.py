@@ -1254,3 +1254,84 @@ def test_every_send_alert_call_in_this_module_reads_its_verdict():
 
     total = sum(1 for n in ast.walk(tree) if is_send_alert(n))
     assert total >= 6, f"expected every alert path to be present, found {total} call(s)"
+
+
+def test_cannot_verify_tier_escalates_exactly_at_the_streak_threshold():
+    """Innocence and guilt for the helper that replaced a fragile local.
+
+    A blind probe must get LOUDER, never quieter (superscar #2): below the threshold the
+    alert is a digest, at and above it a p0. Both directions are pinned so a mutation
+    that returns a constant dies here whichever constant it picks.
+    """
+    n = probe.CANNOT_VERIFY_P0_STREAK
+    assert probe.cannot_verify_tier(n - 1) == "digest"
+    assert probe.cannot_verify_tier(n) == "p0"
+    assert probe.cannot_verify_tier(n + 5) == "p0"
+
+
+def test_no_local_named_tier_is_bound_inside_run():
+    """STRUCTURAL, and structural for the same reason as the send_alert class assertion.
+
+    CodeQL flagged, at error severity, that `run()` bound `tier` in ONE arm of an
+    if/else and read it from a LATER `elif`. It was safe only because both tested the
+    same `verdict.exit_code` — a correlation nothing in the code stated. Widening that
+    `elif` by one value turns the paging branch into an `UnboundLocalError`: the p0
+    computed and never sent, which is this probe's whole defect class turned inward.
+
+    Asserting "it is initialised before use" would pass again the moment someone adds a
+    plain default, and a default silently picks a tier for a state nobody considered. So
+    the assertion is that the LOCAL does not exist: the tier is derived at the point of
+    use, from `streak`, which both arms bind.
+    """
+    import ast
+    tree = ast.parse(Path(probe.__file__).read_text())
+    run_fn = next(n for n in ast.walk(tree)
+                  if isinstance(n, ast.FunctionDef) and n.name == "run")
+    bound = sorted({
+        t.lineno for node in ast.walk(run_fn)
+        if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign))
+        for t in (node.targets if isinstance(node, ast.Assign) else [node.target])
+        if isinstance(t, ast.Name) and t.id == "tier"
+    })
+    assert not bound, (
+        f"`run()` binds a local named `tier` at line(s) {bound} — derive it from "
+        "`streak` via cannot_verify_tier() at the point of use instead, so no branch "
+        "can read a tier that another branch was supposed to have set")
+
+
+def test_classify_advertises_no_clock_it_does_not_read():
+    """`classify` had a `now: datetime | None = None` parameter it never read (CodeQL
+    notice: "Variable now is not used"). Every temporal judgment it makes is relative —
+    last-success against last-failure, this run's counters against the previous run's —
+    so the seam governed nothing while looking like it governed everything, and the
+    first test to pin time through it would have been green and proved nothing.
+
+    That is W129 inverted: there a real injected clock was dropped by a caller, here the
+    seam had nothing to govern. W129's cure is to WIRE the clock and prove it with two
+    injected instants; the cure here is to DELETE it, because wiring would have to
+    invent an absolute staleness rule that no RED path defines. This test fails if the
+    parameter comes back without such a rule arriving with it.
+    """
+    import inspect
+    params = inspect.signature(probe.classify).parameters
+    assert "now" not in params, (
+        "classify() takes a `now` parameter again. If an absolute staleness check now "
+        "exists, wire it and pin it the W129 way — the SAME fixture at two injected "
+        "instants yielding different verdicts, so no wall clock satisfies both. If it "
+        "does not, the parameter is a seam that lies about what it controls.")
+    # Over the AST, never over the source text: the first draft of this assertion was a
+    # `"datetime.now" not in inspect.getsource(...)` substring test, and it failed on the
+    # DOCSTRING above that explains why the clock was removed. A guard that a comment can
+    # trip is superscar #3, and one that a comment can SATISFY is the same bug pointed
+    # the other way — so this walks for a real Call node.
+    import ast
+    fn = next(n for n in ast.walk(ast.parse(Path(probe.__file__).read_text()))
+              if isinstance(n, ast.FunctionDef) and n.name == "classify")
+    clock_reads = [
+        n.lineno for n in ast.walk(fn)
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+        and n.func.attr in ("now", "utcnow", "today")
+    ]
+    assert not clock_reads, (
+        f"classify() reads the wall clock at line(s) {clock_reads} — a pure verdict "
+        "function whose answer depends on when it runs cannot be pinned by any fixture")
