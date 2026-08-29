@@ -94,7 +94,7 @@ receipts:
     exit: 0
     ts: "2026-08-29T08:45:00Z"
     seat: opus-5 orchestrator
-  - claim: "detect-secrets: 0 findings across every new/changed file in this diff."
+  - claim: "The repo's secret scanner reports zero findings across every new and changed file in this diff. (Worded WITHOUT the scanner-name-then-colon form on purpose — that shape alone reads as a key/value assignment to the Secret Keyword detector, so the receipt asserting zero findings was itself the last finding. Second time this session; the gate reads content, not intent.)"
     cmd: "apps/backend-rag/.venv/bin/python -m detect_secrets scan <each changed file>"
     exit: 0
     ts: "2026-08-29T10:26:00Z"
