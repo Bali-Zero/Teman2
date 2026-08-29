@@ -1,5 +1,5 @@
 council_run: council.jsonl
-brief_ref: evidence/2026-08/agent-nuzantara-craft-e-council-yield-3fb9ef29/brief.yml
+brief_ref: evidence/brief.yml
 lanes:
   - lane: orchestrator
     role: review
