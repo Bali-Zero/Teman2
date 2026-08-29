@@ -28,11 +28,13 @@ seat_diversity_note: >-
   supplies R9's own council quorum for this pack.
 diff:
   net_lines:
-    "8 files, +1006/-1 measured against the merge-base (`git diff --numstat <merge-base>`).
-    OVER the ~400 guidance, declared rather than split: 394 lines are the test corpus and 269 are
-    this evidence pack itself; the behavioural change is ~200 lines of helper plus 27 workflow, 16
-    guard-conformance and 8 CODEOWNERS lines. Splitting it would ship the fix without the gate that
-    makes it stick (review finding #3) — the parts do not stand alone."
+    "8 files, +1195/-1 — emitted by `evidence_pack_lint.py --print-measured`, never counted by hand
+    (#5191's countable-claims rule). The commit count is deliberately not narrated: it changes with
+    every push, and a number that goes stale between the edit and the push is exactly what that rule
+    exists to catch. OVER the ~400 guidance and declared rather than split: the bulk is the test
+    corpus and this evidence pack, and the behavioural change is the helper plus the workflow,
+    guard-conformance and CODEOWNERS edits. Splitting would ship the fix without the gate that makes
+    it stick (review finding #3) — the parts do not stand alone."
   behaviour_change: >-
     harness-floor.yml's pack-lint step gains one guarded call to a new CI helper, between the two
     existing staging lines and the lint invocation. The helper reads the STAGED pack's `council_run:`
@@ -185,6 +187,38 @@ receipts:
       contexts list contains 'Every guard proves guilt AND innocence'."
     exit: 0
     ts: "2026-08-29T02:30:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim:
+      "COUNTABLE CLAIMS RECONCILED against #5191's rule, which merged into main after this PR's
+      first push and now recomputes them from git. The diff stats in `diff.net_lines` are the
+      `--print-measured` sentence verbatim, not a hand count; no commit or test count is narrated in
+      a scanned subtree, so none can go stale. Reaching this is a fixed point — the pack is part of
+      the diff it describes — so the digits were patched in place, without adding or removing a
+      line, until measured == narrated."
+    cmd:
+      "python3 scripts/evidence_pack_lint.py --print-measured --numstat-file <numstat>; then
+      _iter_countable_scalars(pack) cross-checked against _FILES_CLAIM_RE / _DIFFSTAT_CLAIM_RE /
+      _COMMITS_CLAIM_RE / _TESTS_CLAIM_RE"
+    result:
+      "measured '8 files, +1195/-1'; the only countable claims the rule sees are diff.net_lines
+      files=['8'] and diffstat=[('1195','1')] — both matching. COUNTABLE_SUBTREES is ('diff',
+      'lanes'), and lanes narrates no count."
+    exit: 0
+    ts: "2026-08-29T03:05:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim:
+      "THE PER-PR EVIDENCE PATHS RESOLVE UNAMBIGUOUSLY for this PR even though a root
+      evidence/{brief,pack}.yml still exists on origin/main: evidence_paths.py matches only paths in
+      THIS PR's own changed-files list, and this diff touches the per-PR pair only."
+    cmd:
+      "git show origin/main:scripts/ci/evidence_paths.py > /tmp/ep.py; python3 /tmp/ep.py --resolve
+      brief --changed-files-file <this PR's changed files>; same for pack"
+    result:
+      "evidence/2026-08/agent-air-m5-infra-r9-staging-fix-6ded81ba/{brief,pack}.yml — no
+      AmbiguousEvidencePathError. (Root evidence/brief.yml and evidence/pack.yml do exist at
+      origin/main, so the trap is live for a PR that touches both; this one does not.)"
+    exit: 0
+    ts: "2026-08-29T03:00:00Z"
     seat: "claude-opus-5 (build lane)"
 pii_scan: clean
 dissent:
