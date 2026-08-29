@@ -118,27 +118,61 @@ else
 fi
 
 echo
-echo "== 1. extract the REAL note-builder payload (the shipped NOTE_TAIL python3 -c block) =="
+echo "== 1. extract the REAL note-builder payload -- BOTH the python body alone,"
+echo "     for behavioural checks, AND the FULL raw bash construct (wrapper"
+echo "     included) for a genuine bash-quoting scar-pin in section 1b =="
 
+# Gate round 3 (Kimi K3 refutation, verified independently): extracting
+# only the python BODY and running it via python3 <file> args never
+# exercises the bash double-quoting layer production actually uses --
+# which is exactly how a backtick-command-substitution defect in the
+# payload's own comments (finding B, fixed the same round as the
+# byte-budget fix below) shipped past 32 green checks undetected.
+# NOTE_TAIL_RAW below keeps the FULL construct, wrapper included, so
+# section 1b can run it through REAL bash and prove its stderr is clean --
+# the shape production actually executes, not an extraction of it.
 NOTE_BUILDER="$(require_tmpfile)"
-"$PY_BIN" - "$TARGET_SRC" "$NOTE_BUILDER" <<'EXTRACT'
+NOTE_TAIL_RAW="$(require_tmpfile)"
+"$PY_BIN" - "$TARGET_SRC" "$NOTE_BUILDER" "$NOTE_TAIL_RAW" <<'EXTRACT'
 import re
 import sys
 
-target, out = sys.argv[1], sys.argv[2]
+target, out_body, out_raw = sys.argv[1], sys.argv[2], sys.argv[3]
 with open(target) as f:
     src = f.read()
 
-m = re.search(r'NOTE_TAIL=\$\(python3 -c "\n(.*?)\n" "\$VERDICT_JSON"', src, re.S)
+OPEN_LINE = (
+    "NOTE_TAIL=$(python3 - "
+    '"'
+    "$VERDICT_JSON"
+    '"'
+    " "
+    '"'
+    "$NOTE_MAX_TOTAL"
+    '"'
+    " "
+    '"'
+    "$NOTE_MAX_TITLE"
+    '"'
+    " "
+    '"'
+    "$NOTE_MAX_SUMMARY"
+    '"'
+    " <<'PYEOF'"
+)
+pattern = re.escape(OPEN_LINE) + r"\n(.*?)\nPYEOF\n\)"
+m = re.search(pattern, src, re.S)
 if not m:
     sys.exit(1)
-with open(out, "w") as f:
+with open(out_raw, "w") as f:
+    f.write(src[m.start():m.end()])
+with open(out_body, "w") as f:
     f.write(m.group(1))
 EXTRACT
 EXTRACT_RC=$?
 
 HAVE_BUILDER=0
-if [ "$EXTRACT_RC" -eq 0 ] && [ -s "$NOTE_BUILDER" ]; then
+if [ "$EXTRACT_RC" -eq 0 ] && [ -s "$NOTE_BUILDER" ] && [ -s "$NOTE_TAIL_RAW" ]; then
     check "note-builder payload extracted from the real shipped file" "extracted" "extracted"
     HAVE_BUILDER=1
 else
@@ -150,6 +184,56 @@ build_note() {
     local json="$1" max_total="${2:-400}" max_title="${3:-150}" max_summary="${4:-120}"
     "$PY_BIN" "$NOTE_BUILDER" "$json" "$max_total" "$max_title" "$max_summary"
 }
+
+echo
+echo "== 1b. SCAR-PIN (finding B): the RAW bash construct, run through REAL"
+echo "      bash (not extracted-then-python3), produces ZERO stderr =="
+
+# The extraction in section 1 pulls the python BODY out for convenience
+# (build_note() above runs it via `python3 <file> args`, sidestepping bash
+# entirely) -- which is exactly why 32 earlier checks all passed while
+# finding B's backtick-command-substitution defect shipped undetected: none
+# of them ever asked bash to interpret the payload the way production
+# really does. This section runs $NOTE_TAIL_RAW -- the FULL construct,
+# `NOTE_TAIL=$(python3 - ... <<'PYEOF' ... PYEOF)`, wrapper included --
+# through a REAL bash process and inspects its stderr. Reproduced against
+# the pre-this-round shipped file before writing this check: the buggy
+# `-c "..."` form (backticks in two of its own comments) printed 4 lines of
+# "syntax error near unexpected token" noise on stderr for this exact
+# invocation, even though stdout (NOTE_TAIL's value) was correct throughout
+# -- the defect is invisible in the output, only visible in stderr.
+if [ "$HAVE_BUILDER" -eq 1 ]; then
+    RAWRUN_SCRIPT="$(require_tmpfile)"
+    RAWRUN_STDOUT="$(require_tmpfile)"
+    RAWRUN_STDERR="$(require_tmpfile)"
+
+    {
+        printf 'set -uo pipefail\n'
+        printf 'VERDICT_JSON=%q\n' '{"real_failures":[{"title":"/dream loads","fingerprint":"x","error_summary":""}]}'
+        # Fixed representative values, not the section-10 extracted
+        # NOTE_MAX_*_VAL (those are not yet defined at this point in the
+        # corpus, and this check's purpose -- proving the raw construct
+        # runs cleanly through real bash -- does not depend on them).
+        printf 'NOTE_MAX_TOTAL=400\n'
+        printf 'NOTE_MAX_TITLE=150\n'
+        printf 'NOTE_MAX_SUMMARY=120\n'
+        cat "$NOTE_TAIL_RAW"
+        printf '\n'
+        printf %s 'printf "%s" "$NOTE_TAIL"'
+        printf '\n'
+    } > "$RAWRUN_SCRIPT"
+
+    bash "$RAWRUN_SCRIPT" 1>"$RAWRUN_STDOUT" 2>"$RAWRUN_STDERR"
+
+    check "(scar-pin, finding B) raw construct through REAL bash produces ZERO stderr" "0" "$(wc -c < "$RAWRUN_STDERR" | tr -d ' ')"
+    check "(scar-pin, finding B) NOTE_TAIL still correct when run as real bash" "FAILED: /dream loads" "$(cat "$RAWRUN_STDOUT")"
+    if [ -s "$RAWRUN_STDERR" ]; then
+        echo "  --- stderr from the raw-construct run (should have been empty) ---"
+        sed 's/^/  | /' "$RAWRUN_STDERR"
+    fi
+else
+    echo "  (skipped -- note-builder not found, see section 1)"
+fi
 
 if [ "$HAVE_BUILDER" -eq 1 ]; then
 
@@ -188,6 +272,53 @@ out="$(build_note "$LONG_JSON")"
 expected="FAILED: X failed :: $("$PY_BIN" -c "print('a' * 117 + '...')")"
 check "a 300-char summary clips to NOTE_MAX_SUMMARY (120) with a visible '...'" "$expected" "$out"
 check "the clipped entry does not silently look complete (ends in '...')" "yes" "$(if [[ "$out" == *'...' ]]; then echo yes; else echo no; fi)"
+
+echo
+echo "== 6b. PIN: clip() itself is BYTE-exact for genuinely oversized multi-byte"
+echo "       content -- section 6 above never forced it to, and section 11's"
+echo "       em-dash fixture is sized to stay UNDER the per-field char cap on"
+echo "       purpose (isolating the shown-search loop), so neither exercises"
+echo "       clip()'s OWN truncation branch on multi-byte input =="
+
+# Self-caught via this corpus's own mutation battery: reverting clip() to a
+# character-slice (finding A's fix applied only to blen()'s callers, not
+# clip() itself) passed EVERY check in this file with zero red -- section 6's
+# 'a'*300 fixture is pure ASCII (char length == byte length, the mutation is
+# invisible), section 11's em-dash fixture is sized to NEVER trigger clip()'s
+# truncation branch at all (title_len/summary_len = NOTE_MAX_*_VAL - 2, always
+# under the cap), and sections 13/14 use ASCII filler for the same reason as
+# section 6. This isolates clip() directly: exec the real extracted builder
+# module (suppressing its own top-level print side effect) to get a live
+# reference to its clip function, then call clip() on 500 em dashes (1500
+# UTF-8 bytes) at limit=120 and assert the byte length of what comes back.
+# Measured: fixed clip() returns exactly 120 bytes; the character-slice
+# mutation returns 354.
+if [ "$HAVE_BUILDER" -eq 1 ]; then
+    CLIP_CHECK_SCRIPT="$(require_tmpfile)"
+    cat > "$CLIP_CHECK_SCRIPT" <<'CLIPCHECK'
+import contextlib
+import io
+import sys
+
+builder_path, limit = sys.argv[1], int(sys.argv[2])
+ns = {}
+sys.argv = ["prog", '{"real_failures":[]}', "400", "150", "120"]
+with open(builder_path) as f:
+    code = f.read()
+buf = io.StringIO()
+with contextlib.redirect_stdout(buf):
+    exec(compile(code, builder_path, "exec"), ns)
+
+clip = ns["clip"]
+huge = u"\u2014" * 500  # 500 em dashes, 1500 UTF-8 bytes, pure python source stays ASCII
+result = clip(huge, limit)
+print(len(result.encode("utf-8")))
+CLIPCHECK
+    clip_byte_len="$("$PY_BIN" "$CLIP_CHECK_SCRIPT" "$NOTE_BUILDER" 120)"
+    check "(pin) clip(500 em dashes, limit=120) stays AT OR UNDER 120 UTF-8 bytes" "yes" "$([ "${clip_byte_len:-9999}" -le 120 ] 2>/dev/null && echo yes || echo no)"
+else
+    echo "  (skipped -- note-builder not found, see section 1)"
+fi
 
 echo
 echo "== 7. budget: several failures that do not all fit are marked '+N more', never silently dropped =="
@@ -283,15 +414,66 @@ print(d['note'])
         check "published note is unambiguously a failure (contains FAILED:)" "yes" "$(if [[ "$parsed_note" == *"FAILED:"* ]]; then echo yes; else echo no; fi)"
         check "published note does NOT open with a bare separator (the original defect)" "no" "$(if [[ "$parsed_note" == ';'* ]]; then echo yes; else echo no; fi)"
 
-        non_ascii_bytes="$("$PY_BIN" -c "
+        # NOT this (gate round 3, Kimi K3 refutation, verified independently):
+        # heartbeat.sh strips EVERY non-ASCII byte to a space UNCONDITIONALLY,
+        # for any input whatsoever -- asserting the published note has none is
+        # true by heartbeat.sh's own construction, not by anything THIS
+        # wrapper did. That check could never go red -- superscar #2 inside
+        # the very corpus meant to catch it. Replaced below with a check that
+        # CAN fail: an em-dash-dense multi-failure fixture, sized off the REAL
+        # extracted constants (not a hardcoded density), driven through
+        # build_note() with those same real values and then through the REAL
+        # heartbeat.sh -- asserting the marker (or a sibling failure) SURVIVES
+        # publication. This is finding A end-to-end: budgeting on python
+        # character count instead of len(s.encode("utf-8")) let a dense-enough
+        # note pass every earlier check while heartbeat.sh's real 500-BYTE
+        # (not 500-char) ceiling silently cut the marker -- measured before the
+        # byte-budget fix: 297 python chars / 829 UTF-8 bytes, marker present
+        # in the builder output, ABSENT from the published note. Two real,
+        # non-contrived sources of this density: the live defect's own title
+        # already carries an em dash, and this wrapper's SKIPPED-path title
+        # ("... [SKIPPED -- never actually ran]") embeds a second one.
+        EM_DASH_JSON="$("$PY_BIN" -c "
 import json, sys
-with open(sys.argv[1], 'rb') as f:
-    raw = f.read()
-d = json.loads(raw)
-note = d['note']
-print('yes' if any(ord(c) > 127 for c in note) else 'no')
-" "$PUBLISHED")"
-        check "published note contains zero non-ASCII bytes (heartbeat.sh's own contract, verified live)" "no" "$non_ascii_bytes"
+
+title_len = max(int(sys.argv[1]) - 2, 1)
+summary_len = max(int(sys.argv[2]) - 2, 1)
+em = u'\u2014'  # em dash, U+2014, 3 UTF-8 bytes -- python source stays pure ASCII
+title = em * title_len
+summary = em * summary_len
+failures = [{'title': title, 'fingerprint': 'f%d' % i, 'error_summary': summary} for i in range(3)]
+print(json.dumps({'real_failures': failures}))
+" "$NOTE_MAX_TITLE_VAL" "$NOTE_MAX_SUMMARY_VAL")"
+
+        DENSE_HOME="$(require_tmpdir)"
+        e2e_note_tail_dense="$(build_note "$EM_DASH_JSON" "$NOTE_MAX_TOTAL_VAL" "$NOTE_MAX_TITLE_VAL" "$NOTE_MAX_SUMMARY_VAL")"
+        e2e_full_note_dense="3 real journey failure(s): $e2e_note_tail_dense"
+        HOME="$DENSE_HOME" bash "$HEARTBEAT_LIB" mini.journey_sentinel degraded "$e2e_full_note_dense"
+
+        DENSE_PUBLISHED="$DENSE_HOME/.organism/last_seen/mini.journey_sentinel.json"
+        if [ -f "$DENSE_PUBLISHED" ]; then
+            dense_parsed_note="$("$PY_BIN" -c "
+import json, sys
+with open(sys.argv[1]) as f:
+    d = json.load(f)
+print(d['note'])
+" "$DENSE_PUBLISHED" 2>/dev/null || echo "PARSE-FAILED")"
+
+            # NOT also asserting "published note <=500 bytes": self-caught via
+            # this corpus's own mutation battery (reverting blen() to a
+            # character count, defeating finding A) -- that assertion stayed
+            # GREEN under the exact mutation the marker-survival check below
+            # catches, because heartbeat.sh's OWN truncation makes it true
+            # unconditionally for any em-dash/space-only content (no quotes
+            # or backslashes to trigger its post-truncation escaping step
+            # growing the string back past 500). Same disease finding C
+            # named in the check this section replaced -- caught here by
+            # running the mutation, not by re-reasoning about it after the
+            # fact, and removed rather than kept as false reassurance.
+            check "(finding A, end-to-end) em-dash-dense 3-failure note still publishes with a truncation marker" "yes" "$(if [[ "$dense_parsed_note" == *"more (see log)"* ]]; then echo yes; else echo no; fi)"
+        else
+            check "(finding A, end-to-end) heartbeat.sh published the dense-fixture sidecar" "yes" "no"
+        fi
     else
         check "heartbeat.sh published a sidecar file" "yes" "no (nothing written to $PUBLISHED)"
     fi
@@ -309,7 +491,18 @@ echo "== 12. HYGIENE: every heartbeat.sh call in THIS corpus is HOME-scoped to a
 # with this corpus. The real, non-flaky guarantee is structural: verify
 # THIS FILE never invokes scripts/lib/heartbeat.sh without an explicit
 # HOME= override on the same line.
-UNSCOPED_CALLS="$(grep -n 'bash "\$HEARTBEAT_LIB"' "${BASH_SOURCE[0]}" | grep -v 'HOME=' || true)"
+#
+# Gate round 3 (Kimi K3 refutation, "matches only one exact quoting
+# form"): broadened from a literal 'bash "$HEARTBEAT_LIB"' string match to
+# a pattern tolerant of unquoted or loosely-spaced forms
+# (bash $HEARTBEAT_LIB, bash  "$HEARTBEAT_LIB", ...) -- verified this still
+# finds exactly the two real invocations below (both HOME-scoped) and does
+# not silently stop matching if either is ever reformatted. Comment lines
+# are excluded (`grep -vE '^[0-9]+:[[:space:]]*#'`): the broadened pattern
+# immediately self-matched THIS VERY comment block, which illustrates the
+# pattern in prose -- caught before shipping by actually running this
+# check, not by reasoning about the regex.
+UNSCOPED_CALLS="$(grep -nE 'bash[[:space:]]+"?\$HEARTBEAT_LIB"?' "${BASH_SOURCE[0]}" | grep -vE '^[0-9]+:[[:space:]]*#' | grep -v 'HOME=' || true)"
 check "no heartbeat.sh invocation in this corpus omits an explicit HOME= override" "0" "$(printf '%s' "$UNSCOPED_CALLS" | grep -c . || true)"
 
 echo
