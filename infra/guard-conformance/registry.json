@@ -679,7 +679,7 @@
       }
     },
     "required_workflow_conformance": {
-      "_doc": "Merge-OS v2 Wave 0 trap-disarm (research/operations/2026-08-10-merge-os-v2-submission-system.md §4 Wave 0, Codex F12). scripts/ci/check_required_workflow_conformance.py reads infra/required.d/contexts.json and fails if a required context's defining workflow lacks a merge_group: trigger or carries a top-level pull_request.paths: filter — the exact defect docs-sync.yml and migration-lint.yml shipped (cured same PR): a required check gated by a top-level paths: filter never even starts a run on an innocent PR, so GitHub shows it 'Expected — waiting' forever. Each check_* function IS a guard in the superscar #3 sense, same shape as evidence_pack_lint.py/wr2_editorial_pregate.py.",
+      "_doc": "Merge-OS v2 Wave 0 trap-disarm (research/operations/2026-08-10-merge-os-v2-submission-system.md §4 Wave 0, Codex F12), extended 2026-08-29 (L06-PR1 trigger-symmetry, two cross-family refuter rounds). scripts/ci/check_required_workflow_conformance.py reads infra/required.d/contexts.json and fails if a required context's defining workflow: (2) lacks a merge_group: trigger; (3) lacks a pull_request: trigger entirely; (4) carries a top-level paths:/paths-ignore: filter under on.pull_request (the BRANCH axis is a declared, deliberately-unbuilt scope limit \u2014 flagging branches:/branches-ignore: by key-presence over-matched the innocent branches: [main], so the rule was withdrawn pending a directional test against the protected branch); or (5) narrows on.pull_request.types: without both opened and synchronize — each is a shape where a required check never starts a run for some legitimate PR and hangs 'Expected — waiting' forever (the exact defect docs-sync.yml and migration-lint.yml shipped, cured same PR as rule 4's paths half). No ALLOWLIST escape hatch — removed 2026-08-29: it was empty, unreachable, and silenced rules 2-5 together for any context sharing its workflow_file, wider than its own stated justification. Each check_* function IS a guard in the superscar #3 sense, same shape as evidence_pack_lint.py/wr2_editorial_pregate.py.",
       "source": "scripts/ci/check_required_workflow_conformance.py",
       "census": {
         "method": "ast-def-prefix",
@@ -692,12 +692,40 @@
           "guilt": ["test_guilt_missing_merge_group_flagged"],
           "innocence": ["test_innocence_merge_group_present_passes"]
         },
-        "check_no_pull_request_paths_filter": {
-          "scar": ["Codex-F12"],
-          "guilt": ["test_guilt_toplevel_pr_paths_filter_flagged"],
+        "check_pull_request_trigger_present": {
+          "scar": ["Codex-F12", "L06-PR1"],
+          "guilt": ["test_guilt_missing_pull_request_trigger_flagged"],
+          "innocence": [
+            "test_innocence_bare_pull_request_passes",
+            "test_innocence_pull_request_with_types_passes"
+          ]
+        },
+        "check_no_pull_request_trigger_filters": {
+          "scar": ["Codex-F12", "L06-PR1"],
+          "guilt": [
+            "test_guilt_toplevel_pr_paths_filter_flagged",
+            "test_guilt_toplevel_pr_paths_ignore_filter_flagged",
+            "test_guilt_both_paths_and_paths_ignore_flagged_once_each"
+          ],
           "innocence": [
             "test_innocence_pull_request_without_paths_passes",
+            "test_innocence_pull_request_branches_filter_is_out_of_scope",
             "test_innocence_push_paths_filter_is_out_of_scope"
+          ]
+        },
+        "check_pull_request_types_include_opened_and_synchronize": {
+          "scar": ["L06-PR1"],
+          "guilt": [
+            "test_guilt_types_missing_synchronize_flagged",
+            "test_guilt_types_missing_opened_flagged",
+            "test_guilt_types_missing_both_flagged"
+          ],
+          "innocence": [
+            "test_innocence_types_with_opened_and_synchronize_passes",
+            "test_innocence_types_with_all_three_passes",
+            "test_innocence_bare_pull_request_no_types_key_passes",
+            "test_innocence_pull_request_dict_without_types_key_passes",
+            "test_innocence_malformed_types_not_a_list_out_of_scope"
           ]
         },
         "check_context_workflow_file_exists": {
