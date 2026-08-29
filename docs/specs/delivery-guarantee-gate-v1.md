@@ -176,8 +176,10 @@ exactly that reason (see the correction below):
 > be typed. See §6.4: **re-deriving a number does not re-derive its boundary.**
 
 **The dropped cohort is the sharpest instance in this document, not an edge case.**
-`.github/workflows/fly-deploy.yml` carries **eight** direct sends, every one of them
-`curl -s … -d "parse_mode=Markdown" … || true`. Two of them (`:321`, `:335`) belong to the
+`.github/workflows/fly-deploy.yml` carries **eight** direct sends, every one of them a
+`curl -s … || true` that discards its own refusal, and **seven of the eight set
+`parse_mode=Markdown`** (the eighth, `:137`, sets `parse_mode=HTML` — a different escaping
+regime with the same exposure, not an exemption). Two of them (`:321`, `:335`) belong to the
 post-deploy migration step, and the second is the _failure_ page — the message whose own
 text reads _"Backend live ma schema potenzialmente disallineato. Investigare subito."_ Its
 payload interpolates `github.sha` and `github.actor` inside backticks. So a single three-line
@@ -372,6 +374,22 @@ docs/specs` returned **1** and `git ls-tree -r origin/main -- docs/specs` return
    Without `-r`, `ls-tree` reports the directory as a single entry. Same lesson at a
    different scale — **when two probes of the same question disagree, one of them is broken;
    find out which before believing either.**
+
+   A third instance, and a **third mechanism** worth naming separately because it does not
+   look like a cap at all: `gh api ".../code-scanning/alerts?…&per_page=100"` **without
+   `--paginate`** returns one page, and the PR body for this very change reported its length,
+   100, as the repo-wide total. Paginated, it is **3266** — off by ~33x. A `per_page` is a
+   page size, not a limit, and it silently becomes the answer when the caller counts the
+   response instead of the population. Display caps (`head`, `[:N]`) at least look like caps;
+   a pagination default looks like a complete reply.
+
+   > Worth distinguishing carefully, because not every wrong number costs its argument: that
+   > figure served as a **positive control**, and a positive control only needs to be
+   > non-zero. The conclusion it supported — that 0 hits for one path is meaningful rather
+   > than an empty probe — survives the correction intact. But it survives by luck, not by
+   > construction: had the same call been used to establish a scope, it would have been the
+   > `| head -10` failure again with a different cap. **State which of the two a number is
+   > doing before deciding how much its wrongness costs.**
 
    > **This is the strongest argument for this document's own existence, and it is an
    > argument against documents.** The failure is scar **W97** (_display-cap read as
