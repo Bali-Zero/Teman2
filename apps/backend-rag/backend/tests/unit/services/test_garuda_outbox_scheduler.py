@@ -697,6 +697,104 @@ async def test_the_real_sender_reports_delivery_truthfully(
         )
 
 
+async def _drive_two_outbox_ticks(monkeypatch, *, sender) -> list[str]:
+    """Two periodic ticks with a STANDING outbox backlog and a scripted sender.
+
+    Shares the quarantine pair's fake clock: 400s per read steps into the
+    periodic block on both ticks while staying far below `REALERT_SECONDS`, so
+    a second page can only come from the condition never being marked reported.
+    """
+
+    sends: list[str] = []
+
+    async def recording_send(client, text):
+        sends.append(text)
+        return sender
+
+    async def sweep(pool, repository, **kw):
+        return SimpleNamespace(candidates=0, expired=0, left_for_webhook=0)
+
+    async def silent_quarantine(c, **kw):
+        return QuarantineSnapshot(recent=0, lifetime=0, reasons=frozenset(), sample=())
+
+    clock = iter(400.0 * i for i in range(1, 500))
+    monkeypatch.setattr(main_api, "time", SimpleNamespace(monotonic=lambda: next(clock)))
+
+    script = [DrainStats(claimed=0), DrainStats(claimed=0)]
+
+    async def fake_drain(c, handlers, **kw):
+        if not script:
+            raise asyncio.CancelledError
+        return script.pop(0)
+
+    async def fake_count_undrained(c, **kw):
+        return {"exhausted": 3}  # a standing, unchanging backlog
+
+    monkeypatch.setenv("GARUDA_OUTBOX_POLL_SECONDS", "5")
+    monkeypatch.setattr("backend.services.garuda_orders.outbox_consumer.drain_once", fake_drain)
+    monkeypatch.setattr(
+        "backend.services.garuda_orders.outbox_consumer.count_undrained", fake_count_undrained
+    )
+    monkeypatch.setattr(
+        "backend.services.garuda_orders.payment_inbox_watch.count_quarantined",
+        silent_quarantine,
+    )
+    monkeypatch.setattr(
+        "backend.services.garuda_orders.reconciliation.reconcile_expired_checkouts", sweep
+    )
+    monkeypatch.setattr(main_api, "_send_outbox_alarm", recording_send)
+
+    async def fake_sleep(seconds):
+        return None
+
+    monkeypatch.setattr(main_api.asyncio, "sleep", fake_sleep)
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(db_pool=_LockPool(_LockConn()), garuda_order_repository=object())
+    )
+    with pytest.raises(asyncio.CancelledError):
+        await main_api._run_garuda_outbox_scheduler(app)
+    return sends
+
+
+async def test_an_undelivered_OUTBOX_page_does_not_start_the_suppression_window(
+    monkeypatch,
+) -> None:
+    """RED IF the outbox alarm's `confirm_sent` stops being gated on delivery.
+
+    The identical defect the council found on the payment-inbox alarm, on the
+    older sibling twelve lines away — and the sharper instance of the two,
+    because its call site carried the comment "A page that never landed must
+    not silence the next hour" directly above the line that let exactly that
+    happen. The comment stated the invariant; the code broke it.
+    """
+
+    sends = await _drive_two_outbox_ticks(monkeypatch, sender=False)
+    assert len(sends) == 2, (
+        "an undelivered outbox page consumed the suppression window — the "
+        "money queue's alarm went quiet because it had just failed to reach "
+        "anyone"
+    )
+
+
+async def test_a_delivered_OUTBOX_page_DOES_start_the_suppression_window(
+    monkeypatch,
+) -> None:
+    """The innocence half: a page that DID land must not re-page next tick.
+
+    Without this, gating on a sender hardwired to False would satisfy the
+    guilt test while re-paging the same standing backlog every five minutes —
+    a spamming alarm, which an operator mutes, which is the same disease by a
+    different road.
+    """
+
+    sends = await _drive_two_outbox_ticks(monkeypatch, sender=True)
+    assert len(sends) == 1, (
+        "a delivered outbox page did not mark the condition reported — the "
+        "same standing backlog re-pages on every tick"
+    )
+
+
 async def test_the_sweep_is_skipped_while_the_order_lane_answers_503(monkeypatch) -> None:
     """No `garuda_order_repository` means Xendit is unarmed and no order can
     exist. Sweeping then would be a query per 300s forever for nothing — and,

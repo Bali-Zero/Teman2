@@ -164,8 +164,18 @@ _OP04_SWEEP_LIMIT = 200
 _ALARM_SEND_TIMEOUT_SECONDS = 20.0
 
 
-async def _send_outbox_alarm(client: "httpx.AsyncClient", text: str) -> None:  # noqa: F821
+async def _send_outbox_alarm(client: "httpx.AsyncClient", text: str) -> bool:  # noqa: F821
     """Best-effort page to the owner chat. NEVER raises.
+
+    RETURNS whether the page actually reached Telegram, and the caller MUST
+    gate `confirm_sent` on it. This returned `None` on every path — refused by
+    Telegram, no credentials, delivered fine — while its call site ran
+    `confirm_sent` unconditionally under a comment reading "A page that never
+    landed must not silence the next hour". The comment stated the invariant
+    the line broke. Found on the sibling inbox alarm first (kimi-code/k3,
+    cross-family council) and cured here in the same change, because the
+    concern is one — an alarm's delivery result is discarded and success
+    confirmed anyway — and the two definitions sit a dozen lines apart.
 
     DESTINATION, and why it needs no SYMBIOSIS Law 2 derogation.
     `TELEGRAM_OWNER_CHAT_ID` is Zero's own chat — the same destination the five
@@ -193,10 +203,12 @@ async def _send_outbox_alarm(client: "httpx.AsyncClient", text: str) -> None:  #
             "TELEGRAM_BOT_TOKEN/TELEGRAM_OWNER_CHAT_ID unset. The log line above "
             "is the only record."
         )
-        return
+        return False
     ok, err = await send_telegram_message(client, token, chat_id, text)
     if not ok:
         logger.error("GARUDA outbox alarm could not be delivered: %s", err)
+        return False
+    return True
 
 
 async def _send_quarantine_alarm(client: "httpx.AsyncClient", text: str) -> bool:  # noqa: F821
@@ -400,13 +412,17 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
                             # timeout is 30s — a worst case of roughly 94
                             # seconds with the drain stopped behind it. The
                             # alarm may be late; the queue may not be blocked.
-                            await asyncio.wait_for(
+                            delivered = await asyncio.wait_for(
                                 _send_outbox_alarm(client, page),
                                 timeout=_ALARM_SEND_TIMEOUT_SECONDS,
                             )
                             # Only NOW does the suppression window start. A page
-                            # that never landed must not silence the next hour.
-                            alarm.confirm_sent(time.monotonic())
+                            # that never landed must not silence the next hour —
+                            # which is what this line did until 2026-08-29, one
+                            # line under this very comment, because the sender
+                            # returned None on success and failure alike.
+                            if delivered:
+                                alarm.confirm_sent(time.monotonic())
                     except Exception:
                         logger.exception(
                             "GARUDA outbox alarm check failed; the DRAIN is unaffected"
