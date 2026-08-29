@@ -1274,6 +1274,71 @@ def test_branch_in_origin_main_union_path_missing_line_refuses_reap(fake_repo):
     assert mod._branch_in_origin_main(wt) is False
 
 
+def test_branch_in_origin_main_union_path_stale_preexisting_row_is_reapable(fake_repo):
+    """Live bug, 2026-08-29: a merged, content-on-main ledger-append branch
+    was refused reap because a DIFFERENT, pre-existing row — one this branch
+    never touched — was edited by a later lane on main. The old subset check
+    compared the branch's FULL frozen snapshot against main, so any edit to
+    a row that predates the branch's merge-base (append-only-in-name only:
+    real healer ticks correct/close existing rows constantly) reads as the
+    branch's own line missing. The fix scopes the subset check to the lines
+    the branch itself ADDED since its own merge-base — that line survives
+    the base-row edit untouched and must still pass."""
+    mod, repo = fake_repo
+    _declare_union_ledger(repo)
+    wt = mod.cmd_create("wr2", "unionstalerow", ttl_minutes=5)
+
+    with (wt / "LEDGER.md").open("a") as f:
+        f.write("- branch's own new row\n")
+    _commit_in_worktree(wt, mod, "LEDGER.md", "append branch's own row")
+
+    # A later lane, on main, EDITS the pre-existing "base line" row (not an
+    # append — a rewrite of a row that predates this branch's merge-base),
+    # then applies the branch's own row on top, exactly as a real merge would.
+    subprocess.run(["git", "checkout", "main"], cwd=repo, check=True)
+    (repo / "LEDGER.md").write_text("- base line EDITED by another lane\n- branch's own new row\n")
+    subprocess.run(["git", "add", "LEDGER.md"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit",
+         "-m", "edit base row + land branch's row"],
+        cwd=repo,
+        check=True,
+    )
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True)
+    subprocess.run(["git", "fetch", "origin"], cwd=wt, check=True)
+
+    # The branch's own contribution IS on main — reapable, despite the
+    # pre-existing row it never wrote no longer byte-matching its snapshot.
+    assert mod._branch_in_origin_main(wt) is True
+
+
+def test_branch_in_origin_main_union_path_pure_deletion_refuses_reap(fake_repo):
+    """Innocence twin for the added-lines scoping: a branch whose only change
+    to a union path is a DELETION (no added lines to check a subset of) must
+    fail safe to False, never fall back to a full-snapshot comparison that
+    could reintroduce the stale-row false-negative from the test above."""
+    mod, repo = fake_repo
+    _declare_union_ledger(repo)
+    wt = mod.cmd_create("wr2", "uniondelete", ttl_minutes=5)
+
+    (wt / "LEDGER.md").write_text("")
+    _commit_in_worktree(wt, mod, "LEDGER.md", "delete base line, add nothing")
+
+    subprocess.run(["git", "checkout", "main"], cwd=repo, check=True)
+    with (repo / "LEDGER.md").open("a") as f:
+        f.write("- other lane row\n")
+    subprocess.run(["git", "add", "LEDGER.md"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-m", "other lane append"],
+        cwd=repo,
+        check=True,
+    )
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True)
+    subprocess.run(["git", "fetch", "origin"], cwd=wt, check=True)
+
+    assert mod._branch_in_origin_main(wt) is False
+
+
 # ---------------------------------------------------------------------------
 # list — orphan detection (W62 ANTIBODY #2)
 # ---------------------------------------------------------------------------
