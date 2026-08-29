@@ -48,21 +48,83 @@ name: Token contrast tripwire tests
 # are ways to make the checker silently agree with a BROKEN file, not ways
 # to stop it catching an honest one.
 #
-# WHAT A GREEN RUN HERE DOES PROVE: the script executed against the real
-# token file and found no claim-vs-hex drift, no duty-floor violation among
-# the claims present, and no REQUIRED_CLAIM_PATHS token with zero claims.
-# WHAT IT DOES NOT PROVE: that the claim set is complete, that every `duty`
-# value is legal for its token's category, that no claim was silenced by an
-# ancestor `$value` or an emptied claims list dressed up as "nothing to
-# check", or that `against` binds a living token rather than a frozen hex
-# literal. A green advisory check here must never be read as "contrast
-# duties are enforced" — only as "no drift found in what the file currently
-# volunteers".
+# WHAT "ADVISORY" ACTUALLY MEANS ON A PR, AND WHAT IT DOES NOT — verified
+# against this repo's OWN measured behaviour, not GitHub's docs in the
+# abstract, because a plausible-sounding intuition about this exact point
+# was wrong when a cross-family reviewer (Kimi K3) applied it to this PR.
+# `continue-on-error: true` at JOB level does NOT make the job's own
+# check-run report `success` when a step inside it fails — this repo has
+# already measured the opposite. `tests.yml`'s `visa-oracle-fullstack-smoke`
+# job carries the identical `continue-on-error: true` shape, and its own
+# comment there records: "measured 2026-08-24 on its first real run (job
+# 97222544510, PR #4709): the step failed and the check-run's `conclusion`
+# on the commit was `failure`, same as any other red job, `gh pr checks`
+# included." So on a PR, a human looking at the Checks tab (or running
+# `gh pr checks`) sees THIS job red the moment a claim fails, exactly like a
+# blocking job — the difference `continue-on-error` buys is narrower than
+# "renders green": it is that (a) the OVERALL WORKFLOW RUN's conclusion is
+# not dragged down by this one job's failure, and (b) nothing that `needs:`
+# this job is blocked by it. Neither of those two things is "a human sees
+# green" — a human sees exactly the failure, on the PR, today, advisory or
+# not. What advisory DOES cost is downstream of the workflow run's own
+# conclusion, not the job's — see the `main-push-failure-watch.yml` note
+# below for the one place that distinction is load-bearing.
 #
-# THE EXACT ONE-LINE CHANGE THAT ARMS THIS JOB: delete the
-# `continue-on-error: true` line below. Do NOT do that until the 6-item
-# follow-up spec in the field report above has landed and cured the root
-# cause:
+# WHAT A GREEN RUN HERE DOES PROVE: the script executed against the real
+# token file and found no claim-vs-hex drift beyond ±0.02, no
+# REQUIRED_CLAIM_PATHS token with zero claims, and that every claim present
+# clears its duty's floor AFTER ROUNDING the recomputed ratio to this file's
+# own 2-decimal publication precision (`check_token_contrast.py:524`,
+# `floor_check_value = round(computed, 2)`) — deliberately, to avoid a false
+# red on a claim that is correctly transcribed at 2dp (see
+# `TestFloorComparisonHonorsPublicationPrecision` in the corpus). That last
+# clause is NOT the same as "clears the floor under a strict WCAG reading":
+# WCAG does not permit rounding a computed ratio UP to a threshold, and this
+# rounding does exactly that for a claim whose TRUE ratio sits just under a
+# floor and rounds up to meet it — a raw 4.4951 against a 4.5 floor rounds
+# to 4.50 and passes here, even though it does not, by WCAG's own rule,
+# actually clear 4.5:1. This is field report item 4, listed below, and is
+# NOT cured by this workflow — only surfaced honestly.
+#
+# WHAT IT DOES NOT PROVE: that the claim set is complete; that every `duty`
+# value is legal for its token's category; that no claim was silenced by an
+# ancestor `$value` or an emptied claims list dressed up as "nothing to
+# check"; that `against` binds a living token rather than a frozen hex
+# literal; that a claim's rounded value truly clears its floor under a
+# strict, non-rounded WCAG reading (the item directly above); that a
+# claim's ratio is finite — a bare `NaN` in the JSON defeats the DRIFT
+# comparison specifically (`nan > tolerance` is False, so a claim can
+# diverge from the truth by any amount undetected there; the floor check
+# afterward still runs against the correctly recomputed value for any claim
+# whose duty carries one, so a decorative/icon-only NaN claim is the fully
+# blind case); or that the SET of `(token, against)` pairs is the right
+# one, rather than merely the right COUNT — deleting one real pairing and
+# adding a duplicate elsewhere leaves both this checker and its own pytest
+# corpus's `== 28` claim-count assertion green. A green advisory check here
+# must never be read as "contrast duties are enforced" — only as "no drift
+# found, and no claim among those present recomputes worse than its
+# rounded floor, in what the file currently volunteers".
+#
+# TWO DIFFERENT THINGS BOTH CALLED "ARMED" — say which one is meant, or a
+# reader fills in the stronger one by default. (1) ARMED AS "FAILS LOUD":
+# this job's check-run concludes `failure` and shows red on a PR the moment
+# a real defect is caught — reached by deleting the single
+# `continue-on-error: true` line below, once the 6-item follow-up spec has
+# landed (see next paragraph). This is what this file's PENDING-ARMS row
+# means by "armed", and it is what registering this workflow in
+# `main-push-failure-watch.yml` is FOR (see that file's own comment on this
+# entry). (2) ARMED AS "STOPS A MERGE": a materially stronger and separate
+# claim — this job would ALSO need to become a required branch-protection
+# context, which needs, in order beyond step (1): removing the `paths:`
+# filter from BOTH triggers below (a required, path-filtered check gets
+# stuck at "Expected — waiting for status" on any PR outside its paths,
+# exactly the trap `token-lint.yml`'s own header names and avoids by
+# carrying no `paths:` filter at all), then an operator/Zero
+# branch-protection action adding this job's name to
+# `required_status_checks` (CLAUDE.md §13 — not performed here, not
+# requested here, not implied by anything in this file). Do NOT do even
+# step (1) until the 6-item follow-up spec below has landed and cured the
+# root cause:
 #   1. derive the required claim set from the TREE, not a frozen list;
 #   2. a `$value`-bearing group must not terminate the walk, and a run that
 #      collects ZERO claims must be a FAILURE, never an OK;
@@ -83,7 +145,13 @@ name: Token contrast tripwire tests
 # bounded [0, MAX_TOLERANCE] range specifically because an unbounded
 # `--tolerance 99` would make every drift claim recompute "clean" regardless
 # of how far a hex has actually moved. A future edit that adds `--tolerance`
-# to "make CI pass" defeats the one capability this job currently has.
+# to "make CI pass" defeats the one capability this job currently has. This
+# is enforced mechanically, not just in prose — see the self-check step
+# below — because the asymmetry matters: the NOTICE-line count a few
+# paragraphs down is deliberately NOT asserted on (it is a property of the
+# current token set, and a checker that fails a legitimate no-floor claim is
+# worse than none), while `--tolerance`'s absence from this workflow's own
+# invocation IS a property of this file and belongs to a mechanical check.
 #
 # NO STEP HERE GREPS FOR OR FAILS ON THE SCRIPT'S "NOTICE" LINES. Four are
 # expected on the shipped token file today — `color.boundary.hairline`
@@ -105,9 +173,9 @@ name: Token contrast tripwire tests
 # `.github/workflows/token-lint.yml`, which carries NO `paths:` filter at
 # all because IT is meant to become required — a required, path-filtered
 # check never reports on a PR outside its paths and gets stuck at "Expected
-# — waiting for status" forever. If this job is ever promoted past advisory
-# to a required context, its `paths:` filter must be removed FIRST, or the
-# next unrelated PR silently stalls on it exactly that way.
+# — waiting for status" forever. If this job is ever promoted past step (1)
+# above to a required context, its `paths:` filter must be removed FIRST,
+# or the next unrelated PR silently stalls on it exactly that way.
 
 on:
   pull_request:
@@ -138,12 +206,61 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # ADVISORY, not blocking — see the header comment above for the exact
-    # standing instruction this honours (Handoff H3, cicatrix superscar #2)
-    # and the one-line change (delete this key) that arms it, gated on the
-    # 6-item follow-up spec landing first.
+    # standing instruction this honours (Handoff H3, cicatrix superscar #2),
+    # what "advisory" does and does not actually cost on a PR, and the
+    # one-line change (delete this key) that arms it in the "fails loud"
+    # sense — gated on the 6-item follow-up spec landing first, and
+    # distinct from the separate, stronger "stops a merge" sense.
     continue-on-error: true
     steps:
       - uses: actions/checkout@v7
+
+      - name: This job's own invocation never adds --tolerance (the gate's off-switch)
+        id: no_tolerance_check
+        # Mechanical, not prose-only — a future edit that adds `--tolerance
+        # 0.5` to the invocation step below would pass every OTHER check in
+        # this workflow (the checker still runs, pytest still runs) and
+        # would be the one change that silently neuters this job. Parses
+        # the YAML and walks every OTHER step's `run:` body, excluded BY
+        # THIS STEP'S OWN `id:` (`no_tolerance_check`) rather than by any
+        # content heuristic. A first draft filtered on the substring
+        # "check_token_contrast.py" appearing in a step's run body instead,
+        # and false-positived on ITSELF the moment it was run: this
+        # script's own error message ("--tolerance found alongside
+        # check_token_contrast.py ...") contains both substrings it was
+        # searching for, so a content-based exclusion cannot be made safe
+        # against its own prose. Excluding by `id:` has no such failure
+        # mode — it can never accidentally match its own source, no matter
+        # what this step's comments or messages say. Same lesson as the
+        # NOTICE-line paragraph above, applied to the gate itself rather
+        # than to the thing it gates: form vs entity, twice in one PR.
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check pyyaml
+          python3 - <<'PY'
+          import sys
+          import yaml
+
+          SELF_STEP_ID = "no_tolerance_check"
+
+          with open(".github/workflows/token-contrast-tests.yml") as f:
+              doc = yaml.safe_load(f)
+
+          offenders = []
+          for job_id, job in doc["jobs"].items():
+              for step in job.get("steps", []):
+                  if step.get("id") == SELF_STEP_ID:
+                      continue  # this step inspects the file; excluded by identity, not content
+                  run_body = step.get("run", "")
+                  if "--tolerance" in run_body:
+                      offenders.append((job_id, step.get("name", "<unnamed>")))
+
+          if offenders:
+              for job_id, name in offenders:
+                  print(f"::error::--tolerance found in job '{job_id}' step '{name}'")
+              sys.exit(1)
+
+          print("OK — no other run: step passes --tolerance")
+          PY
 
       - name: The shipped token file's claims recompute clean (drift, floor, required-claims)
         run: python3 scripts/check_token_contrast.py
