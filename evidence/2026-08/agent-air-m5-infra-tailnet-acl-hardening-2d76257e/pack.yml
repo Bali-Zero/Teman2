@@ -28,12 +28,12 @@ lanes:
       real cross-machine flows so the matrix is evidence-backed rather than guessed
 
 diff:
-  files: 24
-  net_lines: 1275
-  measured_at: 7d059287fd
+  files: 28
+  net_lines: 1476
+  measured_at: daefe9f26f
   note: >-
     git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD. The hand-authored
-    surface is the ACL, the guard, the runbook and 14 guilt fixtures; there is no generated
+    surface is the ACL, the guard, the runbook and 18 guilt fixtures; there is no generated
     artifact in this diff. Larger than the ~400-line target and declared as such in the PR body:
     the shape is policy-as-code plus its runbook plus its guard plus the fixture corpus that
     proves the guard fails, and the policy's comments ARE the artifact — the SHELL-ROUTE block
