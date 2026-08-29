@@ -1085,11 +1085,21 @@ def run(args: argparse.Namespace) -> int:
                               findings=[Finding(V_CANNOT_VERIFY,
                                                 "the read returned no archiver fields — "
                                                 "the probe looked at the wrong thing.")])
-            if not args.dry_run:
-                send_alert(format_message(verdict, obs), "blind", "p0")
+            if not args.dry_run and not send_alert(format_message(verdict, obs),
+                                                   "blind", "p0"):
+                log("ALERT NOT DELIVERED: the blind-guard p0 did not leave the machine.")
+                verdict.notes.append(Finding(
+                    V_ALERT_UNDELIVERED,
+                    "the blind-guard alert was computed but the gateway did not deliver "
+                    "it — treat this run as unreported."))
             if args.json:
                 print(json.dumps(verdict.as_dict(), indent=2))
-            return EXIT_BLIND
+            # C5 — return the VERDICT's code, never a parallel literal. They were two
+            # separate values on this path, so the JSON payload's `exit_code` was
+            # unpinned against the status the process actually exits with: a consumer
+            # reading the payload and a wrapper reading `$?` could disagree about the
+            # same run.
+            return verdict.exit_code
         if obs.get("in_recovery") is True or \
                 str(obs.get("in_recovery")).strip().lower() in ("true", "t"):
             cannot_verify_reason = (
@@ -1108,13 +1118,21 @@ def run(args: argparse.Namespace) -> int:
         )
         log(f"CANNOT_VERIFY (streak {streak}): {cannot_verify_reason}")
         if not args.dry_run:
-            send_alert(format_message(verdict, obs), "cannot-verify", tier)
+            delivered = send_alert(format_message(verdict, obs), "cannot-verify", tier)
+            if not delivered:
+                log("ALERT NOT DELIVERED: the CANNOT_VERIFY alert did not leave the "
+                    "machine.")
+                verdict.notes.append(Finding(
+                    V_ALERT_UNDELIVERED,
+                    "the alert for this run was computed but the gateway did not "
+                    "deliver it — treat this run as unreported."))
             state["cannot_verify_streak"] = streak
             state["last_verdict"] = V_CANNOT_VERIFY
+            state["last_alert_delivered"] = delivered
             save_state(path, state)
         if args.json:
             print(json.dumps(verdict.as_dict(), indent=2))
-        return EXIT_CANNOT_VERIFY
+        return verdict.exit_code
 
     first_run_count = _as_int(state.get("first_run_count"), 0)
     verdict = classify(previous, obs, state_status=state_status,

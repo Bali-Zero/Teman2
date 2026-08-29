@@ -321,6 +321,51 @@ receipts:
     exit: 0
     ts: "2026-08-29T07:20Z"
     seat: "session (m5, build lane)"
+  - claim: "C5 was never relayed to this lane; read verbatim from the gate's own comment, measured still-alive at this head, and CURED rather than ledgered"
+    cmd: "gh pr view 5205 --json comments  (round-1 verdict, section C5) ; then two mutants at head 91462523b0 with PYTHONDONTWRITEBYTECODE=1"
+    result: >-
+      The relay of C5 was lost and the dispatching agent declined to reconstruct it from
+      memory — correctly, because a plausible sentence is not the finding. Taken verbatim
+      from the gate's posted comment instead, which is the authoritative record.
+
+      Both survivors it named were re-measured HERE and both were still alive:
+      truncating `as_dict()["findings"]` to its first element passed all 79 tests, and
+      `run()` still returned a literal `EXIT_CANNOT_VERIFY` beside a `Verdict` carrying
+      its own `exit_code` — two parallel values for one fact, so a consumer reading the
+      JSON and a wrapper reading `$?` could disagree about the same run.
+
+      CURED rather than ledgered, deliberately: a ledger row is itself a
+      `PENDING-ARMS.md` edit and therefore costs the same push, so ledgering a defect
+      this small would have been strictly worse than closing it. Both mutants now die
+      (1 and 3 failures). The blind-guard p0 also had its delivery verdict discarded —
+      the same defect as the RED path, one branch over, and found only because C5 sent
+      me back into this function (W107: the cure that covers one of two identical sites).
+
+      Round 2 of the gate did not carry C5 forward; it is closed here anyway because it
+      was real and measured, not because it was still binding.
+    exit: 0
+    ts: "2026-08-29T07:35Z"
+    seat: "session (m5, build lane), on the gate's posted round-1 comment"
+  - claim: "C4's binding test was STILL a substring match one layer in, and its parser truncated the input it judged"
+    cmd: "4 mutants: `0 * a.archived_count` with the key kept; the CASE made primary-only; plus the two C5 mutants"
+    result: >-
+      A refuter (codex gpt-5.6-sol) pointed out that `column in expression` accepts
+      `0 * a.archived_count` — the cure for a substring guard was itself a substring
+      guard. Now the bound expression must BE the column, allowing only the `COALESCE(x,
+      '')` wrapper the query genuinely uses.
+
+      Fixing that exposed a second defect in the test, which is the part worth recording:
+      the per-line parser read only the line a key OPENS, so `current_wal_lsn` — a
+      three-line CASE — was judged as the string `CASE WHEN pg_is_in_recovery()`. A
+      parser that truncates its input judges something other than what the file says,
+      which is the same shape as W97 (a display cap read as the whole value). Continuation
+      lines are now folded in, and `current_wal_lsn`, `wal_segment_size` and
+      `in_recovery` are pinned to their real expressions instead of bare presence
+      anywhere in the query. Mutant: making the CASE primary-only — which would silently
+      read the wrong LSN on a standby — now turns it red.
+    exit: 0
+    ts: "2026-08-29T07:35Z"
+    seat: "session (m5, build lane), on codex gpt-5.6-sol's finding"
 dissent:
   - seat: "gpt-5.6-sol xhigh"
     objection: >-

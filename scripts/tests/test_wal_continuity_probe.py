@@ -893,13 +893,23 @@ def test_the_query_binds_each_json_key_to_its_real_column_not_just_the_key_name(
     # Per-LINE binding rather than an SQL parse: each key sits on its own line with the
     # expression it is bound to, and `COALESCE(a.x, '')` carries commas that a naive
     # field split would choke on.
+    # A binding can SPAN LINES (`current_wal_lsn` is a three-line CASE), so continuation
+    # lines are folded into the key that opened them. The first version of this parser
+    # read only the opening line and would have reported the CASE as `CASE WHEN
+    # pg_is_in_recovery()` — a parser that truncates its input judges something other
+    # than what the query says.
     pairs: dict[str, str] = {}
+    key: str | None = None
     for line in probe.ARCHIVER_QUERY.splitlines():
         stripped = line.strip()
-        if not stripped.startswith("'"):
+        if stripped.startswith("--"):
             continue
-        key, _, rest = stripped[1:].partition("'")
-        pairs[key] = rest
+        if stripped.startswith("'"):
+            key, _, rest = stripped[1:].partition("'")
+            pairs[key] = rest.lstrip(",").strip()
+        elif key is not None and stripped and not stripped.startswith(")"):
+            pairs[key] += " " + stripped
+    pairs = {k: v.strip().rstrip(",").strip() for k, v in pairs.items()}
 
     expected = {
         "archived_count": "a.archived_count",
@@ -910,15 +920,76 @@ def test_the_query_binds_each_json_key_to_its_real_column_not_just_the_key_name(
         "last_failed_time": "a.last_failed_time",
         "stats_reset": "a.stats_reset",
     }
-    for key, column in expected.items():
-        assert key in pairs, f"the query stopped selecting {key}"
-        assert column in pairs[key], \
-            f"{key} is no longer read from {column} — it now reads {pairs[key]!r}"
+    # `column in expression` was still a SUBSTRING test, one layer in — a refuter
+    # (codex gpt-5.6-sol) pointed out it accepts `0 * a.archived_count`, which contains
+    # the column and reads a constant. The bound expression must be the column ITSELF,
+    # allowing only the COALESCE default wrapper the query genuinely uses.
+    for json_key, column in expected.items():
+        assert json_key in pairs, f"the query stopped selecting {json_key}"
+        expr = pairs[json_key]
+        allowed = {column, f"COALESCE({column}, '')"}
+        assert expr in allowed, \
+            f"{json_key} is no longer read straight from {column} — it now reads {expr!r}"
+
+    # The two remaining fields are not `a.<column>` reads, so they are pinned against
+    # the exact expression instead of merely appearing SOMEWHERE in the query — the
+    # same gap, and the two the previous version left as bare presence checks.
+    assert pairs["in_recovery"] == "pg_is_in_recovery()"
+    lsn_expr = pairs["current_wal_lsn"]
+    assert "pg_current_wal_lsn()" in lsn_expr and "pg_last_wal_replay_lsn()" in lsn_expr, \
+        "the WAL position must come from the server, and must pick the replay LSN in "\
+        f"recovery rather than a primary-only call — it now reads {lsn_expr!r}"
+    seg_expr = pairs["wal_segment_size"]
+    assert "pg_settings" in seg_expr and "wal_segment_size" in seg_expr, \
+        f"wal_segment_size must be read from pg_settings — it now reads {seg_expr!r}"
     assert "pg_stat_archiver" in probe.ARCHIVER_QUERY
     assert "archive_mode" in probe.ARCHIVER_QUERY
     assert "archive_library" in probe.ARCHIVER_QUERY
-    assert "pg_is_in_recovery" in probe.ARCHIVER_QUERY
-    assert "wal_segment_size" in probe.ARCHIVER_QUERY
+
+
+def test_the_machine_readable_verdict_reports_everything_the_message_does():
+    """C5 — `--json` could under-report while `format_message` could not.
+
+    Two survivors the gate measured and I re-measured at this head: truncating
+    `as_dict()["findings"]` to its first element passed the whole suite, because
+    `test_multiple_faults_are_all_reported_not_just_the_first` asserts on
+    `verdict.findings` and never on the serialised form; and `Verdict.exit_code` was
+    unpinned against the code the process actually returns, because `run()` returned a
+    literal on that path. Nothing consumes `--json` today, which is exactly why it could
+    drift unnoticed until something did.
+    """
+    v = probe.classify(probe.sanitize_observation(obs()),
+                       probe.sanitize_observation(
+                           obs(archive_mode="off", failed_count=7,
+                               last_failed_time="2026-08-29 05:00:00+00")))
+    assert len(v.findings) >= 2, "fixture no longer produces multiple findings"
+    d = v.as_dict()
+    assert [f["code"] for f in d["findings"]] == [f.code for f in v.findings]
+    assert [n["code"] for n in d["notes"]] == [n.code for n in v.notes]
+    assert d["exit_code"] == v.exit_code
+
+
+@pytest.mark.parametrize("fixture,expected_rc", [
+    (dict(archive_mode="off"), EXIT_RED),
+    (dict(), EXIT_OK),
+])
+def test_the_json_exit_code_field_equals_the_code_the_process_returns(tmp_path,
+                                                                     monkeypatch, capsys,
+                                                                     fixture, expected_rc):
+    """The other half of C5: the serialised `exit_code` and the process's real exit
+    status are two different values, and only one of them is read by a human."""
+    monkeypatch.setattr(probe, "send_alert",
+                        lambda text, condition, tier, dry_run=False: True)
+    src = tmp_path / "o.json"
+    src.write_text(json.dumps(obs(**fixture)))
+    rc = probe.main(["--from-json", str(src), "--state-file", str(tmp_path / "s.json"),
+                     "--json"])
+    out = capsys.readouterr().out
+    payload = json.loads(out[out.index("{"):])
+    assert rc == expected_rc
+    assert payload["exit_code"] == rc, (
+        "the JSON says one thing and the process exits another — a consumer reading the "
+        "payload and a wrapper reading $? would disagree about the same run")
 
 
 def test_detection_latency_at_one_segment_per_run_is_pinned():
