@@ -1,0 +1,53 @@
+name: PR collision check (advisory)
+
+# PR-3, L06-ci-merge-queue-ship-pipeline.md. scripts/ci/pr_collision_check.py
+# generalizes lint_scar_number_collision.py's claim-set technique from
+# "W-number" to "file + hunk-window". ADVISORY ONLY: posts a comment naming
+# any add/add overlap against another open PR; gates nothing, is never a
+# required check, and no other job may `needs:` this one. Reinstate-by-catch
+# promotion is a separate, future PR after two clean advisory weeks.
+#
+# No top-level `paths:` filter — a collision is cross-PR, not scoped to
+# what THIS PR touches; a path filter would blind the check to exactly the
+# case it exists for (a one-line PR colliding with another's on a hot file).
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+concurrency:
+  group: pr-collision-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  pr-collision-check:
+    name: PR collision check (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          filter: blob:none
+
+      - name: Run collision check (never fails the job — advisory)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          python3 scripts/ci/pr_collision_check.py > /tmp/collision-report.md 2>&1
+          true
+
+      - name: Post advisory comment (never fails the job)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -uo pipefail
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" \
+            --edit-last --create-if-none --body-file /tmp/collision-report.md \
+            || echo "advisory comment post failed — non-blocking, see job logs"

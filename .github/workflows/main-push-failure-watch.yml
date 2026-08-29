@@ -285,6 +285,15 @@ on:
       # first run.
       - zantara-core-edit-gate
       - Vercel auto-promote organ tests
+      # Added with the workflow itself (PR-3, L06-ci-merge-queue-ship-
+      # pipeline.md, 2026-08-29): pr-collision-check.yml triggers on
+      # pull_request only (opened/reopened/synchronize/ready_for_review) —
+      # same non-reachable-but-still-required-for-coverage shape as
+      # actionlint / hot-zone-enforcement / Prettier (changed files) /
+      # Harness floor recompute above. check_watcher_coverage.py's
+      # contract is name-set membership against this file's `name:`, not
+      # alert-path reachability (see its own docstring).
+      - PR collision check (advisory)
     types: [completed]
     # 2026-08-20 CI-churn cure — see the matching GOTCHA above for the
     # measurement and the empirical proof this narrows run CREATION, never
