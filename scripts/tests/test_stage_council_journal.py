@@ -75,8 +75,12 @@ def _make_repo(tmp_path: Path, council_run: str, journal_at: str | None) -> tupl
     _git(repo, "config", "user.email", "corpus@example.invalid")
     _git(repo, "config", "user.name", "corpus")
 
+    # json.dumps gives a YAML double-quoted scalar, so a value's leading/trailing whitespace
+    # survives the round-trip — a plain scalar would be stripped by the YAML parser, and the
+    # unstripped case is exactly one of the mirrors under test.
     (pack_dir / "pack.yml").write_text(
-        f"brief_ref: evidence/brief.yml\ncouncil_run: {council_run}\ngear: 3\n", encoding="utf-8"
+        f"brief_ref: evidence/brief.yml\ncouncil_run: {json.dumps(council_run)}\ngear: 3\n",
+        encoding="utf-8",
     )
     (pack_dir / "brief.yml").write_text("gear: 3\n", encoding="utf-8")
     if journal_at is not None:
@@ -178,19 +182,63 @@ def test_nested_council_run_is_staged_with_its_parent_directories(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "council_run", ["/etc/passwd", "../../../etc/passwd", "../sibling/journal.jsonl"]
+    "council_run",
+    [
+        "/etc/passwd",
+        # POSIX reserves a LEADING DOUBLE SLASH: PurePosixPath("//x").parts[0] is "//", never "/",
+        # so a leading-"/" string compare accepts this — and `staged_dir / "//x"` then discards the
+        # left operand and writes outside the staged tree. R9 refuses it (Path.is_absolute()).
+        "//etc/passwd",
+        "../../../etc/passwd",
+        "../sibling/journal.jsonl",
+        # The canonical staged names: staging over either would clobber the very files the lint is
+        # about to read. R9 finds no quorum in a YAML document either way, so the pack still fails.
+        "pack.yml",
+        "brief.yml",
+    ],
 )
-def test_absolute_or_escaping_council_run_stages_nothing(tmp_path, council_run):
-    """GUILT: R9 refuses an absolute or pack-dir-escaping `council_run` itself. Staging one would
-    launder a path-confinement violation into a pass, so the script declines and says why — the
-    pack stays a violation, and nothing is written outside the staged pack dir."""
+def test_absolute_escaping_or_reserved_council_run_stages_nothing(tmp_path, council_run):
+    """GUILT: R9 refuses an absolute or pack-dir-escaping `council_run` itself, and the two
+    canonical staged names must never be written over. Staging any of them would either launder a
+    path-confinement violation into a pass or clobber the staged tree, so the script declines — the
+    pack stays a violation, and the staged dir still holds exactly the two files CI put there.
+
+    The stdout assertion is the load-bearing one: for "pack.yml" and "brief.yml" the blob really
+    does exist at HEAD, so a version that staged them would write bytes identical to what CI had
+    already put there and leave the file LIST unchanged — the refusal is only observable in the
+    decision the script reports."""
     repo, head_sha = _make_repo(tmp_path, council_run, "council-journal.jsonl")
-    staging_root = tmp_path / "ci"
-    staged = _stage_like_ci(repo, head_sha, staging_root, run_the_fix=True)
+    staged = _stage_like_ci(repo, head_sha, tmp_path / "ci", run_the_fix=False)
+    pack_rel = f"{PACK_DIR_REL}/pack.yml"
+
+    proc = _run_script(repo, staged / "pack.yml", pack_rel, head_sha)
+    assert proc.returncode == 0, proc.stderr
+    assert "staging nothing" in proc.stdout, proc.stdout
 
     assert sorted(p.name for p in staged.iterdir()) == ["brief.yml", "pack.yml"]
     violations, _ = _verdict(staged)
     assert violations and "council_run" in violations[0]
+
+
+@pytest.mark.parametrize(
+    ("council_run", "committed_at"),
+    [
+        # `..` that stays INSIDE the pack dir: R9 resolves it and accepts it, so refusing it here
+        # would fail a legitimate pack — this PR's own defect, in miniature.
+        ("council/../council-journal.jsonl", "council-journal.jsonl"),
+        ("./council-journal.jsonl", "council-journal.jsonl"),
+        # R9 tests `.strip()` for emptiness but resolves the RAW value, so a leading space is part
+        # of the filename it goes looking for. Stripping it here would stage the wrong name.
+        (" leading-space.jsonl", " leading-space.jsonl"),
+    ],
+)
+def test_council_run_shapes_r9_accepts_are_staged_verbatim(tmp_path, council_run, committed_at):
+    """INNOCENCE, the other direction of the mirror: every `council_run` shape R9 would resolve
+    inside the pack dir must reach the staged tree, or CI fails a pack that is not at fault."""
+    repo, head_sha = _make_repo(tmp_path, council_run, committed_at)
+    staged = _stage_like_ci(repo, head_sha, tmp_path / "ci", run_the_fix=True)
+
+    assert _verdict(staged) == ([], None)
 
 
 def test_declared_but_uncommitted_journal_stages_nothing_and_exits_clean(tmp_path):
@@ -223,14 +271,116 @@ def test_pack_declaring_no_council_run_stages_nothing(tmp_path):
     assert sorted(p.name for p in staged.iterdir()) == ["brief.yml", "pack.yml"]
 
 
+def test_guilt_a_directory_named_as_the_journal_is_never_staged(tmp_path):
+    """GUILT, the quorum fail-open: `git show <sha>:<a tree>` succeeds and prints the child
+    FILENAMES, one per line. A directory whose children are named like JSON review records would
+    therefore stage as a perfectly valid two-seat journal — while R9 refuses the directory outright
+    on a real tree (`journal_path.is_file()` is False). Only the git MODE separates the two."""
+    repo = tmp_path / "repo"
+    pack_dir = repo / PACK_DIR_REL
+    pack_dir.mkdir(parents=True)
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "corpus@example.invalid")
+    _git(repo, "config", "user.name", "corpus")
+    (pack_dir / "pack.yml").write_text(
+        'brief_ref: evidence/brief.yml\ncouncil_run: "as-a-dir"\ngear: 3\n', encoding="utf-8"
+    )
+    (pack_dir / "brief.yml").write_text("gear: 3\n", encoding="utf-8")
+    # Children named like JSON records: `git show` on the tree prints these names verbatim.
+    trap = pack_dir / "as-a-dir"
+    trap.mkdir()
+    for entry in JOURNAL_LINES:
+        (trap / json.dumps(entry).replace("/", "_")).write_text("x", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "corpus: a directory posing as a council journal")
+    head_sha = _git(repo, "rev-parse", "HEAD").stdout.strip()
+
+    staged = _stage_like_ci(repo, head_sha, tmp_path / "ci", run_the_fix=True)
+
+    assert not (staged / "as-a-dir").exists()
+    violations, _ = _verdict(staged)
+    assert violations and "council_run" in violations[0]
+
+
+def test_guilt_dotdot_cancelling_a_symlink_is_never_staged(tmp_path):
+    """GUILT: `..` is resolved lexically here and symlink-aware by R9, so the two name the same file
+    only while every directory a `..` cancels really is a directory. Where a symlink sits there,
+    stage nothing rather than hand R9 a file it would not have resolved to."""
+    repo = tmp_path / "repo"
+    pack_dir = repo / PACK_DIR_REL
+    pack_dir.mkdir(parents=True)
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "corpus@example.invalid")
+    _git(repo, "config", "user.name", "corpus")
+    (pack_dir / "pack.yml").write_text(
+        'brief_ref: evidence/brief.yml\ncouncil_run: "jump/../council-journal.jsonl"\ngear: 3\n',
+        encoding="utf-8",
+    )
+    (pack_dir / "brief.yml").write_text("gear: 3\n", encoding="utf-8")
+    (pack_dir / "council-journal.jsonl").write_text(
+        "".join(json.dumps(entry) + "\n" for entry in JOURNAL_LINES), encoding="utf-8"
+    )
+    (pack_dir / "jump").symlink_to("../../..")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "corpus: a symlink cancelled by ..")
+    head_sha = _git(repo, "rev-parse", "HEAD").stdout.strip()
+    assert _git(repo, "ls-tree", "HEAD", "--", f"{PACK_DIR_REL}/jump").stdout.split()[0] == "120000"
+
+    staged = _stage_like_ci(repo, head_sha, tmp_path / "ci", run_the_fix=True)
+
+    assert not (staged / "council-journal.jsonl").exists()
+    violations, _ = _verdict(staged)
+    assert violations and "council_run" in violations[0]
+
+
+def test_dotdot_cancelled_prefixes_names_every_directory_that_must_be_verified():
+    sys.path.insert(0, str(REPO / "scripts" / "ci"))
+    from stage_council_journal import dotdot_cancelled_prefixes
+
+    assert dotdot_cancelled_prefixes("journal.jsonl") == []
+    assert dotdot_cancelled_prefixes("a/../journal.jsonl") == ["a"]
+    assert dotdot_cancelled_prefixes("a/b/../../journal.jsonl") == ["a/b", "a"]
+
+
+def test_sanitize_relpath_mirrors_r9s_confinement_in_both_directions():
+    """The mirror stated directly, value by value. The end-to-end tests above cannot see the
+    "//x" case — `git show` refuses that pathspec before any write is attempted, so a version
+    that accepted it still stages nothing — but the acceptance is exactly what would put an
+    absolute path on the right-hand side of a join and land the write outside the staged tree."""
+    sys.path.insert(0, str(REPO / "scripts" / "ci"))
+    from stage_council_journal import sanitize_relpath
+
+    for refused in ("/etc/passwd", "//etc/passwd", "../x", "a/../../x", ".", "", "pack.yml", "brief.yml"):
+        assert sanitize_relpath(refused) is None, refused
+
+    for value, expected in (
+        ("journal.jsonl", "journal.jsonl"),
+        ("./journal.jsonl", "journal.jsonl"),
+        ("council//journal.jsonl", "council/journal.jsonl"),
+        ("council/../journal.jsonl", "journal.jsonl"),
+        ("a/b/../c.jsonl", "a/c.jsonl"),
+        (" leading-space.jsonl", " leading-space.jsonl"),
+    ):
+        assert sanitize_relpath(value) == expected, value
+
+
 # ---- the wiring, pinned against the workflow itself ------------------------
 
 
 def test_harness_floor_stages_the_council_journal_before_running_the_pack_lint():
     """The corpus above exercises the script; only this pins that harness-floor.yml still CALLS
     it, with the staged pack it is about to lint, BEFORE linting it. A workflow that stops
-    invoking the script would leave every test above green while restoring the whole defect."""
-    text = HARNESS_FLOOR.read_text(encoding="utf-8")
+    invoking the script would leave every test above green while restoring the whole defect.
+
+    Comment lines are stripped first (cross-family review, codex-gpt-5.6-sol, LOW): this step's own
+    explanatory comments name the script, so a bare substring search over the raw file would be
+    satisfied by a COMMENTED-OUT invocation. Declared residual gap: a live line parked under an
+    `if false` would still satisfy this — presence is what a static pin can prove, not reachability."""
+    text = "\n".join(
+        line
+        for line in HARNESS_FLOOR.read_text(encoding="utf-8").splitlines()
+        if not line.lstrip().startswith("#")
+    )
 
     invocation = "python3 scripts/ci/stage_council_journal.py"
     assert invocation in text

@@ -38,10 +38,23 @@ NOTICE today, violation on/after the flip — which is strictly stricter than st
 fail-open):
 
   * no `council_run:` field, or a blank/non-string one — nothing is declared, nothing to stage;
-  * an ABSOLUTE path, or one escaping the pack dir via `..` — R9 rejects these shapes itself, and
-    staging them would launder a path-confinement violation into a pass;
-  * a `council_run:` that names a file not present at HEAD — the pack declares a journal it did
-    not commit, which is exactly what R9 exists to catch.
+  * an ABSOLUTE path (leading "/" or POSIX's reserved leading "//"), or one escaping the pack dir
+    via `..` — R9 rejects these shapes itself, and staging them would launder a path-confinement
+    violation into a pass;
+  * `pack.yml` or `brief.yml` — the canonical names harness-floor.yml stages the pack and brief
+    under, which the journal must never be written over (see STAGED_RESERVED_NAMES);
+  * a `council_run:` that does not name a REGULAR FILE (git mode 100644/100755) at HEAD — an absent
+    path, but also a directory, a symlink or a gitlink. `git show` on a TREE succeeds and prints the
+    child filenames, so without the mode gate a directory whose children are named like JSON records
+    would stage as a valid two-seat journal that R9 refuses on a real tree;
+  * a `..` that cancels something which EXISTS at HEAD and is not a directory — there the lexical
+    resolution below and R9's symlink-aware `Path.resolve()` would name different files. A cancelled
+    prefix that does not exist is fine: `Path.resolve()` is non-strict and normalizes it lexically
+    too.
+
+A `..` that stays INSIDE the pack dir ("a/../b") is NOT in that list: R9 resolves it and accepts
+it, so this script resolves it the same way and stages it. Refusing it would fail a legitimate
+pack — this defect in miniature.
 
 Exit codes: 0 = staged, or nothing to stage (every case above); 1 = the journal was resolved but
 could not be written (a real infrastructure failure, never a verdict about the pack).
@@ -73,25 +86,111 @@ def read_council_run(pack_text: str) -> str | None:
     raw = pack.get("council_run")
     if not isinstance(raw, str) or not raw.strip():
         return None
-    return raw.strip()
+    # Returned UNSTRIPPED (only the emptiness test strips). R9 tests `council_run.strip()` for
+    # emptiness but then resolves the RAW string, so a value like " journal.jsonl" names a file
+    # whose first character is a space. Stripping here would stage it under a different name than
+    # the one R9 goes looking for — a divergence in the direction that fails a legitimate pack,
+    # which is the whole class of defect this script exists to remove.
+    return raw
+
+
+#: Staged filenames the journal may never be written over: harness-floor.yml stages the pack and
+#: the brief under exactly these canonical names, so a `council_run:` naming one of them would have
+#: the staging clobber the very files the lint is about to judge. R9 could never find a quorum in
+#: either (both are YAML documents, not JSON Lines), so refusing them costs no legitimate pack
+#: anything — it only removes the clobber.
+STAGED_RESERVED_NAMES = frozenset({"pack.yml", "brief.yml"})
 
 
 def sanitize_relpath(council_run: str) -> str | None:
     """The pack-dir-relative form of `council_run`, or None if R9 would refuse to resolve it.
 
-    Mirrors _read_council_journal_seats' confinement check by construction: absolute paths and any
-    `..` component are refused here for the same reason they are refused there. PurePosixPath is
-    used (not os.path) because evidence/ paths in this repo are always POSIX-style, and it collapses
-    `.` components on its own, so "./journal.jsonl" and "journal.jsonl" stage identically.
+    Mirrors _read_council_journal_seats' confinement check by construction, and the mirror has to
+    be exact in BOTH directions: a value this refuses but R9 accepts fails a legitimate pack, and a
+    value this accepts but R9 refuses stages a file R9 will not look at. So the `..` components are
+    resolved LEXICALLY here, exactly as R9's `(pack_dir / council_run).resolve()` resolves them
+    (cross-family review, kimi-code/k3): "a/../b" is a perfectly good reference to "b" inside the
+    pack dir, and refusing it outright — as the first version of this function did — would have
+    reintroduced the defect in miniature.
+
+    Absoluteness is asked of PurePosixPath rather than tested against a leading "/" for the same
+    reason (same review): POSIX reserves a LEADING DOUBLE SLASH, so `PurePosixPath("//x").parts[0]`
+    is "//" and never equals "/". `Path("//x").is_absolute()` is True, so R9 refuses it — and a
+    string-compare version of this check would have accepted it and then joined it onto the staged
+    pack dir, where an absolute right-hand operand discards the left and the write lands outside
+    the staged tree entirely.
     """
-    parts = PurePosixPath(council_run).parts
-    if not parts or parts[0] == "/" or ".." in parts:
+    if PurePosixPath(council_run).is_absolute():
         return None
-    return PurePosixPath(*parts).as_posix()
+    resolved: list[str] = []
+    for part in PurePosixPath(council_run).parts:
+        if part == "..":
+            if not resolved:
+                return None  # escapes the pack dir, exactly as R9's confinement check refuses
+            resolved.pop()
+        else:
+            resolved.append(part)
+    if not resolved:
+        return None
+    relpath = PurePosixPath(*resolved).as_posix()
+    if relpath in STAGED_RESERVED_NAMES:
+        return None
+    return relpath
+
+
+def dotdot_cancelled_prefixes(council_run: str) -> list[str]:
+    """The pack-dir-relative directory paths that `..` components of `council_run` cancel.
+
+    Each one must be a REAL DIRECTORY in the tree for the lexical resolution above to agree with
+    R9's `Path.resolve()` — see verify_cancelled_prefixes_are_directories, which is where that is
+    enforced. Returns [] for a value with no `..`, which is every real pack.
+    """
+    prefixes: list[str] = []
+    stack: list[str] = []
+    for part in PurePosixPath(council_run).parts:
+        if part == "..":
+            if not stack:
+                return prefixes
+            prefixes.append(PurePosixPath(*stack).as_posix())
+            stack.pop()
+        else:
+            stack.append(part)
+    return prefixes
+
+
+def tree_entry_mode(repo: Path, head_sha: str, path: str, git_bin: str = "git") -> str | None:
+    """The git mode of `<head_sha>:<path>` ("100644", "040000", "120000", ...), or None if absent.
+
+    `git ls-tree` is asked rather than `git cat-file -t` because TYPE IS NOT ENOUGH: a symlink is
+    stored as a blob, so `cat-file -t` answers "blob" for both a real file and a symlink, and only
+    the mode tells them apart (measured: `.claude/skills/bot` in this repo is type blob, mode
+    120000).
+    """
+    proc = subprocess.run(
+        [git_bin, "-C", str(repo), "ls-tree", "--full-tree", head_sha, "--", path],
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode != 0 or not proc.stdout.strip():
+        return None
+    return proc.stdout.split()[0]
 
 
 def journal_bytes_at_head(repo: Path, head_sha: str, path: str, git_bin: str = "git") -> bytes | None:
-    """The blob at `<head_sha>:<path>`, or None when it does not exist there."""
+    """The REGULAR-FILE blob at `<head_sha>:<path>`, or None for anything else.
+
+    The mode gate is the point, not the read (cross-family review, codex-gpt-5.6-sol, CRITICAL):
+    `git show <sha>:<a-tree>` succeeds and prints a HEADER PLUS THE CHILD FILENAMES, one per line.
+    Written out as the journal, a directory whose children are named like JSON records becomes a
+    perfectly valid two-seat JSONL — and R9, which refuses the directory outright on a real tree
+    (`journal_path.is_file()` is False), would read the staged listing and find quorum. Verified on
+    this repo: `git show HEAD:evidence/2026-08/<a pack dir>` prints "tree <sha>:<path>" then
+    brief.yml / council-journal.jsonl / pack.yml. Symlinks (120000) and gitlinks (160000) are
+    refused by the same gate; git does not follow symlinks in a pathspec either (measured), so a
+    journal can never be read from outside the pack directory.
+    """
+    if tree_entry_mode(repo, head_sha, path, git_bin) not in ("100644", "100755"):
+        return None
     proc = subprocess.run(
         [git_bin, "-C", str(repo), "show", f"{head_sha}:{path}"],
         capture_output=True,
@@ -125,18 +224,39 @@ def main(argv: list[str] | None = None) -> int:
     relpath = sanitize_relpath(declared)
     if relpath is None:
         print(
-            f"stage_council_journal: council_run: '{declared}' is absolute or escapes the pack dir — "
-            "staging nothing, R9 refuses this shape itself"
+            f"stage_council_journal: council_run: '{declared}' is absolute, escapes the pack dir, "
+            f"or names one of the staged files {sorted(STAGED_RESERVED_NAMES)} — staging nothing"
         )
         return 0
 
+    repo = Path(args.repo)
     source_dir = PurePosixPath(args.source_path).parent
+
+    # A `..` is resolved LEXICALLY above; R9's Path.resolve() is SYMLINK-AWARE. The two agree only
+    # while every directory a `..` cancels really is a directory (cross-family review,
+    # codex-gpt-5.6-sol, HIGH — demonstrated with a symlink already tracked in this repo:
+    # ".claude/skills/bot/../x" is ".claude/skills/x" lexically and ".agents/skills/x" resolved).
+    # Where they would disagree, stage nothing and let R9 judge the pack.
+    # A prefix that does not exist at all is NOT a disagreement: Path.resolve() is non-strict and
+    # normalizes a missing component lexically, exactly as this script does. Only an EXISTING
+    # non-directory — a symlink, or a file — makes the two name different things.
+    for prefix in dotdot_cancelled_prefixes(declared):
+        prefix_path = (source_dir / prefix).as_posix()
+        mode = tree_entry_mode(repo, args.head_sha, prefix_path, args.git_bin)
+        if mode is not None and mode != "040000":
+            print(
+                f"stage_council_journal: council_run: '{declared}' cancels '{prefix}', which exists "
+                f"at HEAD but is not a directory (mode {mode}) — lexical and symlink-aware "
+                "resolution would name different files, so staging nothing"
+            )
+            return 0
+
     journal_source = (source_dir / relpath).as_posix()
-    blob = journal_bytes_at_head(Path(args.repo), args.head_sha, journal_source, args.git_bin)
+    blob = journal_bytes_at_head(repo, args.head_sha, journal_source, args.git_bin)
     if blob is None:
         print(
             f"stage_council_journal: pack declares council_run: '{declared}' but '{journal_source}' "
-            "does not exist at HEAD — staging nothing, R9 will judge the pack on that"
+            "is not a regular file at HEAD — staging nothing, R9 will judge the pack on that"
         )
         return 0
 
