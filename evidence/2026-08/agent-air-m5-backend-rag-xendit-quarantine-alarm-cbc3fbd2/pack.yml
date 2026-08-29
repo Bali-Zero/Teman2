@@ -1,0 +1,196 @@
+brief_ref: evidence/brief.yml
+effort_for_gear: xhigh
+plan_ref: >-
+  PR #5204 (agent/air-m5/backend-rag/xendit-quarantine-alarm) — gives
+  `garuda_payment_inbox.outcome = 'quarantined'` its first non-test reader,
+  a page that reaches a human, and a recorded cause (migration 298).
+lanes:
+  - lane: xendit-quarantine-alarm
+    role: build
+    seat: "session (Air-M5, Opus 5 — dispatched by team-lead per CLAUDE.md §5 implementer routing)"
+  - lane: xendit-quarantine-alarm-gate
+    role: review
+    seat: "independent adjudicator, to be dispatched by team-lead — generator != grader; this lane deliberately posts NO verdict of its own"
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Exactly ONE build lane, so the D3 floor does not fire (it applies to
+  packs declaring >= 2 build lanes). Stated rather than omitted: this was
+  a single-session backend change with a real Postgres to measure against,
+  not a cross-family council dispatch, and inventing a second build seat
+  to satisfy a rule that does not apply would be ceremony.
+diff:
+  net_lines: >-
+    12 files, +1584/-16, measured by
+    `git diff --numstat origin/main HEAD`. Over the ~400-line guidance and
+    declared as such rather than hidden: roughly 595 of those lines are
+    tests (test_quarantine_alarm.py 320, test_payment_inbox_watch.py 275)
+    and 97 are the migration's header comment, while this evidence pair and
+    the PENDING-ARMS rows account for most of the rest. It remains ONE
+    concern — a refused payment callback must reach a human, with enough to
+    act on.
+  behaviour_change: >-
+    Adds a reader, an alarm and a `quarantine_reason` column. The five
+    quarantine decision POINTS are unchanged — same branches, same
+    returns, same OP-F03 — they now record WHICH cause fired. The failure
+    and refund paths previously recorded two genuinely different incidents
+    ("no such checkout session" and "the order's state does not admit this
+    event") identically; they now distinguish them. Nothing else in the
+    payment path is touched, and no flag is flipped.
+receipts:
+  - claim: "THE DISPATCHED DEFECT DOES NOT EXIST — the append-only ledger's quarantine state is written at five sites and read at NONE outside tests. This is the measurement the whole lane rests on."
+    cmd: 'git grep -n "FROM garuda_payment_inbox" origin/main'
+    result: "exactly one line, and it is a test: origin/main:apps/backend-rag/backend/tests/services/garuda_orders/test_funnel_end_to_end_http.py:655"
+    exit: 0
+    ts: "2026-08-29T05:55:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: "The five writers exist, so the state is genuinely write-only rather than merely unused"
+    cmd: 'git grep -n "quarantined" origin/main -- apps/backend-rag/backend/services/garuda_orders/repository.py'
+    result: "five SET sites at lines 389, 406, 540, 580, 649 — all UPDATE ... SET outcome = 'quarantined'; zero SELECTs"
+    exit: 0
+    ts: "2026-08-29T05:55:30Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: "The dispatch's OTHER three claims are false: reconciliation exists AND is armed, contradicting 'there is no job that compares what the provider thinks was paid against what the system recorded'"
+    cmd: 'git grep -n "reconcile_expired_checkouts" origin/main'
+    result: "called from apps/backend-rag/backend/app/main_api.py:396 under a pg_try_advisory_lock, with test_garuda_outbox_scheduler.py:376 labelled 'THE arming assertion' — plus its own definition and tests"
+    exit: 0
+    ts: "2026-08-29T05:56:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: "Deterministic gear floor recomputed from this PR's actual diff is 3 — migrations_v2 is hot-zone by path, not the author's choice"
+    cmd: "git diff --name-only origin/main HEAD > /tmp/ql-changed.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/ql-changed.txt"
+    result: "3"
+    exit: 0
+    ts: "2026-08-29T06:40:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: "Migration 298 applies cleanly against a REAL Postgres, and is idempotent (it was applied twice during development, the second time after a botched sed range had partially reverted it)"
+    cmd: "sed '/=== ROLLBACK ===/q' apps/backend-rag/backend/db/migrations_v2/298_garuda_payment_inbox_quarantine_reason.sql | psql -v ON_ERROR_STOP=1 postgresql://localhost:5432/nuzantara_test"
+    result: "ALTER TABLE / ALTER TABLE / ALTER TABLE / COMMENT / CREATE INDEX, with NOTICEs for the already-existing constraint and index on the second run; column verified present and nullable via information_schema"
+    exit: 0
+    ts: "2026-08-29T06:12:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: "Migration number 298 collides with nothing on ANY ref, checked across all branches rather than the local checkout (290 and 291 already collide — W40 — which is why this was checked properly)"
+    cmd: "git log --all --diff-filter=A --name-only --format='' -- 'apps/backend-rag/backend/db/migrations_v2/29*' | sort -u"
+    result: "highest existing is 297; 298 free. (290 and 291 each appear twice from different lanes — pre-existing, not this PR's)"
+    exit: 0
+    ts: "2026-08-29T06:05:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: "MUTATION 1 — removing the `outcome = 'quarantined'` filter from the reader turns a named test RED, so the innocence half is real and not decorative"
+    cmd: 'replace "WHERE outcome = ''quarantined''" with ''WHERE outcome IS NOT NULL'' in payment_inbox_watch.py, then PYTHONPATH=. pytest backend/tests/services/garuda_orders/test_payment_inbox_watch.py'
+    result: "FAILED test_committed_and_received_rows_are_not_a_condition - AssertionError: assert 3 == 0"
+    exit: 1
+    ts: "2026-08-29T06:20:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: "MUTATION 2 — deriving the reason set from the truncated sample instead of the window turns a named test RED"
+    cmd: 'replace `reasons=frozenset(r["reason"] for r in reason_rows)` with a sample-derived frozenset, then PYTHONPATH=. pytest backend/tests/services/garuda_orders/test_payment_inbox_watch.py'
+    result: "FAILED test_the_reason_set_covers_the_whole_window_not_just_the_sample - AssertionError: assert 'amount_mismatch' in frozenset({'unmatched_session'})"
+    exit: 1
+    ts: "2026-08-29T06:33:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: "MUTATION 3 — committing the suppression state inside `decide` (undoing the decide/confirm_sent split) turns a named test RED, so the undelivered-page guarantee is falsifiable"
+    cmd: "add `self._last_signature = signature; self._last_sent_at = now` inside decide() in quarantine_alarm.py, then PYTHONPATH=. pytest backend/tests/services/garuda_orders/test_quarantine_alarm.py"
+    result: "FAILED test_a_page_that_was_never_delivered_does_not_silence_the_next_hour - AssertionError: an undelivered page consumed the suppression window"
+    exit: 1
+    ts: "2026-08-29T06:35:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: "MUTATION 4 — disarming the reader in the scheduler (the exact measured origin/main state) turns the arming assertions RED. This is the mutation that matters most: the defect being cured IS an unarmed reader."
+    cmd: "replace `snapshot = await count_quarantined(conn)` in main_api.py with a hardcoded clean snapshot, then PYTHONPATH=. pytest backend/tests/unit/services/test_garuda_outbox_scheduler.py"
+    result: "FAILED test_the_periodic_tick_reads_the_payment_quarantine - AssertionError: the quarantine must be read exactly once per periodic tick; FAILED test_the_quarantine_is_read_even_when_the_order_lane_is_not_wired - assert 0 == 1"
+    exit: 1
+    ts: "2026-08-29T06:36:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: "All four mutations were REVERTED and the suite is green on the shipped code — the tree was verified clean, not assumed"
+    cmd: "git -C <worktree> status --short && PYTHONPATH=. pytest test_payment_inbox_watch.py test_quarantine_alarm.py test_outbox_alarm.py test_garuda_outbox_scheduler.py"
+    result: "git status empty; pytest exit code 0 across all four files (15 + 21 + 15 + 18 tests). The pre-existing outbox alarm suite is untouched and still green."
+    exit: 0
+    ts: "2026-08-29T06:45:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: "The ledger rows added by this PR parse and declare no phantom operator lane"
+    cmd: "python3 scripts/pending_arms_report.py"
+    result: "counts: total=624 phantom_operator=0 malformed=0; both new rows render under their own headings"
+    exit: 0
+    ts: "2026-08-29T06:50:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+pii_scan: clean
+dissent:
+  - seat: "Harness floor recompute (CI, deterministic)"
+    objection: >-
+      This PR touches `apps/backend-rag/backend/db/migrations_v2/` — a
+      hot-zone path — so it floors at Gear 3 regardless of the change being
+      one additive nullable column with no data migration and no existing
+      column altered.
+    status: CONFIRMED
+    note: >-
+      Verified independently rather than accepted on a FAIL message alone:
+      recomputed the floor from this PR's own changed-file list via
+      `evidence_pack_lint.py --print-floor` and got 3 (receipt above).
+      Answered by supplying this brief+pack at the per-branch evidence path
+      resolved by `scripts/ci/evidence_paths.py`.
+  - seat: "session, self-check on scope (the honest version, because the first answer was wrong)"
+    objection: >-
+      Adding a migration to a PR dispatched as "an alarm" is scope creep,
+      and Agent PR Contract rule 1 exists to stop exactly that.
+    status: PLAUSIBLE
+    note: >-
+      Not retracted, because it is a real cost and the reader should weigh
+      it rather than be told it was fine. The reason it was done anyway:
+      without `quarantine_reason` the three causes inside
+      `handle_paid_event` alone are indistinguishable in the schema, so the
+      alarm could only emit "N quarantined, cause unknown" — which is the
+      half-cure this subsystem has now produced three times, and it could
+      not satisfy the explicit instruction that the page name the amount
+      mismatch when that is the cause. The alternative considered and
+      rejected was shipping the alarm first and the reason second: that
+      lands a page nobody can act on, and the second PR would touch the
+      same five call sites again. The cost is declared in `diff.net_lines`
+      rather than hidden.
+  - seat: "session, self-check on the windowed count"
+    objection: >-
+      Windowing the page at 24h means a quarantined payment that nobody
+      handles goes SILENT after a day — the alarm stops mentioning real
+      money that is still unreconciled.
+    status: CONFIRMED
+    note: >-
+      Confirmed, not argued away, and the design answers it only partly.
+      Unwindowed, the population only ever grows and no tooling lets a
+      human clear a row, so the alarm would page hourly forever after the
+      first quarantine and be muted within a day — a muted alarm is worse
+      than a windowed one. Two mitigations are in the shipped code: the
+      LIFETIME total travels with every message including the quiet one,
+      so history can never read as "none at all"; and the quiet notice
+      deliberately never says "recovered", because a row leaves the window
+      by ageing out rather than by being handled. The real fix is an
+      acknowledgement column, which is a schema change with its own review
+      — the honest limitation is stated in `payment_inbox_watch.py`'s
+      module docstring rather than papered over.
+  - seat: "session, self-check on duplicating OutboxAlarm"
+    objection: >-
+      `QuarantineAlarm` re-implements `OutboxAlarm`'s state machine instead
+      of extracting a shared base — ~60 lines of duplicated discipline, and
+      the two can now drift.
+    status: RETRACTED
+    note: >-
+      Investigated rather than assumed innocent. The thing that MUST not
+      drift is the re-alert cadence, and that is shared for real:
+      `REALERT_SECONDS` is IMPORTED from `outbox_alarm`, not re-declared.
+      What differs is the condition type, the vocabulary and every line of
+      message text, so a shared base would have been a parameterised
+      template rather than a reuse. Against that: `OutboxAlarm` is the LIVE
+      money-page for the outbox queue, and rewriting it inside a PR about
+      the payment inbox is a second concern and a real regression risk for
+      a dozen saved lines. The reasoning is recorded in the new module's
+      docstring so the next reader can overturn it deliberately.
+  - seat: "session, on the two residuals this lane did NOT fix"
+    objection: >-
+      Two defects were found and left open: `outcome = 'received'` is
+      unreachable as a persisted state, and "received but never processed"
+      is undetectable. Leaving known defects open is how they become
+      permanent.
+    status: CONFIRMED
+    note: >-
+      Both are ledgered in `.claude/skills/modus/PENDING-ARMS.md` with this
+      session as owner, and the second row leads with "this is BY DESIGN,
+      not an oversight — read this row before fixing it": the inbox INSERT
+      shares the handler's transaction, which is precisely what buys the
+      provider a clean retry, so a naive "fix" would be a regression. Its
+      arming step is therefore to MEASURE whether the failure ever occurs
+      once GARUDA is live, then decide — not to build a detector whose own
+      orphan class would be unbounded.
