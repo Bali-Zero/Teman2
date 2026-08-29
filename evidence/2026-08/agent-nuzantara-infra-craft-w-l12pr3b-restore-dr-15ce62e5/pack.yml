@@ -1,0 +1,246 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: |
+  docs/plans/2026-08-29-beyond-sota-craft-wave/L12-data-schema-migrations.md, PR-3 (second half).
+  PR-3 was split: #5260 shipped the Level-5 verifier `scripts/ci/restore_drill_verify.py`; this PR
+  wires the workflow to CALL it. The split was originally attempted as a STACK (base =
+  the #5260 branch) and the `Base branch protected` gate rejected it, correctly: an `agent/*` branch
+  carries no ruleset, so a PR based on one bypasses every required check this repo has. Repointed to
+  `main`; the dependency is stated in prose instead of encoded in a base ref.
+lanes:
+  - lane: craft-w-l12pr3b-build
+    role: build
+    seat: sonnet-5
+    scope: |
+      Two rounds, each dispatched on a finding the gate had already MEASURED, never on a description:
+      (1) re-arm the `ON_ERROR_STOP` assertion against the executable psql line after the gate proved
+      a body-wide substring check was satisfied by comments alone; (2) scope the belt-and-braces
+      `ON_ERROR_STOP=0` check to executable lines too, after the gate found the first fix could
+      false-RED on a reworded comment.
+  - lane: craft-w-l12pr3b-refute-r1
+    role: review
+    seat: codex-gpt-5.6-sol
+    scope: Adversarial round on the final diff, read-only sandbox, xhigh effort, six declared attack axes.
+  - lane: craft-w-l12pr3b-refute-r2
+    role: review
+    seat: kimi-code/k3
+    scope: Second adversarial round on the same final diff, different family.
+seat_diversity: satisfied
+seat_diversity_note: |
+  Two DISTINCT non-Anthropic review seats from different families, both run on the FINAL bytes —
+  not one seat consulted twice, and not a quorum assembled after the fact. Both seats were
+  RE-MEASURED alive at the start of this session (`SEAT-ALIVE-CODEX` / `SEAT-ALIVE-KIMI`, rc=0)
+  because the SessionStart arsenal banner reported `codex✗unknown_err` from a 2-hour-old probe and
+  a previous session had honestly recorded only one reachable seat. A stale probe reporting a seat
+  dead is indistinguishable from a dead seat until you call it.
+diff: |
+  `.github/workflows/restore-drill.yml` (+145/-32) and `scripts/tests/test_restore_drill_workflow_wiring.py`
+  (+148, new). Net 261 against the 400 contract.
+
+  NO PRODUCTION CODE CHANGES. `scripts/ci/restore_drill_verify.py` is untouched here — it landed in
+  #5260 and is on main. This PR's whole payload is the workflow's exit-code wiring and the corpus
+  that pins it.
+receipts:
+  - claim: |
+      THE PR'S HEADLINE CLAIM WAS ARMED BY A COMMENT. `test_restore_and_verify_capture_their_own_exit_code_not_a_swallow`
+      asserted `"ON_ERROR_STOP=1" in body` over the whole step body; that literal occurs FIVE times
+      there — once on the executing `psql "$DSN" -v ON_ERROR_STOP=1` line, and four times in prose
+      (three `#` comments plus an `echo "::error title=Restore aborted (ON_ERROR_STOP=1)::…"`).
+    cmd: |
+      perl -pi -e 's{psql "\$DSN" -v ON_ERROR_STOP=1}{psql "\$DSN" -v ON_ERROR_STOP=0}' restore-drill.yml
+      # comments deliberately untouched; then pytest
+    result: |
+      BEFORE the fix: 5 passed — the flip was invisible.
+      AFTER  the fix: 1 failed, 4 passed, with 4 comment mentions of ON_ERROR_STOP=1 verified still
+      present in the file at the moment of the run.
+    exit: 0
+    ts: "2026-08-30T01:35:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      THE FIRST FIX COULD FALSE-RED ON A COMMENT — the mirror of the bug it cured. Its
+      belt-and-braces `assert "ON_ERROR_STOP=0" not in body` scanned comments too, green today only
+      because the existing comment reads `# ON_ERROR_STOP=1 (was 0)` rather than `# was ON_ERROR_STOP=0`.
+    cmd: |
+      append `# historical note: this drill used to run with ON_ERROR_STOP=0` INTO the run: body,
+      then pytest, both before and after scoping the assertion to _executable_lines()
+    result: |
+      unscoped: 1 failed, 4 passed — a cosmetic reword of non-load-bearing prose fails the build.
+      scoped:   5 passed. Restore cmp -s byte-identical; re-innocence 5 passed.
+    exit: 0
+    ts: "2026-08-30T01:52:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      THE SURROUNDING GUARDS ARE ARMED — mutation battery re-run by the gate on the PRODUCTION
+      workflow, every restore from a `cp` backup and verified byte-identical with `cmp -s`, never
+      `git checkout --` (W125). PYTHONDONTWRITEBYTECODE=1 and `-p no:cacheprovider` throughout (W121).
+    cmd: cp backup -> mutate -> pytest -> cp restore -> cmp -s, per guard
+    result: |
+      reintroduce `|| true` on the log-tail line ......... 2 red
+      RESTORE_RC=${PIPESTATUS[0]} (gunzip's rc) .......... 1 red
+      drop `exit "$VERIFY_RC"` .......................... 1 red
+      let TG_RC gate the exit in success-notify ......... 1 red
+      Baseline 5 passed. Restore byte-identical after every one.
+    exit: 0
+    ts: "2026-08-30T01:30:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      A MUTATION THAT DOES NOT APPLY IS INDISTINGUISHABLE FROM ONE THAT SURVIVES, and this session's
+      own harness produced two false survivors before the gate noticed. `perl -0pi` slurps and,
+      without `/g`, replaces the FIRST occurrence — which in this codebase is usually the comment or
+      docstring that EXPLAINS the expression, not the expression.
+    cmd: grep for the mutated text on the EXECUTABLE line before believing any pytest result
+    result: |
+      `ON_ERROR_STOP=1` non-global flip edited a COMMENT at line 129 and left the psql call at 168
+      intact -> "5 passed" read as "guard present". Only after asserting the mutation LANDED did the
+      real defect become visible. `cmp -s` says "the file changed"; it does not say "the thing you
+      meant to change, changed".
+    exit: 0
+    ts: "2026-08-30T01:33:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      TWO SEATS, TWO ROUNDS, AND THE CURE ITSELF HAD TO BE CURED. Round 1 found twelve defects
+      including a BLOCKER neither the implementer nor the gate had seen: the corpus was executed by
+      NOTHING that can go red. Round 2, briefed to hunt what the CURE broke, found that the gunzip
+      check it added runs BEFORE the psql check.
+    cmd: |
+      probe: flip ONLY `psql "$DSN" -v ON_ERROR_STOP=1` to =0, leave all comments; require red
+      probe: reintroduce `|| true` on the tail line; require red
+      probe: mutate RESTORE_RC=${_PIPE_STATUSES[1]} -> ${PIPESTATUS[0]} and require a red test
+      probe: mutate an `exit $TG_RC` onto the success-notify path and require a red test
+      cp backup -> mutate -> grep-confirm it landed on the EXECUTABLE line -> pytest -> cp restore -> cmp -s
+    result: |
+      drop the gunzip check .............. 3 red      delete `set +e` before the pipe .... 1 red
+      empty the `exit 3` branch .......... 1 red      flag into a TRAILING comment ....... 2 red
+      ADD a legitimate flagless `psql "$DSN" -Atc 'SELECT 1'` ... 16 PASSED (the over-match probe:
+        a cure for an under-match usually births an over-match, so the probe that must stay GREEN
+        matters as much as the ones that must go red)
+      Baseline 16 passed. Restore byte-identical after every one.
+    exit: 0
+    ts: "2026-08-30T03:40:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      MY OWN CURE BLAMED THE ARCHIVE FOR EVERY PSQL FAILURE. psql dying closes the pipe, so gunzip
+      receives SIGPIPE 141 — and the gunzip check ran first, so a genuine SQL failure reported
+      "Backup archive truncated or corrupt". W106, reintroduced by the ORDERING of a check whose own
+      brief warned against exactly that in the other direction.
+    cmd: |
+      measured with real gzip archives, then the SHIPPED judgment logic driven with forced values
+      under `bash --noprofile --norc -eo pipefail`
+    result: |
+      gunzip -c big.gz | sh -c 'exit 3'    -> PIPESTATUS = (141, 3)
+      gunzip -c trailing_garbage.gz | cat  -> rc=2, "trailing garbage ignored", 199999/199999 lines
+
+      gunzip psql  exit  annotation
+         0     0     0   proceeds
+       141     3     3   Restore aborted (ON_ERROR_STOP=1)        <- was "archive corrupt"
+         0     3     3   Restore aborted (ON_ERROR_STOP=1)
+       141     0     0   WARNING: SIGPIPE after a successful restore (proceeds — no false RED)
+         2     0     4   gzip warning-class status (restore completed) — does NOT claim truncation
+         1     0     4   Backup archive truncated or corrupt
+    exit: 0
+    ts: "2026-08-30T04:05:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      THE CORPUS NOW HAS AN EXECUTOR THAT CAN GO RED. Before this PR no workflow named either corpus;
+      the only sweep over scripts/tests/ is `continue-on-error: true` and, by its own header,
+      "deliberately NOT pull_request:".
+    cmd: |
+      probe: grep -rn restore_drill .github/workflows/ ; parse the new workflow's steps and triggers
+    result: |
+      new restore-drill-wiring-tests.yml — PR+push, paths-scoped to the drill, the verifier, both
+      corpora and itself; every step and the job read continue-on-error=None (parsed, not grepped —
+      a grep hit line 14, which is a COMMENT explaining why the sweep is inadequate); both corpora
+      named in `paths:` AND run as real steps; registered with the failure watcher at line 192.
+      actionlint rc=0 · check_watcher_coverage.py rc=0, 108 workflows · 38 passed across both corpora.
+    exit: 0
+    ts: "2026-08-30T03:55:00Z"
+    seat: claude-opus-5 (gate)
+pii_scan: clean
+pii_note: |
+  A CI restore drill and a test that parses its YAML. Touches a throwaway restore target and a
+  Telegram chat id already held in repo secrets. No client data, no credentials in the diff.
+dissent:
+  - status: CONFIRMED
+    seat: codex-gpt-5.6-sol
+    objection: |
+      BLOCKER — `_PIPE_STATUSES` captures both statuses and only index 1 is read. A truncated .gz
+      makes gunzip exit non-zero while psql consumes the valid prefix and exits 0; the drill reports
+      SUCCESS on an incomplete restore.
+    disposition: |
+      ACCEPTED, and independently found by the OTHER seat in the same round. Kimi qualified it better
+      than Codex — mid-stream truncation usually leaves a partial statement psql rejects anyway, so
+      the silent case needs truncation on a statement boundary — and Kimi's narrower framing is what
+      went into the comment. The louder claim would have invited someone to delete the guard on its
+      authority.
+  - status: CONFIRMED
+    seat: codex-gpt-5.6-sol
+    objection: |
+      BLOCKER — the new corpus is not wired into blocking PR CI. A PR flipping ON_ERROR_STOP back to
+      0 fails the test locally and nowhere else, and merges green.
+    disposition: |
+      ACCEPTED — the sharpest finding of round 1, and invisible to the gate because it had run the
+      tests by hand and they passed. A PR whose subject is a drill that could not fail was shipping a
+      guard that could not fail. New dedicated blocking workflow, house pattern.
+  - status: CONFIRMED
+    seat: kimi-code/k3
+    objection: |
+      HIGH — nothing pins the `set +e` brackets around the RESTORE pipe. Delete that one line and a
+      failing psql under errexit kills the step instantly: the capture never runs, the tail never
+      prints, the ::error is never emitted — W101 recurring, with all tests green.
+    disposition: |
+      ACCEPTED. The gate's own brief had asked only for the TELEGRAM brackets; this is the gap that
+      briefing missed. All four capture sites are now pinned.
+  - status: CONFIRMED
+    seat: kimi-code/k3
+    objection: |
+      MEDIUM — the psql finder keys on the literal `psql "$DSN"`, which is both an under-match (a
+      refactor away from $DSN plus a dead debug line reads green) and an over-match (an added
+      legitimate flagless psql reads red).
+    disposition: |
+      ACCEPTED — two defects in the gate's OWN morning fix, pointing opposite ways, cured by one
+      structural change: identify the psql that is the captured pipeline's second stage. Both
+      directions are now probes, and the over-match probe (16 PASSED) is in the receipts above.
+  - status: CONFIRMED
+    seat: kimi-code/k3
+    objection: |
+      LOW — a comment claims `shell: bash` is Actions' default `bash -e {0}` and that pipefail is not
+      part of it.
+    disposition: |
+      ACCEPTED — factually wrong, verified. An explicit `shell: bash` runs
+      `bash --noprofile --norc -eo pipefail {0}`; `bash -e {0}` is the default only when no shell is
+      declared, and this step declares one. No behavioural defect (`-u` is genuinely new) but a wrong
+      "measured, not assumed" rationale is worse than none. Corrected.
+  - status: CONFIRMED
+    seat: codex-gpt-5.6-sol
+    objection: |
+      ROUND 2, MEDIUM — the cure's gunzip check misclassifies: gzip exit 2 is a documented WARNING
+      (trailing garbage, output complete) and SIGPIPE 141 means the consumer died first.
+    disposition: |
+      ACCEPTED and fixed — see the receipt above for the measured matrix. THE TWO SEATS DISAGREED:
+      Codex called failing on exit 2 a false RED; Kimi called it "defensible fail-loud, noted but not
+      a finding". It still fails, because for a BACKUP drill an anomalous archive is worth surfacing,
+      but the message no longer claims truncation.
+  - status: CONFIRMED
+    seat: kimi-code/k3
+    objection: |
+      ROUND 2 — the adjacency pins use CONTAINMENT, so splicing `echo debugging \\` between the
+      pipeline and the capture leaves all five assertions passing while the assignment never executes
+      and `set -u` aborts the drill. Tests green, drill broken. Kimi EXECUTED this.
+    disposition: |
+      CONFIRMED, NOT CURED — SUSPENDED under the depth-1 rule with a written spec
+      (research/operations/specs/W-restore-drill-wiring-harness-evasions.md), which carries this
+      reproduction, the `\\`-join false-RED beside it, the proposed fixes, and the attacks round 2
+      tried and COULD NOT break. The battle plan is explicit: if the correction is itself wrong, the
+      surface is under-specified — write the spec, do not open the third PR. Branch stays alive.
+tests: |
+  5 passed (scripts/tests/test_restore_drill_workflow_wiring.py). Four mutations re-run by the gate
+  on the production workflow; the executable-line-only flip goes red where it previously did not,
+  and a comment-append probe stays green where the intermediate fix would have gone red.
+static: |
+  actionlint on the changed workflows rc=0 (run on the sibling H3 PR's tree in the same session for
+  the shared watcher file). Pre-commit hooks green.
+notes: |
+  What this PR is really about is visible in its own history: a diff whose purpose is to stop a
+  restore drill from swallowing its own exit code shipped a test suite that swallowed the evidence
+  for its most important claim — and the guard was held up by the sentence explaining why the guard
+  mattered.
