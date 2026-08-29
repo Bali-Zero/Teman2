@@ -52,18 +52,39 @@ constraints:
     (W96: tests that mutate production state)."
   - "Work only in `.worktrees/ops-wal-probe`, `git -C` on every git command.
     The main checkout stays untouched."
+# Rewritten 2026-08-29 to satisfy the acceptance-probe rule that landed on main the
+# same day (#5208, notice mode). Each bullet now names the PROBE that decides it and is
+# EARS-shaped, because an acceptance criterion with no runnable probe is an assertion
+# nobody runs — the same sentence this lane put in its own pack about numbers in prose.
+# Every probe named here also appears in a pack receipt, which is what makes the pairing
+# a binding rather than a second place to write a wish.
 acceptance:
-  - "One guilt test per declared RED condition, driven through the SAME entry
-    point cron uses — `classify` being right while `main()` never reaches it
-    is W116/W120 exactly: dead code on the only path it exists for."
-  - "The innocence half of each, specifically the ones a naive check fails: a
-    quiet database archives nothing and must stay green; a timeline bump is
-    not a gap; a counter reset is not a stall."
-  - "Mutation proof: with each RED branch disabled, the suite must go red."
-  - "A verdict or note that exists in the contract with no path that produces
-    it must fail a test — reachability, not documentation."
-  - "A run where a check DID NOT RUN must not be indistinguishable from a run
-    where it passed."
+  - text:
+      "WHEN any declared RED condition holds, the probe SHALL exit RED through the
+      same entry point cron uses — `classify` being right while `main()` never reaches
+      it is W116/W120 exactly: dead code on the only path it exists for."
+    probe: "python3 -m pytest scripts/tests/test_wal_continuity_probe.py -q"
+  - text:
+      "WHERE a naive check would cry wolf — a quiet database that archives nothing,
+      a timeline bump, a counter reset, a `.backup` filename, a brand-new cluster
+      inside its first WAL segment — the probe SHALL stay green."
+    probe: "python3 scripts/wal_continuity_probe.py --selftest"
+  - text: "IF any RED branch is disabled by mutation, the suite SHALL go red."
+    probe: "python3 -m pytest scripts/tests/test_wal_continuity_probe.py -q"
+  - text:
+      "WHEN a verdict or note exists in the contract, a test SHALL prove a path
+      produces it — reachability, not documentation."
+    probe: "test_guilt_every_declared_red_code_is_reachable"
+  - text:
+      "WHILE a check could not run, the run SHALL NOT be indistinguishable from one
+      where it passed: it alerts, and where the evidence itself was erased it exits
+      CANNOT_VERIFY rather than clean."
+    probe: "test_a_stats_reset_is_CANNOT_VERIFY_not_a_stall_and_not_a_clean_run"
+  - text:
+      "WHEN the probe computes a RED, it SHALL report whether the gateway actually
+      delivered it — a correct verdict that reaches nobody is the disease this artifact
+      exists to catch, wearing its own uniform."
+    probe: "test_a_RED_the_gateway_REFUSED_to_send_is_reported_as_unreported"
 risks:
   - "IRREDUCIBLE, and the reason for the residual ledger row: a LYING
     `archive_command` (`/bin/true`, or an uploader exiting 0 before

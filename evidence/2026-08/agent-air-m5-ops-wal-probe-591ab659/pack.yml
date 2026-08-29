@@ -113,7 +113,7 @@ receipts:
     ts: "2026-08-29T06:05Z"
     seat: "session (m5, build lane)"
   - claim: "The probe can go RED on every one of its six declared conditions, through the same entry point cron uses"
-    cmd: "python3 -m pytest scripts/tests/test_wal_continuity_probe.py -q ; python3 scripts/wal_continuity_probe.py --selftest"
+    cmd: "python3 -m pytest scripts/tests/test_wal_continuity_probe.py -q ; python3 scripts/wal_continuity_probe.py --selftest ; test_guilt_every_declared_red_code_is_reachable ; test_every_voiding_note_is_reachable"
     result: >-
       55 passed AT ROUND 1 (79 after the second council round — see the later
       receipt; this figure is left as measured rather than silently refreshed,
@@ -291,7 +291,7 @@ receipts:
     ts: "2026-08-29T07:10Z"
     seat: "gpt-5.6-sol xhigh and kimi-code/k3 (review lanes), each finding reproduced against the source by the build lane before it was accepted"
   - claim: "The stall check now accumulates across runs — an archiver dead on a quiet database used to stay green FOREVER"
-    cmd: "test_guilt_an_archiver_dead_on_a_quiet_database_goes_RED_instead_of_green_forever ; test_guilt_an_archiver_shipping_half_of_what_is_written_is_caught ; test_innocence_an_archiver_that_catches_up_repays_its_deficit"
+    cmd: "test_guilt_an_archiver_dead_on_a_quiet_database_goes_RED_instead_of_green_forever ; test_guilt_an_archiver_shipping_half_of_what_is_written_is_caught ; test_innocence_an_archiver_that_catches_up_repays_its_deficit ; test_a_stats_reset_is_CANNOT_VERIFY_not_a_stall_and_not_a_clean_run ; test_a_RED_the_gateway_REFUSED_to_send_is_reported_as_unreported"
     result: >-
       Two holes, one cure. (a) The check was gated on `count_delta == 0`, so an archiver
       shipping 1 of every 2 segments — falling permanently behind — disarmed it by
@@ -366,6 +366,28 @@ receipts:
     exit: 0
     ts: "2026-08-29T07:35Z"
     seat: "session (m5, build lane), on codex gpt-5.6-sol's finding"
+  - claim: "The acceptance-probe rule that landed on main mid-flight is satisfied by THIS brief — verified against the check function, because the CLI cannot see my brief locally"
+    cmd: "l.check_acceptance_probe_pairing(brief, pack, 3)  with brief/pack read from this pack's OWN directory"
+    result: >-
+      `#5208` added rule 12 (notice-only): an acceptance bullet must name the `probe:`
+      that decides it, be EARS-shaped, and that probe must appear verbatim in a
+      receipt's `claim` or `cmd`. All six bullets rewritten to satisfy all three; the
+      function returns NO notices.
+
+      Recorded because running the LINT CLI here is misleading and would have been taken
+      as a pass: `brief_ref` is the staged literal `evidence/brief.yml`, which in a local
+      checkout resolves to whatever OTHER lane's brief sits at that path — the two
+      acceptance notices the CLI still prints quote the visa-oracle brief, not this one.
+      Only in CI does the staging step copy THIS brief to that name. So the CLI's verdict
+      on acceptance bullets is, locally, a verdict about someone else's file; the check
+      function called against this directory is the probe that actually answers.
+
+      The rule is worth honouring rather than waiting out in notice mode: an acceptance
+      criterion with no runnable probe is an assertion nobody runs, which is the same
+      sentence this lane already had to learn about numbers in prose.
+    exit: 0
+    ts: "2026-08-29T07:42Z"
+    seat: "session (m5, build lane)"
 dissent:
   - seat: "gpt-5.6-sol xhigh"
     objection: >-
