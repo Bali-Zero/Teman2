@@ -38,6 +38,7 @@ from evidence_pack_lint import (  # noqa: E402
     check_brief_ref_exists,
     check_cheap_seat_floor,
     check_council_run_gear3,
+    check_countable_claims,
     check_dissent_nonempty_on_gear3,
     check_gear_floor,
     check_ground_truth_lane,
@@ -52,7 +53,10 @@ from evidence_pack_lint import (  # noqa: E402
     compute_floor_source,
     compute_seat_floor,
     effort_for_gear,
+    format_measured_claims,
     lint,
+    measured_commit_count,
+    parse_numstat_totals,
     sum_numstat,
 )
 
@@ -2237,3 +2241,185 @@ def test_evidence_root_cli_explicit_source_path_overrides_default(tmp_repo):
     payload = _json.loads(result.stdout)
     assert payload["exit"] == 0
     assert not any("evidence_root_deprecated" in v for v in payload["violations"])
+
+
+# --------------------------------------------------------- check_countable_claims
+
+#: A numstat blob standing in for `git diff --numstat <merge-base>..HEAD`:
+#: 2 changed files, +1860/-83. The numbers are the REAL measurement PR #5157's
+#: pack contradicted (its prose said "11 files, +1195/-119 across two commits"
+#: where the cited command returned 14 files, +1860/-83 and 6 commits).
+CC_NUMSTAT = "1800\t60\ta.py\n60\t23\tb.py\n"
+CC_RECEIPTS = [{
+    "claim": "the narrow suite passes", "cmd": "pytest -q",
+    "result": "64 passed", "exit": 0,
+    "ts": "2026-08-29T00:00:00Z", "seat": "sonnet-5",
+}]
+
+
+def test_countable_guilt_wrong_diff_stats_rejected():
+    """GUILT: narrated file count and +ins/-del that contradict the measured
+    numstat are convicted, and the message carries computed, narrated AND the
+    command that produced the computed value."""
+    violations, _notices = check_countable_claims(
+        {"diff": {"net_lines": "11 files, +1195/-119"}, "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=6,
+    )
+    assert len(violations) == 2
+    joined = " ".join(violations)
+    assert '"11 files"' in joined and "changes 2" in joined
+    assert '"+1195/-119"' in joined and "+1860/-83" in joined
+    assert "git diff --numstat" in joined
+
+
+def test_countable_guilt_wrong_commit_count_rejected_digit_and_word():
+    """GUILT: "two commits" and "both commits" are both count claims, and both
+    are convicted against a 6-commit branch — #5157 made the second form."""
+    violations, _ = check_countable_claims(
+        {"diff": {"net_lines": "across two commits"},
+         "lanes": [{"lane": "D1", "role": "build", "seat": "codex",
+                    "note": "both commits reviewed"}],
+         "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=6,
+    )
+    assert len(violations) == 2
+    assert all("git rev-list --count" in v for v in violations)
+
+
+def test_countable_guilt_unsubstantiated_test_count_rejected():
+    """GUILT: "the 44 tests" with no receipt reporting 44 is prose asserting a
+    measurement nobody took."""
+    violations, _ = check_countable_claims(
+        {"lanes": [{"lane": "D1", "role": "build", "seat": "codex",
+                    "note": "both lanes, the 44 tests"}],
+         "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=2,
+    )
+    assert any('"44 tests"' in v for v in violations)
+
+
+def test_countable_innocence_accurate_numbers_pass():
+    """INNOCENCE: the same fields with the COMPUTED values are clean — the rule
+    convicts inaccuracy, not the act of stating a number."""
+    assert check_countable_claims(
+        {"diff": {"net_lines": "2 files, +1860/-83 across 6 commits"},
+         "lanes": [{"lane": "D1", "role": "build", "seat": "codex",
+                    "note": "64 tests pass"}],
+         "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=6,
+    ) == ([], [])
+
+
+def test_countable_innocence_unmeasured_notices_never_convicts():
+    """INNOCENCE: with no numstat and no commit count, the same wrong pack
+    NOTICEs and does not fail — "could not measure" is never "guilty" (same
+    discipline as the floor's size term)."""
+    violations, notices = check_countable_claims(
+        {"diff": {"net_lines": "11 files, +1195/-119 across two commits"},
+         "receipts": CC_RECEIPTS},
+        None, commits=None,
+    )
+    assert violations == []
+    assert len(notices) == 2
+
+
+def test_countable_innocence_dissent_and_receipts_out_of_scope():
+    """INNOCENCE (superscar #3, guard-over-match): judgment prose keeps its
+    numbers. Identical wrong figures inside `dissent` — and inside the receipts
+    themselves — are not this rule's business."""
+    assert check_countable_claims(
+        {"dissent": [{"seat": "kimi", "objection": "11 files, +1195/-119, two commits, 44 tests",
+                      "status": "CONFIRMED", "resolution": "x"}],
+         "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=6,
+    ) == ([], [])
+
+
+def test_countable_innocence_binary_file_downgrades_line_counts_to_notice():
+    """INNOCENCE: numstat cannot report line counts for a binary file, so the
+    computed +ins/-del is a lower bound — a mismatch NOTICEs instead of
+    convicting, while the file COUNT (which binary rows do not corrupt) stays
+    enforced."""
+    numstat = "10\t2\ta.py\n-\t-\tlogo.png\n"
+    violations, notices = check_countable_claims(
+        {"diff": {"net_lines": "2 files, +999/-999"}, "receipts": CC_RECEIPTS},
+        numstat, commits=1,
+    )
+    assert violations == []
+    assert any("+10/-2" in n for n in notices)
+
+
+def test_parse_numstat_totals_guilt_and_innocence():
+    """The pure measurement function: real rows sum, binary rows count as files
+    but not as lines, and an unusable blob returns None (never a false zero)."""
+    assert parse_numstat_totals(CC_NUMSTAT) == (2, 1860, 83, False)
+    assert parse_numstat_totals("10\t2\ta.py\n-\t-\tlogo.png\n") == (2, 10, 2, True)
+    assert parse_numstat_totals(None) is None
+    assert parse_numstat_totals("") is None
+    assert parse_numstat_totals("garbage\n") is None
+
+
+def test_measured_commit_count_reads_pull_request_event_payload(tmp_path):
+    """In CI the commit count comes from the event payload with NO workflow
+    change; an explicit flag wins, and a merge_group-shaped payload (no
+    pull_request key) degrades to None rather than guessing."""
+    import json as _json
+
+    pr_event = tmp_path / "pr.json"
+    pr_event.write_text(_json.dumps({"pull_request": {"commits": 6}}), encoding="utf-8")
+    assert measured_commit_count(None, str(pr_event)) == 6
+    assert measured_commit_count(3, str(pr_event)) == 3
+
+    mg_event = tmp_path / "mg.json"
+    mg_event.write_text(_json.dumps({"merge_group": {"head_sha": "abc"}}), encoding="utf-8")
+    assert measured_commit_count(None, str(mg_event)) is None
+    assert measured_commit_count(None, str(tmp_path / "missing.json")) is None
+
+
+def test_countable_end_to_end_red_pack_fails_and_green_pack_passes(tmp_repo):
+    """RED-FIRST PROOF, end to end through lint(): the SAME pack fails with the
+    narrated numbers PR #5157 carried and passes once they are corrected to the
+    computed ones. Nothing else about the pack changes between the two runs."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=2)
+
+    wrong = write_pack(
+        diff={"net_lines": "11 files, +1195/-119 across two commits"},
+        lanes=[{"lane": "D1", "role": "build", "seat": "codex", "note": "the 44 tests"}],
+        receipts=CC_RECEIPTS,
+    )
+    exit_code, violations = lint(
+        wrong, tmp_path, None, numstat_text=CC_NUMSTAT, measured_commits=6
+    )
+    assert exit_code == 1
+    assert len([v for v in violations if "countable claim" in v]) == 4
+
+    right = write_pack(
+        diff={"net_lines": "2 files, +1860/-83 across 6 commits"},
+        lanes=[{"lane": "D1", "role": "build", "seat": "codex", "note": "64 tests pass"}],
+        receipts=CC_RECEIPTS,
+    )
+    exit_code, violations = lint(
+        right, tmp_path, None, numstat_text=CC_NUMSTAT, measured_commits=6
+    )
+    assert exit_code == 0
+    assert violations == []
+
+
+def test_print_measured_emits_pasteable_sentence(tmp_path):
+    """The GENERATE half: `--print-measured` hands the author the canonical
+    sentence so the value never has to be counted by hand."""
+    import os as _os
+
+    numstat = tmp_path / "numstat.txt"
+    numstat.write_text(CC_NUMSTAT, encoding="utf-8")
+    env = {**_os.environ}
+    env.pop("GITHUB_EVENT_PATH", None)
+    result = subprocess.run(
+        [sys.executable, str(SCRIPTS / "evidence_pack_lint.py"),
+         "--print-measured", "--numstat-file", str(numstat), "--commit-count", "6"],
+        capture_output=True, text=True, timeout=30, env=env,
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == "2 files, +1860/-83, 6 commits"
+    assert format_measured_claims(CC_NUMSTAT, 6) == "2 files, +1860/-83, 6 commits"
