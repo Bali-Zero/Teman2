@@ -198,6 +198,81 @@ def test_within_contract_pr_falls_back_to_pr_level_net_without_files():
 
 
 # ---------------------------------------------------------------------------
+# DATA COMPLETENESS — unknown(<reason>) when the tool cannot vouch for its
+# own input. A missing measurement must never read as a measured zero.
+# ---------------------------------------------------------------------------
+
+def test_unknown_no_file_detail_when_over_contract_pr_has_no_files():
+    # GUILT: an over-contract PR whose file list was never fetched must read
+    # unknown(no-file-detail), never exempt(code) or within-contract — "could
+    # not measure" must never collapse into "measured zero".
+    pr = {"n": 40, "t": "no file detail", "net": 500, "files": []}
+    v = pst.pr_verdict(pr)
+    assert v["verdict"] == "unknown"
+    assert v["label"] == "unknown(no-file-detail)"
+    assert v["code_residual_net"] is None
+    assert v["code_residual_churn"] is None
+    assert v["verdict"] not in ("exempt", "within-contract")
+
+
+def test_unknown_no_file_detail_also_fires_when_pr_level_net_is_missing():
+    # Same guard, the other trigger: no `net` at all and no files means there
+    # is nothing to fall back on — unknown, not a silent zero.
+    pr = {"n": 41, "t": "nothing to go on", "files": []}
+    v = pst.pr_verdict(pr)
+    assert v["verdict"] == "unknown"
+    assert v["label"] == "unknown(no-file-detail)"
+
+
+def test_within_contract_fast_path_survives_with_no_files_at_the_boundary():
+    # INNOCENCE: the two-phase fetch's real fast path — a PR whose file list
+    # was never fetched but whose PR-level net alone already proves
+    # within-contract — must NOT regress into unknown.
+    pr = {"n": 42, "t": "no files, within contract", "net": 400, "files": []}
+    v = pst.pr_verdict(pr)
+    assert v["verdict"] == "within-contract"
+    assert v["label"] is None
+    assert v["total_net"] == 400
+
+
+def _pr_with_totals(n: int, add: int, dele: int, files: list[tuple[str, int, int]], title: str = "synthetic") -> dict:
+    return {"n": n, "t": title, "add": add, "del": dele, "net": add - dele,
+            "files": [{"p": p, "a": a, "d": d} for p, a, d in files]}
+
+
+def test_unknown_reconciliation_mismatch_when_file_sums_disagree_with_pr_totals():
+    # GUILT: PR-level totals claim 1000 additions but the fetched file list
+    # only sums to 500 — a truncated `--paginate` page that still exits 0.
+    # The tool must not trust the file list it cannot reconcile.
+    pr = _pr_with_totals(43, add=1000, dele=0, files=[("scripts/foo.py", 500, 0)])
+    v = pst.pr_verdict(pr)
+    assert v["verdict"] == "unknown"
+    assert v["label"] == "unknown(reconciliation-mismatch)"
+    assert v["code_residual_net"] is None
+    assert v["total_net"] == 1000  # falls back to the PR-level net it DOES trust
+
+
+def test_reconciliation_agreement_never_reads_unknown():
+    # INNOCENCE: when the file list's own sums agree with the PR-level
+    # totals, classification proceeds normally — never unknown.
+    pr = _pr_with_totals(44, add=500, dele=0, files=[("scripts/foo.py", 500, 0)])
+    v = pst.pr_verdict(pr)
+    assert v["verdict"] == "split-required"
+    assert v["verdict"] != "unknown"
+    assert v["code_residual_net"] == 500
+
+
+def test_reconciliation_check_skipped_when_pr_lacks_add_del_totals():
+    # INNOCENCE: a PR carrying files but no PR-level `add`/`del` at all has
+    # nothing to reconcile against — the check is skipped, not forced red.
+    pr = _pr(45, [("scripts/foo.py", 500, 0)])
+    v = pst.pr_verdict(pr)
+    assert v["verdict"] != "unknown"
+    assert v["verdict"] == "split-required"
+    assert v["code_residual_net"] == 500
+
+
+# ---------------------------------------------------------------------------
 # Exact per-class attribution — a `>= 1 file landed somewhere` probe is
 # vacuous even if every file were credited to every class; this pins the
 # EXACT net dict, and the dominant-class (largest positive contributor,
@@ -228,6 +303,70 @@ def test_by_class_churn_differs_from_net_when_deletions_present():
 
 
 # ---------------------------------------------------------------------------
+# EXEMPT_CLASSES completeness — each class must, alone, be able to carry an
+# over-contract PR to `exempt(<class>)`. A tuple missing a member silently
+# falls back to `exempt(code)` for that class (see `pr_verdict`'s `dominant`
+# fallback) — a subtle mislabel, not a crash, so each member needs its own
+# defense, not just a shared "the tuple exists" smoke test.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "path,label",
+    [
+        ("evidence/2026-08/x/pack.yml", "exempt(evidence)"),
+        ("scripts/tests/test_bulk.py", "exempt(tests)"),
+        ("docs/runbooks/bulk.md", "exempt(docs)"),
+        ("package-lock.json", "exempt(lockfile)"),
+    ],
+)
+def test_each_path_derived_exempt_class_alone_carries_the_overage(path, label):
+    v = pst.pr_verdict(_pr(50, [(path, 401, 0)]))
+    assert v["verdict"] == "exempt"
+    assert v["label"] == label
+    assert v["code_residual_net"] == 0
+
+
+def test_generated_class_alone_carries_the_overage_when_probed(tmp_path):
+    # `generated` is content-marker-only, gated on --probe-generated, and the
+    # probe shells out to a real `git show <sha>:<path>` — it cannot be
+    # exercised through pr_verdict with a mock. Reuses the same
+    # throwaway-repo + os.chdir seam as
+    # test_probe_generated_via_git_real_plumbing_positive_and_negative
+    # rather than inventing a new one.
+    repo = tmp_path / "throwaway"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.email", "t@example.com"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=repo, check=True)
+    (repo / "gen.py").write_text("# @generated by codemod\nprint(1)\n")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=repo, check=True)
+    sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
+    ).stdout.strip()
+
+    import os
+    old_cwd = os.getcwd()
+    try:
+        os.chdir(repo)
+        pr = _pr(51, [("gen.py", 401, 0)], merge_sha=sha)
+        v = pst.pr_verdict(pr, probe_generated=True)
+        v_unprobed = pst.pr_verdict(pr, probe_generated=False)
+    finally:
+        os.chdir(old_cwd)
+
+    assert v["verdict"] == "exempt"
+    assert v["label"] == "exempt(generated)"
+    assert v["code_residual_net"] == 0
+
+    # INNOCENCE half of the same probe: without --probe-generated the same
+    # file, same marker, same overage classifies as plain code — the class
+    # never fires from a path glob, only from an explicit content probe.
+    assert v_unprobed["verdict"] == "split-required"
+    assert v_unprobed["code_residual_net"] == 401
+
+
+# ---------------------------------------------------------------------------
 # build_report — aggregation, and the honest-recompute pin.
 # ---------------------------------------------------------------------------
 
@@ -245,6 +384,23 @@ def test_honest_recompute_differs_from_the_real_repos_measured_31_and_11():
     # The pin: this tool computed a DIFFERENT answer than the real repo's
     # measured 31/11 — proof it recomputes from input, not from a constant.
     assert (report["over_contract_total"], report["over_contract_nonexempt"]) != (31, 11)
+
+
+def test_build_report_counts_unknown_separately_from_over_contract():
+    # An unknown PR must never be silently folded into "over" or "within" —
+    # counting it as within-contract would understate the over-contract
+    # population this report exists to surface.
+    prs = [
+        _pr(60, [("scripts/foo.py", 100, 0)]),                    # within-contract
+        _pr(61, [("scripts/foo.py", 500, 0)]),                    # split-required
+        {"n": 62, "t": "unmeasurable", "net": 500, "files": []},  # unknown(no-file-detail)
+    ]
+    report = pst.build_report(prs)
+    assert report["examined"] == 3
+    assert report["unknown_count"] == 1
+    assert report["over_contract_total"] == 1  # the unknown PR is NOT counted here
+    assert report["over_contract_nonexempt"] == 1
+    assert report["exempt_count"] == 0
 
 
 def test_build_report_churn_share_sums_to_one():
