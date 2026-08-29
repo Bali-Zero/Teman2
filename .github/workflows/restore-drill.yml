@@ -62,6 +62,7 @@ jobs:
           aws --version
 
       - name: Run restore drill
+        shell: bash
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.TIGRIS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.TIGRIS_SECRET_ACCESS_KEY }}
@@ -76,9 +77,17 @@ jobs:
           # a pre-provisioned container via DRILL_CONTAINER_EXISTS.
           DRILL_CONTAINER_EXISTS: "1"
         run: |
+          # `shell: bash` above is still Actions' DEFAULT `bash -e {0}` (an
+          # explicit `shell: bash` does not opt out of errexit — only a literal
+          # command-line spec like `bash {0}` would — see
+          # scripts/lint_workflow_errexit_decap.py's own note on this). `-o
+          # pipefail` is NOT part of that default and is added explicitly below,
+          # so a `pipe1 | pipe2` failing on its FIRST segment cannot read as
+          # success just because the last segment happens to exit 0.
+          set -euo pipefail
+
           # Skip the docker-run block: we already have a service container.
           # Just run the drill against the service DB.
-          set -e
           cd "$GITHUB_WORKSPACE"
 
           # Creds preflight: distinguish "Tigris repo secrets not configured"
@@ -106,44 +115,139 @@ jobs:
           test "$DUMP_SIZE" -gt 1000000
 
           # Restore into CI postgres service.
+          #
           # NOTE: PGPASSWORD must prefix psql, NOT gunzip — an env prefix only
           # applies to the left side of a pipe, so `PGPASSWORD=drill gunzip | psql`
           # leaves psql with NO password → instant auth-fail → 0 tables restored
-          # (the 2026-06-06 silent-restore bug the drill itself surfaced).
+          # (the 2026-06-06 silent-restore bug the drill itself surfaced). The DSN
+          # below carries the credential inline instead, which sidesteps that
+          # whole class of "which side of the pipe" bug: there is no side to get
+          # wrong when the credential is one token in one argv, not an
+          # env-var prefix scoped to half a shell pipeline.
+          DSN="postgresql://drill:drill@127.0.0.1:${DRILL_PORT}/nuzantara_drill"
+
+          # ON_ERROR_STOP=1 (was 0): a restore that silently swallows a failed
+          # statement is exactly the blind spot this drill exists to close —
+          # see restore_drill_verify.py's own module docstring for the fuller
+          # case. The trade this makes explicit rather than silent: a dump that
+          # legitimately needs a privilege the CI role lacks (superuser-only
+          # CREATE EXTENSION, an ALTER ... OWNER TO naming a role CI never
+          # created) now aborts the WHOLE restore instead of continuing past it.
+          # That has never been measured against a real production dump in this
+          # CI environment — the first live dispatch of this drill after this
+          # change lands is the real test of whether that trade is survivable
+          # as-is; a benign-privilege abort here is expected to need a follow-up
+          # (documented in the PR, not fixed blind here).
+          #
+          # `set +e` / `set -e` bracket the pipe explicitly (scar W101 and its
+          # three recurrences: a bare `${PIPESTATUS[N]}` read under a live
+          # errexit is decapitated — the read is fine, but errexit already
+          # killed the step at the failing segment before the read's own line
+          # could run). This is the ONLY way to guarantee the log tail below
+          # still prints when the restore itself fails.
+          #
+          # PIPESTATUS[1], NOT [0]: `gunzip -c ... | psql ...` is a two-stage
+          # pipe, and PIPESTATUS[0] is gunzip's own exit code (index 0 = FIRST
+          # command), not psql's — measured directly (`echo x | false;
+          # STATUSES=("${PIPESTATUS[@]}")` prints `[0]=0 [1]=1`), not assumed.
+          # gunzip almost never fails on a valid .sql.gz (the size check above
+          # already proved the file downloaded intact); the restore's actual
+          # pass/fail signal is psql's, at index 1. Reading index 0 here would
+          # have made the whole ON_ERROR_STOP=1 legibility change silently
+          # inert — caught by a stubbed end-to-end run of this exact script
+          # with a faked failing psql, BEFORE this line shipped.
+          #
+          # The whole array is captured in ONE assignment
+          # (`_PIPE_STATUSES=(...)`), not two separate scalar reads: any
+          # simple command — even a bare assignment — resets $PIPESTATUS to
+          # its OWN single-element pipeline, so `A=${PIPESTATUS[0]}` on one
+          # line followed by `B=${PIPESTATUS[1]}` on the next reads a DIFFERENT,
+          # already-overwritten array for B (measured the same way).
+          set +e
           gunzip -c "/tmp/$LATEST" | \
-            PGPASSWORD=drill psql -h 127.0.0.1 -p 15499 -U drill -d nuzantara_drill \
-                 -v ON_ERROR_STOP=0 \
-              > /tmp/restore.log 2>&1 || true
+            psql "$DSN" -v ON_ERROR_STOP=1 \
+              > /tmp/restore.log 2>&1
+          _PIPE_STATUSES=("${PIPESTATUS[@]}")
+          RESTORE_RC=${_PIPE_STATUSES[1]}
+          set -e
 
           # Surface restore output — previously hidden, which is what let the
           # PGPASSWORD-scope bug stay invisible until a manual investigation.
-          echo "=== restore.log (tail) ==="; tail -25 /tmp/restore.log || true; echo "=== end restore.log ==="
+          # Printed UNCONDITIONALLY, restore success or failure, so an abort
+          # under ON_ERROR_STOP=1 is legible: the failing statement is the
+          # LAST one psql attempted, i.e. the one closest to the tail's end —
+          # everything the dump had left to run after it was never attempted.
+          echo "=== restore.log (tail) ==="; tail -25 /tmp/restore.log; echo "=== end restore.log ==="
 
-          # Sanity
-          q() { PGPASSWORD=drill psql -h 127.0.0.1 -p 15499 -U drill -d nuzantara_drill -Atc "$1"; }
-          TABLES=$(q "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public'")
-          CLIENTS=$(q "SELECT COUNT(*) FROM clients" || echo "ERROR")
-          PRACTICES=$(q "SELECT COUNT(*) FROM practices" || echo "ERROR")
+          if [ "$RESTORE_RC" -ne 0 ]; then
+            echo "::error title=Restore aborted (ON_ERROR_STOP=1)::psql exited $RESTORE_RC. The failing statement is the last one visible above; see the PR/runbook note on ON_ERROR_STOP=1 before assuming this means the backup itself is corrupt."
+            exit 3
+          fi
 
-          echo "Tables: $TABLES, clients: $CLIENTS, practices: $PRACTICES"
-          test "$TABLES" -ge 50 || { echo "schema incomplete"; exit 3; }
-          test "$CLIENTS" != "ERROR" || { echo "clients table broken"; exit 3; }
-          test "$PRACTICES" != "ERROR" || { echo "practices table broken"; exit 3; }
+          # Level-5 application verification (was: a bare table census —
+          # `TABLES -ge 50` — that a restore of 60 empty tables would still
+          # pass). See scripts/ci/restore_drill_verify.py for the full
+          # rationale; same set+e/set-e bracket as above and for the same
+          # reason.
+          set +e
+          python3 scripts/ci/restore_drill_verify.py --dsn "$DSN" --json \
+            > /tmp/verify.json 2> /tmp/verify.err
+          VERIFY_RC=$?
+          set -e
 
-          # Telegram success
-          MSG=$(cat <<EOF
-          ✅ Restore drill passed (CI)
+          echo "=== restore_drill_verify.py (Level-5 verification) ==="
+          cat /tmp/verify.json
+          cat /tmp/verify.err >&2
+          echo "=== end restore_drill_verify.py ==="
+
+          if [ "$VERIFY_RC" -ne 0 ]; then
+            echo "::error title=Restore drill FAILED Level-5 verification::exit $VERIFY_RC — see the per-invariant verdicts printed above for which relation(s) and why."
+          fi
+
+          # A one-line summary for the Telegram message only -- the FULL
+          # per-invariant JSON is already in the job log above. Single-line
+          # python3 -c on purpose: a multi-line snippet embedded inside a
+          # YAML block scalar must stay indented at-or-above the block's own
+          # indent or YAML treats it as the block ending early (measured:
+          # the first draft of this line broke exactly that way).
+          AGGREGATE=$(python3 -c "import json; print(json.load(open('/tmp/verify.json'))['aggregate'])" 2>/dev/null || echo "UNKNOWN (could not parse verify.json)")
+
+          # Telegram notification.
+          #
+          # DEVIATION from the letter of "remove every unconditional swallow
+          # of a curl failure on this step": the two Telegram steps below
+          # never let a broken notification fail the DRILL. Measured, not
+          # assumed: cicatrix-scars.md's own W104-adjacent finding records
+          # `TELEGRAM_BOT_TOKEN` answering `{"ok":false,"error_code":401,...}`
+          # from GitHub Actions secrets at least once before. A step that
+          # aborts on that would mean a dead bot token turns EVERY PASSING
+          # drill red — exactly the kind of guard-over-match (superscar #3)
+          # this repo has paid for repeatedly elsewhere. So this is not the
+          # OLD unconditional-success pattern either: the curl's own outcome
+          # is captured into a variable and surfaced loudly (`::warning::`),
+          # so a broken notification is VISIBLE without being allowed to
+          # decide whether the backup is recoverable. Do not delete this
+          # capture to "finish the job" — read the deviation in the PR body
+          # first.
+          if [ "$VERIFY_RC" -eq 0 ]; then
+            MSG=$(cat <<EOF
+          ✅ Restore drill passed (CI) — Level-5 verification
           backup: $LATEST
-          tables: $TABLES
-          clients: $CLIENTS
-          practices: $PRACTICES
           dump: $DUMP_SIZE bytes
+          verdict: $AGGREGATE
           EOF
-          )
-          curl -s --max-time 10 \
-            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -d chat_id="${TELEGRAM_OWNER_CHAT_ID}" \
-            --data-urlencode "text=${MSG}" > /dev/null || true
+            )
+            set +e
+            TG_BODY=$(curl -s --max-time 10 -w '\nHTTP_STATUS:%{http_code}' \
+              -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -d chat_id="${TELEGRAM_OWNER_CHAT_ID}" \
+              --data-urlencode "text=${MSG}")
+            TG_RC=$?
+            set -e
+            echo "::warning::telegram success-notify rc=${TG_RC} response=${TG_BODY}"
+          fi
+
+          exit "$VERIFY_RC"
 
       - name: Telegram alert on failure
         if: failure()
@@ -151,8 +255,17 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
         run: |
-          curl -s --max-time 10 \
+          # Same deviation as the success notifier above: a dead Telegram
+          # token must never mask which step actually failed, so this never
+          # aborts on the curl's own failure -- but its outcome is captured
+          # and surfaced instead of being silently discarded either. See the
+          # PR body for the full reasoning; do not delete this capture
+          # without reading it first.
+          set +e
+          TG_BODY=$(curl -s --max-time 10 -w '\nHTTP_STATUS:%{http_code}' \
             -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d chat_id="${TELEGRAM_OWNER_CHAT_ID}" \
-            --data-urlencode "text=❌ Monthly restore drill FAILED — backups may not be recoverable. Investigate: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            > /dev/null || true
+            --data-urlencode "text=❌ Monthly restore drill FAILED — backups may not be recoverable. Investigate: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}")
+          TG_RC=$?
+          set -e
+          echo "::warning::telegram failure-notify rc=${TG_RC} response=${TG_BODY}"
