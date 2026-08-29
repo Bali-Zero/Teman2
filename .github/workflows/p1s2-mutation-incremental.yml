@@ -28,6 +28,26 @@ name: P1 STRATO-2 incremental mutation gate
 # in the "Did relevant paths change?" step below, and the expensive WORK steps
 # are gated on its output. On a path-miss PR the job ENDS success (sentinel).
 # The push trigger keeps its paths filter (push only fires when work is needed).
+# NO `merge_group:` TRIGGER, and that is a measured decision rather than an
+# oversight — a round-2 cross-family refuter raised its absence and it is real:
+# a PR whose only change is a trust-path file runs the canary on `pull_request`
+# and NOT on the queue's synthetic merge SHA.
+#
+# It is left absent because closing it costs more than the gap. Measured
+# 2026-08-29: this job ("Canary self-test + incremental mutation") is NOT in
+# main's required_status_checks (11 contexts, it is not among them), so its
+# absence in the queue deadlocks nothing — the pending-forever trap that makes
+# a missing merge_group dangerous does not apply here. Meanwhile the relevance
+# step below resolves `run=true` for every non-pull_request event, so adding
+# `merge_group:` as-is would run a full mutation gate — pip install mutmut, a
+# mutation pass — on EVERY PR entering the queue, fleet-wide, for every lane.
+# That is a large recurring cost bought to close a gap in an advisory check.
+#
+# The honest fix, if this ever becomes required, is NOT to add the trigger
+# alone: the relevance step must first learn to compute changed files against
+# `github.event.merge_group.base_sha`, or the sentinel's own logic turns the
+# saving off. Declared here so the next reader inherits the reasoning instead
+# of re-deriving it, or worse, adding the trigger and the cost together.
 on:
   pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
   push:
@@ -37,6 +57,15 @@ on:
       - "scripts/mutation_incremental.py"
       - "scripts/test_mutation_incremental.py"
       - ".github/workflows/p1s2-mutation-incremental.yml"
+      # W121 trust path — a change to the hermetic wrapper, its census lint or
+      # their corpus changes whether ANY number below is trustworthy, so it must
+      # run this gate. Omitting them meant a PR that edited ONLY the wrapper —
+      # including one that disabled it — never executed the self-canary: a
+      # guardian whose sole executor cannot go red on the guardian's own file
+      # (superscar #2 / W108). Found by the cross-family refuter, verified here.
+      - "scripts/hermetic_verify.sh"
+      - "scripts/ci/lint_hermetic_instruments.py"
+      - "scripts/tests/test_hermetic_census.py"
 
 concurrency:
   # Dependabot branch: ALL Dependabot PRs share one group per workflow (not
@@ -75,10 +104,15 @@ jobs:
 
       # BUCO #1 sentinel: decide whether this gate's RELEVANT paths changed in
       # this PR. Dependency-free git diff (no third-party action — TIER-1
-      # anti-injection file). The regex is the EXACT original pull_request
-      # `paths:` list, each anchored ^...$. On a push event (already paths-
-      # filtered at the trigger) or any non-PR event, run=true so the gate never
-      # silently skips real work.
+      # anti-injection file). The regex mirrors the `push: paths:` list above,
+      # each entry anchored ^...$ — the two are one relevance decision expressed
+      # for two event shapes, and `scripts/tests/test_hermetic_census.py` pins
+      # them EQUAL so neither can gain a path the other lacks (an earlier
+      # version of this comment said "the EXACT original pull_request paths
+      # list", which stopped being true the moment either side was extended —
+      # a comment that inventories mutable state is a comment that will lie,
+      # W106). On a push event (already paths-filtered at the trigger) or any
+      # non-PR event, run=true so the gate never silently skips real work.
       - name: Did relevant paths change?
         id: relevant
         run: |
@@ -90,12 +124,46 @@ jobs:
           fi
           base="${{ github.event.pull_request.base.sha }}"
           if git diff --name-only "$base"...HEAD | grep -qE \
-            '^(scripts/mutation_incremental\.py|scripts/test_mutation_incremental\.py|\.github/workflows/p1s2-mutation-incremental\.yml)$'; then
+            '^(scripts/mutation_incremental\.py|scripts/test_mutation_incremental\.py|\.github/workflows/p1s2-mutation-incremental\.yml|scripts/hermetic_verify\.sh|scripts/ci/lint_hermetic_instruments\.py|scripts/tests/test_hermetic_census\.py)$'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
             echo "::notice::no relevant paths changed — sentinel success"
           fi
+
+      # UNCONDITIONAL, and the asymmetry with every step below it is the point.
+      # A round-2 refuter (kimi-code/k3) found that the census lint this PR adds
+      # was named in this workflow ONLY as a trigger path — nothing ever RAN it.
+      # The PR's own commit message accuses its predecessor of exactly that
+      # shape; I fixed the trigger and not the execution, which is the half that
+      # looks right. Verified before fixing: `grep -rln lint_hermetic_instruments
+      # .github/workflows/` returned this file and this file only, from the
+      # `paths:` list.
+      #
+      # It is NOT gated on `steps.relevant.outputs.run` because its subject is
+      # every workflow in the tree, not this one's trust-path files: a PR that
+      # adds a bare instrument invocation to an UNRELATED workflow is precisely
+      # what it exists to catch, and that PR touches none of the paths the
+      # sentinel matches. Cost is bounded — pure stdlib, no deps, no network,
+      # ~1s over 106 files — and the live tree measures 0 violations today, so
+      # its first red will be a real one rather than a migration tax.
+      #
+      # DECLARED GAP, on the PUSH side only. This step is unconditional within
+      # the job, but the JOB still fires on push only for the six paths below.
+      # So a direct-to-main push that adds a bare instrument invocation to a
+      # DIFFERENT workflow file never runs this census. PRs are covered (no
+      # top-level pull_request paths filter — the sentinel gates the work, not
+      # the trigger), and workflow edits are hot-zone gated besides, so the
+      # uncovered path is narrow. Closing it means adding `.github/workflows/**`
+      # to the push paths, which would ALSO fire the full mutation gate on
+      # every workflow push to main, because the relevance step resolves
+      # run=true for every non-pull_request event. That is a cost, not a
+      # one-liner, and it is a different concern from this PR: the honest fix
+      # teaches the relevance step to compute changed files on push instead of
+      # answering true. Found by a round-3 refuter; declared rather than
+      # half-fixed.
+      - name: Instrument census — every measurement instrument runs wrapped (W121)
+        run: python3 scripts/ci/lint_hermetic_instruments.py
 
       - name: Set up Python
         if: steps.relevant.outputs.run == 'true'
@@ -111,13 +179,37 @@ jobs:
         if: steps.relevant.outputs.run == 'true'
         run: python3 -m pytest scripts/test_mutation_incremental.py -q
 
+      # The corpus for the wrapper and the census. Relevance-gated, unlike the
+      # lint above, because its subject IS this workflow's trust-path files —
+      # and those are exactly what the sentinel matches. Before this step it
+      # ran in `scripts/tests/ sweep` only, which is `continue-on-error: true`
+      # and in no required context: a corpus whose only executor cannot go red
+      # proves nothing (superscar #2, and the third instance of it found in
+      # this one PR).
+      - name: Hermetic wrapper + census corpus
+        if: steps.relevant.outputs.run == 'true'
+        run: python3 -m pytest scripts/tests/test_hermetic_census.py -q
+
+      # W121 (2026-08-21, cicatrix-scars.md): a mutation-testing cycle that
+      # mutates and restores source files in the same second, without a
+      # byte-length change, can have its .pyc reused stale by Python's
+      # mtime+size-only staleness check — silently, in either direction (a
+      # survivor reported as a kill, or a kill reported as a survivor). This
+      # instrument does exactly that mutate/restore shape. scripts/
+      # hermetic_verify.sh proves the environment cannot reuse stale
+      # bytecode BEFORE trusting any number the instrument prints below, and
+      # wraps every invocation of it so nothing downstream runs unprotected.
+      - name: Hermetic self-canary (proves stale bytecode reuse is impossible — W121)
+        if: steps.relevant.outputs.run == 'true'
+        run: bash scripts/hermetic_verify.sh --self-test-only
+
       - name: Print frozen canary integrity hash
         if: steps.relevant.outputs.run == 'true'
-        run: python3 scripts/mutation_incremental.py --print-integrity
+        run: bash scripts/hermetic_verify.sh -- python3 scripts/mutation_incremental.py --print-integrity
 
       - name: Canary self-test + incremental mutation gate
         if: steps.relevant.outputs.run == 'true'
         # mutmut IS installed here → the mutmut leg runs on changed lines.
         # --allow-skip is intentionally NOT passed: if mutmut were somehow
         # absent in CI we WANT exit 2 (visible SKIP), never a false pass.
-        run: python3 scripts/mutation_incremental.py -v
+        run: bash scripts/hermetic_verify.sh -- python3 scripts/mutation_incremental.py -v
