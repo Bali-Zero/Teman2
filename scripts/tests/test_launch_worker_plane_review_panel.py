@@ -746,11 +746,33 @@ def test_phase1_review_gate_accepts_a_well_formed_no_go() -> None:
     )
     kimi = next(seat for seat in launcher.SEATS if seat.name == "kimi")
 
+    # INNOCENCE: the validator raises on a malformed body, so returning is the
+    # assertion. Left bare, that reads as a test that checks nothing — and it
+    # would pass unchanged if the validator accepted EVERYTHING, which is the
+    # substance behind the reward-hacking lint's RH005 flag on this function.
     launcher._validate_phase1_review_body(
         seat=kimi,
         body=body.encode("utf-8"),
         input_manifest_sha256=_sha256(manifest_bytes),
     )
+
+    # GUILT: the same validator must REJECT the same body bound to a different
+    # manifest. Without this half, "accepts a well-formed NO-GO" is satisfied by
+    # a validator with no opinion at all.
+    # `match=` is load-bearing, not decoration: a bare `pytest.raises(LauncherError)`
+    # passes on ANY LauncherError, and this validator binds the manifest TWICE
+    # (an equality check and a count check). Measured — neutering the first one
+    # leaves the second raising, so the bare form could not tell a weakened
+    # binding from an intact one.
+    with pytest.raises(
+        launcher.LauncherError,
+        match="does not bind the attested manifest",
+    ):
+        launcher._validate_phase1_review_body(
+            seat=kimi,
+            body=body.encode("utf-8"),
+            input_manifest_sha256=_sha256(b"a different manifest"),
+        )
 
 
 def test_gemini_prompt_makes_finding_bullet_contract_explicit(
@@ -2076,6 +2098,18 @@ def test_private_copy_replacement_after_last_check_never_executes_replacement(
         f"Path({str(marker)!r}).write_text('executed', encoding='utf-8')"
     )
     seat = launcher.Seat(
+        # `role` and `input_transport` are required fields of Seat and were
+        # missing here since the launcher's own birth commit, so this test has
+        # raised TypeError instead of exercising its guilt path.
+        #
+        # `stdin`, NOT `file`: the file branch of `_run_seat` demands an
+        # `input_path` and then dispatches on `seat.client`, where a synthetic
+        # client raises "has no canonical file-input invocation" — the test
+        # would die before reaching the spawn boundary it exists to guard, and
+        # would be judging the wrong thing. The stdin branch passes
+        # `seat.argv_suffix` through unchanged, which is what this test built.
+        role="red-team",
+        input_transport="stdin",
         name="guilt",
         requested_route="guilt",
         client="test",
@@ -2126,7 +2160,24 @@ def test_private_copy_replacement_after_last_check_never_executes_replacement(
                 seat=seat,
                 executable=prepared,
                 client_version="test",
-                packet_bytes=b"",
+                # `packet_bytes` was renamed `review_input_bytes` and six more
+                # keyword-only arguments became required, all in the launcher's
+                # own birth commit; this call was never updated, so the test has
+                # raised TypeError ever since instead of guarding anything.
+                # Shapes are taken from the production call site, chosen so the
+                # stdin branch runs the seat's own argv unchanged:
+                #   runner_executable=None  -> argv is the executable itself
+                #   execution_prefix=()     -> no wrapper in front of it
+                #   input_path=None         -> required by the stdin branch
+                review_input_bytes=b"",
+                runner_executable=None,
+                execution_prefix=(),
+                client_artifacts=(),
+                input_path=None,
+                home=tmp_path,
+                wall_timeout_seconds=launcher.DEFAULT_WALL_TIMEOUT_SECONDS,
+                termination_grace_seconds=launcher.DEFAULT_TERMINATION_GRACE_SECONDS,
+                max_output_bytes=launcher.DEFAULT_MAX_OUTPUT_BYTES,
                 cwd=tmp_path,
                 environment=launcher._base_environment(os.environ),
                 invocation_uuid="00000000-0000-0000-0000-000000000000",
@@ -2161,6 +2212,14 @@ def test_darwin_bound_runner_executes_authenticated_signed_image(
         )
         launcher._seal_executable_sandbox(executable_sandbox, (prepared,))
         result = launcher._run_bound_command(
+            # Same story: `_run_bound_command` grew three required keyword-only
+            # arguments and this call was never updated. The production defaults
+            # are used verbatim — this test asserts that the SIGNED image is the
+            # one executed, and a `--version` call finishes long before any of
+            # these bounds is reached, so they cannot change its verdict.
+            wall_timeout_seconds=launcher.DEFAULT_WALL_TIMEOUT_SECONDS,
+            termination_grace_seconds=launcher.DEFAULT_TERMINATION_GRACE_SECONDS,
+            max_output_bytes=launcher.DEFAULT_MAX_OUTPUT_BYTES,
             executable=prepared,
             argv=(str(prepared.canonical.path), "--version"),
             input_bytes=b"",
