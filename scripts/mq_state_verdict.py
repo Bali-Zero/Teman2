@@ -43,7 +43,9 @@ EVIDENCE (never a verdict, always printed)
 
 EXIT CODES
     0  a verdict was produced (read `verdict` / `--json` for which)
-    3  CANNOT-VERIFY — the primary read failed; no verdict is emitted
+    3  CANNOT-VERIFY — the payload was unreadable or carried no PR node; no
+       verdict is emitted. `mq state` returns the same 3 when its own primary
+       read fails.
 """
 
 from __future__ import annotations
@@ -94,19 +96,27 @@ def _rollup(pr):
     return _dig(pr, "commits", "nodes", 0, "commit", "statusCheckRollup", default={}) or {}
 
 
-def _context_states(pr):
-    """Every rollup context's state, normalised to upper-case strings.
+def _context_nodes(pr):
+    """The rollup contexts the query actually RETURNED — at most one page.
 
-    CheckRun carries `conclusion` (None while running); StatusContext carries
-    `state`. Both shapes land in the same list.
+    `contexts(first:100)` is paginated while `totalCount` counts them all, so
+    this list can be a strict subset. Anything derived from it is a statement
+    about the page, never about the rollup, and the caller has to say which.
+
+    CheckRun carries `name` + `conclusion` (None while running); StatusContext
+    carries `context` + `state`. Both shapes are normalised into one list.
     """
     nodes = _dig(_rollup(pr), "contexts", "nodes", default=[]) or []
     out = []
     for n in nodes:
         if not isinstance(n, dict):
             continue
-        val = n.get("conclusion") or n.get("state") or n.get("status") or ""
-        out.append(str(val).upper())
+        out.append(
+            {
+                "name": str(n.get("name") or n.get("context") or ""),
+                "state": str(n.get("conclusion") or n.get("state") or n.get("status") or "").upper(),
+            }
+        )
     return out
 
 
@@ -115,9 +125,17 @@ def judge(payload):
 
     `payload` keys:
       pr             the GraphQL `pullRequest` node (required)
-      required_count int | None — branch protection's required-context count
-      queue_runs     int | None — count of `gh-readonly-queue/.../pr-<N>-*` runs
+      required_names list[str] | None — the NAMES branch protection requires on
+                     the PR's own base branch. None means the probe could not
+                     answer, which is not the same as "requires nothing"
+      queue_runs     {matched, window, oldest} | None — queue-branch runs and the
+                     DEPTH of the page they were counted in. A bare int is still
+                     accepted (older callers), but then the window is unknown and
+                     a zero is rendered with that uncertainty stated.
       armed_sha      str | None — the sha `mq arm` recorded, if any
+      armed_sha_unreadable
+                     bool — a state file exists but could not be parsed, so the
+                     head-vs-armed comparison is unavailable rather than absent
     """
     pr = payload.get("pr")
     if not isinstance(pr, dict) or not pr:
@@ -129,9 +147,11 @@ def judge(payload):
     amr = pr.get("autoMergeRequest")
     enabled_at = _dig(amr, "enabledAt", default="") if isinstance(amr, dict) else ""
 
-    required_count = payload.get("required_count")
+    required_names = payload.get("required_names")
+    required_count = len(required_names) if isinstance(required_names, list) else None
     queue_runs = payload.get("queue_runs")
     armed_sha = payload.get("armed_sha")
+    armed_sha_unreadable = bool(payload.get("armed_sha_unreadable"))
 
     evidence, warnings = [], []
     sub_state = ""
@@ -168,12 +188,27 @@ def judge(payload):
         evidence.append(f"autoMergeRequest.enabledAt={enabled_at}, no queue entry yet")
         evidence.append("will enter the queue when the required checks go green")
     else:
-        # BOTH absent. This is trap #10's window and it is NOT 'not armed'.
+        # NEITHER field yields an arm. This is trap #10's window and it is NOT
+        # 'not armed'.
+        #
+        # ARMED keys on `enabledAt`, not on the presence of the object, because
+        # `enabledAt` is a nullable DateTime — so `autoMergeRequest` CAN arrive
+        # as a non-null object carrying a null timestamp. Saying "both absent"
+        # there would assert the absence of an object we were just handed: a
+        # measured falsehood inside the one tool whose entire value is that its
+        # evidence is true. Say which of the two shapes actually arrived.
         verdict = "INDETERMINATE"
-        evidence.append(
-            "autoMergeRequest AND mergeQueueEntry are both absent — this is the "
-            "documented arm->entry window, NOT proof of disarmament (measured PR #5036)"
-        )
+        if isinstance(amr, dict):
+            evidence.append(
+                "autoMergeRequest is PRESENT but carries no enabledAt, and there is no "
+                "mergeQueueEntry — no arm can be read from either, which is the "
+                "documented arm->entry window, NOT proof of disarmament (measured PR #5036)"
+            )
+        else:
+            evidence.append(
+                "autoMergeRequest AND mergeQueueEntry are both absent — this is the "
+                "documented arm->entry window, NOT proof of disarmament (measured PR #5036)"
+            )
         evidence.append(f"to decide: {DISAMBIGUATOR}")
 
     # --- signal 3: queue-branch runs (evidence, never a verdict on its own) --
@@ -242,28 +277,69 @@ def judge(payload):
     # --- evidence: the rollup, and the count it was computed over -----------
     rollup_state = (_rollup(pr).get("state") or "").upper()
     total = _dig(_rollup(pr), "contexts", "totalCount")
+    nodes = _context_nodes(pr)
+    seen_names = {n["name"] for n in nodes if n["name"]}
+    truncated = isinstance(total, int) and len(nodes) < total
+    base_ref = pr.get("baseRefName") or ""
+
     evidence.append(
         f"rollup={rollup_state or '<none>'} over totalCount="
         f"{total if total is not None else '?'} context(s)"
-        + (f"; branch protection requires {required_count}" if required_count is not None else "")
+        + (f"; {base_ref or 'the base branch'} requires {required_count}" if required_count is not None else "")
     )
+
+    # A required check has an IDENTITY, not a cardinality. Sixty-eight green
+    # OPTIONAL contexts do not satisfy eleven REQUIRED ones that are all
+    # absent — and comparing the two counts says they do. That substitution
+    # (a number standing in for a name set) is the same proxy-for-entity
+    # mistake this whole verb exists to stop, so it is checked by NAME and the
+    # count is kept only as the thing to print.
     if terminal:
         pass
-    elif required_count is None:
+    elif required_names is None:
         warnings.append(
-            "required-context count CANNOT-VERIFY: a rollup=SUCCESS cannot be trusted without "
-            "the number it was computed over."
+            "required checks CANNOT-VERIFY: the base branch's protection did not answer with a "
+            "check list (classic protection may be absent and the rules may live in a ruleset). "
+            "A rollup=SUCCESS cannot be trusted without knowing WHICH checks had to be in it — "
+            "and this is not the same as 'requires nothing'."
         )
-    elif rollup_state == "SUCCESS" and isinstance(total, int) and total < required_count:
+    elif not required_names:
+        evidence.append("the base branch declares no required status checks")
+    elif not seen_names:
         warnings.append(
-            f"FALSE GREEN: rollup=SUCCESS was computed over {total} context(s) while main "
-            f"requires {required_count}. A rerun detaches check-runs and third-party contexts "
-            "alone can average to SUCCESS. This is not mergeable-green."
+            f"{len(required_names)} required check(s) declared, but the rollup returned no context "
+            "NAMES to match them against — presence cannot be verified from this read."
+        )
+    else:
+        # No count-vs-count fallback lives here. Once every required NAME is
+        # accounted for, `totalCount < len(required)` is unreachable by
+        # construction (nodes are a subset of total), so such a branch would
+        # be a guard that cannot fire — the shape this file exists to refuse.
+        missing = sorted(n for n in required_names if n not in seen_names)
+        if missing and truncated:
+            warnings.append(
+                f"{len(missing)} required check(s) are absent from the {len(nodes)} context(s) this "
+                f"read returned, but the rollup has {total} and only one page was fetched — "
+                f"CANNOT-VERIFY rather than missing. First: {', '.join(missing[:3])}"
+            )
+        elif missing:
+            warnings.append(
+                f"FALSE GREEN RISK: {len(missing)} of {len(required_names)} required check(s) are "
+                f"ABSENT from the rollup entirely, whatever its state says — a green computed over "
+                f"contexts that are not the required ones is not mergeable-green. "
+                f"Missing: {', '.join(missing[:5])}"
+                + (f" (+{len(missing) - 5} more)" if len(missing) > 5 else "")
+            )
+
+    if truncated and not terminal:
+        warnings.append(
+            f"only {len(nodes)} of {total} rollup contexts were fetched (the query asks for one "
+            "page): any statement below about which contexts are present or CANCELLED is about "
+            "that page, not about the rollup."
         )
 
     # --- evidence: CANCELLED is not 'fail', and not 'pass' either -----------
-    states = _context_states(pr)
-    cancelled = [s for s in states if s == "CANCELLED"]
+    cancelled = [n for n in nodes if n["state"] == "CANCELLED"]
     if cancelled:
         evidence.append(f"CANCELLED contexts: {len(cancelled)}")
         warnings.append(
@@ -274,12 +350,27 @@ def judge(payload):
 
     # --- evidence: the arm rides the PR, not the sha ------------------------
     head = pr.get("headRefOid") or ""
-    if armed_sha:
+    if armed_sha_unreadable:
+        # Silence here would delete the HEAD-MOVED check without saying so —
+        # an omission indistinguishable from "this PR was never armed", which
+        # is the one thing this file refuses to imply anywhere else.
+        warnings.append(
+            "an armed-state file exists for this PR but could not be read, so the "
+            "head-vs-armed comparison is CANNOT-VERIFY — not evidence that the head "
+            "has held still since arming."
+        )
+    elif armed_sha:
         if head and head != armed_sha:
             warnings.append(
                 f"HEAD MOVED since arm: armed {armed_sha[:12]}, head now {head[:12]}. "
                 "The auto-merge request sits on the PR, not the SHA — this push inherited "
                 "the arm WITHOUT re-passing the gate that judged it."
+            )
+        elif not head:
+            warnings.append(
+                f"an armed sha is on record ({armed_sha[:12]}) but this read returned no "
+                "headRefOid, so head-vs-armed is CANNOT-VERIFY — silence here would have "
+                "read as 'the head has held still'."
             )
         else:
             evidence.append(f"head matches the sha recorded at arm time ({armed_sha[:12]})")
@@ -299,8 +390,8 @@ def judge(payload):
     }
 
 
-def render(result, pr_number):
-    lines = [f"== mq state — PR #{pr_number} =="]
+def render(result, pr_number, repo=""):
+    lines = [f"== mq state — PR #{pr_number}" + (f" ({repo})" if repo else "") + " =="]
     v = result["verdict"]
     sub = f" ({result['sub_state']})" if result.get("sub_state") else ""
     lines.append(f"VERDICT: {v}{sub}")
@@ -319,6 +410,7 @@ def render(result, pr_number):
 def main(argv=None):
     ap = argparse.ArgumentParser(description="judge one PR's merge-queue state (read-only)")
     ap.add_argument("--pr", default="?", help="PR number, for the header only")
+    ap.add_argument("--repo", default="", help="owner/name, for the header only")
     ap.add_argument("--json", action="store_true", help="emit the verdict as JSON")
     ap.add_argument(
         "--payload",
@@ -333,16 +425,22 @@ def main(argv=None):
     except json.JSONDecodeError as exc:
         print(f"CANNOT-VERIFY — payload is not JSON: {exc}", file=sys.stderr)
         return 3
+    # A traceback is not a verdict, and rc 1 is not rc 3. Any shape the judge
+    # cannot read — a list instead of an object, a string where a number was
+    # promised — has to arrive as a labelled CANNOT-VERIFY, or the caller
+    # reading only the exit code learns the wrong thing.
     try:
+        if not isinstance(payload, dict):
+            raise ValueError(f"payload must be a JSON object, got {type(payload).__name__}")
         result = judge(payload)
-    except ValueError as exc:
-        print(f"CANNOT-VERIFY — {exc}", file=sys.stderr)
+    except (ValueError, TypeError, AttributeError, KeyError, IndexError) as exc:
+        print(f"CANNOT-VERIFY — {type(exc).__name__}: {exc}", file=sys.stderr)
         return 3
 
     if args.json:
         print(json.dumps(result, indent=2, sort_keys=True))
     else:
-        print(render(result, args.pr))
+        print(render(result, args.pr, args.repo))
     return 0
 
 
