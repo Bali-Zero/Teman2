@@ -4,9 +4,13 @@
 > stated so that no future PR has to carry the general cure as a side-effect of fixing its
 > own alarm. Implementation is a separate, later PR, adjudicated on its own merits.
 >
-> **Every number and file reference in this document is re-derived at publication time**,
-> not carried from the session that drafted it. Two lanes shipped stale self-counts on
-> 2026-08-29, one of them inside a section about unmeasured claims.
+> **Every number and file reference in this document is re-derived at publication time,
+> together with the scope it was taken over** — not carried from the session that drafted
+> it. Two lanes shipped stale self-counts on 2026-08-29, one of them inside a section about
+> unmeasured claims. **The second half of that sentence was added after this document
+> shipped a wrong number while honestly satisfying the first half**: §3.3's count was
+> re-derived at publication and was still wrong, because the re-derivation re-ran the same
+> path-filtered command and inherited its boundary. See §6.4.
 
 ---
 
@@ -150,29 +154,59 @@ A gateway has a security property only for the callers that use it. If the paylo
 lives at the gateway, **every direct caller is outside the guarantee by construction** —
 so clause (a.3) is a requirement on each sender, not on `tg_notify.py`.
 
-This is not hypothetical. Measured on `origin/main` at `862b92a394`, re-derived at
-publication and **not** carried from the session that drafted this:
+This is not hypothetical. Measured on `origin/main` at `862b92a394`, **repo-wide** — the
+scope is stated because the first version of this table did not state it, and was wrong for
+exactly that reason (see the correction below):
 
-|                                                                  |                                             |
-| ---------------------------------------------------------------- | ------------------------------------------- |
-| files containing `parse_mode`                                    | 100 — `apps/` 62, `scripts/` 37, `infra/` 1 |
-| known direct senders (`infra/tg-gateway/grandfathered.json`)     | 144                                         |
-| files that are **both** a direct sender **and** set a parse mode | **62**                                      |
+|                                                                  |                                                                                   |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| files containing `parse_mode`, whole tree                        | **134** — `apps/` 62, `scripts/` 37, `docs/` 22, `.github/` 7, other 6            |
+| known direct senders (`infra/tg-gateway/grandfathered.json`)     | 144                                                                               |
+| files that are **both** a direct sender **and** set a parse mode | **69** — of which `.github/workflows/` **7**, the rest under `apps/` + `scripts/` |
 
-> The re-derivation earned its keep: the draft said 98 / `apps/` 60, measured a few hours
-> earlier. Two files entered `apps/` in between. The `scripts/` 37 and the 62 held. A
-> document that had stated its own numbers from memory would have shipped two wrong ones —
-> which is §6's whole argument, applied to §3.
+> **Correction, kept visible rather than silently applied.** The published version of this
+> table read _"100 — `apps/` 62, `scripts/` 37, `infra/` 1"_ and an intersection of **62**.
+> Those numbers are arithmetically correct **inside a boundary this document never stated**:
+> they are `apps` + `scripts` + `infra` only. Repo-wide the figures are 134 and 69. The 7
+> dropped files are all `.github/workflows/*.yml`, and they are all real senders.
+>
+> The failure is not the count. It is that §3.4, ten lines below, states the rule this table
+> broke — _a bounded negative is a deliverable only when the boundary itself was measured_ —
+> and the boundary here was never measured, only inherited from the command that happened to
+> be typed. See §6.4: **re-deriving a number does not re-derive its boundary.**
 
-Sixty-two senders bypass the gateway _and_ ask Telegram to parse entities — the exact pair
+**The dropped cohort is the sharpest instance in this document, not an edge case.**
+`.github/workflows/fly-deploy.yml` carries **eight** direct sends, every one of them
+`curl -s … -d "parse_mode=Markdown" … || true`. Two of them (`:321`, `:335`) belong to the
+post-deploy migration step, and the second is the _failure_ page — the message whose own
+text reads _"Backend live ma schema potenzialmente disallineato. Investigare subito."_ Its
+payload interpolates `github.sha` and `github.actor` inside backticks. So a single three-line
+block violates **both** clauses at once: it sets a parse mode over uncontrolled content
+(a.3), and `curl -s … || true` discards the refusal (b). A `400 can't parse entities` there
+is the schema-drift page silently not arriving.
+
+**And the file that enumerates these senders had already recorded this exact mistake being
+made and corrected.** `grandfathered.json`'s own `_doc` says the `.yml` cohort was added on
+2026-07-28 because _"the founding census never scanned GitHub Actions, so these were day-1
+members nobody counted, not new senders"_, and closes: _"`scan_suffixes` exists so no future
+reader has to guess whether 'no senders here' meant 'nobody looked here'."_ `scan_suffixes`
+lists `.yml`. This document then reproduced the same boundary error **against that very
+file**. Counting the earlier `| head -10` incident in §6.2, that is the second time in one
+night that a warning sitting in front of the author failed to prevent the thing it warns
+about — which is §6.2's argument for why these rules want a gate and not a paragraph.
+
+Sixty-nine senders bypass the gateway _and_ ask Telegram to parse entities — the exact pair
 that produced the payments defect. The repo has already been bitten and has already cured
 it locally without naming the class: `scripts/sota_fase0_final_check.py` carries the comment
 *"Plain text — Markdown parse_mode 400-errors on nested `and emoji"*, and`intake_review_reader_liveness.sh`and`cost_breaker_deadman.sh` each record migrating
 **away** from raw-curl-with-parse_mode to the gateway.
 
-The sweep of those 62 is **its own ledger row and its own PR**, not a line in this document.
+The sweep of those 69 is **its own ledger row and its own PR**, not a line in this document.
 It gets its worklist for free: `grandfathered.json` already enumerates the direct senders,
-and that list's ratchet (§5.1) already prevents new ones being added.
+and that list's ratchet (§5.1) already prevents new ones being added. The row must carry the
+repo-wide number: an arming step written against 62 would close green over the 7 workflow
+senders **and its own close-out probe would confirm the wrong number**, because that probe
+re-runs the same bounded command.
 
 **What is true about the gateway, and only that:** `scripts/tg_notify.py` sets no parse mode
 on any of its three roads — `send_telegram` is `urlencode({"chat_id", "text"})`, the relay
@@ -379,14 +413,112 @@ docs/specs` returned **1** and `git ls-tree -r origin/main -- docs/specs` return
 5. **A textual probe over human-formatted output reads a string nobody guarantees stable.**
    Prefer a structured field; if there is none, pin the format with a test that fails when
    it changes.
-6. **Compare sets bidirectionally.** A ledger check must assert _nothing lost_ **and**
-   _nothing resurrected_: a union merge restoring a row that main deliberately deleted passes
-   a count comparison whenever anything else was added. Per rule 3, assert that main
-   actually deleted something before claiming the second half proved anything.
+6. **Compare sets bidirectionally — and do not build the comparison out of lines.** A ledger
+   check must assert _nothing lost_ **and** _nothing resurrected_: a union merge restoring a
+   row that main deliberately deleted passes a count comparison whenever anything else was
+   added. Per rule 3, assert that main actually deleted something before claiming the second
+   half proved anything.
+
+   **The obvious formula is wrong, and it was wrong twice in one hour in mirror directions.**
+   `expected = main ∪ branch` counts every row the branch merely INHERITED as a row it owes,
+   so a correct union merge reports as a LOST. The mirror instance is worse: a row the branch
+   legitimately closed — an in-place `opened` → `CLOSED` amendment, which is this ledger's
+   normal way of closing a row — reads to a line differ as a delete plus an unrelated add,
+   and reports the same way. The interim hand version, independently re-derived by two
+   adjudicators and verified LOST 0 / EXTRA 0 on a real PR:
+
+   ```
+   authored = branch − base
+   deleted  = base − branch
+   expected = (main − deleted) ∪ authored
+   ```
+
+   **But two mirror false positives in one hour is not two bugs; it is the primitive telling
+   you it is the wrong primitive**, and the formula above is a patch on it. A line-set
+   comparison cannot distinguish _row edited_ from _row deleted plus unrelated row added_,
+   because at the level of lines those are the same event. The consequence is not noise:
+   **every lane that closes a row it opened trips its own check**, so the check punishes
+   precisely the discipline it exists to enforce — and the repair a lane reaches for on that
+   false red is to restore the row, which is the resurrection the other half of this rule was
+   written to catch. The wrong primitive manufactures the failure its sibling check exists to
+   prevent.
+
+   **So the binding requirement is not the formula.** Any armed implementation keys on the
+   identity each row already carries — its `(date, lane)` pair — never on line identity.
+   Until it does, the three-term version is an interim, and a red from it is a question.
+
 7. **Re-derive every handle bound to a commit at the moment of use** — run ids, check-run
    ids, head SHAs, span numbers. The tell is identical in every instance: _the artifact
    looks authoritative because it is internally consistent._ Self-consistency is not
    evidence; it is what a lie looks like from the inside.
+
+### 6.4 The probe was re-run, and re-running is not re-deriving
+
+8. **Re-deriving a number does not re-derive its boundary.** A count is two things — a
+   measurement and the scope it was taken over — and only the first is visible in the
+   result. Re-running the command re-measures the first while silently re-inheriting the
+   second, so a stale, wrong, or never-chosen boundary survives every honest refresh and
+   arrives at publication wearing the credibility of a fresh measurement. **State the scope
+   next to the number, or the number is not a deliverable.**
+
+   This is the rule of the four in this section that most needs stating without its
+   incident, because the incident makes it look like carelessness and it is not. §8's
+   criterion 7 asks whether every number was re-derived at publication. For §3.3's table the
+   answer was **yes** — the re-derivation is documented, it caught two files that had
+   entered `apps/` between drafting and publishing, and it was cited in this document as
+   evidence the discipline was working. It re-ran `git grep … -- apps/ scripts/ infra/`. The
+   published figure was 100 files and a 69-file intersection reported as 62, and the boundary
+   that produced it appears nowhere in the sentence that carries it. **A criterion that asks
+   for re-derivation is satisfied by re-running the wrong probe.**
+
+   It is the general form of the `| head -10` failure in §6.2 — there the boundary was a
+   display cap, here it is a path filter, and in both cases every line of output was true.
+   Operationally: a scope claim needs the scope as an artifact, not as an argument that was
+   typed once. Count the complement (`whole tree − the slice you measured`) and say what is
+   in it, or name the slice in the sentence so the next reader can see the fence.
+
+### 6.5 The check was read, and reading it does not say whether it binds
+
+9. **A check's STANDING is not legible where its verdict is read.** In a pull request's
+   status rollup, a check that merely reports renders identically to one that gates: same
+   name, same red, same row. What separates them lives somewhere the rollup never shows —
+   `branches/<branch>/protection`'s `required_status_checks.contexts` — so a genuine
+   error-severity finding can sit visible in a rollup, be read by two agents and a merge
+   queue, and block nothing.
+
+   Measured on the PR this document was written from. #5205's rollup carried a FAILURE on a
+   check named `CodeQL` with an **empty `workflowName`**, while both jobs named
+   `CodeQL Analysis (python)` and `(javascript)` were SUCCESS. All three are `CheckRun`s,
+   which is why they render alike:
+
+   | rollup entry                   | `app.slug`                 | `workflowName`      | required? |
+   | ------------------------------ | -------------------------- | ------------------- | --------- |
+   | `CodeQL Analysis (python)`     | `github-actions`           | `Security Scanning` | yes       |
+   | `CodeQL Analysis (javascript)` | `github-actions`           | `Security Scanning` | yes       |
+   | `CodeQL`                       | `github-advanced-security` | _(empty)_           | **no**    |
+
+   The third is the security app's aggregate, not an Actions job — hence no workflow name,
+   hence the contextless look. Its two annotations were both correct, one at error severity,
+   and the PR merged with them outstanding. The first reading of this entry, by two agents
+   independently, was that it could be trusted _neither_ red nor green. That was half wrong
+   in the direction that matters: **it can be trusted red. What is illegible is its
+   authority, not its truth.**
+
+10. **An aggregate can reach a terminal verdict before the runs it summarises**, and that
+    verdict renders as a pass. Same widget, opposite failure, measured the next hour: on the
+    PR that fixed those two findings, the same aggregate posted `conclusion: NEUTRAL`,
+    `status: COMPLETED`, while `CodeQL Analysis (python)` was still `IN_PROGRESS`. Its own
+    summary said so — _"Code scanning cannot determine the alerts introduced by this pull
+    request, because 1 configuration … was not found"_ — but the rollup shows the conclusion,
+    not the summary, and `NEUTRAL/COMPLETED` is indistinguishable there from a pass. It
+    later flipped to SUCCESS when the analysis finished, **so the entry is not stable and
+    reading it once is not reading it.**
+
+    Together, rules 9 and 10 give the two questions a rollup does not answer and cannot be
+    made to: **who posted this** (`.app.slug` on the check-run — an Actions job and a
+    security app are different producers, and only the former carries a `workflowName`) and
+    **did that producer actually observe the thing it names**. Neither is derivable from the
+    row.
 
 ---
 
@@ -409,5 +541,15 @@ This document should be judged on whether:
 4. §5 reuses the existing ratchets rather than proposing a third;
 5. §3.4's retracted boundary is still present as a retraction — a spec that quietly
    deletes its own wrong claim teaches nothing, and this one was acted on by another lane;
-6. the 62-sender sweep is scoped OUT of this document and into its own ledger row;
-7. every number in it was re-derived at publication, including the 98 / 37 / 62.
+6. the sender sweep is scoped OUT of this document and into its own ledger row, **carrying
+   the repo-wide number** — an arming step written against the scoped 62 closes green over
+   the 7 workflow senders and its own close-out probe confirms the wrong figure;
+7. every number in it was re-derived at publication **together with the scope it was taken
+   over** — see §6.4. The first version of this criterion asked only for re-derivation, was
+   honestly satisfied, and passed a wrong number through anyway, because re-running a probe
+   re-inherits its boundary. A criterion that can be met by re-running the wrong command is
+   not a criterion;
+8. the implementation is bound by a ledger row with a named owner, a named entry point and a
+   proof-of-armed that is RED against today's tree — **a spec adjudicated and then left
+   unimplemented is precisely the artifact §6.2 says does not bind**, and "adjudicate first,
+   implement second" becomes "adjudicate, then never" without that row.
