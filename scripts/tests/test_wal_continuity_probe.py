@@ -1224,3 +1224,33 @@ def test_an_unrecognised_last_archived_wal_is_not_described_as_a_backup_file():
     v = probe.classify(None, probe.sanitize_observation(obs(last_archived_wal="GARBAGE")))
     note = next(n for n in v.notes if n.code == probe.V_NON_SEGMENT_LAST_ARCHIVED)
     assert "cannot tell those apart" in note.detail
+
+
+def test_every_send_alert_call_in_this_module_reads_its_verdict():
+    """STRUCTURAL, and the reason it is structural: the blind-guard p0 discarded its
+    delivery verdict for a whole round, cured only because C5 sent me back into that
+    function. The RED path had been fixed; the identical site one branch over had not.
+    That is W107 — curing one wrapper of five — and enumerating "the two I have seen"
+    would have left the same question open for the next branch somebody adds.
+
+    So the assertion is about the CLASS: every call to `send_alert` anywhere in the
+    module must have its return value bound or tested. A bare expression-statement call
+    is a delivery nobody read.
+    """
+    import ast
+    src = Path(probe.__file__).read_text()
+    tree = ast.parse(src)
+
+    def is_send_alert(node: ast.AST) -> bool:
+        return (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                and node.func.id == "send_alert")
+
+    discarded = [n.lineno for n in ast.walk(tree)
+                 if isinstance(n, ast.Expr) and is_send_alert(n.value)]
+    assert not discarded, (
+        f"send_alert's verdict is discarded at line(s) {discarded} — the gateway can "
+        "refuse a message and exit 0, so an unread return is an alert that may never "
+        "have left the machine")
+
+    total = sum(1 for n in ast.walk(tree) if is_send_alert(n))
+    assert total >= 6, f"expected every alert path to be present, found {total} call(s)"

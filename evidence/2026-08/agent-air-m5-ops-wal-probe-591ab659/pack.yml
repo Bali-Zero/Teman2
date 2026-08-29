@@ -398,6 +398,29 @@ receipts:
     exit: 0
     ts: "2026-08-29T07:42Z"
     seat: "session (m5, build lane)"
+  - claim: "There is no THIRD unread delivery — asked as a class, not enumerated, and the class is now pinned by an AST test"
+    cmd: "grep -n 'send_alert(' scripts/wal_continuity_probe.py ; test_every_send_alert_call_in_this_module_reads_its_verdict ; one mutant"
+    result: >-
+      The orchestrator's challenge was the right one: the class is "every place this
+      module reports a delivery", not "the two I have seen". Enumerated all SIX call
+      sites — blind p0, read-failure CANNOT_VERIFY, and the four on the classify path
+      (red, evidence-erased, voided, recovered). All six read the verdict; there is no
+      third unread site.
+
+      One real asymmetry surfaced from asking it that way, and it is fixed: the BLIND
+      path was the only one that never wrote state at all, so the run where the probe is
+      most broken left no on-disk trace of whether anybody was told. It now persists
+      `last_verdict` and `last_alert_delivered` while deliberately leaving `previous`
+      untouched — a blind read must not overwrite a good baseline with nothing.
+
+      Pinned structurally rather than by a list, because a list is what failed last time:
+      an AST walk asserts that NO `send_alert` call anywhere in the module is a bare
+      expression statement. Mutant — restoring the discarded form on the recovered-alert
+      path — turns it red. A seventh branch added later is covered without anyone
+      remembering to extend a census.
+    exit: 0
+    ts: "2026-08-29T07:58Z"
+    seat: "session (m5, build lane), on the orchestrator's class-not-instances challenge"
 dissent:
   - seat: "gpt-5.6-sol xhigh"
     objection: >-

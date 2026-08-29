@@ -1092,6 +1092,16 @@ def run(args: argparse.Namespace) -> int:
                     V_ALERT_UNDELIVERED,
                     "the blind-guard alert was computed but the gateway did not deliver "
                     "it — treat this run as unreported."))
+                # The blind path is the ONLY one that never wrote state, so the run
+                # where the probe is most broken left no on-disk trace of whether
+                # anybody was told. `previous` is deliberately left untouched — a blind
+                # read must not overwrite a good baseline with nothing — but the
+                # delivery outcome is persisted, so the two keys a human greps for mean
+                # the same thing on every path.
+                if not args.dry_run:
+                    state["last_verdict"] = V_CANNOT_VERIFY
+                    state["last_alert_delivered"] = False
+                    save_state(path, state)
             if args.json:
                 print(json.dumps(verdict.as_dict(), indent=2))
             # C5 — return the VERDICT's code, never a parallel literal. They were two
