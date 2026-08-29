@@ -83,6 +83,46 @@ the token-SSOT + critic-conformance cures, in that priority order.
   **Conflicts / order**: does NOT include the VOA anonymous-buyer journey (L07 owns it). Must not
   re-flag any defect class PR #5181/#5189/#5170 already closed — verify via replay before building.
 
+### PR-1 ACCEPTANCE CORRECTION (2026-08-29, Squad P) — the supplied guilt fixture is not executable
+
+PR-1's Acceptance reads:
+
+> Guilt — on a scratch branch, revert the cure commits (#5181/#5189/#5170), then run the suite ->
+> red, naming the correct defect class.
+
+**Executed at gate time, and it does not work.** Reverting `10ba83473`'s change to
+`apps/mouth/src/app/visa/clock/[hash]/page.tsx` locally and running that sentinel gives:
+
+```
+[1/1] ... an overstay payload on /visa/clock/[hash] renders the overstay branch, never 'Valid until'
+  1 passed (4.3s)
+```
+
+Green, with the cure reverted. That is **not** a defect in the sentinel. All three cures live in
+`apps/mouth/src/**`, which is compiled and deployed to Vercel, and these specs drive
+`https://balizero.com`. Reverting local source cannot change what production serves; satisfying
+this fixture literally would mean deploying reverted code to production.
+
+**Why the wrong fixture is worse than no fixture here:** an author who runs it and sees green has
+three readings available — "the cure is still live" (true, but nothing was tested), "the sentinel
+is broken" (false), "guilt passed" (false) — and nothing in the spec disambiguates them. A guilt
+fixture whose green is uninformative trains its reader to stop looking.
+
+**What a PRODUCTION sentinel's guilt fixture must be instead** (all three shipped in PR-1):
+
+1. **Synthesize the defect at the NETWORK layer**, never in source. The visa-clock spec intercepts
+   the page's two API calls with a synthetic overstay payload — #5170 was a client-side `Math.max`
+   bug, so the deployed bundle that regressed is still the thing exercised.
+2. **Mutate the SENTINEL and require red.** Measured: self-test neutered -> `CRITICAL
+selftest-malfunction`; a spec file moved out of the directory -> exit 8 naming it; a spec skipped
+   -> `[SKIPPED - never actually ran]` in `real_failures`; `baseURL` pointed at localhost -> exit 7
+   refusal.
+3. **Keep at least one sentinel pointed at a defect that is genuinely live**, so the suite is not
+   composed entirely of things that cannot currently fail. Today that is `/prime`
+   (`ExpiredKeyMapError`, needs-ruling item 1) — and it is the only one detecting anything.
+
+The Innocence and Self-test halves of PR-1's acceptance are unaffected and were both satisfied.
+
 ## PR-2: feat(design-tokens): Merah Putih DTCG source + contrast tripwire
 
 **Files**: `design/tokens/merah-putih.tokens.json` [proposed — no existing tokens dir at repo root
@@ -104,6 +144,65 @@ for `apps/mouth`; distinct from the brand-cortex carousel `tokens.json`]; `scrip
   **Arming / prove-live**: armed when the CI job actually runs on a PR touching the token file
   (confirm via a real PR diff, not just presence of the job definition).
   **Conflicts / order**: independent of PR-1/PR-3; must land before any future migration PR.
+
+### PR-2 FIELD REPORT (2026-08-29, Squad P) — the tripwire's model is under-specified
+
+PR-2 shipped as [#5240] and the SSOT half is sound. The TRIPWIRE half needs one more PR, and this
+section is the missing spec detail that PR needs — written here, per the craft-wave depth-1 rule,
+instead of being patched in a second correction round on the same surface.
+
+**What two blind cross-family rounds found.** Kimi K3 found that a token could be silenced by
+emptying its own claims list; that was cured with a required-claims floor over 16 duty-chosen
+paths. Codex GPT-5.6 sol (xhigh, blind, no context about Kimi's round) then found SEVEN more ways
+to make the script print `OK` while the identity it guards is broken. **All seven were reproduced
+against the shipped token file** by the gating seat before being accepted:
+
+| #   | escape                                                         | measured                                                                                                      |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| 1   | `"$value"` on the `color` GROUP silences the entire tree       | prints `OK — 0 claim(s) … all 16 required-claims-floor path(s) carry >=1 claim` (false in that state), exit 0 |
+| 2   | `duty: "decorative"` on a `color.text.*` token skips the floor | ink at the page ground's own hex, 1.0:1 → exit 0                                                              |
+| 3   | the floor comparison rounds before comparing                   | true 4.4951 published as `4.50` clears a 4.5 floor                                                            |
+| 4   | claim IDENTITY is unpinned, only the count                     | delete a real pairing + duplicate another → count still 28, exit 0                                            |
+| 5   | `against` accepts a frozen hex literal                         | freeze `{color.ground.carta}`, then move that ground to `#000000` → exit 0, every pairing stale               |
+| 6   | a bare `NaN` ratio bypasses drift                              | `nan > tolerance` is False → exit 0                                                                           |
+| 7   | `REQUIRED_CLAIM_PATHS` is a frozen list of today's names       | a NEW `color.text.*` token with no claim is invisible → exit 0                                                |
+
+**The root cause is single and structural**: _the script validates the claims the file VOLUNTEERS,
+and never derives from the token tree which claims MUST exist and what each must be measured
+against._ Every row above is that sentence wearing a different hat, which is why patching them
+one at a time would have been the wrong shape of fix.
+
+**What the follow-up PR must change (this is the spec, not a wish list):**
+
+1. **Derive the required claim set from the TREE, not from a frozen list.** Any token under a
+   category that carries a WCAG duty (`color.text.*`, `color.state.state-*`, and whatever the
+   duty table names next) requires at least one claim, discovered by walking — so a token added
+   tomorrow is covered without anyone remembering to edit a constant.
+2. **A group carrying `$value` must not terminate the walk for its descendants**, and a run that
+   collects ZERO claims must be a FAILURE, never an `OK`. Zero claims is the signature of a
+   silenced file, not of a clean one.
+3. **`against` must be an ALIAS**, never a literal. A claim's whole purpose is to bind a
+   foreground to a background TOKEN; a frozen hex severs that binding invisibly.
+4. **Compare the raw ratio to the floor**, and reconcile that with the drift check's 2dp
+   tolerance deliberately — the two currently disagree, and the disagreement is what lets a
+   sub-threshold ratio through. WCAG does not permit rounding up to the threshold.
+5. **Reject non-finite ratios at parse time** (`json.loads(..., parse_constant=)` or an
+   `isfinite` gate), and reject a `duty` that is not legal for the token's category — the duty
+   string is currently an unrestricted floor off-switch.
+6. **Pin claim IDENTITY, not just the count** — the set of `(token, against)` pairs, so a
+   deletion cannot be hidden behind a duplicate.
+
+**Until that lands, the standing instruction is in the script's own docstring and must be honoured
+by whoever wires the CI job**: do NOT promote `check_token_contrast.py` to a blocking or required
+check. A gate that cannot fail is worse than no gate, because it is believed — the exact defect
+class (superscar #2) the script was written to defend against. The blocking-job request in the
+squad ledger (HANDOFF H3) carries the same blocker.
+
+**What a green from the current script DOES still prove**, and why it is worth keeping meanwhile:
+for a claim that is present and honestly shaped, the ratio really is recomputed from the raw hex
+and really is compared to its duty's floor. Both directions were re-measured at gate time —
+drifting one hex fails naming every affected claim; emptying a required token's list fails naming
+the token.
 
 ## PR-3: feat(wr2): critic conformance corpus + font structural probe
 

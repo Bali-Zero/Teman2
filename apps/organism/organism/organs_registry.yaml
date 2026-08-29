@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 7ab8f17de61d7f29e725d95daedf633ace61ead85e9f08f8976f742388ada1a2
+checksum: 9bc8da9a6dfbfcb92f1f5e3c0d17654b8146b8b129f52b53f3f145594fa000f0
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2598,6 +2598,32 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/mini.vercel_autopromote.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.voa_probe
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 900
+  owner_module: infra/launchagents/wrappers/voa-probe-wrapper.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.voa-probe
+  severity_on_silence: warning
+  notes: 'Anonymous end-to-end probe of the GARUDA VOA public funnel (page load plus
+    the create-read-delete-verify eligibility-check API journey) every 900s. Reports
+    a four-state verdict (pass/dark/fail/unknown, see scripts/probes/voa_journey_probe.mjs
+    header) to its OWN heartbeat file (VOA_PROBE_HEARTBEAT, L07-PR3 dead-man reads
+    it) -- separate from this organism heartbeat, which only says the cron itself
+    ran. severity is warning, not critical: the funnel is deliberately dark pre-launch
+    today (the public flag is off) and dark maps to organism status=ok (an intentionally-off
+    flag is healthy, not degraded -- see W104); this organ silence starts mattering
+    once the funnel goes live, not before.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.voa_probe.json
     timestamp_field: ts
     status_field: status
 - id: pro.wa_bot_throughput_sentinel
