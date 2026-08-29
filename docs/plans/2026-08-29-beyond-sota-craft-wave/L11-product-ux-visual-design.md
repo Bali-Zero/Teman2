@@ -134,8 +134,42 @@ for `apps/mouth`; distinct from the brand-cortex carousel `tokens.json`]; `scrip
   **Arming / prove-live**: armed when the CI job is blocking (not advisory) AND both fixtures have
   actually run red/green in a real CI run this session, not local execution alone. Required-check
   promotion is a separate, later operator/Zero action and is not part of this PR's arming.
-  **Conflicts / order**: if the corpus can't reach 20 labeled artifacts (report's kill criterion),
-  fold this PR's scope into PR-1's sentinel probes instead of an under-powered conformance job.
+
+> **MEASURED 2026-08-29 by squad P — the kill criterion FIRES, and the probe mechanism this PR
+> names is insufficient. Read this before attempting PR-3.**
+>
+> **Corpus**: `~/.claude/skills/bali-zero-brand/_carousels-by-session/` contains exactly **one**
+> session (`c5a-konten-kreator-2026-05-26`): 13 PNG, 12 HTML, 9 JSON. It does carry a genuine
+> good/bad pair (`_archive-parallel-pre-verify/brief-parallel-errato.json` vs
+> `slides-v2-post-verify-gate.json`, alongside `CRITIC-GATE.md`/`VERIFY-GATE.md`) — but those labels
+> are about CONTENT correctness, not the font-identity dimension W99 concerns. **The W99 failing
+> slides are not on disk anywhere in the tree**, and no R6 blind-panel output exists. 13 < 20 and the
+> available labels are for the wrong dimension, so the kill criterion applies as written.
+>
+> **The probe mechanism**: this PR's build step says to route font/identity checks through
+> `document.fonts.check` "or equivalent". Measured against production:
+>
+> ```
+> https://balizero.com/visa/clock
+>   loaded FontFace families: inter, inter Fallback, cormorant, cormorant Fallback,
+>                             montserrat, montserrat Fallback
+>   document.fonts.check(): Montserrat=true Inter=true "Cormorant Garamond"=true "IBM Plex Mono"=true
+> ```
+>
+> **`IBM Plex Mono` answers `true` while being absent from the loaded set entirely.**
+> `document.fonts.check()` answers "can this family be used?" — a system or fallback resolution
+> satisfies it. It does NOT prove a webfont loaded, so a W99 cure built on it would pass on exactly
+> the system-font renders W99 is about: the defect's own shape, one level up.
+>
+> A sound probe must instead (a) enumerate the `FontFace` set and require each brand family with
+> `status === "loaded"`, and (b) assert the COMPUTED `font-family` of a rendered element resolves to
+> the brand face. Never `check()` alone.
+>
+> **Also note** the fold-in target is not buildable until PR-1 merges: `playwright.production.config.ts`
+> arrives with it, so a branch cut from `main` has no harness to fold into.
+
+**Conflicts / order**: if the corpus can't reach 20 labeled artifacts (report's kill criterion),
+fold this PR's scope into PR-1's sentinel probes instead of an under-powered conformance job.
 
 ## Needs-ruling carried (Zero only — this spec does NOT decide these)
 
