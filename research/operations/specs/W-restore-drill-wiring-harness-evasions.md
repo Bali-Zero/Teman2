@@ -2,7 +2,13 @@
 date: 2026-08-30
 domain: operations
 lane: craft-w L12-PR3b (restore-drill wiring)
-adversarial_review: codex-gpt-5.6-sol + kimi-code/k3 (round 2 — both DO-NOT-SHIP; this spec IS their findings)
+adversarial_review: codex
+reviewed_also: kimi-k3
+review_note: |
+  Both round-2 seats returned DO-NOT-SHIP on the diff this spec suspends; the spec's entire
+  content IS their findings, so the reviewer is genuinely not the author of the claims.
+  The key takes a single known seat token — an earlier value spelled both seats in prose and
+  the checker correctly refused it.
 status: SPEC — SUSPENDED under the depth-1 rule, not abandoned
 ---
 
@@ -102,3 +108,34 @@ proven by MUTATION on the production helper (not by reading the corpus), restore
 `PYTHONDONTWRITEBYTECODE=1` throughout. And the existing regression set must still kill: `|| true` on
 the log tail, `PIPESTATUS[0]`, a dropped `exit "$VERIFY_RC"`, an executable-psql-only `ON_ERROR_STOP`
 flip, a deleted `set +e` before the pipe, an emptied `exit 3` branch.
+
+## Adversarial review
+
+Two non-Anthropic seats of different families reviewed the diff this spec suspends, in two rounds
+each. Round 2 was briefed specifically to hunt what the CURE broke rather than to re-list what it
+fixed. Both returned DO-NOT-SHIP.
+
+**Surviving objections — the two written up above, neither cured here:**
+
+1. `codex` / `kimi-k3` — the adjacency pins are containment-based and defeated by a spliced
+   backslash-continuation. Kimi EXECUTED this and reported all five assertions passing while the
+   assignment never runs. Surviving: yes. Suspended under the depth-1 rule, reproduction in §Evasion 1.
+2. `kimi-k3` — `_logical_lines` treats an even number of trailing backslashes as a continuation.
+   Surviving: yes. Reproduction in §Evasion 2.
+
+**Objections raised and RESOLVED in the PR rather than here** (listed so this document is not read as
+the complete set): the gunzip check ordering, which made every psql failure report a corrupt archive,
+was fixed in the PR itself with a measured matrix; and twelve round-1 findings were cured before
+round 2 ran.
+
+**Objections raised and DECLINED, with the reason** — see §"Declared, NOT proposed for fixing": the
+structural psql finder's adversarial-only decoy (Kimi tried and could not construct a benign edit
+that mis-picks), the if/fi counter's blindness to `&&`/`case`/subshells, the line-continuation evasion
+of the TG_RC rule, and a repo-wide `addopts = --collect-only`.
+
+**Where the seats disagreed**: gzip exit 2 with a complete decompression — Codex called failing on it
+a false RED, Kimi called it "defensible fail-loud, noted but not a finding". Recorded in the PR, not
+resolved by fiat.
+
+**What round 2 could not break** is listed in its own section above, deliberately, so the next reader
+does not re-run attacks a seat has already exhausted.
