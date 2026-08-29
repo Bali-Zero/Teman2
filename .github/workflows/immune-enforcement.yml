@@ -184,6 +184,8 @@ jobs:
               scripts/tests/test_docs_inventory_render_is_clock_free.py|\
               scripts/lib/fly_credential.sh|\
               scripts/test_fly_credential.sh|\
+              scripts/ci/lint_queue_field_verdict.py|\
+              scripts/tests/test_lint_queue_field_verdict.py|\
               scripts/lib/offsite_verify.sh|\
               scripts/test_offsite_verify.sh|\
               scripts/fly-pg-backup.sh|\
@@ -436,6 +438,7 @@ jobs:
             scripts/tests/test_lint_plist_keepalive.py \
             scripts/tests/test_arsenal_probe.py \
             scripts/tests/test_adversarial_review_gate.py \
+            scripts/tests/test_lint_queue_field_verdict.py \
             scripts/tests/test_nb_curator_artifact_gate.py \
             scripts/tests/test_jules_dispatch.py \
             scripts/tests/test_codex_autofix_selector.py \
@@ -595,6 +598,24 @@ jobs:
           # No `if [ -f ]` skip here: this file is on main, so absent means deleted, and a
           # deleted corpus must go red rather than quietly pass.
           bash scripts/test_fly_credential.sh
+
+      - name: Queue-field verdict lint — prove the guard, then scan every tracked file
+        # DELIBERATELY UNCONDITIONAL — no `steps.paths.outputs.relevant` gate.
+        #
+        # This lint scans the WHOLE tree, so the file that introduces the disease
+        # is by definition one nobody has listed in a sentinel yet. Gating it on
+        # a path list would make it a guardian whose only executor cannot go red
+        # on the PR that needs it (W108). The whole-tree scan is 2.7s measured on
+        # this repository, which buys that unconditionally for the price of noise
+        # nobody will notice.
+        #
+        # --selftest FIRST, always: a clean verdict from a scanner that has lost
+        # the ability to fail is the exact green-but-dead shape this battery
+        # exists to catch. It runs 8 guilt+innocence fixtures in 0.05s and exits
+        # non-zero if any of them stops discriminating.
+        run: |
+          python3 scripts/ci/lint_queue_field_verdict.py --selftest
+          python3 scripts/ci/lint_queue_field_verdict.py
 
       - name: Off-site artifact gate corpus (guilt + innocence)
         if: steps.paths.outputs.relevant == 'true'
