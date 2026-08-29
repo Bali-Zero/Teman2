@@ -2352,12 +2352,20 @@ def test_production_kimi_and_codex_identity_chain_is_fully_pinned() -> None:
     }
 
 
-def test_sequential_fable_gate_is_explicitly_fail_closed(
+def test_sequential_final_gate_is_explicitly_fail_closed(
     tmp_path: Path,
 ) -> None:
+    # Renamed 2026-08-29, and the `match=` with it. This test used to pin the
+    # literal string "sequential Fable final gate is not implemented" — so the
+    # retired seat was named as the gate in the ERROR MESSAGE, in the test's
+    # own NAME, and in the function's docstring, all of which survived the
+    # module-docstring correction because a guard that reads only the module
+    # docstring can never see them (cross-family refuter finding, PR #5224).
+    # What this test is actually for is the fail-CLOSED behaviour: phase two
+    # raises rather than proceeding. That is what it pins now.
     with pytest.raises(
         launcher.LauncherError,
-        match="sequential Fable final gate is not implemented",
+        match="sequential final gate is not implemented",
     ):
         launcher.launch_final_gate(
             reviewer_output_dir=tmp_path / "reviews",

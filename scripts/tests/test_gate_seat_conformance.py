@@ -95,14 +95,41 @@ def test_launcher_docstring_does_not_name_the_retired_model_as_the_gate() -> Non
     # correction explains why it used to be named, and a guard that forbids the
     # word would forbid its own explanation (W112). What it may not do is
     # assert that the model IS the gate.
-    claim = re.compile(
-        rf"invokes\s+{re.escape(short)}\s+as\s+the\s+only\s+sequential\s+final\s+gate",
+    #
+    # The first version of this guard matched ONE literal phrasing,
+    # "invokes fable 5 as the only sequential final gate". A cross-family
+    # refuter reproduced four evasions of it, each pasted into the docstring
+    # and each leaving the suite green:
+    #   - "invokes claude-fable-5 as the only sequential final gate"
+    #     (the MODEL ID rather than the prose name — and the natural one, since
+    #     FABLE_GATE_ARGV_SUFFIX in the launcher literally contains that string)
+    #   - "the only sequential final gate is Fable 5."
+    #   - "phase two invokes Fable 5, the only sequential final gate."
+    #   - "phase two invokes Fable 5 as the sequential final gate."  (drops "only")
+    # A guard that forbids one wording of a claim does not forbid the claim.
+    #
+    # So this is negative-gated on INTENT instead of positive-matched on a
+    # phrase (the W115 shape): a sentence that mentions the retired model —
+    # by prose name OR model ID — anywhere near "final gate" asserts the claim,
+    # UNLESS it also carries a retirement marker, which is what every honest
+    # sentence about the correction carries.
+    tokens = "|".join(re.escape(x) for x in (short, model, model.removeprefix("claude-")))
+    model_re = re.compile(rf"\b(?:{tokens})\b", re.IGNORECASE)
+    retirement_re = re.compile(
+        r"\b(?:retired|no longer|superseded|used to|taken out|was false|not the gate|"
+        r"instead of|ruled out|removed)\b",
         re.IGNORECASE,
     )
-    assert not claim.search(doc), (
-        f"{LAUNCHER.name}'s docstring claims {short} is the sequential final "
+    offenders = [
+        s.strip()
+        for s in re.split(r"(?<=[.;])\s+", doc)
+        if "final gate" in s.lower() and model_re.search(s) and not retirement_re.search(s)
+    ]
+    assert not offenders, (
+        f"{LAUNCHER.name}'s docstring asserts {short} is the sequential final "
         f"gate, but CLAUDE.md retired `{model}` from every automated route "
-        "(ruling 2026-08-20). The gate seat is Opus 5."
+        f"(ruling 2026-08-20). The gate seat is Opus 5. Offending sentence(s): "
+        f"{offenders}"
     )
 
 
@@ -124,7 +151,20 @@ def test_arming_flag_is_false_while_the_gate_seat_is_the_retired_model() -> None
             re.DOTALL,
         )
     )
-    flag_on = bool(re.search(r"^V3_FINAL_GATE_READY\s*=\s*True\b", validator_src, re.MULTILINE))
+    # The first version required a bare `= True`. A refuter reproduced two
+    # evasions that are completely ordinary edits, each leaving the suite
+    # green while the flag was actually on:
+    #     V3_FINAL_GATE_READY: bool = True      (adding a type annotation)
+    #     V3_FINAL_GATE_READY = bool(True)
+    # An arming flag read by a pattern that a natural edit slips past is not a
+    # guard on the flag, it is a guard on one way of writing it.
+    flag_on = bool(
+        re.search(
+            r"^V3_FINAL_GATE_READY\s*(?::[^=\n]+)?=\s*(?:True\b|bool\(\s*True\s*\))",
+            validator_src,
+            re.MULTILINE,
+        )
+    )
 
     assert not (gate_seat_is_retired and flag_on), (
         f"V3_FINAL_GATE_READY is True while the sequential gate seat still "
@@ -139,4 +179,53 @@ def test_arming_flag_is_false_while_the_gate_seat_is_the_retired_model() -> None
         "the FABLE_GATE seat no longer requests the retired model — if the "
         "seat was re-pointed, delete this test; if the pattern merely stopped "
         "matching, it has silently stopped guarding."
+    )
+
+
+def test_this_guard_is_actually_executed_by_its_workflow() -> None:
+    """The guard that guards THIS guard's arming.
+
+    A cross-family refuter's BLOCKER on this PR was not that the test was
+    wrong — it was that `.github/workflows/worker-plane-review-tests.yml`
+    named it nowhere, so it ran in no CI job at all while the launcher's
+    docstring claimed it made a retired-seat flip "impossible". That workflow's
+    OWN header exists because "NO CI job anywhere referenced any of these files
+    by name"; this file had quietly joined that set.
+
+    Three places must name it, and all three matter independently: `push.paths`
+    (a direct push to main), the pull_request sentinel regex (whether the work
+    steps run at all on a PR), and the pytest invocation (whether this file is
+    collected once they do). Naming it in two of the three is a guard that runs
+    on some events and not others — which is worse than not running, because
+    the green looks the same.
+    """
+    wf = REPO_ROOT / ".github" / "workflows" / "worker-plane-review-tests.yml"
+    assert wf.is_file(), f"{wf} is missing — this pin cannot verify anything"
+    src = wf.read_text(encoding="utf-8")
+    me = "test_gate_seat_conformance"
+
+    # Premise check first: if the workflow stops naming the files it has always
+    # named, this pin's shape has changed and its silence would mean nothing.
+    assert "test_v3_final_gate_parity" in src, (
+        "worker-plane-review-tests.yml no longer names test_v3_final_gate_parity — "
+        "this pin's premise is gone, so it has stopped guarding rather than passed"
+    )
+
+    in_paths = f'"scripts/tests/{me}.py"' in src
+    in_sentinel = f"scripts/tests/{me}\\.py" in src
+    in_pytest = f"scripts/tests/{me}.py \\" in src or f"scripts/tests/{me}.py\n" in src
+
+    missing = [
+        name
+        for name, present in (
+            ("push.paths", in_paths),
+            ("pull_request sentinel regex", in_sentinel),
+            ("pytest invocation", in_pytest),
+        )
+        if not present
+    ]
+    assert not missing, (
+        f"{me}.py is not named in: {missing}. A guard its workflow does not "
+        "execute is decorative — it reports nothing, forbids nothing, and its "
+        "green is indistinguishable from a real one (superscar #2)."
     )

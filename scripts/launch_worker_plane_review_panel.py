@@ -8,7 +8,8 @@ only sequential final gate.  GLM and DeepSeek are not routes in this protocol
 and can never substitute for an unavailable seat.
 
 THAT SECOND PHASE IS NOT IMPLEMENTED HERE.  `launch_final_gate()` raises
-unconditionally and nothing calls it; `V3_FINAL_GATE_READY` in
+unconditionally and nothing in production calls it (only the test that
+asserts that raise); `V3_FINAL_GATE_READY` in
 `check_worker_plane_review.py` is False.  This sentence used to name Fable 5
 as that gate, which was false twice over: the gate does not run at all, and
 Fable 5 was taken out of the workflow
@@ -19,8 +20,16 @@ to it").  When the phase is built, the ruled seat is Opus 5 — CLAUDE.md §5,
 The `FABLE_GATE` seat and `FABLE_GATE_ARGV_SUFFIX` below are left exactly as
 they are on purpose.  Re-pointing them changes what the v3 protocol WOULD do,
 which is a design decision and not a docstring correction; the conformance
-test in `scripts/tests/test_gate_seat_conformance.py` makes flipping
-`V3_FINAL_GATE_READY` on a retired seat impossible instead.
+test in `scripts/tests/test_gate_seat_conformance.py` guards the flip instead:
+arming the flag while the gate seat still requests the retired model fails
+that test, which `worker-plane-review-tests.yml` executes.
+
+It is a guard, not an impossibility, and the difference is not pedantry — the
+first draft of this sentence said "impossible" while the test was named in NO
+workflow at all, so it ran nowhere and forbade one exact wording. A
+cross-family refuter reproduced four evasions of that wording and the CI gap
+itself. Both are fixed; what remains true is that a determined edit can still
+outrun a textual guard, and this sentence no longer pretends otherwise.
 """
 
 from __future__ import annotations
@@ -3824,10 +3833,10 @@ def launch_panel(
 
 
 def launch_final_gate(*, reviewer_output_dir: Path, disposition_path: Path) -> None:
-    """Fail closed until the hash-bound sequential Fable gate is implemented."""
+    """Fail closed until the hash-bound sequential final gate is implemented."""
     del reviewer_output_dir, disposition_path
     raise LauncherError(
-        "sequential Fable final gate is not implemented; reviewer evidence "
+        "sequential final gate is not implemented; reviewer evidence "
         "cannot authorize execution"
     )
 

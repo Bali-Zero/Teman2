@@ -67,21 +67,26 @@ LAUNCH_WORKER_PLANE_REVIEW_PANEL = "scripts/launch_worker_plane_review_panel.py"
 # its 6 for an unknown time, passing the whole while — because "these lines are
 # approved" does not notice a line it was never told about. Hence the counts.
 CHECK_WORKER_PLANE_REVIEW_PIN_LINES = [185, 186, 196, 197, 207, 208]
+# Re-derived 2026-08-29 (SECOND time in this PR) by asking the classifier which
+# lines it approves — never by adding an offset to the previous list by hand.
+# A hand-shifted list is a list that was never checked; and this PR shifted
+# these lines twice, once per docstring edit, which is the whole argument for
+# eliminating index anchoring (tracked in PR #4664, not here).
 LAUNCH_WORKER_PLANE_REVIEW_PANEL_PIN_LINES = [
-    225,
-    226,
-    237,
-    238,
-    253,
-    254,
+    234,
+    235,
+    246,
+    247,
+    262,
     263,
-    264,
-    275,
-    276,
-    288,
-    289,
-    299,
-    300,
+    272,
+    273,
+    284,
+    285,
+    297,
+    298,
+    308,
+    309,
 ]
 
 
