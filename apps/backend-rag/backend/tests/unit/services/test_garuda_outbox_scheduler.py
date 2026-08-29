@@ -23,6 +23,7 @@ import pytest
 
 from backend.app import main_api
 from backend.services.garuda_orders.outbox_consumer import DrainStats
+from backend.services.garuda_orders.payment_inbox_watch import QuarantineSnapshot
 
 pytestmark = pytest.mark.asyncio
 
@@ -329,7 +330,7 @@ class _LockPool:
         return _Ctx()
 
 
-async def _drive_one_tick(monkeypatch, *, repository, conn, sweep):
+async def _drive_one_tick(monkeypatch, *, repository, conn, sweep, quarantine=None):
     """One drain pass with the periodic block armed, then CancelledError.
 
     `next_alarm_check` starts at 0.0, so the FIRST iteration always enters the
@@ -348,6 +349,14 @@ async def _drive_one_tick(monkeypatch, *, repository, conn, sweep):
         # sweep half cannot be mistaken for the alarm's.
         return {"exhausted": 0}
 
+    async def silent_quarantine(c, **kw):
+        # Third periodic job on this tick. Silent by default for the same
+        # reason as `fake_count_undrained`: a failure in one half must never be
+        # read as a failure of another. `_LockConn` answers only the advisory
+        # lock queries, so the REAL reader would raise here — swallowed by the
+        # block's own except, but noisily and for the wrong reason.
+        return QuarantineSnapshot(recent=0, lifetime=0, reasons=frozenset(), sample=())
+
     async def fake_sleep(seconds):
         return None
 
@@ -360,6 +369,10 @@ async def _drive_one_tick(monkeypatch, *, repository, conn, sweep):
     )
     monkeypatch.setattr(
         "backend.services.garuda_orders.reconciliation.reconcile_expired_checkouts", sweep
+    )
+    monkeypatch.setattr(
+        "backend.services.garuda_orders.payment_inbox_watch.count_quarantined",
+        quarantine or silent_quarantine,
     )
     monkeypatch.setattr(main_api.asyncio, "sleep", fake_sleep)
 
@@ -389,6 +402,88 @@ async def test_the_periodic_tick_calls_the_op04_sweep_once_the_order_lane_is_wir
 
     assert len(called) == 1, "the sweep must run exactly once per periodic tick"
     assert called[0][1] is repo
+    assert conn.calls == ["lock", "unlock"]
+
+
+async def test_the_periodic_tick_reads_the_payment_quarantine(monkeypatch) -> None:
+    """THE arming assertion for the THIRD write-only state in this subsystem.
+
+    Measured 2026-08-29: `garuda_payment_inbox.outcome = 'quarantined'` was SET
+    at five sites in `repository.py` and read at NONE — the only non-test
+    mention of a read anywhere in the tree was a test. A quarantined row is an
+    authentic provider callback we refused to act on, and the router answers
+    204 so the provider never retries. RED if this call is ever removed: the
+    money goes back to being refused in silence.
+    """
+    seen: list[object] = []
+
+    async def reader(conn, **kw):
+        seen.append(conn)
+        return QuarantineSnapshot(recent=0, lifetime=0, reasons=frozenset(), sample=())
+
+    async def sweep(pool, repository, **kw):
+        return SimpleNamespace(candidates=0, expired=0, left_for_webhook=0)
+
+    await _drive_one_tick(
+        monkeypatch, repository=object(), conn=_LockConn(), sweep=sweep, quarantine=reader
+    )
+
+    assert len(seen) == 1, "the quarantine must be read exactly once per periodic tick"
+
+
+async def test_the_quarantine_is_read_even_when_the_order_lane_is_not_wired(
+    monkeypatch,
+) -> None:
+    """RED IF: the quarantine read is ever moved inside the `repository is not
+    None` guard the OP-04 sweep sits behind.
+
+    Those two have OPPOSITE preconditions. The sweep needs a live provider
+    adapter because it asks the provider a question. This one reads a table —
+    and rows already IN it were written by a webhook that arrived while the
+    lane WAS wired. A quarantined payment must still page after the adapter
+    goes away (a rotated key, a failed composition), which is exactly when
+    nobody is watching.
+    """
+    seen: list[object] = []
+
+    async def reader(conn, **kw):
+        seen.append(conn)
+        return QuarantineSnapshot(recent=0, lifetime=0, reasons=frozenset(), sample=())
+
+    async def sweep(pool, repository, **kw):  # pragma: no cover - must not run
+        raise AssertionError("the sweep must not run without a repository")
+
+    await _drive_one_tick(
+        monkeypatch, repository=None, conn=_LockConn(), sweep=sweep, quarantine=reader
+    )
+
+    assert len(seen) == 1
+
+
+async def test_a_failing_quarantine_read_kills_neither_the_drain_nor_the_sweep(
+    monkeypatch,
+) -> None:
+    """RED IF: the quarantine block stops having its own try/except.
+
+    This is observability; the drain is the product. An alarm that can kill the
+    queue it watches — or the sibling sweep on the same tick — is worse than no
+    alarm.
+    """
+    swept: list[object] = []
+
+    async def reader(conn, **kw):
+        raise RuntimeError("inbox unreadable")
+
+    async def sweep(pool, repository, **kw):
+        swept.append(repository)
+        return SimpleNamespace(candidates=0, expired=0, left_for_webhook=0)
+
+    conn = _LockConn()
+    await _drive_one_tick(
+        monkeypatch, repository=object(), conn=conn, sweep=sweep, quarantine=reader
+    )
+
+    assert len(swept) == 1, "a broken quarantine read took the OP-04 sweep down with it"
     assert conn.calls == ["lock", "unlock"]
 
 

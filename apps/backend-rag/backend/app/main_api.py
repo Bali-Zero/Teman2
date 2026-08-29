@@ -199,6 +199,45 @@ async def _send_outbox_alarm(client: "httpx.AsyncClient", text: str) -> None:  #
         logger.error("GARUDA outbox alarm could not be delivered: %s", err)
 
 
+async def _send_quarantine_alarm(client: "httpx.AsyncClient", text: str) -> None:  # noqa: F821
+    """Best-effort page for a REFUSED payment callback. NEVER raises.
+
+    DESTINATION, and why it needs no SYMBIOSIS Law 2 derogation. Both env var
+    NAMES are read here and never their values from anywhere else — no token
+    and no chat id is written in this repository (119 hardcoded fallbacks once
+    pointed at a mailbox nobody can open; this is not the 120th).
+    `TELEGRAM_OWNER_CHAT_ID` is Zero's own chat, the same destination the five
+    `staff_page_*` handlers and the outbox alarm already use. Nothing here
+    carries applicant data: the message names counts, the closed
+    `quarantine_reason` vocabulary, provider event ids and order ids — never a
+    name, email, phone or passport, none of which exist on
+    `garuda_payment_inbox` at all. `test_the_quarantine_page_carries_no_pii`
+    pins the shape rather than trusting this paragraph.
+
+    A DELIBERATE NEAR-TWIN of `_send_outbox_alarm` rather than a shared helper
+    it was refactored into: that function is the live money-page for a
+    different queue, and rewriting it inside a PR about the payment inbox
+    would put a working alarm at risk for a dozen saved lines. The one thing
+    that MUST not drift — the re-alert discipline — is shared for real, by
+    importing `REALERT_SECONDS` in `quarantine_alarm.py`.
+    """
+
+    from backend.services.wa_copilot.telegram_notifier import send_telegram_message
+
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.getenv("TELEGRAM_OWNER_CHAT_ID", "")
+    if not token or not chat_id:
+        logger.error(
+            "GARUDA payment quarantine alarm has something to report and NO WAY "
+            "TO SEND IT: TELEGRAM_BOT_TOKEN/TELEGRAM_OWNER_CHAT_ID unset. The "
+            "log line above is the only record."
+        )
+        return
+    ok, err = await send_telegram_message(client, token, chat_id, text)
+    if not ok:
+        logger.error("GARUDA payment quarantine alarm could not be delivered: %s", err)
+
+
 async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
     """Drain `garuda_order_outbox` by calling `drain_once` in a loop.
 
@@ -250,6 +289,8 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
         TelegramStaffPageSender,
         build_handlers,
     )
+    from backend.services.garuda_orders.payment_inbox_watch import count_quarantined
+    from backend.services.garuda_orders.quarantine_alarm import QuarantineAlarm
     from backend.services.garuda_orders.reconciliation import (
         reconcile_expired_checkouts,
     )
@@ -300,6 +341,16 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
         # problem. The cadence is wall-clock from a MONOTONIC source, so a system
         # clock adjustment cannot postpone the check indefinitely.
         alarm = OutboxAlarm()
+        # THE THIRD WRITE-ONLY STATE IN THIS SUBSYSTEM. `count_undrained` above
+        # and `reconcile_expired_checkouts` below were both armed on 2026-08-28
+        # in the same tick; `garuda_payment_inbox.outcome = 'quarantined'` was
+        # left behind, and measured 2026-08-29 it had five writers in
+        # `repository.py` and zero non-test readers in the whole tree. A
+        # quarantined row is an authentic provider callback we refused to act
+        # on — the router answered 204, the provider will not retry, and until
+        # this line nothing told anyone. Armed on the SAME tick as its two
+        # siblings, deliberately: one cadence, one place to look.
+        quarantine_alarm = QuarantineAlarm()
         next_alarm_check = 0.0
         seen_unroutable: frozenset[str] = frozenset()
         while True:
@@ -350,6 +401,36 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
                     except Exception:
                         logger.exception(
                             "GARUDA outbox alarm check failed; the DRAIN is unaffected"
+                        )
+
+                    # THIRD JOB THAT HAD NO CALLER, same tick — the payment
+                    # inbox's quarantine. Its own try/except for the same
+                    # reason as the block above: this is observability, the
+                    # drain is the product, and an alarm that can kill the
+                    # queue it watches is worse than no alarm. A separate
+                    # block, not a shared one, so a failure reading the inbox
+                    # cannot also suppress the outbox page.
+                    try:
+                        async with pool.acquire() as conn:
+                            snapshot = await count_quarantined(conn)
+                        page = quarantine_alarm.decide(snapshot, now=now)
+                        if page is not None:
+                            # The log line goes out FIRST and unconditionally:
+                            # it is the record that survives an unreachable
+                            # Telegram.
+                            logger.error(
+                                "GARUDA payment quarantine alarm: %s",
+                                page.replace(chr(10), " | "),
+                            )
+                            await asyncio.wait_for(
+                                _send_quarantine_alarm(client, page),
+                                timeout=_ALARM_SEND_TIMEOUT_SECONDS,
+                            )
+                            # Only NOW does the suppression window start.
+                            quarantine_alarm.confirm_sent(time.monotonic())
+                    except Exception:
+                        logger.exception(
+                            "GARUDA payment quarantine check failed; the DRAIN is unaffected"
                         )
 
                     # SECOND JOB THAT HAD NO CALLER, same tick. On origin/main
