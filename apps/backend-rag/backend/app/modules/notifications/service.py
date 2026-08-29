@@ -303,10 +303,20 @@ class NotificationService:
                 AlertType.VISA_CRITICAL,
                 AlertType.VISA_EXPIRED,
             ]:
-                # Get team leader email from database
-                team_leader = await self._get_team_leader_email(alert.client_id)
-                if team_leader:
-                    bcc.append(team_leader)
+                # Get team leader email from database. This address is a BCC:
+                # it is a courtesy copy, never the reason a client goes unwarned.
+                # Until 2026-08-29 this ran unguarded, so a database error here
+                # aborted the whole send and the alert never left the building.
+                try:
+                    team_leader = await self._get_team_leader_email(alert.client_id)
+                except Exception as bcc_error:  # best effort by design: a BCC never blocks the alert
+                    logger.warning(
+                        "Team leader lookup failed; sending alert without BCC",
+                        extra={"client_id": alert.client_id, "error": str(bcc_error)},
+                    )
+                else:
+                    if team_leader:
+                        bcc.append(team_leader)
 
             # Send email
             success = await self.email_provider.send_email(
@@ -328,12 +338,44 @@ class NotificationService:
 
         except Exception as e:
             logger.error(f"Failed to process alert {alert.id}", exc_info=e)
-            await self._update_alert_status(alert, AlertStatus.FAILED, str(e))
+            # Recording the failure must never mask the failure itself: until
+            # 2026-08-29 a broken UPDATE here replaced the real cause in Sentry
+            # and left the row 'pending' forever, so it was re-selected as the
+            # head of the queue on every subsequent run.
+            try:
+                await self._update_alert_status(alert, AlertStatus.FAILED, str(e))
+            except Exception as status_error:
+                logger.error(
+                    "Could not record alert failure; the row stays pending",
+                    extra={"alert_id": alert.id, "error": str(status_error)},
+                )
             return NotificationResult(
                 success=False,
                 alert_id=alert.id,
                 error_message=str(e),
             )
+
+    async def _process_one(
+        self,
+        alert: ClientAlert,
+        get_client_email_func,
+    ) -> NotificationResult:
+        """Resolve the recipient and process a single alert."""
+        client_email = await get_client_email_func(alert.client_id)
+        if not client_email:
+            logger.warning(f"No email found for client {alert.client_id}")
+            await self._update_alert_status(
+                alert,
+                AlertStatus.SUPPRESSED,
+                "No email address found",
+            )
+            return NotificationResult(
+                success=False,
+                alert_id=alert.id,
+                error_message="No email address found",
+            )
+
+        return await self.process_alert(alert, client_email)
 
     async def process_alerts_batch(
         self,
@@ -353,26 +395,25 @@ class NotificationService:
         results = []
 
         for alert in alerts:
-            # Get client email
-            client_email = await get_client_email_func(alert.client_id)
-            if not client_email:
-                logger.warning(f"No email found for client {alert.client_id}")
-                await self._update_alert_status(
-                    alert,
-                    AlertStatus.SUPPRESSED,
-                    "No email address found",
+            # One alert's failure must never end the run. The queue is ordered
+            # oldest-first with no LIMIT, so before 2026-08-29 an exception on
+            # the first alert meant every alert behind it was never attempted
+            # at all -- silent non-delivery, with no Sentry event to show for it.
+            try:
+                results.append(await self._process_one(alert, get_client_email_func))
+            except Exception as e:
+                logger.error(
+                    "Alert processing raised; continuing with the rest of the batch",
+                    exc_info=e,
+                    extra={"alert_id": alert.id},
                 )
                 results.append(
                     NotificationResult(
                         success=False,
                         alert_id=alert.id,
-                        error_message="No email address found",
+                        error_message=str(e),
                     ),
                 )
-                continue
-
-            result = await self.process_alert(alert, client_email)
-            results.append(result)
 
         logger.info(
             "Batch processing completed",
@@ -390,10 +431,11 @@ class NotificationService:
         async with self.db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT u.email
-                FROM users u
-                JOIN clients c ON c.assigned_to = u.email
+                SELECT tm.email
+                FROM team_members tm
+                JOIN clients c ON lower(c.assigned_to) = lower(tm.email)
                 WHERE c.id = $1
+                  AND tm.active IS NOT FALSE
                 """,
                 client_id,
             )
@@ -412,7 +454,7 @@ class NotificationService:
                     """
                     UPDATE notification_alerts
                     SET status = $1,
-                        sent_at = CASE WHEN $1 = 'sent' THEN NOW() ELSE sent_at END,
+                        sent_at = CASE WHEN $1::text = 'sent' THEN NOW() ELSE sent_at END,
                         error_message = $2
                     WHERE id = $3
                     """,
