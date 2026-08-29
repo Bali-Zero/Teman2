@@ -1,4 +1,8 @@
-brief_ref: evidence/2026-08/agent-air-m5-infra-tailnet-policy-ship-187afa8e/brief.yml
+# brief_ref MUST be the literal staging path, never this PR's real per-task path:
+# harness-floor.yml stages both files into /tmp/evidence-check/evidence/{pack,brief}.yml
+# and the lint resolves brief_ref against THAT synthetic tree. The real brief lives at
+# evidence/2026-08/agent-air-m5-infra-tailnet-policy-ship-187afa8e/brief.yml.
+brief_ref: evidence/brief.yml
 council_run: journal.jsonl
 plan_ref: >-
   PR superseding #5192 (agent/air-m5/infra/tailnet-policy-ship -> main) — ship the deny-by-default
@@ -38,18 +42,20 @@ lanes:
 
 diff:
   files: 30
-  net_lines: 1629
-  measured_at: 679b0079cc
+  net_lines: 1642
+  measured_at:
+    the commit this pack lands in (projected from the staged tree against
+    `git merge-base origin/main HEAD`, so it is exact rather than lagging the tree it describes)
   note: >-
-    Measured, not estimated: `--print-measured` emitted "30 files, +1728/-99, 6 commits" at
-    679b0079cc, the commit carrying this pack. 1728 - 99 = 1629. What follows it is a re-pin of
-    these three numbers, touching this file alone — so the totals CI recomputes will exceed these
-    slightly, by that commit and a handful of lines in this paragraph. CI's measured value
-    wins over this field by design; it is stated here so the figure is checkable rather than
-    approximately right. Far over the ~400-line target, and the shape is why: roughly 1,470 of
-    those lines are #5192's content carried across byte-identical (policy, guard, 18 fixtures,
-    runbook, README), which this PR does not modify. The genuinely new surface is the documentation
-    correction, five ledger rows and this pack.
+    Counts come from `git diff --numstat $(git merge-base origin/main HEAD)..HEAD` via
+    `scripts/evidence_pack_lint.py --print-measured`, and are recomputed by CI, which is the
+    authority. They are deliberately NOT restated in prose anywhere in this pack: an earlier
+    revision narrated them, went stale the moment the re-pin commit landed, and reproduced exactly
+    the corrected-headline-with-surviving-restatement defect that suspended #5157 and #5158.
+    On size: this is far over the ~400-line target, and the shape is why. The large majority of the
+    diff is #5192's content carried across byte-identical (policy, guard, 18 fixtures, runbook,
+    README), which this PR does not modify — see the first receipt, which proves it unchanged. The
+    genuinely new surface is the documentation correction, five ledger rows and this pack.
 
 pii_scan: clean
 
@@ -134,7 +140,10 @@ receipts:
     cmd: >-
       python3 scripts/evidence_pack_lint.py --print-floor / --print-floor-source / --print-measured
       --changed-files-file <changed> --numstat-file <numstat> --commit-count <n>
-    result: "3 ; path ; 30 files, +1728/-99, 6 commits"
+    result: >-
+      floor 3, source `path`. The diff/commit counts printed alongside are deliberately not
+      transcribed here — CI recomputes them on every push and its value is the authority; a
+      transcribed count is stale the moment the next commit lands.
     exit: 0
     ts: 2026-08-29T13:35+08:00
     seat: session (build lane)
