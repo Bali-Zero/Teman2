@@ -105,6 +105,65 @@ for `apps/mouth`; distinct from the brand-cortex carousel `tokens.json`]; `scrip
   (confirm via a real PR diff, not just presence of the job definition).
   **Conflicts / order**: independent of PR-1/PR-3; must land before any future migration PR.
 
+### PR-2 FIELD REPORT (2026-08-29, Squad P) — the tripwire's model is under-specified
+
+PR-2 shipped as [#5240] and the SSOT half is sound. The TRIPWIRE half needs one more PR, and this
+section is the missing spec detail that PR needs — written here, per the craft-wave depth-1 rule,
+instead of being patched in a second correction round on the same surface.
+
+**What two blind cross-family rounds found.** Kimi K3 found that a token could be silenced by
+emptying its own claims list; that was cured with a required-claims floor over 16 duty-chosen
+paths. Codex GPT-5.6 sol (xhigh, blind, no context about Kimi's round) then found SEVEN more ways
+to make the script print `OK` while the identity it guards is broken. **All seven were reproduced
+against the shipped token file** by the gating seat before being accepted:
+
+| # | escape | measured |
+| --- | --- | --- |
+| 1 | `"$value"` on the `color` GROUP silences the entire tree | prints `OK — 0 claim(s) … all 16 required-claims-floor path(s) carry >=1 claim` (false in that state), exit 0 |
+| 2 | `duty: "decorative"` on a `color.text.*` token skips the floor | ink at the page ground's own hex, 1.0:1 → exit 0 |
+| 3 | the floor comparison rounds before comparing | true 4.4951 published as `4.50` clears a 4.5 floor |
+| 4 | claim IDENTITY is unpinned, only the count | delete a real pairing + duplicate another → count still 28, exit 0 |
+| 5 | `against` accepts a frozen hex literal | freeze `{color.ground.carta}`, then move that ground to `#000000` → exit 0, every pairing stale |
+| 6 | a bare `NaN` ratio bypasses drift | `nan > tolerance` is False → exit 0 |
+| 7 | `REQUIRED_CLAIM_PATHS` is a frozen list of today's names | a NEW `color.text.*` token with no claim is invisible → exit 0 |
+
+**The root cause is single and structural**: *the script validates the claims the file VOLUNTEERS,
+and never derives from the token tree which claims MUST exist and what each must be measured
+against.* Every row above is that sentence wearing a different hat, which is why patching them
+one at a time would have been the wrong shape of fix.
+
+**What the follow-up PR must change (this is the spec, not a wish list):**
+
+1. **Derive the required claim set from the TREE, not from a frozen list.** Any token under a
+   category that carries a WCAG duty (`color.text.*`, `color.state.state-*`, and whatever the
+   duty table names next) requires at least one claim, discovered by walking — so a token added
+   tomorrow is covered without anyone remembering to edit a constant.
+2. **A group carrying `$value` must not terminate the walk for its descendants**, and a run that
+   collects ZERO claims must be a FAILURE, never an `OK`. Zero claims is the signature of a
+   silenced file, not of a clean one.
+3. **`against` must be an ALIAS**, never a literal. A claim's whole purpose is to bind a
+   foreground to a background TOKEN; a frozen hex severs that binding invisibly.
+4. **Compare the raw ratio to the floor**, and reconcile that with the drift check's 2dp
+   tolerance deliberately — the two currently disagree, and the disagreement is what lets a
+   sub-threshold ratio through. WCAG does not permit rounding up to the threshold.
+5. **Reject non-finite ratios at parse time** (`json.loads(..., parse_constant=)` or an
+   `isfinite` gate), and reject a `duty` that is not legal for the token's category — the duty
+   string is currently an unrestricted floor off-switch.
+6. **Pin claim IDENTITY, not just the count** — the set of `(token, against)` pairs, so a
+   deletion cannot be hidden behind a duplicate.
+
+**Until that lands, the standing instruction is in the script's own docstring and must be honoured
+by whoever wires the CI job**: do NOT promote `check_token_contrast.py` to a blocking or required
+check. A gate that cannot fail is worse than no gate, because it is believed — the exact defect
+class (superscar #2) the script was written to defend against. The blocking-job request in the
+squad ledger (HANDOFF H3) carries the same blocker.
+
+**What a green from the current script DOES still prove**, and why it is worth keeping meanwhile:
+for a claim that is present and honestly shaped, the ratio really is recomputed from the raw hex
+and really is compared to its duty's floor. Both directions were re-measured at gate time —
+drifting one hex fails naming every affected claim; emptying a required token's list fails naming
+the token.
+
 ## PR-3: feat(wr2): critic conformance corpus + font structural probe
 
 **Files**: fixtures dir [proposed], runner [proposed], CI job [proposed]
