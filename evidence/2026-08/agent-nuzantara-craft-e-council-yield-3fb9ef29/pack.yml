@@ -1,0 +1,237 @@
+brief_ref: evidence/2026-08/agent-nuzantara-craft-e-council-yield-3fb9ef29/brief.yml
+lanes:
+  - lane: orchestrator
+    role: review
+    role_note: "ground, the council_yield: key ruling, the final on-disk gate, and every cure that followed blind review"
+    seat: "claude-opus-5 (xhigh)"
+  - lane: implementer
+    role: build
+    role_note: "first draft of the report, its tests, and the ASSEMBLY-LINE item"
+    seat: "claude-sonnet-5 (subagent)"
+  - lane: refuter
+    role: review
+    role_note: "blind cross-family refutation of the module code only — no tests, no PR framing, no author intent"
+    seat: "kimi-code/k3"
+seat_diversity: 3
+seat_diversity_note: >-
+  Three families: Anthropic Opus 5 (orchestrator/gate), Anthropic Sonnet 5
+  (implementer), Moonshot Kimi K3 (refuter). Generator != grader holds in the
+  direction that matters — the refuter is cross-family and saw only the code,
+  never the tests or the PR framing, so it could not read the answer off our
+  own words. The gate did not write the first draft; the drafter did not gate.
+diff:
+  net_lines: >-
+    AS OF the commit this pack ships with: 5 files, +2496/-0, measured
+    THREE-DOT against the merge base 564ba570a — never two-dot, which on a
+    moved base blames this PR for files that landed on main after the branch
+    point (W102). Deterministic gear floor recomputed from this diff = 1;
+    declared Gear 2, which is ABOVE the floor and therefore allowed (the floor
+    is a lower bound). The 400-line target is exceeded and that is stated, not
+    hidden: 953 lines of report + 1154 of tests. The test file is larger than
+    the subject because 14 of its cases exist only to pin defects that blind
+    review and mutation found in the first draft, and deleting them to hit a
+    line target would delete the evidence that the cures work.
+  behaviour_change: >-
+    NOTHING changes for any existing consumer. `scripts/evidence_pack_lint.py`
+    is untouched, no check_* is added, guard-conformance stays at 16 checks.
+    The new script is a standalone report nothing yet calls automatically.
+receipts:
+  - claim: "council_yield_report.py over the live 54-pack corpus runs clean and aggregates 267 findings"
+    cmd: "PYTHONDONTWRITEBYTECODE=1 apps/backend-rag/.venv/bin/python scripts/council_yield_report.py"
+    result: "RC=0; packs scanned 54, with dissent 53, unparseable 0, TOTALS findings=267 confirmed=193 retracted=48 plausible=26 unrecognized=0"
+    exit: 0
+    ts: "2026-08-29T19:40Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "run twice and cmp both human and --json output — reproducibility is the spec's arming probe"
+    cmd: "council_yield_report.py > z1; council_yield_report.py > z2; cmp z1 z2 (and the same with --json)"
+    result: "BYTE-IDENTICAL for both the human table and --json"
+    exit: 0
+    ts: "2026-08-29T19:40Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "pytest scripts/tests/test_council_yield_report.py — the report's own guilt+innocence corpus"
+    cmd: "PYTHONDONTWRITEBYTECODE=1 apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_council_yield_report.py -q -p no:cacheprovider"
+    result: "78 passed"
+    exit: 0
+    ts: "2026-08-29T19:40Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "pytest scripts/tests/test_evidence_pack_lint.py -q — the lane baseline is unmoved at 288"
+    cmd: "PYTHONDONTWRITEBYTECODE=1 apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_evidence_pack_lint.py -q -p no:cacheprovider"
+    result: "288 passed — identical to the pre-edit baseline"
+    exit: 0
+    ts: "2026-08-29T19:40Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "guard-conformance stays RC0 with 16 evidence-pack-lint checks and 0 violations"
+    cmd: "PYTHONDONTWRITEBYTECODE=1 apps/backend-rag/.venv/bin/python infra/guard-conformance/check_guard_conformance.py"
+    result: "16 evidence-pack-lint checks, 0 violation(s)"
+    exit: 0
+    ts: "2026-08-29T19:40Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "The `council:` key is NOT free — compute_ceiling convicts a populated mapping and acquits an empty one"
+    cmd: "compute_ceiling(['docs/factory/ASSEMBLY-LINE.md'], 3, pack, measured_net_lines=10) across five council shapes"
+    result: "no key -> (1,[]) clean; council:{findings:0,applied:0} -> hard `ceiling:` violation; council:{} -> clean. This is why the key here is council_yield:"
+    exit: 0
+    ts: "2026-08-29T17:20Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "MUTATION: every guard in the cures is armed, 14/14 mutants killed"
+    cmd: "per-occurrence source mutation + pytest, PYTHONDONTWRITEBYTECODE=1 -p no:cacheprovider, restored from a cp backup and byte-compared"
+    result: "14/14 killed. N10 (empty seat cell) SURVIVED the first sweep — a cure written without a proof; test added, mutant re-cut, killed."
+    exit: 0
+    ts: "2026-08-29T19:20Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "The frozen-corpus assertions would have made this test file a repo-wide merge blocker"
+    cmd: "create a 55th evidence pack, run the OLD test file, then the NEW one, then remove the sim pack"
+    result: "OLD -> RC=1, 3 FAILED (disposition_totals, pack_counts, json_output). NEW -> RC=0, 60 passed. Corpus restored to 54."
+    exit: 0
+    ts: "2026-08-29T18:05Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "ruff is clean on the two new files (dir-wide scripts/ is 390 errors PRE-EXISTING on main)"
+    cmd: "/opt/homebrew/bin/ruff check scripts/council_yield_report.py scripts/tests/test_council_yield_report.py"
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-08-29T19:40Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+spend:
+  adversarial_rounds: 1
+spend_note: >-
+  ONE cross-family blind round (Kimi K3), under the ceiling of 2. The second
+  round was not needed: its 15 findings were dispositioned and cured in one
+  pass, and every accepted one was reproduced on disk before being believed.
+  `wall_clock_hours` is deliberately NOT declared as a ceiling — this session
+  has no instrument that measures its own wall clock at pack-write time, and
+  declaring a ceiling I cannot measure, then staging a spend for it, would be
+  theatre.
+pii_scan: clean
+pii_scan_note: >-
+  Seat names and dispositions only. No client data enters this tool at any
+  point: it reads `dissent:` blocks written by agents about their own diffs.
+tests: >-
+  78 in scripts/tests/test_council_yield_report.py. Red-before-green proven,
+  not assumed: the 6 AMENDMENTS-extension tests give 3 FAILED against the
+  pre-change code, and the 15 refutation-cure tests give 13 FAILED against the
+  pre-refutation code. Mutation 14/14 on the cures plus 8/8 on the extension.
+static: "ruff clean on both new files; the lint on the surface this PR does not touch (evidence_pack_lint.py) is unchanged."
+notes: >-
+  Dogfood, the speaking kind: this pack's own `dissent:` block is what the tool
+  it ships reads. The `council_yield:` block is deliberately ABSENT here — the
+  honest counts for this PR come from `dissent:`, and declaring a block just to
+  exercise the override path would be staging evidence for my own instrument.
+  The tool's own live output on this corpus is in the receipts.
+dissent:
+  - seat: "kimi-code/k3 (blind cross-family refuter, code-only payload)"
+    objection: >-
+      Any non-empty `council_yield:` mapping took the override branch and
+      returned before `dissent:` was ever read, so a block carrying only
+      `est_tokens:` silently DELETED the pack's entire dissent list — and,
+      because the derived counts then read zero findings, also silenced the
+      AMENDMENTS antidote on exactly the pack that needed it.
+    status: CONFIRMED
+    note: >-
+      Reproduced on disk before accepting: totals went {findings: 0} with
+      AMENDMENTS [] and now read {findings: 1, retracted: 1} with one
+      candidate plus a warning naming the cause. An override that overrides
+      with nothing is not an override.
+  - seat: "kimi-code/k3 (blind cross-family refuter, code-only payload)"
+    objection: >-
+      `isinstance(True, int)` is True in Python, so `applied: yes` counted as
+      one applied finding and `rejected: -3` flowed into the report as a
+      negative total; and malformed dissent items were counted then discarded
+      at both call sites while the docstring promised they were "never
+      silently vanished from the pack's diagnostics".
+    status: CONFIRMED
+    note: >-
+      Cured with this lane's own precedent from days earlier — rule 14's
+      `_appetite_numeric`: validate the NUMBER, not the type. A docstring
+      describing behaviour the code does not have is worse than silence; it
+      tells the next reader not to look.
+  - seat: "kimi-code/k3 (blind cross-family refuter, code-only payload)"
+    objection: >-
+      The markdown fallback FABRICATED findings: the section terminator matched
+      h2 only so an `# Appendix` table below it was ingested as phantom seats;
+      only the first data row was separator-checked so a second table donated
+      its header and `---` as findings; code fences were not stripped so a
+      dossier showing the reader an example table was convicted by its own
+      illustration.
+    status: CONFIRMED
+    note: >-
+      Cured despite the path having zero live consumers today (1 of 3 dossiers
+      parses; 2 are prose-only). Fabricated data is the worst failure mode for
+      a tool whose only product is a number people will trust.
+  - seat: "kimi-code/k3 (blind cross-family refuter, code-only payload)"
+    objection: >-
+      `classify_role` filed "kimi-k3 on opus's own diff" as `self` — a KIMI
+      seat reviewing an OPUS diff, i.e. the cross-family case the report exists
+      to measure, deleted from council yield by a phrase that described the
+      SUBJECT rather than the seat.
+    status: CONFIRMED
+    note: >-
+      Real, and curing it birthed the under-match twin TWICE (W94). First my
+      own innocence test caught "the build lane, against its own correction"
+      flipping to `review` — `its own` is reflexive, `opus's own` names a third
+      party. Then the live-corpus diff caught that dropping the dead
+      `against its own` had also dropped `this session`, flipping two genuine
+      self-refutations. Resolved by MEASUREMENT: the corpus uses "this session"
+      both ways, so it is a WEAK signal, decisive only when nothing else
+      identifies the seat. Net on the live corpus: 3 distinct seats / 6
+      findings move, and family changed for 0 strings.
+  - seat: "session (orchestrator on-disk gate, against the implementer's diff)"
+    objection: >-
+      The AMENDMENTS antidote gated on `used_override`, so it could fire only
+      through a schema present in 0 of 54 packs while four real packs carried
+      findings with nothing applied. It printed "AMENDMENTS candidates: none"
+      over a corpus that was misfiring.
+    status: CONFIRMED
+    note: >-
+      Superscar #2 (Esiste != Armato), in its sharpest form: the antidote to
+      "the misfire log was silent while misfiring", built so that it was itself
+      silent while the corpus misfired. Now reads both sources and NAMES which
+      one each candidate came from.
+  - seat: "session (orchestrator on-disk gate, against the implementer's diff)"
+    objection: >-
+      Eight test assertions froze the corpus as it stood at 15:00 that day —
+      packs_scanned == 54, findings == 267, len(seats) == 126 and five more.
+      Every one is a moving measurement, not a property.
+    status: CONFIRMED
+    note: >-
+      This would have made the test file a REPO-WIDE merge blocker: the corpus
+      grows by one pack on every merged PR, including this one. Proven in both
+      directions by creating a 55th pack — old file RC=1 with 3 FAILED, new
+      file RC=0. Replaced with invariants that survive growth. One assertion
+      deliberately NOT tightened: `unparseable == []` would fail this PR's CI
+      over a malformed pack landed by another squad, so what is pinned is that
+      nothing vanishes silently, never that the list is empty.
+  - seat: "session (orchestrator on-disk gate, against its own first cure)"
+    objection: >-
+      My `declared_block_still_wins` test asserted the right verdict by a road
+      that proved nothing: parsing returns early on `council_yield:`, so a
+      scalar override leaves findings empty and a mutant ignoring the block
+      entirely also acquits.
+    status: CONFIRMED
+    note: >-
+      Found by a surviving mutant, not by reading. Inverted the fixture so
+      honouring the block must CONVICT while ignoring it acquits. A guilt test
+      that reaches its verdict by another route is not evidence about the route
+      it names.
+  - seat: "session (orchestrator, against the spec's stated ground)"
+    objection: >-
+      The lane spec asserts twice that PR-3's `council:` is "a NEW top-level
+      key, additive only". It is not: evidence_pack_lint.py already reads
+      `bool(pack.get("council"))` for the R11-CEILING rule, and `council_run:`
+      is a third meaning in the same namespace.
+    status: CONFIRMED
+    note: >-
+      Deviation from the spec's literal wording, taken deliberately and stated
+      openly. Its INTENT is preserved verbatim; only the token changes, because
+      the token it named is occupied. Probed rather than argued: a populated
+      `council:` mapping convicts a Gear-3 pack while an EMPTY one passes, so
+      adopting the block would have cost a merge precisely on the 0-applied
+      case the antidote targets.
+  - seat: "kimi-code/k3 (blind cross-family refuter, code-only payload)"
+    objection: >-
+      An inline comment claims the scalar-override branch contributes "not to
+      the family x role matrix" while the code three lines below adds it, and
+      the module docstring says the opposite of the comment.
+    status: CONFIRMED
+    note: >-
+      Code and module docstring agreed with each other, so the inline comment
+      was the wrong one. A comment that misdescribes the code beside it sends
+      the next auditor hunting a bug that is not there.
