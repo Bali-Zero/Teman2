@@ -453,6 +453,27 @@
             "test_gear_floor_innocence_skipped_without_changed_files"
           ]
         },
+        "check_acceptance_probe_pairing": {
+          "scar": ["#2-esiste-non-armato", "#3-over-match"],
+          "guilt": [
+            "test_acceptance_probe_guilt_legacy_bullets_notice",
+            "test_acceptance_probe_guilt_unbound_probe_notice",
+            "test_acceptance_probe_guilt_non_ears_text_notice",
+            "test_acceptance_probe_guilt_lowercase_ears_words_do_not_count",
+            "test_acceptance_probe_guilt_probe_not_bound_inside_longer_word"
+          ],
+          "innocence": [
+            "test_acceptance_probe_innocence_fully_probed_pack_silent",
+            "test_acceptance_probe_innocence_gear1_out_of_scope",
+            "test_acceptance_probe_innocence_absent_block_silent",
+            "test_acceptance_probe_innocence_probe_bound_via_claim",
+            "test_acceptance_probe_innocence_probe_binds_as_whole_token",
+            "test_acceptance_probe_innocence_duplicate_probes_counted_once",
+            "test_acceptance_probe_innocence_examples_sanitize_quotes_and_newlines",
+            "test_acceptance_probe_innocence_non_mapping_pack_does_not_crash",
+            "test_acceptance_probe_end_to_end_notice_reaches_stderr"
+          ]
+        },
         "check_lanes_build_seat_diversity": {
           "scar": ["D3", "fleet-order-spec-4"],
           "guilt": [
