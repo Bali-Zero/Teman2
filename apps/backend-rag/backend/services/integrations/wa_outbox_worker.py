@@ -576,7 +576,7 @@ async def _apply_pending_status(conn: asyncpg.Connection, wamid: str) -> None:
 async def _coalesce_thread_bursts(
     conn: asyncpg.Connection, thread_id: int, outbox_id: int
 ) -> int:
-    """Supersede other pending bot-reply rows of the same thread (P2).
+    """Supersede other NOT-YET-STARTED pending bot-reply rows of the same thread (P2).
 
     The generator always answers the *latest* thread message (see
     ``wa_inbox_bot._load_thread_context``), so whichever row of a same-thread
@@ -584,6 +584,25 @@ async def _coalesce_thread_bursts(
     burst — the other pending bot-reply rows would just be redundant sends.
     Only ``needs_generation`` rows are touched: a pending HUMAN send must
     never be silently dropped.
+
+    ``attempts = 0`` is what makes "redundant" TRUE, and it is not decorative
+    (2026-08-28, measured in production, thread 394 / row 363). Without it
+    this sweep also killed rows that had already generated real text. That
+    row's answer was produced by ChatGPT three times — every broker job
+    ``consumed_ok``, 9711/10137/8521 ms — and rejected three times by the
+    finalize safety pipeline; it sat at attempts 3 of MAX_ATTEMPTS waiting
+    for its 4th try when a follow-up message arrived 3m27s later and this
+    UPDATE marked it ``failed``. Silently: the sweep writes only ``status``,
+    never a fall-off reason, and never reaches ``_maybe_send_apology`` (which
+    is called ONLY from the two ladder-exhaustion branches). The client got
+    no answer and no apology, and nothing alerted.
+
+    A row with ``attempts > 0`` is not a burst duplicate — it is a question
+    somebody is still owed an answer to. Left alone, its ladder ends one of
+    only two ways: the answer is delivered, or the apology is sent. Never
+    silence. It may then reply after the newer row does; a second, later
+    message is a far smaller harm than a question answered by nothing, and
+    its own context load already includes the follow-up.
     """
     async with conn.transaction():
         superseded = await conn.fetch(
@@ -593,6 +612,7 @@ async def _coalesce_thread_bursts(
             WHERE thread_id = $1
               AND status = 'pending'
               AND needs_generation = true
+              AND attempts = 0
               AND id <> $2
             RETURNING id, message_id
             """,

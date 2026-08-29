@@ -1,0 +1,179 @@
+---
+date: 2026-08-29
+domain: operations
+plan: beyond-sota-craft-wave
+lane: "L11 — Product, UX & visual design craft"
+source_report: research/operations/2026-08-28-beyond-sota-product-ux-visual-design.md (PR #5177 branch)
+status: SPEC-FINAL
+---
+
+# L11 — Product, UX & visual design craft
+
+## Mission
+
+Cure the "verify at the surface I control, and call it the experience" belief (report §8).
+Falsifying number: **0 of 6** measured 2026-08-28 production defects (dream ejection, chat false
+bounce, visa-clock overstay, magic-link dead end, `/prime` Maps key, `/exclusive` ambiguity) were
+caught by the existing **53 Playwright specs** across 158 routes — those run against a local build
+with mocked auth and assert on elements, not on where an anonymous visitor ends up in production.
+Report §2 scores 5 of 6 as mechanically catchable by a journey-grade probe. Separately, R0 counted
+**six coexisting design systems**; this session verified ≥3 live palettes serving public/app
+surfaces with raw hex literals, while a fully-computed WCAG token contract (Merah Putih, R4) sits
+unshipped in a research doc. This lane arms the vantage-point fix (journey sentinels) and starts
+the token-SSOT + critic-conformance cures, in that priority order.
+
+## Ground to load (orchestrator first reads)
+
+- `discovery_five_measured_defects_on_public_surfaces_2026_08_28.md` [memory, exists] — the six
+  defects and their journey-catchability scoring; re-read before building anything.
+- Merge commits already curing part of this list, verified this session: `d6556a75b` (auth gates
+  decide on server session state, not localStorage, 14 sites, #5181), `fcf3bf7e5` (regression
+  guard for that split-brain, #5189), `10ba83473` (visa-clock overstay fix, #5170) — **REPLAY the
+  6 defect fixtures against CURRENT prod first** and drop already-cured classes before PR-1.
+- `apps/mouth/e2e/` [exists, 53 spec files verified, subdirs incl. `smoke/`, `chat/`, `auth/`,
+  `a11y/`] — `apps/mouth/e2e/production/` is **[proposed, verified absent]**, new directory.
+  `apps/mouth/e2e/a11y/workspace-a11y.spec.ts` [exists] is pattern reference only.
+- `apps/mouth/src/app/visa/clock/[hash]/page.tsx`, `apps/mouth/src/app/portal/magic-link/page.tsx`
+  - `magic/page.tsx`, `apps/mouth/src/app/dream/` [all exist] — the journey surfaces PR-1 targets.
+- `apps/mouth/src/lib/api/auth/auth.api.ts` [exists, `isAuthenticated()` defined here] — 14
+  referencing files verified this session; PR #5181 already migrated the cited sites — verify
+  current count before re-opening this as unfixed.
+- `research/design/2026-08-27-r4-identity-merah-putih-token-spec.md` [exists] — Merah Putih token
+  contract PR-2 transcribes; computed contrast ratios live here, not asserted.
+- `apps/mouth/src/app/globals.css` [exists] — current copper/dark palette (`--bz-accent`), one of
+  ≥3 live palettes; PR-2 does NOT touch this file (no migration in wave 2).
+- `.claude/skills/bali-zero-brand/tokens.json` [exists] — IG-carousel token system, a DIFFERENT
+  store from the new `apps/mouth` DTCG SSOT PR-2 creates — do not conflate them.
+- `.claude/agents/wr2-critic.md` [exists] — the critic PR-3 benchmarks; `cicatrix-scars.md` W99
+  entry (line 717, "6/9 slides... critic PASS") [exists, verified] — seed PR-3's corpus with it.
+- `infra/guard-conformance/registry.json` + `check_guard_conformance.py` +
+  `.github/workflows/guard-conformance.yml` [all exist] — guilt+innocence discipline (family #3)
+  PR-3 extends to design gates; study its sentinel-pattern trigger (no top-level `paths:` filter).
+- `.github/workflows/lighthouse.yml` + `apps/mouth/.lighthouserc.json` [exist] — a11y ERROR gate
+  reference, not modified here. L07's spec owns the VOA anonymous-buyer journey — no duplicate.
+
+## PR-1: feat(journeys): production journey sentinels wave 1 — dream, clock, magic-link
+
+**Files**: `apps/mouth/e2e/production/*.spec.ts` [proposed, new dir]; `scripts/journey_sentinel.sh` [proposed]; plist under `infra/launchagents/` [proposed, `com.nuzantara.*` naming]
+**Gear**: 2
+**Build**:
+
+- Before writing specs: replay all 6 defect fixtures against CURRENT prod (post-#5181/#5189/#5170)
+  — drop any class already cured from this wave; keep it as a permanent regression guard anyway
+  (guilt+innocence needs both states).
+- Each spec runs against PRODUCTION (`playwright.prodlike.config.ts` pattern), anonymous context,
+  real typing where the defect involved autosave/debounce, asserts (a) final URL, (b) zero console
+  errors of named classes (`ExpiredKeyMapError`, 4xx on public XHR), (c) content truthfulness for
+  state-driven pages (an overstay payload must NOT render "Valid until").
+- dream: assert typing one character never lands on `login?expired=true&reason=token_expired`.
+- clock: assert an overstay-date payload renders an overstay branch, never "Valid until"/"0 days".
+- magic-link: assert the email-link journey reaches the funnel's first page, not a dead end.
+- `scripts/journey_sentinel.sh` runs the suite on cron (Pro/Mini), routes failures through the
+  existing Telegram gateway under the existing P0 budget — no new alert channel.
+- Include a seeded-failure self-test route that MUST fail on demand, verified per run (family #2:
+  a sentinel that greens while dead is worse than none).
+  **Acceptance**: Guilt — on a scratch branch, revert the cure commits (#5181/#5189/#5170), then run
+  the suite → red, naming the correct defect class. Innocence — run against current prod → suite green.
+  Self-test — the seeded-failure route fails on demand every run (not just once).
+  **Seats**: implementer = Sonnet 5; refuter = Kimi K3 (journey-test PR, no prod-flag surface); final gate = orchestrator (Opus 5 xhigh).
+  **Arming / prove-live**: armed when the cron wrapper is loaded on its machine (`launchctl print`
+
+* real log content, not exit 0) AND at least one real Telegram alert has been produced by the
+  seeded self-test this session.
+  **Conflicts / order**: does NOT include the VOA anonymous-buyer journey (L07 owns it). Must not
+  re-flag any defect class PR #5181/#5189/#5170 already closed — verify via replay before building.
+
+## PR-2: feat(design-tokens): Merah Putih DTCG source + contrast tripwire
+
+**Files**: `design/tokens/merah-putih.tokens.json` [proposed — no existing tokens dir at repo root
+for `apps/mouth`; distinct from the brand-cortex carousel `tokens.json`]; `scripts/check_token_contrast.py` [proposed]; CI job [proposed]
+**Gear**: 2
+**Build**:
+
+- Transcribe `research/design/2026-08-27-r4-identity-merah-putih-token-spec.md` §3 into DTCG
+  2025.10 shape (`$value`/`$type`/`$description` = provenance: R4 ruling/ratio/PR number).
+- `scripts/check_token_contrast.py` RECOMPUTES every contrast ratio the file claims (e.g.
+  `border-input #7a8093` → 3.64:1) — must fail if a `$value` is edited to a failing hex.
+- **NO surface migration in this PR** — `globals.css` and the raw hex in `(marketing)/page.tsx`,
+  `PersonaDoors.tsx`, `layout.tsx` stay untouched; SSOT + tripwire only, migration is a later PR.
+- Add a DO-NOT-EDIT-BY-HAND header anticipating a future generator (family #9 two-writers risk).
+  **Acceptance**: Guilt — edit a `$value` to a hex failing its declared ratio → CI red, naming the
+  token. Innocence — CI green on the spec as authored (ratios recompute within tolerance).
+  **Seats**: implementer = Sonnet 5; refuter = Kimi K3 (static token file, no prod-flag surface);
+  final gate = orchestrator (Opus 5 xhigh).
+  **Arming / prove-live**: armed when the CI job actually runs on a PR touching the token file
+  (confirm via a real PR diff, not just presence of the job definition).
+  **Conflicts / order**: independent of PR-1/PR-3; must land before any future migration PR.
+
+## PR-3: feat(wr2): critic conformance corpus + font structural probe
+
+**Files**: fixtures dir [proposed], runner [proposed], CI job [proposed]
+**Gear**: 2
+**Build**:
+
+- Build a labeled corpus from what exists: the brand-cortex past-carousel archive, the W99 failing
+  slides (6/9 system-font renders, `cicatrix-scars.md:717`), any R6 blind-panel outputs on disk —
+  re-render from archived source where possible, never trust a remembered verdict as a label
+  (family #6).
+- The WR2 critic (`.claude/agents/wr2-critic.md`) must, in CI: (a) FAIL known-bad (W99-class)
+  artifacts, (b) PASS known-good ones, (c) route font/identity checks through a structural probe
+  (`document.fonts.check` or equivalent) instead of vision — vision alone cannot judge font
+  identity (W99: critic PASS on system-font slides).
+- **The source report supplies NO acceptance test for this PR — a recorded defect.** This spec
+  supplies one below; do not ship without it passing for real.
+- Wire the CI job as blocking, not `continue-on-error` (W108). Introduce it NON-required in
+  branch protection — promoting to REQUIRED is an operator/Zero ruleset action, not
+  self-authorized here (see Needs-ruling); the workflow-file diff for promotion is handed to
+  Squad W per the battle plan.
+  **Acceptance** (falsifiable, guilt+innocence, written because the report did not supply one):
+  Guilt — feed the W99-class known-bad fixture to the critic in CI → must return FAIL, else red.
+  Innocence — feed a known-good fixture → must return PASS, else red. Both run every invocation.
+  **Seats**: implementer = Sonnet 5; refuter = Codex GPT-5.6 sol (xhigh) — this PR's acceptance test
+  was authored from scratch, raising the bar for verifying fixture labels are real re-renders, not
+  remembered verdicts; final gate = orchestrator (Opus 5 xhigh).
+  **Arming / prove-live**: armed when the CI job is blocking (not advisory) AND both fixtures have
+  actually run red/green in a real CI run this session, not local execution alone. Required-check
+  promotion is a separate, later operator/Zero action and is not part of this PR's arming.
+  **Conflicts / order**: if the corpus can't reach 20 labeled artifacts (report's kill criterion),
+  fold this PR's scope into PR-1's sentinel probes instead of an under-powered conformance job.
+
+## Needs-ruling carried (Zero only — this spec does NOT decide these)
+
+1. **`/prime` Google Maps key expired** — `operator[GUI]`, Google console; the map IS the page's
+   product, no code path fixes a credential.
+2. **`/dream` public or gated?** — the #5181/#5189 cure removed the ejection bug, not the
+   ambiguity of whether the page should require auth at all.
+3. **`/exclusive` two-line body + streaming video** — intended minimalism or unfinished? Unowned;
+   PR-1 treats this as PARTIAL/not-sentinel-worthy until ruled.
+4. **Adopting Merah Putih as the production identity** — PR-2 ships the token SSOT as a
+   research-backed artifact, but shipping it AS the production identity (vs. team-controlled
+   default per R6) is a business decision (report's adversarial review, objection #2, accepted).
+5. **VOA dark-state page**: is a bare 404 body the right dark state for the flagship product page
+   if anything external links it? Already flagged to Zero in the 5-defects memory.
+6. **`/visa/match` investor >500M → E33G ("remote worker") domain misroute** — owner Zero per
+   `MEMORY_VISA_ORACLE.md:87`; carried per report §7, not in this lane's 3 PRs.
+7. **Experimentation infra (GrowthBook + CUPED) and any A/B on real prospective clients** — needs
+   consent-copy ruling (Law 2); wave 3 in the report, carried for completeness only.
+8. **PR-3's required-check promotion** — an operator/Zero ruleset action, not self-authorized by
+   this PR; PR-3 ships the job blocking-but-non-required, the promotion diff goes to Squad W.
+
+## Suspend & ledger rules
+
+- Rule 8: a PR red for the SAME cause three times (gate/lint/refuter, same surface) gets no
+  fourth round — SUSPEND with one PENDING-ARMS line naming the cause, branch left alive, move on.
+- Fix-of-a-fix stops at depth 1: a wrong correction means the surface is under-specified — write
+  the spec or escalate to Needs-ruling, never open a third corrective PR.
+- Every built-not-armed step gets one PENDING-ARMS row (e.g. "PR-1 merged, cron not installed on
+  Pro/Mini"), closed only when `launchctl print` + real log/Telegram content confirm the arm.
+- PR-3 has no report-supplied acceptance test; if this spec's supplied test cannot be made to pass
+  for real, PR-3 SUSPENDS rather than ship an unfalsifiable gate.
+
+## Out of scope
+
+- The VOA anonymous-buyer journey and its dead-man — owned entirely by L07, do not duplicate.
+- Migrating `globals.css` or marketing-page raw hex onto the new token SSOT — PR-2 is SSOT +
+  tripwire only; migration is a separate future PR.
+- GrowthBook/CUPED experimentation infra (report R5) — wave 3, needs-ruling item 7, not this lane.
+- The journey-gate for NEW public routes (report R6) — separate PR, not one of this lane's 3.
+- Fixing `/prime`'s Maps key, ruling `/dream`'s public/gated status, or `/exclusive`'s content —
+  `operator[GUI]` or Zero rulings, not session-executable.

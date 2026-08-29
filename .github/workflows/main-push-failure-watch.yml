@@ -118,6 +118,12 @@ on:
       - check-cicatrix-scar-pointers
       - check-kbli-dataset-sync
       - check-ledger-no-silent-loss
+      # check-skills-canonical landed unwatched with PR #5041 — inherited debt,
+      # not caused by the ACL lane. Registered here rather than left red because
+      # it is the same one-line concern as the row below it, and the sweep is
+      # all-or-nothing: leaving it blocks every subsequent PR too.
+      - check-skills-canonical
+      - check-tailnet-acl
       - cron - codex autofix reaper (autonomous reap every 48h)
       - Contract Tests (Schemathesis)
       - cron - cert monitor (daily 07:00 WITA)

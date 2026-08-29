@@ -1,0 +1,48 @@
+{
+  "expected_candidates": ["E30B"],
+  "expected_state": "SUPPORTED_CANDIDATES",
+  "label": "24-year-old German national admitted to a master's programme at an Indonesian university, sponsored by the university, applying from Berlin",
+  "overrides": {
+    "intent.desired_entry_date": {
+      "status": "KNOWN",
+      "value": "2026-09-01"
+    },
+    "intent.entry_pattern": {
+      "status": "KNOWN",
+      "value": "MULTIPLE"
+    },
+    "intent.purposes": {
+      "status": "KNOWN",
+      "value": ["STUDY"]
+    },
+    "intent.stay_days": {
+      "status": "KNOWN",
+      "value": 730
+    },
+    "person.birth_date": {
+      "status": "KNOWN",
+      "value": "2002-03-14"
+    },
+    "person.nationalities": {
+      "status": "KNOWN",
+      "value": ["DE"]
+    },
+    "sponsor.type": {
+      "status": "KNOWN",
+      "value": "EDUCATION"
+    },
+    "study.admission_confirmed": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "study.level": {
+      "status": "KNOWN",
+      "value": "POSTGRADUATE"
+    },
+    "study.sponsor_confirmed": {
+      "status": "KNOWN",
+      "value": true
+    }
+  },
+  "product_code": "E30B"
+}
