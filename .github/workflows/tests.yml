@@ -2213,7 +2213,7 @@ jobs:
           name: playwright-report
           path: apps/mouth/playwright-report/
 
-  # ADVISORY, non-required (2026-08-23). This job drives the ONLY test that
+  # NON-ADVISORY since 2026-08-29, still non-required. This job drives the ONLY test that
   # exercises the real browser -> Next -> FastAPI -> signed TEST RulePack ->
   # Postgres chain (e2e-tests above never reaches it: every visa-oracle spec
   # it runs intercepts and mocks `/api/visa-oracle/evaluate`). It is opt-in
@@ -2222,21 +2222,71 @@ jobs:
   # never touches the e2e-tests job's shared Postgres/Redis services or its
   # `--grep "page Page|@offline"` filter.
   #
-  # `continue-on-error: true` at job level does NOT make this job's own
-  # check-run report success when a step fails — measured 2026-08-24 on its
-  # first real run (job 97222544510, PR #4709): the step failed and the
-  # check-run's `conclusion` on the commit was `failure`, same as any other
-  # red job, `gh pr checks` included. What continue-on-error actually buys:
-  # the overall WORKFLOW RUN conclusion is not dragged down by this job, and
-  # any future job that `needs:` this one still proceeds. The reason this
-  # job does not block merging TODAY is that its name is absent from
-  # `main`'s branch protection `required_status_checks` — that is the one
-  # thing standing between "advisory" and "blocking", so adding this job's
-  # name there is exactly the mistake this paragraph warns against; nothing
-  # in the job's own config stops it. Promote to required only after it has
-  # demonstrably passed a few times in CI.
+  # `continue-on-error: true` was REMOVED here on 2026-08-29. Be precise about
+  # what that did and did not change, because the distinction is the whole
+  # reason this paragraph exists.
+  #
+  # It never made this job's own check-run report success — measured
+  # 2026-08-24 on its first real run (job 97222544510, PR #4709): the step
+  # failed and the check-run's `conclusion` on the commit was `failure`, same
+  # as any other red job, `gh pr checks` included. What it actually bought
+  # was that the overall WORKFLOW RUN conclusion was not dragged down by this
+  # job, and that any job which `needs:` this one still proceeded.
+  #
+  # So removing it changes the RUN conclusion — and the first draft of this
+  # comment said "exactly ONE thing: ... Nothing else", which a cross-family
+  # refuter falsified. Zero jobs declare this one in `needs:` (verified by
+  # PARSING tests.yml, not grepping) and no other workflow names it by string,
+  # but a run conclusion is itself an input, and two consumers read it:
+  #
+  #   * `main-red-breaker.yml` intersects the SET OF FAILING JOB NAMES across
+  #     consecutive runs (`run0 & run1`). Because this change also renames the
+  #     job, a failure immediately before and one immediately after the rename
+  #     do not intersect — so a genuinely repeated failure spanning this commit
+  #     is reported one cycle late. One-time cost of the rename, declared here
+  #     because no string search could have found it: the consumer binds the
+  #     name at runtime, not in source.
+  #   * `test-summary` needs six jobs and NOT this one, so it can still print
+  #     "✅ Test Results" inside a workflow whose conclusion is now red. That
+  #     contradiction pre-dates this change; the flip makes it louder rather
+  #     than creating it. Left alone deliberately — widening `test-summary`'s
+  #     `needs:` is a different concern with its own blast radius.
+  #
+  # Anything downstream that reads this workflow's RUN conclusion (status
+  # rollups, main-red decisions) now sees a red where it previously saw green.
+  # That is the intended effect, stated rather than described as "nothing".
+  #
+  # It still does NOT block a merge. That is governed by `main`'s branch
+  # protection `required_status_checks`, where this job's name is absent
+  # (measured 2026-08-29: 11 contexts, none of them this one; and it is not
+  # in the tracked snapshot `infra/required.d/contexts.json` either).
+  # Promoting it there is an operator/Zero action and is deliberately NOT
+  # taken here. Note the mechanism precisely: `main` uses CLASSIC branch
+  # protection, not a repository ruleset — an earlier draft of this line said
+  # "ruleset action", which names the wrong API and would send whoever acts on
+  # it to the wrong settings page.
+  #
+  # The old text closed "Promote to required only after it has demonstrably
+  # passed a few times in CI." That condition is now met and then some, which
+  # is what licensed this flip: independently censused 2026-08-29 at JOB level
+  # over the last 40 `tests.yml` runs — 37 success, 3 cancelled, ZERO failure,
+  # and the job PRESENT in 40 of 40 (absent from none, so nothing was
+  # skipped-and-uncounted). Its own step "Run the disposable-DB fullstack
+  # smoke" concludes success, so the Playwright test executed rather than the
+  # job passing as a no-op. The 3 cancellations are NOT attributed here: an
+  # earlier draft called them "superseded pushes", which the census did not
+  # measure — it collected conclusions, not causes. Job level, not workflow level: querying run
+  # conclusions is precisely the misreading that let this job sit red for
+  # ~30 hours in August unnoticed (two PENDING-ARMS rows, 2026-08-24 and
+  # 2026-08-25, record that episode). If a future reader finds this job red,
+  # read its own check-run, not the run's.
+  #
+  # NAME NOTE: the job's `name:` lost its "(advisory)" suffix in the same
+  # change. The string a future branch-protection promotion must use is
+  # therefore `Visa Oracle fullstack smoke` — adding the old suffixed name
+  # would add a context that no longer exists and deadlock the queue.
   visa-oracle-fullstack-smoke:
-    name: Visa Oracle fullstack smoke (advisory)
+    name: Visa Oracle fullstack smoke
     needs: [changes]
     if: >-
       !cancelled() &&
@@ -2247,7 +2297,6 @@ jobs:
       )
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    continue-on-error: true
 
     services:
       postgres:
