@@ -310,3 +310,70 @@ fold this PR's scope into PR-1's sentinel probes instead of an under-powered con
 - The journey-gate for NEW public routes (report R6) — separate PR, not one of this lane's 3.
 - Fixing `/prime`'s Maps key, ruling `/dream`'s public/gated status, or `/exclusive`'s content —
   `operator[GUI]` or Zero rulings, not session-executable.
+
+---
+
+## Spec-back (2026-08-29, Squad P) — a per-failure fingerprint defeats its own dedup when the surface is NON-DETERMINISTIC
+
+PR-1's sentinel dedups Telegram alerts on `journey-sentinel:<slugged title>-<fingerprint>`, where the
+fingerprint hashes the failure's first error line. The code states its reason verbatim:
+
+> so a DIFFERENT root cause on the SAME journey (e.g. `prime-maps.spec.ts` failing tomorrow on a CSP
+> violation instead of today's `ExpiredKeyMapError`) gets its own dedup identity instead of being
+> muted by `tg_notify.py`'s repeat-ladder as "the same condition, still ongoing"
+
+**The intent is right and the realisation is measurably wrong, because the worked example in that
+comment is the false-positive case.** `/prime`'s single expired credential surfaces through two
+detectors non-deterministically, and one of them says `404 / CSP / DNS` — the very words the comment
+treats as proof of a new root cause.
+
+Measured on Mini across every sentinel run in `~/logs/journey-sentinel.log`:
+
+```
+22:52 KEY · 22:54 sdk · 22:57 KEY · 23:19 KEY · 00:19 sdk · 01:20 KEY
+10 x "GOOGLE MAPS KEY DEFECT (ExpiredKeyMapError)"          fingerprint b28513a7
+ 2 x "window.google.maps never loaded ... (404 / CSP / DNS)" fingerprint 0753d92d
+```
+
+Two detectors, one defect, interleaved: the error-string check when the SDK loads far enough to log,
+the positive-signal check (added after a round-1 refutation, and correctly so — it catches a 404/CSP
+block that logs no string) when it does not. **Consequence: the same unchanged defect re-alerts
+whenever it flips, ~1 run in 6**, and the operator reads a fresh P0 as a fresh event.
+
+This is superscar #3's under-match twin at the ALERTING layer: the fingerprint is a proxy for
+"which defect is this", and it is measuring the assertion that happened to trip rather than the
+condition on the page.
+
+### Requirements for whoever fixes it — the naive fixes are both wrong
+
+1. **Do NOT drop the fingerprint back to the title alone.** That reinstates exactly what it was
+   added to prevent: a genuinely new defect on the same spec muted as "still ongoing". The dedup
+   identity must still be able to CHANGE when the condition changes.
+2. **Do NOT hash a longer slice of the error text.** The problem is not collision granularity — the
+   two texts are legitimately different strings. More text makes flapping _more_ likely, not less.
+3. The identity must key on **the condition being asserted, not the assertion that fired**. Two
+   plausible shapes, both needing a decision rather than a guess: a stable per-check `defect_class`
+   the spec declares explicitly (so both `/prime` Maps detectors share one class while a real CSP
+   regression could declare another), or a per-JOURNEY identity with the detector demoted to alert
+   BODY rather than alert KEY.
+4. Whatever is chosen must carry **guilt AND innocence**: innocence = the two `/prime` presentations
+   produce ONE dedup key across a flip; guilt = a genuinely different failure on the same spec still
+   produces a NEW key and is not muted. A fix that only proves the first has re-created the bug it
+   replaced, one level up.
+5. **`scripts/journey_sentinel.sh` has no shell corpus at all** (verified: its only test is the
+   Playwright self-test spec, which tests detection, not the wrapper). Any change here must bring
+   one, or it is untestable by construction.
+
+### Related, same organ, same family — the heartbeat NOTE can read as its own opposite
+
+The published note quotes the failing test's TITLE, and Playwright titles are conventionally phrased
+as the DESIRED property, so a RED organ publishes `1 real journey failure(s): ;/prime Google Maps
+key is valid ...`. The author anticipated it and appended `(currently RED -- see file header)`, but
+`scripts/lib/heartbeat.sh` byte-strips non-ASCII to spaces (deliberately, for provably-valid JSON in
+any locale -- measured: `A -- B` publishes with the dash gone), destroying the mitigation. Only
+`status=degraded` keeps the organ honest. The `error_summary` that would state the failure plainly
+already exists and is used in the Telegram alert; the heartbeat discards it.
+
+**Rule for this class, worth carrying past this lane**: a machine-readable signal must never be
+phrased so that a human skimming it reads the opposite of its own status field -- and it must not
+rely on a non-ASCII character to carry meaning through a writer that is contractually ASCII-only.
