@@ -42,13 +42,44 @@ mention occurring only AFTER the instrument mention does not excuse it
 either: the instrument already ran unprotected.
 
 DECLARED SCOPE LIMIT: this is a textual substring/position rule, not a
-shell parser — it cannot see that an instrument mention lives inside a
-quoted string being merely echoed, or that a `hermetic_verify.sh` mention on
-an earlier line belongs to an unrelated, already-exited subshell. Both are
-rare in this repo's workflow style (a `run:` step's lines are one
-sequential shell script) and the bias is toward FALSE POSITIVES (reporting
-a wrapped call as unwrapped) rather than false negatives, which is the
-safer direction for a guard whose job is catching an unwrapped instrument.
+shell parser. The bias is deliberately toward FALSE POSITIVES (reporting a
+wrapped call as unwrapped) rather than false negatives, which is the safer
+direction for a guard whose job is catching an unwrapped instrument.
+
+The evasions are ENUMERATED rather than gestured at, because an earlier
+version of this paragraph said "both are rare in this repo's workflow style"
+while a cross-family refuter was listing seven of them. A guard's stated
+limits should be a list someone can check, not a reassurance. It does not
+catch any of these:
+
+  * `cd scripts && python3 mutation_incremental.py` — the declared path
+    never appears; only the basename does. Matching the basename instead
+    would false-positive on `test_mutation_incremental.py`, which CONTAINS
+    it as a substring, so this is deferred rather than bolted on.
+  * `PYTHONPATH=scripts python3 -m mutation_incremental` — module form, no
+    path at all.
+  * an intermediate target (`make mutate`, a shell script) that invokes the
+    instrument out of this file's sight.
+  * `${{ matrix.tool }}` or any path assembled by expression/concatenation.
+  * a `run:` inside a composite action under `.github/actions/` — this lint
+    scans `.github/workflows/` only.
+  * an instrument mention inside a quoted string being merely ECHOED (the
+    false-positive direction), and a `hermetic_verify.sh` mention on an
+    earlier line belonging to an already-exited subshell.
+  * (NOT a limit, listed because a refuter named it and precision matters) a
+    plain backslash continuation from a `--self-test-only` line onto a bare
+    instrument is NOT a bypass: the wrapper's own arg parser rejects the
+    trailing tokens and exits 2, so the step goes red. Verified by running it.
+    An invented weakness costs a list of limits its credibility exactly as a
+    missing one does. Its separator variants WERE real bypasses on three
+    different axes and are closed structurally by the segmentation rule below,
+    not by a fourth special case.
+
+What this lint DOES guarantee is narrower and worth stating plainly: an
+instrument invoked by its declared path, in a workflow file, without a
+wrapper mention protecting that invocation, is reported. That is the shape
+the repo's workflows actually use today (106 scanned, 1 instrument, 0
+violations), and it is the shape a careless future edit will take.
 
 Blind-scan guard (W84 "esiste ≠ armato"): zero tracked workflow files
 scanned, or an empty INSTRUMENTS tuple, is CANNOT VERIFY, never a clean
@@ -90,7 +121,7 @@ _RUN_KEY_RE = re.compile(r"^(?P<indent>[ \t]*)(?:-\s+)?run:\s*(?P<rest>.*)$")
 # and NONE of the block's following lines were ever scanned — a silent false
 # NEGATIVE, i.e. a working bypass of this lint by an indentation indicator.
 # Found by the cross-family refuter; reproduced here before fixing.
-_BLOCK_SCALAR_RE = re.compile(r"^[|>](?:[1-9][+-]?|[+-][1-9]?)?\s*$")
+_BLOCK_SCALAR_RE = re.compile(r"^[|>](?:[1-9][+-]?|[+-][1-9]?)?\s*(?:#.*)?$")
 
 
 @dataclass(frozen=True)
@@ -152,60 +183,83 @@ def _strip_shell_comment(text: str) -> str:
     return text
 
 
-def find_unwrapped_mentions(block: RunBlock, instruments: tuple[str, ...]) -> list[str]:
-    """Every instrument mention in `block` with no `WRAPPER` mention earlier
-    in the SAME block (earlier line, or earlier column on the same line)."""
-    # A wrapper mention inside a `#` comment is not an invocation. Without
-    # this, `# scripts/hermetic_verify.sh -- disabled for now` above a bare
-    # instrument call reads as protection and the lint exits 0 — measured.
-    # That is the same form-for-entity substitution this lint exists to stop,
-    # committed inside the lint. Shell comments only: everything after an
-    # unquoted `#` on a line cannot execute.
-    wrapper_positions = [
-        (line_no, m.start())
-        for line_no, text in block.lines
-        for m in re.finditer(re.escape(WRAPPER), _strip_shell_comment(text))
-    ]
+def _segments(block: RunBlock) -> list[list[tuple[int, int, str]]]:
+    """Split a `run:` block into SHELL COMMANDS, keeping (line, col) per char.
 
-    # A wrapper mention on an EARLIER LINE only protects an instrument if the
-    # shell is still building the SAME command — i.e. every line between them
-    # ends with a `\` continuation. Without that condition,
-    #
-    #     run: |
-    #       bash scripts/hermetic_verify.sh --self-test-only
-    #       python3 scripts/mutation_incremental.py -v
-    #
-    # passes this lint while the instrument runs BARE: the first line is a
-    # complete, already-exited command, and "somewhere earlier in this block"
-    # is not the same claim as "wrapping this invocation". Measured as a live
-    # bypass by the cross-family refuter. The continuation case is kept because
-    # it is the legitimate multi-line wrapping shape:
-    #
-    #     run: |
-    #       bash scripts/hermetic_verify.sh -- \
-    #         python3 scripts/mutation_incremental.py -v
-    text_by_line = {ln: _strip_shell_comment(txt) for ln, txt in block.lines}
-
-    def _continues_to(from_line: int, to_line: int) -> bool:
-        """True if every line in [from_line, to_line) ends with a backslash."""
-        for ln in range(from_line, to_line):
-            if not text_by_line.get(ln, "").rstrip().endswith("\\"):
-                return False
-        return True
-
-    def wrapped_before(line_no: int, col: int) -> bool:
-        return any(
-            (wl == line_no and wc < col) or (wl < line_no and _continues_to(wl, line_no))
-            for wl, wc in wrapper_positions
-        )
-
-    violations: list[str] = []
+    Each element is one command: a list of (line_no, column, char). Commands are
+    separated by `&&`, `||`, `;`, `|`, and by a newline that is NOT continued
+    with a trailing backslash.
+    """
+    flat: list[tuple[int, int, str]] = []
     for line_no, text in block.lines:
         live = _strip_shell_comment(text)
+        stripped = live.rstrip()
+        continued = stripped.endswith("\\")
+        if continued:
+            stripped = stripped[:-1]
+        for col, ch in enumerate(stripped):
+            flat.append((line_no, col, ch))
+        if not continued:
+            flat.append((line_no, len(stripped), "\n"))
+
+    text = "".join(ch for _l, _c, ch in flat)
+    segments: list[list[tuple[int, int, str]]] = []
+    current: list[tuple[int, int, str]] = []
+    i = 0
+    while i < len(text):
+        two = text[i : i + 2]
+        if two in ("&&", "||"):
+            segments.append(current)
+            current = []
+            i += 2
+            continue
+        if text[i] in (";", "|", "\n"):
+            segments.append(current)
+            current = []
+            i += 1
+            continue
+        current.append(flat[i])
+        i += 1
+    segments.append(current)
+    return [s for s in segments if s]
+
+
+def find_unwrapped_mentions(block: RunBlock, instruments: tuple[str, ...]) -> list[str]:
+    """Every instrument mention not protected by a wrapper mention EARLIER IN
+    THE SAME SHELL COMMAND.
+
+    THIS RULE WAS REWRITTEN, and the reason is the point. It began as "a
+    wrapper mention anywhere earlier in the block", which a refuter defeated
+    with a completed `--self-test-only` call on the line above a bare
+    invocation. It was narrowed to "same line, or an earlier line joined by a
+    backslash" — defeated by a separator before that backslash. That was narrowed
+    again to reject command separators before the backslash — and defeated a
+    THIRD time by the same shape on ONE line: `hermetic_verify.sh -- echo ok;
+    python3 <instrument>`.
+
+    Three rounds, three twins, because every version answered "is a wrapper
+    mention NEAR this instrument?" when the question is "is this instrument
+    running INSIDE a wrapped command?". Proximity is not the property. So the
+    block is now segmented into shell commands and each is judged on its own;
+    the same-line, multi-line and separator shapes all fall out of one rule
+    instead of three special cases, and there is no fourth twin to find,
+    because there is no proximity left to exploit.
+
+    A wrapper mention in a DIFFERENT command no longer protects anything, which
+    is exactly right: that command has already run and exited.
+    """
+    violations: list[str] = []
+    line_text = {ln: txt for ln, txt in block.lines}
+    for segment in _segments(block):
+        text = "".join(ch for _l, _c, ch in segment)
+        wrapper_at = [m.start() for m in re.finditer(re.escape(WRAPPER), text)]
+        first_wrapper = wrapper_at[0] if wrapper_at else None
         for instrument in instruments:
-            for m in re.finditer(re.escape(instrument), live):
-                if not wrapped_before(line_no, m.start()):
-                    violations.append(f"{block.file}:{line_no}: {text.strip()}")
+            for m in re.finditer(re.escape(instrument), text):
+                if first_wrapper is not None and first_wrapper < m.start():
+                    continue
+                line_no = segment[m.start()][0]
+                violations.append(f"{block.file}:{line_no}: {line_text[line_no].strip()}")
     return violations
 
 

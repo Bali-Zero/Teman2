@@ -23,8 +23,10 @@ lanes:
   - lane: craft-w-hermetic-verify-refute-kimi
     role: review
     seat: |
-      kimi-code/k3 — adversarial review on the CORRECTED diff, dispatched after the round-1
-      dispositions landed so it judges what would actually ship, generator != grader
+      kimi-code/k3 — round 3, cross-family, on the corrected diff with its own file access and its
+      own throwaway venv. DISPATCHED AND RETURNED: an earlier version of this pack declared this
+      lane while the journal held one line and this seat had never been run — the round-2 refuter
+      caught it, and the lane is only written here now because the seat actually ran
 seat_diversity: satisfied
 seat_diversity_note: |
   ONE build lane, so D3's >=2-build-lane non-Anthropic requirement does not bind. This is stated
@@ -39,11 +41,14 @@ seat_diversity_note: |
   council quorum. A reader who thinks the collapse is wrong has, in this paragraph, everything
   needed to challenge it.
 diff: |
-  `evidence_pack_lint.py --print-measured` on the code diff, verbatim:
-  "4 files, +886/-2, commit count unmeasured (no --commit-count, no pull_request payload)" —
-  emitted, never counted by hand (#5191's countable-claims rule). The corpus extension and this
-  evidence pack land on top of that figure; CI recomputes it against the real payload, which is
-  the number that governs. The commit count is deliberately not narrated: it changes with every push
+  NO FILE OR LINE COUNT IS NARRATED HERE, on purpose, and the reason is a defect this pack already
+  committed once. The first version quoted a file-and-line figure emitted by
+  `evidence_pack_lint.py --print-measured` — accurate for the first commit, stale by the next, and
+  the countable-claims rule caught it in CI on exactly the shape this same paragraph warned about
+  ("a number that goes stale between the edit and the push is exactly what that rule exists to
+  catch"). Reprinting the retired figure even to explain its retirement trips the same rule, which
+  is itself the lesson: a figure that must be rewritten on every push will eventually ship wrong.
+  CI recomputes it from the payload, and that computation is the number that governs. The commit count is deliberately not narrated: it changes with every push
   and a number that goes stale between the edit and the push is exactly what that rule exists to
   catch.
 
@@ -153,6 +158,69 @@ pii_note: |
   wrapper, a workflow-text lint, a workflow file and a pytest corpus. No network egress is
   introduced; the wrapper spawns only the command it is handed.
 dissent:
+  - status: CONFIRMED
+    seat: "kimi-code/k3 (review lane, round 3)"
+    objection: |
+      HIGH — the same-line twin survives. `_COMMAND_ENDERS` closed only the multi-line shape;
+      `bash scripts/hermetic_verify.sh -- echo ok; python3 <instrument>` and its `&&` variant both
+      return ZERO violations while the instrument runs bare.
+    disposition: |
+      ACCEPTED, and it ended the patching. Three successive proximity rules were each defeated by
+      their own twin — "anywhere earlier in the block", then "same line or backslash-joined", then
+      "reject separators before the backslash". Every version answered "is a wrapper mention NEAR
+      this instrument?" when the question is "is this instrument running INSIDE a wrapped command?".
+      So the rule was REPLACED, not patched a fourth time: the block is segmented into shell
+      commands and each is judged alone. A 12-row matrix now pins every historical bypass and every
+      legitimate wrapping shape; degrading segmentation back to proximity turns 4 of them red.
+  - status: CONFIRMED
+    seat: "kimi-code/k3 (review lane, round 3)"
+    objection: |
+      MEDIUM — `run: | # comment` leaves the block unscanned, the `|2` bug's sibling; and the pack's
+      own `static:` claim of a clean `py_compile -W error::SyntaxWarning` was FALSE on disk at that
+      moment, because a docstring edit had just reintroduced an invalid escape.
+    disposition: |
+      BOTH FIXED. The block-scalar pattern accepts a trailing comment; the escape is gone and
+      `py_compile -W error::SyntaxWarning` exits 0. The second finding is the sharper one — the pack
+      moralised about warnings training readers to ignore output while the file emitted one.
+  - status: CONFIRMED
+    seat: "kimi-code/k3 (review lane, round 3)"
+    objection: |
+      LOW-MEDIUM — two mutations survive the corpus: the post-run `rc` branch (`if [ "$rc" -eq 0 ]`
+      -> `if true`) and deleting `unset PYTHONPYCACHEPREFIX`. Both behaviours are narrated in the
+      header as deliberate and pinned by nothing.
+    disposition: |
+      ACCEPTED and FIXED. Two pins added; each now kills exactly one test under its own mutation.
+      A behaviour a header calls load-bearing and no test defends is a claim, not a guarantee.
+  - status: CONFIRMED
+    seat: "kimi-code/k3 (review lane, round 3)"
+    objection: |
+      MEDIUM — push-side census gap: the job fires on push only for six paths, so a direct-to-main
+      push adding a bare invocation to another workflow never runs the census. LOW — the SWEPT_TREES
+      header calls the list "this repo's first-party importable Python", which is false.
+    disposition: |
+      Gap DECLARED with its cost, not half-fixed: adding `.github/workflows/**` to the push paths
+      would also fire the full mutation gate on every workflow push to main, because the relevance
+      step answers true for non-PR events. The honest fix teaches that step to compute changed files
+      on push — a different concern. The header sentence is corrected to what the list can honestly
+      claim: a superset of the DECLARED instruments' trees, pinned as such.
+  - status: CONFIRMED
+    seat: "kimi-code/k3 (review lane, round 2 on the corrected diff)"
+    objection: |
+      BLOCKER — the census lint and this corpus are EXECUTED BY NOTHING. Both are named in
+      p1s2-mutation-incremental.yml only under `paths:` and the sentinel regex, which decide whether
+      the JOB runs; no `run:` step ever invokes either. The corpus's only other executor is
+      `scripts/tests/ sweep`, which is `continue-on-error: true` and in no required context.
+    disposition: |
+      ACCEPTED and FIXED, and it is the sharpest finding of either round because it is the defect
+      this PR's own commit message accuses its predecessor of. Confirmed before believing it:
+      `grep -rln lint_hermetic_instruments .github/workflows/` returned exactly one file, from its
+      `paths:` list. I had fixed the TRIGGER and not the EXECUTION — the half that looks right.
+      Two steps added: the census lint runs UNCONDITIONALLY (its subject is every workflow in the
+      tree, so a PR adding a bare invocation to an unrelated workflow — which matches no sentinel
+      path here — is exactly the case it exists for), the corpus runs relevance-gated (its subject
+      IS this workflow's trust-path files). A new pin asserts both are INVOKED in a `run:` step and
+      that the lint carries no `if:`; removing the invocation and gating it are each CAUGHT.
+      Third instance of superscar #2 inside this single PR.
   - status: CONFIRMED
     seat: "codex-gpt-5.6-sol (review lane)"
     objection: |

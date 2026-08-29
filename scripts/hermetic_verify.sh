@@ -61,8 +61,9 @@
 #      which would abort ON the very failure it exists to report — cicatrix
 #      W101, "pre-push fail-closed decapitated by sh -e").
 #   6. POST-RUN, re-checks SWEPT_TREES for `__pycache__`. The canary proves
-#      the environment was hermetic BEFORE the command; only this proves the
-#      command did not defeat it (`env -u PYTHONDONTWRITEBYTECODE`, a
+#      the environment was hermetic BEFORE the command; this detects the
+#      ORDINARY ways a command defeats it during the run (see the measured
+#      limits below — it is detection, not proof) (`env -u PYTHONDONTWRITEBYTECODE`, a
 #      conftest setting `sys.dont_write_bytecode = False`, `python -E`, a
 #      different interpreter, a subprocess that rebuilds its env). A green
 #      produced under a defeated environment exits 3 instead of 0; a red
@@ -71,8 +72,33 @@
 #
 # WHAT THIS CANNOT DO, stated because a wrapper that overclaims is the same
 # failure as the one it guards against:
-#   - It cannot stop a hostile command from defeating the environment; it can
-#     only DETECT that one did, after the fact, via step 6.
+#   - It cannot stop a hostile command from defeating the environment, and its
+#     detection is NOT complete either. Both limits were measured on this
+#     machine by a round-2 cross-family refuter, and both reproduce:
+#
+#       (a) A REDIRECTED CACHE IS INVISIBLE. Step 6 counts __pycache__ under
+#           SWEPT_TREES; PYTHONPYCACHEPREFIX puts it somewhere else entirely.
+#           Measured: pre-compile a probe with the prefix pointing at a temp
+#           dir, mutate it same-length, restore its mtime, then run it here as
+#             hermetic_verify.sh -- env -u PYTHONDONTWRITEBYTECODE \
+#                 PYTHONPYCACHEPREFIX=$tmp PYTHONPATH=... python3 -c 'import probe...'
+#           The child printed the STALE value and this wrapper exited 0. The
+#           `unset PYTHONPYCACHEPREFIX` in step 1 does not help: the child sets
+#           it again. So step 6 catches the ORDINARY defeat (bytecode landing
+#           where Python puts it by default), which is the shape W121 actually
+#           measured, and not a deliberate redirect.
+#
+#       (b) A LEGITIMATE BYTECODE WRITER IS A FALSE POSITIVE. Measured:
+#           `hermetic_verify.sh -- python3 -m compileall -q <dir>` exits 3.
+#           compileall's whole job is to write .pyc; nothing was defeated. Any
+#           tool that intentionally exercises bytecode semantics hits this.
+#           There is no opt-out flag, deliberately: this wrapper is for
+#           MEASUREMENT INSTRUMENTS whose output is a number someone quotes,
+#           and adding a "trust me" switch to a trust primitive is how the
+#           switch ends up in the invocation that needed the check.
+#
+#     Neither is a reason to distrust the ordinary case, and both are reasons
+#     not to describe step 6 as proof that the environment SURVIVED the run.
 #   - It cannot see bytecode read from outside SWEPT_TREES (a stale cache in
 #     an instrument's own dependency tree, say). The corpus pins SWEPT_TREES
 #     against the one instrument declared today; a future instrument that
@@ -165,11 +191,15 @@ export PYTEST_ADDOPTS="-p no:cacheprovider${PYTEST_ADDOPTS:+ $PYTEST_ADDOPTS}"
 # finished diff, verified here against the driver's source before believing it.
 #
 # The list is NOT derived from any one instrument (this wrapper is generic —
-# it wraps whatever measurement instrument it is handed). It is this repo's
-# first-party importable Python, and scripts/tests/test_hermetic_census.py
-# pins it as a SUPERSET of mutation_incremental.py's include_glob, so an
-# instrument that grows a tree this sweep does not cover fails the corpus
-# instead of silently measuring on stale bytecode.
+# it wraps whatever measurement instrument it is handed). Nor is it "all
+# first-party importable Python": an earlier draft of this sentence said so
+# and a refuter falsified it — tests/, products/, data/ and research/ also
+# hold importable modules. What it IS: a SUPERSET of every tree the DECLARED
+# instruments mutate, pinned as such by scripts/tests/test_hermetic_census.py
+# against mutation_incremental.py's include_glob. An instrument that grows a
+# tree this sweep does not cover fails that pin rather than silently measuring
+# on stale bytecode — which is the property that matters, and the only one
+# this list can honestly claim.
 SWEPT_TREES="scripts apps packages infra"
 
 # PRUNED_DIRS is not tidiness, it is correctness, and the number is why.

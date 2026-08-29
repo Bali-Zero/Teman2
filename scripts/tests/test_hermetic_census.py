@@ -14,6 +14,7 @@ from __future__ import annotations
 import importlib.util
 import os
 import re
+import shutil
 import subprocess
 import sys
 import uuid
@@ -803,7 +804,19 @@ def test_push_paths_and_pull_request_grep_regex_are_the_same_set() -> None:
         "p1s2-mutation-incremental.yml — the pin stopped matching, so it "
         "stopped pinning"
     )
-    push_paths = set(re.findall(r'"([^"]*)"', push_block))
+    # Comment-stripped BEFORE extraction. A cross-family refuter (round 2)
+    # showed this test passed for the wrong reason without it: the extraction
+    # is a bare quoted-string scan, so
+    #     paths:
+    #       # - "scripts/hermetic_verify.sh"
+    # still "contains" the path and satisfies the assertion, while GitHub does
+    # not treat a commented line as an active path at all. Commenting out a
+    # trigger is the cheapest possible way to disarm this workflow, and it is
+    # exactly what this pin exists to catch. (Same form-for-entity mistake the
+    # census lint itself had to fix earlier in this PR — a lint that counted a
+    # wrapper mention inside a `#` comment as protection.)
+    push_lines = [ln for ln in push_block.splitlines() if not ln.lstrip().startswith("#")]
+    push_paths = set(re.findall(r'"([^"]*)"', "\n".join(push_lines)))
     assert push_paths, "push: paths: matched but parsed to an empty set"
 
     grep_match = re.search(r"grep -qE \\\n\s+'\^\(([^)]*)\)\$'", text)
@@ -830,4 +843,233 @@ def test_push_paths_and_pull_request_grep_regex_are_the_same_set() -> None:
         "of the W121 trust-path files means a PR editing ONLY that file "
         "(including one disabling it) never runs this gate's own "
         "self-canary (superscar #2 / W108)"
+    )
+
+
+def test_the_workflow_EXECUTES_the_census_and_the_corpus_not_merely_triggers_on_them() -> None:
+    """Trigger membership is not execution, and this PR shipped that confusion.
+
+    The sibling test above pins that the wrapper, the census lint and this
+    corpus appear in `push: paths:` and in the sentinel regex. That makes the
+    workflow RUN when they change. It says nothing about whether the workflow
+    ever invokes them — and it did not: a round-2 cross-family refuter found
+    `lint_hermetic_instruments.py` named in this repo's workflows ONLY as a
+    trigger path, and this corpus executed nowhere but `scripts/tests/ sweep`,
+    which is `continue-on-error: true` and in no required context.
+
+    So the census that enforces "every instrument runs wrapped" was itself
+    unenforced, and the corpus proving the wrapper works could not go red.
+    Third instance of superscar #2 found inside this single PR, and the one
+    the PR's own commit message accuses its predecessor of.
+
+    The two are pinned with different strictness on purpose, matching how they
+    are wired: the lint must be invoked UNCONDITIONALLY (its subject is every
+    workflow in the tree, including ones this workflow's sentinel never
+    matches), the corpus may be relevance-gated (its subject is this
+    workflow's own trust-path files).
+    """
+    wf = _REPO_ROOT / ".github" / "workflows" / "p1s2-mutation-incremental.yml"
+    assert wf.is_file(), f"{wf} is missing — this pin cannot verify anything"
+    lines = wf.read_text(encoding="utf-8").splitlines()
+
+    def _invocation_line(needle: str) -> int | None:
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                continue
+            if stripped.startswith("run:") and needle in stripped:
+                return i
+        return None
+
+    lint_at = _invocation_line("scripts/ci/lint_hermetic_instruments.py")
+    corpus_at = _invocation_line("scripts/tests/test_hermetic_census.py")
+
+    missing = [
+        name
+        for name, at in (
+            ("the census lint", lint_at),
+            ("this corpus", corpus_at),
+        )
+        if at is None
+    ]
+    assert not missing, (
+        f"{wf.name} does not INVOKE {missing} in any `run:` step — it only "
+        "names them under `paths:`/the sentinel regex, which decides WHETHER "
+        "THE JOB RUNS, never whether these are executed. A guard that is "
+        "triggered but not invoked is disarmed with a green check on top."
+    )
+
+    # The lint must not be relevance-gated. Walk back to its step's `if:`, if
+    # any: a gated census cannot see a bare invocation added to an unrelated
+    # workflow, which is the case it exists for.
+    assert lint_at is not None  # narrowed by the assertion above
+    step_start = lint_at
+    while step_start > 0 and not lines[step_start].lstrip().startswith("- name:"):
+        step_start -= 1
+    gated = any(
+        lines[i].strip().startswith("if:")
+        for i in range(step_start, lint_at)
+    )
+    assert not gated, (
+        "the census lint step carries an `if:` condition. It must run on every "
+        "PR: a PR that adds a bare instrument invocation to an UNRELATED "
+        "workflow touches none of this workflow's sentinel paths, so a gated "
+        "census would never see the one edit it is for."
+    )
+
+
+# --------------------------------------------------------------------------
+# The census bypass matrix. Three successive proximity rules were each
+# defeated by their own twin — "anywhere earlier in the block" by a completed
+# call on the line above; "same line or backslash-joined" by `&& \` on the
+# joining line; "reject separators before the backslash" by the same separator
+# on ONE line. Every version answered "is a wrapper mention NEAR this
+# instrument?" when the question is "is this instrument running INSIDE a
+# wrapped command?".
+#
+# The rule is now shell-command segmentation, and this table is the reason it
+# cannot be quietly replaced by a fourth proximity heuristic: every historical
+# bypass is here as a named row, so a regression re-opens a row rather than
+# passing silently.
+# --------------------------------------------------------------------------
+_CENSUS_GUILT = [
+    (
+        "round-1 bypass: a COMPLETED wrapper call on the line above",
+        "        - name: x\n          run: |\n            bash scripts/hermetic_verify.sh --self-test-only\n            python3 scripts/mutation_incremental.py -v\n",
+    ),
+    (
+        "round-2 bypass: `&&` before the backslash continuation",
+        "        - name: x\n          run: |\n            bash scripts/hermetic_verify.sh --self-test-only && \\\n              python3 scripts/mutation_incremental.py -v\n",
+    ),
+    (
+        "round-3 bypass: the SAME shape on one line, `;` separator",
+        "        - name: x\n          run: bash scripts/hermetic_verify.sh -- echo ok; python3 scripts/mutation_incremental.py -v\n",
+    ),
+    (
+        "round-3 bypass: the SAME shape on one line, `&&` separator",
+        "        - name: x\n          run: bash scripts/hermetic_verify.sh -- true && python3 scripts/mutation_incremental.py -v\n",
+    ),
+    (
+        "round-3 bypass: the SAME shape on one line, pipe separator",
+        "        - name: x\n          run: bash scripts/hermetic_verify.sh -- true | python3 scripts/mutation_incremental.py -v\n",
+    ),
+    (
+        "block-scalar indentation indicator left the block unscanned",
+        "        - name: x\n          run: |2\n            python3 scripts/mutation_incremental.py -v\n",
+    ),
+    (
+        "block-scalar trailing YAML comment left the block unscanned",
+        "        - name: x\n          run: | # keep hermetic\n            python3 scripts/mutation_incremental.py -v\n",
+    ),
+    (
+        "a wrapper mention inside a shell COMMENT is not protection",
+        "        - name: x\n          run: |\n            # bash scripts/hermetic_verify.sh -- disabled\n            python3 scripts/mutation_incremental.py -v\n",
+    ),
+    (
+        "the plainest case: a bare invocation",
+        "        - name: x\n          run: python3 scripts/mutation_incremental.py -v\n",
+    ),
+]
+
+_CENSUS_INNOCENCE = [
+    (
+        "same-line wrapping",
+        "        - name: x\n          run: bash scripts/hermetic_verify.sh -- python3 scripts/mutation_incremental.py -v\n",
+    ),
+    (
+        "multi-line wrapping via a genuine continuation",
+        "        - name: x\n          run: |\n            bash scripts/hermetic_verify.sh -- \\\n              python3 scripts/mutation_incremental.py -v\n",
+    ),
+    (
+        "a wrapped invocation piped to tee — the pipe does not orphan it",
+        "        - name: x\n          run: bash scripts/hermetic_verify.sh -- python3 scripts/mutation_incremental.py -v 2>&1 | tee log\n",
+    ),
+]
+
+
+def _census_violations(yaml_text: str) -> int:
+    total = 0
+    for block in lint.find_run_blocks(yaml_text, "fixture.yml"):
+        total += len(lint.find_unwrapped_mentions(block, lint.INSTRUMENTS))
+    return total
+
+
+@pytest.mark.parametrize("label,fixture", _CENSUS_GUILT, ids=[x[0] for x in _CENSUS_GUILT])
+def test_census_catches_every_historical_bypass(label: str, fixture: str) -> None:
+    assert _census_violations(fixture) > 0, (
+        f"the census did NOT flag: {label}. Each row here defeated a previous "
+        "version of this rule; a green row means a proximity heuristic has "
+        "crept back in."
+    )
+
+
+@pytest.mark.parametrize("label,fixture", _CENSUS_INNOCENCE, ids=[x[0] for x in _CENSUS_INNOCENCE])
+def test_census_does_not_flag_a_legitimately_wrapped_invocation(label: str, fixture: str) -> None:
+    assert _census_violations(fixture) == 0, (
+        f"the census FALSELY flagged: {label}. Closing a bypass by refusing "
+        "every wrapping shape is not closing it."
+    )
+
+
+def test_a_FAILING_command_keeps_its_own_exit_code_even_when_it_defeats_the_env(tmp_path: Path) -> None:
+    """The post-run check must not overwrite a real failure with a generic 3.
+
+    A refuter mutated `if [ "$rc" -eq 0 ]` to `if true` and the whole corpus
+    stayed green: the wrapper's deliberate asymmetry — a green produced under a
+    defeated environment becomes 3, a red keeps its own code because that code
+    carries more information — was narrated in the header and pinned by nothing.
+    """
+    probe_pkg = _REPO_ROOT / "packages" / f"_hv_failpin_{uuid.uuid4().hex[:8]}"
+    probe_pkg.mkdir(parents=True, exist_ok=True)
+    (probe_pkg / "__init__.py").write_text("X = 1\n", encoding="utf-8")
+    try:
+        proc = subprocess.run(
+            [
+                "bash", str(_WRAPPER_PATH), "--",
+                "env", "-u", "PYTHONDONTWRITEBYTECODE", "python3", "-c",
+                f"import sys; sys.path.insert(0, {str(_REPO_ROOT / 'packages')!r}); "
+                f"import {probe_pkg.name}; sys.exit(7)",
+            ],
+            capture_output=True, text=True, cwd=str(_REPO_ROOT), timeout=120,
+        )
+        assert proc.returncode == 7, (
+            "a command that FAILED and also defeated the environment must keep its own "
+            f"exit code, not be flattened to 3 — got {proc.returncode}"
+        )
+        assert "WARNING" in proc.stderr and "defeated" in proc.stderr, (
+            "the defeat must still be reported loudly on a failing run; stderr was: "
+            f"{proc.stderr[-400:]}"
+        )
+    finally:
+        shutil.rmtree(probe_pkg, ignore_errors=True)
+        for cache in (_REPO_ROOT / "packages").rglob("__pycache__"):
+            shutil.rmtree(cache, ignore_errors=True)
+
+
+def test_an_ambient_PYTHONPYCACHEPREFIX_does_not_reach_the_child() -> None:
+    """`unset PYTHONPYCACHEPREFIX` is load-bearing and was pinned by nothing.
+
+    A refuter deleted that line and the corpus stayed green. An inherited
+    redirect target makes the write-suppression meaningless for whatever path
+    it points at — and the sweep, which is what actually protects an
+    already-poisoned checkout, would then be sweeping the wrong place.
+
+    This pins the ordinary case the wrapper CAN control (a prefix inherited
+    from its caller). It deliberately does not claim to cover a child that
+    re-sets the variable itself — that limit is measured and declared in the
+    wrapper's own header.
+    """
+    env = dict(os.environ)
+    env["PYTHONPYCACHEPREFIX"] = "/tmp/should-not-survive-the-wrapper"
+    proc = subprocess.run(
+        [
+            "bash", str(_WRAPPER_PATH), "--",
+            "python3", "-c", "import os; print(os.environ.get('PYTHONPYCACHEPREFIX', 'UNSET'))",
+        ],
+        capture_output=True, text=True, cwd=str(_REPO_ROOT), env=env, timeout=120,
+    )
+    assert proc.returncode == 0, proc.stderr[-400:]
+    assert proc.stdout.strip().endswith("UNSET"), (
+        "an ambient PYTHONPYCACHEPREFIX reached the child — the wrapper's `unset` "
+        f"is not doing its job. child saw: {proc.stdout.strip()!r}"
     )
