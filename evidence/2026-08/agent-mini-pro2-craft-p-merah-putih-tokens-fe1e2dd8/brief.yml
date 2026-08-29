@@ -1,0 +1,61 @@
+task_id: craft-p-l11-pr2-merah-putih-tokens
+gear: 1
+l_level: L2
+gate_class: opus
+objective: |
+  R4's Merah Putih token contract has been sitting in a research doc — fully
+  computed, adversarially reviewed, unshipped — while at least three live
+  palettes serve public surfaces with raw hex literals. This lands it as an SSOT
+  and, more importantly, as a tripwire that can tell when the file starts lying.
+
+  The tripwire is the point, not the JSON. A token file drifts in two directions
+  and both are defects: the hex changes and the comment lies, or the comment
+  changes and the hex lies. So the contrast claims are machine-checkable —
+  `{against: <alias>, ratio: <claim>, duty: <role>}` in each token's
+  `$extensions` — and the checker resolves the alias, RECOMPUTES from the raw
+  hexes, and fails on drift. The ratio is derived, never trusted.
+constraints:
+  - "NO surface migration. globals.css, (marketing)/page.tsx, PersonaDoors.tsx
+    and layout.tsx are untouched — this PR is SSOT + tripwire only, and a
+    migration is a separate, later change."
+  - "Faithful transcription, not correction. All 26 ratios the source doc
+    declares were independently recomputed first and reproduce exactly, so any
+    disagreement would have been a reason to STOP, not to silently 'fix' the
+    doc."
+  - "The deliberately LOW ratios must PASS. hairline 1.21 is decorative and
+    whatsapp white-on 1.98 is icon-only because R4 §3/§4 narrow those duties so
+    they are never a text surface nor the sole identifier of an interactive
+    control (WCAG 2.2 SC 1.4.11). A checker that only rewarded high numbers
+    would push someone to 'fix' the design to satisfy it."
+  - "The exemptions must be LOUD. Every run prints which claims carry no floor
+    and why, so a reader cannot mistake a deliberate exemption for an oversight."
+  - "A do-not-edit-by-hand marker anticipating a future generator — two writers
+    on one file is family #9."
+acceptance: |
+  Innocence — the shipped file passes; the deliberately-low decorative and
+    icon-only claims pass WITHOUT a floor being invented for them.
+  Guilt A — a $value edited to a hex that fails its declared ratio: non-zero,
+    naming the token, showing claimed vs recomputed.
+  Guilt B — the CLAIMED ratio edited while the hex is left alone: non-zero
+    (a comment lying about the hex is as much a defect as the reverse).
+  Guilt C — a token whose declared duty is `text` but whose recomputed ratio is
+    below 4.5: non-zero, naming the floor it fails.
+risks: |
+  - The file is an SSOT nothing consumes yet. Until a surface migrates, it can
+    only be wrong in the small — but it is also the moment to get the shape
+    right, before anything depends on it.
+  - The duty->floor table encodes a reading of WCAG. If that reading is wrong,
+    the gate is confidently wrong; it is small and legible on purpose.
+  - `border-focus`'s double-ring (ink 2px + 2px carta offset) has no DTCG
+    composite that expresses an offset ring; the token captures the outer ring
+    and the description names the gap. Declared rather than invented.
+grader: |
+  Blind cross-family refutation (Kimi K3, per the lane spec — static token file,
+  no prod-flag surface). Final on-disk gate held by the Opus 5 squad
+  orchestrator, empirically: the 26 source ratios were recomputed independently
+  BEFORE the build, and the checker's guilt cases were re-run by the
+  orchestrator with its own mutations, not the implementer's.
+budget: |
+  One Sonnet 5 implementer pass, one refutation, orchestrator gate. The checker
+  is pure-python stdlib — no new dependency enters the runtime.
+pii: none

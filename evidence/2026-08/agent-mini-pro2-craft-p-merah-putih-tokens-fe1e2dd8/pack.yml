@@ -1,0 +1,185 @@
+brief_ref: evidence/brief.yml
+plan_ref: "L11-PR2 — docs/plans/2026-08-29-beyond-sota-craft-wave/L11-product-ux-visual-design.md"
+diff:
+  files: 3
+  insertions: 900
+  deletions: 0
+  hotzone_hits: []
+
+lanes:
+  - lane: build
+    role: build
+    seat: sonnet-5
+  - lane: refute
+    role: review
+    seat: kimi-code/k3 (blind, cross-family — the lane spec's designated refuter for this PR)
+  - lane: gate
+    role: review
+    seat: opus-5 squad-P orchestrator (final on-disk gate, empirical, in-session)
+
+receipts:
+  - claim: "GROUND, before a line was written: all 26 contrast ratios the R4 source doc declares were independently recomputed with the WCAG 2.x relative-luminance formula and reproduce EXACTLY. The doc is a trustworthy source, so the transcription is faithful rather than corrected."
+    cmd: "python3 - <<'PY'  # WCAG relative luminance over all 26 declared pairs"
+    exit: 0
+    ts: "2026-08-29T10:45:00Z"
+    seat: opus-5 orchestrator
+  - claim: "Deterministic floor for this diff is 1 — no hot-zone path is touched (no infra/launchagents, no migration, no workflow)."
+    cmd: "apps/backend-rag/.venv/bin/python scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/p_changed3.txt"
+    exit: 0
+    ts: "2026-08-29T11:05:00Z"
+    seat: opus-5 orchestrator
+  - claim: "The shipped token file passes: 28 claims recompute within tolerance and clear their duty's floor, with 4 explicit notices naming the claims that carry NO floor by design."
+    cmd: "apps/backend-rag/.venv/bin/python scripts/check_token_contrast.py"
+    exit: 0
+    ts: "2026-08-29T11:40:00Z"
+    seat: opus-5 orchestrator
+  - claim: "Checker self-test and the pytest corpus are green: 38 passed."
+    cmd: "apps/backend-rag/.venv/bin/python scripts/check_token_contrast.py --selftest && apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_check_token_contrast.py -q"
+    exit: 0
+    ts: "2026-08-29T11:41:00Z"
+    seat: opus-5 orchestrator
+  - claim: "MY OWN GUILT MUTATION (not the implementer's): lying in the CLAIM alone — ink 14.79 -> 9.99 with the hex untouched — is caught, naming the token and showing claimed 9.99 vs recomputed 14.7928."
+    cmd: "sed 14.79 -> 9.99 in the token file && apps/backend-rag/.venv/bin/python scripts/check_token_contrast.py"
+    exit: 1
+    ts: "2026-08-29T11:10:00Z"
+    seat: opus-5 orchestrator
+  - claim: "MY OWN GUILT MUTATION: re-declaring hairline's duty as `text` is caught against the 4.5 floor at its real 1.21 ratio — the duty label cannot be used to smuggle a failing colour into a text role."
+    cmd: "set hairline duty=text && apps/backend-rag/.venv/bin/python scripts/check_token_contrast.py"
+    exit: 1
+    ts: "2026-08-29T11:12:00Z"
+    seat: opus-5 orchestrator
+  - claim: "MY OWN GUILT MUTATION of the refuter's CRITICAL: emptying color.text.ink's claims list AND recolouring it to the page ground is now caught — 'required-claims floor — this token carries zero contrast claims'. Before the fix this exited 0."
+    cmd: "empty $extensions claims + set $value to carta && apps/backend-rag/.venv/bin/python scripts/check_token_contrast.py"
+    exit: 1
+    ts: "2026-08-29T11:45:00Z"
+    seat: opus-5 orchestrator
+  - claim: "The gate cannot be neutered by its own flag: --tolerance 99 is refused with exit 2 rather than passing everything."
+    cmd: "apps/backend-rag/.venv/bin/python scripts/check_token_contrast.py --tolerance 99"
+    exit: 2
+    ts: "2026-08-29T11:46:00Z"
+    seat: opus-5 orchestrator
+  - claim: "The token file is byte-identical after every mutation, and no surface file was touched (globals.css, marketing page, PersonaDoors, layout all absent from the diff)."
+    cmd: "cmp -s /tmp/p_tok2.orig design/tokens/merah-putih.tokens.json && git status --porcelain"
+    exit: 0
+    ts: "2026-08-29T11:47:00Z"
+    seat: opus-5 orchestrator
+
+tests:
+  cmd: "apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_check_token_contrast.py -q"
+  passed: 38
+  failed: 0
+static:
+  lint: ok
+  typecheck: n/a-python
+  build: n/a
+
+runtime_proof:
+  - "Shipped token file: exit 0, 28 claims recomputed, 4 no-floor notices printed by design."
+  - "Claim-only lie: exit 1, names the token with claimed vs recomputed."
+  - "Duty mis-declaration: exit 1, names the WCAG floor."
+  - "Silenced token (refuter's CRITICAL): exit 1, names the required-claims floor."
+  - "--tolerance 99: exit 2, refused."
+
+dissent:
+  - seat: kimi-code/k3 (blind, cross-family)
+    objection: >
+      CRITICAL — a token can be silenced by emptying its claims. Delete a
+      token's $extensions contrast list, drift its hex, and the checker exits 0:
+      it validates whatever claims happen to exist and has no expectation of
+      which tokens MUST carry one. The pytest `== 28` pin cannot save it — a
+      whole-file count survives deleting one claim and adding a
+      bogus-but-consistent one elsewhere.
+    status: CONFIRMED
+    repro: >
+      Reproduced with my own mutation before accepting, and it is the SAME shape
+      a sibling PR in this squad was caught by hours earlier (a guard that
+      validates what is present rather than requiring what must be). Fixed with
+      a REQUIRED-CLAIMS floor of 16 token paths chosen by duty, checked
+      independently of the file's contents, and failing on a missing token as
+      well as a claim-less one. Post-fix the same mutation exits 1 naming the
+      token.
+  - seat: kimi-code/k3 (blind, cross-family)
+    objection: >
+      CRITICAL — the tripwire is wired to nothing. No workflow runs
+      check_token_contrast.py, so it can fail forever without turning a PR red.
+    status: CONFIRMED
+    repro: >
+      TRUE and NOT fixable in this PR by design: every `.github/workflows/` edit
+      belongs to the workflow squad under this wave's battle plan §2. Handed
+      over as HANDOFF-TO-W H3 with the exact job requested, and carried as a
+      PENDING-ARMS row until that job turns RED on a guilt fixture in a real CI
+      run. Until then the tripwire is BUILT, not ARMED — stated plainly rather
+      than implied green.
+  - seat: kimi-code/k3 (blind, cross-family)
+    objection: >
+      MEDIUM — the floor check and the drift check disagree about precision, so
+      a CORRECTLY transcribed claim can be a false red: a true ratio of 4.4951
+      published as 4.50 (the file's own 2dp convention) passes drift and fails
+      the 4.5 floor.
+    status: CONFIRMED
+    repro: >
+      Accepted precisely because it does NOT fire today (the nearest token is
+      3.13 against a 3.0 floor) — it would fire the first time someone adds a
+      borderline token, and they would "fix" a correct file to silence a gate
+      that was wrong. Floor comparison now matches the file's publication
+      precision; the exact 4.4951/4.50 case is pinned by a test.
+  - seat: kimi-code/k3 (blind, cross-family)
+    objection: >
+      MEDIUM — test_every_against_reference_resolves is tautological
+      (`assert isinstance(violations, list)` is true on any non-raising run)
+      while its docstring claims it catches a refactor that swallows the
+      exception.
+    status: CONFIRMED
+    repro: >
+      Replaced with a test that sabotages a real alias and asserts the raise,
+      and proved it goes red when the raise is downgraded to a violation. A test
+      that cannot fail is not a test — this repo lints for that class, which
+      makes shipping one in a gate especially poor.
+  - seat: kimi-code/k3 (blind, cross-family)
+    objection: >
+      MEDIUM — `icon-only` grants a blanket no-floor pass to the duty STRING,
+      broader than the SC 1.4.11 carve-out it cites: 1.4.11 exempts an icon only
+      when it is not needed to identify the component, so a future 1.5:1 icon
+      that IS the sole identifier would sail through.
+    status: PLAUSIBLE
+    repro: >
+      Accepted as correct and DECLARED rather than fixed — encoding "is this
+      icon the sole identifier of a control?" is a judgment the checker cannot
+      make from a token file. Today's single icon-only claim satisfies the
+      carve-out (the WhatsApp component co-carries an ink label). The module
+      docstring now says plainly that a passing claim is not a conformance
+      proof, instead of letting the duty label imply one.
+  - seat: kimi-code/k3 (blind, cross-family)
+    objection: >
+      LOW — --tolerance is unbounded (`--tolerance 99` is green by
+      construction); `"ratio": true` passes because bool subclasses int; a deep
+      alias chain raises RecursionError instead of the documented error; and the
+      test file's package-style import contradicts the importlib convention the
+      adjacent test file explicitly documents.
+    status: CONFIRMED
+    repro: >
+      All four fixed. The tolerance bound matters most: this file is about to
+      become a CI gate and the flag was the obvious way to neuter it (verified:
+      --tolerance 99 now exits 2). The import contradiction is now remarked in a
+      comment rather than left as two silent conventions in one directory.
+
+residual_risks:
+  - "BUILT, NOT ARMED: no workflow runs this checker yet. Until the workflow
+    squad wires it and it turns RED on a guilt fixture in a real CI run, it
+    protects nothing — the exact superscar #2 shape this wave exists to cure,
+    stated rather than implied away."
+  - "The SSOT has no consumer. Nothing imports these tokens yet; a migration is
+    a separate, later PR by the lane spec's own instruction. So the file can
+    only be wrong in the small today — which is also the cheapest moment to fix
+    its shape."
+  - "The duty->floor table encodes one reading of WCAG. If that reading is
+    wrong, the gate is confidently wrong; it is deliberately small and legible."
+  - "`icon-only` is a blanket exemption by duty string, narrower in the standard
+    than in the checker — see the dissent entry and the module docstring."
+  - "border-focus's double-ring (ink 2px + 2px carta offset) has no DTCG
+    composite that expresses an offset ring; the token captures the outer ring
+    and the description names the gap. Declared rather than invented."
+
+sources: []
+pii_scan: clean
+size_tokens: 4200
