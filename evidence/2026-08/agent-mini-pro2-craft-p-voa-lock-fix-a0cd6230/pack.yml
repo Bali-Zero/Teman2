@@ -1,0 +1,101 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: "L07 — docs/plans/2026-08-29-beyond-sota-craft-wave/L07-deploy-release-prove-live.md (defect found while ARMING PR-2, not a planned PR)"
+diff:
+  files: 2
+  insertions: 261
+  deletions: 2
+  hotzone_hits:
+    - infra/launchagents/wrappers/voa-probe-wrapper.sh
+
+lanes:
+  - lane: build
+    role: build
+    seat: sonnet-5
+  - lane: refute
+    role: review
+    seat: codex gpt-5.6-sol (high, blind, cross-family)
+  - lane: gate
+    role: review
+    seat: opus-5 squad-P orchestrator (final on-disk gate, empirical, in-session)
+
+receipts:
+  - claim: "zsystem flock does NOT create its lockfile: rc=1 'failed to open ... for writing: no such file or directory'. This is the defect's mechanism."
+    cmd: "zsh -c 'zmodload zsh/system; zsystem flock -t 0.001 -i 0.001 -f FD /tmp/absent.lock; echo $?'"
+    exit: 1
+    ts: "2026-08-29T14:47:00Z"
+    seat: opus-5 orchestrator
+  - claim: "The cure works and still EXCLUDES: create-then-lock returns 0, and a second process against the held lock returns 2 — the rc the wrapper's existing skip branch already handles."
+    cmd: "zsh -c 'zmodload zsh/system; L=/tmp/x.lock; : >> $L; zsystem flock ... ; echo $?' (holder + second process)"
+    exit: 0
+    ts: "2026-08-29T14:47:30Z"
+    seat: opus-5 orchestrator
+  - claim: "Class audit (W107): exactly two wrappers use this primitive. bali-zero-magazine-publish.sh — the file this wrapper's own comment says it copied from — already carries BOTH preconditions. Exactly one defective member: this one."
+    cmd: "grep -rln 'zsystem flock' infra/launchagents/wrappers/ scripts/"
+    exit: 0
+    ts: "2026-08-29T14:52:00Z"
+    seat: opus-5 orchestrator
+  - claim: "Corpus green with the fix intact: 43 -> 56 checks (the lock had ZERO coverage before, which is why this shipped)."
+    cmd: "bash scripts/tests/test_voa_probe_wrapper.sh"
+    exit: 0
+    ts: "2026-08-29T15:16:00Z"
+    seat: opus-5 orchestrator
+  - claim: "MUTATION: break the 2) skip branch so it falls through instead of exiting -> FAILED 1, '(lock busy) the probe itself was NEVER invoked'. Proves the guilt check exercises the previously-dead branch."
+    cmd: "mutate wrapper; bash scripts/tests/test_voa_probe_wrapper.sh"
+    exit: 1
+    ts: "2026-08-29T15:09:00Z"
+    seat: opus-5 orchestrator
+  - claim: "MUTATION: remove the touch precondition, reproducing the ORIGINAL live defect -> FAILED 3 (both innocence checks + the regression pin)."
+    cmd: "mutate wrapper; bash scripts/tests/test_voa_probe_wrapper.sh"
+    exit: 1
+    ts: "2026-08-29T15:10:00Z"
+    seat: opus-5 orchestrator
+  - claim: "MUTATION: remove the non-regular-path guard -> SURVIVED on first submission (FAILED 0), proving that guard shipped untested. After the correction round it FAILS 1, naming '(lock path is a directory) log names the non-regular-path guard specifically'."
+    cmd: "mutate wrapper; bash scripts/tests/test_voa_probe_wrapper.sh"
+    exit: 1
+    ts: "2026-08-29T15:14:00Z"
+    seat: opus-5 orchestrator
+  - claim: "touch on an existing DIRECTORY returns 0 on macOS, so touch alone does not subsume the non-regular-path guard — without it you fall through to zsystem flock against a directory and lose the specific diagnosis."
+    cmd: "zsh -c 'touch /tmp/lockdir; echo $?' on an existing directory"
+    exit: 0
+    ts: "2026-08-29T15:13:00Z"
+    seat: opus-5 orchestrator
+
+dissent:
+  - objection: "HIGH — fail-open contract violated: once touch makes locking functional, rc=2 enters the exit-0 branch without invoking the probe. A hung first run suppresses every subsequent health check indefinitely while emitting fresh warning heartbeats."
+    seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    disposition: "PARTIALLY ACCEPTED — mechanism confirmed, consequence OVERTURNED by measurement. There is indeed no timeout on the node call (line 247). But this system has TWO heartbeats and the refuter saw only the diff: the skip branch calls heartbeat(), which writes the ORGANISM heartbeat (~/.organism/last_seen/mini.voa_probe.json); the PROBE's own heartbeat (~/logs/voa-probe-heartbeat.json) — the one PR-3's dead-man reads — is written ONLY by the node probe, so a stuck run makes it go STALE and the dead-man correctly detects silence and fires. Declared not patched: the fleet organ view reads warning+fresh during a stuck run, which understates it. Bounding probe runtime is a different concern from creating a lockfile."
+  - objection: "HIGH — the claimed symlink guard does not guard symlinks: zsh's -f follows symlinks."
+    seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    disposition: "ACCEPTED, declared not patched. Correct: [[ -f ]] follows symlinks, so a symlink to a regular file passes. MEASURED, not reasoned: a symlink to a REGULAR FILE passes the guard (refuter right), while a symlink to a DIRECTORY is still caught (because -f follows the link and the target is not a regular file) — sharper than the objection stated. The comment claims a 'non-regular-path guard', which is precisely what it is. Widening it to symlink semantics is a scope increase on a two-file fix."
+  - objection: "MEDIUM — the lock is released before the protected result is consumed (unlock precedes the heartbeat read)."
+    seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    disposition: "ACCEPTED, reproduced exactly — unlock at line 252, heartbeat read at 259-267. Newly reachable only because the lock now works at all. Declared not patched (depth-1)."
+  - objection: "MEDIUM — pathname operations are TOCTOU-prone across [[ ]], touch and flock."
+    seat: codex-gpt-5.6-sol
+    status: PLAUSIBLE
+    disposition: "ACCEPTED in principle, declared not patched. The path is user-owned under $HOME/logs on a single-user machine; the mitigation (open-once-and-lock-the-fd) is a rewrite of the primitive, not a precondition fix."
+  - objection: "MEDIUM — the tests never prove a wrapper RETAINS its lock while the probe runs; an implementation that acquired and immediately released would pass 14a-14d."
+    seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    disposition: "ACCEPTED, declared. A true proof needs a long-running stub plus a concurrent second wrapper. Recorded as a known corpus limit rather than claimed to be covered."
+  - objection: "LOW — the regression pin accepts comments as executable evidence; grep would match a commented-out touch."
+    seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    disposition: "ACCEPTED, declared. This is a class this repo has been bitten by (a guard that reads the comment rather than the code) — and the implementer independently hit the same shape in its own no-flock test for the sibling dead-man wrapper and fixed it there by stripping comment lines. Noted for the follow-up rather than widened here."
+  - objection: "LOW — holder cleanup is unsafe: bash does not run an EXIT trap on SIGTERM, and a reaped PID left in CLEANUP_PIDS could be reused."
+    seat: codex-gpt-5.6-sol
+    status: PLAUSIBLE
+    disposition: "ACCEPTED, test-harness-only, declared. The holder is also killed explicitly and waited on immediately after each use, so the trap is a backstop rather than the primary mechanism."
+
+pii_scan: clean
+
+residual_risks:
+  - "Six of the seven refutation findings describe behaviour that was UNREACHABLE until this diff made the lock work. That is the honest one-line summary of this PR: it turns a dormant code path live for the first time, and that path has never run in production."
+  - "No timeout bounds the probe process. Declared above; the dead-man is protected by the two-heartbeat design, not by this."
+  - "The non-regular-path guard does not cover symlinks to regular files."
+  - "The corpus cannot prove the lock is HELD for the probe's duration."
+  - "Kimi K3, the mandated first refuter seat for a non-prod-flag diff, is dead on this machine. One cross-family seat was reached, not two. Recorded rather than papered over."
