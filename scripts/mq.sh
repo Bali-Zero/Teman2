@@ -26,6 +26,8 @@
 #   mq status [--all|PR...]            wrap queue_doctor.py, pass-through output
 #   mq why-red <PR>                    name/bucket/link of each non-passing required check
 #   mq arm <PR>                        record head sha, bare `gh pr merge --auto`, confirm
+#   mq state <PR> [--json]             READ-ONLY queue-state oracle; never mutates, and has
+#                                      no NOT_ARMED verdict (see scripts/mq_state_verdict.py)
 #   mq watch <PR> [--timeout-mins N]   post-arm watcher (default ceiling 120m)
 #   mq requeue <PR>                    disable-auto + re-arm (standing cure for ejections)
 #   mq dequeue <PR>                    disable-auto + drop the local armed-state file
@@ -77,6 +79,7 @@ mq.sh — merge-queue operations tool (Merge-OS v2 Wave 0)
   mq status [--all|PR...]            wrap queue_doctor.py (pass-through output)
   mq why-red <PR>                    name/bucket/link of each non-passing required check
   mq arm <PR>                        record head sha, bare 'gh pr merge --auto', confirm
+  mq state <PR> [--json]             read-only queue-state oracle (never arms, never mutates)
   mq watch <PR> [--timeout-mins N]   post-arm watcher (default ceiling 120m)
   mq requeue <PR>                    disable-auto + re-arm
   mq dequeue <PR>                    disable-auto + drop the local armed-state file
@@ -202,6 +205,123 @@ cmd_arm() {
     echo "  CANNOT-VERIFY confirm step (rc=$MQ_RC): ${MQ_ERR:0:160} — recorded sha stands, check manually"
   fi
   echo "ARMED #$pr @ $sha"
+}
+
+# ---------------------------------------------------------------------------
+# mq state — READ-ONLY. Gathers three facts and hands them to the verdict
+# module; judges nothing itself. It never calls `gh pr merge`, not even to
+# disambiguate: that is a MUTATION, and this verb is what you run when you do
+# NOT want to touch the PR. When the answer is INDETERMINATE it NAMES the
+# mutation instead of performing it.
+#
+# Every read degrades to a labelled CANNOT-VERIFY rather than to a value that
+# looks like a measurement (W106b: a probe that cannot answer must say so, not
+# guess). Only the FIRST read is load-bearing; without it there is no verdict.
+cmd_state() {
+  local pr="" as_json=0
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --json) as_json=1; shift ;;
+      --repo) REPO="${2:-}"; shift 2 ;;
+      -*) _die "state: unknown argument '$1'" ;;
+      *) pr="$1"; shift ;;
+    esac
+  done
+  [[ -n "$pr" ]] || _die "state requires a PR number"
+  _require_pr_number "$pr"
+
+  local owner name
+  owner="${REPO%%/*}"; name="${REPO##*/}"
+  [[ -n "$owner" && -n "$name" && "$owner" != "$REPO" ]] || _die "MQ_REPO must be owner/name, got '$REPO'"
+
+  # (a) the per-PR node. `mergeQueueEntry` does NOT exist in `gh pr view --json`'s
+  #     field list ("Unknown JSON field") — GraphQL is the only way to read it,
+  #     which is exactly why CLI-only probes have concluded "not queued" about a
+  #     PR sitting at position 1.
+  local q
+  q='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){
+        number state mergedAt isDraft mergeable mergeStateStatus headRefOid
+        autoMergeRequest{enabledAt}
+        mergeQueueEntry{state position}
+        commits(last:1){nodes{commit{statusCheckRollup{state
+          contexts(first:100){totalCount nodes{
+            __typename
+            ... on CheckRun{name conclusion status}
+            ... on StatusContext{context state}}}}}}}}}}'
+  _gh api graphql -f query="$q" -f o="$owner" -f r="$name" -F n="$pr" \
+      --jq '.data.repository.pullRequest'
+  if (( MQ_RC != 0 )) || [[ -z "$MQ_OUT" || "$MQ_OUT" == "null" ]]; then
+    echo "CANNOT-VERIFY — the per-PR read failed (rc=$MQ_RC): ${MQ_ERR:0:200}" >&2
+    echo "  no verdict is emitted: an unread state is not an absent one." >&2
+    return 3
+  fi
+  local pr_json="$MQ_OUT"
+
+  # (b) how many contexts branch protection actually requires. Without it a
+  #     rollup=SUCCESS cannot be judged (it can be SUCCESS over 3 of 11).
+  local required_count="null"
+  _gh api "repos/$REPO/branches/main/protection" \
+      --jq '(.required_status_checks.checks // .required_status_checks.contexts // [])|length'
+  if (( MQ_RC == 0 )) && [[ "$MQ_OUT" =~ ^[0-9]+$ ]]; then
+    required_count="$MQ_OUT"
+  fi
+
+  # (c) queue-branch runs. Their EXISTENCE is durable evidence that this PR has
+  #     been built by the queue at least once — the queue deletes the branch on
+  #     the way out, so the runs outlive the entry that produced them.
+  #     The listing is a BOUNDED PAGE (100 runs ~= a dozen PRs). A zero here
+  #     therefore means "not in this window", which is NOT the same claim as
+  #     "never queued" — so the window's own depth travels with the count and
+  #     the verdict module renders the difference instead of flattening it.
+  local queue_runs="null"
+  _gh api "repos/$REPO/actions/runs?event=merge_group&per_page=100" \
+      --jq "{matched:([.workflow_runs[]?|select(.head_branch|test(\"gh-readonly-queue/.*/pr-${pr}-\"))]|length), window:(.workflow_runs|length), oldest:([.workflow_runs[]?.created_at]|sort|first)}"
+  if (( MQ_RC == 0 )) && [[ "$MQ_OUT" == \{* ]]; then
+    queue_runs="$MQ_OUT"
+  fi
+
+  # (d) the sha this tool recorded when it armed, if it ever did.
+  local armed_sha="" f
+  f="$(_state_file "$pr")"
+  if [[ -f "$f" ]]; then
+    armed_sha="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("sha",""))' "$f" 2>/dev/null || true)"
+  fi
+
+  local verdict_py="$SCRIPT_DIR/mq_state_verdict.py"
+  [[ -f "$verdict_py" ]] || _die "mq_state_verdict.py not found at $verdict_py"
+
+  local payload rc=0
+  payload="$(python3 - "$pr_json" "$required_count" "$queue_runs" "$armed_sha" <<'MQSTATEPY'
+import json, sys
+pr_json, required_count, queue_runs, armed_sha = sys.argv[1:5]
+def num(v):
+    return int(v) if v.isdigit() else None
+def obj(v):
+    try:
+        d = json.loads(v)
+        return d if isinstance(d, dict) else None
+    except Exception:
+        return None
+print(json.dumps({
+    "pr": json.loads(pr_json),
+    "required_count": num(required_count),
+    "queue_runs": obj(queue_runs),
+    "armed_sha": armed_sha or None,
+}))
+MQSTATEPY
+)" || rc=$?
+  if (( rc != 0 )) || [[ -z "$payload" ]]; then
+    echo "CANNOT-VERIFY — could not assemble the payload (rc=$rc)" >&2
+    return 3
+  fi
+
+  rc=0
+  if (( as_json )); then
+    printf '%s' "$payload" | python3 "$verdict_py" --pr "$pr" --json || rc=$?
+  else
+    printf '%s' "$payload" | python3 "$verdict_py" --pr "$pr" || rc=$?
+  fi
+  return "$rc"
 }
 
 # ---------------------------------------------------------------------------
@@ -351,6 +471,7 @@ main() {
     status)  cmd_status "$@" ;;
     why-red) cmd_why_red "$@" ;;
     arm)     cmd_arm "$@" ;;
+    state)   cmd_state "$@" ;;
     watch)   cmd_watch "$@" ;;
     requeue) cmd_requeue "$@" ;;
     dequeue) cmd_dequeue "$@" ;;
