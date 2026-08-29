@@ -94,9 +94,12 @@ describe("GET /visa/voa/auth", () => {
   // `new URL(request.url).hostname === "localhost"`, while a plain
   // `new URL("http://127.0.0.1:3000/x")` keeps `127.0.0.1`. So a
   // `127.0.0.1` (or `[::1]`) row passes through the `localhost` entry and
-  // cannot fail if its own entry is deleted; dropping `127.0.0.1` from the
-  // set turns 0 tests red, dropping `localhost` turns 2 red — which is the
-  // whole `it.each` this replaced. The other three entries stay in the set as
+  // cannot fail if its own entry is deleted: dropping `127.0.0.1` from the set
+  // leaves this whole file GREEN, while dropping `localhost` turns the test
+  // directly below RED — which is why the two-row `it.each` this replaced was
+  // never two independent assertions. Stated as a direction, not a count, so
+  // it cannot quietly disagree with the file: re-derive it by deleting an
+  // entry and re-running this file. The other three entries stay in the set as
   // defensive parity with the backend's `_LOOPBACK_HOSTS` and carry no test,
   // because a test that cannot fail is worse than no test.
   it("omits Secure on localhost so local dev can accept the cookie", async () => {

@@ -125,12 +125,21 @@ export const FAILURE_LOCATION = "/visa/voa/auth/continue?error=invalid";
  * `new URL(request.url).hostname === "localhost"`, and the same holds for
  * `http://[::1]:3000` — a plain `new URL(...)` does NOT normalise (it keeps
  * `127.0.0.1` / the bracketed `[::1]`), which is what made the other entries
- * look testable. Confirmed by mutation on the same date: deleting
- * `"127.0.0.1"` from this set turns 0 tests red, deleting `"localhost"`
- * turns 2 red. The three non-`localhost` entries are kept as defensive
- * parity with the backend list and deliberately carry NO test, because a
- * test written against them passes whether or not they are present — which
- * is worse than no test.
+ * look testable. Confirmed by mutation on the same date, and stated as a
+ * DIRECTION rather than a count so nothing here can go stale unnoticed:
+ * deleting `"localhost"` turns this `route.test.ts` case RED —
+ * `omits Secure on localhost so local dev can accept the cookie`
+ * (kept on one line so it stays greppable) — while deleting `"127.0.0.1"`
+ * leaves every test in that file GREEN. Re-derive it, do not trust this
+ * sentence: delete an entry, run
+ * `npx vitest run src/app/visa/voa/auth/route.test.ts` from `apps/mouth`.
+ * (An earlier revision of this comment carried a literal red-count that was
+ * already wrong one commit later — it had been measured against a two-row
+ * `it.each` that the same PR collapsed into the single named test above.)
+ * The three non-`localhost` entries are kept as defensive parity with the
+ * backend list and deliberately carry NO test, because a test written
+ * against them passes whether or not they are present — which is worse than
+ * no test.
  */
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 
