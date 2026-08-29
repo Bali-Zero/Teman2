@@ -60,8 +60,11 @@
 //   * The public Funnel. `nuzantara.tail461666.ts.net:8443` -> 127.0.0.1:8789 (the WhatsApp
 //     webhook, public by design because Meta must reach it) is a Funnel, and Funnel traffic is
 //     not filtered by these ACLs. Port 443 — the one carrying /term — is NOT funnelled.
-//   * `tailscale ping`. Disco pings are not ACL-gated, so `scripts/fleet_watch.py`'s ping probe
-//     keeps working regardless; its SSH probe is what rules 1 and 2 cover.
+//   * `scripts/fleet_watch.py`'s liveness probes. CORRECTED 2026-08-29 (round-2 gate): an
+//     earlier revision said fleet_watch has a "ping probe" that survives because disco pings are
+//     not ACL-gated. It has no ping probe at all — `check_tailscale()` reads the LOCAL daemon
+//     (`tailscale status --json`, no tailnet traffic) and `check_ssh()` uses OpenSSH on port 22,
+//     which rules 1 and 2 grant. The conclusion held; the cited mechanism did not exist.
 //   * LAN/mDNS paths (`pro-lan`, `Nuzantara.local`). Not tailnet traffic.
 //
 // ONE DELIBERATE NARROWING, declared rather than slipped in: the compiled SSH policy in effect
@@ -206,6 +209,18 @@
     // This is the direction the 2026-05-02 decision actually asked for ("Bali Zero retains remote
     // access se serve"): we reach the laptop, the laptop reaches nothing. 22 is SSH, 5900 is
     // Screen Sharing, per infra/tailscale/enroll-team-device.md.
+    //
+    // DECLARED CASUALTY (round-2 gate): `scripts/profile-monitor/` is a repo-resident consumer in
+    // exactly the direction this rule fences. An employee's Mac POSTs checkout events to
+    // `http://100.107.22.111:9099/checkout` (mac-client/profile-monitor.swift:12; the wrapper
+    // listens on 9099, wrapper.py:44) and mac-client/setup-balizero.sh is the documented procedure
+    // for joining such a Mac to this tailnet. Under this policy a `tag:team-device` Mac CANNOT
+    // reach 9099, and the failure is SILENT — a fire-and-forget POST dropped by the packet filter
+    // is indistinguishable from "no checkout happened", on an HR-monitoring surface. This is not
+    // an oversight: granting it would be the file's only team-device-as-source rule, i.e. the one
+    // thing that keeps the shell fenced. Whether to grant it as a single named exception or to
+    // move that client off the tailnet is a business decision (Legge 5), so it is declared here
+    // and left to the owner rather than resolved by this diff.
     //
     // There is deliberately NO rule anywhere in this file with `tag:team-device` in `src`. That single
     // absence is what denies a teammate's laptop the shell on pro:443, the Redis on mini:6379,

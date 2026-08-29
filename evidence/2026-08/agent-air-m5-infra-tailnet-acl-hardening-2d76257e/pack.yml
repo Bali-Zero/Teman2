@@ -15,6 +15,12 @@ lanes:
     seat:
       codex gpt-5.6-sol xhigh (OpenAI, non-Anthropic) — round-1 grader, REJECT with
       executed bypasses against the guard; never the build seat
+  - lane: tailnet-acl-gate-r2
+    role: review
+    seat:
+      claude opus 5 (independent gate seat, fresh context — never the build seat)
+      round-2 Gear-3 adjudication, REWORK-BUILD with three executed destination-axis
+      bypasses; re-adjudicated after the fix
   - lane: tailnet-acl-dependency-audit
     role: read
     seat:
@@ -143,6 +149,22 @@ receipts:
     ts: 2026-08-29T03:17Z
     seat: codex gpt-5.6-sol xhigh (round-1 grader, non-Anthropic)
 
+  - claim: >-
+      Round-2 independent Gear-3 gate ran its own mutations and returned REWORK-BUILD, finding
+      three destination-axis bypasses the round-1 fixes had not covered: a SECOND hosts alias
+      for Pro's IP (pro-deck:443), the historical defect merely de-wildcarded
+      (antonellosiano@gmail.com:443), and autogroup:member:443 — all green against the guard as
+      it then stood. Each is now caught on the REAL policy, not only as a fixture.
+    cmd: >-
+      for each mutation: cp policy.hujson /tmp/p.bak; <apply mutation>; python3 -m pytest
+      scripts/tests/test_tailnet_acl_deny_by_default.py -q; cp /tmp/p.bak policy.hujson
+    result: >-
+      duplicate-alias -> SHELL_PORT_SRC_NOT_ALLOWLISTED; user-dst, autogroup-member-dst and
+      cidr-dst -> UNRESOLVABLE_DST_SELECTOR; all 4 "1 failed"; restored -> 23 passed
+    exit: 1
+    ts: 2026-08-29T04:05Z
+    seat: session (build lane, replaying the gate's mutations)
+
 dissent:
   - seat: codex gpt-5.6-sol xhigh (round-1 grader)
     objection: >-
@@ -197,6 +219,47 @@ dissent:
       audited, AND the guard fails closed on any top-level key it does not know how to audit
       (UNKNOWN_TOP_LEVEL_KEY). A future access surface must grow an auditor in the same commit
       instead of arriving silently.
+
+  - seat: claude opus 5 (round-2 independent Gear-3 gate)
+    objection: >-
+      REWORK-BUILD. The guard was blind on the DESTINATION axis of the one invariant it exists to
+      protect: _canon_node keyed on the alias rather than the IP, so a duplicate alias was a
+      different machine; and the shell check fired only when a destination resolved to a host, so
+      every non-node selector (user, group:, autogroup:, CIDR) skipped it entirely. The gate's
+      mutation B is the exact defect this PR removes with one character class changed — the
+      minimal edit a maintainer would make to "narrow" the old blanket — and it was green.
+    status: CONFIRMED
+    resolution: >-
+      FIXED STRUCTURALLY, not by enumerating more spellings. Canonicalisation now resolves every
+      node to its IP (the identity that cannot be aliased), and UNRESOLVABLE_DST_SELECTOR fails
+      closed on any destination the guard cannot resolve to a node — the same posture
+      UNKNOWN_TOP_LEVEL_KEY already applied to top-level keys. Four new fixtures, 19 -> 23 tests,
+      and all four of the gate's mutations replayed red against the real policy.
+  - seat: claude opus 5 (round-2 independent Gear-3 gate)
+    objection: >-
+      Two files claimed `scripts/fleet_watch.py` has a "ping probe" that survives the proto:tcp
+      narrowing because disco pings are not ACL-gated. fleet_watch.py has no ping probe at all —
+      check_tailscale() reads the local daemon and check_ssh() uses OpenSSH:22. The conclusion
+      survived but the cited mechanism did not exist, in a lane whose quality claim is file:line
+      anchoring.
+    status: CONFIRMED
+    resolution: >-
+      FIXED in both places (policy.hujson and the apply runbook), and verified by grep before
+      rewriting rather than by trusting the gate: fleet_watch.py defines check_tailscale (:100)
+      and check_ssh (:120) and contains no ping probe.
+  - seat: claude opus 5 (round-2 independent Gear-3 gate)
+    objection: >-
+      scripts/profile-monitor/ is a repo-resident consumer in exactly the direction this policy
+      fences — an employee Mac POSTs to 100.107.22.111:9099 — and it appeared in neither the
+      matrix nor the "deliberately NOT granted" notes, contradicting the pack's own claim that no
+      rule lacks a cited consumer. Worse, the failure is SILENT on an HR-monitoring surface.
+    status: CONFIRMED
+    resolution: >-
+      DECLARED, not silently granted. Verified independently (wrapper.py:44, profile-monitor.swift
+      :12, mac-client/setup-balizero.sh). Granting it would be the file's only team-device-as-
+      source rule, i.e. the single property keeping the laptop off the shell — so the trade is a
+      business decision (Legge 5). It is now named in policy.hujson beside rule 7 and carries its
+      own "decide this BEFORE you enrol" section in enroll-team-device.md.
 
 open_questions:
   - >-

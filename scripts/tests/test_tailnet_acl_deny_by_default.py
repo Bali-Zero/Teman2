@@ -23,10 +23,21 @@ straight past it. Tailscale offers many spellings of the same access:
   * the same grant expressed in `acls`, in the newer `grants` block, or via the legacy
     `users`/`ports` fields — all three are valid and ADDITIVE.
 
-So this guard now canonicalises before it judges, audits every access-granting surface, and
-fails closed on any top-level key it does not know how to audit. `audit_policy()` is the whole
-rule: the real policy must produce zero findings, and every fixture in fixtures/tailnet_acl/ must
-produce the specific finding it is named for. Innocence and guilt, per infra/guard-conformance/.
+HARDENED AGAIN 2026-08-29 by the independent Gear-3 gate, which ran the same lens down the
+DESTINATION column that round 1 had run down the source column, and found three more live
+bypasses: a second `hosts` alias for Pro's IP, `antonellosiano@gmail.com:443` (the historical
+defect with one character class changed), and `autogroup:member:443`. All three were green.
+
+So this guard canonicalises every spelling of a node to its IP before judging, and FAILS CLOSED
+twice over: on any top-level key it cannot audit, and on any destination selector it cannot
+resolve to a node. That second one is the general answer to the whole family — a destination the
+guard cannot resolve is treated as possibly being the shell host, rather than skipped.
+
+It is not, and cannot be, a Tailscale evaluator: it does not know what a `group:` expands to, and
+it takes no position on selectors it has never seen beyond refusing them. `audit_policy()` is the
+whole rule: the real policy must produce zero findings, and every fixture in fixtures/tailnet_acl/
+must produce the specific finding it is named for. Innocence and guilt, per
+infra/guard-conformance/.
 """
 
 from __future__ import annotations
@@ -46,14 +57,24 @@ SHELL_PORT = 443
 
 # Exactly which nodes may open the shell port. This is an ALLOWLIST, not a shape rule, and it is
 # deliberately duplicated here rather than derived from the policy: widening the shell exposure
-# then takes two edits in two files by two different intents, instead of one tidy-looking line in
-# the policy. Caught by mutation 2026-08-29 — an earlier version only required the source to be
+# for a KNOWN NODE then takes two edits in two files instead of one tidy-looking line in the
+# policy. (Scoped honestly, round-2 gate: this is not a general two-key lock — a destination the
+# guard cannot resolve is refused outright by UNRESOLVABLE_DST_SELECTOR, which is what actually
+# covers the non-node spellings.) Caught by mutation 2026-08-29 — an earlier version required
+# only that the source be
 # *some* named node, so re-pointing `mini` at `pro:1-65535` stayed green while handing the
 # least-attended machine on the fleet a writable shell.
 SHELL_PORT_ALLOWED_SOURCES = {"m5", "iphone-14", "iphone175", "apple-vision-pro"}
 
 # A port spec wider than this is a wildcard wearing a range's clothes (`1-65535`).
 MAX_PORTS_PER_DST = 64
+
+# The only destination selectors that are allowed NOT to resolve to a node in `hosts`. A team
+# device has no magic IP until it enrols, so the tag is the only way to express the support
+# direction — and it is safe precisely because a tagged device is the thing being fenced.
+# Everything else (a user, a `group:`, an `autogroup:`, a CIDR, an unknown tag) is rejected:
+# see UNRESOLVABLE_DST_SELECTOR below for why.
+ALLOWED_NON_NODE_DSTS = {"tag:team-device"}
 
 # Selectors that include a team-class device. `autogroup:tagged` is the one that bit us: it
 # contains every tagged node, so it contains the team laptop, while looking nothing like
@@ -141,13 +162,21 @@ def load_policy(text: str) -> dict:
 
 
 def _canon_node(token: str, hosts: dict) -> str:
-    """`pro` and `100.107.22.111` are the same machine. Collapse them before comparing."""
+    """Collapse every spelling of a machine to its IP — the one identity that cannot be aliased.
+
+    Canonicalising to the ALIAS was the round-2 gate's finding A: `hosts` could simply grow a
+    second name for the same IP (`"pro-deck": "100.107.22.111"`), and an alias-keyed comparison
+    treats it as a different machine. The IP is the node; the alias is a label for it.
+    """
     if token in hosts:
+        return hosts[token]
+    if token in set(hosts.values()):
         return token
-    for alias, ip in hosts.items():
-        if token == ip:
-            return alias
     return token
+
+
+def _is_node(token: str, hosts: dict) -> bool:
+    return _canon_node(token, hosts) in set(hosts.values())
 
 
 def _split_dst(dst: str) -> tuple[str, str]:
@@ -176,6 +205,11 @@ def _port_spec_covers(spec: str, wanted: int) -> bool:
             except ValueError:
                 continue
     return False
+
+
+def _allowed_shell_ips(hosts: dict) -> set:
+    """The allowlist, resolved to IPs — so a renamed or duplicated alias cannot smuggle a node in."""
+    return {hosts[a] for a in SHELL_PORT_ALLOWED_SOURCES if a in hosts}
 
 
 def _port_count(spec: str) -> int:
@@ -237,15 +271,26 @@ def audit_policy(text: str) -> list[str]:
                 findings.append("WILDCARD_DST_PORT")
             if _port_count(port) > MAX_PORTS_PER_DST:
                 findings.append("OVERBROAD_DST_PORT_RANGE")
+            # FAIL CLOSED ON THE DESTINATION AXIS (round-2 gate, findings B/C/E). The shell
+            # check below can only fire on a destination it can RESOLVE to a node. A user, a
+            # `group:`, an `autogroup:`, a CIDR or an unknown tag resolves to nothing — and the
+            # first version simply skipped them, so `antonellosiano@gmail.com:443` (the
+            # historical defect, merely de-wildcarded) and `autogroup:member:443` both handed
+            # every node the shell while the guard reported green. An unresolvable destination
+            # is therefore treated as possibly covering the shell host, exactly as an unknown
+            # top-level key is treated as possibly granting access.
+            if not _is_node(host, hosts) and host not in ALLOWED_NON_NODE_DSTS:
+                findings.append("UNRESOLVABLE_DST_SELECTOR")
             # Whoever may open the shell port must be a NAMED NODE (never a user, group or
             # autogroup, each of which silently grows as devices are added to it) AND must be on
             # the allowlist above.
-            if _canon_node(host, hosts) == SHELL_HOST and _port_spec_covers(port, SHELL_PORT):
+            if _canon_node(host, hosts) == hosts.get(SHELL_HOST) and _port_spec_covers(
+                port, SHELL_PORT
+            ):
                 for src in srcs:
-                    canon = _canon_node(src, hosts)
-                    if canon not in hosts:
+                    if not _is_node(src, hosts):
                         findings.append("SHELL_PORT_SRC_NOT_A_NAMED_HOST")
-                    elif canon not in SHELL_PORT_ALLOWED_SOURCES:
+                    elif _canon_node(src, hosts) not in _allowed_shell_ips(hosts):
                         findings.append("SHELL_PORT_SRC_NOT_ALLOWLISTED")
 
     for rule in policy.get("acls", []):
@@ -293,7 +338,7 @@ def audit_policy(text: str) -> list[str]:
             for d in t.get("deny", [])
         }
         if not any(
-            _canon_node(_split_dst(d)[0], hosts) == SHELL_HOST
+            _canon_node(_split_dst(d)[0], hosts) == hosts.get(SHELL_HOST)
             and _port_spec_covers(_split_dst(d)[1], SHELL_PORT)
             for d in denied
         ):
@@ -337,6 +382,12 @@ GUILT_CASES = [
     ("ssh_to_team_device.hujson", "TEAM_TAG_AS_SSH_DESTINATION"),
     ("missing_proto.hujson", "MISSING_PROTO"),
     ("unknown_top_level_key.hujson", "UNKNOWN_TOP_LEVEL_KEY"),
+    # Destination-axis bypasses executed by the round-2 independent gate. Round 1 hunted SOURCE
+    # spellings and they were fixed; nobody had run the same lens down the destination column.
+    ("shell_via_duplicate_alias.hujson", "SHELL_PORT_SRC_NOT_ALLOWLISTED"),
+    ("shell_via_user_dst.hujson", "UNRESOLVABLE_DST_SELECTOR"),
+    ("shell_via_autogroup_member_dst.hujson", "UNRESOLVABLE_DST_SELECTOR"),
+    ("shell_via_cidr_dst.hujson", "UNRESOLVABLE_DST_SELECTOR"),
 ]
 
 
@@ -363,9 +414,13 @@ def test_stripper_handles_block_comments_and_commas_inside_strings() -> None:
     assert parsed["hosts"]["a"] == "x,}y"
 
 
-def test_canonicalisation_collapses_alias_and_ip() -> None:
-    hosts = {"pro": "100.107.22.111"}
-    assert _canon_node("100.107.22.111", hosts) == "pro"
+def test_canonicalisation_collapses_every_spelling_of_a_node() -> None:
+    """Alias, duplicate alias and bare IP must all resolve to the same node identity."""
+    hosts = {"pro": "100.107.22.111", "pro-deck": "100.107.22.111"}
+    assert _canon_node("pro", hosts) == _canon_node("pro-deck", hosts) == "100.107.22.111"
+    assert _canon_node("100.107.22.111", hosts) == "100.107.22.111"
+    assert not _is_node("autogroup:member", hosts)
+    assert not _is_node("100.107.22.111/32", hosts)
     assert _port_spec_covers("22,443", SHELL_PORT)
     assert _port_spec_covers("1-65535", SHELL_PORT)
     assert not _port_spec_covers("22,5900", SHELL_PORT)

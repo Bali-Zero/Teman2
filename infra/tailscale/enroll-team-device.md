@@ -86,6 +86,22 @@ further. One construct is worth knowing because a draft of this policy had it wr
 an `ssh` `dst`, where the value must be a user, a tag, or `autogroup:self`. (An earlier version of
 this paragraph called it invalid as any `dst`; that was overbroad.)
 
+### Known casualty of this policy — decide it BEFORE you enrol · `operator[business]`
+
+`scripts/profile-monitor/` expects an employee's Mac to POST checkout events to
+`http://100.107.22.111:9099/checkout` (`mac-client/profile-monitor.swift:12`; the wrapper listens
+on 9099, `wrapper.py:44`), and `mac-client/setup-balizero.sh` is the documented procedure for
+joining such a Mac to this tailnet. **Under `policy.hujson` a `tag:team-device` Mac cannot reach
+that port, and the failure is silent** — a fire-and-forget POST dropped by the packet filter looks
+exactly like "no checkout happened", on an HR-monitoring surface where nobody is watching for
+absence.
+
+This is deliberate, not an oversight: granting it would be the only rule in the file with a team
+device as a SOURCE, which is the single property keeping the laptop off the writable shell on Pro.
+The choice is the owner's: grant `tag:team-device -> pro:9099` as one named exception (with its own
+deny-tests for every other port), or move that client off the tailnet. Decide it before enrolling,
+because after enrolment the wrong answer is invisible.
+
 ## Step 2 — mint a tagged, single-use auth key · `operator[GUI]`
 
 Admin console → **Settings → Keys → Generate auth key**:

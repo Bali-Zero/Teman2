@@ -94,10 +94,12 @@ after the save.
 **Every rule carries `"proto": "tcp"`, so UDP and ICMP between nodes are no longer permitted.**
 That is deliberate — without `proto` a rule granting "only SSH" also grants UDP/22 and ICMP for
 the pair, which made the file's own comments false. Practical consequence: a plain
-`ping 100.93.236.6` between fleet nodes will now fail. `tailscale ping` is unaffected (it is a
-disco probe, not ICMP through the filter), which is what `fleet_watch.py` actually uses. If some
-service turns out to need UDP, add `"proto": "udp"` as its own rule with its evidence — do not
-delete `proto` to make a red go green.
+`ping 100.93.236.6` between fleet nodes will now fail. `scripts/fleet_watch.py` is unaffected, but
+**not for the reason an earlier draft of this runbook gave** (corrected 2026-08-29): it has no ping
+probe at all. `check_tailscale()` reads the local daemon (`tailscale status --json` — no tailnet
+traffic) and `check_ssh()` uses OpenSSH on port 22, which the policy grants. If some service turns
+out to need UDP, add `"proto": "udp"` as its own rule with its evidence — do not delete `proto` to
+make a red go green.
 
 ## 5. Verify the denies actually deny (guilt) — the load-bearing step
 
