@@ -72,6 +72,45 @@ def test_multi_file_diff_splits_on_diff_git_boundary() -> None:
     assert result == {"x.txt": [(1, 2)], "y.txt": [(9, 10)]}
 
 
+# ── zero-width windows: pure-addition hunks (new-file / -U0 insert) ────────
+# `old_len` is 0 for BOTH shapes below: a brand-new file's `@@ -0,0 ...@@`
+# and a `-U0` pure insertion into an existing file. Without `max(old_len,
+# 1)` clamping the old-side span to nonempty, both degrade to a zero-width
+# window that `windows_overlap`'s strict `<` can never report as True.
+
+
+def test_new_file_hunk_yields_nonempty_window_not_zero_width() -> None:
+    """A brand-new file (`@@ -0,0 +1,N @@`) has old_len=0 -- exactly the
+    W125 shape (two Gear>=2 PRs each adding evidence/brief.yml)."""
+    patch = "@@ -0,0 +1,3 @@\n+a\n+b\n+c\n"
+    assert pcc.parse_add_windows_for_hunks(patch) == [(0, 1)]
+
+
+def test_pure_u0_insertion_hunk_yields_nonempty_window_not_zero_width() -> None:
+    """A `-U0` pure insertion into an EXISTING file also has old_len=0 --
+    a different input shape guarded by the same max(old_len, 1) clamp."""
+    patch = "@@ -1271,0 +1272,1 @@\n+new line\n"
+    assert pcc.parse_add_windows_for_hunks(patch) == [(1271, 1272)]
+
+
+def test_two_new_file_additions_of_same_path_flag_the_w125_shape(tmp_path: Path) -> None:
+    """W125's real shape: two PRs each ADDING evidence/brief.yml wholesale.
+    Zero-width windows can never overlap, so an unclamped old_len makes
+    this canonical collision silently invisible to find_collisions/main."""
+    fixture = tmp_path / "w125_new_file.json"
+    fixture.write_text(json.dumps({
+        "prs": {
+            "PR #100": {"evidence/brief.yml": "@@ -0,0 +1,3 @@\n+objective: one\n+l_level: L2\n+status: draft\n"},
+            "PR #200": {"evidence/brief.yml": "@@ -0,0 +1,3 @@\n+objective: two\n+l_level: L1\n+status: draft\n"},
+        }
+    }))
+    assert pcc.main(["--fixture", str(fixture)]) == 1
+    windows = pcc.gather_fixture_pr_windows(fixture)
+    collisions = pcc.find_collisions(windows)
+    assert len(collisions) == 1
+    assert collisions[0].path == "evidence/brief.yml"
+
+
 # ── guilt: add/add overlapping windows on the same file ────────────────────
 
 
