@@ -4,14 +4,14 @@ domain: compliance
 client_case: none
 sources:
   - PR #5218 (SUSPENDED draft, head a1799989d) — the lint this spec replaces
+  - ~/.claude/projects/-Users-nuzantara-nuzantara/memory/MEMORY_MERGE_QUEUE_TRAPS.md — the PR #5036 receipt
   - scripts/mq_state_verdict.py (origin/main @ 5066d7a8d) — attestation order, no NOT_ARMED verdict
   - scripts/queue_shepherd.py (origin/main @ 5066d7a8d) — is_rearm_candidate, run_rearm_pass
-  - scripts/ci/queue_rearm.sh + scripts/lane_ship.sh (origin/main) — the refusal-text convention
-  - .claude/rules/cicatrix-scars.md — W111, W123 (GOTCHA a/b), W126
+  - .claude/rules/cicatrix-scars.md:1279 — W123 GOTCHA (b), the stale line
 adversarial_review: codex
 ---
 
-# L06-PR2b successor — the queue-field surface has an unresolved DOCTRINE, not a missing lint
+# L06-PR2b successor — the doctrine was settled by measurement and never propagated
 
 > **Status: SPEC — no code changed by this document.** It discharges the Rule-8 suspension of
 > PR #5218 (`ci(queue): a regression guard with zero catches today`), stopped because its rule's
@@ -21,27 +21,28 @@ adversarial_review: codex
 > Date: 2026-08-30 · Author: Squad W (workflow track), Opus 5 · Base: `origin/main` @ `5066d7a8d`
 > · Lineage: L06 lane, `docs/plans/2026-08-29-beyond-sota-craft-wave/`
 >
-> **This document was rewritten wholesale after its first draft was refuted.** Codex GPT-5.6 sol
-> returned DO-NOT-SHIP with 3 BLOCKER + 3 HIGH; five of the six were reproduced on disk and are
-> load-bearing here. What the first draft got wrong is recorded in §Adversarial review rather
-> than quietly deleted, because the errors are the same class the spec is about.
+> **Two adversarial rounds, two rewrites.** Round 1 (Codex GPT-5.6 sol) killed the first draft's
+> direction and its harm model. Round 2 (Kimi K3) killed the second draft's central premise by
+> following a citation the author had quoted but not opened. Both are recorded in
+> §Adversarial review rather than deleted, because both errors are the class this spec is about.
 
 ---
 
 ## TL;DR
 
 1. **The suspended lint is genuinely broken** — both blockers reproduced this turn (§1). It stays
-   suspended; do not re-open it.
-2. **The repo holds a three-way, unresolved split on what `auto=null AND queue=null` means** (§2).
-   One of the three is the auto-loaded cicatrix file every session reads. **This spec cannot settle
-   it** — settling it needs a primary artifact (the PR #5036 receipt) that no one has preserved.
-   Everything downstream is blocked on that, and saying so is the deliverable.
-3. **The one concrete, measured defect is a false human-escalation alert**, not a bad merge and not
-   a spurious re-arm (§3). `queue_shepherd.py` in the disputed window sends a P0 saying a PR "looks
-   disarmed" and stops. It never calls `gh pr merge`.
-4. **The "cure" the first draft proposed already exists** in `queue_rearm.sh` and `lane_ship.sh`
-   (§4). `queue_shepherd` is the outlier among its own siblings — which reframes the work from
-   "invent a convention" to "one organ diverges from a convention the repo already keeps."
+   suspended. Do not re-open it in any lexical form.
+2. **The question the lint was built around is already ANSWERED.** `auto=null AND queue=null` does
+   **not** prove disarmed — measured on PR #5036 on 2026-08-26, with the refusal text
+   `! Pull request #5036 is already queued to merge` obtained while both fields read "not armed"
+   (§2). The receipt exists. The second draft of this spec claimed it did not.
+3. **The defect is PROPAGATION, not doctrine.** The measurement corrected an earlier rule by the
+   same author and never reached the two places that still carry the old one:
+   `cicatrix-scars.md:1279` and `queue_shepherd.py:233-236` (§3).
+4. **The live consequence is a false human-escalation P0**, not a bad merge and not a spurious
+   re-arm (§4) — `rearm_pr` is unreachable on that path.
+5. **The refusal-parsing convention already exists at three sites** (§5). `queue_shepherd` is the
+   outlier, which makes this a one-organ job.
 
 ---
 
@@ -51,10 +52,11 @@ PR #5218 shipped `scripts/ci/lint_queue_field_verdict.py`: for any tracked file 
 null-comparison on `autoMergeRequest`, require the SAME file to also mention `mergeQueueEntry`,
 `isInMergeQueue`, `"already queued"`, `"mq state"`, or an explicit waiver.
 
-Head tree `a1799989d` extracted with `git archive | tar -x` and `git init`-ed, because the tool's
-`git ls-files` gathering exits **3 (CANNOT VERIFY)** without a repo — correctly fail-closed.
+Head tree `a1799989d` extracted with `git archive | tar -x` and `git init`-ed — the tool exits
+**3 (CANNOT VERIFY)** without a repo, correctly fail-closed, which was confirmed before trusting
+any later rc.
 
-**BLOCKER 1 — the rule absolves the disease.** Added:
+**BLOCKER 1 — the rule absolves the disease.**
 
 ```python
 def verdict(pr):
@@ -64,161 +66,169 @@ def verdict(pr):
     return "armed"
 ```
 
-→ **rc=0**, probe file appears **0 times** in the output. It reads both fields, so it clears the
-rule, while being precisely the shape the rule exists to catch.
+→ **rc=0**, probe file appears **0 times**. It reads both fields, so it clears the rule, while being
+exactly the shape the rule exists to catch.
 
 **BLOCKER 2 — the allowlist tripwire is form, not entity.** Appending an unconditional
-`gh pr merge --auto "$PR" || true` to the orchestrator whose awareness the waiver rests on
-(`scripts/ci/queue_rearm.sh`) leaves the scan **rc=0** and the tripwire still printing
-`orchestrator … still carries: mergeQueue(, already in the queue`. It asserts the words are
-PRESENT, never that the guard is EFFECTIVE.
+`gh pr merge --auto "$PR" || true` to the orchestrator whose awareness the waiver rests on leaves
+the scan **rc=0** and the tripwire still printing `still carries: mergeQueue(, already in the queue`.
+It asserts the words are PRESENT, never that the guard is EFFECTIVE.
 
 Both reproductions restored the tree and re-ran clean.
 
-**Also measured: the obvious replacement discriminator fails too.** Switching the rule to *"the file
-emits a disarm verdict"* flags `scripts/mq_state_verdict.py` **9 times** — and those nine are its
-docstring *explaining why the verdict must not exist*. A guard firing on the prose that warns against
-the disease is this repo's W108/W112 shape, hit on the second attempt.
+**The obvious replacement fails too.** Switching to *"the file emits a disarm verdict"*
+(`grep -icE "DISARMED|re-?arm needed|not[ _]armed"`) returns **9** on `scripts/mq_state_verdict.py`
+— and those nine are its docstring *explaining why the verdict must not exist*. A guard firing on
+the prose that warns against the disease, hit on the second attempt.
 
-## 2. The unresolved doctrine — and this is the deliverable
+## 2. The question is answered — the receipt exists, and this spec had to be told twice
 
-Three artifacts on `origin/main` @ `5066d7a8d` answer *"what does `auto=null AND queue=null` prove?"*
-and they do not agree:
+`scripts/mq_state_verdict.py:11` opens *"WHAT THE QUEUE ACTUALLY LIES ABOUT (measured,
+MEMORY_MERGE_QUEUE_TRAPS.md)"*. **Following that citation** to
+`~/.claude/projects/-Users-nuzantara-nuzantara/memory/MEMORY_MERGE_QUEUE_TRAPS.md` yields the
+primary record, verbatim (translated inline, original Italian):
 
-| # | artifact | position |
+> **CORRECTS the rule I wrote myself on 26/8: there is a WINDOW in which `autoMergeRequest` is
+> already `null` and `mergeQueueEntry` has not yet appeared — both say "not armed" while the PR is
+> perfectly fine.** Measured on PR #5036 … afterwards there were 32 runs on
+> `gh-readonly-queue/main/pr-5036-…`, so it really had entered the queue. … **The decisive proof is
+> not a field: it is the command's REFUSAL.** Re-arming I got
+> `! Pull request #5036 is already queued to merge` while BOTH fields said "not armed".
+
+That is attestation rank #1 — the refusal text — captured against the exact PR, alongside the
+32-run count. **The transient is measured, not hypothesised.**
+
+**The second draft of this spec asserted the opposite** — that no primary receipt existed and that
+everything downstream was therefore blocked. It searched in-tree, found only the oracle's docstring
+and a *synthetic* fixture (`scripts/tests/test_mq_state_oracle.sh:79`, which fabricates the shape it
+is cited to corroborate), and stopped — **without opening the file the docstring it was quoting
+names as its source.** The blocking prerequisite it invented was manufactured by an unfollowed
+citation. That is the same defect as the lint's: judging by what a text *contains* rather than by
+what it *points at*.
+
+**Consequence for the doctrine.** There is no symmetric three-way split. The record explicitly
+**corrects** the earlier rule, so:
+
+| position | site | standing |
 |---|---|---|
-| A | `.claude/rules/cicatrix-scars.md:1279` (W123 GOTCHA b) | `queue:false + auto:null` = **«disarmata davvero»** |
-| B | `scripts/mq_state_verdict.py:11-24` | **no** instantaneous joint read can prove NOT ARMED; the module therefore has no `NOT_ARMED` verdict |
-| C | `scripts/queue_shepherd.py:233-236` | *"Only BOTH null means truly disarmed, which is the only state this organ may act on"* — agrees with A |
+| `auto=null ∧ queue=null` ⇒ disarmed | `.claude/rules/cicatrix-scars.md:1279` (W123 GOTCHA b, 23/8) | **stale — self-refuted by the same author on 26/8**, correction never propagated |
+| no instantaneous joint read can prove not-armed | `scripts/mq_state_verdict.py:11-24` | **established** by the #5036 receipt |
+| *"Only BOTH null means truly disarmed"* | `scripts/queue_shepherd.py:233-236` | **wrong, and written 2026-08-27 — after the correction** |
 
-**The first draft of this spec asserted B as settled fact and called C a contradiction of it.** That
-was wrong in a way worth recording: A is in the file auto-loaded into **every** session, so the
-majority doctrine — and the one with the widest reach — is the one B denies. Promoting B's docstring
-to a measured fact was the exact move (§1) the suspended lint made with its own premise.
+## 3. The deliverable: propagate the correction, in three places
 
-**What would settle it.** B cites PR #5036 — *"both fields read 'not armed' while 32 queue-branch
-runs existed"*. Searched this turn: the repo preserves that claim in B's docstring and in a
-**synthetic** fixture (`scripts/tests/test_mq_state_oracle.sh:79`, which fabricates
-`autoMergeRequest:null, mergeQueueEntry:null, matched:32`). A fixture built from the claim cannot
-corroborate the claim. **No primary receipt — no API/timeline capture from #5036 — exists in-tree.**
+- **P1.** Commit the #5036 receipt in-tree so the next session does not have to find it in a memory
+  file. `mq_state_verdict.py`'s own attestation order is the natural home.
+- **P2.** Correct `cicatrix-scars.md:1279`. It is auto-loaded project instructions, so a stale line
+  there is read by every session — the mechanism by which position C got written *after* the
+  correction is most plausibly exactly this.
+- **P3.** Correct `queue_shepherd.py:233-236`, whose docstring asserts the refuted rule under a
+  `W111 guard` label that makes it read as the cure.
 
-> **BLOCKING PREREQUISITE.** Until a primary #5036 receipt (or a fresh live reproduction of the
-> transient) is produced and committed, B is a **hypothesis**, A and C are **unrefuted**, and no
-> guard, lint, or organ change on this surface should be built — any of them would harden one side
-> of an open question with CI's authority. This is the whole reason the surface is under-specified.
+**Ordering matters: P2 before P3.** Fixing the organ while the scar file still teaches the old rule
+invites the next author to re-derive it.
 
-## 3. The one concrete defect, traced rather than inferred
+## 4. The live consequence, traced rather than inferred
 
-Assume B for a moment (the transient exists). Then `queue_shepherd.py` — LaunchAgent
-`com.nuzantara.queue-shepherd.10min.plist`, every 10 minutes — does this:
+`queue_shepherd.py` — LaunchAgent `com.nuzantara.queue-shepherd.10min.plist`, every 10 minutes:
 
-| step | site | result in the disputed window |
+| step | site | in the #5036 window |
 |---|---|---|
-| candidate gate | `queue_shepherd.py:238-250` | BOTH-null **passes** — it is the only state the organ acts on |
+| candidate gate | `:238-250` | BOTH-null **passes** — the only state the organ acts on |
 | last ejection event | `:515-536` | last item is `Added` (or none) → **`None`** |
 | classify | `:176-196` | `None` → **`UNKNOWN`** |
-| decide | `:913-923` | not allowed → **`send_telegram("PR #N looks disarmed … Needs a human look")`** → `continue` |
+| decide | `:914-922` | not allowed → **P0: *"PR #N looks disarmed … Needs a human look"*** → `continue` |
 
-**`rearm_pr` is never reached.** The first draft of this spec claimed the organ "attempts a re-arm
-and GitHub refuses"; that path requires a prior `Removed` event still last AND classified `INFRA`.
-The draft modelled the candidate gate and stopped, then built a cure on the inferred remainder — the
-same defect it was documenting.
+**`rearm_pr` is never reached** — that path needs a prior `Removed` event still last AND classified
+`INFRA`. The first draft claimed the organ "attempts a re-arm and GitHub refuses", having modelled
+the candidate gate and inferred the rest.
 
-So the harm is **a false P0 to a human**, saying a PR is disarmed when it is (per B) armed and
-entering the queue. Severity is **not** the first draft's "P3, spurious mutation, mostly harmless":
+Severity inputs, none of them yet counted: the alert consumes a shared Telegram budget that
+`scripts/tg_notify.py:519-540` documents as exhausted 8 days of 21; `alerted_state` dedups only a
+**delivered** alert (`:921-922`), so a failed send retries every tick; re-arm and janitor passes are
+serial (`:1048-1049`), so false candidates delay `cancel_run`. **Severity: undetermined pending
+measurement (A1).** The first draft's confident "P3" was asserted without any of these numbers.
 
-- the alert consumes the shared Telegram budget, which `scripts/tg_notify.py:519-540` documents as
-  **exhausted 8 days of 21**, with a critical backup alert already having gone slot-less;
-- `alerted_state` dedups only a **delivered** alert (`:920-921`), so a send that fails is retried
-  every tick;
-- re-arm and janitor passes are serial (`:1048-1049`), so false candidates delay `cancel_run`.
+## 5. The refusal-text convention exists at THREE sites — the outlier is one organ
 
-**Correct severity: undetermined, plausibly P2, and it must be measured before it is asserted** —
-frequency of the transient, `UNKNOWN`-vs-`INFRA` distribution, and actual P0 consumption. Naming a
-severity without those numbers is what the first draft did.
-
-## 4. The refusal-text convention already exists — `queue_shepherd` is the outlier
-
-The first draft "proposed" classifying the refusal text of `gh pr merge --auto`. Measured this turn,
-that is **already this repo's convention**:
-
-- `scripts/ci/queue_rearm.sh:229-231` — *"Judge the REPLY, not only the exit code (W104): 'already
+- `scripts/mq.sh:196` — the origin (`already queued|auto-merge enabled|already enabled`)
+- `scripts/lane_ship.sh:235` — same grep, and its comment names `mq.sh cmd_arm` as precedent
+- `scripts/ci/queue_rearm.sh:228-230` — *"Judge the REPLY, not only the exit code (W104): 'already
   queued' is success, and a zero rc on an unexpected message is not."*
-- `scripts/lane_ship.sh:235` — same shape, matching `already queued|auto-merge enabled|already
-  enabled|clean`.
 
-And the first draft's cross-tab was wrong about its own population: `scripts/queue_unstick.py:29-37`
-states explicitly that it *never* reads `autoMergeRequest` and never asserts an armed/disarmed
-verdict; `queue_doctor.py:71-107` reports populations rather than deciding a re-arm. The honest
-population is **`queue_shepherd.py`**, not five files, and the finding is that one organ diverges
-from a convention its siblings keep.
+The first draft "proposed" this as a novel cure and named a five-file population. Both were wrong:
+`scripts/queue_unstick.py:29-37` states it never reads `autoMergeRequest`, and
+`scripts/queue_doctor.py:71-107` reports populations rather than deciding a re-arm.
 
-**This does not make refusal-parsing the answer.** It is itself a form-not-entity gesture — a string
-match on an error message, brittle to `gh` version, locale, stdout-vs-stderr, and rephrasing, and
-liable to read `ALREADY_ARMED` out of an unrelated error containing the fragment. If it is ever
-adopted in `queue_shepherd` it needs a fresh positive read of the queued entry after the refusal,
-unknown wording **fail-closed**, and a `gh`-version-bound adapter.
+**Caveat, measured and not glossed:** `scripts/ci/queue_rearm_population.sh:58` selects orphan
+candidates on `autoMergeRequest == null` **alone** — a single-field read, weaker than
+`queue_shepherd`'s joint one. Its downstream gate (`queue_rearm.sh` requires a `merge_group` run to
+exist) means the transient produces "leave alone" rather than an action, so the pipeline
+self-corrects. The "siblings keep the convention" framing is therefore true of the *arming* step and
+not of the *selection* step, and is stated that way here rather than as a blanket claim.
 
-## 5. Acceptance criteria — ordered, and the first one gates the rest
+## 6. Acceptance criteria
 
-- **A0 (BLOCKING, prerequisite).** Produce and commit a primary receipt for the #5036 transient, or a
-  fresh live reproduction. Until then A1-A4 must not be attempted. If the transient cannot be
-  reproduced, the correct outcome is the **opposite** change: reconcile B toward A/C and delete the
-  oracle's claim — the doctrine, either way, must end up single-valued.
-- **A1.** Measure the defect before fixing it: transient frequency, `UNKNOWN`-vs-`INFRA` split, P0s
-  emitted per week attributable to this branch, and janitor delay. Severity is then stated from
-  numbers.
-- **A2.** `queue_shepherd.py:233-236`'s docstring stops asserting a side of an open question and
-  cites whichever artifact A0 leaves standing.
-- **A3.** If (and only if) A0 confirms B: the `UNKNOWN`-branch P0 gains a disambiguating step before
-  alerting. Guilt fixture — the transient shape produces **no** alert; innocence — a genuinely
-  disarmed PR with no ejection event **still** alerts. Neither may be satisfied by prose.
+- **A1.** Measure before fixing: transient frequency, `UNKNOWN`-vs-`INFRA` split, P0s per week
+  attributable to this branch, janitor delay. Severity is then stated from numbers.
+- **A2.** P1/P2/P3 land, P2 before P3. Each cites the #5036 receipt rather than restating it.
+- **A3.** The `UNKNOWN`-branch P0 gains a disambiguating step before alerting. Guilt — the transient
+  shape produces **no** alert; innocence — a genuinely disarmed PR with no ejection event **still**
+  alerts. Neither may be satisfied by prose.
 - **A4.** Mutation-verified: inverting the disambiguator turns A3's guilt case red. Run with
   `PYTHONDONTWRITEBYTECODE=1` (W121 — a same-length mutation written in the same second is judged
   against a cached `.pyc`, and the verdict is manufactured by the filesystem).
+- **A5.** If the disambiguator is refusal-parsing, it needs a fresh positive read of the queued entry
+  after the refusal, unknown wording **fail-closed**, and a `gh`-version-bound adapter. A bare string
+  match is form-not-entity and brittle to locale, stream, and rephrasing.
 
-## 6. What this spec explicitly does NOT recommend
+## 7. What this spec explicitly does NOT recommend
 
-**Do not re-open the lint.** Two textual discriminators were measured and both fail: "reads both
+**Do not re-open the lint.** Two lexical discriminators were measured and both fail: "reads both
 fields" absolves the disease (§1); "emits a disarm verdict" convicts the oracle's own warning prose
-(§1). This refutes **those two lexical heuristics** — it does not prove no guard is possible. An
-AST/dataflow check, a structural delegation rule, or a behavioural gate remain open designs. But
-none of them may be built before A0, because all of them would encode one side of §2.
+(§1). That refutes **those two heuristics** — it does not prove no guard is possible. An AST/dataflow
+check, a structural delegation rule, or a behavioural gate remain open designs. But the population is
+one organ, so a repo-wide guard is disproportionate to the surface either way.
 
-**Do not widen any existing gate's scope to cover this.** The population is one organ.
-
-## 7. Evidence provenance
+## 8. Evidence provenance
 
 | claim | how |
 |---|---|
 | #5218 BLOCKER 1 + 2 | reproduced on `a1799989d`, this turn, rc=0 both |
-| "emits a disarm verdict" flags the oracle's prose 9× | `grep -icE "DISARMED|re-?arm needed|not[ _]armed" scripts/mq_state_verdict.py` → **9** on `origin/main`, this turn. The regex is declared here because the first draft left it implicit and the count was correctly called irreproducible. |
-| the three-way doctrine split (A/B/C) | all three read on `origin/main` @ `5066d7a8d`, this turn |
-| **no primary #5036 receipt in-tree** | searched this turn; only B's docstring + a synthetic fixture |
+| "emits a disarm verdict" flags the oracle 9× | `grep -icE "DISARMED\|re-?arm needed\|not[ _]armed" scripts/mq_state_verdict.py` → **9**, this turn |
+| **the #5036 receipt + verbatim refusal text** | `MEMORY_MERGE_QUEUE_TRAPS.md`, read this turn after round 2 named it |
+| A is stale / self-corrected | same record: *"CORRECTS the rule I wrote myself on 26/8"* |
 | `queue_shepherd` control flow to the P0 | four sites read in sequence on `origin/main`, this turn |
-| Telegram budget exhausted 8/21 days | `scripts/tg_notify.py:519-540` — read by the refuter, **not independently re-measured by me** |
-| refusal-text convention already in 2 files | `queue_rearm.sh:229-231`, `lane_ship.sh:235`, this turn |
-| `gh pr merge --auto` refusal wording | **RECORDED, NOT re-measured** — `cicatrix-scars.md:1248` (**W123**, not W126); that record carries no rc |
+| refusal convention at three sites | `mq.sh:196`, `lane_ship.sh:235`, `queue_rearm.sh:228-230`, this turn |
+| `queue_rearm_population.sh:58` single-field read | read this turn after round 2 raised it |
+| Telegram budget exhausted 8/21 days | `tg_notify.py:519-540` — **refuter's measurement, not independently re-measured by me** |
 
 ## Adversarial review
 
-**Seat: Codex GPT-5.6 sol (`gpt-5.6-sol`, effort xhigh), blind, non-Anthropic — generator ≠ grader.**
-Round 1 on the first draft: **DO-NOT-SHIP, 3 BLOCKER + 3 HIGH.** Five findings reproduced on disk by
-the author before disposition; the sixth accepted on argument.
+**Two blind rounds, both non-Anthropic, both cross-family (generator ≠ grader). Neither returned
+SHIP; both rewrote the document.**
+
+### Round 1 — Codex GPT-5.6 sol (xhigh) on draft 1: DO-NOT-SHIP, 3 BLOCKER + 3 HIGH
 
 | # | finding | disposition |
 |---|---|---|
-| B1 | The BOTH-null premise is laundered from a docstring; `cicatrix-scars.md:1279` asserts the opposite | **CONFIRMED on disk. Rewrote §2** from "the oracle is right, the organ is wrong" to a three-way unresolved split, and added A0 as a blocking prerequisite. The draft's central claim is now a hypothesis. |
-| B2 | The `queue_shepherd` harm model is invented; `rearm_pr` is unreachable in the disputed window | **CONFIRMED on disk** (four sites traced). §3 rewritten: the defect is a false P0, not a spurious re-arm. The draft's §4 cure targeted a path the defect never reaches — deleted. |
-| B3 | A1 mis-cites the refusal string to W126; it is W123 and carries no rc. The classifier is under-specified and is itself form-not-entity | **CONFIRMED on disk** (line 1248 = W123). Citation fixed in §7; §4 now argues *against* refusal-parsing as the answer and lists the conditions it would need. |
-| H4 | P3 ignores implemented harm: P0 budget, retry-on-failed-send, janitor serialization | **ACCEPTED.** Severity downgraded to *undetermined* with A1 requiring numbers first. The `tg_notify.py` budget figure is the refuter's measurement, flagged as such in §7 rather than restated as mine. |
-| H5 | The cross-tab's semantic classification is false; `queue_rearm.sh`/`lane_ship.sh` already parse the refusal; `queue_unstick.py` does not read the field | **CONFIRMED on disk.** §4 rewritten — the population is one organ, not five, and the proposed "cure" was already the repo's convention. This inverted the draft's headline. |
-| H6 | "Not lintable in any form" overreaches: two lexical heuristics refuted ≠ no guard possible | **ACCEPTED on argument** (no disk check needed — it is a logic error). §6 narrowed to the two measured heuristics; AST/dataflow/behavioural guards recorded as open, gated behind A0. |
+| B1 | the BOTH-null premise is laundered from a docstring; `cicatrix-scars.md:1279` says the opposite | **CONFIRMED on disk.** Draft 1 had the direction backwards. |
+| B2 | the harm model is invented — `rearm_pr` is unreachable in the disputed window | **CONFIRMED on disk** (four sites). §4 rewritten; the proposed cure targeted an unreachable path and was deleted. |
+| B3 | the refusal string is mis-cited to W126 (it is W123) and carries no rc; refusal-parsing is itself form-not-entity | **CONFIRMED.** Citation fixed; conditions moved to A5. |
+| H4 | P3 severity ignores P0 budget, retry-on-failed-send, janitor serialization | **ACCEPTED.** Severity → undetermined, numbers made A1. |
+| H5 | the cross-tab is semantically false; two files already parse the refusal; `queue_unstick` does not read the field | **CONFIRMED on disk.** Inverted draft 1's headline. |
+| H6 | "not lintable in any form" overreaches | **ACCEPTED on argument.** §7 narrowed. |
 
-**Not deferred, declined, or argued away: all six changed the document.** The regex behind the
-draft's "disarm hits" column was challenged as undeclared and irreproducible (the refuter's own
-case-sensitive variant produced different counts) — that column was **deleted** rather than
-re-derived, because §4 removed the claim it supported.
+### Round 2 — Kimi K3 on draft 2 (the REWRITTEN bytes): DO-NOT-SHIP, 1 BLOCKER + 2 HIGH + 2 MEDIUM
 
-**What round 1 could not test:** the spec's core prerequisite A0 is precisely the artifact neither
-seat can produce from the repo. That is not a gap in the review — it is the finding.
+| # | finding | disposition |
+|---|---|---|
+| B1 | **A0's premise is false — the #5036 receipt IS preserved**, in the file the oracle's docstring names, carrying the verbatim refusal text and the 32-run count | **CONFIRMED by opening the file.** Dispositive. Draft 2's entire "everything is blocked, saying so is the deliverable" posture was manufactured by not following a citation it had quoted. §2/§3 rewritten; the deliverable became propagation. |
+| H3 | the three-way split's symmetry is manufactured — A was self-refuted by its own author days later and simply never propagated | **CONFIRMED** in the same record. The table in §2 now states standing rather than pretending to neutrality. |
+| H2 | "auto-loaded into every session" is false — the file is ~296 KB against a 40 KB threshold, no hook loads it, and W123 sits at line 1234/1517 | **REFUTED by direct observation, and the rhetoric removed anyway.** `cicatrix-scars.md` is present in this session's context as project instructions, W123 GOTCHA (b) included — the mechanism is the harness's `.claude/rules/*.md` injection, not a hook or a CLAUDE.md import, which is what round 2 searched. The 40 KB line it cites is the archive file's *stated intent*, not an enforced truncation. But the "widest reach" weighting it objected to was load-bearing only for draft 2's symmetry argument, which B1 removed — so §2 no longer argues from reach at all. |
+| M4 | line citations off by one: `queue_rearm.sh` 229-231 → **228-230**; `queue_shepherd.py` 920-921 → **921-922** | **CONFIRMED on disk. Both corrected** (§5, §4). |
+| M5 | the convention has a THIRD site (`mq.sh:196`, the origin) and `queue_rearm_population.sh:58` is a single-field read the "siblings" framing glosses | **CONFIRMED on disk. Both added** to §5, including the caveat against this spec's own framing. |
+
+**Nothing was deferred or argued away.** Round 2's BLOCKER inverted the conclusion of round 1's
+rewrite — which is the strongest argument in this document for why the two-seat, two-round rule is
+not ceremony: a single round would have shipped a confident, well-cited, wrong spec.
