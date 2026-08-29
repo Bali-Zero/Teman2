@@ -1,0 +1,312 @@
+brief_ref: evidence/brief.yml
+plan_ref: "L07-PR2 — docs/plans/2026-08-29-beyond-sota-craft-wave/L07-deploy-release-prove-live.md"
+diff:
+  files: 6
+  insertions: 2187
+  deletions: 144
+  hotzone_hits:
+    - infra/launchagents/com.nuzantara.voa-probe.plist
+    - infra/launchagents/wrappers/voa-probe-wrapper.sh
+    - infra/launchagents/install_voa_probe.sh
+
+lanes:
+  - lane: build
+    role: build
+    seat: sonnet-5
+  - lane: refute
+    role: review
+    seat: codex gpt-5.6-sol (xhigh, blind, cross-family)
+  - lane: gate
+    role: review
+    seat: opus-5 squad-P orchestrator (final on-disk gate, empirical, in-session)
+
+receipts:
+  - claim: "Deterministic floor for this diff is 3, driven by the two infra/launchagents paths (the two scripts/ paths compute floor 1 on their own)."
+    cmd: "apps/backend-rag/.venv/bin/python scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/p_changed.txt"
+    exit: 0
+    ts: "2026-08-29T07:05:00Z"
+    seat: opus-5 orchestrator
+  - claim: "Probe self-test green: 50 assertions, zero network calls."
+    cmd: "node scripts/probes/voa_journey_probe.mjs --self-test"
+    exit: 0
+    ts: "2026-08-29T07:21:30Z"
+    seat: opus-5 orchestrator
+  - claim: "Shell corpus green: TOTAL 37 FAILED 0 (was 8 checks before the refutation round)."
+    cmd: "bash scripts/tests/test_voa_probe_wrapper.sh"
+    exit: 0
+    ts: "2026-08-29T07:21:40Z"
+    seat: opus-5 orchestrator
+  - claim: "pytest shim collects and passes, so the shell corpus runs inside the existing scripts/tests sweep."
+    cmd: "apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_voa_probe_corpus.py -q"
+    exit: 0
+    ts: "2026-08-29T07:21:50Z"
+    seat: opus-5 orchestrator
+  - claim: "New plist is well-formed and clean under the KeepAlive/one-shot lint (KeepAlive is false, StartInterval 900)."
+    cmd: "plutil -lint infra/launchagents/com.nuzantara.voa-probe.plist && python3 scripts/lint_plist_keepalive.py"
+    exit: 0
+    ts: "2026-08-29T07:22:00Z"
+    seat: opus-5 orchestrator
+  - claim: "LIVE against production: verdict dark (frontend flag off), the full API journey nevertheless exercised — POST 201 + Location + cookie + ACCEPT, GET 200 ACCEPT — and cleanup verified_gone=1 unverified=0 leaked=0. Exit 0, because dark is a healthy pre-launch state."
+    cmd: "VOA_PROBE_HEARTBEAT=/tmp/p_hb_live2.json node scripts/probes/voa_journey_probe.mjs"
+    exit: 0
+    ts: "2026-08-29T07:22:41Z"
+    seat: opus-5 orchestrator
+  - claim: "GUILT (page broken, live): pointed at a host whose /visa/voa answers 401 -> verdict fail, exit 1, reason page_http_401, while the API legs stayed healthy — proving the page-broken branch is wired independently of the journey."
+    cmd: "VOA_PROBE_BASE_URL=https://nuzantara-rag.fly.dev node scripts/probes/voa_journey_probe.mjs"
+    exit: 1
+    ts: "2026-08-29T06:46:40Z"
+    seat: opus-5 orchestrator
+  - claim: "GUILT (the crux semantic — dark page AND broken API): local server serving the real dark-page body plus a 503 API -> verdict fail, exit 1, reason leg_post_failed:...status=503. Darkness on one platform cannot mask a break on the other."
+    cmd: "VOA_PROBE_BASE_URL=http://127.0.0.1:8791 node scripts/probes/voa_journey_probe.mjs   # fake server: dark page + 503 API"
+    exit: 1
+    ts: "2026-08-29T06:47:04Z"
+    seat: opus-5 orchestrator
+  - claim: "F2 attribution, live: an unresolvable host (a failure on OUR side) yields verdict unknown, exit 0 — it can never authorize the dead-man."
+    cmd: "VOA_PROBE_BASE_URL=https://this-host-does-not-exist-p4.invalid node scripts/probes/voa_journey_probe.mjs"
+    exit: 0
+    ts: "2026-08-29T07:23:11Z"
+    seat: opus-5 orchestrator
+  - claim: "F2 attribution, other side: a real HTTP 500 from a server IS attributable and still yields verdict fail, exit 1 — the unknown state did not swallow real failures."
+    cmd: "VOA_PROBE_BASE_URL=http://127.0.0.1:8792 node scripts/probes/voa_journey_probe.mjs   # fake server: HTTP 500"
+    exit: 1
+    ts: "2026-08-29T07:23:20Z"
+    seat: opus-5 orchestrator
+  - claim: "F1 verified live: --dry-run writes NO heartbeat at the default path (the file the dead-man reads), so a synthetic green cannot be mistaken for a real run."
+    cmd: "rm -f ~/logs/voa-probe-heartbeat.json && node scripts/probes/voa_journey_probe.mjs --dry-run && test ! -f ~/logs/voa-probe-heartbeat.json"
+    exit: 0
+    ts: "2026-08-29T07:22:50Z"
+    seat: opus-5 orchestrator
+  - claim: "Wrapper runs end-to-end under its real interpreter: resolves node absolutely, writes the heartbeat JSON to the log, logs rc=0, exits 0."
+    cmd: "/bin/zsh infra/launchagents/wrappers/voa-probe-wrapper.sh --dry-run"
+    exit: 0
+    ts: "2026-08-29T06:49:51Z"
+    seat: opus-5 orchestrator
+  - claim: "REFUTER CLAIM VERIFIED (not taken on trust): GARUDA_PUBLIC_DISABLED maps to HTTP 404 in the router's error catalog, so a verify-404 is genuinely ambiguous between 'row deleted' and 'flag flipped off mid-run'."
+    cmd: "sed -n '160,170p' apps/backend-rag/backend/app/routers/garuda_voa_public.py"
+    exit: 0
+    ts: "2026-08-29T07:10:00Z"
+    seat: opus-5 orchestrator
+  - claim: "REFUTER CLAIM VERIFIED: check_store.py INSERTs into garuda_voa_check_idempotency on BOTH the create path and the delete path, and 286_garuda_voa_check_results.sql defaults expires_at to statement_timestamp() + INTERVAL '30 days'. A run therefore leaves 2 durable ledger rows, not zero."
+    cmd: 'grep -n idempotency apps/backend-rag/backend/services/garuda_flow/check_store.py; grep -n "INTERVAL ''30 days''" apps/backend-rag/backend/db/migrations_v2/286_garuda_voa_check_results.sql'
+    exit: 0
+    ts: "2026-08-29T07:12:00Z"
+    seat: opus-5 orchestrator
+  - claim: "Contract ground truth for the journey was measured on production before any code was written: POST 201 + Location + HttpOnly cookie + ACCEPT; the SAME id reads 200 with the jar and 404 RESULT_NOT_FOUND without it; DELETE via balizero.com returns 500 while GET afterwards returns 404 (the row really died); the same DELETE direct to the origin returns 204."
+    cmd: "curl -s -D- -c jar -X POST .../eligibility-checks ; curl -b jar .../{id} ; curl .../{id} ; curl -b jar -X DELETE .../{id} ; curl -b jar .../{id} ; curl -X DELETE https://nuzantara-rag.fly.dev/api/visa/voa/eligibility-checks/{id}"
+    exit: 0
+    ts: "2026-08-29T06:31:00Z"
+    seat: opus-5 orchestrator
+
+tests:
+  cmd: "node scripts/probes/voa_journey_probe.mjs --self-test && bash scripts/tests/test_voa_probe_wrapper.sh && apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_voa_probe_corpus.py -q"
+  passed: 88
+  failed: 0
+static:
+  lint: ok
+  typecheck: n/a-plain-esm-no-ts
+  build: n/a
+
+runtime_proof:
+  - "Live production run 2026-08-29T07:22:41Z: verdict dark, cleanup verified_gone=1 leaked=0 unverified=0, exit 0."
+  - "Live guilt 2026-08-29T06:46:40Z: verdict fail, exit 1, page_http_401."
+  - "Live guilt 2026-08-29T06:47:04Z: dark page + 503 API -> verdict fail, exit 1."
+  - "Live attribution 2026-08-29T07:23:11Z: unresolvable host -> verdict unknown, exit 0."
+
+dissent:
+  - seat: codex gpt-5.6-sol (blind, cross-family)
+    objection: >
+      CRITICAL — `--dry-run` writes the authoritative heartbeat while skipping
+      every API and cleanup check, so a dry-run could publish verdict "pass" to
+      the exact file the dead-man reads. The dead-man cannot distinguish that
+      synthetic green from a real run.
+    status: CONFIRMED
+    repro: >
+      Fixed: dry-run now writes only when VOA_PROBE_HEARTBEAT is set
+      explicitly, never to the default path, and every heartbeat carries
+      mode: full|dry_run. Verified live this session — after `rm` of the
+      default heartbeat, a --dry-run run left it absent (receipt above).
+  - seat: codex gpt-5.6-sol (blind, cross-family)
+    objection: >
+      CRITICAL — any laptop-side DNS/Wi-Fi/TLS/timeout failure is classified as
+      a production failure. One packet-loss event while balizero.com is
+      perfectly healthy yields fail/exit 1 and would authorize the dead-man to
+      darken a LIVE funnel. There is no unknown state.
+    status: CONFIRMED
+    repro: >
+      This was the most valuable finding: the probe's only downstream power is
+      to turn a public surface OFF, so a false red is an outage the probe
+      itself causes. Fixed by adding a fourth verdict `unknown` for
+      transport-level errors we cannot attribute, exit 0, while an HTTP answer
+      from a real server stays attributable and can still be fail. Both sides
+      verified live (receipts above): unresolvable host -> unknown/exit 0;
+      HTTP 500 -> fail/exit 1.
+  - seat: codex gpt-5.6-sol (blind, cross-family)
+    objection: >
+      CRITICAL — the verify-GET treats every 404 as proof of deletion. If
+      GARUDA_PUBLIC_ENABLED flips off between the GET and the DELETE, the
+      router-level gate returns GARUDA_PUBLIC_DISABLED, which is ALSO a 404;
+      the probe records verified_gone while the row survives.
+    status: CONFIRMED
+    repro: >
+      Verified independently against the router's _ERROR_CATALOG before
+      accepting (receipt above): GARUDA_PUBLIC_DISABLED is indeed (404, ...).
+      Cleanup now reads the error CODE and gained a fourth counter:
+      RESULT_NOT_FOUND -> verified_gone, GARUDA_PUBLIC_DISABLED -> unverified,
+      200 -> leaked, anything else -> unverified. leaked forces fail;
+      unverified forces unknown, never a silent pass.
+  - seat: codex gpt-5.6-sol (blind, cross-family)
+    objection: >
+      HIGH — cleanup can never mean zero production rows: check_store.py
+      inserts a 30-day idempotency row on the create path AND on the delete
+      path. At 96 runs/day that converges on thousands of durable rows,
+      indistinguishable from customer traffic, while the heartbeat reports
+      verified_gone.
+    status: CONFIRMED
+    repro: >
+      Verified at source (receipt above) — both INSERTs exist and expires_at
+      defaults to +30 days. This falsified a claim the orchestrator had
+      already written in its own squad ledger ("0 rows left"), which has been
+      corrected there rather than quietly dropped. The rows are the anti-replay
+      ledger and deleting them would be wrong, so the honest fix is
+      documentation, not code: the residual is declared below and carried as a
+      needs-ruling (whether the VOA tables should grow a probe-tenancy marker
+      is a backend/migration decision outside this lane).
+  - seat: codex gpt-5.6-sol (blind, cross-family)
+    objection: >
+      HIGH — the probe validates only verdict == "ACCEPT". A body of literally
+      {"verdict":"ACCEPT"} passes although the contract requires reason_codes,
+      published_filing_deadline and price_idr, which the customer result page
+      actually renders.
+    status: CONFIRMED
+    repro: >
+      Fixed: the probe now asserts the contract shape (verdict in
+      ACCEPT/DECLINE, reason_codes an array, and for ACCEPT a positive
+      price_idr plus a YYYY-MM-DD published_filing_deadline). Corpus case (g)
+      drives a missing price_idr through runJourney and expects broken.
+  - seat: codex gpt-5.6-sol (blind, cross-family)
+    objection: >
+      HIGH — hardcoding "USA issuance must ACCEPT" makes a volatile business
+      outcome load-bearing. A legitimate rule or freshness change that
+      correctly returns a fail-closed DECLINE would be reported as broken: a
+      false red on a service working exactly as designed.
+    status: CONFIRMED
+    repro: >
+      Fixed, and it sharpened the design: the health signal is "the funnel
+      answered with a well-formed verdict", not "the answer was yes". The
+      observed verdict is still recorded in the heartbeat so a human can see a
+      DECLINE trend. Corpus case (f) asserts a contract-shaped DECLINE is
+      healthy.
+  - seat: codex gpt-5.6-sol (blind, cross-family)
+    objection: >
+      HIGH — if a proxy strips Set-Cookie while preserving the 201 and
+      Location, the DELETE is unauthorized and the verify-GET returns 404
+      BECAUSE the cookie is absent. The probe records verified_gone although
+      the row remains.
+    status: CONFIRMED
+    repro: >
+      Fixed: with no cookie the probe skips the verify entirely and counts
+      unverified, naming the missing cookie. Corpus case (d) drives it; the
+      mutation that disabled the guard was caught only by the call-sequence
+      assertion, which is why that assertion exists.
+  - seat: codex gpt-5.6-sol (blind, cross-family)
+    objection: >
+      HIGH — every process shares one <path>.tmp, so overlapping runs can
+      clobber each other and one rename can publish the wrong run's verdict.
+      Separately, the heartbeat write sits OUTSIDE the catch-all and main() is
+      called without .catch(), so a disk-full produces an unhandled rejection
+      and NO heartbeat — breaking the file's own promise.
+    status: CONFIRMED
+    repro: >
+      Both fixed: per-process temp name, and the write is wrapped with a loud
+      stderr FATAL plus a .catch() on the main() invocation.
+  - seat: codex gpt-5.6-sol (blind, cross-family)
+    objection: >
+      HIGH — the corpus never calls runJourney at all, so a mutation deleting
+      DELETE entirely, or treating every verification as success, leaves it
+      green. The wrapper cases stub only a successful probe, so a wrapper that
+      always returned 0 would pass.
+    status: CONFIRMED
+    repro: >
+      Fixed: corpus grew 8 -> 37 checks and now injects a fake fetchImpl into
+      the exported runJourney for the happy path, leaked row, flag-off 404,
+      missing cookie, transport error, DECLINE, and contract-missing-field;
+      wrapper cases now cover missing-probe (exit 2) and nonzero propagation.
+      Mutation-tested: breaking the leaked branch (4 red), the flag-off branch
+      (4 red), the no-cookie guard (1 red) and the transport classifier (3 red).
+      One mutation left the self-test green while the runJourney cases went
+      red — evidence the two layers are not redundant.
+  - seat: codex gpt-5.6-sol (blind, cross-family)
+    objection: >
+      CRITICAL — the plist ships unresolved __HOME__/__REPO_ROOT__ placeholders
+      and the commit adds no installer or bootstrap step, so merging schedules
+      nothing.
+    status: CONFIRMED
+    repro: >
+      Fixed by adding infra/launchagents/install_voa_probe.sh (substitutes the
+      placeholders, refuses if the resolved repo root lacks the probe,
+      plutil-lints the rendered plist, bootout-then-bootstrap, prints the
+      verification commands). The orchestrator arms it on Mini and records
+      launchctl print + a real heartbeat line as the proof — a merged plist is
+      not an armed one (superscar #2).
+  - seat: codex gpt-5.6-sol (blind, cross-family)
+    objection: >
+      MEDIUM — the implementation contradicts its own lane spec: the spec's
+      acceptance says a dark route must produce FAIL, the probe returns `dark`
+      and exits 0, and no test detects the drift.
+    status: PLAUSIBLE
+    repro: >
+      Accepted as a real deviation, REJECTED as a defect, and made explicit
+      rather than hidden. Taken literally the spec's rule makes the heartbeat
+      permanently red before go-live, so the dead-man would fire on every tick
+      — an alarm that always fires is an alarm nobody reads (W104). The
+      deviation and its reasoning are recorded in the squad ledger and in this
+      pack's brief; the tri-state decision is pinned by self-test assertions so
+      a future silent drift is visible. The spec's underlying intent — a dead
+      funnel must be detectable — is preserved: `page dark + API broken` is
+      still fail (proven live).
+  - seat: codex gpt-5.6-sol (blind, cross-family)
+    objection: >
+      CRITICAL — the probe never drives the browser. Broken JS chunks, failed
+      hydration, dead buttons or a broken client-side result page all still
+      yield a green if the server-rendered marker and the APIs survive.
+    status: CONFIRMED
+    repro: >
+      Accepted as TRUE and NOT fixed in this PR — declared as a residual risk
+      instead of silently carried. An HTTP-level probe is a legitimate first
+      receptor at a 15-minute cadence and is what this lane's spec scoped;
+      browser-grade journeys are L11's lane (which owns Playwright production
+      sentinels). Fixing it here would duplicate that lane and widen a PR that
+      is already over its line target. Recorded in residual_risks so the gap is
+      visible to whoever reads the heartbeat.
+
+residual_risks:
+  - "A run does NOT leave zero production rows. The eligibility RESULT is
+    deleted and verified gone, but two garuda_voa_check_idempotency rows (one
+    create-path, one delete-path) persist for 30 days by design — they are the
+    anti-replay ledger. At a 15-minute cadence that is ~96 runs/day and roughly
+    5,760 steady-state rows, indistinguishable from customer traffic because
+    the VOA tables have no probe-tenancy column. Any analytics counting
+    'eligibility checks created' will include probe traffic. Whether to add
+    such a marker is a backend/migration decision outside this lane."
+  - "HTTP-level, not browser-level: broken hydration, dead buttons or a broken
+    client-rendered result page can still read green here. L11 owns
+    browser-grade production journeys."
+  - "Probe and dead-man will be colocated on Mini — a single failure domain.
+    Worst-case actuation is ~30 min (15-min interval + 15-min silence
+    threshold), the honest figure, not the source report's optimistic <20 min."
+  - "Only the issuance/tourism/USA branch is exercised. The extension branch
+    has different required fields and could be broken while this probe is
+    green."
+  - "Cookie ATTRIBUTES are not validated — the probe replays name=value
+    manually, so a wrong Path/Domain or an immediate expiry that a real browser
+    would reject stays invisible."
+  - "If the POST commits upstream but its response times out locally, the
+    result id is lost and cleanup is skipped; the run reports unknown, but that
+    orphan row is not recoverable by a later run."
+  - "The shell corpus is only reached via the pytest shim inside the existing
+    scripts/tests sweep, which is non-blocking. A blocking CI job is handed to
+    the workflow squad (HANDOFF-TO-W H2) and is not armed by this PR."
+
+sources: []
+pii_scan: clean
+size_tokens: 7200
