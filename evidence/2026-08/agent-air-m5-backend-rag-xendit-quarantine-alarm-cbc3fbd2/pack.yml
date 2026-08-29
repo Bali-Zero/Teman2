@@ -26,7 +26,7 @@ seat_diversity_note: >-
   and the transport above it.
 diff:
   net_lines: >-
-    13 files, +2311/-21, measured by
+    13 files, +2334/-21, measured by
     `git diff --numstat origin/main...HEAD` and pasted verbatim from
     `evidence_pack_lint.py --print-measured`. Over the ~400-line guidance
     and declared as such rather than hidden: the great majority is tests,
