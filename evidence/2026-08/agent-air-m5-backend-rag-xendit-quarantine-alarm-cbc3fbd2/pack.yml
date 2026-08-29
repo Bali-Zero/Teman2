@@ -177,6 +177,12 @@ receipts:
     exit: 0
     ts: "2026-08-29T09:30:00Z"
     seat: "session (this task, Air-M5 worktree)"
+  - claim: "Every acceptance probe named in the brief was RUN by name, not asserted from a whole-file green: test_a_quarantined_row_is_seen, test_the_page_carries_the_ids_and_the_cause_needed_to_act, test_an_empty_inbox_is_clean, test_the_same_condition_does_not_page_again_within_the_hour, test_the_quiet_notice_is_announced_exactly_once, test_a_page_that_was_never_delivered_does_not_silence_the_next_hour, test_an_undelivered_OUTBOX_page_does_not_start_the_suppression_window, test_the_periodic_tick_reads_the_payment_quarantine, test_paid_event_with_wrong_amount_is_quarantined_never_marks_paid"
+    cmd: "PYTHONPATH=. pytest test_payment_inbox_watch.py test_quarantine_alarm.py test_garuda_outbox_scheduler.py test_repository_integration.py --color=no -k '<the nine probe names, or-joined>'"
+    result: '8 passed, 66 deselected, 1 error. The error is NOT a failure of the code under test: `test_paid_event_with_wrong_amount_is_quarantined_never_marks_paid` errors AT SETUP on this machine with `asyncpg.exceptions.UndefinedTableError: relation "public.garuda_magic_link_tokens" does not exist` — an unrelated table missing from the local database. That one probe is proven by CI''s migrated Postgres and by the Gear-3 gate''s own real-Postgres replay, NOT here, and is recorded as such rather than counted among the eight.'
+    exit: 1
+    ts: "2026-08-29T09:55:00Z"
+    seat: "session (this task, Air-M5 worktree)"
 pii_scan: clean
 dissent:
   - seat: "Harness floor recompute (CI, deterministic)"
