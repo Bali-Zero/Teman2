@@ -259,11 +259,24 @@ def test_gunzip_failure_is_detected_and_reported_under_its_own_title():
     fed only the valid PREFIX gunzip managed to emit before dying, still
     exits 0 -- RESTORE_RC (index 1) alone cannot see this class of failure.
     GUNZIP_RC (index 0 of the SAME captured `_PIPE_STATUSES` array) must be
-    checked SEPARATELY, and its failure must be reported under its OWN
-    title -- folding it into the "Restore aborted (ON_ERROR_STOP=1)"
+    checked SEPARATELY (and only AFTER RESTORE_RC -- see
+    test_restore_rc_is_checked_before_gunzip_rc_ordering for that pin), and
+    a genuine archive-corruption failure must still be reported under its
+    OWN title -- folding it into the "Restore aborted (ON_ERROR_STOP=1)"
     message (which specifically means "psql itself rejected a statement")
     would send the reader to fix the wrong component: psql may have exited
     0 on the truncated prefix it actually received.
+
+    Entered via the `-eq 141` branch marker (the FIRST `if` of the
+    GUNZIP_RC if/elif/elif/fi chain) rather than the old bare `-ne 0`
+    marker: `_if_block`'s balance-counting only increments depth on a line
+    that literally starts with `if ` (not `elif `), so anchoring on an
+    `elif` line -- which is all `-ne 0` matches now that it is the LAST arm
+    of the chain, not a standalone `if` -- would never find a balancing
+    `fi` and instead walk past it into unrelated blocks below. Anchoring on
+    the chain's own opening `if` returns the whole if/elif/elif/fi
+    structure as one block, which is what "gunzip failure reported"
+    actually needs to be true of.
 
     (Narrower than "every corrupt .gz" in practice -- a truncation usually
     lands mid-statement, which psql itself rejects under ON_ERROR_STOP=1 and
@@ -272,13 +285,60 @@ def test_gunzip_failure_is_detected_and_reported_under_its_own_title():
     or claim otherwise; it closes the gap regardless of how narrow it is.)"""
     body = _run_restore_drill_step()
     assert "GUNZIP_RC=${_PIPE_STATUSES[0]}" in body
-    assert 'if [ "$GUNZIP_RC" -ne 0 ]' in body
-    block = _if_block(body, 'if [ "$GUNZIP_RC" -ne 0 ]')
+    assert 'if [ "$GUNZIP_RC" -eq 141 ]' in body
+    block = _if_block(body, 'if [ "$GUNZIP_RC" -eq 141 ]')
     assert "::error" in block, f"gunzip failure must be reported, not just detected -- block: {block!r}"
-    assert "exit" in block, f"gunzip failure must abort the step non-zero -- block: {block!r}"
+    assert "exit 4" in block, f"gunzip failure must abort the step non-zero -- block: {block!r}"
     assert "Restore aborted (ON_ERROR_STOP=1)" not in block, (
         "a gunzip failure must not be reported under the psql-abort title -- "
         f"it misdirects the reader to the wrong component -- block: {block!r}"
+    )
+
+
+def test_restore_rc_is_checked_before_gunzip_rc_ordering():
+    """RESTORE_RC must be judged BEFORE GUNZIP_RC. The previous ordering
+    (GUNZIP_RC first) was a real bug, not a style choice: when psql itself
+    dies (a rejected statement, a permissions gap, ON_ERROR_STOP tripping),
+    its death closes the read end of the pipe and gunzip receives SIGPIPE
+    (rc=141) from the OS as a pure CONSEQUENCE -- not an independent fault
+    of its own. Checking GUNZIP_RC first meant EVERY genuine psql failure
+    was reported as "Backup archive truncated or corrupt (gunzip failed)",
+    misdirecting an operator debugging a real SQL failure toward the backup
+    pipeline instead. Pinned by raw text POSITION of the two `if` markers
+    -- a mutation that swaps their order changes no string content, only
+    order, so this is the only way to catch that specific regression."""
+    body = _run_restore_drill_step()
+    restore_idx = body.index('if [ "$RESTORE_RC" -ne 0 ]')
+    gunzip_idx = body.index('if [ "$GUNZIP_RC" -eq 141 ]')
+    assert restore_idx < gunzip_idx, (
+        "RESTORE_RC must be checked BEFORE GUNZIP_RC -- psql's own exit "
+        "code is the authoritative signal for whether the restore itself "
+        "succeeded; checking gunzip's status first mislabels every genuine "
+        f"psql failure as archive corruption (restore_idx={restore_idx}, "
+        f"gunzip_idx={gunzip_idx})"
+    )
+
+
+def test_restore_rc_failure_branch_never_mentions_gunzip():
+    """When psql itself fails (RESTORE_RC != 0), the branch that reports
+    and exits on that failure must say nothing about gunzip, and must never
+    re-acquire the archive-corruption title -- a psql-side failure is not
+    evidence the DOWNLOADED ARCHIVE is corrupt. This is the regression the
+    ordering fix (test_restore_rc_is_checked_before_gunzip_rc_ordering)
+    exists to prevent from resurfacing through a different route: even with
+    the correct order, folding gunzip's corruption wording INTO this
+    branch's own message would reproduce the same misdirection."""
+    body = _run_restore_drill_step()
+    block = _if_block(body, 'if [ "$RESTORE_RC" -ne 0 ]')
+    assert "gunzip" not in block.lower(), (
+        "the psql-failure branch must never mention gunzip -- a psql death "
+        "closes the pipe under it and gunzip reporting 141 (SIGPIPE) there "
+        "is a pure CONSEQUENCE, not an independent fault worth naming on "
+        f"this path -- block: {block!r}"
+    )
+    assert "Backup archive truncated or corrupt" not in block, (
+        "the gunzip corruption title must never appear on the psql-failure "
+        f"path -- block: {block!r}"
     )
 
 

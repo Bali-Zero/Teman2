@@ -204,21 +204,66 @@ jobs:
           # everything the dump had left to run after it was never attempted.
           echo "=== restore.log (tail) ==="; tail -25 /tmp/restore.log; echo "=== end restore.log ==="
 
-          # GUNZIP_RC checked FIRST and under its OWN title, separately from
-          # RESTORE_RC below: this is a distinct failure class (a corrupt
-          # download, not a rejected SQL statement) and folding it into the
-          # "Restore aborted (ON_ERROR_STOP=1)" message would send the reader
-          # to the wrong component — that title specifically means "psql
-          # itself aborted a statement", which is not what happened here;
-          # psql may well have exited 0 on the truncated prefix it received.
-          if [ "$GUNZIP_RC" -ne 0 ]; then
-            echo "::error title=Backup archive truncated or corrupt (gunzip failed)::gunzip exited $GUNZIP_RC decompressing /tmp/$LATEST. psql (index 1) exited $RESTORE_RC and may only have consumed a truncated PREFIX of the dump before gunzip died — do not trust RESTORE_RC=0 alone when this fires. Investigate the downloaded archive / Tigris backup pipeline, not the target database schema."
-            exit 4
-          fi
-
+          # RESTORE_RC checked FIRST, GUNZIP_RC only after it (this is the
+          # OPPOSITE of the previous ordering, and the previous ordering was
+          # a real bug, not a style choice): when psql itself dies mid-COPY
+          # (a bad statement, a permissions gap, ON_ERROR_STOP tripping),
+          # the pipe's reader is gone and gunzip receives SIGPIPE (rc=141)
+          # from the OS as a pure CONSEQUENCE of psql's death — not an
+          # independent fault. Measured: `gunzip -c big.gz | sh -c "exit
+          # 3"` gives PIPESTATUS=(141 3). Checking GUNZIP_RC first (the
+          # previous ordering) meant EVERY genuine psql failure was
+          # reported as "Backup archive truncated or corrupt (gunzip
+          # failed)" — an operator hitting a real SQL failure during a
+          # restore drill was told their backup was corrupt (scar
+          # W113-class: a diagnostic message accusing the wrong
+          # component). psql's own exit code is the authoritative signal
+          # for whether the RESTORE succeeded; it is judged first, and on
+          # this path gunzip is never even mentioned.
           if [ "$RESTORE_RC" -ne 0 ]; then
             echo "::error title=Restore aborted (ON_ERROR_STOP=1)::psql exited $RESTORE_RC. The failing statement is the last one visible above; see the PR/runbook note on ON_ERROR_STOP=1 before assuming this means the backup itself is corrupt."
             exit 3
+          fi
+
+          # Reached only when psql succeeded (RESTORE_RC=0) — that is
+          # already independent proof the restore itself completed. What
+          # follows judges GUNZIP_RC on its OWN terms, never as evidence
+          # against a restore that RESTORE_RC=0 already vouches for.
+          if [ "$GUNZIP_RC" -eq 141 ]; then
+            # SIGPIPE with a SUCCESSFUL psql is anomalous (a healthy
+            # consumer reading to a clean EOF should not leave its
+            # producer mid-write) but is not itself evidence of a
+            # corrupt/truncated archive — RESTORE_RC=0 above already
+            # proved the restore completed. Deliberately WARN, not fail:
+            # failing here would manufacture exactly the false-positive
+            # class this reordering exists to remove. If this recurs on a
+            # real dispatch, that pattern (not a single occurrence) is
+            # what would warrant investigation.
+            echo "::warning title=gunzip received SIGPIPE after a successful restore::gunzip exited 141 (SIGPIPE) decompressing /tmp/$LATEST, but psql (index 1) already exited 0 — the restore completed. This is not evidence the archive is corrupt; it means gunzip's writer side of the pipe closed after psql finished reading. Investigate only if this pattern recurs across runs."
+          elif [ "$GUNZIP_RC" -eq 2 ]; then
+            # gzip's own documented WARNING exit status (e.g. "trailing
+            # garbage ignored" after a complete, valid stream) — the
+            # decompression can be COMPLETE despite status 2. Measured:
+            # `gunzip -c tg.gz | cat` on an archive with a valid payload
+            # followed by trailing garbage exits 2 while emitting every
+            # line of the full uncompressed payload. RESTORE_RC=0 above is
+            # independent proof the restore succeeded, so this message
+            # must NOT claim "truncated" or "incomplete" — that would be
+            # false. Still fail-loud on purpose: for a BACKUP drill, an
+            # archive that trips a gzip warning is worth a human look even
+            # when the restore it produced was fine.
+            echo "::error title=Backup archive reported a gzip warning-class status (restore completed)::gunzip exited 2 (gzip's documented WARNING status, e.g. \"trailing garbage ignored\") decompressing /tmp/$LATEST. psql (index 1) exited 0 and the restore itself completed — this is NOT a truncated or incomplete restore. Investigate the archive / backup-writing pipeline for the trailing-garbage condition; the drill fails here to surface that, not because data was lost."
+            exit 4
+          elif [ "$GUNZIP_RC" -ne 0 ]; then
+            # Any other non-zero GUNZIP_RC alongside a psql that still
+            # exited 0: gunzip can die on a genuinely corrupt archive
+            # while still having emitted a syntactically-valid-looking
+            # PREFIX that lets psql run to completion on partial data —
+            # exactly the "restore of an incomplete dump reported as a
+            # pass" gap this GUNZIP_RC check exists to close. RESTORE_RC=0
+            # here does NOT mean the full dump was applied.
+            echo "::error title=Backup archive truncated or corrupt (gunzip failed)::gunzip exited $GUNZIP_RC decompressing /tmp/$LATEST. psql (index 1) exited 0 despite this — it may only have consumed the truncated PREFIX gunzip managed to emit before failing, which can still look like a complete, successful restore. Investigate the downloaded archive / Tigris backup pipeline, not the target database schema."
+            exit 4
           fi
 
           # Level-5 application verification (was: a bare table census —
