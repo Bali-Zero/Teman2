@@ -70,6 +70,29 @@ name: Token contrast tripwire tests
 # conclusion, not the job's — see the `main-push-failure-watch.yml` note
 # below for the one place that distinction is load-bearing.
 #
+# THE TWO ADVERSARIAL REVIEW SEATS ON THIS FILE SPLIT ON ONE POINT, AND BOTH
+# HALVES ARE RIGHT -- recorded rather than resolved one way. This workflow's
+# name is registered in `main-push-failure-watch.yml` (added the same day,
+# see that file's own comment on the entry) so that a push-to-main failure
+# here eventually pages operators. But while `continue-on-error: true` is
+# set on the job below, that registration is a FUTURE-ARMING entry, not a
+# live one: the watcher's `alert` job gates on the WORKFLOW RUN's own
+# `conclusion`, and a job-level `continue-on-error` keeps that overall
+# conclusion `success` even when THIS job's own check-run concludes
+# `failure` (measured, not assumed -- see that file's comment for the exact
+# evidence). Codex GPT-5.6 counted this HIGH: the effect -- nobody is paged
+# on a main-branch contrast regression today -- is real regardless of
+# intent. Kimi K3 did not count it against this PR: the inertness is
+# already disclosed, in both files. Neither seat is wrong. Not cured here
+# -- curing it means removing `continue-on-error`, which is exactly the
+# change gated on the 6-item follow-up spec a few paragraphs below, not a
+# thing to do quietly as a side effect of a guard rewrite. Separately, and
+# worth stating plainly rather than leaving it implicit: this workflow
+# carries NO `schedule:` trigger of its own -- its triggers are exactly
+# `pull_request` and `push` (see below) -- so there is no cron-driven run
+# of this job to page on either; the only way it runs at all is a PR or a
+# push to main that touches one of the `paths:` below.
+#
 # WHAT A GREEN RUN HERE DOES PROVE: the script executed against the real
 # token file and found no claim-vs-hex drift beyond ±0.02, no
 # REQUIRED_CLAIM_PATHS token with zero claims, and that every claim present
@@ -215,57 +238,177 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: This job's own invocation never adds --tolerance (the gate's off-switch)
-        id: no_tolerance_check
-        # Mechanical, not prose-only — a future edit that adds `--tolerance
-        # 0.5` to the invocation step below would pass every OTHER check in
-        # this workflow (the checker still runs, pytest still runs) and
-        # would be the one change that silently neuters this job. Parses
-        # the YAML and walks every OTHER step's `run:` body, excluded BY
-        # THIS STEP'S OWN `id:` (`no_tolerance_check`) rather than by any
-        # content heuristic. A first draft filtered on the substring
-        # "check_token_contrast.py" appearing in a step's run body instead,
-        # and false-positived on ITSELF the moment it was run: this
-        # script's own error message ("--tolerance found alongside
-        # check_token_contrast.py ...") contains both substrings it was
-        # searching for, so a content-based exclusion cannot be made safe
-        # against its own prose. Excluding by `id:` has no such failure
-        # mode — it can never accidentally match its own source, no matter
-        # what this step's comments or messages say. Same lesson as the
-        # NOTICE-line paragraph above, applied to the gate itself rather
-        # than to the thing it gates: form vs entity, twice in one PR.
+      - name: Exactly one step invokes the checker, in its pinned form, and nothing else references it
+        id: pinned_invocation_guard
+        # POSITIVE pin, not a negative scan -- Kimi K3 finding #1 on the
+        # first draft of this guard: a scan that only asserts the ABSENCE
+        # of `--tolerance` never asserts the PRESENCE of the invocation at
+        # all. Delete the step below entirely (a plausible "this duplicates
+        # scripts-tests-sweep.yml" refactor) and the old guard printed OK --
+        # measured against a scratch copy before this rewrite, not assumed:
+        # with the invocation step removed, the old guard exited 0. This
+        # step instead asserts, mechanically:
+        #   (1) EXACTLY ONE step in this workflow, other than this one, has
+        #       a run: body that -- after stripping shell comments and
+        #       collapsing whitespace -- IS the pinned invocation, verbatim,
+        #       with no extra arguments. Zero such steps fails (the arming
+        #       was deleted, renamed, or altered); two or more fails too
+        #       (ambiguous -- decide which one is real).
+        #   (2) NO OTHER step -- `run:` OR `uses:`/`with:` -- references the
+        #       checker at all, outside that one pinned form. A `uses:`
+        #       composite action, an env-split flag (`env: {X: "--tolerance
+        #       0.1"}` + `$X` in the run body), or the flagged invocation
+        #       smuggled into THIS step's own body are all caught the same
+        #       way, because...
+        #
+        # ...THIS STEP'S OWN BODY IS SCANNED TOO, with no id-based
+        # exclusion. Kimi K3 finding #4: the previous guard excluded itself
+        # BY id, which is exactly where a "simplify the workflow" refactor
+        # would relocate the flagged invocation -- move it into this step's
+        # own run: body, delete the separate step, and an id-based
+        # exclusion passes it clean. Kimi K3 finding #6, closed rather than
+        # patched: the previous guard also carried a SELF_STEP_ID constant
+        # that had to be kept in sync with this step's own `id:` by hand --
+        # rename one without the other and the guard scans its own source,
+        # matches its own code, and fails loud on itself forever after.
+        # Dropping the id-based exclusion removes that coupling; there is
+        # nothing left to keep in sync (the `id:` above is a label only,
+        # unread by the script below).
+        #
+        # Self-immunity comes from a different mechanism instead: the
+        # needle this script searches for is BUILT FROM TWO PARTS at
+        # runtime, never written as one contiguous literal anywhere in this
+        # step's own source. A raw substring scan of this step's OWN run:
+        # text (which it must undergo under (2) above, self-inclusive)
+        # therefore never finds its own needle -- there is no
+        # "check_token_contrast" run together anywhere in this body, only
+        # "check_token" and "_contrast" as two separate string literals
+        # joined with `+` at runtime. Any comment ADDED inside this run:
+        # block must keep that same discipline (never spell the checker's
+        # module name as one contiguous word inside `run:` here) or it
+        # defeats this immunity -- the header comment ABOVE this step
+        # (outside `run:`, discarded by the YAML parser, never scanned) has
+        # no such restriction and uses the full name freely, as it does a
+        # few lines up.
+        #
+        # One residual this does NOT cover, declared rather than pretended
+        # away: a step of the form `run: bash scripts/ci/some_wrapper.sh`
+        # where that wrapper script (not this workflow file) invokes the
+        # checker with a flag. Rules (1) and (2) both operate on THIS
+        # WORKFLOW FILE's own text; they cannot see inside a script this
+        # file merely shells out to. No step in this job does that today.
         run: |
           python3 -m pip install --quiet --disable-pip-version-check pyyaml
           python3 - <<'PY'
+          import re
           import sys
           import yaml
 
-          SELF_STEP_ID = "no_tolerance_check"
+          WORKFLOW_PATH = ".github/workflows/token-contrast-tests.yml"
 
-          with open(".github/workflows/token-contrast-tests.yml") as f:
+          # Built from parts, not as one contiguous literal -- see the step
+          # comment above for why (Kimi K3 findings #4 and #6).
+          _NEEDLE_PARTS = ("check_token", "_contrast")
+          NEEDLE = "".join(_NEEDLE_PARTS)
+          PINNED_INVOCATION = "python3 scripts/{}.py".format(NEEDLE)
+          # The corpus step below legitimately names a SIBLING test file
+          # that pytest collects (this needle, "test_"-prefixed, is a
+          # substring of that DIFFERENT file's name -- deliberately never
+          # spelled out contiguously in a comment here either, so this
+          # step's own self-immunity claim above stays true by
+          # construction and not by coincidence with this string). Allowed
+          # by exact match against a value built the same way as NEEDLE,
+          # not a lookbehind/heuristic regex, so the one known exception
+          # is auditable rather than guessed at.
+          ALLOWED_NON_PINNED_REFERENCE = "scripts/tests/test_{}.py".format(NEEDLE)
+
+          COMMENT_RE = re.compile(r"(^|\s)#.*$")
+
+
+          def normalize(run_body):
+              """Strip shell comments (whole-line or trailing-after-
+              whitespace), then collapse to single-spaced tokens for a
+              verbatim compare against the pinned invocation. Not a general
+              shell parser -- sufficient for pinning one fixed command,
+              nothing more."""
+              kept = []
+              for line in run_body.splitlines():
+                  m = COMMENT_RE.search(line)
+                  if m:
+                      line = line[: m.start()]
+                  kept.append(line)
+              return " ".join(" ".join(kept).split())
+
+
+          with open(WORKFLOW_PATH) as f:
               doc = yaml.safe_load(f)
 
-          offenders = []
+          pinned_hits = []     # steps whose run: body IS the pinned invocation
+          reference_hits = []  # steps mentioning the checker outside that form
+
           for job_id, job in doc["jobs"].items():
               for step in job.get("steps", []):
-                  if step.get("id") == SELF_STEP_ID:
-                      continue  # this step inspects the file; excluded by identity, not content
+                  name = step.get("name", "<unnamed>")
                   run_body = step.get("run", "")
-                  if "--tolerance" in run_body:
-                      offenders.append((job_id, step.get("name", "<unnamed>")))
+                  if run_body and normalize(run_body) == PINNED_INVOCATION:
+                      pinned_hits.append((job_id, name))
+                      continue  # this IS the arming -- never scanned below
 
-          if offenders:
-              for job_id, name in offenders:
-                  print(f"::error::--tolerance found in job '{job_id}' step '{name}'")
+                  # No id-based exclusion here -- this step's own body is
+                  # scanned on this same pass (Kimi K3 #4).
+                  haystack = yaml.safe_dump(step)
+                  scrubbed = haystack.replace(ALLOWED_NON_PINNED_REFERENCE, "")
+                  if NEEDLE in scrubbed:
+                      reference_hits.append((job_id, name))
+
+          problems = []
+
+          if len(pinned_hits) == 0:
+              problems.append(
+                  "no step invokes the checker in its pinned, argument-free "
+                  "form ({!r}) -- the arming step may have been deleted, "
+                  "renamed, or altered. This is the finding this guard "
+                  "exists to catch.".format(PINNED_INVOCATION)
+              )
+          elif len(pinned_hits) > 1:
+              where = ", ".join("{}/{}".format(j, n) for j, n in pinned_hits)
+              problems.append(
+                  "more than one step invokes the checker in its pinned "
+                  "form: {} -- ambiguous, decide which one is real".format(where)
+              )
+
+          for job_id, name in reference_hits:
+              problems.append(
+                  "job '{}' step '{}' references the checker outside its "
+                  "pinned, argument-free invocation ({!r}) -- this is how a "
+                  "flag, an env-split, or a `uses:` indirection re-enters"
+                  .format(job_id, name, PINNED_INVOCATION)
+              )
+
+          if problems:
+              for p in problems:
+                  print("::error::" + p)
               sys.exit(1)
 
-          print("OK — no other run: step passes --tolerance")
+          print("OK -- exactly one pinned invocation, no other reference to the checker")
           PY
 
       - name: The shipped token file's claims recompute clean (drift, floor, required-claims)
         run: python3 scripts/check_token_contrast.py
 
       - name: The checker's own guilt+innocence corpus is green
+        # Runs regardless of whether the guard above or the checker
+        # invocation above THAT failed (Codex GPT-5.6 finding #4): without
+        # this, GitHub's implicit `if: success()` on every step means a PR
+        # carrying BOTH a drift/guard failure AND a corpus regression
+        # reports no corpus result at all -- the two checks answer
+        # different questions and a reader wants both, every time. This
+        # does not make a failing corpus advisory-within-advisory: `if:
+        # always()` only removes the implicit skip-on-prior-failure; the
+        # job-level `continue-on-error: true` above still governs whether
+        # THIS step's own failure is blocking, identically to every other
+        # step in this job.
+        if: always()
         run: |
           python3 -m pip install --quiet --disable-pip-version-check pytest
           python3 -m pytest scripts/tests/test_check_token_contrast.py -v
