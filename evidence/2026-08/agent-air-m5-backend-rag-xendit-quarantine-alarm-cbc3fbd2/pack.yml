@@ -11,23 +11,32 @@ lanes:
   - lane: xendit-quarantine-alarm-gate
     role: review
     seat: "independent adjudicator, to be dispatched by team-lead — generator != grader; this lane deliberately posts NO verdict of its own"
+council_run: council-journal.jsonl
 seat_diversity: not_applicable
 seat_diversity_note: >-
   Exactly ONE build lane, so the D3 floor does not fire (it applies to
   packs declaring >= 2 build lanes). Stated rather than omitted: this was
-  a single-session backend change with a real Postgres to measure against,
-  not a cross-family council dispatch, and inventing a second build seat
-  to satisfy a rule that does not apply would be ceremony.
+  a single-session backend change with a real Postgres to measure against.
+  The REVIEW side is a different matter and is no longer single-family: a
+  cross-family council of two seats (kimi-code/k3 and codex-gpt-5.6-sol)
+  reviewed the frozen diff and is journalled in `council_run` above. It
+  found two HIGH defects in this lane's own code that four rounds of the
+  author's own mutation testing had missed, because every one of those
+  mutations lived inside the class while both defects lived in the wiring
+  and the transport above it.
 diff:
   net_lines: >-
-    12 files, +1584/-16, measured by
-    `git diff --numstat origin/main HEAD`. Over the ~400-line guidance and
-    declared as such rather than hidden: roughly 595 of those lines are
-    tests (test_quarantine_alarm.py 320, test_payment_inbox_watch.py 275)
-    and 97 are the migration's header comment, while this evidence pair and
-    the PENDING-ARMS rows account for most of the rest. It remains ONE
-    concern — a refused payment callback must reach a human, with enough to
-    act on.
+    MEASURED_PLACEHOLDER, measured by
+    `git diff --numstat origin/main...HEAD` and pasted verbatim from
+    `evidence_pack_lint.py --print-measured`. Over the ~400-line guidance
+    and declared as such rather than hidden: the great majority is tests,
+    the migration's header comment, this evidence pair and the PENDING-ARMS
+    rows. Deliberately NO secondary per-file counts here — the countable
+    claims lint reads every countable phrase in this field, not just the
+    headline, so a numeric gloss beside the measured value is one more
+    thing that goes stale on the next commit. It remains ONE concern — a
+    refused payment callback must reach a human, with enough to act on —
+    and the Gear-3 gate ruled it one concern too.
   behaviour_change: >-
     Adds a reader, an alarm and a `quarantine_reason` column. The five
     quarantine decision POINTS are unchanged — same branches, same
@@ -67,12 +76,32 @@ receipts:
     exit: 0
     ts: "2026-08-29T06:12:00Z"
     seat: "session (this task, Air-M5 worktree)"
+    correction: >-
+      THIS RECEIPT PROVES LESS THAN IT CLAIMS, corrected rather than argued
+      (Gear-3 gate, 2026-08-29). The `sed '/=== ROLLBACK ===/q'` above is a
+      HAND-ROLLED APPROXIMATION of the production splitter, not the splitter
+      itself: the runner uses `migration_base.ROLLBACK_MARKER_RE`, and a
+      migration can apply cleanly under one and not the other. The claim
+      happens to hold — the gate re-ran the runner's ACTUAL regex and reached
+      the same conclusion — but it holds on the gate's instrument, not on
+      this one. Anyone reusing this cmd should drive `split_migration_sql`.
+
   - claim: "Migration number 298 collides with nothing on ANY ref, checked across all branches rather than the local checkout (290 and 291 already collide — W40 — which is why this was checked properly)"
     cmd: "git log --all --diff-filter=A --name-only --format='' -- 'apps/backend-rag/backend/db/migrations_v2/29*' | sort -u"
     result: "highest existing is 297; 298 free. (290 and 291 each appear twice from different lanes — pre-existing, not this PR's)"
     exit: 0
     ts: "2026-08-29T06:05:00Z"
     seat: "session (this task, Air-M5 worktree)"
+    correction: >-
+      THE PARENTHETICAL IS HALF WRONG (Gear-3 gate, 2026-08-29). 291 IS a
+      genuine W40 collision — two DISTINCT files sharing the number. 290 is
+      NOT: it is the same filename re-added across rebases, which the
+      `--diff-filter=A --all` query reports twice without there being any
+      collision at all. The load-bearing claim — that 298 is free — holds,
+      and the gate confirmed it two independent ways. Recorded because a
+      receipt that miscounts the evidence AROUND its claim invites the next
+      reader to trust the miscount.
+
   - claim: "MUTATION 1 — removing the `outcome = 'quarantined'` filter from the reader turns a named test RED, so the innocence half is real and not decorative"
     cmd: 'replace "WHERE outcome = ''quarantined''" with ''WHERE outcome IS NOT NULL'' in payment_inbox_watch.py, then PYTHONPATH=. pytest backend/tests/services/garuda_orders/test_payment_inbox_watch.py'
     result: "FAILED test_committed_and_received_rows_are_not_a_condition - AssertionError: assert 3 == 0"
@@ -161,6 +190,58 @@ dissent:
       acknowledgement column, which is a schema change with its own review
       — the honest limitation is stated in `payment_inbox_watch.py`'s
       module docstring rather than papered over.
+    resolution: >-
+      THIS DISSENT WAS THE ONLY CONFIRMED ONE IN THE PACK WITH NO ROW, NO
+      OWNER AND NO ARMING STEP, while the other CONFIRMED one had all three
+      — the pack performing rigor at exactly one point (Gear-3 gate). Worse,
+      the docstring it pointed at CLAIMED the limitation was "Ledgered in
+      PENDING-ARMS" when no such row existed. BOTH council seats then
+      confirmed the dissent independently and both called the defence above
+      a FALSE DICHOTOMY: the third option needs no schema change and no
+      acknowledgement column — a second, much longer stale timer keyed on
+      `lifetime`, which already travels in every snapshot. Measured
+      consequence, now in the docstring instead of a vague "goes silent":
+      26 hourly pages, then permanent silence on a row still unhandled.
+      A real row exists (search PENDING-ARMS for `REQUIRED FOLLOW-UP: the
+      lifetime digest`), owner named, arming step concrete, marked REQUIRED
+      rather than optional. The WINDOWING ITSELF stays — it is right; what
+      was wrong was the claim of having ledgered its cost.
+  - seat: "kimi-code/k3 (cross-family council, review seat)"
+    objection: >-
+      `_send_quarantine_alarm` returns None on every path while the caller
+      runs `confirm_sent` unconditionally, so a page Telegram REFUSED still
+      consumes the hour-long suppression window. The decide/confirm_sent
+      discipline, heavily documented and tested at unit level, is voided by
+      the wiring.
+    status: CONFIRMED
+    note: >-
+      Cured in this diff. The helper now returns whether the page landed and
+      the caller gates on it, with a guilt/innocence PAIR rather than a
+      single test: "always return False" would satisfy a guilt test alone
+      while turning a mute alarm into a spamming one, and an operator mutes
+      a spamming alarm, so the money state goes dark by a different road.
+      All three mutations the gate named (delete the send, delete
+      `confirm_sent`, force `page = None`) now die to a named test. Not one
+      of the author's own four mutations could have caught this: every one
+      of them lived inside the class, and the defect lived above it.
+  - seat: "codex-gpt-5.6-sol (cross-family council, review seat)"
+    objection: >-
+      The page interpolates reasons and identifiers unescaped while the
+      transport hardcodes `parse_mode="Markdown"`. Every `quarantine_reason`
+      contains an underscore, so Telegram answers 400 "can't parse entities"
+      — and `send_telegram_message` treats 4xx as NON-retryable. Every page
+      this alarm produces would have been dropped.
+    status: CONFIRMED
+    note: >-
+      The most serious finding of the round and cured in this diff: an alarm
+      built to cure "nobody reads this state" would itself have delivered
+      nothing. The cure is not novel — this subsystem had ALREADY solved it
+      in `outbox_handlers` (ids in backtick code spans, backticks stripped
+      to a visible marker, free text escaped) and carries a Kimi K3 scar
+      from 2026-08-28 for the backtick-breaks-the-span case. This module
+      simply failed to reuse it. Square brackets around the order id are
+      gone too: `[` is reserved in its own right. Mutation-proved by making
+      the escaper a no-op — both new tests go RED, and only those two.
   - seat: "session, self-check on duplicating OutboxAlarm"
     objection: >-
       `QuarantineAlarm` re-implements `OutboxAlarm`'s state machine instead
