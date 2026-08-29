@@ -53,6 +53,7 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures" / "tailnet_acl"
 
 # The node and port that carry `tailscale serve` on Pro, and therefore /term.
 SHELL_HOST = "pro"
+SHELL_HOST_IP = "100.107.22.111"
 SHELL_PORT = 443
 
 # Exactly which nodes may open the shell port. This is an ALLOWLIST, not a shape rule, and it is
@@ -75,6 +76,18 @@ MAX_PORTS_PER_DST = 64
 # Everything else (a user, a `group:`, an `autogroup:`, a CIDR, an unknown tag) is rejected:
 # see UNRESOLVABLE_DST_SELECTOR below for why.
 ALLOWED_NON_NODE_DSTS = {"tag:team-device"}
+
+# The mirror of the above on the SOURCE axis. This policy's design has no user or group sources
+# at all — every acl src is a fleet node — so anything else is a finding. A `group:` or a bare
+# user as a src was green before this existed: `group:team -> mini:22,6379,11434` handed Redis,
+# Ollama and sshd on Mini to a non-tagged teammate identity.
+ALLOWED_NON_NODE_SRCS: set = set()
+
+# The ssh block is allowlisted on all three axes (see audit_policy). These are exactly the values
+# the shipped policy uses and Tailscale's own default policy documents.
+SSH_ALLOWED_SRCS = {"autogroup:member"}
+SSH_ALLOWED_DSTS = {"autogroup:self"}
+SSH_ALLOWED_USERS = {"autogroup:nonroot"}
 
 # Selectors that include a team-class device. `autogroup:tagged` is the one that bit us: it
 # contains every tagged node, so it contains the team laptop, while looking nothing like
@@ -253,12 +266,21 @@ def audit_policy(text: str) -> list[str]:
         if key not in KNOWN_TOP_LEVEL_KEYS:
             findings.append("UNKNOWN_TOP_LEVEL_KEY")
 
+    # The shell anchor is an IP, not a name. Pinning it here closes the last spelling: re-pointing
+    # the `pro` alias at a decoy address moved the anchor, and the real Pro's 443 became
+    # unguarded while every other check stayed green.
+    if hosts.get(SHELL_HOST) != SHELL_HOST_IP:
+        findings.append("SHELL_HOST_IP_MOVED")
+
     def audit_rule(srcs: list, dsts: list, port_spec_of, *, require_proto: bool, rule: dict):
         for src in srcs:
             if src == "*":
                 findings.append("WILDCARD_SRC")
             if _is_team_reaching(src):
                 findings.append("TEAM_TAG_AS_SOURCE")
+            # Mirror of UNRESOLVABLE_DST_SELECTOR on the source axis.
+            elif not _is_node(src, hosts) and src not in ALLOWED_NON_NODE_SRCS:
+                findings.append("UNRESOLVABLE_SRC_SELECTOR")
         if require_proto and not str(rule.get("proto", "")).strip():
             # Without `proto`, a rule grants UDP alongside the TCP service it names, plus ICMP
             # between the pair — so "only SSH" would be false as written.
@@ -309,13 +331,28 @@ def audit_policy(text: str) -> list[str]:
             rule=grant,
         )
 
+    # The ssh block gets ALLOWLISTS on all three axes, not a denylist on one of them. Two
+    # independent gates converged on this: the block never passed through audit_rule at all, so
+    # `src: ["*"]` / `dst: ["*"]` returned clean — and `users: ["root"]` was caught only because
+    # "root" is the one literal that was ever spelled out, while `users: ["*"]` (strictly wider,
+    # and a superset of `autogroup:tagged`) sailed through. A denylist on the axis that hands out
+    # shells is the same mistake this whole file exists to stop.
     for rule in policy.get("ssh", []):
-        if "root" in rule.get("users", []):
-            findings.append("SSH_ROOT_GRANT")
-        if any(_is_team_reaching(s) for s in rule.get("src", [])):
-            findings.append("TEAM_TAG_AS_SOURCE")
-        if any(_is_team_reaching(d) for d in rule.get("dst", [])):
-            findings.append("TEAM_TAG_AS_SSH_DESTINATION")
+        for src in rule.get("src", []):
+            if src not in SSH_ALLOWED_SRCS:
+                findings.append("SSH_SRC_NOT_ALLOWLISTED")
+            if _is_team_reaching(src):
+                findings.append("TEAM_TAG_AS_SOURCE")
+        for dst in rule.get("dst", []):
+            if dst not in SSH_ALLOWED_DSTS:
+                findings.append("SSH_DST_NOT_ALLOWLISTED")
+            if _is_team_reaching(dst):
+                findings.append("TEAM_TAG_AS_SSH_DESTINATION")
+        for user in rule.get("users", []):
+            if user == "root":
+                findings.append("SSH_ROOT_GRANT")
+            elif user not in SSH_ALLOWED_USERS:
+                findings.append("SSH_USERS_NOT_ALLOWLISTED")
 
     # The exposure must stay documented in the file that contains it, or the next reader inherits
     # a tidy-looking ACL with no idea which port is load-bearing.
@@ -388,6 +425,13 @@ GUILT_CASES = [
     ("shell_via_user_dst.hujson", "UNRESOLVABLE_DST_SELECTOR"),
     ("shell_via_autogroup_member_dst.hujson", "UNRESOLVABLE_DST_SELECTOR"),
     ("shell_via_cidr_dst.hujson", "UNRESOLVABLE_DST_SELECTOR"),
+    # Third axis — the `ssh` block and the source column. Found independently by BOTH round-3
+    # gates, which is why they are here rather than in the ledger: two seats converging on the
+    # same hole is not a taste difference.
+    ("ssh_wildcard_src.hujson", "SSH_SRC_NOT_ALLOWLISTED"),
+    ("ssh_users_wildcard.hujson", "SSH_USERS_NOT_ALLOWLISTED"),
+    ("acl_group_src.hujson", "UNRESOLVABLE_SRC_SELECTOR"),
+    ("shell_host_ip_moved.hujson", "SHELL_HOST_IP_MOVED"),
 ]
 
 

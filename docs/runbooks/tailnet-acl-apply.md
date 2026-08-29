@@ -35,9 +35,16 @@ cd ~/nuzantara
 python3 -m pytest scripts/tests/test_tailnet_acl_deny_by_default.py -q
 ```
 
-Green means the file is structurally deny-by-default, names the shell route, keeps
-`tag:team-device` out of every `src`, grants no root over Tailscale SSH, and carries deny-tests. It
-does **not** mean Tailscale accepts it — only the console can say that.
+Green means, clause by clause and each one actually enforced by `audit_policy()`: no wildcard or
+unresolvable source or destination anywhere; every node spelling collapsed to its IP before
+judging, with Pro's own IP pinned so the anchor cannot be moved by renaming an alias; the shell
+port reachable only from an explicit allowlist of named devices; `tag:team-device` in no rule's
+`src`; the `ssh` block allowlisted on all three axes, so no root and no wildcard user; deny-tests
+present including team → `pro:443`; and the `SHELL-ROUTE` block still naming `/term`.
+
+It does **not** mean Tailscale accepts the file — only the console can say that — and it is not a
+Tailscale evaluator: it does not expand `group:` membership and takes no position on selectors it
+has never seen beyond refusing them.
 
 ## 2. Preview (dry run) in the console
 

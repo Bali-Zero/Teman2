@@ -77,8 +77,10 @@
 // use is OpenSSH on port 22 with keys, which the rules below grant explicitly.
 //
 // VALIDATION LIMIT, stated rather than implied: this file is checked repo-side by
-// scripts/tests/test_tailnet_acl_deny_by_default.py (structure, no wildcard src/dst, shell-route
-// naming, `tag:team-device` never a source, no root SSH grant, deny-tests present) and it parses as JSON
+// scripts/tests/test_tailnet_acl_deny_by_default.py — which fails closed on anything it cannot
+// resolve (unknown top-level key, unresolvable src or dst selector), collapses every node
+// spelling to its IP with Pro's own IP pinned, allowlists the shell port's sources and all three
+// axes of the ssh block, and requires deny-tests — and it parses as JSON
 // with comments stripped. That is grammar and intent, NOT acceptance. There is no Tailscale API
 // token on the fleet and no offline validator, so the ONLY authority on whether this policy is
 // accepted is the admin console at save time, which also runs the `tests` block. If it refuses,
@@ -243,6 +245,14 @@
   // uses with an `autogroup:member` src; it resolves to exactly the fleet here, since every node
   // is owned by the same account and `tag:team-device` devices are tailnet-owned, not user-owned, so
   // they fall outside `autogroup:member` on both sides.
+  //
+  // ENFORCED, not merely intended (2026-08-29, found independently by BOTH round-3 gate seats):
+  // this block used to be exempt from every check the `acls` rules go through, so `src: ["*"]`
+  // and `dst: ["*"]` were clean — and `*` is a strict superset of `autogroup:tagged`, i.e. it
+  // reaches a team laptop, which is exactly what the sentence above promises it does not. The
+  // guard now ALLOWLISTS all three axes (`autogroup:member` / `autogroup:self` /
+  // `autogroup:nonroot`); widening any of them is a finding, `root` included. A denylist on the
+  // axis that hands out shells was the same mistake the rest of this file exists to stop.
   "ssh": [
     {
       "action": "accept",

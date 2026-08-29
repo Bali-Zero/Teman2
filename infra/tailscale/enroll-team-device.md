@@ -96,8 +96,14 @@ that port, and the failure is silent** — a fire-and-forget POST dropped by the
 exactly like "no checkout happened", on an HR-monitoring surface where nobody is watching for
 absence.
 
-This is deliberate, not an oversight: granting it would be the only rule in the file with a team
-device as a SOURCE, which is the single property keeping the laptop off the writable shell on Pro.
+This is deliberate, not an oversight — but state the cost precisely, because it is the owner's
+decision and an inflated cost biases it. What fences the shell is the **absence of any grant to
+`pro:443`**; ACL rules are independent allow entries, so a rule granting `tag:team-device -> pro:9099`
+would leave `pro:443` exactly as fenced. The real cost is narrower and lives in the guard, not in
+Tailscale: "a team device is never a SOURCE" is the bright line this repo mechanically enforces
+(`TEAM_TAG_AS_SOURCE`), and port-scoping it would mean teaching that check an exemption — turning
+a rule anyone can check by eye into one that needs reading. That is a genuine cost, and it is a
+smaller one than "the single property keeping the laptop off the shell".
 The choice is the owner's: grant `tag:team-device -> pro:9099` as one named exception (with its own
 deny-tests for every other port), or move that client off the tailnet. Decide it before enrolling,
 because after enrolment the wrong answer is invisible.
