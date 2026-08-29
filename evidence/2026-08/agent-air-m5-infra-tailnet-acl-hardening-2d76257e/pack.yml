@@ -280,10 +280,23 @@ dissent:
     status: CONFIRMED
     resolution: >-
       DECLARED, not silently granted. Verified independently (wrapper.py:44, profile-monitor.swift
-      :12, mac-client/setup-balizero.sh). Granting it would be the file's only team-device-as-
-      source rule, i.e. the single property keeping the laptop off the shell — so the trade is a
-      business decision (Legge 5). It is now named in policy.hujson beside rule 7 and carries its
-      own "decide this BEFORE you enrol" section in enroll-team-device.md.
+      :12, mac-client/setup-balizero.sh). The trade is a business decision (Legge 5). It is now
+      named in policy.hujson beside rule 7 and carries its own "decide this BEFORE you enrol"
+      section in enroll-team-device.md. — CORRECTED POST-MERGE 2026-08-29 by PR #5199, and the
+      correction is recorded here rather than applied silently, because this file is an audit
+      record and a quietly-edited record is worth less than a corrected one. This field used to
+      assert that granting pro:9099 would remove "the single property keeping the laptop off the
+      shell". That is false as Tailscale semantics: ACL rules are independent ALLOW entries, and
+      every rule in policy.hujson carries "proto": "tcp" with explicit ports, so a
+      tag:team-device -> pro:9099 rule would grant TCP 9099 and nothing else — pro:443 stays
+      fenced by the ABSENCE of any rule granting it, which is what fences it today. The real cost
+      is narrower and lives in the guard: tag:team-device in any src trips TEAM_TAG_AS_SOURCE, so
+      the file would trade a coarse invariant anyone can check by eye for one needing per-port
+      reasoning. That is a defensible reason to refuse; it is not "the shell opens". The claim
+      mattered because it sat under a Legge-5 decision reserved to the owner and inflated the cost
+      of granting. The objection field above is deliberately left VERBATIM: it is a transcript of
+      what a grader actually argued, and a pack that rewrites an objector's words is a worse
+      record than one quoting a wrong objection.
 
   - seat:
       claude opus 5 (round-3 gate A, resumed round-2 seat) and claude opus 5 (round-3 gate B,

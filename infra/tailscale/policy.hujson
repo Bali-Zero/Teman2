@@ -76,12 +76,43 @@
 // disarms it before someone runs `tailscale up --ssh` and arms it by accident. Fleet SSH in daily
 // use is OpenSSH on port 22 with keys, which the rules below grant explicitly.
 //
-// VALIDATION LIMIT, stated rather than implied: this file is checked repo-side by
-// scripts/tests/test_tailnet_acl_deny_by_default.py — which fails closed on anything it cannot
-// resolve (unknown top-level key, unresolvable src or dst selector), collapses every node
-// spelling to its IP with Pro's own IP pinned, allowlists the shell port's sources and all three
-// axes of the ssh block, and requires deny-tests — and it parses as JSON
-// with comments stripped. That is grammar and intent, NOT acceptance. There is no Tailscale API
+// WHAT GREEN MEANS — and the two things it still does not mean. Every clause below was executed
+// against `audit_policy()` on 2026-08-29, not carried over from an earlier revision of this
+// paragraph; three earlier revisions of it were wrong in one direction or the other, which is why
+// it is written as a list of checks rather than a reassurance.
+//
+//   ON `acls` AND `grants`: no `*` as a source; no source starting `tag:team` and no
+//   `autogroup:tagged`; every source resolves to a node in `hosts` or is refused
+//   (UNRESOLVABLE_SRC_SELECTOR — the allowlist of non-node sources is empty); no `*` as a
+//   destination host or port; no destination spanning more than 64 ports; every destination
+//   selector resolves to a node or is refused, with exactly one permitted exception,
+//   `tag:team-device`, which has no IP until a laptop enrols; and `pro:443` — the shell port —
+//   reachable only from the four allowlisted nodes, in every spelling of node and port. On `acls`
+//   rules, `proto` must be present AND must be `tcp`: it used to be presence-checked only, so
+//   `"proto": "udp"` under a comment reading "Only SSH" was green.
+//
+//   ON `ssh`: all three axes by allowlist, not denylist — `src` must be `autogroup:member`, `dst`
+//   `autogroup:self`, `users` `autogroup:nonroot`. `users: ["*"]`, strictly wider than `root` and
+//   the spelling that walked past a one-literal denylist, yields SSH_USERS_NOT_ALLOWLISTED. A
+//   green run IS therefore evidence that this file grants no root over Tailscale SSH.
+//
+//   ON `hosts`: the six fleet aliases must keep their pinned values, and EVERY entry — including
+//   ones added later — must be a bare dotted-quad IPv4 literal. Entries may be added, so
+//   enrolling a laptop does not require touching the guard; what an entry may not be is a CIDR, a
+//   v6 address or a DNS name. This closed the last class in which the guard's own anchors were
+//   editable by the file it audits.
+//
+//   FILE-WIDE: no unknown top-level key; the SHELL-ROUTE block below must still contain `7681`,
+//   `/term` and `ttyd` — checked WITHIN the block, not anywhere in the file, which is what it
+//   used to do; and BOTH halves of `tests` — a deny-test covering the shell port for a
+//   team-reaching source, AND an accept-test for every grant `acls` makes.
+//
+// WHAT IT STILL DOES NOT COVER, both worth knowing before you save:
+//   (1) A `hosts` entry added later with a well-formed but FOREIGN IPv4, granted a non-shell port,
+//       is green — the value is legitimately shaped, so no shape rule can catch it. Reading the
+//       rule that grants it is the only control. The shell port is not exposed this way: `pro:443`
+//       remains fenced to the four allowlisted nodes.
+//   (2) This is grammar and intent, NOT acceptance. There is no Tailscale API
 // token on the fleet and no offline validator, so the ONLY authority on whether this policy is
 // accepted is the admin console at save time, which also runs the `tests` block. If it refuses,
 // read its message before editing anything here.
@@ -96,6 +127,19 @@
   // targets. If a node is removed and re-registered it gets a NEW magic IP and its rules stop
   // matching — the service breaks loudly rather than silently widening, and the fix is to update
   // this block. Source: `tailscale status --json`, README table, re-read 2026-08-29.
+  //
+  // PINNED, 2026-08-29 (round-4 gate): this table is INPUT to the repo-side guard — it resolves
+  // every node spelling, and the shell-port allowlist, THROUGH these values — so an editable
+  // table meant an editable guard. Re-pointing `m5` at a foreign address handed that machine
+  // pro:443 with every check still green; an IPv6 alias, a CIDR alias and a `/32` alias for Pro's
+  // own IP each did the same by a different spelling. The guard now asserts two things about this
+  // block: the six aliases below keep these exact values (no re-pointing, no deletion), and EVERY
+  // entry is a bare IPv4 literal.
+  //
+  // Entries may still be ADDED — deliberately, so that enrolling a team laptop (see
+  // infra/tailscale/enroll-team-device.md step 5) does not require touching the guard, and does
+  // not go red at the one moment nobody wants a red. What an added entry may NOT be is anything
+  // other than a bare dotted quad: a CIDR, a v6 address or a DNS name here is a finding.
   "hosts": {
     "pro":              "100.107.22.111",
     "mini":             "100.93.236.6",
@@ -217,12 +261,34 @@
     // `http://100.107.22.111:9099/checkout` (mac-client/profile-monitor.swift:12; the wrapper
     // listens on 9099, wrapper.py:44) and mac-client/setup-balizero.sh is the documented procedure
     // for joining such a Mac to this tailnet. Under this policy a `tag:team-device` Mac CANNOT
-    // reach 9099, and the failure is SILENT — a fire-and-forget POST dropped by the packet filter
-    // is indistinguishable from "no checkout happened", on an HR-monitoring surface. This is not
-    // an oversight: granting it would be the file's only team-device-as-source rule, i.e. the one
-    // thing that keeps the shell fenced. Whether to grant it as a single named exception or to
-    // move that client off the tailnet is a business decision (Legge 5), so it is declared here
-    // and left to the owner rather than resolved by this diff.
+    // reach 9099.
+    //
+    // CORRECTED 2026-08-29, claim 1 of 2. An earlier revision called that failure SILENT and the
+    // POST "fire-and-forget". Both are false, and the client says so in its own source: it sets
+    // `timeoutInterval = 5` (profile-monitor.swift:65), blocks on a semaphore for up to 6s (:78),
+    // and logs `POST_FAIL` with the error inside `if let error` (:70), or `POST_OK` with the HTTP
+    // status otherwise (:73). A POST dropped by the packet filter surfaces as a transport error,
+    // so it IS recorded — to `~/Library/Logs/balizero-profile-events.log` (:13), on the
+    // EMPLOYEE'S OWN Mac. The evidence exists; it is on the far side of the fence this policy
+    // raises. The accurate phrase is INVISIBLE TO US, not silent, and the difference is
+    // operational: recovering a missed checkout means reading a log on someone else's laptop,
+    // which is a consent question, rather than proving a negative, which is impossible.
+    //
+    // CORRECTED 2026-08-29, claim 2 of 2 — and this is the one that mattered, because it inflated
+    // the cost of a decision reserved to the owner. An earlier revision said granting `pro:9099`
+    // would remove "the one thing that keeps the shell fenced". False as Tailscale semantics. ACL
+    // rules are independent ALLOW entries, and every rule in this file carries `"proto": "tcp"`
+    // with explicit ports, so `tag:team-device -> pro:9099` would grant TCP 9099 and nothing else;
+    // `pro:443` stays exactly as fenced as it is today, because what fences it is the ABSENCE of
+    // any rule granting it — not the absence of team-device rules in general. The real cost is
+    // narrower and lives in the GUARD, not in Tailscale: `tag:team-device` in any `src` trips
+    // TEAM_TAG_AS_SOURCE, so this file would trade a coarse invariant anyone can check by eye for
+    // one that needs per-port reasoning. That is a real loss and a defensible reason to refuse. It
+    // is not "the shell opens".
+    //
+    // Whether to grant it as a single named exception or to move that client off the tailnet is a
+    // business decision (Legge 5), so it is declared here and left to the owner rather than
+    // resolved by this diff.
     //
     // There is deliberately NO rule anywhere in this file with `tag:team-device` in `src`. That single
     // absence is what denies a teammate's laptop the shell on pro:443, the Redis on mini:6379,
@@ -282,6 +348,23 @@
     {
       "src":    "apple-vision-pro",
       "accept": ["pro:443"]
+    },
+    // ADDED 2026-08-29 (round-4 gate): the guard now requires that EVERY grant in `acls` be
+    // asserted by an accept-test from that same source, because the innocence half of this block
+    // was unenforced — every accept-test here could be deleted and the guard stayed green. These
+    // three entries are the grants that had no accept-test: rule 6 was proven for the Vision Pro
+    // only, and rule 7's support direction was proven from `m5` only.
+    {
+      "src":    "iphone-14",
+      "accept": ["pro:443"]
+    },
+    {
+      "src":    "iphone175",
+      "accept": ["pro:443"]
+    },
+    {
+      "src":    "pro",
+      "accept": ["tag:team-device:22", "tag:team-device:5900"]
     },
 
     // Guilt: the narrowing must actually deny. A team laptop must not open anything on the

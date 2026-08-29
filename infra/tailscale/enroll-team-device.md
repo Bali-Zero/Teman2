@@ -92,9 +92,17 @@ this paragraph called it invalid as any `dst`; that was overbroad.)
 `http://100.107.22.111:9099/checkout` (`mac-client/profile-monitor.swift:12`; the wrapper listens
 on 9099, `wrapper.py:44`), and `mac-client/setup-balizero.sh` is the documented procedure for
 joining such a Mac to this tailnet. **Under `policy.hujson` a `tag:team-device` Mac cannot reach
-that port, and the failure is silent** — a fire-and-forget POST dropped by the packet filter looks
-exactly like "no checkout happened", on an HR-monitoring surface where nobody is watching for
-absence.
+that port.**
+
+CORRECTED 2026-08-29: this used to say the failure is "silent" and the POST "fire-and-forget".
+Both are false. `profile-monitor.swift` sets `timeoutInterval = 5` (`:65`), waits on a semaphore
+up to 6s (`:78`), and logs `POST_FAIL` with the error inside `if let error` (`:70`) or `POST_OK`
+with the HTTP status otherwise (`:73`). A POST the packet filter drops is a transport error, so it
+**is** recorded — to `~/Library/Logs/balizero-profile-events.log` (`:13`), **on the employee's own
+Mac**. So the checkout evidence exists; it is on the far side of the fence this policy raises. The
+accurate word is **invisible to us**, not silent — and that changes the remedy: recovering a
+missed checkout means reading a log on someone else's laptop, which is a consent question, not an
+unprovable negative.
 
 This is deliberate, not an oversight — but state the cost precisely, because it is the owner's
 decision and an inflated cost biases it. What fences the shell is the **absence of any grant to
@@ -204,6 +212,22 @@ Once a real node exists, add the concrete-host form alongside it. Note the sourc
 
 Save in the console, commit the same edit here, and the property is enforced from then on instead
 of remembered.
+
+**Adding that `hosts` entry does NOT require editing the guard, and that is deliberate.**
+`scripts/tests/test_tailnet_acl_deny_by_default.py` pins `hosts` — because it is the table the
+guard resolves all of its other anchors through, and an unpinned one let a re-pointed alias hand
+a foreign machine the shell while every check stayed green — but it pins it in an
+**additive-tolerant** way: the six fleet aliases may not be re-pointed or deleted, and every
+value must be a bare IPv4 literal, while new entries are allowed. Adding
+`"team-laptop-01": "100.x.y.z"` satisfies both clauses and the guard stays green. This is
+asserted, not merely intended: `test_enrolling_a_team_laptop_keeps_the_guard_green` performs
+exactly this edit and requires zero findings, so a future tightening of the pin cannot silently
+break this step — it would have to delete that test.
+
+Two things that WILL turn it red, both correctly: giving the new entry anything other than a bare
+dotted-quad IPv4 (a CIDR, a v6 address, a DNS name), and adding the `acls` grant without the
+matching accept-test — the guard requires every grant to be asserted by an accept-test from its
+own source, so add the accept-test above in the same commit.
 
 ## Step 6 — a distinct alias, never `air` or `air-ts`
 
