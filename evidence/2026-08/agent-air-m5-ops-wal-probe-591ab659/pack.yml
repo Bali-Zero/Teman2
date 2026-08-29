@@ -1,0 +1,362 @@
+# STAGING PATH, NOT THE REAL ONE — the documented contract, not an oversight.
+# harness-floor.yml copies both files into a synthetic tree at
+# /tmp/evidence-check/evidence/{brief,pack}.yml under their CANONICAL names,
+# whatever their real location, and evidence_pack_lint.py resolves brief_ref
+# against THAT root. So this field must read the literal `evidence/brief.yml`
+# even though the real file lives at
+# evidence/2026-08/agent-air-m5-ops-wal-probe-591ab659/brief.yml. Writing the per-PR
+# path here — the "obviously correct" value — is the exact trap the workflow
+# comment warns about. Do not "fix" this back.
+brief_ref: evidence/brief.yml
+# `clean` is a claim about THIS diff, and it is cheap to justify: the probe
+# handles no client data at all. Its inputs are Postgres archiver counters and
+# WAL segment filenames; the one field that could carry a credential
+# (`archive_command`) is dropped at the boundary by `sanitize_observation` and
+# pinned by a test. No name, phone, document or client_id passes through any
+# path in this PR.
+pii_scan: clean
+plan_ref: >-
+  Reliability mandate (team-lead, 2026-08-29): build the nightly WAL-continuity
+  probe the Beyond-SOTA B7/X2 reports recommend, or prove it exists and report
+  NO-OP. Ground first — the premise may be stale.
+lanes:
+  - lane: wal-probe-build
+    role: build
+    seat: "claude-opus-5 (this session, M5 — authored the probe, its suite, the workflow, the plist and the wrapper)"
+  - lane: wal-probe-refute-codex
+    role: review
+    seat: "gpt-5.6-sol xhigh (OpenAI, --sandbox read-only — cross-family adversarial refuter, fresh context, wrote none of the files)"
+  - lane: wal-probe-refute-kimi
+    role: review
+    seat: "kimi-code/k3 (Moonshot — second cross-family refuter, fresh context, independent of the codex seat and of the build lane)"
+seat_diversity: degraded
+seat_diversity_note: >-
+  ONE build lane, so D3's own floor (>=2 build lanes) does not fire and the
+  field is "degraded" on that basis alone. The REVIEW side is not degraded and
+  that is where the argument sits: two seats from two different families
+  outside Anthropic, run independently on fresh context with the same narrow
+  question, produced 13 ranked findings and agreed on 4 — two of which were
+  real false-REDs that would have paged on a healthy server.
+
+  Recorded because it is the measurement rather than the principle: the seats
+  did NOT find the worst defect. `send_alert` reading `proc.returncode` instead
+  of the gateway verdict — an alarm that reports delivery when the gateway
+  refused — was caught by a machine gate in CI
+  (`test_gateway_callers_read_the_verdict.py`), after both model reviews had
+  finished. Two cross-family reviews plus a deterministic gate found strictly
+  more than either alone, and the ordering matters: the gate is not a
+  formality behind the models, it is a third reviewer that sees a different
+  class of thing.
+
+  NO GATE VERDICT IS RECORDED IN THIS PACK. The mandate reserves it: "Do not
+  post your own gate verdict. Report to me when green and I dispatch an
+  adjudicator." The `grader` block in brief.yml describes what the build lane
+  put the diff through and is not a verdict.
+diff:
+  net_lines: >-
+    AS OF 928f0ec453 (pinned deliberately — a byte count stated unqualified
+    inside a file that every subsequent commit changes is a claim that decays
+    by construction): 8 files, measured THREE-DOT against the merge base
+    (`git diff --stat origin/main...HEAD`), never two-dot, which on a moved
+    base blames this PR for files that landed on main after the branch point
+    (W102).
+
+    New: `scripts/wal_continuity_probe.py`,
+    `scripts/tests/test_wal_continuity_probe.py`,
+    `.github/workflows/check-wal-continuity-probe.yml`,
+    `infra/launchagents/com.nuzantara.wal-continuity-probe.daily.plist`,
+    `infra/launchagents/wrappers/wal-continuity-probe.sh`.
+    Modified: `apps/organism/organism/organs_registry.yaml` (one organ entry
+    plus its checksum line), `.github/workflows/main-push-failure-watch.yml`
+    (one line), `.claude/skills/modus/PENDING-ARMS.md` (two rows).
+
+    Deterministic gear floor recomputed from this diff = 3, source "both"
+    (hot-zone path AND blast radius). Gear 3 is the floor, not a choice.
+  behaviour_change: >-
+    NOTHING changes on any machine when this merges, and nothing runs against
+    production. The probe is a new file that no cron invokes; the plist and
+    wrapper are artifacts an operator installs later, tracked in PENDING-ARMS.
+    The only always-on effect is a new non-required CI check that runs on PRs
+    touching the probe's own paths.
+
+    Once installed on Pro (a separate, post-merge step this lane did not take):
+    a daily 05:00 read-only query against `pg_stat_archiver` on
+    `nuzantara-postgres` via `fly ssh console`, and Telegram alerts through the
+    existing gateway. No write of any kind, to any database, ever.
+receipts:
+  - claim: "The premise held — no WAL/archiver continuity check existed anywhere on origin/main"
+    cmd: "git grep -l -iE 'pg_stat_archiver|last_archived_wal|archive_command|archive_mode|wal_level' origin/main -- ; git ls-tree -r --name-only origin/main | grep -iE 'wal|archiv|backup|restore|tigris'"
+    result: >-
+      ZERO files for the archiver grep. The path listing returns
+      `restore-drill.yml`, `fly-pg-backup.sh`, `backup_sensor.py` and
+      `nlm_drive_backup.py` — read in full, and each asserts something true
+      that is NOT continuity: an object landed in Tigris; the newest `.sql.gz`
+      restores into a CI Postgres with >=50 tables and `clients`/`practices`
+      readable; the off-site receipt is younger than N hours. None reads WAL.
+      `W101-recidiva-fly-backup` was read before assuming it covered this: its
+      "Fase 2 mai parte" is the QDRANT phase of `infra/scripts/fly-backup.sh`
+      dying under a bare pipeline. No PENDING-ARMS row matched.
+    exit: 0
+    ts: "2026-08-29T06:05Z"
+    seat: "session (m5, build lane)"
+  - claim: "The probe can go RED on every one of its six declared conditions, through the same entry point cron uses"
+    cmd: "python3 -m pytest scripts/tests/test_wal_continuity_probe.py -q ; python3 scripts/wal_continuity_probe.py --selftest"
+    result: >-
+      55 passed. Every guilt test drives `probe.main([...])` with a fixture
+      file — not `classify` directly — because `classify` being correct while
+      `main()` never reaches it is W116/W120: dead code on the only path it
+      exists for. `test_guilt_every_declared_red_code_is_reachable` asserts
+      RED_FINDINGS is a subset of what six scenarios actually produce, so a
+      verdict cannot exist in the contract with no path that produces it;
+      `test_every_voiding_note_is_reachable` does the same for the notes.
+    exit: 0
+    ts: "2026-08-29T06:28Z"
+    seat: "session (m5, build lane)"
+  - claim: "The RED paths are load-bearing, not decorative — 15 mutants, all killed"
+    cmd: "for each: cp the file, replace one condition with `if False:`/`if True:`, re-run the suite, restore from the COPY (never `git checkout --`), verify with `cmp -s`. PYTHONDONTWRITEBYTECODE=1."
+    result: >-
+      All 15 killed, 1-6 failures each: write-pressure comparison removed (4),
+      sequence arithmetic removed (3), archive_mode-off branch dead (4), blind
+      guard neutered (2), ARCHIVER_FAILING dead (4), lag dead (3),
+      failed_count dead (6), the `and lib_set is False` conjunction removed (2),
+      the recovered-failure downgrade removed (3), COUNTERS_WENT_BACKWARDS
+      dead (2), the two CHECKS_UNRUNNABLE branches dead (2 and 1), the
+      voiding-note alert removed (3), the non-segment note dead (3), the
+      standby CANNOT_VERIFY gate dead (1). `cmp -s` confirmed byte-identical
+      restore afterwards and the baseline returned to 55 passed.
+
+      Two traps deliberately avoided and worth naming: restore came from a `cp`
+      copy rather than `git checkout --`, which would have reverted to the last
+      COMMIT and silently destroyed uncommitted work (the P3/W121 gotcha); and
+      `PYTHONDONTWRITEBYTECODE=1` because a mutation that does not change byte
+      length, restored within the same second, leaves Python reusing the
+      MUTATED `.pyc` against a corrected source (W121).
+    exit: 0
+    ts: "2026-08-29T06:29Z"
+    seat: "session (m5, build lane)"
+  - claim: "The stall check actually compares write pressure — proven at the threshold boundary, not merely asserted"
+    cmd: "test_stall_threshold_is_actually_compared_not_decorative"
+    result: >-
+      STALL_SEGMENTS-1 segments of write pressure with archived_count unmoved
+      is GREEN; STALL_SEGMENTS is ARCHIVING_STALLED. A stall check that ignored
+      write pressure makes the first half red (a quiet database is not a
+      fault); one that never compared makes the second half green. Both halves
+      are needed to pin that the comparison exists at all.
+    exit: 0
+    ts: "2026-08-29T06:28Z"
+    seat: "session (m5, build lane)"
+  - claim: "Two cross-family refuters found four agreed findings, TWO of which were real false-REDs that would have shipped"
+    cmd: "codex exec -m gpt-5.6-sol -c model_reasoning_effort=xhigh --sandbox read-only  |  kimi -p ... -m kimi-code/k3   (both: 'find only false negatives and false positives', fresh context, no build history)"
+    result: >-
+      codex 7 ranked findings, kimi 6, agreeing on 4. REAL AND CURED: (a)
+      `archive_library` — since PG15 an archive MODULE replaces
+      `archive_command`, so a healthy server reports an EMPTY command and the
+      first draft called it ARCHIVING_DISABLED; (b) recovered failures paged
+      even after the archiver succeeded. Both now have an innocence test and a
+      mutant. Also cured: three SILENT SKIPS (counters falling with
+      stats_reset unchanged; a missing WAL position; a non-segment filename on
+      the PREVIOUS side, where the first cure had covered only the current
+      side — W107 in miniature).
+
+      NOT cured, because it cannot be from this data source, and written into
+      the module docstring instead of assumed away: a lying `archive_command`.
+      Both seats raised it independently.
+    exit: 0
+    ts: "2026-08-29T06:26Z"
+    seat: "gpt-5.6-sol xhigh and kimi-code/k3 (review lanes), verified against the source by the build lane"
+  - claim: "A CI gate found the worst defect AFTER both model reviews had passed on it — the probe's own alarm was blind"
+    cmd: "python3 scripts/tests/test_gateway_callers_read_the_verdict.py"
+    result: >-
+      `send_alert` returned `proc.returncode == 0`. `tg_notify.py` deliberately
+      never fails its caller: it exits 0 on six outcomes and THREE mean NOT
+      SENT (deduped / p0_overflow_spooled / p0_unsent_spooled). So a p0 the
+      gateway refused would have been logged as delivered — a WAL-continuity
+      probe whose alarm silently does not arrive, which is the disease it was
+      built to catch wearing its own uniform. Neither refuter saw it.
+      Cured via `scripts/tg_gateway_verdict`: digest accepted on
+      spooled/deduped, p0 only on `gateway_delivered`. Gate now reports
+      "27 leggono il verdetto, 0 ciechi", rc=0.
+    exit: 0
+    ts: "2026-08-29T06:40Z"
+    seat: "session (m5, build lane) acting on the CI gate's finding"
+  - claim: "The secret never leaves the boundary — archive_command's VALUE is dropped, and that is TESTED, not merely intended"
+    cmd: "test_the_probe_never_carries_the_archive_command_value"
+    result: >-
+      A canary `s3://AKIAEXAMPLE:sup3rs3cret@bucket/%f` is fed in; the string
+      appears in neither the persisted state file nor the formatted alert
+      message, while `archive_command_set` is True. `sanitize_observation`
+      drops the key entirely at the boundary rather than redacting downstream,
+      so there is no path on which the value could be persisted (superscar #4).
+    exit: 0
+    ts: "2026-08-29T06:28Z"
+    seat: "session (m5, build lane)"
+  - claim: "No hardcoded Telegram destination — the gateway owns it, and the test that proves it does not itself name a host"
+    cmd: "python3 scripts/lint_tg_direct_senders.py ; test_alerts_go_through_the_tg_notify_gateway_and_name_no_destination"
+    result: >-
+      "lint_tg: clean (9500 files scanned, 144 grandfathered)", rc=0. The test
+      asserts no argument handed to the gateway starts with `http` and none is
+      a chat-id-shaped integer — literal-free, and a stronger claim than the
+      single-host string it replaced.
+
+      RECORDED BECAUSE THE LOCAL RUN LIED FIRST: an earlier invocation reported
+      "clean (9495 files)" while the test DID contain the literal
+      `api.telegram.org`. The lint scans TRACKED files, and the test was still
+      untracked. A lint run against an uncommitted tree is a lint run against a
+      tree that does not contain your change — CI caught it, the local probe
+      could not have.
+    exit: 0
+    ts: "2026-08-29T06:40Z"
+    seat: "session (m5, build lane)"
+  - claim: "The organ is registered and the registry still validates — both, because the first is not the second"
+    cmd: "python3 infra/organ-conformance/check_organ_conformance.py ; python3 apps/organism/organism/tools/validate_organs_registry.py"
+    result: >-
+      "185 plists scanned, 121 grandfathered, 0 regressions, 0 non-conformant
+      births", rc=0; and "organs_registry.yaml valid", rc=0. Adding the entry
+      without regenerating the file's own sha256 left the registry describing a
+      tree it no longer was — a second, separate red, and the reason both
+      commands are in this receipt rather than just the first.
+      `expected_hb_seconds: 108000` is 30h, deliberately not the naive copy of
+      the daily interval; `severity_on_silence: warning` because this organ
+      going quiet means we stopped WATCHING the WAL chain, one level removed
+      from the chain itself breaking.
+    exit: 0
+    ts: "2026-08-29T06:45Z"
+    seat: "session (m5, build lane)"
+  - claim: "The new workflow is watched on main, and the plist is not a KeepAlive one-shot"
+    cmd: "python3 scripts/check_watcher_coverage.py ; python3 scripts/lint_plist_keepalive.py ; plutil -lint ; actionlint"
+    result: >-
+      "all 106 live workflow(s) covered by main-push-failure-watch.yml" (a
+      check nobody watches on main can rot red unnoticed). KeepAlive lint
+      "clean — no KeepAlive=true wrapper shows a one-shot smell"; the new plist
+      is StartCalendarInterval with no KeepAlive at all, the correct shape
+      (superscar #7), and it is absent from the twelve pre-existing WARN lines.
+      `plutil -lint` OK, `actionlint` clean on the new workflow.
+    exit: 0
+    ts: "2026-08-29T06:45Z"
+    seat: "session (m5, build lane)"
+  - claim: "The deterministic gear floor is 3, recomputed from this diff — not taken from the brief"
+    cmd: "git diff --name-only origin/main...HEAD > /tmp/wal_changed.txt ; python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/wal_changed.txt"
+    result: "3. CI independently recomputes it and reports source=both (hot-zone path AND blast radius)."
+    exit: 0
+    ts: "2026-08-29T06:48Z"
+    seat: "session (m5, build lane)"
+dissent:
+  - seat: "gpt-5.6-sol xhigh"
+    objection: >-
+      CRITICAL — a lying `archive_command` (`/bin/true`, or an uploader exiting
+      0 before durability) leaves every check green with nothing recoverable;
+      `pg_stat_archiver` proves neither presence nor durability of the archive.
+    status: "CONFIRMED"
+    resolution: >-
+      NOT cured, and deliberately not: it is unreachable from this data source,
+      which is the one the mandate correctly asked the probe to read. Written
+      into the module docstring under its own heading (§WHAT THIS PROBE CANNOT
+      SEE) and ledgered in PENDING-ARMS with a concrete arming step — a
+      bucket-side listing that diffs the archived WAL sequence against what is
+      actually in Tigris, with its own guilt tests. Scoped as a separate PR:
+      different data source, different failure surface, one PR one concern.
+  - seat: "gpt-5.6-sol xhigh"
+    objection: >-
+      CRITICAL — SEQUENCE_GAP is mathematically insufficient: `.backup`,
+      `.history` and re-archived files also increment `archived_count`, so a
+      skipped intermediate segment can hide when `seg_delta <= count_delta`.
+    status: "CONFIRMED"
+    resolution: >-
+      Accepted as a stated BOUND rather than papered over. The check is
+      one-directional and detects gaps larger than the number of non-segment
+      archives in the same window; it catches the large, obvious hole and does
+      not prove the set is complete. Written into the docstring in those words.
+      Making it tighter is impossible without knowing WHICH archives were
+      segments — which only the bucket-side listing above can establish.
+  - seat: "gpt-5.6-sol xhigh"
+    objection: >-
+      HIGH — false RED with `archive_library`: a healthy PG15+ server using an
+      archive module has an empty `archive_command` and was declared
+      ARCHIVING_DISABLED.
+    status: "CONFIRMED"
+    resolution: >-
+      CURED. The query now reads `archive_library` (with `missing_ok`, so it
+      still works against a pre-15 server) and disabled requires NEITHER to be
+      set. Innocence test
+      `test_innocence_an_archive_module_with_an_empty_command_is_healthy` plus
+      mutant M8, which removes the conjunction and turns the suite red.
+  - seat: "gpt-5.6-sol xhigh"
+    objection: >-
+      HIGH — a stats reset erases the evidence: `arch_seg` becomes None, deltas
+      are skipped, and the run re-baselines GREEN, so any hole spanning the
+      reset is invisible. Should be CANNOT_VERIFY.
+    status: "PLAUSIBLE"
+    resolution: >-
+      PARTIALLY accepted — not promoted to CANNOT_VERIFY — a stats reset is a legitimate operation
+      and the ABSOLUTE checks (disabled, failing, lagging) still run through
+      it, so the probe is not blind, only delta-blind for one window. But the
+      silence was real and is fixed: STATS_RESET is now a voiding note, and any
+      voiding note raises a digest alert instead of exiting 0 quietly. The
+      residual disagreement is recorded rather than argued away: a session
+      resetting archiver stats before every probe run would defeat the delta
+      checks, and only the bucket-side listing would notice.
+  - seat: "kimi-code/k3"
+    objection: >-
+      LOW — a counter reset WITHOUT a `stats_reset` change (a crash can lose
+      the stats file): `count_delta` goes negative, the stall check requires
+      `== 0` and the gap check `>= 0`, so both skip and the run is green with
+      no note at all.
+    status: "CONFIRMED"
+    resolution: >-
+      CURED — COUNTERS_WENT_BACKWARDS, a voiding note, therefore alerting.
+      Mutant M10. Found by only one of the two seats, which is the argument for
+      running both.
+  - seat: "kimi-code/k3"
+    objection: >-
+      LOW — a missing `current_wal_lsn` silently disables stall and lag; a
+      non-segment `last_archived_wal` on the PREVIOUS side silently disables
+      the gap check (the first cure covered only the current side).
+    status: "CONFIRMED"
+    resolution: >-
+      CURED — CHECKS_UNRUNNABLE on both, mutants M11 and M12. The second half
+      is W107 in miniature: the first cure covered the half that bit, and the
+      other half sat one run earlier with the identical silence.
+  - seat: "gpt-5.6-sol xhigh and kimi-code/k3 (both)"
+    objection: >-
+      MEDIUM — false RED after a transient recovery: one failed attempt that
+      then succeeded before the probe ran still raised RED on the failed_count
+      delta.
+    status: "CONFIRMED"
+    resolution: >-
+      CURED — downgraded to a FAILURES_RECOVERED note when
+      `last_archived_time > last_failed_time`, the same pair ARCHIVER_FAILING
+      uses in the other direction. Still visible (it alerts at digest), never
+      paging. Mutant M9.
+  - seat: "gpt-5.6-sol xhigh"
+    objection: >-
+      LOW — `wal_segment_size` is handled parametrically but the suite fixes
+      16 MiB everywhere, so a hardcoded 256 would survive review.
+    status: "CONFIRMED"
+    resolution: >-
+      CURED in the tests rather than the code (the code was already correct):
+      `test_the_arithmetic_holds_at_a_non_default_wal_segment_size` replays the
+      healthy and stalled scenarios at 64 MiB, where segments-per-logid is 64.
+  - seat: "gpt-5.6-sol xhigh"
+    objection: >-
+      LOW — `archived_count` int64 overflow makes deltas negative and disables
+      the stall and gap checks.
+    status: "RETRACTED"
+    resolution: >-
+      The seat itself rated this an accepted trade-off at ~9x10^18 archive
+      operations, and it is now covered incidentally anyway: any negative
+      `count_delta` emits COUNTERS_WENT_BACKWARDS, so the overflow case is
+      loud rather than silent even though it will never occur.
+  - seat: "session (m5, build lane) — self-declared, found by no reviewer"
+    objection: >-
+      `read_archiver_state_via_fly()` has NEVER been executed against
+      production. Its live behaviour — credential resolution, the psql
+      invocation through `fly ssh console`, the JSON line parse — is unproven.
+    status: "CONFIRMED"
+    resolution: >-
+      Accepted and declared rather than hidden. The mandate forbade touching
+      production, so the contract is pinned by fixtures and the live path is
+      proven by the first scheduled run. This is precisely why the install
+      ledger row REFUSES `launchctl list` as proof of arming and demands a
+      state file containing a real `archived_count` and `last_archived_wal`,
+      advanced by a second run — a state file holding only
+      `cannot_verify_streak` means installed and BLIND, which is not armed.
