@@ -199,8 +199,15 @@ async def _send_outbox_alarm(client: "httpx.AsyncClient", text: str) -> None:  #
         logger.error("GARUDA outbox alarm could not be delivered: %s", err)
 
 
-async def _send_quarantine_alarm(client: "httpx.AsyncClient", text: str) -> None:  # noqa: F821
+async def _send_quarantine_alarm(client: "httpx.AsyncClient", text: str) -> bool:  # noqa: F821
     """Best-effort page for a REFUSED payment callback. NEVER raises.
+
+    RETURNS whether the page actually reached Telegram, and the caller MUST
+    gate `confirm_sent` on it. Returning `None` unconditionally — which this
+    did until a cross-family council seat caught it — hands the suppression
+    hour to a page that was never delivered: exactly the failure
+    `QuarantineAlarm.confirm_sent` exists to prevent, reintroduced one layer
+    up in the wiring where the class's own tests cannot see it.
 
     DESTINATION, and why it needs no SYMBIOSIS Law 2 derogation. Both env var
     NAMES are read here and never their values from anywhere else — no token
@@ -232,10 +239,12 @@ async def _send_quarantine_alarm(client: "httpx.AsyncClient", text: str) -> None
             "TO SEND IT: TELEGRAM_BOT_TOKEN/TELEGRAM_OWNER_CHAT_ID unset. The "
             "log line above is the only record."
         )
-        return
+        return False
     ok, err = await send_telegram_message(client, token, chat_id, text)
     if not ok:
         logger.error("GARUDA payment quarantine alarm could not be delivered: %s", err)
+        return False
+    return True
 
 
 async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
@@ -422,12 +431,15 @@ async def _run_garuda_outbox_scheduler(app: FastAPI) -> None:
                                 "GARUDA payment quarantine alarm: %s",
                                 page.replace(chr(10), " | "),
                             )
-                            await asyncio.wait_for(
+                            delivered = await asyncio.wait_for(
                                 _send_quarantine_alarm(client, page),
                                 timeout=_ALARM_SEND_TIMEOUT_SECONDS,
                             )
-                            # Only NOW does the suppression window start.
-                            quarantine_alarm.confirm_sent(time.monotonic())
+                            # Only a page that ACTUALLY WENT OUT starts the
+                            # suppression window. An undelivered one must page
+                            # again next tick, not buy an hour of silence.
+                            if delivered:
+                                quarantine_alarm.confirm_sent(time.monotonic())
                     except Exception:
                         logger.exception(
                             "GARUDA payment quarantine check failed; the DRAIN is unaffected"
