@@ -23,6 +23,7 @@ import pytest
 
 from backend.app import main_api
 from backend.services.garuda_orders.outbox_consumer import DrainStats
+from backend.services.garuda_orders.payment_inbox_watch import QuarantineSnapshot
 
 pytestmark = pytest.mark.asyncio
 
@@ -329,7 +330,7 @@ class _LockPool:
         return _Ctx()
 
 
-async def _drive_one_tick(monkeypatch, *, repository, conn, sweep):
+async def _drive_one_tick(monkeypatch, *, repository, conn, sweep, quarantine=None):
     """One drain pass with the periodic block armed, then CancelledError.
 
     `next_alarm_check` starts at 0.0, so the FIRST iteration always enters the
@@ -348,6 +349,14 @@ async def _drive_one_tick(monkeypatch, *, repository, conn, sweep):
         # sweep half cannot be mistaken for the alarm's.
         return {"exhausted": 0}
 
+    async def silent_quarantine(c, **kw):
+        # Third periodic job on this tick. Silent by default for the same
+        # reason as `fake_count_undrained`: a failure in one half must never be
+        # read as a failure of another. `_LockConn` answers only the advisory
+        # lock queries, so the REAL reader would raise here — swallowed by the
+        # block's own except, but noisily and for the wrong reason.
+        return QuarantineSnapshot(recent=0, lifetime=0, reasons=frozenset(), sample=())
+
     async def fake_sleep(seconds):
         return None
 
@@ -360,6 +369,10 @@ async def _drive_one_tick(monkeypatch, *, repository, conn, sweep):
     )
     monkeypatch.setattr(
         "backend.services.garuda_orders.reconciliation.reconcile_expired_checkouts", sweep
+    )
+    monkeypatch.setattr(
+        "backend.services.garuda_orders.payment_inbox_watch.count_quarantined",
+        quarantine or silent_quarantine,
     )
     monkeypatch.setattr(main_api.asyncio, "sleep", fake_sleep)
 
@@ -390,6 +403,459 @@ async def test_the_periodic_tick_calls_the_op04_sweep_once_the_order_lane_is_wir
     assert len(called) == 1, "the sweep must run exactly once per periodic tick"
     assert called[0][1] is repo
     assert conn.calls == ["lock", "unlock"]
+
+
+async def test_the_periodic_tick_reads_the_payment_quarantine(monkeypatch) -> None:
+    """THE arming assertion for the THIRD write-only state in this subsystem.
+
+    Measured 2026-08-29: `garuda_payment_inbox.outcome = 'quarantined'` was SET
+    at five sites in `repository.py` and read at NONE — the only non-test
+    mention of a read anywhere in the tree was a test. A quarantined row is an
+    authentic provider callback we refused to act on, and the router answers
+    204 so the provider never retries. RED if this call is ever removed: the
+    money goes back to being refused in silence.
+    """
+    seen: list[object] = []
+
+    async def reader(conn, **kw):
+        seen.append(conn)
+        return QuarantineSnapshot(recent=0, lifetime=0, reasons=frozenset(), sample=())
+
+    async def sweep(pool, repository, **kw):
+        return SimpleNamespace(candidates=0, expired=0, left_for_webhook=0)
+
+    await _drive_one_tick(
+        monkeypatch, repository=object(), conn=_LockConn(), sweep=sweep, quarantine=reader
+    )
+
+    assert len(seen) == 1, "the quarantine must be read exactly once per periodic tick"
+
+
+async def test_the_quarantine_is_read_even_when_the_order_lane_is_not_wired(
+    monkeypatch,
+) -> None:
+    """RED IF: the quarantine read is ever moved inside the `repository is not
+    None` guard the OP-04 sweep sits behind.
+
+    Those two have OPPOSITE preconditions. The sweep needs a live provider
+    adapter because it asks the provider a question. This one reads a table —
+    and rows already IN it were written by a webhook that arrived while the
+    lane WAS wired. A quarantined payment must still page after the adapter
+    goes away (a rotated key, a failed composition), which is exactly when
+    nobody is watching.
+    """
+    seen: list[object] = []
+
+    async def reader(conn, **kw):
+        seen.append(conn)
+        return QuarantineSnapshot(recent=0, lifetime=0, reasons=frozenset(), sample=())
+
+    async def sweep(pool, repository, **kw):  # pragma: no cover - must not run
+        raise AssertionError("the sweep must not run without a repository")
+
+    await _drive_one_tick(
+        monkeypatch, repository=None, conn=_LockConn(), sweep=sweep, quarantine=reader
+    )
+
+    assert len(seen) == 1
+
+
+async def test_a_failing_quarantine_read_kills_neither_the_drain_nor_the_sweep(
+    monkeypatch,
+) -> None:
+    """RED IF: the quarantine block stops having its own try/except.
+
+    This is observability; the drain is the product. An alarm that can kill the
+    queue it watches — or the sibling sweep on the same tick — is worse than no
+    alarm.
+    """
+    swept: list[object] = []
+
+    async def reader(conn, **kw):
+        raise RuntimeError("inbox unreadable")
+
+    async def sweep(pool, repository, **kw):
+        swept.append(repository)
+        return SimpleNamespace(candidates=0, expired=0, left_for_webhook=0)
+
+    conn = _LockConn()
+    await _drive_one_tick(
+        monkeypatch, repository=object(), conn=conn, sweep=sweep, quarantine=reader
+    )
+
+    assert len(swept) == 1, "a broken quarantine read took the OP-04 sweep down with it"
+    assert conn.calls == ["lock", "unlock"]
+
+
+async def test_an_undelivered_page_does_not_start_the_suppression_window(
+    monkeypatch,
+) -> None:
+    """THE WIRING TEST. RED IF `confirm_sent` is called without checking that
+    the page actually landed.
+
+    `QuarantineAlarm` splits `decide` from `confirm_sent` precisely so a page
+    the transport failed to deliver does not consume the hour. The class-level
+    test of that property passes whatever the scheduler does — it never sees
+    `_send_quarantine_alarm`. The first version of this wiring returned `None`
+    on every path, including "Telegram refused it" and "no credentials
+    configured", so `confirm_sent` ran unconditionally: the alarm went quiet
+    for an hour BECAUSE it had just failed to reach anyone. The unit was
+    right and the system was wrong, which is the only kind of bug this
+    repository keeps re-learning.
+
+    Two periodic ticks with a standing condition and a transport that always
+    fails. With the guarantee intact the page is attempted on BOTH ticks (the
+    condition was never marked reported). With it broken the second tick sees
+    an unchanged, already-"reported" condition and stays silent — one attempt.
+    """
+
+    sends: list[str] = []
+
+    async def failing_send(client, text):
+        sends.append(text)
+        return False  # Telegram refused it / no credentials
+
+    async def reader(conn, **kw):
+        return QuarantineSnapshot(
+            recent=1, lifetime=1, reasons=frozenset({"amount_mismatch"}), sample=()
+        )
+
+    async def sweep(pool, repository, **kw):
+        return SimpleNamespace(candidates=0, expired=0, left_for_webhook=0)
+
+    # Two drain passes, then stop. `_ALARM_PERIOD_SECONDS` is 300, so the fake
+    # clock steps 400s per read: far enough to enter the periodic block on both
+    # ticks, nowhere near `REALERT_SECONDS` (3600) — so a re-page on tick two
+    # can ONLY come from the condition never having been marked reported, never
+    # from staleness. That distinction is the whole point of the test.
+    clock = iter(400.0 * i for i in range(1, 500))
+    monkeypatch.setattr(main_api, "time", SimpleNamespace(monotonic=lambda: next(clock)))
+
+    script = [DrainStats(claimed=0), DrainStats(claimed=0)]
+
+    async def fake_drain(c, handlers, **kw):
+        if not script:
+            raise asyncio.CancelledError
+        return script.pop(0)
+
+    async def fake_count_undrained(c, **kw):
+        return {"exhausted": 0}
+
+    monkeypatch.setenv("GARUDA_OUTBOX_POLL_SECONDS", "5")
+    monkeypatch.setattr("backend.services.garuda_orders.outbox_consumer.drain_once", fake_drain)
+    monkeypatch.setattr(
+        "backend.services.garuda_orders.outbox_consumer.count_undrained", fake_count_undrained
+    )
+    monkeypatch.setattr(
+        "backend.services.garuda_orders.payment_inbox_watch.count_quarantined", reader
+    )
+    monkeypatch.setattr(
+        "backend.services.garuda_orders.reconciliation.reconcile_expired_checkouts", sweep
+    )
+    monkeypatch.setattr(main_api, "_send_quarantine_alarm", failing_send)
+
+    async def fake_sleep(seconds):
+        return None
+
+    monkeypatch.setattr(main_api.asyncio, "sleep", fake_sleep)
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(db_pool=_LockPool(_LockConn()), garuda_order_repository=object())
+    )
+    with pytest.raises(asyncio.CancelledError):
+        await main_api._run_garuda_outbox_scheduler(app)
+
+    assert len(sends) == 2, (
+        "an undelivered page consumed the suppression window — the alarm went "
+        "quiet precisely because it had just failed to reach anyone"
+    )
+
+
+async def test_a_delivered_page_DOES_start_the_suppression_window(monkeypatch) -> None:
+    """The innocence half of the test above. RED IF the wiring stops committing
+    a page that DID land.
+
+    Without this, `_send_quarantine_alarm` could simply return False forever —
+    every page delivered, none ever committed — and the guilt test above would
+    still pass while the alarm re-paged the same standing condition every five
+    minutes for as long as it lasted. A cure that turns a mute alarm into a
+    spamming one is not a cure; an operator mutes a spamming alarm, and the
+    money state goes dark again by a different road.
+
+    Identical to its twin except the transport succeeds. Same two ticks, same
+    unchanged condition, same sub-`REALERT_SECONDS` clock — so tick two may
+    page ONLY if the delivered page failed to mark the condition reported.
+    """
+
+    sends: list[str] = []
+
+    async def succeeding_send(client, text):
+        sends.append(text)
+        return True
+
+    async def reader(conn, **kw):
+        return QuarantineSnapshot(
+            recent=1, lifetime=1, reasons=frozenset({"amount_mismatch"}), sample=()
+        )
+
+    async def sweep(pool, repository, **kw):
+        return SimpleNamespace(candidates=0, expired=0, left_for_webhook=0)
+
+    clock = iter(400.0 * i for i in range(1, 500))
+    monkeypatch.setattr(main_api, "time", SimpleNamespace(monotonic=lambda: next(clock)))
+
+    script = [DrainStats(claimed=0), DrainStats(claimed=0)]
+
+    async def fake_drain(c, handlers, **kw):
+        if not script:
+            raise asyncio.CancelledError
+        return script.pop(0)
+
+    async def fake_count_undrained(c, **kw):
+        return {"exhausted": 0}
+
+    monkeypatch.setenv("GARUDA_OUTBOX_POLL_SECONDS", "5")
+    monkeypatch.setattr("backend.services.garuda_orders.outbox_consumer.drain_once", fake_drain)
+    monkeypatch.setattr(
+        "backend.services.garuda_orders.outbox_consumer.count_undrained", fake_count_undrained
+    )
+    monkeypatch.setattr(
+        "backend.services.garuda_orders.payment_inbox_watch.count_quarantined", reader
+    )
+    monkeypatch.setattr(
+        "backend.services.garuda_orders.reconciliation.reconcile_expired_checkouts", sweep
+    )
+    monkeypatch.setattr(main_api, "_send_quarantine_alarm", succeeding_send)
+
+    async def fake_sleep(seconds):
+        return None
+
+    monkeypatch.setattr(main_api.asyncio, "sleep", fake_sleep)
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(db_pool=_LockPool(_LockConn()), garuda_order_repository=object())
+    )
+    with pytest.raises(asyncio.CancelledError):
+        await main_api._run_garuda_outbox_scheduler(app)
+
+    assert len(sends) == 1, (
+        "a page that WAS delivered did not start the suppression window — the "
+        "same standing condition re-pages every tick, which is how an alarm "
+        "gets muted by the human it was written for"
+    )
+
+
+@pytest.mark.parametrize(
+    ("token", "chat_id", "notifier_result", "expected"),
+    [
+        ("tok", "chat", (True, None), True),
+        ("tok", "chat", (False, "HTTP 400 non-retryable: can't parse entities"), False),
+        ("tok", "chat", (False, "connection reset"), False),
+        ("", "chat", None, False),
+        ("tok", "", None, False),
+    ],
+)
+async def test_the_real_sender_reports_delivery_truthfully(
+    monkeypatch, token, chat_id, notifier_result, expected
+) -> None:
+    """RED IF `_send_quarantine_alarm` ever reports success it did not have.
+
+    The two wiring tests above monkeypatch this function OUT, so they prove the
+    scheduler HONOURS its answer but prove nothing about the answer itself — a
+    regression returning True on a Telegram refusal would leave both of them
+    green while an undelivered page silently consumed the suppression hour
+    again (raised by codex-gpt-5.6-sol on the cross-family council). This test
+    is the other half: the real helper, with only the notifier replaced.
+
+    The 400 case is not hypothetical. `send_telegram_message` treats 4xx as
+    NON-retryable, so a page whose text the parser rejects is dropped for good
+    — which is exactly what an unescaped `quarantine_reason` used to cause.
+    """
+
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", token)
+    monkeypatch.setenv("TELEGRAM_OWNER_CHAT_ID", chat_id)
+
+    called: list[str] = []
+
+    async def fake_notifier(client, bot_token, target, text):
+        called.append(text)
+        return notifier_result
+
+    monkeypatch.setattr(
+        "backend.services.wa_copilot.telegram_notifier.send_telegram_message",
+        fake_notifier,
+    )
+
+    delivered = await main_api._send_quarantine_alarm(object(), "GARUDA page body")
+
+    assert delivered is expected
+    if not token or not chat_id:
+        assert called == [], (
+            "the sender tried to transmit with no destination configured — the "
+            "log line is the only record in that state, and it must say so "
+            "rather than pretend a send happened"
+        )
+
+
+async def _drive_two_outbox_ticks(monkeypatch, *, sender) -> list[str]:
+    """Two periodic ticks with a STANDING outbox backlog and a scripted sender.
+
+    Shares the quarantine pair's fake clock: 400s per read steps into the
+    periodic block on both ticks while staying far below `REALERT_SECONDS`, so
+    a second page can only come from the condition never being marked reported.
+    """
+
+    sends: list[str] = []
+
+    async def recording_send(client, text):
+        sends.append(text)
+        return sender
+
+    async def sweep(pool, repository, **kw):
+        return SimpleNamespace(candidates=0, expired=0, left_for_webhook=0)
+
+    async def silent_quarantine(c, **kw):
+        return QuarantineSnapshot(recent=0, lifetime=0, reasons=frozenset(), sample=())
+
+    clock = iter(400.0 * i for i in range(1, 500))
+    monkeypatch.setattr(main_api, "time", SimpleNamespace(monotonic=lambda: next(clock)))
+
+    script = [DrainStats(claimed=0), DrainStats(claimed=0)]
+
+    async def fake_drain(c, handlers, **kw):
+        if not script:
+            raise asyncio.CancelledError
+        return script.pop(0)
+
+    async def fake_count_undrained(c, **kw):
+        return {"exhausted": 3}  # a standing, unchanging backlog
+
+    monkeypatch.setenv("GARUDA_OUTBOX_POLL_SECONDS", "5")
+    monkeypatch.setattr("backend.services.garuda_orders.outbox_consumer.drain_once", fake_drain)
+    monkeypatch.setattr(
+        "backend.services.garuda_orders.outbox_consumer.count_undrained", fake_count_undrained
+    )
+    monkeypatch.setattr(
+        "backend.services.garuda_orders.payment_inbox_watch.count_quarantined",
+        silent_quarantine,
+    )
+    monkeypatch.setattr(
+        "backend.services.garuda_orders.reconciliation.reconcile_expired_checkouts", sweep
+    )
+    monkeypatch.setattr(main_api, "_send_outbox_alarm", recording_send)
+
+    async def fake_sleep(seconds):
+        return None
+
+    monkeypatch.setattr(main_api.asyncio, "sleep", fake_sleep)
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(db_pool=_LockPool(_LockConn()), garuda_order_repository=object())
+    )
+    with pytest.raises(asyncio.CancelledError):
+        await main_api._run_garuda_outbox_scheduler(app)
+    return sends
+
+
+async def test_an_undelivered_OUTBOX_page_does_not_start_the_suppression_window(
+    monkeypatch,
+) -> None:
+    """RED IF the outbox alarm's `confirm_sent` stops being gated on delivery.
+
+    The identical defect the council found on the payment-inbox alarm, on the
+    older sibling twelve lines away — and the sharper instance of the two,
+    because its call site carried the comment "A page that never landed must
+    not silence the next hour" directly above the line that let exactly that
+    happen. The comment stated the invariant; the code broke it.
+    """
+
+    sends = await _drive_two_outbox_ticks(monkeypatch, sender=False)
+    assert len(sends) == 2, (
+        "an undelivered outbox page consumed the suppression window — the "
+        "money queue's alarm went quiet because it had just failed to reach "
+        "anyone"
+    )
+
+
+async def test_a_delivered_OUTBOX_page_DOES_start_the_suppression_window(
+    monkeypatch,
+) -> None:
+    """The innocence half: a page that DID land must not re-page next tick.
+
+    Without this, gating on a sender hardwired to False would satisfy the
+    guilt test while re-paging the same standing backlog every five minutes —
+    a spamming alarm, which an operator mutes, which is the same disease by a
+    different road.
+    """
+
+    sends = await _drive_two_outbox_ticks(monkeypatch, sender=True)
+    assert len(sends) == 1, (
+        "a delivered outbox page did not mark the condition reported — the "
+        "same standing backlog re-pages on every tick"
+    )
+
+
+@pytest.mark.parametrize(
+    ("token", "chat_id", "notifier_result", "expected"),
+    [
+        ("tok", "chat", (True, None), True),
+        ("tok", "chat", (False, "HTTP 400 non-retryable: can't parse entities"), False),
+        ("tok", "chat", (False, "connection reset"), False),
+        ("", "chat", None, False),
+        ("tok", "", None, False),
+    ],
+)
+async def test_the_real_OUTBOX_sender_reports_delivery_truthfully(
+    monkeypatch, token, chat_id, notifier_result, expected
+) -> None:
+    """RED IF `_send_outbox_alarm` ever reports success it did not have.
+
+    The other half of the outbox pair, and NOT an inherited gap. Before this
+    PR the function was `-> None` and its return value was load-bearing for
+    nothing, so having no test cost nothing. This diff made an HOUR of alarm
+    suppression on a live money-page depend on its answer — the contract is
+    new, so the coverage is this diff's to carry.
+
+    The two wiring tests above monkeypatch this function OUT, so they prove
+    the scheduler HONOURS the answer and prove nothing about the answer: a
+    regression returning True on a Telegram refusal leaves both of them green
+    while an undelivered page silently consumes the suppression hour again.
+    That is the same gap codex-gpt-5.6-sol raised for the quarantine twin and
+    this lane closed there — the fix did not travel with the cure, which is
+    the whole shape of this PR repeating itself one function over.
+
+    The 400 case is not hypothetical HERE either, and is the sharper of the
+    two instances: `send_telegram_message` treats 4xx as NON-retryable, and
+    `outbox_alarm._compose` still interpolates job-type names with no
+    Markdown escaping — so a page naming an ODD number of underscore-bearing
+    types (`practice_release` alone) is rejected by the parser and dropped
+    for good, while two of them parse and deliver. That defect is ledgered,
+    not fixed here; this test pins the SENDER's honesty about it.
+    """
+
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", token)
+    monkeypatch.setenv("TELEGRAM_OWNER_CHAT_ID", chat_id)
+
+    called: list[str] = []
+
+    async def fake_notifier(client, bot_token, target, text):
+        called.append(text)
+        return notifier_result
+
+    monkeypatch.setattr(
+        "backend.services.wa_copilot.telegram_notifier.send_telegram_message",
+        fake_notifier,
+    )
+
+    delivered = await main_api._send_outbox_alarm(object(), "GARUDA outbox page body")
+
+    assert delivered is expected
+    if not token or not chat_id:
+        assert called == [], (
+            "the outbox sender tried to transmit with no destination "
+            "configured — in that state the log line is the only record, and "
+            "it must say so rather than pretend a send happened"
+        )
 
 
 async def test_the_sweep_is_skipped_while_the_order_lane_answers_503(monkeypatch) -> None:

@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: b413834f34502ded269dd3b6bdbd038c62a1e3610dad0f15159f2bc2e2579b0a
+checksum: 826adb6d5f403d01d57e95d852bfb7705ca36f5c94917507a0eee27930f3962b
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -144,6 +144,23 @@ organs:
     path: ~/.agent/decisions/state/login_healthcheck.last.json
     timestamp_field: ts
     status_field: status
+- id: pro.wal_continuity_probe
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 108000
+  owner_module: infra/launchagents/wrappers/wal-continuity-probe.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.wal-continuity-probe.daily
+  severity_on_silence: warning
+  cicatrix_refs:
+  - 2026-07-27-W101-recidiva-fly-backup
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/wal-continuity-probe.json
+    timestamp_field: ts
+    status_field: exit
 - id: m5.auth_sentinel
   runtime: air_launchd
   type: cron
@@ -2594,16 +2611,15 @@ organs:
     host: mini
     label: com.nuzantara.voa-probe
   severity_on_silence: warning
-  notes: 'Anonymous end-to-end probe of the GARUDA VOA public funnel (page load
-    plus the create-read-delete-verify eligibility-check API journey) every 900s.
-    Reports a four-state verdict (pass/dark/fail/unknown, see
-    scripts/probes/voa_journey_probe.mjs header) to its OWN heartbeat file
-    (VOA_PROBE_HEARTBEAT, L07-PR3 dead-man reads it) -- separate from this
-    organism heartbeat, which only says the cron itself ran. severity is
-    warning, not critical: the funnel is deliberately dark pre-launch today (the
-    public flag is off) and dark maps to organism status=ok (an intentionally-off
-    flag is healthy, not degraded -- see W104); this organ silence starts
-    mattering once the funnel goes live, not before.'
+  notes: 'Anonymous end-to-end probe of the GARUDA VOA public funnel (page load plus
+    the create-read-delete-verify eligibility-check API journey) every 900s. Reports
+    a four-state verdict (pass/dark/fail/unknown, see scripts/probes/voa_journey_probe.mjs
+    header) to its OWN heartbeat file (VOA_PROBE_HEARTBEAT, L07-PR3 dead-man reads
+    it) -- separate from this organism heartbeat, which only says the cron itself
+    ran. severity is warning, not critical: the funnel is deliberately dark pre-launch
+    today (the public flag is off) and dark maps to organism status=ok (an intentionally-off
+    flag is healthy, not degraded -- see W104); this organ silence starts mattering
+    once the funnel goes live, not before.'
   cicatrix_refs: []
   bridge_source:
     type: state_file

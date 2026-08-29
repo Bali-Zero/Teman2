@@ -71,6 +71,25 @@ Click **Save**. The policy compiles and pushes to every node within seconds. The
 again at save time and a failing test blocks the save — that is the gate, and it is why the file
 ships with deny-tests and not only accept-tests.
 
+> **If Save is REFUSED, look here first — one assertion is `(unverified)`.** The `tests` block
+> asserts reachability to `tag:team-device:22` and `tag:team-device:5900` from `m5` and `pro`. No
+> device currently carries that tag. Whether the console resolves an ACL test whose destination is
+> a tag with **no members** cannot be determined from this repo: the fleet holds no Tailscale API
+> token and there is no offline validator, so the repo-side guard cannot answer it and does not
+> claim to. It is asserted deliberately — a test destination may be a tag, which is what lets the
+> support direction be proven before any laptop enrols — but it is the one line in the file whose
+> acceptance is genuinely unknown until this Save, and the failure lands on you, here.
+>
+> If Save fails naming those tests: delete the two `tag:team-device` **accept**-test entries, save
+> again, and record the outcome in `infra/tailscale/enroll-team-device.md` step 5. **Expect the
+> repo guard to go red when you do — measured: four occurrences of `ACL_RULE_NOT_ACCEPT_TESTED`.**
+> Every ACL rule must be covered by an accept-test from its own source, so removing those two
+> entries leaves the `tag:team-device` grants untested. That red is the correct and temporary
+> consequence of this workaround, not a second fault to chase, and it clears when you reinstate
+> the accept form after enrolment using the concrete host (`team-laptop-01:22`), which is
+> unambiguous. Do NOT delete the `tag:team-device` **deny**-tests — those are the load-bearing
+> half, and they reference the tag as a SOURCE, which is a different question.
+
 ## 4. Verify the fleet still works (innocence)
 
 From M5:
@@ -93,6 +112,17 @@ nc -z -G 5 100.93.236.6 8990  && echo "pro->mini:8990 (KG api) OK"
 If one of these fails, the policy is missing a rule the fleet actually needs. **Add the rule with
 its evidence** (which script, which file:line) and re-apply. Do not widen a `dst` to `:*` to make a
 red go green — that is exactly the defect this policy replaced, and the CI guard will reject it.
+
+> **One red here is intended, and will look like a guard bug if you do not know it.** If the
+> missing flow needs a machine to be a **source** — a new node that must reach `mini:11434`, say,
+> rather than merely be reached — the CI guard fails that rule with `UNPINNED_ALIAS_AS_SOURCE`
+> until that machine's alias is added to `EXPECTED_HOSTS` in
+> `scripts/tests/test_tailnet_acl_deny_by_default.py`. Only the six pinned fleet aliases may
+> appear in a `src`; any other alias may be a destination only. **The fix is to add the constant,
+> never to relax the clause**, and adding it is the point: a new machine acquiring reach _into_
+> the fleet then shows up as a reviewed line in a diff instead of widening the tailnet silently.
+> Enrolling a team device does **not** hit this — that path only ever adds a destination, which
+> is why `test_enrolling_a_team_laptop_keeps_the_guard_green` still passes.
 
 Then let a full cron cycle pass and check `scripts/fleet_watch.py`'s output and the memory-sync
 logs. A deny-by-default policy fails loudly on first use of an ungranted flow, which may be hours
