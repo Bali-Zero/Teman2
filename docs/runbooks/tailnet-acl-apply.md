@@ -109,6 +109,17 @@ If one of these fails, the policy is missing a rule the fleet actually needs. **
 its evidence** (which script, which file:line) and re-apply. Do not widen a `dst` to `:*` to make a
 red go green — that is exactly the defect this policy replaced, and the CI guard will reject it.
 
+> **One red here is intended, and will look like a guard bug if you do not know it.** If the
+> missing flow needs a machine to be a **source** — a new node that must reach `mini:11434`, say,
+> rather than merely be reached — the CI guard fails that rule with `UNPINNED_ALIAS_AS_SOURCE`
+> until that machine's alias is added to `EXPECTED_HOSTS` in
+> `scripts/tests/test_tailnet_acl_deny_by_default.py`. Only the six pinned fleet aliases may
+> appear in a `src`; any other alias may be a destination only. **The fix is to add the constant,
+> never to relax the clause**, and adding it is the point: a new machine acquiring reach _into_
+> the fleet then shows up as a reviewed line in a diff instead of widening the tailnet silently.
+> Enrolling a team device does **not** hit this — that path only ever adds a destination, which
+> is why `test_enrolling_a_team_laptop_keeps_the_guard_green` still passes.
+
 Then let a full cron cycle pass and check `scripts/fleet_watch.py`'s output and the memory-sync
 logs. A deny-by-default policy fails loudly on first use of an ungranted flow, which may be hours
 after the save.

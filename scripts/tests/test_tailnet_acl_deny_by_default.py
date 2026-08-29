@@ -696,6 +696,48 @@ def test_enrolling_a_team_laptop_keeps_the_guard_green() -> None:
     assert audit_policy(enrolled) == []
 
 
+def _reformat_banner(kind: str) -> str:
+    """Reformat the SHELL-ROUTE banner without changing a word of what it says."""
+    lines = POLICY.read_text(encoding="utf-8").splitlines()
+    start = next(i for i, ln in enumerate(lines) if "SHELL-ROUTE:" in ln)
+    if kind == "shorter-fences":
+        return "\n".join(("// " + "=" * 12) if _is_fence(ln) else ln for ln in lines)
+    if kind == "blank-comment-line":
+        return "\n".join(lines[: start + 3] + ["//"] + lines[start + 3 :])
+    if kind == "trailing-whitespace-on-fences":
+        return "\n".join((ln + "   ") if _is_fence(ln) else ln for ln in lines)
+    if kind == "block-moved-down-the-file":
+        return "\n".join(["// shifted"] * 12 + lines)
+    raise AssertionError(f"unknown reformat {kind!r}")
+
+
+@pytest.mark.parametrize(
+    "kind",
+    [
+        "shorter-fences",
+        "blank-comment-line",
+        "trailing-whitespace-on-fences",
+        "block-moved-down-the-file",
+    ],
+)
+def test_reformatting_the_banner_does_not_make_the_guard_red(kind: str) -> None:
+    """Cosmetic reformatting of the SHELL-ROUTE banner must stay GREEN.
+
+    `_shell_route_block` was rewritten from a permissive span (which ran to EOF once its closing
+    fence was deleted — a false GREEN) to a strict one that terminates on a structural boundary.
+    Strictness buys a new failure mode: a false RED the first time somebody rewraps the banner,
+    and a guard that goes red on innocent edits gets deleted by whoever hits it. These four cases
+    are the ones a human editor plausibly produces. Each asserts the mutation actually applied,
+    so the test cannot pass by silently doing nothing.
+    """
+    policy = POLICY.read_text(encoding="utf-8")
+    mutated = _reformat_banner(kind)
+    assert mutated != policy, f"the {kind} reformat did not apply — this test would be vacuous"
+    _, terminated = _shell_route_block(mutated)
+    assert terminated, f"{kind} broke block termination — the span no longer closes"
+    assert audit_policy(mutated) == [], f"{kind} made the guard red: cosmetic edit, false positive"
+
+
 # ---------------------------------------------------------------------------------------------
 # Guilt: each fixture reintroduces a defect and must be caught by the finding it is named for.
 #
