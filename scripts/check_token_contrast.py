@@ -75,6 +75,59 @@ only "no floor was checked here BY DESIGN" (the NOTICE lines say exactly
 that) — it is not proof of SC 1.4.11 conformance by itself. That
 case-by-case judgment still has to be made by a human at claim-authoring
 time, every time.
+
+MEASURED ESCAPES - what a GREEN from this script does NOT prove
+---------------------------------------------------------------
+A second blind cross-family round (Codex GPT-5.6 sol, xhigh, 2026-08-29) found
+SEVEN ways to make this script print OK while the identity it guards is broken.
+Every one was reproduced by the gating session against this exact file before
+being written down; none is speculative. They are recorded here rather than
+patched because they share ONE root cause and therefore need a design change,
+not a seventh patch - see the craft-wave rule "fix-of-a-fix stops at depth 1:
+the second correction means the surface is under-specified".
+
+THE ROOT CAUSE, stated once: this script validates the claims the file
+VOLUNTEERS. It never derives, from the token tree itself, which claims MUST
+exist and what each one must be measured against. Everything below is that one
+sentence wearing a different hat.
+
+  1. An ancestor `$value` silences the whole file. Adding `"$value"` to the
+     `color` GROUP makes the walk return at the group, so zero claims are
+     collected - and the run prints `OK - 0 claim(s) ... all 16
+     required-claims-floor path(s) carry >=1 claim`, which is false in that
+     state. Measured: `color.$value="#000000"` + `color.text.ink` recoloured to
+     the page ground -> exit 0.
+  2. `duty` is an unrestricted off-switch. `decorative` and `icon-only` map to
+     no floor for ANY token, including `color.text.*`. Measured: ink set to
+     carta's own hex with one `{"ratio": 1.0, "duty": "decorative"}` claim ->
+     exit 0.
+  3. The floor comparison rounds first. A true 4.4951:1 published as `4.50`
+     clears a 4.5 floor. WCAG says computed ratios are not to be rounded up to
+     the threshold. Measured: `contrast_ratio("#bb4f96", "#ffffff")` =
+     4.495100... -> passes.
+  4. Claim IDENTITY is not pinned, only the count. Deleting a real pairing and
+     duplicating another leaves the total at 28 and every check green.
+  5. `against` accepts a frozen hex literal. Replacing `{color.ground.carta}`
+     with `#f7f6f2` disconnects the claim from the token it purports to guard;
+     moving `color.ground.carta` to `#000000` afterwards is then invisible.
+     Measured: every carta pairing stale -> exit 0.
+  6. A non-finite ratio bypasses drift. `json.loads` accepts bare `NaN`, and
+     `nan > tolerance` is False. Measured: one claim's ratio set to `NaN` ->
+     exit 0.
+  7. REQUIRED_CLAIM_PATHS is a frozen list of today's names. A NEW
+     `color.text.*` token with no claim at all is invisible to it. Measured:
+     `color.text.new-broken` added with no `$extensions` -> exit 0.
+
+WHAT IT DOES STILL PROVE, and it is worth keeping: for a claim that is present
+and honestly shaped, the published ratio really is recomputed from the raw hex
+and really is compared to its duty's floor. Both directions were measured on
+this file the same day: drifting one token's hex fails naming every affected
+claim, and emptying a required token's claim list fails naming the token.
+
+CONSEQUENCE FOR WIRING THIS INTO CI: do NOT promote this script to a blocking
+or required check until the root cause above is cured. A gate that cannot fail
+is worse than no gate, because it is believed - which is the exact defect class
+(superscar #2, "esiste != armato") this script was written to defend against.
 """
 
 from __future__ import annotations
