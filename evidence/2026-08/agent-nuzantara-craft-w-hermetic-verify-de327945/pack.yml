@@ -1,4 +1,4 @@
-brief_ref: evidence/2026-08/agent-nuzantara-craft-w-hermetic-verify-de327945/brief.yml
+brief_ref: evidence/brief.yml
 council_run: council-journal.jsonl
 plan_ref: |
   docs/plans/2026-08-29-beyond-sota-craft-wave/L05-verification-adversarial-gate.md, PR-1
