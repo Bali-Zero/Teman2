@@ -795,6 +795,69 @@ async def test_a_delivered_OUTBOX_page_DOES_start_the_suppression_window(
     )
 
 
+@pytest.mark.parametrize(
+    ("token", "chat_id", "notifier_result", "expected"),
+    [
+        ("tok", "chat", (True, None), True),
+        ("tok", "chat", (False, "HTTP 400 non-retryable: can't parse entities"), False),
+        ("tok", "chat", (False, "connection reset"), False),
+        ("", "chat", None, False),
+        ("tok", "", None, False),
+    ],
+)
+async def test_the_real_OUTBOX_sender_reports_delivery_truthfully(
+    monkeypatch, token, chat_id, notifier_result, expected
+) -> None:
+    """RED IF `_send_outbox_alarm` ever reports success it did not have.
+
+    The other half of the outbox pair, and NOT an inherited gap. Before this
+    PR the function was `-> None` and its return value was load-bearing for
+    nothing, so having no test cost nothing. This diff made an HOUR of alarm
+    suppression on a live money-page depend on its answer — the contract is
+    new, so the coverage is this diff's to carry.
+
+    The two wiring tests above monkeypatch this function OUT, so they prove
+    the scheduler HONOURS the answer and prove nothing about the answer: a
+    regression returning True on a Telegram refusal leaves both of them green
+    while an undelivered page silently consumes the suppression hour again.
+    That is the same gap codex-gpt-5.6-sol raised for the quarantine twin and
+    this lane closed there — the fix did not travel with the cure, which is
+    the whole shape of this PR repeating itself one function over.
+
+    The 400 case is not hypothetical HERE either, and is the sharper of the
+    two instances: `send_telegram_message` treats 4xx as NON-retryable, and
+    `outbox_alarm._compose` still interpolates job-type names with no
+    Markdown escaping — so a page naming an ODD number of underscore-bearing
+    types (`practice_release` alone) is rejected by the parser and dropped
+    for good, while two of them parse and deliver. That defect is ledgered,
+    not fixed here; this test pins the SENDER's honesty about it.
+    """
+
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", token)
+    monkeypatch.setenv("TELEGRAM_OWNER_CHAT_ID", chat_id)
+
+    called: list[str] = []
+
+    async def fake_notifier(client, bot_token, target, text):
+        called.append(text)
+        return notifier_result
+
+    monkeypatch.setattr(
+        "backend.services.wa_copilot.telegram_notifier.send_telegram_message",
+        fake_notifier,
+    )
+
+    delivered = await main_api._send_outbox_alarm(object(), "GARUDA outbox page body")
+
+    assert delivered is expected
+    if not token or not chat_id:
+        assert called == [], (
+            "the outbox sender tried to transmit with no destination "
+            "configured — in that state the log line is the only record, and "
+            "it must say so rather than pretend a send happened"
+        )
+
+
 async def test_the_sweep_is_skipped_while_the_order_lane_answers_503(monkeypatch) -> None:
     """No `garuda_order_repository` means Xendit is unarmed and no order can
     exist. Sweeping then would be a query per 300s forever for nothing — and,

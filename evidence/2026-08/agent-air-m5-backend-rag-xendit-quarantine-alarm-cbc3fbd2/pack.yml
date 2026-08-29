@@ -183,6 +183,30 @@ receipts:
     exit: 1
     ts: "2026-08-29T09:55:00Z"
     seat: "session (this task, Air-M5 worktree)"
+  - claim: "The gate's control probe for item 1 is imprecise in a way worth recording, though its FINDING is correct: `grep -rn _send_outbox_alarm backend/tests/` does NOT return nothing — it returns two hits. Neither is a test OF the real helper (one is this lane's own `monkeypatch.setattr` replacing the organ, one a docstring mention), so the substance holds: no test exercised the real sender."
+    cmd: "grep -rn '_send_outbox_alarm' backend/tests/ ; grep -rn '_send_quarantine_alarm' backend/tests/"
+    result: "2 hits for the outbox name (test_garuda_outbox_scheduler.py:745 monkeypatch, test_outbox_alarm.py:106 docstring); the quarantine twin returns its real-helper test. A probe reported as ABSENT that actually returns rows is the shape that hides a real hit next time — the finding stood on re-reading, not on the probe."
+    exit: 0
+    ts: "2026-08-29T10:30:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: "`_send_outbox_alarm`'s NEW `-> bool` contract is now covered by a real-helper test — the other half of the pair, mirroring the quarantine twin, parametrized over missing credentials / (False, 400) / (False, transport) / (True, None)"
+    cmd: "PYTHONPATH=. pytest backend/tests/unit/services/test_garuda_outbox_scheduler.py --color=no"
+    result: "32 passed (was 27; +5 parametrized cases)"
+    exit: 0
+    ts: "2026-08-29T10:40:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+    note: >-
+      NOT an inherited gap, which is why it lands here rather than in a row:
+      before this PR the function was `-> None` and its return value was
+      load-bearing for nothing. This diff made an hour of alarm suppression on
+      a live money-page depend on its answer, so the contract is new and the
+      coverage is this diff's to carry.
+  - claim: "The two mutations the gate found SURVIVING on the real outbox sender are each RED to a NAMED test now"
+    cmd: "a.1: make the notifier-failure branch `return True`; a.2: neuter the credentials guard to `if False:` — each applied, suite run, then restored from a file backup (never `git checkout`, which destroyed an uncommitted fix earlier in this lane)"
+    result: "a.1 -> 2 failed: test_the_real_OUTBOX_sender_reports_delivery_truthfully[tok-chat-notifier_result1-False] and [tok-chat-notifier_result2-False]. a.2 -> 2 failed: [-chat-None-False] and [tok--None-False]. After restore: 32 passed, and `git diff --stat main_api.py` prints nothing — the tree is verified clean, not assumed."
+    exit: 1
+    ts: "2026-08-29T10:45:00Z"
+    seat: "session (this task, Air-M5 worktree)"
 pii_scan: clean
 dissent:
   - seat: "Harness floor recompute (CI, deterministic)"
