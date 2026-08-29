@@ -144,6 +144,23 @@ receipts:
     exit: 0
     ts: "2026-08-30T04:25:00Z"
     seat: claude-opus-5 (gate)
+  - claim: |
+      THE CURE'S FIRST LIVE RUN PROVED THE TOOL HAD NEVER RUN. With `|| true` removed, the collision
+      check failed CI on this very PR with exit 2 — and the reason was that the step calls
+      `gh pr list` with no `GH_TOKEN` in its env (only the comment-POSTING step had one), so `gh`
+      exits 4 with "set the GH_TOKEN environment variable".
+    cmd: |
+      read the job's own posted report rather than rerunning; then parse the workflow's step envs
+    result: |
+      report: "CANNOT VERIFY — collision scan could not be assembled: command failed (rc=4):
+               gh pr list ... gh: To use GitHub CLI in a GitHub Actions workflow, set GH_TOKEN"
+      step envs before: self-test [], collision-check [], post [GH_TOKEN, REPO, PR_NUMBER]
+      Under the OLD `|| true` this exact condition produced a GREEN job with no report at all: the
+      tool returned 2, the swallow made it 0, and it had never once completed a scan. Fixed by adding
+      GH_TOKEN to the step; actionlint rc=0.
+    exit: 0
+    ts: "2026-08-30T04:50:00Z"
+    seat: claude-opus-5 (gate)
 pii_scan: clean
 pii_note: |
   A CI reporting tool. Reads PR numbers and file paths from `gh` and git; writes an advisory PR

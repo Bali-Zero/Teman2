@@ -89,6 +89,15 @@ jobs:
       # non-zero path, and rc=1 (a documented step SUCCESS) would instead
       # FAIL the job, breaking the tool's central promise (scar W101).
       - name: Run collision check (advisory verdict; fails ONLY on an operational error)
+        # GH_TOKEN is REQUIRED here, not optional: the script's first act is
+        # `gh pr list`, and gh in Actions exits 4 with "set the GH_TOKEN
+        # environment variable" without it. Its absence was invisible for as
+        # long as this step ended in `|| true` — the tool returned 2
+        # (CANNOT VERIFY), the swallow turned that into 0, and the job was
+        # green having never once completed a scan. The very first run after
+        # the swallow was removed surfaced it.
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -uo pipefail
           set +e
