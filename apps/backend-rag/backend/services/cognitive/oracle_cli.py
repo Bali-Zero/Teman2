@@ -6,7 +6,8 @@ Two modes:
 
 Context is assembled by re-using :class:`StrategosContextBuilder`.
 
-DeepSeek voice requires ``DEEPSEEK_API_KEY`` env. If missing we fall back
+Kimi voice (K3, replaces the retired DeepSeek HTTP voice — Zero
+2026-07-19) requires the ``kimi`` CLI binary. If missing we fall back
 to a 3-voice council (claude+gemini+ollama) — ``degraded=True`` in result.
 Ollama voice requires a running local Ollama with ``gemma4:26b`` pulled.
 """
@@ -32,8 +33,8 @@ from backend.services.cognitive.repository import CognitiveRepository
 from backend.services.cognitive.strategos import StrategosContextBuilder
 from backend.services.council.cli_runners import (
     ClaudeCLIRunner,
-    DeepSeekHTTPRunner,
     GeminiCLIRunner,
+    KimiCLIRunner,
 )
 from backend.services.intel.dossier_repository import IntelRepository
 from backend.services.review.telegram_adapter import TelegramReviewAdapter
@@ -83,15 +84,10 @@ def _build_proponents() -> dict:
         proponents["gemini"] = GeminiCLIRunner()
     except Exception as exc:
         logger.warning("gemini voice unavailable: %s", exc)
-
-    dk = os.environ.get("DEEPSEEK_API_KEY")
-    if dk:
-        try:
-            proponents["deepseek"] = DeepSeekHTTPRunner(api_key=dk)
-        except Exception as exc:
-            logger.warning("deepseek voice unavailable: %s", exc)
-    else:
-        logger.info("deepseek voice skipped (no DEEPSEEK_API_KEY)")
+    try:
+        proponents["kimi"] = KimiCLIRunner()
+    except Exception as exc:
+        logger.warning("kimi voice unavailable: %s", exc)
 
     # Ollama as gemma4:26b devil's advocate — reuse GeminiCLIRunner-like pattern?
     # For now we drop the Ollama proponent if we don't have a CLI runner for it;
