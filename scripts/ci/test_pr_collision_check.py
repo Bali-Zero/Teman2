@@ -291,7 +291,11 @@ def test_merge_base_anchoring_defuses_being_behind_and_catches_real_overlap(tmp_
 
     # CORRECT (merge-base-anchored): feature-a vs main shows ONLY its own
     # append -- no phantom hunk near the L10 line it never touched.
-    windows_a = pcc.pr_windows_from_git(repo, shas["main"], shas["feature_a"])
+    merge_base_a, windows_a = pcc.pr_windows_from_git(repo, shas["main"], shas["feature_a"])
+    # merge-base(main, feature-a) is ancestor A, NOT main's tip B -- feature_a
+    # branched off A before B (main-only, unrelated PR) landed.
+    assert merge_base_a != shas["main"]
+    assert len(merge_base_a) == 40
     assert windows_a.keys() == {"f.txt"}
     assert len(windows_a["f.txt"]) == 1
     # 20-line file, default 3-line context around a pure trailing append:
@@ -300,7 +304,8 @@ def test_merge_base_anchoring_defuses_being_behind_and_catches_real_overlap(tmp_
 
     # Sibling feature-b's real overlap with feature-a IS caught (both anchor
     # to the same merge-base A, both append at the identical position).
-    windows_b = pcc.pr_windows_from_git(repo, shas["main"], shas["feature_b"])
+    merge_base_b, windows_b = pcc.pr_windows_from_git(repo, shas["main"], shas["feature_b"])
+    assert merge_base_b == merge_base_a  # both branched off the SAME ancestor A
     found = pcc.find_collisions({"PR feature-a": windows_a, "PR feature-b": windows_b})
     assert len(found) == 1
     assert found[0].path == "f.txt"
@@ -318,3 +323,277 @@ def test_merge_base_anchoring_defuses_being_behind_and_catches_real_overlap(tmp_
         "real append -- if this drops to 1, git's diff algorithm merged the "
         "hunks and the test needs a wider gap, not that the trap disappeared"
     )
+
+
+# ── FIX 2: a malformed --fixture must be CANNOT VERIFY, never "collision
+# found" ─────────────────────────────────────────────────────────────────
+
+
+def test_malformed_fixture_json_yields_cannot_verify_not_collision_found(
+    tmp_path: Path, capsys
+) -> None:
+    """A truncated/malformed --fixture must raise json.JSONDecodeError
+    inside gather_fixture_pr_windows and land as exit 2 (CANNOT VERIFY) --
+    never exit 1, which is documented to mean 'collisions found'. Before
+    the FIX-2 patch, this escaped main()'s bare `except CollisionCheckError`
+    as a raw traceback that happened to exit 1 -- the same code as a real
+    finding."""
+    fixture = tmp_path / "broken.json"
+    fixture.write_text('{"prs": {"PR #1": {"f.txt": "@@ -1,1 +1,2')  # truncated JSON
+    rc = pcc.main(["--fixture", str(fixture)])
+    captured = capsys.readouterr()
+    assert rc == 2
+    assert "CANNOT VERIFY" in captured.err
+    assert captured.out == ""
+
+
+def test_valid_fixture_with_real_collision_still_returns_one(tmp_path: Path) -> None:
+    """Innocence guard on the FIX-2 patch: a well-formed fixture that DOES
+    collide must still exit 1 -- the json.JSONDecodeError catch must not
+    swallow a real finding into a false CANNOT VERIFY."""
+    fixture = tmp_path / "valid_collision.json"
+    fixture.write_text(json.dumps({
+        "prs": {
+            "PR #100": {PENDING_ARMS: "@@ -1271,6 +1271,7 @@\n" + " l\n" * 6 + "+x\n"},
+            "PR #200": {PENDING_ARMS: "@@ -1272,6 +1272,7 @@\n" + " l\n" * 6 + "+y\n"},
+        }
+    }))
+    assert pcc.main(["--fixture", str(fixture)]) == 1
+
+
+# ── K7: "shared by 2+ PRs" must count genuinely-shared files, not every
+# file touched by anyone. Measured pre-fix: 2 PRs on 2 DISJOINT files
+# reported "2 file(s) shared" (the union), true value is 0 -- every clean
+# run overstated its own scan coverage ──────────────────────────────────
+
+
+def test_clean_run_shared_files_count_excludes_files_touched_by_only_one_pr(
+    tmp_path: Path, capsys
+) -> None:
+    fixture = tmp_path / "k7.json"
+    fixture.write_text(json.dumps({
+        "prs": {
+            "PR #1": {"a.txt": "@@ -1,1 +1,2 @@\n l1\n+x\n"},
+            "PR #2": {"b.txt": "@@ -1,1 +1,2 @@\n l1\n+y\n"},
+        }
+    }))
+    rc = pcc.main(["--fixture", str(fixture)])
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "0 file(s) genuinely shared" in captured.out
+
+
+def test_report_shared_files_count_matches_files_touched_by_2plus_prs_end_to_end(
+    tmp_path: Path, capsys
+) -> None:
+    """Sibling of the above with a nonzero, non-trivial count: 4 files
+    total, only ONE ('shared.txt') touched by both PRs -- the reported
+    count must be 1, not 4 (old union bug) and not 0 (undercounting a
+    genuinely-shared-but-disjoint file)."""
+    fixture = tmp_path / "k7b.json"
+    fixture.write_text(json.dumps({
+        "prs": {
+            "PR #1": {
+                "shared.txt": "@@ -1,1 +1,2 @@\n l1\n+x\n",
+                "only-pr1.txt": "@@ -1,1 +1,2 @@\n l1\n+x\n",
+            },
+            "PR #2": {
+                "shared.txt": "@@ -50,1 +50,2 @@\n l50\n+y\n",  # disjoint window, same file
+                "only-pr2.txt": "@@ -1,1 +1,2 @@\n l1\n+y\n",
+            },
+        }
+    }))
+    rc = pcc.main(["--fixture", str(fixture)])
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "1 file(s) genuinely shared" in captured.out
+
+
+# ── FIX 3: PRs with DIFFERENT merge-bases are NOT COMPARED, never folded
+# into a silent "no collision" -- the tool must not claim a negative it
+# has not earned (module docstring, COMPARABILITY) ─────────────────────
+
+
+def test_different_merge_base_pair_is_not_compared_not_silently_clean(
+    tmp_path: Path, capsys
+) -> None:
+    """Two PRs share PENDING_ARMS with windows that WOULD overlap if their
+    merge-bases agreed -- but they declare DIFFERENT merge-bases, so this
+    tool must record the pair as NOT COMPARED: not flagged (their windows
+    are not in the same coordinate space, so "overlap" is not even a
+    meaningful question), but also not silently folded into a confident
+    '0 collisions'."""
+    fixture = tmp_path / "diff_mb.json"
+    fixture.write_text(json.dumps({
+        "prs": {
+            "PR #100": {
+                "merge_base": "aaaaaaa",
+                PENDING_ARMS: "@@ -10,4 +10,5 @@\n l\n l\n l\n l\n+x\n",
+            },
+            "PR #200": {
+                "merge_base": "bbbbbbb",
+                PENDING_ARMS: "@@ -11,4 +11,5 @@\n l\n l\n l\n l\n+y\n",
+            },
+        }
+    }))
+    rc = pcc.main(["--fixture", str(fixture)])
+    captured = capsys.readouterr()
+    assert rc == 0  # NOT flagged -- incomparable is not a finding
+    assert "NOT COMPARED — 1 pair(s)" in captured.out
+    assert "PR #100" in captured.out and "PR #200" in captured.out
+
+
+def test_same_merge_base_overlapping_windows_still_flags_as_collision(
+    tmp_path: Path,
+) -> None:
+    """Innocence guard on the FIX-3 patch: two PRs that DO share a
+    merge-base and genuinely overlap must still be FLAGGED (exit 1) -- the
+    comparability partition must not turn a real finding into a
+    not-compared entry, and must not swallow it."""
+    fixture = tmp_path / "same_mb_overlap.json"
+    fixture.write_text(json.dumps({
+        "prs": {
+            "PR #100": {
+                "merge_base": "shared-sha",
+                PENDING_ARMS: "@@ -1271,6 +1271,7 @@\n" + " l\n" * 6 + "+x\n",
+            },
+            "PR #200": {
+                "merge_base": "shared-sha",
+                PENDING_ARMS: "@@ -1272,6 +1272,7 @@\n" + " l\n" * 6 + "+y\n",
+            },
+        }
+    }))
+    assert pcc.main(["--fixture", str(fixture)]) == 1
+
+
+def test_same_merge_base_disjoint_windows_does_not_flag(tmp_path: Path, capsys) -> None:
+    """Innocence guard, other direction: two PRs sharing a merge-base with
+    genuinely disjoint windows must NOT flag, and must NOT be counted as
+    not-compared either -- they WERE compared (comparably) and found
+    disjoint, which is a different thing from never having been looked
+    at."""
+    fixture = tmp_path / "same_mb_disjoint.json"
+    fixture.write_text(json.dumps({
+        "prs": {
+            "PR #100": {"merge_base": "shared-sha", "f.txt": "@@ -5,3 +5,4 @@\n l\n l\n l\n+x\n"},
+            "PR #200": {"merge_base": "shared-sha", "f.txt": "@@ -55,3 +55,4 @@\n l\n l\n l\n+y\n"},
+        }
+    }))
+    rc = pcc.main(["--fixture", str(fixture)])
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "NOT COMPARED — 0 pair(s)" in captured.out
+
+
+def test_clean_report_wording_is_qualified_not_a_bare_guarantee(
+    tmp_path: Path, capsys
+) -> None:
+    """A fully-clean run (0 collisions, 0 not-compared) must not print the
+    OLD bare 'No add/add collisions found' sentence -- it must be
+    qualified so a skim-reader cannot mistake it for an unconditional
+    guarantee. Exact wording asserted here is the wording this PR ships;
+    if it drifts, this test names what must still be true of it."""
+    fixture = tmp_path / "fully_clean.json"
+    fixture.write_text(json.dumps({"prs": {"PR #1": {"f.txt": "@@ -1,1 +1,2 @@\n l1\n+x\n"}}}))
+    rc = pcc.main(["--fixture", str(fixture)])
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "No add/add collisions found (" not in captured.out  # the OLD unqualified phrase
+    assert "genuinely shared" in captured.out
+    assert "not a guarantee" in captured.out
+    assert "NOT COMPARED — 0 pair(s)" in captured.out
+
+
+def test_gather_fixture_pr_merge_base_defaults_and_declares(tmp_path: Path) -> None:
+    fixture = tmp_path / "mb.json"
+    fixture.write_text(json.dumps({
+        "prs": {
+            "PR #1": {"f.txt": "@@ -1,1 +1,2 @@\n l1\n+x\n"},  # no merge_base key
+            "PR #2": {"merge_base": "deadbeef", "f.txt": "@@ -1,1 +1,2 @@\n l1\n+x\n"},
+        }
+    }))
+    result = pcc.gather_fixture_pr_merge_base(fixture)
+    assert result["PR #1"] == pcc.NO_MERGE_BASE_DECLARED
+    assert result["PR #2"] == "deadbeef"
+
+
+def test_gather_fixture_pr_merge_base_malformed_json_is_cannot_verify(tmp_path: Path) -> None:
+    fixture = tmp_path / "broken_mb.json"
+    fixture.write_text('{"prs": {"PR #1": {"merge_base": "x"')  # truncated
+    with pytest.raises(pcc.CollisionCheckError):
+        pcc.gather_fixture_pr_merge_base(fixture)
+
+
+def test_find_collisions_and_uncompared_backward_compat_when_all_same_sentinel() -> None:
+    """When every PR shares the SAME merge-base value (what every fixture
+    that omits the key gets, via NO_MERGE_BASE_DECLARED), the partition-
+    and-compare path must reproduce find_collisions's plain output exactly
+    -- the backward-compat guarantee find_collisions_and_uncompared's own
+    docstring makes."""
+    pr_files = {
+        "PR #100": {PENDING_ARMS: [(1271, 1277)]},
+        "PR #200": {PENDING_ARMS: [(1272, 1278)]},
+    }
+    same_mb = {"PR #100": "x", "PR #200": "x"}
+    collisions, not_compared = pcc.find_collisions_and_uncompared(pr_files, same_mb)
+    assert collisions == pcc.find_collisions(pr_files)
+    assert not_compared == []
+
+
+# ── K9: `gh pr list --limit` truncation must be reported, never silently
+# folded into "clean" -- the module docstring's own promise ────────────
+
+
+def test_pr_list_truncated_at_limit_is_reported_not_silently_clean(
+    monkeypatch, capsys, tmp_path: Path
+) -> None:
+    limit = pcc.PR_LIST_LIMIT
+    fake_prs = json.dumps([{"number": i} for i in range(1, limit + 1)])
+
+    def fake_run(cmd, cwd, check=True):
+        if cmd[:3] == ["gh", "pr", "list"]:
+            return fake_prs
+        if cmd[:2] == ["git", "rev-parse"]:
+            return "deadbeef\n"
+        if cmd[:2] == ["git", "fetch"]:
+            return ""
+        if cmd[:2] == ["git", "merge-base"]:
+            return "deadbeef\n"
+        if cmd[:2] == ["git", "diff"]:
+            return ""  # no add hunks -- this test is about truncation, not windows
+        raise AssertionError(f"unexpected command in fake_run: {cmd}")
+
+    monkeypatch.setattr(pcc, "_run", fake_run)
+    rc = pcc.main(["--repo-root", str(tmp_path)])
+    captured = capsys.readouterr()
+    assert rc == 0  # no collisions found -- but must not read as confident clean
+    assert "SCAN TRUNCATED" in captured.out
+    assert str(limit) in captured.out
+
+
+def test_pr_list_below_limit_is_not_reported_as_truncated(
+    monkeypatch, capsys, tmp_path: Path
+) -> None:
+    """Innocence guard: a scan that returns FEWER PRs than the limit must
+    NOT print the truncation line -- the heuristic must not fire on an
+    ordinary small open-PR count."""
+    fake_prs = json.dumps([{"number": 1}, {"number": 2}])
+
+    def fake_run(cmd, cwd, check=True):
+        if cmd[:3] == ["gh", "pr", "list"]:
+            return fake_prs
+        if cmd[:2] == ["git", "rev-parse"]:
+            return "deadbeef\n"
+        if cmd[:2] == ["git", "fetch"]:
+            return ""
+        if cmd[:2] == ["git", "merge-base"]:
+            return "deadbeef\n"
+        if cmd[:2] == ["git", "diff"]:
+            return ""
+        raise AssertionError(f"unexpected command in fake_run: {cmd}")
+
+    monkeypatch.setattr(pcc, "_run", fake_run)
+    rc = pcc.main(["--repo-root", str(tmp_path)])
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "SCAN TRUNCATED" not in captured.out
