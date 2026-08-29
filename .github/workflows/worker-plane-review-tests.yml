@@ -52,6 +52,13 @@ on:
       - "scripts/tests/test_worker_plane_review_packet.py"
       - "scripts/tests/test_v3_final_gate_parity.py"
       - "scripts/tests/test_detect_secrets_auto_triage.py"
+      # Added 2026-08-29: the gate-seat conformance guard. It was written, it
+      # was correct, and it was named in NO workflow — so it ran nowhere and
+      # forbade nothing, while the launcher's docstring claimed it made a
+      # retired-seat flip "impossible". A guard whose only executor cannot go
+      # red is superscar #2 (esiste != armato); a cross-family refuter found
+      # this one that way.
+      - "scripts/tests/test_gate_seat_conformance.py"
       - ".github/workflows/worker-plane-review-tests.yml"
 
 permissions:
@@ -83,7 +90,7 @@ jobs:
           fi
           base="${{ github.event.pull_request.base.sha }}"
           if git diff --name-only "$base"...HEAD | grep -qE \
-            '^(scripts/check_worker_plane_review\.py|scripts/launch_worker_plane_review_panel\.py|scripts/freeze_worker_plane_review\.py|scripts/detect_secrets_auto_triage\.py|scripts/tests/test_check_worker_plane_review\.py|scripts/tests/test_launch_worker_plane_review_panel\.py|scripts/tests/test_worker_plane_review_packet\.py|scripts/tests/test_v3_final_gate_parity\.py|scripts/tests/test_detect_secrets_auto_triage\.py|\.github/workflows/worker-plane-review-tests\.yml)$'; then
+            '^(scripts/check_worker_plane_review\.py|scripts/launch_worker_plane_review_panel\.py|scripts/freeze_worker_plane_review\.py|scripts/detect_secrets_auto_triage\.py|scripts/tests/test_check_worker_plane_review\.py|scripts/tests/test_launch_worker_plane_review_panel\.py|scripts/tests/test_worker_plane_review_packet\.py|scripts/tests/test_v3_final_gate_parity\.py|scripts/tests/test_detect_secrets_auto_triage\.py|scripts/tests/test_gate_seat_conformance\.py|\.github/workflows/worker-plane-review-tests\.yml)$'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -117,6 +124,7 @@ jobs:
             scripts/tests/test_worker_plane_review_packet.py \
             scripts/tests/test_v3_final_gate_parity.py \
             scripts/tests/test_detect_secrets_auto_triage.py \
+            scripts/tests/test_gate_seat_conformance.py \
             -q
 
       - name: Sentinel success (no worker-plane review surface changed)
