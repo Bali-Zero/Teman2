@@ -1,0 +1,232 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: |
+  docs/plans/2026-08-29-beyond-sota-craft-wave/L06-ci-merge-queue-ship-pipeline.md, PR-3.
+lanes:
+  - lane: craft-w-l06pr3-build
+    role: build
+    seat: sonnet-5
+    scope: |
+      Build, then three rounds each dispatched on a finding the gate had already MEASURED: arming the
+      unguarded `max(old_len, 1)` clamp; the eight-finding refuter round; and the W101 the first cure
+      introduced.
+  - lane: craft-w-l06pr3-refute-r1
+    role: review
+    seat: codex-gpt-5.6-sol
+    scope: Adversarial round on the final diff, xhigh, read-only sandbox, six declared attack axes.
+  - lane: craft-w-l06pr3-refute-r2
+    role: review
+    seat: kimi-code/k3
+    scope: Second adversarial round, different family, same diff.
+seat_diversity: satisfied
+seat_diversity_note: |
+  Two DISTINCT non-Anthropic families, and they DISAGREED — on `--no-renames`, where Codex filed a
+  HIGH and Kimi listed it under "attacks that failed". The disagreement is recorded in the module
+  docstring rather than resolved by fiat; the flag is unchanged either way, and rename/rename on the
+  source path is undetected in both readings. One seat run twice would have produced neither the
+  disagreement nor Kimi's `shared_files` finding.
+diff: |
+  `scripts/ci/pr_collision_check.py` (new), its corpus `scripts/ci/test_pr_collision_check.py`
+  (32 tests), `.github/workflows/pr-collision-check.yml` (new, advisory), and one line registering it
+  with the failure watcher.
+
+  OVER CONTRACT AND SAYING SO: code-class net 695 (496 excluding comments and blank lines) against
+  400, measured three-dot against the merge-base. Splitting is not available — a stacked PR onto an
+  `agent/*` branch bypasses every required check, which the `Base branch protected` gate caught
+  earlier in this same wave — and the alternative is shipping known defects to hit a line count.
+  Landing whole is the lesser harm for a tool that gates nothing; splitting the K7/K8/K9 layer into a
+  follow-up from fresh main remains open if the conductor prefers it.
+receipts:
+  - claim: |
+      THE CLAMP THAT MAKES add/add-ON-A-NEW-FILE VISIBLE SHIPPED WITH NO TEST. Removing
+      `max(old_len, 1)` leaves all 16 original tests green while the tool answers "No add/add
+      collisions found" on two PRs each adding `evidence/brief.yml` — which is W125, the scar that
+      created evidence_paths.py, and the single shape this tool exists for.
+    cmd: |
+      probe: mutate max(old_len, 1) -> old_len; require the new-file window, the -U0 window, and
+      main(--fixture) returning 1 on two PRs each adding evidence/brief.yml, all to go red
+    result: |
+      clamp present : windows=[(0, 1)]  overlap=True   find_collisions -> 1 Collision
+      clamp removed : windows=[(0, 0)]  overlap=False  find_collisions -> []   and 16 passed
+      After arming: 3 red. Mutation verified to have landed on CODE line 86, NOT on the identical
+      text in the docstring at line 26 — a non-global `perl -0pi` had twice edited the prose instead,
+      and an unapplied mutation is byte-indistinguishable from a survived one.
+    exit: 0
+    ts: "2026-08-30T02:00:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      THE TOOL CLAIMED A NEGATIVE IT HAD NOT EARNED, and the gate proved it against GIT rather than
+      against the seat's reasoning. Each PR's windows are in ITS OWN merge-base's coordinate space,
+      so two PRs with different merge-bases are not comparable at all — and that silence was reported
+      as "no collisions".
+    cmd: |
+      probe: three-branch fixture; PR-A from BASE and PR-B from a 20-line-advanced main both insert
+      after L05; compare find_collisions against `git merge-tree --write-tree`
+    result: |
+      merge-base(main,prA)=BASE  ->  @@ -3,6  +3,7  @@  window [3, 9)
+      merge-base(main,prB)=MAIN  ->  @@ -23,6 +23,7 @@  window [23, 29)
+      find_collisions(...) -> []                      "NO COLLISION REPORTED"
+      git merge-tree --write-tree prA prB -> rc=1     CONFLICT (content) in f.txt
+      AFTER the fix, same fixture: NOT COMPARED, naming both merge-base SHAs, with the sentence
+      "0 collisions above is not a guarantee these pairs are safe — only that this tool did not look."
+    exit: 0
+    ts: "2026-08-30T02:45:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      EVERY CLEAN REPORT OVERSTATED ITS OWN COVERAGE. `shared_files` was the union of ALL touched
+      files, not files touched by 2+ PRs.
+    cmd: |
+      probe: two PRs touching DIFFERENT files; assert the reported shared count is 0
+    result: |
+      before: {"PR #1": a.txt, "PR #2": b.txt} -> "2 file(s) shared by 2+ PRs"  (true value 0)
+      after : same input                       -> "0 file(s) genuinely shared by 2+"
+    exit: 0
+    ts: "2026-08-30T03:20:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      A PARSE FAILURE WAS INDISTINGUISHABLE FROM A FINDING. `main()` caught only CollisionCheckError,
+      so a malformed fixture exited 1 — the code documented for "collisions found".
+    cmd: |
+      probe: a malformed fixture must exit 2 CANNOT VERIFY, and a real add/add must still exit 1
+    result: |
+      malformed fixture -> rc=2, "CANNOT VERIFY — ... is not valid JSON"
+      real add/add on a new file -> rc=1, "COLLISION — 1 add/add overlap(s)"   (innocence preserved)
+    exit: 0
+    ts: "2026-08-30T03:25:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      THE FIRST FIX OVERSHOT `|| true` INTO W101. `set -uo pipefail` does not disable errexit and the
+      step declares no `shell:`, so the command group aborted before `rc=$?` — the capture, the whole
+      `case`, and the `::error::` were dead code on every non-zero path, and rc=1 (collisions found)
+      FAILED the job, breaking the promise that the verdict is advisory. A class audit found FOUR
+      such sites, not one; three were in the comment-posting step, whose own comment reads "A failed
+      POST/PATCH here is NON-FATAL BY DESIGN ... every failure path below surfaces a ::warning::".
+      None of those warnings could execute.
+    cmd: |
+      probe: run the REAL extracted step under `bash -e` and under
+      `bash --noprofile --norc -eo pipefail`, stub forced to rc 0/1/2
+    result: |
+      before: rc=0 reached exit 0 · rc=1 NOT reached exit 1 · rc=2 NOT reached exit 2
+      after : rc=0 reached exit 0 · rc=1 reached exit 0 (advisory) · rc=2 reached exit 2 (::error::)
+      Identical under both shells. Sibling PRs class-audited: restore-drill.yml 3 captures all
+      bracketed, token-contrast-tests.yml 0 captures.
+    exit: 0
+    ts: "2026-08-30T04:20:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      EVERY DECLARED ACCEPTANCE PROBE, WITH ITS OUTCOME — listed verbatim so none reads as
+      unrecorded. The rule that flags this exists because a probe nobody binds to a receipt is
+      a promise, not a measurement.
+    cmd: |
+      probe: replay of #4673 / #4678 (both touch evidence/brief.yml AND evidence/pack.yml at the root paths)
+      probe: synthetic 3-branch git fixture; test_modify_modify_disjoint_lines_same_file_does_not_flag
+      probe: OSError path test exercising the real _run()
+      probe: self-test step, continue-on-error: false, run under bash --noprofile --norc -eo pipefail
+      probe: mutate max(old_len, 1) -> old_len; require the new-file window, the -U0 window, and main(--fixture) returning 1 on two PRs each adding evidence/brief.yml, all to go red
+    result: |
+      add/add on the same new file (the #4673/#4678 root-path shape) -> flagged, rc=1.
+      modify/modify on disjoint lines, and the 'merely behind' 3-branch fixture -> NOT flagged.
+      OSError through the real _run() -> CANNOT VERIFY, rc=2, never a silent zero.
+      self-test step parses with continue-on-error: False and runs the corpus unconditionally
+      (the `-f` bootstrap guard is gone — it borrowed harness-floor's rationale, which does not
+      transfer: that job reads the BASE checkout, this one reads PR HEAD, so deleting the
+      corpus disarmed it silently).
+      zero-width windows: new-file and -U0 insert both nonempty; find_collisions reports the
+      W125 pair; all three go red without the clamp.
+    exit: 0
+    ts: "2026-08-30T04:30:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: STATIC GATES and the corpus on the final tree.
+    cmd: actionlint with the rc captured directly; pytest on the corpus
+    result: |
+      actionlint rc=0 · 32 passed (was 19) · regressions still kill: windows_overlap->True 5 red,
+      dropped has_addition gate 2 red, `<`->`<=` 1 red, dropped clamp 3 red.
+    exit: 0
+    ts: "2026-08-30T04:25:00Z"
+    seat: claude-opus-5 (gate)
+pii_scan: clean
+pii_note: |
+  A CI reporting tool. Reads PR numbers and file paths from `gh` and git; writes an advisory PR
+  comment. No client data, no credentials, no PII.
+dissent:
+  - status: CONFIRMED
+    seat: codex-gpt-5.6-sol
+    objection: |
+      BLOCKER — per-PR merge-bases put two PRs' windows in incomparable coordinate spaces; the tool
+      reports "no collisions" where git reports CONFLICT.
+    disposition: |
+      CONFIRMED against git itself, with the predicted windows exact to the digit. NOT cured by
+      changing the anchoring — the main tip reintroduces the "merely behind" false positive this tool
+      exists to avoid, and this repo has scars for BOTH directions (W88, W102). The correct oracle is
+      `git merge-tree`, which is a redesign. What ships is the honest half the brief already demanded:
+      the pairs are counted, named, and reported as NOT COMPARED, printed unconditionally even at zero.
+  - status: CONFIRMED
+    seat: codex-gpt-5.6-sol
+    objection: |
+      BLOCKER — the workflow's `|| true` converts an operational failure (exit 2, CANNOT VERIFY) into
+      a green job, directly contradicting the PR's own constraint.
+    disposition: |
+      ACCEPTED, and independently found by the other seat. Cured — and the CURE then introduced a
+      W101 decapitation, found by the gate's own class audit and fixed across all four sites. See the
+      receipt above for the measured before/after matrix.
+  - status: CONFIRMED
+    seat: codex-gpt-5.6-sol
+    objection: |
+      HIGH — a malformed fixture or truncated `gh` output raises JSONDecodeError and exits 1, the same
+      code documented for "collisions found".
+    disposition: ACCEPTED — now exit 2 CANNOT VERIFY, with innocence pinned (a real collision still exits 1).
+  - status: CONFIRMED
+    seat: kimi-code/k3
+    objection: |
+      LOW — the clean report lies about "file(s) shared by 2+ PRs": it is the union of all touched
+      files, so two PRs sharing zero files report 2.
+    disposition: |
+      ACCEPTED, reproduced verbatim by the gate. Small, cheap, and the same disease as the merge-base
+      blocker one level down — a number that sounds like evidence of thoroughness and is not.
+  - status: CONFIRMED
+    seat: kimi-code/k3
+    objection: |
+      LOW — `--limit 500` truncates the scan silently, against the module's own docstring line
+      "Never report clean on a partial scan".
+    disposition: ACCEPTED — truncation is now detected and reported alongside the NOT COMPARED count.
+  - status: PLAUSIBLE
+    seat: codex-gpt-5.6-sol
+    objection: |
+      HIGH — `--no-renames` erases the relation needed to see rename/rename: two PRs renaming the same
+      file to different names both read as a pure deletion plus adds on different paths.
+    disposition: |
+      DECLARED, NOT CURED — and THE TWO SEATS REACHED OPPOSITE VERDICTS. Kimi listed `--no-renames`
+      under "attacks that FAILED", reasoning it is the correct call because rename-as-delete+add at
+      least preserves the add-side window. Both are partly right and the code does not change either
+      way: the conflict on the SOURCE path is undetected with or without the flag. Recorded in the
+      module docstring, including the disagreement, so the next reader is told rather than
+      rediscovering it.
+  - status: CONFIRMED
+    seat: kimi-code/k3
+    objection: |
+      HIGH — binary and submodule add/add are wholly invisible: the diff carries no `@@` line, so
+      `parse_multi_file_diff` returns {} and both PRs are omitted from a report that claims zero
+      collisions.
+    disposition: |
+      CONFIRMED by both seats independently. DECLARED as a blind spot in the docstring rather than
+      cured — curing it means a different parser, not a fix, and this PR is already over contract.
+  - status: CONFIRMED
+    seat: codex-gpt-5.6-sol
+    objection: |
+      HIGH — overlapping windows do not imply a conflict: with `-U3` context, two insertions three
+      lines apart produce overlapping windows that a real three-way merge resolves cleanly. The false
+      positive that makes a check ignorable.
+    disposition: |
+      DECLARED, NOT CURED — same root as the merge-base blocker (line-number windows are a proxy for
+      a question only git can answer) and the same redesign closes both. Named in the docstring
+      alongside the NOT COMPARED wording, so a reader is not invited to treat a flag as a verdict.
+tests: |
+  32 passed (scripts/ci/test_pr_collision_check.py), up from 19. Four regression mutations still kill;
+  every new guard has its own mutation, each grep-confirmed to have landed on the executable line
+  before its result was believed. PYTHONDONTWRITEBYTECODE=1 and -p no:cacheprovider throughout (W121).
+static: |
+  actionlint rc=0 · pre-commit hooks green, including the anti-reward-hacking test lint.
+notes: |
+  A tool built to detect the collisions others miss was itself blind to the canonical one, and its
+  cure for a swallowed exit code overshot into a decapitated one. Both were found by running things
+  rather than reading them.
