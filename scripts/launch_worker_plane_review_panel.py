@@ -3,9 +3,24 @@
 
 Phase one launches Gemini, Codex, and Kimi concurrently as independent
 constructive, red-team, and refuter reviewers.  Phase two is a separate command:
-it binds those reviews and the completed finding disposition, then invokes
-Fable 5 as the only sequential final gate.  GLM and DeepSeek are not routes in
-this protocol and can never substitute for an unavailable seat.
+it binds those reviews and the completed finding disposition, then invokes the
+only sequential final gate.  GLM and DeepSeek are not routes in this protocol
+and can never substitute for an unavailable seat.
+
+THAT SECOND PHASE IS NOT IMPLEMENTED HERE.  `launch_final_gate()` raises
+unconditionally and nothing calls it; `V3_FINAL_GATE_READY` in
+`check_worker_plane_review.py` is False.  This sentence used to name Fable 5
+as that gate, which was false twice over: the gate does not run at all, and
+Fable 5 was taken out of the workflow
+by the 2026-08-20 ruling ("no doctrine, skill, cron, or script may auto-route
+to it").  When the phase is built, the ruled seat is Opus 5 — CLAUDE.md §5,
+"the final on-disk gate is Opus 5", effort xhigh per the 2026-08-21 amendment.
+
+The `FABLE_GATE` seat and `FABLE_GATE_ARGV_SUFFIX` below are left exactly as
+they are on purpose.  Re-pointing them changes what the v3 protocol WOULD do,
+which is a design decision and not a docstring correction; the conformance
+test in `scripts/tests/test_gate_seat_conformance.py` makes flipping
+`V3_FINAL_GATE_READY` on a retired seat impossible instead.
 """
 
 from __future__ import annotations
