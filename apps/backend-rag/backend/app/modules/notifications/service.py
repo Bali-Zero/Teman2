@@ -303,10 +303,20 @@ class NotificationService:
                 AlertType.VISA_CRITICAL,
                 AlertType.VISA_EXPIRED,
             ]:
-                # Get team leader email from database
-                team_leader = await self._get_team_leader_email(alert.client_id)
-                if team_leader:
-                    bcc.append(team_leader)
+                # Get team leader email from database. This address is a BCC:
+                # it is a courtesy copy, never the reason a client goes unwarned.
+                # Until 2026-08-29 this ran unguarded, so a database error here
+                # aborted the whole send and the alert never left the building.
+                try:
+                    team_leader = await self._get_team_leader_email(alert.client_id)
+                except Exception as bcc_error:  # best effort by design: a BCC never blocks the alert
+                    logger.warning(
+                        "Team leader lookup failed; sending alert without BCC",
+                        extra={"client_id": alert.client_id, "error": str(bcc_error)},
+                    )
+                else:
+                    if team_leader:
+                        bcc.append(team_leader)
 
             # Send email
             success = await self.email_provider.send_email(
@@ -390,10 +400,11 @@ class NotificationService:
         async with self.db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT u.email
-                FROM users u
-                JOIN clients c ON c.assigned_to = u.email
+                SELECT tm.email
+                FROM team_members tm
+                JOIN clients c ON c.assigned_to = tm.email
                 WHERE c.id = $1
+                  AND tm.active IS NOT FALSE
                 """,
                 client_id,
             )
@@ -412,7 +423,7 @@ class NotificationService:
                     """
                     UPDATE notification_alerts
                     SET status = $1,
-                        sent_at = CASE WHEN $1 = 'sent' THEN NOW() ELSE sent_at END,
+                        sent_at = CASE WHEN $1::text = 'sent' THEN NOW() ELSE sent_at END,
                         error_message = $2
                     WHERE id = $3
                     """,
