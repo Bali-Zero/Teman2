@@ -29,22 +29,75 @@ file by rejecting `hairline` (1.21:1) and the `whatsapp` white-on-icon claim
 (1.98:1) — both real, both correct, both legitimately below the text floor
 because neither carries a text (or non-text) duty. A checker that fails
 these is worse than none: someone would "fix" the design to please it.
+
+A cross-family adversarial review of check_token_contrast.py found five
+more real holes, each drilled below in its own class:
+
+  * REQUIRED-CLAIMS FLOOR (TestRequiredClaimsFloor) — a token can be
+    silenced by emptying its claims list (or deleting it outright) while
+    drifting its hex in the same edit; the drift/floor checks above have
+    nothing to recompute for a claim-less token, so the run stays quiet.
+    `check_required_claims()` is the independent-of-content answer.
+  * FLOOR PRECISION (TestFloorComparisonHonorsPublicationPrecision) — the
+    floor check used to compare a raw, un-rounded float against the floor
+    with a near-zero epsilon, disagreeing with the drift check's own ±0.02
+    tolerance for this file's 2-decimal publication convention. A claim
+    whose true ratio is 4.4951, correctly published as 4.50, cleared drift
+    and then failed the floor outright — a false red on a correct claim.
+  * TAUTOLOGICAL TEST (removed) — the old
+    `test_every_against_reference_resolves` asserted only
+    `isinstance(violations, list)`, true on any non-raising run whether or
+    not an unresolved alias was silently swallowed. Replaced below with a
+    test that actually sabotages a real alias and asserts the RAISE.
+  * UNBOUNDED --tolerance (TestToleranceIsBounded) — `--tolerance 99` used
+    to make the gate green by construction now that this script is a CI
+    gate; `main()` refuses anything outside [0, MAX_TOLERANCE].
+  * BOOLEAN RATIO (TestBooleanRatioIsRejected) — `isinstance(x, (int,
+    float))` admits `True`/`False` because bool subclasses int in Python;
+    a JSON `"ratio": true` used to pass as the number 1.
+  * ALIAS DEPTH (TestAliasChainDepthIsBounded) — a very long, non-cyclic
+    alias chain (never revisiting a path, so the existing cycle guard
+    cannot see it) used to raise a bare RecursionError instead of the
+    documented TokenContrastError.
 """
 
 from __future__ import annotations
 
-import copy
 import json
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+# Imported as `from scripts.check_token_contrast import ...` — a PACKAGE
+# import, not the importlib.util.spec_from_file_location loading that
+# scripts/tests/test_adversarial_review_gate.py and
+# scripts/tests/test_pending_arms_report.py document and use ("because
+# scripts/ is a flat bag of standalone tools, not a Python package").
+# Both conventions are live in this same test directory (as of this file,
+# ~60 files use this package-style import, ~150 use importlib) and BOTH
+# work, for different reasons: this one resolves because `scripts/` has no
+# `__init__.py` and is therefore a PEP-420 namespace package, resolvable
+# from the repo root the moment the repo root is on `sys.path` — which it
+# is here, because every invocation in this file's own module docstring
+# and in this repo's CI runs pytest as `python -m pytest` FROM THE REPO
+# ROOT, and `-m` inserts the current working directory as `sys.path[0]`.
+# Change the invocation to a bare `pytest scripts/tests/...` (no `-m`, or
+# run from a different cwd) and this import would break while the
+# importlib-based siblings would not — that fragility, not indecision, is
+# the actual argument for standardising on importlib repo-wide; it is not
+# fixed in THIS PR, which only touches check_token_contrast.py's own
+# defects, but this comment exists so the two conventions are never
+# silently contradictory again.
 from scripts.check_token_contrast import (
     DEFAULT_TOKENS_PATH,
     DUTY_FLOORS,
+    MAX_ALIAS_DEPTH,
+    MAX_TOLERANCE,
+    REQUIRED_CLAIM_PATHS,
     TokenContrastError,
     check,
+    check_required_claims,
     collect_claims,
     contrast_ratio,
     main,
@@ -355,13 +408,311 @@ class TestStructuralDefectsAreHardErrorsNotSilentSkips:
 class TestAliasResolutionAgainstTheRealAliasGraph:
     """Every `against` in the shipped file must resolve inside it — a
     dangling reference here would be a hard error at CI time, not
-    something a human notices in review."""
+    something a human notices in review.
 
-    def test_every_against_reference_resolves(self) -> None:
+    The previous version of this test asserted only
+    `isinstance(violations, list)` after calling `check(tree)` — true on
+    ANY non-raising run, whether or not an unresolved alias inside it was
+    silently swallowed instead of raising. That assertion could not fail
+    (cicatrix W95/#3: "a test that cannot fail is not a test"); it has
+    been replaced with one that sabotages a REAL claim in the shipped file
+    and asserts the documented raise, not a tautology about the return
+    type of the happy path.
+    """
+
+    def test_a_real_claims_against_reference_raises_when_it_dangles(self) -> None:
         tree = _load_real_tree()
-        # check() already resolves every alias as a side effect of
-        # recomputing; a clean run with zero TokenContrastError is the
-        # proof. Re-asserted explicitly here so a future refactor that
-        # accidentally swallows the exception is still caught.
-        violations, _notices = check(tree)  # raises on unresolved alias
-        assert isinstance(violations, list)
+        token = tree["color"]["text"]["ink-soft"]
+        claim = token["$extensions"]["com.balizero.contrast"][0]
+        assert claim["against"] == "{color.ground.carta}"
+        # Sabotage exactly this one claim's `against` alias so it points
+        # nowhere; every other claim, and the hex values, are untouched.
+        claim["against"] = "{color.ground.does-not-exist}"
+        with pytest.raises(TokenContrastError, match="does not resolve"):
+            check(tree)
+
+
+# --------------------------------------------------- required-claims floor
+
+
+class TestRequiredClaimsFloor:
+    """A token can be silenced without tripping `check()` above: delete its
+    whole `$extensions."com.balizero.contrast"` block (or just empty the
+    list) and drift its hex in the same edit — `check()` only ever
+    recomputes claims that EXIST, so a claim-less token has nothing to
+    disagree with and the run stays quiet. `check_required_claims()` is
+    the independent-of-content answer: an explicit set of token paths that
+    must carry >=1 contrast claim, verified regardless of what the file
+    happens to contain.
+    """
+
+    def test_the_shipped_file_clears_the_required_claims_floor(self) -> None:
+        assert check_required_claims(_load_real_tree()) == []
+
+    def test_the_floor_is_a_real_non_empty_set(self) -> None:
+        # A required-claims floor that is empty by accident would pass
+        # everything trivially — this is the sanity check that it isn't.
+        assert len(REQUIRED_CLAIM_PATHS) > 0
+        for path in REQUIRED_CLAIM_PATHS:
+            assert _lookup_exists(_load_real_tree(), path), (
+                f"{path} is in REQUIRED_CLAIM_PATHS but does not exist in "
+                "the shipped file — the constant has drifted from reality"
+            )
+
+    def test_emptying_a_required_tokens_claims_list_is_caught_by_path(self) -> None:
+        assert "color.text.ink" in REQUIRED_CLAIM_PATHS
+        tree = _load_real_tree()
+        # Silence AND drift in the same edit — exactly the attack
+        # check_token_contrast.py's own module docstring names: the
+        # per-claim recompute in check() has nothing left to disagree
+        # with once the claims list is gone.
+        tree["color"]["text"]["ink"]["$extensions"]["com.balizero.contrast"] = []
+        tree["color"]["text"]["ink"]["$value"] = "#f7f6f2"  # drift to == carta
+        drift_violations, _notices = check(tree)
+        assert drift_violations == [], (
+            "sanity: check() alone must stay quiet on a claim-less token "
+            f"(this is exactly the hole this floor exists to close): "
+            f"{drift_violations!r}"
+        )
+        floor_violations = check_required_claims(tree)
+        assert len(floor_violations) == 1
+        assert "color.text.ink" in floor_violations[0]
+        assert "required-claims floor" in floor_violations[0]
+
+    def test_deleting_the_extensions_block_entirely_is_caught_the_same_way(
+        self,
+    ) -> None:
+        tree = _load_real_tree()
+        del tree["color"]["text"]["ink-soft"]["$extensions"]
+        violations = check_required_claims(tree)
+        assert len(violations) == 1
+        assert "color.text.ink-soft" in violations[0]
+
+    def test_deleting_a_required_token_outright_is_caught(self) -> None:
+        assert "color.red.merah" in REQUIRED_CLAIM_PATHS
+        tree = _load_real_tree()
+        del tree["color"]["red"]["merah"]
+        violations = check_required_claims(tree)
+        assert len(violations) == 1
+        assert "color.red.merah" in violations[0]
+        assert "MISSING" in violations[0]
+
+    def test_cli_exits_nonzero_naming_the_silenced_token(
+        self, tmp_path, capsys
+    ) -> None:
+        tree = _load_real_tree()
+        tree["color"]["red"]["merah"]["$extensions"]["com.balizero.contrast"] = []
+        path = _write_tree(tmp_path, tree)
+        rc = main(["--path", str(path)])
+        err = capsys.readouterr().err
+        assert rc == 1
+        assert "color.red.merah" in err
+        assert "required-claims floor" in err
+
+
+def _lookup_exists(tree: dict[str, Any], dotted_path: str) -> bool:
+    node: Any = tree
+    for segment in dotted_path.split("."):
+        if not isinstance(node, dict) or segment not in node:
+            return False
+        node = node[segment]
+    return isinstance(node, dict) and "$value" in node
+
+
+# ------------------------------------------------ floor publication precision
+
+
+class TestFloorComparisonHonorsPublicationPrecision:
+    """The drift check already forgives up to ±0.02 against a claim
+    published at this file's own 2-decimal precision (see
+    DEFAULT_TOLERANCE's comment in check_token_contrast.py). The floor
+    check must forgive the SAME thing, or a claim that is transcribed
+    correctly per that convention can pass drift and still fail the floor
+    purely from comparing a raw, un-rounded float against the floor with a
+    near-zero epsilon.
+
+    Repro: #bb4f96 on #ffffff computes to 4.495100028222215 (verified
+    below) — rounds to the published 4.50 under this file's own
+    convention, and the 0.0049 drift from that published value clears the
+    ±0.02 drift tolerance comfortably. duty=text demands >=4.5:1. The OLD
+    floor check (`computed < floor - 1e-9`) failed this: a false red on a
+    token that is not actually broken. Comparing the rounded (2dp) value —
+    matching this file's own publication precision — must pass.
+    """
+
+    def test_a_correctly_transcribed_borderline_claim_clears_the_floor(self) -> None:
+        fg, bg = "#bb4f96", "#ffffff"
+        computed = contrast_ratio(fg, bg)
+        assert abs(computed - 4.4951) < 1e-4, f"fixture drifted: {computed}"
+        assert round(computed, 2) == 4.50
+        tree = {
+            "color": {
+                "white": {"$value": bg},
+                "borderline": {
+                    "$value": fg,
+                    "$extensions": {
+                        "com.balizero.contrast": [
+                            {
+                                "against": "{color.white}",
+                                "ratio": 4.50,
+                                "duty": "text",
+                            }
+                        ]
+                    },
+                },
+            }
+        }
+        violations, _notices = check(tree)
+        assert violations == [], violations
+
+    def test_a_genuinely_failing_borderline_ratio_still_fails(self) -> None:
+        """Mutation proof for the pass above: a claim whose rounded value
+        is BELOW the floor (4.49, not 4.50) must still be rejected — this
+        is not a blanket widening of the floor, only a precision fix."""
+        fg, bg = "#c506f2", "#ffffff"  # true ratio 4.4850..., rounds to 4.49
+        computed = contrast_ratio(fg, bg)
+        assert round(computed, 2) < 4.5, f"fixture no longer below the floor: {computed}"
+        tree = {
+            "color": {
+                "white": {"$value": bg},
+                "just-under": {
+                    "$value": fg,
+                    "$extensions": {
+                        "com.balizero.contrast": [
+                            {
+                                "against": "{color.white}",
+                                "ratio": round(computed, 2),
+                                "duty": "text",
+                            }
+                        ]
+                    },
+                },
+            }
+        }
+        violations, _notices = check(tree)
+        assert len(violations) == 1
+        assert "color.just-under" in violations[0]
+
+
+# -------------------------------------------------------- --tolerance bound
+
+
+class TestToleranceIsBounded:
+    """`--tolerance` is a CI-gate parameter as of this PR; an unbounded
+    value is the obvious way to neuter the gate by construction
+    (`--tolerance 99` makes any drift claim recompute "clean")."""
+
+    def test_absurd_tolerance_is_refused_not_silently_accepted(
+        self, tmp_path, capsys
+    ) -> None:
+        path = _write_tree(tmp_path, _load_real_tree())
+        rc = main(["--path", str(path), "--tolerance", "99"])
+        err = capsys.readouterr().err
+        assert rc == 2
+        assert "REFUSED" in err
+
+    def test_negative_tolerance_is_refused(self, tmp_path, capsys) -> None:
+        path = _write_tree(tmp_path, _load_real_tree())
+        rc = main(["--path", str(path), "--tolerance", "-1"])
+        err = capsys.readouterr().err
+        assert rc == 2
+        assert "REFUSED" in err
+
+    def test_tolerance_exactly_at_the_bound_is_accepted(self, tmp_path, capsys) -> None:
+        # The bound itself must be inclusive, not an off-by-one trap.
+        path = _write_tree(tmp_path, _load_real_tree())
+        rc = main(["--path", str(path), "--tolerance", str(MAX_TOLERANCE)])
+        assert rc == 0
+
+    def test_default_tolerance_is_within_the_bound(self) -> None:
+        from scripts.check_token_contrast import DEFAULT_TOLERANCE
+
+        assert 0 <= DEFAULT_TOLERANCE <= MAX_TOLERANCE
+
+
+# ------------------------------------------------------------ boolean ratio
+
+
+class TestBooleanRatioIsRejected:
+    """`isinstance(x, (int, float))` admits `True`/`False` because `bool`
+    subclasses `int` in Python — a JSON `"ratio": true` would otherwise
+    silently pass as the number 1."""
+
+    def test_ratio_as_json_true_is_rejected_not_silently_treated_as_one(
+        self,
+    ) -> None:
+        tree = {
+            "color": {
+                "a": {"$value": "#ffffff"},
+                "b": {
+                    "$value": "#fefefe",
+                    "$extensions": {
+                        "com.balizero.contrast": [
+                            {"against": "{color.a}", "ratio": True, "duty": "text"}
+                        ]
+                    },
+                },
+            }
+        }
+        with pytest.raises(TokenContrastError, match="numeric"):
+            check(tree)
+
+    def test_ratio_as_json_false_is_rejected(self) -> None:
+        tree = {
+            "color": {
+                "a": {"$value": "#ffffff"},
+                "b": {
+                    "$value": "#000000",
+                    "$extensions": {
+                        "com.balizero.contrast": [
+                            {"against": "{color.a}", "ratio": False, "duty": "text"}
+                        ]
+                    },
+                },
+            }
+        }
+        with pytest.raises(TokenContrastError, match="numeric"):
+            check(tree)
+
+
+# --------------------------------------------------------- alias chain depth
+
+
+class TestAliasChainDepthIsBounded:
+    """A chain of all-DISTINCT alias paths never revisits anything, so the
+    existing `_visiting` cycle guard cannot see it coming — without a
+    depth bound it would recurse until it exhausts CPython's own
+    recursion limit and raises a bare RecursionError instead of the
+    documented TokenContrastError."""
+
+    def test_a_very_long_non_cyclic_chain_raises_not_recursionerror(self) -> None:
+        n = MAX_ALIAS_DEPTH + 10
+        tree: dict[str, Any] = {"color": {"ground": {"$value": "#ffffff"}}}
+        for i in range(n):
+            tree["color"][f"step{i}"] = {"$value": f"{{color.step{i + 1}}}"}
+        tree["color"][f"step{n}"] = {"$value": "{color.ground}"}
+        tree["color"]["step0"]["$extensions"] = {
+            "com.balizero.contrast": [
+                {"against": "{color.ground}", "ratio": 1.0, "duty": "text"}
+            ]
+        }
+        with pytest.raises(TokenContrastError, match="MAX_ALIAS_DEPTH"):
+            check(tree)
+
+    def test_a_chain_within_the_bound_still_resolves_normally(self) -> None:
+        n = MAX_ALIAS_DEPTH - 5
+        tree: dict[str, Any] = {"color": {"ground": {"$value": "#ffffff"}}}
+        for i in range(n):
+            tree["color"][f"step{i}"] = {"$value": f"{{color.step{i + 1}}}"}
+        tree["color"][f"step{n}"] = {"$value": "{color.ground}"}
+        # step0's chain resolves to the SAME hex as `ground` (#ffffff), so
+        # the true ratio is exactly 1.0:1 — duty="decorative" (no floor)
+        # is what isolates "does the long chain resolve at all" from an
+        # unrelated floor failure a 1.0:1 pair would trip under duty=text.
+        tree["color"]["step0"]["$extensions"] = {
+            "com.balizero.contrast": [
+                {"against": "{color.ground}", "ratio": 1.0, "duty": "decorative"}
+            ]
+        }
+        violations, _notices = check(tree)
+        assert violations == [], violations
