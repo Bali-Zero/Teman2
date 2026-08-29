@@ -232,7 +232,7 @@ Hooks (`~/.claude/hooks/`) sono il backstop quando il system prompt non basta. A
 git diff --name-only HEAD -- apps/backend-rag/backend/
 cd apps/backend-rag && source .venv/bin/activate
 python -c "from backend.app.dependencies import get_current_user; print('OK')"
-PYTHONPATH=. pytest backend/tests/services/rag/test_kg_langgraph.py backend/tests/services/rag/test_kg_subgraphs.py backend/tests/services/rag/test_confidence.py -q
+PYTHONPATH=. pytest backend/tests/services/rag/test_kg_langgraph.py backend/tests/services/rag/test_kg_subgraphs.py backend/tests/services/rag/test_confidence.py
 ```
 
 **Deploy** — run from the monorepo ROOT, not from `apps/backend-rag` (corrected 2026-07-24, PR #3062 ship:

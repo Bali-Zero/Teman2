@@ -150,7 +150,7 @@ PYEOF
             echo "   [pytest] impact map could not safely scope this diff (reason=$reason)."
             echo "            The full backend suite is heavy (11-32min) — this script never runs it"
             echo "            and never auto-dispatches it. If you need it, run it yourself:"
-            echo "              ssh mini 'cd ~/nuzantara/apps/backend-rag && source .venv/bin/activate && PYTHONPATH=.:../crm-cell python -m pytest backend/tests --ignore=backend/tests/e2e -q'"
+            echo "              ssh mini 'cd ~/nuzantara/apps/backend-rag && source .venv/bin/activate && PYTHONPATH=.:../crm-cell python -m pytest backend/tests --ignore=backend/tests/e2e'"
         fi
         return 0
     fi
