@@ -1,0 +1,88 @@
+task_id: craft-w-l12pr3b-restore-drill-wiring
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  The monthly Postgres restore drill was, by its own wiring, incapable of reporting a failed
+  restore. `psql` ran under `-v ON_ERROR_STOP=0`, the whole pipeline ended in `|| true`, and the
+  log tail, the row-count query and BOTH Telegram notifications used the same bare swallow. A
+  drill that cannot fail is not a drill: it is a monthly green light that proves only that the
+  workflow file parses.
+
+  Wire the drill to its own exit codes. #5260 (already on main) shipped the Level-5 verifier
+  `scripts/ci/restore_drill_verify.py` — the thing that decides whether a restored database is
+  actually usable rather than merely present. THIS PR is the other half: make the workflow CALL
+  that verifier and surface what it says, instead of counting tables and swallowing the answer.
+constraints:
+  - "A restore that fails must make the job fail. No `|| true` on any step whose exit code carries
+    the drill's verdict — the entire premise of the drill is that its red means something."
+  - "A NOTIFICATION failing must never change the drill's verdict. Telegram being down is not a
+    restore problem, and letting it flip the exit code would make the drill lie in the other
+    direction. Failure-tolerance for notifications is kept, but implemented as an explicit
+    capture-and-surface (`TG_RC=$?` + a `::warning::`), never a bare swallow — the difference is
+    that a swallowed rc leaves no trace and a captured one does."
+  - "`gunzip | psql` is a TWO-STAGE pipe. `PIPESTATUS[0]` is gunzip's exit code, not psql's.
+    Reading index 0 would make the whole ON_ERROR_STOP change silently inert on a genuinely
+    failing restore — the fix would ship, look right, and do nothing."
+  - "The log tail must run whether the restore succeeded or failed. Under ON_ERROR_STOP=1 a failed
+    restore aborts at the offending statement, and that statement is the only thing that makes the
+    failure legible; gating the tail on success would trade one illegibility for another."
+  - "Every guard added here must be defended by a test that goes red when the guard is removed —
+    established by MUTATION on the production file, not by reading the corpus."
+acceptance:
+  - text: |
+      WHEN the restore's `psql` stage exits non-zero, the job SHALL exit non-zero. WHERE the
+      failure is psql's, the captured status SHALL come from PIPESTATUS index 1, never index 0.
+    probe: "mutate RESTORE_RC=${_PIPE_STATUSES[1]} -> ${PIPESTATUS[0]} and require a red test"
+  - text: |
+      WHILE a Telegram call fails, the drill's own exit code SHALL be unchanged — no line
+      mentioning TG_RC may also contain `exit`.
+    probe: "mutate an `exit $TG_RC` onto the success-notify path and require a red test"
+  - text: |
+      IF the restore fails, the log tail SHALL still run — the tail line must not sit inside any
+      unclosed conditional, checked by if/fi BALANCE up to that line rather than by inspecting the
+      tail line alone (a wrapping `if` sits on an EARLIER line and a same-line check misses it).
+    probe: "reintroduce `|| true` on the tail line; require red"
+  - text: |
+      EVERY assertion pinning a shell flag SHALL be anchored to the line that EXECUTES it, never to
+      the step body as text. Measured: `ON_ERROR_STOP=1` occurs 5x in that body — 1 executable,
+      4 in prose — so a body-wide substring check is satisfied by the comments alone.
+    probe: 'flip ONLY `psql "$DSN" -v ON_ERROR_STOP=1` to =0, leave all comments; require red'
+consumer_map:
+  - "`.github/workflows/restore-drill.yml` — the monthly drill itself (schedule + workflow_dispatch).
+    Its exit code is the only consumer that matters: it is what makes a broken backup visible."
+  - "`scripts/ci/restore_drill_verify.py` (#5260, already on main) — this PR is that verifier's
+    first and only caller. Until this merges, the verifier is armed by nothing (W81): shipped,
+    tested, and never invoked by the job it was written for."
+  - "The Telegram alert path — the human-facing surface. It now reports its OWN rc as a warning
+    instead of discarding it, so a silently-undelivered alert is visible in the run log rather
+    than being indistinguishable from 'no alert was needed'."
+risks:
+  - "ON_ERROR_STOP=1 CHANGES WHAT COUNTS AS A FAILING RESTORE. A dump containing a statement that
+    previously errored harmlessly (a DROP of a nonexistent object, an extension already present)
+    now aborts the restore. That is the intended semantics — a drill that ignores errors measures
+    nothing — but the first red after this merges may be the drill working, not the backup being
+    broken. The workflow's own `::error title=Restore aborted (ON_ERROR_STOP=1)::` message says so
+    at the point of failure, so the person reading it is told before they conclude data loss."
+  - "The log-tail balance check counts `if`/`fi` by line prefix. It is deliberately crude and would
+    mis-count against a `case`/`esac` or an `if` inside a heredoc. Neither exists in this step
+    today; if one is added, the check goes red rather than silently wrong, which is the safe
+    direction for a guard."
+  - "This PR pins the workflow's wiring by PARSING it, so a future edit that restructures the step
+    names breaks the tests loudly. That is intended coupling: the tests exist to make the wiring
+    hard to un-wire, and a rename that silently detached them would be the failure they prevent."
+grader: |
+  Opus 5, effort xhigh, on-disk, this turn. Every mutation re-run by the gate on the PRODUCTION
+  workflow rather than read from any implementer report; every restore from a `cp` backup and
+  verified byte-identical with `cmp -s` (never `git checkout --`, W125); PYTHONDONTWRITEBYTECODE=1
+  and `-p no:cacheprovider` on every run (W121). Each mutation verified to have LANDED on the
+  intended line by grep before its result was believed — the session's own harness produced two
+  false "survivors" by editing a docstring/comment instead of the code.
+budget: |
+  Code-class net +223 against the 400 contract; tests +595, the exempt class this repo mandates
+  (scripts/pr_size_taxonomy.py). Measured THREE-DOT against the merge-base — a two-dot
+  `git diff origin/main` blames a moving main on the branch (W102) and produced a phantom
+  `docs -128` plus an earlier, wrong figure of +151 that had also been taken on the pre-fix tree. The 505-line verifier and its fixtures that
+  earlier appeared in this PR's file list belonged to #5260 and are on main; the number shrank
+  because the tree moved, not because anything was removed here.
+pii: none
