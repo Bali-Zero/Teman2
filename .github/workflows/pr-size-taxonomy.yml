@@ -1,0 +1,34 @@
+name: PR size taxonomy (advisory)
+
+# L04-PR3 — report-only, prints to the job summary. NEVER gates a merge: the
+# script has no `--check` flag, this name is not in required-checks, and no
+# job may `needs:` it. Do not add either.
+on:
+  pull_request_target:
+    types: [closed]
+  schedule:
+    - cron: "0 20 * * *" # daily full-window recompute, 04:00 WITA
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  taxonomy:
+    if: github.event_name != 'pull_request_target' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts/pr_size_taxonomy.py
+          sparse-checkout-cone-mode: false
+      - name: Classify this merged PR
+        if: github.event_name == 'pull_request_target'
+        run: python3 scripts/pr_size_taxonomy.py --explain ${{ github.event.pull_request.number }} >> "$GITHUB_STEP_SUMMARY"
+      - name: Recompute the full advisory window
+        if: github.event_name != 'pull_request_target'
+        run: python3 scripts/pr_size_taxonomy.py --limit 100 >> "$GITHUB_STEP_SUMMARY"
