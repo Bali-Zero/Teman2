@@ -111,13 +111,26 @@ jobs:
         if: steps.relevant.outputs.run == 'true'
         run: python3 -m pytest scripts/test_mutation_incremental.py -q
 
+      # W121 (2026-08-21, cicatrix-scars.md): a mutation-testing cycle that
+      # mutates and restores source files in the same second, without a
+      # byte-length change, can have its .pyc reused stale by Python's
+      # mtime+size-only staleness check — silently, in either direction (a
+      # survivor reported as a kill, or a kill reported as a survivor). This
+      # instrument does exactly that mutate/restore shape. scripts/
+      # hermetic_verify.sh proves the environment cannot reuse stale
+      # bytecode BEFORE trusting any number the instrument prints below, and
+      # wraps every invocation of it so nothing downstream runs unprotected.
+      - name: Hermetic self-canary (proves stale bytecode reuse is impossible — W121)
+        if: steps.relevant.outputs.run == 'true'
+        run: bash scripts/hermetic_verify.sh --self-test-only
+
       - name: Print frozen canary integrity hash
         if: steps.relevant.outputs.run == 'true'
-        run: python3 scripts/mutation_incremental.py --print-integrity
+        run: bash scripts/hermetic_verify.sh -- python3 scripts/mutation_incremental.py --print-integrity
 
       - name: Canary self-test + incremental mutation gate
         if: steps.relevant.outputs.run == 'true'
         # mutmut IS installed here → the mutmut leg runs on changed lines.
         # --allow-skip is intentionally NOT passed: if mutmut were somehow
         # absent in CI we WANT exit 2 (visible SKIP), never a false pass.
-        run: python3 scripts/mutation_incremental.py -v
+        run: bash scripts/hermetic_verify.sh -- python3 scripts/mutation_incremental.py -v
