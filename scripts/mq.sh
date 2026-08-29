@@ -26,6 +26,8 @@
 #   mq status [--all|PR...]            wrap queue_doctor.py, pass-through output
 #   mq why-red <PR>                    name/bucket/link of each non-passing required check
 #   mq arm <PR>                        record head sha, bare `gh pr merge --auto`, confirm
+#   mq state <PR> [--json]             READ-ONLY queue-state oracle; never mutates, and has
+#                                      no NOT_ARMED verdict (see scripts/mq_state_verdict.py)
 #   mq watch <PR> [--timeout-mins N]   post-arm watcher (default ceiling 120m)
 #   mq requeue <PR>                    disable-auto + re-arm (standing cure for ejections)
 #   mq dequeue <PR>                    disable-auto + drop the local armed-state file
@@ -77,6 +79,7 @@ mq.sh — merge-queue operations tool (Merge-OS v2 Wave 0)
   mq status [--all|PR...]            wrap queue_doctor.py (pass-through output)
   mq why-red <PR>                    name/bucket/link of each non-passing required check
   mq arm <PR>                        record head sha, bare 'gh pr merge --auto', confirm
+  mq state <PR> [--json]             read-only queue-state oracle (never arms, never mutates)
   mq watch <PR> [--timeout-mins N]   post-arm watcher (default ceiling 120m)
   mq requeue <PR>                    disable-auto + re-arm
   mq dequeue <PR>                    disable-auto + drop the local armed-state file
@@ -202,6 +205,172 @@ cmd_arm() {
     echo "  CANNOT-VERIFY confirm step (rc=$MQ_RC): ${MQ_ERR:0:160} — recorded sha stands, check manually"
   fi
   echo "ARMED #$pr @ $sha"
+}
+
+# ---------------------------------------------------------------------------
+# mq state — READ-ONLY. Gathers three facts and hands them to the verdict
+# module; judges nothing itself. It never calls `gh pr merge`, not even to
+# disambiguate: that is a MUTATION, and this verb is what you run when you do
+# NOT want to touch the PR. When the answer is INDETERMINATE it NAMES the
+# mutation instead of performing it.
+#
+# Every read degrades to a labelled CANNOT-VERIFY rather than to a value that
+# looks like a measurement (W106b: a probe that cannot answer must say so, not
+# guess). Only the FIRST read is load-bearing; without it there is no verdict.
+cmd_state() {
+  # Arg parsing that REFUSES rather than guesses. `--repo` with no value used
+  # to leave REPO empty and then `shift 2` failed under errexit, killing the
+  # verb with rc=1 and ZERO output; and a second positional silently WON, so
+  # `mq state 5 6` read PR 6 while the operator was asking about 5. Both are
+  # the read-a-different-thing-than-you-were-asked class, which is exactly what
+  # this verb exists to stop.
+  local pr="" as_json=0
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --json) as_json=1; shift ;;
+      --repo)
+        [[ $# -ge 2 && -n "${2:-}" ]] || _die "state: --repo needs a value (owner/name)"
+        REPO="$2"; shift 2 ;;
+      -*) _die "state: unknown argument '$1'" ;;
+      *)
+        [[ -z "$pr" ]] || _die "state: takes ONE PR number, got '$pr' and '$1'"
+        pr="$1"; shift ;;
+    esac
+  done
+  [[ -n "$pr" ]] || _die "state requires a PR number"
+  _require_pr_number "$pr"
+
+  # STRICT. `owner/junk/name` used to pass: `%%/*` took `owner`, `##*/` took
+  # `name`, so GraphQL read owner/name while the REST calls read the full
+  # three-segment string — one verdict, two different repositories, and the
+  # header named neither. Exactly one slash, both sides non-empty, or refuse.
+  local owner name
+  [[ "$REPO" =~ ^[^/]+/[^/]+$ ]] || _die "repo must be exactly owner/name, got '$REPO'"
+  owner="${REPO%%/*}"; name="${REPO##*/}"
+
+  # (a) the per-PR node. `mergeQueueEntry` does NOT exist in `gh pr view --json`'s
+  #     field list ("Unknown JSON field") — GraphQL is the only way to read it,
+  #     which is exactly why CLI-only probes have concluded "not queued" about a
+  #     PR sitting at position 1.
+  local q
+  q='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){
+        number state mergedAt isDraft mergeable mergeStateStatus headRefOid baseRefName
+        autoMergeRequest{enabledAt}
+        mergeQueueEntry{state position}
+        commits(last:1){nodes{commit{statusCheckRollup{state
+          contexts(first:100){totalCount nodes{
+            __typename
+            ... on CheckRun{name conclusion status}
+            ... on StatusContext{context state}}}}}}}}}}'
+  _gh api graphql -f query="$q" -f o="$owner" -f r="$name" -F n="$pr" \
+      --jq '.data.repository.pullRequest'
+  if (( MQ_RC != 0 )) || [[ -z "$MQ_OUT" || "$MQ_OUT" == "null" ]]; then
+    echo "CANNOT-VERIFY — the per-PR read failed (rc=$MQ_RC): ${MQ_ERR:0:200}" >&2
+    echo "  no verdict is emitted: an unread state is not an absent one." >&2
+    return 3
+  fi
+  local pr_json="$MQ_OUT"
+
+  # (b) WHICH contexts branch protection requires — the NAMES, not the count.
+  #     A required check has an IDENTITY. Comparing cardinalities lets a rollup
+  #     of 68 green OPTIONAL contexts satisfy a bar of 11 REQUIRED ones that are
+  #     all absent, which is the same proxy-for-entity mistake this whole verb
+  #     exists to stop.
+  #
+  #     Read the protection of the PR's OWN base branch: a PR into release/1.x
+  #     judged against main's rules is judged against the wrong world.
+  #
+  #     `// []` is deliberately NOT used: `required_status_checks: null` is a
+  #     REAL answer (the branch's required checks come from a ruleset, not from
+  #     classic protection), and flattening it to an empty list would print
+  #     "requires 0" as if it were a measurement. Absent stays absent.
+  local base_ref required_names="null"
+  base_ref="$(printf '%s' "$pr_json" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("baseRefName") or "")' 2>/dev/null || true)"
+  if [[ -n "$base_ref" ]]; then
+    # One line, one name, so the corpus can EXTRACT this exact filter and run it
+    # under real jq instead of testing a copy that drifts. Two things it must do:
+    #   - UNIQUE, not concatenate: `checks[].context` and `contexts` are the SAME
+    #     list in two shapes (measured on main: 11 and 11, identical sets), and a
+    #     plain `+` printed "requires 22" as though it were a measurement.
+    #   - leave a null `required_status_checks` NULL: that is a real answer (the
+    #     rules live in a ruleset), and `// []` would print "requires 0" instead.
+    local prot_jq='if (.required_status_checks|type) == "object" then ([(.required_status_checks.checks // [])[].context] + (.required_status_checks.contexts // []) | unique) else null end'
+    _gh api "repos/$REPO/branches/$base_ref/protection" --jq "$prot_jq"
+    if (( MQ_RC == 0 )) && [[ "$MQ_OUT" == \[* ]]; then
+      required_names="$MQ_OUT"
+    fi
+  fi
+
+  # (c) queue-branch runs. Their EXISTENCE is durable evidence that this PR has
+  #     been built by the queue at least once — the queue deletes the branch on
+  #     the way out, so the runs outlive the entry that produced them.
+  #     The listing is a BOUNDED PAGE (100 runs ~= a dozen PRs). A zero here
+  #     therefore means "not in this window", which is NOT the same claim as
+  #     "never queued" — so the window's own depth travels with the count and
+  #     the verdict module renders the difference instead of flattening it.
+  #     `.head_branch` is nullable on a workflow_run, and jq's `test()` ABORTS the
+  #     whole filter on a null (`null cannot be matched, as it is not a string`,
+  #     rc=5) — one such row anywhere in the page would turn a real count into a
+  #     CANNOT-VERIFY. `//""` keeps the row from poisoning the other 99.
+  local queue_runs="null"
+  _gh api "repos/$REPO/actions/runs?event=merge_group&per_page=100" \
+      --jq "{matched:([.workflow_runs[]?|select((.head_branch//\"\")|test(\"gh-readonly-queue/.*/pr-${pr}-\"))]|length), window:(.workflow_runs|length), oldest:([.workflow_runs[]?.created_at]|sort|first)}"
+  if (( MQ_RC == 0 )) && [[ "$MQ_OUT" == \{* ]]; then
+    queue_runs="$MQ_OUT"
+  fi
+
+  # (d) the sha this tool recorded when it armed, if it ever did.
+  local armed_sha="" armed_unreadable="false" f
+  f="$(_state_file "$pr")"
+  if [[ -f "$f" ]]; then
+    armed_sha="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("sha",""))' "$f" 2>/dev/null || true)"
+    # A file that exists but will not parse is NOT the same as no file: the
+    # first means the head-vs-armed comparison is unavailable, the second means
+    # there is nothing to compare. Collapsing them would delete a check in
+    # silence — the header above promises every read degrades to a LABEL.
+    [[ -n "$armed_sha" ]] || armed_unreadable="true"
+  fi
+
+  local verdict_py="$SCRIPT_DIR/mq_state_verdict.py"
+  [[ -f "$verdict_py" ]] || _die "mq_state_verdict.py not found at $verdict_py"
+
+  local payload rc=0
+  payload="$(python3 - "$pr_json" "$required_names" "$queue_runs" "$armed_sha" "$armed_unreadable" <<'MQSTATEPY'
+import json, sys
+pr_json, required_names, queue_runs, armed_sha, armed_unreadable = sys.argv[1:6]
+def lst(v):
+    try:
+        d = json.loads(v)
+        return d if isinstance(d, list) else None
+    except Exception:
+        return None
+def obj(v):
+    try:
+        d = json.loads(v)
+        return d if isinstance(d, dict) else None
+    except Exception:
+        return None
+print(json.dumps({
+    "pr": json.loads(pr_json),
+    "required_names": lst(required_names),
+    "queue_runs": obj(queue_runs),
+    "armed_sha": armed_sha or None,
+    "armed_sha_unreadable": armed_unreadable == "true",
+}))
+MQSTATEPY
+)" || rc=$?
+  if (( rc != 0 )) || [[ -z "$payload" ]]; then
+    echo "CANNOT-VERIFY — could not assemble the payload (rc=$rc)" >&2
+    return 3
+  fi
+
+  rc=0
+  if (( as_json )); then
+    printf '%s' "$payload" | python3 "$verdict_py" --pr "$pr" --repo "$REPO" --json || rc=$?
+  else
+    printf '%s' "$payload" | python3 "$verdict_py" --pr "$pr" --repo "$REPO" || rc=$?
+  fi
+  return "$rc"
 }
 
 # ---------------------------------------------------------------------------
@@ -351,6 +520,7 @@ main() {
     status)  cmd_status "$@" ;;
     why-red) cmd_why_red "$@" ;;
     arm)     cmd_arm "$@" ;;
+    state)   cmd_state "$@" ;;
     watch)   cmd_watch "$@" ;;
     requeue) cmd_requeue "$@" ;;
     dequeue) cmd_dequeue "$@" ;;

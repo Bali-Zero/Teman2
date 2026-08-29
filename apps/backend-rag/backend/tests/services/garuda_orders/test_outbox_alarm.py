@@ -8,6 +8,8 @@ as hard as "fires".
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from backend.services.garuda_orders.outbox_alarm import REALERT_SECONDS, OutboxAlarm
@@ -76,7 +78,12 @@ def test_unrouted_types_are_named_and_rendered_stably():
         exhausted=0, unroutable_types=frozenset({"b_type", "a_type"}), now=0.0
     )
     assert msg is not None
-    assert "a_type, b_type" in msg, "unsorted output defeats every downstream dedup"
+    # Code-span rendering since 2026-08-29 — the names still arrive verbatim
+    # and still sorted; what changed is that Markdown no longer re-parses the
+    # underscores inside them and answers 400.
+    assert "`a_type`, `b_type`" in msg, (
+        "unsorted output defeats every downstream dedup"
+    )
 
 
 def test_set_order_never_changes_the_message():
@@ -180,3 +187,86 @@ def test_the_window_starts_when_the_page_LANDED_not_when_it_was_decided():
         alarm.decide(exhausted=1, unroutable_types=frozenset(), now=100.0 + REALERT_SECONDS)
         is not None
     )
+
+
+# ---------------------------------------------------------------------------
+# The page must survive the Markdown parser the transport actually uses.
+#
+# These assert DELIVERABILITY OF THE PAYLOAD, never "the escaper was called" —
+# so they stay red if someone swaps the escaper for a broken one, and they do
+# not care which mechanism (backslash escape or code span) achieves it.
+# ---------------------------------------------------------------------------
+
+
+def _reserved_left_unescaped(message: str) -> list[str]:
+    """Markdown V1 reserved characters the parser would still try to interpret.
+
+    Code spans are removed FIRST: inside a span Markdown re-parses nothing, so
+    a reserved character there is inert. Whatever remains must be escaped.
+    """
+
+    outside_spans = re.sub(r"`[^`]*`", "", message)
+    return [m.group(0) for m in re.finditer(r"(?<!\\)[_*\[`]", outside_spans)]
+
+
+@pytest.mark.parametrize(
+    "types",
+    [
+        frozenset({"practice_release"}),
+        frozenset({"practice_release", "portal_invite"}),
+        frozenset({"practice_release", "portal_invite", "payment_paid_email"}),
+    ],
+    ids=["one-underscore-ODD", "two-underscores-EVEN", "three-underscores-ODD"],
+)
+def test_the_page_survives_the_parser_at_every_underscore_parity(types):
+    """RED IF an unroutable-type page can be rejected by Telegram as malformed.
+
+    THE DEFECT THIS PINS, live on main until 2026-08-29: `_compose`
+    interpolated job-type names raw while `send_telegram_message` sends
+    `parse_mode="Markdown"`, and 4xx there is NON-retryable. The two real job
+    types carry exactly one underscore each, so delivery depended on PARITY —
+    one failing type is an unmatched `_` and a 400 the page never recovers
+    from; two of them pair up and arrive.
+
+    Parametrised across odd/even/odd because PARITY IS THE AXIS THE DEFECT
+    LIVES ON, and a single-case test would document only the case it happened
+    to pick.
+
+    MEASURED, not assumed (escaper-no-op mutation, 2026-08-29): all three
+    cases go red, the even one included. That is deliberate and worth stating,
+    because it means this assertion is STRICTLY STRONGER than the delivery
+    bug: a balanced pair of underscores does not make Telegram answer 400 —
+    it parses as emphasis and SWALLOWS the underscores, so `portal_invite`
+    and `practice_release` arrive as one italic run with the characters gone.
+    A page that mangles the identifier an operator must act on is a milder
+    failure than a page that never arrives, not an acceptable one. So the
+    property asserted here is "no reserved character reaches the parser
+    unprotected", not "the page happens to survive at this parity".
+    """
+
+    msg = OutboxAlarm().decide(exhausted=0, unroutable_types=types, now=0.0)
+    assert msg is not None
+    assert _reserved_left_unescaped(msg) == [], (
+        "the page carries a reserved Markdown character the parser would choke "
+        "on — Telegram answers 400 'can't parse entities' and, because 4xx is "
+        "non-retryable, the money-queue page is dropped for good"
+    )
+
+
+def test_a_backtick_in_a_job_type_cannot_break_out_of_its_code_span():
+    """A backtick would close the span early and let the tail re-parse.
+
+    The malformed identifier would then be exactly the thing that stops its
+    own page from arriving — the trap `outbox_handlers` records from Kimi K3
+    on 2026-08-28.
+    """
+
+    msg = OutboxAlarm().decide(
+        exhausted=0, unroutable_types=frozenset({"we`ird_type"}), now=0.0
+    )
+    assert msg is not None
+    assert "we<backtick>ird_type" in msg, (
+        "the backtick was not neutralised — it can terminate the code span "
+        "early and make Telegram re-parse the tail"
+    )
+    assert _reserved_left_unescaped(msg) == []
