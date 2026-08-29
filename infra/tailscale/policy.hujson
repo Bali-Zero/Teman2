@@ -79,8 +79,13 @@
 // with comments stripped. That is grammar and intent, NOT acceptance. There is no Tailscale API
 // token on the fleet and no offline validator, so the ONLY authority on whether this policy is
 // accepted is the admin console at save time, which also runs the `tests` block. If it refuses,
-// read its message before editing anything here — an earlier draft used `autogroup:member` as a
-// `dst`, which the console rejects outright.
+// read its message before editing anything here.
+//
+// CORRECTED 2026-08-29 (round-1 grader, finding 9): earlier revisions of this file warned that
+// `autogroup:member` is invalid as a `dst`. That is false for an ordinary ACL destination, where
+// current Tailscale syntax permits it. It IS invalid as an **ssh** `dst` — which is the only
+// place this file would have used it, and why the ssh block below uses `autogroup:self`. Keep
+// the distinction; do not restore the blanket claim.
 {
   // Magic IPs are stable per node and are not secrets. Used as both rule operands and test
   // targets. If a node is removed and re-registered it gets a NEW magic IP and its rules stop
@@ -122,6 +127,7 @@
     //         consumed by apps/nuzantara-mcp/nuzantara_mcp/tools/kg_intel.py).
     {
       "action": "accept",
+      "proto":  "tcp",
       "src":    ["pro"],
       "dst":    ["mini:22", "mini:6379", "mini:11434", "mini:8990"]
     },
@@ -134,6 +140,7 @@
     // shell, and it is the least-attended machine on the fleet. See SHELL-ROUTE above.
     {
       "action": "accept",
+      "proto":  "tcp",
       "src":    ["mini"],
       "dst":    ["pro:22"]
     },
@@ -143,6 +150,7 @@
     //         air-m5-2.tail461666.ts.net). Spokes never talk to each other.
     {
       "action": "accept",
+      "proto":  "tcp",
       "src":    ["pro"],
       "dst":    ["m5:22"]
     },
@@ -158,6 +166,7 @@
     //         deliberate edit to this line. See SHELL-ROUTE above.
     {
       "action": "accept",
+      "proto":  "tcp",
       "src":    ["m5"],
       "dst":    ["pro:22", "pro:443"]
     },
@@ -172,6 +181,7 @@
     // evidence rather than widening this rule.
     {
       "action": "accept",
+      "proto":  "tcp",
       "src":    ["m5"],
       "dst":    ["mini:22", "mini:4317"]
     },
@@ -187,6 +197,7 @@
     // not to this file. That is the real fix and it is filed in the ledger.
     {
       "action": "accept",
+      "proto":  "tcp",
       "src":    ["iphone-14", "iphone175", "apple-vision-pro"],
       "dst":    ["pro:443"]
     },
@@ -200,9 +211,13 @@
     // absence is what denies a teammate's laptop the shell on pro:443, the Redis on mini:6379,
     // the Ollama on mini:11434, every sshd, and the CRM runtime — at the packet layer, before the
     // CRM's own RBAC (which is row-level, and would otherwise be bypassed underneath) gets a say.
-    // scripts/tests/test_tailnet_acl_deny_by_default.py fails the build if that absence ends.
+    // scripts/tests/test_tailnet_acl_deny_by_default.py goes RED if that absence ends. Stated
+    // precisely (round-1 grader, finding 5): `check-tailnet-acl` is NOT a required check yet, so
+    // a red there is a loud signal on the PR, not a merge block. Promoting it to required is a
+    // branch-protection change and therefore operator-only.
     {
       "action": "accept",
+      "proto":  "tcp",
       "src":    ["m5", "pro"],
       "dst":    ["tag:team-device:22", "tag:team-device:5900"]
     }
@@ -263,6 +278,12 @@
       "deny": ["pro:22", "mini:22", "mini:11434", "m5:22"]
     },
     {
+      // The SUPPORT direction, asserted rather than assumed. A test destination may be a tag,
+      // so this needs no enrolled laptop — see the note at the foot of this file.
+      "src":    "m5",
+      "accept": ["tag:team-device:22", "tag:team-device:5900"]
+    },
+    {
       // The blanket the previous draft granted is gone: no port on Pro beyond 22 and 443 is
       // reachable from M5, so a new service appearing on a new port is denied until someone adds
       // it here on purpose.
@@ -271,11 +292,14 @@
     }
   ]
 
-  // NOT TESTED HERE, and the reason is stated rather than hidden: the accept direction toward a
-  // team laptop (m5 -> tag:team-device:22) cannot be expressed as a test until the node exists, because
-  // ACL tests need a concrete destination host. Add
+  // CORRECTED 2026-08-29 (round-1 grader, finding 4): an earlier revision of this file claimed
+  // the accept direction toward a team laptop could not be tested until the node existed,
+  // "because ACL tests need a concrete destination host". That is false — a test destination may
+  // be a TAG — so the support path is asserted above (`m5` and `pro` accept `tag:team-device:22`
+  // and `:5900`) with no enrolled laptop required. It was the one claim in this file that
+  // excused an untested direction, which is exactly the shape of excuse worth distrusting.
+  // After enrollment, add the concrete-host form too — that is step 5 of
+  // infra/tailscale/enroll-team-device.md:
   //   {"src": "m5", "accept": ["team-laptop-01:22", "team-laptop-01:5900"]}
-  // with `"team-laptop-01": "<its magic IP>"` in `hosts` immediately after enrollment — that is
-  // step 5 of infra/tailscale/enroll-team-device.md, and it is the test that proves the support
-  // path works rather than assuming it.
+  // with `"team-laptop-01": "<its magic IP>"` in `hosts`.
 }

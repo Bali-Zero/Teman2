@@ -48,10 +48,12 @@ does **not** mean Tailscale accepts it — only the console can say that.
 3. Paste the contents of `infra/tailscale/policy.hujson` into the editor. **Do not save yet.**
 4. The editor validates as you type: syntax errors, unknown tags, and invalid `dst` shapes surface
    inline. It also runs the `tests` block. Read every message.
-   - If it rejects `autogroup:*` in a `dst`, that is the known trap: an autogroup as a destination
-     is limited to `autogroup:internet` / `autogroup:self`. Fix the file in the repo, re-run step
-     1, and re-paste — never patch only in the console, or the repo and the tailnet diverge (the
-     HOME-fork disease, applied to network policy).
+   - If it rejects an `autogroup:*` used as an **ssh** `dst`, that is the known trap: an ssh
+     destination is limited to `autogroup:self` (which is what the file uses). Note the
+     distinction — an autogroup IS permitted as an ordinary ACL destination, so a blanket "no
+     autogroups in dst" reading is wrong. Fix the file in the repo, re-run step 1, and re-paste
+     — never patch only in the console, or the repo and the tailnet diverge (the HOME-fork
+     disease, applied to network policy).
 5. Use **Preview** on a couple of node pairs before saving. Preview answers "can A reach B:port"
    against the pasted draft. Check at minimum `m5` -> `pro:22` (must be allowed) and `mini` ->
    `pro:443` (must be denied).
@@ -89,6 +91,14 @@ Then let a full cron cycle pass and check `scripts/fleet_watch.py`'s output and 
 logs. A deny-by-default policy fails loudly on first use of an ungranted flow, which may be hours
 after the save.
 
+**Every rule carries `"proto": "tcp"`, so UDP and ICMP between nodes are no longer permitted.**
+That is deliberate — without `proto` a rule granting "only SSH" also grants UDP/22 and ICMP for
+the pair, which made the file's own comments false. Practical consequence: a plain
+`ping 100.93.236.6` between fleet nodes will now fail. `tailscale ping` is unaffected (it is a
+disco probe, not ICMP through the filter), which is what `fleet_watch.py` actually uses. If some
+service turns out to need UDP, add `"proto": "udp"` as its own rule with its evidence — do not
+delete `proto` to make a red go green.
+
 ## 5. Verify the denies actually deny (guilt) — the load-bearing step
 
 An accept-only verification is not a verification: it can report success and can never report
@@ -96,21 +106,38 @@ failure. That is precisely how the 2026-05 laptop handoff "verified" retained ac
 `ssh air 'tailscale status'` — a command that answers green from M5 no matter what, because both
 `air` and `air-ts` resolve to M5 on Pro.
 
-Run this **from Mini**, a node the policy denies `pro:443`:
+**Run the positive control FIRST, or the negative result proves nothing.** A failed `curl` to
+`/term` has at least three causes — the ACL denied it, ttyd is down, or `tailscale serve` is not
+mounted — and only the first is the one you are testing. So establish that the endpoint is alive
+from a node the policy _allows_, then show it is dead from a node the policy _denies_, in the same
+few minutes.
+
+Step A — **from M5** (allowed: rule 4 grants `m5 -> pro:443`). This must SUCCEED:
+
+```bash
+curl -sk -m 8 -o /dev/null -w 'M5 -> /term : %{http_code}\n' https://nuzantara.tail461666.ts.net/term
+```
+
+Expect `200`. If this is not 200, the endpoint itself is down — stop, because step B cannot mean
+anything yet.
+
+Step B — **from Mini** (denied: rule 2 grants only `mini -> pro:22`). This must FAIL:
 
 ```bash
 # GUILT TEST. Success here means the policy did NOT take effect.
-curl -sk -m 8 -o /dev/null -w '%{http_code}\n' https://nuzantara.tail461666.ts.net/term
+curl -sk -m 8 -o /dev/null -w 'MINI -> /term : %{http_code}\n' https://nuzantara.tail461666.ts.net/term
+echo "curl exit: $?"
 ```
 
-- **Expected (policy applied): the command times out** — `curl: (28)`, or exit 7 / `000`. The
-  packet filter drops the connection, so there is no HTTP status at all.
+- **Expected: a TIMEOUT — `curl: (28)`, exit 28.** A dropped packet gives no answer at all, so the
+  connection hangs until the deadline. That is the signature of a packet filter.
+- **Exit 7 (`Failed to connect`) is NOT a clean pass.** It means the connection was actively
+  refused, which a dropped packet does not do — read it as "something else is wrong" and
+  investigate, rather than banking it as proof.
 - **`200`: the policy is NOT in effect.** Either it was not saved, or Mini matched a rule you did
   not intend. Stop and re-read the `acls` block before doing anything else.
-
-An HTTP `403` would also be a failure of this test, not a pass: 403 means the connection was
-established and something above the network layer refused it. The ACL's job is that the TCP
-connection never completes.
+- **`403` is a failure of this test too**: the connection was established and something above the
+  network layer refused it. The ACL's job is that the TCP connection never completes.
 
 Once a team laptop exists, the same test from the laptop is the real one, and its expected result
 is identical. `infra/tailscale/enroll-team-device.md` step 5 covers it, together with

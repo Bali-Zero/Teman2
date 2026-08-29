@@ -1,0 +1,11 @@
+// GUILT: a top-level key this guard does not know how to audit. Fail closed — a policy that
+// grows a new access surface must grow an auditor for it in the same commit.
+// SHELL-ROUTE: /term -> 127.0.0.1:7681 is ttyd -W zsh.
+{
+  "hosts": {"pro": "100.107.22.111", "m5": "100.110.186.116", "mini": "100.93.236.6"},
+  "tagOwners": {"tag:team-device": ["autogroup:admin"]},
+  "acls": [],
+  "ssh": [],
+  "nodeAttrs": [{"target": ["*"], "attr": ["funnel"]}],
+  "tests": [{"src": "tag:team-device", "deny": ["pro:443"]}]
+}

@@ -68,23 +68,32 @@ Admin console → **Access Controls** → replace the policy with `infra/tailsca
 → **Save**. The console validates the `tests` block on save; if a test fails it refuses, which is
 why the tests ship with the policy.
 
-Expected: no change for the six existing nodes (rule 1 reproduces today's flat reachability for
-devices owned by the tailnet owner — which is all six). The one intended difference is that
-Tailscale SSH loses its root grant — latent today, since no node runs the Tailscale SSH server.
+Expected (REWRITTEN 2026-08-29 — the policy no longer reproduces flat reachability, so the old
+text here was describing a draft that no longer exists): the six existing nodes keep only the
+flows the repo has a cited consumer for — `pro -> mini` 22/6379/11434/8990, `mini -> pro` 22,
+`pro -> m5` 22, `m5 -> pro` 22/443, `m5 -> mini` 22/4317, and the three iOS devices -> `pro:443`.
+Anything else between Zero's own machines is now denied, including UDP and ICMP (every rule
+carries `"proto": "tcp"`), so a plain `ping` between nodes stops working while `tailscale ping`
+keeps working. Two intended differences beyond that: Tailscale SSH loses its root grant (latent
+today, since no node runs the Tailscale SSH server), and `mini` no longer reaches `pro:443`.
+Verification, including the positive/negative control pair, is `docs/runbooks/tailnet-acl-apply.md`.
 
 If the console refuses the policy, the message is the ground truth, not this file: nothing in the
 fleet can validate a Tailscale policy offline (no API token, no local validator), so the grammar
-here was checked against the published ACL syntax reference and no further. Two constructs are
-worth knowing because a draft of this policy had both wrong: `autogroup:member` is valid in `src`
-only — never as a `dst` in `acls`, and never as an `ssh` `dst`, where the value must be a user, a
-tag, or `autogroup:self`.
+here was checked against the published ACL syntax reference and by a cross-family review, and no
+further. One construct is worth knowing because a draft of this policy had it wrong:
+`autogroup:member` is fine in `src`, and is also permitted as an ordinary ACL `dst` — but NOT as
+an `ssh` `dst`, where the value must be a user, a tag, or `autogroup:self`. (An earlier version of
+this paragraph called it invalid as any `dst`; that was overbroad.)
 
 ## Step 2 — mint a tagged, single-use auth key · `operator[GUI]`
 
 Admin console → **Settings → Keys → Generate auth key**:
 
-- **Tags**: `tag:team-device` ← the entire mechanism. Without it the laptop joins as a member
-  device and rule 1 hands it the shell.
+- **Tags**: `tag:team-device` ← the entire mechanism, and it must be this exact string, because
+  it is the tag every containing rule in `policy.hujson` names. Without it the laptop joins as a
+  member device, lands outside every rule written to fence it, and inherits `autogroup:member` —
+  which is what the Tailscale SSH rule grants.
 - **Reusable**: off.
 - **Ephemeral**: off (an ephemeral node disappears when it goes offline; a laptop is not that).
 - **Expiration**: the shortest that fits the handover window. This is the _key's_ lifetime, not
@@ -151,14 +160,22 @@ console before anything else.
 
 ## Step 5 — pin the support path in the ACL
 
-`policy.hujson` deliberately ships without a test for the accept direction toward the laptop,
-because ACL tests need a concrete destination host and the node did not exist yet. Once it does,
-add its magic IP to `hosts` and the test that proves support works:
+CORRECTED 2026-08-29: this step used to say the accept direction toward the laptop could not be
+tested until the node existed, "because ACL tests need a concrete destination host". That was
+false — a test destination may be a TAG — so `policy.hujson` now ships the tag form already, and
+the support path is asserted before any laptop joins:
+
+```hujson
+{ "src": "m5", "accept": ["tag:team-device:22", "tag:team-device:5900"] }
+```
+
+Once a real node exists, add the concrete-host form alongside it. Note the source is `m5` (and
+`pro`), not the whole owner identity — those are the only two sources the support rule grants:
 
 ```hujson
 "hosts": { …, "team-laptop-01": "100.x.y.z" },
 "tests": [
-  { "src": "antonellosiano@gmail.com", "accept": ["team-laptop-01:22", "team-laptop-01:5900"] },
+  { "src": "m5", "accept": ["team-laptop-01:22", "team-laptop-01:5900"] },
   …
 ]
 ```

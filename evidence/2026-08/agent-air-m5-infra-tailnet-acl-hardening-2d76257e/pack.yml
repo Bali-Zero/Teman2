@@ -1,0 +1,211 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR #5192 (agent/air-m5/infra/tailnet-acl-hardening -> main) — deny-by-default Tailscale ACL,
+  apply runbook, and CI guard, on the orchestrator's tailnet-security mandate. Anchors:
+  infra/tailscale/README.md (the 2026-08-11 live measurement), research/operations/
+  2026-08-11-apple-vision-pro-tailnet-leverage.md (the vision-deck consumers), and the two
+  PENDING-ARMS rows opened 2026-08-11 for the ttyd exposure and the blocked team enrollment.
+
+lanes:
+  - lane: tailnet-acl-build
+    role: build
+    seat: claude (this session — M5 interactive, sole build lane)
+  - lane: tailnet-acl-refuter-r1
+    role: review
+    seat:
+      codex gpt-5.6-sol xhigh (OpenAI, non-Anthropic) — round-1 grader, REJECT with
+      executed bypasses against the guard; never the build seat
+  - lane: tailnet-acl-dependency-audit
+    role: read
+    seat:
+      claude sonnet 5 subagent (fresh context, repo-only read) — enumerated the fleet's
+      real cross-machine flows so the matrix is evidence-backed rather than guessed
+
+diff:
+  files: 21
+  net_lines: 1179
+  measured_at: PENDING
+  note: >-
+    git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD. The hand-authored
+    surface is the ACL, the guard, the runbook and 14 guilt fixtures; there is no generated
+    artifact in this diff. Larger than the ~400-line target and declared as such in the PR body:
+    the shape is policy-as-code plus its runbook plus its guard plus the fixture corpus that
+    proves the guard fails, and the policy's comments ARE the artifact — the SHELL-ROUTE block
+    exists so the next reader cannot mistake pro:443 for an ordinary port.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      The guard is green on the shipped policy and red on every one of the 14 defect fixtures
+      (6 original + 8 added from the round-1 grader's executed bypasses), plus 3 parser and
+      canonicalisation tests.
+    cmd: >-
+      python3 -m pytest scripts/tests/test_tailnet_acl_deny_by_default.py -q
+    result: "19 passed in 0.04s"
+    exit: 0
+    ts: 2026-08-29T03:10Z
+    seat: session (build lane)
+
+  - claim: >-
+      The guard actually FAILS when the real policy is widened — not merely passes as shipped.
+      Two independent mutations were applied to infra/tailscale/policy.hujson and reverted from
+      a /tmp copy: (A) mini's dst widened from pro:22 to pro:1-65535, the range that hides the
+      shell port without containing the string "pro:443"; (B) pro:443 quietly appended to mini's
+      dst list. Both turned test_real_policy_is_deny_by_default_and_names_the_shell red.
+    cmd: >-
+      cp policy.hujson /tmp/backup; python3 -c "<replace dst>"; python3 -m pytest
+      scripts/tests/test_tailnet_acl_deny_by_default.py -q; cp /tmp/backup policy.hujson
+    result: >-
+      A -> "assert ['OVERBROAD_DST_PORT_RANGE', 'SHELL_PORT_SRC_NOT_ALLOWLISTED'] == []";
+      B -> "assert ['SHELL_PORT_SRC_NOT_ALLOWLISTED'] == []"; restored -> 19 passed
+    exit: 1
+    ts: 2026-08-29T03:32Z
+    seat: session (build lane)
+
+  - claim: >-
+      Run against the PREVIOUS on-disk draft of this same policy — the one that granted
+      `antonellosiano@gmail.com -> antonellosiano@gmail.com:*` — the guard reports the exact
+      defect this PR removes. The guard catches a real historical widening, not only a fixture.
+    cmd: >-
+      git checkout -- infra/tailscale/policy.hujson (restoring HEAD's older draft);
+      python3 -m pytest scripts/tests/test_tailnet_acl_deny_by_default.py -q
+    result: "assert ['WILDCARD_DST_PORT'] == [] — 1 failed, 8 passed"
+    exit: 1
+    ts: 2026-08-29T02:41Z
+    seat: session (build lane)
+
+  - claim: >-
+      Both watcher-coverage violations reported by the `check` job are cleared: the new
+      check-tailnet-acl workflow and the pre-existing, inherited check-skills-canonical (landed
+      unwatched with PR #5041) are both registered in main-push-failure-watch.yml.
+    cmd: python3 scripts/check_watcher_coverage.py
+    result: "watcher-coverage: all 105 live workflow(s) covered by main-push-failure-watch.yml"
+    exit: 0
+    ts: 2026-08-29T03:05Z
+    seat: session (build lane)
+
+  - claim: >-
+      Both touched workflow files are actionlint-clean.
+    cmd: >-
+      actionlint .github/workflows/check-tailnet-acl.yml
+      .github/workflows/main-push-failure-watch.yml
+    result: "no findings (exit 0)"
+    exit: 0
+    ts: 2026-08-29T03:06Z
+    seat: session (build lane)
+
+  - claim: >-
+      The deterministic gear floor for this diff is 3, sourced from PATH (.github/workflows/**
+      is hot-zone), not from size — so this pack is required regardless of the diff's length.
+    cmd: >-
+      python3 -c "import evidence_pack_lint as m; m.compute_floor(<changed files>,
+      numstat=/tmp/nl.txt)" and m.compute_floor_source(...)
+    result: "FLOOR: 3 — SOURCE: path"
+    exit: 0
+    ts: 2026-08-29T02:58Z
+    seat: session (build lane)
+
+  - claim: >-
+      The fleet-flow matrix is evidence-backed. An independent read-only subagent enumerated
+      every cross-machine connection the repo actually makes, and every port granted by the
+      policy traces to a cited file:line — pro->mini 6379 (infra/eventbus/publisher.py), 11434
+      (wr2 image-generator plist + mos-plus worker), 8990 (com.matagaruda.kg-query-api.plist),
+      22 (memory-sync-bidirectional.sh, fleet_watch.py); m5->mini 4317 (wr2-control-app
+      Theme.swift); m5->pro 22 (wr2-queue-pull.sh). It also identified ports that LOOK
+      cross-machine but are localhost-only (5432, 15432, 6333, 18795) and are deliberately
+      NOT granted.
+    cmd:
+      Agent(general-purpose, sonnet) read-only repo enumeration; findings cross-checked
+      against the cited files before any rule was written
+    result: >-
+      "9 node->node flows with evidence; 7 localhost/LAN-only ports excluded" — no rule in the
+      policy lacks a cited consumer
+    exit: 0
+    ts: 2026-08-29T02:20Z
+    seat: sonnet subagent (independent of the build edit loop)
+
+  - claim: >-
+      Round-1 cross-family adversarial review REJECTED the first version and its two HIGH
+      findings were reproduced by the grader as executed bypasses, not asserted: a `grants`
+      block and legacy `users`/`ports` fields were invisible to the auditor, and the shell/team
+      invariants matched only literal spellings (`autogroup:tagged`, `pro:22,443`,
+      `pro:1-65535`, and Pro's magic IP all walked past). Both are fixed and each bypass is now
+      a named guilt fixture.
+    cmd: >-
+      codex exec -m gpt-5.6-sol -c model_reasoning_effort="xhigh" --sandbox read-only
+      --skip-git-repo-check "<adversarial grader prompt over the full diff>"
+    result: >-
+      "VERDICT: REJECT" with 11 findings (2 HIGH, 5 MEDIUM, 2 LOW, 2 INFO); the two INFO
+      findings independently confirmed that no requested fleet flow is missing and that the
+      policy's syntax constructs are valid
+    exit: 0
+    ts: 2026-08-29T03:17Z
+    seat: codex gpt-5.6-sol xhigh (round-1 grader, non-Anthropic)
+
+dissent:
+  - seat: codex gpt-5.6-sol xhigh (round-1 grader)
+    objection: >-
+      Finding 3 (MEDIUM) — every ACL rule omitted `proto`, so each granted UDP alongside the TCP
+      service it named, plus ICMP for the pair; "Only SSH" and "port 443 only" were therefore
+      overstated.
+    status: CONFIRMED
+    resolution: >-
+      FIXED. `"proto": "tcp"` added to all seven ACL rules (not to the ssh block, where it is
+      not a field). Consequence declared rather than hidden: plain `ping` between fleet nodes
+      now fails, while `tailscale ping` — the probe fleet_watch.py actually uses — is a disco
+      probe and unaffected. Recorded in the apply runbook and the enrollment runbook.
+  - seat: codex gpt-5.6-sol xhigh (round-1 grader)
+    objection: >-
+      Finding 5 (MEDIUM) — the workflow header claimed a regression would "fail the build",
+      but the check is non-required, so a red does not block a merge. The same overstatement
+      appeared in policy.hujson.
+    status: CONFIRMED
+    resolution: >-
+      FIXED as a wording correction, not by making the check required. Promoting a check to
+      required is a branch-protection change and therefore operator-only; both files now say
+      "goes RED on the PR" and name the non-required status explicitly.
+  - seat: codex gpt-5.6-sol xhigh (round-1 grader)
+    objection: >-
+      Finding 6 (MEDIUM) — the runbook's guilt test accepted curl exit 7 / HTTP 000 as proof the
+      packet filter dropped the connection, but exit 7 also means the service is down, so a
+      broken endpoint would read as a passing security test.
+    status: CONFIRMED
+    resolution: >-
+      FIXED. The runbook now requires a POSITIVE CONTROL first (from M5, which the policy
+      allows, expecting 200) before the negative test from Mini, and it distinguishes a timeout
+      (exit 28, the packet-filter signature) from exit 7, which is explicitly called out as NOT
+      a clean pass.
+  - seat: session (build lane, self-audit after the grader round)
+    objection: >-
+      The grader's HIGH finding 2 was fixed only halfway. Requiring the shell-port source to be
+      a NAMED NODE still allowed any fleet node — a mutation re-pointing `mini` at
+      `pro:1-65535` stayed GREEN, handing the least-attended machine a writable shell.
+    status: CONFIRMED
+    resolution: >-
+      FIXED, and this is why the mutation receipt above exists: the guard now enforces an
+      explicit allowlist (SHELL_PORT_ALLOWED_SOURCES) plus an OVERBROAD_DST_PORT_RANGE ceiling.
+      Both mutations now go red. Found by running the mutation rather than by reading the fix —
+      the grader's finding was correct and the first correction to it was not sufficient.
+  - seat: codex gpt-5.6-sol xhigh (round-1 grader)
+    objection: >-
+      Finding 1 (HIGH) — the auditor read only `acls`, so a valid `grants` block or the legacy
+      `users`/`ports` fields granted access invisibly. Probe: the modified policy returned [].
+    status: CONFIRMED
+    resolution: >-
+      FIXED STRUCTURALLY rather than by enumeration: `grants` and the legacy fields are now
+      audited, AND the guard fails closed on any top-level key it does not know how to audit
+      (UNKNOWN_TOP_LEVEL_KEY). A future access surface must grow an auditor in the same commit
+      instead of arriving silently.
+
+open_questions:
+  - >-
+    Port 443 cannot be split by URL path in a Tailscale ACL, so the m5 and iOS grants
+    necessarily carry /term alongside /deck. The real fix is moving /term to its own port in
+    Pro's `tailscale serve` config — a change to a live machine, out of scope for this
+    repo-only lane, and a business call for the owner. Left in the ledger, declared in the
+    policy's SHELL-ROUTE block, not silently accepted.
+  - >-
+    Two secondary findings are flagged as follow-ups, not fixed here: Pro's OpenClaw Control
+    binds *:18789 (all interfaces, LAN-reachable independently of the tailnet), and the public
+    Funnel on 8443 bypasses ACLs entirely by design.

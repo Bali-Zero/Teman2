@@ -7,7 +7,9 @@
 # `antonellosiano@gmail.com -> antonellosiano@gmail.com:*` — a blanket that reads as "the fleet
 # keeps talking to itself" and means "every port on every owned device", including the port
 # carrying the unauthenticated writable ttyd shell on Pro. That widening looked tidy in review.
-# The guard makes the next one fail the build instead.
+# The guard makes the next one go RED on the PR instead. Stated precisely, because an earlier
+# draft of this header said "fail the build" and that is not true while this check is
+# non-required (see below): a red here is a loud, attributable signal, not a merge block.
 #
 # NON-REQUIRED by design, same posture as check-cicatrix-scar-pointers.yml: a new signal observes
 # for a review cycle before it can block. Promoting it to a required branch-protection check is a
