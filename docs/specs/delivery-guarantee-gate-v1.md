@@ -443,6 +443,18 @@ docs/specs` returned **1** and `git ls-tree -r origin/main -- docs/specs` return
    written to catch. The wrong primitive manufactures the failure its sibling check exists to
    prevent.
 
+   **The resurrection half must cover deletions from BOTH sides, not just main's.** Measured
+   on this document's own recovery: after the merge queue ejected the PR carrying this rule
+   and a local `git merge origin/main` was run, the `merge=union` driver **restored the
+   superseded version of a row this branch had corrected in place** — so the file briefly
+   held both the wrong "62" row and the "69" row that corrects it, the worse of the two
+   outcomes because a reader grepping the old number finds a live-looking row. A
+   resurrection check written as _rows MAIN deleted that came back_ reports **0** here and
+   misses it entirely; the correct predicate is `deleted_either = (base − main) ∪ (base −
+branch)`, because under a union driver **whichever side deleted a line, the other side's
+   copy restores it.** The `EXTRA` term caught it, which is the argument for computing both
+   terms rather than the one the incident of the day suggests.
+
    **So the binding requirement is not the formula.** Any armed implementation keys on the
    identity each row already carries — its `(date, lane)` pair — never on line identity.
    Until it does, the three-term version is an interim, and a red from it is a question.
