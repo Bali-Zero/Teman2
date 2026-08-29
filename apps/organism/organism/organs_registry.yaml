@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 67f06a65588fdfbbcd70c50ce64a6102129e1d418b9d6d0bf5a9882158967ba8
+checksum: fe05a77cd6b6bc75b753fefa7da936d7bb096ff9c56cd7ab1abd8ab2a941e00a
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -147,17 +147,12 @@ organs:
 - id: pro.wal_continuity_probe
   runtime: pro_launchd
   type: cron
-  # Daily at 05:00, so a night where WAL archiving died is reported the same morning
-  # the snapshot is taken. 30h of slack before silence is an alarm in its own right.
   expected_hb_seconds: 108000
   owner_module: infra/launchagents/wrappers/wal-continuity-probe.sh
   dependencies: []
   recovery_action: launchctl_kickstart
   recovery_params:
     label: com.nuzantara.wal-continuity-probe.daily
-  # warning, not critical: this organ's silence means we stopped WATCHING the WAL
-  # chain, which is one level removed from the chain itself breaking. Both matter;
-  # only one of them is an outage.
   severity_on_silence: warning
   cicatrix_refs:
   - 2026-07-27-W101-recidiva-fly-backup
