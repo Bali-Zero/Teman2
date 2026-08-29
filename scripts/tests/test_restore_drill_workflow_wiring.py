@@ -44,6 +44,21 @@ def _run_restore_drill_step() -> str:
     raise AssertionError('no step named "Run restore drill" found -- broken test, not a clean file')
 
 
+def _executable_lines(body: str) -> list[str]:
+    """Lines of a step's `run:` body that are not full-line `#` comments.
+    Narrow on purpose: this step never puts a trailing comment after real
+    shell tokens, so "strip only lines whose STRIPPED form starts with #"
+    is enough here and cannot clip a `#` that's part of a string."""
+    return [ln for ln in body.splitlines() if not ln.strip().startswith("#")]
+
+
+def _psql_restore_invocation_lines(body: str) -> list[str]:
+    """The line(s) that actually EXECUTE the restore, as opposed to the
+    prose that talks about it. See the docstring on the test that calls
+    this for the measured reason this distinction is load-bearing."""
+    return [ln for ln in _executable_lines(body) if 'psql "$DSN"' in ln]
+
+
 def _run_failure_notify_step() -> str:
     doc = _load_workflow()
     for step in doc["jobs"]["restore-drill"]["steps"]:
@@ -67,13 +82,42 @@ def test_restore_and_verify_capture_their_own_exit_code_not_a_swallow():
     turned into an `exit` -- never a bare `|| true` that discards the fact a
     restore or a verification failed.
 
+    The ON_ERROR_STOP=1 check is anchored to the EXECUTABLE psql invocation
+    line, not to the step body as a whole. Measured: the literal string
+    "ON_ERROR_STOP=1" occurs FIVE times in this step's `run:` text -- once on
+    the `psql "$DSN" -v ON_ERROR_STOP=1` line that actually runs the restore,
+    and four more times in prose that merely TALKS about it (three `#`
+    comments plus the `echo "::error title=Restore aborted
+    (ON_ERROR_STOP=1)::..."` message). A blanket `"ON_ERROR_STOP=1" in body`
+    is satisfied by those four prose occurrences alone: flipping ONLY the
+    executable psql line to `ON_ERROR_STOP=0` and leaving every comment and
+    the echo message untouched left that blanket form green (superscar
+    family #3 -- a guard reading the FORM of the string, anywhere in the
+    text, instead of the ENTITY that actually executes it). Locating the
+    `psql "$DSN"` line among non-comment lines and asserting on THAT line
+    closes the gap without becoming brittle to harmless comment rewording,
+    since comments are excluded from the scan entirely.
+
     PIPESTATUS[1], NOT [0]: `gunzip | psql` is a two-stage pipe and index 0 is
     gunzip's own exit code, not psql's -- reading index 0 here would make the
     whole ON_ERROR_STOP=1 change silently inert on a genuinely failing
     restore. Found by a stubbed end-to-end run of the real de-indented script
     with a faked failing psql (see the PR body), not by inspection."""
     body = _run_restore_drill_step()
-    assert "ON_ERROR_STOP=1" in body
+    psql_lines = _psql_restore_invocation_lines(body)
+    assert psql_lines, 'no executable psql "$DSN" restore line found -- broken test, not a clean file'
+    assert all("ON_ERROR_STOP=1" in ln for ln in psql_lines), (
+        "the executable psql restore invocation must carry ON_ERROR_STOP=1, "
+        f"not just a comment/message mentioning it -- got: {psql_lines!r}"
+    )
+    # Belt-and-braces, NOT sufficient on its own (a deleted flag would also
+    # satisfy this): the disabled form must not be lurking anywhere else in
+    # the body either, e.g. a second, dead invocation. Scoped to
+    # _executable_lines for the same reason as the positive check above --
+    # a `#`-comment mentioning "ON_ERROR_STOP=0" (e.g. explaining the OLD
+    # value) is prose, not a second invocation, and rewording it must be
+    # able to neither satisfy nor break this test.
+    assert not any("ON_ERROR_STOP=0" in ln for ln in _executable_lines(body))
     assert "_PIPE_STATUSES=(\"${PIPESTATUS[@]}\")" in body
     assert "RESTORE_RC=${_PIPE_STATUSES[1]}" in body
     assert "RESTORE_RC=${PIPESTATUS[0]}" not in body, "must not read gunzip's exit code instead of psql's"
