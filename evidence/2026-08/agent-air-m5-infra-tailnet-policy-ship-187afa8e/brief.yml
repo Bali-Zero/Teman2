@@ -1,0 +1,86 @@
+task_id: tailnet-policy-ship-0829
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Ship the deny-by-default Tailscale ACL that PR #5192 suspended, with the two operator-facing
+  documents corrected so each states exactly what its CI guard verifies and, explicitly, what it
+  does not.
+
+  The security artifact is sound and was independently confirmed so by three graders on #5192: no
+  wildcard destination host or port, `tag:team-device` in no rule's `src`, `"proto": "tcp"` on
+  every rule, every granted port cited to a real file:line, deny-tests present, and an apply
+  runbook whose verification carries a genuine positive/negative control that distinguishes
+  "policy applied" from "service down". Zero cannot enrol any team device until it is applied, and
+  the ordering is load-bearing: applied BEFORE the laptop joins, because join-then-restrict leaves
+  a window in which that laptop holds the unauthenticated writable shell on `pro:443`.
+
+  What suspended #5192 was not the policy. Three independent seats each swept a different column
+  of its CI guard and each found the guard blind on the column nobody had swept yet — source, then
+  destination, then `ssh.users`. Every fix was genuine; three seats finding three axes is Agent PR
+  Contract rule 8's own signal that the surface is under-specified, and its own remedy is "write
+  the spec, do not open the third PR". This PR therefore does NOT attempt a fourth patch.
+
+  It closes the one thing that was actually blocking, which is a documentation defect on a security
+  gate: `docs/runbooks/tailnet-acl-apply.md` and `infra/tailscale/policy.hujson` both told the
+  operator that a green guard means the file "grants no root over Tailscale SSH". That is false —
+  `SSH_ROOT_GRANT` is a denylist of the literal string `"root"`, so `users: ["*"]` passes it, and
+  the `ssh` block never enters the wildcard/selector checks at all. An operator reading a green
+  check as proof of an unchecked invariant is worse than having no check.
+
+  Gear 3 by PATH, deterministically: the diff touches `.github/workflows/**`, so compute_floor()
+  returns 3 with source `path` regardless of size. Receipt in the pack.
+constraints:
+  - "Repo-only lane. No live machine state changes — no ssh mutation, no launchctl, no tailscale
+    reconfiguration. Applying the policy is operator[GUI] and stays that way: the fleet holds no
+    Tailscale API token and the CLI can neither read nor write ACLs."
+  - "Bring #5192's content across UNCHANGED except for the documentation corrections. Verified by
+    construction: commit aabaa110e9 carries the content alone and a diff of every carried path
+    against #5192's head is empty."
+  - "Do NOT complete the guard. A fourth round on the same surface is what rule 8 forbids; the
+    guard-completeness work is written down as an executable spec instead, one ledger row per axis,
+    each carrying a reproduction that was actually run."
+  - "No claim wider than what was measured. Every countable number comes from --print-measured and
+    every code reference was grep-confirmed on this branch at the moment it was written."
+acceptance:
+  - "Every sentence in the three corrected sections is true clause by clause when checked against
+    `audit_policy()` — established by executing each claim, not by reading the guard's comments."
+  - "The runbook names, at the apply step, the specific properties the guard checks AND states that
+    the `ssh` block is not among them and must be read by eye."
+  - "The guard, policy and fixtures are bit-identical to #5192: this PR changes no behaviour."
+  - "`python3 -m pytest scripts/tests/test_tailnet_acl_deny_by_default.py -q` is green and the real
+    policy still audits to zero findings."
+  - "The four guard axes exist as PENDING-ARMS rows with reproductions, and the profile-monitor
+    Legge-5 decision is stated where it bites — in the enrolment runbook, before the key is minted."
+risks:
+  - "The guard remains incomplete on four named axes after this merge. That is a deliberate,
+    declared state, and the mitigation is that neither document now credits the guard with coverage
+    it lacks. The residual exposure is unchanged from before this PR — the guard was already
+    incomplete; only the false claim about it is removed."
+  - "Deny-by-default breaks any flow that exists on the machines but nowhere in the repo. Intended
+    failure mode, surfacing at apply time, possibly hours later on a cron cycle. Runbook step 4."
+  - "`scripts/profile-monitor/` is fenced by this policy from Bali Zero's side, and the client's own
+    POST_FAIL line lands only on the employee's Mac. It is a Legge-5 decision reserved to Zero and
+    it must be answered BEFORE enrolment, because afterwards the wrong answer is invisible.
+    Declared in the enrolment runbook and in the ledger."
+  - "This is policy as code that no offline validator can accept. The admin console at save time is
+    the sole authority on acceptance; the repo-side guard checks grammar and intent only."
+grader: |
+  generator != grader, on fresh context, cross-family, and it changed the outcome materially.
+  The build lane (this session, Anthropic) never graded its own diff. Three adversarial rounds:
+  codex gpt-5.6-sol at xhigh (OpenAI) x3 and kimi-code/k3 (Moonshot) x2, each instructed to
+  falsify the corrected claims by EXECUTING audit_policy() rather than reading its comments.
+
+  They found eleven overstatements — in the corrections themselves, which is the finding worth
+  recording: a session correcting overclaims produced six new ones on its first pass. Findings per
+  round were 6 -> 3 -> 2, with every prior round's fix re-measured green by the next round, and the
+  round-3 verdicts confirming the substance of all five claim families. Two of the round-2 findings
+  were inherited from #5192 and had survived all three of ITS graders.
+
+  The Gear-3 verdict itself is posted by an independent gate seat that did not author this diff and
+  is not one of the council seats above. Journal: journal.jsonl in this pack directory.
+budget: |
+  Flat-subscription seats only: this session (build, Claude MAX OAuth), codex gpt-5.6-sol (review,
+  ChatGPT Pro) and kimi-code/k3 (review, Moonshot Allegro). No metered API spend, no paid
+  per-token key, no PII to any seat.
+pii: none

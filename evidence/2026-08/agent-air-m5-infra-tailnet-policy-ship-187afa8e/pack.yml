@@ -1,0 +1,262 @@
+brief_ref: evidence/2026-08/agent-air-m5-infra-tailnet-policy-ship-187afa8e/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  PR superseding #5192 (agent/air-m5/infra/tailnet-policy-ship -> main) — ship the deny-by-default
+  Tailscale ACL that #5192 suspended under Agent PR Contract rule 8, with its two operator-facing
+  overclaims corrected and the guard-completeness work written down as a spec instead of attempted
+  a fourth time. Anchors: infra/tailscale/README.md (the 2026-08-11 live measurement), PR #5192,
+  and the five PENDING-ARMS rows this diff opens.
+
+lanes:
+  - lane: tailnet-policy-ship-build
+    role: build
+    seat: >-
+      claude (this session — M5, sole build lane). Declared rather than left implicit: with one
+      build lane, D3 seat-diversity is not engaged. It is not being dodged — the load-bearing
+      questions here are settled by executing audit_policy(), and the cross-family breadth went
+      into the REVIEW lanes below, where it changed the outcome eleven times.
+  - lane: tailnet-doc-refuter-r1
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol xhigh (OpenAI, non-Anthropic) — round-1 adversarial review of the
+      CORRECTIONS, REJECT with six executed findings; never the build seat
+  - lane: tailnet-doc-verifier-r1
+    role: review
+    seat: >-
+      kimi-code/k3 (Moonshot, non-Anthropic, fresh context) — independent re-measurement of all
+      five claim families after the round-1 fixes, PASS
+  - lane: tailnet-doc-refuter-r2
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol xhigh — round 2, REJECT with three further executed findings, two of them
+      inherited from #5192 and missed by all three of ITS graders
+  - lane: tailnet-doc-refuter-r3
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol xhigh and kimi-code/k3 in parallel — round 3, two residual precision
+      findings between them, both fixed; substance of all five claim families confirmed by both
+
+diff:
+  files: 32
+  net_lines: 1786
+  measured_at: HEAD, recomputed immediately before the final commit
+  note: >-
+    `git diff --numstat origin/main...HEAD` via `scripts/evidence_pack_lint.py --print-measured`;
+    the exact sentence it emitted is in the gear-floor receipt below. Far over the ~400-line target,
+    and the shape is why: roughly 1,470 of those lines are #5192's content carried across
+    byte-identical (policy, guard, 18 fixtures, runbook, README), which this PR does not modify.
+    The genuinely new surface is the documentation correction, five ledger rows and this pack.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      #5192's content was brought across UNCHANGED. Commit aabaa110e9 carries the policy, the
+      guard, all 18 fixtures, the runbook, the README and the watcher registrations and nothing
+      else; a diff of every carried path against #5192's head is empty.
+    cmd: >-
+      git diff 15598b4e28 aabaa110e9 -- .github/workflows/check-tailnet-acl.yml
+      .github/workflows/main-push-failure-watch.yml docs/runbooks/tailnet-acl-apply.md
+      infra/tailscale/ scripts/tests/fixtures/tailnet_acl/
+      scripts/tests/test_tailnet_acl_deny_by_default.py --stat
+    result: "(no output — byte-identical)"
+    exit: 0
+    ts: 2026-08-29T11:43+08:00
+    seat: session (build lane)
+
+  - claim: >-
+      The guard is green on the shipped policy and red on each of the 18 defect fixtures. This PR
+      changes no guard behaviour; the corpus is #5192's, unmodified.
+    cmd: python3 -m pytest scripts/tests/test_tailnet_acl_deny_by_default.py -q
+    result: "23 passed in 0.09s"
+    exit: 0
+    ts: 2026-08-29T13:10+08:00
+    seat: session (build lane)
+
+  - claim: >-
+      The claim the two documents used to make is false, and both halves of the falsification are
+      executed rather than argued. An ssh rule with wildcard src and dst audits CLEAN, where the
+      identical wildcard in an `acls` rule produces three findings; and `users: ["*"]` — strictly
+      wider than root — passes the root check that `users: ["root"]` fails.
+    cmd: >-
+      python3 -c "<import audit_policy from the guard; call it on synthetic policy strings>"
+    result: >-
+      ssh src=*/dst=* -> [] ; same wildcard in acls -> ['WILDCARD_SRC', 'WILDCARD_DST_HOST',
+      'UNRESOLVABLE_DST_SELECTOR'] ; ssh users=['*'] -> [] ; ssh users=['root'] ->
+      ['SSH_ROOT_GRANT']
+    exit: 0
+    ts: 2026-08-29T11:20+08:00
+    seat: session (build lane)
+
+  - claim: >-
+      The other three documented gaps are executed too. There is no UNRESOLVABLE_SRC_SELECTOR: an
+      unresolvable SOURCE audits clean against an ordinary destination while the same selector as a
+      DESTINATION is refused — with the shell-port carve-out both documents now name. And the shell
+      anchor follows the `hosts` alias: with "pro" re-pointed and a second alias carrying Pro's real
+      IP, a rule handing that alias's 443 to Mini audits clean.
+    cmd: python3 -c "<audit_policy on seven synthetic mutations>"
+    result: >-
+      tag:fleet as src -> [] ; group:ops as src -> [] ; tag:fleet as dst ->
+      ['UNRESOLVABLE_DST_SELECTOR'] ; tag:team-other as src -> ['TEAM_TAG_AS_SOURCE'] (prefix, not
+      exact string) ; tag:fleet -> pro:443 -> ['SHELL_PORT_SRC_NOT_A_NAMED_HOST'] (the carve-out) ;
+      two-edit alias form -> [] ; control mini->pro:443 on a correct map ->
+      ['SHELL_PORT_SRC_NOT_ALLOWLISTED']
+    exit: 0
+    ts: 2026-08-29T13:08+08:00
+    seat: session (build lane)
+
+  - claim: >-
+      The `profile-monitor` citations are live on this branch, and #5192's characterisation of them
+      was wrong. The client is not fire-and-forget: it sets a 5s timeout, blocks on a semaphore up
+      to 6s, and logs POST_FAIL on a transport error — to a file on the employee's own Mac. Only
+      transport errors are classified that way; an HTTP 4xx/5xx logs POST_OK with the status.
+    cmd: >-
+      sed -n '40,85p' scripts/profile-monitor/mac-client/profile-monitor.swift ;
+      sed -n '42,46p' scripts/profile-monitor/wrapper.py ;
+      ls scripts/profile-monitor/mac-client/setup-balizero.sh
+    result: >-
+      profile-monitor.swift:12 WRAPPER_URL = "http://100.107.22.111:9099/checkout" ;
+      :65 timeoutInterval = 5 ; :70 logEvent("POST_FAIL") on error ; :73 logEvent("POST_OK") with
+      status on any HTTPURLResponse ; :78 sem.wait(timeout: .now() + 6) ; wrapper.py:44
+      LISTEN_PORT = 9099 ; setup-balizero.sh present
+    exit: 0
+    ts: 2026-08-29T12:55+08:00
+    seat: session (build lane)
+
+  - claim: >-
+      The gear floor is 3 with source `path`, not a conductor's choice — the diff touches
+      .github/workflows/**. Diff stats and commit count measured LAST, immediately before the final
+      commit, from this branch's own three-dot diff against origin/main.
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-floor / --print-floor-source / --print-measured
+      --changed-files-file <changed> --numstat-file <numstat> --commit-count <n>
+    result: "3 ; path ; 32 files, +1762/-99, 6 commits"
+    exit: 0
+    ts: 2026-08-29T13:35+08:00
+    seat: session (build lane)
+
+  - claim: >-
+      The five ledger rows parse and none is a phantom-operator row. Four are owner=me (repo-only
+      guard work); the fifth is owner=operator[business], a genuine Legge-5 decision.
+    cmd: python3 scripts/pending_arms_report.py --strict-phantom
+    result: "exit 0 — MALFORMED: none, PHANTOM-OPERATOR: none"
+    exit: 0
+    ts: 2026-08-29T13:12+08:00
+    seat: session (build lane)
+
+  - claim: >-
+      A near-miss caught and cured in-flight, recorded because it was this session's own error: the
+      first draft of this pack was written to the ROOT evidence/brief.yml and evidence/pack.yml,
+      which belong to PR #5059 (visa-oracle-retention-scope-p0). Both were restored from HEAD and
+      re-verified byte-identical to origin/main before this pack moved to its per-task directory.
+    cmd: git diff origin/main -- evidence/brief.yml evidence/pack.yml --stat
+    result: "(no output — both root files identical to origin/main)"
+    exit: 0
+    ts: 2026-08-29T13:30+08:00
+    seat: session (build lane)
+
+dissent:
+  - seat: codex-gpt-5.6-sol (round 1, xhigh)
+    status: CONFIRMED
+    objection: >-
+      THE CORRECTIONS THEMSELVES OVERCLAIMED, AND THAT IS THE MOST IMPORTANT LINE IN THIS PACK.
+      This PR exists because #5192's documents credited the guard with coverage it lacked. On its
+      first pass, this session's replacement text did the same thing six times: "does NOT check the
+      ssh block" (it checks team-reaching src and dst there); "every destination selector resolves
+      to a named node or is refused" (one exception exists, ALLOWED_NON_NODE_DSTS =
+      {tag:team-device}); "the two allowlisted nodes" (SHELL_PORT_ALLOWED_SOURCES holds four);
+      "any tag other than tag:team-device is skipped" (the check is the PREFIX `tag:team`, so
+      tag:team-other IS caught); "re-pointing the alias alone is caught as
+      UNRESOLVABLE_DST_SELECTOR" (not cleanly caught at all); and "the SHELL-ROUTE comment must
+      still name 7681/term/ttyd" (the check scans the WHOLE FILE — and the correction's own text
+      now satisfies it). Each finding arrived with an executed reproduction. All six rewritten.
+    resolution: >-
+      Fixed in commit 03d3ca470b and re-measured green by rounds 2 and 3.
+  - seat: session (build lane, self-caught while verifying the refuter)
+    status: CONFIRMED
+    objection: >-
+      A SEVENTH, WHICH NO REVIEWER CAUGHT. The corrected text claimed Pro's magic IP
+      "100.107.22.111 appears nowhere in the guard". False: `grep -c` returns 6. All six are in
+      comments or in one canonicalisation test's fixture, and none is an assertion — which is the
+      true, narrower claim and the one that actually supports the point being made. Recorded
+      because it shows the refuters are a floor, not a ceiling: the session still has to verify
+      its own text after they pass on it.
+    resolution: >-
+      Both documents now say "no assertion pins the alias to that IP", with the six occurrences
+      characterised.
+  - seat: codex-gpt-5.6-sol (round 2, xhigh)
+    status: CONFIRMED
+    objection: >-
+      TWO OF ROUND 2's THREE FINDINGS WERE INHERITED FROM #5192 AND HAD SURVIVED ALL THREE OF ITS
+      GRADERS. The "fire-and-forget POST" whose failure is "silent" is contradicted by
+      `profile-monitor.swift:48-79`: a 5s timeout, a 6s semaphore wait, and a POST_FAIL log. The
+      third was this session's: "acls and grants blocks, and nowhere else" needed to carve out the
+      team-reaching source check, which `ssh` also gets; and the 9099 grant needed its `proto:
+      "tcp"` qualifier to justify "and nothing else".
+    resolution: >-
+      All three fixed. The honest statement is that the failure is invisible to Bali Zero, not
+      unrecorded — the evidence exists on the far side of the fence this policy raises.
+  - seat: codex-gpt-5.6-sol + kimi-code/k3 (round 3)
+    status: CONFIRMED
+    objection: >-
+      POST_FAIL covers TRANSPORT ERRORS ONLY — an HTTP 4xx/5xx logs POST_OK carrying the status,
+      and a semaphore expiry logs nothing (codex). And policy.hujson still lacked the src-column
+      carve-out the runbook already had: a src aimed at the shell port IS required to be a named
+      node, so the documented gap was stated wider than it is (kimi, explicitly "not a merge
+      blocker on the guard").
+    resolution: >-
+      Both fixed. An ACL drop IS a transport error, so the POST_FAIL claim holds for this policy's
+      case and is now scoped to it rather than asserted generally.
+  - seat: session (build lane, methodological)
+    status: CONFIRMED
+    objection: >-
+      FINDINGS PER ROUND WERE 6 -> 3 -> 2 AND THE LOOP WAS STOPPED DELIBERATELY, WHICH IS ITSELF A
+      JUDGEMENT CALL OPEN TO CHALLENGE. Every round re-measured the previous round's fixes green
+      and both round-3 verdicts confirm the substance of all five claim families. That reads as
+      convergence rather than #5192's pattern — there, each round found a NEW BYPASS AXIS in code,
+      genuinely new surface. Here the residue was documentation precision. A fourth cross-family
+      round would likely find a seventh phrasing to sharpen, and spending it would be the same
+      disease this program diagnoses, in a different costume. The independent Gear-3 gate, not
+      another council round, is the right judge of whether that call was correct.
+    resolution: >-
+      Loop stopped after round 3. Every round's findings and verdicts are in journal.jsonl for the
+      gate to weigh.
+  - seat: session (build lane, declared limitation)
+    status: CONFIRMED
+    objection: >-
+      THE GUARD IS STILL INCOMPLETE ON FOUR AXES AFTER THIS MERGES, AND THE DIFF IS FAR OVER THE
+      ~400-LINE TARGET. The incompleteness is deliberate and is the point of the PR: the exposure
+      is unchanged from before, and what is removed is the false claim about it. On size, roughly
+      1,470 of the lines are #5192's content carried byte-identical; splitting would put the
+      corrected documents in one PR and the policy in another, meaning either a knowingly false
+      claim on a security gate live on main between them, or holding the policy that unblocks the
+      team expansion.
+    resolution: >-
+      Four axes carry executed reproductions in PENDING-ARMS, specified concretely enough (A-C in
+      ONE PR, D optional and last) that the successor works from a spec. Size accepted and declared.
+  - seat: session (build lane, scope limit)
+    status: PLAUSIBLE
+    objection: >-
+      ONE THING THIS PR CANNOT ESTABLISH AT ALL: whether Tailscale ACCEPTS the policy. No offline
+      validator exists and the fleet holds no API token, so every green in this pack is about
+      grammar and intent. A reader could take "23 passed" as more assurance than it is.
+    resolution: >-
+      Both documents state it explicitly at the apply step; the admin console at save time is named
+      as the sole authority. Nothing here should be read as evidence the policy will compile.
+
+open_questions:
+  - >-
+    `scripts/profile-monitor/` — grant `tag:team-device -> pro:9099` as one named exception, or move
+    that client off the tailnet? Legge 5, owner=operator[business], and ORDERING-CRITICAL: it must
+    be answered before the enrolment runbook's step 2 mints an auth key, because afterwards a
+    dropped checkout POST is indistinguishable from an employee who never checked in. Stated in the
+    enrolment runbook where it bites, and in PENDING-ARMS.
+  - >-
+    Hardening ttyd itself (`-c user:pass`, or moving `/term` off port 443 so the ACL can separate it
+    from `/deck`) changes how Zero reaches his own machine from his own phone. Business call,
+    unchanged from #5192, still in the ledger. This policy contains the blast radius without it.
+  - >-
+    `check-tailnet-acl` is not a required check. Promoting it is a branch-protection change and
+    therefore operator-only; until then a red there is a loud signal on the PR, not a merge block.
+    Worth weighing against the fact that the guard it would enforce is knowingly incomplete on four
+    axes — promoting it would give a green there more authority than it has earned.
