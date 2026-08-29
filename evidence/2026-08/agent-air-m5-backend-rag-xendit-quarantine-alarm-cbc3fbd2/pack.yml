@@ -26,7 +26,7 @@ seat_diversity_note: >-
   and the transport above it.
 diff:
   net_lines: >-
-    13 files, +2113/-16, measured by
+    13 files, +2234/-21, measured by
     `git diff --numstat origin/main...HEAD` and pasted verbatim from
     `evidence_pack_lint.py --print-measured`. Over the ~400-line guidance
     and declared as such rather than hidden: the great majority is tests,
@@ -132,11 +132,50 @@ receipts:
     exit: 0
     ts: "2026-08-29T06:45:00Z"
     seat: "session (this task, Air-M5 worktree)"
+    correction: >-
+      "The pre-existing outbox alarm suite is untouched" was true when this
+      ran and is SUPERSEDED by the later receipts below. After a Gear-3 gate
+      found the identical delivery-arm defect on `_send_outbox_alarm`, the
+      dispatching lead ruled it cured in this same change rather than
+      ledgered, so the outbox scheduler suite is no longer untouched — it
+      gained the guilt/innocence pair. Left in place rather than rewritten:
+      a receipt records what a command printed at a moment, and silently
+      editing that is the failure this pack exists to name.
   - claim: "The ledger rows added by this PR parse and declare no phantom operator lane"
     cmd: "python3 scripts/pending_arms_report.py"
     result: "counts: total=624 phantom_operator=0 malformed=0; both new rows render under their own headings"
     exit: 0
     ts: "2026-08-29T06:50:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: "The SIBLING defect is real on disk and is the SHARPER of the two: `_send_outbox_alarm` returned `None` on every path while its call site ran `confirm_sent` unconditionally, one line below a comment reading 'A page that never landed must not silence the next hour'. Read before touching, not taken on the gate's word."
+    cmd: "grep -n 'async def _send_outbox_alarm' -A 45 apps/backend-rag/backend/app/main_api.py"
+    result: "signature `-> None` at line 167; three exit paths, none returning a value; call site at the periodic block calling `alarm.confirm_sent(time.monotonic())` unguarded directly under that comment"
+    exit: 0
+    ts: "2026-08-29T09:05:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: "With the sibling cured, the touched-file suite is green — 65 tests across the scheduler, the alarm and the watcher"
+    cmd: "PYTHONPATH=. pytest backend/tests/unit/services/test_garuda_outbox_scheduler.py backend/tests/services/garuda_orders/test_quarantine_alarm.py backend/tests/services/garuda_orders/test_payment_inbox_watch.py --color=no"
+    result: "65 passed in 4.08s"
+    exit: 0
+    ts: "2026-08-29T09:20:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+    note: >-
+      Run WITHOUT a `-q` of my own: `pyproject.toml` addopts already carries
+      `-q`, so adding another makes it `-qq`, which suppresses the summary
+      line entirely — the first attempt exited 0 and printed no count at all.
+      A green exit code with no visible tally is the shape this pack is
+      supposed to distrust, so it is recorded rather than quietly re-run.
+  - claim: "The three mutations the Gear-3 gate named as surviving on the OUTBOX alarm are each RED to a named test now — the same signature the quarantine pair produces"
+    cmd: "for each of: delete the `_send_outbox_alarm` call / delete `alarm.confirm_sent(...)` / force `page = None` — apply, run test_garuda_outbox_scheduler.py --color=no, restore from a file backup (never `git checkout`, which destroyed an uncommitted fix earlier in this lane)"
+    result: "delete the send -> FAILED ...an_undelivered_OUTBOX_page... + FAILED ...a_delivered_OUTBOX_page...; delete confirm_sent -> FAILED ...a_delivered_OUTBOX_page... only; force page = None -> both FAILED; after restore: 27 passed"
+    exit: 1
+    ts: "2026-08-29T09:15:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: "The ledger still parses after the C2 row was rewritten from REQUIRED-deferred to CLOSED-cured, and the malformed marker line drafted alongside it was removed rather than shipped"
+    cmd: "python3 scripts/pending_arms_report.py --strict-phantom"
+    result: "counts: total=632 phantom_operator=0 malformed=0; exit 0"
+    exit: 0
+    ts: "2026-08-29T09:30:00Z"
     seat: "session (this task, Air-M5 worktree)"
 pii_scan: clean
 dissent:
@@ -275,3 +314,43 @@ dissent:
       arming step is therefore to MEASURE whether the failure ever occurs
       once GARUDA is live, then decide — not to build a detector whose own
       orphan class would be unbounded.
+  - seat: "session, self-check on curing the sibling alarm inside this PR"
+    objection: >-
+      Fixing `_send_outbox_alarm` — the live page for a DIFFERENT queue —
+      inside a PR about the payment inbox is a second concern on a money
+      path, and Agent PR Contract rule 1 says one PR, one concern.
+    status: RETRACTED
+    note: >-
+      This was my own position and the dispatching lead overruled it, and
+      the overruling is right. The concern is not "the payment inbox"; it is
+      "an alarm's delivery result is discarded and `confirm_sent` runs
+      anyway", and the two functions are that one concern two definitions
+      apart in the same file. Shipping the cure for one while knowingly
+      leaving its twin live on the same money path is not rule-1 discipline
+      — it is half a cure with a ledger row for an alibi, which is the exact
+      shape this PR exists to end. The deferral had already been written
+      into the ledger as REQUIRED; leaving that row saying "DELIBERATELY NOT
+      DONE HERE" after the code was cured would itself have been the
+      write-only-state disease, so the row was rewritten to CLOSED and a
+      separate row opened for the part curing two call sites does NOT close:
+      the class. Cost of the reversal, declared: +121 lines over the
+      previously measured diff and a second gate signature, because the
+      verdict standing on the earlier SHA was signed over a known HIGH
+      defect and was withdrawn.
+  - seat: "session, on what the two cured instances do NOT prove"
+    objection: >-
+      Two fixed call sites might be read as closing the delivery-arm
+      question for this organism. They do not.
+    status: CONFIRMED
+    note: >-
+      Three unrelated surfaces showed this shape in one night: the
+      payment-inbox alarm (kimi-code/k3), the outbox alarm twelve lines away
+      (Gear-3 gate, three surviving mutations), and an independent gate on
+      the WAL-probe PR finding that no test asserts a RED verdict is
+      DELIVERED. The transferable lesson is that a discipline can be
+      correct, documented and unit-tested and still be void because its
+      CALLER does not honour its contract — and mutation testing inside a
+      class cannot see past the class boundary, which is why four rounds of
+      it against `QuarantineAlarm` reached neither defect. The arming step
+      is a conformance check over every page-sending call site, ledgered
+      open with this session as owner; it is not claimed here.
