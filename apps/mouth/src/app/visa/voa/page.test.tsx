@@ -8,6 +8,32 @@ import VoaEligibilityPage from "./page";
  * contract's `allOf` forbids on issuance.
  */
 
+// The tracker's own emitFunnelAppEvent posts to /api/analytics/funnel-event
+// through the SAME global fetch mock the tests below use for
+// /api/visa/voa/eligibility-checks — mocked here (mirroring visa/match's
+// page.test.tsx) so `fetchMock.toHaveBeenCalledTimes(1)` below still counts
+// only the eligibility-checks call, and so tracker calls are assertable.
+const trackerMocks = vi.hoisted(() => ({
+  wizardStep: vi.fn(),
+  wizardAbandoned: vi.fn(),
+  formSubmitted: vi.fn(),
+  formSubmitFailed: vi.fn(),
+}));
+
+vi.mock("@balizero/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@balizero/core")>();
+  return {
+    ...actual,
+    useFunnelApp: () => ({
+      viewed: vi.fn(),
+      wizardStep: trackerMocks.wizardStep,
+      wizardAbandoned: trackerMocks.wizardAbandoned,
+      formSubmitted: trackerMocks.formSubmitted,
+      formSubmitFailed: trackerMocks.formSubmitFailed,
+    }),
+  };
+});
+
 const fetchMock = global.fetch as unknown as ReturnType<typeof vi.fn>;
 
 function fillIssuanceHappyPath() {
@@ -68,6 +94,21 @@ describe("VoaEligibilityPage — wire contract", () => {
     });
     // Contract allOf: voa_expiry_date is forbidden outside `extension`.
     expect(body).not.toHaveProperty("voa_expiry_date");
+
+    // Telemetry: field NAMES only (Law 2) — the same payload_keys-only
+    // pattern visa/match's W0b fix established, never any answer value.
+    expect(trackerMocks.formSubmitted).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        "case_type",
+        "nationality",
+        "purpose",
+        "entry_date",
+        "passport_expiry_date",
+      ]),
+    );
+    const submittedWire = JSON.stringify(trackerMocks.formSubmitted.mock.calls);
+    expect(submittedWire).not.toContain("ITA");
+    expect(submittedWire).not.toContain("2026-09-01");
   });
 
   it("asks for the current VOA expiry date on the extension path and sends it", async () => {
@@ -123,6 +164,12 @@ describe("VoaEligibilityPage — wire contract", () => {
     expect(
       screen.getByRole("link", { name: /message us on WhatsApp/i }),
     ).toBeInTheDocument();
+    // Network failure (fetch rejects before any response) reports status null
+    // — never a fabricated value — mirroring visa/match's W0b contract.
+    expect(trackerMocks.formSubmitFailed).toHaveBeenCalledWith(
+      "/api/visa/voa/eligibility-checks",
+      null,
+    );
   });
 });
 
@@ -156,5 +203,19 @@ describe("VoaEligibilityPage — customer-facing surface", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
+  });
+
+  it("tracks step progression (1-indexed) and abandonment mid-wizard", () => {
+    render(<VoaEligibilityPage />);
+    expect(trackerMocks.wizardStep).toHaveBeenCalledWith(1, 4);
+    fireEvent.click(
+      screen.getByRole("button", { name: /Get a new Visa on Arrival/ }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(trackerMocks.wizardStep).toHaveBeenCalledWith(2, 4);
+
+    expect(trackerMocks.wizardAbandoned).not.toHaveBeenCalled();
+    window.dispatchEvent(new Event("beforeunload"));
+    expect(trackerMocks.wizardAbandoned).toHaveBeenCalledWith(1);
   });
 });
