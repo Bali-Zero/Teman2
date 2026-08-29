@@ -31,13 +31,15 @@ shape) followed by a non-block-scalar remainder is a one-line block; a
 whose content lines are every subsequent line indented strictly more than
 the `run:` key, stopping at the first non-blank line that is not). Within
 each block, every occurrence of a declared instrument's path is required to
-have an occurrence of `scripts/hermetic_verify.sh` EARLIER in that SAME
-block — an earlier line, or an earlier column on the same line (the wrapped
-single-line shape: `python3 scripts/hermetic_verify.sh -- python3
-scripts/mutation_incremental.py -v`). An instrument mention with no such
-earlier wrapper mention in its own block is a violation; a wrapper mention
-occurring only AFTER the instrument mention (out of order) does not excuse
-it — the instrument already ran unprotected before the wrapper is invoked.
+have an occurrence of `scripts/hermetic_verify.sh` protecting it: at an
+earlier COLUMN ON THE SAME LINE (the wrapped single-line shape:
+`bash scripts/hermetic_verify.sh -- python3 scripts/mutation_incremental.py -v`),
+or on an earlier line whose every intervening line ends with a backslash
+continuation (the same command, wrapped across lines). A wrapper mention on
+an earlier line that is NOT continued does not excuse anything — that line is
+a command that already ran and exited, not a wrapping of this one. A wrapper
+mention occurring only AFTER the instrument mention does not excuse it
+either: the instrument already ran unprotected.
 
 DECLARED SCOPE LIMIT: this is a textual substring/position rule, not a
 shell parser — it cannot see that an instrument mention lives inside a
@@ -81,7 +83,14 @@ INSTRUMENTS: tuple[str, ...] = ("scripts/mutation_incremental.py",)
 WRAPPER = "scripts/hermetic_verify.sh"
 
 _RUN_KEY_RE = re.compile(r"^(?P<indent>[ \t]*)(?:-\s+)?run:\s*(?P<rest>.*)$")
-_BLOCK_SCALAR_RE = re.compile(r"^[|>][+-]?\s*$")
+# YAML block-scalar header: `|` or `>` followed by an optional indentation
+# indicator (1-9) and/or a chomping indicator (+/-), IN EITHER ORDER (`|2-`
+# and `|-2` are both valid). The first version of this pattern accepted only
+# the chomping indicator, so `run: |2` fell through to the single-line branch
+# and NONE of the block's following lines were ever scanned — a silent false
+# NEGATIVE, i.e. a working bypass of this lint by an indentation indicator.
+# Found by the cross-family refuter; reproduced here before fixing.
+_BLOCK_SCALAR_RE = re.compile(r"^[|>](?:[1-9][+-]?|[+-][1-9]?)?\s*$")
 
 
 @dataclass(frozen=True)
@@ -158,8 +167,37 @@ def find_unwrapped_mentions(block: RunBlock, instruments: tuple[str, ...]) -> li
         for m in re.finditer(re.escape(WRAPPER), _strip_shell_comment(text))
     ]
 
+    # A wrapper mention on an EARLIER LINE only protects an instrument if the
+    # shell is still building the SAME command — i.e. every line between them
+    # ends with a `\` continuation. Without that condition,
+    #
+    #     run: |
+    #       bash scripts/hermetic_verify.sh --self-test-only
+    #       python3 scripts/mutation_incremental.py -v
+    #
+    # passes this lint while the instrument runs BARE: the first line is a
+    # complete, already-exited command, and "somewhere earlier in this block"
+    # is not the same claim as "wrapping this invocation". Measured as a live
+    # bypass by the cross-family refuter. The continuation case is kept because
+    # it is the legitimate multi-line wrapping shape:
+    #
+    #     run: |
+    #       bash scripts/hermetic_verify.sh -- \
+    #         python3 scripts/mutation_incremental.py -v
+    text_by_line = {ln: _strip_shell_comment(txt) for ln, txt in block.lines}
+
+    def _continues_to(from_line: int, to_line: int) -> bool:
+        """True if every line in [from_line, to_line) ends with a backslash."""
+        for ln in range(from_line, to_line):
+            if not text_by_line.get(ln, "").rstrip().endswith("\\"):
+                return False
+        return True
+
     def wrapped_before(line_no: int, col: int) -> bool:
-        return any(wl < line_no or (wl == line_no and wc < col) for wl, wc in wrapper_positions)
+        return any(
+            (wl == line_no and wc < col) or (wl < line_no and _continues_to(wl, line_no))
+            for wl, wc in wrapper_positions
+        )
 
     violations: list[str] = []
     for line_no, text in block.lines:

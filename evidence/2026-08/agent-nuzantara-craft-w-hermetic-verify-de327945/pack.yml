@@ -1,0 +1,290 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: |
+  docs/plans/2026-08-29-beyond-sota-craft-wave/L05-verification-adversarial-gate.md, PR-1
+  ("hermetic verification runner + W121 census"). The spec's own Ground pointer was treated as a
+  LEAD and re-measured from scratch: `scripts/mutation_incremental.py` was grepped for
+  PYTHONDONTWRITEBYTECODE / dont_write_bytecode / __pycache__ / cacheprovider and returned ZERO
+  hits, and W121's trap was reproduced first-hand on this machine before any of it was believed.
+lanes:
+  - lane: craft-w-hermetic-verify
+    role: build
+    seat: |
+      claude-opus-5 (this session, xhigh) with claude-sonnet-5 implementer subagents inside it —
+      the orchestrator reproduced W121 on this machine, specified the wrapper and census,
+      dispositioned the refuter round, authored the BLOCKER-1/BLOCKER-2 fixes and the two census
+      bypass closures, and re-measured every number below. The Sonnet subagents produced first
+      drafts under that spec; none of their reports was taken on trust
+  - lane: craft-w-hermetic-verify-refute-codex
+    role: review
+    seat: |
+      codex-gpt-5.6-sol (model_reasoning_effort=high, --sandbox read-only) — adversarial review on
+      the finished diff across six declared attack axes, generator != grader
+  - lane: craft-w-hermetic-verify-refute-kimi
+    role: review
+    seat: |
+      kimi-code/k3 — adversarial review on the CORRECTED diff, dispatched after the round-1
+      dispositions landed so it judges what would actually ship, generator != grader
+seat_diversity: satisfied
+seat_diversity_note: |
+  ONE build lane, so D3's >=2-build-lane non-Anthropic requirement does not bind. This is stated
+  plainly because the rule DID fire on an earlier draft of this pack, which declared the Sonnet
+  implementers as a second build lane: two Anthropic build seats, zero non-Anthropic builders.
+  The correction is a truer description, not a dodge — a "lane" here is a unit of INDEPENDENT
+  work, and the implementer subagents were not independent: they drafted to this lane's spec,
+  their reports were re-measured rather than trusted, and the orchestrator authored every fix that
+  ships. Declaring them separately overstated the structure. Both REVIEW seats are cross-family
+  and non-Anthropic (OpenAI gpt-5.6-sol, Moonshot kimi-code/k3), dispatched on the finished diff
+  with their own file access rather than on a description of it — which is also what supplies R9's
+  council quorum. A reader who thinks the collapse is wrong has, in this paragraph, everything
+  needed to challenge it.
+diff: |
+  `evidence_pack_lint.py --print-measured` on the code diff, verbatim:
+  "4 files, +886/-2, commit count unmeasured (no --commit-count, no pull_request payload)" —
+  emitted, never counted by hand (#5191's countable-claims rule). The corpus extension and this
+  evidence pack land on top of that figure; CI recomputes it against the real payload, which is
+  the number that governs. The commit count is deliberately not narrated: it changes with every push
+  and a number that goes stale between the edit and the push is exactly what that rule exists to
+  catch.
+
+  OVER the ~400 net-line guidance and DECLARED rather than split. The parts do not stand alone: the
+  wrapper without the census is unenforced (nothing stops the next workflow from invoking the
+  instrument bare), and the census without the corpus is a guard nobody proved bites — which is the
+  precise failure class (superscar #2) this whole PR exists to close. Splitting would ship the
+  measurement fix without the thing that keeps it measured.
+
+  BEHAVIOUR CHANGE: `.github/workflows/p1s2-mutation-incremental.yml` gains one self-canary step and
+  routes its two existing instrument invocations through the wrapper; its `push: paths:` list and
+  its relevance regex each gain the three W121 trust-path files. `scripts/hermetic_verify.sh` and
+  `scripts/ci/lint_hermetic_instruments.py` are new. `scripts/mutation_incremental.py` is NOT
+  modified.
+receipts:
+  - claim: |
+      THE TRAP IS LIVE ON THIS MACHINE, TODAY. A probe returning 11111 is imported; mutated to
+      22222 PRESERVING BYTE LENGTH; its mtime restored with `touch -r`; re-imported in a FRESH
+      interpreter. It returns the OLD value. Every mutation number this repo has quoted was
+      produced under this exposure.
+    cmd: |
+      printf 'def v():\n    return 11111\n' > probe.py; python3 -c 'import probe; print(probe.v())';
+      touch -r probe.py .mtimeref; <same-length mutation>; touch -r .mtimeref probe.py;
+      python3 -c 'import probe; print(probe.v())'
+    result: "run1=11111, __pycache__ created; source now says 22222; run2=11111 — stale bytecode reused"
+    exit: 0
+    ts: "2026-08-29T11:29:29Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim: |
+      BLOCKER 2, VERIFIED IN SOURCE BEFORE BEING BELIEVED. The wrapper's first sweep covered
+      `scripts apps` while the driver mutates a THIRD tree. PYTHONDONTWRITEBYTECODE suppresses
+      writes, not reads, so a stale .pyc under packages/ survived the sweep and was readable by the
+      measurement — while the canary, which runs in its own temp dir, passed regardless.
+    cmd: "grep -n 'include_glob' scripts/mutation_incremental.py"
+    result: '204: include_glob: Sequence[str] = ("apps/", "scripts/", "packages/")'
+    exit: 0
+    ts: "2026-08-29T11:12:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim: |
+      BLOCKER 1, VERIFIED IN THE WORKFLOW. The relevance regex named three paths, none of them the
+      wrapper — so a PR editing ONLY scripts/hermetic_verify.sh, INCLUDING one that disabled it,
+      resolved run=false and never executed the self-canary. A guardian whose sole executor cannot
+      go red on the guardian's own file (superscar #2 / W108).
+    cmd: "grep -n 'mutation_incremental' .github/workflows/p1s2-mutation-incremental.yml (pre-fix)"
+    result: "regex alternation = mutation_incremental.py | test_mutation_incremental.py | the workflow itself — hermetic_verify.sh absent from both the regex and the push: paths: list"
+    exit: 0
+    ts: "2026-08-29T11:10:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim: |
+      THE OBVIOUS FIX WAS WRONG, AND MEASURING IS WHAT SHOWED IT. Adding `packages` to the sweep
+      without pruning vendored trees would delete a virtualenv's entire bytecode cache on EVERY
+      invocation — minutes of pointless recompilation, and one undeletable vendor cache would abort
+      a legitimate run through the new verified-removal check. It buys nothing: the instruments
+      mutate first-party source only, so a site-packages .pyc cannot be stale against a mutation
+      that never touches its source.
+    cmd: "find apps -type d -name __pycache__ | wc -l; ... | grep -cE '(^|/)(\\.venv|venv|node_modules|site-packages)/'  [main checkout]"
+    result: "3679 total, 3216 (87%) inside a virtualenv or node_modules"
+    exit: 0
+    ts: "2026-08-29T11:18:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim: |
+      THE PRUNE HELPER WORKS ON THE BASH THAT ACTUALLY RUNS IT. The `${@:2:$(($#-2))}` construction
+      is exercised under bash 3.2.57 (macOS system default, the floor this repo targets) against a
+      fixture containing a real __pycache__, one inside .venv and one inside node_modules.
+    cmd: "/bin/bash /tmp/hvfn.sh  (bash 3.2.57(1)-release, arm64-apple-darwin26)"
+    result: "found /tmp/hvtest/a/__pycache__ only; COUNT=1; .venv and node_modules pruned; rc=0"
+    exit: 0
+    ts: "2026-08-29T11:20:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim: |
+      POST-RUN DEFEAT DETECTION IS DISCRIMINATING, not decorative. The guilt and innocence commands
+      are IDENTICAL except for `env -u PYTHONDONTWRITEBYTECODE` — which is what makes the pair
+      evidence rather than illustration.
+    cmd: |
+      bash scripts/hermetic_verify.sh -- env -u PYTHONDONTWRITEBYTECODE python3 -c '<import probe>'
+      bash scripts/hermetic_verify.sh --                          python3 -c '<import probe>'
+    result: "GUILT rc=3 with 'POST-RUN CHECK FAILED ... refusing to report success'; INNOCENCE rc=0"
+    exit: 3
+    ts: "2026-08-29T11:24:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim: |
+      BOTH CENSUS BYPASSES THE REFUTER DEMONSTRATED ARE NOW CAUGHT, and both legitimate wrapping
+      shapes still pass. The earlier-line loophole let a COMPLETED `--self-test-only` call excuse
+      every bare invocation below it; the `run: |2` block-scalar indicator meant the block's lines
+      were never scanned at all — a silent false negative.
+    cmd: "find_run_blocks + find_unwrapped_mentions over four inline YAML fixtures"
+    result: "GUILT earlier-line=1 violation; GUILT |2=1 violation; INNOCENCE same-line=0; INNOCENCE backslash-continued=0"
+    exit: 0
+    ts: "2026-08-29T11:27:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim: |
+      THE LINT TURNS NOTHING RED TODAY. Its first red will be a real one, not a migration tax.
+    cmd: "python3 scripts/ci/lint_hermetic_instruments.py"
+    result: "106 workflow(s) scanned, 1 instrument(s) tracked, 0 violation(s)"
+    exit: 0
+    ts: "2026-08-29T11:28:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim: "The wrapper propagates a command's exit code, and an empty command is never a pass."
+    cmd: "bash scripts/hermetic_verify.sh -- {true | bash -c 'exit 7' | no_such_binary} ; and `--` with no command"
+    result: "rc=0, rc=7, rc=127, rc=2 respectively"
+    exit: 0
+    ts: "2026-08-29T11:23:00Z"
+    seat: "claude-opus-5 (build lane)"
+pii_scan: clean
+pii_note: |
+  No client data, no credentials, no PII touched or referenced. The diff is CI tooling: a bash
+  wrapper, a workflow-text lint, a workflow file and a pytest corpus. No network egress is
+  introduced; the wrapper spawns only the command it is handed.
+dissent:
+  - status: CONFIRMED
+    seat: "codex-gpt-5.6-sol (review lane)"
+    objection: |
+      BLOCKER — "the workflow step is not unconditional": every work step is gated on
+      `steps.relevant.outputs.run == 'true'`, and the relevance regex does not list the wrapper, so
+      a PR that edits ONLY scripts/hermetic_verify.sh runs nothing and the required check stays
+      green.
+    disposition: |
+      ACCEPTED and FIXED. Verified in the workflow before believing it. The wrapper, the census lint
+      and this corpus are now in BOTH the `push: paths:` list and the relevance regex, and the
+      corpus pins the two lists EQUAL so neither can gain a path the other lacks.
+  - status: CONFIRMED
+    seat: "codex-gpt-5.6-sol (review lane)"
+    objection: |
+      BLOCKER — "the wrapper can exit 0 using stale bytecode": PYTHONDONTWRITEBYTECODE forbids
+      writes, not reads; the sweep covered only scripts/ and apps/ while the driver also mutates
+      packages/; and `rm -rf ... || true` never verifies the removal succeeded.
+    disposition: |
+      ACCEPTED and FIXED, both halves. Verified against scripts/mutation_incremental.py:204 in this
+      worktree first. SWEPT_TREES now covers the driver's whole include_glob (and infra/), the
+      corpus pins it as a SUPERSET of that glob with a premise check, and removal is VERIFIED by
+      re-counting — a surviving cache is exit 3, never a silent pass. Measuring the fix also
+      surfaced the vendored-tree cost (3216/3679) and produced PRUNED_DIRS, which the objection did
+      not anticipate and which the fix needed to be correct rather than merely broader.
+  - status: CONFIRMED
+    seat: "codex-gpt-5.6-sol (review lane)"
+    objection: |
+      BLOCKER — "the measurement driver stays fail-open when mutmut fails":
+      `_run_mutmut_on_targets` never inspects `proc.returncode`, so a mutmut that exits non-zero
+      having done nothing yields an empty survivor list and the gate prints STRATO-2 PASS. Its own
+      docstring claims the opposite ("a mutmut harness error must not silently PASS ... so we log
+      loudly") while the code does not log on that path at all.
+    disposition: |
+      ACCEPTED AS REAL, NOT FIXED HERE, AND NOT DROPPED. Verified at
+      scripts/mutation_incremental.py:593-622: `check=False`, returncode never read, and the only
+      logging is in the `except OSError` branch — which a non-zero exit does not enter. It is
+      PRE-EXISTING code outside this diff, and the fix flips a gate from pass to fail, which needs
+      its own guilt+innocence and its own blast-radius thinking rather than riding along on a
+      measurement-environment PR. Ledgered as a PENDING-ARMS follow-up and named in the PR body so
+      the next reader inherits the finding rather than rediscovering it.
+  - status: CONFIRMED
+    seat: "codex-gpt-5.6-sol (review lane)"
+    objection: |
+      HIGH — "the canary verifies a different process than the one producing the measurement": the
+      canary probes the interpreter resolved at canary time; `env -u PYTHONDONTWRITEBYTECODE`,
+      `python -E`, a nested interpreter or a conftest setting `sys.dont_write_bytecode = False`
+      all defeat the environment AFTER the canary has passed.
+    disposition: |
+      ACCEPTED and CONVERTED FROM A DECLARED LIMITATION INTO A MEASURED ONE. A limitation that can
+      be measured should be measured. The wrapper now re-checks SWEPT_TREES after the command: a
+      command that exits 0 having written bytecode exits 3 instead, because a green produced under
+      a defeated environment is exactly the artifact this script exists to stop; a command that
+      already failed keeps its own exit code (it carries more information than a generic 3) and
+      gets a loud warning. It still cannot PREVENT a hostile command — that residue is stated in
+      the wrapper's own "WHAT THIS CANNOT DO" block rather than left implicit.
+  - status: CONFIRMED
+    seat: "codex-gpt-5.6-sol (review lane)"
+    objection: |
+      HIGH — "the lint has direct bypasses": a wrapper mention anywhere earlier in the block
+      excuses a bare call; `run: |2` is not recognised as a block scalar; and `cd scripts && python3
+      mutation_incremental.py`, `PYTHONPATH=... -m mutation_incremental`, a `make` target, a
+      `${{ matrix.* }}` indirection, a composite action under .github/actions/, and a
+      concatenated path all evade a textual rule.
+    disposition: |
+      SPLIT. The two that make the lint report a FALSE GREEN are fixed and pinned by guilt fixtures:
+      an earlier-line wrapper mention now only protects an invocation when every intervening line
+      ends with a backslash continuation (the real wrapping shape), and the block-scalar pattern
+      accepts YAML indentation indicators in either order. The remaining evasions are genuine limits
+      of a textual rule; they are ENUMERATED in the module docstring and in this pack's `risks:`
+      rather than papered over. Basename matching would catch the `cd scripts &&` form but
+      false-positives on `test_mutation_incremental.py`, so it is deferred with its reason stated
+      instead of bolted on.
+  - status: CONFIRMED
+    seat: "codex-gpt-5.6-sol (review lane)"
+    objection: |
+      HIGH — "if the lint were made unconditional it would turn unrelated PRs red": a `run:` line
+      that merely ECHOES an instrument path is classified as a bare invocation.
+    disposition: |
+      ACCEPTED AS TRUE, AND ALREADY DECLARED — the module docstring states the scope limit and that
+      the bias is deliberately toward FALSE POSITIVES, "the safer direction for a guard whose job is
+      catching an unwrapped instrument". The objection is a correct reading of a documented trade,
+      not an undisclosed defect. The empirical answer to the harm it predicts is the live-tree
+      measurement: 106 workflows, 0 violations — the lint reddens nothing today.
+  - status: CONFIRMED
+    seat: "codex-gpt-5.6-sol (review lane)"
+    objection: |
+      HIGH — "the 13 tests do not prove the wrapper mode": every wrapper test uses
+      `--self-test-only`, so mutating `"$@"; rc=$?` to `true; rc=0` leaves all 13 green. The
+      wrapper's actual job — running a command and propagating its status — is untested, and the
+      W121 reproduction test can end SKIPPED, so the suite can be green without ever having
+      reproduced the phenomenon.
+    disposition: |
+      ACCEPTED and FIXED. This was the single most valuable finding of the round: a corpus that
+      cannot notice the wrapper not running its command is the same class of defect as the bug the
+      wrapper cures. The corpus now exercises the command path directly (exit-code propagation,
+      empty command, a sentinel file proving the command actually ran, and the hermetic env reaching
+      the child), which is what kills the `"$@"` -> `true` mutation.
+  - status: CONFIRMED
+    seat: "codex-gpt-5.6-sol (review lane)"
+    objection: |
+      MEDIUM — the "propagates its exit code EXACTLY" contract is not met for three shapes: a
+      command killed by SIGTERM surfaces as a normal exit 143 rather than the same wait-status; an
+      exported SHELLOPTS can leak `set +e` into a later child shell; and a non-existent TMPDIR makes
+      `mktemp` fail with 1, not the documented 3.
+    disposition: |
+      ACCEPTED AS TO THE CLAIM, corrected by weakening the CLAIM rather than the code. The word
+      "EXACTLY" was doing work the implementation does not do, which is the overclaim this PR is
+      about. The header now says "whatever bash reports as the command's exit status, not a faithful
+      re-raise", names the SIGTERM case explicitly, and notes that no caller in this repo inspects
+      wait-status directly. Signal re-raise is not implemented: it would add a trap dance for a
+      distinction nothing consumes.
+tests: |
+  scripts/tests/test_hermetic_census.py — 13 -> 28 tests, 28 passed. Run under the hermetic
+  environment the PR itself installs (PYTHONDONTWRITEBYTECODE=1, -p no:cacheprovider, caches
+  cleared each run), because a corpus that measures its own subject must not be measured through
+  the defect it is measuring (W121, and W107's "the probe that measures a disease can have it").
+
+  MUTATION-PROVED BY THE GATE, not by the implementer's report. Three mutations applied to the
+  PRODUCTION files by the orchestrator, each verified APPLIED before running and restored
+  byte-identical after:
+    - `"$@"; rc=$?` -> `true; rc=0` (the wrapper stops running its command) -> 5 FAILED
+    - SWEPT_TREES back to the pre-fix "scripts apps" (BLOCKER 2) -> 2 FAILED, naming `packages`
+    - the lint's earlier-line loophole reopened -> 1 FAILED
+  The implementer additionally reported a per-test revert measurement for all 15 new tests; those
+  three are the ones the gate re-ran independently, and they are the three the PR turns on.
+static: |
+  `bash -n scripts/hermetic_verify.sh` clean under bash 3.2.57; `py_compile` of the census lint
+  clean with `-W error::SyntaxWarning` (an earlier draft emitted two SyntaxWarnings from backslash
+  escapes in docstrings — a lint that prints warnings trains its readers to ignore its output);
+  `actionlint` on the modified workflow; ruff.
+notes: |
+  ORDERING NOTE, recorded because it was wrong. The refuter's round-1 report was already on disk
+  when this PR was opened and was not read until the next session picked the lane back up. Nothing
+  merged on the strength of it, so no damage — but "dispatched" is not "dispositioned", and a
+  refuter verdict sitting unread is indistinguishable from one that never ran.

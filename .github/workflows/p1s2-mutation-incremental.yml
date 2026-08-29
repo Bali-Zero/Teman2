@@ -37,6 +37,15 @@ on:
       - "scripts/mutation_incremental.py"
       - "scripts/test_mutation_incremental.py"
       - ".github/workflows/p1s2-mutation-incremental.yml"
+      # W121 trust path — a change to the hermetic wrapper, its census lint or
+      # their corpus changes whether ANY number below is trustworthy, so it must
+      # run this gate. Omitting them meant a PR that edited ONLY the wrapper —
+      # including one that disabled it — never executed the self-canary: a
+      # guardian whose sole executor cannot go red on the guardian's own file
+      # (superscar #2 / W108). Found by the cross-family refuter, verified here.
+      - "scripts/hermetic_verify.sh"
+      - "scripts/ci/lint_hermetic_instruments.py"
+      - "scripts/tests/test_hermetic_census.py"
 
 concurrency:
   # Dependabot branch: ALL Dependabot PRs share one group per workflow (not
@@ -75,10 +84,15 @@ jobs:
 
       # BUCO #1 sentinel: decide whether this gate's RELEVANT paths changed in
       # this PR. Dependency-free git diff (no third-party action — TIER-1
-      # anti-injection file). The regex is the EXACT original pull_request
-      # `paths:` list, each anchored ^...$. On a push event (already paths-
-      # filtered at the trigger) or any non-PR event, run=true so the gate never
-      # silently skips real work.
+      # anti-injection file). The regex mirrors the `push: paths:` list above,
+      # each entry anchored ^...$ — the two are one relevance decision expressed
+      # for two event shapes, and `scripts/tests/test_hermetic_census.py` pins
+      # them EQUAL so neither can gain a path the other lacks (an earlier
+      # version of this comment said "the EXACT original pull_request paths
+      # list", which stopped being true the moment either side was extended —
+      # a comment that inventories mutable state is a comment that will lie,
+      # W106). On a push event (already paths-filtered at the trigger) or any
+      # non-PR event, run=true so the gate never silently skips real work.
       - name: Did relevant paths change?
         id: relevant
         run: |
@@ -90,7 +104,7 @@ jobs:
           fi
           base="${{ github.event.pull_request.base.sha }}"
           if git diff --name-only "$base"...HEAD | grep -qE \
-            '^(scripts/mutation_incremental\.py|scripts/test_mutation_incremental\.py|\.github/workflows/p1s2-mutation-incremental\.yml)$'; then
+            '^(scripts/mutation_incremental\.py|scripts/test_mutation_incremental\.py|\.github/workflows/p1s2-mutation-incremental\.yml|scripts/hermetic_verify\.sh|scripts/ci/lint_hermetic_instruments\.py|scripts/tests/test_hermetic_census\.py)$'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
