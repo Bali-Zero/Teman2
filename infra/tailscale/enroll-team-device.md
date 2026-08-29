@@ -92,16 +92,23 @@ this paragraph called it invalid as any `dst`; that was overbroad.)
 `http://100.107.22.111:9099/checkout` (`mac-client/profile-monitor.swift:12`; the wrapper listens
 on 9099, `wrapper.py:44`), and `mac-client/setup-balizero.sh` is the documented procedure for
 joining such a Mac to this tailnet. **Under `policy.hujson` a `tag:team-device` Mac cannot reach
-that port, and the failure is silent** — a fire-and-forget POST dropped by the packet filter looks
-exactly like "no checkout happened", on an HR-monitoring surface where nobody is watching for
-absence.
+that port, and the failure is invisible to us** — scoped precisely (round-2 cross-family review,
+2026-08-29; an earlier draft called this a "fire-and-forget" POST, which the source contradicts):
+the client sets a 5s timeout, blocks on a semaphore up to 6s, and a DROPPED POST — this policy's
+case — times out as a transport error and IS logged as `POST_FAIL`, into
+`~/Library/Logs/balizero-profile-events.log` on the employee's own Mac
+(`mac-client/profile-monitor.swift:48-79`). Only transport errors are classified that way: an HTTP
+4xx/5xx logs `POST_OK` with the status, and a semaphore expiry logs nothing. Nothing on the fleet reads that file. So the evidence
+exists and sits on the far side of the fence: from here a dropped POST looks exactly like "no
+checkout happened", on an HR-monitoring surface where nobody is watching for absence.
 
 This is deliberate, not an oversight — but the cost of granting it is smaller than an earlier draft
 of this section claimed, and the owner should decide against the accurate figure (corrected
 2026-08-29). That draft said granting 9099 would surrender "the single property keeping the laptop
 off the writable shell on Pro". **That is false as Tailscale semantics.** ACL rules are independent
-allow entries: a rule granting `tag:team-device -> pro:9099` grants port 9099 and nothing else. It
-does not open `pro:443`. What fences the shell is that no rule grants a team device `pro:443`, and
+allow entries: a rule granting `tag:team-device -> pro:9099`, carrying this file's mandatory
+`"proto": "tcp"`, grants TCP 9099 and nothing else. It does not open `pro:443`. (Keep the `proto`
+qualifier — without it the same rule would also carry UDP/9099 and ICMP for that node pair.) What fences the shell is that no rule grants a team device `pro:443`, and
 a named single-port exception leaves that untouched.
 
 The real cost is the tripwire, not the shell. `tag:team-device` appearing in any `src` fires
@@ -114,8 +121,9 @@ shell opens", and the difference is exactly what the decision turns on.
 grant `tag:team-device -> pro:9099` as one named exception — with its own deny-tests for every
 other port, `pro:443` included, and the guard's expected finding acknowledged in the PR that adds
 it — or move that client off the tailnet. Enrol first and the wrong answer is invisible: a
-fire-and-forget POST dropped by the packet filter looks exactly like an employee who never checked
-in, and nothing in the fleet watches for that absence.
+dropped POST looks, from our side, exactly like an employee who never checked in — the `POST_FAIL`
+line it does produce lands only in a log on their laptop, and nothing in the fleet watches for that
+absence.
 
 ## Step 2 — mint a tagged, single-use auth key · `operator[GUI]`
 

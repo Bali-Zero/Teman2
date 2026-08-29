@@ -78,37 +78,50 @@
 //
 // VALIDATION LIMIT, stated rather than implied. This file is checked repo-side by
 // scripts/tests/test_tailnet_acl_deny_by_default.py, and that check covers LESS than a reader
-// would assume, so here is its exact reach.
+// would assume, so here is its exact reach (every line below re-measured against audit_policy()
+// on 2026-08-29 after a cross-family review found an earlier version of THIS PARAGRAPH overstating
+// in six places — the irony is recorded deliberately).
 //
-//   VERIFIED, on the `acls` and `grants` blocks only: no `*` as a source; no `*` as a destination
-//   host or port; no destination spanning more than 64 ports; every destination selector resolves
-//   to a named node or is refused (UNRESOLVABLE_DST_SELECTOR); pro:443 reachable only from the two
-//   allowlisted nodes, in every spelling of node and port; `proto` present on every `acls` rule;
-//   `tag:team-device` in no rule's `src`. Beyond the rules: no unknown top-level key, the
-//   SHELL-ROUTE comment still names 7681 / /term / ttyd, and a deny-test covers the shell port for
-//   a team device.
+//   VERIFIED, on the `acls` and `grants` blocks (the team-reaching source check below is the one
+//   item that also applies to `ssh`): no `*` as a source; no source starting
+//   `tag:team` and no `autogroup:tagged`; no `*` as a destination host or port; no destination
+//   spanning more than 64 ports; every destination selector resolves to a node in `hosts` or is
+//   refused (UNRESOLVABLE_DST_SELECTOR) — with exactly ONE permitted exception, `tag:team-device`,
+//   which has no IP until a laptop enrols; pro:443 reachable only from the FOUR allowlisted nodes
+//   (m5, iphone-14, iphone175, apple-vision-pro), in every spelling of node and port. On `acls`
+//   rules only, `proto` must be present. File-wide: no unknown top-level key; the tokens
+//   `SHELL-ROUTE:`, 7681, /term and ttyd present SOMEWHERE in the file; and a deny-test covering
+//   the shell port for a team-reaching source.
 //
-//   NOT VERIFIED — THE `ssh` BLOCK BELOW. The guard applies NONE of the above to it. It looks at
-//   three things there: the literal string "root" in `users`, and `tag:team-device` in `src` or
-//   `dst`. Measured 2026-08-29: an ssh rule reading `"src": ["*"], "dst": ["*"], "users":
-//   ["autogroup:nonroot"]` produces zero findings, where the same wildcard in an `acls` rule
-//   produces WILDCARD_SRC + WILDCARD_DST_HOST + UNRESOLVABLE_DST_SELECTOR. And the root check is a
-//   denylist of that one literal, so `"users": ["*"]` — strictly wider than root — is green.
-//   THEREFORE: a green guard does NOT establish that this file grants no root over Tailscale SSH.
-//   The narrowing declared in the paragraph above is real, but only READING the ssh block proves
-//   it — it must say `"users": ["autogroup:nonroot"]`.
+//   BARELY CHECKED — THE `ssh` BLOCK BELOW gets exactly three checks: the literal string "root" in
+//   `users`, a team-reaching `src`, and a team-reaching `dst`. None of the wildcard, port or
+//   selector-resolution checks above are applied to it. Measured: an ssh rule reading
+//   `"src": ["*"], "dst": ["*"], "users": ["autogroup:nonroot"]` produces zero findings, where the
+//   same wildcard in an `acls` rule produces WILDCARD_SRC + WILDCARD_DST_HOST +
+//   UNRESOLVABLE_DST_SELECTOR. And the root check is a denylist of that one literal, so
+//   `"users": ["*"]` — strictly wider than root — is green. THEREFORE: a green guard does NOT
+//   establish that this file grants no root over Tailscale SSH. The narrowing declared in the
+//   paragraph above is real, but only READING the ssh block proves it — it must say
+//   `"users": ["autogroup:nonroot"]`.
 //
-//   ALSO NOT VERIFIED: there is no UNRESOLVABLE_SRC_SELECTOR mirroring the destination one, so an
-//   unresolvable SOURCE (`tag:fleet`, a `group:`, any tag but tag:team-device) is skipped silently.
-//   And the shell anchor resolves through the `hosts` alias "pro", never through Pro's IP (the
-//   literal 100.107.22.111 appears nowhere in the guard): with "pro" re-pointed at Mini's IP and a
+//   ALSO NOT VERIFIED. (1) There is no UNRESOLVABLE_SRC_SELECTOR mirroring the destination one:
+//   the source column is checked for the literal `*` and for team-reaching selectors only, so
+//   `tag:fleet` or `group:ops` as a src measures clean against an ordinary destination (`mini:22`)
+//   while the same `tag:fleet` as a DST yields UNRESOLVABLE_DST_SELECTOR. One carve-out, so the gap
+//   is not overstated: a src aimed at the SHELL PORT is separately required to be a named node
+//   (SHELL_PORT_SRC_NOT_A_NAMED_HOST fires for `tag:fleet -> pro:443`), so the hole is on every
+//   OTHER destination. What is caught is the PREFIX `tag:team`, not the exact string, so
+//   `tag:team-other` is caught and `tag:fleet` is not. (2) The shell anchor is whatever
+//   `hosts["pro"]` says; no assertion pins it to 100.107.22.111 (that address appears in the guard
+//   only in comments and one canonicalisation test's fixture). With "pro" moved to Mini's IP and a
 //   second alias carrying Pro's real one, `mini -> <that alias>:443` measures zero findings, where
-//   `mini -> pro:443` on the correct map gives SHELL_PORT_SRC_NOT_ALLOWLISTED. Two coordinated
-//   edits, not one — re-pointing the alias alone is caught as UNRESOLVABLE_DST_SELECTOR — but it
-//   means the `hosts` map is load-bearing and unguarded. Finally, `MISSING_PROTO` tests that
-//   `proto` is PRESENT, never its value.
+//   `mini -> pro:443` on a correct map gives SHELL_PORT_SRC_NOT_ALLOWLISTED — so the `hosts` map is
+//   load-bearing and unguarded. (3) The SHELL-ROUTE token check scans the WHOLE FILE, not this
+//   block: deleting the block's body passes as long as 7681 / /term / ttyd survive anywhere, and
+//   this very paragraph now contains them. (4) MISSING_PROTO tests that `proto` is PRESENT, never
+//   its value.
 //
-// All four gaps carry their reproduction in .claude/skills/modus/PENDING-ARMS.md (search
+// All of these carry their reproduction in .claude/skills/modus/PENDING-ARMS.md (search
 // `tailnet-acl guard`). They are a specified follow-up PR, not a blocker on applying this policy.
 //
 // And none of this is ACCEPTANCE. The file parses as JSON with comments stripped; that is grammar
@@ -247,13 +260,22 @@
     // `http://100.107.22.111:9099/checkout` (mac-client/profile-monitor.swift:12; the wrapper
     // listens on 9099, wrapper.py:44) and mac-client/setup-balizero.sh is the documented procedure
     // for joining such a Mac to this tailnet. Under this policy a `tag:team-device` Mac CANNOT
-    // reach 9099, and the failure is SILENT — a fire-and-forget POST dropped by the packet filter
-    // is indistinguishable from "no checkout happened", on an HR-monitoring surface. This is not
+    // reach 9099, and the failure is INVISIBLE TO US — scoped precisely (round-2 cross-family review,
+    // 2026-08-29; an earlier draft called the POST "fire-and-forget", which the source contradicts):
+    // the client sets a 5s request timeout and blocks on a semaphore up to 6s, and a DROPPED POST —
+    // this policy's case — times out as a transport error and IS recorded as `POST_FAIL`, into
+    // `~/Library/Logs/balizero-profile-events.log` ON THE EMPLOYEE'S OWN MAC
+    // (`mac-client/profile-monitor.swift:48-79`). Only transport errors are classified that way: an
+    // HTTP 4xx/5xx logs `POST_OK` carrying the status, and a semaphore expiry logs nothing at all. Nothing on the fleet reads that file, so from this
+    // side a dropped POST is indistinguishable from "no checkout happened", on an HR-monitoring
+    // surface. The evidence exists; it is on the far side of the fence this policy raises. This is not
     // an oversight, but state its cost ACCURATELY rather than inflating it (corrected 2026-08-29 —
     // an earlier draft of this comment called the absence "the one thing that keeps the shell
     // fenced", which is false as Tailscale semantics and biased the owner's decision). ACL rules
-    // are independent allow entries: a rule granting `tag:team-device -> pro:9099` grants 9099 and
-    // nothing else — it does not open pro:443. What actually fences the shell is that NO rule
+    // are independent allow entries: a rule granting `tag:team-device -> pro:9099` with this file's
+    // mandatory `"proto": "tcp"` grants TCP 9099 and nothing else — it does not open pro:443. (The
+    // `proto` qualifier is load-bearing, not decoration: omit it and the same rule would also carry
+    // UDP/9099 and ICMP for that node pair.) What actually fences the shell is that NO rule
     // grants a team device pro:443, and a named single-port exception would not change that.
     // The real cost is the tripwire, not the shell: `tag:team-device` in any `src` fires
     // TEAM_TAG_AS_SOURCE, so the guard goes red and the file loses a coarse structural invariant
