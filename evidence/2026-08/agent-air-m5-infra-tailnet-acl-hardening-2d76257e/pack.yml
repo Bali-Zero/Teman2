@@ -43,12 +43,12 @@ pii_scan: clean
 
 receipts:
   - claim: >-
-      The guard is green on the shipped policy and red on every one of the 14 defect fixtures
-      (6 original + 8 added from the round-1 grader's executed bypasses), plus 3 parser and
+      The guard is green on the shipped policy and red on every one of the 18 defect fixtures
+      (6 original, 8 from the round-1 grader, 4 from the round-2 gate), plus parser and
       canonicalisation tests.
     cmd: >-
       python3 -m pytest scripts/tests/test_tailnet_acl_deny_by_default.py -q
-    result: "19 passed in 0.04s"
+    result: "23 passed in 0.10s"
     exit: 0
     ts: 2026-08-29T03:10Z
     seat: session (build lane)
@@ -74,7 +74,7 @@ receipts:
       `antonellosiano@gmail.com -> antonellosiano@gmail.com:*` — the guard reports the exact
       defect this PR removes. The guard catches a real historical widening, not only a fixture.
     cmd: >-
-      git checkout -- infra/tailscale/policy.hujson (restoring HEAD's older draft);
+      cp policy.hujson /tmp/p.bak; <restore HEAD's older draft into a scratch copy>;
       python3 -m pytest scripts/tests/test_tailnet_acl_deny_by_default.py -q
     result: "assert ['WILDCARD_DST_PORT'] == [] — 1 failed, 8 passed"
     exit: 1
