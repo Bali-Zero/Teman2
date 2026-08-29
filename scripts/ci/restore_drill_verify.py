@@ -408,7 +408,11 @@ def _evaluate_one(spec: Invariant, measurement: Optional[dict[str, Any]]) -> dic
             cannot_verify = True
             continue
         count = violations[check]
-        if not isinstance(count, int) or count < 0:
+        # bool is an int subclass in Python (`True < 0` is False either
+        # way) -- excluded so a fixture typo (`"x": true`) reads as
+        # CANNOT-VERIFY, not a genuine-looking FAIL. --dsn can't hit this;
+        # count(*) is always a bigint.
+        if not isinstance(count, int) or isinstance(count, bool) or count < 0:
             reasons.append(f"check '{check}' has a malformed value: {count!r}")
             cannot_verify = True
             continue
