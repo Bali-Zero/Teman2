@@ -107,12 +107,21 @@
 //   used to do; and BOTH halves of `tests` — a deny-test covering the shell port for a
 //   team-reaching source, AND an accept-test for every grant `acls` makes.
 //
-// WHAT IT STILL DOES NOT COVER, both worth knowing before you save:
-//   (1) A `hosts` entry added later with a well-formed but FOREIGN IPv4, granted a non-shell port,
-//       is green — the value is legitimately shaped, so no shape rule can catch it. Reading the
-//       rule that grants it is the only control. The shell port is not exposed this way: `pro:443`
-//       remains fenced to the four allowlisted nodes.
-//   (2) This is grammar and intent, NOT acceptance. There is no Tailscale API
+//   ON AN ADDED `hosts` ALIAS (2026-08-29, gate condition C2): entries may be added, but an alias
+//   that is not one of the six pinned ones may appear only as a DESTINATION, never as a `src`
+//   (UNPINNED_ALIAS_AS_SOURCE). This closes what the previous revision of this paragraph listed
+//   as an open hole: an added alias holding a well-formed FOREIGN IPv4 satisfied both clauses of
+//   the pin and could then originate traffic — measured green to `pro:22`, `mini:22`, `mini:6379`,
+//   `mini:11434`, `mini:8990` and `m5:22`, with only `pro:443` refused. It costs the enrolment
+//   path nothing, because a team laptop is reached, never a source.
+//
+//   ON THE SHELL-ROUTE BLOCK: the tokens must appear INSIDE the block, and the block must be
+//   properly closed. With its closing `====` fence deleted the span used to run to end-of-file,
+//   so a gutted block with the tokens parked in the JSON body audited clean; an unterminated
+//   block is now SHELL_ROUTE_BLOCK_UNTERMINATED.
+//
+// WHAT IT STILL DOES NOT COVER, worth knowing before you save:
+//   (1) This is grammar and intent, NOT acceptance. There is no Tailscale API
 // token on the fleet and no offline validator, so the ONLY authority on whether this policy is
 // accepted is the admin console at save time, which also runs the `tests` block. If it refuses,
 // read its message before editing anything here.
