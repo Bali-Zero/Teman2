@@ -76,13 +76,45 @@
 // disarms it before someone runs `tailscale up --ssh` and arms it by accident. Fleet SSH in daily
 // use is OpenSSH on port 22 with keys, which the rules below grant explicitly.
 //
-// VALIDATION LIMIT, stated rather than implied: this file is checked repo-side by
-// scripts/tests/test_tailnet_acl_deny_by_default.py (structure, no wildcard src/dst, shell-route
-// naming, `tag:team-device` never a source, no root SSH grant, deny-tests present) and it parses as JSON
-// with comments stripped. That is grammar and intent, NOT acceptance. There is no Tailscale API
-// token on the fleet and no offline validator, so the ONLY authority on whether this policy is
-// accepted is the admin console at save time, which also runs the `tests` block. If it refuses,
-// read its message before editing anything here.
+// VALIDATION LIMIT, stated rather than implied. This file is checked repo-side by
+// scripts/tests/test_tailnet_acl_deny_by_default.py, and that check covers LESS than a reader
+// would assume, so here is its exact reach.
+//
+//   VERIFIED, on the `acls` and `grants` blocks only: no `*` as a source; no `*` as a destination
+//   host or port; no destination spanning more than 64 ports; every destination selector resolves
+//   to a named node or is refused (UNRESOLVABLE_DST_SELECTOR); pro:443 reachable only from the two
+//   allowlisted nodes, in every spelling of node and port; `proto` present on every `acls` rule;
+//   `tag:team-device` in no rule's `src`. Beyond the rules: no unknown top-level key, the
+//   SHELL-ROUTE comment still names 7681 / /term / ttyd, and a deny-test covers the shell port for
+//   a team device.
+//
+//   NOT VERIFIED — THE `ssh` BLOCK BELOW. The guard applies NONE of the above to it. It looks at
+//   three things there: the literal string "root" in `users`, and `tag:team-device` in `src` or
+//   `dst`. Measured 2026-08-29: an ssh rule reading `"src": ["*"], "dst": ["*"], "users":
+//   ["autogroup:nonroot"]` produces zero findings, where the same wildcard in an `acls` rule
+//   produces WILDCARD_SRC + WILDCARD_DST_HOST + UNRESOLVABLE_DST_SELECTOR. And the root check is a
+//   denylist of that one literal, so `"users": ["*"]` — strictly wider than root — is green.
+//   THEREFORE: a green guard does NOT establish that this file grants no root over Tailscale SSH.
+//   The narrowing declared in the paragraph above is real, but only READING the ssh block proves
+//   it — it must say `"users": ["autogroup:nonroot"]`.
+//
+//   ALSO NOT VERIFIED: there is no UNRESOLVABLE_SRC_SELECTOR mirroring the destination one, so an
+//   unresolvable SOURCE (`tag:fleet`, a `group:`, any tag but tag:team-device) is skipped silently.
+//   And the shell anchor resolves through the `hosts` alias "pro", never through Pro's IP (the
+//   literal 100.107.22.111 appears nowhere in the guard): with "pro" re-pointed at Mini's IP and a
+//   second alias carrying Pro's real one, `mini -> <that alias>:443` measures zero findings, where
+//   `mini -> pro:443` on the correct map gives SHELL_PORT_SRC_NOT_ALLOWLISTED. Two coordinated
+//   edits, not one — re-pointing the alias alone is caught as UNRESOLVABLE_DST_SELECTOR — but it
+//   means the `hosts` map is load-bearing and unguarded. Finally, `MISSING_PROTO` tests that
+//   `proto` is PRESENT, never its value.
+//
+// All four gaps carry their reproduction in .claude/skills/modus/PENDING-ARMS.md (search
+// `tailnet-acl guard`). They are a specified follow-up PR, not a blocker on applying this policy.
+//
+// And none of this is ACCEPTANCE. The file parses as JSON with comments stripped; that is grammar
+// and intent. There is no Tailscale API token on the fleet and no offline validator, so the ONLY
+// authority on whether this policy is accepted is the admin console at save time, which also runs
+// the `tests` block. If it refuses, read its message before editing anything here.
 //
 // CORRECTED 2026-08-29 (round-1 grader, finding 9): earlier revisions of this file warned that
 // `autogroup:member` is invalid as a `dst`. That is false for an ordinary ACL destination, where
@@ -217,10 +249,19 @@
     // for joining such a Mac to this tailnet. Under this policy a `tag:team-device` Mac CANNOT
     // reach 9099, and the failure is SILENT — a fire-and-forget POST dropped by the packet filter
     // is indistinguishable from "no checkout happened", on an HR-monitoring surface. This is not
-    // an oversight: granting it would be the file's only team-device-as-source rule, i.e. the one
-    // thing that keeps the shell fenced. Whether to grant it as a single named exception or to
-    // move that client off the tailnet is a business decision (Legge 5), so it is declared here
-    // and left to the owner rather than resolved by this diff.
+    // an oversight, but state its cost ACCURATELY rather than inflating it (corrected 2026-08-29 —
+    // an earlier draft of this comment called the absence "the one thing that keeps the shell
+    // fenced", which is false as Tailscale semantics and biased the owner's decision). ACL rules
+    // are independent allow entries: a rule granting `tag:team-device -> pro:9099` grants 9099 and
+    // nothing else — it does not open pro:443. What actually fences the shell is that NO rule
+    // grants a team device pro:443, and a named single-port exception would not change that.
+    // The real cost is the tripwire, not the shell: `tag:team-device` in any `src` fires
+    // TEAM_TAG_AS_SOURCE, so the guard goes red and the file loses a coarse structural invariant
+    // that needs no per-port reasoning to check. That is a genuine loss and a defensible reason to
+    // refuse — it is simply a smaller one than "the shell opens". Whether to grant it as a single
+    // named exception (with its own deny-tests for every other port, pro:443 included) or to move
+    // that client off the tailnet is a business decision (Legge 5), so it is declared here and left
+    // to the owner rather than resolved by this diff.
     //
     // There is deliberately NO rule anywhere in this file with `tag:team-device` in `src`. That single
     // absence is what denies a teammate's laptop the shell on pro:443, the Redis on mini:6379,

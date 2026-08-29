@@ -35,9 +35,50 @@ cd ~/nuzantara
 python3 -m pytest scripts/tests/test_tailnet_acl_deny_by_default.py -q
 ```
 
-Green means the file is structurally deny-by-default, names the shell route, keeps
-`tag:team-device` out of every `src`, grants no root over Tailscale SSH, and carries deny-tests. It
-does **not** mean Tailscale accepts it — only the console can say that.
+### What green means — and the block it does not look at
+
+Green means these properties hold **on the `acls` and `grants` blocks**, and nowhere else: no `*`
+as a source; no `*` as a destination host or port; no destination spanning more than 64 ports;
+every destination selector resolves to a named node or is refused outright
+(`UNRESOLVABLE_DST_SELECTOR`); the shell port `pro:443` is reachable only from the two allowlisted
+nodes, in every spelling of node and port the guard canonicalises; `"proto"` present on every
+`acls` rule; and `tag:team-device` in no rule's `src`. Beyond the rules it also refuses any
+top-level key it does not know, requires the `SHELL-ROUTE:` comment to still name `7681`, `/term`
+and `ttyd`, and requires a deny-test covering the shell port for a team device.
+
+**It does NOT check the `ssh` block, and you must read that block by eye before you save.** The
+guard inspects exactly three things there — the literal string `"root"` in `users`, and
+`tag:team-device` in `src` or `dst` — and applies none of the wildcard or selector checks above to
+it. Measured on this branch: an `ssh` rule reading `"src": ["*"], "dst": ["*"], "users":
+["autogroup:nonroot"]` yields **zero findings**, while the identical wildcard in an `acls` rule
+yields `WILDCARD_SRC` + `WILDCARD_DST_HOST` + `UNRESOLVABLE_DST_SELECTOR`. And because the root
+check is a denylist of that one literal, `"users": ["*"]` — strictly wider than `root` — is green
+too. **So a green run is not evidence that this file grants no root over Tailscale SSH.** The only
+thing that establishes that is your own reading of the block, which is one rule of six lines near
+the end of `policy.hujson`; it must read `"users": ["autogroup:nonroot"]`.
+
+Two further gaps, both relevant while you are looking at the file rather than after:
+
+- **There is no `UNRESOLVABLE_SRC_SELECTOR`** to mirror the destination one. A source the guard
+  cannot resolve — `tag:fleet`, a `group:`, any tag other than `tag:team-device` — is skipped
+  silently, so a device enrolled under a different tag sits outside both the rules written to
+  contain it and the guard written to check them. This is the same failure mode step 2 of
+  `infra/tailscale/enroll-team-device.md` warns about from the other end: the auth key must carry
+  `tag:team-device`, that exact string.
+- **The shell anchor resolves through the `hosts` alias `"pro"`**, not through Pro's IP
+  (`100.107.22.111` appears nowhere in the guard). Editing what `"pro"` points at moves the anchor
+  with it. Measured: with `"pro"` re-pointed at Mini's IP and a second alias carrying Pro's real
+  one, `mini -> <that alias>:443` produces **zero findings**, where `mini -> pro:443` against the
+  correct map produces `SHELL_PORT_SRC_NOT_ALLOWLISTED`. It takes two coordinated edits rather than
+  one, and re-pointing the alias alone is caught (as `UNRESOLVABLE_DST_SELECTOR`) — but it means
+  **you must read the `hosts` map itself**, not only the rules that reference it. Confirm `"pro"`
+  still reads `100.107.22.111`.
+
+All four gaps are written up with their reproductions in `.claude/skills/modus/PENDING-ARMS.md`
+(search `tailnet-acl guard`); closing them is a separate, specified PR and not a prerequisite for
+applying this policy — the policy's own content was independently confirmed sound by three graders.
+
+None of this means Tailscale accepts the file — only the console can say that.
 
 ## 2. Preview (dry run) in the console
 

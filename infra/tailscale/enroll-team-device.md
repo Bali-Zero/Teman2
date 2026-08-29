@@ -96,11 +96,26 @@ that port, and the failure is silent** — a fire-and-forget POST dropped by the
 exactly like "no checkout happened", on an HR-monitoring surface where nobody is watching for
 absence.
 
-This is deliberate, not an oversight: granting it would be the only rule in the file with a team
-device as a SOURCE, which is the single property keeping the laptop off the writable shell on Pro.
-The choice is the owner's: grant `tag:team-device -> pro:9099` as one named exception (with its own
-deny-tests for every other port), or move that client off the tailnet. Decide it before enrolling,
-because after enrolment the wrong answer is invisible.
+This is deliberate, not an oversight — but the cost of granting it is smaller than an earlier draft
+of this section claimed, and the owner should decide against the accurate figure (corrected
+2026-08-29). That draft said granting 9099 would surrender "the single property keeping the laptop
+off the writable shell on Pro". **That is false as Tailscale semantics.** ACL rules are independent
+allow entries: a rule granting `tag:team-device -> pro:9099` grants port 9099 and nothing else. It
+does not open `pro:443`. What fences the shell is that no rule grants a team device `pro:443`, and
+a named single-port exception leaves that untouched.
+
+The real cost is the tripwire, not the shell. `tag:team-device` appearing in any `src` fires
+`TEAM_TAG_AS_SOURCE` in `scripts/tests/test_tailnet_acl_deny_by_default.py`, so the guard goes red
+and the file loses a coarse structural invariant that can be checked without per-port reasoning.
+That is a genuine loss and a defensible reason to refuse — it is simply a smaller one than "the
+shell opens", and the difference is exactly what the decision turns on.
+
+**The choice is the owner's (Legge 5), and it must be made BEFORE step 2 mints the key.** Either
+grant `tag:team-device -> pro:9099` as one named exception — with its own deny-tests for every
+other port, `pro:443` included, and the guard's expected finding acknowledged in the PR that adds
+it — or move that client off the tailnet. Enrol first and the wrong answer is invisible: a
+fire-and-forget POST dropped by the packet filter looks exactly like an employee who never checked
+in, and nothing in the fleet watches for that absence.
 
 ## Step 2 — mint a tagged, single-use auth key · `operator[GUI]`
 
