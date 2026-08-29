@@ -58,9 +58,15 @@ import sys
 # happened, with the authority of an automated measurement).
 VERDICTS = ("MERGED", "CLOSED", "IN_QUEUE", "ARMED", "INDETERMINATE")
 
+# The ONLY thing that settles it — and it is asymmetric, which the text must
+# say. If the PR is already armed the command REFUSES and nothing changes; if
+# it is NOT armed the same command ARMS IT. So it is a probe in exactly the
+# case you did not need one, and an action in the case you did. Calling it
+# "harmless" would be true of one branch and a trap on the other.
 DISAMBIGUATOR = (
-    "run `gh pr merge <PR> --auto` (a MUTATION, but it refuses harmlessly): "
-    "'already queued to merge' proves ARMED; anything else leaves it open"
+    "`gh pr merge <PR> --auto` decides it, but ONLY RUN IT IF YOU INTEND TO ARM: "
+    "'already queued to merge' proves it was ARMED and changes nothing, while any "
+    "other outcome means it was not armed and you have just armed it"
 )
 
 

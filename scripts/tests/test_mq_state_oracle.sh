@@ -74,6 +74,12 @@ judge "$P"; ALL_VERDICTS="$ALL_VERDICTS $(verdict_of "$JOUT")"
 check "verdict is INDETERMINATE" "$(yesno [ "$(verdict_of "$JOUT")" = "INDETERMINATE" ])"
 check "never says NOT_ARMED" "$(nope has 'NOT_ARMED' "$JOUT")"
 check "names the mutation as the disambiguator" "$(yesno has 'already queued to merge' "$OUT")"
+# The disambiguator is ASYMMETRIC: it refuses on an armed PR, and ARMS an
+# unarmed one. Advertising it as "harmless" would be true of one branch and
+# a trap on the other — so the text must carry the condition, not the comfort.
+check "and warns the mutation ARMS an unarmed PR, not merely refuses" \
+      "$(yesno has 'ONLY RUN IT IF YOU INTEND TO ARM' "$OUT")"
+check "and never calls that command harmless" "$(nope has 'harmless' "$OUT")"
 check "queue-branch runs present -> ejection is flagged as CONSISTENT, not asserted" \
       "$(yesno has 'consistent with an EJECTION' "$OUT")"
 check "points at the only source for WHY" "$(yesno has 'RemovedFromMergeQueueEvent' "$OUT")"
