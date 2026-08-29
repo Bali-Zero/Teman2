@@ -474,6 +474,28 @@
             "test_acceptance_probe_end_to_end_notice_reaches_stderr"
           ]
         },
+        "check_assumptions_register": {
+          "scar": ["#2-esiste-non-armato", "W82"],
+          "guilt": [
+            "test_assumptions_guilt_unverified_entry_notice",
+            "test_assumptions_guilt_status_pending_fires_n2_not_n1",
+            "test_assumptions_guilt_status_typo_fires_n2_not_n1",
+            "test_assumptions_guilt_bare_string_entry_fires_n2",
+            "test_assumptions_guilt_missing_status_key_fires_n2",
+            "test_assumptions_guilt_unverified_without_probe_fires_n1_and_n3"
+          ],
+          "innocence": [
+            "test_assumptions_innocence_all_verified_silent",
+            "test_assumptions_innocence_absent_block_silent",
+            "test_assumptions_innocence_empty_list_silent",
+            "test_assumptions_innocence_brief_none_does_not_crash",
+            "test_assumptions_innocence_non_list_assumptions_do_not_crash",
+            "test_assumptions_innocence_status_tolerates_whitespace_and_case",
+            "test_assumptions_innocence_unverified_with_probe_fires_n1_not_n3",
+            "test_assumptions_innocence_examples_sanitize_quotes_and_newlines",
+            "test_assumptions_end_to_end_notice_reaches_stderr"
+          ]
+        },
         "check_lanes_build_seat_diversity": {
           "scar": ["D3", "fleet-order-spec-4"],
           "guilt": [
