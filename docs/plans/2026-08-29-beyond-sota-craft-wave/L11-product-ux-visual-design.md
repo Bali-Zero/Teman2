@@ -313,67 +313,81 @@ fold this PR's scope into PR-1's sentinel probes instead of an under-powered con
 
 ---
 
-## Spec-back (2026-08-29, Squad P) — a per-failure fingerprint defeats its own dedup when the surface is NON-DETERMINISTIC
+## Spec-back (2026-08-29, Squad P) — the sentinel's output cannot tell you whether two failures on one journey are one condition or two
 
-PR-1's sentinel dedups Telegram alerts on `journey-sentinel:<slugged title>-<fingerprint>`, where the
-fingerprint hashes the failure's first error line. The code states its reason verbatim:
+**This section began as a claimed defect in the alert fingerprinting. That claim was REFUTED before
+merge, and it is kept here as the finding — because the trap it describes is one a future reader of
+this organ's log will fall into exactly as I did.**
 
-> so a DIFFERENT root cause on the SAME journey (e.g. `prime-maps.spec.ts` failing tomorrow on a CSP
-> violation instead of today's `ExpiredKeyMapError`) gets its own dedup identity instead of being
-> muted by `tg_notify.py`'s repeat-ladder as "the same condition, still ongoing"
+### The retracted claim, stated so nobody re-derives it
 
-**The intent is right and the realisation is measurably wrong, because the worked example in that
-comment is the false-positive case.** `/prime`'s single expired credential surfaces through two
-detectors non-deterministically, and one of them says `404 / CSP / DNS` — the very words the comment
-treats as proof of a new root cause.
+`/prime` failed with two different messages across runs — `GOOGLE MAPS KEY DEFECT
+(ExpiredKeyMapError)` and `window.google.maps never loaded — the Maps SDK script itself failed
+(404 / CSP / DNS)` — producing two different fingerprints (`b28513a7`, `0753d92d`) and therefore two
+Telegram dedup keys. I read that as ONE defect surfacing through whichever assertion tripped first,
+and concluded the fingerprinting defeated its own dedup.
 
-Measured on Mini across every sentinel run in `~/logs/journey-sentinel.log`:
+**Wrong, and the file that settles it is `apps/mouth/e2e/production/prime-maps.spec.ts` itself**,
+whose header records the empirical measurement:
+
+> Google's JS bootstrap loads and defines `window.google.maps` **regardless of key validity**; key
+> validation happens against the backend … So these three checks alone do NOT discriminate today's
+> defect from a healthy map — they are useful for a DIFFERENT class of break (404 / blocked script /
+> DNS failure / CSP — cases where the SDK never loads at all)
+
+Under the expired key the SDK **does** load. A run where it never loaded is therefore a DIFFERENT
+condition, not the same one in disguise — so two fingerprints is **correct behaviour**, and the
+alert log confirms it worked: `0753d92d` paged once as a new condition while `b28513a7` followed its
+own dedup ladder normally.
+
+### Two things a future reader should take from that, and they are the real spec content
+
+1. **The log alone cannot answer "same condition or different?"** Nothing in the heartbeat, the
+   alert, or the verdict JSON carries the fact that settles it. The answer lived in a source
+   comment. **Read the detector's own documentation before reasoning about what its output means** —
+   for this spec that means the header block, which explicitly states which checks discriminate
+   which fault class and which do not.
+2. **Your own runs are in the log.** Of 12 verdicts, only **3** were production cron ticks
+   (`launchctl … runs = 3`, spaced ~1h); the other nine were hand-runs and mutation fixtures from
+   development sessions, and one carried `missing_files: ["dream.spec.ts"]` — an exit-8 guilt
+   fixture. Any RATE computed over that log is arithmetic over a polluted denominator. The tells are
+   `missing_files` and second-level clustering. A **universal** claim ("never leaked") survives this;
+   a **rate** claim does not.
+
+### What IS a real defect, measured and unrefuted: the heartbeat note reads as its own opposite
+
+The published note quotes the failing Playwright test's TITLE, and titles are conventionally phrased
+as the DESIRED property. A RED organ therefore publishes, verbatim:
 
 ```
-22:52 KEY · 22:54 sdk · 22:57 KEY · 23:19 KEY · 00:19 sdk · 01:20 KEY
-10 x "GOOGLE MAPS KEY DEFECT (ExpiredKeyMapError)"          fingerprint b28513a7
- 2 x "window.google.maps never loaded ... (404 / CSP / DNS)" fingerprint 0753d92d
+1 real journey failure(s): ;/prime Google Maps key is valid (currently RED     see file header, ...)
 ```
 
-Two detectors, one defect, interleaved: the error-string check when the SDK loads far enough to log,
-the positive-signal check (added after a round-1 refutation, and correctly so — it catches a 404/CSP
-block that logs no string) when it does not. **Consequence: the same unchanged defect re-alerts
-whenever it flips, ~1 run in 6**, and the operator reads a fresh P0 as a fresh event.
+Three separate problems, and only `status=degraded` keeps the organ honest:
 
-This is superscar #3's under-match twin at the ALERTING layer: the fingerprint is a proxy for
-"which defect is this", and it is measuring the assertion that happened to trip rather than the
-condition on the page.
+- the note leads with a string asserting the thing that is false;
+- the `error_summary` that would state the failure plainly **already exists and is used in the
+  Telegram alert**, and the heartbeat discards it;
+- a separator (`;`) is used as a prefix.
 
-### Requirements for whoever fixes it — the naive fixes are both wrong
+A narrower correction, since an earlier draft of this section over-claimed it: the author DID
+anticipate the first problem and appended `(currently RED — see file header)` to the title, and
+`scripts/lib/heartbeat.sh` byte-strips non-ASCII to spaces (deliberately — provably-valid JSON in
+any locale, its own comment declares the cost), so the em dash becomes whitespace. **The mitigating
+WORDS survive**; only the visual break is lost. The mitigation is damaged, not destroyed — but a
+note that needs a parenthetical to stop it meaning the opposite is still the wrong shape.
 
-1. **Do NOT drop the fingerprint back to the title alone.** That reinstates exactly what it was
-   added to prevent: a genuinely new defect on the same spec muted as "still ongoing". The dedup
-   identity must still be able to CHANGE when the condition changes.
-2. **Do NOT hash a longer slice of the error text.** The problem is not collision granularity — the
-   two texts are legitimately different strings. More text makes flapping _more_ likely, not less.
-3. The identity must key on **the condition being asserted, not the assertion that fired**. Two
-   plausible shapes, both needing a decision rather than a guess: a stable per-check `defect_class`
-   the spec declares explicitly (so both `/prime` Maps detectors share one class while a real CSP
-   regression could declare another), or a per-JOURNEY identity with the detector demoted to alert
-   BODY rather than alert KEY.
-4. Whatever is chosen must carry **guilt AND innocence**: innocence = the two `/prime` presentations
-   produce ONE dedup key across a flip; guilt = a genuinely different failure on the same spec still
-   produces a NEW key and is not muted. A fix that only proves the first has re-created the bug it
-   replaced, one level up.
-5. **`scripts/journey_sentinel.sh` has no shell corpus at all** (verified: its only test is the
-   Playwright self-test spec, which tests detection, not the wrapper). Any change here must bring
-   one, or it is untestable by construction.
+**Requirement**: the note must state a FAILURE unambiguously even when every title is phrased as the
+desired property, carry the `error_summary` the alert already has, separate rather than prefix, stay
+ASCII, and degrade legibly when several failures must share the budget.
 
-### Related, same organ, same family — the heartbeat NOTE can read as its own opposite
+**Blocker for any change here**: `scripts/journey_sentinel.sh` has **no shell corpus at all** —
+verified, its only test is the Playwright self-test spec, which tests detection rather than the
+wrapper. A change to it is untestable by construction until one exists, so a fix must bring the
+first one, including a scar-pin that goes red if the fix is reverted.
 
-The published note quotes the failing test's TITLE, and Playwright titles are conventionally phrased
-as the DESIRED property, so a RED organ publishes `1 real journey failure(s): ;/prime Google Maps
-key is valid ...`. The author anticipated it and appended `(currently RED -- see file header)`, but
-`scripts/lib/heartbeat.sh` byte-strips non-ASCII to spaces (deliberately, for provably-valid JSON in
-any locale -- measured: `A -- B` publishes with the dash gone), destroying the mitigation. Only
-`status=degraded` keeps the organ honest. The `error_summary` that would state the failure plainly
-already exists and is used in the Telegram alert; the heartbeat discards it.
+### The general rule, worth carrying past this lane
 
-**Rule for this class, worth carrying past this lane**: a machine-readable signal must never be
-phrased so that a human skimming it reads the opposite of its own status field -- and it must not
-rely on a non-ASCII character to carry meaning through a writer that is contractually ASCII-only.
+A machine-readable signal must never be phrased so that a human skimming it reads the opposite of
+its own status field, and must not rely on a non-ASCII character to carry meaning through a writer
+that is contractually ASCII-only.
