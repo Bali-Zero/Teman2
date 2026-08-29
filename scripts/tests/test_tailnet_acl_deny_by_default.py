@@ -55,13 +55,28 @@ blind on the axis nobody had swept yet, and every fix that enumerated bad spelli
 by the next spelling. The ones that held are the ones that fail closed on a whole class —
 unknown top-level key, unresolvable selector, and now a `hosts` value of the wrong shape.
 
-DECLARED RESIDUAL, measured rather than hoped: additive tolerance means a NEW alias holding a
-well-formed foreign IPv4 satisfies both clauses. Granting such an alias a non-shell port (say
-`mini:6379`) is therefore GREEN here. That is not reachable by any `hosts`-shape assertion —
-the value is genuinely well-formed — and it is caught by reading the rule that grants it, which
-is a diff a human sees. It is recorded here so the next reader does not mistake this pin for a
-guarantee it does not make. The shell port itself is NOT in that residual:
-SHELL_PORT_ALLOWED_SOURCES still fences pro:443 to four named nodes.
+HARDENED A FOURTH TIME 2026-08-29 by the round-5 gate, which closed two things the round-4 PR
+declared but did not fix. Both are recorded because the SHAPE of each mistake outlives it.
+
+  C1 — the SHELL-ROUTE span was inferred from a decorative `// ====` fence, and with that fence
+  deleted it ran to end-of-file: the block could be gutted and the required tokens parked in the
+  JSON body, and the guard returned `[]`. A FALSE GREEN, in the check written to stop one. What
+  makes it worth remembering is how it was found: the round-4 PR correctly named this the weakest
+  surface in the diff and then PREDICTED its failure mode in prose — a cosmetic reflow causing a
+  false RED — instead of mutating it. The prediction was wrong in the worst direction. A guard's
+  weak point is found by mutating it; naming it and guessing is not evidence. It now terminates on
+  a structural boundary (the comment run, which the JSON body ends) and an UNTERMINATED block is
+  itself a finding.
+
+  C2 — additive tolerance had an unpriced cost. An alias ADDED to `hosts` with a perfectly
+  well-formed FOREIGN IPv4 satisfies both clauses above, and could then originate traffic. The
+  round-4 PR declared this residual honestly but illustrated it with `mini:6379`, which
+  understated it: probed port by port, `pro:443` was correctly refused and `pro:22`, `mini:22`,
+  `mini:6379`, `mini:11434`, `mini:8990` and `m5:22` were ALL green — OpenSSH on the host holding
+  the secrets file among them. No `hosts`-SHAPE rule can catch it, because the value is
+  legitimately shaped; the cure is about the alias's ROLE instead. See UNPINNED_ALIAS_AS_SOURCE.
+
+It is not, and cannot be, a Tailscale evaluator: it does not know what a `group:` expands to, and
 
 It is not, and cannot be, a Tailscale evaluator: it does not know what a `group:` expands to, and
 it takes no position on selectors it has never seen beyond refusing them. `audit_policy()` is the
@@ -373,26 +388,53 @@ def _is_fence(line: str) -> bool:
     return stripped.startswith("//") and set(stripped.strip("/ \t")) == {"="}
 
 
-def _shell_route_block(text: str) -> str:
-    """The SHELL-ROUTE banner's own span — marker line through the fence that closes the block.
+def _is_comment(line: str) -> bool:
+    """A `//` comment line — the only thing a well-formed SHELL-ROUTE block is made of."""
+    return line.strip().startswith("//")
+
+
+def _shell_route_block(text: str) -> tuple[str, bool]:
+    """The SHELL-ROUTE banner's span, and whether that span is properly TERMINATED.
+
+    Returns `(block_text, terminated)`. `terminated` is the load-bearing half.
 
     The marker sits BETWEEN two fences (a banner), so the fence immediately following it opens the
-    body rather than closing it. A fence only terminates the block once real content has been
-    seen; that off-by-one made the first version of this fire on the shipped policy, which is why
-    the innocence test above is worth more than this docstring.
+    body rather than closing it. A fence only terminates the block once real content has been seen;
+    that off-by-one made the first version of this fire on the shipped policy.
+
+    HARDENED 2026-08-29 (gate condition C1) after the previous version was measured to produce a
+    false GREEN — the failure mode this file exists to prevent, in the check written to prevent it.
+    That version scanned for the closing fence and, finding none, silently returned everything to
+    EOF: delete the `// ====` at policy.hujson:42 and the span grew from 32 lines to 374, so the
+    required tokens could be parked ANYWHERE below — inside the JSON body — and the guard returned
+    `[]`. Measured, not theorised.
+    The cure is to stop treating a decorative fence as the only boundary and to fail closed when
+    the block is not properly closed:
+      * the block is a run of `//` COMMENT lines — the first non-comment line (i.e. the JSON body)
+        ends it, so tokens parked in the policy proper can never count as "inside the block";
+      * a span that reaches that boundary, or EOF, without a closing fence is UNTERMINATED, and an
+        unterminated block is malformed rather than permissive.
+    Structural, not decorative: reformatting the banner cannot silently widen what the check sees,
+    and deleting its fence is now a finding instead of a licence.
     """
     lines = text.splitlines()
     start = next(i for i, ln in enumerate(lines) if "SHELL-ROUTE:" in ln)
-    collected, seen_content = [lines[start]], False
+    collected: list[str] = [lines[start]]
+    seen_content = False
+    terminated = False
     for line in lines[start + 1 :]:
+        if not _is_comment(line):
+            # The comment run ended (blank line or the JSON body). The block cannot extend past it.
+            break
         if _is_fence(line):
             if seen_content:
+                terminated = True
                 break
             continue
         if line.strip().strip("/ \t"):
             seen_content = True
         collected.append(line)
-    return "\n".join(collected)
+    return "\n".join(collected), terminated
 
 
 def _is_team_reaching(src: str) -> bool:
@@ -445,6 +487,25 @@ def audit_policy(text: str) -> list[str]:
             # Mirror of UNRESOLVABLE_DST_SELECTOR on the source axis.
             elif not _is_node(src, hosts) and src not in ALLOWED_NON_NODE_SRCS:
                 findings.append("UNRESOLVABLE_SRC_SELECTOR")
+            # AN UNPINNED ALIAS MAY BE A DESTINATION, NEVER A SOURCE (gate condition C2,
+            # 2026-08-29). The `hosts` pin is additive-tolerant on purpose — the enrolment runbook
+            # adds a seventh entry, and a guard that reddens when the operator follows the
+            # documented procedure is worse than the gap it closes. But that tolerance had a price
+            # nobody had priced: an added alias holding a perfectly well-formed FOREIGN IPv4 became
+            # "a node", and could then be granted anything. Probed port by port: `pro:443` was
+            # correctly refused by the shell allowlist, and `pro:22`, `mini:22`, `mini:6379`,
+            # `mini:11434`, `mini:8990` and `m5:22` were ALL green — OpenSSH on the host that holds
+            # the secrets file among them.
+            #
+            # No `hosts`-SHAPE rule can catch that: the value is legitimately shaped. So the rule
+            # is about the ROLE instead, and it mirrors the bright line this file already draws for
+            # team devices — we reach the new machine, the new machine reaches nothing. That is
+            # exactly what enrolment needs (`m5`/`pro -> team-laptop-01:22,5900` keeps the alias on
+            # the destination side), so the cure costs the documented path nothing;
+            # `test_enrolling_a_team_laptop_keeps_the_guard_green` is what proves that, not this
+            # comment.
+            elif src not in EXPECTED_HOSTS and _canon_node(src, hosts) not in EXPECTED_HOSTS.values():
+                findings.append("UNPINNED_ALIAS_AS_SOURCE")
         if require_proto:
             proto = str(rule.get("proto", "")).strip()
             if not proto:
@@ -529,12 +590,18 @@ def audit_policy(text: str) -> list[str]:
     # Measured: delete the block's body and leave `7681`, `/term` and `ttyd` surviving anywhere at
     # all — including inside the very paragraph warning that they must not be deleted — and the
     # guard stayed green. Same disease as the `hosts` defect this commit exists to close: a check
-    # asking "does this string appear somewhere" where it means "is this structure intact". The
-    # block is the span from the SHELL-ROUTE marker to the `====` fence that closes it.
+    # asking "does this string appear somewhere" where it means "is this structure intact".
+    #
+    # AND THE SPAN ITSELF MUST BE WELL-FORMED (C1, 2026-08-29). Scoping alone was not enough: the
+    # first version inferred the span from a decorative `// ====` fence and, when that fence was
+    # deleted, ran to EOF — so the block could be gutted, the tokens parked in the JSON body, and
+    # the guard returned green. An unterminated block is now a finding in its own right.
     if "SHELL-ROUTE:" not in text:
         findings.append("SHELL_ROUTE_BLOCK_MISSING")
     else:
-        block = _shell_route_block(text)
+        block, terminated = _shell_route_block(text)
+        if not terminated:
+            findings.append("SHELL_ROUTE_BLOCK_UNTERMINATED")
         for token in ("7681", "/term", "ttyd"):
             if token not in block:
                 findings.append("SHELL_ROUTE_BLOCK_INCOMPLETE")
@@ -680,6 +747,11 @@ GUILT_CASES = [
     ("hosts_slash32_alias.hujson", "HOST_VALUE_NOT_BARE_IPV4"),
     # The two minors the round-3 and round-4 adjudicators both declared, carried in with them.
     ("shell_route_tokens_outside_block.hujson", "SHELL_ROUTE_BLOCK_INCOMPLETE"),
+    # Gate condition C1: the previous span inference produced a FALSE GREEN when its fence
+    # was deleted — the failure mode this whole file exists to prevent.
+    ("shell_route_fence_deleted.hujson", "SHELL_ROUTE_BLOCK_UNTERMINATED"),
+    # Gate condition C2: additive tolerance let a new foreign alias originate traffic.
+    ("unpinned_alias_as_source.hujson", "UNPINNED_ALIAS_AS_SOURCE"),
     ("proto_not_tcp.hujson", "PROTO_NOT_ALLOWLISTED"),
     ("accept_tests_deleted.hujson", "ACL_RULE_NOT_ACCEPT_TESTED"),
 ]

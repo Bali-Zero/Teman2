@@ -71,6 +71,21 @@ Click **Save**. The policy compiles and pushes to every node within seconds. The
 again at save time and a failing test blocks the save — that is the gate, and it is why the file
 ships with deny-tests and not only accept-tests.
 
+> **If Save is REFUSED, look here first — one assertion is `(unverified)`.** The `tests` block
+> asserts reachability to `tag:team-device:22` and `tag:team-device:5900` from `m5` and `pro`. No
+> device currently carries that tag. Whether the console resolves an ACL test whose destination is
+> a tag with **no members** cannot be determined from this repo: the fleet holds no Tailscale API
+> token and there is no offline validator, so the repo-side guard cannot answer it and does not
+> claim to. It is asserted deliberately — a test destination may be a tag, which is what lets the
+> support direction be proven before any laptop enrols — but it is the one line in the file whose
+> acceptance is genuinely unknown until this Save, and the failure lands on you, here.
+>
+> If Save fails naming those tests: delete the two `tag:team-device` **accept**-test entries, save
+> again, and record the outcome in `infra/tailscale/enroll-team-device.md` step 5. Do NOT delete
+> the `tag:team-device` **deny**-tests — those are the load-bearing half, and they reference the
+> tag as a SOURCE, which is a different question. Then reinstate the accept form after enrolment
+> using the concrete host (`team-laptop-01:22`), which is unambiguous.
+
 ## 4. Verify the fleet still works (innocence)
 
 From M5:
