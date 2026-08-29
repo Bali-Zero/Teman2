@@ -189,6 +189,7 @@ on:
       - P9 Cost Breaker (GOVERN)
       - PR size taxonomy (advisory)
       - Monthly PG Restore Drill
+      - Restore drill wiring tests
       - "runbook section numbers are unique"
       - Root Guard
       - SBOM (Software Bill of Materials)

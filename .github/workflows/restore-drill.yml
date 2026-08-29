@@ -77,13 +77,26 @@ jobs:
           # a pre-provisioned container via DRILL_CONTAINER_EXISTS.
           DRILL_CONTAINER_EXISTS: "1"
         run: |
-          # `shell: bash` above is still Actions' DEFAULT `bash -e {0}` (an
-          # explicit `shell: bash` does not opt out of errexit — only a literal
-          # command-line spec like `bash {0}` would — see
-          # scripts/lint_workflow_errexit_decap.py's own note on this). `-o
-          # pipefail` is NOT part of that default and is added explicitly below,
-          # so a `pipe1 | pipe2` failing on its FIRST segment cannot read as
-          # success just because the last segment happens to exit 0.
+          # CORRECTED (scar-class W113 -- a comment stating a fact WRONG
+          # is worse than stating no fact, because it invites a future edit
+          # on its authority): the earlier version of this comment claimed
+          # `-o pipefail` was NOT part of Actions' default and had to be
+          # added here explicitly. That is false. GitHub's documented
+          # command line for the `bash` shell keyword -- used both as the
+          # Linux/macOS DEFAULT when no `shell:` is declared, AND for this
+          # step's own EXPLICIT `shell: bash` (line 65) -- is
+          # `bash --noprofile --norc -eo pipefail {0}`: errexit (`-e`) AND
+          # pipefail (`-o pipefail`) are BOTH already active before this
+          # line ever runs. `-u` (nounset) is the one flag genuinely NEW
+          # here -- neither the unset default nor an explicit `shell: bash`
+          # turns it on. Restating `-e`/`-o pipefail` below is therefore
+          # redundant, not load-bearing, but kept explicit for readability
+          # rather than deleted -- do not read this correction as licence to
+          # drop them. See scripts/lint_workflow_errexit_decap.py's own
+          # header for the separate, still-correct claim this does not
+          # contradict: that file is about errexit alone and treats
+          # `shell: bash` the same as the unset default, which matches the
+          # fact above.
           set -euo pipefail
 
           # Skip the docker-run block: we already have a service container.
@@ -146,28 +159,40 @@ jobs:
           # could run). This is the ONLY way to guarantee the log tail below
           # still prints when the restore itself fails.
           #
-          # PIPESTATUS[1], NOT [0]: `gunzip -c ... | psql ...` is a two-stage
-          # pipe, and PIPESTATUS[0] is gunzip's own exit code (index 0 = FIRST
-          # command), not psql's — measured directly (`echo x | false;
+          # PIPESTATUS[1] is psql's own exit code (index 0 = gunzip, the
+          # FIRST command in the pipe) — measured directly (`echo x | false;
           # STATUSES=("${PIPESTATUS[@]}")` prints `[0]=0 [1]=1`), not assumed.
           # gunzip almost never fails on a valid .sql.gz (the size check above
-          # already proved the file downloaded intact); the restore's actual
-          # pass/fail signal is psql's, at index 1. Reading index 0 here would
-          # have made the whole ON_ERROR_STOP=1 legibility change silently
-          # inert — caught by a stubbed end-to-end run of this exact script
-          # with a faked failing psql, BEFORE this line shipped.
+          # already proved the file downloaded intact); RESTORE_RC (index 1)
+          # is psql's own pass/fail signal for the restore. Reading only
+          # index 0 here would make the whole ON_ERROR_STOP=1 legibility
+          # change silently inert on a genuinely failing restore — caught by
+          # a stubbed end-to-end run of this exact script with a faked
+          # failing psql, BEFORE this line shipped.
+          #
+          # But index 0 is NOT ignored either: a truncated/corrupt .gz can
+          # make gunzip itself exit non-zero while psql, fed only the valid
+          # PREFIX gunzip managed to emit before dying, still exits 0 — a
+          # restore of an INCOMPLETE dump reported as a pass if only
+          # RESTORE_RC is read. GUNZIP_RC (index 0, from the SAME captured
+          # array) closes that gap; see the dedicated `if` below for why it
+          # is checked under its own title rather than folded into the
+          # ON_ERROR_STOP=1 message.
           #
           # The whole array is captured in ONE assignment
           # (`_PIPE_STATUSES=(...)`), not two separate scalar reads: any
           # simple command — even a bare assignment — resets $PIPESTATUS to
           # its OWN single-element pipeline, so `A=${PIPESTATUS[0]}` on one
           # line followed by `B=${PIPESTATUS[1]}` on the next reads a DIFFERENT,
-          # already-overwritten array for B (measured the same way).
+          # already-overwritten array for B (measured the same way). Both
+          # GUNZIP_RC and RESTORE_RC below read from that ONE captured array,
+          # immediately after it, so neither line resets $PIPESTATUS again.
           set +e
           gunzip -c "/tmp/$LATEST" | \
             psql "$DSN" -v ON_ERROR_STOP=1 \
               > /tmp/restore.log 2>&1
           _PIPE_STATUSES=("${PIPESTATUS[@]}")
+          GUNZIP_RC=${_PIPE_STATUSES[0]}
           RESTORE_RC=${_PIPE_STATUSES[1]}
           set -e
 
@@ -178,6 +203,18 @@ jobs:
           # LAST one psql attempted, i.e. the one closest to the tail's end —
           # everything the dump had left to run after it was never attempted.
           echo "=== restore.log (tail) ==="; tail -25 /tmp/restore.log; echo "=== end restore.log ==="
+
+          # GUNZIP_RC checked FIRST and under its OWN title, separately from
+          # RESTORE_RC below: this is a distinct failure class (a corrupt
+          # download, not a rejected SQL statement) and folding it into the
+          # "Restore aborted (ON_ERROR_STOP=1)" message would send the reader
+          # to the wrong component — that title specifically means "psql
+          # itself aborted a statement", which is not what happened here;
+          # psql may well have exited 0 on the truncated prefix it received.
+          if [ "$GUNZIP_RC" -ne 0 ]; then
+            echo "::error title=Backup archive truncated or corrupt (gunzip failed)::gunzip exited $GUNZIP_RC decompressing /tmp/$LATEST. psql (index 1) exited $RESTORE_RC and may only have consumed a truncated PREFIX of the dump before gunzip died — do not trust RESTORE_RC=0 alone when this fires. Investigate the downloaded archive / Tigris backup pipeline, not the target database schema."
+            exit 4
+          fi
 
           if [ "$RESTORE_RC" -ne 0 ]; then
             echo "::error title=Restore aborted (ON_ERROR_STOP=1)::psql exited $RESTORE_RC. The failing statement is the last one visible above; see the PR/runbook note on ON_ERROR_STOP=1 before assuming this means the backup itself is corrupt."
