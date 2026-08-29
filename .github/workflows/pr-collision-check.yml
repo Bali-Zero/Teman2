@@ -2,14 +2,22 @@ name: PR collision check (advisory)
 
 # PR-3, L06-ci-merge-queue-ship-pipeline.md. scripts/ci/pr_collision_check.py
 # generalizes lint_scar_number_collision.py's claim-set technique from
-# "W-number" to "file + hunk-window". ADVISORY ONLY: posts a comment naming
-# any add/add overlap against another open PR; gates nothing, is never a
-# required check, and no other job may `needs:` this one. Reinstate-by-catch
-# promotion is a separate, future PR after two clean advisory weeks.
+# "W-number" to "file + hunk-window".
 #
-# No top-level `paths:` filter — a collision is cross-PR, not scoped to
-# what THIS PR touches; a path filter would blind the check to exactly the
-# case it exists for (a one-line PR colliding with another's on a hot file).
+# TWO SENSES OF "ADVISORY" HERE — do not conflate:
+#   - The COLLISION VERDICT is advisory: a PR that collides never fails this
+#     job (the check step is errexit-guarded on purpose). Promise about PR
+#     CONTENT.
+#   - The CORPUS (scripts/ci/test_pr_collision_check.py) is NOT advisory: if
+#     it fails, this tool is broken and every verdict it ever posted is
+#     worthless -- the self-test step is `continue-on-error: false`,
+#     unguarded, deliberately. Same rule as scripts/pr_size_taxonomy.py's own
+#     docstring: "report-only is a promise about PR CONTENT, never about
+#     this tool's own operational health." An operational failure still
+#     exits non-zero, here as there.
+#
+# Never a required check, no job may `needs:` this. No top-level `paths:`
+# filter -- a collision is cross-PR, not scoped to what THIS PR touches.
 on:
   pull_request:
     types: [opened, reopened, synchronize, ready_for_review]
@@ -33,21 +41,57 @@ jobs:
           fetch-depth: 0
           filter: blob:none
 
-      - name: Run collision check (never fails the job — advisory)
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      # Self-test the discriminator (guilt+innocence+replay+mutation-defended
+      # merge-base anchoring), shape copied from hot-zone-pr-gate.yml Step
+      # 1bis: continue-on-error: false, no `|| true` swallowing a red pytest
+      # -- a shipped guard whose corpus can never go red anywhere is W81.
+      # Job checks out PR HEAD, so the corpus is present from this PR's own
+      # first run; the `-f` guard covers only a past-commit replay predating
+      # this file.
+      - name: Self-test the collision discriminator
+        continue-on-error: false
         run: |
           set -uo pipefail
-          python3 scripts/ci/pr_collision_check.py > /tmp/collision-report.md 2>&1
-          true
+          if [[ -f scripts/ci/test_pr_collision_check.py ]]; then
+            python3 -m pip install --quiet pytest
+            python3 -m pytest scripts/ci/test_pr_collision_check.py -v
+          else
+            echo "::notice::collision-check corpus not in this checkout yet (bootstrap run)"
+          fi
 
-      - name: Post advisory comment (never fails the job)
+      - name: Run collision check (never fails the job -- advisory verdict only)
+        run: |
+          set -uo pipefail
+          {
+            echo "<!-- pr-collision-check -->"
+            python3 scripts/ci/pr_collision_check.py
+          } > /tmp/collision-report.md 2>&1 || true
+
+      - name: Post advisory comment (marker-matched, never fails the job)
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -uo pipefail
-          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" \
-            --edit-last --create-if-none --body-file /tmp/collision-report.md \
-            || echo "advisory comment post failed — non-blocking, see job logs"
+          # Marker match, not --edit-last: --edit-last targets the LAST
+          # comment from this token's identity regardless of who posted it --
+          # load-bearing on nothing else here commenting as github-actions[bot]
+          # (grepped 2026-08-29, currently true). A marker survives that.
+          COMMENT_ID=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
+            --jq '[.[] | select(.body | startswith("<!-- pr-collision-check -->"))] | last | .id // empty' \
+            2>/dev/null || true)
+          if [[ -n "$COMMENT_ID" ]]; then
+            gh api "repos/$REPO/issues/comments/$COMMENT_ID" -X PATCH \
+              --input <(jq -n --rawfile b /tmp/collision-report.md '{body:$b}') \
+              || echo "advisory comment update failed -- non-blocking, see job logs"
+          else
+            gh api "repos/$REPO/issues/$PR_NUMBER/comments" -X POST \
+              --input <(jq -n --rawfile b /tmp/collision-report.md '{body:$b}') \
+              || echo "advisory comment post failed -- non-blocking, see job logs"
+          fi

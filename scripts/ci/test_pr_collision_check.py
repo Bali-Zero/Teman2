@@ -25,6 +25,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent))
 
 import pr_collision_check as pcc  # noqa: E402
@@ -145,6 +147,15 @@ def test_gh_unreachable_yields_cannot_verify_not_clean(
     assert "CANNOT VERIFY" in captured.err
     # never silence, never a clean-looking pass on stdout
     assert captured.out == ""
+
+
+def test_run_missing_binary_raises_collision_check_error_not_oserror(tmp_path: Path) -> None:
+    """A missing `gh` binary (or any subprocess launch failure) must land as
+    CollisionCheckError -- caught by main() as exit 2 -- never escape as a
+    raw OSError that crashes with exit 1, the same exit code as "collision
+    found". Exercises the REAL `_run()`, not a monkeypatched stand-in."""
+    with pytest.raises(pcc.CollisionCheckError):
+        pcc._run(["definitely-not-a-real-binary-xyz123"], tmp_path)
 
 
 # ── replay: the real #4783/#4782 pair (trap #11), header values verbatim ──

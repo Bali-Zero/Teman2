@@ -196,7 +196,13 @@ def format_report(collisions: list[Collision], scanned_prs: int, scanned_shared_
 
 
 def _run(cmd: list[str], cwd: Path, check: bool = True) -> str:
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
+    except OSError as exc:
+        # e.g. `gh` missing from PATH -- must land as CANNOT VERIFY (exit 2),
+        # never an uncaught traceback that happens to exit 1 and collide
+        # with "collision found" in a consumer's exit-code check.
+        raise CollisionCheckError(f"command could not even start: {' '.join(cmd)}\n{exc}") from exc
     if check and result.returncode != 0:
         raise CollisionCheckError(
             f"command failed (rc={result.returncode}): {' '.join(cmd)}\n{result.stderr.strip()}"
