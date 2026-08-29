@@ -51,24 +51,37 @@ from scripts.detect_secrets_auto_triage import CONTENT_KEYED_RULES, classify, tr
 CHECK_WORKER_PLANE_REVIEW = "scripts/check_worker_plane_review.py"
 LAUNCH_WORKER_PLANE_REVIEW_PANEL = "scripts/launch_worker_plane_review_panel.py"
 
-# Line numbers re-verified against the actual files on disk 2026-08-22 (the
-# exact 18 findings `Detect Secrets` flagged on PR #3127).
-CHECK_WORKER_PLANE_REVIEW_PIN_LINES = [185, 186, 196, 197]
+# Line numbers re-verified against the actual files on disk 2026-08-29.
+#
+# THESE ARE INDEX ANCHORS AND THEY DRIFT. Any edit that inserts lines ABOVE a
+# pin moves it, and the test then fails on a file nobody broke: a docstring
+# correction in launch_worker_plane_review_panel.py shifted all 14 launcher
+# pins by +15 and turned this suite red. Eliminating index-anchored
+# CONTENT_KEYED_RULES tests is tracked separately (PR #4664); until that lands,
+# the completeness assertions below are what keeps a drift LOUD — without them
+# a shifted pin either fails with no explanation, or silently stops being
+# covered.
+#
+# The validator's list was ALSO stale, independently of that shift: two pins
+# added at 207/208 were never added here, so this suite has been covering 4 of
+# its 6 for an unknown time, passing the whole while — because "these lines are
+# approved" does not notice a line it was never told about. Hence the counts.
+CHECK_WORKER_PLANE_REVIEW_PIN_LINES = [185, 186, 196, 197, 207, 208]
 LAUNCH_WORKER_PLANE_REVIEW_PANEL_PIN_LINES = [
-    210,
-    211,
-    222,
-    223,
+    225,
+    226,
+    237,
     238,
-    239,
-    248,
-    249,
-    260,
-    261,
-    273,
-    274,
-    284,
-    285,
+    253,
+    254,
+    263,
+    264,
+    275,
+    276,
+    288,
+    289,
+    299,
+    300,
 ]
 
 
@@ -104,9 +117,37 @@ def test_guilt_production_artifact_sha256_dict_members_approved() -> None:
     don't say sha256=/cdhash= on their own line — they are the two findings
     a rule keyed ONLY on the literal names `sha256`/`cdhash` would have
     missed, which is why those two names are also in the content pattern."""
-    for line in (284, 285):
+    for line in LAUNCH_WORKER_PLANE_REVIEW_PANEL_PIN_LINES[-2:]:
         auto, _reason = classify(LAUNCH_WORKER_PLANE_REVIEW_PANEL, line)
         assert auto, f"{LAUNCH_WORKER_PLANE_REVIEW_PANEL}:{line} should be auto-approved"
+
+
+def _approved_lines(path: str) -> list[int]:
+    """Every line the classifier auto-approves in `path`, found by asking it."""
+    total = len(Path(path).read_text(encoding="utf-8").splitlines())
+    return [n for n in range(1, total + 1) if classify(path, n)[0]]
+
+
+def test_pin_line_lists_are_COMPLETE_not_merely_correct() -> None:
+    """The lists above must name EVERY approved line, not just some of them.
+
+    Without this, the suite degrades in silence twice over: a pin that drifts
+    out of the list stops being covered, and a pin added later never enters it
+    — which is exactly what happened to check_worker_plane_review.py's 207/208.
+    Asserting the set, not a subset, turns both into a red with a message that
+    says which lines to write down.
+    """
+    for path, pinned in (
+        (LAUNCH_WORKER_PLANE_REVIEW_PANEL, LAUNCH_WORKER_PLANE_REVIEW_PANEL_PIN_LINES),
+        (CHECK_WORKER_PLANE_REVIEW, CHECK_WORKER_PLANE_REVIEW_PIN_LINES),
+    ):
+        actual = _approved_lines(path)
+        assert actual == sorted(pinned), (
+            f"{path}: the classifier auto-approves {actual}, but this file pins "
+            f"{sorted(pinned)}. If lines were inserted above a pin, re-derive the "
+            "list (do not hand-shift it); if a pin was added or removed, say so "
+            "here — a list that is merely a SUBSET covers less than it claims."
+        )
 
 
 # --- INNOCENCE: unrelated lines/files must stay flagged --------------------
