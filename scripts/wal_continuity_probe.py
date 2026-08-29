@@ -67,10 +67,23 @@ is not a passed check — so they raise a digest-tier alert rather than exiting 
                               were lost (a crash), not reset; deltas are void.
   NON_SEGMENT_LAST_ARCHIVED   last_archived_wal is a `.backup`/`.history` file; the lag
                               and sequence checks cannot run against it.
-  CHECKS_UNRUNNABLE           an input one of the delta checks needs was missing on one
-                              side (no WAL position, or a non-segment on the older side).
+  CHECKS_UNRUNNABLE           an input a delta check needs was missing — no WAL position,
+                              a non-segment on the older side, or a valid segment with no
+                              `wal_segment_size` to index it against.
   FAILURES_RECOVERED          failures rose but the archiver succeeded afterwards.
   FIRST_RUN                   no baseline yet — the absolute checks still applied.
+  BASELINE_LOST               the state file EXISTS and could not be parsed. Not a first
+                              run: the baseline was lost.
+  BASELINE_RECURRED           a baseline is being written for the second time or more. A
+                              genuine first run happens exactly once.
+
+  This list is load-bearing and it was WRONG once, in the direction that matters: an
+  earlier revision claimed FIRST_RUN was "NOT red, but NEVER SILENT" while `VOIDING_NOTES`
+  excluded it and a test enshrined the exclusion. With no baseline, ARCHIVING_STALLED,
+  SEQUENCE_GAP and FAILURES_ACCUMULATING cannot fire at all — so a state file wiped or
+  corrupted before every run left half the contract dark at exit 0, and the docstring
+  said otherwise. A false statement about silence, protected by a test, is worse than no
+  statement: the next reader budgets trust against it.
 
 CANNOT_VERIFY (exit 4) is its own verdict and is NEVER green: the reader failed, the
 server answered from recovery (we asked for the primary), or a required field is
@@ -97,6 +110,21 @@ gets trusted past them (all three raised by a cross-family refuter before this s
    which is correct for this cluster (we ask the primary) but would be wrong for a standby
    legitimately running `archive_mode = always`. If such a standby is ever archived from,
    this probe needs a second mode, not a loosened check.
+4. **A SEVEN-RUN BLIND WINDOW at exactly one segment per run.** Neither threshold is
+   wrong alone; what was missing was the composition, so it is stated here as a number.
+   With archiving frozen and the database writing exactly ONE segment between runs:
+   ARCHIVING_STALLED needs `written >= STALL_SEGMENTS` (2) and sees 1, so it never fires;
+   ARCHIVING_LAGGING fires when `lag > MAX_LAG_SEGMENTS` (8), and lag grows by 1 per run
+   from its floor of 1 — so **runs 1 through 7 are GREEN and run 8 is the first RED**
+   (measured, not reasoned: the first draft of this paragraph said 8 green runs and the
+   pinning test below said 7, which is the third time in this file's history that prose
+   and measurement diverged and the measurement won). SEQUENCE_GAP stays quiet too,
+   because nothing is being archived for the filename to advance. So the worst-case
+   detection latency for a total archiving stop is EIGHT runs — eight nights on the
+   daily schedule — and it is worst
+   exactly on a low-write database, where the WAL matters least per unit time but the
+   blind window is longest. `test_detection_latency_at_one_segment_per_run_is_pinned`
+   holds this number so a future threshold change cannot move it silently.
 
 EXIT CODES
     0  clean (or first-run baseline written, with no absolute finding)
@@ -188,12 +216,28 @@ V_NON_SEGMENT_LAST_ARCHIVED = "NON_SEGMENT_LAST_ARCHIVED"
 V_FAILURES_RECOVERED = "FAILURES_RECOVERED"
 V_COUNTERS_WENT_BACKWARDS = "COUNTERS_WENT_BACKWARDS"
 V_CHECKS_UNRUNNABLE = "CHECKS_UNRUNNABLE"
+V_BASELINE_LOST = "BASELINE_LOST"
+V_BASELINE_RECURRED = "BASELINE_RECURRED"
+
+# How the baseline file itself came back — see load_state.
+STATE_OK = "ok"
+STATE_MISSING = "missing"
+STATE_UNREADABLE = "unreadable"
 
 # Notes that mean "a check did not run this time". Each of them is legitimate, and each
 # of them leaves a window nothing looked at — so they alert (digest), never in silence.
 VOIDING_NOTES = frozenset({
     V_TIMELINE_CHANGED, V_STATS_RESET, V_NON_SEGMENT_LAST_ARCHIVED, V_FAILURES_RECOVERED,
     V_COUNTERS_WENT_BACKWARDS, V_CHECKS_UNRUNNABLE,
+    # FIRST_RUN belongs here, and its ABSENCE was a silent mute switch. An earlier
+    # revision excluded it on the reasoning "it is not a voided check, it is the absence
+    # of a baseline" — and a test enshrined that exclusion, so the docstring's claim that
+    # FIRST_RUN is "NOT red, but NEVER SILENT" was false AND protected. With no baseline
+    # the three DELTA conditions (STALLED, SEQUENCE_GAP, FAILURES_ACCUMULATING) cannot
+    # fire at all, so a state file that is wiped or corrupted before every run leaves
+    # half the contract dark at rc 0. The absence of a baseline IS a voided check —
+    # three of them.
+    V_FIRST_RUN, V_BASELINE_LOST, V_BASELINE_RECURRED,
 })
 
 RED_FINDINGS = frozenset({
@@ -359,7 +403,8 @@ def observation_is_blind(obs: dict) -> bool:
     return all(obs.get(k) in (None, "") for k in ARCHIVER_FIELDS)
 
 
-def classify(previous: dict | None, current: dict, now: datetime | None = None) -> Verdict:
+def classify(previous: dict | None, current: dict, now: datetime | None = None,
+             state_status: str = STATE_OK, first_run_count: int = 0) -> Verdict:
     """The whole judgment, as a pure function. Every RED path is reachable from here.
 
     Order matters only for which code names the dedup key; ALL findings are collected
@@ -423,12 +468,29 @@ def classify(previous: dict | None, current: dict, now: datetime | None = None) 
     # a check that quietly stops checking is how this organism goes blind (superscar #2).
     last_wal = current.get("last_archived_wal") or ""
     if last_wal and arch_seg is None:
-        notes.append(Finding(
-            V_NON_SEGMENT_LAST_ARCHIVED,
-            f"last_archived_wal={last_wal!r} is not a plain WAL segment (a .backup or "
-            ".history file). Lag and sequence-gap checks are SKIPPED this run; the "
-            "disabled/failing/stall checks still applied.",
-        ))
+        # TWO different causes reach this branch and they need DIFFERENT names. The
+        # filename can be a legitimate non-segment (`.backup`, `.history`), or the
+        # filename can be a perfectly valid 24-hex segment while `wal_segment_size` is
+        # missing — in which case `wal_segment_index` also returns None. The first
+        # revision reported the former unconditionally, so a missing segment size was
+        # announced as "last_archived_wal ... is not a plain WAL segment (a .backup or
+        # .history file)" about a name that plainly IS one. A diagnosis that points away
+        # from the cause costs more than silence (W106).
+        if parse_wal_filename(last_wal) is not None:
+            notes.append(Finding(
+                V_CHECKS_UNRUNNABLE,
+                f"last_archived_wal={last_wal!r} IS a valid WAL segment, but "
+                f"wal_segment_size is missing or invalid ({current.get('wal_segment_size')!r}) "
+                "so no segment index can be computed. Lag and sequence-gap checks are "
+                "SKIPPED this run; the disabled/failing checks still applied.",
+            ))
+        else:
+            notes.append(Finding(
+                V_NON_SEGMENT_LAST_ARCHIVED,
+                f"last_archived_wal={last_wal!r} is not a plain WAL segment (a .backup or "
+                ".history file). Lag and sequence-gap checks are SKIPPED this run; the "
+                "disabled/failing/stall checks still applied.",
+            ))
     if cur_seg is not None and arch_seg is not None:
         lag = cur_seg - arch_seg
         if lag > MAX_LAG_SEGMENTS:
@@ -441,8 +503,26 @@ def classify(previous: dict | None, current: dict, now: datetime | None = None) 
 
     # ---- delta checks: need a baseline -------------------------------------
     if previous is None:
-        notes.append(Finding(V_FIRST_RUN, "no previous observation — baseline written; "
-                                          "delta checks start on the next run."))
+        # A missing baseline is not one situation but three, and only one of them is
+        # benign. All three alert (digest): with no baseline the delta conditions
+        # cannot fire, so this run checked strictly less than a normal one.
+        if state_status == STATE_UNREADABLE:
+            notes.append(Finding(
+                V_BASELINE_LOST,
+                "the state file EXISTS but could not be parsed — the baseline is lost, "
+                "not absent. This is NOT a first run: STALLED, SEQUENCE_GAP and "
+                "FAILURES_ACCUMULATING could not be evaluated at all this time.",
+            ))
+        elif first_run_count >= 1:
+            notes.append(Finding(
+                V_BASELINE_RECURRED,
+                f"this is baseline write number {first_run_count + 1} — a genuine first "
+                "run happens exactly once. The baseline is being destroyed between runs, "
+                "so the three delta conditions have never had a chance to fire.",
+            ))
+        else:
+            notes.append(Finding(V_FIRST_RUN, "no previous observation — baseline written; "
+                                              "delta checks start on the next run."))
     else:
         prev_reset = current.get("stats_reset")
         if prev_reset != previous.get("stats_reset"):
@@ -558,7 +638,8 @@ def classify(previous: dict | None, current: dict, now: datetime | None = None) 
         return Verdict(verdict=worst, findings=findings, notes=notes, exit_code=EXIT_RED)
 
     top = notes[0].code if notes else V_OK
-    return Verdict(verdict=top if top == V_FIRST_RUN else V_OK,
+    baseline_codes = (V_FIRST_RUN, V_BASELINE_LOST, V_BASELINE_RECURRED)
+    return Verdict(verdict=top if top in baseline_codes else V_OK,
                    findings=[], notes=notes, exit_code=EXIT_OK)
 
 
@@ -578,11 +659,23 @@ def state_path() -> Path:
     return Path(os.path.expanduser("~/.agent/decisions/state")) / "wal_continuity_probe.state.json"
 
 
-def load_state(path: Path) -> dict:
+def load_state(path: Path) -> tuple[dict, str]:
+    """Return `(state, status)` — and NEVER collapse the two failures into one.
+
+    The first revision swallowed both `OSError` and `ValueError` into `{}`, which made a
+    CORRUPTED baseline indistinguishable from a first run: the probe reported FIRST_RUN,
+    exit 0, and said nothing, while the three delta conditions it could no longer
+    evaluate stayed dark. A mute switch disguised as a fresh start.
+    """
+    if not path.exists():
+        return {}, STATE_MISSING
     try:
-        return json.loads(path.read_text())
+        loaded = json.loads(path.read_text())
     except (OSError, ValueError):
-        return {}
+        return {}, STATE_UNREADABLE
+    if not isinstance(loaded, dict):
+        return {}, STATE_UNREADABLE
+    return loaded, STATE_OK
 
 
 def save_state(path: Path, state: dict) -> None:
@@ -779,7 +872,7 @@ def format_message(verdict: Verdict, obs: dict) -> str:
 
 def run(args: argparse.Namespace) -> int:
     path = Path(args.state_file) if args.state_file else state_path()
-    state = load_state(path)
+    state, state_status = load_state(path)
     previous = state.get("previous")
 
     raw: dict | None
@@ -836,7 +929,9 @@ def run(args: argparse.Namespace) -> int:
             print(json.dumps(verdict.as_dict(), indent=2))
         return EXIT_CANNOT_VERIFY
 
-    verdict = classify(previous, obs)
+    first_run_count = int(state.get("first_run_count", 0) or 0)
+    verdict = classify(previous, obs, state_status=state_status,
+                       first_run_count=first_run_count)
     log(f"verdict={verdict.verdict} exit={verdict.exit_code}")
     for f in verdict.findings:
         log(f"  RED  {f.code}: {f.detail}")
@@ -862,6 +957,12 @@ def run(args: argparse.Namespace) -> int:
         state["previous"] = obs
         state["cannot_verify_streak"] = 0
         state["last_verdict"] = verdict.verdict
+        # Counts baseline WRITES, so a state file that keeps losing its `previous`
+        # block (truncated, partially wiped, hand-edited) is caught on the second
+        # occurrence. A full DELETE of the file resets this counter too — that case is
+        # covered instead by FIRST_RUN itself now alerting, which no wipe can suppress.
+        if previous is None:
+            state["first_run_count"] = first_run_count + 1
         save_state(path, state)
 
     if args.json:

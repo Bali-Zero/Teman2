@@ -640,10 +640,20 @@ def test_a_non_segment_on_the_OLDER_side_also_says_so():
 def test_every_voiding_note_is_reachable():
     """Same rule as the RED codes: a note nobody can trigger is decoration.
 
-    FIRST_RUN is excluded — it is not a voided check, it is the absence of a baseline.
+    FIRST_RUN used to be EXCLUDED here, on the reasoning that it is not a voided check
+    but the absence of a baseline. That exclusion was the bug: with no baseline the three
+    delta conditions cannot fire, so it voids half the contract. The exclusion clause
+    that used to live in this docstring is what protected the false claim, which is why
+    the fix had to land in the test as well as the code.
     """
     prev = probe.sanitize_observation(obs())
     produced = set()
+    for v in (
+        probe.classify(None, prev),                                        # FIRST_RUN
+        probe.classify(None, prev, state_status=probe.STATE_UNREADABLE),   # BASELINE_LOST
+        probe.classify(None, prev, first_run_count=3),                     # BASELINE_RECURRED
+    ):
+        produced.update(n.code for n in v.notes)
     for then, cur in (
         (prev, obs(last_archived_wal=seg_name(110, timeline=2), archived_count=1010)),
         (prev, obs(stats_reset="2026-08-29 05:00:00+00", archived_count=3)),
@@ -656,3 +666,226 @@ def test_every_voiding_note_is_reachable():
         produced.update(n.code for n in v.notes)
     missing = probe.VOIDING_NOTES - produced
     assert not missing, f"unreachable voiding notes: {missing}"
+
+
+# ---------------------------------------------------------------------------
+# Gate conditions C1-C4 (adjudication 2026-08-29). Each of these is a state the
+# suite could NOT distinguish before: the gate mutated the code and every test
+# stayed green. They exist so that never happens silently again.
+# ---------------------------------------------------------------------------
+
+def test_a_RED_verdict_is_actually_DELIVERED_not_merely_computed(tmp_path, monkeypatch):
+    """C1 — THE condition this whole probe exists to enforce, applied to itself.
+
+    The gate replaced the RED `send_alert(...)` call with `pass` and all 55 tests, the
+    selftest and `check-wal-continuity-probe` stayed green: the suite asserted the right
+    VERDICT and never once asserted that anybody was PAGED. That is the 2026-08-09
+    disease one level in — a correct answer that reaches nobody — inside the artifact
+    built to catch it.
+
+    It matters more here than for most organs because the exit code is NOT the delivery:
+    the plist invokes the wrapper directly rather than routing through
+    `scripts/cron-runner.sh`, so nothing downstream turns a non-zero exit into a message.
+    The p0 IS the delivery.
+    """
+    sent: list[tuple[str, str, str]] = []
+    monkeypatch.setattr(
+        probe, "send_alert",
+        lambda text, condition, tier, dry_run=False: (sent.append((condition, tier, text)), True)[1],
+    )
+    state = tmp_path / "state.json"
+    first = tmp_path / "a.json"
+    first.write_text(json.dumps(obs()))
+    probe.main(["--from-json", str(first), "--state-file", str(state)])
+    sent.clear()
+
+    red = tmp_path / "b.json"
+    red.write_text(json.dumps(obs(archive_mode="off")))
+    assert probe.main(["--from-json", str(red), "--state-file", str(state)]) == EXIT_RED
+    assert sent, "a RED verdict was computed and NOBODY was paged"
+    condition, tier, text = sent[-1]
+    assert tier == "p0", f"a RED verdict went out at {tier!r}, not p0"
+    assert condition == probe.V_ARCHIVING_DISABLED.lower()
+    assert probe.V_ARCHIVING_DISABLED in text
+
+
+@pytest.mark.parametrize("verdict_code,cur", [
+    (probe.V_ARCHIVING_DISABLED, dict(archive_mode="off")),
+    (probe.V_ARCHIVER_FAILING, dict(last_failed_time="2026-08-29 05:00:00+00")),
+    (probe.V_FAILURES_ACCUMULATING, dict(failed_count=9, last_failed_time="2026-08-29 05:00:00+00")),
+    (probe.V_ARCHIVING_STALLED, dict(current_wal_lsn=lsn_at(103))),
+    (probe.V_ARCHIVING_LAGGING, dict(current_wal_lsn=lsn_at(100 + probe.MAX_LAG_SEGMENTS + 2))),
+    (probe.V_SEQUENCE_GAP, dict(archived_count=1002, last_archived_wal=seg_name(110),
+                                current_wal_lsn=lsn_at(111))),
+])
+def test_every_RED_condition_pages_at_p0(tmp_path, monkeypatch, verdict_code, cur):
+    """C1, generalised: not just "a" RED delivers — EVERY declared RED delivers.
+
+    Proving one path pages would leave the other five free to regress into a computed
+    verdict nobody receives, which is exactly the shape of W107 (curing the one that bit).
+    """
+    sent: list[tuple[str, str, str]] = []
+    monkeypatch.setattr(
+        probe, "send_alert",
+        lambda text, condition, tier, dry_run=False: (sent.append((condition, tier, text)), True)[1],
+    )
+    state = tmp_path / "state.json"
+    first = tmp_path / "base.json"
+    first.write_text(json.dumps(obs()))
+    probe.main(["--from-json", str(first), "--state-file", str(state)])
+    sent.clear()
+
+    red = tmp_path / "red.json"
+    red.write_text(json.dumps(obs(**cur)))
+    assert probe.main(["--from-json", str(red), "--state-file", str(state)]) == EXIT_RED
+    assert sent, f"{verdict_code} was computed and nobody was paged"
+    assert sent[-1][1] == "p0"
+
+
+def test_a_corrupted_baseline_is_BASELINE_LOST_not_a_quiet_first_run(tmp_path, monkeypatch):
+    """C2 — `load_state` swallowed OSError and ValueError into `{}`, so a corrupted
+    state file became FIRST_RUN, rc 0, in silence. With no baseline the three DELTA
+    conditions cannot fire, so that is a mute switch on half the contract, disguised as
+    a fresh start. Distinguishing MISSING from UNREADABLE is the whole fix."""
+    sent: list[tuple[str, str, str]] = []
+    monkeypatch.setattr(
+        probe, "send_alert",
+        lambda text, condition, tier, dry_run=False: (sent.append((condition, tier, text)), True)[1],
+    )
+    state = tmp_path / "state.json"
+    state.write_text("this is not json")
+    payload = tmp_path / "o.json"
+    payload.write_text(json.dumps(obs()))
+    assert probe.main(["--from-json", str(payload), "--state-file", str(state)]) == EXIT_OK
+    assert sent, "a lost baseline said nothing"
+    assert probe.V_BASELINE_LOST in sent[-1][2]
+    assert probe.V_FIRST_RUN not in sent[-1][2]
+
+
+def test_a_recurring_first_run_is_reported_because_one_is_legitimate_and_two_are_not(tmp_path):
+    """C2, the adopted cure: a genuine first run happens exactly once. A baseline that
+    keeps vanishing means the delta conditions have never had a chance to fire."""
+    state = tmp_path / "state.json"
+    payload = tmp_path / "o.json"
+    payload.write_text(json.dumps(obs()))
+    probe.main(["--from-json", str(payload), "--state-file", str(state)])
+    saved = json.loads(state.read_text())
+    assert saved["first_run_count"] == 1
+
+    # Wipe only the baseline, the way a truncation or a hand-edit would.
+    del saved["previous"]
+    state.write_text(json.dumps(saved))
+    probe.main(["--from-json", str(payload), "--state-file", str(state)])
+    v = probe.classify(None, probe.sanitize_observation(obs()), first_run_count=1)
+    assert v.verdict == probe.V_BASELINE_RECURRED
+
+
+def test_first_run_itself_is_never_silent(tmp_path, monkeypatch):
+    """C2 — the docstring claimed FIRST_RUN was "NOT red, but NEVER SILENT" while
+    VOIDING_NOTES excluded it and a test enshrined the exclusion: a false statement about
+    silence, protected by a test. A full DELETE of the state file resets first_run_count
+    too, so this is the half of the cure that no wipe can suppress."""
+    sent: list[tuple[str, str, str]] = []
+    monkeypatch.setattr(
+        probe, "send_alert",
+        lambda text, condition, tier, dry_run=False: (sent.append((condition, tier, text)), True)[1],
+    )
+    payload = tmp_path / "o.json"
+    payload.write_text(json.dumps(obs()))
+    assert probe.main(["--from-json", str(payload),
+                       "--state-file", str(tmp_path / "fresh.json")]) == EXIT_OK
+    assert sent, "the very first run said nothing at all"
+    assert sent[-1][1] == "digest"
+    assert probe.V_FIRST_RUN in sent[-1][2]
+
+
+def test_a_missing_wal_segment_size_is_not_reported_as_a_backup_file(tmp_path):
+    """C3 — two causes reached one branch. `wal_segment_index` returns None both when
+    the filename is a `.backup`/`.history` AND when `wal_segment_size` is missing, and
+    the note named only the first. So a perfectly valid 24-hex segment was announced as
+    "not a plain WAL segment (a .backup or .history file)". A diagnosis pointing away
+    from the cause costs more than silence (W106)."""
+    o = obs()
+    del o["wal_segment_size"]
+    v = probe.classify(None, probe.sanitize_observation(o))
+    codes = {n.code for n in v.notes}
+    assert probe.V_CHECKS_UNRUNNABLE in codes
+    assert probe.V_NON_SEGMENT_LAST_ARCHIVED not in codes, \
+        "a valid segment was called a .backup file"
+    detail = next(n.detail for n in v.notes if n.code == probe.V_CHECKS_UNRUNNABLE)
+    assert "wal_segment_size" in detail
+
+    # INNOCENCE: a real non-segment must still get the non-segment note.
+    v2 = probe.classify(None, probe.sanitize_observation(
+        obs(last_archived_wal="00000002.history")))
+    assert probe.V_NON_SEGMENT_LAST_ARCHIVED in {n.code for n in v2.notes}
+
+
+def test_the_query_binds_each_json_key_to_its_real_column_not_just_the_key_name():
+    """C4 — superscar #3 applied to my own test. The previous version asserted only that
+    the words appeared SOMEWHERE in the query, so the gate swapped `a.archived_count` for
+    a literal `0`, kept the JSON key, and the test stayed green: the probe would have
+    read a constant forever and reported a permanent stall. Bind key to SOURCE, and
+    assert on the pair."""
+    # Per-LINE binding rather than an SQL parse: each key sits on its own line with the
+    # expression it is bound to, and `COALESCE(a.x, '')` carries commas that a naive
+    # field split would choke on.
+    pairs: dict[str, str] = {}
+    for line in probe.ARCHIVER_QUERY.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("'"):
+            continue
+        key, _, rest = stripped[1:].partition("'")
+        pairs[key] = rest
+
+    expected = {
+        "archived_count": "a.archived_count",
+        "last_archived_wal": "a.last_archived_wal",
+        "last_archived_time": "a.last_archived_time",
+        "failed_count": "a.failed_count",
+        "last_failed_wal": "a.last_failed_wal",
+        "last_failed_time": "a.last_failed_time",
+        "stats_reset": "a.stats_reset",
+    }
+    for key, column in expected.items():
+        assert key in pairs, f"the query stopped selecting {key}"
+        assert column in pairs[key], \
+            f"{key} is no longer read from {column} — it now reads {pairs[key]!r}"
+    assert "pg_stat_archiver" in probe.ARCHIVER_QUERY
+    assert "archive_mode" in probe.ARCHIVER_QUERY
+    assert "archive_library" in probe.ARCHIVER_QUERY
+    assert "pg_is_in_recovery" in probe.ARCHIVER_QUERY
+    assert "wal_segment_size" in probe.ARCHIVER_QUERY
+
+
+def test_detection_latency_at_one_segment_per_run_is_pinned():
+    """The undeclared blind window, turned into a number the code must keep.
+
+    Archiving frozen, the database writing exactly ONE segment between runs:
+    ARCHIVING_STALLED needs >= 2 segments of pressure and sees 1, so it never fires;
+    ARCHIVING_LAGGING only crosses when lag > MAX_LAG_SEGMENTS. Neither threshold is
+    wrong alone — the gap is the COMPOSITION, and nothing stated it until the gate asked.
+    Pinned here so a future tuning of either constant cannot move the latency in silence.
+    """
+    archived_at = 100
+    prev = probe.sanitize_observation(obs(last_archived_wal=seg_name(archived_at),
+                                          current_wal_lsn=lsn_at(archived_at + 1)))
+    greens = 0
+    for run in range(1, 30):
+        cur = probe.sanitize_observation(
+            obs(last_archived_wal=seg_name(archived_at),          # nothing ever archived
+                current_wal_lsn=lsn_at(archived_at + 1 + run)))   # one more segment/run
+        v = probe.classify(prev, cur)
+        if v.exit_code != EXIT_OK:
+            break
+        greens += 1
+        prev = cur
+    else:                                                          # pragma: no cover
+        pytest.fail("archiving was frozen for 29 runs and the probe never went red")
+
+    assert greens == 7, (
+        f"detection latency changed: {greens} green runs before the first RED. The "
+        "docstring's §WHAT THIS PROBE CANNOT SEE entry 4 states 7 green then RED on run 8 "
+        "— update BOTH or neither."
+    )
+    assert v.verdict == probe.V_ARCHIVING_LAGGING
