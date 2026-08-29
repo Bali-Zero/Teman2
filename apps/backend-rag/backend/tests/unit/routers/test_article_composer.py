@@ -124,7 +124,7 @@ def _make_llm_message(payload: dict) -> ClaudeOAuthMessage:
     return ClaudeOAuthMessage(
         content=[_TextBlock(text=json.dumps(payload))],
         usage=_Usage(input_tokens=1000, output_tokens=1500),
-        model="deepseek-v4-flash",
+        model="deepseek-v4-flash-0731",
         token_label="deepseek_cache_hit=0",
     )
 
@@ -165,7 +165,7 @@ def mock_llm_response():
 # --- COMPOSE ENDPOINT TESTS ---
 
 
-@patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
+@patch.dict("os.environ", {"BAILIAN_TOKEN_PLAN_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.call_claude_with_retry")
 def test_compose_article_success(
     mock_call,
@@ -190,10 +190,10 @@ def test_compose_article_success(
     assert data["api_cost_cents"] >= 0
     assert "image_prompt" not in data["article"]
     mock_call.assert_called_once()
-    assert mock_call.call_args.kwargs.get("model") == "deepseek-v4-flash"
+    assert mock_call.call_args.kwargs.get("model") == "deepseek-v4-flash-0731"
 
 
-@patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
+@patch.dict("os.environ", {"BAILIAN_TOKEN_PLAN_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.call_claude_with_retry")
 def test_compose_article_priority_word_count(mock_call, test_client):
     """Test that facts section length varies by priority (high=600, medium=500, low=400 words)."""
@@ -244,7 +244,7 @@ def test_compose_article_priority_word_count(mock_call, test_client):
         assert word_count >= expected_words - 50
 
 
-@patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
+@patch.dict("os.environ", {"BAILIAN_TOKEN_PLAN_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.call_claude_with_retry")
 def test_compose_article_json_cleanup(mock_call, test_client, sample_compose_request):
     """Test that markdown JSON blocks are cleaned correctly."""
@@ -277,7 +277,7 @@ def test_compose_article_json_cleanup(mock_call, test_client, sample_compose_req
         mock_call.return_value = ClaudeOAuthMessage(
             content=[_TextBlock(text=wrapper)],
             usage=_Usage(input_tokens=500, output_tokens=800),
-            model="deepseek-v4-flash",
+            model="deepseek-v4-flash-0731",
             token_label="deepseek_cache_hit=0",
         )
 
@@ -302,10 +302,10 @@ def test_compose_article_missing_api_key(test_client, sample_compose_request):
     assert response.status_code == 500
     detail = response.json()["detail"]
     assert detail["code"] == "API_KEY_NOT_CONFIGURED"
-    assert "DEEPSEEK_API_KEY" in detail["message"]
+    assert "BAILIAN_TOKEN_PLAN_API_KEY" in detail["message"]
 
 
-@patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
+@patch.dict("os.environ", {"BAILIAN_TOKEN_PLAN_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.call_claude_with_retry")
 def test_compose_article_json_parse_error(
     mock_call,
@@ -316,7 +316,7 @@ def test_compose_article_json_parse_error(
     mock_call.return_value = ClaudeOAuthMessage(
         content=[_TextBlock(text="Invalid JSON {{{")],
         usage=_Usage(input_tokens=500, output_tokens=100),
-        model="deepseek-v4-flash",
+        model="deepseek-v4-flash-0731",
         token_label="deepseek_cache_hit=0",
     )
 
@@ -331,7 +331,7 @@ def test_compose_article_json_parse_error(
     assert data["error"]["code"] in {"INVALID_JSON_RESPONSE", "JSON_PARSE_ERROR"}
 
 
-@patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
+@patch.dict("os.environ", {"BAILIAN_TOKEN_PLAN_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.call_claude_with_retry")
 def test_compose_article_api_error(mock_call, test_client, sample_compose_request):
     """Test compose handles DeepSeek API errors."""
@@ -352,14 +352,14 @@ def test_compose_article_api_error(mock_call, test_client, sample_compose_reques
 
 def test_compose_status_configured(test_client):
     """Test compose status endpoint when configured"""
-    with patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"}):
+    with patch.dict("os.environ", {"BAILIAN_TOKEN_PLAN_API_KEY": "test-key"}):
         response = test_client.get("/api/articles/compose/status")
 
         assert response.status_code == 200
         data = response.json()
         assert data["configured"] is True
         assert data["api_key_set"] is True
-        assert data["model"] == "deepseek-v4-flash"
+        assert data["model"] == "deepseek-v4-flash-0731"
         assert data["provider"] == "deepseek"
 
 
@@ -775,7 +775,7 @@ def test_build_enrichment_prompt_priority_instructions():
 # --- INTEGRATION TEST ---
 
 
-@patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
+@patch.dict("os.environ", {"BAILIAN_TOKEN_PLAN_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.call_claude_with_retry")
 @patch("backend.services.integrations.github_publisher.github_publisher")
 def test_full_compose_and_publish_flow(
