@@ -249,3 +249,33 @@ will settle it empirically.
    section above, not something CI enforces. Until a checker exists (process-liveness in the
    worktree, plus hash-stability across a settling window), the dispatcher must do this by hand
    every time. (Raised by the 2026-08-24 GARUDA VOA contract-freeze incident.)
+8. **Acceptance bullets are not yet mechanically bound to a probe.** An `acceptance:` bullet
+   may now be a mapping `{text, probe}` instead of a bare string, where `probe:` names the
+   command, test id, or check that would prove the criterion true, and
+   `evidence_pack_lint.py` rule 12 (`check_acceptance_probe_pairing`) emits a NOTICE naming
+   uncovered bullets (no `probe:` at all), unbound probes (a declared probe absent from every
+   receipt's `claim`/`cmd`), and non-EARS text (no WHEN/WHILE/IF/WHERE/SHALL keyword). But the
+   lint checks FIELD PRESENCE ONLY — a `receipts:` outcome is self-reported prose, forgeable
+   until a CI step actually executes the probe and writes the receipt itself, so this is not
+   yet "mechanically bound acceptance", only a visible gap where one could be built. Measured
+   baseline, 2026-08-29: 0 of 209 acceptance bullets across 49 Gear>=2 packs carried a `probe:`
+   field. Follow-up: wire a CI step that actually runs the declared probe and writes the
+   receipt, then flip NOTICE to FAIL on an unbound or unexecuted one.
+
+9. **An `assumptions:` register is opt-in and unaudited.** A `brief.yml` may now carry a
+   top-level `assumptions:` list, each entry a mapping `{text, status, probe}` where `status`
+   is expected to be `verified` or `unverified` and `probe` (relevant when unverified) names
+   the check that would settle it. `evidence_pack_lint.py` rule 13
+   (`check_assumptions_register`) emits a NOTICE, never a violation, naming three gaps: entries
+   still `unverified`; entries with no recognised status at all (a typo like `unverfied`,
+   `status: pending`, or a bare string entry — an unrecognised or missing status must not read
+   as verified); and unverified entries with no `probe:` naming what would settle them.
+   Deliberately NOT gear-gated (rule 12 is): a zero-assumption brief passes silently already,
+   and adoption is the whole gap, so gating an opt-in block would be a bypass, not a safeguard.
+   Measured baseline, 2026-08-29: `assumptions:` present in 0 of 50 briefs on disk. HONEST
+   LIMIT: same posture as item 8 — `status: verified` is self-reported prose, this rule checks
+   the SHAPE of the declaration (is there a recognised status, does an unverified one name a
+   probe), never its TRUTH; it makes the register's own gaps visible, it does not adjudicate
+   the assumptions. Day-60 kill criterion (verbatim, do NOT build auto-removal now): if the
+   block degenerates to boilerplate ("no assumptions") in >80% of briefs by 2026-10-28, that is
+   a day-60 review item.
