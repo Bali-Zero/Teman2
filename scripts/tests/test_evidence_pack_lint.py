@@ -36,6 +36,7 @@ from evidence_pack_lint import (  # noqa: E402
     _seat_rule_verdict,
     _size_term_net_lines,
     check_acceptance_probe_pairing,
+    check_assumptions_register,
     check_brief_ref_exists,
     check_cheap_seat_floor,
     check_council_run_gear3,
@@ -2637,4 +2638,211 @@ def test_acceptance_probe_end_to_end_notice_reaches_stderr(tmp_repo, capsys):
     assert viol == []
     captured = capsys.readouterr()
     assert "acceptance-probe" in captured.err
+    assert "NOTICE" in captured.err
+
+
+# --------------------------------------------------------- check_assumptions_register
+
+AA_RECEIPT_B211A = {"claim": "b211a probe", "cmd": "pytest -k test_b211a_probe", "exit": 0,
+                     "ts": "2026-08-29T00:00:00Z", "seat": "sonnet-5"}
+
+
+def test_assumptions_guilt_unverified_entry_notice():
+    """GUILT: a single mapping entry with `status: unverified` pins exactly
+    one N1 (unverified) notice naming the total out of one."""
+    brief = {
+        "assumptions": [
+            {"text": "the client already holds a valid B211A", "status": "unverified",
+             "probe": "pytest -k test_b211a_probe"},
+        ],
+    }
+    notices = check_assumptions_register(brief)
+    assert len(notices) == 1
+    assert notices[0].startswith("assumptions: 1 of 1")
+    assert "still 'unverified'" in notices[0]
+
+
+def test_assumptions_guilt_status_pending_fires_n2_not_n1():
+    """GUILT: `status: pending` is neither `verified` nor `unverified` — it
+    fires N2 (unadjudicated) and must NOT fire N1, or the whole point of
+    N2 (a status other than the literal string can't hide) is untested."""
+    brief = {"assumptions": [{"text": "the queue drains nightly", "status": "pending"}]}
+    notices = check_assumptions_register(brief)
+    assert any("no recognised status" in n for n in notices)
+    assert not any("still 'unverified'" in n for n in notices)
+
+
+def test_assumptions_guilt_status_typo_fires_n2_not_n1():
+    """GUILT: the typo `unverfied` (one keystroke short of `unverified`) is
+    the load-bearing case for N2 — matching only the literal `unverified`
+    string in N1 would let this escape in total silence."""
+    brief = {"assumptions": [{"text": "the mirror is idempotent", "status": "unverfied"}]}
+    notices = check_assumptions_register(brief)
+    assert any("no recognised status" in n for n in notices)
+    assert not any("still 'unverified'" in n for n in notices)
+
+
+def test_assumptions_guilt_bare_string_entry_fires_n2():
+    """GUILT: an entry that is not a mapping at all (a bare string, the
+    same legacy shape rule 12 accepts for `acceptance:`) has no status to
+    read and fires N2."""
+    brief = {"assumptions": ["the API key never expires"]}
+    notices = check_assumptions_register(brief)
+    assert any("no recognised status" in n for n in notices)
+
+
+def test_assumptions_guilt_missing_status_key_fires_n2():
+    """GUILT: a mapping entry with no `status:` key at all fires N2, same
+    as an unrecognised value — missing is not a special case."""
+    brief = {"assumptions": [{"text": "the cron runs hourly"}]}
+    notices = check_assumptions_register(brief)
+    assert any("no recognised status" in n for n in notices)
+
+
+def test_assumptions_guilt_unverified_without_probe_fires_n1_and_n3():
+    """GUILT: an `unverified` entry with no usable `probe:` fires BOTH N1
+    (it is unverified) and N3 (nothing names the check that would settle
+    it) — the two are independent facts about the same entry."""
+    brief = {"assumptions": [{"text": "the ledger is append-only", "status": "unverified"}]}
+    notices = check_assumptions_register(brief)
+    assert any("still 'unverified'" in n for n in notices)
+    assert any("declare no 'probe:'" in n for n in notices)
+
+
+def test_assumptions_innocence_all_verified_silent():
+    """INNOCENCE: every entry declaring `status: verified` is silent."""
+    brief = {
+        "assumptions": [
+            {"text": "the schema migration already ran", "status": "verified"},
+            {"text": "the receipt format is stable", "status": "verified"},
+        ],
+    }
+    assert check_assumptions_register(brief) == []
+
+
+def test_assumptions_innocence_absent_block_silent():
+    """INNOCENCE: no `assumptions:` key at all — the block is opt-in, and
+    absence must never be read as a gap."""
+    assert check_assumptions_register({}) == []
+
+
+def test_assumptions_innocence_empty_list_silent():
+    """INNOCENCE: `assumptions: []` (declared, deliberately empty) is
+    silent, same as absent."""
+    assert check_assumptions_register({"assumptions": []}) == []
+
+
+def test_assumptions_innocence_brief_none_does_not_crash():
+    """INNOCENCE: `brief=None` (rule 6's check_brief_ref_exists already
+    flagged that elsewhere) must not raise — a NOTICE-only rule crashing
+    is the one thing it can never do."""
+    assert check_assumptions_register(None) == []
+
+
+def test_assumptions_innocence_non_list_assumptions_do_not_crash():
+    """INNOCENCE: `assumptions:` present but shaped as a mapping or a bare
+    string (not a list) must not crash — it is simply out of scope,
+    identical to rule 12's `acceptance` non-list guard."""
+    assert check_assumptions_register({"assumptions": {"text": "not a list"}}) == []
+    assert check_assumptions_register({"assumptions": "not a list"}) == []
+
+
+def test_assumptions_innocence_status_tolerates_whitespace_and_case():
+    """INNOCENCE: `status` is compared stripped and lower-cased — leading/
+    trailing whitespace and any case of `VERIFIED` still reads as
+    verified."""
+    brief = {"assumptions": [{"text": "the token rotates weekly", "status": "  VERIFIED  "}]}
+    assert check_assumptions_register(brief) == []
+
+
+def test_assumptions_innocence_unverified_with_probe_fires_n1_not_n3():
+    """INNOCENCE: an `unverified` entry that DOES declare a usable `probe:`
+    still fires N1 (it is unverified) but N3 (unsettleable) stays silent
+    — the probe names the check that would settle it."""
+    brief = {
+        "assumptions": [
+            {"text": "the outbox drains within 5 minutes", "status": "unverified",
+             "probe": "pytest -k test_outbox_drain_latency"},
+        ],
+    }
+    notices = check_assumptions_register(brief)
+    assert any("still 'unverified'" in n for n in notices)
+    assert not any("declare no 'probe:'" in n for n in notices)
+
+
+def test_assumptions_innocence_examples_sanitize_quotes_and_newlines():
+    """INNOCENCE: an assumption's `text` arrives from prose that may
+    legitimately carry a newline and a double quote (the same YAML
+    block-scalar reality rule 12 already guards against) — reusing
+    `_acceptance_examples()` must keep every notice on one stderr line."""
+    notices = check_assumptions_register(
+        {"assumptions": [{"text": 'he said "go"\nsecond line', "status": "unverified"}]}
+    )
+    assert notices
+    for n in notices:
+        assert "\n" not in n
+
+
+def test_assumptions_innocence_control_bytes_never_reach_a_notice():
+    """Blind adversarial review 2026-08-29 (Kimi K3, finding 1), verified
+    on disk before it was accepted: `_acceptance_examples` collapsed
+    whitespace and swapped double quotes, but ESC/BEL/NUL are not
+    whitespace (`"\x1b".isspace()` is False), so a control byte in an
+    assumption's text travelled verbatim into a stderr-bound notice while
+    the helper's own docstring said "Every item is SANITIZED first". The
+    over-claim was the defect; the code now matches the claim. This guard
+    covers rule 12 as well, since both rules share the helper."""
+    notices = check_assumptions_register(
+        {"assumptions": [
+            {"text": "settle \x1b[31mRED\x1b[0m later \x07\x00",
+             "status": "unverified"},
+        ]}
+    )
+    assert notices
+    for n in notices:
+        assert "\x1b" not in n and "\x07" not in n and "\x00" not in n
+
+
+def test_assumptions_guilt_whitespace_only_probe_is_not_a_probe():
+    """Found by MUTATION, not by reading: making `probe_ok` accept any
+    string (dropping the `.strip()` truthiness test) left every test
+    green, so `probe: "   "` counted as a settlement path. That is
+    precisely the boilerplate degeneration N3 exists to surface — a
+    declared field carrying nothing."""
+    notices = check_assumptions_register(
+        {"assumptions": [
+            {"text": "the lease renews", "status": "unverified", "probe": "   "},
+        ]}
+    )
+    assert any("declare no 'probe:'" in n for n in notices)
+
+
+def test_assumptions_guilt_bare_string_entry_names_itself():
+    """Also found by MUTATION: collapsing a non-mapping entry's text to
+    "" survived the first corpus, and would have rendered a bare-string
+    assumption as "<non-text bullet>" in N2 — the one notice whose whole
+    job is naming the offending entry. For a bare string, the string IS
+    the text."""
+    notices = check_assumptions_register(
+        {"assumptions": ["the queue is drained by the nightly cron"]}
+    )
+    assert any("the queue is drained by the nightly cron" in n for n in notices)
+
+
+def test_assumptions_end_to_end_notice_reaches_stderr(tmp_repo, capsys):
+    """End-to-end (same 'wiring, not just return value' pattern as
+    test_acceptance_probe_end_to_end_notice_reaches_stderr): rule 13 is
+    NOTICE-only and NOT gear-gated — lint() must return rc == 0 on a pack
+    whose brief carries one unverified assumption, and the operator must
+    still see the "assumptions" text on stderr."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1, assumptions=[
+        {"text": "the mirror is idempotent", "status": "unverified"},
+    ])
+    write_pack()
+    rc, viol = lint(tmp_path / "evidence" / "pack.yml", tmp_path, None)
+    assert rc == 0
+    assert viol == []
+    captured = capsys.readouterr()
+    assert "assumptions:" in captured.err
     assert "NOTICE" in captured.err
