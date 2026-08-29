@@ -81,10 +81,14 @@ ships with deny-tests and not only accept-tests.
 > acceptance is genuinely unknown until this Save, and the failure lands on you, here.
 >
 > If Save fails naming those tests: delete the two `tag:team-device` **accept**-test entries, save
-> again, and record the outcome in `infra/tailscale/enroll-team-device.md` step 5. Do NOT delete
-> the `tag:team-device` **deny**-tests — those are the load-bearing half, and they reference the
-> tag as a SOURCE, which is a different question. Then reinstate the accept form after enrolment
-> using the concrete host (`team-laptop-01:22`), which is unambiguous.
+> again, and record the outcome in `infra/tailscale/enroll-team-device.md` step 5. **Expect the
+> repo guard to go red when you do — measured: four occurrences of `ACL_RULE_NOT_ACCEPT_TESTED`.**
+> Every ACL rule must be covered by an accept-test from its own source, so removing those two
+> entries leaves the `tag:team-device` grants untested. That red is the correct and temporary
+> consequence of this workaround, not a second fault to chase, and it clears when you reinstate
+> the accept form after enrolment using the concrete host (`team-laptop-01:22`), which is
+> unambiguous. Do NOT delete the `tag:team-device` **deny**-tests — those are the load-bearing
+> half, and they reference the tag as a SOURCE, which is a different question.
 
 ## 4. Verify the fleet still works (innocence)
 

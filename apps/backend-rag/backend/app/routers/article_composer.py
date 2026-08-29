@@ -309,20 +309,24 @@ async def compose_article(
     background_tasks: BackgroundTasks = None,  # type: ignore
     request_id: str = Depends(get_request_id),
 ) -> ComposeResponse:
-    """Compose/enrich an article with Bali Zero style via DeepSeek.
+    """Compose/enrich an article with Bali Zero style via DeepSeek (TP1 gateway).
 
     Migrated from Claude Max OAuth (which hangs inside Fly containers on
     Linux non-TTY — see ``memory/feedback_claude_cli_linux_hang.md``) to
-    ``deepseek-v4-flash`` (~100x cheaper, structured JSON output, clean exit).
+    ``deepseek-v4-flash-0731`` (~100x cheaper, structured JSON output, clean
+    exit) — routed through the TP1/Alibaba gateway since 2026-08-29
+    (the original direct ``api.deepseek.com`` door was retired 2026-07-19;
+    see ``backend.llm.deepseek_client`` module docstring).
     """
     start_time = time.time()
 
-    # Validate API key (DeepSeek — migrated from Claude OAuth)
-    api_key = os.getenv("DEEPSEEK_API_KEY")
+    # Validate API key (TP1 gateway credential — DeepSeek's own direct-API
+    # key, DEEPSEEK_API_KEY, is retired and must never be used here again)
+    api_key = os.getenv("BAILIAN_TOKEN_PLAN_API_KEY")
     if not api_key:
         error = APIError.create(
             code=ErrorCode.API_KEY_NOT_CONFIGURED,
-            message="DEEPSEEK_API_KEY not configured",
+            message="BAILIAN_TOKEN_PLAN_API_KEY not configured",
             request_id=request_id,
         )
         article_compose_payloads.labels(status="error", category=payload.category).inc()
@@ -372,11 +376,11 @@ async def compose_article(
         # Call Claude with retry logic
         logger.info(
             "Calling Claude API",
-            extra={"request_id": request_id, "model": "deepseek-v4-flash"},
+            extra={"request_id": request_id, "model": "deepseek-v4-flash-0731"},
         )
         message = await call_claude_with_retry(
             prompt=prompt,
-            model="deepseek-v4-flash",
+            model="deepseek-v4-flash-0731",
             max_tokens=4096,
         )
 
@@ -401,8 +405,10 @@ async def compose_article(
             article_compose_payloads.labels(status="json_error", category=payload.category).inc()
             return ComposeResponse(success=False, error=error, request_id=request_id)
 
-        # Calculate approximate cost.
-        # DeepSeek V3.2 `deepseek-v4-flash`: $0.28/1M input (cache miss),
+        # Calculate approximate cost (metered-equivalent estimate; TP1 is a
+        # quota-based subscription, not per-call billed the same way as the
+        # retired direct door — see FLEET_TOPOLOGY.json).
+        # `deepseek-v4-flash-0731`: $0.28/1M input (cache miss),
         # $0.42/1M output. That's ~100x cheaper than Claude Sonnet 4.6.
         input_tokens = message.usage.input_tokens
         output_tokens = message.usage.output_tokens
@@ -526,13 +532,14 @@ async def compose_article(
 @router.get("/compose/status")
 async def compose_status() -> dict[str, Any]:
     """Check if article composer is properly configured"""
-    api_key = os.getenv("DEEPSEEK_API_KEY")
+    api_key = os.getenv("BAILIAN_TOKEN_PLAN_API_KEY")
 
     return {
         "configured": bool(api_key),
         "api_key_set": bool(api_key),
         "provider": "deepseek",
-        "model": "deepseek-v4-flash",
+        "gateway": "tp1",
+        "model": "deepseek-v4-flash-0731",
         "estimated_cost_per_article": "$0.0001-0.0005",
         "cache_enabled": cache_service.enabled,
         "rate_limit": "10 requests/minute per IP",
