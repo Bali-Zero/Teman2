@@ -1,0 +1,12 @@
+// GUILT (grader round 1, HIGH): the shell port reached by Pro's magic IP rather than its alias.
+// Same machine, same port, different spelling.
+// SHELL-ROUTE: /term -> 127.0.0.1:7681 is ttyd -W zsh.
+{
+  "hosts": {"pro": "100.107.22.111", "m5": "100.110.186.116", "mini": "100.93.236.6"},
+  "tagOwners": {"tag:team-device": ["autogroup:admin"]},
+  "acls": [
+    {"action": "accept", "proto": "tcp", "src": ["autogroup:member"], "dst": ["100.107.22.111:443"]}
+  ],
+  "ssh": [],
+  "tests": [{"src": "tag:team-device", "deny": ["pro:443"]}]
+}

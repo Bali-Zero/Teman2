@@ -1,97 +1,258 @@
 // Tailscale ACL for tailnet `balizero` (tail461666.ts.net) — policy as code.
 //
 // STATUS: PROPOSED. Not yet applied. The tailnet currently runs the DEFAULT allow-all policy;
-// applying this file is an operator[GUI] action (admin console → Access Controls), because the
-// fleet holds no Tailscale API token and the CLI cannot read or write ACLs. Ledger:
-// .claude/skills/modus/PENDING-ARMS.md.
+// applying this file is an operator[GUI] action (admin console -> Access Controls), because the
+// fleet holds no Tailscale API token and the CLI can neither read nor write ACLs. Apply runbook:
+// docs/runbooks/tailnet-acl-apply.md. Ledger: .claude/skills/modus/PENDING-ARMS.md.
 //
-// WHY THIS FILE EXISTS
-// Measured on the live tailnet 2026-08-11, from M5, with `tailscale debug netmap`:
-//   * the packet filter is ONE rule — every node → 0.0.0.0/0 ports 0-65535, TCP+UDP+ICMP;
-//   * `tailscale serve` on Pro publishes, TAILNET-WIDE and with no authentication,
-//     https://nuzantara.tail461666.ts.net/term → 127.0.0.1:7681, which is
-//     `ttyd -p 7681 --interface 127.0.0.1 -W zsh`: `-W` is WRITABLE and there is no `-c`
-//     credential flag. GET /term answered 200 from another node.
-// So today ANY device that joins this tailnet gets an unauthenticated, writable zsh shell on
-// Pro as user `nuzantara` — the machine that holds the wa-mirror raw PII, the CRM runtime and
-// ~/.nuzantara-secrets.env. That is acceptable while every node is Zero's own. It stops being
-// acceptable the moment a teammate's daily-driver laptop joins, which is what this policy is
-// for: the CRM's own RBAC (team sees only assigned_to rows) would be bypassed at the network
-// layer, and UU PDP / SYMBIOSIS Law 2 do not bend for convenience.
+// ============================================================================
+// SHELL-ROUTE: the reason this file exists. Do not delete this block.
+// ============================================================================
+// Measured on the live tailnet 2026-08-11 from M5 (`tailscale debug netmap`), re-confirmed
+// 2026-08-29: the packet filter is ONE rule — every node -> 0.0.0.0/0, ports 0-65535,
+// TCP+UDP+ICMP. On top of that, `tailscale serve` on Pro publishes TAILNET-WIDE and with NO
+// authentication:
 //
-// ORDERING IS LOAD-BEARING: apply this policy BEFORE any team device joins. Join-then-restrict
-// leaves a window in which the device holds that shell.
+//     https://nuzantara.tail461666.ts.net/        -> 127.0.0.1:18789   OpenClaw Control
+//     https://nuzantara.tail461666.ts.net/term    -> 127.0.0.1:7681    ttyd -p 7681 -W zsh
+//     https://nuzantara.tail461666.ts.net/deck    -> 127.0.0.1:18890   vision deck
+//     https://nuzantara.tail461666.ts.net/cinema  -> 127.0.0.1:18891   vision cinema
 //
-// WHAT THIS CHANGES FOR THE EXISTING FLEET: nothing at the packet layer. Rule 1 reproduces
-// today's flat behaviour for every device owned by a tailnet member — which is all six current
-// nodes (M5, Pro, Mini, two iPhones, Apple Vision Pro, all owned by antonellosiano@).
+// `-W` means WRITABLE and there is no `-c user:pass` credential flag, so `/term` is an
+// unauthenticated writable zsh shell on Pro as user `nuzantara` — the host holding the wa-mirror
+// raw PII, the CRM runtime and ~/.nuzantara-secrets.env. GET /term answered 200 from another node.
+//
+// ttyd binds 127.0.0.1, which protects it from the LAN and the internet but NOT from the tailnet:
+// `tailscale serve` is the proxy that carries it to every peer. A localhost bind is therefore not
+// a mitigation here, and any future reader tempted to write it off as "it's only on loopback"
+// should stop at this paragraph.
+//
+// The exposure is reachable ONLY over port 443 on `pro`. So port 443 on `pro` is the shell port,
+// and every rule below that grants it names its sources one host at a time — never a wildcard,
+// never a whole user's device set, never a group. Two rules grant it (m5, and Zero's three iOS
+// devices) and both are Zero's own hardware. `tag:team-device` appears in no rule's `src` anywhere in
+// this file, which is what keeps a teammate's laptop off that shell.
+//
+// This is NOT a live breach today: all six nodes belong to `antonellosiano@gmail.com`. It is a
+// hard blocker on the tailnet team expansion. ORDERING IS LOAD-BEARING — apply this policy
+// BEFORE any team device joins; join-then-restrict leaves a window in which that device holds
+// the shell. Hardening ttyd itself (`-c user:pass`, or dropping `/term` from `serve`) changes how
+// Zero reaches his own machine from his own phone, so it stays his call and stays in the ledger;
+// this file contains the blast radius without touching his workflow.
+// ============================================================================
+//
+// WHAT CHANGED 2026-08-29 (this revision): the previous draft granted
+// `antonellosiano@gmail.com` -> `antonellosiano@gmail.com:*` — every port on every owned device.
+// That reproduced the flat default among the fleet and is not deny-by-default in any meaningful
+// sense: it left `pro:443` open to all six nodes, and it would silently absorb any new service on
+// any new port. It is replaced by the per-direction, per-port matrix below, derived by auditing
+// what the repo actually connects to (evidence cited on each rule). Nothing in that matrix is a
+// guess: a rule with no cited consumer is not in this file.
+//
+// WHAT THIS COSTS THE EXISTING FLEET: the flows below are the ones the repo has consumers for.
+// A flow that exists on the machines but nowhere in the repo will break, loudly, on first use —
+// that is the intended failure mode of deny-by-default, and the runbook's verification step is
+// where it should surface. Add the missing rule with its evidence; do not widen a rule to `:*`.
+//
+// NOT GOVERNED BY THIS FILE, stated so nobody looks for it here:
+//   * Internet egress. Each node runs its own `fly proxy 15432:5432` to Fly.io over the public
+//     internet; ACLs govern tailnet traffic, not egress.
+//   * The public Funnel. `nuzantara.tail461666.ts.net:8443` -> 127.0.0.1:8789 (the WhatsApp
+//     webhook, public by design because Meta must reach it) is a Funnel, and Funnel traffic is
+//     not filtered by these ACLs. Port 443 — the one carrying /term — is NOT funnelled.
+//   * `scripts/fleet_watch.py`'s liveness probes. CORRECTED 2026-08-29 (round-2 gate): an
+//     earlier revision said fleet_watch has a "ping probe" that survives because disco pings are
+//     not ACL-gated. It has no ping probe at all — `check_tailscale()` reads the LOCAL daemon
+//     (`tailscale status --json`, no tailnet traffic) and `check_ssh()` uses OpenSSH on port 22,
+//     which rules 1 and 2 grant. The conclusion held; the cited mechanism did not exist.
+//   * LAN/mDNS paths (`pro-lan`, `Nuzantara.local`). Not tailnet traffic.
 //
 // ONE DELIBERATE NARROWING, declared rather than slipped in: the compiled SSH policy in effect
-// today is `action: accept` with `sshUsers {"*": "=", "root": "root"}` and agent + local +
-// remote port forwarding, principals = every node IP. That grants passwordless ROOT over
-// Tailscale SSH from any tailnet device, with no re-authentication. It is currently LATENT — no
-// node runs the Tailscale SSH server (`RunSSH: false` on M5; Pro advertises no SSH host key, so
-// `tailscale ssh nuzantara@nuzantara` fails with "No ED25519 host key is known"; Mini could not
-// be measured at all — its inbound path is unusable, see README). Because it is latent, dropping
-// the root grant
-// costs zero operational disruption today and disarms it before someone runs `tailscale up
-// --ssh` and arms it by accident. Fleet SSH in daily use is OpenSSH on port 22 with keys, which
-// rule 1 leaves untouched.
+// today is `action: accept` with `sshUsers {"*": "=", "root": "root"}` and agent + local + remote
+// port forwarding, principals = every node IP. That is passwordless ROOT over Tailscale SSH from
+// any tailnet device with no re-authentication. It is LATENT — no node runs the Tailscale SSH
+// server (`RunSSH: false` on M5; Pro advertises no SSH host key; Mini's inbound path is unusable,
+// see README). Because it is latent, dropping the root grant costs zero disruption today and
+// disarms it before someone runs `tailscale up --ssh` and arms it by accident. Fleet SSH in daily
+// use is OpenSSH on port 22 with keys, which the rules below grant explicitly.
 //
-// VALIDATION LIMIT, stated rather than implied: this file was checked three ways — it parses as
-// JSON with the line comments stripped; no `dst` anywhere contains `autogroup:member` (src-only per
-// the ACL syntax reference); and `tag:team-device` appears in no rule's `src`. That is grammar and
-// intent, NOT acceptance. There is no Tailscale API token on the fleet and no offline validator, so
-// the ONLY authority on whether this policy is accepted is the admin console at save time. It
-// validates the `tests` block too. If it refuses, read its message before editing anything here —
-// an earlier draft of this same file used `autogroup:member` as a dst in both `acls` and `ssh`,
-// which the console would have rejected outright.
+// VALIDATION LIMIT, stated rather than implied: this file is checked repo-side by
+// scripts/tests/test_tailnet_acl_deny_by_default.py — which fails closed on anything it cannot
+// resolve (unknown top-level key, unresolvable src or dst selector), collapses every node
+// spelling to its IP with Pro's own IP pinned, allowlists the shell port's sources and all three
+// axes of the ssh block, and requires deny-tests — and it parses as JSON
+// with comments stripped. That is grammar and intent, NOT acceptance. There is no Tailscale API
+// token on the fleet and no offline validator, so the ONLY authority on whether this policy is
+// accepted is the admin console at save time, which also runs the `tests` block. If it refuses,
+// read its message before editing anything here.
+//
+// CORRECTED 2026-08-29 (round-1 grader, finding 9): earlier revisions of this file warned that
+// `autogroup:member` is invalid as a `dst`. That is false for an ordinary ACL destination, where
+// current Tailscale syntax permits it. It IS invalid as an **ssh** `dst` — which is the only
+// place this file would have used it, and why the ssh block below uses `autogroup:self`. Keep
+// the distinction; do not restore the blanket claim.
 {
-  // Magic IPs are stable per node and are not secrets. Used by the `tests` block below.
+  // Magic IPs are stable per node and are not secrets. Used as both rule operands and test
+  // targets. If a node is removed and re-registered it gets a NEW magic IP and its rules stop
+  // matching — the service breaks loudly rather than silently widening, and the fix is to update
+  // this block. Source: `tailscale status --json`, README table, re-read 2026-08-29.
   "hosts": {
-    "pro":  "100.107.22.111",
-    "mini": "100.93.236.6",
-    "m5":   "100.110.186.116"
+    "pro":              "100.107.22.111",
+    "mini":             "100.93.236.6",
+    "m5":               "100.110.186.116",
+    "iphone-14":        "100.113.83.92",
+    "iphone175":        "100.77.16.7",
+    "apple-vision-pro": "100.97.28.18"
   },
 
-  // A tagged device is owned by the TAILNET, not by a user, so it is deliberately excluded
-  // from `autogroup:member` — that exclusion is the whole mechanism of rule 2.
+  // A tagged device is owned by the TAILNET, not by a user, so it is deliberately excluded from
+  // `autogroup:member` — that exclusion is half the mechanism. The other half is that `tag:team-device`
+  // appears in no rule's `src`, anywhere in this file.
   "tagOwners": {
-    "tag:team-device": ["autogroup:admin"]
+    // A teammate's company laptop. Reusable — the mechanism is person-neutral on purpose, and
+    // this repo is public, so no device is mapped to a named person here.
+    "tag:team-device": ["autogroup:admin"],
+    // Reserved for a future fleet node that should be tailnet-owned rather than user-owned (a
+    // headless server, a CI runner). Nothing carries it today; it is declared so that adding such
+    // a node is a tag assignment plus one rule, not a re-think of this file.
+    "tag:fleet": ["autogroup:admin"]
   },
 
   "acls": [
-    // 1. The existing fleet keeps exactly today's flat reachability among itself.
-    //    The owner is named explicitly rather than written as `autogroup:member:*`: per the ACL
-    //    syntax reference, `autogroup:member` is valid in `src` only, and an autogroup as a `dst`
-    //    is limited to `autogroup:internet` / `autogroup:self` (the latter carrying its own
-    //    src-shape condition). A user is unambiguously valid on BOTH sides, and here it is exact:
-    //    all six current nodes are owned by this one account. If `zero@balizero.com` or the other
-    //    admin ever registers a device, it needs its own rule — they own none today.
+    // ---- 1. Pro -> Mini. Pro is the hub; Mini is the workhorse. ------------------------------
+    //   22    OpenSSH: memory-sync hub->spoke (infra/sync-daemons/memory-sync-bidirectional.sh),
+    //         fleet-watch liveness probe (scripts/fleet_watch.py), the intake-qwen autocatalog
+    //         tunnel (scripts/intake_qwen_autocatalog_worker.sh forwards 11434 over ssh), and
+    //         infra/launchagents/install_fly_pg_tunnel.sh reading Pro's own keychain.
+    //   6379  Redis EventBus, password-gated since 2026-06-29 (infra/eventbus/publisher.py).
+    //   11434 Ollama on Mini — WR2 image VLM scorer
+    //         (infra/launchagents/com.balizero.wr2.image-generator.plist) and the MOS+
+    //         compression worker (scripts/mos-plus-compression-worker.py).
+    //   8990  Mata Garuda KG query API (infra/launchagents/com.matagaruda.kg-query-api.plist,
+    //         consumed by apps/nuzantara-mcp/nuzantara_mcp/tools/kg_intel.py).
     {
       "action": "accept",
-      "src":    ["antonellosiano@gmail.com"],
-      "dst":    ["antonellosiano@gmail.com:*"]
+      "proto":  "tcp",
+      "src":    ["pro"],
+      "dst":    ["mini:22", "mini:6379", "mini:11434", "mini:8990"]
     },
 
-    // 2. A team device is a DESTINATION for support, never a source. This is the direction the
-    //    2026-05-02 decision actually asked for ("Bali Zero retains remote access se serve"):
-    //    we reach the laptop, the laptop does not reach the infrastructure. There is
-    //    deliberately NO rule with `tag:team-device` as src, so it can initiate nothing inside
-    //    the tailnet — no :443/term shell, no Redis, no OpenClaw Control, no sshd, no Ollama.
-    //    5900 is Screen Sharing, per the handoff runbook's on-demand support path.
+    // ---- 2. Mini -> Pro. Only SSH. -----------------------------------------------------------
+    //   22    fleet-watch's reverse liveness probe (infra/fleet-watch/peers.json declares the
+    //         probe mutual) and wr2-warroom-sync pulling war-room output from Pro
+    //         (infra/launchagents/wrappers/wr2-warroom-sync.sh).
+    // Deliberately NOT granted: pro:443. Mini has no consumer for the deck, the cinema or the
+    // shell, and it is the least-attended machine on the fleet. See SHELL-ROUTE above.
     {
       "action": "accept",
-      "src":    ["antonellosiano@gmail.com"],
+      "proto":  "tcp",
+      "src":    ["mini"],
+      "dst":    ["pro:22"]
+    },
+
+    // ---- 3. Pro -> M5. Only SSH. -------------------------------------------------------------
+    //   22    memory-sync hub->spoke; M5 is a spoke (memory-sync-bidirectional.sh names
+    //         air-m5-2.tail461666.ts.net). Spokes never talk to each other.
+    {
+      "action": "accept",
+      "proto":  "tcp",
+      "src":    ["pro"],
+      "dst":    ["m5:22"]
+    },
+
+    // ---- 4. M5 -> Pro. SSH plus the serve endpoints. -----------------------------------------
+    //   22    wr2-queue-pull, M5's scheduled pull of the WR2 queue
+    //         (infra/launchagents/wrappers/wr2-queue-pull.sh), plus interactive `ssh pro`, which
+    //         is how the primary workstation reaches the runtime host at all.
+    //   443   `tailscale serve`: OpenClaw Control, /deck, /cinema — AND /term.
+    //         THIS GRANT INCLUDES THE UNAUTHENTICATED WRITABLE SHELL. It is granted because M5 is
+    //         Zero's own workstation and the deck is used from it. It is granted to M5 by name,
+    //         not to a user, a group or a wildcard, precisely so that widening it later takes a
+    //         deliberate edit to this line. See SHELL-ROUTE above.
+    {
+      "action": "accept",
+      "proto":  "tcp",
+      "src":    ["m5"],
+      "dst":    ["pro:22", "pro:443"]
+    },
+
+    // ---- 5. M5 -> Mini. ----------------------------------------------------------------------
+    //   22    interactive `ssh mini` from the primary workstation (the alias is declared in
+    //         CLAUDE.md's machine table and in infra/fleet/nodes.json).
+    //   4317  Zero Design Studio local-webapp-server, the wr2-control-app client's endpoint
+    //         (apps/wr2-control-app/Sources/Theme.swift).
+    // Deliberately NOT granted: mini:11434 and mini:6379. Every Ollama and Redis consumer found
+    // in the repo runs on Pro. If an M5-side consumer is added, add the port here with its
+    // evidence rather than widening this rule.
+    {
+      "action": "accept",
+      "proto":  "tcp",
+      "src":    ["m5"],
+      "dst":    ["mini:22", "mini:4317"]
+    },
+
+    // ---- 6. Zero's iOS devices -> Pro, port 443 only. -----------------------------------------
+    // The Apple Vision Pro and the two iPhones consume /deck and /cinema; that is the entire
+    // point of the vision-deck pilot
+    // (research/operations/2026-08-11-apple-vision-pro-tailnet-leverage.md). They get 443 and
+    // nothing else — no SSH, no Redis, no Ollama.
+    // THIS GRANT ALSO INCLUDES /term, for the same reason as rule 4: these are Zero's own devices
+    // and port 443 cannot be split by URL path in a Tailscale ACL. Path-level separation would
+    // mean moving /term onto its own port in Pro's `tailscale serve` config — a change to Pro,
+    // not to this file. That is the real fix and it is filed in the ledger.
+    {
+      "action": "accept",
+      "proto":  "tcp",
+      "src":    ["iphone-14", "iphone175", "apple-vision-pro"],
+      "dst":    ["pro:443"]
+    },
+
+    // ---- 7. A team device is a DESTINATION for support, never a source. -----------------------
+    // This is the direction the 2026-05-02 decision actually asked for ("Bali Zero retains remote
+    // access se serve"): we reach the laptop, the laptop reaches nothing. 22 is SSH, 5900 is
+    // Screen Sharing, per infra/tailscale/enroll-team-device.md.
+    //
+    // DECLARED CASUALTY (round-2 gate): `scripts/profile-monitor/` is a repo-resident consumer in
+    // exactly the direction this rule fences. An employee's Mac POSTs checkout events to
+    // `http://100.107.22.111:9099/checkout` (mac-client/profile-monitor.swift:12; the wrapper
+    // listens on 9099, wrapper.py:44) and mac-client/setup-balizero.sh is the documented procedure
+    // for joining such a Mac to this tailnet. Under this policy a `tag:team-device` Mac CANNOT
+    // reach 9099, and the failure is SILENT — a fire-and-forget POST dropped by the packet filter
+    // is indistinguishable from "no checkout happened", on an HR-monitoring surface. This is not
+    // an oversight: granting it would be the file's only team-device-as-source rule, i.e. the one
+    // thing that keeps the shell fenced. Whether to grant it as a single named exception or to
+    // move that client off the tailnet is a business decision (Legge 5), so it is declared here
+    // and left to the owner rather than resolved by this diff.
+    //
+    // There is deliberately NO rule anywhere in this file with `tag:team-device` in `src`. That single
+    // absence is what denies a teammate's laptop the shell on pro:443, the Redis on mini:6379,
+    // the Ollama on mini:11434, every sshd, and the CRM runtime — at the packet layer, before the
+    // CRM's own RBAC (which is row-level, and would otherwise be bypassed underneath) gets a say.
+    // scripts/tests/test_tailnet_acl_deny_by_default.py goes RED if that absence ends. Stated
+    // precisely (round-1 grader, finding 5): `check-tailnet-acl` is NOT a required check yet, so
+    // a red there is a loud signal on the PR, not a merge block. Promoting it to required is a
+    // branch-protection change and therefore operator-only.
+    {
+      "action": "accept",
+      "proto":  "tcp",
+      "src":    ["m5", "pro"],
       "dst":    ["tag:team-device:22", "tag:team-device:5900"]
     }
   ],
 
-  // Tailscale SSH: preserved for the fleet, root removed (see the note above), and never
-  // granted toward or from tag:team-device. `dst` is `autogroup:self` — an ssh dst takes a user,
-  // a tag or an autogroup, and `autogroup:self` is the shape Tailscale's own default policy uses
-  // with an `autogroup:member` src. It resolves to exactly the fleet here, since every node is
-  // owned by the same account.
+  // Tailscale SSH: preserved for the fleet, root removed (see the note above), never granted
+  // toward or from `tag:team-device`. `dst: autogroup:self` is the shape Tailscale's own default policy
+  // uses with an `autogroup:member` src; it resolves to exactly the fleet here, since every node
+  // is owned by the same account and `tag:team-device` devices are tailnet-owned, not user-owned, so
+  // they fall outside `autogroup:member` on both sides.
+  //
+  // ENFORCED, not merely intended (2026-08-29, found independently by BOTH round-3 gate seats):
+  // this block used to be exempt from every check the `acls` rules go through, so `src: ["*"]`
+  // and `dst: ["*"]` were clean — and `*` is a strict superset of `autogroup:tagged`, i.e. it
+  // reaches a team laptop, which is exactly what the sentence above promises it does not. The
+  // guard now ALLOWLISTS all three axes (`autogroup:member` / `autogroup:self` /
+  // `autogroup:nonroot`); widening any of them is a finding, `root` included. A denylist on the
+  // axis that hands out shells was the same mistake the rest of this file exists to stop.
   "ssh": [
     {
       "action": "accept",
@@ -101,27 +262,69 @@
     }
   ],
 
-  // The console validates these on save. They pin the two properties that matter, in both
-  // directions — a policy shipped with only "accept" tests is the same half-guard mistake the
-  // handoff runbook made (it could report success, never failure).
+  // The console validates these on save. Both directions are pinned: a policy shipped with only
+  // "accept" tests is the same half-guard mistake the 2026-05 handoff runbook made — it could
+  // report success and never failure.
   "tests": [
+    // Innocence: the flows the fleet actually runs must survive the narrowing.
     {
-      "src":    "antonellosiano@gmail.com",
-      "accept": ["pro:22", "pro:443", "pro:6379", "pro:18789", "mini:22", "mini:11434", "m5:22"]
+      "src":    "pro",
+      "accept": ["mini:22", "mini:6379", "mini:11434", "mini:8990", "m5:22"]
     },
     {
-      // The laptop must not be able to open anything on the fleet — least of all pro:443,
-      // which is where the unauthenticated writable shell lives.
+      "src":    "m5",
+      "accept": ["pro:22", "pro:443", "mini:22", "mini:4317"]
+    },
+    {
+      "src":    "mini",
+      "accept": ["pro:22"]
+    },
+    {
+      "src":    "apple-vision-pro",
+      "accept": ["pro:443"]
+    },
+
+    // Guilt: the narrowing must actually deny. A team laptop must not open anything on the
+    // fleet — least of all pro:443, which is where the unauthenticated writable shell lives.
+    {
       "src":  "tag:team-device",
-      "deny": ["pro:443", "pro:22", "pro:6379", "pro:18789", "mini:22", "mini:11434", "m5:22"]
+      "deny": ["pro:443", "pro:22", "pro:18789", "mini:22", "mini:6379", "mini:11434",
+               "mini:8990", "m5:22"]
+    },
+    {
+      // Mini is Zero's own machine and still does not get the shell: least privilege is not a
+      // property of who owns the device, it is a property of what the device has a consumer for.
+      "src":  "mini",
+      "deny": ["pro:443", "pro:18789", "m5:22"]
+    },
+    {
+      // An iOS device gets the deck and nothing else.
+      "src":  "iphone-14",
+      "deny": ["pro:22", "mini:22", "mini:11434", "m5:22"]
+    },
+    {
+      // The SUPPORT direction, asserted rather than assumed. A test destination may be a tag,
+      // so this needs no enrolled laptop — see the note at the foot of this file.
+      "src":    "m5",
+      "accept": ["tag:team-device:22", "tag:team-device:5900"]
+    },
+    {
+      // The blanket the previous draft granted is gone: no port on Pro beyond 22 and 443 is
+      // reachable from M5, so a new service appearing on a new port is denied until someone adds
+      // it here on purpose.
+      "src":  "m5",
+      "deny": ["pro:6379", "pro:18789", "pro:18890", "pro:7681", "mini:6379", "mini:11434"]
     }
   ]
 
-  // NOT TESTED HERE, and the reason is stated rather than hidden: the accept direction toward
-  // the laptop (member → tag:team-device:22) cannot be expressed as a test until the node
-  // exists, because ACL tests need a concrete destination host. Add
-  //   {"src": "antonellosiano@gmail.com", "accept": ["team-laptop-01:22", "team-laptop-01:5900"]}
-  // with `"team-laptop-01": "<its magic IP>"` in `hosts` immediately after enrollment —
-  // that is step 5 of infra/tailscale/enroll-team-device.md, and it is the test that proves
-  // the support path works rather than assuming it.
+  // CORRECTED 2026-08-29 (round-1 grader, finding 4): an earlier revision of this file claimed
+  // the accept direction toward a team laptop could not be tested until the node existed,
+  // "because ACL tests need a concrete destination host". That is false — a test destination may
+  // be a TAG — so the support path is asserted above (`m5` and `pro` accept `tag:team-device:22`
+  // and `:5900`) with no enrolled laptop required. It was the one claim in this file that
+  // excused an untested direction, which is exactly the shape of excuse worth distrusting.
+  // After enrollment, add the concrete-host form too — that is step 5 of
+  // infra/tailscale/enroll-team-device.md:
+  //   {"src": "m5", "accept": ["team-laptop-01:22", "team-laptop-01:5900"]}
+  // with `"team-laptop-01": "<its magic IP>"` in `hosts`.
 }
