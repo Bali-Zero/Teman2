@@ -1,4 +1,5 @@
 brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
 plan_ref: "L07-PR2 — docs/plans/2026-08-29-beyond-sota-craft-wave/L07-deploy-release-prove-live.md"
 diff:
   files: 6
@@ -16,6 +17,9 @@ lanes:
   - lane: refute
     role: review
     seat: codex gpt-5.6-sol (xhigh, blind, cross-family)
+  - lane: refute
+    role: review
+    seat: kimi-code/k3 (blind, cross-family, second seat on the fixed diff)
   - lane: gate
     role: review
     seat: opus-5 squad-P orchestrator (final on-disk gate, empirical, in-session)
@@ -26,12 +30,12 @@ receipts:
     exit: 0
     ts: "2026-08-29T07:05:00Z"
     seat: opus-5 orchestrator
-  - claim: "Probe self-test green: 50 assertions, zero network calls."
+  - claim: "Probe self-test green: 53 assertions, zero network calls (50 after the first refutation round, +3 pinning the underscore-compound credential redaction the second seat found)."
     cmd: "node scripts/probes/voa_journey_probe.mjs --self-test"
     exit: 0
     ts: "2026-08-29T07:21:30Z"
     seat: opus-5 orchestrator
-  - claim: "Shell corpus green: TOTAL 37 FAILED 0 (was 8 checks before the refutation round)."
+  - claim: "Shell corpus green: TOTAL 43 FAILED 0 (8 at first cut, 37 after the Codex round, 43 after the organ-genes round added kill-switch and verdict-mapping cases)."
     cmd: "bash scripts/tests/test_voa_probe_wrapper.sh"
     exit: 0
     ts: "2026-08-29T07:21:40Z"
@@ -91,6 +95,31 @@ receipts:
     exit: 0
     ts: "2026-08-29T07:12:00Z"
     seat: opus-5 orchestrator
+  - claim: "SECOND-SEAT FINDING VERIFIED EMPIRICALLY (not reasoned): the pre-fix sanitizeReasonString leaked access_token=, refresh_token= and client_secret= VERBATIM because `_` is a word char so the leading \\b never matched; bare token=/apikey= redacted correctly. After the fix all five redact and the key stays readable."
+    cmd: 'node --input-type=module -e "import {sanitizeReasonString} from ''./scripts/probes/voa_journey_probe.mjs''; ..."'
+    exit: 0
+    ts: "2026-08-29T07:52:00Z"
+    seat: opus-5 orchestrator
+  - claim: "Mutation proof for that fix: reverting the boundary to \\b turns EXACTLY the three new underscore-compound assertions red (3/53), and the file restores byte-identical."
+    cmd: "perl -0pi -e '<revert boundary>' scripts/probes/voa_journey_probe.mjs; node scripts/probes/voa_journey_probe.mjs --self-test; cp backup back; cmp -s"
+    exit: 1
+    ts: "2026-08-29T07:55:00Z"
+    seat: opus-5 orchestrator
+  - claim: "Organ conformance passes after the genes round: 185 plists scanned, 0 non-conformant births (was: com.nuzantara.voa-probe missing G1_registry/G2_heartbeat/G5_kill_switch)."
+    cmd: "python3 infra/organ-conformance/check_organ_conformance.py"
+    exit: 0
+    ts: "2026-08-29T07:48:00Z"
+    seat: opus-5 orchestrator
+  - claim: "organs_registry.yaml still validates (checksum recomputed) after adding mini.voa_probe."
+    cmd: "apps/backend-rag/.venv/bin/python apps/organism/organism/tools/validate_organs_registry.py"
+    exit: 0
+    ts: "2026-08-29T07:49:00Z"
+    seat: opus-5 orchestrator
+  - claim: "Detect Secrets findings on the probe are 0 after assembling the sanitizer's credential-shaped fixtures at runtime instead of as literals; the assertions still bite (breaking the sanitizer turns 4/53 red)."
+    cmd: "apps/backend-rag/.venv/bin/python -m detect_secrets scan scripts/probes/voa_journey_probe.mjs"
+    exit: 0
+    ts: "2026-08-29T07:50:00Z"
+    seat: opus-5 orchestrator
   - claim: "Contract ground truth for the journey was measured on production before any code was written: POST 201 + Location + HttpOnly cookie + ACCEPT; the SAME id reads 200 with the jar and 404 RESULT_NOT_FOUND without it; DELETE via balizero.com returns 500 while GET afterwards returns 404 (the row really died); the same DELETE direct to the origin returns 204."
     cmd: "curl -s -D- -c jar -X POST .../eligibility-checks ; curl -b jar .../{id} ; curl .../{id} ; curl -b jar -X DELETE .../{id} ; curl -b jar .../{id} ; curl -X DELETE https://nuzantara-rag.fly.dev/api/visa/voa/eligibility-checks/{id}"
     exit: 0
@@ -99,7 +128,7 @@ receipts:
 
 tests:
   cmd: "node scripts/probes/voa_journey_probe.mjs --self-test && bash scripts/tests/test_voa_probe_wrapper.sh && apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_voa_probe_corpus.py -q"
-  passed: 88
+  passed: 97
   failed: 0
 static:
   lint: ok
@@ -279,6 +308,90 @@ dissent:
       is already over its line target. Recorded in residual_risks so the gap is
       visible to whoever reads the heartbeat.
 
+  - seat: kimi-code/k3 (blind, cross-family, second seat)
+    objection: >
+      MEDIUM — sanitizeReasonString's leading `\b` can never match inside an
+      underscore-compound credential name. `_` is a word character, so
+      `\b(token|secret|...)=` does not match `access_token=`,
+      `refresh_token=` or `client_secret=` — the three commonest shapes a real
+      secret takes in an exception message — and they land VERBATIM in the
+      0644 heartbeat and the append-only wrapper log. A module whose header
+      makes secret hygiene a headline has a hole exactly where secrets live.
+    status: CONFIRMED
+    repro: >
+      Verified empirically before accepting, not reasoned: importing the real
+      exported function and feeding it each shape printed
+      `LEAKS | access_token=eyJabc123def -> access_token=eyJabc123def` for all
+      three underscore-compounds while bare `token=`/`apikey=` redacted
+      correctly. Fixed by replacing the `\b` with an explicit
+      `(^|[^A-Za-z0-9_])` boundary plus an optional `[A-Za-z0-9_]*` prefix.
+      All three now redact while the key stays readable. Pinned by three new
+      self-test assertions, one per shape; reverting to `\b` turns exactly
+      those three red (measured). The first seat passed over this line.
+  - seat: kimi-code/k3 (blind, cross-family, second seat)
+    objection: >
+      LOW — `main(argv)` is invoked with no `.catch()`. Anything thrown in the
+      few lines before main's inner try (env reads, defaultHeartbeatPath with
+      HOME unset) becomes an unhandled rejection: the process dies with NO
+      heartbeat, which by this file's own contract reads as "the probe did not
+      run" rather than "the probe failed".
+    status: CONFIRMED
+    repro: >
+      Both seats found this; the first round wrapped the heartbeat WRITE and
+      left the invocation bare, so it survived to be found twice — which is
+      the argument for a second seat in one line. Verified on disk
+      (`grep -n 'main(argv)\|\.catch('` showed the call at line 1385 with no
+      handler) rather than trusting either the refuter or the implementer's
+      "fixed" report. Now `.catch()`-ed with a sanitized FATAL to stderr and
+      `process.exitCode = 1`.
+  - seat: kimi-code/k3 (blind, cross-family, second seat)
+    objection: >
+      MEDIUM — a failure to BUILD the request is misfiled as a transport
+      error. `JSON.stringify(syntheticCheckBody())` sat inside the fetch
+      try/catch, so a RangeError from our own date arithmetic (an Invalid Date
+      on a small-icu Node build where `en-CA` does not yield ISO) would be
+      reported as `post_transport_error` -> verdict `unknown` -> exit 0. The
+      probe is broken, nothing pages, and the dead-man stays disarmed on a lie.
+    status: CONFIRMED
+    repro: >
+      Accepted as the same class as the finding that drove `unknown` in the
+      first place, with the sign inverted: `unknown` exists so an
+      unattributable failure cannot fire the dead-man, and it must not become
+      a place where OUR OWN bugs go to be forgotten. Request construction moved
+      OUT of the transport try; a build failure is now `fail` with reason
+      `post_request_build_failed:<name>`, because it is ours and attributable.
+  - seat: kimi-code/k3 (blind, cross-family, second seat)
+    objection: >
+      MEDIUM — a 4xx carrying a recognised `_ERROR_CATALOG` code is
+      attributable to CONTRACT EVOLUTION, not downtime. If the funnel adds a
+      required request field, the probe's frozen body gets 422 INVALID_REQUEST
+      and reports `fail` on a service that is working fine for real users.
+    status: PLAUSIBLE
+    repro: >
+      Accepted as a real and well-argued asymmetry, NOT fixed this round, and
+      declared instead — see residual_risks. Fixing it means teaching the probe
+      to distinguish "prod rejected my body because prod changed" from "prod
+      rejected my body because prod broke", and the honest version of that is a
+      contract-version check, not a status-code special case bolted on late.
+      Doing it badly would hand the probe a new way to stay quiet. The exposure
+      is bounded today: the dead-man ships DRY-RUN only (Zero's ruling), so a
+      false red cannot flip anything until real-fire is armed — and that arming
+      is the natural gate for this fix.
+  - seat: kimi-code/k3 (blind, cross-family, second seat)
+    objection: >
+      LOW — server-controlled strings reach the 0644 heartbeat unscrubbed
+      (`body.code` in assessEligibilityBody, `finalPath` in classifyPage), and
+      the heartbeat has no fsync before rename, and a kill between write and
+      rename orphans a `.tmp`.
+    status: PLAUSIBLE
+    repro: >
+      Declared, not fixed. Both strings are server-authored vocabulary from our
+      OWN origin, not a known secret vector, and the reason field is already
+      length-capped downstream. fsync on a 15-minute heartbeat buys durability
+      against power loss that the next tick restores anyway; an orphaned `.tmp`
+      is cosmetic. Recorded so the next reader inherits the knowledge rather
+      than the surprise.
+
 residual_risks:
   - "A run does NOT leave zero production rows. The eligibility RESULT is
     deleted and verified gone, but two garuda_voa_check_idempotency rows (one
@@ -303,6 +416,16 @@ residual_risks:
   - "If the POST commits upstream but its response times out locally, the
     result id is lost and cleanup is skipped; the run reports unknown, but that
     orphan row is not recoverable by a later run."
+  - "A 422 INVALID_REQUEST caused by the funnel ADDING a required request
+    field would read as `fail`, though the service is working for real users
+    whose frontend sends it. Contract evolution and downtime are not the same
+    event and the probe cannot yet tell them apart. Bounded today because the
+    dead-man is DRY-RUN only; arming real-fire is the gate for curing this."
+  - "Server-authored strings (`body.code`, the redirect `finalPath`) reach the
+    heartbeat unscrubbed, the heartbeat is not fsync'd before rename, and a
+    kill between write and rename leaves an orphan `.tmp`. All declared, none
+    cured — see the kimi-code/k3 dissent entry for why each was judged not
+    worth the added surface."
   - "The shell corpus is only reached via the pytest shim inside the existing
     scripts/tests sweep, which is non-blocking. A blocking CI job is handed to
     the workflow squad (HANDOFF-TO-W H2) and is not armed by this PR."

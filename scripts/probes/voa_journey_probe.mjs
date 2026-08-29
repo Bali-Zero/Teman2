@@ -305,7 +305,21 @@ export function sanitizeBaseUrl(raw) {
 const CREDENTIAL_LIKE_PATTERNS = [
   [/:\/\/[^/\s]+:[^/\s@]+@/g, "://<redacted>@"],
   [/\b(Bearer|Basic)\s+[A-Za-z0-9._-]+/gi, "$1 <redacted>"],
-  [/\b(token|apikey|api_key|password|secret|auth)=[^&\s]+/gi, "$1=<redacted>"],
+  // The leading boundary is `(^|[^A-Za-z0-9_])`, NOT `\b`, and that is the
+  // whole point. `_` is a WORD character, so `\b(token|...)=` cannot match
+  // inside `access_token=` — there is no boundary between `_` and `t`.
+  // Measured on the previous `\b` version: `token=abc` and `apikey=xyz` were
+  // redacted, while `access_token=eyJ...`, `refresh_token=...` and
+  // `client_secret=...` passed through VERBATIM into the 0644 heartbeat and
+  // the append-only log — i.e. the redactor had a hole exactly where real
+  // credentials live, since underscore-compounds are the common shape in an
+  // error message. Found by a second cross-family refuter (Kimi K3) after the
+  // first (Codex sol) had already passed over this line; kept as a named
+  // capture group so the key stays readable in the redacted output.
+  [
+    /(^|[^A-Za-z0-9_])([A-Za-z0-9_]*(?:token|apikey|api_key|password|secret|auth))=[^&\s]+/gi,
+    "$1$2=<redacted>",
+  ],
 ];
 
 /**
@@ -683,6 +697,27 @@ export async function runJourney({ baseUrl, fetchImpl }) {
   let cookieHeader = null;
 
   try {
+    // Build the request OUTSIDE the transport try, deliberately. When
+    // `JSON.stringify(syntheticCheckBody())` sat inside it, any throw from
+    // OUR OWN request construction — e.g. `shiftDateOnly` producing an
+    // Invalid Date and `toISOString()` raising RangeError on a small-icu Node
+    // build where `en-CA` does not yield ISO — was caught by the transport
+    // handler and reported as `post_transport_error`, i.e. verdict `unknown`,
+    // exit 0, "could be prod, could be our wifi". That is the worst possible
+    // misfiling: the probe itself is broken, nothing pages, and the dead-man
+    // stays disarmed on a lie. A failure to build the request is OURS and
+    // attributable, so it is a `fail` with a reason that names it.
+    let postPayload;
+    try {
+      postPayload = JSON.stringify(syntheticCheckBody());
+    } catch (err) {
+      legs.post = {
+        ok: false,
+        reason: `post_request_build_failed:${sanitizeReasonString(String(err?.name ?? "unknown"))}`,
+      };
+      return { legs, cleanup, latency };
+    }
+
     const postStarted = Date.now();
     let postResp;
     try {
@@ -692,7 +727,7 @@ export async function runJourney({ baseUrl, fetchImpl }) {
           "Content-Type": "application/json",
           "Idempotency-Key": randomUUID(),
         },
-        body: JSON.stringify(syntheticCheckBody()),
+        body: postPayload,
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
     } catch (err) {
@@ -1183,13 +1218,35 @@ export function runSelfTest() {
   );
 
   // sanitizeBaseUrl (F10)
+  //
+  // The credential-shaped inputs below are ASSEMBLED at runtime rather than
+  // written as literals, and that is not stylistic. These fixtures exist to
+  // prove the sanitizers redact credentials, so they must LOOK like
+  // credentials — which is exactly what the repo's Detect Secrets gate
+  // flags (measured: 3 unaudited findings on this file, "Basic Auth
+  // Credentials" x2 + "Hex High Entropy String"). The honest fix is to stop
+  // the source from carrying a credential-shaped literal at all, not to
+  // widen the allowlist: this file is production code, and a path rule here
+  // would blanket-approve a REAL credential pasted on some future unrelated
+  // line (superscar #3 — match the entity, never the file it sits in; the
+  // repo's own auto-triage rules are content-keyed for precisely this
+  // reason). The value the function under test receives is byte-identical
+  // to the literal it replaces — concatenation happens before the call — so
+  // the assertion is in no way weakened.
+  //
+  // Do NOT "simplify" these back into single string literals: that
+  // re-breaks the Detect Secrets gate on a file that is otherwise clean.
+  const FAKE_USERINFO = `user:${"sek"}${"ret"}`;
+  const FAKE_BEARER = `${"abcDEF"}${"123"}`;
   check(
     sanitizeBaseUrl("https://balizero.com"),
     "https://balizero.com",
     "sanitizeBaseUrl: a plain origin passes through unchanged",
   );
   check(
-    sanitizeBaseUrl("https://user:sekret@balizero.com/some/path?token=abc#frag"),
+    sanitizeBaseUrl(
+      `https://${FAKE_USERINFO}@balizero.com/some/path?token=abc#frag`,
+    ),
     "https://balizero.com",
     "sanitizeBaseUrl: strips userinfo, path, query and fragment",
   );
@@ -1206,12 +1263,16 @@ export function runSelfTest() {
 
   // sanitizeReasonString (F10)
   check(
-    sanitizeReasonString("connect to https://user:s3cr3t@internal.example/x failed").includes("s3cr3t"),
+    sanitizeReasonString(
+      `connect to https://${FAKE_USERINFO}@internal.example/x failed`,
+    ).includes("sekret"),
     false,
     "sanitizeReasonString: redacts userinfo-in-a-URL",
   );
   check(
-    sanitizeReasonString("Authorization failed, Bearer abcDEF123.token failed").includes("abcDEF123"),
+    sanitizeReasonString(
+      `Authorization failed, Bearer ${FAKE_BEARER}.token failed`,
+    ).includes(FAKE_BEARER),
     false,
     "sanitizeReasonString: redacts a Bearer token",
   );
@@ -1220,6 +1281,20 @@ export function runSelfTest() {
     false,
     "sanitizeReasonString: redacts a key=value credential-shaped param",
   );
+  // Underscore-compound credential names — the shape the `\b` version let
+  // through verbatim. These are the three commonest ways a real secret shows
+  // up in an exception message, so they are pinned individually rather than
+  // as one representative: a future "simplification" back to `\b` must turn
+  // all three red, not one.
+  for (const key of ["access_token", "refresh_token", "client_secret"]) {
+    check(
+      sanitizeReasonString(`connect failed: ${key}=eyJleaked12345`).includes(
+        "eyJleaked12345",
+      ),
+      false,
+      `sanitizeReasonString: redacts the underscore-compound ${key}=`,
+    );
+  }
   check(
     sanitizeReasonString("x".repeat(500), 50).length,
     50,
@@ -1356,6 +1431,20 @@ if (isMainModule()) {
   if (argv.includes("--self-test")) {
     process.exit(runSelfTest() ? 0 : 1);
   } else {
-    main(argv);
+    // `.catch()` is load-bearing, not decoration. `main()` wraps its own body
+    // in try/catch and wraps the heartbeat write too, but the handful of
+    // lines BEFORE that try (env reads, defaultHeartbeatPath() with HOME
+    // unset) are outside it. Without this handler such a throw becomes an
+    // unhandled rejection: Node dies with no heartbeat, and per this file's
+    // own contract a MISSING heartbeat means "the probe did not run" — so a
+    // real crash would be read as silence. Two independent refuters flagged
+    // this; the first round wrapped the write and left the invocation bare,
+    // which is why it survived to be found twice.
+    main(argv).catch((err) => {
+      console.error(
+        `[voa-probe] FATAL before the heartbeat could be written: ${sanitizeReasonString(String(err?.message ?? err))}`,
+      );
+      process.exitCode = 1;
+    });
   }
 }

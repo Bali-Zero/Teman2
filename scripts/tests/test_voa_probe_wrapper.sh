@@ -442,9 +442,15 @@ echo
 echo "== 11. wrapper: a NON-ZERO probe exit code propagates through the wrapper =="
 
 PROBE_FAILS_TMP="$(require_tmpdir)"
-mkdir -p "$PROBE_FAILS_TMP/infra/launchagents/wrappers" "$PROBE_FAILS_TMP/scripts/probes" "$PROBE_FAILS_TMP/logs"
+mkdir -p "$PROBE_FAILS_TMP/infra/launchagents/wrappers" "$PROBE_FAILS_TMP/scripts/probes" "$PROBE_FAILS_TMP/scripts/lib" "$PROBE_FAILS_TMP/logs"
 cp "$WRAPPER_SRC" "$PROBE_FAILS_TMP/infra/launchagents/wrappers/voa-probe-wrapper.sh"
 chmod +x "$PROBE_FAILS_TMP/infra/launchagents/wrappers/voa-probe-wrapper.sh"
+# The REAL organism heartbeat library, not a stub — sections 12/13 below
+# assert what this wrapper actually writes to the ORGANISM (not the probe's
+# own heartbeat, which the writeHeartbeatAtomic call further down already
+# covers), so the library that call is meant to invoke must genuinely exist
+# in this fake world.
+cp "$REPO/scripts/lib/heartbeat.sh" "$PROBE_FAILS_TMP/scripts/lib/heartbeat.sh"
 
 cat > "$PROBE_FAILS_TMP/scripts/probes/voa_journey_probe.mjs" <<FAILEOF
 // Stub that behaves like a real "fail" verdict run: writes a heartbeat (so
@@ -474,6 +480,98 @@ HOME="$PROBE_FAILS_TMP" \
     zsh "$PROBE_FAILS_TMP/infra/launchagents/wrappers/voa-probe-wrapper.sh" >/dev/null 2>&1
 probe_fails_rc=$?
 check "wrapper propagates a non-zero probe exit code (1), not a hardcoded 0" "1" "$probe_fails_rc"
+
+FAIL_ORGANISM_HB="$PROBE_FAILS_TMP/.organism/last_seen/mini.voa_probe.json"
+if [ -f "$FAIL_ORGANISM_HB" ]; then
+    fail_organism_status="$("$NODE_BIN" -e "console.log(JSON.parse(require('fs').readFileSync('$FAIL_ORGANISM_HB','utf8')).status)" 2>&1)"
+    check "(verdict=fail) organism status=error (an attributable break, real heartbeat.sh)" "error" "$fail_organism_status"
+else
+    check "(verdict=fail) organism status=error (an attributable break, real heartbeat.sh)" "error" "FILE-MISSING"
+fi
+
+echo
+echo "== 12. wrapper: VOA_PROBE_ENABLED=false -> exit 0, probe NEVER invoked, disabled heartbeat =="
+echo "         (this is the RUNTIME kill switch, distinct from install_voa_probe.sh's"
+echo "          install-time VOA_PROBE_CRON_ENABLED)"
+
+KILLSWITCH_TMP="$(require_tmpdir)"
+mkdir -p "$KILLSWITCH_TMP/infra/launchagents/wrappers" "$KILLSWITCH_TMP/scripts/probes" "$KILLSWITCH_TMP/scripts/lib" "$KILLSWITCH_TMP/logs"
+cp "$WRAPPER_SRC" "$KILLSWITCH_TMP/infra/launchagents/wrappers/voa-probe-wrapper.sh"
+chmod +x "$KILLSWITCH_TMP/infra/launchagents/wrappers/voa-probe-wrapper.sh"
+cp "$REPO/scripts/lib/heartbeat.sh" "$KILLSWITCH_TMP/scripts/lib/heartbeat.sh"
+
+KILLSWITCH_RAN_MARKER="$KILLSWITCH_TMP/probe-ran-marker"
+cat > "$KILLSWITCH_TMP/scripts/probes/voa_journey_probe.mjs" <<KILLEOF
+// If the kill switch works, this file must never even be imported, let
+// alone executed. Its only job is to prove that IF it ran, we would know.
+import fs from "node:fs";
+fs.writeFileSync("$KILLSWITCH_RAN_MARKER", "ran");
+process.exit(99);
+KILLEOF
+
+VOA_PROBE_ENABLED=false HOME="$KILLSWITCH_TMP" \
+    zsh "$KILLSWITCH_TMP/infra/launchagents/wrappers/voa-probe-wrapper.sh" >/dev/null 2>&1
+killswitch_rc=$?
+check "(kill switch) wrapper exits 0 when VOA_PROBE_ENABLED=false" "0" "$killswitch_rc"
+
+if [ -f "$KILLSWITCH_RAN_MARKER" ]; then
+    check "(kill switch) the probe itself was NEVER invoked" "not-run" "ran"
+else
+    check "(kill switch) the probe itself was NEVER invoked" "not-run" "not-run"
+fi
+
+KILLSWITCH_ORGANISM_HB="$KILLSWITCH_TMP/.organism/last_seen/mini.voa_probe.json"
+if [ -f "$KILLSWITCH_ORGANISM_HB" ]; then
+    killswitch_status="$("$NODE_BIN" -e "console.log(JSON.parse(require('fs').readFileSync('$KILLSWITCH_ORGANISM_HB','utf8')).status)" 2>&1)"
+    check "(kill switch) organism heartbeat status=disabled (never resurrected by a healer)" "disabled" "$killswitch_status"
+else
+    check "(kill switch) organism heartbeat status=disabled (never resurrected by a healer)" "disabled" "FILE-MISSING"
+fi
+
+echo
+echo "== 13. wrapper: verdict=dark maps to organism status=ok (W104: an intentionally-off"
+echo "         flag is healthy, not degraded — never nag the organism over it) =="
+
+DARK_TMP="$(require_tmpdir)"
+mkdir -p "$DARK_TMP/infra/launchagents/wrappers" "$DARK_TMP/scripts/probes" "$DARK_TMP/scripts/lib" "$DARK_TMP/logs"
+cp "$WRAPPER_SRC" "$DARK_TMP/infra/launchagents/wrappers/voa-probe-wrapper.sh"
+chmod +x "$DARK_TMP/infra/launchagents/wrappers/voa-probe-wrapper.sh"
+cp "$REPO/scripts/lib/heartbeat.sh" "$DARK_TMP/scripts/lib/heartbeat.sh"
+
+cat > "$DARK_TMP/scripts/probes/voa_journey_probe.mjs" <<DARKEOF
+// Stub that behaves like a real "dark" verdict run (flag deliberately off,
+// pre-launch): writes a heartbeat and exits 0, same as the probe's own
+// documented exit-code contract for dark/pass/unknown.
+import { writeHeartbeatAtomic } from "$PROBE_SRC";
+writeHeartbeatAtomic(process.env.VOA_PROBE_HEARTBEAT, {
+    schema: 1,
+    probe: "voa_journey",
+    mode: "full",
+    ts: new Date().toISOString(),
+    ts_epoch: Math.floor(Date.now() / 1000),
+    verdict: "dark",
+    reason: "flag_off_next_404_template",
+    latency_ms: { page: 1, post: null, get: null },
+    legs: {},
+    cleanup: { attempted: 0, verified_gone: 0, unverified: 0, leaked: 0 },
+    base_url: "stub://no-network",
+    probe_version: 1,
+});
+process.exit(0);
+DARKEOF
+
+HOME="$DARK_TMP" \
+    zsh "$DARK_TMP/infra/launchagents/wrappers/voa-probe-wrapper.sh" >/dev/null 2>&1
+dark_wrapper_rc=$?
+check "(verdict=dark) wrapper rc propagates the probe's 0" "0" "$dark_wrapper_rc"
+
+DARK_ORGANISM_HB="$DARK_TMP/.organism/last_seen/mini.voa_probe.json"
+if [ -f "$DARK_ORGANISM_HB" ]; then
+    dark_organism_status="$("$NODE_BIN" -e "console.log(JSON.parse(require('fs').readFileSync('$DARK_ORGANISM_HB','utf8')).status)" 2>&1)"
+    check "(verdict=dark) organism status=ok, not degraded (W104)" "ok" "$dark_organism_status"
+else
+    check "(verdict=dark) organism status=ok, not degraded (W104)" "ok" "FILE-MISSING"
+fi
 
 echo
 echo "TOTAL $((PASS + FAIL)) FAILED $FAIL"
