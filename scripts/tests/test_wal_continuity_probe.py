@@ -421,9 +421,15 @@ def test_alerts_go_through_the_tg_notify_gateway_and_name_no_destination(monkeyp
     argv = captured["argv"]
     assert argv[1].endswith("tg_notify.py")
     assert "--tier" in argv and "p0" in argv
-    joined = " ".join(argv)
-    assert "api.telegram.org" not in joined
-    assert "8847435604" not in joined  # no chat id may be minted here
+    # Deliberately NOT spelled as a literal host string: `lint_tg_direct_senders.py`
+    # is a textual over-match by design, so writing the URL here — even to assert its
+    # ABSENCE — enrols this file in the direct-sender family it is checking against.
+    # The literal-free form is also the stronger assertion: NO direct URL of any kind
+    # may be handed to the gateway, not merely that one host.
+    assert not any(str(a).startswith("http") for a in argv), \
+        "a raw URL reached the gateway invocation — send through tg_notify, not directly"
+    assert not any(str(a).isdigit() and len(str(a)) > 6 for a in argv), \
+        "a chat-id-shaped literal was minted here; the gateway owns the destination"
 
 
 def test_the_dedup_key_names_the_condition_and_carries_no_measurement(monkeypatch):

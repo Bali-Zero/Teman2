@@ -138,6 +138,12 @@ from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from scripts.tg_gateway_verdict import (  # noqa: E402
+    extract_gateway_verdict,
+    gateway_delivered,
+)
 
 FLY_APP = os.environ.get("WAL_PROBE_FLY_APP", "nuzantara-postgres")
 
@@ -723,8 +729,23 @@ def send_alert(text: str, condition: str, tier: str, dry_run: bool = False) -> b
              "--source", "wal-continuity-probe", "--dedup-key", dedup_key, "--", text],
             capture_output=True, text=True, timeout=30,
         )
-        log(f"tg_notify: rc={proc.returncode} {proc.stderr.strip()[:160]}")
-        return proc.returncode == 0
+        # THE EXIT CODE IS NOT THE ANSWER. `tg_notify.py` deliberately never fails its
+        # caller: it exits 0 on six outcomes, and three of them mean "not sent to
+        # Telegram now" (deduped / p0_overflow_spooled / p0_unsent_spooled). Reading
+        # `returncode == 0` therefore reports a REFUSAL as a delivery — which for a
+        # probe whose entire job is "the alarm actually reached someone" is the same
+        # disease it was built to catch, one level up. Caught by the repo's own
+        # `test_gateway_callers_read_the_verdict.py` gate before this shipped; seven
+        # live callers were blind this way when that census ran on 2026-08-10.
+        verdict = extract_gateway_verdict(proc.stderr)
+        log(f"tg_notify: {verdict or f'NO VERDICT rc={proc.returncode}'}")
+        if proc.returncode != 0:
+            return False
+        # A digest is accepted once the gateway durably queues it (or recognises an
+        # already-queued duplicate). A p0 is accepted ONLY when Telegram received it.
+        if tier == "digest":
+            return verdict in {"spooled", "deduped"}
+        return gateway_delivered(verdict)
     except Exception as exc:  # never let the alerter kill the probe's exit code
         log(f"telegram failed: {exc}")
         return False

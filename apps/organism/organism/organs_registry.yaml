@@ -144,6 +144,28 @@ organs:
     path: ~/.agent/decisions/state/login_healthcheck.last.json
     timestamp_field: ts
     status_field: status
+- id: pro.wal_continuity_probe
+  runtime: pro_launchd
+  type: cron
+  # Daily at 05:00, so a night where WAL archiving died is reported the same morning
+  # the snapshot is taken. 30h of slack before silence is an alarm in its own right.
+  expected_hb_seconds: 108000
+  owner_module: infra/launchagents/wrappers/wal-continuity-probe.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.wal-continuity-probe.daily
+  # warning, not critical: this organ's silence means we stopped WATCHING the WAL
+  # chain, which is one level removed from the chain itself breaking. Both matter;
+  # only one of them is an outage.
+  severity_on_silence: warning
+  cicatrix_refs:
+  - 2026-07-27-W101-recidiva-fly-backup
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/wal-continuity-probe.json
+    timestamp_field: ts
+    status_field: exit
 - id: m5.auth_sentinel
   runtime: air_launchd
   type: cron
