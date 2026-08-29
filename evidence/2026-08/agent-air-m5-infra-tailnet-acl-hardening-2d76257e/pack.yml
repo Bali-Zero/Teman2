@@ -15,6 +15,11 @@ lanes:
     seat:
       codex gpt-5.6-sol xhigh (OpenAI, non-Anthropic) — round-1 grader, REJECT with
       executed bypasses against the guard; never the build seat
+  - lane: tailnet-acl-gate-r3
+    role: review
+    seat:
+      claude opus 5 (SECOND independent gate seat, fresh context — never the build
+      seat) round-3 adjudication; 12 self-authored mutations, 7 missed, REWORK-BUILD
   - lane: tailnet-acl-gate-r2
     role: review
     seat:
@@ -165,6 +170,24 @@ receipts:
     ts: 2026-08-29T04:05Z
     seat: session (build lane, replaying the gate's mutations)
 
+  - claim: >-
+      Round 3 was adjudicated TWICE, independently, on the same sha (0a521cbd04) — the resumed
+      round-2 gate returned PASS-WITH-CONDITIONS and a second fresh gate returned REWORK-BUILD.
+      They disagreed on disposition and CONVERGED on the defect: the ssh block was exempt from
+      every check the acls rules go through. The convergence, not either verdict, is why the fix
+      landed in the diff rather than the ledger. Verified on disk before acting on either report.
+    cmd: >-
+      python3 -c "import audit_policy; print(audit_policy(policy))" with the ssh rule's
+      src/dst replaced by ["*"], then users by ["*"], ["root"], then a group: acl src, then
+      the pro alias re-pointed to a decoy IP
+    result: >-
+      before: ssh wildcards and users:* both returned []; after: SSH_SRC/DST_NOT_ALLOWLISTED,
+      SSH_USERS_NOT_ALLOWLISTED, SSH_ROOT_GRANT, UNRESOLVABLE_SRC_SELECTOR, SHELL_HOST_IP_MOVED
+      — baseline still []
+    exit: 0
+    ts: 2026-08-29T05:20Z
+    seat: session (build lane, verifying both gates' reports independently)
+
 dissent:
   - seat: codex gpt-5.6-sol xhigh (round-1 grader)
     objection: >-
@@ -260,6 +283,37 @@ dissent:
       source rule, i.e. the single property keeping the laptop off the shell — so the trade is a
       business decision (Legge 5). It is now named in policy.hujson beside rule 7 and carries its
       own "decide this BEFORE you enrol" section in enroll-team-device.md.
+
+  - seat:
+      claude opus 5 (round-3 gate A, resumed round-2 seat) and claude opus 5 (round-3 gate B,
+      fresh seat) — INDEPENDENTLY, on the same sha
+    objection: >-
+      The ssh block never went through audit_rule, so it had no wildcard or selector check at
+      all: src/dst ["*"] returned clean while the identical wildcard in an acls rule went red,
+      and SSH_ROOT_GRANT was a denylist of the single literal "root" so users:["*"] — strictly
+      wider, and a superset of autogroup:tagged — passed. Gate A dispositioned it as a
+      next-PR condition; gate B called it blocking because two operator-facing documents claim
+      the invariant it does not enforce.
+    status: CONFIRMED
+    resolution: >-
+      FIXED IN THIS DIFF rather than deferred, because two independent seats converging on one
+      hole is not a taste difference. The ssh block is now allowlisted on all three axes;
+      UNRESOLVABLE_SRC_SELECTOR mirrors the dst check; SHELL_HOST_IP pins Pro's address so
+      re-pointing the alias cannot move the anchor. 4 fixtures, 27 tests, all five mutations
+      replayed red against the real policy. The two documents are consequently TRUE again and
+      were rewritten to state what is enforced clause by clause, rather than weakened.
+  - seat: claude opus 5 (round-3 gate B)
+    objection: >-
+      The profile-monitor note called "a team device is never a SOURCE" the single property
+      keeping the laptop off the writable shell. That is false as Tailscale semantics — ACL
+      rules are independent allow entries — and it inflates the cost of granting pro:9099,
+      biasing a decision deliberately handed to the owner.
+    status: CONFIRMED
+    resolution: >-
+      Reworded in enroll-team-device.md to the defensible narrower claim: what fences the shell
+      is the absence of a grant to pro:443; the real cost is that the bright line is what this
+      repo mechanically enforces (TEAM_TAG_AS_SOURCE) and port-scoping it means teaching that
+      check an exemption. The deferral itself was confirmed by both gates as the right call.
 
 open_questions:
   - >-
