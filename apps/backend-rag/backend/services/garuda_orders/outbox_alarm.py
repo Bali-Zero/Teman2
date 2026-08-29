@@ -32,12 +32,57 @@ nothing.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 #: A standing condition is re-reported at most this often. An hour is chosen
 #: over "once, ever" deliberately: the row stays broken until a human acts, and
 #: a single page that scrolls away is indistinguishable from no page at all.
 REALERT_SECONDS = 3600.0
+
+#: Telegram Markdown V1 (`parse_mode='Markdown'`, set by
+#: `telegram_notifier.send_telegram_message`) reserves `_ * ` [`. An UNMATCHED
+#: reserve character makes Telegram answer 400 "can't parse entities", and 4xx
+#: is NON-retryable there — so a page the parser rejects is dropped for good.
+#:
+#: WHY THAT WAS A LIVE DEFECT AND NOT A TYPOGRAPHY NICETY. Until 2026-08-29
+#: `_compose` interpolated job-type names raw, and the two real ones —
+#: `practice_release` and `portal_invite` — carry exactly ONE underscore each.
+#: So delivery depended on UNDERSCORE PARITY: one failing job type is an
+#: unmatched `_` and the page dies; two of them pair up, parse, and arrive.
+#: That is worse than always-broken. An alarm that never arrives gets noticed
+#: eventually; an alarm that arrives most of the time teaches everyone the
+#: channel works, and the silence on the odd-parity cases then reads as
+#: "nothing went wrong".
+#:
+#: WHY THESE LIVE HERE. Same char set as `telegram_notifier._MARKDOWN_ESCAPE_RE`
+#: and `outbox_handlers._MARKDOWN_ESCAPE_RE`, and NOT imported from either: both
+#: of those modules pull in asyncpg, httpx and the portal/CRM services, and this
+#: module is deliberately dependency-free so the decision stays testable without
+#: a database, an event loop or a Telegram double (see the module docstring).
+#: This is the package's alarm root — `quarantine_alarm` already imports
+#: `REALERT_SECONDS` from here "so the two cadences cannot silently drift", and
+#: the escaper is now shared the same way, for the same reason.
+_MARKDOWN_ESCAPE_RE = re.compile(r"([_*`\[])")
+
+
+def _escape_markdown(text: str) -> str:
+    return _MARKDOWN_ESCAPE_RE.sub(r"\\\1", text)
+
+
+def _code_span(value: str) -> str:
+    """Wrap an identifier so Markdown V1 does not re-parse inside it.
+
+    A BACKTICK IN THE VALUE WOULD END THE SPAN EARLY — the trap
+    `outbox_handlers` records from Kimi K3 on 2026-08-28. Telegram would
+    re-parse the tail and answer 400, and the page would never go out, so the
+    malformed identifier is precisely what would make itself unseeable.
+    Stripped to a visible marker rather than escaped: inside a code span a
+    backslash is literal, so escaping would print the backslash AND still
+    break the span.
+    """
+
+    return "`" + value.replace("`", "<backtick>") + "`"
 
 
 def _plural(n: int, word: str) -> str:
@@ -133,8 +178,12 @@ class OutboxAlarm:
             # Sorted so the same condition always renders identically — an
             # alarm whose text wobbles between identical states defeats every
             # downstream dedup, including a human's.
+            # Code spans, not escapes: a job type is an IDENTIFIER, and
+            # `outbox_handlers` already treats ids this way — Markdown V1 does
+            # not re-parse inside a span, so the name arrives verbatim instead
+            # of carrying backslashes an operator would have to read past.
             lines.append(
                 "Unrouted job type(s), enqueued with no handler: "
-                + ", ".join(sorted(types))
+                + ", ".join(_code_span(t) for t in sorted(types))
             )
         return "\n".join(lines)
