@@ -136,3 +136,60 @@ class TestAnOptionalBccNeverBlocksTheAlert:
         sent = service.email_provider.send_email.await_args.kwargs
         assert sent["to_email"] == "client@example.com"
         assert not sent.get("bcc"), "the BCC is dropped, the alert still goes out"
+
+
+class TestOneBadAlertNeverEndsTheRun:
+    """The queue is oldest-first with no LIMIT (``service.py`` ``get_pending_alerts``).
+
+    Before 2026-08-29 ``process_alerts_batch`` had no per-item guard, so the first
+    alert that raised took the whole run down with it — every alert behind it was
+    never attempted, and produced no Sentry event either, because the code that
+    would have raised for them never ran.
+    """
+
+    @pytest.mark.asyncio
+    async def test_the_alerts_behind_a_failing_one_are_still_attempted(self):
+        conn = _RecordingConnection()
+        service = _service(conn)
+
+        async def email_for(client_id):
+            if client_id == 1:
+                raise RuntimeError("lookup exploded")
+            return f"c{client_id}@example.com"
+
+        alerts = [_alert(AlertType.BIRTHDAY) for _ in range(3)]
+        for i, alert in enumerate(alerts, start=1):
+            alert.id = i
+            alert.client_id = i
+
+        results = await service.process_alerts_batch(alerts, email_for)
+
+        assert len(results) == 3, "every alert gets a result, none is silently skipped"
+        assert results[0].success is False
+        assert [r.success for r in results[1:]] == [True, True]
+        assert service.email_provider.send_email.await_count == 2
+
+
+class TestRecordingAFailureNeverMasksIt:
+    @pytest.mark.asyncio
+    async def test_a_broken_status_update_does_not_replace_the_real_error(self):
+        """The status UPDATE runs inside the ``except`` that handles the real error.
+
+        When it raised too (the AmbiguousParameterError), it escaped ``process_alert``
+        and became the only thing Sentry ever saw — hiding the cause underneath.
+        """
+        conn = _RecordingConnection()
+        service = _service(conn)
+        service.email_provider.send_email = AsyncMock(side_effect=RuntimeError("smtp down"))
+
+        async def execute_that_fails(sql, *args):
+            raise RuntimeError("ambiguous parameter")
+
+        conn.execute = execute_that_fails
+
+        result = await service.process_alert(_alert(AlertType.BIRTHDAY), "c@example.com")
+
+        assert result.success is False
+        assert "smtp down" in result.error_message, (
+            "the surfaced error must be the real cause, not the bookkeeping failure"
+        )
