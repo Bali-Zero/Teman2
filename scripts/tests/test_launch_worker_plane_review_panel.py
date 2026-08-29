@@ -2160,15 +2160,23 @@ def test_private_copy_replacement_after_last_check_never_executes_replacement(
                 seat=seat,
                 executable=prepared,
                 client_version="test",
-                # `packet_bytes` was renamed `review_input_bytes` and six more
-                # keyword-only arguments became required, all in the launcher's
-                # own birth commit; this call was never updated, so the test has
-                # raised TypeError ever since instead of guarding anything.
-                # Shapes are taken from the production call site, chosen so the
-                # stdin branch runs the seat's own argv unchanged:
+                # `packet_bytes` was renamed `review_input_bytes` and EIGHT more
+                # keyword-only arguments became required, all in the launcher's own
+                # birth commit; this call was never updated, so the test has raised
+                # TypeError ever since instead of guarding anything. (Counted against
+                # the birth signature: 16 required parameters, 7 validly supplied, so
+                # 9 absent — of which one is the rename. An earlier draft of this
+                # comment said six; a refuter caught it.)
+                #
+                # These values are NOT the production shapes: production always passes
+                # a sandbox-exec runner with a non-empty execution_prefix and real
+                # client_artifacts. This test deliberately takes the simplest route
+                # that still reaches the spawn boundary it guards:
                 #   runner_executable=None  -> argv is the executable itself
                 #   execution_prefix=()     -> no wrapper in front of it
                 #   input_path=None         -> required by the stdin branch
+                # The cost: the wrapped-argv construction production uses is not
+                # exercised here. Named in the PR, not papered over.
                 review_input_bytes=b"",
                 runner_executable=None,
                 execution_prefix=(),

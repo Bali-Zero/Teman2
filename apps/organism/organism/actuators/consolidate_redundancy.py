@@ -1,9 +1,15 @@
 """Actuator: open PR to consolidate a single redundancy from redundancies.yaml.
 
-L3 actuator — IRREVERSIBLE (shared-infra effect). Consiglio gate requires
-3/4 approval before dispatch. The actuator itself opens a draft PR; the
-actual merge is a separate human-in-the-loop step (W4 auto-merge when CI
-green only applies to feature-branch PRs, not infra consolidation).
+L3 actuator — IRREVERSIBLE (shared-infra effect). NOT gated by Consiglio
+today, despite `organism/supervisor/consiglio_gate.py`'s own
+IRREVERSIBLE_ACTUATORS set naming this actuator: ConsiglioGate is fully
+built and tested, but nothing on the live dispatch path
+(`organism/supervisor/dispatch.py`) ever imports or calls it. The
+actuator itself opens a draft PR; the actual merge is a separate
+human-in-the-loop step (W4 auto-merge when CI green only applies to
+feature-branch PRs, not infra consolidation) — that human merge step is
+real and is currently the ONLY thing standing between this actuator and
+a shared-infra change landing unreviewed.
 
 Each call consolidates ONE redundancy (by `id`) — this is deliberate:
 multiple parallel PRs = reviewable independently.

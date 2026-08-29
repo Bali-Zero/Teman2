@@ -1,0 +1,141 @@
+task_id: craft-e-appetite-ceiling
+gear: 2
+l_level: L2
+gate_class: opus
+objective: |
+  L01/PR-3 of the beyond-SOTA craft wave, and the LAST item of L01: give a session a place
+  to declare, at TRIAGE, what it is willing to spend — and make an overrun that nobody
+  acknowledged a hard stop rather than a thing everyone noticed afterwards and nobody wrote
+  down.
+
+  Rule 14: `evidence/brief.yml` may carry an optional `appetite: {wall_clock_hours,
+  adversarial_rounds, tokens}`; `evidence/pack.yml` may carry `spend:` with the same keys
+  (ex-post observed) and `appetite_exceeded: "<reason>"` (the acknowledgment). Exceeding a
+  declared ceiling with no acknowledgment is a VIOLATION — this is THE ONLY RULE IN THE
+  LANE THAT CAN FAIL; rules 11, 12 and 13 are all NOTICE-only. It mirrors `gear_override`
+  exactly: the REASON is the artifact, and a checkbox acknowledges nothing.
+
+  Gear 2 is the DETERMINISTIC FLOOR recomputed from this PR's own changed-file list and
+  numstat (`--print-floor` -> 2). Measured from the MERGE-BASE, not from the live tip of
+  main: a two-dot diff against a main that had advanced 1,514 lines since the branch cut
+  returned 3, accusing this PR of files it never touched (W102). Not a choice, and not the
+  first number the tool offered.
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 2
+  tokens: 900000
+constraints:
+  - "A FALSE POSITIVE HERE COSTS ANOTHER SQUAD ITS MERGE. Every other rule in this lane
+    can only cost a stderr line. That asymmetry drove every design call below: where the
+    safe direction and the strict direction disagreed, the safe direction won and the
+    choice is written into the docstring rather than left implicit."
+  - "The mandate's compatibility rule — 'passes silently on packs with NO appetite: block'
+    — is necessary but NOT sufficient. On disk the ONE real instance is a free-text
+    STRING, not a mapping: it declares no machine-readable ceiling either, so it has
+    nothing to exceed and must ALSO stay silent. A rule that read `appetite` and assumed a
+    mapping would crash or falsely convict on the only instance the corpus has."
+  - "Ex-post / PR-lifetime accounting, NEVER an in-flight breaker — stated in the code and
+    in the doctrine paragraph, not only in the PR body. The linter has no clock and no
+    session-runtime access; it cannot interrupt a live 44h session and must not be written
+    as if it could."
+  - "Unmeasured never convicts. A declared ceiling with no recorded spend NOTICES, reusing
+    check_countable_claims' own 'not verified this run' phrasing so the corpus speaks one
+    language."
+  - "Auto-suspend on breach and the default ceiling VALUES are CARRIED, not decided (lane
+    spec needs-ruling 1 and 3). This rule ships acknowledgment-only and picks no number."
+assumptions:
+  - text:
+      "WHEN rule 14 is applied to every pack in the repo and on every open PR branch, it
+      SHALL convict nothing — no pack declares appetite as a mapping, so any violation
+      would be a false positive."
+    status: verified
+    probe: "53 main packs + 1348 packs across 42 open PRs, 0 exit-code deltas vs origin/main"
+  - text:
+      "WHERE `appetite:` is the free-text STRING that actually exists in the corpus, the
+      rule SHALL stay silent rather than crash or convict."
+    status: verified
+    probe: "check_appetite_acknowledgment against the live brief.yml of ...craft-wave-specs-8455f4c0"
+  - text:
+      "IF a spend value is self-reported dishonestly, THEN this rule cannot tell. It
+      grades a declaration's SHAPE, never its truth — the same honest limit rule 13
+      carries for `status: verified`."
+    status: unverified
+    probe: "none exists: no probe can settle a self-report from inside the linter"
+  - text:
+      "WHILE adoption is 1 pack (this one), the claim that a declared ceiling changes
+      session behaviour rather than merely recording it SHALL be untested."
+    status: unverified
+    probe: "census appetite:/spend: blocks and breach rate across evidence/*/*/ on 2026-10-29"
+acceptance:
+  - text:
+      "WHEN a pack exceeds a declared ceiling with no acknowledgment, the lint SHALL
+      return a VIOLATION and exit non-zero."
+    probe: "scripts/evidence_pack_lint.py --selftest"
+  - text:
+      "WHERE the same overrun carries a non-empty `appetite_exceeded:`, the lint SHALL
+      report and NOT fail — `gear_override`'s posture exactly."
+    probe: "scripts/evidence_pack_lint.py --selftest"
+  - text:
+      "IF a brief carries no `appetite:` block, or carries the free-text STRING shape the
+      corpus actually has, THEN the rule SHALL be silent."
+    probe: "scripts/evidence_pack_lint.py --selftest"
+  - text:
+      "WHEN any of the seventeen mutations of rule 14, its numeric guard and its sanitiser
+      is applied, the corpus SHALL turn red — proving the tests are not vacuous."
+    probe: "pytest scripts/tests/test_evidence_pack_lint.py"
+  - text:
+      "WHILE the rule is live, NO pack on main and no pack on any open PR branch SHALL
+      acquire a new non-zero exit relative to origin/main's linter."
+    probe: "/tmp/e_inflight_sweep.py scripts/evidence_pack_lint.py"
+  - text:
+      "WHERE a new check_* function is censused, guard-conformance SHALL report zero
+      violations, with the registry exhaustive in BOTH directions."
+    probe: "infra/guard-conformance/check_guard_conformance.py"
+consumer_map:
+  - "`scripts/evidence_pack_lint.py` — one new check_ function, one new call site in
+    lint(), module docstring rule 14, plus `_sanitize_notice_text` EXTRACTED from
+    `_acceptance_examples` and now shared by rules 12, 13 and 14."
+  - "`scripts/tests/test_evidence_pack_lint.py` — the sole guilt+innocence corpus rule 14
+    is graded against, and the file guard-conformance resolves its test names in."
+  - "`infra/guard-conformance/registry.json` — one new guards entry, PLUS nine test names
+    that were on disk but unlisted (three carried from PR-2). Census parity 15 -> 16."
+  - "`.claude/skills/modus/SKILL.md` — one STAGE 0 TRIAGE paragraph. A doctrine hot-zone
+    path, which is why the floor was measured rather than assumed."
+  - "RULES 12 AND 13, transitively: they now call the extracted sanitiser. Proven
+    byte-identical across nine shapes, and a mutation deleting the filter kills their
+    tests — so the extraction left them armed, not merely still passing."
+  - "Every future pack under evidence/**/pack.yml — rule 14 grades it, and can FAIL it,
+    from the moment this lands on origin/main."
+risks:
+  - "This is the lane's only convicting rule, so its false positive is the expensive
+    direction. Mitigated by measurement, not by hope: 1,401 packs linted under both
+    linters with zero exit-code deltas, and every numeric edge the refuter could name
+    routed to silence or to a notice rather than to a conviction."
+  - "Raw IEEE `>` on self-reported floats: a spend machine-summed from components can be
+    0.30000000000000004 against a declared 0.3 and convict over 4e-17. DECIDED, not
+    smoothed — picking a tolerance is picking a number, and numbers here are a Zero
+    ruling this rule carries rather than decides. The message prints both values, so it
+    is visible rather than silent. Written into the docstring as a known sharp edge."
+  - "`appetite_exceeded: yes` is the YAML bool True and still convicts. Deliberate: the
+    field mirrors `gear_override`, where the reason IS the artifact, and accepting a bare
+    `yes` would turn this rule into a one-token bypass. The MESSAGE was the defect and is
+    fixed — it now names the type instead of claiming nothing was written."
+  - "Values are self-reported and the linter has no clock. This rule makes an overrun
+    visible after the fact; it does not and cannot prevent one."
+grader: |
+  Blind cross-family refutation by Kimi K3 (kimi-code/k3), which did not build this diff
+  and was given the rule plus the one helper it calls — no tests, no PR framing, no
+  author intent. One dispatch, RC=0, six findings and four categories returned explicitly
+  clean. ALL SIX REPRODUCED ON DISK before disposition (W65). Five fixed, one decided and
+  documented. The most valuable was F4: it proved the ORCHESTRATOR'S OWN GATE had examined
+  that exact input, pinned the wrong half of it, and written a test certifying a bypass as
+  correct behaviour — generator != grader, demonstrated rather than asserted.
+  Final on-disk gate: the orchestrating Opus 5 session, empirically, in the same turn as
+  this pack.
+budget: |
+  1 Sonnet 5 implementer dispatch, 1 refuter dispatch (Kimi K3), 1 orchestrator gate,
+  2 mutation sweeps (17 mutants on the final code), 2 in-flight compatibility sweeps
+  (42 open PRs, 1348 packs each).
+pii:
+  none — this PR touches a CI lint script, its test corpus, the guard-conformance
+  registry, and one doctrine paragraph. No client data anywhere in the diff.
