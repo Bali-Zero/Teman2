@@ -340,6 +340,34 @@ condition, not the same one in disguise — so two fingerprints is **correct beh
 alert log confirms it worked: `0753d92d` paged once as a new condition while `b28513a7` followed its
 own dedup ladder normally.
 
+### The evidence that settles it, and the mechanism that produces the flutter
+
+Two measurements a second refuter (Kimi K3) asked for and I then took myself, both decisive:
+
+1. **In the `00:19` run — the only genuine cron occurrence of the `never loaded` presentation — the
+   string `ExpiredKeyMapError` appears NOWHERE.** The bootstrap did not execute at all. Under the
+   expired key it does execute and logs that error, so this is a different condition co-occurring
+   with the known credential defect, not the credential defect in disguise. (That run also took
+   58.3s against ~27s typical — consistent with a slow or failed fetch of the SDK.)
+2. **The fingerprint is taken from the RETRY, never the first attempt.** `spec_error_summary()`
+   iterates `for r in reversed(t.get("results") or [])`, and the production Playwright config sets
+   `retries: 1`. So with two attempts, the dedup identity is decided by the second — the flakiest
+   single observation available. At `22:54` attempt 1 showed the key error and the retry showed
+   `never loaded`, in the same minute: that proves the OBSERVATION is non-deterministic, and the
+   `reversed()` choice makes the dedup key inherit that non-determinism wholesale.
+
+And the alerting behaved correctly throughout, which is the strongest argument that there is no bug
+here to fix: reading the log's own `tg[p0 …]` lines, across those runs exactly **one** fresh page
+occurred (`00:19`, a new key on first appearance); `22:57` and `01:20` flip-backs were `deduped` by
+the dominant key's own window, and `22:54` never alerted at all because that run exited at the
+missing-spec-file branch — it was one of my mutation runs.
+
+**Requirement this replaces the retracted one with**: before anyone changes the fingerprinting,
+_determine cause identity first_ — and the means is already in the log: check whether the
+`never loaded` runs contain the key error string. They do not. Any future proposal to merge two
+presentations into one dedup identity must clear that bar first, or it will re-mute a genuine
+404 / CSP / DNS event, which is the bug the fingerprint was added to prevent.
+
 ### Two things a future reader should take from that, and they are the real spec content
 
 1. **The log alone cannot answer "same condition or different?"** Nothing in the heartbeat, the
