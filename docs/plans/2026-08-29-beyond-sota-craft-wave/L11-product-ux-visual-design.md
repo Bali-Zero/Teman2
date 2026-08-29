@@ -117,19 +117,19 @@ paths. Codex GPT-5.6 sol (xhigh, blind, no context about Kimi's round) then foun
 to make the script print `OK` while the identity it guards is broken. **All seven were reproduced
 against the shipped token file** by the gating seat before being accepted:
 
-| # | escape | measured |
-| --- | --- | --- |
-| 1 | `"$value"` on the `color` GROUP silences the entire tree | prints `OK — 0 claim(s) … all 16 required-claims-floor path(s) carry >=1 claim` (false in that state), exit 0 |
-| 2 | `duty: "decorative"` on a `color.text.*` token skips the floor | ink at the page ground's own hex, 1.0:1 → exit 0 |
-| 3 | the floor comparison rounds before comparing | true 4.4951 published as `4.50` clears a 4.5 floor |
-| 4 | claim IDENTITY is unpinned, only the count | delete a real pairing + duplicate another → count still 28, exit 0 |
-| 5 | `against` accepts a frozen hex literal | freeze `{color.ground.carta}`, then move that ground to `#000000` → exit 0, every pairing stale |
-| 6 | a bare `NaN` ratio bypasses drift | `nan > tolerance` is False → exit 0 |
-| 7 | `REQUIRED_CLAIM_PATHS` is a frozen list of today's names | a NEW `color.text.*` token with no claim is invisible → exit 0 |
+| #   | escape                                                         | measured                                                                                                      |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| 1   | `"$value"` on the `color` GROUP silences the entire tree       | prints `OK — 0 claim(s) … all 16 required-claims-floor path(s) carry >=1 claim` (false in that state), exit 0 |
+| 2   | `duty: "decorative"` on a `color.text.*` token skips the floor | ink at the page ground's own hex, 1.0:1 → exit 0                                                              |
+| 3   | the floor comparison rounds before comparing                   | true 4.4951 published as `4.50` clears a 4.5 floor                                                            |
+| 4   | claim IDENTITY is unpinned, only the count                     | delete a real pairing + duplicate another → count still 28, exit 0                                            |
+| 5   | `against` accepts a frozen hex literal                         | freeze `{color.ground.carta}`, then move that ground to `#000000` → exit 0, every pairing stale               |
+| 6   | a bare `NaN` ratio bypasses drift                              | `nan > tolerance` is False → exit 0                                                                           |
+| 7   | `REQUIRED_CLAIM_PATHS` is a frozen list of today's names       | a NEW `color.text.*` token with no claim is invisible → exit 0                                                |
 
-**The root cause is single and structural**: *the script validates the claims the file VOLUNTEERS,
+**The root cause is single and structural**: _the script validates the claims the file VOLUNTEERS,
 and never derives from the token tree which claims MUST exist and what each must be measured
-against.* Every row above is that sentence wearing a different hat, which is why patching them
+against._ Every row above is that sentence wearing a different hat, which is why patching them
 one at a time would have been the wrong shape of fix.
 
 **What the follow-up PR must change (this is the spec, not a wish list):**
