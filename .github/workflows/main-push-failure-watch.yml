@@ -285,6 +285,14 @@ on:
       # first run.
       - zantara-core-edit-gate
       - Vercel auto-promote organ tests
+      # Added 2026-08-29 (Handoff H3, token-contrast-tests.yml): ADVISORY job
+      # (continue-on-error: true, deliberately not promoted past that yet — see
+      # the workflow's own header comment) but still a real workflow_run event on
+      # push-to-main, so its absence here would be the same coverage gap as any
+      # other unwatched workflow — check_watcher_coverage.py's contract is
+      # name-set membership against this file's declared name:, not whether the
+      # job is required or advisory.
+      - Token contrast tripwire tests
     types: [completed]
     # 2026-08-20 CI-churn cure — see the matching GOTCHA above for the
     # measurement and the empirical proof this narrows run CREATION, never

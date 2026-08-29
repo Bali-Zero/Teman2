@@ -1,0 +1,154 @@
+name: Token contrast tripwire tests
+
+# Executor for scripts/check_token_contrast.py and its guilt+innocence corpus,
+# shipped in PR #5240 ("Merah Putih DTCG source + a contrast tripwire that
+# recomputes") with NO workflow naming either one. Premise re-verified on
+# `origin/main` before writing this file, not assumed:
+#
+#   git grep -ln "check_token_contrast" origin/main -- .github/
+#
+# returns nothing. `scripts-tests-sweep.yml` collects only `test_*.py` under
+# `continue-on-error: true` and gates nothing (cicatrix-scars.md W108); a
+# corpus that is not the target of a dedicated job is invisible in practice.
+# Same shape and rationale as `vercel-autopromote-tests.yml` (the model this
+# file copies) and `s7-yield-dispatch-tests.yml` — superscar #2, "esiste !=
+# armato", applied to the guards of an organism built to cure exactly that.
+#
+# WHY THIS JOB IS ADVISORY (`continue-on-error: true`), NOT BLOCKING —
+# read before "fixing" this to match the shape of every other job in this
+# directory. `scripts/check_token_contrast.py`'s own module docstring
+# (lines 127-130 on `origin/main` at the time of writing) says, verbatim:
+#
+#   CONSEQUENCE FOR WIRING THIS INTO CI: do NOT promote this script to a
+#   blocking or required check until the root cause above is cured. A gate
+#   that cannot fail is worse than no gate, because it is believed - which
+#   is the exact defect class (superscar #2, "esiste != armato") this
+#   script was written to defend against.
+#
+# `docs/plans/2026-08-29-beyond-sota-craft-wave/L11-product-ux-visual-design.md`
+# lines 196-199 (the "PR-2 FIELD REPORT", written the SAME DAY as PR #5240,
+# by a second blind cross-family round after the first round's fixes had
+# already shipped) names this exact handoff:
+#
+#   Until that lands, the standing instruction is in the script's own
+#   docstring and must be honoured by whoever wires the CI job: do NOT
+#   promote check_token_contrast.py to a blocking or required check. [...]
+#   The blocking-job request in the squad ledger (HANDOFF H3) carries the
+#   same blocker.
+#
+# This workflow IS Handoff H3 (the worktree this file was built in is named
+# `infra-craft-w-h3-token-contrast-ci`). The root cause: the checker
+# validates the claims the token file VOLUNTEERS and never derives, from the
+# token tree itself, which claims MUST exist — seven independently measured
+# ways to make it print OK while the identity it guards is broken follow
+# from that one sentence (full repro of each lives in the script's own
+# docstring and in the field report above). None of the seven defeat the
+# ORDINARY drift check this job's break/restore proof exercised at build
+# time (see the PR/task record for the exact command and exit codes) — they
+# are ways to make the checker silently agree with a BROKEN file, not ways
+# to stop it catching an honest one.
+#
+# WHAT A GREEN RUN HERE DOES PROVE: the script executed against the real
+# token file and found no claim-vs-hex drift, no duty-floor violation among
+# the claims present, and no REQUIRED_CLAIM_PATHS token with zero claims.
+# WHAT IT DOES NOT PROVE: that the claim set is complete, that every `duty`
+# value is legal for its token's category, that no claim was silenced by an
+# ancestor `$value` or an emptied claims list dressed up as "nothing to
+# check", or that `against` binds a living token rather than a frozen hex
+# literal. A green advisory check here must never be read as "contrast
+# duties are enforced" — only as "no drift found in what the file currently
+# volunteers".
+#
+# THE EXACT ONE-LINE CHANGE THAT ARMS THIS JOB: delete the
+# `continue-on-error: true` line below. Do NOT do that until the 6-item
+# follow-up spec in the field report above has landed and cured the root
+# cause:
+#   1. derive the required claim set from the TREE, not a frozen list;
+#   2. a `$value`-bearing group must not terminate the walk, and a run that
+#      collects ZERO claims must be a FAILURE, never an OK;
+#   3. `against` must be an alias, never a literal hex;
+#   4. compare the RAW ratio to the floor before any rounding — WCAG does
+#      not permit rounding up to the threshold;
+#   5. reject non-finite ratios and any `duty` that is not legal for the
+#      token's category;
+#   6. pin claim IDENTITY (the `(token, against)` pair set), not just the
+#      count.
+# `git log --oneline -- scripts/check_token_contrast.py` showed exactly one
+# commit (`a5d409eec`, #5240) at the time this workflow was written — the
+# follow-up has not landed. See `.claude/skills/modus/PENDING-ARMS.md` for
+# the tracked row.
+#
+# `--tolerance` IS NOT PASSED ANYWHERE BELOW, and must never be. It is the
+# gate's own off-switch: the script refuses (`exit 2`) any value outside its
+# bounded [0, MAX_TOLERANCE] range specifically because an unbounded
+# `--tolerance 99` would make every drift claim recompute "clean" regardless
+# of how far a hex has actually moved. A future edit that adds `--tolerance`
+# to "make CI pass" defeats the one capability this job currently has.
+#
+# NO STEP HERE GREPS FOR OR FAILS ON THE SCRIPT'S "NOTICE" LINES. Four are
+# expected on the shipped token file today — `color.boundary.hairline`
+# (duty=decorative, 1.21:1), `color.ground.elevated` against
+# `color.state.whatsapp` (duty=icon-only, 1.98:1), and BOTH
+# `color.retired` claims (duty=decorative, 3.34:1 and 3.62:1) — each stating
+# plainly that no WCAG floor applies to that claim BY DESIGN. They are
+# correct and load-bearing (WCAG 2.2 SC 1.4.11's own carve-out for a
+# non-text, non-identifying component); "fixing" them would mean changing
+# the design to please a linter that was never wrong. A reader tempted to
+# add a NOTICE-count assertion should not — the count is a property of the
+# CURRENT token set, not a contract this job enforces.
+#
+# NO paths:-FILTER TRAP: this job's `pull_request`/`push` blocks share an
+# IDENTICAL `paths:` list (each including this file's own name — editing
+# the workflow re-runs it), which is safe ONLY because this job is
+# deliberately NOT a required branch-protection context (an operator/Zero
+# repo-settings action per CLAUDE.md §13, not performed here). Compare
+# `.github/workflows/token-lint.yml`, which carries NO `paths:` filter at
+# all because IT is meant to become required — a required, path-filtered
+# check never reports on a PR outside its paths and gets stuck at "Expected
+# — waiting for status" forever. If this job is ever promoted past advisory
+# to a required context, its `paths:` filter must be removed FIRST, or the
+# next unrelated PR silently stalls on it exactly that way.
+
+on:
+  pull_request:
+    paths:
+      - "design/tokens/**"
+      - "scripts/check_token_contrast.py"
+      - "scripts/tests/test_check_token_contrast.py"
+      - ".github/workflows/token-contrast-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "design/tokens/**"
+      - "scripts/check_token_contrast.py"
+      - "scripts/tests/test_check_token_contrast.py"
+      - ".github/workflows/token-contrast-tests.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: token-contrast-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+jobs:
+  contrast-tests:
+    name: Token contrast tripwire tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # ADVISORY, not blocking — see the header comment above for the exact
+    # standing instruction this honours (Handoff H3, cicatrix superscar #2)
+    # and the one-line change (delete this key) that arms it, gated on the
+    # 6-item follow-up spec landing first.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: The shipped token file's claims recompute clean (drift, floor, required-claims)
+        run: python3 scripts/check_token_contrast.py
+
+      - name: The checker's own guilt+innocence corpus is green
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check pytest
+          python3 -m pytest scripts/tests/test_check_token_contrast.py -v
