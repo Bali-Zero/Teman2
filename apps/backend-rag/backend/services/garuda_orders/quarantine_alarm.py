@@ -30,10 +30,13 @@ sleeping, and a test that sleeps gets shortened until it proves nothing.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 
-from backend.services.garuda_orders.outbox_alarm import REALERT_SECONDS
+from backend.services.garuda_orders.outbox_alarm import (
+    REALERT_SECONDS,
+    _code_span,
+    _escape_markdown,
+)
 from backend.services.garuda_orders.payment_inbox_watch import QuarantineSnapshot
 
 #: Rows named individually in the page. The snapshot's sample is already
@@ -51,29 +54,13 @@ _MAX_LISTED = 5
 #: dropped, permanently, for a formatting reason having nothing to do with
 #: whether Telegram is reachable. An alarm whose every message fails to parse
 #: is the exact disease this module exists to cure, one layer further out.
-#: Same char set and same two-line reimplementation as
-#: `outbox_handlers._MARKDOWN_ESCAPE_RE`, for the reason stated there: what is
-#: worth importing whole from `telegram_notifier` is its retry loop, not a
-#: one-liner.
-_MARKDOWN_ESCAPE_RE = re.compile(r"([_*`\[])")
-
-
-def _escape_markdown(text: str) -> str:
-    return _MARKDOWN_ESCAPE_RE.sub(r"\\\1", text)
-
-
-def _code_span(value: str) -> str:
-    """Wrap an identifier so Markdown V1 does not re-parse inside it.
-
-    A BACKTICK IN THE VALUE WOULD END THE SPAN EARLY — the same trap
-    `outbox_handlers` records from Kimi K3 on 2026-08-28. Telegram would
-    re-parse the tail and answer 400, and the page would never go out, so the
-    malformed id is precisely what would make itself unseeable. Stripped to a
-    visible marker rather than escaped: inside a code span a backslash is
-    literal, so escaping would print the backslash and still break the span.
-    """
-
-    return "`" + value.replace("`", "<backtick>") + "`"
+#:
+#: `_escape_markdown` / `_code_span` were DEFINED here until 2026-08-29 and now
+#: come from `outbox_alarm`, unchanged. The move is the point: the sibling
+#: alarm shipped with this same defect UNCURED while a working escaper sat two
+#: modules away, so the copies are collapsed into the one module both alarms
+#: already depend on — the same reasoning that made `REALERT_SECONDS` shared
+#: rather than re-declared, "so the two cadences cannot silently drift".
 
 
 def _plural(n: int, word: str) -> str:
