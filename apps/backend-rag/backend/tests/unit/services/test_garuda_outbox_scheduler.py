@@ -645,6 +645,58 @@ async def test_a_delivered_page_DOES_start_the_suppression_window(monkeypatch) -
     )
 
 
+@pytest.mark.parametrize(
+    ("token", "chat_id", "notifier_result", "expected"),
+    [
+        ("tok", "chat", (True, None), True),
+        ("tok", "chat", (False, "HTTP 400 non-retryable: can't parse entities"), False),
+        ("tok", "chat", (False, "connection reset"), False),
+        ("", "chat", None, False),
+        ("tok", "", None, False),
+    ],
+)
+async def test_the_real_sender_reports_delivery_truthfully(
+    monkeypatch, token, chat_id, notifier_result, expected
+) -> None:
+    """RED IF `_send_quarantine_alarm` ever reports success it did not have.
+
+    The two wiring tests above monkeypatch this function OUT, so they prove the
+    scheduler HONOURS its answer but prove nothing about the answer itself — a
+    regression returning True on a Telegram refusal would leave both of them
+    green while an undelivered page silently consumed the suppression hour
+    again (raised by codex-gpt-5.6-sol on the cross-family council). This test
+    is the other half: the real helper, with only the notifier replaced.
+
+    The 400 case is not hypothetical. `send_telegram_message` treats 4xx as
+    NON-retryable, so a page whose text the parser rejects is dropped for good
+    — which is exactly what an unescaped `quarantine_reason` used to cause.
+    """
+
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", token)
+    monkeypatch.setenv("TELEGRAM_OWNER_CHAT_ID", chat_id)
+
+    called: list[str] = []
+
+    async def fake_notifier(client, bot_token, target, text):
+        called.append(text)
+        return notifier_result
+
+    monkeypatch.setattr(
+        "backend.services.wa_copilot.telegram_notifier.send_telegram_message",
+        fake_notifier,
+    )
+
+    delivered = await main_api._send_quarantine_alarm(object(), "GARUDA page body")
+
+    assert delivered is expected
+    if not token or not chat_id:
+        assert called == [], (
+            "the sender tried to transmit with no destination configured — the "
+            "log line is the only record in that state, and it must say so "
+            "rather than pretend a send happened"
+        )
+
+
 async def test_the_sweep_is_skipped_while_the_order_lane_answers_503(monkeypatch) -> None:
     """No `garuda_order_repository` means Xendit is unarmed and no order can
     exist. Sweeping then would be a query per 300s forever for nothing — and,

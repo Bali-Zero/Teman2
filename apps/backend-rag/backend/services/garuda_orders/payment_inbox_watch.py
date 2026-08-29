@@ -30,8 +30,17 @@ and a message claiming otherwise would be false.
 THE HONEST LIMITATION, stated because a reader will otherwise assume
 otherwise: there is no acknowledgement column, so this cannot distinguish
 "a human has dealt with it" from "it scrolled out of the window". The window
-is a proxy for un-acknowledged, not a synonym. Ledgered in PENDING-ARMS
-rather than papered over.
+is a proxy for un-acknowledged, not a synonym. Measured consequence, not an
+estimate: a quarantine that lands and is never handled produces 26 hourly
+pages and then PERMANENT SILENCE, while the row stays unhandled forever.
+
+Ledgered in `.claude/skills/modus/PENDING-ARMS.md` — search that file for
+`REQUIRED FOLLOW-UP: the lifetime digest`. That sentence used to read
+"Ledgered in PENDING-ARMS" with no row behind it, which is worse than saying
+nothing: a false claim of ledgering, in a module whose entire subject is
+state nobody reads, is the disease signing its own alibi. The row exists now;
+if you cannot find it, the claim has rotted again and the row is what must be
+restored, not this sentence deleted.
 
 NO PII. The projection is `provider_event_id`, `order_id`, the closed
 `quarantine_reason` vocabulary and a count — never an applicant name, email,

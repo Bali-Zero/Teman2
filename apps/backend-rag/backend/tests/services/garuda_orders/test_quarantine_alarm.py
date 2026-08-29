@@ -9,6 +9,8 @@ here is one that would go RED if the guarantee it names were removed.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from backend.services.garuda_orders.payment_inbox_watch import (
@@ -82,13 +84,22 @@ def test_the_page_carries_the_ids_and_the_cause_needed_to_act():
 
     msg = QuarantineAlarm().decide(_one("amount_mismatch"), now=0.0)
     assert msg is not None
+    # Identifiers travel inside code spans and the reason is Markdown-escaped,
+    # so the operator reads them verbatim while Telegram's parser survives
+    # them — see `test_the_page_survives_the_markdown_parser_...` below.
     assert "evt_test_0001" in msg
     assert "ord_test_0001" in msg
-    assert "amount_mismatch" in msg
+    assert "amount\\_mismatch" in msg
 
 
 def test_an_unmatched_event_says_so_rather_than_printing_none():
-    """RED IF: a row with no order renders the literal `None`."""
+    """RED IF: a row with no order renders the literal `None`.
+
+    The wording deliberately does NOT say "no matching order". NULL here does
+    not mean unmatchable: `garuda_payment_inbox.order_id` is never written by
+    any path, so it is NULL even when the repository had already found the
+    order. Claiming otherwise would put a false statement in an alert.
+    """
 
     snapshot = _snapshot(
         recent=1,
@@ -101,7 +112,11 @@ def test_an_unmatched_event_says_so_rather_than_printing_none():
     )
     msg = QuarantineAlarm().decide(snapshot, now=0.0)
     assert msg is not None
-    assert "no matching order" in msg
+    assert "no order id on the inbox row" in msg
+    assert "no matching order" not in msg, (
+        "the page asserts the callback was unmatchable; the row simply does "
+        "not carry an order id, which is true of matched quarantines too"
+    )
     assert "None" not in msg
 
 
@@ -259,7 +274,8 @@ def test_reasons_render_sorted():
         now=0.0,
     )
     assert msg is not None
-    assert "amount_mismatch, unmatched_session" in msg
+    # Escaped for the transport; the ORDER is what this test pins.
+    assert "amount\\_mismatch, unmatched\\_session" in msg
 
 
 def test_set_order_never_changes_the_message():
@@ -300,8 +316,17 @@ def test_the_quarantine_page_carries_no_pii():
     below could never exist in the real table — `garuda_payment_inbox.order_id`
     is a FK (284_garuda_orders.sql:277) to `garuda_orders.order_id`, which is
     constrained to `^[A-Za-z0-9_-]{16,128}$` (284:37-38), so it cannot carry
-    `@`, `+` or a space, and `provider_event_id` is Xendit-opaque. So the
-    no-PII guarantee does NOT live here. It lives in the schema and the
+    `@`, `+` or a space.
+
+    `provider_event_id` is the WEAKER of the two and is stated separately
+    rather than waved at (codex-gpt-5.6-sol corrected an earlier draft of this
+    docstring that called it simply "provider-opaque"): the column is TEXT with
+    NO format CHECK, and its content is copied from the provider's signed
+    callback. So nothing in this repository structurally prevents PII-shaped
+    text from arriving in it — what holds is that Xendit sends opaque event
+    ids, which is a property of the provider, not a guarantee we enforce.
+
+    So the no-PII guarantee does NOT live here. It lives in the schema and the
     provider; `garuda_payment_inbox` has no applicant column at all (its
     columns are declared at 284:272-283, plus `quarantine_reason` from 298)
     and the reader never joins to one. What this test actually
@@ -332,3 +357,90 @@ def test_the_quarantine_page_carries_no_pii():
             f"the page contains {applicant_shaped!r} from somewhere other than its "
             f"arguments — it has grown a lookup it must not have"
         )
+
+
+def _reserved_left_unescaped(message: str) -> list[str]:
+    """Markdown V1 reserved chars that would reach Telegram's parser bare.
+
+    Code spans are stripped first because V1 does not re-parse inside them —
+    that is the whole reason identifiers are wrapped rather than escaped.
+    """
+
+    outside_spans = re.sub(r"`[^`]*`", "", message)
+    found: list[str] = []
+    i = 0
+    while i < len(outside_spans):
+        char = outside_spans[i]
+        if char == "\\":
+            i += 2  # escaped: whatever follows is literal
+            continue
+        if char in "_*`[":
+            found.append(char)
+        i += 1
+    return found
+
+
+def test_the_page_survives_the_markdown_parser_the_transport_actually_uses():
+    """RED IF the page stops escaping Markdown. This is a DELIVERY test.
+
+    `send_telegram_message` hardcodes `parse_mode="Markdown"`, and all four
+    `quarantine_reason` values contain an underscore. Unescaped, Telegram
+    answers 400 "can't parse entities" — and that function treats 4xx as NON
+    retryable, so the page is dropped permanently for a formatting reason
+    having nothing to do with whether Telegram is reachable. An alarm whose
+    every message fails to parse is the disease this module exists to cure,
+    one layer further out.
+
+    Found by codex-gpt-5.6-sol on the cross-family council AFTER the alarm had
+    passed a full class-level suite: every test in that suite inspected the
+    string, and not one of them asked whether the transport could parse it.
+    """
+
+    snapshot = _snapshot(
+        recent=2,
+        reasons=frozenset({"amount_mismatch", "session_not_bound"}),
+        sample=(
+            QuarantinedEvent(
+                provider_event_id="evt_xnd_9f2c1a",
+                order_id="ord_01JQ4Z8K_9WLD2",
+                reason="amount_mismatch",
+            ),
+        ),
+    )
+    message = QuarantineAlarm().decide(snapshot, now=0.0)
+    assert message is not None
+    assert _reserved_left_unescaped(message) == [], (
+        "the page carries Markdown control characters the transport will choke "
+        "on — Telegram answers 400, does not retry, and this page is lost"
+    )
+    # `[` is reserved too, so the old `[{order}]` form broke the parse even
+    # once the identifiers inside it were made safe.
+    assert "[" not in message
+
+
+def test_a_backtick_in_an_id_cannot_break_out_of_its_code_span():
+    """RED IF a garbled id can close its own code span.
+
+    `provider_event_id` is TEXT with no format CHECK and is copied from the
+    provider's signed callback, so its content is the provider's choice, not
+    ours. One backtick closes the span early, Telegram re-parses the tail and
+    answers 400 — and the malformed id would be exactly what made the page
+    reporting it unseeable. Mirrors the same defence in
+    `outbox_handlers._render_id`.
+    """
+
+    snapshot = _snapshot(
+        recent=1,
+        reasons=frozenset({"unexpected_state"}),
+        sample=(
+            QuarantinedEvent(
+                provider_event_id="evt_`backtick`_break",
+                order_id="ord_`x`_9WLD2",
+                reason="unexpected_state",
+            ),
+        ),
+    )
+    message = QuarantineAlarm().decide(snapshot, now=0.0)
+    assert message is not None
+    assert _reserved_left_unescaped(message) == []
+    assert "<backtick>" in message, "the anomaly must stay legible, not vanish"

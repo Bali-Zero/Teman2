@@ -30,6 +30,7 @@ sleeping, and a test that sleeps gets shortened until it proves nothing.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 from backend.services.garuda_orders.outbox_alarm import REALERT_SECONDS
@@ -39,6 +40,40 @@ from backend.services.garuda_orders.payment_inbox_watch import QuarantineSnapsho
 #: bounded; this is the second bound, so a burst cannot produce a Telegram
 #: message too long to send.
 _MAX_LISTED = 5
+
+#: THE TRANSPORT PARSES THIS TEXT AS MARKDOWN, AND EVERY REASON WE EMIT WOULD
+#: HAVE BROKEN IT (cross-family seat, codex-gpt-5.6-sol, 2026-08-29).
+#: `send_telegram_message` hardcodes `parse_mode="Markdown"`, whose V1 grammar
+#: reserves ``_ * ` [``. All four `quarantine_reason` values contain an
+#: underscore, and `order_id` is `^[A-Za-z0-9_-]{16,128}$` so it usually does
+#: too. An unmatched underscore makes Telegram answer 400 "can't parse
+#: entities" — and that function treats 4xx as NON-retryable, so the page is
+#: dropped, permanently, for a formatting reason having nothing to do with
+#: whether Telegram is reachable. An alarm whose every message fails to parse
+#: is the exact disease this module exists to cure, one layer further out.
+#: Same char set and same two-line reimplementation as
+#: `outbox_handlers._MARKDOWN_ESCAPE_RE`, for the reason stated there: what is
+#: worth importing whole from `telegram_notifier` is its retry loop, not a
+#: one-liner.
+_MARKDOWN_ESCAPE_RE = re.compile(r"([_*`\[])")
+
+
+def _escape_markdown(text: str) -> str:
+    return _MARKDOWN_ESCAPE_RE.sub(r"\\\1", text)
+
+
+def _code_span(value: str) -> str:
+    """Wrap an identifier so Markdown V1 does not re-parse inside it.
+
+    A BACKTICK IN THE VALUE WOULD END THE SPAN EARLY — the same trap
+    `outbox_handlers` records from Kimi K3 on 2026-08-28. Telegram would
+    re-parse the tail and answer 400, and the page would never go out, so the
+    malformed id is precisely what would make itself unseeable. Stripped to a
+    visible marker rather than escaped: inside a code span a backslash is
+    literal, so escaping would print the backslash and still break the span.
+    """
+
+    return "`" + value.replace("`", "<backtick>") + "`"
 
 
 def _plural(n: int, word: str) -> str:
@@ -148,11 +183,32 @@ class QuarantineAlarm:
             # Sorted so the same condition always renders identically — an alarm
             # whose text wobbles between identical states defeats every
             # downstream dedup, including a human's.
-            lines.append("Reason(s): " + ", ".join(sorted(reasons)))
+            lines.append(
+                "Reason(s): " + ", ".join(_escape_markdown(r) for r in sorted(reasons))
+            )
         listed = snapshot.sample[:_MAX_LISTED]
         for event in listed:
-            order = event.order_id or "no matching order"
-            lines.append(f"  {event.provider_event_id} [{order}] {event.reason}")
+            # NO SQUARE BRACKETS around the order any more: `[` is reserved by
+            # Markdown V1 too, so the old `[{order}]` form broke the parse on
+            # every single page even after the ids themselves were made safe.
+            # NOT "no matching order": NULL here does not mean the callback was
+            # unmatchable. `garuda_payment_inbox.order_id` is never written —
+            # not by the INSERT, not by `_quarantine` — so it is NULL even for
+            # amount_mismatch and unexpected_state, where the repository HAD
+            # already found the order (codex-gpt-5.6-sol, cross-family council).
+            # Saying "no matching order" would state something false in an
+            # alert, which is the defect this PR was opened to cure. Until the
+            # writer records it (ledgered, REQUIRED), the page says only what
+            # is true: this row does not carry one.
+            order = (
+                _code_span(event.order_id)
+                if event.order_id
+                else "no order id on the inbox row"
+            )
+            lines.append(
+                f"  {_code_span(event.provider_event_id)} order {order} "
+                f"— {_escape_markdown(event.reason)}"
+            )
         if recent > len(listed):
             lines.append(f"  ... and {recent - len(listed)} more")
         if snapshot.lifetime > recent:
