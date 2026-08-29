@@ -185,15 +185,50 @@ def test_innocence_timeline_change_is_a_note_not_a_gap(tmp_path):
     assert rc2 == EXIT_OK
 
 
-def test_innocence_stats_reset_voids_deltas_instead_of_reporting_a_stall(tmp_path):
-    """A counter reset makes archived_count go BACKWARDS. That is not a fault."""
+def test_a_stats_reset_is_CANNOT_VERIFY_not_a_stall_and_not_a_clean_run(tmp_path):
+    """A counter reset makes archived_count go BACKWARDS. That is not a FAULT — and it
+    is not a CLEAN RUN either, which is what this test used to assert.
+
+    Two cross-family refuters (kimi-code/k3, codex gpt-5.6-sol) independently attacked
+    the position this file previously encoded. Codex reproduced the scenario: baseline
+    count=100/last=...064, a reset, then count=1/last=...067 while ...065 and ...066 are
+    genuinely missing from the archive. Every delta check skips, the failure fields were
+    wiped so ARCHIVER_FAILING sees nothing, the lag reads 1 — and the probe answered OK.
+    The reset erased the evidence the judgment rests on, so the only honest verdict is
+    "I could not verify": exit 4, and an alert. Three of these in a row page at p0,
+    because a cluster whose archiver stats are reset before every run would otherwise
+    re-baseline politely forever.
+    """
     rc, state = run_cli(tmp_path, obs())
     assert rc == EXIT_OK
     rc2, _ = run_cli(tmp_path, obs(archived_count=3, failed_count=0,
                                    stats_reset="2026-08-29 05:00:00+00",
                                    current_wal_lsn=lsn_at(120),
                                    last_archived_wal=seg_name(119)), state=state)
-    assert rc2 == EXIT_OK
+    assert rc2 == EXIT_CANNOT_VERIFY, "a stats reset must never read as a clean run"
+
+
+def test_a_stats_reset_that_repeats_escalates_from_digest_to_p0(tmp_path, monkeypatch):
+    """The escalation is the half that makes the CANNOT_VERIFY verdict load-bearing.
+
+    Without it, a permanently-resetting cluster answers "cannot verify" at digest tier
+    every night forever and nobody is ever paged — quieter than the RED it is standing
+    in for. A probe that cannot see must get LOUDER (superscar #2).
+    """
+    sent: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        probe, "send_alert",
+        lambda text, condition, tier, dry_run=False: (sent.append((condition, tier)), True)[1])
+    state = tmp_path / "state.json"
+    for i in range(4):
+        src = tmp_path / f"o{i}.json"
+        src.write_text(json.dumps(obs(archived_count=3 + i,
+                                      stats_reset=f"2026-08-2{i + 5} 05:00:00+00",
+                                      current_wal_lsn=lsn_at(120 + i),
+                                      last_archived_wal=seg_name(119 + i))))
+        probe.main(["--from-json", str(src), "--state-file", str(state)])
+    tiers = [tier for _, tier in sent]
+    assert tiers[1:] == ["digest", "digest", "p0"], tiers
 
 
 # ---------------------------------------------------------------------------
@@ -332,6 +367,13 @@ def test_guilt_every_declared_red_code_is_reachable():
         obs(current_wal_lsn=lsn_at(103)),
         obs(current_wal_lsn=lsn_at(100 + probe.MAX_LAG_SEGMENTS + 2)),
         obs(archived_count=1002, last_archived_wal=seg_name(110), current_wal_lsn=lsn_at(111)),
+        # NOTHING_ARCHIVED: archiving is ON, the counter is 0 and no segment was ever
+        # named, while the database has written well past its first segment. This is the
+        # post-reset shape of total archiving failure, and it is the code whose ABSENCE
+        # from the severity ordering made `classify` raise StopIteration — a RED that
+        # crashed the probe instead of paging. This row is why that cannot recur.
+        obs(archived_count=0, last_archived_wal="", last_archived_time=None,
+            stats_reset="2026-08-29 05:00:00+00", current_wal_lsn=lsn_at(160)),
     ):
         v = probe.classify(prev, probe.sanitize_observation(cur))
         produced.update(f.code for f in v.findings)
@@ -586,7 +628,11 @@ def test_a_run_whose_checks_were_voided_still_says_so_out_loud(tmp_path, monkeyp
 
     second = tmp_path / "second.json"
     second.write_text(json.dumps(obs(**cur)))
-    assert probe.main(["--from-json", str(second), "--state-file", str(state)]) == EXIT_OK
+    rc = probe.main(["--from-json", str(second), "--state-file", str(state)])
+    # STATS_RESET erases the evidence rather than voiding one check, so it now exits
+    # CANNOT_VERIFY; the others void a subordinate check and stay OK. Either way the
+    # run must SPEAK — that is what this test is for.
+    assert rc in (EXIT_OK, EXIT_CANNOT_VERIFY)
     assert sent, f"{voided} voided a check and said nothing"
     assert sent[-1][1] == "digest"
     assert voided in sent[-1][2]
@@ -619,10 +665,20 @@ def test_counters_falling_without_a_stats_reset_is_not_silent():
     (dict(), dict(current_wal_lsn="")),                       # none on the older side
 ])
 def test_a_stall_check_that_cannot_run_says_so(cur, then):
+    """Unreadable WAL position = the PRIMARY continuity check did not run.
+
+    That is a narrower code than CHECKS_UNRUNNABLE and it escalates, because nothing is
+    left answering the question the probe exists to ask. Contrast
+    `test_a_backup_or_history_filename_does_not_crash_or_falsely_accuse`: there the
+    filename-based checks void but the stall check still reads LSN and counter, so the
+    run stays OK. Escalating that one too would page p0 three nights after every base
+    backup, and an alert that cries wolf on a routine event is how the real one gets
+    ignored.
+    """
     v = probe.classify(probe.sanitize_observation(obs(**then)),
                        probe.sanitize_observation(obs(**cur)))
-    assert v.exit_code == EXIT_OK
-    assert probe.V_CHECKS_UNRUNNABLE in {n.code for n in v.notes}
+    assert v.exit_code == EXIT_CANNOT_VERIFY
+    assert probe.V_CONTINUITY_UNCHECKED in {n.code for n in v.notes}
 
 
 def test_a_non_segment_on_the_OLDER_side_also_says_so():
@@ -661,6 +717,13 @@ def test_every_voiding_note_is_reachable():
         (prev, obs(last_archived_wal="00000002.history", archived_count=1010)),
         (probe.sanitize_observation(obs(current_wal_lsn="")), obs()),
         (prev, obs(failed_count=4, last_failed_time="2026-08-28 00:00:00+00")),
+        # LSN_WENT_BACKWARDS: a PITR or a restart from an older checkpoint. `written`
+        # goes negative, so the stall arithmetic cannot run against it. Declared as a
+        # code but produced by NOTHING until a refuter pointed at it — a note nobody can
+        # trigger is decoration, which is exactly what this test is here to forbid.
+        (prev, obs(current_wal_lsn=lsn_at(40), archived_count=1000)),
+        # CONTINUITY_UNCHECKED via malformed counters in a hand-edited baseline.
+        ({**prev, "archived_count": "1000"}, obs()),
     ):
         v = probe.classify(then, probe.sanitize_observation(cur))
         produced.update(n.code for n in v.notes)
@@ -859,23 +922,30 @@ def test_the_query_binds_each_json_key_to_its_real_column_not_just_the_key_name(
 
 
 def test_detection_latency_at_one_segment_per_run_is_pinned():
-    """The undeclared blind window, turned into a number the code must keep.
+    """The blind window, turned into a number the code must keep.
 
-    Archiving frozen, the database writing exactly ONE segment between runs:
-    ARCHIVING_STALLED needs >= 2 segments of pressure and sees 1, so it never fires;
-    ARCHIVING_LAGGING only crosses when lag > MAX_LAG_SEGMENTS. Neither threshold is
-    wrong alone — the gap is the COMPOSITION, and nothing stated it until the gate asked.
-    Pinned here so a future tuning of either constant cannot move the latency in silence.
+    Archiving frozen, the database writing exactly ONE segment between runs. This test
+    ITSELF carried a stale claim for one round: it drove `classify` without threading the
+    carried pressure back in, so it measured a probe that had already been replaced and
+    stayed green while pinning the OLD latency of 7. A test that does not feed the code
+    what production feeds it measures a world that no longer exists — the same class of
+    error as the prose it is here to police.
+
+    With the deficit accumulating across runs, one segment per run crosses
+    STALL_SEGMENTS on the second run. Pinned so a future tuning of either constant
+    cannot move the latency in silence.
     """
     archived_at = 100
     prev = probe.sanitize_observation(obs(last_archived_wal=seg_name(archived_at),
                                           current_wal_lsn=lsn_at(archived_at + 1)))
     greens = 0
+    carried = 0
     for run in range(1, 30):
         cur = probe.sanitize_observation(
             obs(last_archived_wal=seg_name(archived_at),          # nothing ever archived
                 current_wal_lsn=lsn_at(archived_at + 1 + run)))   # one more segment/run
-        v = probe.classify(prev, cur)
+        v = probe.classify(prev, cur, carried_pressure=carried)
+        carried = v.pressure
         if v.exit_code != EXIT_OK:
             break
         greens += 1
@@ -883,9 +953,203 @@ def test_detection_latency_at_one_segment_per_run_is_pinned():
     else:                                                          # pragma: no cover
         pytest.fail("archiving was frozen for 29 runs and the probe never went red")
 
-    assert greens == 7, (
+    assert greens == 1, (
         f"detection latency changed: {greens} green runs before the first RED. The "
-        "docstring's §WHAT THIS PROBE CANNOT SEE entry 4 states 7 green then RED on run 8 "
+        "docstring's §WHAT THIS PROBE CANNOT SEE entry 4 states 1 green then RED on run 2 "
         "— update BOTH or neither."
     )
-    assert v.verdict == probe.V_ARCHIVING_LAGGING
+    assert v.verdict == probe.V_ARCHIVING_STALLED
+
+
+# ---------------------------------------------------------------------------
+# Council round 2026-08-29 (kimi-code/k3 + codex gpt-5.6-sol, refute-mandate).
+# Every test below reproduces a state in which the probe answered GREEN, or
+# crashed, while the WAL chain was broken. They are the seats' findings turned
+# into guards, so the same false green cannot come back quietly.
+# ---------------------------------------------------------------------------
+
+def test_the_severity_ordering_covers_every_RED_code():
+    """STRUCTURAL. The ordering and the membership set were two lists, and they diverged.
+
+    `RED_FINDINGS` gained NOTHING_ARCHIVED; the ordering list inside `classify` did not.
+    `next(c for c in order ...)` then raised StopIteration on exactly the total-archiving-
+    failure state the code had just been taught to detect: no p0, no baseline advance, a
+    traceback into a log nobody reads. Reproduced by codex gpt-5.6-sol before the fix.
+
+    Deriving one from the other makes the divergence unrepresentable — this test pins
+    that they stay derived, so a future edit cannot re-split them.
+    """
+    assert set(probe.RED_SEVERITY_ORDER) == set(probe.RED_FINDINGS)
+    assert len(probe.RED_SEVERITY_ORDER) == len(probe.RED_FINDINGS), "duplicate in ordering"
+
+
+def test_guilt_total_archiving_failure_after_a_stats_reset_is_RED_not_a_crash(tmp_path,
+                                                                             monkeypatch):
+    """THE 2026-08-09 SHAPE, one layer deeper: broken archiver AND wiped statistics.
+
+    After `pg_stat_reset_shared('archiver')` there is no failure to see, no segment to
+    index and no delta to compare. Every relative check is blind by construction. The
+    only thing left that can still speak is an ABSOLUTE one: archiving is enabled, the
+    database has written past its first segment, and the archiver has shipped nothing at
+    all. Without it the cluster reports clean forever while holding no restorable chain.
+    """
+    sent: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        probe, "send_alert",
+        lambda text, condition, tier, dry_run=False: (sent.append((condition, tier)), True)[1])
+    state = tmp_path / "state.json"
+    src = tmp_path / "o.json"
+    src.write_text(json.dumps(obs(archived_count=0, last_archived_wal="",
+                                  last_archived_time=None,
+                                  stats_reset="2026-08-29 05:00:00+00",
+                                  current_wal_lsn=lsn_at(160))))
+    assert probe.main(["--from-json", str(src), "--state-file", str(state)]) == EXIT_RED
+    assert sent and sent[-1] == ("nothing_archived", "p0")
+
+
+def test_innocence_a_brand_new_cluster_inside_its_first_segment_is_not_accused():
+    """The counterpart to the test above. A cluster that has genuinely not filled its
+    first WAL segment has archived nothing for an innocent reason, and calling that a
+    total archiving failure would be a false RED on every fresh install."""
+    v = probe.classify(None, probe.sanitize_observation(
+        obs(archived_count=0, last_archived_wal="", last_archived_time=None,
+            current_wal_lsn="0/00A00000")))
+    assert probe.V_NOTHING_ARCHIVED not in {f.code for f in v.findings}
+    assert v.exit_code == EXIT_OK
+
+
+def test_guilt_an_archiver_dead_on_a_quiet_database_goes_RED_instead_of_green_forever():
+    """The widest hole codex gpt-5.6-sol found, and the one closest to the founding scar.
+
+    The stall check compared a SINGLE interval and the baseline advanced every run, so
+    write pressure never accumulated. An archiver that died on a database writing one
+    segment a night never reached the 2-segment floor — not once, ever. It reported
+    clean indefinitely while the chain was already broken.
+
+    Carrying the shortfall in the state file is the fix: run after run the deficit adds
+    up until it crosses the floor. This test walks that timeline one segment at a time
+    and fails if the probe is still green when the deficit has passed it.
+    """
+    prev = probe.sanitize_observation(obs(archived_count=1000,
+                                          last_archived_wal=seg_name(100),
+                                          current_wal_lsn=lsn_at(101)))
+    carried = 0
+    verdicts = []
+    for n in range(1, 5):
+        cur = probe.sanitize_observation(obs(archived_count=1000,          # never moves
+                                             last_archived_wal=seg_name(100),
+                                             current_wal_lsn=lsn_at(101 + n)))
+        v = probe.classify(prev, cur, carried_pressure=carried)
+        carried = v.pressure
+        verdicts.append(v)
+        prev = cur                       # the baseline advances, as it does in production
+    # One segment per run: green on the first (pressure 1 < floor 2), red from the
+    # second onward. Before the accumulator, EVERY one of these was green.
+    assert verdicts[0].exit_code == EXIT_OK
+    assert all(v.verdict == probe.V_ARCHIVING_STALLED for v in verdicts[1:]), \
+        [v.verdict for v in verdicts]
+
+
+def test_guilt_an_archiver_shipping_half_of_what_is_written_is_caught():
+    """`count_delta == 0` gated the whole stall check, so an archiver falling
+    permanently behind — 2 segments written, 1 shipped, every single run — disarmed it
+    by shipping ANYTHING. The deficit is what matters, not whether it is total."""
+    prev = probe.sanitize_observation(obs(archived_count=1000,
+                                          last_archived_wal=seg_name(100),
+                                          current_wal_lsn=lsn_at(101)))
+    carried = 0
+    for n in range(1, 4):
+        cur = probe.sanitize_observation(obs(archived_count=1000 + n,       # ships 1
+                                             last_archived_wal=seg_name(100 + n),
+                                             current_wal_lsn=lsn_at(101 + 2 * n)))  # writes 2
+        v = probe.classify(prev, cur, carried_pressure=carried)
+        carried = v.pressure
+        prev = cur
+    assert v.verdict == probe.V_ARCHIVING_STALLED, v.as_dict()
+
+
+def test_innocence_an_archiver_that_catches_up_repays_its_deficit():
+    """The accumulator must be repayable, or the first slow night poisons every night
+    after it and the probe becomes a stuck alarm — which is a broken alarm."""
+    prev = probe.sanitize_observation(obs(archived_count=1000,
+                                          last_archived_wal=seg_name(100),
+                                          current_wal_lsn=lsn_at(101)))
+    behind = probe.sanitize_observation(obs(archived_count=1000,
+                                            last_archived_wal=seg_name(100),
+                                            current_wal_lsn=lsn_at(102)))
+    v1 = probe.classify(prev, behind)
+    assert v1.pressure == 1 and v1.exit_code == EXIT_OK
+    caught_up = probe.sanitize_observation(obs(archived_count=1003,
+                                               last_archived_wal=seg_name(103),
+                                               current_wal_lsn=lsn_at(103)))
+    v2 = probe.classify(behind, caught_up, carried_pressure=v1.pressure)
+    assert v2.pressure == 0, "a caught-up archiver must clear the carried deficit"
+    assert v2.exit_code == EXIT_OK
+
+
+def test_a_RED_the_gateway_REFUSED_to_send_is_reported_as_unreported(tmp_path,
+                                                                    monkeypatch):
+    """C1 proved the CALL, not the DELIVERY — found independently by both council seats.
+
+    `send_alert` already returns False when the gateway's own verdict says the message
+    did not leave the machine, and `run` threw that answer away: the probe could compute
+    a perfect p0, fail to deliver it, write a fresh baseline and exit 1 into a heartbeat
+    nobody reads. Every C1 test monkeypatched `send_alert` with a lambda returning True
+    unconditionally, so all of them passed against a gateway that refused everything.
+
+    The probe cannot make Telegram work. It CAN refuse to pretend it was reported.
+    """
+    monkeypatch.setattr(probe, "send_alert",
+                        lambda text, condition, tier, dry_run=False: False)
+    state = tmp_path / "state.json"
+    src = tmp_path / "o.json"
+    src.write_text(json.dumps(obs(archive_mode="off")))
+    rc = probe.main(["--from-json", str(src), "--state-file", str(state), "--json"])
+    assert rc == EXIT_RED
+    saved = json.loads(state.read_text())
+    assert saved["last_alert_delivered"] is False
+
+
+def test_a_malformed_state_file_does_not_crash_or_read_as_a_clean_run(tmp_path):
+    """C2 validated the outer container only (codex gpt-5.6-sol).
+
+    `{"previous": []}` parsed as STATE_OK and then `previous.get(...)` raised
+    AttributeError; a `first_run_count` of `"three"` crashed `int()`. A reliability probe
+    that dies because its OWN bookkeeping file is malformed is a probe that stopped
+    watching, and launchd will happily report the failure as a single non-zero exit in a
+    log nobody reads.
+    """
+    state = tmp_path / "state.json"
+    src = tmp_path / "o.json"
+    src.write_text(json.dumps(obs()))
+    for broken in ('{"previous": [], "first_run_count": "three"}',
+                   '{"previous": "nonsense", "cannot_verify_streak": null}',
+                   '{"previous": {"archived_count": "1000"}}'):
+        state.write_text(broken)
+        rc = probe.main(["--from-json", str(src), "--state-file", str(state)])
+        assert rc in (EXIT_OK, EXIT_CANNOT_VERIFY), broken
+
+
+def test_a_WAL_position_that_moved_backwards_is_not_silent():
+    """A PITR or a restart from an older checkpoint makes `written` negative. It failed
+    the threshold comparison and produced NOTHING — green silence at the moment the WAL
+    chain deserves the most attention. TIMELINE_CHANGED does not cover it: with a broken
+    archiver `last_archived_wal` still carries the old timeline."""
+    v = probe.classify(
+        probe.sanitize_observation(obs(archived_count=1000, last_archived_wal=seg_name(199),
+                                       current_wal_lsn=lsn_at(200))),
+        probe.sanitize_observation(obs(archived_count=1000, last_archived_wal=seg_name(149),
+                                       current_wal_lsn=lsn_at(150))))
+    assert probe.V_LSN_WENT_BACKWARDS in {n.code for n in v.notes}
+    # No RED fires here — the lag is one segment and the counter is intact — so without
+    # the escalation this run would have exited 0 in silence.
+    assert v.exit_code == EXIT_CANNOT_VERIFY, v.as_dict()
+
+
+def test_an_unrecognised_last_archived_wal_is_not_described_as_a_backup_file():
+    """The note asserted a benign cause — "a .backup or .history file" — for ANY value it
+    could not parse, including a corrupt or truncated one. A message that explains away
+    what it does not understand teaches its reader to dismiss it."""
+    v = probe.classify(None, probe.sanitize_observation(obs(last_archived_wal="GARBAGE")))
+    note = next(n for n in v.notes if n.code == probe.V_NON_SEGMENT_LAST_ARCHIVED)
+    assert "cannot tell those apart" in note.detail

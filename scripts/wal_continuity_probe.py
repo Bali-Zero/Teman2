@@ -110,21 +110,29 @@ gets trusted past them (all three raised by a cross-family refuter before this s
    which is correct for this cluster (we ask the primary) but would be wrong for a standby
    legitimately running `archive_mode = always`. If such a standby is ever archived from,
    this probe needs a second mode, not a loosened check.
-4. **A SEVEN-RUN BLIND WINDOW at exactly one segment per run.** Neither threshold is
-   wrong alone; what was missing was the composition, so it is stated here as a number.
-   With archiving frozen and the database writing exactly ONE segment between runs:
-   ARCHIVING_STALLED needs `written >= STALL_SEGMENTS` (2) and sees 1, so it never fires;
-   ARCHIVING_LAGGING fires when `lag > MAX_LAG_SEGMENTS` (8), and lag grows by 1 per run
-   from its floor of 1 — so **runs 1 through 7 are GREEN and run 8 is the first RED**
-   (measured, not reasoned: the first draft of this paragraph said 8 green runs and the
-   pinning test below said 7, which is the third time in this file's history that prose
-   and measurement diverged and the measurement won). SEQUENCE_GAP stays quiet too,
-   because nothing is being archived for the filename to advance. So the worst-case
-   detection latency for a total archiving stop is EIGHT runs — eight nights on the
-   daily schedule — and it is worst
-   exactly on a low-write database, where the WAL matters least per unit time but the
-   blind window is longest. `test_detection_latency_at_one_segment_per_run_is_pinned`
-   holds this number so a future threshold change cannot move it silently.
+4. **A TWO-RUN BLIND WINDOW at exactly one segment per run.** With archiving frozen and
+   the database writing exactly ONE segment between runs, the carried deficit reaches
+   STALL_SEGMENTS (2) on the second run: **run 1 is GREEN and run 2 is the first RED**
+   (measured by `test_detection_latency_at_one_segment_per_run_is_pinned`, not reasoned).
+   This paragraph previously declared SEVEN green runs, which was true of an earlier
+   design and is the fourth time in this file's history that prose and measurement
+   diverged — the measurement won each time, and on this round the pinning TEST was
+   stale too: it drove `classify` without threading the carried pressure back, so it
+   measured a probe that no longer existed and stayed green while holding the old number.
+5. **The deficit can be repaid by a file that is not a data segment.** `.backup` and
+   `.history` archives increment `archived_count`, so they can pay down carried pressure
+   they did not earn. The inflation is bounded — one per base backup, one per timeline
+   switch — which is why STALL_SEGMENTS is small; it is not zero.
+6. **A cluster whose archiver statistics are reset before every run is never GREEN, but
+   it is never RED for the right reason either.** It reports CANNOT_VERIFY, escalating to
+   p0 on the third consecutive run. That is the honest answer — the evidence is gone —
+   but the probe cannot distinguish "someone resets these stats" from "archiving broke
+   and the stats were reset". Only the bucket-side listing in (1) can.
+7. **Deleting the state file resets the FIRST_RUN counter with it.** A wipe before every
+   run therefore produces FIRST_RUN every run: not silent (it alerts at digest, under a
+   stable dedup key), but not escalating either, because the counter that would notice
+   the repetition lives inside the file being deleted. Detecting that needs a second,
+   independent durable location — not built, declared.
 
 EXIT CODES
     0  clean (or first-run baseline written, with no absolute finding)
@@ -218,6 +226,10 @@ V_COUNTERS_WENT_BACKWARDS = "COUNTERS_WENT_BACKWARDS"
 V_CHECKS_UNRUNNABLE = "CHECKS_UNRUNNABLE"
 V_BASELINE_LOST = "BASELINE_LOST"
 V_BASELINE_RECURRED = "BASELINE_RECURRED"
+V_NOTHING_ARCHIVED = "NOTHING_ARCHIVED"
+V_LSN_WENT_BACKWARDS = "LSN_WENT_BACKWARDS"
+V_ALERT_UNDELIVERED = "ALERT_UNDELIVERED"
+V_CONTINUITY_UNCHECKED = "CONTINUITY_UNCHECKED"
 
 # How the baseline file itself came back — see load_state.
 STATE_OK = "ok"
@@ -228,7 +240,8 @@ STATE_UNREADABLE = "unreadable"
 # of them leaves a window nothing looked at — so they alert (digest), never in silence.
 VOIDING_NOTES = frozenset({
     V_TIMELINE_CHANGED, V_STATS_RESET, V_NON_SEGMENT_LAST_ARCHIVED, V_FAILURES_RECOVERED,
-    V_COUNTERS_WENT_BACKWARDS, V_CHECKS_UNRUNNABLE,
+    V_COUNTERS_WENT_BACKWARDS, V_CHECKS_UNRUNNABLE, V_LSN_WENT_BACKWARDS,
+    V_CONTINUITY_UNCHECKED,
     # FIRST_RUN belongs here, and its ABSENCE was a silent mute switch. An earlier
     # revision excluded it on the reasoning "it is not a voided check, it is the absence
     # of a baseline" — and a test enshrined that exclusion, so the docstring's claim that
@@ -240,14 +253,48 @@ VOIDING_NOTES = frozenset({
     V_FIRST_RUN, V_BASELINE_LOST, V_BASELINE_RECURRED,
 })
 
-RED_FINDINGS = frozenset({
-    V_ARCHIVING_DISABLED,
-    V_ARCHIVER_FAILING,
-    V_FAILURES_ACCUMULATING,
-    V_ARCHIVING_STALLED,
-    V_ARCHIVING_LAGGING,
-    V_SEQUENCE_GAP,
+# The RED codes, WORST FIRST. This tuple is the single source of both "is this red?"
+# and "which one names the dedup key" — deliberately ONE list, because they were two.
+# A cross-family refuter (codex gpt-5.6-sol) reproduced the consequence of the split:
+# NOTHING_ARCHIVED was added to the membership set and NOT to the ordering list inside
+# `classify`, so the `next(...)` that picks the worst raised StopIteration — the probe
+# CRASHED on precisely the total-archiving-failure state it had just been taught to
+# detect. No p0, no baseline advance, and the "every RED pages at p0" test passed
+# because it enumerated the same stale list. Deriving one from the other makes that
+# class of divergence unrepresentable.
+# Notes that do not merely void ONE arithmetic check but erase the EVIDENCE the whole
+# judgment rests on. Reported by a cross-family refuter (codex gpt-5.6-sol) with a
+# reproduced scenario: baseline count=100/last=...064, then a stats reset, then
+# count=1/last=...067 while ...065 and ...066 are genuinely missing from the archive.
+# Every delta check is skipped, the failure fields were wiped so ARCHIVER_FAILING sees
+# nothing, the lag is 1 — and the probe answered OK. That OK is a claim the probe is not
+# entitled to make: the correct verdict is "I could not verify", which is exit 4 and an
+# alert, not exit 0 and silence. RED still wins over it — an absolute finding survives a
+# reset and must page.
+EVIDENCE_ERASING_NOTES = frozenset({
+    V_STATS_RESET,
+    V_CONTINUITY_UNCHECKED,
+    V_LSN_WENT_BACKWARDS,
 })
+# Deliberately NOT in that set: V_CHECKS_UNRUNNABLE and V_NON_SEGMENT_LAST_ARCHIVED.
+# A `.backup` or `.history` filename in last_archived_wal voids the lag and sequence-gap
+# arithmetic, but the accumulating stall check reads the LSN and the counter, not the
+# filename, so the primary continuity question is still ANSWERED. Escalating those to
+# CANNOT_VERIFY would page p0 three nights after every base backup on a perfectly healthy
+# cluster, and an alert that cries wolf on a routine event is how the real one gets
+# ignored. V_CONTINUITY_UNCHECKED is the narrower code that means the stall check itself
+# could not run — THAT is unverifiable, and it is what escalates.
+
+RED_SEVERITY_ORDER = (
+    V_ARCHIVING_DISABLED,
+    V_NOTHING_ARCHIVED,
+    V_SEQUENCE_GAP,
+    V_ARCHIVER_FAILING,
+    V_ARCHIVING_STALLED,
+    V_FAILURES_ACCUMULATING,
+    V_ARCHIVING_LAGGING,
+)
+RED_FINDINGS = frozenset(RED_SEVERITY_ORDER)
 
 # Fields that must be present for the observation to count as a real read. If NONE of
 # them arrived we did not read archiver state — we read something else, or nothing.
@@ -357,6 +404,10 @@ class Verdict:
     findings: list[Finding] = field(default_factory=list)
     notes: list[Finding] = field(default_factory=list)
     exit_code: int = EXIT_OK
+    # Segments the database wrote that the archiver has not shipped, CARRIED across
+    # runs. Persisted by `run` and handed back to the next `classify`; without it a
+    # low-write database can never accumulate enough pressure to prove a stall.
+    pressure: int = 0
 
     @property
     def is_red(self) -> bool:
@@ -368,6 +419,7 @@ class Verdict:
             "exit_code": self.exit_code,
             "findings": [{"code": f.code, "detail": f.detail} for f in self.findings],
             "notes": [{"code": n.code, "detail": n.detail} for n in self.notes],
+            "carried_pressure_segments": self.pressure,
         }
 
 
@@ -404,7 +456,8 @@ def observation_is_blind(obs: dict) -> bool:
 
 
 def classify(previous: dict | None, current: dict, now: datetime | None = None,
-             state_status: str = STATE_OK, first_run_count: int = 0) -> Verdict:
+             state_status: str = STATE_OK, first_run_count: int = 0,
+             carried_pressure: int = 0) -> Verdict:
     """The whole judgment, as a pure function. Every RED path is reachable from here.
 
     Order matters only for which code names the dedup key; ALL findings are collected
@@ -413,6 +466,11 @@ def classify(previous: dict | None, current: dict, now: datetime | None = None,
     now = now or datetime.now(timezone.utc)
     findings: list[Finding] = []
     notes: list[Finding] = []
+    # Starts at what the last run carried; only the stall branch below moves it. Every
+    # `return` hands it back, so a path that could not measure pressure PRESERVES the
+    # deficit instead of silently forgiving it.
+    carried_pressure = max(0, carried_pressure)
+    new_pressure = carried_pressure
 
     seg_size = current.get("wal_segment_size") or 0
 
@@ -467,6 +525,42 @@ def classify(previous: dict | None, current: dict, now: datetime | None = None,
     # so the lag and sequence checks cannot run against them. That skip must be VISIBLE —
     # a check that quietly stops checking is how this organism goes blind (superscar #2).
     last_wal = current.get("last_archived_wal") or ""
+
+    # K1 — the hole a cross-family refuter (kimi-code/k3) opened in my own recorded
+    # position. I had argued a `pg_stat_reset_shared('archiver')` only makes the probe
+    # DELTA-blind, because "the absolute checks still run through a reset". That is
+    # FALSE, and the refuter was right: the reset clears `last_archived_wal`,
+    # `last_failed_wal` and both timestamps as well as the counters. So afterwards
+    # ARCHIVER_FAILING has no failure to see, ARCHIVING_LAGGING has no segment to index
+    # against (`arch_seg` is None), and the branch below only spoke when `last_wal` was
+    # NON-empty — so an EMPTY one said nothing at all. With a genuinely broken archiver
+    # nothing ever repopulates those fields, and on a low-write database ARCHIVING_STALLED
+    # never reaches its 2-segment floor either. Total archiving failure, exit 0, forever.
+    #
+    # The cure is an ABSOLUTE check that needs no baseline and no segment arithmetic:
+    # archiving is enabled and the archiver has shipped NOTHING. `wrote_something` keeps a
+    # legitimately brand-new cluster (still inside its very first segment) innocent.
+    archived_count = current.get("archived_count")
+    cur_lsn_bytes = parse_lsn(current.get("current_wal_lsn", "")) or 0
+    wrote_something = cur_lsn_bytes >= (seg_size or 0) > 0
+    if (mode not in ("off", "") and archived_count == 0 and not last_wal
+            and wrote_something):
+        findings.append(Finding(
+            V_NOTHING_ARCHIVED,
+            f"archive_mode={mode!r} but archived_count is 0 and last_archived_wal is "
+            "EMPTY — the archiver has shipped nothing at all, while the database has "
+            f"written past its first segment (LSN {current.get('current_wal_lsn')}). "
+            "After a pg_stat_archiver reset this is the ONLY check that can still see a "
+            "dead archiver: the reset clears the failure fields and the last-archived "
+            "filename too, disarming ARCHIVER_FAILING and ARCHIVING_LAGGING with it.",
+        ))
+    elif not last_wal and mode not in ("off", ""):
+        notes.append(Finding(
+            V_CHECKS_UNRUNNABLE,
+            "last_archived_wal is EMPTY, so no segment index exists: the lag and "
+            "sequence-gap checks could not run this time.",
+        ))
+
     if last_wal and arch_seg is None:
         # TWO different causes reach this branch and they need DIFFERENT names. The
         # filename can be a legitimate non-segment (`.backup`, `.history`), or the
@@ -487,9 +581,12 @@ def classify(previous: dict | None, current: dict, now: datetime | None = None,
         else:
             notes.append(Finding(
                 V_NON_SEGMENT_LAST_ARCHIVED,
-                f"last_archived_wal={last_wal!r} is not a plain WAL segment (a .backup or "
-                ".history file). Lag and sequence-gap checks are SKIPPED this run; the "
-                "disabled/failing/stall checks still applied.",
+                f"last_archived_wal={last_wal!r} is not a plain 24-hex WAL segment. "
+                "Usually that is a legitimate .backup or .history file, but this branch "
+                "cannot tell those apart from a corrupt or truncated value, so it does "
+                "not claim to — a message that names a benign cause for an unrecognised "
+                "value teaches the reader to dismiss it. Lag and sequence-gap checks are "
+                "SKIPPED this run; the disabled/failing/stall checks still applied.",
             ))
     if cur_seg is not None and arch_seg is not None:
         lag = cur_seg - arch_seg
@@ -502,6 +599,16 @@ def classify(previous: dict | None, current: dict, now: datetime | None = None,
             ))
 
     # ---- delta checks: need a baseline -------------------------------------
+    if previous is not None and not isinstance(previous, dict):
+        # A malformed baseline must not crash the probe on `.get` — and must not be
+        # silently treated as absent either.
+        notes.append(Finding(
+            V_BASELINE_LOST,
+            f"the stored baseline is a {type(previous).__name__}, not an object — it "
+            "cannot be compared against. The delta checks did not run.",
+        ))
+        previous = None
+
     if previous is None:
         # A missing baseline is not one situation but three, and only one of them is
         # benign. All three alert (digest): with no baseline the delta conditions
@@ -537,6 +644,22 @@ def classify(previous: dict | None, current: dict, now: datetime | None = None,
             p_fail = previous.get("failed_count")
             c_fail = current.get("failed_count")
 
+            # K5 — the `isinstance(..., int)` guards below are correct but they were
+            # SILENT: a legacy or hand-edited baseline carrying "1000" as a STRING made
+            # both delta checks skip and the run report clean, permanently. A guard that
+            # declines to judge must say that it declined.
+            bad_types = [name for name, value in (("previous.archived_count", p_arch),
+                                                  ("archived_count", c_arch),
+                                                  ("previous.failed_count", p_fail),
+                                                  ("failed_count", c_fail))
+                         if not isinstance(value, int) or isinstance(value, bool)]
+            if bad_types:
+                notes.append(Finding(
+                    V_CONTINUITY_UNCHECKED,
+                    f"counter fields are not integers ({', '.join(bad_types)}), so the "
+                    "stall, sequence-gap and failure-delta checks could not run.",
+                ))
+
             if isinstance(p_fail, int) and isinstance(c_fail, int) and c_fail > p_fail:
                 # RECOVERED failures are a note, not a page. The archiver retries the same
                 # segment until it succeeds, so a transient error followed by a success is
@@ -571,28 +694,69 @@ def classify(previous: dict | None, current: dict, now: datetime | None = None,
                         "UNCHANGED — the counters were lost, not reset. Delta checks are "
                         "void this run; the absolute checks still applied.",
                     ))
-                # STALLED: nothing archived while the database kept writing.
+                # STALLED: the database wrote more segments than the archiver shipped,
+                # and the shortfall ACCUMULATES ACROSS RUNS.
+                #
+                # This was the widest hole a cross-family refuter (codex gpt-5.6-sol)
+                # found, and it had two halves that a single-run comparison cannot close:
+                #   * the check only ran when `count_delta == 0`, so an archiver shipping
+                #     1 of every 2 segments — falling permanently behind — disarmed it;
+                #   * write pressure never accumulated, because the baseline advances on
+                #     every run. An archiver that died after one segment on a quiet
+                #     database wrote 1 segment per night, never reached the 2-segment
+                #     floor, and stayed green FOREVER. That is the 2026-08-09 shape.
+                # Carrying the deficit in the state file fixes both: pressure adds up
+                # night after night until it crosses the floor, and repays only when the
+                # archiver genuinely catches up.
+                #
+                # Declared slack: `.backup` and `.history` files also increment
+                # archived_count, so they can repay deficit they did not earn. That
+                # inflation is bounded (one per base backup / timeline switch) and it is
+                # why the floor is small.
                 prev_cur_seg = lsn_segment_index(previous.get("current_wal_lsn", ""), seg_size)
-                if count_delta == 0 and (cur_seg is None or prev_cur_seg is None):
-                    # No write-pressure reading, so "archived nothing" cannot be judged.
+                if cur_seg is None or prev_cur_seg is None:
+                    # No write-pressure reading, so the shortfall cannot be judged.
                     # Skipping is right; skipping QUIETLY is the disease.
                     notes.append(Finding(
-                        V_CHECKS_UNRUNNABLE,
-                        "archived_count did not move, but the WAL position could not be "
-                        f"read on one side (now={current.get('current_wal_lsn') or 'missing'!r}, "
+                        V_CONTINUITY_UNCHECKED,
+                        "the WAL position could not be read on one side "
+                        f"(now={current.get('current_wal_lsn') or 'missing'!r}, "
                         f"then={previous.get('current_wal_lsn') or 'missing'!r}) — the stall "
-                        "check could not run.",
+                        "check could not run and the carried deficit was not updated.",
                     ))
-                if count_delta == 0 and cur_seg is not None and prev_cur_seg is not None:
+                else:
                     written = cur_seg - prev_cur_seg
-                    if written >= STALL_SEGMENTS:
-                        findings.append(Finding(
-                            V_ARCHIVING_STALLED,
-                            f"archived_count has not moved ({c_arch}) since "
-                            f"{previous.get('observed_at')} while the database wrote "
-                            f"{written} WAL segments. Archiving is not keeping up, or has "
-                            "stopped.",
+                    if written < 0:
+                        # A PITR or a restart from an older checkpoint moves the WAL
+                        # position BACKWARDS. `written` goes negative, fails the
+                        # threshold test, and produced no note at all: green silence
+                        # exactly when the WAL deserves the most attention.
+                        # TIMELINE_CHANGED does not cover it — with a broken archiver
+                        # `last_archived_wal` still carries the OLD timeline — and
+                        # COUNTERS_WENT_BACKWARDS watches archived_count, never the LSN.
+                        notes.append(Finding(
+                            V_LSN_WENT_BACKWARDS,
+                            f"the WAL position moved BACKWARDS ({previous.get('current_wal_lsn')}"
+                            f" -> {current.get('current_wal_lsn')}, {-written} segments): a PITR "
+                            "or a restart from an older checkpoint. The stall check cannot "
+                            "run against a negative write pressure, and the carried deficit "
+                            "was left untouched.",
                         ))
+                    else:
+                        # `count_delta` can be negative (counters lost); a negative
+                        # "shipped" must not manufacture deficit beyond what was written.
+                        shipped = max(0, count_delta)
+                        pressure = max(0, carried_pressure + written - shipped)
+                        new_pressure = pressure
+                        if pressure >= STALL_SEGMENTS:
+                            findings.append(Finding(
+                                V_ARCHIVING_STALLED,
+                                f"the database wrote {written} WAL segment(s) since "
+                                f"{previous.get('observed_at')} while archived_count moved "
+                                f"{count_delta}; the shortfall carried across runs is now "
+                                f"{pressure} segment(s) (floor {STALL_SEGMENTS}). Archiving "
+                                "is not keeping up, or has stopped.",
+                            ))
 
                 # SEQUENCE GAP: the archived filename ran further than the counter did.
                 prev_parsed = parse_wal_filename(previous.get("last_archived_wal", ""))
@@ -632,20 +796,43 @@ def classify(previous: dict | None, current: dict, now: datetime | None = None,
 
     if findings:
         # Name the worst by the declared order, so the dedup key is stable per condition.
-        order = [V_ARCHIVING_DISABLED, V_SEQUENCE_GAP, V_ARCHIVER_FAILING,
-                 V_ARCHIVING_STALLED, V_FAILURES_ACCUMULATING, V_ARCHIVING_LAGGING]
-        worst = next(c for c in order if any(f.code == c for f in findings))
-        return Verdict(verdict=worst, findings=findings, notes=notes, exit_code=EXIT_RED)
+        # `next` carries a DEFAULT: an unranked code must still page under its own name
+        # rather than crash the probe (that is how the RED was lost, above).
+        worst = next((c for c in RED_SEVERITY_ORDER if any(f.code == c for f in findings)),
+                     findings[0].code)
+        return Verdict(verdict=worst, findings=findings, notes=notes,
+                       exit_code=EXIT_RED, pressure=new_pressure)
+
+    erased = [n.code for n in notes if n.code in EVIDENCE_ERASING_NOTES]
+    if erased:
+        return Verdict(verdict=V_CANNOT_VERIFY, findings=[], notes=notes,
+                       exit_code=EXIT_CANNOT_VERIFY, pressure=new_pressure)
 
     top = notes[0].code if notes else V_OK
     baseline_codes = (V_FIRST_RUN, V_BASELINE_LOST, V_BASELINE_RECURRED)
     return Verdict(verdict=top if top in baseline_codes else V_OK,
-                   findings=[], notes=notes, exit_code=EXIT_OK)
+                   findings=[], notes=notes, exit_code=EXIT_OK, pressure=new_pressure)
 
 
 # ===========================================================================
 # State — the previous observation has to survive between runs
 # ===========================================================================
+
+def _as_int(value: Any, default: int) -> int:
+    """Coerce a state-file counter, NEVER raise.
+
+    A hand-edited or half-written state file carrying `"first_run_count": "3"` used to
+    reach `int(...)` and crash the whole probe on a string like `"abc"` — a reliability
+    probe that dies because its own bookkeeping file is malformed is a probe that stops
+    watching. Reported by a cross-family refuter (codex gpt-5.6-sol).
+    """
+    if isinstance(value, bool) or value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
 
 def state_path() -> Path:
     """Read the env at CALL time, never at import: tests must be able to redirect it.
@@ -912,7 +1099,7 @@ def run(args: argparse.Namespace) -> int:
             )
 
     if cannot_verify_reason:
-        streak = int(state.get("cannot_verify_streak", 0)) + 1
+        streak = _as_int(state.get("cannot_verify_streak"), 0) + 1
         tier = "p0" if streak >= CANNOT_VERIFY_P0_STREAK else "digest"
         verdict = Verdict(
             verdict=V_CANNOT_VERIFY, exit_code=EXIT_CANNOT_VERIFY,
@@ -929,33 +1116,80 @@ def run(args: argparse.Namespace) -> int:
             print(json.dumps(verdict.as_dict(), indent=2))
         return EXIT_CANNOT_VERIFY
 
-    first_run_count = int(state.get("first_run_count", 0) or 0)
+    first_run_count = _as_int(state.get("first_run_count"), 0)
     verdict = classify(previous, obs, state_status=state_status,
-                       first_run_count=first_run_count)
+                       first_run_count=first_run_count,
+                       carried_pressure=_as_int(state.get("carried_pressure"), 0))
     log(f"verdict={verdict.verdict} exit={verdict.exit_code}")
     for f in verdict.findings:
         log(f"  RED  {f.code}: {f.detail}")
     for n in verdict.notes:
         log(f"  note {n.code}: {n.detail}")
 
+    # A run whose evidence was ERASED (a stats reset, an unrunnable check) comes back
+    # from `classify` as CANNOT_VERIFY, and it must escalate exactly like a failed READ:
+    # a database whose archiver stats are reset before every run would otherwise
+    # re-baseline forever at a polite digest tier.
+    if verdict.exit_code == EXIT_CANNOT_VERIFY:
+        streak = _as_int(state.get("cannot_verify_streak"), 0) + 1
+        tier = "p0" if streak >= CANNOT_VERIFY_P0_STREAK else "digest"
+        condition = "+".join(sorted(n.code for n in verdict.notes
+                                    if n.code in EVIDENCE_ERASING_NOTES)).lower()
+        verdict.findings.append(Finding(
+            V_CANNOT_VERIFY,
+            f"the evidence this judgment rests on was erased ({condition}); the probe "
+            f"cannot claim the WAL chain is intact this run (consecutive: {streak})."))
+    else:
+        streak = 0
+        condition = None
+
     if not args.dry_run:
+        # Every send's VERDICT is read, never its absence. `send_alert` returns False
+        # when the gateway says the message did not leave the machine, and an earlier
+        # revision threw that answer away on the RED path: the probe could compute a
+        # perfect p0, fail to deliver it, save a fresh baseline and exit 1 into a
+        # heartbeat nobody reads. An alert that was not delivered is an outage of the
+        # alerting path, and it has to be said out loud in the run's own output.
+        delivered: bool | None = None
         if verdict.is_red:
-            send_alert(format_message(verdict, obs), verdict.verdict.lower(), "p0")
-        elif any(n.code in VOIDING_NOTES for n in verdict.notes):
+            delivered = send_alert(format_message(verdict, obs),
+                                   verdict.verdict.lower(), "p0")
+        elif verdict.exit_code == EXIT_CANNOT_VERIFY:
+            delivered = send_alert(format_message(verdict, obs),
+                                   condition or "cannot-verify", tier)
+        elif voided_codes := [n.code for n in verdict.notes if n.code in VOIDING_NOTES]:
             # A run where a check was SKIPPED is not the same as a run where it passed,
-            # and the difference must leave the machine. A timeline switch, a stats reset
-            # or a `.backup`/`.history` in last_archived_wal each void real arithmetic;
-            # exiting 0 and saying nothing is precisely how this organism goes blind while
-            # looking healthy. Digest tier, not p0 — visible, not paging.
-            send_alert(format_message(verdict, obs), "checks-voided", "digest")
+            # and the difference must leave the machine. A timeline switch or a
+            # `.backup`/`.history` in last_archived_wal voids real arithmetic; exiting 0
+            # and saying nothing is precisely how this organism goes blind while looking
+            # healthy. Digest tier, not p0 — visible, not paging.
+            # K3 — the dedup key must name the CONDITION, and every voided run used to
+            # send the constant "checks-voided". So the causes shared one key and the
+            # gateway's dedup window swallowed whichever arrived second — the exact scar
+            # this file's own `send_alert` docstring cites (#3677 / 2026-08-06),
+            # reproduced one layer up in the caller. Sorted so a run reporting the same
+            # SET of causes keeps a stable key regardless of append order.
+            delivered = send_alert(format_message(verdict, obs),
+                                   "+".join(sorted(voided_codes)).lower(), "digest")
         elif state.get("last_verdict") in (V_CANNOT_VERIFY, *RED_FINDINGS):
             # Recovery is news too — a silent return to green leaves whoever read the
             # p0 believing it is still broken.
-            send_alert(format_message(verdict, obs), "recovered", "digest")
+            delivered = send_alert(format_message(verdict, obs), "recovered", "digest")
+
+        if delivered is False:
+            log("ALERT NOT DELIVERED: the gateway did not put this message on the wire. "
+                "The condition below is REAL and nobody was told.")
+            verdict.notes.append(Finding(
+                V_ALERT_UNDELIVERED,
+                "the alert for this run was computed but the Telegram gateway did not "
+                "deliver it — treat this run as unreported."))
+        state["last_alert_delivered"] = delivered
+
         # The baseline advances on EVERY successful read, red included: the next run
         # must measure against what is true now, or a stall reports itself forever.
         state["previous"] = obs
-        state["cannot_verify_streak"] = 0
+        state["carried_pressure"] = verdict.pressure
+        state["cannot_verify_streak"] = streak
         state["last_verdict"] = verdict.verdict
         # Counts baseline WRITES, so a state file that keeps losing its `previous`
         # block (truncated, partially wiped, hand-edited) is caught on the second
@@ -1076,6 +1310,26 @@ def selftest() -> int:
     check("guilt: a far-behind archiver is RED with no baseline",
           classify(None, _obs(current_wal_lsn="0/80000000")   # seg 128 vs archived 100
                    ).verdict == V_ARCHIVING_LAGGING)
+    # The council round's two: total failure after a stats reset (which crashed the
+    # probe before the severity ordering was unified with the membership set), and a
+    # deficit that only becomes visible because it ACCUMULATES across runs.
+    check("guilt: archiving on, nothing ever shipped, is RED after a stats reset",
+          classify(prev, _obs(archived_count=0, last_archived_wal="",
+                              last_archived_time=None,
+                              stats_reset="2026-08-29 05:00:00+00",
+                              current_wal_lsn="0/A0000000")
+                   ).verdict == V_NOTHING_ARCHIVED)
+    check("guilt: one segment per run accumulates into a stall",
+          classify(prev, _obs(current_wal_lsn="0/66000000"),   # +1 segment, count unmoved
+                   carried_pressure=1).verdict == V_ARCHIVING_STALLED)
+    check("innocence: a caught-up archiver repays its carried deficit",
+          classify(prev, _obs(archived_count=1002, last_archived_wal="000000010000000000000066",
+                              current_wal_lsn="0/66000000"),
+                   carried_pressure=1).pressure == 0)
+    check("guilt: a stats reset is CANNOT_VERIFY, never a clean run",
+          classify(prev, _obs(archived_count=3,
+                              stats_reset="2026-08-29 05:00:00+00")
+                   ).exit_code == EXIT_CANNOT_VERIFY)
 
     # --- the blind guard -------------------------------------------------
     check("blind: an observation with no archiver fields is not clean",

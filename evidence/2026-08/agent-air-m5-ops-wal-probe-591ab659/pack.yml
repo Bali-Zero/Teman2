@@ -8,6 +8,13 @@
 # path here — the "obviously correct" value — is the exact trap the workflow
 # comment warns about. Do not "fix" this back.
 brief_ref: evidence/brief.yml
+# R9 — the Gear-3 council journal, resolved relative to THIS pack's own directory (not
+# the staged root that brief_ref uses; they are two different resolution rules and
+# conflating them is how the previous round declared none at all). Two seats, both in
+# COUNCIL_REVIEW_SEATS, both with real delivered findings. Written AFTER the seats
+# answered, never before: an `ok: true` for a seat that did not deliver would pass the
+# very check that exists to prove a council happened, which is worse than the NOTICE.
+council_run: council-journal.jsonl
 # `clean` is a claim about THIS diff, and it is cheap to justify: the probe
 # handles no client data at all. Its inputs are Postgres archiver counters and
 # WAL segment filenames; the one field that could carry a credential
@@ -54,9 +61,9 @@ seat_diversity_note: >-
   put the diff through and is not a verdict.
 diff:
   net_lines: >-
-    AS OF 928f0ec453 (pinned deliberately — a byte count stated unqualified
+    AS OF the round-2 head (pinned deliberately — a count stated unqualified
     inside a file that every subsequent commit changes is a claim that decays
-    by construction): 10 files, measured THREE-DOT against the merge base
+    by construction): 11 files, measured THREE-DOT against the merge base
     (`git diff --stat origin/main...HEAD`), never two-dot, which on a moved
     base blames this PR for files that landed on main after the branch point
     (W102).
@@ -65,7 +72,10 @@ diff:
     `scripts/tests/test_wal_continuity_probe.py`,
     `.github/workflows/check-wal-continuity-probe.yml`,
     `infra/launchagents/com.nuzantara.wal-continuity-probe.daily.plist`,
-    `infra/launchagents/wrappers/wal-continuity-probe.sh`.
+    `infra/launchagents/wrappers/wal-continuity-probe.sh`,
+    `evidence/2026-08/agent-air-m5-ops-wal-probe-591ab659/council-journal.jsonl`
+    (added at round 2 — the eleventh file, and counting it is the same discipline
+    the note below records the pack failing at round 1).
     Modified: `apps/organism/organism/organs_registry.yaml` (one organ entry
     plus its checksum line), `.github/workflows/main-push-failure-watch.yml`
     (one line), `.claude/skills/modus/PENDING-ARMS.md` (two rows). Plus this
@@ -105,7 +115,10 @@ receipts:
   - claim: "The probe can go RED on every one of its six declared conditions, through the same entry point cron uses"
     cmd: "python3 -m pytest scripts/tests/test_wal_continuity_probe.py -q ; python3 scripts/wal_continuity_probe.py --selftest"
     result: >-
-      55 passed. Every guilt test drives `probe.main([...])` with a fixture
+      55 passed AT ROUND 1 (79 after the second council round — see the later
+      receipt; this figure is left as measured rather than silently refreshed,
+      because a receipt is a record of a run, not a running total).
+      Every guilt test drives `probe.main([...])` with a fixture
       file — not `classify` directly — because `classify` being correct while
       `main()` never reaches it is W116/W120: dead code on the only path it
       exists for. `test_guilt_every_declared_red_code_is_reachable` asserts
@@ -252,6 +265,62 @@ receipts:
     exit: 0
     ts: "2026-08-29T06:48Z"
     seat: "session (m5, build lane)"
+  - claim: "A SECOND cross-family council round found a CRASH and four false greens that the first round, the gate and the whole suite had all passed over"
+    cmd: "codex exec -m gpt-5.6-sol -c model_reasoning_effort=xhigh --sandbox read-only ... ; kimi -p ... -m kimi-code/k3   (both: REFUTE, do not approve; pointed hardest at the recorded stats_reset position and at ARCHIVING_STALLED's write-pressure boundaries)"
+    result: >-
+      Journal: `council-journal.jsonl`. codex 6 findings, kimi 7, converging on three.
+      The one that mattered most was a defect the FIRST round could not have found
+      because the first round predated it: curing kimi's stats_reset finding added
+      NOTHING_ARCHIVED to `RED_FINDINGS` and not to the severity-ordering list inside
+      `classify`, which was a SECOND list. `next(c for c in order ...)` then raised
+      StopIteration on exactly the total-archiving-failure state the code had just been
+      taught to detect — no p0, no baseline advance, a traceback. Reproduced here before
+      fixing (`REPRODUCED: StopIteration in the RED-ordering next()`), and the
+      "every RED pages at p0" test had stayed GREEN because it enumerated the same
+      stale list. That is a fix-of-a-fix introducing a worse fault than the one it
+      cured, which is why the cure is structural: the ordering IS the membership set
+      (`RED_SEVERITY_ORDER`), pinned by
+      `test_the_severity_ordering_covers_every_RED_code`, so the two cannot diverge again.
+
+      The other converging finding — both seats, independently, and NEITHER of them in
+      the first round: `run()` discarded `send_alert`'s return value. Every C1 test
+      monkeypatched it with a lambda returning True unconditionally, so all of them
+      passed against a gateway that refused everything. The C1 condition proved the
+      CALL, never the DELIVERY.
+    exit: 0
+    ts: "2026-08-29T07:10Z"
+    seat: "gpt-5.6-sol xhigh and kimi-code/k3 (review lanes), each finding reproduced against the source by the build lane before it was accepted"
+  - claim: "The stall check now accumulates across runs — an archiver dead on a quiet database used to stay green FOREVER"
+    cmd: "test_guilt_an_archiver_dead_on_a_quiet_database_goes_RED_instead_of_green_forever ; test_guilt_an_archiver_shipping_half_of_what_is_written_is_caught ; test_innocence_an_archiver_that_catches_up_repays_its_deficit"
+    result: >-
+      Two holes, one cure. (a) The check was gated on `count_delta == 0`, so an archiver
+      shipping 1 of every 2 segments — falling permanently behind — disarmed it by
+      shipping ANYTHING. (b) Write pressure never accumulated, because the baseline
+      advances every run: a database writing one segment a night never reached the
+      2-segment floor, not once, ever. Both are the founding scar's exact shape.
+      The deficit is now carried in the state file and repaid only when the archiver
+      genuinely catches up. Declared cost, written into the docstring: `.backup` and
+      `.history` archives can repay deficit they did not earn, which is bounded and is
+      why the floor stays small.
+
+      The detection-latency test that pins this had to be fixed too, and how it failed
+      is the point: it drove `classify` WITHOUT threading the carried pressure back in,
+      so it measured a probe that no longer existed and stayed green while pinning the
+      old number (7). A test that does not feed the code what production feeds it
+      measures a world that no longer exists. Re-measured: 1 green run, RED on run 2.
+    exit: 0
+    ts: "2026-08-29T07:12Z"
+    seat: "session (m5, build lane), on codex gpt-5.6-sol's finding"
+  - claim: "79 tests pass, the selftest passes, and four of the new tests fail against the pre-round code"
+    cmd: "python3 -m pytest scripts/tests/test_wal_continuity_probe.py -q ; python3 scripts/wal_continuity_probe.py --selftest"
+    result: >-
+      "79 passed" (was 55 at the first round's close) and "SELFTEST PASS" with four new
+      on-host cases. The suite grew by the council's findings turned into guards, not by
+      coverage padding: every added test names the state in which the probe answered
+      GREEN, or crashed, while the WAL chain was broken.
+    exit: 0
+    ts: "2026-08-29T07:20Z"
+    seat: "session (m5, build lane)"
 dissent:
   - seat: "gpt-5.6-sol xhigh"
     objection: >-
@@ -297,16 +366,24 @@ dissent:
       HIGH — a stats reset erases the evidence: `arch_seg` becomes None, deltas
       are skipped, and the run re-baselines GREEN, so any hole spanning the
       reset is invisible. Should be CANNOT_VERIFY.
-    status: "PLAUSIBLE"
+    status: "CONFIRMED"
     resolution: >-
-      PARTIALLY accepted — not promoted to CANNOT_VERIFY — a stats reset is a legitimate operation
-      and the ABSOLUTE checks (disabled, failing, lagging) still run through
-      it, so the probe is not blind, only delta-blind for one window. But the
-      silence was real and is fixed: STATS_RESET is now a voiding note, and any
-      voiding note raises a digest alert instead of exiting 0 quietly. The
-      residual disagreement is recorded rather than argued away: a session
-      resetting archiver stats before every probe run would defeat the delta
-      checks, and only the bucket-side listing would notice.
+      CURED, after a SECOND round in which both cross-family seats independently
+      attacked the position recorded here. This entry previously read PLAUSIBLE and
+      argued "the absolute checks still run through a reset". That was FALSE, and the
+      argument was the defect: `pg_stat_reset_shared('archiver')` clears
+      `last_archived_wal`, `last_failed_wal` and BOTH timestamps as well as the
+      counters, so the reset disarms two of the three absolutes by itself.
+      ARCHIVER_FAILING has no failure left to see and ARCHIVING_LAGGING has no segment
+      to index. Codex reproduced the concrete consequence (count=100/last=...064, reset,
+      count=1/last=...067 with ...065 and ...066 genuinely missing) and got OK.
+      Now: a stats reset returns CANNOT_VERIFY (exit 4), escalating digest -> p0 on the
+      third consecutive run, and a new ABSOLUTE red — NOTHING_ARCHIVED — fires when
+      archiving is on, the counter is 0, nothing was ever named and the database has
+      written past its first segment. Tests
+      `test_a_stats_reset_is_CANNOT_VERIFY_not_a_stall_and_not_a_clean_run`,
+      `test_a_stats_reset_that_repeats_escalates_from_digest_to_p0`,
+      `test_guilt_total_archiving_failure_after_a_stats_reset_is_RED_not_a_crash`.
   - seat: "kimi-code/k3"
     objection: >-
       LOW — a counter reset WITHOUT a `stats_reset` change (a crash can lose
@@ -372,3 +449,79 @@ dissent:
       state file containing a real `archived_count` and `last_archived_wal`,
       advanced by a second run — a state file holding only
       `cannot_verify_streak` means installed and BLIND, which is not armed.
+  - seat: "gpt-5.6-sol xhigh (round 2)"
+    objection: >-
+      CRITICAL — NOTHING_ARCHIVED is in the RED membership set but not in the severity
+      ordering, so `next(...)` raises StopIteration: the probe CRASHES on the state it
+      was just taught to detect, and the "every RED" test misses it by enumerating the
+      same stale list.
+    status: "CONFIRMED"
+    resolution: >-
+      CURED structurally. `RED_SEVERITY_ORDER` is now the single tuple and
+      `RED_FINDINGS` is derived from it, so the two cannot diverge; `next` also carries
+      a default, so an unranked code pages under its own name instead of crashing.
+      Pinned by `test_the_severity_ordering_covers_every_RED_code`. Reproduced by the
+      build lane before the fix, not taken on the seat's word.
+  - seat: "gpt-5.6-sol xhigh and kimi-code/k3 (round 2, both, independently)"
+    objection: >-
+      HIGH — the C1 gate condition proves the CALL, not the DELIVERY. `send_alert`
+      returns False when the gateway's verdict says the message never left the machine,
+      and `run()` discarded it; every C1 test monkeypatched `send_alert` to return True
+      unconditionally, so they pass against a gateway that refuses everything.
+    status: "CONFIRMED"
+    resolution: >-
+      CURED. Every send's verdict is read; an undelivered alert appends an
+      ALERT_UNDELIVERED note, logs "ALERT NOT DELIVERED", and is recorded in the state
+      file as `last_alert_delivered: false`. Test
+      `test_a_RED_the_gateway_REFUSED_to_send_is_reported_as_unreported` drives the whole
+      path with a gateway that refuses. The probe cannot make Telegram work; it can
+      refuse to pretend the condition was reported.
+  - seat: "kimi-code/k3 (round 2)"
+    objection: >-
+      HIGH — every voiding note shared the constant dedup key "checks-voided", so the
+      gateway's dedup window swallowed whichever cause arrived second. The exact scar
+      this file's own `send_alert` docstring cites, reproduced one layer up in the caller.
+    status: "CONFIRMED"
+    resolution: >-
+      CURED — the key now names the CONDITION SET, sorted so the same causes produce a
+      stable key regardless of append order.
+  - seat: "gpt-5.6-sol xhigh (round 2)"
+    objection: >-
+      HIGH — C2 validated the outer container only: `{"previous": []}` parses as
+      STATE_OK and then crashes on `.get`; a non-numeric `first_run_count` crashes
+      `int()`. A probe that dies because its own bookkeeping file is malformed has
+      stopped watching.
+    status: "CONFIRMED"
+    resolution: >-
+      CURED — `_as_int` never raises, a non-dict baseline degrades to BASELINE_LOST
+      rather than an AttributeError, and malformed counters emit CONTINUITY_UNCHECKED
+      instead of silently skipping both delta checks. Test
+      `test_a_malformed_state_file_does_not_crash_or_read_as_a_clean_run`.
+  - seat: "gpt-5.6-sol xhigh (round 2)"
+    objection: >-
+      MEDIUM — any unparseable `last_archived_wal` was described to the reader as "a
+      .backup or .history file", a benign cause the branch cannot actually establish.
+    status: "CONFIRMED"
+    resolution: >-
+      CURED in the message: it now says the value is not a 24-hex segment and that this
+      branch cannot tell a legitimate `.backup`/`.history` from a corrupt or truncated
+      value. A message that explains away what it does not understand teaches its reader
+      to dismiss it. Pinned by
+      `test_an_unrecognised_last_archived_wal_is_not_described_as_a_backup_file`.
+  - seat: "session (m5, build lane) — self-declared, round 2"
+    objection: >-
+      The escalation this round introduces (CANNOT_VERIFY on an evidence-erasing event,
+      p0 on the third consecutive one) is a NEW false-page surface: a cluster that
+      legitimately resets archiver statistics on a schedule would page every third run.
+    status: "CONFIRMED"
+    resolution: >-
+      Accepted deliberately and scoped rather than softened. The escalating set is
+      narrow by construction — STATS_RESET, CONTINUITY_UNCHECKED (the stall check itself
+      could not run) and LSN_WENT_BACKWARDS — and explicitly EXCLUDES the routine cases:
+      a `.backup` or `.history` filename voids the lag and sequence arithmetic but the
+      stall check still reads the LSN and the counter, so it stays OK. Escalating those
+      too would have paged three nights after every base backup, and an alarm that cries
+      wolf on a routine event is how the real one gets ignored. The reasoning is in the
+      code beside `EVIDENCE_ERASING_NOTES`, and the boundary is pinned from both sides
+      by `test_a_stall_check_that_cannot_run_says_so` and
+      `test_a_backup_or_history_filename_does_not_crash_or_falsely_accuse`.
