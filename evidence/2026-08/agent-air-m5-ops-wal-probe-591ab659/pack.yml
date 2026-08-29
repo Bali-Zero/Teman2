@@ -297,7 +297,8 @@ receipts:
       shipping 1 of every 2 segments — falling permanently behind — disarmed it by
       shipping ANYTHING. (b) Write pressure never accumulated, because the baseline
       advances every run: a database writing one segment a night never reached the
-      2-segment floor, not once, ever. Both are the founding scar's exact shape.
+      2-segment floor, not once, ever. Both are the founding scar's exact shape,
+      living inside the artifact built to catch it.
       The deficit is now carried in the state file and repaid only when the archiver
       genuinely catches up. Declared cost, written into the docstring: `.backup` and
       `.history` archives can repay deficit they did not earn, which is bounded and is
@@ -343,6 +344,15 @@ receipts:
 
       Round 2 of the gate did not carry C5 forward; it is closed here anyway because it
       was real and measured, not because it was still binding.
+
+      ON THE RECORD, because the orchestrator later asked for the opposite entry: C5 was
+      NOT "content never received". Its text was retrieved from the gate's own posted
+      comment on the PR — which is what the orchestrator's earlier instruction directed,
+      and it is the authoritative record either way — then re-measured here and cured.
+      Writing "never received, not landed and not knowingly skipped" would describe a
+      state that stopped being true before the request was made. The gate's
+      re-adjudication on the new head remains the backstop regardless, and if it restates
+      C5 under its own signature that verdict governs over this paragraph.
     exit: 0
     ts: "2026-08-29T07:35Z"
     seat: "session (m5, build lane), on the gate's posted round-1 comment"
