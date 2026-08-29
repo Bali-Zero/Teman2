@@ -34,13 +34,17 @@ position, `wal_segment_size`, and `pg_is_in_recovery()`.
 
 WHAT MAKES IT RED  (this list is the contract; see `classify`)
 --------------------------------------------------------------
-  ARCHIVING_DISABLED     archive_mode is off, or archive_command is empty.
+  ARCHIVING_DISABLED     archive_mode is off (or unreadable — fail closed), or NEITHER
+                         archive_command NOR archive_library (PG15+) is set.
                          THE 2026-08-09 SCAR. Absolute — fires on the first run,
                          with no previous observation to compare against.
   ARCHIVER_FAILING       the most recent archive attempt FAILED and nothing has
                          succeeded since (last_failed_time > last_archived_time, or
                          a failure exists and nothing was ever archived). Absolute.
-  FAILURES_ACCUMULATING  failed_count rose since the previous observation.
+  FAILURES_ACCUMULATING  failed_count rose since the previous observation AND the
+                         archiver has not succeeded since. A rise that RECOVERED is a
+                         note, not a page: the archiver retries the same segment until
+                         it succeeds, so a transient error is not a break in the chain.
   ARCHIVING_STALLED      archived_count did NOT move since the previous observation
                          while the database wrote >= STALL_SEGMENTS worth of WAL.
                          The write-pressure half is load-bearing: a quiet database
@@ -55,16 +59,44 @@ WHAT MAKES IT RED  (this list is the contract; see `classify`)
                          archived_count advanced: segments were skipped. This is the
                          hole that makes a restore stop mid-recovery.
 
-NOT red, but never silent:
-  TIMELINE_CHANGED  a failover/PITR happened; sequence arithmetic is void this run.
-  STATS_RESET       the counters restarted; deltas are void this run.
-  FIRST_RUN         no baseline yet — absolute checks still applied.
+NOT red, but NEVER SILENT. Each of these means a check DID NOT RUN, and a skipped check
+is not a passed check — so they raise a digest-tier alert rather than exiting 0 in quiet:
+  TIMELINE_CHANGED            a failover/PITR happened; sequence arithmetic is void.
+  STATS_RESET                 the counters restarted; deltas are void.
+  COUNTERS_WENT_BACKWARDS     archived_count fell with stats_reset UNCHANGED — the stats
+                              were lost (a crash), not reset; deltas are void.
+  NON_SEGMENT_LAST_ARCHIVED   last_archived_wal is a `.backup`/`.history` file; the lag
+                              and sequence checks cannot run against it.
+  CHECKS_UNRUNNABLE           an input one of the delta checks needs was missing on one
+                              side (no WAL position, or a non-segment on the older side).
+  FAILURES_RECOVERED          failures rose but the archiver succeeded afterwards.
+  FIRST_RUN                   no baseline yet — the absolute checks still applied.
 
 CANNOT_VERIFY (exit 4) is its own verdict and is NEVER green: the reader failed, the
 server answered from recovery (we asked for the primary), or a required field is
 missing. W106b's rule — "I could not check" must never be reported as "there is no
 problem". It escalates to p0 after CANNOT_VERIFY_P0_STREAK consecutive runs, so a
 permanently blind probe cannot sit quietly at digest tier forever.
+
+WHAT THIS PROBE CANNOT SEE — stated up front, because a guard whose limits are unwritten
+gets trusted past them (all three raised by a cross-family refuter before this shipped)
+-----------------------------------------------------------------------------------------
+1. **A LYING archive_command.** `archive_command = '/bin/true'`, or a script that exits 0
+   before the upload is durable, makes Postgres increment `archived_count` and advance
+   `last_archived_wal` with nothing recoverable anywhere. Every check here would be green
+   and every one of them would be right about what it measured. `pg_stat_archiver` records
+   what Postgres BELIEVES it shipped; it is not evidence the object exists. Closing this
+   needs a bucket-side listing that diffs the archived WAL sequence against what is really
+   in Tigris — a separate probe, tracked in the ledger, NOT silently assumed here.
+2. **SEQUENCE_GAP is one-directional and bounded.** It fires when the archived filename
+   ran further than the counter did. Because `.backup` and `.history` files also increment
+   `archived_count`, a hole SMALLER than the number of non-segment archives in the same
+   window hides inside that slack. It catches the large, obvious gap; it does not prove
+   the set is complete. Only the bucket-side listing in (1) can do that.
+3. **Primary-only, by contract.** An answer from a server in recovery is CANNOT_VERIFY,
+   which is correct for this cluster (we ask the primary) but would be wrong for a standby
+   legitimately running `archive_mode = always`. If such a standby is ever archived from,
+   this probe needs a second mode, not a loosened check.
 
 EXIT CODES
     0  clean (or first-run baseline written, with no absolute finding)
@@ -101,7 +133,7 @@ import socket
 import subprocess
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -145,6 +177,18 @@ V_SEQUENCE_GAP = "SEQUENCE_GAP"
 V_TIMELINE_CHANGED = "TIMELINE_CHANGED"
 V_STATS_RESET = "STATS_RESET"
 V_CANNOT_VERIFY = "CANNOT_VERIFY"
+
+V_NON_SEGMENT_LAST_ARCHIVED = "NON_SEGMENT_LAST_ARCHIVED"
+V_FAILURES_RECOVERED = "FAILURES_RECOVERED"
+V_COUNTERS_WENT_BACKWARDS = "COUNTERS_WENT_BACKWARDS"
+V_CHECKS_UNRUNNABLE = "CHECKS_UNRUNNABLE"
+
+# Notes that mean "a check did not run this time". Each of them is legitimate, and each
+# of them leaves a window nothing looked at — so they alert (digest), never in silence.
+VOIDING_NOTES = frozenset({
+    V_TIMELINE_CHANGED, V_STATS_RESET, V_NON_SEGMENT_LAST_ARCHIVED, V_FAILURES_RECOVERED,
+    V_COUNTERS_WENT_BACKWARDS, V_CHECKS_UNRUNNABLE,
+})
 
 RED_FINDINGS = frozenset({
     V_ARCHIVING_DISABLED,
@@ -284,10 +328,12 @@ def sanitize_observation(raw: dict) -> dict:
     report only whether it is set — superscar #4, secrets-in-the-clear.
     """
     cmd = raw.get("archive_command")
+    lib = raw.get("archive_library")
     obs = {
         "observed_at": raw.get("observed_at") or datetime.now(timezone.utc).isoformat(),
         "archive_mode": raw.get("archive_mode"),
         "archive_command_set": bool(cmd) if cmd is not None else raw.get("archive_command_set"),
+        "archive_library_set": bool(lib) if lib is not None else raw.get("archive_library_set"),
         "archived_count": raw.get("archived_count"),
         "last_archived_wal": raw.get("last_archived_wal") or "",
         "last_archived_time": raw.get("last_archived_time"),
@@ -323,6 +369,7 @@ def classify(previous: dict | None, current: dict, now: datetime | None = None) 
     raw_mode = current.get("archive_mode")
     mode = (raw_mode or "").strip().lower()
     cmd_set = current.get("archive_command_set")
+    lib_set = current.get("archive_library_set")
     if mode in ("off", ""):
         # Fail CLOSED, and say WHICH of the two it is. `off` is the 2026-08-09 world.
         # NULL/empty means `current_setting('archive_mode')` itself came back empty — a
@@ -338,11 +385,17 @@ def classify(previous: dict | None, current: dict, now: datetime | None = None) 
             f"archive_mode={raw_mode!r}: {how}. WAL is not being shipped. Every backup is a "
             "snapshot; point-in-time recovery is not available.",
         ))
-    elif cmd_set is False:
+    elif cmd_set is False and lib_set is False:
+        # BOTH, never just the command. Since PG 15 an archive MODULE
+        # (`archive_library = 'basic_archive'`, or a vendor's) replaces `archive_command`
+        # entirely, and a perfectly healthy server then reports an EMPTY archive_command.
+        # Demanding the command alone declares that server disabled — a false RED on the
+        # exact configuration Fly's postgres-flex 17.x can be running. Caught by a
+        # cross-family refuter (codex gpt-5.6-sol) before this ever shipped.
         findings.append(Finding(
             V_ARCHIVING_DISABLED,
-            f"archive_mode={mode!r} but archive_command is EMPTY — archiving is nominally "
-            "on and ships nothing.",
+            f"archive_mode={mode!r} but NEITHER archive_command NOR archive_library is set "
+            "— archiving is nominally on and ships nothing.",
         ))
 
     last_ok = _parse_ts(current.get("last_archived_time"))
@@ -365,7 +418,7 @@ def classify(previous: dict | None, current: dict, now: datetime | None = None) 
     last_wal = current.get("last_archived_wal") or ""
     if last_wal and arch_seg is None:
         notes.append(Finding(
-            "NON_SEGMENT_LAST_ARCHIVED",
+            V_NON_SEGMENT_LAST_ARCHIVED,
             f"last_archived_wal={last_wal!r} is not a plain WAL segment (a .backup or "
             ".history file). Lag and sequence-gap checks are SKIPPED this run; the "
             "disabled/failing/stall checks still applied.",
@@ -399,17 +452,51 @@ def classify(previous: dict | None, current: dict, now: datetime | None = None) 
             c_fail = current.get("failed_count")
 
             if isinstance(p_fail, int) and isinstance(c_fail, int) and c_fail > p_fail:
-                findings.append(Finding(
-                    V_FAILURES_ACCUMULATING,
-                    f"failed_count rose {p_fail} -> {c_fail} (+{c_fail - p_fail}) since "
-                    f"{previous.get('observed_at')}; last failure "
-                    f"{current.get('last_failed_wal') or '?'}.",
-                ))
+                # RECOVERED failures are a note, not a page. The archiver retries the same
+                # segment until it succeeds, so a transient error followed by a success is
+                # not a break in continuity — and paging p0 on it is how a probe teaches
+                # people to ignore it. `last_ok > last_fail` is the recovery proof, and it
+                # is the same pair ARCHIVER_FAILING uses in the other direction.
+                recovered = last_ok is not None and (last_fail is None or last_ok > last_fail)
+                blurb = (f"failed_count rose {p_fail} -> {c_fail} (+{c_fail - p_fail}) since "
+                         f"{previous.get('observed_at')}; last failure "
+                         f"{current.get('last_failed_wal') or '?'}")
+                if recovered:
+                    notes.append(Finding(
+                        V_FAILURES_RECOVERED,
+                        f"{blurb} — but the archiver SUCCEEDED afterwards "
+                        f"({current.get('last_archived_time')}), so the chain is not broken. "
+                        "Worth knowing, not worth paging.",
+                    ))
+                else:
+                    findings.append(Finding(V_FAILURES_ACCUMULATING, blurb + "."))
 
             if isinstance(p_arch, int) and isinstance(c_arch, int):
                 count_delta = c_arch - p_arch
+                if count_delta < 0:
+                    # Counters fell without a stats_reset — a crash can lose the stats
+                    # file while `stats_reset` stays put. Both delta checks then skip on
+                    # their own sign guards and the run reports clean, having compared
+                    # nothing. Raised by the Kimi K3 refuter; this is the note that keeps
+                    # it from being silent.
+                    notes.append(Finding(
+                        V_COUNTERS_WENT_BACKWARDS,
+                        f"archived_count fell {p_arch} -> {c_arch} with stats_reset "
+                        "UNCHANGED — the counters were lost, not reset. Delta checks are "
+                        "void this run; the absolute checks still applied.",
+                    ))
                 # STALLED: nothing archived while the database kept writing.
                 prev_cur_seg = lsn_segment_index(previous.get("current_wal_lsn", ""), seg_size)
+                if count_delta == 0 and (cur_seg is None or prev_cur_seg is None):
+                    # No write-pressure reading, so "archived nothing" cannot be judged.
+                    # Skipping is right; skipping QUIETLY is the disease.
+                    notes.append(Finding(
+                        V_CHECKS_UNRUNNABLE,
+                        "archived_count did not move, but the WAL position could not be "
+                        f"read on one side (now={current.get('current_wal_lsn') or 'missing'!r}, "
+                        f"then={previous.get('current_wal_lsn') or 'missing'!r}) — the stall "
+                        "check could not run.",
+                    ))
                 if count_delta == 0 and cur_seg is not None and prev_cur_seg is not None:
                     written = cur_seg - prev_cur_seg
                     if written >= STALL_SEGMENTS:
@@ -424,6 +511,16 @@ def classify(previous: dict | None, current: dict, now: datetime | None = None) 
                 # SEQUENCE GAP: the archived filename ran further than the counter did.
                 prev_parsed = parse_wal_filename(previous.get("last_archived_wal", ""))
                 cur_parsed = parse_wal_filename(current.get("last_archived_wal", ""))
+                if not (prev_parsed and cur_parsed):
+                    # The PREVIOUS side can be the non-segment one, and that case had no
+                    # note: only the current side did. Same silence, one run earlier.
+                    notes.append(Finding(
+                        V_CHECKS_UNRUNNABLE,
+                        "the sequence-gap check could not run: last_archived_wal is not a "
+                        f"plain segment on one side (then="
+                        f"{previous.get('last_archived_wal') or 'missing'!r}, now="
+                        f"{current.get('last_archived_wal') or 'missing'!r}).",
+                    ))
                 if prev_parsed and cur_parsed:
                     if prev_parsed[0] != cur_parsed[0]:
                         notes.append(Finding(
@@ -507,7 +604,11 @@ _FLY_CANDIDATES = (
 ARCHIVER_QUERY = """
 SELECT json_build_object(
   'archive_mode',       current_setting('archive_mode', true),
-  'archive_command_set', COALESCE(NULLIF(current_setting('archive_command', true), ''), '') <> '',
+  'archive_command_set', COALESCE(current_setting('archive_command', true), '') <> '',
+  -- PG15+ archive MODULE: a healthy server using one has an EMPTY archive_command.
+  -- `missing_ok = true` keeps this working against a pre-15 server, where the GUC does
+  -- not exist and the expression is simply false.
+  'archive_library_set',  COALESCE(current_setting('archive_library', true), '') <> '',
   'archived_count',     a.archived_count,
   'last_archived_wal',  COALESCE(a.last_archived_wal, ''),
   'last_archived_time', a.last_archived_time,
@@ -688,7 +789,8 @@ def run(args: argparse.Namespace) -> int:
             if args.json:
                 print(json.dumps(verdict.as_dict(), indent=2))
             return EXIT_BLIND
-        if obs.get("in_recovery") is True:
+        if obs.get("in_recovery") is True or \
+                str(obs.get("in_recovery")).strip().lower() in ("true", "t"):
             cannot_verify_reason = (
                 "the server answered from RECOVERY (pg_is_in_recovery() = true). We asked "
                 "for the primary; pg_stat_archiver on a standby does not describe the "
@@ -723,6 +825,13 @@ def run(args: argparse.Namespace) -> int:
     if not args.dry_run:
         if verdict.is_red:
             send_alert(format_message(verdict, obs), verdict.verdict.lower(), "p0")
+        elif any(n.code in VOIDING_NOTES for n in verdict.notes):
+            # A run where a check was SKIPPED is not the same as a run where it passed,
+            # and the difference must leave the machine. A timeline switch, a stats reset
+            # or a `.backup`/`.history` in last_archived_wal each void real arithmetic;
+            # exiting 0 and saying nothing is precisely how this organism goes blind while
+            # looking healthy. Digest tier, not p0 — visible, not paging.
+            send_alert(format_message(verdict, obs), "checks-voided", "digest")
         elif state.get("last_verdict") in (V_CANNOT_VERIFY, *RED_FINDINGS):
             # Recovery is news too — a silent return to green leaves whoever read the
             # p0 believing it is still broken.
@@ -768,6 +877,7 @@ def _obs(**over) -> dict:
         "observed_at": "2026-08-29T00:00:00+00:00",
         "archive_mode": "on",
         "archive_command": "wal-g wal-push %p",
+        "archive_library": "",
         "archived_count": 1000,
         "last_archived_wal": "000000010000000000000064",   # logid 0, seg 100
         "last_archived_time": "2026-08-29 00:00:00+00",
@@ -815,14 +925,23 @@ def selftest() -> int:
           classify(prev, _obs(archive_mode="off")).verdict == V_ARCHIVING_DISABLED)
     check("guilt: archive_mode=off is RED on the FIRST run too",
           classify(None, _obs(archive_mode="off")).exit_code == EXIT_RED)
-    check("guilt: empty archive_command is RED",
-          classify(prev, _obs(archive_command="")).verdict == V_ARCHIVING_DISABLED)
+    check("guilt: neither command nor library set is RED",
+          classify(prev, _obs(archive_command="", archive_library="")).verdict
+          == V_ARCHIVING_DISABLED)
+    check("innocence: an archive MODULE with an empty command is healthy (PG15+)",
+          classify(prev, _obs(archive_command="", archive_library="basic_archive")
+                   ).exit_code == EXIT_OK)
     check("guilt: a failure newer than the last success is RED",
           classify(prev, _obs(last_failed_time="2026-08-29 05:00:00+00",
                               last_failed_wal="000000010000000000000065")
                    ).verdict == V_ARCHIVER_FAILING)
-    check("guilt: rising failed_count is RED",
-          classify(prev, _obs(failed_count=4)).verdict == V_FAILURES_ACCUMULATING)
+    check("guilt: rising failed_count with no recovery is RED",
+          any(f.code == V_FAILURES_ACCUMULATING for f in classify(
+              prev, _obs(failed_count=4,
+                         last_failed_time="2026-08-29 05:00:00+00")).findings))
+    check("innocence: failures that RECOVERED are a note, not a page",
+          classify(prev, _obs(failed_count=4,
+                              last_failed_time="2026-08-28 00:00:00+00")).exit_code == EXIT_OK)
     check("guilt: stalled archiver under write pressure is RED",
           classify(prev, _obs(observed_at="2026-08-29T06:00:00+00:00",
                               current_wal_lsn="0/67000000")   # +2 segments, count unmoved
