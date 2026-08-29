@@ -1,4 +1,4 @@
-brief_ref: evidence/brief.yml
+brief_ref: evidence/2026-08/agent-nuzantara-craft-w-hermetic-verify-de327945/brief.yml
 council_run: council-journal.jsonl
 plan_ref: |
   docs/plans/2026-08-29-beyond-sota-craft-wave/L05-verification-adversarial-gate.md, PR-1
@@ -333,7 +333,10 @@ dissent:
       wait-status directly. Signal re-raise is not implemented: it would add a trap dance for a
       distinction nothing consumes.
 tests: |
-  scripts/tests/test_hermetic_census.py — 13 -> 28 tests, 28 passed. Run under the hermetic
+  scripts/tests/test_hermetic_census.py — 13 -> 43 tests, 43 passed (re-counted on disk at gate
+  time; this field said "28" until then, a number true after round 1 and stale after rounds 2-3
+  added the 12-row historical-bypass matrix. A pack that narrates a test count is making a
+  countable claim, and it drifts the moment the corpus grows). Run under the hermetic
   environment the PR itself installs (PYTHONDONTWRITEBYTECODE=1, -p no:cacheprovider, caches
   cleared each run), because a corpus that measures its own subject must not be measured through
   the defect it is measuring (W121, and W107's "the probe that measures a disease can have it").
@@ -346,6 +349,13 @@ tests: |
     - the lint's earlier-line loophole reopened -> 1 FAILED
   The implementer additionally reported a per-test revert measurement for all 15 new tests; those
   three are the ones the gate re-ran independently, and they are the three the PR turns on.
+
+  RE-RUN AT FINAL GATE (fresh orchestrator context, caches disabled): the segmentation rule
+  degraded to whole-block proximity — `_segments` returning the entire block as one segment, i.e.
+  the ORIGINAL defeated rule — turns 6 rows RED: all five historical-bypass matrix rows (round-1
+  completed-call-above, round-2 `&&`-before-backslash, and all three round-3 same-line separators
+  `;` `&&` `|`) plus the named earlier-already-exited-wrapper test. Restored from a byte copy
+  (never `git checkout --`, W125) and re-run: 43 passed.
 static: |
   `bash -n scripts/hermetic_verify.sh` clean under bash 3.2.57; `py_compile` of the census lint
   clean with `-W error::SyntaxWarning` (an earlier draft emitted two SyntaxWarnings from backslash
