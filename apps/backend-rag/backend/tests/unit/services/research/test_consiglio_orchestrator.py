@@ -113,3 +113,34 @@ def test_values_agree_scalars():
 
 def test_values_agree_type_mismatch():
     assert ConsiglioV1._values_agree("1.0", 1.0) is False
+
+
+def test_a_permanently_failing_member_never_flips_agreement_or_dispute():
+    """Pins the PENDING-ARMS correction (2026-08-29, follow-up on #5211):
+    a member that never responds at all gets recorded as an explicit
+    `False` vote on every claim (a known, separately-ledgered merge-loop
+    bug), but this can never change `agreement_count()`/`is_disputed()`
+    because those only sum/compare TRUE votes against a threshold — a
+    `False`-only phantom entry contributes nothing to either side of
+    that comparison. The only thing a phantom entry changes is
+    `len(votes)`, a display-only artifact never read by a gate.
+
+    If this test ever goes red, the phantom-vote bug has stopped being
+    outcome-inert and the PENDING-ARMS severity assessment must be
+    revisited — do not silently adjust the assertion to match new
+    behavior.
+    """
+    votes_without_phantom = {"claude": True, "gemini": True, "notebooklm": False}
+    votes_with_phantom = {**votes_without_phantom, "deepseek": False}
+
+    without = ConsiglioClaim(key="k", value="v", votes=votes_without_phantom)
+    with_phantom = ConsiglioClaim(key="k", value="v", votes=votes_with_phantom)
+
+    assert without.agreement_count() == with_phantom.agreement_count()
+    for threshold in (1, 2, 3, 4):
+        assert without.is_disputed(min_agreement=threshold) == with_phantom.is_disputed(
+            min_agreement=threshold
+        )
+    # The one thing that DOES differ — confirms the bug is real, not that
+    # nothing changed at all.
+    assert len(with_phantom.votes) == len(without.votes) + 1
