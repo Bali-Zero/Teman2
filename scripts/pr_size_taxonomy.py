@@ -21,13 +21,22 @@ per-file finding that this specific diff was needed:
                                                  from its diff is unreviewable — a path match, not a mandate claim.
   tests      **/test(s)?/**, test_*.py,        splitting a guilt+innocence corpus from its subject is
              *.spec.*, *.test.*                 the W81 shipped-guard-without-arming trap.
-  docs       docs/**, research/**, .claude/**  a spec/plan/scar is ONE artifact; 400-line chunks unreadable.
+  docs       docs/**, research/**, .claude/**,  a spec/plan/scar is ONE artifact; 400-line chunks unreadable —
+             *.md anywhere                       but a code extension (.py/.sh/.mjs/.ts/.tsx/.js) under the
+                                                  PREFIX still wins as `code` (a live guard script filed
+                                                  under docs/ is code, not documentation).
   lockfile   *.lock, package-lock.json, ...    regenerated, not authored.
   generated  content-marker ONLY               NEVER path-inferred (no glob, e.g. no "fixture"-substring
                                                   guess); fires only on a literal machine-authorship comment
                                                   line in the file's first 20 lines. No such marker is in
                                                   live use on this repo's code today — honestly, never fires yet.
   code       everything else                   the only class the residual gate treats as unexplained.
+
+Measured 2026-08-29 on this tree (not a frozen constant — recompute anytime,
+see the honest-recompute note above): before the docs/code precedence fix,
+503 `.md` files misclassified `code` and 44 code-extension files under
+docs/research/.claude misclassified exempt (3 were live guard/hook scripts:
+.claude/hooks/*, .claude/scripts/*).
 
 Verdict: `exempt(<class>)` when the CODE-CLASS SIGNED NET <= contract, else
 `split-required` regardless of exempt payload size — a huge evidence+tests
@@ -81,22 +90,27 @@ LOCKFILE_RE = re.compile(
 # `generated` header marker — NOT a path glob (see docstring): only a literal
 # machine-authorship comment line in a file's own first 20 lines counts.
 GENERATED_MARKER_RE = re.compile(r"^\s*(#|//|/\*|<!--)\s*@?generated\b", re.I)
+CODE_EXTS = (".py", ".sh", ".mjs", ".ts", ".tsx", ".js")
 
 CLASS_EVIDENCE, CLASS_TESTS, CLASS_DOCS = "evidence", "tests", "docs"
 CLASS_LOCKFILE, CLASS_GENERATED, CLASS_CODE = "lockfile", "generated", "code"
 EXEMPT_CLASSES = (CLASS_EVIDENCE, CLASS_TESTS, CLASS_DOCS, CLASS_LOCKFILE, CLASS_GENERATED)
 
 def classify_path(path: str) -> str:
-    """Path-only classification. `generated` is deliberately absent here — it is
-    never inferred from a path, only from content (see `_has_generated_marker`)."""
+    """Path-only classification, in match-order (full precedence rationale in
+    the module TAXONOMY docstring). `generated` is content-marker-only, never
+    inferred here — see `_has_generated_marker`."""
     if path.startswith("evidence/"):
         return CLASS_EVIDENCE
     if TESTS_RE.search(path):
         return CLASS_TESTS
-    if path.startswith("docs/") or path.startswith("research/") or path.startswith(".claude/"):
-        return CLASS_DOCS
     if LOCKFILE_RE.search(path):
         return CLASS_LOCKFILE
+    if path.endswith(".md"):
+        return CLASS_DOCS
+    docs_prefix = path.startswith("docs/") or path.startswith("research/") or path.startswith(".claude/")
+    if docs_prefix and not path.endswith(CODE_EXTS):
+        return CLASS_DOCS
     return CLASS_CODE
 
 def _has_generated_marker(text: str) -> bool:

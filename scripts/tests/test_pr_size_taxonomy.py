@@ -74,6 +74,35 @@ def test_classify_path_ordering_evidence_beats_a_nested_tests_looklike():
     assert pst.classify_path("evidence/2026-08/agent-x/test_notes.yml") == "evidence"
 
 
+@pytest.mark.parametrize(
+    "path,expected",
+    [
+        # F-B GUILT: a root-level `.md` is docs at ANY location, not only
+        # under a docs/research/.claude prefix — a live example on this repo
+        # (CLAUDE.md, AGENTS.md sit at repo root, no prefix matches them).
+        ("CLAUDE.md", "docs"),
+        ("AGENTS.md", "docs"),
+        # F-B INNOCENCE: a plain docs/**/*.md stays docs — the extension rule
+        # and the prefix rule agree here, this pins that agreement.
+        ("docs/runbooks/foo.md", "docs"),
+        # F-C GUILT: a code extension under a docs/research/.claude PREFIX
+        # wins over the prefix — a live guard/hook script filed under a docs
+        # directory is code, not documentation. All four are real repo paths.
+        (".claude/hooks/codex-spalla-trigger.sh", "code"),
+        (".claude/hooks/memory_budget_gate.py", "code"),
+        (".claude/scripts/codex-spalla.sh", "code"),
+        ("docs/mata-garuda/poc/dummy_agent.py", "code"),
+        # F-C INNOCENCE: the code-extension override never reaches `tests`
+        # or `evidence` — both are checked, and win, before the docs/code
+        # precedence is even consulted.
+        ("apps/x/tests/helper.py", "tests"),
+        ("evidence/2026-08/x/helper.py", "evidence"),
+    ],
+)
+def test_classify_path_docs_vs_code_extension_precedence(path, expected):
+    assert pst.classify_path(path) == expected
+
+
 # ---------------------------------------------------------------------------
 # generated — content-marker only.
 # ---------------------------------------------------------------------------
@@ -494,6 +523,18 @@ def _run_cli(*args: str) -> str:
     return proc.stdout
 
 
+def _md_row_for(out: str, n: int) -> str:
+    # The row for PR #n, not any substring of the whole document — the
+    # static header line already contains the literal "split-required"
+    # (see render_markdown), so `"split-required" in out` is satisfiable by
+    # an implementation that classifies every PR exempt. Tie the assertion
+    # to the verdict CELL of PR #n's own row instead (F-A).
+    for line in out.splitlines():
+        if line.startswith(f"| #{n} |"):
+            return line
+    raise AssertionError(f"no markdown row found for #{n} in:\n{out}")
+
+
 def test_cli_end_to_end_guilt_and_innocence_via_fixture(tmp_path):
     fixture = {"prs": [
         {"n": 100, "t": "guilty", "files": [{"p": "scripts/foo.py", "a": 500, "d": 0}]},
@@ -505,8 +546,10 @@ def test_cli_end_to_end_guilt_and_innocence_via_fixture(tmp_path):
     fpath = tmp_path / "fixture.json"
     fpath.write_text(json.dumps(fixture))
     out = _run_cli("--fixture", str(fpath))
-    assert "#100" in out and "split-required" in out
-    assert "#101" in out and "exempt(evidence)" in out
+    assert "#100" in out
+    assert _md_row_for(out, 100).rstrip().endswith("| split-required |")
+    assert "#101" in out
+    assert _md_row_for(out, 101).rstrip().endswith("| exempt(evidence) |")
 
 
 def test_cli_explain_mode_via_fixture(tmp_path):
