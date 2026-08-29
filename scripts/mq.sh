@@ -273,9 +273,13 @@ cmd_state() {
   #     therefore means "not in this window", which is NOT the same claim as
   #     "never queued" — so the window's own depth travels with the count and
   #     the verdict module renders the difference instead of flattening it.
+  #     `.head_branch` is nullable on a workflow_run, and jq's `test()` ABORTS the
+  #     whole filter on a null (`null cannot be matched, as it is not a string`,
+  #     rc=5) — one such row anywhere in the page would turn a real count into a
+  #     CANNOT-VERIFY. `//""` keeps the row from poisoning the other 99.
   local queue_runs="null"
   _gh api "repos/$REPO/actions/runs?event=merge_group&per_page=100" \
-      --jq "{matched:([.workflow_runs[]?|select(.head_branch|test(\"gh-readonly-queue/.*/pr-${pr}-\"))]|length), window:(.workflow_runs|length), oldest:([.workflow_runs[]?.created_at]|sort|first)}"
+      --jq "{matched:([.workflow_runs[]?|select((.head_branch//\"\")|test(\"gh-readonly-queue/.*/pr-${pr}-\"))]|length), window:(.workflow_runs|length), oldest:([.workflow_runs[]?.created_at]|sort|first)}"
   if (( MQ_RC == 0 )) && [[ "$MQ_OUT" == \{* ]]; then
     queue_runs="$MQ_OUT"
   fi

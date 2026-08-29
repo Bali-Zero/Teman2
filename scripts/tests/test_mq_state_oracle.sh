@@ -265,6 +265,42 @@ check "still produces a verdict" "$(yesno has 'VERDICT: INDETERMINATE' "$OUT")"
 check "and admits the required count is unverified" \
       "$(yesno has 'required-context count CANNOT-VERIFY' "$OUT")"
 
+# ---------------------------------------------------------------------------
+# The jq filter that counts queue-branch runs is a STRING inside mq.sh, and the
+# fake `gh` above answers with the filter's RESULT — so the fake sits ABOVE the
+# transformation and none of the rows so far exercise the filter itself (W114:
+# a fake at the wrong boundary proves nothing about what it bypassed).
+#
+# This block extracts the LIVE filter text out of mq.sh — never a copy, or the
+# corpus would drift into testing a stale duplicate — and runs it under real jq
+# against a payload shaped like the API's.
+# ---------------------------------------------------------------------------
+echo "the queue-run jq filter, extracted from mq.sh and run under real jq:"
+if ! command -v jq >/dev/null 2>&1; then
+  echo "  SKIP — jq is not installed; this row cannot judge (declared, not silently passed)"
+else
+  FILTER="$(sed -n 's/.*--jq "\({matched:.*\)"$/\1/p' "$MQSH" | head -1)"
+  FILTER="$(printf '%s' "$FILTER" | sed 's/\\"/"/g; s/\${pr}/4242/g')"
+  check "the filter was actually extracted (a blank one would pass everything)" \
+        "$(yesno [ -n "$FILTER" ])"
+
+  # A workflow_run's head_branch is NULLABLE. jq's test() aborts the entire
+  # filter on a null ("null cannot be matched, as it is not a string", rc=5),
+  # so ONE such row anywhere in the page would turn a real count into a
+  # CANNOT-VERIFY. The guard must survive it and still count the real match.
+  # The EARLIEST timestamp is deliberately NOT first in this array. With it
+  # first, the "oldest" assertion below passes whether the filter sorts or
+  # simply takes element 0 — a vacuous check. Measured: dropping the `sort`
+  # killed nothing until this array was reordered.
+  PAYLOAD='{"workflow_runs":[{"head_branch":null,"created_at":"2026-08-29T03:00:00Z"},{"head_branch":"gh-readonly-queue/main/pr-4242-abc","created_at":"2026-08-29T02:00:00Z"},{"head_branch":"gh-readonly-queue/main/pr-9999-def","created_at":"2026-08-29T01:00:00Z"}]}'
+  JQOUT="$(printf '%s' "$PAYLOAD" | jq -c "$FILTER" 2>&1)"; JQRC=$?
+  check "a null head_branch does not poison the whole page" "$(yesno [ "$JQRC" = "0" ])"
+  check "and the real match is still counted (matched:1)" "$(yesno has '"matched":1' "$JQOUT")"
+  check "it does not count another PR's queue branch" "$(nope has '"matched":2' "$JQOUT")"
+  check "the window depth travels with the count" "$(yesno has '"window":3' "$JQOUT")"
+  check "the oldest timestamp is the earliest, not the first" "$(yesno has '"oldest":"2026-08-29T01:00:00Z"' "$JQOUT")"
+fi
+
 echo
 if [ "$failures" -eq 0 ]; then
   echo "TOTAL $total FAILED 0"
