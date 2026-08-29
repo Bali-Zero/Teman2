@@ -100,6 +100,25 @@
 #   create/read/delete/verify journey, so degrading the advisory feature is
 #   the right trade, not hard-failing the health check over it.
 #
+#   `zsystem flock` OPENS its target for writing but does not CREATE it: on
+#   an absent lockfile it fails unconditionally (rc=1, "no such file or
+#   directory"). This lockfile was never created anywhere else, so the
+#   lock was a real, live defect — measured on Mini's first armed run, the
+#   guard could never engage, every tick fell into the "proceeding
+#   WITHOUT single-instance protection" WARN branch, and the
+#   overlapping-run SKIP branch above was unreachable dead code. The fix
+#   carries the SAME two preconditions
+#   infra/launchagents/wrappers/bali-zero-magazine-publish.sh already runs
+#   before calling this primitive (a non-regular-path guard catching a
+#   symlink/directory sitting at that path, then `touch` to create it if
+#   absent) — but with the OPPOSITE failure posture: the magazine
+#   publisher exits 70 on either precondition failing (a duplicate
+#   publish corrupts shared state); this wrapper falls through to the
+#   same degraded WARN path described above (an advisory lock this
+#   wrapper cannot even establish is exactly the "proceed without
+#   protection" case for an idempotent probe, never a reason to
+#   hard-fail it).
+#
 # NOTE ON HEARTBEAT.SH AND ZSH — this wrapper never `source`s
 # scripts/lib/heartbeat.sh directly. That library declares locals such as
 # `local status=…`-shaped internals guarded by a caller-readonly detector,
@@ -184,8 +203,22 @@ echo "[voa-probe] node=$NODE_BIN probe=$PROBE" >> "$LOG"
 # --- G10 single instance (advisory) ---------------------------------------
 LOCK_ACQUIRED=1
 if zmodload zsh/system 2>/dev/null; then
-    zsystem flock -t 0.001 -i 0.001 -f VOA_PROBE_LOCK_FD "$LOCKFILE" 2>/dev/null
-    lock_rc=$?
+    # The two preconditions below (non-regular-path guard, then `touch`)
+    # mirror bali-zero-magazine-publish.sh's own use of this primitive —
+    # see the header block above for why they were missing here and what
+    # each precondition catches. OPPOSITE failure posture from that
+    # wrapper: on either failing, fall through to the same degraded WARN
+    # path as a missing zsh/system module below, never exit.
+    if [[ -e "$LOCKFILE" && ! -f "$LOCKFILE" ]]; then
+        echo "[voa-probe] advisory lock path is not a regular file: $LOCKFILE" >> "$LOG"
+        lock_rc=1
+    elif ! touch "$LOCKFILE" 2>/dev/null; then
+        echo "[voa-probe] advisory lock path unavailable (touch failed): $LOCKFILE" >> "$LOG"
+        lock_rc=1
+    else
+        zsystem flock -t 0.001 -i 0.001 -f VOA_PROBE_LOCK_FD "$LOCKFILE" 2>/dev/null
+        lock_rc=$?
+    fi
     case "$lock_rc" in
         0) LOCK_ACQUIRED=0 ;;
         2)

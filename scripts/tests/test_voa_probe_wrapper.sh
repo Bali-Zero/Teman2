@@ -72,10 +72,19 @@ command -v zsh >/dev/null 2>&1 || { echo "FATAL: no zsh on PATH — the wrapper 
 
 # --- mktemp discipline: abort loudly, never continue on a hollow path -----
 CLEANUP_PATHS=()
+# Section 14 backgrounds a lock-holder process; register its PID here too
+# so a corpus that dies unexpectedly between backgrounding and reaping it
+# (a later section's `exit`, a signal) still cannot leave an orphan zsh
+# holding an flock open indefinitely — same discipline as CLEANUP_PATHS,
+# same trap.
+CLEANUP_PIDS=()
 cleanup_all() {
     local p
     for p in "${CLEANUP_PATHS[@]:-}"; do
         [ -n "$p" ] && rm -rf "$p"
+    done
+    for p in "${CLEANUP_PIDS[@]:-}"; do
+        [ -n "$p" ] && kill "$p" 2>/dev/null
     done
 }
 trap cleanup_all EXIT
@@ -571,6 +580,223 @@ if [ -f "$DARK_ORGANISM_HB" ]; then
     check "(verdict=dark) organism status=ok, not degraded (W104)" "ok" "$dark_organism_status"
 else
     check "(verdict=dark) organism status=ok, not degraded (W104)" "ok" "FILE-MISSING"
+fi
+
+echo
+echo "== 14. G10 advisory lock: guilt (busy) + innocence (acquired) + degrade"
+echo "         (unwritable path) + non-regular path (a directory) + a"
+echo "         regression pin on the fix itself =="
+echo "         (0 network calls — the holder process only flocks a scratch"
+echo "          file in the fake world, never imports the probe)"
+
+LOCK_TMP="$(require_tmpdir)"
+mkdir -p "$LOCK_TMP/infra/launchagents/wrappers" "$LOCK_TMP/scripts/probes" "$LOCK_TMP/logs"
+cp "$WRAPPER_SRC" "$LOCK_TMP/infra/launchagents/wrappers/voa-probe-wrapper.sh"
+chmod +x "$LOCK_TMP/infra/launchagents/wrappers/voa-probe-wrapper.sh"
+
+LOCK_RAN_MARKER="$LOCK_TMP/probe-ran-marker"
+cat > "$LOCK_TMP/scripts/probes/voa_journey_probe.mjs" <<LOCKSTUBEOF
+// If the lock is genuinely busy, this file must never even be invoked —
+// its only job is to prove that IF it ran, we would know.
+import fs from "node:fs";
+fs.writeFileSync("$LOCK_RAN_MARKER", "ran");
+process.exit(0);
+LOCKSTUBEOF
+
+LOCKFILE_PATH="$LOCK_TMP/logs/voa-probe.flock"
+
+# 14a. GUILT — the lock is held by a SEPARATE live process (the same
+# non-blocking primitive the wrapper itself uses, `zsystem flock -t 0.001
+# -i 0.001`, so the holder's own acquisition is deterministic too), then
+# the wrapper is run against the SAME lockfile. Before this fix,
+# `zsystem flock` never created the lockfile at all, so this exact
+# scenario always fell into the "*)" WARN/proceed branch and the probe
+# ran anyway regardless of who held the lock — the branch below was
+# unreachable dead code until the create step existed for the wrapper
+# (and, here, the test setup) to rely on.
+: >> "$LOCKFILE_PATH"
+zsh -c "zmodload zsh/system; zsystem flock -t 0.001 -i 0.001 -f HOLDER_FD '$LOCKFILE_PATH' || exit 1; sleep 3" &
+HOLDER_PID=$!
+CLEANUP_PIDS+=("$HOLDER_PID")
+# Give the holder a moment to actually acquire before racing the wrapper —
+# the flock call above is non-blocking, so without this pause the wrapper
+# could win the race and observe an unheld lock.
+sleep 0.3
+
+HOME="$LOCK_TMP" \
+    zsh "$LOCK_TMP/infra/launchagents/wrappers/voa-probe-wrapper.sh" >/dev/null 2>&1
+lock_busy_rc=$?
+
+# Reap the holder immediately — before any check() call below, so an
+# orphan flock-holding zsh cannot survive a failed assertion further down.
+kill "$HOLDER_PID" 2>/dev/null || true
+wait "$HOLDER_PID" 2>/dev/null || true
+
+check "(lock busy) wrapper exits 0 (skipped tick, never a failure)" "0" "$lock_busy_rc"
+
+LOCK_BUSY_LOG="$LOCK_TMP/logs/voa-probe.log"
+if grep -q 'overlapping run detected' "$LOCK_BUSY_LOG" 2>/dev/null; then
+    check "(lock busy) log reports 'overlapping run detected'" "yes" "yes"
+else
+    check "(lock busy) log reports 'overlapping run detected'" "yes" "no"
+    [ -f "$LOCK_BUSY_LOG" ] && { echo "  --- $LOCK_BUSY_LOG ---"; sed 's/^/  | /' "$LOCK_BUSY_LOG"; }
+fi
+
+if [ -f "$LOCK_RAN_MARKER" ]; then
+    check "(lock busy) the probe itself was NEVER invoked" "not-run" "ran"
+else
+    check "(lock busy) the probe itself was NEVER invoked" "not-run" "not-run"
+fi
+
+# 14b. INNOCENCE — a normal run against an uncontended lockfile must
+# acquire the lock cleanly: no WARN about proceeding without protection,
+# and the lockfile must exist on disk afterward (nothing else in this
+# fake world ever touches that path, so its existence proves the wrapper
+# itself created/opened it).
+rm -f "$LOCKFILE_PATH"
+INNOCENT_LOG="$LOCK_TMP/logs/voa-probe.log"
+: > "$INNOCENT_LOG"  # fresh — 14a already appended to this same log path
+
+HOME="$LOCK_TMP" \
+    zsh "$LOCK_TMP/infra/launchagents/wrappers/voa-probe-wrapper.sh" >/dev/null 2>&1
+lock_clean_rc=$?
+check "(lock uncontended) wrapper exits 0" "0" "$lock_clean_rc"
+
+if grep -q 'WITHOUT single-instance protection' "$INNOCENT_LOG" 2>/dev/null; then
+    check "(lock uncontended) log does NOT warn about missing lock protection" "absent" "present"
+    echo "  --- $INNOCENT_LOG ---"; sed 's/^/  | /' "$INNOCENT_LOG"
+else
+    check "(lock uncontended) log does NOT warn about missing lock protection" "absent" "absent"
+fi
+
+if [ -f "$LOCKFILE_PATH" ]; then
+    check "(lock uncontended) lockfile exists on disk after the run" "yes" "yes"
+else
+    check "(lock uncontended) lockfile exists on disk after the run" "yes" "no"
+fi
+
+# 14c. DEGRADE (a third state, neither guilt nor innocence) — the
+# lockfile's directory is unwritable, so neither the non-regular-path
+# guard nor `touch` can create/validate the lockfile there. Per this
+# probe's documented philosophy (an overlapping run is merely redundant
+# traffic against an idempotent journey — unlike
+# bali-zero-magazine-publish.sh, where the SAME primitive fails CLOSED
+# because a duplicate publish corrupts shared state), the wrapper must
+# WARN and still run the probe — never hard-fail a health check over an
+# advisory lock it could not establish.
+DEGRADE_TMP="$(require_tmpdir)"
+mkdir -p "$DEGRADE_TMP/infra/launchagents/wrappers" "$DEGRADE_TMP/scripts/probes" "$DEGRADE_TMP/logs"
+cp "$WRAPPER_SRC" "$DEGRADE_TMP/infra/launchagents/wrappers/voa-probe-wrapper.sh"
+chmod +x "$DEGRADE_TMP/infra/launchagents/wrappers/voa-probe-wrapper.sh"
+
+DEGRADE_RAN_MARKER="$DEGRADE_TMP/probe-ran-marker"
+cat > "$DEGRADE_TMP/scripts/probes/voa_journey_probe.mjs" <<DEGRADEEOF
+import fs from "node:fs";
+fs.writeFileSync("$DEGRADE_RAN_MARKER", "ran");
+process.exit(0);
+DEGRADEEOF
+
+# Pre-create the wrapper's own log file WRITABLE before locking the
+# directory down — appending to an EXISTING file needs write permission on
+# the FILE, not the directory; only CREATING a new file (the lockfile)
+# needs directory write permission. This isolates the lockfile-creation
+# failure from the wrapper's own (unrelated) logging.
+: > "$DEGRADE_TMP/logs/voa-probe.log"
+chmod 644 "$DEGRADE_TMP/logs/voa-probe.log"
+chmod 500 "$DEGRADE_TMP/logs"
+
+HOME="$DEGRADE_TMP" \
+    zsh "$DEGRADE_TMP/infra/launchagents/wrappers/voa-probe-wrapper.sh" >/dev/null 2>&1
+degrade_rc=$?
+
+chmod 700 "$DEGRADE_TMP/logs"  # restore write so cleanup_all's rm -rf can work
+
+check "(lock path unwritable) wrapper still exits 0 (probe ran, verdict pass)" "0" "$degrade_rc"
+
+if [ -f "$DEGRADE_RAN_MARKER" ]; then
+    check "(lock path unwritable) the probe STILL ran (degrade, never hard-fail)" "ran" "ran"
+else
+    check "(lock path unwritable) the probe STILL ran (degrade, never hard-fail)" "ran" "not-run"
+fi
+
+DEGRADE_LOG="$DEGRADE_TMP/logs/voa-probe.log"
+if grep -q 'WITHOUT single-instance protection' "$DEGRADE_LOG" 2>/dev/null; then
+    check "(lock path unwritable) log warns about missing lock protection" "yes" "yes"
+else
+    check "(lock path unwritable) log warns about missing lock protection" "yes" "no"
+    [ -f "$DEGRADE_LOG" ] && { echo "  --- $DEGRADE_LOG ---"; sed 's/^/  | /' "$DEGRADE_LOG"; }
+fi
+
+# 14c2. NON-REGULAR LOCKFILE PATH — a DIRECTORY sitting at $LOCKFILE. This
+# is a DIFFERENT failure mode from 14c above and needs its OWN check: on
+# macOS, `touch` on an EXISTING directory succeeds (rc=0, it just updates
+# mtime — verified empirically before writing this assertion, not assumed)
+# so the `touch` precondition alone would NOT catch this case; without the
+# `[[ -e "$LOCKFILE" && ! -f "$LOCKFILE" ]]` guard running FIRST, the code
+# falls through touch's success straight into `zsystem flock` against the
+# directory, which still fails (rc=1, "is a directory") but lands in the
+# GENERIC `*)` WARN branch rather than the specific non-regular-path
+# branch — same fail-open behavior on the surface, but the guard's own
+# diagnostic line never fires and the guard itself is untested (this is
+# the gap a mutant that deletes the guard, e.g. `if false; then`, would
+# survive). This check pins the SPECIFIC message, not just the generic
+# fail-open posture the checks above already cover.
+NONREG_TMP="$(require_tmpdir)"
+mkdir -p "$NONREG_TMP/infra/launchagents/wrappers" "$NONREG_TMP/scripts/probes" "$NONREG_TMP/logs"
+cp "$WRAPPER_SRC" "$NONREG_TMP/infra/launchagents/wrappers/voa-probe-wrapper.sh"
+chmod +x "$NONREG_TMP/infra/launchagents/wrappers/voa-probe-wrapper.sh"
+
+NONREG_RAN_MARKER="$NONREG_TMP/probe-ran-marker"
+cat > "$NONREG_TMP/scripts/probes/voa_journey_probe.mjs" <<NONREGEOF
+import fs from "node:fs";
+fs.writeFileSync("$NONREG_RAN_MARKER", "ran");
+process.exit(0);
+NONREGEOF
+
+# A directory sitting AT the lockfile path — not a symlink to one, not an
+# unwritable parent (that is 14c); this is the exact shape the
+# non-regular-path guard exists to name.
+mkdir -p "$NONREG_TMP/logs/voa-probe.flock"
+
+NONREG_LOG="$NONREG_TMP/logs/voa-probe.log"
+HOME="$NONREG_TMP" \
+    zsh "$NONREG_TMP/infra/launchagents/wrappers/voa-probe-wrapper.sh" >/dev/null 2>&1
+nonreg_rc=$?
+
+check "(lock path is a directory) wrapper exits 0 (non-fatal)" "0" "$nonreg_rc"
+
+if grep -q 'advisory lock path is not a regular file' "$NONREG_LOG" 2>/dev/null; then
+    check "(lock path is a directory) log names the non-regular-path guard specifically" "yes" "yes"
+else
+    check "(lock path is a directory) log names the non-regular-path guard specifically" "yes" "no"
+    [ -f "$NONREG_LOG" ] && { echo "  --- $NONREG_LOG ---"; sed 's/^/  | /' "$NONREG_LOG"; }
+fi
+
+if [ -f "$NONREG_RAN_MARKER" ]; then
+    check "(lock path is a directory) the probe STILL ran (fail-open, not a refusal)" "ran" "ran"
+else
+    check "(lock path is a directory) the probe STILL ran (fail-open, not a refusal)" "ran" "not-run"
+fi
+
+# 14d. REGRESSION PIN — this is the pin against the actual defect: assert
+# the wrapper SOURCE contains a lockfile-creation step (`touch "$LOCKFILE"`
+# or the equivalent append-create `: >> "$LOCKFILE"`) somewhere BEFORE its
+# first `zsystem flock` invocation. Matched on the ENTITY (a
+# create-if-absent step targeting $LOCKFILE), not a brittle exact line, so
+# it survives a future reformatting but still goes red if the create step
+# itself is ever dropped again — which is exactly the shape of the
+# original defect (14a/14b would also go red in that case, but this pin
+# names the cause directly instead of only its symptom).
+FLOCK_LINE_NO="$(grep -n 'zsystem flock -t' "$WRAPPER_SRC" | head -1 | cut -d: -f1)"
+if [ -n "$FLOCK_LINE_NO" ]; then
+    PRECEDING_TEXT="$(sed -n "1,${FLOCK_LINE_NO}p" "$WRAPPER_SRC")"
+    if echo "$PRECEDING_TEXT" | grep -Eq '(touch[[:space:]]+"\$LOCKFILE"|:[[:space:]]*>>[[:space:]]*"\$LOCKFILE")'; then
+        check "(regression pin) a lockfile-creation step precedes zsystem flock" "present" "present"
+    else
+        check "(regression pin) a lockfile-creation step precedes zsystem flock" "present" "absent"
+    fi
+else
+    check "(regression pin) zsystem flock call found in wrapper source" "found" "not-found"
 fi
 
 echo
