@@ -1152,3 +1152,185 @@ def test_markdown_empty_seat_cell_is_not_a_finding(tmp_path: Path) -> None:
     report = cyr.run([str(doc)], repo_root=tmp_path)
     assert report["totals"]["findings"] == 1, report["totals"]
     assert report["totals"]["retracted"] == 0
+
+
+# ---------------------------------------------------------------------------
+# BLIND REFUTATION ROUND 2 (Codex GPT-5.6-sol, non-Anthropic, second
+# cross-family seat — dispatched because the Gear-3 quorum NOTICE said one
+# seat was not enough, and it was right: 12 findings, several Kimi missed).
+# Payload was again the module code only. Every finding below was reproduced
+# on disk before acceptance. ZERO of these cures move a number on the live
+# corpus (family changed for 0 strings, role for 0) — they are latent defects,
+# which is exactly the kind a second seat exists to find.
+# ---------------------------------------------------------------------------
+
+
+def test_family_is_the_seats_own_identity_not_what_it_reviewed() -> None:
+    """The REVIEWED model was becoming the reviewer's family: precedence
+    scanned the whole phrase, so `sonnet reviewing codex` returned
+    `codex-gpt-5.6` and `gemini reviewing kimi` returned `kimi`. A finding's
+    yield was credited to the wrong seat — in a report whose entire product is
+    per-family yield. Same lesson as the role axis (the seat, not the subject),
+    one axis over."""
+    assert cyr.normalize_family("sonnet reviewing codex") == "sonnet"
+    assert cyr.normalize_family("gemini reviewing kimi") == "gemini"
+    assert cyr.normalize_family("kimi-k3 on opus's own diff") == "kimi"
+
+
+def test_identity_cut_does_not_erase_a_plain_seat_name() -> None:
+    """INNOCENCE for the identity cut — the over-correction twin. Real corpus
+    strings that never name a subject must be untouched, and a cut that left
+    nothing nameable must fall back to the whole string rather than return
+    `unattributed`."""
+    assert cyr.normalize_family("agy (Gemini 3.1 Pro, cross-family refuter)") == "gemini"
+    assert cyr.normalize_family("codex-gpt-5.6-sol (review lane)") == "codex-gpt-5.6"
+    assert cyr.normalize_family("kimi-code/k3 (cross-family refuter, blind)") == "kimi"
+    assert cyr.normalize_family("reviewing kimi") == "kimi"
+
+
+def test_explicit_self_marker_outranks_the_subject_heuristic() -> None:
+    """"sonnet SELF reviewing its own diff" landed in `review`, because the
+    generic `reviewing` disabled every self signal at once. An explicit marker
+    outranks the heuristic that exists to protect it."""
+    assert cyr.classify_role("sonnet self reviewing its own diff") == cyr.ROLE_SELF
+
+
+def test_a_non_utf8_file_does_not_break_exit_zero_always(tmp_path: Path) -> None:
+    """`except OSError` does not catch `UnicodeDecodeError` (a ValueError), so
+    one undecodable byte propagated out of run() and main() and the tool exited
+    non-zero — violating its single headline contract, on the path that exists
+    to report unreadable inputs gracefully."""
+    bad = tmp_path / "bad.md"
+    bad.write_bytes(b"## Adversarial review\n\xff\xfe not utf-8\n")
+    report = cyr.run([str(bad)], repo_root=tmp_path)
+    assert len(report["sources"]["unparseable"]) == 1
+    assert report["sources"]["unparseable"][0]["error"]
+
+
+def test_a_gate_only_finding_is_not_a_council_amendments_candidate(
+    tmp_path: Path,
+) -> None:
+    """A pack whose only finding is `Harness floor recompute (CI)` emitted
+    "council raised findings, applied none" — reintroducing the review/self/
+    gate pooling this report claims to avoid, INSIDE the antidote that is its
+    headline feature. Only REVIEW-role findings are council yield."""
+    _write_pack(
+        tmp_path,
+        "p1",
+        dissent=[{"seat": "Harness floor recompute (CI, deterministic)", "status": "RETRACTED"}],
+    )
+    assert cyr.run([], repo_root=tmp_path)["amendments_candidates"] == []
+
+
+def test_a_real_council_finding_still_becomes_a_candidate(tmp_path: Path) -> None:
+    """INNOCENCE for the role filter — the under-match twin. Filtering to
+    REVIEW must not delete the antidote it just made honest."""
+    _write_pack(
+        tmp_path,
+        "p1",
+        dissent=[
+            {"seat": "kimi-k3 (cross-family refuter)", "status": "RETRACTED"},
+            {"seat": "Harness floor recompute (CI)", "status": "CONFIRMED"},
+        ],
+    )
+    cands = cyr.run([], repo_root=tmp_path)["amendments_candidates"]
+    assert len(cands) == 1, cands
+    assert cands[0]["findings"] == 1
+
+
+def test_an_all_malformed_seats_list_is_not_an_override(tmp_path: Path) -> None:
+    """A non-empty `seats:` list every entry of which is malformed yields
+    NOTHING, and taking the override on it zeroed a pack that had a perfectly
+    good `dissent:`. Same defect as the est_tokens-only case, one branch over:
+    what makes an override an override is USABLE CONTENT, never a key."""
+    _write_pack(
+        tmp_path,
+        "p1",
+        council_yield={"seats": [{"seat": ""}]},
+        dissent=[{"seat": "kimi-k3", "status": "CONFIRMED"}],
+    )
+    assert cyr.run([], repo_root=tmp_path)["totals"]["findings"] == 1
+
+
+def test_contradictory_declared_counts_are_named_not_silently_rewritten(
+    tmp_path: Path,
+) -> None:
+    """`findings: 1, applied: 2` was silently reported as findings=2. The
+    author declared a number; the tool disagreeing with it in silence is the
+    report deciding what the author meant."""
+    _write_pack(tmp_path, "p1", council_yield={"findings": 1, "applied": 2})
+    warns = " ".join(w["warning"] for w in cyr.run([], repo_root=tmp_path)["sources"]["warnings"])
+    assert "less than applied+rejected+plausible" in warns
+
+
+def test_est_tokens_actually_reaches_the_json_output(tmp_path: Path) -> None:
+    """The docstring promised `est_tokens` "surfaces only in --json output";
+    build_report dropped it entirely. Another docstring describing behaviour
+    the code did not have."""
+    _write_pack(
+        tmp_path,
+        "p1",
+        council_yield={"seats": [{"seat": "agy", "status": "CONFIRMED"}], "est_tokens": 1234},
+    )
+    report = cyr.run([], repo_root=tmp_path)
+    assert report["sources"]["est_tokens"] == [
+        {"pack": report["sources"]["est_tokens"][0]["pack"], "est_tokens": 1234}
+    ]
+
+
+def test_an_unrelated_table_in_the_section_is_not_merged_in(tmp_path: Path) -> None:
+    """Every row in the section was poured into ONE table, so a `Metric/Value`
+    table before the real one made the doc unparseable and one after it donated
+    phantom findings. Tables are delimited by their own header rows."""
+    doc = tmp_path / "d.md"
+    doc.write_text(
+        "## Adversarial review\n\n"
+        "| Metric | Value |\n| --- | --- |\n| rounds | 2 |\n\n"
+        "| Seat | Disposition |\n| --- | --- |\n| kimi-k3 | applied |\n",
+        encoding="utf-8",
+    )
+    report = cyr.run([str(doc)], repo_root=tmp_path)
+    assert report["totals"]["findings"] == 1, report["totals"]
+    assert report["totals"]["confirmed"] == 1
+
+
+def test_an_escaped_pipe_is_content_not_a_column_boundary(tmp_path: Path) -> None:
+    r"""`| kimi-k3 \| blind | APPLIED |` read as seat `kimi-k3 \` and
+    disposition `blind`, dropping the real disposition entirely."""
+    doc = tmp_path / "d.md"
+    doc.write_text(
+        "## Adversarial review\n\n"
+        "| Seat | Disposition |\n| --- | --- |\n| kimi-k3 \\| blind | APPLIED |\n",
+        encoding="utf-8",
+    )
+    report = cyr.run([str(doc)], repo_root=tmp_path)
+    assert report["totals"]["confirmed"] == 1, report["totals"]
+
+
+def test_the_same_fallback_doc_named_twice_is_counted_once(tmp_path: Path) -> None:
+    """Fallback docs went through no dedup at all, so naming one twice counted
+    every finding twice. A double-counted finding is a wrong number in a report
+    whose only product is numbers."""
+    doc = tmp_path / "d.md"
+    doc.write_text(
+        "## Adversarial review\n\n"
+        "| Seat | Disposition |\n| --- | --- |\n| kimi-k3 | applied |\n",
+        encoding="utf-8",
+    )
+    report = cyr.run([str(doc), str(doc)], repo_root=tmp_path)
+    assert report["totals"]["findings"] == 1
+    assert report["sources"]["fallback_docs_scanned"] == 1
+
+
+def test_a_non_utf8_pack_yml_also_does_not_break_exit_zero(tmp_path: Path) -> None:
+    """The SAME defect exists on BOTH read paths, and pinning only one of them
+    is how a mis-aimed mutant looks like a passing suite: the first mutation
+    of `except (OSError, ValueError)` survived because it hit `load_pack`
+    while the only test exercised `load_fallback_markdown`. Two call sites,
+    two proofs."""
+    pack_dir = tmp_path / "evidence" / "p1"
+    pack_dir.mkdir(parents=True)
+    (pack_dir / "pack.yml").write_bytes(b"brief_ref: x\ndissent:\n  - seat: \xff\xfe\n")
+    report = cyr.run([], repo_root=tmp_path)
+    assert len(report["sources"]["unparseable"]) == 1
+    assert report["sources"]["unparseable"][0]["error"]

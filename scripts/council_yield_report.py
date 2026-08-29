@@ -124,11 +124,31 @@ def _binds(text: str, token: str) -> bool:
     return re.search(pattern, text, re.IGNORECASE) is not None
 
 
+#: Truncates a seat string at the point where it stops naming ITSELF and
+#: starts naming what it reviewed. Blind review round 2 (Codex) measured the
+#: consequence: `normalize_family("sonnet reviewing codex")` returned
+#: `codex-gpt-5.6` and `"gemini reviewing kimi"` returned `kimi` — the
+#: REVIEWED model became the reviewer's family, so a finding's yield was
+#: credited to the wrong seat entirely. Precedence was scanning the whole
+#: phrase; identity lives to the LEFT of these words. Same lesson as the role
+#: axis (the seat, not the subject), one axis over.
+_IDENTITY_CUT_RE = re.compile(r"\breviewing\b|\bagainst\b|\bon\s+\S+'s\b", re.IGNORECASE)
+
+
+def _seat_identity_text(raw_seat: str) -> str:
+    m = _IDENTITY_CUT_RE.search(raw_seat)
+    head = raw_seat[: m.start()] if m else raw_seat
+    # If the cut leaves nothing nameable, the whole string is all we have —
+    # better an imperfect family than an empty one (the under-match twin).
+    return head if head.strip() else raw_seat
+
+
 def normalize_family(raw_seat: str) -> str:
     """Resolve a raw `seat:` string to a family, or `unattributed` if no
     declared family token binds. First match in FAMILY_PRECEDENCE wins."""
+    ident = _seat_identity_text(raw_seat)
     for family, aliases in FAMILY_PRECEDENCE:
-        if any(_binds(raw_seat, alias) for alias in aliases):
+        if any(_binds(ident, alias) for alias in aliases):
             return family
     return UNATTRIBUTED
 
@@ -218,7 +238,16 @@ _GATE_PATTERNS = [
 ]
 
 
+#: `self` names the seat outright and cannot be talking about the subject —
+#: "sonnet SELF reviewing its own diff" was landing in `review` because the
+#: generic `reviewing` disabled every self signal at once (blind review round
+#: 2). An explicit marker outranks the heuristic that exists to protect it.
+_EXPLICIT_SELF_RE = re.compile(r"\bself\b", re.IGNORECASE)
+
+
 def classify_role(raw_seat: str) -> str:
+    if _EXPLICIT_SELF_RE.search(raw_seat):
+        return ROLE_SELF
     subject_not_seat = bool(_SUBJECT_NOT_SEAT_RE.search(raw_seat))
     if _SELF_LEADING_TOKEN.match(raw_seat) or (
         not subject_not_seat
@@ -359,7 +388,7 @@ def load_pack(path: Path) -> PackResult:
         return PackResult(path=rel, ok=False, error="pyyaml not importable")
     try:
         text = path.read_text(encoding="utf-8")
-    except OSError as exc:
+    except (OSError, ValueError) as exc:
         return PackResult(path=rel, ok=False, error=f"read error: {exc}")
     try:
         data = yaml.safe_load(text)
@@ -397,8 +426,19 @@ def load_pack(path: Path) -> PackResult:
             else:
                 totals[key] = usable
 
+        seat_findings: list[Finding] = []
+        seat_malformed = 0
         if isinstance(seats, list) and seats:
-            findings, malformed = _seat_findings_from_items(seats, rel, "council_yield")
+            seat_findings, seat_malformed = _seat_findings_from_items(
+                seats, rel, "council_yield"
+            )
+        # A non-empty list every entry of which is malformed yields NOTHING,
+        # and taking the override on it zeroed a pack that had a perfectly
+        # good `dissent:` list (blind review round 2). Same defect as F1, one
+        # branch over: what makes an override an override is USABLE CONTENT,
+        # never the mere presence of a key.
+        if seat_findings:
+            findings, malformed = seat_findings, seat_malformed
             result.findings = findings
             result.used_override = True
             if malformed:
@@ -408,6 +448,17 @@ def load_pack(path: Path) -> PackResult:
         elif totals:
             for key in ("findings", "applied", "rejected", "plausible"):
                 totals.setdefault(key, 0)
+            parts = totals["applied"] + totals["rejected"] + totals["plausible"]
+            if totals["findings"] < parts:
+                # `findings: 1, applied: 2` used to be silently rewritten to
+                # findings=2 (the parts win downstream). The author declared a
+                # number; the tool disagreeing with it in silence is the
+                # report deciding what the author meant.
+                result.warnings.append(
+                    f"council_yield: declared findings={totals['findings']} is less "
+                    f"than applied+rejected+plausible={parts} — the parts are "
+                    "reported; the declared total is inconsistent"
+                )
             result.override_totals = totals
             result.used_override = True
         else:
@@ -486,6 +537,31 @@ def _extract_adversarial_section(text: str) -> list[str] | None:
     return lines[start:end]
 
 
+def _split_row(row: str) -> list[str]:
+    r"""Splits on UNESCAPED pipes only. `| kimi-k3 \| blind | APPLIED |` used to
+    read as seat `kimi-k3 \` / disposition `blind`, dropping the real
+    disposition entirely (blind review round 2) — a column separator that also
+    appears escaped inside a cell is a parser that mis-reads its own data."""
+    out: list[str] = []
+    buf: list[str] = []
+    escaped = False
+    for ch in row:
+        if escaped:
+            buf.append(ch)
+            escaped = False
+            continue
+        if ch == "\\":
+            escaped = True
+            continue
+        if ch == "|":
+            out.append("".join(buf))
+            buf = []
+            continue
+        buf.append(ch)
+    out.append("".join(buf))
+    return out
+
+
 def _parse_markdown_table(section: list[str]) -> list[dict[str, str]] | None:
     rows: list[list[str]] = []
     in_fence = False
@@ -501,13 +577,25 @@ def _parse_markdown_table(section: list[str]) -> list[dict[str, str]] | None:
         m = _TABLE_ROW_RE.match(line)
         if not m:
             continue
-        cells = [c.strip() for c in m.group(1).split("|")]
+        cells = [c.strip() for c in _split_row(m.group(1))]
         rows.append(cells)
     if len(rows) < 2:
         return None
-    header = [c.lower() for c in rows[0]]
-    if "seat" not in header or "disposition" not in header:
+    # Every row in the section used to be poured into ONE table, so an
+    # unrelated `| Metric | Value |` table before the real one made the doc
+    # unparseable and one after it donated phantom findings (blind review
+    # round 2). Tables are delimited by their own header rows.
+    tables: list[list[list[str]]] = []
+    for cells in rows:
+        lowered = [c.lower() for c in cells]
+        if "seat" in lowered and "disposition" in lowered:
+            tables.append([cells])
+        elif tables:
+            tables[-1].append(cells)
+    if not tables:
         return None
+    rows = [r for t in tables for r in t]
+    header = [c.lower() for c in tables[0][0]]
     seat_idx = header.index("seat")
     disp_idx = header.index("disposition")
     parsed: list[dict[str, str]] = []
@@ -559,7 +647,7 @@ def load_fallback_markdown(path: Path) -> PackResult:
     rel = _rel(path)
     try:
         text = path.read_text(encoding="utf-8")
-    except OSError as exc:
+    except (OSError, ValueError) as exc:
         return PackResult(path=rel, ok=False, error=f"read error: {exc}", kind="fallback_md")
     section = _extract_adversarial_section(text)
     if section is None:
@@ -790,8 +878,14 @@ def amendments_candidates(pack_results: list[PackResult]) -> list[dict[str, Any]
             # something untrue about where the number came from — the exact
             # failure the field exists to prevent (blind review, verified).
             source = "fallback_md" if pr.kind == "fallback_md" else "derived"
-            findings = len(pr.findings)
-            applied = sum(1 for f in pr.findings if f.disposition == DISP_CONFIRMED)
+            # Only REVIEW-role findings are council yield. A pack whose only
+            # finding is `Harness floor recompute (CI)` used to emit "council
+            # raised findings, applied none" — reintroducing exactly the
+            # review/self/gate pooling this report claims to avoid, inside the
+            # antidote that is its headline feature (blind review round 2).
+            council = [f for f in pr.findings if f.role == ROLE_REVIEW]
+            findings = len(council)
+            applied = sum(1 for f in council if f.disposition == DISP_CONFIRMED)
         if findings > 0 and applied == 0:
             out.append(
                 {
@@ -896,6 +990,14 @@ def build_report(pack_results: list[PackResult], fallback_count: int) -> dict[st
         "packs_with_dissent": agg.pop("packs_with_dissent"),
         "packs_with_council_yield_override": agg.pop("packs_with_council_yield_override"),
         "warnings": agg.pop("warnings"),
+        "est_tokens": sorted(
+            (
+                {"pack": pr.path, "est_tokens": pr.est_tokens}
+                for pr in pack_results
+                if pr.est_tokens is not None
+            ),
+            key=lambda e: e["pack"],
+        ),
         "fallback_docs_scanned": fallback_count,
         "unparseable": agg.pop("unparseable"),
     }
@@ -922,10 +1024,21 @@ def run(paths: list[str] | None, repo_root: Path = REPO_ROOT) -> dict[str, Any]:
         all_pack_paths.append(p)
 
     pack_results = [load_pack(p) for p in all_pack_paths]
+    # Fallback docs went through no dedup at all, so `--paths same.md same.md`
+    # counted every finding twice and claimed two docs scanned (blind review
+    # round 2). A double-counted finding is a wrong number in a report whose
+    # only product is numbers.
+    unique_md: list[Path] = []
     for md in sorted(md_paths, key=lambda x: str(x)):
+        key = str(md.resolve()) if md.exists() else str(md)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique_md.append(md)
+    for md in unique_md:
         pack_results.append(load_fallback_markdown(md))
 
-    return build_report(pack_results, fallback_count=len(md_paths))
+    return build_report(pack_results, fallback_count=len(unique_md))
 
 
 def main(argv: list[str] | None = None) -> int:

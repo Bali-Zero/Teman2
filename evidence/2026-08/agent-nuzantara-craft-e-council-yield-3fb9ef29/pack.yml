@@ -1,3 +1,4 @@
+council_run: council.jsonl
 brief_ref: evidence/2026-08/agent-nuzantara-craft-e-council-yield-3fb9ef29/brief.yml
 lanes:
   - lane: orchestrator
@@ -21,13 +22,13 @@ seat_diversity_note: >-
   own words. The gate did not write the first draft; the drafter did not gate.
 diff:
   net_lines: >-
-    AS OF the commit this pack ships with: 5 files, +2496/-0, measured
+    AS OF the commit this pack ships with: 6 files, +2867/-0, measured
     THREE-DOT against the merge base 564ba570a — never two-dot, which on a
     moved base blames this PR for files that landed on main after the branch
     point (W102). Deterministic gear floor recomputed from this diff = 1;
     declared Gear 2, which is ABOVE the floor and therefore allowed (the floor
     is a lower bound). The 400-line target is exceeded and that is stated, not
-    hidden: 953 lines of report + 1154 of tests. The test file is larger than
+    hidden: the report and its tests are the bulk of it. The test file is larger than
     the subject because 14 of its cases exist only to pin defects that blind
     review and mutation found in the first draft, and deleting them to hit a
     line target would delete the evidence that the cures work.
@@ -91,11 +92,16 @@ receipts:
     ts: "2026-08-29T19:40Z"
     seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
 spend:
-  adversarial_rounds: 1
+  adversarial_rounds: 2
 spend_note: >-
-  ONE cross-family blind round (Kimi K3), under the ceiling of 2. The second
-  round was not needed: its 15 findings were dispositioned and cured in one
-  pass, and every accepted one was reproduced on disk before being believed.
+  TWO cross-family blind rounds, exactly at the declared ceiling of 2 and not
+  over it. Round 1 was Kimi K3; round 2 was Codex GPT-5.6-sol, dispatched
+  BECAUSE the Gear-3 quorum NOTICE said one seat was not enough — and it was
+  right: 12 findings, several Kimi never saw, including a `UnicodeDecodeError`
+  that broke the tool's one headline contract (exit 0 always) and a family
+  misattribution that credited a finding's yield to the model being REVIEWED.
+  A notice that names a real gap and gets acted on is the difference between
+  a gate and a formality.
   `wall_clock_hours` is deliberately NOT declared as a ceiling — this session
   has no instrument that measures its own wall clock at pack-write time, and
   declaring a ceiling I cannot measure, then staging a spend for it, would be
@@ -225,6 +231,74 @@ dissent:
       `council:` mapping convicts a Gear-3 pack while an EMPTY one passes, so
       adopting the block would have cost a merge precisely on the 0-applied
       case the antidote targets.
+  - seat: "codex-gpt-5.6-sol (blind cross-family refuter, round 2, code-only payload)"
+    objection: >-
+      `except OSError` does not catch `UnicodeDecodeError` (a ValueError), so a
+      single undecodable byte in any input propagated out of run() and main()
+      and the tool exited non-zero — violating "exit 0 always", its one
+      headline contract, on the very path that exists to report unreadable
+      inputs gracefully.
+    status: CONFIRMED
+    note: >-
+      Cured on BOTH read paths. Pinning only one is how a mis-aimed mutant
+      looks like a passing suite: the first mutation of this line survived
+      because it hit load_pack while the only test exercised the markdown
+      loader. Two call sites, two proofs.
+  - seat: "codex-gpt-5.6-sol (blind cross-family refuter, round 2, code-only payload)"
+    objection: >-
+      Family precedence scanned the whole seat phrase, so
+      `normalize_family("sonnet reviewing codex")` returned `codex-gpt-5.6` and
+      `"gemini reviewing kimi"` returned `kimi` — the REVIEWED model became the
+      reviewer's family, crediting a finding's yield to the wrong seat in a
+      report whose entire product is per-family yield.
+    status: CONFIRMED
+    note: >-
+      The same lesson as the role axis one axis over: identity lives to the
+      LEFT of the words that name what was reviewed. Cured with an identity
+      cut, and its over-correction twin pinned — a cut that leaves nothing
+      nameable falls back to the whole string rather than returning
+      `unattributed`.
+  - seat: "codex-gpt-5.6-sol (blind cross-family refuter, round 2, code-only payload)"
+    objection: >-
+      A pack whose only finding is `Harness floor recompute (CI)` emitted
+      "council raised findings, applied none" — the AMENDMENTS antidote did not
+      filter by role, so deterministic CI gates and self-refutations counted as
+      council yield.
+    status: CONFIRMED
+    note: >-
+      This reintroduced the exact review/self/gate pooling the report claims to
+      avoid, INSIDE the antidote that is its headline feature. Now only
+      REVIEW-role findings count. Measured on the live corpus: candidates went
+      4 -> 3 and one pack's count 3 -> 1, i.e. the number got smaller and
+      truer.
+  - seat: "codex-gpt-5.6-sol (blind cross-family refuter, round 2, code-only payload)"
+    objection: >-
+      Six more, each with a running trigger: a `seats:` list whose every entry
+      is malformed still took the override and zeroed a good `dissent:`;
+      `findings: 1, applied: 2` was silently rewritten to findings=2; an
+      explicit `self` marker lost to a generic `reviewing`; `est_tokens` was
+      promised in `--json` and dropped; an unrelated `Metric/Value` table in
+      the section was merged into the findings table; an escaped `\|` split a
+      cell; and the same fallback doc named twice was counted twice.
+    status: CONFIRMED
+    note: >-
+      All cured and pinned. ZERO of the round-2 cures move a number on the live
+      corpus (family changed for 0 strings, role for 0) — they are latent
+      defects, which is exactly the kind a second seat exists to find, and the
+      argument for dispatching one even when the first round looked thorough.
+  - seat: "codex-gpt-5.6-sol (blind cross-family refuter, round 2, code-only payload)"
+    objection: >-
+      "There is no per-seat yield: kimi-k3 and kimi-k2 both collapse into one
+      `kimi x review` row, and the raw seat string is discarded."
+    status: RETRACTED
+    note: >-
+      Correct as an observation, refused as a defect: collapsing to family IS
+      the design (DECISION 1), taken because 126 raw strings fragment one seat
+      into dozens and every per-seat number would then be an artifact of
+      punctuation. The refuter read the spec's phrase "per-seat" literally
+      without the ground that produced it. Kept as written; the auditability
+      concern underneath it is real and is answered by `--json`, which carries
+      the per-pack detail.
   - seat: "kimi-code/k3 (blind cross-family refuter, code-only payload)"
     objection: >-
       An inline comment claims the scalar-override branch contributes "not to
