@@ -34,10 +34,11 @@ lanes:
 
 diff:
   files: 33
-  net_lines: 1653
-  measured_at: d88ffb1f55
+  net_lines: 1655
+  measured_at: eae7ac917e
   note: >-
-    git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD. The hand-authored
+    git diff --no-renames --numstat <measured_at>..HEAD — measured_at IS that merge-base, which is
+    stable, unlike a head sha that every recount would invalidate. The hand-authored
     surface is the ACL, the guard, the runbook and 22 guilt fixtures; there is no generated
     artifact in this diff. Larger than the ~400-line target and declared as such in the PR body:
     the shape is policy-as-code plus its runbook plus its guard plus the fixture corpus that
