@@ -37,15 +37,19 @@ lanes:
       findings between them, both fixed; substance of all five claim families confirmed by both
 
 diff:
-  files: 32
-  net_lines: 1786
-  measured_at: HEAD, recomputed immediately before the final commit
+  files: 30
+  net_lines: 1629
+  measured_at: 679b0079cc
   note: >-
-    `git diff --numstat origin/main...HEAD` via `scripts/evidence_pack_lint.py --print-measured`;
-    the exact sentence it emitted is in the gear-floor receipt below. Far over the ~400-line target,
-    and the shape is why: roughly 1,470 of those lines are #5192's content carried across
-    byte-identical (policy, guard, 18 fixtures, runbook, README), which this PR does not modify.
-    The genuinely new surface is the documentation correction, five ledger rows and this pack.
+    Measured, not estimated: `--print-measured` emitted "30 files, +1728/-99, 6 commits" at
+    679b0079cc, the commit carrying this pack. 1728 - 99 = 1629. What follows it is a re-pin of
+    these three numbers, touching this file alone — so the totals CI recomputes will exceed these
+    slightly, by that commit and a handful of lines in this paragraph. CI's measured value
+    wins over this field by design; it is stated here so the figure is checkable rather than
+    approximately right. Far over the ~400-line target, and the shape is why: roughly 1,470 of
+    those lines are #5192's content carried across byte-identical (policy, guard, 18 fixtures,
+    runbook, README), which this PR does not modify. The genuinely new surface is the documentation
+    correction, five ledger rows and this pack.
 
 pii_scan: clean
 
@@ -130,7 +134,7 @@ receipts:
     cmd: >-
       python3 scripts/evidence_pack_lint.py --print-floor / --print-floor-source / --print-measured
       --changed-files-file <changed> --numstat-file <numstat> --commit-count <n>
-    result: "3 ; path ; 32 files, +1762/-99, 6 commits"
+    result: "3 ; path ; 30 files, +1728/-99, 6 commits"
     exit: 0
     ts: 2026-08-29T13:35+08:00
     seat: session (build lane)
