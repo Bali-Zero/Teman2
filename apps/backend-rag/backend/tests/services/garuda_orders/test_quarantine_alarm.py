@@ -294,6 +294,20 @@ def test_the_quarantine_page_carries_no_pii():
     the text: feed it applicant-shaped poison through the only string-carrying
     fields it has and confirm the message contains what it was given and
     nothing more — i.e. it never enriches and has no path to an order row.
+
+    WHAT THIS TEST DOES NOT PIN, said plainly because the name overstates it
+    (raised by the cross-family council seat kimi-code/k3): the poison fed in
+    below could never exist in the real table — `garuda_payment_inbox.order_id`
+    is a FK (284_garuda_orders.sql:277) to `garuda_orders.order_id`, which is
+    constrained to `^[A-Za-z0-9_-]{16,128}$` (284:37-38), so it cannot carry
+    `@`, `+` or a space, and `provider_event_id` is Xendit-opaque. So the
+    no-PII guarantee does NOT live here. It lives in the schema and the
+    provider; `garuda_payment_inbox` has no applicant column at all (its
+    columns are declared at 284:272-283, plus `quarantine_reason` from 298)
+    and the reader never joins to one. What this test actually
+    pins is the other half, the half that CAN rot: that the alarm passes its
+    arguments through verbatim and never grows a lookup that would fetch
+    something richer.
     """
 
     poisoned_event = "evt_traveller@example.invalid"
