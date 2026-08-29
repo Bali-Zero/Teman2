@@ -127,10 +127,18 @@ def test_positive_control_class_name_is_caught() -> None:
 
 def test_positive_control_url_literal_is_caught() -> None:
     """A live API_URL constant pointing at the retired endpoint must be
-    flagged even with no DeepSeek-named class around it."""
-    source = 'API_URL = "https://api.deepseek.com/v1/chat/completions"\n'
+    flagged even with no DeepSeek-named class around it.
+
+    Uses the ``_FORBIDDEN_URL`` module constant rather than a duplicated raw
+    literal on both sides of the ``in`` check — the raw-literal form trips
+    CodeQL's py/incomplete-url-substring-sanitization heuristic (it pattern
+    -matches "domain-literal in string" regardless of context; this is a
+    diagnostic-message check, not a URL trust decision, but the query can't
+    tell the difference from syntax alone).
+    """
+    source = f'API_URL = "https://{_FORBIDDEN_URL}/v1/chat/completions"\n'
     violations = _scan_source(source, "synthetic_url.py")
-    assert any("api.deepseek.com" in v for v in violations)
+    assert any(_FORBIDDEN_URL in v for v in violations)
 
 
 def test_positive_control_env_var_literal_is_caught() -> None:
