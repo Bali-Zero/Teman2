@@ -83,6 +83,46 @@ the token-SSOT + critic-conformance cures, in that priority order.
   **Conflicts / order**: does NOT include the VOA anonymous-buyer journey (L07 owns it). Must not
   re-flag any defect class PR #5181/#5189/#5170 already closed — verify via replay before building.
 
+### PR-1 ACCEPTANCE CORRECTION (2026-08-29, Squad P) — the supplied guilt fixture is not executable
+
+PR-1's Acceptance reads:
+
+> Guilt — on a scratch branch, revert the cure commits (#5181/#5189/#5170), then run the suite ->
+> red, naming the correct defect class.
+
+**Executed at gate time, and it does not work.** Reverting `10ba83473`'s change to
+`apps/mouth/src/app/visa/clock/[hash]/page.tsx` locally and running that sentinel gives:
+
+```
+[1/1] ... an overstay payload on /visa/clock/[hash] renders the overstay branch, never 'Valid until'
+  1 passed (4.3s)
+```
+
+Green, with the cure reverted. That is **not** a defect in the sentinel. All three cures live in
+`apps/mouth/src/**`, which is compiled and deployed to Vercel, and these specs drive
+`https://balizero.com`. Reverting local source cannot change what production serves; satisfying
+this fixture literally would mean deploying reverted code to production.
+
+**Why the wrong fixture is worse than no fixture here:** an author who runs it and sees green has
+three readings available — "the cure is still live" (true, but nothing was tested), "the sentinel
+is broken" (false), "guilt passed" (false) — and nothing in the spec disambiguates them. A guilt
+fixture whose green is uninformative trains its reader to stop looking.
+
+**What a PRODUCTION sentinel's guilt fixture must be instead** (all three shipped in PR-1):
+
+1. **Synthesize the defect at the NETWORK layer**, never in source. The visa-clock spec intercepts
+   the page's two API calls with a synthetic overstay payload — #5170 was a client-side `Math.max`
+   bug, so the deployed bundle that regressed is still the thing exercised.
+2. **Mutate the SENTINEL and require red.** Measured: self-test neutered -> `CRITICAL
+selftest-malfunction`; a spec file moved out of the directory -> exit 8 naming it; a spec skipped
+   -> `[SKIPPED - never actually ran]` in `real_failures`; `baseURL` pointed at localhost -> exit 7
+   refusal.
+3. **Keep at least one sentinel pointed at a defect that is genuinely live**, so the suite is not
+   composed entirely of things that cannot currently fail. Today that is `/prime`
+   (`ExpiredKeyMapError`, needs-ruling item 1) — and it is the only one detecting anything.
+
+The Innocence and Self-test halves of PR-1's acceptance are unaffected and were both satisfied.
+
 ## PR-2: feat(design-tokens): Merah Putih DTCG source + contrast tripwire
 
 **Files**: `design/tokens/merah-putih.tokens.json` [proposed — no existing tokens dir at repo root
