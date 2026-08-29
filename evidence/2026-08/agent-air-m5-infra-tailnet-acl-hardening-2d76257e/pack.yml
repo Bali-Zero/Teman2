@@ -33,12 +33,12 @@ lanes:
       real cross-machine flows so the matrix is evidence-backed rather than guessed
 
 diff:
-  files: 29
-  net_lines: 1477
-  measured_at: 61148c1953
+  files: 33
+  net_lines: 1653
+  measured_at: d88ffb1f55
   note: >-
     git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD. The hand-authored
-    surface is the ACL, the guard, the runbook and 18 guilt fixtures; there is no generated
+    surface is the ACL, the guard, the runbook and 22 guilt fixtures; there is no generated
     artifact in this diff. Larger than the ~400-line target and declared as such in the PR body:
     the shape is policy-as-code plus its runbook plus its guard plus the fixture corpus that
     proves the guard fails, and the policy's comments ARE the artifact — the SHELL-ROUTE block
@@ -49,11 +49,11 @@ pii_scan: clean
 receipts:
   - claim: >-
       The guard is green on the shipped policy and red on every one of the 18 defect fixtures
-      (6 original, 8 from the round-1 grader, 4 from the round-2 gate), plus parser and
+      (6 original, 8 round-1 grader, 4 round-2 gate, 4 round-3 gates), plus parser and
       canonicalisation tests.
     cmd: >-
       python3 -m pytest scripts/tests/test_tailnet_acl_deny_by_default.py -q
-    result: "23 passed in 0.10s"
+    result: "27 passed in 0.10s"
     exit: 0
     ts: 2026-08-29T03:10Z
     seat: session (build lane)
