@@ -293,7 +293,67 @@ def _idempotency_key(idempotency_key: str | None) -> str:
     return idempotency_key
 
 
-@router.post("/orders", status_code=201)
+#: Status codes THIS router's own call sites (plus the router-level
+#: `_require_flag` dependency and the top-level exception handler /
+#: rate-limit middleware every route shares) can genuinely produce today,
+#: per operation. Documentation only, changes no behaviour — without this,
+#: FastAPI only knows each decorator's own success `status_code` plus its
+#: automatic 422, which is the exact drift class
+#: `test_garuda_voa_openapi_parity.py` measured for this router on
+#: 2026-08-30 (the same disease that file's docstring already describes for
+#: `garuda_voa_public.py`, reproduced here for L3).
+#:
+#: Three of these five sets are deliberately NOT a full transcription of the
+#: frozen contract's declared codes for that operationId — the gaps are
+#: real, separate defects (not an OpenAPI-documentation oversight), and
+#: documenting a status this router cannot yet produce would be exactly the
+#: false-schema-entry mistake `garuda_voa_public.py::_error_responses`'s
+#: docstring warns against. Each omission is named, cited, and pinned by
+#: `_KNOWN_STATUS_CODE_GAPS` in the parity test rather than silently closed
+#: here:
+#:   - `observePaymentBrowserReturn` has no `409` — `GarudaOrderRepository.
+#:     record_browser_return_observation` (repository.py) unconditionally
+#:     overwrites `browser_return_nonce` on a mismatch instead of raising an
+#:     `IdempotencyConflict`, so the contract's declared conflict code can
+#:     never fire.
+#:   - `receivePaymentWebhook` has no `202`/`400`/`409` — `202` (quarantine)
+#:     is a response shape this handler's body never constructs, and
+#:     `400`/`409` are Idempotency-Key-shaped codes for a parameter this
+#:     operation deliberately stopped taking (see the handler's own comment
+#:     above); the frozen contract's `responses` block was not updated to
+#:     match, and this module never edits the contract.
+#:   - `resolveLateOrder` has no `403` — `_require_staff_actor` only ever
+#:     returns 401 or a verified actor (see its docstring: the real staff
+#:     authority verifier is "wired nowhere today"), so `ACCESS_DENIED` has
+#:     no code path that can raise it yet.
+_OPERATION_STATUS_CODES: dict[str, tuple[int, ...]] = {
+    "createOrderFromCheck": (400, 401, 404, 409, 422, 429, 500, 503),
+    "getOrderAndPractice": (401, 404, 500, 503),
+    "observePaymentBrowserReturn": (400, 401, 404, 422, 500, 503),
+    "receivePaymentWebhook": (401, 404, 422, 500, 503),
+    "resolveLateOrder": (400, 401, 404, 409, 422, 500, 503),
+}
+
+
+def _status_responses(operation_id: str) -> dict[int, dict[str, object]]:
+    """Build a minimal FastAPI `responses=` dict from `_OPERATION_STATUS_CODES`
+    — status codes only, no message-key detail, since this router raises bare
+    `HTTPException(detail={"code": ..., "retryable": ...})` rather than the
+    catalog-driven `_error()` helper `garuda_voa_public.py`/`garuda_portal_
+    auth.py` use (see PR #5300 for the in-flight fix to this router's error
+    envelope itself — orthogonal to this OpenAPI-schema-documentation fix)."""
+    return {
+        status_code: {"description": "See `products/garuda-voa/contracts/errors.yaml`."}
+        for status_code in _OPERATION_STATUS_CODES[operation_id]
+    }
+
+
+@router.post(
+    "/orders",
+    status_code=201,
+    operation_id="createOrderFromCheck",
+    responses=_status_responses("createOrderFromCheck"),
+)
 async def create_order_from_check(
     request: Request,
     response: Response,
@@ -377,7 +437,11 @@ async def create_order_from_check(
     return body_out
 
 
-@router.get("/orders/{order_id}")
+@router.get(
+    "/orders/{order_id}",
+    operation_id="getOrderAndPractice",
+    responses=_status_responses("getOrderAndPractice"),
+)
 async def get_order_and_practice(
     order_id: str,
     request: Request,
@@ -429,7 +493,12 @@ async def get_order_and_practice(
     return body_out
 
 
-@router.post("/orders/{order_id}/browser-return-observations", status_code=204)
+@router.post(
+    "/orders/{order_id}/browser-return-observations",
+    status_code=204,
+    operation_id="observePaymentBrowserReturn",
+    responses=_status_responses("observePaymentBrowserReturn"),
+)
 async def observe_payment_browser_return(
     order_id: str,
     request: Request,
@@ -454,7 +523,12 @@ async def observe_payment_browser_return(
         ) from exc
 
 
-@router.post("/webhooks/payment", status_code=204)
+@router.post(
+    "/webhooks/payment",
+    status_code=204,
+    operation_id="receivePaymentWebhook",
+    responses=_status_responses("receivePaymentWebhook"),
+)
 async def receive_payment_webhook(
     request: Request,
     response: Response,
@@ -510,7 +584,11 @@ async def receive_payment_webhook(
         await repository.handle_refund_event(event, canonical_payload_sha256=digest)
 
 
-@router.post("/staff/orders/{order_id}/late-resolution")
+@router.post(
+    "/staff/orders/{order_id}/late-resolution",
+    operation_id="resolveLateOrder",
+    responses=_status_responses("resolveLateOrder"),
+)
 async def resolve_late_order(
     order_id: str,
     request: Request,
