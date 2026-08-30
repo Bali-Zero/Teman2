@@ -29,8 +29,8 @@ seat_diversity_note:
   second cross-family seat (Moonshot kimi-code/k3) reviewed the coupled PR and is recorded in
   journal.jsonl."
 diff:
-  files: 4
-  net_lines: 575
+  files: 7
+  net_lines: 910
   hot_zone: "apps/backend-rag/backend/db/migrations_v2/300_*.sql — floor 3 by path"
 receipts:
   - claim:
@@ -39,9 +39,9 @@ receipts:
     cmd:
       git -C <worktree> diff --name-only origin/main...HEAD > /tmp/split-changed.txt && python3
       scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/split-changed.txt
-    result: 3 (migrations_v2/** is hot-zone by path); 4 files, net 575 lines
+    result: 3 (migrations_v2/** is hot-zone by path); 7 files, net 910 lines
     exit: 0
-    ts: 2026-08-30T20:34Z
+    ts: 2026-08-31T05:35Z
     seat: session (M5)
   - claim:
       THE DEFECT IS REAL AND WAS OBSERVED IN PRODUCTION, not constructed — wa_outbox row 379 answered a
