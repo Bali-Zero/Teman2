@@ -276,39 +276,42 @@ LEGACY_CHECKSUM_BASELINE: dict[tuple[int, str], LegacyFingerprint] = {
     (43, "043_invoices_table"): ("", None),
     (44, "044_cleanup_practices_invoice_jsonb"): ("", None),
     (45, "045_visa_records_type_fk"): ("", None),
-    (182, "182_companies_tax_dept_folder"): ("031c4d196dcc3860b6ee0598d0db7853", None),
+    (182, "182_companies_tax_dept_folder"): (
+        "031c4d196dcc3860b6ee0598d0db7853",  # pragma: allowlist secret
+        None,
+    ),
     # --- mismatches ---
     (127, "127_war_room_canva_url"): (
-        "ff34400ec9cd949199a00d66ce2a60601c376ebe45591fee9f95fc4a6011ca76",
-        "9a493d1f70c814bc15bcd21e613bf0fb8881505526e07761dab1d6602cff066b",
+        "ff34400ec9cd949199a00d66ce2a60601c376ebe45591fee9f95fc4a6011ca76",  # pragma: allowlist secret
+        "9a493d1f70c814bc15bcd21e613bf0fb8881505526e07761dab1d6602cff066b",  # pragma: allowlist secret
     ),
     (157, "157_practice_types_2026_pricing_delta"): (
-        "f602c9afefc92ff7750ca0d5c63145771756d79bdab6819bc582d2b7b6412512",
-        "4caafd4a22cb66c915425e11d5f07401960310678a90717948b39a61b14d2d43",
+        "f602c9afefc92ff7750ca0d5c63145771756d79bdab6819bc582d2b7b6412512",  # pragma: allowlist secret
+        "4caafd4a22cb66c915425e11d5f07401960310678a90717948b39a61b14d2d43",  # pragma: allowlist secret
     ),
     (158, "158_practices_discount_columns"): (
-        "86cbe9765757450b42f2f075394c0f54364d89de2cd9cda86deb35893545e190",
-        "1a1c1931d2a5e48dcb813c8cb8df2adff6b0a8adf63fa556a8ff28eb0119d13a",
+        "86cbe9765757450b42f2f075394c0f54364d89de2cd9cda86deb35893545e190",  # pragma: allowlist secret
+        "1a1c1931d2a5e48dcb813c8cb8df2adff6b0a8adf63fa556a8ff28eb0119d13a",  # pragma: allowlist secret
     ),
     (186, "186_crm_phone_dedup_2026_05_20"): (
-        "431e0465a0e055c36e5b51615c627da36d557845b542f5c950ba7d49ae0e1ba9",
-        "ea743cce867034bfd0600ed64903d6265891ea3caff231d1f52b3d88f25afa5c",
+        "431e0465a0e055c36e5b51615c627da36d557845b542f5c950ba7d49ae0e1ba9",  # pragma: allowlist secret
+        "ea743cce867034bfd0600ed64903d6265891ea3caff231d1f52b3d88f25afa5c",  # pragma: allowlist secret
     ),
     (192, "192_bridge_outbox_jsonb_double_encoding_repair"): (
-        "6a070dbdb8c2dd9de289c5c42e45798816b9a6475af65d2e6f98c3fe773e2083",
-        "df865b0734d7e98c8ea421bb93bfddbd74c68a0a984eb797adbc8029fc045bfb",
+        "6a070dbdb8c2dd9de289c5c42e45798816b9a6475af65d2e6f98c3fe773e2083",  # pragma: allowlist secret
+        "df865b0734d7e98c8ea421bb93bfddbd74c68a0a984eb797adbc8029fc045bfb",  # pragma: allowlist secret
     ),
     (200, "200_wa_copilot_infrastructure"): (
-        "70d0962f1d17f8bd0413b5c2160b94812d0a7e9a8a8054f505427108365b0fe8",
-        "e32d488b2c6c5a9c799159fd83be4979d3d6928181f845db0d1b62ea48658845",
+        "70d0962f1d17f8bd0413b5c2160b94812d0a7e9a8a8054f505427108365b0fe8",  # pragma: allowlist secret
+        "e32d488b2c6c5a9c799159fd83be4979d3d6928181f845db0d1b62ea48658845",  # pragma: allowlist secret
     ),
     (207, "207_team_admin_runtime_grants"): (
-        "a101bc5f13f47357e96b59d0e1815cae8befd0e3329e9b9560e16df06623edca",
-        "280a7abc2e1209f7dee167a8fac837f9f033a4e90238f67c83760d84ff88b9c5",
+        "a101bc5f13f47357e96b59d0e1815cae8befd0e3329e9b9560e16df06623edca",  # pragma: allowlist secret
+        "280a7abc2e1209f7dee167a8fac837f9f033a4e90238f67c83760d84ff88b9c5",  # pragma: allowlist secret
     ),
     (217, "217_intake_commit_audit"): (
-        "4404de267c13064f25929089b227b8d269f65b52924117a2fa68094e7378540a",
-        "5522a284fbf7fb958c4b088a2ce591dccc2d5f72b44c26124bdd2a565d7daef9",
+        "4404de267c13064f25929089b227b8d269f65b52924117a2fa68094e7378540a",  # pragma: allowlist secret
+        "5522a284fbf7fb958c4b088a2ce591dccc2d5f72b44c26124bdd2a565d7daef9",  # pragma: allowlist secret
     ),
 }
 
