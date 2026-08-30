@@ -218,7 +218,31 @@ def _all_operator_mentions_negated(owner: str) -> bool:
     OPERATOR_WORD_RE finds here is genuinely naked, never a tag fragment.
     Returns False (not phantom-safe) when there is no mention at all —
     defensive only; every real caller has already confirmed "operator" is
-    present via the outer substring gate."""
+    present via the outer substring gate.
+
+    DELIBERATE BIAS, independently verified by a second reviewer (team-lead,
+    2026-08-30) against this exact function, not merely against the regex:
+    the closed hedge-word vocabulary is intentionally narrow enough that it
+    still returns False (PHANTOM-OPERATOR, the guard's fail-closed state) on
+    text a human would also read as a denial once the gap or the trailing
+    shape gets unusual enough — e.g. `"not a completely unrelated distant
+    operator"` (a 4-word gap outside the closed vocabulary) and `"NOT a
+    human, operator"` (a second, bare, un-negated mention trailing after the
+    negated one — caught by the "EVERY mention" check above, not the regex).
+    Both are false positives, and both fail in the SAFE direction for this
+    guard: a row whose owner a human would read as a disclaimer still gets
+    classified PHANTOM-OPERATOR rather than TECH-DEBT, which only means it
+    surfaces for a manual reword (as every real incident in PR #4603/#4864/
+    #5273/#5233 already did) — never that a genuine bare-operator claim
+    slips through unflagged. Widen this vocabulary only for a phrasing that
+    has actually blocked a real PR (see the WIDENED history above); widening
+    it pre-emptively to cover a hypothetical phrasing re-opens exactly the
+    unbounded-regex problem this function was built to bound. If a THIRD
+    real phrasing defeats this function the way this one defeated PR #5273's
+    single-pattern fix, that is the signal the surface itself is
+    under-specified, not that the vocabulary needs a fourth entry — see
+    `docs/specs/pending-arms-owner-tag-v1.md` for the structured-field
+    alternative reserved for exactly that case."""
     mentions = [m.span() for m in OPERATOR_WORD_RE.finditer(owner)]
     if not mentions:
         return False
