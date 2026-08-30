@@ -1,4 +1,4 @@
-brief_ref: evidence/2026-08/agent-air-m5-craft-h-scar-cold-storage-e3288e82/brief.yml
+brief_ref: evidence/brief.yml
 plan_ref: >-
   SQUAD H lane 1 of 5 — L02-PR1 of
   docs/plans/2026-08-29-beyond-sota-craft-wave/L02-context-engineering-grounding.md,
@@ -8,13 +8,11 @@ plan_ref: >-
 lanes:
   - lane: craft-h-orchestration
     role: build
-    seat:
-      claude-opus-5 (conducting session, M5 — the move, the repoints, the
+    seat: claude-opus-5 (conducting session, M5 — the move, the repoints, the
       machine-local probe, the arming, and the final on-disk gate)
   - lane: craft-h-injected-surface-guard
     role: build
-    seat:
-      kimi-for-coding (non-Anthropic build lane — authored
+    seat: kimi-for-coding (non-Anthropic build lane — authored
       scripts/tests/test_injected_surface_budget.py; graded by the conducting
       session, never by itself. D3 satisfied by a real seat, not seat_override)
   - lane: craft-h-adversarial
@@ -287,4 +285,3 @@ dissent:
     resolution: >-
       accepted-and-fixed — those dirs are scanned; the skip is by NAME only. Proven:
       a stale pointer planted in `.agents/skills/wr2/SKILL.md` now reddens the guard.
-

@@ -404,7 +404,7 @@ Prima di ogni PR, commit, o deploy, rispondi a queste 5:
 | -------------------- | ----------------------------------------------------------- |
 | Principi e filosofia | `SYMBIOSIS.md`                                              |
 | Regole Claude Code   | `CLAUDE.md`                                                 |
-| Cicatrici operative  | `docs/scars/cicatrix-scars.md`                           |
+| Cicatrici operative  | `docs/scars/cicatrix-scars.md`                              |
 | Genome DNA Recording | `packages/cell-core/cell_core/genome.py`                    |
 | Design spec genome   | `docs/superpowers/specs/2026-04-12-dna-recording-design.md` |
 | Memoria sessione     | `~/.claude/scripts/mem`                                     |

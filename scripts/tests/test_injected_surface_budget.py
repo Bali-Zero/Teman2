@@ -118,6 +118,16 @@ _ARCHIVAL_PREFIXES = (
     "docs/superpowers/",
     "docs/ops/",
     "docs/wr2/operator-driven-mode-spec-",
+    # The PENDING-ARMS ledger is append-only and dated, exactly like the audit
+    # trees above — and unlike them it is ENFORCED as such: `check-ledger-no-silent-loss`
+    # compares rows to `origin/main` line-for-line and fails when a row that
+    # nobody's PR touched is not byte-identical. Repointing paths inside old rows
+    # (this session tried it) turns that check red AND falsifies the rows: one of
+    # them argues that a tool is dead because it "targets the excluded
+    # `.claude/rules/cicatrix-scars.md`", and rewriting the path inside the
+    # argument destroys the argument. A row records what was true when it was
+    # written; new rows use the new path.
+    ".claude/skills/modus/PENDING-ARMS.md",
 )
 
 # Generated, not authored: `.secrets.baseline` is rewritten in place by the

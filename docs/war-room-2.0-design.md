@@ -787,7 +787,7 @@ Ogni `ResearchDossier` è letto da ≤10 consumatori diversi con scopo distinto.
 | 5   | **Consiglio v1** (LIVE)          | path da verificare                                                            | Input deliberazione invece di web search al volo         | Decisioni meglio informate        |
 | 6   | **War Room Director M4**         | Parte I §1 + §3                                                               | Consiglio tone + concept parte da dossier                | Articoli blog + carousel + thread |
 | 7   | **Newsletter settimanale** (NEW) | `apps/backend-rag/backend/services/communication/` (DA VERIFICARE)            | Roundup 5 dossier più importanti della settimana         | 1 email ogni lunedì               |
-| 8   | **Guardian V5**                  | `docs/scars/cicatrix-scars.md` + auto-calibration                          | Pattern mining su frequenza topic per evolvere regole    | Skill/scar promozione             |
+| 8   | **Guardian V5**                  | `docs/scars/cicatrix-scars.md` + auto-calibration                             | Pattern mining su frequenza topic per evolvere regole    | Skill/scar promozione             |
 | 9   | **Team Workspace search**        | `apps/kita` (Cmd+J) + MCP                                                     | Team (Damar, Adel, Dea) cerca dossier per caso cliente   | Knowledge interna ricercabile     |
 | 10  | **Intel pubblica selettiva**     | Via War Room fast-track                                                       | Alert pubblici gratuiti (lead magnet) + press release    | Autorità brand                    |
 

@@ -100,6 +100,12 @@
       "hooks_dirs": ["infra/claude-hooks", "scripts/hooks", ".claude/hooks"],
       "vaccine": "infra/claude-hooks/test_hook_innocence.py",
       "entries": {
+        "scripts/hooks/injected_surface_sessionstart.sh": {
+          "scar": ["superscar-2-esiste-non-armato", "W55", "W76"],
+          "symbols": {},
+          "tests": ["scripts/tests/test_injected_surface_hook.sh"],
+          "note": "SessionStart receptor for the turn-1 injected surface. Its ONE promise is that silence means exactly 'not registered' and never 'ran and had nothing to say' -- which is the whole reason it exists: the surface grew from ~150 KB (2026-08-21 audit) to 783,444 B (2026-08-31) with nothing printing it, so nobody could miss the growth. The tests therefore assert the NEGATIVE space as hard as the positive: it must still speak when its own attestation script is missing, must NOT emit a byte figure it could not have measured, must exit 0 in every case (a receptor that can block session boot gets disarmed, and a disarmed receptor reports nothing forever), and only the exact value INJECTED_SURFACE_RECEPTOR_ENABLED=false may silence it -- any other value leaves it armed, so a typo fails safe rather than quiet."
+        },
         ".claude/hooks/codex-spalla-trigger.sh": {
           "scar": ["superscar-4-secret-in-the-clear"],
           "symbols": {},
