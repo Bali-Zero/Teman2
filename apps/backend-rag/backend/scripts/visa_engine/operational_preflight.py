@@ -553,7 +553,7 @@ async def collect_preflight_checks(
     if "visa_pack_writer" in roles and "visa_activation_executor" in roles:
         dual_capability_login = await connection.fetchval(
             """
-            SELECT string_agg(role.rolname, ', ' ORDER BY role.rolname)
+            SELECT pg_catalog.string_agg(role.rolname, ', ' ORDER BY role.rolname)
               FROM pg_catalog.pg_roles AS role
              WHERE role.rolcanlogin
                AND pg_catalog.pg_has_role(role.oid, 'visa_pack_writer', 'MEMBER')

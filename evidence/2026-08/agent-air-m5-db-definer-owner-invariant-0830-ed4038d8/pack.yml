@@ -52,7 +52,7 @@ seat_diversity_note:
   that made both the migration and the check answer clean with the ownership wrong, and it caught a
   rollback section that would have told the migration framework it had reversed something it had not."
 diff:
-  net_lines: "7 files, +1874/-16 (git diff --numstat over the merge-base)"
+  net_lines: "8 files, +1986/-28 (git diff --numstat over the merge-base)"
   behaviour_change:
     "No production behaviour changes. Migration 300 is a no-op against the production primary because
     the five ALTERs already landed there by hand on 2026-08-30 before this lane opened; it exists so an
@@ -158,9 +158,18 @@ receipts:
       up if any lint or chain test disliked it."
     cmd: "PYTHONPATH=. python -m pytest backend/tests/db/"
     exit: 0
-    ts: "2026-08-30T11:40:00Z"
+    ts: "2026-08-31T05:20:00Z"
     seat: claude-opus-5
-    result: "398 passed, 16 skipped. Pre-commit's own migration-number and ROLLBACK-marker lints pass."
+    result:
+      "420 passed, 16 skipped. Pre-commit's own migration-number and ROLLBACK-marker lints pass.
+      RE-RUN and CORRECTED 2026-08-31: the earlier reading on this line (398 passed, ts 11:40) no
+      longer reproduced. It was taken before #5335 landed, and #5335 added
+      `assert 300 not in on_disk` — a next-free-number tripwire that migration 300 in this diff
+      fails deterministically. So the claim above was FALSE for several hours: the suite was red,
+      and the receipt said it was green. Caught by the Gear-3 gate, which re-ran the command
+      instead of reading the recorded outcome. The tripwire is replaced in this diff by the
+      property it was proxying for — no two migrations share a number — and the figure here is
+      what the command actually printed on re-run."
   - claim:
       "The rollback finding is real, read from the source rather than reasoned about: the framework
       deletes the ledger row and reports success after running whatever the ROLLBACK section contains."

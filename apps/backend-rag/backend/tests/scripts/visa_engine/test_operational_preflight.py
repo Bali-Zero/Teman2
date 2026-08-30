@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import io
 import pathlib
+import re
 import tokenize
 from typing import Any
 
@@ -1020,6 +1021,16 @@ def test_every_catalog_reference_in_this_module_is_schema_qualified() -> None:
         "has_function_privilege",
         "has_table_privilege",
         "current_setting",
+        # Added 2026-08-31. `string_agg` was unqualified in the
+        # visa:no-dual-capability-login-role statement while `pg_roles` and
+        # `pg_has_role` around it were qualified, and this tuple did not list
+        # it, so nothing said so. Proven on a throwaway PostgreSQL 17.10, not
+        # argued: `CREATE AGGREGATE public.string_agg(name, text)` over an
+        # sfunc returning NULL, then `SET search_path = public, pg_catalog`,
+        # makes the shipped query answer (empty) -- a segregation-of-duties
+        # check forged green by the same role this module states can CREATE in
+        # `public`. An aggregate is shadowable exactly like a function.
+        "string_agg",
     )
     for name in forgeable:
         unqualified = code.replace(f"pg_catalog.{name}", "")
@@ -1028,3 +1039,56 @@ def test_every_catalog_reference_in_this_module_is_schema_qualified() -> None:
             "search_path = public, pg_catalog the checked role can shadow it "
             "and forge this check's answer"
         )
+
+
+def test_no_sql_call_in_this_module_is_unqualified_without_being_declared_safe():
+    """The tuple above is HAND-MAINTAINED, which is the exact anti-pattern the
+    census in this module exists to replace -- and it failed the way a hand
+    list always fails: `string_agg` was missing from it, so a real forgeable
+    call sat unqualified in a segregation-of-duties check and nothing was red.
+
+    So this check inverts the polarity. Instead of "these names must be
+    qualified" (where a name nobody thought of is a SILENT miss), it asserts
+    "every unqualified call site in this module's SQL must be explicitly
+    declared safe" (where a call nobody thought of is a LOUD failure). Adding
+    a new catalog call now forces a decision at review time rather than
+    depending on someone remembering to extend a tuple.
+
+    A name is safe to leave unqualified only if it cannot be shadowed by an
+    object the checked role may create in `public` -- which in practice means
+    reserved SQL syntax that is not resolved through `search_path` at all.
+    """
+    source = pathlib.Path(operational_preflight.__file__).read_text()
+    assert source, "could not read operational_preflight.py"
+
+    # Only look inside the triple-quoted SQL literals -- Python calls in this
+    # file are not resolved through a Postgres search_path.
+    sql_blocks = re.findall(r'"""(.*?)"""', source, re.DOTALL)
+    assert sql_blocks, "no SQL literals found -- this check would be vacuous"
+
+    #: Not resolved via search_path: SQL keywords/constructs the parser handles
+    #: directly. Anything NOT here must carry an explicit `pg_catalog.`.
+    NOT_SEARCH_PATH_RESOLVED = {
+        "coalesce", "cast", "nullif", "greatest", "least", "exists", "in",
+        "any", "all", "values", "case", "extract", "overlaps", "position",
+        "substring", "trim", "array", "row", "count",
+    }
+
+    offenders: set[str] = set()
+    for block in sql_blocks:
+        # An identifier immediately followed by `(`, not already preceded by a
+        # dot (which means it is schema- or alias-qualified).
+        for match in re.finditer(r"(?<![.\w])([a-z_][a-z0-9_]*)\s*\(", block, re.I):
+            name = match.group(1).lower()
+            if name in NOT_SEARCH_PATH_RESOLVED:
+                continue
+            offenders.add(name)
+
+    assert not offenders, (
+        "these calls appear unqualified inside this module's SQL. Under "
+        "`search_path = public, pg_catalog` the checked role can create an "
+        "object in `public` that shadows any of them and forge the check's "
+        "answer. Qualify each with `pg_catalog.`, or -- if it genuinely is not "
+        "resolved through search_path -- add it to NOT_SEARCH_PATH_RESOLVED "
+        "with the reason: " + repr(sorted(offenders))
+    )
