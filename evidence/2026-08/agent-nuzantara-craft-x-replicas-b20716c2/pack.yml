@@ -38,17 +38,8 @@ seat_diversity_note:
   across families, not just across seats)."
 diff:
   net_lines:
-    "10 files, +2632/-23 = 2609 net lines -- the FULL PR diff (git diff --no-renames
-    --numstat, merge-base 8b60993b1 to HEAD, unscoped), which is what harness-floor.yml's
-    own Step 2c/7b feeds evidence_pack_lint.py as --numstat-file for the countable-claims
-    rule (verified by replaying that workflow's exact staging locally). Supersedes an
-    earlier, narrower measurement carried in a prior draft of this pack, which restricted
-    the count to the CONTENT-ONLY files (the six new xfamily files plus the edited
-    INDEX.md) and so omitted this task's own three evidence-pack files (brief.yml,
-    journal.jsonl, pack.yml) -- that narrower, content-only scope is unchanged and still
-    correct on its own terms (it is what the gear-floor receipt below deliberately
-    measures, net_lines=2324, reverified against this same final commit), but it is not
-    what CI checks this field against, which is the full, unscoped diff. See receipt #1."
+    "10 files, +2648/-23 (churn 2671) vs origin/main 08ea5fb2f — measured via
+    evidence_pack_lint.py --print-measured."
   behaviour_change:
     "None. Six research files (raw TP1 seat output under a run-header this PR controls) plus one
     coverage-matrix/prose edit to an existing INDEX file. Nothing executes, deploys, routes, or
@@ -61,38 +52,41 @@ pii_scan_note:
   receipt #7 for the redaction-fix history."
 receipts:
   - claim:
-      "Deterministic gear floor recomputed from THIS diff's changed-file list + numstat is 3
-      (source: size — net_lines=2324, over SIZE_GEAR3_THRESHOLD=1828; zero hot-zone path hits).
-      Docs-only shape (compute_ceiling()'s DOCS_LEDGER_EXTENSIONS rule) caps the CEILING, not the
-      floor — the two are independent mechanisms and floor wins. No `gear_override` is declared or
-      needed: compute_ceiling() only flags a gear-3 declaration on a docs-shaped diff when the pack
-      ALSO carries a convened `council` or `grader_dispatches>=3` (neither true here), so gear=3
-      simply matches the floor with nothing for the ceiling rule to object to."
-    cmd:
-      "git diff --cached --numstat origin/main -- research/operations/2026-08-28-beyond-sota-xfamily/
-      research/operations/2026-08-28-beyond-sota-panel-INDEX.md > ns.txt; git diff --cached
-      --name-only origin/main -- <same paths> > cf.txt; python3 scripts/evidence_pack_lint.py
-      --print-floor --changed-files-file cf.txt --numstat-file ns.txt; python3
-      scripts/evidence_pack_lint.py --print-floor-source --changed-files-file cf.txt --numstat-file
-      ns.txt"
-    result: "3 (source: size)"
+      "Deterministic gear floor recomputed from THIS diff's FULL changed-file list + numstat
+      (all 10 files, base 08ea5fb2f) is 3 (source: size — churn=2671, over
+      SIZE_GEAR3_THRESHOLD=1828; zero hot-zone path hits). Docs-only shape
+      (compute_ceiling()'s DOCS_LEDGER_EXTENSIONS rule) caps the CEILING, not the floor —
+      the two are independent mechanisms and floor wins. No `gear_override` is declared or
+      needed: compute_ceiling() only flags a gear-3 declaration on a docs-shaped diff when
+      the pack ALSO carries a convened `council` or `grader_dispatches>=3` (neither true
+      here), so gear=3 simply matches the floor with nothing for the ceiling rule to object
+      to. SUPERSEDES an earlier version of this receipt scoped to only 7 of the 10 files."
+    cmd: "git fetch origin main --quiet; git diff origin/main...HEAD --numstat >
+      /tmp/ns.txt; git diff origin/main...HEAD --name-only > /tmp/cf.txt; python3
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/cf.txt
+      --numstat-file /tmp/ns.txt; python3 scripts/evidence_pack_lint.py
+      --print-floor-source --changed-files-file /tmp/cf.txt --numstat-file /tmp/ns.txt"
+    result: "3 / size"
     exit: 0
-    ts: "2026-08-31T02:52:00Z"
+    ts: "2026-08-31T03:20:00Z"
     seat:
       claude-sonnet-5 (squad X, direct measurement — no subagent, per team-lead instruction to
-      run this myself rather than delegate a 30-second check)
+      run this myself rather than delegate a 30-second check; base sha and full 10-file scope
+      re-verified after team-lead flagged the earlier 7-file scope as not what CI measures)
   - claim:
       "receipt #1b — the pack's self-reported `diff.net_lines` scalar (above) is not hand-narrated:
-      it is the literal, unedited string `evidence_pack_lint.py --print-measured` prints for this
-      diff, re-run in the same turn this pack was finalized (not carried over from an earlier,
-      possibly-stale measurement) — closing the exact trap named 'a stale scalar there is a hard
-      FAIL that no override covers'."
+      it is the literal, unedited string `evidence_pack_lint.py --print-measured` prints for the
+      FULL diff (origin/main...HEAD, base 08ea5fb2f), re-run in the same turn this pack was
+      finalized — closing the exact trap named 'a stale scalar there is a hard FAIL that no
+      override covers'. Honest limit: pack.yml is part of the diff being measured, so this
+      number necessarily drifts by pack.yml's own remaining edit size; the truly final figure is
+      re-measured once more immediately before push (receipt below / SHIP comment)."
     cmd:
-      "python3 scripts/evidence_pack_lint.py --print-measured --changed-files-file cf.txt
-      --numstat-file ns.txt"
-    result: "7 files, +2301/-23, commit count unmeasured (no --commit-count, no pull_request payload)"
+      "python3 scripts/evidence_pack_lint.py --print-measured --changed-files-file /tmp/x-cf.txt
+      --numstat-file /tmp/x-numstat.txt"
+    result: "10 files, +2648/-23, commit count unmeasured (no --commit-count, no pull_request payload)"
     exit: 0
-    ts: "2026-08-31T02:52:05Z"
+    ts: "2026-08-31T03:20:00Z"
     seat: claude-sonnet-5 (squad X)
   - claim:
       "INDEX §I's coverage matrix carries zero remaining 'deferred — TP1 quota' cells after this
@@ -125,6 +119,22 @@ receipts:
     seat:
       claude-sonnet-5 (squad X, quoting the runner's own artifact rather than re-typing numbers
       by hand)
+  - claim:
+      "receipt #1d — blind-replica contract (protocol §7): the ground-pack ancestor commit
+      `11a3c89a2` (11a3c89a2e411cb2e2d73144780022241e9b1ae2, 2026-08-28 13:43:23 +0000, #5175)
+      IS an ancestor of this branch's HEAD, and contains ZERO `beyond-sota-*` panel files under
+      `research/operations/` — i.e. the 6 new cells' ground-pack content came from a tree with no
+      possible visibility into any panel report or existing xfamily cell, same as the original 59
+      runs (protocol §7 'Run 2')."
+    cmd:
+      "git merge-base --is-ancestor 11a3c89a2 HEAD && echo ANCESTOR; git ls-tree -r --name-only
+      11a3c89a2 -- research/operations/ | grep -c 'beyond-sota'"
+    result: "ANCESTOR; 0 (grep exit 1, expected-zero — no beyond-sota-* files at that commit)"
+    exit: 0
+    ts: "2026-08-30T19:10:59Z"
+    seat:
+      claude-sonnet-5 (squad X, re-verified in this same turn per team-lead's request so the
+      independent reader can check the command rather than re-derive it)
   - claim:
       "All 65 planned xfamily cells now on disk (13 lanes x 5 seats); the 6 that were missing before
       this PR (qwen lanes 07/10/11/12/13, deepseek lane 13) now exist, matching the exact set

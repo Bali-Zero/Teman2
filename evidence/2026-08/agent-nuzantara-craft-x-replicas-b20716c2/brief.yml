@@ -3,9 +3,15 @@ gear: 3
 l_level: L1
 gate_class: opus
 objective: |
-  Gear 3 is the deterministic FLOOR alone, via the SIZE term (net_lines=2324, over
-  SIZE_GEAR3_THRESHOLD=1828 — measured, receipt below), not the hot-zone path term (zero hot-zone
-  hits). No `gear_override:` is used or needed: `compute_ceiling()` only flags a Gear-3 declaration
+  Gear 3 is the deterministic FLOOR alone, via the SIZE term — churn (Σ added+deleted, per
+  `_size_term_net_lines()`) = 2671 over the full 10-file diff (all 6 new xfamily files + the
+  edited INDEX.md + this task's own 3 evidence-pack files), measured against origin/main
+  08ea5fb2f, over SIZE_GEAR3_THRESHOLD=1828 — measured, receipt below. An earlier version of
+  this objective scoped the count to only 7 files (excluding the evidence-pack files
+  themselves) and used insertions-minus-deletions instead of churn; both were wrong for what
+  CI actually measures and computes, though the floor conclusion (3) was unchanged either way
+  since both figures clear the threshold. Not the hot-zone path term (zero hot-zone hits). No
+  `gear_override:` is used or needed: `compute_ceiling()` only flags a Gear-3 declaration
   on a docs-shaped diff when the pack ALSO carries a convened `council` or
   `grader_dispatches >= 3` — this pack has neither (verified by reading compute_ceiling()'s own
   logic before writing this brief, not assumed), so the ceiling has nothing to flag and the
