@@ -334,6 +334,15 @@ def _init_sentry_blocking(dsn: str) -> None:
         environment=env,
         release=os.getenv("SENTRY_RELEASE", "nuzantara-backend@1.0.0"),
         before_send=_before_send,
+        # `_before_send`/`_scrub` above only ever see the JSON-shaped event
+        # payload. The SDK's logging integration attaches raw frame-LOCAL
+        # values to `stacktrace.frames[].vars` at capture time, before
+        # `before_send` runs, whenever this is left at its default (`True`,
+        # historically named `with_locals`). A value that exists only as a
+        # bare local (e.g. `garuda_result_session` / `result_session_secret`
+        # in garuda_portal_auth.py) would leak regardless of how complete
+        # `_PII_KEY_SUBSTRINGS` is — key-based redaction cannot reach it.
+        include_local_variables=False,
     )
 
 
