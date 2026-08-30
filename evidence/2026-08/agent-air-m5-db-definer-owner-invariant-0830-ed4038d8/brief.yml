@@ -1,0 +1,158 @@
+task_id: definer-owner-invariant-0830
+gear: 3
+l_level: L3
+gate_class: opus
+objective: |
+  Codify the five ownership transfers that migrations 281 and 286 announced and
+  never performed, and replace the hand-maintained list that let migration 285
+  through with a class-level invariant that needs no list.
+
+  Measured on the production primary 2026-08-30: 281 and 286 are both recorded
+  APPLIED in `_schema_versions` (executed 2026-08-26), and five of the functions
+  they name were still owned by the application role `backend_rag_v2` four days
+  later. `ALTER FUNCTION ... OWNER TO` needs superuser, or the current owner plus
+  membership of the target role; the migration runner is `backend_rag_v2`, which
+  is neither. Both migrations catch `insufficient_privilege`, emit a NOTICE and
+  defer — and the row is written as applied anyway. Nothing was red.
+
+  This is NOT an outage fix. Unlike migration 285's trigger, these five are not
+  on a hot write path: they are the bounded purge / evidence / legal-hold /
+  legacy-binding primitives. The ownership was a latent trap. It was cured on
+  production by hand before this lane opened, so the diff is codification plus a
+  guard, so that a fresh database or a restore does not come up with the trap
+  re-armed.
+
+  Gear 3 by PATH, deterministically (`migrations_v2/` is a hot zone). Honored,
+  not argued with.
+constraints:
+  - "Migration 300 copies migration 299's DISCIPLINE, not its text: role-guarded
+    (skip when visa_ledger_owner is absent), `to_regprocedure` rather than a
+    `::regprocedure` cast so an absent function yields NULL at lookup instead of
+    raising there, the ALTER attempted inside an insufficient_privilege handler,
+    and then a re-read of pg_proc.proowner that RAISES. It must not be possible
+    for it to be recorded applied while the ownership is still wrong."
+  - "Past the role guard, an ABSENT target is a failed postcondition, not
+    permission to continue — a divergence from 299, added after the adversarial
+    round. The ledger role exists at that point and 281/286 create all five
+    unconditionally beforehand, so an absence means the chain is broken."
+  - "Every catalog relation and catalog function, in the migration AND in the
+    census SQL, is `pg_catalog.`-qualified. The migration runner can CREATE in
+    `public`, so an unqualified `pg_get_userbyid` can be shadowed by the very
+    role being checked."
+  - "The ROLLBACK section RAISES rather than emitting a NOTICE.
+    `MigrationManager.rollback_migration` deletes the `_schema_versions` row and
+    returns True after running it, so a notice-only body advertises a reversal
+    that did not happen."
+  - "It raises ONCE naming every function still wrong, not on the first: an
+    operator repairing this by hand needs the whole list in one pass. 281/286 left
+    five behind at the same time."
+  - "The new preflight check is a FLOOR, not a replacement. The list-driven
+    `owner:{signature}` checks stay exactly as they are; the class check is added
+    under them."
+  - "No SECURITY DEFINER function in `public` is exempt, because none needs to be:
+    measured on production, 21 such functions, all owned by visa_ledger_owner, and
+    ZERO of them belong to an extension (checked via pg_depend deptype='e', with
+    postgis/pgcrypto/pg_trgm/btree_gist/uuid-ossp all installed into public). If a
+    future object genuinely needs another owner the check goes red and somebody
+    argues the case in a diff — the intended cost, per the mandate's instruction
+    not to exempt silently."
+  - "Production is read-only for this lane. Every production read went through
+    scripts/pg.sh (nuzantara_readonly). The five ALTERs were run by the mandating
+    session before this lane opened; no DDL was issued from here."
+acceptance:
+  - text:
+      "WHEN a SECURITY DEFINER function in schema public is owned by any role other than
+      visa_ledger_owner, the preflight check `definer:public-security-definer-ledger-owned` SHALL be
+      ok=False and name it — INCLUDING a function that appears in no module list, which is the whole
+      point."
+    probe:
+      "PYTHONPATH=. python -m pytest backend/tests/scripts/visa_engine/test_operational_preflight.py -k
+      definer_owner"
+  - text:
+      "WHERE the census is read from a REAL Postgres catalog, the shipped SQL SHALL report a
+      SECURITY DEFINER function owned by the application role and SHALL NOT report an ordinary invoker
+      function owned by that same role."
+    probe: "PYTHONPATH=. python -m pytest
+      backend/tests/scripts/visa_engine/test_security_definer_owner_invariant.py -k shipped_census"
+  - text:
+      "IF migration 300 is applied by a session that is neither superuser nor a member of
+      visa_ledger_owner — the migration runner's exact shape on production — it SHALL raise rather
+      than defer, so `_schema_versions` cannot record a cure that did not happen."
+    probe: "PYTHONPATH=. python -m pytest
+      backend/tests/scripts/visa_engine/test_security_definer_owner_invariant.py -k raises_rather"
+  - text:
+      "WHEN migration 300 is applied on a superuser connection the five transfers SHALL land and a
+      second application SHALL change nothing and raise nothing; its ROLLBACK section SHALL RAISE
+      rather than report a reversal it did not perform."
+    probe: "PYTHONPATH=. python -m pytest
+      backend/tests/scripts/visa_engine/test_security_definer_owner_invariant.py -k 'silent_no_op or
+      rollback'"
+  - text:
+      "IF a `public.pg_get_userbyid(oid)` shadows the catalog function under a hostile search_path —
+      an object the checked role is allowed to create — the census SHALL still report the real owners
+      and migration 300 SHALL still raise."
+    probe: "PYTHONPATH=. python -m pytest
+      backend/tests/scripts/visa_engine/test_security_definer_owner_invariant.py -k shadowed"
+  - text:
+      "WHERE one of the five target functions is absent while visa_ledger_owner exists, migration 300
+      SHALL raise and name it, rather than recording itself applied."
+    probe: "PYTHONPATH=. python -m pytest
+      backend/tests/scripts/visa_engine/test_security_definer_owner_invariant.py -k absent"
+consumer_map:
+  - "backend/db/migrations_v2/ — applied by migration_base.py's runner, forward
+    section only. On production that runner connects as backend_rag_v2, so
+    migration 300 will RAISE unless the ownership is already correct. It IS
+    already correct (cured by hand 2026-08-30), so the next deploy is silent."
+  - "backend/scripts/visa_engine/operational_preflight.py — run by the privacy
+    ENFORCE gate (docs/runbooks/visa-oracle-privacy-enforce-gate.md) and by hand
+    against production. One extra `connection.fetch` per run; read-only."
+  - "backend/tests/scripts/visa_engine/ — both test files run in the standard
+    backend suite. The new real-Postgres file needs a database and reads
+    TEST_DATABASE_URL exactly like its three siblings in that directory; CI's
+    backend job provides one."
+  - "PR #5302 (migration 299) touches the SAME two Python files. It ADDS the two
+    GARUDA binders to RETENTION_BINDING_TRIGGER_FUNCTIONS and to the test's frozen
+    authority — a list update. This lane adds the check that makes such an update
+    unnecessary next time. Different hunks, no semantic conflict; whichever merges
+    second may need a trivial rebase."
+risks:
+  - "OPEN DECISION FOR THE GATE OWNER. The floor has no exemption mechanism at
+    all, and the adversarial round supplied the case that would need one: some
+    contrib extensions ship SECURITY DEFINER routines (`dblink_connect_u` is the
+    standard example) owned by whoever installed the extension. Measured today
+    the case is absent — zero extension-owned definer functions in public
+    (pg_depend deptype='e'), with postgis/pgcrypto/pg_trgm/btree_gist/uuid-ossp
+    all installed there — so the floor is correct on THIS database. The mandate
+    forbids a silent exemption, so none was added; if dblink or a similar
+    extension is ever installed, this check goes red and the exemption becomes a
+    deliberate diff."
+  - "The floor covers schema `public` only, as mandated. Production has one other
+    non-system schema, `mata_garuda`, which today holds zero SECURITY DEFINER
+    functions (measured). A definer function created there would not be seen."
+  - "Migration 300 does not raise when `visa_ledger_owner` is absent, and that IS
+    a path where it is recorded applied with the five still wrongly owned. It is
+    deliberate: the role is absent on the local cluster and on CI's Postgres
+    service, so raising would block the whole migration chain everywhere it is
+    not provisioned. The state is caught by the pre-existing
+    `role:visa_ledger_owner` preflight check, which goes red on it."
+  - "The class check reads the catalog of the database it is pointed at. It says
+    nothing about a database the preflight is never run against; it is a gate, not
+    a monitor. Migration 300 is the part that converges an unattended environment."
+  - "The five signatures in migration 300 are a list, and lists are the disease
+    this lane is treating. It is bounded and closed — the five functions that
+    exist and are wrong — and the class check is what covers the sixth."
+grader: |
+  generator != grader. The diff was authored by this session (Anthropic
+  claude-opus-5); the adversarial round is codex gpt-5.6-sol at xhigh effort
+  (OpenAI, ChatGPT Pro flat subscription) — a different model family, given the
+  full diff plus the production measurements and told to break the migration, the
+  census SQL and the tests. Verdict and findings recorded in evidence/pack.yml.
+  The Gear-3 final on-disk gate is owned by the mandating session, which did not
+  author this diff.
+budget: |
+  Flat-subscription seats only: this session (build), codex gpt-5.6-sol
+  (adversarial review). No metered API spend. Production reads went through
+  scripts/pg.sh (nuzantara_readonly, SELECT-only); all destructive-looking
+  experiments ran against throwaway local databases created and dropped by the
+  test fixtures.
+pii: none
