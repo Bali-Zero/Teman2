@@ -1,0 +1,261 @@
+# NOT `evidence/brief.yml`. That root path EXISTS on this branch and belongs to a
+# DIFFERENT lane (`task_id: visa-window-seq18-0831`), so naming it would validate
+# this pack against someone else's brief — measured: the linter's acceptance-probe
+# rule reported 7 unmatched probes about `p.sequence`, `payload_sha256` and
+# RFC-8785 digests, none of which appear anywhere in this diff. `evidence_paths.py`
+# assigns this PR its own directory; point at the brief that is actually in it.
+brief_ref: evidence/2026-08/agent-nuzantara-infra-trigger-symmetry-unblock-61d546e9/brief.yml
+plan_ref: >-
+  Unjam the merge queue. Three PRs (#5340, #5370, #5372) showed UNMERGEABLE while
+  green on their own PR refs; one job failed on all three merge_group refs. Root
+  cause is a single workflow that landed carrying both a `merge_group:` trigger
+  and a `pull_request.paths` filter. Fix it, in the half that obeys the standing
+  2026-08-27 advisory-workflow ruling rather than the half that merely satisfies
+  the lint.
+
+lanes:
+  - lane: trigger-symmetry-diagnosis-and-fix
+    role: build
+    seat:
+      claude-opus-5 (interactive session, xhigh — queue forensics, root-cause
+      isolation from the merge_group logs, both fix commits, all verification)
+  - lane: trigger-symmetry-review-kimi
+    role: review
+    seat: kimi-code/k3 (kimi CLI, Moonshot Allegro flat subscription,
+      non-Anthropic cross-family — adversarial review of the FIRST commit on six
+      named axes; produced the finding that REVERSED it)
+
+council_run: null
+
+diff:
+  files: 3
+  net_lines: 421
+  measured_at: d7df674c3
+  note: >-
+    Churn (added+deleted) via `git diff --no-renames --numstat --cached
+    <merge-base>` against merge-base 6e4492b75, measured with this exact pack
+    STAGED — the only moment the number can be true, since the pack is part of
+    what it counts: with-seat-broker-tests.yml 38+5 = 43, brief.yml 117+0,
+    pack.yml 256+0. Total 421 across 3 files. A first draft of this field said
+    261, from an ESTIMATE of the pack's own length; it was measured and
+    corrected rather than left standing, which is the entire point of the
+    field. The CODE change under review is 43 lines in ONE file; the other 378
+    are this evidence pack, whose size does not change what the diff does. CI
+    supplies the authoritative numstat via --numstat-file at merge time and
+    prefers it over this self-declared value.
+    FLOOR is 3 by PATH, not by size — `.github/workflows/` is a hot zone, and
+    the ceiling rule explicitly cannot override a floor. `harness-floor.yml`
+    reported `FLOOR: 3, SOURCE: path` on this branch before this pack existed.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      The L06 trigger-symmetry lint is CLEAN against this tree — and can still go
+      red, so the green is not a green-by-absence.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python3 scripts/ci/lint_trigger_symmetry.py
+      (lint copied from #5340's branch — it does not exist on main — run from
+      inside the worktree so its __file__-relative repo-root resolution finds
+      the right tree; removed again before commit, never staged)
+    result: >-
+      INNOCENCE (fixed tree): rc=0, "trigger-symmetry: 116 workflow(s) checked,
+      0 violation(s)".
+      GUILT (merge_group reinserted): rc=1, "116 workflow(s) checked, 1
+      violation(s) — .github/workflows/with-seat-broker-tests.yml: carries
+      'on.pull_request.paths'".
+    exit: 0
+    ts: "2026-08-30T21:57:00Z"
+    seat: session (Pro)
+
+  - claim: >-
+      The tripwire that guards the OPPOSITE direction still passes — a REQUIRED
+      workflow must never lose its merge_group trigger, and this change removes
+      one only from an ADVISORY workflow.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python3 -m pytest
+      scripts/tests/test_advisory_workflows_no_merge_group.py -q
+    result: "3 passed in 0.62s"
+    exit: 0
+    ts: "2026-08-30T21:58:30Z"
+    seat: session (Pro)
+    note: >-
+      RE-RUN deliberately. An earlier attempt returned rc=4 "no tests ran"
+      because a shutil.rmtree aimed at the borrowed lint's directory had removed
+      the worktree's whole tracked scripts/ tree seconds before pytest ran.
+      `git checkout -- scripts/` restored all 3366 files (0 deletions remaining,
+      only the intended workflow edit left modified) and this receipt is the
+      re-run. An rc=4 is not a pass and was not recorded as one.
+
+  - claim: The required-workflow conformance suite is unaffected.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python3 -m pytest
+      scripts/tests/test_check_required_workflow_conformance.py -q
+    result: "37 passed in 0.33s"
+    exit: 0
+    ts: "2026-08-30T21:58:40Z"
+    seat: session (Pro)
+
+  - claim: The workflow is schema-valid after the edit.
+    cmd: actionlint .github/workflows/with-seat-broker-tests.yml
+    result: "no output"
+    exit: 0
+    ts: "2026-08-30T21:58:45Z"
+    seat: session (Pro)
+
+  - claim: >-
+      The YAML says what the diff claims: merge_group gone, both path lists
+      intact and identical (the &guarded_paths anchor survives).
+    cmd: >-
+      apps/backend-rag/.venv/bin/python3 -c "yaml.safe_load(...); print triggers,
+      len(pull_request.paths), len(push.paths), equality, 'merge_group' in on"
+    result: >-
+      "triggers: ['pull_request', 'push'] | pull_request.paths: 6 entries |
+      push.paths: 6 entries; anchor intact: True | merge_group present: False"
+    exit: 0
+    ts: "2026-08-30T21:57:10Z"
+    seat: session (Pro)
+
+  - claim: >-
+      The workflow is ADVISORY, so removing its queue trigger cannot deadlock a
+      PR — established three independent ways, because the FIRST probe used was
+      blind and is reported rather than quietly re-run.
+    cmd: >-
+      gh api repos/Bali-Zero/Teman2/branches/main/protection --jq
+      '.required_status_checks.contexts' ; git show
+      origin/main:infra/required.d/contexts.json
+    result: >-
+      Branch protection lists 12 required contexts; "Seat broker
+      env-minimization tests" is not among them. contexts.json declares 11 and
+      has ZERO matches for seat/broker. The file's own header says "Deliberately
+      NOT a branch-protection required context". CORRECTION: the first probe
+      walked `repos/.../rulesets/<id> -> required_status_checks`, which returns
+      nothing for EVERY context in this repo — the rulesets carry only
+      `deletion`, `non_fast_forward`, `copilot_code_review` and `merge_queue`.
+      That probe could not have returned a positive about anything; its "no
+      match" was an absence impersonating an answer.
+    exit: 0
+    ts: "2026-08-30T22:02:00Z"
+    seat: session (Pro)
+
+  - claim: >-
+      The defect is measured, not inferred: since it landed, this workflow has
+      run only in the queue and never on a PR.
+    cmd: >-
+      gh run list --repo Bali-Zero/Teman2 --workflow with-seat-broker-tests.yml
+      --limit 8 --json databaseId,conclusion,startedAt,updatedAt,event
+    result: >-
+      8 runs, ALL event=merge_group (durations 4s-67s, typical ~40s), ZERO
+      pull_request runs. File landed 2026-08-30 19:15:44Z (8106d250f, #5326).
+    exit: 0
+    ts: "2026-08-30T21:41:00Z"
+    seat: session (Pro)
+
+  - claim: >-
+      The queue jam is one poisoned entry, not three bad PRs, and the poison is
+      this workflow's shape.
+    cmd: >-
+      gh run list --repo Bali-Zero/Teman2 --event merge_group --limit 80 --json
+      headBranch,conclusion,name,databaseId ; gh run view 33336811212
+      --log-failed
+    result: >-
+      The same job — "Immune enforcement (superscar antidotes)" — is the ONLY
+      failure across the recent merge_group set, and it fails on the merge_group
+      refs of #5340, #5370 AND #5372. The log names
+      test_lint_trigger_symmetry.py::test_live_tree_is_clean_and_the_linter_saw_it
+      and prints "116 workflow(s) checked, 1 violation(s)" against
+      with-seat-broker-tests.yml. #5369 at queue position 3 (ahead of #5340) was
+      MERGEABLE; positions 4-6 were not.
+    exit: 0
+    ts: "2026-08-30T21:44:00Z"
+    seat: session (Pro)
+
+dissent:
+  - seat: kimi-code/k3 (cross-family refuter, Moonshot flat subscription)
+    objection: >-
+      Keeping `merge_group:` on an ADVISORY workflow contradicts a standing
+      repo-wide ruling. scripts/tests/test_advisory_workflows_no_merge_group.py
+      documents Zero's 2026-08-27 queue-slim cure, which stripped merge_group
+      from every workflow that does not back one of the 11 required contexts,
+      because each queue entry was spawning ~50 runs and the gating contexts
+      starved behind the ~40 that gate nothing. This file is advisory and keeps
+      merge_group — it re-arms the exact pattern that cure removed, with no test
+      enforcing the negative side.
+    status: CONFIRMED
+    note: >-
+      THIS REVERSED THE PR. The first commit removed the pull_request.paths
+      filter and kept merge_group; the second does the opposite. Verified
+      independently before acting: the test file was read from origin/main in
+      the same turn, and advisory status confirmed three ways (contexts.json 11,
+      branch protection 12, the file's own header). It also explains the shape
+      of the file's three declared siblings — fleet-burst-tests.yml,
+      vercel-autopromote-tests.yml, intake-review-reader-liveness.yml all carry
+      pull_request.paths and no merge_group. The file was the outlier against
+      its own family.
+
+  - seat: kimi-code/k3 (cross-family refuter)
+    objection: >-
+      The diff is comment-incomplete: the header block spends ~20 lines
+      justifying the PR-side paths filter ("It starts on a PR that touches the
+      broker...", the 3,000-file platform limit, the forward-looking
+      fleet_burst entry). Remove the filter and every one of those sentences
+      describes behaviour that no longer exists.
+    status: RETRACTED
+    note: >-
+      The header is fully rewritten in both commits — the reviewer was given a
+      prose description of the change rather than the diff itself, and reasoned
+      correctly from wrong input. Recorded rather than dropped because the
+      underlying rule is right and this PR does obey it: the final commit's
+      header explains the removal, names the 2026-08-27 ruling, and states the
+      combination-coverage loss explicitly.
+
+  - seat: kimi-code/k3 (cross-family refuter)
+    objection: >-
+      "I could not locate any lint in scripts/ that flags the pair 'merge_group
+      present AND pull_request carries paths'. check_required_workflow_conformance.py
+      only iterates contexts declared in infra/required.d/contexts.json, and this
+      workflow is not one. Verify which check actually ejected the lint's PR
+      seven times before blessing this as the fix for it."
+    status: RETRACTED
+    note: >-
+      A fair doubt, and the answer is that scripts/ci/lint_trigger_symmetry.py
+      is NOT on main — it arrives with #5340, which is why a repo-wide grep
+      cannot see it. It was fetched from that PR's head and run directly (see
+      the guilt/innocence receipt). The failing CI log names that test by path.
+      Worth keeping because the reviewer's instinct — do not accept an
+      attribution you cannot reproduce — is the right one; it simply lacked a
+      branch it had no way to know about.
+
+tests:
+  - "scripts/tests/test_advisory_workflows_no_merge_group.py — 3 passed."
+  - "scripts/tests/test_check_required_workflow_conformance.py — 37 passed."
+  - >-
+    Guilt+innocence on the actual change: the L06 lint is rc=0/0-violations on
+    the fixed tree and rc=1/1-violation with merge_group reinserted. The
+    positive control is the point — a lint that only ever answers "clean" has
+    not answered anything.
+
+static:
+  - "actionlint on the changed file — rc=0."
+  - >-
+    YAML re-parse: triggers [pull_request, push]; pull_request.paths ==
+    push.paths, 6 entries, anchor intact.
+
+notes:
+  - >-
+    council_run is null and this is stated rather than padded: ONE cross-family
+    seat reviewed this diff (kimi-code/k3), not the two distinct
+    COUNCIL_REVIEW_SEATS an R9 quorum wants. No second seat was available —
+    `codex` and `agy` both answered TIMEOUT on this machine's arsenal probe
+    this session. A council journal with one entry, or with a fabricated
+    second, would be worse than an honest null.
+  - >-
+    Scope: ONE file, trigger shape and comments only. No job, step, permission
+    or test in the workflow changed. The borrowed L06 lint was never staged.
+  - >-
+    Auto-merge is deliberately NOT armed. This PR carries a Gear-3 floor and
+    needs an external gate verdict on top of this pack; arming it before that
+    would be self-grading.
+  - >-
+    When it IS armed, arm it NAKED (`gh pr merge <n> --auto`, no strategy
+    flag) — the merge queue owns the merge method and rejects strategy flags.
