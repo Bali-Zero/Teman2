@@ -85,8 +85,15 @@ a dry-run shows an exhausted seat actually skipped.
 
 ## PR-2: feat(fleet): fleet_burst — account-sharded headless fan-out
 
-**Files**: `scripts/fleet_burst.sh` [proposed], `scripts/tests/test_fleet_burst.sh` [proposed].
-**Gear**: 2
+**Files**: `scripts/fleet_burst.sh` [proposed], `scripts/tests/test_fleet_burst.sh` [proposed],
+`.github/workflows/fleet-burst-tests.yml` [proposed — added at build time: a `.sh` corpus has no
+consumer in this repo otherwise, since `scripts-tests-sweep.yml` collects only `test_*.py` and is
+`continue-on-error`, so wave-2 rule 3 puts the executor in this same PR].
+**Gear**: 2 as drafted, but the CI-recomputed floor for the diff as built is **3** — that workflow
+file is a hot-zone path, and the floor is computed from the diff, never chosen. Build to Gear 3
+(council journal + `xhigh`): `evidence_pack_lint.py --print-floor` is the authority, not this line.
+**Correction (2026-08-31, measured while building)**: PR-1 landed at `scripts/lib/seat_state.sh`,
+not `scripts/seat_state.sh` as this file's prose implies elsewhere.
 **Build**:
 
 - Deprecate `fork`/`tmux`-pane fan-out for >2 parallel Opus/Fable-class lanes (the W98/W96 shape);
