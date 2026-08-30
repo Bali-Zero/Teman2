@@ -108,6 +108,40 @@ def test_guilt_trap10_shape_direct_null_compare_unaware_is_violation(tmp_path):
     assert report["violations"][0]["path"] == "guilt_trap10.py"
 
 
+def test_guilt_aliased_trap10_intermediate_variable_is_violation(tmp_path):
+    """The REAL historical incident shape (PR #5218 review finding): the
+    trap-#10 verdict derived through an intermediate variable named `auto`
+    rather than comparing the field expression directly. Shapes A/B, which
+    require the literal `autoMergeRequest` token at the comparison site,
+    do not see this -- this is what Shape C (single-hop alias tracking)
+    exists to catch."""
+    f = _write(
+        tmp_path,
+        "guilt_aliased_trap10.py",
+        'auto = pr.get("autoMergeRequest")\n'
+        'if auto is None:\n    print("ARM CONSUMED, re-arm needed")\n',
+    )
+    report = mod.evaluate([str(f)], tmp_path)
+    assert len(report["violations"]) == 1
+    assert report["violations"][0]["path"] == "guilt_aliased_trap10.py"
+    assert "auto" in report["violations"][0]["reason"]
+
+
+def test_guilt_aliased_negated_truthy_via_variable_is_violation(tmp_path):
+    """Shape C's negated-truthy sibling: `state = pr.get("autoMergeRequest")`
+    then `if not state:` two lines later, same function body."""
+    f = _write(
+        tmp_path,
+        "guilt_aliased_negated.py",
+        'state = pr.get("autoMergeRequest")\n'
+        'log.debug("checking")\n'
+        'if not state:\n    alarm("disarmed")\n',
+    )
+    report = mod.evaluate([str(f)], tmp_path)
+    assert len(report["violations"]) == 1
+    assert report["violations"][0]["path"] == "guilt_aliased_negated.py"
+
+
 # ----------------------------------------------------------------- innocence
 
 
@@ -194,6 +228,234 @@ def test_innocence_shell_absence_check_is_not_matched_as_negated_truthy(tmp_path
     f = _write(tmp_path, "absence_check.sh", '! grep -qi "autoMergeRequest" "$out"\n')
     text = f.read_text(encoding="utf-8")
     assert mod.NEGATED_TRUTHY_RE.search(text) is None
+
+
+def test_innocence_aliased_usage_after_dedent_is_not_matched(tmp_path):
+    """Bounding proof #1: the alias tracker must NOT bleed across a dedent.
+    `f()`'s `auto` is the real incident shape; `g()`'s `auto` is an
+    unrelated later reuse of the same bare name in a SIBLING function. If
+    Shape C tracked the whole file instead of stopping at the dedent, this
+    would false-positive on `g()`."""
+    f = _write(
+        tmp_path,
+        "innocent_aliased_dedent.py",
+        "def f():\n"
+        '    auto = pr.get("autoMergeRequest")\n'
+        "    do_a()\n"
+        "def g():\n"
+        '    auto = "unrelated"\n'
+        "    if not auto:\n        handle()\n",
+    )
+    report = mod.evaluate([str(f)], tmp_path)
+    assert report["violations"] == []
+
+
+def test_innocence_aliased_usage_after_reassignment_is_not_matched(tmp_path):
+    """Bounding proof #2: a later reassignment of the SAME name to
+    something that no longer mentions the field ends the alias's blame --
+    single-hop only, no re-derivation tracking (`x = x or {}` etc.)."""
+    f = _write(
+        tmp_path,
+        "innocent_aliased_reassign.py",
+        'auto = pr.get("autoMergeRequest")\n'
+        "do_a()\n"
+        "auto = compute_something_else()\n"
+        "if not auto:\n    handle_something_else()\n",
+    )
+    report = mod.evaluate([str(f)], tmp_path)
+    assert report["violations"] == []
+
+
+def test_innocence_aliased_usage_beyond_window_is_not_matched(tmp_path):
+    """Bounding proof #3: the hard `_ALIAS_WINDOW` cap is real, not
+    decorative -- a usage far enough past the assignment (no dedent, no
+    reassignment, just distance) at module level must not be attributed to
+    the field either. Keeps the tracker from becoming unbounded whole-file
+    aliasing by accident."""
+    filler = "\n".join(f"noop_{i}()" for i in range(mod._ALIAS_WINDOW + 5))
+    f = _write(
+        tmp_path,
+        "innocent_aliased_far.py",
+        f'auto = pr.get("autoMergeRequest")\n{filler}\nif auto is None:\n    alarm("disarmed")\n',
+    )
+    report = mod.evaluate([str(f)], tmp_path)
+    assert report["violations"] == []
+
+
+def test_innocence_aliased_with_awareness_marker_is_clean(tmp_path):
+    """The Shape C hit still routes through the SAME file-wide awareness
+    check as Shapes A/B -- an aliased verdict is clean if the file shows
+    queue-awareness anywhere, exactly like the direct shapes."""
+    f = _write(
+        tmp_path,
+        "innocent_aliased_aware.py",
+        'auto = pr.get("autoMergeRequest")\n'
+        'if auto is None:\n'
+        '    if pr.get("mergeQueueEntry") is None:\n'
+        '        alarm("truly disarmed")\n',
+    )
+    report = mod.evaluate([str(f)], tmp_path)
+    assert report["violations"] == []
+
+
+def test_innocence_real_merge_queue_watch_alias_idiom_is_not_flagged():
+    """The real live-code version of the Shape C idiom:
+    `.github/workflows/merge-queue-watch.yml` does `amr =
+    pr.get('autoMergeRequest')` then `if amr and amr.get('enabledAt'):` --
+    a plain truthy check, never a null-comparison or negated-truthy test on
+    `amr`. Asserts BOTH the outcome (clean under `evaluate`) AND the
+    mechanism (`find_aliased_hit` finds no hit at all) -- an earlier
+    revision of this module's docstring claimed the file "matches but
+    clears via awareness", which a cross-family review measured false;
+    the file carries `mergeQueueEntry`/`isInMergeQueue` awareness for an
+    unrelated reason, but Shape C never matches it in the first place."""
+    workflow = REPO_ROOT / ".github" / "workflows" / "merge-queue-watch.yml"
+    assert workflow.exists()
+    text = workflow.read_text(encoding="utf-8")
+    assert mod.find_aliased_hit(text) is None
+    report = mod.evaluate([str(workflow)], REPO_ROOT)
+    assert report["violations"] == []
+
+
+# ------------------------- Shape C hardening (2026-08-31 cross-family review)
+
+
+def test_guilt_aliased_type_annotated_assignment_is_violation(tmp_path):
+    """Golden rule #5 mandates type hints in this repo -- the incident
+    shape written idiomatically for this codebase (`auto: dict | None =
+    pr.get("autoMergeRequest")`) must not be invisible just because it
+    carries an annotation. Cross-family review finding, reproduced."""
+    f = _write(
+        tmp_path,
+        "guilt_annotated.py",
+        'auto: dict | None = pr.get("autoMergeRequest")\n'
+        'if auto is None:\n    print("ARM CONSUMED, re-arm needed")\n',
+    )
+    report = mod.evaluate([str(f)], tmp_path)
+    assert len(report["violations"]) == 1
+
+
+def test_innocence_aliased_annotated_reassignment_is_not_matched(tmp_path):
+    """The mirror of the annotated-assignment fix: an ANNOTATED
+    reassignment (`auto: str = "unrelated"`) must also count as staling the
+    alias, or the alias gets blamed past its own rebinding."""
+    f = _write(
+        tmp_path,
+        "innocent_annotated_reassign.py",
+        'auto = pr.get("autoMergeRequest")\n'
+        'auto: str = "unrelated"\n'
+        'if not auto:\n    handle()\n',
+    )
+    report = mod.evaluate([str(f)], tmp_path)
+    assert report["violations"] == []
+
+
+def test_innocence_aliased_for_loop_target_shadow_is_not_matched(tmp_path):
+    """A `for <alias> in ...` loop rebinds the name just as much as an `=`
+    -- a common short alias (`state`) reused as a loop variable a few lines
+    later must not be blamed on the field. Cross-family review finding,
+    reproduced (`(3, 'if not state:', 'state')` before the fix)."""
+    f = _write(
+        tmp_path,
+        "innocent_for_shadow.py",
+        'state = pr.get("autoMergeRequest")\n'
+        'for state in other_states:\n'
+        '    if not state:\n        continue\n',
+    )
+    report = mod.evaluate([str(f)], tmp_path)
+    assert report["violations"] == []
+
+
+def test_innocence_for_loop_reading_alias_as_iterable_still_tracks(tmp_path):
+    """The mirror-innocence for the for-loop fix: `for x in auto:` READS
+    the alias as the iterable -- it must NOT be treated as a rebinding, or
+    a genuine later violation on `auto` itself would be wrongly hidden."""
+    f = _write(
+        tmp_path,
+        "guilt_for_reads_alias.py",
+        'auto = pr.get("autoMergeRequest")\n'
+        'for x in auto:\n'
+        '    pass\n'
+        'if not auto:\n    handle()\n',
+    )
+    report = mod.evaluate([str(f)], tmp_path)
+    assert len(report["violations"]) == 1
+
+
+def test_innocence_aliased_def_param_shadow_is_not_matched(tmp_path):
+    """A nested function's OWN parameter of the same name is unrelated to
+    the outer alias. Cross-family review finding, reproduced
+    (`(4, 'if not auto:', 'auto')` before the fix)."""
+    f = _write(
+        tmp_path,
+        "innocent_def_param_shadow.py",
+        "def f(pr):\n"
+        '    auto = pr.get("autoMergeRequest")\n'
+        "    def helper(auto):\n"
+        "        if not auto:\n            return\n",
+    )
+    report = mod.evaluate([str(f)], tmp_path)
+    assert report["violations"] == []
+
+
+def test_guilt_aliased_usage_past_dedented_comment_is_violation(tmp_path):
+    """A column-0 comment between the assignment and its usage carries no
+    scope semantics and must not abort the scan. Cross-family review
+    finding: `find_aliased_hit` returned None here before the fix (the
+    dedent check fired on the comment line itself)."""
+    f = _write(
+        tmp_path,
+        "guilt_comment_gap.py",
+        "def f(pr):\n"
+        '    auto = pr.get("autoMergeRequest")\n'
+        "# TODO: rearm check happens below\n"
+        "    if auto is None:\n        print(\"ARM CONSUMED, re-arm needed\")\n",
+    )
+    report = mod.evaluate([str(f)], tmp_path)
+    assert len(report["violations"]) == 1
+
+
+def test_innocence_comment_mentioning_null_check_is_not_a_usage(tmp_path):
+    """The over-match mirror of the previous test: a comment that merely
+    DISCUSSES the null-check idiom near the alias is prose, not a verdict,
+    and must not itself be read as a usage."""
+    f = _write(
+        tmp_path,
+        "innocent_comment_prose.py",
+        'auto = pr.get("autoMergeRequest")\n'
+        "# note: upstream already handles the auto is None case in mq state\n",
+    )
+    report = mod.evaluate([str(f)], tmp_path)
+    assert report["violations"] == []
+
+
+def test_guilt_aliased_js_strict_equality_is_violation(tmp_path):
+    """Shape C explicitly supports `const|let|var`, which invites JS/TS --
+    where `=== null` / `!== null` is the canonical idiom, not `==`/`!=`.
+    The alias null-check must accept strict equality too."""
+    f = _write(
+        tmp_path,
+        "guilt_strict_eq.js",
+        'const auto = pr.autoMergeRequest;\n'
+        "if (auto === null) { alarm('disarmed'); }\n",
+    )
+    report = mod.evaluate([str(f)], tmp_path)
+    assert len(report["violations"]) == 1
+
+
+def test_innocence_real_lane_ship_alias_idiom_is_not_flagged():
+    """Same real-code proof for `scripts/lane_ship.sh`'s `amr = pr.get(
+    "autoMergeRequest") or {}` -- `amr` is only ever `.get()`-ed
+    afterwards, never null-compared or negated, so (same as the
+    merge-queue-watch.yml sibling test above) `find_aliased_hit` finds no
+    hit at all; the file's `isInMergeQueue` awareness is real but not why
+    this one stays clean."""
+    lane_ship = REPO_ROOT / "scripts" / "lane_ship.sh"
+    assert lane_ship.exists()
+    text = lane_ship.read_text(encoding="utf-8")
+    assert mod.find_aliased_hit(text) is None
+    report = mod.evaluate([str(lane_ship)], REPO_ROOT)
+    assert report["violations"] == []
 
 
 # ------------------------------------------------------------- allowlist tripwire
