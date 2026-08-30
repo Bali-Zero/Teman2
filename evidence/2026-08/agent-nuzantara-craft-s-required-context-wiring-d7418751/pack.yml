@@ -1,5 +1,16 @@
-council_run: evidence/2026-08/agent-nuzantara-craft-s-required-context-wiring-d7418751/council.jsonl
-brief_ref: evidence/2026-08/agent-nuzantara-craft-s-required-context-wiring-d7418751/brief.yml
+# THE STAGING LAYOUT, and it is NOT the layout of this directory. Both refs below
+# name where `harness-floor.yml` STAGES these files (/tmp/evidence-check/evidence/),
+# never where they live in the repo — and the two resolve against different bases:
+# evidence_pack_lint.py resolves `brief_ref` against --repo-root, and `council_run`
+# against the PACK'S OWN directory. So the correct values are the literal
+# "evidence/brief.yml" and a bare sibling filename, whatever this pack's real
+# per-PR path is. Writing the obviously-correct-looking per-PR path here is the
+# exact trap harness-floor.yml documents at the staging step; it was written here
+# first, and CI caught it. Running the lint LOCALLY does not: locally these refs
+# resolve against the real tree, so the per-PR value reads clean and the correct
+# value can read broken. The lint is authoritative only in CI's staged layout.
+council_run: council.jsonl
+brief_ref: evidence/brief.yml
 pii_scan: clean
 lanes:
   - lane: implementer
@@ -33,8 +44,8 @@ seat_diversity_note: >-
   about the RULE and not about this diff.
 diff:
   net_lines: >-
-    AS OF the commit this pack ships with: the whole PR is 5 files, +319/-49,
-    net 270 — measured THREE-DOT against the merge base a66c76ab6, never
+    AS OF the commit this pack ships with: the whole PR is 5 files, +330/-49,
+    net 281 — measured THREE-DOT against the merge base a66c76ab6, never
     two-dot, which on a moved base blames this PR for files that landed on main
     after the branch point (W102). Three of those five files are this evidence
     pack itself; the SUBJECT of the change is two workflow files. Deterministic
