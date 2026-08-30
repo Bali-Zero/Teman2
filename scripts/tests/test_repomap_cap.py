@@ -22,18 +22,29 @@ _SPEC.loader.exec_module(cap)
 HEADER = "# Nuzantara repo map (auto-generated)\n# Generated: 2026-08-31\n# Strategy: ctags\n#\n"
 
 
+def _name(rank: int) -> str:
+    """A filename whose alphabetical order is the REVERSE of its rank.
+
+    The first version numbered blocks 0000..0199 ascending, so rank order and
+    alphabetical order coincided and a mutation that sorted the blocks by name
+    survived every test (Codex sol, 2026-08-31). Counting down makes the two
+    orders opposite, so "kept the prefix" and "kept the alphabetical head" can
+    never be confused again."""
+    return f"{9999 - rank:04d}_file.py"
+
+
 def _map(n_blocks: int, syms_per_block: int = 40) -> str:
-    """A map shaped like the real generators': `path:` headers, indented bodies,
-    emitted best-first. Block index doubles as its rank."""
+    """A map shaped like the real ctags output: `path:` headers, indented bodies,
+    emitted best-first. Block INDEX is its rank; its NAME sorts the other way."""
     body = "".join(
-        f"\n{i:04d}_file.py:\n  function: {', '.join('sym%03d' % j for j in range(syms_per_block))}\n"
+        f"\n{_name(i)}:\n  function: {', '.join('sym%03d' % j for j in range(syms_per_block))}\n"
         for i in range(n_blocks)
     )
     return HEADER + body
 
 
 def _kept_ranks(text: str) -> list[int]:
-    return [int(m) for m in re.findall(r"^(\d{4})_file\.py:", text, re.M)]
+    return [9999 - int(m) for m in re.findall(r"^(\d{4})_file\.py:", text, re.M)]
 
 
 def test_innocence_a_map_already_under_the_cap_is_returned_byte_identical() -> None:
@@ -68,7 +79,7 @@ def test_no_block_is_cut_in_half() -> None:
     out, _ = cap.cap_text(_map(200), 20_480)
     intact = _map(200)
     for rank in _kept_ranks(out):
-        block = f"\n{rank:04d}_file.py:\n  function: {', '.join('sym%03d' % j for j in range(40))}\n"
+        block = f"\n{_name(rank)}:\n  function: {', '.join('sym%03d' % j for j in range(40))}\n"
         assert block in intact and block in out, f"block {rank} was cut"
 
 
@@ -157,3 +168,91 @@ def test_the_cap_is_measured_in_bytes_not_characters() -> None:
     body = "".join(f"\n{i:04d}_fïlé.py:\n  function: {'è' * 200}\n" for i in range(200))
     out, _ = cap.cap_text(HEADER + body, 20_480)
     assert len(out.encode()) <= 20_480, "counted characters, not bytes"
+
+
+# --- the cases a cross-family refuter found the first eight could not fail on ---
+
+
+def test_the_reserved_note_is_the_one_actually_emitted() -> None:
+    """#1: the budget reserved `kept=0` while the output carried the real count,
+    so a run keeping a three-digit number of blocks wrote more bytes than it had
+    budgeted — an overflow of the very cap this module exists to hold, invisible
+    except within a few bytes of the boundary. Swept across block widths so the
+    boundary is actually crossed rather than hoped for."""
+    for width in range(30, 90):
+        text = HEADER + "".join(
+            f"\n{_name(i)}:\n  k: {'y' * width}\n" for i in range(400)
+        )
+        out, _ = cap.cap_text(text, 20_480)
+        assert len(out.encode()) <= 20_480, (
+            f"width={width}: {len(out.encode())} B, over the cap by "
+            f"{len(out.encode()) - 20_480} — the reservation and the emission disagree"
+        )
+
+
+def test_one_oversized_block_does_not_end_the_walk() -> None:
+    """#5: a `break` meant a map whose FIRST block was pathological came back
+    with nothing but a note, though every later block would have fitted."""
+    text = HEADER + f"\n{_name(0)}:\n  k: " + "x" * 25_000 + f"\n\n{_name(1)}:\n  k: small\n"
+    out, verdict = cap.cap_text(text, 20_480)
+    assert _name(1) in out, f"the fitting block was dropped with the oversized one ({verdict})"
+    assert len(out.encode()) <= 20_480
+
+
+def test_no_half_block_holds_for_the_aider_format_too() -> None:
+    """#13: the earlier no-half-block case used only indented ctags
+    continuations, so it was vacuous for the format that actually breaks — a
+    parser splitting on 'not indented' passes it while cutting every aider file
+    in half."""
+    blocks = [f"{_name(i)}:\n⋮...\n│def f{i}():\n│    pass\n⋮...\n" for i in range(300)]
+    out, _ = cap.cap_text(HEADER + "".join(blocks), 20_480)
+    for b in blocks:
+        head = b.split("\n", 1)[0]
+        if head in out:
+            assert b in out, f"aider block {head} was cut in half"
+
+
+def test_the_early_return_boundary_is_exact_and_counted_in_bytes() -> None:
+    """#10 + #17 together: a text EXACTLY at the cap must pass through untouched
+    (`<=`, not `<`), and one that is short in CHARACTERS but long in BYTES must
+    not. The old unicode case exceeded the cap both ways, so it could not tell a
+    byte count from a character count at the only place it matters."""
+    exact = "#" * 100
+    out, verdict = cap.cap_text(exact, 100)
+    assert out == exact and verdict == "within-cap", "the boundary itself must not be rewritten"
+
+    multibyte = "é" * 60  # 60 characters, 120 bytes
+    assert len(multibyte) < 100 < len(multibyte.encode())
+    out2, verdict2 = cap.cap_text(multibyte, 100)
+    assert verdict2 != "within-cap", "counted characters — 60 < 100 — instead of 120 bytes"
+
+
+def test_the_note_reports_the_count_it_actually_kept() -> None:
+    """#14: the announcement case accepted any two numbers, so a mutation that
+    always wrote `kept 0` passed while dozens of blocks were present."""
+    out, verdict = cap.cap_text(_map(200), 20_480)
+    m = re.search(r"kept (\d+) of (\d+) file blocks", out)
+    assert m, "the note must state both counts"
+    claimed, total = int(m.group(1)), int(m.group(2))
+    assert total == 200
+    assert claimed == len(_kept_ranks(out)), (
+        f"the note claims {claimed} blocks, the file contains {len(_kept_ranks(out))}"
+    )
+    assert verdict.endswith(f"{claimed}/200")
+
+
+def test_the_real_generator_header_is_what_survives() -> None:
+    """#15: the fixture header omitted the `# Repository:` and `# Refresh cadence:`
+    lines the generator actually writes, so a mutation dropping exactly those two
+    survived. Uses the real six-line header from build_repomap.sh."""
+    real = (
+        "# Nuzantara repo map (auto-generated)\n"
+        "# Generated: 2026-08-31 01:42:08 WITA\n"
+        "# Strategy: ctags\n"
+        "# Repository: /Users/nuzantara/nuzantara\n"
+        "# Refresh cadence: 15min (com.nuzantara.repomap.15min)\n"
+        "#\n"
+    )
+    body = "".join(f"\n{_name(i)}:\n  function: a, b, c\n" for i in range(600))
+    out, _ = cap.cap_text(real + body, 20_480)
+    assert out.startswith(real), "the generator's provenance header must survive verbatim"

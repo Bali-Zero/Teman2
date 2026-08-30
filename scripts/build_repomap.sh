@@ -32,10 +32,33 @@ if [[ "${REPOMAP_ENABLED:-true}" == "false" ]]; then
 fi
 
 # === Config ===
+# Resolved HERE, before the `cd` below, and symlink-followed: this is what
+# `$(dirname "$0")` could not be relied on to give afterwards.
+SCRIPT_SELF="${BASH_SOURCE[0]:-$0}"
+while [[ -L "$SCRIPT_SELF" ]]; do
+    _link="$(readlink "$SCRIPT_SELF")"
+    case "$_link" in
+        /*) SCRIPT_SELF="$_link" ;;
+        *)  SCRIPT_SELF="$(cd "$(dirname "$SCRIPT_SELF")" && pwd)/$_link" ;;
+    esac
+done
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_SELF")" && pwd)"
+
 REPO_ROOT="${REPOMAP_REPO_ROOT:-/Users/nuzantara/nuzantara}"
 OUTPUT_PATH="${REPOMAP_OUTPUT:-$HOME/.nuzantara-repomap.txt}"
 OUTPUT_TMP="${OUTPUT_PATH}.tmp.$$"
 MAX_TOKENS="${REPOMAP_MAX_TOKENS:-1024}"
+
+# Validated at CONFIG time, not at use time. Unvalidated it aborted the run under
+# `set -u` at `(( SIZE_BYTES > CAP_BYTES ))` — AFTER the uncapped map had already
+# been installed, which is the worst possible order to fail in (Codex sol,
+# 2026-08-31). A bad cap is a misconfiguration to announce and ignore, never a
+# reason to leave the machine without a map.
+CAP_BYTES="${REPOMAP_HARD_CAP_BYTES:-20480}"
+if ! [[ "$CAP_BYTES" =~ ^[0-9]+$ ]] || (( CAP_BYTES < 1 )); then
+    echo "[build_repomap] WARN: REPOMAP_HARD_CAP_BYTES=$CAP_BYTES is not a positive integer — using 20480" >&2
+    CAP_BYTES=20480
+fi
 LOG_PREFIX="[$(date '+%Y-%m-%d %H:%M:%S')] [build_repomap]"
 
 cd "$REPO_ROOT" || {
@@ -232,9 +255,18 @@ HEADER_TMP="${OUTPUT_TMP}.header"
 # highest-signal part of exactly the ordering they chose. A half-written block
 # would be worse than a missing one — a reader cannot tell a truncated symbol
 # list from a short one.
-CAP_BYTES="${REPOMAP_HARD_CAP_BYTES:-20480}"
+# Resolved BEFORE the `cd "$REPO_ROOT"` above, and made absolute, because after
+# that cd a relative `$0` points at the repo root instead of at this script's own
+# directory — so `$(dirname "$0")/repomap_cap.py` silently missed, the filter
+# "failed", and the UNCAPPED map was installed with only a WARN (Codex sol,
+# 2026-08-31). Symlink-resolved too: the cron may one day point at a link.
+CAP_SCRIPT="$SCRIPT_DIR/repomap_cap.py"
+
 CAPPED_TMP="${HEADER_TMP}.capped"
-if python3 "$(dirname "$0")/repomap_cap.py" "$HEADER_TMP" "$CAPPED_TMP" "$CAP_BYTES"
+if [[ ! -f "$CAP_SCRIPT" ]]; then
+    echo "$LOG_PREFIX WARN: $CAP_SCRIPT missing — map left UNCAPPED (the repomap_size probe reports the oversize)" >&2
+    rm -f "$CAPPED_TMP"
+elif python3 "$CAP_SCRIPT" "$HEADER_TMP" "$CAPPED_TMP" "$CAP_BYTES"
 then
     if [[ -s "$CAPPED_TMP" ]]; then
         mv -f "$CAPPED_TMP" "$HEADER_TMP"

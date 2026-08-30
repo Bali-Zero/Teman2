@@ -11,14 +11,22 @@ control (superscar #2; W55 — a signal emitted is not a signal seen). W76 is th
 same file's earlier relapse, where a silent strategy fallback filled the map with
 minified webpack chunks. So the generator truncates now, and says that it did.
 
-TRUNCATION IS BY RANK, AT BLOCK BOUNDARIES
-------------------------------------------
-Both strategies already emit file blocks best-first — ctags sorts by symbol
-count, aider by its own PageRank — so keeping a whole-block PREFIX keeps the
-highest-signal part of exactly the ordering they chose, without this script
-inventing a ranking of its own. A block is never cut in half: a half-written
-symbol list is worse than an absent one, because a reader cannot tell it from a
-short one.
+TRUNCATION KEEPS A PREFIX OF THE STRATEGY'S OWN ORDER
+-----------------------------------------------------
+The ctags path sorts its files by symbol count, so its prefix genuinely is the
+densest part. Aider does NOT: it selects tags by PageRank and then renders them
+sorted BY FILENAME, so its prefix is alphabetical, not best-first. An earlier
+draft of this docstring claimed both were best-first (Codex sol, 2026-08-31); a
+false claim about ranking is worse than no claim, because the next reader budgets
+trust on it.
+
+Keeping a prefix is still the right cut: it preserves whatever order the strategy
+chose rather than substituting one this script invented, it is stable between
+runs (so a diff of two maps is readable), and a block is never cut in half — a
+half-written symbol list is worse than an absent one, because a reader cannot
+tell it from a genuinely short one. What it is NOT is a guarantee that the most
+important files survive under aider; the note says how many blocks were dropped,
+so a reader can see when that matters.
 
 The truncation always announces itself in the output. A map that quietly stops
 early is indistinguishable from a small repository — which is the confusion this
@@ -92,9 +100,10 @@ def _note(kept: int, total: int, cap: int, why: str) -> str:
     return (
         f"#\n# TRUNCATED: kept {kept} of {total} file blocks to stay inside the "
         f"{cap}-byte hard cap ({why}).\n"
-        "# The blocks kept are the highest-ranked ones the strategy emitted, in its\n"
-        "# own order. This is a map, not the territory: grep the repo for what is\n"
-        "# not here.\n"
+        "# What is kept is a PREFIX of the order the generating strategy emitted —\n"
+        "# which is by symbol count under ctags, but alphabetical under aider, so do\n"
+        "# not read the surviving files as the most important ones. This is a map,\n"
+        "# not the territory: grep the repo for what is not here.\n"
     )
 
 
@@ -105,7 +114,13 @@ def cap_text(text: str, cap: int = DEFAULT_CAP_BYTES) -> tuple[str, str]:
 
     head, blocks = _split(text)
     head_str = "".join(head)
-    budget = cap - len(head_str.encode()) - len(_note(0, len(blocks), cap, "by rank").encode())
+    # Reserve the LONGEST note we could emit, not the shortest. The reservation
+    # used `kept=0` while the output carries the real count, so a run keeping 288
+    # of 400 blocks writes two digits more than it budgeted — an overflow of the
+    # very cap this module exists to hold, invisible except at the boundary
+    # (Codex sol, 2026-08-31). `len(blocks)` is the widest `kept` can ever be.
+    worst_note = len(_note(len(blocks), len(blocks), cap, "by rank").encode())
+    budget = cap - len(head_str.encode()) - worst_note
 
     if budget <= 0:
         # A FLOOR, and it is deliberately above the cap. Below "provenance header
@@ -121,12 +136,18 @@ def cap_text(text: str, cap: int = DEFAULT_CAP_BYTES) -> tuple[str, str]:
             f"floor-exceeds-cap 0/{len(blocks)}",
         )
 
+    # `continue`, not `break`. One pathological block — a generated file with
+    # thousands of symbols — used to end the walk, so a map whose FIRST block was
+    # oversized came back with nothing but a note while every later block would
+    # have fitted (measured: `truncated 0/2`, both files gone). Skipping it keeps
+    # the rest of the order, which is strictly more of what the strategy chose
+    # than zero of it.
     kept: list[list[str]] = []
     used = 0
     for b in blocks:
         n = len("".join(b).encode())
         if used + n > budget:
-            break
+            continue
         kept.append(b)
         used += n
 

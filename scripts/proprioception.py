@@ -845,16 +845,59 @@ def probe_repomap_size(root: Path, args: dict, timeout: int) -> tuple[str, int, 
     not run the cron (measured 2026-08-31: Pro has the file, Mini and M5 do not).
     Reporting "fine" for a file that does not exist is how a probe becomes decor.
     """
-    cap = int(args.get("cap_bytes", 20480))
+    # The cap the GENERATOR would use on THIS machine, not a constant. The
+    # generator reads REPOMAP_HARD_CAP_BYTES; a probe that hardcodes 20480 calls
+    # a correctly-capped 25,000-byte map on a machine configured for 30,000 a
+    # DIVERGENCE, and blames a truncator that worked (Codex sol, 2026-08-31).
+    cap_raw = os.environ.get("REPOMAP_HARD_CAP_BYTES", "").strip()
+    cap = int(cap_raw) if cap_raw.isdigit() and int(cap_raw) > 0 else int(args.get("cap_bytes", 20480))
     target = Path(os.path.expanduser(args.get("path", "~/.nuzantara-repomap.txt")))
+    label = args.get("launchd_label", "com.nuzantara.repomap.15min")
+
     if not target.exists():
-        return UNPROBEABLE, 0, [f"{target} absent — this machine does not run the repomap cron"]
+        # "Absent" means two opposite things and the probe must not guess. If the
+        # cron is LOADED here, absence is a failed run — a finding. If it is not,
+        # this machine simply does not generate a map, and reporting a finding
+        # would train the reader to ignore this line (measured 2026-08-31: Pro
+        # has the file, Mini and M5 do not).
+        loaded = False
+        try:
+            r = subprocess.run(["launchctl", "list", label], capture_output=True, timeout=5)
+            loaded = r.returncode == 0
+        except Exception:
+            loaded = False
+        if loaded:
+            return DIVERGED, 1, [
+                f"{target} absent while {label} IS loaded on this machine — "
+                "the generator ran and produced nothing, or has never run"
+            ]
+        return UNPROBEABLE, 0, [f"{target} absent and {label} not loaded — this machine does not generate a map"]
+
+    # A path that exists is not a map. A directory, a symlink to nothing, or a
+    # zero-byte file would all have read as RECONCILED on size alone — "small"
+    # is the most reassuring possible reading of "broken".
+    if not target.is_file():
+        return DIVERGED, 1, [f"{target} exists but is not a regular file — nothing usable is being injected"]
     size = target.stat().st_size
+    if size == 0:
+        return DIVERGED, 1, [f"{target} is empty — a 0-byte map reads as a lean repo and is not one"]
+
+    # Freshness, because a stale map is silently wrong in a way size cannot show.
+    # The band is generous (4x the 900s cadence) so an ordinary missed tick is not
+    # a finding; what it catches is a cron that stopped days ago.
+    age = int(time.time() - target.stat().st_mtime)
+    stale_after = int(args.get("stale_after_sec", 3600))
+    if age > stale_after:
+        return DIVERGED, 1, [
+            f"{target} is {size}B but {age // 60} minutes old (cadence is 15 min) — "
+            f"{label} has stopped producing; the injected map is frozen at whatever it last held"
+        ]
     if size <= cap:
-        return RECONCILED, 0, [f"{size}B <= {cap}B cap"]
+        return RECONCILED, 0, [f"{size}B <= {cap}B cap, {age}s old"]
     return DIVERGED, 1, [
-        f"{target} is {size}B, over the {cap}B hard cap by {size - cap}B — "
-        "the truncator did not run (check the generator's stderr for 'hard-cap filter failed')"
+        f"{target} is {size}B, over the {cap}B cap by {size - cap}B — either the truncator "
+        "failed open (its WARN is in the generator's stderr) or the cap was raised without "
+        "this probe's args following"
     ]
 
 
