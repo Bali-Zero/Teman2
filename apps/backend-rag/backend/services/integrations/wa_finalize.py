@@ -562,9 +562,7 @@ def _summable_operands(price_sources: Sequence[str], cur: str) -> set[int]:
     return operands
 
 
-def _is_two_component_total(
-    value: int, price_sources: Sequence[str], cur: str
-) -> bool:
+def _is_two_component_total(value: int, operands: set[int]) -> bool:
     """True when ``value`` is the sum of two DISTINCT same-currency amounts.
 
     Two terms, not three: three let unrelated chunks be laundered into a
@@ -596,7 +594,6 @@ def _is_two_component_total(
     chunks still sum to a total no source authorizes, because `price_sources`
     carries no provenance and no semantic role.
     """
-    operands = _summable_operands(price_sources, cur)
     for a in operands:
         b = value - a
         if b > a and b in operands:
@@ -642,12 +639,18 @@ def price_tokens_outside_sources(text: str, price_sources: Sequence[str]) -> lis
             if value is not None:
                 source_values.add(value)
     offenders: list[str] = []
+    operands_by_family: dict[str, set[int]] = {}
     for cur, value in _currency_amounts(text):
         if value < _VETO_FLOORS[cur]:
             continue
         if value in source_values:
             continue
-        if not _is_two_component_total(value, price_sources, cur):
+        # Parsed once per CURRENCY FAMILY, not once per amount: an answer
+        # quoting four figures re-parsed every chunk four times, and the retry
+        # ladder repeated that up to five times per turn.
+        if cur not in operands_by_family:
+            operands_by_family[cur] = _summable_operands(price_sources, cur)
+        if not _is_two_component_total(value, operands_by_family[cur]):
             offenders.append(f"{cur}:{value}")
     return offenders
 
