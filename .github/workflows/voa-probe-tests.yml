@@ -155,7 +155,21 @@ jobs:
         run: |
           set -euo pipefail
           FLOOR=56
-          TOTAL="$(bash scripts/tests/test_voa_probe_wrapper.sh | sed -n 's/^TOTAL \([0-9][0-9]*\) FAILED .*/\1/p' | tail -1)"
+          # THE BRACES ARE LOAD-BEARING and the `|| true` is too, and both were
+          # arrived at by RUNNING the line rather than reading it.
+          #
+          # `|| true`: under `set -euo pipefail` a suite that ABORTS kills the
+          # step at this assignment, so the "printed no TOTAL line" branch below
+          # is unreachable dead code on the only path it exists for (W101/W108).
+          #
+          # Braces: without them `||` binds looser than `|`, so
+          # `bash suite || true | sed ...` parses as `bash suite || (true | sed ...)`
+          # — on SUCCESS sed never runs and TOTAL captures the suite's ENTIRE
+          # output, which the `-lt` comparison below then tries to read as a
+          # number. Measured: the unbraced form set TOTAL to the whole 113-line
+          # transcript; the braced form sets it to `113`, and to empty on a
+          # failing suite, which is what makes the branch below reachable.
+          TOTAL="$({ bash scripts/tests/test_voa_probe_wrapper.sh 2>/dev/null || true; } | sed -n 's/^TOTAL \([0-9][0-9]*\) FAILED .*/\1/p' | tail -1)"
           if [ -z "$TOTAL" ]; then
             echo "::error::the corpus printed no TOTAL line — it aborted before reporting, so its check count is unknown"
             exit 1

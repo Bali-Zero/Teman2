@@ -309,12 +309,13 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     #
     # 2026-08-21: this branch (#4498) independently added the p2b_score.json
     # rule, but #4422 landed it on main first via a different path — same
-    # rule, registered once, not twice. The count below (15) and the comment
+    # rule, registered once, not twice. The count below (22 as of 2026-08-31)
+    # and the comment
     # trail are derived from the live registry post-merge, not summed by
     # hand (team-lead's call: a rule appears once in the trail regardless of
     # how many PRs tried to add it).
-    assert len(CONTENT_KEYED_RULES) == 21, (
-        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 21. "
+    assert len(CONTENT_KEYED_RULES) == 22, (
+        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 22. "
         "If you just ADDED a rule: bump this number AND append a `# +1: <what> "
         "(<date>, PR #NNNN)` line below, matching the existing trail's format — "
         "that comment IS the audit record this assert exists to force. "
@@ -337,6 +338,7 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # +1: fold_pack_seq14.py seq-13 chain anchor exact-value pin (2026-08-24, #4797)
     # +1: evidence/<month>/<slug>/pack.yml diff.measured_at git SHA (2026-08-27, #5054)
     # +1: fold_pack_seq17.py seq-16 chain anchor exact-value pin (2026-08-30, #5311)
+    # +1: fold_pack_seq18.py seq-17 chain anchor exact-value pin (2026-08-31, #5333)
     #
     # Note (2026-08-23): "appended last" is no longer a constraint. It was
     # true only because this test and the two Google-OAuth tests below
@@ -1535,6 +1537,43 @@ def test_fold_seq17_rule_is_exact_and_rejects_ride_alongs() -> None:
     assert content_pat.match(real_line)
     assert content_pat.match('SEQ16_PAYLOAD_SHA256 = "' + "a" * 64 + '"') is None
     assert content_pat.match(f'API_KEY = "{FOLD_PACK_SEQ17_ANCHOR}"') is None
+    assert content_pat.match(f'{real_line}; API_KEY = "real-secret"') is None
+    assert "credential" in reason
+
+
+FOLD_PACK_SEQ18 = "apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq18.py"
+FOLD_PACK_SEQ18_ANCHOR = (
+    "97cb964780b114a2fa936230055327102a5af59efb010b6bf04090bb7321890b"
+)
+
+
+def test_fold_seq18_rule_is_exact_and_rejects_ride_alongs() -> None:
+    """Same contract seq-17 gets, for the same reason.
+
+    The count assert above proves a rule was ADDED and named; it says nothing
+    about whether the rule is tight. Only this shape does — and adversarial
+    review of the seq-18 PR pointed out that seq-17 had it and seq-18 did not.
+    """
+    path_pat, content_pat, reason = _find_content_keyed_rule(
+        "fold_pack_seq18.py: seq-17 chain anchor"
+    )
+    real_line = f'SEQ17_PAYLOAD_SHA256 = "{FOLD_PACK_SEQ18_ANCHOR}"'
+    matching_lines = [
+        line
+        for line in Path(FOLD_PACK_SEQ18).read_text(encoding="utf-8").splitlines()
+        if FOLD_PACK_SEQ18_ANCHOR in line
+    ]
+
+    assert path_pat.search(FOLD_PACK_SEQ18)
+    # Scoped to THIS fold — the sibling that legitimately holds the same digest
+    # as its own OUTPUT must not be forgiven by this rule.
+    assert not path_pat.search(FOLD_PACK_SEQ17)
+    assert not path_pat.search(FOLD_PACK_SEQ14)
+    assert matching_lines == [real_line]
+    assert content_pat.match(real_line)
+    assert content_pat.match('SEQ17_PAYLOAD_SHA256 = "' + "a" * 64 + '"') is None
+    assert content_pat.match(f'API_KEY = "{FOLD_PACK_SEQ18_ANCHOR}"') is None
+    assert content_pat.match(f'SEQ17_PAYLOAD_SHA256_OTHER = "{FOLD_PACK_SEQ18_ANCHOR}"') is None
     assert content_pat.match(f'{real_line}; API_KEY = "real-secret"') is None
     assert "credential" in reason
 
