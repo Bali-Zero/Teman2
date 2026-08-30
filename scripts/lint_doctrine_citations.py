@@ -38,7 +38,10 @@ DEFAULT_SUBJECTS: tuple[str, ...] = (
 # entirely (`~/Desktop/OSINT-Nexus/docs/...`). A lint that reddens correct
 # doctrine is a lint someone disables, and it would have been red on this
 # repo's most load-bearing document (superscar #3, guard-over-match).
-_PATH_RE = re.compile(r"(?<![\w/.~-])(research|docs)/[\w./-]+\.\w+\b")
+# `\.?/?` lets a `./`-prefixed path match in prose; the lookbehind still refuses
+# a path that is merely a SUFFIX of a longer one (`apps/x/docs/y.md`), which is
+# the over-match this anchor exists for.
+_PATH_RE = re.compile(r"(?<![\w/~-])\.?/?(research|docs)/[\w./-]+\.\w+\b")
 # Markdown link URLs: we only care about the parenthesised path.
 _LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 # Inline code spans delimited by a single backtick.
@@ -96,10 +99,15 @@ _PLACEHOLDER_TOKENS: frozenset[str] = frozenset(
 def _looks_like_template(path: str) -> bool:
     """Exclude paths that are clearly templates, not real references.
 
-    WHY: A glob (*, ?, {), a placeholder bracket, or an ALL-CAPS segment such as
-    YYYY-MM-DD means the author is describing a pattern, not pointing at one
-    concrete file. Reporting those would create false positives the reader must
-    then ignore, which trains people to disable the lint.
+    WHY: a glob, or a bracketed/named placeholder, means the author is describing
+    a PATTERN rather than pointing at one concrete file.
+
+    NOT "any capitalised segment", which an earlier version used and which made
+    `docs/API/x.md` and `docs/RESEARCH_LANDSCAPE_2026.md` — a real filename shape
+    here — silently unscannable. That was an under-match hiding exactly the
+    phantoms this lint looks for, and this docstring argued for it after the code
+    had stopped doing it (Kimi K3, 2026-08-31: prose outliving the rule it
+    describes is how the next reader re-adds a defect).
     """
     if any(ch in path for ch in "*?{}<>[]"):
         return True
@@ -129,6 +137,9 @@ def _candidates_from_link(url: str) -> list[str]:
     # reported an existing file as missing.
     from urllib.parse import unquote
 
+    # `[x](path "title")` — markdown allows a title after the target. Leaving it
+    # attached made the extension test fail and the citation invisible.
+    url = url.strip().split(None, 1)[0] if url.strip() else url
     url = _normalise_relative(_strip_suffixes_and_punctuation(unquote(url)))
     if _starts_a_repo_path(url) and _is_file_citation(url):
         return [url]
@@ -154,13 +165,17 @@ def _candidates_from_backtick_span(span: str) -> list[str]:
     if tokens and tokens[0].lower() in _SHELL_WORDS:
         return []
     for i, token in enumerate(tokens):
-        if i > 0 and _starts_a_repo_path(token):
+        if i > 0 and _starts_a_repo_path(_normalise_relative(token)):
             if tokens[i - 1].lower() in _SHELL_WORDS:
                 return []
     found: list[str] = []
     for token in tokens:
-        if _starts_a_repo_path(token):
-            candidate = _strip_suffixes_and_punctuation(token)
+        # Normalise BEFORE the repo-path test: `./research/x.md` does not start
+        # with `research/`, so checking first made every `./`-prefixed span
+        # invisible while the same path resolved fine as a link — the three
+        # recognisers disagreeing about the same string (Kimi K3, 2026-08-31).
+        candidate = _normalise_relative(_strip_suffixes_and_punctuation(token))
+        if _starts_a_repo_path(candidate):
             if _is_file_citation(candidate):
                 found.append(candidate)
     return found
@@ -170,7 +185,7 @@ def _candidates_from_bare_text(text: str) -> list[str]:
     """Return citation candidates found loose in prose."""
     found: list[str] = []
     for match in _PATH_RE.finditer(text):
-        candidate = _strip_suffixes_and_punctuation(match.group(0))
+        candidate = _normalise_relative(_strip_suffixes_and_punctuation(match.group(0)))
         if _starts_a_repo_path(candidate) and _is_file_citation(candidate):
             found.append(candidate)
     return found
@@ -232,25 +247,23 @@ def _extract_citations(text: str) -> list[tuple[int, str]]:
     citations: list[tuple[int, str]] = []
 
     in_list = False
-    in_retraction = False
     for line_no, line in enumerate(lines, start=1):
         stripped = line.strip()
         if stripped.startswith(("- ", "* ", "+ ")) or (stripped[:2].rstrip(".").isdigit() and ". " in stripped[:4]):
             in_list = True
         elif not stripped:
             in_list = False
-            in_retraction = False
         if in_fence[line_no - 1]:
             continue
         if _RETRACTION_RE.search(line):
-            # The marker opens a retraction BLOCK, not just a line. A human writes
-            # "RETRACTED 2026-08-31 — <why>" and then names the path a line or two
-            # down, inside the same paragraph or blockquote; matching only the
-            # marker's own line left that path a finding, which is how the cure
-            # for a phantom becomes a phantom (measured on this very file's three
-            # retractions). The block ends at the first blank line.
-            in_retraction = True
-        if in_retraction:
+            # LINE-scoped, deliberately. A block-scoped marker — "the paragraph
+            # after RETRACTED is exempt" — excused every OTHER citation sharing
+            # that paragraph, including live ones: `Old rule RETRACTED; the live
+            # source is research/x.md` passed with x.md missing (Kimi K3,
+            # 2026-08-31), and the test written for it pinned only the blank-line
+            # boundary, so the hole was locked in by its own guard. The narrow
+            # rule costs one thing — a retraction must NAME its dead path on the
+            # marker's own line — and that is a better sentence anyway.
             continue
 
         # Mask out link spans and backtick spans so bare-text scanning does not
@@ -281,6 +294,29 @@ def _extract_citations(text: str) -> list[tuple[int, str]]:
             citations.append((line_no, candidate))
 
     return citations
+
+
+def _resolves_through_symlink(cwd: Path, cited: str) -> bool:
+    """Last-resort existence check for a path that reaches THROUGH a symlink.
+
+    `docs/design-palettes/kbli-images` is a tracked symlink to a directory under
+    `apps/`. `git ls-tree` lists the LINK, not what is behind it, and `rglob` does
+    not descend into directory symlinks — so a citation to a real file under it
+    was reported missing by BOTH resolvers, reddening CI on correct doctrine
+    (Kimi K3, 2026-08-31, verified on two interpreters).
+
+    Confined to the repo: a citation is repo-relative by definition, so anything
+    resolving outside `cwd` is refused rather than trusted — `..` in a citation
+    must not become a way to point at the filesystem at large.
+    """
+    try:
+        target = (cwd / cited).resolve()
+        cwd_resolved = cwd.resolve()
+        if cwd_resolved not in (target, *target.parents):
+            return False
+        return target.is_file()
+    except (OSError, RuntimeError):
+        return False
 
 
 def _load_resolver(ref: str, cwd: Path) -> tuple[set[str], bool]:
@@ -402,7 +438,7 @@ def main(argv: list[str] | None = None) -> int:
         text = subject.read_text(encoding="utf-8")
         for line_no, cited in _extract_citations(text):
             total_citations += 1
-            if cited in resolver:
+            if cited in resolver or _resolves_through_symlink(cwd, cited):
                 continue
             key = (rel, line_no, cited)
             if key in seen_findings:

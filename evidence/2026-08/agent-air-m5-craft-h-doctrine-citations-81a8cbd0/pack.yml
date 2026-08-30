@@ -194,3 +194,57 @@ dissent:
       here and in the PR body rather than left for a reader to discover: a PR that
       only DELETES a cited target can still land a phantom, and the next run on any
       doctrine change catches it. A ledger row carries it.
+  - seat: kimi-code/k3 (cross-family refuter, second pass on the Codex-fixed tree)
+    objection: >-
+      THE RETRACTION MARKER I ADDED WAS ITSELF A HOLE, AND MY TEST LOCKED IT IN.
+      It exempted the whole PARAGRAPH after the marker, so a live citation sharing
+      that paragraph was excused too: `Old rule RETRACTED; the live source is
+      research/x.md` passed with x.md missing. The test written for it pinned only
+      the blank-line boundary, so the defect was blessed by its own guard.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed — the marker is LINE-scoped now, which costs one thing: a
+      retraction must NAME its dead path on the marker's own line. All three cures
+      were rewritten to do that, and a test asserts it, because a path drifting to
+      the next line would silently become a finding again. The residual cost — a
+      live citation sharing the marker's line is also excused — is asserted in the
+      test rather than left for someone to find.
+  - seat: kimi-code/k3
+    objection: >-
+      A tracked SYMLINK reddens correct doctrine. `docs/design-palettes/kbli-images`
+      is a symlink to a directory under `apps/`; `git ls-tree` lists the link, not
+      what is behind it, and `rglob` does not descend into directory symlinks — so
+      a citation to a real file under it was reported missing by BOTH resolvers.
+      Verified on two interpreters.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed — a last-resort existence check that follows symlinks,
+      confined to the repo so a `..` in a citation cannot become a way to point at
+      the filesystem at large. Its test skips loudly if that symlink ever
+      disappears, saying the rule may then be removable.
+  - seat: kimi-code/k3
+    objection: >-
+      The `./` fix landed on LINKS only. Prose and backtick spans still checked
+      `_starts_a_repo_path` BEFORE normalising, so the same path was seen as a link
+      and invisible everywhere else — three recognisers disagreeing about one
+      string. Plus: a titled link `[x](path "title")` was invisible, the
+      `_PLACEHOLDER_TOKENS` branch was unreachable behind the bracket test so
+      emptying it survived the suite, and `_looks_like_template`'s docstring still
+      argued for the ALL-CAPS rule the code had stopped implementing.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed, each with its own case and each mutation-killed. The
+      docstring one matters beyond its size: prose outliving the rule it describes
+      is how the next reader re-adds a defect on purpose.
+  - seat: kimi-code/k3
+    objection: >-
+      The cured skill file still said the dead path was "riportata qui dentro un
+      blocco di codice" — the fence was gone, replaced by the RITIRATA line. The
+      note described the previous cure. Also, the test fixture directory is created
+      inside the repo and never removed, leaving committable clutter.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed — the prose now describes what the file actually does, and
+      the fixture directory is gitignored. The first is the same class as the
+      docstring above and the same class this whole lane is about: text that
+      outlives the thing it describes.

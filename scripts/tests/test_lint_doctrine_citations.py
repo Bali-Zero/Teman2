@@ -216,20 +216,109 @@ def test_every_retraction_in_the_repo_is_green_under_the_lint() -> None:
         assert _run(f).returncode == 0, f"{rel} is red under the lint"
 
 
-def test_a_retraction_marker_does_not_excuse_the_rest_of_the_file(tmp_path: Path) -> None:
-    """The marker opens a BLOCK, and the block ends at a blank line. If it excused
-    everything after it, one retraction anywhere would disarm the file."""
+def test_a_retraction_marker_excuses_its_own_line_and_nothing_else(tmp_path: Path) -> None:
+    """The marker is LINE-scoped, and this case is why.
+
+    It was block-scoped first — "the paragraph after RETRACTED is exempt" — which
+    excused every OTHER citation sharing that paragraph, live ones included, and
+    the test written for it pinned only the blank-line boundary so the hole was
+    locked in by its own guard (Kimi K3, 2026-08-31). The narrow rule costs one
+    thing: a retraction must NAME its dead path on the marker's own line."""
     f = _write(
         tmp_path,
-        "RETRACTED — `research/operations/dead-one.md` never existed.\n"
+        "RETRACTED — `research/operations/dead-one.md` never existed. "
+        "The live source is `research/operations/also-missing.md` today.\n"
         "\n"
-        "But this one is a live claim: `research/operations/also-missing.md`.\n",
+        "And a plain claim: `research/operations/third-missing.md`.\n",
     )
     try:
         r = _run(f)
-        assert r.returncode == 1, "the marker excused a citation outside its own block"
-        assert "also-missing.md" in r.stdout
-        assert "dead-one.md" not in r.stdout, "the retracted path was still reported"
+        assert r.returncode == 1
+        assert "third-missing.md" in r.stdout, "a citation outside the marked line was excused"
+        assert "dead-one.md" not in r.stdout, "the retracted path was reported anyway"
+        # The load-bearing half: a live citation SHARING the marker's line is
+        # excused too, and that is the accepted cost of the narrow rule — it is
+        # named here rather than left for someone to discover.
+        assert "also-missing.md" not in r.stdout
+    finally:
+        f.unlink()
+
+
+def test_every_retraction_names_its_path_on_the_marker_line() -> None:
+    """The rule above only works if the cures obey it. Asserted, because a
+    retraction whose path drifts to the next line silently becomes a finding."""
+    for rel in (
+        ".claude/skills/sota-architecture-loop/SKILL.md",
+        ".claude/skills/skill-catalog/SKILL.md",
+        "AUTONOMOUS_OPS.md",
+    ):
+        text = (REPO / rel).read_text()
+        marked = [ln for ln in text.splitlines() if lint._RETRACTION_RE.search(ln)]
+        assert marked, f"{rel} has no retraction marker"
+        assert any(("research/" in ln or "docs/" in ln) for ln in marked), (
+            f"{rel} marks a retraction but names no path on the marker's own line — "
+            "the marker is line-scoped, so the path would be a finding"
+        )
+
+
+def test_a_citation_reaching_through_a_tracked_symlink_resolves(tmp_path: Path) -> None:
+    """`docs/design-palettes/kbli-images` is a tracked symlink to a directory
+    under `apps/`. `git ls-tree` lists the LINK, and `rglob` does not descend into
+    directory symlinks, so a real file behind it was reported missing by BOTH
+    resolvers — a false positive on correct doctrine (Kimi K3, 2026-08-31)."""
+    link = REPO / "docs" / "design-palettes" / "kbli-images"
+    if not link.is_symlink():
+        import pytest as _pytest
+
+        _pytest.skip("the tracked symlink this case exists for is gone; the rule may be removable")
+    target = next((p for p in link.resolve().iterdir() if p.is_file()), None)
+    assert target is not None, "premise: the symlinked dir must contain a file"
+    cited = f"docs/design-palettes/kbli-images/{target.name}"
+    f = _write(tmp_path, f"See `{cited}`.\n")
+    try:
+        r = _run(f)
+        assert r.returncode == 0, f"a real file behind a symlink read as missing:\n{r.stdout}"
+    finally:
+        f.unlink()
+
+
+def test_a_titled_link_is_still_a_citation(tmp_path: Path) -> None:
+    """Markdown allows `[x](path "title")`; leaving the title attached made the
+    extension test fail and the citation invisible."""
+    f = _write(tmp_path, 'See [x](research/operations/nope-titled.md "The Title").\n')
+    try:
+        r = _run(f)
+        assert r.returncode == 1, f"a titled link was invisible:\n{r.stdout}"
+        assert "nope-titled.md" in r.stdout
+    finally:
+        f.unlink()
+
+
+def test_a_relative_prefix_is_normalised_in_prose_and_backticks_too(tmp_path: Path) -> None:
+    """The `./` fix landed on links only, so the three recognisers disagreed —
+    the same path was seen as a link and invisible as prose or in a span."""
+    f = _write(
+        tmp_path,
+        "Backtick: `./research/operations/nope-tick.md`\n"
+        "\n"
+        "Prose: see ./research/operations/nope-prose.md for detail.\n",
+    )
+    try:
+        r = _run(f)
+        assert r.returncode == 1
+        assert "nope-tick.md" in r.stdout, "./ in a backtick span was invisible"
+        assert "nope-prose.md" in r.stdout, "./ in prose was invisible"
+    finally:
+        f.unlink()
+
+
+def test_the_placeholder_token_set_is_actually_reachable(tmp_path: Path) -> None:
+    """Its fixtures were all caught by the bracket/glob test first, so emptying
+    the token set survived the whole suite — a branch that read as protection
+    while nothing could tell it from dead code."""
+    f = _write(tmp_path, "Write to `research/YYYY/nope-token.md`.\n")
+    try:
+        assert _run(f).returncode == 0, "a YYYY placeholder was treated as a citation"
     finally:
         f.unlink()
 
