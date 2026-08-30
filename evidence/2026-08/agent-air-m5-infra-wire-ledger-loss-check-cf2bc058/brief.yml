@@ -1,0 +1,119 @@
+task_id: wire-ledger-loss-check-0830
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Wire `scripts/check_ledger_no_silent_loss.py`'s verdict where a reader actually
+  looks. Team-lead's mandate (relayed from a prior lane in this same session that
+  resolved conflicts on PR #5279/#5244): the script already exists, is already
+  wired into `.github/workflows/check-ledger-no-silent-loss.yml`, and already ran
+  correctly on every PR touching PENDING-ARMS.md — but `continue-on-error: true`
+  on the invariant-check step made the JOB read "success" on the PR's checks list
+  regardless of the script's own exit code, so a genuine finding sat only in raw
+  step logs. Measured live before this PR: `gh run view <run-id> --log` on the
+  exact run for PR #5279 shows `FAIL ... 1 open ledger row(s) ... absent from this
+  branch's HEAD` and `Process completed with exit code 1`, while `gh run list`
+  for that same run reports `success` — the job conclusion and the check's own
+  verdict disagreed, and only the job conclusion was visible without digging.
+
+  This is the third instance in one session of one disease per team-lead: "the
+  organism keeps rebuilding what it already owns... the artifact was correct and
+  simply not in the path of the person who needed it." The fix is NOT a new
+  script — it is making the EXISTING script's verdict reach a reader.
+
+  Gear 3 by PATH, deterministic: `python3 scripts/evidence_pack_lint.py
+  --print-floor --changed-files-file <enumeration>` -> 3 (the diff touches
+  `.github/workflows/check-ledger-no-silent-loss.yml`). Honored, not argued with.
+constraints:
+  - "Must stay NON-REQUIRED (team-lead's explicit instruction, and the check's
+    own header comment/history): promoting to a required branch-protection
+    context is a separate, later, operator-only action. Verified this PR does
+    NOT add the job to branch protection — `gh api
+    repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks`
+    still lists 11 contexts, none matching this job (receipt 1)."
+  - "'Non-required' must come from branch-protection omission, NOT from
+    `continue-on-error` — that was the actual defect (the file's own header
+    cited check-kbli-dataset-sync.yml as its posture precedent, but that file
+    has no continue-on-error anywhere; the citation was aspirational, not
+    actual — receipt 2)."
+  - "The comment-upsert surface must not spam: only post/update when the
+    verdict is non-clean, and self-correct to 'now clean' in place (edited,
+    not reposted) rather than accumulating a second comment (receipt 5, mock
+    test cases 1/3)."
+  - "The 'confirm in one step' guidance for a flagged row (team-lead's explicit
+    design requirement) must be tuned against a REAL case, not asserted —
+    a first draft (`grep -c '^+- closed'` on the diff) was found to
+    under-detect: tested against the actual PR #5279 base/head SHAs, it
+    returns 0 even though that removal was genuinely deliberate and fully
+    explained in its own commit message (receipt 6). Corrected to point at
+    `git log --oneline <base>..<head> -- .claude/skills/modus/PENDING-ARMS.md`
+    plus reading the commit messages, and re-verified against the same real
+    SHAs that the commit message DOES explain the removal (receipt 7)."
+  - "No PII/OSINT in any artifact — this is pure CI-plumbing (one workflow
+    YAML file). Nothing here touches client data."
+acceptance:
+  - "actionlint passes clean on the modified workflow file (receipt 3)."
+  - "The embedded github-script JS is syntactically valid when wrapped the way
+    `actions/github-script@v9` actually executes it (async IIFE) — a raw
+    `node --check` on the extracted script fails on top-level `await` by
+    design (that's expected outside the actions/github-script wrapper), so
+    the real check wraps it first (receipt 4)."
+  - "The invariant-check step's bash logic (RC capture, step-summary write,
+    real exit propagation) is verified end-to-end against TWO real historical
+    scenarios from this session's own prior work: PR #5279's base/head (known
+    LOST-row case, expected exit 1) and PR #5244's base/head (known-clean
+    case, expected exit 0) — both reproduce the expected exit code AND a
+    correctly-formatted step summary (receipts 6, 8)."
+  - "The github-script comment-upsert logic is verified via a mock harness
+    covering all 4 reachable branches: rc=0/no-existing-comment (no API call
+    beyond listing), rc=1/no-existing (createComment with LOST direction),
+    rc=0/existing-comment (updateComment to 'now clean'), rc=2/existing
+    (updateComment with DUPLICATED direction) — all 4 run without exception
+    and produce the expected body content (receipt 5)."
+  - "Net diff stays inside the one-PR-one-concern guideline: 1 file, 171 net
+    lines (174 insertions / 3 deletions) — a single workflow YAML file."
+consumer_map:
+  - ".github/workflows/check-ledger-no-silent-loss.yml — the file itself; this
+    PR is a self-contained wiring fix with no other file depending on its
+    exact shape."
+  - "Every future PR whose diff touches `.claude/skills/modus/PENDING-ARMS.md`,
+    `scripts/check_ledger_no_silent_loss.py`,
+    `scripts/pending_arms_report.py`, or this workflow file — the check
+    already ran on all of them (path-scoped, unchanged by this PR); after
+    this PR, a real finding on any of those PRs shows red on the checks list
+    and gets a PR comment, instead of a silent green with the finding buried
+    in a log nobody opens."
+risks:
+  - "A future push to `main-push-failure-watch.yml`'s workflow-coverage list
+    could, in principle, need this workflow registered if that watcher
+    enumerates workflow NAMES and this PR is read as introducing a 'new'
+    workflow — checked and ruled out: this PR modifies an EXISTING workflow
+    file (`check-ledger-no-silent-loss.yml` already existed and was already
+    running before this PR), so no new workflow name is introduced and no
+    coverage-list registration is needed."
+  - "The `pull-requests: write` permission is new on this workflow (was
+    `contents: read` only). Scoped to this single workflow's
+    `GITHUB_TOKEN`, standard least-privilege pattern already used elsewhere
+    in this repo (tests.yml, sonarqube.yml both use `actions/github-script`
+    with issue/PR comment permissions) — not a novel grant shape."
+  - "If GitHub's ~65536-char PR-comment body limit is approached by an
+    unusually large check output (many flagged rows at once), the comment
+    truncates at 55000 chars with a note pointing to the full run log —
+    verified in code (receipt 5's mock output field), not yet observed
+    against a real oversized output since no PR has flagged that many rows
+    at once in this repo's history so far."
+grader: |
+  generator != grader: this session (M5, ledger-conflicts lane, continuing the
+  same thread that found the gap) is both author and the one running the
+  verification receipts below — flagged as a limitation, not concealed. The
+  mitigating factor: every claim below is a COMMAND RUN THIS TURN against real
+  data (actionlint, a JS syntax check under the actual execution wrapper, two
+  live git-history replays of real PR SHAs, a 4-case mock harness), not a
+  self-report of intent. No cross-family refuter was dispatched for this
+  specific PR — team-lead's mandate did not request one and the change is
+  CI-plumbing (a YAML/JS wiring fix around an already-tested Python script),
+  not a new invariant or a business decision.
+budget: |
+  Single-lane CI-plumbing wiring fix, no new script, no cloud LLM spend beyond
+  this session's own interactive turns. Flat-subscription only.
+pii: none

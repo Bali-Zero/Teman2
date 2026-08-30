@@ -1,0 +1,255 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Team-lead's mandate on the same thread that resolved PR #5279/#5244 ledger
+  merge conflicts (this session, 2026-08-30): "wire
+  scripts/check_ledger_no_silent_loss.py as a loud, NON-REQUIRED CI signal on
+  any PR whose diff touches .claude/skills/modus/PENDING-ARMS.md" — after
+  discovering the script already exists, is already wired into
+  .github/workflows/check-ledger-no-silent-loss.yml, and had already caught
+  the exact resurrection on PR #5279's own merge, but its verdict was invisible
+  behind `continue-on-error: true`.
+
+lanes:
+  - lane: wire-ledger-loss-check-build
+    role: build
+    seat: claude-opus-5 (this session — interactive default per CLAUDE.md §5)
+  - lane: wire-ledger-loss-check-verify
+    role: review
+    seat: same session, independent verification pass (see receipts 3-8) — no
+      cross-family refuter dispatched; see brief.yml `grader:` for the
+      declared limitation and mitigation
+
+diff:
+  files: 1
+  net_lines: 171
+  measured_at: 0213d390fc
+  note: >-
+    `git diff --no-renames --numstat $(git merge-base origin/main HEAD) HEAD`
+    -> 1 file (.github/workflows/check-ledger-no-silent-loss.yml), +174/-3,
+    net 171.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      This workflow is not, and this PR does not make it, a required
+      branch-protection context — "non-required" is a live branch-protection
+      fact, not a `continue-on-error` artifact.
+    cmd: >-
+      gh api repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks
+      --jq '.contexts[]'
+    result: >-
+      11 contexts listed: "E2E Tests (Playwright)", "Backend Tests (Python)",
+      "CodeQL Analysis (python)", "CodeQL Analysis (javascript)", "Frontend
+      Tests (Next.js) (mouth, true)", "Every organ is born with its genes",
+      "R1 gate — adversarial review present", "antidotes", "Harness floor
+      recompute", "actionlint — workflow schema + expression gate", "Every
+      guard proves guilt AND innocence". None match
+      "check-ledger-no-silent-loss" or "check-kbli-dataset-sync". Also
+      checked the repo's `merge-queue-main` ruleset
+      (`gh api repos/Bali-Zero/Teman2/rulesets/19779175`) — its only rule is
+      type `merge_queue`, carrying no separate required-checks list of its
+      own.
+    exit: 0
+    ts: 2026-08-30T01:46:54Z
+    seat: session (build lane)
+
+  - claim: >-
+      The workflow's own header comment cited "same posture as
+      check-kbli-dataset-sync.yml" to justify `continue-on-error: true` — but
+      that precedent file has NO continue-on-error anywhere; it lets its own
+      steps fail for real and is non-required purely by branch-protection
+      omission (receipt 1). The citation was aspirational, not actual — the
+      actual defect this PR fixes.
+    cmd: cat .github/workflows/check-kbli-dataset-sync.yml
+    result: >-
+      Three real steps ("Canonical dataset is a real file...", "All tracked
+      consumer copies are byte-identical to canonical",
+      "The native-app fleet notice tells the truth (guilt AND innocence)"),
+      each a plain `run:` block with `exit 1` on failure and no
+      `continue-on-error` key anywhere in the file.
+    exit: 0
+    ts: 2026-08-30T01:46:54Z
+    seat: session (build lane)
+
+  - claim: The modified workflow file is actionlint-clean.
+    cmd: actionlint .github/workflows/check-ledger-no-silent-loss.yml
+    result: (no output — actionlint reports nothing on a clean file)
+    exit: 0
+    ts: 2026-08-30T01:46:54Z
+    seat: session (build lane)
+
+  - claim: >-
+      The embedded github-script JS is syntactically valid under the
+      execution context actions/github-script@v9 actually uses (an async
+      IIFE) — a bare `node --check` on the raw extracted script fails on
+      top-level `await` by design (expected: that error is specific to
+      running it as a plain CommonJS file, not evidence of a real syntax
+      bug), so the real check wraps it first, matching how the action
+      executes it.
+    cmd: >-
+      python3 -c "import yaml; ..." to extract the script: field into a .js
+      file, then `node --check` on both the raw extraction (expected to fail
+      on top-level await) and on the same content wrapped in `(async () =>
+      { ... })();` (the actual execution shape)
+    result: >-
+      Raw extraction: "SyntaxError: await is only valid in async functions
+      and the top level bodies of modules" (expected, not a defect). Wrapped:
+      no output, exit 0 — syntactically valid.
+    exit: 0
+    ts: 2026-08-30T01:46:54Z
+    seat: session (build lane)
+
+  - claim: >-
+      The PR-comment upsert logic behaves correctly across all 4 reachable
+      branches: clean+no-prior-comment (silent, no spam), non-clean
+      (LOST)+no-prior (creates a comment naming the direction, embedding the
+      real check output, and the confirm-in-one-step guidance), clean+prior
+      comment exists (updates it to "now clean" in place), and
+      non-clean(DUPLICATED)+prior exists (updates with the correct
+      direction text) — all without exception, verified against mocked
+      `github`/`context` objects that record every API call attempted.
+    cmd: >-
+      A ~90-line Node mock harness (`/tmp/mock_harness.js`) that
+      `new Function`-wraps the extracted script body with fake
+      `github.rest.issues.{listComments,updateComment,createComment}` and
+      `github.paginate`, run for RC=0/no-existing, RC=1/no-existing,
+      RC=0/existing, RC=2/existing
+    result: >-
+      Case1 (rc=0, no existing): only `paginate` called, no
+      create/updateComment — confirms no-spam behavior. Case2 (rc=1, no
+      existing): `createComment` called once; body contains the hidden
+      marker, the real fake check output, and the `grep -c` confirm command
+      text. Case3 (rc=0, existing present): `updateComment` called once with
+      a "now clean" body. Case4 (rc=2, existing present): `updateComment`
+      called once, body contains "DUPLICATED". All 4 cases completed without
+      a thrown exception ("ALL CASES RAN WITHOUT EXCEPTION").
+    exit: 0
+    ts: 2026-08-30T01:46:54Z
+    seat: session (build lane)
+
+  - claim: >-
+      A first-draft "confirm in one step" heuristic (`git diff <base>
+      <head> -- .claude/skills/modus/PENDING-ARMS.md | grep -c
+      '^+- closed'`) under-detects on a REAL case: run against the exact
+      base/head SHAs of PR #5279 (the resurrection this whole check exists
+      for), it returns 0 — even though that PR's removal of the "62 senders"
+      row was genuinely deliberate, verified, and pushed earlier this same
+      session.
+    cmd: >-
+      git diff b977b580ff864cbc0e939dc351f5ef0be68679e1
+      9a9641c6bca434dd9c4474790b974fb2a34cf747 -- .claude/skills/modus/PENDING-ARMS.md
+      | grep -c '^+- closed'  (run inside
+      .worktrees/docs-kill-62-senders-resurrection-0830, the real PR #5279
+      worktree from earlier in this session)
+    result: "0"
+    exit: 0
+    ts: 2026-08-30T01:46:54Z
+    seat: session (build lane)
+
+  - claim: >-
+      The corrected heuristic (`git log --oneline <base>..<head> --
+      .claude/skills/modus/PENDING-ARMS.md`, then read the commit messages)
+      DOES surface the explanation for the same real case where the grep
+      heuristic (receipt 6) failed — the removing commit's own message
+      states exactly why the row was deleted.
+    cmd: >-
+      git log --oneline b977b580ff864cbc0e939dc351f5ef0be68679e1..9a9641c6bca434dd9c4474790b974fb2a34cf747
+      -- .claude/skills/modus/PENDING-ARMS.md  (same worktree as receipt 6)
+    result: >-
+      3 commits listed, including `9a9641c6bc fix(ledger): remove
+      union-driver-resurrected duplicate after merging origin/main` — whose
+      full message (`git log ... --format=%B`) explains: "The merge=union
+      driver on PENDING-ARMS.md restored the exact '62 senders' row this PR
+      deletes when merging origin/main... Verified by multiset diff across
+      base/origin/branch/merged: this was the only row resurrected, nothing
+      else was lost or duplicated."
+    exit: 0
+    ts: 2026-08-30T01:46:54Z
+    seat: session (build lane)
+
+  - claim: >-
+      The invariant-check step's bash logic (RC capture via PIPESTATUS,
+      step-summary construction, real exit-code propagation) reproduces the
+      correct verdict end-to-end against TWO real historical scenarios from
+      this session's own earlier work: PR #5279's original base/head (known
+      LOST case) and PR #5244's base/head (known-clean case).
+    cmd: >-
+      Extracted the step's `run:` block into a standalone .sh file via
+      `yaml.safe_load`, then ran it with `BASE_SHA`/`HEAD_SHA`/
+      `GITHUB_STEP_SUMMARY`/`GITHUB_OUTPUT` set to real values, inside the
+      real worktrees for PR #5279 and PR #5244
+    result: >-
+      PR #5279 scenario: script exit 1, `$GITHUB_OUTPUT` contains "rc=1",
+      step summary contains the FAIL block naming the exact row, the new
+      `git log --oneline` confirm command (verified against receipt 7's real
+      output), and "Verdict: exit 1 — see the flagged row(s) above."
+      PR #5244 scenario: script exit 0, `$GITHUB_OUTPUT` contains "rc=0",
+      step summary contains "OK: 661 open row(s) on HEAD..." and "Verdict:
+      clean."
+    exit: 0
+    ts: 2026-08-30T01:46:54Z
+    seat: session (build lane)
+
+dissent:
+  - seat: session (self-review pass, not a separate cross-family seat)
+    objection: >-
+      The first-draft "confirm in one step" heuristic
+      (`grep -c '^+- closed'`) looked plausible and matched several existing
+      `- closed` rows already observed in the ledger this session — it was
+      about to ship unverified. Before finalizing, tested it against the one
+      real case this whole PR is motivated by (PR #5279) and it gave the
+      WRONG answer (0, implying "not confirmed, treat as accidental loss"
+      for a removal that was in fact deliberate and fully documented in its
+      commit message).
+    status: CONFIRMED
+    note: >-
+      Genuine dissent from this session's own first draft, not a
+      cross-family seat — declared as such in brief.yml's `grader:` field
+      rather than overstated as an independent review. Resolved by replacing
+      the heuristic with `git log --oneline <base>..<head> -- ...` plus
+      reading commit messages, re-verified (receipt 7) to surface the exact
+      explanation for the same real case where the grep-only heuristic
+      failed (receipt 6). Both the flawed and the corrected version are
+      documented in the workflow's own guidance text (not silently edited
+      away) so a future reader sees WHY the guidance reads commits, not just
+      the diff.
+
+tests:
+  - "No test suite change in this PR's own diff — it modifies only
+    .github/workflows/check-ledger-no-silent-loss.yml, which orchestrates
+    the ALREADY-tested scripts/check_ledger_no_silent_loss.py (its own guilt
+    AND innocence suite, scripts/tests/test_check_ledger_no_silent_loss.py,
+    is unchanged and still runs as this workflow's self-test step)."
+  - "New logic (bash step-summary/exit-propagation, github-script
+    comment-upsert) has no Python/pytest home — it is CI-YAML-embedded shell
+    and JS, verified instead via receipts 3-8 (actionlint, wrapped-JS syntax
+    check, 4-case mock harness, 2 real-scenario bash replays) rather than a
+    committed test file, matching this repo's existing convention for
+    workflow-embedded logic (e.g. tests.yml's own test-summary
+    github-script step has no separate unit test either)."
+
+static:
+  - "actionlint on .github/workflows/check-ledger-no-silent-loss.yml — clean
+    (receipt 3)."
+  - "YAML re-parses cleanly with PyYAML after every edit (used during
+    authoring to catch a real YAML block-scalar break — a raw multi-line JS
+    template literal starting a line with `**bold**` at column 1 parsed as a
+    YAML alias token; fixed by rebuilding the comment body as an array-join
+    instead of a template literal — see the workflow file's own inline
+    comment at that spot)."
+
+notes:
+  - "This PR does not touch scripts/check_ledger_no_silent_loss.py or its
+    test file — the underlying invariant logic (LOST/DUPLICATED detection,
+    identity keying, the two-invariant design) is unchanged and already
+    proven by its own guilt/innocence suite. This PR's entire scope is
+    making that already-correct verdict reach a reader: real exit code
+    instead of continue-on-error, a step summary, and a self-updating PR
+    comment on non-clean verdicts."
+  - "Per team-lead's explicit instruction, this PR does not touch PR
+    #5279, #5244, or #5283 (all armed/frozen from earlier in this session)
+    and does not add this workflow to branch protection (operator-only
+    action, CLAUDE.md §13) — build first, observe over a dry-run window
+    (now genuinely visible, unlike before this PR), promote later if
+    warranted."
