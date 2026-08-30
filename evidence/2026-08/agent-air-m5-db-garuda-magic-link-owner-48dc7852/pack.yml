@@ -26,7 +26,7 @@ seat_diversity_note:
   the author's own tests did not cover."
 diff:
   net_lines:
-    "6 files, +603/-403, computed by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
+    "6 files, +702/-0, computed by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
     One new .sql migration, one new static test file, two touched Python files (the live preflight
     check and its independently frozen authority), and this evidence pair. Zero frontend, zero
     workflow, zero runtime request path."
