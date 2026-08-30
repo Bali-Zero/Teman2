@@ -23,7 +23,7 @@ Make database behavior provable at the application boundary: the panel measured 
 - [exists] `apps/backend-rag/backend/db/schema_audit.py` — current schema audit, which does not verify stored migration checksums.
 - [exists] `apps/backend-rag/backend/tests/db/test_post_d1_migrations_guard_ledger_owned_ddl.py` — runtime-role ownership guard for ledger-owned DDL.
 - [exists] `.github/workflows/restore-drill.yml` — current restore drill; application-level verification is incomplete.
-- [exists] `apps/backend-rag/backend/db/migrations_v2/297_wa_outbox_fall_off_reason_finalize_sub_reasons.sql` — highest migration present; `298` is the verified next free number.
+- [exists] `apps/backend-rag/backend/db/migrations_v2/297_wa_outbox_fall_off_reason_finalize_sub_reasons.sql` — highest migration present; `298` was the verified next free number WHEN THIS SPEC WAS WRITTEN; `298_garuda_payment_inbox_quarantine_reason.sql` landed since, so **299** is the next free number (measured on disk 2026-08-31, `ls migrations_v2 | sort -n | tail`). Corrected here rather than in a separate docs PR, per the wave-2 rule that spec corrections ride inside the lane PR.
 
 ## PR-1: feat(db): jsonb codec default=str + shared prod-shaped pool fixture + bare-create_pool lint
 
@@ -60,8 +60,8 @@ Make database behavior provable at the application boundary: the panel measured 
 ```bash
 source apps/backend-rag/.venv/bin/activate
 python scripts/lint_test_pool_codec_parity.py --root apps/backend-rag/backend/tests
-PYTHONPATH=apps/backend-rag pytest scripts/tests/test_lint_test_pool_codec_parity.py apps/backend-rag/backend/tests/db/test_jsonb_codec_parity.py apps/backend-rag/backend/tests/db/test_jsonb_double_encoding_class_guard.py -q
-PYTHONPATH=apps/backend-rag pytest apps/backend-rag/backend/tests/services/garuda_orders apps/backend-rag/backend/tests/services/garuda_portal apps/backend-rag/backend/tests/services/garuda_documents apps/backend-rag/backend/tests/services/garuda_ops -q
+PYTHONPATH=apps/backend-rag pytest scripts/tests/test_lint_test_pool_codec_parity.py apps/backend-rag/backend/tests/db/test_jsonb_codec_parity.py apps/backend-rag/backend/tests/db/test_jsonb_double_encoding_class_guard.py
+PYTHONPATH=apps/backend-rag pytest apps/backend-rag/backend/tests/services/garuda_orders apps/backend-rag/backend/tests/services/garuda_portal apps/backend-rag/backend/tests/services/garuda_documents apps/backend-rag/backend/tests/services/garuda_ops
 ```
 
 **Seats:** Implementer = Sonnet 5 subagent. Refuter = Kimi K3. Family exclusion binds the DIFF BUILDER's family, not the spec drafter's: builder is Anthropic (Sonnet 5 implementer under an Opus 5 orchestrator); the refuter must be a non-Anthropic family (Kimi K3 default, Codex GPT-5.6 sol for security-class diffs); a diff built by a non-Anthropic seat is refuted by a different family. Final gate = orchestrator Opus 5 xhigh.
@@ -74,7 +74,7 @@ PYTHONPATH=apps/backend-rag pytest apps/backend-rag/backend/tests/services/garud
 
 **Files:**
 
-- [proposed] `apps/backend-rag/backend/db/migrations_v2/298_schema_versions_provenance.sql`
+- [proposed] `apps/backend-rag/backend/db/migrations_v2/299_schema_versions_provenance.sql`
 - [exists] `apps/backend-rag/backend/db/migration_manager.py`
 - [exists] `apps/backend-rag/backend/db/schema_audit.py`
 - [exists] `apps/backend-rag/backend/tests/db/test_migrations.py`; [exists] `apps/backend-rag/backend/tests/db/test_schema_audit.py`; [exists] `apps/backend-rag/backend/tests/db/test_post_d1_migrations_guard_ledger_owned_ddl.py`
@@ -95,19 +95,19 @@ PYTHONPATH=apps/backend-rag pytest apps/backend-rag/backend/tests/services/garud
 
 **Acceptance:**
 
-- Guilt must turn RED: modify the bytes of an already recorded fixture migration, run the audit, and require a nonzero result naming migration `298`.
+- Guilt must turn RED: modify the bytes of an already recorded fixture migration, run the audit, and require a nonzero result naming migration `299`.
 - Innocence must stay GREEN: a fresh apply records the actual database role in `applied_as`, the selected origin in `applied_via`, a nonempty runner version, and an untampered audit passes.
 - Exact commands from `apps/backend-rag`:
 
 ```bash
 source .venv/bin/activate
-PYTHONPATH=. pytest backend/tests/db/test_migrations.py backend/tests/db/test_schema_audit.py backend/tests/db/test_post_d1_migrations_guard_ledger_owned_ddl.py -q
+PYTHONPATH=. pytest backend/tests/db/test_migrations.py backend/tests/db/test_schema_audit.py backend/tests/db/test_post_d1_migrations_guard_ledger_owned_ddl.py
 PYTHONPATH=. python -m backend.db.schema_audit
 ```
 
 **Seats:** Implementer = Sonnet 5 subagent. A Codex sandbox verifier must run upgrade, provenance assertions, downgrade, and post-downgrade assertions against a disposable database. Refuter = Kimi K3. Family exclusion binds the DIFF BUILDER's family, not the spec drafter's: builder is Anthropic (Sonnet 5 implementer under an Opus 5 orchestrator); the refuter must be a non-Anthropic family (Kimi K3 default, Codex GPT-5.6 sol for security-class diffs); a diff built by a non-Anthropic seat is refuted by a different family. Final gate = orchestrator Opus 5 xhigh.
 
-**Arming / prove-live:** Apply only through the normal release command after manual gate approval, then run `schema_audit` and query only migration `298` metadata. Proof records role name, origin, runner version, and checksum verdict without credentials or PII.
+**Arming / prove-live:** Apply only through the normal release command after manual gate approval, then run `schema_audit` and query only migration `299` metadata. Proof records role name, origin, runner version, and checksum verdict without credentials or PII.
 
 **Conflicts / order:** Migrations execute as the runtime role. Any DDL touching objects owned by `visa_ledger_owner` aborts the deploy. This migration must avoid those objects; if ownership preflight contradicts that assumption, suspend and require the temporary-GRANT operator[secret] ceremony. Squawk is mandatory, migration PRs are auto-merge-OFF, and the orchestrator merges manually after every gate.
 
@@ -141,7 +141,7 @@ PYTHONPATH=. python -m backend.db.schema_audit
 - Exact commands from repository root:
 
 ```bash
-apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_restore_drill_verify.py -q
+apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_restore_drill_verify.py
 apps/backend-rag/.venv/bin/python scripts/ci/restore_drill_verify.py --fixture scripts/tests/fixtures/restore_drill/healthy.json
 apps/backend-rag/.venv/bin/python -c "from pathlib import Path; assert '|| true' not in Path('.github/workflows/restore-drill.yml').read_text()"
 ```
@@ -151,6 +151,26 @@ apps/backend-rag/.venv/bin/python -c "from pathlib import Path; assert '|| true'
 **Arming / prove-live:** After merge, manually dispatch one restore drill against the approved isolated target. Close the PENDING-ARMS row only when all five per-invariant verdicts and the aggregate verdict are PASS.
 
 **Conflicts / order:** Land after PR-2 so restored schemas are checksum-audited. This PR does not authorize a production restore or relax notification failures.
+
+## Spec corrections applied in-lane (2026-08-31, Squad D')
+
+- **Every `pytest ... -q` above was unrunnable as written.** `main` now carries
+  `scripts/pytest_guards/pytest_verbosity_guard.py`, which exits **RC=4** under
+  `apps/backend-rag/pytest.ini` (whose `addopts` already lower verbosity) with
+  *"effective verbosity is -2: pytest would print no pass/fail tally, so this
+  run cannot be read as evidence that anything ran."* The `-q` flags are
+  removed above. Measured, not reasoned: the first acceptance run of PR-1 died
+  on exactly this.
+- **`298` -> `299`.** See PR-2's file list.
+- **PR-1's caller-fix scope was incomplete and the spec's own A/B requirement is
+  what exposed it.** Converting the four writers to native containers breaks any
+  test whose pool is bare. Two such files existed outside the spec's stated file
+  list (`services/garuda_portal/test_practice.py`,
+  `app/routers/test_garuda_orders_ownership.py`) and both are converted in PR-1,
+  because the spec's own ordering rule requires the caller fixes and the fixture
+  to land atomically. A third defect class was found by the blind refutation: a
+  FOURTH codec-registering pool (`backend/scripts/kg_staging_promotion.py`) that
+  the spec's three-file list did not name.
 
 ## Needs-ruling carried (Zero only)
 
