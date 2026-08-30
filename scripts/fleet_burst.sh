@@ -245,8 +245,20 @@ if [[ "$dry_run" -eq 1 ]]; then
 fi
 
 [[ -n "$prompt" ]] || die "--prompt is required unless --dry-run is used"
-command -v claude >/dev/null 2>&1 || die "claude command is unavailable"
 
+# ORDER IS LOAD-BEARING: the seat-binding guard below runs BEFORE the check that
+# `claude` is installed, and that is not cosmetic.
+#
+# Measured: with the availability check first, a machine WITHOUT claude on PATH
+# refuses with "claude command is unavailable" and never evaluates the security
+# guard at all -- so the reason a misconfigured burst is refused depends on which
+# machine you are standing on. This shipped green through a local gate on a box
+# where claude IS installed and went red only in CI, where it is not: the dev
+# machine was structurally incapable of reaching the branch.
+#
+# A refusal that protects a credential boundary must not sit behind an unrelated
+# availability check. Refuse for the security reason first, on every machine.
+#
 # Fail-closed on the seat-binding gap, and the reasoning is the point.
 #
 # This dispatcher PLANS one distinct verified-LIVE seat per lane, and it handles
@@ -264,6 +276,8 @@ command -v claude >/dev/null 2>&1 || die "claude command is unavailable"
 # and the plan is honest about being only a plan.
 [[ -n "${FLEET_BURST_SEAT_BROKER:-}" ]] || die "refusing to dispatch: no FLEET_BURST_SEAT_BROKER set, so lanes cannot be bound to the seats planned for them and would silently share one credential (use --dry-run to plan only)"
 [[ -x "${FLEET_BURST_SEAT_BROKER}" ]] || die "FLEET_BURST_SEAT_BROKER is not executable: ${FLEET_BURST_SEAT_BROKER}"
+
+command -v claude >/dev/null 2>&1 || die "claude command is unavailable"
 
 declare -a active_pids=()
 failed=0

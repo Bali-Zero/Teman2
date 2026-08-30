@@ -1,13 +1,20 @@
 council_run: journal.jsonl
-# REPO-ROOT-relative, not pack-relative -- measured, because the two look alike and
-# only one is right. `brief_ref: evidence/brief.yml` (the value a sibling pack in this
-# same evidence tree carries) resolves to the REPO-ROOT evidence/brief.yml, which
-# belongs to an unrelated task; the acceptance-probe NOTICE then reports on THAT
-# brief's probes and this pack silently validates against a stranger's acceptance
-# criteria. `council_run` above is the opposite convention -- pack-dir-relative -- so
-# the two adjacent keys do not agree with each other and neither can be inferred from
-# the other. Both verified against the lint's own resolvers this turn.
-brief_ref: evidence/2026-08/agent-mini-pro2-craft-f2-fleet-burst-244d7503/brief.yml
+# The literal `evidence/brief.yml`, NEVER this pack's real per-PR path -- and the
+# per-PR path is the trap, not the fix. harness-floor.yml stages BOTH files under
+# canonical names into a synthetic tree (/tmp/evidence-check) and resolves brief_ref
+# against THAT, so the per-PR value fails with "does not resolve to a file on disk".
+# Documented at .github/workflows/harness-floor.yml (THE brief_ref CONTRACT) and in
+# scripts/ci/evidence_paths.py's module docstring.
+#
+# Recorded because I got this wrong in the first push of this PR: running the lint
+# LOCALLY there is no staging, so brief_ref resolves against the real repo root and
+# lands on the root evidence/brief.yml of whatever task last wrote it -- which emits
+# an acceptance-probe NOTICE naming probes this pack never declared. That NOTICE
+# looks exactly like evidence of a bug and is really just the absence of staging.
+# I "fixed" it to the per-PR path, which is precisely what the contract forbids, and
+# CI failed. The local lint and the CI lint do not see the same tree; when they
+# disagree, CI is the one that decides.
+brief_ref: evidence/brief.yml
 plan_ref: >-
   docs/plans/2026-08-29-beyond-sota-craft-wave/L09-multi-agent-orchestration-fleet-routing.md
   section "PR-2: feat(fleet): fleet_burst — account-sharded headless fan-out".
@@ -49,7 +56,7 @@ diff:
 pii_scan: clean
 
 receipts:
-  - claim: "14/14 corpus green, and it bites: 7 mutants killed at real code sites (refusal moved after the mapping loop; dedup block deleted; broker guard dropped; control-char validator neutered; throttle disabled; whitespace normalisation removed; exit-status half of the liveness condition dropped)."
+  - claim: "15/15 corpus green, and it bites: 8 mutants killed at real code sites (refusal moved after the mapping loop; dedup block deleted; broker guard dropped; control-char validator neutered; throttle disabled; whitespace normalisation removed; exit-status half of the liveness condition dropped; the seat-binding guard moved back behind the claude-availability check)."
     cmd: "bash scripts/tests/test_fleet_burst.sh --dry-run"
     exit: 0
     ts: "2026-08-31T00:38:00Z"
@@ -76,6 +83,40 @@ receipts:
     seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
 
 dissent:
+  - seat: CI (Fleet burst dispatcher tests, run 33323160057 — the executor this PR adds)
+    objection: >-
+      REAL_BURST_REFUSES_BEFORE_TOUCHING_THE_FILESYSTEM failed on the runner while
+      passing 14/14 locally. Cause: the seat-binding guard sat AFTER
+      `command -v claude`, so a machine without claude on PATH refused with
+      "claude command is unavailable" and never evaluated the security guard --
+      the same misconfiguration producing two different verdicts depending on the
+      machine.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced locally by restricting PATH (the runner's shape), then fixed by
+      moving the security guard ahead of the availability check: a refusal that
+      protects a credential boundary must not sit behind an unrelated
+      availability probe. Pinned by a new case that restricts PATH itself, so the
+      ordering cannot regress on a box where claude happens to be installed.
+      Worth recording as the reason the executor exists at all -- this defect was
+      structurally unreachable from the dev machine, and the workflow shipped in
+      this same PR is what found it.
+  - seat: claude opus-5 xhigh (this orchestrator, final gate)
+    objection: >-
+      Raised against this pack: `brief_ref: evidence/brief.yml` resolves to the
+      REPO-ROOT brief of an unrelated task, so the pack appeared to validate its
+      acceptance probes against a stranger's brief. Reported to the squad ledger
+      as a likely repo-wide defect.
+    status: RETRACTED
+    resolution: >-
+      Wrong, and the correction matters more than the finding. harness-floor.yml
+      stages pack AND brief under canonical names into a synthetic tree and
+      resolves brief_ref against THAT; the literal `evidence/brief.yml` is the
+      contract, and the per-PR path is named in the workflow as "exactly the trap
+      this migration exists to remove". The NOTICE I read as evidence was an
+      artifact of running the lint locally, where no staging happens. Reverted,
+      corrected in the ledger, and the pack now carries a local reproduction of
+      CI's staging layout so the two are checked the same way.
   - seat: kimi-code/k3 (blind refutation of the shell diff)
     objection: >-
       Seat identifiers are validated for tab/newline/CR because they are

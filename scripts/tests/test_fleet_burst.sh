@@ -178,6 +178,30 @@ else
     check REAL_BURST_REFUSES_BEFORE_TOUCHING_THE_FILESYSTEM fail
 fi
 
+# The SAME refusal, on a machine where `claude` is not installed.
+#
+# This is the check the local gate could not have written from imagination: the
+# first version of the guard sat AFTER `command -v claude`, so on a dev box with
+# claude on PATH it refused for the seat-binding reason and on a CI runner without
+# it refused for "claude command is unavailable" -- the same misconfiguration
+# producing two different verdicts depending on where you stand. It passed
+# locally 14/14 and went red only in CI.
+# Restricting PATH here reproduces the runner's shape on any machine, so the
+# ordering cannot silently regress back.
+noclaude_stderr="${tmp_dir}/noclaude.stderr"
+noclaude_run_dir="${tmp_dir}/noclaude-rd"
+env -u FLEET_BURST_SEAT_BROKER PATH="/usr/bin:/bin" \
+    FLEET_BURST_SEAT_STATE_LIB="$fake_lib" \
+    "$burst_script" --lanes 1 --seat live-a --prompt 'noop' --run-dir "$noclaude_run_dir" \
+    >/dev/null 2>"$noclaude_stderr"
+noclaude_status=$?
+if [[ "$noclaude_status" -ne 0 ]] && grep -q 'FLEET_BURST_SEAT_BROKER' "$noclaude_stderr" \
+    && [[ ! -e "$noclaude_run_dir" ]]; then
+    check SEAT_BINDING_REFUSAL_DOES_NOT_DEPEND_ON_CLAUDE_BEING_INSTALLED pass
+else
+    check SEAT_BINDING_REFUSAL_DOES_NOT_DEPEND_ON_CLAUDE_BEING_INSTALLED fail
+fi
+
 # Two spellings of one seat must not fill two lanes. This is the double-map the
 # refusal check cannot see: with `live-a` and `live-a ` both counted, there ARE
 # enough "live seats" to proceed, so nothing refuses and both lanes plan onto one
