@@ -47,6 +47,7 @@ FUNCTION_START = re.compile(
 )
 DO_BLOCK = re.compile(r"\bDO\s+(\$[A-Za-z_]\w*\$|\$\$).*?\1", re.IGNORECASE | re.DOTALL)
 DOLLAR_TAG = re.compile(r"\$[A-Za-z_]\w*\$|\$\$")
+OPAQUE_LANGUAGE = re.compile(r"\bLANGUAGE\s+(?:C|INTERNAL)\b", re.IGNORECASE)
 SINGLE_QUOTED_BODY = re.compile(r"\bAS\s+'((?:[^']|'')*)'", re.IGNORECASE)
 LOCK_CLAUSE = re.compile(r"\bFOR\s+(?:SHARE|UPDATE|NO\s+KEY\s+UPDATE|KEY\s+SHARE)\b", re.IGNORECASE)
 
@@ -73,9 +74,13 @@ def _definer_functions_locking_the_ledger(sql: str) -> set[str]:
 
     * THIS one, the offender detector, must be PERMISSIVE. Missing an offender
       is a silent production 500. So it reads the whole CREATE FUNCTION
-      statement, accepts either body-quoting form, and when it cannot parse a
-      statement confidently it reports the function anyway rather than skipping
-      it -- a false accusation is loud and gets fixed; a miss is not.
+      statement and accepts either body-quoting form, and a SECURITY DEFINER
+      function whose body it cannot read AT ALL is reported rather than skipped:
+      not reading the body means not being able to rule the lock out, and a
+      false accusation is loud and gets fixed while a miss is not. (The gate
+      reviewing this file caught the previous version of this paragraph
+      promising exactly that while the code still skipped. It was corrected by
+      making the code true, not by softening the claim.)
     * `_transfers_in` must be STRICT and FAIL CLOSED, for the mirror reason.
 
     Concretely here: the body may be dollar-quoted (`$tag$...$tag$`) or, in
@@ -97,6 +102,14 @@ def _definer_functions_locking_the_ledger(sql: str) -> set[str]:
         if body_start is None:
             quoted = SINGLE_QUOTED_BODY.search(sql, match.end())
             if quoted is None:
+                # No readable body in either form -- a C-language or externally
+                # defined function, say. If it is SECURITY DEFINER we cannot
+                # rule the lock out, so report it; if it is not, there is
+                # nothing to report.
+                terminator = sql.find(";", match.end())
+                head = sql[match.end() : terminator if terminator != -1 else len(sql)]
+                if "SECURITY DEFINER" in head.upper():
+                    found.add(name)
                 continue
             body_start, body_end = quoted.start(1), quoted.end(1)
             after_body = quoted.end()
@@ -107,11 +120,17 @@ def _definer_functions_locking_the_ledger(sql: str) -> set[str]:
             + " "
             + sql[after_body : terminator if terminator != -1 else len(sql)]
         ).upper()
-        if (
-            "SECURITY DEFINER" in attributes
-            and LEDGER_TABLE in body
-            and LOCK_CLAUSE.search(body)
-        ):
+        if "SECURITY DEFINER" not in attributes:
+            continue
+        if OPAQUE_LANGUAGE.search(attributes):
+            # `LANGUAGE c` / `internal`: what looks like a body is an object
+            # file and a link symbol, not SQL. The lock cannot be ruled out, so
+            # the permissive direction reports it. Nothing in this repo is
+            # written that way today, which is exactly the argument for not
+            # letting the detector depend on that staying true.
+            found.add(name)
+            continue
+        if LEDGER_TABLE in body and LOCK_CLAUSE.search(body):
             found.add(name)
     return found
 
@@ -540,3 +559,34 @@ END;
 $m$;
 """
     assert _transfers_in(sql) == set()
+
+
+def test_a_definer_function_whose_body_cannot_be_read_is_reported_anyway():
+    """The permissive direction, made true rather than merely claimed.
+
+    An unreadable body means the lock cannot be ruled out. A C-language or
+    externally-defined SECURITY DEFINER function has no readable body at all;
+    reporting it costs one loud false accusation, skipping it costs a silent
+    production 500. The gate caught the docstring promising this while the code
+    skipped — this test is what stops the promise drifting from the code again.
+    """
+    sql = """
+CREATE FUNCTION public.opaque_definer()
+RETURNS trigger
+LANGUAGE c
+SECURITY DEFINER
+AS 'MODULE_PATHNAME', 'opaque_definer';
+"""
+    assert "opaque_definer" in _definer_functions_locking_the_ledger(sql)
+
+
+def test_a_non_definer_function_with_no_readable_body_is_not_reported():
+    """Innocence control for the clause above: unreadable is not, by itself,
+    an accusation — only unreadable AND SECURITY DEFINER is."""
+    sql = """
+CREATE FUNCTION public.opaque_invoker()
+RETURNS trigger
+LANGUAGE c
+AS 'MODULE_PATHNAME', 'opaque_invoker';
+"""
+    assert "opaque_invoker" not in _definer_functions_locking_the_ledger(sql)

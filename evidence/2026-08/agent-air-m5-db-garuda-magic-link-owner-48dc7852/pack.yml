@@ -32,7 +32,7 @@ seat_diversity_note:
   the author's own tests did not cover."
 diff:
   net_lines:
-    "6 files, +1096/-0, computed by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
+    "6 files, +NETLINES, computed by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
     One new .sql migration, one new static test file, two touched Python files (the live preflight
     check and its independently frozen authority), and this evidence pair. Zero frontend, zero
     workflow, zero runtime request path."
@@ -290,3 +290,34 @@ dissent:
       its first run, and this PR is what finally tells it these two functions exist. A real SQL parser
       (pglast/sqlglot) would close the text layer properly; that is a separate decision with a
       dependency attached, not something to smuggle into an outage fix."
+  - seat: claude-opus-5 (Gear-3 final on-disk gate, round three — verdict PASS with one nit)
+    objection:
+      "The spec docstring claimed the offender detector 'reports the function anyway rather than
+      skipping it' when it cannot parse a statement confidently, but the code still `continue`d. The
+      substantive polarity was right; that clause overstated it — a spec promising more than the code
+      delivers is exactly the failure mode this file exists to prevent."
+    status: CONFIRMED
+    resolution:
+      "Corrected by making the code true rather than by softening the claim. A SECURITY DEFINER
+      function with no readable body in either quoting form is now reported, and so is one written
+      `LANGUAGE c` / `internal`, where what looks like a body is an object file and a link symbol.
+      Two tests pin it — the accusation and its innocence control (unreadable alone is not an
+      accusation; unreadable AND SECURITY DEFINER is). RED captured first: `1 failed, 51 passed`.
+      52 passed now."
+  - seat: claude-opus-5 (Gear-3 final on-disk gate, round three — residual limits, PLAUSIBLE)
+    objection:
+      "Three text-layer evasions survive, demonstrated end-to-end: (1) ORDER-BLINDNESS — a later
+      migration that DROPs and re-CREATEs a binder resets its ownership in Postgres, but the transfer
+      lives in an earlier file, so the lint passes (throwaway migration 904: 14 passed with the
+      defect on disk); (2) an ARRAY subscript `target_function[2]` marks every entry of the array;
+      (3) a correctly-bound ALTER inside `IF false THEN` counts, because text cannot evaluate control
+      flow."
+    status: PLAUSIBLE
+    resolution:
+      "Recorded against the boundary this pack already declares, not chased — rule 8, no fourth patch
+      round. (1) is the most reachable and worth naming precisely: migration 289 already re-creates
+      two transferred binders and is safe only because it uses CREATE OR REPLACE, which preserves the
+      owner; its own header says so. The backstop for all three is not textual — operational_preflight
+      reads pg_proc.proowner from the live database, where a DROP+CREATE that reset ownership shows up
+      immediately and no SQL formatting evades it. Closing the text layer properly means a real SQL
+      parser (pglast/sqlglot), which is a dependency decision, not an outage fix."
