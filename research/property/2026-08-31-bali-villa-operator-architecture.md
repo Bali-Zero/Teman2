@@ -134,6 +134,14 @@ A truly long-term residential product can be structured in this lane, with a dif
 
 Under the KBLI 2025 record, 68111 concerns residential development, sale, and projects for more permanent or annual use. It is not a short-stay villa-operation code. The fact that the Navigator lists PT PMA among related entity forms does not prove that a particular PMA application is open in Bali.
 
+### Adjacent codes surfaced by the Navigator
+
+The semantic search also surfaced three adjacent codes. They create legitimate product lanes only when the physical asset and operating facts genuinely match them.
+
+- **55209 — other short-stay accommodation:** the record covers formats not already included in 55201–55204, such as bungalow, cottage without daily housekeeping, hostel, bed-and-breakfast unit, mountain lodge, capsule hotel, tree house, cabin, and glamping. It is not a generic substitute for a villa that belongs in 55203. The record is regulated at medium-low risk, but its licensing data is inherited from old 55199 and its PMA status is not verified.
+- **55201 — homestay:** the record requires an individual to use a residential building occupied by its owner, rent only part of it daily or weekly, and give tourists an opportunity to interact with the owner's daily life. It is not a scalable replacement for a detached villa operation or a paper-company model. Its licensing data is inherited from old 80100 and must be treated cautiously.
+- **68292 — fee-based residential property management:** the record covers management, maintenance, repairs, residential charges, budgets, and house rules under a fee or contract. It is regulated at medium-high risk and shows P4-related requirements. It can support a genuine long-stay residential management product, but it does not authorise tourist accommodation or solve 55203. Its licensing data is inherited from old 68200 and PMA status is not verified.
+
 ## Direct KBLI Navigator audit — 31 August 2026
 
 The internal `/kbli-navigator` was queried directly for 55203, 55901, 55400, 68112, 55193, 55900, and 68111. Critical fields were independently rechecked by a second read-only audit. The structured `inspect_kbli` output was treated as more reliable than the Navigator's generative chat layer.
@@ -145,6 +153,9 @@ The internal `/kbli-navigator` was queried directly for 55203, 55901, 55400, 681
 | 55400 | Pending regulation; high risk; accommodation intermediation for commission | Booking/intermediation is separate from operation | Authority to operate a villa, manage staff, or record guest gross revenue |
 | 68112 | Pending regulation; risk not classified; residential leasing of owned or leased property | Residential lease activity exists as a separate lane | Tourist short-stay use, PMA availability, or a villa workaround |
 | 68111 | Regulated; medium-low risk; residential development/permanent or annual use | Current 2025 code concerns development rather than short-stay hospitality | PMA opening in Bali or old-to-new legal concordance |
+| 55209 | Regulated; medium-low risk; other short-stay formats; licensing inherited from old 55199 | A distinct classification for listed alternative-accommodation formats | Permission to relabel a 55203 villa; PMA or Bali availability |
+| 55201 | Regulated; medium-low risk; owner-occupied individual homestay; licensing inherited from old 80100 | A narrow, owner-present homestay model | A company-operated detached villa or passive-owner model |
+| 68292 | Regulated; medium-high risk; fee-based residential management; licensing inherited from old 68200 | A possible long-stay residential management service | Tourist accommodation operation, PMA availability, or a 55203 workaround |
 | 55193 | Legacy endpoint returned 404 | Old code is not independently inspectable in the current Navigator | Nothing about the substantive old rule can be inferred from the 404 |
 | 55900 | Legacy endpoint returned 404 | Old code is not independently inspectable in the current Navigator | Nothing about the substantive old rule can be inferred from the 404 |
 
@@ -421,6 +432,10 @@ A vetted network of genuinely independent owner-operators and managers with veri
 ### 7. Brownfield PMA Rescue
 
 A review for existing PMA businesses assessing grandfathering, new locations, permit mutations, expansion, shareholder changes, KBLI migration, operational controls, and a lawful restructuring or exit path.
+
+### 8. Long-Stay Residential Operations Pack
+
+A separate 68112/68292 product for genuinely residential leases and fee-based residential management. It should include tenancy classification, P4 requirements, owner–manager scope, rental withholding, maintenance budgets, resident charges, and controls preventing drift into unlicensed short-stay hospitality.
 
 ## Thirty-day pilot
 
