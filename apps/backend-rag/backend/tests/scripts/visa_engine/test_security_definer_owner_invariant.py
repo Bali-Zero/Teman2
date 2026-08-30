@@ -64,13 +64,20 @@ _MIGRATION_300 = (
     / "300_garuda_voa_retention_owner_transfer.sql"
 )
 
-# Two of the five signatures migration 300 transfers. Two rather than five so
-# the test also proves the block does not stop at the first name it fixes, and
-# rather than all five so the fixture stays readable; the `not present --
-# nothing to transfer` path for the other three is exercised by the same run.
+# ALL FIVE signatures migration 300 transfers, in the exact identity form the
+# migration names them. All five and not a readable subset: an adversarial round
+# pointed out that seeding two and letting the other three take the "absent"
+# path certifies the blind spot instead of attacking it -- misspell one of the
+# unseeded three and every test still passed. Past the role guard, an absent
+# target is now a FAILED postcondition, so a typo in any one of these five
+# reddens the suite.
 _TRANSFERRED = (
-    "public.purge_garuda_voa_checks(integer, text)",
+    "public.bind_legacy_garuda_voa_checks_retention_policy(integer, text)",
     "public.garuda_voa_check_retention_evidence()",
+    "public.purge_garuda_voa_checks(integer, text)",
+    "public.set_garuda_voa_check_legal_hold("
+    "varchar, boolean, text, text, text, text, timestamptz)",
+    "public.purge_garuda_voa_check_results(integer, text)",
 )
 
 
@@ -130,10 +137,28 @@ async def _seed_functions(connection: asyncpg.Connection, sandbox: dict[str, str
         f'GRANT CREATE, USAGE ON SCHEMA public TO "{sandbox["app"]}", "{sandbox["ledger"]}"'
     )
     await connection.execute(f'SET ROLE "{sandbox["app"]}"')
-    # GUILT: SECURITY DEFINER, owned by the application role.
+    # GUILT: all five of migration 300's targets, SECURITY DEFINER and owned by
+    # the application role -- production's exact pre-cure state.
     await connection.execute(
         "CREATE FUNCTION public.purge_garuda_voa_checks("
         "p_limit integer, p_requested_by text) RETURNS integer "
+        "LANGUAGE sql SECURITY DEFINER AS $fn$ SELECT 0 $fn$"
+    )
+    await connection.execute(
+        "CREATE FUNCTION public.purge_garuda_voa_check_results("
+        "p_limit integer, p_requested_by text) RETURNS integer "
+        "LANGUAGE sql SECURITY DEFINER AS $fn$ SELECT 0 $fn$"
+    )
+    await connection.execute(
+        "CREATE FUNCTION public.bind_legacy_garuda_voa_checks_retention_policy("
+        "p_limit integer, p_requested_by text) RETURNS integer "
+        "LANGUAGE sql SECURITY DEFINER AS $fn$ SELECT 0 $fn$"
+    )
+    await connection.execute(
+        "CREATE FUNCTION public.set_garuda_voa_check_legal_hold("
+        "p_hash varchar, p_legal_hold boolean, p_requested_by text, "
+        "p_case_reference text, p_reason_code text, p_approved_by text, "
+        "p_review_due_at timestamptz) RETURNS integer "
         "LANGUAGE sql SECURITY DEFINER AS $fn$ SELECT 0 $fn$"
     )
     # INNOCENCE: an ordinary invoker function owned by the SAME role. A census
@@ -143,8 +168,14 @@ async def _seed_functions(connection: asyncpg.Connection, sandbox: dict[str, str
         "CREATE FUNCTION public.an_ordinary_invoker_function() RETURNS integer "
         "LANGUAGE sql AS $fn$ SELECT 0 $fn$"
     )
+    # A SECURITY DEFINER PROCEDURE, wrongly owned. Same hazard, different
+    # remediation statement; it must be censused, not skipped.
+    await connection.execute(
+        "CREATE PROCEDURE public.a_definer_procedure() "
+        "LANGUAGE sql SECURITY DEFINER AS $fn$ SELECT 1 $fn$"
+    )
     await connection.execute(f'SET ROLE "{sandbox["ledger"]}"')
-    # INNOCENCE: SECURITY DEFINER, correctly owned.
+    # INNOCENCE: SECURITY DEFINER, correctly owned from the start.
     await connection.execute(
         "CREATE FUNCTION public.garuda_voa_check_retention_evidence() "
         "RETURNS integer LANGUAGE sql SECURITY DEFINER AS $fn$ SELECT 0 $fn$"
@@ -185,14 +216,32 @@ async def test_shipped_census_reads_prosecdef_and_ownership_from_a_real_catalog(
         == definer_sandbox["ledger"]
     ), censused
 
+    # The definer PROCEDURE is censused and labelled as one -- `prosecdef` is
+    # the filter, `prokind` only decides the wording of the remediation.
+    assert censused.get("a_definer_procedure()") == definer_sandbox["app"], censused
+
     # And the shipped verdict, fed rows from the real catalog rather than a fake.
     violations = operational_preflight._security_definer_violations(
         rows, expected_owner=definer_sandbox["ledger"]
     )
-    assert violations == [
-        f"purge_garuda_voa_checks(p_limit integer, p_requested_by text) "
-        f"owned by {definer_sandbox['app']}"
-    ], violations
+    assert sorted(violations) == sorted(
+        [
+            f"a_definer_procedure() [procedure] owned by {definer_sandbox['app']}",
+            "bind_legacy_garuda_voa_checks_retention_policy("
+            "p_limit integer, p_requested_by text) [function] "
+            f"owned by {definer_sandbox['app']}",
+            "purge_garuda_voa_check_results("
+            "p_limit integer, p_requested_by text) [function] "
+            f"owned by {definer_sandbox['app']}",
+            "purge_garuda_voa_checks(p_limit integer, p_requested_by text) "
+            f"[function] owned by {definer_sandbox['app']}",
+            "set_garuda_voa_check_legal_hold("
+            "p_hash character varying, p_legal_hold boolean, p_requested_by text, "
+            "p_case_reference text, p_reason_code text, p_approved_by text, "
+            "p_review_due_at timestamp with time zone) [function] "
+            f"owned by {definer_sandbox['app']}",
+        ]
+    ), violations
 
 
 def _migration_300_forward(ledger_role: str) -> str:
@@ -274,30 +323,37 @@ async def test_migration_300_transfers_then_is_a_silent_no_op(
         )
         assert invoker_owner == definer_sandbox["app"]
 
-        # Nothing violates the floor any more, read through the shipped pair.
+        # None of the FIVE violates the floor any more, read through the
+        # shipped pair -- and the definer PROCEDURE, which migration 300 does
+        # not name, is still reported. The migration transfers what it names;
+        # the class check keeps watching everything else.
         rows = await connection.fetch(
             operational_preflight.SECURITY_DEFINER_CENSUS_SQL
         )
-        assert (
-            operational_preflight._security_definer_violations(
-                rows, expected_owner=definer_sandbox["ledger"]
-            )
-            == []
+        violations = operational_preflight._security_definer_violations(
+            rows, expected_owner=definer_sandbox["ledger"]
         )
+        assert violations == [
+            f"a_definer_procedure() [procedure] owned by {definer_sandbox['app']}"
+        ], violations
     finally:
         await connection.close()
 
 
-async def test_migration_300_rollback_is_a_no_op_that_does_not_re_break_anything(
+async def test_migration_300_rollback_refuses_instead_of_reporting_a_reversal(
     definer_sandbox: dict[str, str],
 ) -> None:
-    """The ROLLBACK section must parse, run, and change no ownership.
+    """The ROLLBACK section must RAISE, not merely print.
 
-    Its mechanical inverse -- handing the five functions back to the runtime
-    role -- re-arms the trap migration 285 fell into, so the section is
-    deliberately inert. A rollback that is inert BY ACCIDENT (a syntax error
-    nobody ever executes) would look identical from the file, which is why it
-    is executed here.
+    `MigrationManager.rollback_migration` runs the rollback SQL inside a
+    transaction and then DELETEs the `_schema_versions` row and returns True
+    (`backend/db/migration_manager.py:249-263`). So a rollback body that only
+    emits a NOTICE reports a successful reversal, erases the ledger row, and
+    leaves every ownership change in place -- the forward section's own defect,
+    pointing the other way. An adversarial round caught exactly this, and the
+    section was rewritten to refuse.
+
+    Raising keeps the transaction from committing, so the row survives.
     """
 
     file_sql = _MIGRATION_300.read_text(encoding="utf-8")
@@ -310,19 +366,105 @@ async def test_migration_300_rollback_is_a_no_op_that_does_not_re_break_anything
         await connection.execute(
             forward_sql.replace("visa_ledger_owner", definer_sandbox["ledger"])
         )
-        await connection.execute(
-            rollback_sql.replace("visa_ledger_owner", definer_sandbox["ledger"])
-        )
 
+        with pytest.raises(asyncpg.exceptions.RaiseError) as raised:
+            await connection.execute(
+                rollback_sql.replace("visa_ledger_owner", definer_sandbox["ledger"])
+            )
+        assert "irreversible" in str(raised.value), str(raised.value)
+
+        # And it changed nothing on its way out.
         for signature in _TRANSFERRED:
             owner = await connection.fetchval(
-                "SELECT pg_get_userbyid(proowner) FROM pg_proc "
-                "WHERE oid = to_regprocedure($1)",
+                "SELECT pg_catalog.pg_get_userbyid(proowner) FROM pg_catalog.pg_proc "
+                "WHERE oid = pg_catalog.to_regprocedure($1)",
                 signature,
             )
             assert owner == definer_sandbox["ledger"], (
                 f"the rollback moved {signature} back to {owner} -- it is a "
                 "symmetric undo, which re-creates the defect"
             )
+    finally:
+        await connection.close()
+
+
+async def test_migration_300_raises_when_a_target_function_is_absent(
+    definer_sandbox: dict[str, str],
+) -> None:
+    """An absent target is a FAILED postcondition, not permission to continue.
+
+    `to_regprocedure` returning NULL used to `CONTINUE`, so a database missing
+    one of the five -- a partial restore, a dropped function, or a typo in the
+    migration's own signature list -- recorded 300 as applied with the
+    ownership never established. Past the role guard the ledger role EXISTS and
+    migrations 281/286 create all five unconditionally before this one runs, so
+    an absence here means the chain is broken and saying so is the only honest
+    answer.
+    """
+
+    forward_sql = _migration_300_forward(definer_sandbox["ledger"])
+    connection = await asyncpg.connect(definer_sandbox["dsn"])
+    try:
+        await _seed_functions(connection, definer_sandbox)
+        await connection.execute(
+            "DROP FUNCTION public.purge_garuda_voa_check_results(integer, text)"
+        )
+
+        with pytest.raises(asyncpg.exceptions.RaiseError) as raised:
+            await connection.execute(forward_sql)
+        message = str(raised.value)
+        assert "purge_garuda_voa_check_results(integer, text) (ABSENT)" in message, message
+    finally:
+        await connection.close()
+
+
+async def test_a_shadowed_pg_get_userbyid_cannot_forge_a_clean_answer(
+    definer_sandbox: dict[str, str],
+) -> None:
+    """The evasion an adversarial round supplied, run for real.
+
+    The application role can CREATE in `public`. An unqualified
+    `pg_get_userbyid` therefore resolves to whatever sits earlier on the
+    search_path, so a constant-returning `public.pg_get_userbyid(oid)` plus
+    `search_path = public, pg_catalog` makes both the census and the migration
+    read a FORGED owner: the census answers clean and the migration skips its
+    ALTER, passes its own assertion, and is recorded applied with the ownership
+    still wrong.
+
+    Both are `pg_catalog.`-qualified, so the shadow is inert. Guilt is proved in
+    the same run: with the hostile search_path ACTIVE, the census still reports
+    the real owners and the migration still raises.
+    """
+
+    forward_sql = _migration_300_forward(definer_sandbox["ledger"])
+    connection = await asyncpg.connect(definer_sandbox["dsn"])
+    try:
+        await _seed_functions(connection, definer_sandbox)
+        await connection.execute(f'SET ROLE "{definer_sandbox["app"]}"')
+        await connection.execute(
+            "CREATE FUNCTION public.pg_get_userbyid(oid) RETURNS name "
+            "LANGUAGE sql IMMUTABLE AS $fn$ SELECT "
+            f"'{definer_sandbox['ledger']}'::name $fn$"
+        )
+        await connection.execute("SET search_path = public, pg_catalog")
+
+        # The shadow really is reachable -- otherwise this whole test would
+        # pass for the wrong reason, proving nothing about qualification.
+        forged = await connection.fetchval("SELECT pg_get_userbyid(0::oid)")
+        assert forged == definer_sandbox["ledger"], forged
+
+        rows = await connection.fetch(
+            operational_preflight.SECURITY_DEFINER_CENSUS_SQL
+        )
+        violations = operational_preflight._security_definer_violations(
+            rows, expected_owner=definer_sandbox["ledger"]
+        )
+        assert violations, (
+            "the census answered clean under a shadowed pg_get_userbyid -- an "
+            "unqualified catalog call let the checked role forge its own verdict"
+        )
+
+        with pytest.raises(asyncpg.exceptions.RaiseError):
+            await connection.execute(forward_sql)
     finally:
         await connection.close()

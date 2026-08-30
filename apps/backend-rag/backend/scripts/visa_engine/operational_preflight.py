@@ -241,12 +241,28 @@ LEDGER_OWNER = "visa_ledger_owner"
 # DEFINER function executes with its OWNER's privileges, so an owner that
 # cannot do what the body needs turns the whole construct into a no-op that
 # fails only on the first real call.
+# Every catalog name is `pg_catalog.`-qualified, and that is load-bearing, not
+# housekeeping. An adversarial round (codex gpt-5.6-sol, xhigh) supplied a
+# working evasion: the application role can CREATE in `public`, so a
+# `public.pg_get_userbyid(oid)` returning a constant plus a `search_path` of
+# `public, pg_catalog` makes an unqualified census report a FORGED owner and
+# answer ok=True with the ownership still wrong. A privilege check answerable by
+# an object the checked role may create is not a check. Qualified names cannot
+# be redirected by any search_path.
+#
+# `prokind` comes back so the remediation names the right statement: a SECURITY
+# DEFINER PROCEDURE carries the identical hazard and is censused on purpose, but
+# is moved with ALTER PROCEDURE, not ALTER FUNCTION. Cast to `text`: `prokind`
+# is Postgres's `"char"` type, which asyncpg decodes to BYTES, so the label
+# lookup silently missed and printed `[b'p']`. Found by the real-Postgres test,
+# never by the fake -- the fake had been told the answer.
 SECURITY_DEFINER_CENSUS_SQL = """
 SELECT proc.proname
            || '('
-           || pg_get_function_identity_arguments(proc.oid)
+           || pg_catalog.pg_get_function_identity_arguments(proc.oid)
            || ')' AS signature,
-       pg_get_userbyid(proc.proowner) AS owner
+       pg_catalog.pg_get_userbyid(proc.proowner) AS owner,
+       proc.prokind::text AS kind
   FROM pg_catalog.pg_proc AS proc
   JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = proc.pronamespace
  WHERE namespace.nspname = 'public'
@@ -254,11 +270,14 @@ SELECT proc.proname
  ORDER BY signature
 """
 
+# pg_proc.prokind, spelled out for the operator-facing message.
+_PROKIND_LABEL = {"f": "function", "p": "procedure", "a": "aggregate", "w": "window"}
+
 
 def _security_definer_violations(
     rows, *, expected_owner: str = LEDGER_OWNER
 ) -> list[str]:
-    """Every censused function whose owner is not `expected_owner`.
+    """Every censused routine whose owner is not `expected_owner`.
 
     Split out from the check so a real-Postgres test can feed it rows read from
     an actual catalog by `SECURITY_DEFINER_CENSUS_SQL`, rather than proving the
@@ -271,7 +290,8 @@ def _security_definer_violations(
     """
 
     return [
-        f"{row['signature']} owned by {row['owner']}"
+        f"{row['signature']} [{_PROKIND_LABEL.get(row['kind'], row['kind'])}] "
+        f"owned by {row['owner']}"
         for row in rows
         if row["owner"] != expected_owner
     ]
@@ -628,9 +648,18 @@ async def collect_preflight_checks(
     #
     # Measured against the production primary on 2026-08-30: 21 SECURITY
     # DEFINER functions in `public`, every one owned by `visa_ledger_owner`,
-    # so there is no known legitimate exception and none is encoded here. If a
-    # future object genuinely needs a different owner, this check goes red and
-    # somebody has to argue the case in a diff -- which is the intended cost.
+    # and ZERO of them belonging to an extension (pg_depend deptype='e'), with
+    # postgis, pgcrypto, pg_trgm, btree_gist and uuid-ossp all installed into
+    # `public`. So there is no legitimate exception in THIS database and none is
+    # encoded here.
+    #
+    # A hypothetical one exists and is named rather than pre-exempted: some
+    # contrib extensions do ship SECURITY DEFINER routines (`dblink`'s
+    # `dblink_connect_u` is the standard example) which would be owned by
+    # whoever installed the extension. If one is ever installed here this check
+    # goes red and somebody argues the case in a diff. That is the intended
+    # cost: an exemption written before a real case exists is exactly how a
+    # floor turns back into the list that let migration 285 through.
     #
     # An empty census is reported in the detail rather than passing silently:
     # zero rows means either a database with no governed functions or a probe
@@ -657,8 +686,9 @@ async def collect_preflight_checks(
                     "privileges, so one owned by the runtime role is a no-op "
                     "that fails on its first real call -- the shape that kept "
                     "magic-link issuance answering 500 (migration 285). "
-                    "Transfer it with ALTER FUNCTION ... OWNER TO "
-                    f"{LEDGER_OWNER} on a superuser connection."
+                    "Transfer it with ALTER FUNCTION (or ALTER PROCEDURE, for "
+                    f"a routine marked [procedure]) ... OWNER TO {LEDGER_OWNER} "
+                    "on a superuser connection."
                 )
             ),
         )

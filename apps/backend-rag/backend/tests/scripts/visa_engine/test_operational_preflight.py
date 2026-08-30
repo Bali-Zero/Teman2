@@ -89,6 +89,10 @@ class FakePreflightConnection:
             "visa_activate_rule_pack(p_rule_pack_id uuid, p_activated_by text, "
             "p_activation_reason text)": "visa_ledger_owner",
         }
+        # pg_proc.prokind per signature; anything absent defaults to 'f'. The
+        # census returns it so the remediation can name ALTER PROCEDURE where
+        # that is the right statement.
+        self.security_definer_kinds: dict[str, str] = {}
         self.memberships: set[tuple[str, str]] = set()
         self.dual_capability_login: str | None = None
         # Live bodies of the two binders migration 289 re-scopes. Default to
@@ -114,7 +118,11 @@ class FakePreflightConnection:
     async def fetch(self, query: str, *args: Any) -> list[dict[str, Any]]:
         if "prosecdef" in query:
             return [
-                {"signature": signature, "owner": owner}
+                {
+                    "signature": signature,
+                    "owner": owner,
+                    "kind": self.security_definer_kinds.get(signature, "f"),
+                }
                 for signature, owner in sorted(self.security_definer_functions.items())
             ]
         if "FROM pg_catalog.pg_proc" in query and "prosrc" in query:
@@ -843,12 +851,22 @@ def test_definer_violations_helper_is_indifferent_to_every_module_list() -> None
     """
 
     rows = [
-        {"signature": "visa_activate_rule_pack(p_id uuid)", "owner": RUNTIME_ROLE},
-        {"signature": "something_entirely_new()", "owner": "visa_ledger_owner"},
+        {
+            "signature": "visa_activate_rule_pack(p_id uuid)",
+            "owner": RUNTIME_ROLE,
+            "kind": "f",
+        },
+        {
+            "signature": "something_entirely_new()",
+            "owner": "visa_ledger_owner",
+            "kind": "f",
+        },
     ]
     violations = operational_preflight._security_definer_violations(rows)
 
-    assert violations == [f"visa_activate_rule_pack(p_id uuid) owned by {RUNTIME_ROLE}"]
+    assert violations == [
+        f"visa_activate_rule_pack(p_id uuid) [function] owned by {RUNTIME_ROLE}"
+    ]
 
 
 def test_definer_census_sql_selects_on_prosecdef_and_scopes_to_public() -> None:
@@ -864,4 +882,35 @@ def test_definer_census_sql_selects_on_prosecdef_and_scopes_to_public() -> None:
     sql = operational_preflight.SECURITY_DEFINER_CENSUS_SQL
     assert "proc.prosecdef" in sql
     assert "namespace.nspname = 'public'" in sql
-    assert "pg_get_userbyid(proc.proowner)" in sql
+    assert "pg_catalog.pg_get_userbyid(proc.proowner)" in sql
+    # Every catalog name qualified. Unqualified, `pg_get_userbyid` can be
+    # shadowed by a `public.pg_get_userbyid(oid)` the application role is
+    # allowed to create, and the census then reports a forged owner. The live
+    # counterexample runs in test_security_definer_owner_invariant.py; this is
+    # the cheap tripwire that fails the moment a qualification is dropped.
+    assert "pg_catalog.pg_get_function_identity_arguments" in sql
+    assert "pg_get_userbyid" not in sql.replace("pg_catalog.pg_get_userbyid", "")
+    assert "pg_get_function_identity_arguments" not in sql.replace(
+        "pg_catalog.pg_get_function_identity_arguments", ""
+    )
+
+
+@pytest.mark.asyncio
+async def test_definer_owner_check_catches_a_security_definer_PROCEDURE() -> None:
+    """A SECURITY DEFINER PROCEDURE carries the identical hazard -- it also runs
+    with its owner's privileges -- and `prosecdef` is what the census filters
+    on, so it is caught by construction. The kind is reported because the
+    remediation differs: ALTER PROCEDURE, not ALTER FUNCTION. An alarm that
+    hands the operator a statement that errors is an alarm they learn to skip.
+    """
+
+    connection = FakePreflightConnection()
+    connection.security_definer_functions["purge_something(p_limit integer)"] = (
+        RUNTIME_ROLE
+    )
+    connection.security_definer_kinds["purge_something(p_limit integer)"] = "p"
+
+    check = await _definer_check(connection)
+    assert check.ok is False
+    assert "purge_something(p_limit integer) [procedure]" in check.detail
+    assert "ALTER PROCEDURE" in check.detail

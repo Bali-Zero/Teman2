@@ -76,9 +76,13 @@
 --
 -- WHY THE TRANSFER IS ROLE-GUARDED, IDEMPOTENT, AND ENDS IN AN ASSERTION
 -- =============================================================================
---   Role-guarded and `to_regprocedure` rather than a `::regprocedure` cast, so
---   an absent role or an absent function skips instead of raising -- the
---   fresh-database ordering hazard 299's review flagged.
+--   Role-guarded, because `visa_ledger_owner` genuinely does not exist on an
+--   unprovisioned database and there would be nothing to transfer TO. And
+--   `to_regprocedure` rather than a `::regprocedure` cast, so an absent
+--   function yields NULL at lookup instead of raising there -- the
+--   fresh-database ordering hazard 299's review flagged. Past the role guard
+--   that NULL is treated as a FAILED postcondition, not as permission to skip:
+--   see the block's own comment.
 --
 --   The ALTER is still attempted, and its privilege failure still explained.
 --   But the block then RE-READS `pg_proc.proowner` and RAISES if the
@@ -88,6 +92,18 @@
 --   possible for this migration to be recorded applied while the ownership is
 --   still wrong. That is the whole point of the file, and it is precisely what
 --   281 and 286 got wrong.
+
+-- WHY EVERY CATALOG NAME BELOW IS SCHEMA-QUALIFIED
+-- =============================================================================
+--   Adversarial review (codex gpt-5.6-sol, xhigh) supplied a working evasion:
+--   the migration runner connects as `backend_rag_v2`, which can CREATE in
+--   `public`, so a function named `public.pg_get_userbyid(oid)` returning a
+--   constant plus a `search_path` of `public, pg_catalog` makes this block read
+--   a FORGED owner, skip the ALTER, pass its own assertion, and be recorded
+--   applied with the ownership still wrong. A privilege check that can be
+--   answered by an object the checked role is allowed to create is not a check.
+--   Every catalog relation and catalog function here is therefore written
+--   `pg_catalog.`-qualified, which no search_path can redirect.
 
 DO $garuda_300_owner_transfer$
 DECLARE
@@ -104,7 +120,16 @@ DECLARE
     current_owner text;
     still_wrong text[] := ARRAY[]::text[];
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ledger_owner) THEN
+    -- The one branch that legitimately returns without asserting anything.
+    -- `visa_ledger_owner` is ABSENT on every unprovisioned database, including
+    -- the local dev cluster and CI's Postgres service (measured 2026-08-30):
+    -- there is no role to transfer TO, and raising here would block the whole
+    -- migration chain on every environment that has not provisioned the
+    -- capability roles -- which is the same convention 251/253/268/281/286/299
+    -- all follow. This is NOT a silent hole: `operational_preflight.py` already
+    -- carries a `role:visa_ledger_owner` check that goes red on exactly this
+    -- state, so an environment missing the role is loud where it matters.
+    IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = ledger_owner) THEN
         RAISE NOTICE 'garuda retention (300): role % absent -- skipping ownership transfer, same convention as 251/253/268/281/286/299',
             ledger_owner;
         RETURN;
@@ -112,38 +137,49 @@ BEGIN
 
     FOREACH signature IN ARRAY target_function
     LOOP
-        fn := to_regprocedure(signature);
+        fn := pg_catalog.to_regprocedure(signature);
+
+        -- `to_regprocedure` and not a `::regprocedure` cast so an absent
+        -- function yields NULL instead of raising at lookup time. But NULL is
+        -- then treated as a FAILED POSTCONDITION, not as permission to
+        -- continue: past this point the ledger role EXISTS, and migrations 281
+        -- and 286 -- which create all five unconditionally -- run before this
+        -- one. A function missing here means the chain is broken, and
+        -- recording 300 as applied over that is the same false success the
+        -- file exists to end.
         IF fn IS NULL THEN
-            RAISE NOTICE 'garuda retention (300): % not present -- nothing to transfer', signature;
+            still_wrong := still_wrong || pg_catalog.format('%s (ABSENT)', signature);
             CONTINUE;
         END IF;
 
-        SELECT pg_get_userbyid(proowner) INTO current_owner FROM pg_proc WHERE oid = fn;
+        SELECT pg_catalog.pg_get_userbyid(proowner) INTO current_owner
+          FROM pg_catalog.pg_proc WHERE oid = fn;
 
         IF current_owner IS DISTINCT FROM ledger_owner THEN
             BEGIN
-                EXECUTE format('ALTER FUNCTION %s OWNER TO %I', signature, ledger_owner);
+                EXECUTE pg_catalog.format('ALTER FUNCTION %s OWNER TO %I', signature, ledger_owner);
             EXCEPTION
                 WHEN insufficient_privilege THEN
                     RAISE NOTICE 'garuda retention (300): ALTER of % denied (current owner %) -- this session is neither superuser nor a member of %',
                         signature, current_owner, ledger_owner;
             END;
-            SELECT pg_get_userbyid(proowner) INTO current_owner FROM pg_proc WHERE oid = fn;
+            SELECT pg_catalog.pg_get_userbyid(proowner) INTO current_owner
+              FROM pg_catalog.pg_proc WHERE oid = fn;
         END IF;
 
         -- Collect rather than raise on the first: an operator repairing this
         -- by hand needs the whole list in one pass, not one name per attempt.
         IF current_owner IS DISTINCT FROM ledger_owner THEN
-            still_wrong := still_wrong || format('%s (owned by %s)', signature, current_owner);
+            still_wrong := still_wrong || pg_catalog.format('%s (owned by %s)', signature, current_owner);
         END IF;
     END LOOP;
 
-    IF array_length(still_wrong, 1) IS NOT NULL THEN
+    IF pg_catalog.array_length(still_wrong, 1) IS NOT NULL THEN
         RAISE EXCEPTION
-            'garuda retention (300): % of the 5 GARUDA_CHECK retention functions are still not owned by % -- %. Migrations 281 and 286 announced this transfer and were recorded applied without performing it; refusing to repeat that. Run the ALTERs on a superuser connection (or as a member of %), then re-apply.',
-            array_length(still_wrong, 1),
+            'garuda retention (300): % of the 5 GARUDA_CHECK retention functions are not owned by % -- %. Migrations 281 and 286 announced this transfer and were recorded applied without performing it; refusing to repeat that. Run the ALTERs on a superuser connection (or as a member of %), then re-apply.',
+            pg_catalog.array_length(still_wrong, 1),
             ledger_owner,
-            array_to_string(still_wrong, '; '),
+            pg_catalog.array_to_string(still_wrong, '; '),
             ledger_owner;
     END IF;
 END;
@@ -151,21 +187,32 @@ $garuda_300_owner_transfer$;
 
 -- === ROLLBACK ===
 
--- Deliberately a no-op that says so, not a symmetric undo.
+-- Deliberately IRREVERSIBLE, and it says so by REFUSING rather than by
+-- printing a notice.
 --
 -- The mechanical inverse of this migration is `ALTER FUNCTION ... OWNER TO
 -- backend_rag_v2` on all five, which re-creates the exact latent trap that
 -- migration 285 later fell into and that cost the GARUDA magic-link endpoint
--- weeks of silent 500s. A rollback that faithfully restores a known trap is
--- worse than none: it hands a future operator a one-command way to re-arm it
--- while believing they are being careful. Same reasoning, and the same verdict,
--- as migration 299's rollback section.
+-- weeks of silent 500s. So the inverse is not performed.
 --
--- If ownership genuinely must be reverted, that is a deliberate operator action
--- with its own reasoning, not the mechanical inverse of this file.
+-- But a rollback that merely RAISE NOTICEs would be worse than the inverse,
+-- and the adversarial review of this PR was right to call it a lie:
+-- `MigrationManager.rollback_migration` runs the rollback SQL inside a
+-- transaction and then DELETEs the `_schema_versions` row and returns True
+-- (backend/db/migration_manager.py:249-263). A notice-only body therefore
+-- reports a successful reversal, erases the ledger row, and leaves every
+-- ownership change in place -- so the schema history now claims 300 was
+-- reversed when nothing was. That is the same class of false record the
+-- forward section exists to prevent, pointing the other way.
+--
+-- Raising keeps the transaction from committing, so the `_schema_versions` row
+-- survives and the operator gets told why. If ownership genuinely must be
+-- reverted, that is a deliberate operator action with its own reasoning, not
+-- the mechanical inverse of this file.
 
 DO $garuda_300_owner_rollback$
 BEGIN
-    RAISE NOTICE 'garuda retention (300 rollback): intentionally does nothing -- restoring ownership to backend_rag_v2 would re-arm the SECURITY DEFINER trap this migration closes.';
+    RAISE EXCEPTION
+        'garuda retention (300) is irreversible: handing these five functions back to backend_rag_v2 would re-arm the SECURITY DEFINER trap this migration closes (the shape that kept magic-link issuance answering 500 after migration 285). Refusing rather than reporting a reversal that did not happen. To move the ownership deliberately, run the ALTERs by hand as a superuser and record why.';
 END;
 $garuda_300_owner_rollback$;
