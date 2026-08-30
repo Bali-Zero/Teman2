@@ -224,6 +224,59 @@ SENSITIVE_FUNCTIONS = (
     *RETENTION_BINDING_TRIGGER_FUNCTIONS,
 )
 
+# The role every governed object in this schema must belong to. Named here
+# because the class-level census below compares against it; the pre-existing
+# per-object checks still spell it inline and are deliberately left alone.
+LEDGER_OWNER = "visa_ledger_owner"
+
+# The class-level floor behind `definer:public-security-definer-ledger-owned`.
+# Held as a module constant, not inlined, so a real-Postgres test can run the
+# SHIPPED text against a real catalog instead of retyping it and drifting from
+# the code it is supposed to guard (scar #9 / W114: a fake and the code it
+# checks share the same imagination).
+#
+# It asks the catalog for EVERY SECURITY DEFINER function in `public` and who
+# owns it -- no list, no inventory to keep up to date. `prosecdef` is the
+# property that makes ownership load-bearing in the first place: a SECURITY
+# DEFINER function executes with its OWNER's privileges, so an owner that
+# cannot do what the body needs turns the whole construct into a no-op that
+# fails only on the first real call.
+SECURITY_DEFINER_CENSUS_SQL = """
+SELECT proc.proname
+           || '('
+           || pg_get_function_identity_arguments(proc.oid)
+           || ')' AS signature,
+       pg_get_userbyid(proc.proowner) AS owner
+  FROM pg_catalog.pg_proc AS proc
+  JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = proc.pronamespace
+ WHERE namespace.nspname = 'public'
+   AND proc.prosecdef
+ ORDER BY signature
+"""
+
+
+def _security_definer_violations(
+    rows, *, expected_owner: str = LEDGER_OWNER
+) -> list[str]:
+    """Every censused function whose owner is not `expected_owner`.
+
+    Split out from the check so a real-Postgres test can feed it rows read from
+    an actual catalog by `SECURITY_DEFINER_CENSUS_SQL`, rather than proving the
+    verdict only against a hand-written fake.
+
+    `expected_owner` is a parameter solely so that test can use a
+    uuid-suffixed throwaway role: a privilege boundary is cluster-wide, so a
+    test may not create a role literally named `visa_ledger_owner`. Nothing in
+    production passes it.
+    """
+
+    return [
+        f"{row['signature']} owned by {row['owner']}"
+        for row in rows
+        if row["owner"] != expected_owner
+    ]
+
+
 SENSITIVE_TABLES = (
     "visa_rule_packs",
     "visa_ruleset_activations",
@@ -543,6 +596,70 @@ async def collect_preflight_checks(
                 "visa_evaluate_idempotency INSERT fail with the INTO STRICT ambiguity. "
                 "289's catalog guard declined (the runtime role does not own these "
                 "functions) -- re-apply it as visa_ledger_owner or a superuser."
+            ),
+        )
+    )
+
+    # ------------------------------------------------------------------
+    # definer:public-security-definer-ledger-owned
+    # ------------------------------------------------------------------
+    # A FLOOR, not a replacement for the `owner:{signature}` checks above.
+    # Those read a hand-maintained inventory (`SENSITIVE_FUNCTIONS`); this one
+    # reads the catalog and needs no list at all.
+    #
+    # The list is why nothing caught migration 285. That migration created a
+    # new SECURITY DEFINER trigger, `bind_garuda_magic_link_token_retention_
+    # policy`, left it owned by the runtime role `backend_rag_v2`, and nobody
+    # added it to `RETENTION_BINDING_TRIGGER_FUNCTIONS`. Its body takes a
+    # `SELECT ... FOR SHARE` on `visa_decision_retention_policies`, which is
+    # owned by `visa_ledger_owner` and on which the runtime role holds only
+    # SELECT; row locking needs more than SELECT. SECURITY DEFINER bought
+    # nothing because the DEFINER could not take the lock either, so
+    # `POST /api/visa/voa/auth/magic-links` answered 500 from the day it
+    # shipped and no magic link was ever minted. A list-driven check is exactly
+    # as good as the memory of whoever last edited the list.
+    #
+    # Migrations 281 and 286 are the same disease one step earlier: both NAME
+    # the ownership transfer, both were recorded APPLIED, and five functions
+    # stayed owned by `backend_rag_v2` for four days because their
+    # `insufficient_privilege` handler emitted a NOTICE and deferred. Migration
+    # 300 makes those two honest; this check is what notices the next one
+    # regardless of what any migration claims.
+    #
+    # Measured against the production primary on 2026-08-30: 21 SECURITY
+    # DEFINER functions in `public`, every one owned by `visa_ledger_owner`,
+    # so there is no known legitimate exception and none is encoded here. If a
+    # future object genuinely needs a different owner, this check goes red and
+    # somebody has to argue the case in a diff -- which is the intended cost.
+    #
+    # An empty census is reported in the detail rather than passing silently:
+    # zero rows means either a database with no governed functions or a probe
+    # reading the wrong catalog, and the two must not look alike in a log. It
+    # is deliberately NOT a failure -- the `owner:{signature}` checks above go
+    # red on their own the moment those functions are genuinely missing, so an
+    # empty schema is already loud without this check inventing a second alarm
+    # that would fire on a legitimately fresh database.
+    definer_rows = await connection.fetch(SECURITY_DEFINER_CENSUS_SQL)
+    violations = _security_definer_violations(definer_rows)
+    checks.append(
+        PreflightCheck(
+            name="definer:public-security-definer-ledger-owned",
+            ok=not violations,
+            detail=(
+                f"all {len(definer_rows)} SECURITY DEFINER function(s) in public "
+                f"are owned by {LEDGER_OWNER}"
+                if not violations
+                else (
+                    f"{len(violations)} of {len(definer_rows)} SECURITY DEFINER "
+                    f"function(s) in public are NOT owned by {LEDGER_OWNER}: "
+                    + ", ".join(violations)
+                    + ". A SECURITY DEFINER function runs with its OWNER's "
+                    "privileges, so one owned by the runtime role is a no-op "
+                    "that fails on its first real call -- the shape that kept "
+                    "magic-link issuance answering 500 (migration 285). "
+                    "Transfer it with ALTER FUNCTION ... OWNER TO "
+                    f"{LEDGER_OWNER} on a superuser connection."
+                )
             ),
         )
     )

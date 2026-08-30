@@ -73,6 +73,22 @@ class FakePreflightConnection:
             ).items()
             for table, privilege in allowed
         }
+        # Independent census for `definer:public-security-definer-ledger-owned`.
+        # Deliberately NOT derived from SENSITIVE_FUNCTIONS: the whole point of
+        # that check is that it reads the catalog and consults no list, so a
+        # fixture built from the module's own list would quietly re-introduce
+        # the coupling the check exists to remove. These three signatures were
+        # copied from the production census of 2026-08-30 (21 rows, all
+        # ledger-owned), in the `proname(identity args)` shape the shipped
+        # query really returns.
+        self.security_definer_functions: dict[str, str] = {
+            "bind_garuda_magic_link_token_retention_policy()": "visa_ledger_owner",
+            "purge_garuda_voa_checks(p_limit integer, p_requested_by text)": (
+                "visa_ledger_owner"
+            ),
+            "visa_activate_rule_pack(p_rule_pack_id uuid, p_activated_by text, "
+            "p_activation_reason text)": "visa_ledger_owner",
+        }
         self.memberships: set[tuple[str, str]] = set()
         self.dual_capability_login: str | None = None
         # Live bodies of the two binders migration 289 re-scopes. Default to
@@ -96,6 +112,11 @@ class FakePreflightConnection:
         )
 
     async def fetch(self, query: str, *args: Any) -> list[dict[str, Any]]:
+        if "prosecdef" in query:
+            return [
+                {"signature": signature, "owner": owner}
+                for signature, owner in sorted(self.security_definer_functions.items())
+            ]
         if "FROM pg_catalog.pg_proc" in query and "prosrc" in query:
             requested = args[0]
             return [
@@ -693,3 +714,154 @@ def test_noise_mask_covers_a_single_quoted_string_including_its_quotes() -> None
     assert all(mask[start : end + 1])
     assert not any(mask[:start])
     assert not any(mask[end + 1 :])
+
+
+# ---------------------------------------------------------------------------
+# definer:public-security-definer-ledger-owned — the list-free floor.
+#
+# The check next to it, `owner:{signature}`, reads `SENSITIVE_FUNCTIONS`. That
+# list is why migration 285 shipped a SECURITY DEFINER trigger owned by the
+# runtime role and no preflight went red: nobody added the new function to it.
+# These cases assert the replacement is genuinely list-free — the fixture below
+# introduces a function that appears in NO module constant, and the check must
+# still catch it.
+CHECK_NAME = "definer:public-security-definer-ledger-owned"
+
+
+async def _definer_check(connection: FakePreflightConnection):
+    checks = _by_name(
+        await operational_preflight.collect_preflight_checks(
+            connection,  # type: ignore[arg-type]
+            runtime_role=RUNTIME_ROLE,
+        )
+    )
+    return checks[CHECK_NAME]
+
+
+@pytest.mark.asyncio
+async def test_definer_owner_check_passes_when_every_definer_is_ledger_owned() -> None:
+    """INNOCENCE. The fake's census is the healthy production shape."""
+
+    check = await _definer_check(FakePreflightConnection())
+    assert check.ok is True, check.detail
+    assert "3" in check.detail, check.detail
+
+
+@pytest.mark.asyncio
+async def test_definer_owner_check_catches_a_function_named_in_no_list() -> None:
+    """GUILT, and the whole reason this check exists.
+
+    `garuda_new_thing_nobody_listed` is in no module constant — not
+    `SENSITIVE_FUNCTIONS`, not `RETENTION_BINDING_TRIGGER_FUNCTIONS`, not
+    `CANONICAL_SENSITIVE_FUNCTIONS` in this file. It is migration 285's
+    situation reproduced: a brand-new SECURITY DEFINER function left owned by
+    the runtime role. A list-driven check cannot see it; this one must.
+    """
+
+    connection = FakePreflightConnection()
+    connection.security_definer_functions[
+        "garuda_new_thing_nobody_listed(p_limit integer)"
+    ] = RUNTIME_ROLE
+
+    check = await _definer_check(connection)
+    assert check.ok is False, (
+        "a SECURITY DEFINER function owned by the runtime role passed the floor "
+        "— the check is still reading a list, not the catalog"
+    )
+    assert "garuda_new_thing_nobody_listed(p_limit integer)" in check.detail
+    assert RUNTIME_ROLE in check.detail
+
+
+@pytest.mark.asyncio
+async def test_definer_owner_check_catches_the_exact_285_regression() -> None:
+    """The concrete incident, by name: `bind_garuda_magic_link_token_retention_
+    policy` owned by `backend_rag_v2` is the state in which
+    `POST /api/visa/voa/auth/magic-links` answered 500 to every call."""
+
+    connection = FakePreflightConnection()
+    connection.security_definer_functions[
+        "bind_garuda_magic_link_token_retention_policy()"
+    ] = RUNTIME_ROLE
+
+    check = await _definer_check(connection)
+    assert check.ok is False
+    assert "bind_garuda_magic_link_token_retention_policy()" in check.detail
+
+
+@pytest.mark.asyncio
+async def test_definer_owner_check_reports_every_offender_not_only_the_first() -> None:
+    """Migration 281/286 left FIVE functions behind at once. A check that named
+    only the first would send an operator round the loop five times, and a
+    reviewer reading the log would think one ALTER closed it."""
+
+    connection = FakePreflightConnection()
+    for signature in (
+        "purge_garuda_voa_checks(p_limit integer, p_requested_by text)",
+        "purge_garuda_voa_check_results(p_limit integer, p_requested_by text)",
+        "garuda_voa_check_retention_evidence()",
+    ):
+        connection.security_definer_functions[signature] = RUNTIME_ROLE
+
+    check = await _definer_check(connection)
+    assert check.ok is False
+    for signature in (
+        "purge_garuda_voa_checks(p_limit integer, p_requested_by text)",
+        "purge_garuda_voa_check_results(p_limit integer, p_requested_by text)",
+        "garuda_voa_check_retention_evidence()",
+    ):
+        assert signature in check.detail, signature
+    # 3 of 5: the fixture seeds three healthy functions, of which
+    # `purge_garuda_voa_checks` is one of the three re-owned above.
+    assert "3 of 5" in check.detail, check.detail
+
+
+@pytest.mark.asyncio
+async def test_definer_owner_check_survives_an_empty_census_without_lying() -> None:
+    """An empty catalog read must be legible, not a silent green.
+
+    It is deliberately NOT a failure: a legitimately fresh database has no
+    governed functions yet, and inventing a second alarm there would make this
+    check the boy who cried wolf. But the count has to reach the log, because
+    "0 functions, all correctly owned" and "21 functions, all correctly owned"
+    must not print the same sentence.
+    """
+
+    connection = FakePreflightConnection()
+    connection.security_definer_functions.clear()
+
+    check = await _definer_check(connection)
+    assert check.ok is True
+    assert "0 SECURITY DEFINER function(s)" in check.detail
+
+
+def test_definer_violations_helper_is_indifferent_to_every_module_list() -> None:
+    """The helper's verdict must depend on the OWNER column alone.
+
+    A row whose signature happens to sit in `SENSITIVE_FUNCTIONS` gets no
+    amnesty, and one that sits in no list gets no free pass — otherwise the
+    floor has quietly grown a list again.
+    """
+
+    rows = [
+        {"signature": "visa_activate_rule_pack(p_id uuid)", "owner": RUNTIME_ROLE},
+        {"signature": "something_entirely_new()", "owner": "visa_ledger_owner"},
+    ]
+    violations = operational_preflight._security_definer_violations(rows)
+
+    assert violations == [f"visa_activate_rule_pack(p_id uuid) owned by {RUNTIME_ROLE}"]
+
+
+def test_definer_census_sql_selects_on_prosecdef_and_scopes_to_public() -> None:
+    """The three properties the shipped query may not lose.
+
+    Read off the constant rather than re-derived: a census that dropped
+    `prosecdef` would flag every ordinary function in the schema (a permanent
+    false red), and one that dropped the namespace filter would reach into
+    `pg_catalog` and flag Postgres's own definer functions, which no migration
+    of ours may ever own.
+    """
+
+    sql = operational_preflight.SECURITY_DEFINER_CENSUS_SQL
+    assert "proc.prosecdef" in sql
+    assert "namespace.nspname = 'public'" in sql
+    assert "pg_get_userbyid(proc.proowner)" in sql
