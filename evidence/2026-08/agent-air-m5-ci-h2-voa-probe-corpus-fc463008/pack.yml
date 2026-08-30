@@ -16,15 +16,20 @@ lanes:
     role: review
     seat: "independent seat (generator != grader; the workflow's author does not gate it)"
 diff:
-  files: 1
+  files: 6
   net_lines: >-
-    Measured with git diff --numstat against the merge-base 1b95c75611, over the whole diff:
-    159 net lines in the workflow itself, plus this evidence pair. The workflow hot-zone fixes
-    the deterministic floor at Gear 3 regardless of that size. The figure grew after the
-    cross-family review: most of the addition is the header stating what this job does and does
-    not gate, and the check-count floor both seats asked for.
+    Measured with git diff --numstat against the merge-base 1b95c75611, over the WHOLE diff
+    (both workflows plus this evidence pair, not the new workflow alone), taken from the linter's
+    own --print-measured so the pack cannot disagree with the tool that judges it: +466/-69. The deletions are the previous occupant of the shared root brief, which every
+    Gear-3 PR rewrites with its own. The new workflow by itself is +159; the watcher-coverage entry is +6. An earlier version of
+    this pack declared `files: 1` — true of the code file, false of the diff — which is precisely
+    the defect this repo ledgered on 2026-08-30: the scalars are never compared against the
+    measurement, so a false blast-radius survives forever as long as the prose stays digit-free.
+    It was caught here by an independent coherence read, not by the lint.
   behaviour_change: >-
-    Adds one workflow. It runs on pull_request and on main pushes that touch the probe, its
+    Adds one workflow and one line to the watcher-coverage list, without which
+    `check_watcher_coverage.py` fails by construction: a new push-to-main workflow that nothing
+    watches is a red nobody would see. It runs on pull_request and on main pushes that touch the probe, its
     wrapper, the plist, the installer or their corpora. No existing job, matrix leg, required
     context, dependency setup or change-map rule is touched, and nothing is added to branch
     protection. The organ's runtime behaviour is unchanged: this ships no code into any
