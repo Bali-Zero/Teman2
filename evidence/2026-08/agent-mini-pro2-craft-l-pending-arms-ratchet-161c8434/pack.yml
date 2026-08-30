@@ -42,7 +42,7 @@ diff:
   net_lines: >-
     AS OF 6b501570dd (pinned — a bare byte count inside a file every subsequent
     commit rewrites is a claim that decays by construction): 9 files,
-    +2425/-8, measured against the MERGE BASE. Deliberately over the ~400-line
+    +2441/-8, measured against the MERGE BASE. Deliberately over the ~400-line
     target and said plainly rather than split: 1,004 of those lines are the two
     test corpora and roughly 320 more are load-bearing comment — the executable
     surface is one CLI mode and one sort. Splitting the corpus from the code it
