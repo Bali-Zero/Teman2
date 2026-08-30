@@ -198,11 +198,26 @@ def test_an_exempt_root_is_not_reported(tmp_path: Path) -> None:
 #: `grep`, not this check), so a Python call site that ALSO used
 #: `--noconftest` would have gone undetected by both the live guard (blind
 #: by construction to `--noconftest`) and this static scanner (blind for
-#: lack of a glob) — a defect generator, not merely a gap. Scoped to
-#: `apps/`/`scripts/` rather than a bare `**/*.py`: those are the two
-#: directories this PR's own hand-swept population lives in, and a
-#: repo-wide glob would additionally walk vendored/virtualenv trees this
-#: check has no business reading.
+#: lack of a glob) — a defect generator, not merely a gap.
+#:
+#: MEASURED LIMIT (2026-08-30): the matcher in `_quiet_noconftest_call_sites`
+#: (`any(f" {flag}" in line ...)`) requires a literal space immediately before
+#: the quiet flag. That check was written for shell-string invocations
+#: (`"python -m pytest ... -q"`) and never re-measured against the shape these
+#: two globs actually add: Python argv-list calls (`["pytest", ..., "-q"]`),
+#: where the character before the flag is a quote, not a space.
+#: `subprocess.run(["pytest", "t/", "--noconftest", "-q"])` measures
+#: `flagged=False`; only `cmd = "python -m pytest tests/ --noconftest -q"`
+#: measures `flagged=True`. All three Python sites this PR swept by hand use
+#: the argv-list shape, so adding these globs did not close the gap they were
+#: added to close — it widened what gets scanned, not what gets caught. Left
+#: open rather than patched with another substring variant (see cicatrix
+#: family #3, guard-over-match): tracked in
+#: `.claude/skills/modus/PENDING-ARMS.md`.
+#:
+#: Scoped to `apps/`/`scripts/` rather than a bare `**/*.py` because that is
+#: where this PR's own hand-swept population lives — no claim is made here
+#: about which other directories a repo-wide glob would or would not walk.
 _SCANNED_GLOBS = (
     ".github/workflows/*.yml",
     ".github/workflows/*.yaml",
@@ -288,6 +303,26 @@ def test_the_call_site_scan_can_actually_report_one(tmp_path: Path) -> None:
         "steps:\n  - run: python -m pytest tests/ --collect-only -q --noconftest\n"
     )
     assert _quiet_noconftest_call_sites(tmp_path) == [".github/workflows/ci.yml:2"]
+
+
+def test_the_call_site_scan_catches_a_shell_string_inside_python(
+    tmp_path: Path,
+) -> None:
+    """GUILT for the `apps/**/*.py` / `scripts/**/*.py` globs specifically.
+
+    The GUILT test above only exercises the pre-existing `.github/workflows/*.yml`
+    glob — the `*.py` globs added 2026-08-30 had no guilt case of their own.
+    This one writes a `.py` fixture using the shell-string shape the matcher
+    actually recognises (a literal space before the flag) — deliberately NOT
+    the argv-list shape (`["pytest", ..., "-q"]`), which the `_SCANNED_GLOBS`
+    comment documents as measured-uncaught.
+    """
+    scripts_dir = tmp_path / "scripts"
+    scripts_dir.mkdir()
+    (scripts_dir / "run_ci.py").write_text(
+        'cmd = "python -m pytest tests/ --noconftest -q"\n'
+    )
+    assert _quiet_noconftest_call_sites(tmp_path) == ["scripts/run_ci.py:1"]
 
 
 @pytest.mark.parametrize(
