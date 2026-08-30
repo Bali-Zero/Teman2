@@ -1,0 +1,12 @@
+// GUILT: one rule with tag:team in src. Looks harmless ("let the laptop reach the deck"); grants
+// a non-Zero device the port that also carries the writable shell.
+// SHELL-ROUTE: /term -> 127.0.0.1:7681 is ttyd -W zsh.
+{
+  "hosts": {"pro": "100.107.22.111"},
+  "tagOwners": {"tag:team": ["autogroup:admin"]},
+  "acls": [
+    {"action": "accept", "src": ["tag:team"], "dst": ["pro:443"]}
+  ],
+  "ssh": [],
+  "tests": [{"src": "tag:team", "deny": ["pro:22"]}]
+}

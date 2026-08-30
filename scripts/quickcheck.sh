@@ -285,6 +285,63 @@ run_actionlint_if_touched() {
 }
 
 # ---------------------------------------------------------------------------
+# 3b. skills-canon — untracked drift between .claude/skills and .agents/skills
+#
+# Added 2026-08-27 (Q0 correction, team-lead finding): CI can only ever see
+# COMMITTED state, so scripts/tests/test_skills_canonical.py's own
+# check-skills-canonical.yml workflow can never catch untracked cruft sitting
+# in a local checkout. Measured live on the Pro MAIN checkout: 11 Tier-B
+# skills (modus, workflow, ...) existed as UNTRACKED real directories under
+# `.agents/skills/` — `git status --porcelain` never showed them to anyone
+# who only reads diffs — one of them (a stale `.agents/skills/modus/SKILL.md`)
+# still routed the Gear-3 gate to "Fable 5 first", contradicting the current
+# ruling. Deliberately UNCONDITIONAL (not gated on the diff touching
+# .claude/skills or .agents/skills): the failure mode this exists to catch is
+# BY DEFINITION untracked, so it never shows up in `changed_all` — gating on
+# the diff would exempt exactly the case that matters. Cheap regardless (a
+# stat/iterdir pass over ~20 directories).
+# ---------------------------------------------------------------------------
+run_skills_canonical_check() {
+    if [ ! -f scripts/tests/test_skills_canonical.py ]; then
+        echo "   [skills-canon] scripts/tests/test_skills_canonical.py not on this branch yet — skipping."
+        return 0
+    fi
+    local py=""
+    if command -v python3 >/dev/null 2>&1; then
+        py="$(command -v python3)"
+    else
+        echo "   [skills-canon] no python3 on PATH — skipping."
+        return 0
+    fi
+
+    local out rc
+    out="$(NUZ_SKILLS_ROOT="$(pwd)" "$py" - <<'PYEOF' 2>&1
+import importlib.util
+import sys
+
+spec = importlib.util.spec_from_file_location(
+    "quickcheck_skills_canonical", "scripts/tests/test_skills_canonical.py"
+)
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+violations = mod.find_canonicity_violations(mod.CLAUDE_SKILLS, mod.AGENTS_SKILLS)
+for v in violations:
+    print(v)
+sys.exit(1 if violations else 0)
+PYEOF
+)"
+    rc=$?
+    if [ "$rc" -eq 0 ]; then
+        echo "   [skills-canon] OK — no untracked drift between .claude/skills and .agents/skills."
+    else
+        echo "   [skills-canon] local tree has drift NO CI CHECK CAN SEE (untracked files never travel with a commit):"
+        printf '%s\n' "$out" | sed 's/^/            /'
+        echo "            (advisory — fix: remove the stray .agents/skills/<name> copy, or make .claude/skills/<name> a symlink to it)"
+    fi
+    return 0
+}
+
+# ---------------------------------------------------------------------------
 # 4. R1 — literal '## Adversarial review' heading on the branch's open PR
 # ---------------------------------------------------------------------------
 run_r1_check() {
@@ -346,6 +403,7 @@ main() {
     run_impact_scoped_pytest "$changed_all"
     run_prettier_changed "$changed_existing"
     run_actionlint_if_touched "$changed_all"
+    run_skills_canonical_check
     run_r1_check
 
     echo "🩺 quickcheck done (advisory — see .husky/pre-push for the real gates)."

@@ -1,12 +1,26 @@
 #!/usr/bin/env bash
-# Give Codex, Kimi, and Qwen one non-interactive build call shape so an
-# orchestrator does not need to reimplement worktree setup, stdin closure,
-# output parsing, or a watchdog. Fleet hosts have no working timeout(1) or
-# gtimeout(1), so the sourced watchdog is pure Bash and kills process groups.
-# Exit codes: 64 invalid arguments, 65 not a linked worktree, 66 dirty tree,
-# 73 report-write failure, 124 watchdog expiry, and 127 missing seat binary.
+# Give Codex, Kimi, Qwen, and agy (Gemini) one non-interactive build call shape
+# so an orchestrator does not need to reimplement worktree setup, stdin
+# closure, output parsing, or a watchdog. Fleet hosts have no working
+# timeout(1) or gtimeout(1), so the sourced watchdog is pure Bash and kills
+# process groups.
+# Exit codes: 64 invalid arguments (includes a missing --tier when
+# SEAT_BUILD_TIER_REQUIRED=1), 65 not a linked worktree OR an effort/gear policy
+# violation (R2/R3: an effort above a tier's cap, or sol at xhigh/max without
+# --gear 3), 66 dirty tree OR the task's estimated tokens exceed the requested
+# seat/tier's context window (ctx-check), 73 report-write failure, 124 watchdog
+# expiry, and 127 missing seat binary.
 # JSON reports include "log": the durable seat/test sidecar path, or null when
 # no seat was invoked (for example, validation failures and --dry-run).
+#
+# --tier selects the model within a seat: codex sol|terra|luna, kimi
+# k3|coding|highspeed, agy flash|pro. Omitting it defaults (terra/coding/flash)
+# with a stderr NOTICE; SEAT_BUILD_TIER_REQUIRED=1 turns that NOTICE into exit 64
+# (mandatory from 2026-09-02). qwen has no tiers and ignores --tier entirely.
+# --gear names the diff's CI-recomputed gear floor (1|2|3) — only consulted to
+# gate codex/sol at effort xhigh|max (R2). --role, currently only "synthesis",
+# lets agy/pro survive on a small task file without the usual ctx downgrade (R4).
+#
 # This wrapper never ships:
 # no commit, push, merge, hosting, deployment, or service-control operations.
 # The orchestrator remains the independent grader and publisher.
@@ -16,6 +30,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/lib/seat_watchdog.sh
 source "$SCRIPT_DIR/lib/seat_watchdog.sh"
+source "$SCRIPT_DIR/seat_build_tp1.sh"
 
 quota_output_exhausted() {
     local output_file="$1"
@@ -48,18 +63,26 @@ collect_git_metrics() {
 emit_report() {
     local report_rc="$1"
     local dry_run="$2"
+    shift 2
+    # Only meaningful when dry_run=true: the redacted argv preview (mandate E2
+    # item 4, "prints the final argv as JSON"). Empty on every other call site.
+    local -a argv_preview=("$@")
     local report_json
-    report_json="$(python3 - "$SEAT" "$MODEL" "$EFFORT" "$report_rc" "$DURATION" \
+    report_json="$(python3 - "$SEAT" "$MODEL" "$EFFORT" "${TIER:-}" "$report_rc" "$DURATION" \
         "$DIFF_STAT" "$UNTRACKED" "$TESTS_CMD" "$TESTS_RC" "$QUOTA_EXHAUSTED" \
-        "$LOG_PATH" "$dry_run" <<'PY'
+        "$LOG_PATH" "$dry_run" "${INPUT_TOKENS_EST:-0}" "${TIER_DOWNGRADED_FROM:-}" \
+        ${argv_preview[@]+"${argv_preview[@]}"} <<'PY'
 import json
 import sys
 
-seat, model, effort, rc, duration, diff_stat, untracked, tests_cmd, tests_rc, quota, log_path, dry = sys.argv[1:]
+(seat, model, effort, tier, rc, duration, diff_stat, untracked, tests_cmd,
+ tests_rc, quota, log_path, dry, input_tokens_est, downgraded_from) = sys.argv[1:16]
+argv_preview = sys.argv[16:]
 report = {
     "seat": seat,
     "model": model,
     "effort": effort,
+    "tier": tier or None,
     "rc": None if rc == "null" else int(rc),
     "duration_s": int(duration),
     "diff_stat": diff_stat,
@@ -70,9 +93,15 @@ report = {
     },
     "quota_exhausted": quota == "true",
     "log": log_path or None,
+    "input_tokens_est": int(input_tokens_est),
+    # R4: non-null only when agy/pro was silently downgraded (e.g. to
+    # "flash") — a caller checking rc==0 alone would otherwise believe it
+    # got the tier it asked for (codex-sol adversarial review, PR #5044).
+    "tier_downgraded_from": downgraded_from or None,
 }
 if dry == "true":
     report["dry_run"] = True
+    report["argv"] = argv_preview
 print(json.dumps(report, separators=(",", ":")))
 PY
 )"
@@ -82,6 +111,127 @@ PY
         return 73
     fi
     printf '%s\n' "$report_json"
+}
+
+# seat_tier_default <seat> <default_tier>
+# If --tier was not given, defaults it (NOTICE to stderr) unless
+# SEAT_BUILD_TIER_REQUIRED=1, in which case a missing --tier is exit 64.
+# No-op when --tier is already set (explicit value is validated by the caller).
+seat_tier_default() {
+    local seat="$1" default_tier="$2"
+    [ -n "$TIER" ] && return 0
+    if [ "${SEAT_BUILD_TIER_REQUIRED:-0}" = "1" ]; then
+        refuse 64 "--tier is required for seat '$seat' (mandatory from 2026-09-02; SEAT_BUILD_TIER_REQUIRED=1)"
+    fi
+    printf 'seat_build: --tier missing, defaulting to %s (mandatory from 2026-09-02)\n' "$default_tier" >&2
+    TIER="$default_tier"
+}
+
+# Ordinal rank of an effort level, low..max. -1 for an unrecognized value
+# (unreachable here: EFFORT is already validated before this is called).
+effort_rank() {
+    case "$1" in
+        low) echo 0 ;;
+        medium) echo 1 ;;
+        high) echo 2 ;;
+        xhigh) echo 3 ;;
+        max) echo 4 ;;
+        *) echo -1 ;;
+    esac
+}
+
+# R2/R3: static per-tier effort ceilings, plus R2's dynamic sol/xhigh+ gear gate.
+# Requires SEAT/TIER/EFFORT/GEAR already resolved. Exits 65 on violation.
+enforce_effort_cap() {
+    local rank cap_rank
+    rank="$(effort_rank "$EFFORT")"
+    case "$SEAT/$TIER" in
+        codex/luna)
+            cap_rank="$(effort_rank medium)"
+            [ "$rank" -le "$cap_rank" ] ||
+                refuse 65 "R2: codex/luna is capped at effort medium (got $EFFORT)"
+            ;;
+        codex/terra)
+            cap_rank="$(effort_rank high)"
+            [ "$rank" -le "$cap_rank" ] ||
+                refuse 65 "R2: codex/terra is capped at effort high (got $EFFORT)"
+            ;;
+        codex/sol)
+            cap_rank="$(effort_rank xhigh)"
+            if [ "$rank" -ge "$cap_rank" ] && [ "$GEAR" != "3" ]; then
+                refuse 65 "R2: codex/sol at effort $EFFORT requires --gear 3 (got --gear=${GEAR:-<unset>})"
+            fi
+            ;;
+        kimi/highspeed)
+            cap_rank="$(effort_rank medium)"
+            [ "$rank" -le "$cap_rank" ] ||
+                refuse 65 "R3: kimi/highspeed is capped at effort medium (got $EFFORT)"
+            ;;
+        *) ;;  # kimi/k3, kimi/coding, agy/flash, agy/pro: no cap in this mandate
+    esac
+}
+
+# ctx_window_for <seat> <tier> — prints the configured context window (tokens)
+# from scripts/seat_ctx.json. Exit 1 means the seat/tier pair is legitimately
+# absent from an otherwise-valid table (this is how qwen, which carries no
+# tiers, is exempted). Exit 2 means the table itself could not be trusted
+# (missing file, unreadable, invalid JSON) — the caller must NOT treat that
+# the same as an intentional exemption, or ctx-check fails open exactly when
+# its own configuration is broken (codex-sol adversarial review, PR #5044).
+ctx_window_for() {
+    python3 - "$SCRIPT_DIR/seat_ctx.json" "$1" "$2" <<'PY'
+import json
+import sys
+
+path, seat, tier = sys.argv[1:4]
+try:
+    with open(path) as f:
+        data = json.load(f)
+except (OSError, ValueError) as exc:
+    print(f"seat_build: seat_ctx.json unreadable/invalid: {exc}", file=sys.stderr)
+    sys.exit(2)
+window = data.get(seat, {}).get(tier)
+if not isinstance(window, int):
+    sys.exit(1)
+print(window)
+PY
+}
+
+# ctx_eligible_seats <need_tokens> — comma-joined "seat/tier" list of every
+# entry in scripts/seat_ctx.json whose window can hold need_tokens.
+ctx_eligible_seats() {
+    python3 - "$SCRIPT_DIR/seat_ctx.json" "$1" <<'PY'
+import json
+import sys
+
+path, need = sys.argv[1], int(sys.argv[2])
+with open(path) as f:
+    data = json.load(f)
+out = []
+for seat in sorted(data):
+    for tier in sorted(data[seat]):
+        window = data[seat][tier]
+        if isinstance(window, int) and window >= need:
+            out.append(f"{seat}/{tier}")
+print(",".join(out))
+PY
+}
+
+# E2 ctx-check: refuses (exit 66) when the task file's estimated token count
+# (bytes/4, already computed into INPUT_TOKENS_EST) exceeds the requested
+# seat/tier's declared context window.
+enforce_ctx_window() {
+    local window rc=0
+    window="$(ctx_window_for "$SEAT" "$TIER")" || rc=$?
+    if [ "$rc" -eq 2 ]; then
+        refuse 64 "ctx-check: scripts/seat_ctx.json is missing or invalid — cannot verify $SEAT/$TIER's context window (refusing rather than failing open)"
+    elif [ "$rc" -eq 1 ]; then
+        return 0  # seat/tier has no declared window in a VALID table: exempt, not a config error
+    fi
+    [ "$INPUT_TOKENS_EST" -le "$window" ] && return 0
+    local eligible
+    eligible="$(ctx_eligible_seats "$INPUT_TOKENS_EST")"
+    refuse 66 "ctx-check: $SEAT/$TIER context window is $window tokens, task is ~$INPUT_TOKENS_EST estimated tokens; eligible seats: ${eligible:-none}"
 }
 
 refuse() {
@@ -109,10 +259,15 @@ main() {
     UNTRACKED=0
     QUOTA_EXHAUSTED=false
     LOG_PATH=""
+    TIER=""
+    GEAR=""
+    ROLE=""
+    INPUT_TOKENS_EST=0
+    TIER_DOWNGRADED_FROM=""
 
     while [ "$#" -gt 0 ]; do
         case "$1" in
-            --seat|--worktree|--task-file|--tests|--effort|--timeout|--out)
+            --seat|--worktree|--task-file|--tests|--effort|--timeout|--out|--tier|--gear|--role)
                 [ "$#" -ge 2 ] || refuse 64 "missing value for $1"
                 case "$1" in
                     --seat) SEAT="$2" ;;
@@ -122,6 +277,9 @@ main() {
                     --effort) EFFORT="$2" ;;
                     --timeout) TIMEOUT_SECS="$2" ;;
                     --out) OUT_PATH="$2" ;;
+                    --tier) TIER="$2" ;;
+                    --gear) GEAR="$2" ;;
+                    --role) ROLE="$2" ;;
                 esac
                 shift 2
                 ;;
@@ -132,16 +290,79 @@ main() {
 
     local binary_name
     case "$SEAT" in
-        codex) binary_name="codex"; MODEL="codex-default" ;;
-        kimi) binary_name="kimi"; MODEL="kimi-code/kimi-for-coding" ;;
-        qwen) binary_name="qwen"; MODEL="qwen-default" ;;
+        codex)
+            binary_name="codex"
+            seat_tier_default codex terra
+            case "$TIER" in
+                sol|terra|luna) ;;
+                *) refuse 64 "invalid --tier for seat codex: $TIER (expected sol|terra|luna)" ;;
+            esac
+            MODEL="gpt-5.6-$TIER"
+            ;;
+        kimi)
+            binary_name="kimi"
+            seat_tier_default kimi coding
+            case "$TIER" in
+                k3) MODEL="kimi-code/k3" ;;
+                coding) MODEL="kimi-code/kimi-for-coding" ;;
+                highspeed) MODEL="kimi-code/kimi-for-coding-highspeed" ;;
+                *) refuse 64 "invalid --tier for seat kimi: $TIER (expected k3|coding|highspeed)" ;;
+            esac
+            ;;
+        agy)
+            binary_name="agy"
+            seat_tier_default agy flash
+            case "$TIER" in
+                flash|pro) ;;
+                *) refuse 64 "invalid --tier for seat agy: $TIER (expected flash|pro)" ;;
+            esac
+            MODEL="pending"  # finalized below, after the pro/flash ctx+role gate (R4)
+            ;;
+        qwen)
+            binary_name="qwen"; MODEL="qwen-default"
+            # unchanged: no tiers. Clear (not just ignore) a --tier the caller
+            # passed anyway, so the report never claims a tier qwen never used
+            # (codex-sol adversarial review, PR #5044: a stray --tier value
+            # would otherwise leak into telemetry/routing downstream).
+            TIER=""
+            ;;
+        tp1)
+            binary_name="$(tp1_binary_path)"; MODEL="${TP1_MODEL:-$TP1_DEFAULT_MODEL}"
+            # Forward-compatible with PR #5044's tier system (codex/kimi/agy
+            # sol/terra/luna-style tiers): tp1 has no tiers of its own — one
+            # OpenAI-compatible door per model slug — so clear (not just
+            # ignore) a stray --tier the same way qwen's arm does, so the
+            # report never claims a tier tp1 never used.
+            TIER=""
+            ;;
         "") refuse 64 "missing --seat" ;;
         *) refuse 64 "unknown seat: $SEAT" ;;
     esac
     [ -n "$WORKTREE" ] || refuse 64 "missing --worktree"
     [ -r "$TASK_FILE" ] || refuse 64 "missing or unreadable --task-file: $TASK_FILE"
-    case "$EFFORT" in low|medium|high|xhigh) ;; *) refuse 64 "invalid --effort: $EFFORT" ;; esac
+    case "$EFFORT" in low|medium|high|xhigh|max) ;; *) refuse 64 "invalid --effort: $EFFORT" ;; esac
     [[ "$TIMEOUT_SECS" =~ ^[1-9][0-9]*$ ]] || refuse 64 "invalid --timeout: $TIMEOUT_SECS"
+    case "$GEAR" in ""|1|2|3) ;; *) refuse 64 "invalid --gear: $GEAR (expected 1|2|3)" ;; esac
+
+    INPUT_TOKENS_EST=$(( $(wc -c < "$TASK_FILE" | tr -d '[:space:]') / 4 ))
+
+    if [ "$SEAT" = "agy" ]; then
+        if [ "$TIER" = "pro" ] && [ "$INPUT_TOKENS_EST" -le 200000 ] && [ "$ROLE" != "synthesis" ]; then
+            printf 'seat_build: R4 — agy/pro needs >200000 estimated input tokens or --role synthesis (got ~%s tokens, role=%s); downgrading to flash\n' \
+                "$INPUT_TOKENS_EST" "${ROLE:-none}" >&2
+            TIER_DOWNGRADED_FROM="pro"
+            TIER=flash
+        fi
+        case "$TIER" in
+            flash) MODEL="gemini-3.5-flash" ;;
+            pro) MODEL="gemini-3.1-pro" ;;
+        esac
+    fi
+
+    if [ -n "$TIER" ]; then
+        enforce_effort_cap
+        enforce_ctx_window
+    fi
 
     local git_dir
     git_dir="$(git -C "$WORKTREE" rev-parse --git-dir 2>/dev/null)" ||
@@ -167,11 +388,13 @@ main() {
     case "$SEAT" in
         codex)
             seat_argv=("$seat_binary" exec --sandbox workspace-write --skip-git-repo-check \
-                -c "model_reasoning_effort=$EFFORT" "$task_text")
-            task_index=7
+                -m "$MODEL" -c "model_reasoning_effort=$EFFORT" "$task_text")
+            task_index=9
             ;;
-        kimi) seat_argv=("$seat_binary" -p "$task_text" -m kimi-code/kimi-for-coding); task_index=2 ;;
-        qwen) seat_argv=("$seat_binary" -p "$task_text"); task_index=2 ;;
+        kimi) seat_argv=("$seat_binary" -p "$task_text" -m "$MODEL"); task_index=2 ;;
+        agy) seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --print-timeout 8m); task_index=2 ;;
+        qwen) seat_argv=("$seat_binary" -p "$task_text"); task_index=2 ;;  # unchanged
+        tp1) seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --effort "$EFFORT"); task_index=2 ;;
     esac
     strip_env_args=()
     stripped_names=()
@@ -201,7 +424,7 @@ main() {
         fi
         printf '\n' >&2
         collect_git_metrics
-        emit_report null true
+        emit_report null true ${display_argv[@]+"${display_argv[@]}"}
         exit 0
     fi
 

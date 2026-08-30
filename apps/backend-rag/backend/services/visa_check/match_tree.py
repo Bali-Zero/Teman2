@@ -297,6 +297,72 @@ _MAX_RESULTS: dict[Purpose, int] = {
 }
 
 
+#: Human-readable purpose names used inside referral explanations.
+#: Every `Purpose` must appear here — `test_every_purpose_has_a_label` enforces
+#: it, so a new purpose cannot ship with an explanation that names it `None`.
+_PURPOSE_LABEL: dict[Purpose, str] = {
+    Purpose.WORK_REMOTE: "remote work",
+    Purpose.INVESTOR: "investment",
+    Purpose.WORK_EMPLOYEE: "local employment",
+    Purpose.FAMILY: "family",
+    Purpose.LONG_TOURISM: "tourism",
+    Purpose.RETIREMENT: "retirement",
+    Purpose.STUDENT: "study",
+    Purpose.OTHER: "the purpose you chose",
+}
+
+
+def _covered_purposes_sentence() -> str:
+    """List the purposes this form can actually rank, as prose.
+
+    Derived from `Purpose` rather than hardcoded, so adding a purpose updates
+    the visitor-facing sentence instead of silently turning it into a lie.
+    """
+    labels = [_PURPOSE_LABEL[p] for p in Purpose if p is not Purpose.OTHER]
+    return f"{', '.join(labels[:-1])} and {labels[-1]}"
+
+
+def _explain_empty_ranking(purpose: Purpose, months: int, band: BudgetBand) -> str:
+    """Name the specific constraint that eliminated every candidate.
+
+    `_rank_for_purpose` can come back empty for two reasons that mean opposite
+    things to the visitor: the catalogue carries no visa for this purpose at
+    all, or it carries several but the budget filter excluded every one. A
+    single "no visa matches cleanly" for both hides the one fact the visitor
+    could act on, so each cause gets its own sentence and its own number.
+    """
+    tagged = [meta for meta in _get_visa_meta().values() if purpose in meta.purposes]
+
+    if not tagged:
+        return (
+            f"Our catalogue carries no visa tagged for {_PURPOSE_LABEL[purpose]}, so "
+            "there is nothing for us to rank — we would rather tell you that than hand "
+            "you a poor match. Indonesia's visa index is wider than this form: tell us "
+            "on WhatsApp what you will actually be doing here and we will name the route."
+        )
+
+    if not any(_budget_fits(meta, band) for meta in tagged):
+        # `_budget_fits` returns True whenever `min_budget_idr is None`, so if
+        # nothing fit then every tagged visa carries a minimum — `min()` below
+        # can never run over an empty sequence.
+        cheapest = min(
+            meta.min_budget_idr for meta in tagged if meta.min_budget_idr is not None
+        )
+        return (
+            f"Every {_PURPOSE_LABEL[purpose]} visa we rank carries a minimum-budget "
+            "requirement above the band you selected — the cheapest one starts at "
+            f"IDR {cheapest:,}. On WhatsApp we can work out whether a staged approach "
+            "gets you there, or whether a different route fits what you have today."
+        )
+
+    return (
+        f"We hold {len(tagged)} {_PURPOSE_LABEL[purpose]} route(s), and none of them "
+        f"came through our ranking for a {months}-month stay at your budget band. That "
+        "combination is unusual enough that it deserves a person rather than a form — "
+        "15 minutes on WhatsApp."
+    )
+
+
 def recommend_visa(
     *,
     nationality: str,
@@ -311,6 +377,13 @@ def recommend_visa(
     2. Under-budget investors refer (E28A, D12, E33G all require budget).
     3. Tourism > 6 months refers (Indonesian tourism visas cap at ~180d).
     4. Everything else: filter VISA_META by purpose tag, score, top-N.
+
+    Invariant on every referral (ruled by Zero, 2026-08-28): the reason must
+    name the specific constraint that blocked us — quoting the stay length,
+    the purpose, or a real IDR figure — and must tell the visitor where to go
+    next. A generic "your case needs a conversation" is not an explanation.
+    Enforced across the whole input space by
+    `tests/services/visa_check/test_match_tree_referral_reasons.py`.
     """
     del nationality  # reserved for future visa-waiver rules
     months = max(1, min(60, int(duration_months)))
@@ -321,9 +394,13 @@ def recommend_visa(
             pre_arrival_steps=[],
             referral_mode=True,
             referral_reason=(
-                "Your case has specifics we don't capture in a 4-step form. "
-                "A 15-minute WhatsApp review with our visa team is faster than "
-                "any guess we could make here."
+                f"This form ranks visas for {_covered_purposes_sentence()} — you told "
+                "us none of those is your reason for coming. The visa follows the "
+                "activity, so we will not reverse-engineer one from a duration and a "
+                f"budget. We do have your {months}-month horizon and your budget band; "
+                "what is missing is what you will actually be doing in Indonesia. "
+                "That is one question on WhatsApp, and the official index names far "
+                "more categories than a four-step form can ask about."
             ),
         )
 
@@ -336,7 +413,8 @@ def recommend_visa(
                 f"Indonesia's tourism visas max out at ~180 days. For a "
                 f"{months}-month stay, we need a non-tourism route (investor, "
                 "digital nomad, retirement) that matches what you actually "
-                "plan to do here."
+                "plan to do here. Tell us on WhatsApp which of those fits and "
+                "we will name the visa."
             ),
         )
 
@@ -348,8 +426,8 @@ def recommend_visa(
             referral_reason=(
                 "Investor routes (E28A, D12, E33G) all have minimum-capital or "
                 "savings requirements that a sub-IDR 50M budget does not meet. "
-                "Let's talk through what kind of business you want to open — "
-                "there may be a staged approach."
+                "Let's talk through what kind of business you want to open on "
+                "WhatsApp — there may be a staged approach."
             ),
         )
 
@@ -365,10 +443,7 @@ def recommend_visa(
             ranking=[],
             pre_arrival_steps=[],
             referral_mode=True,
-            referral_reason=(
-                "No visa in our catalogue matches this combination cleanly. "
-                "Let's review the details on WhatsApp."
-            ),
+            referral_reason=_explain_empty_ranking(purpose, months, budget_band),
         )
 
     return MatchResult(

@@ -1,0 +1,158 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: |
+  docs/plans/2026-08-29-beyond-sota-craft-wave/L07-deploy-release-prove-live.md PR-1, handed to
+  Squad W per BATTLE-PLAN §2 ("every .github/workflows/ edit — from ANY lane — is executed by
+  Squad W" as a serialized mini-PR, auto-merge OFF, conductor merges on gates-green). Squad P's
+  handoff evidence was treated as a LEAD and re-measured independently here.
+lanes:
+  - lane: craft-w-h1-smoke-blocking
+    role: build
+    seat: |
+      claude-opus-5 (this session, xhigh) — re-measured the handoff's licensing evidence at JOB
+      level, established the blast radius by PARSING tests.yml, checked every reference to the old
+      job name before renaming, and authored the diff
+  - lane: craft-w-h1-smoke-blocking-refute
+    role: review
+    seat: |
+      cross-family non-Anthropic seat on the finished diff with its own file access,
+      generator != grader
+seat_diversity: satisfied
+seat_diversity_note: |
+  One build lane, so D3's >=2-build-lane non-Anthropic requirement does not bind. The review seat
+  is cross-family and non-Anthropic, dispatched on the finished diff rather than on a description
+  of it.
+diff: |
+  One file, three edits: `continue-on-error: true` removed, the job's `name:` loses its
+  "(advisory)" suffix, and the comment block above it is rewritten to describe what the flip does
+  and — more importantly — what it does not do. `evidence_pack_lint.py --print-measured` emits the
+  figure; it is not counted by hand.
+
+  BEHAVIOUR CHANGE, stated narrowly because the narrowness is the point: the workflow RUN
+  conclusion stops reporting success when this job's steps fail. The job's own check-run conclusion
+  is UNCHANGED — it was already `failure` on a failed step, measured, and `continue-on-error` never
+  altered that. Merge blocking is UNCHANGED: governed by branch protection, where this job is
+  absent.
+receipts:
+  - claim: |
+      LICENSING EVIDENCE, MEASURED INDEPENDENTLY AT JOB LEVEL. The handoff reported 52 success / 6
+      cancelled / 0 failure over 60 runs. This lane did not take that on trust and ran its own
+      census over the last 40 tests.yml runs, reading each run's JOBS (never the run conclusion —
+      that misreading is what hid this job's August failure for ~30 hours).
+    cmd: 'gh run list --workflow=tests.yml --limit 40 --json databaseId | while read id; do gh api repos/.../actions/runs/$id/jobs --jq ''.jobs[]|select(.name|startswith("Visa Oracle fullstack smoke"))|.conclusion''; done | sort | uniq -c'
+    result: "37 success, 3 cancelled, 0 failure"
+    exit: 0
+    ts: "2026-08-29T11:42:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim: |
+      THE REPO ALSO CONTAINS THE OPPOSITE CLAIM, AND BOTH ARE TRUE OF THEIR OWN MOMENT. Two
+      PENDING-ARMS rows (2026-08-24, 2026-08-25) state this job "has failed 100% of runs for ~30
+      hours and passed exactly once — on the PR that introduced it". Those are dated four and five
+      days before the handoff. The contradiction is chronological, not factual, and the flip is
+      licensed by the CURRENT measurement — which is exactly why the census above was re-run rather
+      than inherited.
+    cmd: "grep -rn 'Visa Oracle fullstack smoke' .claude/skills/modus/PENDING-ARMS.md"
+    result: "two rows, both describing the August red period; their proof-of-armed condition (job-level success on >=2 consecutive runs + a guilt check) is now satisfied"
+    exit: 0
+    ts: "2026-08-29T11:41:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim: |
+      BLAST RADIUS ESTABLISHED BY PARSING, NOT GREP. A `needs:` list spanning multiple lines is
+      invisible to a single-line grep, and a dependent job would mean the flip changes halt
+      behaviour too, not just reporting.
+    cmd: 'python3 -c "import yaml; d=yaml.safe_load(open(''.github/workflows/tests.yml'')); print([n for n,x in d[''jobs''].items() if ''visa-oracle-fullstack-smoke'' in (x.get(''needs'') or [])])"'
+    result: "[] — zero dependents; and no other workflow in the tree references the job at all"
+    exit: 0
+    ts: "2026-08-29T11:38:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim: |
+      THE RENAME IS SAFE BECAUSE NOTHING IN CI CONFIG BINDS THE OLD STRING. Checked before renaming,
+      not after: the only hits are prose in historical evidence packs, a research capture and the
+      PENDING-ARMS rows — records of what was true when written, correctly untouched.
+    cmd: "grep -rn 'Visa Oracle fullstack smoke' --include='*.json' --include='*.yml' --include='*.yaml' --include='*.py' --include='*.sh' --include='*.md' . ; grep -n fullstack infra/required.d/contexts.json"
+    result: "no hit in any workflow, script or the tracked required-contexts snapshot; contexts.json has no 'fullstack' entry"
+    exit: 0
+    ts: "2026-08-29T11:40:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim: "The edited workflow is schema-valid and the job's post-edit shape is what was intended."
+    cmd: "actionlint .github/workflows/tests.yml ; then re-parse the job's name / continue-on-error / dependents"
+    result: "actionlint rc=0; name='Visa Oracle fullstack smoke', continue-on-error=None, dependents=NONE"
+    exit: 0
+    ts: "2026-08-29T11:44:00Z"
+    seat: "claude-opus-5 (build lane)"
+receipts_addendum: |
+  NOT A RECEIPT, AND SAID SO: the guilt proof (a deliberately malformed evaluate response producing
+  a red FOR THAT CAUSE) was performed by Squad P on Mini and is NOT reproduced by this lane. It is
+  cited as theirs in `dissent` above, never as a measurement of mine.
+pii_scan: clean
+pii_note: |
+  A CI workflow edit. No client data, no credentials, no PII. The job's own steps are unchanged.
+dissent:
+  - status: CONFIRMED
+    seat: "codex-gpt-5.6-sol (review lane)"
+    objection: |
+      HIGH — "changes exactly ONE thing / Nothing else" is false. Zero `needs:` dependents is true,
+      but a run conclusion is itself an input: `main-red-breaker.yml` intersects the SET OF FAILING
+      JOB NAMES across consecutive runs (`run0 & run1`), so the RENAME breaks that correlation for
+      exactly one cycle — a genuinely repeated failure spanning this commit is reported late. No
+      string search could find this: the consumer binds the name at RUNTIME.
+    disposition: |
+      ACCEPTED and CONFIRMED by reading main-red-breaker.yml myself. This is the finding of the
+      round and it is the kind my own method missed — I searched for the old string and concluded
+      "no binding", which answers a narrower question than "does anything depend on this name".
+      The rename is KEPT (leaving "(advisory)" on a non-advisory job is its own lie) and the
+      one-cycle cost is now DECLARED in the workflow comment, so whoever sees a late alert knows why.
+  - status: CONFIRMED
+    seat: "codex-gpt-5.6-sol (review lane)"
+    objection: |
+      MEDIUM — `test-summary` needs six jobs and not this one, so it prints "✅ Test Results" inside
+      a workflow whose conclusion is now red. The flip makes that contradiction operationally louder.
+    disposition: |
+      ACCEPTED, verified by parsing (`needs: [backend-tests, mcp-tests, evaluator-critical-tests,
+      frontend-tests, packages-core-tests, e2e-tests]`). Declared in the comment, NOT fixed: widening
+      test-summary's `needs:` is a different concern with its own blast radius, and this PR is a
+      three-line flip. The contradiction pre-dates the change; the flip makes it visible.
+  - status: CONFIRMED
+    seat: "codex-gpt-5.6-sol (review lane)"
+    objection: |
+      MEDIUM — the comment asserts the 3 cancellations were "superseded pushes", a CAUSE the census
+      never collected; and it calls branch-protection promotion a "ruleset action" when `main` uses
+      CLASSIC branch protection, which is a different API and a different settings page.
+    disposition: |
+      BOTH ACCEPTED and FIXED. The cancellations are now reported as cancellations with no cause
+      attributed — the census collected conclusions, not causes, and inventing the reason is the
+      same error class this whole PR is about. "ruleset" corrected to the classic mechanism.
+  - status: CONFIRMED
+    seat: "codex-gpt-5.6-sol (review lane)"
+    objection: |
+      HIGH — the guilt proof the plan requires (break the evaluate route, get red for THAT cause) is
+      not present. The pack's probe for it is a grep of a ledger. 37 green prove AVAILABILITY, not
+      SENSITIVITY.
+    disposition: |
+      ACCEPTED AS TRUE and NOT SATISFIED HERE — stated plainly rather than argued away. Squad P
+      performed that mutation locally on Mini (4x `"state": "HUMAN_REVIEW_REQUIRED"` ->
+      `"GUILT_FIXTURE_MALFORMED"` in evaluate_path.py, giving `1 failed`, exit 1, logged at
+      /tmp/p_smoke_guilt.log) and this lane did NOT reproduce it. Citing another lane's measurement
+      as if it were mine is precisely the failure this wave keeps finding, so it is attributed
+      instead. What THIS lane proved is availability plus execution: the job present in 40/40 runs
+      and its own smoke step concluding success. Whether that is sufficient licensing for the flip
+      is the conductor's call, and the evidence for both halves is here to make it on.
+
+tests: |
+  No test corpus ships with this diff, and that is a real gap rather than an oversight worth
+  hiding: the assertion "this job carries no continue-on-error and nothing needs it" is exactly the
+  shape a static workflow pin could hold, and this repo already has that pattern
+  (scripts/tests/test_hermetic_census.py's E1 group pins a workflow's trigger lists the same way).
+  It is not added here because the pin belongs with the branch-protection promotion that would make
+  the job load-bearing — an operator/Zero action this lane does not take — and a pin that guards a
+  property nobody depends on yet is the "guard nobody proved bites" shape. Named so the next lane
+  inherits the decision rather than rediscovering the gap.
+static: |
+  `actionlint .github/workflows/tests.yml` rc=0. Job re-parsed after the edit with PyYAML to
+  confirm `name`, absent `continue-on-error`, and an empty dependent set.
+notes: |
+  What this PR deliberately does NOT do, restated because the job's own comment says confusing the
+  two is the mistake: it does not make the smoke block a merge. Branch protection governs that, the
+  job's name is absent from it, and promoting it is an operator/Zero ruleset action (L07
+  Needs-ruling 7). If that promotion is ever made, the string to register is
+  `Visa Oracle fullstack smoke` — without the suffix this PR removed.

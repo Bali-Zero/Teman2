@@ -249,6 +249,41 @@ function defaultCoverImage(category: ArticleCategory): string {
 }
 
 /**
+ * An MDX article's cover: what frontmatter states, or the category's cover.
+ *
+ * What it replaced was `frontmatter.coverImage || frontmatter.image?.src ||
+ * `/static/blog/${folder}/${slug}.jpg`` — a guess nobody verified. Measured
+ * across the corpus on 2026-08-27, 57 articles in six folders emitted a path
+ * with no file behind it, so `/_next/image` answered 400: 30 fell through to
+ * the per-slug guess (their images had been generated into a different tree,
+ * `static/insights/`, which that line never looked at) and 27 named a cover
+ * explicitly that is not in the repo under any path. `/news` showed three of
+ * them because it lists one page.
+ *
+ * The tempting fix — stat the candidates and keep the one that exists — was
+ * built, and is wrong HERE, which is worth recording so it is not rebuilt:
+ * `next.config.ts` excludes `./public/static/**` from serverless tracing
+ * (public/ is 537MB, the function limit is 300MB) while explicitly including
+ * `src/content/articles/**`. In the Vercel function the articles are present
+ * and the images are NOT, so `existsSync` would answer false for every cover
+ * and quietly collapse all ~3,300 articles onto their category default. A
+ * runtime existence check cannot be honest in this deployment.
+ *
+ * So the guess is simply gone. Frontmatter is the authority; when it is silent
+ * the article gets its category cover, a file we ship. The paths frontmatter
+ * DOES state are held true by a corpus test that runs in CI, where public/ is
+ * present — see `resolveCoverImage.test.ts`. That is the right place for the
+ * check: a build-time fact, proven once, instead of a per-request stat that
+ * production cannot answer.
+ */
+export function resolveCoverImage(
+  explicit: string | null | undefined,
+  category: ArticleCategory,
+): string {
+  return explicit || defaultCoverImage(category);
+}
+
+/**
  * Derive the homepage-card (16:10) variant path from a news cover image.
  * The poller writes `/static/news/{slug}.jpg` (hero) + `/static/news/{slug}_card.jpg`
  * (card). When an explicit cardImage isn't in frontmatter, derive it only for the
@@ -553,10 +588,10 @@ async function getMdxArticleBySlug(
       ? cleanExcerpt(frontmatter.excerpt)
       : extractBodyExcerpt(content),
     content: content,
-    coverImage:
-      frontmatter.coverImage ||
-      frontmatter.image?.src ||
-      `/static/blog/${actualFolderCategory}/${slug}.jpg`,
+    coverImage: resolveCoverImage(
+      frontmatter.coverImage || frontmatter.image?.src,
+      normalizeCategory(frontmatter.category || category),
+    ),
     cardImage:
       frontmatter.cardImage ||
       deriveCardImage(frontmatter.coverImage || frontmatter.image?.src),
@@ -679,10 +714,10 @@ export async function getArticleByLocale(
           ? cleanExcerpt(frontmatter.excerpt)
           : extractBodyExcerpt(content),
         content,
-        coverImage:
-          frontmatter.coverImage ||
-          frontmatter.image?.src ||
-          `/static/blog/${folder}/${slug}.jpg`,
+        coverImage: resolveCoverImage(
+          frontmatter.coverImage || frontmatter.image?.src,
+          normalizeCategory(frontmatter.category || category),
+        ),
         cardImage:
           frontmatter.cardImage ||
           deriveCardImage(frontmatter.coverImage || frontmatter.image?.src),

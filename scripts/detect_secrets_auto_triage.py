@@ -528,6 +528,24 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "content-derived sha256 of a public Bali Zero policy source, "
         "not a credential",
     ),
+    # Evidence Pack `diff.measured_at` field (harness-v2 evidence packs,
+    # scripts/evidence_pack_lint.py) — a short or full git commit SHA the
+    # pack author recorded as "which merge-base this diff was measured
+    # against". A 7-40 char lowercase-hex commit hash reads as a "Hex High
+    # Entropy String" to detect-secrets on every single evidence pack this
+    # repo produces (found 2026-08-27, PR #5054's own pack tripped it).
+    # Path-keyed to per-task pack.yml files under evidence/<month>/<slug>/
+    # (never the whole evidence/ tree — that also holds brief.yml, which
+    # this rule does not scope, and other pack fields that DO need human
+    # eyes), content-keyed to the exact `measured_at:` assignment so an
+    # unrelated real secret added to the SAME file on a different line is
+    # still left unaudited.
+    (
+        re.compile(r"(^|/)evidence/[^/]+/[^/]+/pack\.yml$"),
+        re.compile(r"^\s*measured_at:\s*[0-9a-f]{7,40}\s*$"),
+        "Evidence Pack diff.measured_at: a git commit SHA (merge-base "
+        "the diff was measured against), not a credential",
+    ),
 ]
 
 # Each rule is (pattern, reason). The pattern matches the file path

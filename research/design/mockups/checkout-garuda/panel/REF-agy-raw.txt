@@ -1,0 +1,106 @@
+### 1. The "PNBP" Acronym Introduces Alien Bureaucratic Friction
+* **Severity:** HIGH
+* **Vulnerability:** The line `Government charges: IDR 5XX.XXX (PNBP, set by the state) — included in the total above, not added to it` fails Western/international tourist mental models. First-time tourists arriving in Bali do not know what *Penerimaan Negara Bukan Pajak (PNBP)* means. To an English speaker, an unexplained Indonesian legal acronym placed next to a masked money figure looks like suspicious internal jargon or a faux-official obfuscation tactic used by scam sites trying to sound official.
+* **Refutation of Design Judgment:** The design report claims this "makes the guardrail's point FOR the reader." In practice, it forces cognitive translation at the exact moment of payment anxiety.
+* **Counter-Proposal:** Strip the acronym entirely. Use standard cross-border consumer taxonomy:
+  > `"Official government fee: IDR 500,000 (mandated by Indonesian Immigration) — included in total, not added at checkout."`
+
+---
+
+### 2. WhatsApp Talk-First Card Pattern-Matches Bali "Calo" Operations
+* **Severity:** HIGH
+* **Vulnerability:** The card `"Prefer to talk it through first? Our team answers on WhatsApp within {SLA} — before you pay, not after. Message us →"` placed directly on the checkout surface triggers the exact scam pattern it tries to alleviate. In Bali, unregulated visa middlemen (*calo* / Instagram brokers) operate almost exclusively via direct WhatsApp chats, demanding upfront payment or passport photos without a formal merchant gateway. 
+* **Funnel Leakage:** Offering an escape hatch to WhatsApp *on the checkout page* diverts users who were seconds away from paying into an asynchronous, manual chat queue, radically increasing drop-off and support overhead.
+* **Counter-Proposal:** 
+  1. Remove the standalone "talk-first" card above the CTA.
+  2. Subordinate WhatsApp to a contextual fallback inside the trust/support footer:
+     > `"Need help before completing? Chat with verified support: [WhatsApp Support] (PT {LEGAL_NAME})"`
+  3. Ensure the link carries the session ID / draft order ID in the pre-filled message so it doesn't degrade into an untracked support inquiry.
+
+---
+
+### 3. Total Absence of Refund Policy and Rejection Contingency
+* **Severity:** HIGH
+* **Vulnerability:** The report references A7’s carried demand (*"total, inclusions, refund, time above the pay button"*), yet the mockup contains **zero mention of refund terms**. For a scam-wary traveler paying a private agency, the #1 lingering fear at checkout is: *"What happens if my visa is rejected, if I entered incorrect details, or if the website takes my money and vanishes?"*
+* **Refutation of Design Judgment:** Concealing the refund contract until the post-payment receipt is a doctrine failure that directly fuels 5-quits checkout abandonment.
+* **Counter-Proposal:** Add a concise refund and guarantee line directly inside the Price Card or "What happens after you pay":
+  > `"100% Service Fee Refund if rejected by immigration or not processed within {SLA}. (Government statutory fee non-refundable per Ditjen Imigrasi regulations)."`
+
+---
+
+### 4. Currency Shock (IDR Denomination Friction Without Foreign Anchor)
+* **Severity:** HIGH
+* **Vulnerability:** The checkout displays only `IDR 8XX.XXX` with the vague footer `Paying in another currency? Your bank's FX rate applies · {FX_POLICY}`. Foreign tourists (AUD, USD, EUR, GBP) experience severe "zero shock" when seeing hundreds of thousands of Rupiah. Without an approximate local currency conversion, users leave checkout to open a currency converter app or browser tab—a primary vector for session death and competitor poaching.
+* **Counter-Proposal:** Under the IDR figure, display an indicative foreign currency equivalent calculated via real-time mid-market rate:
+  > **IDR 8XX,XXX** [REDACTED at archive time: the seat's invented example figure coincided with a real bundle price — masking rule, PricingTool sole source] `(~ $55 USD / ~ $85 AUD)`  
+  > `<span class="fx-note">Billed in IDR. Final conversion rate set by your card issuer.</span>`
+
+---
+
+### 5. Informational Rail Badges Confuse International Cardholders
+* **Severity:** MED
+* **Vulnerability:** Rendering badges for `QRIS`, `Virtual Account · BCA`, and `Virtual Account · Mandiri` on an English-language tourist checkout is anti-reassuring. Over 95% of incoming Western tourists do not have Indonesian bank accounts, BCA/Mandiri access, or QRIS-enabled e-wallets. Highlighting domestic Indonesian clearing rails makes the checkout look like an internal Indonesian B2B/domestic portal rather than an international service tailored for foreign tourists. Worse, international cardholders wonder if standard Visa, Mastercard, or Apple Pay/Google Pay are supported.
+* **Refutation of §6.2:** While demoting a non-functional selector to badges is correct (honest controls doctrine), showing hyper-localized domestic rails prominently without international payment schemes creates uncertainty.
+* **Counter-Proposal:** Prioritize badges by tourist demographic:
+  > `Accepted on payment page: [Visa] [Mastercard] [Apple Pay / Google Pay] [QRIS / Indo Bank Transfer]`
+
+---
+
+### 6. "What Happens After You Pay" Omits the Final Deliverable
+* **Severity:** MED
+* **Vulnerability:** Step 3 currently reads: `"We prepare and submit your application — {PROCESSING_WINDOW}. If anything needs a human, our team messages you on WhatsApp within {SLA}."`  
+  This ends on an error state / exception path rather than the primary value proposition: receiving the official approved eVisa document. The user is left wondering: *How do I get the actual visa? Do I print it? Is it a PDF? Is it linked to my passport?*
+* **Counter-Proposal:** Reframe Step 3 around delivery and clear arrival instructions:
+  > `3. We process and verify with Ditjen Imigrasi ({PROCESSING_WINDOW}). Your official electronic visa (PDF & QR code) is delivered directly to your email and WhatsApp, ready for Bali airport e-gates.`
+
+---
+
+### 7. Over-Defensive Microcopy Increases Scam Suspicion (Noise vs. Reassurance)
+* **Severity:** MED
+* **Vulnerability:** The page is littered with defensive, meta-justification text:
+  - `"Everything below can still change — nothing is sent to immigration until after payment."`
+  - `"Total — the same number you saw at your result"`
+  - `"Why we ask for the two fields below: ... Nobody else sees them."`
+  
+  When an interface repeatedly insists *"we aren't scamming you, we haven't sent this yet, this is the same number, nobody else sees your email"*, it violates standard commercial confidence heuristics. Legitimate enterprise checkouts (e.g., airlines, official transit portals) project authority through clean, professional structure, not insecure over-explanation.
+* **Counter-Proposal:** Tighten copy to authoritative, concise microcopy:
+  - Header subtext: `"Review your information before proceeding to secure payment."`
+  - Contact fields: `"Contact details for visa delivery and order tracking."`
+  - Price header: `"Order Summary"` (drop the defensive self-reference to the previous screen).
+
+---
+
+### 8. Legal Disclaimer of Non-Government Status is Obscured in Footer
+* **Severity:** MED
+* **Vulnerability:** The disclaimer `"We prepare your application; Ditjen Imigrasi decides and issues."` is hidden at the bottom of the page in small muted text (`--t-small`, `--ink-soft`). 
+  - To be compliant with Google Ads merchant policies and international consumer protection standards (FTC / UK CMA / Australian ACCC for visa assistance services), private agencies must prominently disclose that they are a private commercial entity not affiliated with the government.
+  - If a user feels deceived post-charge into thinking this was `evisa.imigrasi.go.id`, chargeback rates spike drastically.
+* **Counter-Proposal:** Place a standardized, high-contrast banner above the fold or in the Price Card:
+  > `GARUDA is an independent visa agency assisting travelers with Indonesian immigration applications. Applications can also be submitted independently on official government portals (evisa.imigrasi.go.id).`
+
+---
+
+### 9. Mobile Viewport Squashing & Sticky CTA Collision
+* **Severity:** LOW
+* **Vulnerability:** The mockup targets a 390px viewport with a fixed bottom CTA (`.cta-wrap` with `min-height: 2.75rem` + `.window` note + padding) combined with 3 bulky cards and a 4-line trust footer. On devices with soft navigation bars or small screens (iPhone SE, standard Androids), the sticky bar conceals almost 30% of the active reading area, and focusing on the `#ck-email` or `#ck-phone` input fields triggers virtual keyboard scroll jank that masks the price context.
+* **Counter-Proposal:**
+  - Collapse the review card into a single compact summary table.
+  - Reduce vertical margins from `margin-bottom: 1rem` to `.5rem` on mobile.
+  - Add `padding-bottom: 9rem` to `.ck` to prevent the sticky footer from permanently obscuring the legal trust footer.
+
+---
+
+### 10. Audit of §6 Declarations & Alternatives
+
+| Declaration | Soundness | Evaluation of Rejected Alternative | Verdict |
+| :--- | :--- | :--- | :--- |
+| **§6.1 (Price on checkout)** | **SOUND** | Alternative (verdict + PSP only) correctly rejected. Withholding total price on the penultimate screen violates basic e-commerce standards and spikes abandonment. | **ACCEPTED** |
+| **§6.2 (Rails as badges)** | **PARTIALLY SOUND** | Alternative (fake interactive selector) correctly rejected as dishonest. However, the chosen badge implementation fails by featuring domestic Indonesian rails over tourist payment methods (Visa/Mastercard/Apple Pay). | **AMEND** (re-order and re-badge for international audience). |
+| **§6.3 (Team-control module)** | **SOUND** | Alternative (named person placeholder without backend verification) correctly rejected under R6/R7 verifiability doctrine. Stock photos / fake agent names trigger deep distrust among savvy travelers. | **ACCEPTED** |
+
+---
+
+### Summary of Missing Structural Elements
+1. **Terms of Service & Privacy Policy Checkbox / Consent Statement:** Mandatory before payment gateway dispatch under Indonesian PDP Law (UU No. 27/2022 on Personal Data Protection) and PSP compliance.
+2. **Passport Expiry Validity Warning:** Must re-confirm that the user’s passport has at least 6 months validity from arrival date before accepting payment.
+3. **Multi-Applicant / Group Indicator:** No UI affordance exists if a user is purchasing VOAs for a spouse or family traveling together.

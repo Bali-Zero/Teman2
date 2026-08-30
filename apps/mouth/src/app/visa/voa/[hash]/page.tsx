@@ -6,6 +6,7 @@ import {
   AppShareBar,
   AppStampReveal,
   AppWhatsAppCTA,
+  useFunnelApp,
 } from "@balizero/core";
 import { formatIDR } from "@balizero/core/utils";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
@@ -87,6 +88,7 @@ export default function VoaResultPage({
 }: {
   params: Promise<{ hash: string }>;
 }) {
+  const tracker = useFunnelApp("visa_voa", { trackView: false });
   const stampRef = useRef<HTMLDivElement | null>(null);
   const [hash, setHash] = useState<string | null>(null);
   const [data, setData] = useState<VoaResult | null>(null);
@@ -109,11 +111,16 @@ export default function VoaResultPage({
           );
           return;
         }
-        setData((await res.json()) as VoaResult);
+        const result = (await res.json()) as VoaResult;
+        setData(result);
+        // Verdict + price shown together (they render on the same screen) —
+        // one event covers both funnel steps the mandate names.
+        tracker.resultViewed(hash);
       } catch {
         setErr("Network error. Please try again.");
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hash]);
 
   if (err) {
@@ -198,6 +205,9 @@ export default function VoaResultPage({
               {edu.routeKind === "oracle" ? (
                 <a
                   href="/visa/match"
+                  onClick={() =>
+                    tracker.ctaClicked("try_visa_match", "/visa/match")
+                  }
                   style={{
                     display: "inline-block",
                     textAlign: "center",
@@ -219,6 +229,9 @@ export default function VoaResultPage({
                 )}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() =>
+                  tracker.ctaClicked("continue_on_whatsapp_decline", "wa.me")
+                }
                 style={{
                   display: "inline-block",
                   textAlign: "center",
@@ -238,7 +251,7 @@ export default function VoaResultPage({
         <AppShareBar
           url={publicUrl}
           title="Bali Zero — Visa on Arrival check"
-          onShare={() => {}}
+          onShare={(c) => tracker.shareClicked(c)}
         />
       </AppFrame>
     );
@@ -282,11 +295,12 @@ export default function VoaResultPage({
         defaultLabel="Continue on WhatsApp →"
         postScrollLabel="Continue on WhatsApp →"
         stampRef={stampRef}
+        onCaptured={({ leadIntentId }) => tracker.whatsappHandoff(leadIntentId)}
       />
       <AppShareBar
         url={publicUrl}
         title="Bali Zero — Visa on Arrival"
-        onShare={() => {}}
+        onShare={(c) => tracker.shareClicked(c)}
       />
     </AppFrame>
   );
@@ -300,6 +314,7 @@ export default function VoaResultPage({
  * and this form must not create a second oracle on top of that.
  */
 function MagicLinkRequestForm({ resultId }: { resultId: string }) {
+  const tracker = useFunnelApp("visa_voa", { trackView: false });
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
     "idle",
@@ -308,6 +323,7 @@ function MagicLinkRequestForm({ resultId }: { resultId: string }) {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus("sending");
+    let httpStatus: number | null = null;
     try {
       const res = await fetch("/api/visa/voa/auth/magic-links", {
         method: "POST",
@@ -320,9 +336,19 @@ function MagicLinkRequestForm({ resultId }: { resultId: string }) {
         body: JSON.stringify({ result_id: resultId, email }),
         credentials: "include",
       });
-      setStatus(res.status === 202 ? "sent" : "error");
+      httpStatus = res.status;
+      if (res.status === 202) {
+        setStatus("sent");
+        // The CTA that continues the money funnel — never the email
+        // address itself, only that a request happened.
+        tracker.emailSubscribed("voa_magic_link_request");
+      } else {
+        setStatus("error");
+        tracker.formSubmitFailed("/api/visa/voa/auth/magic-links", httpStatus);
+      }
     } catch {
       setStatus("error");
+      tracker.formSubmitFailed("/api/visa/voa/auth/magic-links", httpStatus);
     }
   };
 

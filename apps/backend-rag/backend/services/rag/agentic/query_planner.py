@@ -440,8 +440,34 @@ class QueryPlanner:
             if kw in query_lower:
                 scores[QueryDomain.NEWS] += 1
 
-        # Pick highest scoring domain
+        # Pick highest scoring domain. GREETING must never outrank a
+        # substantive domain: its +3 weight exists to win a BARE greeting
+        # ("Halo!") against near-zero noise, not to erase a real question
+        # that happens to open with "Halo, ..." — a greeting prefix must
+        # not overwrite the correct classification of the substance that
+        # follows it. Client-facing incident 2026-08-28: wa_outbox #348
+        # fell off with `package_unbuildable` (the stored value collapses
+        # three sub-reasons; the specific one was not recoverable — the
+        # log line naming it had already expired), retried 5 times against
+        # this same deterministic classifier, and hard-failed into the
+        # terminal apology. The message text itself was never read (client
+        # data); the mechanism was reproduced with SYNTHETIC strings — a
+        # greeting prefix in front of generic domain words with no entity
+        # code (KITAS/NPWP/PT PMA/...) classifies GREETING, which maps to
+        # zero collections. If any non-greeting domain scored above zero,
+        # GREETING is excluded from the max — a bare greeting (no other
+        # domain scoring) is unaffected and still wins GREETING.
         best_domain = max(scores, key=lambda d: scores[d])
+        if best_domain == QueryDomain.GREETING:
+            non_greeting_scores = {
+                d: s for d, s in scores.items() if d != QueryDomain.GREETING
+            }
+            best_non_greeting = max(
+                non_greeting_scores, key=lambda d: non_greeting_scores[d]
+            )
+            if non_greeting_scores[best_non_greeting] > 0:
+                best_domain = best_non_greeting
+
         if scores[best_domain] > 0:
             return best_domain
 

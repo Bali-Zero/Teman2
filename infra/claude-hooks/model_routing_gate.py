@@ -136,6 +136,13 @@ import shlex
 import sys
 from pathlib import Path
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from gate_coverage import record as _gc_record
+except Exception:
+    def _gc_record(hook_name, decision, payload=None):
+        pass
+
 USER_AGENTS = Path.home() / ".claude" / "agents"
 FRONTMATTER_MODEL_RE = re.compile(r"^model\s*:\s*\S", re.MULTILINE)
 
@@ -573,16 +580,19 @@ def main() -> int:
     try:
         payload = json.load(sys.stdin)
     except (json.JSONDecodeError, ValueError):
+        _gc_record("model_routing_gate", "exempt", None)
         return 0
 
     # Fix (2026-08-22): valid JSON that isn't a dict (`[]`, `"text"`, `null`,
     # `42`) used to crash on the next line's `.get` — genuine unhandled
     # AttributeError, before any try/except in this function. Fail open.
     if not isinstance(payload, dict):
+        _gc_record("model_routing_gate", "exempt", payload)
         return 0
 
     tool_input = payload.get("tool_input") or {}
     if not isinstance(tool_input, dict):
+        _gc_record("model_routing_gate", "exempt", payload)
         return 0
 
     # Field-CLASS fix (2026-08-22, final round). Every externally-supplied
@@ -636,20 +646,25 @@ def main() -> int:
             "dal workflow (RULED 2026-08-20).",
             file=sys.stderr,
         )
+        _gc_record("model_routing_gate", "deny", payload)
         return 2
 
     if not model:
         # Allowed via "fork" or a frontmatter pin, not via an explicit model
         # string on this call — Rule 2 classifies strictly on tool_input.model
         # (see module docstring), so there is nothing for it to count here.
+        _gc_record("model_routing_gate", "allow", payload)
         return 0
 
     try:
-        return _apply_routing_floor(payload, tool_input, model, cwd)
+        verdict = _apply_routing_floor(payload, tool_input, model, cwd)
+        _gc_record("model_routing_gate", "deny" if verdict == 2 else "allow", payload)
+        return verdict
     except Exception:
         # Rule 2 is a routing/economy guard, not a safety boundary — a bug in
         # it must never paralyze the harness. Rule 1's verdict above already
         # stands regardless of what happens here.
+        _gc_record("model_routing_gate", "exempt", payload)
         return 0
 
 

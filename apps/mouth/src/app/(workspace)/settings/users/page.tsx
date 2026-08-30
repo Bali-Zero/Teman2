@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
+import { useSessionState } from "@/hooks/useSessionState";
 import { logger } from "@/lib/logger";
 
 interface TeamMember {
@@ -32,6 +33,7 @@ interface TeamMember {
 
 export default function UserManagementPage() {
   const router = useRouter();
+  const session = useSessionState();
   const { success, error: toastError, warning } = useToast();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,16 +48,17 @@ export default function UserManagementPage() {
   });
 
   useEffect(() => {
-    if (!api.isAuthenticated()) {
+    if (session === "anonymous") {
       router.push("/login");
       return;
     }
+    if (session !== "authenticated") return;
     if (!api.isAdmin()) {
       router.push("/chat");
       return;
     }
     setIsAuthorized(true);
-  }, [router]);
+  }, [session, router]);
 
   useEffect(() => {
     if (!isAuthorized) return;

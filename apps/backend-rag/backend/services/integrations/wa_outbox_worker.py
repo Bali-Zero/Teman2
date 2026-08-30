@@ -80,12 +80,27 @@ per outbox row via the durable ``ack_sent_at``/``apology_sent_at`` columns
 (migration 260 — an in-memory flag would not survive the crash-and-reclaim
 scenarios this worker is built to tolerate), takeover-aware, 24h-window-aware,
 and swallow their own exceptions — neither can ever break generation, the
-send, or the failure handling they piggyback on. All three sends are gated
-by ``_manners_enabled()`` (``WA_OUTBOX_MANNERS_ENABLED``, DEFAULT OFF) — a
+send, or the failure handling they piggyback on. The ack is gated by
+``_manners_enabled()`` (``WA_OUTBOX_MANNERS_ENABLED``, DEFAULT OFF) — a
 dedicated kill-switch distinct from ``WHATSAPP_ACK_ENABLED`` (which stays
 Path-A's flag, default ON, untouched semantics; the ack ANDs both). Ships
 dark: the deploy alone changes nothing observable until this is armed
 deliberately post-verify.
+
+The apology is a SEPARATE decision as of the Gemini-cut PR (2026-08-27, Zero:
+"spegni gemini e collega chatgpt"): it is gated by its OWN
+``_terminal_apology_enabled()`` (``WA_OUTBOX_TERMINAL_APOLOGY_ENABLED``,
+DEFAULT **ON**), not by ``_manners_enabled()`` — with Gemini retired from this
+worker (see the generation section of :func:`_process_claimed_row`), a
+terminal failure or a codex-not-armed standing condition is now the FIRST
+point where a client could be left in total silence, so the net that answers
+that must not itself need arming. It also now tells a human
+(:func:`wa_inbox_bot._tell_a_human`, Telegram) every time it fires, once per
+row (the notifier's own 30-minute per-thread dedup applies) — the apology
+copy says the conversation was flagged for the team, never that someone WILL
+reply "shortly" (``human_escalation_notifier``'s own docstring: the boolean
+this returns proves Telegram accepted a message, never that a person is on
+shift or will act on it).
 """
 
 from __future__ import annotations
@@ -102,7 +117,10 @@ from typing import Any
 import asyncpg
 
 from backend.services.integrations import wa_codex_leg
-from backend.services.integrations.wa_bot_outcomes import BotStandingCondition
+from backend.services.integrations.wa_bot_outcomes import (
+    BotStandingCondition,
+    SilentStandingCondition,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +169,16 @@ CLAIM_CANDIDATE_LIMIT = 20
 MAX_ATTEMPTS = 5
 RETRY_BACKOFF_BASE_SECONDS = 30
 
+# wa_codex_leg._attempt() fall-off reasons that are STANDING CONDITIONS in
+# disguise, not failed attempts: the leg deliberately steps aside on these
+# two (its own docstring says so) trusting the Gemini leg to raise the
+# IDENTICAL BotStandingCondition as ITS first statement (`is_bot_autoreply_
+# enabled()` / "no customer message in the loaded window"). With Gemini
+# retired from this worker (2026-08-27, "spegni gemini e collega chatgpt"),
+# this module raises that BotStandingCondition itself instead of losing the
+# distinction — see the generation section of `_process_claimed_row`.
+_CODEX_LEG_STANDING_REASONS = frozenset({"autoreply_disabled", "no_customer_message"})
+
 # Meta free-text customer-care window.
 CUSTOMER_WINDOW_HOURS = 24
 
@@ -183,18 +211,60 @@ def _manners_enabled() -> bool:
     )
 
 
+# Dedicated enablement for the terminal apology ONLY (item C4) — SEPARATE
+# from `_manners_enabled()` and DEFAULT **ON**, as of the Gemini-cut PR
+# (2026-08-27, Zero: "spegni gemini e collega chatgpt"). Before that PR a
+# terminal failure was rare (Gemini answered almost everything in-claim);
+# after it, a codex-not-armed standing condition or a genuine codex fall-off
+# reaches this exhaustion path on EVERY message until WA_GENERATION_PROVIDER
+# is armed — so the net that keeps the client from pure silence must not
+# itself need a secret set. No variable needs arming for this to be live —
+# deploying this PR alone turns it on. Kill-switch, if ever needed:
+#   fly secrets set WA_OUTBOX_TERMINAL_APOLOGY_ENABLED=false -a nuzantara-rag
+def _terminal_apology_enabled() -> bool:
+    return os.getenv("WA_OUTBOX_TERMINAL_APOLOGY_ENABLED", "true").strip().lower() not in (
+        "false",
+        "0",
+        "no",
+        "off",
+    )
+
+
 # Terminal-failure apology (item C4). Short, neutral, non-technical — never
 # leaks the underlying exception. Same language keys `detect_language()`
 # returns (backend.services.communication.language_detector); "auto"/unknown
 # falls back to English via the .get(..., default) below, mirroring
 # whatsapp_ack.ack_text()'s pattern. Deliberately NOT a new translation
 # subsystem: five short strings, same shape as _ACK_TEXTS.
+#
+# Corrected 2026-08-27 (Gemini-cut PR, first pass): the previous EN/IT copy
+# promised "a member of our team will follow up with you shortly" while no
+# code path ever told a human anything.
+#
+# Corrected AGAIN 2026-08-27, same day (Kimi K3 adversarial review,
+# coordinator-weighted MAGGIORE): the first pass above only REWORDED the
+# promise instead of removing it — "someone will get back to you as soon
+# as they can" (EN), "akan segera ditindaklanjuti" (ID, literally "will
+# soon be followed up"), "che ti risponderà appena possibile" (IT), "как
+# только смогут"/"щойно зможуть" (RU/UK) are all still timed-reply
+# promises in 4 of 5 languages, and the regression test meant to catch
+# this only checked the English word "shortly" — vacuous, since that word
+# could never appear in the other four languages regardless of whether the
+# promise was removed. `_tell_a_human`'s own docstring is the actual
+# contract: the boolean it returns proves Telegram ACCEPTED the alert,
+# never that a person is on shift or will act on it AT ALL, let alone on a
+# timescale ("shortly" / "segera" / "appena possibile" / etc.) nobody can
+# guarantee. The copy below states only what is TRUE right now — the
+# message was received and flagged — and commits to nothing about when or
+# whether a human replies. See `test_apology_texts_never_promise_a_timed_reply`
+# (derived from a real per-language promise-word list, not one English
+# token) for the regression this now actually catches.
 _APOLOGY_TEXTS = {
-    "en": "Sorry — we're having a technical hiccup on our end. A member of our team will follow up with you shortly.",
-    "id": "Maaf, sistem kami sedang ada kendala teknis. Tim kami akan segera menindaklanjuti pesan Anda.",
-    "it": "Ci scusiamo — abbiamo un problema tecnico momentaneo. Un membro del team ti risponderà a breve.",
-    "ru": "Извините — у нас временные технические неполадки. Наш сотрудник свяжется с вами в ближайшее время.",
-    "uk": "Вибачте — у нас тимчасові технічні проблеми. Наш співробітник незабаром зв'яжеться з вами.",
+    "en": "Sorry — we're having a technical hiccup on our end. We've received your message and flagged this conversation for our team.",
+    "id": "Maaf, sistem kami sedang mengalami kendala teknis. Pesan Anda sudah kami terima dan percakapan ini sudah kami tandai untuk tim kami.",
+    "it": "Ci scusiamo — abbiamo un problema tecnico momentaneo. Abbiamo ricevuto il tuo messaggio e segnalato questa conversazione al nostro team.",
+    "ru": "Извините — у нас временные технические неполадки. Мы получили ваше сообщение и передали этот разговор нашей команде.",
+    "uk": "Вибачте — у нас тимчасові технічні проблеми. Ми отримали ваше повідомлення і передали цю розмову нашій команді.",
 }
 
 
@@ -326,47 +396,64 @@ async def _maybe_send_apology(
     outbox_id: int,
     thread: asyncpg.Record,
     whatsapp_service: Any,
+    *,
+    reason: str = "terminal_failure",
 ) -> None:
     """Best-effort apology when a row is permanently failed after exhausting
-    retries (item C4) — tells the client a team member will follow up
-    instead of leaving them in silence. Called from BOTH terminal-failure
-    branches (bot-generation exhausted, Graph-send exhausted) AFTER the
-    caller has already recorded the real failure on wa_outbox/
-    meta_inbox_messages — this function's own failure is swallowed and
-    logged, never allowed to mask or replace that recording (checked by
-    the caller unconditionally proceeding to `return "failed"` regardless
-    of what happens here).
+    retries (item C4) — tells the client the conversation was flagged for
+    the team instead of leaving them in silence, and ACTUALLY flags it.
+    Called from BOTH terminal-failure branches (bot-generation exhausted,
+    Graph-send exhausted) AFTER the caller has already recorded the real
+    failure on wa_outbox/meta_inbox_messages — this function's own failure
+    is swallowed and logged, never allowed to mask or replace that
+    recording (checked by the caller unconditionally proceeding to
+    `return "failed"` regardless of what happens here). ``reason`` is a
+    short caller-supplied label (e.g. "bot_generation_exhausted",
+    "graph_send_exhausted") — forwarded to the Telegram notification only,
+    never to the client-facing text.
 
     Idempotent via the durable ``apology_sent_at`` column (migration 260):
     'failed' is a terminal wa_outbox status no other code path resets back
     to 'pending' (the stale-claim reclaimer only touches 'claimed'/
     'generating'; coalescing only touches 'pending'), so in practice this
-    can only be entered once per row — the
-    ``WHERE apology_sent_at IS NULL`` guard is kept as defense-in-depth
-    against future code paths, not because a race is currently reachable.
+    can only be entered once per row. As of 2026-08-27 (Kimi K3 adversarial
+    finding, minore) the durable claim is taken AFTER a successful
+    client-facing send, not before — a read-only
+    ``SELECT apology_sent_at`` guards against re-sending, and the post-send
+    ``WHERE apology_sent_at IS NULL`` update is kept as defense-in-depth
+    against a genuine concurrent re-entry, not because one is expected in
+    practice. The human notification (`_tell_a_human`) is NOT gated by this
+    column at all — it is independent of the client-send claim, and relies
+    entirely on its own 30-minute per-thread dedup, which also covers the
+    case where MULTIPLE rows in the same thread all exhaust retries.
 
     Takeover-aware: does a FRESH human_handling read (unlike the ack, which
     reuses the caller's just-verified value) — a terminal failure can be
     reached long after the original human_handling check (bot generation
     can run for minutes, and Graph-send retries backoff for several more),
     so the value the caller loaded at claim time may be stale. If a human
-    now owns the thread, they are already the one following up — skip.
+    now owns the thread, they are already the one following up — skip (this
+    gates BOTH the human alert and the client apology).
 
-    Window-aware: skips if the Meta 24h window is closed (nothing could be
-    sent anyway).
+    Window-aware for the CLIENT SEND ONLY (2026-08-27 Kimi K3 adversarial
+    finding, MAGGIORE): the Meta 24h window governs what can be sent TO the
+    client, not the internal Telegram alert — see the call-site comment on
+    `_tell_a_human` below for why that call now happens BEFORE this check.
 
-    Armed by ``_manners_enabled()`` (``WA_OUTBOX_MANNERS_ENABLED``, default
-    OFF) — the SAME dedicated kill-switch as the ack (no separate flag;
-    unlike the ack, this send has no whatsapp_ack.ack_enabled() equivalent
-    to AND against, since it doesn't go through that module at all). Ships
-    dark: unset in prod today.
+    Armed by ``_terminal_apology_enabled()`` (``WA_OUTBOX_TERMINAL_APOLOGY_ENABLED``,
+    default **ON**, 2026-08-27) — a DEDICATED flag, deliberately NOT
+    ``_manners_enabled()`` (which stays the ack's flag, default OFF,
+    unchanged). See that function's own docstring for why the default
+    flipped: Gemini is retired from this worker as of the same PR, so a
+    terminal failure or a codex-not-armed standing condition is the first
+    thing that can leave a client in total silence, and the net that
+    answers that must not itself need arming.
     """
     try:
         from backend.services.communication import detect_language
+        from backend.services.integrations.wa_inbox_bot import _tell_a_human
 
-        if not _manners_enabled():
-            return
-        if not _window_open_locally(thread):
+        if not _terminal_apology_enabled():
             return
 
         human_handling_now = await conn.fetchval(
@@ -376,15 +463,30 @@ async def _maybe_send_apology(
         if human_handling_now:
             return
 
-        claimed = await conn.fetchrow(
-            """
-            UPDATE wa_outbox SET apology_sent_at = NOW()
-            WHERE id = $1 AND apology_sent_at IS NULL
-            RETURNING id
-            """,
-            outbox_id,
+        # Tell a human BEFORE the Meta-window check (2026-08-27 Kimi K3
+        # adversarial finding, MAGGIORE): Telegram is an internal alert, not
+        # a WhatsApp send — it is not bound by the 24h customer-care window
+        # at all. The previous ordering put this call after the window
+        # check, so a row that sat unanswered long enough to exhaust its
+        # retries AND close the window got no client apology (unavoidable —
+        # nothing can be sent) AND no human alert (avoidable, and exactly
+        # the case a human is needed most: nobody else will ever see it).
+        # _tell_a_human never raises and carries its own 30-min per-thread
+        # dedup, so calling it here — independent of the client-send claim
+        # below — is safe even across multiple rows in the same thread.
+        await _tell_a_human(
+            phone=thread["counterpart_phone"],
+            reason=f"terminal_apology:{reason}",
+            thread_id=thread["thread_id"],
         )
-        if claimed is None:
+
+        if not _window_open_locally(thread):
+            return
+
+        already_sent = await conn.fetchval(
+            "SELECT apology_sent_at FROM wa_outbox WHERE id = $1", outbox_id
+        )
+        if already_sent is not None:
             return  # already apologized
 
         latest_inbound = await _latest_inbound_text(conn, thread["thread_id"])
@@ -393,8 +495,29 @@ async def _maybe_send_apology(
             phone=thread["counterpart_phone"],
             text=_apology_text(detected_language),
         )
+
+        # Claim ONLY after a successful send (2026-08-27 Kimi K3 adversarial
+        # finding, minore): claiming apology_sent_at before attempting the
+        # send meant a failed send was swallowed by the except-Exception
+        # below while the durable flag was already set — permanently
+        # suppressing every future apology attempt for this row, with no
+        # recovery path (unlike the retry ladder for generation). The
+        # `WHERE apology_sent_at IS NULL` guard is kept as defense-in-depth
+        # against a genuine concurrent re-entry, not because one is expected
+        # in practice (see this function's own docstring on why this is
+        # normally entered once per row).
+        await conn.execute(
+            """
+            UPDATE wa_outbox SET apology_sent_at = NOW()
+            WHERE id = $1 AND apology_sent_at IS NULL
+            """,
+            outbox_id,
+        )
         logger.info(
-            "wa_outbox: apology sent (outbox=%s thread=%s)", outbox_id, thread["thread_id"]
+            "wa_outbox: apology sent (outbox=%s thread=%s reason=%s)",
+            outbox_id,
+            thread["thread_id"],
+            reason,
         )
     except Exception:
         logger.exception(
@@ -453,7 +576,7 @@ async def _apply_pending_status(conn: asyncpg.Connection, wamid: str) -> None:
 async def _coalesce_thread_bursts(
     conn: asyncpg.Connection, thread_id: int, outbox_id: int
 ) -> int:
-    """Supersede other pending bot-reply rows of the same thread (P2).
+    """Supersede other NOT-YET-STARTED pending bot-reply rows of the same thread (P2).
 
     The generator always answers the *latest* thread message (see
     ``wa_inbox_bot._load_thread_context``), so whichever row of a same-thread
@@ -461,6 +584,25 @@ async def _coalesce_thread_bursts(
     burst — the other pending bot-reply rows would just be redundant sends.
     Only ``needs_generation`` rows are touched: a pending HUMAN send must
     never be silently dropped.
+
+    ``attempts = 0`` is what makes "redundant" TRUE, and it is not decorative
+    (2026-08-28, measured in production, thread 394 / row 363). Without it
+    this sweep also killed rows that had already generated real text. That
+    row's answer was produced by ChatGPT three times — every broker job
+    ``consumed_ok``, 9711/10137/8521 ms — and rejected three times by the
+    finalize safety pipeline; it sat at attempts 3 of MAX_ATTEMPTS waiting
+    for its 4th try when a follow-up message arrived 3m27s later and this
+    UPDATE marked it ``failed``. Silently: the sweep writes only ``status``,
+    never a fall-off reason, and never reaches ``_maybe_send_apology`` (which
+    is called ONLY from the two ladder-exhaustion branches). The client got
+    no answer and no apology, and nothing alerted.
+
+    A row with ``attempts > 0`` is not a burst duplicate — it is a question
+    somebody is still owed an answer to. Left alone, its ladder ends one of
+    only two ways: the answer is delivered, or the apology is sent. Never
+    silence. It may then reply after the newer row does; a second, later
+    message is a far smaller harm than a question answered by nothing, and
+    its own context load already includes the follow-up.
     """
     async with conn.transaction():
         superseded = await conn.fetch(
@@ -470,6 +612,7 @@ async def _coalesce_thread_bursts(
             WHERE thread_id = $1
               AND status = 'pending'
               AND needs_generation = true
+              AND attempts = 0
               AND id <> $2
             RETURNING id, message_id
             """,
@@ -533,8 +676,11 @@ async def process_outbox_once(
         pool: asyncpg pool.
         whatsapp_service: object exposing ``async send_message(phone, text,
             reply_to_message_id=None)`` returning the Graph API response dict.
-        bot_generate_fn: async callable producing the bot reply text for a
-            thread (only invoked when ``needs_generation`` is true).
+        bot_generate_fn: accepted for signature/back-compat only — NEVER
+            invoked as of the Gemini-cut PR (2026-08-27, "spegni gemini e
+            collega chatgpt"). Generation now runs exclusively through the
+            codex broker leg (``wa_codex_leg.attempt``); see
+            ``_process_claimed_row``'s docstring.
 
     Returns:
         A short status string describing what happened (for logging/metrics):
@@ -645,7 +791,7 @@ async def _process_claimed_row(
     row: asyncpg.Record,
     claim_token: uuid.UUID,
     whatsapp_service: Any,
-    bot_generate_fn: BotGenerateFn,
+    _bot_generate_fn: BotGenerateFn,
     *,
     pool: asyncpg.Pool,
 ) -> str:
@@ -655,6 +801,13 @@ async def _process_claimed_row(
     its deadline CAS on its own acquired connections; the thread-context
     loader acquires its own too) — everything else on this path stays on
     ``conn`` under the advisory lock.
+
+    ``_bot_generate_fn`` (Gemini, ``wa_inbox_bot.generate_bot_reply`` in
+    prod) is accepted but deliberately NEVER CALLED as of the Gemini-cut PR
+    (2026-08-27, Zero: "spegni gemini e collega chatgpt") — kept as a
+    parameter only so ``process_outbox_once``'s public signature and every
+    existing test/caller shape stay unchanged. See the generation section
+    below for what runs instead.
     """
     outbox_id = row["id"]
     thread_id = row["thread_id"]
@@ -767,25 +920,24 @@ async def _process_claimed_row(
         )
 
         # Concierge ack (C3) — fire right as generation starts, before the
-        # potentially slow bot_generate_fn call below. Fully self-contained
+        # potentially slow codex-leg call below. Fully self-contained
         # (idempotent, takeover/window-aware, never raises) — see docstring.
         await _maybe_send_ack(conn, outbox_id, claim_token, thread, whatsapp_service)
 
-        # bot_generate_fn may raise (transient RAG error, or — in the
-        # human-send-only v1 — a NotImplementedError sentinel). Without this
-        # guard the exception bubbles to the scheduler and the row is left
-        # ORPHANED in 'generating' (reclaim only resets 'claimed' rows), so
-        # it is never retried nor surfaced. Mirror the send retry/backoff
-        # policy: retry with backoff up to MAX_ATTEMPTS, then mark failed.
+        # The generation step below may raise (transient RAG/broker error,
+        # a standing condition, or — with Gemini cut — a fall-off/fail from
+        # the codex leg). Without this guard the exception bubbles to the
+        # scheduler and the row is left ORPHANED in 'generating' (reclaim
+        # only resets 'claimed' rows), so it is never retried nor surfaced.
+        # Mirror the send retry/backoff policy: retry with backoff up to
+        # MAX_ATTEMPTS, then mark failed.
         #
         # P5/P6: the heartbeat below renews claim_expires_at every ~60s for
         # the duration of this await so a slow (but alive) generation is
         # never reclaimed out from under this worker. It runs on the SAME
         # connection as the rest of this function; that is only safe because
-        # NEITHER generation leg touches this connection while it runs —
-        # bot_generate_fn (wa_inbox_bot.generate_bot_reply) acquires its own
-        # from the pool internally and talks to the RAG process over HTTP,
-        # and wa_codex_leg.attempt is pool-only BY CONTRACT (it is not even
+        # generation does not touch this connection while it runs —
+        # wa_codex_leg.attempt is pool-only BY CONTRACT (it is not even
         # handed this connection; asyncpg allows one operation in flight per
         # connection, so sharing it would race the heartbeat into
         # InterfaceError). The heartbeat is always cancelled and
@@ -798,47 +950,81 @@ async def _process_claimed_row(
         gen_exc: Exception | None = None
         codex_stand_down = False
         try:
-            # Codex broker leg (BOT-V4 S2 PR-5) — attempted BEFORE the
-            # Gemini call, inside the same heartbeat span. attempt() never
+            # Codex broker leg (BOT-V4 S2 PR-5) — the ONLY generation path
+            # left on this worker (2026-08-27, Zero: "spegni gemini e
+            # collega chatgpt" — the WhatsApp channel no longer generates
+            # with Gemini, full stop; `bot_generate_fn`/`generate_bot_reply`
+            # is retained as an injected parameter for test/back-compat
+            # shape only and is never called from here). attempt() never
             # raises and answers in one of four shapes (its module
             # docstring is the contract): text (send it) · stand_down
             # (drift verdict — the leg already terminalized the row
             # atomically, NO generation may replace it) · fall-off (a
-            # CERTAIN pre-durable outcome: Gemini answers in this same
-            # claim, zero retry attempts consumed) · fail (an UNCERTAIN
-            # outcome at/after a durable boundary — offer, wait, or the
-            # post-completion drift protocol: the raise below takes the
-            # retry ladder, because generating in THIS claim could run
-            # Gemini beside a durable job or an unverified completion).
+            # CERTAIN pre-durable outcome — gates, build, offer admission)
+            # · fail (an UNCERTAIN outcome at/after a durable boundary).
+            # Historically fall-off "cost zero retry attempts" because
+            # Gemini answered in the same claim; with Gemini cut there is
+            # no second generator to hand it to, so BOTH fall-off and fail
+            # now take the SAME retry ladder below — except the two
+            # fall-off reasons that are standing conditions in disguise
+            # (see `_CODEX_LEG_STANDING_REASONS`), which raise
+            # BotStandingCondition instead, exactly as the Gemini leg used
+            # to. #5093 (dependency of this change, see the PR body) gives
+            # `offer_job` a real retry budget — REATTACHED/fresh-OFFERED
+            # instead of an eternal ALREADY_SPENT — so a retried claim can
+            # make actual progress on the codex route instead of spinning
+            # on the same fall-off every attempt.
             body_text = ""
-            if wa_codex_leg.provider_is_codex():
-                leg = await wa_codex_leg.attempt(
-                    pool,
-                    outbox_id=outbox_id,
-                    thread_id=thread_id,
-                    message_id=message_id,
-                    claim_token=claim_token,
-                    outbox_expected_status=expected_status,
-                    thread=thread,
+            if not wa_codex_leg.provider_is_codex():
+                # WA_GENERATION_PROVIDER is the owner's switch alone (bot
+                # corner doctrine — the S4 cutover). Unset, or anything
+                # other than "codex", now means "generate nothing this
+                # attempt", never "fall back to Gemini". A standing
+                # condition, not an incident: the env is re-read live on
+                # every claim, so arming the switch mid-backoff rescues the
+                # row on the very next attempt — same recovery shape as the
+                # WA_INBOX_BOT_AUTOREPLY flag below.
+                #
+                # This is the ONE fall-off condition the codex leg itself
+                # never sees (the leg is not even called), so it is the
+                # one place outside wa_codex_leg.attempt() that must record
+                # its own durable reason (migration 290) — best-effort,
+                # same as every reason attempt() records internally.
+                await wa_codex_leg.record_fall_off_reason(
+                    pool, outbox_id=outbox_id, raw_reason="provider_not_codex"
                 )
-                if leg.stand_down:
-                    codex_stand_down = True
-                elif leg.fail:
-                    raise RuntimeError(f"codex_leg_failure:{leg.fail}")
-                elif leg.text is not None:
-                    body_text = leg.text
-                    logger.info(
-                        "wa_outbox: codex leg served outbox=%s", outbox_id
-                    )
-                else:
-                    logger.info(
-                        "wa_outbox: codex leg fell off to Gemini "
-                        "(outbox=%s reason=%s)",
-                        outbox_id,
-                        leg.reason,
-                    )
-            if not codex_stand_down and not body_text:
-                body_text = await bot_generate_fn(thread)
+                raise BotStandingCondition(
+                    "wa-inbox bot: gemini generation retired for whatsapp "
+                    "(WA_GENERATION_PROVIDER != 'codex')"
+                )
+            leg = await wa_codex_leg.attempt(
+                pool,
+                outbox_id=outbox_id,
+                thread_id=thread_id,
+                message_id=message_id,
+                claim_token=claim_token,
+                outbox_expected_status=expected_status,
+                thread=thread,
+            )
+            if leg.stand_down:
+                codex_stand_down = True
+            elif leg.fail:
+                raise RuntimeError(f"codex_leg_failure:{leg.fail}")
+            elif leg.text is not None:
+                body_text = leg.text
+                logger.info(
+                    "wa_outbox: codex leg served outbox=%s", outbox_id
+                )
+            elif leg.reason in _CODEX_LEG_STANDING_REASONS:
+                # SilentStandingCondition, not the plain BotStandingCondition:
+                # these two mirror the Gemini leg's OWN silent exits (flag off /
+                # no customer message) — must notify NOBODY, client or human
+                # (2026-08-27 Kimi K3 adversarial finding, BLOCCANTE).
+                raise SilentStandingCondition(
+                    f"wa-inbox bot: codex leg standing ({leg.reason})"
+                )
+            else:
+                raise RuntimeError(f"codex_leg_fell_off:{leg.reason}")
         except Exception as exc:  # deliberately broad — see the retry/failed handling below
             gen_exc = exc
             body_text = ""
@@ -930,15 +1116,27 @@ async def _process_claimed_row(
                         gen_exc,
                     )
                 # Apology (C4) — best-effort, never masks the failure above
-                # (already recorded on both ledgers by this point). Fires for a
-                # STANDING condition too, deliberately: `_maybe_send_ack` above
-                # does NOT consult WA_INBOX_BOT_AUTOREPLY, so with manners armed
-                # a client can already have received "checking on this…" before
-                # the generator ever declined. Suppressing the apology there
-                # would leave that promise hanging in permanent silence — an
-                # adversarial review caught exactly that path in the first draft
-                # of this change.
-                await _maybe_send_apology(conn, outbox_id, thread, whatsapp_service)
+                # (already recorded on both ledgers by this point). A real
+                # failure, or `provider_not_codex` (WA_GENERATION_PROVIDER
+                # unarmed — a misconfiguration that needs fixing regardless),
+                # DOES get the apology + human alert. A `SilentStandingCondition`
+                # (`autoreply_disabled` / `no_customer_message`) explicitly does
+                # NOT — those two mirror wa_inbox_bot.generate_bot_reply's own
+                # two silent exits, which by pre-existing, documented contract
+                # notify nobody (see `_tell_a_human`'s docstring and
+                # `SilentStandingCondition`'s own): "the bot is intentionally
+                # off right now" or "nothing to answer" is not an incident, and
+                # an apology/Telegram alert firing for it would invert that
+                # contract — a "switch it off" flag that produces client-facing
+                # messages is not a switch (2026-08-27 Kimi K3 adversarial
+                # review, coordinator-weighted BLOCCANTE — the first draft of
+                # this change fired the apology for every standing condition,
+                # which is exactly the regression this comment used to defend).
+                if not isinstance(gen_exc, SilentStandingCondition):
+                    await _maybe_send_apology(
+                        conn, outbox_id, thread, whatsapp_service,
+                        reason="bot_standing_condition" if standing else "bot_generation_exhausted",
+                    )
                 return "failed"
 
             backoff = RETRY_BACKOFF_BASE_SECONDS * (2 ** (attempts - 1))
@@ -1131,7 +1329,9 @@ async def _process_claimed_row(
             # just failed, so this attempt may also fail; that's fine, it's
             # swallowed by _maybe_send_apology and never masks the failure
             # already recorded above.
-            await _maybe_send_apology(conn, outbox_id, thread, whatsapp_service)
+            await _maybe_send_apology(
+                conn, outbox_id, thread, whatsapp_service, reason="graph_send_exhausted"
+            )
             return "failed"
 
         backoff = RETRY_BACKOFF_BASE_SECONDS * (2 ** (attempts - 1))

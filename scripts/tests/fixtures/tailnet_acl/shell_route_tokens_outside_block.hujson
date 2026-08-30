@@ -1,0 +1,29 @@
+// GUILT: the SHELL-ROUTE banner is still here and the tokens still appear in the file — but the
+// block's BODY is gone, and the tokens survive only out here, outside it. The old check asked
+// `if token not in text` of the whole file, so this audited clean: a reader would find a banner
+// promising an explanation and no explanation. Same disease as the `hosts` defect — asking
+// "does this string appear somewhere" where the question is "is this structure intact".
+// ============================================================================
+// SHELL-ROUTE: the reason this file exists. Do not delete this block.
+// ============================================================================
+// (body deleted by whoever tidied this file)
+// ============================================================================
+// The tokens live out here now, which used to be enough: 7681, /term, ttyd.
+{
+  "hosts": {
+    "pro":              "100.107.22.111",
+    "mini":             "100.93.236.6",
+    "m5":               "100.110.186.116",
+    "iphone-14":        "100.113.83.92",
+    "iphone175":        "100.77.16.7",
+    "apple-vision-pro": "100.97.28.18"
+  },
+  "acls": [
+    {"action": "accept", "proto": "tcp", "src": ["m5"], "dst": ["pro:443"]}
+  ],
+  "ssh": [],
+  "tests": [
+    {"src": "m5", "accept": ["pro:443"]},
+    {"src": "tag:team-device", "deny": ["pro:443"]}
+  ]
+}

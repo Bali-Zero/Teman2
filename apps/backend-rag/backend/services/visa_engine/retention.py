@@ -59,7 +59,18 @@ async def active_policy_available(
 
     Missing schema, DB failure, overlap corruption, or no policy propagates or
     returns false to the caller, which must abstain in ENFORCE. The exclusion
-    constraint makes more than one active policy structurally impossible.
+    constraint makes more than one active policy per ``policy_scope``
+    structurally impossible -- the scope predicate below is what makes that
+    guarantee apply here. Migration 281 turned this table into the single
+    retention authority for four data classes (VISA_DECISION, GARUDA_CHECK,
+    GARUDA_ORDER, GARUDA_MAGIC_LINK) and widened the exclusion constraint to
+    partition on scope; an unscoped ``count(*) == 1`` therefore stopped
+    meaning "one active policy" the moment the first GARUDA policy was
+    activated in production (2026-08-26 04:40:27Z), and every evaluation
+    abstains with RETENTION_POLICY_UNAVAILABLE until migration 289 and this
+    predicate land. How many real callers that turned away is unknowable from
+    the ledger -- the gate refuses before any INSERT, so a blocked call leaves
+    no row at all. See 289's header for the full incident.
     """
 
     if environment not in _ENVIRONMENTS:
@@ -72,6 +83,7 @@ async def active_policy_available(
             SELECT count(*)
             FROM public.visa_decision_retention_policies
             WHERE environment = $1
+              AND policy_scope = 'VISA_DECISION'
               AND effective_period @> $2::timestamptz
             """,
             environment,

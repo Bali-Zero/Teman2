@@ -11,9 +11,10 @@ from datetime import date, datetime, timezone
 import pytest
 
 from backend.services.garuda_ops.crm_handoff import (
-    GARUDA_VOA_PRACTICE_TYPE_CODE,
+    PRACTICE_TYPE_CODE_BY_CASE_TYPE,
     CrmHandoffService,
     HandoffOutcome,
+    UnmappedCaseType,
 )
 from backend.services.garuda_ops.ports import EventEnvelope, IdempotencyIdentity, OrderSnapshot
 
@@ -117,11 +118,11 @@ class AtomicFakeCrmWriter(FakeCrmWriter):
             )
 
 
-def _snapshot(order_id: str = "practice-order-1") -> OrderSnapshot:
+def _snapshot(order_id: str = "practice-order-1", case_type: str = "issuance") -> OrderSnapshot:
     return OrderSnapshot(
         order_aggregate_id=order_id,
         customer_email="traveller@example.com",
-        case_type="issuance",
+        case_type=case_type,
         purpose="tourism",
         nationality="AUS",
         entry_date=date(2026, 9, 1),
@@ -144,7 +145,7 @@ async def test_creates_crm_practice_from_order_snapshot_with_zero_retyping() -> 
     assert len(writer.created) == 1
     snapshot, source_idempotency_key, practice_type_code = writer.created[0]
     assert source_idempotency_key == event.idempotency_identity.key_digest
-    assert practice_type_code == GARUDA_VOA_PRACTICE_TYPE_CODE
+    assert practice_type_code == "visa_b1_voa"
     assert snapshot.customer_email == "traveller@example.com"
 
 
@@ -336,3 +337,80 @@ async def test_atomic_writer_closes_the_race_under_true_concurrency() -> None:
         service.handle_practice_received(_pr01_event()),
     )
     assert len(writer.created) == 1
+
+
+# --------------------------------------------------------------------------
+# The practice type is DERIVED FROM THE ORDER, not hardcoded (Zero, 2026-08-26)
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("case_type", "expected_code"),
+    [("issuance", "visa_b1_voa"), ("extension", "ext_b1_voa")],
+)
+@pytest.mark.asyncio
+async def test_each_case_type_writes_its_own_catalogue_service(
+    case_type: str, expected_code: str
+) -> None:
+    """RED-if-wrong: the version this replaces passed ONE constant
+    (`"garuda_voa"`) for both case types. Issuance and extension are separate
+    products at separate prices in `practice_types` — Rp 750,000 vs
+    Rp 850,000, migration 221 — so a shared code prices, reports and routes
+    them as one service. Parametrized precisely so re-hardcoding either side
+    reddens exactly one case, not the pair."""
+    writer = FakeCrmWriter()
+    service = CrmHandoffService(
+        order_snapshots=FakeOrderSnapshots(
+            {"practice-order-1": _snapshot(case_type=case_type)}
+        ),
+        crm_writer=writer,
+    )
+    result = await service.handle_practice_received(_pr01_event())
+    assert result.outcome is HandoffOutcome.CREATED
+    _, _, practice_type_code = writer.created[0]
+    assert practice_type_code == expected_code
+
+
+def test_the_two_case_types_do_not_share_one_code() -> None:
+    """Guards the shape, not one value: a future edit that collapses both
+    rows onto a single code reddens here even if each row still "looks"
+    populated."""
+    codes = set(PRACTICE_TYPE_CODE_BY_CASE_TYPE.values())
+    assert len(codes) == len(PRACTICE_TYPE_CODE_BY_CASE_TYPE) == 2
+
+
+@pytest.mark.asyncio
+async def test_an_unmapped_case_type_raises_and_writes_nothing() -> None:
+    """A paid order whose case_type has no CRM service must NOT be retired
+    green. `drain_once` reads a returned value as success and marks the job
+    dispatched; only a raise keeps the job visible. The second assertion is
+    the one that matters — no half-written practice."""
+    writer = FakeCrmWriter()
+    service = CrmHandoffService(
+        order_snapshots=FakeOrderSnapshots(
+            {"practice-order-1": _snapshot(case_type="renewal")}
+        ),
+        crm_writer=writer,
+    )
+    with pytest.raises(UnmappedCaseType):
+        await service.handle_practice_received(_pr01_event())
+    assert writer.created == []
+
+
+@pytest.mark.asyncio
+async def test_the_unmapped_error_leaks_no_order_identifier_or_case_value() -> None:
+    """SM-G03 bans order/account identifiers as log fields, and this message
+    reaches a log through the raise. RED if someone "helpfully" interpolates
+    the case_type or the aggregate id into the text."""
+    service = CrmHandoffService(
+        order_snapshots=FakeOrderSnapshots(
+            {"practice-order-1": _snapshot(case_type="renewal")}
+        ),
+        crm_writer=FakeCrmWriter(),
+    )
+    with pytest.raises(UnmappedCaseType) as excinfo:
+        await service.handle_practice_received(_pr01_event())
+    text = str(excinfo.value)
+    assert "renewal" not in text
+    assert "practice-order-1" not in text
+    assert "traveller@example.com" not in text
