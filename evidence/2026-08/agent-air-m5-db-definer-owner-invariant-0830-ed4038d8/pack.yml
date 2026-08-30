@@ -8,6 +8,19 @@ plan_ref:
   and 286 announced and never performed, and replace the hand-maintained list that let migration 285
   through with a class-level invariant. Companion to PR #5302 (migration 299), which cures the one
   transfer migration 285 forgot."
+# R8 (ground_truth) seat_override. R8 fires on the PATTERN `*/visa_engine/*`, and
+# the only file in this diff that matches it is
+# apps/backend-rag/backend/scripts/visa_engine/operational_preflight.py. Its diff
+# here is a Postgres SECURITY DEFINER ownership census -- pg_catalog queries,
+# LEDGER_OWNER, prosecdef -- and asserts no regulatory fact: no visa rule, no fee,
+# no eligibility condition, no KBLI code. There is therefore no NotebookLM query
+# for a ground_truth lane to hash, and fabricating one to go green would be
+# inventing evidence, which is strictly worse than the red. Verified by reading
+# the diff, not inferred from the path: the rule cannot see that a file living
+# under visa_engine/ makes no ground-truth claim (guard-over-match, superscar
+# family #3 -- recorded as a finding against the RULE).
+seat_override: "the only ground-truth-path hit is scripts/visa_engine/operational_preflight.py, whose diff here is a Postgres SECURITY DEFINER ownership census asserting no regulatory fact -- no visa rule, fee, eligibility condition or KBLI code -- so there is no NotebookLM query for a ground_truth lane to hash"
+
 lanes:
   - lane: definer-owner-invariant-build
     role: build
