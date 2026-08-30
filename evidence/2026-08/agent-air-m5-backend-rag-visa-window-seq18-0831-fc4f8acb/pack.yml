@@ -522,3 +522,47 @@ dissent:
       accepts any positive window and any sequence, so a payload reaching model_validate first
       would be blessed before either guard looked at it). Re-measured: deleting either call now
       reddens 2 tests each. The gate's own mutations B, C, D, E stand as reported.
+
+  - objection: >-
+      The gate's own epistemic caveat, recorded in its words rather than smoothed into a clean PASS:
+      "I have not re-derived anything at 49491367ef — my session's last measured HEAD is
+      f66b7bde4a, and you asked me not to re-verify. So this confirmation rests on your pasted
+      proofs, not on my own tool calls." It signed because the numbers were internally coherent in
+      a way a fabricated report usually is not (51+3=54; each mutation 2 failed / 52 passed, with
+      the ordering test correctly appearing in BOTH columns — arithmetic it did not tell me to
+      produce) and because condition 2 came back with a finding LARGER than the one it raised.
+    seat: seq18-gate (final on-disk gate, Opus 5)
+    status: PLAUSIBLE
+    resolution: >-
+      Not resolved, recorded. The three conditions were closed by the lane that wrote the diff, and
+      the gate confirmed on pasted evidence rather than its own tool calls. Anyone reading this PASS
+      should read it as: everything through f66b7bde4a was independently measured by the gate;
+      everything after it is the build lane's own proof, offered in the gate's requested form and
+      accepted by the gate on coherence.
+
+  - objection: >-
+      No cross-family seat has seen the SHIPPED head. codex reviewed 9b22e99ff2, kimi reviewed
+      9b22e99ff2..3accba68c3, the gate reviewed f66b7bde4a — and 49491367ef (plus the seat_override
+      commit after it) carries the condition fixes on top. The council block must not be read as
+      covering the head that merges.
+    seat: seq18-gate (final on-disk gate, Opus 5)
+    status: CONFIRMED
+    resolution: >-
+      Accepted as a limit, not cured, and deliberately: Agent PR Contract rule 8 caps this at three
+      rounds, and every trailing commit is an answer to a named finding rather than new surface —
+      the gate itself declined to request a fourth round on exactly that ground. Stated here so the
+      council block is read for what it covers.
+
+  - objection: >-
+      Still UNVERIFIED by anyone, after three adversarial rounds and a gate: (a) the ssh mini
+      imigrasi-mirror receipt — a machine state, not the diff, and outside every reviewer's scope;
+      (b) faithful transcription of the raw refuter transcripts — council-run.jsonl was checked for
+      internal honesty (two seats, one ok:false ERROR recorded rather than dropped, review commits
+      named) but nobody read the codex and kimi outputs against the findings quoted from them.
+    seat: seq18-gate (final on-disk gate, Opus 5)
+    status: PLAUSIBLE
+    resolution: >-
+      Recorded, not waived — the gate's own phrasing. Neither touches the artifact or the code: (a)
+      is a claim about a machine, already carrying its own PENDING-ARMS row; (b) is a claim about
+      whether this pack quotes its reviewers faithfully, which only re-reading the transcripts can
+      settle and which no reviewer was asked to do.
