@@ -1141,17 +1141,17 @@ jobs:
       # that only fires when someone remembers to touch the registry is the
       # family-#2 defect it exists to catch.
       # ------------------------------------------------------------------
+      # NO `if [ -f ... ]` GUARD on any of the three steps below, deliberately.
+      # The guard reads as defensive and is a disarm vector: a PR that deletes
+      # the linter and its corpus makes every body a no-op, and this REQUIRED
+      # job goes green with the entire gate removed (cross-family gate). This
+      # job checks out the PR HEAD, so the files are present unless a PR removed
+      # them — which is exactly the case that must be red.
       - name: Immune contracts self-test (the detector still detects)
-        run: |
-          if [ -f scripts/lint_immune_contracts.py ]; then
-            python scripts/lint_immune_contracts.py --selftest
-          fi
+        run: python scripts/lint_immune_contracts.py --selftest
 
       - name: Immune contracts registry matches the real emitters and consumers
-        run: |
-          if [ -f scripts/lint_immune_contracts.py ]; then
-            python scripts/lint_immune_contracts.py --check
-          fi
+        run: python scripts/lint_immune_contracts.py --check
 
       # Separate step from the one above ON PURPOSE: the contract check answers
       # "does the registry match the code", the shrink check answers "is the
@@ -1167,16 +1167,19 @@ jobs:
       # this reason.
       - name: known_gaps may only shrink (fetch main by name, then compare)
         run: |
-          if [ -f scripts/lint_immune_contracts.py ]; then
-            git fetch --no-tags --depth=200 origin main:refs/remotes/origin/main || true
-            python scripts/lint_immune_contracts.py --check --no-regrowth origin/main
+          set -uo pipefail
+          # The fetch is allowed to fail — a shallow or offline runner is a real
+          # state — but its failure is REPORTED, not swallowed. `|| true` alone
+          # would let a STALE origin/main stand in for the real baseline, and a
+          # stale baseline can approve growth it never saw (cross-family gate).
+          if ! git fetch --no-tags --depth=200 origin main:refs/remotes/origin/main; then
+            echo "::warning::could not fetch origin/main; the shrink check below is comparing "\
+                 "against whatever origin/main this checkout already had, which may be stale"
           fi
+          python scripts/lint_immune_contracts.py --check --no-regrowth origin/main
 
       - name: Immune contracts corpus (named, because scripts/tests/ gates nothing)
-        run: |
-          if [ -f scripts/tests/test_lint_immune_contracts.py ]; then
-            python -m pytest -q scripts/tests/test_lint_immune_contracts.py
-          fi
+        run: python -m pytest -q scripts/tests/test_lint_immune_contracts.py
 
       - name: PENDING-ARMS ledger parses (report smoke, exit 0 signaler)
         run: |

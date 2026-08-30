@@ -111,7 +111,9 @@
             "NOT_INSTALLED",
             "UNKNOWN_ERR"
           ]
-        }
+        },
+        "emit_helpers": ["probe_seat"],
+        "emit_helpers_note": "run() hands probe_seat to a ThreadPoolExecutor via pool.submit(probe_seat, ...), so the helper is named as an ARGUMENT and never as Call(func=Name). Declared explicitly rather than letting the lint follow every bare Name, which would be a wider net in the false-green direction."
       },
       "consumer": {
         "path": "scripts/organism_digest.py",
@@ -167,7 +169,9 @@
             "NOT_INSTALLED",
             "UNKNOWN_ERR"
           ]
-        }
+        },
+        "emit_helpers": ["probe_seat"],
+        "emit_helpers_note": "run() hands probe_seat to a ThreadPoolExecutor via pool.submit(probe_seat, ...), so the helper is named as an ARGUMENT and never as Call(func=Name). Declared explicitly rather than letting the lint follow every bare Name, which would be a wider net in the false-green direction."
       },
       "consumer": {
         "path": "scripts/organism_digest.py",
@@ -223,14 +227,14 @@
       "known_gaps": [
         {
           "check": "C2",
-          "key": "live",
-          "reason": "organism_digest.stale_heartbeats treats status=live as healthy, and no organ producer emits it \u2014 measured 2026-08-31 across scripts/lib/heartbeat.sh (ok|error|warning|starting|degraded|success|healthy|disabled) and apps/cell/cell/utils/organ_emitter.py (ok|degraded|fail). Dead tolerance, inert today: accepting a value that never arrives changes no verdict. NOT deleted here, deliberately \u2014 removing a boot receptor's tolerance on three machines inside a contracts PR is a behaviour change with a real downside if a future producer does emit it, and no upside today.",
+          "key": "status=live",
+          "reason": "organism_digest.stale_heartbeats accepts this status as healthy. NO CALLER in the tree passes it: measured 2026-08-31 across every call site of scripts/lib/heartbeat.sh's organism_heartbeat (ok|error|warning|starting|degraded|success|healthy|disabled) and apps/cell/cell/utils/organ_emitter.py (ok|degraded|fail). CORRECTED after a cross-family review: the earlier wording said no producer CAN emit it, which is false \u2014 organism_heartbeat writes whatever status string it is handed and validates nothing. The claim is about callers, not about the function's capability, and the two are not the same sentence. Inert either way today. Not deleted: removing a boot receptor's tolerance on three machines inside a contracts PR is a behaviour change with a real downside if some caller later passes it, and no upside now.",
           "ledger": "squad-L issue #5319 \u2014 declare-or-delete decision, owner squad L"
         },
         {
           "check": "C2",
-          "key": "green",
-          "reason": "Same as 'live', same measurement. The `green` literals that do exist in the tree (seo_cell sensors, admin dashboards, docs_sync) are DIFFERENT payloads, not the organ heartbeat sidecar this contract covers \u2014 checked before declaring the gap rather than assumed from a grep count.",
+          "key": "status=green",
+          "reason": "organism_digest.stale_heartbeats accepts this status as healthy. NO CALLER in the tree passes it: measured 2026-08-31 across every call site of scripts/lib/heartbeat.sh's organism_heartbeat (ok|error|warning|starting|degraded|success|healthy|disabled) and apps/cell/cell/utils/organ_emitter.py (ok|degraded|fail). CORRECTED after a cross-family review: the earlier wording said no producer CAN emit it, which is false \u2014 organism_heartbeat writes whatever status string it is handed and validates nothing. The claim is about callers, not about the function's capability, and the two are not the same sentence. Inert either way today. Not deleted: removing a boot receptor's tolerance on three machines inside a contracts PR is a behaviour change with a real downside if some caller later passes it, and no upside now.",
           "ledger": "squad-L issue #5319 \u2014 declare-or-delete decision, owner squad L"
         }
       ]

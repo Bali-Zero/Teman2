@@ -199,7 +199,10 @@ def test_c2_reports_enum_literal_outside_producer_domain(tmp_path: Path) -> None
     v, u, c, g, anchored, total = _lint(tmp_path, contract)
     c2 = _check(_cid(v, "c2_guilt"), "C2")
     assert len(c2) == 1
-    assert c2[0].key == "normal"
+    assert c2[0].key == "items[].status=normal", (
+        "the violation key carries its PATH so one gap cannot excuse the same literal "
+        "at two different sites"
+    )
 
 
 def test_c2_literal_inside_domain_is_clean(tmp_path: Path) -> None:
@@ -391,13 +394,20 @@ def test_known_gap_matching_a_real_violation_downgrades_it(tmp_path: Path) -> No
         "c_gap_downgrade",
         _producer(emits=["items"], nested={"items[]": ["status"]}, enums={"items[].status": ["NORMAL"]}),
         _consumer(reads=["items", "items[].status"], enum_literals={"items[].status": ["normal"]}),
-        known_gaps=[_gap("C2", "normal", reason="operator decided to defer, tracked externally", ledger="issue-123")],
+        known_gaps=[
+            _gap("C2", "items[].status=normal", reason="operator decided to defer, tracked externally", ledger="issue-123"),
+            # C2b is the SAME drift seen from the source side. Both must be
+            # declared: excusing only the registry half would leave the
+            # source-anchored finding live, which is the point of C2b.
+            _gap("C2b", "status=normal", reason="same finding, source-anchored", ledger="issue-123"),
+        ],
     )
     v, u, c, g, anchored, total = _lint(tmp_path, contract)
     assert _cid(v, "c_gap_downgrade") == []
     gaps_for_cid = _cid(g, "c_gap_downgrade")
-    assert len(gaps_for_cid) == 1
-    line = gaps_for_cid[0].line()
+    assert len(gaps_for_cid) == 2
+    assert {x.check for x in gaps_for_cid} == {"C2", "C2b"}
+    line = next(x.line() for x in gaps_for_cid if x.check == "C2")
     assert "operator decided to defer, tracked externally" in line
     assert "issue-123" in line
 
@@ -461,17 +471,18 @@ def test_known_gap_matches_on_check_and_key_together_not_key_alone(tmp_path: Pat
             reads=["items", "items[].status", "GHOST"],  # "GHOST" resolves to nothing -> C1 violation
             enum_literals={"items[].status": ["GHOST"]},  # "GHOST" is outside the domain -> C2 violation
         ),
-        known_gaps=[_gap("C2", "GHOST")],  # only excuses the C2 half
+        known_gaps=[_gap("C2", "items[].status=GHOST")],  # only excuses the C2 half
     )
     v, u, c, g, anchored, total = _lint(tmp_path, contract)
     violations_for_cid = _cid(v, "c_gap_check_and_key")
-    assert len(violations_for_cid) == 1
-    assert violations_for_cid[0].check == "C1"
+    # The C1 half survives — a C2 gap does not excuse it. (The source here
+    # compares "NORMAL", which is inside the domain, so C2b stays silent.)
+    assert [x.check for x in violations_for_cid] == ["C1"], violations_for_cid
     assert violations_for_cid[0].key == "GHOST"
     gaps_for_cid = _cid(g, "c_gap_check_and_key")
     assert len(gaps_for_cid) == 1
     assert gaps_for_cid[0].check == "C2"
-    assert gaps_for_cid[0].key == "GHOST"
+    assert gaps_for_cid[0].key == "items[].status=GHOST"
 
 
 # ---------------------------------------------------------------------------
@@ -572,7 +583,7 @@ def test_no_regrowth_growth_against_base_is_a_c5_violation(tmp_path: Path) -> No
     assert cannot_verify == []
     assert len(violations) == 1
     assert violations[0].check == "C5"
-    assert "known_gaps grew 1 -> 2" in violations[0].msg
+    assert "gained 1 entry" in violations[0].msg, violations[0].msg
 
 
 def test_no_regrowth_shrink_against_base_is_clean(tmp_path: Path) -> None:
@@ -730,3 +741,148 @@ def test_main_selftest_prints_named_individual_cases_not_just_a_bare_zero(capsys
     pass_lines = [line for line in lines if line.startswith("PASS ")]
     assert len(pass_lines) >= 5, "selftest should name several individual passing cases, not just return 0"
     assert not any(line.startswith("FAIL ") for line in lines)
+
+
+def test_an_empty_registry_is_a_disarmed_gate_not_a_clean_one(tmp_path: Path) -> None:
+    """Replacing the registry with `{}` used to report `0/0 contracts, 0 violations`
+    and exit 0 — the whole gate disarmed by deleting its CONTENT rather than its
+    code, with nothing red anywhere (cross-family gate). Two shapes, one rule.
+    """
+    for payload in ({}, {"version": 1, "contracts": []}):
+        registry = tmp_path / "empty.json"
+        registry.write_text(json.dumps(payload), encoding="utf-8")
+        v, u, c, g, anchored, total = lic._lint_registry(registry, tmp_path)
+        assert any(x.check == "C6" for x in v), f"empty registry read as clean: {payload!r}"
+        assert lic.main(["--registry", str(registry), "--repo-root", str(tmp_path)]) == 1
+
+
+def test_the_real_w120_shape_an_undeclared_payload_read_is_caught(tmp_path: Path) -> None:
+    """The blocker a cross-family reviewer reproduced against the first version:
+    C1=[], C3=[], C4=[], exit 0 on the EXACT defect this registry exists for.
+
+    `classification` is precisely a key the producer does NOT declare, so a C3
+    that only flagged already-declared keys discarded it as ordinary code. The
+    cure is provenance — a read off a value that flows from the payload is a
+    contract read whatever the registry says about it.
+    """
+    (tmp_path / "producer.py").write_text(
+        'def build():\n    return {"entries": [{"class": "TECH-DEBT"}]}\n', encoding="utf-8"
+    )
+    (tmp_path / "consumer.py").write_text(
+        'def consume(data):\n'
+        '    for e in data.get("entries", []):\n'
+        '        if e.get("classification") == "TECH-DEBT":\n'
+        '            yield e\n',
+        encoding="utf-8",
+    )
+    contract = _contract(
+        "c_w120_real",
+        _producer(emits=["entries"], nested={"entries[]": ["class"]}),
+        _consumer(reads=["entries"]),
+    )
+    v, u, c, g, anchored, total = _lint(tmp_path, contract)
+    hits = [x for x in v if x.check == "C3" and x.key == "classification"]
+    assert hits, f"the W120 shape was not caught: {[(x.check, x.key) for x in v]}"
+
+
+def test_a_literal_that_never_touches_the_payload_is_not_a_contract_read(tmp_path: Path) -> None:
+    """The innocence twin of the test above — otherwise the cure is a wider net,
+    and a required job reddens on `os.environ.get("HOME")`."""
+    (tmp_path / "producer.py").write_text(
+        'def build():\n    return {"entries": []}\n', encoding="utf-8"
+    )
+    (tmp_path / "consumer.py").write_text(
+        'import os\n'
+        'def consume(data):\n'
+        '    home = os.environ.get("HOME")\n'
+        '    cfg = {"classification": "x"}\n'
+        '    return data.get("entries"), home, cfg["classification"]\n',
+        encoding="utf-8",
+    )
+    contract = _contract(
+        "c_prose", _producer(emits=["entries"]), _consumer(reads=["entries"])
+    )
+    v, u, c, g, anchored, total = _lint(tmp_path, contract)
+    assert v == [], f"an unrelated literal was treated as a contract read: {[(x.check, x.key) for x in v]}"
+
+
+def test_c4_checks_nested_keys_not_only_top_level(tmp_path: Path) -> None:
+    """C4 read only `emits`, so a rename INSIDE an entry dict was invisible — the
+    producer half of exactly the drift this registry exists to catch."""
+    (tmp_path / "producer.py").write_text(
+        'def build():\n    return {"entries": [{"klass": "x"}]}\n', encoding="utf-8"
+    )
+    (tmp_path / "consumer.py").write_text(
+        'def consume(data):\n    return data.get("entries")\n', encoding="utf-8"
+    )
+    contract = _contract(
+        "c_nested_c4",
+        _producer(emits=["entries"], nested={"entries[]": ["class"]}),  # code writes "klass"
+        _consumer(reads=["entries"]),
+    )
+    v, u, c, g, anchored, total = _lint(tmp_path, contract)
+    assert [x.key for x in v if x.check == "C4"] == ["class"], [(x.check, x.key) for x in v]
+
+
+def test_emit_helpers_are_followed_and_are_not_followed_by_default(tmp_path: Path) -> None:
+    """A real producer hands its builder to an executor —
+    `pool.submit(probe_seat, ...)` names the helper as an ARGUMENT, so no
+    `Call(func=Name)` ever mentions it and the keys it writes look unwritten.
+
+    Following every bare Name would be a wider net in the FALSE-GREEN direction
+    (an unrelated function could satisfy a claimed key by accident), so the
+    registry names the helper. Both halves are asserted: without the
+    declaration the key is a violation, with it the key is found.
+    """
+    (tmp_path / "producer.py").write_text(
+        'def helper(x):\n'
+        '    return {"latency_ms": x}\n'
+        'def build(pool):\n'
+        '    return {"seats": [pool.submit(helper, 1)]}\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "consumer.py").write_text(
+        'def consume(data):\n    return data.get("seats")\n', encoding="utf-8"
+    )
+    producer = _producer(emits=["seats"], nested={"seats[]": ["latency_ms"]})
+    producer["function"] = "build"
+
+    undeclared = _contract("c_helper_undeclared", producer, _consumer(reads=["seats"]))
+    v, *_ = _lint(tmp_path, undeclared)
+    assert [x.key for x in v if x.check == "C4"] == ["latency_ms"], (
+        "without the declaration the helper's keys must read as unwritten"
+    )
+
+    declared_producer = dict(producer, emit_helpers=["helper"])
+    declared = _contract("c_helper_declared", declared_producer, _consumer(reads=["seats"]))
+    v2, *_ = _lint(tmp_path, declared)
+    assert [x for x in v2 if x.check == "C4"] == [], [(x.check, x.key) for x in v2]
+
+
+def test_a_malformed_read_path_is_rejected_not_interpreted(tmp_path: Path) -> None:
+    """`counts.` and `counts..x` used to RESOLVE — a declaration that is not a
+    path was being read as one, which is a false green in the direction that
+    matters (cross-family gate)."""
+    (tmp_path / "producer.py").write_text(
+        'def build():\n    return {"counts": {"total": 1}}\n', encoding="utf-8"
+    )
+    (tmp_path / "consumer.py").write_text(
+        'def consume(data):\n    return data.get("counts")\n', encoding="utf-8"
+    )
+    for bad in ("counts.", "counts..total", " counts"):
+        contract = _contract(
+            f"c_malformed_{abs(hash(bad))}",
+            _producer(emits=["counts"], nested={"counts": ["total"]}),
+            _consumer(reads=["counts", bad]),
+        )
+        v, *_ = _lint(tmp_path, contract)
+        assert any(x.check == "C1" and x.key == bad for x in v), f"{bad!r} was accepted"
+
+    # Innocence: a well-formed path still resolves.
+    ok = _contract(
+        "c_wellformed",
+        _producer(emits=["counts"], nested={"counts": ["total"]}),
+        _consumer(reads=["counts", "counts.total"]),
+    )
+    v2, *_ = _lint(tmp_path, ok)
+    assert [x for x in v2 if x.check == "C1"] == []
