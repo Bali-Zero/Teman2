@@ -116,7 +116,6 @@ class AuditReport:
 # ---------------------------------------------------------------------------
 
 
-
 # ---------------------------------------------------------------------------
 # Checksum verification (migration 299)
 # ---------------------------------------------------------------------------
@@ -174,26 +173,26 @@ SYMBOLIC_CHECKSUM_ALLOWLIST: dict[tuple[int, str], tuple[str, str]] = {
         "legacy_fake_checksum",
         "marked applied WITHOUT executing its SQL when the runner adopts a "
         "pre-existing database (migration_manager.py:451-462); the text never ran, "
-        "so there is no honest checksum to record."
+        "so there is no honest checksum to record.",
     ),
     (107, "107_bridge_outbox"): (
         "legacy-107-bridge-outbox",
         "the ledger row is BACKFILLED by migration 194 with the literal "
         "'legacy-107-bridge-outbox'; 107 itself was promoted from a legacy Python "
         "migration, so the row records the promotion rather than an execution of "
-        "this file's text."
+        "this file's text.",
     ),
     (165, "165_reconcile_schema_migrations_duplicates"): (
         "tracked-by-migration-165",
         "this migration INSERTS ITS OWN ledger row with 'tracked-by-migration-165', "
         "and `_log_migration` then uses ON CONFLICT DO NOTHING, so the symbolic "
-        "value is never replaced by a real digest."
+        "value is never replaced by a real digest.",
     ),
     (166, "166_reconcile_client_email_duplicates"): (
         "tracked-by-migration-166",
         "same self-inserting shape as 165, with 'tracked-by-migration-166'; the "
         "ON CONFLICT DO NOTHING in `_log_migration` leaves the symbolic value in "
-        "place for the lifetime of the row."
+        "place for the lifetime of the row.",
     ),
 }
 
@@ -236,22 +235,149 @@ LEGACY_CHECKSUM_ALLOWLIST: dict[int, str] = {
 # migration, a duplicate number, a tracking divergence or a missing required
 # table still fails the deploy, because each of those describes something the
 # CURRENT deploy is about to get wrong.
+# The 25 rows production was already carrying when this verifier was armed on
+# 2026-08-30, read verbatim out of the failing `release_command` — number,
+# name, and the EXACT stored value, plus the recomputed digest for the eight
+# whose file disagrees. Not transcribed by hand: extracted from the run's own
+# `details:` JSON.
+#
+# WHY A BASELINE AND NOT A CLASS-WIDE DEMOTION. The first cure (#5376) demoted
+# the whole checksum CLASS to warning, which unblocked the fleet but also
+# disarmed the check against corruption that has not happened yet: tamper with
+# migration 300 tomorrow and the deploy would still exit 0. A cross-family
+# refuter (Codex gpt-5.6-sol, xhigh) named that as its lead finding and it was
+# right. Pinning the 25 known rows instead restores fail-closed for everything
+# else — a NEW anomaly, even on one of these same migration numbers, is an
+# error again.
+#
+# BOUND TO THE VALUES, NOT THE ROW. A sentinel entry excuses one exact stored
+# string; a mismatch entry excuses one exact (stored, recomputed) PAIR. So
+# editing one of those eight legacy .sql files turns the deploy red rather
+# than silently re-excusing a different divergence. That is deliberate and it
+# is the one real cost of this design: those eight files are effectively
+# frozen until someone re-baselines. Editing an already-applied migration is
+# precisely the event this check exists to stop, so the cost is the feature.
+LegacyFingerprint = tuple[str, str | None]
+
+LEGACY_CHECKSUM_BASELINE: dict[tuple[int, str], LegacyFingerprint] = {
+    (2, "002_portal_sync_tables.sql"): ("manual_apply", None),
+    (3, "003_portal_performance_indexes.sql"): ("manual_apply", None),
+    (4, "004_query_analytics.sql"): ("manual_apply", None),
+    (5, "005_workflow_analytics.sql"): ("manual_apply", None),
+    (6, "006_performance_indexes_advanced"): ("", None),
+    (19, "migration_019"): ("", None),
+    (22, "022_dedup_constraints"): ("manual-fix", None),
+    (23, "migration_023"): ("", None),
+    (26, "026_review_queue"): ("manual-fix", None),
+    (34, "034_company_centric_crm"): ("manual", None),
+    (40, "040_documents_drive_integrity"): ("", None),
+    (41, "041_workflow_jobs_context"): ("", None),
+    (42, "042_clients_tax_ids"): ("", None),
+    (43, "043_invoices_table"): ("", None),
+    (44, "044_cleanup_practices_invoice_jsonb"): ("", None),
+    (45, "045_visa_records_type_fk"): ("", None),
+    (182, "182_companies_tax_dept_folder"): ("031c4d196dcc3860b6ee0598d0db7853", None),
+    # --- mismatches ---
+    (127, "127_war_room_canva_url"): (
+        "ff34400ec9cd949199a00d66ce2a60601c376ebe45591fee9f95fc4a6011ca76",
+        "9a493d1f70c814bc15bcd21e613bf0fb8881505526e07761dab1d6602cff066b",
+    ),
+    (157, "157_practice_types_2026_pricing_delta"): (
+        "f602c9afefc92ff7750ca0d5c63145771756d79bdab6819bc582d2b7b6412512",
+        "4caafd4a22cb66c915425e11d5f07401960310678a90717948b39a61b14d2d43",
+    ),
+    (158, "158_practices_discount_columns"): (
+        "86cbe9765757450b42f2f075394c0f54364d89de2cd9cda86deb35893545e190",
+        "1a1c1931d2a5e48dcb813c8cb8df2adff6b0a8adf63fa556a8ff28eb0119d13a",
+    ),
+    (186, "186_crm_phone_dedup_2026_05_20"): (
+        "431e0465a0e055c36e5b51615c627da36d557845b542f5c950ba7d49ae0e1ba9",
+        "ea743cce867034bfd0600ed64903d6265891ea3caff231d1f52b3d88f25afa5c",
+    ),
+    (192, "192_bridge_outbox_jsonb_double_encoding_repair"): (
+        "6a070dbdb8c2dd9de289c5c42e45798816b9a6475af65d2e6f98c3fe773e2083",
+        "df865b0734d7e98c8ea421bb93bfddbd74c68a0a984eb797adbc8029fc045bfb",
+    ),
+    (200, "200_wa_copilot_infrastructure"): (
+        "70d0962f1d17f8bd0413b5c2160b94812d0a7e9a8a8054f505427108365b0fe8",
+        "e32d488b2c6c5a9c799159fd83be4979d3d6928181f845db0d1b62ea48658845",
+    ),
+    (207, "207_team_admin_runtime_grants"): (
+        "a101bc5f13f47357e96b59d0e1815cae8befd0e3329e9b9560e16df06623edca",
+        "280a7abc2e1209f7dee167a8fac837f9f033a4e90238f67c83760d84ff88b9c5",
+    ),
+    (217, "217_intake_commit_audit"): (
+        "4404de267c13064f25929089b227b8d269f65b52924117a2fa68094e7378540a",
+        "5522a284fbf7fb958c4b088a2ce591dccc2d5f72b44c26124bdd2a565d7daef9",
+    ),
+}
+
+
+def _baseline_covers(number: int, name: str, stored: str | None, recomputed: str | None) -> bool:
+    """True iff this exact row is one of the 25 known-legacy rows.
+
+    `recomputed is None` in the table means a sentinel entry (there is no
+    honest digest to compare); a mismatch entry pins BOTH sides.
+    """
+    entry = LEGACY_CHECKSUM_BASELINE.get((number, name))
+    if entry is None:
+        return False
+    baseline_stored, baseline_recomputed = entry
+    if stored != baseline_stored:
+        return False
+    return baseline_recomputed is None or baseline_recomputed == recomputed
+
+
 _CHECKSUM_ENFORCE_ENV = "SCHEMA_AUDIT_CHECKSUM_ENFORCE"
-_TRUTHY = frozenset({"1", "true", "yes", "on"})
+_TRUTHY = frozenset({"1", "true", "yes", "on", "enforce"})
+_FALSY = frozenset({"0", "false", "no", "off"})
 
 
-def _checksum_severity() -> str:
-    """Severity for the checksum findings: "warning" unless explicitly armed.
+def _enforcement_armed() -> str | None:
+    """The raw flag value if enforcement is armed, else None.
 
     Read per call, never cached at import: the release_command is a fresh
-    process, but a long-lived caller must not be pinned to the value the
+    process, but a long-lived caller must not be pinned to whatever value the
     module happened to see first.
+
+    An UNRECOGNISED non-empty value raises rather than reading as "off". A
+    flag whose typo fails open is the failure this whole file is about:
+    `SCHEMA_AUDIT_CHECKSUM_ENFORCE=treu` would otherwise leave the gate
+    disarmed with no error and no log line, and the operator who typed it
+    would have every reason to believe it was on. `ENFORCE` is accepted
+    because the neighbouring `VISA_ENGINE_EVALUATE_MODE` takes that literal
+    word, and an operator carrying the habit across must not be silently
+    wrong.
     """
-    return (
-        "error"
-        if os.environ.get(_CHECKSUM_ENFORCE_ENV, "").strip().lower() in _TRUTHY
-        else "warning"
+    raw = os.environ.get(_CHECKSUM_ENFORCE_ENV, "").strip()
+    if not raw:
+        return None
+    lowered = raw.lower()
+    if lowered in _TRUTHY:
+        return raw
+    if lowered in _FALSY:
+        return None
+    raise ValueError(
+        f"{_CHECKSUM_ENFORCE_ENV}={raw!r} is not a recognised value. "
+        f"Use one of {sorted(_TRUTHY)} to arm, {sorted(_FALSY)} to disarm, or "
+        "leave it unset. Refusing to guess: a flag that reads an unknown value "
+        "as 'off' disarms the gate exactly when someone believed they armed it."
     )
+
+
+def _checksum_severity(
+    number: int, name: str, stored: str | None, recomputed: str | None = None
+) -> str:
+    """Severity for ONE checksum finding.
+
+    `error` for everything, EXCEPT the 25 fingerprints in
+    `LEGACY_CHECKSUM_BASELINE`, which are `warning` until enforcement is armed.
+    A row that is not in the baseline — or is, but with a different value — is
+    a new anomaly and fails the deploy.
+    """
+    if _enforcement_armed() is not None:
+        return "error"
+    return "warning" if _baseline_covers(number, name, stored, recomputed) else "error"
 
 
 def _migration_sql_by_number() -> dict[int, Path]:
@@ -319,7 +445,7 @@ async def _check_migration_checksums(
             findings.append(
                 Finding(
                     code="migration_checksum_unallowed_sentinel",
-                    severity=_checksum_severity(),
+                    severity=_checksum_severity(number, row["migration_name"], stored),
                     message=(
                         f"migration {number} ({row['migration_name']}) stores "
                         f"{stored!r}, which is not a sha256 digest, and the pair "
@@ -347,7 +473,7 @@ async def _check_migration_checksums(
             findings.append(
                 Finding(
                     code="migration_checksum_mismatch",
-                    severity=_checksum_severity(),
+                    severity=_checksum_severity(number, row["migration_name"], stored, actual),
                     message=(
                         f"migration {number} ({row['migration_name']}) does not match the "
                         "file on disk: the text applied to this database is not the text "
@@ -627,6 +753,12 @@ async def run_audit(
 # ---------------------------------------------------------------------------
 
 
+def _plural(count: int, noun: str) -> str:
+    """`1 error` / `2 errors` — not `1 error(s)`. A deploy log is read at 03:00
+    by someone deciding whether to scroll; `(s)` is one more thing to parse."""
+    return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
+
+
 def _format_human(report: AuditReport) -> str:
     lines = ["=" * 70, "SCHEMA AUDIT", "=" * 70]
     lines.append(f"Checks run: {', '.join(report.checks_run)}")
@@ -635,11 +767,11 @@ def _format_human(report: AuditReport) -> str:
     # A warning-only report must never render as an empty success. The whole
     # risk of demoting a finding is that the summary line starts impersonating
     # "nothing was found" -- so the count is always stated, on both branches.
-    suffix = f" ({warnings} warning(s))" if warnings else ""
+    suffix = f" ({_plural(warnings, 'warning')})" if warnings else ""
     if report.ok:
         lines.append(f"Result: OK — no errors{suffix}")
     else:
-        lines.append(f"Result: FAIL — {errors} error(s){suffix}")
+        lines.append(f"Result: FAIL — {_plural(errors, 'error')}{suffix}")
     for f in report.findings:
         lines.append("")
         lines.append(f"[{f.severity.upper()}] {f.code}")
