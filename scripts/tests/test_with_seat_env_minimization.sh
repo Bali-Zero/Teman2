@@ -210,7 +210,26 @@ import json, re, sys
 NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 BASENAME = re.compile(r"^[A-Za-z0-9._-]+$")
 bad = []
-seats = json.load(open(sys.argv[1]))["seats"]
+raw = open(sys.argv[1]).read()
+registry = json.loads(raw)
+seats = registry["seats"]
+
+# Secret-shape scan over the WHOLE file, prose included.
+#
+# An earlier version exempted `note` because notes are prose. Measured, that let
+# this through untouched:
+#     "note": "OPENAI_API_KEY: sk-proj-0123456789abcdefghijklmnopqrstuv"
+# -- the key name is only 14 chars before the colon breaks the run, and the token
+# itself is not adjacent to a quote, so a key/value grep never considered it.
+# Found by blind cross-family refutation (Codex GPT-5.6 sol).
+#
+# 32 is measured, not guessed: the longest legitimate token anywhere in this
+# registry's prose is 23 chars (CLAUDE_CODE_OAUTH_TOKEN, FLEET_BURST_SEAT_BROKER),
+# and real credentials are far longer. Prose does not need 32-character words; if
+# a future note genuinely does, shorten the word rather than raising this.
+for token in re.findall(r"[A-Za-z0-9+/=_-]{32,}", raw):
+    bad.append("value-shaped token (%d chars) in the registry — this file declares NAMES only: %r..."
+               % (len(token), token[:8]))
 for name, seat in seats.items():
     env = seat.get("env") or []
     if not env:
@@ -234,12 +253,15 @@ for name, seat in seats.items():
     for item in seat.get("exec_search_path", []):
         if not isinstance(item, str) or not (item.startswith("/") or item.startswith("~/")):
             bad.append("%s: bare-relative exec_search_path entry %r" % (name, str(item)[:24]))
-    # Prose fields are the only place a long string belongs.
-    for key, value in seat.items():
-        if key in ("note",):
-            continue
-        if isinstance(value, str) and len(value) > 128:
-            bad.append("%s: long string in field %r" % (name, key))
+    # A seat's allowlist must plausibly serve the seat it belongs to. Without
+    # this, `"exec_allowlist": ["codxe"]` is structurally perfect and the
+    # resolution check below cannot see it on a machine where codex is not
+    # installed -- which is every CI runner. Found by blind cross-family
+    # refutation (Codex GPT-5.6 sol).
+    expected = name[:-5] if name.endswith("-seat") else name
+    if expected not in allow:
+        bad.append("%s: exec_allowlist %r does not contain %r, the executable this seat is named for"
+                   % (name, allow, expected))
 if bad:
     sys.stderr.write("\n".join(bad) + "\n")
     sys.exit(1)
@@ -263,6 +285,29 @@ cat >"$hex_as_name" <<'EOF'
 EOF
 python3 "$registry_validator" "$hex_as_name" >/dev/null 2>&1
 check "a hex token wearing a valid name's syntax is rejected on length" test $? -ne 0
+
+# Guilt for the two gaps a blind cross-family refuter (Codex GPT-5.6 sol) found in
+# the first version of these rules. Both are edits a real person could plausibly
+# make, and both passed everything before this.
+prose_secret="$TEMP_DIR/prose-secret.json"
+python3 - "$REAL_REGISTRY" "$prose_secret" <<'MKPROSE'
+import json, sys
+d = json.load(open(sys.argv[1]))
+d["seats"]["codex"]["note"] = "OPENAI_API_KEY: sk-proj-0123456789abcdefghijklmnopqrstuv"
+json.dump(d, open(sys.argv[2], "w"))
+MKPROSE
+python3 "$registry_validator" "$prose_secret" >/dev/null 2>&1
+check "a secret wrapped in prose inside a note is rejected" test $? -ne 0
+
+typo_allowlist="$TEMP_DIR/typo-allowlist.json"
+python3 - "$REAL_REGISTRY" "$typo_allowlist" <<'MKTYPO'
+import json, sys
+d = json.load(open(sys.argv[1]))
+d["seats"]["codex"]["exec_allowlist"] = ["codxe"]
+json.dump(d, open(sys.argv[2], "w"))
+MKTYPO
+python3 "$registry_validator" "$typo_allowlist" >/dev/null 2>&1
+check "an allowlist that does not name its own seat's executable is rejected" test $? -ne 0
 
 # Resolution half: for each real seat, if its executable exists ANYWHERE the
 # operator's own PATH can see it, the broker must resolve it too. A seat whose

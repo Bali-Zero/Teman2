@@ -26,29 +26,46 @@ name: Seat broker env-minimization tests
 # would pass just as well against a child that sees nothing because the fixture broke.
 #
 # Deliberately NOT a branch-protection required context (repo-settings action, operator-
-# gated; a permanently-red required check blocks the whole merge queue). It runs on every
-# PR touching the broker, its registry, or its corpus — which is what makes it bite.
+# gated; a permanently-red required check blocks the whole merge queue). It starts on a PR
+# that touches the broker, its registry, its corpus, or `.gitattributes` (a checkout-
+# semantics change such as `eol=crlf` breaks these shell scripts without appearing in any
+# of the other paths).
 #
-# `scripts/fleet_burst.sh` is in the filter because it names this broker as its
-# `FLEET_BURST_SEAT_BROKER` and depends on the `<broker> <seat> <command...>` contract;
-# a change to that contract must start this job.
+# "Starts on", not "runs on every PR that touches them": GitHub evaluates path filters
+# against at most the first 3,000 files of a diff, so a large enough PR can touch a guarded
+# file and still not trigger this workflow. That is a platform limit, not something this
+# file can close, and it is stated rather than papered over.
+#
+# `scripts/fleet_burst.sh` is in the filter FORWARD-LOOKINGLY and does not exist on this
+# branch yet: it arrives with L09-PR2 (PR #5322), where it names this broker as its
+# `FLEET_BURST_SEAT_BROKER` and depends on the `<broker> <seat> <command...>` contract.
+# Until that lands, this entry simply never matches — a filter naming an absent file is
+# inert, not broken. Stating it because the honest reading today is that the broker's only
+# proven consumer is its own corpus; the fleet dispatch becomes a real consumer when #5322
+# merges, and the entry is here so that a later change to the contract starts this job
+# rather than being remembered.
 
 on:
   pull_request:
-    paths:
+    paths: &guarded_paths
       - "scripts/with_seat.sh"
       - "scripts/tests/test_with_seat_env_minimization.sh"
       - "infra/llm-credentials/seat-env.json"
       - "scripts/fleet_burst.sh"
+      - ".gitattributes"
       - ".github/workflows/with-seat-broker-tests.yml"
+  # Runs on the merge queue's synthetic revision too, so two individually-green
+  # PRs whose COMBINATION breaks the broker are caught before landing rather
+  # than after. Without this the only post-merge signal is the push run below,
+  # which is detection, not prevention.
+  merge_group:
   push:
     branches:
       - main
-    paths:
-      - "scripts/with_seat.sh"
-      - "scripts/tests/test_with_seat_env_minimization.sh"
-      - "infra/llm-credentials/seat-env.json"
-      - "scripts/fleet_burst.sh"
+    # Identical set, the workflow file included: a PR that changes ONLY this file
+    # runs on the PR but would produce no main-push run after merge, leaving
+    # main-push-failure-watch.yml with nothing to observe.
+    paths: *guarded_paths
 
 permissions:
   contents: read

@@ -45,7 +45,7 @@ diff:
     the executor out would ship a credential broker whose guards nothing runs.
 
 receipts:
-  - claim: "19/19 corpus green, and it bites: 6 mutants killed at real code sites (basename-only exec resolution restored; declared search paths removed; bare-relative search path; swallowing TERM trap restored; file_mode forced to answer a safe mode; length cap raised past a sha256 hex)."
+  - claim: "21/21 corpus green, and it bites: 8 mutants killed at real code sites (basename-only exec resolution restored; declared search paths removed; bare-relative search path; swallowing TERM trap restored; file_mode forced to answer a safe mode; length cap raised past a sha256 hex; secret-shape scan disabled; seat-name/allowlist consistency disabled)."
     cmd: "bash scripts/tests/test_with_seat_env_minimization.sh"
     exit: 0
     ts: "2026-08-31T01:30:00Z"
@@ -161,3 +161,87 @@ dissent:
       like, plus guilt fixtures for exactly those two pastes. The length cap is 48
       deliberately: 64 would have let a sha256 hex through, which it measurably
       did on the first attempt.
+  - seat: codex-gpt-5.6-sol (blind refutation of the workflow diff)
+    objection: >-
+      The registry's secret check exempts `note`, so a credential wrapped in
+      prose lands untouched: "note": "OPENAI_API_KEY: sk-proj-0123...". The key
+      name is only 14 chars before the colon breaks the run and the token is not
+      adjacent to a quote, so no key/value pattern considers it.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced against the real registry: it passed. The scan now covers the
+      WHOLE file, prose included, rejecting any 32+ char run of secret-charset.
+      32 is measured rather than guessed -- the longest legitimate token anywhere
+      in this registry's prose is 23 (CLAUDE_CODE_OAUTH_TOKEN,
+      FLEET_BURST_SEAT_BROKER). Pinned by a guilt fixture built from the real
+      registry plus exactly that note.
+  - seat: codex-gpt-5.6-sol (blind refutation of the workflow diff)
+    objection: >-
+      The real-seat resolution check can execute ZERO cases and still pass: it
+      skips a seat whose CLI is absent and then asserts only that failures == 0.
+      None of codex/agy/kimi/claude exist on ubuntu-latest, so on CI it always
+      checks nothing. `"exec_allowlist": ["codxe"]` is structurally valid and
+      invisible there, while production rejects the real codex.
+    status: CONFIRMED
+    resolution: >-
+      This is the coverage-theatre shape the workflow's own header criticises,
+      inside the workflow. Fixed with a rule that needs no binary present: a
+      seat's allowlist must contain the executable the seat is NAMED for
+      (claude-seat -> claude), so a typo is caught on every machine including a
+      runner where nothing is installed. The resolution check is kept for the
+      machines that CAN answer it and now prints how many seats it actually
+      checked, so a zero-coverage run is visible rather than a silent green.
+  - seat: codex-gpt-5.6-sol (blind refutation of the workflow diff)
+    objection: >-
+      Three trigger gaps: `.gitattributes` is not in the path filter (an
+      `eol=crlf` entry breaks every guarded shell script without touching any
+      listed path); there is no `merge_group` trigger, so the
+      `!= 'merge_group'` concurrency exception is dead code and two individually
+      green PRs whose COMBINATION breaks the broker are not caught before
+      landing; and the push:main filter omits the workflow file itself, so a PR
+      changing only it produces no main-push run for the failure watcher to
+      observe.
+    status: CONFIRMED
+    resolution: >-
+      All three fixed: `.gitattributes` added, `merge_group:` added (which also
+      makes the existing concurrency expression live logic rather than dead), and
+      the two path sets unified with a YAML anchor so they cannot drift apart
+      again -- the third defect existed only because they were maintained as two
+      hand-copied lists.
+  - seat: codex-gpt-5.6-sol (blind refutation of the workflow diff)
+    objection: >-
+      The header claims the job "runs on every PR touching the broker". GitHub
+      evaluates path filters against at most the first 3,000 files of a diff, so
+      a large enough PR can touch a guarded file and not trigger this workflow.
+    status: CONFIRMED
+    resolution: >-
+      The claim was false and is not restated: the header now says "starts on"
+      and names the 3,000-file limit as a platform constraint this file cannot
+      close. A comment that overstates a guard's reach is how the next reader
+      stops looking.
+  - seat: codex-gpt-5.6-sol (blind refutation of the workflow diff)
+    objection: >-
+      `scripts/fleet_burst.sh` and `FLEET_BURST_SEAT_BROKER` do not exist in the
+      inspected repository, so the workflow can prove an isolated fixture while
+      no fleet dispatch actually uses the broker.
+    status: CONFIRMED
+    resolution: >-
+      Correct and worth stating rather than arguing: fleet_burst arrives in
+      L09-PR2 (PR #5322), which is open and green but not merged. Until then the
+      broker's only proven consumer is its own corpus, and the path-filter entry
+      is inert -- a filter naming an absent file never matches. The comment now
+      says exactly that instead of implying a live consumer.
+  - seat: tp1-glm-5.2 (third security opinion, DID NOT PRODUCE A VERDICT)
+    objection: >-
+      No findings: the seat returned finish_reason "length" with ZERO content at
+      max_tokens 8000 and again at 32000, spending its whole budget on reasoning.
+    status: PLAUSIBLE
+    resolution: >-
+      Recorded as a door limitation rather than silently dropped, because a
+      missing refuter is exactly the kind of absence that reads as "no findings".
+      This is the trap arsenal_probe.py:156 documents -- TP1 thinking models cap
+      reasoning and answer TOGETHER -- so any lane budgeting such a seat by
+      expected ANSWER length gets an empty HTTP 200. GLM-5.2 is not usable as a
+      refuter on a diff of this size through that door. The family-exclusion and
+      R9 quorum requirements are met without it by kimi-code/k3 and
+      codex-gpt-5.6-sol.
