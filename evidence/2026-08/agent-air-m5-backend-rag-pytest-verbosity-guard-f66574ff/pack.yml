@@ -1,0 +1,303 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  "PR #5243 (agent/air-m5/backend-rag/pytest-verbosity-guard) — dispatched by the team lead to
+  finish the pytest-verbosity-guard PR after its own CI went red on the guard it ships."
+lanes:
+  - lane: pytest-verbosity-guard-family-fix
+    role: build
+    seat:
+      claude-opus-5 (this session — round 1 fixed tests.yml's 2 sites, reported the family was
+      bigger than the dispatching message described, round 2 fixed the remaining 5 sites the
+      dispatcher's expanded scope plus the adversarial subagent named, gathered every receipt
+      below, authored this pack)
+  - lane: pytest-verbosity-guard-refute
+    role: review
+    seat:
+      claude-sonnet-5 (spalla-review adversarial subagent, dispatched via Agent tool WITHOUT this
+      session's reasoning and told explicitly to try to break the fix rather than confirm it —
+      found the two additional genuinely-missed sites recorded in dissent below)
+seat_diversity: not_applicable
+seat_diversity_note:
+  "One build lane (fewer than 2 — the D3 floor in evidence_pack_lint.py rule 8 only applies at
+  >= 2 build lanes) plus one review lane. Both Anthropic seats: this is a CI-infrastructure
+  verbosity-flag fix verified by re-deriving arithmetic and running real commands against the real
+  repo, not a domain judgment call where cross-family breadth would add anything a second
+  independent adversarial pass could not."
+diff:
+  net_lines: 8 files, +7/-12, 3 commits
+  behaviour_change:
+    Eight non-evidence files change — two GitHub Actions workflow files, one git hook script, one
+    CI helper Python script, two production Python files in the autonomous-lab service, and two
+    test files. Every change removes exactly one redundant command-line pytest verbosity flag
+    (or updates a test assertion to match a removed flag) — no test logic, no business logic, no
+    workflow trigger, no permission, and no secret changes anywhere in the diff. The observable
+    change is that 8 distinct pytest call sites, which the new guard shipped in this same PR was
+    about to refuse with UsageError (exit 4, no tally printed), now complete normally and print a
+    real pass/fail or collected-count tally.
+receipts:
+  - claim:
+      Deterministic gear floor recomputed from this PR's actual changed-file list is 3, and
+      the floor source is the hot-zone PATH term (.github/workflows/**), not the size term —
+      correctly overriding this session's own small non-evidence diff (see diff.net_lines for
+      the exact machine-measured size).
+    cmd:
+      python3 scripts/ci/hotzone_changed_files.sh <merge-base> <HEAD> 5243 > /tmp/changed.txt &&
+      python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source
+      --changed-files-file /tmp/changed.txt --repo-root .
+    result: "3 / path"
+    exit: 0
+    ts: "2026-08-30T02:00Z"
+    seat: session
+  - claim:
+      Repo-wide, exactly one pytest config root anywhere in this repo carries `-q` inside its
+      own `addopts` — apps/backend-rag/pytest.ini. No other pytest.ini/pyproject.toml/tox.ini/
+      setup.cfg does. This is the load-bearing fact the whole fix rests on.
+    cmd:
+      python3 -c "import configparser,re; ... parse every pytest.ini/pyproject.toml addopts
+      token-by-token, print any whose addopts contains the literal token '-q'" (ad-hoc, run over
+      every candidate file found by `find . -name pytest.ini -o -name pyproject.toml`)
+    result:
+      apps/backend-rag/pytest.ini only. apps/evaluator/pyproject.toml's addopts is
+      "-v --tb=short" (net +1, not -q) — confirms the round-1 "third site" was innocent.
+    exit: 0
+    ts: "2026-08-30T01:15Z"
+    seat: session
+  - claim:
+      tests.yml core-gate step (test_confidence.py), real repo content — WITH the old
+      redundant -q the guard refuses; WITHOUT it the run completes and prints a real tally.
+    cmd:
+      "cd apps/backend-rag; PYTHONPATH=.:../crm-cell pytest backend/tests/services/rag/
+      test_confidence.py -q   (then the same command without -q, plus -ra --no-header --tb=short
+      --durations=10 -x, matching the shipped fix verbatim)"
+    result: "before: exit 4, 'effective verbosity is -2', config in force =
+      apps/backend-rag/pytest.ini. after: exit 0, '24 passed in 0.67s'."
+    exit: 0
+    ts: "2026-08-30T01:10Z"
+    seat: session
+  - claim:
+      tests.yml sharded-unit-test step shape (xdist -n auto --dist loadfile), same
+      before/after transition, proven with --collect-only so no live Postgres is needed.
+    cmd:
+      "PYTHONPATH=.:../crm-cell pytest backend/tests/services/rag/test_confidence.py -n auto
+      --dist loadfile -q -ra --no-header --durations=50 --ignore=backend/tests/e2e --collect-only
+      (then the same without -q)"
+    result: "before: exit 4, same UsageError. after: exit 0, '24 tests collected in 0.39s'."
+    exit: 0
+    ts: "2026-08-30T01:12Z"
+    seat: session
+  - claim:
+      backend_stability_gate.py's 3 pytest subprocess calls (migration/schema gate, LKPM
+      compliance gate, KG/confidence gate) — the ACTUAL cause of Backend Shard 1/2/3's red CI, per
+      the live failure log's own "config in force" line. All 3 proven before/after.
+    cmd:
+      "the exact 3 file-sets from build_gate_commands(), run with the old trailing -q and without,
+      from apps/backend-rag; migration and LKPM sets via --collect-only (no Postgres needed, the
+      guard fires at pytest_configure before collection); KG/confidence set as a full run"
+    result:
+      "migration set: exit 4 -> exit 0, '53 tests collected'. LKPM set: exit 4 -> exit 0,
+      '32 tests collected'. KG/confidence set: exit 4 -> exit 0, '91 passed in 2.34s'."
+    exit: 0
+    ts: "2026-08-30T01:20Z"
+    seat: session
+  - claim:
+      fly-deploy.yml's pre-deploy-gate "Core tests" step is byte-identical in file-set to
+      backend_stability_gate.py's 3rd command (same 3 files, different order) — the KG/confidence
+      receipt above covers it directly; the same before/after pattern applies.
+    cmd: (same command as the KG/confidence receipt above — no separate run needed, files identical)
+    result: "covered by the KG/confidence receipt: exit 4 -> exit 0, '91 passed'."
+    exit: 0
+    ts: "2026-08-30T01:20Z"
+    seat: session
+  - claim:
+      The autonomous_lab verification-command family — allowlist constant, real execution
+      argv, and the independent shape-check in sandbox_runner.py — all needed the SAME -q removed
+      in lockstep, or the shape-check would reject an otherwise-correct plan. Verified by running
+      the exact post-edit argv shape before/after, and by running the whole test suite this
+      command itself verifies.
+    cmd:
+      "PYTHONPATH=. python -m pytest backend/tests/unit/services/autonomous_lab (with a trailing
+      -q, then without, from apps/backend-rag); then the same target with no verbosity flag at
+      all (the real fixed shape) as a full non-collect-only run"
+    result:
+      "with -q: exit 4, same UsageError. without: exit 0, '173 passed in 1.47s' (collect-only
+      variant) and '173 passed in 1.58s' (full run) — 0 failures either way."
+    exit: 0
+    ts: "2026-08-30T01:58Z"
+    seat: session
+  - claim:
+      The EXACT .husky/pre-push pytest command (backend/tests/ --ignore=backend/tests/e2e
+      --tb=short), not just an analogous one, reproduces the guard's UsageError with the old -q
+      and completes with a real tally without it — proven with --collect-only so no live
+      Postgres/Redis is needed (the guard fires at pytest_configure, before collection or any
+      fixture runs).
+    cmd:
+      "PYTHONPATH=.:../crm-cell pytest backend/tests/ --ignore=backend/tests/e2e --tb=short -q
+      --collect-only   (then the same without -q, matching the shipped fix verbatim)"
+    result:
+      "before: exit 4, same UsageError, config in force = apps/backend-rag/pytest.ini. after:
+      exit 0, '28498 tests collected in 25.07s'."
+    exit: 0
+    ts: "2026-08-30T02:05Z"
+    seat: session
+  - claim:
+      The 4 pre-push shell test suites that exercise .husky/pre-push's content/behaviour
+      (including one, test_prepush_suite_lock.sh, that greps the hook file's own pytest line) all
+      pass unchanged after the hook edit — this is a check on the hook's CONTROL FLOW (branching
+      on exit codes 0/75/>=128/else), a distinct thing from the guard-trip receipt directly above.
+    cmd:
+      bash scripts/tests/test_prepush_suite_lock.sh && bash scripts/tests/test_prepush_failclosed.sh
+      && bash scripts/tests/test_prepush_default_off.sh && bash scripts/tests/test_prepush_tip_drift.sh
+    result:
+      "22 passed, 0 failed / 23 passed, 0 failed / 14 passed, 0 failed / 14 passed, 0 failed
+      (73 total, 0 failed)."
+    exit: 0
+    ts: "2026-08-30T01:55Z"
+    seat: session
+  - claim:
+      This PR's own guard test suite (guilt+innocence cases for the plugin itself, plus the
+      static --noconftest scanner) is unaffected by any of these 7 edits.
+    cmd: python3 -m pytest scripts/tests/test_pytest_verbosity_guard.py -v
+    result: 20 passed, 0 failed (both before and after the round-2 commit)
+    exit: 0
+    ts: "2026-08-30T01:59Z"
+    seat: session
+  - claim:
+      actionlint reports the identical finding set on fly-deploy.yml before and after the
+      edit (same 14 pre-existing shellcheck info/style notes, none on the touched line) — the
+      edit introduces zero new lint surface.
+    cmd:
+      "actionlint fly-deploy.yml on the pre-edit commit (via `git show HEAD~1:...` written to a
+      scratch file) vs. the edited tree; diffed the two outputs"
+    result: 14 findings both times, byte-identical diff output (empty diff between the two runs)
+    exit: 0
+    ts: "2026-08-30T01:05Z"
+    seat: session
+  - claim:
+      The two archival JSON receipts under research/operations/autonomous-lab/receipts/ that
+      still show the old -q command verbatim are historical records, not live code — confirmed by
+      grep that they are the ONLY other repo-wide occurrences of the exact command string, and by
+      their filenames/paths (dated bootstrap receipts, not source).
+    cmd:
+      grep -rn "cd apps/backend-rag && PYTHONPATH=. pytest backend/tests/unit/services/
+      autonomous_lab" . --include='*.py' --include='*.md' --include='*.json' --include='*.yml'
+    result:
+      "3 hits total: the (now-fixed) command_policy.py constant, and 2 dated JSON files under
+      research/operations/autonomous-lab/receipts/ — left untouched, deliberately."
+    exit: 0
+    ts: "2026-08-30T01:35Z"
+    seat: session
+  - claim:
+      Live CI failure logs from this PR's own pushed history are the pre-fix ground truth for
+      2 of the 4 CI/hook sites — not inferred, read directly from GitHub Actions.
+    cmd:
+      gh run view --repo Bali-Zero/Teman2 33284494761 --job 99185411765 --log (Backend Shard 1,
+      step "Run backend stability gate") and --job 99185411703 (Backend Static, step "Run core
+      tests")
+    result:
+      "Both show 'ERROR: effective verbosity is -2 ... config in force: .../apps/backend-rag/
+      pytest.ini' — the exact guard message, confirming these were real production failures on
+      this PR's own head SHA before either round of fixes."
+    exit: 0
+    ts: "2026-08-30T00:50Z"
+    seat: session
+pii_scan: clean
+pii_scan_note:
+  Nothing in this diff, brief, or pack touches client data, credentials, or any PII-bearing
+  field. Every changed file is CI/tooling infrastructure (workflow YAML, a git hook, a Python
+  test-command allowlist and its argv construction, two test-file assertions). Receipts quote
+  pytest exit codes, test counts, and file:line locations only.
+dissent:
+  - seat: claude-sonnet-5 (spalla-review adversarial subagent)
+    objection:
+      "Two of the four sites this session initially reported as 'fixed' (backend_stability_gate.py,
+      fly-deploy.yml) were, at the moment the subagent looked, edited in the working tree but NOT
+      YET COMMITTED OR PUSHED — `git show HEAD:...` for both files still contained the old `-q`.
+      The subagent traced this to a real, currently-failing CI run (33284494761) whose failing
+      step is exactly the site that was locally fixed but not shipped, and called it a BLOCKER:
+      commit and push before claiming done."
+    status: CONFIRMED
+    resolution:
+      "Sequencing artifact of when the subagent was dispatched (mid-session, before the commit
+      step) — not a defect in the edits themselves, which the subagent separately verified as
+      correct and minimal. Both files committed (dae8d6f1ec) and pushed in the same turn the
+      dissent was read. No further action needed beyond the commit/push already required by the
+      task."
+  - seat: claude-sonnet-5 (spalla-review adversarial subagent)
+    objection:
+      "`.husky/pre-push:700` was missed by this session's own first pass. It runs the local backend
+      suite via `cd apps/backend-rag ... python -m pytest backend/tests/ --ignore=backend/tests/e2e
+      --tb=short -q` — same stacked-`-q` shape as every CI site, but in a LOCAL git hook that runs
+      on every qualifying `git push` (`PREPUSH_RUN_BACKEND=1`), not in CI. Exit code 4 (the guard's
+      UsageError) is not handled by any of the hook's own branches (0 = pass, 75 = lock not
+      acquired, >=128 = signal-killed), so it falls into the generic else-branch and prints
+      '❌ Python tests FAILED — push blocked' for a suite that never actually ran — a misdiagnosis,
+      not just a failure."
+    status: CONFIRMED
+    resolution:
+      "Fixed (dae8d6f1ec): the redundant `-q` removed from line 700. Verified the hook's own printed
+      'Reproduce' command (line 747-749) already omitted `-q` before this fix — so post-fix the real
+      run and the printed reproduce command are finally consistent with each other, where pre-fix
+      they were consistently-worded but the printed command would not have reproduced the guard
+      failure either. All 4 shell test suites exercising this hook re-run green (73/73)."
+  - seat: claude-sonnet-5 (spalla-review adversarial subagent)
+    objection:
+      "`apps/backend-rag/backend/services/autonomous_lab/command_policy.py:18`
+      (PYTEST_AUTONOMOUS_LAB_COMMAND) was missed by this session's first pass — a live, allowlisted
+      autonomous-lab verification command with the same stacked-`-q` bug, matched by EXACT STRING
+      EQUALITY so a caller cannot work around it by dropping the flag; the constant itself has to
+      change."
+    status: CONFIRMED
+    resolution:
+      "Fixed, and turned out to require 3 coordinated edits, not 1 (found while acting on the
+      dissent, not by the subagent itself): the allowlist constant string
+      (command_policy.py:18), the ACTUAL argv list built in plan_for_allowlisted_command()
+      (command_policy.py:120, a second independent embedding of the same flag), and the
+      defense-in-depth shape-check's expected argv in sandbox_runner.py's
+      _command_shape_refusal_reason (:224) — all three must agree, or the shape-check rejects an
+      otherwise-correct plan as argv_not_allowlisted. Two test assertions pinned to the old shape
+      (test_run_cli.py:237, an exact-argv-tail assertion; test_runtime_worker.py:285, a hardcoded
+      literal fixture value not itself exercising the allowlist match) updated to match. Full
+      173-test autonomous_lab suite re-run green. Two archival JSON receipts under
+      research/operations/autonomous-lab/receipts/ still show the old command verbatim —
+      deliberately left untouched as historical record, not source."
+  - seat: session (self-check while acting on the dissent above)
+    objection:
+      "Is `apps/backend-rag/scripts/deploy_staging.sh:29`'s `pytest ... -v --tb=short -q` (BOTH
+      `-v` and `-q` on the same command line) a 5th real site, or is the mixed flag combination
+      actually safe? Not obvious without doing the arithmetic."
+    status: RETRACTED
+    resolution:
+      "Confirmed safe, not a defect: cumulative verbosity math is +1 (`-v`) then -1 (`-q`) = net 0
+      on the command line, combined with the config's own -q = net -1 overall — the SAME verbosity
+      the fixed sites land at, not -2. Left untouched. Recorded here so the next reader does not
+      re-open it as an open question."
+  - seat: session (declared limit, unresolved — intentionally left open)
+    objection:
+      "Several docs/skill files (`.clinerules`, `VADEMECUM.md`, `.kimi-code/skills/
+      nuzantara-context/SKILL.md`, `docs/AI_ONBOARDING.md`, plus a handful of test-file/module
+      docstrings inside apps/backend-rag) carry the same `pytest <file> -q` PROSE pattern as an
+      example command for a human or agent to type. The subagent flagged these as a SUGGESTION,
+      not a blocker: nobody following one of these verbatim silently loses a verdict — they get
+      the guard's own loud, self-explanatory UsageError immediately and self-correct. They are not
+      a live automated execution path (the definition this pack's 'fix the family' scope used for
+      the 4 code/hook sites above)."
+    status: PLAUSIBLE
+    resolution:
+      "Deliberately NOT fixed here — expanding scope a third time from 'live automation the guard
+      newly breaks' to 'every prose example anywhere in the repo' is a different, larger, and
+      lower-urgency cleanup with a different acceptance shape (a docs consistency pass, not a CI
+      fix), and this PR is already at round 2 of the 'three rounds, then suspend' discipline this
+      repo runs its PRs under. Left as a named follow-up rather than silently dropped or silently
+      absorbed into an already-larger-than-planned PR."
+  - seat: session (self-check while writing this pack)
+    objection:
+      "An unrelated CI job on this PR, `antidotes`, is ALSO red — does it belong in THIS pack's
+      scope, since it is a real defect and the PR is already touching the guard's own conftest
+      wiring?"
+    status: CONFIRMED
+    resolution: "Investigated and explicitly scoped OUT: the failure is
+      'apps/zantara-media imports pytest_verbosity_guard, which magazine-auto-assets.yml does not
+      install' — a workflow missing a pip-install step for a module THIS PR's own conftest.py
+      additions newly require it to import, not a redundant-`-q` site. Different bug class, different
+      file, different fix shape (add a dependency install, not remove a flag). Named in brief.yml's
+      risks: as flagged-not-fixed rather than silently left unexplained."

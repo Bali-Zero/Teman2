@@ -1,0 +1,149 @@
+task_id: backend-rag-pytest-verbosity-guard
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Land PR #5243's new pytest-verbosity guard (a conftest-wired plugin that refuses any pytest
+  run whose EFFECTIVE verbosity — config `addopts` plus argv, cumulative: each `-v` is +1, each
+  `-q` is -1 — reaches -2, because at that level pytest prints no pass/fail tally at all, so a
+  green exit code is not evidence anything ran) WITHOUT leaving any of the call sites it correctly
+  condemns still red.
+
+  `apps/backend-rag/pytest.ini`'s `addopts` already carries one `-q` (verbosity -1 at that config
+  root). Every pytest invocation that ALSO passes `-q` on the command line while resolving to that
+  config root (cwd=apps/backend-rag, or args under it) reaches -2 and is refused. The PR's own CI
+  run went red on exactly this, across 7 checks (antidotes unrelated — see dissent).
+
+  Two rounds of scope, both driven by re-deriving the verbosity math per site rather than trusting
+  a fixed list of line numbers:
+  - Round 1 (commit 584e92bc01): `.github/workflows/tests.yml`, the 2 sites actually cited by the
+    dispatching message — a third cited site (apps/evaluator job) turned out INNOCENT on inspection
+    (that root's own `addopts = "-v --tb=short"` cancels the command-line `-q` to net 0, not -2).
+  - Round 2 (commit dae8d6f1ec, this pack): the dispatcher's own citation of "three sites in
+    tests.yml" was itself imprecise — the real third+ site was `apps/backend-rag/scripts/
+    backend_stability_gate.py` (3 separate pytest calls), found by reading the LIVE CI failure log
+    for "Backend Shard 1", not by grep. Reported to the dispatcher, scope was explicitly expanded
+    to "fix the family, not the instance". An adversarial subagent (dispatched with no prior
+    context, told to try to break the fix) then found two MORE genuinely-missed live-automation
+    sites this session's own first pass did not catch: `.husky/pre-push`'s local backend suite,
+    and the `autonomous_lab` verification-command allowlist family (which turned out to need THREE
+    coordinated edits, not one — see acceptance).
+constraints:
+  - "Do not weaken, special-case, or add an escape hatch to the guard itself — the guard being
+    strict is the entire point of the PR it ships in. Every fix here removes a redundant flag,
+    never touches `pytest_verbosity_guard.py`, `config_roots.py`, or `pytest.ini`'s own `addopts`."
+  - "No client PII in any output/log/artifact. This is a CI-infrastructure fix; nothing in scope
+    touches client data, so this is true by construction, not by redaction."
+  - "No `fly`, no `launchctl`, no plist load, no production database connection, no external
+    endpoint call, and specifically: never send anything to Telegram / use a real bot token, even
+    though `fly-deploy.yml` (one of the edited files) is full of Telegram send steps on OTHER
+    lines. Every verification in this pack is local/offline: real pytest.ini + real conftest.py +
+    real repo test files, run from a worktree, never through the actual workflow runners."
+  - "Read-only on the repo apart from the files this fix actually needs. No `gh` mutations beyond
+    pushing this branch — no merge, no arm/disarm auto-merge, no new PR, no edits to any other PR."
+  - "Fix the family, not the instance (dispatcher's explicit instruction after round 1): every site
+    sharing the exact structural cause — cwd/args resolving to apps/backend-rag's config root PLUS
+    a redundant command-line `-q`/`-qq`/`--quiet` — gets fixed in this PR, not filed as a follow-up,
+    because the guard this PR ships makes every one of them a live, immediate break the moment this
+    PR merges (CI sites) or the moment a teammate next pushes (the `.husky/pre-push` site) or the
+    moment the autonomous-lab worker next runs its verification command."
+acceptance:
+  - text:
+      "Every command-line `-q` stacked on top of `apps/backend-rag/pytest.ini`'s own `-q` is
+      removed, and NOTHING ELSE on those lines changes (no other flag added/removed, no reordering)."
+    probe: 'git diff between this session''s own two fix commits'' parent
+      (15261bbd61, the PR tip before this session started) and their tip (dae8d6f1ec) — every
+      hunk a single `-q`/`"-q",` removal (or, for the two `autonomous_lab` test files, an
+      assertion updated to match). See `diff.net_lines` for the exact machine-measured count.'
+  - text:
+      "For every one of the 8 pytest call sites this session touched (tests.yml x2,
+      backend_stability_gate.py x3, fly-deploy.yml, .husky/pre-push, and the autonomous_lab
+      verification-command family as one logical site matched in 3 files), the SAME real command
+      WITH the old redundant `-q` reproduces the guard's `UsageError` (exit 4, config in force =
+      apps/backend-rag/pytest.ini) and WITHOUT it completes (exit 0) and prints a real pass/fail
+      or collected-count tally, run against the actual repo content on this branch — not a
+      synthetic pytest root."
+    probe:
+      "7 paired before/after runs recorded as receipts below (one pair covers both
+      backend_stability_gate.py's 3rd command and fly-deploy.yml, since their file-set is
+      byte-identical), each showing exit 4 -> exit 0 — jointly covering all 8 sites."
+  - text:
+      "The autonomous_lab verification-command allowlist, its real execution argv, its
+      independent defense-in-depth shape-check, and both test files pinned to its exact shape all
+      agree with each other after the edit — none is stale relative to the others."
+    probe:
+      "PYTHONPATH=. python -m pytest backend/tests/unit/services/autonomous_lab (from
+      apps/backend-rag) -> 173 passed, 0 failed."
+  - text:
+      "All 4 pre-push shell test suites that exercise `.husky/pre-push`'s content/behaviour
+      still pass after the hook edit — the fix does not silently break the hook's OWN test
+      coverage while fixing the bug the hook shipped with."
+    probe:
+      "bash scripts/tests/test_prepush_suite_lock.sh / test_prepush_failclosed.sh /
+      test_prepush_default_off.sh / test_prepush_tip_drift.sh -> 22+23+14+14 = 73 passed, 0 failed."
+  - text:
+      "`actionlint` on both edited workflow files reports the SAME finding set before and after
+      (zero new, zero removed) — the edit introduces no new lint surface."
+    probe:
+      "diff of `actionlint fly-deploy.yml` output between HEAD~1 (pre-edit) and the edited
+      tree is empty; 14/14 identical pre-existing shellcheck info/style notes, none on the touched
+      lines."
+consumer_map:
+  - "GitHub Actions `Backend Static (Python)` job, step `Run core tests (fast gate — always run)`
+    (`.github/workflows/tests.yml`) — was the CI failure the dispatching message was responding to."
+  - "GitHub Actions `Backend Shard 1/2/3` jobs, step `Run backend stability gate`
+    (`apps/backend-rag/scripts/backend_stability_gate.py`, invoked at tests.yml:910) — the ACTUAL
+    cause of those 3 red checks; the sharded pytest step this PR's round-1 commit fixed in
+    tests.yml is never reached because this step aborts the job first."
+  - "GitHub Actions `pre-deploy-gate` job (`.github/workflows/fly-deploy.yml`) — not exercised by
+    this PR's own `pull_request`-triggered checks at all (fly-deploy runs on a different trigger),
+    so this defect was invisible to this PR's CI and would only have surfaced on the next real
+    deploy attempt after merge, as a blocked deploy with a misleading gate-failure alert."
+  - "Every developer's local `git push` on a meaningfully-sized backend-rag diff
+    (`.husky/pre-push`, `PREPUSH_RUN_BACKEND=1` path) — was about to start printing
+    `❌ Python tests FAILED — push blocked` for a suite that never ran (exit 4 isn't 0/75/>=128,
+    so it fell through to the generic 'tests failed' branch), with a reproduce command that
+    (already, pre-existing) omits `-q` and so would not have reproduced the false failure either."
+  - "The autonomous-lab worker's self-verification step
+    (`backend/services/autonomous_lab/sandbox_runner.py` + `command_policy.py`) — a live execution
+    path (matched by exact-string allowlist, not test scaffolding), gated by its own independent
+    shape-check that would have rejected a plan built from a stale constant against an updated
+    argv list, or vice versa, had the three sites been fixed out of lockstep."
+  - "Two archival JSON receipts under `research/operations/autonomous-lab/receipts/` still contain
+    the OLD `-q` command verbatim — deliberately NOT touched: they are records of what actually ran
+    at the time (2026-05-31), not live code, and rewriting them would falsify the historical record."
+risks:
+  - "A workflow-file change is auto-merge-eligible per this repo's own auto-merge-whitelist gate
+    (mechanical CI-flag edits, not a guardrail/migration/force-push class) — armed `gh pr merge
+    --auto` bare, not `--squash`/other strategy flags, per this repo's own merge-queue doctrine."
+  - "`.github/workflows/**` is a hot-zone path by this repo's own CODEOWNERS-tier classification,
+    which is exactly why this pack exists at Gear 3 regardless of this session's own diff being
+    small — the floor is PATH-driven, not size-driven, and correctly overrides size here
+    (`evidence_pack_lint.py --print-floor-source` -> `path`; the exact measured size is in
+    `diff.net_lines`, not restated by hand here to avoid a second, driftable copy of the number)."
+  - "An unrelated CI job named `antidotes` is ALSO red on this PR, for a completely different
+    reason: `apps/zantara-media` imports `pytest_verbosity_guard` (a module this PR's own
+    conftest.py wiring adds) which `magazine-auto-assets.yml` does not install, so collection dies
+    there. This is a real, separate defect (a workflow missing a dependency install this PR's OWN
+    conftest-wiring change now requires), but it is OUT OF SCOPE for this pack — it is not a
+    redundant-`-q` site, it is a missing `pip install`. Flagged, not fixed, not hidden."
+  - "GitHub's Actions queue was visibly saturated while this PR's checks were pending (many
+    concurrent `merge_group`/`pull_request` runs from other PRs observed) — CI verdicts for the
+    final pushed SHA were not yet available at pack-authoring time. Every acceptance criterion
+    above is therefore proven by LOCAL reproduction against the real repo content (pytest.ini +
+    conftest.py + actual test files on this branch), not by a fresh green CI run, which is exactly
+    the kind of evidence a Gear-3 pack exists to substitute for/complement."
+grader: |
+  Independent verification via a dispatched adversarial subagent (Agent tool, spalla-review,
+  fresh context — did not see this session's reasoning, told explicitly to try to break the fix
+  rather than confirm it). It found the round-1 dispatching message's own site count was
+  imprecise in a NEW way (two of what it initially read as "claimed fixed" sites were, at the
+  moment it looked, edited-but-not-yet-committed working-tree state rather than pushed commits —
+  a sequencing artifact of when it was dispatched mid-session, since resolved by commit+push) and,
+  more importantly, found two genuinely-missed sites (`.husky/pre-push`,
+  `autonomous_lab/command_policy.py`) that this session's own first pass did not catch. Both
+  confirmed independently against the live repo (not taken on the subagent's word) before being
+  fixed. See `dissent:` in pack.yml for the full record, including what was investigated and NOT
+  changed (deploy_staging.sh's `-v -q` combo: net 0, confirmed safe; several docs/skill files with
+  stale `-q` in PROSE examples: self-correcting if followed, not a live execution path, left as a
+  lower-priority follow-up rather than expanding this PR's scope further).
