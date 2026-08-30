@@ -24,9 +24,9 @@ seat_diversity_note: >-
   principle.
 diff:
   net_lines: >-
-    AS OF 90b1760b30 (pinned — an unqualified count inside a file that later
-    commits rewrite decays by construction): 7 files, +716/-2 against the merge base, plus
-    this evidence pack. Roughly half is the two corpora. Deterministic gear
+    AS OF 023ab4df5c (pinned — an unqualified count inside a file that later
+    commits rewrite decays by construction): 9 files, +916/-2 against the merge base, INCLUDING this
+    evidence pack. Roughly half is the two corpora. Deterministic gear
     floor recomputed from the diff = 2. NOT 1: `--print-floor` over the code
     files alone answers 1, and the floor rises to 2 once this evidence pack is
     part of the changed set — the blast-radius half of the computation counts
