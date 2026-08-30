@@ -1,0 +1,84 @@
+name: VOA probe organ tests
+
+# Executor for the corpora that prove the VOA journey probe -- the receptor that walks the
+# anonymous public funnel on a schedule so a broken checkout is discovered by us and not by a
+# traveller.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# PR #5215 shipped the probe with 56 shell checks (`scripts/tests/test_voa_probe_wrapper.sh`)
+# plus a pytest shim, and NO workflow naming either. `scripts-tests-sweep.yml` does collect the
+# shim, but that sweep is `continue-on-error: true` and sits in no required context, so the
+# corpus could fail forever without turning a single PR red -- superscar #2 ("exists != armed")
+# applied to the guards of a receptor that exists to cure exactly that class. Same shape and
+# rationale as `vercel-autopromote-tests.yml`, which this file is modelled on.
+#
+# Handed off by Squad P to Squad W per battle plan §2 (every `.github/workflows/` edit is
+# executed by W); issue #5251 §H2. H1 and H3 of that same handoff were already landed by
+# #5246 and `token-contrast-tests.yml` respectively -- verified on `origin/main` before
+# building this one, rather than assumed still-open from the issue text.
+#
+# `paths:` filtered to the probe, its wrapper, the plist, the installer and their corpora.
+# NOT added to branch-protection required checks here -- that is a repo-settings action,
+# operator-gated (CLAUDE.md §13). It runs on every PR that touches the organ.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/probes/voa_journey_probe.mjs"
+      - "scripts/tests/test_voa_probe_wrapper.sh"
+      - "scripts/tests/test_voa_probe_corpus.py"
+      - "infra/launchagents/wrappers/voa-probe-wrapper.sh"
+      - "infra/launchagents/com.nuzantara.voa-probe.plist"
+      - "infra/launchagents/install_voa_probe.sh"
+      - ".github/workflows/voa-probe-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/probes/voa_journey_probe.mjs"
+      - "scripts/tests/test_voa_probe_wrapper.sh"
+      - "scripts/tests/test_voa_probe_corpus.py"
+      - "infra/launchagents/wrappers/voa-probe-wrapper.sh"
+      - "infra/launchagents/com.nuzantara.voa-probe.plist"
+      - "infra/launchagents/install_voa_probe.sh"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: voa-probe-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+jobs:
+  organ-tests:
+    name: VOA probe organ tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      # BOTH steps below, never just the first one. Measured on 2026-08-30 against the shipped
+      # files: collapsing every `"unknown"` literal in the probe to `"fail"` -- which would undo
+      # the four-verdict lattice that exists so the probe cannot cause its own outage -- leaves
+      # the self-test at `SELF-TEST OK (53 assertions)`, exit 0, and is caught ONLY by the shell
+      # corpus, which goes `TOTAL 56 FAILED 3`, exit 1. Innocence on the unmutated tree: both
+      # exit 0. A job running the self-test alone would be a half-arming that reads as full.
+      - name: The probe's pure classifiers agree with themselves, offline
+        run: node scripts/probes/voa_journey_probe.mjs --self-test
+
+      # Judged by EXIT CODE, deliberately not by grepping the corpus's own `TOTAL n FAILED m`
+      # line: a `mktemp` failure on a sandboxed runner aborts before that line is ever printed,
+      # and a grep for "FAILED 0" would then find nothing and have to guess what the absence
+      # means. The script exits 1 on any failed check (verified by the mutation above) and
+      # non-zero on an aborted setup, so the exit code separates "the code is wrong" from "the
+      # environment is wrong" without this workflow having to parse prose. The line still prints
+      # to the log for a human reading the failure.
+      - name: The wrapper corpus holds — 56 checks against the real script in a scratch world
+        run: bash scripts/tests/test_voa_probe_wrapper.sh
+
+      - name: The wrapper still parses (a shell syntax error is a silent dead organ)
+        run: bash -n infra/launchagents/wrappers/voa-probe-wrapper.sh
+
+      - name: The installer still parses (it is the only path that arms the plist)
+        run: bash -n infra/launchagents/install_voa_probe.sh
