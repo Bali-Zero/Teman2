@@ -26,8 +26,11 @@ from __future__ import annotations
 
 import hashlib
 import os
+from collections.abc import Awaitable, Callable
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
+from fastapi.routing import APIRoute
 
 from backend.services.garuda_orders.errors import (
     NoOpenLateCase,
@@ -91,8 +94,69 @@ def _require_flag() -> None:
 # first exception) — proved empirically, not assumed, by
 # `test_garuda_voa_flag_ordering.py`, which fails red against the OLD
 # per-handler-body placement and passes green here.
+
+
+class _ContractErrorRoute(APIRoute):
+    """Rewrite every `HTTPException` this router raises into the frozen
+    `errors.yaml` envelope, with the SAME privacy headers success paths get
+    (Gear-3 gate finding on PR #4959's follow-up: the 28 bare
+    `raise HTTPException(status_code=X, detail={"code": Y, "retryable": Z})`
+    call sites below — spread across the router-level dependency
+    (`_require_flag`), a parameter dependency (`get_repository`), plain
+    helper coroutines called directly from handler bodies
+    (`_require_magic_session_actor`, `_require_staff_actor`,
+    `_idempotency_key`), and the five handler bodies themselves — each
+    produced FastAPI's default `{"detail": {...}}` envelope instead of the
+    contract's flat `{"code", "retryable", "message_key"}` shape, AND lost
+    the `_privacy_headers()` a success response gets, because raising builds
+    a brand-new `Response` FastAPI's own exception handling constructs,
+    never the `response` object handlers mutate.
+
+    `garuda_voa_public.py`'s `_ContractErrorRoute` (the model this
+    replicates, per LANES.md file-ownership discipline — this is a
+    same-shaped LOCAL copy, not a shared import) catches two SPECIFIC
+    exception types because neither one carries a reusable `code` (a
+    framework `RequestValidationError` and a bespoke `_FeatureDisabled`
+    sentinel with none). Every one of THIS file's exceptions already IS an
+    `HTTPException` whose `detail` already names the exact contract `code`
+    — so catching `HTTPException` itself and reading `detail["code"]` is
+    the direct generalisation of that same idea to 28 call sites through
+    ONE catch, instead of converting each `raise` to a hand-written
+    `return _error(...)` with 28 chances for a status/code typo to drift
+    from the `errors.yaml` entry it is supposed to mirror. Whichever layer
+    raises — router-level dependency, parameter dependency, a plain
+    `await helper(...)` inside a handler body, or the handler body itself —
+    the exception propagates through THIS route's own dispatch (dependency
+    resolution included; same ordering argument as
+    `garuda_voa_public._require_public_enabled`'s docstring) before
+    Starlette's global `ExceptionMiddleware` ever sees it, so catching it
+    here is exactly as complete as a bespoke sentinel per site would be.
+
+    A caught `HTTPException` whose `detail` is not one of `_ERROR_CATALOG`'s
+    codes (defensive — nothing in this file raises one today) is re-raised
+    untouched rather than guessed at.
+    """
+
+    def get_route_handler(self) -> Callable[[Request], Awaitable[Response]]:
+        downstream = super().get_route_handler()
+
+        async def handler(request: Request) -> Response:
+            try:
+                return await downstream(request)
+            except HTTPException as exc:
+                code = exc.detail.get("code") if isinstance(exc.detail, dict) else None
+                if code not in _ERROR_CATALOG:
+                    raise
+                return _error(code)
+
+        return handler
+
+
 router = APIRouter(
-    prefix="/api/visa/voa", tags=["garuda-orders"], dependencies=[Depends(_require_flag)]
+    prefix="/api/visa/voa",
+    tags=["garuda-orders"],
+    route_class=_ContractErrorRoute,
+    dependencies=[Depends(_require_flag)],
 )
 
 
@@ -100,6 +164,47 @@ def _privacy_headers(response: Response) -> None:
     response.headers["Cache-Control"] = "no-store, private"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["X-Robots-Tag"] = "noindex, nofollow, noarchive"
+
+
+#: `errors.yaml` — (http_status, retryable, message_key), restricted to the
+#: codes THIS router's own 28 `raise HTTPException(...)` call sites can ever
+#: emit. Each tuple is a verbatim copy of that code's `x-http-status` /
+#: `retryable` / `message_key` consts in
+#: `products/garuda-voa/contracts/errors.yaml` (frozen, orchestrator-owned)
+#: — never hand-typed independently of the `raise` sites below, whose
+#: `detail={"code": ..., "retryable": ...}` values `_ContractErrorRoute`
+#: cross-checks against this table at request time.
+_ERROR_CATALOG: dict[str, tuple[int, bool, str]] = {
+    "GARUDA_PUBLIC_DISABLED": (404, False, "garuda_voa.error.unavailable"),
+    "SERVICE_UNAVAILABLE": (503, True, "garuda_voa.error.service_unavailable"),
+    "SESSION_REQUIRED": (401, False, "garuda_voa.error.session_required"),
+    "IDEMPOTENCY_KEY_REQUIRED": (400, False, "garuda_voa.error.idempotency_key_required"),
+    "INVALID_REQUEST": (422, False, "garuda_voa.error.invalid_request"),
+    "RESULT_NOT_FOUND": (404, False, "garuda_voa.error.result_not_found"),
+    "IDEMPOTENCY_CONFLICT": (409, False, "garuda_voa.error.idempotency_conflict"),
+    "ORDER_NOT_READY": (409, False, "garuda_voa.error.order_not_ready"),
+    "PERSISTENCE_POLICY_UNAVAILABLE": (503, False, "garuda_voa.error.sale_unavailable"),
+    "PRICE_UNRESOLVABLE": (503, False, "garuda_voa.error.sale_unavailable"),
+    "PAYMENT_PROVIDER_UNAVAILABLE": (503, True, "garuda_voa.error.payment_provider_unavailable"),
+    "ORDER_NOT_FOUND": (404, False, "garuda_voa.error.order_not_found"),
+    "WEBHOOK_SIGNATURE_INVALID": (401, False, "garuda_voa.error.webhook_signature_invalid"),
+    "INVALID_STATE_TRANSITION": (409, False, "garuda_voa.error.invalid_state_transition"),
+}
+
+
+def _error(code: str) -> JSONResponse:
+    """One error tuple, one call site — the body is EXACTLY the 3 contract
+    fields. Privacy headers go through the SAME `_privacy_headers()` helper
+    every success response already uses, so there is one place (not two)
+    that can drift from the contract's `x-public-privacy-response-headers`.
+    """
+    status_code, retryable, message_key = _ERROR_CATALOG[code]
+    response = JSONResponse(
+        status_code=status_code,
+        content={"code": code, "retryable": retryable, "message_key": message_key},
+    )
+    _privacy_headers(response)
+    return response
 
 
 def get_repository(request: Request) -> GarudaOrderRepository:
