@@ -23,23 +23,32 @@ lanes:
     role: review
     seat: kimi-code/k3 (kimi CLI, Moonshot Allegro flat subscription,
       non-Anthropic cross-family — adversarial review of the FIRST commit on six
-      named axes; produced the finding that REVERSED it)
+      named axes; produced the finding that REVERSED it; re-convened on the FINAL
+      diff, since its first review judged a commit that no longer exists)
+  - lane: trigger-symmetry-review-tp1
+    role: review
+    seat: tp1-qwen3.8-max (Alibaba TP1/DashScope gateway, flat token plan,
+      non-Anthropic cross-family — second seat, fresh context, same adversarial
+      brief on the FINAL diff)
 
-council_run: null
+council_run: council-journal.jsonl
 
 diff:
-  files: 3
-  net_lines: 421
-  measured_at: d7df674c3
+  files: 4
+  net_lines: 513
+  measured_at: 8d5c50b2c
   note: >-
     Churn (added+deleted) via `git diff --no-renames --numstat --cached
     <merge-base>` against merge-base 6e4492b75, measured with this exact pack
     STAGED — the only moment the number can be true, since the pack is part of
-    what it counts: with-seat-broker-tests.yml 38+5 = 43, brief.yml 117+0,
-    pack.yml 261+0. Total 421 across 3 files. A first draft of this field said
-    261, from an ESTIMATE of the pack's own length; it was measured and
-    corrected rather than left standing, which is the entire point of the
-    field. The CODE change under review is 43 lines in ONE file; the other 378
+    what it counts: with-seat-broker-tests.yml 56+5 = 61, brief.yml 117+0,
+    council-journal.jsonl 2+0, pack.yml 333+0. Total 513 across 4 files. This
+    field has now been re-measured four times, and every correction moved it:
+    an ESTIMATE said 261, measurement said 421, the council journal and the
+    reviewers' findings took it to 513. A self-counting field is only ever true
+    at the instant it is measured, so the last edit before commit is always a
+    DIGIT-ONLY one — same character count, same line count, therefore same
+    number. The CODE change under review is 61 lines in ONE file; the other 452
     are this evidence pack, whose size does not change what the diff does. CI
     supplies the authoritative numstat via --numstat-file at merge time and
     prefers it over this self-declared value.
@@ -225,6 +234,69 @@ dissent:
       Worth keeping because the reviewer's instinct — do not accept an
       attribution you cannot reproduce — is the right one; it simply lacked a
       branch it had no way to know about.
+
+  - seat: kimi-code/k3 (cross-family refuter, round 2 — on the FINAL diff)
+    objection: >-
+      The header overclaims twice. (a) "the 2026-08-27 cure removed merge_group
+      from EVERY advisory workflow" is falsifiable in-repo today — four advisory
+      workflows carry it, one of them added AFTER the cure. (b) Citing
+      test_advisory_workflows_no_merge_group.py as the ruling's enforcement
+      misstates its direction: it asserts only that REQUIRED workflows RETAIN
+      merge_group. It passes under BOTH repairs — nothing mechanical forbade
+      keeping the trigger.
+    status: CONFIRMED
+    note: >-
+      Both halves verified independently before acting, and the header is now
+      corrected. Measured by parsing every `on:` block on origin/main (not by
+      grep — a textual match hits comments and conditionals): 13 workflows carry
+      a real merge_group trigger, 8 back one of the 11 required contexts, so 5
+      are advisory — this file plus voa-probe-tests, pr-collision-check,
+      restore-drill-wiring-tests and p1s2-mutation-incremental (added
+      2026-08-31, four days after the cure). The reviewer said each counterexample
+      carries its own justification header; that is TOO GENEROUS — only
+      restore-drill argues its case. The test's direction was confirmed by
+      reading it: its docstring states the policy, its assertions guard only the
+      deadlock. So the cure is a stated, UNENFORCED, drifting policy. This does
+      not change the repair — the file argued nothing and its trigger was
+      incoherent with its own filter — but the header now says the true thing,
+      and names the legitimate route back to a queue run (an argued exception,
+      like restore-drill's).
+
+  - seat: tp1-qwen3.8-max (cross-family refuter, second seat)
+    objection: >-
+      The added header comments contain the literal string "merge_group:"
+      repeatedly. If the trigger-symmetry lint or the advisory tripwire matches
+      TEXT rather than parsing the `on:` mapping, this diff could trip the very
+      rule it is trying to satisfy.
+    status: RETRACTED
+    note: >-
+      Refuted empirically rather than by argument, because it is exactly the
+      shape of defect that deserves a probe. With the comments in place the L06
+      lint reports 116 workflows checked, 0 violations (rc=0 captured directly,
+      not through a pipe — a `| tail` had already made this probe report tail's
+      exit code once). Re-inserting a REAL bare merge_group trigger under the
+      same comments takes it to rc=1 with one violation naming this file, and
+      restoring the file returns it byte-identical to rc=0. The tripwire's own
+      docstring says it re-parses `on:` with PyYAML for precisely this reason.
+      Recorded because the instinct is right and cost one command to settle.
+
+  - seat: tp1-qwen3.8-max (cross-family refuter, second seat)
+    objection: >-
+      The diff alone cannot prove that no required context or branch-protection
+      entry expects this check in the queue. If one does, the queue waits forever
+      on a check that never starts.
+    status: RETRACTED
+    note: >-
+      Correct that the diff cannot prove it; the pack can. Three independent
+      measurements, all re-run this session: absent from contexts.json (11
+      contexts, parsed — 8 distinct workflow files back them), absent from branch
+      protection's 12 required contexts (read from
+      repos/.../branches/main/protection, NOT from rulesets, which carry no
+      required_status_checks in this repo — an earlier blind probe against
+      rulesets returned nothing for EVERY context and was corrected rather than
+      believed), and the file's own pre-existing header. Kept because the failure
+      mode it names is real and silent, and no test would catch it: the tripwire
+      only iterates contexts declared in contexts.json.
 
 tests:
   - "scripts/tests/test_advisory_workflows_no_merge_group.py — 3 passed."

@@ -43,12 +43,26 @@ name: Seat broker env-minimization tests
 #      L06-PR1 trigger-symmetry lint exists to forbid, and this file was its first live
 #      violation — red in every merge group, which is what kept ejecting that lint's own
 #      PR (#5340).
-#   2. Independently of the lint: Zero's 2026-08-27 queue-slim cure removed `merge_group`
-#      from EVERY advisory workflow, because each queue entry was spawning ~50 runs and
-#      the 11 gating contexts starved behind the ~40 that gate nothing. See
-#      `scripts/tests/test_advisory_workflows_no_merge_group.py`. This workflow is
-#      advisory — it is absent from `infra/required.d/contexts.json` (11 contexts) and
-#      from branch protection — so the queue trigger was never its to take.
+#   2. Independently of the lint: Zero's 2026-08-27 queue-slim cure says advisory
+#      workflows stop triggering on `merge_group`, because each queue entry was spawning
+#      ~50 runs and the 11 gating contexts starved behind the ~40 that gate nothing. That
+#      policy is stated in the docstring of
+#      `scripts/tests/test_advisory_workflows_no_merge_group.py`. Read what that test
+#      actually asserts before citing it: it guards only the OPPOSITE direction — a
+#      REQUIRED workflow must never LOSE `merge_group` (the queue-deadlock tripwire). So
+#      the cure is UNENFORCED in the advisory direction, and it has drifted. Measured on
+#      origin/main 2026-08-31 by parsing every `on:` block: 13 workflows carry a real
+#      `merge_group` trigger, 8 of them back one of the 11 required contexts, leaving 5
+#      advisory ones — this file plus `voa-probe-tests.yml`, `pr-collision-check.yml`,
+#      `restore-drill-wiring-tests.yml` and `p1s2-mutation-incremental.yml`, the last
+#      added 2026-08-31, four days AFTER the cure. Of those four, only
+#      `restore-drill-wiring-tests.yml` argues its case in a header.
+#      This workflow is advisory on three independent measurements — absent from
+#      `infra/required.d/contexts.json` (11 contexts), absent from branch protection's
+#      12 required contexts, and its own header below says so. It argued nothing: it
+#      acquired the trigger silently, paired with a filter that makes the pair
+#      incoherent. An advisory workflow CAN keep `merge_group` — but by arguing for it,
+#      the way restore-drill does, not by accident.
 #
 # So the `merge_group:` line goes and the `paths:` filter stays. Removing the FILTER
 # instead would also have satisfied the lint, but it would have kept an advisory job in
@@ -59,11 +73,15 @@ name: Seat broker env-minimization tests
 # against its own declared family; it now matches it.
 #
 # What is genuinely given up: a `merge_group` run tests the SYNTHETIC MERGE revision, so
-# it could catch two individually-green PRs whose combination breaks the broker. The
-# 2026-08-27 cure made exactly that trade for every advisory workflow, deliberately —
-# PR-time coverage is unchanged and the post-merge `push` run below still detects it.
-# Stated rather than quietly dropped: this is a real loss, already priced by that ruling,
-# and not one this file gets to re-decide on its own.
+# it could catch two individually-green PRs whose combination breaks the broker. That is
+# the trade the 2026-08-27 cure asks advisory workflows to make — PR-time coverage is
+# unchanged and the post-merge `push` run below still detects it, one step later. Stated
+# rather than quietly dropped, because it IS a real loss and this file guards a
+# credential-isolation boundary. Two cross-family reviewers (kimi-code/k3,
+# tp1-qwen3.8-max) each argued that side and neither could refute the change; both
+# landed on it being a judgment call, not an error. If a future reader concludes the
+# prevention is worth the queue slot, the way to take it back is an argued exception
+# header — not a bare trigger, and not while a `paths:` filter sits beside it.
 #
 # "Starts on", not "runs on every PR that touches them": GitHub evaluates path filters
 # against at most the first 3,000 files of a diff, so a large enough PR can touch a guarded
