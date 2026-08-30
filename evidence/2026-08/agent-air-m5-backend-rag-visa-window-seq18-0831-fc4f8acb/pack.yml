@@ -251,6 +251,30 @@ receipts:
     ts: 2026-08-31T04:19Z
     seat: seq18-gate (final on-disk gate, Opus 5, fresh context — generator != grader)
 
+  - claim: >-
+      The catalog receipts the final gate could not reach (its classifier refused scripts/pg.sh) —
+      the activation UUID, the activation instants, and the live per-authority windows — closed by
+      this session against the production catalog through the read-only role.
+    cmd: >-
+      scripts/pg.sh over visa_ruleset_activations JOIN visa_rule_packs, then a
+      jsonb_array_elements roll-up of the ACTIVE pack's source_records by authority_type
+    result: >-
+      Active row: activation be75facc-b1c0-4daa-ae87-247b5bd408d2, sequence 18, pack_version
+      2026.8.31, digest 5a24472d187f85c54628f23d6e37b2a4b814e54762478c099472f0437d255849,
+      system_period opening 2026-08-30T17:28:56.30462Z and still open. seq-17's activation
+      80e6dda6-0ffb-4005-8a9c-706c23f1094d ran 2026-08-30T15:35:49.031881Z until exactly that
+      instant, which CONFIRMS the 15:35:49Z the fold, the triage comment and the brief all cite as
+      the anchor's activation. Windows in the ACTIVE pack: OFFICIAL_PORTAL x18 at 2764800,
+      IMPLEMENTING_REGULATION x7 and PRIMARY_LAW x3 at 31536000 — the widening reached exactly the
+      18 records it was scoped to and nothing else.
+    note: >-
+      This measurement also FALSIFIED a claim in this PR's own brief: it said seq-18 was activated
+      at 2026-08-31T00:47Z. The catalog says 2026-08-30T17:28:56Z, and no query supports the earlier
+      value. Corrected in the brief rather than quietly dropped.
+    exit: 0
+    ts: 2026-08-31T04:31Z
+    seat: session (M5) via the read-only Postgres role
+
 council_run: council-run.jsonl
 
 dissent:
@@ -275,7 +299,7 @@ dissent:
     resolution: >-
       Deliberately NOT all fixed here, and named rather than left silent. The two sentinel files
       belong to PR #5339, which is open on exactly those files and is the honest home for them.
-      The wrapper is a HOME-fork declared pair (infra/home-fork/declared-pairs.json[146]) — editing
+      The wrapper is a HOME-fork declared pair (infra/home-fork/declared-pairs.json pairs[151]) — editing
       the repo side makes it diverge from the live copy on Pro until synced, so it needs the sync
       in the same gesture and gets its own PENDING-ARMS row rather than being smuggled into a pack
       ceremony. The registry note is prose with no live pair and is corrected here.

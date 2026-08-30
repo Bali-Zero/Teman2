@@ -122,7 +122,9 @@ consumer_map:
 
 risks:
   - "This PR ships an artifact that is ALREADY ACTIVE in production (activation
-    be75facc-b1c0-4daa-ae87-247b5bd408d2, 2026-08-31T00:47Z). The activation preceded the merge
+    be75facc-b1c0-4daa-ae87-247b5bd408d2, activated 2026-08-30T17:28:56.30462Z — read from the
+    catalog, correcting an earlier 2026-08-31T00:47Z in this brief that no query supports).
+    The activation preceded the merge
     because the seq-17 window would otherwise have expired again on 2026-09-06 while the PR sat.
     The merge RECORDS what was done rather than authorising it. If review rejects the artifact, the
     remedy is a forward pack, never an edit to this one."

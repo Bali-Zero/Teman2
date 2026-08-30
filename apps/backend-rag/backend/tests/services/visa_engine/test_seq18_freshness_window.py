@@ -713,11 +713,21 @@ def test_fold_refuses_when_no_trust_store_is_configured(
 # quietly becoming decoration during a later refactor.
 
 
+class _GuardReached(Exception):
+    """Raised by a spy standing in for a guard, and asserted BY IDENTITY.
+
+    `fold()` exits via SystemExit on a dozen legitimate paths, so
+    `pytest.raises(SystemExit)` here would pass for the wrong reason. A private
+    exception type that only the spy can raise cannot be produced by any other
+    path in the module under test.
+    """
+
+
 def _spy(recorder: list[str], name: str, *, raises: bool = False):
     def _fn(*_args, **_kwargs):
         recorder.append(name)
         if raises:
-            raise AssertionError(f"{name} was reached")
+            raise _GuardReached(name)
 
     return _fn
 
@@ -731,8 +741,9 @@ def test_fold_calls_the_shape_guard(
         "assert_only_expected_changes",
         _spy(calls, "shape", raises=True),
     )
-    with pytest.raises(AssertionError, match="shape was reached"):
+    with pytest.raises(_GuardReached) as exc:
         fold(seq17_source, _read_json(_SEQ17_SIGNED_PATH))
+    assert type(exc.value) is _GuardReached and exc.value.args == ("shape",)
     assert calls == ["shape"]
 
 
@@ -745,8 +756,9 @@ def test_fold_calls_the_value_guard(
         "assert_changed_fields_hold_their_expected_values",
         _spy(calls, "value", raises=True),
     )
-    with pytest.raises(AssertionError, match="value was reached"):
+    with pytest.raises(_GuardReached) as exc:
         fold(seq17_source, _read_json(_SEQ17_SIGNED_PATH))
+    assert type(exc.value) is _GuardReached and exc.value.args == ("value",)
     assert calls == ["value"]
 
 
