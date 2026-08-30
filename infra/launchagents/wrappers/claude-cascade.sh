@@ -356,6 +356,15 @@ try_claude() {
     local config_dir="${4:-}"
     [ ! -x "$bin" ] && { echo "  [skip] $label not installed at $bin" >&2; return 99; }
 
+    # L09-PR1: consult the seat-state ledger before spending a dispatch on a
+    # seat already known to be quota-exhausted. Kill switch: SEAT_STATE_PRECHECK=0.
+    # 98 is the wrapper's existing "retryable quota failure" code, so the caller
+    # advances to the next seat exactly as it would after a live quota rejection.
+    if [ "${SEAT_STATE_PRECHECK:-1}" != "0" ] && seat_state_precheck_skip "$label"; then
+        echo "  [skip] $label — seat ledger reports this seat exhausted (no dispatch spent)" >&2
+        return 98
+    fi
+
     local tmpout tmperr exit_code
     new_temp_file
     tmpout="$REPLY"
@@ -590,6 +599,31 @@ else
     echo "  [warn] codex_seat.sh not found (looked next to this wrapper and under ~/nuzantara) — falling back to the single default seat" >&2
     codex_seat_dirs() { [ -f "$HOME/.codex/auth.json" ] && printf '%s\n' "$HOME/.codex"; }
     codex_seat_offset() { printf '0'; }
+fi
+
+# L09-PR1: the seat-state ledger (scripts/lib/seat_state.sh) — a pre-dispatch
+# check so try_claude() can skip a seat already known to be quota-exhausted
+# without spending a live dispatch on it. Same discovery pattern as
+# CODEX_SEAT_LIB just above: look next to this wrapper first (repo checkout),
+# then under ~/nuzantara (a HOME-fork twin). If neither exists, degrade to a
+# no-op stub that never skips anything — fail-open, never fail-closed, so a
+# missing library only costs back the pre-check optimization, never the
+# cascade itself.
+SEAT_STATE_LIB=""
+for _seat_state_lib in "${0:A:h}/../../../scripts/lib/seat_state.sh" \
+                       "$HOME/nuzantara/scripts/lib/seat_state.sh"; do
+    [ -f "$_seat_state_lib" ] && { SEAT_STATE_LIB="$_seat_state_lib"; break; }
+done
+if [ -n "$SEAT_STATE_LIB" ]; then
+    . "$SEAT_STATE_LIB"
+    # Say WHICH copy was loaded. The second candidate is the main checkout,
+    # which on a worktree may be a DIFFERENT version of this library than the
+    # wrapper being exercised — a worktree validating new behaviour could
+    # silently run the old library and never know.
+    [ "${SEAT_STATE_VERBOSE:-0}" = "1" ] && echo "  [info] seat-state library: $SEAT_STATE_LIB" >&2
+else
+    echo "  [warn] seat_state.sh not found (looked next to this wrapper and under ~/nuzantara) — seat-state precheck disabled, cascade unaffected" >&2
+    seat_state_precheck_skip() { return 1; }
 fi
 
 codex_seat_homes() {
