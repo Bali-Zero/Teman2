@@ -71,13 +71,15 @@ emit_report() {
     report_json="$(python3 - "$SEAT" "$MODEL" "$EFFORT" "${TIER:-}" "$report_rc" "$DURATION" \
         "$DIFF_STAT" "$UNTRACKED" "$TESTS_CMD" "$TESTS_RC" "$QUOTA_EXHAUSTED" \
         "$LOG_PATH" "$dry_run" "${INPUT_TOKENS_EST:-0}" "${TIER_DOWNGRADED_FROM:-}" \
+        "${EFFORT_SOURCE:-}" "${EFFORT_ADVISORY:-}" \
         ${argv_preview[@]+"${argv_preview[@]}"} <<'PY'
 import json
 import sys
 
 (seat, model, effort, tier, rc, duration, diff_stat, untracked, tests_cmd,
- tests_rc, quota, log_path, dry, input_tokens_est, downgraded_from) = sys.argv[1:16]
-argv_preview = sys.argv[16:]
+ tests_rc, quota, log_path, dry, input_tokens_est, downgraded_from,
+ effort_source, effort_advisory) = sys.argv[1:18]
+argv_preview = sys.argv[18:]
 report = {
     "seat": seat,
     "model": model,
@@ -98,6 +100,13 @@ report = {
     # "flash") — a caller checking rc==0 alone would otherwise believe it
     # got the tier it asked for (codex-sol adversarial review, PR #5044).
     "tier_downgraded_from": downgraded_from or None,
+    # PR-3: which path set EFFORT ("explicit" | "default" | "derived-from-floor"
+    # | "advisory-floor-2"); floor 2 unenforced proposed value, None when not
+    # applicable -- never the empty string. (No apostrophes in this heredoc body:
+    # bash 3.2 mis-scans single quotes for command-substitution balance even
+    # inside a quoted <<'PY' heredoc -- verified live, not theoretical.)
+    "effort_source": effort_source,
+    "effort_advisory": effort_advisory or None,
 }
 if dry == "true":
     report["dry_run"] = True
@@ -168,6 +177,44 @@ enforce_effort_cap() {
                 refuse 65 "R3: kimi/highspeed is capped at effort medium (got $EFFORT)"
             ;;
         *) ;;  # kimi/k3, kimi/coding, agy/flash, agy/pro: no cap in this mandate
+    esac
+}
+
+# derive_effort_from_floor — PR-3 (R2/R5): when --effort is omitted, derive the
+# default from --gear's compute-floor instead of leaving the hardcoded literal
+# "medium" (main()'s init value) to apply regardless of floor. floor-1 -> medium
+# and floor-3 -> xhigh come straight from the source report's R2 and existing
+# modus doctrine (xhigh is the coding/agentic default; max is
+# Gear-3-adjudication-only, so this derivation path can never produce max).
+# floor-2 has NO default specified by the source report or by existing
+# doctrine, so this function does not invent one: it logs `high` as a proposal
+# (this spec's suggestion, <ruled value - Zero>) and enforces nothing until
+# Zero rules it — whoever rules floor-2 flips the advisory branch below into
+# an enforcing one, it does not need a new mechanism.
+derive_effort_from_floor() {
+    if [ "$EFFORT_EXPLICIT" = true ]; then
+        EFFORT_SOURCE="explicit"
+        return 0
+    fi
+    if [ -z "$GEAR" ]; then
+        EFFORT_SOURCE="default"
+        return 0
+    fi
+    case "$GEAR" in
+        1)
+            EFFORT="medium"
+            EFFORT_SOURCE="derived-from-floor"
+            ;;
+        3)
+            EFFORT="xhigh"
+            EFFORT_SOURCE="derived-from-floor"
+            ;;
+        2)
+            # Advisory only (needs-ruling, PR-3): do NOT overwrite EFFORT.
+            EFFORT_ADVISORY="high"
+            EFFORT_SOURCE="advisory-floor-2"
+            printf 'seat_build: --gear 2 has no ruled default effort yet (advisory only, not enforced): proposed high, pending Zero ruling\n' >&2
+            ;;
     esac
 }
 
@@ -251,6 +298,9 @@ main() {
     TESTS_CMD=""
     TESTS_RC="null"
     EFFORT="medium"
+    EFFORT_EXPLICIT=false
+    EFFORT_SOURCE=""
+    EFFORT_ADVISORY=""
     TIMEOUT_SECS=1800
     OUT_PATH=""
     DRY_RUN=false
@@ -274,7 +324,7 @@ main() {
                     --worktree) WORKTREE="$2" ;;
                     --task-file) TASK_FILE="$2" ;;
                     --tests) TESTS_CMD="$2" ;;
-                    --effort) EFFORT="$2" ;;
+                    --effort) EFFORT="$2"; EFFORT_EXPLICIT=true ;;
                     --timeout) TIMEOUT_SECS="$2" ;;
                     --out) OUT_PATH="$2" ;;
                     --tier) TIER="$2" ;;
@@ -343,6 +393,8 @@ main() {
     case "$EFFORT" in low|medium|high|xhigh|max) ;; *) refuse 64 "invalid --effort: $EFFORT" ;; esac
     [[ "$TIMEOUT_SECS" =~ ^[1-9][0-9]*$ ]] || refuse 64 "invalid --timeout: $TIMEOUT_SECS"
     case "$GEAR" in ""|1|2|3) ;; *) refuse 64 "invalid --gear: $GEAR (expected 1|2|3)" ;; esac
+
+    derive_effort_from_floor
 
     INPUT_TOKENS_EST=$(( $(wc -c < "$TASK_FILE" | tr -d '[:space:]') / 4 ))
 
