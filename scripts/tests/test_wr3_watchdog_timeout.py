@@ -9,10 +9,9 @@ pipeline (project → video → scene → image → video → download). Mocks n
 target the per-phase HTTP helpers (`_create_scene`, `_generate_start_image`,
 `_generate_video`, `_download_video_media`) plus `setup_episode_context`.
 """
+
 from __future__ import annotations
 
-import asyncio
-import base64
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -28,6 +27,7 @@ from wr3_flowkit_client import (  # noqa: E402
     EpisodeContext,
     FlowkitError,
     FlowkitQuotaError,
+    FlowkitRetrievalError,
     FlowkitTimeoutError,
     PER_CLIP_TIMEOUT_S,
     submit_clip,
@@ -69,20 +69,27 @@ async def test_watchdog_default_is_300s() -> None:
 
 
 @pytest.mark.asyncio
-async def test_submit_clip_timeout_raises(tmp_path: Path, fake_request, fake_ctx) -> None:
+async def test_submit_clip_timeout_raises(
+    tmp_path: Path, fake_request, fake_ctx
+) -> None:
     """When the gateway hangs longer than per-phase timeout, FlowkitTimeoutError fires."""
+
     async def _hang_scene(*_args, **_kwargs):
         raise FlowkitTimeoutError("scene create shot=1 timeout")
 
     with patch("wr3_flowkit_client._create_scene", new=_hang_scene):
         with pytest.raises(FlowkitTimeoutError):
             await submit_clip(
-                fake_request, episode_dir=tmp_path,
-                episode_context=fake_ctx, timeout_s=30,
+                fake_request,
+                episode_dir=tmp_path,
+                episode_context=fake_ctx,
+                timeout_s=30,
             )
 
 
-def _authorize_spend(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, episode_id: str) -> None:
+def _authorize_spend(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, episode_id: str
+) -> None:
     """Give the spend-authority gate a valid token for `episode_id`, dated
     today, and route its decision log to a tmp_path file — never the real
     ~/.cache/wr3/spend-decisions.jsonl. Added 2026-08-23: these tests exercise
@@ -97,7 +104,9 @@ def _authorize_spend(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, episode_id
         "WR3_SPEND_DECISION",
         f"{episode_id}:pytest:{_dt.date.today().isoformat()}",
     )
-    monkeypatch.setenv("WR3_SPEND_DECISION_LOG", str(tmp_path / "spend-decisions.jsonl"))
+    monkeypatch.setenv(
+        "WR3_SPEND_DECISION_LOG", str(tmp_path / "spend-decisions.jsonl")
+    )
 
 
 @pytest.mark.asyncio
@@ -116,12 +125,16 @@ async def test_submit_clip_quota_error(
         ctx.scene_ids[shot_index] = "scene-id-xyz"
         return "scene-id-xyz"
 
-    with patch("wr3_flowkit_client._create_scene", new=_ok_scene), \
-         patch("wr3_flowkit_client._http_post_json", new=_quota_image):
+    with (
+        patch("wr3_flowkit_client._create_scene", new=_ok_scene),
+        patch("wr3_flowkit_client._http_post_json", new=_quota_image),
+    ):
         with pytest.raises(FlowkitQuotaError, match="quota|exceeded|flow"):
             await submit_clip(
-                fake_request, episode_dir=tmp_path,
-                episode_context=fake_ctx, timeout_s=30,
+                fake_request,
+                episode_dir=tmp_path,
+                episode_context=fake_ctx,
+                timeout_s=30,
             )
 
 
@@ -139,18 +152,23 @@ async def test_submit_clip_malformed_response(
     async def _bad_image(*_args, **_kwargs):
         return {"weird": "shape"}
 
-    with patch("wr3_flowkit_client._create_scene", new=_ok_scene), \
-         patch("wr3_flowkit_client._http_post_json", new=_bad_image):
+    with (
+        patch("wr3_flowkit_client._create_scene", new=_ok_scene),
+        patch("wr3_flowkit_client._http_post_json", new=_bad_image),
+    ):
         with pytest.raises(FlowkitError, match="generate-image returned no media"):
             await submit_clip(
-                fake_request, episode_dir=tmp_path,
-                episode_context=fake_ctx, timeout_s=30,
+                fake_request,
+                episode_dir=tmp_path,
+                episode_context=fake_ctx,
+                timeout_s=30,
             )
 
 
 @pytest.mark.asyncio
 async def test_submit_clip_happy_path(tmp_path: Path, fake_request, fake_ctx) -> None:
     """End-to-end happy path with mocked pipeline phases."""
+
     async def _ok_scene(ctx, shot_index, positive_prompt, timeout_s=30):
         ctx.scene_ids[shot_index] = "scene-id-xyz"
         return "scene-id-xyz"
@@ -159,21 +177,33 @@ async def test_submit_clip_happy_path(tmp_path: Path, fake_request, fake_ctx) ->
         # **_kwargs swallows shot_index (added 2026-08-23, credit-ledger fix)
         return "img-media-aaa"
 
-    async def _ok_video(ctx, start_image_media_id, scene_id, prompt, timeout_s=180, **_kwargs):
+    async def _ok_video(
+        ctx, start_image_media_id, scene_id, prompt, timeout_s=180, **_kwargs
+    ):
         # **_kwargs swallows shot_index (added 2026-08-23, credit-ledger fix)
         return ("workflow-bbb", "video-media-ccc")
 
-    async def _ok_download(ctx, media_id, dest, timeout_s=120):
+    async def _ok_download(
+        ctx,
+        media_id,
+        dest,
+        timeout_s=120,
+        workflow_id=None,
+    ):
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(_fake_mp4_bytes())
 
-    with patch("wr3_flowkit_client._create_scene", new=_ok_scene), \
-         patch("wr3_flowkit_client._generate_start_image", new=_ok_image), \
-         patch("wr3_flowkit_client._generate_video", new=_ok_video), \
-         patch("wr3_flowkit_client._download_video_media", new=_ok_download):
+    with (
+        patch("wr3_flowkit_client._create_scene", new=_ok_scene),
+        patch("wr3_flowkit_client._generate_start_image", new=_ok_image),
+        patch("wr3_flowkit_client._generate_video", new=_ok_video),
+        patch("wr3_flowkit_client._download_video_media", new=_ok_download),
+    ):
         clip = await submit_clip(
-            fake_request, episode_dir=tmp_path,
-            episode_context=fake_ctx, timeout_s=60,
+            fake_request,
+            episode_dir=tmp_path,
+            episode_context=fake_ctx,
+            timeout_s=60,
         )
 
     assert clip.veo_job_id == "workflow-bbb"
@@ -185,6 +215,7 @@ async def test_submit_clip_happy_path(tmp_path: Path, fake_request, fake_ctx) ->
 @pytest.mark.asyncio
 async def test_download_timeout_raises(tmp_path: Path, fake_request, fake_ctx) -> None:
     """Submit OK but download phase hangs → FlowkitTimeoutError on download step."""
+
     async def _ok_scene(ctx, shot_index, positive_prompt, timeout_s=30):
         ctx.scene_ids[shot_index] = "scene-id-xyz"
         return "scene-id-xyz"
@@ -193,21 +224,33 @@ async def test_download_timeout_raises(tmp_path: Path, fake_request, fake_ctx) -
         # **_kwargs swallows shot_index (added 2026-08-23, credit-ledger fix)
         return "img-media-aaa"
 
-    async def _ok_video(ctx, start_image_media_id, scene_id, prompt, timeout_s=180, **_kwargs):
+    async def _ok_video(
+        ctx, start_image_media_id, scene_id, prompt, timeout_s=180, **_kwargs
+    ):
         # **_kwargs swallows shot_index (added 2026-08-23, credit-ledger fix)
         return ("workflow-bbb", "video-media-ccc")
 
-    async def _hang_download(ctx, media_id, dest, timeout_s=120):
+    async def _hang_download(
+        ctx,
+        media_id,
+        dest,
+        timeout_s=120,
+        workflow_id=None,
+    ):
         raise FlowkitTimeoutError(f"media download timeout {media_id[:8]}")
 
-    with patch("wr3_flowkit_client._create_scene", new=_ok_scene), \
-         patch("wr3_flowkit_client._generate_start_image", new=_ok_image), \
-         patch("wr3_flowkit_client._generate_video", new=_ok_video), \
-         patch("wr3_flowkit_client._download_video_media", new=_hang_download):
-        with pytest.raises(FlowkitTimeoutError, match="media download timeout"):
+    with (
+        patch("wr3_flowkit_client._create_scene", new=_ok_scene),
+        patch("wr3_flowkit_client._generate_start_image", new=_ok_image),
+        patch("wr3_flowkit_client._generate_video", new=_ok_video),
+        patch("wr3_flowkit_client._download_video_media", new=_hang_download),
+    ):
+        with pytest.raises(FlowkitRetrievalError, match="media download timeout"):
             await submit_clip(
-                fake_request, episode_dir=tmp_path,
-                episode_context=fake_ctx, timeout_s=120,
+                fake_request,
+                episode_dir=tmp_path,
+                episode_context=fake_ctx,
+                timeout_s=120,
             )
 
 

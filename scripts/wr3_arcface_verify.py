@@ -19,6 +19,7 @@ ONLY for smoke testing. Guarded by WR3_PRODUCTION env var: if PRODUCTION
 is true, the mock flag is IGNORED and real verification is forced. Codex
 + Gemini + DeepSeek 3/3 review 2026-05-18 caught the launchd leak risk.
 """
+
 from __future__ import annotations
 
 import json
@@ -26,10 +27,15 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-ANCHOR_EMBEDDING_PATH = Path(os.environ.get(
-    "WR3_ARCFACE_ANCHOR",
-    str(Path.home() / "nuzantara/research/marketing/zantara-visual-dataset/v1/ingredients/zantara-anchor-A007.embedding.npy"),
-))
+ANCHOR_EMBEDDING_PATH = Path(
+    os.environ.get(
+        "WR3_ARCFACE_ANCHOR",
+        str(
+            Path.home()
+            / "nuzantara/research/marketing/zantara-visual-dataset/v1/ingredients/zantara-anchor-A007.embedding.npy"
+        ),
+    )
+)
 MIN_COSINE = float(os.environ.get("WR3_ARCFACE_MIN_COSINE", "0.6"))
 HARD_FAIL_COSINE = float(os.environ.get("WR3_ARCFACE_HARD_FAIL", "0.55"))
 SAMPLE_FRAMES_PER_CLIP = int(os.environ.get("WR3_ARCFACE_SAMPLES", "5"))
@@ -144,6 +150,7 @@ def _try_import_insightface():
         import insightface  # type: ignore
         import cv2  # type: ignore
         import numpy as np  # type: ignore
+
         return insightface, cv2, np
     except ImportError:
         return None, None, None
@@ -191,45 +198,41 @@ def _real_verify(clips: list[Path]) -> IdentityReport:
 
     per_clip: list[ClipIdentity] = []
     overall_sum = 0.0
-    # Start overall_min at 0.0 NOT 1.0 — Codex review 2026-05-18 caught:
-    # if every clip is zero-frame/unreadable (face detection skipped), we
-    # would have hard_fail=False + overall_min=1.0 = silent PASS. With 0.0
-    # start, an episode with zero detected faces hard-fails the threshold.
-    overall_min = 0.0 if clips else 1.0
+    # Start at the neutral value for a running minimum.  Zero-face clips are
+    # explicitly assigned mn=0.0 and hard_fail=True below, so they still fail
+    # closed.  Initialising this to 0.0 made every otherwise-valid report claim
+    # an impossible overall minimum of zero even when all sampled faces passed.
+    overall_min = 1.0
     hard_fail = False
     passed_count = 0
-    clips_with_zero_samples = 0
 
     for clip_path in clips:
         cap = cv2.VideoCapture(str(clip_path))
         total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
-        if total <= 0:
-            cap.release()
-            continue
-        step = max(1, total // SAMPLE_FRAMES_PER_CLIP)
         cosines: list[float] = []
 
-        for i in range(SAMPLE_FRAMES_PER_CLIP):
-            frame_idx = min(i * step, total - 1)
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-            ok, frame = cap.read()
-            if not ok:
-                continue
-            faces = app.get(frame)
-            if not faces:
-                continue
-            emb = faces[0].normed_embedding
-            cos = float(np.dot(anchor / np.linalg.norm(anchor), emb))
-            cosines.append(cos)
+        if total > 0:
+            step = max(1, total // SAMPLE_FRAMES_PER_CLIP)
+            for i in range(SAMPLE_FRAMES_PER_CLIP):
+                frame_idx = min(i * step, total - 1)
+                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+                ok, frame = cap.read()
+                if not ok:
+                    continue
+                faces = app.get(frame)
+                if not faces:
+                    continue
+                emb = faces[0].normed_embedding
+                cos = float(np.dot(anchor / np.linalg.norm(anchor), emb))
+                cosines.append(cos)
         cap.release()
 
         if not cosines:
-            # Zero samples = zero faces detected. Treat as identity hard-fail.
-            # Codex review: previously avg=0.0 + mn=0.0 left hard_fail=False
-            # because the for-loop never wrote a low value to overall_min.
+            # Zero samples includes unreadable/zero-frame clips, failed frame
+            # reads, and frames with no detected face.  Every case must fail
+            # closed: a corrupt MP4 is not evidence of preserved identity.
             avg = 0.0
             mn = 0.0
-            clips_with_zero_samples += 1
             hard_fail = True  # zero-detection IS a hard fail
         else:
             avg = sum(cosines) / len(cosines)
@@ -243,13 +246,15 @@ def _real_verify(clips: list[Path]) -> IdentityReport:
         if mn < HARD_FAIL_COSINE:
             hard_fail = True
 
-        per_clip.append(ClipIdentity(
-            clip_path=clip_path,
-            cosine_avg=avg,
-            cosine_min=mn,
-            sample_count=len(cosines),
-            passed=clip_passed,
-        ))
+        per_clip.append(
+            ClipIdentity(
+                clip_path=clip_path,
+                cosine_avg=avg,
+                cosine_min=mn,
+                sample_count=len(cosines),
+                passed=clip_passed,
+            )
+        )
         overall_sum += avg
         overall_min = min(overall_min, mn)
         if clip_passed:
@@ -294,9 +299,13 @@ def verify_clips_dir(clips_dir: Path, episode_dir: Path) -> IdentityReport:
     if not clips:
         # Episode has zero Zantara shots — nothing to verify, vacuous pass.
         report = IdentityReport(
-            overall_cosine_avg=0.0, overall_cosine_min=0.0,
-            clips_passed=0, clips_failed=0, hard_fail_triggered=False,
-            per_clip=[], mock_mode=MOCK_MODE,
+            overall_cosine_avg=0.0,
+            overall_cosine_min=0.0,
+            clips_passed=0,
+            clips_failed=0,
+            hard_fail_triggered=False,
+            per_clip=[],
+            mock_mode=MOCK_MODE,
         )
     elif MOCK_MODE:
         # Audit log line — operator should see this in launchd logs and
@@ -329,5 +338,9 @@ def verify_clips_dir(clips_dir: Path, episode_dir: Path) -> IdentityReport:
 
 if __name__ == "__main__":
     import sys
-    print(f"min_cosine={MIN_COSINE} hard_fail={HARD_FAIL_COSINE} samples={SAMPLE_FRAMES_PER_CLIP}", file=sys.stderr)
+
+    print(
+        f"min_cosine={MIN_COSINE} hard_fail={HARD_FAIL_COSINE} samples={SAMPLE_FRAMES_PER_CLIP}",
+        file=sys.stderr,
+    )
     print(f"anchor={ANCHOR_EMBEDDING_PATH} mock={MOCK_MODE}", file=sys.stderr)

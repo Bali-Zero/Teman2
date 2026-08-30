@@ -12,6 +12,7 @@ shot (verified cosine 0.91, gate PASS). These tests pin the contract:
 - explicit per-shot start_image_media_id still wins
 - no anchor → text-prompt path preserved (no regression for faceless episodes)
 """
+
 from __future__ import annotations
 
 import sys
@@ -60,7 +61,9 @@ async def _ok_scene(ctx, *, shot_index, positive_prompt, timeout_s=30):
     return f"scene-{shot_index}"
 
 
-async def _ok_video(ctx, *, start_image_media_id, scene_id, prompt, timeout_s=180, **_kwargs):
+async def _ok_video(
+    ctx, *, start_image_media_id, scene_id, prompt, timeout_s=180, **_kwargs
+):
     # echo the start image id back so the test can assert which id Veo received
     # (**_kwargs swallows shot_index, added 2026-08-23 for the credit-ledger fix —
     # these fakes replace _generate_video's real spend-recording body entirely,
@@ -68,7 +71,15 @@ async def _ok_video(ctx, *, start_image_media_id, scene_id, prompt, timeout_s=18
     return (f"wf-{start_image_media_id}", f"vmedia-{start_image_media_id}")
 
 
-async def _ok_download(ctx, *, media_id, dest, timeout_s=120, poll_interval_s=10):
+async def _ok_download(
+    ctx,
+    *,
+    media_id,
+    dest,
+    timeout_s=120,
+    poll_interval_s=10,
+    workflow_id=None,
+):
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(_mp4())
 
@@ -80,16 +91,20 @@ async def test_anchor_uploaded_and_used_as_start_image(tmp_path: Path) -> None:
     gen_img = AsyncMock(return_value="should-not-be-used")
     captured = {}
 
-    async def _capture_video(c, *, start_image_media_id, scene_id, prompt, timeout_s=180, **_kwargs):
+    async def _capture_video(
+        c, *, start_image_media_id, scene_id, prompt, timeout_s=180, **_kwargs
+    ):
         # **_kwargs swallows shot_index (added 2026-08-23, credit-ledger fix)
         captured["start"] = start_image_media_id
         return ("wf", "vmedia")
 
-    with patch("wr3_flowkit_client._create_scene", new=_ok_scene), \
-         patch("wr3_flowkit_client._upload_image_asset", new=upload), \
-         patch("wr3_flowkit_client._generate_start_image", new=gen_img), \
-         patch("wr3_flowkit_client._generate_video", new=_capture_video), \
-         patch("wr3_flowkit_client._download_video_media", new=_ok_download):
+    with (
+        patch("wr3_flowkit_client._create_scene", new=_ok_scene),
+        patch("wr3_flowkit_client._upload_image_asset", new=upload),
+        patch("wr3_flowkit_client._generate_start_image", new=gen_img),
+        patch("wr3_flowkit_client._generate_video", new=_capture_video),
+        patch("wr3_flowkit_client._download_video_media", new=_ok_download),
+    ):
         await submit_clip(_req(), episode_dir=tmp_path, episode_context=ctx)
 
     assert captured["start"] == "anchor-media-xyz"
@@ -103,10 +118,12 @@ async def test_anchor_uploaded_once_across_shots(tmp_path: Path) -> None:
     ctx = _ctx(anchor="/abs/anchor.png")
     upload = AsyncMock(return_value="anchor-media-1")
 
-    with patch("wr3_flowkit_client._create_scene", new=_ok_scene), \
-         patch("wr3_flowkit_client._upload_image_asset", new=upload), \
-         patch("wr3_flowkit_client._generate_video", new=_ok_video), \
-         patch("wr3_flowkit_client._download_video_media", new=_ok_download):
+    with (
+        patch("wr3_flowkit_client._create_scene", new=_ok_scene),
+        patch("wr3_flowkit_client._upload_image_asset", new=upload),
+        patch("wr3_flowkit_client._generate_video", new=_ok_video),
+        patch("wr3_flowkit_client._download_video_media", new=_ok_download),
+    ):
         for i in range(1, 4):
             await submit_clip(_req(idx=i), episode_dir=tmp_path, episode_context=ctx)
 
@@ -119,17 +136,24 @@ async def test_explicit_start_image_wins_over_anchor(tmp_path: Path) -> None:
     upload = AsyncMock(return_value="anchor-media")
     captured = {}
 
-    async def _capture_video(c, *, start_image_media_id, scene_id, prompt, timeout_s=180, **_kwargs):
+    async def _capture_video(
+        c, *, start_image_media_id, scene_id, prompt, timeout_s=180, **_kwargs
+    ):
         # **_kwargs swallows shot_index (added 2026-08-23, credit-ledger fix)
         captured["start"] = start_image_media_id
         return ("wf", "vmedia")
 
-    with patch("wr3_flowkit_client._create_scene", new=_ok_scene), \
-         patch("wr3_flowkit_client._upload_image_asset", new=upload), \
-         patch("wr3_flowkit_client._generate_video", new=_capture_video), \
-         patch("wr3_flowkit_client._download_video_media", new=_ok_download):
-        await submit_clip(_req(start_image="explicit-id-999"),
-                          episode_dir=tmp_path, episode_context=ctx)
+    with (
+        patch("wr3_flowkit_client._create_scene", new=_ok_scene),
+        patch("wr3_flowkit_client._upload_image_asset", new=upload),
+        patch("wr3_flowkit_client._generate_video", new=_capture_video),
+        patch("wr3_flowkit_client._download_video_media", new=_ok_download),
+    ):
+        await submit_clip(
+            _req(start_image="explicit-id-999"),
+            episode_dir=tmp_path,
+            episode_context=ctx,
+        )
 
     assert captured["start"] == "explicit-id-999"
     upload.assert_not_awaited()
@@ -142,16 +166,20 @@ async def test_no_anchor_falls_back_to_text_prompt(tmp_path: Path) -> None:
     upload = AsyncMock(return_value="should-not-upload")
     captured = {}
 
-    async def _capture_video(c, *, start_image_media_id, scene_id, prompt, timeout_s=180, **_kwargs):
+    async def _capture_video(
+        c, *, start_image_media_id, scene_id, prompt, timeout_s=180, **_kwargs
+    ):
         # **_kwargs swallows shot_index (added 2026-08-23, credit-ledger fix)
         captured["start"] = start_image_media_id
         return ("wf", "vmedia")
 
-    with patch("wr3_flowkit_client._create_scene", new=_ok_scene), \
-         patch("wr3_flowkit_client._generate_start_image", new=gen_img), \
-         patch("wr3_flowkit_client._upload_image_asset", new=upload), \
-         patch("wr3_flowkit_client._generate_video", new=_capture_video), \
-         patch("wr3_flowkit_client._download_video_media", new=_ok_download):
+    with (
+        patch("wr3_flowkit_client._create_scene", new=_ok_scene),
+        patch("wr3_flowkit_client._generate_start_image", new=gen_img),
+        patch("wr3_flowkit_client._upload_image_asset", new=upload),
+        patch("wr3_flowkit_client._generate_video", new=_capture_video),
+        patch("wr3_flowkit_client._download_video_media", new=_ok_download),
+    ):
         await submit_clip(_req(), episode_dir=tmp_path, episode_context=ctx)
 
     assert captured["start"] == "text-generated-img"
@@ -177,6 +205,34 @@ async def test_render_shot_pack_reads_anchor_from_root(tmp_path: Path) -> None:
     await render_shot_pack(sp_path, tmp_path, episode_context=ctx)
 
     assert ctx.anchor_image_path == "/abs/from-root.png"
+
+
+@pytest.mark.asyncio
+async def test_render_shot_pack_persists_root_anchor_after_assignment(
+    tmp_path: Path,
+) -> None:
+    import json
+
+    from wr3_flowkit_client import render_shot_pack
+
+    shot_pack = {
+        "episode_id": "anchor-persist-test",
+        "anchor_image_path": "/abs/persisted-anchor.png",
+        "shots": [],
+    }
+    shot_pack_path = tmp_path / "shot-pack.json"
+    shot_pack_path.write_text(json.dumps(shot_pack))
+    created_context = _ctx(anchor=None)
+
+    with patch(
+        "wr3_flowkit_client.setup_episode_context",
+        new=AsyncMock(return_value=created_context),
+    ):
+        await render_shot_pack(shot_pack_path, tmp_path)
+
+    persisted = json.loads((tmp_path / "_flowkit_context.json").read_text())
+    assert created_context.anchor_image_path == "/abs/persisted-anchor.png"
+    assert persisted["anchor_image_path"] == "/abs/persisted-anchor.png"
 
 
 @pytest.mark.asyncio

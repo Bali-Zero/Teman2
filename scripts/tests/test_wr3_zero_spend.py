@@ -10,6 +10,7 @@ Hermetic and offline by construction:
 
 Run: `python3 -m pytest scripts/tests/test_wr3_zero_spend.py -q`
 """
+
 from __future__ import annotations
 
 import json
@@ -73,7 +74,9 @@ def _ffprobe_json(path: Path) -> dict:
 
 
 @requires_ffmpeg
-def test_placeholder_render_produces_real_file_with_expected_geometry(tmp_path: Path) -> None:
+def test_placeholder_render_produces_real_file_with_expected_geometry(
+    tmp_path: Path,
+) -> None:
     dest = tmp_path / "clip.mp4"
     out = render_placeholder_clip(episode_id="EP01", shot_index=1, dest=dest)
 
@@ -161,10 +164,14 @@ def test_placeholder_render_missing_ffmpeg_raises_named_error(tmp_path: Path) ->
 
 
 @requires_ffmpeg
-def test_placeholder_render_ffmpeg_failure_leaves_no_partial_file(tmp_path: Path) -> None:
+def test_placeholder_render_ffmpeg_failure_leaves_no_partial_file(
+    tmp_path: Path,
+) -> None:
     dest = tmp_path / "clip.mp4"
     with pytest.raises(PlaceholderRenderError):
-        render_placeholder_clip(episode_id="EP01", shot_index=1, dest=dest, duration_s=0)
+        render_placeholder_clip(
+            episode_id="EP01", shot_index=1, dest=dest, duration_s=0
+        )
     assert not dest.exists()
 
 
@@ -195,7 +202,9 @@ def test_placeholder_render_ffmpeg_failure_leaves_no_partial_file(tmp_path: Path
         ("2", False),
     ],
 )
-def test_zero_spend_enabled_truthy_falsy_matrix(monkeypatch: pytest.MonkeyPatch, raw: str, expected: bool) -> None:
+def test_zero_spend_enabled_truthy_falsy_matrix(
+    monkeypatch: pytest.MonkeyPatch, raw: str, expected: bool
+) -> None:
     monkeypatch.setenv("WR3_ZERO_SPEND", raw)
     assert zero_spend_enabled() is expected
 
@@ -270,7 +279,9 @@ def decision_log(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return log_path
 
 
-def test_assert_spend_authorized_raises_when_env_unset(monkeypatch: pytest.MonkeyPatch, decision_log: Path) -> None:
+def test_assert_spend_authorized_raises_when_env_unset(
+    monkeypatch: pytest.MonkeyPatch, decision_log: Path
+) -> None:
     monkeypatch.delenv("WR3_ZERO_SPEND", raising=False)
     monkeypatch.delenv("WR3_SPEND_DECISION", raising=False)
     with pytest.raises(SpendNotAuthorizedError):
@@ -278,21 +289,27 @@ def test_assert_spend_authorized_raises_when_env_unset(monkeypatch: pytest.Monke
     assert not decision_log.exists()
 
 
-def test_assert_spend_authorized_raises_when_env_empty(monkeypatch: pytest.MonkeyPatch, decision_log: Path) -> None:
+def test_assert_spend_authorized_raises_when_env_empty(
+    monkeypatch: pytest.MonkeyPatch, decision_log: Path
+) -> None:
     monkeypatch.delenv("WR3_ZERO_SPEND", raising=False)
     monkeypatch.setenv("WR3_SPEND_DECISION", "")
     with pytest.raises(SpendNotAuthorizedError):
         assert_spend_authorized(episode_id="EP01")
 
 
-def test_assert_spend_authorized_raises_on_two_fields(monkeypatch: pytest.MonkeyPatch, decision_log: Path) -> None:
+def test_assert_spend_authorized_raises_on_two_fields(
+    monkeypatch: pytest.MonkeyPatch, decision_log: Path
+) -> None:
     monkeypatch.delenv("WR3_ZERO_SPEND", raising=False)
     monkeypatch.setenv("WR3_SPEND_DECISION", "EP01:zero")
     with pytest.raises(SpendNotAuthorizedError):
         assert_spend_authorized(episode_id="EP01")
 
 
-def test_assert_spend_authorized_raises_on_four_fields(monkeypatch: pytest.MonkeyPatch, decision_log: Path) -> None:
+def test_assert_spend_authorized_raises_on_four_fields(
+    monkeypatch: pytest.MonkeyPatch, decision_log: Path
+) -> None:
     monkeypatch.delenv("WR3_ZERO_SPEND", raising=False)
     today = date.today().isoformat()
     monkeypatch.setenv("WR3_SPEND_DECISION", f"EP01:zero:{today}:extra")
@@ -300,14 +317,18 @@ def test_assert_spend_authorized_raises_on_four_fields(monkeypatch: pytest.Monke
         assert_spend_authorized(episode_id="EP01")
 
 
-def test_assert_spend_authorized_raises_on_bad_date_format(monkeypatch: pytest.MonkeyPatch, decision_log: Path) -> None:
+def test_assert_spend_authorized_raises_on_bad_date_format(
+    monkeypatch: pytest.MonkeyPatch, decision_log: Path
+) -> None:
     monkeypatch.delenv("WR3_ZERO_SPEND", raising=False)
     monkeypatch.setenv("WR3_SPEND_DECISION", "EP01:zero:2026-8-1")
     with pytest.raises(SpendNotAuthorizedError):
         assert_spend_authorized(episode_id="EP01")
 
 
-def test_assert_spend_authorized_raises_on_internal_whitespace(monkeypatch: pytest.MonkeyPatch, decision_log: Path) -> None:
+def test_assert_spend_authorized_raises_on_internal_whitespace(
+    monkeypatch: pytest.MonkeyPatch, decision_log: Path
+) -> None:
     monkeypatch.delenv("WR3_ZERO_SPEND", raising=False)
     today = date.today().isoformat()
     monkeypatch.setenv("WR3_SPEND_DECISION", f"EP 01:zero:{today}")
@@ -315,7 +336,9 @@ def test_assert_spend_authorized_raises_on_internal_whitespace(monkeypatch: pyte
         assert_spend_authorized(episode_id="EP01")
 
 
-def test_assert_spend_authorized_raises_on_wrong_episode_id(monkeypatch: pytest.MonkeyPatch, decision_log: Path) -> None:
+def test_assert_spend_authorized_raises_on_wrong_episode_id(
+    monkeypatch: pytest.MonkeyPatch, decision_log: Path
+) -> None:
     monkeypatch.delenv("WR3_ZERO_SPEND", raising=False)
     today = date.today().isoformat()
     monkeypatch.setenv("WR3_SPEND_DECISION", f"EP02:zero:{today}")
@@ -323,7 +346,9 @@ def test_assert_spend_authorized_raises_on_wrong_episode_id(monkeypatch: pytest.
         assert_spend_authorized(episode_id="EP01")
 
 
-def test_assert_spend_authorized_raises_on_yesterdays_date(monkeypatch: pytest.MonkeyPatch, decision_log: Path) -> None:
+def test_assert_spend_authorized_raises_on_yesterdays_date(
+    monkeypatch: pytest.MonkeyPatch, decision_log: Path
+) -> None:
     monkeypatch.delenv("WR3_ZERO_SPEND", raising=False)
     yesterday = (date.today() - timedelta(days=1)).isoformat()
     monkeypatch.setenv("WR3_SPEND_DECISION", f"EP01:zero:{yesterday}")
@@ -331,7 +356,9 @@ def test_assert_spend_authorized_raises_on_yesterdays_date(monkeypatch: pytest.M
         assert_spend_authorized(episode_id="EP01")
 
 
-def test_assert_spend_authorized_raises_on_tomorrows_date(monkeypatch: pytest.MonkeyPatch, decision_log: Path) -> None:
+def test_assert_spend_authorized_raises_on_tomorrows_date(
+    monkeypatch: pytest.MonkeyPatch, decision_log: Path
+) -> None:
     monkeypatch.delenv("WR3_ZERO_SPEND", raising=False)
     tomorrow = (date.today() + timedelta(days=1)).isoformat()
     monkeypatch.setenv("WR3_SPEND_DECISION", f"EP01:zero:{tomorrow}")
@@ -378,7 +405,9 @@ def test_assert_spend_authorized_happy_path_returns_decision_and_logs_once(
     assert "ts" in record
 
 
-def test_assert_spend_authorized_accepts_explicit_now_override(monkeypatch: pytest.MonkeyPatch, decision_log: Path) -> None:
+def test_assert_spend_authorized_accepts_explicit_now_override(
+    monkeypatch: pytest.MonkeyPatch, decision_log: Path
+) -> None:
     """`now=` lets a caller pin "today" for testing without touching the
     system clock — the decision token must match that pinned date."""
     monkeypatch.delenv("WR3_ZERO_SPEND", raising=False)
@@ -389,7 +418,9 @@ def test_assert_spend_authorized_accepts_explicit_now_override(monkeypatch: pyte
     assert decision.date == fixed_today
 
 
-def test_log_path_unwritable_raises_and_does_not_return(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_log_path_unwritable_raises_and_does_not_return(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Fail-closed contract: if the decision log can't be written, the
     call must raise SpendNotAuthorizedError — never return a decision."""
     readonly_dir = tmp_path / "readonly"
@@ -414,7 +445,9 @@ def test_log_decision_direct_unwritable_path_raises(tmp_path: Path) -> None:
     readonly_dir = tmp_path / "readonly2"
     readonly_dir.mkdir(mode=0o500)
     unwritable_log = readonly_dir / "spend-decisions.jsonl"
-    decision = SpendDecision(episode_id="EP01", who="zero", date=date.today(), raw="EP01:zero:2026-01-01")
+    decision = SpendDecision(
+        episode_id="EP01", who="zero", date=date.today(), raw="EP01:zero:2026-01-01"
+    )
     try:
         with pytest.raises(SpendNotAuthorizedError):
             log_decision(decision, episode_id="EP01", log_path=unwritable_log)
@@ -424,7 +457,9 @@ def test_log_decision_direct_unwritable_path_raises(tmp_path: Path) -> None:
 
 def test_log_decision_sets_mode_0600(tmp_path: Path) -> None:
     log_path = tmp_path / "spend-decisions.jsonl"
-    decision = SpendDecision(episode_id="EP01", who="zero", date=date.today(), raw="EP01:zero:2026-01-01")
+    decision = SpendDecision(
+        episode_id="EP01", who="zero", date=date.today(), raw="EP01:zero:2026-01-01"
+    )
     log_decision(decision, episode_id="EP01", log_path=log_path)
     mode = log_path.stat().st_mode & 0o777
     assert mode == 0o600
@@ -458,11 +493,13 @@ async def test_submit_clip_zero_spend_renders_placeholder_and_opens_no_socket(
     async def _boom(*_a, **_k):
         raise AssertionError("network path reached")
 
-    with patch.object(fk, "_create_scene", new=_boom), \
-         patch.object(fk, "_generate_start_image", new=_boom), \
-         patch.object(fk, "_generate_video", new=_boom), \
-         patch.object(fk, "_download_video_media", new=_boom), \
-         patch.object(fk, "setup_episode_context", new=_boom):
+    with (
+        patch.object(fk, "_create_scene", new=_boom),
+        patch.object(fk, "_generate_start_image", new=_boom),
+        patch.object(fk, "_generate_video", new=_boom),
+        patch.object(fk, "_download_video_media", new=_boom),
+        patch.object(fk, "setup_episode_context", new=_boom),
+    ):
         req = fk.ClipRequest(shot_index=5, positive_prompt="a placeholder shot")
         result = await fk.submit_clip(req, episode_dir=tmp_path)
 
@@ -500,11 +537,13 @@ async def test_render_shot_pack_zero_spend_renders_all_placeholders_no_setup(
     sp_path = tmp_path / "shot-pack.json"
     sp_path.write_text(json.dumps(shot_pack))
 
-    with patch.object(fk, "_create_scene", new=_boom), \
-         patch.object(fk, "_generate_start_image", new=_boom), \
-         patch.object(fk, "_generate_video", new=_boom), \
-         patch.object(fk, "_download_video_media", new=_boom), \
-         patch.object(fk, "setup_episode_context", new=_boom):
+    with (
+        patch.object(fk, "_create_scene", new=_boom),
+        patch.object(fk, "_generate_start_image", new=_boom),
+        patch.object(fk, "_generate_video", new=_boom),
+        patch.object(fk, "_download_video_media", new=_boom),
+        patch.object(fk, "setup_episode_context", new=_boom),
+    ):
         results = await fk.render_shot_pack(sp_path, tmp_path)
 
     assert len(results) == 3
@@ -543,19 +582,25 @@ async def test_download_failure_after_generate_video_still_records_real_spend(
     monkeypatch.delenv("WR3_ZERO_SPEND", raising=False)
     today = date.today().isoformat()
     monkeypatch.setenv("WR3_SPEND_DECISION", f"EP-regression:pytest:{today}")
-    monkeypatch.setenv("WR3_SPEND_DECISION_LOG", str(tmp_path / "spend-decisions.jsonl"))
+    monkeypatch.setenv(
+        "WR3_SPEND_DECISION_LOG", str(tmp_path / "spend-decisions.jsonl")
+    )
 
     ledger_path = tmp_path / "credit-ledger.jsonl"
     monkeypatch.setenv("WR3_CREDIT_LEDGER", str(ledger_path))
 
     ctx = fk.EpisodeContext(
-        project_id="p", video_id="v", project_name="EP-regression",
-        endpoint="http://127.0.0.1:8100", paygate="PAYGATE_TIER_ONE",
+        project_id="p",
+        video_id="v",
+        project_name="EP-regression",
+        endpoint="http://127.0.0.1:8100",
+        paygate="PAYGATE_TIER_ONE",
     )
     # start_image_media_id preset → _generate_start_image is never called,
     # isolating this test to the _generate_video charge under test.
     req = fk.ClipRequest(
-        shot_index=7, positive_prompt="regression shot",
+        shot_index=7,
+        positive_prompt="regression shot",
         start_image_media_id="preset-start-img",
     )
 
@@ -571,18 +616,29 @@ async def test_download_failure_after_generate_video_still_records_real_spend(
             "media": [{"name": "vmedia-abc"}],
         }
 
-    async def _fail_download(ctx, *, media_id, dest, timeout_s=120, poll_interval_s=10):
+    async def _fail_download(
+        ctx,
+        *,
+        media_id,
+        dest,
+        timeout_s=120,
+        poll_interval_s=10,
+        workflow_id=None,
+    ):
         raise fk.FlowkitTimeoutError("simulated download timeout AFTER the Veo charge")
 
-    with patch.object(fk, "_create_scene", new=_ok_scene), \
-         patch.object(fk, "_http_post_json", new=_fake_post_json), \
-         patch.object(fk, "_download_video_media", new=_fail_download):
-        with pytest.raises(fk.FlowkitTimeoutError):
+    with (
+        patch.object(fk, "_create_scene", new=_ok_scene),
+        patch.object(fk, "_http_post_json", new=_fake_post_json),
+        patch.object(fk, "_download_video_media", new=_fail_download),
+    ):
+        with pytest.raises(fk.FlowkitRetrievalError):
             await fk.submit_clip(req, episode_dir=tmp_path, episode_context=ctx)
 
     records = read_records(ledger_path=ledger_path)
     real_video_rows = [
-        r for r in records
+        r
+        for r in records
         if r["mode"] == "real"
         and r["source"] == "_generate_video"
         and r["episode_id"] == "EP-regression"
@@ -614,13 +670,19 @@ async def test_generate_video_direct_call_blocked_without_decision_no_http(
         raise AssertionError("network path reached")
 
     ctx = fk.EpisodeContext(
-        project_id="p", video_id="v", project_name="EP-direct-video",
-        endpoint="http://127.0.0.1:8100", paygate="PAYGATE_TIER_ONE",
+        project_id="p",
+        video_id="v",
+        project_name="EP-direct-video",
+        endpoint="http://127.0.0.1:8100",
+        paygate="PAYGATE_TIER_ONE",
     )
     with patch.object(fk, "_http_post_json", new=_boom_http):
         with pytest.raises(SpendNotAuthorizedError):
             await fk._generate_video(
-                ctx, start_image_media_id="img", scene_id="scene", prompt="p",
+                ctx,
+                start_image_media_id="img",
+                scene_id="scene",
+                prompt="p",
             )
 
 
@@ -639,8 +701,11 @@ async def test_generate_start_image_direct_call_blocked_without_decision_no_http
         raise AssertionError("network path reached")
 
     ctx = fk.EpisodeContext(
-        project_id="p", video_id="v", project_name="EP-direct-image",
-        endpoint="http://127.0.0.1:8100", paygate="PAYGATE_TIER_ONE",
+        project_id="p",
+        video_id="v",
+        project_name="EP-direct-image",
+        endpoint="http://127.0.0.1:8100",
+        paygate="PAYGATE_TIER_ONE",
     )
     with patch.object(fk, "_http_post_json", new=_boom_http):
         with pytest.raises(SpendNotAuthorizedError):
@@ -672,13 +737,18 @@ async def test_submit_clip_real_mode_blocked_without_decision_no_http(
         raise AssertionError("network path reached")
 
     ctx = fk.EpisodeContext(
-        project_id="p", video_id="v", project_name="EP-submit-clip-guard",
-        endpoint="http://127.0.0.1:8100", paygate="PAYGATE_TIER_ONE",
+        project_id="p",
+        video_id="v",
+        project_name="EP-submit-clip-guard",
+        endpoint="http://127.0.0.1:8100",
+        paygate="PAYGATE_TIER_ONE",
     )
     req = fk.ClipRequest(shot_index=3, positive_prompt="unauthorized shot")
 
-    with patch.object(fk, "_create_scene", new=_ok_scene), \
-         patch.object(fk, "_http_post_json", new=_boom_http):
+    with (
+        patch.object(fk, "_create_scene", new=_ok_scene),
+        patch.object(fk, "_http_post_json", new=_boom_http),
+    ):
         with pytest.raises(SpendNotAuthorizedError):
             await fk.submit_clip(req, episode_dir=tmp_path, episode_context=ctx)
 

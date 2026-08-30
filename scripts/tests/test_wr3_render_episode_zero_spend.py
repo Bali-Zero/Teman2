@@ -28,6 +28,7 @@ stray `WR3_*` toggles, and `HTTP_PROXY`/`ALL_PROXY`, which `urllib` honours and
 which would otherwise route the "verified refused" loopback endpoint through a
 proxy and quietly void the fixture's central guarantee.
 """
+
 from __future__ import annotations
 
 import json
@@ -64,16 +65,11 @@ _ENV_WHITELIST = ("PATH", "TMPDIR", "LANG", "LC_ALL")
 
 
 def _refused_endpoint() -> str:
-    """A loopback endpoint verified to REFUSE connections right now.
+    """A loopback endpoint verified to refuse connections right now."""
 
-    Binding port 0 and closing hands back a port the kernel just confirmed
-    free; we then PROVE it is refused rather than assuming it. If another
-    process grabs it in the gap, the probe says so and the test skips instead
-    of silently testing nothing.
-    """
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        port = s.getsockname()[1]
+    with socket.socket() as available:
+        available.bind(("127.0.0.1", 0))
+        port = available.getsockname()[1]
     probe = socket.socket()
     probe.settimeout(1.0)
     try:
@@ -82,7 +78,7 @@ def _refused_endpoint() -> str:
         return f"http://127.0.0.1:{port}"
     finally:
         probe.close()
-    pytest.skip(f"port {port} became occupied between bind and probe — cannot prove refusal")
+    pytest.skip(f"port {port} became occupied — cannot prove the refused-gateway case")
 
 
 class _StubGateway:
@@ -134,24 +130,35 @@ def _stub_gateway(payload: dict):
 def _episode(tmp_path: Path, *, name: str = "EP-F11", n_shots: int = 3) -> Path:
     ep = tmp_path / name
     ep.mkdir(parents=True)
-    (ep / "shot-pack.json").write_text(json.dumps({
-        "resolution": "720x1280",
-        "aspect_ratio": "9:16",
-        "shots": [
+    (ep / "shot-pack.json").write_text(
+        json.dumps(
             {
-                "shot_id": f"s{i:03d}",
-                "prompt_positive": f"placeholder shot {i}",
-                "prompt_negative": "",
-                "duration_s": 8,
-            }
-            for i in range(1, n_shots + 1)
-        ],
-    }, indent=2))
+                "resolution": "720x1280",
+                "aspect_ratio": "9:16",
+                "shots": [
+                    {
+                        "shot_id": f"s{i:03d}",
+                        "prompt_positive": f"placeholder shot {i}",
+                        "prompt_negative": "",
+                        "duration_s": 8,
+                    }
+                    for i in range(1, n_shots + 1)
+                ],
+            },
+            indent=2,
+        )
+    )
     return ep
 
 
-def _run(ep: Path, tmp_path: Path, *, zero_spend: bool, endpoint: str | None = None,
-         ledger: Path | None = None) -> subprocess.CompletedProcess:
+def _run(
+    ep: Path,
+    tmp_path: Path,
+    *,
+    zero_spend: bool,
+    endpoint: str | None = None,
+    ledger: Path | None = None,
+) -> subprocess.CompletedProcess:
     home = tmp_path / "home"
     home.mkdir(exist_ok=True)
     env = {k: os.environ[k] for k in _ENV_WHITELIST if k in os.environ}
@@ -167,7 +174,10 @@ def _run(ep: Path, tmp_path: Path, *, zero_spend: bool, endpoint: str | None = N
         env["WR3_ZERO_SPEND"] = "1"
     return subprocess.run(
         [sys.executable, str(DRIVER), str(ep)],
-        capture_output=True, text=True, env=env, timeout=300,
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=300,
     )
 
 
@@ -175,24 +185,27 @@ def _run(ep: Path, tmp_path: Path, *, zero_spend: bool, endpoint: str | None = N
 # The health gate is real — proven against a LIVE gateway, not a dead port
 # --------------------------------------------------------------------------
 
-def test_health_gate_halts_when_the_extension_is_disconnected(tmp_path: Path) -> None:
-    """Exit 2 + the named reason — not merely "some network call failed".
 
-    Against a refused port every preflight dies with an indistinguishable
-    URLError, so a dead-port test cannot tell the health gate from the context
-    call that follows it. This one can: the gateway is up and answering.
-    """
+def test_real_mode_rejects_noncanonical_gateway_before_health(
+    tmp_path: Path,
+) -> None:
+    """A local service on a non-FlowKit port is not an allowed network target."""
     ep = _episode(tmp_path, n_shots=2)
-    with _stub_gateway({"extension_connected": False, "status": "degraded"}) as (url, stub):
+    with _stub_gateway({"extension_connected": False, "status": "degraded"}) as (
+        url,
+        stub,
+    ):
         res = _run(ep, tmp_path, zero_spend=False, endpoint=url)
-    assert res.returncode == 2, f"stdout={res.stdout!r} stderr={res.stderr[-1500:]!r}"
-    assert json.loads(res.stdout.strip())["reason"] == "extension_not_connected"
-    assert stub.paths == ["/health"], stub.paths
+    assert res.returncode == 6, f"stdout={res.stdout!r} stderr={res.stderr[-1500:]!r}"
+    assert json.loads(res.stdout.strip())["reason"] == "episode_run_guard"
+    assert stub.paths == [], stub.paths
     assert not (ep / "clips").exists()
 
 
 @requires_ffmpeg
-def test_zero_spend_bypasses_a_health_gate_that_is_demonstrably_firing(tmp_path: Path) -> None:
+def test_zero_spend_bypasses_a_health_gate_that_is_demonstrably_firing(
+    tmp_path: Path,
+) -> None:
     """Same live gateway, same `extension_connected: false`, zero-spend ON.
 
     The previous test proves that gateway HALTS a real run. This one proves
@@ -200,7 +213,10 @@ def test_zero_spend_bypasses_a_health_gate_that_is_demonstrably_firing(tmp_path:
     is a genuine skip and not a dial whose error is swallowed.
     """
     ep = _episode(tmp_path, n_shots=2)
-    with _stub_gateway({"extension_connected": False, "status": "degraded"}) as (url, stub):
+    with _stub_gateway({"extension_connected": False, "status": "degraded"}) as (
+        url,
+        stub,
+    ):
         res = _run(ep, tmp_path, zero_spend=True, endpoint=url)
     assert res.returncode == 0, f"stdout={res.stdout!r} stderr={res.stderr[-1500:]!r}"
     assert stub.paths == [], f"zero-spend run contacted the gateway: {stub.paths}"
@@ -211,8 +227,11 @@ def test_zero_spend_bypasses_a_health_gate_that_is_demonstrably_firing(tmp_path:
 # Nothing running at all
 # --------------------------------------------------------------------------
 
+
 @requires_ffmpeg
-def test_zero_spend_renders_every_shot_against_a_refused_gateway(tmp_path: Path) -> None:
+def test_zero_spend_renders_every_shot_against_a_refused_gateway(
+    tmp_path: Path,
+) -> None:
     ep = _episode(tmp_path, n_shots=3)
     res = _run(ep, tmp_path, zero_spend=True)
     assert res.returncode == 0, f"stdout={res.stdout!r} stderr={res.stderr[-1500:]!r}"
@@ -231,12 +250,13 @@ def test_without_zero_spend_a_refused_gateway_stops_the_run(tmp_path: Path) -> N
     assert res.returncode != 0
     assert not (ep / "clips").exists()
     combined = res.stdout + res.stderr
-    assert "URLError" in combined or "Connection refused" in combined, combined[-1500:]
+    assert "FlowKit endpoint must be exactly loopback port 8100" in combined
 
 
 # --------------------------------------------------------------------------
 # Credits, labelling, and what must NOT appear on disk
 # --------------------------------------------------------------------------
+
 
 @requires_ffmpeg
 def test_zero_spend_spends_zero_credits_in_the_ledger(tmp_path: Path) -> None:
@@ -278,9 +298,14 @@ def test_a_new_run_never_leaves_a_previous_runs_report_in_place(tmp_path: Path) 
     the placeholder run it must claim neither.
     """
     ep = _episode(tmp_path, n_shots=2)
-    stale = {"mode": "real", "total_cost_cr": 380, "status": "OK",
-             "rendered": [{"shot_id": "s001", "veo_job_id": "veo-real-deadbeef"}],
-             "failed": [], "extension_drop": False}
+    stale = {
+        "mode": "real",
+        "total_cost_cr": 380,
+        "status": "OK",
+        "rendered": [{"shot_id": "s001", "veo_job_id": "veo-real-deadbeef"}],
+        "failed": [],
+        "extension_drop": False,
+    }
     (ep / "render-report.json").write_text(json.dumps(stale))
 
     pack = json.loads((ep / "shot-pack.json").read_text())
@@ -310,25 +335,38 @@ def test_the_stale_report_is_gone_before_the_run_finishes(tmp_path: Path) -> Non
     SIGKILL, full disk) would leave clips described by the wrong run.
     """
     ep = _episode(tmp_path, n_shots=4)
-    stale = {"mode": "real", "total_cost_cr": 380, "status": "OK",
-             "rendered": [{"shot_id": "s001", "veo_job_id": "veo-real-deadbeef"}],
-             "failed": [], "extension_drop": False}
+    stale = {
+        "mode": "real",
+        "total_cost_cr": 380,
+        "status": "OK",
+        "rendered": [{"shot_id": "s001", "veo_job_id": "veo-real-deadbeef"}],
+        "failed": [],
+        "extension_drop": False,
+    }
     report_path = ep / "render-report.json"
     report_path.write_text(json.dumps(stale))
 
     home = tmp_path / "home"
     home.mkdir(exist_ok=True)
     env = {k: os.environ[k] for k in _ENV_WHITELIST if k in os.environ}
-    env.update({
-        "HOME": str(home),
-        "WR3_CREDIT_LEDGER": str(tmp_path / "ledger.jsonl"),
-        "WR3_SPEND_DECISION_LOG": str(tmp_path / "decisions.jsonl"),
-        "WR3_FLOWKIT_ENDPOINT": _refused_endpoint(),
-        "NO_PROXY": "*", "no_proxy": "*", "WR3_ZERO_SPEND": "1",
-    })
-    proc = subprocess.Popen([sys.executable, str(DRIVER), str(ep)],
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            text=True, env=env)
+    env.update(
+        {
+            "HOME": str(home),
+            "WR3_CREDIT_LEDGER": str(tmp_path / "ledger.jsonl"),
+            "WR3_SPEND_DECISION_LOG": str(tmp_path / "decisions.jsonl"),
+            "WR3_FLOWKIT_ENDPOINT": _refused_endpoint(),
+            "NO_PROXY": "*",
+            "no_proxy": "*",
+            "WR3_ZERO_SPEND": "1",
+        }
+    )
+    proc = subprocess.Popen(
+        [sys.executable, str(DRIVER), str(ep)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=env,
+    )
     seen_incomplete = False
     try:
         deadline = time.monotonic() + 120
