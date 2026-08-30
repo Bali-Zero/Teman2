@@ -287,6 +287,12 @@ on:
       # first run.
       - zantara-core-edit-gate
       - Vercel auto-promote organ tests
+      # Added 2026-08-30 (Handoff H2, voa-probe-tests.yml). Listed by the `name:`
+      # the workflow declares, not by its filename — the matching rule this file's
+      # own GOTCHA section states. Caught by check_watcher_coverage.py on that PR's
+      # own first run, which is the coverage gate doing exactly its job: a new
+      # push-to-main workflow that nothing watches is a red nobody would see.
+      - VOA probe organ tests
       # Added 2026-08-29 (Handoff H3, token-contrast-tests.yml): ADVISORY job
       # (continue-on-error: true — see the workflow's own header comment).
       # check_watcher_coverage.py's contract is name-set membership against
