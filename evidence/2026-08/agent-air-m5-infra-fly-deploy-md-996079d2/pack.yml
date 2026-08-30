@@ -214,7 +214,13 @@ receipts:
     ts: "2026-08-29T10:05-10:30Z (ongoing at pack-write time)"
     seat: session (Air-M5, implementer lane)
 
-dissent: []
+dissent:
+  - seat: harness-gate-m5
+    objection: "No test in this repo exercises the fly-deploy.yml notifier shell logic (parse_mode/curl/warning path) — any mutation of it would pass every test that runs today. Pre-existing across the whole file, not introduced by this PR."
+    status: PLAUSIBLE
+  - seat: harness-gate-m5
+    objection: "This PR's strategy (drop parse_mode entirely on 7 sites) diverges from outbox_alarm.py's escape-and-preserve-formatting strategy for the same class of defect, though it matches scripts/tg_notify.py's existing no-parse_mode precedent. Not a defect; flagged so the divergence is a recorded decision, not an accident."
+    status: RETRACTED
 
 tests:
   - "No application test suite applies — this PR changes only GitHub Actions
