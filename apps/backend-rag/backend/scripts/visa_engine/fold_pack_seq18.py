@@ -62,10 +62,16 @@ import hashlib
 import json
 import sys
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from backend.services.visa_engine.bundle import canonicalize_json
+from backend.services.visa_engine.bundle import (
+    RulePackVerificationError,
+    StaticTrustStore,
+    canonicalize_json,
+    verify_rule_pack,
+)
 from backend.services.visa_engine.models import RulePackPayload
 
 #: The seq-17 payload digest — the chain anchor, and the digest activated in
@@ -119,6 +125,50 @@ def _rule_pack_id(sequence: int) -> uuid.UUID:
 
 def _fail(message: str) -> None:
     raise SystemExit(f"fold_pack_seq18: {message}")
+
+
+def assert_changed_fields_hold_their_expected_values(after: dict[str, Any]) -> None:
+    """Abort unless every field this fold is ALLOWED to move holds the value it
+    is supposed to move to.
+
+    ``assert_only_expected_changes`` names what MAY change and then excludes
+    exactly those fields from comparison — which means it is silent about
+    whether they changed to the RIGHT thing. Adversarial review of this diff
+    demonstrated the gap concretely: ``max_age_seconds = 1``, ``sequence = 19``,
+    ``version = "2026.9.99"``, ``created_at = "2099-01-01T00:00:00Z"``, a
+    fabricated ``previous_payload_sha256`` and a spurious
+    ``rollback_of_payload_sha256`` all passed both the guard and
+    ``RulePackPayload.model_validate`` — the model accepts any positive window
+    and binds none of these to this fold's intent.
+
+    Nothing today reaches those states, because ``fold()`` writes the values
+    itself. That is precisely why this is worth pinning: the guard is *claimed*
+    to be fail-closed, and a claim that only holds while the code above it stays
+    correct is not a guard, it is a comment.
+    """
+    expected: dict[str, Any] = {
+        "sequence": 18,
+        "rule_pack_id": str(_rule_pack_id(18)),
+        "version": FOLD_VERSION,
+        "created_at": FOLD_CREATED_AT,
+        "created_by": FOLD_CREATED_BY,
+        "previous_payload_sha256": SEQ17_PAYLOAD_SHA256,
+        "rollback_of_payload_sha256": None,
+    }
+    for key, want in expected.items():
+        got = after.get(key)
+        if got != want:
+            _fail(f"{key} is {got!r}, expected {want!r}")
+
+    portals = [r for r in after["source_records"] if r.get("authority_type") == PORTAL_AUTHORITY]
+    if len(portals) != EXPECTED_PORTAL_COUNT:
+        _fail(f"expected {EXPECTED_PORTAL_COUNT} portal records in the output, got {len(portals)}")
+    windows = {r["freshness_policy"]["max_age_seconds"] for r in portals}
+    if windows != {NEW_MAX_AGE_SECONDS}:
+        _fail(
+            f"portal windows are {sorted(windows)}, expected every one to be "
+            f"{NEW_MAX_AGE_SECONDS}"
+        )
 
 
 def assert_only_expected_changes(before: dict[str, Any], after: dict[str, Any]) -> None:
@@ -176,8 +226,66 @@ def assert_only_expected_changes(before: dict[str, Any], after: dict[str, Any]) 
                 _fail("a portal record's freshness_policy field set changed")
 
 
-def fold(seq17: dict[str, Any]) -> dict[str, Any]:
-    """Return the seq-18 payload, or abort loudly."""
+def assert_anchor_is_a_verified_signed_artifact(
+    signed_envelope: dict[str, Any],
+    digest: str,
+    *,
+    observed_at: datetime | None = None,
+) -> None:
+    """Require the chain anchor to be a SIGNED seq-17 pack, not just a digest.
+
+    Recomputing the digest of the source file and comparing it to
+    ``SEQ17_PAYLOAD_SHA256`` proves only that the input matches a constant
+    written in THIS file — an author who pinned the digest of a valid but
+    never-signed pack would sail through it. So the signed seq-17 bundle is
+    opened, its Ed25519 signature verified against the SAME trust store
+    production uses (``VISA_ENGINE_TRUST_STORE_KEYS_JSON``, a public key, not
+    a secret), and its verified ``payload_sha256`` required to equal the
+    digest recomputed from the source.
+
+    What this still does NOT prove is ACTIVATION — a signed pack and an active
+    pack are different claims, and only the production catalog can settle the
+    second. That receipt lives in the evidence pack, deliberately, not here.
+    """
+    try:
+        trust_store = StaticTrustStore.from_env()
+    except RulePackVerificationError as exc:
+        _fail(
+            f"cannot verify the seq-17 anchor's signature: {exc}. Export the "
+            "production trust store (the public key, e.g. "
+            "VISA_ENGINE_TRUST_STORE_KEYS_JSON='[{\"kid\": \"prod-2026-07-1\", ...}]') "
+            "and re-run — the anchor is never taken on a digest constant alone."
+        )
+    try:
+        verified = verify_rule_pack(
+            signed_envelope,
+            trust_store=trust_store,
+            observed_at=observed_at or datetime.now(timezone.utc),
+        )
+    except RulePackVerificationError as exc:
+        _fail(f"the seq-17 signed bundle does not verify: {exc}")
+
+    signed_digest = verified.payload_sha256.hex()
+    if signed_digest != digest:
+        _fail(
+            f"the seq-17 SOURCE digest {digest} is not the digest of the signed "
+            f"seq-17 artifact ({signed_digest}) — the source on disk and the "
+            "artifact production verifies are two different payloads."
+        )
+    if verified.pack.payload.sequence != 17:
+        _fail(
+            "the signed bundle handed in as the seq-17 anchor carries sequence "
+            f"{verified.pack.payload.sequence}"
+        )
+
+
+def fold(seq17: dict[str, Any], seq17_signed: dict[str, Any]) -> dict[str, Any]:
+    """Return the seq-18 payload, or abort loudly.
+
+    ``seq17_signed`` is the signed seq-17 envelope and is REQUIRED, not
+    optional: an anchor check a caller can skip is not a check. See
+    :func:`assert_anchor_is_a_verified_signed_artifact`.
+    """
     digest = hashlib.sha256(canonicalize_json(seq17)).hexdigest()
     if digest != SEQ17_PAYLOAD_SHA256:
         _fail(
@@ -185,6 +293,7 @@ def fold(seq17: dict[str, Any]) -> dict[str, Any]:
             f"digest {digest} != {SEQ17_PAYLOAD_SHA256}. Everything below would "
             "otherwise be built on a payload production never ran."
         )
+    assert_anchor_is_a_verified_signed_artifact(seq17_signed, digest)
     if seq17.get("sequence") != 17:
         _fail(f"expected sequence 17, got {seq17.get('sequence')!r}")
 
@@ -235,6 +344,7 @@ def fold(seq17: dict[str, Any]) -> dict[str, Any]:
     out["rollback_of_payload_sha256"] = None
 
     assert_only_expected_changes(seq17, out)
+    assert_changed_fields_hold_their_expected_values(out)
     RulePackPayload.model_validate(out)
     return out
 
@@ -242,11 +352,28 @@ def fold(seq17: dict[str, Any]) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Fold RulePack seq-18.")
     parser.add_argument("--seq17-source", required=True, type=Path)
+    parser.add_argument(
+        "--seq17-signed",
+        type=Path,
+        default=None,
+        help=(
+            "the signed seq-17 envelope; defaults to the .signed.json sibling "
+            "of --seq17-source. Its signature is verified — the anchor is never "
+            "taken on the digest constant alone."
+        ),
+    )
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args(argv)
 
+    signed_path = args.seq17_signed or Path(
+        str(args.seq17_source).replace(".source.json", ".signed.json")
+    )
+    if signed_path == args.seq17_source or not signed_path.exists():
+        _fail(f"no signed seq-17 bundle at {signed_path} — pass --seq17-signed")
+
     seq17 = json.loads(args.seq17_source.read_text(encoding="utf-8"))
-    seq18 = fold(seq17)
+    seq17_signed = json.loads(signed_path.read_text(encoding="utf-8"))
+    seq18 = fold(seq17, seq17_signed)
     args.output.write_text(
         json.dumps(seq18, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )

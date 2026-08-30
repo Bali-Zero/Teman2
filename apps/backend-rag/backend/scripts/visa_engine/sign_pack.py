@@ -313,6 +313,31 @@ def _public_key_b64url(private_key: Ed25519PrivateKey) -> str:
     return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
 
 
+def assert_created_before_signed(created_at: datetime, signed_at: datetime) -> None:
+    """Refuse to sign a payload that claims to have been created after its own signature.
+
+    The signature proves those bytes already existed at `signed_at`, so a later
+    `created_at` is internally false — and nothing in the chain could see it:
+    this signer only compared `signed_at` to the wall clock, and `bundle.py`'s
+    verifier only compares `signed_at` to `observed_at`. seq-18 shipped that way
+    (created_at=2026-08-31T00:00:00Z, signed_at=2026-08-30T17:18:16.587039Z — false
+    by 6h41m43s) and, being signed, cannot be edited: the remedy for THAT artifact
+    is a forward pack. This function is the remedy for every artifact after it.
+
+    Raises:
+        SignPackError: if `created_at` is strictly after `signed_at`. Equality is
+            accepted — a pack folded and signed in the same instant is coherent.
+    """
+    if created_at > signed_at:
+        raise SignPackError(
+            f"payload.created_at ({utc_isoformat(created_at)}) is AFTER signed_at "
+            f"({utc_isoformat(signed_at)}) — the signature would prove these bytes "
+            "existed before the payload says it was created. Fix created_at in the "
+            "source (or pass --signed-at); never ship the incoherence, because a "
+            "signed artifact cannot be edited afterwards."
+        )
+
+
 def sign_pack(
     *,
     payload_source: Path,
@@ -399,6 +424,9 @@ def sign_pack(
     private_key = _load_private_key(key_file)
 
     signed_at_dt = signed_at or datetime.now(timezone.utc)
+
+    assert_created_before_signed(payload.created_at, signed_at_dt)
+
     protected: dict = {
         "domain": "balizero.visa-rulepack.v1",
         "alg": "Ed25519",
