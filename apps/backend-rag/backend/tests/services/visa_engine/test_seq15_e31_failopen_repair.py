@@ -31,7 +31,6 @@ innocence — the legitimate populations still get their product:
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -235,12 +234,24 @@ def _evaluate(
     )
     request = build_persona_request(persona)
     facts = request.applicant_facts()
-    now = datetime.now(timezone.utc)
+    # PINNED to the pack's own created_at, never datetime.now(): the pack's
+    # source_records carry a freshness_policy (MAX_AGE_SINCE_VERIFIED_AT) with
+    # a 604800s (7-day) window on the newest source. Evaluating at wall-clock
+    # time is a clock bomb — it is guaranteed to go stale exactly 7 days after
+    # the fixture's verified_at, with no code change, and it took the ENTIRE
+    # merge queue down on 2026-08-30 (verified_at 2026-08-23T10:44:48Z +
+    # 604800s = 2026-08-30T10:44:48Z). At that instant the engine correctly
+    # started returning HUMAN_REVIEW_REQUIRED — the engine was right, the
+    # test's clock was the bug. Deriving the instant from the pack (rather
+    # than a hardcoded literal) means it moves automatically when the pack is
+    # regenerated; a pack whose own created_at falls outside its sources'
+    # freshness window is genuinely broken and SHOULD fail here.
+    as_of = seq15.source_pack.payload.created_at
     decision = evaluator.evaluate(
         facts,
         seq15,
-        effective_at=now,
-        observed_at=now,
+        effective_at=as_of,
+        observed_at=as_of,
         identity_provider=_offline_identity_provider,
     )
     decision = apply_public_policy_adapters(decision, facts, seq15)

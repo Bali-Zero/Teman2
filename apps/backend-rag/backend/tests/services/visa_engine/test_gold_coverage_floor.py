@@ -18,12 +18,32 @@ from pathlib import Path
 import pytest
 
 from backend.scripts.visa_engine import gold_coverage_replay as replay
+from backend.scripts.visa_engine.gold_replay_driver import (
+    PACKS_DIR,
+    select_highest_repository_pack,
+)
 
 CORPUS_DIR = Path(__file__).resolve().parent / "gold_coverage" / "personas"
 
+# PINNED to the highest signed pack's own `signed_at`, never the wall clock:
+# the selected pack's source_records carry a freshness_policy
+# (MAX_AGE_SINCE_VERIFIED_AT) with as little as a 604800s (7-day) window, so
+# calling `replay.main` without `--as-of` evaluates at `datetime.now(UTC)` —
+# a clock bomb guaranteed to go stale exactly 7 days after the newest
+# source's verified_at, with zero code change. It took the ENTIRE merge
+# queue down on 2026-08-30 (verified_at 2026-08-23T10:44:48Z + 604800s =
+# 2026-08-30T10:44:48Z); at that instant the engine correctly started
+# returning HUMAN_REVIEW_REQUIRED for every persona in this floor — the
+# engine was right, the wall-clock evaluation was the bug. `signed_at` (not
+# `payload.created_at`) because `--as-of` also drives `verify_rule_pack`'s
+# `observed_at`, which rejects a signature dated AFTER the observation
+# instant.
+_, _HIGHEST_SIGNED_PACK = select_highest_repository_pack(PACKS_DIR)
+_AS_OF = _HIGHEST_SIGNED_PACK["protected"]["signed_at"]
+
 
 def _run_corpus(capsys: pytest.CaptureFixture[str]) -> tuple[int, dict]:
-    rc = replay.main(["--corpus", str(CORPUS_DIR)])
+    rc = replay.main(["--corpus", str(CORPUS_DIR), "--as-of", _AS_OF])
     out = capsys.readouterr().out
     start = out.find("{")
     report = json.loads(out[start:]) if start >= 0 else {}

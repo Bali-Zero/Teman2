@@ -32,6 +32,7 @@ from typing import Any
 from backend.scripts.visa_engine.gold_replay_driver import (
     PACKS_DIR,
     _offline_identity_provider,
+    _parse_utc,
     _repository_trust_store,
     build_persona_request,
     select_highest_repository_pack,
@@ -89,8 +90,21 @@ def _registry_rows() -> list[dict[str, Any]]:
     return rows
 
 
-def _evaluate(overrides: dict[str, dict[str, Any]], label: str) -> dict[str, Any]:
-    now = datetime.now(UTC)
+def _evaluate(
+    overrides: dict[str, dict[str, Any]], label: str, *, as_of: datetime | None = None
+) -> dict[str, Any]:
+    # `as_of` defaults to None so production behaviour (evaluate at the real
+    # wall clock) is unchanged. It exists so a TEST can pin the instant to the
+    # pack's own `created_at` instead: the selected pack's `source_records`
+    # carry a freshness_policy (MAX_AGE_SINCE_VERIFIED_AT) with as little as a
+    # 604800s (7-day) window, so evaluating at `datetime.now(UTC)` is a clock
+    # bomb — it is guaranteed to go stale exactly 7 days after the newest
+    # source's verified_at, with zero code change, and it took the ENTIRE
+    # merge queue down on 2026-08-30 (verified_at 2026-08-23T10:44:48Z +
+    # 604800s = 2026-08-30T10:44:48Z). At that instant the engine correctly
+    # started returning HUMAN_REVIEW_REQUIRED — the engine was right, the
+    # wall-clock evaluation was the bug.
+    now = as_of if as_of is not None else datetime.now(UTC)
     pack_path, raw_pack = select_highest_repository_pack(PACKS_DIR)
     verified = verify_rule_pack(raw_pack, trust_store=_repository_trust_store(), observed_at=now)
     compiled = build_compiled_pack(verified.pack)
@@ -133,6 +147,18 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--dump-baseline", action="store_true")
     parser.add_argument("--dump-registry", action="store_true")
+    parser.add_argument(
+        "--as-of",
+        type=_parse_utc,
+        default=None,
+        help=(
+            "pin the evaluation/verification instant to this timezone-aware "
+            "UTC ISO-8601 timestamp instead of the real wall clock (e.g. "
+            "'2026-08-29T05:00:00Z'). Defaults to now — production behaviour "
+            "is unchanged; this exists so a test can pin the instant to a "
+            "pack's own created_at and avoid a freshness-window clock bomb."
+        ),
+    )
     args = parser.parse_args(argv)
 
     if args.dump_baseline:
@@ -149,7 +175,7 @@ def main(argv: list[str] | None = None) -> int:
     overrides = spec.get("overrides") or {}
     if not isinstance(overrides, dict):
         parser.error("'overrides' must be an object keyed by dotted FactPath")
-    out = _evaluate(overrides, str(spec.get("label", args.persona.stem)))
+    out = _evaluate(overrides, str(spec.get("label", args.persona.stem)), as_of=args.as_of)
     for key in ("expected_state", "expected_candidates", "product_code"):
         if key in spec:
             out[key] = spec[key]
