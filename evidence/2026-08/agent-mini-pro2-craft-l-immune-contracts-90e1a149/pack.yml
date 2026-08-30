@@ -1,0 +1,194 @@
+# STAGING PATH, NOT THE REAL ONE — the documented contract. harness-floor.yml
+# copies both files into /tmp/evidence-check/evidence/{brief,pack}.yml under
+# their canonical names, and evidence_pack_lint.py resolves brief_ref against
+# THAT root, so this field must read the literal evidence/brief.yml even though
+# the real brief lives beside this file.
+brief_ref: evidence/brief.yml
+plan_ref: "docs/plans/2026-08-29-beyond-sota-craft-wave/L08-observability-immune-self-healing.md — PR-1; squad ledger issue #5319"
+lanes:
+  - lane: lint-core
+    role: build
+    seat: "kimi-code/kimi-for-coding (Moonshot — the D3 non-Anthropic build lane)"
+  - lane: registry
+    role: build
+    seat: "claude-sonnet-5 (subagent — grounded all six contracts in the real emitters, citing file:line, and found two live mismatches while doing it)"
+  - lane: corpus
+    role: build
+    seat: "claude-sonnet-5 (second subagent — wrote the 28-case corpus and proved three of its tests non-vacuous against a broken copy in /tmp)"
+  - lane: refute
+    role: review
+    seat: "gpt-5.6-sol xhigh, --sandbox read-only — DO-NOT-SHIP, 25 findings, 5 blockers"
+  - lane: final-gate
+    role: review
+    seat: "claude-opus-5 (this orchestrator — every receipt command re-run here, this turn)"
+seat_diversity: ok
+seat_diversity_note: >-
+  Three build lanes across two families, review by a third. D3 satisfied by a
+  real build lane, never seat_override.
+
+  The measurement, not the principle: the cross-family reviewer found that the
+  lint could not detect the single defect it was written to detect, and proved
+  it by running the submitted code rather than by arguing about it. Three
+  Anthropic-side lanes and this gate had all missed that.
+diff:
+  net_lines: >-
+    AS OF a361363cc3 (pinned — an unqualified byte count inside a file every
+    later commit rewrites decays by construction): 4 files, +2645/-0 against the
+    merge base, plus this evidence pack. 1,050 of those lines are the corpus and
+    roughly 400 more are load-bearing comment; the executable surface is one
+    lint and six registry entries.
+
+    Deterministic gear floor recomputed from the diff = 3 (source: path —
+    .github/workflows/ is a hot zone). Gear 3 is the floor, not a choice.
+  behaviour_change: >-
+    Three steps join a REQUIRED job on every PR: the lint's self-test, the
+    registry check, and the corpus. A registry that stops matching the code, a
+    consumer that starts reading an undeclared key, a producer that stops
+    writing a declared one, an empty registry, or a deleted linter all turn that
+    job red. Nothing else in the repo changes: the lint reads and never writes,
+    and no producer or consumer is modified by this PR.
+receipts:
+  - claim: "The gear floor is 3, recomputed from the diff rather than taken from the brief"
+    cmd: "scripts/evidence_pack_lint.py --print-floor --changed-files-file changed.txt"
+    result: "3 (.github/workflows/immune-enforcement.yml is the hot-zone hit)"
+    exit: 0
+    ts: "2026-08-31T03:45Z"
+    seat: "session (mini, final gate)"
+  - claim: "The lint now catches W120 AS IT ACTUALLY HAPPENED — the blocker that voided the first version"
+    cmd: "python3 scripts/lint_immune_contracts.py --selftest"
+    result: >-
+      21/21, including "guilt W120 AS IT ACTUALLY HAPPENED: an undeclared
+      payload read is caught" and its innocence twin "a literal that never
+      touches the payload is not a contract read". Reproduced directly before
+      the fix: producer emits entries[].class, consumer reads
+      e.get("classification") -> C1=[], C3=[], C4=[], exit 0. After: C3
+      'classification'.
+    exit: 0
+    ts: "2026-08-31T03:35Z"
+    seat: "session (mini, final gate)"
+  - claim: "The live registry is clean, and says how much it actually checked instead of implying it checked everything"
+    cmd: "python3 scripts/lint_immune_contracts.py --check --no-regrowth origin/main"
+    result: "4/6 contracts anchored to source, 19 unchecked, 2 known-gap, 0 cannot-verify, 0 violations — every unchecked line carries its reason"
+    exit: 0
+    ts: "2026-08-31T03:45Z"
+    seat: "session (mini, final gate)"
+  - claim: "The gate cannot be disarmed by deleting its content or its code"
+    cmd: "pytest scripts/tests/test_lint_immune_contracts.py -k disarmed"
+    result: >-
+      An empty registry ({} and {contracts: []}) is C6 and exit 1, where it used
+      to report 0/0 and exit 0. The three workflow steps lost their
+      `if [ -f ... ]` guards, so a PR deleting the linter fails the REQUIRED job
+      instead of turning it green.
+    exit: 0
+    ts: "2026-08-31T03:40Z"
+    seat: "session (mini, final gate)"
+  - claim: "Every cure is defended: reverting it turns the corpus red"
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3.11 -B -m pytest -q -p no:cacheprovider"
+    result: >-
+      8 mutants, 8 killed — taint made inert (C3 blind), C3 inverted, C2b
+      disabled, C4 stops reading nested, emit_helpers ignored, empty registry
+      accepted, regrowth allowed, malformed read paths accepted. __pycache__
+      cleared between every case and files restored from a byte copy, never git
+      checkout (W121).
+    exit: 0
+    ts: "2026-08-31T03:50Z"
+    seat: "session (mini, final gate)"
+  - claim: "The workflow-class guards that judge the edited file are green, and actionlint runs at the version CI pins"
+    cmd: "pytest test_immune_enforcement_trigger_symmetry test_lint_workflow_errexit_decap test_lint_workflow_timeout_floor test_check_required_workflow_conformance; actionlint 1.7.12 -shellcheck="
+    result: "73 passed; actionlint rc=0. Mini has no actionlint — the binary was fetched at the exact pinned version rather than a verdict assumed from a different one."
+    exit: 0
+    ts: "2026-08-31T03:50Z"
+    seat: "session (mini, final gate)"
+  - claim: "Two live mismatches found by building the registry, both grounded before being written down"
+    cmd: "python3 scripts/lint_immune_contracts.py --check  (before the registry was corrected)"
+    result: >-
+      (1) organism_digest.stale_heartbeats reads `checkout`, which heartbeat.sh
+      never emits — it comes from a genuine SECOND producer into the same
+      directory, scripts/lib/wr2_runtime_stamp.py. Modelled as two contracts.
+      (2) The same consumer accepts statuses `live` and `green` that no caller
+      passes, measured across every call site of heartbeat.sh's
+      organism_heartbeat and of organ_emitter.py. Declared as a known gap.
+    exit: 1
+    ts: "2026-08-31T02:20Z"
+    seat: "session (mini, final gate)"
+  - claim: "The taint layer is checked in BOTH directions — it sees a real payload read, and it stays blind to a literal that never touched the payload"
+    cmd: "pytest scripts/tests/test_lint_immune_contracts.py -k payload"
+    result: "2 passed — the undeclared payload read is caught; os.environ.get('HOME') and an unrelated local dict are not contract reads. The second is the over-match guard, and it is the one that keeps a REQUIRED job from reddening on ordinary code."
+    exit: 0
+    ts: "2026-08-31T04:00Z"
+    seat: "session (mini, final gate)"
+  - claim: "C4 covers nested keys and declared helpers, and does NOT follow an undeclared one"
+    cmd: "pytest scripts/tests/test_lint_immune_contracts.py -k c4"
+    result: "3 passed — a rename inside an entry dict is caught; a helper handed to an executor is found only when the registry names it, and is a violation when it does not. Following every bare Name would be a wider net in the false-green direction."
+    exit: 0
+    ts: "2026-08-31T04:00Z"
+    seat: "session (mini, final gate)"
+  - claim: "A third family found five more, including that C2b was blind to the very shape the registry declares as its flagship gap"
+    cmd: "kimi -p <the cured diff + an attack list> -m kimi-code/k3"
+    result: >-
+      REWORK, 0 blockers, 5 majors, all accepted. C2b saw only INLINE
+      comparisons while the live shape is bind-then-compare; provenance died at
+      a container call and leaked into nested scopes; and the ratchet guarded
+      known_gaps while function:null, a non-python kind and caller_supplied were
+      three open doors to turning any red into a printed-but-passing line. Four
+      fixed, two declared at the site with reasons.
+    exit: 0
+    ts: "2026-08-31T04:35Z"
+    seat: "kimi-code/k3 (third family)"
+pii_scan: clean
+council_run: journal.jsonl
+dissent:
+  - seat: "gpt-5.6-sol (xhigh, read-only) — on the diff, with an attack list"
+    objection: >-
+      DO-NOT-SHIP, 25 findings, 5 blockers. The first voided the PR's claim and
+      was reproduced rather than argued: with the producer emitting
+      entries[].class and the consumer reading e.get("classification"), the
+      submitted lint returned C1=[], C3=[], C4=[], exit 0 — W120 itself passing
+      its own cure, because C3 kept only literals that were ALREADY declared
+      producer keys and `classification` is precisely a key the producer does
+      not declare. Also: C2 compared two registry lists to each other, so a
+      consumer switching from "LIVE" to "live" stayed green; C4 read only
+      top-level emits and only the declared function's own body; one uncheckable
+      side disabled BOTH anchors; and the workflow's `if [ -f ... ]` guards let
+      a PR delete the linter and turn the REQUIRED job green.
+    status: CONFIRMED
+    disposition: >-
+      All 25 accepted, all reproduced on disk, 0 rejected. C3 is now provenance-
+      based (`_Taint`), C2b reads literals out of the source, C4 covers nested
+      keys and declared helpers, each anchor runs on its own merits, the workflow
+      guards are gone and an empty registry is C6. Four limits are DECLARED at
+      the site rather than fixed — first-same-named-definition, dynamic keys,
+      consumer-side helper calls, and `writer_function` being documentation only
+      — because each needs a design decision this PR is not the place for.
+  - seat: "claude-opus-5 (this session, on its own registry)"
+    objection: >-
+      The `live`/`green` known-gap said "no producer CAN emit it". False:
+      organism_heartbeat writes whatever status string it is handed and
+      validates nothing. The measurement was of CALLERS and was written as a
+      property of the function.
+    status: CONFIRMED
+    disposition: >-
+      Corrected in the registry, with the distinction stated rather than
+      smoothed over. The gap stands on the caller measurement, which is the
+      claim that was actually made.
+  - seat: "kimi-code/k3 — third family, on the cured diff"
+    objection: >-
+      REWORK, five MAJORs, no blockers left. The sharpest: C2b matched only
+      INLINE comparisons, while the live shape is
+      `status = str(data.get("status","")).lower()` then `status not in (...)` —
+      so the one case this registry declares as a known gap was precisely the
+      case C2b could not see, and the gap's own existence proved the check
+      blind. Also: provenance died at `list(data["entries"])` and leaked into
+      nested function scopes; and the ratchet guarded `known_gaps` alone, while
+      `function: null`, a non-python `kind` and `caller_supplied` were three
+      unguarded ways to convert any red into a printed-but-passing line.
+    status: CONFIRMED
+    disposition: >-
+      Four fixed — an alias pass for C2b (with the C2b twins of both gaps now
+      declared), container builtins made provenance-transparent, scope
+      discipline in both the taint pass and the collector, and every downgrade
+      door ratcheted together as a stripped SET of identities. Two DECLARED at
+      the site: C4 does not check that the dict carrying a key flows into the
+      returned payload (needs return-value dataflow), and taint never UNtaints
+      on rebinding (a false-RED direction, loud rather than silent, which is why
+      it is declared rather than rushed).
