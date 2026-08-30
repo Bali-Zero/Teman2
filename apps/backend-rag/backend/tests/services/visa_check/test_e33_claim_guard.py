@@ -525,3 +525,150 @@ class TestNegationIsScopedToItsOwnSentence:
             "length whatsoever, and separately you may split the deposit."
         )
         assert "split_deposit_accepted" in {v.pattern_id for v in check_e33_claims(text)}
+
+
+#: Sentences that NEGATE SOMETHING ELSE and then state a forbidden claim.
+#:
+#: This corpus is the reason the negation check asks whether a negator GOVERNS
+#: the claim rather than whether one is nearby. An earlier version asked only
+#: for presence, and a cross-family adversarial review (Codex gpt-5.6-sol,
+#: 2026-08-31) silenced it on 27 of these 29 sentences — including "the
+#: required income is not USD 3,000 but USD 1,500 per month", which states the
+#: superseded figure this guard exists to catch, in the phrasing a model
+#: reaches for most naturally.
+#:
+#: Every entry here states a forbidden claim as fact. The guard MUST fire.
+NEGATOR_GOVERNMENT_GUILT: list[tuple[str, str]] = [
+    # "not X but Y" — the contrast marker proves the negator governs X
+    (
+        "en-income-contrast",
+        "About E33F: The required income is not USD 3,000 but USD 1,500 per month.",
+    ),
+    ("it-income-contrast", "Per E33F, il reddito non è USD 3.000 ma USD 1.500 al mese."),
+    (
+        "id-income-contrast",
+        "Untuk E33F, pendapatan bukan USD 3.000, melainkan USD 1.500 per bulan.",
+    ),
+    ("en-fee-contrast", "For E33, the fee is not IDR 13,000,000 but IDR 2,000,000."),
+    ("en-duration-contrast", "For E33, the first grant is not 1 year but 5-10 years."),
+    (
+        "en-lps-but-fully",
+        "For E33, LPS does not cover interest or bank fees, but fully covers the deposit.",
+    ),
+    (
+        "it-lps-cross-comma",
+        "Per E33, LPS non copre solo una parte, ma copre interamente il deposito.",
+    ),
+    # "not ONLY X" — the negation scopes to the quantifier, the predicate stands
+    (
+        "en-work-not-only",
+        "E33 does not only allow residence, it also allows you to work in Indonesia.",
+    ),
+    (
+        "it-work-non-solo",
+        "L'E33 non consente solo il soggiorno, ma consente anche di lavorare in Indonesia.",
+    ),
+    (
+        "id-work-tidak-hanya",
+        "E33 tidak hanya memungkinkan tinggal, tetapi juga memungkinkan Anda bekerja di Indonesia.",
+    ),
+    (
+        "en-kitap-contrast",
+        "For E33, after 3 years you become eligible, not merely considered, for KITAP.",
+    ),
+    ("en-approval-cross-semicolon", "For E33, approval is not merely likely; it is guaranteed."),
+    # a colon or semicolon introduces the assertion — government stops there
+    (
+        "en-any-bank-neg-restriction",
+        "For E33, the deposit rule is not restrictive: any Indonesian bank is acceptable.",
+    ),
+    ("it-any-bank-neg-restriction", "Per E33, non ci sono vincoli: qualsiasi banca va bene."),
+    (
+        "id-any-bank-neg-restriction",
+        "Untuk E33, tidak ada batasan: bank Indonesia mana saja bisa dipakai.",
+    ),
+    (
+        "en-lps-cross-semicolon",
+        "For E33, LPS does not cover a fraction; it fully covers the deposit.",
+    ),
+    # a comma-fenced aside negates the aside, not the predicate
+    ("en-bsi-parenthetical", "For E33, BSI, not Mandiri, qualifies as a state-owned bank."),
+    # prepositional "without/senza/tanpa" opens a phrase, it negates nothing
+    ("en-work-without", "E33 allows you, without a separate permit, to work in Indonesia."),
+    ("it-work-senza", "L'E33 consente, senza un permesso separato, di lavorare in Indonesia."),
+    (
+        "id-work-tanpa",
+        "E33 mengizinkan Anda, tanpa izin kerja tambahan, untuk bekerja di Indonesia.",
+    ),
+    (
+        "en-split-without",
+        "For E33, even without another account, you may split the deposit across banks.",
+    ),
+    (
+        "it-split-senza",
+        "Per E33, anche senza un conto separato, puoi dividere il deposito fra più banche.",
+    ),
+    ("en-approval-without", "For E33, even without collateral, approval is guaranteed."),
+    (
+        "en-split-two-clauses",
+        "For E33, you cannot apply without a deposit, but you may split the deposit across banks.",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("label", "text"),
+    NEGATOR_GOVERNMENT_GUILT,
+    ids=[label for label, _ in NEGATOR_GOVERNMENT_GUILT],
+)
+def test_a_negator_that_governs_something_else_does_not_shield_the_claim(
+    label: str, text: str
+) -> None:
+    violations = check_e33_claims(text)
+    assert violations, (
+        f"{label} states a forbidden claim as fact and the guard stayed silent: {text!r}"
+    )
+
+
+class TestNegationGovernmentRules:
+    """One named test per rule, so a regression names its own cause.
+
+    Each pair is the same claim twice: once genuinely denied (must stay
+    silent), once asserted behind a negator that governs something else (must
+    fire). A rule that stops working takes exactly one of these red.
+    """
+
+    def test_contrast_marker_breaks_government(self):
+        assert not check_e33_claims(_EN + "The required income is not USD 1,500 per month.")
+        assert check_e33_claims(_EN + "The income is not USD 3,000 but USD 1,500 per month.")
+
+    def test_scope_limiter_breaks_government(self):
+        assert not check_e33_claims(_EN + "Approval is not guaranteed.")
+        # No semicolon and no contrast marker: only the scope limiter stands
+        # between "not only" and a suppression here.
+        assert check_e33_claims(
+            _EN + "E33 does not only allow residence, it also allows you to work in Indonesia."
+        )
+
+    def test_colon_breaks_government(self):
+        assert not check_e33_claims(_EN + "The deposit cannot be placed at any bank.")
+        assert check_e33_claims(
+            _EN + "The deposit rule is not restrictive: any Indonesian bank is acceptable."
+        )
+
+    def test_comma_fenced_aside_breaks_government(self):
+        assert not check_e33_claims(_EN + "BSI does not qualify as a state-owned bank.")
+        assert check_e33_claims(_EN + "BSI, not Mandiri, qualifies as a state-owned bank.")
+
+    def test_prepositional_negators_never_govern(self):
+        # Not comma-fenced, so the aside rule cannot cover for this: the only
+        # reason "without" fails to suppress is that it is not a negator.
+        assert check_e33_claims(
+            _EN + "Without any doubt you may split the deposit across several banks."
+        )
+
+    def test_a_thousands_separator_is_not_a_sentence_boundary(self):
+        """`USD 130.000` must not end the sentence and expose the negator."""
+        assert not check_e33_claims(
+            "Per E33, il deposito non può essere di USD 130.000 presso qualsiasi banca."
+        )

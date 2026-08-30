@@ -232,18 +232,58 @@ E33_FORBIDDEN_PATTERNS: tuple[ForbiddenPattern, ...] = (
 #: Sentence terminators. A negation only shields a claim inside its OWN
 #: sentence — "Approval is not guaranteed. You may split the deposit." must
 #: still flag the second clause.
-_SENTENCE_BOUNDARY_RE = re.compile(r"[.!?;\n]")
+#: A sentence boundary. A period BETWEEN DIGITS is a thousands separator, not
+#: the end of a sentence: Italian and Indonesian write the very figures this
+#: guard exists to police as "USD 130.000" / "USD 1.500". Reading those dots as
+#: full stops moved the search window past the negator and made the verdict
+#: depend on which locale's separator the sentence happened to use.
+_SENTENCE_BOUNDARY_RE = re.compile(r"(?<!\d)\.(?!\d)|[!?;:\n]")
 
 #: Negators in the three languages this guard actually sees. The bot answers in
 #: whichever language the client wrote in (`wrap_query_with_language_instruction`),
 #: so an English-only negation guard fires on correct Italian and Indonesian
 #: sentences that say a thing is NOT allowed.
+#:
+#: PREPOSITIONAL negators are deliberately ABSENT — no "without", no "senza",
+#: no "tanpa". They open a phrase, they do not negate the claim that follows:
+#: "E33 allows you, without a separate permit, to work in Indonesia" asserts
+#: the forbidden claim while carrying a negator. Their removal costs a few
+#: false positives and closes a whole class of false negatives.
 _NEGATOR_RE = re.compile(
-    r"\b(?:not|never|cannot|can\'t|don\'t|doesn\'t|isn\'t|aren\'t|without|neither"
-    r"|non|mai|senza|nessun\w*"
-    r"|tidak|bukan|jangan|tanpa|belum)\b",
+    r"\b(?:not|never|cannot|can\'t|don\'t|doesn\'t|isn\'t|aren\'t|neither"
+    r"|non|mai|nessun\w*"
+    r"|tidak|bukan|jangan|belum)\b",
     re.IGNORECASE,
 )
+
+#: "not X **but** Y" — the negator governs X, and Y is asserted. A contrast
+#: marker between a negator and the claim therefore PROVES the negator does not
+#: reach it. This is the construction that broke the previous heuristic on 27
+#: adversarial sentences, among them "the required income is not USD 3,000 but
+#: USD 1,500 per month" — the superseded figure, stated as fact, silently
+#: suppressed because a "not" appeared earlier in the clause.
+_CONTRAST_RE = re.compile(
+    r"\b(?:but|rather|instead"
+    r"|ma|bensì|bensi|invece|anzi|piuttosto"
+    r"|melainkan|tetapi|namun|justru)\b",
+    re.IGNORECASE,
+)
+
+#: "not ONLY X" scopes the negation to the quantifier, never to the predicate:
+#: "E33 does not only allow residence, it also allows you to work" asserts the
+#: forbidden claim. Same for "approval is not merely likely; it is guaranteed".
+_SCOPE_LIMITER_RE = re.compile(
+    r"\W*\b(?:only|just|merely|simply"
+    r"|solo|soltanto|solamente|semplicemente"
+    r"|hanya|sekadar|sekedar|semata)\b",
+    re.IGNORECASE,
+)
+
+#: A negator fenced inside a comma-delimited aside governs the aside, not the
+#: predicate: "BSI, not Mandiri, qualifies as a state-owned bank" ASSERTS that
+#: BSI qualifies. The closing comma must fall before the claim ends, which is
+#: what separates the aside from an ordinary "not X, only Y" correction.
+_PARENTHETICAL_OPEN_RE = re.compile(r",\s*$")
 
 #: How far back a negator may sit and still be read as negating this claim.
 #: Deliberately short. A wider window suppresses more false positives but buys
@@ -254,28 +294,51 @@ _NEGATION_WINDOW = 40
 
 
 def _is_negated(text: str, match_start: int, match_end: int) -> bool:
-    """True if a negator governs the claim spanning ``match_start:match_end``.
+    """True if a negator GOVERNS the claim spanning ``match_start:match_end``.
 
-    Replaces what fixed-width lookbehinds cannot express. Python's ``re``
-    requires a constant-width lookbehind, so the old ``_NEG`` prefix could only
-    see the single token immediately before the match: it caught "not
-    guaranteed" but missed "you cannot split the deposit" (three words back)
-    and "l'approvazione non e' garantita" (the copula sits in between). Both of
-    those are CORRECT sentences the guard was flagging — measured, on English
-    too, before this change.
+    Presence is not government. The previous version answered "is there a
+    negator nearby", which a contrast clause turns into a silencer: an
+    adversarial matrix of 29 sentences that each state a forbidden claim after
+    negating something else was suppressed 27 times. Three tests now stand
+    between a negator and a suppression:
 
-    The search is bounded twice: it never crosses a sentence boundary, and it
-    never looks further back than ``_NEGATION_WINDOW`` characters.
+    1. it must lie in the same sentence (``_SENTENCE_BOUNDARY_RE``, which knows
+       a thousands separator from a full stop) and within ``_NEGATION_WINDOW``;
+    2. no contrast marker may sit between it and the claim — "not X **but** Y"
+       asserts Y;
+    3. it must not be a scope limiter — "not **only** X" asserts X.
+
+    The span searched runs to ``match_end``, not ``match_start``: several
+    patterns swallow the negator themselves ("KITAP is not automatic after 3
+    years" matches from "KITAP"), and those ARE correct cautionary sentences.
+    Rules 2 and 3 are what keep that span from becoming a loophole — they are
+    applied to the text between the negator and the end of the claim, so a
+    contrast inside the match disqualifies the negator exactly as one before it
+    does.
     """
     window_start = max(0, match_start - _NEGATION_WINDOW)
     sentence_start = window_start
     for boundary in _SENTENCE_BOUNDARY_RE.finditer(text, window_start, match_start):
         sentence_start = boundary.end()
-    # Search up to match_END, not match_start: several patterns span the
-    # negator themselves. "KITAP is not automatic after 3 years" matches from
-    # "KITAP", so the "not" sits INSIDE the match and a look-behind-only search
-    # never sees it. Same for "l'approvazione non e' garantita".
-    return bool(_NEGATOR_RE.search(text, sentence_start, match_end))
+
+    for negator in _NEGATOR_RE.finditer(text, sentence_start, match_end):
+        tail_start = negator.end()
+        if _SCOPE_LIMITER_RE.match(text, tail_start):
+            continue  # "not only" — the predicate is asserted, not denied
+        if _CONTRAST_RE.search(text, tail_start, match_end):
+            continue  # "not X but Y" — this negator governs X, not the claim
+        if (
+            _PARENTHETICAL_OPEN_RE.search(text, sentence_start, negator.start())
+            and text.find(",", tail_start, match_end) != -1
+        ):
+            continue  # ", not X," — an aside; the predicate is still asserted
+        if _SENTENCE_BOUNDARY_RE.search(text, tail_start, match_end):
+            # The negator sits INSIDE a match that swallowed a sentence break:
+            # "LPS does not cover a fraction; it fully covers the deposit."
+            # Government stops at the break, so it does not reach the claim.
+            continue
+        return True
+    return False
 
 
 def check_e33_claims(text: str) -> list[ClaimViolation]:
