@@ -450,3 +450,100 @@ def test_hold_labels_are_case_insensitive():
     pr = make_pr(50, merge_state_status="BEHIND", minutes_since_commit=30, labels=["Hold"])
     plan = qu.plan_actions([pr], NOW)
     assert plan["skipped"][50] == "hold_label"
+
+
+# ---------------------------------------------------------------------------
+# _union_merged_changed_paths — guilt + innocence against a REAL git repo.
+#
+# These build an actual repository rather than stubbing `_run`, because the
+# behaviour under test is entirely `git check-attr`'s: a fake would encode my
+# belief about its output format and agree with itself (superscar #9 / W114 —
+# a fake and the code it checks share the same imagination).
+# ---------------------------------------------------------------------------
+
+import subprocess as _sp  # noqa: E402
+
+
+def _git(repo, *args):
+    _sp.run(["git", "-C", str(repo), *args], check=True,
+            capture_output=True, text=True)
+
+
+def _repo_with(tmp_path, gitattributes: str | None):
+    repo = tmp_path / "r"
+    repo.mkdir()
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "t@example.invalid")
+    _git(repo, "config", "user.name", "t")
+    if gitattributes is not None:
+        (repo / ".gitattributes").write_text(gitattributes)
+    (repo / "ledger.md").write_text("base\n")
+    (repo / "plain.txt").write_text("base\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "base")
+    _git(repo, "branch", "base-ref")
+    (repo / "ledger.md").write_text("base\npr row\n")
+    (repo / "plain.txt").write_text("base\npr line\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "pr")
+    _git(repo, "branch", "pr-ref")
+    return repo
+
+
+def test_union_path_is_named_when_the_pr_touches_one(tmp_path):
+    """GUILT: the changed file carries merge=union -> it is reported."""
+    repo = _repo_with(tmp_path, "ledger.md merge=union\n")
+    found = qu._union_merged_changed_paths(
+        repo_root=repo, base_ref="base-ref", pr_ref="pr-ref"
+    )
+    assert found == ["ledger.md"]
+
+
+def test_non_union_paths_are_not_named(tmp_path):
+    """INNOCENCE: a PR touching only ordinary files reports nothing, so the
+    caller keeps its pre-existing 'race' wording."""
+    repo = _repo_with(tmp_path, "ledger.md merge=union\n")
+    _git(repo, "checkout", "-q", "-b", "plain-only", "base-ref")
+    (repo / "plain.txt").write_text("base\nonly this\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "plain only")
+    found = qu._union_merged_changed_paths(
+        repo_root=repo, base_ref="base-ref", pr_ref="plain-only"
+    )
+    assert found == []
+
+
+def test_no_gitattributes_at_all_reports_nothing(tmp_path):
+    """INNOCENCE: the same diff, with no merge driver declared anywhere."""
+    repo = _repo_with(tmp_path, None)
+    found = qu._union_merged_changed_paths(
+        repo_root=repo, base_ref="base-ref", pr_ref="pr-ref"
+    )
+    assert found == []
+
+
+def test_a_path_containing_a_colon_survives_the_parse(tmp_path):
+    """`check-attr` prints `<path>: merge: <value>`; splitting from the LEFT
+    would truncate a path that legitimately contains ': '."""
+    # DOUBLE quotes: `.gitattributes` rejects a single-quoted pattern outright
+    # ("name.md' is not a valid attribute name"), which silently yields
+    # `merge: unspecified` and would make this test pass for the wrong reason.
+    repo = _repo_with(tmp_path, '"weird: name.md" merge=union\n')
+    _git(repo, "checkout", "-q", "-b", "colon", "base-ref")
+    (repo / "weird: name.md").write_text("x\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "colon path")
+    found = qu._union_merged_changed_paths(
+        repo_root=repo, base_ref="base-ref", pr_ref="colon"
+    )
+    assert found == ["weird: name.md"]
+
+
+def test_a_broken_repo_returns_empty_rather_than_raising(tmp_path):
+    """The probe is fail-quiet by design: an unusable repo must degrade to the
+    caller's existing wording, never crash the daemon's tick."""
+    empty = tmp_path / "not-a-repo"
+    empty.mkdir()
+    assert qu._union_merged_changed_paths(
+        repo_root=empty, base_ref="base-ref", pr_ref="pr-ref"
+    ) == []
