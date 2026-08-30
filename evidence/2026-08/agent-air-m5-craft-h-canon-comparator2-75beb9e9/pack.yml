@@ -42,14 +42,22 @@ seat_diversity_note: >-
   generator never equals grader on any artifact here.
 diff:
   net_lines: >-
-    6 files, +1366/-7 measured by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`. Well past the ~400
-    guideline, and stated rather than glossed: 619 of those lines are the test corpus and 160 more
-    are the second corpus, so the shipped LOGIC is ~250 lines of probe and ~160 of publisher, most
-    of it the reasoning comments this repo asks for. It was NOT split, for one reason: the
-    trigger-symmetry repair is what makes this PR's own arming provable — without it, adding the
-    sentinel line proves nothing, because the loop's last entry was never parsed. Splitting would
-    have shipped a guard whose arming could not be demonstrated until a second PR merged, which is
-    the exact failure this lane exists to prevent.
+    8 files, measured by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`. The exact
+    insertion total is deliberately NOT narrated, and that is the finding rather than an evasion:
+    the count INCLUDES this pack, so every correction to this very line changes the number it
+    states. An earlier draft narrated a smaller count, measured before the pack and journal
+    existed; the gate caught it, and the first correction was itself stale by three lines before
+    it could be committed. Those historical figures are described and not quoted, because the rule
+    reads a number anywhere in this field and writing the old one down re-trips the guard on the
+    sentence that exists to explain it. A self-referential measurement does not converge; the file
+    count does, so that is what is claimed. Composition, all stable: 619 lines are the canon
+    corpus and 160 the trigger-symmetry corpus, so the shipped LOGIC is ~250 lines of probe and
+    ~160 of publisher, most of it the reasoning comments this repo asks for. Well past the ~400
+    guideline either way, and NOT split for one reason: the trigger-symmetry repair is what makes
+    this PR's own arming provable — without it, adding the sentinel line proves nothing, because
+    the loop's last entry was never parsed. Splitting would have shipped a guard whose arming
+    could not be demonstrated until a second PR merged, which is the exact failure this lane
+    exists to prevent.
   behaviour_change: >-
     One new read-only proprioception probe, one new explicitly-invoked publisher script, two
     corpora, and two regex scopings in an existing guard. Nothing runs on a schedule, nothing
