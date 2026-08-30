@@ -24,8 +24,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "lint_web_surface.py"
 
@@ -268,17 +266,16 @@ class TestParseFloatOnPrice:
 class TestCompactCurrency:
     def test_guilty_compact_with_currency_options(self, tmp_path: Path) -> None:
         src = (
-            'const f = new Intl.NumberFormat("id-ID", {\n'
+            'const payablePriceFormatter = new Intl.NumberFormat("id-ID", {\n'
             '  style: "currency", currency: "IDR", notation: "compact",\n'
             "});\n"
         )
         assert "GATE-056-COMPACT" in hits(tmp_path, "a.ts", src)
 
     def test_guilty_compact_under_a_money_named_formatter(self, tmp_path: Path) -> None:
-        """`formatIDRCompact` really exists in @balizero/core/utils and is called
-        from two apps/mouth surfaces; the name is the currency evidence."""
+        """The payable-price role, not merely a currency option, is the evidence."""
         src = (
-            "export const formatIDRCompact = (n: number) =>\n"
+            "export const formatPayablePriceCompact = (n: number) =>\n"
             '  new Intl.NumberFormat("id-ID", { notation: "compact" }).format(n);\n'
         )
         assert "GATE-056-COMPACT" in hits(tmp_path, "b.ts", src)
@@ -538,7 +535,438 @@ class TestNumberInput:
         assert "GATE-068-NUMBERINPUT" not in hits(tmp_path, "c.tsx", src)
 
 
-# ══ suppression contract ══════════════════════════════════════════════════════
+# ══ adversarial review regressions ══
+
+class TestAdversarialReviewRegressions:
+    def test_finding_10_guilty_message_calls_expansion_a_working_margin(
+        self, tmp_path: Path
+    ) -> None:
+        found = findings(tmp_path, "button.css", ".btn-primary {\n  width: 180px;\n}\n")
+        fixed_width = next(f for f in found if f.gate_id == "GATE-058-FIXEDWIDTH")
+        assert "working margin +35-50%" in fixed_width.message
+        assert "not a measurement" in fixed_width.message
+        assert "Indonesian short strings run +35-50% wider than English" not in fixed_width.message
+
+    def test_finding_10_innocent_non_control_has_no_expansion_message(
+        self, tmp_path: Path
+    ) -> None:
+        src = ".content-column {\n  width: 640px;\n}\n"
+        assert "GATE-058-FIXEDWIDTH" not in hits(tmp_path, "layout.css", src)
+
+    def test_finding_11_guilty_positive_guarantees_still_fail(
+        self, tmp_path: Path
+    ) -> None:
+        src = (
+            'const en = "Refunds are guaranteed for government refusals.";\n'
+            'const id = "Keputusan akhir dijamin oleh agen kami.";\n'
+        )
+        assert "GATE-108-GUARANTEE" in hits(tmp_path, "positive.ts", src)
+
+    def test_finding_11_innocent_negated_guarantees_are_honest_copy(
+        self, tmp_path: Path
+    ) -> None:
+        src = (
+            'const en = "Refunds are not guaranteed for government refusals.";\n'
+            'const id = "Keputusan akhir tidak dijamin oleh agen mana pun.";\n'
+        )
+        assert "GATE-108-GUARANTEE" not in hits(tmp_path, "negated.ts", src)
+
+    def test_finding_12_guilty_self_promise_still_fails_both_claim_gates(
+        self, tmp_path: Path
+    ) -> None:
+        src = 'const hero = "Our site promises 100% guaranteed approval.";\n'
+        got = hits(tmp_path, "promise.ts", src)
+        assert "GATE-108-GUARANTEE" in got
+        assert "GATE-108-ABSOLUTE" in got
+
+    def test_finding_12_innocent_anti_scam_and_denial_copy_is_reporting(
+        self, tmp_path: Path
+    ) -> None:
+        src = (
+            'const warning = "Avoid any site that promises 100% guaranteed approval.";\n'
+            'const actor = "We cannot promise 100% approval — Immigration decides.";\n'
+        )
+        got = hits(tmp_path, "warning.ts", src)
+        assert "GATE-108-GUARANTEE" not in got
+        assert "GATE-108-ABSOLUTE" not in got
+
+    def test_finding_13_guilty_self_referential_rank_claim_still_fails(
+        self, tmp_path: Path
+    ) -> None:
+        src = 'const hero = "We are the #1 visa agency in Bali.";\n'
+        assert "GATE-108-RANK" in hits(tmp_path, "rank.ts", src)
+
+    def test_finding_13_innocent_ranked_mistake_is_not_a_market_claim(
+        self, tmp_path: Path
+    ) -> None:
+        src = 'const title = "The #1 mistake visa buyers make";\n'
+        assert "GATE-108-RANK" not in hits(tmp_path, "mistake.ts", src)
+
+    def test_finding_14_guilty_formatted_price_identifier_still_fails(
+        self, tmp_path: Path
+    ) -> None:
+        src = "const amount = parseFloat(formattedPriceText);\n"
+        assert "GATE-057-PARSEFLOAT" in hits(tmp_path, "price.ts", src)
+
+    def test_finding_14_innocent_fee_percentage_is_not_a_localized_price(
+        self, tmp_path: Path
+    ) -> None:
+        src = "const percentage = parseFloat(FEE_PERCENT);\n"
+        assert "GATE-057-PARSEFLOAT" not in hits(tmp_path, "percent.ts", src)
+
+    def test_finding_15_guilty_compact_payable_price_still_fails(
+        self, tmp_path: Path
+    ) -> None:
+        src = (
+            "const payablePriceFormatter = new Intl.NumberFormat(\"id-ID\", { "
+            'notation: "compact", style: "currency", currency: "IDR" });\n'
+        )
+        assert "GATE-056-COMPACT" in hits(tmp_path, "payable.ts", src)
+
+    def test_finding_15_innocent_compact_currency_aggregate_is_not_payable(
+        self, tmp_path: Path
+    ) -> None:
+        src = (
+            "const processedVolumeFormatter = new Intl.NumberFormat(\"id-ID\", { "
+            'notation: "compact", style: "currency", currency: "IDR" });\n'
+            'const label = `${processedVolumeFormatter.format(totalProcessed)} processed`;\n'
+        )
+        assert "GATE-056-COMPACT" not in hits(tmp_path, "aggregate.ts", src)
+
+    def test_finding_16_guilty_price_clamp_still_fails(self, tmp_path: Path) -> None:
+        src = ".price-value {\n  font-size: clamp(1.5rem, 4vw, 2rem);\n}\n"
+        assert "GATE-042-CLAMP" in hits(tmp_path, "price.css", src)
+
+    def test_finding_16_innocent_explicit_hero_wins_over_prose_and_body_tokens(
+        self, tmp_path: Path
+    ) -> None:
+        css = ".prose-hero { font-size: clamp(2.5rem, 6vw, 5rem); }\n"
+        js = (
+            "const heroStyle = { fontSize: \"clamp(2.5rem, 6vw, 5rem)\" };\n"
+            "document.body.appendChild(hero);\n"
+        )
+        got = {
+            "css": hits(tmp_path, "hero.css", css),
+            "js": hits(tmp_path, "hero.ts", js),
+        }
+        assert all("GATE-042-CLAMP" not in gate_ids for gate_ids in got.values()), got
+
+    def test_finding_17_guilty_footnote_asterisk_still_fails(
+        self, tmp_path: Path
+    ) -> None:
+        src = '<p>IDR 50.000 *</p>\n'
+        assert "GATE-088-ASTERISK" in hits(tmp_path, "footnote.tsx", src)
+
+    def test_finding_17_innocent_adjacent_asterisk_multiplication_is_arithmetic(
+        self, tmp_path: Path
+    ) -> None:
+        src = (
+            "const total = {pricePerNight}*{nights};\n"
+            'const label = "IDR 50.000*2 pax";\n'
+        )
+        assert "GATE-088-ASTERISK" not in hits(tmp_path, "multiply.tsx", src)
+
+    def test_finding_18_guilty_state_setter_inside_timeout_still_fails(
+        self, tmp_path: Path
+    ) -> None:
+        src = 'setTimeout(() => setPhase("success"), 100);\n'
+        assert "GATE-030-DELAY" in hits(tmp_path, "inside.ts", src)
+
+    def test_finding_18_innocent_synchronous_state_after_scroll_timeout(
+        self, tmp_path: Path
+    ) -> None:
+        src = (
+            "setTimeout(() => window.scrollTo(0, 0), 100);\n"
+            'setPhase("success");\n'
+        )
+        assert "GATE-030-DELAY" not in hits(tmp_path, "outside.ts", src)
+
+    def test_finding_19_guilty_price_truncation_still_fails(
+        self, tmp_path: Path
+    ) -> None:
+        src = '<span className="truncate">{totalPrice}</span>\n'
+        assert "GATE-059-ELLIPSIS" in hits(tmp_path, "price.tsx", src)
+
+    def test_finding_19_innocent_context_does_not_leak_into_generic_truncation(
+        self, tmp_path: Path
+    ) -> None:
+        js = (
+            'import { VerdictBadge } from "./verdict-badge";\n\n'
+            'const cell = { overflow: "hidden", textOverflow: "ellipsis" };\n'
+            '<span className="truncate">{row.verdictId}</span>\n'
+        )
+        css = ".verdict-history .case-id { text-overflow: ellipsis; }\n"
+        got = {
+            "js": hits(tmp_path, "history.tsx", js),
+            "css": hits(tmp_path, "history.css", css),
+        }
+        assert all("GATE-059-ELLIPSIS" not in gate_ids for gate_ids in got.values()), got
+
+    def test_finding_20_guilty_flag_in_switcher_copy_still_fails(
+        self, tmp_path: Path
+    ) -> None:
+        src = (
+            'import { t } from "@/lib/i18n";\n'
+            'const option = "\U0001F1EE\U0001F1E9 Bahasa Indonesia";\n'
+        )
+        assert "GATE-062-FLAG" in hits(tmp_path, "switcher.tsx", src)
+
+    def test_finding_20_innocent_flag_inside_comment_never_fires(
+        self, tmp_path: Path
+    ) -> None:
+        src = (
+            'import { t } from "@/lib/i18n";\n'
+            "// \U0001F1F8\U0001F1EC Singapore passport holders get a dedicated block\n"
+        )
+        assert "GATE-062-FLAG" not in hits(tmp_path, "comment.tsx", src)
+
+    def test_finding_21_guilty_loaded_overlay_host_still_fails(
+        self, tmp_path: Path
+    ) -> None:
+        src = '<script src="https://cdn.userway.org/widget.js"></script>\n'
+        assert "GATE-113-OVERLAY" in hits(tmp_path, "widget.html", src)
+
+    def test_finding_21_innocent_overlay_denylist_and_warning_do_not_load_it(
+        self, tmp_path: Path
+    ) -> None:
+        src = (
+            'export const OVERLAY_WIDGET_DENYLIST = ["acsbapp.com", "cdn.userway.org"];\n'
+            'const warning = "If the site loads a widget from cdn.userway.org, be suspicious.";\n'
+        )
+        found = [f for f in findings(tmp_path, "denylist.ts", src) if f.gate_id == "GATE-113-OVERLAY"]
+        assert found == []
+
+    def test_finding_22_guilty_fixed_width_control_still_fails(
+        self, tmp_path: Path
+    ) -> None:
+        src = '<Button className="btn w-[320px]">Lanjut</Button>\n'
+        assert "GATE-058-FIXEDWIDTH" in hits(tmp_path, "button.tsx", src)
+
+    def test_finding_22_innocent_layout_containers_are_not_controls(
+        self, tmp_path: Path
+    ) -> None:
+        css = (
+            ".button-group { width: 640px; }\n"
+            ".cta-section { width: 1200px; }\n"
+            ".button-group {\n  width: 640px;\n}\n"
+            ".cta-section {\n  width: 1200px;\n}\n"
+        )
+        js = '<div className="w-[320px] mx-auto"><Button>Lanjut</Button></div>\n'
+        got = {
+            "css": hits(tmp_path, "containers.css", css),
+            "js": hits(tmp_path, "wrapper.tsx", js),
+        }
+        assert all("GATE-058-FIXEDWIDTH" not in gate_ids for gate_ids in got.values()), got
+
+    def test_finding_23_guilty_json_string_value_is_scanned_as_copy(
+        self, tmp_path: Path
+    ) -> None:
+        src = '{"claim": "Approval guaranteed"}\n'
+        assert "GATE-108-GUARANTEE" in hits(tmp_path, "copy.json", src)
+
+    def test_finding_23_innocent_json_keys_are_not_user_visible_copy(
+        self, tmp_path: Path
+    ) -> None:
+        src = '{"guaranteed": false, "official": false}\n'
+        assert "GATE-108-GUARANTEE" not in hits(tmp_path, "flags.json", src)
+
+    def test_finding_24_guilty_html_and_scss_copy_still_fails(
+        self, tmp_path: Path
+    ) -> None:
+        html = '<span title="100% approval">Apply now</span>\n'
+        scss = '$badge-copy: "dijamin";\n'
+        assert "GATE-108-ABSOLUTE" in hits(tmp_path, "copy.html", html)
+        assert "GATE-108-GUARANTEE" in hits(tmp_path, "copy.scss", scss)
+
+    def test_finding_24_innocent_html_and_scss_comments_are_blanked(
+        self, tmp_path: Path
+    ) -> None:
+        html = '<!-- pre-launch: remove the "100% approval" badge -->\n'
+        scss = '// "dijamin" was the old badge text\n'
+        got = {
+            "html": hits(tmp_path, "comment.html", html),
+            "scss": hits(tmp_path, "comment.scss", scss),
+        }
+        assert got == {"html": set(), "scss": set()}
+
+    def test_finding_25_guilty_named_wait_interval_and_delayed_route_fail(
+        self, tmp_path: Path
+    ) -> None:
+        src = (
+            "const DELAY_MS = 1500; await new Promise(r => setTimeout(r, DELAY_MS));\n"
+            "setInterval(() => setProgress(p => Math.min(p + 4, 90)), 100);\n"
+            'setTimeout(() => router.push("/verdict/result"), 1500);\n'
+        )
+        found = [f for f in findings(tmp_path, "delays.ts", src) if f.gate_id == "GATE-030-DELAY"]
+        assert {f.line for f in found} == {1, 2, 3}
+
+    def test_finding_25_innocent_named_debounce_clock_and_help_route_stay_clean(
+        self, tmp_path: Path
+    ) -> None:
+        src = (
+            "const DEBOUNCE_DELAY_MS = 300;\n"
+            "setTimeout(fetchSuggestions, DEBOUNCE_DELAY_MS);\n"
+            "setInterval(updateClock, 1000);\n"
+            'setTimeout(() => router.push("/help"), 1500);\n'
+        )
+        assert "GATE-030-DELAY" not in hits(tmp_path, "timers.ts", src)
+
+    def test_finding_26_guilty_tailwind_clamp_on_price_fails(
+        self, tmp_path: Path
+    ) -> None:
+        src = '<span className="text-[clamp(14px,2vw,18px)]">{price}</span>\n'
+        assert "GATE-042-CLAMP" in hits(tmp_path, "price.tsx", src)
+
+    def test_finding_26_innocent_tailwind_clamp_on_hero_stays_clean(
+        self, tmp_path: Path
+    ) -> None:
+        src = '<h1 className="hero text-[clamp(32px,6vw,72px)]">Your visa, made clear</h1>\n'
+        assert "GATE-042-CLAMP" not in hits(tmp_path, "hero.tsx", src)
+
+    def test_finding_27_guilty_line_clamp_on_inclusion_fails(
+        self, tmp_path: Path
+    ) -> None:
+        src = '<p className="line-clamp-2">{inclusionLine}</p>\n'
+        assert "GATE-059-ELLIPSIS" in hits(tmp_path, "included.tsx", src)
+
+    def test_finding_27_innocent_line_clamp_on_article_summary_stays_clean(
+        self, tmp_path: Path
+    ) -> None:
+        src = '<p className="line-clamp-2">{article.summary}</p>\n'
+        assert "GATE-059-ELLIPSIS" not in hits(tmp_path, "article.tsx", src)
+
+    def test_finding_28_guilty_hyphenated_language_switcher_context_fails(
+        self, tmp_path: Path
+    ) -> None:
+        src = (
+            "/* language-switcher.css */\n"
+            '.lang-flag { background: url("/assets/flag-id.svg"); }\n'
+        )
+        assert "GATE-062-FLAG" in hits(tmp_path, "language-switcher.css", src)
+
+    def test_finding_28_innocent_hyphenated_passport_flag_stays_clean(
+        self, tmp_path: Path
+    ) -> None:
+        src = '.passport-flag { background: url("/assets/flag-id.svg"); }\n'
+        assert "GATE-062-FLAG" not in hits(tmp_path, "nationality-picker.css", src)
+
+    def test_finding_29_guilty_currency_asterisk_variants_fail(
+        self, tmp_path: Path
+    ) -> None:
+        src = (
+            'const idr = "IDR 790.000 *";\n'
+            'const usd = "USD 1.200*";\n'
+            'const eur = "€44*";\n'
+        )
+        found = [f for f in findings(tmp_path, "prices.ts", src) if f.gate_id == "GATE-088-ASTERISK"]
+        assert {f.line for f in found} == {1, 2, 3}
+
+    def test_finding_29_innocent_currency_multiplication_stays_clean(
+        self, tmp_path: Path
+    ) -> None:
+        src = 'const total = "USD 1.200*2 nights";\n'
+        assert "GATE-088-ASTERISK" not in hits(tmp_path, "multiply.ts", src)
+
+    def test_finding_30_guilty_affiliation_and_absolute_synonyms_fail(
+        self, tmp_path: Path
+    ) -> None:
+        affiliation = (
+            'const a = "the official agency for Indonesian e-VOA";\n'
+            'const b = "Konsultan imigrasi resmi";\n'
+        )
+        absolute = (
+            'const a = "100% acceptance rate";\n'
+            'const b = "100% refundable";\n'
+        )
+        got = {
+            "affiliation": hits(tmp_path, "affiliation.ts", affiliation),
+            "absolute": hits(tmp_path, "absolute.ts", absolute),
+        }
+        assert "GATE-108-AFFILIATION" in got["affiliation"], got
+        assert "GATE-108-ABSOLUTE" in got["absolute"], got
+
+    def test_finding_30_innocent_source_and_conditional_copy_stays_clean(
+        self, tmp_path: Path
+    ) -> None:
+        src = (
+            'const source = "Check the official agency directory before choosing a provider.";\n'
+            'const refund = "Refundable only when the written cancellation conditions apply.";\n'
+        )
+        got = hits(tmp_path, "conditions.ts", src)
+        assert "GATE-108-AFFILIATION" not in got
+        assert "GATE-108-ABSOLUTE" not in got
+
+    def test_finding_31_guilty_one_hop_price_alias_fails(
+        self, tmp_path: Path
+    ) -> None:
+        src = "const amt = row.harga_text;\nconst parsed = parseFloat(amt);\n"
+        assert "GATE-057-PARSEFLOAT" in hits(tmp_path, "alias.ts", src)
+
+    def test_finding_31_innocent_one_hop_percentage_alias_stays_clean(
+        self, tmp_path: Path
+    ) -> None:
+        src = "const amt = row.tax_percentage;\nconst parsed = parseFloat(amt);\n"
+        assert "GATE-057-PARSEFLOAT" not in hits(tmp_path, "percent.ts", src)
+
+    def test_finding_32_guilty_copy_after_regex_literal_is_not_hidden(
+        self, tmp_path: Path
+    ) -> None:
+        src = (
+            'const clean = s.replace(/\\//g, "-"); const label = "Rp 790.000*";\n'
+            'const RE = /\\/\\//; const other = "Rp 850.000*";\n'
+        )
+        assert "GATE-088-ASTERISK" in hits(tmp_path, "regex.ts", src)
+
+    def test_finding_32_innocent_real_comment_after_regex_is_still_blanked(
+        self, tmp_path: Path
+    ) -> None:
+        src = 'const clean = s.replace(/\\//g, "-"); // "Rp 790.000*" old copy\n'
+        assert "GATE-088-ASTERISK" not in hits(tmp_path, "regex-comment.ts", src)
+
+    def test_finding_33_docstring_reports_verified_brand_red_precisely(self) -> None:
+        r = run_cli("--help")
+        assert r.returncode == 0
+        help_text = " ".join(r.stdout.split())
+        assert "The brand red is #C8102E" in help_text
+        assert "absent from the brand-TOKEN files" in help_text
+        assert "The corpus could not verify which hex is Bali Zero's brand red" not in help_text
+
+    def test_finding_36_guilty_copy_outside_comments_still_fails(
+        self, tmp_path: Path
+    ) -> None:
+        src = 'const option = "\U0001F1EE\U0001F1E9 Bahasa";\nconst i18n = true;\n'
+        assert "GATE-062-FLAG" in hits(tmp_path, "copy.ts", src)
+
+    def test_finding_36_innocent_all_supported_comment_forms_stay_clean(
+        self, tmp_path: Path
+    ) -> None:
+        html = '<!-- "100% approval" -->\n'
+        scss = '// "dijamin"\n'
+        tsx = 'const i18n = true; // \U0001F1EE\U0001F1E9 language flag\n'
+        got = {
+            "html": hits(tmp_path, "comment.html", html),
+            "scss": hits(tmp_path, "comment.scss", scss),
+            "tsx": hits(tmp_path, "comment.tsx", tsx),
+        }
+        assert got == {"html": set(), "scss": set(), "tsx": set()}
+        help_text = " ".join(run_cli("--help").stdout.split())
+        assert "ordinary comments cannot trip them" in help_text
+        assert "a code comment can never trip a gate" not in help_text
+
+    def test_finding_37_exit_code_four_is_part_of_cli_help(self) -> None:
+        r = run_cli("--help")
+        assert r.returncode == 0
+        assert "4 unknown --only gate id" in " ".join(r.stdout.split())
+
+    def test_finding_37_known_gate_never_uses_unknown_gate_exit_code(
+        self, tmp_path: Path
+    ) -> None:
+        (tmp_path / "ok.ts").write_text('const copy = "Selamat datang";\n')
+        r = run_cli(str(tmp_path), "--only", "GATE-108-GUARANTEE")
+        assert r.returncode == 0
+
+
+# ══ suppression contract ══
 
 class TestSuppression:
     GUILTY = 'const t = "Bali Zero | #1 Visa & PT PMA Experts in Bali";'

@@ -246,14 +246,14 @@ What L09's number **does** kill is X-qwen's *justification*. If bandwidth is not
 | # | Gate | Number | Lane |
 |---|---|---|---|
 | 1 | Body text | WCAG 2.x **≥ 4.5:1** *and* APCA **\|Lc\| ≥ 75** — both, not either | L10, L01 |
-| 2 | Large text (≥18px, or ≥14px bold) and UI text | **≥ 3:1** *and* **\|Lc\| ≥ 60** | L10, L01 |
+| 2 | Large text (**≥24px, or ≥18.66px bold** — WCAG SC 1.4.3 says 18pt/14pt bold, and CSS 1pt = 1.333px) and UI text | **≥ 3:1** *and* **\|Lc\| ≥ 60** | L10, L01 |
 | 3 | Any border/rule that carries meaning (`--border-strong`) | **≥ 3:1** (WCAG SC 1.4.11) *and* **\|Lc\| ≥ 26** | L01 F3 |
 | 4 | Decorative separator (`--border-subtle`) | **\|Lc\| ≤ 14** — deliberately below the non-text threshold, and it may carry no obligation | L01 F3 |
 | 5 | Focus indicator | **≥ 3:1** against the unfocused state of the same pixels, covering **≥ a 2px perimeter** | L10 (WCAG 2.4.13) |
 | 6 | Neutral surface chroma | OKLCH **C peak ≤ 0.018** across the whole neutral ramp. Above it, the surface stops being a surface and becomes a colour | L01 F2 |
 | 7 | Any two semantic state colours that can co-occur | **≥ 12 OKLCH L-points** apart, *plus* a glyph, *plus* a word | L01 F7 |
-| 8 | Dark-mode surface elevation step | **≥ +7 L** per level (dark ladder needs 1.2–1.6× the travel of the light ladder) | L01 F1 |
-| 9 | Light-mode surface elevation step | **≥ −3.5 L** per level | L01 F1 |
+| 8 | Dark-mode surface elevation step | **≥ +4.2 L** per level, derived as **1.2–1.6× gate 9's light step** (the multiplier is the measured number; +7 was invented and put the pair at 2.0×, outside the envelope this very row states) | L01 F1 |
+| 9 | Light-mode surface elevation step | **≥ −3.5 L** per level — the base gate 8 derives from | L01 F1 |
 | 10 | Brand red as **ink** on a dark ground | **Forbidden.** `#C8102E` on `#141218` measures **Lc −24**; no lightness of that hue clears Lc 60 on both a near-black and a near-white ground (max achievable 50.6) | L01 F3/F5 |
 | 11 | Brand red as **fill** | Permitted. White on `#C8102E` = **Lc −82.4** | L01 F5 |
 | 12 | Hue distance, ground to accent | **26–46°** (warm near-black), never the ~113° of a blue-black — that is the maximum-span chromostereopsis pair | L01 F6 |
@@ -408,7 +408,7 @@ What L09's number **does** kill is X-qwen's *justification*. If bandwidth is not
 | 109 | Statutory hooks (these are not house style) | UU 8/1999 **Pasal 9(1)(c)(d)(j)(k)** and **Pasal 10**; penalties **Pasal 62(1)** up to 5 years or **Rp 2.000.000.000**, and **Pasal 63** includes **revocation of the business licence** | L07 |
 | 110 | Compliant form of a strong claim | The claim **with its conditions attached**, not a weakened claim. Pasal 9(1)(j)'s escape hatch is *"tanpa keterangan yang lengkap"*. "We filed 47 KITAS this month" is fine **with the period, definition and date stated**; "#1" is not fine at any length | L07 |
 | 111 | Urgency devices | Zero countdowns, "X people viewing", "N slots left" — **unless wired to a real, checkable deadline** (a VA expiry is real; a marketing timer is not) | L06, L11, X-qwen |
-| 112 | Success states | **No confetti.** A drawn checkmark (300–400ms, no bounce), the amount, a reference ID, the next step | L05, L12, X-codex |
+| 112 | Success states | **No confetti.** A drawn checkmark (**300–320ms**, no bounce — clamped to gate 24's `slow` token, which nothing on these surfaces exceeds), the amount, a reference ID, the next step | L05, L12, X-codex |
 | 113 | Accessibility overlays | **Zero, on any surface, ever.** Over 1,030 signatories: "full compliance cannot be achieved with an overlay" | L10 |
 | 114 | Self-issued badges | No Bali Zero-branded "verified"/"licensed" badge graphic. **Test: who serves the asset, and where does the click land?** | L07, L08 |
 | 115 | Preference media queries | All four implemented and tested: `prefers-reduced-motion`, `prefers-contrast`, `forced-colors`, `prefers-color-scheme`. All are Baseline widely available — there is no excuse in 2026 | L10 |
@@ -628,3 +628,29 @@ Also unfetchable: **Linear's and Stripe's design tokens** (no public spec; the v
 - **X-codex**: **zero** live sources; all ten `FROM-MEMORY` by lane design. Its state table is a design artefact, not evidence.
 - **X-kimi**: 3 verified of 14. **Every product reference in its §1 and §3 is `FROM-MEMORY`** — The Row, Stripe, Linear, Toss, Nod Young, BASAO/Tea'stone, MUJI/Hara — and its maroon hex ranges are "reasoned proposals, not tested values." Its convergence explanation for the fifteen night modes ("training-data gravity") is, in its own words, "a reasoned hypothesis about model behavior, not an established finding."
 - **X-qwen**: **zero** live sources; 23 `FROM-MEMORY`, and every named interface is a pre-2026 snapshot of a product that "change[s] quarterly." Its own closing note is the correct way to read it: the mechanism-based recommendations "stand on logic and named precedent, not on studies — and they are each testable within a week of launch."
+
+---
+
+## Corrections — 2026-08-31
+
+This synthesis was reviewed adversarially by **Kimi K3**, a different model family from the one that
+wrote it, against the derived spec (`skills/bali-zero-brand/surfaces/web.md`). Four numbers in §3
+were wrong and are corrected **in place**; the lane reports under `reports/` are untouched, because
+they are the record of what each lane actually said and the errors are the synthesis's, not theirs.
+
+| Gate | Was | Now | Why |
+| --- | --- | --- | --- |
+| 2 | large text `≥18px / ≥14px bold` | `≥24px / ≥18.66px bold` | WCAG SC 1.4.3 is stated in **points**, not pixels. As written it silently demoted 18–24px regular and 14–18.66px bold out of the 4.5:1 tier |
+| 8 | `≥ +7 L` dark step | `≥ +4.2 L`, derived as 1.2–1.6× gate 9 | +7 against gate 9's −3.5 is exactly **2.0×**, outside the 1.2–1.6× envelope the same row asserts. The multiplier is measured (Radix, §5); the absolute step was invented, so the invented one moved. L01's report keeps its original wording — the inconsistency was inherited, not introduced by the lane |
+| 9 | `≥ −3.5 L` light step | unchanged, now named as the base | — |
+| 112 | checkmark `300–400ms` | `300–320ms` | Gate 24 caps every duration on these surfaces at 320ms. Nothing here earns an exemption |
+
+**One correction was itself wrong and is recorded rather than reverted quietly.** Gate 72's
+"60% of test subjects could not locate guest checkout" was struck on the finding that it resolved to
+no source. It does: L06 carries **two** distinct 60% figures, and the second is verbatim the one the
+gate cited, inside a paragraph the lane marked `VERIFIED-LIVE (fetched 2026-08-31)`. The gate is
+restored with its citation. A correction that deletes a true statement costs more than the error it
+was aimed at.
+
+`#141218` (§5, and gate 10) is a Material 3 hex carried without the `[M]` mark that §7.4's own rule
+requires. Marked here rather than left for the next reader to trip over.
