@@ -313,8 +313,8 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # trail are derived from the live registry post-merge, not summed by
     # hand (team-lead's call: a rule appears once in the trail regardless of
     # how many PRs tried to add it).
-    assert len(CONTENT_KEYED_RULES) == 20, (
-        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 20. "
+    assert len(CONTENT_KEYED_RULES) == 21, (
+        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 21. "
         "If you just ADDED a rule: bump this number AND append a `# +1: <what> "
         "(<date>, PR #NNNN)` line below, matching the existing trail's format — "
         "that comment IS the audit record this assert exists to force. "
@@ -336,6 +336,7 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # +1: research/visa/doctrine-factory/e5/inc8-pack-edits/d12-active-stay-permit-rule-and-source.json content_sha256 (2026-08-24, #4719)
     # +1: fold_pack_seq14.py seq-13 chain anchor exact-value pin (2026-08-24, #4797)
     # +1: evidence/<month>/<slug>/pack.yml diff.measured_at git SHA (2026-08-27, #5054)
+    # +1: fold_pack_seq17.py seq-16 chain anchor exact-value pin (2026-08-30, #5311)
     #
     # Note (2026-08-23): "appended last" is no longer a constraint. It was
     # true only because this test and the two Google-OAuth tests below
@@ -1509,6 +1510,33 @@ def test_innocence_fold_seq14_keyed_assignment_not_approved() -> None:
     )
     keyed_line = f'    "payload_sha256": "{FOLD_PACK_SEQ14_ANCHOR}",'
     assert content_pat.match(keyed_line) is None
+
+
+FOLD_PACK_SEQ17 = "apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq17.py"
+FOLD_PACK_SEQ17_ANCHOR = (
+    "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100"
+)
+
+
+def test_fold_seq17_rule_is_exact_and_rejects_ride_alongs() -> None:
+    path_pat, content_pat, reason = _find_content_keyed_rule(
+        "fold_pack_seq17.py: seq-16 chain anchor"
+    )
+    real_line = f'SEQ16_PAYLOAD_SHA256 = "{FOLD_PACK_SEQ17_ANCHOR}"'
+    matching_lines = [
+        line
+        for line in Path(FOLD_PACK_SEQ17).read_text(encoding="utf-8").splitlines()
+        if FOLD_PACK_SEQ17_ANCHOR in line
+    ]
+
+    assert path_pat.search(FOLD_PACK_SEQ17)
+    assert not path_pat.search(FOLD_PACK_SEQ14)
+    assert matching_lines == [real_line]
+    assert content_pat.match(real_line)
+    assert content_pat.match('SEQ16_PAYLOAD_SHA256 = "' + "a" * 64 + '"') is None
+    assert content_pat.match(f'API_KEY = "{FOLD_PACK_SEQ17_ANCHOR}"') is None
+    assert content_pat.match(f'{real_line}; API_KEY = "real-secret"') is None
+    assert "credential" in reason
 
 
 GOOGLE_OAUTH_LINT = "scripts/lint_google_oauth_credentials.py"
