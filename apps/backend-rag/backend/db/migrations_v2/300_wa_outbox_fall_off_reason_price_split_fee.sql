@@ -1,4 +1,9 @@
--- 299_wa_outbox_fall_off_reason_price_split_fee.sql
+-- 300_wa_outbox_fall_off_reason_price_split_fee.sql
+--
+-- Renumbered from 299 on 2026-08-31: 299_schema_versions_provenance.sql landed
+-- on main while this branch was open. Migration numbers are a namespace two
+-- lanes can claim at once (scar W40/W128) — `Detect duplicate prefixes` caught
+-- it, which is what that check is for.
 --
 -- THE DEFECT (2026-08-30, measured live, on code already carrying #5293/#5295):
 -- `wa_outbox` row 379 (thread of cycle-357 case q1, 2026-08-30T17:54:35Z)
