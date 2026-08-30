@@ -48,7 +48,19 @@ type Locale = "en" | "it" | "id" | "fr" | "ru";
 //        lookarounds below are what make this fire on 1 500 and nothing
 //        else; the INNOCENCE test at the bottom pins that.
 const SEP = "[\\s\\u00a0\\u202f.,]";
-const N1500 = `(?<!\\d)1${SEP}?500(?!${SEP}?\\d)`;
+//    (c) THE CENTS. The trailing lookahead that (correctly) rejects
+//        `USD 1 500 000` as a THOUSANDS continuation also rejected
+//        `USD 1,500.00` — which is not a different number, it is the
+//        superseded figure written the way an English invoice writes it.
+//        `USD 1.500,00` and `$1 500,50` are the same figure in the other
+//        four locales' notation. All three were measured evading.
+//        The two cases are separable by DIGIT COUNT, which is the whole
+//        trick: a separator followed by exactly TWO digits and then a
+//        non-digit is a cents group and the amount is still 1 500; a
+//        separator followed by THREE is another thousands group and the
+//        amount is 1 500 000. So consume an optional cents group first,
+//        then refuse a thousands continuation.
+const N1500 = `(?<!\\d)1${SEP}?500(?:${SEP}\\d{2}(?!\\d))?(?!${SEP}?\\d)`;
 const SUPERSEDED_1500 = new RegExp(
   `${N1500}\\s*(?:USD|\\$)|(?:USD|\\$)\\s*${N1500}`,
   "i",
@@ -370,6 +382,15 @@ describe("secondHome dictionaries — W82 locale-aware forbidden-claims sweep", 
         "usd 1 500",
         "$1,500",
         "1 500 $",
+        // ── cents. Not a different number: the superseded figure written
+        //    the way an invoice writes it, in each locale's notation.
+        "USD 1,500.00",
+        "USD 1.500,00",
+        "1.500,00 USD",
+        "$1 500,50",
+        "1 500,00 USD",
+        // the Indonesian/Dutch "and no cents" dash
+        "USD 1.500,-",
       ]) {
         const hits = sweep({ p: `Total: ${spelled}.` }, RULES[locale]);
         expect({ locale, spelled, caught: hits.length > 0 }).toEqual({
@@ -399,6 +420,16 @@ describe("secondHome dictionaries — W82 locale-aware forbidden-claims sweep", 
         "USD 3 000",
         "USD 1 500 000",
         "11 500 USD",
+        // A THIRD digit after the separator is another thousands group, not
+        // cents — that is the only thing separating these from the rows
+        // above, and it is why the cents group demands exactly two.
+        "USD 1.500.000",
+        "1,500,000 USD",
+        "USD 1,500.000",
+        // digits on the other side: the lookbehind and lookahead each own
+        // one of these.
+        "USD 21,500",
+        "USD 1,5001",
       ]) {
         const hits = sweep({ p: `Total: ${ok}.` }, RULES[locale]);
         expect({ locale, figure: ok, hits }).toEqual({
