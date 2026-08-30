@@ -1,0 +1,188 @@
+<!-- GARUDA VOA checkout — build-lane design deliverable (post-loop, R7 §4 item 1).
+     First surface designed REM-NATIVE (R7 §2 amendment 3) and under the FLIPPED production
+     default (R6 §8 item 1: team control, no named person until the A/B decides).
+     Price contract: Q6c (R4:114) names TWO places — quoted verdict and pay button; this page
+     is the payment place and carries two renderings of it (price card + CTA), so the M5
+     payment contract's three-renderings scheme (R6:73) holds across verdict → card → CTA,
+     all three strings verbatim-identical. Masked figures + {PLACEHOLDERS} only —
+     PricingTool is the sole source of real prices. Light theme; dark set lives in R5b. -->
+<style>
+  :root{
+    --carta:#f7f6f2; --elevated:#ffffff; --ink:#16213a; --ink-soft:#475372;
+    --border-input:#7a8093; --hairline:#e3e1da;
+    --merah:#C8102E; --merah-action:#D01033; --merah-pressed:#c40020;
+    --state-error:#a83a44;
+    --radius:12px; --radius-nested:8px; --radius-pill:9999px; --motion:220ms;
+    --font-display:"Cormorant Garamond",Georgia,serif;
+    --font-ui:"Inter",system-ui,sans-serif;
+    --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+    /* Type scale in REM (R7 §2.3): identical rendering at default 16px root; text-only zoom now works. */
+    --t-body:1rem; --t-small:.8125rem; --t-label:.875rem; --t-price:1.375rem; --t-h1:1.5rem; --t-h2:1.125rem;
+  }
+  .ck{background:var(--carta);color:var(--ink);font-family:var(--font-ui);font-size:var(--t-body);
+      line-height:1.55;max-width:26rem;margin:0 auto;padding:1rem 1rem 8.5rem}
+  /* Identity header — R4:108 law, slim carta variant inside funnels (never a red band). */
+  .ck .idh{display:flex;justify-content:space-between;align-items:center;min-height:2.75rem;
+      margin-bottom:.25rem}
+  .ck .idh .wm{font-family:var(--font-display);font-weight:600;font-size:var(--t-h2);
+      letter-spacing:.08em;color:var(--ink);text-decoration:none;display:inline-flex;
+      align-items:center;min-height:2.75rem}
+  .ck .idh .idh-right{display:flex;gap:.5rem}
+  .ck .idh .idh-right a{display:inline-flex;align-items:center;min-height:2.75rem;
+      padding:0 .5rem;font-size:var(--t-small);color:var(--ink);text-decoration:none}
+  .ck .idh .idh-right a.wa{color:var(--merah-action);text-decoration:underline}
+  .ck h1{font-family:var(--font-display);font-size:var(--t-h1);font-weight:600;margin:.25rem 0 .125rem}
+  .ck h2{font-size:var(--t-h2);font-weight:600;margin:0 0 .5rem}
+  .ck .steps{font-size:var(--t-small);color:var(--ink-soft);margin-bottom:1rem}
+  .ck .steps strong{color:var(--ink)}
+  .ck .card{background:var(--elevated);border:1px solid var(--border-input);border-radius:var(--radius);
+      box-shadow:0 1px 3px rgba(22,33,58,.08);padding:1rem;margin-bottom:1rem}
+  .ck .why{font-size:var(--t-small);color:var(--ink-soft);margin:.25rem 0 .75rem}
+  .ck .field{margin-bottom:.75rem}
+  .ck label{display:block;font-size:var(--t-label);font-weight:600;margin-bottom:.25rem}
+  .ck input{width:100%;min-height:2.75rem;font:inherit;color:var(--ink);background:var(--elevated);
+      border:1px solid var(--border-input);border-radius:var(--radius-nested);padding:.5rem .75rem}
+  .ck input:focus{outline:2px solid var(--ink);outline-offset:1px}
+  .ck .ro{display:flex;justify-content:space-between;align-items:baseline;gap:.5rem;
+      border:1px solid var(--hairline);border-radius:var(--radius-nested);padding:.5rem .75rem;
+      background:var(--carta);margin-bottom:.5rem}
+  .ck .ro .v{font-family:var(--font-mono);font-size:var(--t-label)}
+  /* Links are tap targets — R4:146 44px floor (2.75rem = 44px), ≥8px clearance. */
+  .ck .edit{display:inline-flex;align-items:center;min-height:2.75rem;padding:0 .5rem;
+      margin:-.5rem -.5rem -.5rem 0;font-size:var(--t-small);color:var(--merah-action);
+      text-decoration:underline;white-space:nowrap}
+  .ck .price{font-family:var(--font-mono);font-size:var(--t-price);font-weight:600}
+  .ck .allinc{font-size:var(--t-small);color:var(--ink-soft)}
+  .ck .pnbp{border-top:1px solid var(--hairline);margin-top:.75rem;padding-top:.75rem;
+      font-size:var(--t-small);color:var(--ink-soft)}
+  .ck .pnbp .n{font-family:var(--font-mono);color:var(--ink)}
+  .ck ol.after{margin:.25rem 0 0;padding-left:1.25rem}
+  .ck ol.after li{margin-bottom:.5rem}
+  /* Rails render as INFORMATIONAL chips (never controls): muted, borderless-soft — a chip
+     must not read as a button (honest-controls doctrine). The set is CONFIG-DRIVEN. */
+  .ck .rails{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.5rem;list-style:none;padding:0}
+  .ck .rail{border:1px solid var(--hairline);border-radius:var(--radius-pill);
+      padding:.25rem .75rem;font-size:var(--t-small);color:var(--ink-soft);background:var(--carta)}
+  .ck .trust{border-top:2px solid var(--ink);padding-top:.75rem;font-size:var(--t-small);color:var(--ink-soft)}
+  .ck .trust .role{color:var(--ink);font-weight:600}
+  .ck .trust a{display:inline-flex;align-items:center;min-height:2.75rem;padding:0 .25rem;
+      margin:-.5rem 0;color:var(--merah-action)}
+  .ck .talk{border:1px solid var(--border-input);border-radius:var(--radius);padding:.75rem 1rem;
+      margin-top:.75rem;font-size:var(--t-label);background:var(--elevated);
+      box-shadow:0 1px 2px rgba(22,33,58,.06)}
+  .ck .talk a{display:inline-flex;align-items:center;min-height:2.75rem;padding:0 .25rem;
+      margin:-.5rem 0;color:var(--merah-action)}
+  .ck .consent{font-size:var(--t-small);color:var(--ink-soft);text-align:center;margin:0 0 .375rem}
+  .ck .consent a{color:var(--merah-action)}
+  .ck .cta-wrap{position:sticky;bottom:0;background:linear-gradient(transparent,var(--carta) 30%);
+      padding:1rem;margin:0 -1rem}
+  .ck .cta{display:flex;justify-content:center;gap:.5rem;align-items:baseline;width:100%;
+      min-height:2.75rem;background:var(--merah-action);color:#fff;border:0;border-radius:var(--radius);
+      font:600 var(--t-body) var(--font-ui);padding:.75rem 1rem;cursor:pointer;
+      transition:background var(--motion)}
+  .ck .cta:active{background:var(--merah-pressed);transform:scale(.99)}
+  .ck .cta .mono{font-family:var(--font-mono)}
+  .ck .window{text-align:center;font-size:var(--t-small);color:var(--ink-soft);margin-top:.375rem}
+  .ck .guard{border-left:3px solid var(--state-error);padding:.75rem 1rem;background:var(--elevated);
+      border-radius:var(--radius-nested);font-size:var(--t-label)}
+  .ck .guard a{color:var(--merah-action)}
+  @media (prefers-reduced-motion: reduce){ .ck .cta{transition:none} }
+</style>
+
+<div class="ck">
+  <!-- ══ Identity header (R4:108 — every screen in the perimeter; slim carta in funnels) ══ -->
+  <header class="idh">
+    <a class="wm" href="{HOME_LINK}">BALI ZERO</a>
+    <span class="idh-right"><a href="{LANG_TOGGLE}" aria-label="Ganti bahasa">EN · ID</a><a class="wa" href="{WA_HEADER_LINK}">WhatsApp</a></span>
+  </header>
+
+  <p class="steps">Passport → Review → <strong>Checkout</strong> → Payment</p>
+  <h1>Review &amp; pay</h1>
+  <p class="why">Everything below can still change — nothing is sent to immigration until after payment.</p>
+
+  <!-- ══ Review-before-pay (A7 cure: every fact editable, R4 question protocol) ══ -->
+  <section class="card" aria-labelledby="ck-review">
+    <h2 id="ck-review">Your details</h2>
+    <div class="ro"><span>Full name</span><span class="v">{FULL_NAME}</span><a class="edit" href="#ck-review">Edit →</a></div>
+    <div class="ro"><span>Passport no.</span><span class="v">{PASSPORT_MASKED}</span><a class="edit" href="#ck-review">Edit →</a></div>
+    <p class="why">Why we ask: your receipt and order tracker go to this email, and this phone is
+    where our team reaches you if anything needs a human. Nobody else sees them.</p>
+    <!-- Email PREFILLS from the session where the visitor already gave it at the result screen
+         (MagicLinkRequestForm, voa/[hash]/page.tsx) — never ask twice as if unknown. -->
+    <div class="field"><label for="ck-email">Email</label><input id="ck-email" type="email" autocomplete="email" value="{EMAIL}"></div>
+    <div class="field"><label for="ck-phone">Phone (WhatsApp)</label><input id="ck-phone" type="tel" autocomplete="tel" value="{PHONE}"></div>
+  </section>
+
+  <!-- ══ Price card — payment-place rendering 1 of 2 (Q6c: verdict + pay button; M5 contract
+       R6:73 spans verdict → card → CTA). PNBP line: R7 §5.1 open question answered YES under
+       Zero's 2026-08-27 standing pre-confirmation (async veto open) — amends R4:114's charter
+       guardrail for THIS surface: one state-set figure inside the total, never a fee breakdown. ══ -->
+  <section class="card" aria-labelledby="ck-price">
+    <h2 id="ck-price">Total — the same number you saw at your result</h2>
+    <!-- ONE figure instance in this card ({BUNDLE_NAME} is the bundle's LABEL, never a number);
+         the only other on-page instance is the CTA. -->
+    <p><span class="price">IDR 8XX.XXX</span> <span class="allinc">all-inclusive · {BUNDLE_NAME}</span></p>
+    <p class="allinc">Inside this price: our service, government charges, and follow-up until
+    your visa outcome. Your receipt itemizes after payment.</p>
+    <!-- CONDITIONAL (build contract, §4): this line renders ONLY when the state-set figure is
+         resolved for the case type — no resolved figure, no line. Static mockup shows the
+         resolved state. -->
+    <p class="pnbp">Government charges: <span class="n">IDR 5XX.XXX</span> (PNBP, set by the
+    state) — included in the total above, not added to it.</p>
+    <!-- Refund: A7's carried demand (R1:107) includes refund above the pay button. TERMS are
+         a Legge-5 business decision — placeholder only, never invented reassurance (R4 §5). -->
+    <p class="allinc" style="margin-top:.5rem">If your application can't proceed: {REFUND_POLICY_LINE}</p>
+    <p class="allinc" style="margin-top:.5rem">Paying in another currency? Your bank's FX rate
+    applies · {FX_POLICY}
+    <!-- Indicative FX equivalent renders ONLY with a resolved live rate (C1 discipline);
+         multi-currency display is an R5b/ENG behavioral acceptance (R4:146). -->
+    <span class="n" style="font-family:var(--font-mono)">≈ {FX_APPROX}</span> (indicative)</p>
+  </section>
+
+  <!-- ══ What happens after you pay (A7: time & outcome above the pay button) ══ -->
+  <section class="card" aria-labelledby="ck-after">
+    <h2 id="ck-after">What happens after you pay</h2>
+    <ol class="after">
+      <li>You pay by card on the next page — a secure payment page.
+        <!-- Rail chips are CONFIG-DRIVEN ({RAIL_SET} mirrors the live payment config): today the
+             adapter offers CARD ONLY — Virtual Account is out of scope by owner decision
+             (xendit.py module contract, DECISIONS.md decision 1), QRIS is not enabled. R4:114's
+             QRIS/VA/card badge components are the design system; a chip renders ONLY when the
+             config offers that rail. Never a selector while the provider is a hosted invoice. -->
+        <ul class="rails" aria-label="Accepted payment methods"><li class="rail">Card</li></ul></li>
+      <li>Your receipt and order tracker arrive by email within minutes. Order
+        <span class="v" style="font-family:var(--font-mono)">{ORDER_ID}</span> appears on both.</li>
+      <li>We prepare and submit your application — {PROCESSING_WINDOW}. Your visa outcome and
+        documents arrive by email: {DELIVERABLE_DETAIL}. If anything needs a human, our team
+        messages you on WhatsApp within {SLA}.</li>
+    </ol>
+  </section>
+
+  <!-- ══ Trust block (R7 §2.4 full contract) ══ -->
+  <footer class="trust">
+    <p class="role">We prepare your application; Ditjen Imigrasi decides and issues.</p>
+    <p>PT {PT_LEGAL_NAME} · NPWP {NPWP} · <a href="{REGISTRY_LINK}">registry entry</a><br>
+    {OFFICE_STREET_ADDRESS}, Bali — {OFFICE_HOURS}</p>
+  </footer>
+
+  <!-- Talk-first card — SIBLING BELOW the trust block (contact affordance after the trust
+       attestation, on this page's own terms). {WA_LINK} carries an OPAQUE case code ONLY —
+       never personal facts in the URL (R4 §5 WhatsApp-handoff privacy law). -->
+  <div class="talk">Prefer to talk it through first? Our team answers on WhatsApp within
+  {SLA} — before you pay, not after. <a href="{WA_LINK}">Message us →</a></div>
+
+  <!-- ══ Sticky CTA — pay-button rendering (Q6c place 2) + consent + payment-window honesty ══ -->
+  <div class="cta-wrap">
+    <p class="consent">By paying you agree to our <a href="{TOS_LINK}">terms</a> and
+    <a href="{PRIVACY_LINK}">privacy policy</a>.</p>
+    <button class="cta" type="button">Pay &amp; start — <span class="mono">IDR 8XX.XXX</span></button>
+    <p class="window">This total holds for {PAYMENT_WINDOW} — no price change while you decide.</p>
+  </div>
+
+  <!-- ══ Guard state (live copy kept, restyled) — shown INSTEAD of the page when the
+       reviewed handoff is missing ══ -->
+  <template id="ck-guard">
+    <div class="guard"><p>We need your reviewed passport details first.</p>
+    <p><a href="{UPLOAD_ROUTE}">Go back to upload your passport →</a></p></div>
+  </template>
+</div>

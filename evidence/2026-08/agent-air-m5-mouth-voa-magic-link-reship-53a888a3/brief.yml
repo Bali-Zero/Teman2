@@ -1,0 +1,75 @@
+task_id: voa-magic-link-reship
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Land the GARUDA VOA magic-link consumer. The emailed link pointed at `/visa/voa`, the
+  funnel's FIRST page, which reads neither `?result_id=` nor `?magic_token=`. No surface in
+  this app consumed the token, so the authenticated half of the paid product was
+  unreachable by construction, not by a flag.
+
+  SCOPE, STATED NARROWLY ON PURPOSE: this closes the blocker on REACHING the authenticated
+  half. It is not the last blocker on the whole revenue path. Both cross-family refuters
+  independently found — and this session verified — that the upload step's own API,
+  `POST /api/visa/voa/eligibility-checks/{result_id}/documents`
+  (`apps/mouth/src/app/visa/voa/upload/api-client.ts:3`), has NO backend route: the repo's
+  only `/eligibility-checks` routes are `garuda_voa_public.py:477,541,570`, none of them a
+  `documents` sub-path. Two further gates named in the pack (a magic-link issuance
+  ownership check, and the Xendit key) also stand between this PR and money.
+
+  THIS PR RESHIPS THE CODE OF #5157 ON A FRESH `origin/main`, WITH AN INDEPENDENTLY AUTHORED
+  EVIDENCE PACK. #5157 was suspended under Agent-PR-Contract rule 8 after the Gear-3 gate
+  BLOCKed it three consecutive rounds — never once on the code. Every BLOCK was an inaccuracy
+  in the pack's own prose: a wrong commit count, a wrong test count, wrong diff stats, a
+  `dissent` entry naming a `formData()` branch that greps to nothing, and two dissent notes
+  contradicting each other on how many tests a mutation turns red. Rule 8 suspends a PR
+  because a surface that fails three times the same way is under-specified; here the
+  under-specified surface was the NARRATION, and the cure it names is separation. The lane
+  that wrote this code is not the lane that wrote this pack. Two of the four failure causes
+  are now machine-prevented as well: #5191 taught `evidence_pack_lint.py` to RECOMPUTE the
+  countable claims from git (`--print-measured`), which is where every number below comes from.
+
+  Gear 3 by PATH, deterministically: `.github/workflows/**` is hot-zone, so the floor is 3
+  regardless of size. Recomputed from the real committed changed-file list — receipt in the
+  pack.
+constraints:
+  - "Bring the code across; do not redesign it. An independent Gear-3 gate already measured
+    this code sound. A reship that quietly rewrites the thing it claims to be reshipping is
+    a third round wearing a new number."
+  - "Every code reference in the pack is grep-confirmed on THIS branch at the moment it is
+    written. A single phantom reference is what ended round 3."
+  - "Every countable number comes from `--print-measured`, taken last. The commit count goes
+    stale between edit and push, so it is not narrated at all."
+  - "The pack states no scope claim wider than what was measured. Understating is safe."
+  - "This lane posts NO gate verdict. Generator != grader is the entire reason this lane
+    exists; a self-verdict would collapse it."
+acceptance:
+  - "The three new frontend test files and the backend magic-link suite are green on a fresh
+    `origin/main`, and `tsc --noEmit` is clean on `apps/mouth`."
+  - "Each declared mutation is re-run on this branch and its red-test count is the measured
+    one — a mutation that survives is reported as surviving, not quietly dropped."
+  - "`route.test.ts`'s loopback case actually bites: the carried-forward suspicion that its
+    `127.0.0.1` row could not fail is either disproved or cured."
+  - "Every `file:line` the brought-across code cites resolves on current `origin/main` — the
+    rebase is verified, not presumed."
+  - "The deterministic floor recomputed from this PR's own committed changed-file set is 3,
+    matching the gear declared here."
+consumer_map:
+  - "`apps/backend-rag/backend/services/garuda_portal/magic_link_store.py::_default_send_magic_link_email`
+    — mints the URL that every VOA sign-in email carries. Its default moves from `/visa/voa`
+    to `/visa/voa/auth`."
+  - "`.github/workflows/garuda-arm.yml` — sets `GARUDA_MAGIC_LINK_BASE_URL` on Fly. The env
+    var OVERRIDES the Python default, so until an operator re-runs this workflow (or sets the
+    secret by hand) production keeps emailing the old URL. Named as an operator action in the
+    PR body; this PR cannot perform it."
+  - "`apps/mouth/src/app/api/[...path]/route.ts:421,449,510` — the proxy the exchange calls
+    through. It forwards upstream `Set-Cookie` verbatim for every path except
+    `/api/auth/login`; the account cookie the backend mints reaches the browser through it,
+    unmodified. Not touched by this PR; verified still true on this base."
+  - "`apps/backend-rag/backend/app/routers/garuda_portal_auth.py:225,234,238` — the backend
+    contract `contract.ts` mirrors (result-id pattern, token length bounds, loopback hosts).
+    Not touched by this PR; re-verified line-for-line on this base."
+  - "`apps/mouth/src/app/visa/voa/upload/[resultId]` — the destination of a successful
+    exchange. Reached only with the account cookie the backend minted."
+  - "`apps/mouth/src/app/sitemap.test.ts::INTENTIONALLY_UNLISTED` — the three new routes are
+    declared absent from the sitemap on purpose; the test fails on an undeclared route."

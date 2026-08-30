@@ -1,0 +1,57 @@
+### Finding 1: Premature Ratification Contradicts Panel Doctrine
+- **Severity**: HIGH
+- **Failing Fragment**: `adversarial_review_detail: PENDING-PANEL` vs `§2: "these amendments are BINDING NOW by their rounds' declarations"` and `§8: "Final declarations (adopted under the standing pre-confirmation, async veto open)"`
+- **Why**: §3.2 and §7 mandate that no finding or rule is disposed/adopted without a 4-seat panel review, row-by-row dispositions, and conductor source verification. Declaring R7 amendments and governance rules "BINDING NOW" while the file's own review status is explicitly `PENDING-PANEL` violates the verification gate it attempts to establish.
+
+---
+
+### Finding 2: Human Gate Rule Inverted by Binding Production Defaults
+- **Severity**: HIGH
+- **Failing Fragment**: `§3.3: "Three question classes in this loop are answerable ONLY by real users, and no proxy result may set their production state: (1) named-human vs team-control... A production commitment on any of these before its human gate is a doctrine violation, whatever any panel says."` vs `§2.5: "the PRODUCTION default is the team control until the R7-gated real-user A/B decides (§3.3)."` and `§2.4: "no funnel page ships without role-separation line + PT/NPWP/registry line + a visible physical office address"`
+- **Why**: §3.3 strictly forbids setting production state on human-gate questions via proxy or panel evaluations. However, §2.5 commits a production default ("team control") and §2.4 commits shipping gates based entirely on R6 walkthroughs and proxy panels. Defaulting production behavior to one variant prior to running the real-user A/B test is itself a production state commitment based on proxy evidence, breaching §3.3.
+
+---
+
+### Finding 3: Premature Loop Closure Abandons Unmocked Critical Funnel Surfaces
+- **Severity**: HIGH
+- **Failing Fragment**: `§8.3: "The loop CLOSES with this round. Continuation happens as product lanes (§4) and as the human-gate studies (§3.3), each under its own mandate — not as an R8."` vs `§4.1: "GARUDA checkout page — the funnel's highest-risk step has NO mockup (R6-P1's open half)... First build item because R1 rated its live state 5-quits."`, `§4.2: "Consent placement (R1-A4, unmocked)"`, and `§5.1: "PNBP pre-payment line (R6 §8.2): may a single state-set «government charges: IDR X (PNBP)» line appear before payment inside ruling Q7's bundle-only frame"`
+- **Why**: R7 claims the design study is complete, yet the highest-risk funnel screen (Garuda checkout, 5-quits drop-off risk) and consent placement have no mockups, while core pricing disclosure legality (§5.1) remains unresolved. Offloading unmocked primary UI surfaces and unresolved design vetoes into product engineering backlogs orphans the §5 register and violates design loop closure criteria.
+
+---
+
+### Finding 4: Evidence Ladder Self-Violation, Non-Exclusivity, and Incompleteness
+- **Severity**: HIGH
+- **Failing Fragment**: `§3.1: "Every claim carries its class, and the class bounds what it can license: (a) MEASURED... (b) EXECUTABLE... (c) EXPERT WALKTHROUGH... (d) LLM-PROXY PANEL... (e) CITED MEMORY/AUDIT"` vs `§Solo-operatore: "Every claim's class is declared"` and `§1: "Seven rounds and one ENG side-lane... Every round shipped: a repo report behind the R1 gate..."`
+- **Why**: 
+  1. **Self-Violation**: §Solo-operatore claims every claim's class is declared, but throughout §1, §2, §4, §5, §6, and §Meta, dozens of factual and procedural claims lack class prefixes `(a)`–`(e)`.
+  2. **Incomplete/Non-Exclusive Ladder**: The five rungs omit non-empirical design derivations (e.g., §2.2 radius math, token inheritance rules, regulatory KBLI compliance, type conversions), while blurring executable test assertions with live environment measurements.
+
+---
+
+### Finding 5: Fabricated Round and PR Counts
+- **Severity**: MED
+- **Failing Fragment**: `§1: "Seven rounds and one ENG side-lane, 2026-08-27... R0 measured... R1 built... R2 imported... R3 performed... R4 wrote... R5 rendered... R5b made... R6 walked"` and `§Solo-operatore: "8 PRs"`
+- **Why**: The paragraph enumerates 8 distinct rounds (R0, R1, R2, R3, R4, R5, R5b, R6) preceding R7. Combined with the ENG side-lane, there are 9 PRs (#5058, #5060, #5064, #5074, #5078, #5079, #5087, #5090, #5077). Stating "Seven rounds" in §1 and "8 PRs" in §Solo-operatore miscounts the loop's own record.
+
+---
+
+### Finding 6: Backlog Dependency Inversion and Misplaced Risk Ordering
+- **Severity**: MED
+- **Failing Fragment**: `§4.4: "4. i18n for the sponsor — the delegate flow cannot pass Wharton for an Indonesian sponsor until it speaks Bahasa"` vs `§4.5: "5. Delegate flow as product surface (R5b §5)... now needing an owner lane."` and `§4.6: "6. rem migration (§2.3) and the A/B + device-pass infrastructure (§3.3) — the two items that unblock every human gate."`
+- **Why**:
+  1. **Inverted Dependency**: §4.4 prioritizes Bahasa localization (#4) ahead of building the delegate flow UI surface (#5); localizing a non-existent surface is impossible.
+  2. **Risk Misordering**: §4.6 places the human-gate and A/B test infrastructure dead last (#6), despite §3.3 stating that human gates are blocking prerequisites for resolving production state.
+
+---
+
+### Finding 7: Unenforceable Panel Protocol Imposed on Product Lanes
+- **Severity**: MED
+- **Failing Fragment**: `§3.2: "The panel protocol (now standard): generator≠grader always; four cross-family seats, never the conductor's own family as final gate... at least one refuter seat gets FILESYSTEM ACCESS on ground-heavy reports... every finding gets a row-by-row disposition"` and `§8.2: "The verification doctrine (§3) binds future DESIGN rounds and design-adjacent product claims in this repo"`
+- **Why**: Mandating a 4-seat cross-family LLM panel with filesystem sandboxing, order counterbalancing, double-payload recovery, and manual conductor source verification for all "design-adjacent product claims" is operationally unexecutable for daily product lane capacity (Legge 5). Creating an unfulfillable verification hurdle ensures the doctrine will be quietly bypassed in production.
+
+---
+
+### Finding 8: Performative Epistemic Abstention
+- **Severity**: LOW
+- **Failing Fragment**: `§6: "no loop total is asserted — a doctrine file practices its own §3.1 rule, and this paragraph is exactly the kind of aggregate a refuter should re-derive from disk rather than trust."`
+- **Why**: The text cites granular per-round seat breakdowns (e.g., `32/23/14/10`, `30/18/15/0`, `25/18/20/0`, `15/10/11/6`, `11/7/10/8`) without verifying them on disk, but refuses to compute their basic arithmetic sum (283 text findings + 1 runtime = 284) under the guise of "epistemic discipline." Withholding a sum while publishing the unverified addends is evasion, not rigor.

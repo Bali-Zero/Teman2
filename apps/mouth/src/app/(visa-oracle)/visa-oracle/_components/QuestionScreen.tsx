@@ -408,17 +408,32 @@ function CountryPicker({
   onNotListed: () => void;
 }) {
   const [pendingCode, setPendingCode] = useState("");
+  const [countryQuery, setCountryQuery] = useState("");
   const options = useMemo(() => getCountryOptions(language), [language]);
   const nameByCode = useMemo(
     () =>
       new Map<string, string>(options.map(({ code, name }) => [code, name])),
     [options],
   );
+  // Predictive filter (D-V5): 190+ countries in a plain <select> forces
+  // scroll-and-scan. This narrows the <option> list client-side by name or
+  // code — no new dependency, no change to how a selection is committed.
+  const filteredOptions = useMemo(() => {
+    const query = countryQuery.trim().toLowerCase();
+    if (!query) return options;
+    return options.filter(
+      ({ code, name }) =>
+        name.toLowerCase().includes(query) ||
+        code.toLowerCase().includes(query),
+    );
+  }, [options, countryQuery]);
   const selectId = `${questionId}-country`;
+  const searchId = `${questionId}-country-search`;
   const maxReached = selectedCodes.length >= maxSelections;
 
   useEffect(() => {
     setPendingCode("");
+    setCountryQuery("");
   }, [language, questionId]);
 
   const addPendingCountry = () => {
@@ -447,6 +462,23 @@ function CountryPicker({
           {translate(language, labelI18nKey)}
         </span>
       </label>
+      <label className="oracle-input-label" htmlFor={searchId}>
+        <span className="oracle-sr-only">
+          {translate(language, "question.country_picker.search")}
+        </span>
+        <input
+          id={searchId}
+          type="text"
+          className="oracle-form-control"
+          value={countryQuery}
+          onChange={(event) => setCountryQuery(event.target.value)}
+          placeholder={translate(
+            language,
+            "question.country_picker.search_placeholder",
+          )}
+          autoComplete="off"
+        />
+      </label>
       <div className="oracle-country-picker__control">
         <select
           id={selectId}
@@ -468,7 +500,7 @@ function CountryPicker({
           <option value="">
             {translate(language, "question.country_picker.placeholder")}
           </option>
-          {options.map(({ code, name }) => (
+          {filteredOptions.map(({ code, name }) => (
             <option
               key={code}
               value={code}

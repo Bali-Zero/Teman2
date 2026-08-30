@@ -1068,6 +1068,200 @@ def test_human_report_renders_every_kind_once_with_truthful_counts():
     assert report.index("a.warn") < report.index("z.warn"), report
 
 
+# ---------------------------------------------------------------------------
+# scan_stale_coverage_branches — R7 proprioception (2026-08-27).
+#
+# Born from the measured root cause of the R7 mandate: a pipefail bug in
+# scripts/codex/codex-nightly-coverage-improver.sh silently killed 9 of the
+# last 10 nightly runs one line after "Codex completed" — real commits
+# landed on a real codex/coverage-* branch and nothing ever surfaced it for
+# 10 days. This check is the structural antidote so a future regression (in
+# either the generator or scripts/army/spark_coverage_harvester.py) cannot
+# go silent again.
+#
+# Contract:
+#   - GUILT: a branch older than stale_hours, with commits ahead of the
+#     base, and NO pr anywhere -> flagged kind="stale_branch".
+#   - INNOCENCE: a fresh branch (younger than stale_hours) is NOT flagged,
+#     regardless of PR status.
+#   - INNOCENCE: an old branch that already HAS a pr (any state) is NOT
+#     flagged — the harvester did its job.
+# ---------------------------------------------------------------------------
+
+import stat as _stat  # noqa: E402
+
+
+def _git_ok(repo, *args, env=None):
+    return subprocess.run(["git", "-C", repo, *args], capture_output=True,
+                           text=True, check=True, env=env)
+
+
+def _make_fake_gh(bin_dir):
+    """A `gh` stand-in that answers `gh pr list --head <b> ...` from the
+    JSON dict in $FAKE_GH_PRS_BY_BRANCH — never touches the network, so this
+    test suite stays offline-safe (SYMBIOSIS Law 6) and deterministic.
+    """
+    gh_path = os.path.join(bin_dir, "gh")
+    with open(gh_path, "w", encoding="utf-8") as fh:
+        fh.write(
+            "#!/usr/bin/env python3\n"
+            "import json, os, sys\n"
+            "args = sys.argv[1:]\n"
+            "head = None\n"
+            "for i, a in enumerate(args):\n"
+            "    if a == '--head' and i + 1 < len(args):\n"
+            "        head = args[i + 1]\n"
+            "prs = json.loads(os.environ.get('FAKE_GH_PRS_BY_BRANCH', '{}'))\n"
+            "print(json.dumps(prs.get(head, [])))\n"
+        )
+    os.chmod(gh_path, os.stat(gh_path).st_mode | _stat.S_IEXEC | _stat.S_IXGRP | _stat.S_IXOTH)
+
+
+def _make_repo_with_coverage_branch(tmp_path, branch, age_hours, n_commits=1):
+    repo = str(tmp_path / "repo")
+    os.makedirs(repo)
+    _git_ok(repo, "init", "-q")
+    _git_ok(repo, "config", "user.email", "t@example.com")
+    _git_ok(repo, "config", "user.name", "t")
+    _git_ok(repo, "commit", "-q", "--allow-empty", "-m", "init")
+    _git_ok(repo, "branch", "-M", "main")
+    bare = str(tmp_path / "bare.git")
+    subprocess.run(["git", "init", "-q", "--bare", bare], check=True)
+    _git_ok(repo, "remote", "add", "origin", bare)
+    _git_ok(repo, "push", "-q", "-u", "origin", "main")
+
+    _git_ok(repo, "checkout", "-q", "-b", branch)
+    commit_epoch = time.time() - age_hours * 3600
+    commit_iso = time.strftime("%Y-%m-%dT%H:%M:%S+0000", time.gmtime(commit_epoch))
+    env = dict(os.environ, GIT_AUTHOR_DATE=commit_iso, GIT_COMMITTER_DATE=commit_iso)
+    for i in range(n_commits):
+        with open(os.path.join(repo, f"f{i}.py"), "w", encoding="utf-8") as fh:
+            fh.write("x = 1\n")
+        _git_ok(repo, "add", f"f{i}.py")
+        subprocess.run(["git", "-C", repo, "commit", "-q", "-m", f"c{i}"],
+                        check=True, env=env)
+    return repo
+
+
+def _fake_gh_path_env(tmp_path, monkeypatch, prs_by_branch=None):
+    bin_dir = tmp_path / "fakebin"
+    bin_dir.mkdir(exist_ok=True)
+    _make_fake_gh(str(bin_dir))
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    monkeypatch.setenv("FAKE_GH_PRS_BY_BRANCH", json.dumps(prs_by_branch or {}))
+
+
+def test_scan_stale_coverage_branches_guilt_old_branch_no_pr_is_flagged(tmp_path, monkeypatch):
+    from organism_stale_detector import scan_stale_coverage_branches
+
+    branch = "codex/coverage-foo_bar-20260825_030000"
+    repo = _make_repo_with_coverage_branch(tmp_path, branch, age_hours=48)
+    _fake_gh_path_env(tmp_path, monkeypatch, prs_by_branch={})
+
+    findings = scan_stale_coverage_branches(repo=repo, stale_hours=24.0)
+    assert len(findings) == 1, findings
+    f = findings[0]
+    assert f.kind == "stale_branch", f
+    assert f.organ_id == "codex.coverage_branch.foo_bar", f
+    assert f.status == "no PR", f
+    assert "1 commit" in f.detail and branch in f.detail, f.detail
+
+
+def test_scan_stale_coverage_branches_innocence_fresh_branch_not_flagged(tmp_path, monkeypatch):
+    from organism_stale_detector import scan_stale_coverage_branches
+
+    branch = "codex/coverage-foo_bar-20260827_030000"
+    repo = _make_repo_with_coverage_branch(tmp_path, branch, age_hours=1)
+    _fake_gh_path_env(tmp_path, monkeypatch, prs_by_branch={})
+
+    findings = scan_stale_coverage_branches(repo=repo, stale_hours=24.0)
+    assert findings == [], f"a 1h-old branch must not be flagged yet (threshold 24h): {findings}"
+
+
+def test_scan_stale_coverage_branches_innocence_existing_pr_not_flagged(tmp_path, monkeypatch):
+    from organism_stale_detector import scan_stale_coverage_branches
+
+    branch = "codex/coverage-foo_bar-20260825_030000"
+    repo = _make_repo_with_coverage_branch(tmp_path, branch, age_hours=48)
+    _fake_gh_path_env(tmp_path, monkeypatch, prs_by_branch={branch: [4242]})
+
+    findings = scan_stale_coverage_branches(repo=repo, stale_hours=24.0)
+    assert findings == [], f"a branch with an existing PR must not be flagged: {findings}"
+
+
+def _make_fake_gh_failing(bin_dir):
+    """A `gh` stand-in that always fails, like an offline or unauthenticated
+    machine (gh installed, but `gh pr list` errors) — SYMBIOSIS Law 6:
+    disconnection is not evidence of a stuck branch.
+    """
+    gh_path = os.path.join(bin_dir, "gh")
+    with open(gh_path, "w", encoding="utf-8") as fh:
+        fh.write(
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            "sys.stderr.write('gh: not logged in to any GitHub hosts\\n')\n"
+            "sys.exit(1)\n"
+        )
+    os.chmod(gh_path, os.stat(gh_path).st_mode | _stat.S_IEXEC | _stat.S_IXGRP | _stat.S_IXOTH)
+
+
+def test_scan_stale_coverage_branches_innocence_gh_error_fails_open(tmp_path, monkeypatch):
+    # 2026-08-27 refuter finding: `gh` installed but failing (offline/
+    # unauthenticated/rate-limited — pr.returncode != 0) fell through to a
+    # false RED finding, directly contradicting this function's own
+    # docstring ("fails OPEN ... on any git/gh error") and the inverse of
+    # what has_any_pr() in spark_coverage_harvester.py already does
+    # correctly for the identical gh-error case. This test would have
+    # failed against the pre-fix code.
+    from organism_stale_detector import scan_stale_coverage_branches
+
+    branch = "codex/coverage-foo_bar-20260825_030000"
+    repo = _make_repo_with_coverage_branch(tmp_path, branch, age_hours=48)
+    bin_dir = tmp_path / "fakebin"
+    bin_dir.mkdir(exist_ok=True)
+    _make_fake_gh_failing(str(bin_dir))
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+
+    findings = scan_stale_coverage_branches(repo=repo, stale_hours=24.0)
+    assert findings == [], (
+        f"gh failing (offline/unauthenticated) must fail OPEN per this "
+        f"function's own docstring, never a false RED finding: {findings}"
+    )
+
+
+def test_scan_stale_coverage_branches_fails_open_on_unreadable_repo(tmp_path, monkeypatch):
+    from organism_stale_detector import scan_stale_coverage_branches
+
+    _fake_gh_path_env(tmp_path, monkeypatch)
+    findings = scan_stale_coverage_branches(repo=str(tmp_path / "does-not-exist"))
+    assert findings == [], (
+        f"a repo path that is not a git repo must fail OPEN (no finding, no "
+        f"crash) — SYMBIOSIS Law 6, offline/misconfigured is not evidence of "
+        f"a stuck branch: {findings}"
+    )
+
+
+def test_scan_stale_coverage_branches_exit_code_is_red(tmp_path, monkeypatch):
+    # The R7 mandate asks for this to surface as "red", not merely advisory —
+    # confirm main()'s exit-code contract treats stale_branch like dead_channel.
+    branch = "codex/coverage-foo_bar-20260825_030000"
+    repo = _make_repo_with_coverage_branch(tmp_path, branch, age_hours=48)
+    _fake_gh_path_env(tmp_path, monkeypatch, prs_by_branch={})
+
+    from organism_stale_detector import main as detector_main
+
+    empty_sidecars = str(tmp_path / "sidecars")
+    os.makedirs(empty_sidecars, exist_ok=True)
+    rc = detector_main([
+        "--dir", empty_sidecars,
+        "--no-cross-host-sync",
+        "--repo", repo,
+        "--coverage-branch-stale-hours", "24",
+        "--json",
+    ])
+    assert rc == 1, f"a stale, PR-less coverage branch must exit non-zero: rc={rc}"
+
+
 def test_the_all_clear_sentence_is_the_hooks_only_branch_and_is_a_contract():
     """CROSS-ARTIFACT PIN: this one string IS an interface, not prose.
 

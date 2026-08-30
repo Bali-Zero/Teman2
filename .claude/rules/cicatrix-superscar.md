@@ -64,7 +64,7 @@ access-wall, dev identity su proxy PROD) · W97 (display-cap `[:40]` letto come 
 W101-recidiva-fly-backup (PARTIAL: Fase 2 mai parte) · W104 (`redis-cli` esce 0 con NOAUTH su stdout) ·
 W107 (curato 1 wrapper su 5) · W108 (19/20 cron muti, 2 cause) · W110 (heartbeat sull'organo sbagliato)
 · W116 (allarme su esito giusto, cura codice morto) · W118 (11h fermo, nessun check rosso) · W120
-(sentinella della famiglia stessa disarmata) · W121 (mutation testing su bytecode avvelenato) · W122 (rosso mente: lavoro fatto, SIGINT→130) · W123 (hold disarmato si ri-arma al push)
+(sentinella della famiglia stessa disarmata) · W121 (mutation testing su bytecode avvelenato) · W122 (rosso mente: lavoro fatto, SIGINT→130) · W123 (run `success` ≠ ha armato)
 · W126 (draft non espelle dalla coda)
 · W124
 (PR DIRTY: check-suite `completed` su un sottoinsieme, non su zero corse).
@@ -204,12 +204,12 @@ CONTENUTO (diff vuoto/subset), mai patch-equivalenza/SHA-ancestor/timestamp.
 **MEMBRI:** W54 (timestamp schianta staleness-check) · W53 (DLQ TERMINAL gate mancante) · W61
 (autopilot_attempts droppati) · W86 (DOCSYNC stale, boccia PR innocente) · W88 (cherry mente sul
 contenuto post-squash) · W102 (two-dot diff accusa PR dei file di main) · W106 (proxy congelato sceglie
-credenziale morta) · W106b (il checkout stesso è il proxy) · W109b (2 PR che si bloccano a vicenda) ·
+credenziale morta) · W106b (il checkout è il proxy) · W109b (2 PR si bloccano a vicenda) ·
 W111 (`gh run rerun` rigioca merge-ref stantio) · W114 (fake e codice condividono l'immaginazione) ·
-W118 (3 proxy merge-queue che mentono) · W125 (fusione pulita senza marker, la resa a mano la tiene).
+W118 (3 proxy merge-queue che mentono) · W125 (fusione pulita, la resa a mano la tiene) · W131 (un nome, due ruoli).
 **→ dettaglio:** cicatrix-scars.md (resto) + archive (W53/W54/W61)
-**PR-1 landing** (corpo in `PENDING-ARMS.md`): la mergeability GitHub non onora `merge=union`;
-`autoMergeRequest` non sopravvive a un transito CONFLICTING — va riarmato via GraphQL.
+**PR-1 landing** (corpo in `PENDING-ARMS.md`): mergeability GitHub non onora `merge=union`;
+`autoMergeRequest` NULL non prova armata/disarmata — leggi `mergeQueueEntry`; dopo conflitto/espulsione RIARMA (idempotente).
 
 ---
 

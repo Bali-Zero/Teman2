@@ -1,12 +1,49 @@
-"""Drains `garuda_order_outbox` — the queue that has never had a consumer.
+"""Drains `garuda_order_outbox`. This module IS the queue's consumer.
 
-`journal.enqueue_outbox` has ten callers in `repository.py` (checkout_ready_email,
-payment_paid_email, payment_failed_email, refund_email, practice_release and the
-five staff_page_* jobs). Nothing anywhere in this repository has ever SELECTed
-that table outside a test. Every row written since the table shipped is still
-sitting there with `dispatched_at IS NULL`: a customer who pays today receives no
-confirmation, because there is no code that could send one. This module is the
-missing half.
+CORRECTED 2026-08-27: this docstring used to open "the queue that has never had
+a consumer" and assert that "nothing anywhere in this repository has ever
+SELECTed that table outside a test". Both described the world in which this file
+was being WRITTEN, and both stopped being true the moment it shipped — it is
+wired in `app/main_api.py` (see `drain_once`'s import there) behind
+`GARUDA_OUTBOX_CONSUMER_ENABLED`, which is set to `true` in production. A
+docstring that denies its own module's existence is precisely the shape that
+misleads the next repo-wide ground pass, so it is stated positively now.
+
+**FOURTEEN distinct `job_type` values are enqueued by production code, and as of
+2026-08-28 `outbox_handlers.build_handlers` registers a handler for all
+fourteen.** Thirteen come from `repository.py`; the fourteenth,
+`practice_received_email`, is enqueued by
+`garuda_portal/practice.py::mint_received_practice`.
+
+THIS NUMBER WAS WRONG THREE TIMES, and how it was wrong matters more than the
+number. Successive versions of this paragraph said twelve, then thirteen. Every
+one of those counts came from grepping ``job_type="`` — a LITERAL — and
+`repository.py:799-805` passes a VARIABLE:
+
+    job_type = ("practice_release" if resolution == "honoured"
+                else "late_refund_confirmation_email")
+
+so `late_refund_confirmation_email` was invisible to all of them. The correction
+prescribed after the second miss was "grep across ALL of `backend/services`,
+not just the repository module" — and that antidote carried the same defect it
+was curing: widening the DIRECTORY finds nothing when the shape being matched is
+the wrong one. Widening from TEXT to SYNTAX is the fix (superscar #3,
+under-match).
+
+So: do NOT re-derive this count with a grep, and do not trust this paragraph over
+the test. `test_every_enqueued_job_type_has_a_handler` walks the AST of every
+`enqueue_outbox` call under `backend/services`, reads the `job_type=` argument,
+and FAILS LOUDLY on a non-literal rather than skipping it. That test is the only
+thing entitled to assert the count; this prose is a convenience that has now
+misled three readers.
+
+ROUTED IS NOT ARMED, AND NOT OBSERVABLE. `_run_garuda_outbox_scheduler` spawns
+only when `GARUDA_OUTBOX_CONSUMER_ENABLED` is exactly `"true"`, and it spawns
+via `asyncio.create_task` — a failure inside it kills that task alone while
+`/health` keeps answering 200. Nothing pages on a non-empty `unroutable` set,
+and `count_undrained` below has no non-test caller, so the queue's state is not
+visible from outside the process at all. Both gaps are ledgered, neither is
+fixed here.
 
 WHY THE LOCK IS HELD ACROSS THE HANDLER (the one design decision that matters).
 `UNIQUE (journal_event_id, job_type)` makes "email once" structural on the WRITE
@@ -189,6 +226,32 @@ async def drain_once(
     not dispatched, and its attempt bump rolled back, so registering the handler
     later picks it up with a full attempt budget rather than one already spent
     down by passes that never even tried to deliver it.
+
+    `batch_size` costs more than linear WHEN JOBS FAIL, and this is worth
+    stating precisely because the obvious reading is wrong. The per-pass
+    exclusion list (see `_claim_one`) is an unindexable `NOT (id = ANY(...))`,
+    but a job that DISPATCHES gets `dispatched_at` set and thereby leaves
+    `idx_garuda_order_outbox_undispatched` — a partial index on `(created_at)
+    WHERE dispatched_at IS NULL` — so the happy path stays linear and the
+    exclusion list never has to be walked for it. What the list actually pays
+    for are the rows this pass touched and LEFT undispatched (failed and
+    unroutable ones): each remains in the index, so every later claim in the
+    same pass scans past all of them. The cost is therefore
+    O(batch_size * undispatched_touched), i.e. quadratic only in a pass that
+    is failing wholesale. At the default of 20 even the worst case is a few
+    hundred comparisons; a caller passing thousands into a failing queue is
+    the one shape where this bites, and should call `drain_once` repeatedly
+    instead. No ceiling is enforced because the right one depends on the
+    deployment.
+
+    CANCELLATION IS NOT A HANDLER FAILURE. The `except Exception` around the
+    handler deliberately does not catch `BaseException`, so an
+    `asyncio.CancelledError` (worker shutdown, task cancellation) propagates
+    out of the transaction — rolling back that job's attempt bump — and then
+    out of `drain_once` itself, abandoning the rest of the batch. That is the
+    intended behaviour: a cancelled worker must stop, not quietly continue
+    delivering customer email, and the interrupted job must not be charged an
+    attempt for work nobody asked it to finish.
     """
 
     if not is_consumer_enabled():
@@ -290,7 +353,16 @@ async def count_undrained(
         """,
         max_attempts,
     )
-    assert row is not None  # a bare aggregate SELECT always returns one row
+    if row is None:
+        # A bare aggregate SELECT always returns exactly one row, so this is
+        # unreachable — which is precisely why it must not be an `assert`.
+        # `python -O` strips asserts, and the stripped version would fall
+        # through to `dict(None)` and raise a bare TypeError instead of saying
+        # what happened. An explicit raise survives every invocation mode.
+        raise RuntimeError(
+            f"aggregate SELECT over {OUTBOX_TABLE} returned no row; "
+            "the database did not answer a query that cannot be empty"
+        )
     return {k: int(v) for k, v in dict(row).items()}
 
 

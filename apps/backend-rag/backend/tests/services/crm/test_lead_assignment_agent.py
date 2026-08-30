@@ -218,3 +218,73 @@ async def test_trigger_lead_assignment_returns_failure_state_when_workflow_raise
     assert result["success"] is False
     assert result["assigned_lead"] is None
     assert result["errors"] == ["workflow failed"]
+
+
+# --------------------------------------------------------------------------
+# GARUDA VOA specialty routing (Zero ruling 2026-08-26)
+# --------------------------------------------------------------------------
+
+
+def test_both_garuda_voa_codes_route_to_the_setup_department() -> None:
+    """RED-if-wrong: `assign_lead` looks the code up EXACTLY
+    (`PRACTICE_DEPARTMENT_MAP.get(practice_type_code)`), with no prefix or
+    substring match. Before these two entries existed, both GARUDA codes
+    missed the map and every paid VOA order fell through to the round-robin
+    fallback, which draws from ALL assignable roles — tax included. Both
+    codes are catalogue-real: seeded by
+    `db/migrations_v2/221_practice_types_b1_voa.sql`."""
+    from backend.services.crm.assignment import PRACTICE_DEPARTMENT_MAP
+
+    assert PRACTICE_DEPARTMENT_MAP.get("visa_b1_voa") == "setup"
+    assert PRACTICE_DEPARTMENT_MAP.get("ext_b1_voa") == "setup"
+
+
+def test_the_garuda_codes_match_the_handoff_mapping_exactly() -> None:
+    """The two maps live in different packages and would drift silently:
+    `crm_handoff` decides WHICH code a paid order gets, `assignment` decides
+    WHO works it. A code present in the first and absent from the second is
+    an order routed by round-robin — the exact defect above, reintroduced.
+    RED if either side gains a code the other lacks."""
+    from backend.services.crm.assignment import PRACTICE_DEPARTMENT_MAP
+    from backend.services.garuda_ops.crm_handoff import PRACTICE_TYPE_CODE_BY_CASE_TYPE
+
+    unrouted = set(PRACTICE_TYPE_CODE_BY_CASE_TYPE.values()) - PRACTICE_DEPARTMENT_MAP.keys()
+    assert unrouted == set(), f"GARUDA practice types with no department: {sorted(unrouted)}"
+
+
+def test_setup_is_a_real_department_with_assignable_people_behind_it() -> None:
+    """Turns the open question this lane carried into a measured one.
+
+    Mapping a practice type to a department only helps if someone IS in that
+    department with an assignable role — otherwise `assign_lead`'s Strategy 1
+    finds nobody and falls through to the same round-robin the mapping was
+    meant to replace, making the entry inert rather than wrong.
+
+    `team_members.department` is populated out-of-band (no migration writes it),
+    so the closest checkable source is the seeded roster the loader reads:
+    `backend/data/team_members.json` via `backend/scripts/seed_users.py`. RED if
+    the `setup` department disappears from that roster, or if everyone left in
+    it holds a role `assign_lead` will not assign to.
+    """
+
+    import json
+    from pathlib import Path as _Path
+
+    import backend
+    from backend.services.crm.assignment import ASSIGNABLE_ROLES
+
+    # Anchored on the package, not on `__file__`'s parent count: this suite is
+    # run from several worktrees and a miscounted `parents[n]` fails as a
+    # FileNotFoundError that reads like a missing roster.
+    roster_path = _Path(backend.__file__).resolve().parent / "data" / "team_members.json"
+    assert roster_path.is_file(), f"seeded roster not where expected: {roster_path}"
+    roster = json.loads(roster_path.read_text())
+    setup_assignable = [
+        m
+        for m in roster
+        if m.get("department") == "setup" and m.get("role") in ASSIGNABLE_ROLES
+    ]
+    assert setup_assignable, (
+        "no seeded team member is in department 'setup' with an assignable role — "
+        "the GARUDA VOA department mapping would resolve to nobody"
+    )

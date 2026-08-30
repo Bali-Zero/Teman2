@@ -1,0 +1,76 @@
+task_id: craft-w-gate-seat-conformance
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  `scripts/launch_worker_plane_review_panel.py`'s module docstring named Fable 5 as the v3
+  sequential final gate, eight days after the 2026-08-20 ruling took Fable out of the workflow
+  entirely. Measuring instead of assuming showed the docstring was false in a way the task did not
+  anticipate: `launch_final_gate()` raises unconditionally, `V3_FINAL_GATE_READY` is False, and the
+  parity tripwire that guards the flag passes VACUOUSLY because of that False. So the sentence did
+  not merely name a retired seat — it claimed a capability the file does not have. Rewriting it to
+  say "Opus 5" would have replaced one false claim with another.
+
+  The forward exposure is the real risk: flipping one boolean would arm a protocol whose final gate
+  requests a retired model, and the existing tripwire demands parity with exactly that seat.
+
+  This PR corrects the docstring to what is TRUE, adds a guard on the flip, and — after a
+  cross-family refuter found the guard was executed by no workflow at all — arms it.
+constraints:
+  - "The correction must not swap one false claim for another. The docstring may not assert Opus 5
+    runs either; nothing runs."
+  - "`FABLE_GATE` / `FABLE_GATE_ARGV_SUFFIX` stay untouched. Re-pointing them changes what the v3
+    protocol WOULD do — a design decision, not a docstring correction."
+  - "The guard must forbid the CLAIM, not the word: a guard that forbids the token would forbid the
+    file's own explanation of the correction (W112, which bit this PR's first draft directly)."
+  - "The retired model name is read from CLAUDE.md, never hardcoded — a guard that hardcodes the
+    doctrine it enforces stops tracking that doctrine the moment it changes."
+acceptance:
+  - text: |
+      WHEN the retired-seat claim is reintroduced in ANY natural wording — prose name or model ID,
+      reordered, appositive, or with "only" dropped — the guard SHALL fail, WHILE the file's own
+      sentences explaining the correction SHALL still pass.
+    probe: "paste each evasion into the launcher docstring in turn, then pytest scripts/tests/test_gate_seat_conformance.py"
+  - text: |
+      WHEN `V3_FINAL_GATE_READY` is flipped to True while the gate seat still requests the retired
+      model — including the annotated and `bool(True)` forms — the guard SHALL fail.
+    probe: "rewrite the flag in each form, then pytest scripts/tests/test_gate_seat_conformance.py"
+  - text: |
+      IF the workflow stops naming this guard in ANY of its three places, the corpus SHALL go red;
+      naming it in two of three is worse than none because the green looks identical.
+    probe: "remove test_gate_seat_conformance from push.paths / the sentinel regex / the pytest list in turn, then pytest"
+  - text: |
+      WHERE the guard's own pattern stops matching (a rename, a reformat), it SHALL fail loudly
+      rather than pass silently.
+    probe: "grep -n 'launch_final_gate' scripts/launch_worker_plane_review_panel.py"
+consumer_map:
+  - "scripts/launch_worker_plane_review_panel.py — docstring, the function docstring and its error
+    string. No behaviour change; the launcher's phase two still raises unconditionally."
+  - "scripts/tests/test_gate_seat_conformance.py — the new guard, now executed."
+  - ".github/workflows/worker-plane-review-tests.yml — three edits that make the guard run at all."
+  - "scripts/tests/test_detect_secrets_auto_triage.py — its identity pins address lines by NUMBER;
+    the docstring edit shifted 14 of them. Re-derived by asking the classifier which lines it
+    approves, never by adding an offset by hand."
+  - "Whoever eventually flips V3_FINAL_GATE_READY — the guard is the thing that will stop them
+    arming a retired seat."
+risks:
+  - "The claim guard is textual and negative-gated on a retirement-marker vocabulary. A sentence
+    asserting the claim while also containing one of those markers would pass. That is the cost of
+    not forbidding the file's own explanation, and it is a narrower hole than the one it replaced —
+    but it is a hole, and it is stated rather than implied."
+  - "The detect-secrets pins remain index anchors and will drift again on the next edit above them.
+    Eliminating CONTENT_KEYED_RULES index-anchoring is tracked in PR #4664; the comment says so
+    rather than implying the anchors are fine."
+  - "`worker-plane-review-tests.yml` is self-described as advisory and is not a required context on
+    main. Arming the guard makes it RUN; making it BLOCK is an operator/Zero ruleset action, not
+    taken here."
+grader: |
+  Generator != grader, and it changed the diff substantially. Build lane: this session
+  (claude-opus-5, xhigh). Review lane: kimi-code/k3, cross-family and non-Anthropic, dispatched on
+  the finished merge-base-anchored diff with its own file access. It returned DO-NOT-SHIP with a
+  BLOCKER the build lane had not seen — the guard was named in no workflow — plus four reproduced
+  evasions of the guard's matching. Every finding was re-verified in this worktree before being
+  believed, and every fix is proved by the evasion it closes going from green to red.
+budget: |
+  1 build lane + 1 cross-family review seat. Three scripts, one workflow, this evidence pack.
+pii: none

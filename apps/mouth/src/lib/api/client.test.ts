@@ -2,6 +2,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ApiClientBase, PORTAL_IMPERSONATION_STORAGE_KEY } from "./client";
 import { UserProfile } from "@/types";
 
+// The 401 branch chooses a LOG LEVEL, and level is the whole point: `warn` and
+// `error` both forward to Sentry, `debug` does not (see logger.ts). Asserting
+// "it logged" would pass either way, so these tests assert WHICH method ran.
+vi.mock("@/lib/logger", () => ({
+  logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+import { logger } from "@/lib/logger";
+
 // Mock localStorage
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
@@ -418,6 +431,89 @@ describe("ApiClientBase", () => {
 
       const result = await (client as any).request("/test");
       expect(result).toEqual({});
+    });
+  });
+
+  // Measured 2026-08-28 on the live site: `/dream` is public, its autosave hits
+  // an authenticated endpoint, and an anonymous visitor who typed one character
+  // was ejected to kita.balizero.com/login?expired=true within seconds — while
+  // every tick logged at a Sentry-forwarding level until Sentry answered 429.
+  // Each test below fails if its half of that cure is removed.
+  describe("401 handling: never-authenticated visitor vs expired session", () => {
+    let replace: ReturnType<typeof vi.fn>;
+    let originalLocation: Location;
+
+    beforeEach(() => {
+      replace = vi.fn();
+      originalLocation = window.location;
+      Object.defineProperty(window, "location", {
+        configurable: true,
+        writable: true,
+        value: { pathname: "/dream", search: "", replace },
+      });
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        headers: new Headers(),
+        json: async () => ({ detail: "Authentication required" }),
+      });
+    });
+
+    afterEach(() => {
+      Object.defineProperty(window, "location", {
+        configurable: true,
+        writable: true,
+        value: originalLocation,
+      });
+    });
+
+    const seedSession = () => {
+      const profile: UserProfile = {
+        id: "1",
+        email: "someone@balizero.com",
+        name: "Someone",
+        role: "user",
+      };
+      localStorageMock.setItem("user_profile", JSON.stringify(profile));
+      return new ApiClientBase(baseUrl);
+    };
+
+    it("does NOT navigate away when the caller opts out (background autosave)", async () => {
+      await expect(
+        (client as any).request("/api/dream/state", {
+          method: "POST",
+          redirectOnUnauthorized: false,
+        }),
+      ).rejects.toThrow();
+
+      expect(replace).not.toHaveBeenCalled();
+    });
+
+    it("logs an anonymous visitor's 401 at debug — never at a Sentry-forwarding level", async () => {
+      await expect((client as any).request("/api/protected")).rejects.toThrow();
+
+      expect(logger.debug).toHaveBeenCalled();
+      expect(logger.warn).not.toHaveBeenCalled();
+      expect(logger.error).not.toHaveBeenCalled();
+    });
+
+    it("still warns and redirects when a real session died", async () => {
+      const authed = seedSession();
+
+      await expect((authed as any).request("/api/protected")).rejects.toThrow();
+
+      expect(logger.warn).toHaveBeenCalled();
+      expect(replace).toHaveBeenCalledWith(
+        expect.stringContaining("/login?expired=true"),
+      );
+    });
+
+    it("still redirects an anonymous visitor on a protected route by default", async () => {
+      // The opt-out is per-call, not a blanket change: a route that really is
+      // authenticated-only must keep sending the visitor to log in.
+      await expect((client as any).request("/api/protected")).rejects.toThrow();
+
+      expect(replace).toHaveBeenCalled();
     });
   });
 });

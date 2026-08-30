@@ -75,6 +75,7 @@ from backend.llm.codex_exec_client import (
     CodexExecCommunicationError,
     CodexExecOutputShapeError,
     CodexExecProcessError,
+    CodexExecQuotaError,
     CodexExecTimeoutError,
     CodexExecUnavailableError,
 )
@@ -507,6 +508,20 @@ class WaCodexDaemon:
                 claim.job_id,
             )
             error_class = "cli_failure"
+        except CodexExecQuotaError:
+            # B2b: a quota-dead seat is NOT a crash — every subsequent job
+            # will fail the same way until the seat's usage window resets,
+            # but no operator re-login fixes it (unlike auth death above).
+            # Reported as its own wire vocabulary entry so the sentinel can
+            # page a DEDICATED, time-bound condition instead of folding it
+            # into the generic cli_failure bucket, where it was previously
+            # indistinguishable from any other crash.
+            logger.warning(
+                "wa-codex-daemon: codex seat QUOTA EXHAUSTED (job %s reported as "
+                "quota_exhausted) — no operator action; waits for the usage window to reset",
+                claim.job_id,
+            )
+            error_class = "quota_exhausted"
         except (CodexExecProcessError, CodexExecCommunicationError, CodexExecOutputShapeError):
             error_class = "cli_failure"
         except Exception as exc:

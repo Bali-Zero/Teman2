@@ -98,6 +98,31 @@ class XenditPaymentProvider:
             raise ValueError(
                 "XenditPaymentProvider requires a sandbox (xnd_development_) secret key"
             )
+        if not callback_verification_token.strip():
+            # The SECOND half of the credential, and the one that fails
+            # SILENTLY when forgotten. `verify_signature` below rejects on
+            # `not received or not hmac.compare_digest(received, token)`: with
+            # an empty configured token, EVERY input is rejected — measured
+            # 2026-08-27 against this class, including a header carrying an
+            # arbitrary value, because `compare_digest(x, "")` is False for
+            # any non-empty x. That is not a security hole (nothing gets in),
+            # it is a money hole: `service_initializer.py` §5.7 arms the whole
+            # order lane on `GARUDA_XENDIT_SECRET_KEY` alone and reads THIS
+            # token with a `""` default, so setting one env var and forgetting
+            # the other opens checkout while making every legitimate Xendit
+            # callback answer 401. The customer is really charged, the order
+            # never leaves `awaiting_payment`, and nothing surfaces to them.
+            #
+            # Refusing construction here rather than only in §5.7 is
+            # deliberate: this is the one place every caller must pass, so a
+            # future second call site cannot reintroduce the hole. A provider
+            # that can never verify a callback is not a degraded provider, it
+            # is a provider that must not exist.
+            raise ValueError(
+                "XenditPaymentProvider requires a non-empty callback_verification_token: "
+                "with an empty one, every Xendit callback is rejected and paid orders "
+                "never advance (set GARUDA_XENDIT_CALLBACK_TOKEN)"
+            )
         self._secret_key = secret_key
         self._callback_verification_token = callback_verification_token
         # `public_base_url` is the ONE thing this adapter needs to reach the

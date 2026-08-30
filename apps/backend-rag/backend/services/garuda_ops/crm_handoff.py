@@ -30,6 +30,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from backend.app.utils.logging_utils import get_logger
+from backend.services.garuda_flow.intake import CaseType
 from backend.services.garuda_ops.ports import (
     CrmWriter,
     EventEnvelope,
@@ -38,12 +39,38 @@ from backend.services.garuda_ops.ports import (
 
 logger = get_logger(__name__)
 
-# The practice_type_code this handoff writes against. Not yet seeded in
-# `practice_types` (that migration is L1's exclusive path,
-# `apps/backend-rag/backend/db/migrations_v2/`) — kept as a named constant
-# so the concrete `PostgresCrmWriter` fails with a clear, attributable error
-# rather than a silent wrong-row insert if the row is still missing.
-GARUDA_VOA_PRACTICE_TYPE_CODE = "garuda_voa"
+# RULED by Zero, 2026-08-26: a paid GARUDA order enters the CRM as one of the
+# two B1-VOA services the catalogue ALREADY holds — never a new `garuda_voa`
+# type. Both rows are seeded by
+# `db/migrations_v2/221_practice_types_b1_voa.sql`, so no migration and no new
+# catalogue entry belong to this lane.
+#
+# This replaces a single hardcoded `GARUDA_VOA_PRACTICE_TYPE_CODE =
+# "garuda_voa"`, whose own comment conceded the row was "not yet seeded in
+# `practice_types`". That constant was not merely unseeded, it was WRONG:
+# issuance and extension are different products at different prices
+# (Rp 750,000 vs Rp 850,000, migration 221), and one shared code would have
+# priced, reported and routed them as one service.
+#
+# Derived per ORDER, never per SERVICE INSTANCE: there is deliberately no
+# constructor override any more. An override is exactly how one code silently
+# reclaims both case types again — the bug this constant already was.
+PRACTICE_TYPE_CODE_BY_CASE_TYPE: dict[str, str] = {
+    CaseType.ISSUANCE.value: "visa_b1_voa",
+    CaseType.EXTENSION.value: "ext_b1_voa",
+}
+
+
+class UnmappedCaseType(ValueError):
+    """`OrderSnapshot.case_type` names a case with no CRM service behind it.
+
+    Raised, not returned as a `HandoffOutcome`, and the distinction is
+    load-bearing. A `HandoffOutcome` is a resolved state the consumer marks
+    dispatched; this is a code/data defect that no retry can fix and that
+    must stay VISIBLE — a paid order with no CRM practice is a customer who
+    paid and whom nobody is working for. Raising lets the outbox record the
+    failed attempt and surface the job instead of retiring it green.
+    """
 
 
 class HandoffOutcome(str, Enum):
@@ -64,11 +91,9 @@ class CrmHandoffService:
         *,
         order_snapshots: OrderSnapshotProvider,
         crm_writer: CrmWriter,
-        practice_type_code: str = GARUDA_VOA_PRACTICE_TYPE_CODE,
     ) -> None:
         self._order_snapshots = order_snapshots
         self._crm_writer = crm_writer
-        self._practice_type_code = practice_type_code
 
     async def handle_practice_received(self, event: EventEnvelope) -> HandoffResult:
         if event.transition_id != "PR-01" or event.aggregate_type != "practice":
@@ -100,10 +125,21 @@ class CrmHandoffService:
             )
             return HandoffResult(HandoffOutcome.ORDER_SNAPSHOT_MISSING, None)
 
+        practice_type_code = PRACTICE_TYPE_CODE_BY_CASE_TYPE.get(snapshot.case_type)
+        if practice_type_code is None:
+            # Neither the case_type value nor any order identifier goes into
+            # this message: SM-G03 bans order/account identifiers as log
+            # fields, and this string reaches a log through the raise.
+            msg = (
+                "GARUDA order snapshot carries a case_type with no CRM practice "
+                "type mapped to it; see PRACTICE_TYPE_CODE_BY_CASE_TYPE"
+            )
+            raise UnmappedCaseType(msg)
+
         crm_practice_id = await self._crm_writer.create_client_and_practice(
             snapshot,
             source_idempotency_key=idempotency_key,
-            practice_type_code=self._practice_type_code,
+            practice_type_code=practice_type_code,
         )
         logger.info(
             "garuda_ops.crm_handoff.created",

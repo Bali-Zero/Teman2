@@ -1,0 +1,204 @@
+{
+ "m1-garuda-landing": {
+  "placeholder_markers": 6,
+  "header_contract": true,
+  "identifier_line": true,
+  "dated_line": true,
+  "counter": "n/a",
+  "idr_occurrences": 2,
+  "idr_contained": true,
+  "wa_component": true,
+  "inline_red_uses": 0,
+  "red_budget_ok": true,
+  "selected_not_red": true,
+  "no_guarantee_language": true
+ },
+ "m2a-garuda-question": {
+  "placeholder_markers": 2,
+  "header_contract": true,
+  "identifier_line": true,
+  "dated_line": true,
+  "counter": true,
+  "idr_occurrences": 0,
+  "idr_contained": "n/a",
+  "wa_component": true,
+  "inline_red_uses": 0,
+  "red_budget_ok": true,
+  "selected_not_red": true,
+  "no_guarantee_language": true
+ },
+ "m2b-garuda-upload": {
+  "placeholder_markers": 4,
+  "header_contract": true,
+  "identifier_line": true,
+  "dated_line": true,
+  "counter": true,
+  "idr_occurrences": 0,
+  "idr_contained": "n/a",
+  "wa_component": true,
+  "inline_red_uses": 0,
+  "red_budget_ok": true,
+  "selected_not_red": true,
+  "no_guarantee_language": true
+ },
+ "m3-vo-question": {
+  "placeholder_markers": 2,
+  "header_contract": true,
+  "identifier_line": true,
+  "dated_line": true,
+  "counter": true,
+  "idr_occurrences": 0,
+  "idr_contained": "n/a",
+  "wa_component": true,
+  "inline_red_uses": 0,
+  "red_budget_ok": true,
+  "selected_not_red": true,
+  "no_guarantee_language": true
+ },
+ "m4a-vo-verdict-human-review-named": {
+  "placeholder_markers": 7,
+  "header_contract": true,
+  "identifier_line": true,
+  "dated_line": true,
+  "counter": "n/a",
+  "idr_occurrences": 0,
+  "idr_contained": "n/a",
+  "wa_component": true,
+  "inline_red_uses": 0,
+  "red_budget_ok": true,
+  "selected_not_red": true,
+  "variant_ok": true,
+  "no_guarantee_language": true
+ },
+ "m4b-vo-verdict-human-review-control": {
+  "placeholder_markers": 5,
+  "header_contract": true,
+  "identifier_line": true,
+  "dated_line": true,
+  "counter": "n/a",
+  "idr_occurrences": 0,
+  "idr_contained": "n/a",
+  "wa_component": true,
+  "inline_red_uses": 0,
+  "red_budget_ok": true,
+  "selected_not_red": true,
+  "variant_ok": true,
+  "no_guarantee_language": true
+ },
+ "m5-vo-verdict-supported-payment": {
+  "placeholder_markers": 10,
+  "header_contract": true,
+  "identifier_line": true,
+  "dated_line": true,
+  "counter": "n/a",
+  "idr_occurrences": 3,
+  "idr_contained": true,
+  "wa_component": true,
+  "inline_red_uses": 0,
+  "red_budget_ok": true,
+  "selected_not_red": true,
+  "no_guarantee_language": true
+ },
+ "m6-my-tracker": {
+  "placeholder_markers": 7,
+  "header_contract": true,
+  "identifier_line": true,
+  "dated_line": true,
+  "counter": "n/a",
+  "idr_occurrences": 0,
+  "idr_contained": "n/a",
+  "wa_component": true,
+  "inline_red_uses": 1,
+  "red_budget_ok": true,
+  "selected_not_red": true,
+  "no_guarantee_language": true
+ },
+ "m7-vo-landing": {
+  "placeholder_markers": 5,
+  "header_contract": true,
+  "identifier_line": true,
+  "dated_line": true,
+  "counter": "n/a",
+  "idr_occurrences": 2,
+  "idr_contained": true,
+  "wa_component": true,
+  "inline_red_uses": 0,
+  "red_budget_ok": true,
+  "selected_not_red": true,
+  "no_guarantee_language": true
+ },
+ "m8-garuda-recovery": {
+  "placeholder_markers": 6,
+  "header_contract": true,
+  "identifier_line": true,
+  "dated_line": true,
+  "counter": "n/a",
+  "idr_occurrences": 0,
+  "idr_contained": "n/a",
+  "wa_component": true,
+  "inline_red_uses": 0,
+  "red_budget_ok": true,
+  "selected_not_red": true,
+  "no_guarantee_language": true
+ },
+ "_css": {
+  "cormorant_floor_24": true,
+  "h3_is_inter": true,
+  "focus_covers_all_interactives": true,
+  "placeholder_aa": true,
+  "error_not_color_alone": true,
+  "touch44_shell": true,
+  "touch44_core": true,
+  "cta_clearance_8px": true,
+  "interactive_shadow": true,
+  "selected_is_ink_with_padding_compensation": true,
+  "pressed_has_motion": true,
+  "track_boundary": true,
+  "mono_nowrap": true,
+  "dark_primitives_present": true,
+  "reduced_motion": true,
+  "buttons_inherit_font": true
+ },
+ "_apca_advisory": [
+  {
+   "pair": "ink on carta",
+   "Lc": 97.5
+  },
+  {
+   "pair": "ink on white",
+   "Lc": 102.9
+  },
+  {
+   "pair": "ink-soft on carta",
+   "Lc": 81.1
+  },
+  {
+   "pair": "ink-soft on white",
+   "Lc": 86.5
+  },
+  {
+   "pair": "merah-action on carta (links)",
+   "Lc": 69.8
+  },
+  {
+   "pair": "white on merah-action (CTA)",
+   "Lc": -80.6
+  },
+  {
+   "pair": "state-error on white (error msg)",
+   "Lc": 80.3
+  },
+  {
+   "pair": "state-conditional on carta (.ph)",
+   "Lc": 78.2
+  },
+  {
+   "pair": "state-conditional on white (.ph in cards)",
+   "Lc": 83.7
+  },
+  {
+   "pair": "state-eligible on white (M5 h2)",
+   "Lc": 83.1
+  }
+ ]
+}

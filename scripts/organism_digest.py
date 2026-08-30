@@ -179,9 +179,26 @@ _SEAT_PROVIDER = {
     "nlm": "Google",
     "qwen-cloud-code": "Alibaba Token Plan (TP1)",
     "jules": "Google",
+    # 7 TP1 seats added 2026-08-29 (W-class: _SEAT_PROVIDER drifted behind
+    # arsenal_probe.py's ALL_SEATS — roster-drift selftest was RED, 27/28,
+    # before this fix). All seven share the SAME MODEL_ROSTER.md provider
+    # section as qwen-cloud-code: "## Alibaba Token Plan (TP1)" documents
+    # deepseek-v4-pro, deepseek-v4-flash-0731, glm-5.2, qwen3.8-max,
+    # qwen3.7-max, qwen3.7-plus and qwen3.6-flash side by side with
+    # qwen-cloud-code's own row (verified 2026-08-29 against the live file).
+    "tp1-deepseek-v4-pro": "Alibaba Token Plan (TP1)",
+    "tp1-deepseek-v4-flash-0731": "Alibaba Token Plan (TP1)",
+    "tp1-glm-5.2": "Alibaba Token Plan (TP1)",
+    "tp1-qwen3.8-max": "Alibaba Token Plan (TP1)",
+    "tp1-qwen3.7-max": "Alibaba Token Plan (TP1)",
+    "tp1-qwen3.7-plus": "Alibaba Token Plan (TP1)",
+    "tp1-qwen3.6-flash": "Alibaba Token Plan (TP1)",
 }
 _FALLBACK_ALL_SEATS = ["claude", "kimi", "agy", "codex", "codex-spark",
-                        "ollama", "nlm", "qwen-cloud-code", "jules"]
+                        "ollama", "nlm", "qwen-cloud-code", "jules",
+                        "tp1-deepseek-v4-pro", "tp1-deepseek-v4-flash-0731",
+                        "tp1-glm-5.2", "tp1-qwen3.8-max", "tp1-qwen3.7-max",
+                        "tp1-qwen3.7-plus", "tp1-qwen3.6-flash"]
 
 
 def _known_seats() -> list[str]:
