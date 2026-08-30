@@ -152,6 +152,7 @@ on:
       - manual - garuda voa arm
       - Deploy Backend to Fly.io
       - Fly.io Secrets Health Check
+      - Fleet burst dispatcher tests
       - Frontend Live Sentinel
       - Frontend typecheck (apps/mouth)
       - garuda-contract-parity
