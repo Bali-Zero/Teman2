@@ -31,6 +31,10 @@ from backend.services.garuda_portal.magic_link_store import (
     _MAX_ISSUES_PER_EMAIL_PER_WINDOW,
     PostgresMagicLinkStore,
 )
+from backend.tests.fixtures.prod_shaped_pool import (
+    create_prod_shaped_pool,
+    init_prod_shaped_connection,
+)
 
 _DSN = (
     os.environ.get("GARUDA_L4_TEST_DSN")
@@ -110,7 +114,7 @@ async def _close_garuda_magic_link_test_policy(conn: asyncpg.Connection, policy_
 @pytest.fixture
 async def pool():
     try:
-        p = await asyncpg.create_pool(dsn=_DSN, min_size=1, max_size=4)
+        p = await create_prod_shaped_pool(dsn=_DSN, min_size=1, max_size=4)
     except (OSError, asyncpg.PostgresError) as exc:
         if os.environ.get("CI"):
             pytest.fail(
@@ -461,11 +465,24 @@ def _make_counting_connection_class(counts: list[int]) -> type:
 @pytest.fixture
 async def counting_pool():
     """A SEPARATE pool (own connection class) so this file's other tests'
-    connections are never instrumented — only exchange() calls made
-    through `counting_store` below are counted."""
+    connections are never instrumented -- only exchange() calls made
+    through `counting_store` below are counted.
+
+    Also needs the canonical codec (2026-08-29): `counting_store` below
+    calls `.exchange()`, which writes through `garuda_portal/idempotency.py
+    ::complete()` -- that writer now hands a jsonb parameter a native Python
+    container and relies on the codec to encode it. `create_prod_shaped_pool`
+    does not expose `connection_class`, so this pool is built directly with
+    BOTH `connection_class=...` (for counting) and
+    `init=init_prod_shaped_connection` -- the SAME canonical init object
+    production and `create_prod_shaped_pool` use, not a re-implementation."""
     counts = [0]
     p = await asyncpg.create_pool(
-        dsn=_DSN, min_size=1, max_size=2, connection_class=_make_counting_connection_class(counts)
+        dsn=_DSN,
+        min_size=1,
+        max_size=2,
+        connection_class=_make_counting_connection_class(counts),
+        init=init_prod_shaped_connection,
     )
     yield p, counts
     await p.close()
