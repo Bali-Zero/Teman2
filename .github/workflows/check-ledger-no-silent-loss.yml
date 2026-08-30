@@ -96,6 +96,12 @@ on:
       - "scripts/pending_arms_report.py"
       - "scripts/tests/test_check_ledger_no_silent_loss.py"
       - ".github/workflows/check-ledger-no-silent-loss.yml"
+      # Ratchet subjects (2026-08-31). A guard whose own corpus is not a
+      # trigger of the job that runs it can be edited into uselessness by a PR
+      # this job never sees.
+      - "scripts/tests/test_pending_arms_ratchet.py"
+      - "scripts/organism_digest.py"
+      - "scripts/tests/test_organism_digest_pending_arms.py"
 
 permissions:
   contents: read
@@ -375,3 +381,77 @@ jobs:
             } else {
               await github.rest.issues.createComment({ owner, repo, issue_number, body });
             }
+
+      # ---------------------------------------------------------------------
+      # The overdue RATCHET (added 2026-08-31, squad L / L10-PR1)
+      #
+      # Same file as the loss/duplication check above because it asks about the
+      # same artefact across the same base-vs-head boundary — but NOT the same
+      # question, and deliberately not the same base:
+      #
+      #   this check (above): "is a row that was on CURRENT main gone?"  -> origin/main
+      #   the ratchet (below): "what did THIS BRANCH author?"            -> merge-base
+      #
+      # W88/W102 are the two halves of that pair and each one breaks the other
+      # if unified. `pending_arms_report.py` carries the same warning at the
+      # site that computes the base; do not "fix" either into the other.
+      #
+      # `if: always()` on all three: a finding from the loss check above must
+      # not silently skip the ratchet, and a ratchet finding must not hide a
+      # loss finding. Both surface; the job goes red for whichever fired.
+      # Non-required, exactly like the check above — a red here is loud on the
+      # PR's checks list but does not block. Promotion to a REQUIRED context is
+      # branch protection, i.e. operator-only (CLAUDE.md §13), and is carried
+      # as a PENDING-ARMS row rather than claimed here.
+      # ---------------------------------------------------------------------
+
+      - name: Ratchet self-test (the detector still detects — guilt AND innocence)
+        if: always()
+        # This is the arming proof, and it runs on every triggering PR rather
+        # than once at review time: the fixtures assert that +1 overdue row is
+        # RED, that a FRESH row is CLEAN, that a sufficient override is accepted
+        # and an insufficient one is not, and that the base/head delta is
+        # identical at two far-apart dates. If the detector ever stops
+        # detecting, THIS step is what goes red — not a silent pass.
+        run: python scripts/pending_arms_report.py --ratchet-selftest
+
+      - name: Ratchet + digest corpora (named, because scripts/tests/ gates nothing)
+        if: always()
+        # `scripts-tests-sweep.yml` is continue-on-error, so a corpus there
+        # cannot redden anything. Measured 2026-08-31:
+        # test_organism_digest_pending_arms.py — the corpus that CLOSED W120,
+        # the "the sentinel for built-but-not-armed was itself not armed" scar
+        # — was named by NO workflow in this repo. It is named here.
+        run: |
+          python -m pytest -q \
+            scripts/tests/test_pending_arms_ratchet.py \
+            scripts/tests/test_organism_digest_pending_arms.py
+
+      - name: PENDING-ARMS overdue ratchet (no new overdue rows without a stated why)
+        if: always()
+        run: |
+          set -uo pipefail
+          # Real exit code, deliberately not swallowed. 0 = clean or an
+          # override was accepted, 1 = this branch raised the overdue count
+          # without saying why, 3 = CANNOT-VERIFY (no resolvable merge-base:
+          # a scan that could not look is not a clean scan, W84).
+          #
+          # set +e around the pipe, and it is load-bearing — the same third-pass
+          # correction the ledger-check step above already carries, and this
+          # step was written by copying that step's SHAPE without its cure.
+          # Actions' default bash is `-eo pipefail` and `set -uo pipefail` never
+          # turns errexit off, so on a non-clean verdict the shell exits AT the
+          # pipe: no PIPESTATUS, no step summary — the surface goes silent
+          # exactly when the verdict is not clean. (Cross-family gate finding.)
+          set +e
+          python scripts/pending_arms_report.py --ratchet 2>&1 | tee /tmp/ratchet.out
+          RC="${PIPESTATUS[0]}"
+          set -e
+          {
+            echo "### PENDING-ARMS overdue ratchet"
+            echo
+            echo '```'
+            cat /tmp/ratchet.out
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$RC"

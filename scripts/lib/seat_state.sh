@@ -67,13 +67,22 @@ import json, sys, datetime, math
 # meaningfully in the future is not. 300s absorbs ordinary NTP drift without
 # absorbing a broken writer.
 #
-# EDITING NOTE, measured not theorised: this heredoc body is nested inside a
-# command substitution, so bash SCANS it even though it is quote-delimited.
-# A comment here containing a dollar-paren sequence, a backtick, or an
-# unbalanced quote makes bash reject the WHOLE FILE with
-# 'unexpected EOF while looking for matching quote' - and the reported line
-# number is the end of the file, nowhere near the offending comment. Keep
-# prose in here free of shell metacharacters.
+# EDITING NOTE, and the first version of this note was WRONG so the method
+# matters more than the rule: this heredoc body is nested inside a command
+# substitution, so bash SCANS it even though it is quote-delimited. Measured on
+# this exact file by injecting one token at a time and running bash -n:
+#   a lone apostrophe        -> FATAL
+#   an unbalanced double quote -> FATAL
+#   a dollar-paren sequence  -> harmless
+#   a backtick               -> harmless
+# So the rule is QUOTE BALANCE, not shell metacharacters generally. The earlier
+# note here blamed dollar-paren and backticks; both are measured harmless, and
+# it had absolved the apostrophe that actually broke the file. That mistake came
+# from counting apostrophe-bearing LINES with grep -c instead of apostrophe
+# CHARACTERS - the body already held a balanced pair, so the count read 1 and
+# looked like proof that one apostrophe was survivable. Count characters.
+# The failure is also badly signposted: bash reports the END OF THE FILE,
+# nowhere near the offending comment. Keep prose in here quote-balanced.
 _FUTURE_TOLERANCE_S = 300
 
 def _reject_const(_name):

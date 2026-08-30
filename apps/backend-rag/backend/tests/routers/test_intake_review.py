@@ -38,6 +38,7 @@ from httpx import ASGITransport, AsyncClient
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.setup.route_walk import iter_leaf_routes
+from backend.tests.fixtures.prod_shaped_pool import create_prod_shaped_pool
 
 DSN = os.environ.get("INTAKE_TEST_DSN", "postgresql://localhost:5432/nuzantara_test")
 PIPELINE = "test-5a"
@@ -77,7 +78,7 @@ async def _dsn_reachable() -> bool:
 async def pool() -> AsyncIterator[asyncpg.Pool]:
     if not await _dsn_reachable():
         pytest.skip(f"local intake DB not reachable at {DSN}")
-    p = await asyncpg.create_pool(DSN, min_size=1, max_size=4)
+    p = await create_prod_shaped_pool(DSN, min_size=1, max_size=4)
     yield p
     await p.close()
 
@@ -117,9 +118,19 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
                     status, stage_output, intake_key, received_by)
                    VALUES ($1,$2,$3,$4,$5,$6,'done',$7::jsonb,$8,$9) RETURNING id""",
                 inst, source, f"{tag}-ref", f"/tmp/{tag}.pdf", bh[:64], PIPELINE,
-                json.dumps(stage_output if stage_output is not None else
-                           {"ocr": {"pages": [{"page": 1, "text": "NPWP 09.x"}]},
-                            "doc_type": "npwp"}),
+                # NATIVE dict, not json.dumps (2026-08-31). This fixture's pool is
+                # now the production-shaped one, which registers the jsonb codec --
+                # so a pre-serialized string is encoded a SECOND time and lands as a
+                # jsonb STRING SCALAR, exactly the defect this lane exists to close.
+                # It is not cosmetic here: `routing || jsonb_build_object(...)` in
+                # test_candidate_ids_routing_fallback_and_companies_excluded operates
+                # on a scalar instead of an object, the client_id fallback never
+                # lands, and the test fails `assert 90 in []`. Found in CI Backend
+                # Shard 3, not locally -- this repo's local Postgres has no `clients`
+                # table, so the test ERRORS here and can never reproduce the red.
+                (stage_output if stage_output is not None else
+                 {"ocr": {"pages": [{"page": 1, "text": "NPWP 09.x"}]},
+                  "doc_type": "npwp"}),
                 ikey, received_by,
             )
             created["queues"].append(qid)
@@ -129,12 +140,12 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
                     entity_resolution, routing, commit_gate, status)
                    VALUES ($1,0,$2,$3,$4::jsonb,$5::jsonb,$6::jsonb,'review_pending') RETURNING id""",
                 qid, PIPELINE, f"{tag}-{uuid.uuid4().hex[:6]}",
-                json.dumps(entity_resolution),
-                json.dumps({"doc_type": "npwp",
-                            "fields": {"npwp_number": {"value": "09.254.294.3-407.000",
-                                                       "confidence": 0.85, "source_page": 1}},
-                            "type_confidence": 0.97}),
-                json.dumps({"requires_human": True, "auto_commit_eligible": False}),
+                entity_resolution,
+                {"doc_type": "npwp",
+                 "fields": {"npwp_number": {"value": "09.254.294.3-407.000",
+                                            "confidence": 0.85, "source_page": 1}},
+                 "type_confidence": 0.97},
+                {"requires_human": True, "auto_commit_eligible": False},
             )
             created["proposals"].append(pid)
             return pid

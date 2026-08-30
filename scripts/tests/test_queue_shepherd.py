@@ -933,3 +933,267 @@ def test_parse_iso_invalid_string_is_none_not_a_crash():
 def test_parse_iso_none_and_empty_are_none():
     assert qs._parse_iso(None) is None
     assert qs._parse_iso("") is None
+
+
+# ── quarantine (2026-08-31, squad-S / issue #5316): consecutive-failure threshold ───────────
+# See queue_shepherd.py's module docstring QUARANTINE section for the live incident this
+# responds to: 4 real run ids failing `cancel_run` with an identical HTTP 500 forever, because
+# a "failed" outcome was never persisted anywhere.
+
+
+def test_record_cancel_failure_innocence_two_consecutive_failed_is_not_quarantined():
+    state: dict = {}
+    state = qs.record_cancel_failure(state, "999", "failed", NOW)
+    state = qs.record_cancel_failure(state, "999", "failed", NOW + _dt.timedelta(minutes=10))
+    assert state["999"]["consecutive_failures"] == 2
+    assert "quarantined_at" not in state["999"]
+    assert qs.is_quarantined(state["999"], NOW + _dt.timedelta(minutes=20)) is False
+
+
+def test_record_cancel_failure_guilt_third_consecutive_failed_quarantines():
+    state: dict = {}
+    for i in range(2):
+        state = qs.record_cancel_failure(state, "999", "failed", NOW + _dt.timedelta(minutes=i))
+    state = qs.record_cancel_failure(state, "999", "failed", NOW + _dt.timedelta(minutes=2))
+    assert state["999"]["consecutive_failures"] == 3 == qs.UNCANCELLABLE_FAILURE_THRESHOLD
+    assert state["999"]["quarantined_at"] == _iso(NOW + _dt.timedelta(minutes=2))
+    assert qs.is_quarantined(state["999"], NOW + _dt.timedelta(minutes=3)) is True
+
+
+def test_record_cancel_failure_guilt_single_uncancellable_409_quarantines_immediately():
+    state = qs.record_cancel_failure({}, "42", "uncancellable_409", NOW)
+    assert state["42"]["consecutive_failures"] == qs.UNCANCELLABLE_FAILURE_THRESHOLD
+    assert state["42"]["quarantined_at"] == _iso(NOW)
+    assert qs.is_quarantined(state["42"], NOW) is True
+
+
+def test_record_cancel_failure_records_a_real_last_error_label_and_timestamp():
+    failed_state = qs.record_cancel_failure({}, "1", "failed", NOW)
+    assert failed_state["1"]["last_error"] == qs._UNCANCELLABLE_ERROR_LABELS["failed"]
+    assert failed_state["1"]["last_attempt_at"] == _iso(NOW)
+    conflict_state = qs.record_cancel_failure({}, "2", "uncancellable_409", NOW)
+    assert conflict_state["2"]["last_error"] == qs._UNCANCELLABLE_ERROR_LABELS["uncancellable_409"]
+
+
+def test_record_cancel_failure_uncancellable_409_never_lowers_an_already_higher_count():
+    # 3 "failed" already recorded (count=3, already quarantined); a LATER uncancellable_409 on
+    # the SAME id must never reset/lower the counter — max(existing, THRESHOLD), not overwrite.
+    state: dict = {}
+    for i in range(3):
+        state = qs.record_cancel_failure(state, "7", "failed", NOW + _dt.timedelta(minutes=i))
+    assert state["7"]["consecutive_failures"] == 3
+    state = qs.record_cancel_failure(state, "7", "uncancellable_409", NOW + _dt.timedelta(hours=1))
+    assert state["7"]["consecutive_failures"] == 3
+
+
+def test_record_cancel_failure_never_mutates_the_input_dict():
+    original: dict = {}
+    result = qs.record_cancel_failure(original, "1", "failed", NOW)
+    assert original == {}  # pure — mirrors record_infra_rearm's own no-mutation contract
+    assert result != original
+
+
+# ── clear_cancel_entry ───────────────────────────────────────────────────────
+
+
+def test_clear_cancel_entry_guilt_removes_a_tracked_id():
+    state = {"5": {"consecutive_failures": 2}}
+    cleared = qs.clear_cancel_entry(state, "5")
+    assert "5" not in cleared
+
+
+def test_clear_cancel_entry_innocence_absent_id_is_a_harmless_noop():
+    state = {"5": {"consecutive_failures": 2}}
+    result = qs.clear_cancel_entry(state, "999")
+    assert result == state
+    assert "5" in result
+
+
+# ── is_quarantined ────────────────────────────────────────────────────────────
+
+
+def test_is_quarantined_innocence_no_entry_is_false():
+    assert qs.is_quarantined(None, NOW) is False
+    assert qs.is_quarantined({}, NOW) is False
+
+
+def test_is_quarantined_innocence_below_threshold_no_quarantined_at_is_false():
+    entry = {"consecutive_failures": 2}
+    assert qs.is_quarantined(entry, NOW) is False
+
+
+def test_is_quarantined_guilt_within_cooldown_is_true():
+    entry = {"consecutive_failures": 3, "quarantined_at": _iso(NOW)}
+    assert qs.is_quarantined(entry, NOW + _dt.timedelta(hours=1)) is True
+
+
+def test_is_quarantined_innocence_past_cooldown_expires_and_allows_retry():
+    entry = {"consecutive_failures": 3, "quarantined_at": _iso(NOW)}
+    assert qs.is_quarantined(entry, NOW + _dt.timedelta(hours=25)) is False
+
+
+def test_is_quarantined_malformed_timestamp_fails_open_to_retry_never_permanent_skip():
+    # A quarantined_at this module cannot parse must never turn into a run skipped FOREVER
+    # with no path back — fail toward "retry" (harmless: cancel_run just fails and re-quarantines
+    # fresh), never toward "permanent silent skip" (the exact esiste!=armato failure mode).
+    entry = {"consecutive_failures": 3, "quarantined_at": "not-a-timestamp"}
+    assert qs.is_quarantined(entry, NOW) is False
+
+
+# ── end-to-end: the LIVE incident (2026-08-31) — 4 real run ids, real HTTP 500 text ─────────
+
+REAL_STUCK_RUN_IDS = (32217208723, 32217208752, 32217399769, 32212086540)
+
+
+def test_janitor_quarantines_the_real_stuck_run_ids_after_three_ticks_no_more_log_spam(
+    monkeypatch, tmp_path, caplog
+):
+    """BITE: reproduces the LIVE incident measured on Pro 2026-08-30/31
+    (~/logs/queue-shepherd.log) verbatim — only `_run` (the subprocess boundary) is faked, so
+    the REAL cancel_run() code path runs and produces the exact observed
+    'gh: Failed to cancel workflow run (HTTP 500)' text for 4 real run ids, every tick, forever
+    (this is what "failed" never being persisted anywhere actually looked like live). Runs 3
+    real ticks (the quarantine threshold) and asserts the real WARNING log line repeats EVERY
+    time (innocence: the threshold really is 3, not fewer) — then a 4th tick proves cancel_run
+    is never re-invoked for any of the 4 ids and the log carries zero further
+    'cancel_run(<id>) failed' lines for them (guilt: quarantine actually silences the repeat,
+    which is the entire point of this PR)."""
+    monkeypatch.setattr(qs, "UNCANCELLABLE_FILE", tmp_path / "uncancellable.json")
+
+    def fake_fetch_queued_runs(repo=qs.REPO):
+        return [
+            {"id": rid, "event": "pull_request", "head_sha": "dead", "head_branch": None, "name": "CI"}
+            for rid in REAL_STUCK_RUN_IDS
+        ]
+
+    def fake_fetch_open_pr_heads(repo=qs.REPO):
+        return set()  # stale on discovery AND every recheck — these are genuinely dead runs
+
+    def fake_fetch_live_queue_branches(repo=qs.REPO):
+        return set()
+
+    def fake_run(cmd, timeout=30):
+        # cancel_run()'s FIRST (plain-cancel) attempt only — the exact live error text.
+        return 1, "", "gh: Failed to cancel workflow run (HTTP 500)"
+
+    monkeypatch.setattr(qs, "fetch_queued_runs", fake_fetch_queued_runs)
+    monkeypatch.setattr(qs, "fetch_open_pr_heads", fake_fetch_open_pr_heads)
+    monkeypatch.setattr(qs, "fetch_live_queue_branches", fake_fetch_live_queue_branches)
+    monkeypatch.setattr(qs, "_run", fake_run)
+
+    for tick_num in range(1, 4):  # ticks 1-3: every id still gets a real cancel_run attempt
+        caplog.clear()
+        with caplog.at_level("WARNING"):
+            cancelled = qs.run_janitor_pass(dry_run=False)
+        assert cancelled == 0
+        for rid in REAL_STUCK_RUN_IDS:
+            assert (
+                f"cancel_run({rid}) failed rc=1 err=gh: Failed to cancel workflow run (HTTP 500)"
+                in caplog.text
+            ), f"tick {tick_num} lost the real warning for {rid}"
+
+    # Tick 4: all 4 ids are now quarantined.
+    caplog.clear()
+    with caplog.at_level("INFO"):
+        cancelled_4 = qs.run_janitor_pass(dry_run=False)
+
+    assert cancelled_4 == 0
+    assert "skipping 4 known-uncancellable runs" in caplog.text
+    for rid in REAL_STUCK_RUN_IDS:
+        assert f"cancel_run({rid}) failed" not in caplog.text
+
+    saved = qs._load_json(qs.UNCANCELLABLE_FILE)
+    assert len(saved) == 4
+    for rid in REAL_STUCK_RUN_IDS:
+        entry = saved[str(rid)]
+        assert entry["consecutive_failures"] == qs.UNCANCELLABLE_FAILURE_THRESHOLD
+        assert "quarantined_at" in entry
+        assert entry["last_error"] == qs._UNCANCELLABLE_ERROR_LABELS["failed"]
+
+
+def test_janitor_quarantine_expires_after_cooldown_and_a_successful_retry_clears_it(
+    monkeypatch, tmp_path
+):
+    """Guilt+success: a quarantined id whose quarantined_at is more than
+    UNCANCELLABLE_RETRY_COOLDOWN_HOURS in the past gets exactly one retry attempt; if it
+    succeeds, the entry is cleared entirely — 'reset the counter if a later attempt succeeds'."""
+    uncancellable_path = tmp_path / "uncancellable.json"
+    old_ts = (
+        qs._now() - _dt.timedelta(hours=qs.UNCANCELLABLE_RETRY_COOLDOWN_HOURS + 1)
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    qs._save_json(
+        uncancellable_path,
+        {"555": {"consecutive_failures": 5, "quarantined_at": old_ts, "last_error": "x", "last_attempt_at": old_ts}},
+    )
+    monkeypatch.setattr(qs, "UNCANCELLABLE_FILE", uncancellable_path)
+
+    def fake_fetch_queued_runs(repo=qs.REPO):
+        return [{"id": 555, "event": "pull_request", "head_sha": "dead", "head_branch": None, "name": "CI"}]
+
+    def fake_fetch_open_pr_heads(repo=qs.REPO):
+        return set()
+
+    def fake_fetch_live_queue_branches(repo=qs.REPO):
+        return set()
+
+    calls = []
+
+    def fake_cancel_run(repo, run_id):
+        calls.append(run_id)
+        return True, "cancelled"
+
+    monkeypatch.setattr(qs, "fetch_queued_runs", fake_fetch_queued_runs)
+    monkeypatch.setattr(qs, "fetch_open_pr_heads", fake_fetch_open_pr_heads)
+    monkeypatch.setattr(qs, "fetch_live_queue_branches", fake_fetch_live_queue_branches)
+    monkeypatch.setattr(qs, "cancel_run", fake_cancel_run)
+
+    cancelled = qs.run_janitor_pass(dry_run=False)
+
+    assert cancelled == 1
+    assert calls == [555]  # the expired quarantine WAS retried, not skipped forever
+    saved = qs._load_json(uncancellable_path)
+    assert "555" not in saved  # cleared entirely on success
+
+
+def test_janitor_quarantine_expires_but_a_failing_retry_re_quarantines_and_restarts_cooldown(
+    monkeypatch, tmp_path
+):
+    """Innocence-of-permanence: an expired quarantine's retry that fails AGAIN must not be
+    forgotten — it re-quarantines (refreshes quarantined_at to the NEW attempt), so the very
+    next tick skips it again instead of retrying every tick from then on."""
+    uncancellable_path = tmp_path / "uncancellable.json"
+    old_ts = (
+        qs._now() - _dt.timedelta(hours=qs.UNCANCELLABLE_RETRY_COOLDOWN_HOURS + 1)
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    qs._save_json(
+        uncancellable_path,
+        {"556": {"consecutive_failures": 5, "quarantined_at": old_ts, "last_error": "x", "last_attempt_at": old_ts}},
+    )
+    monkeypatch.setattr(qs, "UNCANCELLABLE_FILE", uncancellable_path)
+
+    def fake_fetch_queued_runs(repo=qs.REPO):
+        return [{"id": 556, "event": "pull_request", "head_sha": "dead", "head_branch": None, "name": "CI"}]
+
+    def fake_fetch_open_pr_heads(repo=qs.REPO):
+        return set()
+
+    def fake_fetch_live_queue_branches(repo=qs.REPO):
+        return set()
+
+    monkeypatch.setattr(qs, "fetch_queued_runs", fake_fetch_queued_runs)
+    monkeypatch.setattr(qs, "fetch_open_pr_heads", fake_fetch_open_pr_heads)
+    monkeypatch.setattr(qs, "fetch_live_queue_branches", fake_fetch_live_queue_branches)
+    monkeypatch.setattr(qs, "cancel_run", lambda repo, run_id: (False, "failed"))
+
+    cancelled = qs.run_janitor_pass(dry_run=False)
+    assert cancelled == 0
+    saved = qs._load_json(uncancellable_path)
+    assert saved["556"]["quarantined_at"] != old_ts  # refreshed, not left stale
+    assert qs.is_quarantined(saved["556"], qs._now()) is True  # freshly re-quarantined
+
+    def never_called(repo, run_id):
+        raise AssertionError("must not retry immediately after a fresh re-quarantine")
+
+    monkeypatch.setattr(qs, "cancel_run", never_called)
+    cancelled_2 = qs.run_janitor_pass(dry_run=False)
+    assert cancelled_2 == 0

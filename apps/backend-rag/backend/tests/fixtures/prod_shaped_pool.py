@@ -24,8 +24,18 @@ file is, by construction, a pool that can drift from production again.
 WHAT IS MIRRORED, AND WHAT IS NOT. Stated exactly, because the defect this
 file exists to catch was born of a comment that claimed more than its code did.
 
-Mirrored, because both production pools set it identically:
-  * the `jsonb` and `json` type codecs (the load-bearing one)
+Mirrored -- and, since 2026-08-29, mirrored by IDENTITY rather than by
+duplicate code: this module imports `init_asyncpg_connection` from
+`backend/app/core/database.py`, the SAME function object every production
+pool (`service_initializer.py`'s full and light init paths, and
+`get_db_pool()`) passes to `asyncpg.create_pool(init=...)`. This is no
+longer a copy that can silently drift -- it is the canonical codec, imported,
+not "mirrored" by a second hand-written `set_type_codec` call. That function
+registers:
+  * the `jsonb` and `json` type codecs (the load-bearing one, encoder
+    `JSONB_ENCODER = functools.partial(json.dumps, default=str)`)
+
+This file additionally sets, matching what both production pools do:
   * `SET statement_timeout = '30s'`
   * `statement_cache_size=0`
   * `max_inactive_connection_lifetime=30.0`
@@ -45,9 +55,9 @@ picking one -- a fixture that silently picks is worse than one that abstains.
 
 from __future__ import annotations
 
-import json
-
 import asyncpg
+
+from backend.app.core.database import init_asyncpg_connection
 
 
 async def init_prod_shaped_connection(conn: asyncpg.Connection) -> None:
@@ -55,20 +65,13 @@ async def init_prod_shaped_connection(conn: asyncpg.Connection) -> None:
 
     Kept as its own function (not inlined into the pool factory) so a test can
     assert on it, and so the diff against production's own init hook is a
-    two-file read rather than an archaeology exercise.
+    two-file read rather than an archaeology exercise. Delegates codec
+    registration to `init_asyncpg_connection` -- the SAME object production
+    uses -- rather than re-registering the codecs by hand, so this function
+    cannot drift from production's encoder the way the pre-2026-08-29 version
+    could.
     """
-    await conn.set_type_codec(
-        "jsonb",
-        encoder=json.dumps,
-        decoder=json.loads,
-        schema="pg_catalog",
-    )
-    await conn.set_type_codec(
-        "json",
-        encoder=json.dumps,
-        decoder=json.loads,
-        schema="pg_catalog",
-    )
+    await init_asyncpg_connection(conn)
     # Both production inits also do this, identically. Added after an
     # adversarial review pointed out that this module PROMISED to mirror
     # production's init and then mirrored only the codecs -- the same

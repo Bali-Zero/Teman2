@@ -1,0 +1,69 @@
+name: Promotion readiness tests
+
+# Executor for scripts/ci/test_check_promotion_readiness.py — the corpus for
+# scripts/ci/check_promotion_readiness.py (the instrument that answers "how
+# many currently-open PRs would become newly BLOCKED if these contexts were
+# required today?", built per the mandate that commissioned it: wiring a
+# context and being able to require it are two different states, and this
+# repo had no instrument that could tell them apart).
+#
+# WHY A DEDICATED WORKFLOW, not a generic sweep -- measured 2026-08-31:
+# `scripts/ci/shard_tests.py`'s DEFAULT_TARGETS (the corpus tests.yml's
+# Backend Shard jobs actually run) is `backend/tests/` plus two named
+# scripts/bot/ files ONLY -- it never walks scripts/ci/. `scripts-tests-
+# sweep.yml` (the other candidate) covers scripts/tests/, a different
+# directory, and is itself `continue-on-error: true` on schedule/
+# workflow_dispatch only -- never pull_request. Neither would ever run this
+# corpus. Same shape as `voa-probe-tests.yml` / `restore-drill-wiring-
+# tests.yml`: a new scripts/ci/ corpus needs its own executor or it is
+# theater (superscar #2, "exists != armed") -- inside the very PR whose
+# subject is catching that class of defect for OTHER contexts, ironically.
+#
+# NOT a promotion candidate itself. Unlike the four contexts
+# check_promotion_readiness.py measures, this workflow's own context is not
+# being prepared for main's required-status-checks -- the script is a
+# conductor-invoked instrument, not a merge gate -- so it correctly KEEPS a
+# `paths:` filter (scoped to its own three files) rather than removing one,
+# and carries no `merge_group:` trigger. Both would be defects under
+# scripts/ci/check_required_workflow_conformance.py's rules 2 and 4 if this
+# context were ever added to infra/required.d/contexts.json; neither is a
+# defect here, because it never will be.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/ci/check_promotion_readiness.py"
+      - "scripts/ci/test_check_promotion_readiness.py"
+      - ".github/workflows/promotion-readiness-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/ci/check_promotion_readiness.py"
+      - "scripts/ci/test_check_promotion_readiness.py"
+      - ".github/workflows/promotion-readiness-tests.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: promotion-readiness-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  corpus:
+    name: Promotion readiness corpus
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest (the corpus mocks subprocess.run -- zero network, zero gh calls)
+        run: python3 -m pip install --quiet --disable-pip-version-check pytest
+
+      - name: check_promotion_readiness.py corpus -- every classify() state, every exit code, guilt+innocence
+        run: python3 -m pytest scripts/ci/test_check_promotion_readiness.py -v
