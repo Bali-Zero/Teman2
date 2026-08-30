@@ -164,9 +164,13 @@ dissent:
   - seat: codex-gpt-5.6-sol (blind refutation of the workflow diff)
     objection: >-
       The registry's secret check exempts `note`, so a credential wrapped in
-      prose lands untouched: "note": "OPENAI_API_KEY: sk-proj-0123...". The key
-      name is only 14 chars before the colon breaks the run and the token is not
-      adjacent to a quote, so no key/value pattern considers it.
+      prose lands untouched -- a note reading "<VENDOR>_API_KEY: <token>" defeats it,
+      because the key name is short enough that the colon breaks the character run,
+      and the token itself is not adjacent to a quote, so no key/value pattern
+      considers it. (Deliberately described rather than quoted: a pack that carries a
+      value-shaped string is exactly what this finding is about, and the repo's own
+      secret scanner flagged the first draft of this entry for containing one --
+      W108's "the guard that forbids the string was writing it", one level up.)
     status: CONFIRMED
     resolution: >-
       Reproduced against the real registry: it passed. The scan now covers the

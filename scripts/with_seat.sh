@@ -267,9 +267,15 @@ then
 fi
 
 fingerprint=""
-declare -a DECLARED_NAMES
-declare -a ALLOWED_EXECUTABLES
-declare -a SEARCH_PATH
+# `=()` is load-bearing, not style. `declare -a X` alone leaves X with the array
+# ATTRIBUTE but no value, so on bash 5 `${#X[@]}` under `set -u` is an "unbound
+# variable" error the first time through the loop below; bash 3.2 tolerates it.
+# This machine has only bash 3.2, so the corpus was green here and the job died on
+# every ubuntu runner at the first env name — the whole dispatch path, invisible
+# locally. Assigning an empty array makes them SET on both.
+declare -a DECLARED_NAMES=()
+declare -a ALLOWED_EXECUTABLES=()
+declare -a SEARCH_PATH=()
 while IFS=$'\t' read -r kind value; do
   case "$kind" in
     fingerprint) fingerprint="$value" ;;
@@ -289,6 +295,11 @@ if [ "${#SEARCH_PATH[@]}" -eq 0 ]; then
 fi
 
 [ -n "$fingerprint" ] || fail "registry parser did not return a fingerprint"
+# The python validator refuses a seat with an empty `env` list, so an empty array
+# here means the parse loop never ran — a silently skipped read rather than an
+# empty declaration. Fail rather than dispatch a child with NO environment, which
+# would look like perfect isolation and be a broken probe.
+[ "${#DECLARED_NAMES[@]}" -gt 0 ] || fail "registry parser returned no environment names"
 resolve_status=0
 resolved_command="$(resolve_command "$requested_command" "${SEARCH_PATH[@]}")" || resolve_status=$?
 if [ "$resolve_status" -eq 2 ]; then
