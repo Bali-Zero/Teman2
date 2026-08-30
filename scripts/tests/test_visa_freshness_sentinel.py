@@ -541,3 +541,104 @@ def test_stale_and_anomaly_keys_carry_no_urgency_suffix():
         VERIFIED_AT + timedelta(hours=1),
     )
     assert vfs.dedup_key(dataclasses.replace(anomaly, pack_sequence=17)) == "visa-freshness:anomaly:17"
+
+
+# --- REPAIR 3+4: the two defects the refuter on this diff found ----------
+#
+# Both are the SAME shape as the bug being fixed, one layer further out: the
+# ANOMALY is detected correctly and then thrown away by whatever reports it.
+
+
+def test_guilt_anomaly_does_not_exit_zero():
+    """Exit 0 means `heartbeat "ok"` on the sidecar — the surface people read.
+
+    The wrapper writes `heartbeat "ok" "run done"` on ANY zero exit, so an
+    ANOMALY returning 0 would be invisible exactly where it matters.
+    """
+    import dataclasses
+
+    anomaly = vfs.classify_freshness(
+        [_portal_record("id", VERIFIED_AT.isoformat(), with_policy=False)],
+        VERIFIED_AT + timedelta(hours=1),
+    )
+    assert anomaly.outcome == vfs.OUTCOME_ANOMALY
+    # The exit map lives in main(); assert the contract it implements.
+    assert vfs.OUTCOME_ANOMALY not in (vfs.OUTCOME_OK,)
+    src = (SCRIPTS / "visa_freshness_sentinel.py").read_text()
+    assert "if verdict.outcome == OUTCOME_ANOMALY:" in src
+    assert "return 3" in src
+
+
+def test_guilt_an_anomaly_appearing_during_a_stale_pack_mints_a_new_key():
+    """Otherwise a muted STALE key swallows the news that the pack broke.
+
+    STALE outranks ANOMALY, so the anomaly rides along in the alert body and
+    gets no outcome of its own. If it also got no KEY of its own, the ladder
+    (already climbing on a repeating STALE) would suppress the one message
+    carrying the new fact.
+    """
+    import dataclasses
+
+    stale_only = vfs.classify_freshness(
+        [_portal_record("aaaa0000-0000-0000-0000-000000000001", VERIFIED_AT.isoformat())],
+        BOUNDARY + timedelta(seconds=1),
+    )
+    stale_plus_anomaly = vfs.classify_freshness(
+        [
+            _portal_record("aaaa0000-0000-0000-0000-000000000001", VERIFIED_AT.isoformat()),
+            _portal_record(
+                "aaaa0000-0000-0000-0000-000000000002",
+                VERIFIED_AT.isoformat(),
+                with_policy=False,
+            ),
+        ],
+        BOUNDARY + timedelta(seconds=1),
+    )
+    assert stale_only.outcome == vfs.OUTCOME_STALE
+    assert stale_plus_anomaly.outcome == vfs.OUTCOME_STALE  # ranking unchanged
+
+    k1 = vfs.dedup_key(dataclasses.replace(stale_only, pack_sequence=17))
+    k2 = vfs.dedup_key(dataclasses.replace(stale_plus_anomaly, pack_sequence=17))
+    assert k1 == "visa-freshness:stale:17"
+    assert k2 == "visa-freshness:stale:17:anom"
+    assert k1 != k2
+
+    # ...and the body actually carries the new fact, so the fresh key is worth
+    # spending. (A new key delivering the identical text would be pure noise.)
+    assert "missing/unreadable" in vfs.format_alert_text(stale_plus_anomaly)
+    assert "missing/unreadable" not in vfs.format_alert_text(stale_only)
+
+
+def test_guilt_the_same_marker_applies_while_approaching():
+    import dataclasses
+
+    approaching_plus_anomaly = vfs.classify_freshness(
+        [
+            _portal_record("bbbb0000-0000-0000-0000-000000000001", VERIFIED_AT.isoformat()),
+            _portal_record(
+                "bbbb0000-0000-0000-0000-000000000002",
+                # Genuinely ahead of THIS run's clock (BOUNDARY - 23h), not
+                # merely ahead of VERIFIED_AT — the anomaly is measured against now.
+                (BOUNDARY + timedelta(days=1)).isoformat(),
+            ),
+        ],
+        BOUNDARY - timedelta(hours=23),
+    )
+    assert approaching_plus_anomaly.outcome == vfs.OUTCOME_APPROACHING
+    key = vfs.dedup_key(dataclasses.replace(approaching_plus_anomaly, pack_sequence=17))
+    assert key == "visa-freshness:approaching:17:t24:anom"
+
+
+def test_innocence_a_clean_stale_pack_keeps_its_unsuffixed_key():
+    """The marker must not appear when there is no anomaly — otherwise every
+    stale alert mints a second key and the ladder never suppresses anything."""
+    import dataclasses
+
+    stale = vfs.classify_freshness(
+        [_portal_record("cccc0000-0000-0000-0000-000000000001", VERIFIED_AT.isoformat())],
+        BOUNDARY + timedelta(seconds=1),
+    )
+    assert (
+        vfs.dedup_key(dataclasses.replace(stale, pack_sequence=17))
+        == "visa-freshness:stale:17"
+    )

@@ -625,10 +625,18 @@ def dedup_key(verdict: Verdict) -> str:
     deadline and must not be copied to a consumer without one.
     """
     seq = verdict.pack_sequence if verdict.pack_sequence is not None else "unknown"
+    # An anomaly that appears while the pack is ALREADY stale or approaching does
+    # not get its own outcome — it rides along in the alert body. Without this
+    # suffix it would also not get its own key, so if the stale/approaching key
+    # were already muted by the ladder, the new information would be swallowed
+    # and nobody would learn the pack had also become un-ageable. Adding the
+    # marker mints a fresh key at the moment anomalies first appear alongside a
+    # deadline condition. (Found by the cross-family refuter on this diff.)
+    anomalous = ":anom" if (verdict.policy_missing or verdict.future_verified) else ""
     if verdict.outcome == OUTCOME_STALE:
-        return f"visa-freshness:stale:{seq}"
+        return f"visa-freshness:stale:{seq}{anomalous}"
     if verdict.outcome == OUTCOME_APPROACHING:
-        return f"visa-freshness:approaching:{seq}:t{approaching_bucket(verdict)}"
+        return f"visa-freshness:approaching:{seq}:t{approaching_bucket(verdict)}{anomalous}"
     if verdict.outcome == OUTCOME_ANOMALY:
         return f"visa-freshness:anomaly:{seq}"
     if verdict.outcome == OUTCOME_NO_PORTAL_RECORDS:
@@ -798,6 +806,22 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if verdict.outcome == OUTCOME_STALE:
         return 1
+    if verdict.outcome == OUTCOME_ANOMALY:
+        # NOT 0. `pro-visa-freshness-sentinel.sh` writes `heartbeat "ok"` on any
+        # zero exit, so an ANOMALY returning 0 would show as `ok` on the sidecar
+        # — the one surface anyone actually reads — and the repair above would be
+        # swallowed one layer down, exactly the way APPROACHING already is
+        # (PENDING-ARMS 2026-08-30, defect 2, still open and NOT fixed here:
+        # APPROACHING fires for 48h before every boundary, so making IT non-zero
+        # needs the wrapper's exit-code map changed too, and that wrapper is a
+        # HOME-fork declared pair that must be synced to Pro in the same gesture).
+        # 3 is safe to ship alone: the wrapper's else-branch writes
+        # `heartbeat "error" "rc=3"`, which is visible and true, and an
+        # un-ageable pack is a rare defect state rather than a recurring phase,
+        # so it cannot become a standing false red. Recovery is driven by
+        # SILENCE (`severity_on_silence: warning`), not by a fresh error
+        # heartbeat, so this does not put the healer in a kickstart loop.
+        return 3
     return 0
 
 
