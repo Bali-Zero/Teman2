@@ -485,6 +485,24 @@ async def test_journal_append_event_writes_a_real_jsonb_object_on_garuda_order_j
                 "'object' -- journal.append_event no longer hands the codec a native "
                 "dict, or the codec regressed"
             )
+            # `jsonb_typeof` alone proves the SHAPE, not that the CONTENT survived:
+            # a writer that stored `{}` would also read back 'object'. The server-side
+            # path extraction below is the second half, and under double-encoding it
+            # fails for a SECOND, independent reason -- on a jsonb string scalar the
+            # `->>` accessor returns NULL rather than the value. Added 2026-08-31 after
+            # a blind non-Anthropic counter-build (GLM-5.2) argued that typeof PLUS a
+            # path extraction is the pair that defeats every false-green it could name,
+            # and these tests asserted only the first.
+            probe = await conn.fetchval(
+                "SELECT detail ->> 'probe' FROM garuda_order_journal "
+                "WHERE event_id = $1",
+                event_id,
+            )
+            assert probe == "jsonb_codec_parity", (
+                f"garuda_order_journal.detail ->> 'probe' is {probe!r}, expected "
+                "'jsonb_codec_parity' -- shape is an object but the VALUE did not "
+                "round-trip; on a jsonb string scalar this accessor returns None"
+            )
     finally:
         await pool.close()
 
@@ -554,6 +572,24 @@ async def test_journal_enqueue_outbox_writes_a_real_jsonb_object_on_garuda_order
                     "'object' -- journal.enqueue_outbox no longer hands the codec a "
                     "native dict, or the codec regressed"
                 )
+                # `jsonb_typeof` alone proves the SHAPE, not that the CONTENT survived:
+                # a writer that stored `{}` would also read back 'object'. The server-side
+                # path extraction below is the second half, and under double-encoding it
+                # fails for a SECOND, independent reason -- on a jsonb string scalar the
+                # `->>` accessor returns NULL rather than the value. Added 2026-08-31 after
+                # a blind non-Anthropic counter-build (GLM-5.2) argued that typeof PLUS a
+                # path extraction is the pair that defeats every false-green it could name,
+                # and these tests asserted only the first.
+                probe = await conn.fetchval(
+                    "SELECT payload ->> 'probe' FROM garuda_order_outbox "
+                    "WHERE journal_event_id = $1 AND job_type = 'jsonb_codec_parity_probe'",
+                    event_id,
+                )
+                assert probe == "jsonb_codec_parity", (
+                    f"garuda_order_outbox.payload ->> 'probe' is {probe!r}, expected "
+                    "'jsonb_codec_parity' -- shape is an object but the VALUE did not "
+                    "round-trip; on a jsonb string scalar this accessor returns None"
+                )
             finally:
                 await conn.execute(
                     "DELETE FROM garuda_order_outbox WHERE order_id = $1", order_id
@@ -613,6 +649,24 @@ async def test_garuda_orders_idempotency_complete_writes_a_real_jsonb_object() -
                 "expected 'object' -- idempotency.complete no longer hands the codec "
                 "a native dict, or the codec regressed"
             )
+            # `jsonb_typeof` alone proves the SHAPE, not that the CONTENT survived:
+            # a writer that stored `{}` would also read back 'object'. The server-side
+            # path extraction below is the second half, and under double-encoding it
+            # fails for a SECOND, independent reason -- on a jsonb string scalar the
+            # `->>` accessor returns NULL rather than the value. Added 2026-08-31 after
+            # a blind non-Anthropic counter-build (GLM-5.2) argued that typeof PLUS a
+            # path extraction is the pair that defeats every false-green it could name,
+            # and these tests asserted only the first.
+            probe = await conn.fetchval(
+                "SELECT response_body ->> 'probe' FROM garuda_order_idempotency "
+                "WHERE key_sha256 = $1",
+                key_sha256,
+            )
+            assert probe == "jsonb_codec_parity", (
+                f"garuda_order_idempotency.response_body ->> 'probe' is {probe!r}, expected "
+                "'jsonb_codec_parity' -- shape is an object but the VALUE did not "
+                "round-trip; on a jsonb string scalar this accessor returns None"
+            )
     finally:
         await pool.close()
 
@@ -661,6 +715,24 @@ async def test_garuda_portal_idempotency_complete_writes_a_real_jsonb_object() -
                 f"garuda_magic_link_idempotency.response_body has jsonb_typeof={typeof!r}, "
                 "expected 'object' -- idempotency.complete no longer hands the codec "
                 "a native dict, or the codec regressed"
+            )
+            # `jsonb_typeof` alone proves the SHAPE, not that the CONTENT survived:
+            # a writer that stored `{}` would also read back 'object'. The server-side
+            # path extraction below is the second half, and under double-encoding it
+            # fails for a SECOND, independent reason -- on a jsonb string scalar the
+            # `->>` accessor returns NULL rather than the value. Added 2026-08-31 after
+            # a blind non-Anthropic counter-build (GLM-5.2) argued that typeof PLUS a
+            # path extraction is the pair that defeats every false-green it could name,
+            # and these tests asserted only the first.
+            probe = await conn.fetchval(
+                "SELECT response_body ->> 'probe' FROM garuda_magic_link_idempotency "
+                "WHERE key_sha256 = $1",
+                key_sha256,
+            )
+            assert probe == "jsonb_codec_parity", (
+                f"garuda_magic_link_idempotency.response_body ->> 'probe' is {probe!r}, expected "
+                "'jsonb_codec_parity' -- shape is an object but the VALUE did not "
+                "round-trip; on a jsonb string scalar this accessor returns None"
             )
     finally:
         await pool.close()
