@@ -1,0 +1,187 @@
+name: PR collision check (advisory)
+
+# PR-3, L06-ci-merge-queue-ship-pipeline.md. scripts/ci/pr_collision_check.py
+# generalizes lint_scar_number_collision.py's claim-set technique from
+# "W-number" to "file + hunk-window".
+#
+# TWO SENSES OF "ADVISORY" HERE — do not conflate:
+#   - The COLLISION VERDICT is advisory: a PR that collides never fails this
+#     job (the check step below distinguishes "collision found", rc=1, which
+#     is a documented step SUCCESS, from an OPERATIONAL failure, any other
+#     non-zero rc, which fails the step for real). Promise about PR CONTENT.
+#   - The CORPUS (scripts/ci/test_pr_collision_check.py) is NOT advisory: if
+#     it fails, this tool is broken and every verdict it ever posted is
+#     worthless -- the self-test step is `continue-on-error: false`,
+#     unguarded, deliberately. Same rule as scripts/pr_size_taxonomy.py's own
+#     docstring: "report-only is a promise about PR CONTENT, never about
+#     this tool's own operational health." An operational failure still
+#     exits non-zero, here as there.
+#
+# Never a required check, no job may `needs:` this. No top-level `paths:`
+# filter -- a collision is cross-PR, not scoped to what THIS PR touches.
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+concurrency:
+  group: pr-collision-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  pr-collision-check:
+    name: PR collision check (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          filter: blob:none
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      # Self-test the discriminator (guilt+innocence+replay+mutation-defended
+      # merge-base anchoring), shape copied from hot-zone-pr-gate.yml Step
+      # 1bis: continue-on-error: false, no `|| true` swallowing a red pytest
+      # -- a shipped guard whose corpus can never go red anywhere is W81.
+      #
+      # Unconditional, no `-f` bootstrap guard: unlike hot-zone-pr-gate.yml's
+      # equivalent step (which checks out BASE/main, so ITS `-f` guard really
+      # is a one-shot bootstrap window before this exact corpus file first
+      # lands on main -- that rationale is quoted verbatim in that file), THIS
+      # job checks out the PR's own head/merge ref. The corpus is guaranteed
+      # present starting with the very PR that adds it, and a LATER PR simply
+      # deleting this test file would make an `-f` guard here disarm
+      # silently (a notice, then a green pass) -- exactly the "a guard turned
+      # off by removing its own test" shape this whole file is written
+      # against. Run unconditionally instead: if the file is ever missing,
+      # pytest's own "no tests ran" failure is the loud signal.
+      - name: Self-test the collision discriminator
+        continue-on-error: false
+        run: |
+          set -uo pipefail
+          python3 -m pip install --quiet pytest
+          python3 -m pytest scripts/ci/test_pr_collision_check.py -v
+
+      # rc 0 (clean) and rc 1 (collision found) are both DOCUMENTED step
+      # successes -- the collision verdict is advisory by design (see the
+      # header comment above). rc 2, or any other non-zero, is an
+      # OPERATIONAL failure (gh/git unreachable, malformed output, a bug) --
+      # a tool that could not measure must not let that read as "0
+      # collisions" one level up, so this step fails loudly instead of
+      # swallowing it with `|| true`. The report file is still written on
+      # every path (the redirect wraps the whole group, before `rc` is even
+      # read), so the next step always has something to post.
+      #
+      # GitHub Actions runs `run:` steps as `bash --noprofile --norc -eo
+      # pipefail {0}` -- `-e` (errexit) is ON from the invocation itself.
+      # `set -uo pipefail` above only ADDS -u; it does NOT turn -e off. So
+      # without the `set +e` / `set -e` bracket below, the `{ ... } >
+      # /tmp/collision-report.md 2>&1` group exiting 1 (collision found)
+      # or 2 (operational error) would abort the STEP right there --
+      # `rc=$?` and the whole `case` below would be dead code on every
+      # non-zero path, and rc=1 (a documented step SUCCESS) would instead
+      # FAIL the job, breaking the tool's central promise (scar W101).
+      - name: Run collision check (advisory verdict; fails ONLY on an operational error)
+        # GH_TOKEN is REQUIRED here, not optional: the script's first act is
+        # `gh pr list`, and gh in Actions exits 4 with "set the GH_TOKEN
+        # environment variable" without it. Its absence was invisible for as
+        # long as this step ended in `|| true` — the tool returned 2
+        # (CANNOT VERIFY), the swallow turned that into 0, and the job was
+        # green having never once completed a scan. The very first run after
+        # the swallow was removed surfaced it.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          set +e
+          {
+            echo "<!-- pr-collision-check -->"
+            python3 scripts/ci/pr_collision_check.py
+          } > /tmp/collision-report.md 2>&1
+          rc=$?
+          set -e
+          case "$rc" in
+            0) echo "pr_collision_check.py: clean (rc=0)" ;;
+            1) echo "pr_collision_check.py: collision(s) found (rc=1) -- advisory, not a step failure" ;;
+            *)
+              echo "::error::pr_collision_check.py exited $rc -- OPERATIONAL failure (gh/git unreachable, malformed output, or a bug), NOT a collision verdict. See /tmp/collision-report.md (posted below) for detail."
+              exit "$rc"
+              ;;
+          esac
+
+      - name: Post advisory comment (marker-matched)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -uo pipefail
+          # Marker match, not --edit-last: --edit-last targets the LAST
+          # comment from this token's identity regardless of who posted it --
+          # load-bearing on nothing else here commenting as github-actions[bot]
+          # (grepped 2026-08-29, currently true). A marker survives that.
+          #
+          # `--paginate` applies `--jq` PER PAGE, not once across the whole
+          # result: the old `| last` lived INSIDE the jq filter, so it picked
+          # the last match WITHIN EACH PAGE and gh concatenated every page's
+          # answer -- a PR with enough comments to paginate could hand
+          # COMMENT_ID a newline-separated list of ids, breaking the PATCH
+          # URL below. Emitting one id per match instead and letting bash's
+          # `tail -n1` pick the true last across the WHOLE (chronologically
+          # ordered) paginated result fixes that with no jq restructuring.
+          # GitHub Actions runs `run:` steps under `bash -eo pipefail` by
+          # default (see the same note in the check step above) -- `-e` is
+          # ON here too. Everything from the lookup through the final
+          # `post_rc` check below is a command whose FAILURE this step
+          # intends to HANDLE (warn, fall back, keep going), never abort
+          # on -- so the whole block is bracketed in one `set +e` / `set
+          # -e` pair (scar W101; the house pattern from restore-drill.yml).
+          # Without it, `COMMENT_ID=$(gh api ... | tail -n1)` failing would
+          # abort the step at that line -- the entire `if [[ "$lookup_rc"
+          # -ne 0 ]]` fallback right below would be unreachable -- and a
+          # failing PATCH/POST would abort BEFORE `post_rc=$?` is ever
+          # read, making the "non-fatal, warn and move on" promise a few
+          # lines down false. The promise stands; this bracket is what
+          # makes the code keep it instead of just declaring it.
+          set +e
+          COMMENT_ID=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
+            --jq '.[] | select(.body | startswith("<!-- pr-collision-check -->")) | .id' \
+            2>/tmp/lookup.err | tail -n1)
+          lookup_rc=$?
+          if [[ "$lookup_rc" -ne 0 ]]; then
+            echo "::warning::pr-collision-check: could not look up an existing advisory comment (rc=$lookup_rc) -- will POST a new comment instead of updating one; see stderr below"
+            cat /tmp/lookup.err >&2
+            COMMENT_ID=""
+          fi
+          # A failed POST/PATCH here is NON-FATAL BY DESIGN, not by
+          # oversight: the collision-check step above already fails loudly
+          # on an OPERATIONAL failure (rc 2+), so a missing PR comment never
+          # hides a broken tool -- it only means the human-readable summary
+          # did not land, and this check gates nothing, so no PR is blocked
+          # by it either way. "Non-fatal" must not mean "silent" though:
+          # every failure path below surfaces a `::warning::` annotation
+          # (never `>/dev/null`), visible in the Checks tab even when the
+          # step itself stays green.
+          if [[ -n "$COMMENT_ID" ]]; then
+            gh api "repos/$REPO/issues/comments/$COMMENT_ID" -X PATCH \
+              --input <(jq -n --rawfile b /tmp/collision-report.md '{body:$b}') \
+              2>/tmp/post.err
+          else
+            gh api "repos/$REPO/issues/$PR_NUMBER/comments" -X POST \
+              --input <(jq -n --rawfile b /tmp/collision-report.md '{body:$b}') \
+              2>/tmp/post.err
+          fi
+          post_rc=$?
+          if [[ "$post_rc" -ne 0 ]]; then
+            echo "::warning::pr-collision-check: failed to post/update the advisory PR comment (rc=$post_rc) -- non-fatal (see comment above this block for why), report content is in the check-step log; see stderr below"
+            cat /tmp/post.err >&2
+          fi
+          set -e
