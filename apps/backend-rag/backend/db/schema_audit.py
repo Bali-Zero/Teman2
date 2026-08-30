@@ -159,24 +159,38 @@ LEGACY_CHECKSUM_SENTINEL = "legacy_fake_checksum"
 # checksum. Keyed on the PAIR, not the number alone: a number-only key lets any
 # future row renumbered to 1 skip verification, and the divergence checker
 # compares numbers only, so nothing else would notice.
-SYMBOLIC_CHECKSUM_ALLOWLIST: dict[tuple[int, str], str] = {
+# Keyed on (number, name) AND bound to the EXACT symbolic value the row must
+# carry: `(number, name) -> (expected_checksum, reason)`.
+#
+# Value-binding closes a real bypass, raised as CONFIRMED by a second
+# cross-family seat (Kimi K3, 2026-08-31): keyed on the pair ALONE, adding a
+# migration here exempts it UNCONDITIONALLY -- including after its file is
+# tampered with, and including if its stored checksum later becomes a real
+# digest that ought to be verified. Bound to the value, an entry excuses
+# exactly one known string and nothing else: a real sha256 on an allowlisted
+# row is verified normally, and a DIFFERENT symbolic value is an error.
+SYMBOLIC_CHECKSUM_ALLOWLIST: dict[tuple[int, str], tuple[str, str]] = {
     (1, "001_baseline_v2.sql"): (
+        "legacy_fake_checksum",
         "marked applied WITHOUT executing its SQL when the runner adopts a "
         "pre-existing database (migration_manager.py:451-462); the text never ran, "
         "so there is no honest checksum to record."
     ),
     (107, "107_bridge_outbox"): (
+        "legacy-107-bridge-outbox",
         "the ledger row is BACKFILLED by migration 194 with the literal "
         "'legacy-107-bridge-outbox'; 107 itself was promoted from a legacy Python "
         "migration, so the row records the promotion rather than an execution of "
         "this file's text."
     ),
     (165, "165_reconcile_schema_migrations_duplicates"): (
+        "tracked-by-migration-165",
         "this migration INSERTS ITS OWN ledger row with 'tracked-by-migration-165', "
         "and `_log_migration` then uses ON CONFLICT DO NOTHING, so the symbolic "
         "value is never replaced by a real digest."
     ),
     (166, "166_reconcile_client_email_duplicates"): (
+        "tracked-by-migration-166",
         "same self-inserting shape as 165, with 'tracked-by-migration-166'; the "
         "ON CONFLICT DO NOTHING in `_log_migration` leaves the symbolic value in "
         "place for the lifetime of the row."
@@ -192,7 +206,7 @@ SYMBOLIC_CHECKSUM_ALLOWLIST: dict[tuple[int, str], str] = {
 # Kept as a derived view so callers and tests can ask "is this number allowed"
 # without duplicating the pair logic.
 LEGACY_CHECKSUM_ALLOWLIST: dict[int, str] = {
-    number: reason for (number, _name), reason in SYMBOLIC_CHECKSUM_ALLOWLIST.items()
+    number: reason for (number, _name), (_value, reason) in SYMBOLIC_CHECKSUM_ALLOWLIST.items()
 }
 
 
@@ -255,7 +269,8 @@ async def _check_migration_checksums(
         # like a guard and can never fire. Found 2026-08-31 by this check's own
         # corpus failing with KeyError, not by reading the code.
         if not _SHA256_HEX.match(stored or ""):
-            if (number, row["migration_name"]) in SYMBOLIC_CHECKSUM_ALLOWLIST:
+            allowed = SYMBOLIC_CHECKSUM_ALLOWLIST.get((number, row["migration_name"]))
+            if allowed is not None and allowed[0] == stored:
                 continue
             findings.append(
                 Finding(
@@ -267,7 +282,9 @@ async def _check_migration_checksums(
                         "(number, name) is not in SYMBOLIC_CHECKSUM_ALLOWLIST. A "
                         "symbolic checksum means 'this SQL was never executed'; "
                         "allowing it implicitly would let any row opt out of "
-                        "verification by storing a non-digest string."
+                        "verification by storing a non-digest string. An allowlist "
+                        "entry excuses exactly ONE known value, so a DIFFERENT "
+                        "symbolic string on an allowlisted row still lands here."
                     ),
                     details={"migration_number": number, "migration_name": row["migration_name"]},
                 )

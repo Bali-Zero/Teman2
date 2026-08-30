@@ -177,6 +177,36 @@ dissent:
       migrations_v2, and the ACCESS EXCLUSIVE scan is negligible on a ledger of
       this size — a narrow, written limit rather than an unknown one.
 
+council_run:
+  - seat: codex-gpt-5.6-sol
+    ok: true
+    verdict: >-
+      Five CONFIRMED-DEFECTs (rollback asymmetry, conname not globally unique,
+      current_user/applied_via provenance claims, the symbolic-checksum
+      deploy-breaker, destructive tests + unscoped probe) and one PLAUSIBLE
+      (number-only allowlist key). All six acted on.
+  - seat: kimi-code/k3
+    ok: true
+    verdict: >-
+      One CONFIRMED-DEFECT the first seat did not find: "the allowlist is keyed
+      only on (migration_number, migration_name), not on the checksum value, so
+      listing a migration there exempts it unconditionally and can be used to
+      waive verification for a migration whose file was tampered with." Closed:
+      the allowlist now binds (number, name) -> (expected_value, reason), so an
+      entry excuses exactly ONE known string; a real sha256 on an allowlisted
+      row is verified normally and a different symbolic value still errors.
+      Mutation-proved — reverting to pair-only reddens exactly the new test.
+      Its other three were PLAUSIBLE and already addressed: the rollback
+      asymmetry is documented in the migration, the sentinel false-positive is
+      the defect fixed at the class, and the byte-sensitivity of the hash
+      comparison is pinned by the writer/auditor AST test.
+  - seat: tp1-qwen3.8-max
+    ok: false
+    verdict: >-
+      NO VERDICT — dispatch timed out at 10 minutes. Recorded rather than
+      omitted: a council journal should show which seats were asked, not only
+      which answered.
+
 tests:
   - "backend/tests/db/test_migration_checksum_verification.py — 11 tests:
     structural (299 is next-free, carries a ROLLBACK that inverts exactly the
@@ -191,15 +221,6 @@ tests:
 static:
   - "ruff on every changed file — All checks passed."
   - "scripts/lint_migration_numbers.py — 177 files, all unique prefixes."
-
-  - "COUNCIL, stated as it actually is rather than as the rule would like it:
-    ONE review seat completed — codex-gpt-5.6-sol, which returned five
-    CONFIRMED-DEFECTs, all acted on. A SECOND seat was attempted twice and
-    neither produced a verdict: tp1-qwen3.8-max timed out at 10 minutes, and
-    kimi-code/k3 returned only its version banner. The pack therefore carries no
-    `council_run` block, and the lint NOTICEs it. Recording the two failed
-    dispatches rather than dropping a seat in that never spoke — a council
-    journal listing a seat that produced nothing is worse than an honest gap."
 
 notes:
   - "AUTO-MERGE IS OFF. Migration class: the conductor merges after the gates,

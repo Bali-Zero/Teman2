@@ -77,7 +77,12 @@ async def test_the_allowlist_is_keyed_on_the_NUMBER_NAME_PAIR_and_carries_reason
     (2026-08-31) and closed rather than argued away.
     """
     assert SYMBOLIC_CHECKSUM_ALLOWLIST, "an empty allowlist allows nothing at all"
-    for key, reason in SYMBOLIC_CHECKSUM_ALLOWLIST.items():
+    for key, (expected_value, reason) in SYMBOLIC_CHECKSUM_ALLOWLIST.items():
+        assert isinstance(expected_value, str) and expected_value
+        assert not _SHA256_HEX.match(expected_value), (
+            f"{key} pins a real sha256 as its 'symbolic' value; that row should be "
+            "verified normally, not allowlisted"
+        )
         assert isinstance(key, tuple) and len(key) == 2, f"{key!r} is not a (number, name) pair"
         number, name = key
         assert isinstance(number, int)
@@ -469,3 +474,37 @@ async def test_THE_FOUR_REAL_SYMBOLIC_ROWS_PRODUCE_NO_FINDING() -> None:
         await conn.execute(f"DROP TABLE IF EXISTS {SCRATCH_TABLE}")
         await conn.close()
 
+
+
+@_live_only
+async def test_an_allowlisted_row_carrying_a_DIFFERENT_symbolic_value_still_errors() -> None:
+    """The bypass Kimi K3 named, closed and pinned.
+
+    Keyed on (number, name) ALONE, an allowlist entry exempts a migration
+    UNCONDITIONALLY — a waiver that survives the file being tampered with.
+    Bound to the VALUE, the entry excuses exactly one known string: any other
+    symbolic value on the same row is still an error, and a real sha256 on it is
+    verified normally rather than waived.
+    """
+    import asyncpg
+
+    conn = await asyncpg.connect(TEST_DATABASE_URL)
+    try:
+        await _fresh_versions_table(conn, SCRATCH_TABLE)
+        (number, name), (expected, _reason) = next(iter(SYMBOLIC_CHECKSUM_ALLOWLIST.items()))
+        await conn.execute(
+            f"INSERT INTO {SCRATCH_TABLE} (migration_name, migration_number, checksum) "
+            "VALUES ($1, $2, $3)",
+            name, number, expected + "-tampered",
+        )
+        findings = await _check_migration_checksums(
+            _FakeManager(_FakePool(conn)), table=SCRATCH_TABLE
+        )
+        assert len(findings) == 1, (
+            f"an allowlisted row carrying a DIFFERENT symbolic value was waived: {findings}. "
+            "The allowlist must excuse one exact value, not a migration forever."
+        )
+        assert findings[0].code == "migration_checksum_unallowed_sentinel"
+    finally:
+        await conn.execute(f"DROP TABLE IF EXISTS {SCRATCH_TABLE}")
+        await conn.close()
