@@ -29,6 +29,22 @@ _EMAIL_RE = re.compile(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Z
 _IP_RE = re.compile(
     r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?:/\d{1,2})?(?![\w.])"
 )
+# IPv6, and this is not a hypothetical here: a Tailscale netmap carries addresses in
+# fd7a:115c:a1e0::/48, so an IPv4-only redactor is blind to HALF of every node's
+# identity. Found by blind cross-family refutation (Kimi K3). Deliberately loose --
+# any run of hex groups separated by colons, with or without a prefix -- because this
+# is a redactor: over-matching costs a legible evidence line, under-matching publishes
+# a node address in a public repo.
+_IPV6_RE = re.compile(r"(?<![\w:])(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}(?:/\d{1,3})?(?![\w:])")
+# MagicDNS names. The spec forbids a NODE NAME in output, and neither of the two
+# patterns above sees one: `nuzantara.tail461666.ts.net` is not an address.
+# Scoped to the ts.net suffix on purpose -- a general "anything dotted" rule would
+# redact `policy.hujson` and `0-65535`, turning every evidence line into noise. That
+# leaves a bare hostname with no domain unmatched, which is a declared LIMIT rather
+# than an oversight: no code path here emits one, and the fix for that would be to
+# stop building evidence from untrusted strings, not to widen this regex until it
+# eats its own output.
+_MAGICDNS_RE = re.compile(r"(?<![\w.])[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.ts\.net\b")
 _PROTO_NAMES = {1: "icmp", 6: "tcp", 17: "udp"}
 
 
@@ -277,10 +293,22 @@ def _netmap_rule_fields(rule: dict) -> tuple[Any, Any]:
 def _netmap_destination(destination: Any) -> tuple[str, int, int]:
     """One destination -> (network, first_port, last_port), for either schema.
 
-    `Net` is the live key; `IP` is the older one. `Bits`, when present, is accepted
-    but not trusted as authoritative -- the CIDR string already carries the prefix
-    length, and two sources of the same fact that can disagree are a way to be wrong
-    twice.
+    `Net` is the live key; `IP` is the older one.
+
+    `Bits` IS AUTHORITATIVE when the address carries no prefix of its own, and an
+    earlier version of this function got that exactly backwards: it validated `Bits`
+    and then discarded it under a comment claiming "the CIDR string already carries
+    the prefix length". That is true for `Net` (a CIDR string) and FALSE for the old
+    schema's `IP`, which is a bare address whose prefix lives only in `Bits`.
+    Measured: {"IP": "10.0.0.1", "Bits": 8} produced 10.0.0.1/32 instead of
+    10.0.0.0/8 -- a silently NARROWER network, and narrowing an enforced grant is the
+    direction that can make a broad reality compare equal to a narrow declaration and
+    read CLEAN. Found by blind cross-family refutation (Kimi K3).
+
+    When BOTH are present and they disagree, the answer is BLIND rather than a pick:
+    two sources of the same fact that contradict each other are a way to be wrong
+    twice, and this tool's whole polarity is that uncertainty costs visibility, never
+    correctness.
     """
     if not isinstance(destination, dict):
         raise BlindError("NETMAP_DESTINATION_SHAPE_UNSUPPORTED")
@@ -289,7 +317,7 @@ def _netmap_destination(destination: Any) -> tuple[str, int, int]:
     if not isinstance(address, str) or not isinstance(ports, dict):
         raise BlindError("NETMAP_DESTINATION_SHAPE_UNSUPPORTED")
     bits = destination.get("Bits")
-    if bits is not None and (not isinstance(bits, int) or isinstance(bits, bool)):
+    if bits is not None and (not isinstance(bits, int) or isinstance(bits, bool) or bits < 0):
         raise BlindError("NETMAP_DESTINATION_SHAPE_UNSUPPORTED")
     first, last = ports.get("First"), ports.get("Last")
     if (
@@ -301,10 +329,20 @@ def _netmap_destination(destination: Any) -> tuple[str, int, int]:
     ):
         raise BlindError("NETMAP_DESTINATION_SHAPE_UNSUPPORTED")
     try:
-        network = str(ipaddress.ip_network(address, strict=False))
+        if "/" in address:
+            network = ipaddress.ip_network(address, strict=False)
+            if bits is not None and bits != network.prefixlen:
+                # The two disagree. Refuse to choose.
+                raise BlindError("NETMAP_DESTINATION_PREFIX_CONFLICT")
+        elif bits is not None:
+            network = ipaddress.ip_network(f"{address}/{bits}", strict=False)
+        else:
+            network = ipaddress.ip_network(address, strict=False)
+    except BlindError:
+        raise
     except ValueError as error:
         raise BlindError("NETMAP_DESTINATION_SHAPE_UNSUPPORTED") from error
-    return network, first, last
+    return str(network), first, last
 
 
 def netmap_shapes(netmap: Any) -> set[RuleShape]:
@@ -336,10 +374,18 @@ def netmap_shapes(netmap: Any) -> set[RuleShape]:
 
 
 def sanitize_evidence(value: str) -> str:
-    """Reject sensitive-looking strings before they can enter public output."""
+    """Reject sensitive-looking strings before they can enter public output.
 
-    if not isinstance(value, str) or _EMAIL_RE.search(value) or _IP_RE.search(value):
+    Whole-string rejection rather than substring replacement: a partially-scrubbed
+    line invites the reader to trust the rest of it, and this output lands in a
+    public repo.
+    """
+
+    if not isinstance(value, str):
         return "redacted-sensitive-evidence"
+    for pattern in (_EMAIL_RE, _IP_RE, _IPV6_RE, _MAGICDNS_RE):
+        if pattern.search(value):
+            return "redacted-sensitive-evidence"
     return value
 
 
@@ -364,6 +410,26 @@ def describe_shapes(label: str, shapes: set[RuleShape]) -> str:
     )
 
 
+#: What a CLEAN verdict does and does NOT assert. Emitted with every result.
+#
+# The two sides speak different vocabularies and no amount of care closes that here:
+# policy.hujson grants by IDENTITY (users, groups, tag:*), while the netmap has already
+# RESOLVED those identities into node CIDRs. Mapping one to the other would require this
+# tool to hold the node<->identity table -- exactly the data it is forbidden to touch or
+# emit. So sources are compared only as any-vs-specific.
+#
+# Measured consequence, found by blind cross-family refutation (Kimi K3): take the
+# matching fixture, replace EVERY source with a node that should hold no grant at all,
+# and the comparison still reports equal. A reader who takes CLEAN to mean "the right
+# nodes have the right access" would be wrong. So the scope travels with every verdict
+# instead of living in a docstring nobody reads at 03:00.
+COMPARISON_SCOPE = (
+    "destination-network + port-range + protocol-set, and source only as "
+    "any-vs-specific; SOURCE IDENTITY IS NOT COMPARED (policy grants by identity, "
+    "the netmap has already resolved identities to addresses)"
+)
+
+
 def emit_result(
     verdict: str,
     fingerprint: str | None,
@@ -376,9 +442,18 @@ def emit_result(
         "verdict": verdict,
         "policy_fingerprint": fingerprint,
         "evidence": [sanitize_evidence(item) for item in evidence],
+        # Travels with EVERY verdict, CLEAN included -- especially CLEAN. A limit a
+        # reader has to go looking for is a limit that gets forgotten.
+        "comparison_scope": COMPARISON_SCOPE,
     }
     if verdict == VERDICT_BLIND:
-        payload["reason"] = reason or "UNKNOWN_BLIND_REASON"
+        # Sanitised like evidence. Every reason this tool emits today is a constant, so
+        # nothing leaks right now -- but `reason` is the field a future contributor
+        # reaches for when they want to say WHY, which is exactly when an address or a
+        # hostname gets interpolated. The proprioception harness also forwards `reason`
+        # into its own report, so an unsanitised value would travel one hop further
+        # than the person adding it was looking.
+        payload["reason"] = sanitize_evidence(reason or "UNKNOWN_BLIND_REASON")
     print(json.dumps(payload, sort_keys=True, separators=(",", ":")))
     return {VERDICT_CLEAN: 0, VERDICT_DIVERGED: 1, VERDICT_BLIND: 2}[verdict]
 

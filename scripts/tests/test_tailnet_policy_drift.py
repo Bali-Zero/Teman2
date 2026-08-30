@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import pytest
 import re
 import subprocess
 import sys
@@ -164,6 +165,114 @@ def test_no_tailnet_node_address_appears_in_any_tool_output() -> None:
         combined = completed.stdout + completed.stderr
         assert not re.search(r"\b100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d+\.\d+", combined), \
             f"a tailnet-range address reached the output for {fixture.name}"
+
+
+def test_old_schema_Bits_is_authoritative_when_the_address_has_no_prefix() -> None:
+    """`Bits` was validated and then DISCARDED, under a comment claiming the address
+    string already carried the prefix. True for `Net` (a CIDR); false for the old
+    schema's `IP`, a bare address whose prefix lives only in `Bits`.
+
+    Measured before the fix: {"IP": "10.0.0.1", "Bits": 8} yielded 10.0.0.1/32 instead
+    of 10.0.0.0/8 — silently NARROWER, and narrowing an enforced grant is the direction
+    that can make a broad reality compare equal to a narrow declaration and read CLEAN.
+    """
+    module = load_module()
+    shapes = module.netmap_shapes({"PacketFilter": [{
+        "SrcIPs": ["192.0.2.1/32"],
+        "DstPorts": [{"IP": "10.0.0.1", "Bits": 8, "Ports": {"First": 0, "Last": 65535}}],
+        "IPProto": [6]}]})
+
+    assert {shape.destination for shape in shapes} == {"10.0.0.0/8"}
+
+
+def test_a_prefix_that_contradicts_Bits_is_BLIND_not_a_silent_pick() -> None:
+    """Two sources of the same fact that disagree are a way to be wrong twice. When the
+    CIDR says /24 and Bits says 8, refusing to choose is the only answer consistent with
+    this tool's polarity: uncertainty costs visibility, never correctness."""
+    module = load_module()
+    with pytest.raises(module.BlindError):
+        module.netmap_shapes({"PacketFilter": [{
+            "Srcs": ["192.0.2.1/32"],
+            "Dsts": [{"Net": "10.0.0.0/24", "Bits": 8, "Ports": {"First": 0, "Last": 65535}}],
+            "IPProto": [6]}]})
+
+
+def test_every_verdict_declares_what_it_did_NOT_compare() -> None:
+    """The known limit must travel with the verdict, CLEAN most of all.
+
+    Blind cross-family refutation (Kimi K3) showed the comparison is satisfied when
+    EVERY source is swapped for a node that should hold no grant: policy.hujson grants
+    by identity, the netmap has already resolved identities to addresses, and mapping
+    one to the other would need the node<->identity table this tool must never hold.
+    That limit is real and is not closable here — so it is declared on every result
+    rather than left in a docstring. A reader who takes CLEAN to mean "the right nodes
+    have the right access" would be wrong, and the output now says so itself.
+    """
+    for fixture in (ALLOW_ALL, POLICY_MATCH):
+        _, payload = run_tool("--netmap-fixture", str(fixture))
+        scope = payload.get("comparison_scope", "")
+        assert "SOURCE IDENTITY IS NOT COMPARED" in scope, payload
+
+
+def test_the_known_source_blindness_is_reproducible_and_documented() -> None:
+    """Pins the limitation itself, so a future change that silently NARROWS the
+    comparison (making this pass for the wrong reason) or one that finally closes it
+    both show up here rather than passing unnoticed."""
+    module = load_module()
+    fixture = json.loads(POLICY_MATCH.read_text())
+    for rule in fixture["PacketFilter"]:
+        rule["Srcs"] = ["198.51.100.254/32"]   # a node with no such grant
+
+    declared = module.policy_shapes(module.parse_hujson(POLICY.read_text()))
+    enforced = module.netmap_shapes(fixture)
+
+    assert declared == enforced, (
+        "source identity is now being compared — good, but COMPARISON_SCOPE and this "
+        "test must be updated together so the declared limit stops overstating itself"
+    )
+
+
+def test_redaction_covers_ipv6_magicdns_and_the_blind_reason() -> None:
+    """The redactor was IPv4-and-email only. That is blind to HALF of every node's
+    identity here — a Tailscale netmap carries addresses in fd7a:115c:a1e0::/48 — and
+    to node NAMES entirely, which the spec forbids in output by name. `reason` was not
+    sanitised at all, and the proprioception harness forwards it into its own report,
+    so anything interpolated there would have travelled one hop further than the
+    person adding it was looking. Found by blind cross-family refutation (Kimi K3).
+
+    Declared limit, kept deliberately: a BARE hostname with no domain is not matched.
+    Widening the pattern until it catches those would also eat `policy.hujson` and
+    `0-65535` and turn every evidence line into "redacted".
+    """
+    module = load_module()
+
+    for leak in ("node fd7a:115c:a1e0::1 replied",
+                 "node nuzantara.tail461666.ts.net replied",
+                 "contact owner@example.com at 203.0.113.7"):
+        assert module.sanitize_evidence(leak) == "redacted-sensitive-evidence", leak
+
+    # ...and the real evidence lines must survive, or the redactor has eaten its output.
+    for keep in ("declared: 8 rule-shapes (specific-source -> specific-destination; "
+                 "ports: 22,443,4317,6379,8990,11434; protocols: tcp)",
+                 "enforced: 1 rule-shapes (any-source -> internet-any; ports: all)"):
+        assert module.sanitize_evidence(keep) == keep, keep
+
+
+def test_a_blind_reason_carrying_an_address_is_redacted() -> None:
+    """`reason` travels into the proprioception report, so it needs the same treatment
+    as evidence. Exercised through the real process, so it is the shipped path."""
+    command = (
+        "import importlib.util,sys; "
+        f"spec=importlib.util.spec_from_file_location('drift',{str(SCRIPT)!r}); "
+        "m=importlib.util.module_from_spec(spec); sys.modules[spec.name]=m; "
+        "spec.loader.exec_module(m); "
+        "m.emit_result('BLIND','0123456789abcdef',[],'could not reach 100.107.22.111')"
+    )
+    completed = subprocess.run([sys.executable, "-c", command],
+                               capture_output=True, check=False, text=True)
+
+    assert "100.107.22.111" not in completed.stdout
+    assert json.loads(completed.stdout)["reason"] == "redacted-sensitive-evidence"
 
 
 def test_policy_fingerprint_is_stable_and_changes_with_policy_content(tmp_path: Path) -> None:
