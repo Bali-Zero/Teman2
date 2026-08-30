@@ -25,6 +25,7 @@ from backend.db.schema_audit import (
     LEGACY_CHECKSUM_SENTINEL,
     SYMBOLIC_CHECKSUM_ALLOWLIST,
     _check_migration_checksums,
+    _checksum_severity,
     _migration_sql_by_number,
 )
 
@@ -249,7 +250,11 @@ async def test_a_tampered_row_is_caught_and_names_the_migration_number() -> None
         assert len(findings) == 1, findings
         f = findings[0]
         assert f.code == "migration_checksum_mismatch"
-        assert f.severity == "error"
+        # Default stage is WARNING (see `_checksum_severity`): the finding is
+        # raised in full, it just does not abort a deploy over state that
+        # predates the check. `SCHEMA_AUDIT_CHECKSUM_ENFORCE` flips it, and
+        # `TestChecksumEnforcementStage` below owns both halves of that.
+        assert f.severity == "warning"
         assert "299" in f.message
         assert f.details["migration_number"] == 299
         assert f.details["stored_checksum"] != f.details["recomputed_checksum"]
@@ -505,6 +510,167 @@ async def test_an_allowlisted_row_carrying_a_DIFFERENT_symbolic_value_still_erro
             "The allowlist must excuse one exact value, not a migration forever."
         )
         assert findings[0].code == "migration_checksum_unallowed_sentinel"
+    finally:
+        await conn.execute(f"DROP TABLE IF EXISTS {SCRATCH_TABLE}")
+        await conn.close()
+
+
+# --------------------------------------------------------------------------
+# ENFORCEMENT STAGE -- the checksum findings are staged, and the staging is
+# itself an adversarial surface.
+#
+# Demoting a finding has exactly one catastrophic failure mode: the finding
+# stops being COMPUTED, and the absence reads as health. Every test below is
+# aimed at that, not at the severity string.
+# --------------------------------------------------------------------------
+
+
+class TestChecksumEnforcementStage:
+    """GUILT and INNOCENCE for `_checksum_severity` and its blast radius."""
+
+    def test_the_default_stage_is_warning(self, monkeypatch) -> None:
+        """INNOCENCE. Unset means observe, and unset is the production state.
+
+        A verifier armed fail-closed against a database it was never measured
+        against is an outage, not a check -- which is what happened on
+        2026-08-30 between 19:02 UTC and this fix.
+        """
+        monkeypatch.delenv("SCHEMA_AUDIT_CHECKSUM_ENFORCE", raising=False)
+        assert _checksum_severity() == "warning"
+
+    @pytest.mark.parametrize("raw", ["1", "true", "TRUE", "yes", "on", " True "])
+    def test_the_env_var_arms_it(self, monkeypatch, raw: str) -> None:
+        """GUILT. Arming must actually arm -- including the shapes a human
+        types into `fly secrets set`, and including stray whitespace, which is
+        how a secret set from a shell heredoc arrives."""
+        monkeypatch.setenv("SCHEMA_AUDIT_CHECKSUM_ENFORCE", raw)
+        assert _checksum_severity() == "error", f"{raw!r} failed to arm the check"
+
+    @pytest.mark.parametrize("raw", ["", "0", "false", "no", "off", "maybe", "warning"])
+    def test_a_non_truthy_value_does_not_arm_it(self, monkeypatch, raw: str) -> None:
+        """INNOCENCE, and the half that bites: a flag whose OFF value silently
+        reads as ON turns a staged rollout into the outage it was staging
+        around. `"false"` in particular is a non-empty string, and a naive
+        truthiness test would arm on it."""
+        monkeypatch.setenv("SCHEMA_AUDIT_CHECKSUM_ENFORCE", raw)
+        assert _checksum_severity() == "warning", f"{raw!r} wrongly armed the check"
+
+    def test_the_stage_is_read_per_call_not_frozen_at_import(self, monkeypatch) -> None:
+        """A value cached at import time cannot be armed by a secret set after
+        the process starts, and the failure is silent: the env var is present,
+        the check stays demoted, and nobody learns why."""
+        monkeypatch.delenv("SCHEMA_AUDIT_CHECKSUM_ENFORCE", raising=False)
+        assert _checksum_severity() == "warning"
+        monkeypatch.setenv("SCHEMA_AUDIT_CHECKSUM_ENFORCE", "1")
+        assert _checksum_severity() == "error"
+        monkeypatch.delenv("SCHEMA_AUDIT_CHECKSUM_ENFORCE", raising=False)
+        assert _checksum_severity() == "warning"
+
+    def test_only_the_two_checksum_findings_are_staged(self) -> None:
+        """SCOPE. Everything else in this module still fails the deploy.
+
+        A pending migration, a duplicate number, a tracking divergence or a
+        missing required table each describe something the CURRENT deploy is
+        about to get wrong -- unlike a checksum row written in January, which
+        no amount of waiting makes verifiable. Read off the SOURCE rather than
+        by calling every check, because the point is that no future edit
+        quietly widens the demotion while the callers still look fine.
+        """
+        import inspect
+        import re
+
+        from backend.db import schema_audit
+
+        source = inspect.getsource(schema_audit)
+        # Pair each `code="..."` with the `severity=...` that follows it, which
+        # is how the Finding constructors are written throughout this module.
+        pairs = re.findall(
+            r'code="(?P<code>[a-z_]+)",\s*\n\s*severity=(?P<sev>[^,\n]+),', source
+        )
+        assert pairs, "no code/severity pairs found — the parse, not the module, is broken"
+        staged = {code for code, sev in pairs if sev == "_checksum_severity()"}
+        assert staged == {
+            "migration_checksum_unallowed_sentinel",
+            "migration_checksum_mismatch",
+        }, f"the set of staged findings changed: {sorted(staged)}"
+        for code, sev in pairs:
+            if code not in staged:
+                assert sev == '"error"', (
+                    f"{code} is no longer a hard error (severity={sev}); the "
+                    "demotion has leaked past the two checksum findings"
+                )
+
+    def test_a_warning_only_report_does_not_block_but_an_error_does(self) -> None:
+        """The actual deploy semantics, asserted on the object the
+        `release_command` exit code is derived from -- not on the severity
+        string, which is only a means to it."""
+        from backend.db.schema_audit import AuditReport, Finding
+
+        warn = Finding(code="c", severity="warning", message="m", details={})
+        err = Finding(code="c", severity="error", message="m", details={})
+        assert AuditReport(checks_run=["x"], findings=[warn, warn]).ok is True
+        assert AuditReport(checks_run=["x"], findings=[warn, err]).ok is False
+
+    def test_the_summary_line_never_hides_a_warning(self) -> None:
+        """The one thing a demotion must not buy: silence. A report carrying
+        warnings and no errors must SAY it carries warnings on its headline
+        line, because that line is what a human reads in a deploy log before
+        deciding whether to scroll."""
+        from backend.db.schema_audit import AuditReport, Finding, _format_human
+
+        warn = Finding(
+            code="migration_checksum_mismatch", severity="warning", message="m", details={}
+        )
+        text = _format_human(AuditReport(checks_run=["migration_checksums"], findings=[warn]))
+        headline = next(line for line in text.splitlines() if line.startswith("Result:"))
+        assert "warning" in headline, f"a warning-only report headlined as clean: {headline!r}"
+        assert "migration_checksum_mismatch" in text, "the finding itself vanished from the report"
+
+        clean = _format_human(AuditReport(checks_run=["migration_checksums"], findings=[]))
+        clean_headline = next(line for line in clean.splitlines() if line.startswith("Result:"))
+        assert "warning" not in clean_headline, (
+            f"a genuinely clean report claims warnings: {clean_headline!r}"
+        )
+
+
+@_live_only
+async def test_a_staged_finding_is_still_a_complete_finding() -> None:
+    """THE test of this change. Demotion must move the severity and NOTHING
+    else -- same code, same message, same details, same count. If a demoted
+    finding were also a thinner finding, the deploy log would stop carrying
+    what an operator needs to act, and the check would be disarmed in
+    substance while looking staged on paper.
+    """
+    import asyncpg
+
+    conn = await asyncpg.connect(TEST_DATABASE_URL)
+    try:
+        await _fresh_versions_table(conn, SCRATCH_TABLE)
+        path = _migration_sql_by_number()[299]
+        await conn.execute(
+            f"INSERT INTO {SCRATCH_TABLE} (migration_name, migration_number, checksum) "
+            "VALUES ($1, $2, $3)",
+            path.name, 299, hashlib.sha256(b"not what is on disk").hexdigest(),
+        )
+        # Same table, same row, read twice -- the only variable is the stage.
+        os.environ.pop("SCHEMA_AUDIT_CHECKSUM_ENFORCE", None)
+        staged = await _check_migration_checksums(
+            _FakeManager(_FakePool(conn)), table=SCRATCH_TABLE
+        )
+        os.environ["SCHEMA_AUDIT_CHECKSUM_ENFORCE"] = "1"
+        try:
+            armed = await _check_migration_checksums(
+                _FakeManager(_FakePool(conn)), table=SCRATCH_TABLE
+            )
+        finally:
+            os.environ.pop("SCHEMA_AUDIT_CHECKSUM_ENFORCE", None)
+
+        assert len(staged) == len(armed) == 1, (staged, armed)
+        assert staged[0].severity == "warning"
+        assert armed[0].severity == "error"
+        assert staged[0].code == armed[0].code
+        assert staged[0].message == armed[0].message
+        assert staged[0].details == armed[0].details
     finally:
         await conn.execute(f"DROP TABLE IF EXISTS {SCRATCH_TABLE}")
         await conn.close()

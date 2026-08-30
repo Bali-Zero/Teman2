@@ -56,6 +56,26 @@ FAIL-CLOSED DISCIPLINE: any `gh` fetch failure raises (never returns a fabricate
 an empty candidate set must never be confused with "gh api failed"). `--tick` catches such
 errors at the top level, logs CANNOT-VERIFY, and exits without having mutated anything.
 
+QUARANTINE (added 2026-08-31, squad-S disposition on issue #5316): measured live on Pro the
+night of 2026-08-30/31 — four run ids (32217208723, 32217208752, 32217399769, 32212086540)
+failed `cancel_run` with the IDENTICAL `HTTP 500 "Failed to cancel workflow run"` on EVERY
+10-minute tick, forever, because that outcome classifies as "failed" (see cancel_run's own
+docstring), and "failed" was — by design — never persisted to UNCANCELLABLE_FILE, on the
+reasoning that a single such failure might be transient. It was not: the same four ids repeated
+for hours. `record_cancel_failure` now counts CONSECUTIVE non-"cancelled" outcomes per run id;
+after UNCANCELLABLE_FAILURE_THRESHOLD (3 — long enough that one or two genuinely-transient
+blips never trip it, short enough that a truly-stuck run stops being retried inside the hour)
+it is quarantined into UNCANCELLABLE_FILE alongside its last error and a timestamp, and the
+janitor's per-tick loop skips it via `is_quarantined`. A single "uncancellable_409" outcome
+(GitHub's OWN plain-cancel AND force-cancel endpoints both refusing) still quarantines on the
+same tick it is first seen — nothing is learned by retrying that specific class three more
+times; this is unchanged from before. EXPIRY: quarantining stamps `quarantined_at`; past
+UNCANCELLABLE_RETRY_COOLDOWN_HOURS (24h) the janitor allows exactly one retry. A successful
+cancel on that retry (or any retry) clears the run's entry outright via `clear_cancel_entry` —
+"reset the counter if a later attempt succeeds". A retry that fails again refreshes
+`quarantined_at` to the new attempt, restarting the cooldown, so a permanently-broken run is
+retried at most once per cooldown window forever, never hammered every tick again.
+
 Kill switch: QUEUE_SHEPHERD_ENABLED=false makes every invocation a no-op that still prints a
 receipt line (superscar #2: a mute cron reads as a dead cron with nothing to report — never
 let silence be the only signal).
@@ -126,6 +146,15 @@ ORGAN_ID = "pro.queue_shepherd"
 INFRA_BUDGET_MAX = 3
 BUDGET_WINDOW_HOURS = 24
 BUDGET_GC_DAYS = 7  # prune (pr,sha) entries older than this so the file never grows unbounded
+
+# Quarantine (2026-08-31, squad-S / issue #5316) — see module docstring QUARANTINE section.
+UNCANCELLABLE_FAILURE_THRESHOLD = 3  # consecutive non-"cancelled" outcomes before quarantine
+UNCANCELLABLE_RETRY_COOLDOWN_HOURS = 24  # past this since quarantined_at, allow ONE retry
+
+_UNCANCELLABLE_ERROR_LABELS = {
+    "uncancellable_409": "both cancel and force-cancel endpoints answered HTTP 409 (not queued yet)",
+    "failed": "cancel_run failed (non-409) repeatedly — see queue-shepherd.log for the gh stderr",
+}
 
 FABLE_GATE_CONTEXT_NAMES = ("harness/fable-gate", "harness-floor")
 
@@ -328,6 +357,75 @@ def gc_uncancellable_state(
     no useful TTL for "GitHub told us twice it cannot cancel this" — the only trustworthy signal
     that it is safe to forget an id is that the janitor no longer sees it at all."""
     return {run_id: entry for run_id, entry in uncancellable_state.items() if run_id in candidate_ids}
+
+
+def record_cancel_failure(
+    uncancellable_state: dict[str, Any], run_id: str, outcome: str, now: _dt.datetime
+) -> dict[str, Any]:
+    """Pure: returns a NEW uncancellable_state (never mutates the input) with one more failed
+    cancel_run() attempt recorded against `run_id`. `outcome` is whatever cancel_run() returned
+    as its second element on a FAILURE — "failed" or "uncancellable_409" (never "cancelled"; a
+    success goes through clear_cancel_entry instead, never this function).
+
+    QUARANTINE THRESHOLD (module docstring QUARANTINE section has the full incident this
+    responds to): "uncancellable_409" — GitHub's plain-cancel AND force-cancel endpoints BOTH
+    answered 409, the strongest signal this module can get that GitHub itself cannot resolve the
+    run's state through either instrument — quarantines on the SAME tick it is first seen:
+    consecutive_failures jumps straight to UNCANCELLABLE_FAILURE_THRESHOLD, because nothing is
+    learned by retrying it three more times. "failed" (a plain non-409 error — HTTP 500, network
+    blip, timeout) is treated as POSSIBLY transient and only increments the counter by one; the
+    run is quarantined only once UNCANCELLABLE_FAILURE_THRESHOLD consecutive "failed" outcomes
+    have landed on the identical run_id with no success in between.
+
+    EXPIRY: quarantining sets/refreshes `quarantined_at` to `now`. is_quarantined() (below)
+    treats a quarantine as expired UNCANCELLABLE_RETRY_COOLDOWN_HOURS after that timestamp, at
+    which point the janitor allows exactly one retry attempt. If that retry fails again (this
+    function is called again), `quarantined_at` is refreshed to the NEW `now`, restarting the
+    cooldown — so a permanently-broken run is retried at most once per cooldown window forever,
+    never hammered every tick again. If the retry SUCCEEDS, the caller uses clear_cancel_entry
+    instead of this function, dropping the entry outright — that is the other way a quarantine
+    ends ("reset the counter if a later attempt succeeds")."""
+    new_state = json.loads(json.dumps(uncancellable_state))  # cheap deep copy, JSON-safe by contract
+    entry = new_state.setdefault(run_id, {"consecutive_failures": 0})
+    if outcome == "uncancellable_409":
+        entry["consecutive_failures"] = max(
+            entry.get("consecutive_failures", 0), UNCANCELLABLE_FAILURE_THRESHOLD
+        )
+    else:
+        entry["consecutive_failures"] = entry.get("consecutive_failures", 0) + 1
+    entry["last_error"] = _UNCANCELLABLE_ERROR_LABELS.get(outcome, outcome)
+    entry["last_attempt_at"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    if entry["consecutive_failures"] >= UNCANCELLABLE_FAILURE_THRESHOLD:
+        entry["quarantined_at"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")  # (re)start the cooldown
+    return new_state
+
+
+def clear_cancel_entry(uncancellable_state: dict[str, Any], run_id: str) -> dict[str, Any]:
+    """Pure: a successful cancel_run() (outcome == "cancelled") drops any tracked failure state
+    for run_id entirely — "reset the counter if a later attempt succeeds". A no-op (returns the
+    SAME object, not a copy) when run_id was never tracked, which is the common case since most
+    cancels succeed on the first try — mirrors gc_uncancellable_state's own no-op-when-absent
+    convention just below it."""
+    if run_id not in uncancellable_state:
+        return uncancellable_state
+    new_state = json.loads(json.dumps(uncancellable_state))
+    new_state.pop(run_id, None)
+    return new_state
+
+
+def is_quarantined(entry: dict[str, Any] | None, now: _dt.datetime) -> bool:
+    """Pure: True if a run tracked by `entry` (its uncancellable_state record, or None/{} if
+    untracked) should be SKIPPED this tick. An entry with no `quarantined_at` yet (still under
+    UNCANCELLABLE_FAILURE_THRESHOLD consecutive failures) is never skipped — it is still being
+    retried every tick, exactly like an untracked run. A quarantined entry stops being skipped
+    once UNCANCELLABLE_RETRY_COOLDOWN_HOURS have elapsed since `quarantined_at` — see
+    record_cancel_failure's docstring for what happens on that retry, in both directions."""
+    if not entry:
+        return False
+    quarantined_at = _parse_iso(entry.get("quarantined_at"))
+    if quarantined_at is None:
+        return False
+    return now < quarantined_at + _dt.timedelta(hours=UNCANCELLABLE_RETRY_COOLDOWN_HOURS)
 
 
 def decide_rearm(
@@ -937,7 +1035,10 @@ def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> int:
 
 
 def run_janitor_pass(dry_run: bool) -> int:
-    """Returns count of runs cancelled."""
+    """Returns count of runs cancelled. Skips any run currently is_quarantined() (module
+    docstring QUARANTINE section) — a quarantined id is never passed to cancel_run() at all,
+    which is what actually stops the repeated-failure log line (see this module's test suite for
+    the exact live incident this responds to)."""
     try:
         queued_runs = fetch_queued_runs(REPO)
     except RuntimeError as exc:
@@ -972,7 +1073,10 @@ def run_janitor_pass(dry_run: bool) -> int:
         logger.error("CANNOT-VERIFY uncancellable skip-list: %s", exc)
         return 0
 
-    skip_ids = set(uncancellable_state.keys())
+    now = _now()
+    skip_ids = {
+        run_id for run_id, entry in uncancellable_state.items() if is_quarantined(entry, now)
+    }
     to_process = [run for run in stale if str(run["id"]) not in skip_ids]
     skipped_count = len(stale) - len(to_process)
     if skipped_count:
@@ -998,12 +1102,20 @@ def run_janitor_pass(dry_run: bool) -> int:
             logger.info("[dry-run] would cancel run %s (%s, event=%s)", run["id"], run.get("name"), run["event"])
             cancelled += 1
             continue
+        run_id = str(run["id"])
         ok, outcome = cancel_run(REPO, run["id"])
         if ok:
             logger.info("cancelled stale run %s (%s, event=%s)", run["id"], run.get("name"), run["event"])
             cancelled += 1
-        elif outcome == "uncancellable_409":
-            uncancellable_state[str(run["id"])] = {"recorded_at": _now().strftime("%Y-%m-%dT%H:%M:%SZ")}
+            uncancellable_state = clear_cancel_entry(uncancellable_state, run_id)
+        else:
+            uncancellable_state = record_cancel_failure(uncancellable_state, run_id, outcome, now)
+            entry = uncancellable_state.get(run_id, {})
+            if is_quarantined(entry, now):
+                logger.warning(
+                    "run %s (%s): quarantined after %s consecutive cancel failures (last=%s)",
+                    run["id"], run.get("name"), entry.get("consecutive_failures"), outcome,
+                )
 
     if not dry_run:
         candidate_ids = {str(run["id"]) for run in stale}
