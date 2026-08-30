@@ -49,15 +49,18 @@ seat_diversity_note: >-
   diff alone. No seat_override anywhere.
 
 diff:
-  files: 11
-  net_lines: 1293
+  files: 17
+  net_lines: 3288
   measured_at: >-
-    counted against the PR's BASE, which is the parent branch and not main — this is a stacked PR
-    and its base was retargeted so the harness could resolve one evidence pack instead of two (the
-    resolver refuses to guess, correctly, and failed closed until the retarget). Re-measured as the
-    last action before this commit. Against main the same tree reads larger in both fields because
-    it carries the parent's files too; that figure is deliberately not quoted here, since the
-    countable-claims rule reads any number in this field and the base it belongs to is the parent.
+    counted against origin/main as the last action before this commit, so it INCLUDES the parent
+    branch's files — this PR is stacked and is not independently mergeable until the parent lands.
+    Its own contribution is the eight non-evidence files listed in the diff. Retargeting the base
+    to the parent branch WOULD have made the harness resolve one pack instead of two, and was
+    tried; the repo refuses it, correctly: `Base branch protected` reports that no ruleset covers
+    `agent/*`, and that 52 PRs merged into uncovered integration branches with zero required
+    checks in the 2026-08-25/26 window. A stacked PR is not worth teaching the repo to accept an
+    ungated base, so the ambiguous-pack red stands until the parent merges — it is self-explaining
+    and it disappears on its own.
 
 stacked_on: >-
   agent/air-m5/craft-h/canon-comparator2 (PR #5353). NOT a convenience: the parser this probe
