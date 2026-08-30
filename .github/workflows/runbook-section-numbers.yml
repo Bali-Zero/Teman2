@@ -17,7 +17,10 @@ name: runbook section numbers are unique
 # IT DOES NOT BLOCK ANYTHING YET, and nothing here may say otherwise. Measured on
 # 2026-08-22: `gh api repos/Bali-Zero/Teman2/branches/main/protection --jq
 # '.required_status_checks.contexts[]'` returns 27 contexts and none of them is
-# this one. Until `infra/required.d/contexts.json` is regenerated with
+# this one. Re-checked 2026-08-27 after Zero's ruling cut required contexts to
+# 9 then reinstated 2 to 11 (docs/runbooks/merge-queue-discipline.md "Required
+# vs advisory checks — reinstatement rule"): this context is still not among
+# them. Until `infra/required.d/contexts.json` is regenerated with
 # scripts/ci/snapshot_required_contexts.py and the protection updated, a red run
 # here REPORTS and does not stop a merge. An earlier revision of this file called
 # the step "(blocking)" in the checks UI while that was false — a label promising
@@ -38,7 +41,6 @@ name: runbook section numbers are unique
 
 on:
   pull_request:
-  merge_group:
   push:
     branches: [main]
 

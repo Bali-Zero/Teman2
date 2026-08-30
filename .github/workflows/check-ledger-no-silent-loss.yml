@@ -29,7 +29,58 @@
 # false positives on a rare legitimate closure. Promoting this to a
 # required branch-protection check is a separate, later, operator-only
 # action (repo/branch-protection settings, CLAUDE.md §13) — build first,
-# observe over a dry-run window, promote after.
+# observe over a dry-run window, promote after. "Non-required" is a
+# branch-protection fact (this job's name is absent from
+# `required_status_checks.contexts`, verified live via `gh api
+# repos/.../branches/main/protection/required_status_checks` — 11 entries,
+# none named `check-ledger-no-silent-loss` or `check-kbli-dataset-sync`),
+# NOT a `continue-on-error` on the invariant step — see the fix below.
+#
+# CORRECTED 2026-08-30 (found live: this check flagged a real resurrection
+# on PR #5279 — exit 1, naming the exact row — and it was invisible. The
+# `continue-on-error: true` this file used to carry made the JOB read
+# "success" on the PR's checks list; the actual finding sat only in raw
+# step logs nobody was looking at. That is NOT what "same posture as
+# check-kbli-dataset-sync.yml" means: that file has no continue-on-error
+# anywhere — it lets its own steps fail for real and stays non-required
+# purely by branch-protection omission, exactly as described above. This
+# citation was aspirational, not actual. Fixed: the invariant-check step
+# below now exits with its REAL code (a genuine finding shows red ❌ on
+# the PR — loud, impossible to miss glancing at the checks list) while
+# staying non-required (branch protection untouched — possible to proceed
+# past, merge/queue unaffected). Two new surfaces carry the verdict beyond
+# the check's own pass/fail color, because the raw exit code doesn't say
+# WHICH rows or in WHICH direction: (1) a `$GITHUB_STEP_SUMMARY` written on
+# every run (click the check → summary, no log-diving) and (2) on a
+# non-clean verdict, a single PR comment (upserted by a hidden marker, not
+# re-posted every push) naming the exact rows, the direction (LOST vs
+# DUPLICATED vs CANNOT-VERIFY), and a one-command way to confirm whether a
+# flagged row is a deliberate closure before treating it as real loss. The
+# comment self-corrects to "now clean" on a later push that resolves the
+# flag, instead of leaving a stale scare on the thread.
+#
+# CORRECTED 2026-08-30, second pass (found by an independent gate reviewing
+# this same PR before merge): the invariant-check step below used to pass
+# `--base-ref "$BASE_SHA"` — the PR's frozen `pull_request.base.sha` — to
+# the script. That SHA is, by construction, an ancestor of the PR's HEAD
+# (it IS the commit the branch forked from), so `check()`'s own
+# `git merge-base(base_ref, head)` always resolves back to that same
+# frozen commit, and `main_entries` (loaded FROM `base_ref`) never reflects
+# anything that happened on main after this branch diverged — the
+# invariant's own docstring requires "present at merge-base AND on CURRENT
+# origin/main", and the frozen SHA can only ever supply the first half.
+# Measured empirically (3 crafted scenarios run directly against `check()`,
+# see `scripts/tests/test_check_ledger_no_silent_loss.py`): the frozen SHA
+# never MISSES a real loss this branch itself introduces (that case is
+# caught either way — the branch's own accidental drop of an untouched row
+# doesn't depend on what main did afterward), but it DOES false-flag a row
+# that main legitimately closed after this branch forked and that this
+# branch's own `git merge origin/main` correctly, faithfully picked up —
+# the frozen-SHA invocation would call a clean, correct merge a "loss"
+# because it never saw main move. Fixed: `--base-ref origin/main`, fetched
+# by name (see the "Fetch PR base" step) so it resolves to a live ref
+# reflecting main as it actually is when this job runs, not the PR's
+# fork-point snapshot.
 #
 # Path-scoped: only runs when the ledger, this script, or this workflow
 # changes — a PR that touches none of them has nothing to check.
@@ -48,6 +99,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write # PR-comment upsert on a non-clean verdict — see header comment
 
 concurrency:
   group: check-ledger-no-silent-loss-${{ github.event.pull_request.number || github.ref }}
@@ -84,6 +136,11 @@ jobs:
         run: |
           set -euo pipefail
           git fetch --no-tags --depth=200 origin "$BASE_SHA"
+          # main BY NAME too, not only the PR's frozen base.sha — see the
+          # invariant-check step's comment for why the frozen SHA cannot be
+          # what `--base-ref` receives. This makes `origin/main` a real,
+          # resolvable remote-tracking ref for that step.
+          git fetch --no-tags --depth=200 origin main:refs/remotes/origin/main
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -99,11 +156,222 @@ jobs:
           python -m pytest scripts/tests/test_check_ledger_no_silent_loss.py -q
 
       - name: No silent loss and no silent duplication across the ledger merge
+        id: ledger_check
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -uo pipefail
+          # Real exit code, not swallowed — see header comment. `tee` lets
+          # the raw output land BOTH in the step's own log (existing
+          # behavior) AND in a file this step reads back to build the
+          # summary/comment, without running the check twice (which would
+          # re-read git refs that could theoretically have moved, and would
+          # double the runtime for no reason).
+          #
+          # --base-ref origin/main, NOT "$BASE_SHA" (CORRECTED same day,
+          # second pass): `pull_request.base.sha` is the PR's frozen fork
+          # point — an ancestor of HEAD by construction — so
+          # `check()`'s own `git merge-base(base_ref, head)` always
+          # resolves back to that SAME frozen commit, and `main_entries`
+          # (loaded FROM `base_ref`) ends up reading that frozen snapshot
+          # too, never anything that has happened on main SINCE this
+          # branch forked. Measured empirically (3 crafted scenarios run
+          # against this exact function): passing the frozen SHA never
+          # misses a real loss this branch itself introduced (a branch's
+          # own accidental drop of an untouched row is caught either way),
+          # but it DOES false-flag a row main legitimately closed AFTER
+          # this branch forked and that this branch's own `git merge
+          # origin/main` correctly picked up — the check would call a
+          # clean, correct merge "loss" because it never saw main move.
+          # `origin/main` (a live ref, fetched above) reads what main
+          # ACTUALLY is now, matching the invariant's own docstring
+          # definition ("present at merge-base AND on current
+          # origin/main").
+          #
+          # set +e / set -e around the pipe (CORRECTED same day, third
+          # pass — independent gate finding, corroborated in-repo): GitHub
+          # Actions' default bash invocation already runs `-eo pipefail`
+          # (harness-floor.yml's own comment says so), and this step's own
+          # `set -uo pipefail` never turns errexit OFF — so on a NON-CLEAN
+          # verdict (the pipeline's own nonzero exit), the shell exits
+          # immediately AT THE PIPE, before `RC="${PIPESTATUS[0]}"` on the
+          # next line ever runs: no rc written, no step summary — the
+          # surface goes silent exactly when the verdict is non-clean, the
+          # one case this whole PR exists to make loud. Same idiom already
+          # proven in this repo at fly-deploy.yml's own PIPESTATUS use:
+          # disable errexit only around the piped command, re-enable right
+          # after capturing the code.
+          set +e
           python scripts/check_ledger_no_silent_loss.py \
-            --base-ref "$BASE_SHA" --head-ref "$HEAD_SHA"
-        continue-on-error: true # dry-run posture — see header comment
+            --base-ref origin/main --head-ref "$HEAD_SHA" \
+            2>&1 | tee /tmp/ledger-check-output.txt
+          RC="${PIPESTATUS[0]}"
+          set -e
+          echo "rc=$RC" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## check-ledger-no-silent-loss"
+            echo
+            echo "Base \`${BASE_SHA:0:12}\` → Head \`${HEAD_SHA:0:12}\`"
+            echo
+            echo '```'
+            cat /tmp/ledger-check-output.txt
+            echo '```'
+            echo
+            case "$RC" in
+              0)
+                echo "**Verdict: clean.** No open ledger row was lost or duplicated relative to origin/main / the merge-base."
+                ;;
+              4)
+                echo "**Verdict: CANNOT-VERIFY (exit 4).** The check itself could not read the git refs it needs — this is a check-infra problem, not a claim about the ledger. Non-required: does not block merge."
+                ;;
+              *)
+                echo "**Verdict: exit $RC — see the flagged row(s) above.** Non-required: this never blocks merge or the merge queue, but read it before merging."
+                echo
+                # Qualitative caveat, stated where a reader sees it on FIRST
+                # EXPOSURE (right next to the verdict, before any detail) and
+                # WITHOUT a frequency (team-lead ruling, same day: a ratio
+                # from ~10 runs would harden n=10 into permanent surface text
+                # nobody re-measures — the exact folklore this fact is meant
+                # to prevent). Verbatim wording team-lead specified.
+                echo "A flag here may be a deliberate, correctly-explained row closure rather than an accidental loss — this check cannot tell them apart. Confirm with the command below and read the commit message before treating it as a defect."
+                echo
+                echo '```'
+                echo "git log --oneline ${BASE_SHA}..${HEAD_SHA} -- .claude/skills/modus/PENDING-ARMS.md"
+                echo '```'
+                echo
+                echo "Then read those commit message(s) (\`--format=%B\` for the full text). This ledger's convention is that a deliberate removal is EXPLAINED — either inline in a paired \`- closed\` row landing in the same diff, or in the prose of the commit message that deletes the row (a mechanical \`grep -c '^+- closed'\` alone under-detects this: measured live on the PR that motivated this check, the removal was genuinely deliberate and fully explained in its commit message, yet added no \`- closed\` row at all — grep-only would have wrongly called it unconfirmed). If NEITHER the diff's added rows NOR the removing commit's own message explains why the flagged row is gone, treat it as probable accidental loss/duplication and investigate before merging. See \`docs/runbooks/merge-queue-discipline.md\` §6quinquies."
+                ;;
+            esac
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit "$RC"
+
+      - name: Post/refresh a PR comment when the ledger check is not clean
+        # Runs even when the step above failed (that IS the signal this
+        # step exists to surface) — bare `if: always()` is load-bearing,
+        # not decorative: without it, a real finding would skip straight
+        # past the one surface loud enough to be "impossible to miss" and
+        # leave only the step summary (click-through) and the raw log
+        # (buried).
+        #
+        # BUT bare always() also fires when `ledger_check` was SKIPPED (an
+        # earlier step in this job failed first) or the run was CANCELLED
+        # (CORRECTED same day, third pass — independent gate finding,
+        # measured: 3 cancelled runs in the last 40 on this workflow) — in
+        # either case `steps.ledger_check.outputs.rc` is empty, and the JS
+        # below's `RC || "1"` fallback reads that as non-clean, posting a
+        # "rows LOST" comment against a PR that was never actually judged.
+        # `outputs.rc != ''` gates on "the step that sets rc actually ran
+        # and set it", not merely "the job didn't exit early".
+        if: always() && steps.ledger_check.outputs.rc != ''
+        uses: actions/github-script@v9
+        env:
+          RC: ${{ steps.ledger_check.outputs.rc }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        with:
+          script: |
+            const fs = require("fs");
+            const rc = parseInt(process.env.RC || "1", 10); // missing output -> treat as non-clean, never silently OK
+            const marker = "<!-- check-ledger-no-silent-loss -->";
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const baseShort = (process.env.BASE_SHA || "").slice(0, 12);
+            const headShort = (process.env.HEAD_SHA || "").slice(0, 12);
+            const runUrl = `${context.payload.repository.html_url}/actions/runs/${context.runId}`;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number, per_page: 100,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+
+            if (rc === 0) {
+              // Clean now. Only post/update if a PRIOR push had flagged
+              // something on this same PR — a clean-from-the-start PR gets
+              // no comment at all (never spam the common case).
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner, repo, comment_id: existing.id,
+                  body: `${marker}\n**check-ledger-no-silent-loss: now clean.** A previous push on this PR had flagged a possible ledger row loss/duplication; HEAD \`${headShort}\` no longer does. [Run](${runUrl}).`,
+                });
+              }
+              return;
+            }
+
+            let output = "";
+            try {
+              output = fs.readFileSync("/tmp/ledger-check-output.txt", "utf8");
+            } catch (e) {
+              output = `(could not read the check's own output file: ${e.message})`;
+            }
+            const CAP = 55000; // stay well under GitHub's ~65536-char comment body limit with room for the wrapper text
+            if (output.length > CAP) {
+              output = output.slice(0, CAP) + "\n... (truncated — see the full check-run log for the rest)";
+            }
+
+            const direction =
+              rc === 4
+                ? "⚠️ **CANNOT-VERIFY** — the check could not read the git refs it needs. This is a check-infra problem, not a verdict about the ledger."
+                : rc === 1
+                ? "🔴 **Direction: rows LOST** — present at the merge-base and on origin/main, absent from this PR's HEAD."
+                : rc === 2
+                ? "🔴 **Direction: rows DUPLICATED** — this PR's HEAD carries more copies of some row identity than origin/main or the merge-base do."
+                : rc === 3
+                ? "🔴 **Both directions at once**: rows LOST AND rows DUPLICATED — see the output below for which is which."
+                : `🔴 **Unrecognized exit code ${rc}** — treat as non-clean; see output below.`;
+
+            // Built as an array-join, not a raw multi-line template literal:
+            // a template literal's own line breaks land at column 0, which
+            // breaks the YAML block-scalar this whole script lives inside
+            // (a `**bold**` markdown line starting at column 1 parses as a
+            // YAML alias token, not text — hit live authoring this file).
+            // Every element below is a normal, indented JS statement; only
+            // the STRING VALUES end up unindented in the rendered comment.
+            // Qualitative caveat placed IMMEDIATELY after `direction`, BEFORE
+            // the collapsed <details> block — team-lead ruling, same day:
+            // this is what "sets the reader's prior on FIRST EXPOSURE"
+            // actually means (the alarming headline and the calibrating fact
+            // in the same visual unit, not separated by a details toggle a
+            // reader may never open). Deliberately NO frequency/ratio here —
+            // a number from this check's still-small run history would
+            // harden into permanent surface text nobody re-measures, the
+            // exact folklore this fact exists to prevent. Verbatim wording
+            // team-lead specified.
+            const firstExposureCaveat =
+              "A flag here may be a deliberate, correctly-explained row " +
+              "closure rather than an accidental loss — this check cannot " +
+              "tell them apart. Confirm with the command below and read the " +
+              "commit message before treating it as a defect.";
+
+            const bodyLines = [
+              marker,
+              `**check-ledger-no-silent-loss flagged this PR's HEAD (\`${headShort}\`, base \`${baseShort}\`).** Non-required — this never blocks merge or the merge queue — but read it before merging. [Run](${runUrl}).`,
+              "",
+              direction,
+              "",
+              firstExposureCaveat,
+              "",
+              "```",
+              `git log --oneline ${process.env.BASE_SHA}..${process.env.HEAD_SHA} -- .claude/skills/modus/PENDING-ARMS.md`,
+              "```",
+              "",
+              "<details><summary>Full check output — which rows, verbatim</summary>",
+              "",
+              "```",
+              output,
+              "```",
+              "</details>",
+              "",
+              "Then read those commit message(s) (`--format=%B` for the full text). This ledger's convention is that a deliberate removal is EXPLAINED — either inline in a paired `- closed` row landing in the same diff, or in the prose of the commit message that deletes the row (a mechanical `grep -c '^+- closed'` alone under-detects this: measured live on the PR that motivated this check, the removal was genuinely deliberate and fully explained in its commit message, yet added no `- closed` row at all — grep-only would have wrongly called it unconfirmed). If NEITHER the diff's added rows NOR the removing commit's own message explains why the flagged row is gone, treat it as probable accidental loss/duplication and investigate before merging. See `docs/runbooks/merge-queue-discipline.md` §6quinquies.",
+              "",
+              'This comment self-updates on later pushes to this PR (edited in place, not reposted) — it will say "now clean" here if a later push resolves the flag.',
+            ];
+            const body = bodyLines.join("\n");
+
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }

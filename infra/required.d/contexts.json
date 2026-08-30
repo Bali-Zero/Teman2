@@ -1,6 +1,6 @@
 {
   "_doc": "Advisory snapshot of main's required-status-check contexts (Merge-OS v2 Wave 0, research/operations/2026-08-10-merge-os-v2-submission-system.md §4). Read by scripts/ci/check_required_workflow_conformance.py. Drift vs live branch protection is expected and cured by REGEN, never hand-edit — see regen_command below.",
-  "generated_at": "2026-08-11",
+  "generated_at": "2026-08-27",
   "source": "api",
   "derived_from_pr": null,
   "repo": "Bali-Zero/Teman2",
@@ -9,165 +9,69 @@
   "contexts": [
     {
       "name": "Backend Tests (Python)",
-      "app_id": 15368,
+      "app_id": null,
       "workflow_file": ".github/workflows/tests.yml",
       "job_id": "backend-tests"
     },
     {
-      "name": "Bandit Python Security",
-      "app_id": 15368,
-      "workflow_file": ".github/workflows/security.yml",
-      "job_id": "bandit"
-    },
-    {
-      "name": "Canary self-test + incremental mutation",
-      "app_id": 15368,
-      "workflow_file": ".github/workflows/p1s2-mutation-incremental.yml",
-      "job_id": "mutation-gate"
-    },
-    {
       "name": "CodeQL Analysis (javascript)",
-      "app_id": 15368,
+      "app_id": null,
       "workflow_file": ".github/workflows/security.yml",
       "job_id": "codeql"
     },
     {
       "name": "CodeQL Analysis (python)",
-      "app_id": 15368,
+      "app_id": null,
       "workflow_file": ".github/workflows/security.yml",
       "job_id": "codeql"
     },
     {
-      "name": "Detect Secrets",
-      "app_id": 15368,
-      "workflow_file": ".github/workflows/security.yml",
-      "job_id": "detect-secrets"
-    },
-    {
       "name": "E2E Tests (Playwright)",
-      "app_id": 15368,
+      "app_id": null,
       "workflow_file": ".github/workflows/tests.yml",
       "job_id": "e2e-tests"
     },
     {
       "name": "Every guard proves guilt AND innocence",
-      "app_id": 15368,
+      "app_id": null,
       "workflow_file": ".github/workflows/guard-conformance.yml",
       "job_id": "conformance"
     },
     {
       "name": "Every organ is born with its genes",
-      "app_id": 15368,
+      "app_id": null,
       "workflow_file": ".github/workflows/organ-conformance.yml",
       "job_id": "conformance"
     },
     {
       "name": "Frontend Tests (Next.js) (mouth, true)",
-      "app_id": 15368,
+      "app_id": null,
       "workflow_file": ".github/workflows/tests.yml",
       "job_id": "frontend-tests"
     },
     {
       "name": "Harness floor recompute",
-      "app_id": 15368,
+      "app_id": null,
       "workflow_file": ".github/workflows/harness-floor.yml",
       "job_id": "harness-floor"
     },
     {
-      "name": "Hot-zone enforcement",
-      "app_id": 15368,
-      "workflow_file": ".github/workflows/hot-zone-pr-gate.yml",
-      "job_id": "hot-zone-gate"
-    },
-    {
-      "name": "MCP Server Tests",
-      "app_id": 15368,
-      "workflow_file": ".github/workflows/tests.yml",
-      "job_id": "mcp-tests"
-    },
-    {
-      "name": "P3 static validation (enforcing)",
-      "app_id": 15368,
-      "workflow_file": ".github/workflows/p3-sandbox-gates.yml",
-      "job_id": "p3-static-validation"
-    },
-    {
-      "name": "P6 parallelize-hypothesis falsifiable gates",
-      "app_id": 15368,
-      "workflow_file": ".github/workflows/p6-federation-parallelize.yml",
-      "job_id": "parallelize-gate"
-    },
-    {
-      "name": "Prove hooks bite only the guilty",
-      "app_id": 15368,
-      "workflow_file": ".github/workflows/hook-innocence-gate.yml",
-      "job_id": "innocence"
-    },
-    {
       "name": "R1 gate — adversarial review present",
-      "app_id": 15368,
+      "app_id": null,
       "workflow_file": ".github/workflows/adversarial-review-gate.yml",
       "job_id": "gate"
     },
     {
       "name": "actionlint — workflow schema + expression gate",
-      "app_id": 15368,
+      "app_id": null,
       "workflow_file": ".github/workflows/actionlint.yml",
       "job_id": "lint"
     },
     {
       "name": "antidotes",
-      "app_id": 15368,
+      "app_id": null,
       "workflow_file": ".github/workflows/immune-enforcement.yml",
       "job_id": "antidotes"
-    },
-    {
-      "name": "asyncpg-lint",
-      "app_id": 15368,
-      "workflow_file": ".github/workflows/asyncpg-lint.yml",
-      "job_id": "asyncpg-lint"
-    },
-    {
-      "name": "brand-api-gate",
-      "app_id": 15368,
-      "workflow_file": ".github/workflows/p8-brand-api.yml",
-      "job_id": "brand-api-gate"
-    },
-    {
-      "name": "cost-breaker-tests",
-      "app_id": 15368,
-      "workflow_file": ".github/workflows/p9-cost-breaker.yml",
-      "job_id": "cost-breaker-tests"
-    },
-    {
-      "name": "lesson-harvester-gate",
-      "app_id": 15368,
-      "workflow_file": ".github/workflows/p7-lesson-harvester.yml",
-      "job_id": "lesson-harvester-gate"
-    },
-    {
-      "name": "npm lock honors manifest",
-      "app_id": 15368,
-      "workflow_file": ".github/workflows/npm-lock-sync.yml",
-      "job_id": "lock-honors-manifest"
-    },
-    {
-      "name": "prepush-guards",
-      "app_id": 15368,
-      "workflow_file": ".github/workflows/prepush-guards.yml",
-      "job_id": "prepush-guards"
-    },
-    {
-      "name": "root-guard",
-      "app_id": 15368,
-      "workflow_file": ".github/workflows/root-guard.yml",
-      "job_id": "root-guard"
-    },
-    {
-      "name": "verify-the-verifiers",
-      "app_id": 15368,
-      "workflow_file": ".github/workflows/verify-the-verifiers.yml",
-      "job_id": "verify-the-verifiers"
     }
   ]
 }

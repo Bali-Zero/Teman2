@@ -146,7 +146,7 @@ def run_coverage() -> float | None:
         "backend/tests/",
         f"--cov=backend",
         f"--cov-report=json:{cov_json}",
-        "--no-header", "-q",
+        "--no-header",
         "--timeout=120",
         "--tb=no",
     ]

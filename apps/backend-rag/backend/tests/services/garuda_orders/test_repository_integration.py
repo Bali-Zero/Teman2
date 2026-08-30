@@ -39,6 +39,7 @@ from backend.services.payments.port import (
     NormalizedRefundEvent,
 )
 from backend.services.payments.terminal_taxonomy import FailureOutcome, classify
+from backend.tests.fixtures.prod_shaped_pool import create_prod_shaped_pool
 
 _DSN = (
     os.environ.get("GARUDA_L3_TEST_DSN")
@@ -219,7 +220,7 @@ async def _close_garuda_order_test_policy(conn: asyncpg.Connection, policy_versi
 @pytest.fixture
 async def pool():
     try:
-        p = await asyncpg.create_pool(dsn=_DSN, min_size=1, max_size=2)
+        p = await create_prod_shaped_pool(_DSN, min_size=1, max_size=2)
     except (OSError, asyncpg.PostgresError) as exc:
         if os.environ.get("CI"):
             # A skip in a gate is a fail-open (gate finding, round 3): every
@@ -674,6 +675,20 @@ async def test_paid_event_with_wrong_amount_is_quarantined_never_marks_paid(pool
     assert transition == "OP-F03"
     state = await pool.fetchval("SELECT state FROM garuda_orders WHERE order_id = $1", order_id)
     assert state == "awaiting_payment"  # never flipped to paid on a mismatched amount
+
+    # ... and the REASON is on the record, not just the refusal (migration 298).
+    # RED IF: `_quarantine` stops recording a cause, or records the wrong one.
+    # Without this, the alarm that reads these rows can only say "1 event
+    # quarantined, cause unknown" — and an amount mismatch, an unknown checkout
+    # session and an unbound order are three different incidents with three
+    # different cures.
+    quarantine = await pool.fetchrow(
+        "SELECT outcome, quarantine_reason FROM garuda_payment_inbox "
+        "WHERE provider = 'xendit' AND provider_event_id = $1",
+        "evt-wrong-amount-1",
+    )
+    assert quarantine["outcome"] == "quarantined"
+    assert quarantine["quarantine_reason"] == "amount_mismatch"
 
 
 @pytest.mark.asyncio

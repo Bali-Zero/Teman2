@@ -194,7 +194,9 @@ def magic_link_store(pool) -> PostgresMagicLinkStore:
 
 
 @pytest.fixture
-def app(repository: GarudaOrderRepository, pool, magic_link_store: PostgresMagicLinkStore) -> FastAPI:
+def app(
+    repository: GarudaOrderRepository, pool, magic_link_store: PostgresMagicLinkStore
+) -> FastAPI:
     application = FastAPI()
     application.include_router(garuda_orders_router.router)
     application.state.garuda_order_repository = repository
@@ -241,9 +243,7 @@ async def _seed_session(
     )
 
 
-async def _seed_order(
-    pool, *, order_id: str, result_id_ref: str, price_idr: int = 790_000
-) -> None:
+async def _seed_order(pool, *, order_id: str, result_id_ref: str, price_idr: int = 790_000) -> None:
     await pool.execute(
         """
         INSERT INTO garuda_orders (order_id, result_id_ref, case_type, applicant_full_name,
@@ -271,7 +271,7 @@ class TestSessionVerification:
     async def test_absent_cookie_is_rejected(self, client: AsyncClient) -> None:
         resp = await client.get("/api/visa/voa/orders/ord_absent_0000000000")
         assert resp.status_code == 401
-        assert resp.json()["detail"]["code"] == "SESSION_REQUIRED"
+        assert resp.json()["code"] == "SESSION_REQUIRED"
 
     async def test_unknown_cookie_value_is_rejected(self, client: AsyncClient) -> None:
         resp = await client.get(
@@ -279,11 +279,9 @@ class TestSessionVerification:
             cookies={_SESSION_COOKIE: "not-a-real-session-secret"},
         )
         assert resp.status_code == 401
-        assert resp.json()["detail"]["code"] == "SESSION_REQUIRED"
+        assert resp.json()["code"] == "SESSION_REQUIRED"
 
-    async def test_expired_session_is_rejected(
-        self, pool, client: AsyncClient
-    ) -> None:
+    async def test_expired_session_is_rejected(self, pool, client: AsyncClient) -> None:
         raw_secret = "expired-secret-0000000000000000000000000000"
         await _seed_session(
             pool,
@@ -296,11 +294,9 @@ class TestSessionVerification:
             cookies={_SESSION_COOKIE: raw_secret},
         )
         assert resp.status_code == 401
-        assert resp.json()["detail"]["code"] == "SESSION_REQUIRED"
+        assert resp.json()["code"] == "SESSION_REQUIRED"
 
-    async def test_a_valid_session_reaches_past_the_401(
-        self, pool, client: AsyncClient
-    ) -> None:
+    async def test_a_valid_session_reaches_past_the_401(self, pool, client: AsyncClient) -> None:
         """Positive control: a live, unexpired session gets PAST the auth
         gate (a real ORDER_NOT_FOUND, never SESSION_REQUIRED) -- proves the
         401 tests above are testing the auth gate, not an unrelated 404."""
@@ -311,7 +307,7 @@ class TestSessionVerification:
             cookies={_SESSION_COOKIE: raw_secret},
         )
         assert resp.status_code == 404
-        assert resp.json()["detail"]["code"] == "ORDER_NOT_FOUND"
+        assert resp.json()["code"] == "ORDER_NOT_FOUND"
 
 
 # ============================================================
@@ -325,14 +321,16 @@ class TestGetOrderOwnership:
     ) -> None:
         raw_secret_a = "secret-a-get-000000000000000000000000000"
         await _seed_session(pool, raw_secret=raw_secret_a, result_id="result-a-get-000000000")
-        await _seed_order(pool, order_id="ord_get_owned_by_b_0000", result_id_ref="result-b-get-000000000")
+        await _seed_order(
+            pool, order_id="ord_get_owned_by_b_0000", result_id_ref="result-b-get-000000000"
+        )
 
         resp = await client.get(
             "/api/visa/voa/orders/ord_get_owned_by_b_0000",
             cookies={_SESSION_COOKIE: raw_secret_a},
         )
         assert resp.status_code == 404
-        assert resp.json()["detail"]["code"] == "ORDER_NOT_FOUND"
+        assert resp.json()["code"] == "ORDER_NOT_FOUND"
 
     async def test_a_session_can_read_its_own_order_and_only_the_frozen_fields(
         self, pool, client: AsyncClient
@@ -357,8 +355,12 @@ class TestGetOrderOwnership:
             "practice": None,
         }
         # No applicant PII in the response shape, today or after this fix.
-        for pii_key in ("applicant_full_name", "applicant_email", "applicant_phone",
-                        "applicant_passport_number"):
+        for pii_key in (
+            "applicant_full_name",
+            "applicant_email",
+            "applicant_phone",
+            "applicant_passport_number",
+        ):
             assert pii_key not in body
 
 
@@ -379,7 +381,7 @@ class TestBrowserReturnObservationOwnership:
             json={"return_nonce": "n" * 20},
         )
         assert resp.status_code == 404
-        assert resp.json()["detail"]["code"] == "ORDER_NOT_FOUND"
+        assert resp.json()["code"] == "ORDER_NOT_FOUND"
 
         row = await pool.fetchrow(
             "SELECT browser_observation, browser_return_nonce FROM garuda_orders WHERE order_id = $1",
@@ -435,7 +437,7 @@ class TestCreateOrderOwnership:
             },
         )
         assert resp.status_code == 404
-        assert resp.json()["detail"]["code"] == "RESULT_NOT_FOUND"
+        assert resp.json()["code"] == "RESULT_NOT_FOUND"
 
         count = await pool.fetchval(
             "SELECT count(*) FROM garuda_orders WHERE result_id_ref = $1", "result-b-create-0000000"
@@ -535,7 +537,7 @@ class TestDbPoolDegradationIsFiveOhThreeNotFiveHundred:
             cookies={_SESSION_COOKIE: raw_secret},
         )
         assert resp.status_code == 503, resp.text
-        assert resp.json()["detail"]["code"] == "SERVICE_UNAVAILABLE"
+        assert resp.json()["code"] == "SERVICE_UNAVAILABLE"
 
     async def test_explicit_none_garuda_db_pool_is_503_not_500(
         self, pool, magic_link_store: PostgresMagicLinkStore, repository: GarudaOrderRepository
@@ -554,4 +556,119 @@ class TestDbPoolDegradationIsFiveOhThreeNotFiveHundred:
             cookies={_SESSION_COOKIE: raw_secret},
         )
         assert resp.status_code == 503, resp.text
-        assert resp.json()["detail"]["code"] == "SERVICE_UNAVAILABLE"
+        assert resp.json()["code"] == "SERVICE_UNAVAILABLE"
+
+
+# ============================================================
+# The tracker must not need the PAYMENT provider (2026-08-27).
+#
+# `get_order_and_practice` declared `repository: GarudaOrderRepository =
+# Depends(get_repository)` and never referenced it -- the handler answers
+# entirely from `PracticeRepository(pool)`. FastAPI resolves parameter
+# dependencies BEFORE the handler body, so the unused declaration was not
+# inert: `get_repository` 503s whenever `app.state.garuda_order_repository`
+# is unset, and that object is only ever constructed when
+# `GARUDA_XENDIT_SECRET_KEY` is present (`service_initializer.py` §5.7).
+#
+# Net effect, measured in production 2026-08-27 before any Xendit account
+# exists: `GET /api/visa/voa/orders/{id}` answered 503, the same as the
+# checkout routes that genuinely need the provider. A customer who had
+# ALREADY PAID would lose sight of their own order the moment that
+# credential were absent or badly rotated -- on a read-only route whose
+# real work needs nothing but the database pool.
+#
+# The class above is this one's mirror: it degrades ONLY the pool and keeps
+# the repository working. This one degrades ONLY the repository and keeps
+# the pool working, and the second test proves the removal was surgical --
+# a route that really does need the repository must still 503.
+# ============================================================
+
+
+class TestTrackerDoesNotDependOnThePaymentProvider:
+    async def _app_without_repository(
+        self,
+        pool,
+        magic_link_store: PostgresMagicLinkStore,
+        *,
+        raw_secret: str,
+        result_id: str,
+        repository_state: str,  # "absent" or "none"
+    ) -> AsyncClient:
+        await _seed_session(pool, raw_secret=raw_secret, result_id=result_id)
+        application = FastAPI()
+        application.include_router(garuda_orders_router.router)
+        # Everything the tracker legitimately needs IS wired: a real pool and
+        # the real session verifier. Only `garuda_order_repository` is missing
+        # -- which is exactly production's state whenever no Xendit key is set.
+        application.state.garuda_db_pool = pool
+        application.state.garuda_magic_session_verifier = magic_link_store.verify_session
+        if repository_state == "none":
+            application.state.garuda_order_repository = None
+        # else "absent": never set, the shape §5.7 actually leaves behind.
+        return AsyncClient(transport=ASGITransport(app=application), base_url="http://t")
+
+    @pytest.mark.parametrize("repository_state", ["absent", "none"])
+    async def test_tracker_answers_without_a_payment_provider_wired(
+        self, pool, magic_link_store: PostgresMagicLinkStore, repository_state: str
+    ) -> None:
+        """GUILT: red before the fix (503), green after (404).
+
+        404 and not 200 only because no order is seeded -- the point is that
+        the answer comes from THIS ROUTE'S OWN LOGIC instead of being
+        short-circuited by an unrelated dependency. Asserting `!= 503` alone
+        would also pass on a 500, so the exact code and body are pinned.
+        """
+        raw_secret = f"secret-tracker-norepo-{repository_state}-000000"
+        client = await self._app_without_repository(
+            pool,
+            magic_link_store,
+            raw_secret=raw_secret,
+            result_id=f"result-tracker-norepo-{repository_state[:4]}",
+            repository_state=repository_state,
+        )
+        resp = await client.get(
+            "/api/visa/voa/orders/ord_tracker_norepo_0000",
+            cookies={_SESSION_COOKIE: raw_secret},
+        )
+        assert resp.status_code == 404, (
+            f"the read-only tracker answered {resp.status_code} with no payment provider "
+            f"wired: {resp.text}. A paid customer cannot see their own order because a "
+            "credential they never touch is absent."
+        )
+        assert resp.json()["code"] == "ORDER_NOT_FOUND"
+
+    async def test_creating_an_order_still_503s_without_the_repository(
+        self, pool, magic_link_store: PostgresMagicLinkStore
+    ) -> None:
+        """INNOCENCE: the removal was surgical, not a blanket decoupling.
+
+        `POST /orders` genuinely needs the repository (it creates the checkout
+        session through the provider). If this ever stops being a 503, the
+        dependency was removed from a route that needs it, and the failure
+        would surface as a 500 mid-purchase instead of a retryable 503.
+        """
+        raw_secret = "secret-tracker-create-503-0000000000000"
+        client = await self._app_without_repository(
+            pool,
+            magic_link_store,
+            raw_secret=raw_secret,
+            result_id="result-tracker-create-50",
+            repository_state="absent",
+        )
+        resp = await client.post(
+            "/api/visa/voa/orders",
+            json={
+                "result_id": "result-tracker-create-50",
+                "review_confirmed": True,
+                "applicant": {
+                    "full_name": "Test Traveller",
+                    "email": "tracker-e2e@example.invalid",
+                    "phone": "+390000000000",
+                    "passport_number": "SYNTHETIC000",
+                },
+            },
+            headers={"Idempotency-Key": uuid.uuid4().hex},
+            cookies={_SESSION_COOKIE: raw_secret},
+        )
+        assert resp.status_code == 503, resp.text
+        assert resp.json()["code"] == "SERVICE_UNAVAILABLE"

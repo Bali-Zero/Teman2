@@ -71,6 +71,11 @@ try:
 except Exception:
     def is_plan_phase(payload):
         return False
+try:
+    from gate_coverage import record as _gc_record
+except Exception:
+    def _gc_record(hook_name, decision, payload=None):
+        pass
 
 HARD_BLOCK_THRESHOLD = 800
 RECENT_LINES = 300
@@ -238,12 +243,21 @@ def main():
 
     try:
         payload = json.load(sys.stdin)
-        if is_plan_phase(payload): sys.exit(0)  # phase-aware: relax in plan-mode
+        if not isinstance(payload, dict):
+            # Bug fixed 2026-08-27: same non-dict-JSON crash class model_routing_gate.py
+            # already guarded 2026-08-22 (payload.get() on null/42/[]/a string raises).
+            _gc_record("orchestrate_gate", "exempt", None)
+            sys.exit(0)
+        if is_plan_phase(payload):
+            _gc_record("orchestrate_gate", "exempt", payload)  # phase-aware: relax in plan-mode
+            sys.exit(0)
     except Exception:
+        _gc_record("orchestrate_gate", "exempt", None)
         sys.exit(0)
 
     tool_name = payload.get("tool_name") or payload.get("name") or ""
     if tool_name not in GATED_TOOLS:
+        _gc_record("orchestrate_gate", "exempt", payload)
         sys.exit(0)
 
     if is_subagent_context(payload):
@@ -253,11 +267,13 @@ def main():
             "no Agent tool of its own, so it cannot satisfy 'zero dispatch in "
             f"last {RECENT_LINES} lines' by legitimate means. Not blocking.\n"
         )
+        _gc_record("orchestrate_gate", "exempt", payload)
         sys.exit(0)
 
     transcript_path = payload.get("transcript_path", "")
     full_text = _read_transcript(transcript_path)
     if full_text is None:
+        _gc_record("orchestrate_gate", "exempt", payload)
         sys.exit(0)  # cannot-verify: no transcript to read, no claim to make
 
     verdict = evaluate_transcript(full_text)
@@ -271,8 +287,10 @@ def main():
                 "the gate's detector needs re-measuring against a live transcript.",
                 file=sys.stderr,
             )
+            _gc_record("orchestrate_gate", "exempt", payload)
             sys.exit(0)
         if not verdict["would_block"]:
+            _gc_record("orchestrate_gate", "allow", payload)
             sys.exit(0)
         msg = (
             f"\n[ORCHESTRATE-GATE] Session {verdict['total_lines']} lines, zero subagent "
@@ -282,14 +300,18 @@ def main():
             f"or (b) `export ORCHESTRATE_GATE_OFF=1` if intentional direct work.\n"
         )
         print(msg, file=sys.stderr)
+        _gc_record("orchestrate_gate", "deny", payload)
         sys.exit(2)
 
     # DISARMED — never blocks. Say so, once per session, with the real verdict.
     if not verdict["recognizable"]:
+        _gc_record("orchestrate_gate", "exempt", payload)
         sys.exit(0)  # cannot-verify: unrecognized shape, no would-block claim to make
     if _already_notified_disarm(transcript_path):
+        _gc_record("orchestrate_gate", "exempt", payload)
         sys.exit(0)
     _emit_disarm_notice(build_disarm_notice(tool_name, verdict))
+    _gc_record("orchestrate_gate", "exempt", payload)
     sys.exit(0)
 
 

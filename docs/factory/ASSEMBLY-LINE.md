@@ -196,11 +196,40 @@ from `main` may be actively harmful on a branch that lacks the machinery `main`
 has.** Inherited rules travel with their enforcement or they travel as their own
 opposite.
 
+**Update 2026-08-27 — CHECK-half shipped, ARM-half still pending.**
+`scripts/ci/check_base_protected.py` + the `base-branch-protected` job in
+`.github/workflows/hot-zone-pr-gate.yml` now fail a PR whenever its base branch
+is not covered by an active ruleset carrying the main-equivalent minimum
+required checks (`infra/required.d/integration-branch-minimum-contexts.json`).
+Verified live at authoring time: exactly 2 rulesets exist, both scoped to
+`main`/`~DEFAULT_BRANCH` — nothing covered `refs/heads/feature/*`, and neither
+of those 2 carries a `required_status_checks` rule at all (main's own required
+checks live in classic branch protection, not in its ruleset — a corrected
+premise from the original design, see the script's own module docstring).
+Still open, and deliberately NOT done by this check (repo-settings mutation is
+an operator[control-plane] action): actually creating the `feature/*` ruleset
+— `scripts/ci/setup_merge_queue_ruleset.sh --branch-pattern 'feature/*'
+--apply` (print-only without `--apply`) — and confirming whether the CI job's
+own `gh api .../rulesets` call can authenticate at all with the ambient
+`GITHUB_TOKEN`. Corrected 2026-08-27 after a cross-family refuter round: the
+PR's first draft asserted this would "likely 403" because "administration"
+isn't a grantable Actions `permissions:` scope; the refuter countered that the
+real requirement is "Metadata: read", not Administration. Neither claim could
+be confirmed — GitHub's REST rulesets docs don't publish a permissions table
+for the endpoint, and "metadata" is ALSO absent from actionlint's own
+valid-scopes list, so whichever name is correct in GitHub's model, this job's
+`permissions:` block cannot express it either way. Left as an honestly
+UNTESTED open question (base==main never exercises this call, so this PR
+never observed it either succeed or 403) rather than a confident claim in
+either direction — the first real `feature/*` PR after the ARM-half lands
+will settle it empirically.
+
 ## Enforcement backlog (not yet armed — tracked, per superscar #2 "esiste ≠ armato")
 
 1. CI rule: PR touching only `docs/`/`research/` requires an explicit owner-initialed label
    (kills standalone ledger PRs at the gate, not by exhortation).
-2. Quarterly gate audit: **a gate that has never blocked anything is deleted.**
+2. Quarterly gate audit: **a gate that has never blocked anything is deleted.** — armed via X3 gate
+   lifecycle — see `docs/plans/2026-08-26-receptor-live/MANDATE.md` §3.
 3. Silence-on-output detection: an active lane with no merged PR in 48h escalates (replaces
    status reports and heartbeat chatter).
 4. Typed-contract toolchain (OpenAPI → TS client generation) wired into CI for the first
@@ -220,3 +249,86 @@ opposite.
    section above, not something CI enforces. Until a checker exists (process-liveness in the
    worktree, plus hash-stability across a settling window), the dispatcher must do this by hand
    every time. (Raised by the 2026-08-24 GARUDA VOA contract-freeze incident.)
+8. **Acceptance bullets are not yet mechanically bound to a probe.** An `acceptance:` bullet
+   may now be a mapping `{text, probe}` instead of a bare string, where `probe:` names the
+   command, test id, or check that would prove the criterion true, and
+   `evidence_pack_lint.py` rule 12 (`check_acceptance_probe_pairing`) emits a NOTICE naming
+   uncovered bullets (no `probe:` at all), unbound probes (a declared probe absent from every
+   receipt's `claim`/`cmd`), and non-EARS text (no WHEN/WHILE/IF/WHERE/SHALL keyword). But the
+   lint checks FIELD PRESENCE ONLY — a `receipts:` outcome is self-reported prose, forgeable
+   until a CI step actually executes the probe and writes the receipt itself, so this is not
+   yet "mechanically bound acceptance", only a visible gap where one could be built. Measured
+   baseline, 2026-08-29: 0 of 209 acceptance bullets across 49 Gear>=2 packs carried a `probe:`
+   field. Follow-up: wire a CI step that actually runs the declared probe and writes the
+   receipt, then flip NOTICE to FAIL on an unbound or unexecuted one.
+
+9. **An `assumptions:` register is opt-in and unaudited.** A `brief.yml` may now carry a
+   top-level `assumptions:` list, each entry a mapping `{text, status, probe}` where `status`
+   is expected to be `verified` or `unverified` and `probe` (relevant when unverified) names
+   the check that would settle it. `evidence_pack_lint.py` rule 13
+   (`check_assumptions_register`) emits a NOTICE, never a violation, naming three gaps: entries
+   still `unverified`; entries with no recognised status at all (a typo like `unverfied`,
+   `status: pending`, or a bare string entry — an unrecognised or missing status must not read
+   as verified); and unverified entries with no `probe:` naming what would settle them.
+   Deliberately NOT gear-gated (rule 12 is): a zero-assumption brief passes silently already,
+   and adoption is the whole gap, so gating an opt-in block would be a bypass, not a safeguard.
+   Measured baseline, 2026-08-29: `assumptions:` present in 0 of 50 briefs on disk. HONEST
+   LIMIT: same posture as item 8 — `status: verified` is self-reported prose, this rule checks
+   the SHAPE of the declaration (is there a recognised status, does an unverified one name a
+   probe), never its TRUTH; it makes the register's own gaps visible, it does not adjudicate
+   the assumptions. Day-60 kill criterion (verbatim, do NOT build auto-removal now): if the
+   block degenerates to boilerplate ("no assumptions") in >80% of briefs by 2026-10-28, that is
+   a day-60 review item.
+
+10. **A pack's `dissent:` block has a per-seat yield report, and it counts
+    findings, not families.** `scripts/council_yield_report.py` walks every
+    `evidence/**/pack.yml`'s `dissent:` list (the structured adversarial-review
+    record 53 of 54 packs already carry, 267 findings measured 2026-08-29) and
+    normalises each raw `seat:` string to a FAMILY (kimi / codex-gpt-5.6 / opus
+    / sonnet / gemini / `unattributed`) crossed with a ROLE (`review` — an
+    actual cross-family/external seat; `self` — the same session or lane
+    checking its own work; `gate` — deterministic CI/harness re-derivation),
+    then reports CONFIRMED (design changed — "applied"), RETRACTED (objection
+    refused, with a reason — "rejected") and PLAUSIBLE (neither) per
+    family-x-role cell, never pooled into one scalar. A pack may optionally
+    declare a `council_yield:` block (schema in the script's own docstring;
+    additive, `council_yield: seats: [{seat, status}, ...]` or scalar
+    `findings/applied/rejected/plausible/est_tokens`) that OVERRIDES that
+    pack's dissent-derived counts — absent in all 54 packs measured; this
+    path is exercised only by the script's own test fixtures. It emits an
+    AMENDMENTS-candidate line whenever a council recorded findings > 0 and
+    applied == 0 (a rubber-stamp council), deliberately NOT when
+    findings == 0 (nothing raised is not the same defect). Each candidate
+    NAMES the source of its counts — `declared` (the pack's own
+    `council_yield:` accounting), `derived` (this script reading `dissent:`)
+    or `fallback_md` — because a declared count and a derived one are not
+    interchangeable evidence. Scoping the antidote to `declared` alone was
+    the shape this first shipped in, and it was wrong in the way that
+    matters: `council_yield:` is in 0 of 54 packs, so the antidote could
+    only ever fire on a synthetic fixture while FOUR real packs sat in the
+    corpus with findings and nothing applied. An antidote that is green
+    because nobody has adopted its schema yet is armed-to-nothing, and
+    building the misfire-log antidote so that it is itself silent while the
+    corpus misfires reproduces the defect inside its own cure. It also
+    reports `warnings:` — a pack that is readable but whose
+    `council_yield:` carries no usable seats or counts, or whose counts are
+    bools/negatives, is NAMED and its `dissent:` still read, rather than
+    silently zeroed. **HONEST LIMIT,
+    stated in the report's own output every run, not just here**: this tool
+    cannot know a seat's family beyond word-matching its raw description — a
+    seat such as `opus-5 Gear-3 on-disk gate (fresh context, did not write
+the diff)` is an independent CONTEXT but the SAME FAMILY as most authors
+    in this corpus, and under family-exclusion doctrine that is not
+    cross-family review. The report says so and refuses to emit a single
+    "council yield" number that would quietly assume otherwise — that number
+    is exactly the "report that flatters the process it measures" this item
+    exists to prevent. `evidence_pack_lint.py` is untouched by this item: the
+    key is `council_yield:`, deliberately not `council:`, because
+    `evidence_pack_lint.py`'s existing R11-CEILING rule already reads a
+    truthy `pack.get("council")` as its own, unrelated override signal, and
+    an empty `council: {}` reading clean while a populated one convicts is
+    an incoherence this item does not want to inherit. Exit 0 always — this
+    is a report, never a gate, and a pack (or an explicitly-`--paths`-named
+    markdown fallback doc, for the handful of pre-schema `## Adversarial
+review` write-ups) it cannot parse is named `unparseable` in the
+    output, never silently dropped.

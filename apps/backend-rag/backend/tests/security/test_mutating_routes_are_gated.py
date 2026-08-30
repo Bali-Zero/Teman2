@@ -114,6 +114,31 @@ class KnownUngatedMutation:
 # against its PUBLIC_ENDPOINTS entry AND/OR its router handler source in this
 # sweep — not copied from the registry's own `reason` text blind.
 INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
+    # ── Private marketing bridge: middleware bypass, route-key gated ──
+    IntentionalPublicMutation(
+        "PUT",
+        "/api/workspace-marketing/news/{item_id}/editorial",
+        "Private workspace bridge route; an exact dedicated API-key Depends "
+        "runs before the handler and returns 401 without the bridge credential.",
+    ),
+    IntentionalPublicMutation(
+        "POST",
+        "/api/workspace-marketing/news/{item_id}/cover",
+        "Private workspace bridge route; an exact dedicated API-key Depends "
+        "runs before the handler and returns 401 without the bridge credential.",
+    ),
+    IntentionalPublicMutation(
+        "POST",
+        "/api/workspace-marketing/news/{item_id}/publish",
+        "Private workspace bridge route; an exact dedicated API-key Depends "
+        "runs before the handler and returns 401 without the bridge credential.",
+    ),
+    IntentionalPublicMutation(
+        "POST",
+        "/api/workspace-marketing/news/{item_id}/confirm-live",
+        "Private workspace bridge route; an exact dedicated API-key Depends "
+        "runs before the handler and returns 401 without the bridge credential.",
+    ),
     # ── Auth flows: must be reachable BEFORE the caller has a credential ──
     IntentionalPublicMutation(
         "POST",

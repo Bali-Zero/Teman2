@@ -122,6 +122,22 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 ## LIVE STATE (update on every state change — whoever changes state updates this section)
 
+- 2026-08-29 (M5, gold-coverage lane, PR #5182): **the 4/20 zero-movement wall now has a first
+  instrument and a first corpus.** New offline helper `gold_coverage_eval.py` (single persona →
+  exact replay path vs highest signed pack) + `gold_coverage_replay.py` (fail-closed corpus runner)
+  - **18 synthetic personas** — one per SUPPORT-reachable product the 20 canonical expectations
+    never name — each proven `SUPPORTED_CANDIDATES`, behind `test_gold_coverage_floor.py` (any
+    persona losing its product's support goes red). Report
+    `research/visa/2026-08-28-visa-oracle-gold-coverage-and-divergence-adjudication.md`: full
+    16-divergence matrix vs seq-13 with PROPOSED causes (no acceptance — owner act), **E31B/E31D
+    fail-open re-confirmed live by probe** (sponsor_status_code="NONE" still SUPPORTED; FAMILY intent
+    alone → E31D), the two stepchild evidence facts confirmed referenced by ZERO rules, blocked
+    census 9. Limits: cross-family tie-breaks and realism refutation did NOT complete (session caps;
+    per-lane artifacts lost) — 9 disagreement personas flagged in the report; 7 products still
+    uncovered (E31E,E31G,E31H,E31J,E33,E33E,E33F — mechanical follow-up). The 4/20 gold-persona
+    divergence PRECONDITION of the enforce-gate is NOT closed by this: expectations remain
+    un-ratified; this entry adds the measuring instrument, not the ruling.
+
 - 2026-08-23 (M5, dedicated verification lane — kill-switch rollback proof; **corrected same day
   after a real cross-family adversarial review found the first version's pack-rollback proof
   FATALLY incomplete — see below**): **THE ENFORCE-GATE'S "kill switch has a current,

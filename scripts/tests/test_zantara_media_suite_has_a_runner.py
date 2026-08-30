@@ -107,6 +107,24 @@ def _third_party_imports(root: Path) -> set[str]:
 _DIST = {"PIL": "Pillow", "pytest_asyncio": "pytest-asyncio"}
 
 
+def _repo_provided_modules(repo: Path) -> set[str]:
+    """Modules this REPO supplies on ``sys.path`` — never pip installables.
+
+    Every wired ``conftest.py`` walks up to ``scripts/pytest_guards`` and
+    inserts it into ``sys.path`` before importing from it, so those names
+    resolve out of this tree. There is no distribution to add to any workflow,
+    and demanding one would ask the workflow to install something that does not
+    exist on PyPI.
+
+    DERIVED from the directory, not enumerated: a guard added tomorrow is
+    covered without editing this file. A hardcoded list is the exact failure
+    this module's own docstring records (`test_dlp.py`, `test_image_handler.py`
+    orphaned because a list does not grow).
+    """
+    guards = repo / "scripts" / "pytest_guards"
+    return {p.stem for p in guards.glob("*.py") if not p.stem.startswith("__")}
+
+
 def test_the_workflow_installs_every_third_party_module_the_app_imports():
     """A directory run only helps if collection can reach every file.
 
@@ -116,9 +134,16 @@ def test_the_workflow_installs_every_third_party_module_the_app_imports():
     here rather than a red collection error there.
     """
     installed = WORKFLOW.read_text()
+    supplied = _repo_provided_modules(REPO)
+    assert supplied, (
+        "scripts/pytest_guards yielded no modules — the exemption below would "
+        "then be vacuously empty and this test would silently go back to "
+        "demanding a pip install for a repo-local module (superscar #2: a probe "
+        "that zeroes itself raises nothing)."
+    )
     missing = sorted(
         m for m in _third_party_imports(REPO / "apps/zantara-media")
-        if _DIST.get(m, m) not in installed.split()
+        if m not in supplied and _DIST.get(m, m) not in installed.split()
     )
     assert not missing, (
         "apps/zantara-media imports %s, which magazine-auto-assets.yml does not "
@@ -128,6 +153,22 @@ def test_the_workflow_installs_every_third_party_module_the_app_imports():
 
 
 # --- guilt: the shape this guard exists to reject -------------------------
+
+def test_the_repo_local_exemption_does_not_cover_a_real_pip_dependency():
+    """The exemption must stay narrow: only what `scripts/pytest_guards` holds.
+
+    Guilt case for the widening above. If this ever passes for `pydantic`, the
+    exemption has stopped distinguishing "the repo supplies it" from "nobody
+    installs it", and a missing dependency would ride through as exempt.
+    """
+    supplied = _repo_provided_modules(REPO)
+    assert "pytest_verbosity_guard" in supplied
+    for real in ("pydantic", "httpx", "PIL", "cryptography", "rfc8785"):
+        assert real not in supplied, (
+            "%s must NOT be treated as repo-supplied — it is a pip dependency "
+            "the workflow has to install." % real
+        )
+
 
 def test_it_rejects_a_named_file_list():
     narrowed = """

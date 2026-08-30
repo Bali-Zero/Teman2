@@ -57,6 +57,25 @@ class _MarkerStore:
         raise AssertionError("exchange() is not exercised by this test")
 
 
+class _AlwaysOwnsCheckStore:
+    """A `CheckStore` double that recognises every (result_id,
+    session_secret) pair.
+
+    This file's whole point is isolating `MagicLinkStore`'s `app.state`
+    wiring behaviour (PR #4910's gate finding). The ownership check added
+    2026-08-30 (`garuda_portal_auth.request_magic_link`) runs BEFORE the
+    magic-link store is ever reached, so every test below that wants to
+    exercise the magic-link-store path must stub this port out of the way
+    first -- otherwise every request would 503 at the ownership gate
+    (`UnconfiguredCheckStore`) before saying anything about the thing this
+    file actually tests. The check-store's OWN app.state/unconfigured
+    behaviour is covered separately in `test_garuda_portal_auth.py`.
+    """
+
+    async def get(self, *, result_id, session_secret):
+        return object()
+
+
 def _app() -> FastAPI:
     app = FastAPI()
     app.include_router(router_mod.router)
@@ -82,6 +101,9 @@ def test_app_state_wiring_survives_an_unrelated_dependency_overrides_clear() -> 
 
     # Production wiring shape (service_initializer.py, 2026-08-25 onward).
     app.state.garuda_magic_link_store = _MarkerStore()
+    # Stub the ownership gate out of the way -- see _AlwaysOwnsCheckStore's
+    # docstring; this test isolates the magic-link-store dimension only.
+    app.state.garuda_check_store = _AlwaysOwnsCheckStore()
 
     # Simulate a COMPLETELY UNRELATED test file's indiscriminate teardown
     # against this same app object -- exactly
@@ -100,11 +122,19 @@ def test_app_state_wiring_survives_an_unrelated_dependency_overrides_clear() -> 
 
 
 def test_absent_app_state_falls_back_to_unconfigured_fail_closed() -> None:
-    """The other half of the contract: with NOTHING wired (today's actual
-    state before `service_initializer.py` runs, or if that wiring block
-    itself fails), the route must still fail closed with
-    `PERSISTENCE_POLICY_UNAVAILABLE`, never a bare framework error."""
-    resp = _request_magic_link(TestClient(_app()))
+    """The other half of the contract: with the magic-link store NOTHING
+    wired (today's actual state before `service_initializer.py` runs, or if
+    that wiring block itself fails), the route must still fail closed with
+    `PERSISTENCE_POLICY_UNAVAILABLE`, never a bare framework error. The
+    check-store ownership gate is stubbed to always-own here (see
+    `_AlwaysOwnsCheckStore`) so this test isolates the magic-link-store
+    dimension specifically; the check-store's OWN unconfigured-fail-closed
+    behaviour (also 503, different code: `SERVICE_UNAVAILABLE`) is covered
+    in `test_garuda_portal_auth.py::test_request_with_no_check_store_wired_
+    defaults_to_503_not_a_silent_202`."""
+    app = _app()
+    app.state.garuda_check_store = _AlwaysOwnsCheckStore()
+    resp = _request_magic_link(TestClient(app))
     assert resp.status_code == 503
     body = resp.json()
     assert body["code"] == "PERSISTENCE_POLICY_UNAVAILABLE"
@@ -118,6 +148,7 @@ def test_get_garuda_magic_link_store_prefers_the_dependency_override_when_presen
     other in a way a future editor could mistake for a regression."""
     app = _app()
     app.state.garuda_magic_link_store = _MarkerStore()  # would answer 202
+    app.state.garuda_check_store = _AlwaysOwnsCheckStore()  # clear the ownership gate
 
     class _AlwaysFailsStore:
         async def issue(self, **_kwargs):

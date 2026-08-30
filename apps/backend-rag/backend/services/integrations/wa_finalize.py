@@ -21,13 +21,16 @@ Behavior contract:
       internal-monologue leak — including inside a grounded abstain answer,
       scaffold-only output, empty after strip/format, oversized output,
       pricing veto, secret-egress hit) returns ``DEFECT`` WITHOUT serving a stub
-      and WITHOUT telling a human — the caller fails off to the Gemini leg,
-      which regenerates and re-enters this pipeline, so the client still gets
-      an answer and the silent-client alarm stays with the leg that owns it
-      (spec §2.3 TEXT_DEFECT). The abstain-label branch is the one POLICY
-      branch: its verdict derives from the frozen evidence, not from who wrote
-      the text, so it behaves identically on both providers (stub + tell a
-      human — failing off could not change the verdict, spec §2.3 POLICY).
+      and WITHOUT telling a human — the caller (``wa_codex_leg.attempt``) falls
+      off into the WORKER's retry ladder, not to a second generator (Gemini was
+      retired from this worker 2026-08-27, Zero: "spegni gemini e collega
+      chatgpt"): a LATER codex-leg attempt against a fresh claim re-enters this
+      same pipeline, so the client still gets an answer once a clean attempt
+      lands, and the silent-client alarm stays with the leg that owns it (spec
+      §2.3 TEXT_DEFECT). The abstain-label branch is the one POLICY branch:
+      its verdict derives from the frozen evidence, not from who wrote the
+      text, so it behaves identically on both providers (stub + tell a human —
+      failing off could not change the verdict, spec §2.3 POLICY).
 
 Codex-only egress vetoes (inert on the Gemini leg by construction):
     * Pricing veto — every currency-marked amount in the answer must appear in
@@ -269,35 +272,165 @@ def _starts_with_internal_monologue_leak(answer: str) -> bool:
 # * source numbers are extracted per TOKEN, never from a concatenation of the
 #   whole source ("Rp 12.345" followed by "67 days" can never authorize an
 #   invented "Rp 34.567").
+#
+# ENGLISH MAGNITUDE WORDS (added 2026-08-30): the Indonesian-only list below was
+# not merely incomplete — it was a TOTAL VETO BYPASS in both directions, measured
+# on origin/main before this change:
+#   price_tokens_outside_sources("...IDR 2.5 billion.", [])          -> []
+#   price_tokens_outside_sources("...IDR 999 billion.", [])          -> []   <- INVENTED
+#   price_tokens_outside_sources("Rp 2.500.000.000", [<curated_qa>]) -> ["IDR:2500000000"]
+# Mechanism: with "billion" unknown, the regex captures only the bare "2.5",
+# _canonical_value returns 25, and 25 < _VETO_FLOORS["IDR"] discards it BEFORE the
+# source-membership check ever runs. So an English-worded amount was never
+# validated as grounded AND never caught as hallucinated — the 999-billion control
+# proves that is the rule, not an accident of one value. Symmetrically, a source
+# stating the right figure in English prose (the live curated_qa entry for PT PMA
+# paid-up capital says "IDR 2.5 billion") could not be canonicalized either, so a
+# CORRECT digit-grouped answer was rejected against evidence that actually
+# supported it — the mechanism behind the finalize_pricing_outside_package
+# rejections measured on the live bot 2026-08-30.
+#
+# The pattern is DERIVED from the dict below, longest-alternative-first, so the two
+# can never drift apart. That coupling was live-ammunition: _canonical_value does
+# _AMOUNT_MULTIPLIERS[multiplier.lower()] with no .get(), so a token the pattern
+# matches and the dict lacks is a KeyError inside the finalize path, not a miss.
+# test_wa_finalize_price_veto.py asserts the derivation holds.
+#
+# NOT widened here, deliberately, and named so it is not mistaken for coverage: a
+# bare currency WORD ("2,5 miliar rupiah", with no Rp/IDR/USD marker) is still
+# invisible to this veto. Adding "rupiah" as a currency marker only ever ADDS
+# rejections, and the live bot is already over-rejecting (4 of 5 battery questions
+# blocked on 2026-08-30); widening the marker vocabulary is a separate change that
+# needs its own false-positive measurement, not a rider on this one.
 _AMOUNT_MULTIPLIERS: dict[str, float] = {
     "k": 1e3,
     "rb": 1e3,
     "ribu": 1e3,
+    "thousand": 1e3,
+    "thousands": 1e3,
     "jt": 1e6,
     "juta": 1e6,
+    "mn": 1e6,
+    "million": 1e6,
+    "millions": 1e6,
     "miliar": 1e9,
     "milyar": 1e9,
     "bn": 1e9,
+    "billion": 1e9,
+    "billions": 1e9,
     "triliun": 1e12,
+    "trillion": 1e12,
+    "trillions": 1e12,
 }
-_MULT_PATTERN = r"(?:jt|juta|rb|ribu|k|miliar|milyar|bn|triliun)"
+# Longest first so a longer token is never pre-empted by a prefix of itself
+# ("juta" by "jt" is safe only by luck of ordering; "millions" by "million" is not).
+_MULT_ALTERNATION = "|".join(
+    sorted((re.escape(k) for k in _AMOUNT_MULTIPLIERS), key=len, reverse=True)
+)
+_MULT_PATTERN = f"(?:{_MULT_ALTERNATION})"
+
+# Currency MARKERS, marker -> family. Until 2026-08-30 this vocabulary lived
+# inline in the regex as `Rp|IDR|USD|$` and everything that was not `$`/`USD`
+# was folded into the IDR family. That was a second, SIMPLER bypass of this
+# veto than the English-multiplier one fixed in #5293 — it needed no magnitude
+# word at all. Measured on the parent commit, literal return values:
+#   price_tokens_outside_sources("Costa EUR 5000 in totale.", []) -> []
+#   price_tokens_outside_sources("The fee is SGD 8000.", [])      -> []
+#   price_tokens_outside_sources("The fee is AUD 8000.", [])      -> []
+# An invented foreign-currency price was never validated as grounded and never
+# caught as hallucinated, exactly as an English-worded one was not.
+#
+# Why the marker list alone would NOT have fixed it: with every family folded
+# into IDR, "EUR 500" canonicalized to IDR:500 and fell under the IDR floor of
+# 1000 — so adding the marker without a per-family floor changes nothing. The
+# family map and the floor table are one change, not two.
+#
+# Measured false-positive surface before widening (the reason the parent PR
+# deferred this axis, re-examined rather than assumed): in
+# apps/backend-rag/backend/kb/ the markers EUR, SGD, GBP and the euro sign do
+# not occur at all; across the whole app, word-bounded, EUR appears 19 times in
+# 14 files, AUD 3, GBP 2, SGD 1 — nearly all in tests and scripts, not in
+# retrievable content. So this widening closes a hole at almost no cost in new
+# rejections. It DOES newly veto a currency conversion the model computes
+# itself ("about EUR 600"), which is intended: an unsourced computed figure is
+# precisely what this veto exists to stop, and doctrine already forbids
+# improvising a price.
+#
+# WORD BOUNDARIES ARE LOAD-BEARING HERE, and this is not theoretical: the first
+# measurement of AUD's footprint returned "135 files" because it was counting
+# the substring inside FRAUD and AUDIT. A marker without \b would read an
+# amount out of the middle of an unrelated word — cicatrix family #3, committed
+# by the probe that was measuring for this very change. The alternation below
+# is derived from this table and every alphabetic marker is \b-anchored.
+_CURRENCY_MARKERS: dict[str, str] = {
+    "RP": "IDR",
+    "IDR": "IDR",
+    "USD": "USD",
+    "$": "USD",
+    "EUR": "EUR",
+    "EURO": "EUR",
+    "€": "EUR",
+    "GBP": "GBP",
+    "£": "GBP",
+    "SGD": "SGD",
+    "AUD": "AUD",
+}
+_SYMBOL_MARKERS = frozenset({"$", "€", "£"})
+
+
+def _marker_alternation() -> str:
+    """Regex alternation over _CURRENCY_MARKERS, longest first, \b-anchored.
+
+    Alphabetic markers get a LEADING \b so "AUD" cannot match inside "FRAUD";
+    symbols get none (\b before "$" would require a preceding word char). No
+    trailing \b is needed: both branches of _CURRENCY_AMOUNT_RE require digits
+    adjacent to the marker, which already excludes "EURO" matching "EUROPE".
+    """
+    parts = []
+    for marker in sorted(_CURRENCY_MARKERS, key=len, reverse=True):
+        escaped = re.escape(marker)
+        # "Rp." is written with a trailing dot as often as without.
+        if marker == "RP":
+            escaped += r"\.?"
+        parts.append(escaped if marker in _SYMBOL_MARKERS else r"\b" + escaped)
+    return "|".join(parts)
+
+
+_MARKER_PATTERN = _marker_alternation()
 _CURRENCY_AMOUNT_RE = re.compile(
-    r"(?:(?P<cur1>\bRp\.?|\bIDR|\bUSD|\$)[ \t]*(?P<amt1>\d(?:[\d.,]*\d)?)"
+    r"(?:(?P<cur1>" + _MARKER_PATTERN + r")[ \t]*(?P<amt1>\d(?:[\d.,]*\d)?)"
     r"(?:[ \t]*(?P<mul1>" + _MULT_PATTERN + r")\b)?)"
     r"|(?:(?P<amt2>\d(?:[\d.,]*\d)?)(?:[ \t]*(?P<mul2>" + _MULT_PATTERN + r")\b)?"
-    r"[ \t]*(?P<cur2>IDR|USD)\b)",
+    r"[ \t]*(?P<cur2>" + _MARKER_PATTERN + r"))",
     re.IGNORECASE,
 )
 
 # Veto floors per currency family: IDR prices below Rp 1.000 do not exist in
-# this business (and tiny amounts would fire on noise); dollar prices are real
-# from $10 up (the review's "$999" case must be vetoable).
-_VETO_FLOORS: dict[str, int] = {"USD": 10, "IDR": 1000}
+# this business (and tiny amounts would fire on noise); hard-currency prices
+# are real from 10 up (the review's "$999" case must be vetoable). EVERY family
+# in _CURRENCY_MARKERS must have an entry — _floor_for asserts it rather than
+# defaulting, because a missing floor would silently wave a whole currency
+# through, which is the failure this table exists to prevent.
+_VETO_FLOORS: dict[str, int] = {
+    "IDR": 1000,
+    "USD": 10,
+    "EUR": 10,
+    "GBP": 10,
+    "SGD": 10,
+    "AUD": 10,
+}
 
 
 def _canonical_currency(cur: str) -> str:
+    """Currency FAMILY for a matched marker.
+
+    The regex only ever matches markers derived from _CURRENCY_MARKERS, so the
+    lookup cannot miss; the explicit fallback is a fail-CLOSED default rather
+    than a KeyError, because folding an unknown marker into IDR keeps it inside
+    the veto (with the strictest floor) instead of dropping it on the floor.
+    """
     c = cur.strip().rstrip(".").upper()
-    return "USD" if c in ("$", "USD") else "IDR"
+    return _CURRENCY_MARKERS.get(c, "IDR")
 
 
 def _canonical_value(amount: str, multiplier: str | None) -> int | None:
@@ -349,6 +482,18 @@ def price_tokens_outside_sources(text: str, price_sources: Sequence[str]) -> lis
     in a chunk could semantically launder a wrong "service fee" — accepted
     because the Gemini leg has the identical exposure today with NO veto at
     all, and the label gate + PricingTool grounding remain the primary control.
+
+    Second declared residual, made visible by the 2026-08-30 currency-family
+    change and deliberately NOT closed here: membership is tested on the VALUE
+    alone, not on (family, value), so a "USD 5000" in a source authorizes an
+    "EUR 5000" in the answer. Closing it would require dropping the bare-token
+    pass below — the one that lets a pricing block state an amount without
+    repeating its currency marker — and that pass is what keeps this veto from
+    failing off correct answers. Trading a certain false-positive regression
+    for a speculative laundering path is the wrong side of the exchange for a
+    guard that already over-rejects. Pinned by
+    test_pricing_veto_does_not_distinguish_currency_families so it cannot rot
+    into an unexamined assumption.
     """
     source_values: set[int] = set()
     for src in price_sources:
@@ -488,8 +633,10 @@ async def finalize_wa_answer(
         tell_a_human: REQUIRED one-argument async callable ``(reason)``. The
             pipeline calls it exactly where the pre-extraction code called
             ``_tell_a_human`` — stub paths on both providers, defect paths on
-            the Gemini provider only (a codex defect fails off to the Gemini
-            leg, which still owes the client an answer and re-enters here).
+            the Gemini provider only (a codex defect falls off into the
+            WORKER's retry ladder instead — see the module docstring's
+            2026-08-27 correction — so the client still owes an answer from a
+            LATER attempt, not from Gemini re-entering here).
             Required rather than defaulted (review MAJOR-9): an optional
             notifier makes "forgot to wire it" indistinguishable from "chose
             silence", which is the exact contract inversion the 2026-08-12
@@ -654,7 +801,8 @@ async def finalize_wa_answer(
             # retry ladder below cannot rescue this — it only spends attempts
             # and ends in silence. Tell a human BEFORE the raise, because the
             # raise is precisely what makes this silent. (Gemini leg only: a
-            # codex defect fails off to the Gemini leg, which still answers.)
+            # codex defect falls off into the worker's OWN retry ladder
+            # instead — see the module docstring's 2026-08-27 correction.)
             if provider is FinalizeProvider.GEMINI:
                 await _tell("empty_rag_answer")
             return FinalizeResult(
@@ -665,9 +813,11 @@ async def finalize_wa_answer(
 
         if _starts_with_internal_monologue_leak(answer):
             if provider is FinalizeProvider.CODEX:
-                # TEXT_DEFECT (spec §2.3): a different generator can
-                # legitimately cure a defective text — fail off instead of
-                # serving the stub the Gemini leg would serve.
+                # TEXT_DEFECT (spec §2.3): fail off into the worker's
+                # retry ladder instead of serving the stub the Gemini
+                # branch below would serve — a LATER codex-leg attempt can
+                # legitimately cure a defective text (no second generator
+                # to hand this off to since the 2026-08-27 Gemini cut).
                 return FinalizeResult(
                     outcome=FinalizeOutcome.DEFECT,
                     defect_reason="internal_monologue_leak",
@@ -728,8 +878,9 @@ async def finalize_wa_answer(
         answer = _strip_kg_workflow_scaffold(answer)
         if not answer:
             if provider is FinalizeProvider.CODEX:
-                # TEXT_DEFECT: scaffold-only output is a broken text, and the
-                # Gemini leg can produce a real answer — fail off.
+                # TEXT_DEFECT: scaffold-only output is a broken text — fail
+                # off into the worker's retry ladder so a LATER codex-leg
+                # attempt can produce a real answer.
                 return FinalizeResult(
                     outcome=FinalizeOutcome.DEFECT,
                     defect_reason="workflow_only_output",
@@ -791,10 +942,10 @@ async def finalize_wa_answer(
 
     if provider is FinalizeProvider.CODEX and post_format_len > _WHATSAPP_HARD_SEND_LIMIT:
         # TEXT_DEFECT (spec §2.3 "malformed/oversized output"): on the codex
-        # leg an oversized answer fails off to the Gemini leg instead of
-        # being cut mid-content by the sender's hard limit — a truncated
-        # answer can lose its disclaimer or conclusion, and a different
-        # generator can legitimately produce one that fits.
+        # leg an oversized answer falls off into the worker's retry ladder
+        # instead of being cut mid-content by the sender's hard limit — a
+        # truncated answer can lose its disclaimer or conclusion, and a
+        # LATER codex-leg attempt can legitimately produce one that fits.
         return FinalizeResult(
             outcome=FinalizeOutcome.DEFECT,
             defect_reason="oversized_output",

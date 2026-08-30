@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { useSessionState } from "@/hooks/useSessionState";
 import { logger } from "@/lib/logger";
 import {
   Users,
@@ -48,6 +49,7 @@ type TabType = "overview" | "daily" | "weekly";
 
 export default function AdminPage() {
   const router = useRouter();
+  const session = useSessionState();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -105,16 +107,17 @@ export default function AdminPage() {
 
   useEffect(() => {
     // Check auth and admin role
-    if (!api.isAuthenticated()) {
+    if (session === "anonymous") {
       router.push("/login");
       return;
     }
+    if (session !== "authenticated") return;
     if (!api.isAdmin()) {
       router.push("/chat");
       return;
     }
     loadAllData();
-  }, [router, loadAllData]);
+  }, [session, router, loadAllData]);
 
   const handleExport = async () => {
     try {

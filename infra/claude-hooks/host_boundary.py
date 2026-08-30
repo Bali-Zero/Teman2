@@ -38,6 +38,13 @@ import pathlib
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from gate_coverage import record as _gc_record
+except Exception:
+    def _gc_record(hook_name, decision, payload=None):
+        pass
+
 # --- Protected destinations (writes here are blocked, anywhere on the host) ----
 # Resolved against $HOME. Directory prefixes (a write to any descendant blocks)
 # and exact secret files.
@@ -208,7 +215,8 @@ def _read_hits_secret(cmd: str, cwd: str) -> pathlib.Path | None:
     return resolved
 
 
-def _block(offending: pathlib.Path, surface: str) -> None:
+def _block(offending: pathlib.Path, surface: str, payload: dict | None = None) -> None:
+    _gc_record("host_boundary", "deny", payload)
     sys.stderr.write(
         "HOST BOUNDARY VIOLATION (write to host-sensitive path)\n"
         f"  surface: {surface}\n"
@@ -223,10 +231,20 @@ def _block(offending: pathlib.Path, surface: str) -> None:
 
 def main() -> int:
     if os.environ.get("HOST_BOUNDARY_OFF") == "1":
+        _gc_record("host_boundary", "exempt", None)
         return 0
     try:
         payload = json.load(sys.stdin)
+        if not isinstance(payload, dict):
+            # Bug fixed 2026-08-27: valid JSON that isn't a dict (`null`,
+            # `42`, `[]`, a bare string) used to crash the next line's
+            # `.get()` — genuine unhandled AttributeError, before any
+            # try/except here (model_routing_gate.py hit the identical class
+            # 2026-08-22 and already carries this guard).
+            _gc_record("host_boundary", "exempt", None)
+            return 0
     except Exception:
+        _gc_record("host_boundary", "exempt", None)
         return 0  # unparseable → never block on our own parse failure
 
     tool = payload.get("tool_name") or payload.get("name") or ""
@@ -237,7 +255,8 @@ def main() -> int:
         if fp:
             resolved = _resolve_target(fp, payload.get("cwd", ""))
             if resolved is not None and _is_protected(resolved):
-                _block(resolved, f"{tool} file_path")
+                _block(resolved, f"{tool} file_path", payload)  # exits, does not return
+        _gc_record("host_boundary", "allow", payload)
         return 0
 
     # --- Bash: shell writes + secret reads ---
@@ -246,7 +265,7 @@ def main() -> int:
         cwd = payload.get("cwd", "")
         offending = _write_hits_sensitive(cmd, cwd)
         if offending is not None:
-            _block(offending, "Bash write")
+            _block(offending, "Bash write", payload)  # exits, does not return
         secret = _read_hits_secret(cmd, cwd)
         if secret is not None:
             sys.stderr.write(
@@ -254,8 +273,10 @@ def main() -> int:
                 "  Allowed, but flagged — avoid printing secrets into transcripts "
                 "(cicatrix 2026-06-03 P0). Prefer reading config via code.\n"
             )
+        _gc_record("host_boundary", "allow", payload)
         return 0
 
+    _gc_record("host_boundary", "exempt", payload)
     return 0
 
 

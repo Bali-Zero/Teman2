@@ -43,20 +43,36 @@ on:
 # main — back-to-back merges were cancelling the in-flight main run, so
 # commits landed on main UNTESTED and a future auto-revert guardian could
 # not attribute a green→red window to a single commit. PR refs keep
-# cancelling (newest push wins); every main push now runs to completion.
+# cancelling (newest push wins).
 #
-# Task #37 addendum: a schedule-triggered run must NOT share a group with
-# push-triggered main runs. `github.ref` is `refs/heads/main` for BOTH a
-# push-to-main and a schedule run (schedule always fires against the
+# CORRECTED 2026-08-27 (PENDING-ARMS row opened 2026-08-23 by an
+# adversarial refuter on #4647, closed by this change): this paragraph
+# used to end "every main push now runs to completion" — describing a
+# `push:` trigger that has not existed on this workflow since #4210
+# (2026-08-15, Merge-OS v3 step 2). The property the paragraph is actually
+# about — main never landing on an untested commit — is held today by
+# `merge_group` (pre-merge, required) and the `schedule` run below
+# (post-merge proof-of-health against main's current head), not by a push
+# run. `github.ref != 'refs/heads/main'` below still does real work for a
+# manual `workflow_dispatch` fired against main: that event CAN land on
+# `refs/heads/main` even though `push` cannot, and it should get the same
+# "let an in-flight main run finish" treatment the old push case did.
+#
+# Task #37 addendum: a schedule-triggered run must NOT share a group with a
+# run landing directly on `refs/heads/main` outside the queue (see the
+# CORRECTED note above: today that means a `workflow_dispatch` fired
+# against main; a `push` cannot). `github.ref` is `refs/heads/main` for
+# BOTH that case and a schedule run (schedule always fires against the
 # default branch) — grouping on `github.ref` alone would put the scheduled
-# run back in direct contention with push-triggered runs for the same
-# runner slot, reproducing the exact starvation this run exists to work
-# around. Scheduled runs get a dedicated, ref-independent group instead.
+# run back in direct contention with such runs for the same runner slot,
+# reproducing the exact starvation this run exists to work around.
+# Scheduled runs get a dedicated, ref-independent group instead.
 #
 # cancel-in-progress is the OPPOSITE value for the scheduled group,
-# deliberately: `false` is what protects a push-triggered main run (a
-# started verdict should always get to report, and cancelling it on the
-# next push is what silently starved main in the first place). `true` is
+# deliberately: `false` is what protects a run landing directly on
+# `refs/heads/main` (a started verdict should always get to report, and
+# cancelling it on the next such trigger is what silently starved main in
+# the first place). `true` is
 # correct for the scheduled group for the mirror-image reason — if a new
 # scheduled run starts while the previous is still going (job overrunning
 # the 2h cadence under load), the older run is testing a `main` that no
@@ -77,11 +93,21 @@ on:
 # used on the other 13 required-context workflows: that blanket replacement
 # would have discarded the schedule-vs-push asymmetry documented above. AND-ing
 # `github.event_name != 'merge_group'` onto the existing expression preserves
-# every other branch (push-to-main stays false, PR refs and schedule keep
-# cancelling) and forces false only for the new merge_group case.
+# every other branch (a direct run against main stays false, PR refs and
+# schedule keep cancelling) and forces false only for the new merge_group case.
 concurrency:
-  group: tests-${{ github.event_name == 'schedule' && 'schedule-main' || github.ref }}
-  cancel-in-progress: ${{ (github.event_name == 'schedule' || github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
+  # Dependabot branch: ALL Dependabot PRs share one group per workflow (not
+  # per-ref), bounding concurrent Dependabot runs of THIS workflow to <=2
+  # (Agent PR Contract rule 5) instead of unbounded parallel.
+  # cancel-in-progress:false protects whichever run is RUNNING; GitHub keeps
+  # only one PENDING per group, so a 3rd+ near-simultaneous arrival cancels
+  # the pending run rather than queuing behind it — visible in the PR's
+  # checks tab (never silent), recoverable with `gh run rerun` (confirmed:
+  # docs.github.com/en/actions/using-jobs/using-concurrency + kimi-code/k3
+  # refuter round on PR #5043). Non-Dependabot branch is byte-for-byte the
+  # pre-existing expression — untouched.
+  group: ${{ github.actor == 'dependabot[bot]' && format('dependabot-lockfile-{0}', github.workflow) || format('tests-{0}', github.event_name == 'schedule' && 'schedule-main' || github.ref) }}
+  cancel-in-progress: ${{ github.actor != 'dependabot[bot]' && (github.event_name == 'schedule' || github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
 
 # S11: the coverage-collection decision lives HERE, once, and nowhere else.
 # It used to be a per-shard step that wrote its answer to a file the fan-in read
@@ -495,7 +521,10 @@ jobs:
   #
   # WHY THE THIRD JOB EXISTS AT ALL (do not "simplify" it away)
   # `Backend Tests (Python)` is a REQUIRED context in classic branch protection
-  # (27 contexts, verified 2026-08-23). A matrix renames its check runs to
+  # (27 contexts verified 2026-08-23; cut to 9 then reinstated to 11 by Zero's
+  # 2026-08-27 ruling — this context stayed required throughout, see
+  # docs/runbooks/merge-queue-discipline.md "Required vs advisory checks —
+  # reinstatement rule"). A matrix renames its check runs to
   # "... (1)", "... (2)" — the bare required context would then never report
   # again, every queue entry would wait out `checkResponseTimeout` and fail.
   # That is superscar #2 / W69 (required-checks silently disarmed). So the fan-in
@@ -685,7 +714,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/static-receipts"
           cd apps/backend-rag
           PYTHONPATH=.:../crm-cell pytest backend/tests/services/rag/test_confidence.py \
-            -q -ra --no-header --tb=short --durations=10 -x \
+            -ra --no-header --tb=short --durations=10 -x \
             "--junit-xml=$RUNNER_TEMP/static-receipts/test-results-core.xml"
 
       - name: Upload core-gate test results
@@ -983,7 +1012,7 @@ jobs:
           PYTHONPATH=.:../crm-cell pytest \
             "${CHUNK[@]}" \
             -n auto --dist loadfile \
-            -q -ra --no-header --durations=50 \
+            -ra --no-header --durations=50 \
             --ignore=backend/tests/e2e \
             "${COV_ARGS[@]}" \
             "--junit-xml=$RUNNER_TEMP/shard-receipts/test-results-unit-${SHARD_INDEX}.xml" \
@@ -1024,8 +1053,10 @@ jobs:
 
   # ── THE REQUIRED CONTEXT ─────────────────────────────────────────────────────
   # This job's `name:` is load-bearing infrastructure, not a label. "Backend
-  # Tests (Python)" is one of the 27 required status contexts in classic branch
-  # protection on `main`. Rename it, matrix it, or delete it and every merge
+  # Tests (Python)" is one of the required status contexts in classic branch
+  # protection on `main` (11 as of Zero's 2026-08-27 ruling, down from 27 —
+  # docs/runbooks/merge-queue-discipline.md "Required vs advisory checks —
+  # reinstatement rule"). Rename it, matrix it, or delete it and every merge
   # queue entry from that moment on waits out `checkResponseTimeout` (5400s) and
   # fails with nothing red to fix — superscar #2 / W69. It reports the verdict;
   # the three shards and the static job do the work.
@@ -1710,6 +1741,27 @@ jobs:
           cd packages/core
           npx vitest --run
 
+      # DECLARED LIMIT: exclude only
+      # `__tests__/garuda-preview-process-integration.test.ts`. That test
+      # symlinks the real backend `.venv` at lines 43-46, while
+      # `resolveGarudaProcessConfig` requires `.venv/bin/python` at
+      # `lib/garuda-preview-adapter.ts:137,146`; CI installs Python packages
+      # system-wide at `.github/workflows/tests.yml:529-551`, and only in the
+      # backend job, so this frontend job has neither that `.venv` nor the
+      # backend dependencies the spawned CLI imports. PR #4796's
+      # `backend/tests/services/garuda_flow/test_preview_adapter_parity.py` runs
+      # in the backend suite and covers the nine hand-maintained constants'
+      # contract drift meanwhile. It does NOT prove this excluded test's unique
+      # boundary: the spawned child cannot read the backend `.env` or inherit
+      # unrelated application secrets. Closing the limit requires a backend
+      # venv plus its dependencies in an already-required CI context that can
+      # execute this real-child test; the pending-arms ledger tracks that work.
+      - name: Run admin-dashboard-local tests (except real Python process integration)
+        if: matrix.app == 'mouth' && steps.decide.outputs.run == 'true'
+        run: |
+          cd apps/admin-dashboard-local
+          npx vitest run --exclude='**/garuda-preview-process-integration.test.ts'
+
       # wa-mirror's vitest suite had NEVER run in CI — 8 test files, 0 gates.
       # The bridge is the organ that mirrors client WhatsApp lines, and the alert
       # policy it now carries (announce the failure to recover, never the
@@ -2182,30 +2234,108 @@ jobs:
           name: playwright-report
           path: apps/mouth/playwright-report/
 
-  # ADVISORY, non-required (2026-08-23). This job drives the ONLY test that
-  # exercises the real browser -> Next -> FastAPI -> signed TEST RulePack ->
-  # Postgres chain (e2e-tests above never reaches it: every visa-oracle spec
-  # it runs intercepts and mocks `/api/visa-oracle/evaluate`). It is opt-in
-  # (`VISA_ORACLE_FULLSTACK=1`) and owns its own disposable database via
-  # `backend/scripts/visa_engine/fullstack_smoke.py` — a separate job so it
-  # never touches the e2e-tests job's shared Postgres/Redis services or its
-  # `--grep "page Page|@offline"` filter.
+  # `continue-on-error: true` was REMOVED here on 2026-08-29 — still non-required, still
+  # not in any `needs:` chain. The only thing that changes is this job's own check-run
+  # conclusion and, downstream of it, this WORKFLOW RUN's conclusion. If a future reader
+  # finds this job red, read ITS OWN check-run, not the run's overall conclusion — they
+  # can diverge (see the two consumers below).
   #
-  # `continue-on-error: true` at job level does NOT make this job's own
-  # check-run report success when a step fails — measured 2026-08-24 on its
-  # first real run (job 97222544510, PR #4709): the step failed and the
-  # check-run's `conclusion` on the commit was `failure`, same as any other
-  # red job, `gh pr checks` included. What continue-on-error actually buys:
-  # the overall WORKFLOW RUN conclusion is not dragged down by this job, and
-  # any future job that `needs:` this one still proceeds. The reason this
-  # job does not block merging TODAY is that its name is absent from
-  # `main`'s branch protection `required_status_checks` — that is the one
-  # thing standing between "advisory" and "blocking", so adding this job's
-  # name there is exactly the mistake this paragraph warns against; nothing
-  # in the job's own config stops it. Promote to required only after it has
-  # demonstrably passed a few times in CI.
+  # This job drives the ONLY test that exercises the real browser -> Next -> FastAPI ->
+  # signed TEST RulePack -> Postgres chain (e2e-tests above never reaches it: every
+  # visa-oracle spec it runs intercepts and mocks `/api/visa-oracle/evaluate`). It is
+  # opt-in (`VISA_ORACLE_FULLSTACK=1`) and owns its own disposable database via
+  # `backend/scripts/visa_engine/fullstack_smoke.py` — a separate job so it never
+  # touches the e2e-tests job's shared Postgres/Redis services or its `--grep "page
+  # Page|@offline"` filter.
+  #
+  # WHAT REMOVING `continue-on-error: true` DID NOT CHANGE: it never made this job's own
+  # check-run report success on failure — measured 2026-08-24 on its first real run (job
+  # 97222544510, PR #4709): the step failed and the check-run's `conclusion` on the
+  # commit was `failure`, same as any other red job, `gh pr checks` included. What
+  # `continue-on-error` bought before removal was that the overall WORKFLOW RUN
+  # conclusion was not dragged down by this job, and that any job which `needs:` this
+  # one still proceeded. Zero jobs in this workflow declare it in `needs:` — `needs:`
+  # can only reference a job in the same workflow file, so this is the only place such a
+  # reference could exist — and no other workflow names it by string. But a run
+  # conclusion is itself an input, and two consumers read it:
+  #
+  #   * `main-red-breaker.yml` intersects the SET OF FAILING JOB NAMES across
+  #     consecutive runs (`run0 & run1`). Because this change also renames the job, a
+  #     failure immediately before and one immediately after the rename do not intersect
+  #     — a genuinely repeated failure spanning this commit is reported one cycle late.
+  #     One-time cost of the rename: the consumer binds the name at runtime, not in
+  #     source, so no string search inside this repo finds it.
+  #   * `test-summary` needs six jobs and NOT this one, so it can still print "✅ Test
+  #     Results" inside a workflow whose conclusion is now red. That contradiction
+  #     pre-dates this change; the flip makes it louder rather than creating it. Left
+  #     alone deliberately — widening `test-summary`'s `needs:` is a different concern
+  #     with its own blast radius.
+  #
+  # It still does NOT block a merge. `main`'s branch protection `required_status_checks`
+  # lists 11 contexts (checked live 2026-08-29 via `gh api
+  # repos/.../branches/main/protection`); this job's name, old or new, is not among
+  # them, and the tracked snapshot `infra/required.d/contexts.json` (regenerated
+  # 2026-08-27) agrees. That list is a repository setting read independent of which
+  # commit is on main, so checking it pre-merge gives the same answer it will
+  # post-merge, unless someone edits the setting (which this PR does not) — but note
+  # what this does NOT establish: the old suffixed name was equally absent from that
+  # list before this PR, so absence proves the rename didn't change a merge gate, not
+  # that the flip was validated against one.
+  #
+  # The governing mechanism is CLASSIC branch protection, not a repository ruleset.
+  # Checked the wider surface too: the repo's only two active rulesets (`Copilot review
+  # for default branch`, `merge-queue-main`) were each read via `gh api
+  # .../rulesets/<id>` — neither declares a `required_status_checks` rule, so the merge
+  # queue draws its required-check list from the same classic-protection contexts above,
+  # not a separate one. A full paginated sweep of all 125 branches' `protected` flag
+  # (GitHub sets this true for classic-protection OR ruleset coverage) found only `main`
+  # protected, and both rulesets' `ref_name` conditions match only `main` anyway.
+  # DECLARED LIMIT: this did not call `branches/<name>/protection` on each of the other
+  # 124 branches individually — it relied on the aggregate `protected` flag as a proxy,
+  # not a direct per-branch read. Promoting this job to required is an operator/Zero
+  # action and is deliberately NOT taken here.
+  #
+  # LICENSING CENSUS (2026-08-29T15:37:50Z; reproducible via `gh api
+  # repos/Bali-Zero/Teman2/actions/workflows/233826362/runs` + per-run `.../jobs`,
+  # matched on job-name substring "fullstack smoke"): over the last 150 `tests.yml`
+  # runs, window 2026-08-29T07:17:24Z -> 2026-08-29T15:35:55Z (~8h18m), the job was
+  # PRESENT in all 150 (none skipped-and-uncounted). Of those: 131 success, 16
+  # cancelled, 2 still in progress at query time, and EXACTLY ONE failure — run
+  # 33254169200 / job 99104993853, 2026-08-29T13:06:21Z
+  # (https://github.com/Bali-Zero/Teman2/actions/runs/33254169200/job/99104993853). That
+  # failure was NOT the fullstack chain breaking: the failing step was "Install
+  # Playwright browsers" (an infra dependency-install step), and "Run the disposable-DB
+  # fullstack smoke" — the step this job exists for — was SKIPPED, never executed. Its
+  # own step reporting `success` on the other 131 runs is evidence THAT step executed
+  # and exited zero — not, by itself, proof of a non-empty, non-trivial Playwright test
+  # selection (a test count pulled from the uploaded Playwright report artifact would be
+  # that proof; it was not pulled here). A second, independent census over 150 runs in a
+  # slightly different window (2026-08-29T07:09:02Z -> 2026-08-29T15:18:23Z: 134
+  # success, 15 cancelled, 1 failure) found the SAME single failure, same run and job id
+  # — corroborating, not duplicating, this one. This ~8-hour window does NOT reach the
+  # ~30-hour red episode from 2026-08-24/25 (two PENDING-ARMS rows record that episode)
+  # and is not claimed to.
+  #
+  # So the flip is licensed by "present and correctly-reporting in 150/150 recent runs,
+  # one infra-flake failure out of 150" — not by a clean record. A ~1-in-150 rate on
+  # this job's setup steps means a future infra flake here now reddens this workflow's
+  # run conclusion and feeds `main-red-breaker`'s cross-run intersection: private
+  # flakiness converted into a fleet-wide red signal, with no compensating retry on that
+  # specific step. Considered and NOT added here: `main-red-breaker`'s own
+  # two-consecutive-run intersection already absorbs a single-run flake without falsely
+  # reporting a "repeated failure" (see above); adding a retry to the failing step is a
+  # CI-behavior change, out of scope for this comment-only PR — and the SIBLING
+  # `e2e-tests` job's identical "Install Playwright browsers" step, earlier in this same
+  # file, carries its own dated, measured rationale for deliberately NOT retrying it
+  # ("No retry, deliberately"). Any future retry proposal for this job has to reconcile
+  # with that one, not duplicate it blind.
+  #
+  # NAME NOTE: the job's `name:` lost its "(advisory)" suffix in the same change. The
+  # string a future branch-protection promotion must use is therefore `Visa Oracle
+  # fullstack smoke` — adding the old suffixed name would add a context that no longer
+  # exists and deadlock the queue.
   visa-oracle-fullstack-smoke:
-    name: Visa Oracle fullstack smoke (advisory)
+    name: Visa Oracle fullstack smoke
     needs: [changes]
     if: >-
       !cancelled() &&
@@ -2216,7 +2346,6 @@ jobs:
       )
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    continue-on-error: true
 
     services:
       postgres:
