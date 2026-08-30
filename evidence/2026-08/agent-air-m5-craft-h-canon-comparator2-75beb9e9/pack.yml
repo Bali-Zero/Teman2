@@ -1,0 +1,334 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  SQUAD H lane 5 of 5 — L10-PR2 of
+  docs/plans/2026-08-29-beyond-sota-craft-wave/L10-organizational-learning-loop.md,
+  tracked on issue #5320.
+lanes:
+  - lane: canon-comparator-build
+    role: build
+    seat: >-
+      claude-opus-5 (conducting session — measured the three copies, wrote the probe, the
+      publisher and the corpus, and did the two rounds of repair the graders forced)
+  - lane: canon-comparator-atomicity
+    role: build
+    seat: >-
+      codex gpt-5.6-sol (NON-ANTHROPIC build lane, --sandbox workspace-write in a scratch tree
+      with both scripts read-only to it). Given the one gap the conducting session had DECLARED
+      rather than covered — the write-then-rename was untested and a non-atomic mutation killed
+      nothing — and told the bar was that its test must die on that mutation. It wrote the test,
+      self-verified 36 passed / 35-1 mutated, and restored the publisher byte-identical.
+  - lane: canon-comparator-refute-codex
+    role: review
+    seat: >-
+      codex gpt-5.6-sol at xhigh, --sandbox read-only, handed the DIFF and told to refute — no
+      brief, no narrative. 13 findings, 4 BLOCKER. Verdict REFUTED.
+  - lane: canon-comparator-refute-kimi
+    role: review
+    seat: >-
+      kimi-code/k3, second cross-family seat, same blind diff. 12 findings. Verdict REFUTED, and
+      it is the one that killed the DESIGN rather than the code.
+  - lane: canon-comparator-grade-atomicity
+    role: review
+    seat: >-
+      claude-opus-5 (conducting session grading work it did NOT author — the Codex build lane's
+      test. Two amendments, one of them a measured false positive on correct code.)
+seat_diversity: satisfied
+seat_diversity_note: >-
+  Two of the five lanes are non-Anthropic, and they are not decorative: the Codex build lane wrote
+  a test that is in this diff, and between them the two review seats produced 25 findings that
+  changed the design, not the wording. The one lane where an Anthropic seat reviews is explicitly
+  the reverse direction — the conducting session grading the NON-Anthropic lane's work — so
+  generator never equals grader on any artifact here.
+diff:
+  net_lines: >-
+    6 files, +1366/-7 measured by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`. Well past the ~400
+    guideline, and stated rather than glossed: 619 of those lines are the test corpus and 160 more
+    are the second corpus, so the shipped LOGIC is ~250 lines of probe and ~160 of publisher, most
+    of it the reasoning comments this repo asks for. It was NOT split, for one reason: the
+    trigger-symmetry repair is what makes this PR's own arming provable — without it, adding the
+    sentinel line proves nothing, because the loop's last entry was never parsed. Splitting would
+    have shipped a guard whose arming could not be demonstrated until a second PR merged, which is
+    the exact failure this lane exists to prevent.
+  behaviour_change: >-
+    One new read-only proprioception probe, one new explicitly-invoked publisher script, two
+    corpora, and two regex scopings in an existing guard. Nothing runs on a schedule, nothing
+    writes to `~/.claude/CLAUDE.md`, and no canon block is marked anywhere. On today's fleet the
+    probe's observable behaviour is a single UNPROBEABLE line naming which absence it found —
+    which is the honest answer, because `grep -c 'CANON:'` returns 0 on every machine.
+receipts:
+  - claim: >-
+      THE GROUND, and it is why the organ exists — the three copies of the global CLAUDE.md
+      disagree about how work ships, and nothing was comparing them
+    cmd: >-
+      wc -c ~/.claude/CLAUDE.md on M5 and via ssh on Pro; grep -c 'SHIP-LIFECYCLE' and
+      grep -c 'Zero paid API keys' on each
+    result: >-
+      M5 27,377 B · Pro 22,795 B · Mini 22,795 B. Pro and Mini carry ZERO occurrences of the
+      SHIP-LIFECYCLE HARD RULE, carry the SUPERSEDED "no paid APIs ever" wording of a rule Zero
+      downgraded 2026-06-04, and still name a seat retired 2026-07-19.
+    exit: 0
+    ts: 2026-08-31T02:40Z
+    seat: session (M5, and via ssh on Pro)
+  - claim: >-
+      Nothing is marked canon on any machine, so the probe must answer UNPROBEABLE and not
+      RECONCILED — this is the state it ships into, not a hypothetical
+    cmd: grep -c 'CANON:' ~/.claude/CLAUDE.md on M5 and on Pro
+    result: "0 on M5, 0 on Pro."
+    exit: 1
+    ts: 2026-08-31T02:45Z
+    seat: session (M5, and via ssh on Pro)
+  - claim: >-
+      THE BITE — the wire works end to end across two REAL machines, on a fixture path, never the
+      operator's control-plane file. Guilt then innocence.
+    cmd: >-
+      published a fragment on M5 with --machine Air-M5; scp'd it to Pro under /tmp/canon-fixture;
+      ran the probe on Pro against a fixture home whose CLAUDE.md said something different, then
+      again once the blocks agreed
+    result: >-
+      PRO VERDICT: DIVERGED 1 — "CANON:ship differs from Air-M5 (f6d2411caf6893cb vs
+      29e187bb07ca61b3)". Then PRO INNOCENCE: RECONCILED 0 — "1 canon block(s) identical across
+      this machine and 1 peer(s)". Each machine's own home path differs OUTSIDE the block
+      throughout and is correctly ignored. Fixture removed after the run.
+    exit: 0
+    ts: 2026-08-31T04:05Z
+    seat: session (M5 -> Pro over ssh)
+  - claim: >-
+      The self entry made the organ report fleet agreement having compared nothing — the BLOCKER
+      both graders found independently
+    cmd: >-
+      built a report holding only this machine's own digest and called probe_canon_blocks
+    result: >-
+      BEFORE: RECONCILED, "1 canon block(s) identical across 1 machine(s)". AFTER: UNPROBEABLE,
+      "no peer has published ... no machine other than this one has published a fragment".
+    exit: 0
+    ts: 2026-08-31T03:45Z
+    seat: session (M5, reproducing Codex sol finding #1 / Kimi finding #2)
+  - claim: >-
+      The push targeted this machine's ABSOLUTE path on the peer, so the fragment landed where no
+      probe reads while scp reported success
+    cmd: read the scp invocation; M5 home is /Users/balizero, Pro home is /Users/nuzantara
+    result: >-
+      BEFORE: scp ... pro:/Users/balizero/.claude/canon-blocks.json — a path that does not exist
+      on Pro. AFTER: a tilde path the remote shell expands, pinned by a test.
+    exit: 0
+    ts: 2026-08-31T03:50Z
+    seat: session (M5, reproducing Codex sol #2 / Kimi #1)
+  - claim: >-
+      The single shared report could not survive three machines — the finding that changed the
+      DESIGN rather than a line
+    cmd: >-
+      reasoned from the code and confirmed against it: the merge happens only against the
+      publisher's LOCAL copy, and the push is a whole-file scp overwrite
+    result: >-
+      A pushes {A} to B; C pushes {C} to B; A's entry is gone from B, with no lock, no re-merge on
+      receipt, and no way for the freshness stamps to tell an ERASED peer from a quiet one.
+      Replaced with one fragment per machine: a machine can only affect its own line.
+    exit: 0
+    ts: 2026-08-31T03:55Z
+    seat: kimi-code/k3 (finding #4, blind on the diff)
+  - claim: >-
+      A close marker QUOTED IN PROSE ended the block early, so two files that differ after that
+      sentence hashed IDENTICALLY
+    cmd: >-
+      _canon_blocks on two texts sharing a prefix and differing after an inline
+      "prose <!-- /CANON:x --> ..." line
+    result: >-
+      BEFORE: the two maps compared EQUAL. AFTER: they differ, and the block reads unclosed.
+    exit: 0
+    ts: 2026-08-31T03:45Z
+    seat: session (M5, reproducing Codex sol #6)
+  - claim: >-
+      A fragment of the wrong SHAPE aborted the enclosing proprioception run, so one bad file
+      would have blinded every OTHER boundary too
+    cmd: probe against a report whose machines map holds a string instead of a block map
+    result: >-
+      BEFORE: AttributeError: 'str' object has no attribute 'get'. AFTER: UNPROBEABLE naming the
+      fragment; and with the fragment scheme, one unreadable file no longer stops the others being
+      compared.
+    exit: 0
+    ts: 2026-08-31T03:48Z
+    seat: session (M5, reproducing Codex sol #9 / Kimi #3)
+  - claim: >-
+      Freshness is the stamp INSIDE the fragment, never the file's mtime — so a touch, a sync or a
+      backup cannot revive a peer; and a stamp in the FUTURE does not make a dead peer immortal
+    cmd: >-
+      pytest scripts/tests/test_canon_blocks.py -k "TOUCHING or clock or unstamped"
+    result: >-
+      4 tests, all green: a touched 50-hour-old fragment stays UNPROBEABLE; a stamp 24h in the
+      future is refused as skew; 60 seconds of drift is tolerated; an unstamped entry is
+      unverifiable rather than fresh.
+    exit: 0
+    ts: 2026-08-31T04:10Z
+    seat: session (M5)
+  - claim: >-
+      THE ARMING IS PROVEN, not asserted — and it is provable only because of a repair this PR
+      makes to the guard that does the proving
+    cmd: >-
+      deleted this PR's sentinel line from immune-enforcement.yml and re-ran the trigger-symmetry
+      check; restored and re-ran
+    result: >-
+      RED with the line deleted, green with it present. Before this PR's `_LOOP_RE` repair the
+      same deletion was SILENT: the loop's last entry — which closes with " ; do" rather than a
+      continuation backslash — had never been parsed by that check, in the file whose whole
+      purpose is catching half-armed tests.
+    exit: 0
+    ts: 2026-08-31T03:20Z
+    seat: session (M5)
+  - claim: >-
+      Widening that regex produced the over-match twin W94 predicts, inside 24 hours — and its
+      sibling had the same shape and was PRE-EXISTING
+    cmd: >-
+      loop_tests() on a synthetic workflow carrying an unrelated `scripts/regen_repomap.py ; do`;
+      sentinel_paths() on one where a `run:` line merely NAMES a test file
+    result: >-
+      BEFORE: the unrelated script was demanded to have a trigger path (a red check on a correct
+      workflow), and a test NAMED outside the case block read as triggered. AFTER: each set is
+      read from its own region, with non-vacuity pinned (>=100 sentinel, >=40 loop on the real
+      file) so narrowing cannot silently reduce both to nothing and report "all wired" forever.
+    exit: 0
+    ts: 2026-08-31T04:00Z
+    seat: kimi-code/k3 #8 (over-match) + codex gpt-5.6-sol #11 (the pre-existing sibling)
+  - claim: >-
+      The declared atomicity gap is closed, and the grading of that closure found a false positive
+      on CORRECT code
+    cmd: >-
+      three mutations of the publisher's commit step, each run against the corpus:
+      non-atomic write · direct-write-only · os.replace(tmp, path)
+    result: >-
+      non-atomic FAILS · direct-write-only FAILS · os.replace PASSES. The third was RED before the
+      grading amendment: the build lane's test pinned `Path.replace` by name, so an equally correct
+      atomic commit turned it red on working code. Both primitives are recorded now, and the
+      property — the final path is never written into directly — is asserted alongside.
+    exit: 0
+    ts: 2026-08-31T04:35Z
+    seat: session (M5, grading the non-Anthropic build lane)
+  - claim: >-
+      Mutation across the whole lane, and three of the mutations were themselves no-ops that
+      reported FALSE KILLS
+    cmd: >-
+      29 mutations of probe, publisher and both corpora, each applied through a harness that
+      ASSERTS its target string exists before writing
+    result: >-
+      28 killed, each by the test that names the property. The one deliberate survivor was
+      atomicity, which the build lane then closed. Three earlier mutations silently failed to apply
+      because ruff had reflowed their target lines and reported green — W121's lesson belongs to
+      the mutation harness, not only to bytecode.
+    exit: 0
+    ts: 2026-08-31T04:30Z
+    seat: session (M5)
+  - claim: The gear floor recomputed from this PR's own changed-file list is 3, matching the declared gear
+    cmd: >-
+      git diff --name-only origin/main...HEAD > /tmp/changed.txt && python3
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/changed.txt
+    result: "3 (.github/workflows/** is hot-zone by path)"
+    exit: 0
+    ts: 2026-08-31T04:40Z
+    seat: session (M5)
+  - claim: >-
+      The brief's acceptance probes, run as written — the four EARS clauses and the corpus's
+      never-touches-the-operator's-file constraint
+    cmd: >-
+      pytest scripts/tests/test_canon_blocks.py -k "reworded_rule or block_missing_on_a_peer or
+      present_only_on_a_peer" ; -k "identical_blocks_are_silent or divergence_OUTSIDE" ; -k
+      "no_markers or report_holding_ONLY_this_machine" ; then
+      pytest scripts/tests/test_immune_enforcement_trigger_symmetry.py with this PR's sentinel
+      line deleted and restored
+    result: >-
+      3 passed · 2 passed · 2 passed · RED-then-green on the sentinel deletion. Every test in the
+      corpus takes tmp_path and builds its world through _home(); the real ~/.claude is named only
+      in docstrings explaining why it is never read.
+    exit: 0
+    ts: 2026-08-31T04:45Z
+    seat: session (M5)
+  - claim: The repo's own gates accept this diff
+    cmd: >-
+      pytest on both corpora; proprioception.py --selftest; actionlint on the workflow; ruff check
+      and format; lint_test_reward_hacking.py
+    result: >-
+      48 passed · SELFTEST OK (16 probes, registry valid) · actionlint clean · ruff clean on every
+      file this PR touches, with main's 3 pre-existing proprioception errors unchanged at the same
+      lines · anti-reward-hacking clean.
+    exit: 0
+    ts: 2026-08-31T04:38Z
+    seat: session (M5)
+lint_notices_accepted: >-
+  `acceptance-probe: 5 declared probe(s) appear in no receipt's claim/cmd` is accepted rather than
+  chased. The outcomes ARE recorded — the receipt immediately above pii_scan runs all five and
+  reports 3/2/2 passed plus the red-then-green sentinel deletion — but the rule matches the probe
+  text as a SUBSTRING of a receipt's cmd, and my receipt states the five commands as one
+  YAML-folded line. Reshaping that text until a substring matcher is satisfied would be exactly the
+  form-instead-of-entity move this whole PR spent the day removing from its own guards, so the
+  outcome is recorded plainly and the notice is left standing. `evidence_root_deprecated` fires
+  only because the lint was run against the harness copy at /tmp/evidence-check/evidence/pack.yml;
+  the real pack lives at its per-PR path.
+pii_scan: clean
+pii_scan_note: >-
+  Nothing in this diff, brief or pack transcribes client data. The probe reads a doctrine file and
+  emits sha256 digests; the publisher transmits digests and block IDs and never block text. One
+  residual is named rather than left implicit: block IDs DO travel verbatim as JSON keys, so an id
+  chosen to look like a document number would travel too. The IDs are author-chosen topic names
+  constrained to [A-Za-z0-9._-], the marking step is the operator's, and the constraint is written
+  where the marker regex is defined — but it is a convention, not an enforcement, and it is
+  recorded here as such.
+dissent:
+  - seat: codex gpt-5.6-sol (blind refuter) and kimi-code/k3, independently
+    objection: >-
+      "The only deployed state explicitly covered is 'no markers', accepted as UNPROBEABLE; nothing
+      in the diff installs markers or invokes the publisher. The registered P1 guard therefore has
+      no reachable comparison path on the stated fleet state." Kimi put it more sharply: nothing
+      schedules the publisher either, so the steady state is UNPROBEABLE forever absent an operator
+      remembering a manual step.
+    status: CONFIRMED
+    resolution: >-
+      Accepted as stated and NOT fixed here, deliberately. Marking canon blocks is an edit to the
+      operator's ~/.claude/CLAUDE.md on three machines, and scheduling a writer into ~/.claude is a
+      separate blast radius — shipping the writer's cron in the same PR as its own watchdog would
+      arm both in one motion. What was done instead: the reachability is PROVEN across two real
+      machines on a fixture path (receipt 3), so the wire is known to work rather than assumed, and
+      UNPROBEABLE is checked to be low-noise — the receptor counts it in a header and does not page
+      it as P1, so a permanently-unprobeable organ is honest rather than an alarm nobody reads. The
+      marking and the schedule are named in the brief's out_of_scope as operator[control-plane].
+  - seat: kimi-code/k3
+    objection: >-
+      The skip-self guard in the publisher compares an SSH ALIAS (`pro`, `mini`) against a HOSTNAME
+      (`Air-M5`, `Nuzantara`), so it can never fire: a machine copies its fragment onto itself and
+      reports "push pro: ok", masking a failure to reach any other machine.
+    status: CONFIRMED
+    resolution: >-
+      Half-fixed and the remainder named. Under the fragment scheme a self-copy is a byte-identical
+      no-op rather than a corruption, so the danger is gone; what remains is a push that proves
+      nothing being reported as success. That is now written at the call site rather than left for
+      the next reader to rediscover. Mapping aliases to hostnames needs a fleet-topology lookup this
+      script does not have and should not grow.
+  - seat: session (grading the non-Anthropic build lane's test)
+    objection: >-
+      Not an objection to the build lane but a defect in what it delivered, found by mutating rather
+      than by reading: the test pinned `Path.replace` by NAME, so `os.replace(tmp, path)` — an
+      equally correct atomic commit — turned it RED on working code.
+    status: CONFIRMED
+    resolution: >-
+      Amended in place with the reason written into the test: both rename primitives are recorded,
+      the property (the final path is never written into directly) is asserted alongside the
+      mechanism, and exact-list equality became membership because Path.replace is itself
+      implemented on os.replace and one rename was being seen twice. All three mutation directions
+      re-run afterwards.
+  - seat: session (self-review, first draft of the quiet-peer filter)
+    objection: >-
+      The filter matched a machine NAME against a prefix of its own display line, and the test
+      written to catch that used Pro/Pro2 — which the trailing space already separates, so the
+      mutant survived and the test was VACUOUS.
+    status: CONFIRMED
+    resolution: >-
+      Rewritten with a name that is a space-delimited prefix of another; the mutant now dies, and
+      the vacuous first attempt is recorded in the test's own docstring so the next reader sees why
+      that fixture shape was chosen.
+  - seat: session (self-review)
+    objection: >-
+      Three of this lane's mutations silently failed to apply — ruff had reflowed their target lines
+      — and each reported a green run as a KILL.
+    status: CONFIRMED
+    resolution: >-
+      Every mutation after that ran through a harness that asserts its target string exists before
+      writing, and the earlier ones were re-run through it. No mutation result in this pack comes
+      from an unasserted substitution.

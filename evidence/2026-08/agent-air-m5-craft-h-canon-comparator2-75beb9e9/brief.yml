@@ -50,17 +50,37 @@ constraints:
     the last."
 
 acceptance:
-  - "Guilt: a synthetic divergent canon block on one machine's FIXTURE copy produces a P1 line.
-    Innocence: identical blocks across fixture copies are silent, AND a difference outside the
-    marked blocks is silent."
-  - "Every test builds a synthetic HOME under tmp_path. The operator's real `~/.claude/CLAUDE.md`
-    is never read by the corpus: it is control-plane, it is theirs, and a test that depended on
-    one machine's copy would pass or fail for reasons unrelated to the code."
-  - "The arming is proven by mutation, not by presence: deleting the sentinel path for the new
-    test must turn the trigger-symmetry check red."
-  - "`proprioception.py --selftest` exits 0 with the new probe registered and its boundary class
-    in the taxonomy."
-
+  - text: >-
+      WHEN one machine's fixture copy carries a canon block whose body differs from another's,
+      the probe SHALL report DIVERGED and name the peer it differs from.
+    probe: >-
+      pytest scripts/tests/test_canon_blocks.py -k "reworded_rule or block_missing_on_a_peer or
+      present_only_on_a_peer" — and, end to end, the two-machine M5->Pro fixture run recorded in
+      the pack's third receipt.
+  - text: >-
+      WHILE every fixture copy carries identical canon blocks, the probe SHALL be silent, and IF
+      the copies differ only OUTSIDE a marked block it SHALL still be silent.
+    probe: >-
+      pytest scripts/tests/test_canon_blocks.py -k "identical_blocks_are_silent or
+      divergence_OUTSIDE"
+  - text: >-
+      WHERE no machine has marked any canon block — today's state on every machine — the probe
+      SHALL report UNPROBEABLE naming that absence, and SHALL NOT report agreement.
+    probe: >-
+      pytest scripts/tests/test_canon_blocks.py -k "no_markers or report_holding_ONLY_this_machine"
+  - text: >-
+      IF this PR's sentinel path is removed from immune-enforcement.yml, the trigger-symmetry check
+      SHALL fail — the arming is proven by mutation, never by the line's presence.
+    probe: >-
+      delete the `scripts/tests/test_canon_blocks.py|\` line, then
+      pytest scripts/tests/test_immune_enforcement_trigger_symmetry.py — recorded in the pack's
+      "THE ARMING IS PROVEN" receipt.
+  - text: >-
+      WHILE the corpus runs, it SHALL read no file under the operator's real ~/.claude: every test
+      builds a synthetic HOME under tmp_path.
+    probe: >-
+      grep -c 'Path.home()\|~/.claude' scripts/tests/test_canon_blocks.py restricted to
+      non-comment lines; every test takes tmp_path and calls _home().
 out_of_scope:
   - "Marking the canon blocks in `~/.claude/CLAUDE.md`. That is an edit to the operator's
     control-plane file on three machines — operator[control-plane], escalated separately."
