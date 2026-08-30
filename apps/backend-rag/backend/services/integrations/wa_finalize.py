@@ -294,7 +294,10 @@ def _starts_with_internal_monologue_leak(answer: str) -> bool:
 # can never drift apart. That coupling was live-ammunition: _canonical_value does
 # _AMOUNT_MULTIPLIERS[multiplier.lower()] with no .get(), so a token the pattern
 # matches and the dict lacks is a KeyError inside the finalize path, not a miss.
-# test_wa_finalize_price_veto.py asserts the derivation holds.
+# test_wa_finalize.py::test_pricing_veto_multiplier_pattern_is_derived_from_the_table
+# asserts the derivation holds. (The name cited here until 2026-08-30 was
+# test_wa_finalize_price_veto.py, a file that does not exist in this tree —
+# a citation pointing at nothing protects nothing.)
 #
 # NOT widened here, deliberately, and named so it is not mistaken for coverage: a
 # bare currency WORD ("2,5 miliar rupiah", with no Rp/IDR/USD marker) is still
@@ -469,6 +472,135 @@ def _currency_amounts(text: str) -> list[tuple[str, int]]:
     return out
 
 
+# ---------------------------------------------------------------------------
+# TWO-COMPONENT TOTALS (added 2026-08-30)
+#
+# THE DEFECT that opened this, measured rather than argued: the ONE rule this
+# bot must obey was unshippable. Zero's 2026-07-17 ruling is a single
+# all-inclusive client-facing price, which for an Investor KITAS means
+# 17,000,000 + 9,500,000 = 26,500,000 — a figure that appears in no source.
+# Against the real package notation, before this change:
+#
+#     "Total all-in ... Rp26.500.000"        -> ['IDR:26500000']   VETOED
+#     "biaya layanan Rp17.000.000.
+#      PNBP pemerintah Rp9.500.000"          -> []                 passes
+#
+# So this veto was actively PUSHING the generator toward splitting the
+# government levy out of the client price: splitting is the only shape that
+# keeps every figure verbatim-anchored. The split-price defect guarded
+# separately by `price_split_offenders` was, in part, this veto's own output.
+#
+# THE RULE: an amount is anchored if it is a source amount, or the sum of
+# exactly TWO DISTINCT source amounts that are each price-sized. Nothing else.
+# The generator may add up two things the sources state; it may not invent, and
+# it may not multiply.
+#
+# WHAT WAS TRIED AND REJECTED, kept because the wider shape is the tempting one
+# and this is the record of why it fails. The first version also admitted an
+# integer multiple of a source amount, on the reasoning that a per-day rate
+# times a day count is honest arithmetic. It is — but the code cannot see the
+# count. It divided the GENERATED figure by a source figure and accepted any
+# whole quotient. A cross-family adversarial reviewer returned BLOCK, and all
+# seven of its concrete cases reproduced verbatim against the code:
+#
+#     Rp250.000.000  passed (250x the daily rate; the client asked about 5 days)
+#     Rp88.000.000   passed (as did every whole million up to 366 million)
+#     Rp1.002.069    passed (1,000,000 + 2024 + 45 — a year and an article no.)
+#     Rp26.500.002   passed (the bare "2" from "2 years" used as an operand)
+#     Rp43.500.000   passed (one 17,000,000 service fee charged twice)
+#     Rp20.500.000   passed (KITAS fee + tax penalty + overstay fine, laundered)
+#     Rp3.000.000    passed (a USD source authorizing an IDR multiple)
+#
+# With one Rp1,000,000/day source the guard admitted the entire round-million
+# grid — precisely the numbers a generator emits. Divisibility is not
+# derivation. Each of those seven is now a test.
+#
+# WHAT THIS STILL COSTS, stated rather than buried:
+# * An honest multiplication is still vetoed. "5 hari x Rp1.000.000" is a
+#   correct answer to a real question, and `wa_outbox` row 387 — fired alone
+#   into a quiet thread — failed 5 of 5 attempts on exactly that and the client
+#   got an apology. Admitting it safely requires binding the multiplier to a
+#   count present in the CUSTOMER'S QUESTION, which this function never
+#   receives. That is a signature change; it will be specified, not guessed.
+# * Two REAL price amounts from unrelated chunks can still sum to a total no
+#   source authorizes, because `price_sources` is a flat sequence of strings
+#   carrying no provenance, no currency family and no semantic role. Closing
+#   that is a data-contract change, not a predicate change.
+def _summable_operands(price_sources: Sequence[str], cur: str) -> set[int]:
+    """Source amounts eligible to be COMPONENTS of a two-part total.
+
+    Deliberately much narrower than the membership set the veto uses. Two
+    restrictions, each of which a cross-family reviewer demonstrated is
+    load-bearing with a concrete case:
+
+    * CURRENCY-MARKED ONLY. The membership set is harvested from every numeric
+      token in every chunk, which is right for membership (a pricing block may
+      state an amount without repeating its marker) and catastrophic for
+      addition: years, article numbers, KBLI codes, quantities and even
+      statistics are not money. `USD 59` passed as `45 + 14` from "Pasal 45"
+      and "14 hari kerja"; `Rp7.275.000` passed as a tourist count plus a real
+      fee. An earlier draft tried to exclude those with a magnitude floor,
+      which is the wrong instrument -- a number's ROLE is not recoverable from
+      its size, and the floor was simultaneously too low for a 7-digit
+      non-money token and too high for a real Rp10.000 stamp duty.
+    * SAME CURRENCY FAMILY as the answer. The membership set is untyped, so a
+      USD figure could authorize an IDR one: `USD 100,000` (a capital minimum)
+      plus `Rp500.000` (notary) authorized `Rp600.000`. Family is available
+      here at no cost -- `_currency_amounts` already returns it -- so the pair
+      rule keeps it even though membership, by its own documented residual,
+      does not.
+
+    Dropping the magnitude floor is what lets a genuine small line item (stamp
+    duty, admin fee) still be a component; being currency-marked is the test
+    that does the work the floor was failing to do.
+    """
+    operands: set[int] = set()
+    for src in price_sources:
+        for family, value in _currency_amounts(src):
+            if family == cur and value > 0:
+                operands.add(value)
+    return operands
+
+
+def _is_two_component_total(value: int, operands: set[int]) -> bool:
+    """True when ``value`` is the sum of two DISTINCT same-currency amounts.
+
+    Two terms, not three: three let unrelated chunks be laundered into a
+    plausible package total (a KITAS fee + a tax penalty + an overstay fine
+    summing to a "PT PMA setup price" no source states). Distinct VALUES, not
+    occurrences: with replacement, one 17,000,000 service fee authorized
+    43,500,000 by being charged twice.
+
+    NO MULTIPLES, and that exclusion is the important one. An earlier version
+    allowed an integer multiple of a source amount, reasoning that a per-day
+    rate times a day count is honest arithmetic. It is -- but this function
+    cannot see the count. It divided the GENERATED figure by a source figure
+    and accepted any whole quotient, so a single `IDR 1,000,000/day` source
+    authorized every whole million to 366 million, and `Rp250.000.000` passed
+    a five-day question. Divisibility is not derivation.
+
+    DECLARED FALSE POSITIVES, named so they are not mistaken for coverage.
+    Each costs a retry and then an apology to a client whose answer was right:
+    * an honest multiplication (5 days x Rp1.000.000) -- needs the multiplier
+      bound to a count in the customer's question, which this function never
+      receives;
+    * a percentage of a base (PPh final 5% of Rp100.000.000) -- same shape,
+      same missing input;
+    * a legitimate three-component total (PNBP + telex + service fee).
+    All three want the same thing: typed operands carrying a role, not a
+    predicate guessing arithmetic backwards. That is a data-contract change.
+
+    DECLARED FALSE NEGATIVE: two REAL same-currency amounts from UNRELATED
+    chunks still sum to a total no source authorizes, because `price_sources`
+    carries no provenance and no semantic role.
+    """
+    for a in operands:
+        b = value - a
+        if b > a and b in operands:
+            return True
+    return False
+
+
 def price_tokens_outside_sources(text: str, price_sources: Sequence[str]) -> list[str]:
     """Canonical amounts in ``text`` that no source contains, as "CUR:value" strings.
 
@@ -507,10 +639,18 @@ def price_tokens_outside_sources(text: str, price_sources: Sequence[str]) -> lis
             if value is not None:
                 source_values.add(value)
     offenders: list[str] = []
+    operands_by_family: dict[str, set[int]] = {}
     for cur, value in _currency_amounts(text):
         if value < _VETO_FLOORS[cur]:
             continue
-        if value not in source_values:
+        if value in source_values:
+            continue
+        # Parsed once per CURRENCY FAMILY, not once per amount: an answer
+        # quoting four figures re-parsed every chunk four times, and the retry
+        # ladder repeated that up to five times per turn.
+        if cur not in operands_by_family:
+            operands_by_family[cur] = _summable_operands(price_sources, cur)
+        if not _is_two_component_total(value, operands_by_family[cur]):
             offenders.append(f"{cur}:{value}")
     return offenders
 
