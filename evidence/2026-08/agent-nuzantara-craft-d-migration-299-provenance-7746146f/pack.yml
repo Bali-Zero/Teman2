@@ -1,0 +1,213 @@
+brief_ref: evidence/2026-08/agent-nuzantara-craft-d-migration-299-provenance-7746146f/brief.yml
+plan_ref: >-
+  docs/plans/2026-08-29-beyond-sota-craft-wave/L12-data-schema-migrations.md
+  PR-2, driven by SQUAD D' wave-2 issue #5317. Migration class: auto-merge OFF,
+  the conductor merges on the gates-green evidence posted in the issue.
+
+lanes:
+  - lane: migration-299-build
+    role: build
+    seat: claude-opus-5 xhigh (this session)
+  - lane: migration-299-counterbuild
+    role: build
+    seat: glm-5.2 via Alibaba TP1 (NON-ANTHROPIC — D3 by a real build lane,
+      never seat_override). Blind on the problem statement.
+  - lane: migration-299-refuter
+    role: review
+    seat: codex gpt-5.6-sol (NON-ANTHROPIC, cross-family; the migration/
+      security class refuter this repo's rules name)
+
+diff:
+  files: 4
+  net_lines: 940
+  measured_at: 0bcb7f8d2
+  note: >-
+    `git diff --numstat origin/main...HEAD` -> 4 files, net 940. Over the ~400
+    target and stated as such: the migration, the runner that populates it, the
+    audit that reads it back, and a guilt+innocence corpus are one concern, and
+    splitting a verifier from its corpus is the anti-pattern this repo names.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      UPGRADE AND DOWNGRADE proven against a real postgres:15, 10 steps, on a
+      namespaced scratch table so nothing real was touched.
+    cmd: >-
+      split 299 at `-- === ROLLBACK ===`; psql -v ON_ERROR_STOP=1 against the
+      local docker craftd-pg, upgrade / verify / CHECK guilt+innocence /
+      re-upgrade / rollback / verify / re-upgrade / drop
+    result: >-
+      upgrade rc=0; three text columns + CHECK present; legacy row survives with
+      all three NULL; CHECK REJECTS 'bogus' ("violates check constraint") and
+      ACCEPTS 'ci' ("UPDATE 1"); second upgrade rc=0 (idempotent); rollback
+      rc=0; columns 0 and constraint 0 and the legacy row intact with its
+      original values; upgrade again rc=0 with 3 columns back; real
+      _schema_versions untouched (0 applied_as columns).
+    exit: 0
+    ts: 2026-08-31T04:20Z
+    seat: session (final gate, Opus 5 xhigh)
+
+  - claim: >-
+      The Codex sandbox could NOT run that proof, and the reason is recorded
+      rather than glossed: `--sandbox workspace-write` has no network.
+    cmd: >-
+      codex exec -m gpt-5.6-terra --sandbox workspace-write ... "connect with
+      psql using $CRAFTD_DSN"
+    result: >-
+      'psql: error: connection to server at "127.0.0.1", port 55432 failed:
+      Operation not permitted' — steps 2-10 NOT RUN. The proof was therefore
+      run in-session; the commands are the receipt above.
+    exit: 0
+    ts: 2026-08-31T04:05Z
+    seat: codex gpt-5.6-terra (sandbox)
+
+  - claim: >-
+      THE AUDIT WOULD HAVE FAILED THE DEPLOY ON A HEALTHY DATABASE. Four ledger
+      rows in a migrated database carry SYMBOLIC checksums that no digest can
+      match.
+    cmd: >-
+      grep -rhoE "'[a-z][a-z0-9-]{6,40}'" migrations_v2/*.sql | grep -iE
+      'checksum|tracked|legacy'; then the new tree-scan test on its first run
+    result: >-
+      Three literals by grep — legacy_fake_checksum, tracked-by-migration-165,
+      tracked-by-migration-166 — and the refuter named 165/166. The tree-scan
+      test then found a FOURTH attribution: `legacy-107-bridge-outbox` is
+      written by migration **194** backfilling the row for **107**, so "which
+      file contains the string" is not "which row carries it". Cured at the
+      class: a real checksum is 64-hex, anything else is symbolic and must be
+      allowlisted on its (number, name) pair.
+    exit: 0
+    ts: 2026-08-31T04:50Z
+    seat: session (final gate, Opus 5 xhigh)
+
+  - claim: >-
+      The decisive regression: the four REAL symbolic rows produce NO finding,
+      and the test discriminates. A tampered row, by contrast, is an error that
+      names the migration number ("tampered names the number").
+    cmd: >-
+      insert (1,001_baseline_v2.sql,legacy_fake_checksum),
+      (107,107_bridge_outbox,legacy-107-bridge-outbox),
+      (165,...,tracked-by-migration-165), (166,...,tracked-by-migration-166)
+      into a scratch table; run _check_migration_checksums; then MUTATE by
+      removing 165 from the allowlist and re-run
+    result: >-
+      Unmutated 11 passed. With 165 removed: "1 failed, 10 passed", the failure
+      being exactly test_THE_FOUR_REAL_SYMBOLIC_ROWS_PRODUCE_NO_FINDING.
+    exit: 0
+    ts: 2026-08-31T05:05Z
+    seat: session (final gate, Opus 5 xhigh)
+
+  - claim: >-
+      TWO TAUTOLOGIES OF MY OWN, both caught by mutation rather than by reading,
+      both replaced by discriminating tests.
+    cmd: >-
+      (1) mutate `_calculate_checksum(sql)` -> `(split_migration_sql(sql)[0])`;
+      (2) mutate the checker's sentinel branch back below `if path is None`;
+      (3) remove 165 from the allowlist
+    result: >-
+      Each mutation initially left the whole file GREEN. (1) the test compared
+      sha256(raw) to sha256(raw) — one expression spelled twice; it now inspects
+      the writer's AST and the mutation reddens it. (2) asserting an ALLOWLISTED
+      file-less row passes cannot distinguish the orderings (both give []); the
+      discriminating case is an UNLISTED sentinel with no file. (3) see the
+      receipt above.
+    exit: 0
+    ts: 2026-08-31T05:10Z
+    seat: session (final gate, Opus 5 xhigh)
+
+  - claim: >-
+      No regression against origin/main on the whole backend/tests/db/ tree,
+      compared as FAILED+ERROR name sets.
+    cmd: >-
+      pytest backend/tests/db/ -p no:cacheprovider, with the diff and after
+      `git stash push -u`; comm -23 on the sorted name sets
+    result: >-
+      "9 failed, 394 passed, 22 skipped" here vs "10 failed, 382 passed, 22
+      skipped" on origin/main. A-only (regressions introduced) is EMPTY; the
+      extra failures are on MAIN's side (test_xdist_worker_isolation, the known
+      W131 family). +12 passes.
+    exit: 1
+    ts: 2026-08-31T05:15Z
+    seat: session (final gate, Opus 5 xhigh)
+
+  - claim: >-
+      D3: a blind non-Anthropic BUILD lane ran on the problem statement alone.
+    cmd: >-
+      POST token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
+      /chat/completions, model glm-5.2, 6 questions, diff withheld
+    result: >-
+      4271 bytes. Converged on server-sourced identity, on nullable-no-backfill,
+      and on naming the false-positive as the important risk.
+    exit: 0
+    ts: 2026-08-31T04:35Z
+    seat: glm-5.2 (TP1, non-Anthropic build lane)
+
+dissent:
+  - seat: codex gpt-5.6-sol (non-Anthropic refuter, migration class)
+    objection: >-
+      FIVE CONFIRMED-DEFECTs and one PLAUSIBLE. (A) the rollback is not the exact
+      inverse — ADD IF NOT EXISTS / DROP IF EXISTS would take a pre-existing
+      column, and ADD CHECK takes ACCESS EXCLUSIVE. (B) `pg_constraint.conname`
+      is not globally unique, so a same-named constraint on ANY table makes the
+      guard skip the ADD silently. (C) `current_user` is the effective role, not
+      the actor; a bare membership without SET ROLE is invisible, contrary to the
+      docstring; and `applied_via` is env-spoofable with Fly-before-CI precedence
+      wrong, because `flyctl ssh console` FROM CI carries FLY_APP_NAME. (D) THE
+      DEPLOY-BREAKER: migrations 165/166 self-insert symbolic checksums that
+      ON CONFLICT DO NOTHING never replaces, so the audit reports mismatches on a
+      healthy database. (E, PLAUSIBLE) the allowlist is keyed on number alone, so
+      a renumbered row bypasses verification. (F) the tests CREATE/DROP a table
+      literally named `_schema_versions` on TEST_DATABASE_URL, and the provenance
+      probe omits table_schema.
+    status: CONFIRMED
+    note: >-
+      ALL SIX ACTED ON. D cured at the CLASS rather than the two instances it
+      named — shape-matching (64-hex = real, anything else symbolic), which is
+      what surfaced a THIRD literal and, through the new test, a FOURTH
+      attribution (194 backfills 107's row). E closed by keying on the
+      (number, name) pair. F closed on both halves: a unique per-run scratch
+      table with an assertion refusing the real ledger name, and a
+      table_schema-scoped probe. B scoped to conrelid. C now records
+      session_user when it differs, flips the precedence to GITHUB_ACTIONS/CI
+      first, and the docstring's overclaim about role membership is corrected in
+      place rather than softened. A is ACCEPTED WITH REASON and documented in the
+      migration itself: PostgreSQL does not record which column an
+      `ADD IF NOT EXISTS` created, the three names appear nowhere else in
+      migrations_v2, and the ACCESS EXCLUSIVE scan is negligible on a ledger of
+      this size — a narrow, written limit rather than an unknown one.
+
+tests:
+  - "backend/tests/db/test_migration_checksum_verification.py — 11 tests:
+    structural (299 is next-free, carries a ROLLBACK that inverts exactly the
+    three columns, allowlist keyed on pairs with written reasons, no NEW
+    symbolic literal in the tree, and the writer/auditor hash-coupling pinned by
+    AST) plus live guilt+innocence against a real Postgres (untampered passes,
+    tampered names the number, allowlisted symbolic passes, UNLISTED symbolic
+    with no file still errors, orphan rows left to the divergence check, and the
+    four REAL symbolic rows produce nothing)."
+  - "A/B on the whole backend/tests/db/ tree: zero regressions, +12 passes."
+
+static:
+  - "ruff on every changed file — All checks passed."
+  - "scripts/lint_migration_numbers.py — 177 files, all unique prefixes."
+
+  - "COUNCIL, stated as it actually is rather than as the rule would like it:
+    ONE review seat completed — codex-gpt-5.6-sol, which returned five
+    CONFIRMED-DEFECTs, all acted on. A SECOND seat was attempted twice and
+    neither produced a verdict: tp1-qwen3.8-max timed out at 10 minutes, and
+    kimi-code/k3 returned only its version banner. The pack therefore carries no
+    `council_run` block, and the lint NOTICEs it. Recording the two failed
+    dispatches rather than dropping a seat in that never spoke — a council
+    journal listing a seat that produced nothing is worse than an honest gap."
+
+notes:
+  - "AUTO-MERGE IS OFF. Migration class: the conductor merges after the gates,
+    per the wave rules and the L12 spec."
+  - "NOT applied to production by this PR. The apply happens through the normal
+    release command after the gate, and the spec's ownership preflight still
+    governs: if `_schema_versions` turns out not to be runtime-role-owned, STOP
+    rather than broadening grants."
+  - "The `applied_via` value is self-reported from the environment and is
+    documented as a HINT. `applied_as` is the one the server answers, and it is
+    the one to trust."
