@@ -71,7 +71,19 @@ async def _connect() -> asyncpg.Connection:
         if os.environ.get("CI"):
             pytest.fail(f"no reachable Postgres in CI at {_DSN}: {exc}")
         pytest.skip(f"no reachable Postgres at {_DSN}: {exc}")
-    await init_asyncpg_connection(conn)
+    # INSIDE the guard, and closing on failure (2026-08-30, found by a blind
+    # cross-family refuter). The first version of this fix awaited the codec
+    # registration OUTSIDE the try: a failure there escaped the skip/fail
+    # policy this helper exists to enforce AND leaked the connection that had
+    # just been opened. `set_type_codec` is a round trip to the server, so it
+    # can fail for exactly the reasons the guard above already handles.
+    try:
+        await init_asyncpg_connection(conn)
+    except (OSError, asyncpg.PostgresError) as exc:
+        await conn.close()
+        if os.environ.get("CI"):
+            pytest.fail(f"codec registration failed in CI at {_DSN}: {exc}")
+        pytest.skip(f"codec registration failed at {_DSN}: {exc}")
     return conn
 
 

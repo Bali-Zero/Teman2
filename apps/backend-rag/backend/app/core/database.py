@@ -41,15 +41,34 @@ async def init_asyncpg_connection(conn: asyncpg.Connection) -> None:
     """The canonical `init=` hook for every asyncpg pool in this repo.
 
     Registers the `jsonb` and `json` type codecs with `JSONB_ENCODER` /
-    `json.loads`. This is the SINGLE registration point: every pool this
-    codebase creates (the full `rag`-process pool in
+    `json.loads`. This is the SINGLE registration point for every pool that
+    registers a jsonb/json codec at all: the full `rag`-process pool in
     `service_initializer.py::_initialize_database`, the light `api`-process
     pool in `service_initializer.py::initialize_services_light`, the
-    standalone `get_db_pool()` below, and the test fixture in
-    `backend/tests/fixtures/prod_shaped_pool.py`) must pass THIS object to
+    standalone `get_db_pool()` below, the KG staging-promotion job's pool in
+    `backend/scripts/kg_staging_promotion.py`, and the test fixture in
+    `backend/tests/fixtures/prod_shaped_pool.py`. Each passes THIS object to
     `asyncpg.create_pool(init=...)` — directly, or by awaiting it from its
     own thin wrapper that adds pool-specific extras (a statement timeout, a
     validation `SELECT 1`) on top.
+
+    SCOPED DELIBERATELY, because the previous wording said "every pool this
+    codebase creates" and that was FALSE (corrected 2026-08-30 after a blind
+    cross-family refuter found the kg_staging_promotion pool registering its
+    own codecs with a bare `json.dumps`). Five further `asyncpg.create_pool`
+    call sites outside the test tree register NO codec at all and are NOT
+    converted here: `app/intake_review_reader.py`,
+    `core/legal/hierarchical_indexer.py`, `app/routers/admin_zoho_auth.py`
+    (x2), `app/routers/admin_drive_health.py`, and
+    `migrations/migration_084a_nlm_verification_log.py`. Measured, not
+    assumed: none of the five references `garuda_orders`, `garuda_portal`,
+    `journal` or `idempotency`, so none can reach the four writers that now
+    bind native containers. A pool with no codec has a DIFFERENT failure mode
+    from one with a bare-`json.dumps` codec — it cannot bind a `dict` at all
+    (loud `DataError`) rather than silently storing a string scalar — so it is
+    not this lane's defect class. Converting them is real work with its own
+    blast radius, not a rider on this diff. If you add a jsonb write path to
+    any of the five, import this hook rather than writing a sixth codec.
 
     Deliberately narrow: codec registration only. No `SET statement_timeout`,
     no `SELECT 1` validation — those are call-site concerns (some pools want

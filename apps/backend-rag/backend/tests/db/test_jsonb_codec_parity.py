@@ -87,6 +87,22 @@ _CANONICAL_CODEC_FILES = (
     BACKEND_ROOT / "app" / "core" / "database.py",
     BACKEND_ROOT / "app" / "setup" / "service_initializer.py",
     BACKEND_ROOT / "tests" / "fixtures" / "prod_shaped_pool.py",
+    # 2026-08-30: the FOURTH file, added after a blind cross-family refuter
+    # found it registering both codecs itself with a bare `json.dumps` while
+    # this tuple listed only three paths -- so the scan below could not see
+    # it and `database.py`'s centralisation claim was false. A scanner is
+    # only as honest as its file list.
+    BACKEND_ROOT / "scripts" / "kg_staging_promotion.py",
+)
+
+# The production wrappers that must ACTUALLY CALL the canonical hook. Importing
+# the symbol is not using it: `test_service_initializer_imports_the_canonical_
+# initializer_by_identity` below compares module attributes, and that comparison
+# stays true even if every call were deleted. Same refuter, same round.
+_MUST_CALL_INITIALIZER = (
+    BACKEND_ROOT / "app" / "setup" / "service_initializer.py",
+    BACKEND_ROOT / "scripts" / "kg_staging_promotion.py",
+    BACKEND_ROOT / "tests" / "fixtures" / "prod_shaped_pool.py",
 )
 
 
@@ -232,6 +248,37 @@ def test_scanner_actually_detects_a_bare_encoder(tmp_path: Path) -> None:
         "    )\n"
     )
     assert _set_type_codec_violations(innocent) == []
+
+
+def _awaits_canonical_initializer(path: Path) -> bool:
+    """True if `path` contains at least one `await init_asyncpg_connection(...)`
+    call. AST-based, so a mention inside a docstring or a comment does not
+    count -- only a real call node does."""
+    tree = ast.parse(path.read_text(), filename=str(path))
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        name = func.id if isinstance(func, ast.Name) else getattr(func, "attr", None)
+        if name == "init_asyncpg_connection":
+            return True
+    return False
+
+
+def test_production_pool_wrappers_actually_call_the_initializer() -> None:
+    """The identity tests above prove the SYMBOL is shared. They do NOT prove
+    it is USED: delete the `await init_asyncpg_connection(conn)` lines from
+    `service_initializer.py` and both identity tests still pass, because a
+    module attribute is still a module attribute. That gap was found by a
+    blind cross-family refuter (Codex GPT-5.6 sol) on 2026-08-30 and is what
+    this test closes -- an import is not a call."""
+    missing = [str(p) for p in _MUST_CALL_INITIALIZER if not _awaits_canonical_initializer(p)]
+    assert not missing, (
+        "these files import or are expected to use the canonical initializer but "
+        f"contain no call to it: {missing}. An import is not a call -- if the pool "
+        "no longer routes through init_asyncpg_connection, test/production codec "
+        "parity is broken even though every identity assertion still passes."
+    )
 
 
 # --------------------------------------------------------------------------
