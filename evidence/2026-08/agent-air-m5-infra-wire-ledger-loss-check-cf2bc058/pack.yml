@@ -21,7 +21,7 @@ lanes:
 
 diff:
   files: 4
-  net_lines: 1083
+  net_lines: 1078
   measured_at: 2f4625037c
   note: >-
     `scripts/evidence_pack_lint.py --print-measured`, the same tool and the
