@@ -1,148 +1,371 @@
 brief_ref: evidence/brief.yml
 plan_ref:
-  "PR #5302 (agent/air-m5/db/garuda-magic-link-owner) — cure of the production outage that has kept
-  the authenticated half of GARUDA VOA unreachable since migration 285 shipped, plus the static lint
-  that stops the omission recurring. Governing mandate: GARUDA VOA dark launch to production."
+  "PR #5059 (agent/nuzantara/db/visa-retention-scope-p0) — P0 retention-scope repair, 2026-08-26.
+  Governing mandate: docs/plans/2026-08-24-visa-oracle-live/MANDATE.md."
 lanes:
-  - lane: garuda-magic-link-owner-build
+  - lane: visa-retention-scope-p0
     role: build
     seat:
-      claude-opus-5 (conducting session — measured the outage against production, falsified four
-      competing hypotheses, authored migration 299, the static lint, the preflight extension and this pack)
-  - lane: garuda-magic-link-owner-refute
+      claude-opus-5 (conducting session — diagnosed the defect, censused the family, authored migration
+      289, the two Python predicates, the tripwire and this pack)
+  - lane: visa-retention-scope-refute
     role: review
     seat:
-      codex gpt-5.6-sol at xhigh effort (OpenAI, ChatGPT Pro flat subscription) — given the diff and the
-      production measurements and told to break both the migration and the lint. Returned REJECT with
-      three findings, all CONFIRMED and all fixed; see receipts and dissent.
-seat_diversity: satisfied
+      claude-sonnet-5 (adversarial subagent, dispatched WITHOUT this brief and told to attack the diagnosis
+      rather than confirm it — it killed the timeline claim, see dissent[0])
+  - lane: visa-retention-scope-proof
+    role: review
+    seat:
+      claude-sonnet-5 (second subagent, red/green proof on a throwaway Postgres; also the source of
+      dissent[2], a near-miss it caused)
+seat_diversity: not_applicable
 seat_diversity_note:
-  "The build lane is Anthropic and the adversarial lane is OpenAI — different families, and the grader
-  is not the author. This mattered rather than being ceremony: the REJECT killed a migration that would
-  have recorded false success, and one of the two counterexamples it supplied (a commented-out transfer)
-  was a shape the author's own tests did not cover."
+  "All three lanes are Anthropic seats. Declared rather than left to read as satisfied:
+  every load-bearing question here is settled by a query against the live catalog or by a linter's exit
+  code, not by an opinion — the arbiter is the probe, and cross-family breadth adds nothing a second seat's
+  judgement could contribute."
 diff:
   net_lines:
-    "5 files measured by `git diff --stat origin/main...HEAD` plus the working tree: one new .sql
-    migration (299), one new static test file, two touched Python files (preflight check + its frozen
-    authority), and this evidence pair. Zero frontend, zero workflow, zero runtime code path."
+    4 files, +538/-2 measured by `git diff --stat origin/main...HEAD`. One new .sql migration,
+    two one-line predicate changes plus docstring corrections in Python, one new test file. Zero frontend,
+    zero workflow.
   behaviour_change:
-    "At apply time against production, migration 299 changes NOTHING and says so: the runner connects as
-    backend_rag_v2, which is not a member of visa_ledger_owner, so the ALTER cannot succeed and the
-    migration RAISES rather than recording itself applied. The observable cure arrives only when the
-    ALTER runs on a superuser connection — after which the BEFORE INSERT trigger on
-    garuda_magic_link_tokens can finally take its FOR SHARE lock and magic-link issuance stops
-    answering 500. The static lint and the preflight extension change no production behaviour at all."
+    Two SECURITY DEFINER trigger functions are redefined with one added predicate each
+    (`AND policy_scope = 'VISA_DECISION'`); no table is created, altered or dropped, and no row is read,
+    written or deleted at apply time. Two Python readers gain the same predicate. The observable change
+    is that the retention gate stops counting other data classes' policies as if they were its own.
 receipts:
   - claim:
-      "Magic-link issuance is dead in production, and has never worked: the endpoint answers 500
-      INTERNAL_ERROR and garuda_magic_link_tokens holds zero rows."
-    evidence:
-      "Live POST against the production endpoint returned 500 INTERNAL_ERROR; `SELECT count(*)` on
-      garuda_magic_link_tokens through scripts/pg.sh (nuzantara_readonly, primary confirmed by
-      pg_is_in_recovery = f) returned 0. The exception class asyncpg InsufficientPrivilegeError
-      (PostgreSQL 42501) was read from the production log only after PR #5297 taught the blind
-      catch-all to log the class name — before that the handler swallowed it."
+      Deterministic gear floor recomputed from THIS PR's actual changed-file list is 3 — matching the
+      declared gear and the `Harness floor recompute` FAIL message that demanded this pack
+    cmd:
+      git diff --name-only origin/main...HEAD > /tmp/p0-changed.txt && python3 scripts/evidence_pack_lint.py
+      --print-floor --changed-files-file /tmp/p0-changed.txt
+    result: 3 (migrations_v2/** is hot-zone by path)
+    exit: 0
+    ts: 2026-08-26T17:59Z
+    seat: session (Pro)
   - claim:
-      "The cause is ownership, not privilege on the app role: the trigger is SECURITY DEFINER but owned
-      by backend_rag_v2, which cannot take a FOR SHARE lock on a visa_ledger_owner-owned table."
-    evidence:
-      "pg_proc on the production primary: bind_garuda_magic_link_token_retention_policy has
-      prosecdef = t and proowner = backend_rag_v2, while its working twin
-      bind_garuda_voa_check_retention_policy has prosecdef = t and proowner = visa_ledger_owner.
-      The two functions differ by owner and by nothing else that touches the lock. Grants were read
-      from pg_class.relacl, NOT from information_schema.role_table_grants — that view is filtered by
-      the calling role, so its empty answer means 'invisible to me', never 'absent'."
+      THE CENTRAL RECEIPT — the gate's own predicate, run verbatim against production, returns 4 where
+      the code demands exactly 1; adding the scope predicate returns 1
+    cmd:
+      psql (nuzantara_readonly, prod proxy) -c "SELECT count(*) FROM public.visa_decision_retention_policies
+      WHERE environment='PRODUCTION' AND effective_period @> now()" and the same query with AND policy_scope='VISA_DECISION'
+    result: unscoped -> 4, gate_passa=f · scoped -> 1, gate_passerebbe=t
+    exit: 0
+    ts: 2026-08-26T17:41Z
+    seat: session (Pro, read-only role against production)
   - claim:
-      "This is a recurrence, not a new class: migration 268 cured the shape on 2026-08-07 and 281
-      carried the role-guarded transfer forward; 285 created a trigger of the same shape and omitted it."
-    evidence:
-      "Read from the migration files themselves in this worktree — 281 contains the guarded ownership
-      transfer, 285 creates the trigger with no transfer at all."
-  - claim: "The static lint would have blocked migration 285. Guilt and innocence both proven, not asserted."
-    evidence:
-      "Guilt: with 299 removed — the real state of production — the lint names
-      bind_garuda_magic_link_token_retention_policy in 285_garuda_magic_link.sql. Innocence: with 299
-      present it is green, and it does not accuse prepare_visa_evaluate_idempotency_reservation
-      (migration 264), which production confirms is correctly owned and does not read the ledger.
-      A third test asserts the detector matches the shape at all, so a guard that has quietly stopped
-      matching anything cannot pass forever."
-  - claim: "The live catalog check that SHOULD have caught this had never been told these functions exist."
-    evidence:
-      "operational_preflight.py's RETENTION_BINDING_TRIGGER_FUNCTIONS listed neither GARUDA binder.
-      Both are now listed, and the independently frozen schema authority in
-      test_operational_preflight.py's CANONICAL_SENSITIVE_FUNCTIONS was updated in step so the two
-      cannot drift apart silently."
-  - claim: "The full test surface is green as of this pack."
-    evidence:
-      "`PYTHONPATH=. python -m pytest backend/tests/db/test_retention_lock_triggers_are_ledger_owned.py
-      backend/tests/scripts/visa_engine/test_operational_preflight.py` — 43 passed in 0.38s, run in
-      this worktree's .venv this turn."
+      The four active PRODUCTION policies and their activation instants — the invariant broke when
+      the second one went live
+    cmd:
+      psql -c "SELECT policy_version, policy_scope, lower(effective_period), upper(effective_period),
+      created_at FROM public.visa_decision_retention_policies WHERE environment='PRODUCTION' ORDER BY lower(effective_period)"
+    result:
+      visa-oracle-privacy-v1/VISA_DECISION from 2026-08-07 13:23:00Z · garuda-check-privacy-v1/GARUDA_CHECK
+      from 2026-08-26 04:40:27.189958Z · garuda-magic-link-privacy-v1/GARUDA_MAGIC_LINK and garuda-order-privacy-v1/GARUDA_ORDER
+      both from 2026-08-26 06:28:56.99346Z. All four open-ended (upper = NULL). Only PRODUCTION exists in
+      this table.
+    exit: 0
+    ts: 2026-08-26T17:41Z
+    seat: session (Pro, read-only role against production)
+  - claim:
+      The family census — which shipped functions filter by scope and which do not, read from the LIVE
+      catalog rather than from migration source
+    cmd:
+      psql -c "SELECT p.proname, (prosrc ILIKE '%policy_scope%') AS filtra_scope, (prosrc ILIKE '%INTO
+      STRICT%') FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND
+      prosrc ILIKE '%visa_decision_retention_policies%' ORDER BY 1"
+    result:
+      11 functions. Every GARUDA one -> filtra_scope=t. bind_visa_decision_retention_policy -> f,
+      INTO STRICT=t. bind_visa_evaluate_idempotency_retention_policy -> f, INTO STRICT=t. (guard_* functions
+      resolve no policy.) Exactly the two this PR repairs are unscoped, in production, right now.
+    exit: 0
+    ts: 2026-08-26T17:38Z
+    seat: session (Pro, read-only role against production)
+  - claim:
+      The two replacement bodies are production's own definitions plus one line — not a re-typing of
+      264's source, which could have drifted
+    cmd:
+      psql -tA -c "SELECT pg_get_functiondef(p.oid) FROM pg_proc p ... WHERE p.proname IN ('bind_visa_decision_retention_policy','bind_visa_evaluate_idempotency_retention_policy')"
+      then diffed against the migration by eye, line by line
+    result:
+      Live bodies match 264's source exactly; 289's bodies are those bodies with `AND policy_scope
+      = 'VISA_DECISION'` inserted and SECURITY DEFINER / SET search_path restated verbatim.
+    exit: 0
+    ts: 2026-08-26T17:39Z
+    seat: session (Pro, read-only role against production)
+  - claim:
+      CREATE OR REPLACE will succeed despite visa_ledger_owner ownership — proven by precedent, not
+      assumed
+    cmd:
+      psql -c "SELECT p.proname, pg_get_userbyid(p.proowner), p.prosecdef FROM pg_proc ..." and "SELECT
+      m.rolname, r.rolname FROM pg_auth_members ... WHERE r.rolname='visa_ledger_owner'" and "SELECT migration_number,
+      applied_at FROM public.schema_migrations WHERE migration_number BETWEEN 264 AND 288"
+    result:
+      Both binders owned by visa_ledger_owner, prosecdef=t. ZERO roles are members of visa_ledger_owner;
+      only flypgadmin/postgres/repmgr are superuser. Migration 281 — which ALTERed this same visa_ledger_owner-owned
+      table — is recorded applied at 2026-08-26 00:53:49Z, so the runner demonstrably holds the privilege
+      this migration needs.
+    exit: 0
+    ts: 2026-08-26T17:44Z
+    seat: session (Pro, read-only role against production)
+  - claim:
+      The blast radius is FOUR readers and the census is complete — no fifth unscoped resolution exists
+      in the shipped tree
+    cmd:
+      grep -rn --include='*.py' --include='*.sql' 'effective_period @>' apps/backend-rag/backend | grep
+      -v '/tests/'
+    result:
+      "38 hits. All `NEW.effective_period @>` hits are writer-side policy-insert guards (a different
+      shape). The active-policy resolutions are: retention.py, retention_worker.py, 264's two binders (superseded
+      here), and the GARUDA ones — all of which carry a scope predicate on the adjacent line."
+    exit: 0
+    ts: 2026-08-26T17:46Z
+    seat: session (Pro)
+  - claim:
+      The structural tripwire is RED on origin/main — it is not a probe that agrees with whatever it
+      is shown
+    cmd:
+      loaded the tripwire module and ran its own _ACTIVE_LOOKUP/_SCOPE_PREDICATE/_WINDOW logic against
+      `git show origin/main:<path>` for the two Python readers
+    result:
+      retention.py -> [(75, 'AND effective_period @> $2::timestamptz')]; retention_worker.py -> [(65,
+      'AND effective_period @> clock_timestamp()')]. 2 offences on main, 0 here.
+    exit: 0
+    ts: 2026-08-26T17:47Z
+    seat: session (Pro)
+  - claim:
+      264's historical exemption in the tripwire is EARNED, not asserted — removing 289 turns the exemption
+      test red
+    cmd: re-ran the exemption test's own supersession logic with `289_*` filtered out of the migration glob
+    result:
+      bind_visa_decision_retention_policy -> redefinitions=[] · bind_visa_evaluate_idempotency_retention_policy
+      -> redefinitions=[]. Both hit the `assert redefinitions` branch, i.e. red.
+    exit: 0
+    ts: 2026-08-26T17:52Z
+    seat: session (Pro)
+  - claim: The tripwire passes here, including its own guilt and innocence cases
+    cmd:
+      cd apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python -m pytest backend/tests/test_retention_policy_scope_family_tripwire.py
+      -p no:cacheprovider -q
+    result: 5 passed (guilt case, innocence case, non-empty census, earned exemption, and the census itself)
+    exit: 0
+    ts: 2026-08-26T17:53Z
+    seat: session (Pro)
+  - claim: 289 does not collide with any migration number on main or on ANY open remote branch (W40)
+    cmd:
+      git fetch origin && for n in 289 290 291 292 296 297; do count files matching ^${n}_ across every
+      origin/<branch>; done
+    result:
+      289 -> 0 branches · 290 -> 5 · 291 -> 2 · 292 -> 2 · 296 -> 0 · 297 -> 0. 289 chosen; main tops
+      out at 288.
+    exit: 0
+    ts: 2026-08-26T17:43Z
+    seat: session (Pro)
+  - claim: The repo's own migration linters accept 289 — number uniqueness and ROLLBACK marker presence
+    cmd:
+      the .husky pre-commit hook chain on the staged migration (W41 number-uniqueness lint + W42 ROLLBACK-marker
+      lint)
+    result:
+      "migration-numbers lint: 171 files, all unique prefixes · migration-rollback lint: 166 post-cutoff
+      migrations, all have ROLLBACK marker · lease-check: no blocking leases · ruff: all checks passed ·
+      FastAPI import chain OK"
+    exit: 0
+    ts: 2026-08-26T17:44Z
+    seat: session (Pro)
+  - claim: Repairing the purge worker is pre-emptive, not urgent — nothing is currently overdue for purging
+    cmd:
+      psql -c "SELECT count(*) FILTER (WHERE retention_until <= now() AND NOT legal_hold), count(*) FILTER
+      (WHERE retention_until <= now() AND legal_hold), min(retention_until), count(*) FROM public.visa_decisions"
+    result:
+      0 purgeable-expired · 0 expired-under-hold · oldest retention_until = 2026-09-06 15:20:36Z ·
+      6758 rows total. A ~10-day fuse, not an active retention violation.
+    exit: 0
+    ts: 2026-08-26T17:45Z
+    seat: session (Pro, read-only role against production)
+  - claim: The outage is reproducible against the live site, not inferred from the code
+    cmd:
+      POST https://balizero.com/api/visa-oracle/evaluate?traffic_source=real with a contract-valid 45-fact
+      payload built from the fact registry's dotted aliases
+    result:
+      HTTP 200, body carries state='TEMPORARILY_UNAVAILABLE' and outage={code:'RETENTION_POLICY_UNAVAILABLE',
+      retryable:true}. Run earlier in this same session, before the diagnosis was written; timestamp recorded
+      to the hour rather than the second because it predates this pack.
+    exit: 0
+    ts: 2026-08-26T~16Z
+    seat: session (Pro, live production endpoint)
+  - claim: No existing test pins the broken behaviour, so nothing in the suite goes red against this fix
+    cmd:
+      grep -rl 'VISA_DECISION' backend/tests/ | xargs grep -l 'GARUDA_CHECK|GARUDA_ORDER|GARUDA_MAGIC_LINK'
+      (and three narrower variants over the files importing visa_engine.retention)
+    result:
+      No test file seeds two scopes at once. test_retention_policy_is_unseeded_and_new_decision_insert_fails_closed
+      (test_evaluate_endpoint.py:3356) covers only the 0-policy case; test_retention_policy_is_non_overlapping_append_only_authority
+      (:3451) covers only 1->0; test_two_overlapping_garuda_check_policies_are_structurally_impossible (test_garuda_voa_retention.py:229)
+      covers SAME-scope duplication, which stays true after this fix.
+    exit: 0
+    ts: 2026-08-26T17:53Z
+    seat: claude-sonnet-5 (refuter subagent, searches re-run and quoted)
+  - claim:
+      289 as first written would have raised `must be owner of function` in Fly's release_command and
+      aborted the deploy; the repo's own guard for this class is blind to it
+    cmd:
+      "psql (read-only, nuzantara_readonly via flyctl proxy): pg_has_role('backend_rag_v2','visa_ledger_owner','USAGE');
+      rolsuper; login members of visa_ledger_owner. Then pytest backend/tests/db/test_post_d1_migrations_guard_ledger_owned_ddl.py
+      -o addopts= -p no:randomly"
+    result:
+      "member=false, rolsuper=false, login members of visa_ledger_owner = flypgadmin/postgres/repmgr
+      (all superusers). The D1 guard returned 32 passed on the DEFECTIVE migration: it convicts bare ALTER
+      TABLE on ledger-owned TABLES and has no rule for ledger-owned FUNCTIONS, which is where 289 sits."
+    exit: 0
+    ts: 2026-08-27T03:10Z
+    seat: session (production read-only measurement, re-run this turn)
+  - claim:
+      The catalog guard added in 68b8d8a81 declines without aborting, the unguarded statement really
+      does abort, and an able role really does apply the fix
+    cmd:
+      PYTHONPATH=. python -m pytest backend/tests/scripts/visa_engine/test_operational_preflight.py backend/tests/scripts/visa_engine/test_retention_binder_scope_survives_a_non_owner_runner.py
+      backend/tests/scripts/visa_engine/test_retention_binders_scope_to_visa_decision.py backend/tests/test_retention_policy_scope_family_tripwire.py
+      backend/tests/db/test_post_d1_migrations_guard_ledger_owned_ddl.py -o addopts= -p no:randomly
+    result:
+      "collected 60, 60 passed. Three legs against a real Postgres reproducing the D1 ownership split:
+      non-owner -> no exception + NOTICE naming both binders + bodies unchanged; same statement unguarded,
+      same role -> InsufficientPrivilegeError 'must be owner of function'; able role -> both bodies gain
+      the predicate."
+    exit: 0
+    ts: 2026-08-27T03:21Z
+    seat: session (build lane)
 pii_scan: clean
 pii_scan_note:
-  "No client data is touched, read or transcribed. Production reads were catalog queries (pg_proc,
-  pg_class) and one row COUNT; no row contents left the database. No secret value was read: the
-  ownership ALTER is handed to the operator as a command that references $OPERATOR_PASSWORD in place
-  on the target machine rather than printing it."
+  Nothing in this diff, brief or pack transcribes applicant data. The migration touches policy
+  metadata (interval, anchor, scope, approval reference) and never a decision payload; the receipts quote
+  counts, timestamps, policy version strings and function names only. The one live POST used a synthetic
+  persona, and its request body is not reproduced here.
 dissent:
-  - seat: codex gpt-5.6-sol (adversarial grader)
+  - seat: claude-sonnet-5 (refuter, dispatched without the brief)
     objection:
-      "The migration would record FALSE SUCCESS. Its first draft caught insufficient_privilege and
-      emitted a NOTICE, mirroring migration 268 — but a declined migration is still written to
-      _schema_versions as applied and is never retried. Production would carry a migration claiming to
-      have cured an outage that is still live, and nothing downstream would ever say otherwise."
+      '"I cannot confirm ''the Oracle went dark at 2026-08-26 04:40:27Z''." The build lane dated
+      the outage from a gap in `visa_decisions`, but that table structurally cannot record a blocked call:
+      the gate refuses BEFORE any INSERT, and zero rows carry verdict TEMPORARILY_UNAVAILABLE in any environment,
+      ever. Worse, the ledger''s last PRODUCTION row (2026-08-24 09:10:52Z; real traffic stops earlier still,
+      02:02:47Z) predates the defect by ~43 hours, and the same window already shows zero-decision spans
+      on 16-18, 21-22 and 25 August while the gate was healthy. The silence is not a signal.'
     status: CONFIRMED
     resolution:
-      "Rewritten to assert its own postcondition and RAISE: after attempting the ALTER it re-reads
-      pg_proc.proowner and, if the function is still not owned by visa_ledger_owner, raises an exception
-      naming the consequence ('magic-link issuance still answers 500') and refuses to be recorded
-      applied. The ROLLBACK section is a deliberate no-op that says why — restoring backend_rag_v2 as
-      owner would re-create the outage."
-  - seat: codex gpt-5.6-sol (adversarial grader)
+      "Accepted in full and the claim withdrawn — from the migration header, the Python docstring,
+      the commit history (87b83626d) and the PR description, each corrected in the open rather than quietly
+      edited. Two facts are asserted now and no more: the invariant broke at 04:40:27Z, and the gate is
+      broken now. How many real visitors that turned away is UNKNOWN and, given the instrumentation, unknowable."
+  - seat: claude-sonnet-5 (refuter)
     objection:
-      "The lint's transfer collector was too permissive: it treated any appearance of a function name
-      near an ownership transfer as evidence that THAT function was transferred, so an unrelated
-      transfer in the same file laundered an offender, and a mere mention counted as a cure."
+      No independent signal exists to corroborate or refute user impact. `api_audit_trail` is live
+      and busy (33,877 rows since 04:40:27Z) but holds ZERO rows for `/api/visa-oracle/evaluate`, ever —
+      the middleware does not instrument that router. `visa_evaluate_idempotency` is empty. Frontend telemetry
+      is gated on NEXT_PUBLIC_ANALYTICS_ENDPOINT, deliberately unset for this surface pending a DPIA blocker.
     status: CONFIRMED
     resolution:
-      "Rewritten to parse real ALTER FUNCTION ... OWNER TO statements and the DO-block transfer arrays
-      used by migrations 268/281, binding each transfer to its own function name. Five tests now encode
-      the grader's counterexamples directly: unrelated transfer, mere mention, commented-out transfer,
-      SECURITY DEFINER inside a comment, and DO-block array."
-  - seat: codex gpt-5.6-sol (adversarial grader)
+      "Not fixed here, and deliberately not: adding observability to the evaluate path is a separate
+      concern and would violate one-PR-one-concern on a P0. Recorded as the finding it is — the front door
+      of every visa sale has no server-side failure signal, which is why the owner discovered this by using
+      the product. Follow-up lane, not this PR."
+  - seat: claude-sonnet-5 (proof lane)
     objection:
-      "Comments produced false results in both directions — a commented-out transfer read as a real one,
-      and the words SECURITY DEFINER inside a comment read as a real offender."
+      "Not an objection but a defect the lane caused: it proved RED by reverting the scope predicate
+      IN PLACE in the shipped `retention.py`. A `git add -A` on the build lane staged that revert while
+      the working tree had the fix back."
     status: CONFIRMED
     resolution:
-      "Line comments are stripped before analysis, and dollar-quoted bodies are matched by their real
-      tags rather than split coarsely. This also fixed a false positive the author's own innocence
-      control had caught earlier against prepare_visa_evaluate_idempotency_reservation."
-  - seat: session (self-refutation during build, RESOLVED)
+      "Caught before the commit by counting the missing line, not by any git warning — the index
+      was inspected and the revert unstaged. Rule imposed on the lane for the rest of the run: no RED proof
+      may touch a tracked file; read the old version with `git show origin/main:<path>` instead, which yields
+      the same proof with none of the risk. The build lane's own red-on-main proof was already done that
+      way."
+  - seat: session (self-review while building the tripwire)
     objection:
-      "The lint's own MIGRATIONS path was wrong (parents[3] instead of parents[2]), so it globbed a
-      directory that does not exist. A glob over a missing directory returns empty silently — the lint
-      was green because it was looking at nothing."
+      The tripwire's first implementation split each migration on the literal string `-- === ROLLBACK
+      ===`, which cuts at the HEADER PROSE that names the marker rather than at the marker itself — so it
+      read a comment block as the entire forward half and would have passed for the wrong reason.
     status: CONFIRMED
     resolution:
-      "Caught by the innocence control the lint carries. Path corrected, and an explicit
-      `MIGRATIONS.is_dir()` assertion added so the same failure can never be silent again."
+      'Replaced with the runner''s own `split_migration_sql`, whose regex is line-anchored (`^\s*--\s*===\s*ROLLBACK\s*===\s*$`),
+      so the probe and the migration runner can never disagree about where a migration ends. A second trap
+      found the same way: `ALTER FUNCTION public.f()` names a signature without redefining it (268 does
+      exactly that), so the supersession check matches CREATE only.'
+  - seat: claude-sonnet-5 (independent frontend lane)
+    objection:
+      'The owner''s reported screen ("No evaluation was submitted") is NOT caused by this defect.
+      It is `NON_ENGINE_MODE`: production runs SHADOW, `resolve_response_mode()` returns "CURATED", and
+      the frontend''s `requireEngineResponse()` throws unless mode is "ENGINE" — a designed rendering boundary
+      that predates this outage by a month.'
+    status: CONFIRMED
+    resolution:
+      Verified independently by the build lane at evaluate_path.py:243, runtime-mode.ts, engine-response.ts:499
+      and outcome-fallbacks.ts:39. It reframes this PR's value — it restores the shadow-evidence ledger
+      the go-live gate accumulates, NOT the client experience, which is withheld by design in SHADOW. The
+      brief and PR description say so explicitly rather than letting the fix read as a restoration of service.
+  - seat: claude-sonnet-5 (adversarial grader, dispatched on the finished diff)
+    objection:
+      '289''s ROLLBACK section claimed to restore 264''s bodies "verbatim" and did not: the decision
+      binder''s rollback body was missing three plpgsql comment lines present in both 264 and 289''s own
+      forward half. Behaviourally identical, but a rolled-back database would have held a THIRD textual
+      variant of the function that never existed anywhere -- and the migration''s own claim of verbatim
+      restoration was false.'
+    status: CONFIRMED
+    resolution:
+      "Comments restored, and the claim replaced with a checked one: the rollback bodies now differ
+      from 264's by exactly the `SECURITY DEFINER` attribute (268's addition, which MUST be restated or
+      CREATE OR REPLACE demotes both functions to SECURITY INVOKER) and by nothing else -- verified line-by-line
+      against `git show <base>:...264...sql`, not by eye."
+  - seat: claude-sonnet-5 (adversarial grader)
+    objection:
+      The structural tripwire censused an ALLOWLIST of three directories (`services/`, `scripts/`,
+      `db/migrations_v2/`) and never descended into `backend/app/` -- 287 shipped Python files including
+      163 routers. A planted unscoped resolver under `app/routers/` or `app/services/` was invisible to
+      it. Latent today (nothing under `app/` touches the table), but a retention- status endpoint is a plausible
+      place for the next reader, and it would sail through.
+    status: CONFIRMED
+    resolution:
+      "The allowlist WAS the same defect one level up -- a guard that silently stops covering
+      whatever is added next. Replaced with a walk of the whole backend tree minus test/vendor paths, so
+      a new directory cannot fall outside it by omission. Proven rather than asserted: an unscoped reader
+      planted at `backend/app/routers/` is now reported by name (`{'app/routers/_tmp_planted_unscoped_reader.py':
+      [(6, 'AND effective_period @> ...')]}`), and removing it returns the census to green."
   - seat: session (declared limit, unresolved)
     objection:
-      "The lint reads SQL text, not a database. A migration whose trigger takes the lock through a
-      helper function rather than inline would not be caught."
+      This pack asserts that the outage stops the go-live gate's evidence accumulating, but the
+      build lane did not measure `shadow_evidence.py`'s gate consuming those rows — the causal chain from
+      "no new visa_decisions row" to "G-a-vol gate stalls" is read from structure, not from a probe.
     status: PLAUSIBLE
     resolution:
-      "Left standing and named in the brief's risks. The live catalog check in operational_preflight,
-      now aware of both GARUDA binders, is the layer that would catch that shape at runtime."
-  - seat: session (declared limit, unresolved at merge BY DESIGN)
+      Left standing and labelled, rather than quietly upgraded. It does not affect the fix, only
+      the framing of its urgency. Settling it is a one-query follow-up against the shadow evidence gate's
+      own inputs.
+  - seat: session (self-refutation mid-build, RESOLVED by redesign)
     objection:
-      "Merging this PR does not end the outage. The ALTER needs a superuser connection, which the
-      session's permission classifier declines to make — it is an operator action."
+      "The first draft of 289 assumed the migration runner could replace two functions owned by
+      `visa_ledger_owner`. It cannot: migrations connect with `settings.database_url` (migration_manager.py:96)
+      with no `SET ROLE`, i.e. as the runtime role. The migration would have failed inside Fly's `release_command`,
+      aborting the whole deploy — a strictly larger blast radius than the outage it repairs. CI cannot see
+      this class at all: fly-deploy.yml validates against an ephemeral Postgres where the connecting role
+      owns everything it created."
     status: CONFIRMED
     resolution:
-      "Stated in the brief's risks and in the migration's own RAISE message rather than papered over.
-      PROVE-LIVE is explicitly NOT claimed by this PR: the proof is two calls with one
-      Idempotency-Key returning 202 against the live endpoint, run after the ALTER lands. Note the cure
-      is invisible in the response body — both states return a non-enumerating 202 — so the observable
-      signal is the Idempotency-Replayed header, false->true before the cure and false->false after."
+      "Redesigned in 68b8d8a81: each replacement sits in a `DO $guardN$` catalog guard that declines
+      instead of raising. Because a declined migration is still recorded APPLIED and never retried (scar
+      #2), the no-op is made loud OUTSIDE the migration by operational_preflight's `binder:retention-policy-scoped`
+      check, which reads the live body from pg_proc and cannot be satisfied by merging the PR — only by
+      289 having actually run."
+  - seat: session (declared limit, unresolved)
+    objection:
+      Migrations 281/284-287 are recorded applied in production although the runtime role could
+      not have executed 281's bare `ALTER TABLE` on a `visa_ledger_owner`-owned table. The out-of-band superuser
+      apply that must have followed the 2026-08-26 deploy abort is INFERRED from the ownership evidence
+      (286's `OWNER TO visa_ledger_owner` succeeded, and only superusers are members) — no log or ledger
+      entry recording it was found. `_schema_versions.applied_by` stores the literal 'system' for every
+      row and discriminates nothing.
+    status: PLAUSIBLE
+    resolution:
+      "Left standing and labelled. It does not change this PR: 289 is now correct whether the
+      applying role can or cannot own the binders. It does mean nobody should assume a future ledger-owned
+      migration will be applied by hand — the preflight check is what will say so."

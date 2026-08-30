@@ -1,0 +1,191 @@
+# brief_ref is the LITERAL 'evidence/brief.yml' even though this pack lives in a per-PR
+# directory: harness-floor.yml stages both files into a synthetic tree under those fixed
+# names before validating, so any other value fails to resolve in CI.
+brief_ref: evidence/brief.yml
+plan_ref:
+  "PR #5302 (agent/air-m5/db/garuda-magic-link-owner) — cure of the production outage that kept the
+  authenticated half of GARUDA VOA unreachable from the day migration 285 shipped, plus the static
+  lint that stops the omission recurring. Governing mandate: GARUDA VOA dark launch to production."
+lanes:
+  - lane: garuda-magic-link-owner-build
+    role: build
+    seat:
+      claude-opus-5 (conducting session — measured the outage against production, falsified four
+      competing hypotheses, authored migration 299, the static lint, the preflight extension, this pack)
+  - lane: garuda-magic-link-owner-refute
+    role: review
+    seat:
+      codex-gpt-5.6-sol at xhigh effort (OpenAI, ChatGPT Pro flat subscription) — given the diff plus
+      the production measurements and told to break both the migration and the lint. Returned REJECT
+      with three findings, all CONFIRMED and all fixed; see dissent.
+seat_diversity: satisfied
+seat_diversity_note:
+  "Build lane Anthropic, adversarial lane OpenAI — different families, and the grader is not the
+  author. It earned its keep rather than being ceremony: the REJECT killed a migration that would have
+  recorded false success, and one counterexample it supplied (a commented-out transfer) was a shape
+  the author's own tests did not cover."
+diff:
+  net_lines:
+    "6 files, +603/-403, computed by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
+    One new .sql migration, one new static test file, two touched Python files (the live preflight
+    check and its independently frozen authority), and this evidence pair. Zero frontend, zero
+    workflow, zero runtime request path."
+  behaviour_change:
+    "At apply time against production, migration 299 changes nothing and says so: the runner connects
+    as backend_rag_v2, which is not a member of visa_ledger_owner, so the ALTER cannot succeed and the
+    migration RAISES rather than recording itself applied. The cure itself landed out of band on a
+    superuser connection (receipt below). The static lint and the preflight extension change no
+    production behaviour at all."
+receipts:
+  - claim:
+      "The ownership cure landed on the production PRIMARY and the trigger function is now owned by
+      visa_ledger_owner — read back from a SEPARATE read-only connection, not from the output of the
+      command that wrote it."
+    cmd:
+      'env -u FLY_API_TOKEN scripts/pg.sh -A -t -c "SELECT proname||'' ''||pg_get_userbyid(proowner)
+      FROM pg_proc WHERE proname=''bind_garuda_magic_link_token_retention_policy''"'
+    exit: 0
+    ts: "2026-08-30T07:09:20Z"
+    seat: claude-opus-5
+    result:
+      "bind_garuda_magic_link_token_retention_policy visa_ledger_owner — all three bind_garuda_*
+      binders now ledger-owned. scripts/pg.sh routes through haproxy to the primary
+      (pg_is_in_recovery = f, verified in the same session)."
+  - claim:
+      "PROVE-LIVE: magic-link issuance answers 202 in production, for the first time since it was
+      written. Before the cure every call returned 500 and garuda_magic_link_tokens had zero rows
+      ever; after it, the table holds the rows those calls minted."
+    cmd: "bash scratchpad/prove-live-garuda.sh (F2: two POSTs to
+      https://nuzantara-rag.fly.dev/api/visa/voa/auth/magic-links sharing one Idempotency-Key), then
+      `SELECT count(*) FROM garuda_magic_link_tokens` via scripts/pg.sh"
+    exit: 0
+    ts: "2026-08-30T07:03:06Z"
+    seat: claude-opus-5
+    result:
+      "F2 owner path: '202 false' then '202 true'. Table count 0 -> 2, both rows PRODUCTION, both with
+      retention_policy_id and retention_until populated — i.e. the trigger that used to raise 42501
+      ran to completion. The response body is deliberately non-enumerating and identical either way,
+      so the Idempotency-Replayed header is the observable signal, not the status code."
+  - claim:
+      "The static lint would have blocked migration 285. GUILT control, run this turn: with 299
+      removed — the real state of production until today — the lint fails and names the offender and
+      the file."
+    cmd:
+      "mv 299_garuda_magic_link_binding_owner.sql /tmp && PYTHONPATH=. python -m pytest
+      backend/tests/db/test_retention_lock_triggers_are_ledger_owned.py -k transferred"
+    exit: 1
+    ts: "2026-08-30T07:10:04Z"
+    seat: claude-opus-5
+    result:
+      "Failure names `bind_garuda_magic_link_token_retention_policy` in `285_garuda_magic_link.sql`.
+      The migration was restored immediately and `git status --porcelain` returned zero lines."
+  - claim:
+      "INNOCENCE control: with 299 present the whole guarded surface is green, and the lint does not
+      accuse prepare_visa_evaluate_idempotency_reservation (migration 264), which production confirms
+      is correctly owned and does not read the ledger."
+    cmd:
+      "PYTHONPATH=. python -m pytest backend/tests/db/test_retention_lock_triggers_are_ledger_owned.py
+      backend/tests/scripts/visa_engine/test_operational_preflight.py"
+    exit: 0
+    ts: "2026-08-30T07:09:19Z"
+    seat: claude-opus-5
+    result:
+      "43 passed in 0.38s. Includes a third control asserting the detector matches the shape at all,
+      so a guard that has quietly stopped matching anything cannot pass forever."
+  - claim:
+      "The cause is ownership, not a missing grant on the app role: the trigger is SECURITY DEFINER
+      but was owned by backend_rag_v2, which cannot take FOR SHARE on a visa_ledger_owner-owned
+      table. Its working twin differs by owner and by nothing else that touches the lock."
+    cmd:
+      'env -u FLY_API_TOKEN scripts/pg.sh -A -F''|'' -c "SELECT proname, prosecdef,
+      pg_get_userbyid(proowner) FROM pg_proc WHERE proname LIKE ''bind_garuda%'' ORDER BY proname"'
+    exit: 0
+    ts: "2026-08-30T07:02:00Z"
+    seat: claude-opus-5
+    result:
+      "Before the ALTER: magic_link binder prosecdef=t owner=backend_rag_v2; voa_check binder
+      prosecdef=t owner=visa_ledger_owner. Grants were read from pg_class.relacl, NOT from
+      information_schema.role_table_grants — that view is filtered by the calling role, so its empty
+      answer means 'invisible to me', never 'absent'."
+  - claim:
+      "The live catalog check that should have caught this on its first run had never been told these
+      functions exist; both GARUDA binders are now listed, and the frozen authority moved with them."
+    cmd: "PYTHONPATH=. python -m pytest backend/tests/scripts/visa_engine/test_operational_preflight.py"
+    exit: 0
+    ts: "2026-08-30T07:09:19Z"
+    seat: claude-opus-5
+    result:
+      "36 passed. RETENTION_BINDING_TRIGGER_FUNCTIONS in operational_preflight.py now lists
+      bind_garuda_voa_check_retention_policy and bind_garuda_magic_link_token_retention_policy, and
+      CANONICAL_SENSITIVE_FUNCTIONS in the test was updated in the same commit so the two cannot
+      drift apart silently."
+pii_scan: clean
+pii_scan_note:
+  "No client data was touched, read or transcribed. Production reads were catalog queries (pg_proc,
+  pg_class, information_schema.columns) and one row COUNT; no row contents left the database. The two
+  synthetic eligibility checks the prove-live harness created were deleted by it (204 each). The
+  magic links minted during the proof were addressed to zantara@balizero.com, our own alias — no third
+  party received anything. No secret value entered any transcript: the ownership ALTER referenced
+  $OPERATOR_PASSWORD in place on the target machine rather than printing it."
+dissent:
+  - seat: codex-gpt-5.6-sol (adversarial grader)
+    objection:
+      "The migration would record FALSE SUCCESS. Its first draft caught insufficient_privilege and
+      emitted a NOTICE, mirroring migration 268 — but a declined migration is still written to
+      _schema_versions as applied and is never retried, so production would carry a migration claiming
+      to have cured an outage that was still live, and nothing downstream would ever say otherwise."
+    status: CONFIRMED
+    resolution:
+      "Rewritten to assert its own postcondition and RAISE: after attempting the ALTER it re-reads
+      pg_proc.proowner and, if the function is still not owned by visa_ledger_owner, raises an
+      exception naming the consequence ('magic-link issuance still answers 500') and refuses to be
+      recorded applied. The ROLLBACK section is a deliberate no-op that says why — restoring
+      backend_rag_v2 as owner would re-create the outage."
+  - seat: codex-gpt-5.6-sol (adversarial grader)
+    objection:
+      "The lint's transfer collector was too permissive: it treated any appearance of a function name
+      near an ownership transfer as evidence that THAT function was transferred, so an unrelated
+      transfer in the same file laundered an offender, and a mere mention counted as a cure."
+    status: CONFIRMED
+    resolution:
+      "Rewritten to parse real ALTER FUNCTION ... OWNER TO statements and the DO-block transfer arrays
+      used by migrations 268/281, binding each transfer to its own function name. Five tests now
+      encode the grader's counterexamples directly: unrelated transfer, mere mention, commented-out
+      transfer, SECURITY DEFINER inside a comment, and DO-block array."
+  - seat: codex-gpt-5.6-sol (adversarial grader)
+    objection:
+      "Comments produced false results in both directions — a commented-out transfer read as a real
+      one, and the words SECURITY DEFINER inside a comment read as a real offender."
+    status: CONFIRMED
+    resolution:
+      "Line comments are stripped before analysis, and dollar-quoted bodies are matched by their real
+      tags rather than split coarsely. This also removed a false positive against
+      prepare_visa_evaluate_idempotency_reservation that the author's own innocence control had caught."
+  - seat: claude-opus-5 (self-refutation during build, RESOLVED)
+    objection:
+      "The lint's own MIGRATIONS path was wrong (parents[3] instead of parents[2]), so it globbed a
+      directory that does not exist. A glob over a missing directory returns empty silently — the lint
+      was green because it was looking at nothing."
+    status: CONFIRMED
+    resolution:
+      "Caught by the innocence control the lint carries. Path corrected and an explicit
+      MIGRATIONS.is_dir() assertion added, so the same failure can never be silent again."
+  - seat: claude-opus-5 (declared limit, unresolved)
+    objection:
+      "The lint reads SQL text, not a database. A migration whose trigger takes the lock through a
+      helper function rather than inline would not be caught."
+    status: PLAUSIBLE
+    resolution:
+      "Left standing and named in the brief's risks. The live catalog check in operational_preflight,
+      now aware of both GARUDA binders, is the layer that would catch that shape at runtime."
+  - seat: claude-opus-5 (measured during PROVE-LIVE, out of scope for this PR)
+    objection:
+      "F3 of the prove-live harness shows the magic-link endpoint still issues for a result_id the
+      caller does not own: a second, unrelated session cookie got '202 false' then '202 true',
+      i.e. it reached store.issue and minted one of the two tokens."
+    status: CONFIRMED
+    resolution:
+      "Orthogonal defect, already cured in PR #5298 (router-level ownership check) which is open and
+      queued. Named here rather than left implicit: this PR ends the outage, it does not close that
+      hole, and neither cure makes the other unnecessary — with #5298 alone the endpoint would still
+      have answered 500."

@@ -1,0 +1,97 @@
+task_id: garuda-magic-link-binding-owner-0830
+gear: 3
+l_level: L3
+gate_class: opus
+objective: |
+  PR #5302 (agent/air-m5/db/garuda-magic-link-owner -> main): cure the
+  production outage that has kept the entire authenticated half of GARUDA VOA
+  unreachable since migration 285 shipped, and add the static lint that stops
+  the same omission from shipping a third time.
+
+  Measured against production 2026-08-30: POST /api/visa/voa/auth/magic-links
+  answers 500 INTERNAL_ERROR to every call, and garuda_magic_link_tokens holds
+  ZERO rows — no magic link has ever been minted. The exception class is
+  asyncpg InsufficientPrivilegeError (named only after PR #5297 taught the
+  blind catch-all to log the class).
+
+  Cause: the BEFORE INSERT trigger bind_garuda_magic_link_token_retention_policy
+  opens with `SELECT ... FROM visa_decision_retention_policies ... FOR SHARE`.
+  That table is owned by visa_ledger_owner; the app role backend_rag_v2 holds
+  only SELECT, and a row-locking clause needs more than SELECT. The trigger IS
+  SECURITY DEFINER — and that bought nothing, because it is owned by
+  backend_rag_v2, so it runs as a role that cannot take the lock either. Its
+  healthy twin bind_garuda_voa_check_retention_policy is SECURITY DEFINER owned
+  by visa_ledger_owner, which is why the eligibility-check path works.
+
+  This is a RECURRENCE: migration 268 cured the shape on 2026-08-07 for the
+  visa-engine triggers, 281 carried it forward for the GARUDA_CHECK family with
+  an explicit role-guarded ownership transfer, and 285 created a new trigger of
+  the same shape and omitted the transfer.
+
+  Gear 3 by PATH, deterministically (migrations_v2 is a hot zone). Honored, not
+  argued with.
+constraints:
+  - "Migration 299 reuses migration 281's role-guarded, idempotent, best-effort
+    DO block verbatim rather than inventing a new form — the ALTER is wrapped in
+    an insufficient_privilege handler and skips entirely when the role is absent."
+  - "Against production the transfer is EXPECTED to NOTICE-and-defer: measured
+    2026-08-30, nobody is a member of visa_ledger_owner and the migration runner
+    connects as backend_rag_v2, so ALTER FUNCTION ... OWNER TO needs a superuser
+    connection. Migration 268 records the identical history for itself."
+  - "Exactly ONE function is transferred. Measured on the live database, it is
+    the only one of migration 285's four that is SECURITY DEFINER AND locks the
+    ledger: active_garuda_magic_link_policy_available is not SECURITY DEFINER and
+    takes no lock; neither guard_ function touches the ledger at all."
+  - "Not in this PR by design: the superuser ALTER itself (post-merge apply step),
+    and the magic-link ownership check (#5298, already in the merge queue)."
+acceptance:
+  - text:
+      "WHEN migration 299 is absent — the real state of production until 2026-08-30 — the static lint
+      SHALL fail and name bind_garuda_magic_link_token_retention_policy in 285_garuda_magic_link.sql."
+    probe: "PYTHONPATH=. python -m pytest backend/tests/db/test_retention_lock_triggers_are_ledger_owned.py -k transferred"
+  - text:
+      "WHERE migration 299 is present, the guarded surface SHALL be green and the lint SHALL NOT
+      accuse prepare_visa_evaluate_idempotency_reservation, which production shows is correctly owned
+      and does not read the ledger."
+    probe: "PYTHONPATH=. python -m pytest backend/tests/db/test_retention_lock_triggers_are_ledger_owned.py backend/tests/scripts/visa_engine/test_operational_preflight.py"
+  - text:
+      "IF the detector ever stops matching the shape it guards, the suite SHALL fail rather than pass
+      forever — the lint carries its own innocence control."
+    probe: "PYTHONPATH=. python -m pytest backend/tests/db/test_retention_lock_triggers_are_ledger_owned.py"
+  - text:
+      "WHEN the ownership ALTER has landed on the production primary, two calls sharing one
+      Idempotency-Key against the live magic-link endpoint SHALL return 202 rather than 500, and
+      garuda_magic_link_tokens SHALL hold rows where it previously held none."
+    probe: "bash scratchpad/prove-live-garuda.sh (F2), then SELECT count(*) FROM garuda_magic_link_tokens via scripts/pg.sh"
+consumer_map:
+  - "backend/db/migrations_v2/ — applied by migration_base.py's runner, forward
+    section only; the runner connects as backend_rag_v2, so 299 will NOTICE."
+  - "The live trigger on garuda_magic_link_tokens — the only consumer whose
+    behavior actually changes, and only once the ALTER lands on a superuser
+    connection."
+  - "backend/tests/db/ — the new static lint runs on every PR, no database
+    needed, so it also guards migrations written by lanes that never touch prod."
+  - "PR #5298 (magic-link ownership check) is queued against the SAME endpoint:
+    it is orthogonal (router-level authorization vs database privilege) and
+    neither cure makes the other unnecessary — with #5298 alone the endpoint
+    still 500s; with #5302 alone it mints links for result_ids the caller does
+    not own."
+risks:
+  - "The migration is a no-op against production until an operator or superuser
+    connection runs the ALTER. Merging it does NOT end the outage, and this PR
+    says so rather than declaring victory at merge."
+  - "The static lint reads SQL text, not a database. A migration that takes the
+    lock through a helper function called from the trigger body, rather than
+    inline, would not be caught — named explicitly as the known residual."
+grader: |
+  generator != grader. The diff was authored by this session (Anthropic); the
+  adversarial round is codex gpt-5.6-sol at xhigh effort (OpenAI, ChatGPT Pro
+  flat subscription) — a different model family, given the diff plus the
+  production measurements and asked to break both the migration and the lint,
+  specifically to find a new migration shape the lint would miss. Verdict and
+  findings recorded in evidence/pack.yml.
+budget: |
+  Flat-subscription seats only: this session (build), codex gpt-5.6-sol
+  (adversarial review). No metered API spend. Production reads went through
+  scripts/pg.sh (nuzantara_readonly, SELECT-only).
+pii: none
