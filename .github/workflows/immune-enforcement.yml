@@ -75,6 +75,15 @@ jobs:
           # immune workflow as an exact self-trigger: removing or narrowing these
           # globs must not make a change to the required workflow auto-skip its
           # own contracts. The exact entry is therefore a deliberate overlap.
+          # `.claude/skills/*/*.md` below is EVERY markdown under a skill dir, not
+          # just SKILL.md: the doctrine citation lint's subjects are
+          # `.claude/skills/**/*.md`, and a filter enumerating only SKILL.md left a
+          # phantom in any other file free to land on a PR that never ran the
+          # finder. That pattern SUBSUMES the former explicit
+          # `.claude/skills/modus/PENDING-ARMS.md` entry, removed because actionlint
+          # reports the pair as SC2221 — the ledger file still triggers this job
+          # (verified by simulating this very case block), so nothing that depended
+          # on it is disarmed.
           while IFS= read -r f; do
             case "$f" in
               scripts/lint_home_fork.py|\
@@ -87,6 +96,13 @@ jobs:
               scripts/tests/test_proprioception_finding_count.sh|\
               scripts/secrets_permissions_audit.py|\
               scripts/pending_arms_report.py|\
+              scripts/lint_immune_contracts.py|\
+              scripts/tests/test_lint_immune_contracts.py|\
+              infra/immune-contracts/contracts.json|\
+              scripts/organism_digest.py|\
+              scripts/arsenal_probe.py|\
+              scripts/lib/heartbeat.sh|\
+              scripts/lib/wr2_runtime_stamp.py|\
               scripts/lint_plist_keepalive.py|\
               scripts/arsenal_probe.py|\
               scripts/check_adversarial_review.py|\
@@ -132,9 +148,21 @@ jobs:
               package-lock.json|\
               apps/*/package.json|\
               packages/*/package.json|\
+              scripts/lint_doctrine_citations.py|\
+              scripts/tests/test_lint_doctrine_citations.py|\
+              .claude/skills/*/*.md|\
+              .claude/commands/*.md|\
+              CLAUDE.md|\
+              SYMBIOSIS.md|\
+              AUTONOMOUS_OPS.md|\
+              VADEMECUM.md|\
+              INDEX.md|\
               infra/doc-lint/*|\
               docs/wr2/*.md|\
               infra/home-fork/declared-pairs.json|\
+              scripts/build_repomap.sh|\
+              scripts/repomap_cap.py|\
+              scripts/tests/test_repomap_cap.py|\
               scripts/tcc_migrate_desktop_paths.py|\
               scripts/lint_tcc_desktop_paths.py|\
               scripts/tests/test_tcc_migrate_desktop_paths.py|\
@@ -249,7 +277,6 @@ jobs:
               apps/evaluator/nlm_deep_research/nb10_pipeline.py|\
               apps/evaluator/nlm_deep_research/tests/test_run_verdict.py|\
               apps/evaluator/nlm_deep_research/tests/test_calendar_skip_marker_class.py|\
-              .claude/skills/modus/PENDING-ARMS.md|\
               scripts/ci/required_context_map.py|\
               scripts/ci/snapshot_required_contexts.py|\
               scripts/ci/check_required_workflow_conformance.py|\
@@ -424,6 +451,7 @@ jobs:
           fail=0
           for t in \
             scripts/tests/test_agent_start.py \
+            scripts/tests/test_lint_doctrine_citations.py \
             scripts/tests/test_lint_home_fork.py \
             scripts/tests/test_lint_public_asset_refs.py \
             scripts/tests/test_home_fork_bak_shadows.py \
@@ -455,6 +483,7 @@ jobs:
             scripts/tests/test_wa_session_liveness.py \
             scripts/tests/test_prepush_classify.py \
             scripts/tests/test_husky_pii_pass_overmatch.py \
+            scripts/tests/test_repomap_cap.py \
             scripts/tests/test_docs_audit.py \
             scripts/tests/test_docs_inventory_refresh_liveness.py \
             scripts/tests/test_docs_inventory_regen.py \
@@ -1115,6 +1144,66 @@ jobs:
       - name: Tailnet node verifier keys on DNSName, not HostName or an ssh alias
         if: steps.paths.outputs.relevant == 'true'
         run: bash scripts/tests/test_verify_tailnet_node.sh
+
+      # ------------------------------------------------------------------
+      # IMMUNE CONTRACTS (2026-08-31, squad L / L08-PR1)
+      #
+      # W120's shape, generalised: `pending_arms_report.py --json` emitted
+      # `"class"` while `organism_digest.py` read `"classification"`. The key
+      # was never emitted, `.get()` returned None forever, the filter stayed
+      # empty, and 262 overdue rows read as silence — with nothing red anywhere.
+      # The registry pairs every machine-readable health EMITTER with its
+      # CONSUMERS and this lint checks the pairing.
+      #
+      # The load-bearing part, and the reason this is not just two lists: the
+      # lint AST-parses the declared producer and consumer FUNCTIONS and checks
+      # the registry against the real source. A registry whose halves only agree
+      # with each other is a fixture, not a contract (W114).
+      #
+      # Runs on EVERY PR, like the two ledger gates below it — parsing one JSON
+      # file and a handful of python functions is cheap, and a contract gate
+      # that only fires when someone remembers to touch the registry is the
+      # family-#2 defect it exists to catch.
+      # ------------------------------------------------------------------
+      # NO `if [ -f ... ]` GUARD on any of the three steps below, deliberately.
+      # The guard reads as defensive and is a disarm vector: a PR that deletes
+      # the linter and its corpus makes every body a no-op, and this REQUIRED
+      # job goes green with the entire gate removed (cross-family gate). This
+      # job checks out the PR HEAD, so the files are present unless a PR removed
+      # them — which is exactly the case that must be red.
+      - name: Immune contracts self-test (the detector still detects)
+        run: python scripts/lint_immune_contracts.py --selftest
+
+      - name: Immune contracts registry matches the real emitters and consumers
+        run: python scripts/lint_immune_contracts.py --check
+
+      # Separate step from the one above ON PURPOSE: the contract check answers
+      # "does the registry match the code", the shrink check answers "is the
+      # debt list growing". One step for both would leave a reader unable to
+      # tell which question failed.
+      #
+      # `origin/main` is fetched BY NAME first. `actions/checkout` with
+      # fetch-depth: 0 does not reliably leave a resolvable
+      # refs/remotes/origin/main on a pull_request event, and the lint treats an
+      # unresolvable base as CANNOT-VERIFY (exit 3, never a pass) — correct
+      # behaviour, and it would redden every innocent PR on a REQUIRED job. The
+      # sibling check-ledger-no-silent-loss.yml fetches main by name for exactly
+      # this reason.
+      - name: known_gaps may only shrink (fetch main by name, then compare)
+        run: |
+          set -uo pipefail
+          # The fetch is allowed to fail — a shallow or offline runner is a real
+          # state — but its failure is REPORTED, not swallowed. `|| true` alone
+          # would let a STALE origin/main stand in for the real baseline, and a
+          # stale baseline can approve growth it never saw (cross-family gate).
+          if ! git fetch --no-tags --depth=200 origin main:refs/remotes/origin/main; then
+            echo "::warning::could not fetch origin/main; the shrink check below is comparing "\
+                 "against whatever origin/main this checkout already had, which may be stale"
+          fi
+          python scripts/lint_immune_contracts.py --check --no-regrowth origin/main
+
+      - name: Immune contracts corpus (named, because scripts/tests/ gates nothing)
+        run: python -m pytest -q scripts/tests/test_lint_immune_contracts.py
 
       - name: PENDING-ARMS ledger parses (report smoke, exit 0 signaler)
         run: |
