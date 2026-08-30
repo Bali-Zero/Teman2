@@ -181,10 +181,18 @@ def pull_request_filter_violation(on_block: Any) -> str | None:
 def format_trigger_shape(on_block: Any, name: str) -> str:
     """Compact representation of how a trigger is declared."""
     if isinstance(on_block, dict):
-        value = on_block.get(name)
-        if value is None:
+        # `name not in on_block` is the ONLY test for absence. A bare `merge_group:`
+        # parses to None, so `on_block.get(name) is None` cannot tell "key missing"
+        # from "key present, no value" -- and the bare form is the commonest way to
+        # write this trigger. Reported as "absent", it sent a reader to open the file,
+        # find `merge_group:` sitting right there, and conclude the LINTER was broken.
+        # The verdict was never wrong (trigger_present uses `name in on_block`); only
+        # this message was, and the message is the whole diagnostic surface.
+        # Measured on .github/workflows/with-seat-broker-tests.yml, 2026-08-31.
+        if name not in on_block:
             return f"on.{name}: absent"
-        if value is True or value is None:
+        value = on_block.get(name)
+        if value is None or value is True:
             return f"on.{name}: bare"
         if isinstance(value, dict) and not value:
             return f"on.{name}: bare"

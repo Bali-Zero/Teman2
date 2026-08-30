@@ -380,3 +380,52 @@ if __name__ == "__main__":
     print("=== trigger-symmetry OK (guilt on paths/paths-ignore+merge_group, unparseable, "
           "and an operational failure; innocence on four legitimate shapes; live tree clean and scanned) ===")
     sys.exit(0)
+
+
+# ---------------------------------------------------------------------------
+# The MESSAGE, not the verdict. `format_trigger_shape` reported a bare
+# `merge_group:` (which parses to None) as "absent", because it tested
+# `on_block.get(name) is None` instead of `name not in on_block`. The verdict
+# was always right; the diagnostic told a reader to open the file and find the
+# key sitting right there, i.e. that the LINTER was broken. Measured on
+# .github/workflows/with-seat-broker-tests.yml, 2026-08-31. The dead
+# `or value is None` in the branch below it was the author's own evidence
+# that "bare" was the intent.
+# ---------------------------------------------------------------------------
+
+def _shape(on_block, name: str) -> str:
+    spec = __import__("importlib.util", fromlist=["util"]).spec_from_file_location(
+        "_lts", str(_LINT)
+    )
+    mod = __import__("importlib.util", fromlist=["util"]).module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.format_trigger_shape(on_block, name)
+
+
+def test_a_bare_trigger_renders_as_bare_not_absent() -> None:
+    """GUILT: `merge_group:` with no value is PRESENT. Calling it absent is the bug."""
+    got = _shape({"pull_request": {"paths": ["a"]}, "merge_group": None}, "merge_group")
+    assert got == "on.merge_group: bare", got
+
+
+def test_a_genuinely_missing_trigger_still_renders_as_absent() -> None:
+    """INNOCENCE: the fix must not turn every shape into 'bare'."""
+    got = _shape({"pull_request": {"paths": ["a"]}}, "merge_group")
+    assert got == "on.merge_group: absent", got
+
+
+def test_an_explicit_true_trigger_is_also_bare() -> None:
+    """PyYAML 1.1 can hand back True for a valueless key; same meaning."""
+    assert _shape({"merge_group": True}, "merge_group") == "on.merge_group: bare"
+
+
+def test_a_configured_trigger_still_lists_its_keys() -> None:
+    """INNOCENCE: the non-empty mapping branch is untouched."""
+    got = _shape({"pull_request": {"paths": ["a"], "branches": ["main"]}}, "pull_request")
+    assert got == "on.pull_request: {branches, paths}", got
+
+
+def test_list_form_absence_is_unaffected() -> None:
+    """INNOCENCE: `on: [push]` — the list branch has its own absent/present pair."""
+    assert _shape(["push"], "merge_group") == "on.merge_group: absent"
+    assert _shape(["push", "merge_group"], "merge_group") == "on.merge_group: present"
