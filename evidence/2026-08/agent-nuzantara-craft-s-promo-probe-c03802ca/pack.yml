@@ -328,6 +328,25 @@ receipts:
     ts: "2026-08-30T20:08:00Z"
     seat: claude-opus-5 (gate)
   - claim: |
+      EVERY DECLARED ACCEPTANCE PROBE, WITH ITS OUTCOME — listed verbatim so
+      none reads as unrecorded.
+    cmd: |
+      probe: test_classify_absent_when_other_contexts_present / test_evaluate_blocked_pr_present_and_clean_pr_absent / live run against VOA probe organ tests
+      probe: test_classify_checkrun_pass / test_main_all_passing_exits_zero
+      probe: test_main_empty_pr_list_exits_two_not_zero
+      probe: test_main_no_context_exits_three_and_never_calls_gh
+      probe: test_classify_checkrun_skipped_not_fail / test_classify_checkrun_neutral_not_fail
+      probe: test_gh_run_retry_exhausted_raises_cannot_verify / test_main_one_pr_view_fails_among_others_exits_two
+      probe: test_never_calls_gh_run_or_actions_runs_api
+      probe: python3 scripts/ci/check_promotion_readiness.py --context ... (all four) --repo Bali-Zero/Teman2
+    result: |
+      All 8 pass on the final 57-test corpus (individually confirmed by name
+      in the full pytest -v run) plus the live run receipts above. Zero
+      probes unbound.
+    exit: 0
+    ts: "2026-08-30T20:10:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
       STATIC GATES clean on the final tree, all 9 fixes included.
     cmd: |
       python3 -m py_compile scripts/ci/check_promotion_readiness.py
