@@ -11,8 +11,16 @@ seat_diversity_note: >-
   CI-wiring fix, not a cross-family council dispatch.
 diff:
   net_lines: >-
-    5 files, +137/-8, measured by
-    `git diff --no-renames --numstat origin/main...HEAD`:
+    Not stated as a number, deliberately: this pack's own two files are part of
+    the branch's `git diff --no-renames --numstat origin/main...HEAD` against
+    which any stated count would be checked, so writing the measured value here
+    changes this file's own byte size, which changes the measured value — a
+    fixpoint with no stable answer. See `evidence/2026-08/agent-mini-pro2-infra-organ-birth-underscore-hea-b3b73aaf/brief.yml`
+    for the code-only diff's real shape (three wrapper files each carry a
+    two-line header-comment edit; one new local variable in
+    scripts/organ_birth.py; one new test file). Full changed-file list on this
+    branch's diff against origin/main: evidence/2026-08/agent-mini-pro2-infra-organ-birth-underscore-hea-b3b73aaf/brief.yml,
+    evidence/2026-08/agent-mini-pro2-infra-organ-birth-underscore-hea-b3b73aaf/pack.yml,
     infra/launchagents/wrappers/pro-git-pull-main.sh,
     infra/launchagents/wrappers/pro-llm-burn-alarm.sh,
     infra/launchagents/wrappers/pro-tg-digest-flush.sh,
@@ -44,9 +52,9 @@ receipts:
     exit: 0
     ts: "2026-08-30T01:37:20Z"
     seat: "session (this task, worktree .worktrees/infra-evidence-5237)"
-  - claim: "A repo-wide scan of every wrapper's own # Canon: self-reference against its actual filename, run independently of the PR's own test (not merely trusting that test's PASSED line), finds zero mismatches across every wrapper on this branch"
-    cmd: "python3 -c \"import glob, os, re; mismatches = []\\nfor path in sorted(glob.glob('infra/launchagents/wrappers/*.sh')):\\n    fname = os.path.basename(path)\\n    text = open(path, encoding='utf-8').read()\\n    m = re.search(r'^# Canon: infra/launchagents/wrappers/(\\\\S+)', text, re.M)\\n    if m and m.group(1) != fname:\\n        mismatches.append((fname, m.group(1)))\\nprint('mismatches:', mismatches); print('total wrappers scanned:', len(glob.glob('infra/launchagents/wrappers/*.sh')))\""
-    result: "mismatches: [] ; total wrappers scanned: 50"
+  - claim: "A repo-wide scan of every wrapper's own # Canon: self-reference against its actual filename, run independently of the PR's own test (not merely trusting that test's PASSED line), finds zero mismatches among the wrapper files that actually carry a # Canon: line. CORRECTED after independent gate review (2026-08-30): this pack's first draft said 'zero mismatches across every wrapper on this branch', which is literally true but misleading — the check is vacuously true for any wrapper with no # Canon: line at all, and only a minority of wrapper files carry one"
+    cmd: "python3 -c \"import glob, os, re; total = 0; carry_canon = 0; mismatches = []\\nfor path in sorted(glob.glob('infra/launchagents/wrappers/*.sh')):\\n    total += 1\\n    fname = os.path.basename(path)\\n    text = open(path, encoding='utf-8').read()\\n    m = re.search(r'^# Canon: infra/launchagents/wrappers/(\\\\S+)', text, re.M)\\n    if m:\\n        carry_canon += 1\\n        if m.group(1) != fname:\\n            mismatches.append((fname, m.group(1)))\\nprint('total wrappers:', total); print('carry a # Canon: line:', carry_canon); print('mismatches among those:', mismatches)\""
+    result: "total wrappers: 50 ; carry a # Canon: line: 15 ; mismatches among those: [] — real coverage is 15/50, not 50/50; the other 35 wrapper files predate organ_birth.py or were hand-authored without this comment and are outside this check's scope entirely (it is silent on them, not passing on them)"
     exit: 0
     ts: "2026-08-30T01:33:10Z"
     seat: "session (this task, worktree .worktrees/infra-evidence-5237)"
@@ -74,9 +82,9 @@ dissent:
     objection: >-
       PR #5237 touches infra/launchagents/wrappers/*.sh, which is hot-zone by
       path (infra/launchagents/* is a literal HOTZONE_PATTERNS entry) — floors
-      at Gear 3 regardless of the diff's small, mechanical-looking size (5
-      files, +137/-8, mostly a new test file) or the fact that the change is a
-      header-comment fix with no runtime behaviour change — and the PR shipped
+      at Gear 3 regardless of the diff's small, mechanical-looking size (a
+      handful of files, mostly a new test file, no runtime behaviour change)
+      or the fact that the change is a header-comment fix — and the PR shipped
       with no evidence/brief.yml or evidence/pack.yml in its own diff, so the
       check correctly FAILED with "this diff's deterministic floor is 3
       (source: path) ... but carries no evidence/brief.yml ... it cannot

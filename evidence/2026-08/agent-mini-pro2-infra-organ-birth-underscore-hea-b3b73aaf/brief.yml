@@ -30,9 +30,12 @@ objective: |
   Gear 3 by PATH, not by blast radius: `infra/launchagents/*` is a literal
   `HOTZONE_PATTERNS` entry in `scripts/evidence_pack_lint.py` — floor is a
   deterministic lower bound computed from the changed-file set, never the
-  author's choice, regardless of how small or mechanical the diff reads (5
-  files, +137/-8, all header-comment-shaped edits plus one new test file). The
-  PR's own author (a Mini-Pro2 healer tick — autonomous cure session, Claude
+  author's choice, regardless of how small or mechanical the diff reads
+  (three of the changed wrapper files carry only a two-line header-comment
+  edit each, plus one new test file). Diff size in files/lines is
+  deliberately NOT stated as a number here — see `diff.net_lines` in
+  `pack.yml` for why a self-referential count is not a stable claim to make.
+  The PR's own author (a Mini-Pro2 healer tick — autonomous cure session, Claude
   Sonnet 5 per its own commit's co-author line) sized this as routine content;
   it is the PATH, not the content, that trips the floor. This evidence pack is
   supplied after the fact, on the orchestrating session's explicit dispatch, to
@@ -67,10 +70,13 @@ acceptance:
       green) — proving the tests actually exercise the bug, not merely echo the
       fix."
     probe: "pytest scripts/tests/test_organ_birth.py -v"
-  - text:
-      "WHEN every wrapper's own `# Canon:` line in `infra/launchagents/wrappers/*.sh`
-      is scanned against its own actual filename, SHALL find zero mismatches after
-      the fix."
+  - text: "WHEN every `# Canon:` line actually present under
+      `infra/launchagents/wrappers/*.sh` is scanned against its own file's actual
+      filename, SHALL find zero mismatches — measured coverage: 15 of the 50
+      wrapper files carry a `# Canon:` line at all (the other 35 predate
+      organ_birth.py or were hand-authored without one, and are outside this
+      check's scope — silent on them, not passing on them); 0 of those 15 are
+      mismatched after the fix."
     probe: "repo-wide scan of every wrapper's own # Canon: self-reference against its actual filename"
   - text: "WHEN shellcheck runs against the 3 hand-edited wrapper files, SHALL
       introduce zero NEW findings relative to their pre-fix versions (the diff is
