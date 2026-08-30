@@ -48,6 +48,7 @@ from pathlib import Path
 from typing import Any
 
 from backend.scripts.visa_engine.gold_coverage_eval import _evaluate
+from backend.scripts.visa_engine.gold_replay_driver import _parse_utc
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,9 @@ def _load_persona_specs(corpus: Path) -> list[tuple[Path, dict[str, Any]]]:
     return specs
 
 
-def _evaluate_persona(path: Path, spec: dict[str, Any]) -> dict[str, Any]:
+def _evaluate_persona(
+    path: Path, spec: dict[str, Any], *, as_of: datetime | None = None
+) -> dict[str, Any]:
     """Evaluate one persona spec via ``gold_coverage_eval._evaluate`` and
     grade it against its own declared ``expected_state``/``expected_candidates``.
 
@@ -80,13 +83,19 @@ def _evaluate_persona(path: Path, spec: dict[str, Any]) -> dict[str, Any]:
     persona is evaluated against the same on-disk highest signed PRODUCTION
     pack, so any caller may take the first row's pack info as the report's
     top-level pack identity.
+
+    ``as_of`` is forwarded verbatim to ``gold_coverage_eval._evaluate`` — see
+    that function's docstring for why a fixed-wall-clock evaluation against a
+    pack's freshness-windowed source_records is a clock bomb, not a stable
+    baseline. Defaults to None so production behaviour (evaluate at the real
+    wall clock) is unchanged.
     """
     overrides = spec.get("overrides") or {}
     if not isinstance(overrides, dict):
         raise ValueError(f"{path}: 'overrides' must be an object keyed by dotted FactPath")
     label = str(spec.get("label", path.stem))
 
-    result = _evaluate(overrides, label)
+    result = _evaluate(overrides, label, as_of=as_of)
     actual = result["actual"]
     actual_candidates = set(actual.get("candidates") or actual.get("candidate_products") or [])
 
@@ -110,7 +119,7 @@ def _evaluate_persona(path: Path, spec: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def build_report(corpus: Path) -> dict[str, Any]:
+def build_report(corpus: Path, *, as_of: datetime | None = None) -> dict[str, Any]:
     """Evaluate every persona in ``corpus`` and return the full report dict.
 
     Raises ``ValueError`` when the corpus contains zero persona files — the
@@ -118,6 +127,13 @@ def build_report(corpus: Path) -> dict[str, Any]:
     explanation. Building an empty-but-"passing" report is deliberately not
     a reachable code path: total==0 can only ever arrive here as a raised
     exception, never as a returned summary a caller could mistake for green.
+
+    ``as_of`` defaults to None (real wall clock, unchanged production
+    behaviour) and is forwarded to every persona's evaluation — see
+    ``_evaluate_persona``/``gold_coverage_eval._evaluate`` for why evaluating
+    at ``datetime.now(UTC)`` against a pack's freshness-windowed
+    ``source_records`` is a clock bomb, not a stable default for a pinned
+    test.
     """
     entries = _load_persona_specs(corpus)
     if not entries:
@@ -126,7 +142,7 @@ def build_report(corpus: Path) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     pack_info: dict[str, Any] = {}
     for path, spec in entries:
-        row = _evaluate_persona(path, spec)
+        row = _evaluate_persona(path, spec, as_of=as_of)
         pack_info = row.pop("_pack")
         rows.append(row)
         logger.info("%s: label=%s pass=%s", path.name, row["label"], row["pass"])
@@ -164,6 +180,18 @@ def _parser() -> argparse.ArgumentParser:
         default=None,
         help="optional path to also write the report JSON (always printed to stdout)",
     )
+    parser.add_argument(
+        "--as-of",
+        type=_parse_utc,
+        default=None,
+        help=(
+            "pin the evaluation/verification instant to this timezone-aware "
+            "UTC ISO-8601 timestamp instead of the real wall clock (e.g. "
+            "'2026-08-29T05:00:00Z'). Defaults to now — production behaviour "
+            "is unchanged; this exists so a test can pin the instant to a "
+            "pack's own created_at and avoid a freshness-window clock bomb."
+        ),
+    )
     return parser
 
 
@@ -174,7 +202,7 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
 
     try:
-        report = build_report(args.corpus)
+        report = build_report(args.corpus, as_of=args.as_of)
     except ValueError as exc:
         logger.error("gold coverage replay cannot run: %s", exc)
         return 1
