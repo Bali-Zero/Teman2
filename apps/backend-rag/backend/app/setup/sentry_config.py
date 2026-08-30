@@ -254,8 +254,51 @@ def _scrub(obj: Any, parent_key: str | None = None) -> Any:
     return obj
 
 
+# Transactions Sentry should not be paying for. Measured on `bali-zero-7p` over
+# 7 days (2026-08-28): 1,952 errors accepted against 753 rate_limited — 28% of
+# production errors dropped for quota, chosen by arrival order rather than by
+# importance. A dropped event is indistinguishable from one that never happened.
+#
+# ONLY TRANSACTIONS, and that distinction is the whole safety of this filter. A
+# health check that 200s every 15 seconds is a metronome; a health check that
+# 500s is one of the most important errors this system can produce (the
+# 2026-04-29 outage was exactly that, and /health answering 200 while the worker
+# was dead is its own scar). Dropping by URL would delete the second along with
+# the first. `event.get("type") == "transaction"` is what separates them.
+_HEALTH_TRANSACTIONS = (
+    "/health",
+    "/healthz",
+    "/readyz",
+    "/livez",
+    "/api/health",
+)
+
+
+def _is_health_transaction(event: dict[str, Any]) -> bool:
+    """True only for a TRANSACTION on a health path. Never for an error.
+
+    Never raises: this runs inside `before_send`, and Sentry drops an event
+    silently when that hook throws — a bug here would delete real errors rather
+    than metronome ticks.
+    """
+    try:
+        if event.get("type") != "transaction":
+            return False
+        name = event.get("transaction")
+        if not isinstance(name, str):
+            return False
+        # Exact match or a path segment, never a substring: `/healthcheck-audit`
+        # and `/api/health-report` are real endpoints, not metronomes.
+        for path in _HEALTH_TRANSACTIONS:
+            if name == path or name.startswith(path + "/") or name.endswith(" " + path):
+                return True
+        return False
+    except Exception:
+        return False
+
+
 def _before_send_impl(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] | None:
-    """Inner implementation. Scrubs PII, returns scrubbed event.
+    """Inner implementation. Drops health-check transactions, scrubs PII.
 
     NOTE: cron/deploy alert deduplication was removed from this PR's scope
     (review #168/B2). No code in the repo currently tags events with
@@ -263,6 +306,8 @@ def _before_send_impl(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, 
     to be added at cron entrypoints (`cron-wrapper.sh`, `auto_sentinel.sh`,
     `cron_notifiers.py`) in a follow-up before a dedup filter can land here.
     """
+    if _is_health_transaction(event):
+        return None
     return _scrub(event)
 
 
