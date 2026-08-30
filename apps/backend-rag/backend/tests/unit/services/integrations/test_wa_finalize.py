@@ -639,6 +639,64 @@ def test_price_split_innocent_live_all_in_indonesian_breakdown() -> None:
     )
 
 
+# ── Negation-aware separation: a positive separation claim reverses when
+# negated; an already-negative form does not. Both directions, because the
+# first cut of this guard shipped the natural compliant sentence as a defect.
+
+
+def test_price_split_veto_survives_a_negated_separation_reassurance() -> None:
+    # The single most natural compliant sentence in the bot's register: the
+    # client is told they do NOT pay the levy separately. On the first cut of
+    # this guard it returned ['pnbp', 'biaya_pemerintah'] — separation is
+    # checked before inclusion, and the bare `terpisah` inside "secara
+    # terpisah" fired without reading the `tidak` in front of it.
+    assert (
+        price_split_offenders(
+            "Tenang kak, kakak tidak perlu membayar PNBP secara terpisah - "
+            "total Rp 15.000.000 itu sudah mencakup semua biaya pemerintah."
+        )
+        == []
+    )
+
+
+def test_price_split_veto_survives_a_negated_separation_in_english() -> None:
+    # Same defect, English half. Returned ['pnbp'] before the negation guard.
+    assert (
+        price_split_offenders(
+            "You will not be billed separately for the PNBP - it is already "
+            "included in your Rp 25.000.000 package."
+        )
+        == []
+    )
+
+
+def test_price_split_veto_still_fires_when_the_negator_is_a_sentence_away() -> None:
+    # The bound that keeps the negation guard from disarming the veto: the
+    # `tidak` here negates the DISCOUNT, not the levy, and a sentence boundary
+    # sits between it and `terpisah`. Without the boundary rule a 40-character
+    # lookbehind would reach across and let a real split through.
+    assert price_split_offenders(
+        "Kami tidak bisa memberikan diskon. PNBP Rp9.500.000 dibayar "
+        "terpisah dari harga paket Rp15.000.000."
+    ) == ["pnbp"]
+
+
+def test_price_split_veto_treats_tidak_termasuk_as_separation_not_negation() -> None:
+    # `tidak termasuk` / `not included` ALREADY carry their negator and MEAN
+    # separation. A blanket "a negator kills separation" rule would invert
+    # exactly these, which is why the two lists are kept apart.
+    assert price_split_offenders(
+        "Harga paket kami Rp15.000.000. PNBP Rp9.500.000 tidak termasuk."
+    ) == ["pnbp"]
+    assert price_split_offenders(
+        "Total Rp15.000.000. Biaya pemerintah Rp9.500.000 belum termasuk."
+    ) == ["biaya_pemerintah"]
+    assert price_split_offenders(
+        "Our fee is IDR 15,000,000. The government fee of IDR 9,500,000 is "
+        "not included."
+    ) == ["government_fee"]
+
+
 def test_pricing_veto_idr_and_usd_behave_exactly_as_before() -> None:
     # Regression fence: the families that already existed must not shift.
     assert price_tokens_outside_sources("$999 flat.", ["no prices"]) == ["USD:999"]

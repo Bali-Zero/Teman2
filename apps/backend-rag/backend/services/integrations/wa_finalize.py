@@ -738,12 +738,59 @@ _PRICE_SPLIT_MARKERS: tuple[tuple[str, re.Pattern[str]], ...] = (
 # rather than derived by a generic negation window, because a generic one would
 # misread the inclusion phrase `tidak ada biaya tambahan` ("no additional
 # charges") — which opens with a negator and MEANS inclusion.
-_PRICE_SEPARATION_MARKERS = re.compile(
+# Split into two lists because they behave OPPOSITELY under negation, and a
+# single list made the guard veto the single most natural compliant sentence in
+# the bot's register. `tidak termasuk` / `not included` ALREADY CONTAIN their
+# negator and mean separation, so a negation test must never touch them. The
+# forms below assert separation POSITIVELY, so negating one reverses its meaning:
+# "tidak perlu membayar PNBP secara terpisah — total Rp15.000.000 sudah mencakup
+# semua biaya pemerintah" is a perfectly compliant reassurance, and the bare
+# `terpisah` inside "secara terpisah" vetoed it. Measured on the shipped code
+# before this fix: that sentence returned ['pnbp', 'biaya_pemerintah'], and its
+# English twin ("you will not be billed separately … already included") returned
+# ['pnbp']. Since separation is checked FIRST and beats any inclusion wording,
+# the client's reassurance was the one shape guaranteed to fail.
+_PRICE_SEPARATION_NEGATIVE_FORMS = re.compile(
+    r"(?i)\b(?:tidak\s+termasuk|belum\s+termasuk|not\s+included"
+    r"|not\s+all[\s-]?inclusive)\b"
+)
+_PRICE_SEPARATION_POSITIVE_FORMS = re.compile(
     r"(?i)\b(?:di ?bayar\s+terpisah|bayar\s+terpisah|terpisah"
     r"|(?:payable|paid|charged|billed)\s+separately|separately"
-    r"|tidak\s+termasuk|belum\s+termasuk|not\s+included|not\s+all[\s-]?inclusive"
     r"|di\s+luar\s+(?:harga|biaya)|on\s+top\s+of|excluded\s+from)\b"
 )
+
+# A negator only reverses a separation claim it is actually attached to. Two
+# bounds, both deliberate: a 40-character reach, and a hard stop at the nearest
+# sentence boundary BEFORE the marker. The boundary is what keeps "Kami tidak
+# bisa memberikan diskon. PNBP Rp9.500.000 dibayar terpisah." guilty — the
+# `tidak` there negates the discount, not the levy. Note this is a lookBEHIND
+# only, and narrow on purpose: the 140-char association window elsewhere in this
+# function is wide because association wants reach, whereas negation wants
+# adjacency. Widening this one would start reading a negator out of a previous
+# clause and silently disarm the guard.
+_PRICE_NEGATOR = re.compile(
+    r"(?i)\b(?:tidak|bukan|belum|tanpa|jangan|not|never|no)\b"
+)
+_PRICE_NEGATOR_REACH = 40
+
+
+def _separation_asserted(window: str) -> bool:
+    """True when the window claims the levy is paid SEPARATELY, negation-aware.
+
+    An already-negative form counts unconditionally; a positive form counts only
+    if it is not itself negated within reach and within the same sentence.
+    """
+    if _PRICE_SEPARATION_NEGATIVE_FORMS.search(window):
+        return True
+    for match in _PRICE_SEPARATION_POSITIVE_FORMS.finditer(window):
+        lead = window[max(0, match.start() - _PRICE_NEGATOR_REACH) : match.start()]
+        cut = max(lead.rfind("."), lead.rfind("!"), lead.rfind("?"), lead.rfind("\n"))
+        if cut != -1:
+            lead = lead[cut + 1 :]
+        if not _PRICE_NEGATOR.search(lead):
+            return True
+    return False
 
 # An inclusion marker EXEMPTS the levy: it asserts the levy sits INSIDE the
 # quoted price. Only consulted when no separation marker fired.
@@ -805,9 +852,9 @@ def price_split_offenders(text: str) -> list[str]:
             window = haystack[lo:hi]
             if not _CURRENCY_AMOUNT_RE.search(window):
                 continue
-            if not _PRICE_SEPARATION_MARKERS.search(
+            if not _separation_asserted(window) and _PRICE_INCLUSION_MARKERS.search(
                 window
-            ) and _PRICE_INCLUSION_MARKERS.search(window):
+            ):
                 continue
             offenders.append(name)
             break
