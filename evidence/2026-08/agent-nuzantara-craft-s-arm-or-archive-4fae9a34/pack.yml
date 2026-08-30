@@ -1,0 +1,150 @@
+# STAGING LAYOUT, not this directory's. See #5325's pack for the full note.
+council_run: council.jsonl
+brief_ref: evidence/brief.yml
+pii_scan: clean
+lanes:
+  - lane: implementer
+    role: build
+    role_note: "authored craft-instruments-daily.yml from a spec naming the schedule, the corpora-first ordering and the emptiness gate"
+    seat: "kimi-code/kimi-for-coding"
+  - lane: orchestrator
+    role: review
+    role_note: "ground (all four instruments' real executor state), the mq-oracle workflow, three repairs to the build, the dead-branch fix in two files, and every empirical probe"
+    seat: "claude-opus-5 (xhigh)"
+  - lane: refuter
+    role: review
+    role_note: "blind cross-family refutation — 1 BLOCKER real and cured, plus two findings on a false premise I had supplied, one of which led to a BLOCKER of my own"
+    seat: "agy-gemini-3.1-pro"
+seat_diversity: 3
+seat_diversity_note: >-
+  Three families, build lane non-Anthropic (Moonshot) — D3 by a real build lane.
+  Refuter cross-family (Google). Codex sol out of credits.
+diff:
+  net_lines: >-
+    AS OF the commit this pack ships with: 6 files, +449/-1, net 448 — THREE-DOT
+    against the merge base (W102). Gear floor recomputed = 3 (hot-zone:
+    .github/workflows/); declared Gear 3, at the floor. Two of the six files are
+    new workflows, one is a one-line fix to an existing one, three are this
+    evidence pack.
+  behaviour_change: >-
+    Two instruments that ran nowhere now run daily at 21:17 UTC with their output
+    in the job summary and a warning when either produces nothing measurable. A
+    113-assertion corpus that ran nowhere now runs on every PR and push touching
+    the mq surface, with a shrink floor. One pre-existing dead branch in
+    `voa-probe-tests.yml` — a required context since this wave promoted it —
+    becomes reachable. Nothing is archived and no existing report changes.
+receipts:
+  - claim: "The arm-or-archive verdict for each of the four, measured not assumed"
+    cmd: "grep -rln <script> .github/workflows/ infra/launchagents/ ; parse pr-size-taxonomy.yml's on: block ; grep -rln mq_state_verdict"
+    result: >-
+      council_yield_report.py -> no executor anywhere (only docs and ledger
+      mentions) -> ARM. correction_tax.py -> same -> ARM. pr_size_taxonomy.py ->
+      ALREADY ARMED, `pr-size-taxonomy.yml` runs it daily at 20:00 with output to
+      the job summary -> no action, and saying otherwise would have been busywork.
+      mq state -> the instrument IS armed (mq.sh calls mq_state_verdict.py) but
+      its corpus `test_mq_state_oracle.sh` (113 assertions) is named by no
+      workflow -> ARM the corpus. Nothing archived: all four are live.
+    exit: 0
+    ts: "2026-08-31T10:10Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "The emptiness-gate patterns match REAL instrument output, and the first draft's did not"
+    cmd: "run both instruments, grep their real output with the shipped patterns and with the draft's"
+    result: >-
+      Shipped: `packs scanned: *[1-9]` MATCHES (`packs scanned: 84`), and
+      `correction-tax: ` MATCHES (`correction-tax: 338/488 = 0.693`). Draft:
+      `([1-9][0-9]*) packs scanned` did NOT match — it expected the number BEFORE
+      the words. That gate would have warned on every single run forever, which is
+      how a channel teaches its reader to ignore it, while claiming to cure W108.
+    exit: 0
+    ts: "2026-08-31T10:35Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "Both shrink floors execute correctly, and their aborted-suite branch is now REACHABLE"
+    cmd: "extract each floor step's run body from the YAML and execute it, then again with the suite path pointed at a nonexistent file"
+    result: >-
+      Normal: `mq state oracle: 113 assertions (floor 113)` and `corpus ran 56
+      checks (floor 56)`, both rc=0. Aborting suite: BOTH rc=1 with
+      `::error::... printed no TOTAL line — it aborted before reporting`. Before
+      the fix that branch was unreachable in both files.
+    exit: 0
+    ts: "2026-08-31T11:05Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "Both instrument corpora pass offline, so the daily job's blocking first step is CI-safe"
+    cmd: "pytest scripts/tests/test_council_yield_report.py scripts/tests/test_correction_tax.py -q"
+    result: "120 passed in 9.35s, no network."
+    exit: 0
+    ts: "2026-08-31T10:15Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "actionlint green on all three touched workflows"
+    cmd: "actionlint craft-instruments-daily.yml mq-oracle-tests.yml voa-probe-tests.yml"
+    result: "clean. `git diff --check` clean."
+    exit: 0
+    ts: "2026-08-31T11:10Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+dissent:
+  - objection: 'BLOCKER — `TOTAL="$(bash suite | sed ...)"` under `set -euo pipefail` terminates the step when the suite aborts, so the `if [ -z "$TOTAL" ]` branch is unreachable dead code and its custom ::error:: can never print.'
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: >-
+      Correct, and the sharp part is that this squad FIXED this exact defect in
+      lane 3 four hours earlier and then reintroduced it here by copying
+      `voa-probe-tests.yml`'s shape without re-reading it. The sibling has it
+      too — and this wave promoted that file to a required context, so its dead
+      branch now matters more than it did. Both are fixed in this PR, which is
+      one concern (the class) rather than two files. Cured with a braced
+      `$({ bash suite 2>/dev/null || true; } | sed ...)`.
+  - objection: "SELF-FOUND, chasing the refuter's false-premise finding: the checkout is shallow, and `correction_tax.py` reads `git log --since/--until`, so its window would be empty every night — and the script deliberately EXITS 1 rather than report a share over an empty window."
+    seat: "claude-opus-5 (orchestrator, measured this turn)"
+    status: CONFIRMED
+    disposition: accepted
+    note: >-
+      The most valuable finding of this lane, and it arrived sideways. I told
+      the refuter in its prompt that correction_tax "queries the GitHub API", so
+      its permissions finding was reasoning on my false premise. Checking that
+      premise instead of the finding is what surfaced the real defect: the
+      script's docstring opens "Read-only against `git log`". The workflow would
+      have gone red every night on a claim I had written into its own comment.
+      Fixed with `fetch-depth: 0`, the false comment rewritten to say what it got
+      backwards, and the now-pointless `pull-requests: read` scope and GH_TOKEN
+      removed — a scope nothing uses is one a future step inherits without anyone
+      deciding to grant it. A refuter given a wrong premise can still be worth its
+      cost, provided the premise is what you check.
+  - objection: "The emptiness gate's comment claims `pipefail` is set 'so a failed pipe is still detected' — there are no pipes in that step."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "True. The flag is kept for house consistency but the comment now says plainly that it currently accomplishes nothing, rather than claiming work it does not do. The same paragraph now also bounds what the gate can promise: the report steps have no continue-on-error, so a CRASHED instrument reddens the job before this step runs — the gate covers 'ran and found nothing', not 'never ran'."
+  - objection: "The mq-oracle paths filter omits the corpus's fixtures directory."
+    seat: "agy-gemini-3.1-pro"
+    status: RETRACTED
+    disposition: rejected
+    note: "Reasoning on my own wording — I wrote 'drives the verdict module against fixtures' in the review prompt. Measured: the corpus resolves only `$REPO_ROOT/mq.sh` and `$REPO_ROOT/mq_state_verdict.py`, both already in the filter, and builds its cases inline. No fixtures directory exists."
+  - objection: "The step names on checkout/setup-python are omitted, violating the file's own naming convention."
+    seat: "agy-gemini-3.1-pro"
+    status: RETRACTED
+    disposition: rejected
+    note: "This repo's convention is the opposite: `voa-probe-tests.yml` and `restore-drill-wiring-tests.yml` both use a bare `- uses: actions/checkout@v7`. Matching the tree beats matching a general style rule."
+  - objection: "PRE-EXISTING DEFECT touched here: `voa-probe-tests.yml`'s shrink floor carried the same dead branch, and this wave made it a required context."
+    seat: "claude-opus-5 (orchestrator)"
+    status: CONFIRMED
+    disposition: accepted
+    note: >-
+      Fixed in this PR rather than deferred, and the scope call is deliberate:
+      the concern is the dead-branch CLASS, not the file, and leaving it in a
+      context this squad promoted last night would be knowing about a defect in
+      something we armed. It is one line plus its explanation.
+  - objection: "SEAT AVAILABILITY — R9's allowlist unsatisfiable from Pro. Seventh PR."
+    seat: "claude-opus-5 (orchestrator, measured this turn)"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Codex out of credits; tp1-qwen3.8-max timing out; kimi-code is this PR's build lane. Zero reachable allowlisted review seats. Reported for lane 6; R9 is a NOTICE today."
+  - objection: "SCOPE HONESTY — 'armed' is claimed narrowly and the claim should be read narrowly."
+    seat: "claude-opus-5 (orchestrator)"
+    status: CONFIRMED
+    disposition: accepted
+    note: >-
+      These two instruments are now SCHEDULED and their output is READABLE in a
+      run summary. That is not READ. The workflow's own top comment says so, and
+      this row says so, because the wave's whole subject is the distance between
+      a thing existing and a thing being in force — and a squad closing that gap
+      should not quietly open a smaller one in its own report.
