@@ -36,7 +36,7 @@ seat_diversity_note: >-
 diff:
   net_lines: >-
     AS OF this commit (pinned — a bare byte count inside a file every subsequent
-    commit rewrites is a claim that decays by construction): 6 files, +1110/-2,
+    commit rewrites is a claim that decays by construction): 7 files, +1112/-2,
     measured against the MERGE BASE with `git diff --cached --numstat`.
 
     Over the ~400-line target and said plainly rather than split: 590 of those
@@ -46,7 +46,7 @@ diff:
     land an instrument whose guilt fixtures arrive in a later PR, which is the
     exact shape this lane exists to stop.
 
-    The count INCLUDES this evidence pack (3 of the 6 files), because that is
+    The count INCLUDES this evidence pack (3 of the 7 files), because that is
     what `git diff --numstat` against the merge base measures and a number that
     quietly excluded itself would be the same convenient half-truth these
     receipts spend their time refusing.
