@@ -174,6 +174,18 @@ TRUE_OPERATOR_CATEGORIES = frozenset(
 # owner ("operatore" in Italian prose must not slip through as TECH-DEBT — W82 under-match).
 OPERATOR_TAG_RE = re.compile(r"\boperator\s*\[\s*([a-z0-9-]+)\s*\]", re.IGNORECASE)
 
+# Explicit disclaimer of an operator-lane claim ("not operator-gated", "not
+# operator[<cat>]") — found live 2026-08-30 (healer tick, PR #5269 blocked by
+# --strict-phantom): the owner field "next BUILD session (repo-side; not
+# operator-gated — this is a real code fix, just not a healer-tick-safe one)"
+# was classified PHANTOM-OPERATOR because plain substring matching on "operator"
+# cannot see the "not " sitting in front of it. Deliberately narrow: only
+# suppresses the phantom read when there is NO operator[cat] tag anywhere in the
+# owner (checked at the call site below) — an owner mixing a real tag with a
+# disclaiming aside elsewhere must still resolve through the tag logic, never
+# this exception, so a genuine phantom tag can't hide behind a nearby "not".
+NEGATED_OPERATOR_RE = re.compile(r"\bnot\s+operator\b", re.IGNORECASE)
+
 # NATURAL-WAIT: the owner declares a PASSIVE wait on a dated natural trigger
 # (`me (passivo — verifica 07-12)`) — the arming is done, only the proof needs the
 # calendar. NOT overdue debt: strict must not fail on it, and the healer's ledger
@@ -665,6 +677,11 @@ def parse_entry(raw: str, now: date) -> Entry:
         tags = [m.group(1).lower() for m in OPERATOR_TAG_RE.finditer(owner)]
         if tags and all(t in TRUE_OPERATOR_CATEGORIES for t in tags):
             cls = CLASS_OPERATOR_GATED
+        elif not tags and NEGATED_OPERATOR_RE.search(owner):
+            # No bracket tag at all AND the only "operator" mention is inside a
+            # "not operator..." disclaimer — this is prose DENYING an operator-lane
+            # claim, not making one. See NEGATED_OPERATOR_RE comment above.
+            cls = CLASS_TECH_DEBT
         else:
             cls = CLASS_PHANTOM_OPERATOR
     else:

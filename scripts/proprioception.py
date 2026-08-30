@@ -1024,7 +1024,23 @@ DEFAULT_REGISTRY: list[dict] = [
         # every tick (found live on Mini: com.balizero.wa-mirror, correctly disabled
         # per the W67c single-node-Telegram fix). Keep aligned with the detector's own
         # alarm semantics, not a second, drifted opinion of what counts as ok.
-        "verdict_key": "verdict", "ok_values": ["OK", "NOT-LOADED", "RECOVERED", "DISABLED"],
+        #
+        # NOT-LOADED removed 2026-08-30 (PENDING-ARMS row opened 2026-07-19, "guardians
+        # audit Wave 1" item 2, overdue 42d): the detector's own ALARM_VERDICTS is
+        # {"DEAD-GREEN", "DEAD-NONZERO", "ARMED-TO-NOTHING", "NOT-LOADED"} — NOT-LOADED
+        # IS an alarm there (a plist file present but not `launchctl load`ed is exactly
+        # esiste-≠-armato), yet this list kept whitelisting it as OK, so a genuinely
+        # unloaded LaunchAgent was invisible to BOTH this probe and the sibling
+        # `launchagent_canon` probe (whose `present_not_loaded` category is deliberately
+        # exempted here on the assumption THIS probe covers it — see that entry's
+        # comment). A label an operator actually disabled on purpose still reads
+        # DISABLED, not NOT-LOADED (`_disabled_verdict` overrides it before this list is
+        # ever consulted — see launchd_liveness_detector.py), so this change does not
+        # cry-wolf on an intentional disable; it only stops swallowing an ACCIDENTAL
+        # unload. self-test below pins the detector's ALARM_VERDICTS set by reading its
+        # source text, so any future verdict this list disagrees with fails loudly
+        # instead of drifting quietly again (superscar #9).
+        "verdict_key": "verdict", "ok_values": ["OK", "RECOVERED", "DISABLED"],
         "fix_hint": "read the job's real log; DEAD-GREEN = TCC re-grant (operator); ARMED-TO-NOTHING = retire or repoint the plist",
     },
     {
@@ -1283,6 +1299,34 @@ def selftest() -> int:
         st, _, ev = run_wrap(root, disabled_entry, 10)
         if st != RECONCILED:
             failures.append(f"DISABLED verdict parsed as {st}, want RECONCILED ({ev[:1]})")
+        # 2026-08-30: the mirror-image guilt case for the fix above — an ACCIDENTALLY
+        # unloaded LaunchAgent (no operator disable, just NOT-LOADED) must now DIVERGE.
+        # Before the fix this echoed RECONCILED (ok_values whitelisted NOT-LOADED),
+        # which is exactly how a real esiste-≠-armato gap went invisible.
+        not_loaded_payload = json.dumps({"findings": [{"label": "com.example.stray", "verdict": "NOT-LOADED"}], "alarms": 0})
+        not_loaded_entry = {**launchd_entry, "target": [echo, not_loaded_payload]}
+        st, _, ev = run_wrap(root, not_loaded_entry, 10)
+        if st != DIVERGED:
+            failures.append(f"NOT-LOADED verdict parsed as {st}, want DIVERGED ({ev[:1]})")
+        # Structural guard against re-drift (superscar #9): read the detector's OWN
+        # ALARM_VERDICTS from source text (never import it — that module argparse's at
+        # module scope in other code paths and this selftest must stay dependency-free)
+        # and assert every alarm verdict it declares is excluded from this probe's
+        # ok_values. A future verdict added to ALARM_VERDICTS that this list forgets to
+        # exclude now fails the selftest by name, instead of drifting quietly for
+        # another 42 days like NOT-LOADED did.
+        real_root = repo_root() or root
+        detector_src = (real_root / "scripts" / "launchd_liveness_detector.py").read_text()
+        m = re.search(r'ALARM_VERDICTS\s*=\s*(\{[^}]*\})', detector_src)
+        if not m:
+            failures.append("could not locate ALARM_VERDICTS in launchd_liveness_detector.py — selftest is blind")
+        else:
+            import ast
+            alarm_verdicts = ast.literal_eval(m.group(1))
+            probe_ok_values = set(launchd_entry.get("ok_values", []))
+            leaked = alarm_verdicts & probe_ok_values
+            if leaked:
+                failures.append(f"launchd_liveness ok_values whitelists detector ALARM_VERDICTS {sorted(leaked)} — esiste≠armato regression")
         if redact("token Bearer abcdef123456789012 end") == "token Bearer abcdef123456789012 end":
             failures.append("redact() failed to mask a Bearer token")
     if failures:

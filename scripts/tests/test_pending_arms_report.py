@@ -247,6 +247,38 @@ def test_innocence_operator_word_only_in_proof_not_flagged(tmp_path):
     assert e.cls == par.CLASS_TECH_DEBT
 
 
+def test_innocence_negated_operator_disclaimer_is_not_phantom(tmp_path):
+    # Live 2026-08-30 (healer tick): owner text explicitly DENIES claiming an
+    # operator lane ("not operator-gated") — plain substring matching on
+    # "operator" cannot see the negation and misread this as a phantom claim.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | negated disclaimer artifact | step | "
+        "next BUILD session (repo-side; not operator-gated) | proof",
+    )
+    assert e.cls == par.CLASS_TECH_DEBT
+
+
+def test_guilt_negation_does_not_rescue_a_real_operator_tag(tmp_path):
+    # A negated aside elsewhere in the owner must NOT rescue a genuinely
+    # untagged/mis-tagged operator claim living alongside it.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | mixed negation artifact | step | "
+        "operator[vibes] (not operator-gated for the other half) | proof",
+    )
+    assert e.cls == par.CLASS_PHANTOM_OPERATOR
+
+
+def test_guilt_bare_operator_word_unaffected_by_negation_regex(tmp_path):
+    # Regression pin: bare "operator" (no "not" nearby) must still phantom.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | bare operator artifact | step | operator | proof",
+    )
+    assert e.cls == par.CLASS_PHANTOM_OPERATOR
+
+
 def test_firebreak_precedence_over_phantom_documented(tmp_path):
     # Pre-existing precedence: an explicit 'firebreak' in the raw text wins the
     # classification even with an untagged operator owner. Documented, not accidental.
