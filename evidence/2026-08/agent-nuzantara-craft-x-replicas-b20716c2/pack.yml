@@ -38,11 +38,17 @@ seat_diversity_note:
   across families, not just across seats)."
 diff:
   net_lines:
-    "7 files, +2301/-23 (net 2324) — the exact string `evidence_pack_lint.py --print-measured`
-    prints for this diff against origin/main (6 new files under research/operations/2026-08-28-
-    beyond-sota-xfamily/ + 1 edited: research/operations/2026-08-28-beyond-sota-panel-INDEX.md).
-    Self-reported here verbatim, not hand-narrated, per the tool's own canonical-sentence-to-paste
-    convention — see receipt #1b."
+    "10 files, +2632/-23 = 2609 net lines -- the FULL PR diff (git diff --no-renames
+    --numstat, merge-base 8b60993b1 to HEAD, unscoped), which is what harness-floor.yml's
+    own Step 2c/7b feeds evidence_pack_lint.py as --numstat-file for the countable-claims
+    rule (verified by replaying that workflow's exact staging locally). Supersedes an
+    earlier, narrower measurement carried in a prior draft of this pack, which restricted
+    the count to the CONTENT-ONLY files (the six new xfamily files plus the edited
+    INDEX.md) and so omitted this task's own three evidence-pack files (brief.yml,
+    journal.jsonl, pack.yml) -- that narrower, content-only scope is unchanged and still
+    correct on its own terms (it is what the gear-floor receipt below deliberately
+    measures, net_lines=2324, reverified against this same final commit), but it is not
+    what CI checks this field against, which is the full, unscoped diff. See receipt #1."
   behaviour_change:
     "None. Six research files (raw TP1 seat output under a run-header this PR controls) plus one
     coverage-matrix/prose edit to an existing INDEX file. Nothing executes, deploys, routes, or
