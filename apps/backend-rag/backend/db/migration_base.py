@@ -5,7 +5,9 @@ Provides base classes and utilities for database migrations
 
 import hashlib
 import logging
+import os
 import re
+import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -14,6 +16,103 @@ import asyncpg
 from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+
+# ---------------------------------------------------------------------------
+# Provenance (migration 299)
+# ---------------------------------------------------------------------------
+# `_schema_versions` records WHAT and WHEN. Migration 299 added WHO, THROUGH
+# WHAT and WITH WHICH RUNNER. These helpers fill them, and the rule that makes
+# them worth anything is: `applied_as` is asked of POSTGRES, never taken from
+# something the caller can set. A provenance field a caller can spoof records
+# a claim, not a fact.
+
+_APPLIED_VIA_VALUES = ("release_command", "manual", "ci")
+
+
+def resolve_applied_via() -> str:
+    """Which invocation path is running: release_command | manual | ci.
+
+    Deterministic and derived from the ENVIRONMENT THE PLATFORM SETS, not from
+    a flag a human passes:
+
+    * Fly sets `FLY_APP_NAME` in the machine that runs `release_command`.
+    * GitHub Actions sets `CI=true` (and `GITHUB_ACTIONS`).
+    * Anything else is a human at a shell -- `manual`.
+
+    Fly is checked FIRST because a Fly machine is the narrower, more specific
+    fact: `CI` may also be set inside a container image for unrelated reasons,
+    and mislabelling a production release as `ci` would defeat the column's
+    only purpose. The value is CHECK-constrained by migration 299, so an
+    unexpected string is rejected by the database rather than silently stored.
+    """
+    if os.environ.get("FLY_APP_NAME"):
+        return "release_command"
+    if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
+        return "ci"
+    return "manual"
+
+
+def resolve_runner_version() -> str:
+    """A NON-SECRET identifier of the runner that applied a row.
+
+    Deliberately boring: the module path plus the Python version. It must never
+    carry a token, a DSN, a hostname or a username -- this string is written to
+    a table that survives, and a provenance column is exactly the kind of place
+    a secret gets parked "temporarily". Kept short because it is stored per
+    row.
+    """
+    return f"migration_base/py{sys.version_info.major}.{sys.version_info.minor}"
+
+
+async def resolve_applied_as(conn: asyncpg.Connection) -> str | None:
+    """The effective PostgreSQL role, asked of the server.
+
+    `SELECT current_user` -- not `USER`, not an env var, not a DSN fragment.
+    W130's temporary `GRANT visa_ledger_owner TO backend_rag_v2` is precisely
+    the case this exists to make visible after the fact: the DSN's username
+    would have said `backend_rag_v2` either way, while `current_user` reports
+    what the session is actually acting as.
+
+    Returns None rather than raising if the query fails: provenance is
+    valuable, but refusing to record a migration that APPLIED CLEANLY because
+    a metadata read failed would turn a nice-to-have into an outage.
+    """
+    try:
+        return await conn.fetchval("SELECT current_user")
+    except Exception:  # provenance must never block an apply that succeeded
+        logger.warning("could not resolve current_user for provenance; recording NULL")
+        return None
+
+
+async def _schema_versions_has_provenance(conn: asyncpg.Connection) -> bool:
+    """True when migration 299 has been applied to THIS database.
+
+    Necessary because the runner must work against a database that predates
+    299 -- including while 299 itself is the migration being applied. Asked of
+    the catalogue, not assumed from the file tree.
+    """
+    fetchval = getattr(conn, "fetchval", None)
+    if fetchval is None:
+        # A connection object that cannot answer a catalogue question cannot
+        # prove provenance columns exist. FAIL SAFE to the legacy INSERT rather
+        # than raising: this probe exists to ADD a metadata column, and it must
+        # never be the reason a migration that would otherwise apply cleanly
+        # does not. (Found by an existing test whose FakeConnection implements
+        # only `execute` -- the probe turned a passing test into an
+        # AttributeError, which is the probe breaking the thing it observes.)
+        return False
+    try:
+        return bool(
+            await fetchval(
+                "SELECT EXISTS (SELECT 1 FROM information_schema.columns "
+                "WHERE table_name = '_schema_versions' AND column_name = 'applied_as')"
+            )
+        )
+    except Exception:  # a metadata read must never abort a good apply
+        logger.warning("could not probe _schema_versions provenance columns; assuming absent")
+        return False
 
 
 class MigrationError(Exception):
@@ -414,6 +513,33 @@ class BaseMigration:
             execution_time_ms,
             rollback_sql,
         )
+        # Provenance (migration 299). Asked of the CATALOGUE, not assumed from
+        # the file tree: this runner must keep working against a database that
+        # predates 299 -- including during the apply of 299 itself, where the
+        # columns do not exist yet at the moment this row is written.
+        if await _schema_versions_has_provenance(conn):
+            await conn.execute(
+                """
+                INSERT INTO _schema_versions
+                (migration_name, migration_number, checksum, description,
+                 execution_time_ms, rollback_sql, applied_by,
+                 applied_as, applied_via, runner_version)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                ON CONFLICT (migration_name) DO NOTHING
+            """,
+                self.migration_name,
+                self.migration_number,
+                checksum,
+                self.description,
+                execution_time_ms,
+                rollback_sql,
+                "migration-base",
+                await resolve_applied_as(conn),
+                resolve_applied_via(),
+                resolve_runner_version(),
+            )
+            return
+
         await conn.execute(
             """
             INSERT INTO _schema_versions

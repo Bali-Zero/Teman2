@@ -57,12 +57,18 @@ from typing import Any
 # Make the audit runnable from anywhere without PYTHONPATH gymnastics.
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+import hashlib
+
 import asyncpg
 
 from backend.app.core.config import settings
 from backend.db.migration_manager import MigrationManager
 
 logger = logging.getLogger(__name__)
+
+# The runner discovers migrations here; the audit MUST use the same directory
+# or it would verify a different set than the one that applies.
+MIGRATIONS_V2_DIR = Path(__file__).resolve().parent / "migrations_v2"
 
 
 # ---------------------------------------------------------------------------
@@ -107,6 +113,148 @@ class AuditReport:
 # ---------------------------------------------------------------------------
 # Individual checks
 # ---------------------------------------------------------------------------
+
+
+
+# ---------------------------------------------------------------------------
+# Checksum verification (migration 299)
+# ---------------------------------------------------------------------------
+# `migration_base.py::_log_migration` has computed `sha256(sql)` and stored it
+# in `_schema_versions.checksum` for as long as the table has existed. NOTHING
+# EVER READ IT BACK -- grep the tree before this PR and the column is
+# write-only. A stored proof that is never verified is the same family as a
+# cron that exits 0 without doing its work: it reassures without checking.
+#
+# What a mismatch actually means: the migration FILE on disk is no longer the
+# text that was applied to this database. Either the file was edited after the
+# fact (which silently diverges every fresh environment from production,
+# because a fresh apply runs the NEW text while production carries the OLD
+# schema), or the row was written by something other than this runner.
+#
+# The sentinel is real and must stay allowed. `migration_manager.py:461`
+# inserts the literal string `legacy_fake_checksum` for `001_baseline_v2.sql`
+# when adopting a pre-existing database -- the SQL was deliberately NOT
+# executed there, so no honest checksum exists. Allowing it BY MIGRATION
+# NUMBER, with a written reason, is the difference between an exception and a
+# hole: a blanket "ignore anything that says legacy" would let any future row
+# opt out of verification by storing that string.
+
+LEGACY_CHECKSUM_SENTINEL = "legacy_fake_checksum"
+
+# migration_number -> why this row is allowed to carry the sentinel.
+LEGACY_CHECKSUM_ALLOWLIST: dict[int, str] = {
+    1: (
+        "001_baseline_v2.sql is marked applied WITHOUT executing its SQL when the "
+        "runner adopts a pre-existing database (migration_manager.py:451-462); the "
+        "text was never run, so there is no honest checksum to record."
+    ),
+}
+
+
+def _migration_sql_by_number() -> dict[int, Path]:
+    """On-disk migration files keyed by number, discovered the same way the
+    runner discovers them so the audit cannot drift from what actually applies."""
+    found: dict[int, Path] = {}
+    for path in sorted(MIGRATIONS_V2_DIR.glob("*.sql")):
+        head = path.name.split("_", 1)[0]
+        if head.isdigit():
+            found[int(head)] = path
+    return found
+
+
+async def _check_migration_checksums(manager: MigrationManager) -> list[Finding]:
+    """Recompute every applied migration's checksum from disk and compare.
+
+    Rows whose file is absent are NOT reported here: that is the orphan case
+    `_check_tracking_divergence` already owns, and duplicating it would make
+    one schema problem produce two findings with different names.
+    """
+    findings: list[Finding] = []
+    assert manager.pool is not None
+    on_disk = _migration_sql_by_number()
+
+    async with manager.pool.acquire() as conn:
+        has_table = await _table_exists(conn, "_schema_versions")
+        if not has_table:
+            return findings
+        # SELECT * rather than naming the columns, and the reason is not style.
+        # A `_schema_versions` WITHOUT a `checksum` column is a LEGITIMATE
+        # shape: several fixtures in this tree create a minimal ledger, and an
+        # old database may predate the column. Naming `checksum` in the SELECT
+        # makes those a hard error on a schema that is not wrong -- and an
+        # audit that cries on a valid shape is one people switch off.
+        # The presence is then read off the ROWS, not from a second catalogue
+        # round trip: fewer queries, and it cannot disagree with what was
+        # actually fetched.
+        rows = await conn.fetch("SELECT * FROM _schema_versions ORDER BY migration_number")
+
+    if not rows:
+        return findings
+    if "checksum" not in rows[0]:
+        return findings
+
+    for row in rows:
+        number = row["migration_number"]
+        stored = row["checksum"]
+        path = on_disk.get(number)
+
+        # The sentinel is judged on the ROW, BEFORE the file lookup, and the
+        # ordering is load-bearing rather than stylistic. `001_baseline_v2.sql`
+        # -- the one migration the allowlist exists for -- has NO FILE in
+        # migrations_v2/ at all (the directory starts at 092; that row is
+        # written by migration_manager.py when adopting a pre-existing
+        # database). Judging the sentinel after `if path is None: continue`
+        # therefore made the entire allowlist UNREACHABLE: a branch that looks
+        # like a guard and can never fire. Found 2026-08-31 by this check's own
+        # corpus failing with KeyError, not by reading the code.
+        if stored == LEGACY_CHECKSUM_SENTINEL:
+            if number in LEGACY_CHECKSUM_ALLOWLIST:
+                continue
+            findings.append(
+                Finding(
+                    code="migration_checksum_unallowed_sentinel",
+                    severity="error",
+                    message=(
+                        f"migration {number} ({row['migration_name']}) stores the "
+                        f"{LEGACY_CHECKSUM_SENTINEL!r} sentinel but is not in "
+                        "LEGACY_CHECKSUM_ALLOWLIST. The sentinel means 'this SQL was "
+                        "never executed'; allowing it implicitly would let any row opt "
+                        "out of checksum verification by storing that string."
+                    ),
+                    details={"migration_number": number, "migration_name": row["migration_name"]},
+                )
+            )
+            continue
+
+        # No file: that is the ORPHAN case, and `_check_tracking_divergence`
+        # already owns it. Reporting it here too would turn one schema problem
+        # into two findings with different names, which is how an operator
+        # learns to ignore both.
+        if path is None:
+            continue
+
+        actual = hashlib.sha256(path.read_text(encoding="utf-8").encode("utf-8")).hexdigest()
+        if actual != stored:
+            findings.append(
+                Finding(
+                    code="migration_checksum_mismatch",
+                    severity="error",
+                    message=(
+                        f"migration {number} ({row['migration_name']}) does not match the "
+                        "file on disk: the text applied to this database is not the text "
+                        "in the repository. A fresh environment would apply the NEW file "
+                        "and diverge from this schema."
+                    ),
+                    details={
+                        "migration_number": number,
+                        "migration_name": row["migration_name"],
+                        "stored_checksum": stored,
+                        "recomputed_checksum": actual,
+                        "path": str(path),
+                    },
+                )
+            )
+    return findings
 
 
 async def _check_pending_migrations(manager: MigrationManager) -> list[Finding]:
@@ -347,6 +495,7 @@ async def run_audit(
 
     checks_run = [
         "pending_migrations",
+        "migration_checksums",
         "tracking_divergence",
         "required_tables",
         "client_email_uniqueness",
@@ -354,6 +503,7 @@ async def run_audit(
     findings: list[Finding] = []
     try:
         findings.extend(await _check_pending_migrations(manager))
+        findings.extend(await _check_migration_checksums(manager))
         findings.extend(await _check_tracking_divergence(manager.pool))
         findings.extend(await _check_required_tables(manager.pool, required_tables))
         findings.extend(await _check_client_email_uniqueness(manager.pool))
