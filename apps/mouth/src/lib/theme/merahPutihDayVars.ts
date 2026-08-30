@@ -99,8 +99,19 @@ export const MERAH_PUTIH_DAY_VARS = {
   // day ground before this line existed: banner body text 2.56:1, links
   // 2.90:1, and white on the dismiss button 2.90:1 — all under the 4.5:1
   // floor, on a fixed-bottom consent bar every non-consented visitor sees.
-  // That is a REGRESSION THIS MIGRATION CAUSED: the same #94a3b8 measured
-  // 6.25:1 against the navy ground it was chosen for.
+  //
+  // TWO OF THOSE THREE ARE THIS MIGRATION'S DOING; THE THIRD IS NOT, and the
+  // first version of this comment blamed all three (corrected 2026-08-31 after
+  // measuring the OLD design). Body text and links are ours: #94a3b8 measured
+  // 6.25:1 against the navy it was chosen for and 2.56:1 against paper — the
+  // ground moved, the token did not. The dismiss BUTTON is white on
+  // `--bz-accent`, and both of those colours are element-local: a page-ground
+  // change cannot move that ratio at all. A walk of the pre-migration
+  // production measured that same button at 2.9:1 — it was already failing,
+  // and this token mapping now fixes a defect that predates the lane rather
+  // than one it introduced. Keeping the true and the false attribution in one
+  // sentence would have taught the next reader that a ground change can break
+  // an element-local pair, which is exactly the reasoning error to avoid here.
   //
   // Restated here rather than edited in ConsentBanner, deliberately: that
   // component is shared with the rest of the /visa funnel, which is still on

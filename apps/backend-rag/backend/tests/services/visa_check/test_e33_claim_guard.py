@@ -672,3 +672,58 @@ class TestNegationGovernmentRules:
         assert not check_e33_claims(
             "Per E33, il deposito non può essere di USD 130.000 presso qualsiasi banca."
         )
+
+
+class TestTheWorkClaimKnowsTheProductsOwnName:
+    """ "Second Home" must reach the work pattern exactly as "E33" does.
+
+    This pattern was the only one of the ten with `requires_e33_context=False`:
+    it hardcoded `\\bE33[A-Z]?\\b` in its own regex rather than using the shared
+    context vocabulary, which already knew `second[- ]home`, `rumah kedua` and
+    `silver hair`. So the guard was blind to the name clients, marketing pages
+    and the bot itself normally use — on the one claim in this set that risks a
+    client's immigration status rather than their money.
+
+    A cross-family adversarial probe (2026-08-31) found it by inventing its own
+    sentences rather than reusing the corpus above; the negation corpus could
+    not have found it, because every sentence in it says "E33".
+    """
+
+    GUILTY = [
+        ("en-e33", "The E33 allows you to work in Indonesia."),
+        ("en-second-home", "The Second Home visa allows you to work in Indonesia."),
+        ("en-hyphen", "The Second-Home permit entitles you to employment in Indonesia."),
+        ("it-second-home", "Il visto Second Home ti permette di lavorare in Indonesia."),
+        ("id-rumah-kedua", "Visa Rumah Kedua memungkinkan Anda bekerja di Indonesia."),
+        ("id-second-home", "Visa Second Home mengizinkan Anda bekerja di Indonesia."),
+    ]
+
+    INNOCENT = [
+        ("en-negated", "The Second Home visa does not allow you to work in Indonesia."),
+        ("it-negated", "Il visto Second Home non ti permette di lavorare in Indonesia."),
+        ("id-negated", "Visa Rumah Kedua tidak mengizinkan Anda bekerja di Indonesia."),
+        (
+            "en-residence-carveout",
+            "The Second Home visa allows you to reside in Indonesia.",
+        ),
+    ]
+
+    @pytest.mark.parametrize(("label", "text"), GUILTY, ids=[x for x, _ in GUILTY])
+    def test_the_claim_fires_under_every_name_the_product_has(self, label, text):
+        assert "e33_permits_local_work" in {v.pattern_id for v in check_e33_claims(text)}, (
+            f"{label}: the work claim went unflagged — {text!r}"
+        )
+
+    @pytest.mark.parametrize(("label", "text"), INNOCENT, ids=[x for x, _ in INNOCENT])
+    def test_correct_sentences_under_those_names_stay_silent(self, label, text):
+        assert not check_e33_claims(text), f"{label} is correct but fired: {text!r}"
+
+    def test_the_name_vocabulary_has_exactly_one_definition(self):
+        """The context gate and the work pattern must not drift apart again."""
+        from backend.services.visa_check import e33_claim_guard as g
+
+        assert g._E33_CONTEXT_RE.pattern == g._E33_NAME
+        work = next(p for p in g.E33_FORBIDDEN_PATTERNS if p.pattern_id == "e33_permits_local_work")
+        assert "second[- ]home" in work.regex.pattern, (
+            "the work pattern no longer carries the shared name vocabulary"
+        )

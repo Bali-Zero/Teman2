@@ -104,6 +104,9 @@ jobs:
               scripts/lib/heartbeat.sh|\
               scripts/lib/wr2_runtime_stamp.py|\
               scripts/lint_plist_keepalive.py|\
+              scripts/lint_decision_registry.py|\
+              scripts/tests/test_lint_decision_registry.py|\
+              docs/decisions/registry.yaml|\
               scripts/arsenal_probe.py|\
               scripts/check_adversarial_review.py|\
               scripts/nb_curator_artifact_gate.py|\
@@ -170,6 +173,8 @@ jobs:
               scripts/tests/test_tcc_migrate_desktop_paths.py|\
               scripts/tests/test_lint_tcc_desktop_paths.py|\
               infra/tcc-desktop-paths/allowlist.txt|\
+              scripts/canon_blocks_publish.py|\
+              scripts/tests/test_canon_blocks.py|\
               scripts/launchd_liveness_detector.py|\
               scripts/tests/test_launchd_liveness_expected_nonzero.py|\
               scripts/tests/test_launchd_liveness_exit_status_decode.py|\
@@ -466,6 +471,7 @@ jobs:
             scripts/tests/test_secrets_permissions_audit.py \
             scripts/tests/test_lane_outcome_report.py \
             scripts/tests/test_pending_arms_report.py \
+            scripts/tests/test_lint_decision_registry.py \
             scripts/tests/test_lint_plist_keepalive.py \
             scripts/tests/test_arsenal_probe.py \
             scripts/tests/test_adversarial_review_gate.py \
@@ -503,7 +509,8 @@ jobs:
             scripts/test_lint_test_reward_hacking.py \
             scripts/tests/test_required_context_map.py \
             scripts/tests/test_check_required_workflow_conformance.py \
-            scripts/tests/test_unreachable_workflow_conditions.py ; do
+            scripts/tests/test_unreachable_workflow_conditions.py \
+            scripts/tests/test_canon_blocks.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
               python -m pytest "$t" -q || fail=1
