@@ -26,29 +26,49 @@ name: Seat broker env-minimization tests
 # would pass just as well against a child that sees nothing because the fixture broke.
 #
 # Deliberately NOT a branch-protection required context (repo-settings action, operator-
-# gated; a permanently-red required check blocks the whole merge queue).
+# gated; a permanently-red required check blocks the whole merge queue). It starts on a PR
+# that touches the broker, its registry, its corpus, or `.gitattributes` (a checkout-
+# semantics change such as `eol=crlf` breaks these shell scripts without appearing in any
+# of the other paths).
 #
-# WHY `on.pull_request` CARRIES NO `paths:` FILTER (corrected 2026-08-31, measured)
-# --------------------------------------------------------------------------------
-# It used to. Pairing a PR-side `paths:` filter with the `merge_group:` trigger below is
-# the exact asymmetry `scripts/ci/lint_trigger_symmetry.py` (L06-PR1) forbids — and this
-# file was that lint's first live violation. `merge_group` accepts no `paths:` sub-key at
-# all, so the queue run ALWAYS executed while the PR run fired only when a guarded file
-# changed. Measured over every run this workflow had since it landed: EIGHT `merge_group`,
-# ZERO `pull_request`. The author never saw the job, the queue ran it, and a red there
-# ejects the entry — head-green/queue-red by construction, which is precisely what the
-# lint exists to catch.
+# BEING ADVISORY IS WHY THERE IS NO `merge_group:` TRIGGER (corrected 2026-08-31)
+# ------------------------------------------------------------------------------
+# This file shipped on 2026-08-30 19:15 with a bare `merge_group:` alongside the
+# `pull_request.paths` filter below. That pair is broken twice over:
 #
-# The filter is what goes, NOT the `merge_group:` trigger: dropping the trigger instead
-# would satisfy the lint while throwing away the combination-coverage it was added for
-# (see its own note below). Cost of this shape: ~40s on every PR.
+#   1. `merge_group` accepts no `paths:` sub-key at all, so the queue run ALWAYS
+#      executed while the PR run fired only when a guarded file changed. Measured over
+#      the whole window: EIGHT `merge_group` runs, ZERO `pull_request` runs. The author
+#      never saw the job; the queue did. That is the head-green/queue-red split the
+#      L06-PR1 trigger-symmetry lint exists to forbid, and this file was its first live
+#      violation — red in every merge group, which is what kept ejecting that lint's own
+#      PR (#5340).
+#   2. Independently of the lint: Zero's 2026-08-27 queue-slim cure removed `merge_group`
+#      from EVERY advisory workflow, because each queue entry was spawning ~50 runs and
+#      the 11 gating contexts starved behind the ~40 that gate nothing. See
+#      `scripts/tests/test_advisory_workflows_no_merge_group.py`. This workflow is
+#      advisory — it is absent from `infra/required.d/contexts.json` (11 contexts) and
+#      from branch protection — so the queue trigger was never its to take.
 #
-# `push.paths` keeps its filter and is untouched — a push to main gates no PR, which the
-# lint declares an explicit scope limit. One platform limit still applies to it: GitHub
-# evaluates path filters against at most the first 3,000 files of a diff, so a large enough
-# push can touch a guarded file and still not trigger this workflow. That is stated rather
-# than papered over. `.gitattributes` is in the set because a checkout-semantics change such
-# as `eol=crlf` breaks these shell scripts without appearing in any of the other paths.
+# So the `merge_group:` line goes and the `paths:` filter stays. Removing the FILTER
+# instead would also have satisfied the lint, but it would have kept an advisory job in
+# the queue against a standing repo-wide ruling and paid ~40s on every PR to do it. The
+# three workflows this file's own header names as its shape-siblings —
+# `fleet-burst-tests.yml`, `vercel-autopromote-tests.yml`, `intake-review-reader-liveness.yml`
+# — all carry `pull_request.paths` and no `merge_group`. This file was the outlier
+# against its own declared family; it now matches it.
+#
+# What is genuinely given up: a `merge_group` run tests the SYNTHETIC MERGE revision, so
+# it could catch two individually-green PRs whose combination breaks the broker. The
+# 2026-08-27 cure made exactly that trade for every advisory workflow, deliberately —
+# PR-time coverage is unchanged and the post-merge `push` run below still detects it.
+# Stated rather than quietly dropped: this is a real loss, already priced by that ruling,
+# and not one this file gets to re-decide on its own.
+#
+# "Starts on", not "runs on every PR that touches them": GitHub evaluates path filters
+# against at most the first 3,000 files of a diff, so a large enough PR can touch a guarded
+# file and still not trigger this workflow. That is a platform limit, not something this
+# file can close, and it is stated rather than papered over.
 #
 # `scripts/fleet_burst.sh` is in the filter FORWARD-LOOKINGLY and does not exist on this
 # branch yet: it arrives with L09-PR2 (PR #5322), where it names this broker as its
@@ -60,27 +80,25 @@ name: Seat broker env-minimization tests
 # rather than being remembered.
 
 on:
-  # No `paths:` here, deliberately — see the header block. A PR-side filter paired
-  # with `merge_group:` is the head-green/queue-red asymmetry L06-PR1 forbids.
   pull_request:
-  # Runs on the merge queue's synthetic revision too, so two individually-green
-  # PRs whose COMBINATION breaks the broker are caught before landing rather
-  # than after. Without this the only post-merge signal is the push run below,
-  # which is detection, not prevention.
-  merge_group:
-  push:
-    branches:
-      - main
-    # The workflow file is in the set on purpose: a PR that changes ONLY this file
-    # would otherwise produce no main-push run after merge, leaving
-    # main-push-failure-watch.yml with nothing to observe.
-    paths:
+    paths: &guarded_paths
       - "scripts/with_seat.sh"
       - "scripts/tests/test_with_seat_env_minimization.sh"
       - "infra/llm-credentials/seat-env.json"
       - "scripts/fleet_burst.sh"
       - ".gitattributes"
       - ".github/workflows/with-seat-broker-tests.yml"
+  # NO `merge_group:` — see the header block. This workflow is advisory, and
+  # advisory workflows deliberately do not run in the merge queue (Zero's
+  # 2026-08-27 queue-slim cure). It carried one from 2026-08-30 19:15 until
+  # this commit; in that window it ran 8 times in the queue and 0 times on a PR.
+  push:
+    branches:
+      - main
+    # Identical set, the workflow file included: a PR that changes ONLY this file
+    # runs on the PR but would produce no main-push run after merge, leaving
+    # main-push-failure-watch.yml with nothing to observe.
+    paths: *guarded_paths
 
 permissions:
   contents: read
