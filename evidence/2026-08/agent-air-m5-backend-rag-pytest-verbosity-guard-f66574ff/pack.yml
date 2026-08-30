@@ -27,17 +27,34 @@ seat_diversity_note:
   repo, not a domain judgment call where cross-family breadth would add anything a second
   independent adversarial pass could not."
 diff:
-  net_lines: 12 files, +9/-16, 5 commits
+  net_lines: >
+    Not stated as a count. This branch has merged origin/main repeatedly across the rounds this
+    pack spans, and an earlier commit on the branch (not this session's fix commits) added the
+    whole guard infrastructure — so the merge-base-to-head diff this lint measures is wider than,
+    and structurally different from, any count scoped to "this session's own fix commits", and it
+    re-stales on the next merge regardless of how it was scoped. See the file list below instead,
+    which stays true across a merge.
   behaviour_change:
-    Twelve non-evidence files change across 3 rounds — two GitHub Actions workflow files, one git
-    hook script, one shell dev-loop script, two cron/automation Python scripts, three production
-    Python files in the autonomous-lab service, and three test files (one of them the site the
-    guard itself found in live CI). Every change removes exactly one redundant command-line
-    pytest verbosity flag (or updates a test assertion to match a removed flag) — no test logic,
-    no business logic, no workflow trigger, no permission, and no secret changes anywhere in the
-    diff. The observable change is that 12 distinct pytest call sites, which the new guard shipped
-    in this same PR was about to refuse with UsageError (exit 4, no tally printed), now complete
-    normally and print a real pass/fail or collected-count tally.
+    Every file this session touched removes exactly one redundant command-line pytest verbosity
+    flag (or updates a test assertion / probe to match a removed flag) — no test logic, no
+    business logic, no workflow trigger, no permission, and no secret change in any of them. The
+    files, by round — round one, .github/workflows/tests.yml; round two, apps/backend-rag/
+    scripts/backend_stability_gate.py, .github/workflows/fly-deploy.yml, .husky/pre-push, and the
+    autonomous_lab verification-command family (apps/backend-rag/backend/services/autonomous_lab/
+    command_policy.py, sandbox_runner.py, and their paired test files test_run_cli.py and
+    test_runtime_worker.py); round three, apps/backend-rag/backend/tests/db/
+    test_xdist_worker_isolation.py (the nested-pytest-subprocess site the guard itself found in
+    live CI), scripts/cron-agent-python/tdd_pipeline.py, scripts/coverage_trend.py, and
+    scripts/quickcheck.sh. scripts/coverage_trend.py and scripts/cron-agent-python/tdd_pipeline.py
+    are NOT incidental to this diff — both are cron/automation scripts that shell out to a nested
+    pytest against apps/backend-rag (a config root whose own addopts already carries a redundant
+    -q), both were carrying the identical redundant CLI -q as every other site in this family, and
+    both were found by this session's own targeted search for "pytest invoked from inside Python
+    code" — the shape the dispatcher named as invisible to every workflow/shell predicate used in
+    earlier rounds — triggered by the guard catching test_xdist_worker_isolation.py live in CI. The
+    observable change on every site above is that a pytest call the new guard shipped in this same
+    PR was about to refuse with UsageError (exit 4, no tally printed) now completes normally and
+    prints a real pass/fail or collected-count tally.
 receipts:
   - claim:
       Deterministic gear floor recomputed from this PR's actual changed-file list is 3, and
