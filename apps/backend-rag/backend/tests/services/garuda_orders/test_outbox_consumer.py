@@ -71,6 +71,9 @@ async def _connect() -> asyncpg.Connection:
         if os.environ.get("CI"):
             pytest.fail(f"no reachable Postgres in CI at {_DSN}: {exc}")
         pytest.skip(f"no reachable Postgres at {_DSN}: {exc}")
+        raise  # unreachable: pytest.fail/skip always raise, but CodeQL's
+        # py/uninitialized-local-variable can't see that and flags `conn`
+        # below as reachable-unset without an explicit terminal raise here.
     # INSIDE the guard, and closing on failure (2026-08-30, found by a blind
     # cross-family refuter). The first version of this fix awaited the codec
     # registration OUTSIDE the try: a failure there escaped the skip/fail
@@ -84,6 +87,9 @@ async def _connect() -> asyncpg.Connection:
         if os.environ.get("CI"):
             pytest.fail(f"codec registration failed in CI at {_DSN}: {exc}")
         pytest.skip(f"codec registration failed at {_DSN}: {exc}")
+        raise  # same reasoning as the connect() guard above — keeps this
+        # branch symmetric and provably terminal instead of an implicit
+        # fallthrough that would return a connection with no jsonb codec.
     return conn
 
 
