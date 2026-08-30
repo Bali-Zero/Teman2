@@ -40,6 +40,13 @@ from backend.app.utils.cookie_auth import (
     get_samesite_policy,
 )
 from backend.app.utils.logging_utils import get_logger
+from backend.services.garuda_flow.public_api import (
+    CheckStore,
+    UnconfiguredCheckStore,
+)
+from backend.services.garuda_flow.public_api import (
+    PersistencePolicyUnavailable as CheckStorePersistencePolicyUnavailable,
+)
 from backend.services.garuda_portal.magic_link import (
     ExchangeOutcome,
     IdempotencyConflict,
@@ -262,6 +269,28 @@ def get_garuda_magic_link_store(request: Request) -> MagicLinkStore:
     return getattr(request.app.state, "garuda_magic_link_store", None) or _default_store
 
 
+_default_check_store = UnconfiguredCheckStore()
+
+
+def get_garuda_check_store(request: Request) -> CheckStore:
+    """Reads `app.state.garuda_check_store` -- the SAME slot L2's
+    `garuda_voa_public.get_garuda_check_store` reads and
+    `service_initializer.py` wires -- duplicated rather than imported per
+    this module's LANES.md file-ownership discipline (see the module
+    docstring and `_FeatureDisabled`'s identical rationale above: this lane
+    does not couple to `garuda_voa*.py`, L2's reserved filename pattern;
+    `garuda_flow.public_api` is the shared PORT module, not that router
+    file, so importing the Protocol/exception types from it is the seam,
+    not a boundary violation).
+
+    Used ONLY to re-verify, in `request_magic_link` below, that the
+    caller's `garuda_result_session` cookie actually owns the `result_id`
+    it is requesting a magic link for -- the same persistence port
+    `getEligibilityResult` already reads for the identical purpose.
+    """
+    return getattr(request.app.state, "garuda_check_store", None) or _default_check_store
+
+
 # ============================================================
 # Request models — literal translation of openapi.yaml
 # ============================================================
@@ -358,6 +387,7 @@ async def request_magic_link(
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
     garuda_result_session: Annotated[str | None, Cookie(alias=_RESULT_SESSION_COOKIE)] = None,
     store: MagicLinkStore = Depends(get_garuda_magic_link_store),
+    check_store: CheckStore = Depends(get_garuda_check_store),
 ) -> Response:
     """Always 202 for an unknown or non-owned result and never returns the
     token (contract, verbatim). Exact replay returns the original 202
@@ -378,6 +408,47 @@ async def request_magic_link(
     # `garuda_voa_public.py::get_eligibility_result`'s identical short-circuit
     # for the same reason.
     if garuda_result_session is None or _RESULT_ID_PATTERN.fullmatch(payload.result_id) is None:
+        result.headers["Idempotency-Replayed"] = "false"
+        return result
+
+    # Ownership check (security fix, 2026-08-30): a cookie's mere PRESENCE
+    # used to be treated as sufficient to request a magic link for ANY
+    # result_id in the request body -- the cookie was forwarded to
+    # `store.issue` as `result_session_secret` and discarded there
+    # unverified (`MagicLinkStore.issue` never persists or compares it; see
+    # `magic_link_store.py::PostgresMagicLinkStore.issue`'s `del` and the
+    # Protocol docstring it points back to). That let anyone who knows or
+    # guesses a `result_id` they do NOT own -- using only their own,
+    # unrelated session cookie -- have that OTHER result's magic link
+    # mailed to an email address they control.
+    #
+    # `CheckStore.get` re-verifies the (result_id, session_secret) pair
+    # against the hash persisted at check-creation time
+    # (`garuda_flow/check_store.py::PostgresCheckStore.get`) -- the exact
+    # primitive `garuda_voa_public.get_eligibility_result` already calls for
+    # the identical ownership question. An unrecognised pair MUST take the
+    # SAME non-enumerating 202 path as the absent-cookie/malformed-id case
+    # above: a non-owned result_id has to be indistinguishable from a
+    # non-existent one to the caller, or the endpoint becomes an oracle for
+    # "does this result_id exist and belong to someone".
+    try:
+        owns_result = await check_store.get(
+            result_id=payload.result_id, session_secret=garuda_result_session
+        )
+    except CheckStorePersistencePolicyUnavailable:
+        # Same mapping `garuda_voa_public.get_eligibility_result` uses for
+        # this identical unconfigured-check-store state: a configuration
+        # gap must surface as an OBSERVABLE 503 (`SERVICE_UNAVAILABLE` is
+        # already declared for this operation in the frozen contract), never
+        # silently collapse into the enumeration-safe 202 below -- that
+        # would read as "no magic link is ever issued", with no signal that
+        # anything is misconfigured, rather than a dark-launch gap.
+        logger.warning(
+            "garuda_portal_auth: persistence policy unavailable at ownership check"
+        )
+        return _error("SERVICE_UNAVAILABLE")
+
+    if owns_result is None:
         result.headers["Idempotency-Replayed"] = "false"
         return result
 
