@@ -49,8 +49,18 @@ WORKFLOW = REPO_ROOT / ".github" / "workflows" / "immune-enforcement.yml"
 _SENTINEL_RE = re.compile(
     r"^\s+([A-Za-z0-9_./*-]+\.(?:py|sh|md|json|txt|yml))\|?\\?$", re.MULTILINE
 )
-# A loop entry: an indented python test path continued with a trailing ` \`.
-_LOOP_RE = re.compile(r"^\s+(scripts/[A-Za-z0-9_./-]+\.py) \\$", re.MULTILINE)
+# A loop entry: an indented python test path, either continued with a trailing
+# ` \` or — for the LAST entry — closing the list with ` ; do`.
+#
+# The ` ; do` alternative was added 2026-08-31. Until then this regex required
+# the continuation backslash, so the final entry of the loop was invisible to
+# this check and could be added without a sentinel path — the exact half-armed
+# shape this file exists to catch, in the file that catches it. Measured when
+# found: the terminal entry happened to be listed correctly, so nothing was
+# broken, but nothing was checking either (superscar #3, under-match).
+_LOOP_RE = re.compile(
+    r"^\s+(scripts/[A-Za-z0-9_./-]+\.py)(?: \\| ; do)$", re.MULTILINE
+)
 
 
 def _workflow_text() -> str:
@@ -129,6 +139,29 @@ def test_guilt_a_looped_test_absent_from_the_sentinel_is_reported() -> None:
     assert missing_triggers(synthetic) == [
         "scripts/tests/test_orphaned_never_triggered.py"
     ]
+
+
+def test_guilt_the_LAST_loop_entry_is_parsed_not_skipped() -> None:
+    """The terminal entry closes the list with ` ; do` instead of a continuation
+    backslash. A parser that only knows the backslash form silently exempts it,
+    and the last line of a list is exactly where a new entry gets appended."""
+    synthetic = (
+        "              scripts/tests/test_wired.py|\\\n"
+        "              .github/workflows/immune-enforcement.yml)\n"
+        "            scripts/tests/test_wired.py \\\n"
+        "            scripts/tests/test_last_and_untriggered.py ; do\n"
+    )
+    assert "scripts/tests/test_last_and_untriggered.py" in loop_tests(synthetic)
+    assert missing_triggers(synthetic) == ["scripts/tests/test_last_and_untriggered.py"]
+
+
+def test_innocence_a_wired_LAST_entry_reports_nothing() -> None:
+    synthetic = (
+        "              scripts/tests/test_last_and_wired.py|\\\n"
+        "              .github/workflows/immune-enforcement.yml)\n"
+        "            scripts/tests/test_last_and_wired.py ; do\n"
+    )
+    assert missing_triggers(synthetic) == []
 
 
 def test_innocence_a_fully_wired_pair_reports_nothing() -> None:

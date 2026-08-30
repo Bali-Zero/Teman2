@@ -76,6 +76,7 @@ KNOWN_BOUNDARY_CLASSES = [
     "worktree<->gate",          # does git actually invoke a pre-push hook in this worktree (#2)
     "tunnel<->reachable",       # declared network tunnel/forward vs live reachability (2026-08-21)
     "declared<->enforced",      # policy-as-code in the repo vs what the node actually enforces (L13, 2026-08-31)
+    "home<->home",              # the SAME control-plane file on two machines (global CLAUDE.md, 2026-08-31)
 ]
 
 SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
@@ -902,6 +903,159 @@ def probe_repomap_size(root: Path, args: dict, timeout: int) -> tuple[str, int, 
     ]
 
 
+_CANON_OPEN_RE = re.compile(r"<!--\s*CANON:([A-Za-z0-9._-]+)\s*-->")
+_CANON_CLOSE_RE = re.compile(r"<!--\s*/CANON:([A-Za-z0-9._-]+)\s*-->")
+
+
+def _canon_blocks(text: str) -> dict[str, str]:
+    """{block id: sha256-16 of its normalised body}.
+
+    Normalised on whitespace only — trailing spaces and line-ending differences
+    between machines are not doctrine drift, and treating them as drift would
+    make the first real finding arrive inside a crowd of false ones. Anything
+    else, including a single reworded sentence, changes the digest, which is the
+    point: this compares MEANING-BEARING text, and it cannot tell a fix from a
+    regression, only that the three copies stopped agreeing.
+
+    An unclosed block is not silently dropped: it is hashed to end-of-file and
+    its id is suffixed, so a malformed marker surfaces as a mismatch rather than
+    as one fewer thing to compare.
+    """
+    blocks: dict[str, str] = {}
+    lines = text.splitlines()
+    open_id: str | None = None
+    body: list[str] = []
+    for line in lines:
+        close = _CANON_CLOSE_RE.search(line)
+        if close and open_id is not None and close.group(1) == open_id:
+            blocks[open_id] = hashlib.sha256(
+                "\n".join(ln.rstrip() for ln in body).encode()
+            ).hexdigest()[:16]
+            open_id, body = None, []
+            continue
+        opened = _CANON_OPEN_RE.search(line)
+        if opened and open_id is None:
+            open_id, body = opened.group(1), []
+            continue
+        if open_id is not None:
+            body.append(line)
+    if open_id is not None:
+        blocks[f"{open_id}!unclosed"] = hashlib.sha256(
+            "\n".join(ln.rstrip() for ln in body).encode()
+        ).hexdigest()[:16]
+    return blocks
+
+
+def probe_canon_blocks(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
+    """Do the fleet's three copies of the global CLAUDE.md agree where it matters?
+
+    THE BOUNDARY: `~/.claude/CLAUDE.md` on M5 <-> on Pro <-> on Mini. It is
+    injected at turn 1 into every session and every subagent on the machine that
+    holds it, it is per-machine by design, and nothing has ever compared the
+    copies. Measured 2026-08-31: M5 27,377 B, Pro 22,795 B, Mini 22,795 B, and
+    the divergence is not cosmetic — Pro and Mini were missing the entire
+    SHIP-LIFECYCLE HARD RULE, carried the SUPERSEDED "no paid APIs ever" wording
+    of a rule Zero downgraded on 2026-06-04, and still named a seat retired on
+    2026-07-19. Two of those govern how work ships and what it may cost.
+
+    BLOCK LEVEL, NEVER WHOLE FILE. The file is SUPPOSED to differ per machine —
+    it carries machine-specific paths and roles — so hashing the whole thing
+    would alarm on every legitimate difference and be switched off within a week.
+    Only regions a human has explicitly marked as canon are compared:
+
+        <!-- CANON:<id> -->  ...doctrine...  <!-- /CANON:<id> -->
+
+    UNPROBEABLE WHEN NOTHING IS MARKED, which today is every machine (measured:
+    `grep -c 'CANON:'` returns 0 on M5 and 0 on Pro). A comparator that reported
+    "all blocks agree" across three files containing zero blocks would be the
+    purest possible instance of the disease this organ exists to detect, so the
+    absence of markers is reported as an absence and never as agreement.
+
+    READ-ONLY, and deliberately not a fourth copy of the thing it watches
+    (superscar family #1): the probe lives in the repo, runs from the checkout,
+    and never writes to `~/.claude/`.
+    """
+    home = Path(os.path.expanduser(args.get("home", "~")))
+    target = home / ".claude" / "CLAUDE.md"
+    report_path = Path(os.path.expanduser(args.get("report", "~/.claude/canon-blocks.json")))
+    max_age_min = float(args.get("max_age_min", 1440))
+
+    if not target.is_file():
+        return UNPROBEABLE, 0, [f"{target} absent — this machine has no global doctrine file"]
+
+    local = _canon_blocks(target.read_text(encoding="utf-8", errors="replace"))
+    if not local:
+        return UNPROBEABLE, 0, [
+            f"{target} carries no <!-- CANON:<id> --> markers — nothing is declared canon yet, "
+            "so there is nothing to compare (marking the blocks is an operator step)"
+        ]
+
+    if not report_path.is_file():
+        return UNPROBEABLE, 0, [
+            f"{len(local)} canon block(s) here, but no fleet report at {report_path} — "
+            "one machine must publish before any machine can compare"
+        ]
+    try:
+        report = json.loads(report_path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        return UNPROBEABLE, 0, [f"{report_path} unreadable ({type(exc).__name__}) — cannot compare"]
+
+    age_min = (time.time() - report_path.stat().st_mtime) / 60
+    if age_min > max_age_min:
+        return UNPROBEABLE, 0, [
+            f"fleet report is {int(age_min)} min old (> {int(max_age_min)}) — refusing to compare "
+            "against a stale snapshot, which is how a published file rots into a confident lie"
+        ]
+
+    me = report.get("machines", {})
+    seen_at = report.get("seen_at", {})
+    # The report is MERGED, one entry per machine, so the file's mtime is only
+    # the LAST publisher's. A peer that stopped publishing would otherwise be
+    # compared against forever on digests from whenever it went quiet — the same
+    # confident lie as a stale file, hidden one level down. Drop it and say so.
+    quiet_names: set[str] = set()
+    quiet: list[str] = []
+    for machine in sorted(me):
+        ts = seen_at.get(machine)
+        if ts is None:
+            continue  # written by a publisher older than this field; whole-report age governs
+        try:
+            age = (time.time() - float(ts)) / 60
+        except (TypeError, ValueError):
+            continue  # a malformed stamp is not evidence of quiet; whole-report age governs
+        if age > max_age_min:
+            quiet_names.add(machine)
+            quiet.append(f"{machine} (last published {int(age)} min ago)")
+    # Filter by NAME, never by string prefix of the display line: two machines
+    # whose names share a prefix would drop each other (superscar family #3).
+    me = {k: v for k, v in me.items() if k not in quiet_names}
+    if not me:
+        return UNPROBEABLE, 0, [
+            "no peer has published within "
+            f"{int(max_age_min)} min — nothing fresh to compare against: " + ", ".join(quiet)
+        ]
+
+    findings: list[str] = []
+    for block_id, digest in sorted(local.items()):
+        for machine, blocks in sorted(me.items()):
+            other = blocks.get(block_id)
+            if other is None:
+                findings.append(f"CANON:{block_id} is here but ABSENT on {machine}")
+            elif other != digest:
+                findings.append(f"CANON:{block_id} differs from {machine} ({digest} vs {other})")
+    for machine, blocks in sorted(me.items()):
+        for block_id in sorted(set(blocks) - set(local)):
+            findings.append(f"CANON:{block_id} exists on {machine} but is ABSENT here")
+
+    if findings:
+        return DIVERGED, len(findings), findings
+    note = f" (ignoring quiet: {', '.join(quiet)})" if quiet else ""
+    return RECONCILED, 0, [
+        f"{len(local)} canon block(s) identical across {len(me)} machine(s), "
+        f"report {int(age_min)} min old{note}"
+    ]
+
+
 BUILTINS = {
     "git_alignment": probe_git_alignment,
     "executed_code_currency": probe_executed_code_currency,
@@ -909,6 +1063,7 @@ BUILTINS = {
     "home_fork_scripts": probe_home_fork_scripts,
     "guardian_freshness": probe_guardian_freshness,
     "repomap_size": probe_repomap_size,
+    "canon_blocks": probe_canon_blocks,
 }
 
 
@@ -1129,6 +1284,15 @@ DEFAULT_REGISTRY: list[dict] = [
         "severity": "P1",
         "args": {"pairs": [{"glob": "research/regulatory/*-delta.json", "label": "regulatory deltas"}]},
         "fix_hint": "promote stranded deltas: git add research/regulatory/*-delta.json + PR",
+    },
+    {
+        "id": "canon_blocks", "type": "builtin", "target": "canon_blocks",
+        "class": "home<->home",
+        "boundary": "the canon blocks of ~/.claude/CLAUDE.md, machine against machine",
+        "machines": ["all"], "tags": ["fast"], "timeout_sec": 10,
+        "severity": "P1",
+        "args": {"home": "~", "report": "~/.claude/canon-blocks.json", "max_age_min": 1440},
+        "fix_hint": "port the DIVERGED block, never the whole file — it is per-machine by design; publish again from the machine that is ahead",
     },
     {
         "id": "repomap_size", "type": "builtin", "target": "repomap_size",
