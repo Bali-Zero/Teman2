@@ -1,0 +1,154 @@
+# STAGING LAYOUT, not this directory's. See #5325's pack for the full note.
+council_run: council.jsonl
+brief_ref: evidence/brief.yml
+pii_scan: clean
+lanes:
+  - lane: implementer
+    role: build
+    role_note: "authored scripts/ci/lint_trigger_symmetry.py from a rule-by-rule contract"
+    seat: "kimi-code/kimi-for-coding"
+  - lane: orchestrator
+    role: review
+    role_note: "ground (what PR-1 actually shipped vs specced, the live asymmetry count, whether the arming reaches the lint's real subject), the corpus, the arming, five repairs after review, and ten mutants"
+    seat: "claude-opus-5 (xhigh)"
+  - lane: refuter
+    role: review
+    role_note: "blind cross-family refutation — 5 real findings cured, 1 BLOCKER refuted by execution"
+    seat: "agy-gemini-3.1-pro"
+seat_diversity: 3
+seat_diversity_note: >-
+  Three families, build lane non-Anthropic (Moonshot) — D3 by a real build lane,
+  never seat_override. Refuter cross-family from the builder (Google). Codex sol
+  out of credits.
+diff:
+  net_lines: >-
+    AS OF the commit this pack ships with: 6 files, +909/-1, net 908 — THREE-DOT
+    against the merge base, never two-dot (W102). Gear floor recomputed = 3
+    (hot-zone: .github/workflows/); declared Gear 3, at the floor. Over the ~400
+    target and stated: the lint is ~300 and its corpus ~340, because nine cases
+    exist and five of them pin a defect a refuter found. The remaining three
+    files are this evidence pack. The spec budgeted 150 net lines for the lint
+    alone, which was written before the five findings existed.
+  behaviour_change: >-
+    A new lint runs on the live tree inside the REQUIRED `antidotes` job, with no
+    `continue-on-error`, and blocks a merge on a newly-introduced trigger
+    asymmetry. Zero violations today, so nothing currently merging changes. Its
+    corpus joins the same job's batch loop, and both files join the relevance
+    allowlist so a change to either re-runs them.
+receipts:
+  - claim: "The gap was real: the lint the L06-PR1 spec named did not exist"
+    cmd: "test -f scripts/ci/lint_trigger_symmetry.py on origin/main"
+    result: "absent. PR-1 landed reshaped as the required-context guard (#5214), which asserts BOTH triggers are declared — a different rule from the path-semantics one the spec named."
+    exit: 1
+    ts: "2026-08-31T08:15Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "The live tree has ZERO asymmetries, and the premise for a preventive guard is demonstrable rather than plausible"
+    cmd: "parse all 112 workflows; count those with merge_group AND a pull_request paths/paths-ignore filter"
+    result: >-
+      0 of 112. The premise: in THIS wave, three of the four workflows made
+      queue-aware (voa-probe-tests, restore-drill-wiring-tests,
+      p1s2-mutation-incremental) carried pull_request paths filters, and
+      "make it queue-aware" is naturally done by ADDING merge_group and leaving
+      the filter. That is the violation, one keystroke away, on files a squad was
+      editing this week — reachable and harmful, which is what a zero-catch guard
+      needs before it earns its place.
+    exit: 0
+    ts: "2026-08-31T08:20Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "ARMED — inside the required `antidotes` job, and a PR touching ANY workflow reaches it"
+    cmd: "parse immune-enforcement.yml for the step's job; check branch protection for that context; EXECUTE the relevance matcher against sample paths"
+    result: >-
+      Step lands in job `antidotes`, no continue-on-error; `antidotes` IS a
+      required context on main. The relevance gate resolved `relevant=true` for
+      both `.github/workflows/bad.yml` AND `.github/workflows/bad.yaml`, and
+      `relevant=false` for `docs/unrelated.md`. That last measurement refutes a
+      refuter BLOCKER which assumed a GitHub `paths:` filter with micromatch
+      semantics; the gate is a bash `case` statement, where `*` crosses `/`.
+    exit: 0
+    ts: "2026-08-31T09:20Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "Corpus: 9 cases, guilt and innocence and the declared scope limit"
+    cmd: "python3 scripts/tests/test_lint_trigger_symmetry.py"
+    result: "9/9. Guilt on paths, paths-ignore, pull_request_target, an unparseable file, a missing on: block, a literal true: key, and an operational failure; innocence on four legitimate shapes including a push.paths filter; plus a live-tree case that asserts BOTH cleanliness AND that the linter actually scanned >100 workflows (rc==0 alone would pass on a linter that scanned nothing)."
+    exit: 0
+    ts: "2026-08-31T09:30Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "Ten mutants, each ASSERTED to have applied before its verdict was read; all ten killed"
+    cmd: "mutate, run the corpus, revert"
+    result: >-
+      Round 1 (five): the core rule never firing; paths-ignore uncounted;
+      unparseable silently skipped; over-match onto push.paths; an operational
+      failure reading as 0. Round 2, the refuter's cures (five): pull_request_target
+      dropped; the opt-out excusing without a reason; a missing on: block
+      mislabelled unparseable; the true:-key hole reopened; an exemption applied
+      silently. TWO first-attempt mutants were no-ops and were rewritten after the
+      assert caught them — a mutation that does not apply proves nothing.
+    exit: 0
+    ts: "2026-08-31T09:35Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+dissent:
+  - objection: "UNDER-MATCH — `pull_request_target` with a paths filter alongside merge_group creates the identical trap, and the rule only inspects `pull_request`."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Correct. Both triggers start a run on a PR and both support `paths:`, while merge_group supports neither — so either one filtered produces the same divergence. This repo has exactly one workflow using it (measured), which is precisely the kind of rare surface an under-match hides in. Now both are judged, with a guilt case naming the trigger in the violation text so a reader is not sent to the wrong one."
+  - objection: "OVER-MATCH — the rule forbids a shape a careful author could make safe: keep the PR-side paths filter for runner economy, and have the merge_group job self-skip with an in-job path filter."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: >-
+      Fair, and it is superscar #3 pointed at this lint's own rule: the rule
+      judges the FORM (`paths:` present) while the hazard is about the ENTITY
+      (can the queue run diverge from the PR run), and the two are not statically
+      decidable apart. Rather than pretend otherwise, an explicit per-file opt-out
+      marker was added — deliberately NOT the central allowlist the spec asked
+      for, because the justification should travel with the workflow it excuses,
+      where the next reader of that workflow will meet it. A marker with no reason
+      does not excuse: an exemption is a guard running in reverse and wants its
+      own justification. Every exemption is printed, never silent.
+  - objection: "The docstring's required-context claim is mechanically wrong: a PR whose required check is pending cannot be ADDED to the merge queue at all, so that case is not a queue-red trap."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Right, and the conflation would have sent whoever hit the second symptom looking in the wrong place. The paragraph now separates them: non-required -> head-green/queue-red; required -> a PR that can never be queued, with nothing red to fix. Same root cause, different mechanism, different symptom."
+  - objection: "A workflow that parses perfectly but simply omits `on:` is reported as 'unparseable' — the file is valid YAML and merely missing a schema key."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "A mislabel that sends a reader hunting for a syntax error that is not there. The parse now happens at the call site so the two failures are told apart and reported separately. Both remain violations — this lint cannot guard a file whose triggers it cannot read — but each is named for what it is."
+  - objection: "The `doc.get(True)` YAML-1.1 fallback would accept a literal `true:` key: a document with no `on:` block but a top-level `true: something` satisfies the fallback and sails through."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Real, and it defeats the missing-block check for exactly that file. The fallback is now taken only when what it finds is trigger-shaped (a mapping or a list), never an arbitrary scalar. Pinned by its own guilt case."
+  - objection: "BLOCKER — the relevance gate's `.github/workflows/*.yaml` glob does not recurse under micromatch, so a `.yaml` workflow would never trigger the lint and the arming is bypassed."
+    seat: "agy-gemini-3.1-pro"
+    status: RETRACTED
+    disposition: rejected
+    note: >-
+      Refuted by EXECUTION rather than argument. The relevance gate is not a
+      GitHub `paths:` filter — it is a bash `case` statement over `git diff
+      --name-only`, where `*` crosses `/`. The matcher was extracted from the
+      workflow and run against real paths: `.github/workflows/bad.yml` ->
+      relevant=true, `.github/workflows/bad.yaml` -> relevant=true,
+      `docs/unrelated.md` -> relevant=false. The finding was a correct reading of
+      the wrong mechanism, and it was worth checking: had it been a `paths:`
+      filter it would have been right, and the arming would have been theatre.
+  - objection: "SEAT AVAILABILITY — R9's allowlist unsatisfiable from Pro. Sixth PR."
+    seat: "claude-opus-5 (orchestrator, measured this turn)"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Codex out of credits; tp1-qwen3.8-max timing out; kimi-code is this PR's build lane. Zero reachable allowlisted review seats. Reported for lane 6; R9 is a NOTICE today."
+  - objection: "SPEC DEVIATION — the spec asks for a dated, shrink-only central allowlist; this ships a per-file opt-out marker instead."
+    seat: "claude-opus-5 (orchestrator)"
+    status: CONFIRMED
+    disposition: accepted
+    note: >-
+      Declared. The spec anticipated live asymmetries to grandfather; measured,
+      there are ZERO across 112 workflows, so a central allowlist would ship
+      empty and could only ever be used to admit the FIRST violation — an escape
+      hatch built ahead of any case needing it. The refuter then named a shape
+      that genuinely might need one, so an escape does ship: a per-file marker
+      that must carry a reason and is always reported. It is narrower than the
+      spec's allowlist and keeps the justification where the next reader will
+      meet it.

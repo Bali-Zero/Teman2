@@ -291,6 +291,8 @@ jobs:
               scripts/tests/test_check_required_workflow_conformance.py|\
               scripts/ci/lint_unreachable_workflow_conditions.py|\
               scripts/tests/test_unreachable_workflow_conditions.py|\
+              scripts/ci/lint_trigger_symmetry\.py|\
+              scripts/tests/test_lint_trigger_symmetry\.py|\
               infra/required.d/contexts.json|\
               infra/guard-conformance/registry.json|\
               infra/guard-conformance/check_guard_conformance.py|\
@@ -510,7 +512,8 @@ jobs:
             scripts/tests/test_required_context_map.py \
             scripts/tests/test_check_required_workflow_conformance.py \
             scripts/tests/test_unreachable_workflow_conditions.py \
-            scripts/tests/test_canon_blocks.py ; do
+            scripts/tests/test_canon_blocks.py \
+            scripts/tests/test_lint_trigger_symmetry.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
               python -m pytest "$t" -q || fail=1
@@ -1018,6 +1021,32 @@ jobs:
           # clean today — a censused guard that no workflow actually runs against
           # live data is theater (W81).
           python3 scripts/ci/check_required_workflow_conformance.py
+
+      - name: Trigger symmetry — a queue-only path filter is a head-green/queue-red split
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # L06-PR1 follow-through. `merge_group:` does NOT support a `paths:`
+          # sub-key in GitHub Actions at all, so a workflow carrying BOTH a
+          # merge_group trigger AND a pull_request paths filter has path
+          # semantics that can never match: the pull_request run may be SKIPPED
+          # while the queue run always executes. The author never sees the job,
+          # the queue runs it, it fails, and the entry is ejected with a red
+          # nobody was shown. For a required context it is worse — the PR
+          # reports "Expected — waiting for status" forever (W69).
+          #
+          # ZERO violations on the live tree (112 workflows, measured
+          # 2026-08-31), so this is preventive, and its premise is demonstrable
+          # rather than hypothetical: in this same wave THREE of the four
+          # workflows made queue-aware carried pull_request paths filters, and
+          # "make it queue-aware" is naturally done by adding `merge_group:` and
+          # leaving the filter alone. That is the violation, one keystroke away,
+          # on files a squad was editing this week.
+          #
+          # The guilt+innocence corpus in the batch above proves the CHECKER can
+          # still bite; this step proves the REAL repo tree is clean today — a
+          # censused guard that no workflow runs against live data is theater
+          # (W81), which is the same reason its two neighbours below exist.
+          python3 scripts/ci/lint_trigger_symmetry.py
 
       - name: "Unreachable workflow if: conditions (security.yml orphaned-alarm class)"
         if: steps.paths.outputs.relevant == 'true'
