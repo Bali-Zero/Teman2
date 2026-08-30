@@ -4,43 +4,68 @@ name: PR collision check (advisory)
 # generalizes lint_scar_number_collision.py's claim-set technique from
 # "W-number" to "file + hunk-window".
 #
-# TWO SENSES OF "ADVISORY" HERE — do not conflate:
+# TWO SENSES OF "ADVISORY" HERE — do not conflate, and now do not put them
+# in the same job either:
 #   - The COLLISION VERDICT is advisory: a PR that collides never fails this
 #     job (the check step below distinguishes "collision found", rc=1, which
 #     is a documented step SUCCESS, from an OPERATIONAL failure, any other
 #     non-zero rc, which fails the step for real). Promise about PR CONTENT.
+#     This lives in job `pr-collision-check`, name `PR collision check
+#     (advisory)` -- the context reported by that job must stay advisory.
 #   - The CORPUS (scripts/ci/test_pr_collision_check.py) is NOT advisory: if
 #     it fails, this tool is broken and every verdict it ever posted is
 #     worthless -- the self-test step is `continue-on-error: false`,
 #     unguarded, deliberately. Same rule as scripts/pr_size_taxonomy.py's own
 #     docstring: "report-only is a promise about PR CONTENT, never about
 #     this tool's own operational health." An operational failure still
-#     exits non-zero, here as there.
+#     exits non-zero, here as there. This lives in job `collision-corpus`,
+#     name `PR collision check corpus`; that job is intentionally designed
+#     to be promoted to a required status check.
 #
-# Never a required check, no job may `needs:` this. No top-level `paths:`
-# filter -- a collision is cross-PR, not scoped to what THIS PR touches.
+# The advisory job `needs:` the corpus job: if the discriminator is broken,
+# its verdict is worthless and must not be posted. The advisory job itself
+# remains never a required check, and no other job may `needs:` it.
+# No top-level `paths:` filter -- a collision is cross-PR, not scoped to
+# what THIS PR touches. A `paths:` filter is now also FORBIDDEN: a required
+# status check filtered by paths never starts a run on a PR that does not
+# touch those paths, so it hangs "Expected -- waiting for status" forever.
 on:
   pull_request:
     types: [opened, reopened, synchronize, ready_for_review]
+  merge_group:
 
 concurrency:
-  group: pr-collision-check-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  # `github.event.pull_request.number` is empty on merge_group events, so
+  # the previous group `pr-collision-check-${{ github.event.pull_request.number }}`
+  # would have collapsed every merge-queue entry in the repository into the
+  # single group `pr-collision-check-`. With `cancel-in-progress: true`,
+  # those entries would cancel each other, ejecting queue entries with a
+  # cancelled required check and leaving them unmergeable with nothing red
+  # to point at. Fall back to github.ref when there is no PR number, and
+  # only cancel in-progress runs for pull_request events.
+  group: pr-collision-check-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
-  pr-collision-check:
-    name: PR collision check (advisory)
+  collision-corpus:
+    name: PR collision check corpus
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      # Shallow default is deliberate and cheaper, and the reason is stronger
+      # than "a pytest file does not walk history" — a refuter of this diff
+      # rightly challenged that phrasing, since the corpus's own subject IS
+      # merge-base anchoring. What makes the shallow checkout safe is that the
+      # corpus never touches THIS workspace's history: every git-dependent case
+      # builds its own repository with `git init` inside pytest's `tmp_path`
+      # (see `_build_being_behind_repo`), so the only thing it needs from the
+      # checkout is the source files. That is a measurement, not a hope. The
+      # advisory job below keeps `fetch-depth: 0` + `filter: blob:none`, because
+      # the script IT runs really does anchor on the real merge-base.
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          filter: blob:none
 
       - uses: actions/setup-python@v7
         with:
@@ -68,6 +93,34 @@ jobs:
           set -uo pipefail
           python3 -m pip install --quiet pytest
           python3 -m pytest scripts/ci/test_pr_collision_check.py -v
+
+  pr-collision-check:
+    name: PR collision check (advisory)
+    needs: [collision-corpus]
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # `contents: read` is listed EXPLICITLY alongside the write scope, and its
+    # absence would have been a hard failure rather than a style point: a
+    # job-level `permissions:` block REPLACES the workflow-level one, it does
+    # not merge with it, so naming only `pull-requests: write` here sets every
+    # other scope to `none` and `actions/checkout` — the first step of this job
+    # — 403s before any script runs. Caught by a blind refuter of this diff.
+    # The repo's own precedent agrees: `security.yml`'s codeql job and
+    # `cron-fly-watcher.yml`'s run job both spell `contents: read` out next to
+    # the scope they actually wanted.
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          filter: blob:none
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
 
       # rc 0 (clean) and rc 1 (collision found) are both DOCUMENTED step
       # successes -- the collision verdict is advisory by design (see the
