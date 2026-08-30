@@ -1,10 +1,10 @@
-# NOT `evidence/brief.yml`. That root path EXISTS on this branch and belongs to a
-# DIFFERENT lane (`task_id: visa-window-seq18-0831`), so naming it would validate
-# this pack against someone else's brief — measured: the linter's acceptance-probe
-# rule reported 7 unmatched probes about `p.sequence`, `payload_sha256` and
-# RFC-8785 digests, none of which appear anywhere in this diff. `evidence_paths.py`
-# assigns this PR its own directory; point at the brief that is actually in it.
-brief_ref: evidence/2026-08/agent-nuzantara-infra-trigger-symmetry-unblock-61d546e9/brief.yml
+# The STAGING path, not this PR's real per-PR path: harness-floor.yml copies THIS
+# PR's own brief to /tmp/evidence-check/evidence/brief.yml and lints with
+# --repo-root /tmp/evidence-check, so the canonical name resolves to MY brief
+# there — never to the root file this branch inherited from another lane.
+# Both probes were right on different trees: the per-PR path FAILS in CI ("does
+# not resolve to a file on disk"); this value, run LOCALLY, reads that other brief.
+brief_ref: evidence/brief.yml
 plan_ref: >-
   Unjam the merge queue. Three PRs (#5340, #5370, #5372) showed UNMERGEABLE while
   green on their own PR refs; one job failed on all three merge_group refs. Root
@@ -36,7 +36,7 @@ diff:
     <merge-base>` against merge-base 6e4492b75, measured with this exact pack
     STAGED — the only moment the number can be true, since the pack is part of
     what it counts: with-seat-broker-tests.yml 38+5 = 43, brief.yml 117+0,
-    pack.yml 256+0. Total 421 across 3 files. A first draft of this field said
+    pack.yml 261+0. Total 421 across 3 files. A first draft of this field said
     261, from an ESTIMATE of the pack's own length; it was measured and
     corrected rather than left standing, which is the entire point of the
     field. The CODE change under review is 43 lines in ONE file; the other 378
