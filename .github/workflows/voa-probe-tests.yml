@@ -58,6 +58,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # The wrapper is `#!/bin/zsh` and loads `zsh/system` for `zsystem flock` (5 call sites),
+      # so the corpus drives a zsh script even though the corpus itself is bash. macOS ships
+      # zsh; `ubuntu-latest` does not, and the corpus says so rather than guessing —
+      # `FATAL: no zsh on PATH — the wrapper is #!/bin/zsh`, exit 1, which is exactly how the
+      # first run of this very workflow failed. Installed here rather than moving the job to
+      # `macos-latest`: the wrapper's zsh is a fleet choice, not a macOS dependency, and a
+      # Linux runner keeps this job cheap enough to stay blocking.
+      - name: zsh (the wrapper's interpreter — not present on ubuntu runners)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq zsh
+
       # BOTH steps below, never just the first one. Measured on 2026-08-30 against the shipped
       # files: collapsing every `"unknown"` literal in the probe to `"fail"` -- which would undo
       # the four-verdict lattice that exists so the probe cannot cause its own outage -- leaves
@@ -77,8 +87,13 @@ jobs:
       - name: The wrapper corpus holds — 56 checks against the real script in a scratch world
         run: bash scripts/tests/test_voa_probe_wrapper.sh
 
-      - name: The wrapper still parses (a shell syntax error is a silent dead organ)
-        run: bash -n infra/launchagents/wrappers/voa-probe-wrapper.sh
+      # `zsh -n`, not `bash -n`: the wrapper's shebang is `#!/bin/zsh`, so checking it with bash
+      # parses it under the wrong grammar — passing on syntax the real interpreter would reject,
+      # and rejecting zsh-only constructs that are correct. The installer really is `#!/bin/bash`
+      # and is checked with bash. Each script is checked by ITS OWN interpreter; the first
+      # version of this file used `bash -n` for both and was wrong about half of it.
+      - name: The wrapper still parses under zsh (a syntax error is a silent dead organ)
+        run: zsh -n infra/launchagents/wrappers/voa-probe-wrapper.sh
 
-      - name: The installer still parses (it is the only path that arms the plist)
+      - name: The installer still parses under bash (it is the only path that arms the plist)
         run: bash -n infra/launchagents/install_voa_probe.sh
