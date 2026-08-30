@@ -219,7 +219,18 @@ class PostgresMagicLinkStore:
         email: str,
         result_session_secret: str,
     ) -> IssueOutcome:
-        del result_session_secret  # not persisted -- see magic_link.py Protocol docstring
+        # Not persisted -- see magic_link.py Protocol docstring. Ownership of
+        # `result_id` by the caller's `garuda_result_session` cookie is now
+        # verified by the ROUTER (`garuda_portal_auth.request_magic_link`,
+        # security fix 2026-08-30) against `garuda_flow.public_api.CheckStore`
+        # BEFORE `issue` is ever called -- this parameter therefore arrives
+        # here only for an already-verified owner, but this method still has
+        # no ownership check of its own to perform: `result_session_secret`
+        # is not this store's hash target (the check-result's OWN session
+        # secret hash lives in `garuda_voa_check_results`, a different table
+        # this adapter does not own) and nothing here would gain security by
+        # holding onto the value.
+        del result_session_secret
 
         if not await self._active_policy_available():
             raise PersistencePolicyUnavailable("no active GARUDA_MAGIC_LINK retention policy")
