@@ -52,6 +52,10 @@ from pathlib import Path
 MAX_DELTA_LINES = 5
 MAX_PR_LINES = 5
 MAX_STALE_LINES = 4
+# Only ever emitted under ORGANISM_DIGEST_PENDING_ARMS=rows — an operator who
+# asks WHICH rows wants enough of them to act on, and none of this reaches the
+# default boot path.
+MAX_PENDING_ARMS_ROWS = 10
 HEARTBEAT_STALE_H = 26.0  # matches proprioception guardian_freshness for the arsenal report
 BUDGET_S = 6
 
@@ -342,7 +346,17 @@ def pending_arms_overdue() -> tuple[list[str], list[str]]:
     # correcting a previous commit's claim. The ledger is still read at modus TRIAGE and by
     # `pending_arms_report.py`; this only stops it from being the FIRST thing a
     # session sees at boot. Opt back in: ORGANISM_DIGEST_PENDING_ARMS=1.
-    if os.environ.get("ORGANISM_DIGEST_PENDING_ARMS", "0") != "1":
+    #
+    # THREE states, not two (added 2026-08-31): "0"/unset = silent (the default,
+    # unchanged); "1" = the one summary line (unchanged — every existing caller
+    # and every existing test in test_organism_digest_pending_arms.py asserts
+    # `len(lines) == 1`, and that assertion is load-bearing: it is what keeps a
+    # boot-injected receptor terse); "rows" = summary PLUS the ten oldest rows
+    # named. The detail is a THIRD state rather than a widening of "1" precisely
+    # so that opting into the count does not silently start costing ten lines of
+    # every session's boot on three machines.
+    _mode = os.environ.get("ORGANISM_DIGEST_PENDING_ARMS", "0")
+    if _mode not in ("1", "rows"):
         return lines, errs
     try:
         proc = subprocess.run(
@@ -376,12 +390,26 @@ def pending_arms_overdue() -> tuple[list[str], list[str]]:
                 f"pending-arms: {n_overdue} overdue by counts, {len(overdue)} matched "
                 "in entries (per-entry key drift?)"
             )
+        # OLDEST, not first-in-file. Measured on the live ledger 2026-08-31:
+        # `overdue[0]` (file order) had age 7d while the genuinely oldest row had
+        # age 56d — so the line said "top:" and showed something that was not the
+        # top of anything. The label and the value disagreed for the whole life of
+        # this branch; naming the oldest is also what makes the `rows` detail
+        # below worth reading. `or 0` because a drifted payload can carry
+        # age_days present-but-null, and sorting on None raises.
+        oldest = sorted(overdue, key=lambda e: (e.get("age_days") or 0), reverse=True)
         if n_overdue or overdue:
             # `or "?"` and not a get() default: a drifted payload can carry the
             # key with a null value, and None[:70] would raise inside the
             # catch-all below — losing the alarm to fix a detail.
-            top = (overdue[0].get("artifact") or "?")[:70] if overdue else "?"
-            lines.append(f"{n_overdue or len(overdue)} armamenti sospesi OVERDUE — top: {top}")
+            top = (oldest[0].get("artifact") or "?")[:70] if oldest else "?"
+            lines.append(f"{n_overdue or len(overdue)} armamenti sospesi OVERDUE — oldest: {top}")
+            if _mode == "rows":
+                for e in oldest[:MAX_PENDING_ARMS_ROWS]:
+                    age = e.get("age_days")
+                    age_s = f"{age}d" if isinstance(age, int) else "?d"
+                    art = (e.get("artifact") or "?")[:70]
+                    lines.append(f"  · {age_s} {art}")
     except Exception as e:
         errs.append(f"pending-arms: reporter failed ({type(e).__name__})")
     return lines, errs

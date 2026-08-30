@@ -55,10 +55,15 @@ running."
 **Gear**: 2
 **Build**:
 
-- Extend `pending_arms_report.py` with a `--budget`/ratchet mode: a JSON snapshot of the current
-  TECH-DEBT-overdue count, compared against the last committed snapshot. The count may not
-  increase without an explicit override line in the PR (same pattern as tg-gateway
-  `grandfathered.json`).
+- Extend `pending_arms_report.py` with a `--ratchet` mode. **Spec corrected in-lane 2026-08-31
+  (implementation PR, §5.1.4):** the original text asked for a committed JSON snapshot compared
+  against the live count. That shape is a countdown, not a ratchet — `tech_debt_overdue` is a
+  function of the CALENDAR (a FRESH row becomes OVERDUE at 48h), so a stored absolute number
+  reddens every innocent PR ~2 days after anyone opens a row. Shipped instead: BASE-vs-HEAD at a
+  single frozen `--now`, base = `git merge-base origin/main HEAD` (W102), so ageing cancels and
+  the delta is attributable to the diff alone. The count may not increase without an explicit
+  `RATCHET-OVERRIDE: tech_debt_overdue<=N -- <reason>` line in the ledger (same shrink-only
+  discipline as tg-gateway `grandfathered.json`); the acceptance criteria below are unchanged.
 - Extend `organism_digest.py` to name the **10 oldest** TECH-DEBT-overdue rows explicitly (the
   reporter already computes the count; this closes the gap to "an operator can see which rows").
 - Add a reporter schema self-test: assert the digest's parser reads the exact keys

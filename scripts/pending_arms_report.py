@@ -124,6 +124,7 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
@@ -948,6 +949,325 @@ def compute_counts(entries: List[Entry], check_pr_refs: bool = False) -> Dict[st
     return counts
 
 
+# =============================================================================
+# The overdue ratchet — "no NEW overdue rows without saying why"
+# =============================================================================
+#
+# WHY A DELTA AND NOT A SNAPSHOT. The obvious ratchet is a committed number
+# ("overdue must not exceed 440") compared against a live count. That shape is
+# a countdown, not a gate: `tech_debt_overdue` grows with the CALENDAR — a row
+# opened today becomes OVERDUE at 48h all by itself — so a committed snapshot
+# goes red, on every innocent PR, roughly two days after anyone opens a row.
+# A gate that reddens for a cause no PR created is a gate everyone learns to
+# disarm (family #2 arriving by way of #3). Measured while building this: 440
+# overdue rows, 14 of them fresh — i.e. up to 14 automatic reds in the next 48h,
+# none attributable to any diff.
+#
+# So both sides are evaluated at ONE frozen `now`. Aging then cancels exactly,
+# and the delta is what the DIFF did and nothing else. An innocent PR reads 0
+# forever, whatever the calendar says.
+#
+# WHICH BASE. `git merge-base origin/main HEAD` — the commit this branch forked
+# from — because the question is "what did THIS BRANCH author" (W102).
+#
+# ⚠️ Do NOT "fix" this to `origin/main`. The sibling check that runs beside this
+# one in the same workflow (`check_ledger_no_silent_loss.py`) uses `origin/main`
+# ON PURPOSE and was corrected INTO that on 2026-08-30, because it asks the
+# opposite question: "is this row still on CURRENT main?". Two adjacent checks,
+# one file, opposite correct bases. Unify them and one of the two starts lying —
+# exactly the W88/W102 pair, where reading only one scar breaks the other.
+#
+# CANNOT-VERIFY IS NOT CLEAN. A shallow clone with no `origin/main`, or no git
+# at all, exits 3 with the reason — never 0. A scan that could not look is not a
+# clean scan (W84).
+
+# Anchored at the start of the line (after markdown/HTML decoration) on purpose:
+# prose that merely MENTIONS the token — this very file's comments do — is not an
+# override attempt and must produce no output at all. A line that DOES start with
+# the token is an attempt, and a malformed attempt is reported loudly rather than
+# ignored: silence there would let a typo read as "no override was intended".
+_RATCHET_DECORATION_RE = re.compile(r"^[\s>#*+-]*(?:<!--)?\s*")
+RATCHET_OVERRIDE_TOKEN = "RATCHET-OVERRIDE:"
+RATCHET_OVERRIDE_RE = re.compile(
+    r"^RATCHET-OVERRIDE:\s*tech_debt_overdue\s*<=\s*(\d+)\s*(?:--|—)\s*(.*?)\s*(?:-->)?\s*$"
+)
+
+
+def parse_ratchet_overrides(text: str) -> List[Dict[str, Any]]:
+    """Every RATCHET-OVERRIDE attempt in `text`, each validated.
+
+    Recognised form, at the start of a line (markdown bullet / `<!-- -->`
+    wrapper allowed):
+
+        RATCHET-OVERRIDE: tech_debt_overdue<=443 -- three rows aged out mid-wave
+
+    An em dash is accepted in place of `--`. A mention of the token anywhere
+    other than the start of a line is prose and is ignored silently. An attempt
+    that is malformed, or whose reason is empty, comes back `valid=False` with
+    `why_invalid` set — never silently dropped.
+
+    Duplicates are expected, not an error: PENDING-ARMS.md is declared
+    `merge=union` in .gitattributes, so a union merge legitimately keeps two
+    copies of a header line both sides touched. All are returned; the caller
+    uses the highest ceiling.
+    """
+    overrides: List[Dict[str, Any]] = []
+    for raw_line in text.splitlines():
+        stripped = _RATCHET_DECORATION_RE.sub("", raw_line, count=1)
+        if not stripped.startswith(RATCHET_OVERRIDE_TOKEN):
+            continue
+        m = RATCHET_OVERRIDE_RE.match(stripped)
+        if not m:
+            overrides.append(
+                {
+                    "ceiling": None,
+                    "reason": "",
+                    "raw": raw_line.strip(),
+                    "valid": False,
+                    "why_invalid": (
+                        "malformed override; expected "
+                        "'RATCHET-OVERRIDE: tech_debt_overdue<=<int> -- <reason>'"
+                    ),
+                }
+            )
+            continue
+        ceiling = int(m.group(1))
+        reason = m.group(2).strip()
+        if not reason:
+            overrides.append(
+                {
+                    "ceiling": ceiling,
+                    "reason": "",
+                    "raw": raw_line.strip(),
+                    "valid": False,
+                    "why_invalid": "override reason is empty — a ceiling without a why is not a why",
+                }
+            )
+            continue
+        overrides.append(
+            {
+                "ceiling": ceiling,
+                "reason": reason,
+                "raw": raw_line.strip(),
+                "valid": True,
+                "why_invalid": None,
+            }
+        )
+    return overrides
+
+
+def ratchet_verdict(
+    base_overdue: int, head_overdue: int, overrides: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """Pure decision over three numbers: clean, override, or red.
+
+    Takes data, not argv, so the corpus can hit it directly instead of through
+    a subprocess that would need git and a ledger to say anything at all.
+
+    A valid override authorises HEAD only when its ceiling covers `head_overdue`
+    — a ceiling naming a number below the count authorises nothing, which is what
+    keeps an override from becoming a permanent blanket: the next increase needs a
+    new, higher, separately-reviewed ceiling.
+
+    A stale override (present while delta <= 0) is inert. An override may never
+    turn a clean run red; it can only ever authorise.
+    """
+    delta = head_overdue - base_overdue
+    notes: List[str] = []
+    for ov in overrides:
+        if not ov["valid"]:
+            notes.append(f"invalid override ignored — {ov['why_invalid']} :: {ov['raw']}")
+    valid = [ov for ov in overrides if ov["valid"]]
+
+    if delta <= 0:
+        return {"status": "clean", "delta": delta, "ceiling_used": None,
+                "reason_used": None, "notes": notes}
+
+    sufficient = [ov for ov in valid if (ov["ceiling"] or 0) >= head_overdue]
+    if sufficient:
+        best = max(sufficient, key=lambda ov: ov["ceiling"])
+        return {"status": "override", "delta": delta, "ceiling_used": best["ceiling"],
+                "reason_used": best["reason"], "notes": notes}
+
+    if valid:
+        ceilings = ", ".join(str(ov["ceiling"]) for ov in valid)
+        notes.append(
+            f"override ceiling(s) {ceilings} do not cover head count {head_overdue}"
+        )
+    return {"status": "red", "delta": delta, "ceiling_used": None,
+            "reason_used": None, "notes": notes}
+
+
+def _resolve_ratchet_base(ledger_path: Path, base_ref: Optional[str]) -> tuple[Optional[str], str]:
+    """(resolved_ref, how) — or (None, why-not). See the header for WHICH base."""
+    if base_ref is not None:
+        return base_ref, f"--base-ref {base_ref}"
+    rc, out, err = _git(["merge-base", "origin/main", "HEAD"], cwd=ledger_path.parent)
+    if rc != 0:
+        return None, err or f"git merge-base exited {rc}"
+    if not out:
+        return None, "git merge-base produced no output"
+    return out, "git merge-base origin/main HEAD"
+
+
+def run_ratchet(ledger_path: Path, now: date, base_ref: Optional[str]) -> int:
+    """0 clean / 0 override-accepted / 1 increased / 3 cannot-verify."""
+    resolved, how = _resolve_ratchet_base(ledger_path, base_ref)
+    if resolved is None:
+        print(
+            f"ratchet CANNOT-VERIFY: no base to compare against ({how}). "
+            "This is not a clean result — fetch origin/main (unshallow if needed) "
+            "or pass --base-ref.",
+            file=sys.stderr,
+        )
+        return 3
+
+    try:
+        base_entries = load_entries(ledger_path, now, ref=resolved)
+    except LedgerRefUnreadable as exc:
+        print(f"ratchet CANNOT-VERIFY: base ref {resolved!r} unreadable: {exc}", file=sys.stderr)
+        return 3
+
+    head_entries = load_entries(ledger_path, now, ref=None)
+    base_overdue = compute_counts(base_entries)["tech_debt_overdue"]
+    head_overdue = compute_counts(head_entries)["tech_debt_overdue"]
+    overrides = parse_ratchet_overrides(ledger_path.read_text(encoding="utf-8"))
+    verdict = ratchet_verdict(base_overdue, head_overdue, overrides)
+
+    for note in verdict["notes"]:
+        print(f"ratchet note: {note}", file=sys.stderr)
+
+    where = f"base {base_overdue} -> head {head_overdue} (delta {verdict['delta']}) at now={now.isoformat()} vs {resolved} ({how})"
+
+    if verdict["status"] == "clean":
+        print(f"ratchet CLEAN: {where}")
+        return 0
+
+    if verdict["status"] == "override":
+        print(f"ratchet OVERRIDE ACCEPTED: {where}")
+        print(f"  ceiling {verdict['ceiling_used']} — {verdict['reason_used']}")
+        valid = [ov for ov in overrides if ov["valid"]]
+        if len(valid) > 1:
+            for ov in valid:
+                print(f"  (also present) ceiling {ov['ceiling']} — {ov['reason']}")
+        return 0
+
+    print(f"ratchet RED: {where}")
+    # Name the rows, not just the number. Compare on the FULL raw line: two
+    # distinct rows can share an 80-char prefix, and a truncated key would
+    # silently drop one of them from the report.
+    base_raw = {e.raw for e in base_entries if e.bucket == f"{CLASS_TECH_DEBT}-OVERDUE"}
+    newly = [
+        e for e in head_entries
+        if e.bucket == f"{CLASS_TECH_DEBT}-OVERDUE" and e.raw not in base_raw
+    ]
+    if newly:
+        print("newly-overdue rows introduced by this branch:")
+        for e in newly:
+            opened = e.opened_date.isoformat() if e.opened_date else "?"
+            print(f"  - {e.artifact or '(no artifact parsed)'} (opened {opened}, age {e.age_days}d)")
+    else:
+        # Possible when a row's TEXT changed while staying overdue. Say so
+        # rather than printing an empty list under a "newly-overdue" heading.
+        print("  (count rose but no row is textually new — a row was edited in place)")
+    print(
+        "To authorise deliberately, add to the ledger:\n"
+        f"  RATCHET-OVERRIDE: tech_debt_overdue<={head_overdue} -- <why this is the right trade>"
+    )
+    return 1
+
+
+def ratchet_selftest() -> int:
+    """Guilt AND innocence on synthetic ledgers in a temp dir. No git, no real ledger.
+
+    This runs in CI on every triggering PR, so "the ratchet reddens on +1 overdue
+    row" is proven by a real run's log rather than asserted from a laptop. If the
+    detector ever stops detecting, this step is what goes red.
+
+    The fixtures go through the REAL parser (`load_entries` / `compute_counts`),
+    not a hand-built count: a fixture the parser quietly classified MALFORMED
+    would make every case below vacuously true (W108 — a fake world too poor to
+    reach the thing you meant to measure ends up measuring itself).
+    """
+    now = date(2026, 8, 30)
+    fresh = "- opened 2026-08-29 (selftest) | **fresh row** | wire it | session | CI red"
+    overdue = "- opened 2026-08-01 (selftest) | **overdue row** | wire it | session | CI red"
+    other = "- opened 2026-08-02 (selftest) | **another overdue row** | wire it | session | CI red"
+
+    def counts(text: str, tmp: Path, name: str) -> int:
+        p = tmp / name
+        p.write_text(text, encoding="utf-8")
+        return compute_counts(load_entries(p, now))["tech_debt_overdue"]
+
+    cases: List[tuple[str, bool, str]] = []
+    with tempfile.TemporaryDirectory() as td:
+        tmp = Path(td)
+
+        # Premise check first: if these fixture rows are not real overdue
+        # TECH-DEBT entries, every case below proves nothing.
+        premise_ok = counts(overdue + "\n", tmp, "p1.md") == 1 and counts(fresh + "\n", tmp, "p2.md") == 0
+        cases.append(("premise: fixtures parse as real ledger rows", premise_ok, "0/1 overdue"))
+
+        def verdict_for(base_text: str, head_text: str) -> Dict[str, Any]:
+            return ratchet_verdict(
+                counts(base_text, tmp, "b.md"),
+                counts(head_text, tmp, "h.md"),
+                parse_ratchet_overrides(head_text),
+            )
+
+        v = verdict_for(fresh + "\n", fresh + "\n" + overdue + "\n")
+        cases.append(("guilt: +1 overdue row -> RED", v["status"] == "red" and v["delta"] == 1, str(v["status"])))
+
+        v = verdict_for(fresh + "\n", fresh + "\n")
+        cases.append(("innocence: identical ledgers -> CLEAN", v["status"] == "clean", str(v["status"])))
+
+        v = verdict_for(fresh + "\n", fresh + "\n" + fresh + "\n")
+        cases.append(("innocence: a FRESH row added -> CLEAN", v["status"] == "clean", str(v["status"])))
+
+        v = verdict_for(overdue + "\n" + other + "\n", overdue + "\n")
+        cases.append(("innocence: a row CLOSED -> CLEAN", v["status"] == "clean" and v["delta"] == -1, str(v["status"])))
+
+        v = verdict_for(
+            fresh + "\n",
+            fresh + "\n" + overdue + "\n<!-- RATCHET-OVERRIDE: tech_debt_overdue<=1 -- deliberate, reviewed -->\n",
+        )
+        cases.append(("innocence: sufficient override -> OVERRIDE", v["status"] == "override" and v["ceiling_used"] == 1, str(v["status"])))
+
+        v = verdict_for(
+            fresh + "\n",
+            fresh + "\n" + overdue + "\nRATCHET-OVERRIDE: tech_debt_overdue<=0 -- ceiling too low\n",
+        )
+        cases.append(("guilt: ceiling below the count -> RED", v["status"] == "red", str(v["status"])))
+
+        v = verdict_for(
+            fresh + "\n",
+            fresh + "\n" + overdue + "\nRATCHET-OVERRIDE: tech_debt_overdue<=1 --   \n",
+        )
+        cases.append(("guilt: empty reason -> RED", v["status"] == "red", str(v["status"])))
+
+        prose = parse_ratchet_overrides("we discussed RATCHET-OVERRIDE: handling at length\n")
+        cases.append(("innocence: prose mentioning the token is not an override", prose == [], repr(prose)[:60]))
+
+        # Calendar independence — the property the whole design rests on.
+        far = date(2026, 12, 25)
+        b_txt, h_txt = fresh + "\n", fresh + "\n" + overdue + "\n"
+        p_b, p_h = tmp / "cb.md", tmp / "ch.md"
+        p_b.write_text(b_txt, encoding="utf-8"); p_h.write_text(h_txt, encoding="utf-8")
+        d_now = (compute_counts(load_entries(p_h, now))["tech_debt_overdue"]
+                 - compute_counts(load_entries(p_b, now))["tech_debt_overdue"])
+        d_far = (compute_counts(load_entries(p_h, far))["tech_debt_overdue"]
+                 - compute_counts(load_entries(p_b, far))["tech_debt_overdue"])
+        cases.append(("invariant: delta is identical at two far-apart dates", d_now == d_far == 1, f"{d_now} vs {d_far}"))
+
+    failed = 0
+    for name, ok, detail in cases:
+        print(f"ratchet-selftest: {'PASS' if ok else 'FAIL'}  {name}  [{detail}]")
+        if not ok:
+            failed += 1
+    print(f"ratchet-selftest: {len(cases) - failed}/{len(cases)} cases behaved as specified")
+    return 1 if failed else 0
+
+
 def _freshness_line(freshness: Optional[Dict[str, Any]], ref: Optional[str] = None) -> str:
     """One line, always printed. Silence about freshness is what made this necessary."""
     if not freshness:
@@ -1277,12 +1597,61 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "mutates the ledger."
         ),
     )
+    parser.add_argument(
+        "--ratchet",
+        action="store_true",
+        help=(
+            "Compare the TECH-DEBT-OVERDUE count between this branch's base "
+            "(git merge-base origin/main HEAD, or --base-ref) and the working "
+            "tree, BOTH evaluated at the same --now so calendar aging cancels "
+            "and the delta is what the diff did. Exit 0 clean or override-"
+            "accepted, 1 if it increased without an override, 3 if the base "
+            "cannot be resolved (never 0 — a scan that could not look is not a "
+            "clean scan). Read-only."
+        ),
+    )
+    parser.add_argument(
+        "--base-ref",
+        type=str,
+        default=None,
+        metavar="GITREF",
+        help=(
+            "Ratchet base override (default: git merge-base origin/main HEAD). "
+            "For the corpus and for local reproduction. Only meaningful with "
+            "--ratchet."
+        ),
+    )
+    parser.add_argument(
+        "--ratchet-selftest",
+        action="store_true",
+        help=(
+            "Run the ratchet's guilt+innocence fixtures in a temporary directory "
+            "and exit non-zero if the detector stops detecting. Touches no git "
+            "and no real ledger; this is what proves the gate armed, in CI, on "
+            "every run."
+        ),
+    )
     return parser
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
+
+    # Self-test first: it needs neither a ledger nor git, and a caller asking
+    # "does the detector still detect?" must get an answer even on a machine
+    # where the ledger is missing.
+    if args.ratchet_selftest:
+        return ratchet_selftest()
+
+    # A flag that silently does nothing is how a gate ends up believed-armed
+    # and inert. Say so instead.
+    if args.base_ref is not None and not args.ratchet:
+        print(
+            "pending_arms_report: --base-ref has no effect without --ratchet",
+            file=sys.stderr,
+        )
+        return 2
 
     ledger_path: Path = args.ledger if args.ledger is not None else _default_ledger_path()
 
@@ -1301,6 +1670,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             file=sys.stderr,
         )
         return 2
+
+    # The ratchet is its own mode — it must not also print the normal report,
+    # or a CI step reading its stdout gets 600 lines of ledger before the verdict.
+    if args.ratchet:
+        return run_ratchet(ledger_path, now, args.base_ref)
 
     try:
         entries = load_entries(ledger_path, now, ref=args.ref)
