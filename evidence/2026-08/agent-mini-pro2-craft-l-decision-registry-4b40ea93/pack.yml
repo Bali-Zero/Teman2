@@ -34,9 +34,18 @@ seat_diversity_note: >-
   contradiction that does not exist. Neither would have been enough alone.
 diff:
   net_lines: >-
-    AS OF this commit (pinned): 14 files, +1471/-21, measured against the MERGE
-    BASE with `git diff --cached --numstat`. Three of those files are this
+    AS OF this commit (pinned): 15 files, +1534/-68, measured against the MERGE
+    BASE with `git diff --no-renames --numstat`. Three of those files are this
     evidence pack, and the count includes them.
+
+    Rename detection is OFF deliberately: that is the invocation the lint
+    recomputes with, so it is the only one whose answer CI will agree with.
+    Git's default detects the ADR rename and collapses the deleted and added
+    file into a single entry, yielding a smaller pair that is equally correct
+    about the same diff and that the gate will still reject. The earlier text
+    here also cited `git diff --cached --numstat`, which compares the index to
+    HEAD and does not measure against the merge base at all — so the sentence
+    named a command that could not have produced the number it carried.
 
     Deterministic gear floor recomputed from this diff = 3 (source: path —
     .github/workflows/immune-enforcement.yml, edited to ARM the corpus).

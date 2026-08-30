@@ -83,8 +83,15 @@ risks:
     would have put a FALSE fact in the field that is the registry's whole reason
     to exist, on its first commit. D-001 stays `accepted`, with the reasoning at
     the site; escalated rather than decided silently."
-  - "The ADR-006 renumber has a cost that was measured before it was paid: 9 live
-    references across a plan doc and a `nb_monitor/README.md`, all repointed. The
+  - "The ADR-006 renumber has a cost that was measured before it was paid: 16
+    references in one plan document, 4 in live `.py` source and 1 in
+    `nb_monitor/README.md`, all repointed. This line first said `9 live
+    references across a plan doc and a README` — that 9 was the second sweep's
+    subset (the bare-number prose refs the first `--include='*.md'` pass could
+    not see) written down as if it were the whole cost, and it silently
+    excluded the four `.py` files the refuter found. `pack.yml` carried the
+    correct breakdown from the start; only this sentence was wrong, which is
+    the worst place for it, because the brief is what a reader meets first. The
     dated research captures and the 2026-05-07 dated spec that cite the old
     filename are deliberately LEFT — they record what was true when written, and
     rewriting a record to match a later rename is how a repo loses its history.
