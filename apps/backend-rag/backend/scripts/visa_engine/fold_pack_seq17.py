@@ -59,6 +59,7 @@ import argparse
 import hashlib
 import json
 import sys
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -85,7 +86,21 @@ PORTAL_AUTHORITY = "OFFICIAL_PORTAL"
 EXPECTED_PORTAL_COUNT = 18
 EXPECTED_SEQ16_STAMP = "2026-08-23T10:44:48Z"
 
-UNTOUCHED_KEYS = ("rules", "products", "hit_policy", "valid_period", "rule_pack_id")
+UNTOUCHED_KEYS = ("rules", "products", "hit_policy", "valid_period")
+
+# seq-16/seq-17 identity (the uuid5 anchor is VERIFIED against the pack being
+# folded, never assumed). ``rule_pack_id`` is the primary key of
+# ``visa_rule_packs`` and packs are immutable there: carrying seq-16's id into
+# seq-17 makes the row a mutation of an existing pack, and ``activate_pack``
+# rejects it — measured live 2026-08-30 ("already holds ... with a DIFFERENT
+# payload_sha256"). Nothing was written; the guard is the reason.
+_RULE_PACK_ID_URL_PREFIX = (
+    "https://balizero.com/visa-oracle/rule-pack/PRODUCTION/ID/IMMIGRATION_VISA/"
+)
+
+
+def _rule_pack_id(sequence: int) -> uuid.UUID:
+    return uuid.uuid5(uuid.NAMESPACE_URL, f"{_RULE_PACK_ID_URL_PREFIX}{sequence}")
 
 
 def _fail(message: str) -> None:
@@ -132,7 +147,18 @@ def fold(seq16: dict[str, Any]) -> dict[str, Any]:
     if restamped != EXPECTED_PORTAL_COUNT:
         _fail(f"restamped {restamped}, expected {EXPECTED_PORTAL_COUNT}")
 
+    inherited_id = seq16.get("rule_pack_id")
+    expected_seq16_id = str(_rule_pack_id(16))
+    if inherited_id != expected_seq16_id:
+        _fail(
+            f"the seq-16 payload carries rule_pack_id={inherited_id!r}, but the "
+            f"uuid5 convention yields {expected_seq16_id!r} — the anchor is "
+            "verified, never assumed; refusing to mint seq-17's id from a "
+            "convention this pack does not follow."
+        )
+
     out["sequence"] = 17
+    out["rule_pack_id"] = str(_rule_pack_id(17))
     out["created_at"] = FOLD_CREATED_AT
     out["created_by"] = FOLD_CREATED_BY
     out["previous_payload_sha256"] = SEQ16_PAYLOAD_SHA256

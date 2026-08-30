@@ -1899,7 +1899,7 @@
       }
     ],
     "rollback_of_payload_sha256": null,
-    "rule_pack_id": "08e07e77-eb71-5490-b246-d980b6f3afb6",
+    "rule_pack_id": "a51a3142-df1d-5467-b015-623d9a8644e6",
     "rules": [
       {
         "effect": {
@@ -9055,14 +9055,14 @@
     },
     "version": "2026.8.26"
   },
-  "payload_sha256": "49a18d790ea011bf7f8daaa08050e7475566f8023a76b95e01ff98572eb83f50",
+  "payload_sha256": "97cb964780b114a2fa936230055327102a5af59efb010b6bf04090bb7321890b",
   "protected": {
     "alg": "Ed25519",
     "domain": "balizero.visa-rulepack.v1",
     "environment": "PRODUCTION",
     "kid": "prod-2026-07-1",
     "schema_version": "1.0.0",
-    "signed_at": "2026-08-30T13:21:37.770713Z"
+    "signed_at": "2026-08-30T15:16:36.650739Z"
   },
-  "signature": "iy3PtBphLFOBHPpDd2aKUeNesykr01YlJMSdvk7epQkFMKbqjyTT42Za-XqwYF69DbZlWYHJ76bCvK0TdcSBAw"
+  "signature": "EO4C4ubaUT_3YAeR7P4LoG4W38OG622CTTsVGJ6AOhKABHRHMIABHQ0n0XbC6GJYap6dAFnbC-nzhzOtqdcXAg"
 }
