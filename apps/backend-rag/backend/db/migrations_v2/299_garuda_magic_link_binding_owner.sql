@@ -62,13 +62,31 @@
 --   migration exists so every other environment converges without a human
 --   retyping it.
 
+-- WHY THIS ONE DOES NOT MERELY NOTICE-AND-DEFER LIKE 281
+-- =============================================================================
+--   Adversarial review (codex gpt-5.6-sol, xhigh) rejected the first draft of
+--   this migration for copying 281's handler verbatim, and was right: 281 was
+--   codifying a transfer ALREADY applied to production by hand, so its NOTICE
+--   path was a no-op confirmation. Here the transfer has NOT happened yet, so a
+--   NOTICE would let the runner record migration 299 as applied while the
+--   outage stands -- a permanent false green in `_schema_versions`, and exactly
+--   the "esiste != armato" disease this repo keeps paying for.
+--
+--   So the ALTER is still attempted and its failure still explained, but the
+--   block ends by asserting the POSTCONDITION and raising if the world does not
+--   match it. On a superuser connection (CI, fresh clone) the ALTER succeeds and
+--   the assertion is silent. On production it fails loudly until an operator
+--   runs the ALTER, which is the honest state: the cure is not in force.
+--
+--   `to_regprocedure` (not a `::regprocedure` cast) so an absent function
+--   yields NULL instead of raising -- the same review flagged the cast as a
+--   fresh-database ordering hazard.
+
 DO $garuda_299_owner_transfer$
 DECLARE
     ledger_owner constant text := 'visa_ledger_owner';
-    target_function constant text[] := ARRAY[
-        'public.bind_garuda_magic_link_token_retention_policy()'
-    ];
-    signature text;
+    signature constant text := 'public.bind_garuda_magic_link_token_retention_policy()';
+    fn oid;
     current_owner text;
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ledger_owner) THEN
@@ -77,43 +95,49 @@ BEGIN
         RETURN;
     END IF;
 
-    FOREACH signature IN ARRAY target_function
-    LOOP
-        current_owner := (
-            SELECT pg_get_userbyid(proowner)
-              FROM pg_proc
-             WHERE oid = signature::regprocedure
-        );
-        IF current_owner IS DISTINCT FROM ledger_owner THEN
-            BEGIN
-                EXECUTE format('ALTER FUNCTION %s OWNER TO %I', signature, ledger_owner);
-            EXCEPTION
-                WHEN insufficient_privilege THEN
-                    RAISE NOTICE 'garuda magic-link (299): ownership transfer of % to % requires operator action (current owner %, insufficient privilege) -- deferring to operator provisioning, same as 251/253/268/281',
-                        signature, ledger_owner, current_owner;
-            END;
-        END IF;
-    END LOOP;
+    fn := to_regprocedure(signature);
+    IF fn IS NULL THEN
+        RAISE NOTICE 'garuda magic-link (299): % not present -- nothing to transfer', signature;
+        RETURN;
+    END IF;
+
+    SELECT pg_get_userbyid(proowner) INTO current_owner FROM pg_proc WHERE oid = fn;
+
+    IF current_owner IS DISTINCT FROM ledger_owner THEN
+        BEGIN
+            EXECUTE format('ALTER FUNCTION %s OWNER TO %I', signature, ledger_owner);
+        EXCEPTION
+            WHEN insufficient_privilege THEN
+                RAISE NOTICE 'garuda magic-link (299): ALTER denied (current owner %) -- this session is neither superuser nor a member of %',
+                    current_owner, ledger_owner;
+        END;
+        SELECT pg_get_userbyid(proowner) INTO current_owner FROM pg_proc WHERE oid = fn;
+    END IF;
+
+    IF current_owner IS DISTINCT FROM ledger_owner THEN
+        RAISE EXCEPTION
+            'garuda magic-link (299): % is still owned by % -- the SECURITY DEFINER trigger cannot take its FOR SHARE lock on visa_decision_retention_policies, so magic-link issuance still answers 500. Refusing to record this migration as applied while that is true: run the ALTER on a superuser connection, then re-apply.',
+            signature, current_owner;
+    END IF;
 END;
 $garuda_299_owner_transfer$;
 
 -- === ROLLBACK ===
 
+-- Deliberately a no-op that says so, not a symmetric undo.
+--
+-- The "undo" of this migration is `ALTER FUNCTION ... OWNER TO backend_rag_v2`,
+-- which is precisely the state that kept magic-link issuance answering 500 with
+-- zero tokens ever minted. A rollback section that faithfully restores a known
+-- outage is worse than none: it hands a future operator a one-command way to
+-- re-break production while believing they are being careful. Flagged by the
+-- adversarial review of this PR and honored.
+--
+-- If the ownership genuinely must be reverted, it is a deliberate operator
+-- action with its own reasoning, not the mechanical inverse of this file.
+
 DO $garuda_299_owner_rollback$
-DECLARE
-    app_owner constant text := 'backend_rag_v2';
-    signature constant text := 'public.bind_garuda_magic_link_token_retention_policy()';
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = app_owner) THEN
-        RAISE NOTICE 'garuda magic-link (299 rollback): role % absent -- nothing to restore', app_owner;
-        RETURN;
-    END IF;
-    BEGIN
-        EXECUTE format('ALTER FUNCTION %s OWNER TO %I', signature, app_owner);
-    EXCEPTION
-        WHEN insufficient_privilege THEN
-            RAISE NOTICE 'garuda magic-link (299 rollback): restoring ownership of % to % requires operator action',
-                signature, app_owner;
-    END;
+    RAISE NOTICE 'garuda magic-link (299 rollback): intentionally does nothing -- restoring ownership to backend_rag_v2 would re-create the production outage this migration cures.';
 END;
 $garuda_299_owner_rollback$;

@@ -1,80 +1,89 @@
-task_id: visa-oracle-retention-scope-p0-0826
+task_id: garuda-magic-link-binding-owner-0830
 gear: 3
-l_level: L2
+l_level: L3
 gate_class: opus
 objective: |
-  Restore the Visa Oracle's retention gate, which has been refusing every evaluation since
-  a foreign-scope policy became active in production.
+  PR #5302 (agent/air-m5/db/garuda-magic-link-owner -> main): cure the
+  production outage that has kept the entire authenticated half of GARUDA VOA
+  unreachable since migration 285 shipped, and add the static lint that stops
+  the same omission from shipping a third time.
 
-  Migration 264 built `public.visa_decision_retention_policies` with one active row per
-  environment and an exclusion constraint to match. Four readers were written against that
-  guarantee and resolve "the" active policy with nothing but
-  `environment = <env> AND effective_period @> <clock>`.
+  Measured against production 2026-08-30: POST /api/visa/voa/auth/magic-links
+  answers 500 INTERNAL_ERROR to every call, and garuda_magic_link_tokens holds
+  ZERO rows — no magic link has ever been minted. The exception class is
+  asyncpg InsufficientPrivilegeError (named only after PR #5297 taught the
+  blind catch-all to log the class).
 
-  Migration 281 (GARUDA VOA) made that table the single retention authority for four data
-  classes: it added `policy_scope` and widened the exclusion constraint to
-  `(environment WITH =, policy_scope WITH =, effective_period WITH &&)`. The invariant became
-  one active row per (environment, scope). 281 taught every GARUDA-side reader to filter by
-  scope and never revisited the four Visa Oracle readers, which stayed correct only while the
-  table held no foreign-scope row. The first GARUDA policy activated 2026-08-26 04:40:27Z.
+  Cause: the BEFORE INSERT trigger bind_garuda_magic_link_token_retention_policy
+  opens with `SELECT ... FROM visa_decision_retention_policies ... FOR SHARE`.
+  That table is owned by visa_ledger_owner; the app role backend_rag_v2 holds
+  only SELECT, and a row-locking clause needs more than SELECT. The trigger IS
+  SECURITY DEFINER — and that bought nothing, because it is owned by
+  backend_rag_v2, so it runs as a role that cannot take the lock either. Its
+  healthy twin bind_garuda_voa_check_retention_policy is SECURITY DEFINER owned
+  by visa_ledger_owner, which is why the eligibility-check path works.
 
-  Gear 3 by PATH, deterministically: `apps/backend-rag/backend/db/migrations_v2/**` is hot-zone,
-  so the floor is 3 regardless of the diff being 4 files and +538/-2. Recomputed from the actual
-  changed-file list — receipt in the pack.
+  This is a RECURRENCE: migration 268 cured the shape on 2026-08-07 for the
+  visa-engine triggers, 281 carried it forward for the GARUDA_CHECK family with
+  an explicit role-guarded ownership transfer, and 285 created a new trigger of
+  the same shape and omitted the transfer.
+
+  Gear 3 by PATH, deterministically (migrations_v2 is a hot zone). Honored, not
+  argued with.
 constraints:
-  - "Fix the FAMILY, not the instance. Four readers are unscoped; a fix that repairs one and
-    leaves three is a fix that converts a graceful outage into a different failure."
-  - "`CREATE OR REPLACE FUNCTION` must restate SECURITY DEFINER and SET search_path verbatim.
-    Replace preserves owner and ACL but takes those attributes from the statement — omitting
-    them silently demotes both binders to SECURITY INVOKER and re-opens the 2026-08-07 prod
-    incident that migration 268 closed."
-  - "No behaviour change beyond the scope predicate. Both function bodies are
-    `pg_get_functiondef()` of the LIVE functions plus one added line each, so the diff is
-    auditable against production rather than against 264's source."
-  - "No migration-number collision (W40). 289 is verified free across main and every open
-    remote branch."
-  - "Do not weaken any check. The one red this PR drew (`Harness floor recompute`) is answered
-    by supplying this pack, never by touching the gate."
+  - "Migration 299 reuses migration 281's role-guarded, idempotent, best-effort
+    DO block verbatim rather than inventing a new form — the ALTER is wrapped in
+    an insufficient_privilege handler and skips entirely when the role is absent."
+  - "Against production the transfer is EXPECTED to NOTICE-and-defer: measured
+    2026-08-30, nobody is a member of visa_ledger_owner and the migration runner
+    connects as backend_rag_v2, so ALTER FUNCTION ... OWNER TO needs a superuser
+    connection. Migration 268 records the identical history for itself."
+  - "Exactly ONE function is transferred. Measured on the live database, it is
+    the only one of migration 285's four that is SECURITY DEFINER AND locks the
+    ledger: active_garuda_magic_link_policy_available is not SECURITY DEFINER and
+    takes no lock; neither guard_ function touches the ledger at all."
+  - "Not in this PR by design: the superuser ALTER itself (post-merge apply step),
+    and the magic-link ownership check (#5298, already in the merge queue)."
 acceptance:
-  - "`active_policy_available` returns True in production's actual policy configuration
-    (1 VISA_DECISION + 3 GARUDA active) instead of False."
-  - "Both SQL binders resolve the VISA_DECISION policy and bind to ITS id, not a GARUDA one,
-    with a foreign-scope policy concurrently active."
-  - "289's forward half applies on top of the real main chain; its ROLLBACK half restores 264's
-    unscoped bodies verbatim, SECURITY DEFINER included."
-  - "The structural tripwire is red on origin/main and green here, and its historical exemption
-    for 264 is re-derived from the migration chain rather than asserted."
-  - "`Detect duplicate prefixes` and `Detect missing ROLLBACK markers` both green."
+  - "Guilt: with migration 299 removed — i.e. the real state of production — the
+    static lint names bind_garuda_magic_link_token_retention_policy in
+    285_garuda_magic_link.sql. Had this lint existed, 285 would not have merged."
+  - "Innocence: with 299 present the lint is green, and it does NOT accuse
+    prepare_visa_evaluate_idempotency_reservation (migration 264), which
+    production shows is correctly owned and does not read the ledger."
+  - "The lint carries its own innocence control asserting the detector matches
+    something at all — a guard that matches nothing passes forever."
+  - "PROVE-LIVE (post-merge, post-superuser-ALTER, NOT claimed by this PR): two
+    calls with one Idempotency-Key against the live endpoint return 202, not 500."
 consumer_map:
-  - "`services/visa_engine/evaluate_path.py:140,280,1466,1708` — imports and calls
-    `active_policy_available` at BOTH call sites, ungated on SHADOW vs ENFORCE. This is the
-    surface the outage is visible on."
-  - "`public.visa_decisions` — BEFORE INSERT trigger runs `bind_visa_decision_retention_policy`.
-    Every durable decision write passes through the predicate this PR changes."
-  - "`public.visa_evaluate_idempotency` — same, via
-    `bind_visa_evaluate_idempotency_retention_policy`. The table currently holds 0 rows."
-  - "`scripts/visa_engine/retention_worker.py` — the bounded purge worker. Broken by the same
-    cause; currently has nothing to purge (receipt below), so the repair is pre-emptive."
-  - "GARUDA VOA — `services/garuda_flow/retention.py`,
-    `active_garuda_magic_link_policy_available`, migration 284's order-policy function. All
-    three already filter their own scope and are NOT touched by this PR. Verified, not assumed."
-  - "`bind_visa_decision_payload_retention` — deliberately NOT touched: it resolves its parent
-    by `visa_decisions.id`, never by active-policy lookup."
+  - "backend/db/migrations_v2/ — applied by migration_base.py's runner, forward
+    section only; the runner connects as backend_rag_v2, so 299 will NOTICE."
+  - "The live trigger on garuda_magic_link_tokens — the only consumer whose
+    behavior actually changes, and only once the ALTER lands on a superuser
+    connection."
+  - "backend/tests/db/ — the new static lint runs on every PR, no database
+    needed, so it also guards migrations written by lanes that never touch prod."
+  - "PR #5298 (magic-link ownership check) is queued against the SAME endpoint:
+    it is orthogonal (router-level authorization vs database privilege) and
+    neither cure makes the other unnecessary — with #5298 alone the endpoint
+    still 500s; with #5302 alone it mints links for result_ids the caller does
+    not own."
 risks:
-  - "A migration PR is auto-merge-OFF class per CLAUDE.md §2. Merged by the session after gates
-    are green and the Gear-3 verdict is posted, never armed with --auto."
-  - "The two binders are owned by `visa_ledger_owner`, and no role is a member of it. CREATE OR
-    REPLACE therefore requires the migration runner to be superuser — which it demonstrably is,
-    since 281 successfully ALTERed this same visa_ledger_owner-owned table on 2026-08-26."
-  - "Rolling 289 back re-arms the outage on any database that has applied 281 and activated a
-    GARUDA policy. Documented in the ROLLBACK section: it is only meaningful together with
-    rolling back 281."
-  - "This PR does NOT restore the client experience. Production runs SHADOW and the frontend's
-    public rendering boundary withholds the decision regardless — an unrelated, designed state.
-    What this PR restores is the shadow-evidence ledger the go-live gate accumulates."
+  - "The migration is a no-op against production until an operator or superuser
+    connection runs the ALTER. Merging it does NOT end the outage, and this PR
+    says so rather than declaring victory at merge."
+  - "The static lint reads SQL text, not a database. A migration that takes the
+    lock through a helper function called from the trigger body, rather than
+    inline, would not be caught — named explicitly as the known residual."
 grader: |
-  Independent verification by this session against production's live catalog (read-only role)
-  and against the repo's own linters. Two adversarial subagents were dispatched WITHOUT this
-  brief: one to attack the diagnosis (it killed the timeline claim — see dissent), one to prove
-  the fix red-then-green on a throwaway Postgres. Generator != grader: the session that wrote
-  the diff does not post the Gear-3 verdict.
+  generator != grader. The diff was authored by this session (Anthropic); the
+  adversarial round is codex gpt-5.6-sol at xhigh effort (OpenAI, ChatGPT Pro
+  flat subscription) — a different model family, given the diff plus the
+  production measurements and asked to break both the migration and the lint,
+  specifically to find a new migration shape the lint would miss. Verdict and
+  findings recorded in evidence/pack.yml.
+budget: |
+  Flat-subscription seats only: this session (build), codex gpt-5.6-sol
+  (adversarial review). No metered API spend. Production reads went through
+  scripts/pg.sh (nuzantara_readonly, SELECT-only).
+pii: none

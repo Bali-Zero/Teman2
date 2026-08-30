@@ -40,17 +40,26 @@ assert MIGRATIONS.is_dir(), (
 
 LEDGER_TABLE = "visa_decision_retention_policies"
 LEDGER_OWNER = "visa_ledger_owner"
+LINE_COMMENT = re.compile(r"--[^\n]*")
 ROLLBACK_MARKER = re.compile(r"^--\s*===\s*ROLLBACK\s*===", re.MULTILINE)
 FUNCTION_START = re.compile(
     r"CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+(?:public\.)?(\w+)\s*\(", re.IGNORECASE
 )
+DO_BLOCK = re.compile(r"\bDO\s+(\$[A-Za-z_]\w*\$|\$\$).*?\1", re.IGNORECASE | re.DOTALL)
 DOLLAR_TAG = re.compile(r"\$[A-Za-z_]\w*\$|\$\$")
 LOCK_CLAUSE = re.compile(r"\bFOR\s+(?:SHARE|UPDATE|NO\s+KEY\s+UPDATE|KEY\s+SHARE)\b", re.IGNORECASE)
 
 
 def _forward(sql: str) -> str:
-    """Only the forward section: the rollback section is never executed."""
-    return ROLLBACK_MARKER.split(sql)[0]
+    """Only the forward section, with line comments stripped.
+
+    Comments are removed because every detector below matches raw substrings:
+    a header reading `-- SECURITY DEFINER is forbidden here` above a function
+    that is actually SECURITY INVOKER would otherwise be read as an offender,
+    and a commented-out `ALTER ... OWNER TO` would be read as proof of a
+    transfer that never happens.
+    """
+    return LINE_COMMENT.sub(" ", ROLLBACK_MARKER.split(sql)[0])
 
 
 def _definer_functions_locking_the_ledger(sql: str) -> set[str]:
@@ -81,14 +90,47 @@ def _definer_functions_locking_the_ledger(sql: str) -> set[str]:
     return found
 
 
+ALTER_OWNER = re.compile(
+    r"ALTER\s+FUNCTION\s+(?:public\.)?(\w+)\s*\([^)]*\)\s*OWNER\s+TO\s+(\w+)",
+    re.IGNORECASE,
+)
+TRANSFER_ARRAY_ENTRY = re.compile(r"'(?:public\.)?(\w+)\s*\([^)]*\)'")
+
+
+def _transfers_in(sql: str) -> set[str]:
+    """Functions a migration actually transfers to `visa_ledger_owner`.
+
+    Two shapes count, and nothing else:
+
+    * a literal ``ALTER FUNCTION <sig> OWNER TO visa_ledger_owner``;
+    * a name inside the quoted signature array of a ``DO`` block whose body
+      performs ``ALTER FUNCTION %s OWNER TO %I`` with that role, which is how
+      migrations 281 and 299 do it (the ALTER is built by `format()`, so no
+      literal statement exists to match).
+
+    The first version of this helper collected EVERY ``public.<name>(``
+    occurrence in any file mentioning the role, which the adversarial review
+    broke in one line: a migration containing a real transfer of some unrelated
+    function marks every other function in the same file as transferred, and a
+    mere ``COMMENT ON FUNCTION`` or ``EXECUTE FUNCTION`` reference is enough. It
+    also mislabelled `guard_visa_decision_retention_policy_mutation`, which
+    migration 281 mentions but never transfers.
+    """
+    transferred: set[str] = set()
+    for name, role in ALTER_OWNER.findall(sql):
+        if role == LEDGER_OWNER:
+            transferred.add(name)
+    for block in DO_BLOCK.finditer(sql):
+        body = block.group(0)
+        if LEDGER_OWNER in body and "OWNER TO" in body.upper():
+            transferred.update(TRANSFER_ARRAY_ENTRY.findall(body))
+    return transferred
+
+
 def _functions_transferred_to_the_ledger_owner() -> set[str]:
-    """Every function name named in a migration that transfers to the owner."""
     transferred: set[str] = set()
     for path in MIGRATIONS.glob("*.sql"):
-        sql = _forward(path.read_text(encoding="utf-8"))
-        if LEDGER_OWNER not in sql or "OWNER TO" not in sql.upper():
-            continue
-        transferred.update(re.findall(r"public\.(\w+)\s*\(", sql))
+        transferred |= _transfers_in(_forward(path.read_text(encoding="utf-8")))
     return transferred
 
 
@@ -125,3 +167,87 @@ def test_the_test_can_actually_see_the_shape_it_guards():
     assert _functions_transferred_to_the_ledger_owner(), (
         "no ownership transfer was found in any migration — the second detector is broken"
     )
+
+
+# ============================================================
+# The adversarial review's own counterexamples, kept as tests
+# ============================================================
+#
+# codex gpt-5.6-sol broke the first version of this lint in one line and was
+# right. Each case below is the exact shape it produced; they live here so the
+# hole cannot quietly reopen when someone "simplifies" the detectors.
+
+_BAD_TRIGGER = """
+CREATE FUNCTION public.bad_trigger()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $body$
+BEGIN
+    PERFORM 1 FROM public.visa_decision_retention_policies FOR SHARE;
+    RETURN NEW;
+END
+$body$;
+"""
+
+
+def test_an_unrelated_transfer_in_the_same_file_does_not_launder_an_offender():
+    sql = _BAD_TRIGGER + """
+ALTER FUNCTION public.unrelated_function() OWNER TO visa_ledger_owner;
+"""
+    assert "bad_trigger" in _definer_functions_locking_the_ledger(sql)
+    assert "bad_trigger" not in _transfers_in(sql), (
+        "a real transfer of some OTHER function must never mark this one transferred"
+    )
+    assert "unrelated_function" in _transfers_in(sql)
+
+
+def test_a_commented_out_transfer_is_not_a_transfer():
+    sql = _BAD_TRIGGER + """
+-- ALTER FUNCTION public.bad_trigger() OWNER TO visa_ledger_owner;
+"""
+    assert "bad_trigger" not in _transfers_in(_forward(sql))
+
+
+def test_a_mere_mention_of_the_function_is_not_a_transfer():
+    sql = _BAD_TRIGGER + """
+COMMENT ON FUNCTION public.bad_trigger() IS 'nothing to see here';
+DROP FUNCTION IF EXISTS public.something_else();
+ALTER FUNCTION public.something_else() OWNER TO visa_ledger_owner;
+"""
+    assert "bad_trigger" not in _transfers_in(sql)
+
+
+def test_security_definer_written_only_in_a_comment_is_not_an_offender():
+    sql = """
+-- SECURITY DEFINER is forbidden here
+CREATE FUNCTION public.harmless()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+AS $body$
+BEGIN
+    PERFORM 1 FROM public.visa_decision_retention_policies FOR SHARE;
+    RETURN NEW;
+END
+$body$;
+"""
+    assert not _definer_functions_locking_the_ledger(_forward(sql)), (
+        "a comment must never make a SECURITY INVOKER function read as a definer"
+    )
+
+
+def test_a_do_block_transfer_array_still_counts():
+    """Migrations 281 and 299 build the ALTER with format(), so no literal
+    ``ALTER FUNCTION ... OWNER TO visa_ledger_owner`` statement exists to match."""
+    sql = _BAD_TRIGGER + """
+DO $t$
+DECLARE
+    ledger_owner constant text := 'visa_ledger_owner';
+    target_function constant text[] := ARRAY['public.bad_trigger()'];
+BEGIN
+    EXECUTE format('ALTER FUNCTION %s OWNER TO %I', target_function[1], ledger_owner);
+END;
+$t$;
+"""
+    assert "bad_trigger" in _transfers_in(sql)
