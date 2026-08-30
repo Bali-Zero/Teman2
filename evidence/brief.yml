@@ -38,8 +38,10 @@ constraints:
 acceptance:
   - text: >-
       WHEN this PR lands, `research/operations/2026-08-28-beyond-sota-anatomy-16-lanes/` SHALL
-      hold exactly 18 files, and the claim the memory index makes about this panel SHALL become
-      true rather than merely corrected.
+      hold exactly 17 files — the panel's 18 minus the one held back below — and the claim the
+      memory index makes about this panel SHALL become true rather than merely corrected. This
+      line said 18 until the withholding was decided; a criterion the diff deliberately does not
+      meet is worse than no criterion, so it names the real number and the reason for the gap.
     probe: "git ls-tree -r --name-only origin/main -- research/operations/2026-08-28-beyond-sota-anatomy-16-lanes/ | wc -l"
   - text: >-
       WHERE a report describes an exposure that is still live, this diff SHALL add no disclosure
