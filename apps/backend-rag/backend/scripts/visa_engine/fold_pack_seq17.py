@@ -35,9 +35,11 @@ draft of this docstring said seq-16 "does not exist in this repository at all".
 That is FALSE, and the false version was propagated into the PR's brief and
 evidence pack before the refuter caught it. The signed bundle **does** exist, on
 the unmerged branch ``origin/feature/visa-oracle``, carrying exactly the digest
-of the row that was active
-(``ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100``) — verified
-with ``git show``, not assumed. Reading the anchor from the database was still
+pinned below as :data:`SEQ16_PAYLOAD_SHA256` — verified with ``git show``, not
+assumed. (Named by constant, never re-quoted: the digest appears exactly once in
+this file, and ``scripts/detect_secrets_auto_triage.py``'s content-keyed rule
+plus its test enforce that, so a real secret can never ride along beside it.)
+Reading the anchor from the database was still
 the right call, because the database is what production actually ran and a
 branch is not evidence of that; but "absent from version control" was a claim
 nobody had checked. The real gap is narrower and still open: a signed artifact

@@ -7,6 +7,7 @@ sources:
   - apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq17.py
   - production catalog, read-only role (visa_ruleset_activations / visa_rule_packs)
   - PR #5311 adversarial review — codex gpt-5.6-sol xhigh, kimi-code/k3
+adversarial_review: codex
 ---
 
 # seq-17 re-stamp — what the attestation rests on, and what it does not
@@ -124,3 +125,36 @@ oldest look that backs it.
 
 The next ceremony in this lane is the one that raises the portal window. It is
 the place to apply both.
+
+## Adversarial review
+
+Two cross-family reviewers were dispatched on the diff that produced this
+document, both without the brief and both instructed to reject if they could
+substantiate a defect. Neither is the seat that wrote the fold.
+
+**codex gpt-5.6-sol (xhigh) — REJECT.** Its BLOCKER is the subject of this whole
+document: the attestation cannot be proven from the artifact, and the stamp
+instant sits after the last reader rather than the earliest. It also found the
+"nothing else changes" guard incomplete — seven top-level keys unguarded and the
+record comparison covering only non-portal records, so `content_sha256` on a
+portal record could drift unseen — and it caught the false claim that seq-16 was
+absent from version control. The guard was rewritten fail-closed and the false
+claim corrected in all three places it had reached; the attestation findings
+could not be fixed inside a signed, already-active artifact and are recorded
+above instead.
+
+**kimi-code/k3 — SHIP-WITH-FIXES.** It confirmed the portal-record gap
+independently, found `version` still carrying seq-16's value against the lane's
+own convention, found the E23V copy narrowing the pack's product name, and found
+no witness test file where every pack from seq-6 to seq-15 has one. Copy and
+test were fixed; `version` is corrected forward in the next pack, because a
+signed live artifact cannot be edited.
+
+Its headline finding was **refuted**: it asserted that prior restamps in this
+lane shipped per-record evidence documents plus a `source-restamp-edits.json`
+ledger, citing specific paths and dates. No such file exists anywhere — the
+worktree, `origin/main`, and all 440 remote branches return zero hits. The
+precedent was fabricated. Its underlying point about unprovable attestation is
+independently confirmed and acted on above; only the claimed convention is not
+real. Recorded here because a reviewer's finding taken on trust is exactly how a
+wrong fact enters the record — the same failure this document exists to name.
