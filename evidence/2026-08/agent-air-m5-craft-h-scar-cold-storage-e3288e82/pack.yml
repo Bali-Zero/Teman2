@@ -25,7 +25,7 @@ diff:
   files: 68
   net_lines: 1343
   measured_at: >-
-    re-measured against base c2f80a8 as the LAST action before the rebase commit, not carried over
+    re-measured against base 55220a6 as the LAST action before the rebase commit, not carried over
     from the pre-rebase tree. The figures that stood here before were smaller in both fields and
     stale by the time anyone read them: the branch had absorbed two merges from main since they
     were written, and the rebase then dropped a zero-byte `scripts/repomap_cap.py` that #5334 had
