@@ -321,7 +321,7 @@ launchctl list com.nuzantara.mio-job  # verifica: LastExitStatus = 0
 **Checklist inizio sessione:**
 
 1. [ ] Hai letto le memorie recenti? (`mem recent`)
-2. [ ] Hai letto le cicatrici rilevanti? (`cat ~/.claude/rules/cicatrix-scars.md`)
+2. [ ] Hai letto le cicatrici rilevanti? (`cat ~/nuzantara/docs/scars/cicatrix-scars.md`)
 3. [ ] Hai letto SYMBIOSIS.md se stai costruendo qualcosa di nuovo?
 4. [ ] Hai cercato nel genome prima di ragionare da zero? (`genome.search(query)`)
 
@@ -404,7 +404,7 @@ Prima di ogni PR, commit, o deploy, rispondi a queste 5:
 | -------------------- | ----------------------------------------------------------- |
 | Principi e filosofia | `SYMBIOSIS.md`                                              |
 | Regole Claude Code   | `CLAUDE.md`                                                 |
-| Cicatrici operative  | `.claude/rules/cicatrix-scars.md`                           |
+| Cicatrici operative  | `docs/scars/cicatrix-scars.md`                           |
 | Genome DNA Recording | `packages/cell-core/cell_core/genome.py`                    |
 | Design spec genome   | `docs/superpowers/specs/2026-04-12-dna-recording-design.md` |
 | Memoria sessione     | `~/.claude/scripts/mem`                                     |

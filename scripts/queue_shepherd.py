@@ -33,7 +33,7 @@ TWO INDEPENDENT ACTIONS PER TICK:
     (or `harness-floor`) status/check context — the final on-disk gate. Among those, a PR is a
     re-arm CANDIDATE only when it is open, non-draft, currently disarmed (`autoMergeRequest` is
     null AND it holds no `mergeQueueEntry` — per W111, either field alone is ambiguous, see
-    `.claude/rules/cicatrix-scars.md` ~line 160; ONLY both-null means truly disarmed) and its
+    `docs/scars/cicatrix-scars.md` ~line 160; ONLY both-null means truly disarmed) and its
     `mergeStateStatus` is CLEAN/UNSTABLE, or BLOCKED with a green status-check rollup (a required
     review gate blocking merge, not a red check). For each candidate, its most recent
     `RemovedFromMergeQueueEvent` (if any) is classified CODE / INFRA / CONFLICT / MANUAL /
@@ -230,7 +230,7 @@ def is_rearm_candidate(pr: dict[str, Any]) -> bool:
     `pr` fields expected: is_draft, head_ref_name, has_fable_gate_status, in_queue,
     auto_merge_enabled, merge_state_status, status_rollup_state.
 
-    W111 guard (`.claude/rules/cicatrix-scars.md` ~line 160): neither `autoMergeRequest` nor
+    W111 guard (`docs/scars/cicatrix-scars.md` ~line 160): neither `autoMergeRequest` nor
     `mergeQueueEntry`/`isInMergeQueue` ALONE says "armed" — a queued PR has autoMergeRequest
     consumed (null) while carrying mergeQueueEntry; an armed-but-not-yet-queued PR has the
     inverse. Only BOTH null means truly disarmed, which is the only state this organ may act on.

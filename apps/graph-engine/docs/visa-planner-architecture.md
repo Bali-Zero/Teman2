@@ -87,7 +87,7 @@ Every factual claim in a visa answer must be traceable to a document or a
 system note. Otherwise:
 
 1. **Hallucination risk.** Zantara has historically fabricated legal
-   requirements (see `.claude/rules/cicatrix-scars.md`). Prompt
+   requirements (see `docs/scars/cicatrix-scars.md`). Prompt
    instructions are unreliable; a deterministic post-processor is the only
    guarantee.
 2. **User verification.** Users cannot verify claims against primary

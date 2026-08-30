@@ -19,7 +19,7 @@ measured or scarred by another lane today:
            mergeQueueEntry{state position}}}}' -f o=Bali-Zero -f r=Teman2 -F n=4662
      → {"mergeQueueEntry": null} for a non-queued PR. Field exists, shape
      confirmed (no GraphQL error), used as the sole queue-membership check.
-     SCOPE NOTE (cicatrix W111, `.claude/rules/cicatrix-scars.md` ~line 160,
+     SCOPE NOTE (cicatrix W111, `docs/scars/cicatrix-scars.md` ~line 160,
      read directly — not a paraphrase): W111's GOTCHA is that neither
      `autoMergeRequest` nor `mergeQueueEntry`/`isInMergeQueue` ALONE answers
      "is this PR armed for auto-merge" — a PR mid-queue often has

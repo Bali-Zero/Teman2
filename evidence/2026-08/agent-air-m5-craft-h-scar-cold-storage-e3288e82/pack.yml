@@ -1,0 +1,237 @@
+brief_ref: evidence/2026-08/agent-air-m5-craft-h-scar-cold-storage-e3288e82/brief.yml
+plan_ref: >-
+  SQUAD H lane 1 of 5 — L02-PR1 of
+  docs/plans/2026-08-29-beyond-sota-craft-wave/L02-context-engineering-grounding.md,
+  under the wave-2 rules in 01-INVENTORY-AND-WAVE-2-PLAN.md §5.1. Squad ledger:
+  issue #5320, which carries the running GROUND / BUILD / VERIFY record.
+
+lanes:
+  - lane: craft-h-orchestration
+    role: build
+    seat:
+      claude-opus-5 (conducting session, M5 — the move, the repoints, the
+      machine-local probe, the arming, and the final on-disk gate)
+  - lane: craft-h-injected-surface-guard
+    role: build
+    seat:
+      kimi-for-coding (non-Anthropic build lane — authored
+      scripts/tests/test_injected_surface_budget.py; graded by the conducting
+      session, never by itself. D3 satisfied by a real seat, not seat_override)
+  - lane: craft-h-adversarial
+    role: review
+    seat:
+      codex gpt-5.6-sol at xhigh, --sandbox read-only, handed the staged diff and
+      instructed to refute — 12 findings, all 12 verified on disk, all 12 acted on
+
+diff:
+  files: 52
+  net_lines: 890
+  measured_at: staged tree, pre-commit
+  note: >-
+    Rename-detected (-M): the two scar bodies are pure renames and contribute no
+    line count. Roughly two thirds of the file count is one-line path repoints;
+    the behavioural surface is four new or rewritten artifacts. Above the ~400
+    guideline and deliberately not split — the move and its repoints are atomic
+    (any intermediate state leaves consumers reading a file that is not there)
+    and the guards must land WITH the move or nothing pins it. CI's
+    --numstat-file is authoritative over this self-declared figure.
+
+pii_scan: clean
+
+receipts:
+  - claim:
+      The turn-1 injected surface drops from 783,444 B to 90,592 B, measured by the
+      probe rather than computed — and the pre-move state is proven to fail.
+    cmd:
+      python3 scripts/injected_surface_attest.py — then both bodies copied back
+      into .claude/rules/ and it re-run with --strict, then removed and re-run
+    result:
+      "post-move '✅ INJECTED SURFACE 90,592 B / budget 120,000 B (7 files, Air-M5)'
+      rc=0. Pre-move state reproduced: '⚠️ 783,444 B', --strict rc=1, both unpinned
+      files named. The 783,444 matches GROUND's independent per-file sum exactly."
+    exit: 0
+    ts: 2026-08-31T00:52Z
+    seat: session (M5, orchestrator lane)
+
+  - claim:
+      The L02 spec's named acceptance criterion holds — `scar query W76` still
+      resolves — and so does the bridge, which now lives in a DIFFERENT directory
+      from the corpus.
+    cmd: python3 scripts/scar_query.py W76 --titles ; python3 scripts/scar_query.py --family 2
+    result:
+      "W76 → '— 2 hit(s) for [W76] —', both resolved at their new docs/scars/
+      location. --family 2 → '## #2 — Esiste ≠ Armato', read from
+      .claude/rules/cicatrix-superscar.md. The split resolver reaches both."
+    exit: 0
+    ts: 2026-08-31T01:29Z
+    seat: session (M5, orchestrator lane)
+
+  - claim:
+      Both new guards are ARMED, not merely added — the required job's relevance gate
+      fires on this diff and on the regrowth fixture, and stays quiet otherwise.
+    cmd: >-
+      actionlint .github/workflows/immune-enforcement.yml — plus the `case "$f" in`
+      relevance block extracted verbatim from that file and run against three
+      changed-file sets
+    result:
+      "this PR's own changed set → RELEVANT=true; CHANGED=README.md → RELEVANT=false
+      (no over-trigger); CHANGED=.claude/rules/regrowth.md, the exact fixture the
+      refuter proposed → RELEVANT=true. Both test files are also in the executor's
+      `for t in` list at line 434 — a path filter without an executor entry is a job
+      that goes green having run nothing."
+    exit: 0
+    ts: 2026-08-31T01:26Z
+    seat: session (M5, orchestrator lane)
+
+  - claim:
+      Every guard is proven by guilt AND innocence, mutation-verified with bytecode
+      writing disabled.
+    cmd: >-
+      PYTHONDONTWRITEBYTECODE=1 python -B -m pytest scripts/tests/test_injected_surface_budget.py scripts/tests/test_injected_surface_attest.py -p no:cacheprovider
+      — then once more per mutation, restoring from a backup between runs
+    result:
+      "innocence 4 passed. Guilt — unpinned file in .claude/rules → 1 failed naming
+      the file and its bytes; a pinned file removed → 1 failed; a stale resolver
+      planted in scripts/ → 1 failed with file:line; resolver finding nothing → 1
+      failed; budget lowered to 1 B → 1 passed 1 warning (NOTICE not FAIL, per plan
+      §6.3); docstring body explanation deleted → 1 failed. On the machine-local
+      probe: crediting the excludes kills 3 tests, silencing the unpinned list kills
+      2, dropping the global CLAUDE.md kills 2. W121 throughout: a mutation judged
+      against a stale .pyc is a filesystem artifact, not a measurement."
+    exit: 0
+    ts: 2026-08-31T01:00Z
+    seat: session (M5, orchestrator lane)
+
+  - claim:
+      The 26 failures in scripts/tests/test_auto_merge_whitelist.py are PRE-EXISTING,
+      not caused by this diff.
+    cmd:
+      git worktree add --detach /tmp/craft-h/mainref origin/main, then pytest that one
+      file inside the clean tree
+    result:
+      "clean origin/main (a66c76ab60) → '26 failed, 49 passed'. This branch → the same
+      26, same test, same parametrisations, all CODEOWNERS Tier-1 paths this diff never
+      touches. Baselined rather than asserted; temp worktree removed afterwards."
+    exit: 1
+    ts: 2026-08-31T01:15Z
+    seat: session (M5, orchestrator lane)
+
+  - claim:
+      The refuter surfaced a real regression this session's own sweep had missed, and
+      the guard hardened in response is what found it.
+    cmd:
+      pytest apps/evaluator/core_guardian/tests/test_learn.py, before and after
+      repointing its two tmpdir fixtures
+    result:
+      "before — 'AssertionError: None != 5' on test_cicatrix_scores_parses_scars: the
+      fixture built Path(tmp)/'.claude'/'rules'/... while the code now reads docs/scars.
+      No contiguous-substring scan could see it; the split-needle regex added for
+      finding #5 caught it on its first run. After the repoint: 37 passed. Its sibling
+      at line 441 stayed GREEN throughout, because it asserts an EMPTY result — reading
+      nothing looked exactly like 'no scars found'."
+    exit: 0
+    ts: 2026-08-31T01:22Z
+    seat: session (M5, orchestrator lane)
+
+  - claim:
+      scripts/test_scar_query.py was already RED on origin/main, and invisible because
+      nothing executes it.
+    cmd:
+      origin/main's scar_query.py, test_scar_query.py and the three rules files
+      reconstructed into /tmp and run there
+    result:
+      "origin/main → rc=1, 'expected >=10 bridge promises, found 0'. The 2026-08-21
+      boot-tax trim left the bridge with a single '<tema>' placeholder, which the test
+      excludes. Ten days red and unseen: the file defines t_* functions, so pytest
+      collects ZERO tests from it and a suite run reports nothing at all. This PR fixes
+      the call it broke (_candidate_rules_dirs → _candidate_dirs), retires the stale
+      count ratchet for the property that was always the point — every promise the
+      bridge DOES make must resolve — and puts the file in the required job's path
+      filter. Now rc=0."
+    exit: 0
+    ts: 2026-08-31T01:33Z
+    seat: session (M5, orchestrator lane)
+
+  - claim:
+      actionlint is clean on every workflow file this diff touches materially, and its
+      one finding is pre-existing.
+    cmd: >-
+      actionlint .github/workflows/immune-enforcement.yml plus the other two touched
+      workflows; then actionlint on `git show origin/main:` of lint-cross-import.yml
+      — and pytest scripts/tests/test_injected_surface_budget.py::test_no_stale_resolvers_point_to_moved_scars
+    result:
+      "three files, 0 findings. lint-cross-import.yml reports SC2034 'rc appears
+      unused' at :74 — the identical finding reproduces on origin/main's copy, and this
+      diff's only change to that file is a one-line comment path. Not fixed here."
+    exit: 0
+    ts: 2026-08-31T01:26Z
+    seat: session (M5, orchestrator lane)
+
+dissent:
+  - seat: codex gpt-5.6-sol (cross-family refuter, xhigh)
+    objection: >-
+      Neither new guard was referenced by immune-enforcement.yml — not in the path
+      allowlist computing `relevant`, not in the explicit `for t in` executor list.
+      Adding .claude/rules/regrowth.md would have left the PR's CI green. The guard
+      would have shipped disarmed: the exact esiste-ne-armato class this lane exists
+      to remove, reproduced inside its own cure.
+    status: CONFIRMED
+    resolution: accepted-and-fixed
+  - seat: codex gpt-5.6-sol
+    objection: >-
+      The anti-regrowth scan matched only the contiguous string, so a resolver written
+      as Path(".claude") / "rules" / "cicatrix-scars.md" passed — an under-match born
+      from an over-match cure, the twin W94 predicts.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed, and it immediately found a REAL regression this session had
+      missed, in apps/evaluator/core_guardian/tests/test_learn.py
+  - seat: codex gpt-5.6-sol
+    objection: >-
+      `_EXEMPT` excused an entire FILE rather than the one justified legacy line;
+      reverting DEFAULT_FILE in lint_scar_number_collision.py would have slipped
+      straight through it.
+    status: CONFIRMED
+    resolution: accepted-and-fixed — exemptions are now line-scoped by a declared marker
+  - seat: codex gpt-5.6-sol
+    objection: >-
+      test_missing_rules_dir_... built its world with a helper that always CREATES the
+      directory, so it never tested absence and could not have failed. Separately,
+      `--repo-root /definitely/missing` printed a green 0 B and exited 0.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed — the premise is now asserted explicitly, and the probe exits
+      2 with "a wrong repo root, not a lean surface" when the repo side is empty. The
+      first attempt at this fix was itself wrong: judging on the TOTAL left the real
+      global CLAUDE.md masking an empty repo side, so the verdict is now taken on the
+      repo side alone.
+  - seat: codex gpt-5.6-sol
+    objection: >-
+      The collision lint reads origin/main at the OLD path via LEGACY_FILE but filters
+      open PRs by the NEW filename only — so during the very merge window it exists
+      for, every open PR reads as claiming nothing.
+    status: CONFIRMED
+    resolution: accepted-and-fixed — the jq selector now matches either filename
+  - seat: codex gpt-5.6-sol
+    objection: >-
+      INDEX.md, VADEMECUM.md and docs/AI_ONBOARDING.md still sent readers to the old
+      path; `--rules-dir` was documented backward-compatible but only set the bridge
+      dir; glob("*.md") could not see a nested rules file.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed, with a deliberate boundary: dated audit and archive documents
+      under docs/audits/, docs/archive/ and docs/innervation-2026-04-29/ are NOT
+      repointed. Their sentence was true when written; rewriting a dated record to match
+      today is falsifying it, not maintaining it.
+  - seat: session (M5, self-graded against the refuter's finding 12)
+    objection: >-
+      The word "delivery" in the original docstrings over-claimed. Neither check
+      witnesses delivery: a file the harness silently declines to load is counted by
+      both. Measured proof that this distinction is not pedantry — claudeMdExcludes has
+      listed both scar bodies on all three machines since 2026-06-14 and the files still
+      arrive.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed — the docstring now states what each check can and cannot
+      prove, and a test asserts that explanation stays in the BODY rather than being
+      satisfied by the title line

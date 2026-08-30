@@ -289,7 +289,7 @@ have before.
 - **Atlas → Squawk**: original sprint 1 plan was Atlas, but `ariga/atlas v0.38`
   (Oct 2025) moved `migrate lint` behind the Atlas Pro paywall. Pivoted to
   Squawk (also OSS, also Postgres-specific, MIT, ~600K downloads/month).
-  Documented in [`.claude/rules/cicatrix-scars.md`](../.claude/rules/cicatrix-scars.md).
+  Documented in [`docs/scars/cicatrix-scars.md`](../scars/cicatrix-scars.md).
 - **`instructor` package not added**: explored, but `GenAIClient` is a custom
   wrapper that emits cost metrics; `instructor.from_genai()` patches the raw
   google-genai client and would skip our observability. We use google-genai's
@@ -305,4 +305,4 @@ have before.
 - OpenLLMetry PR: [#312](https://github.com/Balizero1987/Teman2/pull/312) — `d6db73c1`
 - Squawk canary verification: [#313](https://github.com/Balizero1987/Teman2/pull/313)
   (closed, do-not-merge — was the live test)
-- Atlas-paywall scar: [`.claude/rules/cicatrix-scars.md`](../.claude/rules/cicatrix-scars.md)
+- Atlas-paywall scar: [`docs/scars/cicatrix-scars.md`](../scars/cicatrix-scars.md)
