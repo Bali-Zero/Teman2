@@ -20,7 +20,7 @@ functools.partial(json.dumps, default=str)` — a strict superset of every
 caller's own `default=str` serializer — and makes it the ONE object every
 pool (`database.py`, both `service_initializer.py` paths, and the
 `prod_shaped_pool` test fixture) imports and passes to
-`asyncpg.create_pool(init=...)`. This file has two parts:
+`asyncpg.create_pool(init=...)`. This file has three parts:
 
 STRUCTURAL (no database, always runs): the encoder object is the right
 shape, the identity is shared (not four independent copies that can drift
@@ -52,12 +52,43 @@ never against "no database". The `skipif` is belt-and-braces for a
 conftest-less invocation (importing this file directly outside pytest, or
 a future test runner that does not carry that root conftest), not a real
 day-to-day escape hatch.
+
+
+REAL-CALL-SITE PROOF (added 2026-08-30, closes the proof-of-armed the
+PENDING-ARMS row at `.claude/skills/modus/PENDING-ARMS.md` ~line 1462
+actually asked for). The temp-table tests above prove the CODEC works
+against an arbitrary jsonb column; they do not touch the four real
+production call sites the row names by column: `garuda_order_journal.detail`,
+`garuda_order_outbox.payload`, and both `response_body` columns
+(`garuda_order_idempotency`, `garuda_magic_link_idempotency`). The third
+part below drives `journal.append_event`, `journal.enqueue_outbox`,
+`garuda_orders.idempotency.complete`, and `garuda_portal.idempotency.complete`
+-- the ACTUAL functions this lane's caller-site fix touched -- against those
+FOUR REAL tables, and asserts `jsonb_typeof` is `object` (never `string`) on
+each. Rows are deleted in a `finally` wherever the schema allows it
+(`garuda_orders`, `garuda_order_outbox`); THREE of the four target tables
+structurally forbid it and the rows are left in place, tagged
+`jsonbparity-`, DOCUMENTED per-test rather than silently omitted:
+`garuda_order_journal` is append-only (migration 284
+`guard_garuda_order_journal_append_only` raises on ANY UPDATE OR DELETE),
+and both `garuda_order_idempotency` and `garuda_magic_link_idempotency`
+forbid DELETE while unexpired (migrations 284/285's own
+`guard_*_idempotency_mutation`, +30 days / +1 day from INSERT
+respectively) -- an idempotency replay cache that could be wiped by
+whoever is testing it would not protect a real retry. This is the correct
+behavior of the real production code path, not a test-hygiene gap: a
+`finally: DELETE ...` was tried first and it raised
+`asyncpg.exceptions.RaiseError` on both idempotency tables, which is how
+this was discovered, not assumed. Each test skips CLEANLY -- not a failure
+-- if its required table is absent, so this file stays usable against a
+`TEST_DATABASE_URL` target that has not run the GARUDA migrations.
 """
 
 from __future__ import annotations
 
 import ast
 import functools
+import hashlib
 import json
 import os
 import uuid
@@ -65,10 +96,14 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
+import asyncpg
 import pytest
 
 from backend.app.core import database as database_module
 from backend.app.setup import service_initializer as service_initializer_module
+from backend.services.garuda_orders import idempotency as garuda_orders_idempotency
+from backend.services.garuda_orders import journal as garuda_orders_journal
+from backend.services.garuda_portal import idempotency as garuda_portal_idempotency
 from backend.tests.fixtures import prod_shaped_pool as prod_shaped_pool_module
 from backend.tests.fixtures.prod_shaped_pool import create_prod_shaped_pool
 
@@ -387,4 +422,245 @@ async def test_pre_serialized_string_still_becomes_jsonb_string_scalar() -> None
     finally:
         async with pool.acquire() as conn:
             await conn.execute(f"DROP TABLE IF EXISTS {table}")
+        await pool.close()
+
+# --------------------------------------------------------------------------
+# REAL CALL-SITE PROOF -- the four production writers, the four real tables.
+# See the module docstring's "REAL-CALL-SITE PROOF" paragraph for why this
+# section exists on top of the temp-table tests above.
+# --------------------------------------------------------------------------
+
+
+async def _table_exists(conn: asyncpg.Connection, table_name: str) -> bool:
+    return bool(
+        await conn.fetchval(
+            "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_name = $1)",
+            table_name,
+        )
+    )
+
+
+@_live_only
+@pytest.mark.asyncio
+async def test_journal_append_event_writes_a_real_jsonb_object_on_garuda_order_journal() -> None:
+    """`garuda_orders/journal.py::append_event` -> `garuda_order_journal.detail`.
+
+    Covers the `datetime` half of "include a datetime or Decimal in at
+    least one payload": a `detail` dict holding a `datetime` would raise
+    `TypeError` inside the OLD bare-`json.dumps` codec, which is exactly
+    why this call site used to pre-serialize with its own `default=str`.
+    """
+    pool = await create_prod_shaped_pool(TEST_DATABASE_URL, min_size=1, max_size=2)
+    try:
+        async with pool.acquire() as conn:
+            if not await _table_exists(conn, "garuda_order_journal"):
+                pytest.skip("garuda_order_journal not present in TEST_DATABASE_URL target")
+
+            aggregate_id = f"jsonbparity-order-{uuid.uuid4().hex[:12]}"
+            event_id = await garuda_orders_journal.append_event(
+                conn,
+                event_name="jsonb_codec_parity.probe",
+                aggregate_type="order",
+                aggregate_id=aggregate_id,
+                transition_id="OP-00",
+                customer_visible=False,
+                detail={
+                    "probe": "jsonb_codec_parity",
+                    "occurred_at": datetime(2026, 8, 30, tzinfo=timezone.utc),
+                },
+            )
+            # NOTE: garuda_order_journal is append-only -- migration 284's
+            # trg_guard_garuda_order_journal_append_only raises on ANY
+            # UPDATE OR DELETE, unconditionally. This row is deliberately
+            # NOT cleaned up (there is no code path that could clean it up);
+            # the jsonbparity- prefix on aggregate_id/event_name marks it as
+            # test noise for anyone auditing the table.
+            typeof = await conn.fetchval(
+                "SELECT jsonb_typeof(detail) FROM garuda_order_journal WHERE event_id = $1",
+                event_id,
+            )
+            assert typeof == "object", (
+                f"garuda_order_journal.detail has jsonb_typeof={typeof!r}, expected "
+                "'object' -- journal.append_event no longer hands the codec a native "
+                "dict, or the codec regressed"
+            )
+    finally:
+        await pool.close()
+
+
+@_live_only
+@pytest.mark.asyncio
+async def test_journal_enqueue_outbox_writes_a_real_jsonb_object_on_garuda_order_outbox() -> None:
+    """`garuda_orders/journal.py::enqueue_outbox` -> `garuda_order_outbox.payload`.
+
+    Covers the `Decimal` half of the same requirement. `garuda_order_outbox`
+    FK-references `garuda_orders`/`garuda_order_journal`, so this test seeds
+    a minimal synthetic order row (deleted in the `finally`) -- the journal
+    row it also creates is append-only and left in place, same as the test
+    above.
+    """
+    pool = await create_prod_shaped_pool(TEST_DATABASE_URL, min_size=1, max_size=2)
+    order_id = f"jsonbparity-order-{uuid.uuid4().hex[:12]}"
+    try:
+        async with pool.acquire() as conn:
+            if not await _table_exists(conn, "garuda_order_outbox") or not await _table_exists(
+                conn, "garuda_orders"
+            ):
+                pytest.skip(
+                    "garuda_order_outbox/garuda_orders not present in TEST_DATABASE_URL target"
+                )
+
+            await conn.execute(
+                """
+                INSERT INTO garuda_orders
+                    (order_id, result_id_ref, case_type, applicant_full_name,
+                     applicant_email, applicant_phone, applicant_passport_number,
+                     price_idr, price_catalogue_key)
+                VALUES ($1, $2, 'issuance', 'JSONB Codec Parity Probe',
+                        'jsonbparity-probe@example.com', '+00000000000',
+                        'X0000000', 100000, 'jsonbparity-catalogue-key')
+                """,
+                order_id,
+                f"jsonbparity-result-{uuid.uuid4().hex[:12]}",
+            )
+            try:
+                event_id = await garuda_orders_journal.append_event(
+                    conn,
+                    event_name="jsonb_codec_parity.probe",
+                    aggregate_type="order",
+                    aggregate_id=order_id,
+                    transition_id="OP-00",
+                    customer_visible=False,
+                    detail={},
+                )
+                await garuda_orders_journal.enqueue_outbox(
+                    conn,
+                    order_id=order_id,
+                    journal_event_id=event_id,
+                    job_type="jsonb_codec_parity_probe",
+                    payload={
+                        "probe": "jsonb_codec_parity",
+                        "amount": Decimal("199.99"),
+                    },
+                )
+                typeof = await conn.fetchval(
+                    "SELECT jsonb_typeof(payload) FROM garuda_order_outbox "
+                    "WHERE journal_event_id = $1 AND job_type = 'jsonb_codec_parity_probe'",
+                    event_id,
+                )
+                assert typeof == "object", (
+                    f"garuda_order_outbox.payload has jsonb_typeof={typeof!r}, expected "
+                    "'object' -- journal.enqueue_outbox no longer hands the codec a "
+                    "native dict, or the codec regressed"
+                )
+            finally:
+                await conn.execute(
+                    "DELETE FROM garuda_order_outbox WHERE order_id = $1", order_id
+                )
+                await conn.execute("DELETE FROM garuda_orders WHERE order_id = $1", order_id)
+                # garuda_order_journal row: append-only, left in place (see
+                # the test above).
+    finally:
+        await pool.close()
+
+
+@_live_only
+@pytest.mark.asyncio
+async def test_garuda_orders_idempotency_complete_writes_a_real_jsonb_object() -> None:
+    """`garuda_orders/idempotency.py::complete` -> `garuda_order_idempotency.response_body`.
+
+    `complete()` is an UPDATE, not an INSERT -- `reserve()` must run first
+    to create the row (the same order the real `create_order_and_checkout`
+    flow calls them in). `order_id` is nullable on this table, so no
+    `garuda_orders` row is needed here.
+
+    NOT cleaned up in a `finally`, and this is not an oversight: migration
+    284's `guard_garuda_order_idempotency_mutation` raises `'unexpired
+    garuda_order_idempotency rows are immutable'` on ANY DELETE while
+    `clock_timestamp() < expires_at` (default +30 days from INSERT) --
+    there is no way to delete a row this test just created without
+    bypassing the exact guard the real replay-cache relies on. Tagged with
+    a `jsonbparity-` key derivation so it is identifiable as test noise.
+    """
+    pool = await create_prod_shaped_pool(TEST_DATABASE_URL, min_size=1, max_size=2)
+    key_sha256 = hashlib.sha256(f"jsonbparity-orders-{uuid.uuid4().hex}".encode()).digest()
+    try:
+        async with pool.acquire() as conn:
+            if not await _table_exists(conn, "garuda_order_idempotency"):
+                pytest.skip("garuda_order_idempotency not present in TEST_DATABASE_URL target")
+
+            payload_sha256 = hashlib.sha256(b"jsonbparity-orders-payload").digest()
+            await garuda_orders_idempotency.reserve(
+                conn, key_sha256=key_sha256, payload_sha256=payload_sha256
+            )
+            await garuda_orders_idempotency.complete(
+                conn,
+                key_sha256=key_sha256,
+                response_status=201,
+                response_body={
+                    "probe": "jsonb_codec_parity",
+                    "issued_at": datetime(2026, 8, 30, tzinfo=timezone.utc),
+                },
+            )
+            typeof = await conn.fetchval(
+                "SELECT jsonb_typeof(response_body) FROM garuda_order_idempotency "
+                "WHERE key_sha256 = $1",
+                key_sha256,
+            )
+            assert typeof == "object", (
+                f"garuda_order_idempotency.response_body has jsonb_typeof={typeof!r}, "
+                "expected 'object' -- idempotency.complete no longer hands the codec "
+                "a native dict, or the codec regressed"
+            )
+    finally:
+        await pool.close()
+
+
+@_live_only
+@pytest.mark.asyncio
+async def test_garuda_portal_idempotency_complete_writes_a_real_jsonb_object() -> None:
+    """`garuda_portal/idempotency.py::complete` -> `garuda_magic_link_idempotency.response_body`.
+
+    Same `reserve()`-then-`complete()` order as the L3 sibling above;
+    `garuda_magic_link_idempotency` has no FK at all.
+
+    NOT cleaned up in a `finally`, same reason as the L3 sibling above:
+    migration 285's `guard_garuda_magic_link_idempotency_mutation` raises on
+    ANY DELETE while unexpired (default +1 day from INSERT).
+    """
+    pool = await create_prod_shaped_pool(TEST_DATABASE_URL, min_size=1, max_size=2)
+    key_sha256 = hashlib.sha256(f"jsonbparity-portal-{uuid.uuid4().hex}".encode()).digest()
+    try:
+        async with pool.acquire() as conn:
+            if not await _table_exists(conn, "garuda_magic_link_idempotency"):
+                pytest.skip(
+                    "garuda_magic_link_idempotency not present in TEST_DATABASE_URL target"
+                )
+
+            payload_sha256 = hashlib.sha256(b"jsonbparity-portal-payload").digest()
+            await garuda_portal_idempotency.reserve(
+                conn, key_sha256=key_sha256, payload_sha256=payload_sha256
+            )
+            await garuda_portal_idempotency.complete(
+                conn,
+                key_sha256=key_sha256,
+                response_status=200,
+                response_body={
+                    "probe": "jsonb_codec_parity",
+                    "authorized": True,
+                    "amount": Decimal("42.00"),
+                },
+            )
+            typeof = await conn.fetchval(
+                "SELECT jsonb_typeof(response_body) FROM garuda_magic_link_idempotency "
+                "WHERE key_sha256 = $1",
+                key_sha256,
+            )
+            assert typeof == "object", (
+                f"garuda_magic_link_idempotency.response_body has jsonb_typeof={typeof!r}, "
+                "expected 'object' -- idempotency.complete no longer hands the codec "
+                "a native dict, or the codec regressed"
+            )
+    finally:
         await pool.close()
