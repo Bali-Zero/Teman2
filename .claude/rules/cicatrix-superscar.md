@@ -206,10 +206,10 @@ CONTENUTO (diff vuoto/subset), mai patch-equivalenza/SHA-ancestor/timestamp.
 contenuto post-squash) · W102 (two-dot diff accusa PR dei file di main) · W106 (proxy congelato sceglie
 credenziale morta) · W106b (il checkout stesso è il proxy) · W109b (2 PR che si bloccano a vicenda) ·
 W111 (`gh run rerun` rigioca merge-ref stantio) · W114 (fake e codice condividono l'immaginazione) ·
-W118 (3 proxy merge-queue che mentono) · W125 (fusione pulita senza marker, la resa a mano la tiene) · W131 (un nome, due ruoli).
+W118 (3 proxy merge-queue che mentono) · W125 (fusione pulita, la resa a mano la tiene) · W131 (un nome, due ruoli).
 **→ dettaglio:** cicatrix-scars.md (resto) + archive (W53/W54/W61)
 **PR-1 landing** (corpo in `PENDING-ARMS.md`): la mergeability GitHub non onora `merge=union`;
-`autoMergeRequest` non sopravvive a un transito CONFLICTING — va riarmato via GraphQL.
+`autoMergeRequest` SOPRAVVIVE a CONFLICTING — leggi la timeline, mai lo scalar (NULL anche pending).
 
 ---
 
