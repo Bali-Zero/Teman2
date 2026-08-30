@@ -138,19 +138,9 @@ _STEPS_EMPLOYEE: list[str] = [
     "Passport valid ≥ 18 months",
 ]
 
-# The two routes ranked under RETIREMENT (E33E 5y, E33F 1y — the official visa
-# catalogue names them "Retirement KITAS (55+)" and "Retirement KITAS
-# (Variant)") do NOT share one financial requirement, so each figure names the
-# route it belongs to. E33E's USD 50,000 deposit was missing from this list
-# entirely: a visitor matched to the 5-year route saw the income requirement
-# alone and could reasonably conclude no deposit was involved. Both figures map
-# to `confirmed` entries in research/secondhome/e33-fact-registry.json
-# (e33e_requirements, e33f_requirements) and to the official catalogue entry
-# ("Proof of USD 50,000 deposit in state bank (within 90 days)").
+# Shared by both retirement routes. The route-specific money line is
+# prepended per product by `_steps_for` — see `_STEPS_BY_VISA` below.
 _STEPS_RETIREMENT: list[str] = [
-    "E33F (1 year): proof of pension or passive income ≥ USD 3,000/month — no deposit required",
-    "E33E (5 years): USD 50,000 deposit at a state-owned (BUMN) Indonesian "
-    "bank, placed within 90 days, plus passive income ≥ USD 3,000/month",
     "Passport valid ≥ 18 months",
     "Proof of accommodation (rental or property in Indonesia)",
     "Domestic helper hire letter (optional but recommended)",
@@ -181,6 +171,48 @@ _STEPS_BY_PURPOSE: dict[Purpose, list[str]] = {
     Purpose.FAMILY: _STEPS_FAMILY,
     Purpose.STUDENT: _STEPS_STUDENT,
 }
+
+
+#: Financial requirements that belong to ONE product, prepended to the
+#: purpose-level list for the visa actually recommended.
+#:
+#: These cannot live in `_STEPS_BY_PURPOSE`. The result is rendered as an
+#: ordered "Pre-arrival checklist" in the frontend and introduced in the funnel
+#: email as "make sure you have the <visa> essentials" — i.e. as ONE visa's
+#: mandatory list. Putting both routes' money lines in it would tell an E33F
+#: client to place a USD 50,000 deposit they do not need, and would show an
+#: E33E client "no deposit required" immediately above a deposit.
+#:
+#: The two senior routes (the official catalogue names them "Retirement KITAS
+#: (55+)" and "Retirement KITAS (Variant)") DO share the USD 3,000/month income
+#: requirement; only E33E adds a deposit on top. Both figures map to
+#: `confirmed` entries in research/secondhome/e33-fact-registry.json
+#: (e33e_requirements, e33f_requirements) and to the official catalogue's own
+#: wording ("Proof of USD 50,000 deposit in state bank (within 90 days)").
+_STEPS_BY_VISA: dict[VisaType, list[str]] = {
+    VisaType.E33E: [
+        "USD 50,000 deposit at a state-owned (BUMN) Indonesian bank, placed "
+        "within 90 days of arrival",
+        "Proof of pension or passive income \u2265 USD 3,000/month",
+    ],
+    VisaType.E33F: [
+        "Proof of pension or passive income \u2265 USD 3,000/month "
+        "\u2014 this route requires no deposit",
+    ],
+}
+
+
+def _steps_for(visa: VisaType | None, purpose: Purpose) -> list[str]:
+    """Pre-arrival steps for the recommended VISA, not merely its purpose.
+
+    One purpose can rank several products with different money requirements,
+    and every caller presents this list as a single visa's mandatory
+    checklist — so a purpose-level list cannot carry a product-level figure.
+    """
+    shared = _STEPS_BY_PURPOSE.get(purpose, [])
+    if visa is None:
+        return shared
+    return _STEPS_BY_VISA.get(visa, []) + shared
 
 
 # ── Scoring ──────────────────────────────────────────────────────
@@ -457,6 +489,6 @@ def recommend_visa(
 
     return MatchResult(
         ranking=ranking,
-        pre_arrival_steps=_STEPS_BY_PURPOSE.get(purpose, []),
+        pre_arrival_steps=_steps_for(ranking[0].visa, purpose),
         referral_mode=False,
     )
