@@ -979,6 +979,34 @@ def test_cleanup_skips_branch_not_in_origin_main(fake_repo, capsys, monkeypatch)
     assert "origin/main" in out
 
 
+def test_cleanup_head_renamed_mid_flight_message_is_honest(fake_repo, capsys, monkeypatch):
+    """Guilt: an expired, clean, idle, no-live-process worktree whose HEAD was
+    renamed mid-flight (`git checkout -b <new>`, no new commits — trivially an
+    ancestor of origin/main) must still be protected, since the registered
+    branch name is no longer what HEAD actually is — but the skip message must
+    say THAT, not assert the unrelated, unverified "has commits not in
+    origin/main" — a real defect found live 2026-08-31 (healer tick): the
+    message named a specific cause `_branch_in_origin_main` never checked,
+    which cost a future reader a live `merge-base --is-ancestor` re-derivation
+    to disprove a false claim from the tool's own diagnostic."""
+    mod, _ = fake_repo
+    wt = mod.cmd_create("wr2", "renamed", ttl_minutes=5)
+    _backdate_metadata(wt, mod, minutes=120)
+    subprocess.run(
+        ["git", "checkout", "-b", "renamed-branch"],
+        cwd=wt, check=True, capture_output=True, text=True,
+    )
+    _backdate_worktree_mtime(wt, minutes=120)  # idle on mtime
+    monkeypatch.setattr(mod, "_worktree_has_live_process", lambda p: False)
+    rc = mod.cmd_cleanup()
+    assert rc == 0  # protection, not a failure
+    assert wt.exists()  # still not reapable: registry can't vouch for HEAD
+    out = capsys.readouterr().out
+    assert "renamed-branch" in out  # names the branch HEAD is actually on
+    assert "cannot verify" in out.lower()
+    assert "unmerged commits not in origin/main" not in out
+
+
 def test_cleanup_reaps_when_no_process_and_merged(fake_repo, monkeypatch):
     """W80 case (3): the ONLY auto-reapable state — expired + clean + idle +
     NO live process AND branch merged into origin/main. Both W80 guards pass,
