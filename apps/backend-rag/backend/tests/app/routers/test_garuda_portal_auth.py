@@ -768,7 +768,14 @@ def test_issue_failure_logs_the_exception_class_and_nothing_else(fake_store, cap
             "/api/visa/voa/auth/magic-links",
             json={"result_id": VALID_RESULT_ID, "email": "traveller@example.com"},
             headers={"Idempotency-Key": "11111111-1111-4111-8111-111111111111"},
-            cookies={"garuda_result_session": "owner-secret"},
+            # `VALID_RESULT_SESSION`, not an arbitrary literal: since the
+            # ownership check landed on this handler, a cookie the default
+            # `_FakeCheckStore` does not recognise takes the non-enumerating
+            # 202 path and `store.issue` — the thing THIS test is about — is
+            # never reached. Written as the ownership constant so the two
+            # facts stay coupled: this test asserts what the handler logs
+            # when issuance fails FOR A LEGITIMATE OWNER.
+            cookies={"garuda_result_session": VALID_RESULT_SESSION},
         )
 
     assert resp.status_code == 500
