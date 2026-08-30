@@ -247,6 +247,9 @@ receipts:
       formatter that compacts single-element arrays onto one line. The RFC-8785 canonical digest is
       identical, and the canonical digest is what is signed. Compare packs by JCS digest, never by
       file size or byte equality.
+    exit: 0
+    ts: 2026-08-31T04:19Z
+    seat: seq18-gate (final on-disk gate, Opus 5, fresh context — generator != grader)
 
 council_run: council-run.jsonl
 
