@@ -473,54 +473,59 @@ def _currency_amounts(text: str) -> list[tuple[str, int]]:
 
 
 # ---------------------------------------------------------------------------
-# DERIVED AMOUNTS (added 2026-08-30)
+# TWO-COMPONENT TOTALS (added 2026-08-30)
 #
-# THE DEFECT, measured live and in isolation, not argued. `wa_outbox` row 387
-# was fired alone into a quiet thread — no sibling message, no coalescing — and
-# failed 5 of 5 attempts on `finalize_pricing_outside_package` answering
+# THE DEFECT that opened this, measured rather than argued: the ONE rule this
+# bot must obey was unshippable. Zero's 2026-07-17 ruling is a single
+# all-inclusive client-facing price, which for an Investor KITAS means
+# 17,000,000 + 9,500,000 = 26,500,000 — a figure that appears in no source.
+# Against the real package notation, before this change:
 #
-#     "Kalau visa saya overstay 5 hari, dendanya berapa per hari?"
-#
-# The evidence package for that query really does carry the rate (measured on
-# the production build endpoint: `IDR 1,000,000` per day, PP 45/2024). The
-# answer was rejected because it did what the client asked — it multiplied the
-# rate by the five days — and `5,000,000` appears in no source verbatim. The
-# client received an apology.
-#
-# The same mechanism makes the ONE rule this bot must obey unshippable. Zero's
-# 2026-07-17 ruling is a single all-inclusive client-facing price, which for an
-# Investor KITAS means 17,000,000 + 9,500,000 = 26,500,000 — a figure that,
-# again, appears in no source. Measured against the real package notation:
-#
-#     "Total all-in ... Rp26.500.000"       -> ['IDR:26500000']   VETOED
+#     "Total all-in ... Rp26.500.000"        -> ['IDR:26500000']   VETOED
 #     "biaya layanan Rp17.000.000.
 #      PNBP pemerintah Rp9.500.000"          -> []                 passes
 #
-# So the anchoring veto was actively PUSHING the generator toward splitting the
+# So this veto was actively PUSHING the generator toward splitting the
 # government levy out of the client price: splitting is the only shape that
-# keeps every figure verbatim-anchored. The split-price defect this codebase is
-# separately guarding against was, in part, this veto's own output.
+# keeps every figure verbatim-anchored. The split-price defect guarded
+# separately by `price_split_offenders` was, in part, this veto's own output.
 #
-# THE CURE: an amount is anchored if it is a source amount OR an exact
-# arithmetic derivation of source amounts — an integer multiple (a per-day rate
-# times a number of days) or a sum of two or three of them (an all-inclusive
-# total). Nothing else: no differences, no percentages, no chains of both. The
-# generator may ADD UP what the sources say; it may not invent.
+# THE RULE: an amount is anchored if it is a source amount, or the sum of
+# exactly TWO DISTINCT source amounts that are each price-sized. Nothing else.
+# The generator may add up two things the sources state; it may not invent, and
+# it may not multiply.
 #
-# WHAT THIS COSTS, stated rather than buried: a hallucinated figure that
-# happens to equal a sum or a small multiple of real source figures now passes.
-# That is a genuine widening. It is the right side of the exchange because the
-# measured alternative is not "a stricter guard" but "no answer at all" on the
-# two commonest question shapes the business has — how much does it cost, and
-# how much is the fine — plus a standing incentive toward the split-price
-# defect. The label gate, the PricingTool grounding and the split-fee veto
-# remain the primary controls on WHAT the answer claims.
+# WHAT WAS TRIED AND REJECTED, kept because the wider shape is the tempting one
+# and this is the record of why it fails. The first version also admitted an
+# integer multiple of a source amount, on the reasoning that a per-day rate
+# times a day count is honest arithmetic. It is — but the code cannot see the
+# count. It divided the GENERATED figure by a source figure and accepted any
+# whole quotient. A cross-family adversarial reviewer returned BLOCK, and all
+# seven of its concrete cases reproduced verbatim against the code:
 #
-# The bounds are deliberate and small. MULTIPLE caps at 366 because the real
-# multiplicand is a count of days (overstay days, rental days) and a year is
-# the honest ceiling; TERMS caps at 3 because a client price is a service fee
-# plus a levy plus at most one add-on, and every extra term multiplies the
-# surface on which a wrong number can land on a legal sum by coincidence.
+#     Rp250.000.000  passed (250x the daily rate; the client asked about 5 days)
+#     Rp88.000.000   passed (as did every whole million up to 366 million)
+#     Rp1.002.069    passed (1,000,000 + 2024 + 45 — a year and an article no.)
+#     Rp26.500.002   passed (the bare "2" from "2 years" used as an operand)
+#     Rp43.500.000   passed (one 17,000,000 service fee charged twice)
+#     Rp20.500.000   passed (KITAS fee + tax penalty + overstay fine, laundered)
+#     Rp3.000.000    passed (a USD source authorizing an IDR multiple)
+#
+# With one Rp1,000,000/day source the guard admitted the entire round-million
+# grid — precisely the numbers a generator emits. Divisibility is not
+# derivation. Each of those seven is now a test.
+#
+# WHAT THIS STILL COSTS, stated rather than buried:
+# * An honest multiplication is still vetoed. "5 hari x Rp1.000.000" is a
+#   correct answer to a real question, and `wa_outbox` row 387 — fired alone
+#   into a quiet thread — failed 5 of 5 attempts on exactly that and the client
+#   got an apology. Admitting it safely requires binding the multiplier to a
+#   count present in the CUSTOMER'S QUESTION, which this function never
+#   receives. That is a signature change; it will be specified, not guessed.
+# * Two REAL price amounts from unrelated chunks can still sum to a total no
+#   source authorizes, because `price_sources` is a flat sequence of strings
+#   carrying no provenance, no currency family and no semantic role. Closing
+#   that is a data-contract change, not a predicate change.
 _SUMMABLE_OPERAND_FLOORS: dict[str, int] = {
     "IDR": 100_000,
     "USD": 10,
