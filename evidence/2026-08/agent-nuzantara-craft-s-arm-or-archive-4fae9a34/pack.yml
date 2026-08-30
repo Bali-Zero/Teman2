@@ -21,7 +21,7 @@ seat_diversity_note: >-
   Refuter cross-family (Google). Codex sol out of credits.
 diff:
   net_lines: >-
-    AS OF the commit this pack ships with: 6 files, +449/-1, net 448 — THREE-DOT
+    AS OF the commit this pack ships with: 7 files, +468/-1, net 467 — THREE-DOT
     against the merge base (W102). Gear floor recomputed = 3 (hot-zone:
     .github/workflows/); declared Gear 3, at the floor. Two of the six files are
     new workflows, one is a one-line fix to an existing one, three are this
