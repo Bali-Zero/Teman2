@@ -515,6 +515,92 @@ def price_tokens_outside_sources(text: str, price_sources: Sequence[str]) -> lis
     return offenders
 
 
+# ---------------------------------------------------------------------------
+# THE SPLIT-PRICE VETO (added 2026-08-30)
+#
+# THE DEFECT, measured on the live bot, not argued: cycle 357 case q1 (outbox
+# row 379, 2026-08-30T17:54Z, route=codex, done at attempt 1) answered an
+# Investor-KITAS price question with
+#
+#   "biaya layanan kami: offshore Rp17.000.000, onshore Rp19.000.000 [...]
+#    PNBP pemerintah Rp9.500.000 untuk 2 tahun"
+#
+# — a government levy presented to a CLIENT as a separate payable item beside
+# the Bali Zero price. Zero's ruling of 2026-07-17 is one all-inclusive
+# client-facing price, never a PNBP-vs-fee split, and the PricingTool rows say
+# so in their own notes ("All-inclusive price - the government fee is included;
+# nothing further is payable on arrival"). A client reading row 379 would
+# reasonably budget Rp9.500.000 that is already inside the Rp17.000.000.
+#
+# WHY THE EXISTING PRICING VETO CANNOT SEE IT: `price_tokens_outside_sources`
+# asks whether every amount is PRESENT in the frozen package's sources. It
+# proves CONSISTENCY, never COMPLIANCE. Measured the same day: the pricing
+# block returned for that exact question contains no "PNBP" and no
+# "pemerintah" at all, yet the answer passed the veto — so the figure was
+# laundered in from a retrieved chunk, which the veto accepts by design (see
+# the "declared residual" in that function's docstring). Two different
+# questions, two different guards.
+#
+# THE SHAPE, and why it is not a bare substring scan (cicatrix family #3): the
+# forbidden thing is a government-fee marker carrying its OWN amount in the
+# same sentence. A sentence that says the government fee is INCLUDED is the
+# behaviour we want and must survive untouched - it is the literal text of the
+# PricingTool notes. So: fire on (marker AND currency amount) within one
+# sentence, UNLESS that sentence also carries an inclusion marker. "mencakup"
+# / "covers" is deliberately NOT an inclusion marker: in row 379 it said the
+# PNBP covers visa+ITAS, which is a statement about what the levy buys, not
+# about it being inside our price.
+_PRICE_SPLIT_MARKERS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("pnbp", re.compile(r"(?i)\bPNBP\b")),
+    ("government_fee", re.compile(r"(?i)\bgovernment(?:al)?\s+(?:fee|charge|levy)s?\b")),
+    ("biaya_pemerintah", re.compile(r"(?i)\bbiaya\s+(?:pemerintah|negara)\b")),
+    ("state_fee", re.compile(r"(?i)\bstate\s+(?:fee|levy)s?\b")),
+)
+
+# An inclusion marker EXEMPTS the sentence. Kept narrow on purpose: each entry
+# asserts the levy sits INSIDE the quoted price. Innocence is pinned by test.
+_PRICE_INCLUSION_MARKERS = re.compile(
+    r"(?i)\b(?:sudah\s+(?:termasuk|include)|termasuk\s+dalam|already\s+included"
+    r"|is\s+included|are\s+included|included\s+in|all[\s-]?inclusive"
+    r"|nothing\s+further\s+is\s+payable)\b"
+)
+
+# Split on sentence-ending punctuation, but NOT when it is immediately
+# followed by a digit — that shape is a thousand-separator or decimal point
+# inside a currency amount ("Rp17.000.000", "USD 700.50"), never a sentence
+# boundary. A trailing "Rp9.500.000." (a real sentence end whose amount also
+# ends the sentence) still splits correctly: only the FINAL period is
+# followed by whitespace/end-of-string, not a digit — the internal grouping
+# periods are the ones protected. (A lookbehind-on-digit approach was tried
+# first and rejected: it also blocks the real sentence-ending period right
+# after a number, e.g. "...Rp18.000.000. PNBP pemerintah..." would then
+# never split — caught by this module's own test suite before being fixed
+# to lookahead-only.)
+_SENTENCE_SPLIT_RE = re.compile(r"[.!?]+(?!\d)|\n+")
+
+
+def price_split_offenders(text: str) -> list[str]:
+    """Names of split-price markers that carry their own amount, uncontradicted.
+
+    Returns marker NAMES only, never the matched text or the amount - this
+    value is logged and stored in `wa_outbox.generation_fall_off_reason`, which
+    dashboards read and reports quote (same discipline as
+    `scan_text_for_secret_egress`).
+    """
+    offenders: list[str] = []
+    for sentence in _SENTENCE_SPLIT_RE.split(text):
+        if not sentence.strip():
+            continue
+        if _PRICE_INCLUSION_MARKERS.search(sentence):
+            continue
+        if not _CURRENCY_AMOUNT_RE.search(sentence):
+            continue
+        for name, pattern in _PRICE_SPLIT_MARKERS:
+            if pattern.search(sentence) and name not in offenders:
+                offenders.append(name)
+    return offenders
+
+
 _SECRET_EGRESS_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("private_key_block", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
     ("ssh_pubkey", re.compile(r"\bssh-(?:rsa|ed25519|dss)\s+[A-Za-z0-9+/=]{20,}")),
@@ -593,6 +679,22 @@ def _codex_egress_veto(
                 f"wa-finalize: answer for thread {thread_id} asserts prices "
                 "outside the frozen package",
             )
+    # Runs unconditionally, NOT under `price_sources is not None`: splitting a
+    # government levy out of a client-facing price is forbidden by the ruling
+    # whether or not this leg was handed price sources to anchor against.
+    split = price_split_offenders(text)
+    if split:
+        logger.warning(
+            "wa-finalize: split-price veto for thread %s — %s presented as a "
+            "separately payable amount beside a client price",
+            thread_id,
+            ",".join(split),
+        )
+        return (
+            "price_split_fee",
+            f"wa-finalize: answer for thread {thread_id} splits a government "
+            "levy out of the client-facing price",
+        )
     if secret_scan:
         hit = scan_text_for_secret_egress(text, canary_tokens)
         if hit is not None:

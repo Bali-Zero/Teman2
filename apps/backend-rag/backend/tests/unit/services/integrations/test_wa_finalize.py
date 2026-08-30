@@ -27,6 +27,7 @@ from backend.services.integrations.wa_finalize import (
     _WHATSAPP_HARD_SEND_LIMIT,
     FinalizeOutcome,
     finalize_wa_answer,
+    price_split_offenders,
     price_tokens_outside_sources,
     scan_text_for_secret_egress,
 )
@@ -356,6 +357,100 @@ def test_pricing_veto_does_not_distinguish_currency_families() -> None:
     is desirable; if a later PR makes membership family-aware it should fail.
     """
     assert price_tokens_outside_sources("Il totale è EUR 5000.", ["USD 5000"]) == []
+
+
+# ── Split-price veto (pure function): guilt and innocence ────────────────
+#
+# GUILT: cycle-357 case q1 (outbox row 379, 2026-08-30T17:54:35Z) presented a
+# government levy as a separately payable amount beside the client price —
+# forbidden by Zero's 2026-07-17 all-inclusive ruling. The existing pricing
+# veto could not catch it (the figure WAS anchored in a retrieved chunk).
+
+
+def test_price_split_veto_catches_the_reproduced_client_defect() -> None:
+    text = (
+        "Untuk KITAS Investor 2 tahun, biaya layanan kami: offshore "
+        "Rp17.000.000, onshore/alih status Rp19.000.000, dan perpanjangan "
+        "Rp18.000.000. PNBP pemerintah Rp9.500.000 untuk 2 tahun, mencakup "
+        "visa, ITAS, izin masuk kembali, dan verifikasi."
+    )
+    assert price_split_offenders(text) == ["pnbp"]
+
+
+def test_price_split_veto_catches_english_government_fee() -> None:
+    assert price_split_offenders(
+        "Our service fee is IDR 17,000,000. The government fee is IDR "
+        "9,500,000 payable separately."
+    ) == ["government_fee"]
+
+
+def test_price_split_veto_catches_state_fee_and_biaya_pemerintah() -> None:
+    assert price_split_offenders("There is also a state fee of USD 700.") == [
+        "state_fee"
+    ]
+    assert price_split_offenders("Ada juga biaya pemerintah Rp500.000.") == [
+        "biaya_pemerintah"
+    ]
+
+
+def test_price_split_veto_ignores_a_marker_with_no_amount_in_its_sentence() -> None:
+    # "mencakup PNBP" alone, no currency figure in the same sentence — the
+    # marker with no amount beside it is not the shape this veto targets
+    # (the amount is what turns a mention into a payable-item claim).
+    assert price_split_offenders(
+        "Harga kami sudah mencakup PNBP dan semua biaya resmi lainnya."
+    ) == []
+
+
+def test_price_split_veto_survives_a_true_inclusion_statement() -> None:
+    # The exact PricingTool notes wording for VOA/extension rows: the
+    # government fee IS the client price, stated as included — must not fire.
+    assert price_split_offenders(
+        "B1 Visa on Arrival: Rp790.000. All-inclusive price — the government "
+        "fee is included; nothing further is payable on arrival."
+    ) == []
+    assert price_split_offenders(
+        "Biaya PNBP Rp1.000.000 sudah termasuk dalam harga layanan kami "
+        "Rp5.000.000."
+    ) == []
+
+
+def test_price_split_veto_does_not_cross_a_sentence_boundary() -> None:
+    # A PNBP mention in one sentence and an unrelated amount in the next must
+    # not combine into a false positive — mirrors the pricing veto's own
+    # "amount never crosses a newline" discipline, at sentence granularity.
+    assert price_split_offenders(
+        "PNBP is a standard government fee category in Indonesia. "
+        "Our total service price is Rp17.000.000 all-inclusive."
+    ) == []
+
+
+def test_price_split_veto_fires_once_per_marker_not_per_sentence() -> None:
+    text = (
+        "PNBP pemerintah Rp5.000.000 untuk tahun pertama. "
+        "PNBP pemerintah Rp5.000.000 untuk perpanjangan."
+    )
+    assert price_split_offenders(text) == ["pnbp"]
+
+
+def test_price_split_veto_runs_regardless_of_price_sources() -> None:
+    """The split-price veto is orthogonal to source-anchoring.
+
+    `_codex_egress_veto` must run `price_split_offenders` unconditionally on
+    the finalize path — not only when `price_sources` was supplied — because
+    splitting a government levy out of a client price is forbidden whether
+    or not this leg happened to receive anchoring sources.
+    """
+    import inspect
+
+    from backend.services.integrations import wa_finalize as _mod
+
+    src = inspect.getsource(_mod._codex_egress_veto)
+    # "price_split_offenders(" must appear outside the
+    # "if price_sources is not None:" block — assert it is not indented
+    # under that guard by checking it exists at the function's own top level
+    # (4-space indent), not nested one level deeper (8-space).
+    assert "\n    split = price_split_offenders(text)" in src
 
 
 def test_pricing_veto_idr_and_usd_behave_exactly_as_before() -> None:

@@ -173,6 +173,7 @@ _KNOWN_FALL_OFF_REASONS: frozenset[str] = frozenset(
         "post_completion_error",
         "consume_lost",
         "finalize_defect",
+        "finalize_price_split_fee",
         "internal_error",
         "unknown",
     }
@@ -256,6 +257,7 @@ _FINALIZE_SUB_REASON_MAP: dict[str, str] = {
     "oversized_output": "finalize_oversized_output",
     "rag_abstain": "finalize_rag_abstain",
     "blank_send_text": "finalize_blank_send_text",
+    "price_split_fee": "finalize_price_split_fee",
 }
 
 # The one sub-reason whose raw form carries a variable suffix.
