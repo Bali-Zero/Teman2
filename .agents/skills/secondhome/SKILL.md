@@ -362,30 +362,38 @@ reached — free to pick up). Status sweep 2026-08-23.
     proves nothing here, only a chunk grep or a rendered read does, and the
     dictionaries live in a numbered chunk (`chunks/NNNNN-<hash>.js`), not in
     the `chunks/app/visa/...` route files where you would look first.
-    - **Consent-banner half** (#5386, merged as `7ee917eab` 22:56:49Z) — ⚠️
-      **MERGED, MEASURED ABSENT FROM PRODUCTION at 23:19Z**, 23 minutes after
-      the merge. The five `common.consent.*` keys were missing from fr/ru, so
-      that banner — which mounts on `/visa/second-home` AND on the Studio —
-      rendered in English for exactly the visitors those dictionaries had just
-      been written for (`t()` falls back locale → en → the raw key path, so
-      nothing throws, nothing is typed-checked, and only a reader of those two
-      languages would ever see it). The measurement, with its controls: all 23
-      chunks downloaded; `Politique de confidentialit` and
-      `конфиденциальности` **0 occurrences anywhere**, while
-      `Une option famille` ×2, `Доступна семейная опция` ×2, `Ho capito` ×1
-      and `Got it` ×2 were all found — so the probe was sighted and the
-      absence is real. Independently bounded by commit content rather than by
-      chunk hashes: the served bundle contains `2306023b` (#5381, 22:18:25Z)
-      and not `7ee917eab` (#5386, 22:56:49Z, main HEAD), and `balizero.com`
-      answered `x-vercel-cache: HIT` with `age` growing 314 → 416 s in
-      lockstep with the wall clock. **Cause not distinguished**: ordinary
-      build+edge-cache lag and the MERGED-NON-PROMOTED gap this file documents
-      on the Merah Putih DAY row are both consistent with one probe 23 minutes
-      out; only a later probe separates them. Re-probe by grepping the chunk
-      set for those two strings, with `Ho capito` / `Got it` as the control.
-      Do NOT close this row on #5381's strings being present — they sit in the
-      same chunk and were already live 38 minutes earlier, so they are a
-      control for the PROBE, never evidence for this row.
+    - **Consent-banner half** (#5386, merged as `7ee917eab` 22:56:49Z) — ✅
+      **LIVE, proved 2026-08-31 at 23:47Z.** `Politique de confidentialit`
+      AND `конфиденциальности` both found in
+      `chunks/99753-97db07dc43c28d3e.js`, with `Ho capito` present in the same
+      sweep as the control. Note the chunk HASH moved —
+      `99753-e8fd4c3e491e784f` → `99753-97db07dc43c28d3e` — which is the
+      cheapest signal that a new bundle is actually being served.
+      **It was ABSENT 28 minutes earlier and the record of that is kept
+      deliberately**, because the question a future prove-live will ask is not
+      "did it ship" but "how long do I wait before an absence means
+      something". Measured here: **absent at 23:19Z (23 min after merge),
+      present at 23:47Z (51 min)** — so on this surface a single negative
+      probe inside the first hour distinguishes nothing, and the
+      MERGED-NON-PROMOTED gap this file documents on the DAY row is NOT the
+      first hypothesis to reach for. What the banner was doing while absent,
+      for the record: the five `common.consent.*` keys were missing from
+      fr/ru, so that banner — which mounts on `/visa/second-home` AND on the
+      Studio — rendered in English for exactly the visitors those dictionaries
+      had just been written for. `t()` falls back locale → en → the raw key
+      path, so nothing throws, nothing is type-checked, and only a reader of
+      those two languages would ever have seen it. The 23:19Z measurement, in
+      full: all 23 chunks downloaded; the two strings **0 occurrences
+      anywhere**, while `Une option famille` ×2, `Доступна семейная опция` ×2,
+      `Ho capito` ×1 and `Got it` ×2 were all found — the probe was sighted.
+      Bounded by commit content rather than by chunk hashes: the bundle served
+      then contained `2306023b` (#5381, 22:18:25Z) and not `7ee917eab` (#5386,
+      22:56:49Z), and `balizero.com` answered `x-vercel-cache: HIT` with `age`
+      growing 314 → 416 s in lockstep with the wall clock. **The rule this
+      leaves behind**: never close a row like this on the strength of an
+      EARLIER commit's strings being present — `Une option famille` sits in
+      the same chunk and was already live 38 minutes before, so it is a
+      control for the PROBE and never evidence for the row.
       (Noted in passing by the same sweep, not re-litigated here: the DAY
       palette markers `merah-putih-day`, `f7f6f2`, `16213a`, `c8102e`,
       `d01033` WERE present in `chunks/11717-943f035014a27981.js` at 23:19Z,
