@@ -1,62 +1,147 @@
-task_id: wa-price-split-fee-veto-0830
+task_id: visa-window-seq18-0831
 gear: 3
 l_level: L2
 gate_class: opus
 objective: |
-  Stop the WhatsApp bot presenting a government levy to a client as a separately
-  payable amount beside the Bali Zero price.
+  Move the OFFICIAL_PORTAL freshness window from seven days to thirty-two, so the next boundary
+  lands on 2026-10-01T13:18:00Z instead of 2026-09-06.
 
-  Measured, not argued. `wa_outbox` row 379 (2026-08-30T17:54:35Z, route=codex,
-  done at attempt 1) answered an Investor-KITAS price question with
-  "biaya layanan kami: offshore Rp17.000.000 [...] PNBP pemerintah Rp9.500.000
-  untuk 2 tahun". Zero's ruling of 2026-07-17 is ONE all-inclusive client-facing
-  price, never a PNBP-vs-fee split, and the PricingTool rows say so in their own
-  notes. The existing anchoring veto cannot catch this: it proves every amount is
-  CONSISTENT with the frozen package's sources, never that the answer is COMPLIANT
-  with the single-price rule — and the 9.5M figure was laundered in from a
-  retrieved chunk, which that veto accepts by design.
+  Ordered by Zero on 2026-08-30, hours after the seven-day window expired unnoticed and took the
+  Visa Oracle silent on every product for roughly five hours: seq-16's portal records were stamped
+  2026-08-23T10:44:48Z, `evaluate_path.py::_evaluate_source_freshness` turned them STALE at exactly
+  one window later, and the decisive-source gate folded every decision into HUMAN_REVIEW_REQUIRED
+  with an empty candidate list. seq-17 re-stamped them to 2026-08-30T13:18:00Z, which under the old
+  window would have expired again on 2026-09-06.
 
-  This adds a second, independent veto on the codex leg's finalize path, plus the
-  reason code and the CHECK-constraint widening that let the fall-off be recorded.
-constraints: |
-  - Client-facing surface. A false positive costs a retry, then an apology to a
-    client whose answer was correct; a false negative costs a client budgeting a
-    levy twice. Both directions must be tested.
-  - `migrations_v2/**` is hot-zone by path, hence gear 3 by construction.
-  - The migration must CONVERGE (DROP IF EXISTS + ADD), mirroring 290/291/297,
-    with a full ROLLBACK section restoring the 297 vocabulary.
-  - No PII in any log line: the veto returns marker NAMES only, never the matched
-    text or the amount, and the DB stores one code regardless.
-acceptance: |
-  - The reproduced row-379 text fires the veto (guilt) and the real PricingTool
-    all-inclusive wording does not (innocence).
-  - Every finding a cross-family refuter can demonstrate against the function is
-    either fixed and pinned as a test, or refuted with evidence and pinned so it
-    is not "fixed" again.
-  - The stored reason code is accepted by the live CHECK constraint.
-  - With this veto AND the anchoring veto both live, a correct answer still has a
-    shape that passes. This was NOT true when the PR was first opened.
-consumer_map: |
-  - `wa_finalize.finalize_wa_answer` — the only caller; runs on the codex leg for
-    every generated answer, unconditionally (not gated on price_sources).
-  - `wa_codex_leg._FINALIZE_SUB_REASON_MAP` — maps the veto's reason to the stored
-    `generation_fall_off_reason`.
-  - `wa_outbox.generation_fall_off_reason` CHECK constraint — rejects any code not
-    in its vocabulary, so the migration is not optional.
-  - Grafana/ledger consumers read the reason code; no new PII surface.
-risks: |
-  - DECLARED RESIDUAL, deliberately open: an amount written in WORDS ("sembilan
-    juta lima ratus ribu rupiah") is invisible, because `_CURRENCY_AMOUNT_RE`
-    requires a currency marker. Pinned by a test so it is a known gap, not a
-    surprise.
-  - DECLARED COST of proximity windows: a levy named definitionally within 140
-    characters of an unrelated total fires. That costs one retry; the reverse
-    error costs a client budgeting a levy twice.
-  - SEQUENCING RISK, and the reason this PR was disarmed for six hours: merged
-    alone it would have converted a wrong answer into NO answer. See the pack's
-    lane rows.
+  The value lives ONLY inside the signed payload — there is no environment variable, no config key
+  and no database column that overrides `max_age_seconds` anywhere in this codebase. So widening it
+  is necessarily a signed pack ceremony, not a setting.
+
+  Gear 3 by SIZE, deterministically: the two generated pack artifacts put the diff at 19,959 net
+  lines across 13 files at this commit — the figure grows with each review round (19,682 at
+  c59d527faa), and the pack's diff block, which carries its own measured_at, is the authority —
+  far past the blast-radius floor. Recomputed from the real merge-base
+  — 0857ce15bc, after the branch was repointed onto fresh main; it was the sequence-17 landing
+  commit f537609969 before that — never from a two-dot diff against a stale base. Receipt in the
+  pack, and the pack's own diff block is the authority if these ever disagree.
+
+constraints:
+  - "State the cost plainly rather than smoothing it over: the engine may now decide on an official
+    immigration portal page that was last read a MONTH ago. Seven days was not arbitrary — it was
+    the assertion that these pages change often enough to matter. Nothing about that changed; what
+    changed is that the re-attestation lane meant to honour it does not run, so the seven-day
+    promise was being kept by nobody. A thirty-two-day window that is actually honoured is safer
+    than a seven-day window that silently lapses. This is NOT a substitute for repairing that lane,
+    and must not be read as closing it."
+  - "NO RE-STAMP. `verified_at`/`verified_by` keep seq-17's values on every record, because nobody
+    has re-read the pages since. Moving a stamp without a reading is exactly the false attestation
+    the seq-17 review named. This fold changes a POLICY, and a policy change needs no attestation."
+  - "The guard is the fail-closed one seq-17's adversarial review produced, and it is IMPORTED in
+    shape rather than loosened: an explicit allow-list of what may change, universal equality for
+    everything else, at both payload and record level, plus an assertion that
+    `freshness_policy.kind` — the closed discriminator — survives untouched."
+  - "`version` is set to the fold date. seq-17 inherited seq-16's `2026.8.26` while being created on
+    2026-08-30 — a real finding from that PR's kimi review that could not be corrected inside a
+    signed, already-active artifact. It is corrected FORWARD, here, which is the only honest way to
+    correct a signed artifact."
+  - "Adversarial review (codex gpt-5.6-sol, no brief) returned REJECT with six substantiated
+    findings; five are answered in this PR and the sixth — the signed artifact claiming a
+    `created_at` six hours AFTER its own `signed_at` — cannot be, because a signed artifact is not
+    editable. It is pinned by a test that asserts the defect and names its own replacement, and
+    guarded forward in `sign_pack.py`. Corrected in seq-19, never by an edit here."
+  - "Do not weaken any check. The two reds this PR drew are answered by supplying what they ask for
+    — a content-keyed triage rule for the new chain-anchor constant, and this evidence — never by
+    touching a gate. The triage rule is pinned to the exact file, the exact variable name and the
+    exact digest, end-anchored, so it forgives that one line and nothing else."
+
+acceptance:
+  - text: >-
+      WHEN seq-18 is activated, the production catalog SHALL report it as the active sequence with a
+      digest equal to the one the fold and the signer independently computed.
+    probe: >-
+      scripts/pg.sh -c "SELECT p.sequence, encode(p.payload_sha256::bytea,'hex') FROM
+      visa_ruleset_activations a JOIN visa_rule_packs p ON p.id=a.rule_pack_id WHERE
+      upper_inf(a.system_period)"
+  - text: >-
+      WHERE the folded payload is compared against the seq-17 payload, the ONLY record-level
+      difference SHALL be `freshness_policy.max_age_seconds` on the eighteen OFFICIAL_PORTAL
+      records, moving 604800 -> 2764800, WHERE `verified_at` and `verified_by` are untouched.
+    probe: >-
+      structural JSON comparison, plus the fold's own assert_only_expected_changes guard which
+      aborts on any other movement
+  - text: >-
+      IF the seq-17 source handed to the fold is not the artifact production actually ran, the fold
+      SHALL abort before building anything on it.
+    probe: >-
+      the fold recomputes the RFC-8785 digest of its input and requires equality with
+      SEQ17_PAYLOAD_SHA256 = 97cb9647…890b, the digest activated at 2026-08-30T15:35:49Z
+  - text: >-
+      WHEN the deployed service is asked a case that depends on a portal source, it SHALL answer
+      SUPPORTED_CANDIDATES with the new boundary in force.
+    probe: >-
+      live evaluate probe against https://nuzantara-rag.fly.dev after activation
+  - text: >-
+      WHEN a payload whose `created_at` is after the signing instant is handed to the signer, it
+      SHALL be refused — the defect seq-18 itself shipped, fixed forward so no later pack repeats it.
+    probe: >-
+      PYTHONPATH=apps/backend-rag python3 -m pytest
+      apps/backend-rag/backend/tests/scripts/test_visa_engine_sign_pack.py
+      -k CreatedAtNeverAfterSignedAt (run from the REPO ROOT — the repo-relative path is
+      required; a bare `backend/tests/...` collects 0 items and exits 4, which reads as a pass)
+      ; mutation-proven at the CALL SITE, not only in the body: removing the call reddens the
+      real-path test (the gate caught two other guards where only the body was pinned)
+  - text: >-
+      WHERE the fold accepts a seq-17 anchor, the anchor SHALL be a bundle whose Ed25519 signature
+      verifies against the production trust store — never a digest matching a constant in the
+      fold's own source.
+    probe: >-
+      PYTHONPATH=apps/backend-rag python3 -m pytest
+      apps/backend-rag/backend/tests/services/visa_engine/test_seq18_freshness_window.py
+      (from the REPO ROOT, full repo-relative path) ; mutation-proven: removing the call from
+      fold() reddens two end-to-end tests
+  - text: >-
+      WHEN the two checks this PR turned red are re-run, they SHALL be green for the reason the fix
+      claims, proven by running the thing itself.
+    probe: >-
+      python3 scripts/detect_secrets_check_unaudited.py ;
+      python3 -m pytest scripts/tests/test_detect_secrets_auto_triage.py -q
+
+consumer_map:
+  - "`services/visa_engine/evaluate_path.py:682-729` — `_evaluate_source_freshness` reads
+    `max_age_seconds` from the record's own `freshness_policy` per evaluation. This is the only
+    consumer of the value being changed, and the surface the outage was visible on."
+  - "`services/visa_engine/shadow.py:340-400` — `_resolve_active_pack_binding` re-runs the
+    bitemporal range-containment query per call, with no lru_cache, no module global and no TTL, so
+    a new activation is live on the next request with no restart. Verified in code, not assumed."
+  - "`scripts/visa_freshness_sentinel.py` — derives every boundary from the pack's own per-record
+    policy, so it tracks the new window with no change. Its own two defects (an un-ageable record
+    resolving to OK and never being sent; a mute ladder that can outlast the warning window) are
+    NOT fixed here — they are PR #5339, deliberately separate."
+  - "`visa_rule_packs` / `visa_ruleset_activations` — the write surface of the ceremony.
+    Deliberately NOT modified by this PR: the ceremony is run, not shipped."
+  - "`scripts/detect_secrets_auto_triage.py` — gains one content-keyed rule for this fold's chain
+    anchor, the same shape every fold from seq-10 onward required."
+
+risks:
+  - "This PR ships an artifact that is ALREADY ACTIVE in production (activation
+    be75facc-b1c0-4daa-ae87-247b5bd408d2, activated 2026-08-30T17:28:56.30462Z — read from the
+    catalog, correcting an earlier 2026-08-31T00:47Z in this brief that no query supports).
+    The activation preceded the merge
+    because the seq-17 window would otherwise have expired again on 2026-09-06 while the PR sat.
+    The merge RECORDS what was done rather than authorising it. If review rejects the artifact, the
+    remedy is a forward pack, never an edit to this one."
+  - "The widened window is the whole risk, and it is deliberate: a month-old reading can now decide.
+    Mitigation is the re-attestation lane, which does not exist yet — named here as open, not
+    claimed as handled."
+  - "seq-16's source still never reached `main` (it lives on an unmerged branch while its signed
+    artifact ran in production). Unchanged by this PR, still open."
+  - "The generated pack artifacts dominate the line count. The hand-authored surface is 395 lines of
+    fold script at this commit — 262 before the two guards adversarial review added — plus a triage
+    rule and its contract test; the generated part is reproducible from the fold plus the seq-17
+    payload."
+
 grader: |
-  Opus 5 at xhigh, on the diff, against the acceptance list above — with the
-  standing instruction that the guilt case (row 379 verbatim) going green is the
-  single non-negotiable condition, because that case is the whole reason the
-  veto exists.
+  Independent verification by this session against the production catalog through the read-only
+  role and against the deployed endpoint — never against the writer's own output. One cross-family
+  adversarial refuter (codex gpt-5.6-sol, xhigh, non-Anthropic) is dispatched on the diff WITHOUT
+  this brief. Generator != grader: the session that wrote the fold does not post the Gear-3 verdict.
