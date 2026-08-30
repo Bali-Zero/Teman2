@@ -1,0 +1,46 @@
+task_id: craft-s-required-context-wiring-3
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Wave-2 Squad S, lane 1, PR 3 of 3. `pr-collision-check.yml` reported ONE
+  status context for TWO promises its own header carefully separates:
+
+    - the COLLISION VERDICT is advisory — a PR that collides must never fail
+      (rc=1 from the script is a documented step SUCCESS);
+    - the CORPUS self-test is NOT advisory — if it fails, the tool is broken
+      and every verdict it ever posted is worthless.
+
+  Because both lived in one job, there was no context carrying only the
+  blocking half, so the blocking half could not be promoted. The issue asked
+  for "the corpus half" and the corpus half did not exist as a context.
+
+  This PR splits them: `collision-corpus` (name `PR collision check corpus`)
+  carries only the blocking promise and is the promotable one; the advisory
+  job keeps its byte-identical name and gains `needs:` on the corpus, because
+  a broken discriminator must not post a verdict.
+
+  It promotes nothing — branch protection is operator-tier; the conductor
+  promotes on the evidence in #5316.
+constraints:
+  - "The advisory job's name `PR collision check (advisory)` is an existing
+    reported context and stays byte-identical."
+  - "Every long explanatory comment in the file is preserved verbatim unless the
+    split makes it false. They cite W101 and W81 and were hard-won."
+  - "`needs:` runs corpus -> advisory, never the reverse. The file's own rule
+    that no job may `needs:` the ADVISORY job is untouched and restated."
+  - "Zero's lane constraint: no merge-queue latency regression."
+acceptance:
+  - text: "WHEN the conformance guard is run against a candidate contexts file
+      naming `PR collision check corpus`, it SHALL report zero violations for it."
+    probe: "python3 scripts/ci/check_required_workflow_conformance.py --contexts"
+  - text:
+      "WHEN merge_group is removed, a paths filter added, or `opened` dropped
+      from types, the guard SHALL name this file (three guilt cases, not one)."
+    probe: "mutate, re-run the guard, restore"
+  - text: "The corpus SHALL still pass, and SHALL be safe on a shallow checkout."
+    probe: "pytest scripts/ci/test_pr_collision_check.py"
+  - text: "The concurrency group SHALL be unique per merge-queue entry. An empty
+      expansion would collapse every entry into one group and, with
+      cancel-in-progress, eject them — the exact latency regression forbidden."
+    probe: "read the concurrency expression for each event"

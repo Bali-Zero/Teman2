@@ -152,6 +152,7 @@ on:
       - manual - garuda voa arm
       - Deploy Backend to Fly.io
       - Fly.io Secrets Health Check
+      - Fleet burst dispatcher tests
       - Frontend Live Sentinel
       - Frontend typecheck (apps/mouth)
       - garuda-contract-parity
@@ -194,6 +195,7 @@ on:
       - Root Guard
       - SBOM (Software Bill of Materials)
       - scripts/tests/ sweep (report-only)
+      - Seat broker env-minimization tests
       - Security Scanning
       - SAST — Bandit + ESLint Security
       - SonarQube Analysis

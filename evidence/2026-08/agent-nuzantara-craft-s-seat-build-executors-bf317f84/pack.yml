@@ -1,0 +1,124 @@
+# STAGING LAYOUT, not this directory's. See PR #5325's pack for the full note.
+council_run: council.jsonl
+brief_ref: evidence/brief.yml
+pii_scan: clean
+lanes:
+  - lane: implementer
+    role: build
+    role_note: "authored the workflow edit — paths, three steps, the corpus-shrink floor"
+    seat: "kimi-code/kimi-for-coding"
+  - lane: orchestrator
+    role: review
+    role_note: "ground (which suites have executors, what the sweep actually collects, the dependency closure, what each suite really asserts), six repairs to the build, the final on-disk gate, and the guilt mutations"
+    seat: "claude-opus-5 (xhigh)"
+  - lane: refuter
+    role: review
+    role_note: "blind cross-family refutation — one BLOCKER cured, one REAL cured, one BLOCKER refuted by measurement"
+    seat: "agy-gemini-3.1-pro"
+seat_diversity: 3
+seat_diversity_note: >-
+  Three families, build lane non-Anthropic (Moonshot) — D3 by a real build lane,
+  never seat_override. Refuter cross-family from the builder (Google). Codex sol,
+  the workflow-class default, is out of credits.
+diff:
+  net_lines: >-
+    AS OF the commit this pack ships with: 4 files, +308/-2, net 306 — THREE-DOT
+    against the merge base, never two-dot (W102). Gear floor recomputed = 3
+    (hot-zone: .github/workflows/); declared Gear 3, at the floor. Inside the
+    ~400 target. One file is the workflow; three are this evidence pack.
+  behaviour_change: >-
+    Three shell suites that had no CI executor anywhere now run on every PR and
+    push that touches seat_build.sh, its source closure, or the suites
+    themselves. They run BEFORE this job's apt install and origin/main fetch,
+    because they need neither. A fourth step asserts their combined assertion
+    count has not fallen below 51. No existing step changes; the job name, the
+    concurrency block and every pre-existing path entry are untouched.
+receipts:
+  - claim: "The gap was real: no workflow anywhere executed these three suites"
+    cmd: "grep -rln 'test_seat_build' .github/workflows/"
+    result: "empty. Only `test_seat_state.sh` — their sibling — had an executor, in this same workflow. The `scripts/tests` sweep runs `python -m pytest scripts/tests/`, which collects test_*.py and never sees a .sh file; its step is also continue-on-error and the workflow is schedule-triggered."
+    exit: 1
+    ts: "2026-08-31T07:00Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "51 assertions, matching Squad F's handoff exactly, all green offline"
+    cmd: "bash scripts/tests/test_seat_build{,_tiers,_effort}.sh"
+    result: "SUMMARY 16 passed / 25 passed / 10 passed, 0 failed each. Total 51."
+    exit: 0
+    ts: "2026-08-31T07:00Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "GUILT — the corpus-shrink floor catches a shrinking corpus, an aborting suite, AND a masked failure"
+    cmd: "extract the floor step's run body from the YAML, execute it against mutated suites, restore"
+    result: >-
+      shrink (16 -> 3) -> rc=1, '::error::the seat_build corpora ran 38
+      assertions, below the floor of 51'. Aborting suite -> rc=1, '::error::
+      test_seat_build_effort.sh printed no clean SUMMARY line'. A suite printing
+      a FAKE clean summary and then a real FAILING one -> rc=1, correctly refusing
+      the count. Innocence: 51, rc=0. Each mutation asserted to have applied
+      before its verdict was read; every suite restored and re-verified intact.
+    exit: 0
+    ts: "2026-08-31T07:55Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "The paths filter covers seat_build.sh's real dependency closure"
+    cmd: "grep -nE '^\\s*(source|\\.)\\s' scripts/seat_build.sh; grep -hoE 'REPO_ROOT\"?/[A-Za-z0-9_./-]+' over the three suites"
+    result: "seat_build.sh sources scripts/lib/seat_watchdog.sh and scripts/seat_build_tp1.sh; the suites additionally read scripts/seat_ctx.json. All three added to BOTH path lists. `compute_floor`, which the refuter also suspected, appears only inside a comment — no external dependency."
+    exit: 0
+    ts: "2026-08-31T07:50Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "REFUTED the refuter's second BLOCKER: no worktree cross-talk from earlier suites"
+    cmd: "dirty this repo's own worktree, then run test_seat_build.sh from it"
+    result: "`git status --porcelain` showed a modified workflow and an untracked probe file; the suite still reported SUMMARY 16 passed, 0 failed. It builds its own fixtures with `mktemp -d` + `git init` (line 9, 24) and never touches the job's worktree. The premise is false."
+    exit: 0
+    ts: "2026-08-31T07:45Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "actionlint green; no existing step altered"
+    cmd: "actionlint; read back every step name in order"
+    result: "clean. 10 steps: checkout, the three new seat_build suites, the four pre-existing steps unchanged, and the floor. `git diff --check` clean."
+    exit: 0
+    ts: "2026-08-31T07:55Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+dissent:
+  - objection: "BLOCKER — the floor's parser filters to CLEAN summary lines and THEN takes the last one, so a suite that printed a clean summary early and a FAILING one at the end has its failure masked: sed drops the failing line, tail picks the fake."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Right, and precisely the shape a shrink-floor exists to prevent, reproduced in the guard meant to catch it. Reproduced with a mutated suite that prints 'SUMMARY 99 passed, 0 failed' and then a real failing summary: the old parser accepted 99. Now the LAST SUMMARY line is taken first, whatever it says, and only then required to be clean — so a failing tail lands in the unknown-count branch and fails loudly."
+  - objection: "REAL — the paths filter omits seat_build.sh's own dependencies; a change to them breaks the suites without triggering this job."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "The closure was derived by grep rather than guessed: two sourced files and a JSON the ctx-check cases read. The refuter guessed at names it could not see; the real ones are different, and the measurement is quoted at the path list so the next reader does not re-derive it."
+  - objection: "BLOCKER — worktree cross-talk: test_seat_build.sh asserts on clean/dirty worktrees and runs after two other suites in the same job, so leftover state would fail it for an unrelated reason."
+    seat: "agy-gemini-3.1-pro"
+    status: RETRACTED
+    disposition: rejected
+    note: "Refuted by measurement rather than by argument: the repo's own worktree was deliberately dirtied (a modified workflow plus an untracked file) and the suite still passed 16/16. It builds its own fixtures with `mktemp -d` + `git init`. A plausible reading of the step name, and false of the code."
+  - objection: "REAL — pure offline suites are now exposed to apt-mirror and network flakes by cohabiting with a job that installs zsh and fetches origin/main; the architectural justification (reusing that setup) is weak, since these suites need neither."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: >-
+      The critique is fair and produced a real change: the three suites now run
+      BEFORE the zsh install and the fetch, so their verdict is already in the log
+      when such a flake reddens the job. Cohabitation is kept, and the honest
+      reason replaces the weak one — one workflow that owns the whole seat surface
+      is easier to keep armed than two that drift apart, and the residual cost is
+      bounded because this job is not a required context, so a flake here cannot
+      block a merge. Both facts are now written at the step.
+  - objection: "The step names asserted contracts the suites do not test."
+    seat: "claude-opus-5 (orchestrator, gate finding on the build)"
+    status: CONFIRMED
+    disposition: accepted
+    note: >-
+      The builder wrote 'maps every caller to codex, kimi or qwen with no tier
+      leakage', 'per account', and 'normalizes effort aliases to the canonical
+      roster values'. Measured against the suites' own cases and docstrings, the
+      first is about worktree refusal and the pure-Bash watchdog, and the third is
+      about deriving effort from the computed gear floor. A step name is what a
+      reader trusts when triaging a red run, so a wrong one is a comment that lies
+      at the worst possible moment. All three rewritten from each suite's own
+      docstring, with that docstring quoted above the step.
+  - objection: "SEAT AVAILABILITY — R9's allowlist unsatisfiable from Pro. Fifth PR."
+    seat: "claude-opus-5 (orchestrator, measured this turn)"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Codex out of credits; tp1-qwen3.8-max timing out; kimi-code is this PR's build lane. Zero reachable allowlisted review seats. Reported for lane 6; R9 is a NOTICE today."

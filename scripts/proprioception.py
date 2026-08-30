@@ -75,6 +75,7 @@ KNOWN_BOUNDARY_CLASSES = [
     "seat<->armed",             # AI-seat credential/quota vs live probe (arsenal, #2)
     "worktree<->gate",          # does git actually invoke a pre-push hook in this worktree (#2)
     "tunnel<->reachable",       # declared network tunnel/forward vs live reachability (2026-08-21)
+    "declared<->enforced",      # policy-as-code in the repo vs what the node actually enforces (L13, 2026-08-31)
 ]
 
 SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
@@ -826,12 +827,88 @@ def probe_executed_code_currency(root: Path, args: dict, timeout: int) -> tuple[
     return (DIVERGED if findings else RECONCILED), findings, ev
 
 
+def probe_repomap_size(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
+    """Is the auto-injected repo map inside the byte cap it claims?
+
+    THE BOUNDARY: `scripts/build_repomap.sh` (repo) <-> `~/.nuzantara-repomap.txt`
+    (HOME, per-machine, injected into every session by the SessionStart hook).
+
+    WHY IT IS A PROBE AND NOT A WARNING IN THE GENERATOR. It WAS a warning in the
+    generator: >30 KB printed a line to stderr and let the file through. Measured
+    on Pro on 2026-08-31, the live map was 42,779 bytes — past its own warn band,
+    for weeks, and the only reader of that stderr was a log nobody opened (W55: a
+    signal emitted is not a signal seen; W76 is this same file's earlier relapse).
+    The generator now truncates, so an over-cap file can only mean the truncator
+    failed open or somebody raised the cap — and either of those is exactly the
+    kind of drift that leaves no repo diff, which is what this organ is for.
+
+    UNPROBEABLE, not RECONCILED, when the map is absent: this machine may simply
+    not run the cron (measured 2026-08-31: Pro has the file, Mini and M5 do not).
+    Reporting "fine" for a file that does not exist is how a probe becomes decor.
+    """
+    # The cap the GENERATOR would use on THIS machine, not a constant. The
+    # generator reads REPOMAP_HARD_CAP_BYTES; a probe that hardcodes 20480 calls
+    # a correctly-capped 25,000-byte map on a machine configured for 30,000 a
+    # DIVERGENCE, and blames a truncator that worked (Codex sol, 2026-08-31).
+    cap_raw = os.environ.get("REPOMAP_HARD_CAP_BYTES", "").strip()
+    cap = int(cap_raw) if cap_raw.isdigit() and int(cap_raw) > 0 else int(args.get("cap_bytes", 20480))
+    target = Path(os.path.expanduser(args.get("path", "~/.nuzantara-repomap.txt")))
+    label = args.get("launchd_label", "com.nuzantara.repomap.15min")
+
+    if not target.exists():
+        # "Absent" means two opposite things and the probe must not guess. If the
+        # cron is LOADED here, absence is a failed run — a finding. If it is not,
+        # this machine simply does not generate a map, and reporting a finding
+        # would train the reader to ignore this line (measured 2026-08-31: Pro
+        # has the file, Mini and M5 do not).
+        loaded = False
+        try:
+            r = subprocess.run(["launchctl", "list", label], capture_output=True, timeout=5)
+            loaded = r.returncode == 0
+        except Exception:
+            loaded = False
+        if loaded:
+            return DIVERGED, 1, [
+                f"{target} absent while {label} IS loaded on this machine — "
+                "the generator ran and produced nothing, or has never run"
+            ]
+        return UNPROBEABLE, 0, [f"{target} absent and {label} not loaded — this machine does not generate a map"]
+
+    # A path that exists is not a map. A directory, a symlink to nothing, or a
+    # zero-byte file would all have read as RECONCILED on size alone — "small"
+    # is the most reassuring possible reading of "broken".
+    if not target.is_file():
+        return DIVERGED, 1, [f"{target} exists but is not a regular file — nothing usable is being injected"]
+    size = target.stat().st_size
+    if size == 0:
+        return DIVERGED, 1, [f"{target} is empty — a 0-byte map reads as a lean repo and is not one"]
+
+    # Freshness, because a stale map is silently wrong in a way size cannot show.
+    # The band is generous (4x the 900s cadence) so an ordinary missed tick is not
+    # a finding; what it catches is a cron that stopped days ago.
+    age = int(time.time() - target.stat().st_mtime)
+    stale_after = int(args.get("stale_after_sec", 3600))
+    if age > stale_after:
+        return DIVERGED, 1, [
+            f"{target} is {size}B but {age // 60} minutes old (cadence is 15 min) — "
+            f"{label} has stopped producing; the injected map is frozen at whatever it last held"
+        ]
+    if size <= cap:
+        return RECONCILED, 0, [f"{size}B <= {cap}B cap, {age}s old"]
+    return DIVERGED, 1, [
+        f"{target} is {size}B, over the {cap}B cap by {size - cap}B — either the truncator "
+        "failed open (its WARN is in the generator's stderr) or the cap was raised without "
+        "this probe's args following"
+    ]
+
+
 BUILTINS = {
     "git_alignment": probe_git_alignment,
     "executed_code_currency": probe_executed_code_currency,
     "produced_promoted": probe_produced_promoted,
     "home_fork_scripts": probe_home_fork_scripts,
     "guardian_freshness": probe_guardian_freshness,
+    "repomap_size": probe_repomap_size,
 }
 
 
@@ -871,6 +948,44 @@ def _parse_exit_code(rc: int, out: str, err: str) -> tuple[str, int, list[str]]:
     return DIVERGED, n, ev
 
 
+def _lenient_json(out: str) -> object:
+    """Best-effort JSON, never raising. Used ONLY by tri_state_exit, where the exit
+    code already carries the verdict: a body that fails to parse must cost detail,
+    never the verdict itself."""
+    try:
+        return json.loads(out.strip() or "null")
+    except json.JSONDecodeError:
+        return None
+
+
+def _tri_state_evidence(data: object) -> tuple[int, list[str]]:
+    """Evidence lines for `parse: tri_state_exit`, from the probe's own JSON.
+
+    Deliberately tolerant: a tri-state probe's VERDICT is carried by its exit code,
+    which run_wrap has already read, so a body that is missing, null or shaped
+    differently must not turn a known verdict into UNPROBEABLE — that would hand the
+    exit code's meaning back to the schema it was chosen to be independent of. The
+    body only enriches the report.
+    """
+    if isinstance(data, dict):
+        raw = data.get("evidence")
+        # A STRING is not a list of findings. Iterating one yields its CHARACTERS:
+        # measured, {"evidence": "100.107.22.111"} produced 5 "findings"
+        # ['1','0','0','.','1'] — a count and a body that are both nonsense, and a
+        # fragment of an address in the report besides. Found by blind cross-family
+        # refutation (Kimi K3).
+        ev = [str(x)[:160] for x in raw if x][:5] if isinstance(raw, list) else []
+        reason = data.get("reason")
+        if reason and not ev:
+            ev = [str(reason)[:160]]
+        # `len(ev) or 1` claimed ONE finding while showing NONE. The count must
+        # describe what is actually there; a DIVERGED verdict with no legible
+        # evidence is honestly reported as 1 unexplained finding only when the probe
+        # gave us nothing at all, and that is what the caller passes through.
+        return len(ev), ev
+    return 0, []
+
+
 def run_wrap(root: Path, entry: dict, timeout: int) -> tuple[str, int, list[str]]:
     argv = [a.replace("{repo}", str(root)) for a in entry["target"]]
     if argv[0].startswith("python") and len(argv) > 1:
@@ -887,6 +1002,45 @@ def run_wrap(root: Path, entry: dict, timeout: int) -> tuple[str, int, list[str]
     parse = entry.get("parse", "exit_code")
     if parse == "exit_code":
         return _parse_exit_code(rc, out, err)
+    if parse == "tri_state_exit":
+        # For a probe that distinguishes "I looked and they match" from "I looked and
+        # they differ" from "I could not look at all".
+        #
+        # `exit_code` cannot express the third: it maps EVERY non-zero to DIVERGED, so a
+        # receptor reporting BLIND (exit 2) would be filed as real drift. That is the
+        # more dangerous direction than it first appears — a BLIND that reads as DIVERGED
+        # sends a healer to reconcile a difference nobody has actually observed, and it
+        # makes "we cannot see the enforced state" indistinguishable from "we can see it
+        # and it is wrong". They have opposite remedies: one needs an operator to restore
+        # visibility, the other needs the policy applied.
+        #
+        # Anything OTHER than 0/1/2 is UNPROBEABLE, not DIVERGED: an unknown exit code
+        # from a tool that promised three is schema drift, and schema drift must not
+        # normalize into a verdict (the same rule findings_list follows above).
+        if rc == 0:
+            # The exit code is authoritative, but a body that CONTRADICTS it is a
+            # contract violation, not enrichment — and the docstring's claim that
+            # "the body only enriches" was enforced in one direction only: rc=2 with
+            # a CLEAN body was tested, rc=0 with a BLIND body was not. A probe that
+            # exits 0 while printing BLIND has not agreed with itself, and filing
+            # that as RECONCILED is exactly the "green over an unknown" this parse
+            # mode exists to prevent. Found by blind cross-family refutation (Kimi K3).
+            body = _lenient_json(out)
+            if isinstance(body, dict):
+                stated = str(body.get("verdict", "")).upper()
+                if stated and stated not in ("CLEAN", "RECONCILED", "OK"):
+                    return UNPROBEABLE, 0, [
+                        f"probe exited 0 but its body says {stated!r} — exit code and "
+                        "body disagree, so neither is trusted"
+                    ]
+            return RECONCILED, 0, []
+        if rc == 1:
+            n, ev = _tri_state_evidence(_lenient_json(out))
+            return DIVERGED, (n or 1), ev
+        if rc == 2:
+            _, ev = _tri_state_evidence(_lenient_json(out))
+            return UNPROBEABLE, 0, ev or [f"probe reported BLIND (exit {rc})"]
+        return UNPROBEABLE, 0, [f"tri_state_exit: unexpected exit {rc} (expected 0, 1 or 2)"]
     try:
         data = json.loads(out.strip() or "null")
     except json.JSONDecodeError:
@@ -923,6 +1077,43 @@ def run_wrap(root: Path, entry: dict, timeout: int) -> tuple[str, int, list[str]
 
 DEFAULT_REGISTRY: list[dict] = [
     {
+        # The tailnet's DECLARED policy vs the filter the node actually enforces.
+        #
+        # This probe is expected to answer DIVERGED on this fleet today, and that is the
+        # correct answer rather than a defect to suppress: infra/tailscale/policy.hujson
+        # is PROPOSED and NOT APPLIED, and the live packet filter (measured 2026-08-11
+        # from M5, re-confirmed 2026-08-29) is one allow-all rule -- every node ->
+        # 0.0.0.0/0, ports 0-65535, TCP+UDP+ICMP. Applying the policy is operator[GUI]
+        # (admin console; the fleet holds no Tailscale API token), so no session can
+        # clear this finding by working harder. It exists to keep the gap VISIBLE and
+        # dated until an operator closes it.
+        #
+        # parse: tri_state_exit, not exit_code, and the distinction is load-bearing.
+        # exit_code maps every non-zero to DIVERGED, which would file BLIND ("I could
+        # not read the enforced state") as real drift. Those have opposite remedies --
+        # DIVERGED needs the policy applied, BLIND needs an operator to restore
+        # visibility -- so collapsing them sends a healer to reconcile a difference
+        # nobody has observed.
+        "id": "tailnet_policy_drift", "type": "wrap",
+        "target": ["python3", "{repo}/scripts/tailnet_policy_drift.py",
+                   "--policy", "{repo}/infra/tailscale/policy.hujson"],
+        "class": "declared<->enforced",
+        "boundary": "infra/tailscale/policy.hujson <-> the packet filter this node enforces",
+        "machines": ["all"], "tags": ["fast"], "timeout_sec": 30,
+        "severity": "P1",
+        "parse": "tri_state_exit",
+        "fix_hint": ("DIVERGED here is expected until policy.hujson is applied in the "
+                     "Tailscale admin console (operator[GUI], runbook "
+                     "docs/runbooks/tailnet-acl-apply.md) -- do NOT try to close it from "
+                     "a session, and do NOT apply policy from this tool: it observes "
+                     "only. BLIND means no comparison was made -- usually lost "
+                     "visibility (no tailscale CLI, unreadable netmap, insufficient "
+                     "permission) but ALSO a tool-side limit: an unparseable policy, a "
+                     "netmap schema this parser does not know, a self-contradictory "
+                     "prefix, or an unexpected crash. Read the reason field; it names "
+                     "which. Either way it is NOT drift, and no healer should act on it."),
+    },
+    {
         "id": "git_alignment", "type": "builtin", "target": "git_alignment",
         "class": "checkout<->origin",
         "boundary": "machine-checkout <-> origin/main",
@@ -938,6 +1129,15 @@ DEFAULT_REGISTRY: list[dict] = [
         "severity": "P1",
         "args": {"pairs": [{"glob": "research/regulatory/*-delta.json", "label": "regulatory deltas"}]},
         "fix_hint": "promote stranded deltas: git add research/regulatory/*-delta.json + PR",
+    },
+    {
+        "id": "repomap_size", "type": "builtin", "target": "repomap_size",
+        "class": "home<->repo",
+        "boundary": "build_repomap.sh hard cap <-> the ~/.nuzantara-repomap.txt a session is actually handed",
+        "machines": ["all"], "tags": ["fast"], "timeout_sec": 10,
+        "severity": "P2",
+        "args": {"path": "~/.nuzantara-repomap.txt", "cap_bytes": 20480},
+        "fix_hint": "re-run scripts/build_repomap.sh and read its stderr — an over-cap file means the truncator failed open, not that the cap is wrong",
     },
     {
         "id": "home_fork_scripts", "type": "builtin", "target": "home_fork_scripts",

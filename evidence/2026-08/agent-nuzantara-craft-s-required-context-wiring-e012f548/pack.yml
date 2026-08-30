@@ -1,0 +1,129 @@
+# THE STAGING LAYOUT, not this directory's layout. Both refs name where
+# harness-floor.yml STAGES these files; evidence_pack_lint.py resolves brief_ref
+# against --repo-root and council_run against the PACK'S OWN directory. Locally
+# the verdict inverts — the per-PR path reads clean and the correct value reads
+# broken. CI is authoritative. PR 1 of this lane learned it the expensive way.
+council_run: council.jsonl
+brief_ref: evidence/brief.yml
+pii_scan: clean
+lanes:
+  - lane: implementer
+    role: build
+    role_note: "authored the two-job split from a spec naming the concurrency hazard and requiring verbatim comment preservation"
+    seat: "kimi-code/kimi-for-coding"
+  - lane: orchestrator
+    role: review
+    role_note: "ground (the file's two-promises header, the empty-expansion hazard, the corpus's real git dependency), spec, the comment-set diff that caught the builder's two drifts, the final on-disk gate, and the three guilt mutations"
+    seat: "claude-opus-5 (xhigh)"
+  - lane: refuter
+    role: review
+    role_note: "round 1 — blind cross-family refutation; found the permissions-replace BLOCKER"
+    seat: "agy-gemini-3.1-pro"
+  - lane: refuter
+    role: review
+    role_note: "round 2 — blind review of the corrected diff; independently retraced the concurrency expression"
+    seat: "tp1-glm-5.2"
+seat_diversity: 4
+seat_diversity_note: >-
+  Four families. The BUILD lane is non-Anthropic (Moonshot Kimi-for-coding) —
+  D3 satisfied by a real build lane, never seat_override. Both refuters are
+  cross-family from the builder AND from each other (Google, Alibaba). Codex
+  sol, the battle plan's named workflow-class reviewer, was measured out of
+  credits; had it been reachable it would have been the natural round-1 seat
+  here, since Kimi built this one.
+diff:
+  net_lines: >-
+    AS OF the commit this pack ships with: 4 files, +244/-12, net 232 — measured
+    THREE-DOT against the merge base, never two-dot (W102). Deterministic gear
+    floor recomputed from this diff = 3 (hot-zone: .github/workflows/); declared
+    Gear 3, at the floor. Inside the ~400 net-line target. One of the four files
+    is the workflow; the other three are this evidence pack. The workflow's own
+    growth is almost entirely comment: the split had to say which job now carries
+    which of the file's two promises, and a header that still described one job
+    would have been the W106 shape on a file whose whole subject is not
+    conflating two things.
+  behaviour_change: >-
+    One job becomes two. `PR collision check (advisory)` keeps its name, its two
+    steps verbatim, its `fetch-depth: 0` + `filter: blob:none` checkout, and its
+    advisory promise; it gains `needs: [collision-corpus]` and
+    `if: github.event_name == 'pull_request'`. A new job `PR collision check
+    corpus` runs only the self-test, on a shallow checkout, and is the
+    promotable context. A `merge_group:` trigger is added. The concurrency group
+    gains a `github.ref` fallback and cancels only on `pull_request`. File-level
+    `pull-requests: write` moves to the job that needs it, with `contents: read`
+    spelled out beside it. No script changes; no step's command changes.
+receipts:
+  - claim: "INNOCENCE — the conformance guard reports zero violations for the new corpus context"
+    cmd: "python3 scripts/ci/check_required_workflow_conformance.py --contexts <12 live + 4 candidates, the collision entry repointed at job collision-corpus>"
+    result: "0 violations naming `PR collision check corpus`. The remaining violations are the two workflows PRs 1 and 2 of this lane wire, which are not on this branch."
+    exit: 1
+    ts: "2026-08-31T04:10Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "GUILT — three distinct mutations, three distinct rules, each named by the guard; tree restored after each"
+    cmd: "mutate, re-run the guard, restore"
+    result: "remove `merge_group:` -> 'missing merge_group: trigger — this context cannot be satisfied by a merge-queue run' (rule 2). Add a `paths:` filter under on.pull_request -> 'hangs Expected — waiting forever (Codex F12)' (rule 4). Drop `opened` from types -> 'narrows to [reopened, synchronize, ready_for_review] without opened' (rule 5). Restored: 0."
+    exit: 1
+    ts: "2026-08-31T04:10Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "The corpus passes, and is safe on the shallow checkout the corpus job now uses"
+    cmd: "pytest scripts/ci/test_pr_collision_check.py -q; grep the corpus for how its git fixtures are built"
+    result: "32 passed in 0.42s. Every git-dependent case builds its OWN repository with `git init` inside pytest's tmp_path (`_build_being_behind_repo`); nothing reads this workspace's history, so depth-1 is sufficient. Measured because a refuter challenged the shallow checkout on exactly this point."
+    exit: 0
+    ts: "2026-08-31T04:08Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "Every long comment survives the split verbatim except the four the split makes false"
+    cmd: "diff the sorted comment-line sets of origin/main's file and the new one"
+    result: "4 lines differ, all four intentionally rewritten (the TWO SENSES header, the `needs:`/never-required sentence, the paths-filter rationale, and its continuation). The builder had silently dropped 'already' from a fifth and duplicated a clause in a sixth; both repaired. This is how those two drifts were found — reading the file would not have surfaced them."
+    exit: 0
+    ts: "2026-08-31T04:05Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "Permissions are correct after the BLOCKER fix"
+    cmd: "yaml.safe_load and print file-level and per-job permissions"
+    result: "file-level {'contents': 'read'}; collision-corpus inherits it; pr-collision-check {'contents': 'read', 'pull-requests': 'write'}. The corpus job no longer inherits a write scope it never used, and the advisory job no longer loses read by naming write."
+    exit: 0
+    ts: "2026-08-31T04:12Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "actionlint green; whitespace clean"
+    cmd: "actionlint .github/workflows/pr-collision-check.yml; git diff --check"
+    result: "both clean"
+    exit: 0
+    ts: "2026-08-31T04:12Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+dissent:
+  - objection: "BLOCKER — the advisory job's `permissions: {pull-requests: write}` strips `contents: read`. A job-level permissions block REPLACES the workflow-level one rather than merging with it, so every unnamed scope becomes `none` and `actions/checkout`, the job's first step, 403s before any script runs."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Correct, and it would have broken the advisory job on its very first run. Verified against the repo's own precedent rather than taken on authority: `security.yml`'s codeql job and `cron-fly-watcher.yml`'s run job both spell `contents: read` out next to the scope they actually wanted, for exactly this reason. Fixed, with that reasoning written at the block."
+  - objection: "The corpus job's shallow checkout is unsafe: the comment claims the corpus 'does not walk history', but the same file says the corpus tests merge-base anchoring, so it plausibly runs git against the workspace."
+    seat: "agy-gemini-3.1-pro"
+    status: RETRACTED
+    disposition: rejected
+    note: "The premise is false and it was measured, not argued: every git-dependent case in the corpus builds its OWN repository with `git init` inside pytest's tmp_path, and touches this workspace's history nowhere. But the CHALLENGE was fair — the comment's phrasing was imprecise in a way that invited exactly this doubt, and 'a pytest file does not walk history' is not what makes the shallow checkout safe. The comment now states the real reason and cites the fixture by name."
+  - objection: "The workflow-level permissions still grant `pull-requests: write`, which the corpus job would inherit without needing it — over-permissioning on a job intended to become required."
+    seat: "tp1-glm-5.2"
+    status: RETRACTED
+    disposition: rejected
+    note: "Already done — the file-level block is `{contents: read}` alone, which is precisely the tightening this finding asks for. The seat was reading the pre-image side of the hunk. Recorded rather than dropped, because an independent family arriving at the same tightening is corroboration of the design even when it is not a new finding."
+  - objection: "`actions/checkout@v7` and `actions/setup-python@v7` do not exist."
+    seat: "tp1-glm-5.2"
+    status: RETRACTED
+    disposition: rejected
+    note: "A knowledge-cutoff artefact, not a finding. Both are in use across this repository today and every required job that calls them is green — including on this lane's own PRs this evening. Recorded because a refuted claim is still evidence about the reviewer's reach, and the next reader should not re-open it."
+  - objection: "Concurrency, needs direction, skipped-job status, and `if: always()` inside a skipped job."
+    seat: "agy-gemini-3.1-pro"
+    status: RETRACTED
+    disposition: rejected
+    note: "Reported as NOT-A-FINDING after being traced: the `github.ref` fallback is unique per queue entry so entries cannot cross-cancel and `cancel-in-progress` is false on merge_group anyway; a skipped non-required job cannot confuse branch protection or the queue; a failed corpus makes the advisory job skip, which is the intended coupling; and `if: always()` on a step inside a job that never starts is inert. These were the change's load-bearing assumptions, so an independent family reaching them separately is worth recording."
+  - objection: "SEAT AVAILABILITY — R9's allowlist remains unsatisfiable from this machine. Third PR, unchanged, re-measured."
+    seat: "claude-opus-5 (orchestrator, measured this turn)"
+    status: CONFIRMED
+    disposition: accepted
+    note: >-
+      Codex out of credits across the whole seat; tp1-qwen3.8-max timing out at
+      400s; kimi-code spent as this PR's BUILD lane, so family exclusion rules
+      out kimi-code/k3 as its own refuter. Reachable allowlisted review seats:
+      zero, for the second PR running. This pack carries TWO genuine
+      cross-family reviews (Google and Alibaba) and one of them found a BLOCKER
+      that would have broken the job on its first run — and R9 will still score
+      it at zero. Reported for lane 6, not decided here; R9 is a NOTICE today.
