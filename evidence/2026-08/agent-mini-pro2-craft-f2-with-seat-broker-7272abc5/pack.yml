@@ -29,3 +29,135 @@ lanes:
     seat: claude opus-5 xhigh (this orchestrator) -- final on-disk gate, empirical
 
 pii_scan: clean
+
+diff:
+  files: 8
+  net_lines: 907
+  measured_at: HEAD-of-branch
+  note: >-
+    Measured with git diff --numstat over merge-base..HEAD. Over the <=400
+    net-line target of rules-of-engagement #2, declared rather than hidden: the
+    broker is 352 lines and its corpus 241 -- and the corpus is why six defects
+    were caught before merge rather than after, three of them by it directly.
+    94 lines are the CI executor without which a .sh corpus has no consumer able
+    to go red, 1 line registers that executor with the main-push failure watcher,
+    and the remainder is this branch's own evidence pack. Splitting the corpus or
+    the executor out would ship a credential broker whose guards nothing runs.
+
+receipts:
+  - claim: "19/19 corpus green, and it bites: 6 mutants killed at real code sites (basename-only exec resolution restored; declared search paths removed; bare-relative search path; swallowing TERM trap restored; file_mode forced to answer a safe mode; length cap raised past a sha256 hex)."
+    cmd: "bash scripts/tests/test_with_seat_env_minimization.sh"
+    exit: 0
+    ts: "2026-08-31T01:30:00Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+  - claim: "THE BITE, measured on Mini with the real registry: a codex child goes from 49 inherited env names (16 secret-shaped, 11 credential families) to 6 declared names and 0 secret-shaped. Names only; no external CLI was asked to print its environment; --dry-run executes nothing."
+    cmd: "with_seat.sh --dry-run codex codex, from a parent that has sourced ~/.nuzantara-secrets.env"
+    exit: 0
+    ts: "2026-08-31T01:10:00Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+  - claim: "All four declared seats resolve their own executable through their declared search path (codex, agy, kimi, claude-seat). Before the fix, agy and kimi could not."
+    cmd: "bash scripts/tests/test_with_seat_env_minimization.sh"
+    exit: 0
+    ts: "2026-08-31T01:25:00Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+  - claim: "The workflow passes the pinned actionlint the required CI gate runs (1.7.12) and the required per-job checkout-budget floor."
+    cmd: "actionlint .github/workflows/with-seat-broker-tests.yml && python3 scripts/lint_workflow_timeout_floor.py"
+    exit: 0
+    ts: "2026-08-31T01:28:00Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+  - claim: "The executor is registered with main-push-failure-watch.yml, verified by removing the registration and watching check_watcher_coverage.py name this workflow as uncovered."
+    cmd: "python3 scripts/check_watcher_coverage.py"
+    exit: 0
+    ts: "2026-08-31T01:00:00Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+
+dissent:
+  - seat: claude opus-5 xhigh (this orchestrator, final gate)
+    objection: >-
+      The exec allowlist was a naming convention, not an allowlist: it checked the
+      BASENAME of a caller-supplied path, so `with_seat.sh codex /tmp/evil/codex`
+      executed the attacker's binary and the broker reported a clean exit.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced (ATTACKER CODE RAN, exit 0), then fixed: a caller may name only a
+      bare command, and WHERE it resolves comes from the registry -- the trusted
+      input here, since the broker refuses to read it if group- or world-writable
+      -- never from argv or the environment. Pinned by a case that plants an
+      executable with an allowlisted basename and asserts it neither runs nor
+      leaves a marker.
+  - seat: claude opus-5 xhigh (this orchestrator, final gate)
+    objection: >-
+      Two of the four shipped seats could not resolve their own binary: agy lives
+      in ~/.local/bin and kimi in ~/.kimi-code/bin, neither on the fixed system
+      search path. A broker armed for one seat in two.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced ("cannot resolve command" for both), then fixed with a per-seat
+      exec_search_path supporting "~/"-prefixed entries -- necessary because the
+      three fleet machines do not share a home (/Users/nuzantara on Pro and Mini,
+      /Users/balizero on M5), and a registry that is wrong on one machine is a
+      broker that gets bypassed there. The deeper defect was in the CORPUS: every
+      check used a synthetic seat, so it could not see this. A check against the
+      REAL registry was added and is what now pins it.
+  - seat: kimi-code/k3 (blind refutation of the broker diff)
+    objection: >-
+      `trap 'rm -f ...' EXIT HUP INT TERM` cleans up but does not exit, so on TERM
+      the script continues and the broker survives the signal its supervisor sent.
+    status: CONFIRMED
+    resolution: >-
+      Measured on bash 3.2.57: the line after `kill -TERM $$` printed and the
+      script exited 0. Fixed to clean up, restore the default handler and
+      re-raise; measured rc=143. Pinned by a case that TERMs the broker while a
+      deliberately slow child is running, so the answer is deterministic rather
+      than a race the test would have to tolerate.
+  - seat: kimi-code/k3 (blind refutation of the broker diff)
+    objection: >-
+      file_mode tries BSD `stat -f '%Lp'` and falls back to GNU `stat -c '%a'`,
+      but on GNU `-f` is not an unknown flag -- it means --file-system. The
+      fallback depends on GNU stat failing for the right reason; if it does not,
+      the function returns garbage and the group/world-writable refusal silently
+      stops refusing.
+    status: CONFIRMED
+    resolution: >-
+      Accepted without needing to settle what GNU stat does, because the
+      uncertainty IS the defect: a security guard should not rest on a guess about
+      another platform's error handling. Replaced with python3, already a hard
+      dependency of this script, which means the same thing everywhere.
+      Mutation-verified: a file_mode that always answers 600 turns the
+      writable-registry check red.
+  - seat: kimi-code/k3 (blind refutation of the broker diff)
+    objection: >-
+      `set +e` disables errexit but leaves pipefail on, so a SIGPIPE or failure in
+      the left side of the dispatch pipeline would be reported as the child's exit
+      status.
+    status: CONFIRMED
+    resolution: >-
+      Fixed by disabling pipefail for exactly that pipeline and restoring it after.
+      The child's status is the one thing this wrapper promises to preserve.
+  - seat: kimi-code/k3 (blind refutation of the broker diff)
+    objection: >-
+      `${!name+x}` (indirect expansion with the +x test) may not be supported on
+      bash 3.2, which would break the present/absent decision for every declared
+      name.
+    status: RETRACTED
+    resolution: >-
+      Measured on /bin/bash 3.2.57 rather than reasoned about: both the set and
+      unset branches behave correctly. Recorded as NOT a defect so that a future
+      reader does not "fix" working code on the strength of a maybe. The refuter
+      itself flagged this as uncertain rather than asserting it, which is the
+      right shape for a finding it could not test.
+  - seat: claude opus-5 xhigh (this orchestrator, on its OWN workflow)
+    objection: >-
+      The workflow step asserting "the registry holds names, never values"
+      grepped for value-shaped `key: "value"` pairs -- but the registry is arrays
+      of strings, so it matched neither realistic paste.
+    status: CONFIRMED
+    resolution: >-
+      Measured both misses: a token dropped into an `env` array is not a
+      key/value pair and never matched, and a 64-char sha256-shaped hex string is
+      itself a syntactically valid identifier. Replaced with a structural
+      validator in the corpus (so it runs locally and is mutation-testable) that
+      bounds the SHAPE of every field instead of guessing what a secret looks
+      like, plus guilt fixtures for exactly those two pastes. The length cap is 48
+      deliberately: 64 would have let a sha256 hex through, which it measurably
+      did on the first attempt.
