@@ -47,6 +47,31 @@ _SPLIT_NEEDLE_RE = re.compile(
     r'["\']\.claude["\']\s*/\s*["\']rules["\']\s*/\s*["\']cicatrix-scars'
 )
 
+# A SYNTHETIC FIXTURE is not a resolver, and the difference is where the path is
+# rooted. `_write(repo / ".claude" / "rules" / "cicatrix-scars.md", ...)` inside a
+# pytest corpus builds the PRE-MOVE world under `tmp_path` in order to prove that
+# a migration is handled; it can never resolve against THIS repository, so it
+# will never "silently read nothing" — which is the entire wound this guard
+# exists to prevent. Flagging it is the family-#3 over-match: judging the FORM of
+# the string instead of the ENTITY it names.
+#
+# Narrow on purpose, and narrow in two independent ways at once: it applies only
+# to `scripts/tests/test_*.py`, and only to a line that ALSO names a fixture root
+# on the same line. A genuine stale resolver in a test file — say
+# `Path(__file__).parents[2] / ".claude/rules/cicatrix-scars.md"` — carries no
+# such token and still fails. This is deliberately NOT a file-wide exemption:
+# `test_consumer_map.py` is exactly the file most likely to grow a real resolver,
+# because it is the corpus for the rename-safety guard.
+_FIXTURE_ROOT_RE = re.compile(r"(?<![A-Za-z0-9_])(?:tmp_path|repo)(?![A-Za-z0-9_])")
+
+
+def _is_synthetic_fixture_line(rel_path: str, line: str) -> bool:
+    """True when the old path is being BUILT under a test fixture root."""
+    if not (rel_path.startswith("scripts/tests/") and rel_path.rsplit("/", 1)[-1].startswith("test_")):
+        return False
+    return _FIXTURE_ROOT_RE.search(line) is not None
+
+
 # An exemption is a DECLARATION, not a hole: each entry names the file and why
 # it is allowed to keep the old string. A blanket skip would let the next stale
 # resolver hide behind the same door (cicatrix-scars.md W108: the guard that
@@ -206,6 +231,8 @@ def _scan_file(file_path: Path, repo_root: Path, hits: list[tuple[str, int]]) ->
         # still fails (cicatrix W105 — judge the entity, not the container).
         if exempt_assignment_re is not None and exempt_assignment_re.match(line):
             continue
+        if _is_synthetic_fixture_line(rel_path, line):
+            continue
         hits.append((rel_path, line_no))
 
 
@@ -324,6 +351,43 @@ def test_no_stale_resolvers_point_to_moved_scars() -> None:
             + "\n".join(lines)
             + "\nThe body now lives at docs/scars/; a stale resolver will silently read nothing."
         )
+
+
+def test_synthetic_fixture_predicate_innocence_and_guilt() -> None:
+    """The synthetic-fixture carve-out must excuse a corpus and nothing else.
+
+    INNOCENCE — the two real lines that made this predicate necessary. Both live
+    in ``scripts/tests/test_consumer_map.py``, which arrived on main from the
+    consumer-map rename-safety PR and builds the PRE-MOVE layout under a
+    ``tmp_path`` repo in order to prove the move is handled. They are quoted
+    verbatim rather than paraphrased: a paraphrase would test the predicate
+    against a string I invented, which is the vacuity this corpus keeps finding.
+
+    GUILT — a genuine stale resolver written inside a test file still fails. The
+    carve-out keys on a fixture-root token on the SAME line, so a module-level
+    resolver rooted at ``Path(__file__)`` carries none and is caught.
+    """
+    old = ".claude" + "/rules/cicatrix-scars.md"
+
+    innocent = [
+        f'    _write(repo / ".claude" / "rules" / "cicatrix-scars.md", "# scars\n")',
+        f'    _git(repo, "mv", "{old}", "docs/scars/cicatrix-scars.md")',
+    ]
+    for line in innocent:
+        assert _is_synthetic_fixture_line("scripts/tests/test_consumer_map.py", line), line
+
+    guilty = [
+        f'ACTIVE = Path(__file__).resolve().parents[2] / "{old}"',
+        f'SCARS = "{old}"',
+        '_P = Path(__file__).parent / ".claude" / "rules" / "cicatrix-scars.md"',
+    ]
+    for line in guilty:
+        assert not _is_synthetic_fixture_line("scripts/tests/test_consumer_map.py", line), line
+
+    # And the carve-out does not leak outside scripts/tests/test_*.py: the same
+    # fixture-looking line in production code is still a hit.
+    assert not _is_synthetic_fixture_line("scripts/consumer_map.py", innocent[0])
+    assert not _is_synthetic_fixture_line("scripts/tests/helpers.py", innocent[0])
 
 
 def test_module_docstring_declares_structural_and_delivery_attestation() -> None:
