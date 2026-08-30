@@ -1,0 +1,174 @@
+# STAGING LAYOUT, not this directory's. harness-floor.yml stages both files as
+# evidence/{pack,brief}.yml; the lint resolves brief_ref against --repo-root and
+# council_run against the pack's own dir. Locally the verdict inverts. CI decides.
+council_run: council.jsonl
+brief_ref: evidence/brief.yml
+pii_scan: clean
+lanes:
+  - lane: implementer
+    role: build
+    role_note: "authored lane_check.py in full from a rule-by-rule contract"
+    seat: "kimi-code/kimi-for-coding"
+  - lane: orchestrator
+    role: review
+    role_note: "ground (the four termination surfaces, which of them exist in repo), the spec, the two corpora, the wiring, the CI executors, the final on-disk gate, and eleven mutants"
+    seat: "claude-opus-5 (xhigh)"
+  - lane: refuter
+    role: review
+    role_note: "blind cross-family refutation — 10 findings, 6 real and all 6 cured, 2 minors accepted"
+    seat: "agy-gemini-3.1-pro"
+seat_diversity: 3
+seat_diversity_note: >-
+  Three families, build lane non-Anthropic (Moonshot) — D3 by a real build lane,
+  never seat_override. The refuter is a third family (Google) because Kimi built
+  this; Codex sol, the natural second reviewer, is out of credits.
+diff:
+  net_lines: >-
+    AS OF the commit this pack ships with: 8 files, +1694/-9, net 1685 —
+    THREE-DOT against the merge base, never two-dot (W102). Gear floor
+    recomputed = 3 (hot-zone: .github/workflows/); declared Gear 3, at the
+    floor. WELL OVER the ~400 target; see the size objection in dissent, where
+    the composition and the reason splitting was rejected are stated in full
+    rather than left for a reviewer to reconstruct.
+  behaviour_change: >-
+    A worktree with no `.lane-check.json` behaves exactly as before — asserted by
+    a side-effect probe AND by a callable that records whether the change set was
+    computed, because the first wiring silently broke that promise. A worktree
+    WITH one gains a block at the SubagentStop boundary when the declared check
+    fails, is unusable, or cannot run. The pre-existing dirty-worktree block is
+    unchanged and now has its own anti-loop marker, so the new reason cannot
+    consume its shot. `.github/workflows/guard-conformance.yml` gains two
+    executor steps inside its existing relevance gate.
+receipts:
+  - claim: "The library decides correctly — 16 cases, guilt and innocence and both under-match gemelli"
+    cmd: "python3 infra/claude-hooks/test_lane_check.py -v"
+    result: "16/16. Guilt on fail/tautology/||-tail/malformed/timeout; innocence on absent/escape/pass/out-of-scope/entity-wise-tautology/quoted-separator; under-match on unknown AND empty change sets; security on an untrusted origin."
+    exit: 0
+    ts: "2026-08-31T06:20Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "ARMED — the decision reaches a real stop boundary, not merely an import"
+    cmd: "python3 infra/claude-hooks/test_lane_check_wiring.py"
+    result: "11/11 by driving subagent_stop_verify.py as a subprocess with a real SubagentStop payload and reading the exit code the harness reads. Includes the untracked-directory scope case and the two-marker case."
+    exit: 0
+    ts: "2026-08-31T06:20Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "Eleven mutants, each ASSERTED to have applied before its verdict was read"
+    cmd: "mutate, run both corpora, revert"
+    result: >-
+      Killed 10: blocks() failing open; tautology becoming a substring match; an
+      unknown change set read as out-of-scope; the hook dropping changed_paths;
+      the hook never calling lane_check; an empty change set read as
+      out-of-scope; the ||-tail rule removed; the trusted-origin gate removed;
+      the change set computed eagerly again; -uall dropped; markers shared again.
+      SURVIVED 1, declared not hidden: making the separator split quote-blind.
+      It is an EQUIVALENT mutant — a mangled fragment keeps its closing quote
+      (`true"`), which is never the exact token the tautology set holds, so
+      quote-blindness cannot fabricate a false verdict. Written into the
+      function's own docstring as correct-and-unproven rather than papered over
+      with a contrived test. TWO of the eleven were no-ops on the first attempt
+      and were re-written after the assert caught them: a mutant that does not
+      apply proves nothing, and would have been read as a corpus gap.
+    exit: 0
+    ts: "2026-08-31T06:25Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "Two of the refuter's claims MEASURED before curing, rather than accepted"
+    cmd: "build a throwaway repo with an untracked directory and a path containing a space; run git status --porcelain with and without -uall -z"
+    result: >-
+      default -> '?? \"has space.txt\"\\n?? newdir/\\n' — both defects reproduce
+      exactly as claimed. With `-uall -z` -> ['?? has space.txt', '?? newdir/x.py'],
+      unquoted and per-file. The cure is those two flags, and the measurement is
+      quoted in the code comment so the next reader does not re-derive it.
+    exit: 0
+    ts: "2026-08-31T06:05Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "No regression across the hooks suite, and the anti-reward-hacking lint is clean"
+    cmd: "pytest infra/claude-hooks/ -q; python3 scripts/lint_test_reward_hacking.py <both corpora>"
+    result: "111 passed. Lint: clean (2 test files checked) — spec item 5 satisfied by the shipped lint rather than by an assertion standing in for it."
+    exit: 0
+    ts: "2026-08-31T06:22Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "actionlint green on the workflow that gains the executors"
+    cmd: "actionlint .github/workflows/guard-conformance.yml"
+    result: "clean. The executors sit inside the existing relevance gate, whose regex already covers `^infra/claude-hooks/`, so they run on exactly the PRs that can break them."
+    exit: 0
+    ts: "2026-08-31T06:22Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+dissent:
+  - objection: "A lane can SILENTLY skip its own check: `git status --porcelain` collapses an untracked directory to `newdir/`, which matches no file glob, so a scoped check resolves OUT_OF_SCOPE on exactly the change it was written for."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Measured before curing and it reproduces verbatim. `-uall` lists the files instead. This is the only direction that matters for this module — a check that skips when it should have run — and it was reachable by an entirely ordinary action (creating a new directory)."
+  - objection: "`pytest test_foo.py || true` passes the tautology rule: every entity but the last is legitimate, so `all()` answers False, the command runs, exits 0 forever, and reports PASS."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "The reward-hacking shape the rule exists to refuse, dressed as a real check — and far likelier in practice than the bare `true` the rule did catch. Now any `||`-guarded no-op tail makes the whole command INVALID, with its own guilt case and an innocence case for quoted separators."
+  - objection: "One anti-loop marker shared between two block reasons means a lane-check block consumes the pre-existing dirty guard's only shot: the next stop short-circuits at the marker and the dirty tree ships unnoticed."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Correct, and worse than the comment I had written to acknowledge it — adding a feature would have silently un-armed a protection already in force, which is the exact class this wave exists to remove. One marker per reason keeps the anti-loop guarantee (no reason can block the same transcript twice, so no loop is possible) and bounds the total at one block per reason. Proved by a wiring case that runs both stops in the SAME TMPDIR."
+  - objection: "The ABSENT path does not do nothing. `changed_paths=_changed_paths(cwd)` is evaluated as a function ARGUMENT, so three git subprocesses run on every subagent stop fleet-wide even with no contract — and the library's own test cannot see it, because it passes the list directly."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "The sharpest of the ten. The module's central promise was false at the only place it mattered, the wiring, and the corpus was structurally blind to it. `evaluate` now takes a `changed_paths_fn` callable resolved only after a contract is known to exist, and the innocence case passes a callable that RECORDS whether it was invoked — an assertion about work done, not about a returned status."
+  - objection: "`shell=True` on a command read from a file in the worktree is a zero-click RCE: a subagent that clones an external repository to read it would execute that repository's `.lane-check.json` the moment it tried to stop."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "The trust-boundary argument I had written was true of our worktrees and false of a clone, and stating it without that distinction was the error. The contract is now honoured only where `origin` matches a trusted pattern (overridable via LANE_CHECK_TRUSTED_ORIGIN; no remote at all is trusted, which is the shape of our own fixtures). An untrusted origin resolves ABSENT and SILENT — refusing to run a stranger's command must never wall the agent that merely read their code."
+  - objection: "The escape hatch is unusable by the party the message addresses: a subagent exporting LANE_CHECK_OFF=1 in its shell cannot reach the harness process that runs the hook."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Right about the mechanism, and the message was therefore misleading. The subagent does have in-band remedies — fix the check, or correct/remove the contract file — and the message now names those first and labels LANE_CHECK_OFF as the OPERATOR's escape. Fail-closed stands: with a real remedy named, it is a block the agent can clear, not a wall."
+  - objection: "A path containing a space arrives quoted from both `git status --porcelain` and `git diff --name-only`, and the rename parser truncates a filename containing the substring ' -> '."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Both measured. `-z` fixes both at once: NUL-separated and unquoted, and a rename becomes two records rather than one arrow-joined string, so the ambiguity disappears instead of being parsed around."
+  - objection: "The path-escape check bricks at the filesystem root (`resolved_cwd + os.sep` becomes '//'), and a 900s timeout ceiling is unreasonable for a synchronous stop hook."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Both accepted. The check now compares the resolved PARENT to the resolved cwd — the entity, not a string prefix. The ceiling is 300s: a stop hook holds the agent loop, and fifteen minutes of it is not a bound, it is a hang."
+  - objection: "SEAT AVAILABILITY — R9's allowlist is still unsatisfiable from this machine. Fourth PR."
+    seat: "claude-opus-5 (orchestrator, measured this turn)"
+    status: CONFIRMED
+    disposition: accepted
+    note: >-
+      Codex out of credits; tp1-qwen3.8-max timing out; kimi-code spent as the
+      BUILD lane, so family exclusion rules out kimi-code/k3. Zero reachable
+      allowlisted review seats, again. This pack's single review found six real
+      defects including a zero-click RCE and a false innocence claim, and R9
+      will score it at zero seats. Reported for lane 6; R9 is a NOTICE today.
+  - objection: "SPEC DEVIATION — the lane file states PR-1 touches no `.github/workflows/`. It does."
+    seat: "claude-opus-5 (orchestrator)"
+    status: CONFIRMED
+    disposition: accepted
+    note: >-
+      guard-conformance.yml gains the two executor steps. Without them the
+      corpora would run only in the `scripts/tests` sweep, which is
+      `continue-on-error: true` and in no required context — a corpus whose only
+      executor cannot go red is W108, and shipping a guard that way in THIS wave
+      would be the joke telling itself. The spec is wrong on this point; the
+      deviation is declared here and in the brief's constraints rather than
+      quietly taken, and it moves this PR into the auto-merge-OFF workflow class.
+  - objection: "SIZE — 1458 net lines against a spec target of ≤380 and a PR-contract target of ~400."
+    seat: "claude-opus-5 (orchestrator)"
+    status: CONFIRMED
+    disposition: accepted
+    note: >-
+      Stated, not hidden. Composition: lane_check.py ~400, the two corpora ~750,
+      the hook wiring ~250, the workflow ~40. The corpora are larger than the
+      subject because six of their cases exist ONLY to pin a defect a refuter or
+      a mutant found, and deleting them to hit a line target would delete the
+      evidence that the cures work. Splitting was considered and rejected: the
+      library alone has no consumer, and landing an inert library is precisely
+      the failure this wave was convened to stop (14 of wave 1's items landed
+      inert). Rule 1 says ~400 "when the nature of the work permits it"; here it
+      does not, and rule 3 — the consumer ships in the same PR — is the stronger
+      constraint. This is exactly the case L04-PR3's size taxonomy exists to
+      classify, and it should be classified rather than argued.
