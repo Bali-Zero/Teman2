@@ -1,0 +1,144 @@
+# STAGING LAYOUT, not this directory's. See #5325's pack for the full note.
+council_run: council.jsonl
+brief_ref: evidence/brief.yml
+pii_scan: clean
+lanes:
+  - lane: implementer
+    role: build
+    role_note: "the readiness harness (staging replication, per-constant isolation, the widened-allowlist and all-three counterfactuals, the gear-floor recompute over the pack-less PRs) and the one-line date move"
+    seat: "claude-opus-5 (xhigh)"
+  - lane: refuter
+    role: review
+    role_note: "round 1 — blind adversarial review of the REPORT's method and claims; 4 blockers"
+    seat: "agy-gemini-3.1-pro"
+  - lane: refuter
+    role: review
+    role_note: "round 2 — blind review of the CORRECTED report; 6 findings round 1 missed, 2 blocking"
+    seat: "tp1-glm-5.2"
+seat_diversity: 3
+seat_diversity_note: >-
+  Three families. NOTE, and it is this PR's subject: the BUILD lane here is
+  Anthropic, because the artefact is a measurement of this repo's own CI rules —
+  the harness had to replicate harness-floor.yml's staging exactly, and handing
+  that to a seat that cannot run it would have produced a plausible harness
+  rather than a faithful one. D3's non-Anthropic build-lane rule is written for
+  code; the seat_override valve exists for exactly this and is deliberately NOT
+  used, because the honest thing is to declare the shape rather than launder it.
+  Both REVIEW seats are non-Anthropic and cross-family from each other, and the
+  second found six things the first missed.
+diff:
+  net_lines: >-
+    AS OF the commit this pack ships with: 5 files, +396/-1, net 395 — THREE-DOT
+    against the merge base (W102). Gear floor recomputed = 1 from this diff;
+    declared Gear 3, which is ABOVE the floor and therefore allowed (the floor is
+    a lower bound). Declared high on purpose: the diff is one constant, but the
+    DECISION it encodes is a fleet-wide enforcement flip, and the evidence for it
+    is the rest of the PR. One line of code, 189 lines of why.
+  behaviour_change: >-
+    One constant moves: SEAT_RULES_ENFORCEMENT_DATE 2026-09-02 -> 2026-08-31, so
+    R8/R10 are hard rules from today. Measured cost: ZERO of the 20 open PRs that
+    carry an evidence pack. The other two constants are untouched. Everything
+    else in this PR is the measurement that justifies the move and prices the two
+    that did not.
+receipts:
+  - claim: "Moving SEAT_RULES_ENFORCEMENT_DATE alone reddens ZERO open PRs"
+    cmd: "lint all 43 open PRs' packs twice — once at today's dates, once with that constant alone pulled to 2020-01-01 — staged as harness-floor.yml stages them, --source-path included"
+    result: "0 of the 20 PRs that carry a pack. 23 carry none (6 of those are Gear-3 and should — see the report §5). The other two constants measured alone: R9_R11 reddens 9, EVIDENCE_ROOT reddens 3 (a subset of the 9)."
+    exit: 0
+    ts: "2026-08-31T12:20Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "The harness's FIRST result was a false positive, and the correction is what makes the number citeable"
+    cmd: "same harness without --source-path, then with it"
+    result: "Without it, Rule 9 judges the CANONICAL STAGED path and every single pack reports `evidence_root_deprecated` — the headline would have been '16 PRs go red' from a cause that does not exist. With it, 3. The difference is one flag that harness-floor.yml passes and I initially did not."
+    exit: 0
+    ts: "2026-08-31T12:05Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "The obvious cure for the R9 nine — widen COUNCIL_REVIEW_SEATS — frees ZERO of them"
+    cmd: "re-lint all nine with agy-gemini-3.1-pro and tp1-glm-5.2 added to COUNCIL_REVIEW_SEATS"
+    result: "0 freed, 9 still red. R9 wants TWO ok:true seats; those four packs have ONE, so widening raises 0 -> 1 against a threshold of 2. The binding constraint is the COUNT, not the list — which is the opposite of the hypothesis this lane started with."
+    exit: 0
+    ts: "2026-08-31T12:30Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "R11 cannot inflate the count of 9 — bounded, not merely declared"
+    cmd: "run the lint's own compute_seat_floor over each of the 20 PRs' real changed-file lists"
+    result: "0 of 20 diffs are 100% mechanical paths, which is R11's only trigger. So the shared R9_R11 constant costs exactly the 9 R9 failures and nothing more. Raised by the second refuter, who noted a declared limit that is not bounded leaves the headline unciteable."
+    exit: 0
+    ts: "2026-08-31T13:05Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "6 of the 23 pack-less PRs are Gear-3 and non-compliant by omission"
+    cmd: "recompute the deterministic gear floor from each PR's own changed-file list and per-file numstat"
+    result: "#5337 #5333 #5218 #5028 #4717 #4569 have floor 3 and carry no pack; the other 17 are floor 1-2 and genuinely out of scope. Found only because a refuter refused the report's original decision to treat 'no pack' as out of scope without measuring it."
+    exit: 0
+    ts: "2026-08-31T12:55Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "The seat-outage claim has an evidence pointer, not an assertion"
+    cmd: "codex exec -m gpt-5.6-sol and -m gpt-5.6-terra, low effort, read-only; TP1 POST to qwen3.8-max at 20KB and 7.8KB"
+    result: "Both codex models: `ERROR: Your workspace is out of credits`, rc=1, the -o output file never created. qwen3.8-max: socket read timeout at 400s, twice. Recorded because the whole Cause A / Cause B split rests on it and the second refuter refused to take it on the words 'measured on Pro'."
+    exit: 1
+    ts: "2026-08-31T01:25Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "The lint's own corpus is unmoved by the date change"
+    cmd: "pytest scripts/tests/test_evidence_pack_lint.py -q"
+    result: "288 passed — identical to the pre-edit baseline."
+    exit: 0
+    ts: "2026-08-31T12:15Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+dissent:
+  - objection: "The §1 buckets were presented as disjoint and summing to 43, but the three EVIDENCE_ROOT failures are a SUBSET of the nine R9 failures — the arithmetic was bent to make the causes look tidier than they are."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Correct, and the correction is stated in the report rather than silently applied. The denominator was wrong too — '0 of 43' is really '0 of the 20 that carry a pack'."
+  - objection: "Treating the 23 pack-less PRs as out of scope is a methodological flaw: if any carry a Gear-3 diff they are non-compliant by omission, and the harness cannot see it."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "The single most valuable finding of the review. Measured after it: SIX have a deterministic floor of 3. A readiness report that counted only the PRs it could conveniently lint would have been measuring its own convenience, and it very nearly did."
+  - objection: "The harness lints each pack in isolation, so diff-dependent rules are not exercised as CI exercises them."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Declared in §2 — and then BOUNDED after the second refuter pointed out that a declared limit which is not bounded leaves the headline unciteable. R11's only trigger is a 100%-mechanical diff; 0 of 20 qualify."
+  - objection: "BLOCKER — the seat-outage claim, on which the whole Cause A / Cause B split rests, cites only 'measured on Pro' with no command and no artefact. If those seats were reachable, the framing inverts from 'rule failing' to 'squad failing'."
+    seat: "tp1-glm-5.2"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Right to refuse it. The exact invocations and their verbatim errors are now in the report, including the method note that a first pass at that probe grepped the run LOG for the OK-string and found the prompt echoed back rather than a reply."
+  - objection: "The §7 asymmetry argument ('the alternative measured worse') rests on a counterfactual that was never run."
+    seat: "tp1-glm-5.2"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Also right. It now is run: all three constants moved together redden 9 of 20; SEAT_RULES alone reddens 0. An assertion replaced by a measurement."
+  - objection: "'COUNCIL_REVIEW_SEATS has no stated justification' was assumed, not checked — a justification might live elsewhere."
+    seat: "tp1-glm-5.2"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Checked: `grep -rn COUNCIL_REVIEW_SEATS` returns the constant, one docstring mention in the same file, and nothing in any .md anywhere in the tree."
+  - objection: "'Widening frees zero' treats the journal as immutable and ignores that a wider allowlist would have changed how authors routed their reviews in the first place."
+    seat: "tp1-glm-5.2"
+    status: CONFIRMED
+    disposition: accepted
+    note: "A fair distinction and now drawn explicitly: the measurement is about the packs AS THEY STAND, and the counterfactual about author behaviour is separately true. Neither half of the fix works alone — a wider list without a second review still counts 1, and a second review on a non-allowlisted seat still counts 0."
+  - objection: "THIS PACK IS THE FINDING. It carries two reachable cross-family reviews — the count R9 demands — and R9 scores it ZERO, because neither seat is allowlisted."
+    seat: "claude-opus-5 (orchestrator, observed on this pack)"
+    status: CONFIRMED
+    disposition: accepted
+    note: >-
+      The second reviewer was run only because the report itself accused Squad S
+      of not running one, and it then found six things the first had missed,
+      two of them blocking. A pack whose second reviewer caught two blockers the
+      first missed still fails the rule that exists to ensure a second reviewer
+      was consulted. Recorded as the argument's strongest single piece of
+      evidence, and left for Zero rather than resolved by a squad.
+  - objection: "D3 SHAPE — the build lane on this pack is Anthropic, not a non-Anthropic seat."
+    seat: "claude-opus-5 (orchestrator)"
+    status: CONFIRMED
+    disposition: accepted
+    note: >-
+      Declared rather than laundered. The artefact is a measurement of this
+      repo's own CI rules whose harness had to replicate harness-floor.yml's
+      staging exactly; handing that to a seat that cannot run it would have
+      produced a plausible harness rather than a faithful one, and a plausible
+      harness is precisely what this report exists to guard against. The
+      `seat_override` valve exists for this and is deliberately NOT used: the
+      honest move is to state the shape and let the gate score it.
