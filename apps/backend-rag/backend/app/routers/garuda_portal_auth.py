@@ -360,13 +360,9 @@ async def request_magic_link(
         # and this frame holds `garuda_result_session`/the store's kwargs,
         # which can include `result_session_secret`. Key-based redaction in
         # `sentry_config._scrub` cannot reach a value that only exists inside
-        # a captured frame's local-variable dump. Structural fix landed
-        # 2026-08-29: `sentry_config._init_sentry_blocking` now passes
-        # `include_local_variables=False` to `sentry_sdk.init`, so the SDK no
-        # longer collects frame locals for ANY handler in the service —
-        # avoiding `.exception()` here is now belt-and-suspenders, not the
-        # sole mitigation, and is kept because it costs nothing to keep. The
-        # exception type/message is still worth nothing here anyway — the
+        # a captured frame's local-variable dump, so the cheapest real
+        # mitigation for *this* handler is to never capture that dump at all.
+        # The exception type/message is still worth nothing here anyway — the
         # contract only ever returns the same opaque INTERNAL_ERROR to the
         # caller — so no diagnostic signal is lost that this endpoint's
         # response shape could have used.
