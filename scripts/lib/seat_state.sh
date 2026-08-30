@@ -61,7 +61,7 @@
 # unexpected exception into UNKNOWN/internal-error rather than a traceback
 # that might echo file contents onto stderr.
 _SEAT_STATE_PY="$(cat <<'SEAT_STATE_PY'
-import json, sys, datetime
+import json, sys, datetime, math
 
 # Clock skew between two fleet machines is normal and small; a report dated
 # meaningfully in the future is not. 300s absorbs ordinary NTP drift without
@@ -167,8 +167,27 @@ def main():
     if kind == "quota":
         weekly = row.get("weekly_pct")
         session = row.get("session_pct")
-        weekly_num = isinstance(weekly, (int, float)) and not isinstance(weekly, bool)
-        session_num = isinstance(session, (int, float)) and not isinstance(session, bool)
+        # FINITE, not merely numeric. Rejecting the literal Infinity/NaN tokens
+        # via parse_constant is not enough: JSON 1e400 overflows to inf through
+        # the ordinary number path and never touches parse_constant. Measured,
+        # weekly_pct 1e400 returned EXHAUSTED and SKIPPED the seat - the same
+        # defect the token filter was added for, reached by another input shape.
+        def _finite_num(v):
+            return (isinstance(v, (int, float)) and not isinstance(v, bool)
+                    and math.isfinite(v))
+
+        weekly_num = _finite_num(weekly)
+        session_num = _finite_num(session)
+        # A field that is PRESENT but not a finite number is a malformed row,
+        # which is a different thing from a row that simply carries no figures.
+        # Answering LIVE off the other field would assert a healthy seat on the
+        # strength of data we just refused to trust: after the finiteness check
+        # above, weekly_pct 1e400 stopped being a wrong SKIP and became a wrong
+        # LIVE, which is a quieter error but still an unfounded claim.
+        for _name, _v, _ok in (("weekly_pct", weekly, weekly_num),
+                               ("session_pct", session, session_num)):
+            if _v is not None and not _ok:
+                emit("UNKNOWN", "malformed-" + _name, True)
         if not weekly_num and not session_num:
             emit("UNKNOWN", "no-usage-figures", True)
         if weekly_num and weekly >= exhausted_pct:
@@ -260,7 +279,14 @@ seat_state_lookup() {
         # cascade spawns inherited the already-probed flag and could never
         # refresh. A plain shell variable gives the stated guarantee already.
         SEAT_STATE_PROBED=1
-        sh -c "$SEAT_STATE_PROBE_CMD" >/dev/null 2>&1
+        # The sentinel is parent-LOCAL (never `export`ed), so an ordinary child
+        # such as a dispatched claude does not inherit it. It IS passed to the
+        # probe itself as a command-scoped assignment, because a probe that
+        # re-enters this library would otherwise not see it and would recurse:
+        # measured, a re-entrant probe ran 26 times before an external timeout
+        # stopped it. Removing the export fixed the leak and opened this twin;
+        # command-scoped passing closes both at once.
+        SEAT_STATE_PROBED=1 sh -c "$SEAT_STATE_PROBE_CMD" >/dev/null 2>&1
         _seat_state_resolve "$seat_key"
         if [ "$SEAT_STATE_STATE" = "UNKNOWN" ]; then
             SEAT_STATE_REASON="after-probe: $SEAT_STATE_REASON"

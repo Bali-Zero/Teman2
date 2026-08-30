@@ -501,6 +501,50 @@ seat_state_precheck_skip claude-token-2-env' || rc=$?
     [ "$rc" -eq 0 ]
 }
 
+case_numeric_overflow_is_unknown() {
+    # Found by the SECOND refuter (codex sol) attacking whether the first
+    # refuter's fix was COMPLETE. Rejecting the literal Infinity/NaN tokens does
+    # not cover JSON 1e400, which overflows to inf through the ordinary number
+    # path and never reaches parse_constant. Measured: it returned EXHAUSTED and
+    # SKIPPED the seat. A present-but-non-finite figure is a malformed row.
+    local quota="$FIXTURE/c25-quota.json" out rc=0
+    cat > "$quota" <<JSON
+{"generated_at_epoch": $(now_epoch), "seats": [{"account": "seat-l@example.invalid", "weekly_pct": 1e400, "session_pct": 1.0}]}
+JSON
+    out="$(env SEAT_STATE_REPORT="$quota" SEAT_STATE_ARSENAL_REPORT="$FIXTURE/c25-missing.json" \
+        bash -c ". \"$SEAT_STATE\"; seat_state_lookup seat-l@example.invalid")" || rc=$?
+    [ "$rc" -eq 2 ] || return 1
+    [ "${out%%$'\t'*}" = "UNKNOWN" ] || return 1
+    # and specifically NOT a confident LIVE off the other field
+    case "${out#*$'\t'}" in *malformed*) : ;; *) return 1 ;; esac
+}
+
+case_reentrant_probe_is_bounded() {
+    # Removing the sentinel export closed a process-tree leak and OPENED this
+    # twin: a probe that re-enters the library no longer inherited the flag and
+    # recursed (measured: 26 invocations before an external timeout). The
+    # sentinel is now passed command-scoped to the probe only, which bounds
+    # re-entry WITHOUT restoring the leak — the case below and
+    # case_sentinel_not_exported_to_children must BOTH stay green.
+    local counter="$FIXTURE/c26-count.txt" probe="$FIXTURE/c26-probe.sh" n
+    : > "$counter"
+    cat > "$probe" <<PROBE
+#!/bin/sh
+echo tick >> "$counter"
+[ \$(wc -l < "$counter") -gt 15 ] && exit 0
+. "$SEAT_STATE"
+seat_state_lookup seat-m@example.invalid >/dev/null 2>&1
+PROBE
+    chmod +x "$probe"
+    env SEAT_STATE_REPORT="$FIXTURE/c26-absent.json" SEAT_STATE_ARSENAL_REPORT="$FIXTURE/c26-absent2.json" \
+        SEAT_STATE_PROBE_CMD="$probe" \
+        bash -c ". \"$SEAT_STATE\"; seat_state_lookup seat-m@example.invalid" >/dev/null 2>&1 || true
+    n="$(wc -l < "$counter" | tr -d ' ')"
+    [ "$n" = "1" ]
+}
+
+run_case "regression: numeric overflow is UNKNOWN, not a skip" case_numeric_overflow_is_unknown
+run_case "regression: a re-entrant probe is bounded to one run" case_reentrant_probe_is_bounded
 run_case "regression: non-strict JSON (Infinity) is UNKNOWN" case_nonstrict_json_is_unknown
 run_case "regression: probe sentinel does not leak to children" case_sentinel_not_exported_to_children
 run_case "regression: reason field is sanitised" case_reason_field_is_sanitised
