@@ -44,7 +44,6 @@ from backend.scripts.visa_engine.fold_pack_seq18 import (
     NEW_MAX_AGE_SECONDS,
     OLD_MAX_AGE_SECONDS,
     PORTAL_AUTHORITY,
-    SEQ17_PAYLOAD_SHA256,
     assert_anchor_is_a_verified_signed_artifact,
     assert_changed_fields_hold_their_expected_values,
     assert_only_expected_changes,
@@ -525,8 +524,12 @@ def test_seq18_claims_to_be_created_after_it_was_signed() -> None:
     trustworthy, and (b) `assert_created_before_signed` in `sign_pack.py`, which
     stops the next pack from doing it. Corrected forward in seq-19.
 
-    This test asserts the DEFECT, deliberately. When seq-19 lands it should be
-    replaced by the positive invariant — not deleted quietly.
+    This test asserts the DEFECT, deliberately, and it is PERMANENT — adversarial
+    review was right that "replace it when seq-19 lands" was wrong: no forward pack
+    can make seq-18's own signed file coherent, so the positive invariant can never
+    hold HERE. It holds for every pack after this one, and `sign_pack.py` is where
+    it is enforced. The only thing that can turn this test red is someone tampering
+    with an immutable artifact — which is exactly when it should go red.
     """
     signed = _read_json(_SEQ18_SIGNED_PATH)
     payload = signed.get("payload", signed)

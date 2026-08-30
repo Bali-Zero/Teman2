@@ -52,7 +52,13 @@ Usage::
 
     PYTHONPATH=. python -m backend.scripts.visa_engine.fold_pack_seq18 \\
         --seq17-source <path to rulepack-prod-017.source.json> \\
+        --seq17-signed <path to rulepack-prod-017.signed.json> \\
         --output <seq-18 source path>
+
+`--seq17-signed` defaults to the `.signed.json` sibling of `--seq17-source`, and
+the fold refuses to run without one: the anchor is verified by SIGNATURE, never by
+a digest constant alone. `VISA_ENGINE_TRUST_STORE_KEYS_JSON` (the production PUBLIC
+key) must be exported — its absence is a refusal, not a skipped check.
 """
 
 from __future__ import annotations

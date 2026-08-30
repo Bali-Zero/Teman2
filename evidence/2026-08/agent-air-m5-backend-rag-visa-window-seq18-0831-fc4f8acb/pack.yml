@@ -19,11 +19,12 @@ lanes:
 
 diff:
   files: 13
-  net_lines: 19674
-  measured_at: 3accba68c3
+  net_lines: 19682
+  measured_at: c59d527faa
   note: >-
     git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD, where the merge-base
-    is f537609969, the commit that landed seq-17. Measured from the MERGE-BASE, never a two-dot
+    is 0857ce15bc — the branch was repointed onto fresh main to pick up a workflow the base
+    predated, so the base moved off the sequence-17 landing. Measured from the MERGE-BASE, never a two-dot
     diff against a stale PR_BASE — that mistake pulls in hundreds of unrelated changes and accuses
     this PR of main's files (cicatrix #9 / W102). The two pack JSONs (9068 + 9005 lines) are
     generated artifacts of the deterministic fold plus the offline signer; the hand-authored
@@ -100,7 +101,9 @@ receipts:
       moving, a portal content digest moving, a NON-portal window moving, the policy discriminator
       changing, the policy gaining a key, a record field added, a record dropped;
       TestGuardInnocence — the fold's own real shape)
-    result: 24 passed, 0 failed (10 guilt + 1 innocence + 13 identity/chain/delta/date)
+    result:
+      51 passed, 0 failed (the guilt matrix, the innocence pairs, identity/chain/delta/date,
+      the value guard, the signed-anchor cases and the fold end-to-end pair)
     exit: 0
     ts: 2026-08-31T02:36Z
     seat: session (build lane)
@@ -112,7 +115,8 @@ receipts:
     cmd: ls apps/backend-rag/backend/tests/services/visa_engine/ | grep -i "seq1[5-8]"
     result: >-
       before — test_seq15_e31_failopen_repair.py, test_seq17_freshness_restamp.py (no seq-18);
-      after — test_seq18_freshness_window.py added, 24 tests.
+      after — test_seq18_freshness_window.py added, 51 tests at this commit (24 when the receipt
+      was first written; it grew answering the same review's later findings).
     exit: 0
     ts: 2026-08-31T02:20Z
     seat: session (build lane)
@@ -125,10 +129,11 @@ receipts:
       different variable name (x2), a different digest on the same variable, the correct line in a
       different file, and a ride-along statement on the same physical line
     result: >-
-      the real line 73 matches exactly 1 rule; all five negative cases NO-MATCH. Independently run
+      the real digest line (fold_pack_seq18.py:79) matches exactly 1 rule; all five negative cases NO-MATCH. Independently run
       by a verification seat. Then python3 scripts/detect_secrets_check_unaudited.py -> "All
       findings audited (7364 total)", exit 0; pytest scripts/tests/test_detect_secrets_auto_triage.py
-      -> 106 passed (the count assert forced the audit-trail line, as designed).
+      -> 107 passed (the count assert forced the audit-trail line, as designed; 106 before the
+      seq-18 contract test this same review asked for).
     exit: 0
     ts: 2026-08-31T02:30Z
     seat: verification subagent (non-build)
@@ -367,3 +372,67 @@ dissent:
       from json.loads, which cannot produce a non-string key, so the path is unreachable here. Noted
       rather than fixed because a future caller that builds the payload in Python instead of parsing
       it would make it reachable; a structural comparison would remove the ambiguity for good.
+
+  - objection: >-
+      HIGH (kimi K3, round 2, the most material of its four): the brief's own acceptance probes do
+      not run as written. `PYTHONPATH=apps/backend-rag pytest backend/tests/...` from the repo root
+      resolves to a path that does not exist — pytest collects 0 items and exits 4, which a harness
+      reads as a pass. The evidence named those commands as its proof surface, so as written they
+      proved nothing.
+    seat: kimi-code/k3 (cross-family refuter, no brief, round 2)
+    status: CONFIRMED
+    resolution: >-
+      Reproduced before believing it (0 items, exit 4) and fixed: both probes now carry the full
+      repo-relative path, say the cwd they assume out loud, and name the failure mode they used to
+      have. Re-run as written they collect 3 and 51 tests respectively.
+
+  - objection: >-
+      MEDIUM (kimi K3, round 2): the new signer guard was placed one statement too late. sign_pack's
+      own docstring promises the private key is touched LAST, "only once everything else already
+      checks out" — but assert_created_before_signed sat AFTER _load_private_key, so a payload
+      destined for refusal still caused a key file to be opened and read. No exploit, but a
+      regression against a security invariant the module states about itself.
+    seat: kimi-code/k3 (cross-family refuter, no brief, round 2)
+    status: CONFIRMED
+    resolution: >-
+      Fixed: the guard (and the signed_at resolution it needs, which requires no key) moved above
+      the key load, the docstring's numbered ordering now names it as step 6, and
+      test_the_key_file_is_never_touched_when_created_at_is_refused pins the ordering by handing in
+      a key path that does not exist — if the ordering ever regresses the error names the key file
+      instead of created_at.
+
+  - objection: >-
+      MINOR, cumulative (kimi K3, round 2): the pack contradicted the tree it describes — "24
+      passed" where the module now collects 51, "106 passed" where the triage suite is 107, a
+      citation to line 73 where the digest sits at line 79, and diff figures measured at a HEAD and
+      a merge-base the branch had already moved off.
+    seat: kimi-code/k3 (cross-family refuter, no brief, round 2)
+    status: CONFIRMED
+    resolution: >-
+      Every number re-measured against the current HEAD rather than adjusted by hand, and the two
+      that changed for a REASON (24 -> 51, 106 -> 107) now say why in the receipt instead of just
+      showing a bigger number.
+
+  - objection: >-
+      MINOR (kimi K3, round 2): the pinned-defect test claimed to "name its own replacement" — but
+      no forward pack can make seq-18's own signed file coherent, so the positive invariant can
+      never hold on THAT artifact. The framing oversold what the test is.
+    seat: kimi-code/k3 (cross-family refuter, no brief, round 2)
+    status: CONFIRMED
+    resolution: >-
+      Corrected in the test's docstring and in the brief: it is a PERMANENT monument over an
+      immutable artifact, not a placeholder. The invariant lives forward in sign_pack.py; the only
+      thing that can turn this test red is tampering with the signed file, which is exactly when it
+      should.
+
+  - objection: >-
+      Threat-model note, not a defect (kimi K3, round 2): the anchor's trust store comes from an
+      environment variable, so an attacker who controls the operator's shell could point it at a key
+      of their own and re-sign the public seq-17 payload.
+    seat: kimi-code/k3 (cross-family refuter, no brief, round 2)
+    status: PLAUSIBLE
+    resolution: >-
+      Accepted as scoped, not fixed. The digest pin means the payload folded is still byte-identical
+      to production's; only the provenance attestation is forfeited, and anyone who can set that
+      variable can already edit the fold script. The check's real target is AUTHORIAL ERROR — a
+      digest pinned from a pack that was never signed — and against that it holds.

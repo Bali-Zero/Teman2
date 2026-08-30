@@ -605,6 +605,32 @@ class TestCreatedAtNeverAfterSignedAt:
         assert envelope["payload"]["created_at"] == "2026-07-19T00:05:00Z"
 
 
+    def test_the_key_file_is_never_touched_when_created_at_is_refused(
+        self, tmp_path: Path
+    ) -> None:
+        """`sign_pack`'s docstring promises the private key is touched LAST, only
+        once everything else checks out. Adversarial review pointed out the first
+        version of this guard sat AFTER `_load_private_key`, so a payload destined
+        for refusal still had a key file opened and read. The key path here does
+        not exist: if the guard runs first the error names `created_at`, and if
+        the ordering ever regresses it names the key file instead."""
+        payload = minimal_valid_envelope()["payload"]
+        payload["created_at"] = "2030-01-01T00:00:00Z"
+        payload_path = tmp_path / "pack.json"
+        payload_path.write_text(json.dumps(payload), encoding="utf-8")
+
+        with pytest.raises(SignPackError, match=r"created_at.*AFTER signed_at"):
+            sign_pack(
+                payload_source=payload_path,
+                kid="key-ordering",
+                key_file=tmp_path / "this-key-does-not-exist.pem",
+                environment="TEST",
+                sequence=1,
+                output=tmp_path / "signed.json",
+                signed_at=_UTC_NOW,
+            )
+
+
 class TestProductionGateStrictIdentity:
     """PR-A1 codex correctness review finding #3: ``i_know_this_is_production``
     must be checked by strict identity (``is not True``), never truthiness —

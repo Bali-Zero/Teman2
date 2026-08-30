@@ -80,16 +80,20 @@ acceptance:
       WHEN a payload whose `created_at` is after the signing instant is handed to the signer, it
       SHALL be refused — the defect seq-18 itself shipped, fixed forward so no later pack repeats it.
     probe: >-
-      PYTHONPATH=apps/backend-rag pytest backend/tests/scripts/test_visa_engine_sign_pack.py
-      -k CreatedAtNeverAfterSignedAt ; mutation-proven (removing the call reddens the real-path test)
+      PYTHONPATH=apps/backend-rag python3 -m pytest
+      apps/backend-rag/backend/tests/scripts/test_visa_engine_sign_pack.py
+      -k CreatedAtNeverAfterSignedAt (run from the REPO ROOT — the repo-relative path is
+      required; a bare `backend/tests/...` collects 0 items and exits 4, which reads as a pass)
+      ; mutation-proven: removing the call reddens the real-path test
   - text: >-
       WHERE the fold accepts a seq-17 anchor, the anchor SHALL be a bundle whose Ed25519 signature
       verifies against the production trust store — never a digest matching a constant in the
       fold's own source.
     probe: >-
-      PYTHONPATH=apps/backend-rag pytest
-      backend/tests/services/visa_engine/test_seq18_freshness_window.py ; mutation-proven (removing
-      the call from fold() reddens two end-to-end tests)
+      PYTHONPATH=apps/backend-rag python3 -m pytest
+      apps/backend-rag/backend/tests/services/visa_engine/test_seq18_freshness_window.py
+      (from the REPO ROOT, full repo-relative path) ; mutation-proven: removing the call from
+      fold() reddens two end-to-end tests
   - text: >-
       WHEN the two checks this PR turned red are re-run, they SHALL be green for the reason the fix
       claims, proven by running the thing itself.

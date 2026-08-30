@@ -362,9 +362,11 @@ def sign_pack(
     with ``--key-file``/``payload_source``, (3) the compile_pack gate
     (re-validates + statically compiles the payload), (4) environment/
     sequence cross-checks against the payload's own fields, (5) ``--kid``
-    shape, (6) the private key file (permission check, then load) — the
-    sensitive resource is touched last, only once everything else already
-    checks out. (7) sign. (8) self-verify via the REAL
+    shape, (6) payload.created_at is not after signed_at (a pack may not claim
+    to have been created after the signature proving its bytes existed),
+    (7) the private key file (permission check, then load) — the sensitive
+    resource is touched last, only once everything else already checks out.
+    (8) sign. (9) self-verify via the REAL
     ``bundle.verify_rule_pack`` before ever returning.
     """
 
@@ -421,11 +423,14 @@ def sign_pack(
             "ProtectedHeader.kid would fail model validation downstream"
         )
 
-    private_key = _load_private_key(key_file)
-
+    # BEFORE the key file is opened: the module's own ordering doctrine says the
+    # sensitive resource is touched last, once everything else already checks
+    # out. A payload this guard will refuse must not cause a private key to be
+    # read — so `signed_at_dt` is resolved here too; it needs no key.
     signed_at_dt = signed_at or datetime.now(timezone.utc)
-
     assert_created_before_signed(payload.created_at, signed_at_dt)
+
+    private_key = _load_private_key(key_file)
 
     protected: dict = {
         "domain": "balizero.visa-rulepack.v1",
