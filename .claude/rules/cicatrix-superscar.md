@@ -209,7 +209,7 @@ W111 (`gh run rerun` rigioca merge-ref stantio) · W114 (fake e codice condivido
 W118 (3 proxy merge-queue che mentono) · W125 (fusione pulita, la resa a mano la tiene) · W131 (un nome, due ruoli).
 **→ dettaglio:** cicatrix-scars.md (resto) + archive (W53/W54/W61)
 **PR-1 landing** (corpo in `PENDING-ARMS.md`): la mergeability GitHub non onora `merge=union`;
-`autoMergeRequest` SOPRAVVIVE a CONFLICTING — leggi la timeline, mai lo scalar (NULL anche pending).
+`autoMergeRequest` SOPRAVVIVE a CONFLICTING — leggi la timeline, mai lo scalar (NULL solo in coda).
 
 ---
 
