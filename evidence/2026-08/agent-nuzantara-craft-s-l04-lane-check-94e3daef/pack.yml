@@ -156,6 +156,29 @@ dissent:
       would be the joke telling itself. The spec is wrong on this point; the
       deviation is declared here and in the brief's constraints rather than
       quietly taken, and it moves this PR into the auto-merge-OFF workflow class.
+  - objection: "CI CAUGHT WHAT I HAD REASONED AWAY: a new command hook must be REGISTERED in infra/guard-conformance/registry.json, not merely tested."
+    seat: "guard-conformance (required context `Every guard proves guilt AND innocence`, on the PR)"
+    status: CONFIRMED
+    disposition: accepted
+    note: >-
+      Before pushing I looked at the registry, saw a `bridge_reply_guards`
+      surface with an ast-def-prefix census, and concluded registration applied
+      only to `_guard_*` families. That was a guess dressed as a reading — the
+      file has a `command_hooks` surface with 17 entries covering exactly
+      `infra/claude-hooks/`, and the required job said so plainly:
+      "`infra/claude-hooks/lane_check.py` is neither registered nor
+      exempted-with-reason". Registered with four symbols and both corpora. The
+      anti-phantom rules then rejected the first attempt twice, and both
+      rejections were correct: `_scope_globs` was a symbol I had invented (the
+      scope logic lives inside `evaluate`), and `_is_tautology` was reached only
+      INDIRECTLY through `evaluate`, which the registry does not accept as proof
+      — rightly, since a test that reaches a function only through a caller stops
+      covering it the moment that caller changes. Both fixed: the invented symbol
+      folded into `evaluate`, and a direct unit case added that names
+      `_is_tautology` and asserts both directions. Final: 0 violations, 18 hook
+      entries. This is the wave's own thesis landing on me — a guard I reasoned
+      about instead of running.
+
   - objection: "SIZE — 1458 net lines against a spec target of ≤380 and a PR-contract target of ~400."
     seat: "claude-opus-5 (orchestrator)"
     status: CONFIRMED

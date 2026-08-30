@@ -420,6 +420,30 @@ def _case_absent_never_computes_the_change_set() -> list[str]:
     return fails
 
 
+
+def _case_is_tautology_directly() -> list[str]:
+    """Direct unit assertions on `_is_tautology`, naming the symbol.
+
+    The cases above exercise it through `evaluate`, which is the behaviour that
+    matters — but the guard-conformance registry requires a registered symbol to
+    be NAMED by the test that proves it, and it is right to: a test that reaches
+    a function only indirectly is a test that stops covering it the moment a
+    caller changes, without anyone noticing. Both directions, since a matcher
+    that says yes to everything passes every guilt case ever written.
+    """
+    fails: list[str] = []
+    for cmd in ("true", ":", "exit 0", "/bin/true", "true && :", "pytest x.py || true", "make check || :"):
+        if not lc._is_tautology(cmd):
+            fails.append(f"_is_tautology({cmd!r}) is False — a command that cannot fail read as a real check")
+    for cmd in ("pytest --assert=plain test_true_positive.py",
+                'git commit -m "fix && true"',
+                "pytest x.py && ruff check .",
+                "bash scripts/tests/test_truthy.sh"):
+        if lc._is_tautology(cmd):
+            fails.append(f"_is_tautology({cmd!r}) is True — over-match on a legitimate command (superscar #3)")
+    return fails
+
+
 _CASES = (
     ("innocence: absent contract is a no-op", _case_absent_is_a_no_op),
     ("innocence: LANE_CHECK_OFF=1 escapes", _case_env_escape_is_absent),
@@ -429,6 +453,7 @@ _CASES = (
     ("under-match: empty change set still runs", _case_empty_change_set_still_runs),
     ("guilt: failing check blocks and quotes stderr", _case_failing_check_blocks_and_quotes_stderr),
     ("guilt: tautological command refused", _case_tautology_is_refused),
+    ("unit: _is_tautology both directions", _case_is_tautology_directly),
     ("innocence: tautology rule is entity-wise", _case_tautology_check_is_not_a_substring_match),
     ("guilt: malformed contract blocks", _case_malformed_contract_blocks),
     ("guilt: timeout blocks rather than passing", _case_timeout_blocks_rather_than_passing),
@@ -467,6 +492,10 @@ def test_empty_change_set_still_runs() -> None:
 
 def test_failing_check_blocks_and_quotes_stderr() -> None:
     assert not _case_failing_check_blocks_and_quotes_stderr()
+
+
+def test_is_tautology_directly() -> None:
+    assert not _case_is_tautology_directly()
 
 
 def test_tautology_is_refused() -> None:
