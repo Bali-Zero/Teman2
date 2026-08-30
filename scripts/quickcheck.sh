@@ -190,7 +190,7 @@ PYEOF
                PYTHONPATH=.:../crm-cell \
                JWT_SECRET_KEY="${JWT_SECRET_KEY:-test_jwt_secret_key_for_testing_only_min_32_chars_long}" \
                API_KEYS="${API_KEYS:-test_api_key_1,test_api_key_2}" \
-               python -m pytest "${rel_tests[@]}" --tb=short -q 2>&1
+               python -m pytest "${rel_tests[@]}" --tb=short 2>&1
     )"
     rc=$?
     printf '%s\n' "$out" | sed 's/^/            /'

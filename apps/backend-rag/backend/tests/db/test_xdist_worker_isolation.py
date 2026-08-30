@@ -209,7 +209,6 @@ async def test_two_xdist_workers_do_not_share_a_database(_require_local_postgres
             "2",
             "--dist",
             "loadfile",
-            "-q",
             "--no-header",
             "-p",
             "no:cacheprovider",
