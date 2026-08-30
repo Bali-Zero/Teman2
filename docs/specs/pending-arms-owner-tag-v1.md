@@ -2,12 +2,28 @@
 
 > **Status: SPECIFICATION ONLY. No implementation in this PR.** This document does not
 > touch `scripts/pending_arms_report.py`, does not open a classifier fix PR, does not
-> revert PR #5273, and does not touch PR #5233 or its ledger row. It exists because that
-> classifier's `PHANTOM-OPERATOR` detector has now been patched once (PR #5273,
-> 2026-08-29) and defeated again within hours by the very next real row (PR #5233), and
-> CLAUDE.md's Agent PR Contract Rule 8 says a fix-of-a-fix chain stops at depth 1: if the
-> correction is itself wrong, the surface is under-specified — write the spec, not the
-> third patch.
+> revert PR #5273, and does not touch PR #5233 or its ledger row. It was originally
+> mandated because that classifier's `PHANTOM-OPERATOR` detector had been patched once
+> (PR #5273, 2026-08-29) and defeated again within hours by the very next real row
+> (PR #5233), read at the time as CLAUDE.md's Agent PR Contract Rule 8 forbidding a third
+> patch on the same surface.
+>
+> **CORRECTED same day, before this PR merged.** That reading of Rule 8 was itself wrong:
+> the rule stops a fix-of-a-fix chain "at depth 1" — it _permits_ depth 1, which is exactly
+> what the classifier fix (PR #5281, closed under the original misreading) was. Team-lead
+> re-read the rule, independently re-exercised PR #5281's code with two additional probes
+> neither of us had run, confirmed both fail in the guard's safe direction (over-flagging,
+> never under-flagging), and reopened it — it is merged or merging as this document ships.
+> **This document is therefore NOT an active recommendation superseding a broken fix.** It
+> is preserved, at team-lead's explicit request, as the reserved fallback for if a further
+> real production phrasing ever defeats PR #5281 the way PR #5233 defeated PR #5273 — so
+> whoever hits that case inherits this reasoning instead of reaching for a fourth regex.
+> §1's forensic account of the four incidents and §3's census are unaffected by the
+> correction; §1's characterization of PR #5281 as "closed" and §5's "one aborted
+> third-attempt PR" are the two claims the correction supersedes, and are fixed in place
+> below rather than silently removed — a document that quietly deletes its own overtaken
+> claim teaches the next reader nothing (`docs/specs/delivery-guarantee-gate-v1.md` §7
+> names this same discipline).
 >
 > **Every number below was re-derived against `origin/main` at publication time**
 > (2026-08-30, worktree `docs-pending-arms-ownership-spec`), not carried from the mandate
@@ -79,13 +95,21 @@ Three different real phrasings ("not operator-gated," "NOT a bare operator," the
 2026-08-23 pair) defeated the loose match, and the one dedicated fix attempt (§1.3) closed
 exactly one of those phrasings and left the door open for the next, which arrived the same
 day. That is not one anecdote and a hunch — it is a fix that was falsified by production
-traffic before its own PR had finished being talked about. A fifth data point, not counted
-in the total above because it never reached production: PR #5281 (`88a076b8f6`), opened by
-the session preceding this spec, widened the negation regex to a closed hedge-word
-vocabulary, verified it against the real PR #5233 text, and shipped guilt+innocence tests —
-technically correct on its own terms, closed under CLAUDE.md Rule 8 before merge because it
-would have been the third attempt at the same surface, and because a hedge-word
-vocabulary is exactly the kind of boundary the next honest phrasing walks around.
+traffic before its own PR had finished being talked about.
+
+**PR #5281** (`88a076b8f6`, later `08544d22e7`) is the depth-1 correction: it widened the
+negation regex to a closed hedge-word vocabulary, verified against the real PR #5233 text,
+and shipped guilt+innocence tests. It was briefly closed under a misreading of Rule 8 (as a
+forbidden third attempt rather than a permitted fix-of-a-fix) and reopened the same day once
+that was corrected — see the status block above. Team-lead's independent re-verification
+found two further false positives the vocabulary produces (`"not a completely unrelated
+distant operator"`, a gap wider than the closed vocabulary; `"NOT a human, operator"`, a
+trailing bare mention after a negated one) and confirmed both fail in the guard's safe
+direction rather than letting a real phantom row through — both are now pinned as guilt
+tests. PR #5281 is the live fix as of this document's publication; a hedge-word vocabulary
+is still, structurally, exactly the kind of boundary a sufficiently different future
+phrasing can walk around — that observation motivates §2–§5 as a reserved contingency, not
+as a claim that #5281 is currently insufficient.
 
 ---
 
@@ -96,10 +120,12 @@ _specific_ phrasing that had just been observed and left the _general_ case — 
 field containing the word "operator" for expository purposes rather than as a claim — as
 open as before. `\bnot\s+operator\b` → defeated by an intervening "a bare". The next
 plausible fix, `\bnot\b(?:\s+\w+){0,3}\s+operator\b` or a closed hedge-word list (what PR
-#5281 tried), is defeated by anything with a longer gap, a clause boundary ("operator? no —
-this is a session task"), a different negator ("never," "hardly," "far from"), or Italian
-prose (this ledger is bilingual by convention — see `owner: n/a` rows and CLAUDE.md §4).
-Every widening buys exactly one more phrasing.
+#5281 shipped, and which currently holds — see §1), is defeated by anything with a longer
+gap than its vocabulary covers, a clause boundary ("operator? no — this is a session task"),
+a different negator ("never," "hardly," "far from"), or Italian prose (this ledger is
+bilingual by convention — see `owner: n/a` rows and CLAUDE.md §4). Every widening buys
+exactly one more phrasing — including #5281's, which is why it is the current live fix
+and not the closing move.
 
 This is a general property of the task, not a property of any one regex: **deciding
 whether a clause of English prose negates a word requires parsing the clause**, and a
@@ -263,14 +289,23 @@ as they can be rather than as a formality:
 **Where I land, and why it isn't advocacy**: the four measured incidents in §1 already show
 this is a recurring, mechanically-defeated pattern rather than an unlucky sample, and the
 census in §3.2 shows the "migration" the structured approach requires is nearly free (198
-of 201 rows already comply) — so on the evidence gathered here, the structured approach is
-the better call, not because prose-parsing is philosophically wrong but because this
-specific instance of it (unbounded English negation, checked by a fixed-width regex, on a
-gate that hard-fails CI) has now cost four real incidents and one aborted third-attempt PR
-in a week, and the alternative costs approximately nothing to adopt for the rows that
-already work. If a future session observes condition (1) or (2) above, that is the signal
-to revisit this document, not a signal to patch the write-time gate the way `pending_arms_report.py`'s
-read-time classifier was patched in §1.
+of 201 rows already comply) — so on the evidence gathered here, the structured approach
+would be the better call **if and when** the read-time approach is defeated a third time.
+It is not because prose-parsing is philosophically wrong; it is because this specific
+instance of it (unbounded English negation, checked by a fixed-width regex, on a gate that
+hard-fails CI) has already cost four real incidents in a week and one dedicated fix
+attempt (PR #5273) that was defeated hours later, and the structured alternative costs
+approximately nothing to adopt for the 198 rows that already work. PR #5281's closed
+hedge-word vocabulary is the live fix today, correctly reopened once the "no third patch"
+reading of Rule 8 was itself corrected (see the status block) — this document does not
+argue #5281 should be reverted or that it is currently insufficient. It argues that
+`_all_operator_mentions_negated` is a bounded patch on an unbounded problem, and names in
+advance what should happen the day that bound is found: not a fifth attempt at the same
+regex, but this structured field. If a future session observes condition (1) or (2) above
+instead — the write-time gate would itself need an unbounded exception list, or its
+friction would exceed today's ~1-in-80 rate — that is the signal this document was wrong,
+not the signal to patch the write-time gate the way `pending_arms_report.py`'s read-time
+classifier was patched in §1.
 
 ---
 
@@ -280,6 +315,10 @@ read-time classifier was patched in §1.
   `pending_arms_report.py`. A separate PR, adjudicated on its own merits.
 - **No touch to PR #5233, its ledger row, or PR #5273.** #5273 is a real, correct
   improvement for the one phrasing it covers; it is not reverted here.
+- **Does not supersede, block, or argue against PR #5281.** #5281 (the closed
+  hedge-word negation fix) is the live guard as of this document's publication — see the
+  status block's correction. This document is a reserved contingency for a future third
+  defeat of the read-time approach, not a case that the current fix is broken.
 - **No `operator[none]` (or any other new tag) is chosen here.** §3.3(2) names two options
   and states a preference for the cheaper one (documented reword over a new tag) but leaves
   the final choice to the implementation PR, which should re-check whether a fifth
@@ -303,7 +342,8 @@ This document should be judged on whether:
 2. §2's claim — that this is a general property of prose-negation-matching, not a
    under-tuned pattern — is judged against whether a bounded regex genuinely could have
    covered all four §1 phrasings without also covering the next one, not against whether
-   PR #5281's specific attempt was competent (it was);
+   PR #5281's specific fix was competent (it was, and it is the live guard as of this
+   document's publication — see the status-block correction);
 3. §3's proposal is judged on the census in §3.2, not on the shape of the fix alone — a
    structured-field proposal that required migrating 400+ rows would be a much weaker case
    than one that requires migrating effectively zero;
