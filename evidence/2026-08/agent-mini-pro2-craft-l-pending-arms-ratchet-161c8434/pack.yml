@@ -1,0 +1,219 @@
+# STAGING PATH, NOT THE REAL ONE — the documented contract, not an oversight.
+# harness-floor.yml copies both files into a synthetic tree at
+# /tmp/evidence-check/evidence/{brief,pack}.yml under their CANONICAL names,
+# whatever their real location, and evidence_pack_lint.py resolves brief_ref
+# against THAT root. So this field must read the literal evidence/brief.yml even
+# though the real brief for this PR lives at
+# evidence/2026-08/agent-mini-pro2-craft-l-pending-arms-ratchet-161c8434/brief.yml.
+brief_ref: evidence/brief.yml
+plan_ref: "docs/plans/2026-08-29-beyond-sota-craft-wave/L10-organizational-learning-loop.md — PR-1; squad ledger issue #5319"
+lanes:
+  - lane: ratchet-core
+    role: build
+    seat: "kimi-code/kimi-for-coding (Moonshot — the D3 non-Anthropic build lane; drafted parse_ratchet_overrides / ratchet_verdict / run_ratchet / ratchet_selftest against a written contract)"
+  - lane: ratchet-corpus
+    role: build
+    seat: "claude-sonnet-5 (subagent, parallel, wrote scripts/tests/test_pending_arms_ratchet.py against the same contract and ground-truthed its fixtures through the real parser before asserting)"
+  - lane: integration-and-digest
+    role: build
+    seat: "claude-opus-5 (this session — wired the mode into main(), the digest half, the workflow arming)"
+  - lane: refute-round-1
+    role: review
+    seat: "gpt-5.6-sol xhigh, --sandbox read-only (cross-family; given the raw diff and an attack list, never a narrative). DO-NOT-SHIP, 10 findings, 1 blocker."
+  - lane: refute-round-2
+    role: review
+    seat: "gpt-5.6-sol xhigh, --sandbox read-only, re-pointed at what the round-1 CURES broke. DO-NOT-SHIP, 8 findings, 4 blockers."
+  - lane: final-gate
+    role: review
+    seat: "claude-opus-5 (this orchestrator — every command in the receipts re-run here, this turn, never taken from an implementer's summary)"
+seat_diversity: ok
+seat_diversity_note: >-
+  Three build lanes across two families (Moonshot + Anthropic), two review
+  rounds by a third family (OpenAI). D3 is satisfied by a real build lane, not
+  by seat_override.
+
+  Recorded because it is the measurement, not the principle: the cross-family
+  reviewer found 18 defects across two rounds that three Anthropic-side lanes
+  and one Opus gate had all missed, including two that falsified claims written
+  in the code's own comments. Round 2 was worth more than round 1 — it was
+  aimed at the CURES, and four of its eight findings were blockers introduced
+  or left open by round 1's fixes.
+diff:
+  net_lines: >-
+    AS OF a28fd3594d (pinned — a bare byte count inside a file every subsequent
+    commit rewrites is a claim that decays by construction): 9 files,
+    +2385/-7, measured against the MERGE BASE. Deliberately over the ~400-line
+    target and said plainly rather than split: 1,004 of those lines are the two
+    test corpora and roughly 320 more are load-bearing comment — the executable
+    surface is one CLI mode and one sort. Splitting the corpus from the code it
+    guards would land a gate whose guilt fixtures arrive in a later PR, which
+    is the shape this whole lane exists to stop.
+
+    The count INCLUDES this evidence pack (3 of the 9 files), because that is
+    what `git diff --numstat` against the merge base measures and a number that
+    quietly excluded itself would be the same kind of convenient half-truth this
+    pack spends its receipts refusing. The first attempt at pinning it added
+    six lines of prose ABOUT converging, and so did not converge — corrected.
+
+    Deterministic gear floor recomputed from this diff = 3 (source: path —
+    .github/workflows/ is a hot zone). Gear 3 is the floor, not a choice.
+  behaviour_change: >-
+    On merge, PRs that touch PENDING-ARMS.md, pending_arms_report.py,
+    organism_digest.py, or either corpus gain three steps on the NON-REQUIRED
+    check-ledger-no-silent-loss job: a self-test of the ratchet's own detector,
+    the two corpora (one of which had no executor at all), and the live ratchet.
+    A red is loud on the checks list and does not block. Nothing changes for a
+    PR that touches none of those paths.
+
+    The digest's DEFAULT boot path is byte-for-byte unchanged on all three
+    machines: ORGANISM_DIGEST_PENDING_ARMS unset still prints nothing, "1" still
+    prints exactly one line. Only the new "rows" state costs anything.
+receipts:
+  - claim: "The gear floor is 3, recomputed from this diff rather than taken from the brief"
+    cmd: "git diff --name-only $(git merge-base origin/main HEAD) HEAD > changed.txt; scripts/evidence_pack_lint.py --print-floor --changed-files-file changed.txt"
+    result: "3 (floor-source: path — .github/workflows/check-ledger-no-silent-loss.yml)"
+    exit: 0
+    ts: "2026-08-31T00:44Z"
+    seat: "session (mini, final gate)"
+  - claim: "The ratchet reddens on +1 already-overdue row and does NOT redden on a fresh one — proven in CI on every run, not asserted from a laptop"
+    cmd: "python3 scripts/pending_arms_report.py --ratchet-selftest"
+    result: "17/17 cases behaved as specified, including 'guilt: +1 overdue row -> RED', 'innocence: a FRESH row added -> CLEAN', 'guilt: an INHERITED override authorises nothing', 'guilt: a FENCED example override authorises nothing', 'guilt: a BLOCKQUOTED example authorises nothing', 'guilt: ``` cannot close a ~~~ fence', 'guilt: RESTYLING an inherited override is not a new approval'"
+    exit: 0
+    ts: "2026-08-31T01:12Z"
+    seat: "session (mini, final gate)"
+  - claim: "The live ratchet runs against the real 679-row ledger and is CLEAN — the gate does not false-positive on its own PR"
+    cmd: "python3 scripts/pending_arms_report.py --ratchet"
+    result: "ratchet CLEAN: base 397 -> head 397 (delta 0) at base commit date 2026-08-30 vs a66c76ab601faae8cbb6f84e19686d465b4e0948 (git merge-base origin/main HEAD)"
+    exit: 0
+    ts: "2026-08-31T01:12Z"
+    seat: "session (mini, final gate)"
+  - claim: "Every cure is defended: reverting it turns the corpus red. Bytecode disabled — W121 bit this session live and invalidated the first battery"
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3.11 -B -m pytest -q -p no:cacheprovider <both corpora>, with __pycache__ cleared between every mutation and the file restored from a byte copy (never git checkout)"
+    result: >-
+      Round 1: 15 mutants, 14 killed. The survivor (one clause of the self-test
+      premise) is proven EQUIVALENT rather than reported green — bucket ==
+      TECH-DEBT-OVERDUE IS cls == TECH-DEBT and overdue, so no input separates
+      them, and mutating both halves of the coupled pair together DOES turn the
+      corpus red (3 further mutants, all killed).
+      Round 2: 7 mutants, 7 killed — blockquote/heading stripped again, any
+      fence closes any fence, html-comment state ignored, identity back to raw
+      bytes, clock back to date.today(), bool age, uncaught OverflowError.
+      R5 (the clock) SURVIVED the first attempt because every fixture used a
+      throwaway repo whose base commit is today, so both implementations agreed;
+      closed with a GIT_COMMITTER_DATE-backdated base and a row that is fresh
+      under one clock and overdue under the other.
+    exit: 0
+    ts: "2026-08-31T01:15Z"
+    seat: "session (mini, final gate)"
+  - claim: "Nothing adjacent regressed"
+    cmd: "pytest scripts/tests/test_pending_arms_report.py scripts/tests/test_check_ledger_no_silent_loss.py; organism_digest.py --selftest; pending_arms_report.py --strict-phantom"
+    result: "108 passed; 11 passed; SELFTEST OK — 28/28; strict-phantom rc=0. The 8 pre-existing digest tests still assert len(lines) == 1 and were not weakened."
+    exit: 0
+    ts: "2026-08-31T01:12Z"
+    seat: "session (mini, final gate)"
+  - claim: "actionlint green at the version and with the flags CI itself pins"
+    cmd: "actionlint 1.7.12 -shellcheck=  .github/workflows/check-ledger-no-silent-loss.yml"
+    result: "rc=0. Mini has no actionlint; the binary was fetched at the exact pinned version rather than a verdict assumed from a different one."
+    exit: 0
+    ts: "2026-08-31T01:12Z"
+    seat: "session (mini, final gate)"
+  - claim: "The digest names ten REAL rows, oldest first — and the line it replaces was mislabelled"
+    cmd: "ORGANISM_DIGEST_PENDING_ARMS=rows python3 -c 'import organism_digest; organism_digest.pending_arms_overdue()'"
+    result: >-
+      11 lines, errs []. Ages 56/56/56/56/56/55/54/54/51/51. The previous line
+      said "top:" and printed the first row in FILE order, measured age 7d,
+      while the true oldest was 56d — label and value had disagreed for the
+      whole life of that branch.
+    exit: 0
+    ts: "2026-08-31T01:12Z"
+    seat: "session (mini, final gate)"
+  - claim: "The corpus that closed W120 has no executor in this repo — the finding that justifies touching a workflow at all"
+    cmd: "grep -rn 'test_organism_digest_pending_arms' .github/workflows/"
+    result: "no output. scripts-tests-sweep.yml is continue-on-error and gates nothing, so the test proving the built-but-not-armed alarm is armed was itself unarmed. Both corpora are now named in the arming step."
+    exit: 1
+    ts: "2026-08-31T00:31Z"
+    seat: "session (mini, final gate)"
+  - claim: "The two calendar-attribution tests pass individually, not only inside a green suite"
+    cmd: "pytest scripts/tests/test_pending_arms_ratchet.py -k overdue_when_the_branch_was_cut or head_only_FRESH"
+    result: "2 passed — a row already overdue when the branch was cut reddens; a row the branch itself opened never does"
+    exit: 0
+    ts: "2026-08-31T01:26Z"
+    seat: "session (mini, final gate)"
+  - claim: "The base-commit clock is the one actually used, proven where a wall clock would disagree"
+    cmd: "pytest scripts/tests/test_pending_arms_ratchet.py::test_the_clock_is_the_BASE_COMMIT_date_and_not_today"
+    result: "1 passed. Base commit backdated 100 days; a row dated 10 days ago is fresh under the base clock and overdue under a wall clock. Both premises asserted inside the test."
+    exit: 0
+    ts: "2026-08-31T01:26Z"
+    seat: "session (mini, final gate)"
+  - claim: "Every CANNOT-VERIFY path returns 3, never 0 and never 1"
+    cmd: "pytest scripts/tests/test_pending_arms_ratchet.py -k cannot_verify"
+    result: "3 passed — unresolvable merge-base (no fallback to origin/main), unreadable base ref, and invalid-UTF-8 working-tree ledger"
+    exit: 0
+    ts: "2026-08-31T01:26Z"
+    seat: "session (mini, final gate)"
+  - claim: "The digest corpus is green, including the 8 pre-existing len(lines)==1 assertions that were not weakened"
+    cmd: "pytest scripts/tests/test_organism_digest_pending_arms.py"
+    result: "14 passed"
+    exit: 0
+    ts: "2026-08-31T01:26Z"
+    seat: "session (mini, final gate)"
+  - claim: "Mutation batteries were run with bytecode disabled — W121 invalidated the first attempt and it was redone"
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3.11 -B -m pytest -q -p no:cacheprovider"
+    result: "round 1: 15 mutants, 14 killed, 1 proven equivalent. round 2: 7 mutants, 7 killed. __pycache__ cleared between every case; files restored from a byte copy, never git checkout."
+    exit: 0
+    ts: "2026-08-31T01:15Z"
+    seat: "session (mini, final gate)"
+pii_scan: clean
+council_run: journal.jsonl
+dissent:
+  - seat: "gpt-5.6-sol (xhigh, read-only) — round 1, on the diff"
+    objection: >-
+      DO-NOT-SHIP, 10 findings, 1 blocker. The blocker falsified a claim the
+      code made about itself: "an override cannot become a permanent blanket"
+      was false, because an override inherited from BASE licensed every later
+      branch — PR A writes <=445, merges, and PR B raises the count writing
+      nothing. Also: a fenced or 4-space-indented EXAMPLE in the ledger granted
+      a live ceiling (the gate disarmed by its own documentation); a 5000-digit
+      ceiling crashed int() instead of being reported malformed; only the BASE
+      read was guarded, so an unreadable HEAD escaped as a traceback and the
+      process reported exit 1 — CANNOT-VERIFY wearing the costume of "this
+      branch raised the count"; and two tests were tautologies, one of them
+      the very test claimed to arm the gate.
+    status: CONFIRMED
+    disposition: >-
+      All 10 accepted, all 10 reproduced on disk first, 0 rejected. Fixed in
+      commit 91ff2e20ab.
+  - seat: "gpt-5.6-sol (xhigh, read-only) — round 2, aimed at what the round-1 CURES broke"
+    objection: >-
+      DO-NOT-SHIP, 8 findings, 4 blockers. The deepest killed the headline
+      claim: freezing a shared `now` does NOT remove the calendar, because it
+      cancels ageing only for rows present on BOTH sides — a row the branch ADDS
+      ages on one side of the subtraction alone, so the same unmodified PR reads
+      delta 0 on the day it is opened and delta 1 three days later. A test in
+      this branch had been written to ASSERT that late red, blessing the
+      behaviour that contradicted the claim. Also: keying override identity on
+      RAW BYTES meant restyling an inherited line (one extra space, an em dash,
+      a comment wrapper) minted a "new" approval nobody reviewed — the round-1
+      blanket restored by formatting; `[>#*+-]` stripped BLOCKQUOTES, so the
+      ordinary way to quote an override in prose was a live authorisation; a
+      boolean fence tracker let ``` close a ~~~ block, and a fence marker inside
+      an HTML comment falsely opened a fence and silently ate a valid override.
+    status: CONFIRMED
+    disposition: >-
+      All 8 accepted, all 8 reproduced on disk, 0 rejected. The clock is now the
+      base commit's date — time removed from the computation rather than held
+      still. Fixed in commit 1f303dcc4b. One trade-off declared rather than
+      resolved: four spaces under a list item is legal Markdown continuation, so
+      an override indented that far is refused; refusing a real override costs a
+      red the author fixes by unindenting, accepting a documented example costs
+      a silent blanket, and the safe direction is the refusal. Written at the
+      site, and the RED output names the rejected line so it is never silent.
+  - seat: "kimi-code/k3 — third family, on the final diff"
+    objection: >-
+      See journal.jsonl and the SHIP comment on issue #5319 for the verbatim
+      findings and their dispositions.
+    status: CONFIRMED
+    disposition: >-
+      Recorded with the round-1 and round-2 dispositions; a third family was
+      reached for precisely because the first two rounds proved that a single
+      reviewing family leaves defects a different one sees immediately.
