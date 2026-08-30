@@ -22,10 +22,13 @@ import pytest
 from backend.db.schema_audit import (
     _SHA256_HEX,
     LEGACY_CHECKSUM_ALLOWLIST,
+    LEGACY_CHECKSUM_BASELINE,
     LEGACY_CHECKSUM_SENTINEL,
     SYMBOLIC_CHECKSUM_ALLOWLIST,
+    _baseline_covers,
     _check_migration_checksums,
     _checksum_severity,
+    _enforcement_armed,
     _migration_sql_by_number,
 )
 
@@ -211,7 +214,6 @@ async def test_an_untampered_row_passes(monkeypatch) -> None:
     """INNOCENCE. A row whose stored checksum matches the file raises nothing."""
     import asyncpg
 
-
     conn = await asyncpg.connect(TEST_DATABASE_URL)
     try:
         await _fresh_versions_table(conn, SCRATCH_TABLE)
@@ -220,9 +222,13 @@ async def test_an_untampered_row_passes(monkeypatch) -> None:
         await conn.execute(
             f"INSERT INTO {SCRATCH_TABLE} (migration_name, migration_number, checksum) "
             "VALUES ($1, $2, $3)",
-            path.name, 299, honest,
+            path.name,
+            299,
+            honest,
         )
-        findings = await _check_migration_checksums(_FakeManager(_FakePool(conn)), table=SCRATCH_TABLE)
+        findings = await _check_migration_checksums(
+            _FakeManager(_FakePool(conn)), table=SCRATCH_TABLE
+        )
         assert findings == [], f"an honest row produced findings: {findings}"
     finally:
         await conn.execute(f"DROP TABLE IF EXISTS {SCRATCH_TABLE}")
@@ -244,17 +250,22 @@ async def test_a_tampered_row_is_caught_and_names_the_migration_number() -> None
         await conn.execute(
             f"INSERT INTO {SCRATCH_TABLE} (migration_name, migration_number, checksum) "
             "VALUES ($1, $2, $3)",
-            path.name, 299, hashlib.sha256(b"what was actually applied").hexdigest(),
+            path.name,
+            299,
+            hashlib.sha256(b"what was actually applied").hexdigest(),
         )
-        findings = await _check_migration_checksums(_FakeManager(_FakePool(conn)), table=SCRATCH_TABLE)
+        findings = await _check_migration_checksums(
+            _FakeManager(_FakePool(conn)), table=SCRATCH_TABLE
+        )
         assert len(findings) == 1, findings
         f = findings[0]
         assert f.code == "migration_checksum_mismatch"
-        # Default stage is WARNING (see `_checksum_severity`): the finding is
-        # raised in full, it just does not abort a deploy over state that
-        # predates the check. `SCHEMA_AUDIT_CHECKSUM_ENFORCE` flips it, and
-        # `TestChecksumEnforcementStage` below owns both halves of that.
-        assert f.severity == "warning"
+        # ERROR, with no flag set: migration 299 is not in
+        # `LEGACY_CHECKSUM_BASELINE`, so it is a NEW anomaly and fails the
+        # deploy. This assertion is the whole point of the baseline — under
+        # the class-wide demotion it briefly read `warning`, which is exactly
+        # the hole the baseline closes.
+        assert f.severity == "error"
         assert "299" in f.message
         assert f.details["migration_number"] == 299
         assert f.details["stored_checksum"] != f.details["recomputed_checksum"]
@@ -285,16 +296,25 @@ async def test_the_allowlisted_sentinel_passes_but_an_unlisted_one_does_not() ->
         await conn.execute(
             f"INSERT INTO {SCRATCH_TABLE} (migration_name, migration_number, checksum) "
             "VALUES ($1, $2, $3)",
-            f"{allowed:03d}_baseline_v2.sql", allowed, LEGACY_CHECKSUM_SENTINEL,
+            f"{allowed:03d}_baseline_v2.sql",
+            allowed,
+            LEGACY_CHECKSUM_SENTINEL,
         )
-        assert await _check_migration_checksums(_FakeManager(_FakePool(conn)), table=SCRATCH_TABLE) == []
+        assert (
+            await _check_migration_checksums(_FakeManager(_FakePool(conn)), table=SCRATCH_TABLE)
+            == []
+        )
 
         await conn.execute(
             f"INSERT INTO {SCRATCH_TABLE} (migration_name, migration_number, checksum) "
             "VALUES ($1, $2, $3)",
-            on_disk[299].name, 299, LEGACY_CHECKSUM_SENTINEL,
+            on_disk[299].name,
+            299,
+            LEGACY_CHECKSUM_SENTINEL,
         )
-        findings = await _check_migration_checksums(_FakeManager(_FakePool(conn)), table=SCRATCH_TABLE)
+        findings = await _check_migration_checksums(
+            _FakeManager(_FakePool(conn)), table=SCRATCH_TABLE
+        )
         assert len(findings) == 1, findings
         assert findings[0].code == "migration_checksum_unallowed_sentinel"
         assert findings[0].details["migration_number"] == 299
@@ -317,9 +337,14 @@ async def test_a_row_whose_file_is_gone_is_left_to_the_divergence_check() -> Non
         await conn.execute(
             f"INSERT INTO {SCRATCH_TABLE} (migration_name, migration_number, checksum) "
             "VALUES ($1, $2, $3)",
-            f"9999_never_existed_{uuid.uuid4().hex[:8]}.sql", 9999, "deadbeef" * 8,
+            f"9999_never_existed_{uuid.uuid4().hex[:8]}.sql",
+            9999,
+            "deadbeef" * 8,
         )
-        assert await _check_migration_checksums(_FakeManager(_FakePool(conn)), table=SCRATCH_TABLE) == []
+        assert (
+            await _check_migration_checksums(_FakeManager(_FakePool(conn)), table=SCRATCH_TABLE)
+            == []
+        )
     finally:
         await conn.execute(f"DROP TABLE IF EXISTS {SCRATCH_TABLE}")
         await conn.close()
@@ -358,9 +383,13 @@ async def test_an_UNLISTED_sentinel_with_NO_FILE_is_still_an_error() -> None:
         await conn.execute(
             f"INSERT INTO {SCRATCH_TABLE} (migration_name, migration_number, checksum) "
             "VALUES ($1, $2, $3)",
-            "002_no_such_file.sql", unlisted, LEGACY_CHECKSUM_SENTINEL,
+            "002_no_such_file.sql",
+            unlisted,
+            LEGACY_CHECKSUM_SENTINEL,
         )
-        findings = await _check_migration_checksums(_FakeManager(_FakePool(conn)), table=SCRATCH_TABLE)
+        findings = await _check_migration_checksums(
+            _FakeManager(_FakePool(conn)), table=SCRATCH_TABLE
+        )
         assert len(findings) == 1, (
             f"an UNLISTED sentinel row was not reported: {findings}. If this is empty, "
             "the file-absent skip has been moved back above the sentinel branch and the "
@@ -463,7 +492,9 @@ async def test_THE_FOUR_REAL_SYMBOLIC_ROWS_PRODUCE_NO_FINDING() -> None:
             await conn.execute(
                 f"INSERT INTO {SCRATCH_TABLE} (migration_name, migration_number, checksum) "
                 "VALUES ($1, $2, $3)",
-                name, number, checksum,
+                name,
+                number,
+                checksum,
             )
         findings = await _check_migration_checksums(
             _FakeManager(_FakePool(conn)), table=SCRATCH_TABLE
@@ -478,7 +509,6 @@ async def test_THE_FOUR_REAL_SYMBOLIC_ROWS_PRODUCE_NO_FINDING() -> None:
     finally:
         await conn.execute(f"DROP TABLE IF EXISTS {SCRATCH_TABLE}")
         await conn.close()
-
 
 
 @_live_only
@@ -500,7 +530,9 @@ async def test_an_allowlisted_row_carrying_a_DIFFERENT_symbolic_value_still_erro
         await conn.execute(
             f"INSERT INTO {SCRATCH_TABLE} (migration_name, migration_number, checksum) "
             "VALUES ($1, $2, $3)",
-            name, number, expected + "-tampered",
+            name,
+            number,
+            expected + "-tampered",
         )
         findings = await _check_migration_checksums(
             _FakeManager(_FakePool(conn)), table=SCRATCH_TABLE
@@ -526,84 +558,182 @@ async def test_an_allowlisted_row_carrying_a_DIFFERENT_symbolic_value_still_erro
 
 
 class TestChecksumEnforcementStage:
-    """GUILT and INNOCENCE for `_checksum_severity` and its blast radius."""
+    """GUILT and INNOCENCE for the baseline, the flag, and the blast radius."""
 
-    def test_the_default_stage_is_warning(self, monkeypatch) -> None:
-        """INNOCENCE. Unset means observe, and unset is the production state.
+    _BASELINED = next(iter(LEGACY_CHECKSUM_BASELINE.items()))
 
-        A verifier armed fail-closed against a database it was never measured
-        against is an outage, not a check -- which is what happened on
-        2026-08-30 between 19:02 UTC and this fix.
-        """
+    def test_a_baselined_row_is_a_warning_by_default(self, monkeypatch) -> None:
+        """INNOCENCE. The 25 rows production already carried do not abort a
+        deploy — no amount of waiting makes a row written in January
+        verifiable, so fail-closed on them is a permanent outage, not a
+        check."""
         monkeypatch.delenv("SCHEMA_AUDIT_CHECKSUM_ENFORCE", raising=False)
-        assert _checksum_severity() == "warning"
+        (number, name), (stored, recomputed) = self._BASELINED
+        assert _checksum_severity(number, name, stored, recomputed) == "warning"
 
-    @pytest.mark.parametrize("raw", ["1", "true", "TRUE", "yes", "on", " True "])
+    def test_an_UNKNOWN_row_is_an_ERROR_by_default(self, monkeypatch) -> None:
+        """GUILT, and the reason this baseline exists at all. The first cure
+        demoted the whole checksum CLASS, which also disarmed the check
+        against corruption that has not happened yet. Anything outside the 25
+        fails the deploy with no flag set."""
+        monkeypatch.delenv("SCHEMA_AUDIT_CHECKSUM_ENFORCE", raising=False)
+        assert _checksum_severity(9999, "9999_not_a_real_migration.sql", "manual") == "error"
+        assert _checksum_severity(9999, "9999_x.sql", "a" * 64, "b" * 64) == "error"
+
+    def test_a_baselined_row_carrying_a_DIFFERENT_value_is_an_ERROR(self, monkeypatch) -> None:
+        """The binding is to the VALUE, not the row. Keyed on (number, name)
+        alone, a baseline entry would excuse that migration forever —
+        including after its stored checksum changed into something nobody has
+        ever seen."""
+        monkeypatch.delenv("SCHEMA_AUDIT_CHECKSUM_ENFORCE", raising=False)
+        (number, name), (stored, recomputed) = self._BASELINED
+        assert _checksum_severity(number, name, stored + "-drifted", recomputed) == "error"
+
+    def test_a_baselined_MISMATCH_whose_file_changed_is_an_ERROR(self, monkeypatch) -> None:
+        """A mismatch entry pins BOTH digests, so editing one of the eight
+        legacy .sql files re-raises it as an error instead of silently
+        excusing a different divergence. Those files are effectively frozen
+        until someone re-baselines, and that is the intended cost: editing an
+        already-applied migration is the event this check exists to stop."""
+        monkeypatch.delenv("SCHEMA_AUDIT_CHECKSUM_ENFORCE", raising=False)
+        pair = next(
+            ((k, v) for k, v in LEGACY_CHECKSUM_BASELINE.items() if v[1] is not None),
+            None,
+        )
+        assert pair is not None, "the baseline should carry at least one mismatch entry"
+        (number, name), (stored, recomputed) = pair
+        assert _checksum_severity(number, name, stored, recomputed) == "warning"
+        assert _checksum_severity(number, name, stored, "0" * 64) == "error"
+
+    def test_the_baseline_holds_exactly_the_25_rows_production_reported(self) -> None:
+        """A count, pinned. The baseline is evidence about ONE database at ONE
+        moment; if it grows, someone has added an exemption rather than fixing
+        a row, and that must be a visible diff with a reason beside it."""
+        assert len(LEGACY_CHECKSUM_BASELINE) == 25
+        sentinels = [k for k, v in LEGACY_CHECKSUM_BASELINE.items() if v[1] is None]
+        mismatches = [k for k, v in LEGACY_CHECKSUM_BASELINE.items() if v[1] is not None]
+        assert len(sentinels) == 17, sentinels
+        assert len(mismatches) == 8, mismatches
+        for (number, name), (stored, recomputed) in LEGACY_CHECKSUM_BASELINE.items():
+            assert isinstance(number, int) and name, (number, name)
+            if recomputed is not None:
+                assert _SHA256_HEX.match(stored), f"{number}: mismatch entries pin a real digest"
+                assert _SHA256_HEX.match(recomputed), f"{number}: recomputed must be a digest"
+                assert stored != recomputed, f"{number}: a mismatch whose digests agree is not one"
+            else:
+                assert not _SHA256_HEX.match(stored or ""), (
+                    f"{number}: a sentinel entry pins a NON-digest; a real digest "
+                    "must be verified, never baselined"
+                )
+
+    @pytest.mark.parametrize("raw", ["1", "true", "TRUE", "yes", "on", " True ", "ENFORCE"])
     def test_the_env_var_arms_it(self, monkeypatch, raw: str) -> None:
-        """GUILT. Arming must actually arm -- including the shapes a human
-        types into `fly secrets set`, and including stray whitespace, which is
-        how a secret set from a shell heredoc arrives."""
+        """GUILT. Including `ENFORCE`, because the neighbouring
+        `VISA_ENGINE_EVALUATE_MODE` takes that literal word and an operator
+        carrying the habit across must not be silently wrong."""
         monkeypatch.setenv("SCHEMA_AUDIT_CHECKSUM_ENFORCE", raw)
-        assert _checksum_severity() == "error", f"{raw!r} failed to arm the check"
+        assert _enforcement_armed() is not None, f"{raw!r} failed to arm the check"
+        (number, name), (stored, recomputed) = self._BASELINED
+        assert _checksum_severity(number, name, stored, recomputed) == "error", (
+            "arming must revoke the baseline exemptions too, or the flag cannot "
+            "express 'no legacy excuses'"
+        )
 
-    @pytest.mark.parametrize("raw", ["", "0", "false", "no", "off", "maybe", "warning"])
-    def test_a_non_truthy_value_does_not_arm_it(self, monkeypatch, raw: str) -> None:
-        """INNOCENCE, and the half that bites: a flag whose OFF value silently
-        reads as ON turns a staged rollout into the outage it was staging
-        around. `"false"` in particular is a non-empty string, and a naive
-        truthiness test would arm on it."""
+    @pytest.mark.parametrize("raw", ["", "   ", "0", "false", "no", "off", "OFF"])
+    def test_a_recognised_falsy_value_does_not_arm_it(self, monkeypatch, raw: str) -> None:
+        """INNOCENCE. `"false"` is a non-empty string; a naive truthiness test
+        would arm on it."""
         monkeypatch.setenv("SCHEMA_AUDIT_CHECKSUM_ENFORCE", raw)
-        assert _checksum_severity() == "warning", f"{raw!r} wrongly armed the check"
+        assert _enforcement_armed() is None, f"{raw!r} wrongly armed the check"
+
+    @pytest.mark.parametrize("raw", ["treu", "enforcing", "maybe", "warning", "2"])
+    def test_an_UNRECOGNISED_value_raises_instead_of_failing_open(
+        self, monkeypatch, raw: str
+    ) -> None:
+        """The failure this whole module is about, applied to its own flag: a
+        typo that reads as "off" disarms the gate at exactly the moment
+        someone believed they armed it, with no error and no log line."""
+        monkeypatch.setenv("SCHEMA_AUDIT_CHECKSUM_ENFORCE", raw)
+        with pytest.raises(ValueError) as excinfo:
+            _enforcement_armed()
+        assert raw in str(excinfo.value), "the error must quote what was actually set"
 
     def test_the_stage_is_read_per_call_not_frozen_at_import(self, monkeypatch) -> None:
-        """A value cached at import time cannot be armed by a secret set after
-        the process starts, and the failure is silent: the env var is present,
-        the check stays demoted, and nobody learns why."""
+        """A value cached at import cannot be armed by a secret set after the
+        process starts, and the failure is silent."""
+        (number, name), (stored, recomputed) = self._BASELINED
         monkeypatch.delenv("SCHEMA_AUDIT_CHECKSUM_ENFORCE", raising=False)
-        assert _checksum_severity() == "warning"
+        assert _checksum_severity(number, name, stored, recomputed) == "warning"
         monkeypatch.setenv("SCHEMA_AUDIT_CHECKSUM_ENFORCE", "1")
-        assert _checksum_severity() == "error"
+        assert _checksum_severity(number, name, stored, recomputed) == "error"
         monkeypatch.delenv("SCHEMA_AUDIT_CHECKSUM_ENFORCE", raising=False)
-        assert _checksum_severity() == "warning"
+        assert _checksum_severity(number, name, stored, recomputed) == "warning"
+
+    def test_baseline_covers_is_not_fooled_by_a_missing_recomputed(self) -> None:
+        """A sentinel entry (`recomputed is None`) must not become a wildcard
+        that also excuses a real digest mismatch on the same row."""
+        sentinel = next((k for k, v in LEGACY_CHECKSUM_BASELINE.items() if v[1] is None), None)
+        assert sentinel is not None
+        number, name = sentinel
+        stored = LEGACY_CHECKSUM_BASELINE[sentinel][0]
+        assert _baseline_covers(number, name, stored, None) is True
+        assert _baseline_covers(number, name, "a" * 64, None) is False
+        assert _baseline_covers(number, name, stored, "b" * 64) is True
 
     def test_only_the_two_checksum_findings_are_staged(self) -> None:
-        """SCOPE. Everything else in this module still fails the deploy.
+        """SCOPE, by AST rather than by regex.
 
-        A pending migration, a duplicate number, a tracking divergence or a
-        missing required table each describe something the CURRENT deploy is
-        about to get wrong -- unlike a checksum row written in January, which
-        no amount of waiting makes verifiable. Read off the SOURCE rather than
-        by calling every check, because the point is that no future edit
-        quietly widens the demotion while the callers still look fine.
+        The earlier version of this test matched `code="..."` followed
+        IMMEDIATELY by `severity=...` in the source text. Two reviewers
+        independently found the same hole from different directions: reorder
+        the kwargs, or insert a `message=` line between them, and a genuinely
+        demoted third finding drops out of the match set while the assertion
+        still passes on the remainder. Parsing the AST removes the question —
+        keyword order and formatting stop mattering, and a `Finding(` call
+        this test cannot read is a failure rather than a silent omission.
         """
+        import ast
         import inspect
-        import re
 
         from backend.db import schema_audit
 
-        source = inspect.getsource(schema_audit)
-        # Pair each `code="..."` with the `severity=...` that follows it, which
-        # is how the Finding constructors are written throughout this module.
-        pairs = re.findall(
-            r'code="(?P<code>[a-z_]+)",\s*\n\s*severity=(?P<sev>[^,\n]+),', source
-        )
-        assert pairs, "no code/severity pairs found — the parse, not the module, is broken"
-        staged = {code for code, sev in pairs if sev == "_checksum_severity()"}
+        tree = ast.parse(inspect.getsource(schema_audit))
+        staged: set[str] = set()
+        hardcoded: dict[str, str] = {}
+        seen = 0
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            fn = node.func
+            if not (isinstance(fn, ast.Name) and fn.id == "Finding"):
+                continue
+            seen += 1
+            kwargs = {kw.arg: kw.value for kw in node.keywords if kw.arg}
+            code_node, sev_node = kwargs.get("code"), kwargs.get("severity")
+            assert isinstance(code_node, ast.Constant), (
+                f"a Finding() at line {node.lineno} has no literal code= this test can read"
+            )
+            assert sev_node is not None, f"Finding() at line {node.lineno} has no severity="
+            if isinstance(sev_node, ast.Call):
+                staged.add(code_node.value)
+            elif isinstance(sev_node, ast.Constant):
+                hardcoded[code_node.value] = sev_node.value
+            else:
+                raise AssertionError(f"unreadable severity= on Finding() at line {node.lineno}")
+        assert seen >= 9, f"only {seen} Finding() calls parsed — the AST walk is broken"
         assert staged == {
             "migration_checksum_unallowed_sentinel",
             "migration_checksum_mismatch",
         }, f"the set of staged findings changed: {sorted(staged)}"
-        for code, sev in pairs:
-            if code not in staged:
-                assert sev == '"error"', (
-                    f"{code} is no longer a hard error (severity={sev}); the "
-                    "demotion has leaked past the two checksum findings"
-                )
+        for code, severity in hardcoded.items():
+            assert severity == "error", (
+                f"{code} is no longer a hard error (severity={severity!r}); the "
+                "demotion has leaked past the two checksum findings"
+            )
 
     def test_a_warning_only_report_does_not_block_but_an_error_does(self) -> None:
-        """The actual deploy semantics, asserted on the object the
-        `release_command` exit code is derived from -- not on the severity
-        string, which is only a means to it."""
+        """The actual deploy semantics, on the object the release_command's
+        exit code is derived from."""
         from backend.db.schema_audit import AuditReport, Finding
 
         warn = Finding(code="c", severity="warning", message="m", details={})
@@ -612,10 +742,7 @@ class TestChecksumEnforcementStage:
         assert AuditReport(checks_run=["x"], findings=[warn, err]).ok is False
 
     def test_the_summary_line_never_hides_a_warning(self) -> None:
-        """The one thing a demotion must not buy: silence. A report carrying
-        warnings and no errors must SAY it carries warnings on its headline
-        line, because that line is what a human reads in a deploy log before
-        deciding whether to scroll."""
+        """The one thing a demotion must not buy: silence."""
         from backend.db.schema_audit import AuditReport, Finding, _format_human
 
         warn = Finding(
@@ -624,7 +751,7 @@ class TestChecksumEnforcementStage:
         text = _format_human(AuditReport(checks_run=["migration_checksums"], findings=[warn]))
         headline = next(line for line in text.splitlines() if line.startswith("Result:"))
         assert "warning" in headline, f"a warning-only report headlined as clean: {headline!r}"
-        assert "migration_checksum_mismatch" in text, "the finding itself vanished from the report"
+        assert "migration_checksum_mismatch" in text, "the finding itself vanished"
 
         clean = _format_human(AuditReport(checks_run=["migration_checksums"], findings=[]))
         clean_headline = next(line for line in clean.splitlines() if line.startswith("Result:"))
@@ -632,38 +759,88 @@ class TestChecksumEnforcementStage:
             f"a genuinely clean report claims warnings: {clean_headline!r}"
         )
 
+    def test_the_MIXED_case_reports_both_counts_separately(self) -> None:
+        """The combination a real deploy hits the moment any other check
+        fires alongside a baselined checksum row — and the one branch the
+        first version of this corpus never constructed. A miscount that only
+        shows up mixed would have passed."""
+        from backend.db.schema_audit import AuditReport, Finding, _format_human
+
+        findings = [
+            Finding(code="pending_migrations", severity="error", message="m", details={}),
+            Finding(code="required_table_missing", severity="error", message="m", details={}),
+            Finding(
+                code="migration_checksum_mismatch", severity="warning", message="m", details={}
+            ),
+        ]
+        text = _format_human(AuditReport(checks_run=["x"], findings=findings))
+        headline = next(line for line in text.splitlines() if line.startswith("Result:"))
+        assert "2 errors" in headline, headline
+        assert "1 warning" in headline, headline
+        assert "3" not in headline, (
+            f"the headline conflates errors and warnings into one total: {headline!r}"
+        )
+
+    def test_the_headline_pluralises(self) -> None:
+        """`1 error(s)` is one more thing to parse at 03:00."""
+        from backend.db.schema_audit import AuditReport, Finding, _format_human
+
+        one = [Finding(code="pending_migrations", severity="error", message="m", details={})]
+        headline = next(
+            line
+            for line in _format_human(AuditReport(checks_run=["x"], findings=one)).splitlines()
+            if line.startswith("Result:")
+        )
+        assert "1 error" in headline and "error(s)" not in headline, headline
+
 
 @_live_only
-async def test_a_staged_finding_is_still_a_complete_finding() -> None:
-    """THE test of this change. Demotion must move the severity and NOTHING
-    else -- same code, same message, same details, same count. If a demoted
-    finding were also a thinner finding, the deploy log would stop carrying
-    what an operator needs to act, and the check would be disarmed in
+async def test_a_staged_finding_is_still_a_complete_finding(monkeypatch) -> None:
+    """Demotion must move the severity and NOTHING else — same code, message,
+    details and count. A demoted finding that is also a THINNER finding would
+    stop carrying what an operator needs to act, which is disarmament in
     substance while looking staged on paper.
+
+    Driven on a REAL baselined row, so it exercises the path production takes.
+    `monkeypatch` rather than a hand-rolled try/finally: the hand-rolled
+    version left the variable UNSET rather than restoring it, so a developer
+    who had exported it to exercise the armed path lost it for the rest of the
+    pytest process.
     """
     import asyncpg
 
+    (number, name), (stored, recomputed) = next(
+        (k, v) for k, v in LEGACY_CHECKSUM_BASELINE.items() if v[1] is not None
+    )
     conn = await asyncpg.connect(TEST_DATABASE_URL)
     try:
         await _fresh_versions_table(conn, SCRATCH_TABLE)
-        path = _migration_sql_by_number()[299]
+        # The row's FILE must be the one whose digest the baseline pins, so
+        # write the recomputed digest's source: use the real file if present,
+        # else skip — a fabricated file would prove only that the fake agrees
+        # with itself.
+        on_disk = _migration_sql_by_number().get(number)
+        if on_disk is None:
+            pytest.skip(f"migration {number}'s file is not in this checkout")
+        actual = hashlib.sha256(on_disk.read_text(encoding="utf-8").encode("utf-8")).hexdigest()
+        if actual != recomputed:
+            pytest.skip(
+                f"migration {number}'s file has changed since the baseline was taken "
+                "— that is itself a finding, not a reason to fabricate one here"
+            )
         await conn.execute(
             f"INSERT INTO {SCRATCH_TABLE} (migration_name, migration_number, checksum) "
             "VALUES ($1, $2, $3)",
-            path.name, 299, hashlib.sha256(b"not what is on disk").hexdigest(),
+            name,
+            number,
+            stored,
         )
-        # Same table, same row, read twice -- the only variable is the stage.
-        os.environ.pop("SCHEMA_AUDIT_CHECKSUM_ENFORCE", None)
+        monkeypatch.delenv("SCHEMA_AUDIT_CHECKSUM_ENFORCE", raising=False)
         staged = await _check_migration_checksums(
             _FakeManager(_FakePool(conn)), table=SCRATCH_TABLE
         )
-        os.environ["SCHEMA_AUDIT_CHECKSUM_ENFORCE"] = "1"
-        try:
-            armed = await _check_migration_checksums(
-                _FakeManager(_FakePool(conn)), table=SCRATCH_TABLE
-            )
-        finally:
-            os.environ.pop("SCHEMA_AUDIT_CHECKSUM_ENFORCE", None)
+        monkeypatch.setenv("SCHEMA_AUDIT_CHECKSUM_ENFORCE", "1")
+        armed = await _check_migration_checksums(_FakeManager(_FakePool(conn)), table=SCRATCH_TABLE)
 
         assert len(staged) == len(armed) == 1, (staged, armed)
         assert staged[0].severity == "warning"

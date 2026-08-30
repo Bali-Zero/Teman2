@@ -28,7 +28,14 @@
       "viewFullTeam": "Voir toute l'équipe",
       "learnMore": "En savoir plus"
     },
-    "error": "Une erreur s'est produite. Veuillez rafraîchir la page."
+    "error": "Une erreur s'est produite. Veuillez rafraîchir la page.",
+    "consent": {
+      "text": "Nous utilisons les données de session pour vous fournir une assistance sur les visas. En continuant, vous acceptez",
+      "privacyPolicy": "notre Politique de confidentialité",
+      "and": "et",
+      "termsOfService": "nos Conditions d'utilisation",
+      "dismiss": "J'ai compris"
+    }
   },
   "home": {
     "hero": {
