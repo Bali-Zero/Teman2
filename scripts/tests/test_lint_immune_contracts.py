@@ -583,7 +583,7 @@ def test_no_regrowth_growth_against_base_is_a_c5_violation(tmp_path: Path) -> No
     assert cannot_verify == []
     assert len(violations) == 1
     assert violations[0].check == "C5"
-    assert "gained 1 entry" in violations[0].msg, violations[0].msg
+    assert "gained 1 DOWNGRADE" in violations[0].msg, violations[0].msg
 
 
 def test_no_regrowth_shrink_against_base_is_clean(tmp_path: Path) -> None:
@@ -886,3 +886,117 @@ def test_a_malformed_read_path_is_rejected_not_interpreted(tmp_path: Path) -> No
     )
     v2, *_ = _lint(tmp_path, ok)
     assert [x for x in v2 if x.check == "C1"] == []
+
+
+def test_the_ratchet_covers_every_downgrade_door_not_only_known_gaps(tmp_path: Path) -> None:
+    """A PR could turn any red into a printed-but-passing line with zero C5
+    exposure: `function: null`, a non-python `kind`, or a new `caller_supplied`
+    key each converts a violation into an UNCHECKED line, and none of them were
+    ratcheted (third-family gate). They are the same currency as a gap.
+    """
+    import subprocess as sp
+
+    repo = tmp_path / "r"
+    (repo / "infra").mkdir(parents=True)
+    reg = repo / "infra" / "contracts.json"
+
+    def git(*a):
+        r = sp.run(["git", "-C", str(repo), *a], capture_output=True, text=True)
+        assert r.returncode == 0, r.stderr
+        return r.stdout.strip()
+
+    base = {"version": 1, "contracts": [{
+        "id": "x",
+        "producer": {"path": "p.py", "function": "build", "kind": "python", "emits": ["a"]},
+        "consumer": {"path": "c.py", "function": "consume", "kind": "python", "reads": ["a"]},
+    }]}
+    reg.write_text(json.dumps(base), encoding="utf-8")
+    git("init", "-q"); git("config", "user.email", "t@e.invalid"); git("config", "user.name", "t")
+    git("add", "-A"); git("commit", "-qm", "base")
+
+    for label, mutate in (
+        ("function:null", lambda d: d["contracts"][0]["consumer"].__setitem__("function", None)),
+        ("non-python kind", lambda d: d["contracts"][0]["producer"].__setitem__("kind", "shell")),
+        ("caller_supplied", lambda d: d["contracts"][0]["producer"].__setitem__("caller_supplied", ["a"])),
+        # BOTH spellings: the grounded `caller_supplied_variants` form is the one
+        # the live registry actually uses, and it was unratcheted while the
+        # singular form was covered — the test followed the implementation
+        # instead of the door.
+        ("caller_supplied_variants", lambda d: d["contracts"][0]["producer"].__setitem__(
+            "caller_supplied_variants", [{"caller": "x.py:1", "keys": ["a"]}])),
+    ):
+        after = json.loads(json.dumps(base))
+        mutate(after)
+        v, c = lic._no_regrowth(reg, after, "HEAD")
+        assert c == [], f"{label}: unexpected cannot-verify {c}"
+        assert [x.check for x in v] == ["C5"], f"{label} was not ratcheted: {v}"
+
+    # Innocence: the unchanged registry is not growth.
+    v, c = lic._no_regrowth(reg, json.loads(json.dumps(base)), "HEAD")
+    assert v == [] and c == []
+
+
+def test_a_whitespace_only_edit_to_a_gap_is_not_new_debt(tmp_path: Path) -> None:
+    """`_gap_set` compared unstripped strings while `_declared_gaps` stripped, so
+    re-indenting a gap read as a different identity and a whitespace-only edit
+    turned the ratchet red (third-family gate)."""
+    a = {"version": 1, "contracts": [{"id": "x", "known_gaps": [{"check": "C1", "key": "k"}]}]}
+    b = {"version": 1, "contracts": [{"id": " x ", "known_gaps": [{"check": " C1 ", "key": " k "}]}]}
+    assert lic._gap_set(a) == lic._gap_set(b)
+
+
+def test_taint_survives_a_container_builtin_and_does_not_escape_a_nested_scope(tmp_path: Path) -> None:
+    """Two provenance defects a third family found, in opposite directions.
+
+    GUILT: `for e in list(data["entries"])` — the taint used to die at the call,
+    so W120's shape survived behind a `list(...)`.
+    INNOCENCE: a nested helper whose own parameter shares the payload's name had
+    its reads counted as contract reads, which on a REQUIRED job is a red for
+    ordinary code.
+    """
+    (tmp_path / "producer.py").write_text(
+        'def build():\n    return {"entries": [{"class": "x"}]}\n', encoding="utf-8"
+    )
+    (tmp_path / "consumer.py").write_text(
+        'def consume(data):\n'
+        '    def helper(data):\n'                     # shadows the name in ITS OWN scope
+        '        return data.get("not_a_contract_read")\n'
+        '    for e in list(data["entries"]):\n'       # container builtin in the way
+        '        if e.get("classification"):\n'
+        '            yield e\n',
+        encoding="utf-8",
+    )
+    contract = _contract(
+        "c_taint",
+        _producer(emits=["entries"], nested={"entries[]": ["class"]}),
+        _consumer(reads=["entries"]),
+    )
+    v, *_ = _lint(tmp_path, contract)
+    keys = {x.key for x in v if x.check == "C3"}
+    assert "classification" in keys, f"taint died at list(...): {keys}"
+    assert "not_a_contract_read" not in keys, f"taint escaped into a nested scope: {keys}"
+
+
+def test_c2b_sees_a_bind_then_compare_not_only_an_inline_one(tmp_path: Path) -> None:
+    """The live shape in this repo is not inline:
+    `status = str(data.get("status","")).lower()` then `status not in (...)`.
+    An inline-only Compare visitor never saw it, and the registry's own gap
+    proved it blind (third-family gate).
+    """
+    (tmp_path / "producer.py").write_text(
+        'def build():\n    return {"status": "ok"}\n', encoding="utf-8"
+    )
+    (tmp_path / "consumer.py").write_text(
+        'def consume(data):\n'
+        '    status = str(data.get("status", "")).lower()\n'
+        '    return status not in ("ok", "live")\n',
+        encoding="utf-8",
+    )
+    contract = _contract(
+        "c_alias",
+        _producer(emits=["status"], enums={"status": ["ok"]}),
+        _consumer(reads=["status"]),
+    )
+    v, *_ = _lint(tmp_path, contract)
+    c2b = [x for x in v if x.check == "C2b"]
+    assert [x.key for x in c2b] == ["status=live"], [(x.check, x.key) for x in v]

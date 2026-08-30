@@ -236,6 +236,18 @@
           "key": "status=green",
           "reason": "organism_digest.stale_heartbeats accepts this status as healthy. NO CALLER in the tree passes it: measured 2026-08-31 across every call site of scripts/lib/heartbeat.sh's organism_heartbeat (ok|error|warning|starting|degraded|success|healthy|disabled) and apps/cell/cell/utils/organ_emitter.py (ok|degraded|fail). CORRECTED after a cross-family review: the earlier wording said no producer CAN emit it, which is false \u2014 organism_heartbeat writes whatever status string it is handed and validates nothing. The claim is about callers, not about the function's capability, and the two are not the same sentence. Inert either way today. Not deleted: removing a boot receptor's tolerance on three machines inside a contracts PR is a behaviour change with a real downside if some caller later passes it, and no upside now.",
           "ledger": "squad-L issue #5319 \u2014 declare-or-delete decision, owner squad L"
+        },
+        {
+          "check": "C2b",
+          "key": "status=live",
+          "reason": "The SAME finding as the C2 gap above, seen from the source instead of from the registry. C2b was blind to it until an alias pass landed: the live shape is bind-then-compare \u2014 `status = str(data.get('status','')).lower()` then `status not in ('ok','live','green')` \u2014 and an inline-only Compare visitor never saw it. Declared here rather than silenced, so the day somebody deletes the tolerance BOTH gaps go stale and the lint says so.",
+          "ledger": "squad-L issue #5319 \u2014 declare-or-delete decision, owner squad L"
+        },
+        {
+          "check": "C2b",
+          "key": "status=green",
+          "reason": "The SAME finding as the C2 gap above, seen from the source instead of from the registry. C2b was blind to it until an alias pass landed: the live shape is bind-then-compare \u2014 `status = str(data.get('status','')).lower()` then `status not in ('ok','live','green')` \u2014 and an inline-only Compare visitor never saw it. Declared here rather than silenced, so the day somebody deletes the tolerance BOTH gaps go stale and the lint says so.",
+          "ledger": "squad-L issue #5319 \u2014 declare-or-delete decision, owner squad L"
         }
       ]
     },

@@ -113,6 +113,9 @@ class _Taint:
     """
 
     _READ_WRAPPERS = {"lower", "upper", "strip", "casefold", "str"}
+    _CONTAINER_BUILTINS = {
+        "list", "tuple", "set", "sorted", "reversed", "iter", "enumerate", "dict",
+    }
 
     def __init__(self, roots: set[str]) -> None:
         self.tainted: set[str] = set(roots)
@@ -127,6 +130,14 @@ class _Taint:
             # does not (`payload.foo` is not a payload READ, it is an object).
             return node.attr in {"items", "values", "get"} and self.is_tainted_expr(node.value)
         if isinstance(node, ast.Call):
+            # A container builtin PASSES provenance through: `for e in
+            # list(data["entries"])` and `sorted(data["seats"])` are the same
+            # payload, differently wrapped. Without this the taint died at the
+            # call and W120's shape survived behind a `list(...)` (third-family
+            # gate). Only these names, and only when an argument is already
+            # tainted — an arbitrary function's return value is NOT the payload.
+            if isinstance(node.func, ast.Name) and node.func.id in self._CONTAINER_BUILTINS:
+                return any(self.is_tainted_expr(a) for a in node.args)
             return self.is_tainted_expr(node.func)
         if isinstance(node, ast.BoolOp):
             return any(self.is_tainted_expr(v) for v in node.values)
@@ -145,10 +156,33 @@ class _Taint:
         elif isinstance(target, ast.Starred):
             self._bind(target.value)
 
+    @staticmethod
+    def _own_scope(func: ast.AST):
+        """Nodes belonging to THIS function, not to a nested def/lambda.
+
+        `ast.walk` descends into nested functions, so an inner helper whose own
+        parameter happens to share the payload's name had its reads counted as
+        contract reads, and its rebinding leaked back out (third-family gate).
+        A nested scope is a different world; this lint does not follow calls
+        into it either, and says so in the declared limits.
+        """
+        seen = []
+        stack = [func]
+        first = True
+        while stack:
+            node = stack.pop()
+            if not first and isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+                continue
+            first = False
+            seen.append(node)
+            stack.extend(ast.iter_child_nodes(node))
+        return seen
+
     def propagate(self, func: ast.AST) -> None:
+        nodes = self._own_scope(func)
         for _ in range(3):  # fixed point; three passes settle every shape here
             before = len(self.tainted)
-            for node in ast.walk(func):
+            for node in nodes:
                 if isinstance(node, ast.Assign) and self.is_tainted_expr(node.value):
                     for t in node.targets:
                         self._bind(t)
@@ -203,9 +237,37 @@ class _ConsumerReadCollector(ast.NodeVisitor):
         self.keys: set[str] = set()
         self.compares: dict[str, set[str]] = {}
         self._store_depth = 0
+        # name -> the payload key it holds. Without this, C2b saw only INLINE
+        # comparisons, and the single live case in this repo is not inline:
+        # `status = str(data.get("status", "")).lower()` then
+        # `status not in ("ok", "live", "green")`. The registry's own flagship
+        # gap proved C2b blind to it (third-family gate).
+        self._alias: dict[str, str] = {}
+        self._alias_wrappers = _Taint._READ_WRAPPERS
+        self._fn_depth = 0
+
+    # A nested def/lambda is a different scope. `propagate` already stops at
+    # that boundary; the COLLECTOR has to as well, or a helper whose own
+    # parameter happens to share the payload's name has its reads counted as
+    # contract reads — a red, on a REQUIRED job, for ordinary code.
+    def _enter_scope(self, node: ast.AST) -> None:
+        if self._fn_depth:
+            return
+        self._fn_depth += 1
+        self.generic_visit(node)
+        self._fn_depth -= 1
+
+    visit_FunctionDef = _enter_scope        # noqa: N815
+    visit_AsyncFunctionDef = _enter_scope   # noqa: N815
+    visit_Lambda = _enter_scope             # noqa: N815
 
     def visit_Assign(self, node: ast.Assign) -> None:  # noqa: N802
         # A write into a tainted dict is not a READ of the contract.
+        key = self.taint.read_key(node.value)
+        if key is not None:
+            for t in node.targets:
+                if isinstance(t, ast.Name):
+                    self._alias[t.id] = key
         for t in node.targets:
             self._store_depth += 1
             self.visit(t)
@@ -236,9 +298,25 @@ class _ConsumerReadCollector(ast.NodeVisitor):
                         if isinstance(e, ast.Constant) and isinstance(e.value, str)]
             return []
 
+        def key_of(n: ast.AST) -> Optional[str]:
+            direct = self.taint.read_key(n)
+            if direct is not None:
+                return direct
+            # ...or a name that holds a payload read, possibly normalised.
+            while isinstance(n, ast.Call):
+                if isinstance(n.func, ast.Attribute) and n.func.attr in self._alias_wrappers and not n.args:
+                    n = n.func.value
+                elif isinstance(n.func, ast.Name) and n.func.id == "str" and len(n.args) == 1:
+                    n = n.args[0]
+                else:
+                    break
+            if isinstance(n, ast.Name):
+                return self._alias.get(n.id)
+            return None
+
         sides = [node.left, *node.comparators]
         for i, side in enumerate(sides):
-            key = self.taint.read_key(side)
+            key = key_of(side)
             if key is None:
                 continue
             for j, other in enumerate(sides):
@@ -296,6 +374,15 @@ class _ProducerEmitCollector(ast.NodeVisitor):
 #  * `writer_function` / `on_disk_path` in the registry are documentation only:
 #    nothing checks that the in-memory dict this lint verifies is the object
 #    that actually reaches disk.
+#  * C4 is satisfied by a string key ANYWHERE in the producer function, with no
+#    check that the dict carrying it flows into the returned payload. A
+#    producer that builds an unrelated local `{"entries": ...}` and returns
+#    something else satisfies the claim — a false green. Curing it needs return-
+#    value dataflow, which is a different piece of work from key collection.
+#  * Taint is additive: rebinding or `del` never UNtaints, so a name reused for
+#    something unrelated after holding the payload keeps its provenance. The
+#    direction is a false RED, which on a required job is loud rather than
+#    silent, and is why it is declared rather than rushed.
 # ---------------------------------------------------------------------------
 
 
@@ -674,18 +761,38 @@ def _gap_count(registry: dict) -> int:
 
 
 def _gap_set(registry: dict) -> set[tuple[str, str, str]]:
-    """Identity of every declared gap: (contract, check, key).
+    """Identity of every DOWNGRADE the registry declares: (contract, kind, key).
 
     A COUNT is defeatable by trade: delete one gap in contract A, add a
-    different one in contract B, totals unchanged, new debt approved (measured
-    by the cross-family gate). A set makes each gap a named thing that has to be
-    named again to survive.
+    different one in contract B, totals unchanged, new debt approved (first
+    cross-family gate). A set makes each one a named thing that has to be named
+    again to survive.
+
+    And `known_gaps` is not the only door. A second reviewer pointed out that a
+    PR could turn any red into a printed-but-passing line with zero exposure by
+    setting `function: null`, flipping `kind` away from "python", or adding a
+    key to `caller_supplied` / `caller_supplied_variants` — every one of which
+    converts a violation into an UNCHECKED line. Those are the same currency as
+    a gap and they are ratcheted the same way. Values are STRIPPED, so a
+    whitespace-only edit is not a new identity.
     """
     out: set[tuple[str, str, str]] = set()
     for c in registry.get("contracts", []):
-        cid = c.get("id", "<no-id>")
+        cid = str(c.get("id", "<no-id>")).strip()
         for g in c.get("known_gaps") or []:
-            out.add((cid, str(g.get("check", "")), str(g.get("key", ""))))
+            out.add((cid, f"gap:{str(g.get('check', '')).strip()}", str(g.get("key", "")).strip()))
+        for side in ("producer", "consumer"):
+            spec = c.get(side) or {}
+            if spec.get("function") is None:
+                out.add((cid, "unanchored", side))
+            if str(spec.get("kind", "python")).strip() != "python":
+                out.add((cid, "non-python", side))
+        prod = c.get("producer") or {}
+        for key in prod.get("caller_supplied") or []:
+            out.add((cid, "caller-supplied", str(key).strip()))
+        for variant in prod.get("caller_supplied_variants") or []:
+            for key in variant.get("keys") or []:
+                out.add((cid, "caller-supplied", str(key).strip()))
     return out
 
 
@@ -746,7 +853,7 @@ def _no_regrowth(registry_path: Path, registry: dict, base_ref: str) -> tuple[li
             if now > 0:
                 print(f"note: {now} known-gap(s) declared at introduction; this list may only shrink from here")
             return [], []
-        reason = stderr.strip().splitlines()
+        reason = (proc.stderr or "").strip().splitlines()
         return [], [CannotVerify("<registry>", f"cannot read {base_ref}: {reason[-1] if reason else 'git failed'}")]
     try:
         base = json.loads(proc.stdout)
@@ -757,9 +864,11 @@ def _no_regrowth(registry_path: Path, registry: dict, base_ref: str) -> tuple[li
     if added:
         return [Violation(
             "<registry>", "C5", "known_gaps", str(registry_path), str(registry_path),
-            f"known_gaps gained {len(added)} entry/entries against {base_ref} — "
-            f"{', '.join(f'{c}:{k}:{v}' for c, k, v in added)}. This list may only shrink; "
-            "removing a different gap elsewhere does not pay for a new one.")], []
+            f"the registry gained {len(added)} DOWNGRADE(s) against {base_ref} — "
+            f"{', '.join(f'{c}:{k}:{v}' for c, k, v in added)}. Every way of turning a red into "
+            "a printed-but-passing line (known_gaps, function:null, a non-python kind, "
+            "caller_supplied) is ratcheted together and may only shrink; removing a different "
+            "one elsewhere does not pay for a new one.")], []
     return [], []
 
 
