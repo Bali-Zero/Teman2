@@ -226,6 +226,28 @@ receipts:
     ts: 2026-08-31T02:15Z
     seat: verification subagent (non-build)
 
+  - claim: >-
+      The file in this PR is the artifact production serves, and the widened window is in force
+      live — established three independent ways rather than asserted once.
+    cmd: >-
+      independent re-fold from the seq-17 source with the signature-verified anchor, then
+      probe_evaluate.py --full-body against the deployed service with gold personas 7 and 19
+    result: >-
+      Re-fold digest 5a24472d187f85c54628f23d6e37b2a4b814e54762478c099472f0437d255849, structurally
+      IDENTICAL to the committed rulepack-prod-018.source.json; the deployed service answers HTTP
+      200 SUPPORTED_CANDIDATES for both personas (candidates [C1,E31A,E31B,E31D] and [B1,C1]) with
+      review_reasons EMPTY, reporting sequence 18 / version 2026.8.31 / that same digest /
+      rule_pack_id 23492882-679e-52d1-b643-f626aa7237f0, freshness statuses ['CURRENT'], windows
+      [2764800, 31536000], and ZERO occurrences of STALE in either body. The uuid5 convention
+      recomputed independently yields the same rule_pack_id the artifact carries and the service
+      serves. Run by the final on-disk gate, not by the author.
+    note: >-
+      Recorded so nobody later reads it as a failure: a byte-level `cmp` of a fresh fold against the
+      committed source DIFFERS (270748 vs 258900 bytes) — the committed file has been through a
+      formatter that compacts single-element arrays onto one line. The RFC-8785 canonical digest is
+      identical, and the canonical digest is what is signed. Compare packs by JCS digest, never by
+      file size or byte equality.
+
 council_run: council-run.jsonl
 
 dissent:
@@ -437,3 +459,20 @@ dissent:
       to production's; only the provenance attestation is forfeited, and anyone who can set that
       variable can already edit the fold script. The check's real target is AUTHORIAL ERROR — a
       digest pinned from a pack that was never signed — and against that it holds.
+
+  - objection: >-
+      The final on-disk gate measured what "mutation-proven" actually covered and it was less than
+      claimed. Deleting the CALL to assert_changed_fields_hold_their_expected_values from fold(),
+      and likewise the call to assert_only_expected_changes, reddened NOTHING — 0 failed. Only the
+      guards' BODIES were pinned (neutering guard-A's body reddens 9 tests), because every existing
+      test drove the guards directly while fold() builds a correct payload the guards then agree
+      with. A call site that can be deleted in silence is a guard one refactor away from decoration.
+    seat: seq18-gate (final on-disk gate, Opus 5, fresh context, generator != grader)
+    status: CONFIRMED
+    resolution: >-
+      Fixed: three tests now drive fold() itself with each guard replaced by a spy —
+      test_fold_calls_the_shape_guard, test_fold_calls_the_value_guard, and
+      test_fold_runs_both_guards_before_model_validation, which also pins the ORDER (pydantic
+      accepts any positive window and any sequence, so a payload reaching model_validate first
+      would be blessed before either guard looked at it). Re-measured: deleting either call now
+      reddens 2 tests each. The gate's own mutations B, C, D, E stand as reported.

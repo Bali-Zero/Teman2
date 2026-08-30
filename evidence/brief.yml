@@ -86,7 +86,8 @@ acceptance:
       apps/backend-rag/backend/tests/scripts/test_visa_engine_sign_pack.py
       -k CreatedAtNeverAfterSignedAt (run from the REPO ROOT — the repo-relative path is
       required; a bare `backend/tests/...` collects 0 items and exits 4, which reads as a pass)
-      ; mutation-proven: removing the call reddens the real-path test
+      ; mutation-proven at the CALL SITE, not only in the body: removing the call reddens the
+      real-path test (the gate caught two other guards where only the body was pinned)
   - text: >-
       WHERE the fold accepts a seq-17 anchor, the anchor SHALL be a bundle whose Ed25519 signature
       verifies against the production trust store — never a digest matching a constant in the

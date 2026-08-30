@@ -39,6 +39,7 @@ from typing import Any
 
 import pytest
 
+from backend.scripts.visa_engine import fold_pack_seq18 as fold_module
 from backend.scripts.visa_engine.fold_pack_seq18 import (
     EXPECTED_PORTAL_COUNT,
     NEW_MAX_AGE_SECONDS,
@@ -696,3 +697,80 @@ def test_fold_refuses_when_no_trust_store_is_configured(
     monkeypatch.delenv("VISA_ENGINE_TRUST_STORE_KEYS_JSON", raising=False)
     with pytest.raises(SystemExit):
         fold(seq17_source, _read_json(_SEQ17_SIGNED_PATH))
+
+
+# ---------------------------------------------------------------------------
+# THE CALL SITES — a guard whose CALL can be deleted with nothing going red is
+# not wired in, however well its body is tested
+# ---------------------------------------------------------------------------
+#
+# The final gate measured this and it was true: deleting
+# `assert_changed_fields_hold_their_expected_values(out)` and
+# `assert_only_expected_changes(seq17, out)` from `fold()` reddened NOTHING,
+# because `fold()` builds a correct payload and the guards then agree with it.
+# Every existing test drove the guards DIRECTLY. These three drive `fold()` and
+# fail if the call disappears — which is the only thing that keeps a guard from
+# quietly becoming decoration during a later refactor.
+
+
+def _spy(recorder: list[str], name: str, *, raises: bool = False):
+    def _fn(*_args, **_kwargs):
+        recorder.append(name)
+        if raises:
+            raise AssertionError(f"{name} was reached")
+
+    return _fn
+
+
+def test_fold_calls_the_shape_guard(
+    prod_trust_store_env: None, monkeypatch: pytest.MonkeyPatch, seq17_source: dict[str, Any]
+) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(
+        fold_module,
+        "assert_only_expected_changes",
+        _spy(calls, "shape", raises=True),
+    )
+    with pytest.raises(AssertionError, match="shape was reached"):
+        fold(seq17_source, _read_json(_SEQ17_SIGNED_PATH))
+    assert calls == ["shape"]
+
+
+def test_fold_calls_the_value_guard(
+    prod_trust_store_env: None, monkeypatch: pytest.MonkeyPatch, seq17_source: dict[str, Any]
+) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(
+        fold_module,
+        "assert_changed_fields_hold_their_expected_values",
+        _spy(calls, "value", raises=True),
+    )
+    with pytest.raises(AssertionError, match="value was reached"):
+        fold(seq17_source, _read_json(_SEQ17_SIGNED_PATH))
+    assert calls == ["value"]
+
+
+def test_fold_runs_both_guards_before_model_validation(
+    prod_trust_store_env: None, monkeypatch: pytest.MonkeyPatch, seq17_source: dict[str, Any]
+) -> None:
+    """Order matters: pydantic accepts any positive window and any sequence, so
+    a payload that reaches `model_validate` first would be validated as fine and
+    the guards would only ever confirm what was already blessed."""
+    calls: list[str] = []
+    monkeypatch.setattr(
+        fold_module, "assert_only_expected_changes", _spy(calls, "shape")
+    )
+    monkeypatch.setattr(
+        fold_module,
+        "assert_changed_fields_hold_their_expected_values",
+        _spy(calls, "value"),
+    )
+
+    class _Model:
+        @staticmethod
+        def model_validate(_payload: dict[str, Any]) -> None:
+            calls.append("model_validate")
+
+    monkeypatch.setattr(fold_module, "RulePackPayload", _Model)
+    fold(seq17_source, _read_json(_SEQ17_SIGNED_PATH))
+    assert calls == ["shape", "value", "model_validate"]
