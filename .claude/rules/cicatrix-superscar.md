@@ -204,12 +204,12 @@ CONTENUTO (diff vuoto/subset), mai patch-equivalenza/SHA-ancestor/timestamp.
 **MEMBRI:** W54 (timestamp schianta staleness-check) · W53 (DLQ TERMINAL gate mancante) · W61
 (autopilot_attempts droppati) · W86 (DOCSYNC stale, boccia PR innocente) · W88 (cherry mente sul
 contenuto post-squash) · W102 (two-dot diff accusa PR dei file di main) · W106 (proxy congelato sceglie
-credenziale morta) · W106b (il checkout stesso è il proxy) · W109b (2 PR che si bloccano a vicenda) ·
+credenziale morta) · W106b (il checkout è il proxy) · W109b (2 PR si bloccano a vicenda) ·
 W111 (`gh run rerun` rigioca merge-ref stantio) · W114 (fake e codice condividono l'immaginazione) ·
 W118 (3 proxy merge-queue che mentono) · W125 (fusione pulita, la resa a mano la tiene) · W131 (un nome, due ruoli).
 **→ dettaglio:** cicatrix-scars.md (resto) + archive (W53/W54/W61)
-**PR-1 landing** (corpo in `PENDING-ARMS.md`): la mergeability GitHub non onora `merge=union`;
-`autoMergeRequest` SOPRAVVIVE a CONFLICTING — leggi la timeline, mai lo scalar (NULL solo in coda).
+**PR-1 landing** (corpo in `PENDING-ARMS.md`): mergeability GitHub non onora `merge=union`;
+`autoMergeRequest` NULL non prova armata/disarmata — leggi `mergeQueueEntry`; dopo conflitto/espulsione RIARMA (idempotente).
 
 ---
 
