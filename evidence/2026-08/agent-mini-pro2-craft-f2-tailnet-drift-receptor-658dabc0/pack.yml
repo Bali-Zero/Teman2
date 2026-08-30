@@ -1,0 +1,153 @@
+council_run: journal.jsonl
+# The literal evidence/brief.yml — the staging-layout contract harness-floor.yml
+# enforces, NOT this pack's per-PR path (which that workflow calls "exactly the trap
+# this migration exists to remove"). Verified by reproducing CI's staging layout
+# locally rather than trusting the bare local lint, which sees no staging.
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  docs/plans/2026-08-29-beyond-sota-craft-wave/L13-security-secrets-pii.md
+  section "PR-2: feat(proprioception): tailnet policy drift receptor".
+
+lanes:
+  - lane: tailnet-drift-build
+    role: build
+    seat: codex-gpt-5.6-terra (non-Anthropic, effort high) -- D3 build lane, never the grader
+  - lane: tailnet-drift-refute
+    role: review
+    seat: kimi-code/k3 (non-Anthropic) -- blind adversarial refutation; reconstructed and RAN the script
+  - lane: tailnet-drift-workflow-refute
+    role: review
+    seat: codex-gpt-5.6-sol xhigh -- workflow-class refutation
+  - lane: tailnet-drift-gate
+    role: review
+    seat: claude opus-5 xhigh (this orchestrator) -- final on-disk gate, empirical
+
+diff:
+  files: 7
+  net_lines: 1274
+  measured_at: HEAD-of-branch
+  note: >-
+    Over the <=400 net-line target, declared: the receptor and its corpus are the
+    bulk, and the corpus is what caught seven defects before merge. The
+    proprioception change is deliberately small (one parse mode, one boundary class,
+    one registry entry) because that file is shared and delicate -- it was written by
+    this orchestrator rather than delegated for the same reason.
+
+pii_scan: clean
+
+receipts:
+  - claim: "18/18 receptor corpus, and it bites: 7 mutants killed at real code sites (escape branch reverted; Bits discarded; scope disclosure dropped; IPv4-only redactor restored; reason left unsanitised; live schema removed; sanitizer neutered)."
+    cmd: "python3 -m pytest scripts/tests/test_tailnet_policy_drift.py -q"
+    exit: 0
+    ts: "2026-08-31T02:30:00Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+  - claim: "PROVE-LIVE on Mini against the node's REAL enforced state: exit 1, DIVERGED. Declared 8 rule-shapes on ports 22,443,4317,6379,8990,11434 (tcp); enforced 2 rule-shapes, ALL ports, icmp+tcp+udp+ICMPv6. No node name, address or identity in the output."
+    cmd: "python3 scripts/tailnet_policy_drift.py --policy infra/tailscale/policy.hujson"
+    exit: 1
+    ts: "2026-08-31T02:00:00Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+  - claim: "The consumer files it correctly: through proprioception's real wrap path the receptor resolves to a verdict, and a BLIND probe resolves to UNPROBEABLE rather than DIVERGED."
+    cmd: "run_wrap() against the registered tailnet_policy_drift entry"
+    exit: 0
+    ts: "2026-08-31T02:00:00Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+  - claim: "17/17 proprioception corpora (tri_state_exit + the pre-existing exit_code suite), registry valid at 14 probes, and the 44-check tailnet ACL guard this workflow already ran is unaffected."
+    cmd: "python3 -m pytest scripts/tests/test_proprioception_tri_state_exit.py scripts/tests/test_proprioception_run_wrap_exit_code.py scripts/tests/test_tailnet_acl_deny_by_default.py -q && python3 scripts/proprioception.py --selftest"
+    exit: 0
+    ts: "2026-08-31T02:30:00Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+
+  - claim: "The tri-state mapping holds on its own, and one case proves the contrast is REAL rather than claimed: it feeds the same BLIND input to the old _parse_exit_code and asserts that parser genuinely answers DIVERGED."
+    cmd: "python3 -m pytest scripts/tests/test_proprioception_tri_state_exit.py -q"
+    exit: 0
+    ts: "2026-08-31T02:30:00Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+
+dissent:
+  - seat: kimi-code/k3 (blind refutation; reconstructed and executed the script)
+    objection: >-
+      `Bits` is validated and then discarded, under a comment claiming the address
+      string already carries the prefix. That is true for `Net` and false for the old
+      schema's `IP`, a bare address whose prefix lives only in `Bits`.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced: {"IP": "10.0.0.1", "Bits": 8} yielded 10.0.0.1/32 instead of
+      10.0.0.0/8 -- silently NARROWER, and narrowing an enforced grant is the direction
+      that makes a broad reality compare equal to a narrow declaration and read CLEAN.
+      Bits is authoritative when the address carries no prefix; when both are present
+      and disagree the answer is BLIND, not a silent pick.
+  - seat: kimi-code/k3 (blind refutation)
+    objection: >-
+      False CLEAN by source erasure: sources collapse to any-vs-specific, so an
+      enforced rule granting the same ports from a DIFFERENT node compares equal.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced at full strength -- replacing EVERY source in the matching fixture
+      with a node that should hold no grant still compares equal. NOT closable here,
+      and the honest response was to stop the verdict claiming more than it checks
+      rather than to fake a fix: policy.hujson grants by IDENTITY while the netmap has
+      already resolved identities to addresses, and bridging them needs the
+      node<->identity table this tool must never hold. A `comparison_scope` field now
+      travels with every result, CLEAN especially, and a test pins the limitation so
+      that closing it later -- or silently narrowing the comparison so it merely looks
+      closed -- both surface.
+  - seat: kimi-code/k3 (blind refutation)
+    objection: >-
+      The redactor is IPv4-and-email only: an IPv6 address passes through, and node
+      NAMES are not redacted at all even though the spec forbids them in output.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced both. A Tailscale netmap carries fd7a:115c:a1e0::/48 addresses, so
+      IPv4-only was blind to half of every node's identity. Added IPv6 and MagicDNS
+      patterns; whole-string rejection kept, because a partially-scrubbed line invites
+      trust in the rest of it. Declared limit retained: a bare hostname with no domain
+      is unmatched, since widening further would eat `policy.hujson` and turn every
+      evidence line into "redacted".
+  - seat: kimi-code/k3 (blind refutation)
+    objection: >-
+      `reason` is not sanitised, and proprioception forwards it into its own report.
+    status: CONFIRMED
+    resolution: >-
+      Sanitised like evidence. Every reason emitted today is a constant, which is
+      exactly why it was easy to miss -- `reason` is the field a future contributor
+      reaches for when they want to say WHY, which is when an address gets
+      interpolated, and it would then travel one hop further than they were looking.
+  - seat: claude opus-5 xhigh (this orchestrator, final gate)
+    objection: >-
+      The HuJSON stripper's escape branch was unreachable: it compared a
+      one-character slice against a TWO-character literal, so an escaped quote ended
+      the string early and the remainder was re-scanned as structure.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced ({"a": "he said \\" // x"} truncated and raised JSONDecodeError),
+      then fixed. It failed toward BLIND rather than CLEAN, so never a security hole
+      -- but a receptor blind on a VALID policy loses the same visibility by a slower
+      route. The corpus already covered an UNESCAPED // inside a string and passed
+      throughout, which is why the two cases are separate: they look identical and
+      only one was broken.
+  - seat: claude opus-5 xhigh (this orchestrator, final gate)
+    objection: >-
+      The tool parsed only the SrcIPs/DstPorts schema, which this tailnet does not
+      emit, and both fixtures encoded that shape.
+    status: CONFIRMED
+    resolution: >-
+      Measured with `tailscale debug netmap`: the live rule carries
+      Srcs/Dsts/Net/Ports. The tool behaved correctly in the way that matters (BLIND
+      rather than a guess) but was blind on every real node while its corpus proved it
+      against a format no netmap produces. Both schemas are accepted now and both
+      fixtures were rewritten in the live shape, sanitized -- the 14 source CIDRs
+      become RFC 5737 ranges, since only "several specific" vs "any" is load-bearing.
+      Destinations are deliberately NOT sanitized: they are already published in
+      policy.hujson, and changing them would break the comparison the CLEAN path
+      exists to exercise.
+  - seat: claude opus-5 xhigh (this orchestrator, on its own proprioception wiring)
+    objection: >-
+      The first tri_state_exit implementation parsed the JSON body BEFORE branching on
+      the exit code, so a malformed body could turn a known verdict into UNPROBEABLE.
+    status: CONFIRMED
+    resolution: >-
+      Restructured so the exit code is authoritative and a bad body costs detail, never
+      the verdict -- otherwise the mode hands its meaning back to the schema it was
+      chosen to be independent of. An unexpected exit code is UNPROBEABLE, never
+      DIVERGED: schema drift must not normalise into a verdict, the rule findings_list
+      already follows.
