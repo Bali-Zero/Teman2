@@ -1,0 +1,10 @@
+Use case: identity-preserve
+Asset type: 9:16 cinematic scene-start still for a vertical editorial video
+Input images: Image 1 is the edit target and approved composition; Image 2 is the primary frontal identity reference A007; Image 3 is the supporting three-quarter identity reference A002.
+Primary request: Preserve Image 1 exactly except for the woman's facial identity and the immediately connected hairline geometry. Replace only those features with the exact same Zantara identity shown in Images 2 and 3.
+Scene/backdrop: Keep the complete edge-to-edge limestone atrium from Image 1 unchanged.
+Subject: One woman only, mid-stride, unobstructed frontal face, ivory silk blouse with restrained gold embroidery, black trousers.
+Style/medium: Photorealistic natural cinematic still with real skin and fabric texture.
+Composition/framing: Keep Image 1 camera angle, portrait framing, subject scale, pose, hand positions, stride, perspective, and background geometry unchanged.
+Lighting/mood: Keep Image 1 daylight direction, exposure, shadows, and restrained serious expression unchanged.
+Constraints: Change only facial identity and immediately connected hairline geometry. Preserve body, pose, wardrobe, embroidery, earrings, scene, lighting, crop, and all spatial relationships. One opaque native portrait raster. No text, logos, watermark, interface, panels, borders, padding, seams, mirroring, reflection, duplicate person, beautification, glamorization, relighting, redesign, or added objects.

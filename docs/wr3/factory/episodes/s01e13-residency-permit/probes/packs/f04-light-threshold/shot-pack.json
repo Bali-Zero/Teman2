@@ -1,0 +1,39 @@
+{
+  "episode_id": "s01e13-residency-permit-probes",
+  "topic": "S01E13 cinematic probe family 04 — light threshold",
+  "anchor_image_path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+  "shots": [
+    {
+      "index": 1,
+      "positive_prompt": "CAMERA FIRST: locked-height 35mm tracking backward, vertical 9:16, keeps exposure stable as Zantara crosses one sharp but natural band of window sunlight inside a continuous unlabelled corridor. Preserve the exact approved A007 Zantara identity, face, age, skin tone, center-parted long black hair, brown eyes, gold earrings, and ivory silk blouse with restrained gold embroidery. One action only: she walks forward from warm amber light through the bright boundary into clear neutral daylight, her expression shifting from easy certainty to focused attention. Nothing opens, closes, or transforms; the story change is carried by motivated light on her face and architecture. Native audio is continuous footfall and room tone with one quiet dry click exactly at the boundary; no speech. No text, signs, forms, graphics, extra people, mirrors, duplicate body, official setting, airport, resort, lens flare flourish, speed ramp, or orbit.",
+      "identity_tokens": ["A007-Zantara-anchor"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16"
+    },
+    {
+      "index": 2,
+      "positive_prompt": "CAMERA FIRST: eye-level 50mm backward track, vertical 9:16, holds a stable medium frame while Zantara passes beneath a single overhead lighting boundary from warm tungsten ambience into subtly cooler neutral architectural light. Preserve approved A007 Zantara exactly: identical face, apparent age, natural skin, long straight center-parted black hair, gold earrings, and canonical ivory-and-gold blouse. One action only: she walks at an unchanged pace through the same continuous space; her gaze becomes more analytical after the color-temperature shift, without melodrama or surprise. Lighting remains physically credible and skin tone remains natural on both sides. Native audio contains measured footsteps, soft ventilation, and a restrained electrical relay click at the threshold; she does not speak. No visible words, signage, papers, interfaces, logos, extra people, reflections, duplicates, government symbols, airport or beach imagery, flicker, fantasy glow, zoom, whip pan, or camera orbit.",
+      "identity_tokens": ["A007-Zantara-anchor"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16"
+    },
+    {
+      "index": 3,
+      "positive_prompt": "CAMERA FIRST: a measured 40mm lateral track, vertical 9:16, follows Zantara across one band of shadow cast by fixed architectural slats; warm light before it gives way to calm neutral light after it. Preserve the exact approved A007 identity, facial geometry, age, skin tone, center-parted black hair, brown eyes, gold earrings, and ivory silk blouse with subtle gold embroidery. One action only: she walks left to right at constant speed, passing through the patterned shadow while her posture remains composed and her attention sharpens. The shadow pattern is restrained, not noir decoration, and never obscures her identity for more than an instant. Native audio is continuous room tone and footfall with one crisp wooden contraction click at the darkest beat; no dialogue. No text, signs, forms, logos, other people, duplicate or reflected Zantara, official seals, airport, resort, dramatic flare, time ramp, zoom, or orbit.",
+      "identity_tokens": ["A007-Zantara-anchor"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16"
+    },
+    {
+      "index": 4,
+      "positive_prompt": "CAMERA FIRST: a calm 35mm backward dolly, vertical 9:16, begins with soft warm light reflected from a timber wall onto Zantara and gradually loses that reflection as she advances into honest neutral daylight. Preserve approved A007 Zantara exactly: same face, age, skin, long straight center-parted black hair, brown eyes, gold earrings, and canonical ivory blouse with restrained gold embroidery. One action only: she walks forward through one uninterrupted minimalist passage; the warmer reflected layer falls away naturally, revealing clearer facial modeling and a more concentrated gaze. There is no doorway, wipe, or artificial color pulse. Native audio is realistic footstep, cloth movement, and quiet air, with a single small latch sound heard before its source is seen; no speech. No visible writing, documents, screens, logos, extra people, mirrors, duplicate figure, government insignia, airport or tropical filler, lens flare, speed ramp, zoom, or orbit.",
+      "identity_tokens": ["A007-Zantara-anchor"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16"
+    }
+  ]
+}

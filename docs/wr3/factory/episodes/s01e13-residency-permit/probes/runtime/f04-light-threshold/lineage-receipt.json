@@ -1,0 +1,74 @@
+{
+  "schema_version": "wr3-camera-probe-lineage/1.0",
+  "adapter_version": "1.2",
+  "family_id": "f04-light-threshold",
+  "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+  "originality_gate": {
+    "verdict": "PASS",
+    "registration_kind": "root",
+    "signature_sha256": "b9a98c97a22e73240455e37b63bb4b6ca950164668910458220a722fa365d8ac",
+    "description_sha256": "0b9204f8c001dec0cffdb05fc8d4218e1b56cb74cc536b0a9af3c2ba0f382796",
+    "request_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-request.json",
+    "request_sha256": "28a33021afd9cff44c873e01e980c2525789bf472f36c7b2883d2ee78fa03998",
+    "receipt_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-receipt.json",
+    "receipt_sha256": "089bec6bc15fc0e2c26e244482edf5b58b5b3746c2d5910326151f794b930eb7",
+    "ledger_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-ledger.jsonl",
+    "ledger_sha256_at_registration": "70c47e1abc40284ba8ab50503ec5203745ae5cb280437b48d6cd482df6d671ba",
+    "ledger_record_count_at_registration": 1
+  },
+  "source_pack": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/packs/f04-light-threshold/shot-pack.json",
+  "source_pack_sha256": "f7b1ed182f08cdc6da5445e9f0a2fe85aefcf0df240c07b82976ea3149c2f535",
+  "runtime_episode_id": "s01e13-residency-permit-probes-f04-light-threshold",
+  "runtime_pack": "f04-light-threshold/shot-pack.json",
+  "runtime_pack_sha256": "2c600b2ee93e340016a5def5de446f8cf0777af4fa9ac3d5283189bbb7dac982",
+  "transformations": [
+    "globally unique family and shot identifiers",
+    "prompt transport and aspect markers removed from positive prose",
+    "source negative clause split into renderer negative fields",
+    "global camera-UI and visible-text protections added to negative prompt",
+    "identity token normalized to exact A007",
+    "source visual performance preserved"
+  ],
+  "variants": [
+    {
+      "source_index": 1,
+      "source_prompt_sha256": "85ec7ad29ec0a901d54ff422ac0bfd41eee9e77fd596d70fd4047173e620ab71",
+      "shot_id": "s0401",
+      "global_probe_id": "s01e13-residency-permit-probes:f04-light-threshold:v01",
+      "variant_id": "v01",
+      "variant_seed_id": "b0de2165-5414-54d3-8245-c8c4e9492680",
+      "runtime_positive_prompt_sha256": "8494880271d2db69065b3f27041ac0b55eae766d637b90673b54b5f2cdb294e0",
+      "runtime_negative_prompt_sha256": "62d93616fe6f296ff4a4907de4b9245f47a368558ebc03537c3ff45441e7bde0"
+    },
+    {
+      "source_index": 2,
+      "source_prompt_sha256": "c5fe0ccd7aa85b6dc5eb3adb67f7b66d748d25bc51e9359d3d23194367e5a5e5",
+      "shot_id": "s0402",
+      "global_probe_id": "s01e13-residency-permit-probes:f04-light-threshold:v02",
+      "variant_id": "v02",
+      "variant_seed_id": "b71e5b7b-5975-5946-b55f-42fd5892227d",
+      "runtime_positive_prompt_sha256": "e68895f21b07845ddd7465707d24548cde2126cc91f9cf6e28a56f7f72318c05",
+      "runtime_negative_prompt_sha256": "4d042584ceb46f9bcf7685a465cd295db9c6e7922a5735dac57ebc98ecb4492c"
+    },
+    {
+      "source_index": 3,
+      "source_prompt_sha256": "5a2034ac2c78040475f3cd44630be85bc5197aedfc0d66a79bfc147fa8636649",
+      "shot_id": "s0403",
+      "global_probe_id": "s01e13-residency-permit-probes:f04-light-threshold:v03",
+      "variant_id": "v03",
+      "variant_seed_id": "3fbb780c-7f15-5af3-81c2-1f8b8cb53948",
+      "runtime_positive_prompt_sha256": "e473ce986ff9152a3999a53093c8330cbcf73da4a51fbd83b01fee987d78fb20",
+      "runtime_negative_prompt_sha256": "814dff97eae5d43e69aeb7a800632d887d90c6f02eeececd66ba03711db7c52f"
+    },
+    {
+      "source_index": 4,
+      "source_prompt_sha256": "ebecfe8ef7eac04764008d366045dea6238cba9d405712e0538da1316e13cd4b",
+      "shot_id": "s0404",
+      "global_probe_id": "s01e13-residency-permit-probes:f04-light-threshold:v04",
+      "variant_id": "v04",
+      "variant_seed_id": "a7f705cd-5e5a-5ee2-b4fd-493c57c6a257",
+      "runtime_positive_prompt_sha256": "0a2a51a9c18caafbc7503d2f6d7ad3283f74907a54f6d74fce980fcb55e86982",
+      "runtime_negative_prompt_sha256": "e340be85779c1c6d8b1614458c4eedd281e3b8f06d627f474bec6a272244d81b"
+    }
+  ]
+}

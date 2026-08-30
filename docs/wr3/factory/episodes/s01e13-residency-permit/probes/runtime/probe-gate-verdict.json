@@ -1,0 +1,89 @@
+{
+  "schema_version": "wr3-camera-probe-gate/1.0",
+  "adapter_version": "1.2",
+  "verdict": "PASS",
+  "scope": "E13 authorised camera probes only; no Flow call and no final-episode approval",
+  "plan_sha256": "58a8f1280894666d7fb4677973b4e150db52906502a6b9822a0ce6ae8b2dbf8e",
+  "checks": {
+    "authorization": {
+      "passed": true,
+      "generation_count": 24
+    },
+    "originality": {
+      "passed": true,
+      "signature_sha256": "b9a98c97a22e73240455e37b63bb4b6ca950164668910458220a722fa365d8ac",
+      "surface_axes_counted": false
+    },
+    "source_immutability": {
+      "passed": true,
+      "source_count": 6
+    },
+    "runtime_schema": {
+      "passed": true
+    },
+    "global_uniqueness": {
+      "passed": true,
+      "family_ids": true,
+      "episode_ids": true,
+      "shot_ids": true,
+      "global_probe_ids": true,
+      "variant_seed_ids": true
+    },
+    "identity": {
+      "passed": true,
+      "required_token": "A007"
+    },
+    "f06_visual_only": {
+      "passed": true
+    },
+    "flow_or_publish_side_effects": {
+      "passed": true,
+      "count": 0
+    }
+  },
+  "errors": [],
+  "families": [
+    {
+      "family_id": "f01-fluid-approach",
+      "episode_id": "s01e13-residency-permit-probes-f01-fluid-approach",
+      "source_pack_sha256": "7d277aad31475fbd4d93f052b935817870f81b00dec43f7c85eacafa38bdc2be",
+      "runtime_pack_sha256": "c0c15d0b9b32520d35a1b26abb6b85825bf909909c224d07bb394f3830c5b402",
+      "shot_count": 4
+    },
+    {
+      "family_id": "f02-occlusion-bridge",
+      "episode_id": "s01e13-residency-permit-probes-f02-occlusion-bridge",
+      "source_pack_sha256": "90ca55ba7c49f070edaefe8f59dc6472fd94b62925509ec2b9c75266f719e1c4",
+      "runtime_pack_sha256": "86f4a60e478e9e7ce9416d90969f8a9550388fbc25de85ecb3b1a8cf1af90548",
+      "shot_count": 4
+    },
+    {
+      "family_id": "f03-spatial-compression",
+      "episode_id": "s01e13-residency-permit-probes-f03-spatial-compression",
+      "source_pack_sha256": "db686e1d618f4ae00ac4b22b01fb4ae53b9959b29613b3b98e20de61360fda7a",
+      "runtime_pack_sha256": "e6b40651429923af0ee70aa9264d22648b58a92f5745d0feda5f9d6339d51124",
+      "shot_count": 4
+    },
+    {
+      "family_id": "f04-light-threshold",
+      "episode_id": "s01e13-residency-permit-probes-f04-light-threshold",
+      "source_pack_sha256": "f7b1ed182f08cdc6da5445e9f0a2fe85aefcf0df240c07b82976ea3149c2f535",
+      "runtime_pack_sha256": "2c600b2ee93e340016a5def5de446f8cf0777af4fa9ac3d5283189bbb7dac982",
+      "shot_count": 4
+    },
+    {
+      "family_id": "f05-deep-information",
+      "episode_id": "s01e13-residency-permit-probes-f05-deep-information",
+      "source_pack_sha256": "68ab8ff1004efcf5160f277ad5612d4911991732bea683a65b24e900c6eb5a70",
+      "runtime_pack_sha256": "0d247a2bd72d982c34491343f4be953035d4b834aa011abf9927d7d6d9165dc1",
+      "shot_count": 4
+    },
+    {
+      "family_id": "f06-static-verdict",
+      "episode_id": "s01e13-residency-permit-probes-f06-static-verdict",
+      "source_pack_sha256": "a7ef30175e88eb53e88eeda48dffb0104adc384a15f4ad34b18f3da76f3f8f37",
+      "runtime_pack_sha256": "ea6d5b1f287247866b6083a043c1bbbb5151b08441f2c3e62ee413544a41399e",
+      "shot_count": 4
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "schema_version": "wr3.camera-probe-originality-link.v1",
+  "episode_id": "s01e13-residency-permit",
+  "family_id": "f01-fluid-approach",
+  "variant_id": "v05",
+  "lineage_id": "m02-v04-reroll-01-inertia-stop",
+  "registration_timing": "post_generation_backfill",
+  "root_creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+  "child_creative_seed_id": "4ac7cfe1-1a72-5c7e-a6a3-c0a367d0022b",
+  "variant_seed_id": "537ed938-c39c-5cec-9ce0-b0d91c2f6eaf",
+  "signature_sha256": "93c49de4bba2ad2466572c0a965f4ba47b58db656f0da253462598106aee5e53",
+  "description_sha256": "083328a659455354520f33aba631e308612c000f266deaf54805f8f7b6acf5a4",
+  "validated_ledger_prefix_sha256": "05fab120c912bd5a7153bc1f459346ff7a5c66ba22162b4d9a492077dba53e61",
+  "bindings": {
+    "originality_request": {
+      "path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-m02-v05-request.json",
+      "sha256": "4fa610ae7b6c00be9977d1674b61e5b33c97ff068cbb36c488abd2f40151cfc4"
+    },
+    "originality_receipt": {
+      "path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-m02-v05-receipt.json",
+      "sha256": "26ed8140ba5f0a4693bd138c58d96d2588066e01f9a8b44b39edd5be4b8c501f"
+    },
+    "reroll_spec": {
+      "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m02-v05-reroll-spec.json",
+      "sha256": "e4af6fb221141bac59821ea98997c2abd3ace1f3ebfd3dec86797f7e53e4fd12"
+    },
+    "generation_result": {
+      "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m02-v05-generation-result.json",
+      "sha256": "4c5254904e9188ba814c71f6245a2c7ae4ecd621c7c190cdece775c61a843597"
+    }
+  },
+  "novelty_evidence": {
+    "material_axis_differences": 10,
+    "concept_axis_differences": 5,
+    "cinematic_axis_differences": 5,
+    "description_jaccard_against_parent": 0.1,
+    "verdict": "PASS"
+  },
+  "historical_limit": "This registration proves the stored M02-v05 signature differs from the parent under the deterministic policy, but it did not gate the already completed generation.",
+  "future_rule": "Every new creative reasoning pass must record its child seed and signature before any paid generation call."
+}

@@ -1,0 +1,122 @@
+{
+  "schema_version": "wr3.camera-probe-generation-result.v1",
+  "recorded_at": "2026-08-30T20:35:08Z",
+  "episode_id": "s01e13-residency-permit-probes-f01-fluid-approach",
+  "family_id": "f01-fluid-approach",
+  "variant_id": "v05",
+  "shot_id": "s0105",
+  "shot_index": 105,
+  "global_probe_id": "s01e13-residency-permit-probes:f01-fluid-approach:v05",
+  "lineage_id": "m02-v04-reroll-01-inertia-stop",
+  "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+  "variant_seed_id": "537ed938-c39c-5cec-9ce0-b0d91c2f6eaf",
+  "creative_interpretation": "The body stops while residual blouse movement continues through inertia; this is a one-use metaphor, not a reusable prompt template.",
+  "source_evidence": {
+    "reroll_spec": {
+      "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m02-v05-reroll-spec.json",
+      "sha256": "e4af6fb221141bac59821ea98997c2abd3ace1f3ebfd3dec86797f7e53e4fd12"
+    },
+    "runtime_pack": {
+      "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/runtime/f01-fluid-approach-m02-reroll-01/shot-pack.json",
+      "sha256": "54fefcd6e931ad2580858ee624810793d8bc50ca21126f140093bb8ca0cf7269"
+    },
+    "independent_pre_render_gate": {
+      "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m02-v05-independent-pre-render-gate.json",
+      "sha256": "9832b9e373520bfb08f879bfaef1d289df8499b65f01e71cc4e63fac490bd1c4",
+      "verdict": "PASS"
+    },
+    "scene_start_manifest": {
+      "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m02-v05-scene-start-manifest.json",
+      "sha256": "8335df87717ec860c8fbbc88b88e66b4e7e98acd8ba556e8ae6b235f43623ac7"
+    },
+    "scene_start_identity_gate": {
+      "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m02-v05-scene-start-manifest-identity-gate.json",
+      "sha256": "e3331b2825e416bab9b5ac8c81527b6e0b36fc6a0a2bb576e4564481fc2c4c2c"
+    },
+    "scene_start_video_authorization": {
+      "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m02-v05-scene-start-video-authorization.json",
+      "sha256": "3e43a3dd4f374131beff0e85812b92f6d12bca9ec4b4fe4ef41d3b7a8e34fd33"
+    },
+    "live_receipt": {
+      "path_on_pro": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/probe-run-receipt.json",
+      "sha256": "a92d856d70e452f532b4c35b338b7a6bf2efa5b8a5242623242dcd9579bb018e"
+    },
+    "flow_context": {
+      "path_on_pro": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/_flowkit_context.json",
+      "sha256": "64be54125c992e2bf0ee3c55dbf30e90b8f785ff6bfa54226861e72d89272960"
+    },
+    "spend_authorization_log": {
+      "path_on_pro": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/execution/spend-decisions.jsonl",
+      "sha256": "295178887fe6da43ddb539b7676d9b1257a77a965442e2f8f4bcb86b78365f9a"
+    }
+  },
+  "start_frame_gate": {
+    "verifier": "insightface-buffalo_l",
+    "mock_mode": false,
+    "face_count": 1,
+    "cosine": 0.7896914482116699,
+    "pass_cosine_threshold": 0.6,
+    "verdict": "PASS",
+    "start_frame_sha256": "c110699f7e6347ad8491e6381e93914089b76e31b5739e1413715fc02c688052"
+  },
+  "generation": {
+    "status": "SUCCESSFUL",
+    "generate_call_count": 1,
+    "automatic_retries": 0,
+    "project_id": "08c2c96a-7983-4f8b-a41e-b3afe3a68e3b",
+    "video_id": "648a1e43-fae8-4d2a-a825-f6a2c31225b0",
+    "scene_id": "84bab0e9-5b86-497f-bb7f-d989f505dce3",
+    "start_image_media_id": "958da8af-e457-49ef-ac94-b7ce255d4484",
+    "workflow_id": "806283d2-a2f8-477d-a327-2a29d313d331",
+    "media_id": "b8f6f600-5093-4edf-bcb3-e5383df76c3e",
+    "flow_media_status": "MEDIA_GENERATION_STATUS_SUCCESSFUL",
+    "flow_project_status": "COMPLETED",
+    "flow_prompt_sha256": "30e6c7b7971b3406df34af8b968b4834154428bb51ec638db6e9e872f23532cb"
+  },
+  "retrieval": {
+    "status": "BLOCKED",
+    "download_call_count": 1,
+    "local_mp4_present": false,
+    "expected_path_on_pro": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/clips/105.mp4",
+    "legacy_endpoint_result": "400 INVALID_ARGUMENT",
+    "workflow_status_route": "/api/flow/check-omni-status",
+    "workflow_status_url_present": false,
+    "workflow_status_encoded_video_present": false,
+    "workflow_status_url_error": "Failed to fetch",
+    "diagnosis": "The workflow-backed asset exists and is complete, but the authenticated bridge did not resolve a signed media URL. This is retrieval failure, not generation failure.",
+    "do_not_regenerate": true,
+    "manual_recovery": {
+      "browser": "authenticated Chrome on Pro",
+      "flow_url": "https://labs.google/fx/tools/flow",
+      "project_name": "s01e13-m02-imagegen-identity-edit-20260831",
+      "action": "Open the existing generated video, choose Download, and save it to the expected_path_on_pro. Do not choose Generate, Retry, Extend, or Upscale.",
+      "authenticated_media_redirect": "https://labs.google/fx/api/trpc/media.getMediaUrlRedirect?name=b8f6f600-5093-4edf-bcb3-e5383df76c3e"
+    }
+  },
+  "credit_truth": {
+    "live_before": 12530,
+    "live_after": 12520,
+    "observed_global_balance_delta": 10,
+    "observed_delta_scope": "global_account_balance_observation_not_per_workflow",
+    "submitted_clip_cost_parameter": 10,
+    "accounted_episode_video_probe_spend_after": 30,
+    "episode_credit_cap": 240,
+    "historical_ledger_discrepancy": {
+      "recorded_clip_cost": 20,
+      "submitted_clip_cost_parameter": 10,
+      "cause": "The generation client used its old default instead of the runner's measured clip cost.",
+      "remediation": "The runner and generation client now propagate the explicit clip-cost parameter. The historical row must not override the contemporaneous observation, and the account-wide balance delta must not be presented as workflow-specific billing proof."
+    }
+  },
+  "clip_qa": {
+    "technical": "NOT_RUN",
+    "identity": "NOT_RUN",
+    "motion": "NOT_RUN",
+    "composition": "NOT_RUN",
+    "audio": "NOT_RUN",
+    "reason": "The MP4 has not been retrieved locally.",
+    "canary_verdict": null
+  },
+  "decision": "RECOVER_EXISTING_MEDIA_THEN_QA",
+  "publication_allowed": false
+}

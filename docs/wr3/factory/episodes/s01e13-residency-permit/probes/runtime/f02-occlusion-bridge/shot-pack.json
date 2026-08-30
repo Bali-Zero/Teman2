@@ -1,0 +1,143 @@
+{
+  "schema_version": "wr3-camera-probe-runtime/1.0",
+  "adapter_version": "1.2",
+  "episode_id": "s01e13-residency-permit-probes-f02-occlusion-bridge",
+  "source_episode_id": "s01e13-residency-permit-probes",
+  "candidate_id": "C07",
+  "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+  "originality_gate": {
+    "verdict": "PASS",
+    "registration_kind": "root",
+    "signature_sha256": "b9a98c97a22e73240455e37b63bb4b6ca950164668910458220a722fa365d8ac",
+    "description_sha256": "0b9204f8c001dec0cffdb05fc8d4218e1b56cb74cc536b0a9af3c2ba0f382796",
+    "request_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-request.json",
+    "request_sha256": "28a33021afd9cff44c873e01e980c2525789bf472f36c7b2883d2ee78fa03998",
+    "receipt_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-receipt.json",
+    "receipt_sha256": "089bec6bc15fc0e2c26e244482edf5b58b5b3746c2d5910326151f794b930eb7",
+    "ledger_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-ledger.jsonl",
+    "ledger_sha256_at_registration": "70c47e1abc40284ba8ab50503ec5203745ae5cb280437b48d6cd482df6d671ba",
+    "ledger_record_count_at_registration": 1
+  },
+  "family_id": "f02-occlusion-bridge",
+  "source_pack": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/packs/f02-occlusion-bridge/shot-pack.json",
+  "source_pack_sha256": "90ca55ba7c49f070edaefe8f59dc6472fd94b62925509ec2b9c75266f719e1c4",
+  "topic": "S01E13 cinematic probe family 02 — occlusion bridge",
+  "purpose": "authorised standalone cinematic camera probes; not a final episode",
+  "anchor_image_path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+  "anchor_sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026",
+  "identity_token": "A007",
+  "aspect_ratio": "9:16",
+  "resolution": "720x1280",
+  "total_duration_s": 32,
+  "transition_map": {
+    "mode": "standalone-camera-probes",
+    "entries": [
+      {
+        "shot_id": "s0201",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      },
+      {
+        "shot_id": "s0202",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      },
+      {
+        "shot_id": "s0203",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      },
+      {
+        "shot_id": "s0204",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      }
+    ]
+  },
+  "shots": [
+    {
+      "index": 201,
+      "shot_id": "s0201",
+      "global_probe_id": "s01e13-residency-permit-probes:f02-occlusion-bridge:v01",
+      "variant_id": "v01",
+      "variant_seed_id": "42050722-c4c6-51d3-a409-03c9c5bd3639",
+      "family_id": "f02-occlusion-bridge",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "eye-level 32mm lateral tracking shot, moving parallel with Zantara until a near limestone pier passes directly across the lens and covers the entire frame for roughly half a second, then reveals her continuing at the same speed. Preserve the approved A007 Zantara face, age, skin tone, long center-parted black hair, gold earrings, and ivory-and-gold blouse. One action only: she walks steadily from left to right through quiet modern service architecture. The occlusion is caused by real blocking and camera travel, not a digital wipe; exposure and motion remain continuous on both sides. Native audio is footsteps and low room tone, with one dry shoe contact spanning the blackout; no speech.",
+      "positive_prompt": "eye-level 32mm lateral tracking shot, moving parallel with Zantara until a near limestone pier passes directly across the lens and covers the entire frame for roughly half a second, then reveals her continuing at the same speed. Preserve the approved A007 Zantara face, age, skin tone, long center-parted black hair, gold earrings, and ivory-and-gold blouse. One action only: she walks steadily from left to right through quiet modern service architecture. The occlusion is caused by real blocking and camera travel, not a digital wipe; exposure and motion remain continuous on both sides. Native audio is footsteps and low room tone, with one dry shoe contact spanning the blackout; no speech.",
+      "prompt_negative": "text, signs, papers, extra people, mirrors, duplicate body, dramatic flare, speed ramp, tourist décor, or visible edit effect, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "negative_prompt": "text, signs, papers, extra people, mirrors, duplicate body, dramatic flare, speed ramp, tourist décor, or visible edit effect, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-dub-safe-ambient"
+    },
+    {
+      "index": 202,
+      "shot_id": "s0202",
+      "global_probe_id": "s01e13-residency-permit-probes:f02-occlusion-bridge:v02",
+      "variant_id": "v02",
+      "variant_seed_id": "f4a8693e-6105-5c4a-aca4-24b0fbf91ddf",
+      "family_id": "f02-occlusion-bridge",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "a 40mm camera tracks backward and slightly sideways, a very near dark wooden architectural fin naturally sweeps across the lens, gives complete edge-to-edge occlusion for a clean edit beat, and uncovers Zantara without changing her screen direction. Preserve the exact approved A007 Zantara identity, facial geometry, age, skin, center-parted black hair, brown eyes, gold earrings, and canonical ivory silk blouse. One action only: she advances calmly through a warm-to-neutral interior, never looking theatrical or promotional. The foreground wipe has believable motion blur and no artificial transition styling. Native audio carries continuous footsteps, room tone, and a restrained dry wooden click at maximum occlusion; no speech or music.",
+      "positive_prompt": "a 40mm camera tracks backward and slightly sideways, a very near dark wooden architectural fin naturally sweeps across the lens, gives complete edge-to-edge occlusion for a clean edit beat, and uncovers Zantara without changing her screen direction. Preserve the exact approved A007 Zantara identity, facial geometry, age, skin, center-parted black hair, brown eyes, gold earrings, and canonical ivory silk blouse. One action only: she advances calmly through a warm-to-neutral interior, never looking theatrical or promotional. The foreground wipe has believable motion blur and no artificial transition styling. Native audio carries continuous footsteps, room tone, and a restrained dry wooden click at maximum occlusion; no speech or music.",
+      "prompt_negative": "words, signs, paperwork, screens, logos, extra people, reflections, duplicate Zantara, official insignia, airport or resort imagery, whip pan, zoom, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "negative_prompt": "words, signs, paperwork, screens, logos, extra people, reflections, duplicate Zantara, official insignia, airport or resort imagery, whip pan, zoom, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-dub-safe-ambient"
+    },
+    {
+      "index": 203,
+      "shot_id": "s0203",
+      "global_probe_id": "s01e13-residency-permit-probes:f02-occlusion-bridge:v03",
+      "variant_id": "v03",
+      "variant_seed_id": "d29101ec-92cd-5f43-bce7-a08fa0180f7a",
+      "family_id": "f02-occlusion-bridge",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "a close 50mm side-follow shot, allows a matte near-black partition in the extreme foreground to enter, cover every pixel for about twelve frames, and leave while camera and subject maintain one uninterrupted velocity. Preserve approved A007 Zantara exactly: the same face, age, skin tone, long straight center-parted hair, gold earrings, and ivory blouse with restrained gold detail. One action only: she walks past layered neutral architecture with controlled purpose, neither hurried nor posing. The full blackout must feel physically photographed, with soft edge blur before and after, suitable for an invisible stitch. Native audio remains continuous: two measured steps, soft air, one quiet latch-like click during blackout; she does not speak.",
+      "positive_prompt": "a close 50mm side-follow shot, allows a matte near-black partition in the extreme foreground to enter, cover every pixel for about twelve frames, and leave while camera and subject maintain one uninterrupted velocity. Preserve approved A007 Zantara exactly: the same face, age, skin tone, long straight center-parted hair, gold earrings, and ivory blouse with restrained gold detail. One action only: she walks past layered neutral architecture with controlled purpose, neither hurried nor posing. The full blackout must feel physically photographed, with soft edge blur before and after, suitable for an invisible stitch. Native audio remains continuous: two measured steps, soft air, one quiet latch-like click during blackout; she does not speak.",
+      "prompt_negative": "generated text, documents, symbols, background people, mirrors, duplicate figure, fantasy interface, stamp imagery, tourist scenery, camera spin, or stylized digital wipe, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "negative_prompt": "generated text, documents, symbols, background people, mirrors, duplicate figure, fantasy interface, stamp imagery, tourist scenery, camera spin, or stylized digital wipe, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-dub-safe-ambient"
+    },
+    {
+      "index": 204,
+      "shot_id": "s0204",
+      "global_probe_id": "s01e13-residency-permit-probes:f02-occlusion-bridge:v04",
+      "variant_id": "v04",
+      "variant_seed_id": "77d81ae6-79e2-5cc1-ab4f-554e0f841a76",
+      "family_id": "f02-occlusion-bridge",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "a steady 35mm forward-lateral move, follows Zantara as a shadowed concrete wall edge passes centimeters from the lens, completely occluding the image for half a second before revealing the same walking action in cooler space. Preserve the exact A007 Zantara identity, facial structure, apparent age, natural skin, center-parted long black hair, gold earrings, and ivory silk blouse. One action only: she continues forward without pause or direction change; her performance stays inward, calm, and precise. The wall wipe is a real spatial event with natural motion blur, not a transition overlay. Native audio bridges the darkness with footfall, restrained room tone, and a single dry architectural click; no dialogue.",
+      "positive_prompt": "a steady 35mm forward-lateral move, follows Zantara as a shadowed concrete wall edge passes centimeters from the lens, completely occluding the image for half a second before revealing the same walking action in cooler space. Preserve the exact A007 Zantara identity, facial structure, apparent age, natural skin, center-parted long black hair, gold earrings, and ivory silk blouse. One action only: she continues forward without pause or direction change; her performance stays inward, calm, and precise. The wall wipe is a real spatial event with natural motion blur, not a transition overlay. Native audio bridges the darkness with footfall, restrained room tone, and a single dry architectural click; no dialogue.",
+      "prompt_negative": "visible writing, labels, forms, logos, additional people, reflection duplicates, official seals, airport imagery, beaches, dramatic lens flare, speed ramp, or orbiting camera, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "negative_prompt": "visible writing, labels, forms, logos, additional people, reflection duplicates, official seals, airport imagery, beaches, dramatic lens flare, speed ramp, or orbiting camera, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-dub-safe-ambient"
+    }
+  ]
+}

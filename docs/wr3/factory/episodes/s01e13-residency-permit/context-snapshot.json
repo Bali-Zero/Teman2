@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "episode_id": "S01E13",
+  "candidate_id": "C07",
+  "title": "What Your Residency Permit Does Not Come With",
+  "domain": "immigration",
+  "core_question": "Which rights do foreigners wrongly assume are bundled into a residency status, and which must be obtained separately?",
+  "audience": "New residents, retirees, investors, and people who assume a long-stay permit automatically unlocks property, banking, work, or tax outcomes.",
+  "human_tension": "The permit feels like citizenship-lite until a real transaction reveals that it is a narrow key rather than a master key.",
+  "narrative_promise": "Separate what residency grants, what it merely enables, and what it does not determine.",
+  "concept_name": "bundle fallacy",
+  "regulatory_volatility": "high",
+  "sourceability": "high",
+  "legal_scope": {
+    "camera_probes_only": true,
+    "implementation_specific_claims_allowed": false,
+    "final_script_requires_independent_grounding": true,
+    "warning": "TO VERIFY against source"
+  },
+  "identity": {
+    "character": "Zantara",
+    "anchor_id": "A007",
+    "anchor_path_on_pro": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+    "anchor_sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026"
+  },
+  "format": {
+    "aspect_ratio": "9:16",
+    "resolution": "720x1280",
+    "source_clip_duration_seconds": 8,
+    "native_audio": true,
+    "visible_generated_text": false
+  },
+  "forbidden_visual_vocabulary": [
+    "airport",
+    "passport close-up",
+    "visa stamp",
+    "floating paper",
+    "holographic interface",
+    "literal labelled doors",
+    "decorative orbiting camera",
+    "drone Bali establishing shot",
+    "beach or resort filler",
+    "government insignia",
+    "duplicate or reflected Zantara"
+  ],
+  "source_artifacts": {
+    "season_01_path": "docs/wr3/factory/editorial/season-01.json",
+    "season_01_sha256": "4eba3b650c05d2926f8976e9458816565568abae490c2da43624b495249765e4",
+    "existing_content_top_lexical_cosine": 0.084
+  }
+}

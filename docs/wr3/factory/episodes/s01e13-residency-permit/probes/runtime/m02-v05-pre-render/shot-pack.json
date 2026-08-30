@@ -1,0 +1,30 @@
+{
+  "schema_version": "wr3.camera-probe-pre-render-input.v1",
+  "created_at": "2026-08-30T20:05:34Z",
+  "episode_id": "s01e13-residency-permit-probes-f01-fluid-approach",
+  "family_id": "f01-fluid-approach",
+  "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+  "lineage_id": "m02-v04-reroll-01-inertia-stop",
+  "source_runtime_pack": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/runtime/f01-fluid-approach-m02-reroll-01/shot-pack.json",
+  "source_runtime_pack_sha256": "54fefcd6e931ad2580858ee624810793d8bc50ca21126f140093bb8ca0cf7269",
+  "total_duration_s": 8,
+  "shots": [
+    {
+      "index": 105,
+      "shot_id": "s0105",
+      "global_probe_id": "s01e13-residency-permit-probes:f01-fluid-approach:v05",
+      "variant_id": "v05",
+      "variant_seed_id": "537ed938-c39c-5cec-9ce0-b0d91c2f6eaf",
+      "family_id": "f01-fluid-approach",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "A007 Zantara completes her current step into stillness; blouse fabric continues briefly from inertia. Locked camera, soft daylight, unobstructed face, native room tone, silent subject.",
+      "prompt_negative": "identity drift, continued walking, runway pose, camera movement, environment change, duplicate person, reflection, text, overlays, borders",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "audio_mode": "native-dub-safe-ambient"
+    }
+  ]
+}

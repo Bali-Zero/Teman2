@@ -1,0 +1,143 @@
+{
+  "schema_version": "wr3-camera-probe-runtime/1.0",
+  "adapter_version": "1.2",
+  "episode_id": "s01e13-residency-permit-probes-f03-spatial-compression",
+  "source_episode_id": "s01e13-residency-permit-probes",
+  "candidate_id": "C07",
+  "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+  "originality_gate": {
+    "verdict": "PASS",
+    "registration_kind": "root",
+    "signature_sha256": "b9a98c97a22e73240455e37b63bb4b6ca950164668910458220a722fa365d8ac",
+    "description_sha256": "0b9204f8c001dec0cffdb05fc8d4218e1b56cb74cc536b0a9af3c2ba0f382796",
+    "request_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-request.json",
+    "request_sha256": "28a33021afd9cff44c873e01e980c2525789bf472f36c7b2883d2ee78fa03998",
+    "receipt_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-receipt.json",
+    "receipt_sha256": "089bec6bc15fc0e2c26e244482edf5b58b5b3746c2d5910326151f794b930eb7",
+    "ledger_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-ledger.jsonl",
+    "ledger_sha256_at_registration": "70c47e1abc40284ba8ab50503ec5203745ae5cb280437b48d6cd482df6d671ba",
+    "ledger_record_count_at_registration": 1
+  },
+  "family_id": "f03-spatial-compression",
+  "source_pack": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/packs/f03-spatial-compression/shot-pack.json",
+  "source_pack_sha256": "db686e1d618f4ae00ac4b22b01fb4ae53b9959b29613b3b98e20de61360fda7a",
+  "topic": "S01E13 cinematic probe family 03 — spatial compression",
+  "purpose": "authorised standalone cinematic camera probes; not a final episode",
+  "anchor_image_path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+  "anchor_sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026",
+  "identity_token": "A007",
+  "aspect_ratio": "9:16",
+  "resolution": "720x1280",
+  "total_duration_s": 32,
+  "transition_map": {
+    "mode": "standalone-camera-probes",
+    "entries": [
+      {
+        "shot_id": "s0301",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      },
+      {
+        "shot_id": "s0302",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      },
+      {
+        "shot_id": "s0303",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      },
+      {
+        "shot_id": "s0304",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      }
+    ]
+  },
+  "shots": [
+    {
+      "index": 301,
+      "shot_id": "s0301",
+      "global_probe_id": "s01e13-residency-permit-probes:f03-spatial-compression:v01",
+      "variant_id": "v01",
+      "variant_seed_id": "68d90612-f43b-5d18-9dd2-0c8f2131249a",
+      "family_id": "f03-spatial-compression",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "a 28mm stabilized camera retreats before Zantara, beginning in an airy warm atrium and continuing as the ceiling gradually lowers and the passage narrows around her without any literal gate. Preserve the exact approved A007 Zantara face, age, skin tone, long center-parted black hair, gold earrings, and canonical ivory blouse with restrained gold embroidery. One action only: she walks forward at one measured pace, becoming more attentive as the volume compresses but never frightened. Architecture, lens perspective, and blocking create the change; no morphing or fantasy transformation. Native audio shifts naturally from open reverberation to a tighter dry footstep and low ventilation; she remains silent. End in a balanced medium shot inside the narrower space.",
+      "positive_prompt": "a 28mm stabilized camera retreats before Zantara, beginning in an airy warm atrium and continuing as the ceiling gradually lowers and the passage narrows around her without any literal gate. Preserve the exact approved A007 Zantara face, age, skin tone, long center-parted black hair, gold earrings, and canonical ivory blouse with restrained gold embroidery. One action only: she walks forward at one measured pace, becoming more attentive as the volume compresses but never frightened. Architecture, lens perspective, and blocking create the change; no morphing or fantasy transformation. Native audio shifts naturally from open reverberation to a tighter dry footstep and low ventilation; she remains silent. End in a balanced medium shot inside the narrower space.",
+      "prompt_negative": "text, signs, doors with labels, papers, screens, other people, duplicates, mirrors, airport, resort, speed ramp, zoom, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "negative_prompt": "text, signs, doors with labels, papers, screens, other people, duplicates, mirrors, airport, resort, speed ramp, zoom, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-dub-safe-ambient"
+    },
+    {
+      "index": 302,
+      "shot_id": "s0302",
+      "global_probe_id": "s01e13-residency-permit-probes:f03-spatial-compression:v02",
+      "variant_id": "v02",
+      "variant_seed_id": "0ed87e67-3d19-5f31-b704-cf6f8e51f682",
+      "family_id": "f03-spatial-compression",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "eye-level 35mm tracking backward, an initially broad stone corridor becomes visually constrained as two side walls converge in perspective and foreground edges occupy more of the frame. Preserve approved A007 Zantara exactly: same Indonesian woman, facial geometry, age, skin tone, straight center-parted black hair, brown eyes, gold earrings, and ivory-and-gold blouse. One action only: she advances along the center line, shoulders relaxed, with confidence turning into precise observation. The world stays physically plausible and continuous; the compression comes from location geometry and camera path, not digital warping. Native audio is footsteps whose echo shortens as the walls close, quiet air, and no speech. Finish with narrow negative space around her.",
+      "positive_prompt": "eye-level 35mm tracking backward, an initially broad stone corridor becomes visually constrained as two side walls converge in perspective and foreground edges occupy more of the frame. Preserve approved A007 Zantara exactly: same Indonesian woman, facial geometry, age, skin tone, straight center-parted black hair, brown eyes, gold earrings, and ivory-and-gold blouse. One action only: she advances along the center line, shoulders relaxed, with confidence turning into precise observation. The world stays physically plausible and continuous; the compression comes from location geometry and camera path, not digital warping. Native audio is footsteps whose echo shortens as the walls close, quiet air, and no speech. Finish with narrow negative space around her.",
+      "prompt_negative": "written words, signs, forms, holograms, literal barriers, extra people, reflections, duplicate face, government emblems, airport or tropical filler, dolly zoom, whip pan, or camera orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "negative_prompt": "written words, signs, forms, holograms, literal barriers, extra people, reflections, duplicate face, government emblems, airport or tropical filler, dolly zoom, whip pan, or camera orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-dub-safe-ambient"
+    },
+    {
+      "index": 303,
+      "shot_id": "s0303",
+      "global_probe_id": "s01e13-residency-permit-probes:f03-spatial-compression:v03",
+      "variant_id": "v03",
+      "variant_seed_id": "ac8fce97-05f8-55f3-b377-1499c0eab5a5",
+      "family_id": "f03-spatial-compression",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "a restrained 70mm lens tracks backward from a medium view, compressing repeated architectural planes behind Zantara so their spacing appears to tighten as she advances. Preserve the exact approved A007 identity, face, age, natural skin texture, long center-parted black hair, gold earrings, and canonical ivory silk blouse with subtle gold embroidery. One action only: she walks toward camera through neutral modern architecture, her pace unchanged while the long lens makes the environment feel progressively less permissive.",
+      "positive_prompt": "a restrained 70mm lens tracks backward from a medium view, compressing repeated architectural planes behind Zantara so their spacing appears to tighten as she advances. Preserve the exact approved A007 identity, face, age, natural skin texture, long center-parted black hair, gold earrings, and canonical ivory silk blouse with subtle gold embroidery. One action only: she walks toward camera through neutral modern architecture, her pace unchanged while the long lens makes the environment feel progressively less permissive.",
+      "prompt_negative": "literal obstruction appears; the psychological pressure comes only from flattened depth, increasingly dense vertical lines, and cooler indirect light. Native audio remains realistic and sparse: firm footfalls, close cloth movement, faint mechanical air; no dialogue or musical rise. End before a close-up. No visible text, paperwork, labels, screens, other people, duplicate, reflection, official iconography, airport or resort imagery, dolly zoom, speed ramp, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "negative_prompt": "literal obstruction appears; the psychological pressure comes only from flattened depth, increasingly dense vertical lines, and cooler indirect light. Native audio remains realistic and sparse: firm footfalls, close cloth movement, faint mechanical air; no dialogue or musical rise. End before a close-up. No visible text, paperwork, labels, screens, other people, duplicate, reflection, official iconography, airport or resort imagery, dolly zoom, speed ramp, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-dub-safe-ambient"
+    },
+    {
+      "index": 304,
+      "shot_id": "s0304",
+      "global_probe_id": "s01e13-residency-permit-probes:f03-spatial-compression:v04",
+      "variant_id": "v04",
+      "variant_seed_id": "fe01bfc9-6a84-52c9-9932-2e6482869ead",
+      "family_id": "f03-spatial-compression",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "a 32mm camera moves laterally with Zantara, a broad near wall wipes most of the frame and reveals her continuing into a visibly narrower, deeper passage, preserving screen direction and walking rhythm. Preserve approved A007 Zantara exactly: same face, age, skin, brown eyes, long straight center-parted hair, gold earrings, and ivory silk blouse with restrained embroidery. One action only: she walks from the generous warm space into the compressed neutral space, reacting only with a slight increase in concentration. The spatial change is architectural and plausible, not magical; the foreground wipe provides a potential stitch point but does not fully black out. Native audio changes from soft atrium reverberation to dry corridor footsteps and low room tone; no speech.",
+      "positive_prompt": "a 32mm camera moves laterally with Zantara, a broad near wall wipes most of the frame and reveals her continuing into a visibly narrower, deeper passage, preserving screen direction and walking rhythm. Preserve approved A007 Zantara exactly: same face, age, skin, brown eyes, long straight center-parted hair, gold earrings, and ivory silk blouse with restrained embroidery. One action only: she walks from the generous warm space into the compressed neutral space, reacting only with a slight increase in concentration. The spatial change is architectural and plausible, not magical; the foreground wipe provides a potential stitch point but does not fully black out. Native audio changes from soft atrium reverberation to dry corridor footsteps and low room tone; no speech.",
+      "prompt_negative": "words, signs, documents, labelled doors, graphics, other people, mirrors, duplicates, official seals, tourist imagery, zoom, whip pan, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "negative_prompt": "words, signs, documents, labelled doors, graphics, other people, mirrors, duplicates, official seals, tourist imagery, zoom, whip pan, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-dub-safe-ambient"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schema_version": "wr3.identity-scene-start-rd-result.v1",
+  "recorded_at": "2026-08-30T19:43:22.670548+00:00",
+  "run_id": "e13-m01-dual-reference-scene-start",
+  "experiment_id": "M01",
+  "hypothesis": "Two project-scoped identity references can preserve A007 while Flow generates the scene composition.",
+  "method": "one Flow image generation with ordered A007 and A002 identity references; no retry; no video generation",
+  "project_id": "2e77dddf-e86e-4e02-a618-3d85376705ad",
+  "video_id": "6eaca857-9566-4e50-98de-f8e08d4aaad9",
+  "generated_media_id": "dee53869-3d4a-45e0-b825-e8027ffa7216",
+  "start_frame_sha256": "9dd5dd184ae381e0e829bd309e7eb14f48862c47c4afbea02ad1e97b6a2d64bf",
+  "prompt_sha256": "30dd512d5db03bb7add3d2935278097159e65ed9323517c5d5675c3a4fd910da",
+  "identity_gate": {
+    "verifier": "insightface-buffalo_l",
+    "mock_mode": false,
+    "face_count": 1,
+    "cosine": 0.49962252378463745,
+    "pass_cosine_threshold": 0.6,
+    "hard_fail_cosine_threshold": 0.55,
+    "verdict": "HARD_FAIL",
+    "reason": "cosine 0.499623 is below 0.550"
+  },
+  "generation_counts": {
+    "image_generation_count": 1,
+    "video_generation_count": 0,
+    "automatic_retries": 0
+  },
+  "decision": "CLOSED_NO_VIDEO",
+  "learning": "Flow's dual-reference scene generation produced a clean composition but did not preserve the canonical identity strongly enough."
+}

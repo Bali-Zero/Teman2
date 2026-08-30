@@ -1,0 +1,48 @@
+{
+  "schema_version": "wr3.scene-start-identity-gate.v1",
+  "recorded_at": "2026-08-30T20:05:34Z",
+  "run_id": "e13-m02-imagegen-identity-edit",
+  "episode_id": "s01e13-residency-permit-probes-f01-fluid-approach",
+  "project_id": "08c2c96a-7983-4f8b-a41e-b3afe3a68e3b",
+  "start_frame_path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/assets/m02-imagegen-identity-edit.png",
+  "start_frame_sha256": "c110699f7e6347ad8491e6381e93914089b76e31b5739e1413715fc02c688052",
+  "mock_mode": false,
+  "verifier": "insightface-buffalo_l",
+  "face_count": 1,
+  "cosine": 0.7896914482116699,
+  "pass_cosine_threshold": 0.6,
+  "hard_fail_cosine_threshold": 0.55,
+  "verdict": "PASS",
+  "reason": "exactly one face and cosine is at least 0.600",
+  "image_generation_count": 1,
+  "video_generation_count": 0,
+  "measurement": {
+    "anchor_embedding_path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/ingredients/zantara-anchor-A007.embedding.npy",
+    "anchor_embedding_sha256": "6825bdcabb2d6a95c51aeeba90bc7e89f8097b37f4fd6f3ffee0f29ebe42c78c",
+    "cosine": 0.7896914482116699,
+    "detector_size": [640, 640],
+    "face_count": 1,
+    "image_path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/assets/m02-imagegen-identity-edit.png",
+    "image_sha256": "c110699f7e6347ad8491e6381e93914089b76e31b5739e1413715fc02c688052",
+    "mock_mode": false,
+    "verifier": "insightface-buffalo_l"
+  },
+  "measurement_provenance": {
+    "measurement_reused_for_identical_frame": true,
+    "source_gate_path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/execution/m02-scene-start-manifest-identity-gate.json",
+    "source_gate_sha256": "d14f5c6bd4ffe4477abe7941383056832ff234d9c588d67a6436cffbcd3c8904",
+    "reuse_basis": "the start-frame path and SHA-256 are unchanged; no image regeneration or pixel transformation occurred"
+  },
+  "manifest_binding": {
+    "path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/execution/m02-v05-scene-start-manifest.json",
+    "sha256": "8335df87717ec860c8fbbc88b88e66b4e7e98acd8ba556e8ae6b235f43623ac7"
+  },
+  "creative_binding": {
+    "lineage_id": "m02-v04-reroll-01-inertia-stop",
+    "variant_id": "v05",
+    "shot_id": "s0105",
+    "runtime_pack_sha256": "54fefcd6e931ad2580858ee624810793d8bc50ca21126f140093bb8ca0cf7269",
+    "reroll_spec_sha256": "e4af6fb221141bac59821ea98997c2abd3ace1f3ebfd3dec86797f7e53e4fd12",
+    "deterministic_pre_render_gate_sha256": "f858ba45bca62d6a8129ade012321b9f2a105ff461feec674d5dcfc0bdb83e33"
+  }
+}

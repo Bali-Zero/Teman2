@@ -1,0 +1,43 @@
+{
+  "schema_version": "wr3.scene-start-authorization.v1",
+  "episode_id": "s01e13-residency-permit-probes",
+  "family_id": "f01-fluid-approach",
+  "variant_id": "v04",
+  "decision": "PASS_STILL_ONLY",
+  "video_authorized": false,
+  "approved_prompt_file": "f01-v04-scene-start-prompt.txt",
+  "approved_prompt_word_count": 22,
+  "identity_reference": {
+    "token": "A007",
+    "role": "identity_reference_only",
+    "sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026",
+    "dimensions": [1402, 1122],
+    "required_character_media_count": 1
+  },
+  "pre_spend_snapshot": {
+    "flow_health": "ok",
+    "extension_connected": true,
+    "live_credits": 12530,
+    "paygate": "PAYGATE_TIER_TIER1P5",
+    "accounted_video_probe_credits": 20,
+    "credit_cap": 240,
+    "image_generation_count": 0,
+    "video_generation_count": 0,
+    "captured_at": "2026-08-30T19:23:05Z"
+  },
+  "attempt_contract": {
+    "maximum_image_generation_calls": 1,
+    "automatic_retries": 0,
+    "native_orientation": "portrait",
+    "post_gate_face_count": 1,
+    "post_gate_arcface_cosine_min": 0.6,
+    "raw_a007_may_be_video_start": false
+  },
+  "gate_notes": {
+    "creative_pass": "fresh bounded v04 reasoning",
+    "pre_render_gate": "PASS",
+    "still_prompt_words": 22,
+    "video_prompt_words": 24,
+    "video_status": "LOCKED_PENDING_STILL_IDENTITY_PASS"
+  }
+}

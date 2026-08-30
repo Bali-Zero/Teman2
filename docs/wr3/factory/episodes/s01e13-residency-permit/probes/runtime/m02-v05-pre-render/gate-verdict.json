@@ -1,0 +1,45 @@
+{
+  "verdict": "PASS",
+  "checks": {
+    "cliche": {
+      "passed": 1,
+      "failed": 0,
+      "details": []
+    },
+    "cost": {
+      "projected_cr": 0,
+      "budget_remaining_cr": null,
+      "expected_cr": 190,
+      "hard_ceiling_cr": 209,
+      "mode": "placeholder",
+      "daily_ceiling_cr": null,
+      "spent_today_cr": null,
+      "spent_today_source": null,
+      "business_tz": null,
+      "quota_as_of": null,
+      "reasons": [],
+      "passed": true
+    },
+    "safety": {
+      "flagged_words": [],
+      "passed": true
+    },
+    "tier1_dialect": {
+      "max_word_count": 25,
+      "passed": true
+    },
+    "shot_count": {
+      "n": 1,
+      "sanity_bound": 2,
+      "passed": true
+    },
+    "identity_tokens": {
+      "passed": true
+    }
+  },
+  "shots_passed": 1,
+  "shots_to_reroll": [],
+  "retry_reasons": [],
+  "reviewer": "wr3-pre-render-gatekeeper (deterministic check matrix, inline ruleset)",
+  "note": "External cliche-library.md absent on disk (infra gap, seeded-empty 2026-05-18). Ran agent-definition inline Hard-rules ruleset. Cost gate derives per-clip cost from wr3_credit_ledger.CLIP_COST_CR SSOT and fails closed on a missing/stale flow-quota snapshot (2026-08-23 cost-truth fix)."
+}

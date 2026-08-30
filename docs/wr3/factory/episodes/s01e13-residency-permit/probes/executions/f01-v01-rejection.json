@@ -1,0 +1,95 @@
+{
+  "schema_version": "wr3-camera-probe-review/1.0",
+  "episode_id": "S01E13",
+  "candidate_id": "C07",
+  "topic": "What Your Residency Permit Does Not Come With",
+  "family_id": "f01-fluid-approach",
+  "variant_id": "v01",
+  "global_probe_id": "s01e13-residency-permit-probes:f01-fluid-approach:v01",
+  "variant_seed_id": "bbe34403-6bb7-55ab-b54f-39e57cf22a0e",
+  "source_pack_sha256": "7d277aad31475fbd4d93f052b935817870f81b00dec43f7c85eacafa38bdc2be",
+  "source_prompt_sha256": "7a918eeb0559abf198b0a5fc9674a0cac91ca4a8adb4747042f62bda611acaa5",
+  "generation": {
+    "submitted_at_utc": "2026-08-30T17:35:08.841748+00:00",
+    "project_id": "6f58bf46-9036-4e6e-8919-35c9021313e7",
+    "video_id": "36b93f20-2653-4dcc-854d-16ba4b40a683",
+    "workflow_id": "8c58f6dd-cc00-45f2-867a-83c30b452051",
+    "media_id": "e97b7545-696a-43f2-819f-587679c13faa",
+    "paygate": "PAYGATE_TIER_TIER1P5",
+    "native_audio": true,
+    "automatic_retries": 0,
+    "generation_status": "successful",
+    "retrieval_path": "authenticated top-level media redirect after legacy endpoint failure",
+    "resubmitted_for_retrieval_failure": false
+  },
+  "media": {
+    "canonical_path_on_pro": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes/clips/01.mp4",
+    "sha256": "b1878254a8d416a4786d6ada8274cfc6ccea98a73f891538a8405e114acc1bfc",
+    "size_bytes": 2433632,
+    "duration_s": 8.0,
+    "video_codec": "h264",
+    "width": 720,
+    "height": 1280,
+    "frame_rate_fps": 24,
+    "audio_codec": "aac",
+    "audio_channels": 2,
+    "audio_sample_rate_hz": 48000
+  },
+  "credit_accounting": {
+    "live_before": 12550,
+    "live_after": 12540,
+    "measured_delta": 10,
+    "ledger_recorded": 20,
+    "ledger_projection_was_not_measurement": true,
+    "discrepancy": "The append-only ledger used its historical 20-credit projection; the live Tier1P5 balance measured a 10-credit debit. The original row is preserved and the measured delta is authoritative for this probe receipt."
+  },
+  "identity_review": {
+    "verdict": "PASS",
+    "mock_mode": false,
+    "samples": 5,
+    "cosine_average": 0.6928329110145569,
+    "cosine_minimum": 0.6356456279754639,
+    "pass_threshold": 0.6,
+    "hard_fail_threshold": 0.55,
+    "source_report_sha256": "90a3078fa988d1ba85828e033037979f9c6d6a5b37bd157131d381175c2c85c9",
+    "source_report_note": "The saved report's overall_cosine_min was incorrectly initialized to 0.0. The per-clip minimum above is the real sampled value; a separate tested code fix corrects the aggregate initializer."
+  },
+  "audio_review": {
+    "verdict": "PASS_FOR_PROBE",
+    "input_integrated_lufs": -18.82,
+    "input_true_peak_dbtp": -0.11,
+    "input_loudness_range_lu": 5.5,
+    "normalization_preview_output_lufs": -13.46,
+    "normalization_preview_output_true_peak_dbtp": -1.0,
+    "voice_corpus_write_performed": false
+  },
+  "creative_review": {
+    "verdict": "FAIL",
+    "narrative_fitness": "FAIL",
+    "motion_execution": "FAIL",
+    "text_free_frame": "FAIL",
+    "identity": "PASS",
+    "technical_container": "PASS",
+    "observations": [
+      "Veo literalized prompt transport metadata as a fake camera interface with black framing bars and visible technical labels.",
+      "The generated sequence exposed the reference-image presentation rather than entering a clean cinematic world.",
+      "The requested forward walk was barely performed, so the shot did not establish confident movement."
+    ],
+    "diagnosed_cause": "Renderer-facing prose mixed cinematic direction with delivery metadata such as CAMERA FIRST and vertical 9:16, increasing the chance of a literal technical-interface interpretation.",
+    "decision": "REJECT",
+    "beautiful_but_decorative_is_not_accepted": true
+  },
+  "evidence": {
+    "contact_sheet_sha256": "c96d31d484a8d7c4086d8b9b31a810ff0f3308056d35fd53001dddc74051479c",
+    "waveform_sha256": "56a61187d53abeb1d056f39974ea68c7bbda3cd057627336df2af850941d40cf",
+    "frame_count_reviewed": 5
+  },
+  "next_action": {
+    "variant_id": "v02",
+    "variant_seed_id": "6ae42b36-03a7-5d67-a86a-d57a869d76f0",
+    "declared_axis": "35mm eye-level parallax",
+    "reasoning_policy": "Use the pre-authored variant axis and deterministic adapter 1.1; do not spend a new high-reasoning creative pass.",
+    "submission_gate": "Rerun only this canary with transport metadata removed and anti-UI/text constraints included in the actual Flow prompt. Open the other five families only after a creative PASS."
+  },
+  "publication_allowed": false
+}

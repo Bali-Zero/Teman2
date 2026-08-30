@@ -1,0 +1,39 @@
+{
+  "episode_id": "s01e13-residency-permit-probes",
+  "topic": "S01E13 cinematic probe family 02 — occlusion bridge",
+  "anchor_image_path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+  "shots": [
+    {
+      "index": 1,
+      "positive_prompt": "CAMERA FIRST: eye-level 32mm lateral tracking shot, vertical 9:16, moving parallel with Zantara until a near limestone pier passes directly across the lens and covers the entire frame for roughly half a second, then reveals her continuing at the same speed. Preserve the approved A007 Zantara face, age, skin tone, long center-parted black hair, gold earrings, and ivory-and-gold blouse. One action only: she walks steadily from left to right through quiet modern service architecture. The occlusion is caused by real blocking and camera travel, not a digital wipe; exposure and motion remain continuous on both sides. Native audio is footsteps and low room tone, with one dry shoe contact spanning the blackout; no speech. No text, signs, papers, extra people, mirrors, duplicate body, dramatic flare, speed ramp, tourist décor, or visible edit effect.",
+      "identity_tokens": ["A007-Zantara-anchor"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16"
+    },
+    {
+      "index": 2,
+      "positive_prompt": "CAMERA FIRST: a 40mm camera tracks backward and slightly sideways, vertical 9:16; a very near dark wooden architectural fin naturally sweeps across the lens, gives complete edge-to-edge occlusion for a clean edit beat, and uncovers Zantara without changing her screen direction. Preserve the exact approved A007 Zantara identity, facial geometry, age, skin, center-parted black hair, brown eyes, gold earrings, and canonical ivory silk blouse. One action only: she advances calmly through a warm-to-neutral interior, never looking theatrical or promotional. The foreground wipe has believable motion blur and no artificial transition styling. Native audio carries continuous footsteps, room tone, and a restrained dry wooden click at maximum occlusion; no speech or music. No words, signs, paperwork, screens, logos, extra people, reflections, duplicate Zantara, official insignia, airport or resort imagery, whip pan, zoom, or orbit.",
+      "identity_tokens": ["A007-Zantara-anchor"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16"
+    },
+    {
+      "index": 3,
+      "positive_prompt": "CAMERA FIRST: a close 50mm side-follow shot, vertical 9:16, allows a matte near-black partition in the extreme foreground to enter, cover every pixel for about twelve frames, and leave while camera and subject maintain one uninterrupted velocity. Preserve approved A007 Zantara exactly: the same face, age, skin tone, long straight center-parted hair, gold earrings, and ivory blouse with restrained gold detail. One action only: she walks past layered neutral architecture with controlled purpose, neither hurried nor posing. The full blackout must feel physically photographed, with soft edge blur before and after, suitable for an invisible stitch. Native audio remains continuous: two measured steps, soft air, one quiet latch-like click during blackout; she does not speak. No generated text, documents, symbols, background people, mirrors, duplicate figure, fantasy interface, stamp imagery, tourist scenery, camera spin, or stylized digital wipe.",
+      "identity_tokens": ["A007-Zantara-anchor"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16"
+    },
+    {
+      "index": 4,
+      "positive_prompt": "CAMERA FIRST: a steady 35mm forward-lateral move, vertical 9:16, follows Zantara as a shadowed concrete wall edge passes centimeters from the lens, completely occluding the image for half a second before revealing the same walking action in cooler space. Preserve the exact A007 Zantara identity, facial structure, apparent age, natural skin, center-parted long black hair, gold earrings, and ivory silk blouse. One action only: she continues forward without pause or direction change; her performance stays inward, calm, and precise. The wall wipe is a real spatial event with natural motion blur, not a transition overlay. Native audio bridges the darkness with footfall, restrained room tone, and a single dry architectural click; no dialogue. No visible writing, labels, forms, logos, additional people, reflection duplicates, official seals, airport imagery, beaches, dramatic lens flare, speed ramp, or orbiting camera.",
+      "identity_tokens": ["A007-Zantara-anchor"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16"
+    }
+  ]
+}

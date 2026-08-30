@@ -1,0 +1,105 @@
+{
+  "schema_version": "wr3-camera-probe-review/1.0",
+  "episode_id": "S01E13",
+  "candidate_id": "C07",
+  "topic": "What Your Residency Permit Does Not Come With",
+  "family_id": "f01-fluid-approach",
+  "variant_id": "v03",
+  "global_probe_id": "s01e13-residency-permit-probes:f01-fluid-approach:v03",
+  "variant_seed_id": "3b7ab14d-e7d7-5cad-8a6e-45f2cbfabe90",
+  "source_pack_sha256": "7d277aad31475fbd4d93f052b935817870f81b00dec43f7c85eacafa38bdc2be",
+  "scene_start": {
+    "submitted_at_utc": "2026-08-30T18:49:36.246997+00:00",
+    "project_id": "75cdeb78-fca1-4746-b3f9-5ba37f8ad603",
+    "video_id": "a4194d26-c5c8-4720-b1dc-5b2da23197c4",
+    "scene_id": "20e779c3-87d8-4f60-93a2-62e861be1eb7",
+    "anchor_media_id": "2b1b0baa-8276-42ef-a418-7799eb5bc1f6",
+    "anchor_upload_workflow_id": "91a55c39-b29e-4e4e-9451-65777eb683e3",
+    "generated_media_id": "5c82847b-55c5-4855-8c20-d5fbc07b7f6c",
+    "generated_workflow_id": "d7730be9-c419-45e5-aad6-f45059965383",
+    "image_generation_call_count": 1,
+    "video_generation_call_count": 0,
+    "automatic_retries": 0,
+    "retrieval_recovery": "Authenticated Chrome-session redirect followed by exact cache extraction; no generation resubmission and no credential export.",
+    "scene_status_after_gate": "FAILED"
+  },
+  "media": {
+    "raw_path_on_pro": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-f01-v03/assets/f01-v03-scene-start-raw.jpg",
+    "raw_sha256": "4438cbf6604264692fa670dbbf069ab610ed601e365477998110722e95c75721",
+    "raw_size_bytes": 693140,
+    "raw_dimensions": [768, 1376],
+    "normalized_path_on_pro": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-f01-v03/assets/f01-v03-scene-start.png",
+    "normalized_sha256": "51388cefb43b96e85a3d30e895163632024265a348014b3be9f1e2ff15950d67",
+    "normalized_dimensions": [720, 1280],
+    "normalization": "center_cover_crop_resize",
+    "crop_box": [0, 5, 768, 1370],
+    "fill_method": null
+  },
+  "credit_accounting": {
+    "live_before": 12530,
+    "live_after": 12530,
+    "measured_delta": 0,
+    "accounted_video_probe_credits_before": 20,
+    "accounted_video_probe_credits_after": 20,
+    "cap": 240
+  },
+  "raster_review": {
+    "verdict": "PASS",
+    "exact_9_16": true,
+    "transparent_pixels": false,
+    "black_border_detected": false,
+    "full_span_seam_detected": false,
+    "source_report_sha256": "68a5e6ae70c6226a98187003a30e5712e6a9301294d58537e4158dd600b3b0d1"
+  },
+  "visual_review": {
+    "verdict": "PASS",
+    "single_visible_person": true,
+    "scene_first_frame": true,
+    "edge_to_edge_world": true,
+    "text_or_ui_detected": false,
+    "duplicate_or_reflected_person_detected": false,
+    "observations": [
+      "The generated image begins inside a coherent architectural world rather than exposing the identity reference.",
+      "The full-frame limestone-and-glass atrium, walking action, and warm depth satisfy the intended opening composition.",
+      "No bars, labels, screens, text, additional people, or reflected duplicate are visible."
+    ]
+  },
+  "identity_review": {
+    "verdict": "HARD_FAIL",
+    "mock_mode": false,
+    "model": "buffalo_l",
+    "face_count": 1,
+    "detector_confidence": 0.8736333847045898,
+    "cosine": 0.28287273645401,
+    "pass_threshold": 0.6,
+    "hard_fail_threshold": 0.55,
+    "source_report_sha256": "9834ee3237b681a023f87c4b9ab8d9fdfe1980b664991fbc4322faf39a2b53ec",
+    "anchor_self_check": {
+      "verdict": "PASS",
+      "face_count": 1,
+      "cosine": 0.8363728523254395,
+      "source_report_sha256": "93e8885d4733abe4fbb815c3b88aa994fb787c3c27313fc7cf6ee70a492d887d"
+    },
+    "diagnosis": "The generated scene contains a different woman. The A007 embedding, detector, and runtime are valid; this is not a technical false failure."
+  },
+  "decision": {
+    "verdict": "REJECT",
+    "video_generation_authorized": false,
+    "reason": "Scene composition passed, but the independent identity gate failed below the hard floor. No f01-v03 video was submitted.",
+    "beautiful_but_wrong_identity_is_not_accepted": true
+  },
+  "evidence": {
+    "scene_start_receipt_sha256": "300ee739365a5d98bff2ec3d3d756e2f46073b7ed0013de5b7b444e22030b4b1",
+    "prompt_file_sha256": "4fae397012dda556b3245fcbba4aa663833ed6a93ef7a3224b66fb25bb009165",
+    "context_file_sha256": "2b9a85d45145c0a9f62aaae0018a50749901752ac904eae473a98340fe582649",
+    "authorization_file_sha256": "8e03872397ad8d6f41037e980993e6181ce5af44f37e1ba40d99e0e4e2a4df31"
+  },
+  "next_action": {
+    "variant_id": "v04",
+    "status": "DESIGN_REQUIRED",
+    "constraint": "This is the fourth and final predeclared f01 axis. It must restore the canonical ivory-and-gold A007 wardrobe, increase face readability, remain scene-first, and pass the still identity gate before any video submit.",
+    "reasoning_policy": "Use the diagnosed identity failure as a new bounded creative input. Run one fresh shot-design pass and one independent pre-render review; do not recycle the rejected v03 composition."
+  },
+  "reviewed_at_utc": "2026-08-30T19:18:51Z",
+  "publication_allowed": false
+}

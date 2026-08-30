@@ -1,0 +1,74 @@
+{
+  "schema_version": "wr3-camera-probe-lineage/1.0",
+  "adapter_version": "1.2",
+  "family_id": "f01-fluid-approach",
+  "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+  "originality_gate": {
+    "verdict": "PASS",
+    "registration_kind": "root",
+    "signature_sha256": "b9a98c97a22e73240455e37b63bb4b6ca950164668910458220a722fa365d8ac",
+    "description_sha256": "0b9204f8c001dec0cffdb05fc8d4218e1b56cb74cc536b0a9af3c2ba0f382796",
+    "request_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-request.json",
+    "request_sha256": "28a33021afd9cff44c873e01e980c2525789bf472f36c7b2883d2ee78fa03998",
+    "receipt_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-receipt.json",
+    "receipt_sha256": "089bec6bc15fc0e2c26e244482edf5b58b5b3746c2d5910326151f794b930eb7",
+    "ledger_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-ledger.jsonl",
+    "ledger_sha256_at_registration": "70c47e1abc40284ba8ab50503ec5203745ae5cb280437b48d6cd482df6d671ba",
+    "ledger_record_count_at_registration": 1
+  },
+  "source_pack": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/packs/f01-fluid-approach/shot-pack.json",
+  "source_pack_sha256": "7d277aad31475fbd4d93f052b935817870f81b00dec43f7c85eacafa38bdc2be",
+  "runtime_episode_id": "s01e13-residency-permit-probes-f01-fluid-approach",
+  "runtime_pack": "f01-fluid-approach/shot-pack.json",
+  "runtime_pack_sha256": "c0c15d0b9b32520d35a1b26abb6b85825bf909909c224d07bb394f3830c5b402",
+  "transformations": [
+    "globally unique family and shot identifiers",
+    "prompt transport and aspect markers removed from positive prose",
+    "source negative clause split into renderer negative fields",
+    "global camera-UI and visible-text protections added to negative prompt",
+    "identity token normalized to exact A007",
+    "source visual performance preserved"
+  ],
+  "variants": [
+    {
+      "source_index": 1,
+      "source_prompt_sha256": "7a918eeb0559abf198b0a5fc9674a0cac91ca4a8adb4747042f62bda611acaa5",
+      "shot_id": "s0101",
+      "global_probe_id": "s01e13-residency-permit-probes:f01-fluid-approach:v01",
+      "variant_id": "v01",
+      "variant_seed_id": "bbe34403-6bb7-55ab-b54f-39e57cf22a0e",
+      "runtime_positive_prompt_sha256": "260c2a8d3bb61b100e8f69d292896f47797c3d2981d1c81db562d2b8b0535273",
+      "runtime_negative_prompt_sha256": "82f5568d50c02c8fdef64a2e359b3643f0c1e03887a3cc3ad38eca22baef8e18"
+    },
+    {
+      "source_index": 2,
+      "source_prompt_sha256": "0c9b9832b8f763b8d8f874875901fed4d07175f6366e427d24b579f3eb607ad7",
+      "shot_id": "s0102",
+      "global_probe_id": "s01e13-residency-permit-probes:f01-fluid-approach:v02",
+      "variant_id": "v02",
+      "variant_seed_id": "6ae42b36-03a7-5d67-a86a-d57a869d76f0",
+      "runtime_positive_prompt_sha256": "67e200bd54f6a81202665bf61adaec2a71c3db57a774ba111845db5ae0b63162",
+      "runtime_negative_prompt_sha256": "36ab8fc3100fa138db8dad85f76e8de8fb63534413115486499deecc978a4dac"
+    },
+    {
+      "source_index": 3,
+      "source_prompt_sha256": "fc449436e8251b65de895dcff0fc36792697341b90547117515c9d718603792f",
+      "shot_id": "s0103",
+      "global_probe_id": "s01e13-residency-permit-probes:f01-fluid-approach:v03",
+      "variant_id": "v03",
+      "variant_seed_id": "3b7ab14d-e7d7-5cad-8a6e-45f2cbfabe90",
+      "runtime_positive_prompt_sha256": "c18ae10e4fe150aedcaaeb4a6a511904efabf9fa53e4401904dde81b1c764087",
+      "runtime_negative_prompt_sha256": "1304d60144e3a2d70ac5792ce4981ac232ac63a7acff1dfb7785d2f1f4699033"
+    },
+    {
+      "source_index": 4,
+      "source_prompt_sha256": "6fb4332a04bf4f7c57f030b17c6ae96ae38cfe37580e69562756e1599cf4cc51",
+      "shot_id": "s0104",
+      "global_probe_id": "s01e13-residency-permit-probes:f01-fluid-approach:v04",
+      "variant_id": "v04",
+      "variant_seed_id": "9c66106c-3869-53d3-94d9-fe36897658d6",
+      "runtime_positive_prompt_sha256": "ad0fb35b0b939172ef74cb456d69a71d1d67f6e3d90b65b1e8a6d0e97a635b74",
+      "runtime_negative_prompt_sha256": "8892336c8e9d1c80650f41467efa67fea39041937f7e59377181db466cc1bd9a"
+    }
+  ]
+}

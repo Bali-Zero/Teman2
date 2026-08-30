@@ -1,0 +1,39 @@
+{
+  "episode_id": "s01e13-residency-permit-probes",
+  "topic": "S01E13 cinematic probe family 01 — fluid approach",
+  "anchor_image_path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+  "shots": [
+    {
+      "index": 1,
+      "positive_prompt": "CAMERA FIRST: a low 24mm cinema lens glides backward at exactly Zantara's walking speed, vertical 9:16, with restrained stabilized motion and natural perspective. Preserve the approved A007 Zantara face, age, skin tone, straight center-parted black hair, gold earrings, and ivory silk blouse with restrained gold embroidery. One action only: she walks calmly toward camera through a warm modern Indonesian stone passage, certain of her direction, while shallow foreground edges create gentle parallax. Soft late-afternoon architectural light, realistic skin, subtle fabric movement, no glamour posing. Native audio is quiet room tone, measured footsteps, and distant air movement; she does not speak. End with her still advancing and centered. No text, signs, documents, logos, extra people, reflections, tourist imagery, or camera orbit.",
+      "identity_tokens": ["A007-Zantara-anchor"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16"
+    },
+    {
+      "index": 2,
+      "positive_prompt": "CAMERA FIRST: eye-level 35mm tracking backward in a perfectly straight line, vertical 9:16; foreground limestone fins pass slowly at the edges and create controlled lateral parallax without covering her face. Preserve the approved A007 Zantara identity, facial geometry, apparent age, skin tone, center-parted long black hair, gold earrings, and canonical ivory-and-gold blouse. One action only: Zantara walks forward through a quiet warm atrium, looking beyond camera with composed certainty rather than performing for it. Natural window light falls across real stone and glass; movement stays human and unhurried. Native audio contains clean footsteps, soft interior air, and one distant architectural creak; no speech. Finish on a stable medium shot. No visible words, signage, papers, screens, logos, extra people, duplicates, mirrors, resort styling, or decorative camera moves.",
+      "identity_tokens": ["A007-Zantara-anchor"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16"
+    },
+    {
+      "index": 3,
+      "positive_prompt": "CAMERA FIRST: a 50mm lens retreats smoothly ahead of Zantara, vertical 9:16, compressing several warm architectural planes so the corridor feels calm, ordered, and deceptively simple. Preserve the exact approved A007 Zantara identity, natural facial proportions, brown eyes, center-parted black hair, gold earrings, and ivory silk blouse with restrained embroidery. One action only: she advances toward camera at a measured pace, maintaining quiet focus past the lens; the background layers slide slowly rather than rushing. Soft indirect light, controlled highlights, realistic skin texture, no commercial beauty treatment. Native audio is dry footsteps and low interior room tone, with no music cue and no speech. End before she reaches camera. No text, labels, permits, floating objects, logos, other people, reflections, official architecture, tropical filler, zoom, whip pan, or orbit.",
+      "identity_tokens": ["A007-Zantara-anchor"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16"
+    },
+    {
+      "index": 4,
+      "positive_prompt": "CAMERA FIRST: a restrained 28mm backward track begins slightly off Zantara's right axis and drifts only a few centimeters toward symmetry, vertical 9:16, creating a subtle correction rather than an orbit. Preserve approved A007 Zantara exactly: same Indonesian woman, face, age, skin, long straight center-parted black hair, brown eyes, gold earrings, and ivory silk blouse with delicate gold embroidery. One action only: she walks through a warm, uncluttered concrete-and-wood passage with calm forward intention. Her posture is natural, never runway-like; architecture supplies depth and soft parallax. Native audio is intimate footfall, cloth movement, and quiet ventilation; she remains silent. End when composition becomes centered and steady. No readable words, signs, documents, graphics, other people, duplicate faces, reflections, government symbols, airport imagery, palms, beaches, gimbal flourish, or circular movement.",
+      "identity_tokens": ["A007-Zantara-anchor"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16"
+    }
+  ]
+}

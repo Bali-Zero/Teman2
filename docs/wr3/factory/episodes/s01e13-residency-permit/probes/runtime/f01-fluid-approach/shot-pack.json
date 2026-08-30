@@ -1,0 +1,143 @@
+{
+  "schema_version": "wr3-camera-probe-runtime/1.0",
+  "adapter_version": "1.2",
+  "episode_id": "s01e13-residency-permit-probes-f01-fluid-approach",
+  "source_episode_id": "s01e13-residency-permit-probes",
+  "candidate_id": "C07",
+  "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+  "originality_gate": {
+    "verdict": "PASS",
+    "registration_kind": "root",
+    "signature_sha256": "b9a98c97a22e73240455e37b63bb4b6ca950164668910458220a722fa365d8ac",
+    "description_sha256": "0b9204f8c001dec0cffdb05fc8d4218e1b56cb74cc536b0a9af3c2ba0f382796",
+    "request_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-request.json",
+    "request_sha256": "28a33021afd9cff44c873e01e980c2525789bf472f36c7b2883d2ee78fa03998",
+    "receipt_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-receipt.json",
+    "receipt_sha256": "089bec6bc15fc0e2c26e244482edf5b58b5b3746c2d5910326151f794b930eb7",
+    "ledger_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-ledger.jsonl",
+    "ledger_sha256_at_registration": "70c47e1abc40284ba8ab50503ec5203745ae5cb280437b48d6cd482df6d671ba",
+    "ledger_record_count_at_registration": 1
+  },
+  "family_id": "f01-fluid-approach",
+  "source_pack": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/packs/f01-fluid-approach/shot-pack.json",
+  "source_pack_sha256": "7d277aad31475fbd4d93f052b935817870f81b00dec43f7c85eacafa38bdc2be",
+  "topic": "S01E13 cinematic probe family 01 — fluid approach",
+  "purpose": "authorised standalone cinematic camera probes; not a final episode",
+  "anchor_image_path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+  "anchor_sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026",
+  "identity_token": "A007",
+  "aspect_ratio": "9:16",
+  "resolution": "720x1280",
+  "total_duration_s": 32,
+  "transition_map": {
+    "mode": "standalone-camera-probes",
+    "entries": [
+      {
+        "shot_id": "s0101",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      },
+      {
+        "shot_id": "s0102",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      },
+      {
+        "shot_id": "s0103",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      },
+      {
+        "shot_id": "s0104",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      }
+    ]
+  },
+  "shots": [
+    {
+      "index": 101,
+      "shot_id": "s0101",
+      "global_probe_id": "s01e13-residency-permit-probes:f01-fluid-approach:v01",
+      "variant_id": "v01",
+      "variant_seed_id": "bbe34403-6bb7-55ab-b54f-39e57cf22a0e",
+      "family_id": "f01-fluid-approach",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "a low 24mm cinema lens glides backward at exactly Zantara's walking speed, with restrained stabilized motion and natural perspective. Preserve the approved A007 Zantara face, age, skin tone, straight center-parted black hair, gold earrings, and ivory silk blouse with restrained gold embroidery. One action only: she walks calmly toward camera through a warm modern Indonesian stone passage, certain of her direction, while shallow foreground edges create gentle parallax. Soft late-afternoon architectural light, realistic skin, subtle fabric movement, no glamour posing. Native audio is quiet room tone, measured footsteps, and distant air movement; she does not speak. End with her still advancing and centered.",
+      "positive_prompt": "a low 24mm cinema lens glides backward at exactly Zantara's walking speed, with restrained stabilized motion and natural perspective. Preserve the approved A007 Zantara face, age, skin tone, straight center-parted black hair, gold earrings, and ivory silk blouse with restrained gold embroidery. One action only: she walks calmly toward camera through a warm modern Indonesian stone passage, certain of her direction, while shallow foreground edges create gentle parallax. Soft late-afternoon architectural light, realistic skin, subtle fabric movement, no glamour posing. Native audio is quiet room tone, measured footsteps, and distant air movement; she does not speak. End with her still advancing and centered.",
+      "prompt_negative": "text, signs, documents, logos, extra people, reflections, tourist imagery, or camera orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "negative_prompt": "text, signs, documents, logos, extra people, reflections, tourist imagery, or camera orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-dub-safe-ambient"
+    },
+    {
+      "index": 102,
+      "shot_id": "s0102",
+      "global_probe_id": "s01e13-residency-permit-probes:f01-fluid-approach:v02",
+      "variant_id": "v02",
+      "variant_seed_id": "6ae42b36-03a7-5d67-a86a-d57a869d76f0",
+      "family_id": "f01-fluid-approach",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "eye-level 35mm tracking backward in a perfectly straight line, foreground limestone fins pass slowly at the edges and create controlled lateral parallax without covering her face. Preserve the approved A007 Zantara identity, facial geometry, apparent age, skin tone, center-parted long black hair, gold earrings, and canonical ivory-and-gold blouse. One action only: Zantara walks forward through a quiet warm atrium, looking beyond camera with composed certainty rather than performing for it. Natural window light falls across real stone and glass; movement stays human and unhurried. Native audio contains clean footsteps, soft interior air, and one distant architectural creak; no speech. Finish on a stable medium shot.",
+      "positive_prompt": "eye-level 35mm tracking backward in a perfectly straight line, foreground limestone fins pass slowly at the edges and create controlled lateral parallax without covering her face. Preserve the approved A007 Zantara identity, facial geometry, apparent age, skin tone, center-parted long black hair, gold earrings, and canonical ivory-and-gold blouse. One action only: Zantara walks forward through a quiet warm atrium, looking beyond camera with composed certainty rather than performing for it. Natural window light falls across real stone and glass; movement stays human and unhurried. Native audio contains clean footsteps, soft interior air, and one distant architectural creak; no speech. Finish on a stable medium shot.",
+      "prompt_negative": "visible words, signage, papers, screens, logos, extra people, duplicates, mirrors, resort styling, or decorative camera moves, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "negative_prompt": "visible words, signage, papers, screens, logos, extra people, duplicates, mirrors, resort styling, or decorative camera moves, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-dub-safe-ambient"
+    },
+    {
+      "index": 103,
+      "shot_id": "s0103",
+      "global_probe_id": "s01e13-residency-permit-probes:f01-fluid-approach:v03",
+      "variant_id": "v03",
+      "variant_seed_id": "3b7ab14d-e7d7-5cad-8a6e-45f2cbfabe90",
+      "family_id": "f01-fluid-approach",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "a 50mm lens retreats smoothly ahead of Zantara, compressing several warm architectural planes so the corridor feels calm, ordered, and deceptively simple. Preserve the exact approved A007 Zantara identity, natural facial proportions, brown eyes, center-parted black hair, gold earrings, and ivory silk blouse with restrained embroidery. One action only: she advances toward camera at a measured pace, maintaining quiet focus past the lens; the background layers slide slowly rather than rushing. Soft indirect light, controlled highlights, realistic skin texture, no commercial beauty treatment. Native audio is dry footsteps and low interior room tone, with no music cue and no speech. End before she reaches camera.",
+      "positive_prompt": "a 50mm lens retreats smoothly ahead of Zantara, compressing several warm architectural planes so the corridor feels calm, ordered, and deceptively simple. Preserve the exact approved A007 Zantara identity, natural facial proportions, brown eyes, center-parted black hair, gold earrings, and ivory silk blouse with restrained embroidery. One action only: she advances toward camera at a measured pace, maintaining quiet focus past the lens; the background layers slide slowly rather than rushing. Soft indirect light, controlled highlights, realistic skin texture, no commercial beauty treatment. Native audio is dry footsteps and low interior room tone, with no music cue and no speech. End before she reaches camera.",
+      "prompt_negative": "text, labels, permits, floating objects, logos, other people, reflections, official architecture, tropical filler, zoom, whip pan, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "negative_prompt": "text, labels, permits, floating objects, logos, other people, reflections, official architecture, tropical filler, zoom, whip pan, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-dub-safe-ambient"
+    },
+    {
+      "index": 104,
+      "shot_id": "s0104",
+      "global_probe_id": "s01e13-residency-permit-probes:f01-fluid-approach:v04",
+      "variant_id": "v04",
+      "variant_seed_id": "9c66106c-3869-53d3-94d9-fe36897658d6",
+      "family_id": "f01-fluid-approach",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "a restrained 28mm backward track begins slightly off Zantara's right axis and drifts only a few centimeters toward symmetry, creating a subtle correction rather than an orbit. Preserve approved A007 Zantara exactly: same Indonesian woman, face, age, skin, long straight center-parted black hair, brown eyes, gold earrings, and ivory silk blouse with delicate gold embroidery. One action only: she walks through a warm, uncluttered concrete-and-wood passage with calm forward intention. Her posture is natural, never runway-like; architecture supplies depth and soft parallax. Native audio is intimate footfall, cloth movement, and quiet ventilation; she remains silent. End when composition becomes centered and steady.",
+      "positive_prompt": "a restrained 28mm backward track begins slightly off Zantara's right axis and drifts only a few centimeters toward symmetry, creating a subtle correction rather than an orbit. Preserve approved A007 Zantara exactly: same Indonesian woman, face, age, skin, long straight center-parted black hair, brown eyes, gold earrings, and ivory silk blouse with delicate gold embroidery. One action only: she walks through a warm, uncluttered concrete-and-wood passage with calm forward intention. Her posture is natural, never runway-like; architecture supplies depth and soft parallax. Native audio is intimate footfall, cloth movement, and quiet ventilation; she remains silent. End when composition becomes centered and steady.",
+      "prompt_negative": "readable words, signs, documents, graphics, other people, duplicate faces, reflections, government symbols, airport imagery, palms, beaches, gimbal flourish, or circular movement, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "negative_prompt": "readable words, signs, documents, graphics, other people, duplicate faces, reflections, government symbols, airport imagery, palms, beaches, gimbal flourish, or circular movement, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-dub-safe-ambient"
+    }
+  ]
+}

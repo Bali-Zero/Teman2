@@ -1,0 +1,21 @@
+{
+  "schema_version": "wr3.originality-request.v1",
+  "episode_id": "s01e13-residency-permit",
+  "seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+  "parent_seed_id": null,
+  "description": "An apparently frictionless forward journey through invisible architectural thresholds discovers that one legal status does not make every adjacent permission identical. Camera movement compresses into chosen stillness while a dry architectural click and a warm-to-neutral light arc carry the distinction without documents, labels, or literal doors.",
+  "signature_axes": {
+    "narrative_engine_id": "continuous-journey-disaggregated-permissions",
+    "spatial_metaphor_id": "invisible-architectural-thresholds",
+    "opening_image_id": "frictionless-forward-passage",
+    "emotional_turn_id": "confidence-to-concentration-to-authority",
+    "final_image_id": "chosen-stillness-neutral-closeup",
+    "camera_grammar_id": "forward-track-lateral-compression-locked-closeup",
+    "transition_motif_id": "full-frame-occlusion-match-on-action",
+    "sound_motif_id": "single-dry-architectural-click",
+    "color_arc_id": "warm-certainty-mixed-ambiguity-neutral-clarity",
+    "blocking_id": "unopposed-forward-motion-constrained-voluntary-stop",
+    "hero_prop_id": "none-body-architecture-light-sound",
+    "wardrobe_arc_id": "constant-ivory-gold"
+  }
+}

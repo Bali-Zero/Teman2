@@ -1,0 +1,21 @@
+{
+  "schema_version": "wr3.originality-request.v1",
+  "episode_id": "s01e13-residency-permit",
+  "seed_id": null,
+  "parent_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+  "description": "A locked portrait observes Zantara finish one step and become still while the blouse alone spends its remaining momentum. The body and fabric briefly disagree about whether movement has ended, turning legal discontinuity into a quiet physical afterimage without barriers, documents, or explanatory graphics.",
+  "signature_axes": {
+    "narrative_engine_id": "residual-motion-decouples-status-from-consequence",
+    "spatial_metaphor_id": "body-stops-fabric-keeps-moving",
+    "opening_image_id": "identity-locked-mid-step-portrait",
+    "emotional_turn_id": "forward-intent-to-observed-aftereffect",
+    "final_image_id": "settled-body-with-dying-fabric-inertia",
+    "camera_grammar_id": "locked-midshot-microkinetic-observation",
+    "transition_motif_id": "continuous-held-beat-without-cut",
+    "sound_motif_id": "native-room-tone-with-cloth-decay",
+    "color_arc_id": "constant-soft-neutral-daylight",
+    "blocking_id": "complete-one-step-stop-let-fabric-settle",
+    "hero_prop_id": "blouse-fabric-as-temporal-residue",
+    "wardrobe_arc_id": "constant-ivory-gold"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "schema_version": "wr3.originality-receipt.v1",
+  "verdict": "PASS",
+  "status": "RECORDED",
+  "episode_id": "s01e13-residency-permit",
+  "seed_id": "4ac7cfe1-1a72-5c7e-a6a3-c0a367d0022b",
+  "parent_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+  "registration_kind": "child",
+  "signature_sha256": "93c49de4bba2ad2466572c0a965f4ba47b58db656f0da253462598106aee5e53",
+  "description_sha256": "083328a659455354520f33aba631e308612c000f266deaf54805f8f7b6acf5a4",
+  "sequence": 2,
+  "ledger_record_count": 2,
+  "recorded_at": "2026-08-30T21:39:18.987222+00:00",
+  "novelty_policy": {
+    "material_differences_required": 4,
+    "concept_differences_required": 1,
+    "cinematic_differences_required": 2,
+    "surface_axes_counted": false,
+    "description_jaccard_fail_at_or_above": 0.8,
+    "closest_structural_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+    "closest_structural_difference": {
+      "material": 10,
+      "concept": 5,
+      "cinematic": 5,
+      "surface_ignored": 1
+    },
+    "max_description_jaccard_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+    "max_description_jaccard": 0.1
+  }
+}

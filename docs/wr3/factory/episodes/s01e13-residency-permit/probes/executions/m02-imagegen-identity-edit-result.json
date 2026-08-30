@@ -1,0 +1,70 @@
+{
+  "schema_version": "wr3.identity-scene-start-rd-result.v1",
+  "recorded_at": "2026-08-30T19:50:34Z",
+  "run_id": "e13-m02-imagegen-identity-edit",
+  "experiment_id": "M02",
+  "hypothesis": "A dedicated identity-preserve edit can transfer the canonical face into an approved composition more reliably than scene generation from identity references.",
+  "method": "one image-gen identity-preserve edit using the approved v04 composition plus A007 and A002; no reroll",
+  "input_lineage": {
+    "edit_target": {
+      "role": "approved_v04_composition",
+      "path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-f01-v04/assets/f01-v04-scene-start.png",
+      "sha256": "afaf0482a2c631d84d77aa9276586cf447b046314da52ca21c67b95d7782efa5"
+    },
+    "identity_references": [
+      {
+        "order": 1,
+        "identity_token": "A007",
+        "path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+        "sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026"
+      },
+      {
+        "order": 2,
+        "identity_token": "A002",
+        "path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a002_primary_3q_face_closeup_anchor.png",
+        "sha256": "e76490b9ddc8bf9cb8e24924f3f13f0304e99b6124c978a8a2a40bdc1b4bb5aa"
+      }
+    ],
+    "prompt": {
+      "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m02-imagegen-identity-edit-prompt.txt",
+      "sha256": "473ce2c086958857f596a6947355492f0a41186ed26c566ad8ad133495f12f26"
+    }
+  },
+  "source_artifact": {
+    "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/assets/m02-imagegen-identity-edit-source.png",
+    "sha256": "f2bc8cc1f1862a07c5fab6289a10ebfec9bb8681544c2728ee29fa8c163942e6",
+    "dimensions": [941, 1672]
+  },
+  "normalized_start_frame": {
+    "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/assets/m02-imagegen-identity-edit.png",
+    "sha256": "c110699f7e6347ad8491e6381e93914089b76e31b5739e1413715fc02c688052",
+    "dimensions": [720, 1280],
+    "normalization": "center_cover_crop_resize",
+    "fill_method": null,
+    "suspicious_seam": false
+  },
+  "identity_gate": {
+    "verifier": "insightface-buffalo_l",
+    "mock_mode": false,
+    "face_count": 1,
+    "detector_confidence": 0.8773651123046875,
+    "cosine": 0.7896915674209595,
+    "pass_cosine_threshold": 0.6,
+    "hard_fail_cosine_threshold": 0.55,
+    "verdict": "PASS"
+  },
+  "visual_gate": {
+    "verdict": "PASS",
+    "one_subject": true,
+    "edge_to_edge_scene": true,
+    "ui_or_border_artifact": false,
+    "reflection_or_duplicate": false,
+    "note": "Clean limestone atrium scene with restrained wardrobe and expression; minor composition drift is acceptable."
+  },
+  "generation_counts": {
+    "image_generation_count": 1,
+    "video_generation_count": 0,
+    "automatic_retries": 0
+  },
+  "decision": "ELIGIBLE_FOR_ONE_VIDEO_CANARY"
+}

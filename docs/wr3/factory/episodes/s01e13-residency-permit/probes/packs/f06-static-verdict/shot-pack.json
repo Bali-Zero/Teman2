@@ -1,0 +1,39 @@
+{
+  "episode_id": "s01e13-residency-permit-probes",
+  "topic": "S01E13 cinematic probe family 06 — static verdict",
+  "anchor_image_path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+  "shots": [
+    {
+      "index": 1,
+      "positive_prompt": "CAMERA FIRST: completely locked intimate 65mm close-up, vertical 9:16, neutral eye level, no push-in, no reframing, and no background motion. Preserve the exact approved A007 Zantara identity, facial geometry, apparent age, natural skin texture, center-parted long black hair, brown eyes, gold earrings, and canonical ivory silk blouse with restrained gold embroidery. One action only: Zantara looks directly into lens and says in calm, precise natural English, “A residence permit answers one question. It does not answer all the others.” She finishes, breathes once, and holds clear eye contact without smiling or dramatizing. Soft neutral architectural daylight, quiet negative space, editorial realism. Native audio prioritizes intelligible dry voice, subtle room tone, and one faint latch click after the sentence. No subtitles, visible words, signs, documents, logos, music, extra people, reflections, duplicate face, government imagery, beauty-filter gloss, camera motion, or cut.",
+      "identity_tokens": ["A007-Zantara-anchor"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16"
+    },
+    {
+      "index": 2,
+      "positive_prompt": "CAMERA FIRST: a fully static formal 85mm head-and-shoulders portrait, vertical 9:16, lens at eye height, symmetrical negative space, no push, pan, or focus change. Preserve approved A007 Zantara exactly: same Indonesian woman, face, age, natural skin tone, long straight center-parted black hair, brown eyes, gold earrings, and ivory-and-gold blouse. One action only: she meets the lens and says with measured authority in natural English, “Permission to stay is not permission for everything else.” Her delivery is quiet and exact, never promotional; after speaking she holds still for a clean edit handle. Neutral daylight with gentle falloff and realistic texture. Native audio is dry intelligible voice, restrained room tone, and a single distant architectural click after the final word. No captions, text, forms, graphics, logo, music, other people, mirrors, duplicate Zantara, official symbols, tourist setting, glamour treatment, camera movement, or visible transition.",
+      "identity_tokens": ["A007-Zantara-anchor"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16"
+    },
+    {
+      "index": 3,
+      "positive_prompt": "CAMERA FIRST: a locked 50mm medium close-up, vertical 9:16, with environmental breathing room and no camera or background movement. Preserve the exact approved A007 Zantara face, age, skin tone, center-parted black hair, brown eyes, gold earrings, and canonical ivory silk blouse with restrained gold embroidery. One action only: she looks directly at camera and says in composed natural English, “Residence may open the first door. It does not decide what comes after.” The word “door” is conceptual; no door appears or moves. Her expression shifts only from concentration to calm clarity, then she holds for one second. Soft neutral light, authentic skin, quiet architecture. Native audio is clean voice and room tone with one subtle dry click before the sentence, creating a J-cut option. No subtitles, words, papers, logos, music, other people, reflections, duplicates, official insignia, airport or resort imagery, beauty gloss, push-in, zoom, or cut.",
+      "identity_tokens": ["A007-Zantara-anchor"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16"
+    },
+    {
+      "index": 4,
+      "positive_prompt": "CAMERA FIRST: completely immobile 75mm close-up, vertical 9:16, severe centered symmetry, neutral eye height, steady focus on both eyes, and no decorative flourish. Preserve approved A007 Zantara exactly: identical facial geometry, apparent age, natural skin, long straight center-parted black hair, brown eyes, gold earrings, and ivory blouse with restrained gold embroidery. One action only: Zantara addresses the lens in calm natural English, “Your permit is a status, not an all-access pass.” She avoids warning-tone emphasis, finishes with a small controlled breath, and holds silent eye contact for a clean ending. Clear neutral architectural daylight separates her gently from an unlabelled stone background. Native audio is intimate dry voice, low room tone, and one restrained latch click on the final hold; no music. No captions, visible text, documents, logos, other people, reflections, duplicate face, government symbols, tourist imagery, commercial glamour, camera movement, rack focus, or transition.",
+      "identity_tokens": ["A007-Zantara-anchor"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16"
+    }
+  ]
+}

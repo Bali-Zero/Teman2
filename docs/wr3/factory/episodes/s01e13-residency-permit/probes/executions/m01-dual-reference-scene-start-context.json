@@ -1,0 +1,32 @@
+{
+  "schema_version": "wr3.scene-start-context.v1",
+  "episode_id": "s01e13-residency-permit-probes",
+  "project": {
+    "id": "2e77dddf-e86e-4e02-a618-3d85376705ad",
+    "video_id": "6eaca857-9566-4e50-98de-f8e08d4aaad9",
+    "name": "s01e13-m01-dual-reference-20260831",
+    "fresh_for_run": true,
+    "endpoint": "http://127.0.0.1:8100",
+    "paygate": "PAYGATE_TIER_TIER1P5"
+  },
+  "anchor_lineage": {
+    "reference_token": "A007",
+    "role": "identity_reference_only",
+    "project_id": "2e77dddf-e86e-4e02-a618-3d85376705ad",
+    "media_id": "1b9fc1c8-cb3e-4f35-aed4-6fd05423698d",
+    "path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+    "sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026",
+    "dimensions": [1402, 1122]
+  },
+  "additional_identity_references": [
+    {
+      "reference_token": "A002",
+      "role": "identity_reference_only",
+      "project_id": "2e77dddf-e86e-4e02-a618-3d85376705ad",
+      "media_id": "fa810e37-10b1-40fc-9d98-5b8331ebe54a",
+      "path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a002_primary_3q_face_closeup_anchor.png",
+      "sha256": "e76490b9ddc8bf9cb8e24924f3f13f0304e99b6124c978a8a2a40bdc1b4bb5aa",
+      "dimensions": [630, 730]
+    }
+  ]
+}

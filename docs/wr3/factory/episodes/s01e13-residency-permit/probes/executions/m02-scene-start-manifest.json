@@ -1,0 +1,58 @@
+{
+  "schema_version": "wr3.scene-start-manifest.v1",
+  "created_at": "2026-08-30T19:50:34Z",
+  "run_id": "e13-m02-imagegen-identity-edit",
+  "episode_id": "s01e13-residency-permit-probes-f01-fluid-approach",
+  "project": {
+    "id": "08c2c96a-7983-4f8b-a41e-b3afe3a68e3b",
+    "video_id": "648a1e43-fae8-4d2a-a825-f6a2c31225b0",
+    "name": "s01e13-m02-imagegen-identity-edit-20260831",
+    "fresh_for_run": true,
+    "freshness_basis": "created_for_m02_canary_upload",
+    "paygate": "PAYGATE_TIER_TIER1P5"
+  },
+  "start_frame": {
+    "role": "scene_composition_i2v_start_frame",
+    "project_id": "08c2c96a-7983-4f8b-a41e-b3afe3a68e3b",
+    "media_id": "958da8af-e457-49ef-ac94-b7ce255d4484",
+    "source_path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-imagegen-identity-edit/assets/m02-imagegen-identity-edit-source.png",
+    "path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/assets/m02-imagegen-identity-edit.png",
+    "raw_sha256": "f2bc8cc1f1862a07c5fab6289a10ebfec9bb8681544c2728ee29fa8c163942e6",
+    "sha256": "c110699f7e6347ad8491e6381e93914089b76e31b5739e1413715fc02c688052",
+    "source_dimensions": [941, 1672],
+    "target_dimensions": [720, 1280],
+    "normalization": "center_cover_crop_resize",
+    "crop_box": [0, 0, 940, 1672],
+    "fill_method": null,
+    "had_alpha": false,
+    "valid_raster": true,
+    "exact_9_16": true,
+    "seam_indicator": {
+      "axis": "vertical",
+      "position": 162,
+      "mean_abs_delta": 20.975,
+      "coherent_fraction": 0.475,
+      "suspicious": false
+    }
+  },
+  "generation": {
+    "method": "imagegen_identity_preserve_edit",
+    "edit_target": "f01-v04-approved-composition",
+    "identity_references": ["A007", "A002"],
+    "submits_made": 1,
+    "retries_made": 0,
+    "flow_upload_generation_count": 0
+  },
+  "generation_counts": {
+    "image_generation_count": 1,
+    "video_generation_count": 0
+  },
+  "identity_gate": {
+    "status": "pending_real_arcface",
+    "required_face_count": 1,
+    "pass_cosine_threshold": 0.6,
+    "hard_fail_cosine_threshold": 0.55,
+    "mock_allowed": false,
+    "result_path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/execution/m02-scene-start-manifest-identity-gate.json"
+  }
+}

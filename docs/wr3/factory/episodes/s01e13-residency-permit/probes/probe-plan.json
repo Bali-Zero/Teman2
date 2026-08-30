@@ -1,0 +1,93 @@
+{
+  "schema_version": "1.0",
+  "episode_id": "s01e13-residency-permit-probes",
+  "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+  "purpose": "Select an original cinematic grammar before legal scripting.",
+  "authorized_generation_count": 24,
+  "authorized_generation_count_is_maximum": true,
+  "frontier_generation_count": 6,
+  "sampling_strategy": "Render variant 1 from all six families first. Render variants 2-4 only for a recorded ambiguity, failure, or close contest; deterministic expansion does not trigger a new creative reasoning pass.",
+  "family_count": 6,
+  "variants_per_family": 4,
+  "common_invariants": [
+    "A007 Zantara identity",
+    "vertical 9:16",
+    "eight seconds",
+    "native audio",
+    "one principal action",
+    "no visible generated text",
+    "no additional visible person"
+  ],
+  "families": [
+    {
+      "id": "f01-fluid-approach",
+      "problem": "Find a motivated warm opening whose forward movement feels confident rather than promotional.",
+      "variant_axes": [
+        "24mm low track",
+        "35mm eye-level parallax",
+        "50mm compressed retreat",
+        "28mm off-axis drift"
+      ],
+      "source_pack": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/packs/f01-fluid-approach/shot-pack.json"
+    },
+    {
+      "id": "f02-occlusion-bridge",
+      "problem": "Create a complete, clean full-frame occlusion that can hide a stitch without looking like an effect.",
+      "variant_axes": [
+        "stone pier",
+        "dark foreground fin",
+        "near black partition",
+        "shadowed wall edge"
+      ],
+      "source_pack": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/packs/f02-occlusion-bridge/shot-pack.json"
+    },
+    {
+      "id": "f03-spatial-compression",
+      "problem": "Move from apparent freedom into constraint through architecture and lensing, without literal barriers or labels.",
+      "variant_axes": [
+        "ceiling compression",
+        "side-wall compression",
+        "long-lens compression",
+        "foreground wipe into narrow depth"
+      ],
+      "source_pack": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/packs/f03-spatial-compression/shot-pack.json"
+    },
+    {
+      "id": "f04-light-threshold",
+      "problem": "Change narrative state inside one space using motivated light rather than a transition effect.",
+      "variant_axes": [
+        "sunlight boundary",
+        "overhead color-temperature boundary",
+        "slatted-shadow boundary",
+        "reflection-to-neutral boundary"
+      ],
+      "source_pack": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/packs/f04-light-threshold/shot-pack.json"
+    },
+    {
+      "id": "f05-deep-information",
+      "problem": "Let foreground and background communicate separation simultaneously in a phone-readable composition.",
+      "variant_axes": [
+        "foreground stop/background darkening",
+        "profile pause/receding layers",
+        "centered hold/sliding screens",
+        "near-field stillness/far-light closure"
+      ],
+      "source_pack": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/packs/f05-deep-information/shot-pack.json"
+    },
+    {
+      "id": "f06-static-verdict",
+      "problem": "Find the strongest motion-to-stasis reversal and a precise non-technical myth-break performance.",
+      "variant_axes": [
+        "intimate 65mm",
+        "formal 85mm",
+        "slightly wider 50mm",
+        "severe symmetrical 75mm"
+      ],
+      "source_pack": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/packs/f06-static-verdict/shot-pack.json"
+    }
+  ],
+  "selection_rule": "Choose narrative fitness first, then identity and technical polish. A beautiful but semantically decorative shot is rejected.",
+  "reroll_rule": "A fifth variant requires a diagnosed failure and either a new declared axis or a child creative seed.",
+  "credit_cap": 240,
+  "credit_cap_basis": "24 authorized attempts multiplied by the first measured Tier1P5 debit of 10 credits on 2026-08-31. Stop before submission if the live measured debit would exceed this cap."
+}

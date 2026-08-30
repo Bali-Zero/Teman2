@@ -1,0 +1,143 @@
+{
+  "schema_version": "wr3-camera-probe-runtime/1.0",
+  "adapter_version": "1.2",
+  "episode_id": "s01e13-residency-permit-probes-f05-deep-information",
+  "source_episode_id": "s01e13-residency-permit-probes",
+  "candidate_id": "C07",
+  "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+  "originality_gate": {
+    "verdict": "PASS",
+    "registration_kind": "root",
+    "signature_sha256": "b9a98c97a22e73240455e37b63bb4b6ca950164668910458220a722fa365d8ac",
+    "description_sha256": "0b9204f8c001dec0cffdb05fc8d4218e1b56cb74cc536b0a9af3c2ba0f382796",
+    "request_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-request.json",
+    "request_sha256": "28a33021afd9cff44c873e01e980c2525789bf472f36c7b2883d2ee78fa03998",
+    "receipt_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-receipt.json",
+    "receipt_sha256": "089bec6bc15fc0e2c26e244482edf5b58b5b3746c2d5910326151f794b930eb7",
+    "ledger_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-ledger.jsonl",
+    "ledger_sha256_at_registration": "70c47e1abc40284ba8ab50503ec5203745ae5cb280437b48d6cd482df6d671ba",
+    "ledger_record_count_at_registration": 1
+  },
+  "family_id": "f05-deep-information",
+  "source_pack": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/packs/f05-deep-information/shot-pack.json",
+  "source_pack_sha256": "68ab8ff1004efcf5160f277ad5612d4911991732bea683a65b24e900c6eb5a70",
+  "topic": "S01E13 cinematic probe family 05 — deep information",
+  "purpose": "authorised standalone cinematic camera probes; not a final episode",
+  "anchor_image_path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+  "anchor_sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026",
+  "identity_token": "A007",
+  "aspect_ratio": "9:16",
+  "resolution": "720x1280",
+  "total_duration_s": 32,
+  "transition_map": {
+    "mode": "standalone-camera-probes",
+    "entries": [
+      {
+        "shot_id": "s0501",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      },
+      {
+        "shot_id": "s0502",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      },
+      {
+        "shot_id": "s0503",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      },
+      {
+        "shot_id": "s0504",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      }
+    ]
+  },
+  "shots": [
+    {
+      "index": 501,
+      "shot_id": "s0501",
+      "global_probe_id": "s01e13-residency-permit-probes:f05-deep-information:v01",
+      "variant_id": "v01",
+      "variant_seed_id": "c3d84873-4e44-5cb1-bb40-ecac2bbe2a74",
+      "family_id": "f05-deep-information",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "a locked 28mm deep-focus composition, holds Zantara in the near left third while a long empty passage remains legible in the far right background. Preserve the exact approved A007 Zantara face, age, skin tone, center-parted long black hair, gold earrings, and ivory-and-gold blouse. One action only: she enters the foreground, stops, and studies the space ahead; at the same continuous beat, the distant warm passage settles into neutral darkness without a visible person or labelled barrier. Foreground, middle ground, and background stay readable on a phone, with realistic depth and no rack-focus flourish. Native audio is one final footstep, room tone, and a distant dry architectural click; no speech.",
+      "positive_prompt": "a locked 28mm deep-focus composition, holds Zantara in the near left third while a long empty passage remains legible in the far right background. Preserve the exact approved A007 Zantara face, age, skin tone, center-parted long black hair, gold earrings, and ivory-and-gold blouse. One action only: she enters the foreground, stops, and studies the space ahead; at the same continuous beat, the distant warm passage settles into neutral darkness without a visible person or labelled barrier. Foreground, middle ground, and background stay readable on a phone, with realistic depth and no rack-focus flourish. Native audio is one final footstep, room tone, and a distant dry architectural click; no speech.",
+      "prompt_negative": "visible text, documents, screens, logos, extra people, reflections, duplicate Zantara, official insignia, airport or resort imagery, horror mood, zoom, pan, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "negative_prompt": "visible text, documents, screens, logos, extra people, reflections, duplicate Zantara, official insignia, airport or resort imagery, horror mood, zoom, pan, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-dub-safe-ambient"
+    },
+    {
+      "index": 502,
+      "shot_id": "s0502",
+      "global_probe_id": "s01e13-residency-permit-probes:f05-deep-information:v02",
+      "variant_id": "v02",
+      "variant_seed_id": "1c7f81f0-d93a-577b-82df-369596050992",
+      "family_id": "f05-deep-information",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "static eye-level 32mm deep-focus shot, places Zantara in clean near profile while three unlabelled architectural layers recede behind her with equal visual clarity. Preserve approved A007 Zantara exactly: same facial geometry, age, natural skin, long straight center-parted black hair, brown eyes, gold earrings, and ivory silk blouse with restrained embroidery. One action only: she walks into the near plane and pauses, looking past the separate spatial layers rather than at camera; the farther layers appear progressively cooler and narrower through practical light and perspective. Her face remains fully visible and undistorted. Native audio is a final soft step, quiet air, and one far latch-like click that arrives before any visual source; no dialogue.",
+      "positive_prompt": "static eye-level 32mm deep-focus shot, places Zantara in clean near profile while three unlabelled architectural layers recede behind her with equal visual clarity. Preserve approved A007 Zantara exactly: same facial geometry, age, natural skin, long straight center-parted black hair, brown eyes, gold earrings, and ivory silk blouse with restrained embroidery. One action only: she walks into the near plane and pauses, looking past the separate spatial layers rather than at camera; the farther layers appear progressively cooler and narrower through practical light and perspective. Her face remains fully visible and undistorted. Native audio is a final soft step, quiet air, and one far latch-like click that arrives before any visual source; no dialogue.",
+      "prompt_negative": "text, labels, papers, interfaces, other people, mirror image, duplicate body, official iconography, airport, beach, ominous thriller styling, rack focus, zoom, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "negative_prompt": "text, labels, papers, interfaces, other people, mirror image, duplicate body, official iconography, airport, beach, ominous thriller styling, rack focus, zoom, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-dub-safe-ambient"
+    },
+    {
+      "index": 503,
+      "shot_id": "s0503",
+      "global_probe_id": "s01e13-residency-permit-probes:f05-deep-information:v03",
+      "variant_id": "v03",
+      "variant_seed_id": "6eacd00a-cd0f-50bb-894b-77ffaaf0e2fd",
+      "family_id": "f05-deep-information",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "a perfectly still 35mm deep-focus portrait composition, keeps Zantara centered in the near middle plane while restrained sliding architectural screens in the distant background settle into three separate openings. Preserve the exact approved A007 Zantara identity, face, age, skin, center-parted black hair, brown eyes, gold earrings, and canonical ivory-and-gold blouse. One principal action: Zantara arrives, stops, and holds calm attention as the spatial divisions behind her complete their quiet movement; the result feels observational, not symbolic theatre. All depth planes remain sharp enough to read on a phone, with neutral light and realistic materials. Native audio is one footfall, soft screen movement, and a single dry stop-click; she does not speak.",
+      "positive_prompt": "a perfectly still 35mm deep-focus portrait composition, keeps Zantara centered in the near middle plane while restrained sliding architectural screens in the distant background settle into three separate openings. Preserve the exact approved A007 Zantara identity, face, age, skin, center-parted black hair, brown eyes, gold earrings, and canonical ivory-and-gold blouse. One principal action: Zantara arrives, stops, and holds calm attention as the spatial divisions behind her complete their quiet movement; the result feels observational, not symbolic theatre. All depth planes remain sharp enough to read on a phone, with neutral light and realistic materials. Native audio is one footfall, soft screen movement, and a single dry stop-click; she does not speak.",
+      "prompt_negative": "words, signs, documents, logos, people, reflections, duplicate Zantara, government imagery, airport or resort décor, suspense lighting, rack-focus effect, zoom, pan, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "negative_prompt": "words, signs, documents, logos, people, reflections, duplicate Zantara, government imagery, airport or resort décor, suspense lighting, rack-focus effect, zoom, pan, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-dub-safe-ambient"
+    },
+    {
+      "index": 504,
+      "shot_id": "s0504",
+      "global_probe_id": "s01e13-residency-permit-probes:f05-deep-information:v04",
+      "variant_id": "v04",
+      "variant_seed_id": "953ff92f-5256-5ab7-a0b7-b2f1b05dcbc6",
+      "family_id": "f05-deep-information",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "locked 40mm deep-focus frame, holds Zantara close in the lower foreground while a distant narrow light well remains visible above and behind her through layered concrete geometry. Preserve approved A007 Zantara exactly: same face, age, natural skin tone, long straight center-parted black hair, gold earrings, and ivory blouse with subtle gold embroidery. One action only: she takes one final step into position and becomes still; the distant light calmly narrows as an unseen architectural shade moves, leaving her face in clean neutral illumination. The composition communicates simultaneous near certainty and far limitation without a literal sign or barrier. Native audio is the last step, quiet room tone, and one far mechanical click; no speech.",
+      "positive_prompt": "locked 40mm deep-focus frame, holds Zantara close in the lower foreground while a distant narrow light well remains visible above and behind her through layered concrete geometry. Preserve approved A007 Zantara exactly: same face, age, natural skin tone, long straight center-parted black hair, gold earrings, and ivory blouse with subtle gold embroidery. One action only: she takes one final step into position and becomes still; the distant light calmly narrows as an unseen architectural shade moves, leaving her face in clean neutral illumination. The composition communicates simultaneous near certainty and far limitation without a literal sign or barrier. Native audio is the last step, quiet room tone, and one far mechanical click; no speech.",
+      "prompt_negative": "generated text, forms, screens, logos, extra people, mirrors, duplicate body, official insignia, airport or tropical imagery, melodramatic darkness, rack focus, camera movement, or digital transition, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "negative_prompt": "generated text, forms, screens, logos, extra people, mirrors, duplicate body, official insignia, airport or tropical imagery, melodramatic darkness, rack focus, camera movement, or digital transition, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-dub-safe-ambient"
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0",
+  "seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+  "parent_seed_id": null,
+  "attempt": 1,
+  "created_at": "2026-08-31T01:19:45+08:00",
+  "context_snapshot_sha256": "916a7293c40a0e4fe9118c34bca37055c22e3566416fd83fc985c725ee2ef1e6",
+  "reasoning_policy": "One high-reasoning lock; deterministic probe expansion; high reasoning returns only for critic ambiguity or a child-seed reroll.",
+  "thesis": "Continuity of movement, discontinuity of rights.",
+  "creative_signature": {
+    "narrative_engine": "A continuous forward journey gradually reveals that legal permissions are separate systems rather than a bundle.",
+    "opening_image": "Zantara advances through a calm, warm, apparently frictionless architectural passage.",
+    "spatial_metaphor": "Invisible thresholds alter access, volume, light, and rhythm without literal labels.",
+    "camera_grammar": "Fluid backward tracking becomes compressed lateral observation and finally a locked direct-address close-up.",
+    "transition_motif": "Full-frame architectural occlusion and match-on-action create an apparent oner from independent clips.",
+    "sound_motif": "A single dry architectural click or latch bridges cuts; restrained room tone carries continuity.",
+    "color_story": "Warm certainty becomes mixed-temperature ambiguity and resolves into clear neutral light.",
+    "hero_prop": "None; the body, architecture, light, and sound carry the argument.",
+    "blocking": "Forward motion begins unopposed, becomes spatially constrained, then stops by choice at the moment of clarity.",
+    "wardrobe_arc": "Canonical understated ivory-and-gold Zantara wardrobe remains unchanged; no bureaucratic costume coding.",
+    "emotional_turn": "Confidence gives way to concentration, then calm authority rather than alarm.",
+    "final_image": "A still close-up in neutral light; the world has stopped moving because the distinction is now precise."
+  },
+  "originality_description": "An apparently frictionless forward journey through invisible architectural thresholds discovers that one legal status does not make every adjacent permission identical. Camera movement compresses into chosen stillness while a dry architectural click and a warm-to-neutral light arc carry the distinction without documents, labels, or literal doors.",
+  "signature_axes": {
+    "narrative_engine_id": "continuous-journey-disaggregated-permissions",
+    "spatial_metaphor_id": "invisible-architectural-thresholds",
+    "opening_image_id": "frictionless-forward-passage",
+    "emotional_turn_id": "confidence-to-concentration-to-authority",
+    "final_image_id": "chosen-stillness-neutral-closeup",
+    "camera_grammar_id": "forward-track-lateral-compression-locked-closeup",
+    "transition_motif_id": "full-frame-occlusion-match-on-action",
+    "sound_motif_id": "single-dry-architectural-click",
+    "color_arc_id": "warm-certainty-mixed-ambiguity-neutral-clarity",
+    "blocking_id": "unopposed-forward-motion-constrained-voluntary-stop",
+    "hero_prop_id": "none-body-architecture-light-sound",
+    "wardrobe_arc_id": "constant-ivory-gold"
+  },
+  "originality_gate": {
+    "verdict": "PASS",
+    "registration_kind": "root",
+    "signature_sha256": "b9a98c97a22e73240455e37b63bb4b6ca950164668910458220a722fa365d8ac",
+    "description_sha256": "0b9204f8c001dec0cffdb05fc8d4218e1b56cb74cc536b0a9af3c2ba0f382796",
+    "request_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-request.json",
+    "request_sha256": "28a33021afd9cff44c873e01e980c2525789bf472f36c7b2883d2ee78fa03998",
+    "receipt_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-receipt.json",
+    "receipt_sha256": "089bec6bc15fc0e2c26e244482edf5b58b5b3746c2d5910326151f794b930eb7",
+    "ledger_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-ledger.jsonl",
+    "ledger_sha256_at_registration": "70c47e1abc40284ba8ab50503ec5203745ae5cb280437b48d6cd482df6d671ba"
+  },
+  "performance_rule": "Zantara speaks only in the myth-break probe family. All other probes are dub-safe visual performance with natural room tone.",
+  "variation_rule": "Within a family, change only declared camera, blocking, occluder, or lighting axes. A conceptual change requires a child seed.",
+  "forbidden_prior_motifs": [
+    "master-key prop",
+    "passport montage",
+    "stamp impact transition",
+    "floating documents",
+    "holographic menu of rights",
+    "airport queue",
+    "labelled work-property-bank-tax doors",
+    "drone-to-office reveal",
+    "influencer walk-and-talk",
+    "decorative 360-degree orbit"
+  ],
+  "probe_scope": {
+    "families": 6,
+    "variants_per_family": 4,
+    "authorized_generations": 24,
+    "credit_cap": 240,
+    "generation_cap_reason": "convergence boundary",
+    "publication_allowed": false
+  }
+}

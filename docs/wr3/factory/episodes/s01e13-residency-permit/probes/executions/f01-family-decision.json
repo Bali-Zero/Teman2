@@ -1,0 +1,63 @@
+{
+  "schema_version": "wr3-camera-probe-family-decision/1.0",
+  "episode_id": "S01E13",
+  "candidate_id": "C07",
+  "family_id": "f01-fluid-approach",
+  "decision": "CLOSED_WITHOUT_WINNER",
+  "closed_at_utc": "2026-08-30T19:26:18Z",
+  "attempts": [
+    {
+      "variant_id": "v01",
+      "image_generation_calls": 0,
+      "video_generation_calls": 1,
+      "video_credits": 10,
+      "identity_cosine_average": 0.692833,
+      "identity_cosine_minimum": 0.635646,
+      "creative_verdict": "FAIL",
+      "diagnosis": "Fake camera interface, technical overlays, bars, and reference-presentation framing contaminated the result."
+    },
+    {
+      "variant_id": "v02",
+      "image_generation_calls": 0,
+      "video_generation_calls": 1,
+      "video_credits": 10,
+      "identity_cosine_average": 0.6568540692329407,
+      "identity_cosine_minimum": 0.5977339744567871,
+      "creative_verdict": "FAIL",
+      "diagnosis": "The clip exposed the raw portrait and generated a large inverted lower panel with a hard seam."
+    },
+    {
+      "variant_id": "v03",
+      "image_generation_calls": 1,
+      "video_generation_calls": 0,
+      "video_credits": 0,
+      "still_identity_cosine": 0.28287273645401,
+      "creative_verdict": "REJECT_BEFORE_VIDEO",
+      "diagnosis": "Scene-first composition passed, but the generated woman was not Zantara."
+    },
+    {
+      "variant_id": "v04",
+      "image_generation_calls": 1,
+      "video_generation_calls": 0,
+      "video_credits": 0,
+      "still_identity_cosine": 0.558037281036377,
+      "creative_verdict": "REJECT_BEFORE_VIDEO",
+      "diagnosis": "Scene-first composition and canonical wardrobe passed; identity improved but remained below the exact 0.600 unlock threshold."
+    }
+  ],
+  "accounting": {
+    "image_generation_calls": 2,
+    "video_generation_calls": 2,
+    "automatic_retries": 0,
+    "measured_video_credits": 20,
+    "authorized_video_credit_cap": 240,
+    "unspent_cap": 220
+  },
+  "causal_conclusion": "Camera-prompt originality is no longer the limiting variable. The common failure is the handoff from a landscape identity anchor to a clean portrait scene-start that both preserves A007 and avoids raw-reference presentation artifacts.",
+  "next_gate": {
+    "id": "E13_IDENTITY_PRESERVING_SCENE_START_R_AND_D",
+    "status": "REQUIRED_BEFORE_MORE_VIDEO",
+    "scope": "Benchmark a small set of materially different identity-preserving start-frame methods with exact ArcFace, raster, and composition gates. A new camera family or fifth f01 variant is not authorized by this decision."
+  },
+  "publication_allowed": false
+}

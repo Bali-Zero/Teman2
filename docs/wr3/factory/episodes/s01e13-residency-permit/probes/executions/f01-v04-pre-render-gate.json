@@ -1,0 +1,38 @@
+{
+  "schema_version": "wr3.camera-probe-pre-render-gate.v1",
+  "episode_id": "s01e13-residency-permit-probes",
+  "family_id": "f01-fluid-approach",
+  "variant_id": "v04",
+  "global_probe_id": "s01e13-residency-permit-probes:f01-fluid-approach:v04",
+  "variant_seed_id": "9c66106c-3869-53d3-94d9-fe36897658d6",
+  "source_pack_sha256": "7d277aad31475fbd4d93f052b935817870f81b00dec43f7c85eacafa38bdc2be",
+  "creative_pass": {
+    "status": "FRESH_BOUNDED_REROLL",
+    "reason": "The v03 scene composition passed but its generated identity hard-failed. The final predeclared f01 axis therefore keeps the apparent-oner grammar while increasing frontal facial readability and restoring the canonical wardrobe.",
+    "distinctive_spatial_event": "A restrained eye-level backward track resolves to a centered frame before a foreground limestone edge nearly fills it.",
+    "still_prompt": "Reference-matched Zantara, alone and knees-up mid-stride inside an edge-to-edge limestone atrium, unobstructed frontal face, ivory silk blouse, restrained gold embroidery, natural daylight.",
+    "still_word_count": 22,
+    "video_prompt": "Zantara walks calmly and decisively as the camera tracks backward at eye level, ending centered while a foreground limestone edge nearly fills the frame.",
+    "video_word_count": 24,
+    "audio": "Dry measured footsteps, faint fabric movement, low quiet ventilation; no speech, music, or tonal cue.",
+    "negative_constraints": "No raw reference portrait, portrait box, borders, black bars, split frame, seams, mirrored or inverted panels, reflective surfaces, duplicate people, extra faces, facial drift, body distortion, text, captions, interface graphics, labels, screens, documents, logos, posing, runway movement, orbit, zoom, whip pan, or abrupt camera motion."
+  },
+  "independent_gate": {
+    "verdict": "PASS",
+    "cliche": "PASS",
+    "safety": "PASS",
+    "identity_readability": "PASS",
+    "single_action": "PASS",
+    "transport_hygiene": "PASS",
+    "reviewed_at_utc": "2026-08-30T19:22:00Z",
+    "notes": "Both prompts remain within the 25-word Tier-One budget. Audio and exclusions are separate, and no internal identity token or transport label enters renderer prose."
+  },
+  "authorization_boundary": {
+    "still_generation_authorized": true,
+    "maximum_image_generation_calls": 1,
+    "automatic_retries": 0,
+    "video_generation_authorized": false,
+    "video_unlock_condition": "The generated still must pass exact single-face real ArcFace with cosine >= 0.600 and retain matching project/media/SHA lineage."
+  },
+  "publication_allowed": false
+}

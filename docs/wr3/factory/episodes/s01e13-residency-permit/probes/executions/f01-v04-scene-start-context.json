@@ -1,0 +1,20 @@
+{
+  "schema_version": "wr3.scene-start-context.v1",
+  "episode_id": "s01e13-residency-permit-probes",
+  "project": {
+    "id": "afab29a9-f27f-4cd7-9953-3dee4a441df2",
+    "video_id": "6c6a8cb0-17aa-48e6-90c2-d7b1dfda22dd",
+    "name": "s01e13-f01-v04-scene-start-20260831",
+    "fresh_for_run": true,
+    "endpoint": "http://127.0.0.1:8100",
+    "paygate": "PAYGATE_TIER_TIER1P5"
+  },
+  "anchor_lineage": {
+    "role": "identity_reference_only",
+    "project_id": "afab29a9-f27f-4cd7-9953-3dee4a441df2",
+    "media_id": "3b2029b3-762f-47b8-a17c-31e9b7b68400",
+    "path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+    "sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026",
+    "dimensions": [1402, 1122]
+  }
+}

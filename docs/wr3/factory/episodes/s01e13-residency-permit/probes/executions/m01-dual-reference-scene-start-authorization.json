@@ -1,0 +1,50 @@
+{
+  "schema_version": "wr3.scene-start-authorization.v1",
+  "episode_id": "s01e13-residency-permit-probes",
+  "family_id": "identity-preserving-scene-start-r-and-d",
+  "method_id": "M01_FLOW_DUAL_IDENTITY_REFERENCE",
+  "method_seed_id": "d8970f2e-d908-5dc3-abe0-ebcdabf9d3fc",
+  "decision": "PASS_STILL_ONLY",
+  "video_authorized": false,
+  "approved_prompt_file": "m01-dual-reference-scene-start-prompt.txt",
+  "approved_prompt_word_count": 22,
+  "identity_references": [
+    {
+      "token": "A007",
+      "role": "identity_reference_only",
+      "sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026",
+      "offline_arcface_cosine": 0.8363728523254395
+    },
+    {
+      "token": "A002",
+      "role": "identity_reference_only",
+      "sha256": "e76490b9ddc8bf9cb8e24924f3f13f0304e99b6124c978a8a2a40bdc1b4bb5aa",
+      "offline_arcface_cosine": 0.9889558553695679
+    }
+  ],
+  "pre_spend_snapshot": {
+    "flow_health": "ok",
+    "extension_connected": true,
+    "live_credits": 12530,
+    "paygate": "PAYGATE_TIER_TIER1P5",
+    "accounted_video_probe_credits": 20,
+    "credit_cap": 240,
+    "image_generation_count": 0,
+    "video_generation_count": 0,
+    "captured_at": "2026-08-30T19:39:06Z"
+  },
+  "attempt_contract": {
+    "maximum_image_generation_calls": 1,
+    "automatic_retries": 0,
+    "required_character_media_count": 2,
+    "native_orientation": "portrait",
+    "post_gate_face_count": 1,
+    "post_gate_arcface_cosine_min": 0.6,
+    "raw_identity_reference_may_be_video_start": false
+  },
+  "gate_notes": {
+    "creative_change": "identity-transfer method only; approved v04 spatial brief held constant",
+    "method_independence": "two ordered Flow identity references instead of the single-reference v04 method",
+    "video_status": "LOCKED_PENDING_STILL_IDENTITY_AND_COMPOSITION_PASS"
+  }
+}

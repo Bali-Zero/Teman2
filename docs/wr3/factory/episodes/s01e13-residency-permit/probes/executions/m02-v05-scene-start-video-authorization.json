@@ -1,0 +1,62 @@
+{
+  "schema_version": "wr3.scene-start-video-authorization.v1",
+  "authorization_id": "fd2026b2-b9c1-4f6d-b82b-b77eab14b517",
+  "authorization_scope": "single_video_generation",
+  "created_at": "2026-08-30T20:05:34Z",
+  "run_id": "e13-m02-imagegen-identity-edit",
+  "episode_id": "s01e13-residency-permit-probes-f01-fluid-approach",
+  "runtime_pack_sha256": "54fefcd6e931ad2580858ee624810793d8bc50ca21126f140093bb8ca0cf7269",
+  "variant_id": "v05",
+  "shot_id": "s0105",
+  "global_probe_id": "s01e13-residency-permit-probes:f01-fluid-approach:v05",
+  "project_id": "08c2c96a-7983-4f8b-a41e-b3afe3a68e3b",
+  "video_id": "648a1e43-fae8-4d2a-a825-f6a2c31225b0",
+  "media_id": "958da8af-e457-49ef-ac94-b7ce255d4484",
+  "bindings": {
+    "manifest_path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/execution/m02-v05-scene-start-manifest.json",
+    "manifest_sha256": "8335df87717ec860c8fbbc88b88e66b4e7e98acd8ba556e8ae6b235f43623ac7",
+    "identity_gate_path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/execution/m02-v05-scene-start-manifest-identity-gate.json",
+    "identity_gate_sha256": "e3331b2825e416bab9b5ac8c81527b6e0b36fc6a0a2bb576e4564481fc2c4c2c",
+    "start_frame_path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/assets/m02-imagegen-identity-edit.png",
+    "start_frame_sha256": "c110699f7e6347ad8491e6381e93914089b76e31b5739e1413715fc02c688052"
+  },
+  "identity_decision": {
+    "verdict": "PASS",
+    "mock_mode": false,
+    "verifier": "insightface-buffalo_l",
+    "face_count": 1,
+    "cosine": 0.7896914482116699,
+    "pass_cosine_threshold": 0.6,
+    "hard_fail_cosine_threshold": 0.55
+  },
+  "creative_provenance": {
+    "lineage_id": "m02-v04-reroll-01-inertia-stop",
+    "reroll_spec_path": "/tmp/e13-m02.DxwoTD/m02-v05-reroll-spec.json",
+    "reroll_spec_sha256": "e4af6fb221141bac59821ea98997c2abd3ace1f3ebfd3dec86797f7e53e4fd12",
+    "runtime_pack_path": "/tmp/e13-m02.DxwoTD/f01-runtime-shot-pack-v05.json",
+    "runtime_pack_sha256": "54fefcd6e931ad2580858ee624810793d8bc50ca21126f140093bb8ca0cf7269",
+    "positive_prompt_word_count": 25,
+    "single_action": "complete the current step and settle into stillness"
+  },
+  "pre_render_gate": {
+    "verdict": "PASS",
+    "ruleset_scope": "deterministic inline-18 cliche set plus independent semantic review",
+    "external_250_plus_library_present": false,
+    "input_shot_pack_sha256": "ef1843f36916eca80c3d6af03f0664b9a9c744f505c5146e87e03dd6eecc482f",
+    "input_brief_sha256": "db2fecaed7ff7634daeb30c3f4df110eb1945001872733223148d80182ea5a3b",
+    "verdict_sha256": "f858ba45bca62d6a8129ade012321b9f2a105ff461feec674d5dcfc0bdb83e33",
+    "independent_semantic_review": {
+      "verdict": "PASS",
+      "path": "/tmp/e13-m02.DxwoTD/m02-v05-independent-pre-render-gate.json",
+      "sha256": "9832b9e373520bfb08f879bfaef1d289df8499b65f01e71cc4e63fac490bd1c4"
+    }
+  },
+  "video_attempt_contract": {
+    "maximum_video_generation_calls": 1,
+    "automatic_retries": 0,
+    "accounted_video_credits_before": 20,
+    "measured_clip_cost": 10,
+    "episode_credit_cap": 240
+  },
+  "publication_allowed": false
+}

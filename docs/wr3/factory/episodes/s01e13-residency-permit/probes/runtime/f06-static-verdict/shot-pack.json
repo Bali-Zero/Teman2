@@ -1,0 +1,143 @@
+{
+  "schema_version": "wr3-camera-probe-runtime/1.0",
+  "adapter_version": "1.2",
+  "episode_id": "s01e13-residency-permit-probes-f06-static-verdict",
+  "source_episode_id": "s01e13-residency-permit-probes",
+  "candidate_id": "C07",
+  "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+  "originality_gate": {
+    "verdict": "PASS",
+    "registration_kind": "root",
+    "signature_sha256": "b9a98c97a22e73240455e37b63bb4b6ca950164668910458220a722fa365d8ac",
+    "description_sha256": "0b9204f8c001dec0cffdb05fc8d4218e1b56cb74cc536b0a9af3c2ba0f382796",
+    "request_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-request.json",
+    "request_sha256": "28a33021afd9cff44c873e01e980c2525789bf472f36c7b2883d2ee78fa03998",
+    "receipt_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-receipt.json",
+    "receipt_sha256": "089bec6bc15fc0e2c26e244482edf5b58b5b3746c2d5910326151f794b930eb7",
+    "ledger_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-ledger.jsonl",
+    "ledger_sha256_at_registration": "70c47e1abc40284ba8ab50503ec5203745ae5cb280437b48d6cd482df6d671ba",
+    "ledger_record_count_at_registration": 1
+  },
+  "family_id": "f06-static-verdict",
+  "source_pack": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/packs/f06-static-verdict/shot-pack.json",
+  "source_pack_sha256": "a7ef30175e88eb53e88eeda48dffb0104adc384a15f4ad34b18f3da76f3f8f37",
+  "topic": "S01E13 cinematic probe family 06 — static verdict",
+  "purpose": "authorised standalone cinematic camera probes; not a final episode",
+  "anchor_image_path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+  "anchor_sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026",
+  "identity_token": "A007",
+  "aspect_ratio": "9:16",
+  "resolution": "720x1280",
+  "total_duration_s": 32,
+  "transition_map": {
+    "mode": "standalone-camera-probes",
+    "entries": [
+      {
+        "shot_id": "s0601",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      },
+      {
+        "shot_id": "s0602",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      },
+      {
+        "shot_id": "s0603",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      },
+      {
+        "shot_id": "s0604",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      }
+    ]
+  },
+  "shots": [
+    {
+      "index": 601,
+      "shot_id": "s0601",
+      "global_probe_id": "s01e13-residency-permit-probes:f06-static-verdict:v01",
+      "variant_id": "v01",
+      "variant_seed_id": "6ceaaf1d-5408-5c91-a22f-6c114068aa3c",
+      "family_id": "f06-static-verdict",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "completely locked intimate 65mm close-up, neutral eye level, no push-in, no reframing, and no background motion. Preserve the exact approved A007 Zantara identity, facial geometry, apparent age, natural skin texture, center-parted long black hair, brown eyes, gold earrings, and canonical ivory silk blouse with restrained gold embroidery. One action only: Zantara meets the lens, takes one controlled breath with naturally closed lips, and holds calm, precise eye contact without smiling or dramatizing. Her chosen stillness reverses the preceding movement and leaves a clean edit handle. Soft neutral architectural daylight, quiet negative space, and realistic skin texture. Native audio contains subtle room tone, fabric movement, breathing, and one faint architectural click after the hold.",
+      "positive_prompt": "completely locked intimate 65mm close-up, neutral eye level, no push-in, no reframing, and no background motion. Preserve the exact approved A007 Zantara identity, facial geometry, apparent age, natural skin texture, center-parted long black hair, brown eyes, gold earrings, and canonical ivory silk blouse with restrained gold embroidery. One action only: Zantara meets the lens, takes one controlled breath with naturally closed lips, and holds calm, precise eye contact without smiling or dramatizing. Her chosen stillness reverses the preceding movement and leaves a clean edit handle. Soft neutral architectural daylight, quiet negative space, and realistic skin texture. Native audio contains subtle room tone, fabric movement, breathing, and one faint architectural click after the hold.",
+      "prompt_negative": "subtitles, visible words, signs, documents, logos, music, extra people, reflections, duplicate face, government imagery, beauty-filter gloss, camera motion, or cut, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text, speech, dialogue, vocalization, lip sync, moving lips, captions",
+      "negative_prompt": "subtitles, visible words, signs, documents, logos, music, extra people, reflections, duplicate face, government imagery, beauty-filter gloss, camera motion, or cut, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text, speech, dialogue, vocalization, lip sync, moving lips, captions",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-ambient-only"
+    },
+    {
+      "index": 602,
+      "shot_id": "s0602",
+      "global_probe_id": "s01e13-residency-permit-probes:f06-static-verdict:v02",
+      "variant_id": "v02",
+      "variant_seed_id": "74fda1ff-7842-5551-9267-db35c868c820",
+      "family_id": "f06-static-verdict",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "a fully static formal 85mm head-and-shoulders portrait, lens at eye height, symmetrical negative space, no push, pan, or focus change. Preserve approved A007 Zantara exactly: same Indonesian woman, face, age, natural skin tone, long straight center-parted black hair, brown eyes, gold earrings, and ivory-and-gold blouse. One action only: Zantara meets the lens, takes one controlled breath with naturally closed lips, and holds calm, precise eye contact without smiling or dramatizing. Her chosen stillness reverses the preceding movement and leaves a clean edit handle. Soft neutral architectural daylight, quiet negative space, and realistic skin texture. Native audio contains subtle room tone, fabric movement, breathing, and one faint architectural click after the hold.",
+      "positive_prompt": "a fully static formal 85mm head-and-shoulders portrait, lens at eye height, symmetrical negative space, no push, pan, or focus change. Preserve approved A007 Zantara exactly: same Indonesian woman, face, age, natural skin tone, long straight center-parted black hair, brown eyes, gold earrings, and ivory-and-gold blouse. One action only: Zantara meets the lens, takes one controlled breath with naturally closed lips, and holds calm, precise eye contact without smiling or dramatizing. Her chosen stillness reverses the preceding movement and leaves a clean edit handle. Soft neutral architectural daylight, quiet negative space, and realistic skin texture. Native audio contains subtle room tone, fabric movement, breathing, and one faint architectural click after the hold.",
+      "prompt_negative": "captions, text, forms, graphics, logo, music, other people, mirrors, duplicate Zantara, official symbols, tourist setting, glamour treatment, camera movement, or visible transition, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text, speech, dialogue, vocalization, lip sync, moving lips, subtitles",
+      "negative_prompt": "captions, text, forms, graphics, logo, music, other people, mirrors, duplicate Zantara, official symbols, tourist setting, glamour treatment, camera movement, or visible transition, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text, speech, dialogue, vocalization, lip sync, moving lips, subtitles",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-ambient-only"
+    },
+    {
+      "index": 603,
+      "shot_id": "s0603",
+      "global_probe_id": "s01e13-residency-permit-probes:f06-static-verdict:v03",
+      "variant_id": "v03",
+      "variant_seed_id": "e4efd17d-04c3-5ab4-90d4-ccfc4576c585",
+      "family_id": "f06-static-verdict",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "a locked 50mm medium close-up, with environmental breathing room and no camera or background movement. Preserve the exact approved A007 Zantara face, age, skin tone, center-parted black hair, brown eyes, gold earrings, and canonical ivory silk blouse with restrained gold embroidery. One action only: Zantara meets the lens, takes one controlled breath with naturally closed lips, and holds calm, precise eye contact without smiling or dramatizing. Her chosen stillness reverses the preceding movement and leaves a clean edit handle. Soft neutral architectural daylight, quiet negative space, and realistic skin texture. Native audio contains subtle room tone, fabric movement, breathing, and one faint architectural click after the hold.",
+      "positive_prompt": "a locked 50mm medium close-up, with environmental breathing room and no camera or background movement. Preserve the exact approved A007 Zantara face, age, skin tone, center-parted black hair, brown eyes, gold earrings, and canonical ivory silk blouse with restrained gold embroidery. One action only: Zantara meets the lens, takes one controlled breath with naturally closed lips, and holds calm, precise eye contact without smiling or dramatizing. Her chosen stillness reverses the preceding movement and leaves a clean edit handle. Soft neutral architectural daylight, quiet negative space, and realistic skin texture. Native audio contains subtle room tone, fabric movement, breathing, and one faint architectural click after the hold.",
+      "prompt_negative": "subtitles, words, papers, logos, music, other people, reflections, duplicates, official insignia, airport or resort imagery, beauty gloss, push-in, zoom, or cut, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text, speech, dialogue, vocalization, lip sync, moving lips, captions",
+      "negative_prompt": "subtitles, words, papers, logos, music, other people, reflections, duplicates, official insignia, airport or resort imagery, beauty gloss, push-in, zoom, or cut, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text, speech, dialogue, vocalization, lip sync, moving lips, captions",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-ambient-only"
+    },
+    {
+      "index": 604,
+      "shot_id": "s0604",
+      "global_probe_id": "s01e13-residency-permit-probes:f06-static-verdict:v04",
+      "variant_id": "v04",
+      "variant_seed_id": "bab688b5-dce8-5a58-903f-ced031c5364a",
+      "family_id": "f06-static-verdict",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "completely immobile 75mm close-up, severe centered symmetry, neutral eye height, steady focus on both eyes, and no decorative flourish. Preserve approved A007 Zantara exactly: identical facial geometry, apparent age, natural skin, long straight center-parted black hair, brown eyes, gold earrings, and ivory blouse with restrained gold embroidery. One action only: Zantara meets the lens, takes one controlled breath with naturally closed lips, and holds calm, precise eye contact without smiling or dramatizing. Her chosen stillness reverses the preceding movement and leaves a clean edit handle. Soft neutral architectural daylight, quiet negative space, and realistic skin texture. Native audio contains subtle room tone, fabric movement, breathing, and one faint architectural click after the hold.",
+      "positive_prompt": "completely immobile 75mm close-up, severe centered symmetry, neutral eye height, steady focus on both eyes, and no decorative flourish. Preserve approved A007 Zantara exactly: identical facial geometry, apparent age, natural skin, long straight center-parted black hair, brown eyes, gold earrings, and ivory blouse with restrained gold embroidery. One action only: Zantara meets the lens, takes one controlled breath with naturally closed lips, and holds calm, precise eye contact without smiling or dramatizing. Her chosen stillness reverses the preceding movement and leaves a clean edit handle. Soft neutral architectural daylight, quiet negative space, and realistic skin texture. Native audio contains subtle room tone, fabric movement, breathing, and one faint architectural click after the hold.",
+      "prompt_negative": "captions, visible text, documents, logos, other people, reflections, duplicate face, government symbols, tourist imagery, commercial glamour, camera movement, rack focus, or transition, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text, speech, dialogue, vocalization, lip sync, moving lips, subtitles",
+      "negative_prompt": "captions, visible text, documents, logos, other people, reflections, duplicate face, government symbols, tourist imagery, commercial glamour, camera movement, rack focus, or transition, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text, speech, dialogue, vocalization, lip sync, moving lips, subtitles",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-ambient-only"
+    }
+  ]
+}

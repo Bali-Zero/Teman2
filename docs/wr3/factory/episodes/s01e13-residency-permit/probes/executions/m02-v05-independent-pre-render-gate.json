@@ -1,0 +1,73 @@
+{
+  "schema_version": "wr3.camera-probe-independent-pre-render-gate.v1",
+  "reviewed_at": "2026-08-30T20:15:32Z",
+  "reviewer": "wr3-pre-render-gatekeeper",
+  "review_mode": "independent_semantic_pre_spend",
+  "verdict": "PASS",
+  "episode_id": "s01e13-residency-permit-probes-f01-fluid-approach",
+  "family_id": "f01-fluid-approach",
+  "variant_id": "v05",
+  "shot_id": "s0105",
+  "global_probe_id": "s01e13-residency-permit-probes:f01-fluid-approach:v05",
+  "lineage_id": "m02-v04-reroll-01-inertia-stop",
+  "reviewed_authorization_sha256": "7ccc4de1f022ca9d35ed66340ccc8504e3a800575bc2e34b979480ed6a4c9b31",
+  "checks": {
+    "tier1_positive_word_count": {
+      "value": 25,
+      "maximum": 25,
+      "verdict": "PASS"
+    },
+    "single_action": {
+      "value": "complete the current step and settle into stillness",
+      "secondary_motion": "passive blouse inertia",
+      "verdict": "PASS"
+    },
+    "frame_coherence": {
+      "verdict": "PASS",
+      "reason": "The frontal mid-step frame physically supports a body stop and brief residual fabric movement without changing architecture or composition."
+    },
+    "semantic_originality": {
+      "verdict": "PASS",
+      "reason": "The dissociation between a stopped body and continuing fabric motion expresses continuity of movement and discontinuity of rights without literal documents, barriers, stamps, or labels."
+    },
+    "cliche_and_safety": {
+      "verdict": "PASS",
+      "scope": "deterministic inline-18 cliche set plus independent semantic review",
+      "external_250_plus_library_present": false,
+      "safety_triggers": []
+    },
+    "identity": {
+      "verdict": "PASS",
+      "mock_mode": false,
+      "face_count": 1,
+      "cosine": 0.7896914482116699,
+      "pass_cosine_threshold": 0.6
+    },
+    "lineage": {
+      "verdict": "PASS",
+      "runtime_pack_sha256": "54fefcd6e931ad2580858ee624810793d8bc50ca21126f140093bb8ca0cf7269",
+      "manifest_sha256": "8335df87717ec860c8fbbc88b88e66b4e7e98acd8ba556e8ae6b235f43623ac7",
+      "identity_gate_sha256": "e3331b2825e416bab9b5ac8c81527b6e0b36fc6a0a2bb576e4564481fc2c4c2c",
+      "start_frame_sha256": "c110699f7e6347ad8491e6381e93914089b76e31b5739e1413715fc02c688052"
+    },
+    "cost": {
+      "verdict": "PASS",
+      "accounted_video_credits_before": 20,
+      "measured_clip_cost": 10,
+      "projected_video_credits_after": 30,
+      "episode_credit_cap": 240,
+      "live_preflight_required": true
+    },
+    "retry_contract": {
+      "verdict": "PASS",
+      "maximum_video_generation_calls": 1,
+      "automatic_retries": 0
+    }
+  },
+  "authorization": {
+    "video_generation_calls": 1,
+    "variant_id": "v05",
+    "automatic_retries": 0,
+    "publication_allowed": false
+  }
+}

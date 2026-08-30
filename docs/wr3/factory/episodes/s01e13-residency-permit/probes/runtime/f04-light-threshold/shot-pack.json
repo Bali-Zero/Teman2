@@ -1,0 +1,143 @@
+{
+  "schema_version": "wr3-camera-probe-runtime/1.0",
+  "adapter_version": "1.2",
+  "episode_id": "s01e13-residency-permit-probes-f04-light-threshold",
+  "source_episode_id": "s01e13-residency-permit-probes",
+  "candidate_id": "C07",
+  "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+  "originality_gate": {
+    "verdict": "PASS",
+    "registration_kind": "root",
+    "signature_sha256": "b9a98c97a22e73240455e37b63bb4b6ca950164668910458220a722fa365d8ac",
+    "description_sha256": "0b9204f8c001dec0cffdb05fc8d4218e1b56cb74cc536b0a9af3c2ba0f382796",
+    "request_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-request.json",
+    "request_sha256": "28a33021afd9cff44c873e01e980c2525789bf472f36c7b2883d2ee78fa03998",
+    "receipt_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-receipt.json",
+    "receipt_sha256": "089bec6bc15fc0e2c26e244482edf5b58b5b3746c2d5910326151f794b930eb7",
+    "ledger_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-ledger.jsonl",
+    "ledger_sha256_at_registration": "70c47e1abc40284ba8ab50503ec5203745ae5cb280437b48d6cd482df6d671ba",
+    "ledger_record_count_at_registration": 1
+  },
+  "family_id": "f04-light-threshold",
+  "source_pack": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/packs/f04-light-threshold/shot-pack.json",
+  "source_pack_sha256": "f7b1ed182f08cdc6da5445e9f0a2fe85aefcf0df240c07b82976ea3149c2f535",
+  "topic": "S01E13 cinematic probe family 04 — light threshold",
+  "purpose": "authorised standalone cinematic camera probes; not a final episode",
+  "anchor_image_path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+  "anchor_sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026",
+  "identity_token": "A007",
+  "aspect_ratio": "9:16",
+  "resolution": "720x1280",
+  "total_duration_s": 32,
+  "transition_map": {
+    "mode": "standalone-camera-probes",
+    "entries": [
+      {
+        "shot_id": "s0401",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      },
+      {
+        "shot_id": "s0402",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      },
+      {
+        "shot_id": "s0403",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      },
+      {
+        "shot_id": "s0404",
+        "from": null,
+        "to": null,
+        "transition": "standalone-camera-probe"
+      }
+    ]
+  },
+  "shots": [
+    {
+      "index": 401,
+      "shot_id": "s0401",
+      "global_probe_id": "s01e13-residency-permit-probes:f04-light-threshold:v01",
+      "variant_id": "v01",
+      "variant_seed_id": "b0de2165-5414-54d3-8245-c8c4e9492680",
+      "family_id": "f04-light-threshold",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "locked-height 35mm tracking backward, keeps exposure stable as Zantara crosses one sharp but natural band of window sunlight inside a continuous unlabelled corridor. Preserve the exact approved A007 Zantara identity, face, age, skin tone, center-parted long black hair, brown eyes, gold earrings, and ivory silk blouse with restrained gold embroidery. One action only: she walks forward from warm amber light through the bright boundary into clear neutral daylight, her expression shifting from easy certainty to focused attention. Nothing opens, closes, or transforms; the story change is carried by motivated light on her face and architecture. Native audio is continuous footfall and room tone with one quiet dry click exactly at the boundary; no speech.",
+      "positive_prompt": "locked-height 35mm tracking backward, keeps exposure stable as Zantara crosses one sharp but natural band of window sunlight inside a continuous unlabelled corridor. Preserve the exact approved A007 Zantara identity, face, age, skin tone, center-parted long black hair, brown eyes, gold earrings, and ivory silk blouse with restrained gold embroidery. One action only: she walks forward from warm amber light through the bright boundary into clear neutral daylight, her expression shifting from easy certainty to focused attention. Nothing opens, closes, or transforms; the story change is carried by motivated light on her face and architecture. Native audio is continuous footfall and room tone with one quiet dry click exactly at the boundary; no speech.",
+      "prompt_negative": "text, signs, forms, graphics, extra people, mirrors, duplicate body, official setting, airport, resort, lens flare flourish, speed ramp, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "negative_prompt": "text, signs, forms, graphics, extra people, mirrors, duplicate body, official setting, airport, resort, lens flare flourish, speed ramp, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-dub-safe-ambient"
+    },
+    {
+      "index": 402,
+      "shot_id": "s0402",
+      "global_probe_id": "s01e13-residency-permit-probes:f04-light-threshold:v02",
+      "variant_id": "v02",
+      "variant_seed_id": "b71e5b7b-5975-5946-b55f-42fd5892227d",
+      "family_id": "f04-light-threshold",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "eye-level 50mm backward track, holds a stable medium frame while Zantara passes beneath a single overhead lighting boundary from warm tungsten ambience into subtly cooler neutral architectural light. Preserve approved A007 Zantara exactly: identical face, apparent age, natural skin, long straight center-parted black hair, gold earrings, and canonical ivory-and-gold blouse. One action only: she walks at an unchanged pace through the same continuous space; her gaze becomes more analytical after the color-temperature shift, without melodrama or surprise. Lighting remains physically credible and skin tone remains natural on both sides. Native audio contains measured footsteps, soft ventilation, and a restrained electrical relay click at the threshold; she does not speak.",
+      "positive_prompt": "eye-level 50mm backward track, holds a stable medium frame while Zantara passes beneath a single overhead lighting boundary from warm tungsten ambience into subtly cooler neutral architectural light. Preserve approved A007 Zantara exactly: identical face, apparent age, natural skin, long straight center-parted black hair, gold earrings, and canonical ivory-and-gold blouse. One action only: she walks at an unchanged pace through the same continuous space; her gaze becomes more analytical after the color-temperature shift, without melodrama or surprise. Lighting remains physically credible and skin tone remains natural on both sides. Native audio contains measured footsteps, soft ventilation, and a restrained electrical relay click at the threshold; she does not speak.",
+      "prompt_negative": "visible words, signage, papers, interfaces, logos, extra people, reflections, duplicates, government symbols, airport or beach imagery, flicker, fantasy glow, zoom, whip pan, or camera orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "negative_prompt": "visible words, signage, papers, interfaces, logos, extra people, reflections, duplicates, government symbols, airport or beach imagery, flicker, fantasy glow, zoom, whip pan, or camera orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-dub-safe-ambient"
+    },
+    {
+      "index": 403,
+      "shot_id": "s0403",
+      "global_probe_id": "s01e13-residency-permit-probes:f04-light-threshold:v03",
+      "variant_id": "v03",
+      "variant_seed_id": "3fbb780c-7f15-5af3-81c2-1f8b8cb53948",
+      "family_id": "f04-light-threshold",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "a measured 40mm lateral track, follows Zantara across one band of shadow cast by fixed architectural slats; warm light before it gives way to calm neutral light after it. Preserve the exact approved A007 identity, facial geometry, age, skin tone, center-parted black hair, brown eyes, gold earrings, and ivory silk blouse with subtle gold embroidery. One action only: she walks left to right at constant speed, passing through the patterned shadow while her posture remains composed and her attention sharpens. The shadow pattern is restrained, not noir decoration, and never obscures her identity for more than an instant. Native audio is continuous room tone and footfall with one crisp wooden contraction click at the darkest beat; no dialogue.",
+      "positive_prompt": "a measured 40mm lateral track, follows Zantara across one band of shadow cast by fixed architectural slats; warm light before it gives way to calm neutral light after it. Preserve the exact approved A007 identity, facial geometry, age, skin tone, center-parted black hair, brown eyes, gold earrings, and ivory silk blouse with subtle gold embroidery. One action only: she walks left to right at constant speed, passing through the patterned shadow while her posture remains composed and her attention sharpens. The shadow pattern is restrained, not noir decoration, and never obscures her identity for more than an instant. Native audio is continuous room tone and footfall with one crisp wooden contraction click at the darkest beat; no dialogue.",
+      "prompt_negative": "text, signs, forms, logos, other people, duplicate or reflected Zantara, official seals, airport, resort, dramatic flare, time ramp, zoom, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "negative_prompt": "text, signs, forms, logos, other people, duplicate or reflected Zantara, official seals, airport, resort, dramatic flare, time ramp, zoom, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-dub-safe-ambient"
+    },
+    {
+      "index": 404,
+      "shot_id": "s0404",
+      "global_probe_id": "s01e13-residency-permit-probes:f04-light-threshold:v04",
+      "variant_id": "v04",
+      "variant_seed_id": "a7f705cd-5e5a-5ee2-b4fd-493c57c6a257",
+      "family_id": "f04-light-threshold",
+      "creative_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "shot_type": "zantara-camera-probe",
+      "prompt_positive": "a calm 35mm backward dolly, begins with soft warm light reflected from a timber wall onto Zantara and gradually loses that reflection as she advances into honest neutral daylight. Preserve approved A007 Zantara exactly: same face, age, skin, long straight center-parted black hair, brown eyes, gold earrings, and canonical ivory blouse with restrained gold embroidery. One action only: she walks forward through one uninterrupted minimalist passage; the warmer reflected layer falls away naturally, revealing clearer facial modeling and a more concentrated gaze. There is no doorway, wipe, or artificial color pulse. Native audio is realistic footstep, cloth movement, and quiet air, with a single small latch sound heard before its source is seen; no speech.",
+      "positive_prompt": "a calm 35mm backward dolly, begins with soft warm light reflected from a timber wall onto Zantara and gradually loses that reflection as she advances into honest neutral daylight. Preserve approved A007 Zantara exactly: same face, age, skin, long straight center-parted black hair, brown eyes, gold earrings, and canonical ivory blouse with restrained gold embroidery. One action only: she walks forward through one uninterrupted minimalist passage; the warmer reflected layer falls away naturally, revealing clearer facial modeling and a more concentrated gaze. There is no doorway, wipe, or artificial color pulse. Native audio is realistic footstep, cloth movement, and quiet air, with a single small latch sound heard before its source is seen; no speech.",
+      "prompt_negative": "visible writing, documents, screens, logos, extra people, mirrors, duplicate figure, government insignia, airport or tropical filler, lens flare, speed ramp, zoom, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "negative_prompt": "visible writing, documents, screens, logos, extra people, mirrors, duplicate figure, government insignia, airport or tropical filler, lens flare, speed ramp, zoom, or orbit, on-screen camera user interface, technical overlays, aspect-ratio labels, frame-rate labels, fps labels, lens labels, framing guides, contact sheet, split screen, reference-image display, letterbox bars, pillarbox bars, any visible text",
+      "identity_tokens": ["A007"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16",
+      "transition_to_next": null,
+      "audio_mode": "native-dub-safe-ambient"
+    }
+  ]
+}

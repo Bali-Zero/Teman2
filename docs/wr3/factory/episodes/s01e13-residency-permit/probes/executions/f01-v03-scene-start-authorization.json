@@ -1,0 +1,40 @@
+{
+  "schema_version": "wr3.scene-start-authorization.v1",
+  "episode_id": "s01e13-residency-permit-probes",
+  "family_id": "f01-fluid-approach",
+  "variant_id": "v03",
+  "decision": "PASS_STILL_ONLY",
+  "video_authorized": false,
+  "approved_prompt_file": "f01-v03-scene-start-prompt.txt",
+  "approved_prompt_word_count": 25,
+  "identity_reference": {
+    "token": "A007",
+    "role": "identity_reference_only",
+    "sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026",
+    "dimensions": [1402, 1122],
+    "required_character_media_count": 1
+  },
+  "pre_spend_snapshot": {
+    "flow_health": "ok",
+    "extension_connected": true,
+    "live_credits": 12530,
+    "ledger_credits_last_24h": 30,
+    "daily_breaker_credits": 190,
+    "image_generation_count": 0,
+    "video_generation_count": 0,
+    "captured_at": "2026-08-30T18:43:00Z"
+  },
+  "attempt_contract": {
+    "maximum_image_generation_calls": 1,
+    "automatic_retries": 0,
+    "native_orientation": "portrait",
+    "post_gate_face_count": 1,
+    "post_gate_arcface_cosine_min": 0.6,
+    "raw_a007_may_be_video_start": false
+  },
+  "gate_notes": {
+    "camera_probe_prompt_contract_words": "60-135",
+    "v03_prompt_status": "PASS_CONDITIONAL_PENDING_STILL",
+    "external_cliche_library_available": false
+  }
+}

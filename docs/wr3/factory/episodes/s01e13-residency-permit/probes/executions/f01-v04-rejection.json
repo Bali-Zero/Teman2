@@ -1,0 +1,99 @@
+{
+  "schema_version": "wr3-camera-probe-review/1.0",
+  "episode_id": "S01E13",
+  "candidate_id": "C07",
+  "topic": "What Your Residency Permit Does Not Come With",
+  "family_id": "f01-fluid-approach",
+  "variant_id": "v04",
+  "global_probe_id": "s01e13-residency-permit-probes:f01-fluid-approach:v04",
+  "variant_seed_id": "9c66106c-3869-53d3-94d9-fe36897658d6",
+  "source_pack_sha256": "7d277aad31475fbd4d93f052b935817870f81b00dec43f7c85eacafa38bdc2be",
+  "scene_start": {
+    "submitted_at_utc": "2026-08-30T19:24:40.227836+00:00",
+    "project_id": "afab29a9-f27f-4cd7-9953-3dee4a441df2",
+    "video_id": "6c6a8cb0-17aa-48e6-90c2-d7b1dfda22dd",
+    "anchor_media_id": "3b2029b3-762f-47b8-a17c-31e9b7b68400",
+    "generated_media_id": "29dd6ddf-e6d5-4ab7-aa64-75cfdcf9fa35",
+    "model": "GEM_PIX_2",
+    "seed": 880267,
+    "image_generation_call_count": 1,
+    "video_generation_call_count": 0,
+    "automatic_retries": 0,
+    "video_scene_created": false
+  },
+  "media": {
+    "raw_path_on_pro": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-f01-v04/assets/f01-v04-scene-start-raw.bin",
+    "raw_sha256": "78e4e68bb24900603161a4dc3f308865b00879b11260851bbec34dc9998f9bbb",
+    "raw_dimensions": [768, 1376],
+    "normalized_path_on_pro": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-f01-v04/assets/f01-v04-scene-start.png",
+    "normalized_sha256": "afaf0482a2c631d84d77aa9276586cf447b046314da52ca21c67b95d7782efa5",
+    "normalized_dimensions": [720, 1280],
+    "normalization": "center_cover_crop_resize",
+    "crop_box": [0, 5, 768, 1370],
+    "fill_method": null
+  },
+  "credit_accounting": {
+    "live_before": 12530,
+    "live_after": 12530,
+    "measured_delta": 0,
+    "accounted_video_probe_credits_before": 20,
+    "accounted_video_probe_credits_after": 20,
+    "cap": 240
+  },
+  "raster_review": {
+    "verdict": "PASS",
+    "exact_9_16": true,
+    "transparent_pixels": false,
+    "fill_method": null,
+    "full_span_seam_detected": false,
+    "source_manifest_sha256": "15d498344abf804ba5637b2e074887d4eb49b24f734701739ef691482403ca31"
+  },
+  "visual_review": {
+    "verdict": "PASS",
+    "single_visible_person": true,
+    "scene_first_frame": true,
+    "edge_to_edge_world": true,
+    "canonical_ivory_and_gold_wardrobe": true,
+    "frontal_unobstructed_face": true,
+    "text_or_ui_detected": false,
+    "duplicate_or_reflected_person_detected": false,
+    "observations": [
+      "The frame is a coherent limestone interior rather than a presentation of the raw reference portrait.",
+      "One front-facing woman advances through the space in the canonical ivory-and-gold wardrobe.",
+      "No bars, split frame, hard seam, interface graphics, visible text, extra person, or reflected duplicate is visible."
+    ]
+  },
+  "identity_review": {
+    "verdict": "REJECT",
+    "mock_mode": false,
+    "model": "insightface-buffalo_l",
+    "face_count": 1,
+    "cosine": 0.558037281036377,
+    "pass_threshold": 0.6,
+    "hard_fail_threshold": 0.55,
+    "hard_fail_triggered": false,
+    "source_report_sha256": "ac53f8690ec5c2186f767695230269a144307d947280a14c98b94c043f2fe08b",
+    "diagnosis": "The prompt correction substantially improved identity retention over v03 but did not reach the exact 0.600 video-unlock threshold. A visually plausible near-match is not accepted as Zantara."
+  },
+  "decision": {
+    "verdict": "REJECT",
+    "video_generation_authorized": false,
+    "reason": "The scene-start raster and composition passed, but the independent real identity gate remained below 0.600. No f01-v04 video was submitted.",
+    "beautiful_but_wrong_identity_is_not_accepted": true,
+    "fifth_variant_authorized": false
+  },
+  "evidence": {
+    "scene_start_receipt_sha256": "df8b06f076117139c28a7c62bffd40fbe1d5ae5895b9b458b4b54b3c997ee752",
+    "prompt_file_sha256": "fef8c58c68ad111913be6ed0a2a8a8bdfe18a8544796227d7e58b6cf749838e5",
+    "context_file_sha256": "4301a59d7f70568de380ae3dc061895f944bae7d270af476e090df89895c4c25",
+    "authorization_file_sha256": "728c3daddbba57b36c6ecf3519dadf0cbc730d49d41f590d2ed0b41f40a0663e",
+    "pre_render_gate_sha256": "8e744b10ed87a205dc8febbd7c41f7c3b8c1ccfaee297a02d88b44b0d27a4b4c"
+  },
+  "next_action": {
+    "status": "FAMILY_CLOSED_WITHOUT_WINNER",
+    "reasoning_policy": "Do not spend another camera-prompt reasoning pass. The residual failure is identity transfer in scene-start synthesis, not the f01 camera idea.",
+    "required_system_work": "Develop and benchmark an identity-preserving scene-start preparation path before opening f02-f06 or creating a child creative seed."
+  },
+  "reviewed_at_utc": "2026-08-30T19:26:18Z",
+  "publication_allowed": false
+}

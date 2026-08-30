@@ -1,0 +1,111 @@
+{
+  "schema_version": "wr3-camera-probe-review/1.0",
+  "episode_id": "S01E13",
+  "candidate_id": "C07",
+  "topic": "What Your Residency Permit Does Not Come With",
+  "family_id": "f01-fluid-approach",
+  "variant_id": "v02",
+  "global_probe_id": "s01e13-residency-permit-probes:f01-fluid-approach:v02",
+  "variant_seed_id": "6ae42b36-03a7-5d67-a86a-d57a869d76f0",
+  "source_pack_sha256": "7d277aad31475fbd4d93f052b935817870f81b00dec43f7c85eacafa38bdc2be",
+  "runtime_pack_sha256": "14e965b685125613de40f7e4704068274594c866f11a34c1278807265aecd09c",
+  "prompt_hashes": {
+    "positive_sha256": "67e200bd54f6a81202665bf61adaec2a71c3db57a774ba111845db5ae0b63162",
+    "negative_sha256": "36ab8fc3100fa138db8dad85f76e8de8fb63534413115486499deecc978a4dac",
+    "flow_prompt_sha256": "3352d5c5c30cbdf3f3e8d2f40104c28ba0118f3f86a06ee2ce9ef234c3415a8d"
+  },
+  "generation": {
+    "submitted_at_utc": "2026-08-30T18:19:38.424868+00:00",
+    "project_id": "e79c19fd-b963-4526-b749-e9050b1ead3a",
+    "video_id": "232e5348-3725-4a97-8b16-4a11a3b923c9",
+    "scene_id": "4fe0018f-fd11-4e9b-bb27-020e52813e96",
+    "anchor_media_id": "116f2066-365f-47de-8d50-3ea5b19641cc",
+    "workflow_id": "9337bca2-81fe-4895-b66f-a5607f478c8f",
+    "media_id": "03517532-2693-45f6-9e90-3393c70b0115",
+    "paygate": "PAYGATE_TIER_TIER1P5",
+    "native_audio": true,
+    "automatic_retries": 0,
+    "generation_call_count": 1,
+    "generation_status": "successful",
+    "retrieval_path": "authenticated top-level media redirect after workflow success returned a null URL",
+    "resubmitted_for_retrieval_failure": false
+  },
+  "media": {
+    "canonical_path_on_pro": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-f01-v02/clips/102.mp4",
+    "sha256": "65a161708b8388e171e418a736e6748e870022ce7e193c1ab5c06eb1998cf111",
+    "size_bytes": 3215143,
+    "duration_s": 8.0,
+    "video_codec": "h264",
+    "width": 720,
+    "height": 1280,
+    "frame_rate_fps": 24,
+    "audio_codec": "aac",
+    "audio_channels": 2,
+    "audio_sample_rate_hz": 48000
+  },
+  "credit_accounting": {
+    "live_before": 12540,
+    "live_after": 12530,
+    "measured_delta": 10,
+    "ledger_recorded": 10,
+    "accounted_before_this_variant": 10,
+    "accounted_after_this_variant": 20,
+    "cap": 240
+  },
+  "identity_review": {
+    "verdict": "BORDERLINE_PASS",
+    "mock_mode": false,
+    "samples": 5,
+    "cosine_average": 0.6568540692329407,
+    "cosine_minimum": 0.5977339744567871,
+    "pass_threshold": 0.6,
+    "hard_fail_threshold": 0.55,
+    "hard_fail_triggered": false,
+    "source_report_sha256": "6e8cf7678300105fc4f9115c1266f80d22055a8d402c2735dc997bd7b5a26a2c",
+    "note": "The implemented gate passed on average with all five face samples present; the sampled minimum is 0.002266 below the stricter 0.60 creative-review target but remains above the 0.55 hard-fail floor."
+  },
+  "audio_review": {
+    "verdict": "PASS_FOR_PROBE",
+    "native_stream_present": true,
+    "input_integrated_lufs": -17.89,
+    "input_true_peak_dbtp": -2.06,
+    "input_loudness_range_lu": 1.8,
+    "normalization_preview_output_lufs": -14.2,
+    "normalization_preview_output_true_peak_dbtp": -1.0,
+    "voice_corpus_write_performed": false
+  },
+  "creative_review": {
+    "verdict": "FAIL",
+    "narrative_fitness": "FAIL",
+    "motion_execution": "PASS",
+    "text_free_frame": "PASS",
+    "clean_world_from_frame_one": "FAIL",
+    "non_promotional_performance": "PASS",
+    "identity": "BORDERLINE_PASS",
+    "technical_container": "PASS",
+    "observations": [
+      "The requested sustained forward approach is visible and the eye-level 35 mm staging is substantially closer to the intended cinematic grammar than v01.",
+      "The opening still exposes the source portrait between large black regions instead of beginning inside the atrium.",
+      "Every reviewed atrium frame contains a large reflected or upside-down duplicate panel across the bottom, separated by a hard horizontal seam.",
+      "No technical labels, words, camera UI, logos, or extra people are visible."
+    ],
+    "diagnosed_cause": "HOLD: the repeated full-width seam and reflected lower panel indicate a start-image composition or aspect-handling failure rather than a remaining prose-only prompt issue.",
+    "decision": "REJECT",
+    "beautiful_but_structurally_broken_is_not_accepted": true
+  },
+  "evidence": {
+    "contact_sheet_sha256": "1ffacd204771977467c53e6e2e050bbad11f7eaeec075813049b96bb1a9d31b2",
+    "frame_0_25_sha256": "742fcdde15f493b3a057b6dce8fa7445ea7e3bd0a5dedd3869f4030b3d22c409",
+    "frame_1_50_sha256": "2a3b7a119f82490245d7e432ab8f1047a4d63aab6f1bfb5b79361b600bc5b255",
+    "frame_4_00_sha256": "128023422afe5c4c7bb87f3abbc8f613589e89c75c16e28c339add30c5bf94c7",
+    "frame_7_50_sha256": "72908d053f0e439e5f2ef32d87baa6ce7a72ae177ad7e0ac20a604c89b9d7441",
+    "full_frame_samples_reviewed": 8
+  },
+  "next_action": {
+    "status": "HOLD",
+    "reasoning_policy": "Do not spend a new high-reasoning creative pass and do not open f02-f06 while the common start-image path is defective.",
+    "prompt_only_reroll_allowed": false,
+    "required_diagnosis": "Determine whether the exact A007 start image must be transformed into a clean 9:16 identity-preserving start frame before another predeclared variant is submitted."
+  },
+  "publication_allowed": false
+}

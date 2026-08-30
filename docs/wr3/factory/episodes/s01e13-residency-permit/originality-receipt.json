@@ -1,0 +1,25 @@
+{
+  "schema_version": "wr3.originality-receipt.v1",
+  "verdict": "PASS",
+  "status": "RECORDED",
+  "episode_id": "s01e13-residency-permit",
+  "seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+  "parent_seed_id": null,
+  "registration_kind": "root",
+  "signature_sha256": "b9a98c97a22e73240455e37b63bb4b6ca950164668910458220a722fa365d8ac",
+  "description_sha256": "0b9204f8c001dec0cffdb05fc8d4218e1b56cb74cc536b0a9af3c2ba0f382796",
+  "sequence": 1,
+  "ledger_record_count": 1,
+  "recorded_at": "2026-08-30T20:54:46.692733+00:00",
+  "novelty_policy": {
+    "material_differences_required": 4,
+    "concept_differences_required": 1,
+    "cinematic_differences_required": 2,
+    "surface_axes_counted": false,
+    "description_jaccard_fail_at_or_above": 0.8,
+    "closest_structural_seed_id": null,
+    "closest_structural_difference": null,
+    "max_description_jaccard_seed_id": null,
+    "max_description_jaccard": 0.0
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "schema_version": "wr3.scene-start-video-authorization.v1",
+  "authorization_id": "89a32722-7cab-412d-a39c-3b2d2c6cf41a",
+  "authorization_scope": "single_video_generation",
+  "created_at": "2026-08-30T19:52:22.339760+00:00",
+  "run_id": "e13-m02-imagegen-identity-edit",
+  "episode_id": "s01e13-residency-permit-probes-f01-fluid-approach",
+  "runtime_pack_sha256": "14e965b685125613de40f7e4704068274594c866f11a34c1278807265aecd09c",
+  "variant_id": "v04",
+  "shot_id": "s0104",
+  "global_probe_id": "s01e13-residency-permit-probes:f01-fluid-approach:v04",
+  "project_id": "08c2c96a-7983-4f8b-a41e-b3afe3a68e3b",
+  "video_id": "648a1e43-fae8-4d2a-a825-f6a2c31225b0",
+  "media_id": "958da8af-e457-49ef-ac94-b7ce255d4484",
+  "bindings": {
+    "manifest_path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/execution/m02-scene-start-manifest.json",
+    "manifest_sha256": "99035753aaab9121a37ea541df6d8ef8f953752f7e03c61b95e1088b61237f2b",
+    "identity_gate_path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/execution/m02-scene-start-manifest-identity-gate.json",
+    "identity_gate_sha256": "d14f5c6bd4ffe4477abe7941383056832ff234d9c588d67a6436cffbcd3c8904",
+    "start_frame_path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/assets/m02-imagegen-identity-edit.png",
+    "start_frame_sha256": "c110699f7e6347ad8491e6381e93914089b76e31b5739e1413715fc02c688052"
+  },
+  "identity_decision": {
+    "verdict": "PASS",
+    "mock_mode": false,
+    "verifier": "insightface-buffalo_l",
+    "face_count": 1,
+    "cosine": 0.7896914482116699,
+    "pass_cosine_threshold": 0.6,
+    "hard_fail_cosine_threshold": 0.55
+  },
+  "video_attempt_contract": {
+    "maximum_video_generation_calls": 1,
+    "automatic_retries": 0,
+    "accounted_video_credits_before": 20,
+    "measured_clip_cost": 10,
+    "episode_credit_cap": 240
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "episode_id": "s01e13-residency-permit-probes",
+  "topic": "S01E13 cinematic probe family 03 — spatial compression",
+  "anchor_image_path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+  "shots": [
+    {
+      "index": 1,
+      "positive_prompt": "CAMERA FIRST: a 28mm stabilized camera retreats before Zantara, vertical 9:16, beginning in an airy warm atrium and continuing as the ceiling gradually lowers and the passage narrows around her without any literal gate. Preserve the exact approved A007 Zantara face, age, skin tone, long center-parted black hair, gold earrings, and canonical ivory blouse with restrained gold embroidery. One action only: she walks forward at one measured pace, becoming more attentive as the volume compresses but never frightened. Architecture, lens perspective, and blocking create the change; no morphing or fantasy transformation. Native audio shifts naturally from open reverberation to a tighter dry footstep and low ventilation; she remains silent. End in a balanced medium shot inside the narrower space. No text, signs, doors with labels, papers, screens, other people, duplicates, mirrors, airport, resort, speed ramp, zoom, or orbit.",
+      "identity_tokens": ["A007-Zantara-anchor"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16"
+    },
+    {
+      "index": 2,
+      "positive_prompt": "CAMERA FIRST: eye-level 35mm tracking backward, vertical 9:16; an initially broad stone corridor becomes visually constrained as two side walls converge in perspective and foreground edges occupy more of the frame. Preserve approved A007 Zantara exactly: same Indonesian woman, facial geometry, age, skin tone, straight center-parted black hair, brown eyes, gold earrings, and ivory-and-gold blouse. One action only: she advances along the center line, shoulders relaxed, with confidence turning into precise observation. The world stays physically plausible and continuous; the compression comes from location geometry and camera path, not digital warping. Native audio is footsteps whose echo shortens as the walls close, quiet air, and no speech. Finish with narrow negative space around her. No written words, signs, forms, holograms, literal barriers, extra people, reflections, duplicate face, government emblems, airport or tropical filler, dolly zoom, whip pan, or camera orbit.",
+      "identity_tokens": ["A007-Zantara-anchor"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16"
+    },
+    {
+      "index": 3,
+      "positive_prompt": "CAMERA FIRST: a restrained 70mm lens tracks backward from a medium view, vertical 9:16, compressing repeated architectural planes behind Zantara so their spacing appears to tighten as she advances. Preserve the exact approved A007 identity, face, age, natural skin texture, long center-parted black hair, gold earrings, and canonical ivory silk blouse with subtle gold embroidery. One action only: she walks toward camera through neutral modern architecture, her pace unchanged while the long lens makes the environment feel progressively less permissive. No literal obstruction appears; the psychological pressure comes only from flattened depth, increasingly dense vertical lines, and cooler indirect light. Native audio remains realistic and sparse: firm footfalls, close cloth movement, faint mechanical air; no dialogue or musical rise. End before a close-up. No visible text, paperwork, labels, screens, other people, duplicate, reflection, official iconography, airport or resort imagery, dolly zoom, speed ramp, or orbit.",
+      "identity_tokens": ["A007-Zantara-anchor"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16"
+    },
+    {
+      "index": 4,
+      "positive_prompt": "CAMERA FIRST: a 32mm camera moves laterally with Zantara, vertical 9:16; a broad near wall wipes most of the frame and reveals her continuing into a visibly narrower, deeper passage, preserving screen direction and walking rhythm. Preserve approved A007 Zantara exactly: same face, age, skin, brown eyes, long straight center-parted hair, gold earrings, and ivory silk blouse with restrained embroidery. One action only: she walks from the generous warm space into the compressed neutral space, reacting only with a slight increase in concentration. The spatial change is architectural and plausible, not magical; the foreground wipe provides a potential stitch point but does not fully black out. Native audio changes from soft atrium reverberation to dry corridor footsteps and low room tone; no speech. No words, signs, documents, labelled doors, graphics, other people, mirrors, duplicates, official seals, tourist imagery, zoom, whip pan, or orbit.",
+      "identity_tokens": ["A007-Zantara-anchor"],
+      "duration_s": 8,
+      "resolution": "720x1280",
+      "aspect": "9:16"
+    }
+  ]
+}

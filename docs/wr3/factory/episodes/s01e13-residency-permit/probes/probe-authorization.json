@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "decision_date": "2026-08-31",
+  "authorizer": "operator",
+  "episode_id": "s01e13-residency-permit-probes",
+  "candidate_id": "C07",
+  "authorized": {
+    "topic_pilot": true,
+    "creative_lock": true,
+    "flow_veo_probe_generations": 24,
+    "flow_credit_cap": 240,
+    "native_audio": true
+  },
+  "not_authorized": [
+    "other Season 01 topics",
+    "final factual script",
+    "finished episode",
+    "upload",
+    "publication",
+    "deployment",
+    "outbound messaging"
+  ],
+  "operator_constraint": "Keep the production steps coherent, but allow each fresh reasoning pass to produce a genuinely different and original creative result.",
+  "execution_strategy": "Six-family frontier first; remaining variants only for diagnosed ambiguity, failure, or a close contest.",
+  "credit_cap_basis": "The operator authorized up to 24 probe generations without a credit-saving objective. The first successful Tier1P5 probe measured 10 credits, so the bounded maximum is 240 credits.",
+  "spend_decision_episode_id": "s01e13-residency-permit-probes",
+  "authorization_expires_after": "24 accounted generation attempts or 2026-08-31, whichever comes first"
+}
