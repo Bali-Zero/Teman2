@@ -152,14 +152,13 @@ def arsenal_seats() -> tuple[list[str], list[str]]:
 # keys off MODEL names (opus-5, codex-luna, kimi-for-coding...), never off the
 # arsenal_probe.py seat ids (codex-spark, qwen-cloud-code, nlm, jules...) — there
 # is no row in the roster keyed by probe-seat-id at all. What IS machine-
-# extractable, verified 2026-08-22 against the live file, is each PROVIDER
-# section's own "## <Provider> — ... door(s): <text>" header (6 of 7 provider
-# sections carry it; "## Local Ollama" does not — no "door:"/"doors:" substring
-# anywhere in that header, so it is a genuine, reportable gap, not a regex miss).
-# So this renders seat -> provider -> door, sourced live from the file, in place
-# of the seat -> role -> invocation the mandate asked for. Doors are grouped by
-# provider (not simplified). Do not invent a role or a fuller invocation string
-# to plug this gap — see the D4 report for the proposed smallest roster change.
+# extractable, verified 2026-08-26 against the live file, is each PROVIDER
+# section's own "## <Provider> — ... door(s): <text>" header — every provider
+# section now carries one, including "## Local Ollama" (closed the historical
+# gap: PENDING-ARMS "MODEL_ROSTER.md's ## Local Ollama section ... has no door:
+# segment"). So this renders seat -> provider -> door, sourced live from the
+# file, in place of the seat -> role -> invocation the mandate asked for. Doors
+# are grouped by provider (not simplified).
 _ROSTER_DOOR_RE = re.compile(r"^## (?P<provider>[^—\n]+?)\s+—.*?doors?:\s*(?P<door>.+?)\s*$", re.MULTILINE)
 _DOOR_CODE_RE = re.compile(r"`([^`]+)`")
 _DOOR_MAX_CHARS = 56
@@ -180,9 +179,26 @@ _SEAT_PROVIDER = {
     "nlm": "Google",
     "qwen-cloud-code": "Alibaba Token Plan (TP1)",
     "jules": "Google",
+    # 7 TP1 seats added 2026-08-29 (W-class: _SEAT_PROVIDER drifted behind
+    # arsenal_probe.py's ALL_SEATS — roster-drift selftest was RED, 27/28,
+    # before this fix). All seven share the SAME MODEL_ROSTER.md provider
+    # section as qwen-cloud-code: "## Alibaba Token Plan (TP1)" documents
+    # deepseek-v4-pro, deepseek-v4-flash-0731, glm-5.2, qwen3.8-max,
+    # qwen3.7-max, qwen3.7-plus and qwen3.6-flash side by side with
+    # qwen-cloud-code's own row (verified 2026-08-29 against the live file).
+    "tp1-deepseek-v4-pro": "Alibaba Token Plan (TP1)",
+    "tp1-deepseek-v4-flash-0731": "Alibaba Token Plan (TP1)",
+    "tp1-glm-5.2": "Alibaba Token Plan (TP1)",
+    "tp1-qwen3.8-max": "Alibaba Token Plan (TP1)",
+    "tp1-qwen3.7-max": "Alibaba Token Plan (TP1)",
+    "tp1-qwen3.7-plus": "Alibaba Token Plan (TP1)",
+    "tp1-qwen3.6-flash": "Alibaba Token Plan (TP1)",
 }
 _FALLBACK_ALL_SEATS = ["claude", "kimi", "agy", "codex", "codex-spark",
-                        "ollama", "nlm", "qwen-cloud-code", "jules"]
+                        "ollama", "nlm", "qwen-cloud-code", "jules",
+                        "tp1-deepseek-v4-pro", "tp1-deepseek-v4-flash-0731",
+                        "tp1-glm-5.2", "tp1-qwen3.8-max", "tp1-qwen3.7-max",
+                        "tp1-qwen3.7-plus", "tp1-qwen3.6-flash"]
 
 
 def _known_seats() -> list[str]:
@@ -665,13 +681,13 @@ def _selftest() -> int:
     real_doors, real_door_errs = _roster_doors(_repo_root())
     expect("roster-drift: MODEL_ROSTER.md was readable for the door extraction",
            not real_door_errs)
-    expected_providers_with_doors = {p for p in _SEAT_PROVIDER.values() if p != "Local Ollama"}
-    expect("roster-drift: every provider _SEAT_PROVIDER names (except the "
-           "known Local-Ollama gap) still has a 'door(s):' header in MODEL_ROSTER.md",
+    expected_providers_with_doors = set(_SEAT_PROVIDER.values())
+    expect("roster-drift: every provider _SEAT_PROVIDER names has a "
+           "'door(s):' header in MODEL_ROSTER.md",
            expected_providers_with_doors <= set(real_doors.keys()))
-    expect("roster-drift: Local Ollama still has no door: line (update this "
-           "test, and the D4 report's proposed fix, the day it gains one)",
-           "Local Ollama" not in real_doors)
+    expect("roster-drift: Local Ollama now HAS a door: line (2026-08-26 "
+           "arming — update this test, and this comment, the day it loses one)",
+           "Local Ollama" in real_doors)
 
     print(f"SELFTEST {'OK' if not failures else 'FAILED'} — "
           f"{total - len(failures)}/{total} checks")

@@ -134,14 +134,18 @@ class ClientIdentityResolver:
         if not email:
             return None
 
+        normalized_email = email.strip().lower()
+        if not normalized_email:
+            return None
+
         async with self.db_pool.acquire() as conn:
             return await conn.fetchval(
                 """
                 SELECT id
                 FROM clients
-                WHERE LOWER(email) = LOWER($1)
+                WHERE LOWER(BTRIM(email)) = $1
             """,
-                email,
+                normalized_email,
             )
 
     @cache_invalidating(
@@ -364,21 +368,24 @@ async def check_duplicates(
     resolver = ClientIdentityResolver(db_pool)
 
     async with db_pool.acquire() as conn:
-        # 1. Check email exact match (case-insensitive)
+        # 1. Check email exact match (case-insensitive, matching the unique index)
         if email := client_data.get("email"):
-            existing = await conn.fetchrow(
-                "SELECT id, assigned_to FROM clients WHERE LOWER(email) = LOWER($1) AND id != $2",
-                email,
-                client_id,
-            )
-            if existing:
-                state["is_duplicate"] = True
-                state["matched_client_id"] = existing["id"]
-                state["assigned_lead"] = existing["assigned_to"]
-                logger.info(
-                    f"🔍 Duplicate detected: client_id={client_id} matches existing client_id={existing['id']} (email)",
+            normalized_email = email.strip().lower()
+            if normalized_email:
+                existing = await conn.fetchrow(
+                    "SELECT id, assigned_to FROM clients "
+                    "WHERE LOWER(BTRIM(email)) = $1 AND id != $2",
+                    normalized_email,
+                    client_id,
                 )
-                return state
+                if existing:
+                    state["is_duplicate"] = True
+                    state["matched_client_id"] = existing["id"]
+                    state["assigned_lead"] = existing["assigned_to"]
+                    logger.info(
+                        f"🔍 Duplicate detected: client_id={client_id} matches existing client_id={existing['id']} (email)",
+                    )
+                    return state
 
         # 2. Check phone exact match (normalized - remove spaces, dashes, + prefix)
         if phone := client_data.get("phone"):
@@ -454,8 +461,47 @@ ASSIGNABLE_ROLES = {
     "Tax Manager",
 }
 
-# Map practice types to departments for specialty routing
+# Map practice types to departments for specialty routing.
+#
+# THIS TABLE SPANS TWO CATALOGUE GENERATIONS, and the lookup below is EXACT
+# (`.get(practice_type_code)`, no prefix or substring match), so a key from the
+# wrong generation simply never fires. Measured 2026-08-26 across BOTH migration
+# systems — 135 legacy `backend/migrations/*.py` and 169 `db/migrations_v2/*.sql`:
+#
+#   SEEDED, so these four keys DO route:
+#     `visa`, `kitas`, `tax`   -> migration_044_seed_practice_types.py:23/:40/:57
+#     `tax_registration`       -> migration_066_populate_practice_types_from_pricing.py:614
+#   NOT SEEDED ANYWHERE, so these eight are dead weight:
+#     `kitap`, `pt_pma`, `investor_visa`, `work_permit`, `company_setup`,
+#     `immigration`, `tax_reporting`, `npwp`
+#
+# The four live ones are all LEGACY short codes. Not one key here is seeded by
+# `migrations_v2/`, which is where today's catalogue lives and whose codes are
+# shaped `visa_*` / `ext_*` / `tax_*` / `other_*` / `merp_*` (`visa_bridging`,
+# `ext_c1_tourism`, `tax_annual_pkg_a`). So the department branch fires for the
+# old generation and is dead for the whole new one, which silently falls through
+# to the round-robin least-workload fallback — drawing from ALL assignable
+# roles, tax included.
+#
+# An earlier version of this comment claimed no migration seeded ANY of the
+# twelve. That was measured against `migrations_v2/` only and read as "the map
+# is entirely dead", which is wrong for four keys and for whatever practices
+# still carry them. The correction cost one broken probe: the first census
+# grepped for single-quoted `'visa'` while the legacy seeds are Python dicts
+# writing `"code": "visa"`, so it reported ABSENT and was believed.
+#
+# Curing the ~51 modern codes is a CRM-lane job with a real business call behind
+# it (which department owns `other_lapor_lahir_under`?), tracked in
+# `.claude/skills/modus/PENDING-ARMS.md`. Do NOT "fix" it here with a prefix
+# match: `visa_*`->setup and `tax_*`->tax would look right and `other_*` would
+# still be a guess.
+#
+# The two GARUDA VOA entries below are this lane's own obligation and are
+# catalogue-real: both are seeded by
+# `db/migrations_v2/221_practice_types_b1_voa.sql`.
 PRACTICE_DEPARTMENT_MAP: dict[str, str] = {
+    "visa_b1_voa": "setup",
+    "ext_b1_voa": "setup",
     "kitas": "setup",
     "kitap": "setup",
     "pt_pma": "setup",

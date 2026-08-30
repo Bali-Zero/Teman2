@@ -8,8 +8,8 @@ from backend.services.council.cli_runners import (
     ClaudeCLIRunner,
     CLIRunner,
     CLIRunnerError,
-    DeepSeekHTTPRunner,
     GeminiCLIRunner,
+    KimiCLIRunner,
     RunnerResult,
 )
 from backend.services.council.prompts import (
@@ -29,9 +29,9 @@ __all__ = [
     "CLIRunnerError",
     "ClaudeCLIRunner",
     "CouncilProposal",
-    "DeepSeekHTTPRunner",
     "GeminiCLIRunner",
     "JudgeDecision",
+    "KimiCLIRunner",
     "RegisterDefinition",
     "RunnerResult",
     "ToneCouncil",

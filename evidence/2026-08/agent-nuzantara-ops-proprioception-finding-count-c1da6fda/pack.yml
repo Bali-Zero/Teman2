@@ -1,0 +1,241 @@
+# brief_ref is the LITERAL 'evidence/brief.yml' even though this pack lives in a per-PR
+# directory: harness-floor.yml stages both files FLAT into /tmp/evidence-check/evidence/
+# and lints with --repo-root /tmp/evidence-check, so the real per-PR path does not resolve
+# there. Linting the pack IN PLACE passes and tells you nothing - reproduce the staging.
+brief_ref: evidence/brief.yml
+plan_ref:
+  "PR #5010 (agent/nuzantara/ops/proprioception-finding-count-0826) — a proprioception probe line
+  reports 1 of N findings as 1, and the corpus guarding the previous fix on that same file has
+  never run in CI. 2026-08-26."
+lanes:
+  - lane: proprioception-finding-count
+    role: build
+    seat: opus-5 orchestrator (Pro worktree; live measurement, fix, guilt+innocence corpus, mutation proof, CI wiring)
+  - lane: proprioception-finding-count-refute
+    role: review
+    seat: sonnet-5 subagent (Pro, fresh context; instructed to REFUTE and default to SUSPECT, seven named attacks)
+seat_diversity: satisfied
+seat_diversity_note:
+  "Generator and grader are different seats and different contexts. The grader was NOT asked to
+  confirm: it was given seven specific author claims to attack by measurement, told to default to
+  SUSPECT when it could not establish correctness, and it re-ran the mutation proof itself from
+  git rather than trusting the reported numbers. It returned one REAL DEFECT, which was fixed
+  before this pack was written — see receipts."
+diff:
+  net_lines: 4 files changed, +319/-4 (git diff --shortstat origin/main...HEAD, pre-evidence).
+  behaviour_change:
+    A DIVERGED probe carrying more than one finding now prints "<id> [1 of N]" instead of "<id>",
+    on the SessionStart receptor line, the CLI line, and the per-host fleet summary. Probes with
+    exactly one finding are unchanged. The JSON report is untouched, so no machine consumer moves.
+    The fleet summary additionally names how many diverged PROBES it dropped past its div[:4] cap.
+receipts:
+  - claim:
+      Four probes were under-reporting live on Pro at the time of the fix, the worst by a factor
+      of 55.
+    cmd: python3 scripts/proprioception.py --json | (filter probes with n_findings > 1)
+    result:
+      "launchagent_canon n_findings=55 evidence=3 printed=1; launchd_liveness 22/5/1;
+      organs_heartbeat 7/5/1. worktree_gate_shim measured separately at 4 findings, printed 1."
+    exit: 0
+    ts: "2026-08-26T08:02:00Z"
+    seat: opus-5 orchestrator (Pro)
+  - claim:
+      The under-report caused real damage, not merely a legible risk — three worktrees kept pushing
+      with no git hooks at all after the one named worktree was repaired.
+    cmd:
+      per-worktree check of `.husky/_` existence against `git config core.hooksPath` (= .husky/_),
+      across every entry of `git worktree list --porcelain`
+    result:
+      "4 worktrees MISSING .husky/_ (codex-autofix-ci-runtime, codex-coverage-improver-runtime,
+      codex-research-actor-runtime, ops-chatgpt-tunnel-activation); the SessionStart line had named
+      exactly one. Repaired on disk, then proved FUNCTIONALLY (the pre-push hook was executed and
+      produced real output), not merely by file existence."
+    exit: 0
+    ts: "2026-08-26T07:58:00Z"
+    seat: opus-5 orchestrator (Pro)
+  - claim: The deterministic floor for this diff is 3, so this pack is required.
+    cmd:
+      git diff --name-only origin/main...HEAD > /tmp/pfc_changed.txt && python3
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/pfc_changed.txt
+    result: "3"
+    exit: 0
+    ts: "2026-08-26T08:20:00Z"
+    seat: opus-5 orchestrator (Pro)
+  - claim:
+      "Mutation proof A: the corpus is red on the pre-fix source and green on the fix, under both
+      sh and bash."
+    cmd:
+      restore both files from git, run the corpus, restore the fix, run again; then run once more
+      under bash
+    result: "pre-fix 5 passed / 12 failed; fixed 12 passed / 0 failed (sh); 12/0 (bash)"
+    exit: 1 then 0
+    ts: "2026-08-26T08:22:00Z"
+    seat: opus-5 orchestrator (Pro)
+  - claim:
+      "Mutation proof B: the drift case genuinely detects the two implementations diverging, rather
+      than observing that they happen to agree."
+    cmd:
+      change ONLY the module threshold (n > 1 -> n > 4), leaving the receptor untouched, run the
+      corpus
+    result:
+      "FAIL - drift — n=2: receptor printed 'drift_probe [1 of 2]', finding_label says
+      'drift_probe' (11 passed / 1 failed). Restored, 12/0."
+    exit: 1 then 0
+    ts: "2026-08-26T08:23:00Z"
+    seat: opus-5 orchestrator (Pro)
+  - claim:
+      test_proprioception_receptor_ranking.sh — the corpus written for the 2026-07-26 W97 fix on
+      this exact file — is named by NO workflow and has never run in CI.
+    cmd: "git grep -c receptor_ranking origin/main -- .github/  (and grep -rn over .github/)"
+    result:
+      "zero matches. Its five .py siblings all run via immune-enforcement.yml's pytest sweep;
+      being a .sh file is the only reason it was invisible. Independently corroborated by the
+      grader, which found the same file already listed among 13 orphaned .sh corpora in
+      PENDING-ARMS.md (entry dated 2026-08-06)."
+    exit: 1
+    ts: "2026-08-26T08:10:00Z"
+    seat: opus-5 orchestrator (Pro), corroborated by the sonnet-5 grader
+  - claim:
+      The workflow edit is well-formed and the new path-filter lines really do arm the job for
+      these three files.
+    cmd:
+      'actionlint .github/workflows/immune-enforcement.yml; grader additionally extracted the real
+      `case "$f" in ... esac` block into an isolated harness and drove each new path through it'
+    result:
+      "actionlint clean. Grader: bash -n clean, and all three new paths independently set
+      RELEVANT=true; continuation backslashes correct."
+    exit: 0
+    ts: "2026-08-26T08:21:00Z"
+    seat: opus-5 orchestrator (Pro) + sonnet-5 grader
+  - claim:
+      "W121 caught on this bench itself: the mutation harness was reading POISONED BYTECODE and
+      reporting a false failure of correct code."
+    cmd:
+      stat the source and the .pyc after a one-character mutation and restore; then compare
+      inspect.getsource() against the function's actual behaviour
+    result:
+      "src mtime 1787732359 == .pyc mtime 1787732359, and the mutation changed `n > 1` to `n > 4`
+      — ONE character, so size was unchanged too. Python validates a .pyc on exactly (mtime,
+      size), so importlib executed the MUTATED bytecode while inspect.getsource printed the
+      RESTORED source. Cured by compiling from source text (no cache to poison); the corpus now
+      passes 12/0 with the poisoned .pyc still on disk, which is the proof the immunity works."
+    exit: 0
+    ts: "2026-08-26T08:19:00Z"
+    seat: opus-5 orchestrator (Pro)
+  - claim: "GRADER VERDICT: one real defect found, and it was a false claim in a durable artifact."
+    cmd:
+      adversarial subagent, fresh context, seven named attacks with independent measurement
+      (fourth-site census; finding_label edges incl. bool/None/str/absent; independent mutation
+      re-run; case-block syntax; whether a two-command CI step can mask the first failure; `host` scope at the fleet call site;
+      sh-vs-dash-vs-bash divergence)
+    result:
+      "6 of 7 claims UPHELD by its own measurement. ONE REAL DEFECT: the corpus comment asserted
+      all THREE render sites 'share one function' — false for the SessionStart receptor, which is
+      a standalone python heredoc that does not import proprioception.py and reimplements the rule
+      by hand. Fixed before this pack: the comment now states the duplication honestly and explains
+      why (SessionStart latency budget), and a new drift case drives BOTH implementations across
+      n in {0,1,2,5,55,999} and fails on the first disagreement — mutation-proved above."
+    exit: 0
+    ts: "2026-08-26T08:18:00Z"
+    seat: sonnet-5 grader (Pro, fresh context)
+tests:
+  - "scripts/tests/test_proprioception_finding_count.sh — 14 pass / 0 fail under BOTH sh and bash.
+    Guilt (a 55-finding probe names it), innocence (n=1 gains nothing; empty-evidence fallback
+    intact; the 2026-07-26 re-verify framing survives), behavioural cases on finding_label
+    including the bool/None/str/absent-key edges, and a drift matrix across n in {0,1,2,5,55,999}."
+  - "scripts/tests/test_proprioception_receptor_ranking.sh — 7 pass / 0 fail, unchanged by this
+    diff. It is named by a workflow for the first time in this PR."
+static:
+  - "actionlint clean on .github/workflows/immune-enforcement.yml"
+  - "bash -n and sh -n clean on the new corpus; it is executed under sh, bash and (by the grader)
+    genuine dash with identical results."
+runtime_proof:
+  "Local only, and stated as such: the receptor was driven with real fixture reports through the
+  actual hook (`bash scripts/hooks/proprioception_sessionstart.sh`), not stubbed. NOT claimed: no
+  proof that a future SessionStart on Mini or M5 renders identically — those machines run the same
+  file from the same repo, but this PR does not measure them."
+pii_scan: clean
+dissent:
+  - seat: "sonnet-5 adversarial grader (Pro, fresh context)"
+    objection: >-
+      The corpus comment claimed all THREE render sites "now share one function, finding_label,
+      which can simply be called". False for scripts/hooks/proprioception_sessionstart.sh: it is a
+      standalone python heredoc inside a shell hook with no import of proprioception.py, and it
+      reimplements the n>1 rule by hand. The two copies agreed only because one fixture happened to
+      exercise them the same way; nothing forced them to stay in step. A false structural claim in a
+      durable artifact is the W113 shape — the correction itself lying.
+    status: CONFIRMED
+    resolution: >-
+      Accepted in full and fixed before this pack was written. The comment now states the
+      duplication honestly and gives the reason (the receptor runs under a SessionStart latency
+      budget; importing that module for a six-line function is the wrong trade). A new drift case
+      drives BOTH implementations across n in {0,1,2,5,55,999} and fails on the first
+      disagreement, and it is mutation-proved: changing the threshold in the module alone reddens
+      it, naming both sides.
+  - seat: "Harness floor recompute (GitHub CI, deterministic)"
+    objection: >-
+      The first PR run rejected this diff — "hot-zone diff with no evidence/brief.yml (deterministic
+      floor 3)". Editing .github/workflows/immune-enforcement.yml floors at Gear 3 by path,
+      regardless of the diff being 4 files and mostly a test corpus.
+    status: CONFIRMED
+    resolution: >-
+      The gate is right and was not worked around. Floor re-derived independently
+      (evidence_pack_lint.py --print-floor = 3) and this brief+pack is the answer to it. The
+      workflow edit was NOT split out to dodge the floor: the whole point of the PR is that a
+      corpus nothing invokes provides no protection, so the CI wiring and the fix belong together.
+  - seat: "sonnet-5 adversarial grader (Pro, fresh context)"
+    objection: >-
+      finding_label with a malformed n_findings — the string "55" rather than the int — fails the
+      isinstance check and silently renders no count, so a probe whose runner emitted a stringy
+      count would under-report exactly as before, with nothing saying so.
+    status: PLAUSIBLE
+    resolution: >-
+      Accepted as a real edge and deliberately NOT fixed. Every producer in this repo writes
+      n_findings as an int (run_wrap computes len(items)); coercing here would mask a broken
+      producer rather than surface it, and raising would turn a rendering nicety into a way for the
+      SessionStart hook to fail closed on every session. Recorded as a residual risk rather than
+      silently coerced.
+  - seat: "opus-5 Gear-3 gate (Pro, fresh context, independent of the author)"
+    objection: >-
+      The corpus proved the FUNCTION and not its two CALLERS. Measured by the gate: reverting
+      `finding_label(r)` back to `r['id']` at the CLI print site left the whole corpus 12/0 GREEN,
+      and the new fleet line "(+N more diverged probes on {host} not listed)" had zero references
+      anywhere outside its own source. Meanwhile acceptance said "mutation-proved in both
+      directions" and consumer_map listed three surfaces, so a reader infers coverage that does not
+      exist. Same W113 over-declaration the earlier round caught in a comment, missed here.
+    status: CONFIRMED
+    resolution: >-
+      Accepted, and CLOSED rather than declared out of scope. Case 6 asserts by AST that both main()
+      and fleet_probe() call finding_label, and it is mutation-proved against the gate's OWN
+      mutation: unplugging the CLI call site yields "NO main -> does not call finding_label (call
+      site unplugged)", unplugging the fleet one yields the same for fleet_probe, 13/1 each, 14/0
+      restored. AST and not grep, because a grep for the name also matches the definition and the
+      comments and would pass on a file with both callers unplugged. The residual weakness (it
+      proves the call exists, not that its output is rendered correctly) is now in residual_risks
+      and in the brief's acceptance rather than left for the next reader to find. The gate's two
+      smaller conditions are applied too: the dead no-op at corpus line 244 is removed, and
+      acceptance no longer lets "mutation-proved" stand in for call-site coverage.
+residual_risks:
+  - "The four repaired worktrees were repaired ON DISK. Nothing stops the next bare `git worktree
+    add` from recreating the hole — scripts/agent_start.py symlinks .husky/_ but a hand-made
+    worktree bypasses it. This diff improves DETECTION honesty, not prevention."
+  - "A stringy n_findings renders no count — see the third dissent entry."
+  - "The two call sites are guarded by an AST check (they CALL finding_label), not a behavioural
+    one (they render its output correctly). Both sit inline in functions that first run a live probe
+    sweep or ssh to a peer, so a behavioural test there would assert about this machine rather than
+    about the code. Reverting either call site does now redden the corpus — measured — but a call
+    site that called finding_label and then mangled its result would still pass."
+  - "The receptor and finding_label remain two implementations of one rule. The drift case makes
+    divergence visible; it does not make it impossible."
+sources:
+  - ".claude/rules/cicatrix-superscar.md — W97 (truncated list read as complete), W121 (mutation
+    testing on poisoned bytecode), W113 (the correction itself lies), family #2 and #3."
+  - "scripts/tests/test_proprioception_receptor_ranking.sh — the 2026-07-26 fix this one sits below."
+  - ".claude/skills/modus/PENDING-ARMS.md — entry dated 2026-08-06 independently listing this
+    corpus among 13 orphaned .sh test files."
+notes: >-
+  Found while acting on a SessionStart proprioception line, not by auditing the renderer. The line
+  said one worktree was pushing with no git hooks; repairing it and then counting by hand turned up
+  four. That gap between what the report said and what was true is the whole defect, and it is why
+  the PR treats "the corpus for the previous fix never runs in CI" as part of the same concern
+  rather than a follow-up.

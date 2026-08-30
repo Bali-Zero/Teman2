@@ -456,6 +456,136 @@ async def tables_exist(conn: asyncpg.Connection, *table_names: str) -> bool:
     )
 
 
+_MIGRATION_264_PATH = (
+    _BACKEND_DIR / "db" / "migrations_v2" / "264_visa_decision_retention_policy.sql"
+)
+
+
+def _read_migration_264() -> tuple[str, str]:
+    sql = _MIGRATION_264_PATH.read_text(encoding="utf-8")
+    forward, rollback = split_migration_sql(sql)
+    assert rollback, "migration 264 must carry a '-- === ROLLBACK ===' section"
+    return forward, rollback
+
+
+# GARUDA_VOA_RETENTION_FK_DEPENDENTS — the registry the two docstrings below
+# point at. Every migration that adds an FK onto
+# ``visa_decision_retention_policies`` (264) from a table OUTSIDE this
+# module's own 250-266 stack belongs here, ascending by migration number.
+# ``marker_table``/``marker_column`` is a column that exists iff this
+# migration's forward SQL has been applied — cheap enough to poll instead of
+# tracking each fixture's own bookkeeping.
+#
+# 2026-08-25 (PR #4902 follow-up): this registry was a single hardcoded
+# migration (281) with the check and the SQL file both inlined directly in
+# ``unwind_garuda_voa_retention_fk``'s body. 285 (GARUDA magic-link auth)
+# added a THIRD FK onto this table and was never taught to this function —
+# PR #4901 merged with two unrelated visa_engine tests red
+# (DependentObjectsStillExistError) because 264's rollback carries no
+# CASCADE (deliberately — see this directory's 252/264 fixture docstrings
+# on why a bare DROP is the right call for THIS table specifically) and
+# nothing enforced that a new dependent gets registered here. See
+# ``test_visa_engine_retention_fk_registry.py`` for the tripwire that now
+# catches the NEXT migration's author at authoring time instead of at
+# merge time three lanes away.
+_GARUDA_VOA_RETENTION_FK_DEPENDENTS: tuple[tuple[int, str, str, str], ...] = (
+    (281, "281_garuda_voa_retention.sql", "garuda_voa_checks", "retention_policy_id"),
+    (285, "285_garuda_magic_link.sql", "garuda_magic_link_tokens", "retention_policy_id"),
+    (
+        286,
+        "286_garuda_voa_check_results.sql",
+        "garuda_voa_check_results",
+        "retention_policy_id",
+    ),
+)
+
+
+def _read_migration(filename: str) -> tuple[str, str]:
+    sql = (_BACKEND_DIR / "db" / "migrations_v2" / filename).read_text(encoding="utf-8")
+    forward, rollback = split_migration_sql(sql)
+    assert rollback, f"migration {filename} must carry a '-- === ROLLBACK ===' section"
+    return forward, rollback
+
+
+async def unwind_garuda_voa_retention_fk(conn: asyncpg.Connection) -> bool:
+    """Roll back every registered dependent migration's FK onto
+    ``visa_decision_retention_policies`` (264) that is currently applied, in
+    REVERSE migration-number order. Call this BEFORE any ``rollback_264`` in
+    this directory's fixtures/tests. Returns ``True`` iff it actually rolled
+    back at least one dependent, so the caller knows whether
+    ``restore_garuda_voa_retention_fk`` is owed later.
+
+    The rule this encodes, not just the mechanism: unwinding a migration stack
+    in reverse order means honouring dependents added ABOVE you, including
+    from another product's migration. Migration 264 (this repo's visa-engine)
+    owns ``visa_decision_retention_policies``; later migrations from a
+    DIFFERENT product (GARUDA-VOA) keep adding FKs onto it — see
+    ``_GARUDA_VOA_RETENTION_FK_DEPENDENTS`` above for the live list.
+    ``rollback_264``'s ``DROP TABLE`` carries no ``CASCADE``, so unless every
+    registered dependent is unwound first, ``rollback_264`` fails with
+    ``asyncpg.exceptions.DependentObjectsStillExistError``. Whoever adds a NEXT
+    migration that FKs onto this table too registers it in
+    ``_GARUDA_VOA_RETENTION_FK_DEPENDENTS`` above — one line, not a sixth call
+    site taught the same lesson by hand — and
+    ``test_visa_engine_retention_fk_registry.py`` fails CI at authoring time
+    if that line is missing.
+    """
+    unwound_any = False
+    for _number, filename, marker_table, marker_column in sorted(
+        _GARUDA_VOA_RETENTION_FK_DEPENDENTS, key=lambda entry: entry[0], reverse=True
+    ):
+        applied = await conn.fetchval(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2",
+            marker_table,
+            marker_column,
+        )
+        if applied:
+            _, rollback_sql = _read_migration(filename)
+            await conn.execute(rollback_sql)
+            unwound_any = True
+    return unwound_any
+
+
+async def restore_garuda_voa_retention_fk(conn: asyncpg.Connection) -> None:
+    """Re-apply ONLY the registered dependent migrations that are currently
+    MISSING, in ASCENDING migration-number order — the companion to
+    ``unwind_garuda_voa_retention_fk``. Call this AFTER ``forward_264`` has
+    re-established ``visa_decision_retention_policies``.
+
+    DELIBERATE OVERRIDE (2026-08-25, team-lead finding, PR #4902 follow-up):
+    this function used to be unconditional, on the stated grounds that
+    "there is no cheap 'already applied' check that isn't just re-deriving
+    the caller's own bookkeeping" — true when the registry held ONE entry,
+    because ``unwind``'s single aggregate ``bool`` return value was then
+    unambiguous (``True`` could only mean "281 was unwound, put 281 back").
+    Generalizing the registry to TWO-OR-MORE entries broke that: the
+    aggregate bool can no longer say WHICH entries were actually unwound, so
+    an unconditional restore can re-apply a migration ``unwind`` never
+    touched (e.g. a DB where 281 is applied but 285 is not: unwind rolls
+    back only 281 and returns ``True``; an unconditional restore would then
+    apply BOTH forward SQLs, handing back a database carrying 285 though it
+    was never live going in). ``unwind``'s own per-entry ``information_schema``
+    probe already IS the cheap "already applied" check the old docstring
+    said didn't exist — it just wasn't being reused on this side. Probing
+    for absence here removes the asymmetry: restore now puts back exactly
+    what unwind actually took away, no more, no less, regardless of how many
+    entries the registry grows to.
+    """
+    for _number, filename, marker_table, marker_column in sorted(
+        _GARUDA_VOA_RETENTION_FK_DEPENDENTS, key=lambda entry: entry[0]
+    ):
+        already_present = await conn.fetchval(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2",
+            marker_table,
+            marker_column,
+        )
+        if not already_present:
+            forward_sql, _ = _read_migration(filename)
+            await conn.execute(forward_sql)
+
+
 def _read_migration_250() -> tuple[str, str]:
     """Return (forward_sql, rollback_sql) for migration 250.
 

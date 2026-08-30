@@ -91,6 +91,14 @@
 /scripts/ci/security_gate_flags.py                   @Balizero1987
 /scripts/ci/test_security_gate_flags.py              @Balizero1987
 
+# Gear-3 council-journal staging (harness-floor.yml's pack-lint step, 2026-08-29) — added on a
+# refuter finding (codex-gpt-5.6-sol, HIGH), not by symmetry: harness-floor.yml runs this helper
+# from the BASE checkout, which makes it trusted decision code that a PR's own run never executes
+# its own copy of. Without this entry a change to it would be judged only after merge, by which
+# point it is already the thing deciding whether R9 sees a council journal at all.
+/scripts/ci/stage_council_journal.py                 @Balizero1987
+/scripts/tests/test_stage_council_journal.py         @Balizero1987
+
 # ---------------------------------------------------------------------------
 # Deploy / infra config — TIER 1
 # ---------------------------------------------------------------------------

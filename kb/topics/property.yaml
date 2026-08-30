@@ -1,0 +1,211 @@
+# kb/topics/property.yaml — Lane D (property & land), KB current-live campaign.
+#
+# MANDATE §2/§3 G0: who asks, the questions this topic must never get wrong, primary
+# metric, guardrails, kill criterion. Nothing here blocks build — it is a prepared
+# proposal; Zero's signature is collected at the end (MANDATE §7 row 1).
+#
+# All `instruments` below are MEASURED against production `legal_unified`
+# (physically `legal_unified_hybrid_hybrid`, 84,283 pts / 388 docs) on 2026-08-25.
+# See kb/inventory/property.yaml for the point-level measurement this topic scopes.
+
+schema_version: 1
+lane: D
+topic: property
+
+asker: >
+  A foreigner (or their agent) asking Bali Zero whether they can buy/rent/hold land or
+  a villa in Bali, under which right, for how long, and what a specific numbered
+  instrument they were told about actually says.
+
+must_never_get_wrong:
+  - "What land rights exist in Indonesia, and which ones can a foreigner (WNA) hold?"
+  - "How long can a foreigner hold Hak Pakai on a villa, and can it be extended/renewed?"
+  - "Can Hak Guna Bangunan / Hak Pakai on a house be converted to Hak Milik, and by whom?"
+  - "What is Hak Pengelolaan, and who can hold it?"
+  - "Does UU 14/2023 govern land rights in Bali? (it does not — see instrument below)"
+  - "What replaced the old foreign-home-ownership rules (PP 103/2015)?"
+  - "What is a Satuan Rumah Susun (strata unit), and can a foreigner own one?"
+  - "Is a cited 'Perda' actually a national law, a provincial regulation, or a governor
+    regulation — and does that change how binding/current it is?"
+  - "Does the Bali provincial zoning (RTRW) restrict villa/leasehold use in a given area?"
+  - "Is UU 5/1960 (the Basic Agrarian Law) still in force, or has it been superseded?"
+
+primary_metric: >
+  Of the journeys in kb/journeys/property.yaml, the fraction whose verbatim_phrase is
+  found in RETRIEVED CONTEXT from production `legal_unified` (probe_state: green),
+  measured by kb/ops/probe_retrieval.py --collection legal_unified.
+
+guardrails:
+  - Never let a Pergub/Perda-shaped instrument answer as if it had national UU standing
+    (UU_14_2023 below is the live example of exactly this happening).
+  - Never delete or promote-in-place a retired-collection edition without a printed
+    fragment-containment ratio first (MANDATE §4.4/§4.6) — see the Permen_18_2021 row.
+  - Never report "missing" from a single document_id lookup (MANDATE §4.2) — three
+    distinct methods, or it is not a finding.
+  - Zoning (RTRW) has ZERO substantive Bali-specific coverage in production (see
+    Perda_RTRW_Bali_2023_or_2009 below, three-method absence proof) — the KB must
+    abstain on villa/leasehold zoning-restriction questions, never invent or borrow a
+    Perda citation it does not actually have indexed.
+
+kill_criterion: >
+  If, after G4 build, the corpus still cannot distinguish a national UU from a
+  provincial Perda/Pergub for any in-scope instrument by verified_identity, this topic
+  does not ship as "current" — a wrong-standing citation on land rights is a client-harm
+  class of error, not a coverage gap.
+
+owner_decisions_log: [] # MANDATE §7 — nothing recorded here yet; nothing blocks on it.
+
+instruments:
+  # ── Verified consistent, in force ────────────────────────────────────────────────
+  - id: UU_5_1960
+    declared_identity: "Undang-Undang Republik Indonesia Nomor 5 Tahun 1960 tentang Peraturan Dasar Pokok-Pokok Agraria"
+    verified_identity: "Undang-Undang Republik Indonesia Nomor 5 Tahun 1960 tentang Peraturan Dasar Pokok-Pokok Agraria"
+    identity_evidence: >
+      declared_identity == verified_identity (identity_verdict: consistent requires
+      byte-identical strings — the check_topic contract's own rule). The foundational
+      national land law (UUPA); established and effective 24 September 1960.
+      Content confirmed by direct retrieval: production chunk text carries the
+      header "[CONTEXT: UU - NO 5 - TAHUN 1960 - TENTANG PERATURAN DASAR
+      POKOK-POKOK AGRARIA...]" verbatim.
+    identity_verdict: consistent
+    status: in_force
+    source_url: "https://peraturan.go.id/terjemahresmi/uu-no-5-tahun-1960"
+    source_verified: true
+
+  - id: Permen_18_2021
+    declared_identity: "Peraturan Menteri Agraria dan Tata Ruang/Kepala Badan Pertanahan Nasional Nomor 18 Tahun 2021 tentang Tata Cara Penetapan Hak Pengelolaan dan Hak Atas Tanah"
+    verified_identity: "Peraturan Menteri Agraria dan Tata Ruang/Kepala Badan Pertanahan Nasional Nomor 18 Tahun 2021 tentang Tata Cara Penetapan Hak Pengelolaan dan Hak Atas Tanah"
+    identity_evidence: >
+      declared_identity == verified_identity (identity_verdict: consistent requires
+      byte-identical strings). Established 28 April 2021, effective 26 October
+      2021. Confirmed by direct retrieval: production chunk text carries the
+      header "[CONTEXT: Permen - NO 18 - TAHUN 2021 - TENTANG TATA CARA
+      PENETAPAN HAK PENGELOLAAN DAN HAK ATAS TANAH]" verbatim, and its body
+      contains the actual HGB/Hak Pakai/Hak Guna Usaha term-length provisions
+      (e.g. "Hak Guna Bangunan diberikan untuk jangka waktu paling lama 30
+      (tiga puluh) tahun...").
+    identity_verdict: consistent
+    status: in_force
+    source_url: "https://peraturan.go.id/id/permen-atrbpn-no-18-tahun-2021"
+    source_verified: true
+
+  # ── Mistyped: content is right, the stored NUMBER is garbled ────────────────────
+  - id: PP_6630_2021
+    declared_identity: >
+      "PP - NO 6630 - TAHUN 2021" — this is the document's OWN stored identity
+      (its production payload's [CONTEXT] header reads verbatim "PP - NO 6630 -
+      TAHUN 2021 - TENTANG HAK PENGELOLAAN, HAK ATAS TANAH, SATUAN RUMAH SUSUN, DAN
+      PENDAFTARAN TANAH"). "6630" is not a real PP serial for 2021 — Indonesian PP
+      numbers in 2021 do not reach four digits. Found by scanning the whole family
+      of similarly garbled ids in this collection (PP_6618_2021, PP_6619_2021,
+      PP_6622_2021, PP_6624_2021, PP_6630_2021, PP_6648_2021 — none of them is
+      lane D's problem except this one; PP_6624_2021 is a housing-adjacent
+      instrument (PP tentang Perumahan dan Kawasan Permukiman) that was noticed but
+      not chased — see inventory).
+    verified_identity: >
+      Peraturan Pemerintah Republik Indonesia Nomor 18 Tahun 2021 tentang Hak
+      Pengelolaan, Hak Atas Tanah, Satuan Rumah Susun, dan Pendaftaran Tanah —
+      established/effective 2 February 2021. Confirmed two ways: (1) the title in
+      the corpus's own [CONTEXT] header matches this regulation's title exactly,
+      character for character; (2) the body text matches its known content — the
+      Hak Pakai term-length rule ("Hak pakai di atas Tanah Negara dan Tanah Hak
+      Pengelolaan ... diberikan untuk jangka waktu paling lama 30 (tiga puluh)
+      tahun, diperpanjang untuk jangka waktu paling lama 20 (dua puluh) tahun, dan
+      diperbarui untuk jangka waktu paling lama 30 (tiga puluh) tahun") matches the
+      externally-sourced 30+20+30 = 80-year figure for this exact PP. This is the
+      companion national regulation Permen_18_2021 above implements — MANDATE §2
+      names "PP 18/2021" explicitly in lane D's scope, and this row is where it
+      actually lives.
+    identity_verdict: mistyped
+    status: in_force
+    source_url: "https://peraturan.bpk.go.id/Home/Details/161848/pp-no-18-tahun-2021"
+    source_verified: true
+
+  # ── Contradictory: a Pergub, filed with a national-UU identity ──────────────────
+  - id: UU_14_2023
+    declared_identity: >
+      "UU No 14 Tahun 2023" — the document's own production payload [CONTEXT]
+      header reads verbatim "UU - NO 14 - TAHUN 2023 - TENTANG RENCANA
+      PEMBANGUNAN DAERAH PROVINSI BALI TAHUN 2024-2026".
+    verified_identity: >
+      Peraturan Gubernur Bali Nomor 14 Tahun 2023 tentang Rencana Pembangunan
+      Daerah (RPD) Provinsi Bali Tahun 2024-2026 — a GOVERNOR REGULATION (Pergub),
+      not a national statute, covering Bali's regional development plan for
+      2024-2026 (issued after the prior governor's term ended 5 Sept 2023, pending
+      a permanent RPJMD). Confirmed externally: the REAL national "UU Nomor 14
+      Tahun 2023" is an unrelated law — Perubahan Atas UU Nomor 3 Tahun 2022
+      tentang Ibu Kota Negara (IKN) — so this stored document does not merely
+      OUTRANK its filed identity downward, it has NOTHING to do with the national
+      law whose number it carries.
+    identity_verdict: contradictory
+    status: in_force
+    source_url: "https://jdih.baliprov.go.id/produk-hukum/peraturan-perundang-undangan/pergub/29132"
+    source_verified: true
+
+  # ── Lost: absent under either candidate identity, not located within budget ─────
+  - id: UU_31_2010_or_Perda_15_2019
+    declared_identity: >
+      Carried forward from a prior investigation as two candidate labels — "UU
+      31/2010" and "Perda 15/2019" — described as "contradictory on all four of
+      id, metadata, filename, and text". This lane's own re-measurement (2026-08-25)
+      could not locate the underlying record that prior finding described.
+    verified_identity: >
+      UNVERIFIED. Neither "UU_31_2010" nor "Perda_15_2019" appears among the 388
+      distinct document_id values in production `legal_unified` (exact string
+      match, both tried). The only near-match by number+year, UU_15_2019 (4 pts),
+      is a DIFFERENT, unrelated law confirmed by content — "Pemantauan dan
+      Peninjauan terhadap Undang-Undang" (post-enactment legislative review
+      procedure, DPR/DPD/Pemerintah), nothing about land or Bali. Whether the
+      original entry is buried inside one of the four UNKNOWN-identity buckets
+      (UU_UNKNOWN_UNKNOWN: 2,953 pts, Permen_UNKNOWN_UNKNOWN: 2,435 pts,
+      UU_UNKNOWN_2023: 94 pts, UU_UNKNOWN_1945/2000: 83 pts) was not established —
+      searching ~5,565 unidentified points for one instrument was out of this
+      lane's time budget. Genuinely UNDETERMINED, not confirmed absent by content.
+    identity_verdict: lost
+    status: unknown
+    source_url: "https://peraturan.go.id/uu?tahun=2010"
+    source_verified: false
+
+  # ── Absent: three-method §4.2 proof, orchestrator-invited follow-up unit ────────
+  - id: Perda_RTRW_Bali_2023_or_2009
+    declared_identity: >
+      No such id exists in production. Candidate real-world identities, both
+      confirmed by external source: CURRENT — Peraturan Daerah Provinsi Bali Nomor 2
+      Tahun 2023 tentang Rencana Tata Ruang Wilayah (RTRW) Provinsi Bali Tahun
+      2023-2043, enacted 9 March 2023; SUPERSEDED — Peraturan Daerah Provinsi Bali
+      Nomor 16 Tahun 2009 tentang RTRW Provinsi Bali Tahun 2009-2029. This is the
+      zoning instrument that answers whether Bali provincial zoning restricts
+      villa/leasehold use in a given area (see must_never_get_wrong above) — the
+      single largest measured gap in this lane's scope.
+    verified_identity: >
+      ABSENT. Three independent methods run against production legal_unified
+      (84,283 pts / 388 document_ids), none found it: (1) id near-match sweep across
+      all 388 distinct document_ids for perda_2_2023/perda_16_2009/rtrw and
+      garbled-prefix variants (uu_/pp_/permen_ + 2_2023/16_2009, following this
+      corpus's own established garbling pattern) — one hit, UU_16_2009, independently
+      read in full (2 points, 663 + 413 chars) and confirmed to be the REAL national
+      UU 16/2009 (the tax-procedure enactment law: closing clause names Perpu 5/2008
+      amending UU 6/1983 KUP, signed by SBY 25 March 2009, published in Lembaran
+      Negara RI 2009/62 — a national, not provincial, citation) — genuinely a
+      different instrument, not this one under a wrong prefix; (2) full-text keyword
+      scan ("rencana tata ruang wilayah" / "rtrw provinsi bali" / "tata ruang wilayah
+      provinsi bali"), UNFILTERED by id, across all 84,283 points — 82 hits across 11
+      document_ids, all either the NATIONAL spatial-planning law (UU_26_2007), the
+      Cipta Kerja omnibus and its amendments (UU_6_2023, the same content also
+      mislabeled UU_11_1945 — a different lane's identity defect, not chased here),
+      OTHER-PROVINCE Perdas (Kalimantan Utara Perda_20_2012, Sumbawa Barat
+      Perda_30_2003), or passing generic mentions in unrelated national PP/Permen —
+      zero Bali-specific RTRW substantive content; (3) targeted read of the four
+      UNKNOWN-identity buckets (~5,565 pts, the exact budget gap left open by the
+      UU_31_2010_or_Perda_15_2019 finding above) for tata-ruang/zonasi/kawasan-lindung
+      signals — 5 distinct UNKNOWN ids matched, all read and confirmed unrelated
+      (aviation certification, factory-layout planning ["tata letak", not "tata
+      ruang"], visa classification revocation, constitutional-court/DPD lawmaking
+      procedure). Full enumeration: of 388 document_ids, 23 contain "perda" (none
+      Bali, none matching 2_2023/16_2009 by number — closest is Perda_2_2016,
+      different year), and 0 contain "rtrw". This is a genuine absence, not a
+      wrong-identity case like PP_6630_2021 or UU_14_2023 above.
+    identity_verdict: lost
+    status: unknown
+    source_url: "https://tarubali.baliprov.go.id/rtrwp-bali/"
+    source_verified: true

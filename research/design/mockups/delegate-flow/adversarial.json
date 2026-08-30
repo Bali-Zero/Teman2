@@ -1,0 +1,230 @@
+{
+  "deliverable": "research/design/2026-08-28-delegate-flow-design.md + mockups/delegate-flow/authorization-checkpoint.{body.,}html",
+  "panel": "joint round-grade panel, R7 §4 items 4+5 (delegate-flow lane + sponsor-i18n lane, 2026-08-28) — codex gpt-5.6-sol xhigh (filesystem, 13), kimi k3 (filesystem, 15), agy gemini-3.1-pro (inline, 12), qwen3.8-max (inline, 17) = 57 raw findings + 1 independent Explore verification pass (10 load-bearing claims: 8 TRUE, 1 IMPRECISE, 1 FALSE-by-letter). This is a JOINT register — the 27 rows below are IDENTICAL in mockups/sponsor-i18n/adversarial.json on the other lane's branch; row tags [D]/[I]/[J] mark which lane(s) each row lands in, and this file carries all 27 for full auditability even though several apply only to the sibling lane.",
+  "verification_note": "Every contested claim re-verified by the conductor against the tree before disposition (eligibility.py decline-tag sites, garuda_voa_public.py match-logic lines, ConsentHandoff.tsx quote spans, declineEducation.ts real path, i18n.ts family_sponsor_confirmed lines, flow.ts:1208 incidental 'Delegate' hit). R21.v ('mockups/sponsor-i18n/delegate-i18n.html does not exist') is REJECTED as a panel-setup artifact — the file exists on the sponsor-i18n branch (commit d0974126a ships both .html and .body.html); kimi's review copy only received the .body fragment. A second embedded rejection sits inside R11: agy's proposal to add a second, delegate-owned contact field to the checkout mockup is rejected for this lane because garuda_orders (284:52-55) has no column to back it — the schema decision stays a product finding (§5.1), not a design invention. The agy-vs-qwen conflict on Indonesian 'atas nama' phrasing (R16.i) was resolved least-claim-wins: agy's reading (implies legal proxy/kuasa) prevailed over qwen's counter-proposal that reused the phrase.",
+  "tally": {
+    "raw": 57,
+    "register": 27,
+    "apply": 23,
+    "partial": 3,
+    "rejected_embedded": 2
+  },
+  "rows": [
+    {
+      "id": "R1",
+      "severity": "CRITICAL",
+      "lane": "J",
+      "seats": "agy F1, codex F6, qwen F1",
+      "disposition": "APPLY",
+      "action": "The two dossiers mandate mutually exclusive pronoun mechanisms (D: pron()/tag rewrite funnel-wide; I: authored variants, regex banned). Winner: I's contract (authored self/delegate keys per locale — Indonesian has no closed pronoun set for a regex). D §3.5 + §4 amended: pronoun layer = mode-variant authored keys; acceptance becomes \"no pronoun-substitution logic, no raw tags, full EN/ID key parity\"."
+    },
+    {
+      "id": "R2",
+      "severity": "CRITICAL",
+      "lane": "I",
+      "seats": "codex F2, kimi F1, qwen F4",
+      "disposition": "APPLY",
+      "action": "I's mockup Screen 4 says \"the traveller can delete this check at any time\" / \"wisatawan dapat menghapus…kapan saja\" — false twice: the right is bound to the session cookie (286:99; garuda_voa_public.py:578,590-595 — normally the DELEGATE's browser) and no deletion UI exists. Rewrite: actor = the session-holder (\"whoever ran this check can delete it from this browser and session\"); add §4 acceptance: deletion copy never names an actor the session model cannot reach."
+    },
+    {
+      "id": "R3",
+      "severity": "CRITICAL",
+      "lane": "D",
+      "seats": "codex F1, qwen F3",
+      "disposition": "APPLY",
+      "action": "The 3rd gate option (\"arranging for someone else, or for more than one person\") is NOT equivalent to NOT_SELF_PAY ∪ GROUP_CASE — a supported delegate IS literally \"arranging for someone else\", and no travellers/self_pay fact is collected at that point. Rewrite §3.1: the gate asks EXPLICIT facts (option copy anchored to payment and traveller count, per agy F8's three-option phrasing), routes only on the owner-defined exclusions, never on a vague label."
+    },
+    {
+      "id": "R4",
+      "severity": "CRITICAL",
+      "lane": "D",
+      "seats": "qwen F8, codex F1(b)",
+      "disposition": "APPLY",
+      "action": "Early-exit screen must NOT reuse the literal decline copy: \"You told us someone else is paying\" / \"travelling with {N} people\" would be false (facts never declared, {N} unknown). Author a generic early-exit mirror; specific copy only after the underlying facts are explicitly declared. §3.7 amended."
+    },
+    {
+      "id": "R5",
+      "severity": "CRITICAL",
+      "lane": "D",
+      "seats": "qwen F2",
+      "disposition": "APPLY",
+      "action": "Mode ambiguity: middle option says the traveller \"will answer for themselves\" but downstream copy renders third-person with the delegate as declarant. Split cleanly in §3.1/§3.2: helper-operates mode keeps the traveller as addressed declarant where feasible; delegate-answers mode uses delegate attestation + third person. State which one the middle option IS (delegate-answers, per R5b's own confirm copy) and fix the option wording accordingly."
+    },
+    {
+      "id": "R6",
+      "severity": "MAJOR",
+      "lane": "D",
+      "seats": "agy F6, codex F4, kimi F4",
+      "disposition": "APPLY",
+      "action": "D §6 header \"adopted under the standing pre-confirmation\" contradicted its own frontmatter (\"panel pending\") and I's correct PROPOSED framing. Post-amendment both §6 read: \"adopted under the standing pre-confirmation — joint round-grade panel run 2026-08-28, dispositions in adversarial.json; async veto open\". EXCEPT rows moved to owner decisions (R7 below)."
+    },
+    {
+      "id": "R7",
+      "severity": "MAJOR",
+      "lane": "D",
+      "seats": "agy F5, codex F4, kimi F5",
+      "disposition": "APPLY",
+      "action": "The screen-1 early-exit ROUTING is a business decision (changes lead-capture economics; §5.4 admits zero measurement; R7:170 assigns ownership to Zero). D §6.1 recast: the gate DESIGN (explicit-facts questions) is design and stays; WHEN the WhatsApp exit fires (screen-1 vs deferred-decline default) is an OWNER decision, default = deferred decline until Zero rules, instrument-first on a small cohort."
+    },
+    {
+      "id": "R8",
+      "severity": "MAJOR",
+      "lane": "D",
+      "seats": "agy F7, codex F7, qwen F6",
+      "disposition": "APPLY",
+      "action": "Scope-limit line overclaims enforcement (\"payment still has to come from the traveller's own card\" — the gateway checks no cardholder name; self_pay is self-declared; xendit.py restricts method only). Rewrite: \"The online checkout is for travellers paying for themselves. If someone else is paying, a consultant handles it on WhatsApp.\" No invented enforcement, no invented policy."
+    },
+    {
+      "id": "R9",
+      "severity": "MAJOR",
+      "lane": "J",
+      "seats": "agy F4, codex F3+F12, kimi F2, qwen F7",
+      "disposition": "APPLY",
+      "action": "\"Sponsor\" vocabulary: compiler = \"delegate/helper\" everywhere; \"sponsor\" reserved for the family-route guarantor. I retitles its subject as delegate-mode i18n (keeping the R7 item-5 name as a quoted mandate label, not as the persona's name); both mockups scrub \"a sponsor, …\" from the R5b why-text (declared amendment of R5b copy, not silent); D §1's sponsor definition corrected per codex F12 (the family_sponsor_* is the SUPPORTING party, not \"the person being sponsored FOR\")."
+    },
+    {
+      "id": "R10",
+      "severity": "MAJOR",
+      "lane": "D",
+      "seats": "codex F5, qwen F5+F10",
+      "disposition": "APPLY",
+      "action": "\"Authorization checkpoint\"/\"standing-to-act\" overstates an unwitnessed self-declaration: rename to \"delegate declaration\" throughout; the delegate-mode payer statement becomes reported speech (\"The traveller has confirmed to me that they will pay themselves\"); note that no ledger can record it yet (091 gap, already §5.3) and that a real authorization design (handoff/receipt/revocation) is product work."
+    },
+    {
+      "id": "R11",
+      "severity": "MAJOR",
+      "lane": "D",
+      "seats": "agy F3, qwen F9",
+      "disposition": "PARTIAL",
+      "action": "Checkout contact relabel stays (\"Traveller's contact\") but adds the honest routing line: \"Receipts and updates about this application go to this contact.\" No second delegate-contact field is invented (schema has none — R4 §5); the schema decision remains §5.1's product finding. agy's optional-second-field proposal REJECTED for this lane (schema-backed only)."
+    },
+    {
+      "id": "R12",
+      "severity": "MAJOR",
+      "lane": "J",
+      "seats": "codex F8",
+      "disposition": "PARTIAL",
+      "action": "Evidence-class inflation: §1 headers reclassified claim-family by claim-family — live-read code stays (a); quotes of prior-round dossiers become (e); linguistic judgments (c). No wholesale re-audit beyond the header discipline."
+    },
+    {
+      "id": "R13",
+      "severity": "MAJOR",
+      "lane": "I",
+      "seats": "qwen F12, kimi F3",
+      "disposition": "APPLY",
+      "action": "I's key-set must cover D's actual (amended) surface: add EN/ID entries + mockup rows for the explicit-facts gate options, the rewritten scope-limit line, the early-exit mirror, and the checkout contact label — or that clause of \"covers item 4\" is false. Enumerate them in a new keys table."
+    },
+    {
+      "id": "R14",
+      "severity": "MAJOR",
+      "lane": "I",
+      "seats": "kimi F7",
+      "disposition": "APPLY",
+      "action": "Re-anchor the persona grounding on R6:102-105/R6:290-291 (the Indonesian sponsor-OPERATOR reading); drop/re-scope the R1:70 P3 anchor (P3's \"sponsor\" is the family-route subject, per D §1 — both readings cannot hold)."
+    },
+    {
+      "id": "R15",
+      "severity": "MAJOR",
+      "lane": "I (lands in D)",
+      "seats": "kimi F6 + verifier claim 1, codex F11",
+      "disposition": "APPLY",
+      "action": "\"'excluded from pilot' appears at every exclusion site\" is FALSE: 5 tagged sites (eligibility.py:208,210,212,221,224); NOT_SELF_PAY (:201-202) and work/business (:214-217) lack the tag. Restrict the claim; ground NOT_SELF_PAY's pilot status in the SOP docstring (:3-8) explicitly. Also (codex F11): \"explicit owner decision\" for the gates is UNVERIFIED — say \"policy implemented by SOP-v0-GARUDA-B1 §1\" unless an owner record is cited."
+    },
+    {
+      "id": "R16",
+      "severity": "MAJOR",
+      "lane": "J",
+      "seats": "G-family: agy F9+F10+F11, codex F9+F10, qwen F13+F14, kimi F14+F15",
+      "disposition": "APPLY",
+      "action": "All Indonesian-language items, synthesis where seats conflict: (i) \"atas nama\" OUT (agy: implies legal proxy/kuasa — least-claim wins over qwen's counter-proposal that reused it): \"Anda sedang membantu pengisian formulir untuk …\". (ii) neutral noun: \"pemohon\" (\"applicant\") as default; \"wisatawan\" ONLY on VOA tourism-scoped copy (kimi F15 scoping rule stated explicitly). (iii) drop the ID-only added obligation \"bukan pendapat Anda sendiri\" (kimi F14iii — EN/ID parity; the EN source has no such clause). (iv) \"fakta miliknya\" replaced (unidiomatic calque); rationale for rejecting \"mereka\" corrected to number-disagreement, not \"colder\" (kimi F14ii). (v) \"Siapa yang melihat:\" → \"Siapa yang dapat melihat apa:\" (faithful-copy class must not drop \"apa\" — kimi F14iv). (vi) \"Sebenarnya, biar …\" → \"Biarkan …\"/\"Sebaiknya …\" (register — kimi F14v, codex F10). (vii) sub-progress badge: \"Bagian sponsor · Pertanyaan {i} dari {n}\" (codex F9 — ke-{i} miscounts sponsors, not questions). (viii) \"KITAS/KITAS\" → \"KITAS/KITAP\"; \"Bahasa\" → \"Bahasa Indonesia\" in formal claims; \"tautan pendaftaran\" → \"entri registri perusahaan\"; \"Ditjen Imigrasi … menerbitkan\" names its object (codex F10). (ix) NEW §4 acceptance in I: a native-speaker review pass is a build requirement before any ID copy ships — this dossier's ID text is draft copy, not final."
+    },
+    {
+      "id": "R17",
+      "severity": "MAJOR",
+      "lane": "I",
+      "seats": "qwen F11, kimi implicit",
+      "disposition": "APPLY",
+      "action": "D inherits the EN·ID header as \"unchanged law\" while I proves the checkout toggle has no dictionary — D adds one line inheriting I's dependency explicitly (toggle renders only with reachable locale logic; honest disabled state otherwise)."
+    },
+    {
+      "id": "R18",
+      "severity": "MAJOR",
+      "lane": "J",
+      "seats": "kimi F13",
+      "disposition": "APPLY",
+      "action": "Custody-density rule stated once (in D, cross-ref in I): density follows the sensitivity of the SCREEN'S ASK (consent §6.1) — the checkpoint's compact hint is deliberate (no PII collected there); the persistent banner is full-tier because it rides PII-collecting screens. One rule, both mockups annotated."
+    },
+    {
+      "id": "R19",
+      "severity": "MINOR",
+      "lane": "J",
+      "seats": "kimi F8 + verifier claim 7",
+      "disposition": "APPLY",
+      "action": "\"zero delegate hits\" qualified: one incidental verb hit (flow.ts:1208 \"Delegate to …\"); \"outside journey.html itself\" wording fixed (journey.html is not in the grepped trees)."
+    },
+    {
+      "id": "R20",
+      "severity": "MINOR",
+      "lane": "D",
+      "seats": "kimi F10",
+      "disposition": "APPLY",
+      "action": "Citation pins corrected: declineEducation.ts real path apps/mouth/src/components/garuda/; eligibility docstring :1-30; [hash]/page.tsx:157-160; i18n.ts family_sponsor_confirmed at :393-398; garuda_voa_public.py match logic :585-595; ConsentHandoff quote spans :44-45."
+    },
+    {
+      "id": "R21",
+      "severity": "MINOR",
+      "lane": "I",
+      "seats": "kimi F9",
+      "disposition": "PARTIAL",
+      "action": "Pins corrected: pron() :336-342; delegateBanner :156-158; R6 quote at :119-120 (not :304); checkout 5-quits at checkout dossier §2 T1. Kimi's item (v) — \"mockups/sponsor-i18n/delegate-i18n.html does not exist\" — REJECTED: panel-setup artifact; the file exists on the I branch (commit d0974126a ships both .html and .body.html); kimi only received the .body copy."
+    },
+    {
+      "id": "R22",
+      "severity": "MINOR",
+      "lane": "I",
+      "seats": "kimi F11",
+      "disposition": "APPLY",
+      "action": "LanguageSettings.tsx dropped from the global-provider consumer list (it uses @/hooks/useLanguage + portal prefs, not src/i18n)."
+    },
+    {
+      "id": "R23",
+      "severity": "MINOR",
+      "lane": "D+I",
+      "seats": "kimi F12",
+      "disposition": "APPLY",
+      "action": "Escape copy: either port R5b verbatim or declare the edit — mockups annotated with the declared edit (current rendering differs from journey.html:396)."
+    },
+    {
+      "id": "R24",
+      "severity": "MINOR",
+      "lane": "D",
+      "seats": "codex F13",
+      "disposition": "APPLY",
+      "action": "Mockup CTA gets disabled/aria-disabled in the unchecked state + a comment that the mockup is compositional, matching §4's \"blocks all progress\"."
+    },
+    {
+      "id": "R25",
+      "severity": "MINOR",
+      "lane": "D",
+      "seats": "qwen F15",
+      "disposition": "APPLY",
+      "action": "\"self path completely unchanged\" reworded: downstream self-mode screens unchanged; the entry gains one gate screen (friction to be measured)."
+    },
+    {
+      "id": "R26",
+      "severity": "MINOR",
+      "lane": "J",
+      "seats": "qwen F16",
+      "disposition": "APPLY",
+      "action": "Placeholder fallback acceptance added to both §4: an unresolved custody/retention token suppresses its line — a raw token or invented value is a failed build."
+    },
+    {
+      "id": "R27",
+      "severity": "MINOR",
+      "lane": "D",
+      "seats": "agy F2 residual",
+      "disposition": "APPLY",
+      "action": "The checkpoint custody line keeps the true session-bound statement but drops the feature-like framing; adds \"if this browser's session is lost, a consultant can help via WhatsApp\" only if that support route actually exists — otherwise states nothing beyond the fact. (No false fallback promise.)"
+    }
+  ]
+}

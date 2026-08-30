@@ -573,13 +573,16 @@ async def test_create_client_duplicate_raises(crm_service, mock_pool):
     pool, conn = mock_pool
     conn.fetchval = AsyncMock(return_value=42)  # Duplicate found
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as exc_info:
         await service.create_client(
             {
                 "full_name": "John Doe",
                 "email": "john@example.com",
             }
         )
+
+    assert exc_info.value.details["field"] == "email"
+    assert "existing_id=42" in exc_info.value.message
 
 
 @pytest.mark.asyncio

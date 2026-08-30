@@ -1,0 +1,67 @@
+task_id: visa-gold-coverage-0828
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  PR #5182 (agent/air-m5/backend-rag/gold-coverage-0828 -> main): the first
+  offline gold-coverage harness for the Visa Oracle — a single-persona
+  evaluator on the exact replay path (gold_coverage_eval.py), a fail-closed
+  corpus runner (gold_coverage_replay.py), an 18-persona synthetic corpus
+  (one per SUPPORT-reachable product the 20 canonical gold expectations
+  never name, each engine-proven SUPPORTED), a fail-closed floor test, and
+  the research report
+  research/visa/2026-08-28-visa-oracle-gold-coverage-and-divergence-adjudication.md
+  (measured 4/20 baseline, 16-divergence matrix with PROPOSED causes,
+  E31B/E31D fail-open probe-confirmed on seq-13, blocked census 9,
+  owner-decision list).
+
+  Gear 3 by SIZE, deterministically: 26 files +1858. Honored.
+constraints:
+  - "Synthetic personas only — zero PII, zero real applicants anywhere."
+  - "No divergence ACCEPTED: causes are PROPOSED; acceptance stays an
+    owner/legal act per the 2026-08-15 disposition. No pack, signature,
+    frontend, or test_evaluator_gold.py expectation is touched."
+  - "The corpus floor is fail-closed by construction: empty corpus,
+    filename/product mismatch, or any persona losing its product's support
+    goes red."
+acceptance:
+  - "The three gold-coverage suites are green: 11 passed (helper 5 + replay
+    3 + floor 3), independently re-run with -v by a verifier subagent that
+    counted the dots (pytest-testmon suppresses the -q summary line)."
+  - "gold_coverage_replay exits 0 only when total>0 and failed==0; the
+    committed corpus replays 18/18 SUPPORTED against the highest signed
+    pack."
+  - "The report carries a section-level adversarial review (kimi-k3) and
+    every number is re-derivable via the commands in its §8."
+consumer_map:
+  - "backend/tests/services/visa_engine/test_gold_coverage_floor.py — new
+    fail-closed CI floor; the only green/red signal wired to the
+    production pack while the 20 gold expectations remain un-ratified."
+  - "backend/scripts/visa_engine/gold_coverage_{eval,replay}.py — offline
+    tools; no runtime surface consumed them before this PR."
+  - "research/visa/ — the report; feeds the owner-decision queue (Legge 5)
+    and the E31 repair lane (PR #5184, which cites its §5 probes)."
+  - ".agents/skills/visaoracle/SKILL.md LIVE STATE + modus PENDING-ARMS —
+    ledger rows updated in this PR."
+risks:
+  - "The report's §2 cause labels are single-session proposals: the
+    twin-lane per-persona tie-breaks and realism refutation did NOT
+    complete (session caps; per-lane artifacts lost to a /tmp cleanup) —
+    stated in the report's adversarial_review frontmatter and §8, with the
+    9 disagreement personas flagged."
+  - "7 of 25 products remain uncovered (E31E,E31G,E31H,E31J,E33,E33E,E33F)
+    — unattempted, not proven unreachable; mechanical follow-up."
+grader: |
+  generator != grader: Kimi K3 (non-Anthropic) adversarially reviewed the
+  full report against the pack source — verdict CONFIRMED-WITH-FINDINGS
+  (it independently re-quoted both fail-open predicates, re-ran the
+  persona-7/8 evaluations itself, and re-confirmed 38/111/29/9); its four
+  prose findings are all addressed in the committed revision and recorded
+  in the report's §Adversarial review. The R1 CI gate verifies the review
+  declaration mechanically. The Gear-3 verdict is posted by an independent
+  gate agent that did not author this diff.
+budget: |
+  Flat-subscription seats only: this session (build), Kimi K3 (report
+  refuter), a Sonnet backend-verifier subagent (independent test run).
+  The earlier 98-lane twin-Opus workflow ran on the same flat OAuth seats.
+pii: none

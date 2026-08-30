@@ -1,0 +1,29 @@
+{
+  "synthetic": true,
+  "fixture_category": "scope_jurisdiction",
+  "adversarial_case_ref": "packet 06-naga-claim-ledger.md, 'Include adversarial cases where': 'a claim is true nationally but false in a local jurisdiction'",
+  "expected_behavior": "Two claims share the same claim_family_id-adjacent subject but differ in scope.jurisdiction, and each is independently supported/contradicted within its own jurisdiction. A query for a specific local office (Yogyakarta, per the real, non-synthetic D-7 per-kanim finding already live in this repo's fleet notes, referenced here only as the real-world shape this fixture mirrors) must not silently inherit the national-scope answer -- doing so is exactly the class of error this repo's own visa-oracle work found live in production this week (national 'paling lambat 7 hari' vs. a specific office's different wording).",
+  "claim_national": {
+    "claim_id": "b2f1a000-0000-4000-8000-000000000060",
+    "statement": {
+      "subject_ref": { "object_kind": "regulation", "object_id": "synth-national-filing-deadline", "object_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" },
+      "predicate": "naga.eligibility_rule.filing_deadline_days",
+      "object_ref_or_value": 7,
+      "unit": "days_before_expiry"
+    },
+    "scope": { "domain": "visa.synthetic", "jurisdiction": "national (synthetic)" },
+    "status": "supported"
+  },
+  "claim_local_exception": {
+    "claim_id": "b2f1a000-0000-4000-8000-000000000061",
+    "statement": {
+      "subject_ref": { "object_kind": "regulation", "object_id": "synth-national-filing-deadline", "object_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" },
+      "predicate": "naga.eligibility_rule.filing_deadline_days",
+      "object_ref_or_value": 1,
+      "unit": "business_days_before_expiry"
+    },
+    "scope": { "domain": "visa.synthetic", "jurisdiction": "kanim-synth-yogyakarta" },
+    "status": "supported",
+    "note": "SYNTHETIC — a specific (fictional) local office publishes a materially different rule for the same nominal regulation. Both claims are simultaneously 'supported' and correct WITHIN their own scope; neither supersedes the other."
+  }
+}

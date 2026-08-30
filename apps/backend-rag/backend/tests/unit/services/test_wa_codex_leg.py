@@ -3,7 +3,15 @@
 Chaos-table ownership (design s2-pr5 §7): rows 2 (ALREADY_SPENT -> Gemini),
 3-adjacent (fall-off semantics), 7 (typed failure -> fall-off), 9 (broker
 dark -> Gemini-only) live here; rows 1/4 are pinned by PR-2's broker suite,
-rows 5/6/8 by PR-6's daemon tests.
+rows 5/6/8 by PR-6's daemon tests. Retry-budget update (spec gradino 2/5,
+migration 296): row 2's ALREADY_SPENT still falls off (now a defensive
+race fallback, not the normal retry path), but a retry offer on a row
+with a STILL-ALIVE prior leg now returns REATTACHED — this leg proceeds
+to wait/consume the SAME job rather than falling off, and a terminal
+prior leg with budget left gets a fresh OFFERED leg instead of falling
+off at all. See test_offer_job_retry_* in test_wa_broker.py for the
+offer_job-side coverage; this file covers only wa_codex_leg.py's
+consumption of the new outcomes.
 
 Fake discipline: the real ``wa_broker`` enums travel through a stub
 namespace, so every ``is not OfferOutcome.OFFERED`` identity check in the
@@ -209,7 +217,15 @@ def _wire_stubs(
         offer_job=AsyncMock(
             return_value=offer
             if offer is not None
-            else OfferResult(OfferOutcome.OFFERED, job_id=uuid.uuid4())
+            else OfferResult(
+                OfferOutcome.OFFERED,
+                job_id=uuid.uuid4(),
+                # matches _thread()'s default handling_version=3 — most
+                # tests never touch the epoch and just need the drift
+                # check's `serving_epoch` to equal what `_thread()` hands
+                # back as `fresh["handling_version"]`.
+                thread_epoch=3,
+            )
         ),
         wait_for_job=AsyncMock(
             return_value=wait if wait is not None else WaitResult(WaitOutcome.COMPLETED)
@@ -301,6 +317,31 @@ async def test_no_customer_message_falls_off_before_http(
 
 
 @pytest.mark.asyncio
+async def test_no_customer_message_records_a_durable_fall_off_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Migration 290 — the exact shape measured live 2026-08-27 (outbox row
+    346: generation_route stayed NULL, no broker_jobs row was ever created,
+    because the fall-off happened at one of the PRE-OFFER conditions). This
+    pins that a pre-offer fall-off writes a normalized, bounded reason to
+    wa_outbox — not just an in-memory CodexLegResult that a log line loses
+    a minute later. Without the write in attempt()'s wrapper this test
+    fails: no execute() call ever mentions the column."""
+    conn = ScriptedConn()
+    stubs = _wire_stubs(monkeypatch, query="")
+    result = await _run(conn=conn)
+    assert result.reason == "no_customer_message"
+    assert conn.sql_contains("generation_fall_off_reason")
+    [written] = [
+        args
+        for sql, args in conn.executed
+        if "generation_fall_off_reason" in sql
+    ]
+    assert written == (42, "standing_no_customer_message")
+    stubs.rag_client.post.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_unbuildable_falls_off_offer_never_called(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -311,6 +352,71 @@ async def test_unbuildable_falls_off_offer_never_called(
     result = await _run()
     assert result.reason == "unbuildable:greeting"
     stubs.offer_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("unbuildable_reason", "expected_stored"),
+    [
+        ("greeting_domain", "package_unbuildable_greeting_domain"),
+        ("no_collections", "package_unbuildable_no_collections"),
+        ("dlp_error", "package_unbuildable_dlp_error"),
+    ],
+)
+async def test_unbuildable_sub_reason_recorded_distinctly(
+    monkeypatch: pytest.MonkeyPatch,
+    unbuildable_reason: str,
+    expected_stored: str,
+) -> None:
+    """Migration 291: the codex leg's three PackageUnbuildable sub-reasons
+    must each land in their own DB value, not collapse into the single
+    "package_unbuildable" bucket the way they did before this migration
+    (2026-08-27, measured live: wa_outbox row 348 fell off
+    "package_unbuildable" and the sub-reason — WHICH of greeting_domain /
+    no_collections / dlp_error fired — was already gone from Fly's ~60s
+    log retention by the time anyone looked, twice)."""
+    conn = ScriptedConn()
+    _wire_stubs(
+        monkeypatch,
+        build={
+            "package_wire": None,
+            "package_hash": None,
+            "unbuildable": unbuildable_reason,
+        },
+    )
+    result = await _run(conn=conn)
+    assert result.reason == f"unbuildable:{unbuildable_reason}"
+    [written] = [
+        args for sql, args in conn.executed if "generation_fall_off_reason" in sql
+    ]
+    assert written == (42, expected_stored)
+
+
+@pytest.mark.asyncio
+async def test_unbuildable_unrecognized_sub_reason_falls_back_to_generic_bucket(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A PackageUnbuildable reason not yet in `_UNBUILDABLE_SUB_REASON_MAP`
+    (a future sub-reason nobody has taught this module yet) must still
+    land somewhere DISTINCTLY LABELED as "an unbuildable package", not in
+    the module-wide "unknown" bucket a genuinely uncatalogued reason HEAD
+    gets — the head here ("unbuildable") is perfectly well known, only the
+    sub-reason is new."""
+    conn = ScriptedConn()
+    _wire_stubs(
+        monkeypatch,
+        build={
+            "package_wire": None,
+            "package_hash": None,
+            "unbuildable": "some_future_reason",
+        },
+    )
+    result = await _run(conn=conn)
+    assert result.reason == "unbuildable:some_future_reason"
+    [written] = [
+        args for sql, args in conn.executed if "generation_fall_off_reason" in sql
+    ]
+    assert written == (42, "package_unbuildable")
 
 
 @pytest.mark.asyncio
@@ -348,13 +454,17 @@ async def test_build_contract_break_missing_wire_falls_off(
         OfferOutcome.QUEUE_FULL,
         OfferOutcome.ALREADY_SPENT,
         OfferOutcome.FENCE_LOST,
+        OfferOutcome.LEGS_EXHAUSTED,
     ],
 )
 async def test_every_non_offered_outcome_falls_off_without_waiting(
     monkeypatch: pytest.MonkeyPatch, outcome: OfferOutcome
 ) -> None:
     """Chaos rows 2/9: every admission refusal is a route decision, not an
-    error — straight to Gemini, no wait, no consume, no fold."""
+    error — straight to Gemini, no wait, no consume, no fold. LEGS_EXHAUSTED
+    (spec gradino 2/5) joins this set: named distinctly from ALREADY_SPENT
+    in the reason string, but the same fall-off shape until Gemini itself
+    is retired from this channel."""
     stubs = _wire_stubs(monkeypatch, offer=OfferResult(outcome))
     result = await _run()
     assert result.text is None and not result.stand_down
@@ -362,6 +472,30 @@ async def test_every_non_offered_outcome_falls_off_without_waiting(
     stubs.wait_for_job.assert_not_awaited()
     stubs.consume_result.assert_not_awaited()
     stubs.record_breaker_result.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_legs_exhausted_offer_refusal_records_a_durable_fall_off_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Migration 290, offer-refusal half of the mandate (as opposed to the
+    pre-offer half pinned above): LEGS_EXHAUSTED is named distinctly in the
+    log/CodexLegResult.reason (spec gradino 2/5) but normalizes to the same
+    bounded 'offer_refused' category as every other non-OFFERED/REATTACHED
+    outcome — the DB column is a small closed vocabulary, not a mirror of
+    every offer outcome string. Without the write this test fails: no
+    execute() call ever mentions the column."""
+    conn = ScriptedConn()
+    stubs = _wire_stubs(monkeypatch, offer=OfferResult(OfferOutcome.LEGS_EXHAUSTED))
+    result = await _run(conn=conn)
+    assert result.reason == "offer:legs_exhausted"
+    [written] = [
+        args
+        for sql, args in conn.executed
+        if "generation_fall_off_reason" in sql
+    ]
+    assert written == (42, "offer_refused")
+    stubs.wait_for_job.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -498,6 +632,147 @@ async def test_attempt_never_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result.reason == "internal_error:RuntimeError"
 
 
+@pytest.mark.asyncio
+async def test_fall_off_reason_recording_failure_never_blocks_the_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Mandate constraint 4: writing the durable reason must never be able
+    to fail the send. A DB acquire that raises on the record-write's own
+    connection must not surface — attempt() still returns the SAME
+    fall-off result it would have returned had the write succeeded."""
+    stubs = _wire_stubs(monkeypatch, query="")
+    # window_margin/no_customer_message do zero pool.acquire() calls of
+    # their own before returning — the record write is the FIRST and ONLY
+    # acquire on this path, so `enter_exc_on_acquire=1` targets exactly it.
+    pool = _FakePool(ScriptedConn(), enter_exc_on_acquire=1)
+    result = await _run(pool=pool)
+    assert result.text is None and not result.stand_down and not result.fail
+    assert result.reason == "no_customer_message"
+    stubs.rag_client.post.assert_not_awaited()
+
+
+def test_fall_off_reason_map_covers_every_reason_the_module_can_emit() -> None:
+    """The map must not be able to rot in silence — which is exactly what
+    this PR exists to prevent. `_normalize_fall_off_reason` maps anything
+    it does not recognise to "unknown" (correct runtime behaviour: it must
+    never raise), which means a NEW ``CodexLegResult(fail="something_new:...")``
+    added later, with nobody teaching `_FALL_OFF_REASON_PREFIX_MAP` its
+    head, goes red NOWHERE at import or unit-test time — the column just
+    quietly fills with "unknown", and "why didn't ChatGPT answer this one?"
+    is unanswered again, this time disguised as a populated column.
+
+    So this test extracts, from the SOURCE (not a hand-copied list, which
+    would itself be a proof that cannot fail when it drifts from the code),
+    every reason head the module's ``CodexLegResult(...)`` call sites can
+    actually produce, plus the one literal `raw_reason=` the worker passes
+    directly (the sole condition the leg itself never sees), and asserts
+    each one is a real key in the map.
+    """
+    import ast
+    from pathlib import Path
+
+    from backend.services.integrations import wa_outbox_worker
+
+    def _head_of(value: ast.expr) -> str:
+        """The exact head `_normalize_fall_off_reason` would compute at
+        runtime for the literal (or literal-prefixed f-string) this AST
+        node represents — mirroring `raw.split(":", 1)[0]` on the STATIC
+        leading text, since every interpolation in this module's reason
+        strings comes after the first literal segment (never inside it)."""
+        if isinstance(value, ast.Constant) and isinstance(value.value, str):
+            return value.value.split(":", 1)[0]
+        if isinstance(value, ast.JoinedStr) and value.values:
+            first = value.values[0]
+            if isinstance(first, ast.Constant) and isinstance(first.value, str):
+                return first.value.split(":", 1)[0]
+        raise AssertionError(
+            f"cannot statically extract a reason head from {ast.dump(value)} "
+            "— teach this helper the new shape before trusting the coverage "
+            "assertion below"
+        )
+
+    assert wa_codex_leg.__file__ is not None
+    tree = ast.parse(Path(wa_codex_leg.__file__).read_text(encoding="utf-8"))
+
+    heads: set[str] = set()
+    result_calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "CodexLegResult"
+    ]
+    assert result_calls, "the module no longer constructs CodexLegResult — retarget this guard"
+    for call in result_calls:
+        by_kw = {kw.arg: kw.value for kw in call.keywords if kw.arg is not None}
+        if "text" in by_kw:
+            # The ONE success shape (`text=result.text, reason="completed"`)
+            # — never written to the DB (attempt() only records when
+            # result.text is None), so "completed" is deliberately excluded
+            # from the coverage requirement below.
+            continue
+        for kw_name in ("reason", "fail"):
+            if kw_name in by_kw:
+                heads.add(_head_of(by_kw[kw_name]))
+
+    assert wa_outbox_worker.__file__ is not None
+    worker_tree = ast.parse(Path(wa_outbox_worker.__file__).read_text(encoding="utf-8"))
+    worker_calls = [
+        node
+        for node in ast.walk(worker_tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "record_fall_off_reason"
+    ]
+    assert worker_calls, (
+        "the worker no longer calls record_fall_off_reason directly — "
+        "retarget this guard (condition 2, provider_not_codex, is the ONE "
+        "reason the leg itself never emits)"
+    )
+    for call in worker_calls:
+        by_kw = {kw.arg: kw.value for kw in call.keywords if kw.arg is not None}
+        if "raw_reason" in by_kw and isinstance(by_kw["raw_reason"], ast.Constant):
+            heads.add(_head_of(by_kw["raw_reason"]))
+        # A non-literal raw_reason (the wrapper's own `result.fail or
+        # result.reason` call inside wa_codex_leg.py) contributes nothing
+        # NEW here — its possible values are already the CodexLegResult
+        # heads collected above.
+
+    assert heads, "extraction found nothing — the AST walk is broken, not the coverage"
+    missing = {h for h in heads if h not in wa_codex_leg._FALL_OFF_REASON_PREFIX_MAP}
+    assert not missing, (
+        f"these reason heads are emitted by the module but have no entry in "
+        f"_FALL_OFF_REASON_PREFIX_MAP — they would silently normalize to "
+        f"'unknown': {sorted(missing)}"
+    )
+
+
+def test_normalize_fall_off_reason_unrecognized_head_defaults_to_unknown() -> None:
+    """The coverage guard above proves every head the module CAN emit today
+    has a map entry — it says nothing about what happens the day a NEW,
+    not-yet-catalogued head shows up (a genuinely new failure mode, or a
+    caller that got the string wrong). That path is this function's
+    `.get(head, "unknown")` fallback, and nothing else in this file drives
+    it: `_normalize_fall_off_reason` itself is never called directly
+    anywhere in the suite. Left uncovered, a mutation of that literal
+    default (e.g. to some other bounded-looking string) would leave all
+    138 tests in this file's suite green while the DB CHECK constraint on
+    ``generation_fall_off_reason`` (exactly 20 allowed values, see the
+    module docstring) started rejecting every genuinely-new reason instead
+    of gracefully bucketing it under "unknown" — silently reintroducing
+    the blindness this column exists to end.
+    """
+    # A colon-delimited head that is not a key in the map.
+    assert wa_codex_leg._normalize_fall_off_reason("totally_unheard_of_reason:detail") == "unknown"
+    # No colon at all — the whole string is the head, still unrecognized.
+    assert wa_codex_leg._normalize_fall_off_reason("totally_unheard_of_reason") == "unknown"
+    # Falsy input takes the function's earlier explicit `if not raw` branch
+    # rather than reaching the map lookup at all — cover it too so the
+    # function's full return contract (never raises, always "unknown" for
+    # anything it cannot place) is proven, not just the map-lookup tail.
+    assert wa_codex_leg._normalize_fall_off_reason("") == "unknown"
+
+
 # ── the offer boundary is fail-closed (Codex r3) ────────────────────────────
 
 
@@ -621,6 +896,100 @@ async def test_offered_without_job_id_is_a_contract_break_fail(
     assert result.fail == "offer_contract_break:missing_job_id"
     assert result.text is None and not result.stand_down
     stubs.wait_for_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_offered_without_thread_epoch_is_a_contract_break_fail(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Same contract-break class as a missing job_id (Codex r4 finding 1):
+    without thread_epoch the post-completion drift check has nothing safe
+    to fence against, so this must fail closed before ever waiting."""
+    stubs = _wire_stubs(
+        monkeypatch,
+        offer=OfferResult(OfferOutcome.OFFERED, job_id=uuid.uuid4(), thread_epoch=None),
+    )
+    result = await _run()
+    assert result.fail == "offer_contract_break:missing_thread_epoch"
+    assert result.text is None and not result.stand_down
+    stubs.wait_for_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_reattached_proceeds_to_wait_like_offered(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """REATTACHED is the fix for the historical bug: a retry offer on a
+    row whose prior codex leg is still alive gets that job's id back and
+    must wait/consume/finalize it exactly like a fresh OFFERED — never
+    fall off and lose it to Gemini."""
+    job_id = uuid.uuid4()
+    stubs = _wire_stubs(
+        monkeypatch,
+        offer=OfferResult(OfferOutcome.REATTACHED, job_id=job_id, thread_epoch=3),
+    )
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    result = await _run(conn=conn)
+    assert result.text == "the broker reply"
+    assert result.stand_down is False
+    stubs.wait_for_job.assert_awaited_once()
+    assert stubs.wait_for_job.await_args.args[1] == job_id
+    stubs.consume_result.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_reattach_drift_check_fences_on_the_jobs_own_epoch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The critical correctness case: a REATTACHED job's post-completion
+    drift check must compare against the PRIOR leg's own frozen
+    thread_epoch (offer.thread_epoch), never this claim's freshly-read
+    local epoch. Here the CURRENT claim's thread reads handling_version=5
+    (it started later than the original leg), the reattached job was
+    actually offered under epoch=3, and the thread's live handling_version
+    is STILL 3 (nothing moved since the original offer) — using the local
+    epoch (5) would wrongly declare drift and discard a perfectly valid
+    completion; using the job's own epoch (3) correctly finds none."""
+    job_id = uuid.uuid4()
+    stubs = _wire_stubs(
+        monkeypatch,
+        offer=OfferResult(OfferOutcome.REATTACHED, job_id=job_id, thread_epoch=3),
+    )
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    result = await _run(conn=conn, thread=_thread(handling_version=5))
+    assert result.text == "the broker reply"
+    assert result.stand_down is False
+    stubs.discard_completion.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_reattach_drift_check_still_catches_real_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """INNOCENCE for the above: if the thread's live handling_version has
+    actually moved PAST the reattached job's own frozen epoch, the drift
+    check must still fire — the fix narrows WHICH epoch is authoritative,
+    it does not disable the protocol."""
+    job_id = uuid.uuid4()
+    stubs = _wire_stubs(
+        monkeypatch,
+        offer=OfferResult(OfferOutcome.REATTACHED, job_id=job_id, thread_epoch=3),
+    )
+    conn = ScriptedConn(
+        fetchrow_results=[
+            {"human_handling": False, "handling_version": 4},  # moved past 3
+            {"id": 42},  # atomic stand-down abort: fenced RETURNING
+        ]
+    )
+    result = await _run(conn=conn, thread=_thread(handling_version=5))
+    assert result.stand_down is True
+    assert result.text is None
+    stubs.discard_completion.assert_awaited_once()
+    stubs.consume_result.assert_not_awaited()
 
 
 def test_stub_namespace_mirrors_the_real_module() -> None:
@@ -1049,3 +1418,288 @@ async def test_absent_reversal_map_passes_completion_through_byte_identical(
     )
     result = await _run(conn=conn)
     assert result.text == original
+
+
+# --- migration 297: finalize sub-reasons ---------------------------------
+#
+# Same shape of blindness migration 291 cured one row up in the map, and
+# the same shape of proof. Measured cost: outbox row 363
+# (2026-08-28T21:43:52Z) had THREE successful codex generations
+# (`consumed_ok`, 9711/10137/8521 ms) discarded by the finalize stage, and
+# every one recorded the same "finalize_defect" — the STAGE, never the
+# CAUSE.
+
+
+@pytest.mark.parametrize(
+    ("defect_reason", "expected_stored"),
+    [
+        ("internal_monologue_leak", "finalize_internal_monologue_leak"),
+        ("pricing_outside_package", "finalize_pricing_outside_package"),
+        ("empty_rag_answer", "finalize_empty_rag_answer"),
+        ("persona_escalate_marker", "finalize_persona_escalate_marker"),
+        ("empty_after_escalate_strip", "finalize_empty_after_escalate_strip"),
+        ("workflow_only_output", "finalize_workflow_only_output"),
+        ("empty_after_channel_format", "finalize_empty_after_channel_format"),
+        ("oversized_output", "finalize_oversized_output"),
+        ("rag_abstain", "finalize_rag_abstain"),
+        ("blank_send_text", "finalize_blank_send_text"),
+    ],
+)
+def test_finalize_sub_reason_normalizes_distinctly(
+    defect_reason: str, expected_stored: str
+) -> None:
+    """Every finalize DEFECT branch must land in its OWN DB value.
+
+    Guilt, not innocence: each of these returned "finalize_defect" before
+    migration 297, so this parametrization goes red on the pre-297 code.
+    """
+    assert (
+        wa_codex_leg._normalize_fall_off_reason(f"finalize:{defect_reason}")
+        == expected_stored
+    )
+
+
+def test_finalize_unrecognized_sub_reason_falls_back_to_generic_bucket() -> None:
+    """A future defect_reason nobody has taught this module yet must still
+    land in a value that says "the finalize stage refused" — never in the
+    module-wide "unknown" bucket a genuinely uncatalogued HEAD gets. The
+    head here is perfectly well known; only the sub-reason is new."""
+    assert (
+        wa_codex_leg._normalize_fall_off_reason("finalize:some_future_defect")
+        == "finalize_defect"
+    )
+
+
+def test_finalize_secret_egress_never_stores_the_pattern_name() -> None:
+    """`secret_egress:<pattern-name>` is the ONE finalize reason with a
+    variable suffix. The stored value must be the bare bucket: the suffix
+    names which scanner pattern hit — this column is read by dashboards and
+    pasted into reports, and an unbounded suffix would also defeat the
+    CHECK constraint that exists to keep this vocabulary closed."""
+    for pattern in ("anthropic_key", "canary_token", "some_future_pattern"):
+        stored = wa_codex_leg._normalize_fall_off_reason(
+            f"finalize:secret_egress:{pattern}"
+        )
+        assert stored == "finalize_secret_egress"
+        assert pattern not in stored
+
+
+def test_finalize_sub_reason_map_covers_every_defect_reason_wa_finalize_can_emit() -> None:
+    """The map must not be able to rot in silence.
+
+    Read the SOURCE of ``wa_finalize.py`` — never a hand-copied list, which
+    would be a proof that cannot fail once it drifts from the code — and
+    assert every ``defect_reason`` that module can actually produce is a
+    key here. A new DEFECT branch added later with nobody teaching this map
+    would otherwise fill the column with the generic bucket again, and
+    "why was this answer discarded?" would be unanswerable a third time.
+
+    A ``defect_reason=`` whose value this helper cannot resolve statically
+    is a FAILURE, never a skip: an un-analysable node is exactly where a
+    new shape would hide.
+    """
+    import ast
+    from pathlib import Path
+
+    from backend.services.integrations import wa_finalize
+
+    assert wa_finalize.__file__ is not None
+    tree = ast.parse(Path(wa_finalize.__file__).read_text(encoding="utf-8"))
+
+    def _literal(node: ast.expr) -> str | None:
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return node.value
+        if isinstance(node, ast.JoinedStr) and node.values:
+            first = node.values[0]
+            if isinstance(first, ast.Constant) and isinstance(first.value, str):
+                # e.g. f"secret_egress:{hit}" -> the static leading segment
+                return first.value
+        return None
+
+    # (a) every literal bound to a name the DEFECT sites forward verbatim,
+    #     plus (b) the veto function's own returned tuples.
+    #
+    # An assignment to one of those names that this helper cannot resolve to
+    # a literal is a FAILURE, not a skip. Waving it through was a real hole
+    # (found by the adversarial review of this PR): a future dict-dispatch
+    # refactor writing `human_reason = _LOOKUP["x"]` would forward a value
+    # this scan never sees, `missing` would stay empty, and the guard would
+    # pass while the map rotted — precisely what it exists to prevent.
+    forwarded = {"reason", "veto", "human_reason"}
+    indirect: set[str] = set()
+
+    def _collect(node: ast.expr, where: str) -> None:
+        lit = _literal(node)
+        if lit is not None:
+            indirect.add(lit)
+            return
+        if isinstance(node, ast.BoolOp):
+            for operand in node.values:
+                _collect(operand, where)
+            return
+        # `reason = "x" if cond else None` — a real shape in this module
+        # (the strict resolver above found it; the permissive first draft
+        # of this test walked straight past it). Both arms count.
+        if isinstance(node, ast.IfExp):
+            _collect(node.body, where)
+            _collect(node.orelse, where)
+            return
+        # An explicit `None` is "no reason yet", not an unresolved shape.
+        if isinstance(node, ast.Constant) and node.value is None:
+            return
+        # `reason = human_reason or "..."` legitimately references a name
+        # whose own literal sources this same scan collects elsewhere.
+        if isinstance(node, ast.Name) and node.id in forwarded:
+            return
+        # `veto = _codex_egress_veto(...)` binds the veto helper's return
+        # value, and that helper's own returned tuples are collected by the
+        # ast.Return branch below — so the call itself needs no resolving.
+        # Any OTHER call bound to these names does, hence the name check.
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "_codex_egress_veto"
+        ):
+            return
+        raise AssertionError(
+            f"cannot statically resolve {where} = {ast.dump(node)} — teach "
+            "this helper the new shape before trusting the coverage "
+            "assertion below"
+        )
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id in forwarded:
+                    _collect(node.value, target.id)
+        elif isinstance(node, ast.Return) and isinstance(node.value, ast.Tuple):
+            if node.value.elts:
+                lit = _literal(node.value.elts[0])
+                if lit is not None:
+                    indirect.add(lit)
+
+    # (c) the direct `defect_reason=` keywords.
+    #
+    # KEYWORD-ONLY BY CONVENTION, enforced here (second hole found by the
+    # adversarial review): `FinalizeResult` is a plain frozen dataclass, so
+    # `FinalizeResult(FinalizeOutcome.DEFECT, "", None, "new_defect", ...)`
+    # is legal Python and completely invisible to a scan that reads only
+    # `node.keywords`. Rather than teach the scan to count positions — which
+    # silently breaks the day a field is inserted — require the call site to
+    # keep naming its arguments.
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "FinalizeResult"
+            and node.args
+        ):
+            raise AssertionError(
+                "FinalizeResult(...) is constructed with positional "
+                f"argument(s) at line {node.lineno} of wa_finalize.py — a "
+                "positional defect_reason is invisible to the coverage scan "
+                "below. Pass every field by keyword."
+            )
+
+    direct: set[str] = set()
+    defect_calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        for kw in node.keywords
+        if kw.arg == "defect_reason"
+    ]
+    assert defect_calls, (
+        "wa_finalize no longer passes defect_reason= — retarget this guard"
+    )
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        for kw in node.keywords:
+            if kw.arg != "defect_reason":
+                continue
+            lit = _literal(kw.value)
+            if lit is not None:
+                direct.add(lit)
+                continue
+            # Not a literal: it must be one of the names whose literal
+            # sources (a)/(b) above already collected. Anything else is a
+            # shape this helper has not been taught — fail loudly.
+            if isinstance(kw.value, ast.Name) and kw.value.id in forwarded:
+                continue
+            if (
+                isinstance(kw.value, ast.Subscript)
+                and isinstance(kw.value.value, ast.Name)
+                and kw.value.value.id in forwarded
+            ):
+                continue
+            raise AssertionError(
+                "cannot statically resolve defect_reason="
+                f"{ast.dump(kw.value)} — teach this helper the new shape "
+                "before trusting the coverage assertion below"
+            )
+
+    emitted = direct | indirect
+    # The leg's own defensive fallback, which wa_finalize never emits.
+    emitted.add("blank_send_text")
+
+    known = set(wa_codex_leg._FINALIZE_SUB_REASON_MAP) | {
+        wa_codex_leg._FINALIZE_EGRESS_SCAN_HEAD
+    }
+    missing = {
+        reason
+        for reason in emitted
+        if reason.partition(":")[0] not in known
+    }
+    assert not missing, (
+        f"wa_finalize can emit defect_reason(s) {sorted(missing)} that "
+        "_FINALIZE_SUB_REASON_MAP does not know — they would silently "
+        "collapse into the generic 'finalize_defect' bucket again"
+    )
+
+
+def test_every_stored_fall_off_value_is_allowed_by_the_live_check_constraint() -> None:
+    """Code and DB must agree on the closed vocabulary.
+
+    A value this module can WRITE that the CHECK constraint REJECTS is not
+    a mislabel — it is an exception on the write path, i.e. a second reason
+    nothing was recorded. Parse the newest migration that (re-)defines the
+    constraint and assert it admits every value the maps can produce.
+    """
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[4]
+    migrations = root / "backend" / "db" / "migrations_v2"
+    assert migrations.is_dir(), f"migrations dir not found at {migrations}"
+    # Sort by the leading INTEGER, never by filename: lexicographically
+    # "1000_..." sorts BEFORE "999_...", so a filename sort silently starts
+    # validating against a stale constraint the day this repo passes
+    # migration 999 (third finding of this PR's adversarial review; same
+    # "a proxy is not the content" class as superscar #9).
+    defining = sorted(
+        (
+            p
+            for p in migrations.glob("*.sql")
+            if "wa_outbox_generation_fall_off_reason_check"
+            in p.read_text(encoding="utf-8")
+        ),
+        key=lambda p: int(p.name.split("_", 1)[0]),
+    )
+    assert defining, "no migration defines the fall-off-reason CHECK constraint"
+    newest = defining[-1]
+    # The UP block only — the file's ROLLBACK section restores the older,
+    # narrower vocabulary on purpose.
+    up = newest.read_text(encoding="utf-8").split("=== ROLLBACK ===")[0]
+    allowed = set(re.findall(r"'([a-z_]+)'", up))
+
+    produced = (
+        set(wa_codex_leg._FALL_OFF_REASON_PREFIX_MAP.values())
+        | set(wa_codex_leg._UNBUILDABLE_SUB_REASON_MAP.values())
+        | set(wa_codex_leg._FINALIZE_SUB_REASON_MAP.values())
+        | {"finalize_secret_egress", "unknown"}
+    )
+    assert produced <= allowed, (
+        f"{sorted(produced - allowed)} can be written by the code but is "
+        f"rejected by the CHECK constraint in {newest.name}"
+    )

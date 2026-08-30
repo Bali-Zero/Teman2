@@ -35,7 +35,19 @@ def app():
 
 @pytest.fixture
 def client(app):
-    return TestClient(app)
+    """Default test client: signature enforcement OFF.
+
+    ``meta_webhook_require_signature`` defaults to ``True`` since 2026-08-26
+    (fail-closed by default). This fixture is used by the message-routing
+    coverage tests below, which POST unsigned payloads and were never about
+    signature verification in the first place — that surface has its own
+    tests (``test_hmac_*`` below, and the dedicated
+    ``test_meta_webhook_require_signature.py``). Patching the real settings
+    singleton's attribute (not a reassigned mock) means every module that
+    imported ``settings`` sees the same override.
+    """
+    with patch.object(real_settings, "meta_webhook_require_signature", False):
+        yield TestClient(app)
 
 
 def _seeded_settings_mock() -> MagicMock:

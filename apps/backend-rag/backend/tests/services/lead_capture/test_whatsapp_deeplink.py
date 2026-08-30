@@ -5,9 +5,6 @@ from __future__ import annotations
 import logging
 from urllib.parse import parse_qs, urlparse
 
-import pytest
-from pydantic import ValidationError
-
 from backend.app.routers.lead_capture import LeadCaptureRequest
 from backend.services.lead_capture.source import LeadSource, PublicLeadSource
 from backend.services.lead_capture.whatsapp_deeplink import build_whatsapp_url
@@ -178,13 +175,38 @@ class TestSourceEnum:
                 assert s.result_url_path is not None
                 assert s.result_url_path.startswith("/")
 
-    def test_public_capture_rejects_retired_garuda_source(self):
-        with pytest.raises(ValidationError):
-            LeadCaptureRequest.model_validate({"source": "garuda_voa"})
+    def test_public_capture_accepts_garuda_but_never_resurrects_its_url(self):
+        """The RETIRED half of #4344 is the URL, not the capture.
+
+        Until 2026-08-28 this asserted the opposite — that the public capture
+        API REJECTS `garuda_voa` — which was correct when #4344 (2026-08-21)
+        retired the then-public GARUDA routes. Four days later #4960 relaunched
+        the funnel dark-by-flag, and its result page captures under exactly this
+        source (`apps/mouth/src/app/visa/voa/[hash]/page.tsx`, the ACCEPT branch:
+        "prefer a human to walk you through it", offered right after the price
+        stamp). Two encoded intents in direct conflict; the newer one is the
+        ratified product (owner decision 5, "Concept A — The Stamp").
+
+        So the assertion is inverted, NOT deleted, and #4344's other half is
+        pinned here in the same breath: `result_url_path` stays None, so no new
+        public deeplink can resurrect the retired URL. The lead is captured; the
+        WA body simply carries no "Reference:" line.
+
+        Flipping this does NOT make anything public: `/visa/voa/*` is gated
+        server-side in `layout.tsx` on `GARUDA_PUBLIC_ENABLED`, which is off on
+        Vercel (product.yaml: `status: build-dark`, `owner_signed_at: null`,
+        go_live `state: blocked-...`). It only means that WHEN the owner flips
+        that flag, the funnel's highest-intent handoff writes a lead row instead
+        of 422'ing into the bare wa.me link.
+        """
+        req = LeadCaptureRequest.model_validate({"source": "garuda_voa"})
+        assert req.source is PublicLeadSource.GARUDA_VOA
+        assert req.source.to_persisted() is LeadSource.GARUDA_VOA
+        assert LeadSource.GARUDA_VOA.result_url_path is None
 
     def test_historical_garuda_value_still_decodes(self):
         assert LeadSource("garuda_voa") is LeadSource.GARUDA_VOA
-        assert "garuda_voa" not in {source.value for source in PublicLeadSource}
+        assert "garuda_voa" in {source.value for source in PublicLeadSource}
 
     def test_content_funnel_values_are_stable(self):
         # Wire-format values: the mouth frontend sends these literal strings.

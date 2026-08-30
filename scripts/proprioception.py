@@ -165,6 +165,31 @@ def verdict(pid: str, boundary: str, bclass: str, status: str, severity: str, n:
     }
 
 
+def finding_label(probe: dict) -> str:
+    """`id` plus a "1 of N" marker when the probe carries more findings than the
+    one line about to be printed shows.
+
+    Every surface that renders a DIVERGED probe prints ONE finding: the receptor
+    line, the CLI line, and the per-host fleet summary. `evidence` holds at most
+    5 items (run_wrap's `items[:5]`) and `n_findings` is the true total, which is
+    routinely far larger. Printing `evidence[0]` with nothing naming the total is
+    W97 — a truncated list read downstream as complete.
+
+    MEASURED 2026-08-26 on Pro: launchagent_canon 55 findings, launchd_liveness
+    22, organs_heartbeat 7, worktree_gate_shim 4 — each rendered as a single
+    line. The last one caused real damage: read as "one worktree pushes with no
+    gate", three others kept pushing with no hooks at all until a hand census
+    found them.
+
+    Silent for n <= 1: a "[1 of 1]" on every single-finding line would be noise
+    on a report injected into every session on three machines.
+    """
+    n = probe.get("n_findings")
+    if probe.get("evidence") and isinstance(n, int) and n > 1:
+        return f"{probe.get('id')} [1 of {n}]"
+    return str(probe.get("id"))
+
+
 # ------------------------------------------------------- machine-aware remedy selection
 
 # A registry entry's fix_hint is a STATIC string chosen at authoring time — it cannot
@@ -444,7 +469,10 @@ def load_declared_fork_pairs(root: Path, machine: str) -> list[dict]:
     for pair in data.get("pairs", []):
         machines = pair.get("machines", ["all"])
         if ("all" in machines or machine in machines) and "live" in pair and "repo" in pair:
-            out.append({"live": pair["live"], "repo": pair["repo"]})
+            entry = {"live": pair["live"], "repo": pair["repo"]}
+            if pair.get("live_may_extend_repo"):
+                entry["live_may_extend_repo"] = True
+            out.append(entry)
     return out
 
 
@@ -469,6 +497,50 @@ def origin_main_sha(root: Path, rel: str) -> str | None:
     except (OSError, subprocess.TimeoutExpired, TypeError, ValueError, AttributeError):
         # A probe that raises takes the whole proprioception run with it.
         return None
+
+
+def _live_extends_repo_verbatim(live: Path, repo: Path) -> bool:
+    """True iff repo's bytes appear whole in live, split into one prefix and
+    one suffix, with exactly one contiguous span of NEW content inserted
+    between them (also covers the degenerate append-only/prepend-only cases,
+    where the other span is empty).
+
+    A pure `live.startswith(repo)` prefix check is too narrow: the real first
+    case (2026-08-28, a live-only Ghostty colour override on Mini, marked in
+    the dotfile itself as "live dotfile only") turned out to be a MID-FILE
+    insertion — the fleet installer places new upstream sections before an
+    existing trailing comment block, so a host-local addition lands in the
+    middle, not appended at the end. A file that merely happens to be longer
+    is not proof of anything; the proof is the longest-common-prefix plus the
+    longest-common-suffix, measured independently from each end, together
+    accounting for the ENTIRE repo file byte-for-byte. Any genuine drift —
+    a changed value, a removed line, a reordering — breaks the prefix match
+    or the suffix match (or both) at the point of the change, so
+    prefix_len + suffix_len falls short of len(repo) and this correctly
+    returns False, reporting DIVERGED normally. This is the structural test
+    for the declared-pairs.json `live_may_extend_repo` flag, distinct from
+    CHECKOUT-STALE (live matches origin/main, the checkout is behind): here
+    repo agrees with what it should say and live legitimately carries MORE,
+    never less, changed, or reordered.
+    """
+    try:
+        repo_bytes = repo.read_bytes()
+        if not repo_bytes:
+            return False  # an empty repo file prefix/suffix-matches anything — refuse to trust it
+        live_bytes = live.read_bytes()
+    except OSError:
+        return False
+    if len(live_bytes) <= len(repo_bytes):
+        return False
+    cap = len(repo_bytes)  # never let prefix+suffix search past repo's own length
+    prefix_len = 0
+    while prefix_len < cap and live_bytes[prefix_len] == repo_bytes[prefix_len]:
+        prefix_len += 1
+    suffix_len = 0
+    max_suffix = cap - prefix_len  # the two spans must not overlap within repo
+    while suffix_len < max_suffix and live_bytes[-1 - suffix_len] == repo_bytes[-1 - suffix_len]:
+        suffix_len += 1
+    return prefix_len + suffix_len == cap
 
 
 def probe_home_fork_scripts(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
@@ -526,6 +598,8 @@ def probe_home_fork_scripts(root: Path, args: dict, timeout: int) -> tuple[str, 
         live_sha, repo_sha = sha256_file(live), sha256_file(repo)
         if live_sha == repo_sha:
             continue
+        if pair.get("live_may_extend_repo") and _live_extends_repo_verbatim(live, repo):
+            continue  # declared + verified: repo is a verbatim prefix, the rest is a local addition
         upstream = origin_main_sha(root, pair["repo"])
         if upstream is not None and live_sha == upstream:
             ev.append(
@@ -950,7 +1024,23 @@ DEFAULT_REGISTRY: list[dict] = [
         # every tick (found live on Mini: com.balizero.wa-mirror, correctly disabled
         # per the W67c single-node-Telegram fix). Keep aligned with the detector's own
         # alarm semantics, not a second, drifted opinion of what counts as ok.
-        "verdict_key": "verdict", "ok_values": ["OK", "NOT-LOADED", "RECOVERED", "DISABLED"],
+        #
+        # NOT-LOADED removed 2026-08-30 (PENDING-ARMS row opened 2026-07-19, "guardians
+        # audit Wave 1" item 2, overdue 42d): the detector's own ALARM_VERDICTS is
+        # {"DEAD-GREEN", "DEAD-NONZERO", "ARMED-TO-NOTHING", "NOT-LOADED"} — NOT-LOADED
+        # IS an alarm there (a plist file present but not `launchctl load`ed is exactly
+        # esiste-≠-armato), yet this list kept whitelisting it as OK, so a genuinely
+        # unloaded LaunchAgent was invisible to BOTH this probe and the sibling
+        # `launchagent_canon` probe (whose `present_not_loaded` category is deliberately
+        # exempted here on the assumption THIS probe covers it — see that entry's
+        # comment). A label an operator actually disabled on purpose still reads
+        # DISABLED, not NOT-LOADED (`_disabled_verdict` overrides it before this list is
+        # ever consulted — see launchd_liveness_detector.py), so this change does not
+        # cry-wolf on an intentional disable; it only stops swallowing an ACCIDENTAL
+        # unload. self-test below pins the detector's ALARM_VERDICTS set by reading its
+        # source text, so any future verdict this list disagrees with fails loudly
+        # instead of drifting quietly again (superscar #9).
+        "verdict_key": "verdict", "ok_values": ["OK", "RECOVERED", "DISABLED"],
         "fix_hint": "read the job's real log; DEAD-GREEN = TCC re-grant (operator); ARMED-TO-NOTHING = retire or repoint the plist",
     },
     {
@@ -1118,7 +1208,11 @@ def fleet_probe(hosts: list[str], self_path: Path) -> list[dict]:
                 continue
             remote = json.loads(p.stdout)
             div = [r for r in remote.get("probes", []) if r["status"] == DIVERGED]
-            ev = [f"{r['id']}: {r['evidence'][0] if r['evidence'] else r['n_findings']}" for r in div[:4]]
+            # div[:4] truncates the PROBE list too; say so rather than let four
+            # stand in for forty (same W97 shape, one level up).
+            ev = [f"{finding_label(r)}: {r['evidence'][0] if r['evidence'] else r['n_findings']}" for r in div[:4]]
+            if len(div) > 4:
+                ev.append(f"(+{len(div) - 4} more diverged probes on {host} not listed)")
             results.append(verdict(f"fleet:{host}", f"fleet({host}) <-> origin", "checkout<->origin",
                                    DIVERGED if div else RECONCILED, "P1" if div else "P2",
                                    sum(r["n_findings"] for r in div),
@@ -1205,6 +1299,34 @@ def selftest() -> int:
         st, _, ev = run_wrap(root, disabled_entry, 10)
         if st != RECONCILED:
             failures.append(f"DISABLED verdict parsed as {st}, want RECONCILED ({ev[:1]})")
+        # 2026-08-30: the mirror-image guilt case for the fix above — an ACCIDENTALLY
+        # unloaded LaunchAgent (no operator disable, just NOT-LOADED) must now DIVERGE.
+        # Before the fix this echoed RECONCILED (ok_values whitelisted NOT-LOADED),
+        # which is exactly how a real esiste-≠-armato gap went invisible.
+        not_loaded_payload = json.dumps({"findings": [{"label": "com.example.stray", "verdict": "NOT-LOADED"}], "alarms": 0})
+        not_loaded_entry = {**launchd_entry, "target": [echo, not_loaded_payload]}
+        st, _, ev = run_wrap(root, not_loaded_entry, 10)
+        if st != DIVERGED:
+            failures.append(f"NOT-LOADED verdict parsed as {st}, want DIVERGED ({ev[:1]})")
+        # Structural guard against re-drift (superscar #9): read the detector's OWN
+        # ALARM_VERDICTS from source text (never import it — that module argparse's at
+        # module scope in other code paths and this selftest must stay dependency-free)
+        # and assert every alarm verdict it declares is excluded from this probe's
+        # ok_values. A future verdict added to ALARM_VERDICTS that this list forgets to
+        # exclude now fails the selftest by name, instead of drifting quietly for
+        # another 42 days like NOT-LOADED did.
+        real_root = repo_root() or root
+        detector_src = (real_root / "scripts" / "launchd_liveness_detector.py").read_text()
+        m = re.search(r'ALARM_VERDICTS\s*=\s*(\{[^}]*\})', detector_src)
+        if not m:
+            failures.append("could not locate ALARM_VERDICTS in launchd_liveness_detector.py — selftest is blind")
+        else:
+            import ast
+            alarm_verdicts = ast.literal_eval(m.group(1))
+            probe_ok_values = set(launchd_entry.get("ok_values", []))
+            leaked = alarm_verdicts & probe_ok_values
+            if leaked:
+                failures.append(f"launchd_liveness ok_values whitelists detector ALARM_VERDICTS {sorted(leaked)} — esiste≠armato regression")
         if redact("token Bearer abcdef123456789012 end") == "token Bearer abcdef123456789012 end":
             failures.append("redact() failed to mask a Bearer token")
     if failures:
@@ -1327,7 +1449,13 @@ def main() -> int:
     else:
         print(summary)
         for r in diverged:
-            print(f"  !! [{r['severity']}] {r['id']}: {r['evidence'][0] if r['evidence'] else r['n_findings']}")
+            # Same finding-level truncation the SessionStart receptor carries — see
+            # the W97 note in scripts/hooks/proprioception_sessionstart.sh. evidence
+            # holds up to 5 items (run_wrap's items[:5]) and n_findings is the true
+            # total, which can be far larger; printing evidence[0] alone reads as
+            # "one finding" for a probe reporting fifty-five.
+            print(f"  !! [{r['severity']}] {finding_label(r)}: "
+                  f"{r['evidence'][0] if r['evidence'] else r['n_findings']}")
             print(f"     fix: {r['fix_hint']}")
         if unwatched:
             print(f"  (unwatched classes: {', '.join(unwatched)})")

@@ -32,20 +32,51 @@ def _pr(number: int, labels: list[str] | None = None, automerge: bool = True) ->
 
 
 class TestOrderQueue:
+    """`in_queue_numbers` is a required kwarg (2026-08-30 fix): every call
+    below passes it explicitly, never relies on a default — the whole point
+    of the fix is that there IS no default a caller could silently fall
+    back to (see `order_queue`'s own docstring)."""
+
     def test_fifo_by_number(self):
-        q = train.order_queue([_pr(30), _pr(10), _pr(20)])
+        q = train.order_queue([_pr(30), _pr(10), _pr(20)], in_queue_numbers=set())
         assert [p["number"] for p in q] == [10, 20, 30]
 
     def test_auto_revert_priority_lane(self):
         # Spec §10.1: the revert-PR (highest number) jumps to the head.
-        q = train.order_queue([_pr(10), _pr(20), _pr(99, labels=["auto-revert"])])
+        q = train.order_queue(
+            [_pr(10), _pr(20), _pr(99, labels=["auto-revert"])], in_queue_numbers=set()
+        )
         assert [p["number"] for p in q] == [99, 10, 20]
 
-    def test_no_train_label_excluded_and_unarmed_excluded(self):
+    def test_no_train_label_excluded_and_never_armed_excluded(self):
+        """A PR opted out (no-train label) and a PR genuinely never armed
+        (autoMergeRequest null AND not in the queue snapshot) are both
+        excluded — the correct, narrower half of the old test's name.
+        `test_queue_accepted_pr_with_null_automerge_is_still_eligible` below
+        is the half the old test got backwards: null alone is NOT "unarmed",
+        it is also what a queue-accepted PR reads."""
         q = train.order_queue(
-            [_pr(10, labels=["no-train"]), _pr(20, automerge=False), _pr(30)]
+            [_pr(10, labels=["no-train"]), _pr(20, automerge=False), _pr(30)],
+            in_queue_numbers=set(),
         )
         assert [p["number"] for p in q] == [30]
+
+    def test_queue_accepted_pr_with_null_automerge_is_still_eligible(self):
+        """2026-08-30 fix — the PR #5275 shape: GitHub's queue has ACCEPTED
+        this PR (autoMergeRequest reads null because the request was
+        CONSUMED on entry, not because it was disarmed), and the queue
+        snapshot (`in_queue_numbers`, GraphQL `mergeQueueEntry`'s positive
+        probe) proves it. Pre-fix, `order_queue` read the null field alone
+        and silently dropped this PR from `eligible` — exactly the bug this
+        test exists to catch (verified against the pre-fix source: this
+        assertion fails there, asserting `[30]` instead of `[20, 30]` —
+        the corrected test does not merely pass, it discriminates). The
+        test above proves this fix does not also flip a genuinely
+        never-armed PR (null AND absent from the snapshot) to eligible."""
+        q = train.order_queue(
+            [_pr(20, automerge=False), _pr(30)], in_queue_numbers={20},
+        )
+        assert [p["number"] for p in q] == [20, 30]
 
 
 class TestSkiplist:

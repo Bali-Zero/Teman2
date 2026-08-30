@@ -118,6 +118,13 @@ on:
       - check-cicatrix-scar-pointers
       - check-kbli-dataset-sync
       - check-ledger-no-silent-loss
+      # check-skills-canonical landed unwatched with PR #5041 — inherited debt,
+      # not caused by the ACL lane. Registered here rather than left red because
+      # it is the same one-line concern as the row below it, and the sweep is
+      # all-or-nothing: leaving it blocks every subsequent PR too.
+      - check-skills-canonical
+      - check-tailnet-acl
+      - check-wal-continuity-probe
       - cron - codex autofix reaper (autonomous reap every 48h)
       - Contract Tests (Schemathesis)
       - cron - cert monitor (daily 07:00 WITA)
@@ -142,10 +149,12 @@ on:
       - Docs Inventory Refresh
       - Docs Sync Check
       - manual - fly api diagnostics
+      - manual - garuda voa arm
       - Deploy Backend to Fly.io
       - Fly.io Secrets Health Check
       - Frontend Live Sentinel
       - Frontend typecheck (apps/mouth)
+      - garuda-contract-parity
       - Guard conformance (superscar
       - Hook innocence gate (vaccine)
       - hot-zone-enforcement
@@ -159,6 +168,7 @@ on:
       - Content lint — reasoning-leak in published MDX
       - Lint Cross-Import
       - Golden Rule
+      - Lint — GARUDA_ENVIRONMENT workflow value matches DB schema
       - Lint i18n providers
       - Migration number uniqueness lint
       - Migration ROLLBACK marker lint
@@ -177,7 +187,9 @@ on:
       - P7 LEARN Shadow Harvester Gate
       - P8 Brand-API Gate
       - P9 Cost Breaker (GOVERN)
+      - PR size taxonomy (advisory)
       - Monthly PG Restore Drill
+      - Restore drill wiring tests
       - "runbook section numbers are unique"
       - Root Guard
       - SBOM (Software Bill of Materials)
@@ -275,6 +287,42 @@ on:
       # first run.
       - zantara-core-edit-gate
       - Vercel auto-promote organ tests
+      # Added 2026-08-29 (Handoff H3, token-contrast-tests.yml): ADVISORY job
+      # (continue-on-error: true — see the workflow's own header comment).
+      # check_watcher_coverage.py's contract is name-set membership against
+      # this file's declared name:, not whether the job is required or
+      # advisory, so listing it here is unconditional. What it is FOR, stated
+      # precisely because a plausible wrong intuition exists (a cross-family
+      # reviewer built an anti-ship case on it): this registration does NOT
+      # currently surface a failure of that job through THIS watcher, because
+      # the `alert` job below gates on the WORKFLOW RUN's own `conclusion`
+      # (see this file's own header + the `if:` on `alert`), and job-level
+      # `continue-on-error` keeps that overall conclusion `success` even when
+      # the job's own check-run concludes `failure` -- measured in this repo,
+      # not assumed: `tests.yml`'s `visa-oracle-fullstack-smoke` job (identical
+      # continue-on-error shape) has its own comment recording "the step
+      # failed and the check-run's conclusion on the commit was failure ...
+      # the overall WORKFLOW RUN conclusion is not dragged down by this job."
+      # So while continue-on-error is present, a failure here is invisible to
+      # THIS watcher specifically -- though still visible red to any human on
+      # the PR itself via `gh pr checks` or the Checks tab, which is a
+      # separate, already-live channel this entry has no bearing on. What
+      # registration DOES buy, and the actual reason to keep it: the moment
+      # `continue-on-error` is removed from that job (see its own
+      # PENDING-ARMS row), a real failure WILL flip the workflow run's
+      # conclusion to `failure`, and this entry is what lets this watcher
+      # catch it on push-to-main from that point on, with no second PR
+      # required to add it then.
+      - Token contrast tripwire tests
+      # Added with the workflow itself (PR-3, L06-ci-merge-queue-ship-
+      # pipeline.md, 2026-08-29): pr-collision-check.yml triggers on
+      # pull_request only (opened/reopened/synchronize/ready_for_review) —
+      # same non-reachable-but-still-required-for-coverage shape as
+      # actionlint / hot-zone-enforcement / Prettier (changed files) /
+      # Harness floor recompute above. check_watcher_coverage.py's
+      # contract is name-set membership against this file's `name:`, not
+      # alert-path reachability (see its own docstring).
+      - PR collision check (advisory)
     types: [completed]
     # 2026-08-20 CI-churn cure — see the matching GOTCHA above for the
     # measurement and the empirical proof this narrows run CREATION, never
