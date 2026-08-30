@@ -40,9 +40,9 @@ seat_diversity_note: >-
   or left open by round 1's fixes.
 diff:
   net_lines: >-
-    AS OF a28fd3594d (pinned — a bare byte count inside a file every subsequent
+    AS OF 6b501570dd (pinned — a bare byte count inside a file every subsequent
     commit rewrites is a claim that decays by construction): 9 files,
-    +2385/-7, measured against the MERGE BASE. Deliberately over the ~400-line
+    +2425/-8, measured against the MERGE BASE. Deliberately over the ~400-line
     target and said plainly rather than split: 1,004 of those lines are the two
     test corpora and roughly 320 more are load-bearing comment — the executable
     surface is one CLI mode and one sort. Splitting the corpus from the code it
@@ -163,6 +163,22 @@ receipts:
     exit: 0
     ts: "2026-08-31T01:15Z"
     seat: "session (mini, final gate)"
+  - claim: "The gate's FIRST live CI run found a defect three adversarial rounds did not — and failed CLOSED while doing it"
+    cmd: "gh run view 33324884785 --log-failed  (check-ledger-no-silent-loss on this PR's own head)"
+    result: >-
+      "ratchet CANNOT-VERIFY: the derived clock 2026-08-31 is in the future
+      (today is 2026-08-30)", exit 3. `git log --format=%as` reports the
+      AUTHOR's timezone; these commits were authored on Mini (WITA, UTC+8) just
+      after midnight, so an ordinary branch read as forged on a UTC runner.
+      Fixed with a two-day tolerance (legitimate offsets span UTC-12..UTC+14),
+      mutation-verified in BOTH directions: removing the tolerance reddens the
+      corpus, widening it until a forged clock passes reddens it too. Three
+      families, 29 mutants and 24 findings missed this, because every one of
+      them ran in the fixtures' own timezone. The guard failing CLOSED — no
+      verdict rather than a wrong one — is what made the over-match survivable.
+    exit: 3
+    ts: "2026-08-30T17:19:21Z"
+    seat: "GitHub Actions runner (UTC) — the consumer this PR ships"
 pii_scan: clean
 council_run: journal.jsonl
 dissent:
