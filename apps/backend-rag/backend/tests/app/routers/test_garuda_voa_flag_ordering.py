@@ -100,15 +100,16 @@ def test_dark_by_flag_beats_body_validation_and_repository_wiring(
         f"anonymous existence-and-liveness oracle on a route this same PR "
         f"is adding to the public allowlist."
     )
-    # Two contract-error-body shapes coexist on purpose here, and unifying
-    # them is a separate, out-of-scope concern from this test's ordering
-    # claim: `garuda_voa_public.py` / `garuda_portal_auth.py` use the
-    # `_ContractErrorRoute` + `_error()` shape (`{"code": ..., ...}` at the
-    # top level); `garuda_orders_router.py` raises a bare `HTTPException`,
-    # whose default FastAPI envelope nests the same payload under
-    # `"detail"`. Both are asserted here because this test's job is
-    # "flag beats body validation and repository wiring", not "all three
-    # GARUDA routers share one error envelope".
+    # CORRECTED: all three GARUDA lanes now share one error envelope.
+    # `garuda_orders_router.py` used to raise a bare `HTTPException`, whose
+    # default FastAPI envelope nests the payload under `"detail"` instead of
+    # the contract's flat top-level shape — fixed by giving it its own
+    # `_ContractErrorRoute` (garuda_orders_router.py, mirroring
+    # `garuda_voa_public.py`'s) that catches `HTTPException` and rewrites it
+    # through `_error()`. The `body.get("detail") or {}` fallback is kept
+    # only so this test doesn't regress silently if a FOURTH lane is ever
+    # added here before it gets the same treatment — every GARUDA route this
+    # test currently exercises answers at the top level.
     body = response.json()
     code = body.get("code") or (body.get("detail") or {}).get("code")
     assert code == "GARUDA_PUBLIC_DISABLED", body
