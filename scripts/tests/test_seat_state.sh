@@ -247,8 +247,12 @@ case_cascade_wiring() {
     # The library is actually sourced (a real `.` line, not a mention in prose).
     printf '%s\n' "$exec_text" | grep -Eq '^[[:space:]]*\.[[:space:]]+"\$SEAT_STATE_LIB"' || return 1
     # The kill switch guards a REAL call, and that call is followed by the skip return.
+    # POLARITY, not just presence. Inverting the guard to `= "0"` (precheck
+    # armed only when the kill switch is ON) left every test green in the first
+    # version of this case — the exact "asserts on text while behavior is
+    # broken" class this guard's own W108 note claims to avoid.
     printf '%s\n' "$exec_text" \
-        | grep -Eq 'SEAT_STATE_PRECHECK.*seat_state_precheck_skip[[:space:]]+"\$label"' || return 1
+        | grep -Eq 'SEAT_STATE_PRECHECK:-1\}"[[:space:]]*!=[[:space:]]*"0".*seat_state_precheck_skip[[:space:]]+"\$label"' || return 1
     printf '%s\n' "$exec_text" \
         | grep -A3 -E 'seat_state_precheck_skip[[:space:]]+"\$label"' | grep -Fq 'return 98' || return 1
 
@@ -267,11 +271,20 @@ case_cascade_wiring() {
     ln_src="$(grep -n '^[[:space:]]*\.[[:space:]]\+"\$SEAT_STATE_LIB"' "$CASCADE" | head -1 | cut -d: -f1)"
     [ -n "$ln_src" ] && [ "$ln_src" -lt "$ln_firstcall" ] || return 1
 
-    local mine origin
+    local mine origin attempt
     mine="$(grep -n '^for index in 1 2 3 4 5; do' "$CASCADE" || true)"
-    origin="$(git -C "$REPO_ROOT" show origin/main:infra/launchagents/wrappers/claude-cascade.sh 2>/dev/null \
-        | grep -n '^for index in 1 2 3 4 5; do' || true)"
     [ -n "$mine" ] || return 1
+    # This worktree is shared with concurrent sibling squad activity (observed
+    # live: SQUAD-LEDGER.md changing underfoot mid-run) — `git show ref:path`
+    # can transiently race a sibling's ref/object-db write. Retry a few times
+    # before treating an empty read as a real failure, so a git-lock blip
+    # never masquerades as "the dispatch loop got touched".
+    for attempt in 1 2 3; do
+        origin="$(git -C "$REPO_ROOT" show origin/main:infra/launchagents/wrappers/claude-cascade.sh 2>/dev/null \
+            | grep -n '^for index in 1 2 3 4 5; do' || true)"
+        [ -n "$origin" ] && break
+        sleep 0.2
+    done
     [ -n "$origin" ] || return 1
     # Only the line NUMBER may legitimately differ (this PR adds lines above
     # it); the line TEXT itself — the dispatch loop's own numbering, which
@@ -305,6 +318,197 @@ run_case "arsenal report: QUOTA_DEAD resolves EXHAUSTED" case_arsenal_exhausted
 run_case "arsenal report: LIVE resolves LIVE" case_arsenal_live
 run_case "no usage figures: never LIVE" case_no_usage_figures_unknown
 run_case "no secrets ever appear in lookup output" case_no_secrets_in_output
+# --- regressions found by the Kimi K3 blind refutation, both CONFIRMED by
+# --- measurement before being fixed (a refuter finding is a lead, not a fact).
+
+case_future_timestamp_is_unknown() {
+    # GUILT: before the fix, `age > max_age_s` was the ONLY freshness test, so a
+    # NEGATIVE age (report dated ahead of now) read as fresh forever. Measured:
+    # a report 11.5 days in the future carrying weekly_pct=100 returned
+    # EXHAUSTED and SKIPPED the seat. A wrong skip is the dangerous polarity.
+    local quota="$FIXTURE/c17-quota.json" out state rc=0 skiprc=0
+    write_quota_fixture "$quota" "seat-f@example.invalid" 100.0 1.0 "$(( $(now_epoch) + 1000000 ))"
+    out="$(env SEAT_STATE_REPORT="$quota" SEAT_STATE_ARSENAL_REPORT="$FIXTURE/c17-missing.json" \
+        bash -c ". \"$SEAT_STATE\"; seat_state_lookup seat-f@example.invalid")" || rc=$?
+    [ "$rc" -eq 2 ] || return 1
+    state="${out%%$'\t'*}"
+    [ "$state" = "UNKNOWN" ] || return 1
+    case "${out#*$'\t'}" in *future*) : ;; *) return 1 ;; esac
+    # and it must not skip
+    env SEAT_STATE_REPORT="$quota" SEAT_STATE_ARSENAL_REPORT="$FIXTURE/c17-missing.json" \
+        CLAUDE_SEAT_ACCOUNT_2="seat-f@example.invalid" \
+        bash -c ". \"$SEAT_STATE\"; seat_state_precheck_skip claude-token-2-env" || skiprc=$?
+    [ "$skiprc" -eq 1 ]
+}
+
+case_small_clock_skew_still_tolerated() {
+    # INNOCENCE for the fix above: ordinary NTP jitter between two fleet
+    # machines must NOT be turned into UNKNOWN, or the feature dies on healthy
+    # infrastructure. 60s ahead is still a usable report.
+    local quota="$FIXTURE/c18-quota.json" out rc=0
+    write_quota_fixture "$quota" "seat-g@example.invalid" 100.0 1.0 "$(( $(now_epoch) + 60 ))"
+    out="$(env SEAT_STATE_REPORT="$quota" SEAT_STATE_ARSENAL_REPORT="$FIXTURE/c18-missing.json" \
+        bash -c ". \"$SEAT_STATE\"; seat_state_lookup seat-g@example.invalid")" || rc=$?
+    [ "$rc" -eq 1 ] || return 1
+    [ "${out%%$'\t'*}" = "EXHAUSTED" ]
+}
+
+case_naive_timestamp_is_unknown() {
+    # GUILT: a timestamp with no timezone is read by Python in LOCAL time.
+    # Measured on Mini (UTC+8): an arsenal report stamped naive-UTC and written
+    # THAT SECOND reported "stale age=28800s" — exactly the local offset. West
+    # of UTC the same bug yields a negative age, i.e. fresh forever. We cannot
+    # know which zone the writer meant, so the answer must be UNKNOWN.
+    local arsenal="$FIXTURE/c19-arsenal.json" naive out rc=0
+    naive="$(python3 -c 'import datetime; print(datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat(timespec="seconds"))')"
+    cat > "$arsenal" <<JSON
+{"ts": "$naive", "seats": [{"seat": "kimi", "status": "QUOTA_DEAD"}]}
+JSON
+    out="$(env SEAT_STATE_REPORT="$FIXTURE/c19-missing.json" SEAT_STATE_ARSENAL_REPORT="$arsenal" \
+        bash -c ". \"$SEAT_STATE\"; seat_state_lookup kimi")" || rc=$?
+    [ "$rc" -eq 2 ] || return 1
+    [ "${out%%$'\t'*}" = "UNKNOWN" ] || return 1
+    case "${out#*$'\t'}" in *timezone*) : ;; *) return 1 ;; esac
+}
+
+case_real_cascade_labels_match_precheck() {
+    # The wiring test proves the CALL exists; this proves the call can ever FIRE.
+    # seat_state_precheck_skip only acts on labels shaped claude-token-<N>-...,
+    # so if the cascade ever renames its numbered labels the feature goes
+    # silently inert — armed-to-nothing, family #2.
+    #
+    # The cascade passes BOTH kinds of label and both are correct:
+    #   numbered  claude-token-{1,2,3,4,5}-...  -> must parse and be able to skip
+    #   unnumbered claude-keychain / claude-token-legacy-env
+    #                                          -> must NEVER skip (no slot, no map)
+    # Asserting "all labels parse" was wrong and failed on the legacy label; the
+    # partition below is the real invariant.
+    local labels l numbered=0 unnumbered=0 q="$FIXTURE/c20-quota.json" n rc
+    # Extract EVERY label the cascade uses, not only ones already shaped
+    # claude-token-*. Grepping for the shape we expect is circular: a rename to
+    # claude-seat-3-env simply vanishes from the input set, so the shape check
+    # below never sees it and the case stays green (measured — that mutant
+    # survived two earlier versions of this test). Both `label="..."`
+    # assignments and literal try_claude call-site labels are collected.
+    labels="$( { grep -oE 'label="[^"]+"' "$CASCADE" | sed -E 's/^label="//; s/"$//'
+                 grep -oE 'try_claude "[^"]+" "[^"]+"' "$CASCADE" | sed -E 's/.*" "//; s/"$//'
+               } | grep -E '^claude' | sort -u )"
+    [ -n "$labels" ] || return 1
+    write_quota_fixture "$q" "seat-h@example.invalid" 100.0 1.0
+    while IFS= read -r l; do
+        [ -n "$l" ] || continue
+        n="$(printf '%s' "$l" | sed -nE 's/^claude-token-([0-9]+)(-.*)?$/\1/p')"
+        # A label carrying a slot-shaped digit MUST parse. Counting only the
+        # labels that already parse is circular: a rename such as
+        # claude-token-3-env -> claude-seat-3-env removes a seat from coverage
+        # while every REMAINING label still parses, so a floor-count test stays
+        # green (measured — that mutant survived the first version of this case).
+        # Classify by "does it look like a numbered seat", then demand it parse.
+        if [ -z "$n" ] && printf '%s' "$l" | grep -qE -- '-[0-9]+(-|$)'; then
+            printf '  label %s looks like a numbered seat but does not parse\n' "$l" >&2
+            return 1
+        fi
+        if [ -n "$n" ]; then
+            rc=0
+            env SEAT_STATE_REPORT="$q" SEAT_STATE_ARSENAL_REPORT="$FIXTURE/c20-missing.json" \
+                "CLAUDE_SEAT_ACCOUNT_$n=seat-h@example.invalid" \
+                bash -c ". \"$SEAT_STATE\"; seat_state_precheck_skip $l" || rc=$?
+            [ "$rc" -eq 0 ] || return 1
+            numbered=$((numbered + 1))
+        else
+            rc=0
+            env SEAT_STATE_REPORT="$q" SEAT_STATE_ARSENAL_REPORT="$FIXTURE/c20-missing.json" \
+                CLAUDE_SEAT_ACCOUNT_1="seat-h@example.invalid" \
+                bash -c ". \"$SEAT_STATE\"; seat_state_precheck_skip $l" || rc=$?
+            [ "$rc" -eq 1 ] || return 1
+            unnumbered=$((unnumbered + 1))
+        fi
+    done <<< "$labels"
+    # A floor alone cannot catch a rename (see above); the per-label shape check
+    # does that. The floor stays only as a tripwire against the grep silently
+    # matching nothing. It is a FLOOR, not an exact count, so PR #4644 adding a
+    # sixth seat does not turn this red.
+    [ "$numbered" -ge 5 ] && [ "$unnumbered" -ge 2 ]
+}
+
+case_nonstrict_json_is_unknown() {
+    # GUILT: Python json accepts Infinity/NaN by default. Measured: a report
+    # with weekly_pct Infinity returned EXHAUSTED and SKIPPED the seat — a
+    # strictly-invalid report forcing the one decision that costs a live seat.
+    local quota="$FIXTURE/c21-quota.json" out rc=0
+    cat > "$quota" <<JSON
+{"generated_at_epoch": $(now_epoch), "seats": [{"account": "seat-i@example.invalid", "weekly_pct": Infinity, "session_pct": 1.0}]}
+JSON
+    out="$(env SEAT_STATE_REPORT="$quota" SEAT_STATE_ARSENAL_REPORT="$FIXTURE/c21-missing.json" \
+        bash -c ". \"$SEAT_STATE\"; seat_state_lookup seat-i@example.invalid")" || rc=$?
+    [ "$rc" -eq 2 ] || return 1
+    [ "${out%%$'\t'*}" = "UNKNOWN" ]
+}
+
+case_sentinel_not_exported_to_children() {
+    # F4: the guarantee is one probe per PROCESS. Exporting made it one probe
+    # per process TREE, so every child the cascade spawns inherited the flag and
+    # could never refresh.
+    #
+    # The fixture MUST make the lookup reach the probe branch. The first version
+    # used a fresh LIVE report, which resolves immediately and never sets the
+    # sentinel at all — so the mutant that re-added `export` survived. A missing
+    # report forces UNKNOWN, which is what actually arms the probe path.
+    local n
+    n="$(env SEAT_STATE_REPORT="$FIXTURE/c22-absent.json" \
+        SEAT_STATE_ARSENAL_REPORT="$FIXTURE/c22-absent2.json" \
+        SEAT_STATE_PROBE_CMD="/usr/bin/true" \
+        bash -c ". \"$SEAT_STATE\"
+seat_state_lookup seat-j@example.invalid >/dev/null 2>&1
+# proves the branch ran at all: without it this case would pass vacuously
+[ \"\${SEAT_STATE_PROBED:-}\" = 1 ] || { echo BRANCH-NOT-REACHED; exit 0; }
+env | grep -c '^SEAT_STATE_PROBED=' || true")"
+    [ "$n" = "0" ]
+}
+
+case_reason_field_is_sanitised() {
+    # F5: report values are unvalidated input and land on the field-separated
+    # line this bridge prints. A crafted status carrying tabs/newlines must not
+    # inject extra fields into that line.
+    local arsenal="$FIXTURE/c24-arsenal.json" out
+    cat > "$arsenal" <<JSON
+{"ts": "$(now_iso)", "seats": [{"seat": "kimi", "status": "WEIRD\tLIVE\t1"}]}
+JSON
+    out="$(env SEAT_STATE_REPORT="$FIXTURE/c24-missing.json" SEAT_STATE_ARSENAL_REPORT="$arsenal" \
+        bash -c ". \"$SEAT_STATE\"; seat_state_lookup kimi" 2>/dev/null || true)"
+    # NF alone cannot judge this: an unsanitised tab does not ADD a field, the
+    # shell's own field-split TRUNCATES the reason at it (measured: the mutant
+    # prints "status=WEIRD" and still shows NF=2). The observable that actually
+    # separates them is whether the value survived intact.
+    [ "$(printf '%s' "$out" | awk -F'\t' '{print NF}')" = "2" ] || return 1
+    [ "${out%%$'\t'*}" = "UNKNOWN" ] || return 1
+    case "$out" in *WEIRD*LIVE*1*) : ;; *) return 1 ;; esac
+}
+
+case_zsh_sources_and_runs_under_set_u() {
+    # T2: invariant 5 said the library must be safe when sourced by zsh under
+    # set -u — the cascade's real mode — and nothing tested it. zsh-only
+    # regressions (unset refs, local semantics) would ship unseen.
+    command -v zsh >/dev/null 2>&1 || { printf '  SKIP zsh not on PATH\n' >&2; return 0; }
+    local quota="$FIXTURE/c23-quota.json" rc=0
+    write_quota_fixture "$quota" "seat-k@example.invalid" 100.0 1.0
+    env SEAT_STATE_REPORT="$quota" SEAT_STATE_ARSENAL_REPORT="$FIXTURE/c23-missing.json" \
+        CLAUDE_SEAT_ACCOUNT_2="seat-k@example.invalid" \
+        zsh -c 'set -uo pipefail
+. '"$SEAT_STATE"'
+seat_state_precheck_skip claude-token-2-env' || rc=$?
+    # exhausted seat under zsh + set -u must still resolve to a skip (rc 0)
+    [ "$rc" -eq 0 ]
+}
+
+run_case "regression: non-strict JSON (Infinity) is UNKNOWN" case_nonstrict_json_is_unknown
+run_case "regression: probe sentinel does not leak to children" case_sentinel_not_exported_to_children
+run_case "regression: reason field is sanitised" case_reason_field_is_sanitised
+run_case "zsh: library sources and skips correctly under set -u" case_zsh_sources_and_runs_under_set_u
+run_case "regression: future-dated report is UNKNOWN, never a skip" case_future_timestamp_is_unknown
+run_case "innocence: small clock skew is still a usable report" case_small_clock_skew_still_tolerated
+run_case "regression: timezone-less timestamp is UNKNOWN" case_naive_timestamp_is_unknown
+run_case "wiring: every real cascade label parses to a slot" case_real_cascade_labels_match_precheck
 run_case "cascade wiring: sourced, called, kill-switched, loop untouched" case_cascade_wiring
 run_case "syntax: bash -n on seat_state.sh" case_syntax_bash
 run_case "syntax: zsh -n on claude-cascade.sh" case_syntax_zsh

@@ -63,6 +63,31 @@
 _SEAT_STATE_PY="$(cat <<'SEAT_STATE_PY'
 import json, sys, datetime
 
+# Clock skew between two fleet machines is normal and small; a report dated
+# meaningfully in the future is not. 300s absorbs ordinary NTP drift without
+# absorbing a broken writer.
+#
+# EDITING NOTE, measured not theorised: this heredoc body is nested inside a
+# command substitution, so bash SCANS it even though it is quote-delimited.
+# A comment here containing a dollar-paren sequence, a backtick, or an
+# unbalanced quote makes bash reject the WHOLE FILE with
+# 'unexpected EOF while looking for matching quote' - and the reported line
+# number is the end of the file, nowhere near the offending comment. Keep
+# prose in here free of shell metacharacters.
+_FUTURE_TOLERANCE_S = 300
+
+def _reject_const(_name):
+    raise ValueError("non-strict JSON constant")
+
+
+def _clean(v):
+    # Report values are unvalidated input. They must never carry a tab or a
+    # newline into the field-separated line this bridge prints, and must never
+    # be unbounded. Cosmetic today, but it is untrusted content reaching output.
+    t = str(v).replace("\t", " ").replace("\r", " ").replace("\n", " ")
+    return t[:80]
+
+
 def emit(state, reason, terminal):
     print(state + "\t" + reason + "\t" + ("1" if terminal else "0"))
     raise SystemExit(0)
@@ -77,7 +102,11 @@ def main():
 
     try:
         with open(path, "r") as fh:
-            data = json.load(fh)
+            # Reject the non-strict JSON constants Python accepts by default.
+            # Measured: a report carrying weekly_pct as Infinity produced
+            # EXHAUSTED and SKIPPED the seat - a strictly-invalid report forcing
+            # the one decision that costs a live seat. Unparseable must be UNKNOWN.
+            data = json.load(fh, parse_constant=_reject_const)
     except FileNotFoundError:
         emit("UNKNOWN", "missing-report", False)
     except (OSError, ValueError):
@@ -96,13 +125,29 @@ def main():
         if not isinstance(ts_raw, str) or not ts_raw:
             emit("UNKNOWN", "unparseable-timestamp", False)
         try:
-            ts_epoch = datetime.datetime.fromisoformat(
-                ts_raw.replace("Z", "+00:00")
-            ).timestamp()
+            _dt = datetime.datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
         except ValueError:
             emit("UNKNOWN", "unparseable-timestamp", False)
+        # A timestamp with NO timezone is refused, never guessed. Python reads
+        # a naive datetime in LOCAL time, so a writer emitting naive UTC is read
+        # here shifted by the reading machine local offset. Measured on Mini
+        # (UTC+8): a naive-UTC arsenal report written THAT SECOND reported
+        # stale age=28800s, exactly the offset. West of UTC the same bug runs
+        # the other way and yields a negative age, i.e. fresh forever. We cannot
+        # know which zone the writer meant, so we decline rather than invent one.
+        if _dt.tzinfo is None or _dt.tzinfo.utcoffset(_dt) is None:
+            emit("UNKNOWN", "timestamp-without-timezone", False)
+        ts_epoch = _dt.timestamp()
 
     age = datetime.datetime.now(datetime.timezone.utc).timestamp() - ts_epoch
+    # A report dated in the FUTURE is not fresh, it is untrustworthy. Only the
+    # `age > max_age_s` side was checked before, so a negative age (clock skew,
+    # a writer bug, a hand-edited fixture) sailed through as fresh FOREVER.
+    # Measured: a report dated 11.5 days ahead carrying weekly_pct=100 made the
+    # library report EXHAUSTED and SKIP a seat that may have been perfectly
+    # live. That is the dangerous polarity - a wrong SKIP, not a wrong dispatch.
+    if age < -_FUTURE_TOLERANCE_S:
+        emit("UNKNOWN", "timestamp-in-future by=" + str(int(-age)) + "s", False)
     if age > max_age_s:
         emit("UNKNOWN", "stale age=" + str(int(age)) + "s", False)
 
@@ -127,17 +172,17 @@ def main():
         if not weekly_num and not session_num:
             emit("UNKNOWN", "no-usage-figures", True)
         if weekly_num and weekly >= exhausted_pct:
-            emit("EXHAUSTED", "weekly_pct=" + str(weekly), True)
+            emit("EXHAUSTED", "weekly_pct=" + _clean(weekly), True)
         if session_num and session >= exhausted_pct:
-            emit("EXHAUSTED", "session_pct=" + str(session), True)
-        emit("LIVE", "weekly_pct=" + str(weekly) + " session_pct=" + str(session), True)
+            emit("EXHAUSTED", "session_pct=" + _clean(session), True)
+        emit("LIVE", "weekly_pct=" + _clean(weekly) + " session_pct=" + _clean(session), True)
     else:
         status = row.get("status")
         if status == "QUOTA_DEAD":
             emit("EXHAUSTED", "status=QUOTA_DEAD", True)
         if status == "LIVE":
             emit("LIVE", "status=LIVE", True)
-        emit("UNKNOWN", "status=" + str(status), True)
+        emit("UNKNOWN", "status=" + _clean(status), True)
 
 try:
     main()
@@ -210,8 +255,11 @@ seat_state_lookup() {
 
     if [ "$SEAT_STATE_STATE" = "UNKNOWN" ] && [ -n "${SEAT_STATE_PROBE_CMD:-}" ] \
         && [ "${SEAT_STATE_PROBED:-0}" != "1" ]; then
+        # Deliberately NOT exported. The guarantee is one probe per PROCESS;
+        # exporting made it one probe per process TREE, so every child the
+        # cascade spawns inherited the already-probed flag and could never
+        # refresh. A plain shell variable gives the stated guarantee already.
         SEAT_STATE_PROBED=1
-        export SEAT_STATE_PROBED
         sh -c "$SEAT_STATE_PROBE_CMD" >/dev/null 2>&1
         _seat_state_resolve "$seat_key"
         if [ "$SEAT_STATE_STATE" = "UNKNOWN" ]; then

@@ -616,6 +616,11 @@ for _seat_state_lib in "${0:A:h}/../../../scripts/lib/seat_state.sh" \
 done
 if [ -n "$SEAT_STATE_LIB" ]; then
     . "$SEAT_STATE_LIB"
+    # Say WHICH copy was loaded. The second candidate is the main checkout,
+    # which on a worktree may be a DIFFERENT version of this library than the
+    # wrapper being exercised — a worktree validating new behaviour could
+    # silently run the old library and never know.
+    [ "${SEAT_STATE_VERBOSE:-0}" = "1" ] && echo "  [info] seat-state library: $SEAT_STATE_LIB" >&2
 else
     echo "  [warn] seat_state.sh not found (looked next to this wrapper and under ~/nuzantara) — seat-state precheck disabled, cascade unaffected" >&2
     seat_state_precheck_skip() { return 1; }
