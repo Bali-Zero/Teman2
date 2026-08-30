@@ -7,6 +7,17 @@ plan_ref: >-
   backend/scripts/visa_engine/fold_pack_seq17.py; ceremony runbook
   docs/runbooks/visa-engine-key-ceremony.md.
 
+seat_override: >-
+  R8 asks for a ground_truth lane because this diff touches visa_engine, and none was consulted —
+  correctly. This fold changes a POLICY NUMBER that Zero ordered (the OFFICIAL_PORTAL freshness
+  window, 7 days -> 32), not a regulatory fact: there is no external authority to ground "how long
+  may a reading stay trusted" against, and the pages themselves are unchanged. Declaring a
+  ground_truth lane here would mean inventing a notebook query that never happened, which is the
+  exact failure the rule exists to prevent. The fact this PR could have grounded — whether anyone
+  re-read the eighteen portal pages — is deliberately NOT claimed anywhere: seq-17's verified_at is
+  inherited untouched, and the unprovable-attestation gap is recorded in dissent and in
+  research/visa/2026-08-30-freshness-restamp-seq17-attestation.md as open work, not as evidence.
+
 lanes:
   - lane: seq18-window-build
     role: build
