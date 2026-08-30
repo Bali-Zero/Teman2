@@ -102,6 +102,21 @@ describe("isKnownNoise — innocence, which is the half that costs if it is wron
     expect(isKnownNoise(err("Something broke"))).toBe(false);
   });
 
+  it("keeps an error whose ROOT carries an EMPTY frames array", () => {
+    // `[].every(...)` is true, so without the length guard an event Sentry
+    // shipped with `frames: []` would read as "entirely foreign code" — the
+    // wrong answer, said confidently, about a stack we simply do not have.
+    expect(
+      isKnownNoise({
+        exception: {
+          values: [
+            { value: "Order finalization failed", stacktrace: { frames: [] } },
+          ],
+        },
+      }),
+    ).toBe(false);
+  });
+
   it("keeps a message that merely CONTAINS a shorter English word from the list", () => {
     // The over-match guard (superscar family #3). Every needle is long enough
     // that it cannot appear inside a real message; this pins that property.
@@ -151,11 +166,115 @@ describe("isKnownNoise — never throws, because a throw deletes the event", () 
   });
 });
 
-describe("the two surfaces stay in step", () => {
-  it("IGNORE_ERRORS is the same list beforeSend checks", () => {
-    // `ignoreErrors` is cheaper (the SDK drops before building the event) but
-    // sees only the message; `beforeSend` can see frames. Neither alone covers
-    // both shapes, so they must not drift apart.
+describe("the shapes a cross-family reviewer executed against the first version", () => {
+  it("KEEPS a linked error whose CAUSE is benign but whose ROOT is actionable", () => {
+    // Sentry puts the ROOT last. Reading every value deleted the whole event
+    // because one entry matched — the reviewer ran this exact input and the old
+    // predicate returned true.
+    expect(
+      isKnownNoise({
+        exception: {
+          values: [
+            {
+              type: "AbortError",
+              value: "AbortError: The operation was aborted",
+            },
+            {
+              type: "CheckoutCommitError",
+              value: "Failed to persist completed payment",
+              stacktrace: {
+                frames: [
+                  { filename: "https://balizero.com/_next/checkout.js" },
+                ],
+              },
+            },
+          ],
+        },
+      }),
+    ).toBe(false);
+  });
+
+  it("KEEPS a frameless ROOT whose CAUSE happens to be extension code", () => {
+    // Flattening frames across values let the frameless root vanish and a
+    // foreign-framed cause decide the verdict. `[].every()` is vacuously true,
+    // which is the wrong answer said confidently.
+    expect(
+      isKnownNoise({
+        exception: {
+          values: [
+            {
+              type: "ExtensionError",
+              value: "extension failed",
+              stacktrace: {
+                frames: [{ filename: "chrome-extension://abc/inject.js" }],
+              },
+            },
+            {
+              type: "OrderFinalizationError",
+              value: "Order finalization failed",
+            },
+          ],
+        },
+      }),
+    ).toBe(false);
+  });
+
+  it("DROPS ResizeObserver noise that arrives via logentry", () => {
+    // Parameterised captureMessage lands in event.logentry, which neither the
+    // old predicate nor the SDK's own ignoreErrors matcher reads — so this
+    // noise reached Sentry through both surfaces.
+    expect(
+      isKnownNoise({
+        logentry: { message: "ResizeObserver loop limit exceeded" },
+      }),
+    ).toBe(true);
+    expect(
+      isKnownNoise({
+        logentry: { formatted: "ResizeObserver loop limit exceeded" },
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("browser-only vs universal noise — the same words, opposite meanings", () => {
+  const abort = err("AbortError: The operation was aborted");
+
+  it("drops a cancelled navigation in the BROWSER", () => {
+    expect(isKnownNoise(abort)).toBe(true);
+    expect(isKnownNoise(abort, { browser: true })).toBe(true);
+  });
+
+  it("KEEPS the same abort on the SERVER, where it is a deadline killing real I/O", () => {
+    // There is no navigation in the server runtime. A nightly export aborted by
+    // an application deadline is an actionable timeout, and the shared list
+    // deleted it (cross-family gate).
+    expect(isKnownNoise(abort, { browser: false })).toBe(false);
+  });
+
+  it("keeps a value-less promise rejection filter in BOTH runtimes", () => {
+    const universal = err(
+      "Non-Error promise rejection captured with value: undefined",
+    );
+    expect(isKnownNoise(universal, { browser: true })).toBe(true);
+    expect(isKnownNoise(universal, { browser: false })).toBe(true);
+  });
+
+  it("KEEPS an application message that merely contains the English phrase", () => {
+    // The needles are anchored to the exact DOMException forms browsers emit,
+    // not to the phrase, because this sentence is a real error.
+    expect(
+      isKnownNoise(
+        err("The operation was aborted while committing invoice 42"),
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("IGNORE_ERRORS is a DIFFERENT surface, and the earlier parity claim was false", () => {
+  it("every ignore-list needle is also caught as a ROOT message", () => {
+    // Not parity: the SDK's matcher reads the top-level message and the root
+    // exception, while this module also reads logentry and inspects frames.
+    // Neither is a superset. What must hold is the overlap they share.
     expect(IGNORE_ERRORS.length).toBeGreaterThan(0);
     for (const needle of IGNORE_ERRORS) {
       expect(isKnownNoise(err(`prefix ${needle} suffix`))).toBe(true);

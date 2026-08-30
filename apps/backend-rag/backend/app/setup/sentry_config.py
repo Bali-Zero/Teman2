@@ -306,9 +306,33 @@ def _before_send_impl(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, 
     to be added at cron entrypoints (`cron-wrapper.sh`, `auto_sentinel.sh`,
     `cron_notifiers.py`) in a follow-up before a dedup filter can land here.
     """
-    if _is_health_transaction(event):
-        return None
     return _scrub(event)
+
+
+def _before_send_transaction(
+    event: dict[str, Any], hint: dict[str, Any]
+) -> dict[str, Any] | None:
+    """Transaction hook. Drops health-check metronomes, scrubs the rest.
+
+    A SEPARATE HOOK, and that is not a style choice. The SDK guards
+    `before_send` with `event.get("type") != "transaction"` and routes
+    transactions to `before_send_transaction` (sentry_sdk/client.py, verbatim in
+    the installed 3.x). The first version of this filter lived in
+    `before_send`, so it was DEAD CODE in production — while its tests stayed
+    green, because they called the inner function directly instead of going
+    through the integration. W116, shipped inside the very wave whose subject is
+    that class; found by a cross-family reviewer reading the SDK rather than
+    the diff.
+
+    Scrubbing still applies to what survives: a transaction name can carry a
+    path parameter, and a path parameter can be PII.
+    """
+    try:
+        if _is_health_transaction(event):
+            return None
+    except Exception:
+        pass  # fail OPEN: a bug here must not delete a transaction silently
+    return _before_send(event, hint)
 
 
 def _before_send(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] | None:
@@ -379,6 +403,11 @@ def _init_sentry_blocking(dsn: str) -> None:
         environment=env,
         release=os.getenv("SENTRY_RELEASE", "nuzantara-backend@1.0.0"),
         before_send=_before_send,
+        # The SDK will NOT call `before_send` for transactions — it guards that
+        # hook with `type != "transaction"` and dispatches transactions here
+        # instead. Registering only the first is how a transaction filter ends
+        # up never running while its unit tests pass.
+        before_send_transaction=_before_send_transaction,
         # `_before_send`/`_scrub` above only ever see the JSON-shaped event
         # payload. The SDK's logging integration attaches raw frame-LOCAL
         # values to `stacktrace.frames[].vars` at capture time, before

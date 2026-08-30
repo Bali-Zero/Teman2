@@ -38,11 +38,59 @@ def _error(name: str) -> dict:
     return {"transaction": name, "exception": {"values": [{"value": "boom"}]}}
 
 
+class TestTheHookIsACTUALLYWIRED:
+    """The defect a cross-family reviewer found by reading the SDK, not the diff.
+
+    `sentry_sdk`'s client guards `before_send` with
+    `event.get("type") != "transaction"` and routes transactions to
+    `before_send_transaction` instead — verbatim in the installed version. The
+    first version of this filter lived in `before_send`, so in production it
+    never ran, while a test that called the inner function directly stayed
+    green. That is W116 with a passing test on top, which is the only reason it
+    could ship.
+    """
+
+    def test_the_installed_sdk_really_does_skip_before_send_for_transactions(self) -> None:
+        # Anchor the premise to the SDK rather than to a memory of it: if a
+        # future SDK starts routing transactions through `before_send`, this
+        # test says so instead of leaving the reason for the split unexplained.
+        import inspect
+
+        import sentry_sdk.client as client_mod
+
+        src = inspect.getsource(client_mod)
+        assert 'event.get("type") != "transaction"' in src
+        assert "before_send_transaction" in src
+
+    def test_init_registers_before_send_transaction(self, monkeypatch) -> None:
+        captured: dict = {}
+
+        def fake_init(**kwargs):
+            captured.update(kwargs)
+
+        # `_init_sentry_blocking` imports sentry_sdk lazily inside the function
+        # (it must not block Fly health checks), so the patch goes on the module
+        # object the import will resolve to, not on an attribute of the module
+        # under test.
+        import sentry_sdk
+
+        monkeypatch.setattr(sentry_sdk, "init", fake_init)
+        sc._init_sentry_blocking("https://k@o1.ingest.us.sentry.io/2")
+
+        assert captured.get("before_send_transaction") is sc._before_send_transaction, (
+            "a transaction filter that is not registered as before_send_transaction "
+            "never runs, however well its own function is tested"
+        )
+        # And the callable really drops through the hook the SDK will call.
+        assert captured["before_send_transaction"](_txn("/health"), {}) is None
+        assert captured["before_send_transaction"](_txn("/api/crm/practices"), {}) is not None
+
+
 class TestGuilt:
     def test_a_health_transaction_is_dropped(self) -> None:
         for path in ("/health", "/healthz", "/readyz", "/livez", "/api/health"):
             assert sc._is_health_transaction(_txn(path)) is True, path
-            assert sc._before_send_impl(_txn(path), {}) is None, path
+            assert sc._before_send_transaction(_txn(path), {}) is None, path
 
     def test_a_method_prefixed_transaction_name_is_recognised(self) -> None:
         # Sentry names transactions "GET /health" on several integrations.
@@ -62,10 +110,12 @@ class TestInnocence:
         event = _error("/health")
         assert sc._is_health_transaction(event) is False
         assert sc._before_send_impl(event, {}) is not None
+        # ...and through the hook the SDK actually calls for errors.
+        assert sc._before_send(event, {}) is not None
 
     def test_a_real_transaction_is_kept(self) -> None:
         assert sc._is_health_transaction(_txn("/api/crm/practices")) is False
-        assert sc._before_send_impl(_txn("/api/crm/practices"), {}) is not None
+        assert sc._before_send_transaction(_txn("/api/crm/practices"), {}) is not None
 
     def test_a_route_that_merely_STARTS_with_a_health_word_is_kept(self) -> None:
         # Over-match guard (superscar family #3): substring matching would eat
