@@ -38,7 +38,10 @@ name: Seat broker env-minimization tests
 #
 #   1. `merge_group` accepts no `paths:` sub-key at all, so the queue run ALWAYS
 #      executed while the PR run fired only when a guarded file changed. Measured over
-#      the whole window: EIGHT `merge_group` runs, ZERO `pull_request` runs. The author
+#      the whole window: **57** `merge_group` runs, ZERO `pull_request` runs — counted
+#      between this file landing (2026-08-30T19:15:44Z) and the first run its own fix
+#      triggered, over `gh run list --limit 300` (an earlier draft of this line said
+#      "EIGHT", which was `--limit 8` read as a total — W97). The author
 #      never saw the job; the queue did. That is the head-green/queue-red split the
 #      L06-PR1 trigger-symmetry lint exists to forbid, and this file was its first live
 #      violation — red in every merge group, which is what kept ejecting that lint's own

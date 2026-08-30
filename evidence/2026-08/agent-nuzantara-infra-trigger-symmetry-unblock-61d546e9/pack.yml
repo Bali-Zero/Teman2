@@ -35,20 +35,20 @@ council_run: council-journal.jsonl
 
 diff:
   files: 4
-  net_lines: 532
-  measured_at: f28d6a476
+  net_lines: 579
+  measured_at: c909b5060
   note: >-
     Churn (added+deleted) via `git diff --no-renames --numstat --cached
     <merge-base>` against merge-base 6e4492b75, measured with this exact pack
     STAGED — the only moment the number can be true, since the pack is part of
-    what it counts: with-seat-broker-tests.yml 65+5 = 70, brief.yml 117+0,
-    council-journal.jsonl 2+0, pack.yml 343+0. Total 532 across 4 files. This
-    field has now been re-measured five times, and every correction moved it:
+    what it counts: with-seat-broker-tests.yml 68+5 = 73, brief.yml 121+0,
+    council-journal.jsonl 2+0, pack.yml 383+0. Total 579 across 4 files. This
+    field has now been re-measured six times, and every correction moved it:
     an ESTIMATE said 261, measurement said 421, the council journal and the
-    reviewers' findings took it to 532. A self-counting field is only ever true
+    reviewers' findings took it to 579. A self-counting field is only ever true
     at the instant it is measured, so the last edit before commit is always a
     DIGIT-ONLY one — same character count, same line count, therefore same
-    number. The CODE change under review is 70 lines in ONE file; the other 462
+    number. The CODE change under review is 73 lines in ONE file; the other 506
     are this evidence pack, whose size does not change what the diff does. CI
     supplies the authoritative numstat via --numstat-file at merge time and
     prefers it over this self-declared value.
@@ -152,13 +152,26 @@ receipts:
       run only in the queue and never on a PR.
     cmd: >-
       gh run list --repo Bali-Zero/Teman2 --workflow with-seat-broker-tests.yml
-      --limit 8 --json databaseId,conclusion,startedAt,updatedAt,event
+      --limit 300 --json event,createdAt,conclusion, then bucketed by event around
+      the landing timestamp
     result: >-
-      8 runs, ALL event=merge_group (durations 4s-67s, typical ~40s), ZERO
-      pull_request runs. File landed 2026-08-30 19:15:44Z (8106d250f, #5326).
+      79 runs exist in total: 68 merge_group, 10 pull_request, 1 push. Bucketed:
+      the file landed 2026-08-30T19:15:44Z (8106d250f, #5326); in the window
+      between that and the first run this fix's own PR triggered (21:47:21Z) there
+      are 57 merge_group and ZERO pull_request. The 4 pull_request runs that exist
+      before the window are #5326's own; the 6 after it are #5378's.
     exit: 0
-    ts: "2026-08-30T21:41:00Z"
+    ts: "2026-08-30T22:52:00Z"
     seat: session (Pro)
+    note: >-
+      CORRECTED. The first version of this receipt ran `--limit 8` and reported "8
+      runs, ALL event=merge_group" — the CAP read as the total, cicatrix W97
+      verbatim, in a pack whose own diff.note lectures about self-counting fields.
+      Caught by a cross-family refuter reading the shipped claim, then re-measured
+      here independently at --limit 300 with a length check. The direction was
+      never in doubt and the true number is ~7x stronger, which is exactly why the
+      wrong one was easy to leave standing: it already supported the conclusion.
+      A number that agrees with you is not thereby measured.
 
   - claim: >-
       The queue jam is one poisoned entry, not three bad PRs, and the poison is
@@ -307,6 +320,33 @@ dissent:
       believed), and the file's own pre-existing header. Kept because the failure
       mode it names is real and silent, and no test would catch it: the tripwire
       only iterates contexts declared in contexts.json.
+
+  - seat: claude-sonnet-5 (in-session subagent refuter — SAME family, so it is
+      recorded here but deliberately NOT counted toward the council quorum in
+      council-journal.jsonl, which holds only cross-family seats)
+    objection: >-
+      "The run-count claim in the commit message and in the file's own header is
+      false. Claimed: EIGHT merge_group, ZERO pull_request. Measured via `gh run
+      list --limit 100`: 57 merge_group, 4 pull_request, 1 push. The EIGHT figure
+      is off by roughly 7x under any reading of 'since it landed' I can construct.
+      The underlying diagnosis is still correct and independently reproducible,
+      but the specific measured evidence cited to justify urgency is fabricated or
+      badly miscounted."
+    status: CONFIRMED
+    note: >-
+      Correct, and re-measured independently before acting rather than accepted on
+      the reviewer's word: `--limit 300` returns 79 runs total (68 merge_group, 10
+      pull_request, 1 push), and bucketing around the landing timestamp gives 57
+      merge_group / 0 pull_request in the window that the sentence is about. The
+      reviewer's 57 and mine agree exactly. Root cause of the error is banal and
+      named in this repo's own scar file: the original probe passed `--limit 8`
+      and the CAP was reported as the total (W97, "display-cap letto come
+      completo"). Corrected in all three places it had propagated — the workflow
+      header, the brief's objective, and the receipt above.
+      The uncomfortable part, recorded because it is the transferable bit: the
+      false number ALREADY SUPPORTED the conclusion, so nothing about it felt
+      wrong. 8-vs-0 and 57-vs-0 argue for the same fix. A measurement that agrees
+      with you gets no scrutiny, which is exactly when it should get the most.
 
 tests:
   - "scripts/tests/test_advisory_workflows_no_merge_group.py — 3 passed."

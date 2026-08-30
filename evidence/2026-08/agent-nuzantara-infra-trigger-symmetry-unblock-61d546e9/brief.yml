@@ -13,7 +13,11 @@ objective: |
   carrying BOTH a bare `merge_group:` trigger and an `on.pull_request.paths:` filter. GitHub's
   `merge_group` accepts no `paths:` sub-key at all, so the queue run ALWAYS executed while the PR
   run fired only when one of 6 guarded files changed. Measured over every run the workflow had
-  since it landed: EIGHT `merge_group`, ZERO `pull_request`. That is the head-green/queue-red split
+  since it landed: 57 `merge_group`, ZERO `pull_request` (counted between the file landing at
+  2026-08-30T19:15:44Z and the first run its own fix triggered, over `gh run list --limit 300`;
+  the introducing PR #5326's own 4 `pull_request` runs sit BEFORE that window). An earlier draft
+  of this brief said "EIGHT" — that was `--limit 8` read as a total, W97, corrected by the
+  cross-family refuter and re-measured independently. That is the head-green/queue-red split
   the L06-PR1 trigger-symmetry lint exists to forbid, and this file was its first live violation.
   #5340 is the PR that INTRODUCES that lint and does not touch this file, so it was unmergeable by
   its own construction — its `test_live_tree_is_clean_and_the_linter_saw_it` asserts a clean tree
