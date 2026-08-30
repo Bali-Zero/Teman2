@@ -172,9 +172,23 @@ BY DESIGN until the first real case (F4b).
   **#4759** (MERGED, LIVE) adds a scenario toggle that previews the
   visitor's own answers against the other route at the verdict stage,
   sanitized through `relevantPlan()` before evaluation (see §6); **#4764**
-  (OPEN, not merged) is a known regression from this same wave — #4751's
-  print stylesheet hides all `<button>`s and #4753 turned each custody node
-  into one, so printing now drops the custody diagram (see §4bis).
+  (**MERGED 2026-08-24T03:14:05Z**) CURED a regression from this same wave —
+  #4751's print stylesheet used a bare `button` selector, and #4753 turned
+  each custody node into a `<button>`, so printing briefly dropped the
+  money-path diagram. Corrected 2026-08-31: this sentence read "(OPEN, not
+  merged) … printing NOW drops the custody diagram" for a week after the fix
+  landed, while pointing the reader at the §4bis row that already said the
+  opposite — the table was updated and the narrative above it was not.
+  Re-measured live this turn on `/visa/second-home/studio`:
+  `totalButtons: 3, buttonsDisplayNoneUnderPrint: 0`, the custody section
+  measures 792px tall under print emulation (it GROWS from 366px on screen,
+  because print expands the three folded detail paragraphs), and a real
+  `page.pdf()` renders 6 pages carrying "Your money stays yours" and
+  "Bali Zero does not take custody of the deposit". The only elements print
+  hides are 3 `custody-chevron` + 2 `custody-arrow` SVGs — correct by design:
+  a chevron is an affordance for a control nobody can click on paper, and the
+  horizontal arrows are meaningless once the flow reflows to a vertical stack
+  where order carries the sequence.
 
 ## 4bis. LIVE STATE — built ≠ armed (probed on prod 2026-07-25; partial re-probe 2026-08-31)
 
