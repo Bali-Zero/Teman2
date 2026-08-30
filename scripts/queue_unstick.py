@@ -429,6 +429,46 @@ def do_update_branch(
     return "ok", f"update-branch OK PR #{number}: {out.strip() or 'requested'}"
 
 
+def _union_merged_changed_paths(
+    *, repo_root: Path, base_ref: str, pr_ref: str, timeout: int = 25
+) -> list[str]:
+    """Paths this PR changes that `.gitattributes` marks `merge=union`.
+
+    Read-only, and deliberately fail-quiet: every failure returns `[]`, which
+    makes the caller fall back to its pre-existing "race" wording. An empty
+    list therefore means "no union path FOUND", never "no union path EXISTS" —
+    so this can only ever add a diagnosis, never suppress one.
+    """
+    rc, out, _err = _run(
+        ["git", "-C", str(repo_root), "diff", "--name-only", f"{base_ref}...{pr_ref}"],
+        timeout=timeout,
+    )
+    if rc != 0:
+        return []
+    paths = [p for p in out.splitlines() if p.strip()]
+    if not paths:
+        return []
+    # `check-attr` is given the paths after `--`, so a leading-dash filename is
+    # not read as a flag. Capped because a huge PR would otherwise blow argv.
+    rc, out, _err = _run(
+        ["git", "-C", str(repo_root), "check-attr", "merge", "--", *paths[:200]],
+        timeout=timeout,
+    )
+    if rc != 0:
+        return []
+    union: list[str] = []
+    for line in out.splitlines():
+        # Format is `<path>: merge: <value>`. Split from the RIGHT: a path may
+        # legitimately contain ": " and a left split would truncate it.
+        head, sep, value = line.rpartition(": ")
+        if not sep or value.strip() != "union":
+            continue
+        path = head[: -len(": merge")] if head.endswith(": merge") else None
+        if path:
+            union.append(path)
+    return union
+
+
 def get_conflicting_files(pr: dict, *, repo_root: Path = REPO_ROOT, timeout: int = 25) -> str:
     """Best-effort LOCAL merge simulation (git merge-tree --write-tree
     --name-only) to name the real conflicting files, without ever touching
@@ -464,8 +504,33 @@ def get_conflicting_files(pr: dict, *, repo_root: Path = REPO_ROOT, timeout: int
         )
         lines = [line for line in out.splitlines() if line.strip()]
         if rc == 0:
-            # No conflict after all (race: PR was updated between the
-            # GraphQL read and this probe) — say so plainly, don't lie.
+            # GitHub says DIRTY and the local merge says clean. There are two
+            # causes, and they want OPPOSITE responses, so naming the right one
+            # is the whole value of this branch.
+            #
+            #   1. A race: the PR moved between the GraphQL read and this probe.
+            #      Transient — the next tick reports it correctly.
+            #   2. A `merge=union` path. git's merge driver resolves the file by
+            #      concatenating both sides and exits 0; GitHub's merge queue
+            #      does NOT honour `.gitattributes` merge drivers and reports a
+            #      real conflict. PERMANENT — re-probing can never clear it, and
+            #      only a hand rebase of that file will.
+            #
+            # Measured 2026-08-31 on PRs #5331 and #5373: both were DIRTY on
+            # GitHub with `merge-tree` rc=0, and both touched the repo's single
+            # union-merged path, `.claude/skills/modus/PENDING-ARMS.md`. Reported
+            # as a race, that is a permanent condition wearing a transient label.
+            union = _union_merged_changed_paths(
+                repo_root=repo_root, base_ref=base_ref, pr_ref=pr_ref, timeout=timeout
+            )
+            if union:
+                shown = ", ".join(union[:5]) + (" (+more)" if len(union) > 5 else "")
+                return (
+                    f"none locally, but this is NOT a race: {shown} carries "
+                    "`merge=union` in .gitattributes, which git's merge-tree honours "
+                    "and GitHub's merge queue does not. Re-probing will never clear "
+                    "it — the cure is a hand rebase of that file."
+                )
             return "none (merge-tree found no conflict at probe time)"
         # First line is the (conflicted) tree OID; the rest, with
         # --name-only, are the conflicting paths.
