@@ -38,14 +38,17 @@ const PRINT_STYLES = `
        --surface-base is pinned by a regression test, though per that same
        precedence fact it is NOT what keeps printed paper white — the
        !important background rule below is.
-       --color-text-muted / --color-border-subtle are NOT in
-       MERAH_PUTIH_DAY_VARS: they are aliases declared once at :root
-       (packages/core/tokens/semantic.css) as var(--text-secondary) /
-       var(--border-subtle). A var() inside a custom-property declaration
-       is substituted using the cascade AT THE DECLARING ELEMENT, so an
-       alias declared at :root can never see a wrapper's inline override —
-       it must be re-asserted directly, here. Printed cards read them for
-       captions and borders, so both restate the day law's own values. */
+       --color-text-muted / --color-border-subtle are aliases declared once
+       at :root (packages/core/tokens/semantic.css) as var(--text-secondary)
+       / var(--border-subtle). A var() inside a custom-property declaration
+       is substituted using the cascade AT THE DECLARING ELEMENT, so an alias
+       declared at :root can never see a wrapper's inline override — it must
+       be re-asserted directly. MERAH_PUTIH_DAY_VARS now restates both, so
+       these two print lines are belt-and-braces rather than the only cure
+       (an earlier revision of this comment claimed the day set did NOT carry
+       them — it does; corrected 2026-08-31). They are kept because this
+       print block is also read on any surface that renders it without the
+       wrapper, and the values are identical either way. */
     :root,
     [data-theme],
     [data-funnel="visa"] {

@@ -143,14 +143,25 @@ const mastheadLabelStyle: React.CSSProperties = {
 /** WCAG contrast fix (2026-08-24): `--color-border-subtle` composites to
  *  ~1.2:1 against the editorial card backdrop — invisible, and below the
  *  3.0:1 floor for non-text UI boundaries (WCAG 1.4.11). No shipped border
- *  token clears that floor on the editorial theme (`--border-strong` tops
- *  out at ~1.9:1 there), so this derives an opaque-enough value from
- *  `--text-primary` instead of inventing a bare hex — it composites to
- *  ~3.5:1 against the editorial backdrop and stays theme-adaptive. */
+ *  token cleared that floor on the editorial theme (`--border-strong` topped
+ *  out at ~1.9:1 there), so this derived an opaque-enough value from
+ *  `--text-primary`: `color-mix(--text-primary 45%, transparent)`, which
+ *  composited to ~3.5:1 against the editorial backdrop.
+ *
+ *  MERAH PUTIH DAY (2026-08-31): that mix claimed to "stay theme-adaptive",
+ *  and it does not. A FIXED percentage is tuned to one ground: composited over
+ *  the day palette it lands #969ba6 on the white QuestionCard (2.79:1) and
+ *  #92969f on carta (2.74:1) — under the same 3:1 floor the comment invokes.
+ *  This is the Back button, rendered on EVERY question step and again at the
+ *  verdict stage, so it is not an edge case. On a light ground the shipped
+ *  token finally works: `--border-strong` (#7a8093) measures 3.94:1 on the
+ *  card and 3.64:1 on carta. Mixing a token toward transparent is safe for a
+ *  TINT, but a boundary's contrast has to be re-measured whenever the ground
+ *  flips — the percentage is not the invariant, the ratio is. */
 const navButtonStyle: React.CSSProperties = {
   padding: "var(--space-2, 0.5rem) var(--space-4, 1.2rem)",
   borderRadius: 12,
-  border: "1px solid color-mix(in srgb, var(--text-primary) 45%, transparent)",
+  border: "1px solid var(--border-strong)",
   background: "transparent",
   color: "var(--text-primary)",
   cursor: "pointer",

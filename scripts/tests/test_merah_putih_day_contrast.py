@@ -84,6 +84,10 @@ TEXT_PAIRS = [
     ("--state-danger", "--surface-base", AA_TEXT),
     ("--accent-whatsapp-ink", "--surface-raised", AA_TEXT),
     ("--accent-whatsapp-ink", "--surface-base", AA_TEXT),
+    # The portal vocabulary ConsentBanner brings into this wrapper. Measured at
+    # 2.56 and 2.90 before the day set answered for them.
+    ("--tx-secondary", "--surface-raised", AA_TEXT),
+    ("--bz-accent", "--surface-raised", AA_TEXT),
 ]
 
 # White text is legal ONLY on these fills (R4 §4.2).
@@ -93,6 +97,7 @@ WHITE_ON = [
     "--cta-bg",  # the primary CTA fill — StudioApp's primaryNavButtonStyle
     "--cta-bg-hover",
     "--state-danger",
+    "--bz-accent",  # ConsentBanner's dismiss button paints white on it
 ]
 
 # Boundaries that IDENTIFY an interactive component must clear 3:1 (SC 1.4.11).
@@ -161,16 +166,39 @@ RETIRED = {
 }
 
 
+_SHARED_IMPORT = re.compile(r"""^import\s[^;]*?from\s+["'](@/components/[^"']+)["']""", re.M)
+
+
 def _perimeter_sources() -> list[Path]:
-    return sorted(
-        p
-        for p in PERIMETER.rglob("*.tsx")
-        if not p.name.endswith(".test.tsx")
-    )
+    """Every .tsx that PAINTS inside the two converted wrappers.
+
+    The route tree alone is NOT that set, and believing it was is what let the
+    worst defect of this migration ship green. `ConsentBanner` lives at
+    apps/mouth/src/components/visa/ — outside PERIMETER — yet renders as a
+    descendant of both wrappers, and it speaks a token vocabulary the day set
+    did not answer for: measured 2.56:1 body text and 2.90:1 links on the new
+    ground. Every guard here reported clean while that was true, because none
+    of them could see the file.
+
+    So the set is the route tree PLUS whatever `@/components/...` the two
+    wrappers actually import — resolved from the import statements, so a
+    component added tomorrow is covered without anyone remembering to add it
+    here. A hand-kept list would rot on its first commit.
+    """
+    files = {p for p in PERIMETER.rglob("*.tsx") if not p.name.endswith(".test.tsx")}
+    src_root = REPO / "apps/mouth/src"
+    for wrapper in (
+        PERIMETER / "SecondHomeLanding.tsx",
+        PERIMETER / "studio/StudioApp.tsx",
+    ):
+        for spec in _SHARED_IMPORT.findall(wrapper.read_text(encoding="utf-8")):
+            candidate = src_root / (spec.removeprefix("@/") + ".tsx")
+            if candidate.exists():
+                files.add(candidate)
+    return sorted(files)
 
 
 _BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
-_LINE_COMMENT = re.compile(r"//[^\n]*")
 
 
 def strip_comments(src: str) -> str:
@@ -181,8 +209,43 @@ def strip_comments(src: str) -> str:
     is how a codebase loses the reason behind its own rules (scar family #3,
     over-match). `test_the_stripper_cannot_hide_a_real_use` is the guilt half
     that keeps this leniency honest.
+
+    Line comments are NOT stripped with `//[^\\n]*`. That regex has no idea what
+    a string literal is, so a URL inside one decapitates the rest of the line:
+    `const a = "https://x"; const s = { color: "#ff3344" }` was truncated at
+    `"https:` and the retired colour after it became invisible to every guard
+    here. Demonstrated in `test_the_stripper_survives_a_url_in_a_string`. Hence
+    the small scanner below: it tracks quote state, so `//` only starts a
+    comment when it is not inside a string.
     """
-    return _LINE_COMMENT.sub("", _BLOCK_COMMENT.sub("", src))
+    src = _BLOCK_COMMENT.sub("", src)
+    out: list[str] = []
+    quote: str | None = None
+    i, n = 0, len(src)
+    while i < n:
+        ch = src[i]
+        if quote:
+            out.append(ch)
+            if ch == "\\" and i + 1 < n:  # an escaped char cannot close the string
+                out.append(src[i + 1])
+                i += 2
+                continue
+            if ch == quote:
+                quote = None
+            i += 1
+            continue
+        if ch in "\"'`":
+            quote = ch
+            out.append(ch)
+            i += 1
+            continue
+        if ch == "/" and i + 1 < n and src[i + 1] == "/":
+            while i < n and src[i] != "\n":
+                i += 1
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
 
 
 @pytest.mark.parametrize("colour,why", sorted(RETIRED.items()))
@@ -421,3 +484,34 @@ def test_the_derived_mix_guard_leaves_opacity_tints_alone() -> None:
         assert not _deriving_mixes(innocent), (
             f"guard over-matches an opacity tint: {innocent}"
         )
+
+
+def test_the_stripper_survives_a_url_in_a_string() -> None:
+    """Guilt: `//` inside a string literal must NOT start a comment.
+
+    The naive `//[^\n]*` truncated at the URL's slashes and silently deleted a
+    real declaration later on the same line — so a retired colour could sit in
+    painted code and every guard here would report clean.
+    """
+    line = 'const img = "https://cdn.example/hero.png"; const s = { color: "#ff3344" };'
+    assert "#ff3344" in strip_comments(line), (
+        "a URL inside a string ate the rest of the line — the stripper is "
+        "hiding painted colours from every guard in this file"
+    )
+    # And the leniency it exists for still works.
+    assert "#ff3344" not in strip_comments("// we retired #ff3344 here")
+    assert "#ff3344" not in strip_comments("/* retired: #ff3344 */")
+
+
+def test_the_perimeter_sees_shared_components_rendered_inside_the_wrappers() -> None:
+    """The route tree is not the painted set.
+
+    ConsentBanner lives outside PERIMETER but renders inside both wrappers. A
+    guard that cannot see it reported clean while it measured 2.56:1.
+    """
+    names = {p.name for p in _perimeter_sources()}
+    assert "ConsentBanner.tsx" in names, (
+        "shared components imported by the wrappers are not being scanned — "
+        f"saw only: {sorted(names)}"
+    )
+    assert "SecondHomeLanding.tsx" in names and "StudioApp.tsx" in names

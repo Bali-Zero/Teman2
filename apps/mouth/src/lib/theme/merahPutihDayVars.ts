@@ -86,6 +86,32 @@ export const MERAH_PUTIH_DAY_VARS = {
   "--color-text-muted": "#475372",
   "--color-border-subtle": "#e3e1da",
 
+  // ── A SECOND, UNRELATED VOCABULARY THAT LANDS INSIDE THIS WRAPPER ────────
+  // `ConsentBanner` (apps/mouth/src/components/visa/ConsentBanner.tsx) renders
+  // as a descendant of BOTH converted wrappers, and it speaks the portal's
+  // "Warm Depth" token family — NOT the funnel's. `--tx-secondary` and
+  // `--bz-accent` are plain hexes declared once at :root in
+  // apps/mouth/src/app/globals.css (#94a3b8 / #d4845a), tuned for a dark
+  // ground, and `[data-theme="editorial"]` never overrides them.
+  //
+  // So they are NOT an alias trap like the two above — they are a whole
+  // vocabulary the day set did not know it had to answer for. MEASURED on the
+  // day ground before this line existed: banner body text 2.56:1, links
+  // 2.90:1, and white on the dismiss button 2.90:1 — all under the 4.5:1
+  // floor, on a fixed-bottom consent bar every non-consented visitor sees.
+  // That is a REGRESSION THIS MIGRATION CAUSED: the same #94a3b8 measured
+  // 6.25:1 against the navy ground it was chosen for.
+  //
+  // Restated here rather than edited in ConsentBanner, deliberately: that
+  // component is shared with the rest of the /visa funnel, which is still on
+  // the dark theme and is a different lane's perimeter. Overriding the tokens
+  // on OUR wrapper fixes our two routes and cannot reach anyone else's.
+  // Of the components that speak this vocabulary, only ConsentBanner is
+  // imported by these two pages (VisaChat, QuestionCounter and WhatsAppCTA
+  // live on routes this wrapper never touches) — verified, not assumed.
+  "--tx-secondary": "#475372", // 7.64:1 on the banner's white ground
+  "--bz-accent": "#D01033", // 5.52:1 as a link, and white on it as a button
+
   // ── The red family (R4 §3) ────────────────────────────────────────────────
   // STRUCTURE (brand marks, progress fill, rules) vs ACTION (CTA, links) are
   // two duties, never interchangeable — and selection is NEVER red (R4 §4.5).
