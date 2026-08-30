@@ -1,0 +1,155 @@
+brief_ref: evidence/2026-08/agent-air-m5-craft-h-repomap-cap-820a30c2/brief.yml
+plan_ref: >-
+  SQUAD H lane 2 of 5 — L02-PR2 of
+  docs/plans/2026-08-29-beyond-sota-craft-wave/L02-context-engineering-grounding.md,
+  under the wave-2 rules in 01-INVENTORY-AND-WAVE-2-PLAN.md §5.1. Squad ledger:
+  issue #5320.
+
+lanes:
+  - lane: craft-h-repomap-cap
+    role: build
+    seat: claude-opus-5 (conducting session, M5 — the cap, the probe, the arming, the gate)
+  - lane: craft-h-repomap-refute-a
+    role: review
+    seat: codex gpt-5.6-sol at xhigh, --sandbox read-only — handed the diff and told to refute
+  - lane: craft-h-repomap-refute-b
+    role: review
+    seat: kimi-code/k3 — second cross-family seat, pulled in by the Gear-3 floor
+
+council_run: journal.jsonl
+
+diff:
+  files: 6
+  net_lines: 430
+  measured_at: staged tree, pre-PR
+  note: >-
+    Small by design: one new module, its test, a ~40-line block in the generator,
+    a probe, and two lines of arming. CI's --numstat-file is authoritative over
+    this self-declared figure.
+
+pii_scan: clean
+
+receipts:
+  - claim:
+      Pro's real map is over the band the generator itself declares, and the new
+      truncator brings it under the cap with its provenance intact.
+    cmd: python3 scripts/repomap_cap.py ~/.nuzantara-repomap.txt /tmp/capped.txt 20480
+    result:
+      "on Pro, against the live file: LIVE 42,779 B -> verdict `truncated 42/100`
+      -> CAPPED 20,143 B. The `# Nuzantara repo map` header survived, and the file
+      ends with `# TRUNCATED: kept 42 of 100 file blocks to stay inside the
+      20480-byte hard cap (by rank).`"
+    exit: 0
+    ts: 2026-08-31T02:16Z
+    seat: session (M5, via ssh pro — M5 has neither aider nor universal-ctags)
+
+  - claim:
+      The cure travels by ordinary merge, not by a per-machine step — the cron
+      runs the REPO copy, so this is not a HOME-fork (superscar #1).
+    cmd: plutil -p ~/Library/LaunchAgents/com.nuzantara.repomap.15min.plist
+    result:
+      "ProgramArguments[0] = /Users/nuzantara/nuzantara/scripts/build_repomap.sh —
+      the repo copy, by absolute path, so `$(dirname \"$0\")` resolves to the repo's
+      own scripts/ and finds repomap_cap.py as a sibling. StartInterval 900."
+    exit: 0
+    ts: 2026-08-31T02:20Z
+    seat: session (M5, via ssh pro)
+
+  - claim:
+      Every guard here is proven by guilt AND innocence, and each is proven to be
+      capable of failing.
+    cmd: PYTHONDONTWRITEBYTECODE=1 python -B -m pytest scripts/tests/test_repomap_cap.py -p no:cacheprovider
+    result:
+      "11 passed. Mutation 6/6: disabling the cap kills 4 · dropping the TRUNCATED
+      note kills 2 · keeping an arbitrary subset instead of the rank prefix kills the
+      prefix test · counting characters instead of bytes kills the encoding test ·
+      dropping the provenance header kills 2 · removing the gutter exclusion kills the
+      aider test · collapsing the floor verdict into `truncated` kills the floor test.
+      W121 throughout — a mutation judged against a stale .pyc is a filesystem artifact."
+    exit: 0
+    ts: 2026-08-31T02:34Z
+    seat: session (M5, orchestrator lane)
+
+  - claim:
+      A predicate no test could distinguish from a constant was found and closed,
+      rather than shipped as decoration.
+    cmd: PYTHONDONTWRITEBYTECODE=1 python -B -m pytest scripts/tests/test_repomap_cap.py -p no:cacheprovider
+    result:
+      "mutating `endswith(\":\")` to `True` SURVIVED all ten cases — in every fixture,
+      every non-gutter column-0 line happened to end in a colon. Added a case with a
+      stray aider prose line (`Repo-map can't include ...`) at column 0; the mutation
+      now kills it. A guard that cannot fail for the reason it exists is the shape of
+      this whole lane."
+    exit: 0
+    ts: 2026-08-31T02:40Z
+    seat: session (M5, orchestrator lane)
+
+  - claim:
+      The new test actually runs on a PR that touches its subjects, and does not run
+      on unrelated ones.
+    cmd: actionlint .github/workflows/immune-enforcement.yml
+    result:
+      "0 findings. Relevance gate extracted verbatim and simulated:
+      scripts/build_repomap.sh -> true, scripts/repomap_cap.py -> true,
+      scripts/tests/test_repomap_cap.py -> true, README.md -> false. The test is also in
+      the executor's `for t in` list — a path filter without an executor entry is a job
+      that goes green having run nothing. Both edits sit at anchors distinct from the
+      ones PR #5331 touches, so the two merge without conflicting."
+    exit: 0
+    ts: 2026-08-31T02:12Z
+    seat: session (M5, orchestrator lane)
+
+  - claim:
+      The boundary probe reports the three states honestly, including the one that
+      must NOT read as success.
+    cmd: python3 scripts/proprioception.py --no-fetch
+    result:
+      "rc=0, the organ runs. Direct probe calls: a 1,000 B file -> RECONCILED
+      ('1000B <= 20480B cap'); a 30,000 B file -> DIVERGED naming the overshoot; an
+      absent file -> UNPROBEABLE, not RECONCILED. On M5 live it answers UNPROBEABLE,
+      which is correct: only Pro runs that cron, and reporting 'fine' for a file that
+      does not exist is how a probe becomes decor."
+    exit: 0
+    ts: 2026-08-31T02:08Z
+    seat: session (M5, orchestrator lane)
+
+dissent:
+  - seat: kimi-code/k3 (cross-family refuter)
+    objection: >-
+      The module calls itself a HARD cap, but when the cap is smaller than
+      header+note it emits them anyway and therefore EXCEEDS the cap — while
+      returning the same `truncated` verdict as an honoured cap, so no caller can
+      tell the two apart. The test asserted the note was present and never
+      asserted the size.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed — the behaviour is right (an empty file reads exactly like
+      a clean small repo; a byte-sliced note is unreadable), so the FLOOR is now
+      named in the code and the verdict is `floor-exceeds-cap`. The caller's
+      over-cap WARN then fires, which is correct: a cap that cannot hold its own
+      floor is a misconfiguration, not a map problem. A promise with an unnamed
+      exception is precisely this lane's subject.
+  - seat: codex gpt-5.6-sol (cross-family refuter, xhigh)
+    objection: >-
+      The block detector recognised a file header as "a non-indented line". True of
+      ctags, false of aider, which draws a gutter at column 0 — `⋮...` for elided
+      regions and `│def foo():` for kept ones. Demonstrated on the real aider shape:
+      a two-file map split into TEN blocks.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed — a header is recognised by SHAPE (no gutter glyph, ends in
+      a colon), and both formats now split identically. This mattered more than its
+      size: with ten pseudo-blocks the truncator would have cut a file's summary in
+      half, which is the one thing the module promises never to do.
+  - seat: session (M5, self-graded while closing the two above)
+    objection: >-
+      `endswith(":")` was an untestable half of the header predicate — mutating it
+      to `True` survived every case, because in all of them every non-gutter
+      column-0 line happened to end in a colon. It read as protection while nothing
+      could distinguish it from a constant.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed — a case with a stray aider prose line at column 0 now
+      kills that mutation. Also caught in the same pass: aider's blank preamble line
+      became a block of its own, which made the "kept N of M" note off by one, and a
+      note that miscounts is a note a reader stops trusting.
