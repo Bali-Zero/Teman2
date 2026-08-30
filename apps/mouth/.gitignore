@@ -9,6 +9,10 @@ dist/
 /test-results/
 /playwright/.cache/
 e2e/.auth/
+# JSON reports + screenshots from playwright.prodlike.config.ts and
+# playwright.production.config.ts (both write under output/playwright/) —
+# regenerated on every run, was previously untracked-but-not-ignored.
+/output/
 
 # Environment variables (never commit!)
 .env.local
