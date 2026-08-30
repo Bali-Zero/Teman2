@@ -1,10 +1,19 @@
 brief_ref: evidence/2026-08/agent-nuzantara-craft-d-jsonb-real-column-arming-48fc41e8/brief.yml
 plan_ref: >-
   docs/plans/2026-08-29-beyond-sota-craft-wave/L12-data-schema-migrations.md
-  (PR-1), driven by SQUAD D' wave-2 issue #5317. PR 2 of the L12-PR1 split,
-  STACKED on agent/nuzantara/craft-d/codec-jsonb-default-str: these assertions
-  are false without that PR's caller fix, so the dependency is represented
-  honestly by the base branch rather than hidden.
+  (PR-1), driven by SQUAD D' wave-2 issue #5317. PR 2 of the L12-PR1 split.
+  Originally STACKED on agent/nuzantara/craft-d/codec-jsonb-default-str
+  (these assertions are false without that PR's caller fix). That PR
+  (#5324) MERGED to main 2026-08-31T21:06:45Z: this branch was then rebased
+  onto fresh origin/main (`git rebase --onto origin/main df17f4b96 HEAD`,
+  clean, no conflicts -- df17f4b96 was #5324's tip when this PR forked; the
+  caller fix squash-merged under a different sha but identical content, so
+  the replay applied cleanly) and the PR's base retargeted to main (`gh pr
+  edit --base main`). Verified by CONTENT, not assumed: `git diff
+  origin/main...HEAD` after the rebase carries only this PR's own 4 files
+  (test_jsonb_codec_parity.py, PENDING-ARMS.md, this pack + its brief) --
+  none of #5324's files. The dependency is now satisfied by main already
+  containing the caller fix, not by branch topology.
 
 lanes:
   - lane: real-column-build
@@ -22,26 +31,31 @@ lanes:
 
 diff:
   files: 4
-  net_lines: 629
-  measured_at: 200efaaee
+  net_lines: 643
+  measured_at: f516ba296
+  base_sha: 55220a65d
   note: >-
-    RE-MEASURED 2026-08-31 by the rescue session, as the last action before
-    this commit: the prior figures (measured @31b607d6a, immediately before
-    this PR's own evidence pack was added) undercounted the PR's real final
-    diff, which also includes this pack.yml + its sibling brief.yml.
-    `git diff --numstat df17f4b96..HEAD` (df17f4b96 = this PR's actual base,
-    PR#5324's tip, matching what CI's harness-floor.yml reads from
-    `pull_request.base.sha`) -> `evidence_pack_lint.py --print-measured`
-    reports "4 files, +627/-2, 4 commits" (raw, unexcluded totals -- the
-    figure the countable-claims rule checks against). `net_lines: 629` is a
-    DIFFERENT number on purpose: CHURN (added+deleted, `_size_term_net_lines()`),
-    identical to the raw 627+2 here since none of these 4 paths hit the
-    floor's fixtures/generated/vendor exclusion list. The deterministic
-    floor recomputed against this PR's real base (df17f4b96, not
-    origin/main -- this PR is stacked, not targeting main) is 2, source
-    "size" (churn 629 >= SIZE_GEAR2_THRESHOLD 400, below SIZE_GEAR3_THRESHOLD
-    1828). The brief already declares gear 2, so gear >= floor holds; no
-    gear change needed.
+    RE-MEASURED 2026-08-31 (second time), as the last action before this
+    commit, after #5324 MERGED and this branch was rebased onto fresh
+    origin/main + retargeted (base was PR#5324's branch, now main).
+    `base_sha` above is origin/main's tip at rebase time, confirmed
+    identical to the real merge-base (`git merge-base HEAD origin/main`
+    returns the same sha). `git diff --numstat origin/main...HEAD`,
+    measured at HEAD f516ba296 -- immediately prior, the same accepted
+    trailing-commit residual already documented on PR#5324's own pack --
+    reports 4 files, +641/-2. Cross-checked WITH and WITHOUT rename
+    detection (`git diff --no-renames --numstat`): both report the
+    identical totals, so the rename-vs-no-rename discrepancy that hit
+    a sibling PR tonight (two disagreeing file/line counts on the same
+    diff) does not apply here -- no renames are present. `net_lines: 643` is CHURN
+    (added+deleted, `_size_term_net_lines()`), not the same number as the
+    prior note's 629: the increase reflects the base change, not new
+    content in these 4 files (main now contains #5324's fix inline instead
+    of this PR sitting on #5324's branch tip). Floor recomputed against the
+    new base: still 2, source "size" (churn 643 >= SIZE_GEAR2_THRESHOLD
+    400, below SIZE_GEAR3_THRESHOLD 1828) -- same bracket as before, no
+    gear change. The brief already declares gear 2, so gear >= floor still
+    holds.
 
 pii_scan: clean
 
