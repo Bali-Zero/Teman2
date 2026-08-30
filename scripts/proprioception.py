@@ -75,6 +75,7 @@ KNOWN_BOUNDARY_CLASSES = [
     "seat<->armed",             # AI-seat credential/quota vs live probe (arsenal, #2)
     "worktree<->gate",          # does git actually invoke a pre-push hook in this worktree (#2)
     "tunnel<->reachable",       # declared network tunnel/forward vs live reachability (2026-08-21)
+    "declared<->enforced",      # policy-as-code in the repo vs what the node actually enforces (L13, 2026-08-31)
 ]
 
 SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
@@ -871,6 +872,34 @@ def _parse_exit_code(rc: int, out: str, err: str) -> tuple[str, int, list[str]]:
     return DIVERGED, n, ev
 
 
+def _lenient_json(out: str) -> object:
+    """Best-effort JSON, never raising. Used ONLY by tri_state_exit, where the exit
+    code already carries the verdict: a body that fails to parse must cost detail,
+    never the verdict itself."""
+    try:
+        return json.loads(out.strip() or "null")
+    except json.JSONDecodeError:
+        return None
+
+
+def _tri_state_evidence(data: object) -> tuple[int, list[str]]:
+    """Evidence lines for `parse: tri_state_exit`, from the probe's own JSON.
+
+    Deliberately tolerant: a tri-state probe's VERDICT is carried by its exit code,
+    which run_wrap has already read, so a body that is missing, null or shaped
+    differently must not turn a known verdict into UNPROBEABLE — that would hand the
+    exit code's meaning back to the schema it was chosen to be independent of. The
+    body only enriches the report.
+    """
+    if isinstance(data, dict):
+        ev = [str(x)[:160] for x in data.get("evidence", []) if x][:5]
+        reason = data.get("reason")
+        if reason and not ev:
+            ev = [str(reason)[:160]]
+        return (len(ev) or 1), ev
+    return 1, []
+
+
 def run_wrap(root: Path, entry: dict, timeout: int) -> tuple[str, int, list[str]]:
     argv = [a.replace("{repo}", str(root)) for a in entry["target"]]
     if argv[0].startswith("python") and len(argv) > 1:
@@ -887,6 +916,30 @@ def run_wrap(root: Path, entry: dict, timeout: int) -> tuple[str, int, list[str]
     parse = entry.get("parse", "exit_code")
     if parse == "exit_code":
         return _parse_exit_code(rc, out, err)
+    if parse == "tri_state_exit":
+        # For a probe that distinguishes "I looked and they match" from "I looked and
+        # they differ" from "I could not look at all".
+        #
+        # `exit_code` cannot express the third: it maps EVERY non-zero to DIVERGED, so a
+        # receptor reporting BLIND (exit 2) would be filed as real drift. That is the
+        # more dangerous direction than it first appears — a BLIND that reads as DIVERGED
+        # sends a healer to reconcile a difference nobody has actually observed, and it
+        # makes "we cannot see the enforced state" indistinguishable from "we can see it
+        # and it is wrong". They have opposite remedies: one needs an operator to restore
+        # visibility, the other needs the policy applied.
+        #
+        # Anything OTHER than 0/1/2 is UNPROBEABLE, not DIVERGED: an unknown exit code
+        # from a tool that promised three is schema drift, and schema drift must not
+        # normalize into a verdict (the same rule findings_list follows above).
+        if rc == 0:
+            return RECONCILED, 0, []
+        if rc == 1:
+            n, ev = _tri_state_evidence(_lenient_json(out))
+            return DIVERGED, n, ev
+        if rc == 2:
+            _, ev = _tri_state_evidence(_lenient_json(out))
+            return UNPROBEABLE, 0, ev or [f"probe reported BLIND (exit {rc})"]
+        return UNPROBEABLE, 0, [f"tri_state_exit: unexpected exit {rc} (expected 0, 1 or 2)"]
     try:
         data = json.loads(out.strip() or "null")
     except json.JSONDecodeError:
@@ -922,6 +975,40 @@ def run_wrap(root: Path, entry: dict, timeout: int) -> tuple[str, int, list[str]
 # ---------------------------------------------------------------- registry
 
 DEFAULT_REGISTRY: list[dict] = [
+    {
+        # The tailnet's DECLARED policy vs the filter the node actually enforces.
+        #
+        # This probe is expected to answer DIVERGED on this fleet today, and that is the
+        # correct answer rather than a defect to suppress: infra/tailscale/policy.hujson
+        # is PROPOSED and NOT APPLIED, and the live packet filter (measured 2026-08-11
+        # from M5, re-confirmed 2026-08-29) is one allow-all rule -- every node ->
+        # 0.0.0.0/0, ports 0-65535, TCP+UDP+ICMP. Applying the policy is operator[GUI]
+        # (admin console; the fleet holds no Tailscale API token), so no session can
+        # clear this finding by working harder. It exists to keep the gap VISIBLE and
+        # dated until an operator closes it.
+        #
+        # parse: tri_state_exit, not exit_code, and the distinction is load-bearing.
+        # exit_code maps every non-zero to DIVERGED, which would file BLIND ("I could
+        # not read the enforced state") as real drift. Those have opposite remedies --
+        # DIVERGED needs the policy applied, BLIND needs an operator to restore
+        # visibility -- so collapsing them sends a healer to reconcile a difference
+        # nobody has observed.
+        "id": "tailnet_policy_drift", "type": "wrap",
+        "target": ["python3", "{repo}/scripts/tailnet_policy_drift.py",
+                   "--policy", "{repo}/infra/tailscale/policy.hujson"],
+        "class": "declared<->enforced",
+        "boundary": "infra/tailscale/policy.hujson <-> the packet filter this node enforces",
+        "machines": ["all"], "tags": ["fast"], "timeout_sec": 30,
+        "severity": "P1",
+        "parse": "tri_state_exit",
+        "fix_hint": ("DIVERGED here is expected until policy.hujson is applied in the "
+                     "Tailscale admin console (operator[GUI], runbook "
+                     "docs/runbooks/tailnet-acl-apply.md) -- do NOT try to close it from "
+                     "a session, and do NOT apply policy from this tool: it observes "
+                     "only. BLIND means the enforced state could not be read at all "
+                     "(no tailscale CLI, unreadable netmap, or insufficient "
+                     "permission); that is a visibility problem, not drift."),
+    },
     {
         "id": "git_alignment", "type": "builtin", "target": "git_alignment",
         "class": "checkout<->origin",
