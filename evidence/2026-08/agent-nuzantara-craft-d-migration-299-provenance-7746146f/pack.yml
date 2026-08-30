@@ -1,4 +1,4 @@
-brief_ref: evidence/2026-08/agent-nuzantara-craft-d-migration-299-provenance-7746146f/brief.yml
+brief_ref: brief.yml
 plan_ref: >-
   docs/plans/2026-08-29-beyond-sota-craft-wave/L12-data-schema-migrations.md
   PR-2, driven by SQUAD D' wave-2 issue #5317. Migration class: auto-merge OFF,
@@ -18,11 +18,12 @@ lanes:
       security class refuter this repo's rules name)
 
 diff:
-  files: 4
-  net_lines: 940
+  files: 7
+  net_lines: 1253
   measured_at: 0bcb7f8d2
   note: >-
-    `git diff --numstat origin/main...HEAD` -> 4 files, net 940. Over the ~400
+    `git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD` ->
+    7 files, net 1253 (4 code/test files plus the evidence pack itself). Over the ~400
     target and stated as such: the migration, the runner that populates it, the
     audit that reads it back, and a guilt+innocence corpus are one concern, and
     splitting a verifier from its corpus is the anti-pattern this repo names.
