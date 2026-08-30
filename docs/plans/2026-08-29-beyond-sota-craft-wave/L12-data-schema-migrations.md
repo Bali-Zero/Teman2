@@ -157,8 +157,8 @@ apps/backend-rag/.venv/bin/python -c "from pathlib import Path; assert '|| true'
 - **Every `pytest ... -q` above was unrunnable as written.** `main` now carries
   `scripts/pytest_guards/pytest_verbosity_guard.py`, which exits **RC=4** under
   `apps/backend-rag/pytest.ini` (whose `addopts` already lower verbosity) with
-  *"effective verbosity is -2: pytest would print no pass/fail tally, so this
-  run cannot be read as evidence that anything ran."* The `-q` flags are
+  _"effective verbosity is -2: pytest would print no pass/fail tally, so this
+  run cannot be read as evidence that anything ran."_ The `-q` flags are
   removed above. Measured, not reasoned: the first acceptance run of PR-1 died
   on exactly this.
 - **`298` -> `299`.** See PR-2's file list.
