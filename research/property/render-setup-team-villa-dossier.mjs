@@ -633,7 +633,9 @@ const documentHtml = `<!DOCTYPE html>
       if (node.matches?.("h2")) {
         currentSection = node.textContent.trim().toUpperCase();
         const used = usedRatio();
-        if (currentBody.children.length && used > 0.72) makePage(currentSection);
+        const nextEntry = entries[index + 1];
+        const opensTable = nextEntry?.type === "content" && nextEntry.node.matches?.("table");
+        if (currentBody.children.length && (used > 0.72 || opensTable)) makePage(currentSection);
       } else if (node.matches?.("h3, h4") && usedRatio() > 0.84) {
         makePage(currentSection);
       }
