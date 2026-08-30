@@ -1,0 +1,145 @@
+# THE STAGING LAYOUT, and it is NOT the layout of this directory. Both refs below
+# name where `harness-floor.yml` STAGES these files (/tmp/evidence-check/evidence/),
+# never where they live in the repo — and the two resolve against different bases:
+# evidence_pack_lint.py resolves `brief_ref` against --repo-root and `council_run`
+# against the PACK'S OWN directory. Running the lint LOCALLY inverts both verdicts:
+# the per-PR path reads clean and the correct staging value can read broken. CI is
+# authoritative here; PR 1 of this lane learned it the expensive way.
+council_run: council.jsonl
+brief_ref: evidence/brief.yml
+pii_scan: clean
+lanes:
+  - lane: implementer
+    role: build
+    role_note: "authored the replacement relevance-sentinel shell body against a spec that named the census pin as untouchable"
+    seat: "kimi-code/kimi-for-coding"
+  - lane: orchestrator
+    role: review
+    role_note: "ground (the header's own named fix, the census pin's extraction regex, fetch-depth), the workflow header and trigger, the executing corpus, the wiring, the final on-disk gate, and the mutation proof"
+    seat: "claude-opus-5 (xhigh)"
+  - lane: refuter
+    role: review
+    role_note: "blind cross-family refutation of the whole diff — 7 findings, 3 accepted, 2 refuted by measurement, 2 confirmed as non-findings"
+    seat: "agy-gemini-3.1-pro"
+seat_diversity: 3
+seat_diversity_note: >-
+  Three families, and the build lane is non-Anthropic (Moonshot Kimi-for-coding):
+  D3 satisfied by a real build lane, never by seat_override. The refuter is a
+  THIRD family (Google Gemini 3.1 Pro) rather than Kimi K3, because Kimi BUILT
+  this one — family exclusion (battle plan §4 rule 3) governs over the
+  workflow-class default, and the default's seat (Codex sol) was measured
+  unreachable anyway. PR 1 of this lane went the other way round: Codex built,
+  Kimi refuted.
+diff:
+  net_lines: >-
+    AS OF the commit this pack ships with: 5 files, +706/-24, net 682 — measured
+    THREE-DOT against the merge base, never two-dot (W102). Deterministic gear
+    floor recomputed from this diff = 3 (hot-zone: .github/workflows/); declared
+    Gear 3, at the floor. The ~400 net-line target is EXCEEDED and it is stated
+    rather than hidden: the workflow change itself is small, and the bulk is
+    `scripts/tests/test_p1s2_relevance_sentinel.py`, a corpus that EXECUTES the
+    sentinel's shell body against synthetic git repositories for twelve event
+    shapes. Six of its cases exist only because a mutant or a refuter proved the
+    sentinel wrong in that exact case; deleting them to hit a line target would
+    delete the evidence that the cures work. The rest is this evidence pack.
+  behaviour_change: >-
+    The job now runs on merge-queue entries as well as pull requests. On an entry
+    that changes no trust path it does the same cheap work an irrelevant PR does
+    (~10s: checkout, sentinel, instrument census, this PR's new corpus) and skips
+    the mutation pass; before, every non-pull_request event ran everything. On an
+    entry that DOES change a trust path it runs the full gate, as a PR would.
+    No existing step's command changes. Two unconditional steps are added (a dep
+    install and the sentinel's own corpus) and the `relevant` step's body is
+    rewritten. The grep's exit code is now discriminated three ways instead of
+    two — the only change that alters an existing verdict, and it alters it in
+    exactly one case that previously resolved WRONG.
+receipts:
+  - claim: "The sentinel resolves correctly for every event shape, proved by EXECUTING the real body — 12 cases"
+    cmd: "pytest scripts/tests/test_p1s2_relevance_sentinel.py -q"
+    result: "12 passed in 2.23s. Includes both directions on merge_group (trust path -> run=true; nothing relevant -> run=false), a case where the pull_request and merge_group bases DISAGREE so reading the wrong key is detectable, empty base, unresolvable base, grep rc=2, grep rc=1, and push/workflow_dispatch/schedule still unconditional."
+    exit: 0
+    ts: "2026-08-31T02:55Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "The corpus goes RED on a regression — six mutants, each reverted after measuring"
+    cmd: "revert the merge_group branch / point it at pull_request.base.sha / fail closed on diff failure / drop the merge_group trigger / collapse grep rc to if-else / set fetch-depth: 1"
+    result: "4 failed, 2 failed, 1 failed, 1 failed, 4 failed (and the census pin also broke), 1 failed. Restored tree: 55 passed. A corpus that only passes on the fix proves nothing."
+    exit: 0
+    ts: "2026-08-31T02:58Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "The census pin still holds — push paths and the grep alternation remain one relevance decision"
+    cmd: "pytest scripts/tests/test_hermetic_census.py -q"
+    result: "43 passed. The grep keeps the `grep -qE \\` line-continuation and the anchored six-way alternation byte-identical, which is what the pin's extraction regex requires."
+    exit: 0
+    ts: "2026-08-31T02:55Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "Conformance: p1s2 is no longer named as a violation for the candidate context"
+    cmd: "python3 scripts/ci/check_required_workflow_conformance.py --contexts <candidate file>"
+    result: "0 violations mentioning p1s2-mutation-incremental.yml (it was 1 before this diff: 'missing merge_group: trigger'). The remaining violations are the two workflows PRs 1 and 3 of this lane cover."
+    exit: 1
+    ts: "2026-08-31T02:50Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "REFUTED the refuter's BLOCKER: system pip on ubuntu-latest is not PEP-668-blocked in this repo's runners"
+    cmd: "read restore-drill-wiring-tests.yml for setup-python; gh api its last 6 completed runs"
+    result: "That workflow runs `python3 -m pip install --quiet ... pytest pyyaml` on the SYSTEM python3 with NO actions/setup-python step, and its last 6 completed runs are all `success` (including one at 17:06Z today on this lane's own PR-1 branch). The claim was plausible in general and false here."
+    exit: 0
+    ts: "2026-08-31T02:45Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "REFUTED the refuter's shallow-clone finding: fetch-depth is 0, explicitly"
+    cmd: "grep -n fetch-depth .github/workflows/p1s2-mutation-incremental.yml"
+    result: "line 94: `fetch-depth: 0 # full history so git diff sees the PR changes`. The refuter had not been shown the checkout step and reasoned correctly under that uncertainty; the premise is false, but the silent-degradation mode it described is real and is now PINNED by a test."
+    exit: 0
+    ts: "2026-08-31T02:45Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+  - claim: "actionlint green; the on: block parses to the intended shape"
+    cmd: "actionlint; yaml.safe_load the on: block"
+    result: "clean. on -> {'pull_request': None, 'merge_group': None, 'push': ['branches','paths']}. No paths under pull_request, none under merge_group. `git diff --check` clean."
+    exit: 0
+    ts: "2026-08-31T02:58Z"
+    seat: "claude-opus-5 (orchestrator on-disk gate, re-run this turn)"
+dissent:
+  - objection: "grep's exit code is three-valued and the sentinel collapsed two of them: `if grep ...; then run=true; else run=false; fi` treats rc=1 (no match) and rc>1 (ERROR — unreadable file, exhausted descriptors) identically, so a grep that could not READ the changed-file list would be recorded as 'nothing relevant changed' and skip the mutation gate."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "The finding that justified the review. It is the same disease the fail-open handling above it was written to prevent, surviving one line further down — a failure to measure reported as a measurement. Now rc is captured and discriminated three ways, with rc>1 resolving run=true and emitting a ::warning::. Proved by a test that puts a `grep` shim exiting 2 ahead of the real one on PATH, and by the mutant that collapses it back."
+  - objection: "The header comment says a queue entry touching no trust path 'now ends at the sentinel'. That is false: three unconditional steps run below it on every event."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "True the moment those steps were added, in the same diff, by me. Rewritten to say what actually happens — the entry skips the EXPENSIVE steps and pays ~10s of cheap ones. A comment that inventories mutable state will lie (W106), and this one started lying before it was ever committed."
+  - objection: "The test executes the sentinel body under plain `bash`, while GitHub runs a `run:` step as `bash --noprofile --norc -e -o pipefail {0}`. The test shell would source the caller's profile and rc files, so it tests a contaminated environment rather than the isolated one the runner provides."
+    seat: "agy-gemini-3.1-pro"
+    status: CONFIRMED
+    disposition: accepted
+    note: "Accepted and matched exactly. The script sets its own `set -euo pipefail` so the semantics were already right, but a corpus whose whole claim is 'this is the real body running' should not run it under different flags than the runner does."
+  - objection: "BLOCKER — `python3 -m pip install` on ubuntu-latest's system python will crash under PEP 668 (externally-managed-environment) without --break-system-packages, on every PR and every queue entry."
+    seat: "agy-gemini-3.1-pro"
+    status: RETRACTED
+    disposition: rejected
+    note: "Plausible as a general fact about modern Debian-derived images, and FALSE for this repo's runners — measured rather than argued. `restore-drill-wiring-tests.yml` does exactly this (system python3, no actions/setup-python anywhere in the file) and its last 6 completed runs are all green, one of them at 17:06Z today. Rejecting a BLOCKER needs evidence, not confidence, so the evidence is the receipt above. The SECOND half of the same finding — that a PyPI dependency on the unconditional path of a required check can redden a PR for reasons unrelated to its diff — is real, is inherent to running any corpus in CI, and is declared at the step rather than argued away."
+  - objection: "The sentinel relies on `$base` existing locally, and actions/checkout defaults to a shallow clone, so `git diff` would fail on every run and the optimisation would be neutered."
+    seat: "agy-gemini-3.1-pro"
+    status: RETRACTED
+    disposition: rejected
+    note: "The premise is false — line 94 sets `fetch-depth: 0` explicitly, and the refuter had not been shown the checkout step. But the failure MODE it describes is real and unusually quiet: if someone later 'optimises' that checkout, the sentinel correctly fails open, the gate stays correct, and the saving silently disappears with nothing red — only a ::warning:: nobody reads. So the finding is rejected as stated and its substance is kept as a test that pins fetch-depth: 0, with the reasoning and the refuter's role written into the docstring."
+  - objection: "merge_group.base_sha is the correct key; three-dot is correct on a queue ref (HEAD is a synthetic merge whose parent is base, so merge-base(base,HEAD)==base); and the fail-open branch IS reachable under set -e because errexit is suspended on the left of an AND-OR list."
+    seat: "agy-gemini-3.1-pro"
+    status: RETRACTED
+    disposition: rejected
+    note: "Reported as NOT-A-FINDING after being checked. Recorded because a checked-and-cleared claim is evidence too, and these three were the load-bearing assumptions of the whole change — an independent family arriving at them separately is worth more than the gate asserting them."
+  - objection: "SEAT AVAILABILITY — R9's review-seat allowlist still cannot be satisfied from this machine. Carried forward from PR 1 of this lane, unchanged and re-measured."
+    seat: "claude-opus-5 (orchestrator, measured this turn)"
+    status: CONFIRMED
+    disposition: accepted
+    note: >-
+      R9 wants >=2 review seats from ('codex-gpt-5.6-sol', 'kimi-code/k3',
+      'tp1-qwen3.8-max'). Codex is out of credits across the whole seat and
+      tp1-qwen3.8-max times out at 400s; on THIS PR kimi-code is spent as the
+      BUILD lane, so family exclusion rules out kimi-code/k3 as its own
+      refuter and the reachable count from the allowlist is ZERO. The review
+      was done properly — by a fourth family, Gemini, which found the one
+      defect that mattered — and R9 will still score this pack at zero
+      allowlisted seats. That is the lane-6 question in its sharpest form: on
+      2026-09-02 this PR, reviewed by a working cross-family seat that found a
+      real BLOCKER-adjacent defect, would be hard-blocked for using the wrong
+      brand of reviewer. Reported, not decided; R9 is a NOTICE today.
