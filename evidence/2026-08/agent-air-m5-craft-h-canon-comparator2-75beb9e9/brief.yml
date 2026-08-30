@@ -1,0 +1,73 @@
+task_id: canon-block-comparator-craft-h-l10pr2
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Nothing compares the fleet's three copies of the global `~/.claude/CLAUDE.md`, and they
+  disagree about how work ships.
+
+  That file is injected at turn 1 into every session and every subagent on the machine that
+  holds it. It is per-machine by design — it carries paths and roles that MUST differ — and it
+  is control-plane, so no automation owns it. The consequence, measured 2026-08-31: M5 is
+  27,377 B, Pro and Mini are 22,795 B, and the difference is not cosmetic. Pro and Mini carry
+  no SHIP-LIFECYCLE HARD RULE at all; they carry the SUPERSEDED "no paid APIs ever" wording of
+  a rule Zero downgraded on 2026-06-04; and they still name a seat retired on 2026-07-19. Two
+  of those govern how work ships and what it may cost, on the machines where most of the
+  fleet's work happens.
+
+  This ships the organ that would have said so: a read-only proprioception probe that compares
+  MARKED BLOCKS, not files, plus the separate write-half that publishes the digests.
+
+  It does NOT mark any blocks and it does not touch the operator's file. Marking the doctrine
+  blocks and porting the three missing sections is control-plane work the session may not do;
+  it is escalated, not smuggled in here.
+
+constraints:
+  - "BLOCK LEVEL, NEVER WHOLE FILE. The file is supposed to differ per machine, so a whole-file
+    hash alarms on every legitimate difference and is switched off inside a week — at which
+    point the organ is worse than absent, because its silence now reads as agreement. Only
+    regions a human has explicitly marked `<!-- CANON:id -->` are compared."
+  - "UNPROBEABLE WHEN NOTHING IS MARKED, and this is today's state on every machine: `grep -c
+    'CANON:'` returns 0 on M5 and 0 on Pro. A comparator reporting 'all blocks agree' across
+    three files containing zero blocks would be the purest instance of the disease it exists to
+    detect (superscar #2). Every absence — no file, no markers, no report, unreadable report,
+    stale report, every peer quiet — is reported AS an absence and never as agreement."
+  - "The probe NEVER writes. The file it watches is control-plane and per-machine; a watcher
+    that can also write is one `--fix` away from becoming the thing that makes the three copies
+    diverge (superscar #1). The write half is a separate, explicitly-invoked script, and it
+    publishes DIGESTS ONLY — a report carrying the text would be a fourth copy of the file, and
+    the whole point is that there are three."
+  - "Whitespace is normalised and nothing else is. Trailing spaces and line endings differ
+    between machines for reasons that are not doctrine, and treating them as drift makes the
+    first real finding arrive inside a crowd of false ones. A single reworded sentence must
+    change the digest, or the comparator is decorative. Both directions are pinned."
+  - "The comparison is symmetric. A block present here and absent on a peer, and a block present
+    on a peer and absent here, are BOTH findings — the machine doing the reading might be the
+    stale one, and a comparator that only looked outward would never say so. The real Pro/Mini
+    divergence is exactly the first shape: an entire section missing on one side."
+  - "No allowlist, no exemptions, no grandfathering. Nothing in this PR is exempted from the
+    probe, because nothing yet is marked; the first marked block is judged by the same rule as
+    the last."
+
+acceptance:
+  - "Guilt: a synthetic divergent canon block on one machine's FIXTURE copy produces a P1 line.
+    Innocence: identical blocks across fixture copies are silent, AND a difference outside the
+    marked blocks is silent."
+  - "Every test builds a synthetic HOME under tmp_path. The operator's real `~/.claude/CLAUDE.md`
+    is never read by the corpus: it is control-plane, it is theirs, and a test that depended on
+    one machine's copy would pass or fail for reasons unrelated to the code."
+  - "The arming is proven by mutation, not by presence: deleting the sentinel path for the new
+    test must turn the trigger-symmetry check red."
+  - "`proprioception.py --selftest` exits 0 with the new probe registered and its boundary class
+    in the taxonomy."
+
+out_of_scope:
+  - "Marking the canon blocks in `~/.claude/CLAUDE.md`. That is an edit to the operator's
+    control-plane file on three machines — operator[control-plane], escalated separately."
+  - "Porting the three missing sections into Pro's and Mini's copies. Same reason, and it is the
+    finding this organ exists to surface, not something to fix silently while shipping the
+    detector."
+  - "Scheduling the publisher. It is a script with no LaunchAgent here on purpose: a cron that
+    writes to `~/.claude/` on three machines is a separate decision with a separate blast
+    radius, and shipping it in the same PR as its own watchdog would arm the writer and the
+    reader in one motion."

@@ -354,10 +354,35 @@ def test_publishing_preserves_peer_entries_and_stamps_only_its_own(tmp_path: Pat
     assert len(got["seen_at"]) == 2
 
 
-def test_publisher_and_probe_share_one_definition_of_a_block() -> None:
+def test_publisher_and_probe_share_one_definition_of_a_block(tmp_path: Path) -> None:
     """Two implementations of 'what is a canon block' would drift, and the drift
     would be invisible: every machine would read DIVERGED for a reason that is
-    not in the doctrine at all."""
-    src = _PUB.read_text()
-    assert "_load_probe()._canon_blocks(" in src
-    assert "_CANON_OPEN_RE" not in src, "the publisher grew its own parser"
+    not in the doctrine at all.
+
+    Checked BEHAVIOURALLY, on the quirks a reimplementation would get wrong,
+    rather than by asserting that some symbol name does or does not appear in the
+    source. The first version of this test asserted `"_CANON_OPEN_RE" not in
+    src`, which an independent parser passes trivially by choosing another name —
+    a substring standing in for the entity, which is the family this repo keeps
+    being bitten by (Codex sol, 2026-08-31).
+    """
+    src = tmp_path / "CLAUDE.md"
+    src.write_text(
+        "<!-- CANON:ws -->\nbody with trailing spaces   \n<!-- /CANON:ws -->\n"
+        "<!-- CANON:mismatch -->\nbody\n<!-- /CANON:other -->\n"
+        "<!-- CANON:dangling -->\nlast body\n"
+    )
+    report = tmp_path / "canon-blocks.json"
+    assert _publish(tmp_path, src, report).returncode == 0
+    published = list(json.loads(report.read_text())["machines"].values())[0]
+    expected = pp._canon_blocks(src.read_text())
+
+    # Non-vacuity: the fixture must actually exercise the quirks, or "equal"
+    # would only mean "both parsers found nothing interesting".
+    assert any(k.endswith("!unclosed") for k in expected), expected
+    assert len(expected) >= 2, expected
+    assert published == expected, (
+        "the publisher's block map diverges from the probe's on a file that "
+        f"exercises trailing whitespace, a mismatched close tag and an unclosed "
+        f"block: published={published} probe={expected}"
+    )
