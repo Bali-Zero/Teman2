@@ -795,3 +795,152 @@ def test_the_clock_is_the_BASE_COMMIT_date_and_not_today(tmp_path):
     assert par.run_ratchet(ledger, None, base_sha) == 0, (
         "the branch's own row, opened after the base commit, must never count"
     )
+
+
+# ---------------------------------------------------------------------------
+# H. Round-3 findings (third family, kimi-code/k3) — chiefly the rebase case.
+# ---------------------------------------------------------------------------
+
+
+def _repo_with_dates(tmp_path, base_text, head_text, base_day, branch_day):
+    """A repo whose BASE is dated `base_day` and whose branch commit carries
+    author date `branch_day` — the only way to tell "the base moved" apart from
+    "the branch is old"."""
+    import os as _os
+
+    repo = tmp_path / "repo"
+    (repo / ".claude" / "skills" / "modus").mkdir(parents=True)
+    ledger = repo / ".claude" / "skills" / "modus" / "PENDING-ARMS.md"
+
+    def git(*argv, day=None):
+        env = dict(_os.environ)
+        if day is not None:
+            stamp = f"{day.isoformat()}T12:00:00+00:00"
+            env.update(GIT_COMMITTER_DATE=stamp, GIT_AUTHOR_DATE=stamp)
+        r = _sp.run(["git", "-C", str(repo), *argv], capture_output=True, text=True, env=env)
+        assert r.returncode == 0, f"git {argv}: {r.stderr}"
+        return r.stdout.strip()
+
+    git("init", "-q")
+    git("config", "user.email", "t@example.invalid")
+    git("config", "user.name", "test")
+    ledger.write_text(base_text, encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "base", day=base_day)
+    base_sha = git("rev-parse", "HEAD")
+    ledger.write_text(head_text, encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "branch work", day=branch_day)
+    return ledger, base_sha
+
+
+def test_a_rebase_does_not_redden_a_branch_that_added_a_FRESH_row(tmp_path):
+    """The third family's MAJOR, and the most likely false positive in this repo.
+
+    A branch opens a row on day X. Three days later the merge queue makes it
+    rebase — routine, and "branch must be up to date" forces it. With the BASE
+    COMMIT's date as the clock, the new base is day X+3, the row is now 3 days
+    old *at the base date*, and the branch reddens demanding an override for a
+    row nobody is late on. Same tree, different verdict, moved by hygiene rather
+    than by authorship.
+
+    The clock is therefore the branch's OWN start — its oldest author date since
+    the base — which a rebase preserves. Simulated here by a base dated AFTER
+    the branch's own commit, which is exactly what a rebase produces.
+    """
+    import datetime as _dt
+
+    today = _dt.date.today()
+    branch_day = today - _dt.timedelta(days=40)   # the branch opened its row here
+    base_day = today - _dt.timedelta(days=37)     # rebased onto a newer main
+    base = f"- opened {(branch_day - _dt.timedelta(days=200)).isoformat()} (t) | **old row** | x | s | p\n"
+    head = base + f"- opened {branch_day.isoformat()} (t) | **the branch's fresh row** | x | s | p\n"
+    ledger, base_sha = _repo_with_dates(tmp_path, base, head, base_day, branch_day)
+
+    # Premise: the base really is NEWER than the branch commit — i.e. a rebase.
+    assert par._base_commit_date(ledger, base_sha) == base_day
+    assert par._branch_start_date(ledger, base_sha) == branch_day
+    assert base_day > branch_day
+
+    # Premise 2: under the base-commit clock this WOULD be red, so the assertion
+    # below is not satisfied by an implementation that never reddens.
+    assert par.run_ratchet(ledger, base_day, base_sha) == 1
+
+    assert par.run_ratchet(ledger, None, base_sha) == 0, (
+        "a rebase must not turn a fresh row into debt"
+    )
+
+
+def test_a_backdated_row_still_reddens_under_the_branch_start_clock(tmp_path):
+    """The innocence half of the clock change — it must not become 'never red'."""
+    import datetime as _dt
+
+    today = _dt.date.today()
+    branch_day = today - _dt.timedelta(days=40)
+    base_day = today - _dt.timedelta(days=37)
+    base = f"- opened {(branch_day - _dt.timedelta(days=200)).isoformat()} (t) | **old row** | x | s | p\n"
+    head = base + "- opened 2020-01-01 (t) | **resurrected row** | x | s | p\n"
+    ledger, base_sha = _repo_with_dates(tmp_path, base, head, base_day, branch_day)
+    assert par.run_ratchet(ledger, None, base_sha) == 1
+
+
+def test_a_future_dated_clock_is_cannot_verify_not_a_verdict(tmp_path):
+    """A skewed or forged commit date in the future makes every row the branch
+    adds look overdue, so every row-adding PR reddens until main moves. Refuse
+    to judge rather than judge from it."""
+    import datetime as _dt
+
+    future = _dt.date.today() + _dt.timedelta(days=400)
+    base = "- opened 2026-01-01 (t) | **old row** | x | s | p\n"
+    head = base + "- opened 2026-01-02 (t) | **another** | x | s | p\n"
+    ledger, base_sha = _repo_with_dates(tmp_path, base, head, future, future)
+    assert par.run_ratchet(ledger, None, base_sha) == 3
+
+
+def test_a_malformed_override_in_the_base_does_not_swallow_a_new_one(tmp_path):
+    """Every malformed override parses to (None, ""), so keying identity over
+    ALL overrides made one old typo hide every new one — the author's mistake
+    silently eaten by someone else's."""
+    base = "RATCHET-OVERRIDE: garbage\n"
+    head = base + "RATCHET-OVERRIDE: tech_debt_overdue<=44x -- my typo\n"
+    fresh, inherited = par._new_overrides(base, head)
+    assert inherited == 0, "an invalid line is never 'the same approval' as another invalid line"
+    assert len(fresh) == 2 and all(not o["valid"] for o in fresh)
+    assert all(o["why_invalid"] for o in fresh), "each must carry a reportable reason"
+
+
+def test_the_RED_output_names_an_override_rejected_for_its_indentation(capsys, tmp_path):
+    """The promised safety valve, which was DEAD code until the third family
+    read the comment that promised it (W116). An author who HAS written an
+    override — indented under a list item, legal Markdown — must be told that,
+    not told 'add an override'."""
+    import datetime as _dt
+
+    today = _dt.date.today()
+    branch_day = today - _dt.timedelta(days=5)
+    base = "- opened 2026-01-01 (t) | **old row** | x | s | p\n"
+    head = (
+        base
+        + "- opened 2020-01-01 (t) | **resurrected** | x | s | p\n"
+        + "- notes:\n"
+        + "      RATCHET-OVERRIDE: tech_debt_overdue<=443 -- reviewed, legal list continuation\n"
+    )
+    ledger, base_sha = _repo_with_dates(tmp_path, base, head, branch_day, branch_day)
+    assert par.run_ratchet(ledger, None, base_sha) == 1
+    out = capsys.readouterr().out
+    assert "indented four or more spaces" in out, out[-400:]
+    assert "reviewed, legal list continuation" in out
+
+
+def test_an_override_hidden_after_a_same_line_comment_reopen_does_not_authorise():
+    """`<!-- x --> prose <!--` closes and RE-OPENS on one line. Testing the two
+    markers independently read everything below as outside a comment, so an
+    override invisible in the rendered document AUTHORISED."""
+    text = "<!-- a --> prose <!--\nRATCHET-OVERRIDE: tech_debt_overdue<=999 -- hidden\n"
+    assert par.parse_ratchet_overrides(text) == []
+
+
+def test_an_override_after_a_multiline_comment_closes_is_still_seen():
+    """The drop direction of the same fix: text after `-->` is live Markdown."""
+    text = "<!--\nnote\n--> RATCHET-OVERRIDE: tech_debt_overdue<=2 -- reviewed\n"
+    assert [o["ceiling"] for o in par.parse_ratchet_overrides(text)] == [2]

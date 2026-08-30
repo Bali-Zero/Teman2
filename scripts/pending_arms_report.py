@@ -1017,6 +1017,41 @@ RATCHET_OVERRIDE_RE = re.compile(
 )
 
 
+def _strip_html_comments(line: str, in_comment: bool) -> tuple[str, bool]:
+    """The part of `line` that is OUTSIDE an HTML comment, plus the new state.
+
+    A single-line `<!-- ... -->` wrapper is a documented override form, so the
+    wrapper's own markers are kept in the visible text (the decoration strip
+    handles them). Only MULTI-line comment interiors are removed, and the scan
+    is left-to-right so a close followed by a re-open on the same line ends
+    inside a comment rather than outside it.
+    """
+    out: List[str] = []
+    i = 0
+    while i < len(line):
+        if in_comment:
+            j = line.find(_HTML_COMMENT_CLOSE, i)
+            if j == -1:
+                return "".join(out), True
+            i = j + len(_HTML_COMMENT_CLOSE)
+            in_comment = False
+            continue
+        j = line.find(_HTML_COMMENT_OPEN, i)
+        if j == -1:
+            out.append(line[i:])
+            return "".join(out), False
+        k = line.find(_HTML_COMMENT_CLOSE, j + len(_HTML_COMMENT_OPEN))
+        if k == -1:
+            # Opens here and does not close on this line: everything from the
+            # opener onward is comment interior.
+            out.append(line[i:j])
+            return "".join(out), True
+        # Opens AND closes on this line — a wrapper, kept verbatim.
+        out.append(line[i : k + len(_HTML_COMMENT_CLOSE)])
+        i = k + len(_HTML_COMMENT_CLOSE)
+    return "".join(out), in_comment
+
+
 def parse_ratchet_overrides(text: str) -> List[Dict[str, Any]]:
     """Every RATCHET-OVERRIDE attempt in `text`, each validated.
 
@@ -1044,16 +1079,17 @@ def parse_ratchet_overrides(text: str) -> List[Dict[str, Any]]:
         # tracker entered fence mode there and then silently swallowed a
         # perfectly good override further down — an honest increase reddening
         # for an invisible reason, which is worse than the hole it was closing.
-        line_for_fence = raw_line
-        if in_comment:
-            if _HTML_COMMENT_CLOSE in raw_line:
-                in_comment = False
-                line_for_fence = raw_line.split(_HTML_COMMENT_CLOSE, 1)[1]
-            else:
-                continue
-        elif _HTML_COMMENT_OPEN in raw_line and _HTML_COMMENT_CLOSE not in raw_line:
-            in_comment = True
-            line_for_fence = raw_line.split(_HTML_COMMENT_OPEN, 1)[0]
+        # Comment state, scanning the line LEFT TO RIGHT rather than testing for
+        # the two markers independently. The independent test missed
+        # `<!-- x --> prose <!--` — a close followed by a re-open on one line —
+        # and read everything below as OUTSIDE a comment, so an override hidden
+        # in that trailing comment AUTHORISED while rendering invisibly
+        # (third-family gate; the hidden-authorisation direction is the bad one).
+        # It also dropped whatever followed a `-->`, which is live Markdown.
+        visible, in_comment = _strip_html_comments(raw_line, in_comment)
+        if not visible.strip():
+            continue
+        line_for_fence = visible
 
         m_fence = _RATCHET_FENCE_RE.match(line_for_fence)
         if m_fence:
@@ -1074,7 +1110,7 @@ def parse_ratchet_overrides(text: str) -> List[Dict[str, Any]]:
             # A fenced sample is documentation. Reading it as an instruction is
             # how a gate gets disarmed by its own runbook.
             continue
-        stripped = _RATCHET_DECORATION_RE.sub("", raw_line, count=1)
+        stripped = _RATCHET_DECORATION_RE.sub("", visible, count=1)
         if not stripped.startswith(RATCHET_OVERRIDE_TOKEN):
             continue
         m = RATCHET_OVERRIDE_RE.match(stripped)
@@ -1216,9 +1252,20 @@ def _new_overrides(base_text: str, head_text: str) -> tuple[List[Dict[str, Any]]
         reason = " ".join(str(ov.get("reason") or "").split()).casefold()
         return (ov.get("ceiling"), reason)
 
-    inherited = {key(ov) for ov in parse_ratchet_overrides(base_text)}
+    # Only VALID overrides take part in the inherited/new comparison. Every
+    # malformed one parses to (ceiling=None, reason=""), so a single garbage
+    # line in the BASE would make every malformed attempt in HEAD look
+    # "inherited" and vanish without the loud note this file promises — the
+    # author's typo swallowed by someone else's older typo (third-family gate).
+    # The two filters below are individually redundant and jointly load-bearing:
+    # an invalid head override short-circuits past the set anyway, and an
+    # invalid base override can never collide with a VALID head key. Measured,
+    # not assumed — mutating either alone leaves the corpus green, reverting
+    # BOTH (the exact pre-fix behaviour) turns it red. Belt and braces on the
+    # path where a silent drop costs an author their own error message.
+    inherited = {key(ov) for ov in parse_ratchet_overrides(base_text) if ov["valid"]}
     head = parse_ratchet_overrides(head_text)
-    fresh = [ov for ov in head if key(ov) not in inherited]
+    fresh = [ov for ov in head if not ov["valid"] or key(ov) not in inherited]
     return fresh, len(head) - len(fresh)
 
 
@@ -1231,6 +1278,38 @@ def _base_commit_date(ledger_path: Path, ref: str) -> Optional[date]:
         return date.fromisoformat(out.splitlines()[0].strip())
     except ValueError:
         return None
+
+
+def _branch_start_date(ledger_path: Path, base_ref: str) -> Optional[date]:
+    """The AUTHOR date of this branch's oldest commit since `base_ref`.
+
+    This, and not the base commit's date, is when the branch's work began — and
+    it is the only one of the two that survives a rebase. Third-family gate:
+    with the base commit's date as the clock, a branch that adds a genuinely
+    fresh row and is then rebased three days later (which the merge queue and
+    "branch must be up to date" force routinely) sees its own row become
+    "already overdue at the base date" and reddens, demanding an override for a
+    row nobody is late on. Same tree, different verdict, moved by hygiene rather
+    than by authorship.
+
+    Rebase preserves AUTHOR dates, so a row the branch opened on day X is still
+    age 0 against a clock of day X after any number of rebases. A row backdated
+    to before the branch began still counts, which is the whole point.
+
+    None when git cannot answer or the range is empty; the caller falls back to
+    the base commit's date and says so.
+    """
+    rc, out, _ = _git(
+        ["log", "--format=%as", f"{base_ref}..HEAD"], cwd=ledger_path.parent
+    )
+    if rc != 0 or not out:
+        return None
+    for line in reversed(out.splitlines()):  # oldest commit last in git log order
+        try:
+            return date.fromisoformat(line.strip())
+        except ValueError:
+            continue
+    return None
 
 
 def run_ratchet(
@@ -1271,16 +1350,34 @@ def run_ratchet(
         return 3
 
     if now is None:
-        now = _base_commit_date(ledger_path, resolved)
+        now = _branch_start_date(ledger_path, resolved)
+        origin = "branch start (oldest author date since the base — rebase-stable)"
+        if now is None:
+            now = _base_commit_date(ledger_path, resolved)
+            origin = "base commit date (no commits since the base, or git could not say)"
         if now is None:
             print(
-                f"ratchet CANNOT-VERIFY: cannot read the commit date of {resolved!r}; "
-                "the ratchet's clock IS that date and falling back to today would "
-                "silently reintroduce calendar drift.",
+                f"ratchet CANNOT-VERIFY: cannot date {resolved!r} or this branch's own "
+                "commits; the ratchet's clock IS one of those dates and falling back "
+                "to today would silently reintroduce the calendar drift this mode "
+                "exists to remove.",
                 file=sys.stderr,
             )
             return 3
-        clock = f"base commit date {now.isoformat()}"
+        # A committer/author date can be skewed or forged. A clock in the FUTURE
+        # makes every row the branch adds look overdue, so every row-adding PR
+        # reddens until main moves — a gate that fires on a wrong wall clock is a
+        # gate people disarm. CANNOT-VERIFY, loudly, rather than a wrong verdict.
+        today = date.today()
+        if now > today:
+            print(
+                f"ratchet CANNOT-VERIFY: the derived clock {now.isoformat()} is in the "
+                f"future (today is {today.isoformat()}) — a skewed or forged commit date. "
+                "Refusing to judge rather than judging from it.",
+                file=sys.stderr,
+            )
+            return 3
+        clock = f"{origin} = {now.isoformat()}"
     else:
         clock = f"now={now.isoformat()} (explicit override)"
 
@@ -1355,6 +1452,22 @@ def run_ratchet(
         # Possible when a row's TEXT changed while staying overdue. Say so
         # rather than printing an empty list under a "newly-overdue" heading.
         print("  (count rose but no row is textually new — a row was edited in place)")
+    # The promised diagnostic, and it was DEAD until the third-family gate found
+    # it: the comment above _RATCHET_DECORATION_RE justified the 3-space rule
+    # with "the RED path below names any line that looked like an override and
+    # was rejected for its indentation", and that path referenced the detector
+    # nowhere. An author who HAD written an override, indented under a list
+    # item, was told only "add an override" (W116 — dead code on the one path it
+    # exists for, wearing a comment that says otherwise).
+    rejected = [
+        ln for ln in head_text.splitlines() if _RATCHET_OVER_INDENTED_RE.match(ln)
+    ]
+    for ln in rejected:
+        print(
+            "note: this line looks like an override but is indented four or more "
+            "spaces, which Markdown reads as a code block — unindent it to at most "
+            f"three:\n    {ln.strip()[:120]}"
+        )
     print(
         "To authorise deliberately, add to the ledger:\n"
         f"  RATCHET-OVERRIDE: tech_debt_overdue<={head_overdue} -- <why this is the right trade>"
@@ -1850,8 +1963,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help=(
             "Compare the TECH-DEBT-OVERDUE count between this branch's base "
             "(git merge-base origin/main HEAD, or --base-ref) and the working "
-            "tree, BOTH evaluated at the same --now so calendar aging cancels "
-            "and the delta is what the diff did. Exit 0 clean or override-"
+            "tree, BOTH evaluated at the date this BRANCH's work began (its "
+            "oldest author date since the base; the base commit's date if there "
+            "is none) — so a row the branch itself opened can never age into a "
+            "verdict, and a rebase cannot change one. Exit 0 clean or override-"
             "accepted, 1 if it increased without an override, 3 if the base "
             "cannot be resolved (never 0 — a scan that could not look is not a "
             "clean scan). Read-only."

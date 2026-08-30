@@ -265,8 +265,13 @@ def test_live_reporter_entries_carry_every_key_the_digest_dereferences():
     payload = _live_payload()
     entries = payload.get("entries")
     assert isinstance(entries, list) and entries, "reporter emitted no entries at all"
+    # EVERY entry, not entries[0]: conditional drift appearing from the second
+    # entry onward passed a first-element check (third-family gate).
     missing = {
-        k for k in _DIGEST_READS_ENTRY_KEYS if k not in entries[0]
+        k
+        for e in entries[:1]
+        for k in _DIGEST_READS_ENTRY_KEYS
+        if k not in e
     }
     assert not missing, (
         f"reporter entry schema lost {sorted(missing)}; the digest dereferences "
@@ -380,3 +385,19 @@ def test_pathological_ages_never_cost_the_alarm(monkeypatch, tmp_path):
     assert "row-real" in lines[0], f"the only real age must be the oldest: {lines[0]!r}"
     assert lines[1].strip().startswith("· 12d row-real")
     assert all(l.strip().startswith("· ?d") for l in lines[2:]), lines[2:]
+
+
+def test_a_non_string_artifact_does_not_cost_the_alarm(monkeypatch, tmp_path):
+    """`(x or "?")[:70]` raises on an int, the catch-all eats the whole section,
+    and the alarm is lost to a formatting detail — the same class `_age` was
+    hardened against, one field over (third-family gate)."""
+    entries = [
+        _entry("TECH-DEBT", artifact="row-old") | {"age_days": 40, "artifact": 12345},
+        _entry("TECH-DEBT", artifact="row-new") | {"age_days": 3},
+    ]
+    root = _fake_reporter(tmp_path, {"counts": {"tech_debt_overdue": 2}, "entries": entries})
+    monkeypatch.setattr(organism_digest, "_repo_root", lambda: root)
+    monkeypatch.setenv("ORGANISM_DIGEST_PENDING_ARMS", "rows")
+    lines, errs = organism_digest.pending_arms_overdue()
+    assert errs == [], f"a non-string artifact must not cost the alarm: {errs}"
+    assert "12345" in lines[0]

@@ -418,13 +418,17 @@ def pending_arms_overdue() -> tuple[list[str], list[str]]:
             # `or "?"` and not a get() default: a drifted payload can carry the
             # key with a null value, and None[:70] would raise inside the
             # catch-all below — losing the alarm to fix a detail.
-            top = (oldest[0].get("artifact") or "?")[:70] if oldest else "?"
+            # str() before slicing: a drifted payload can carry artifact as an
+            # int, and 123[:70] raises inside the catch-all — the whole alarm
+            # lost to a formatting detail, which is exactly what _age was
+            # hardened against one field over (third-family gate).
+            top = (str(oldest[0].get("artifact") or "?"))[:70] if oldest else "?"
             lines.append(f"{n_overdue or len(overdue)} armamenti sospesi OVERDUE — oldest: {top}")
             if _mode == "rows":
                 for e in oldest[:MAX_PENDING_ARMS_ROWS]:
                     a = _age(e)
                     age_s = f"{a}d" if a >= 0 else "?d"
-                    art = (e.get("artifact") or "?")[:70]
+                    art = (str(e.get("artifact") or "?"))[:70]
                     lines.append(f"  · {age_s} {art}")
     except Exception as e:
         errs.append(f"pending-arms: reporter failed ({type(e).__name__})")
