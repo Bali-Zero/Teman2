@@ -8,14 +8,17 @@ lanes:
     seat:
       claude-opus-5 (this session — round 1 fixed tests.yml's 2 sites, reported the family was
       bigger than the dispatching message described, round 2 fixed the remaining 5 sites the
-      dispatcher's expanded scope plus the adversarial subagent named, gathered every receipt
-      below, authored this pack)
+      dispatcher's expanded scope plus the adversarial subagent named, round 3 fixed the 9th site
+      the guard found in live CI plus 3 more siblings found by this session's own targeted search,
+      gathered every receipt below, authored and maintained this pack across all 3 rounds)
   - lane: pytest-verbosity-guard-refute
     role: review
     seat:
       claude-sonnet-5 (spalla-review adversarial subagent, dispatched via Agent tool WITHOUT this
       session's reasoning and told explicitly to try to break the fix rather than confirm it —
-      found the two additional genuinely-missed sites recorded in dissent below)
+      found the two additional genuinely-missed sites recorded in dissent below. Round 2 only —
+      round 3's 3 sibling sites were not independently reviewed by a fresh subagent, see
+      brief.yml's risks section for this gap named explicitly)
 seat_diversity: not_applicable
 seat_diversity_note:
   "One build lane (fewer than 2 — the D3 floor in evidence_pack_lint.py rule 8 only applies at
@@ -24,16 +27,17 @@ seat_diversity_note:
   repo, not a domain judgment call where cross-family breadth would add anything a second
   independent adversarial pass could not."
 diff:
-  net_lines: 8 files, +7/-12, 3 commits
+  net_lines: 12 files, +9/-16, 5 commits
   behaviour_change:
-    Eight non-evidence files change — two GitHub Actions workflow files, one git hook script, one
-    CI helper Python script, two production Python files in the autonomous-lab service, and two
-    test files. Every change removes exactly one redundant command-line pytest verbosity flag
-    (or updates a test assertion to match a removed flag) — no test logic, no business logic, no
-    workflow trigger, no permission, and no secret changes anywhere in the diff. The observable
-    change is that 8 distinct pytest call sites, which the new guard shipped in this same PR was
-    about to refuse with UsageError (exit 4, no tally printed), now complete normally and print a
-    real pass/fail or collected-count tally.
+    Twelve non-evidence files change across 3 rounds — two GitHub Actions workflow files, one git
+    hook script, one shell dev-loop script, two cron/automation Python scripts, three production
+    Python files in the autonomous-lab service, and three test files (one of them the site the
+    guard itself found in live CI). Every change removes exactly one redundant command-line
+    pytest verbosity flag (or updates a test assertion to match a removed flag) — no test logic,
+    no business logic, no workflow trigger, no permission, and no secret changes anywhere in the
+    diff. The observable change is that 12 distinct pytest call sites, which the new guard shipped
+    in this same PR was about to refuse with UsageError (exit 4, no tally printed), now complete
+    normally and print a real pass/fail or collected-count tally.
 receipts:
   - claim:
       Deterministic gear floor recomputed from this PR's actual changed-file list is 3, and
@@ -200,6 +204,97 @@ receipts:
     exit: 0
     ts: "2026-08-30T00:50Z"
     seat: session
+  - claim:
+      The 9th site's exact nested-probe argv (`pytest <probe-dir> -n 2 --dist loadfile
+      --no-header -p no:cacheprovider`) reproduces the guard's UsageError with the old `-q` and
+      completes with a real tally without it — proven with --collect-only, then the REAL guilt
+      test run in full (needs local Postgres — reachable in this environment).
+    cmd:
+      "PYTHONPATH=. python -m pytest backend/tests/db/xdist_isolation_probe -n 2 --dist loadfile
+      -q --no-header -p no:cacheprovider --collect-only (then without -q); then
+      PYTHONPATH=. python -m pytest backend/tests/db/test_xdist_worker_isolation.py -v --tb=short
+      (full real run, from apps/backend-rag)."
+    result:
+      "collect-only: before exit 4 (same UsageError), after exit 0, '2 tests collected'. Full
+      suite: 5 passed, 1 skipped in 34.50s — the skip is
+      test_probe_setup_survives_live_sessions_on_the_workers_own_database, which self-skips
+      outside a real xdist worker context, unrelated to this fix."
+    exit: 0
+    ts: "2026-08-30T02:40Z"
+    seat: session
+  - claim:
+      tdd_pipeline.py's `_verify_tests()` argv (`pytest <file> --collect-only --no-header`, cwd
+      apps/backend-rag) reproduces exit 4 -> exit 0 with the old/new `-q`. Also empirically
+      confirms the adjacent, PRE-EXISTING, NOT-fixed defect named in brief.yml's third acceptance
+      bullet — even fixed, output is still the FLAT nodeid format (`file.py::test_name`), never the tree
+      format (`<Function test_...>`) `_verify_tests()`'s counter expects — because
+      apps/backend-rag/pytest.ini's own `-q` alone (verbosity -1) already selects flat format,
+      identically to verbosity -2. Confirmed by contrast — the SAME collect-only command run with
+      `-o addopts=` (erasing the config's own -q, true verbosity 0) DOES show the tree format.
+    cmd:
+      "PYTHONPATH=. .venv/bin/pytest backend/tests/services/rag/test_confidence.py --collect-only
+      -q --no-header (then without -q); contrast: -o addopts= ... --collect-only --no-header vs.
+      -o addopts= ... --collect-only -q --no-header, from apps/backend-rag"
+    result:
+      "guard: exit 4 -> exit 0, '24 tests collected'. format contrast: flat nodeid list at
+      verbosity -1 (fixed shape) and at -2 (old shape via -o addopts= -q); tree
+      '<Package><Module><Function test_...>' only at verbosity 0 (-o addopts=, no -q)."
+    exit: 0
+    ts: "2026-08-30T02:45Z"
+    seat: session
+  - claim:
+      coverage_trend.py's `run_coverage()` argv reproduces exit 4 -> exit 0, and the coverage
+      JSON file `run_coverage()` depends on (`cov_json.exists()`, never `returncode`) is only
+      written in the fixed (no CLI -q) shape.
+    cmd:
+      "PYTHONPATH=. python -m pytest backend/tests/services/rag/test_confidence.py
+      --cov=backend/services/rag/agentic --cov-report=json:<scratch>.json --no-header -q --tb=no
+      --collect-only (then without -q), from apps/backend-rag"
+    result:
+      "before: exit 4, no JSON file written (would have made run_coverage() return None and log
+      'Coverage measurement failed', misdiagnosed as a coverage-tooling error). after: exit 0,
+      '24 tests collected', 'Coverage JSON written to file <scratch>.json'."
+    exit: 0
+    ts: "2026-08-30T02:47Z"
+    seat: session
+  - claim:
+      quickcheck.sh's scoped-impact-map pytest invocation reproduces exit 4 -> exit 0, and its own
+      test suite (scripts/tests/test_quickcheck.sh) is unaffected by the edit — including
+      confirming no test in that suite asserts the removed literal `-q`.
+    cmd:
+      "PYTHONPATH=.:../crm-cell python -m pytest backend/tests/services/rag/test_confidence.py
+      --tb=short -q --collect-only (then without -q), from apps/backend-rag; bash
+      scripts/tests/test_quickcheck.sh; grep for a literal -q assertion in that suite file"
+    result:
+      "guard: exit 4 -> exit 0, '24 tests collected'. test_quickcheck.sh: ALL PASS. grep for a
+      literal -q assertion: zero hits."
+    exit: 0
+    ts: "2026-08-30T02:50Z"
+    seat: session
+  - claim: This PR's own guard test suite is unaffected by round 3's 4 edits, re-run fresh after them.
+    cmd: python3 -m pytest scripts/tests/test_pytest_verbosity_guard.py -v
+    result: 20 passed, 0 failed
+    exit: 0
+    ts: "2026-08-30T02:52Z"
+    seat: session
+  - claim:
+      Two candidate sites investigated during round 3's sibling search and ruled INNOCENT, with
+      the mechanism for each — not silently skipped.
+    cmd:
+      'scripts/auto_test.sh:78 — pytest "$test_dir" -v --tb=short -q -p no:xonsh (both -v and -q
+      on the command line, cwd apps/backend-rag); .github/workflows/immune-enforcement.yml:494 —
+      python -m pytest scripts/tests/test_runtime_truth_ci_gauntlet.py -q, and
+      scripts/pytest_guards/config_roots.py::winning_config() queried directly for that path plus
+      an empirical --collect-only -q run of that exact target'
+    result:
+      "auto_test.sh: config -q (-1) + CLI -v (+1) + CLI -q (-1) = net -1, same as every other
+      fixed site — not a new pattern, no guard trip, not touched. immune-enforcement.yml:494:
+      winning_config() returns None for scripts/tests/test_runtime_truth_ci_gauntlet.py (no
+      apps/backend-rag-style config root governs it); empirical run confirms exit 0, '31 tests
+      collected' with the real -q left in place."
+    exit: 0
+    ts: "2026-08-30T02:55Z"
+    seat: session
 pii_scan: clean
 pii_scan_note:
   Nothing in this diff, brief, or pack touches client data, credentials, or any PII-bearing
@@ -301,3 +396,49 @@ dissent:
       additions newly require it to import, not a redundant-`-q` site. Different bug class, different
       file, different fix shape (add a dependency install, not remove a flag). Named in brief.yml's
       risks: as flagged-not-fixed rather than silently left unexplained."
+  - seat: dispatcher (team lead, round 3)
+    objection:
+      "The guard's own test suite found a 9th guilt site in live CI, on the branch's OWN new
+      test file (`test_xdist_worker_isolation.py`) — the guard refusing its own repo's
+      nested-probe pytest invocation, the exact 'exit code and tally are two different claims'
+      distinction this PR exists to make. Fix it in this PR; do not weaken the guard to make it
+      pass; choose deliberately between dropping the redundant -q and neutralizing the config with
+      `-o addopts=`, and say which and why."
+    status: CONFIRMED
+    resolution:
+      "Fixed (6ebb73601b): dropped the redundant -q. Chose this over -o addopts= because the
+      probe's assertion is on returncode + the two workers' own JSON files, nothing depends on the
+      suppressed tally — the same shape as every other site in this PR, no reason to reach for a
+      broader escape. Verified the -o addopts= alternative WOULD have been the correct call for a
+      different site (tdd_pipeline.py, see the next entry) precisely BECAUSE that site's downstream
+      logic depends on non-quiet output — the choice is genuinely per-site, not a rule of thumb
+      applied blindly."
+  - seat: session (self-check while fixing the 9th site's siblings)
+    objection:
+      "tdd_pipeline.py's `_verify_tests()` counts `<Function test_` in `--collect-only` stdout —
+      does dropping the redundant -q actually restore correct behavior here, or only stop the
+      guard from refusing the run?"
+    status: CONFIRMED
+    resolution:
+      "Only stops the refusal. Proven empirically (see the r3 receipt): apps/backend-rag/
+      pytest.ini's OWN -q already selects the flat nodeid collect-only format at verbosity -1,
+      identical in shape to the -2 this PR's guard refuses — so this counter has silently returned
+      0 for every generated test file since before this PR, or the guard, existed. This is a
+      genuinely SEPARATE, pre-existing defect (wrong output-format assumption, not a verbosity-
+      guard trip), and NOT fixed here: fixing it would mean `-o addopts=` on this one call
+      (dropping --strict-markers/--import-mode=importlib/warning filters along with it), a larger
+      behavior change than 'remove one redundant flag' for a bug this PR's guard did not create.
+      Flagged in brief.yml's acceptance + risks, not fixed, not hidden — same discipline as the
+      antidotes finding above."
+  - seat: session (self-check while writing this pack, round 3)
+    objection:
+      "Round 2's genuinely-missed sites were found by a DISPATCHED ADVERSARIAL SUBAGENT with fresh
+      context, told to try to break the fix. Round 3's 3 sibling sites (tdd_pipeline.py,
+      coverage_trend.py, quickcheck.sh) were found by this session's own search — is presenting
+      round 3 as having the same review rigor as round 2 accurate?"
+    status: CONFIRMED
+    resolution:
+      "No — and this pack does not claim it does. brief.yml's risks: names this gap explicitly:
+      round 3 was a single reviewer's systematic pass (grep for pytest-as-argv literals, then
+      cwd+addopts verification per candidate — not a bare grep taken at face value), not an
+      independently-verified one. Recorded rather than silently presented as equivalent."

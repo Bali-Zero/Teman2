@@ -14,12 +14,12 @@ objective: |
   config root (cwd=apps/backend-rag, or args under it) reaches -2 and is refused. The PR's own CI
   run went red on exactly this, across 7 checks (antidotes unrelated — see dissent).
 
-  Two rounds of scope, both driven by re-deriving the verbosity math per site rather than trusting
+  Three rounds of scope, all driven by re-deriving the verbosity math per site rather than trusting
   a fixed list of line numbers:
   - Round 1 (commit 584e92bc01): `.github/workflows/tests.yml`, the 2 sites actually cited by the
     dispatching message — a third cited site (apps/evaluator job) turned out INNOCENT on inspection
     (that root's own `addopts = "-v --tb=short"` cancels the command-line `-q` to net 0, not -2).
-  - Round 2 (commit dae8d6f1ec, this pack): the dispatcher's own citation of "three sites in
+  - Round 2 (commit dae8d6f1ec): the dispatcher's own citation of "three sites in
     tests.yml" was itself imprecise — the real third+ site was `apps/backend-rag/scripts/
     backend_stability_gate.py` (3 separate pytest calls), found by reading the LIVE CI failure log
     for "Backend Shard 1", not by grep. Reported to the dispatcher, scope was explicitly expanded
@@ -28,6 +28,20 @@ objective: |
     sites this session's own first pass did not catch: `.husky/pre-push`'s local backend suite,
     and the `autonomous_lab` verification-command allowlist family (which turned out to need THREE
     coordinated edits, not one — see acceptance).
+  - Round 3 (commit 6ebb73601b, this pack): the guard itself found a NINTH site in live CI —
+    `backend/tests/db/test_xdist_worker_isolation.py`'s guilt case spawns a nested `pytest -n 2
+    --dist loadfile -q ...` subprocess from cwd=apps/backend-rag. Fixed by dropping the redundant
+    `-q` (not `-o addopts=`): the probe's own assertion is on `returncode` plus JSON files the two
+    workers write, nothing depends on the suppressed tally, so this is the same shape as every
+    other site — a deliberate choice, not the default, see acceptance for the reasoning and for
+    two adjacent sites where the same choice was NOT free of side effects. Searching specifically
+    for "pytest invoked from inside Python code" (the shape invisible to every workflow/shell
+    predicate used in rounds 1-2) across `apps/backend-rag/backend/tests/` and `scripts/` found two
+    more real siblings: `scripts/cron-agent-python/tdd_pipeline.py`'s `_verify_tests()` and
+    `scripts/coverage_trend.py`'s `run_coverage()` — both cron/automation scripts, both a nested
+    `pytest ... -q` from cwd=apps/backend-rag. A fourth site, `scripts/quickcheck.sh` (a shell
+    script, not "Python code", but the identical mechanical cause), was found while checking known
+    dev-loop shell scripts for the same cwd+flag pattern rather than by the directed search itself.
 constraints:
   - "Do not weaken, special-case, or add an escape hatch to the guard itself — the guard being
     strict is the entire point of the PR it ships in. Every fix here removes a redundant flag,
@@ -51,22 +65,42 @@ acceptance:
   - text:
       "Every command-line `-q` stacked on top of `apps/backend-rag/pytest.ini`'s own `-q` is
       removed, and NOTHING ELSE on those lines changes (no other flag added/removed, no reordering)."
-    probe: 'git diff between this session''s own two fix commits'' parent
-      (15261bbd61, the PR tip before this session started) and their tip (dae8d6f1ec) — every
-      hunk a single `-q`/`"-q",` removal (or, for the two `autonomous_lab` test files, an
-      assertion updated to match). See `diff.net_lines` for the exact machine-measured count.'
+    probe: 'git diff between this session''s own fix commits'' parent
+      (15261bbd61, the PR tip before this session started) and their tip (6ebb73601b), scoped to
+      the 12 files those 3 fix commits touch (excludes the merge commit and an unrelated
+      teammate fix that landed on the branch in between) — every hunk a single `-q`/`"-q",`
+      removal (or, for the two `autonomous_lab` test files, an assertion updated to match). See
+      `diff.net_lines` for the exact machine-measured count.'
   - text:
-      "For every one of the 8 pytest call sites this session touched (tests.yml x2,
-      backend_stability_gate.py x3, fly-deploy.yml, .husky/pre-push, and the autonomous_lab
-      verification-command family as one logical site matched in 3 files), the SAME real command
-      WITH the old redundant `-q` reproduces the guard's `UsageError` (exit 4, config in force =
-      apps/backend-rag/pytest.ini) and WITHOUT it completes (exit 0) and prints a real pass/fail
-      or collected-count tally, run against the actual repo content on this branch — not a
-      synthetic pytest root."
+      "For every one of the 12 pytest call sites this session touched (tests.yml x2,
+      backend_stability_gate.py x3, fly-deploy.yml, .husky/pre-push, the autonomous_lab
+      verification-command family as one logical site matched across 4 files, and round 3's
+      test_xdist_worker_isolation.py, tdd_pipeline.py, coverage_trend.py, quickcheck.sh), the
+      SAME real command WITH the old redundant `-q` reproduces the guard's `UsageError` (exit 4,
+      config in force = apps/backend-rag/pytest.ini) and WITHOUT it completes (exit 0) and prints
+      a real pass/fail or collected-count tally, run against the actual repo content on this
+      branch — not a synthetic pytest root."
     probe:
-      "7 paired before/after runs recorded as receipts below (one pair covers both
+      "11 paired before/after runs recorded as receipts below (one pair covers both
       backend_stability_gate.py's 3rd command and fly-deploy.yml, since their file-set is
-      byte-identical), each showing exit 4 -> exit 0 — jointly covering all 8 sites."
+      byte-identical), each showing exit 4 -> exit 0 — jointly covering all 12 sites."
+  - text:
+      "The fix-shape choice for the 4 round-3 sites (drop the redundant `-q` vs. neutralize the
+      inherited config with `-o addopts=`) is made deliberately per site, not defaulted, and the
+      choice is recorded even where it surfaces a PRE-EXISTING, unrelated defect rather than
+      hiding it."
+    probe:
+      "tdd_pipeline.py's `_verify_tests()` counts the substring `<Function test_` in
+      `--collect-only` stdout — a format pytest only emits at verbosity >= 0. Since
+      apps/backend-rag/pytest.ini's OWN `-q` already puts this invocation at -1 even after
+      dropping the redundant CLI `-q`, this counter has returned 0 unconditionally since BEFORE
+      this PR existed (proven: dropping only the CLI `-q` still yields the flat nodeid format, not
+      the tree format the counter expects — see the r3 receipts). `-o addopts=` would restore the
+      tree format as a side effect, but was rejected here: it would also drop
+      `--strict-markers`/`--import-mode=importlib`/the warning filters from this one invocation,
+      a larger behavior change than this PR's mandate, for a bug that predates the guard entirely
+      and is not something the guard's own PR broke. Flagged in dissent, not fixed — the same
+      discipline as the unrelated `antidotes` CI job in round 2."
   - text:
       "The autonomous_lab verification-command allowlist, its real execution argv, its
       independent defense-in-depth shape-check, and both test files pinned to its exact shape all
@@ -112,6 +146,23 @@ consumer_map:
   - "Two archival JSON receipts under `research/operations/autonomous-lab/receipts/` still contain
     the OLD `-q` command verbatim — deliberately NOT touched: they are records of what actually ran
     at the time (2026-05-31), not live code, and rewriting them would falsify the historical record."
+  - "`backend/tests/db/test_xdist_worker_isolation.py`'s own guilt case (GitHub Actions `Backend
+    Shard 3`) — the guard the PR ships found this site in live CI before this pack's own final
+    sweep did, which is the guard working exactly as designed: refusing a run that would print no
+    tally, on a nested probe whose caller asserts a `returncode` that a silent run cannot actually
+    stand behind."
+  - "The TDD cron pipeline (`scripts/cron-agent-python/tdd_pipeline.py`, LaunchAgent-scheduled) —
+    was silently reporting `tests_added: 0` for every AI-generated test file, every run, once this
+    PR's guard shipped (before this PR, verbosity was already -2 there too and the collect-only
+    parsing was already broken by a separate, older bug — see acceptance bullet 3)."
+  - "The coverage-trend cron job (`scripts/coverage_trend.py`) — was about to log `Coverage
+    measurement failed` on every run, misdiagnosing a guard refusal as a coverage-tooling failure,
+    because `run_coverage()` only checks whether the `--cov-report=json` file was written, never
+    `returncode`, and the guard fires before pytest would ever write that file."
+  - "`scripts/quickcheck.sh`'s scoped impact-map test runner (dev-loop, invoked by agents before
+    committing) — was about to misreport `scoped suite reported failures (advisory, rc=4)` for
+    diffs where nothing was actually wrong, burying the guard's own precise error text inside a
+    generic 'failures' line."
 risks:
   - "A workflow-file change is auto-merge-eligible per this repo's own auto-merge-whitelist gate
     (mechanical CI-flag edits, not a guardrail/migration/force-push class) — armed `gh pr merge
@@ -133,11 +184,24 @@ risks:
     above is therefore proven by LOCAL reproduction against the real repo content (pytest.ini +
     conftest.py + actual test files on this branch), not by a fresh green CI run, which is exactly
     the kind of evidence a Gear-3 pack exists to substitute for/complement."
+  - "Between round 2's push and round 3's dispatch, the PR briefly showed `mergeable: CONFLICTING`
+    against `origin/main` on `.claude/skills/modus/PENDING-ARMS.md` — a file none of this session's
+    commits touch; it was already part of the PR's diff before this session started, and
+    origin/main had moved on that same high-churn shared ledger. Resolved externally (commit
+    24774b0fd0 landed on the branch via a merge from origin/main before round 3's dispatch message
+    arrived) — not by this session, and not by editing PENDING-ARMS.md, which stayed outside this
+    pack's authorized file list throughout."
+  - "Round 3's sibling search (`apps/backend-rag/backend/tests/` + `scripts/`, the 'pytest invoked
+    from inside Python code' shape) was done by THIS session directly, not by a dispatched
+    adversarial subagent — round 2's fresh-context review pattern was not repeated for round 3.
+    The search was systematic (grep for pytest-as-argv-literal patterns, followed by cwd+addopts
+    verification per candidate, not a single grep taken at face value) but is a single reviewer's
+    pass, not an independently-verified one."
 grader: |
-  Independent verification via a dispatched adversarial subagent (Agent tool, spalla-review,
-  fresh context — did not see this session's reasoning, told explicitly to try to break the fix
-  rather than confirm it). It found the round-1 dispatching message's own site count was
-  imprecise in a NEW way (two of what it initially read as "claimed fixed" sites were, at the
+  Round 2: independent verification via a dispatched adversarial subagent (Agent tool,
+  spalla-review, fresh context — did not see this session's reasoning, told explicitly to try to
+  break the fix rather than confirm it). It found the round-1 dispatching message's own site count
+  was imprecise in a NEW way (two of what it initially read as "claimed fixed" sites were, at the
   moment it looked, edited-but-not-yet-committed working-tree state rather than pushed commits —
   a sequencing artifact of when it was dispatched mid-session, since resolved by commit+push) and,
   more importantly, found two genuinely-missed sites (`.husky/pre-push`,
@@ -147,3 +211,11 @@ grader: |
   changed (deploy_staging.sh's `-v -q` combo: net 0, confirmed safe; several docs/skill files with
   stale `-q` in PROSE examples: self-correcting if followed, not a live execution path, left as a
   lower-priority follow-up rather than expanding this PR's scope further).
+
+  Round 3: the 9th site (`test_xdist_worker_isolation.py`) was found by the GUARD ITSELF in live
+  CI (Backend Shard 3, run 33288015368), reported by the dispatcher, not by this session or any
+  subagent — the guard doing its job, per the dispatcher's own framing. The 3 further siblings
+  (`tdd_pipeline.py`, `coverage_trend.py`, `quickcheck.sh`) were found by this session's own
+  targeted search, NOT independently reviewed by a fresh-context subagent this round — see the
+  risks entry above naming this gap explicitly rather than silently presenting round 3 as having
+  the same review depth as round 2.
