@@ -291,8 +291,8 @@ jobs:
               scripts/tests/test_check_required_workflow_conformance.py|\
               scripts/ci/lint_unreachable_workflow_conditions.py|\
               scripts/tests/test_unreachable_workflow_conditions.py|\
-              scripts/ci/lint_trigger_symmetry\.py|\
-              scripts/tests/test_lint_trigger_symmetry\.py|\
+              scripts/ci/lint_trigger_symmetry.py|\
+              scripts/tests/test_lint_trigger_symmetry.py|\
               infra/required.d/contexts.json|\
               infra/guard-conformance/registry.json|\
               infra/guard-conformance/check_guard_conformance.py|\
