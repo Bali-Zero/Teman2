@@ -47,6 +47,7 @@ FUNCTION_START = re.compile(
 )
 DO_BLOCK = re.compile(r"\bDO\s+(\$[A-Za-z_]\w*\$|\$\$).*?\1", re.IGNORECASE | re.DOTALL)
 DOLLAR_TAG = re.compile(r"\$[A-Za-z_]\w*\$|\$\$")
+SINGLE_QUOTED_BODY = re.compile(r"\bAS\s+'((?:[^']|'')*)'", re.IGNORECASE)
 LOCK_CLAUSE = re.compile(r"\bFOR\s+(?:SHARE|UPDATE|NO\s+KEY\s+UPDATE|KEY\s+SHARE)\b", re.IGNORECASE)
 
 
@@ -65,40 +66,53 @@ def _forward(sql: str) -> str:
 def _definer_functions_locking_the_ledger(sql: str) -> set[str]:
     """Function names in `sql` that are SECURITY DEFINER and lock the ledger.
 
-    The body is delimited by its own dollar-quote tag, not by "text until the
-    next CREATE FUNCTION". The coarse version of this helper attributed one
-    function's body to its neighbour and reported
-    `prepare_visa_evaluate_idempotency_reservation` (migration 264) as an
-    offender when production shows it correctly owned by `visa_ledger_owner`
-    and it does not read the ledger at all. A lint that cries wolf is a lint
-    someone deletes, so it reads the real body.
+    SPEC — the two detectors in this file have OPPOSITE polarity, and getting
+    that polarity wrong is what produced three rounds of holes (codex
+    2026-08-30, then the Gear-3 gate twice). Written down so the next person
+    does not rediscover it by being broken again:
+
+    * THIS one, the offender detector, must be PERMISSIVE. Missing an offender
+      is a silent production 500. So it reads the whole CREATE FUNCTION
+      statement, accepts either body-quoting form, and when it cannot parse a
+      statement confidently it reports the function anyway rather than skipping
+      it -- a false accusation is loud and gets fixed; a miss is not.
+    * `_transfers_in` must be STRICT and FAIL CLOSED, for the mirror reason.
+
+    Concretely here: the body may be dollar-quoted (`$tag$...$tag$`) or, in
+    legacy-but-valid PL/pgSQL, an ordinary single-quoted string
+    (`AS '...' LANGUAGE plpgsql`). The dollar-tag-only version skipped the
+    second form entirely, and `SECURITY DEFINER` may sit on either side of the
+    body in both.
     """
     found: set[str] = set()
     for match in FUNCTION_START.finditer(sql):
+        name = match.group(1)
         tag = DOLLAR_TAG.search(sql, match.end())
-        if tag is None:
-            continue
-        closing = sql.find(tag.group(0), tag.end())
-        if closing == -1:
-            body, after = sql[tag.end() :], ""
-        else:
-            body = sql[tag.end() : closing]
-            end = sql.find(";", closing + len(tag.group(0)))
-            after = sql[closing + len(tag.group(0)) : end if end != -1 else len(sql)]
-        header = sql[match.end() : tag.start()]
-        # The attribute may sit on EITHER side of the body -- Postgres accepts
-        # `... SECURITY DEFINER AS $b$...$b$;` and `... AS $b$...$b$ LANGUAGE
-        # plpgsql SECURITY DEFINER;` alike. Reading only the pre-body header
-        # made the second ordering invisible: the gate wrote that migration and
-        # the lint stayed green with the defect present. Zero of the twelve
-        # migrations on disk use it, which is exactly why nothing caught it.
-        attributes = (header + " " + after).upper()
+        body_start = body_end = None
+        if tag is not None:
+            closing = sql.find(tag.group(0), tag.end())
+            if closing != -1:
+                body_start, body_end = tag.end(), closing
+                after_body = closing + len(tag.group(0))
+        if body_start is None:
+            quoted = SINGLE_QUOTED_BODY.search(sql, match.end())
+            if quoted is None:
+                continue
+            body_start, body_end = quoted.start(1), quoted.end(1)
+            after_body = quoted.end()
+        body = sql[body_start:body_end]
+        terminator = sql.find(";", after_body)
+        attributes = (
+            sql[match.end() : body_start]
+            + " "
+            + sql[after_body : terminator if terminator != -1 else len(sql)]
+        ).upper()
         if (
             "SECURITY DEFINER" in attributes
             and LEDGER_TABLE in body
             and LOCK_CLAUSE.search(body)
         ):
-            found.add(match.group(1))
+            found.add(name)
     return found
 
 
@@ -114,6 +128,19 @@ ALTER_FORMAT = re.compile(
     re.IGNORECASE,
 )
 FOREACH = re.compile(r"FOREACH\s+(\w+)\s+IN\s+ARRAY\s+(\w+)", re.IGNORECASE)
+
+
+def ASSIGNMENT(var: str) -> re.Pattern[str]:
+    """`var` assigned at the START of its own statement, nothing before it.
+
+    The anchor is the whole point: the previous version matched
+    `\\b<var>\\b[^;]*?:=`, which walked from a MENTION of the variable into an
+    assignment to a different one, because nothing in between was a semicolon.
+    """
+    return re.compile(
+        rf"^[ \t]*{re.escape(var)}\b[^;:=]*:=\s*(ARRAY\s*\[[^\]]*\]|'[^']*')",
+        re.IGNORECASE | re.MULTILINE,
+    )
 
 
 def _transfers_in(sql: str) -> set[str]:
@@ -150,29 +177,67 @@ def _transfers_in(sql: str) -> set[str]:
 def _do_block_transfers(body: str) -> set[str]:
     """Signatures a DO block actually feeds to its ``ALTER ... OWNER TO``.
 
-    Collecting every quoted signature in the block was the same laundering
-    codex rejected at file level, fixed only one level down: a block that
-    transfers one function while merely naming another -- `to_regprocedure(
-    'public.other()')` is migration 299's own idiom -- marked the second one
-    transferred too. So the signature must reach the ALTER: it is read from the
-    variable that `format('ALTER FUNCTION %s OWNER TO %I', <var>, ...)` passes,
-    either assigned to it directly (299) or held in the array it iterates with
-    FOREACH (281).
+    SPEC — this detector FAILS CLOSED (see the polarity note on
+    `_definer_functions_locking_the_ledger`). Recognising a transfer that did
+    not happen is how an offender gets laundered into silence; refusing to
+    recognise one that did happen only produces a loud false accusation. So
+    anything it cannot bind with certainty yields the EMPTY set.
+
+    Three rounds of adversarial review all broke the permissive direction, each
+    time by a different proximity trick on the same regex:
+
+    * collecting every ``public.<name>(`` in a file that mentions the role;
+    * collecting every quoted signature inside the DO block, so a signature
+      merely NAMED by ``to_regprocedure()`` counted;
+    * matching ``<var> ... := '<sig>'`` across intervening text, so an
+      assignment to a DIFFERENT variable on the next line counted, and so did a
+      variable reassigned between its declaration and the ALTER.
+
+    Hence the contract, deliberately narrow: the block must contain EXACTLY ONE
+    ``format('ALTER FUNCTION %s OWNER TO %I', <var>, <role>)``; ``<role>`` must
+    resolve to ``visa_ledger_owner``; and the variable it formats -- or the
+    array that variable iterates via FOREACH or subscripts -- must have EXACTLY
+    ONE assignment, anchored at the start of its own statement. More than one
+    assignment, or none, means this helper cannot say what reaches the ALTER,
+    so it says nothing.
     """
+    alters = ALTER_FORMAT.findall(body)
+    if len(alters) != 1:
+        return set()
+    var, role_var = alters[0]
+    if not _resolves_to_ledger_owner(body, role_var):
+        return set()
+
+    sources = {var}
+    for loop_var, array_var in FOREACH.findall(body):
+        if loop_var == var:
+            sources.add(array_var)
+
     names: set[str] = set()
-    for var, _role in ALTER_FORMAT.findall(body):
-        sources = {var}
-        for loop_var, array_var in FOREACH.findall(body):
-            if loop_var == var:
-                sources.add(array_var)
-        for source in sources:
-            for literal in re.finditer(
-                rf"\b{re.escape(source)}\b[^;]*?:=\s*(ARRAY\s*\[[^]]*\]|'[^']*')",
-                body,
-                re.IGNORECASE,
-            ):
-                names |= set(TRANSFER_ARRAY_ENTRY.findall(literal.group(1)))
+    for source in sources:
+        literals = _sole_assignment(body, source)
+        if literals is None:
+            continue
+        names |= set(TRANSFER_ARRAY_ENTRY.findall(literals))
     return names
+
+
+def _sole_assignment(body: str, var: str) -> str | None:
+    """The one literal assigned to `var` at statement start, or None.
+
+    None means "cannot say" -- zero assignments, or more than one. Both are
+    treated as no-transfer, which is the fail-closed direction.
+    """
+    matches = ASSIGNMENT(var).findall(body)
+    return matches[0] if len(matches) == 1 else None
+
+
+def _resolves_to_ledger_owner(body: str, role_var: str) -> bool:
+    """`role_var` is either the role name itself or a variable holding it."""
+    if role_var == LEDGER_OWNER:
+        return True
+    literal = _sole_assignment(body, role_var)
+    return literal is not None and LEDGER_OWNER in literal
 
 
 def _functions_transferred_to_the_ledger_owner() -> set[str]:
@@ -385,3 +450,93 @@ $y$;
 """
     assert "scalar_shape" in _transfers_in(scalar)
     assert {"loop_shape_one", "loop_shape_two"} <= _transfers_in(loop)
+
+
+# ============================================================
+# Round three (2026-08-30) — the gate broke the fixes above too
+# ============================================================
+#
+# Same class every time: regex proximity. These closed it by changing the
+# POLARITY of the two detectors rather than by patching the patterns again —
+# see the SPEC notes on `_definer_functions_locking_the_ledger` and
+# `_do_block_transfers`. That reframing is the fix; these are its proof.
+
+def test_a_body_with_no_dollar_quoting_is_still_read():
+    """`AS '...' LANGUAGE plpgsql` is legacy but valid, and used to vanish.
+
+    `DOLLAR_TAG.search` found nothing, so the loop skipped the statement before
+    any attribute was read — the offender was invisible whatever else was true.
+    """
+    sql = """
+CREATE FUNCTION public.old_style()
+RETURNS trigger
+AS 'BEGIN PERFORM 1 FROM public.visa_decision_retention_policies FOR SHARE; RETURN NEW; END'
+LANGUAGE plpgsql SECURITY DEFINER;
+"""
+    assert "old_style" in _definer_functions_locking_the_ledger(sql)
+
+
+def test_an_assignment_to_a_different_variable_is_not_the_altered_signature():
+    """The killer shape: nothing between the two is a semicolon.
+
+    The old pattern walked from a MENTION of the ALTER variable, inside an IF
+    condition, straight into the next line's assignment to `probe` — so a file
+    carrying a live offender reported it transferred and passed green.
+    """
+    sql = _BAD_TRIGGER + """
+DO $z$
+DECLARE
+    ledger_owner constant text := 'visa_ledger_owner';
+    signature constant text := 'public.some_other_helper()';
+    probe text;
+BEGIN
+    IF to_regprocedure(signature) IS NULL THEN
+        probe := 'public.bad_trigger()';
+    END IF;
+    EXECUTE format('ALTER FUNCTION %s OWNER TO %I', signature, ledger_owner);
+END;
+$z$;
+"""
+    transferred = _transfers_in(_forward(sql))
+    assert "some_other_helper" in transferred, "the real transfer must still count"
+    assert "bad_trigger" not in transferred, (
+        "an assignment to a DIFFERENT variable never reaches the ALTER"
+    )
+
+
+def test_a_reassigned_variable_fails_closed():
+    """Two assignments to the ALTER's variable: the helper cannot say which one
+    reaches it, so it says nothing rather than counting both."""
+    sql = """
+DO $r$
+DECLARE
+    ledger_owner constant text := 'visa_ledger_owner';
+    signature text;
+BEGIN
+    signature := 'public.never_transferred()';
+    signature := 'public.actually_transferred()';
+    EXECUTE format('ALTER FUNCTION %s OWNER TO %I', signature, ledger_owner);
+END;
+$r$;
+"""
+    assert _transfers_in(sql) == set(), (
+        "ambiguous dataflow must yield NO transfers — a false accusation is loud, "
+        "a laundered offender is silent"
+    )
+
+
+def test_two_alters_in_one_block_fail_closed():
+    """More than one ALTER means the single-binding contract does not hold."""
+    sql = """
+DO $m$
+DECLARE
+    ledger_owner constant text := 'visa_ledger_owner';
+    a constant text := 'public.one()';
+    b constant text := 'public.two()';
+BEGIN
+    EXECUTE format('ALTER FUNCTION %s OWNER TO %I', a, ledger_owner);
+    EXECUTE format('ALTER FUNCTION %s OWNER TO %I', b, ledger_owner);
+END;
+$m$;
+"""
+    assert _transfers_in(sql) == set()

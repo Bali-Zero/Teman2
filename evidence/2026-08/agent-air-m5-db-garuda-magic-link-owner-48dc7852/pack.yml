@@ -32,7 +32,7 @@ seat_diversity_note:
   the author's own tests did not cover."
 diff:
   net_lines:
-    "6 files, +893/-0, computed by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
+    "6 files, +NETLINES, computed by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
     One new .sql migration, one new static test file, two touched Python files (the live preflight
     check and its independently frozen authority), and this evidence pair. Zero frontend, zero
     workflow, zero runtime request path."
@@ -140,6 +140,20 @@ receipts:
       "RED: 2 failed, 8 passed — test_security_definer_declared_after_the_body_is_still_an_offender
       and test_a_do_block_does_not_launder_a_signature_it_merely_names. File restored from a copy and
       `git status --porcelain` showed only the intended edit. With the fixes in place: 46 passed."
+  - claim:
+      "Round three: all four of the gate's second-round counterexamples are RED against the previous
+      detectors and GREEN against the polarity fix. The fix is a reframing, not a fourth patch."
+    cmd:
+      "reconstruct the file from `git show HEAD:<path>` (round-2 detectors) plus the four new tests
+      only, then PYTHONPATH=. python -m pytest
+      backend/tests/db/test_retention_lock_triggers_are_ledger_owned.py"
+    exit: 1
+    ts: "2026-08-30T10:41:00Z"
+    seat: claude-opus-5
+    result:
+      "RED: 4 failed, 10 passed — no-dollar-quoted body, assignment-to-a-different-variable,
+      reassigned variable, two ALTERs in one block. File restored from a copy afterwards; the test
+      count is 14 and the full surface is 50 passed."
 pii_scan: clean
 pii_scan_note:
   "No client data was touched, read or transcribed. Production reads were catalog queries (pg_proc,
@@ -242,3 +256,37 @@ dissent:
     resolution:
       "The brief now says what is true: neither is part of this DIFF, and both happened out of band
       during the work (ALTER 07:03Z, #5298 merged and deployed 08:19Z with F3 green)."
+  - seat: claude-opus-5 (Gear-3 final on-disk gate, round two)
+    objection:
+      "All three of the round-two fixes were still evadable, by three shapes of one class. (a) The
+      transfer binding matched `\\b<var>\\b[^;]*?:=`, which walks from a MENTION of the ALTER variable
+      — inside an `IF to_regprocedure(signature) IS NULL THEN`, migration 299's own idiom — into the
+      NEXT line's assignment to a DIFFERENT variable, because nothing between them is a semicolon. A
+      throwaway migration carrying a live offender reported it transferred and the file-level test
+      passed. (b) The same regex counted both literals when a variable is reassigned. (c) A function
+      body written `AS '...' LANGUAGE plpgsql` instead of `$tag$...$tag$` has no dollar tag, so the
+      offender detector skipped the statement before reading any attribute."
+    status: CONFIRMED
+    resolution:
+      "Not patched a third time — CLAUDE.md rule 8 says a correction that is itself wrong means the
+      surface is under-specified, so the SPEC was written and the detectors were reframed around it.
+      The two have OPPOSITE polarity, and getting that backwards is what produced every round: the
+      OFFENDER detector must be PERMISSIVE (a miss is a silent production 500) and now reads the whole
+      CREATE FUNCTION statement in either body-quoting form; the TRANSFER detector must FAIL CLOSED (a
+      false transfer launders an offender into silence) and now recognises exactly one binding shape —
+      a single `format('ALTER FUNCTION %s OWNER TO %I', <var>, <role>)` whose variable has exactly one
+      statement-anchored assignment — yielding the empty set for anything ambiguous. Both spec notes
+      are in the file. Four tests, all RED against the previous detectors (receipt above)."
+  - seat: claude-opus-5 (declared limit, deliberately not chased)
+    objection:
+      "A text-based detector can always be evaded by a sufficiently unusual SQL formatting. This is
+      the third round of exactly that, and a fourth is not promised."
+    status: PLAUSIBLE
+    resolution:
+      "Named rather than papered over, and rule 8 applied: no fourth patch round. What makes this
+      acceptable is that the text lint is the CHEAP layer, not the only one — the live catalog check
+      in operational_preflight.py reads `pg_proc.proowner` from the running database and cannot be
+      evaded by any SQL formatting whatsoever. That check is what would have caught migration 285 on
+      its first run, and this PR is what finally tells it these two functions exist. A real SQL parser
+      (pglast/sqlglot) would close the text layer properly; that is a separate decision with a
+      dependency attached, not something to smuggle into an outage fix."
