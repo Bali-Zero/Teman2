@@ -328,23 +328,109 @@ _MULT_ALTERNATION = "|".join(
     sorted((re.escape(k) for k in _AMOUNT_MULTIPLIERS), key=len, reverse=True)
 )
 _MULT_PATTERN = f"(?:{_MULT_ALTERNATION})"
+
+# Currency MARKERS, marker -> family. Until 2026-08-30 this vocabulary lived
+# inline in the regex as `Rp|IDR|USD|$` and everything that was not `$`/`USD`
+# was folded into the IDR family. That was a second, SIMPLER bypass of this
+# veto than the English-multiplier one fixed in #5293 — it needed no magnitude
+# word at all. Measured on the parent commit, literal return values:
+#   price_tokens_outside_sources("Costa EUR 5000 in totale.", []) -> []
+#   price_tokens_outside_sources("The fee is SGD 8000.", [])      -> []
+#   price_tokens_outside_sources("The fee is AUD 8000.", [])      -> []
+# An invented foreign-currency price was never validated as grounded and never
+# caught as hallucinated, exactly as an English-worded one was not.
+#
+# Why the marker list alone would NOT have fixed it: with every family folded
+# into IDR, "EUR 500" canonicalized to IDR:500 and fell under the IDR floor of
+# 1000 — so adding the marker without a per-family floor changes nothing. The
+# family map and the floor table are one change, not two.
+#
+# Measured false-positive surface before widening (the reason the parent PR
+# deferred this axis, re-examined rather than assumed): in
+# apps/backend-rag/backend/kb/ the markers EUR, SGD, GBP and the euro sign do
+# not occur at all; across the whole app, word-bounded, EUR appears 19 times in
+# 14 files, AUD 3, GBP 2, SGD 1 — nearly all in tests and scripts, not in
+# retrievable content. So this widening closes a hole at almost no cost in new
+# rejections. It DOES newly veto a currency conversion the model computes
+# itself ("about EUR 600"), which is intended: an unsourced computed figure is
+# precisely what this veto exists to stop, and doctrine already forbids
+# improvising a price.
+#
+# WORD BOUNDARIES ARE LOAD-BEARING HERE, and this is not theoretical: the first
+# measurement of AUD's footprint returned "135 files" because it was counting
+# the substring inside FRAUD and AUDIT. A marker without \b would read an
+# amount out of the middle of an unrelated word — cicatrix family #3, committed
+# by the probe that was measuring for this very change. The alternation below
+# is derived from this table and every alphabetic marker is \b-anchored.
+_CURRENCY_MARKERS: dict[str, str] = {
+    "RP": "IDR",
+    "IDR": "IDR",
+    "USD": "USD",
+    "$": "USD",
+    "EUR": "EUR",
+    "EURO": "EUR",
+    "€": "EUR",
+    "GBP": "GBP",
+    "£": "GBP",
+    "SGD": "SGD",
+    "AUD": "AUD",
+}
+_SYMBOL_MARKERS = frozenset({"$", "€", "£"})
+
+
+def _marker_alternation() -> str:
+    """Regex alternation over _CURRENCY_MARKERS, longest first, \b-anchored.
+
+    Alphabetic markers get a LEADING \b so "AUD" cannot match inside "FRAUD";
+    symbols get none (\b before "$" would require a preceding word char). No
+    trailing \b is needed: both branches of _CURRENCY_AMOUNT_RE require digits
+    adjacent to the marker, which already excludes "EURO" matching "EUROPE".
+    """
+    parts = []
+    for marker in sorted(_CURRENCY_MARKERS, key=len, reverse=True):
+        escaped = re.escape(marker)
+        # "Rp." is written with a trailing dot as often as without.
+        if marker == "RP":
+            escaped += r"\.?"
+        parts.append(escaped if marker in _SYMBOL_MARKERS else r"\b" + escaped)
+    return "|".join(parts)
+
+
+_MARKER_PATTERN = _marker_alternation()
 _CURRENCY_AMOUNT_RE = re.compile(
-    r"(?:(?P<cur1>\bRp\.?|\bIDR|\bUSD|\$)[ \t]*(?P<amt1>\d(?:[\d.,]*\d)?)"
+    r"(?:(?P<cur1>" + _MARKER_PATTERN + r")[ \t]*(?P<amt1>\d(?:[\d.,]*\d)?)"
     r"(?:[ \t]*(?P<mul1>" + _MULT_PATTERN + r")\b)?)"
     r"|(?:(?P<amt2>\d(?:[\d.,]*\d)?)(?:[ \t]*(?P<mul2>" + _MULT_PATTERN + r")\b)?"
-    r"[ \t]*(?P<cur2>IDR|USD)\b)",
+    r"[ \t]*(?P<cur2>" + _MARKER_PATTERN + r"))",
     re.IGNORECASE,
 )
 
 # Veto floors per currency family: IDR prices below Rp 1.000 do not exist in
-# this business (and tiny amounts would fire on noise); dollar prices are real
-# from $10 up (the review's "$999" case must be vetoable).
-_VETO_FLOORS: dict[str, int] = {"USD": 10, "IDR": 1000}
+# this business (and tiny amounts would fire on noise); hard-currency prices
+# are real from 10 up (the review's "$999" case must be vetoable). EVERY family
+# in _CURRENCY_MARKERS must have an entry — _floor_for asserts it rather than
+# defaulting, because a missing floor would silently wave a whole currency
+# through, which is the failure this table exists to prevent.
+_VETO_FLOORS: dict[str, int] = {
+    "IDR": 1000,
+    "USD": 10,
+    "EUR": 10,
+    "GBP": 10,
+    "SGD": 10,
+    "AUD": 10,
+}
 
 
 def _canonical_currency(cur: str) -> str:
+    """Currency FAMILY for a matched marker.
+
+    The regex only ever matches markers derived from _CURRENCY_MARKERS, so the
+    lookup cannot miss; the explicit fallback is a fail-CLOSED default rather
+    than a KeyError, because folding an unknown marker into IDR keeps it inside
+    the veto (with the strictest floor) instead of dropping it on the floor.
+    """
     c = cur.strip().rstrip(".").upper()
-    return "USD" if c in ("$", "USD") else "IDR"
+    return _CURRENCY_MARKERS.get(c, "IDR")
 
 
 def _canonical_value(amount: str, multiplier: str | None) -> int | None:
@@ -396,6 +482,18 @@ def price_tokens_outside_sources(text: str, price_sources: Sequence[str]) -> lis
     in a chunk could semantically launder a wrong "service fee" — accepted
     because the Gemini leg has the identical exposure today with NO veto at
     all, and the label gate + PricingTool grounding remain the primary control.
+
+    Second declared residual, made visible by the 2026-08-30 currency-family
+    change and deliberately NOT closed here: membership is tested on the VALUE
+    alone, not on (family, value), so a "USD 5000" in a source authorizes an
+    "EUR 5000" in the answer. Closing it would require dropping the bare-token
+    pass below — the one that lets a pricing block state an amount without
+    repeating its currency marker — and that pass is what keeps this veto from
+    failing off correct answers. Trading a certain false-positive regression
+    for a speculative laundering path is the wrong side of the exchange for a
+    guard that already over-rejects. Pinned by
+    test_pricing_veto_does_not_distinguish_currency_families so it cannot rot
+    into an unexamined assumption.
     """
     source_values: set[int] = set()
     for src in price_sources:

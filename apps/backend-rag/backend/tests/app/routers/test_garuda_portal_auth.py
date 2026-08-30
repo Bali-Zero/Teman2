@@ -732,3 +732,65 @@ def test_account_session_cookie_is_secure_on_loopback_https(fake_store):
     set_cookie_headers = resp.headers.get_list("set-cookie")
     account_cookie = next(h for h in set_cookie_headers if h.startswith("garuda_session="))
     assert "Secure" in account_cookie, account_cookie
+
+
+# ============================================================
+# A blind catch-all cannot be diagnosed (2026-08-30, measured in production)
+# ============================================================
+
+
+class _PolicyProbeFailed(Exception):
+    """Stands in for the class of store failure that took issuance down."""
+
+
+def _assert_named_but_silent(caplog, *, expected_name: str, forbidden: str) -> None:
+    records = [r for r in caplog.records if "unexpected error" in r.getMessage()]
+    assert records, "the handler must still log the failure"
+    message = records[-1].getMessage()
+    assert expected_name in message, (
+        "the exception's CLASS NAME must reach the log: on 2026-08-30 every call to this "
+        "endpoint answered INTERNAL_ERROR and the log said only 'unexpected error', which "
+        "cannot tell an absent SQL function from a bad cast from a dead pool"
+    )
+    assert forbidden not in message, "the exception MESSAGE must never be logged: it can quote a value"
+    assert records[-1].exc_info is None, (
+        "exc_info stays off — Sentry's LoggingIntegration turns it into a frame-locals dump, "
+        "which is where the session secret lives and where key-based redaction cannot reach"
+    )
+
+
+def test_issue_failure_logs_the_exception_class_and_nothing_else(fake_store, caplog):
+    fake_store.raise_on_issue = _PolicyProbeFailed("s3cret-session-value")
+    client = _client_with_store(fake_store)
+
+    with caplog.at_level("ERROR"):
+        resp = client.post(
+            "/api/visa/voa/auth/magic-links",
+            json={"result_id": VALID_RESULT_ID, "email": "traveller@example.com"},
+            headers={"Idempotency-Key": "11111111-1111-4111-8111-111111111111"},
+            cookies={"garuda_result_session": "owner-secret"},
+        )
+
+    assert resp.status_code == 500
+    assert resp.json()["code"] == "INTERNAL_ERROR"
+    _assert_named_but_silent(
+        caplog, expected_name="_PolicyProbeFailed", forbidden="s3cret-session-value"
+    )
+
+
+def test_exchange_failure_logs_the_exception_class_and_nothing_else(fake_store, caplog):
+    fake_store.raise_on_exchange = _PolicyProbeFailed("s3cret-token-value")
+    client = _client_with_store(fake_store)
+
+    with caplog.at_level("ERROR"):
+        resp = client.post(
+            "/api/visa/voa/auth/sessions",
+            json={"token": "T" * 43},
+            headers={"Idempotency-Key": "22222222-2222-4222-8222-222222222222"},
+        )
+
+    assert resp.status_code == 500
+    assert resp.json()["code"] == "INTERNAL_ERROR"
+    _assert_named_but_silent(
+        caplog, expected_name="_PolicyProbeFailed", forbidden="s3cret-token-value"
+    )

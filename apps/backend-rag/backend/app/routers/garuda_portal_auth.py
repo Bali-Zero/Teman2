@@ -135,6 +135,56 @@ def _error(code: str) -> JSONResponse:
     return response
 
 
+#: Per-operation error-code membership — identical rationale and shape to
+#: `garuda_voa_public.py`'s twin (duplicated, not imported, per LANES.md
+#: file-ownership discipline). `RATE_LIMITED`/`INTERNAL_ERROR` are included
+#: for both operations even where no call site below raises them directly:
+#: they are cross-cutting (rate-limit middleware, the top-level exception
+#: handler) per that same established convention. Never hand-typed status
+#: codes elsewhere: `_error_responses()` below always derives from
+#: `_ERROR_CATALOG` through this map.
+_OPERATION_ERROR_CODES: dict[str, tuple[str, ...]] = {
+    "requestMagicLink": (
+        "IDEMPOTENCY_KEY_REQUIRED",
+        "GARUDA_PUBLIC_DISABLED",
+        "IDEMPOTENCY_CONFLICT",
+        "INVALID_REQUEST",
+        "RATE_LIMITED",
+        "INTERNAL_ERROR",
+        "PERSISTENCE_POLICY_UNAVAILABLE",
+    ),
+    "exchangeMagicLink": (
+        "IDEMPOTENCY_KEY_REQUIRED",
+        "MAGIC_LINK_INVALID",
+        "GARUDA_PUBLIC_DISABLED",
+        "IDEMPOTENCY_CONFLICT",
+        "INVALID_REQUEST",
+        "RATE_LIMITED",
+        "INTERNAL_ERROR",
+        "PERSISTENCE_POLICY_UNAVAILABLE",
+    ),
+}
+
+
+def _error_responses(operation_id: str) -> dict[int | str, dict[str, object]]:
+    """Build a FastAPI `responses=` dict for `operation_id` from
+    `_ERROR_CATALOG`, grouped by HTTP status — documentation only, changes no
+    behaviour. Identical shape to `garuda_voa_public.py`'s twin.
+
+    Measured 2026-08-30 (`test_garuda_voa_openapi_parity.py` widening): without
+    this, neither route below documented anything past the decorator's own
+    success code and the framework's automatic 422 — the exact drift that
+    test file's docstring already describes for L2, reproduced here for L4.
+    """
+    by_status: dict[int, list[str]] = {}
+    for code in _OPERATION_ERROR_CODES[operation_id]:
+        status_code, _retryable, _message_key = _ERROR_CATALOG[code]
+        by_status.setdefault(status_code, []).append(code)
+    return {
+        status_code: {"description": " / ".join(codes)} for status_code, codes in by_status.items()
+    }
+
+
 def _public_enabled() -> bool:
     return os.environ.get(_FEATURE_FLAG_ENV, "").strip().lower() in {"1", "true", "yes"}
 
@@ -330,6 +380,7 @@ def _set_account_session_cookie(response: Response, request: Request, secret: st
     "/magic-links",
     operation_id="requestMagicLink",
     status_code=202,
+    responses=_error_responses("requestMagicLink"),
 )
 async def request_magic_link(
     payload: MagicLinkRequest,
@@ -421,7 +472,7 @@ async def request_magic_link(
     except PersistencePolicyUnavailable:
         logger.warning("garuda_portal_auth: persistence policy unavailable at issue")
         return _error("PERSISTENCE_POLICY_UNAVAILABLE")
-    except Exception:
+    except Exception as exc:
         # Refuter finding #4: an unmapped store exception must never leak as
         # a bare framework 500 — fail closed into the contract's own shape.
         #
@@ -433,11 +484,24 @@ async def request_magic_link(
         # `sentry_config._scrub` cannot reach a value that only exists inside
         # a captured frame's local-variable dump, so the cheapest real
         # mitigation for *this* handler is to never capture that dump at all.
-        # The exception type/message is still worth nothing here anyway — the
-        # contract only ever returns the same opaque INTERNAL_ERROR to the
-        # caller — so no diagnostic signal is lost that this endpoint's
-        # response shape could have used.
-        logger.error("garuda_portal_auth: unexpected error at issue")
+        # CORRECTED 2026-08-30, falsified in production. The sentence that
+        # stood here — "the exception type/message is still worth nothing
+        # here anyway" — conflated the RESPONSE (rightly opaque) with the
+        # LOG (which is the only place the cause can live). On 2026-08-30
+        # every call to this endpoint answered INTERNAL_ERROR, and the whole
+        # record of it was this one message repeated: no type, no stack, no
+        # way to tell an absent SQL function from a bad parameter cast from
+        # a dead pool. The privacy mitigation had blinded the diagnosis.
+        #
+        # The exception's CLASS NAME is logged, and nothing else. It is not
+        # PII, not a message that could quote a value, and not a frame-locals
+        # dump — `exc_info` stays off for exactly the reason above. A name
+        # like `UndefinedFunctionError` or `PostgresSyntaxError` names the
+        # cause on sight and can hold no caller data.
+        logger.error(
+            "garuda_portal_auth: unexpected error at issue (%s)",
+            type(exc).__name__,
+        )
         return _error("INTERNAL_ERROR")
 
     result.headers["Idempotency-Replayed"] = "true" if issued.idempotency_replayed else "false"
@@ -448,6 +512,7 @@ async def request_magic_link(
     "/sessions",
     operation_id="exchangeMagicLink",
     status_code=204,
+    responses=_error_responses("exchangeMagicLink"),
 )
 async def exchange_magic_link(
     request: Request,
@@ -477,13 +542,19 @@ async def exchange_magic_link(
     except PersistencePolicyUnavailable:
         logger.warning("garuda_portal_auth: persistence policy unavailable at exchange")
         return _error("PERSISTENCE_POLICY_UNAVAILABLE")
-    except Exception:
+    except Exception as exc:
         # `logger.error`, not `.exception` — see the identical rationale at
         # the `issue` handler above: this frame can hold `payload.token` and
         # a future adapter's `account_session_secret`, and `.exception`'s
         # captured frame-locals dump is a leak vector key-based redaction
-        # cannot close.
-        logger.error("garuda_portal_auth: unexpected error at exchange")
+        # cannot close. The exception's CLASS NAME is logged for the reason
+        # given at the `issue` handler above (a blind handler cost a full
+        # production outage its diagnosis on 2026-08-30); a class name can
+        # hold no caller data.
+        logger.error(
+            "garuda_portal_auth: unexpected error at exchange (%s)",
+            type(exc).__name__,
+        )
         return _error("INTERNAL_ERROR")
 
     # `outcome.security_counter` is internal telemetry ONLY — logged here,
@@ -491,9 +562,7 @@ async def exchange_magic_link(
     # magic_link_expired / magic_link_replay / magic_link_invalid, the HTTP
     # shape below is byte-identical: one 401, no other field.
     if not outcome.authorized:
-        logger.info(
-            "garuda_portal_auth: exchange denied (counter=%s)", outcome.security_counter
-        )
+        logger.info("garuda_portal_auth: exchange denied (counter=%s)", outcome.security_counter)
         return _error("MAGIC_LINK_INVALID")
 
     # Refuter finding #8: a store MUST NOT report authorized=True on a FRESH
@@ -507,9 +576,7 @@ async def exchange_magic_link(
         )
         return _error("INTERNAL_ERROR")
 
-    logger.info(
-        "garuda_portal_auth: exchange authorized (counter=%s)", outcome.security_counter
-    )
+    logger.info("garuda_portal_auth: exchange authorized (counter=%s)", outcome.security_counter)
     result = Response(status_code=204)
     result.headers.update(_PRIVACY_HEADERS)
     result.headers["Idempotency-Replayed"] = "true" if outcome.idempotency_replayed else "false"
