@@ -897,6 +897,32 @@ def test_a_future_dated_clock_is_cannot_verify_not_a_verdict(tmp_path):
     assert par.run_ratchet(ledger, None, base_sha) == 3
 
 
+def test_a_TIMEZONE_ahead_of_the_runner_is_not_a_forged_clock(tmp_path):
+    """Found by the FIRST live CI run of this gate, and it is the whole reason
+    the tolerance exists.
+
+    `git log --format=%as` reports the author's date in the AUTHOR's timezone.
+    `date.today()` is the runner's. A commit authored on Mini (WITA, UTC+8) just
+    after midnight carries tomorrow's date while a UTC runner is still on today,
+    so a perfectly ordinary branch read as "a skewed or forged commit date" and
+    the gate refused to judge it — measured: `CANNOT-VERIFY: the derived clock
+    2026-08-31 is in the future (today is 2026-08-30)`, exit 3, on this PR's own
+    first run.
+
+    Timezone skew is not forgery. Legitimate offsets span UTC-12..UTC+14, i.e.
+    up to two calendar days either way.
+    """
+    import datetime as _dt
+
+    tomorrow = _dt.date.today() + _dt.timedelta(days=1)
+    base = "- opened 2026-01-01 (t) | **old row** | x | s | p\n"
+    head = base + f"- opened {tomorrow.isoformat()} (t) | **the branch's own row** | x | s | p\n"
+    ledger, base_sha = _repo_with_dates(tmp_path, base, head, tomorrow, tomorrow)
+    assert par.run_ratchet(ledger, None, base_sha) == 0, (
+        "a branch authored one timezone east of the runner must still get a verdict"
+    )
+
+
 def test_a_malformed_override_in_the_base_does_not_swallow_a_new_one(tmp_path):
     """Every malformed override parses to (None, ""), so keying identity over
     ALL overrides made one old typo hide every new one — the author's mistake

@@ -126,7 +126,7 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
@@ -1364,15 +1364,28 @@ def run_ratchet(
                 file=sys.stderr,
             )
             return 3
-        # A committer/author date can be skewed or forged. A clock in the FUTURE
-        # makes every row the branch adds look overdue, so every row-adding PR
-        # reddens until main moves — a gate that fires on a wrong wall clock is a
-        # gate people disarm. CANNOT-VERIFY, loudly, rather than a wrong verdict.
+        # A committer/author date can be skewed or forged. A clock far in the
+        # FUTURE makes every row the branch adds look overdue, so every
+        # row-adding PR reddens until main moves — a gate that fires on a wrong
+        # wall clock is a gate people disarm. CANNOT-VERIFY, loudly, rather than
+        # a wrong verdict.
+        #
+        # TOLERANCE, and it is not slack for its own sake — found by the FIRST
+        # live CI run of this gate. `%as` is the author's date in the AUTHOR's
+        # timezone; `date.today()` is the runner's. Commits authored on Mini
+        # (WITA, UTC+8) at 01:00 local carry 2026-08-31 while a UTC runner is
+        # still on 2026-08-30, so an ordinary branch read as "forged" and the
+        # gate refused to judge it. Legitimate offsets span UTC-12..UTC+14, i.e.
+        # up to two calendar days either way. Two days of tolerance still leaves
+        # the case this guard exists for — a clock stuck in 2030 — caught by a
+        # wide margin. Timezone skew is not forgery.
         today = date.today()
-        if now > today:
+        tolerance = timedelta(days=2)
+        if now > today + tolerance:
             print(
-                f"ratchet CANNOT-VERIFY: the derived clock {now.isoformat()} is in the "
-                f"future (today is {today.isoformat()}) — a skewed or forged commit date. "
+                f"ratchet CANNOT-VERIFY: the derived clock {now.isoformat()} is more than "
+                f"{tolerance.days} days in the future (today is {today.isoformat()}) — "
+                "further than any timezone can explain, so a skewed or forged commit date. "
                 "Refusing to judge rather than judging from it.",
                 file=sys.stderr,
             )
