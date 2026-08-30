@@ -9,6 +9,7 @@ import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 import { ConsentBanner } from "@/components/visa/ConsentBanner";
 import { usePricingData } from "@/hooks/usePricingData";
 import {
+  MERAH_PUTIH_DAY_BODY_CSS,
   MERAH_PUTIH_DAY_CLASS,
   MERAH_PUTIH_DAY_VARS,
 } from "@/lib/theme/merahPutihDayVars";
@@ -247,6 +248,11 @@ export function SecondHomeLanding() {
         color: "var(--text-primary)",
       }}
     >
+      {/* <body> is an ancestor of this wrapper and keeps the shared editorial
+          navy, which shows as a band under the content and as a navy page in
+          print. Scoped to pages that carry the day wrapper — see
+          MERAH_PUTIH_DAY_BODY_CSS. */}
+      <style>{MERAH_PUTIH_DAY_BODY_CSS}</style>
       <LanguageSwitcher />
 
       {/* HERO */}

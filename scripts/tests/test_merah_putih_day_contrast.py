@@ -87,7 +87,13 @@ TEXT_PAIRS = [
 ]
 
 # White text is legal ONLY on these fills (R4 §4.2).
-WHITE_ON = ["--accent-funnel", "--accent-funnel-text", "--cta-bg-hover", "--state-danger"]
+WHITE_ON = [
+    "--accent-funnel",
+    "--accent-funnel-text",
+    "--cta-bg",  # the primary CTA fill — StudioApp's primaryNavButtonStyle
+    "--cta-bg-hover",
+    "--state-danger",
+]
 
 # Boundaries that IDENTIFY an interactive component must clear 3:1 (SC 1.4.11).
 NON_TEXT_PAIRS = [
@@ -272,6 +278,54 @@ def test_no_cormorant_weight_below_500() -> None:
     )
 
 
+# ── 4. the alias trap ────────────────────────────────────────────────────────
+
+SEMANTIC_CSS = REPO / "packages/core/tokens/semantic.css"
+_ALIAS = re.compile(r"^\s*(--[a-z0-9-]+):\s*var\((--[a-z0-9-]+)")
+
+
+def test_every_consumed_root_alias_is_restated_in_the_day_set() -> None:
+    """Aliases declared at :root do NOT follow a wrapper-scoped override.
+
+    `semantic.css` declares e.g. `--color-text-muted: var(--text-secondary)` at
+    :root. A var() inside a custom-property declaration is substituted using the
+    cascade AT THE DECLARING ELEMENT, so that alias resolves against :root's
+    value and hands the already-computed result down by inheritance. Overriding
+    `--text-secondary` on a wrapper deep in the tree does not move it.
+
+    MEASURED 2026-08-31 on the running app, which is why this test exists: at
+    :root the day pages resolved `--color-text-muted` to `rgba(255,255,255,0.68)`
+    and `--color-border-subtle` to `rgba(255,255,255,0.06)` — white, from the
+    dark theme. Consumed 42 and 36 times in this perimeter, that is white text
+    on warm paper and invisible borders. The cure is to restate the alias itself
+    in the day set; this test fails if a NEW alias is consumed without doing so.
+    """
+    if not SEMANTIC_CSS.exists():  # pragma: no cover - layout guard
+        pytest.skip("semantic.css not found")
+
+    aliases = {}
+    for line in SEMANTIC_CSS.read_text(encoding="utf-8").splitlines():
+        m = _ALIAS.match(line)
+        if m:
+            aliases.setdefault(m.group(1), m.group(2))
+
+    perimeter_text = "\n".join(
+        strip_comments(p.read_text(encoding="utf-8")) for p in _perimeter_sources()
+    )
+    day_set = read_tokens()
+
+    missing = [
+        f"{alias} (alias of {src})"
+        for alias, src in aliases.items()
+        if alias in perimeter_text and alias not in day_set
+    ]
+    assert not missing, (
+        "these :root aliases are consumed in the second-home perimeter but are "
+        "NOT restated in MERAH_PUTIH_DAY_VARS, so they keep the shared theme's "
+        f"(dark) value on a paper page: {missing}"
+    )
+
+
 def test_both_public_wrappers_actually_apply_the_day_set() -> None:
     """The set is inert unless it is spread on the two route wrappers."""
     for rel in (
@@ -282,4 +336,88 @@ def test_both_public_wrappers_actually_apply_the_day_set() -> None:
         assert "MERAH_PUTIH_DAY_VARS" in src, f"{rel} does not apply the day set"
         assert "...MERAH_PUTIH_DAY_VARS" in src, (
             f"{rel} imports the day set but never spreads it into a style"
+        )
+
+
+# ── The derived-colour class ────────────────────────────────────────────────
+# Found twice during the day migration, in two different components, with two
+# different justifications — which is what makes it a class and not a bug:
+#   SavePlanBar   armed fill  color-mix(--accent-funnel 85%, black) -> ~#aa0e27
+#   ScenarioToggle hover label color-mix(--accent-funnel 70%, white) -> ~#D8586D
+# Both were CORRECT when written. On the retired navy ground, mixing a token
+# toward white moves it AWAY from the backdrop and raises contrast. On carta the
+# identical gesture runs backwards: the ScenarioToggle label measured 3.07:1
+# against its own hover tint, a fail, while the flat token measures 4.77:1.
+#
+# The second harm is permanent regardless of ground: a mix toward white or black
+# MINTS A COLOUR THAT BELONGS TO NO TOKEN. #aa0e27 is a fourth red in a palette
+# that declares exactly three, and nothing in R4 can ever be checked against it.
+#
+# A mix toward `transparent` is a different thing and stays allowed: it is an
+# opacity tint that composites the token over whatever is behind it, so the hue
+# remains the token's own.
+# Two things defeat a naive regex here, and the guilt test below caught both:
+#   - `color-mix(in srgb, var(--accent-funnel) 85%, black)` contains a NESTED
+#     `)`, so any `[^)]*` pattern stops inside `var(...)` and never sees `black`;
+#   - the real declarations are pretty-printed across FOUR lines, so a
+#     line-by-line scan never has `color-mix(` and `black` in the same string.
+# Hence a balanced-paren scan over the whole source. `var(...)` contents are
+# dropped before looking, so a token whose NAME contains "white" is not an
+# offender — only a literal white/black ARGUMENT is.
+def _deriving_mixes(src: str) -> list[tuple[int, str]]:
+    found: list[tuple[int, str]] = []
+    for match in re.finditer(r"color-mix\(", src):
+        depth, idx = 0, match.end() - 1
+        while idx < len(src):
+            if src[idx] == "(":
+                depth += 1
+            elif src[idx] == ")":
+                depth -= 1
+                if depth == 0:
+                    break
+            idx += 1
+        body = src[match.end() : idx]
+        if re.search(r"\b(?:white|black)\b", re.sub(r"var\([^)]*\)", "", body), re.I):
+            line = src.count("\n", 0, match.start()) + 1
+            found.append((line, " ".join(body.split())))
+    return found
+
+
+def test_no_colour_is_derived_by_mixing_a_token_toward_white_or_black() -> None:
+    offenders = [
+        f"{path.name}:{line}: color-mix({body})"
+        for path in _perimeter_sources()
+        for line, body in _deriving_mixes(
+            strip_comments(path.read_text(encoding="utf-8"))
+        )
+    ]
+    assert not offenders, (
+        "a colour is being derived by mixing a token toward white/black. That "
+        "mints a hue no token declares, and any contrast measured for it was "
+        "taken on the retired dark ground — on carta, lightening is the "
+        "direction of FAILURE. Use a declared token: " + "; ".join(offenders)
+    )
+
+
+def test_the_derived_mix_guard_catches_the_historical_offenders() -> None:
+    """Guilt: the exact declarations this class was found in must trip it."""
+    for guilty in (
+        "--fill: color-mix(in srgb, var(--accent-funnel) 85%, black);",
+        "color: color-mix(in srgb, var(--accent-funnel) 70%, white);",
+        "color-mix(\n  in srgb,\n  var(--accent-funnel) 85%,\n  black\n)",
+    ):
+        assert _deriving_mixes(guilty), f"guard blind to: {guilty}"
+
+
+def test_the_derived_mix_guard_leaves_opacity_tints_alone() -> None:
+    """Innocence: mixing toward `transparent` keeps the token's own hue."""
+    for innocent in (
+        "background: color-mix(in srgb, var(--state-success) 6%, transparent);",
+        "border: 1px solid color-mix(in srgb, var(--text-primary) 45%, transparent);",
+        "background: color-mix(in srgb, currentColor 10%, transparent);",
+        # A token whose NAME contains the word is not a literal argument.
+        "background: color-mix(in srgb, var(--surface-white) 8%, transparent);",
+    ):
+        assert not _deriving_mixes(innocent), (
+            f"guard over-matches an opacity tint: {innocent}"
         )

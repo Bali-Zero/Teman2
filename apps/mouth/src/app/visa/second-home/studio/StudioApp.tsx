@@ -10,6 +10,7 @@ import {
   type QuestionId,
 } from "@/lib/secondhome-studio/sequence";
 import {
+  MERAH_PUTIH_DAY_BODY_CSS,
   MERAH_PUTIH_DAY_CLASS,
   MERAH_PUTIH_DAY_VARS,
 } from "@/lib/theme/merahPutihDayVars";
@@ -156,21 +157,27 @@ const navButtonStyle: React.CSSProperties = {
   minHeight: 44,
 };
 
-/** WCAG contrast fix (2026-08-24): white-on-`var(--accent-funnel)` measured
- *  3.62:1 on the visa/editorial pairing (and 4.36:1 on the editorial-base
- *  blue) — both fail the 4.5:1 floor for this 16px/600 text, which is
- *  normal-size (large-text exemption needs >=24px, or >=18.66px at
- *  weight>=700). This funnel sells E33E/E33F senior visas (55+), whose own
- *  audience skews toward LOWER contrast tolerance, not higher — so the cure
- *  is darkening the fill to clear 4.5:1, never stretching the label to
- *  dodge the floor via the large-text carve-out. Derived via color-mix so
- *  it holds across every `--accent-funnel` resolution (per-theme, not one
- *  hardcoded hex) — verified >=4.5:1 on both known resolutions. */
+/** The primary CTA takes the ACTION red, `--cta-bg` (#D01033 under the Merah
+ *  Putih DAY set): white on it measures 5.52:1, clearing the 4.5:1 floor for
+ *  this 16px/600 normal-size text (the large-text carve-out needs >=24px, or
+ *  >=18.66px at weight>=700 — never a reason to stretch a label instead of
+ *  fixing the fill, least of all on a funnel selling senior visas to a 55+
+ *  audience whose contrast tolerance skews lower, not higher).
+ *
+ *  This REPLACES a 2026-08-24 fix that read
+ *  `color-mix(in srgb, var(--accent-funnel) 85%, black)`. That was correct for
+ *  the dark theme it was written under — white on the then-current `#ff3344`
+ *  measured 3.62:1, so the fill was darkened until it cleared. Under the DAY
+ *  palette the premise is gone (white on #D01033 already clears), and the
+ *  workaround had two costs worth removing: it painted a colour that exists in
+ *  no token (measured live as rgb(170, 14, 39)), and it built the CTA out of the
+ *  STRUCTURE red when R4 §3 assigns primary CTAs to the ACTION red — the two
+ *  duties red is allowed to have, and the whole point of keeping them apart. */
 const primaryNavButtonStyle: React.CSSProperties = {
   ...navButtonStyle,
   marginLeft: "auto",
   border: "none",
-  background: "color-mix(in srgb, var(--accent-funnel) 85%, black)",
+  background: "var(--cta-bg, var(--accent-funnel-text))",
   color: "var(--text-on-accent, #fff)",
   fontWeight: 600,
 };
@@ -626,6 +633,9 @@ export function StudioApp() {
         minHeight: "100vh",
       }}
     >
+      {/* See SecondHomeLanding: <body> is an ancestor and keeps the editorial
+          navy otherwise — measured 88px of it below this wrapper. */}
+      <style>{MERAH_PUTIH_DAY_BODY_CSS}</style>
       <StudioAtmosphere />
       <div
         className="bz-shs-content"

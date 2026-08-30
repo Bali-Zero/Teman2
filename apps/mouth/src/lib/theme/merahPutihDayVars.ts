@@ -72,6 +72,20 @@ export const MERAH_PUTIH_DAY_VARS = {
   "--border-default": "#d5d0c2",
   "--border-strong": "#7a8093",
 
+  // ── Aliases that MUST be restated, not inherited ──────────────────────────
+  // `semantic.css` declares these at :root as `var(--text-secondary)` /
+  // `var(--border-subtle)`. A var() inside a custom-property declaration is
+  // substituted using the cascade AT THE DECLARING ELEMENT — so an alias
+  // declared at :root resolves against :ROOT's values and hands its
+  // already-computed result down by inheritance. Overriding --text-secondary
+  // on a wrapper deep in the tree therefore does NOT move the alias: it would
+  // keep the dark theme's value while everything around it turned to paper.
+  // These two are the most-consumed tokens in this perimeter (42 and 36 uses),
+  // so the leak would have been wide and quiet. Restated with the same values
+  // their sources take above.
+  "--color-text-muted": "#475372",
+  "--color-border-subtle": "#e3e1da",
+
   // ── The red family (R4 §3) ────────────────────────────────────────────────
   // STRUCTURE (brand marks, progress fill, rules) vs ACTION (CTA, links) are
   // two duties, never interchangeable — and selection is NEVER red (R4 §4.5).
@@ -123,3 +137,32 @@ export const MERAH_PUTIH_DAY_VARS = {
  * without re-stating the whole selector chain.
  */
 export const MERAH_PUTIH_DAY_CLASS = "merah-putih-day";
+
+/**
+ * The wrapper cannot paint its own ancestors, and <body> is an ancestor.
+ *
+ * MEASURED 2026-08-31 on the running app, which is the only reason this exists:
+ * with the wrapper correctly carta, `getComputedStyle(document.body)` still
+ * returned `rgb(29, 39, 59)` — the shared editorial navy — on BOTH routes, and
+ * body was 88px taller than the wrapper on each. That is a navy band under the
+ * content, plus a navy page in print and behind overscroll rubber-banding.
+ *
+ * `:has()` keeps the cure scoped to exactly the pages that opted in: no route
+ * without a `.merah-putih-day` wrapper is affected, so this stays a route-level
+ * change and never becomes a global stylesheet edit. Where `:has()` is
+ * unsupported the page simply keeps today's behaviour — the same navy it has
+ * now, never something worse.
+ *
+ * Inject with `<style>{MERAH_PUTIH_DAY_BODY_CSS}</style>` inside the wrapper.
+ */
+export const MERAH_PUTIH_DAY_BODY_CSS = `
+body:has(.merah-putih-day) {
+  background: #f7f6f2;
+  color: #16213a;
+}
+@media print {
+  body:has(.merah-putih-day) {
+    background: #ffffff;
+  }
+}
+`;
