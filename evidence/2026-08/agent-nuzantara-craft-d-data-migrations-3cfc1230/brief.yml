@@ -1,0 +1,54 @@
+task_id: craft-d-l12-pr1-jsonb-codec-parity
+gear: 2
+l_level: L2
+gate_class: opus
+objective: |
+  Close the JSONB double-encoding defect class at its root, by making the
+  asyncpg codec a strict SUPERSET of what every caller already did, and by
+  making test pools structurally unable to disagree with production about it.
+
+  Three pools each registered their own `jsonb`/`json` codec with a BARE
+  `json.dumps` encoder. Four caller sites therefore pre-serialized with
+  `json.dumps(..., default=str)` — because the bare encoder raises `TypeError`
+  on the first `datetime`/`Decimal` — and the codec then serialized that string
+  a SECOND time, storing a JSONB *string scalar*. On 2026-08-27 that shape
+  answered HTTP 500 to GARUDA VOA's first customer action in production, while
+  the integration test passed 10/10 against a real Postgres with the real
+  migration: the test pool had no codec, so test and production disagreed about
+  what a jsonb parameter means.
+
+  This PR is the arming action for `.claude/skills/modus/PENDING-ARMS.md`'s
+  2026-08-27 row, which specified this cure almost verbatim: widen the encoder
+  to `functools.partial(json.dumps, default=str)`, convert the four sites to
+  native containers, add a tripwire.
+constraints:
+  - "The codec widening must be a strict SUPERSET, never a behaviour change:
+    `json.dumps(x)` succeeding implies `json.dumps(x, default=str)` succeeds
+    with byte-identical output. `default=` is consulted only for values that
+    were previously a hard `TypeError`. Nothing that worked can start failing."
+  - "The canonical initializer registers CODECS ONLY. The two production pools
+    and the test fixture all set `statement_timeout='30s'` but `get_db_pool()`
+    does not, and the full pool additionally runs a `SELECT 1`. Folding those
+    into the shared hook would silently change behaviour for a standalone
+    script pool. Codec parity is the invariant that must not drift; the
+    timeouts are per-pool and `prod_shaped_pool.py` already documents them as
+    deliberately NOT mirrored."
+  - "Zero JSONB shape regressions in the GARUDA suites — established by A/B
+    count identity against origin/main, not by argument."
+  - "No client PII in any artifact. The live tests write synthetic rows to a
+    disposable container and clean up in a `finally`."
+  - "No production deploy and no production probe in this PR. Those are carried
+    by a PENDING-ARMS row, not implied by a green CI."
+acceptance:
+  - "`python scripts/lint_test_pool_codec_parity.py --root apps/backend-rag/backend/tests`
+    exits 0 (the spec's own acceptance command, satisfied honestly via a
+    shrink-only enumerated baseline — never by narrowing the scan)."
+  - "The same lint with `--no-baseline` still exits 1, proving the baseline is
+    SUPPRESSING known findings rather than the findings having vanished."
+  - "Guilt RED: a temporary bare-`create_pool` tree exits nonzero and names the
+    offending file AND line; a pre-serialized array reports `jsonb_typeof =
+    'string'` bound bare AND through `::jsonb`."
+  - "Innocence GREEN: a native Python array round-trips as `jsonb_typeof =
+    'array'` with structural equality; a container holding a `datetime` and a
+    `Decimal` inserts successfully (the `default=str` half)."
+  - "GARUDA suites: identical pass/fail/error counts with and without this diff."

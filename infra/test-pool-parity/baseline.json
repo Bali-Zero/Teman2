@@ -1,0 +1,32 @@
+{
+  "_meta": {
+    "generated": "2026-08-30",
+    "generated_by": "scripts/lint_test_pool_codec_parity.py --write-baseline",
+    "why": "These are PRE-EXISTING bare asyncpg.create_pool() calls, discovered when scripts/lint_test_pool_codec_parity.py (L12-PR1, 2026-08-29) shipped -- outside that PR's stated file list, so it fixed the two files it named (apps/backend-rag/backend/tests/routers/) and enumerated the rest here rather than exempting a whole directory (the blanket-exemption anti-pattern test_jsonb_double_encoding_class_guard.py's own header warns against) or leaving the acceptance command permanently red. This list may only SHRINK: fixing a file's bare pool(s) and not lowering its count here is itself a lint failure (a stale baseline is how a registry rots) -- shrink or remove the entry in the SAME diff. A NEW bare pool in an already-listed file still fires, because the count is compared exactly, not just presence/absence."
+  },
+  "apps/backend-rag/backend/tests/app/routers/conftest.py": 1,
+  "apps/backend-rag/backend/tests/app/routers/test_compliance_alerts_router.py": 1,
+  "apps/backend-rag/backend/tests/app/routers/test_compliance_lkpm_readypack.py": 1,
+  "apps/backend-rag/backend/tests/app/routers/test_garuda_orders_ownership.py": 1,
+  "apps/backend-rag/backend/tests/app/routers/test_intake_gate.py": 1,
+  "apps/backend-rag/backend/tests/app/routers/test_intake_gate_mirror.py": 1,
+  "apps/backend-rag/backend/tests/integration/test_wa_broker_pg.py": 1,
+  "apps/backend-rag/backend/tests/scripts/test_wa_media_pull_worker.py": 1,
+  "apps/backend-rag/backend/tests/scripts/test_wa_mirror_intake_sweeper.py": 1,
+  "apps/backend-rag/backend/tests/scripts/visa_engine/test_retention_binders_scope_to_visa_decision.py": 2,
+  "apps/backend-rag/backend/tests/services/compliance/conftest.py": 1,
+  "apps/backend-rag/backend/tests/services/compliance/test_lkpm_ready_pack_automation.py": 1,
+  "apps/backend-rag/backend/tests/services/garuda_ops/test_adapters_pg.py": 1,
+  "apps/backend-rag/backend/tests/services/garuda_portal/test_practice.py": 1,
+  "apps/backend-rag/backend/tests/services/hr/owner_cashout/test_repository.py": 1,
+  "apps/backend-rag/backend/tests/services/hr/owner_cashout/test_sync_service.py": 1,
+  "apps/backend-rag/backend/tests/services/intake/test_drive_autocreate_apply.py": 1,
+  "apps/backend-rag/backend/tests/services/intake/test_intake_enqueue.py": 1,
+  "apps/backend-rag/backend/tests/services/intake/test_intake_routing.py": 1,
+  "apps/backend-rag/backend/tests/services/intake/test_intake_routing_npwp.py": 1,
+  "apps/backend-rag/backend/tests/services/intake/test_intake_worker.py": 1,
+  "apps/backend-rag/backend/tests/services/intake/test_intake_writer.py": 1,
+  "apps/backend-rag/backend/tests/services/intel/conftest.py": 1,
+  "apps/backend-rag/backend/tests/services/visa_engine/conftest.py": 1,
+  "apps/backend-rag/backend/tests/services/visa_engine/test_write_substrate.py": 1
+}
