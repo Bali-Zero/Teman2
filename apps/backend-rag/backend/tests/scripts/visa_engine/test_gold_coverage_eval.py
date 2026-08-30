@@ -10,6 +10,10 @@ from typing import Any
 import pytest
 
 from backend.scripts.visa_engine import gold_coverage_eval as gce
+from backend.scripts.visa_engine.gold_replay_driver import (
+    PACKS_DIR,
+    select_highest_repository_pack,
+)
 
 #: Every ``FactPath``/baseline key this CLI ever emits is a two-segment
 #: dotted lower_snake_case string (e.g. ``person.birth_date``) — the CLI's
@@ -99,7 +103,28 @@ def test_persona_gold_7_spouse_resolves_to_e31a_candidate(
         encoding="utf-8",
     )
 
-    exit_code = gce.main(["--persona", str(persona_path)])
+    # PINNED to the selected pack's own created_at, never the wall clock: the
+    # highest signed pack's source_records carry a freshness_policy
+    # (MAX_AGE_SINCE_VERIFIED_AT) with as little as a 604800s (7-day) window,
+    # so calling `gce.main` without `--as-of` evaluates at datetime.now(UTC) —
+    # a clock bomb guaranteed to go stale exactly 7 days after the newest
+    # source's verified_at, with zero code change. It took the ENTIRE merge
+    # queue down on 2026-08-30 (verified_at 2026-08-23T10:44:48Z + 604800s =
+    # 2026-08-30T10:44:48Z). At that instant the engine correctly started
+    # returning HUMAN_REVIEW_REQUIRED — the engine was right, the wall-clock
+    # evaluation was the bug. `--as-of` is the new optional CLI flag (default
+    # None = unchanged production behaviour) added to gold_coverage_eval.py
+    # specifically so this test can pin the instant deterministically.
+    # `signed_at` (not `payload.created_at`) — `--as-of` also drives
+    # `verify_rule_pack`'s `observed_at`, which rejects a signature dated
+    # AFTER the observation instant beyond a 5-minute tolerance; a pack is
+    # always signed strictly after its payload's created_at, so anchoring on
+    # created_at here trips that separate check. `signed_at` sits inside both
+    # windows (signature validity AND the sources' freshness window).
+    _, raw_pack = select_highest_repository_pack(PACKS_DIR)
+    as_of = raw_pack["protected"]["signed_at"]
+
+    exit_code = gce.main(["--persona", str(persona_path), "--as-of", as_of])
 
     assert exit_code == 0
     out = _parse_json_stdout(capsys.readouterr().out)
