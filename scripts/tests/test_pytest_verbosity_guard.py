@@ -191,15 +191,42 @@ def test_an_exempt_root_is_not_reported(tmp_path: Path) -> None:
 # --------------------------------------------------------------------------
 
 #: Files that actually execute (or instruct someone to execute) pytest.
+#:
+#: `apps/**/*.py` and `scripts/**/*.py` were added 2026-08-30, after this
+#: scan was found to have no `*.py` glob at all: the Python population this
+#: verbosity-guard PR is named for had been swept by hand (a targeted
+#: `grep`, not this check), so a Python call site that ALSO used
+#: `--noconftest` would have gone undetected by both the live guard (blind
+#: by construction to `--noconftest`) and this static scanner (blind for
+#: lack of a glob) — a defect generator, not merely a gap. Scoped to
+#: `apps/`/`scripts/` rather than a bare `**/*.py`: those are the two
+#: directories this PR's own hand-swept population lives in, and a
+#: repo-wide glob would additionally walk vendored/virtualenv trees this
+#: check has no business reading.
 _SCANNED_GLOBS = (
     ".github/workflows/*.yml",
     ".github/workflows/*.yaml",
     "scripts/**/*.sh",
+    "scripts/**/*.py",
     "infra/**/*.sh",
+    "apps/**/*.py",
     "Makefile",
 )
 
 _QUIET_FLAGS = ("-q", "-qq", "-qqq", "--quiet")
+
+
+#: This scanner reads raw source text, not executed strings — so once the
+#: `*.py` globs above made it scan `scripts/tests/`, it started reading its
+#: OWN fixture literals as if they were real invocations: a test string that
+#: DEMONSTRATES a guilty line (`test_the_call_site_scan_can_actually_report_one`)
+#: and a test string that deliberately CONTAINS the words "pytest"/"--noconftest"/
+#: "-q" to prove the scanner leaves a non-pytest line alone
+#: (`test_the_call_site_scan_leaves_innocent_lines_alone`'s `.replace("pytest",
+#: "pytst")` case) both matched, measured 2026-08-30. Self-exclusion, not a
+#: directory-wide carve-out: other files under `scripts/` genuinely invoke
+#: pytest for real and must stay in scope.
+_SELF_PATH = Path(__file__).resolve()
 
 
 def _quiet_noconftest_call_sites(root: Path) -> list[str]:
@@ -207,7 +234,7 @@ def _quiet_noconftest_call_sites(root: Path) -> list[str]:
     findings: list[str] = []
     for pattern in _SCANNED_GLOBS:
         for path in sorted(root.glob(pattern)):
-            if not path.is_file():
+            if not path.is_file() or path.resolve() == _SELF_PATH:
                 continue
             for number, line in enumerate(
                 path.read_text(encoding="utf-8", errors="replace").splitlines(), 1
@@ -219,25 +246,31 @@ def _quiet_noconftest_call_sites(root: Path) -> list[str]:
     return findings
 
 
-#: The ONE invocation in this repo that the guard cannot see, pinned here on
-#: purpose rather than hidden. It is a `--collect-only` importability gate, and
-#: it is NOT blind: measured 2026-08-29 at effective verbosity -2, pytest still
-#: exits 5 on "no tests collected" and 2 on a collection error, and that step's
-#: exit code is what the job fails on. What it loses is the readable listing.
+#: `.github/workflows/p3-sandbox-gates.yml:125` was the ONE invocation in this
+#: repo the guard could not see — a `--collect-only` importability gate that
+#: was NOT actually blind to failure (measured 2026-08-29 at effective
+#: verbosity -2, pytest still exits 5 on "no tests collected" and 2 on a
+#: collection error, and that step's exit code is what the job fails on; what
+#: it lost was the readable listing) — but its `-q` was still redundant, since
+#: that root's own `pytest.ini` addopts already carries one.
 #:
-#: Its `-q` is not removed here because the file lives under `.github/workflows/`,
-#: which is a hot-zone path: touching it moves this PR's deterministic gear floor
-#: from 2 to 3 and demands a full Gear-3 evidence pack for a one-word deletion.
-#: Tracked as its own row in `.claude/skills/modus/PENDING-ARMS.md`.
-KNOWN_UNGUARDABLE_CALL_SITES = (".github/workflows/p3-sandbox-gates.yml:125",)
+#: A prior version of this comment justified leaving it in place by claiming
+#: touching it would move this PR's deterministic gear floor from 2 to 3 —
+#: false: this PR's floor was already 3, from the hot-zone-path term alone,
+#: because it already edits `fly-deploy.yml` and `tests.yml`. There was no
+#: real reason left to keep the `-q`, so it was dropped 2026-08-30 (same PR)
+#: and this set is pinned to empty rather than removed outright, so a NEW
+#: quiet+`--noconftest` invocation still turns this characterisation test red
+#: instead of silently widening scope.
+KNOWN_UNGUARDABLE_CALL_SITES: tuple[str, ...] = ()
 
 
 def test_no_new_invocation_goes_quiet_behind_noconftest() -> None:
     """`--noconftest` skips the guard, so these need their own check.
 
-    Pinned to the known set, not to the empty set: a characterisation test that
-    admits the one exception is honest, and it still goes red the moment a
-    SECOND such invocation is committed — which is the whole point.
+    Pinned to the empty tuple: every invocation this scan can see is clean.
+    Stays a real assertion, not a vacuous one — it goes red the moment ANY
+    quiet+`--noconftest` invocation is committed, known or new.
     """
     findings = _quiet_noconftest_call_sites(REPO_ROOT)
     assert findings == list(KNOWN_UNGUARDABLE_CALL_SITES), (
