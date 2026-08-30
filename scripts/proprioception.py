@@ -892,12 +892,22 @@ def _tri_state_evidence(data: object) -> tuple[int, list[str]]:
     body only enriches the report.
     """
     if isinstance(data, dict):
-        ev = [str(x)[:160] for x in data.get("evidence", []) if x][:5]
+        raw = data.get("evidence")
+        # A STRING is not a list of findings. Iterating one yields its CHARACTERS:
+        # measured, {"evidence": "100.107.22.111"} produced 5 "findings"
+        # ['1','0','0','.','1'] — a count and a body that are both nonsense, and a
+        # fragment of an address in the report besides. Found by blind cross-family
+        # refutation (Kimi K3).
+        ev = [str(x)[:160] for x in raw if x][:5] if isinstance(raw, list) else []
         reason = data.get("reason")
         if reason and not ev:
             ev = [str(reason)[:160]]
-        return (len(ev) or 1), ev
-    return 1, []
+        # `len(ev) or 1` claimed ONE finding while showing NONE. The count must
+        # describe what is actually there; a DIVERGED verdict with no legible
+        # evidence is honestly reported as 1 unexplained finding only when the probe
+        # gave us nothing at all, and that is what the caller passes through.
+        return len(ev), ev
+    return 0, []
 
 
 def run_wrap(root: Path, entry: dict, timeout: int) -> tuple[str, int, list[str]]:
@@ -932,10 +942,25 @@ def run_wrap(root: Path, entry: dict, timeout: int) -> tuple[str, int, list[str]
         # from a tool that promised three is schema drift, and schema drift must not
         # normalize into a verdict (the same rule findings_list follows above).
         if rc == 0:
+            # The exit code is authoritative, but a body that CONTRADICTS it is a
+            # contract violation, not enrichment — and the docstring's claim that
+            # "the body only enriches" was enforced in one direction only: rc=2 with
+            # a CLEAN body was tested, rc=0 with a BLIND body was not. A probe that
+            # exits 0 while printing BLIND has not agreed with itself, and filing
+            # that as RECONCILED is exactly the "green over an unknown" this parse
+            # mode exists to prevent. Found by blind cross-family refutation (Kimi K3).
+            body = _lenient_json(out)
+            if isinstance(body, dict):
+                stated = str(body.get("verdict", "")).upper()
+                if stated and stated not in ("CLEAN", "RECONCILED", "OK"):
+                    return UNPROBEABLE, 0, [
+                        f"probe exited 0 but its body says {stated!r} — exit code and "
+                        "body disagree, so neither is trusted"
+                    ]
             return RECONCILED, 0, []
         if rc == 1:
             n, ev = _tri_state_evidence(_lenient_json(out))
-            return DIVERGED, n, ev
+            return DIVERGED, (n or 1), ev
         if rc == 2:
             _, ev = _tri_state_evidence(_lenient_json(out))
             return UNPROBEABLE, 0, ev or [f"probe reported BLIND (exit {rc})"]
@@ -1005,9 +1030,12 @@ DEFAULT_REGISTRY: list[dict] = [
                      "Tailscale admin console (operator[GUI], runbook "
                      "docs/runbooks/tailnet-acl-apply.md) -- do NOT try to close it from "
                      "a session, and do NOT apply policy from this tool: it observes "
-                     "only. BLIND means the enforced state could not be read at all "
-                     "(no tailscale CLI, unreadable netmap, or insufficient "
-                     "permission); that is a visibility problem, not drift."),
+                     "only. BLIND means no comparison was made -- usually lost "
+                     "visibility (no tailscale CLI, unreadable netmap, insufficient "
+                     "permission) but ALSO a tool-side limit: an unparseable policy, a "
+                     "netmap schema this parser does not know, a self-contradictory "
+                     "prefix, or an unexpected crash. Read the reason field; it names "
+                     "which. Either way it is NOT drift, and no healer should act on it."),
     },
     {
         "id": "git_alignment", "type": "builtin", "target": "git_alignment",

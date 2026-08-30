@@ -4,6 +4,7 @@ import importlib.util
 import json
 import pytest
 import re
+import tempfile
 import subprocess
 import sys
 from pathlib import Path
@@ -273,6 +274,140 @@ def test_a_blind_reason_carrying_an_address_is_redacted() -> None:
 
     assert "100.107.22.111" not in completed.stdout
     assert json.loads(completed.stdout)["reason"] == "redacted-sensitive-evidence"
+
+
+def test_an_unexpected_crash_is_BLIND_not_DIVERGED() -> None:
+    """`main` caught only BlindError, so any other exception exited 1 — and exit 1 IS
+    DIVERGED. The harness then filed real, actionable drift for a probe that had
+    determined nothing, with zero evidence to explain it. A crash is not a finding."""
+    deep = '{"hosts":{"db":"10.0.0.1"},"acls":' + "[" * 400 + "]" * 400 + "}"
+    policy = Path(tempfile.mkstemp(suffix=".hujson")[1])
+    policy.write_text(deep, encoding="utf-8")
+    try:
+        completed = subprocess.run(
+            [sys.executable, str(SCRIPT), "--policy", str(policy),
+             "--netmap-fixture", str(ALLOW_ALL)],
+            capture_output=True, check=False, text=True)
+        assert completed.returncode == 2, completed.stderr[:400]
+        assert json.loads(completed.stdout)["verdict"] == "BLIND"
+        assert "Traceback" not in completed.stderr
+    finally:
+        policy.unlink(missing_ok=True)
+
+
+def test_any_unexpected_exception_is_BLIND_and_leaks_no_message(capsys, monkeypatch) -> None:
+    """The RecursionError case above exercises a NAMED clause. This one exercises the
+    generic backstop, which is the whole point of it: every malformed policy I could
+    craft is already caught as BlindError (the validation is thorough), so the only
+    honest way to reach the backstop is to force an exception it was never told about.
+
+    Also pins that `str(error)` is NOT emitted: an exception message is the likeliest
+    place for an address or a filesystem path to appear, and this output lands in a
+    public repo. The type name is enough to find the cause.
+    """
+    module = load_module()
+
+    def explode(*_args, **_kwargs):
+        raise RuntimeError("boom /Users/someone/secret-path 100.107.22.111")
+
+    monkeypatch.setattr(module, "policy_shapes", explode)
+    status = module.main(["--policy", str(POLICY), "--netmap-fixture", str(ALLOW_ALL)])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert status == 2
+    assert payload["verdict"] == "BLIND"
+    assert payload["reason"] == "UNEXPECTED_RuntimeError"
+    assert "boom" not in json.dumps(payload)
+    assert "100.107.22.111" not in json.dumps(payload)
+
+
+def test_coverage_canonicalisation_is_actually_WIRED_to_the_verdict(tmp_path: Path) -> None:
+    """The unit test above proves canonical_coverage() computes the right thing; this
+    one proves main() USES it. Reverting the call site to a raw set comparison left
+    every other case green — a fix that is correct and unreachable is not a fix."""
+    policy = tmp_path / "split.hujson"
+    policy.write_text(
+        '{"hosts":{"db":"10.1.0.0/24"},'
+        '"acls":[{"action":"accept","proto":"tcp","src":["*"],"dst":["db:5432-5433"]}]}',
+        encoding="utf-8")
+    netmap = tmp_path / "split-netmap.json"
+    netmap.write_text(json.dumps({"PacketFilter": [{
+        "Srcs": ["0.0.0.0/0"], "SrcCaps": None, "Caps": [], "IPProto": [6],
+        "Dsts": [{"Net": "10.1.0.0/24", "Ports": {"First": 5432, "Last": 5432}},
+                 {"Net": "10.1.0.0/24", "Ports": {"First": 5433, "Last": 5433}}]}]}),
+        encoding="utf-8")
+
+    completed = subprocess.run(
+        [sys.executable, str(SCRIPT), "--policy", str(policy),
+         "--netmap-fixture", str(netmap)],
+        capture_output=True, check=False, text=True)
+
+    assert completed.returncode == 0, completed.stdout
+    assert json.loads(completed.stdout)["verdict"] == "CLEAN"
+
+
+def test_star_destination_resolves_instead_of_going_blind(tmp_path: Path) -> None:
+    """`*:*` is the commonest ACL spelling and it is unambiguous. Treating it as an
+    unknown host alias made the tool answer BLIND on a fully readable, VALID policy —
+    and made the registry's fix_hint ("BLIND means the enforced state could not be
+    read") false, because the cause was a tool-side gap, not lost visibility."""
+    policy = tmp_path / "star.hujson"
+    policy.write_text(
+        '{"hosts":{"db":"10.1.0.0/24"},'
+        '"acls":[{"action":"accept","proto":"tcp","src":["*"],"dst":["*:*"]}]}',
+        encoding="utf-8")
+    completed = subprocess.run(
+        [sys.executable, str(SCRIPT), "--policy", str(policy),
+         "--netmap-fixture", str(ALLOW_ALL)],
+        capture_output=True, check=False, text=True)
+
+    assert completed.returncode != 2, "a resolvable policy must not be BLIND"
+    assert json.loads(completed.stdout)["verdict"] in ("CLEAN", "DIVERGED")
+
+
+def test_a_broad_source_is_not_called_specific() -> None:
+    """The comparison is source-blind by construction, but the one source signal it DOES
+    carry must not point the wrong way: `autogroup:member` is every user device on the
+    tailnet, and calling that "specific-source" let a tailnet-wide grant read like a
+    single named host."""
+    module = load_module()
+    assert module._source_class(["autogroup:member"]) == "broad-source"
+    assert module._source_class(["group:eng"]) == "broad-source"
+    assert module._source_class(["100.64.0.1"]) == "specific-source"
+    assert module._source_class(["*"]) == "any-source"
+
+
+def test_a_comment_is_whitespace_not_nothing() -> None:
+    """Deleting a comment outright concatenates the tokens on either side: `{"a": 1/**/2}`
+    became `{"a": 12}`, which parses cleanly as a DIFFERENT document with a different
+    value and a different fingerprint. Invalid input must cost visibility, never be
+    silently reinterpreted into a valid document."""
+    module = load_module()
+    assert module.strip_hujson('{"a": 1/**/2}') == '{"a": 1 2}'
+    with pytest.raises(module.BlindError):
+        module.parse_hujson('{"a": 1/**/2}')
+
+
+def test_identical_coverage_split_differently_is_CLEAN_not_DIVERGED() -> None:
+    """Whether this receptor can EVER report CLEAN after an operator applies the policy
+    must not depend on how tailscaled happens to split port ranges and protocol lists.
+    A CLEAN signal unstable under the applicator's own normalisation is one nobody can
+    trust; a receptor permanently stuck on DIVERGED is one people learn to ignore."""
+    module = load_module()
+    shape = module.RuleShape
+    one_range = {shape("specific-source", "10.1.0.0/24", 5432, 5433, (6,))}
+    split_range = {shape("specific-source", "10.1.0.0/24", 5432, 5432, (6,)),
+                   shape("specific-source", "10.1.0.0/24", 5433, 5433, (6,))}
+    one_proto = {shape("specific-source", "10.1.0.0/24", 22, 22, (6, 17))}
+    split_proto = {shape("specific-source", "10.1.0.0/24", 22, 22, (6,)),
+                   shape("specific-source", "10.1.0.0/24", 22, 22, (17,))}
+    with_gap = {shape("specific-source", "10.1.0.0/24", 5432, 5432, (6,)),
+                shape("specific-source", "10.1.0.0/24", 5435, 5435, (6,))}
+
+    assert module.canonical_coverage(one_range) == module.canonical_coverage(split_range)
+    assert module.canonical_coverage(one_proto) == module.canonical_coverage(split_proto)
+    # ...and a real GAP must still differ, or the merge has erased a difference.
+    assert module.canonical_coverage(one_range) != module.canonical_coverage(with_gap)
 
 
 def test_policy_fingerprint_is_stable_and_changes_with_policy_content(tmp_path: Path) -> None:

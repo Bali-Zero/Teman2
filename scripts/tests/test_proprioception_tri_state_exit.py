@@ -117,6 +117,33 @@ def test_unparseable_body_does_not_override_the_exit_code() -> None:
     assert ev  # still says something, even with no parseable body
 
 
+def test_a_string_evidence_body_is_not_iterated_as_characters() -> None:
+    """`evidence` must be a LIST. Iterating a string yields its characters: measured,
+    {"evidence": "100.107.22.111"} produced 5 "findings" — ['1','0','0','.','1'] — a
+    count and a body that are both nonsense, plus a fragment of an address in the
+    report. Mutation it survives: dropping the isinstance(list) check."""
+    status, n, ev = _run(1, json.dumps({"verdict": "DIVERGED", "evidence": "100.107.22.111"}))
+    assert status == prop.DIVERGED
+    assert ev == [], ev
+    assert n == 1, "a DIVERGED verdict with no legible evidence is one unexplained finding"
+
+
+def test_exit_zero_with_a_contradicting_body_is_unprobeable() -> None:
+    """The exit code is authoritative, but a body that CONTRADICTS it means the probe
+    has not agreed with itself. Filing that as RECONCILED is green-over-an-unknown,
+    the exact thing this parse mode exists to prevent — and the symmetry was enforced
+    in one direction only (rc=2 with a CLEAN body was tested; rc=0 with a BLIND body
+    was not)."""
+    status, _, ev = _run(0, json.dumps({"verdict": "BLIND", "reason": "no netmap"}))
+    assert status == prop.UNPROBEABLE
+    assert status != prop.RECONCILED
+    assert any("disagree" in e for e in ev), ev
+
+    # An agreeing body, or no body at all, still reconciles.
+    assert _run(0, json.dumps({"verdict": "CLEAN"}))[0] == prop.RECONCILED
+    assert _run(0, "")[0] == prop.RECONCILED
+
+
 def test_unexpected_exit_code_is_unprobeable_never_diverged() -> None:
     """A tool that promised three states and returned a fourth has drifted from its
     contract, and schema drift must not normalize into a verdict — the same rule

@@ -100,11 +100,20 @@ def strip_hujson(source: str) -> str:
             index += 2
             while index < len(source) and source[index] not in "\r\n":
                 index += 1
+            # A comment is WHITESPACE, not nothing. Deleting it outright concatenates
+            # the tokens on either side: measured, `{"a": 1/**/2}` became `{"a": 12}`,
+            # which parses cleanly as a DIFFERENT document with a different value and a
+            # different fingerprint. The input is invalid HuJSON, and the contract is
+            # that invalid input costs visibility (BLIND) -- silently reinterpreting it
+            # into a valid document is the one outcome that contract forbids. Found by
+            # blind cross-family refutation (Kimi K3).
+            without_comments.append(" ")
         elif character == "/" and following == "*":
             end = source.find("*/", index + 2)
             if end == -1:
                 raise BlindError("POLICY_HUJSON_UNTERMINATED_COMMENT")
             index = end + 2
+            without_comments.append(" ")
         else:
             without_comments.append(character)
             index += 1
@@ -187,6 +196,15 @@ def _policy_protocols(value: Any) -> tuple[int, ...]:
         raise BlindError("POLICY_PROTOCOL_SHAPE_UNSUPPORTED") from error
 
 
+#: Policy source tokens that mean "many principals", not one named host. Classifying
+#: these as "specific-source" let a tailnet-wide grant (`autogroup:member`) compare
+#: equal to a /16 of strangers -- the comparison is already source-blind by
+#: construction (see COMPARISON_SCOPE), and calling a broad grant "specific" made the
+#: one source signal it DOES carry point the wrong way. Found by blind cross-family
+#: refutation (Kimi K3).
+_BROAD_SOURCE_PREFIXES = ("autogroup:", "group:", "tag:")
+
+
 def _source_class(sources: list[Any]) -> str:
     if not sources or not all(isinstance(source, str) for source in sources):
         raise BlindError("POLICY_SOURCE_SHAPE_UNSUPPORTED")
@@ -194,6 +212,8 @@ def _source_class(sources: list[Any]) -> str:
         if len(sources) != 1:
             raise BlindError("POLICY_SOURCE_SHAPE_UNSUPPORTED")
         return "any-source"
+    if any(source.startswith(_BROAD_SOURCE_PREFIXES) for source in sources):
+        return "broad-source"
     return "specific-source"
 
 
@@ -234,10 +254,19 @@ def policy_shapes(policy: dict[str, Any]) -> set[RuleShape]:
             first_port, last_port = _parse_port_range(port_text)
             if target.startswith("tag:"):
                 continue
-            try:
-                target_network = host_networks[target]
-            except KeyError as error:
-                raise BlindError("POLICY_DESTINATION_SHAPE_UNSUPPORTED") from error
+            if target == "*":
+                # "*:*" is the commonest ACL spelling and it is not ambiguous: it means
+                # every address. Treating it as an unknown host alias made the tool
+                # answer BLIND on a fully readable, VALID policy -- and made the
+                # registry fix_hint ("BLIND means the enforced state could not be
+                # read") false, since the cause was a tool-side gap rather than lost
+                # visibility. Found by blind cross-family refutation (Kimi K3).
+                target_network = "0.0.0.0/0"
+            else:
+                try:
+                    target_network = host_networks[target]
+                except KeyError as error:
+                    raise BlindError("POLICY_DESTINATION_SHAPE_UNSUPPORTED") from error
             shapes.add(RuleShape(source, target_network, first_port, last_port, protocols))
     if not shapes:
         raise BlindError("POLICY_HAS_NO_CONCRETE_ACL_SHAPES")
@@ -250,6 +279,14 @@ def _netmap_source_class(value: Any) -> str:
     if "*" in value:
         if len(value) != 1:
             raise BlindError("NETMAP_SOURCE_SHAPE_UNSUPPORTED")
+        return "any-source"
+    # A default route IS "any", however it is spelled. The netmap expresses sources as
+    # CIDRs, so an allow-all filter arrives as 0.0.0.0/0 (and ::/0), never as the
+    # literal "*" the policy side uses -- classifying those as "specific-source" made
+    # the two sides disagree about a rule they both call universal. Found while writing
+    # the test that proves coverage-canonicalisation is wired to the verdict: the
+    # fixture was correct and the classifier was not.
+    if any(source in ("0.0.0.0/0", "::/0") for source in value):
         return "any-source"
     for source in value:
         try:
@@ -371,6 +408,45 @@ def netmap_shapes(netmap: Any) -> set[RuleShape]:
     if not shapes:
         raise BlindError("NETMAP_PACKET_FILTER_EMPTY")
     return shapes
+
+
+def canonical_coverage(shapes: set[RuleShape]) -> frozenset[tuple[str, str, int, int, int]]:
+    """Reduce a set of rule shapes to the ACCESS THEY ACTUALLY GRANT.
+
+    Two filters that permit exactly the same traffic must compare equal, and before
+    this they did not: a policy declaring `db:5432-5433` compared DIVERGED against an
+    enforced pair of `{5432,5432}` and `{5433,5433}` on the same network and protocol
+    — identical coverage, split differently. Same for protocol lists: one rule listing
+    [6, 17] versus two rules listing [6] and [17].
+
+    That is not a cosmetic mismatch. Whether this receptor can EVER report CLEAN after
+    an operator correctly applies policy.hujson would otherwise depend on how tailscaled
+    happens to split ranges and protocol lists — a CLEAN signal that is unstable under
+    the applicator's own normalisation is a CLEAN signal nobody can trust, and a
+    receptor permanently stuck on DIVERGED is one people learn to ignore. Found by
+    blind cross-family refutation (Kimi K3).
+
+    The canonical form splits every shape per-protocol, then merges overlapping and
+    ADJACENT port intervals per (source-class, destination, protocol). Adjacency
+    matters as much as overlap: 5432-5432 and 5433-5433 touch without overlapping.
+    """
+    by_key: dict[tuple[str, str, int], list[tuple[int, int]]] = {}
+    for shape in shapes:
+        for protocol in shape.protocols:
+            by_key.setdefault((shape.source_class, shape.destination, protocol), []).append(
+                (shape.first_port, shape.last_port)
+            )
+    canonical: set[tuple[str, str, int, int, int]] = set()
+    for (source_class, destination, protocol), intervals in by_key.items():
+        merged: list[list[int]] = []
+        for first, last in sorted(intervals):
+            if merged and first <= merged[-1][1] + 1:
+                merged[-1][1] = max(merged[-1][1], last)
+            else:
+                merged.append([first, last])
+        for first, last in merged:
+            canonical.add((source_class, destination, protocol, first, last))
+    return frozenset(canonical)
 
 
 def sanitize_evidence(value: str) -> str:
@@ -514,9 +590,32 @@ def main(argv: list[str] | None = None) -> int:
         enforced = netmap_shapes(netmap)
     except BlindError as error:
         return emit_result(VERDICT_BLIND, fingerprint, reason=str(error))
+    except RecursionError:
+        # Named separately because str() on it is unhelpful and the traceback is huge.
+        return emit_result(VERDICT_BLIND, fingerprint, reason="POLICY_TOO_DEEPLY_NESTED")
+    except Exception as error:  # noqa: BLE001 -- deliberate, see below
+        # ANY unexpected failure is BLIND, never a crash.
+        #
+        # Before this, `main` caught only BlindError, so an unhandled exception left a
+        # traceback on stderr and exited 1 — and exit 1 is DIVERGED. The harness then
+        # filed real, actionable drift for a probe that had determined nothing at all,
+        # with zero evidence lines to explain it. Measured by blind cross-family
+        # refutation (Kimi K3) with a deeply-nested policy: RecursionError, empty
+        # stdout, exit 1, reported as drift.
+        #
+        # A bare `except Exception` is usually a smell; here it is the contract. This
+        # process has exactly three legal answers and "crashed" is not among them, so
+        # every path that is not a determination must land on the one that means "I
+        # could not look". The type name is included so the cause is still findable;
+        # str(error) is NOT, because an exception message is the most likely place for
+        # an address or path to appear and it would then reach a public artifact.
+        return emit_result(VERDICT_BLIND, fingerprint,
+                           reason=f"UNEXPECTED_{type(error).__name__}")
 
     evidence = [describe_shapes("declared", declared), describe_shapes("enforced", enforced)]
-    verdict = VERDICT_CLEAN if declared == enforced else VERDICT_DIVERGED
+    # Compared as COVERAGE, not as rule bookkeeping: see canonical_coverage.
+    verdict = (VERDICT_CLEAN if canonical_coverage(declared) == canonical_coverage(enforced)
+               else VERDICT_DIVERGED)
     return emit_result(verdict, fingerprint, evidence)
 
 
