@@ -453,6 +453,192 @@ def test_price_split_veto_runs_regardless_of_price_sources() -> None:
     assert "\n    split = price_split_offenders(text)" in src
 
 
+# ── Split-price veto redesign — cross-family refuter findings (2026-08-31) ──
+#
+# codex gpt-5.6-sol (xhigh, dispatched on the diff WITHOUT the brief) returned
+# BLOCK with 15 findings; 14 reproduced verbatim against this function. Each
+# guilt case below pins one of those 14. F14b is the one finding that did NOT
+# reproduce — it is pinned as a DECLARED RESIDUAL, not fixed.
+
+
+def test_price_split_veto_catches_pnbp_with_a_negated_inclusion_clause() -> None:
+    # F3: "tidak termasuk dalam" is a NEGATED inclusion — must not exempt.
+    assert "pnbp" in price_split_offenders(
+        "Harga paket kami Rp17.000.000. PNBP Rp9.500.000 tidak termasuk "
+        "dalam harga tersebut."
+    )
+
+
+def test_price_split_veto_catches_pnbp_beside_an_unrelated_inclusion_clause() -> None:
+    # F4: an inclusion phrase about something ELSE ("konsultasi") must not
+    # exempt a levy it never referred to.
+    assert "pnbp" in price_split_offenders(
+        "Biaya kami Rp17.000.000 sudah termasuk konsultasi, tetapi PNBP "
+        "Rp9.500.000 dibayar terpisah."
+    )
+
+
+def test_price_split_veto_catches_government_fee_not_all_inclusive() -> None:
+    # F5: "not all-inclusive" is a negated inclusion, not an inclusion.
+    assert "government_fee" in price_split_offenders(
+        "Our fee is IDR 17,000,000. This is not all-inclusive: the "
+        "government fee of IDR 9,500,000 is billed separately."
+    )
+
+
+def test_price_split_veto_catches_pnbp_official_expansion_wording() -> None:
+    # F6: "Penerimaan Negara Bukan Pajak" is PNBP's own official expansion.
+    assert "pnbp" in price_split_offenders(
+        "Penerimaan Negara Bukan Pajak sebesar Rp9.500.000 dibayar "
+        "terpisah dari biaya layanan Rp17.000.000."
+    )
+
+
+def test_price_split_veto_catches_biaya_imigrasi() -> None:
+    # F7: "biaya imigrasi" is a natural way to bill a client for a levy.
+    assert "biaya_imigrasi" in price_split_offenders(
+        "Biaya layanan Rp17.000.000, biaya imigrasi Rp9.500.000 dibayar "
+        "terpisah."
+    )
+
+
+def test_price_split_veto_catches_tarif_resmi_on_a_bulleted_line() -> None:
+    # F8: WhatsApp bullet — marker and amount on the same line.
+    assert "tarif_resmi" in price_split_offenders(
+        "Biaya layanan kami Rp17.000.000\n- tarif resmi: Rp9.500.000 "
+        "(dibayar terpisah)"
+    )
+
+
+def test_price_split_veto_catches_pnbp_split_across_bullet_lines() -> None:
+    # F9: label and amount on separate WhatsApp bullet lines — the sentence
+    # segmenter that used to sever this pairing is gone by design.
+    assert "pnbp" in price_split_offenders(
+        "Rincian:\n- Biaya layanan: Rp17.000.000\n- PNBP:\n  Rp9.500.000 "
+        "(di luar harga)"
+    )
+
+
+def test_price_split_veto_catches_pnbp_reordered_amount_after_separation() -> None:
+    # F10: the separation phrase precedes the amount instead of following it.
+    assert "pnbp" in price_split_offenders(
+        "Total biaya layanan kami Rp17.000.000. PNBP dibayar terpisah, "
+        "yaitu Rp9.500.000."
+    )
+
+
+def test_price_split_veto_catches_biaya_pemerintah_past_an_abbreviation() -> None:
+    # F11: an Indonesian regulation abbreviation ("PP No. 28") used to split
+    # a marker away from its amount under sentence segmentation.
+    assert "biaya_pemerintah" in price_split_offenders(
+        "Sesuai PP No. 28 Tahun 2019, biaya pemerintah adalah Rp9.500.000 "
+        "dan dibayar terpisah dari biaya kami Rp17.000.000."
+    )
+
+
+def test_price_split_veto_catches_pnbp_across_fullwidth_ideographic_stop() -> None:
+    # F13: a full-width ideographic full stop (U+3002) failed to split the
+    # old sentence segmenter, letting one sentence's inclusion wording exempt
+    # another sentence's split levy.
+    assert "pnbp" in price_split_offenders(
+        "Biaya layanan kami Rp17.000.000。PNBP Rp9.500.000 dibayar terpisah。"
+    )
+
+
+def test_price_split_veto_still_catches_government_fee_charged_separately() -> None:
+    # F14a: already fired before the redesign — pinned so it is never
+    # "fixed" again.
+    assert "government_fee" in price_split_offenders(
+        "Our service fee is EUR 1,050. The government fee of EUR 580 is "
+        "charged separately."
+    )
+
+
+def test_price_split_veto_catches_pnbp_with_a_real_nbsp_before_the_digits() -> None:
+    # F14c: WhatsApp text copied from a price list carries a real NBSP
+    # (U+00A0) between the currency marker and the digits — written here as
+    # an explicit \xa0 escape so it is visible to a reader.
+    assert "pnbp" in price_split_offenders(
+        "Biaya layanan kami Rp\xa017.000.000. PNBP Rp\xa09.500.000 dibayar "
+        "terpisah."
+    )
+
+
+def test_price_split_veto_survives_pnbp_stated_as_already_included() -> None:
+    # F1: a true inclusion statement must not fire.
+    assert (
+        price_split_offenders(
+            "Biaya paket Rp17.000.000, PNBP telah termasuk di dalamnya."
+        )
+        == []
+    )
+
+
+def test_price_split_veto_survives_biaya_pemerintah_no_additional_charges() -> None:
+    # F2: "all-inclusive" and "tidak ada biaya tambahan" ("no additional
+    # charges") both MEAN inclusion, despite the negator in the second one.
+    assert (
+        price_split_offenders(
+            "Biaya kami Rp17.000.000 all-inclusive; biaya pemerintah tidak "
+            "ada biaya tambahan."
+        )
+        == []
+    )
+
+
+def test_price_split_veto_survives_pnbp_included_in_an_itemized_list() -> None:
+    # F12: an itemized inclusion statement must not fire.
+    assert (
+        price_split_offenders(
+            "Rincian biaya: 1) Biaya layanan Rp17.000.000 sudah termasuk PNBP."
+        )
+        == []
+    )
+
+
+def test_price_split_veto_declared_residual_no_currency_marked_amount() -> None:
+    # F14b: KNOWN, DELIBERATE residual inherited from the first cut — NOT a
+    # regression. The amounts are spelled out in words ("tujuh belas juta
+    # rupiah", "sembilan juta lima ratus ribu rupiah") rather than digits, so
+    # `_CURRENCY_AMOUNT_RE` — which requires a currency-marked numeral — can
+    # never see them and this veto cannot fire on this text.
+    assert (
+        price_split_offenders(
+            "Biaya layanan kami tujuh belas juta rupiah, PNBP sembilan juta "
+            "lima ratus ribu rupiah dibayar terpisah."
+        )
+        == []
+    )
+
+
+def test_price_split_innocent_live_all_in_english_breakdown() -> None:
+    # Measured live 2026-08-30, wa_outbox row 385 — a correct all-in answer
+    # must never be vetoed. The bare verb "includes" and "all-in" (distinct
+    # from "all-inclusive") were missing from the inclusion vocabulary.
+    assert (
+        price_split_offenders(
+            "For a 2-year Investor KITAS, the all-in total is IDR 26.5m "
+            "offshore, IDR 28.5m onshore/transfer of status, or IDR 27.5m "
+            "for an extension. This includes our service fee plus the IDR "
+            "9.5m government fee."
+        )
+        == []
+    )
+
+
+def test_price_split_innocent_live_all_in_indonesian_breakdown() -> None:
+    # Measured live 2026-08-30, wa_outbox row 385 — a correct all-in answer
+    # must never be vetoed.
+    assert (
+        price_split_offenders(
+            "Total all-in KITAS Investor 2 tahun Rp26.500.000. Nilai ini "
+            "sudah mencakup biaya layanan kami dan PNBP pemerintah "
+            "Rp9.500.000."
+        )
+        == []
+    )
+
+
 def test_pricing_veto_idr_and_usd_behave_exactly_as_before() -> None:
     # Regression fence: the families that already existed must not shift.
     assert price_tokens_outside_sources("$999 flat.", ["no prices"]) == ["USD:999"]

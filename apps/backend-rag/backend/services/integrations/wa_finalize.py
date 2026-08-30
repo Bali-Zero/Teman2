@@ -550,54 +550,127 @@ def price_tokens_outside_sources(text: str, price_sources: Sequence[str]) -> lis
 # / "covers" is deliberately NOT an inclusion marker: in row 379 it said the
 # PNBP covers visa+ITAS, which is a statement about what the levy buys, not
 # about it being inside our price.
+# Levy vocabulary. Widened after the cross-family refuter (codex gpt-5.6-sol,
+# xhigh, dispatched on the diff WITHOUT the brief) returned BLOCK with 15
+# findings, 14 of which reproduced verbatim against this function; the one that
+# did NOT is pinned in the innocence tests so it is not "fixed" again. The
+# first cut knew only four spellings, so `Penerimaan Negara Bukan Pajak`
+# (PNBP's own official expansion), `biaya imigrasi`, `tarif resmi` and
+# `official fee` — all natural ways to bill a client for a levy — walked past
+# it. Several markers deliberately share ONE name: the stored reason code is
+# the single value `finalize_price_split_fee` either way, and a name here only
+# ever reaches a log line.
 _PRICE_SPLIT_MARKERS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("pnbp", re.compile(r"(?i)\bPNBP\b")),
-    ("government_fee", re.compile(r"(?i)\bgovernment(?:al)?\s+(?:fee|charge|levy)s?\b")),
+    ("pnbp", re.compile(r"(?i)\bPenerimaan\s+Negara\s+Bukan\s+Pajak\b")),
+    (
+        "government_fee",
+        re.compile(r"(?i)\bgovernment(?:al)?\s+(?:fee|charge|levy|tax)s?\b"),
+    ),
+    (
+        "government_fee",
+        re.compile(r"(?i)\b(?:official|statutory)\s+(?:fee|charge)s?\b"),
+    ),
     ("biaya_pemerintah", re.compile(r"(?i)\bbiaya\s+(?:pemerintah|negara)\b")),
+    (
+        "biaya_imigrasi",
+        re.compile(
+            r"(?i)\b(?:biaya\s+(?:imigrasi|keimigrasian)|immigration\s+fees?)\b"
+        ),
+    ),
+    ("tarif_resmi", re.compile(r"(?i)\b(?:tarif|biaya)\s+resmi\b")),
     ("state_fee", re.compile(r"(?i)\bstate\s+(?:fee|levy)s?\b")),
 )
 
-# An inclusion marker EXEMPTS the sentence. Kept narrow on purpose: each entry
-# asserts the levy sits INSIDE the quoted price. Innocence is pinned by test.
-_PRICE_INCLUSION_MARKERS = re.compile(
-    r"(?i)\b(?:sudah\s+(?:termasuk|include)|termasuk\s+dalam|already\s+included"
-    r"|is\s+included|are\s+included|included\s+in|all[\s-]?inclusive"
-    r"|nothing\s+further\s+is\s+payable)\b"
+# SEPARATION beats INCLUSION, and that ordering is the heart of this guard.
+#
+# The first cut exempted a whole sentence the moment it contained any inclusion
+# wording, and the refuter broke it four different ways with that one lever:
+# `tidak termasuk dalam` (a NEGATED inclusion) read as an inclusion; `not
+# all-inclusive` likewise; and an inclusion phrase about something ELSE
+# ("sudah termasuk konsultasi, tetapi PNBP ... dibayar terpisah") exempted a
+# levy it never referred to. Binding an exemption to its grammatical subject
+# with a regex is a clause-parsing problem and would have been the wrong shape.
+#
+# The cure inverts the burden instead: an explicit statement that the levy is
+# paid SEPARATELY is decisive evidence of a split and is checked FIRST, so a
+# text carrying both signals fires. The negated inclusion forms are listed HERE
+# rather than derived by a generic negation window, because a generic one would
+# misread the inclusion phrase `tidak ada biaya tambahan` ("no additional
+# charges") — which opens with a negator and MEANS inclusion.
+_PRICE_SEPARATION_MARKERS = re.compile(
+    r"(?i)\b(?:di ?bayar\s+terpisah|bayar\s+terpisah|terpisah"
+    r"|(?:payable|paid|charged|billed)\s+separately|separately"
+    r"|tidak\s+termasuk|belum\s+termasuk|not\s+included|not\s+all[\s-]?inclusive"
+    r"|di\s+luar\s+(?:harga|biaya)|on\s+top\s+of|excluded\s+from)\b"
 )
 
-# Split on sentence-ending punctuation, but NOT when it is immediately
-# followed by a digit — that shape is a thousand-separator or decimal point
-# inside a currency amount ("Rp17.000.000", "USD 700.50"), never a sentence
-# boundary. A trailing "Rp9.500.000." (a real sentence end whose amount also
-# ends the sentence) still splits correctly: only the FINAL period is
-# followed by whitespace/end-of-string, not a digit — the internal grouping
-# periods are the ones protected. (A lookbehind-on-digit approach was tried
-# first and rejected: it also blocks the real sentence-ending period right
-# after a number, e.g. "...Rp18.000.000. PNBP pemerintah..." would then
-# never split — caught by this module's own test suite before being fixed
-# to lookahead-only.)
-_SENTENCE_SPLIT_RE = re.compile(r"[.!?]+(?!\d)|\n+")
+# An inclusion marker EXEMPTS the levy: it asserts the levy sits INSIDE the
+# quoted price. Only consulted when no separation marker fired.
+_PRICE_INCLUSION_MARKERS = re.compile(
+    r"(?i)\b(?:sudah\s+(?:termasuk|include)|telah\s+termasuk|termasuk\s+dalam"
+    r"|already\s+included|is\s+included|are\s+included|included\s+in"
+    r"|all[\s-]?inclusive|all[\s-]?in\b|nothing\s+further\s+is\s+payable"
+    r"|tidak\s+ada\s+biaya\s+tambahan|tidak\s+perlu|no\s+additional"
+    r"|total\s+yang\s+anda\s+bayar|total\s+you\s+pay"
+    r"|(?:this|that|it|which)\s+includes?|includes?\s+(?:our|the|your)"
+    # BARE `mencakup` WAS HERE AND WAS WRONG — it exempted the very defect
+    # this guard exists for. Row 379 reads "PNBP pemerintah Rp9.500.000 untuk
+    # 2 tahun, mencakup visa, ITAS, izin masuk kembali" — there `mencakup`
+    # says what the LEVY BUYS, not that the levy sits inside the client
+    # price. Only the bound form `sudah mencakup` ("already comprises")
+    # makes the inclusion claim. Caught by
+    # test_price_split_veto_catches_the_reproduced_client_defect going red.
+    r"|sudah\s+mencakup)\b"
+)
+
+# Association is by PROXIMITY, not by sentence, and that is a deliberate
+# reversal. Sentence segmentation was the single largest source of defects in
+# the first cut: an Indonesian abbreviation (`PP No. 28`) split a marker away
+# from its amount, a full-width `。` failed to split at all and let one
+# sentence's inclusion wording exempt another sentence's split levy, and a
+# WhatsApp bullet with the label and the amount on separate LINES was severed
+# by the newline rule. All five of those findings are ONE defect — the
+# segmenter — so the segmenter is gone rather than patched. Cost, declared
+# rather than hidden: a marker mentioned definitionally within 140 characters
+# of an unrelated total now fires where a sentence-scoped rule would not. That
+# costs a retry (the ladder rephrases); the reverse error costs a client
+# budgeting a levy twice.
+_PRICE_SPLIT_WINDOW = 140
+
+# WhatsApp text copied from a price list routinely carries U+00A0 between the
+# currency marker and the digits, and `_CURRENCY_AMOUNT_RE` accepts only ASCII
+# blanks — so "Rp 9.500.000" was invisible to this veto. Normalized HERE, on
+# this function's own input only: widening the shared regex would change the
+# OTHER veto's behaviour too, and that belongs in its own change.
+_NBSP = "\xa0"
 
 
 def price_split_offenders(text: str) -> list[str]:
-    """Names of split-price markers that carry their own amount, uncontradicted.
+    """Names of levy markers that carry their own amount, uncontradicted.
 
-    Returns marker NAMES only, never the matched text or the amount - this
-    value is logged and stored in `wa_outbox.generation_fall_off_reason`, which
-    dashboards read and reports quote (same discipline as
+    Returns marker NAMES only, never the matched text or the amount — this
+    value is logged, and the DB stores the single code
+    `finalize_price_split_fee` regardless (same discipline as
     `scan_text_for_secret_egress`).
     """
+    haystack = text.replace(_NBSP, " ")
     offenders: list[str] = []
-    for sentence in _SENTENCE_SPLIT_RE.split(text):
-        if not sentence.strip():
+    for name, pattern in _PRICE_SPLIT_MARKERS:
+        if name in offenders:
             continue
-        if _PRICE_INCLUSION_MARKERS.search(sentence):
-            continue
-        if not _CURRENCY_AMOUNT_RE.search(sentence):
-            continue
-        for name, pattern in _PRICE_SPLIT_MARKERS:
-            if pattern.search(sentence) and name not in offenders:
-                offenders.append(name)
+        for match in pattern.finditer(haystack):
+            lo = max(0, match.start() - _PRICE_SPLIT_WINDOW)
+            hi = min(len(haystack), match.end() + _PRICE_SPLIT_WINDOW)
+            window = haystack[lo:hi]
+            if not _CURRENCY_AMOUNT_RE.search(window):
+                continue
+            if not _PRICE_SEPARATION_MARKERS.search(
+                window
+            ) and _PRICE_INCLUSION_MARKERS.search(window):
+                continue
+            offenders.append(name)
+            break
     return offenders
 
 
