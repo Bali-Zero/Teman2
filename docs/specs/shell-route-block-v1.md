@@ -145,13 +145,98 @@ a pattern rather than an anecdote: **documentation in context does not prevent t
 describes.** Only an executable check does — which is the entire argument for putting R1-R6 in a
 test rather than in a comment, and the reason this spec's own rules must end up as assertions.
 
-The instrument that settled that particular case is worth copying whenever a _state_ is in
-question: **prefer the event log to the rendered field.** `autoMergeRequest` is a view of a
-currently-actionable pending merge — it reads NULL while a PR is CONFLICTING, and NULL again once
-the PR has MERGED, so it cannot answer "was this ever armed". `AutoMergeDisabledEvent` in the
-timeline answers it directly, because it records what the system _did_ rather than what it
-currently shows. A field renders state; an event log records transitions. When the question is
-"did X happen", only one of those can answer.
+> **CORRECTED 2026-08-29, hours after this file first landed.** The paragraph that stood here
+> recommended _"prefer the event log to the rendered field"_ and justified it with a specific
+> claim: that `autoMergeRequest` **reads NULL while a PR is CONFLICTING**. That claim has since
+> been measured false — #5227, live and genuinely `CONFLICTING`/`DIRTY`, carried the field **SET**
+> — and the recommendation it supported does not survive either, because the timeline emits **no
+> event at all** for the transition that actually nulls the field. Consulting the event log would
+> have returned silence and been read as "nothing happened". The correction is kept in place of
+> the original rather than quietly swapped, because this document's own rule is that a deleted
+> claim is a decision: the next reader is entitled to see that this passage was wrong and how.
+
+What actually happens, measured end to end on #5228: the field was **non-null** at 09:58:10Z and
+09:58:28Z while `mergeStateStatus` was `BLOCKED`, unqueued, with checks still running; the PR was
+enqueued at 10:02:59Z; the field read **NULL** at 10:03:00Z — with exactly one
+`AutoMergeEnabledEvent`, zero `AutoMergeDisabledEvent`, and no re-arm. **The queue consumes the
+auto-merge request on entry.** Nothing was lost; a different subsystem took ownership.
+
+So the durable lesson is not about event logs versus fields. It is about the **polarity of the
+instrument**:
+
+> **When every probe you have can only report an ABSENCE, you are measuring your instruments, not
+> the system. Go and find the field that some subsystem populates on purpose.**
+
+Every probe tried here — the field, the disable event, the refusal of `gh pr merge --auto` —
+reported absences, and absence is exactly what _fulfilment_ and _revocation_ have in common. The
+instrument that settled it asserts instead: **`mergeQueueEntry` present is positive proof the arm
+was live**, because GitHub enqueues on the strength of that very request. Note the corollary,
+which the three-state reading in the fleet memory already had: **NULL alone is ambiguous** — a
+never-armed PR and an armed-then-queued PR both read NULL, and only the _pair_ of fields
+separates them. A single field was never going to answer this, in either direction.
+
+#### The insight sometimes comes from thinking; the detection never does
+
+The subsections that follow were found separately, in unrelated subsystems, on one night. State
+the common thread precisely, because the loose version is false and the precise one is stronger:
+reflection is perfectly capable of producing a _principle_ — someone noticing that "merge and
+re-arm" contradicts "read before you touch" needs no tool. But **nobody would have known three
+subjects were burned** without a timeline query returning enables at 09:05:00Z, 09:16:10Z and
+09:48:47Z; nobody would have known a completeness claim was bounded by its own instrument without
+grepping the reporter; nobody would have known a parser design blessed the exact row it was built
+to catch without running it against the real corpus.
+
+That concedes what an opponent would say — _yes, you can reason your way to the principle_ — and
+shows it does not help. In the third case below the principle was not merely available: it had
+been **applied by the same person an hour earlier, in this very document**, and it still did not
+fire. Availability was never the bottleneck; detection was. Hence: **reviewing tells you whether
+something sounds right; running it tells you whether it is.** A specification that has not been
+executed against the real data is a hypothesis wearing a schema.
+
+#### When the state is itself under investigation, the repair must come second
+
+The standing instruction for a branch whose base has moved is to merge and re-arm in one motion.
+It is correct for every ordinary case, and it destroys the one case where the arm state is the
+thing being measured — because re-arming makes _"the arm survived"_ and _"it was dropped and I
+restored it"_ produce identical observations.
+
+Measured 2026-08-29: three lanes each burned an observation by repairing before reading — #5210 at
+09:05:00Z, #5207 at 09:16:10Z, #5213 at 09:48:47Z. Three independent agents, one instruction, the
+same loss. **Before repairing a state you are also trying to measure, take the reading first.** The
+repair is never urgent on the scale of one API call; the observation is destroyed permanently. This
+covers every probe that mutates what it inspects — a restart that clears the log you were about to
+read, a re-run that replaces the artifact that failed, a `--fix` that erases its own evidence. The
+failure is not carelessness: the instruction and the investigation are each correct and jointly
+incompatible, and only the investigation knows it.
+
+#### Two observers disagreeing about a live system are usually disagreeing about sampling
+
+Every cross-lane contradiction that night — three of them, each of which killed the previous
+explanation — turned out to be two agents sampling a _moving_ system at different moments and
+comparing the answers as though they were commensurable. None of the systems were inconsistent.
+The readings were.
+
+What settled it was **one simultaneous read across eight PRs**, not more readings over time. So:
+**when two observers disagree about a live system, suspect the sampling before the system** — and
+prefer one wide simultaneous snapshot to any number of sequential ones, because sequential reads
+of a moving target cannot be differenced.
+
+#### A PR can outrun its own adjudication
+
+Measured on this document's own PR (#5228): opened and armed 09:54:25Z, checks green ~10:02Z,
+entered the merge queue 10:02:59Z — **before an independent adjudicator had been dispatched**. Once
+the queue entry existed, arm-means-freeze made the branch read-only, so the gate could no longer be
+applied without dequeuing a healthy transit.
+
+This is a process hole, not bad luck, and it recurs by construction whenever **checks are fast and
+the gate is dispatched second**. Neither rule is wrong alone: freeze protects a judged SHA from
+drifting under the judgement, and fast checks are the point of fast checks. Composed, they open a
+window in which a PR reaches an irreversible state before the review meant to precede it has begun.
+The remedy is ordering, not speed: **dispatch the adjudicator at PR-open, in the same motion as the
+arm.** A gate scheduled second is a gate that races, and races are decided by CI latency rather
+than by risk. Note the shape of the wrong fix — dequeuing a healthy transit to formalise a verdict
+that would have been given anyway spends a real merge to satisfy a procedure; the failure is
+upstream, in the ordering.
 
 #### When the primitive is wrong, another term will not save it
 

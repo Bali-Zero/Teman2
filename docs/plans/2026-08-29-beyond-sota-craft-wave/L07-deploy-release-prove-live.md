@@ -137,6 +137,61 @@ run` dry-run-equivalent proof captured, Telegram message sent AND delivery verif
   **Conflicts / order**: depends on PR-2's heartbeat contract; never merges with real-fire default
   ON; do not build ahead of PR-1/PR-2 armed.
 
+### PR-3 GROUND FINDING (2026-08-29, Squad P) — `garuda-arm.yml` is not a one-flag toggle
+
+PR-3's build line above reads "fire `gh workflow run garuda-arm.yml -f garuda_public_enabled=false`",
+which describes a much smaller action than the workflow actually performs. Read from
+`.github/workflows/garuda-arm.yml` at `origin/main` (source-read, not a live probe — see the limit
+at the end):
+
+**It takes THREE `required: true` inputs, not one** — `garuda_public_enabled`,
+`garuda_environment` (default `PRODUCTION`) and `stage_only` (default `false`). A dispatch that
+names only the first silently accepts the other two defaults.
+
+**One dispatch rewrites EIGHT Fly secrets, not one.** Its `Set GARUDA_* secrets` step calls
+`add_if_nonempty` for:
+
+| secret                         | value it writes                                                         |
+| ------------------------------ | ----------------------------------------------------------------------- |
+| `GARUDA_PUBLIC_ENABLED`        | the input                                                               |
+| `GARUDA_ENVIRONMENT`           | the input (defaults to `PRODUCTION`)                                    |
+| `GARUDA_PUBLIC_BASE_URL`       | hardcoded `https://balizero.com`                                        |
+| `GARUDA_MAGIC_LINK_BASE_URL`   | hardcoded `https://balizero.com/visa/voa/auth`                          |
+| `GARUDA_XENDIT_FEE_BPS`        | hardcoded `0`                                                           |
+| `GARUDA_XENDIT_FEE_FIXED_IDR`  | hardcoded `0`                                                           |
+| `GARUDA_XENDIT_SECRET_KEY`     | from the GitHub Secret — **skipped if empty, leaving whatever is live** |
+| `GARUDA_XENDIT_CALLBACK_TOKEN` | same                                                                    |
+
+**And it RESTARTS the app** unless `stage_only=true` (`STAGE_FLAG=(--stage)` is added only then).
+
+**Why this matters for a DEAD-MAN specifically.** The organ's whole justification is that its only
+power is to turn a public funnel OFF — a small, safe, one-directional act. As specified, an
+automated fire would instead: re-tag `GARUDA_ENVIRONMENT` to whatever it passes, overwrite four
+hardcoded config values, possibly re-set two payment secrets, and bounce production — all from a
+15-minute silence that might be a laptop's wifi. This is precisely the "an outage the probe itself
+caused" class that PR-2's refutation already forced a fourth verdict (`unknown`) to prevent, one
+layer up.
+
+**What PR-3 must therefore do, when it is built:**
+
+1. **The dry-run log must state the FULL blast radius** — all eight secret names and the restart —
+   not "would set `garuda_public_enabled=false`". A dry-run that under-reports what the real fire
+   does is a dry-run nobody can consent to on the basis of.
+2. **Pass all three inputs explicitly**, never rely on defaults. `garuda_environment` in particular
+   must be read from the live app rather than assumed, or the dead-man becomes a config writer.
+3. **Prefer `stage_only=true` if a bounce is not required to make the flag take effect** — verify
+   which, because the backend reads the gate per-request; if staging suffices, the dead-man never
+   needs to restart production.
+4. **Needs-ruling item 2 is strengthened, not weakened, by this.** Zero's go is being asked for an
+   organ that rewrites eight secrets and restarts an app, not one that flips a boolean. Say so when
+   asking.
+
+**Declared limit of this finding**: it is read from the workflow SOURCE. It could not be checked
+against the live secret set, because `flyctl` on Mini has no usable credential today
+(`no access token available` — the `fly auth login` residual already carried as `operator[gui]`).
+So "rewrites eight secrets" is what the workflow WILL do; whether each write CHANGES the live value
+is unverified, and a PR-3 author should re-check before relying on any of it.
+
 ## Needs-ruling carried (Zero only — this spec does NOT decide these)
 
 1. **Exposure-changing flag flips** — dark→5%→100% and GARUDA go-live itself (MANDATE §3, 5

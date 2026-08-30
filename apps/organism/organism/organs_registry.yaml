@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: fe05a77cd6b6bc75b753fefa7da936d7bb096ff9c56cd7ab1abd8ab2a941e00a
+checksum: 3ede4951893de04e7d112e5f9413d3470388cc6d5b33b821994d9e2105014a73
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2600,6 +2600,62 @@ organs:
     path: ~/.organism/last_seen/mini.vercel_autopromote.json
     timestamp_field: ts
     status_field: status
+- id: mini.voa_probe
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 900
+  owner_module: infra/launchagents/wrappers/voa-probe-wrapper.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.voa-probe
+  severity_on_silence: warning
+  notes: 'Anonymous end-to-end probe of the GARUDA VOA public funnel (page load plus
+    the create-read-delete-verify eligibility-check API journey) every 900s. Reports
+    a four-state verdict (pass/dark/fail/unknown, see scripts/probes/voa_journey_probe.mjs
+    header) to its OWN heartbeat file (VOA_PROBE_HEARTBEAT, L07-PR3 dead-man reads
+    it) -- separate from this organism heartbeat, which only says the cron itself
+    ran. severity is warning, not critical: the funnel is deliberately dark pre-launch
+    today (the public flag is off) and dark maps to organism status=ok (an intentionally-off
+    flag is healthy, not degraded -- see W104); this organ silence starts mattering
+    once the funnel goes live, not before.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.voa_probe.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.voa_deadman
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 450
+  owner_module: infra/launchagents/wrappers/voa-deadman-wrapper.sh
+  dependencies:
+  - mini.voa_probe
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.voa-deadman
+  severity_on_silence: warning
+  notes: 'L07-PR3 dead-man receptor: watches mini.voa_probe''s OWN heartbeat file
+    (VOA_PROBE_HEARTBEAT, NOT the probe process -- silence and a reported fail verdict
+    are different states this organ tells apart) every 300s. Fires (dry-run ONLY --
+    no `gh workflow run` invocation exists anywhere in scripts/probes/voa_deadman.py,
+    real-fire needs Zero''s explicit go per Needs-ruling item 2) on verdict=fail or
+    on the heartbeat going silent/stale/malformed past a 900s threshold; NEVER fires
+    on verdict=dark (the pre-launch NORMAL state) or verdict=unknown (unattributable
+    transport failure). Every fire logs the FULL blast radius of a real garuda-arm.yml
+    dispatch (8 Fly secrets + a restart, see PR-3 GROUND FINDING in that script''s
+    docstring) and sends one real Telegram P0 through scripts/tg_notify.py. severity
+    is warning, matching mini.voa_probe''s own reasoning: this organ''s silence starts
+    mattering once the funnel is actually live, not during the pre-launch dark period.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.voa_deadman.json
+    timestamp_field: ts
+    status_field: status
 - id: pro.wa_bot_throughput_sentinel
   runtime: pro_launchd
   type: cron
@@ -2663,6 +2719,37 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/mini.iqoo_radar_relay.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.journey_sentinel
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 5400
+  owner_module: scripts/journey_sentinel.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.journey-sentinel
+  severity_on_silence: warning
+  notes: 'L11-PR1 production journey sentinel: drives Playwright as an anonymous visitor
+    against REAL production (apps/mouth/e2e/production/*.spec.ts) every 3600s -- dream-ejection,
+    magic-link dead-end, /prime Maps key, and visa-clock overstay regression guards,
+    plus one seeded-failure self-test verified every run (cicatrix-superscar #2: a
+    sentinel that greens while dead is worse than none). expected_hb_seconds is 1.5x
+    the 3600s interval so ordinary launchd jitter is not read as silence -- same ratio
+    as pro.wa_bot_throughput_sentinel. Hourly, not the VOA probes 15min: this launches
+    a real chromium + 5 page loads against a live host per tick, materially heavier
+    than a fetch-based journey, and none of the 4 defect classes need sub-hour detection
+    latency. severity is warning, not critical: /prime is CURRENTLY, KNOWINGLY red
+    (Google Maps API key expired, needs-ruling item 1, operator[GUI] -- no code path
+    fixes a credential), so this organ is EXPECTED to report degraded until that credential
+    is rotated; escalating a known, already-ledgered issue to critical would page
+    on a fact everyone already has.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.journey_sentinel.json
     timestamp_field: ts
     status_field: status
 - id: pro.kb_probe_history
