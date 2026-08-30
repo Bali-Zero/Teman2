@@ -507,6 +507,164 @@ def test_tilde_and_trailing_space_dialects(tmp_path: Path, name: str) -> None:
     assert name.strip() in _run(home, cfg).stdout
 
 
+# ------------------------------------------- round-3 refutation (attacking the cures)
+
+
+def _load_lint():
+    """Import the lint as a module, for the cases the CLI cannot reach."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("lint_home_fork", _LINT)
+    assert spec is not None and spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_a_directory_that_vanishes_AFTER_stat_is_lost_verification_not_absence(tmp_path: Path) -> None:
+    """Two refuters disagreed here and the corpus records which one won.
+
+    One argued for symmetry — same world-state at stat and at iterdir, same
+    verdict. The other argued they are different states, and that is the stronger
+    case: `stat` SUCCEEDED, so the directory was there, and its disappearing now
+    means the scan STARTED and could not finish. "Nothing to scan" may be silent;
+    "I could not finish looking" may not.
+
+    The same refuter also showed this branch IS deterministically testable — the
+    previous revision declared it untestable and shipped a surviving mutant on
+    that basis. Monkeypatching `iterdir` opens the window with no race at all.
+    """
+    mod = _load_lint()
+    home = tmp_path / "home"
+    (home / "scripts").mkdir(parents=True)
+    (home / "scripts" / "thing.sh").write_text("x", encoding="utf-8")
+
+    real_iterdir = mod.Path.iterdir
+
+    def exploding(self):  # noqa: ANN001, ANN202
+        if self.name == "scripts":
+            raise FileNotFoundError(2, "vanished mid-scan")
+        return real_iterdir(self)
+
+    errors: list[str] = []
+    mod.Path.iterdir = exploding
+    try:
+        found = mod.discover_bak_shadows(
+            [{"live": "~/scripts/thing.sh", "repo": "scripts/lint_home_fork.py"}], home, "mini", errors
+        )
+    finally:
+        mod.Path.iterdir = real_iterdir
+
+    assert found == []
+    assert errors and errors[0].startswith("bak-scan unreadable"), errors
+
+
+def test_a_FAILED_first_alias_does_not_suppress_the_second(tmp_path: Path) -> None:
+    """The false-clean round 3 found, and the worst defect of the three rounds.
+
+    The inode was recorded BEFORE the enumeration succeeded. So: `~/alias` and
+    `~/scripts` are one directory; the alias is stat'd, its iterdir fails, the
+    inode is already marked seen — and `~/scripts` is then skipped as a duplicate.
+    A directory full of backups is never scanned and the run prints clean.
+    """
+    mod = _load_lint()
+    home = tmp_path / "home"
+    real = home / "scripts"
+    real.mkdir(parents=True)
+    (real / "thing.sh").write_text("x", encoding="utf-8")
+    (real / "thing.sh.bak").write_text("old", encoding="utf-8")
+    (home / "alias").symlink_to(real)
+
+    real_iterdir = mod.Path.iterdir
+    state = {"failed_once": False}
+
+    def flaky(self):  # noqa: ANN001, ANN202
+        if self.name == "alias" and not state["failed_once"]:
+            state["failed_once"] = True
+            raise PermissionError(13, "denied")
+        return real_iterdir(self)
+
+    errors: list[str] = []
+    mod.Path.iterdir = flaky
+    try:
+        found = mod.discover_bak_shadows(
+            [
+                {"live": "~/alias/thing.sh", "repo": "scripts/lint_home_fork.py"},
+                {"live": "~/scripts/thing.sh", "repo": "scripts/lint_home_fork.py"},
+            ],
+            home,
+            "mini",
+            errors,
+        )
+    finally:
+        mod.Path.iterdir = real_iterdir
+
+    assert any("thing.sh.bak" in f for f in found), (
+        f"the second alias was suppressed by the first one's FAILED scan: {found} {errors}"
+    )
+
+
+def test_a_partial_scan_is_announced_even_when_something_WAS_found(tmp_path: Path) -> None:
+    """Round 2's cure was nested under "no shadows", so a run with one finding
+    and one denied directory printed the count and never mentioned the denial.
+    Incompleteness is a fact about the RUN, not about the findings.
+    """
+    home, cfg = _world(tmp_path, [])
+    ok = _declare(home, "scripts/thing.sh")
+    locked_pair = _declare(home, "locked/other.sh")
+    cfg.write_text(json.dumps({"pairs": [ok, locked_pair], "allow": []}), encoding="utf-8")
+    (home / "scripts" / "thing.sh.bak").write_text("old", encoding="utf-8")
+    if os.geteuid() == 0:
+        pytest.skip("chmod 0o000 does not stop root")
+    (home / "locked").chmod(0o000)
+    try:
+        r = _run(home, cfg)
+    finally:
+        (home / "locked").chmod(0o755)
+
+    assert "thing.sh.bak" in r.stdout, r.stdout
+    assert "CANNOT-VERIFY" in r.stdout, "a denied directory went unmentioned because something was found"
+
+
+def test_an_UNSTATTABLE_entry_is_labelled_so_and_not_called_a_plain_file(tmp_path: Path) -> None:
+    """`is_symlink()`/`is_dir()` swallow OSError and answer False, so the entry
+    would have been labelled a plain file — a confident wrong answer where the
+    honest one is "I could not tell"."""
+    mod = _load_lint()
+    home = tmp_path / "home"
+    (home / "scripts").mkdir(parents=True)
+    (home / "scripts" / "thing.sh").write_text("x", encoding="utf-8")
+    (home / "scripts" / "thing.sh.bak").write_text("old", encoding="utf-8")
+
+    real_lstat = mod.Path.lstat
+
+    def blind(self):  # noqa: ANN001, ANN202
+        if self.name.endswith(".bak"):
+            raise PermissionError(13, "denied")
+        return real_lstat(self)
+
+    mod.Path.lstat = blind
+    try:
+        found = mod.discover_bak_shadows(
+            [{"live": "~/scripts/thing.sh", "repo": "scripts/lint_home_fork.py"}], home, "mini", []
+        )
+    finally:
+        mod.Path.lstat = real_lstat
+
+    assert any("(unstattable)" in f for f in found), found
+
+
+def test_a_live_path_carrying_a_NUL_does_not_crash_the_lint(tmp_path: Path) -> None:
+    """A registry is JSON and JSON can carry \u0000; `os.path.realpath` raises
+    ValueError on it, which is not an OSError and would crash the run."""
+    mod = _load_lint()
+    home = tmp_path / "home"
+    home.mkdir(parents=True)
+    errors: list[str] = []
+    assert mod.discover_bak_shadows([{"live": "~/scr\x00ipts/x.sh", "repo": "r"}], home, "mini", errors) == []
+
+
 # ------------------------------------------------------------- premise of the fixtures
 
 

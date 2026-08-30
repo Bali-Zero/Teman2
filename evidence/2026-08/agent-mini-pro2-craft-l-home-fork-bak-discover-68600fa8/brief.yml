@@ -96,11 +96,25 @@ risks:
     corpora, and has a stated rationale (the window before a lane's PR merges);
     changing it would redden every lane whose corpus has not landed. Reported
     here rather than fixed under cover of a .bak lint."
-  - "DECLARED COVERAGE GAP: the iterdir ENOENT/ENOTDIR branch is reachable only
-    through a TOCTOU window and no fixture can open it deterministically. A
-    mutation narrowing that tuple SURVIVES the corpus. Said at the site and
-    here, rather than counted as proven — it is a real gap, not an equivalent
-    mutant."
+  - "RETRACTED, and the retraction is the point. This brief previously declared
+    the iterdir TOCTOU branch untestable and shipped a surviving mutant on that
+    basis. Round 3 showed it is deterministically testable by monkeypatching
+    `Path.iterdir`, and the same round showed the branch itself was WRONG: a
+    directory that vanishes after a successful stat is lost verification, not
+    absence. Both the claim and the code it excused are gone. Recorded rather
+    than deleted, because 'we proved it could not be tested' is exactly the kind
+    of sentence that should cost something when it turns out to be false."
+  - "DECLARED FALSE-POSITIVE CLASS: with IGNORECASE and `-` in the separator,
+    `routes.BAK-DPS.csv` is flagged — `BAK` is the UN/LOCODE for Baku. The trade
+    is deliberate: dropping IGNORECASE loses `com.x.plist.BAK`, a real backup on
+    the case-insensitive filesystem this lint exists for. The finding is
+    advisory, so a false positive costs one line of output and never a red
+    build, while the miss it trades for costs a leaked key nobody sees."
+  - "DECLARED, NOT CURED: `_is_within` validates one pathname state and `stat`
+    then follows it again, so swapping a directory for an out-of-HOME symlink in
+    that window defeats the containment check. Inherent to any path-based guard
+    short of open-then-fstat, out of proportion to an advisory finding, and
+    named rather than left for the next reader to discover."
   - "DECLARED SCOPE: only the `.bak` family is reported. `~`, `.orig`, `.old`,
     `.save`, `.swp` are not. Widening is a measurement question — which of them
     actually occur beside a declared payload — and claiming coverage never

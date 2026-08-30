@@ -17,6 +17,9 @@ lanes:
   - lane: refute-round-2
     role: review
     seat: "kimi-code/k3 (Moonshot — a SECOND family, run in parallel on the same diff and the same attack list, with no sight of the first round's output). DO-NOT-SHIP, 9 findings, 5 of them the first round did not reach."
+  - lane: refute-round-3
+    role: review
+    seat: "gpt-5.6-sol xhigh, --sandbox read-only, re-pointed at what rounds 1 and 2 CURED rather than at the original diff. DO-NOT-SHIP, 6 findings, and it found a FALSE-CLEAN that both earlier rounds and this gate had missed."
   - lane: final-gate
     role: review
     seat: "claude-opus-5 (this orchestrator — every command in the receipts re-run here, this turn, and every refuter claim checked against the real files before it was acted on)"
@@ -127,6 +130,24 @@ receipts:
     exit: 0
     ts: "2026-08-31T03:47Z"
     seat: "session (mini, final gate)"
+  - claim: "Round 3 found a FALSE-CLEAN that rounds 1 and 2 and this gate had all missed — the worst defect of the three rounds, and it was in a CURE"
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3.11 -B -m pytest -p no:cacheprovider scripts/tests/test_home_fork_bak_shadows.py   # mutant M: record the inode BEFORE the scan succeeds"
+    result: "The inode dedupe recorded a directory as seen BEFORE its enumeration succeeded, so an alias whose iterdir FAILED silently marked the real directory as a duplicate — it was then skipped and the run printed clean over a directory full of backups. Now recorded only after a successful scan; the mutant restoring the old order is killed by test_a_FAILED_first_alias_does_not_suppress_the_second."
+    exit: 0
+    ts: "2026-08-31T04:02Z"
+    seat: "session (mini, final gate) on a finding from gpt-5.6-sol"
+  - claim: "The branch this pack previously called untestable is tested, and it was also wrong"
+    cmd: "pytest scripts/tests/test_home_fork_bak_shadows.py -k vanishes_AFTER_stat"
+    result: "Passes. Round 3 showed monkeypatching Path.iterdir opens the window deterministically, and that ENOENT-after-a-successful-stat is lost verification rather than absence — so the branch now raises the error bit instead of staying silent. Two refuters disagreed about this and the reasoning for choosing one is written at the site."
+    exit: 0
+    ts: "2026-08-31T04:05Z"
+    seat: "session (mini, final gate)"
+  - claim: "18 mutants across three rounds, all killed, bytecode disabled throughout"
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3.11 -B -m pytest -p no:cacheprovider scripts/tests/test_home_fork_bak_shadows.py   # per mutant, __pycache__ cleared, restored from a byte cp"
+    result: "35 tests; 18/18 mutants killed. Three survived at first and all three were MY OWN defects, not missing coverage: two vacuous fixtures (round 2) and one wrong claim of untestability (round 3). Zero surviving mutants remain."
+    exit: 0
+    ts: "2026-08-31T04:10Z"
+    seat: "session (mini, final gate)"
 pii_scan: clean
 council_run: journal.jsonl
 dissent:
@@ -178,6 +199,30 @@ dissent:
     objection: "TOCTOU: a directory deleted between stat and iterdir is CANNOT-VERIFY, while the identical state observed one syscall earlier is silent — the same world gets opposite verdicts."
     status: CONFIRMED
     disposition: "Fixed for consistency, and the coverage gap declared rather than papered over: no fixture can open that race deterministically, so a mutation narrowing the tuple SURVIVES the corpus. Said at the site and in the brief, because a surviving mutant that is not equivalent is a gap, not a pass."
+  - seat: "gpt-5.6-sol (round 3, aimed at the cures)"
+    objection: "The inode enters `seen_inodes` before enumeration succeeds, so a failed first alias suppresses the real directory and the run prints clean."
+    status: CONFIRMED
+    disposition: "Fixed — the worst defect of all three rounds, and it lived inside a cure. The inode is now recorded only after a successful scan, and the mutant restoring the old order is killed."
+  - seat: "gpt-5.6-sol (round 3, aimed at the cures)"
+    objection: "CANNOT-VERIFY is nested under `if not bak_shadows`, so one finding plus one denied directory never mentions the denial."
+    status: CONFIRMED
+    disposition: "Fixed. Incompleteness is a fact about the RUN, not about the findings, so it is announced either way. Round 2 wrote that cure and round 3 found it in the wrong place — which is the argument for pointing a round at the cures rather than at the original diff."
+  - seat: "gpt-5.6-sol (round 3, aimed at the cures)"
+    objection: "`Path.is_symlink()`/`is_dir()` swallow OSError, so the annotation handler is near-unreachable and an unstattable entry is labelled a plain file."
+    status: CONFIRMED
+    disposition: "Fixed with one explicit `lstat` and `stat.S_IS*`. lstat raises, so the handler is real and an entry we cannot stat says so instead of getting a confident wrong label."
+  - seat: "gpt-5.6-sol (round 3, aimed at the cures)"
+    objection: "`os.path.realpath` does raise: a path carrying an embedded NUL raises ValueError, which is not an OSError and crashes the lint."
+    status: CONFIRMED
+    disposition: "Fixed — and it corrects a claim this diff had written in its own comment ('realpath never raises'). A registry is JSON and JSON can carry \\u0000, so it is reachable from data, not only from a hostile filesystem."
+  - seat: "gpt-5.6-sol (round 3, aimed at the cures)"
+    objection: "The TOCTOU branch declared untestable is deterministically testable by monkeypatching Path.iterdir."
+    status: CONFIRMED
+    disposition: "Fixed, and the earlier declaration retracted in the brief. It also turned out the branch was wrong, not merely untested."
+  - seat: "gpt-5.6-sol (round 3, aimed at the cures)"
+    objection: "`routes.BAK-DPS.csv` is a false positive — BAK is the UN/LOCODE for Baku, not a backup."
+    status: CONFIRMED
+    disposition: "NOT cured, declared at the site with the trade written out. Dropping IGNORECASE would lose `com.x.plist.BAK`, a real backup on the filesystem this lint guards; the finding is advisory, so the false positive costs a line of output and the miss would cost a leaked key."
   - seat: "gpt-5.6-sol"
     objection: "Exit bit 8 could collide with or be masked by an existing meaning."
     status: PLAUSIBLE

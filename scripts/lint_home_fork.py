@@ -491,6 +491,14 @@ def _is_allowed(norm: str, home: Path, allow: list[str]) -> bool:
 # and a trailing space catches the accidental `cp x "x.bak "`. The class stays
 # safe — `baklava` fails on `l`, `bakery` on `e`.
 #
+# DECLARED FALSE-POSITIVE CLASS, kept deliberately: with IGNORECASE and `-` in
+# the class, a name like `routes.BAK-DPS.csv` is flagged — `BAK` is the UN/LOCODE
+# for Baku, not a backup. The trade was made with eyes open: dropping IGNORECASE
+# would lose `com.x.plist.BAK`, a REAL backup on a case-insensitive filesystem,
+# which is the filesystem this lint exists for. The finding is advisory (bit 8 is
+# opt-in), so a false positive costs one line of output and never a red build,
+# while the miss it would trade for costs a leaked key nobody sees.
+#
 # DECLARED LIMIT, not an oversight: this covers the `.bak` family ONLY. Other
 # backup conventions on this disk — `~` suffixes, `.orig` from patch, `.old`,
 # `.save`, editor `.swp` — are NOT reported. Widening is a measurement question
@@ -515,8 +523,15 @@ def _is_within(candidate: Path, home: Path) -> bool:
     so resolving only one side compares two spellings of one place and answers
     False for a directory that is plainly inside HOME.
     """
-    real_home = os.path.realpath(home)
-    real_cand = os.path.realpath(candidate)
+    # An embedded NUL makes realpath raise ValueError, which is NOT an OSError
+    # and would sail past every handler in the caller and crash the lint. A
+    # registry is JSON, and JSON can carry \u0000, so this is reachable from data
+    # rather than only from a hostile filesystem.
+    try:
+        real_home = os.path.realpath(home)
+        real_cand = os.path.realpath(candidate)
+    except ValueError:
+        return False
     return real_cand == real_home or real_cand.startswith(real_home + os.sep)
 
 
@@ -619,27 +634,20 @@ def discover_bak_shadows(
         ident = (st.st_dev, st.st_ino)
         if ident in seen_inodes:
             continue
-        seen_inodes.add(ident)
         try:
             entries = sorted(directory.iterdir())
-        except (FileNotFoundError, NotADirectoryError):
-            # Identical world-state to the stat branch above, one syscall later:
-            # the directory vanished or became a file between the two calls. A
-            # benign race. Calling it CANNOT-VERIFY here while calling it silent
-            # up there would give the same disk two opposite verdicts depending
-            # only on when it was observed.
-            #
-            # UNCOVERED BY TEST, and said so rather than counted as proven: both
-            # states are reachable here ONLY through a TOCTOU window between the
-            # stat above and this call, and there is no deterministic way to open
-            # that window from a fixture. A mutation narrowing this tuple to
-            # `(FileNotFoundError,)` survives the corpus. That is a real coverage
-            # gap, not an equivalent mutant — the branch matters in production and
-            # the test cannot reach it.
-            continue
         except OSError as exc:
             # A TCC denial on ~/.claude/hooks is exactly how this would
             # otherwise report a serene zero over 35 files.
+            #
+            # ENOENT/ENOTDIR are DELIBERATELY not silent here, unlike at the stat
+            # above, and two cross-family refuters disagreed about this. One
+            # argued for symmetry: same world-state, same verdict. The other
+            # argued they are not the same state, and that is the stronger case —
+            # `stat` SUCCEEDED, so the directory was there; its disappearing now
+            # means the scan STARTED and could not finish. "Nothing to scan" and
+            # "I could not finish looking" are different claims, and only the
+            # first one may be silent.
             errors.append(f"bak-scan unreadable ({type(exc).__name__}): {directory}")
             continue
         # DECLARED LIMIT: a `.bak` DIRECTORY is reported and its CONTENTS are
@@ -658,13 +666,23 @@ def discover_bak_shadows(
         for entry in entries:
             if not _BAK_SHADOW_RE.search(entry.name):
                 continue
+            # ONE explicit lstat, not is_symlink()/is_dir(). Those swallow
+            # OSError and answer False, so the `except` around them was very
+            # nearly unreachable and an entry we could not stat would have been
+            # labelled a plain file — a confident wrong answer where the honest
+            # one is "I could not tell". lstat raises, so the handler is real.
             try:
-                if entry.is_symlink():
-                    shadows.append(f"{entry.name} (symlink)")
-                    continue
-                shadows.append(f"{entry.name}/" if entry.is_dir() else entry.name)
+                est = entry.lstat()
             except OSError:
                 shadows.append(f"{entry.name} (unstattable)")
+                continue
+            if stat.S_ISLNK(est.st_mode):
+                shadows.append(f"{entry.name} (symlink)")
+            elif stat.S_ISDIR(est.st_mode):
+                shadows.append(f"{entry.name}/")
+            else:
+                shadows.append(entry.name)
+        seen_inodes.add(ident)
         if shadows:
             findings.append(
                 f"{directory} — {len(shadows)} .bak shadow(s) beside "
@@ -997,22 +1015,22 @@ def main(argv: Optional[list[str]] = None) -> int:
         )
         for f in bak_shadows:
             print(f"  ~ {f}")
-        if not bak_shadows:
-            # W84 in the OUTPUT layer, which is the layer a human actually reads:
-            # the exit code already carried bit 4, but the line above it said
-            # "clean" — so a scan that was DENIED printed the same word as a scan
-            # that found nothing. The refuter's own note: the existing test
-            # asserted the error bit and the error string, and never that the
-            # clean line was ABSENT, so a mutant printing it unconditionally
-            # survived. The verdict now names which of the two happened.
-            bak_scan_failed = [e for e in errors if e.startswith("bak-scan ")]
-            if bak_scan_failed:
-                print(
-                    f"  CANNOT-VERIFY — {len(bak_scan_failed)} director(y/ies) could not be "
-                    f"scanned; 'no shadows found' is not a claim this run can make"
-                )
-            else:
-                print("  clean — no .bak shadow beside any declared live payload")
+        # W84 in the OUTPUT layer, which is the layer a human actually reads: the
+        # exit code already carried bit 4, but the line above it said "clean" —
+        # so a scan that was DENIED printed the same word as a scan that found
+        # nothing. Round 2 caught that; round 3 caught that the FIX was nested
+        # under "no shadows", so a run with one finding AND one denied directory
+        # printed the count and never mentioned the denial at all. The partial
+        # scan is now announced whether or not anything was found, because the
+        # incompleteness is a fact about the RUN, not about the findings.
+        bak_scan_failed = [e for e in errors if e.startswith("bak-scan ")]
+        if bak_scan_failed:
+            print(
+                f"  CANNOT-VERIFY — {len(bak_scan_failed)} director(y/ies) could not be "
+                f"scanned; this run cannot claim to have seen everything"
+            )
+        elif not bak_shadows:
+            print("  clean — no .bak shadow beside any declared live payload")
     if errors:
         print(f"[errors] {len(errors)} operational error(s) — scan is PARTIAL, not clean:")
         for e in errors:
