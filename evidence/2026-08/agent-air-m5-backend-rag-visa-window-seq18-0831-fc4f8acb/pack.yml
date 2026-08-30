@@ -129,7 +129,7 @@ receipts:
       different variable name (x2), a different digest on the same variable, the correct line in a
       different file, and a ride-along statement on the same physical line
     result: >-
-      the real digest line (fold_pack_seq18.py:79) matches exactly 1 rule; all five negative cases NO-MATCH. Independently run
+      the real digest line (fold_pack_seq18.py:85 at this HEAD) matches exactly 1 rule; all five negative cases NO-MATCH. Independently run
       by a verification seat. Then python3 scripts/detect_secrets_check_unaudited.py -> "All
       findings audited (7364 total)", exit 0; pytest scripts/tests/test_detect_secrets_auto_triage.py
       -> 107 passed (the count assert forced the audit-trail line, as designed; 106 before the
@@ -236,7 +236,8 @@ dissent:
     seat: session (build lane, self-audit before the refuter reported)
     status: CONFIRMED
     resolution: >-
-      Fixed in this PR: test_seq18_freshness_window.py, 24 tests, whose load-bearing case
+      Fixed in this PR: test_seq18_freshness_window.py, 51 tests at this HEAD (24 when this
+      resolution was first written), whose load-bearing case
       recomputes the 1 October boundary from the payload rather than trusting the constant.
 
   - objection: >-

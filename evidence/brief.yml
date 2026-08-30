@@ -17,9 +17,11 @@ objective: |
   and no database column that overrides `max_age_seconds` anywhere in this codebase. So widening it
   is necessarily a signed pack ceremony, not a setting.
 
-  Gear 3 by SIZE, deterministically: the two generated pack artifacts put the diff at ~18,335 net
-  lines, far past the blast-radius floor. Recomputed from the real merge-base
-  (f537609969, the seq-17 commit), not from a two-dot diff against a stale base — receipt in the pack.
+  Gear 3 by SIZE, deterministically: the two generated pack artifacts put the diff at 19,682 net
+  lines across 13 files, far past the blast-radius floor. Recomputed from the real merge-base
+  — 0857ce15bc, after the branch was repointed onto fresh main; it was the sequence-17 landing
+  commit f537609969 before that — never from a two-dot diff against a stale base. Receipt in the
+  pack, and the pack's own diff block is the authority if these ever disagree.
 
 constraints:
   - "State the cost plainly rather than smoothing it over: the engine may now decide on an official
