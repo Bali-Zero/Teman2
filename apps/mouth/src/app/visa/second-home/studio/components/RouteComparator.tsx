@@ -85,8 +85,10 @@ export function RouteComparator({ highlight = false }: RouteComparatorProps) {
       <h2
         style={{
           margin: 0,
+          // R4 §3: Cormorant is display-only and never below 24px — under that,
+          // low-DPI Android antialiasing shreds the serif.
           fontFamily: "var(--font-serif, Georgia, serif)",
-          fontSize: "clamp(1.2rem, 3vw, 1.5rem)",
+          fontSize: "clamp(1.5rem, 3vw, 1.75rem)",
           color: "var(--text-primary)",
         }}
       >
@@ -165,8 +167,12 @@ export function RouteComparator({ highlight = false }: RouteComparatorProps) {
 
       <style>{`
         .bz-shs-route-comparator {
-          --route-copy: #172033;
-          --route-label: #475569;
+          /* Literal hexes (not var()) so they match the design-system tokens
+             exactly — RouteComparator.test.tsx regexes --route-copy/--route-label
+             for a raw #hex, so an indirection breaks its AA-contrast assertion.
+             #16213a == --text-primary, #475372 == --text-secondary. */
+          --route-copy: #16213a;
+          --route-label: #475372;
         }
 
         .bz-shs-route-table-view {
@@ -264,20 +270,34 @@ export function RouteComparator({ highlight = false }: RouteComparatorProps) {
 
         .bz-shs-route-table-view [data-route="deposit"],
         .bz-shs-route-card[data-route="deposit"] {
-          --route-accent: #315f73;
-          --route-tint: #eef5f7;
+          /* Literal (see comment above): #2a6f97 == --state-likely */
+          --route-accent: #2a6f97;
+          --route-tint: #e8eef2;
         }
 
         .bz-shs-route-table-view [data-route="property"],
         .bz-shs-route-card[data-route="property"] {
-          --route-accent: #79502f;
+          /* Literal (see comment above): #7a5209 == --state-warning */
+          --route-accent: #7a5209;
           --route-tint: #f8f2eb;
         }
 
         .bz-shs-route-table-view [data-route="senior"],
         .bz-shs-route-card[data-route="senior"] {
+          /* DECLARED DEVIATION from the R4 token set (2026-08-31), recorded
+             rather than left implicit. The other two routes map onto real
+             tokens (--state-likely, --state-warning), but the third has no
+             token left that does not LIE: the remaining state colours mean
+             eligible / error, and both reds are reserved for structure and
+             action. Rather than give a route a semantic colour it does not
+             have, this keeps one desaturated hue that means nothing but
+             "third row". Measured on carta 6.42, on its own tint 6.06, on
+             white 6.95 — all clear. Safe because colour is NOT the signal
+             here: the three routes are told apart by crest and by the top
+             rule (dashed on the senior route), per R4 §4.5, and these tints
+             carry no meaning alone. */
           --route-accent: #66517a;
-          --route-tint: #f4f0f7;
+          --route-tint: #f2eef5;
         }
 
         .bz-shs-route-heading {
@@ -328,11 +348,11 @@ export function RouteComparator({ highlight = false }: RouteComparatorProps) {
           align-items: flex-start;
           gap: var(--space-2, 0.5rem);
           padding: 0.4rem 0.55rem;
-          color: #704116;
+          color: var(--state-warning);
           font-weight: 700;
           line-height: 1.4;
           background: #fff7e8;
-          border: 1px dashed #9b6327;
+          border: 1px dashed var(--state-warning);
           border-radius: 6px;
         }
 
