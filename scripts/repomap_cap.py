@@ -33,9 +33,25 @@ from pathlib import Path
 DEFAULT_CAP_BYTES = 20_480
 
 
+# A block header is a file path followed by a colon, at column 0. The two
+# strategies write their CONTINUATION lines differently and the difference is
+# load-bearing: ctags indents them, but aider draws a gutter — `⋮...` for elided
+# regions and `│def foo():` for kept ones — at column 0 too. Detecting a header
+# as "not indented" therefore split real aider output into ten blocks where it
+# had two (measured), which would cut a file's summary in half: the exact thing
+# this module promises never to do. So a header is recognised by SHAPE — no
+# gutter glyph, ends in a colon — not by the absence of leading whitespace.
+_GUTTER_CHARS = "│⋮|"
+
+
+def _is_block_header(line: str) -> bool:
+    if not line.strip() or line[0].isspace() or line[0] in _GUTTER_CHARS:
+        return False
+    return line.rstrip().endswith(":")
+
+
 def _split(text: str) -> tuple[list[str], list[list[str]]]:
-    """(preamble, blocks). A block starts on a non-indented, non-empty line —
-    the `path:` header both strategies emit; everything indented belongs to it."""
+    """(preamble, blocks). A block runs from one file header to the next."""
     lines = text.splitlines(keepends=True)
 
     # The generator's `#` header and any strategy preamble ride along
@@ -50,11 +66,18 @@ def _split(text: str) -> tuple[list[str], list[list[str]]]:
     while i < len(lines) and lines[i].startswith("Here are summaries"):
         head.append(lines[i])
         i += 1
+    # ...and the blank line aider leaves after its preamble. Without this the
+    # blank became a block of its own, ahead of the first real file — harmless
+    # to the byte count, but it made the "kept N of M blocks" note off by one,
+    # and a note that miscounts is a note a reader stops trusting.
+    while i < len(lines) and not lines[i].strip():
+        head.append(lines[i])
+        i += 1
 
     blocks: list[list[str]] = []
     cur: list[str] = []
     for line in lines[i:]:
-        if line.strip() and not line[0].isspace():
+        if _is_block_header(line):
             if cur:
                 blocks.append(cur)
             cur = [line]
@@ -85,12 +108,17 @@ def cap_text(text: str, cap: int = DEFAULT_CAP_BYTES) -> tuple[str, str]:
     budget = cap - len(head_str.encode()) - len(_note(0, len(blocks), cap, "by rank").encode())
 
     if budget <= 0:
-        # Even the header plus its own note does not fit. Emit the header and say
-        # so — an empty map would read like a clean small repo, which is a lie the
-        # reader has no way to detect.
+        # A FLOOR, and it is deliberately above the cap. Below "provenance header
+        # plus an explanation" there is nothing worth writing: an empty file reads
+        # exactly like a clean small repo, and a byte-sliced note is unreadable.
+        # So a cap this small is refused rather than obeyed, and the verdict says
+        # so — the caller's own over-cap WARN then fires, which is correct: a cap
+        # that cannot hold its own floor is a misconfiguration, not a map problem.
+        # Named here because the module calls itself a HARD cap everywhere else,
+        # and a promise with a silent exception is the defect this lane is about.
         return (
-            head_str + _note(0, len(blocks), cap, "header alone exceeds the cap"),
-            f"truncated 0/{len(blocks)}",
+            head_str + _note(0, len(blocks), cap, "cap is below the header+note floor"),
+            f"floor-exceeds-cap 0/{len(blocks)}",
         )
 
     kept: list[list[str]] = []

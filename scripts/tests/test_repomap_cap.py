@@ -87,12 +87,68 @@ def test_the_provenance_header_always_survives() -> None:
     assert out.startswith(HEADER)
 
 
-def test_a_cap_too_small_for_even_the_header_still_says_so() -> None:
-    """Degenerate input must not produce a silently empty map, which reads
-    exactly like a clean small repo."""
+def test_a_cap_below_the_header_floor_is_refused_and_named_as_such() -> None:
+    """The one place the output is deliberately LARGER than the cap.
+
+    Below "provenance header plus an explanation" there is nothing worth
+    writing: an empty file reads exactly like a clean small repo, and a
+    byte-sliced note is unreadable. So such a cap is refused rather than obeyed,
+    and the verdict SAYS which of the two happened — a module that calls itself a
+    hard cap everywhere else must not carry a silent exception (Kimi K3, 2026-08-31:
+    the earlier version returned the same `truncated` verdict here, so a caller
+    could not tell an honoured cap from an impossible one)."""
     out, verdict = cap.cap_text(_map(200), 120)
     assert "TRUNCATED" in out, "an unusable cap must still be explained, not obeyed silently"
-    assert verdict == "truncated 0/200"
+    assert verdict == "floor-exceeds-cap 0/200", (
+        "the verdict must distinguish 'I truncated to fit' from 'this cap cannot fit "
+        "its own explanation' — the caller's over-cap WARN depends on the difference"
+    )
+    assert len(out.encode()) > 120, "premise: this is the case where the floor wins"
+
+
+def test_the_aider_gutter_is_not_mistaken_for_block_headers() -> None:
+    """Aider draws `⋮...` and `│def foo():` at column 0, so "not indented" is not
+    a block header. Measured 2026-08-31: the first version split a two-file aider
+    map into TEN blocks, which would cut a file's summary in half — the one thing
+    this module promises never to do."""
+    aider = (
+        "# Nuzantara repo map (auto-generated)\n#\n"
+        "Here are summaries of some files present in my git repository.\n\n"
+        "a.py:\n⋮...\n│def a():\n│    pass\n⋮...\n"
+        "b.py:\n⋮...\n│def b():\n│    pass\n"
+    )
+    _head, blocks = cap._split(aider)
+    assert len(blocks) == 2, f"expected the two files, got {len(blocks)} blocks"
+    assert [b[0].strip() for b in blocks] == ["a.py:", "b.py:"]
+
+
+def test_a_stray_prose_line_at_column_zero_does_not_start_a_block() -> None:
+    """The other half of the header shape, and it needed its own case.
+
+    A mutation replacing `endswith(":")` with `True` survived every other test
+    here, because in all of them every non-gutter column-0 line happened to end
+    in a colon — the predicate read as protection while nothing could tell it
+    from a constant. Aider's preamble stripper keeps from "Here are summaries",
+    so any prose after that point rides along at column 0; treated as a header it
+    would invent a block and make the "kept N of M" note wrong."""
+    text = (
+        "# h\n#\n\n"
+        "a.py:\n  function: x\n"
+        "Repo-map can't include /some/path, it is not in the repo.\n"
+        "b.py:\n  function: y\n"
+    )
+    _head, blocks = cap._split(text)
+    assert [b[0].strip() for b in blocks] == ["a.py:", "b.py:"], (
+        f"prose was treated as a file header: {[b[0].strip() for b in blocks]}"
+    )
+
+
+def test_both_strategy_formats_split_the_same_way() -> None:
+    """ctags indents its continuations, aider gutters them. One detector, two
+    formats — if a future strategy breaks this, the cap starts cutting blocks."""
+    ctags = "# h\n#\n\nx.py:\n  function: a, b\n\ny.py:\n  class: C\n"
+    _h, blocks = cap._split(ctags)
+    assert [b[0].strip() for b in blocks] == ["x.py:", "y.py:"]
 
 
 def test_the_cap_is_measured_in_bytes_not_characters() -> None:
