@@ -1,4 +1,4 @@
-brief_ref: brief.yml
+brief_ref: evidence/brief.yml
 plan_ref: >-
   docs/plans/2026-08-29-beyond-sota-craft-wave/L12-data-schema-migrations.md
   PR-2, driven by SQUAD D' wave-2 issue #5317. Migration class: auto-merge OFF,
