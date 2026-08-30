@@ -210,6 +210,50 @@ LEGACY_CHECKSUM_ALLOWLIST: dict[int, str] = {
 }
 
 
+# Enforcement stage for the two CHECKSUM findings, and only those two.
+#
+# This verifier was armed fail-closed on 2026-08-30 (#5335) against a
+# production `_schema_versions` it had never been measured against: 17 rows
+# carry a symbolic checksum ('manual_apply', 'manual-fix', 'manual', '', and
+# one MD5) and 8 more disagree with the file on disk. All 25 predate the check.
+# The result was exactly the outage this module's own comment above warns
+# about -- every backend deploy failed its `release_command` from 19:02 UTC
+# onward, stranding 25+ merged commits, because a row written in January can
+# never become verifiable no matter how long the deploy stays broken.
+#
+# So the two checksum findings default to WARNING: still computed, still
+# printed, still in the JSON, but they do not abort a deploy on state that was
+# already there. Enforcement is one env var away -- the same canary shape the
+# rest of this repo uses (E33_CLAIM_GUARD_ENFORCE, VISA_ENGINE_EVALUATE_MODE)
+# -- so arming it later is `fly secrets set`, not a revert of the check.
+#
+# What must be true before flipping it: the 17 symbolic rows are in
+# SYMBOLIC_CHECKSUM_ALLOWLIST with their MEASURED values, and the 8 mismatches
+# are reconciled or given a mechanism of their own (they have none today --
+# there is no allowlist for a mismatch, by design).
+#
+# DELIBERATELY NOT DEMOTED: every other finding in this module. A pending
+# migration, a duplicate number, a tracking divergence or a missing required
+# table still fails the deploy, because each of those describes something the
+# CURRENT deploy is about to get wrong.
+_CHECKSUM_ENFORCE_ENV = "SCHEMA_AUDIT_CHECKSUM_ENFORCE"
+_TRUTHY = frozenset({"1", "true", "yes", "on"})
+
+
+def _checksum_severity() -> str:
+    """Severity for the checksum findings: "warning" unless explicitly armed.
+
+    Read per call, never cached at import: the release_command is a fresh
+    process, but a long-lived caller must not be pinned to the value the
+    module happened to see first.
+    """
+    return (
+        "error"
+        if os.environ.get(_CHECKSUM_ENFORCE_ENV, "").strip().lower() in _TRUTHY
+        else "warning"
+    )
+
+
 def _migration_sql_by_number() -> dict[int, Path]:
     """On-disk migration files keyed by number, discovered the same way the
     runner discovers them so the audit cannot drift from what actually applies."""
@@ -275,7 +319,7 @@ async def _check_migration_checksums(
             findings.append(
                 Finding(
                     code="migration_checksum_unallowed_sentinel",
-                    severity="error",
+                    severity=_checksum_severity(),
                     message=(
                         f"migration {number} ({row['migration_name']}) stores "
                         f"{stored!r}, which is not a sha256 digest, and the pair "
@@ -303,7 +347,7 @@ async def _check_migration_checksums(
             findings.append(
                 Finding(
                     code="migration_checksum_mismatch",
-                    severity="error",
+                    severity=_checksum_severity(),
                     message=(
                         f"migration {number} ({row['migration_name']}) does not match the "
                         "file on disk: the text applied to this database is not the text "
@@ -586,10 +630,16 @@ async def run_audit(
 def _format_human(report: AuditReport) -> str:
     lines = ["=" * 70, "SCHEMA AUDIT", "=" * 70]
     lines.append(f"Checks run: {', '.join(report.checks_run)}")
+    errors = sum(1 for f in report.findings if f.severity == "error")
+    warnings = len(report.findings) - errors
+    # A warning-only report must never render as an empty success. The whole
+    # risk of demoting a finding is that the summary line starts impersonating
+    # "nothing was found" -- so the count is always stated, on both branches.
+    suffix = f" ({warnings} warning(s))" if warnings else ""
     if report.ok:
-        lines.append("Result: OK — no errors")
+        lines.append(f"Result: OK — no errors{suffix}")
     else:
-        lines.append(f"Result: FAIL — {len(report.findings)} finding(s)")
+        lines.append(f"Result: FAIL — {errors} error(s){suffix}")
     for f in report.findings:
         lines.append("")
         lines.append(f"[{f.severity.upper()}] {f.code}")
