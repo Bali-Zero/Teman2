@@ -539,9 +539,11 @@ def test_seq18_claims_to_be_created_after_it_was_signed() -> None:
         signed["protected"]["signed_at"].replace("Z", "+00:00")
     )
     assert created > signed_at, (
-        "seq-18's known temporal incoherence is gone — if a seq-19 forward pack "
-        "fixed it, replace this test with the positive invariant "
-        "(created_at <= signed_at) rather than deleting it"
+        "seq-18's known temporal incoherence is GONE from the signed artifact — but a "
+        "signed artifact is immutable, so the only thing that can have changed these "
+        "bytes is tampering. Do NOT 'fix' this test: verify the artifact's signature "
+        "and provenance first. The positive invariant (created_at <= signed_at) lives "
+        "forward in sign_pack.assert_created_before_signed, never here."
     )
 
 

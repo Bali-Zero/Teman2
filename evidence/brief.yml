@@ -17,8 +17,10 @@ objective: |
   and no database column that overrides `max_age_seconds` anywhere in this codebase. So widening it
   is necessarily a signed pack ceremony, not a setting.
 
-  Gear 3 by SIZE, deterministically: the two generated pack artifacts put the diff at 19,682 net
-  lines across 13 files, far past the blast-radius floor. Recomputed from the real merge-base
+  Gear 3 by SIZE, deterministically: the two generated pack artifacts put the diff at 19,959 net
+  lines across 13 files at this commit — the figure grows with each review round (19,682 at
+  c59d527faa), and the pack's diff block, which carries its own measured_at, is the authority —
+  far past the blast-radius floor. Recomputed from the real merge-base
   — 0857ce15bc, after the branch was repointed onto fresh main; it was the sequence-17 landing
   commit f537609969 before that — never from a two-dot diff against a stale base. Receipt in the
   pack, and the pack's own diff block is the authority if these ever disagree.
@@ -133,8 +135,9 @@ risks:
     claimed as handled."
   - "seq-16's source still never reached `main` (it lives on an unmerged branch while its signed
     artifact ran in production). Unchanged by this PR, still open."
-  - "The generated pack artifacts dominate the line count. The hand-authored surface is 262 lines of
-    fold script plus a triage rule; the generated part is reproducible from the fold plus the seq-17
+  - "The generated pack artifacts dominate the line count. The hand-authored surface is 395 lines of
+    fold script at this commit — 262 before the two guards adversarial review added — plus a triage
+    rule and its contract test; the generated part is reproducible from the fold plus the seq-17
     payload."
 
 grader: |

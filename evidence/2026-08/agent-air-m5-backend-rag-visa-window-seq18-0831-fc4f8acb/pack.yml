@@ -110,7 +110,9 @@ receipts:
 
   - claim: >-
       seq-18 now HAS a witness test file. Its absence was a real gap this session found before the
-      refuter did: seq-15 and seq-17 each have one, seq-18 had none, so nothing on disk would have
+      refuter did: seq-15 and seq-17 each have one (that grep was scoped seq1[5-8], so it never saw
+      test_seq14_pack.py or the seq-10..13 witnesses — the precedent is WIDER than this
+      receipt's evidence, never narrower), seq-18 had none, so nothing on disk would have
       noticed a wrong window constant.
     cmd: ls apps/backend-rag/backend/tests/services/visa_engine/ | grep -i "seq1[5-8]"
     result: >-
@@ -195,12 +197,17 @@ receipts:
       POST https://nuzantara-rag.fly.dev/api/visa-oracle/evaluate?traffic_source=synthetic_driver
       via backend/scripts/visa_engine/probe_evaluate.py --full-body, with bodies built through the
       REAL gold-harness construction path (_gold_fixtures.applicant_facts + gold_replay_driver.
-      build_persona_payload over the E31B and A1 personas), never hand-written
+      build_persona_payload over two personas from the gold set), never hand-written.
+      CORRECTION: an earlier wording called them "the E31B and A1 personas". PERSONAS is keyed
+      by integer id 1..20 with prose labels — no persona carries either name. E31B and A1 are
+      the CANDIDATE codes the two answers returned; the persona ids went unrecorded at probe
+      time, and the receipt that names ids 7 and 19 is the gate's separate run, not this one
     result: >-
-      E31B — HTTP 200, state SUPPORTED_CANDIDATES, candidates [E31B, E31D], review_reasons [],
+      The E31B-yielding persona — HTTP 200, state SUPPORTED_CANDIDATES, candidates [E31B, E31D], review_reasons [],
       missing_facts [], no DECISIVE_SOURCE_STALE; its decisive portal source
       (570f2bc4-5120-561f-90ba-58fcd9507514) reports freshness status CURRENT with
-      max_age_seconds 2764800. A1 — HTTP 200, SUPPORTED_CANDIDATES, candidates [A1, B1, C1], same
+      max_age_seconds 2764800. The A1-yielding persona — HTTP 200, SUPPORTED_CANDIDATES,
+      candidates [A1, B1, C1], same
       empty review_reasons. Both name rule_pack sequence 18 / version 2026.8.31.
       HONEST LIMIT, recorded by the probing seat itself: verified_at (2026-08-30T13:18Z) is still
       inside a SEVEN-day window today, so these two answers do not by themselves prove the
@@ -279,7 +286,8 @@ council_run: council-run.jsonl
 
 dissent:
   - objection: >-
-      seq-18 shipped with no witness test file, where seq-15 and seq-17 each have one. Nothing on
+      seq-18 shipped with no witness test file, where seq-15 and seq-17 each have one (and, on a
+      wider grep, seq-10 through seq-14 too). Nothing on
       disk would have caught a wrong window constant, and a wrong constant is invisible until the
       Oracle goes silent — the exact failure mode this pack exists to postpone.
     seat: session (build lane, self-audit before the refuter reported)
