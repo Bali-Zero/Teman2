@@ -21,13 +21,27 @@ lanes:
       dispatched; its run is INCOMPLETE and is recorded as such.
 
 diff:
-  files: 2
-  net_lines: 375
-  measured_at: 31b607d6a
+  files: 4
+  net_lines: 629
+  measured_at: 200efaaee
   note: >-
-    `git diff --numstat <PR-1 head>...HEAD` -> 2 files, net 375, measured
-    against the STACKED base (the codec PR), not against origin/main, because
-    that is the change this PR actually contributes.
+    RE-MEASURED 2026-08-31 by the rescue session, as the last action before
+    this commit: the prior figures (measured @31b607d6a, immediately before
+    this PR's own evidence pack was added) undercounted the PR's real final
+    diff, which also includes this pack.yml + its sibling brief.yml.
+    `git diff --numstat df17f4b96..HEAD` (df17f4b96 = this PR's actual base,
+    PR#5324's tip, matching what CI's harness-floor.yml reads from
+    `pull_request.base.sha`) -> `evidence_pack_lint.py --print-measured`
+    reports "4 files, +627/-2, 4 commits" (raw, unexcluded totals -- the
+    figure the countable-claims rule checks against). `net_lines: 629` is a
+    DIFFERENT number on purpose: CHURN (added+deleted, `_size_term_net_lines()`),
+    identical to the raw 627+2 here since none of these 4 paths hit the
+    floor's fixtures/generated/vendor exclusion list. The deterministic
+    floor recomputed against this PR's real base (df17f4b96, not
+    origin/main -- this PR is stacked, not targeting main) is 2, source
+    "size" (churn 629 >= SIZE_GEAR2_THRESHOLD 400, below SIZE_GEAR3_THRESHOLD
+    1828). The brief already declares gear 2, so gear >= floor holds; no
+    gear change needed.
 
 pii_scan: clean
 
