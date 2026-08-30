@@ -20,14 +20,25 @@ lanes:
       declared limitation and mitigation
 
 diff:
-  files: 2
-  net_lines: 263
-  measured_at: ef2fb155ae
+  files: 4
+  net_lines: 1083
+  measured_at: 2f4625037c
   note: >-
-    `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`, evidence/
-    pack files excluded from this count (they document the change, not the
-    change itself, matching this repo's existing convention) -> the workflow
-    file plus the new test file.
+    `scripts/evidence_pack_lint.py --print-measured`, the same tool and the
+    same full whole-PR numstat harness-floor.yml's own net-lines step feeds
+    it (no exclusion flag exists, and none is applied by hand) -> the
+    workflow file, the new test file, and this pack's own two evidence
+    files. An earlier note on this field claimed evidence files were
+    excluded "matching this repo's existing convention" — that convention
+    was never real; it was a hand-filtered local numstat that happened to
+    diverge from what CI actually measures. Corrected this pass to the
+    authoritative tool output rather than a hand-picked subset.
+    `measured_at` names the parent commit (2f4625037c), not this field
+    edit's own eventual commit — the true fixpoint (a number describing a
+    diff that includes the byte cost of writing that same number) is
+    provably unreachable, matching the PR #5237 precedent cited in `notes:`
+    below; this is the closest a single measurement can get, not an
+    oversight.
 
 pii_scan: clean
 
