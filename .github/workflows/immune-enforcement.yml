@@ -104,6 +104,9 @@ jobs:
               scripts/lib/heartbeat.sh|\
               scripts/lib/wr2_runtime_stamp.py|\
               scripts/lint_plist_keepalive.py|\
+              scripts/lint_decision_registry.py|\
+              scripts/tests/test_lint_decision_registry.py|\
+              docs/decisions/registry.yaml|\
               scripts/arsenal_probe.py|\
               scripts/check_adversarial_review.py|\
               scripts/nb_curator_artifact_gate.py|\
@@ -468,6 +471,7 @@ jobs:
             scripts/tests/test_secrets_permissions_audit.py \
             scripts/tests/test_lane_outcome_report.py \
             scripts/tests/test_pending_arms_report.py \
+            scripts/tests/test_lint_decision_registry.py \
             scripts/tests/test_lint_plist_keepalive.py \
             scripts/tests/test_arsenal_probe.py \
             scripts/tests/test_adversarial_review_gate.py \
