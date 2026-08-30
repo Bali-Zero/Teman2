@@ -454,6 +454,26 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "of the public signed seq-13 RulePack payload, triple-derived at "
         "run time; exact value pinned, never a credential",
     ),
+    # fold_pack_seq17.py: SEQ16_PAYLOAD_SHA256 is the chain anchor for the
+    # active seq-16 RulePack payload. The fold recomputes sha256 over the
+    # canonical seq-16 payload and aborts unless it equals this database-
+    # recorded digest before producing seq-17.
+    #
+    # Content-keyed and pinned to the exact assignment and exact digest:
+    # this production file remains closed to every other value or line, and
+    # a ride-along statement cannot match because the pattern is end-anchored.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq17\.py$"
+        ),
+        re.compile(
+            r'^\s*SEQ16_PAYLOAD_SHA256\s*=\s*'
+            r'"ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100"\s*$'
+        ),
+        "fold_pack_seq17.py: seq-16 chain anchor — content-derived sha256 "
+        "of the active seq-16 RulePack payload, recomputed before folding; "
+        "exact assignment and value pinned, never a credential",
+    ),
     # scripts/kbli_bench/results/p2b_score.json (PR #4422, KBLI Navigator
     # Phase 2b benchmark run): corpus_sha256 is the content-derived sha256 of
     # the frozen benchmark corpus (scripts/kbli_bench/p2b_corpus.json), the
