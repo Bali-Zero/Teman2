@@ -308,6 +308,33 @@
             "scripts/tests/test_hooks_fail_open_on_garbage_payload.py"
           ],
           "note": "K3/F7 (2026-08-27): registered on THREE hook events (SubagentStop, SessionEnd, PreCompact — one script, event told apart via payload['hook_event_name'], same precedent as mailbox_inject.py in this directory). Writes an on-death handoff artifact (cwd/branch/git-diff/last-tool-names) so a turn that dies without a final message still leaves a trace. Deliberately NO real budget enforcement (2026-08-26 retro §3bis, Sol's refutation of the original F7 proposal) — visibility only, never a gate: it never blocks, never raises past main(), degrades silently on every failure. No allow/deny decision to prove guilt/innocence on, so this entry carries file-level tests: test_session_budget_handoff.py proves the one real correctness property that IS a guilt/innocence pair — a secret-shaped diff line (`sk-...`) is redacted to `[REDACTED]` (guilt: the secret must never reach the written artifact) while the surrounding non-secret diff --stat filename survives verbatim (innocence: redaction must not eat innocent content) — plus exit-0 on empty/malformed stdin. Kill switch SESSION_BUDGET_OFF=1."
+        },
+        "infra/claude-hooks/lane_check.py": {
+          "scar": [
+            "L04-PR1",
+            "superscar-2-exists-not-armed",
+            "superscar-3-entity-not-form",
+            "W104",
+            "W108"
+          ],
+          "symbols": {
+            "evaluate": {
+              "tests": [
+                "infra/claude-hooks/test_lane_check.py",
+                "infra/claude-hooks/test_lane_check_wiring.py"
+              ],
+              "note": "The ABSENT path must be byte-identical to no-op — asserted by a side-effect probe AND by a callable that records whether the change set was computed at all. That second assertion exists because the promise was FALSE at the wiring: the first version evaluated the change set as a function ARGUMENT, so three git subprocesses ran on every termination in the fleet with no contract present, and the library's own tests were structurally blind to it (a blind refuter found it). Also pinned: an untrusted `origin` resolves ABSENT and SILENT, because a subagent that clones an external repo to read it must not have that repo's `.lane-check.json` executed with shell=True. SCOPE, same function: Both under-match gemelli pinned: an UNKNOWN change set (None) and an EMPTY one ([]) must each keep the check RUNNING, never resolve OUT_OF_SCOPE. The empty case was a corpus gap found by mutation. The wiring corpus adds the third: an untracked DIRECTORY must not collapse to `newdir/` and match no file glob, which is why the hook reads `git status --porcelain -uall -z`."
+            },
+            "blocks": {
+              "tests": ["infra/claude-hooks/test_lane_check.py"],
+              "note": "Fails CLOSED on FAIL, INVALID and ERROR (incl. timeout) — the opposite of the fail-open safety guards beside it, and deliberate: those are imposed on the agent, this relays a check the LANE declared about itself, and 'could not measure' recorded as 'measured fine' is W104/W108. Guilt on each of the three; innocence on ABSENT, PASS and OUT_OF_SCOPE."
+            },
+            "_is_tautology": {
+              "tests": ["infra/claude-hooks/test_lane_check.py"],
+              "note": "Entity-wise after a quote-aware split, never a substring (superscar #3): `pytest --assert=plain test_true_positive.py` must NOT be refused, and its innocence case asserts so. TWO guilty shapes: a wholly no-op command, and a real check whose failure is swallowed by an `||` tail (`pytest x || true`) — the second was missed on the first pass and is the likelier one in practice."
+            }
+          },
+          "note": "L04-PR1. `.lane-check.json` in a worktree root is the check a lane's DESIGN stage declares about ITSELF; this module evaluates it at the stop boundary so a lane that broke its own build check cannot end a turn quietly reporting success. It is BUILD-side self-verification and explicitly NOT review: generator!=grader still applies after it passes. Registered with two corpora because they answer different questions — test_lane_check.py proves the library decides correctly, test_lane_check_wiring.py drives subagent_stop_verify.py as a subprocess with a real SubagentStop payload and proves the decision REACHES a stop boundary. That split was earned: 'imports lane_check' is not 'honours lane_check', and the missing change set at the wiring was invisible to every library test."
         }
       },
       "exempt": {
@@ -758,7 +785,7 @@
       }
     },
     "required_workflow_conformance": {
-      "_doc": "Merge-OS v2 Wave 0 trap-disarm (research/operations/2026-08-10-merge-os-v2-submission-system.md §4 Wave 0, Codex F12), extended 2026-08-29 (L06-PR1 trigger-symmetry, two cross-family refuter rounds). scripts/ci/check_required_workflow_conformance.py reads infra/required.d/contexts.json and fails if a required context's defining workflow: (2) lacks a merge_group: trigger; (3) lacks a pull_request: trigger entirely; (4) carries a top-level paths:/paths-ignore: filter under on.pull_request (the BRANCH axis is a declared, deliberately-unbuilt scope limit \u2014 flagging branches:/branches-ignore: by key-presence over-matched the innocent branches: [main], so the rule was withdrawn pending a directional test against the protected branch); or (5) narrows on.pull_request.types: without both opened and synchronize — each is a shape where a required check never starts a run for some legitimate PR and hangs 'Expected — waiting' forever (the exact defect docs-sync.yml and migration-lint.yml shipped, cured same PR as rule 4's paths half). No ALLOWLIST escape hatch — removed 2026-08-29: it was empty, unreachable, and silenced rules 2-5 together for any context sharing its workflow_file, wider than its own stated justification. Each check_* function IS a guard in the superscar #3 sense, same shape as evidence_pack_lint.py/wr2_editorial_pregate.py.",
+      "_doc": "Merge-OS v2 Wave 0 trap-disarm (research/operations/2026-08-10-merge-os-v2-submission-system.md §4 Wave 0, Codex F12), extended 2026-08-29 (L06-PR1 trigger-symmetry, two cross-family refuter rounds). scripts/ci/check_required_workflow_conformance.py reads infra/required.d/contexts.json and fails if a required context's defining workflow: (2) lacks a merge_group: trigger; (3) lacks a pull_request: trigger entirely; (4) carries a top-level paths:/paths-ignore: filter under on.pull_request (the BRANCH axis is a declared, deliberately-unbuilt scope limit — flagging branches:/branches-ignore: by key-presence over-matched the innocent branches: [main], so the rule was withdrawn pending a directional test against the protected branch); or (5) narrows on.pull_request.types: without both opened and synchronize — each is a shape where a required check never starts a run for some legitimate PR and hangs 'Expected — waiting' forever (the exact defect docs-sync.yml and migration-lint.yml shipped, cured same PR as rule 4's paths half). No ALLOWLIST escape hatch — removed 2026-08-29: it was empty, unreachable, and silenced rules 2-5 together for any context sharing its workflow_file, wider than its own stated justification. Each check_* function IS a guard in the superscar #3 sense, same shape as evidence_pack_lint.py/wr2_editorial_pregate.py.",
       "source": "scripts/ci/check_required_workflow_conformance.py",
       "census": {
         "method": "ast-def-prefix",
