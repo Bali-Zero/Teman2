@@ -122,6 +122,8 @@ jobs:
               scripts/tests/test_proprioception_executed_code_currency.py|\
               scripts/tests/test_secrets_permissions_audit.py|\
               scripts/tests/test_pending_arms_report.py|\
+              scripts/lane_outcome_report.py|\
+              scripts/tests/test_lane_outcome_report.py|\
               scripts/tests/test_lint_plist_keepalive.py|\
               scripts/tests/test_arsenal_probe.py|\
               scripts/tests/test_adversarial_review_gate.py|\
@@ -462,6 +464,7 @@ jobs:
             scripts/tests/test_proprioception_self_code_staleness.py \
             scripts/tests/test_proprioception_executed_code_currency.py \
             scripts/tests/test_secrets_permissions_audit.py \
+            scripts/tests/test_lane_outcome_report.py \
             scripts/tests/test_pending_arms_report.py \
             scripts/tests/test_lint_plist_keepalive.py \
             scripts/tests/test_arsenal_probe.py \
