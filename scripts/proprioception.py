@@ -826,12 +826,45 @@ def probe_executed_code_currency(root: Path, args: dict, timeout: int) -> tuple[
     return (DIVERGED if findings else RECONCILED), findings, ev
 
 
+def probe_repomap_size(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
+    """Is the auto-injected repo map inside the byte cap it claims?
+
+    THE BOUNDARY: `scripts/build_repomap.sh` (repo) <-> `~/.nuzantara-repomap.txt`
+    (HOME, per-machine, injected into every session by the SessionStart hook).
+
+    WHY IT IS A PROBE AND NOT A WARNING IN THE GENERATOR. It WAS a warning in the
+    generator: >30 KB printed a line to stderr and let the file through. Measured
+    on Pro on 2026-08-31, the live map was 42,779 bytes — past its own warn band,
+    for weeks, and the only reader of that stderr was a log nobody opened (W55: a
+    signal emitted is not a signal seen; W76 is this same file's earlier relapse).
+    The generator now truncates, so an over-cap file can only mean the truncator
+    failed open or somebody raised the cap — and either of those is exactly the
+    kind of drift that leaves no repo diff, which is what this organ is for.
+
+    UNPROBEABLE, not RECONCILED, when the map is absent: this machine may simply
+    not run the cron (measured 2026-08-31: Pro has the file, Mini and M5 do not).
+    Reporting "fine" for a file that does not exist is how a probe becomes decor.
+    """
+    cap = int(args.get("cap_bytes", 20480))
+    target = Path(os.path.expanduser(args.get("path", "~/.nuzantara-repomap.txt")))
+    if not target.exists():
+        return UNPROBEABLE, 0, [f"{target} absent — this machine does not run the repomap cron"]
+    size = target.stat().st_size
+    if size <= cap:
+        return RECONCILED, 0, [f"{size}B <= {cap}B cap"]
+    return DIVERGED, 1, [
+        f"{target} is {size}B, over the {cap}B hard cap by {size - cap}B — "
+        "the truncator did not run (check the generator's stderr for 'hard-cap filter failed')"
+    ]
+
+
 BUILTINS = {
     "git_alignment": probe_git_alignment,
     "executed_code_currency": probe_executed_code_currency,
     "produced_promoted": probe_produced_promoted,
     "home_fork_scripts": probe_home_fork_scripts,
     "guardian_freshness": probe_guardian_freshness,
+    "repomap_size": probe_repomap_size,
 }
 
 
@@ -938,6 +971,15 @@ DEFAULT_REGISTRY: list[dict] = [
         "severity": "P1",
         "args": {"pairs": [{"glob": "research/regulatory/*-delta.json", "label": "regulatory deltas"}]},
         "fix_hint": "promote stranded deltas: git add research/regulatory/*-delta.json + PR",
+    },
+    {
+        "id": "repomap_size", "type": "builtin", "target": "repomap_size",
+        "class": "home<->repo",
+        "boundary": "build_repomap.sh hard cap <-> the ~/.nuzantara-repomap.txt a session is actually handed",
+        "machines": ["all"], "tags": ["fast"], "timeout_sec": 10,
+        "severity": "P2",
+        "args": {"path": "~/.nuzantara-repomap.txt", "cap_bytes": 20480},
+        "fix_hint": "re-run scripts/build_repomap.sh and read its stderr — an over-cap file means the truncator failed open, not that the cap is wrong",
     },
     {
         "id": "home_fork_scripts", "type": "builtin", "target": "home_fork_scripts",

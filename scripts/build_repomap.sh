@@ -13,7 +13,8 @@
 #           .next, .turbo, .vercel, coverage, *.min.js (build artifacts — 2026-06-13
 #           connectome audit: ctags fallback indexed minified webpack chunks,
 #           188kB of noise injected into every session instead of the 4-20kB target)
-# Target: 4-20kB output (~1-5k tokens)
+# Target: 4-20kB output (~1-5k tokens), enforced by a HARD CAP at 20480 bytes
+# (REPOMAP_HARD_CAP_BYTES) — truncated by rank at block boundaries, not warned about
 #
 # Kill-switch: REPOMAP_ENABLED=false → exit 0 (no-op)
 
@@ -218,6 +219,37 @@ HEADER_TMP="${OUTPUT_TMP}.header"
     cat "$OUTPUT_TMP"
 } > "$HEADER_TMP"
 
+# === Hard cap by rank (W76 antibody) ===
+# The old behaviour here was a stderr WARN above 30kB that let the file through.
+# It fired and nobody saw it: measured on Pro 2026-08-31, the live map was
+# 42,779 bytes — past its own warn band, injected into every session, for weeks.
+# A warning nobody reads is not a control (superscar #2 / W55: signal emitted is
+# not signal seen). So the generator now TRUNCATES instead of complaining.
+#
+# Truncation is by RANK and at BLOCK boundaries, never mid-symbol: both
+# strategies already emit their file blocks best-first (ctags sorts by entry
+# count, aider by its PageRank), so keeping a whole-block prefix keeps the
+# highest-signal part of exactly the ordering they chose. A half-written block
+# would be worse than a missing one — a reader cannot tell a truncated symbol
+# list from a short one.
+CAP_BYTES="${REPOMAP_HARD_CAP_BYTES:-20480}"
+CAPPED_TMP="${HEADER_TMP}.capped"
+if python3 "$(dirname "$0")/repomap_cap.py" "$HEADER_TMP" "$CAPPED_TMP" "$CAP_BYTES"
+then
+    if [[ -s "$CAPPED_TMP" ]]; then
+        mv -f "$CAPPED_TMP" "$HEADER_TMP"
+    else
+        # Fail OPEN, loudly: an empty capped file must never replace a real map.
+        echo "$LOG_PREFIX WARN: hard-cap filter produced an empty file — keeping the uncapped map" >&2
+        rm -f "$CAPPED_TMP"
+    fi
+else
+    # Same posture: a broken filter degrades to the old behaviour and SAYS so,
+    # instead of failing the whole build or silently shipping an unbounded map.
+    echo "$LOG_PREFIX WARN: hard-cap filter failed — map left uncapped, size unbounded" >&2
+    rm -f "$CAPPED_TMP"
+fi
+
 SIZE_BYTES=$(wc -c < "$HEADER_TMP")
 SIZE_LINES=$(wc -l < "$HEADER_TMP")
 
@@ -227,11 +259,19 @@ rm -f "$OUTPUT_TMP"
 
 echo "$LOG_PREFIX done strategy=$STRATEGY bytes=$SIZE_BYTES lines=$SIZE_LINES"
 
-# Warn (not fail) if outside target band 1kB-30kB
+# The <1kB warning stays: it is an unrelated failure mode (a strategy that
+# produced almost nothing), and unlike the old >30kB warning it is not something
+# this script can fix by itself — there is nothing to truncate.
 if (( SIZE_BYTES < 1024 )); then
     echo "$LOG_PREFIX WARN: output suspiciously small (<1kB)" >&2
-elif (( SIZE_BYTES > 30720 )); then
-    echo "$LOG_PREFIX WARN: output >30kB (target 4-20kB); consider lowering REPOMAP_MAX_TOKENS" >&2
+fi
+
+# Above-cap is now a contradiction, not a warning: the truncator ran, so this can
+# only mean the truncator failed open (it says so above) or someone raised
+# REPOMAP_HARD_CAP_BYTES. Either way it is a fact worth stating, because a map
+# larger than its own cap is paid by every session on this machine.
+if (( SIZE_BYTES > CAP_BYTES )); then
+    echo "$LOG_PREFIX WARN: output ${SIZE_BYTES}B exceeds the ${CAP_BYTES}B hard cap — the truncator did not run" >&2
 fi
 
 exit 0
