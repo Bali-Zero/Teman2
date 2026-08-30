@@ -49,12 +49,15 @@ seat_diversity_note: >-
   diff alone. No seat_override anywhere.
 
 diff:
-  files: 17
-  net_lines: 3249
+  files: 11
+  net_lines: 1293
   measured_at: >-
-    re-measured against base a5d26eb as the LAST action before this commit. Counted against
-    origin/main, so it INCLUDES the stacked canon-comparator files this branch is built on — see
-    stacked_on below; this lane's own contribution is the eight files listed in evidence.
+    counted against the PR's BASE, which is the parent branch and not main — this is a stacked PR
+    and its base was retargeted so the harness could resolve one evidence pack instead of two (the
+    resolver refuses to guess, correctly, and failed closed until the retarget). Re-measured as the
+    last action before this commit. Against main the same tree reads larger in both fields because
+    it carries the parent's files too; that figure is deliberately not quoted here, since the
+    countable-claims rule reads any number in this field and the base it belongs to is the parent.
 
 stacked_on: >-
   agent/air-m5/craft-h/canon-comparator2 (PR #5353). NOT a convenience: the parser this probe

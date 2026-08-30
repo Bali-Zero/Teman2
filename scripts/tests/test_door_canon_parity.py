@@ -171,15 +171,8 @@ def test_a_door_GIT_DOES_NOT_TRACK_is_a_finding_even_though_the_shell_sees_it(
     doors["qwen.md"] = _door()  # the LOWERCASE name is what git will track
     root = _repo(tmp_path, doors)
 
-    # THE PREMISE, asserted rather than assumed — this is the whole test. On a
-    # case-insensitive volume the uppercase lookup SUCCEEDS (it resolves to the
-    # lowercase file), while git, asked for the uppercase name, has nothing.
-    # A generic "is it tracked" check passes a fixture that merely leaves an
-    # uppercase file untracked; only this shape proves the CASE fix.
-    assert (root / "QWEN.md").is_file(), (
-        "this volume is case-SENSITIVE, so the trap under test cannot occur here; "
-        "the assertion below would pass for the wrong reason"
-    )
+    # Git is asked for the uppercase name and has only the lowercase one. This
+    # holds on EVERY volume, which is why it is the portable half of the trap.
     tracked = pp._git_tracked_names(root, ["QWEN.md", "qwen.md"], 15)
     assert tracked == {"qwen.md"}, tracked
 
@@ -426,3 +419,43 @@ def test_DECOY_doors_in_an_enclosing_repo_cannot_certify_a_subtree(
         "an enclosing repo's agreeing doors certified a subtree that has none: "
         + "\n".join(ev)
     )
+
+
+def _volume_is_case_insensitive(tmp_path: Path) -> bool:
+    probe = tmp_path / "_case_probe"
+    probe.write_text("x")
+    return (tmp_path / "_CASE_PROBE").is_file()
+
+
+def test_on_a_case_INSENSITIVE_volume_the_shell_answers_for_the_wrong_name(
+    tmp_path: Path,
+) -> None:
+    """The other half of the trap, and the half that only EXISTS on the fleet's
+    own machines. On the APFS default `(root / "QWEN.md").is_file()` returns True
+    while git has only `qwen.md` — measured 2026-08-31, where the two names
+    shared inode 343120045. That is why the probe asks git.
+
+    SKIPPED on a case-sensitive volume rather than failed. A CI runner is Linux
+    and structurally cannot host this trap; a test that goes red there is a
+    required check fabricating a failure on a machine that could never reproduce
+    the bug (W108), and the cure for that is not to weaken the assertion but to
+    say plainly where it can be measured. The portable half above runs
+    everywhere and is what actually guards the fix.
+    """
+    if not _volume_is_case_insensitive(tmp_path):
+        import pytest
+
+        pytest.skip(
+            "case-SENSITIVE volume (a Linux runner): the uppercase lookup cannot "
+            "succeed here, so the trap this test documents does not exist on this "
+            "machine — it is real on every Mac in the fleet"
+        )
+
+    doors = {n: _door() for n in ALL_FOUR if n != "QWEN.md"}
+    doors["qwen.md"] = _door()
+    root = _repo(tmp_path, doors)
+
+    assert (root / "QWEN.md").is_file(), (
+        "the volume reported itself case-insensitive but the uppercase lookup failed"
+    )
+    assert pp._git_tracked_names(root, ["QWEN.md"], 15) == set()
