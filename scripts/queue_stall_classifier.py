@@ -6,7 +6,7 @@ WHY THIS EXISTS: the night of 2026-08-30/31, this repo's merge queue never stall
 mechanical reason — nothing was ejected, nothing needed a rerun. It stalled on JUDGEMENT: a
 missing gate verdict, red checks needing diagnosis. Those are exactly the moves a bot must not
 make on its own — rerunning a red check replays a stale merge ref (W111,
-`.claude/rules/cicatrix-scars.md`), and posting a gate verdict with no independent reader is
+`docs/scars/cicatrix-scars.md`), and posting a gate verdict with no independent reader is
 self-grading. `scripts/queue_shepherd.py` already owns the two things a bot MAY safely do
 (budgeted re-arm, stale-run cancellation). This script owns the third thing: naming WHY a PR is
 stuck, so a human (or the next gate session) knows where to look, without ever touching the PR.
@@ -37,7 +37,7 @@ CORRECTNESS TRAPS THIS SCRIPT RESPECTS (each already measured, live, in this rep
 
   (b) `autoMergeRequest: null` ALONE never means "not armed" — a queued PR has it consumed
       (null) while it still holds a `mergeQueueEntry` (W111,
-      `.claude/rules/cicatrix-scars.md` ~line 160). `not-armed` requires BOTH null.
+      `docs/scars/cicatrix-scars.md` ~line 160). `not-armed` requires BOTH null.
 
   (c) A DIRTY `mergeStateStatus` read minutes ago can already be wrong — the fleet-watch
       "queue_unstick" mailbox this SAME session observed live carries multiple entries reading
