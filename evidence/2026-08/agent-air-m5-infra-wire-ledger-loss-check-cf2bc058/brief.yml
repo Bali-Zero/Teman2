@@ -58,6 +58,27 @@ objective: |
   scalars). (F3) The comment-upsert's bare `if: always()` could false-accuse
   a skipped/cancelled run — fixed to
   `if: always() && steps.ledger_check.outputs.rc != ''`.
+
+  FOURTH PASS, same day: team-lead ruled on the risks-entry recommendation
+  below (state the observed noise rate so a reader's first exposure sets the
+  right prior). Decision: implement the qualitative fact, explicitly WITHOUT
+  a numeric ratio — the ~1-in-3 figure comes from ten runs, and printing it
+  as permanent surface text would harden n=10 into a stated prior nobody
+  re-measures, the exact folklore problem the number was meant to prevent.
+  Verbatim text (team-lead's own wording): "A flag here may be a deliberate,
+  correctly-explained row closure rather than an accidental loss — this
+  check cannot tell them apart. Confirm with `git log --oneline
+  <base>..<head> -- .claude/skills/modus/PENDING-ARMS.md` and read the
+  commit message before treating it as a defect." Added to BOTH surfaces:
+  the bash step-summary (right after the verdict line, before any detail)
+  and the PR-comment JS body (moved to sit immediately after the `direction`
+  headline and BEFORE the collapsed `<details>` block — the prior ordering
+  had it only after `<details>`, satisfying "visible without expanding" but
+  not "same visual unit as the alarming headline"). Verified with a 4-case
+  mock harness (rc=0/no-existing, rc=0/existing, rc=1/no-existing,
+  rc=2/existing) asserting the caveat text's string index precedes the
+  `<details>` block's index on every non-clean branch, and is ABSENT on the
+  clean-path body (receipt 17).
 constraints:
   - "Must stay NON-REQUIRED (team-lead's explicit instruction, and the check's
     own header comment/history): promoting to a required branch-protection
@@ -137,6 +158,15 @@ acceptance:
     against the step's own source; a SKIPPED or CANCELLED
     `ledger_check` leaves `outputs.rc` empty, and the new condition
     excludes exactly that case (receipt 16)."
+  - "FOURTH PASS: the qualitative (non-numeric) caveat team-lead specified
+    is present on BOTH surfaces — the bash step-summary immediately after
+    the verdict line, and the PR-comment JS body immediately after the
+    `direction` headline and before the collapsed `<details>` block — and
+    is absent from the clean-path (`rc === 0`) comment body. Verified with
+    a 4-case mock harness against the real extracted script under the
+    actual async-IIFE wrapper `actions/github-script@v9` uses, asserting
+    string-index ordering (caveat precedes `<details>`) on every non-clean
+    branch (receipt 17)."
 consumer_map:
   - ".github/workflows/check-ledger-no-silent-loss.yml — the file itself; this
     PR is a self-contained wiring fix with no other file depending on its
@@ -167,32 +197,28 @@ risks:
     verified in code (receipt 5's mock output field), not yet observed
     against a real oversized output since no PR has flagged that many rows
     at once in this repo's history so far."
-  - "JUDGMENT CALL, answering team-lead's direct question rather than
-    silently deciding it: the independent gate's own measurement (7 clean
-    / 3 non-clean across ten recent runs, one of the three a legitimate
-    closure) is the residual noise this check's design accepts by
-    construction — it cannot see intent, only content, and F2/base-ref
-    only ever addressed the DIFFERENT false-positive class (a main-side
-    closure this branch correctly merged in). A branch's own deliberate
-    closure of a row it owns is indistinguishable from an accident by
-    content alone; no base_ref choice fixes that, and this PR does not
-    claim to. Recommendation: guidance text alone is not enough at a 30%
-    non-clean rate where a third is legitimate — the fix belongs in the
-    SURFACE, not the invariant: state the observed base rate explicitly in
-    both the step summary and the PR comment (e.g. 'roughly 1 in 3
-    non-clean flags on this check have been deliberate, correctly-explained
-    closures — confirm before treating this as accidental'), so a reader's
-    FIRST exposure sets the right prior rather than an accumulating
-    'this is always noise' impression. Deliberately NOT proposing to
-    suppress the deliberate-closure shape or add a threshold: suppression
-    needs a signal this check does not have (intent), and a threshold
-    trades a real, small population (this check has run on relatively few
-    PRs so far) for false confidence. This is a recommendation for
-    team-lead to weigh, not a change made in this pass — no PR history
-    yet exists to source the exact stated ratio without either
-    fabricating it or re-deriving the same measurement the gate already
-    ran, and doing that within this PR would risk the same
-    over-narrated-number fixpoint F2 exists to cure."
+  - "JUDGMENT CALL, RESOLVED (FOURTH PASS): the independent gate's own
+    measurement (7 clean / 3 non-clean across ten recent runs, one of the
+    three a legitimate closure) is residual noise this check's design
+    accepts by construction — it cannot see intent, only content, and
+    F2/base-ref only ever addressed a DIFFERENT false-positive class (a
+    main-side closure this branch correctly merged in). A branch's own
+    deliberate closure of a row it owns is indistinguishable from an
+    accident by content alone; no base_ref choice fixes that. Team-lead's
+    ruling on the recommendation this entry originally carried: implement
+    a calibrating sentence on both surfaces, but WITHOUT the numeric ratio
+    — n=10 is too small a sample to harden into permanent surface text
+    that nobody re-measures; that is exactly the folklore failure mode the
+    number was meant to guard against. The qualitative version needs no
+    sample and cannot go stale. Done — see objective's FOURTH PASS
+    paragraph for the verbatim text and placement, and receipt 17 for the
+    verification. Deliberately still NOT suppressing the deliberate-closure
+    shape or adding a threshold: suppression needs a signal this check does
+    not have (intent), and this remains an open, accepted design limitation
+    — the surface now sets the reader's prior correctly, it does not (and
+    cannot) eliminate the ambiguity itself. If the ratio becomes interesting
+    after this check has a few hundred runs of real history, it can be
+    measured and stated properly then — not before."
 grader: |
   generator != grader: this session (M5, ledger-conflicts lane, continuing the
   same thread that found the gap) is both author and the one running the

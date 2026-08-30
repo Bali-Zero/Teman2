@@ -325,6 +325,45 @@ receipts:
     ts: 2026-08-30T03:08:00Z
     seat: session (build lane, citing an independent gate's run-history measurement)
 
+  - claim: >-
+      FOURTH PASS: team-lead's ruling on the risks-entry recommendation
+      (state the qualitative caveat, WITHOUT the numeric ratio) is
+      implemented on both surfaces, and the PR-comment version is
+      positioned for first exposure (before the collapsed `<details>`
+      block, immediately after the `direction` headline) — not merely
+      present anywhere in the body.
+    cmd: >-
+      Rebuilt the 4-case mock harness against the RAW extracted
+      `script:` field (the earlier receipt-5 harness had accidentally
+      reused a syntax-check wrapper file with dummy no-op
+      github/context consts shadowing the real ones — caught when all
+      4 cases silently no-op'd; fixed by extracting the script field on
+      its own with no wrapper). Ran rc=0/no-existing,
+      rc=0/existing, rc=1/no-existing, rc=2/existing against the
+      current script, asserting the caveat sentence's string index is
+      LESS than the `<details>` block's string index on every
+      non-clean case, and that the caveat is ABSENT on the clean
+      no-existing case (no comment posted at all) and the clean
+      existing case (comment updates to "now clean", no caveat text).
+      Also re-ran `python3 -c "import yaml; ..."` YAML parse, `npx
+      prettier --check`, `actionlint`, `node --check` on the
+      async-IIFE-wrapped script, and the full pytest suite.
+    result: >-
+      YAML parses (top-level keys: name/on/permissions/concurrency/jobs
+      — the `on:` key normalizes to the PyYAML boolean `True`, expected
+      and unrelated to this edit). Prettier: "All matched files use
+      Prettier code style!". actionlint: exit 0, no output. `node
+      --check` on the wrapped script: exit 0. Mock harness: rc=0
+      no-existing -> no API calls (no-op, as expected); rc=0 existing
+      -> updateComment called, caveat absent (correct — clean-path body
+      never contains it); rc=1 no-existing -> createComment called,
+      caveatIdx=484 < detailsIdx=761; rc=2 existing -> updateComment
+      called, caveatIdx=511 < detailsIdx=788. "ALL_CASES_OK". pytest:
+      11 passed in 3.00s.
+    exit: 0
+    ts: 2026-08-30T04:10:00Z
+    seat: session (build lane)
+
 dissent:
   - seat: session (self-review pass, not a separate cross-family seat)
     objection: >-
@@ -470,3 +509,16 @@ notes:
     scalars under `diff`/`lanes`, per `scripts/evidence_pack_lint.py`'s
     own `COUNTABLE_SUBTREES`) remain the sole numeric source, snapshotted
     at `measured_at`."
+  - "FOURTH PASS, same day: team-lead ruled on the risks-entry
+    recommendation this pack carried into the THIRD PASS — implement the
+    calibrating sentence, explicitly WITHOUT the numeric ratio (n=10 is
+    too small a sample to harden into permanent surface text nobody
+    re-measures). Verbatim wording is team-lead's own. Added to both
+    surfaces; the PR-comment placement was moved (not merely appended) so
+    it sits in the same visual unit as the alarming `direction` headline,
+    before the collapsed `<details>` block — 'present in the body
+    somewhere' was judged insufficient against team-lead's explicit
+    'first exposure' requirement. The `risks:` entry in brief.yml is
+    rewritten from an open recommendation to a resolved decision; it is
+    not deleted, so the reasoning that produced the decision stays
+    legible to a future reader."

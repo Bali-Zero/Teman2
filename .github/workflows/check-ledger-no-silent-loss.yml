@@ -229,7 +229,13 @@ jobs:
               *)
                 echo "**Verdict: exit $RC — see the flagged row(s) above.** Non-required: this never blocks merge or the merge queue, but read it before merging."
                 echo
-                echo "A flagged row MAY be a deliberate closure (the ledger's own \"remove a line ONLY when the arming is PROVEN live\" rule), not an accident — the check cannot see intent, only content. Confirm in one step:"
+                # Qualitative caveat, stated where a reader sees it on FIRST
+                # EXPOSURE (right next to the verdict, before any detail) and
+                # WITHOUT a frequency (team-lead ruling, same day: a ratio
+                # from ~10 runs would harden n=10 into permanent surface text
+                # nobody re-measures — the exact folklore this fact is meant
+                # to prevent). Verbatim wording team-lead specified.
+                echo "A flag here may be a deliberate, correctly-explained row closure rather than an accidental loss — this check cannot tell them apart. Confirm with the command below and read the commit message before treating it as a defect."
                 echo
                 echo '```'
                 echo "git log --oneline ${BASE_SHA}..${HEAD_SHA} -- .claude/skills/modus/PENDING-ARMS.md"
@@ -323,11 +329,33 @@ jobs:
             // YAML alias token, not text — hit live authoring this file).
             // Every element below is a normal, indented JS statement; only
             // the STRING VALUES end up unindented in the rendered comment.
+            // Qualitative caveat placed IMMEDIATELY after `direction`, BEFORE
+            // the collapsed <details> block — team-lead ruling, same day:
+            // this is what "sets the reader's prior on FIRST EXPOSURE"
+            // actually means (the alarming headline and the calibrating fact
+            // in the same visual unit, not separated by a details toggle a
+            // reader may never open). Deliberately NO frequency/ratio here —
+            // a number from this check's still-small run history would
+            // harden into permanent surface text nobody re-measures, the
+            // exact folklore this fact exists to prevent. Verbatim wording
+            // team-lead specified.
+            const firstExposureCaveat =
+              "A flag here may be a deliberate, correctly-explained row " +
+              "closure rather than an accidental loss — this check cannot " +
+              "tell them apart. Confirm with the command below and read the " +
+              "commit message before treating it as a defect.";
+
             const bodyLines = [
               marker,
               `**check-ledger-no-silent-loss flagged this PR's HEAD (\`${headShort}\`, base \`${baseShort}\`).** Non-required — this never blocks merge or the merge queue — but read it before merging. [Run](${runUrl}).`,
               "",
               direction,
+              "",
+              firstExposureCaveat,
+              "",
+              "```",
+              `git log --oneline ${process.env.BASE_SHA}..${process.env.HEAD_SHA} -- .claude/skills/modus/PENDING-ARMS.md`,
+              "```",
               "",
               "<details><summary>Full check output — which rows, verbatim</summary>",
               "",
@@ -335,12 +363,6 @@ jobs:
               output,
               "```",
               "</details>",
-              "",
-              `**A flagged row may be a deliberate closure** (the ledger's own "remove a line ONLY when the arming is PROVEN live" rule), not an accident — the check cannot see intent, only content. Confirm in one step:`,
-              "",
-              "```",
-              `git log --oneline ${process.env.BASE_SHA}..${process.env.HEAD_SHA} -- .claude/skills/modus/PENDING-ARMS.md`,
-              "```",
               "",
               "Then read those commit message(s) (`--format=%B` for the full text). This ledger's convention is that a deliberate removal is EXPLAINED — either inline in a paired `- closed` row landing in the same diff, or in the prose of the commit message that deletes the row (a mechanical `grep -c '^+- closed'` alone under-detects this: measured live on the PR that motivated this check, the removal was genuinely deliberate and fully explained in its commit message, yet added no `- closed` row at all — grep-only would have wrongly called it unconfirmed). If NEITHER the diff's added rows NOR the removing commit's own message explains why the flagged row is gone, treat it as probable accidental loss/duplication and investigate before merging. See `docs/runbooks/merge-queue-discipline.md` §6quinquies.",
               "",
