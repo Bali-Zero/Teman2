@@ -81,6 +81,23 @@ acceptance:
     probe: >-
       grep -c 'Path.home()\|~/.claude' scripts/tests/test_canon_blocks.py restricted to
       non-comment lines; every test takes tmp_path and calls _home().
+  - text: >-
+      IF a marker is marker-SHAPED but mis-cased — `<!-- canon:x -->` — the probe SHALL refuse it
+      as malformed AND say so, and SHALL NOT accept it as a real block. Refusing it silently is
+      the same outcome as the doctrine being ABSENT, which is the state this organ exists to
+      distinguish.
+    probe: >-
+      pytest scripts/tests/test_canon_blocks.py -k "MISCASED or correct_case" — guilt (it becomes
+      a `!miscased` finding that reaches DIVERGED) and innocence (a correctly-spelled file gains
+      no malformed key).
+  - text: >-
+      WHERE a `<!-- CANON:id -->` appears inside a ``` or ~~~ fence, the probe SHALL treat it as
+      displayed text and SHALL NOT open a comparable block; WHILE a fence appears INSIDE an open
+      block, its content SHALL still be hashed as body.
+    probe: >-
+      pytest scripts/tests/test_canon_blocks.py -k "SHOWN_IN_A_FENCE or beside_a_fenced or
+      fence_INSIDE or ALL_FENCED or NOT_told_about" — including the file whose markers are ALL
+      fenced, which must say so rather than read as "nothing is marked".
 out_of_scope:
   - "Marking the canon blocks in `~/.claude/CLAUDE.md`. That is an edit to the operator's
     control-plane file on three machines — operator[control-plane], escalated separately."

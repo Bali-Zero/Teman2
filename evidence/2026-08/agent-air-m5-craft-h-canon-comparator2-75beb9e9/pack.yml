@@ -33,6 +33,16 @@ lanes:
     seat: >-
       claude-opus-5 (conducting session grading work it did NOT author — the Codex build lane's
       test. Two amendments, one of them a measured false positive on correct code.)
+  - lane: canon-comparator-undermatch-cure
+    role: review
+    seat: >-
+      conductor (independent read of the merged diff, generator != grader) -> session (M5) for the
+      cure and the corpus. THIRD review pass, after two blind cross-family refuters had already
+      signed off. It found two SILENT under-matches the blind pair missed, both in the parser, and
+      one of them is the same fenced-example class L10-PR1 produced earlier in this wave. Recorded
+      as its own lane because "two refuters returned REFUTED and we fixed everything they said" is
+      exactly the state in which a third reader still finds something.
+
 seat_diversity: satisfied
 seat_diversity_note: >-
   Two of the five lanes are non-Anthropic, and they are not decorative: the Codex build lane wrote
@@ -260,10 +270,63 @@ receipts:
     exit: 0
     ts: 2026-08-31T04:38Z
     seat: session (M5)
+  - claim: >-
+      Both under-matches were REPRODUCED against the shipped parser before a line was changed —
+      neither is taken on the reviewer's word
+    cmd: >-
+      python3 -c "import sys; sys.path.insert(0,'scripts'); from proprioception import
+      _canon_blocks; print(_canon_blocks('<!-- canon:ship -->\\nrule\\n<!-- /canon:ship -->\\n'));
+      print(_canon_blocks('```markdown\\n<!-- CANON:example -->\\nx\\n<!-- /CANON:example -->\\n```\\n'))"
+    result: >-
+      {} and {'example': 'c8c8c0a9ee6a2abb'} — the mis-cased marker vanished without a finding,
+      and a documentation example held a live comparable block.
+    exit: 0
+    ts: 2026-08-31T05:25Z
+    seat: session (M5)
+  - claim: >-
+      The four new GUILT tests are RED against the pre-fix parser and the three new INNOCENCE
+      tests are GREEN against it — an innocence test that only passes after the fix would be
+      measuring the fix, not the behaviour it protects
+    cmd: >-
+      git checkout HEAD -- scripts/proprioception.py && pytest scripts/tests/test_canon_blocks.py
+      -k "MISCASED or correct_case or SHOWN_IN_A_FENCE or beside_a_fenced or fence_INSIDE or
+      ALL_FENCED or NOT_told_about" ; then restore the cure
+    result: "4 failed, 3 passed, 36 deselected — exactly the four guilt cases and no innocence case"
+    exit: 1
+    ts: 2026-08-31T05:30Z
+    seat: session (M5)
+  - claim: >-
+      Every half of the cure is load-bearing — measured by mutation, not by the suite being green
+    cmd: >-
+      PYTHONDONTWRITEBYTECODE=1 pytest scripts/tests/test_canon_blocks.py -p no:cacheprovider,
+      once per mutant: fence tracking disabled; the mis-case branch disabled; '!miscased' removed
+      from MALFORMED_SUFFIXES; the fenced-count advice suppressed
+    result: >-
+      3 failed / 1 failed / 1 failed / 1 failed, and 43 passed with the cure restored. Bytecode
+      writing disabled and pytest's cache off throughout, because a same-second same-size edit can
+      otherwise be judged against a stale .pyc (W121).
+    exit: 0
+    ts: 2026-08-31T05:35Z
+    seat: session (M5)
+  - claim: >-
+      The cure does not regress the wider organ, and the write half still agrees with the read half
+    cmd: >-
+      PYTHONDONTWRITEBYTECODE=1 pytest scripts/tests/test_canon_blocks.py
+      scripts/tests/test_immune_enforcement_trigger_symmetry.py
+      scripts/tests/test_proprioception_{executed_code_currency,home_fork_merge,remedy_selection,run_wrap_exit_code,self_code_staleness,tri_state_exit}.py
+    result: >-
+      157 passed, including test_publisher_and_probe_share_one_definition_of_a_block — the parser
+      lives in one place and canon_blocks_publish.py imports it, so both halves moved together.
+    exit: 0
+    ts: 2026-08-31T05:36Z
+    seat: session (M5)
 lint_notices_accepted: >-
-  `acceptance-probe: 5 declared probe(s) appear in no receipt's claim/cmd` is accepted rather than
-  chased. The outcomes ARE recorded — the receipt immediately above pii_scan runs all five and
-  reports 3/2/2 passed plus the red-then-green sentinel deletion — but the rule matches the probe
+  `acceptance-probe: 7 declared probe(s) appear in no receipt's claim/cmd` is accepted rather than
+  chased. It read 5 until this round's two under-match clauses were added; the count is restated
+  rather than left stale, because a number that quietly stops matching its own artifact is the
+  defect this wave has now produced four times. The outcomes ARE recorded — the receipt above
+  pii_scan runs the original five and reports 3/2/2 passed plus the red-then-green sentinel
+  deletion, and the guilt/innocence and mutation receipts run the two new ones — but the rule matches the probe
   text as a SUBSTRING of a receipt's cmd, and my receipt states the five commands as one
   YAML-folded line. Reshaping that text until a substring matcher is satisfied would be exactly the
   form-instead-of-entity move this whole PR spent the day removing from its own guards, so the

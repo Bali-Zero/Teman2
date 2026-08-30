@@ -905,6 +905,16 @@ def probe_repomap_size(root: Path, args: dict, timeout: int) -> tuple[str, int, 
 
 _CANON_OPEN_RE = re.compile(r"<!--\s*CANON:([A-Za-z0-9._-]+)\s*-->")
 _CANON_CLOSE_RE = re.compile(r"<!--\s*/CANON:([A-Za-z0-9._-]+)\s*-->")
+# The SHAPE of a marker, case-insensitively. Used only to notice one that a
+# human clearly MEANT and mis-spelled. Accepting it as valid would let
+# `canon:ship` and `CANON:ship` name two different blocks under one id, and the
+# machine carrying the lowercase spelling would read as merely ABSENT.
+_CANON_ANYCASE_RE = re.compile(r"<!--\s*/?CANON:([A-Za-z0-9._-]+)\s*-->", re.IGNORECASE)
+# A fence opens or closes on any line whose first non-space run is three or more
+# backticks or tildes. Deliberately coarser than CommonMark: an over-eager
+# toggle can only SUPPRESS a marker, and a suppressed marker on one machine
+# surfaces as "ABSENT here" against its peers rather than as silent agreement.
+_CANON_FENCE_RE = re.compile(r"^(?:`{3,}|~{3,})")
 _CANON_CLOCK_SKEW_TOLERANCE_MIN = 15.0
 
 
@@ -927,10 +937,28 @@ def _canon_blocks(text: str) -> dict[str, str]:
     is exactly the file where that happens.
 
     MALFORMED CANON IS ITS OWN FINDING, never a comparable block. An unclosed
-    block and a duplicated id both get a `!`-suffixed key, and the probe treats
-    any such key as a finding even when every machine agrees — two machines
-    carrying the SAME malformed marker is not fleet health, and it is also the
-    cheapest way to remove a block from comparison without deleting it.
+    block, a duplicated id and a MIS-CASED marker all get a `!`-suffixed key, and
+    the probe treats any such key as a finding even when every machine agrees —
+    two machines carrying the SAME malformed marker is not fleet health, and it
+    is also the cheapest way to remove a block from comparison without deleting
+    it. `<!-- canon:x -->` used to parse to nothing at all and was not even
+    flagged: an operator who marked a block and got the case wrong got silence,
+    and the machine reading it was indistinguishable from one where the doctrine
+    is genuinely ABSENT.
+
+    FENCED MARKERS ARE EXAMPLES, NOT MARKUP. A `<!-- CANON:id -->` inside a
+    ``` or ~~~ fence is displayed text — the docstring above shows one — and used
+    to open a real, comparable block. Its body still counts as body when a block
+    is already open, because a fence's CONTENT is content; only marker
+    recognition is suppressed.
+
+    DECLARED LIMIT: a real marker accidentally written inside a fence on EVERY
+    machine drops out of comparison in silence, the same way an id nobody ever
+    marked does. It is not flagged, because flagging it would flag every
+    documentation example in every doctrine file, which is the noise that gets a
+    probe switched off. The one case where it is worth saying out loud — a file
+    whose ONLY canon-shaped lines are fenced — is named in the UNPROBEABLE
+    evidence rather than left as a bare "nothing is marked".
     """
     blocks: dict[str, str] = {}
     seen: set[str] = set()
@@ -946,8 +974,24 @@ def _canon_blocks(text: str) -> dict[str, str]:
             blocks[bid] = digest
         seen.add(bid)
 
+    in_fence = False
     for line in text.splitlines():
         stripped = line.strip()
+        if _CANON_FENCE_RE.match(stripped):
+            in_fence = not in_fence
+            if open_id is not None:
+                body.append(line)
+            continue
+        if in_fence:
+            # Inside a fence the text is DISPLAYED, not asserted. A file that
+            # documents its own markers shows them here; this parser's own
+            # docstring does exactly that. Recognising them would grant a live
+            # ceiling to an example, which is the same defect L10-PR1 found
+            # earlier in this wave. Fence lines and their contents still count
+            # as body when a block is open — they are content, just not markup.
+            if open_id is not None:
+                body.append(line)
+            continue
         closing = _CANON_CLOSE_RE.fullmatch(stripped)
         if closing and open_id is not None and closing.group(1) == open_id:
             close(open_id)
@@ -957,6 +1001,17 @@ def _canon_blocks(text: str) -> dict[str, str]:
         if opening and open_id is None:
             open_id, body = opening.group(1), []
             continue
+        miscased = _CANON_ANYCASE_RE.fullmatch(stripped)
+        if miscased:
+            # Marker-shaped, outside a fence, and not the exact spelling: someone
+            # meant this and got the case wrong. Parsing it to nothing is the
+            # silence this comparator exists to remove, so it becomes a finding
+            # of its own rather than a block that quietly does not exist. The
+            # digest is of the marker line, so two machines carrying the same
+            # typo still read as malformed rather than as agreement.
+            blocks[f"{miscased.group(1)}!miscased"] = hashlib.sha256(
+                stripped.encode()
+            ).hexdigest()[:16]
         if open_id is not None:
             body.append(line)
     if open_id is not None:
@@ -966,7 +1021,26 @@ def _canon_blocks(text: str) -> dict[str, str]:
     return blocks
 
 
-MALFORMED_SUFFIXES = ("!unclosed", "!duplicate")
+def _canon_shaped_lines_in_fences(text: str) -> int:
+    """How many canon-SHAPED lines this file hides inside fences.
+
+    Only ever used to make one message honest: a file whose canon markers are
+    all fenced reads exactly like a file that was never marked, and telling
+    those two apart is the difference between "do the operator step" and "you
+    already did it, in a code block".
+    """
+    count, in_fence = 0, False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if _CANON_FENCE_RE.match(stripped):
+            in_fence = not in_fence
+            continue
+        if in_fence and _CANON_ANYCASE_RE.fullmatch(stripped):
+            count += 1
+    return count
+
+
+MALFORMED_SUFFIXES = ("!unclosed", "!duplicate", "!miscased")
 
 
 def _is_malformed(block_id: str) -> bool:
@@ -1010,12 +1084,21 @@ def probe_canon_blocks(root: Path, args: dict, timeout: int) -> tuple[str, int, 
     if not target.is_file():
         return UNPROBEABLE, 0, [f"{target} absent — this machine has no global doctrine file"]
 
-    local = _canon_blocks(target.read_text(encoding="utf-8", errors="replace"))
+    raw = target.read_text(encoding="utf-8", errors="replace")
+    local = _canon_blocks(raw)
     if not local:
-        return UNPROBEABLE, 0, [
+        why = (
             f"{target} carries no <!-- CANON:<id> --> markers — nothing is declared canon yet, "
             "so there is nothing to compare (marking the blocks is an operator step)"
-        ]
+        )
+        fenced = _canon_shaped_lines_in_fences(raw)
+        if fenced:
+            why += (
+                f" — note that {fenced} canon-shaped line(s) ARE present but sit inside fenced "
+                "code blocks, where they read as examples and are deliberately ignored; if one "
+                "of them was meant as a real marker, move it out of the fence"
+            )
+        return UNPROBEABLE, 0, [why]
 
     # ONE FRAGMENT PER MACHINE. A single shared report is rewritten whole by
     # every publisher, so two machines pushing in any order erase each other's

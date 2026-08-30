@@ -712,3 +712,103 @@ def test_published_fragment_reaches_final_path_by_atomic_replace(
     assert tmp_fragment in written_paths, (
         "premise: the temporary file must be the thing written"
     )
+
+
+# --- the second adversarial round: two ways this said nothing and meant it ---
+# Both named by the conductor after an independent read, both reproduced on disk
+# before being touched (2026-08-31): `<!-- canon:x -->` parsed to zero blocks
+# without being flagged, and a marker shown inside a fenced code block became a
+# live comparable block. The wave had already produced the fenced-example defect
+# once (L10-PR1 finding #2), which makes it a pattern rather than a slip.
+
+
+def test_a_MISCASED_marker_is_a_finding_not_silence(tmp_path: Path) -> None:
+    """An operator who marks a block and gets the case wrong used to get nothing
+    at all: zero blocks, no malformed key, and a machine indistinguishable from
+    one where the doctrine is genuinely ABSENT. The wrong spelling is refused —
+    accepting it would let `canon:ship` and `CANON:ship` name two different
+    blocks under one id — but it is refused OUT LOUD."""
+    text = "<!-- canon:ship -->\nthe rule\n<!-- /canon:ship -->\n"
+    blocks = pp._canon_blocks(text)
+    assert blocks, "a mis-cased marker parsed to nothing at all"
+    assert any(k.endswith("!miscased") for k in blocks), blocks
+    assert "ship" not in blocks, "the wrong spelling must not become a real block"
+
+    # And it reaches the operator: malformed is a finding even when the whole
+    # fleet carries the same typo.
+    report = _report({"Pro": blocks})
+    status, n, ev = _probe(_home(tmp_path, text, report=report))
+    assert status == pp.DIVERGED, ev
+    assert "malformed here (miscased)" in "\n".join(ev), ev
+
+
+def test_correct_case_is_untouched_by_the_miscase_rule(tmp_path: Path) -> None:
+    """Innocence: the fix must not make an ordinary, correctly-spelled file
+    malformed. Without this, 'miscased is a finding' could be satisfied by a
+    parser that flags everything."""
+    blocks = pp._canon_blocks(_doc(("ship", "the rule")))
+    assert blocks == {"ship": blocks["ship"]}, blocks
+    assert not any(pp._is_malformed(k) for k in blocks), blocks
+
+
+def test_a_marker_SHOWN_IN_A_FENCE_is_an_example_not_a_block(tmp_path: Path) -> None:
+    """A doctrine file that documents its own markers shows them in a code
+    fence. Parsing those granted a live, comparable ceiling to a piece of
+    documentation — and the id would then read as ABSENT on any machine whose
+    docs word the example differently."""
+    fenced = (
+        "# Doctrine\n\nMark a canon region like this:\n\n"
+        "```markdown\n<!-- CANON:example -->\n...doctrine...\n<!-- /CANON:example -->\n```\n"
+    )
+    assert pp._canon_blocks(fenced) == {}, "a fenced example became a real block"
+
+    # Non-vacuity: the same text outside a fence DOES produce a block, so the
+    # empty result above is the fence's doing and not the fixture being inert.
+    assert pp._canon_blocks(fenced.replace("```markdown\n", "").replace("```\n", ""))
+
+
+def test_a_REAL_block_beside_a_fenced_example_survives(tmp_path: Path) -> None:
+    """The dangerous shape is not the degenerate one. A file with one real block
+    AND one fenced example must yield exactly the real block — suppressing both
+    would be an over-match cure for an under-match defect."""
+    text = (
+        "<!-- CANON:real -->\nreal doctrine\n<!-- /CANON:real -->\n\n"
+        "```\n<!-- CANON:fake -->\nan example\n<!-- /CANON:fake -->\n```\n"
+    )
+    blocks = pp._canon_blocks(text)
+    assert set(blocks) == {"real"}, blocks
+
+
+def test_a_fence_INSIDE_a_block_is_body_not_a_wall(tmp_path: Path) -> None:
+    """A canon block whose doctrine contains a code sample must still close, and
+    the sample must still be part of what is hashed — a fenced region's CONTENT
+    is content, it is only the MARKUP recognition that is suppressed."""
+
+    def doc(sample: str) -> str:
+        return (
+            f"<!-- CANON:r -->\nintro\n```sh\n{sample}\n```\noutro\n<!-- /CANON:r -->\n"
+        )
+
+    a, b = pp._canon_blocks(doc("run --safe")), pp._canon_blocks(doc("run --unsafe"))
+    assert set(a) == {"r"}, a  # it closed: not '!unclosed'
+    assert a != b, "drift inside the fenced sample was not hashed"
+
+
+def test_a_file_whose_markers_are_ALL_FENCED_says_so(tmp_path: Path) -> None:
+    """'Nothing is marked' and 'you marked it inside a code block' need
+    different remedies, and used to produce the same sentence."""
+    text = "# Doctrine\n\n```\n<!-- CANON:x -->\nbody\n<!-- /CANON:x -->\n```\n"
+    status, n, ev = _probe(_home(tmp_path, text))
+    assert status == pp.UNPROBEABLE
+    joined = "\n".join(ev)
+    assert "inside fenced" in joined, joined
+    assert "2 canon-shaped line" in joined, joined  # the open and the close
+
+
+def test_an_ordinary_unmarked_file_is_NOT_told_about_fences(tmp_path: Path) -> None:
+    """Innocence for the message: a file with no canon-shaped lines at all must
+    get the plain 'nothing is declared canon yet', with no fence advice bolted
+    on to confuse an operator who has no fences."""
+    status, n, ev = _probe(_home(tmp_path, "# Doctrine\n\nordinary prose\n"))
+    assert status == pp.UNPROBEABLE
+    assert "fenced" not in "\n".join(ev), ev
