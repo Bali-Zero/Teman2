@@ -31,7 +31,7 @@ sources:
 
 This dossier captures the full legal, licensing, tax, operating, and business-design analysis developed for a Bali villa rental case involving a foreign investor or PT PMA, a genuine Indonesian principal, and a possible Perseroan Perorangan operating or management layer.
 
-It is a product-development and pre-clearance dossier, not a legal opinion or a declaration that the structure has been approved. The strongest commercial opportunity is not a paper workaround for the Bali restrictions. It is a controlled owner–operator architecture in which every contract, bank flow, OTA account, tax invoice, staff instruction, and economic risk points to the same lawful principal.
+This is a product-development and pre-clearance dossier. No structure is approved until the written gates in this document are closed. The strongest commercial opportunity is not a paper workaround for the Bali restrictions. It is a controlled owner–operator architecture in which every contract, bank flow, OTA account, tax invoice, staff instruction, and economic risk points to the same lawful principal.
 
 **Decision as of 31 August 2026:**
 
@@ -61,7 +61,7 @@ No entity may be inserted merely to issue a receipt. Guest contracting, OTA merc
 
 No verified primary source establishes a blanket legal moratorium on every villa or every PT PMA activity in Bali.
 
-The verified landscape is narrower and more complex:
+The verified framework is narrower and more complex:
 
 - Bali Regional Regulation 4/2026 has been in force since 24 February 2026. It addresses productive-land conversion and arrangements that facilitate nominee control of land by foreign nationals.
 - A Governor's letter dated 28 January 2026 requested restrictions. The letter is not itself the final national licensing instrument.
