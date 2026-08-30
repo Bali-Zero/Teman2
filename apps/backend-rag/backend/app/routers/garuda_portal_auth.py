@@ -350,7 +350,7 @@ async def request_magic_link(
     except PersistencePolicyUnavailable:
         logger.warning("garuda_portal_auth: persistence policy unavailable at issue")
         return _error("PERSISTENCE_POLICY_UNAVAILABLE")
-    except Exception:
+    except Exception as exc:
         # Refuter finding #4: an unmapped store exception must never leak as
         # a bare framework 500 — fail closed into the contract's own shape.
         #
@@ -362,11 +362,24 @@ async def request_magic_link(
         # `sentry_config._scrub` cannot reach a value that only exists inside
         # a captured frame's local-variable dump, so the cheapest real
         # mitigation for *this* handler is to never capture that dump at all.
-        # The exception type/message is still worth nothing here anyway — the
-        # contract only ever returns the same opaque INTERNAL_ERROR to the
-        # caller — so no diagnostic signal is lost that this endpoint's
-        # response shape could have used.
-        logger.error("garuda_portal_auth: unexpected error at issue")
+        # CORRECTED 2026-08-30, falsified in production. The sentence that
+        # stood here — "the exception type/message is still worth nothing
+        # here anyway" — conflated the RESPONSE (rightly opaque) with the
+        # LOG (which is the only place the cause can live). On 2026-08-30
+        # every call to this endpoint answered INTERNAL_ERROR, and the whole
+        # record of it was this one message repeated: no type, no stack, no
+        # way to tell an absent SQL function from a bad parameter cast from
+        # a dead pool. The privacy mitigation had blinded the diagnosis.
+        #
+        # The exception's CLASS NAME is logged, and nothing else. It is not
+        # PII, not a message that could quote a value, and not a frame-locals
+        # dump — `exc_info` stays off for exactly the reason above. A name
+        # like `UndefinedFunctionError` or `PostgresSyntaxError` names the
+        # cause on sight and can hold no caller data.
+        logger.error(
+            "garuda_portal_auth: unexpected error at issue (%s)",
+            type(exc).__name__,
+        )
         return _error("INTERNAL_ERROR")
 
     result.headers["Idempotency-Replayed"] = "true" if issued.idempotency_replayed else "false"
@@ -406,13 +419,19 @@ async def exchange_magic_link(
     except PersistencePolicyUnavailable:
         logger.warning("garuda_portal_auth: persistence policy unavailable at exchange")
         return _error("PERSISTENCE_POLICY_UNAVAILABLE")
-    except Exception:
+    except Exception as exc:
         # `logger.error`, not `.exception` — see the identical rationale at
         # the `issue` handler above: this frame can hold `payload.token` and
         # a future adapter's `account_session_secret`, and `.exception`'s
         # captured frame-locals dump is a leak vector key-based redaction
-        # cannot close.
-        logger.error("garuda_portal_auth: unexpected error at exchange")
+        # cannot close. The exception's CLASS NAME is logged for the reason
+        # given at the `issue` handler above (a blind handler cost a full
+        # production outage its diagnosis on 2026-08-30); a class name can
+        # hold no caller data.
+        logger.error(
+            "garuda_portal_auth: unexpected error at exchange (%s)",
+            type(exc).__name__,
+        )
         return _error("INTERNAL_ERROR")
 
     # `outcome.security_counter` is internal telemetry ONLY — logged here,
