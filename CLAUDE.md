@@ -6,6 +6,62 @@
 
 ---
 
+<!-- CANON:builder-contract -->
+
+## THE BUILDER CONTRACT — identical in every door, compared by machine
+
+This block is the same in `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` and `QWEN.md`, and
+`scripts/proprioception.py`'s `door_canon_parity` probe goes RED if any copy drifts from
+`CLAUDE.md`'s. "The same" is what the machine actually enforces, not more: the comparison
+hashes the block with TRAILING whitespace and line endings normalised away, so an editor that
+strips or adds them is not drift — and anything else, including one reworded sentence or one
+extra space mid-line, is. It exists because the CI layer already binds every model equally — a gate does
+not care which family opened the PR — while the harness layer did not: a seat that BUILDS used
+to start with whatever its own door happened to say. **Do not reword this block in one door.**
+Fix it in `CLAUDE.md` and copy it outward, or the probe will name your door.
+
+**1 — PR contract.** One PR, one concern, ≤ ~400 net lines where the work allows. Arming means
+freezing: after auto-merge is armed, the branch is read-only and every follow-up starts from a
+fresh `origin/main`. Never rerun a red check before you know WHY it is red — the right gesture
+depends on the cause, and a blind rerun replays a stale merge ref. Serialize PRs that share a
+lockfile. Work in a dedicated worktree on an `agent/<host>/<lane>/...` branch. Three reds for
+the SAME cause and the PR suspends instead of taking a fourth round; a fix-of-a-fix stops at
+depth 1 — if the correction is itself wrong, the surface is under-specified, so write the spec.
+
+**2 — Every PR body carries a `Bites:` line** naming the CONSUMER and the observation that
+proves the change is in force. "A future job will run it" is not a consumer: the job ships in
+the same PR. Make the observation before reporting the work done — a merged diff is not a live
+one, and this repo's scar record is mostly the distance between those two.
+
+**3 — Bans, stated as an ENTITY and not as a spelling.** What is forbidden is reaching a Claude
+model through a **paid per-token Anthropic endpoint** — because the subscription is already paid
+and a per-token key duplicates it. The sole sanctioned path is the `claude` CLI with
+`CLAUDE_CODE_OAUTH_TOKEN`. `from anthropic import Anthropic` and `ANTHROPIC_API_KEY` are the two
+shapes that usually carry it, and grepping for them is a useful first pass — but an alias, a
+renamed env var, a wrapper library or a Bedrock/Vertex route reaches the same endpoint without
+either literal, and is equally banned. Refuse any new tool, MCP server or cron that requires it. Other paid per-token APIs are not banned but are not
+yours to install: they need the owner's explicit authorization first. Never `--dangerously-bypass`
+a sandbox; never echo, print or commit a credential — `${VAR:+SET}` reports presence,
+`${VAR:-default}` prints the value.
+
+**4 — PII boundary, and it is an OUTPUT boundary.** Processing client data under an authorized
+lane is allowed; transcribing it is not. No output, memory, log, alert, report, skill, prompt
+saved for reuse, or shared artifact may carry client PII or OSINT in cleartext — use a
+`client_id`, a hash, a placeholder or a redaction. This binds every vendor identically: there is
+no cloud whose terms make cleartext PII acceptable here, and no seat exempt from it.
+
+**5 — Ship sequence.** The session that owns a mandate runs it end to end: review → merge → arm
+→ deploy → prove-live. The codeowner does not merge, does not review and does not deploy — by
+design. Arm auto-merge at PR-open. Push, create and merge are three SEPARATE commands, never a
+compound one. What stays with the human: business decisions, credentials and consents, and
+physical/GUI actions. **The one exception both ways:** an external builder seat (`AGENTS.md`,
+`GEMINI.md`, `QWEN.md`) prepares and never ships — it does not merge, arm or deploy its own
+work, and a Claude session verifies it. Generator is never grader, in either direction.
+
+<!-- /CANON:builder-contract -->
+
+---
+
 # Part A — Agent Directives
 
 ## 1. Machine & Reachability
@@ -141,7 +197,7 @@ User writes **colloquial Italian** — translate to precise technical action int
 
 **Kimi seat (added 2026-07-19, Zero GO)**: Moonshot **Kimi K3** + **kimi-for-coding 2.7** via `kimi` CLI (`~/.kimi-code/bin/kimi`, Allegro flat subscription, OAuth device-code login — no API key). Invocation: `kimi -p "..." -m kimi-code/k3` (reasoning/refuter) · `-m kimi-code/kimi-for-coding` (coding) · `-m kimi-code/kimi-for-coding-highspeed` (grunt). Cross-family council/second-opinion seat and flat-quota implementation relief; probed by `scripts/arsenal_probe.py` (seat `kimi`). Armed on all three machines 2026-07-19. Never the final gate.
 
-**Fleet order (accounts, role chains, gate taxonomy) — SSOT, 2026-08-10:** `FLEET_TOPOLOGY.json` (repo root) + `research/operations/2026-08-10-fleet-order-spec.md`. No restatement here — one SSOT. Kimi/qwen doors `kimi.md` / `qwen.md` are **door files (human/prompt-referenced only)** — NOT auto-loaded by their CLIs (Kimi CLI reads `AGENTS.md`; Qwen reads case-sensitive `QWEN.md`).
+**Fleet order (accounts, role chains, gate taxonomy) — SSOT, 2026-08-10:** `FLEET_TOPOLOGY.json` (repo root) + `research/operations/2026-08-10-fleet-order-spec.md`. No restatement here — one SSOT. Kimi's door `kimi.md` is a **door file (human/prompt-referenced only)** — the Kimi CLI reads `AGENTS.md`, not it. **Qwen's door is now `QWEN.md`** (renamed from `qwen.md` on 2026-08-31): that IS the name the Qwen CLI opens, so the seat now has a door that actually loads. The two names were the same file on every Mac in this fleet — APFS is case-insensitive by default, so `ls`, `wc` and `[ -f QWEN.md ]` all answered for the lowercase one while git's index, and any case-sensitive volume, had only `qwen.md`.
 
 > **Fable-paid contingency — MOOT as of 2026-08-20.** The 2026-07-12 "non voglio pagare" contingency
 > (Zero decision, research: `research/operations/2026-07-11-fable-paywall-routing.md`) governed

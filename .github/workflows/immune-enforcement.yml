@@ -144,6 +144,11 @@ jobs:
               infra/tcc-desktop-paths/allowlist.txt|\
               scripts/canon_blocks_publish.py|\
               scripts/tests/test_canon_blocks.py|\
+              scripts/tests/test_door_canon_parity.py|\
+              CLAUDE.md|\
+              AGENTS.md|\
+              GEMINI.md|\
+              QWEN.md|\
               scripts/launchd_liveness_detector.py|\
               scripts/tests/test_launchd_liveness_expected_nonzero.py|\
               scripts/tests/test_launchd_liveness_exit_status_decode.py|\
@@ -476,7 +481,8 @@ jobs:
             scripts/tests/test_required_context_map.py \
             scripts/tests/test_check_required_workflow_conformance.py \
             scripts/tests/test_unreachable_workflow_conditions.py \
-            scripts/tests/test_canon_blocks.py ; do
+            scripts/tests/test_canon_blocks.py \
+            scripts/tests/test_door_canon_parity.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
               python -m pytest "$t" -q || fail=1

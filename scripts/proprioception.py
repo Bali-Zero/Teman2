@@ -77,6 +77,7 @@ KNOWN_BOUNDARY_CLASSES = [
     "tunnel<->reachable",       # declared network tunnel/forward vs live reachability (2026-08-21)
     "declared<->enforced",      # policy-as-code in the repo vs what the node actually enforces (L13, 2026-08-31)
     "home<->home",              # the SAME control-plane file on two machines (global CLAUDE.md, 2026-08-31)
+    "door<->door",              # the SAME rule in each CLI's auto-loaded door file (2026-08-31)
 ]
 
 SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
@@ -1227,6 +1228,232 @@ def probe_canon_blocks(root: Path, args: dict, timeout: int) -> tuple[str, int, 
     ]
 
 
+DOOR_REFERENCE = "CLAUDE.md"
+DOOR_FILES = ("CLAUDE.md", "AGENTS.md", "GEMINI.md", "QWEN.md")
+
+
+def probe_door_canon_parity(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
+    """Do the repo's DOOR files bind every builder with the same rules?
+
+    THE BOUNDARY: `CLAUDE.md` <-> `AGENTS.md` <-> `GEMINI.md` <-> `QWEN.md`, the
+    files each CLI auto-loads at the top of a session. The CI and repo layer
+    already binds every model equally — a gate does not care which family opened
+    the PR. The HARNESS layer does not: an external seat that BUILDS starts with
+    whatever its own door says, and nothing has ever compared those doors. This
+    probe closes that gap at the door, which is the only place it can be closed
+    before the first edit rather than after the first PR.
+
+    BLOCK LEVEL, NEVER WHOLE FILE — the same rule as the fleet comparator, for
+    the same reason. These files are SUPPOSED to differ: each carries its own
+    CLI's invocation, its own model roster, its own sandbox flags. Only regions a
+    human marked as canon are compared, and the parser is the one `_canon_blocks`
+    shared with the fleet probe and the publisher, never a second copy of the
+    definition (two parsers drift, and the drift reads as doctrine drift).
+
+    CLAUDE.md IS THE REFERENCE, and that is a decision rather than an accident:
+    it is the door the codeowner reads and the one the rulings land in first, so
+    "the others agree with it" is the direction that means something. A block
+    present in a peer and absent from the reference is still a finding — it is
+    doctrine that binds one seat and not the others, which is the disease.
+
+    CASE MATTERS AND THE SHELL WILL LIE ABOUT IT. `QWEN.md` is the name the Qwen
+    CLI opens, and on the APFS default (case-insensitive) `[ -f QWEN.md ]`,
+    `ls` and `wc` all answer for a lowercase `qwen.md` — measured 2026-08-31, the
+    two names shared inode 343120045 on this machine while git's index held only
+    the lowercase one. EXISTENCE is therefore established from git, never from
+    the filesystem.
+
+    TWO SOURCES, NAMED RATHER THAN BLURRED. Existence comes from `git ls-files`
+    (the INDEX of this checkout); CONTENT comes from the working tree. Neither
+    choice is free and both were argued (kimi-code/k3, 2026-08-31, which called
+    for HEAD and for hashing git blobs):
+
+      - The INDEX, not HEAD, because the question is "does the seat that opens a
+        door in THIS checkout get the rules" — a door staged here is a door here.
+        The cost is real and declared: a staged-but-uncommitted door reads as
+        present although a fresh clone would not get it, and `git rm --cached`
+        on a door still in HEAD reads as absent. Neither is silent — both change
+        the probe's verdict, which is what makes them arguable rather than
+        hidden.
+      - The WORKING TREE for content, because that is the byte sequence the CLI
+        actually loads. Hashing git blobs would make the probe immune to a dirty
+        tree, which is precisely the state in which a session is editing a door
+        and most wants to know whether it has broken parity.
+
+    The consequence is that the two sources can disagree — a tracked name whose
+    file was deleted with a plain `rm` — and that disagreement is REPORTED, never
+    allowed to raise: see `_read_door`.
+
+    UNPROBEABLE WHEN NOTHING IS MARKED, never RECONCILED — four files containing
+    zero blocks agreeing about nothing is the purest form of the disease.
+    """
+    root = Path(args.get("root") or root)
+    reference = str(args.get("reference") or DOOR_REFERENCE)
+    doors = list(dict.fromkeys([reference, *(args.get("doors") or DOOR_FILES)]))
+
+    # The reference is queried even when a caller left it out of `doors` — asking
+    # only for the names in `doors` and then reporting "the reference is not
+    # tracked" would be a false factual claim about a file nobody looked for
+    # (kimi-code/k3, 2026-08-31).
+    toplevel = _git_toplevel(root, timeout)
+    if toplevel is not None and toplevel != root.resolve():
+        # `git -C <any nested dir>` answers for the enclosing repository, so a
+        # caller pointed at a subdirectory — or at a directory inside SOMEONE
+        # ELSE'S worktree that happens to hold four decoy doors — would get a
+        # confident verdict about the wrong boundary (codex gpt-5.6-sol,
+        # 2026-08-31). Refusing is the only honest answer: this probe cannot
+        # know which repo the caller meant.
+        return UNPROBEABLE, 0, [
+            f"{root} is not a repository toplevel — git answers there for {toplevel}, so any "
+            "verdict would be about a boundary the caller did not name"
+        ]
+
+    tracked = _git_tracked_names(root, doors, timeout)
+    if tracked is None:
+        return UNPROBEABLE, 0, [
+            f"could not ask git which doors exist under {root} — the filesystem cannot be "
+            "asked instead: on a case-insensitive volume it answers for the wrong case"
+        ]
+
+    if reference not in tracked:
+        return UNPROBEABLE, 0, [
+            f"the reference door {reference} is not tracked under {root} — nothing to compare against"
+        ]
+
+    ref_text = _read_door(root, reference)
+    if ref_text is None:
+        return UNPROBEABLE, 0, [
+            f"{reference} is tracked but could not be read from {root} — git's index and the "
+            "working tree disagree (a plain `rm`, a directory of that name, or a permission "
+            "problem). Nothing can be compared until they agree"
+        ]
+    ref_blocks = _canon_blocks(ref_text)
+    if not ref_blocks:
+        why = (
+            f"{reference} carries no <!-- CANON:<id> --> markers — no rule is declared binding "
+            "across doors yet, so there is nothing to compare (marking the block is the step)"
+        )
+        fenced = _canon_shaped_lines_in_fences(ref_text)
+        if fenced:
+            why += (
+                f" — note that {fenced} canon-shaped line(s) sit inside fenced code blocks, where "
+                "they read as examples and are deliberately ignored"
+            )
+        return UNPROBEABLE, 0, [why]
+
+    findings: list[str] = []
+    for bid in sorted(ref_blocks):
+        if _is_malformed(bid):
+            base, why = bid.split("!", 1)
+            findings.append(
+                f"CANON:{base} is malformed in {reference} ({why}) — a malformed marker in the "
+                "REFERENCE door removes that rule from every comparison at once"
+            )
+
+    for door in doors:
+        if door == reference:
+            continue
+        if door not in tracked:
+            findings.append(
+                f"{door} is not tracked in this repo — that seat opens no door at all and starts "
+                "with none of the shared rules (check git, not the filesystem: a case-insensitive "
+                "volume will happily answer for the wrong case)"
+            )
+            continue
+        door_text = _read_door(root, door)
+        if door_text is None:
+            findings.append(
+                f"{door} is tracked but could not be read — git's index and the working tree "
+                "disagree about it, so its doctrine cannot be compared to anything"
+            )
+            continue
+        blocks = _canon_blocks(door_text)
+        for bid in sorted(set(ref_blocks) | set(blocks)):
+            if _is_malformed(bid):
+                if bid in blocks:
+                    base, why = bid.split("!", 1)
+                    findings.append(f"CANON:{base} is malformed in {door} ({why})")
+                continue
+            here, there = blocks.get(bid), ref_blocks.get(bid)
+            if there is None:
+                findings.append(
+                    f"CANON:{bid} is in {door} but ABSENT from {reference} — a rule that binds one "
+                    "seat and not the reference is not shared doctrine"
+                )
+            elif here is None:
+                findings.append(f"CANON:{bid} is in {reference} but ABSENT from {door}")
+            elif here != there:
+                findings.append(
+                    f"CANON:{bid} differs between {door} and {reference} ({here} vs {there})"
+                )
+
+    compared = [d for d in doors if d != reference and d in tracked]
+    if not compared:
+        # A file compared to itself is not agreement. Reaching RECONCILED here
+        # would be the purest instance of the disease this probe is named after
+        # (kimi-code/k3, 2026-08-31): a guard reporting green while comparing
+        # nothing at all.
+        return UNPROBEABLE, 0, [
+            f"only {reference} participates — no other door is both configured and tracked, so "
+            "there is no second copy to compare it against and 'they agree' would mean nothing"
+        ]
+    if findings:
+        return DIVERGED, len(findings), findings
+    return RECONCILED, 0, [
+        f"{len(ref_blocks)} canon block(s) identical across {reference} and "
+        f"{len(compared)} other door(s): {', '.join(compared)}"
+    ]
+
+
+def _git_toplevel(root: Path, timeout: int) -> Path | None:
+    """The repository root `git` would use from `root`, or None if it cannot say."""
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, timeout=timeout,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0 or not out.stdout.strip():
+        return None
+    return Path(out.stdout.strip()).resolve()
+
+
+def _read_door(root: Path, name: str) -> str | None:
+    """A door's text, or None if it cannot be read.
+
+    Existence is established from git and CONTENT is read from the working tree,
+    and those two sources routinely disagree: a plain `rm` leaves the name in the
+    index, a directory can be staged under a file's name, a mode can deny the
+    read. Letting any of those raise turns one unreadable door into a dead
+    proprioception run for every OTHER boundary too.
+    """
+    try:
+        return (root / name).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+
+
+def _git_tracked_names(root: Path, names: list[str], timeout: int) -> set[str] | None:
+    """Which of `names` git actually tracks at `root` — None if git cannot answer.
+
+    Asks git rather than the filesystem ON PURPOSE. See the case note in
+    probe_door_canon_parity: on APFS the shell answers for a name that differs
+    only in case, so a door that is genuinely absent to a Linux runner tests as
+    present on every Mac in this fleet.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-z", "--", *names],
+            capture_output=True, text=True, timeout=timeout,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return None
+    return {n for n in out.stdout.split("\0") if n}
+
+
 BUILTINS = {
     "git_alignment": probe_git_alignment,
     "executed_code_currency": probe_executed_code_currency,
@@ -1235,6 +1462,7 @@ BUILTINS = {
     "guardian_freshness": probe_guardian_freshness,
     "repomap_size": probe_repomap_size,
     "canon_blocks": probe_canon_blocks,
+    "door_canon_parity": probe_door_canon_parity,
 }
 
 
@@ -1464,6 +1692,15 @@ DEFAULT_REGISTRY: list[dict] = [
         "severity": "P1",
         "args": {"home": "~", "report_dir": "~/.claude/canon-blocks.d", "max_age_min": 1440},
         "fix_hint": "port the DIVERGED block, never the whole file — it is per-machine by design; publish again from the machine that is ahead",
+    },
+    {
+        "id": "door_canon_parity", "type": "builtin", "target": "door_canon_parity",
+        "class": "door<->door",
+        "boundary": "the canon block of CLAUDE.md <-> AGENTS.md <-> GEMINI.md <-> QWEN.md",
+        "machines": ["all"], "tags": ["fast", "remote-safe"], "timeout_sec": 15,
+        "severity": "P1",
+        "args": {"reference": "CLAUDE.md", "doors": ["CLAUDE.md", "AGENTS.md", "GEMINI.md", "QWEN.md"]},
+        "fix_hint": "copy the reference door's block VERBATIM into the diverging door — the block is shared doctrine, so the cure is never to reword it locally; if the reference is the one that is wrong, fix it there and re-copy outward",
     },
     {
         "id": "repomap_size", "type": "builtin", "target": "repomap_size",
