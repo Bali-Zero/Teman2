@@ -24,7 +24,7 @@ seat_diversity_note: >-
   this; Codex sol, the natural second reviewer, is out of credits.
 diff:
   net_lines: >-
-    AS OF the commit this pack ships with: 8 files, +1694/-9, net 1685 —
+    AS OF the commit this pack ships with: 9 files, +1774/-10, net 1764 —
     THREE-DOT against the merge base, never two-dot (W102). Gear floor
     recomputed = 3 (hot-zone: .github/workflows/); declared Gear 3, at the
     floor. WELL OVER the ~400 target; see the size objection in dissent, where
@@ -179,7 +179,7 @@ dissent:
       entries. This is the wave's own thesis landing on me — a guard I reasoned
       about instead of running.
 
-  - objection: "SIZE — 1458 net lines against a spec target of ≤380 and a PR-contract target of ~400."
+  - objection: "SIZE — 1766 net lines against a spec target of ≤380 and a PR-contract target of ~400."
     seat: "claude-opus-5 (orchestrator)"
     status: CONFIRMED
     disposition: accepted
