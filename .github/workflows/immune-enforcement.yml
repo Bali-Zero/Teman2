@@ -134,6 +134,9 @@ jobs:
               infra/doc-lint/*|\
               docs/wr2/*.md|\
               infra/home-fork/declared-pairs.json|\
+              scripts/build_repomap.sh|\
+              scripts/repomap_cap.py|\
+              scripts/tests/test_repomap_cap.py|\
               scripts/tcc_migrate_desktop_paths.py|\
               scripts/lint_tcc_desktop_paths.py|\
               scripts/tests/test_tcc_migrate_desktop_paths.py|\
@@ -453,6 +456,7 @@ jobs:
             scripts/tests/test_wa_session_liveness.py \
             scripts/tests/test_prepush_classify.py \
             scripts/tests/test_husky_pii_pass_overmatch.py \
+            scripts/tests/test_repomap_cap.py \
             scripts/tests/test_docs_audit.py \
             scripts/tests/test_docs_inventory_refresh_liveness.py \
             scripts/tests/test_docs_inventory_regen.py \
