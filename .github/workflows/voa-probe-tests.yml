@@ -18,44 +18,49 @@ name: VOA probe organ tests
 # #5246 and `token-contrast-tests.yml` respectively -- verified on `origin/main` before
 # building this one, rather than assumed still-open from the issue text.
 #
-# WHAT THIS GATES, AND WHAT IT DOES NOT -- stated plainly because both cross-family reviewers
-# of this diff independently called the word "blocking" dishonest, and they were right.
-# The job carries no `continue-on-error`, so a failure DOES redden the run. It is NOT in
-# `main`'s required contexts, so a red run does NOT stop a merge -- adding it there is a
-# repo-settings action, operator-gated (CLAUDE.md §13), and the handoff explicitly did not
-# request it. So: SIGNAL-ONLY UNTIL PROMOTED. Calling it "blocking" would recreate, one level
-# up, the exact exists-!=-armed failure this file exists to cure. The promotion is tracked as a
-# PENDING-ARMS row rather than left to be rediscovered.
+# WHAT THIS GATES, AND WHAT IT DOES NOT. The job carries no `continue-on-error`, so a failure
+# DOES redden the run. Whether a red run also STOPS a merge is not decided in this file and
+# never can be: that lives in `main`'s branch protection, a repo-settings action, operator-gated
+# (CLAUDE.md §13). This file's only job is to be SAFE TO REQUIRE, which is a property of its
+# `on:` block and is checked continuously by `scripts/ci/check_required_workflow_conformance.py`
+# rules 2-5. An earlier version of this paragraph instead INVENTORIED the gating state
+# ("SIGNAL-ONLY UNTIL PROMOTED") and went stale the moment that state changed -- a comment that
+# inventories mutable state is a comment that will lie (cicatrix W106), so it states the
+# invariant now and leaves the fact to branch protection.
 #
-# `paths:` covers the probe, its wrapper, the plist, the installer and their corpora. The
-# obvious hole -- a dependency changing outside those paths -- was MEASURED, not assumed:
-# `voa_journey_probe.mjs` imports only node builtins (`node:crypto`, `node:fs`, `node:os`,
-# `node:path`, `node:url`), so there is no package-manifest or shared-library import closure to
-# widen this filter to. What remains uncovered is the Node runtime itself, which is why the
-# version is pinned below rather than taken from whatever the runner happens to ship.
+# WHY THERE IS NO `pull_request` PATHS FILTER, and there deliberately must not be one. A required
+# status check is satisfied only by a run of the workflow that REPORTS it. A top-level
+# `on.pull_request.paths:` filter means a PR outside that filter never STARTS a run -- there is
+# no skipped or neutral status to satisfy the check -- so GitHub shows the context "Expected --
+# waiting for status" forever and the PR is hard-blocked with nothing red to fix (conformance
+# guard rule 4; cicatrix W69). The filter this file used to carry is therefore removed, and the
+# job runs on every pull request and on every merge-queue entry. `push:` KEEPS its filter: a
+# push to `main` happens after a PR has already merged and gates nothing, which is why the
+# guard's own declared scope excludes `on.push.paths`.
 #
-# `scripts/tests/test_voa_probe_corpus.py` is in `paths:` but is deliberately NOT a step here:
-# it is a pytest shim whose only job is to invoke the SAME `.sh` corpus this workflow already
-# runs directly, so a step for it would run those checks twice. It stays in `paths:` because
-# editing the shim can break the sweep that collects it, and this job is the fastest place to
+# WHAT THE OLD FILTER USED TO ARGUE, kept because the measurement is still true and still
+# useful: `voa_journey_probe.mjs` imports only node builtins (`node:crypto`, `node:fs`,
+# `node:os`, `node:path`, `node:url`), so there is no package-manifest or shared-library import
+# closure that a path list would have had to widen to. What remains uncovered is the Node
+# runtime itself, which is why the version is pinned below rather than taken from whatever the
+# runner happens to ship.
+#
+# `scripts/tests/test_voa_probe_corpus.py` is deliberately NOT a step here: it is a pytest shim
+# whose only job is to invoke the SAME `.sh` corpus this workflow already runs directly, so a
+# step for it would run those checks twice. It is still named in the `push:` filter, because
+# editing the shim can break the sweep that collects it and this job is the fastest place to
 # notice that the corpus it wraps is broken.
 
 on:
   pull_request:
-    paths:
-      - "scripts/probes/voa_journey_probe.mjs"
-      - "scripts/tests/test_voa_probe_wrapper.sh"
-      - "scripts/tests/test_voa_probe_corpus.py"
-      - "infra/launchagents/wrappers/voa-probe-wrapper.sh"
-      - "infra/launchagents/com.nuzantara.voa-probe.plist"
-      - "infra/launchagents/install_voa_probe.sh"
-      - ".github/workflows/voa-probe-tests.yml"
   push:
     branches:
       - main
     paths:
-      # Symmetric with the pull_request list above, this file included: an asymmetric filter
-      # means a direct push to main editing only this workflow runs nothing.
+      # `pull_request` above carries NO filter (see the header), so this list is no longer the
+      # symmetric twin of anything -- it is the standalone answer to "which pushes to main are
+      # worth re-running this for". It keeps this file in the list: a direct push to main that
+      # edits only this workflow must still run it.
       - ".github/workflows/voa-probe-tests.yml"
       - "scripts/probes/voa_journey_probe.mjs"
       - "scripts/tests/test_voa_probe_wrapper.sh"
@@ -63,18 +68,24 @@ on:
       - "infra/launchagents/wrappers/voa-probe-wrapper.sh"
       - "infra/launchagents/com.nuzantara.voa-probe.plist"
       - "infra/launchagents/install_voa_probe.sh"
+  merge_group:
 
 permissions:
   contents: read
 
 concurrency:
   group: voa-probe-tests-${{ github.ref }}
-  # PRs only. The modelled-on workflow reads `!= 'merge_group'`, which is vacuously true here
-  # because this workflow has no merge_group trigger — and both cross-family reviewers flagged
-  # what that vacuity costs: the group is keyed on `github.ref`, so on `main` a later push would
-  # cancel an in-flight run. For a job whose entire purpose is "find the broken checkout before a
+  # Reads `== 'pull_request'`, so this is TRUE on a PR and FALSE on both `push` and `merge_group`.
+  # Two things follow, and both are the point. On the QUEUE: a cancelled required check ejects the
+  # merge-queue entry, so a queue run must never be cancellable — `false` on `merge_group` is what
+  # guarantees that. On `main`: the group is keyed on `github.ref`, so the commoner
+  # `!= 'merge_group'` form would be true on `push` and a later push to main would cancel an
+  # in-flight main run — and for a job whose whole purpose is "find the broken checkout before a
   # traveller does", a cancelled main run is a suppressed alarm. Superseded pushes on a PR branch
-  # are a different case and may be cancelled freely.
+  # are the one case where cancelling is right, and GitHub replaces the cancelled check with the
+  # run for the new head. `restore-drill-wiring-tests.yml` was moved onto this same expression for
+  # the same reason; a blind reviewer of that change noted the lesson had been applied to one of
+  # the two sibling files and not the other.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -92,11 +103,19 @@ jobs:
       # first run of this very workflow failed. Installed here rather than moving the job to
       # `macos-latest`: the wrapper's zsh is a fleet choice, not a macOS dependency, and a
       # Linux runner keeps this job cheap enough that nobody will want to weaken it later.
-      # Cost, named because both reviewers raised it: an apt outage now reddens a PR for a
-      # reason unrelated to its diff. Accepted at this job's current signal-only status; it is
-      # the first thing to reconsider if the job is ever promoted to a required context.
+      # The previous version of this comment ended "it is the first thing to reconsider if the
+      # job is ever promoted to a required context." This is that reconsideration, done at
+      # wiring time rather than after promotion: the raw `apt-get update && apt-get install`
+      # is replaced by `scripts/ci/apt_install.sh` (cicatrix W118). An unbounded `apt-get`
+      # hang consumes the whole job budget, and GitHub reports a budget kill as `cancelled`,
+      # not `failure` — a cancelled REQUIRED check ejects the merge-queue entry, leaving it
+      # unmergeable with nothing red anywhere to attribute it to. The script gives apt its own
+      # Acquire timeouts, caps total wall clock at 120s, and fail-closes by verifying `zsh` is
+      # actually on PATH afterwards. Declared trade, not a strict improvement (its own header
+      # says so): a healthy-but-slow install can now be cut at 60s, and a tolerated `update`
+      # failure can install from a stale cache where the raw chain would have gone red.
       - name: zsh (the wrapper's interpreter — not present on ubuntu runners)
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq zsh
+        run: bash scripts/ci/apt_install.sh zsh zsh
 
       # Pinned rather than inherited from the runner image: the probe is the only Node here and
       # its self-test is an assertion suite, so a runner-image Node bump could flip this job red
