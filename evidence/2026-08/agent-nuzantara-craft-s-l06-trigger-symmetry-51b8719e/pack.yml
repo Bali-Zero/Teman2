@@ -22,20 +22,23 @@ seat_diversity_note: >-
   out of credits.
 diff:
   net_lines: >-
-    AS OF the commit this pack ships with: 7 files, +978/-1, churn 979 — THREE-DOT
-    against the merge base, never two-dot (W102), and measured with --no-renames
-    because that is how evidence_pack_lint measures it; the two invocations
-    disagree on a diff that renames, and a number is verified by re-measuring it
-    the way the CHECKER will, not merely by re-measuring it. Gear floor
-    recomputed = 3 (hot-zone: .github/workflows/); declared Gear 3, at the floor.
-    Over the ~400 target and stated: the lint is ~300 and its corpus ~390,
-    because nine cases exist, five of them pin a defect a refuter found, and five
-    more pin the message defect described below. The remaining three files are
-    this evidence pack. The spec budgeted 150 net lines for the lint alone, which
-    was written before any of those findings existed.
-    GREW from 6 files/+909 after the first seven queue ejections: the seventh file
-    is .github/workflows/with-seat-broker-tests.yml, carrying one reported
-    exemption, plus the fix to this lint's own `format_trigger_shape` message and
+    Seven files, THREE-DOT against the merge base, never two-dot (W102), and
+    measured with --no-renames because that is how evidence_pack_lint measures it;
+    the two invocations disagree on a diff that renames, and a number is verified
+    by re-measuring it the way the CHECKER will, not merely by re-measuring it.
+    The exact added/deleted pair is deliberately NOT narrated here: writing it
+    into this file changes it, and chasing that fixed point is how a pack ends up
+    with a figure that was true one commit ago. The lint's own remedy text offers
+    exactly this choice, and CI recomputes the real pair from --numstat anyway.
+    Gear floor recomputed = 3 (hot-zone: .github/workflows/); declared Gear 3, at
+    the floor. Over the ~400-line target and stated rather than hidden: the lint
+    is ~300 lines and its corpus ~390, because nine cases pin defects a refuter
+    found and five more pin the message defect described below; three of the
+    seven files are this evidence pack. The spec budgeted 150 net lines for the
+    lint alone, and was written before any of those findings existed.
+    This grew after the first seven queue ejections: the added file is
+    .github/workflows/with-seat-broker-tests.yml, carrying one reported exemption,
+    together with the fix to this lint's own `format_trigger_shape` message and
     its guilt/innocence pair.
   behaviour_change: >-
     A new lint runs on the live tree inside the REQUIRED `antidotes` job, with no
