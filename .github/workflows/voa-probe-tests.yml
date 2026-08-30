@@ -18,9 +18,27 @@ name: VOA probe organ tests
 # #5246 and `token-contrast-tests.yml` respectively -- verified on `origin/main` before
 # building this one, rather than assumed still-open from the issue text.
 #
-# `paths:` filtered to the probe, its wrapper, the plist, the installer and their corpora.
-# NOT added to branch-protection required checks here -- that is a repo-settings action,
-# operator-gated (CLAUDE.md §13). It runs on every PR that touches the organ.
+# WHAT THIS GATES, AND WHAT IT DOES NOT -- stated plainly because both cross-family reviewers
+# of this diff independently called the word "blocking" dishonest, and they were right.
+# The job carries no `continue-on-error`, so a failure DOES redden the run. It is NOT in
+# `main`'s required contexts, so a red run does NOT stop a merge -- adding it there is a
+# repo-settings action, operator-gated (CLAUDE.md §13), and the handoff explicitly did not
+# request it. So: SIGNAL-ONLY UNTIL PROMOTED. Calling it "blocking" would recreate, one level
+# up, the exact exists-!=-armed failure this file exists to cure. The promotion is tracked as a
+# PENDING-ARMS row rather than left to be rediscovered.
+#
+# `paths:` covers the probe, its wrapper, the plist, the installer and their corpora. The
+# obvious hole -- a dependency changing outside those paths -- was MEASURED, not assumed:
+# `voa_journey_probe.mjs` imports only node builtins (`node:crypto`, `node:fs`, `node:os`,
+# `node:path`, `node:url`), so there is no package-manifest or shared-library import closure to
+# widen this filter to. What remains uncovered is the Node runtime itself, which is why the
+# version is pinned below rather than taken from whatever the runner happens to ship.
+#
+# `scripts/tests/test_voa_probe_corpus.py` is in `paths:` but is deliberately NOT a step here:
+# it is a pytest shim whose only job is to invoke the SAME `.sh` corpus this workflow already
+# runs directly, so a step for it would run those checks twice. It stays in `paths:` because
+# editing the shim can break the sweep that collects it, and this job is the fastest place to
+# notice that the corpus it wraps is broken.
 
 on:
   pull_request:
@@ -36,6 +54,9 @@ on:
     branches:
       - main
     paths:
+      # Symmetric with the pull_request list above, this file included: an asymmetric filter
+      # means a direct push to main editing only this workflow runs nothing.
+      - ".github/workflows/voa-probe-tests.yml"
       - "scripts/probes/voa_journey_probe.mjs"
       - "scripts/tests/test_voa_probe_wrapper.sh"
       - "scripts/tests/test_voa_probe_corpus.py"
@@ -48,7 +69,13 @@ permissions:
 
 concurrency:
   group: voa-probe-tests-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+  # PRs only. The modelled-on workflow reads `!= 'merge_group'`, which is vacuously true here
+  # because this workflow has no merge_group trigger — and both cross-family reviewers flagged
+  # what that vacuity costs: the group is keyed on `github.ref`, so on `main` a later push would
+  # cancel an in-flight run. For a job whose entire purpose is "find the broken checkout before a
+  # traveller does", a cancelled main run is a suppressed alarm. Superseded pushes on a PR branch
+  # are a different case and may be cancelled freely.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   organ-tests:
@@ -64,9 +91,20 @@ jobs:
       # `FATAL: no zsh on PATH — the wrapper is #!/bin/zsh`, exit 1, which is exactly how the
       # first run of this very workflow failed. Installed here rather than moving the job to
       # `macos-latest`: the wrapper's zsh is a fleet choice, not a macOS dependency, and a
-      # Linux runner keeps this job cheap enough to stay blocking.
+      # Linux runner keeps this job cheap enough that nobody will want to weaken it later.
+      # Cost, named because both reviewers raised it: an apt outage now reddens a PR for a
+      # reason unrelated to its diff. Accepted at this job's current signal-only status; it is
+      # the first thing to reconsider if the job is ever promoted to a required context.
       - name: zsh (the wrapper's interpreter — not present on ubuntu runners)
         run: sudo apt-get update -qq && sudo apt-get install -y -qq zsh
+
+      # Pinned rather than inherited from the runner image: the probe is the only Node here and
+      # its self-test is an assertion suite, so a runner-image Node bump could flip this job red
+      # — or, worse, change probe behaviour — with no repo change to point at. Both reviewers
+      # raised it; the repo has no `.nvmrc` to read, so the version is named here.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
 
       # BOTH steps below, never just the first one. Measured on 2026-08-30 against the shipped
       # files: collapsing every `"unknown"` literal in the probe to `"fail"` -- which would undo
@@ -84,8 +122,30 @@ jobs:
       # non-zero on an aborted setup, so the exit code separates "the code is wrong" from "the
       # environment is wrong" without this workflow having to parse prose. The line still prints
       # to the log for a human reading the failure.
-      - name: The wrapper corpus holds — 56 checks against the real script in a scratch world
+      - name: The wrapper corpus holds — every check against the real script in a scratch world
         run: bash scripts/tests/test_voa_probe_wrapper.sh
+
+      # The exit code above cannot see the corpus SHRINKING. Both cross-family reviewers landed on
+      # the same gap independently: if checks silently disappear while the survivors pass, the run
+      # stays green — a green that cannot fail, which is the disease this whole workflow exists to
+      # cure, reproduced one level up. So the count is asserted IN ADDITION to the exit code, never
+      # instead of it: an aborted setup never prints the TOTAL line at all, and this step would then
+      # report an absent count rather than silently accepting one. The floor is a floor, not an
+      # equality — adding checks must never turn this red.
+      - name: The corpus did not shrink (a vanished check is a green that cannot fail)
+        run: |
+          set -euo pipefail
+          FLOOR=56
+          TOTAL="$(bash scripts/tests/test_voa_probe_wrapper.sh | sed -n 's/^TOTAL \([0-9][0-9]*\) FAILED .*/\1/p' | tail -1)"
+          if [ -z "$TOTAL" ]; then
+            echo "::error::the corpus printed no TOTAL line — it aborted before reporting, so its check count is unknown"
+            exit 1
+          fi
+          if [ "$TOTAL" -lt "$FLOOR" ]; then
+            echo "::error::the corpus ran $TOTAL checks, below the floor of $FLOOR — checks were removed or silently skipped"
+            exit 1
+          fi
+          echo "corpus ran $TOTAL checks (floor $FLOOR)"
 
       # `zsh -n`, not `bash -n`: the wrapper's shebang is `#!/bin/zsh`, so checking it with bash
       # parses it under the wrong grammar — passing on syntax the real interpreter would reject,

@@ -1,0 +1,150 @@
+# CI stages every per-PR pair under /tmp/evidence-check/evidence/{brief,pack}.yml.
+# evidence_paths.py and harness-floor.yml therefore require this canonical staging reference.
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Exactly ONE build lane, so the D3 floor does not fire (it applies to packs declaring >= 2 build
+  lanes). The REVIEW side is deliberately not single-family: two cross-family seats reviewed the
+  frozen diff and are journalled in council_run above.
+plan_ref: "Squad P -> Squad W handoff, issue #5251 §H2 — an executor for the VOA probe corpus (2026-08-30). Signal-only until an operator promotes it to a required context; the handoff did not request that promotion."
+lanes:
+  - lane: ci-h2-voa-probe-corpus-build
+    role: build
+    seat: "conductor session (M5, Opus 5) — Squad W executes every .github/workflows/ edit per battle plan §2"
+  - lane: ci-h2-voa-probe-corpus-review
+    role: review
+    seat: "independent seat (generator != grader; the workflow's author does not gate it)"
+diff:
+  files: 1
+  net_lines: >-
+    Measured with git diff --numstat against the merge-base 1b95c75611, over the whole diff:
+    159 net lines in the workflow itself, plus this evidence pair. The workflow hot-zone fixes
+    the deterministic floor at Gear 3 regardless of that size. The figure grew after the
+    cross-family review: most of the addition is the header stating what this job does and does
+    not gate, and the check-count floor both seats asked for.
+  behaviour_change: >-
+    Adds one workflow. It runs on pull_request and on main pushes that touch the probe, its
+    wrapper, the plist, the installer or their corpora. No existing job, matrix leg, required
+    context, dependency setup or change-map rule is touched, and nothing is added to branch
+    protection. The organ's runtime behaviour is unchanged: this ships no code into any
+    deployed artifact.
+receipts:
+  - claim: >-
+      Running the self-test alone would be a half-arming. On a probe whose four-verdict lattice
+      has been collapsed, the self-test still reports OK and exits zero, while the shell corpus
+      exits non-zero and names the failed checks.
+    cmd: >-
+      sed -i '' 's/"unknown"/"fail"/g' scripts/probes/voa_journey_probe.mjs;
+      node scripts/probes/voa_journey_probe.mjs --self-test > /tmp/st.log; ST=$?;
+      bash scripts/tests/test_voa_probe_wrapper.sh > /tmp/co.log; CO=$?; echo "$ST $CO"
+    exit: 0
+    ts: "2026-08-30 (conductor, M5; probe file restored from a copy in the same command)"
+    seat: "conductor (M5, Opus 5)"
+  - claim: >-
+      Innocence on the unmutated tree — both entrypoints exit zero, so the job is not red by
+      construction.
+    cmd: >-
+      node scripts/probes/voa_journey_probe.mjs --self-test >/dev/null; echo $?;
+      bash scripts/tests/test_voa_probe_wrapper.sh >/dev/null; echo $?
+    exit: 0
+    ts: "2026-08-30 (conductor, M5)"
+    seat: "conductor (M5, Opus 5)"
+  - claim: >-
+      The exit code of that corpus was very nearly recorded wrong. A first attempt piped the
+      script into tail and read the pipeline's status, which reports the status of tail and
+      therefore showed a pass on a mutated tree. Re-measured with the status captured directly
+      from the script, which is what the receipt above does.
+    cmd: "bash scripts/tests/test_voa_probe_wrapper.sh | tail -2; echo rc=$?"
+    exit: 0
+    ts: "2026-08-30 (conductor, M5 — recorded as a defect of the measurement, not of the code)"
+    seat: "conductor (M5, Opus 5)"
+  - claim: >-
+      The corpus could not run on the CI runner at all before the zsh step: the wrapper is a zsh
+      script and ubuntu-latest ships no zsh. The corpus said so itself rather than guessing, and
+      this is how the first run of this very workflow failed on its own PR.
+    cmd: "gh run view 33302535300 --repo Bali-Zero/Teman2 --log | grep 'no zsh on PATH'"
+    exit: 0
+    ts: "2026-08-30T08:49Z (GitHub Actions, run 33302535300)"
+    seat: "GitHub Actions runner (ubuntu-latest)"
+  - claim: >-
+      With the interpreter installed, the same workflow completes successfully on the runner.
+    cmd: "gh run list --repo Bali-Zero/Teman2 --workflow voa-probe-tests.yml --limit 2"
+    exit: 0
+    ts: "2026-08-30T09:13Z (GitHub Actions, head fc46300838)"
+    seat: "GitHub Actions runner (ubuntu-latest)"
+  - claim: >-
+      Two of the three handed-off workflow diffs needed no work — verified on origin/main before
+      writing anything, rather than rebuilt from the issue's text. The smoke job carries no
+      continue-on-error and already lost its advisory suffix; a token-contrast workflow already
+      exists.
+    cmd: >-
+      git show origin/main:.github/workflows/tests.yml | awk over the
+      visa-oracle-fullstack-smoke block, grep continue-on-error;
+      git grep -ln check_token_contrast origin/main -- .github/workflows/
+    exit: 0
+    ts: "2026-08-30 (conductor, M5)"
+    seat: "conductor (M5, Opus 5)"
+tests:
+  - "The workflow's own two assertion steps are the tests; both were run locally before the file
+    existed and again by CI after it did. No new test file is introduced by this diff."
+static:
+  - "actionlint clean on the new workflow, locally and in CI."
+  - "zsh -n on the wrapper and bash -n on the installer both exit zero locally — each script
+    under its own interpreter."
+runtime_proof: >-
+  None applicable and none claimed. This diff adds a CI workflow and ships no code into any
+  deployed artifact, so there is no Fly or Vercel surface where a prove-live could be taken.
+  The proof that matters here is that the job runs on the runner and can go red, which the two
+  Actions receipts above supply from opposite directions.
+dissent:
+  - seat: "kimi-code/k3"
+    objection: >-
+      Judging the corpus by exit code alone cannot see it SHRINKING: if checks silently disappear
+      while the survivors pass, the run stays green — a green that cannot fail, inside the very
+      file written to cure that disease.
+    status: CONFIRMED
+  - seat: "codex-gpt-5.6-sol"
+    objection: >-
+      Calling this job "blocking" is dishonest while it sits in no required context: a red run
+      does not stop a merge. Both seats raised it; it was the highest-severity finding of the
+      review and it was about the file's PROSE, not its code.
+    status: CONFIRMED
+  - seat: "kimi-code/k3"
+    objection: >-
+      cancel-in-progress keyed on github.ref also cancels in-flight main runs, so a later push
+      silently suppresses the alarm from the run before it — for a receptor guard, a cancelled
+      main run is a lost signal.
+    status: CONFIRMED
+  - seat: "codex-gpt-5.6-sol"
+    objection: >-
+      The second apt-get call lacks sudo and will therefore fail on a non-root runner.
+    status: RETRACTED
+  - seat: "both"
+    objection: >-
+      The paths filter misses the probe's import closure (package manifests, shared libraries),
+      so a breaking dependency change would never trigger the job.
+    status: PLAUSIBLE
+  - seat: "conductor"
+    objection: >-
+      The handoff asked for the corpus's TOTAL/FAILED line to be parsed; this workflow judges by
+      exit code instead, because an aborted setup never prints that line and a grep would have to
+      interpret an absence.
+    status: CONFIRMED
+residual_risks:
+  - "A runner-side flake on a PR touching the organ now reddens that PR. Both assertion steps are
+    offline and deterministic, so the flake surface is checkout and apt-get, not the checks. Named
+    by both reviewers; accepted at signal-only status and flagged as the first thing to reconsider
+    if this job is ever promoted to a required context."
+  - "The job is NOT in main's required contexts, so a red run does not stop a merge. Stated here
+    rather than implied: calling it blocking was the highest-severity finding of the review, and
+    the honest status is signal-only until an operator promotes it."
+  - "The corpus was authored and proven on macOS. This PR proves it also runs on Linux, but does
+    not prove the two platforms agree on every one of its checks — only that the suite passes on
+    both. A platform-divergent check would show up as a red here, not as a silent pass."
+sources:
+  - "issue #5251 §H2 (Squad P handoff, battle plan §2)"
+  - "PR #5215 (the probe and its corpus)"
+  - "PR #5246 (H1, already landed)"
+  - ".github/workflows/vercel-autopromote-tests.yml (the shape this file follows)"
+pii_scan: clean
