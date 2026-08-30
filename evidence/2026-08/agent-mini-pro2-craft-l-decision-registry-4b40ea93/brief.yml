@@ -1,0 +1,118 @@
+task_id: decision-registry
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  L03-PR1 of the beyond-SOTA craft wave 2 (squad L, issue #5319): make "was this
+  decision superseded?" answerable without reading prose.
+
+  Before this, decisions lived in five places that cannot answer it: 11 legacy
+  ADRs in one monolithic doc last touched 2026-02-26; a second numbering space in
+  `docs/adr/` that COLLIDED with it (both held an ADR-006); four inline rulings
+  inside CLAUDE.md; one memo; and 300+ research dossiers. Every one of those is a
+  real record. None of them carries a status, a supersession link, or a number
+  that means anything across the others.
+
+  This adds `docs/decisions/registry.yaml` (18 backfilled records) and a lint
+  over it whose headline rule is that a reused `D-NNN` is a HARD FAIL.
+constraints:
+  - "The number is the point. W40 (two migrations claimed 194, five minutes
+    apart) and W128 (two PRs claimed scar W126, three minutes apart, while
+    origin/main still read W125 — so 'is it free?' answered TRUE for both,
+    correctly, at the moment each asked) are the same counter with the same
+    concurrent writers. R1 is what stops the third instance."
+  - "Follow the convention this repo already chose. `lint_scar_number_collision.py`
+    solves the neighbouring problem with a pure core over plain data and I/O split
+    into gather_live_* / gather_fixture_* boundary functions; this mirrors that
+    rather than inventing a second shape for one question."
+  - "Read-only. The lint writes nothing, ever."
+  - "No yaml import — a hand-rolled subset over a file this repo controls, where
+    anything unparseable RAISES rather than being skipped. A parser that shrugs
+    at what it does not understand reports a clean registry for a file it only
+    half read."
+acceptance:
+  - text: >-
+      WHEN two records share a `D-NNN`, the lint SHALL fail and name every line
+      that claims it; and WHERE a registry has unique ids and resolving evidence,
+      it SHALL pass.
+    probe: "pytest scripts/tests/test_lint_decision_registry.py -k R1 or well_formed"
+  - text: >-
+      WHILE one entry repeats a KEY, the parse SHALL fail — because a silently
+      overwritten `id` lets two records claim one number where R1 cannot see it.
+    probe: "pytest scripts/tests/test_lint_decision_registry.py -k duplicate_KEY"
+  - text: >-
+      IF `origin/main` is not fetched, the lint SHALL still render a verdict from
+      HEAD and the working tree, and SHALL NOT raise; and a path that exists
+      nowhere SHALL still be a violation.
+    probe: "pytest scripts/tests/test_lint_decision_registry.py -k origin_main_IS_ABSENT"
+  - text: >-
+      WHERE a record's status is `superseded-by`, `superseded_by` SHALL be present
+      and resolve to another record; and WHERE it is not, the field SHALL be
+      absent — an empty one SHALL be a violation, not a pass.
+    probe: "pytest scripts/tests/test_lint_decision_registry.py -k R3 or EMPTY_superseded"
+  - text: >-
+      WHEN any rule is neutered, the corpus SHALL turn red.
+    probe: "PYTHONDONTWRITEBYTECODE=1 python3.11 -B -m pytest -p no:cacheprovider scripts/tests/test_lint_decision_registry.py"
+consumer_map:
+  - "immune-enforcement.yml — the executor. The lint, its corpus AND the registry
+    are added to the in-job paths detector, and the corpus to the unit-test
+    runner, so editing the registry runs the lint that guards it."
+  - "docs/decisions/registry.yaml — the artefact itself, and its own first
+    consumer: the shipped registry must pass the shipped lint, and the first run
+    of the pair found a real defect (an evidence path resolving nowhere)."
+  - "Anyone asking 'was this superseded?' — today that is a prose search across
+    five inconsistent stores. After this it is one field, and a lint that fails
+    if the field points at nothing."
+risks:
+  - "TWO SPEC CORRECTIONS, both verified against the repo rather than inherited,
+    and the second is a NEEDS-RULING.
+
+    (1) The spec says 'the 6 inline RULED blocks in CLAUDE.md'. grep returns 6
+    lines, but 120 and 122 are prose back-references to the ruling at 130. There
+    are FOUR distinct rulings. Backfilling six would have created two duplicate
+    records for the 2026-08-20 decision — the exact collision this lint exists to
+    prevent, committed while building it.
+
+    (2) The spec instructs marking ADR-001 ('Gemini primary LLM') superseded by
+    the 2026-07-25/08-20 routing rulings, and notes its own adversarial round
+    REJECTED an objection to that. It is a category error: ADR-001 is about the
+    PRODUCT's LLM — `CLAUDE.md:261` still reads 'WhatsApp ✅ Fly.io (Gemini 3
+    Flash + RAG)' and the embedding half is still frozen at
+    text-embedding-3-small — while the rulings are about the AGENT WORKFLOW's
+    model routing, a different section about a different system. Recording it
+    would have put a FALSE fact in the field that is the registry's whole reason
+    to exist, on its first commit. D-001 stays `accepted`, with the reasoning at
+    the site; escalated rather than decided silently."
+  - "The ADR-006 renumber has a cost that was measured before it was paid: 9 live
+    references across a plan doc and a `nb_monitor/README.md`, all repointed. The
+    dated research captures and the 2026-05-07 dated spec that cite the old
+    filename are deliberately LEFT — they record what was true when written, and
+    rewriting a record to match a later rename is how a repo loses its history.
+    (My first categorisation of those files was wrong and stated before checking:
+    I called them all dated captures and one was a live README.)"
+  - "`#Lnnn` anchors are advisory and will drift. The lint strips the fragment
+    and resolves the PATH, which is the contract; resolving both would turn every
+    record red the first time somebody inserted a paragraph. All 15 anchors were
+    hand-checked to land on the right heading at this commit, and that check has
+    a shelf life."
+  - "The evidence resolver accepts a path present in HEAD or the working tree, not
+    only on origin/main. Deliberate: a change that adds a decision AND the artefact
+    it cites together is the normal case (this registry's own D-012 is exactly
+    that). What is given up is one commit of trust; what it buys is that records
+    get written at all."
+grader: |
+  TWO cross-family adversarial reviews on the DIFF with an explicit attack list —
+  Kimi K3 and Codex GPT-5.6 sol at xhigh, neither having written any of this. The
+  D3 build lane is real: Kimi's coding model drafted the lint against a written
+  contract that pointed it at `lint_scar_number_collision.py` as the convention to
+  follow, and this session wrote the registry, the corpus, and every cure.
+
+  Final on-disk gate is this orchestrator session (Opus 5, xhigh), empirical: the
+  backfill was verified file by file and line by line in this session, and each
+  refuter claim was reproduced against the real repo before being acted on.
+budget: >-
+  1 build lane (kimi-code/kimi-for-coding) + this session for the registry, the
+  corpus and the cures + 2 cross-family review lanes. One read-only Sonnet
+  subagent for the initial inventory, whose two load-bearing claims were both
+  re-verified here before use.
+pii: none

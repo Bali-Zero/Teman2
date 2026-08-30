@@ -1,0 +1,164 @@
+# STAGING PATH, NOT THE REAL ONE — the documented contract, not an oversight.
+# harness-floor.yml copies both files into a synthetic tree at
+# /tmp/evidence-check/evidence/{brief,pack}.yml under their CANONICAL names,
+# whatever their real location, and evidence_pack_lint.py resolves brief_ref
+# against THAT root.
+brief_ref: evidence/brief.yml
+plan_ref: "docs/plans/2026-08-29-beyond-sota-craft-wave/L03-architecture-decision-making.md — PR-1; squad ledger issue #5319"
+lanes:
+  - lane: lint-core
+    role: build
+    seat: "kimi-code/kimi-for-coding (Moonshot — the D3 non-Anthropic build lane; drafted the lint against a written contract that pointed it at lint_scar_number_collision.py as the convention to follow rather than letting it invent one)"
+  - lane: registry-corpus-and-cures
+    role: build
+    seat: "claude-opus-5 (this session — the 18-record backfill verified file by file, the corpus, and every cure)"
+  - lane: refute-family-2
+    role: review
+    seat: "kimi-code/k3 (Moonshot). DO-NOT-SHIP, 6 findings, including a CI landmine and the hole that hollowed out the headline rule."
+  - lane: refute-family-3
+    role: review
+    seat: "gpt-5.6-sol xhigh, --sandbox read-only (OpenAI). DO-NOT-SHIP, 24 findings."
+  - lane: final-gate
+    role: review
+    seat: "claude-opus-5 (this orchestrator — both spec corrections verified against the repo before acting, every refuter claim reproduced before being cured)"
+seat_diversity: ok
+seat_diversity_note: >-
+  Two build lanes across two families and two review lanes across two more. D3 is
+  satisfied by a real build lane, not by seat_override.
+
+  The measurement worth recording: the two reviewers ran in parallel on the same
+  diff with the same attack list and overlapped on four of thirty findings. k3
+  found the duplicate-KEY hole and the origin/main CI landmine; sol found that
+  `cat-file -e` is true for a DIRECTORY, that the rename had left four LIVE .py
+  files behind, and that one of the registry's own records asserted a
+  contradiction that does not exist. Neither would have been enough alone.
+diff:
+  net_lines: >-
+    AS OF this commit (pinned): 14 files, +1471/-21, measured against the MERGE
+    BASE with `git diff --cached --numstat`. Three of those files are this
+    evidence pack, and the count includes them.
+
+    Deterministic gear floor recomputed from this diff = 3 (source: path —
+    .github/workflows/immune-enforcement.yml, edited to ARM the corpus).
+  behaviour_change: >-
+    A new registry and a new lint over it, plus a rename. The lint is read-only
+    and writes nothing. The workflow edit adds the lint, its corpus and the
+    registry to the in-job paths detector and the corpus to the unit-test runner,
+    so editing the registry runs the lint that guards it. No required check is
+    added or removed.
+
+    The rename `docs/adr/ADR-006-* -> ADR-012-*` repoints 4 live .py files, one
+    live README and 16 references inside one plan document. Dated research
+    captures and the 2026-05-07 dated spec are deliberately untouched.
+receipts:
+  - claim: "The gear floor is 3, recomputed from this diff"
+    cmd: "git diff --cached --name-only > changed.txt; scripts/evidence_pack_lint.py --print-floor --changed-files-file changed.txt"
+    result: "3 (floor-source: path — .github/workflows/immune-enforcement.yml)"
+    exit: 0
+    ts: "2026-08-31T05:20Z"
+    seat: "session (mini, final gate)"
+  - claim: "SPEC CORRECTION 1, verified by this gate rather than inherited: the '6 inline RULED blocks' are FOUR"
+    cmd: "grep -n RULED CLAUDE.md; sed -n '74p;120p;122p;124p;128p;130p' CLAUDE.md"
+    result: "6 grep hits, but lines 120 and 122 are prose back-references to the ruling at 130 — not decisions. Backfilling all six would have created two duplicate records for the 2026-08-20 decision: the exact collision this lint exists to prevent, committed while building it."
+    exit: 0
+    ts: "2026-08-31T05:02Z"
+    seat: "session (mini, final gate)"
+  - claim: "SPEC CORRECTION 2 (escalated, not decided silently): the instructed ADR-001 supersession is a category error — and a cross-family reviewer found it independently with a better citation"
+    cmd: "grep -n 'Gemini' CLAUDE.md | grep -i whatsapp   # then sol: backend/llm/config.py:67-76"
+    result: "CLAUDE.md:261 still reads 'WhatsApp ✅ Fly.io (Gemini 3 Flash + RAG)', and sol cited backend/llm/config.py:67-76 still making Gemini primary. ADR-001 is about the PRODUCT's LLM; the 2026-07-25/08-20 rulings are about the AGENT WORKFLOW's model routing. Recording it would have put a FALSE fact in the field that is this registry's entire reason to exist, on its first commit. D-001 stays accepted; NEEDS-RULING posted."
+    exit: 0
+    ts: "2026-08-31T05:10Z"
+    seat: "session (mini) + gpt-5.6-sol, independently"
+  - claim: "A fabricated fact of my own, caught by a reviewer and removed"
+    cmd: "(review finding) D-012 declared `contradicts: [D-006]`"
+    result: "Removed. A notebook bootstrap registry does not contradict an abstract channel pattern for multi-platform chat; what they shared was a NUMBER. I turned a numbering collision into a semantic conflict — which is precisely the class of fabricated fact a decision registry must not contain. The collision is now recorded where it belongs, in the renamed file's own header."
+    exit: 0
+    ts: "2026-08-31T05:52Z"
+    seat: "gpt-5.6-sol -> session"
+  - claim: "The CI landmine: gating the resolver on origin/main would have reddened a REQUIRED job on innocent PRs"
+    cmd: "grep -n 'git fetch' .github/workflows/immune-enforcement.yml   # vs the unit-test battery's line number"
+    result: "The workflow's ONLY fetch of origin/main is at ~line 1199, roughly 750 lines AFTER the unit-test battery at ~447 that runs this lint, and the workflow's own comment says checkout's fetch-depth:0 does not reliably leave refs/remotes/origin/main on pull_request events. The resolver now probes for ANY usable ref and reserves CANNOT-VERIFY (exit 4) for the state where nothing is answerable."
+    exit: 0
+    ts: "2026-08-31T05:40Z"
+    seat: "kimi-code/k3 -> session"
+  - claim: "The rename was finished properly only after a reviewer showed the first grep was too narrow"
+    cmd: "grep -rn 'ADR-006' --include='*.py' . | grep -v node_modules"
+    result: "4 LIVE .py files cited it (nb_monitor/registry.py, collectors/cite_rate.py, feeder_log.py, skill_derivation.py) — my first sweep used --include='*.md' only. Plus 9 prose references inside the plan I had already edited, where the earlier pass replaced the FILENAME and left the bare number, so executing that plan would have recreated the collision inside the renamed file. All repointed; dated records deliberately left."
+    exit: 0
+    ts: "2026-08-31T05:45Z"
+    seat: "gpt-5.6-sol -> session"
+  - claim: "Evidence must be a readable DOCUMENT inside this repo — probed against the real resolver"
+    cmd: 'python3 -c "...gather_live_registry_data(...); [r(p) for p in (''CLAUDE.md'',''docs'',''/etc/passwd'',''../secrets'',''docs/nope.md'')]"'
+    result: "True, False, False, False, False. `cat-file -e` was true for a TREE so `evidence: docs` resolved, and the working-tree fallback let `/etc/passwd` out of the repository entirely. Now `cat-file -t` must say `blob`, absolute and `..` paths are refused lexically before any filesystem call, and the fallback is `is_file()`."
+    exit: 0
+    ts: "2026-08-31T05:58Z"
+    seat: "session (mini, final gate)"
+  - claim: "All 18 records verified by hand: every evidence path resolves and every line anchor lands on the right heading"
+    cmd: 'for L in 9 38 70 109 145 179 211 240 263 289 318; do sed -n "${L}p" docs/ARCHITECTURE_DECISION_RECORDS.md; done; for L in 74 124 128 130; do sed -n "${L}p" CLAUDE.md; done'
+    result: "15/15. Each ADR anchor printed its own `## ADR-NNN:` heading; each CLAUDE.md anchor printed its own ruling. The anchors are advisory and will drift — the lint strips the fragment and resolves the PATH, which is the contract."
+    exit: 0
+    ts: "2026-08-31T05:08Z"
+    seat: "session (mini, final gate)"
+  - claim: "Every rule and every cure is mutation-proved with bytecode disabled (W121)"
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3.11 -B -m pytest -p no:cacheprovider scripts/tests/test_lint_decision_registry.py   # each rule neutered in turn, then each cure reverted"
+    result: "29 tests; 16 mutants, 16 killed. Two survived at first and both were my own: a live test that passed with the resolver replaced by `bool(path)` (named by sol), and a test that could not tell HEAD-was-consulted from the working-tree fallback."
+    exit: 0
+    ts: "2026-08-31T06:02Z"
+    seat: "session (mini, final gate)"
+  - claim: "Every acceptance probe was run by name, and each selector actually selects"
+    cmd: "pytest scripts/tests/test_lint_decision_registry.py ; pytest scripts/tests/test_lint_decision_registry.py -k R1 or well_formed ; pytest scripts/tests/test_lint_decision_registry.py -k duplicate_KEY ; pytest scripts/tests/test_lint_decision_registry.py -k origin_main_IS_ABSENT ; pytest scripts/tests/test_lint_decision_registry.py -k R3 or EMPTY_superseded"
+    result: "29 passed; then 2, 1, 1 and 5 selected (27/28/28/24 deselected) — every selector matches at least one test, so none of the four is a green over an empty set."
+    exit: 0
+    ts: "2026-08-31T06:08Z"
+    seat: "session (mini, final gate)"
+pii_scan: clean
+council_run: journal.jsonl
+dissent:
+  - seat: "kimi-code/k3"
+    objection: "A duplicate KEY inside one entry overwrites silently, so a pasted record with two `id:` lines hides one and R1 — the hard fail — never sees the collision."
+    status: CONFIRMED
+    disposition: "Fixed: a repeated key is a ParseError naming both lines. This was the likeliest hand-edit accident and the one case the collision rule was blind to."
+  - seat: "kimi-code/k3"
+    objection: "`superseded-by:` as a KEY is a ParseError, although the STATUS value is literally spelled that way."
+    status: CONFIRMED
+    disposition: "Fixed: hyphenated keys are accepted and normalised, and the duplicate check runs on the normalised name so the two spellings still collide. The schema's inconsistency stops being the writer's problem."
+  - seat: "kimi-code/k3"
+    objection: "The resolver gates every check on origin/main, whose only fetch in the immune workflow sits ~750 lines after the battery that runs this lint."
+    status: CONFIRMED
+    disposition: "Fixed, and it is the most expensive finding of the round: it would have turned a REQUIRED job red on innocent PRs for a ref nobody fetched. Probes for any usable ref; CANNOT-VERIFY is now a typed exception rendered as exit 4, since the docstring promised a verdict and the code delivered a traceback."
+  - seat: "kimi-code/k3"
+    objection: "A scalar `contradicts:` and an empty `superseded_by` both pass silently."
+    status: CONFIRMED
+    disposition: "Both fixed. A malformed field that reads as 'nothing to see' is the silent-skip disease; a present-but-empty field is worse than an absent one, because absence is honest."
+  - seat: "gpt-5.6-sol"
+    objection: "D-001 is falsely superseded by D-016; backend/llm/config.py:67-76 still makes Gemini primary, and D-016 governs the review gate."
+    status: CONFIRMED
+    disposition: "Already corrected by this gate before the review returned, from CLAUDE.md:261 — and sol's citation is the better one. Two independent measurements that the SPEC's instruction was wrong. Escalated as NEEDS-RULING rather than decided silently."
+  - seat: "gpt-5.6-sol"
+    objection: "`evidence: docs` resolves because `cat-file -e` is true for a tree; `/etc/passwd` resolves out of the repository."
+    status: CONFIRMED
+    disposition: "Fixed: `cat-file -t` must say `blob`, absolute/`~`/`..` paths are refused lexically before any filesystem call, and the working-tree fallback is `is_file()`."
+  - seat: "gpt-5.6-sol"
+    objection: "D-012's `contradicts: [D-006]` is a fabricated conflict."
+    status: CONFIRMED
+    disposition: "Removed, and it is the finding I am least comfortable with because it was mine: I recorded a NUMBER collision as a SEMANTIC contradiction in a registry whose only value is that its facts are true."
+  - seat: "gpt-5.6-sol"
+    objection: "The rename leaves live source comments in four .py files and a heading/commit-message inside the edited plan citing ADR-006."
+    status: CONFIRMED
+    disposition: "Fixed. My first sweep was `--include='*.md'`, so it could not see the .py files; and the plan pass replaced the FILENAME while leaving the bare number, so executing that plan would have recreated the collision inside the renamed file."
+  - seat: "gpt-5.6-sol"
+    objection: "`test_the_live_run_against_the_shipped_registry_is_clean` still passes with the resolver replaced by `bool(path)`."
+    status: CONFIRMED
+    disposition: "Fixed with two tests that exercise the REAL resolver. The mutation now kills both. This is the eighth vacuous fixture mutation has caught in me across this session's four PRs."
+  - seat: "gpt-5.6-sol"
+    objection: "D-009's 2GB rationale is stale against fly.toml:90 (api is 3gb since 2026-05-28); the eleven ADR dates are all the document's last-updated stamp, not decision dates."
+    status: CONFIRMED
+    disposition: "Both recorded rather than papered over: D-009 is retitled so it does not assert a moved number as current, and the date coarseness is stated in the registry header. Guessing eleven per-ADR dates from git archaeology would have put eleven plausible wrong facts where one known-coarse one is honest."
+  - seat: "gpt-5.6-sol"
+    objection: "D-002 is marked accepted although a 2026-04-10 spec calls the Generals tables obsolete; D-012 remains accepted after its migration condition occurred."
+    status: PLAUSIBLE
+    disposition: "NOT cured. Both are judgements about whether a decision is still in force, which is what the registry is FOR — and deciding them from a reviewer's citation without measuring the running system would put exactly the kind of unverified status into it that this PR spent its time removing. Recorded as the first two candidates for a status review, with their evidence, rather than flipped."
+  - seat: "gpt-5.6-sol"
+    objection: "Three-space indentation, block scalars and quoted-escape forms are valid YAML and are rejected; `next_free_id` at D-999 returns D-1000, which R2 rejects."
+    status: PLAUSIBLE
+    disposition: "NOT cured, declared. The parser is a documented SUBSET over a file this repo controls, and every rejection is loud. The D-1000 ceiling is 981 decisions away and would be a visible, immediate failure rather than a silent one."
