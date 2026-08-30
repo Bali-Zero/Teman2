@@ -10,6 +10,10 @@ import {
   type QuestionId,
 } from "@/lib/secondhome-studio/sequence";
 import {
+  MERAH_PUTIH_DAY_CLASS,
+  MERAH_PUTIH_DAY_VARS,
+} from "@/lib/theme/merahPutihDayVars";
+import {
   E33_LIVE_PRICE_CATEGORY,
   resolveSecondHomePriceKey,
 } from "@/lib/secondhome-studio/pricing-key";
@@ -144,7 +148,7 @@ const mastheadLabelStyle: React.CSSProperties = {
  *  ~3.5:1 against the editorial backdrop and stays theme-adaptive. */
 const navButtonStyle: React.CSSProperties = {
   padding: "var(--space-2, 0.5rem) var(--space-4, 1.2rem)",
-  borderRadius: 8,
+  borderRadius: 12,
   border: "1px solid color-mix(in srgb, var(--text-primary) 45%, transparent)",
   background: "transparent",
   color: "var(--text-primary)",
@@ -610,7 +614,17 @@ export function StudioApp() {
       // `funnel="visa"` prop (packages/core/components/apps/AppFrame.tsx);
       // this route has no AppFrame ancestor, so it sets the attribute here.
       data-funnel="visa"
-      className="bz-shs-studio"
+      className={`bz-shs-studio ${MERAH_PUTIH_DAY_CLASS}`}
+      style={{
+        // MERAH PUTIH DAY (R4 identity law) — see merahPutihDayVars.ts for the
+        // scoping contract and every computed ratio. Inline HERE so it beats the
+        // editorial theme's navy ground and the retired #ff3344 on this route
+        // only, and so /visa/layout.tsx's forced Montserrat stops here.
+        ...MERAH_PUTIH_DAY_VARS,
+        background: "var(--surface-base)",
+        color: "var(--text-primary)",
+        minHeight: "100vh",
+      }}
     >
       <StudioAtmosphere />
       <div

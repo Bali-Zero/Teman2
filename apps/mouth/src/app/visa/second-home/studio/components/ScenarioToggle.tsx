@@ -182,7 +182,7 @@ export function ScenarioToggle({ plan }: ScenarioToggleProps) {
             alignItems: "center",
             gap: "var(--space-2, 0.5rem)",
             padding: "var(--space-2, 0.5rem) var(--space-4, 1.2rem)",
-            borderRadius: 8,
+            borderRadius: 12,
             cursor: "pointer",
             fontWeight: 600,
             minHeight: 44,
@@ -245,7 +245,7 @@ export function ScenarioToggle({ plan }: ScenarioToggleProps) {
           alignItems: "center",
           gap: "var(--space-2, 0.5rem)",
           padding: "6px 14px",
-          borderRadius: 8,
+          borderRadius: 12,
           border: "1px solid var(--color-border-subtle)",
           background: "transparent",
           color: "var(--text-primary)",
@@ -266,7 +266,7 @@ export function ScenarioToggle({ plan }: ScenarioToggleProps) {
             gap: "var(--space-2, 0.5rem)",
             padding: "var(--space-3, 0.75rem)",
             border: "1px solid var(--color-border-subtle)",
-            borderRadius: 8,
+            borderRadius: 12,
             background:
               "color-mix(in srgb, var(--state-warning) 6%, transparent)",
           }}
