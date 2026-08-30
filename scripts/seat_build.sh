@@ -100,8 +100,9 @@ report = {
     # "flash") — a caller checking rc==0 alone would otherwise believe it
     # got the tier it asked for (codex-sol adversarial review, PR #5044).
     "tier_downgraded_from": downgraded_from or None,
-    # PR-3: which path set EFFORT ("explicit" | "default" | "derived-from-floor"
-    # | "advisory-floor-2"); floor 2 unenforced proposed value, None when not
+    # PR-3: which path set EFFORT ("unresolved" | "explicit" | "default" |
+    # "derived-from-floor" | "advisory-floor-2"). "unresolved" means the run was
+    # refused before the derivation ran, never that no path applies; floor 2 unenforced proposed value, None when not
     # applicable -- never the empty string. (No apostrophes in this heredoc body:
     # bash 3.2 mis-scans single quotes for command-substitution balance even
     # inside a quoted <<'PY' heredoc -- verified live, not theoretical.)
@@ -299,7 +300,12 @@ main() {
     TESTS_RC="null"
     EFFORT="medium"
     EFFORT_EXPLICIT=false
-    EFFORT_SOURCE=""
+    # "unresolved", not "": several refusals (invalid --effort/--gear/--seat/
+    # --tier) emit the report BEFORE derive_effort_from_floor runs, and an empty
+    # string there is a fifth, undocumented state that a consumer cannot tell
+    # apart from "resolved to nothing". Found by a blind codex-sol refutation
+    # and reproduced: those paths reported effort_source='' with rc=64.
+    EFFORT_SOURCE="unresolved"
     EFFORT_ADVISORY=""
     TIMEOUT_SECS=1800
     OUT_PATH=""

@@ -225,6 +225,39 @@ case_seat_build_syntax_ok() {
     bash -n "$SEAT_BUILD"
 }
 
+# Found by a blind codex-sol refutation: several refusal paths (invalid
+# --effort / --gear / --seat / --tier) emit the JSON report BEFORE
+# derive_effort_from_floor runs. effort_source was "" there — a fifth,
+# undocumented state a consumer cannot tell apart from "resolved to nothing".
+# It must be the named "unresolved" instead.
+case_pre_derivation_refusal_names_its_state() {
+    local out="$FIXTURE/pre-derive.json" src
+    rm -f "$out"
+    bash "$SEAT_BUILD" --seat nosuchseat --gear 3 --task-file "$TASK_FILE" \
+        --worktree "$FIXTURE" --out "$out" --dry-run >/dev/null 2>&1 || true
+    [ -f "$out" ] || return 1
+    src="$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['effort_source'])" "$out")"
+    [ "$src" = "unresolved" ]
+}
+
+# Found by a blind codex-sol refutation: the floor-2 stderr NOTICE is the only
+# user-visible signal that the advisory hold exists at all, and nothing asserted
+# it — deleting the printf left the whole suite green. A needs-ruling hold whose
+# announcement can vanish silently is a hold nobody will notice was dropped.
+case_floor2_notice_is_actually_printed() {
+    local errlog="$FIXTURE/floor2-notice.log" out="$FIXTURE/floor2-notice.json"
+    rm -f "$errlog" "$out"
+    seat_env "$SEAT_BUILD" --seat qwen --gear 2 --worktree "$LINKED_WT" \
+        --task-file "$TASK_FILE" --out "$out" --dry-run >/dev/null 2>"$errlog" || true
+    grep -q 'gear 2' "$errlog" || return 1
+    grep -qi 'advisory' "$errlog" || return 1
+    # and the notice must NOT appear for the floors that ARE ruled
+    rm -f "$errlog"
+    seat_env "$SEAT_BUILD" --seat qwen --gear 3 --worktree "$LINKED_WT" \
+        --task-file "$TASK_FILE" --out "$out" --dry-run >/dev/null 2>"$errlog" || true
+    ! grep -qi 'advisory' "$errlog"
+}
+
 run_case "GUILT: floor-1 resolves to medium via derivation, not the pre-existing hardcoded default" \
     case_floor1_resolves_via_derivation_not_hardcoded_default
 run_case "INNOCENCE: floor-3, no --effort, derives xhigh" case_floor3_derives_xhigh
@@ -237,6 +270,8 @@ run_case "a derived xhigh (floor-3) is still subject to the existing per-tier ca
 run_case "effort_advisory is JSON null, not empty string, when unset" \
     case_effort_advisory_is_null_not_empty_string
 run_case "seat_build.sh passes bash -n" case_seat_build_syntax_ok
+run_case "a refusal before derivation names its state, never empty-string" case_pre_derivation_refusal_names_its_state
+run_case "floor-2 actually prints its advisory notice (and floor-3 does not)" case_floor2_notice_is_actually_printed
 
 printf 'SUMMARY %d passed, %d failed\n' "$PASS_COUNT" "$FAIL_COUNT"
 [ "$FAIL_COUNT" -eq 0 ]
