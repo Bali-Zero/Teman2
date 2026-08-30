@@ -13,12 +13,15 @@ innocence cases, per cicatrix family #3.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import pytest
 
 from backend.services.integrations.wa_finalize import (
+    _AMOUNT_MULTIPLIERS,
     _KG_WORKFLOW_TRAILER,
+    _MULT_PATTERN,
     _WHATSAPP_HARD_SEND_LIMIT,
     FinalizeOutcome,
     finalize_wa_answer,
@@ -155,6 +158,120 @@ def test_pricing_veto_ignores_amounts_without_a_currency_marker() -> None:
 def test_pricing_veto_floor_skips_noise_amounts() -> None:
     # "Rp 5" (per page, say) is below any real IDR price — noise, not a price.
     assert price_tokens_outside_sources("Rp 5 per page.", ["no numbers"]) == []
+
+
+# ── English magnitude words: the 2026-08-30 total-bypass regression ──────
+#
+# Before the fix, "billion"/"million" were unknown to _MULT_PATTERN, so the
+# regex kept only the bare decimal ("2.5" -> 25), which fell UNDER the IDR floor
+# and was discarded before the source-membership check. The consequence was not
+# a miss in one direction but a hole in both: an invented English-worded price
+# was never caught, and a correct digit-grouped answer was rejected against an
+# English-worded source that actually supported it. Each case below fails on the
+# pre-fix code — verified by re-running this file against it, not assumed.
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # GUILT — an invented amount must be caught whatever word it wears.
+        ("Modal disetornya IDR 2.5 billion.", ["IDR:2500000000"]),
+        ("Biayanya IDR 999 billion, dijamin.", ["IDR:999000000000"]),
+        ("The fee is USD 4 million.", ["USD:4000000"]),
+        ("Setoran USD 250 thousand.", ["USD:250000"]),
+        # Plural forms an LLM writes even though a price rarely takes them.
+        ("The fee is USD 5 millions.", ["USD:5000000"]),
+        # Finance shorthand, the sibling of the "bn" the list already had.
+        ("Cost: USD 12 mn.", ["USD:12000000"]),
+    ],
+)
+def test_pricing_veto_catches_english_magnitude_words(
+    text: str, expected: list[str]
+) -> None:
+    assert price_tokens_outside_sources(text, ["nothing relevant here"]) == expected
+
+
+def test_pricing_veto_accepts_a_digit_answer_backed_by_an_english_source() -> None:
+    """The live false positive: curated_qa states the figure in English prose.
+
+    This is the exact shape measured on the bot on 2026-08-30 — the retrieved
+    evidence said "IDR 2.5 billion", the answer said "Rp 2.500.000.000", and the
+    veto rejected a CORRECT answer because it could not canonicalize its own
+    source. Grounding must not depend on which numeral form each side chose.
+    """
+    source = "Minimum paid-up capital for a PT PMA is IDR 2.5 billion."
+    assert price_tokens_outside_sources("Modalnya Rp 2.500.000.000.", [source]) == []
+
+
+def test_pricing_veto_accepts_an_english_answer_backed_by_a_digit_source() -> None:
+    """The mirror direction — and an honest note about what this test proves.
+
+    Replayed against the pre-fix code this one PASSES, for the wrong reason: the
+    English answer was discarded under the floor, so "no offender" meant "never
+    looked", not "grounded". It is kept as a fence on the post-fix behavior, not
+    as evidence of the bug — the eight tests that DO go red on pre-fix code are
+    where that evidence lives.
+    """
+    source = "Rp 2.500.000.000 adalah syarat modal disetor minimum."
+    assert price_tokens_outside_sources("It is IDR 2.5 billion.", [source]) == []
+
+
+def test_pricing_veto_english_words_do_not_over_match_ordinary_prose() -> None:
+    """Innocence arm (cicatrix family #3): a longer word is not a multiplier.
+
+    "millionaire" must not turn a nearby "USD 20" into twenty million — the word
+    boundary is what stops it, and a pattern built by joining alternatives is
+    exactly where that guarantee gets lost.
+    """
+    assert (
+        price_tokens_outside_sources(
+            "He is a millionaire, but the fee is only USD 20.", ["USD 20"]
+        )
+        == []
+    )
+    # And an unknown magnitude word must not silently become a multiplier.
+    assert price_tokens_outside_sources("USD 20 zillion.", ["USD 20"]) == []
+
+
+def test_pricing_veto_multiplier_pattern_is_derived_from_the_table() -> None:
+    """The pattern and the table cannot be allowed to drift apart.
+
+    ``_canonical_value`` indexes ``_AMOUNT_MULTIPLIERS[multiplier.lower()]`` with
+    no ``.get`` fallback, so a token the PATTERN matches but the TABLE lacks is a
+    KeyError raised inside the finalize path — a crash, not a missed veto. This
+    test is the tripwire for that coupling: it fails if anyone adds a token to
+    one side only, and it fails if the alternation stops being longest-first
+    (which is what keeps "millions" from being pre-empted by "million").
+    """
+    alternatives = _MULT_PATTERN[len("(?:") : -len(")")].split("|")
+    unescaped = [re.sub(r"\\(.)", r"\1", a) for a in alternatives]
+    assert set(unescaped) == set(_AMOUNT_MULTIPLIERS)
+    assert [len(a) for a in unescaped] == sorted(
+        (len(a) for a in unescaped), reverse=True
+    )
+
+
+def test_pricing_veto_still_reads_the_indonesian_forms_it_always_did() -> None:
+    # Regression fence: widening the vocabulary must not disturb what worked.
+    assert price_tokens_outside_sources("Rp 99 juta.", ["Rp 99.000.000"]) == []
+    assert price_tokens_outside_sources("Rp 3,5 jt.", ["Rp 3.500.000"]) == []
+    assert price_tokens_outside_sources("Rp 2,5 miliar.", ["2500000000"]) == []
+    assert price_tokens_outside_sources("Rp 98 juta.", ["Rp 99.000.000"]) == [
+        "IDR:98000000"
+    ]
+
+
+def test_pricing_veto_bare_currency_word_remains_out_of_scope() -> None:
+    """A KNOWN, deliberately unclosed hole — asserted so it cannot rot silently.
+
+    "2,5 miliar rupiah" carries no Rp/IDR/USD marker, so this veto never sees it.
+    Widening the CURRENCY vocabulary only ever adds rejections, and the live bot
+    was already rejecting 4 of 5 battery questions on 2026-08-30; that change
+    needs its own false-positive measurement rather than riding along here. If a
+    later PR closes it, this test SHOULD fail — read it as the marker of a scope
+    boundary, not as an assertion that the behavior is desirable.
+    """
+    assert price_tokens_outside_sources("Modalnya 2,5 miliar rupiah.", []) == []
 
 
 # ── Secret-egress scan (pure function): guilt and innocence ──────────────
