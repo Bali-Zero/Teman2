@@ -1,0 +1,116 @@
+name: Fleet burst dispatcher tests
+
+# Executor for the corpus that proves `scripts/fleet_burst.sh` -- the account-sharded
+# headless fan-out that replaces the `fork`/`tmux`-pane shape behind scars W98 (lanes
+# writing zero bytes to disk) and W96 (ENXIO pty exhaustion with 94% of ptys free).
+#
+# WHY THIS FILE EXISTS, and why it ships in the same PR as the script
+# -------------------------------------------------------------------
+# Measured on this branch before writing it: `scripts-tests-sweep.yml` collects only
+# `test_*.py` through pytest -- a `.sh` file is invisible to pytest collection -- and its
+# sweep step is `continue-on-error: true` besides. So a shell corpus landed alone has NO
+# executor that can ever go red: superscar #2 (exists != armed), which is precisely the
+# defect wave 2 exists to stop. The wave's binding rule 3 is that "a future job will run
+# it" is not a consumer; the job ships in the same PR. This is that job.
+#
+# Same shape and rationale as `vercel-autopromote-tests.yml`,
+# `intake-review-reader-liveness.yml` and `tg-gateway.yml`: one small workflow named by
+# the script it proves, `paths:`-filtered so it starts on exactly the diffs that can
+# break it.
+#
+# Deliberately NOT added to branch-protection required contexts here -- that is a
+# repo-settings action, operator-gated per CLAUDE.md, and a required check that goes
+# permanently red blocks the whole merge queue (the siblings above carry the same
+# reasoning). It runs on every PR that touches the organ, which is what makes it bite.
+#
+# THE PATH FILTER IS THE ARMING SURFACE, so it lists every file this job's steps
+# actually bind -- not just the two the dispatcher is named after. A filter that omits
+# a bound file is a job that stays green by never starting, which is the same
+# exists-!=-armed defect one level up. Blind cross-family refutation (Codex GPT-5.6 sol)
+# caught two such omissions in the first draft of this file:
+#   - `scripts/lib/seat_state.sh` -- fleet_burst SOURCES it for liveness.
+#   - `infra/launchagents/wrappers/claude-cascade.sh` -- the seat-state corpus binds it
+#     directly and asserts against its dispatch loop and kill-switch polarity.
+#   - `scripts/tests/test_seat_state.sh` -- executed below, so a regression case added
+#     to it must schedule this job.
+# An earlier version of this comment claimed the filter covered "exactly the diffs that
+# can break it" while omitting two of them; that claim was false and is not restated.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/fleet_burst.sh"
+      - "scripts/tests/test_fleet_burst.sh"
+      - "scripts/lib/seat_state.sh"
+      - "scripts/tests/test_seat_state.sh"
+      - "infra/launchagents/wrappers/claude-cascade.sh"
+      - ".github/workflows/fleet-burst-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/fleet_burst.sh"
+      - "scripts/tests/test_fleet_burst.sh"
+      - "scripts/lib/seat_state.sh"
+      - "scripts/tests/test_seat_state.sh"
+      - "infra/launchagents/wrappers/claude-cascade.sh"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fleet-burst-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+jobs:
+  fleet-burst-tests:
+    name: Fleet burst dispatcher tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      # A syntax error in a dispatcher is a silent dead organ: the fan-out simply never
+      # happens and every lane reports nothing, which reads like "no work to do".
+      - name: The dispatcher still parses
+        run: bash -n scripts/fleet_burst.sh
+
+      # The corpus stubs seat_state.sh into a temp dir, so it neither reads the real
+      # fleet reports nor spawns a real `claude`. Its guilt case is the one that matters:
+      # more lanes than live seats must never resolve to one seat driving two lanes.
+      - name: One live seat per lane, never two lanes on one seat
+        run: bash scripts/tests/test_fleet_burst.sh --dry-run
+
+      # `test_seat_state.sh` case 14 compares the cascade's dispatch loop against
+      # `origin/main` byte-for-byte, so that ref has to exist. actions/checkout
+      # fetches a single commit by default and a PR build checks out the merge
+      # ref, so `origin/main` is NOT resolvable unless it is asked for -- the case
+      # would return non-zero for a MISSING REF rather than for a touched loop, a
+      # red that names the wrong cause and burns a Rule-8 round chasing it.
+      # Caught by blind cross-family refutation (Codex GPT-5.6 sol) on this file.
+      # depth=1 is enough: `git show <ref>:<path>` needs only that commit's tree.
+      - name: Make origin/main resolvable (the seat-state corpus compares against it)
+        run: git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
+
+      # zsh is NOT on ubuntu-latest, and the seat-state corpus has TWO cases that
+      # `return 0` with a printed SKIP when zsh is missing -- the cascade is a zsh
+      # script and the library is sourced from zsh, so those are the production-shell
+      # cases. Without this install the Bash cases pass, the zsh cases skip, the
+      # corpus exits 0 and this job reports SUCCESS over a real zsh-only regression:
+      # coverage theatre, and the exact shape this workflow exists to refuse.
+      # Caught by blind cross-family refutation (Codex GPT-5.6 sol). Same cure as
+      # immune-enforcement.yml, magazine-auto-assets.yml and organ-conformance.yml.
+      # The explicit `command -v` is the fail-closed half: a silently-failed install
+      # would put us straight back to skipping.
+      - name: zsh must be present, or the production-shell cases would silently skip
+        run: |
+          bash scripts/ci/apt_install.sh zsh zsh
+          command -v zsh >/dev/null || { echo "::error::zsh unavailable — the zsh cases would SKIP and this job would report green over them"; exit 1; }
+
+      # The library the dispatcher leans on for liveness. If seat_state ever answers
+      # wrongly, fleet_burst inherits the fault -- so its corpus runs on the same trigger.
+      # This is also the ONLY workflow in the repo that names this corpus: L09-PR1
+      # landed 26 shell checks with no executor at all (W108), so arming them here
+      # is not incidental coverage, it is the first time they can go red.
+      - name: The seat-state ledger it depends on is still honest
+        run: bash scripts/tests/test_seat_state.sh
