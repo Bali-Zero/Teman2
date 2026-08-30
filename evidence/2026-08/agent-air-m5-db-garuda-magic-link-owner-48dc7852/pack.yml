@@ -2,16 +2,30 @@
 # directory: harness-floor.yml stages both files into a synthetic tree under those fixed
 # names before validating, so any other value fails to resolve in CI.
 brief_ref: evidence/brief.yml
+council_run: journal.jsonl
 plan_ref:
   "PR #5302 (agent/air-m5/db/garuda-magic-link-owner) — cure of the production outage that kept the
   authenticated half of GARUDA VOA unreachable from the day migration 285 shipped, plus the static
   lint that stops the omission recurring. Governing mandate: GARUDA VOA dark launch to production."
+# R8 (ground_truth) seat_override. R8 fires on the PATTERN `*/visa_engine/*`, and
+# the only file in this diff that matches it is
+# apps/backend-rag/backend/scripts/visa_engine/operational_preflight.py. Its diff
+# here is a Postgres SECURITY DEFINER ownership census -- pg_catalog queries,
+# LEDGER_OWNER, prosecdef -- and asserts no regulatory fact: no visa rule, no fee,
+# no eligibility condition, no KBLI code. There is therefore no NotebookLM query
+# for a ground_truth lane to hash, and fabricating one to go green would be
+# inventing evidence, which is strictly worse than the red. Verified by reading
+# the diff, not inferred from the path: the rule cannot see that a file living
+# under visa_engine/ makes no ground-truth claim (guard-over-match, superscar
+# family #3 -- recorded as a finding against the RULE).
+seat_override: "the only ground-truth-path hit is scripts/visa_engine/operational_preflight.py, whose diff here is a Postgres SECURITY DEFINER ownership census asserting no regulatory fact -- no visa rule, fee, eligibility condition or KBLI code -- so there is no NotebookLM query for a ground_truth lane to hash"
+
 lanes:
   - lane: garuda-magic-link-owner-build
     role: build
     seat:
       claude-opus-5 (conducting session — measured the outage against production, falsified four
-      competing hypotheses, authored migration 299, the static lint, the preflight extension, this pack)
+      competing hypotheses, authored migration 301, the static lint, the preflight extension, this pack)
   - lane: garuda-magic-link-owner-refute
     role: review
     seat:
@@ -32,12 +46,12 @@ seat_diversity_note:
   the author's own tests did not cover."
 diff:
   net_lines:
-    "6 files, +1196/-0, computed by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
+    "7 files, +1410/-0, computed by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
     One new .sql migration, one new static test file, two touched Python files (the live preflight
-    check and its independently frozen authority), and this evidence pair. Zero frontend, zero
-    workflow, zero runtime request path."
+    check and its independently frozen authority), and this evidence set (pack, brief, and the
+    council journal). Zero frontend, zero workflow, zero runtime request path."
   behaviour_change:
-    "At apply time against production, migration 299 changes nothing and says so: the runner connects
+    "At apply time against production, migration 301 changes nothing and says so: the runner connects
     as backend_rag_v2, which is not a member of visa_ledger_owner, so the ALTER cannot succeed and the
     migration RAISES rather than recording itself applied. The cure itself landed out of band on a
     superuser connection (receipt below). The static lint and the preflight extension change no
@@ -73,11 +87,11 @@ receipts:
       ran to completion. The response body is deliberately non-enumerating and identical either way,
       so the Idempotency-Replayed header is the observable signal, not the status code."
   - claim:
-      "The static lint would have blocked migration 285. GUILT control, run this turn: with 299
+      "The static lint would have blocked migration 285. GUILT control, run this turn: with 301
       removed — the real state of production until today — the lint fails and names the offender and
       the file."
     cmd:
-      "mv 299_garuda_magic_link_binding_owner.sql /tmp && PYTHONPATH=. python -m pytest
+      "mv 301_garuda_magic_link_binding_owner.sql /tmp && PYTHONPATH=. python -m pytest
       backend/tests/db/test_retention_lock_triggers_are_ledger_owned.py -k transferred"
     exit: 1
     ts: "2026-08-30T07:10:04Z"
@@ -163,6 +177,44 @@ pii_scan_note:
   party received anything. No secret value entered any transcript: the ownership ALTER referenced
   $OPERATOR_PASSWORD in place on the target machine rather than printing it."
 dissent:
+  - seat: kimi-code/k3 (adversarial grader, second council seat)
+    objection:
+      "The header claims the block 'ends by asserting the POSTCONDITION', but the two early RETURNs
+      (role absent; function not present) exit before that assert. A staging environment that
+      provisions visa_ledger_owner after migrations run records 301 as applied with the transfer
+      never performed -- the same 'esiste != armato' false green the file says it refuses."
+    status: CONFIRMED
+    resolution:
+      "Verified on disk before adoption: RETURN at lines 95 and 101, RAISE EXCEPTION at 118. The
+      header was corrected to state exactly how far the guarantee reaches. The deferral itself is
+      kept: it is the inherited 251/253/268/281 convention, and raising would refuse to bootstrap
+      any clone that has not provisioned the role. Cure what the diff introduces (the false claim),
+      spec what it inherits (the convention)."
+  - seat: kimi-code/k3 (adversarial grader, second council seat)
+    objection:
+      "The static lint's comment stripper `--[^\\n]*` is applied to the whole forward section,
+      including inside string literals and dollar-quoted bodies. Postgres treats `--` inside a
+      literal as data. A SECURITY DEFINER function whose body contains a literal with a double
+      hyphen ahead of its FOR SHARE loses the lock clause to the stripper and is not reported --
+      a miss in the detector whose own spec says it must be PERMISSIVE because a miss is a silent
+      production 500."
+    status: CONFIRMED
+    resolution:
+      "Verified, and not merely synthetic: the stripper mangles migration 301's own text
+      `-- the SECURITY DEFINER trigger cannot take its FOR SHARE lock`. Replaced with a
+      character-scanning stripper that tracks single-quoted literals (including '' escapes) and
+      dollar-quoted bodies. Four tests added -- two guilt, two innocence -- plus one pinned to
+      migration 301 itself. Reverting to the regex reddens three of them."
+  - seat: kimi-code/k3 (adversarial grader, second council seat)
+    objection:
+      "Moving a SECURITY DEFINER function to a more privileged owner increases the search_path
+      hijack surface: any object created in a schema on the path could shadow an unqualified
+      reference in the body."
+    status: RETRACTED
+    resolution:
+      "REFUTED by the session against 285_garuda_magic_link.sql:214-218 -- the function is declared
+      `SET search_path = pg_catalog, public` and references
+      `public.visa_decision_retention_policies` fully qualified. Not adopted."
   - seat: codex-gpt-5.6-sol (adversarial grader)
     objection:
       "The migration would record FALSE SUCCESS. Its first draft caught insufficient_privilege and
@@ -260,7 +312,7 @@ dissent:
     objection:
       "All three of the round-two fixes were still evadable, by three shapes of one class. (a) The
       transfer binding matched `\\b<var>\\b[^;]*?:=`, which walks from a MENTION of the ALTER variable
-      — inside an `IF to_regprocedure(signature) IS NULL THEN`, migration 299's own idiom — into the
+      — inside an `IF to_regprocedure(signature) IS NULL THEN`, migration 301's own idiom — into the
       NEXT line's assignment to a DIFFERENT variable, because nothing between them is a semicolon. A
       throwaway migration carrying a live offender reported it transferred and the file-level test
       passed. (b) The same regex counted both literals when a variable is reassigned. (c) A function

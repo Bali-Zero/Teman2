@@ -12,7 +12,7 @@ This defect has now shipped twice.
   was written ``SECURITY DEFINER`` but was never transferred to
   ``visa_ledger_owner``, so it ran with the privileges of a role that also
   cannot take the lock. Every magic-link issuance answered 500 for weeks and
-  ``garuda_magic_link_tokens`` never held a single row. Migration 299 cures it.
+  ``garuda_magic_link_tokens`` never held a single row. Migration 301 cures it.
 
 Both migrations were reviewed and merged. Neither review caught it, because
 nothing about the SQL looks wrong on its own: ``SECURITY DEFINER`` is present,
@@ -40,7 +40,8 @@ assert MIGRATIONS.is_dir(), (
 
 LEDGER_TABLE = "visa_decision_retention_policies"
 LEDGER_OWNER = "visa_ledger_owner"
-LINE_COMMENT = re.compile(r"--[^\n]*")
+# NOT used to strip comments -- see _strip_line_comments for why a regex
+# cannot do that job. Kept only for ROLLBACK_MARKER's sibling shape below.
 ROLLBACK_MARKER = re.compile(r"^--\s*===\s*ROLLBACK\s*===", re.MULTILINE)
 FUNCTION_START = re.compile(
     r"CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+(?:public\.)?(\w+)\s*\(", re.IGNORECASE
@@ -52,6 +53,73 @@ SINGLE_QUOTED_BODY = re.compile(r"\bAS\s+'((?:[^']|'')*)'", re.IGNORECASE)
 LOCK_CLAUSE = re.compile(r"\bFOR\s+(?:SHARE|UPDATE|NO\s+KEY\s+UPDATE|KEY\s+SHARE)\b", re.IGNORECASE)
 
 
+def _strip_line_comments(sql: str) -> str:
+    """Blank out `--` line comments WITHOUT touching `--` inside a literal.
+
+    A regex `--[^\n]*` cannot do this, and the difference is not academic:
+    Postgres treats `--` inside `'...'` or a dollar-quoted body as ordinary
+    data, so the regex deletes real SQL to end-of-line whenever a message
+    happens to contain a double hyphen. Measured on this repo's own migration
+    299, whose text `'... % is still owned by % -- the SECURITY DEFINER trigger
+    cannot take its FOR SHARE lock ...'` loses its `FOR SHARE` to the stripper.
+    That is the offender detector's ONE job, and it is the PERMISSIVE one —
+    the polarity spec below says a miss here is a silent production 500.
+
+    Concrete defect this closes (kimi-code/k3, adversarial round 2026-08-30):
+
+        CREATE FUNCTION public.evil() RETURNS trigger LANGUAGE plpgsql
+        SECURITY DEFINER AS $b$
+        BEGIN
+            RAISE NOTICE 'see -- docs'; PERFORM 1
+              FROM public.visa_decision_retention_policies FOR SHARE;
+            RETURN NEW;
+        END $b$;
+
+    The old stripper ate `FOR SHARE;` along with the fake comment, so the
+    function was not reported and the file passed green with the defect in it.
+
+    Scanned character by character rather than by regex because the state
+    (in a single-quoted literal / in a dollar-quoted body / in a comment) is
+    not expressible as one pattern. Comments are replaced by a space, never
+    deleted, so no two tokens are fused across the removal.
+    """
+    out: list[str] = []
+    i, n = 0, len(sql)
+    while i < n:
+        ch = sql[i]
+        if ch == "'":
+            # Single-quoted literal; '' is an escaped quote, not a terminator.
+            out.append(ch)
+            i += 1
+            while i < n:
+                out.append(sql[i])
+                if sql[i] == "'":
+                    if i + 1 < n and sql[i + 1] == "'":
+                        out.append(sql[i + 1])
+                        i += 2
+                        continue
+                    i += 1
+                    break
+                i += 1
+            continue
+        if ch == "$":
+            tag = DOLLAR_TAG.match(sql, i)
+            if tag is not None:
+                closing = sql.find(tag.group(0), tag.end())
+                end = (closing + len(tag.group(0))) if closing != -1 else n
+                out.append(sql[i:end])
+                i = end
+                continue
+        if ch == "-" and i + 1 < n and sql[i + 1] == "-":
+            newline = sql.find("\n", i)
+            out.append(" ")
+            i = n if newline == -1 else newline
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
 def _forward(sql: str) -> str:
     """Only the forward section, with line comments stripped.
 
@@ -60,8 +128,11 @@ def _forward(sql: str) -> str:
     that is actually SECURITY INVOKER would otherwise be read as an offender,
     and a commented-out `ALTER ... OWNER TO` would be read as proof of a
     transfer that never happens.
+
+    A `--` inside a string or a dollar-quoted body is DATA, not a comment —
+    see `_strip_line_comments`, which is why this is not a one-line regex.
     """
-    return LINE_COMMENT.sub(" ", ROLLBACK_MARKER.split(sql)[0])
+    return _strip_line_comments(ROLLBACK_MARKER.split(sql)[0])
 
 
 def _definer_functions_locking_the_ledger(sql: str) -> set[str]:
@@ -416,7 +487,7 @@ $body$ LANGUAGE plpgsql SECURITY DEFINER;
 def test_a_do_block_does_not_launder_a_signature_it_merely_names():
     """The signature must REACH the ALTER, not just appear in the same block.
 
-    `to_regprocedure('public.<name>()')` is migration 299's own idiom, so a
+    `to_regprocedure('public.<name>()')` is migration 301's own idiom, so a
     block that transfers one function while checking another marked both.
     """
     sql = _BAD_TRIGGER + """
@@ -590,3 +661,69 @@ LANGUAGE c
 AS 'MODULE_PATHNAME', 'opaque_invoker';
 """
     assert "opaque_invoker" not in _definer_functions_locking_the_ledger(sql)
+
+
+def test_a_double_hyphen_inside_a_literal_does_not_hide_the_lock():
+    """GUILT. The offender detector is the PERMISSIVE one, so the thing that
+    must never happen is a real SECURITY DEFINER ledger-locker going
+    unreported. A `--` inside a string literal is DATA; a regex stripper reads
+    it as a comment and deletes the rest of the line, `FOR SHARE` included.
+
+    Found by kimi-code/k3 on 2026-08-30 as a synthetic repro, then confirmed
+    to fire on this repo's own migration 301, whose exception message contains
+    `-- the SECURITY DEFINER trigger cannot take its FOR SHARE lock`.
+    """
+    sql = """
+CREATE FUNCTION public.evil() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $b$
+BEGIN
+    RAISE NOTICE 'see -- docs'; PERFORM 1 FROM public.visa_decision_retention_policies FOR SHARE;
+    RETURN NEW;
+END $b$;
+"""
+    assert "evil" in _definer_functions_locking_the_ledger(_forward(sql))
+
+
+def test_a_double_hyphen_inside_a_dollar_quoted_body_does_not_hide_the_lock():
+    """GUILT, second quoting form. A dollar-quoted body is equally literal."""
+    sql = """
+CREATE FUNCTION public.evil2() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $x$
+BEGIN
+    RAISE EXCEPTION 'a -- b';
+    PERFORM 1 FROM public.visa_decision_retention_policies FOR UPDATE;
+    RETURN NEW;
+END $x$;
+"""
+    assert "evil2" in _definer_functions_locking_the_ledger(_forward(sql))
+
+
+def test_a_real_comment_is_still_stripped():
+    """INNOCENCE. Teaching the stripper about literals must not stop it
+    stripping actual comments -- that is the false-accusation half, and
+    test_security_definer_written_only_in_a_comment_is_not_an_offender above
+    depends on it. Asserted directly here so the property is named."""
+    stripped = _strip_line_comments(
+        "SELECT 1; -- SECURITY DEFINER ... FOR SHARE\nSELECT 2;"
+    )
+    assert "SECURITY DEFINER" not in stripped
+    assert "FOR SHARE" not in stripped
+    assert "SELECT 1;" in stripped and "SELECT 2;" in stripped
+
+
+def test_an_escaped_quote_inside_a_literal_does_not_end_it():
+    """INNOCENCE. `''` is an escaped quote, not a terminator. Getting this
+    wrong flips the scanner's state and makes the REST of the file look like
+    a literal, which would silence every detector after it."""
+    stripped = _strip_line_comments(
+        "SELECT 'it''s -- fine'; -- a real comment\nSELECT 'x' FOR SHARE;"
+    )
+    assert "it''s -- fine" in stripped
+    assert "a real comment" not in stripped
+    assert "FOR SHARE" in stripped
+
+
+def test_the_stripper_does_not_maul_migration_299_itself():
+    """The live case. 299's own exception text carries a double hyphen ahead
+    of the words FOR SHARE; before this fix the stripper deleted them."""
+    sql = (MIGRATIONS / "301_garuda_magic_link_binding_owner.sql").read_text()
+    forward = _forward(sql)
+    assert "the SECURITY DEFINER trigger cannot take its FOR SHARE lock" in forward

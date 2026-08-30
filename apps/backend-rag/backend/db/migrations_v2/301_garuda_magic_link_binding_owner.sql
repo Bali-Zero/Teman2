@@ -1,4 +1,4 @@
--- 299_garuda_magic_link_binding_owner.sql
+-- 301_garuda_magic_link_binding_owner.sql
 --
 -- WHAT IS BROKEN IN PRODUCTION (measured 2026-08-30)
 -- =============================================================================
@@ -68,7 +68,7 @@
 --   this migration for copying 281's handler verbatim, and was right: 281 was
 --   codifying a transfer ALREADY applied to production by hand, so its NOTICE
 --   path was a no-op confirmation. Here the transfer has NOT happened yet, so a
---   NOTICE would let the runner record migration 299 as applied while the
+--   NOTICE would let the runner record migration 301 as applied while the
 --   outage stands -- a permanent false green in `_schema_versions`, and exactly
 --   the "esiste != armato" disease this repo keeps paying for.
 --
@@ -78,11 +78,34 @@
 --   the assertion is silent. On production it fails loudly until an operator
 --   runs the ALTER, which is the honest state: the cure is not in force.
 --
+--   EXACTLY HOW FAR THAT GUARANTEE REACHES (kimi-code/k3, adversarial round
+--   2026-08-30 -- it read the paragraph above as covering every path, and it
+--   does not). The postcondition is asserted on ONE of three paths. The two
+--   early RETURNs below exit before it:
+--     * role `visa_ledger_owner` absent  -> NOTICE, return
+--     * the function not present yet     -> NOTICE, return
+--   In both, the runner records 301 as applied and nothing ever re-runs it. So
+--   in an environment where the role is provisioned AFTER migrations, or where
+--   the function is created later, this file leaves the transfer undone and
+--   says so only in a NOTICE nobody reads.
+--
+--   That deferral is deliberate and INHERITED, not introduced here: it is the
+--   251/253/268/281 convention, and raising instead would refuse to bootstrap
+--   any clone that has not provisioned the role yet -- a worse failure than
+--   the one it prevents. What was wrong was the CLAIM, which promised a
+--   guarantee three paths wide for something one path wide. Corrected here
+--   rather than softened elsewhere.
+--
+--   The standing net under that hole is not this file: it is the static lint
+--   `backend/tests/db/test_retention_lock_triggers_are_ledger_owned.py`, which
+--   fails CI for any SECURITY DEFINER ledger-locker with no transfer, whatever
+--   order things were applied in.
+--
 --   `to_regprocedure` (not a `::regprocedure` cast) so an absent function
 --   yields NULL instead of raising -- the same review flagged the cast as a
 --   fresh-database ordering hazard.
 
-DO $garuda_299_owner_transfer$
+DO $garuda_301_owner_transfer$
 DECLARE
     ledger_owner constant text := 'visa_ledger_owner';
     signature constant text := 'public.bind_garuda_magic_link_token_retention_policy()';
@@ -90,14 +113,14 @@ DECLARE
     current_owner text;
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ledger_owner) THEN
-        RAISE NOTICE 'garuda magic-link (299): role % absent -- skipping ownership transfer, same convention as 251/253/268/281',
+        RAISE NOTICE 'garuda magic-link (301): role % absent -- skipping ownership transfer, same convention as 251/253/268/281',
             ledger_owner;
         RETURN;
     END IF;
 
     fn := to_regprocedure(signature);
     IF fn IS NULL THEN
-        RAISE NOTICE 'garuda magic-link (299): % not present -- nothing to transfer', signature;
+        RAISE NOTICE 'garuda magic-link (301): % not present -- nothing to transfer', signature;
         RETURN;
     END IF;
 
@@ -108,7 +131,7 @@ BEGIN
             EXECUTE format('ALTER FUNCTION %s OWNER TO %I', signature, ledger_owner);
         EXCEPTION
             WHEN insufficient_privilege THEN
-                RAISE NOTICE 'garuda magic-link (299): ALTER denied (current owner %) -- this session is neither superuser nor a member of %',
+                RAISE NOTICE 'garuda magic-link (301): ALTER denied (current owner %) -- this session is neither superuser nor a member of %',
                     current_owner, ledger_owner;
         END;
         SELECT pg_get_userbyid(proowner) INTO current_owner FROM pg_proc WHERE oid = fn;
@@ -116,11 +139,11 @@ BEGIN
 
     IF current_owner IS DISTINCT FROM ledger_owner THEN
         RAISE EXCEPTION
-            'garuda magic-link (299): % is still owned by % -- the SECURITY DEFINER trigger cannot take its FOR SHARE lock on visa_decision_retention_policies, so magic-link issuance still answers 500. Refusing to record this migration as applied while that is true: run the ALTER on a superuser connection, then re-apply.',
+            'garuda magic-link (301): % is still owned by % -- the SECURITY DEFINER trigger cannot take its FOR SHARE lock on visa_decision_retention_policies, so magic-link issuance still answers 500. Refusing to record this migration as applied while that is true: run the ALTER on a superuser connection, then re-apply.',
             signature, current_owner;
     END IF;
 END;
-$garuda_299_owner_transfer$;
+$garuda_301_owner_transfer$;
 
 -- === ROLLBACK ===
 
@@ -136,8 +159,8 @@ $garuda_299_owner_transfer$;
 -- If the ownership genuinely must be reverted, it is a deliberate operator
 -- action with its own reasoning, not the mechanical inverse of this file.
 
-DO $garuda_299_owner_rollback$
+DO $garuda_301_owner_rollback$
 BEGIN
-    RAISE NOTICE 'garuda magic-link (299 rollback): intentionally does nothing -- restoring ownership to backend_rag_v2 would re-create the production outage this migration cures.';
+    RAISE NOTICE 'garuda magic-link (301 rollback): intentionally does nothing -- restoring ownership to backend_rag_v2 would re-create the production outage this migration cures.';
 END;
-$garuda_299_owner_rollback$;
+$garuda_301_owner_rollback$;
