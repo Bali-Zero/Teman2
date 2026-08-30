@@ -22,9 +22,17 @@ lanes:
       instructed to refute — 12 findings, all 12 verified on disk, all 12 acted on
 
 diff:
-  files: 52
-  net_lines: 890
-  measured_at: staged tree, pre-commit
+  files: 68
+  net_lines: 1343
+  measured_at: >-
+    re-measured against base c2f80a8 as the LAST action before the rebase commit, not carried over
+    from the pre-rebase tree. The figures that stood here before were smaller in both fields and
+    stale by the time anyone read them: the branch had absorbed two merges from main since they
+    were written, and the rebase then dropped a zero-byte `scripts/repomap_cap.py` that #5334 had
+    already landed for real. Those superseded numbers are DESCRIBED and not quoted on purpose —
+    the countable-claims rule reads a figure anywhere in this field, so writing the old one down
+    re-trips the guard on the very line that explains it (measured: it did, once). A self-declared
+    count nobody re-derives is the defect this wave produced four times in one night.
   note: >-
     Rename-detected (-M): the two scar bodies are pure renames and contribute no
     line count. Roughly two thirds of the file count is one-line path repoints;
