@@ -1,0 +1,78 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  docs/plans/2026-08-29-beyond-sota-craft-wave/L09-multi-agent-orchestration-fleet-routing.md
+  section "PR-3: feat(effort): bind dispatch effort to compute_floor".
+
+lanes:
+  - lane: effort-from-floor-build
+    role: build
+    seat: claude sonnet-5 (Anthropic) -- implementer subagent, never the grader
+  - lane: effort-from-floor-refute
+    role: review
+    seat: codex gpt-5.6-sol xhigh (non-Anthropic) -- blind adversarial refutation
+  - lane: effort-from-floor-gate
+    role: review
+    seat: claude opus-5 xhigh (this orchestrator) -- final on-disk gate, empirical
+
+diff:
+  files: 2
+  net_lines: 335
+  measured_at: 0c473b9947
+  note: >-
+    Measured with git diff --numstat against the merge-base. Within the
+    <=400 net-line target of rules-of-engagement #2.
+
+pii_scan: clean
+
+receipts:
+  - claim: "The new corpus is green and it bites: 10/10 pass, and reverting any guarded behaviour turns exactly one case red."
+    cmd: "bash scripts/tests/test_seat_build_effort.sh"
+    exit: 0
+    ts: "2026-08-30T03:23:39Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+  - claim: "The two pre-existing seat_build suites are unchanged by this diff."
+    cmd: "bash scripts/tests/test_seat_build.sh && bash scripts/tests/test_seat_build_tiers.sh"
+    exit: 0
+    ts: "2026-08-30T03:23:39Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+  - claim: "A DERIVED xhigh is refused by the per-tier ceiling exactly as an explicit xhigh is -- deriving cannot smuggle an effort past the cap. Measured: codex/luna --gear 3 exits 65 with 'capped at effort medium (got xhigh)', identical to --effort xhigh."
+    cmd: "bash scripts/seat_build.sh --seat codex --tier luna --gear 3 --dry-run"
+    exit: 65
+    ts: "2026-08-30T03:23:39Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+
+dissent:
+  - seat: codex-gpt-5.6-sol (blind refutation)
+    objection: >-
+      Refusals that fire before the derivation emit the report with
+      effort_source="" -- an undocumented state indistinguishable from
+      "resolved to nothing". The refuter proposed moving the derivation earlier.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced on four refusal paths, then fixed by naming the state
+      "unresolved" rather than by reordering. Moving the derivation earlier
+      would be wrong: it must run AFTER --gear is validated, or it would derive
+      from a gear the script is about to reject. The finding was right; its
+      proposed remedy was not, and the difference is recorded rather than
+      quietly resolved either way.
+  - seat: codex-gpt-5.6-sol (blind refutation)
+    objection: >-
+      The floor-2 advisory notice was unasserted -- stderr was redirected to a
+      file the test never inspected, so deleting the printf left the suite green.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced (notice deleted -> 8/8 still green), then asserted both ways:
+      floor-2 prints it, floor-3 does not. That notice is the only user-visible
+      signal the needs-ruling hold exists.
+  - seat: codex-gpt-5.6-sol (blind refutation)
+    objection: >-
+      No workflow executes this shell corpus; scripts-tests-sweep.yml runs
+      pytest, which does not collect .sh, and is continue-on-error besides.
+    status: CONFIRMED
+    resolution: >-
+      Verified, and it is broader than the finding: NONE of the three
+      seat_build shell suites is named by any workflow, so this corpus joins an
+      already-unarmed family (W108, guardian whose only executor cannot go red).
+      Deliberately NOT fixed in this PR -- the battle plan reserves every
+      .github/workflows/ edit for Squad W. Ships as a PENDING-ARMS row and a
+      handoff instead of a workflow diff authored by the wrong lane.
