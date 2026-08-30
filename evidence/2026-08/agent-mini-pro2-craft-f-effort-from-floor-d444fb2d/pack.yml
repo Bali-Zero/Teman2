@@ -15,12 +15,15 @@ lanes:
     seat: claude opus-5 xhigh (this orchestrator) -- final on-disk gate, empirical
 
 diff:
-  files: 2
-  net_lines: 335
-  measured_at: 0c473b9947
+  files: 4
+  net_lines: 455
+  measured_at: 1ff7dad3ad
   note: >-
-    Measured with git diff --numstat against the merge-base. Within the
-    <=400 net-line target of rules-of-engagement #2.
+    git diff --numstat against the merge-base, over the WHOLE diff. The
+    earlier figure counted the two source files and left this pack and its
+    brief out; the harness floor job counts every changed path, which is why
+    it recomputed a higher floor than this lane had measured. Above the
+    rules-of-engagement target, and the excess is entirely this evidence pair.
 
 pii_scan: clean
 
