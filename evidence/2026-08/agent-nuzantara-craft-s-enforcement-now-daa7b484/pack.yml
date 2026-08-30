@@ -28,12 +28,12 @@ seat_diversity_note: >-
   second found six things the first missed.
 diff:
   net_lines: >-
-    AS OF the commit this pack ships with: 5 files, +396/-1, net 395 — THREE-DOT
+    AS OF the commit this pack ships with: 5 files, +444/-1, net 443 — THREE-DOT
     against the merge base (W102). Gear floor recomputed = 1 from this diff;
     declared Gear 3, which is ABOVE the floor and therefore allowed (the floor is
     a lower bound). Declared high on purpose: the diff is one constant, but the
     DECISION it encodes is a fleet-wide enforcement flip, and the evidence for it
-    is the rest of the PR. One line of code, 189 lines of why.
+    is the rest of the PR. One line of code, 237 lines of why.
   behaviour_change: >-
     One constant moves: SEAT_RULES_ENFORCEMENT_DATE 2026-09-02 -> 2026-08-31, so
     R8/R10 are hard rules from today. Measured cost: ZERO of the 20 open PRs that
