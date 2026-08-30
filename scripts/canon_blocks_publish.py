@@ -27,8 +27,16 @@ import sys
 import time
 from pathlib import Path
 
-REPORT_PATH = Path.home() / ".claude" / "canon-blocks.json"
+REPORT_DIR = Path.home() / ".claude" / "canon-blocks.d"
 DEFAULT_PEERS = ("pro", "mini")
+
+# scp with no BatchMode prompts for a password on inherited stdin and blocks
+# FOREVER when a peer resolves but has no key auth — from a scheduler that is a
+# silently wedged job, and a wedged publisher is how the report goes stale
+# (kimi-code/k3, 2026-08-31). The probe module already carries exactly these
+# options; the publisher was not using them.
+SCP_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15"]
+SCP_TIMEOUT_S = 60
 
 
 def _load_probe():
@@ -53,7 +61,7 @@ def _load_probe():
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(prog="canon_blocks_publish")
     ap.add_argument("--claude-md", default="~/.claude/CLAUDE.md")
-    ap.add_argument("--report-path", type=Path, default=REPORT_PATH)
+    ap.add_argument("--report-dir", type=Path, default=REPORT_DIR)
     ap.add_argument(
         "--peers",
         default=",".join(DEFAULT_PEERS),
@@ -61,6 +69,13 @@ def main(argv: list[str]) -> int:
     )
     ap.add_argument(
         "--no-push", action="store_true", help="write locally, push nowhere"
+    )
+    ap.add_argument(
+        "--machine",
+        help="name to publish under (default: this host). For a machine whose "
+        "hostname changed, and for building a synthetic multi-machine fixture: "
+        "the corpus cannot otherwise simulate a second machine, because every "
+        "fragment would be written under this host's name.",
     )
     args = ap.parse_args(argv)
 
@@ -82,46 +97,62 @@ def main(argv: list[str]) -> int:
         )
         return 3
 
-    me = socket.gethostname().split(".")[0]
-    report: dict = {"machines": {}}
-    if args.report_path.is_file():
-        try:
-            report = json.loads(args.report_path.read_text())
-            report.setdefault("machines", {})
-        except (OSError, json.JSONDecodeError):
-            report = {"machines": {}}
-    now = time.time()
-    report["machines"][me] = blocks
-    # Per-machine freshness, because the report is MERGED: a machine that stops
-    # publishing keeps its old digests in the file forever, and the file's own
-    # mtime only ever reflects the LAST publisher. Without this, a peer that went
-    # quiet a month ago is compared against as if it had answered this morning.
-    report.setdefault("seen_at", {})[me] = now
-    report["published_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now))
-    report["published_by"] = me
+    me = args.machine or socket.gethostname().split(".")[0]
 
-    args.report_path.parent.mkdir(parents=True, exist_ok=True)
-    args.report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
-    print(f"canon-publish: {len(blocks)} block(s) from {me} -> {args.report_path}")
+    # ONE FILE PER MACHINE, never a shared document each machine rewrites.
+    # The previous shape merged locally and then scp'd the WHOLE file: A pushes
+    # {A} to B, C pushes {C} to B, and A's entry is gone from B — with no lock,
+    # no re-merge on receipt, and no way for the freshness stamps to tell an
+    # ERASED peer from a quiet one (kimi-code/k3, 2026-08-31). A machine now
+    # writes only its own fragment, so two publishers cannot destroy each other's
+    # work and there is nothing to merge or lock.
+    fragment = {
+        "machine": me,
+        "blocks": blocks,
+        "seen_at": time.time(),
+        "published_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+
+    args.report_dir.mkdir(parents=True, exist_ok=True)
+    path = args.report_dir / f"{me}.json"
+    # Write-then-rename: a reader (or a peer's scp) hitting a half-written file
+    # would report the whole organ unreadable, which is the guard lying about its
+    # own health for a reason that has nothing to do with doctrine.
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(fragment, indent=2, sort_keys=True) + "\n")
+    tmp.replace(path)
+    print(f"canon-publish: {len(blocks)} block(s) from {me} -> {path}")
 
     if args.no_push:
         return 0
 
+    # The remote destination is written as a TILDE, never as this machine's
+    # absolute path. M5's home is /Users/balizero and Pro's is /Users/nuzantara,
+    # so reusing the local absolute path publishes where the remote probe never
+    # reads: the file lands, scp reports success, and every machine keeps
+    # comparing against nothing (Codex sol + kimi-code/k3, 2026-08-31).
+    remote = f"~/.claude/canon-blocks.d/{me}.json"
+
     failures = 0
     for host in [h.strip() for h in args.peers.split(",") if h.strip()]:
-        if host == me:
-            continue
+        # `host` is an SSH ALIAS (`pro`, `mini`) and `me` is a hostname
+        # (`Air-M5`, `Nuzantara`), so they never compare equal: the old skip-self
+        # guard could not fire, and a machine copying its own fragment onto
+        # itself was reported as a successful peer push. Under the fragment
+        # scheme that copy is a byte-identical no-op rather than a corruption,
+        # but it is still a push that proves nothing, so it is named.
         r = subprocess.run(
-            ["scp", "-q", str(args.report_path), f"{host}:{args.report_path}"],
+            ["scp", "-q", *SCP_OPTS, str(path), f"{host}:{remote}"],
             capture_output=True,
             text=True,
+            timeout=SCP_TIMEOUT_S,
         )
         ok = r.returncode == 0
         print(f"  push {host}: {'ok' if ok else 'FAILED — ' + r.stderr.strip()[:120]}")
         failures += 0 if ok else 1
     if failures:
-        # Loud, because a peer that did not receive the report keeps comparing
-        # against an older one until it goes stale — and a stale comparison is
+        # Loud, because a peer that did not receive the fragment keeps comparing
+        # against an older one until it goes quiet — and a stale comparison is
         # exactly the confident lie this whole organ exists to prevent.
         print(f"canon-publish: {failures} peer push(es) failed", file=sys.stderr)
         return 1

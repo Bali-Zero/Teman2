@@ -905,6 +905,7 @@ def probe_repomap_size(root: Path, args: dict, timeout: int) -> tuple[str, int, 
 
 _CANON_OPEN_RE = re.compile(r"<!--\s*CANON:([A-Za-z0-9._-]+)\s*-->")
 _CANON_CLOSE_RE = re.compile(r"<!--\s*/CANON:([A-Za-z0-9._-]+)\s*-->")
+_CANON_CLOCK_SKEW_TOLERANCE_MIN = 15.0
 
 
 def _canon_blocks(text: str) -> dict[str, str]:
@@ -915,27 +916,46 @@ def _canon_blocks(text: str) -> dict[str, str]:
     make the first real finding arrive inside a crowd of false ones. Anything
     else, including a single reworded sentence, changes the digest, which is the
     point: this compares MEANING-BEARING text, and it cannot tell a fix from a
-    regression, only that the three copies stopped agreeing.
+    regression, only that the copies stopped agreeing.
 
-    An unclosed block is not silently dropped: it is hashed to end-of-file and
-    its id is suffixed, so a malformed marker surfaces as a mismatch rather than
-    as one fewer thing to compare.
+    MARKERS MUST OWN THEIR WHOLE LINE. Recognising a marker anywhere in a line
+    lets prose that merely QUOTES a close tag terminate the block early, so all
+    doctrine after that sentence is silently excluded from the comparison —
+    including on a machine where it has drifted. Measured (Codex sol,
+    2026-08-31): two files differing after an inline `<!-- /CANON:x -->` inside a
+    sentence hashed IDENTICALLY. A doctrine file that documents its own markers
+    is exactly the file where that happens.
+
+    MALFORMED CANON IS ITS OWN FINDING, never a comparable block. An unclosed
+    block and a duplicated id both get a `!`-suffixed key, and the probe treats
+    any such key as a finding even when every machine agrees — two machines
+    carrying the SAME malformed marker is not fleet health, and it is also the
+    cheapest way to remove a block from comparison without deleting it.
     """
     blocks: dict[str, str] = {}
-    lines = text.splitlines()
+    seen: set[str] = set()
     open_id: str | None = None
     body: list[str] = []
-    for line in lines:
-        close = _CANON_CLOSE_RE.search(line)
-        if close and open_id is not None and close.group(1) == open_id:
-            blocks[open_id] = hashlib.sha256(
-                "\n".join(ln.rstrip() for ln in body).encode()
-            ).hexdigest()[:16]
+
+    def close(bid: str) -> None:
+        digest = hashlib.sha256("\n".join(ln.rstrip() for ln in body).encode()).hexdigest()[:16]
+        if bid in seen:
+            # Last-wins would hide drift in every occurrence but the last.
+            blocks[f"{bid}!duplicate"] = digest
+        else:
+            blocks[bid] = digest
+        seen.add(bid)
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        closing = _CANON_CLOSE_RE.fullmatch(stripped)
+        if closing and open_id is not None and closing.group(1) == open_id:
+            close(open_id)
             open_id, body = None, []
             continue
-        opened = _CANON_OPEN_RE.search(line)
-        if opened and open_id is None:
-            open_id, body = opened.group(1), []
+        opening = _CANON_OPEN_RE.fullmatch(stripped)
+        if opening and open_id is None:
+            open_id, body = opening.group(1), []
             continue
         if open_id is not None:
             body.append(line)
@@ -944,6 +964,13 @@ def _canon_blocks(text: str) -> dict[str, str]:
             "\n".join(ln.rstrip() for ln in body).encode()
         ).hexdigest()[:16]
     return blocks
+
+
+MALFORMED_SUFFIXES = ("!unclosed", "!duplicate")
+
+
+def _is_malformed(block_id: str) -> bool:
+    return block_id.endswith(MALFORMED_SUFFIXES)
 
 
 def probe_canon_blocks(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
@@ -977,7 +1004,7 @@ def probe_canon_blocks(root: Path, args: dict, timeout: int) -> tuple[str, int, 
     """
     home = Path(os.path.expanduser(args.get("home", "~")))
     target = home / ".claude" / "CLAUDE.md"
-    report_path = Path(os.path.expanduser(args.get("report", "~/.claude/canon-blocks.json")))
+    report_dir = Path(os.path.expanduser(args.get("report_dir", "~/.claude/canon-blocks.d")))
     max_age_min = float(args.get("max_age_min", 1440))
 
     if not target.is_file():
@@ -990,69 +1017,130 @@ def probe_canon_blocks(root: Path, args: dict, timeout: int) -> tuple[str, int, 
             "so there is nothing to compare (marking the blocks is an operator step)"
         ]
 
-    if not report_path.is_file():
+    # ONE FRAGMENT PER MACHINE. A single shared report is rewritten whole by
+    # every publisher, so two machines pushing in any order erase each other's
+    # entries with no lock and no re-merge on receipt — and a peer that was
+    # ERASED is indistinguishable from one that went quiet (kimi-code/k3,
+    # 2026-08-31). Reading a directory instead means a machine can only ever
+    # affect its own line.
+    if not report_dir.is_dir():
         return UNPROBEABLE, 0, [
-            f"{len(local)} canon block(s) here, but no fleet report at {report_path} — "
-            "one machine must publish before any machine can compare"
-        ]
-    try:
-        report = json.loads(report_path.read_text())
-    except (OSError, json.JSONDecodeError) as exc:
-        return UNPROBEABLE, 0, [f"{report_path} unreadable ({type(exc).__name__}) — cannot compare"]
-
-    age_min = (time.time() - report_path.stat().st_mtime) / 60
-    if age_min > max_age_min:
-        return UNPROBEABLE, 0, [
-            f"fleet report is {int(age_min)} min old (> {int(max_age_min)}) — refusing to compare "
-            "against a stale snapshot, which is how a published file rots into a confident lie"
+            f"{len(local)} canon block(s) here, but no fleet fragments at {report_dir} — "
+            "one machine must run scripts/canon_blocks_publish.py before any machine can compare"
         ]
 
-    me = report.get("machines", {})
-    seen_at = report.get("seen_at", {})
-    # The report is MERGED, one entry per machine, so the file's mtime is only
-    # the LAST publisher's. A peer that stopped publishing would otherwise be
-    # compared against forever on digests from whenever it went quiet — the same
-    # confident lie as a stale file, hidden one level down. Drop it and say so.
+    machines: dict[str, dict] = {}
+    seen_at: dict[str, object] = {}
+    unreadable: list[str] = []
+    for frag in sorted(report_dir.glob("*.json")):
+        try:
+            data = json.loads(frag.read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            unreadable.append(f"{frag.name} ({type(exc).__name__})")
+            continue
+        # A syntactically valid fragment can still be the wrong SHAPE. Reading it
+        # optimistically raises inside the enclosing proprioception run, which
+        # turns one malformed file into a dead report for every OTHER boundary
+        # too (Codex sol, 2026-08-31).
+        if not isinstance(data, dict) or not isinstance(data.get("blocks"), dict):
+            unreadable.append(f"{frag.name} (wrong shape)")
+            continue
+        name = str(data.get("machine") or frag.stem)
+        machines[name] = data["blocks"]
+        seen_at[name] = data.get("seen_at")
+
+    self_name = str(args.get("hostname") or socket.gethostname().split(".")[0])
+
+    # THE SELF ENTRY. The report is merged, so it contains an entry for the
+    # machine reading it. Left in, a report holding ONLY this machine reads as
+    # "1 canon block identical across 1 machine" — zero peers masquerading as
+    # fleet agreement, which is the exact disease this organ exists to detect
+    # (Codex sol, 2026-08-31). Pulled out and judged separately: if it differs,
+    # the cause is local and the remedy is local, and saying "differs from
+    # <this machine>" would send a reader looking at the others.
+    self_findings: list[str] = []
+    self_blocks = machines.pop(self_name, None)
+    if isinstance(self_blocks, dict) and self_blocks != local:
+        self_findings.append(
+            f"this machine's own published snapshot is out of date "
+            f"({len(self_blocks)} block(s) published, {len(local)} here) — "
+            "run scripts/canon_blocks_publish.py; this is local, not fleet drift"
+        )
+
+    # FRESHNESS IS PER MACHINE, and its absence is not freshness. The report is
+    # merged and its mtime belongs to the LAST publisher only, so an entry with
+    # no `seen_at` would be trusted at whatever age it happens to be — and
+    # touching or republishing the container file would revive an arbitrarily
+    # stale peer (Codex sol, 2026-08-31). Nothing has ever published, so there is
+    # no back-compatible reader to protect: an unstamped entry is unverifiable,
+    # and unverifiable is reported, never assumed fresh.
     quiet_names: set[str] = set()
     quiet: list[str] = []
-    for machine in sorted(me):
+    now = time.time()
+    for machine in sorted(machines):
         ts = seen_at.get(machine)
-        if ts is None:
-            continue  # written by a publisher older than this field; whole-report age governs
         try:
-            age = (time.time() - float(ts)) / 60
+            age = (now - float(ts)) / 60  # type: ignore[arg-type]
         except (TypeError, ValueError):
-            continue  # a malformed stamp is not evidence of quiet; whole-report age governs
+            quiet_names.add(machine)
+            quiet.append(f"{machine} (no usable seen_at stamp)")
+            continue
+        # A stamp in the FUTURE never ages out, so a peer whose clock runs ahead
+        # would be believed forever even if it died a year ago — the exact lie
+        # this field was added to prevent, reintroduced by clock skew
+        # (kimi-code/k3, 2026-08-31). A small tolerance absorbs ordinary drift;
+        # beyond it the stamp is unusable, not fresh.
+        if age < -_CANON_CLOCK_SKEW_TOLERANCE_MIN:
+            quiet_names.add(machine)
+            quiet.append(f"{machine} (seen_at is {int(-age)} min in the FUTURE — clock skew)")
+            continue
         if age > max_age_min:
             quiet_names.add(machine)
             quiet.append(f"{machine} (last published {int(age)} min ago)")
-    # Filter by NAME, never by string prefix of the display line: two machines
-    # whose names share a prefix would drop each other (superscar family #3).
-    me = {k: v for k, v in me.items() if k not in quiet_names}
-    if not me:
-        return UNPROBEABLE, 0, [
-            "no peer has published within "
-            f"{int(max_age_min)} min — nothing fresh to compare against: " + ", ".join(quiet)
-        ]
+    # Filter by NAME, never by a string prefix of the display line: two machines
+    # whose names share a space-delimited prefix would drop each other (#3).
+    peers = {k: v for k, v in machines.items() if k not in quiet_names}
 
-    findings: list[str] = []
+    malformed = sorted(bid for bid in local if _is_malformed(bid))
+
+    if not peers:
+        ev = list(self_findings)
+        ev += [f"CANON:{bid.split('!')[0]} is malformed here ({bid.split('!')[1]})" for bid in malformed]
+        detail = ", ".join(quiet + unreadable) if (quiet or unreadable) \
+            else "no machine other than this one has published a fragment"
+        ev.append(f"no peer has published within {int(max_age_min)} min — nothing to compare against: {detail}")
+        # Malformed canon and a stale self snapshot are LOCAL facts, true whether
+        # or not a peer ever answers, so they are reported as findings here while
+        # the comparison itself is honestly declared unprobeable.
+        return (DIVERGED, len(self_findings) + len(malformed), ev) if (self_findings or malformed) \
+            else (UNPROBEABLE, 0, ev)
+
+    findings: list[str] = list(self_findings)
+    for bid in malformed:
+        base, why = bid.split("!", 1)
+        findings.append(
+            f"CANON:{base} is malformed here ({why}) — a malformed marker is a finding even "
+            "when every machine carries it, because it is also how a block leaves the comparison"
+        )
     for block_id, digest in sorted(local.items()):
-        for machine, blocks in sorted(me.items()):
+        for machine, blocks in sorted(peers.items()):
             other = blocks.get(block_id)
             if other is None:
                 findings.append(f"CANON:{block_id} is here but ABSENT on {machine}")
             elif other != digest:
                 findings.append(f"CANON:{block_id} differs from {machine} ({digest} vs {other})")
-    for machine, blocks in sorted(me.items()):
+    for machine, blocks in sorted(peers.items()):
         for block_id in sorted(set(blocks) - set(local)):
             findings.append(f"CANON:{block_id} exists on {machine} but is ABSENT here")
 
+    findings.extend(f"fragment {u} is unreadable" for u in unreadable)
     if findings:
         return DIVERGED, len(findings), findings
-    note = f" (ignoring quiet: {', '.join(quiet)})" if quiet else ""
+    skipped = quiet + unreadable
+    note = f" (ignoring: {', '.join(skipped)})" if skipped else ""
     return RECONCILED, 0, [
-        f"{len(local)} canon block(s) identical across {len(me)} machine(s), "
-        f"report {int(age_min)} min old{note}"
+        f"{len(local)} canon block(s) identical across this machine and "
+        f"{len(peers)} peer(s){note}"
     ]
 
 
@@ -1291,7 +1379,7 @@ DEFAULT_REGISTRY: list[dict] = [
         "boundary": "the canon blocks of ~/.claude/CLAUDE.md, machine against machine",
         "machines": ["all"], "tags": ["fast"], "timeout_sec": 10,
         "severity": "P1",
-        "args": {"home": "~", "report": "~/.claude/canon-blocks.json", "max_age_min": 1440},
+        "args": {"home": "~", "report_dir": "~/.claude/canon-blocks.d", "max_age_min": 1440},
         "fix_hint": "port the DIVERGED block, never the whole file — it is per-machine by design; publish again from the machine that is ahead",
     },
     {
