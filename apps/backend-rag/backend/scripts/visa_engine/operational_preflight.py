@@ -400,7 +400,7 @@ async def collect_preflight_checks(
 
     checks: list[PreflightCheck] = []
     server_version_num = int(
-        await connection.fetchval("SELECT current_setting('server_version_num')::integer")
+        await connection.fetchval("SELECT pg_catalog.current_setting('server_version_num')::integer")
     )
     supported_table_privileges = TABLE_PRIVILEGES
     if server_version_num >= 170000:
@@ -414,8 +414,18 @@ async def collect_preflight_checks(
         "visa_privacy_operator": False,
         runtime_role: True,
     }
+    # Every catalog name in THIS function is `pg_catalog.`-qualified, including
+    # the checks that predate the definer floor below. A second adversarial seat
+    # (kimi-code/k3) pointed out the inconsistency and was right: this file now
+    # states that "a privilege check answerable by an object the checked role may
+    # create is not a check", and then relied on `role:visa_ledger_owner` -- which
+    # probed an unqualified `pg_roles` -- to justify migration 300's role guard.
+    # A constant-returning `public.pg_roles` view, or a `public.pg_get_userbyid`,
+    # forges those green under `search_path = public, pg_catalog`. The doctrine
+    # cannot hold for the new code and be waived for the code it leans on.
     role_rows = await connection.fetch(
-        "SELECT rolname, rolcanlogin, rolsuper FROM pg_roles WHERE rolname = ANY($1::text[])",
+        "SELECT rolname, rolcanlogin, rolsuper FROM pg_catalog.pg_roles "
+        "WHERE rolname = ANY($1::text[])",
         list(expected_roles),
     )
     roles = {str(row["rolname"]): row for row in role_rows}
@@ -440,9 +450,10 @@ async def collect_preflight_checks(
     for table in SENSITIVE_TABLES:
         owner = await connection.fetchval(
             """
-            SELECT pg_get_userbyid(class.relowner)
-              FROM pg_class AS class
-              JOIN pg_namespace AS namespace ON namespace.oid = class.relnamespace
+            SELECT pg_catalog.pg_get_userbyid(class.relowner)
+              FROM pg_catalog.pg_class AS class
+              JOIN pg_catalog.pg_namespace AS namespace
+                ON namespace.oid = class.relnamespace
              WHERE namespace.nspname = 'public' AND class.relname = $1
             """,
             table,
@@ -461,7 +472,8 @@ async def collect_preflight_checks(
     function_exists: dict[str, bool] = {}
     for signature in SENSITIVE_FUNCTIONS:
         owner = await connection.fetchval(
-            "SELECT pg_get_userbyid(proowner) FROM pg_proc WHERE oid = to_regprocedure($1)",
+            "SELECT pg_catalog.pg_get_userbyid(proowner) FROM pg_catalog.pg_proc "
+            "WHERE oid = pg_catalog.to_regprocedure($1)",
             signature,
         )
         function_exists[signature] = owner is not None
@@ -483,7 +495,7 @@ async def collect_preflight_checks(
             if role in roles and function_exists.get(signature, False):
                 actual = bool(
                     await connection.fetchval(
-                        "SELECT has_function_privilege($1, $2, 'EXECUTE')",
+                        "SELECT pg_catalog.has_function_privilege($1, $2, 'EXECUTE')",
                         role,
                         signature,
                     )
@@ -505,7 +517,7 @@ async def collect_preflight_checks(
                 if role in roles and table_exists.get(table, False):
                     actual = bool(
                         await connection.fetchval(
-                            "SELECT has_table_privilege($1, $2, $3)",
+                            "SELECT pg_catalog.has_table_privilege($1, $2, $3)",
                             role,
                             f"public.{table}",
                             privilege,
@@ -524,7 +536,7 @@ async def collect_preflight_checks(
         if runtime_role in roles and capability_role in roles:
             runtime_is_member = bool(
                 await connection.fetchval(
-                    "SELECT pg_has_role($1, $2, 'MEMBER')",
+                    "SELECT pg_catalog.pg_has_role($1, $2, 'MEMBER')",
                     runtime_role,
                     capability_role,
                 )
@@ -542,10 +554,12 @@ async def collect_preflight_checks(
         dual_capability_login = await connection.fetchval(
             """
             SELECT string_agg(role.rolname, ', ' ORDER BY role.rolname)
-              FROM pg_roles AS role
+              FROM pg_catalog.pg_roles AS role
              WHERE role.rolcanlogin
-               AND pg_has_role(role.oid, 'visa_pack_writer', 'MEMBER')
-               AND pg_has_role(role.oid, 'visa_activation_executor', 'MEMBER')
+               AND pg_catalog.pg_has_role(role.oid, 'visa_pack_writer', 'MEMBER')
+               AND pg_catalog.pg_has_role(
+                       role.oid, 'visa_activation_executor', 'MEMBER'
+                   )
             """
         )
     checks.append(
@@ -644,7 +658,20 @@ async def collect_preflight_checks(
     # stayed owned by `backend_rag_v2` for four days because their
     # `insufficient_privilege` handler emitted a NOTICE and deferred. Migration
     # 300 makes those two honest; this check is what notices the next one
-    # regardless of what any migration claims.
+    # WHENEVER THIS PREFLIGHT IS RUN -- and that qualifier is not decoration.
+    #
+    # `collect_preflight_checks` has exactly two callers today: this module's
+    # own `__main__` and the tests. No workflow, script or deploy step invokes
+    # it, so every check in this file -- the pre-existing ones included -- fires
+    # when a human runs the CLI (see docs/runbooks/visa-oracle-privacy-enforce-
+    # gate.md) and at no other time. A second adversarial seat named this as the
+    # decisive limit of the floor and it is recorded rather than glossed:
+    # arming it means either calling this from `fullstack_smoke.py` or having a
+    # test apply the real migration chain, and BOTH need the sandbox to create a
+    # role named `visa_ledger_owner` first, or the census compares against a
+    # role that does not exist and reddens on every function in the schema.
+    # That is a piece of work with its own design, not a line to smuggle in
+    # here.
     #
     # Measured against the production primary on 2026-08-30: 21 SECURITY
     # DEFINER functions in `public`, every one owned by `visa_ledger_owner`,

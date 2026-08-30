@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import ast
+import io
+import pathlib
+import tokenize
 from typing import Any
 
 import pytest
@@ -132,7 +136,7 @@ class FakePreflightConnection:
                 for name in requested
                 if name in self.binder_bodies
             ]
-        if "FROM pg_roles WHERE rolname = ANY" not in query:
+        if "pg_catalog.pg_roles" not in query:
             raise AssertionError(f"unexpected fetch query: {query}")
         requested_roles = args[0]
         return [self.roles[role] for role in requested_roles if role in self.roles]
@@ -140,9 +144,9 @@ class FakePreflightConnection:
     async def fetchval(self, query: str, *args: Any) -> Any:
         if "current_setting('server_version_num')" in query:
             return 170000
-        if "FROM pg_class AS class" in query:
+        if "pg_catalog.pg_class AS class" in query:
             return self.table_owners.get(str(args[0]))
-        if "FROM pg_proc" in query:
+        if "pg_catalog.pg_proc" in query:
             return self.function_owners.get(str(args[0]))
         if "has_function_privilege" in query:
             return (str(args[0]), str(args[1])) in self.function_privileges
@@ -151,7 +155,7 @@ class FakePreflightConnection:
             table = str(args[1]).removeprefix("public.")
             privilege = str(args[2]) if len(args) == 3 else "SELECT"
             return (role, table, privilege) in self.table_privileges
-        if "SELECT pg_has_role" in query:
+        if "pg_has_role($1, $2" in query:
             return (str(args[0]), str(args[1])) in self.memberships
         if "string_agg" in query:
             return self.dual_capability_login
@@ -914,3 +918,113 @@ async def test_definer_owner_check_catches_a_security_definer_PROCEDURE() -> Non
     assert check.ok is False
     assert "purge_something(p_limit integer) [procedure]" in check.detail
     assert "ALTER PROCEDURE" in check.detail
+
+
+def _module_source_without_prose() -> str:
+    """`operational_preflight.py` with comments and DOCSTRINGS removed.
+
+    The scan below must judge CODE, not the paragraphs that DISCUSS the code.
+    Two mistakes were made here in a row and both are worth the reader's time:
+
+      1. The first version stripped nothing and failed on the very comment
+         explaining why qualification matters -- superscar #3, guard-over-match.
+      2. The second treated any STRING token following a NEWLINE/NL as a
+         docstring. Inside a multi-line call, `connection.fetch(\n  "SELECT
+         ...")`, the SQL literal follows an NL too -- so every argument-position
+         query was stripped, and the scan then read a file with no queries in
+         it. It PASSED under a mutation that unqualified `pg_roles`, and its
+         innocence control passed as well, because the one string it checked
+         for was a module-level assignment that survived. An innocence control
+         that only proves the stripper kept SOMETHING proves nothing.
+
+    So docstrings are identified by AST POSITION -- the actual first statement
+    of a module, class or function -- and nothing else is touched.
+    """
+
+    source = pathlib.Path(operational_preflight.__file__).read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    docstring_positions: set[tuple[int, int]] = set()
+    for node in ast.walk(tree):
+        if not isinstance(
+            node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+        ):
+            continue
+        body = getattr(node, "body", None)
+        if not body:
+            continue
+        first = body[0]
+        if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant):
+            if isinstance(first.value.value, str):
+                docstring_positions.add((first.value.lineno, first.value.col_offset))
+
+    kept: list[str] = []
+    for token in tokenize.generate_tokens(io.StringIO(source).readline):
+        if token.type == tokenize.COMMENT:
+            continue
+        if token.type == tokenize.STRING and token.start in docstring_positions:
+            continue
+        kept.append(token.string)
+    return "\n".join(kept)
+
+
+def test_every_catalog_reference_in_this_module_is_schema_qualified() -> None:
+    """The doctrine this file states must hold for every query in it.
+
+    A privilege check answerable by an object the checked role may create is
+    not a check: the runtime role can CREATE in `public`, so an unqualified
+    `pg_roles`, `pg_class`, `pg_proc`, `pg_get_userbyid` or `to_regprocedure`
+    can be shadowed under `search_path = public, pg_catalog` and made to
+    report whatever the shadow wants. The definer floor was written qualified
+    from the start; a second adversarial seat pointed out that the checks it
+    LEANS ON -- `role:visa_ledger_owner` in particular, which is the whole
+    justification for migration 300's role guard -- were not. This is the
+    tripwire that stops a future edit from silently unqualifying one again.
+
+    Read off the module SOURCE rather than off a list of query strings,
+    because a query added tomorrow would not be on such a list.
+    """
+
+    code = _module_source_without_prose()
+
+    # INNOCENCE CONTROLS for the stripper. One per SHAPE the queries take in
+    # this module, because the previous version of this test proved that
+    # checking a single shape is how a stripper gets to eat the others in
+    # silence: a module-level assignment, an argument-position literal spanning
+    # lines, and a single-line argument literal.
+    for surviving in (
+        "pg_catalog.pg_proc",  # SECURITY_DEFINER_CENSUS_SQL, assigned
+        "rolcanlogin",  # the role query, an argument over two lines
+        "has_function_privilege",  # a single-line argument literal
+        "pg_catalog.pg_class",  # the table-owner query, a triple-quoted argument
+    ):
+        assert surviving in code, (
+            f"the prose stripper removed {surviving!r} -- it is eating code, so "
+            "every assertion below would pass for the wrong reason"
+        )
+    # And it really did remove the prose, or the scan is judging comments.
+    assert "superscar" not in code
+
+    # Every catalog relation and catalog FUNCTION this module touches. The
+    # privilege probes belong here as much as the owner reads: a
+    # `public.has_table_privilege(text, text, text)` returning the expected
+    # boolean forges the entire least-privilege matrix green.
+    forgeable = (
+        "pg_roles",
+        "pg_class",
+        "pg_proc",
+        "pg_namespace",
+        "pg_get_userbyid",
+        "pg_get_function_identity_arguments",
+        "to_regprocedure",
+        "pg_has_role",
+        "has_function_privilege",
+        "has_table_privilege",
+        "current_setting",
+    )
+    for name in forgeable:
+        unqualified = code.replace(f"pg_catalog.{name}", "")
+        assert name not in unqualified, (
+            f"{name} appears unqualified in operational_preflight.py -- under "
+            "search_path = public, pg_catalog the checked role can shadow it "
+            "and forge this check's answer"
+        )

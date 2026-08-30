@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import os
 import pathlib
+import re
 import uuid
 from collections.abc import AsyncIterator
 
@@ -468,3 +469,53 @@ async def test_a_shadowed_pg_get_userbyid_cannot_forge_a_clean_answer(
             await connection.execute(forward_sql)
     finally:
         await connection.close()
+
+
+def test_every_function_migration_300_names_is_really_created_by_a_migration() -> None:
+    """Pins 281/286 -> 300, which nothing else in this file does.
+
+    A second adversarial seat (kimi-code/k3) made the point precisely: every
+    other test here seeds the sandbox with signatures transcribed FROM
+    migration 300, so they pin the cure to the test author's copy of the cure
+    and nothing pins the cure to the migrations that actually create these
+    functions -- and 281 is the file that failed in production. Rename or drop
+    one of the five over there and every database-backed test above would still
+    pass.
+
+    This is the cheap half of that pin: static, no database, name-level. It
+    catches a rename or a deletion. It does NOT catch an argument-type change
+    (`integer` -> `bigint`), because matching argument lists across SQL
+    formatting is a parser's job, not a substring's; the honest closure for
+    that is a test that applies the real chain and reads `pg_proc`, which needs
+    the sandbox to provision a role named `visa_ledger_owner` first. Named,
+    not pretended away.
+    """
+
+    migrations_dir = _MIGRATION_300.parent
+    assert migrations_dir.is_dir(), (
+        f"{migrations_dir} is not a directory -- a glob over a missing "
+        "directory returns empty silently, and every assertion below would "
+        "then pass for the wrong reason"
+    )
+
+    named = re.findall(
+        r"'public\.(\w+)\(", _MIGRATION_300.read_text(encoding="utf-8")
+    )
+    # INNOCENCE CONTROL: the parse must have found the five, or the loop below
+    # iterates over nothing and asserts nothing.
+    assert len(set(named)) == 5, named
+
+    corpus = "\n".join(
+        path.read_text(encoding="utf-8") for path in sorted(migrations_dir.glob("*.sql"))
+    )
+    for name in sorted(set(named)):
+        assert re.search(
+            rf"CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+public\.{name}\s*\(",
+            corpus,
+            re.IGNORECASE,
+        ), (
+            f"migration 300 transfers public.{name}, but no migration in "
+            f"{migrations_dir.name} creates it -- the cure names a function "
+            "that does not exist, which is exactly the drift this pin exists "
+            "to catch"
+        )
