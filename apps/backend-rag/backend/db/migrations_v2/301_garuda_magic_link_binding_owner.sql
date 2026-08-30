@@ -96,10 +96,22 @@
 --   guarantee three paths wide for something one path wide. Corrected here
 --   rather than softened elsewhere.
 --
---   The standing net under that hole is not this file: it is the static lint
---   `backend/tests/db/test_retention_lock_triggers_are_ledger_owned.py`, which
---   fails CI for any SECURITY DEFINER ledger-locker with no transfer, whatever
---   order things were applied in.
+--   THERE IS NO STANDING NET UNDER THAT HOLE TODAY, and saying so is the
+--   point. An earlier draft of this header promised one: a static lint,
+--   `test_retention_lock_triggers_are_ledger_owned.py`, shipped alongside this
+--   migration. That lint was WITHDRAWN before merge — the Gear-3 gate proved it
+--   ships green on the exact class it exists to catch (an `E'...'` escape
+--   string or an unclosed dollar tag desynchronises its scanner from Postgres,
+--   after which a commented-out `ALTER ... OWNER TO` is read as a real
+--   transfer). Its fourth attempt was still unsound in the same direction as
+--   its third, so under rule 8 it went back to design rather than to a fifth
+--   patch: `docs/specs/2026-08-31-security-definer-ledger-lock-lint.md`.
+--
+--   What DOES see these two functions now is the live preflight owner check,
+--   whose inventory this PR extends. That check asks Postgres rather than
+--   parsing SQL text, so none of the lint's holes apply to it — but it runs
+--   against a cluster, not in CI on a diff, which is the coverage that is
+--   genuinely missing until the spec is built.
 --
 --   `to_regprocedure` (not a `::regprocedure` cast) so an absent function
 --   yields NULL instead of raising -- the same review flagged the cast as a

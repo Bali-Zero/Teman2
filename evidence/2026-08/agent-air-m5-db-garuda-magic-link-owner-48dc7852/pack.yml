@@ -46,10 +46,12 @@ seat_diversity_note:
   the author's own tests did not cover."
 diff:
   net_lines:
-    "7 files, +1410/-0, computed by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
-    One new .sql migration, one new static test file, two touched Python files (the live preflight
-    check and its independently frozen authority), and this evidence set (pack, brief, and the
-    council journal). Zero frontend, zero workflow, zero runtime request path."
+    "7 files, +856/-0, computed by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
+    One new .sql migration, two touched Python files (the live preflight check and its independently
+    frozen authority), one new design spec, and this evidence set (pack, brief, council journal).
+    Zero frontend, zero workflow, zero runtime request path. The count DROPPED from 1410: the static
+    lint file (729 lines) was withdrawn after the Gear-3 gate proved it unsound, and the spec that
+    replaces it is smaller than the code it refuses to ship a fifth time."
   behaviour_change:
     "At apply time against production, migration 301 changes nothing and says so: the runner connects
     as backend_rag_v2, which is not a member of visa_ledger_owner, so the ALTER cannot succeed and the
@@ -57,6 +59,15 @@ diff:
     superuser connection (receipt below). The static lint and the preflight extension change no
     production behaviour at all."
 receipts:
+  # NOTE ON THE LINT RECEIPTS BELOW (added 2026-08-31, on withdrawal).
+  # Several receipts in this list measure
+  # `test_retention_lock_triggers_are_ledger_owned.py`, which is NO LONGER IN
+  # THIS PR. They are kept, not deleted: every one of them records something
+  # that actually happened, and together they are the most instructive part of
+  # this pack — four rounds of a guard being corrected and still being wrong.
+  # Deleting them would erase exactly the evidence that justifies sending the
+  # surface to a spec. Read them as history of a withdrawn artifact, not as
+  # coverage this PR ships.
   - claim:
       "The ownership cure landed on the production PRIMARY and the trigger function is now owned by
       visa_ledger_owner — read back from a SEPARATE read-only connection, not from the output of the
@@ -177,6 +188,39 @@ pii_scan_note:
   party received anything. No secret value entered any transcript: the ownership ALTER referenced
   $OPERATOR_PASSWORD in place on the target machine rather than printing it."
 dissent:
+  - seat: claude-opus-5 (Gear-3 final on-disk gate, fresh context)
+    objection:
+      "REWORK-DESIGN. The static lint ships green on the exact class it exists to catch. Two measured
+      holes in its comment scanner: an `E'...'` escape string (Postgres ends `E'\\''` at the backslash
+      escape; the scanner reads the following `''` as an escaped quote and stays inside the literal
+      for the rest of the file) and an unclosed dollar tag (`closing == -1` emits the whole remainder
+      un-stripped). After either, a commented-out `-- ALTER FUNCTION ... OWNER TO visa_ledger_owner;`
+      is read as a REAL transfer — laundering, against the detector whose declared polarity is
+      FAIL-CLOSED. Plus a pre-existing hole the scanner does not touch: `DOLLAR_TAG.search` is
+      unbounded, so a legacy `AS '...'` body binds to a LATER statement's dollar body and a real
+      offender goes unreported."
+    status: CONFIRMED
+    resolution:
+      "Reproduced independently by the session on disk before acting — both laundering cases return
+      True. The lint is WITHDRAWN from this PR rather than patched a fifth time. Rule 8: the fourth
+      attempt failed in the same direction as the third, so the surface is under-specified and gets a
+      spec, not another patch — docs/specs/2026-08-31-security-definer-ledger-lock-lint.md, which
+      records all four rounds, the measured holes, and six requirements for whatever ships (including
+      R6: decide explicitly whether a hand-written SQL lexer should exist at all, given the
+      catalog-driven census in #5309 answers the same question by asking Postgres). Migration 301 and
+      the preflight inventory extension — which the gate found clean and said it would land as-is —
+      ship here."
+  - seat: claude-opus-5 (Gear-3 final on-disk gate, fresh context)
+    objection:
+      "The withdrawn lint had five tests, both polarities, and was mutation-proven. That was all true
+      and it was still unsound."
+    status: CONFIRMED
+    resolution:
+      "Recorded because it is the transferable lesson, not a footnote: an innocence control proves a
+      guard does not fire on correct input, and says NOTHING about the inputs the guard cannot see.
+      Mutation testing has the same blind spot — it only mutates code that exists, so a missing branch
+      is invisible to it. Neither technique can find a hole in the SET OF CASES CONSIDERED; only an
+      adversary constructing inputs from the spec can."
   - seat: kimi-code/k3 (adversarial grader, second council seat)
     objection:
       "The header claims the block 'ends by asserting the POSTCONDITION', but the two early RETURNs

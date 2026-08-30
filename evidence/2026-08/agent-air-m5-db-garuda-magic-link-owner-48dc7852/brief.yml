@@ -49,19 +49,23 @@ constraints:
     converges without a human retyping it. (b) The magic-link ownership check
     (#5298) merged and deployed at 08:19Z, and PROVE-LIVE F3 is now green."
 acceptance:
+  # WITHDRAWN 2026-08-31. These three acceptance criteria all concerned the
+  # static lint, which is NOT in this PR any more: the Gear-3 gate proved it
+  # ships green on the exact class it exists to catch, and its fourth attempt
+  # failed in the same direction as its third, so under rule 8 it went to a
+  # spec instead of a fifth patch
+  # (docs/specs/2026-08-31-security-definer-ledger-lock-lint.md).
+  #
+  # They are struck rather than deleted because the third one is instructive:
+  # it said "the lint carries its own innocence control", and it did — five
+  # tests, both polarities, mutation-proven. All of that was true and the lint
+  # was still unsound. Innocence controls prove a guard does not fire on
+  # correct input; they say nothing about the inputs the guard cannot see.
   - text:
-      "WHEN migration 299 is absent — the real state of production until 2026-08-30 — the static lint
-      SHALL fail and name bind_garuda_magic_link_token_retention_policy in 285_garuda_magic_link.sql."
-    probe: "PYTHONPATH=. python -m pytest backend/tests/db/test_retention_lock_triggers_are_ledger_owned.py -k transferred"
-  - text:
-      "WHERE migration 299 is present, the guarded surface SHALL be green and the lint SHALL NOT
-      accuse prepare_visa_evaluate_idempotency_reservation, which production shows is correctly owned
-      and does not read the ledger."
-    probe: "PYTHONPATH=. python -m pytest backend/tests/db/test_retention_lock_triggers_are_ledger_owned.py backend/tests/scripts/visa_engine/test_operational_preflight.py"
-  - text:
-      "IF the detector ever stops matching the shape it guards, the suite SHALL fail rather than pass
-      forever — the lint carries its own innocence control."
-    probe: "PYTHONPATH=. python -m pytest backend/tests/db/test_retention_lock_triggers_are_ledger_owned.py"
+      "WHERE the two GARUDA retention-binding functions exist, the live preflight owner check SHALL
+      see them — the inventory it reads is extended by this PR, and before that extension the check
+      was blind to every retention-binding trigger written after migration 268."
+    probe: "PYTHONPATH=. python -m pytest backend/tests/scripts/visa_engine/test_operational_preflight.py"
   - text:
       "WHEN the ownership ALTER has landed on the production primary, two calls sharing one
       Idempotency-Key against the live magic-link endpoint SHALL return 202 rather than 500, and
