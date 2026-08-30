@@ -36,6 +36,8 @@ diff:
     and the guards must land WITH the move or nothing pins it. CI's
     --numstat-file is authoritative over this self-declared figure.
 
+council_run: journal.jsonl
+
 pii_scan: clean
 
 receipts:
@@ -235,3 +237,54 @@ dissent:
       accepted-and-fixed — the docstring now states what each check can and cannot
       prove, and a test asserts that explanation stays in the BODY rather than being
       satisfied by the title line
+  - seat: kimi-code/k3 (second cross-family council seat, pulled in by the Gear-3 floor)
+    objection: >-
+      An explicit `--rules-dir /typo` no longer errored: the try/except around the
+      legacy alias swallowed every SystemExit, including "that path does not
+      exist", so the CLI silently answered from the default corpus. An explicit
+      override ignored without a word.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed — the alias now stands in for the bridge dir ONLY when the
+      directory it names actually holds the corpus; anything else is still a hard
+      error. Proven both ways: `--rules-dir /tmp/craft-h/definitely-not-here` exits
+      1 naming the path, `--rules-dir docs/scars` still returns the 2 W76 hits.
+  - seat: kimi-code/k3
+    objection: >-
+      The machine-local probe used `glob("*.md")` where the CI guard used `rglob`,
+      so the two probes of the SAME surface disagreed about what counts — and the
+      smaller, more reassuring number was the wrong one.
+    status: CONFIRMED
+    resolution: accepted-and-fixed — the probe rglobs and reports nested paths relative to the rules dir
+  - seat: kimi-code/k3
+    objection: >-
+      The SessionStart receptor's comment said the surface grew "seven days later"
+      from the 2026-08-21 audit to 783,444 B. That measurement is dated 2026-08-31,
+      which is ten days. A false number inside the sentence that explains WHY the
+      file moved.
+    status: CONFIRMED
+    resolution: accepted-and-fixed — corrected to ten days
+  - seat: kimi-code/k3
+    objection: >-
+      The line-scoped exemption keyed on the bare WORD `LEGACY_FILE`, so any line
+      mentioning it in a trailing comment bought itself an exemption — while the
+      comment above it claimed "only the line that carries the declared marker is
+      excused". Demonstrated with a planted `FALLBACK2 = "<old path>"  # sibling of
+      LEGACY_FILE`, which the guard excused.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed — the predicate is now an ASSIGNMENT to the named symbol,
+      not a mention of it. That planted line is caught; the real
+      `LEGACY_FILE = ...` declaration is still excused.
+  - seat: kimi-code/k3
+    objection: >-
+      The whole-tree scan skipped every dot-directory it had not listed, so
+      `.agents/` and `.kimi-code/` — live per-agent skill stores that agents read
+      and act on — were invisible, while the code's own comment promised that
+      "anything skipped had to be named". The code was quietly broader than its
+      prose, which is the shape this entire corpus is about.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed — those dirs are scanned; the skip is by NAME only. Proven:
+      a stale pointer planted in `.agents/skills/wr2/SKILL.md` now reddens the guard.
+

@@ -52,9 +52,16 @@ _SPLIT_NEEDLE_RE = re.compile(
 # resolver hide behind the same door (cicatrix-scars.md W108: the guard that
 # forbids a string ends up writing it, and the cure is to name the exception,
 # never to widen the skip).
-# Where an exemption is narrower than "this whole file": the line must ALSO
-# contain this marker to be excused.
-_EXEMPT_LINE_MARKER: dict[str, str] = {
+# Where an exemption is narrower than "this whole file": the line must be an
+# ASSIGNMENT to the named symbol, not merely a line that mentions it.
+#
+# The first version keyed on the bare word and the comment claimed "only the
+# line that carries the declared marker is excused" — true of the word, false of
+# the intent: any new line could buy itself an exemption by mentioning
+# `LEGACY_FILE` in a trailing comment. A guard whose prose is stronger than its
+# predicate is the shape this whole corpus is about, so the predicate is now the
+# narrower thing the prose always meant.
+_EXEMPT_LINE_SYMBOL: dict[str, str] = {
     "scripts/lint_scar_number_collision.py": "LEGACY_FILE",
 }
 
@@ -69,7 +76,15 @@ _EXEMPT: dict[str, str] = {
         "names the condition under which it must be deleted"
     ),
 }
-_ALLOWED_DOT_DIRS = frozenset({".github", ".husky", ".claude"})
+# Dot-directories that ARE scanned. `.agents/` and `.kimi-code/` hold live
+# per-agent skill documents that agents read and act on — a stale pointer there
+# sends an agent to a file that is not there, which is the same wound as a stale
+# resolver in code. The first version skipped every dot-dir it had not listed,
+# while its own comment promised that "anything skipped had to be named": the
+# code was quietly broader than the prose. Now the skip is by NAME only, below.
+_ALLOWED_DOT_DIRS = frozenset(
+    {".github", ".husky", ".claude", ".agents", ".kimi-code", ".claude-plugin"}
+)
 # Skipped by NAME anywhere in the tree. `research/` and `evidence/` are
 # write-once records of past runs; the rest are caches and dependency trees.
 _SKIPPED_DIR_NAMES = frozenset(
@@ -164,8 +179,13 @@ def _scan_file(file_path: Path, repo_root: Path, hits: list[tuple[str, int]]) ->
     rel_path = file_path.relative_to(repo_root).as_posix()
     if rel_path.startswith(_ARCHIVAL_PREFIXES) or rel_path in _GENERATED_FILES:
         return
-    exempt_marker = _EXEMPT_LINE_MARKER.get(rel_path)
-    if rel_path in _EXEMPT and exempt_marker is None:
+    exempt_symbol = _EXEMPT_LINE_SYMBOL.get(rel_path)
+    exempt_assignment_re = (
+        re.compile(rf"^\s*{re.escape(exempt_symbol)}\s*(?::[^=]+)?=")
+        if exempt_symbol
+        else None
+    )
+    if rel_path in _EXEMPT and exempt_symbol is None:
         return
     for line_no, line in enumerate(text.splitlines(), start=1):
         if not (_NEEDLE in line or _SPLIT_NEEDLE_RE.search(line)):
@@ -174,7 +194,7 @@ def _scan_file(file_path: Path, repo_root: Path, hits: list[tuple[str, int]]) ->
         # lint would slip straight through one. Only the line that carries the
         # declared marker is excused; every other stale line in that same file
         # still fails (cicatrix W105 — judge the entity, not the container).
-        if exempt_marker is not None and exempt_marker in line:
+        if exempt_assignment_re is not None and exempt_assignment_re.match(line):
             continue
         hits.append((rel_path, line_no))
 
