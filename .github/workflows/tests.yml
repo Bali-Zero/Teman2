@@ -714,7 +714,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/static-receipts"
           cd apps/backend-rag
           PYTHONPATH=.:../crm-cell pytest backend/tests/services/rag/test_confidence.py \
-            -q -ra --no-header --tb=short --durations=10 -x \
+            -ra --no-header --tb=short --durations=10 -x \
             "--junit-xml=$RUNNER_TEMP/static-receipts/test-results-core.xml"
 
       - name: Upload core-gate test results
@@ -1012,7 +1012,7 @@ jobs:
           PYTHONPATH=.:../crm-cell pytest \
             "${CHUNK[@]}" \
             -n auto --dist loadfile \
-            -q -ra --no-header --durations=50 \
+            -ra --no-header --durations=50 \
             --ignore=backend/tests/e2e \
             "${COV_ARGS[@]}" \
             "--junit-xml=$RUNNER_TEMP/shard-receipts/test-results-unit-${SHARD_INDEX}.xml" \

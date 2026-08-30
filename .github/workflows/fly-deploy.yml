@@ -98,7 +98,7 @@ jobs:
             backend/tests/services/rag/test_confidence.py \
             backend/tests/services/rag/test_kg_langgraph.py \
             backend/tests/services/rag/test_kg_subgraphs.py \
-            -q --tb=short -x \
+            --tb=short -x \
             --junit-xml=test-results-gate.xml
           echo "✅ Core tests OK"
 
