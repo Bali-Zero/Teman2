@@ -138,8 +138,19 @@ _STEPS_EMPLOYEE: list[str] = [
     "Passport valid ≥ 18 months",
 ]
 
+# The two routes ranked under RETIREMENT (E33E 5y, E33F 1y — the official visa
+# catalogue names them "Retirement KITAS (55+)" and "Retirement KITAS
+# (Variant)") do NOT share one financial requirement, so each figure names the
+# route it belongs to. E33E's USD 50,000 deposit was missing from this list
+# entirely: a visitor matched to the 5-year route saw the income requirement
+# alone and could reasonably conclude no deposit was involved. Both figures map
+# to `confirmed` entries in research/secondhome/e33-fact-registry.json
+# (e33e_requirements, e33f_requirements) and to the official catalogue entry
+# ("Proof of USD 50,000 deposit in state bank (within 90 days)").
 _STEPS_RETIREMENT: list[str] = [
-    "Proof of pension or passive income ≥ USD 3,000/month",
+    "E33F (1 year): proof of pension or passive income ≥ USD 3,000/month — no deposit required",
+    "E33E (5 years): USD 50,000 deposit at a state-owned (BUMN) Indonesian "
+    "bank, placed within 90 days, plus passive income ≥ USD 3,000/month",
     "Passport valid ≥ 18 months",
     "Proof of accommodation (rental or property in Indonesia)",
     "Domestic helper hire letter (optional but recommended)",
@@ -345,9 +356,7 @@ def _explain_empty_ranking(purpose: Purpose, months: int, band: BudgetBand) -> s
         # `_budget_fits` returns True whenever `min_budget_idr is None`, so if
         # nothing fit then every tagged visa carries a minimum — `min()` below
         # can never run over an empty sequence.
-        cheapest = min(
-            meta.min_budget_idr for meta in tagged if meta.min_budget_idr is not None
-        )
+        cheapest = min(meta.min_budget_idr for meta in tagged if meta.min_budget_idr is not None)
         return (
             f"Every {_PURPOSE_LABEL[purpose]} visa we rank carries a minimum-budget "
             "requirement above the band you selected — the cheapest one starts at "

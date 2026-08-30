@@ -198,3 +198,49 @@ class TestCoverageSweep:
                     assert r.ranking or r.referral_mode, (
                         f"purpose={purpose} months={months} band={band} produced empty+no-referral"
                     )
+
+
+class TestRetirementStepsNameEachRoutesMoney:
+    """Each retirement route's financial requirement must be stated as its own.
+
+    The two products ranked under RETIREMENT — E33E (5 years) and E33F
+    (1 year), which the official visa catalogue names "Retirement KITAS (55+)"
+    and "Retirement KITAS (Variant)" — do not share one financial bar. E33F is
+    income-only; E33E additionally requires a USD 50,000 deposit. That deposit
+    was absent from the pre-arrival list entirely, so a visitor matched to the
+    5-year route was shown the income requirement alone.
+    """
+
+    def _steps(self) -> list[str]:
+        return _call(
+            purpose=Purpose.RETIREMENT,
+            duration_months=60,
+            budget_band=BudgetBand.OVER_500M,
+        ).pre_arrival_steps
+
+    def test_e33e_deposit_is_stated(self):
+        joined = " ".join(self._steps())
+        assert "USD 50,000" in joined, "E33E's deposit is missing from the steps"
+        assert "E33E" in joined, "the deposit is stated without naming its route"
+
+    def test_income_requirement_is_attributed_not_universal(self):
+        """The income figure must not read as a blanket requirement."""
+        steps = self._steps()
+        income = [s for s in steps if "3,000" in s]
+        assert income, "the USD 3,000/month income requirement disappeared"
+        for step in income:
+            assert "E33E" in step or "E33F" in step, (
+                f"income requirement stated without naming a route: {step!r}"
+            )
+
+    def test_no_superseded_income_figure(self):
+        """USD 1,500/month is the pre-2024 figure and must never reappear."""
+        joined = " ".join(self._steps())
+        assert "1,500" not in joined and "1.500" not in joined
+
+    def test_deposit_never_described_as_any_bank(self):
+        """The deposit only qualifies at a state-owned (BUMN) bank."""
+        joined = " ".join(self._steps()).lower()
+        assert "any bank" not in joined
+        if "deposit" in joined:
+            assert "bumn" in joined or "state-owned" in joined
