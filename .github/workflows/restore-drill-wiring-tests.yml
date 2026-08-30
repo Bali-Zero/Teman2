@@ -1,0 +1,72 @@
+name: Restore drill wiring tests
+
+# Executor for the two corpora that prove restore-drill.yml's own restore/
+# verify/notify steps never let a swallowed exit code mask a genuine
+# restore-drill failure (test_restore_drill_workflow_wiring.py) and that
+# restore_drill_verify.py's Level-5 verification never conflates "could not
+# measure" with "measured zero" (test_restore_drill_verify.py).
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# Measured, not assumed: `grep -rn restore_drill .github/workflows/` before
+# this file existed returned ONLY restore-drill.yml itself -- no workflow
+# named either test file. The only sweep over scripts/tests/ is
+# scripts-tests-sweep.yml, whose own header states it is `continue-on-error:
+# true`, triggered by `schedule:` + `workflow_dispatch:` (verbatim
+# "deliberately NOT `pull_request:`"), and is not in branch protection. So a
+# PR that flipped `ON_ERROR_STOP=1` back to `0`, or reintroduced any of the
+# swallowed-exit-code shapes both corpora exist to catch, failed these tests
+# LOCALLY and NOWHERE ELSE, and merged green -- superscar #2 ("exists !=
+# armed") sitting one level inside a PR whose entire subject is curing that
+# same disease in the drill itself. Same shape and rationale as
+# `vercel-autopromote-tests.yml`, `s7-yield-dispatch-tests.yml`,
+# `check-wal-continuity-probe.yml`, `yield-optimizer-pii-gate-tests.yml`, and
+# `wr3-spend-gate-tests.yml`.
+#
+# `paths:` filtered to the drill + verifier + both corpora + this file
+# itself (self-triggering is part of the pattern -- see every sibling above)
+# -- safe because this workflow is NOT added to branch-protection required
+# checks here (a repo-settings action, operator-gated per CLAUDE.md §13); it
+# runs on every PR that touches the drill.
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/restore-drill.yml"
+      - "scripts/ci/restore_drill_verify.py"
+      - "scripts/tests/test_restore_drill_workflow_wiring.py"
+      - "scripts/tests/test_restore_drill_verify.py"
+      - ".github/workflows/restore-drill-wiring-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/restore-drill.yml"
+      - "scripts/ci/restore_drill_verify.py"
+      - "scripts/tests/test_restore_drill_workflow_wiring.py"
+      - "scripts/tests/test_restore_drill_verify.py"
+      - ".github/workflows/restore-drill-wiring-tests.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: restore-drill-wiring-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+jobs:
+  wiring-tests:
+    name: Restore drill wiring tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pytest + PyYAML (the wiring corpus parses the workflow as YAML)
+        run: python3 -m pip install --quiet --disable-pip-version-check pytest pyyaml
+
+      - name: restore-drill.yml's own restore/verify/notify steps never swallow a failure
+        run: python3 -m pytest scripts/tests/test_restore_drill_workflow_wiring.py -v
+
+      - name: restore_drill_verify.py catches the degenerate shape, never accuses a healthy restore
+        run: python3 -m pytest scripts/tests/test_restore_drill_verify.py -v

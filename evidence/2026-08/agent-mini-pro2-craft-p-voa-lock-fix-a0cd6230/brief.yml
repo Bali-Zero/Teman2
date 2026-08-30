@@ -1,0 +1,81 @@
+task_id: craft-p-l07-voa-probe-lock-defect
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Make the VOA probe's single-instance advisory lock able to engage at all.
+
+  `zsystem flock` does NOT create its lockfile — it opens the path for
+  writing and fails when absent:
+
+      zsh:zsystem:1: failed to open /tmp/absent.lock for writing:
+      no such file or directory                                   rc=1
+
+  Nothing in voa-probe-wrapper.sh ever created ~/logs/voa-probe.flock, so
+  lock_rc was ALWAYS 1, always landed in the `*)` catch-all, and every tick
+  logged "proceeding WITHOUT single-instance protection". The guard was
+  invoked on every run and could never protect anything; the `2)`
+  "overlapping run detected — skipping this tick" branch was unreachable
+  dead code.
+
+  Found by the probe's FIRST ARMED RUN on Mini, minutes after #5215 merged.
+  It was in the log the moment the organ drew breath — which is the whole
+  argument for arming things and reading their output rather than trusting
+  a green CI.
+
+  Gear 3 by PATH, not ambition: the diff touches infra/launchagents/, which
+  is hot-zone for the floor calculator. The floor is recomputed from the
+  diff and is never the author's choice (ruling 2026-08-19).
+constraints:
+  - "FAIL-OPEN is mandatory and must survive the fix. An overlapping probe
+    run is merely redundant traffic against an idempotent
+    create/read/delete/verify journey, so a lock that cannot be established
+    degrades to a WARN and still probes. This is the OPPOSITE posture from
+    bali-zero-magazine-publish.sh, which exits 70 because a duplicate
+    publish corrupts shared state. A health probe must never refuse to
+    probe over an advisory lock."
+  - "Mirror the house pattern rather than invent a second idiom. The
+    reference implementation is bali-zero-magazine-publish.sh lines 98-110 —
+    the very file this wrapper's own G10 comment says it copied the
+    primitive from, and which has carried both preconditions all along.
+    This wrapper copied the primitive and dropped them."
+  - "No behaviour change to the probe itself, the plist, or the installer.
+    Two files only."
+acceptance: |
+  Innocence — an uncontended run acquires the lock: no "WITHOUT
+    single-instance protection" WARN, and the lockfile exists afterwards.
+  Guilt — with the lock HELD by a separate live process, the wrapper logs
+    "overlapping run detected", exits 0, and the probe is NEVER invoked.
+    This exercises the branch that was dead code before this diff.
+  Degrade — an unwritable lock directory WARNs and the probe STILL runs
+    (fail-open proven, not merely asserted).
+  Non-regular path — a directory at the lockfile path is named specifically
+    by its own guard, and the probe still runs.
+  Regression pin — a lockfile-creation step precedes zsystem flock.
+risks: |
+  - This diff's real effect is to make a DORMANT code path live for the
+    first time. Six of the seven refutation findings describe behaviour that
+    was unreachable until now. They are declared in pack.yml rather than
+    patched in the same PR (depth-1 rule).
+  - No timeout bounds the node invocation (wrapper line 247), so a stuck run
+    can hold the lock. The probe's per-request AbortSignal.timeout bounds
+    each fetch, not the process. Consequence is NOT dead-man blindness — see
+    the dissent entry: the skip branch writes the ORGANISM heartbeat, while
+    the PROBE heartbeat the dead-man reads goes stale, so the dead-man fires
+    correctly. Bounding runtime is a different concern from creating a file.
+  - zsh's `-f` follows symlinks, so the non-regular-path guard catches
+    directories and other non-regular targets but not a symlink to a regular
+    file. The comment claims a "non-regular-path guard", which is what it is.
+grader: |
+  Blind cross-family refutation by Codex GPT-5.6 sol (high effort). Kimi K3
+  was probed FIRST as the mandated non-prod-flag seat and returns empty on
+  this machine, matching the arsenal probe's TIMEOUT reading — recorded as
+  measured, not silently substituted. Final on-disk gate held by the Opus 5
+  squad orchestrator, empirically, in-session: every mutation below was run
+  by the orchestrator itself, and one of them found a gap the implementer's
+  own battery had missed.
+budget: |
+  One Sonnet 5 implementer pass, one orchestrator-driven correction round,
+  one Codex sol refutation, orchestrator gate. No runtime cost change: the
+  probe still makes the same 4 HTTP requests per 15 minutes.
+pii: none
