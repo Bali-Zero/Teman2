@@ -35,20 +35,20 @@ council_run: council-journal.jsonl
 
 diff:
   files: 4
-  net_lines: 513
-  measured_at: 8d5c50b2c
+  net_lines: 532
+  measured_at: f28d6a476
   note: >-
     Churn (added+deleted) via `git diff --no-renames --numstat --cached
     <merge-base>` against merge-base 6e4492b75, measured with this exact pack
     STAGED — the only moment the number can be true, since the pack is part of
-    what it counts: with-seat-broker-tests.yml 56+5 = 61, brief.yml 117+0,
-    council-journal.jsonl 2+0, pack.yml 333+0. Total 513 across 4 files. This
-    field has now been re-measured four times, and every correction moved it:
+    what it counts: with-seat-broker-tests.yml 65+5 = 70, brief.yml 117+0,
+    council-journal.jsonl 2+0, pack.yml 343+0. Total 532 across 4 files. This
+    field has now been re-measured five times, and every correction moved it:
     an ESTIMATE said 261, measurement said 421, the council journal and the
-    reviewers' findings took it to 513. A self-counting field is only ever true
+    reviewers' findings took it to 532. A self-counting field is only ever true
     at the instant it is measured, so the last edit before commit is always a
     DIGIT-ONLY one — same character count, same line count, therefore same
-    number. The CODE change under review is 61 lines in ONE file; the other 452
+    number. The CODE change under review is 70 lines in ONE file; the other 462
     are this evidence pack, whose size does not change what the diff does. CI
     supplies the authoritative numstat via --numstat-file at merge time and
     prefers it over this self-declared value.
@@ -251,16 +251,26 @@ dissent:
       grep — a textual match hits comments and conditionals): 13 workflows carry
       a real merge_group trigger, 8 back one of the 11 required contexts, so 5
       are advisory — this file plus voa-probe-tests, pr-collision-check,
-      restore-drill-wiring-tests and p1s2-mutation-incremental (added
-      2026-08-31, four days after the cure). The reviewer said each counterexample
-      carries its own justification header; that is TOO GENEROUS — only
-      restore-drill argues its case. The test's direction was confirmed by
-      reading it: its docstring states the policy, its assertions guard only the
-      deadlock. So the cure is a stated, UNENFORCED, drifting policy. This does
-      not change the repair — the file argued nothing and its trigger was
-      incoherent with its own filter — but the header now says the true thing,
-      and names the legitimate route back to a queue run (an argued exception,
-      like restore-drill's).
+      restore-drill-wiring-tests and p1s2-mutation-incremental. The test's
+      direction was confirmed by reading it: its docstring states the policy, its
+      assertions guard only the deadlock. So the cure is a stated, UNENFORCED
+      policy. This does not change the repair, but the header now says the true
+      thing.
+      SECOND CORRECTION, caught by the Gear-3 on-disk gate against my OWN header
+      before it shipped: I had written that p1s2 was "added 2026-08-31, four days
+      after the cure" and that "only restore-drill argues its case". Both were
+      inherited from prose rather than measured, and both were wrong — the second
+      one INVERTED. The p1s2 FILE dates from 2026-06-07; walking every commit
+      that touched it shows its TRIGGER present 2026-07-27, REMOVED by the
+      2026-08-27 cure, and deliberately RE-ADDED 2026-08-30T18:14Z (#5329). The
+      file's own comment saying "added 2026-08-31" is WITA local time for that
+      same UTC instant. And counting comment lines directly above each trigger:
+      voa-probe 4, pr-collision 9, p1s2 10, restore-drill 0 — three of the four
+      argue adjacently and restore-drill is the one that does not. The reviewer
+      was not "too generous"; I was wrong about which direction the error ran,
+      then propagated the detail without measuring it. That is the same defect
+      class as the brief_ref reversal earlier in this PR, twice in one session:
+      reasoning from a plausible sentence instead of running the command.
 
   - seat: tp1-qwen3.8-max (cross-family refuter, second seat)
     objection: >-

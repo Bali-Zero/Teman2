@@ -50,19 +50,28 @@ name: Seat broker env-minimization tests
 #      `scripts/tests/test_advisory_workflows_no_merge_group.py`. Read what that test
 #      actually asserts before citing it: it guards only the OPPOSITE direction — a
 #      REQUIRED workflow must never LOSE `merge_group` (the queue-deadlock tripwire). So
-#      the cure is UNENFORCED in the advisory direction, and it has drifted. Measured on
-#      origin/main 2026-08-31 by parsing every `on:` block: 13 workflows carry a real
-#      `merge_group` trigger, 8 of them back one of the 11 required contexts, leaving 5
-#      advisory ones — this file plus `voa-probe-tests.yml`, `pr-collision-check.yml`,
-#      `restore-drill-wiring-tests.yml` and `p1s2-mutation-incremental.yml`, the last
-#      added 2026-08-31, four days AFTER the cure. Of those four, only
-#      `restore-drill-wiring-tests.yml` argues its case in a header.
+#      the cure is UNENFORCED in the advisory direction. Measured on origin/main
+#      2026-08-31 by parsing every `on:` block (not by grep — a textual match hits
+#      comments and conditionals): 13 workflows carry a real `merge_group` trigger, 8 of
+#      them back one of the 11 required contexts, leaving 5 advisory ones — this file
+#      plus `voa-probe-tests.yml`, `pr-collision-check.yml`,
+#      `restore-drill-wiring-tests.yml` and `p1s2-mutation-incremental.yml`.
+#
+#      What separates them from this file is not the trigger, it is the ARGUMENT.
+#      Walking the comment block directly above each trigger: voa-probe (4 lines),
+#      pr-collision (9) and p1s2 (10) each state why they want the queue run;
+#      restore-drill states its case elsewhere in the file rather than adjacent to the
+#      trigger. p1s2 is the sharpest illustration and was nearly mis-cited here: its
+#      trigger was PRESENT on 2026-07-27, REMOVED by the 2026-08-27 cure, and
+#      deliberately RE-ADDED on 2026-08-30T18:14Z (#5329) behind an argued cost control.
+#      The cure works when someone applies it; it just cannot enforce itself.
+#
 #      This workflow is advisory on three independent measurements — absent from
 #      `infra/required.d/contexts.json` (11 contexts), absent from branch protection's
-#      12 required contexts, and its own header below says so. It argued nothing: it
+#      12 required contexts, and its own header below says so. And it argued NOTHING: it
 #      acquired the trigger silently, paired with a filter that makes the pair
-#      incoherent. An advisory workflow CAN keep `merge_group` — but by arguing for it,
-#      the way restore-drill does, not by accident.
+#      incoherent. That is the difference. An advisory workflow CAN keep `merge_group`
+#      — the way its four peers do, by saying why, next to the trigger.
 #
 # So the `merge_group:` line goes and the `paths:` filter stays. Removing the FILTER
 # instead would also have satisfied the lint, but it would have kept an advisory job in
