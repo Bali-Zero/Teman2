@@ -186,3 +186,38 @@ def test_the_cured_skill_no_longer_cites_the_phantom() -> None:
                 "the retracted path reappeared outside its code fence — it would be "
                 "a citation again, and the lint would be red on the file that cures it"
             )
+
+
+def test_the_workflow_filter_covers_every_file_the_lint_scans() -> None:
+    """Trigger symmetry, the way `test_tg_gateway_trigger_symmetry.py` does it.
+
+    A guard whose CI job does not start on the only diff that could violate it
+    has been armed at nothing. Measured 2026-08-31: the lint's subject globs
+    reached `.claude/skills/modus/AMENDMENTS.md` while the workflow's path filter
+    listed only `*/SKILL.md`, so a phantom citation added there would have been a
+    finding on a PR that never ran the finder. Asserting the relation rather than
+    the list means the next subject added to the lint fails HERE, loudly, instead
+    of silently escaping the job.
+    """
+    import fnmatch
+
+    wf = (REPO / ".github" / "workflows" / "immune-enforcement.yml").read_text()
+    block = wf.split("while IFS= read -r f; do", 1)[1].split('done <<< "$CHANGED"', 1)[0]
+    patterns = [
+        ln.strip().rstrip("|\\").strip()
+        for ln in block.splitlines()
+        if ln.strip().rstrip("|\\").strip() and not ln.strip().startswith(("#", "case", "esac", "*)", ";;", "RELEVANT"))
+    ]
+
+    subjects = lint._collect_subjects(REPO, None)
+    uncovered = []
+    for s in subjects:
+        rel = s.relative_to(REPO).as_posix()
+        if not any(fnmatch.fnmatch(rel, pat) for pat in patterns):
+            uncovered.append(rel)
+
+    assert not uncovered, (
+        "these files are scanned by the lint but would NOT start the job that runs it — "
+        "add them to immune-enforcement.yml's path filter, or drop them from "
+        f"DEFAULT_SUBJECTS: {uncovered}"
+    )

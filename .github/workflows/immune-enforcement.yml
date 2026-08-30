@@ -134,7 +134,9 @@ jobs:
               scripts/lint_doctrine_citations.py|\
               scripts/tests/test_lint_doctrine_citations.py|\
               .claude/skills/*/SKILL.md|\
+              .claude/skills/*/AMENDMENTS.md|\
               .claude/commands/*.md|\
+              CLAUDE.md|\
               SYMBIOSIS.md|\
               AUTONOMOUS_OPS.md|\
               VADEMECUM.md|\
