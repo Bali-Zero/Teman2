@@ -46,10 +46,19 @@ LEGACY_ERROR_REF = "legacy_error_list"
 # Context gate: patterns flagged ``requires_e33_context`` only fire when the
 # text is actually about the E33 / Second Home vertical, so unrelated answers
 # mentioning e.g. "USD 1,500" are not flagged.
-_E33_CONTEXT_RE = re.compile(
-    r"\bE33[A-Z]?\b|second[- ]home|rumah\s+kedua|silver\s+hair",
-    re.IGNORECASE,
-)
+#: Every name this product answers to — ONE vocabulary, used by the context gate
+#: below AND by any pattern that needs the product named NEAR its claim.
+#:
+#: `e33_permits_local_work` used to hardcode `\bE33[A-Z]?\b` in its own regex
+#: instead. It is the only pattern in the set that opted out of the shared gate,
+#: and it re-implemented it worse: "The Second Home visa allows you to work in
+#: Indonesia" passed in silence while the same sentence with "E33" fired. That
+#: is the name clients, marketing pages and the bot itself normally use, on the
+#: one claim in this guard that risks a client's immigration status rather than
+#: their money.
+_E33_NAME = r"(?:\bE33[A-Z]?\b|second[- ]home|rumah\s+kedua|silver\s+hair)"
+
+_E33_CONTEXT_RE = re.compile(_E33_NAME, re.IGNORECASE)
 
 E33_SAFE_FALLBACK_NOTE = (
     "Note: some details of the E33 Second Home visa are still pending written "
@@ -150,12 +159,12 @@ E33_FORBIDDEN_PATTERNS: tuple[ForbiddenPattern, ...] = (
     ),
     _p(
         "e33_permits_local_work",
-        rf"\bE33[A-Z]?\b[^.\n]{{0,60}}\b{_NEG}(?<!residence\s)(?<!stay\s)(?:allows?|permits?|authoriz\w*|entitle\w*)\b[^.\n]{{0,40}}\b(?:work|employment)\b"
-        rf"|\b{_NEG}work(?:ing)?\s+(?:legally\s+)?(?:in\s+Indonesia\s+)?on\s+(?:the\s+|an\s+)?E33"
+        rf"{_E33_NAME}[^.\n]{{0,60}}\b{_NEG}(?<!residence\s)(?<!stay\s)(?:allows?|permits?|authoriz\w*|entitle\w*)\b[^.\n]{{0,40}}\b(?:work|employment)\b"
+        rf"|\b{_NEG}work(?:ing)?\s+(?:legally\s+)?(?:in\s+Indonesia\s+)?on\s+(?:the\s+|an\s+)?{_E33_NAME}"
         # IT: "l'E33 permette/consente/autorizza ... lavorare/lavoro"
-        rf"|\bE33[A-Z]?\b[^.\n]{{0,60}}\b{_NEG}(?:permett\w+|consent\w+|autorizz\w+|abilit\w+)\b[^.\n]{{0,40}}\b(?:lavor\w+|impiego|occupazione)\b"
+        rf"|{_E33_NAME}[^.\n]{{0,60}}\b{_NEG}(?:permett\w+|consent\w+|autorizz\w+|abilit\w+)\b[^.\n]{{0,40}}\b(?:lavor\w+|impiego|occupazione)\b"
         # ID: "E33 memungkinkan/mengizinkan/membolehkan ... bekerja/kerja"
-        rf"|\bE33[A-Z]?\b[^.\n]{{0,60}}\b{_NEG}(?:memungkinkan|mengizinkan|membolehkan|memperbolehkan)\b[^.\n]{{0,40}}\b(?:bekerja|kerja|pekerjaan)\b",
+        rf"|{_E33_NAME}[^.\n]{{0,60}}\b{_NEG}(?:memungkinkan|mengizinkan|membolehkan|memperbolehkan)\b[^.\n]{{0,40}}\b(?:bekerja|kerja|pekerjaan)\b",
         "Base E33 is a pure residence permit — it does NOT authorize local employment",
         "e33_not_work_visa",
         ctx=False,
