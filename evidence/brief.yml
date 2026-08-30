@@ -1,133 +1,62 @@
-task_id: visa-freshness-restamp-seq17-0830
+task_id: wa-price-split-fee-veto-0830
 gear: 3
 l_level: L2
 gate_class: opus
 objective: |
-  Restore the Visa Oracle, which stopped answering on every product at 2026-08-30T10:44:48Z.
+  Stop the WhatsApp bot presenting a government levy to a client as a separately
+  payable amount beside the Bali Zero price.
 
-  Each source record in a signed RulePack carries a freshness policy. For the OFFICIAL_PORTAL
-  authority that window is seven days, and `evaluate_path.py::_evaluate_source_freshness`
-  turns a source past its window into STALE. The decisive-source gate then folds the whole
-  decision into HUMAN_REVIEW_REQUIRED with an empty candidate list. seq-16's portal records
-  were stamped 2026-08-23T10:44:48Z, so the outage began exactly one window later.
+  Measured, not argued. `wa_outbox` row 379 (2026-08-30T17:54:35Z, route=codex,
+  done at attempt 1) answered an Investor-KITAS price question with
+  "biaya layanan kami: offshore Rp17.000.000 [...] PNBP pemerintah Rp9.500.000
+  untuk 2 tahun". Zero's ruling of 2026-07-17 is ONE all-inclusive client-facing
+  price, never a PNBP-vs-fee split, and the PricingTool rows say so in their own
+  notes. The existing anchoring veto cannot catch this: it proves every amount is
+  CONSISTENT with the frozen package's sources, never that the answer is COMPLIANT
+  with the single-price rule — and the 9.5M figure was laundered in from a
+  retrieved chunk, which that veto accepts by design.
 
-  Nothing was broken. The pack simply aged out and the weekly re-attestation lane that should
-  have re-stamped it never ran. The freshness sentinel DID fire; its alert was swallowed by the
-  Telegram gateway's dedup on key `visa-freshness:approaching:16`.
-
-  seq-17 therefore restamps and nothing else: the eighteen OFFICIAL_PORTAL records get a new
-  `verified_at`/`verified_by`, each backed by a live re-read of the page performed on the day.
-  No rule, product, price, hit policy or non-portal source is touched.
-
-  Gear 3 by SIZE, deterministically: the generated pack artifacts put the diff far past the
-  blast-radius floor. Recomputed from the real changed-file list — receipt in the pack.
-
-constraints:
-  - "A re-stamp is an ATTESTATION, not a formality. `verified_at` asserts that a human or agent
-    actually read the page at that instant, and `content_sha256` stays untouched on every record
-    because no page changed semantically — moving the digest would claim a content review that
-    did not happen. TWO WEAKNESSES, named rather than smoothed over: the stamp instant sits
-    after the LAST reader returned, where it should take the EARLIEST look that backs it; and
-    nothing in the artifact proves the reading happened at all — run the fold offline having
-    read nothing and it emits the same stamp. Both are recorded in
-    research/visa/2026-08-30-freshness-restamp-seq17-attestation.md, and the rule they produce
-    — write the ledger DURING the reading — binds the next ceremony in this lane."
-  - "Derive the restamped set by ENTITY, never from a frozen id list: it must equal exactly the
-    records whose `authority_type` is OFFICIAL_PORTAL, and the expected count is pinned
-    separately as a tripwire. A pack that gained or lost a portal source was authored against a
-    different world and must abort, not adapt."
-  - "The chain anchor is read from the DATABASE, not from disk: the anchor is the live payload,
-    re-hashed under RFC 8785 here and required to equal the `payload_sha256` of the active
-    activation before anything is built on it. CORRECTED after adversarial review — an earlier
-    version of this line said seq-16 'does not exist in this repository at all', which is FALSE:
-    the signed bundle is on the unmerged branch `origin/feature/visa-oracle` with exactly the
-    active digest. Reading from the database was still right, because a branch is not evidence
-    of what production ran; the claim about version control simply had not been checked."
-  - "`rule_pack_id` is the primary key of `visa_rule_packs` and packs are immutable there.
-    Every fold from seq-9 onward mints it as uuid5 of the sequence's canonical URL; seq-17 does
-    the same and VERIFIES the convention against the pack being folded before minting."
-  - "Do not weaken any check. The reds this PR drew are answered by supplying what they ask for
-    — a triage rule for the chain-anchor digest, copy for the newly reachable review reasons,
-    and this evidence — never by touching a gate."
-
-acceptance:
-  - text: >-
-      WHEN the new pack is activated, the production catalog SHALL report it as the active
-      sequence, with a digest equal to the one the fold and the signer independently computed.
-    probe: >-
-      scripts/pg.sh -c "SELECT p.sequence, encode(p.payload_sha256::bytea,'hex') FROM
-      visa_ruleset_activations a JOIN visa_rule_packs p ON p.id=a.rule_pack_id WHERE
-      upper_inf(a.system_period)"
-  - text: >-
-      WHEN a tourist case and an E31A spouse case are evaluated against the deployed service
-      after activation, the endpoint SHALL answer SUPPORTED_CANDIDATES, WHERE both previously
-      folded to HUMAN_REVIEW_REQUIRED with an empty candidate list.
-    probe: >-
-      PYTHONPATH=. python -m backend.scripts.visa_engine.probe_evaluate --url
-      https://nuzantara-rag.fly.dev/api/visa-oracle/evaluate --payload <case>
-  - text: >-
-      WHERE the folded payload is compared against the live seq-16 payload, the only differences
-      SHALL be verified_at and verified_by on the OFFICIAL_PORTAL records, plus the chain and
-      identity fields a new sequence necessarily moves.
-    probe: >-
-      pytest backend/tests/services/visa_engine/test_seq17_freshness_restamp.py
-      (TestFreshnessShape, TestIdentity)
-  - text: >-
-      IF any other payload key or record field moves, the fold SHALL abort; and WHEN the real
-      fold runs, it SHALL NOT abort.
-    probe: >-
-      pytest backend/tests/services/visa_engine/test_seq17_freshness_restamp.py
-      (TestGuardGuilt — eight mutations; TestGuardInnocence)
-  - text: >-
-      WHILE the repo formatter is free to rewrite the pack files, the signed bundle SHALL keep
-      verifying against the pinned PRODUCTION trust-store key.
-    probe: >-
-      pytest backend/tests/services/visa_engine/test_seq17_freshness_restamp.py
-      (TestSignatureAndChain)
-  - text: >-
-      WHEN each check this PR turned red is re-run, it SHALL be green for the reason the fix
-      claims, proven by running the thing itself.
-    probe: >-
-      python3 scripts/detect_secrets_check_unaudited.py ; cd apps/mouth && npx vitest run
-      "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts"
-
-consumer_map:
-  - "`services/visa_engine/evaluate_path.py:1609` — calls `_resolve_active_pack_binding` inside
-    `run_evaluation()` on EVERY request. This is the surface the outage was visible on and the
-    surface the cure is proven on."
-  - "`services/visa_engine/shadow.py:340-400` — `_resolve_active_pack_binding` re-runs the
-    range-containment query against `visa_ruleset_activations` per call, with no lru_cache, no
-    module global and no TTL. A new activation is therefore live on the next request with no
-    restart. Verified in code, not assumed."
-  - "`services/visa_engine/shadow.py:599` — the SHADOW match path resolves the same binding
-    through the same function, so both paths move together."
-  - "`apps/mouth/.../engine-adapter.ts` — renders review-reason codes to human copy. seq-17 is
-    the first pack ON DISK carrying the E23 diplomatic and trade-office rules, so two codes
-    became reachable here for the first time and needed copy."
-  - "`scripts/visa_freshness_sentinel.py` — derives each boundary from the pack's own policy
-    per record, so it tracks the restamp with no change. Its alert path is NOT repaired by this
-    PR; the dedup that swallowed the warning is recorded as an open item, not as done."
-  - "`visa_rule_packs` / `visa_ruleset_activations` — the write surface of the activation
-    ceremony. Deliberately NOT modified by this PR: the ceremony is run, not shipped."
-
-risks:
-  - "This PR ships an artifact that is ALREADY ACTIVE in production. The activation preceded the
-    merge because the outage was live; the merge records what was done rather than authorising
-    it. If review rejects the artifact, the remedy is a forward pack, never an edit to this one."
-  - "seq-16's source never reached `main` — it lives on an unmerged branch while its signed
-    artifact ran in production. Narrower than the 'absent from version control' this brief
-    first claimed, and still open: this PR does not fix it."
-  - "The re-stamped window expires again one week out. Raising it is a separate, signed pack
-    ceremony — the value lives only inside the signed payload, with no environment or config
-    override anywhere. Tracked as its own task, not smuggled in here."
-  - "The generated pack artifacts dominate the line count. The hand-authored surface is small,
-    and the generated part is reproducible from the fold script plus the live payload."
-
+  This adds a second, independent veto on the codex leg's finalize path, plus the
+  reason code and the CHECK-constraint widening that let the fall-off be recorded.
+constraints: |
+  - Client-facing surface. A false positive costs a retry, then an apology to a
+    client whose answer was correct; a false negative costs a client budgeting a
+    levy twice. Both directions must be tested.
+  - `migrations_v2/**` is hot-zone by path, hence gear 3 by construction.
+  - The migration must CONVERGE (DROP IF EXISTS + ADD), mirroring 290/291/297,
+    with a full ROLLBACK section restoring the 297 vocabulary.
+  - No PII in any log line: the veto returns marker NAMES only, never the matched
+    text or the amount, and the DB stores one code regardless.
+acceptance: |
+  - The reproduced row-379 text fires the veto (guilt) and the real PricingTool
+    all-inclusive wording does not (innocence).
+  - Every finding a cross-family refuter can demonstrate against the function is
+    either fixed and pinned as a test, or refuted with evidence and pinned so it
+    is not "fixed" again.
+  - The stored reason code is accepted by the live CHECK constraint.
+  - With this veto AND the anchoring veto both live, a correct answer still has a
+    shape that passes. This was NOT true when the PR was first opened.
+consumer_map: |
+  - `wa_finalize.finalize_wa_answer` — the only caller; runs on the codex leg for
+    every generated answer, unconditionally (not gated on price_sources).
+  - `wa_codex_leg._FINALIZE_SUB_REASON_MAP` — maps the veto's reason to the stored
+    `generation_fall_off_reason`.
+  - `wa_outbox.generation_fall_off_reason` CHECK constraint — rejects any code not
+    in its vocabulary, so the migration is not optional.
+  - Grafana/ledger consumers read the reason code; no new PII surface.
+risks: |
+  - DECLARED RESIDUAL, deliberately open: an amount written in WORDS ("sembilan
+    juta lima ratus ribu rupiah") is invisible, because `_CURRENCY_AMOUNT_RE`
+    requires a currency marker. Pinned by a test so it is a known gap, not a
+    surprise.
+  - DECLARED COST of proximity windows: a levy named definitionally within 140
+    characters of an unrelated total fires. That costs one retry; the reverse
+    error costs a client budgeting a levy twice.
+  - SEQUENCING RISK, and the reason this PR was disarmed for six hours: merged
+    alone it would have converted a wrong answer into NO answer. See the pack's
+    lane rows.
 grader: |
-  Independent verification by this session against the production catalog through the read-only
-  role, and against the deployed endpoint through the synthetic-driver probe path — never
-  against the writer's own output. One cross-family adversarial refuter (codex gpt-5.6-sol,
-  xhigh, non-Anthropic) was dispatched on the diff WITHOUT this brief, and was asked in
-  particular to attack the attestation itself: what in the diff proves anyone actually looked at
-  the pages. Generator != grader: the session that wrote the fold does not post the Gear-3
-  verdict.
+  Opus 5 at xhigh, on the diff, against the acceptance list above — with the
+  standing instruction that the guilt case (row 379 verbatim) going green is the
+  single non-negotiable condition, because that case is the whole reason the
+  veto exists.
