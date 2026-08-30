@@ -1,5 +1,5 @@
 council_run: journal.jsonl
-brief_ref: evidence/2026-08/agent-mini-pro2-craft-f-seat-state-ledger-ec549b00/brief.yml
+brief_ref: evidence/brief.yml
 plan_ref: >-
   docs/plans/2026-08-29-beyond-sota-craft-wave/L09-multi-agent-orchestration-fleet-routing.md
   section "PR-1: feat(fleet): seat-state ledger + cascade pre-dispatch check".
@@ -20,14 +20,13 @@ diff:
   net_lines: 1104
   measured_at: af6369dd4a
   note: >-
-    git diff --numstat $(git merge-base origin/main HEAD)..HEAD -> 5 files,
-    +1104/-0. Three of those are the code under review (seat_state.sh, its
-    corpus, the cascade hook); the rest are this squad's own MANDATE.md,
-    SQUAD-LEDGER.md and this evidence pack, carried as lane provenance. The code
-    half is over the <=400 net-line target of rules-of-engagement #2 and that is
-    declared rather than hidden: roughly half of it is the guilt+innocence
-    corpus the spec's acceptance criteria require, and splitting the corpus out
-    would ship a library with no guard.
+    Measured with git diff --numstat $(git merge-base origin/main HEAD)..HEAD.
+    The code under review is seat_state.sh, its corpus, and the cascade hook;
+    the remainder is this branch's own evidence pack. The code half is over the
+    <=400 net-line target of rules-of-engagement #2 and that is declared rather
+    than hidden: roughly half of it is the guilt+innocence corpus the spec's
+    acceptance criteria require, and splitting the corpus out would ship a
+    library with no guard.
 
 pii_scan: clean
 
