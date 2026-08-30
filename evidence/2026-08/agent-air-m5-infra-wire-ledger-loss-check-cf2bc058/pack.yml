@@ -20,13 +20,14 @@ lanes:
       declared limitation and mitigation
 
 diff:
-  files: 1
-  net_lines: 171
-  measured_at: 0213d390fc
+  files: 2
+  net_lines: 263
+  measured_at: ef2fb155ae
   note: >-
-    `git diff --no-renames --numstat $(git merge-base origin/main HEAD) HEAD`
-    -> 1 file (.github/workflows/check-ledger-no-silent-loss.yml), +174/-3,
-    net 171.
+    `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`, evidence/
+    pack files excluded from this count (they document the change, not the
+    change itself, matching this repo's existing convention) -> the workflow
+    file plus the new test file.
 
 pii_scan: clean
 
@@ -191,6 +192,88 @@ receipts:
     ts: 2026-08-30T01:46:54Z
     seat: session (build lane)
 
+  - claim: >-
+      The invariant-check step passed `--base-ref "$BASE_SHA"`
+      (`pull_request.base.sha`, the PR's frozen fork point) to the script.
+      Empirically, this is never a false NEGATIVE (a real accidental loss
+      this branch introduces is caught either way) but it IS a false
+      POSITIVE generator: a row main legitimately closed after this branch
+      forked, correctly picked up by this branch's own `git merge
+      origin/main`, gets misread as a loss — because `check()`'s own
+      `git merge-base(base_ref, head)` always resolves back to the frozen
+      SHA (it is structurally an ancestor of head), collapsing
+      `main_entries` onto `base_entries` regardless of what main has done
+      since.
+    cmd: >-
+      3 crafted git histories built directly against `check()` (not the CLI)
+      via a throwaway Python probe: (1) branch's own accidental drop of an
+      untouched row, (2) main legitimately closes a row + branch's own
+      `git merge origin/main` correctly picks it up, (3) same shape for the
+      duplication invariant. Each run twice: --base-ref=<frozen fork SHA>
+      vs --base-ref=<a ref reflecting current main>.
+    result: >-
+      Scenario 1: both invocations correctly exit 1 (no divergence — a
+      branch's own drop is caught regardless of base_ref staleness).
+      Scenario 2: frozen-SHA invocation exits 1 (FALSE POSITIVE — "FAIL ...
+      Entry A" — on a clean, correctly-merged branch); current-main
+      invocation exits 0 ("OK: 2 open row(s)... 1 row(s) untouched-by-anyone
+      all survived"). Confirms `missing(new) subset-of missing(old)` and
+      `grown(new) subset-of grown(old)` for this script's specific
+      merge-base-then-load-from-base_ref construction — see dissent below,
+      this is the OPPOSITE polarity from "vacuous / cannot fail" as
+      originally described, though the fix direction (use a live
+      origin/main, not the frozen SHA) is the same and was applied as
+      instructed regardless.
+    exit: 0
+    ts: 2026-08-30T02:14:00Z
+    seat: session (build lane)
+
+  - claim: >-
+      The fixed workflow (--base-ref origin/main, fetched by name) reproduces
+      the correct verdict end-to-end through the ACTUAL bash step logic
+      (not the script in isolation) on both the real-loss case and the
+      newly-fixed false-positive case.
+    cmd: >-
+      Extracted the current invariant-check step's exact run: block into a
+      standalone .sh, ran it with GITHUB_OUTPUT/GITHUB_STEP_SUMMARY captured,
+      against two throwaway repos built with the real
+      check_ledger_no_silent_loss.py + pending_arms_report.py copied in:
+      CASE1 (real accidental loss) and CASE2 (legitimate closure + correct
+      merge, i.e. the case receipt 9 shows the OLD invocation false-flagged).
+    result: >-
+      CASE1: step exit 1, GITHUB_OUTPUT "rc=1", step summary contains the
+      FAIL block naming "Entry A" and the git-log confirm command. CASE2:
+      step exit 0, GITHUB_OUTPUT "rc=0", step summary contains "OK: 2 open
+      row(s)..." and "Verdict: clean." — the false positive from receipt 9
+      does not survive into the fixed workflow's actual bash logic.
+    exit: 0
+    ts: 2026-08-30T02:20:00Z
+    seat: session (build lane)
+
+  - claim: >-
+      No bare conflict-marker (`<<<<<<<`/`>>>>>>>`) grep exists anywhere on
+      this PR's surface — flagged as a specific trap by the PR review
+      because PENDING-ARMS.md contains 9 of each as quoted prose describing
+      past conflict scars.
+    cmd: >-
+      grep -n '<<<<<<<\|>>>>>>>' on the workflow file,
+      check_ledger_no_silent_loss.py, and the new test file additions
+    result: "no marker literal found in any of the three (N/A — the check
+      works via row-identity parsing, never marker detection)."
+    exit: 0
+    ts: 2026-08-30T02:21:00Z
+    seat: session (build lane)
+
+  - claim: >-
+      The full guilt-AND-innocence suite, including the new test closing
+      this exact coverage gap, passes.
+    cmd: python3 -m pytest scripts/tests/test_check_ledger_no_silent_loss.py -v
+    result: "11 passed in 3.10s — including the new
+      test_innocence_a_frozen_base_sha_would_false_flag_a_legitimate_merge."
+    exit: 0
+    ts: 2026-08-30T02:10:00Z
+    seat: session (build lane)
+
 dissent:
   - seat: session (self-review pass, not a separate cross-family seat)
     objection: >-
@@ -215,17 +298,72 @@ dissent:
       away) so a future reader sees WHY the guidance reads commits, not just
       the diff.
 
+  - seat: session (self-review pass, not a separate cross-family seat)
+    objection: >-
+      Team-lead's mandate described the frozen-base.sha defect as "the
+      vacuous invocation" that "returns a confident OK that means nothing"
+      and asked for proof the corrected version "does dissent" the way a
+      positive control that was silent before now fires. Built 3 crafted
+      scenarios directly against `check()` to construct exactly that proof
+      (receipt 9) — and found the actual polarity is the reverse of that
+      framing for this script's specific construction:
+      `git merge-base(base_ref, head)` always resolves back to a frozen
+      base_ref (it is structurally an ancestor of head), so
+      `main_entries == base_entries` under the old invocation, which makes
+      `stable_keys` (and the duplication baseline) AT LEAST AS LARGE as the
+      correct computation, never smaller. That means the frozen-SHA
+      invocation can only produce false POSITIVES relative to the fixed one
+      (flagging a legitimately-closed, correctly-merged row as "lost" —
+      demonstrated in receipt 9's scenario 2), never false NEGATIVES — a
+      branch's own genuine accidental drop of a stable row is caught by
+      BOTH the old and the new base_ref (receipt 9's scenario 1, identical
+      exit 1 either way).
+    status: CONFIRMED
+    resolution: >-
+      This session's own empirical finding (receipt 9, 10) is confirmed by
+      direct, reproducible testing — not the original "silent, cannot
+      dissent" framing itself, which this session could not reproduce using
+      the workflow's actual argument shape (--base-ref=<frozen base.sha>,
+      --head-ref=<genuinely distinct PR head SHA>, exactly as
+      github.event.pull_request.* supplies them). The fix itself
+      (origin/main instead of the frozen SHA) is applied regardless — it is
+      the objectively correct semantic per the script's own docstring/
+      default and it eliminates a real, demonstrated false-positive class
+      — but the specific mechanism this dissent describes (a
+      false-positive generator, not a silent-pass instrument) is offered
+      as a correction for team-lead to weigh against whatever the
+      independent gate on #5269 actually measured, rather than silently
+      reported as agreement with a mechanism this session could not
+      reproduce.
+    note: >-
+      Not a cross-family seat — this session's own re-derivation, run
+      empirically rather than argued abstractly (3 scenarios, both directly
+      against `check()` and replayed through the real bash step — receipt
+      9). Surfaced rather than suppressed per this repo's own
+      anti-hallucination discipline: a claimed finding from another gate is
+      not exempt from independent verification any more than this session's
+      own claims are.
+
 tests:
-  - "No test suite change in this PR's own diff — it modifies only
-    .github/workflows/check-ledger-no-silent-loss.yml, which orchestrates
-    the ALREADY-tested scripts/check_ledger_no_silent_loss.py (its own guilt
-    AND innocence suite, scripts/tests/test_check_ledger_no_silent_loss.py,
-    is unchanged and still runs as this workflow's self-test step)."
-  - "New logic (bash step-summary/exit-propagation, github-script
-    comment-upsert) has no Python/pytest home — it is CI-YAML-embedded shell
-    and JS, verified instead via receipts 3-8 (actionlint, wrapped-JS syntax
-    check, 4-case mock harness, 2 real-scenario bash replays) rather than a
-    committed test file, matching this repo's existing convention for
+  - "This PR's own diff now includes ONE new test:
+    test_innocence_a_frozen_base_sha_would_false_flag_a_legitimate_merge in
+    scripts/tests/test_check_ledger_no_silent_loss.py — closes the
+    coverage gap the fix (dissent above, receipt 9) exposed: every prior
+    test in that file exercised `check()` with the DEFAULT base_ref
+    (`origin/main`, kept live in the test harness via `_mark_as_origin_main`
+    at each step), never the frozen-SHA shape the real CI workflow's
+    ORIGINAL invocation actually passed — so the script's own unit tests
+    could pass 11/11 while the workflow's real argument shape produced a
+    live false positive. The new test explicitly exercises both shapes on
+    one scenario and asserts the divergent verdicts (frozen SHA -> 1,
+    default/live -> 0)."
+  - "Full suite: 11 passed in 3.10s (receipt 12)."
+  - "The remaining workflow logic (bash step-summary/exit-propagation,
+    github-script comment-upsert) still has no Python/pytest home — it is
+    CI-YAML-embedded shell and JS, verified via receipts 3-5 and 10
+    (actionlint, wrapped-JS syntax check, 4-case mock harness, 2
+    real-scenario + 2 fix-scenario bash replays) rather than a committed
+    test file, matching this repo's existing convention for
     workflow-embedded logic (e.g. tests.yml's own test-summary
     github-script step has no separate unit test either)."
 
@@ -240,13 +378,16 @@ static:
     comment at that spot)."
 
 notes:
-  - "This PR does not touch scripts/check_ledger_no_silent_loss.py or its
-    test file — the underlying invariant logic (LOST/DUPLICATED detection,
-    identity keying, the two-invariant design) is unchanged and already
-    proven by its own guilt/innocence suite. This PR's entire scope is
-    making that already-correct verdict reach a reader: real exit code
-    instead of continue-on-error, a step summary, and a self-updating PR
-    comment on non-clean verdicts."
+  - "CORRECTED (second pass, same day): this PR does NOT leave
+    scripts/check_ledger_no_silent_loss.py or its test file untouched — the
+    script itself is still unmodified (the two-invariant LOST/DUPLICATED
+    logic and identity keying are unchanged), but its test file gained one
+    new test (see `tests:` above) closing a real coverage gap the workflow
+    fix exposed. This PR's scope is now: (1) make the script's
+    already-correct verdict reach a reader (real exit code, step summary,
+    self-updating PR comment — unchanged from the first pass), AND (2) stop
+    feeding that already-correct script a frozen base_ref that could
+    false-flag legitimate, correctly-merged closures (this pass)."
   - "Per team-lead's explicit instruction, this PR does not touch PR
     #5279, #5244, or #5283 (all armed/frozen from earlier in this session)
     and does not add this workflow to branch protection (operator-only

@@ -24,6 +24,20 @@ objective: |
   Gear 3 by PATH, deterministic: `python3 scripts/evidence_pack_lint.py
   --print-floor --changed-files-file <enumeration>` -> 3 (the diff touches
   `.github/workflows/check-ledger-no-silent-loss.yml`). Honored, not argued with.
+
+  SECOND PASS, same day: an independent gate reviewing this PR before merge
+  flagged that the invariant-check step passed `--base-ref "$BASE_SHA"`
+  (`pull_request.base.sha`, the PR's frozen fork point) to the script —
+  structurally an ancestor of HEAD, so `check()`'s own
+  `git merge-base(base_ref, head)` always resolves back to that same frozen
+  commit, collapsing `main_entries` onto `base_entries` regardless of what
+  main has done since. Fixed to `--base-ref origin/main`, fetched by name.
+  Empirical testing of the actual defect's polarity is recorded as a genuine
+  `dissent:` entry in pack.yml — the fix direction matches what was
+  instructed; the mechanism this session could independently reproduce
+  (false-positive generator on legitimate closures, not a silent-pass
+  instrument) differs from how it was described, and is surfaced rather than
+  silently agreed with.
 constraints:
   - "Must stay NON-REQUIRED (team-lead's explicit instruction, and the check's
     own header comment/history): promoting to a required branch-protection
@@ -50,7 +64,15 @@ constraints:
     plus reading the commit messages, and re-verified against the same real
     SHAs that the commit message DOES explain the removal (receipt 7)."
   - "No PII/OSINT in any artifact — this is pure CI-plumbing (one workflow
-    YAML file). Nothing here touches client data."
+    YAML file, one test-file addition). Nothing here touches client data."
+  - "The `--base-ref` fix must be proven against the WORKFLOW's actual
+    invocation path, not just the script in isolation — replayed through
+    the real extracted bash step (receipt 10), not only `check()` called
+    directly (receipt 9)."
+  - "No bare conflict-marker (`<<<<<<<`/`>>>>>>>`) grep may exist anywhere
+    on this PR's surface — PENDING-ARMS.md carries 9 of each as quoted
+    prose describing past scars, a known false-positive trap. Checked:
+    N/A, nothing on this surface greps for markers (receipt 11)."
 acceptance:
   - "actionlint passes clean on the modified workflow file (receipt 3)."
   - "The embedded github-script JS is syntactically valid when wrapped the way
@@ -70,8 +92,16 @@ acceptance:
     rc=0/existing-comment (updateComment to 'now clean'), rc=2/existing
     (updateComment with DUPLICATED direction) — all 4 run without exception
     and produce the expected body content (receipt 5)."
-  - "Net diff stays inside the one-PR-one-concern guideline: 1 file, 171 net
-    lines (174 insertions / 3 deletions) — a single workflow YAML file."
+  - "The base-ref fix eliminates a real, demonstrated false-positive class
+    (a legitimate closure the branch correctly merged in, mistakenly
+    flagged as a loss) without losing sensitivity to real accidental loss —
+    both directions verified against `check()` directly (receipt 9) AND
+    against the real bash step (receipt 10)."
+  - "Net diff: 2 files, 263 net lines — two commits within one
+    PR-one-concern scope (wiring the verdict to a reader; feeding it a
+    base_ref that doesn't false-flag legitimate closures), evidence/ pack
+    files excluded from this count per this repo's convention (they
+    document the change, not the change itself)."
 consumer_map:
   - ".github/workflows/check-ledger-no-silent-loss.yml — the file itself; this
     PR is a self-contained wiring fix with no other file depending on its
@@ -108,11 +138,17 @@ grader: |
   verification receipts below — flagged as a limitation, not concealed. The
   mitigating factor: every claim below is a COMMAND RUN THIS TURN against real
   data (actionlint, a JS syntax check under the actual execution wrapper, two
-  live git-history replays of real PR SHAs, a 4-case mock harness), not a
-  self-report of intent. No cross-family refuter was dispatched for this
-  specific PR — team-lead's mandate did not request one and the change is
-  CI-plumbing (a YAML/JS wiring fix around an already-tested Python script),
-  not a new invariant or a business decision.
+  live git-history replays of real PR SHAs, a 4-case mock harness, 3 crafted
+  scenarios run directly against check(), a real bash-step replay of the fix),
+  not a self-report of intent. An INDEPENDENT gate DID review this PR before
+  merge (its finding — the frozen base_ref — is what this second pass fixes),
+  partially offsetting the single-session limitation; this session's own
+  empirical testing of that finding produced a genuine, disclosed dissent
+  (pack.yml `dissent:`) on the exact mechanism rather than silent agreement.
+  No cross-family refuter was separately dispatched for this specific PR —
+  team-lead's mandate did not request one and the change is CI-plumbing (a
+  YAML/JS wiring fix plus one base_ref argument correction around an
+  already-tested Python script), not a new invariant or a business decision.
 budget: |
   Single-lane CI-plumbing wiring fix, no new script, no cloud LLM spend beyond
   this session's own interactive turns. Flat-subscription only.
