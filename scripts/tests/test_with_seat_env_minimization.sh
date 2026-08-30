@@ -17,6 +17,14 @@ trap 'rm -rf "$TEMP_DIR"' EXIT HUP INT TERM
 TOTAL=0
 FAILED=0
 
+# On failure, surface the broker's own stderr from the most recent invocation.
+#
+# Without this a red CI run says only WHICH check failed, never why: the broker writes
+# diagnostics to a captured file, so the job log shows a bare "FAIL" and the next move
+# is a guess. Measured cost of not having it: a full CI cycle unable to distinguish a
+# missing interpreter from a refused seat. A corpus that can go red without saying why
+# spends its reader's time instead of its own.
+LAST_STDERR=""
 check() {
   local label="$1"
   shift
@@ -25,6 +33,9 @@ check() {
     printf 'PASS %s\n' "$label"
   else
     printf 'FAIL %s\n' "$label"
+    if [ -n "$LAST_STDERR" ] && [ -s "$LAST_STDERR" ]; then
+      printf '     broker stderr: %s\n' "$(head -c 500 "$LAST_STDERR" | tr '\n' '|')"
+    fi
     FAILED=$((FAILED + 1))
   fi
 }
@@ -86,6 +97,7 @@ export FAKE_PLANTED_TOKEN_FOR_TEST
 "$capture" "$output"
 check "guilt fixture exposes planted inherited name" grep -qx 'FAKE_PLANTED_TOKEN_FOR_TEST' "$output"
 
+LAST_STDERR="$stderr_file"
 WITH_SEAT_REGISTRY="$registry" "$BROKER" test-seat env-capture "$output" >"$TEMP_DIR/stdout" 2>"$stderr_file"
 check "innocence planted name absent" bash -c '! grep -qx FAKE_PLANTED_TOKEN_FOR_TEST "$1"' _ "$output"
 printf '%s\n' HOME PATH TERM LANG LC_ALL TMPDIR | LC_ALL=C sort >"$TEMP_DIR/expected"
@@ -127,10 +139,12 @@ writable_status=$?
 check "group/world-writable registry refuses" test "$writable_status" -ne 0
 chmod 600 "$registry"
 
+LAST_STDERR="$stderr_file"
 WITH_SEAT_REGISTRY="$registry" "$BROKER" test-seat exit-seven >"$TEMP_DIR/stdout" 2>"$stderr_file"
 exit_seven_status=$?
 check "child exit status preserved" test "$exit_seven_status" -eq 7
 
+LAST_STDERR="$stderr_file"
 WITH_SEAT_REGISTRY="$registry" "$BROKER" test-seat self-term >"$TEMP_DIR/stdout" 2>"$stderr_file"
 self_term_status=$?
 check "child TERM signal preserved" test "$self_term_status" -eq 143
@@ -178,6 +192,7 @@ sleep 1
 kill -TERM "$broker_pid" 2>/dev/null
 wait "$broker_pid"
 broker_term_status=$?
+LAST_STDERR="$term_broker_out"
 check "a TERM to the broker is not swallowed" test "$broker_term_status" -eq 143
 
 # THE REAL REGISTRY, not a synthetic seat.
