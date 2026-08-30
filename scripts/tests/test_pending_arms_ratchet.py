@@ -397,6 +397,41 @@ def test_ratchet_selftest_returns_zero():
     assert par.ratchet_selftest() == 0
 
 
+def test_ratchet_selftest_actually_runs_its_cases(capsys):
+    """`assert ratchet_selftest() == 0` alone is a tautology.
+
+    Measured by the cross-family gate: replacing the whole self-test body with
+    `return 0` leaves that assertion — AND the workflow's stand-alone self-test
+    step — green, so the thing claimed to ARM this gate would be arming nothing.
+    This pins the corpus itself: the named cases must be present, must all have
+    passed, and must number what the design says they number.
+    """
+    cases = par.ratchet_selftest(return_cases=True)
+    assert isinstance(cases, list) and len(cases) >= 14, f"only {len(cases)} cases"
+    names = [c[0] for c in cases]
+    assert all(c[1] for c in cases), [c for c in cases if not c[1]]
+
+    # The load-bearing ones by name — each is a distinct scar, not a variant.
+    for needle in (
+        "premise:",                       # fixtures are real rows, not MALFORMED
+        "+1 overdue row -> RED",          # the first bite
+        "a FRESH row added -> CLEAN",     # what a snapshot gate gets wrong
+        "a row CLOSED -> CLEAN",
+        "NEW sufficient override",
+        "INHERITED override authorises nothing",
+        "FENCED example override authorises nothing",
+        "empty reason -> RED",
+        "prose quoting an override is not an override",
+        "5000-digit ceiling",
+        "malformed override dicts do not raise",
+        "delta is identical at two far-apart dates",
+    ):
+        assert any(needle in n for n in names), f"self-test lost its {needle!r} case"
+
+    out = capsys.readouterr().out
+    assert "cases behaved as specified" in out, "the self-test must SAY what it did"
+
+
 # ---------------------------------------------------------------------------
 # F. run_ratchet end-to-end, in a real git repo — the invariant, pinned where
 #    it can actually be broken.
@@ -485,3 +520,118 @@ def test_unresolvable_merge_base_is_cannot_verify_and_never_falls_back(tmp_path)
     assert isinstance(why, str) and why.strip(), "the reason must be reportable"
     # And the CLI surface agrees: 3, not 0.
     assert par.run_ratchet(ledger, par._parse_now("2026-06-02"), None) == 3
+
+
+def test_an_override_already_on_the_base_does_not_licence_this_branch(tmp_path):
+    """The BLOCKER the cross-family gate found, pinned end-to-end.
+
+    Sequence it describes: PR A raises the count and writes `<=445`; it merges.
+    PR B branches from that, adds another overdue row, writes nothing. If HEAD's
+    overrides are parsed without asking which of them are NEW, PR B inherits a
+    sufficient ceiling and exits 0 — and the claim that "the next increase needs
+    a new, separately reviewed ceiling" is simply false.
+    """
+    ov = "RATCHET-OVERRIDE: tech_debt_overdue<=445 -- PR A's reviewed ceiling\n"
+    old_row = "- opened 2026-06-01 (t) | **row A** | wire it | session | CI red\n"
+    new_row = "- opened 2026-06-01 (t) | **row B** | wire it | session | CI red\n"
+
+    # BASE already carries A's override; HEAD adds a row and nothing else.
+    ledger, base_sha = _git_repo_with_ledger(
+        tmp_path, base_text=old_row + ov, head_text=old_row + new_row + ov
+    )
+    late = par._parse_now("2026-09-01")  # both rows overdue by now
+    assert par.run_ratchet(ledger, late, base_sha) == 1, (
+        "an inherited ceiling must authorise nothing"
+    )
+
+
+def test_a_new_override_in_this_branch_does_licence_it(tmp_path):
+    """The innocence half — otherwise the fix above is just 'always red'."""
+    old_row = "- opened 2026-06-01 (t) | **row A** | wire it | session | CI red\n"
+    new_row = "- opened 2026-06-01 (t) | **row B** | wire it | session | CI red\n"
+    fresh_ov = "RATCHET-OVERRIDE: tech_debt_overdue<=2 -- this branch's own, reviewed\n"
+    ledger, base_sha = _git_repo_with_ledger(
+        tmp_path, base_text=old_row, head_text=old_row + new_row + fresh_ov
+    )
+    late = par._parse_now("2026-09-01")
+    assert par.run_ratchet(ledger, late, base_sha) == 0
+
+
+def test_an_unreadable_head_is_cannot_verify_not_an_increase(tmp_path):
+    """Exit 3, never 1. Conflating "could not read" with "this branch raised the
+    count" is how a CANNOT-VERIFY gets acted on as a real finding.
+    """
+    row = "- opened 2026-06-01 (t) | **row A** | wire it | session | CI red\n"
+    ledger, base_sha = _git_repo_with_ledger(tmp_path, base_text=row, head_text=row)
+    ledger.write_bytes(b"- opened 2026-06-01 (t) | **row \xff\xfe** | x | s | p\n")
+    assert par.run_ratchet(ledger, par._parse_now("2026-09-01"), base_sha) == 3
+
+
+def test_selftest_premise_rejects_a_row_the_parser_calls_MALFORMED(tmp_path):
+    """A count-only premise is satisfied by garbage.
+
+    The blank-owner row below is exactly the one the cross-family gate produced:
+    the real parser classes it MALFORMED, its overdue count is still 0, so a
+    premise that only looked at counts stayed true and every "FRESH row added ->
+    CLEAN" case downstream proved nothing (W108).
+    """
+    now = par._parse_now("2026-08-30")
+    good_overdue = tmp_path / "a.md"
+    good_overdue.write_text(
+        "- opened 2026-08-01 (t) | **overdue row** | wire it | session | CI red\n",
+        encoding="utf-8",
+    )
+    malformed_fresh = tmp_path / "b.md"
+    malformed_fresh.write_text(
+        "- opened 2026-08-29 (t) | **fresh row** | wire it | | CI red\n", encoding="utf-8"
+    )
+    ov = par.load_entries(good_overdue, now)
+    bad = par.load_entries(malformed_fresh, now)
+
+    # Premise of the premise: this really is the count-blind case.
+    assert par.compute_counts(bad)["tech_debt_overdue"] == 0
+    assert bad[0].cls == par.CLASS_MALFORMED
+
+    assert par.selftest_premise_holds(ov, bad) is False
+    good_fresh = tmp_path / "c.md"
+    good_fresh.write_text(
+        "- opened 2026-08-29 (t) | **fresh row** | wire it | session | CI red\n",
+        encoding="utf-8",
+    )
+    assert par.selftest_premise_holds(ov, par.load_entries(good_fresh, now)) is True
+
+
+def _write(tmp_path, name: str, line: str):
+    p = tmp_path / name
+    p.write_text(line if line.endswith("\n") else line + "\n", encoding="utf-8")
+    return par.load_entries(p, par._parse_now("2026-08-30"))
+
+
+def test_selftest_premise_rejects_EACH_way_a_fixture_can_be_the_wrong_row(tmp_path):
+    """Every clause of the premise, not just one.
+
+    Measured: with only the MALFORMED case above, mutating the premise's
+    overdue-BUCKET clause to `True` left the whole suite green — i.e. seven of
+    the eight clauses were decoration. A premise is the one check that makes
+    every downstream case non-vacuous; it does not get to be half-tested.
+    """
+    OVERDUE = "- opened 2026-08-01 (t) | **overdue row** | wire it | session | CI red"
+    FRESH = "- opened 2026-08-29 (t) | **fresh row** | wire it | session | CI red"
+    MALFORMED = "- opened 2026-08-29 (t) | **fresh row** | wire it | | CI red"
+
+    good_ov = _write(tmp_path, "ov.md", OVERDUE)
+    good_fr = _write(tmp_path, "fr.md", FRESH)
+    assert par.selftest_premise_holds(good_ov, good_fr) is True, "the honest pair must pass"
+
+    # overdue side is not overdue at all (bucket FRESH) — the clause the
+    # MALFORMED case cannot reach.
+    assert par.selftest_premise_holds(_write(tmp_path, "x1.md", FRESH), good_fr) is False
+    # overdue side unparseable
+    assert par.selftest_premise_holds(_write(tmp_path, "x2.md", MALFORMED), good_fr) is False
+    # fresh side is actually overdue
+    assert par.selftest_premise_holds(good_ov, _write(tmp_path, "x3.md", OVERDUE)) is False
+    # fresh side unparseable
+    assert par.selftest_premise_holds(good_ov, _write(tmp_path, "x4.md", MALFORMED)) is False
+    # wrong cardinality on either side
+    assert par.selftest_premise_holds(_write(tmp_path, "x5.md", OVERDUE + "\n" + OVERDUE), good_fr) is False
+    assert par.selftest_premise_holds(good_ov, _write(tmp_path, "x6.md", FRESH + "\n" + FRESH)) is False

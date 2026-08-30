@@ -397,7 +397,18 @@ def pending_arms_overdue() -> tuple[list[str], list[str]]:
         # this branch; naming the oldest is also what makes the `rows` detail
         # below worth reading. `or 0` because a drifted payload can carry
         # age_days present-but-null, and sorting on None raises.
-        oldest = sorted(overdue, key=lambda e: (e.get("age_days") or 0), reverse=True)
+        def _age(e: dict) -> int:
+            # int() and not `or 0`: a drifted payload can carry age_days as a
+            # STRING, and "9" sorts after "10" while raising outright the moment
+            # one entry is an int and its neighbour is not — either way the line
+            # would still be labelled "oldest" (cross-family gate finding).
+            v = e.get("age_days")
+            try:
+                return int(v)  # type: ignore[arg-type]
+            except (TypeError, ValueError):
+                return -1  # unknown age sorts LAST, never masquerades as oldest
+
+        oldest = sorted(overdue, key=_age, reverse=True)
         if n_overdue or overdue:
             # `or "?"` and not a get() default: a drifted payload can carry the
             # key with a null value, and None[:70] would raise inside the
@@ -406,8 +417,8 @@ def pending_arms_overdue() -> tuple[list[str], list[str]]:
             lines.append(f"{n_overdue or len(overdue)} armamenti sospesi OVERDUE — oldest: {top}")
             if _mode == "rows":
                 for e in oldest[:MAX_PENDING_ARMS_ROWS]:
-                    age = e.get("age_days")
-                    age_s = f"{age}d" if isinstance(age, int) else "?d"
+                    a = _age(e)
+                    age_s = f"{a}d" if a >= 0 else "?d"
                     art = (e.get("artifact") or "?")[:70]
                     lines.append(f"  · {age_s} {art}")
     except Exception as e:

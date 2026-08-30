@@ -305,3 +305,59 @@ def test_rows_mode_names_the_oldest_rows_and_default_mode_still_does_not(monkeyp
     assert "row-14" in detailed[0], "summary must name the OLDEST, not the first in file order"
     assert detailed[1].strip().startswith("· 14d row-14")
     assert detailed[-1].strip().startswith("· 5d row-5")
+
+
+def test_live_producer_and_live_consumer_actually_agree(monkeypatch):
+    """The two key-presence tests above compare the producer against constants
+    this test file owns. That is not the contract: renaming the CONSUMER to read
+    `classification` again while leaving those constants at `class` keeps them
+    green (cross-family gate finding — the named agreement was not being tested).
+
+    This one derives from BOTH sides: the real reporter, the real digest, no
+    fake in between. If the producer renames the counts key the line disappears;
+    if it renames the per-entry key the digest's own drift check fires and
+    `errs` is non-empty; if the consumer renames either, the same happens. Only
+    genuine agreement is silent.
+    """
+    monkeypatch.setenv("ORGANISM_DIGEST_PENDING_ARMS", "1")
+    lines, errs = organism_digest.pending_arms_overdue()
+
+    assert errs == [], f"producer and consumer disagree: {errs}"
+    # The live ledger is deeply overdue and has been for months; a run that
+    # produced NO line would mean the count key vanished, not that the backlog
+    # cleared. If this repo ever genuinely reaches zero overdue rows, this
+    # assertion is the right place to find out.
+    assert len(lines) == 1, f"expected exactly the summary line, got {lines}"
+    assert "armamenti sospesi OVERDUE" in lines[0]
+
+    payload = _live_payload()
+    n = payload["counts"][_DIGEST_READS_COUNTS_KEY]
+    assert lines[0].startswith(f"{n} "), (
+        f"the digest reported a different number ({lines[0]!r}) than the reporter "
+        f"computed ({n}) — the two are reading different things"
+    )
+
+
+def test_string_ages_do_not_misorder_or_crash_the_oldest_line(monkeypatch, tmp_path):
+    """A drifted payload can carry `age_days` as a STRING.
+
+    Two ways that used to go wrong (cross-family gate): all-string ages sort
+    lexically, so "9" beats "10" and the line says "oldest" about the youngest;
+    mixed int/str raises inside the sort and the catch-all collapses the whole
+    alarm to a generic "reporter failed". Neither may happen.
+    """
+    entries = [
+        _entry("TECH-DEBT", artifact="row-9") | {"age_days": "9"},
+        _entry("TECH-DEBT", artifact="row-10") | {"age_days": "10"},
+        _entry("TECH-DEBT", artifact="row-int-7") | {"age_days": 7},
+        _entry("TECH-DEBT", artifact="row-null") | {"age_days": None},
+    ]
+    root = _fake_reporter(tmp_path, {"counts": {"tech_debt_overdue": 4}, "entries": entries})
+    monkeypatch.setattr(organism_digest, "_repo_root", lambda: root)
+    monkeypatch.setenv("ORGANISM_DIGEST_PENDING_ARMS", "rows")
+
+    lines, errs = organism_digest.pending_arms_overdue()
+    assert errs == [], f"a stringly-typed age must not cost the alarm: {errs}"
+    assert "row-10" in lines[0], f"10 is older than 9: {lines[0]!r}"
+    assert lines[1].strip().startswith("· 10d row-10")
+    assert lines[-1].strip().startswith("· ?d row-null"), "unknown age sorts LAST, never oldest"
