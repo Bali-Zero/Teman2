@@ -33,7 +33,7 @@ seat_diversity_note: >-
 diff:
   net_lines: >-
     AS OF a361363cc3 (pinned — an unqualified byte count inside a file every
-    later commit rewrites decays by construction): 7 files, +2944/-0 against the
+    later commit rewrites decays by construction): 7 files, +2947/-0 against the
     merge base, INCLUDING this evidence pack (3 of the 7 files) —
     which is what `git diff --numstat` measures, and a figure that quietly
     excluded itself would be the convenient half-truth this pack spends its
