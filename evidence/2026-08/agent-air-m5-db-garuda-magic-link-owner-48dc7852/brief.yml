@@ -42,8 +42,12 @@ constraints:
     the only one of migration 285's four that is SECURITY DEFINER AND locks the
     ledger: active_garuda_magic_link_policy_available is not SECURITY DEFINER and
     takes no lock; neither guard_ function touches the ledger at all."
-  - "Not in this PR by design: the superuser ALTER itself (post-merge apply step),
-    and the magic-link ownership check (#5298, already in the merge queue)."
+  - "Not part of this DIFF, and both have since happened out of band — corrected
+    2026-08-30 after the Gear-3 gate flagged this constraint as contradicting the
+    pack. (a) The superuser ALTER landed on the production primary at 07:03Z, so
+    the outage is already over; the migration exists so every other environment
+    converges without a human retyping it. (b) The magic-link ownership check
+    (#5298) merged and deployed at 08:19Z, and PROVE-LIVE F3 is now green."
 acceptance:
   - text:
       "WHEN migration 299 is absent — the real state of production until 2026-08-30 — the static lint

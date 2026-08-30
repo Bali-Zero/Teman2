@@ -79,10 +79,22 @@ def _definer_functions_locking_the_ledger(sql: str) -> set[str]:
         if tag is None:
             continue
         closing = sql.find(tag.group(0), tag.end())
-        body = sql[tag.end() : closing if closing != -1 else len(sql)]
+        if closing == -1:
+            body, after = sql[tag.end() :], ""
+        else:
+            body = sql[tag.end() : closing]
+            end = sql.find(";", closing + len(tag.group(0)))
+            after = sql[closing + len(tag.group(0)) : end if end != -1 else len(sql)]
         header = sql[match.end() : tag.start()]
+        # The attribute may sit on EITHER side of the body -- Postgres accepts
+        # `... SECURITY DEFINER AS $b$...$b$;` and `... AS $b$...$b$ LANGUAGE
+        # plpgsql SECURITY DEFINER;` alike. Reading only the pre-body header
+        # made the second ordering invisible: the gate wrote that migration and
+        # the lint stayed green with the defect present. Zero of the twelve
+        # migrations on disk use it, which is exactly why nothing caught it.
+        attributes = (header + " " + after).upper()
         if (
-            "SECURITY DEFINER" in header.upper()
+            "SECURITY DEFINER" in attributes
             and LEDGER_TABLE in body
             and LOCK_CLAUSE.search(body)
         ):
@@ -95,6 +107,13 @@ ALTER_OWNER = re.compile(
     re.IGNORECASE,
 )
 TRANSFER_ARRAY_ENTRY = re.compile(r"'(?:public\.)?(\w+)\s*\([^)]*\)'")
+ALTER_FORMAT = re.compile(
+    # the first argument may be a scalar variable (299), a loop variable (281)
+    # or a subscript into the array itself -- all three reach the ALTER
+    r"format\s*\(\s*'ALTER\s+FUNCTION\s+%s\s+OWNER\s+TO\s+%I'\s*,\s*(\w+)(?:\[[^\]]*\])?\s*,\s*(\w+)",
+    re.IGNORECASE,
+)
+FOREACH = re.compile(r"FOREACH\s+(\w+)\s+IN\s+ARRAY\s+(\w+)", re.IGNORECASE)
 
 
 def _transfers_in(sql: str) -> set[str]:
@@ -122,9 +141,38 @@ def _transfers_in(sql: str) -> set[str]:
             transferred.add(name)
     for block in DO_BLOCK.finditer(sql):
         body = block.group(0)
-        if LEDGER_OWNER in body and "OWNER TO" in body.upper():
-            transferred.update(TRANSFER_ARRAY_ENTRY.findall(body))
+        if LEDGER_OWNER not in body:
+            continue
+        transferred |= _do_block_transfers(body)
     return transferred
+
+
+def _do_block_transfers(body: str) -> set[str]:
+    """Signatures a DO block actually feeds to its ``ALTER ... OWNER TO``.
+
+    Collecting every quoted signature in the block was the same laundering
+    codex rejected at file level, fixed only one level down: a block that
+    transfers one function while merely naming another -- `to_regprocedure(
+    'public.other()')` is migration 299's own idiom -- marked the second one
+    transferred too. So the signature must reach the ALTER: it is read from the
+    variable that `format('ALTER FUNCTION %s OWNER TO %I', <var>, ...)` passes,
+    either assigned to it directly (299) or held in the array it iterates with
+    FOREACH (281).
+    """
+    names: set[str] = set()
+    for var, _role in ALTER_FORMAT.findall(body):
+        sources = {var}
+        for loop_var, array_var in FOREACH.findall(body):
+            if loop_var == var:
+                sources.add(array_var)
+        for source in sources:
+            for literal in re.finditer(
+                rf"\b{re.escape(source)}\b[^;]*?:=\s*(ARRAY\s*\[[^]]*\]|'[^']*')",
+                body,
+                re.IGNORECASE,
+            ):
+                names |= set(TRANSFER_ARRAY_ENTRY.findall(literal.group(1)))
+    return names
 
 
 def _functions_transferred_to_the_ledger_owner() -> set[str]:
@@ -251,3 +299,89 @@ END;
 $t$;
 """
     assert "bad_trigger" in _transfers_in(sql)
+
+
+# ============================================================
+# The Gear-3 gate's counterexamples (2026-08-30)
+# ============================================================
+#
+# An independent on-disk gate broke the version above with two shapes the
+# adversarial round had not reached. Both were real: the lint stayed green with
+# the defect present. They are kept here for the same reason as the block above.
+
+def test_security_definer_declared_after_the_body_is_still_an_offender():
+    """Postgres accepts the attribute on either side of the body.
+
+    Reading only the text BEFORE the dollar-tag made this ordering invisible.
+    No migration on disk uses it, which is precisely why nothing caught it —
+    a corpus that happens to be uniform is not a guarantee about the next file.
+    """
+    sql = """
+CREATE FUNCTION public.late_definer()
+RETURNS trigger
+AS $body$
+BEGIN
+    PERFORM 1 FROM public.visa_decision_retention_policies FOR SHARE;
+    RETURN NEW;
+END
+$body$ LANGUAGE plpgsql SECURITY DEFINER;
+"""
+    assert "late_definer" in _definer_functions_locking_the_ledger(sql)
+
+
+def test_a_do_block_does_not_launder_a_signature_it_merely_names():
+    """The signature must REACH the ALTER, not just appear in the same block.
+
+    `to_regprocedure('public.<name>()')` is migration 299's own idiom, so a
+    block that transfers one function while checking another marked both.
+    """
+    sql = _BAD_TRIGGER + """
+DO $x$
+DECLARE
+    ledger_owner constant text := 'visa_ledger_owner';
+    signature constant text := 'public.some_other_helper()';
+    probe oid;
+BEGIN
+    probe := to_regprocedure('public.bad_trigger()');
+    EXECUTE format('ALTER FUNCTION %s OWNER TO %I', signature, ledger_owner);
+END;
+$x$;
+"""
+    transferred = _transfers_in(_forward(sql))
+    assert "some_other_helper" in transferred, "the real transfer must still count"
+    assert "bad_trigger" not in transferred, (
+        "a signature the block merely names never reaches the ALTER"
+    )
+
+
+def test_the_two_real_migration_shapes_still_count_as_transfers():
+    """Innocence control for the fix above: 299's scalar and 281's FOREACH."""
+    scalar = """
+DO $x$
+DECLARE
+    ledger_owner constant text := 'visa_ledger_owner';
+    signature constant text := 'public.scalar_shape()';
+BEGIN
+    EXECUTE format('ALTER FUNCTION %s OWNER TO %I', signature, ledger_owner);
+END;
+$x$;
+"""
+    loop = """
+DO $y$
+DECLARE
+    ledger_owner constant text := 'visa_ledger_owner';
+    target_function constant text[] := ARRAY[
+        'public.loop_shape_one()',
+        'public.loop_shape_two(integer, text)'
+    ];
+    signature text;
+BEGIN
+    FOREACH signature IN ARRAY target_function
+    LOOP
+        EXECUTE format('ALTER FUNCTION %s OWNER TO %I', signature, ledger_owner);
+    END LOOP;
+END;
+$y$;
+"""
+    assert "scalar_shape" in _transfers_in(scalar)
+    assert {"loop_shape_one", "loop_shape_two"} <= _transfers_in(loop)

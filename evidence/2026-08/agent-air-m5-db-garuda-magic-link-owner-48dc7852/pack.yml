@@ -18,6 +18,12 @@ lanes:
       codex-gpt-5.6-sol at xhigh effort (OpenAI, ChatGPT Pro flat subscription) — given the diff plus
       the production measurements and told to break both the migration and the lint. Returned REJECT
       with three findings, all CONFIRMED and all fixed; see dissent.
+  - lane: garuda-magic-link-owner-gate
+    role: review
+    seat:
+      claude-opus-5 on a FRESH context, dispatched as the Gear-3 final on-disk gate (the author never
+      gates its own diff). It ran the receipts rather than reading them, and broke the lint with two
+      shapes the first adversarial round had not reached — see dissent.
 seat_diversity: satisfied
 seat_diversity_note:
   "Build lane Anthropic, adversarial lane OpenAI — different families, and the grader is not the
@@ -26,7 +32,7 @@ seat_diversity_note:
   the author's own tests did not cover."
 diff:
   net_lines:
-    "6 files, +702/-0, computed by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
+    "6 files, +NETLINES, computed by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
     One new .sql migration, one new static test file, two touched Python files (the live preflight
     check and its independently frozen authority), and this evidence pair. Zero frontend, zero
     workflow, zero runtime request path."
@@ -119,6 +125,21 @@ receipts:
       bind_garuda_voa_check_retention_policy and bind_garuda_magic_link_token_retention_policy, and
       CANONICAL_SENSITIVE_FUNCTIONS in the test was updated in the same commit so the two cannot
       drift apart silently."
+  - claim:
+      "The Gear-3 gate's two counterexamples were real: with the pre-fix detectors both shapes pass
+      GREEN with the defect present. RED captured before the fix, GREEN after — the new tests are not
+      trivially true."
+    cmd:
+      "temporarily restore the old detectors (header-only SECURITY DEFINER scan; collect every quoted
+      signature in a DO block), then PYTHONPATH=. python -m pytest
+      backend/tests/db/test_retention_lock_triggers_are_ledger_owned.py"
+    exit: 1
+    ts: "2026-08-30T10:24:00Z"
+    seat: claude-opus-5
+    result:
+      "RED: 2 failed, 8 passed — test_security_definer_declared_after_the_body_is_still_an_offender
+      and test_a_do_block_does_not_launder_a_signature_it_merely_names. File restored from a copy and
+      `git status --porcelain` showed only the intended edit. With the fixes in place: 46 passed."
 pii_scan: clean
 pii_scan_note:
   "No client data was touched, read or transcribed. Production reads were catalog queries (pg_proc,
@@ -189,3 +210,35 @@ dissent:
       queued. Named here rather than left implicit: this PR ends the outage, it does not close that
       hole, and neither cure makes the other unnecessary — with #5298 alone the endpoint would still
       have answered 500."
+  - seat: claude-opus-5 (Gear-3 final on-disk gate, fresh context)
+    objection:
+      "The lint missed SECURITY DEFINER declared AFTER the body — `AS $b$...$b$ LANGUAGE plpgsql
+      SECURITY DEFINER;`, ordinary valid Postgres. The detector read only the text before the
+      dollar-tag, so an offender written that way passed green with the defect present. Zero of the
+      twelve migrations on disk use that ordering, which is exactly why nothing caught it."
+    status: CONFIRMED
+    resolution:
+      "The attribute is now read from both sides of the body, up to the statement's terminating
+      semicolon. The gate's own counterexample is kept as a test, and it fails against the previous
+      detector (RED captured, see receipts) — a corpus that happens to be uniform is not a guarantee
+      about the next file."
+  - seat: claude-opus-5 (Gear-3 final on-disk gate, fresh context)
+    objection:
+      "DO-block laundering, one level below the file-level laundering codex rejected: a block that
+      transfers one function while merely NAMING another marked both transferred, because every
+      quoted signature in the block was collected. `to_regprocedure('public.<name>()')` is migration
+      299's own idiom, so this is not an exotic shape."
+    status: CONFIRMED
+    resolution:
+      "A signature now counts only if it REACHES the ALTER: it is read from the variable that
+      `format('ALTER FUNCTION %s OWNER TO %I', <var>, ...)` passes — assigned directly (299's scalar),
+      held in the array that variable iterates with FOREACH (281), or subscripted from it. Three
+      tests pin it: the laundering case, and both real migration shapes as innocence controls."
+  - seat: claude-opus-5 (Gear-3 final on-disk gate, fresh context)
+    objection:
+      "The brief's constraints said the superuser ALTER and #5298 were 'not in this PR by design'
+      while the pack recorded both as already landed — the two documents contradicted each other."
+    status: CONFIRMED
+    resolution:
+      "The brief now says what is true: neither is part of this DIFF, and both happened out of band
+      during the work (ALTER 07:03Z, #5298 merged and deployed 08:19Z with F3 green)."
