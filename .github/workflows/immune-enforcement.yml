@@ -98,6 +98,7 @@ jobs:
               scripts/codex/codex-nightly-autofix-ci.sh|\
               scripts/tests/test_lint_home_fork.py|\
               scripts/tests/test_home_fork_stale_side_attribution.py|\
+              scripts/tests/test_home_fork_bak_shadows.py|\
               scripts/tests/test_home_fork_skipped_visibility.py|\
               scripts/tests/test_proprioception_home_fork_merge.py|\
               scripts/tests/test_proprioception_remedy_selection.py|\
@@ -425,6 +426,7 @@ jobs:
             scripts/tests/test_agent_start.py \
             scripts/tests/test_lint_home_fork.py \
             scripts/tests/test_lint_public_asset_refs.py \
+            scripts/tests/test_home_fork_bak_shadows.py \
             scripts/tests/test_home_fork_stale_side_attribution.py \
             scripts/tests/test_home_fork_skipped_visibility.py \
             scripts/tests/test_proprioception_home_fork_merge.py \

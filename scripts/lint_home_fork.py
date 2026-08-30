@@ -56,6 +56,7 @@ import json
 import os
 import plistlib
 import re
+import stat
 import socket
 import subprocess
 import sys
@@ -477,6 +478,202 @@ def _is_allowed(norm: str, home: Path, allow: list[str]) -> bool:
     return False
 
 
+# A `.bak` SEGMENT, never `"bak" in name` (superscar #3, the substring trap
+# applied to this rule's own trigger). The four dialects on the live disk are
+# `.bak`, `.bak-tcc-20260716`, `.bak.20260726b` and `.bak-sync`; a rule anchored
+# to `endswith(".bak")` would miss 82 of the 83 files actually there, and a bare
+# `".bak" in name` would incriminate `recipes.baklava`.
+#
+# Case-insensitive and digit-tolerant because the disk is not: HFS+/APFS are
+# case-INSENSITIVE by default, so `job.plist.BAK` is the same file to the OS and
+# a case-sensitive rule would miss it; `config.bak1` is the numbered convention
+# `cp` users reach for. `~` catches the backup-of-a-backup every editor writes
+# and a trailing space catches the accidental `cp x "x.bak "`. The class stays
+# safe — `baklava` fails on `l`, `bakery` on `e`.
+#
+# DECLARED LIMIT, not an oversight: this covers the `.bak` family ONLY. Other
+# backup conventions on this disk — `~` suffixes, `.orig` from patch, `.old`,
+# `.save`, editor `.swp` — are NOT reported. Widening is a measurement question
+# (which of them actually occur beside a declared payload) and would be its own
+# change with its own census; claiming coverage that was never measured is worse
+# than a narrow rule that says so.
+def _is_within(candidate: Path, home: Path) -> bool:
+    """Is `candidate` really inside `home`, once `..` and symlinks are spent?
+
+    A LEXICAL check is fooled, and this was MEASURED rather than reasoned:
+    `home in Path("<home>/../../usr/local/bin").parents` is **True**, because
+    `.parents` walks the string. That path resolves to `/usr/local/bin`.
+
+    `os.path.realpath` is used instead of `Path.resolve()` deliberately.
+    Measured on Python 3.11: `resolve()` on a symlink loop raises **RuntimeError**
+    ("Symlink loop from ..."), which is NOT an OSError and would sail straight
+    past the handlers below and crash the lint — a trap inside the fix for a
+    trap. `realpath` never raises: a loop comes back unresolved, a missing path
+    comes back as itself, and the stat below is left to render the verdict.
+
+    Both sides are realpath'd. On macOS `/tmp` is a symlink to `/private/tmp`,
+    so resolving only one side compares two spellings of one place and answers
+    False for a directory that is plainly inside HOME.
+    """
+    real_home = os.path.realpath(home)
+    real_cand = os.path.realpath(candidate)
+    return real_cand == real_home or real_cand.startswith(real_home + os.sep)
+
+
+_BAK_SHADOW_RE = re.compile(r"\.bak(?:$|[-._0-9~ ])", re.IGNORECASE)
+
+
+def discover_bak_shadows(
+    pairs: list[dict],
+    home: Path,
+    label: str,
+    errors: list[str],
+    include_system: bool = False,
+) -> list[str]:
+    """`.bak*` files sitting in a directory that holds a declared live payload.
+
+    WHY THIS IS A COVERAGE GAP AND NOT HOUSEKEEPING. `--check` compares exactly
+    the paths the registry names. A backup beside one of them is invisible to
+    it, and inherits everything the original had at the moment it was taken:
+
+      - W65: the 2026-05-31 sweep chmod'd the LIVE
+        `com.nuzantara.skills-bridge-consumer.plist` to 0400 and left its own
+        backup world-readable — with the 64-hex API key still inside. The
+        hardening hardened the file and not the copy it had just made.
+      - The resurrection surface: a `.bak` under `~/Library/LaunchAgents/` is
+        the reason a deliberately decommissioned job can come back. The WR2
+        canva-renderer scar names "preserving on disk under
+        ~/Library/LaunchAgents/ IS the attack surface for sibling-agent
+        resurrection" in those words.
+      - Silent-drift: a `.bak` of a script is a frozen fork of it, and the one
+        thing this whole lint exists to catch is a frozen fork nobody compares.
+
+    Reported, never fatal by default (`--strict-bak` opts in). Measured on Mini
+    2026-08-31: 83 of them across 9 declared-pair directories, 35 in
+    `~/.claude/hooks` alone. A finding that reddens every run from day one is a
+    finding somebody disarms; this one is loud and countable instead, so the
+    operator's purge has a number to shrink.
+
+    DELETION IS NOT THIS LINT'S JOB and is not done anywhere in this PR:
+    `~/.claude/hooks/` is live control-plane state, i.e. `operator[control-plane]`
+    per Part A §2 of the repo's CLAUDE.md.
+    """
+    findings: list[str] = []
+    dirs: dict[Path, list[str]] = {}
+    for pair in pairs:
+        # DELIBERATELY NOT machine-scoped, unlike every other check in this file.
+        # `pair_applies()` is right for the DIVERGENCE check: comparing a payload's
+        # content only means something where that payload is supposed to run.
+        # It is wrong here, because the thing being reported is a FILE THAT EXISTS
+        # ON THIS DISK. Measured on Mini 2026-08-31: filtering by machine hid 9 real
+        # `.bak` files in `~/scripts/cron-agent-python/` — a directory whose every
+        # declared pair is `machines:["pro"]` yet which is fully populated here. A
+        # Pro script's backup sitting on Mini leaks and resurrects exactly as well
+        # as a Mini one. `label` stays in the signature so the caller reads the same
+        # as its siblings and a future machine-aware rule has somewhere to land.
+        live = pair.get("live")
+        if not isinstance(live, str) or not live:
+            continue
+        # `expand_home()` is this file's OWN resolver and handles `~/`, `$HOME/`
+        # and `${HOME}/`. Hand-rolling a second one here (the first draft did,
+        # `~`-only) is a second source of truth for the same question, which is
+        # superscar #9 — and it silently missed `$HOME/...` pairs.
+        resolved = expand_home(live, home)
+        directory = resolved.parent
+        # The file's own stated policy, docstring line 39: "LaunchDaemons are
+        # scanned only with --system (user-level agents are the organism's
+        # surface; system domain is vendor territory)". MEASURED: the registry
+        # holds 7 pairs outside HOME (`/usr/local/bin`, `/Library/LaunchDaemons`,
+        # `/usr/local/lib/wa-codex-broker/...`). Scanning those unasked reports
+        # vendor backups as organism findings and lets a foreign unreadable
+        # directory raise the error bit.
+        if not include_system and not _is_within(directory, home):
+            continue
+        dirs.setdefault(directory, []).append(live)
+
+    seen_inodes: set[tuple[int, int]] = set()
+    for directory, declared_here in sorted(dirs.items()):
+        # `Path.is_dir()` CANNOT be the gate here. Measured 2026-08-31: it
+        # swallows OSError and returns False for a symlink loop (ELOOP/62) and
+        # for a stat denied by permissions — so "there is nothing here" and "I
+        # was not allowed to look" come back as the same answer, and the second
+        # one would be reported as a clean scan. That is W84 exactly: a scan
+        # that could not look is not a clean scan. stat() is called explicitly
+        # so the two cases stay distinguishable.
+        try:
+            st = directory.stat()
+        except (FileNotFoundError, NotADirectoryError):
+            continue  # genuinely absent on this machine — silent, and correct
+        except OSError as exc:
+            errors.append(
+                f"bak-scan unreachable ({type(exc).__name__}/errno {exc.errno}): {directory}"
+            )
+            continue
+        if not stat.S_ISDIR(st.st_mode):
+            continue
+        # Identity is the INODE, never the lexical path. On case-insensitive
+        # APFS `~/Scripts` and `~/scripts` are one directory with two spellings;
+        # a symlinked alias is the same again. Keying on the string would report
+        # the same 19 files twice and claim two affected directories where the
+        # disk has one.
+        ident = (st.st_dev, st.st_ino)
+        if ident in seen_inodes:
+            continue
+        seen_inodes.add(ident)
+        try:
+            entries = sorted(directory.iterdir())
+        except (FileNotFoundError, NotADirectoryError):
+            # Identical world-state to the stat branch above, one syscall later:
+            # the directory vanished or became a file between the two calls. A
+            # benign race. Calling it CANNOT-VERIFY here while calling it silent
+            # up there would give the same disk two opposite verdicts depending
+            # only on when it was observed.
+            #
+            # UNCOVERED BY TEST, and said so rather than counted as proven: both
+            # states are reachable here ONLY through a TOCTOU window between the
+            # stat above and this call, and there is no deterministic way to open
+            # that window from a fixture. A mutation narrowing this tuple to
+            # `(FileNotFoundError,)` survives the corpus. That is a real coverage
+            # gap, not an equivalent mutant — the branch matters in production and
+            # the test cannot reach it.
+            continue
+        except OSError as exc:
+            # A TCC denial on ~/.claude/hooks is exactly how this would
+            # otherwise report a serene zero over 35 files.
+            errors.append(f"bak-scan unreadable ({type(exc).__name__}): {directory}")
+            continue
+        # DECLARED LIMIT: a `.bak` DIRECTORY is reported and its CONTENTS are
+        # not walked, so `attic.bak/old.sh` is one finding ("attic.bak/") rather
+        # than the files inside it. Deliberate — the operator's next step for a
+        # directory is to look in it, and recursing turns one honest line into
+        # an unbounded listing — but it is a real blind spot, and it belongs in
+        # writing rather than in nobody's head.
+        # A `.bak` DIRECTORY (a whole backed-up hooks tree) and a `.bak` SYMLINK
+        # are both real surfaces — the first is more dangerous than a single
+        # file, the second is still something a restore can resurrect — so both
+        # are counted. They are ANNOTATED rather than silently called "files",
+        # because the operator's purge sequence differs for each and a count
+        # that hides the difference sends them at a `rm` that will not work.
+        shadows: list[str] = []
+        for entry in entries:
+            if not _BAK_SHADOW_RE.search(entry.name):
+                continue
+            try:
+                if entry.is_symlink():
+                    shadows.append(f"{entry.name} (symlink)")
+                    continue
+                shadows.append(f"{entry.name}/" if entry.is_dir() else entry.name)
+            except OSError:
+                shadows.append(f"{entry.name} (unstattable)")
+        if shadows:
+            findings.append(
+                f"{directory} — {len(shadows)} .bak shadow(s) beside "
+                f"{len(declared_here)} declared pair(s): {', '.join(shadows[:6])}"
+                + (f" (+{len(shadows) - 6} more)" if len(shadows) > 6 else "")
+            )
+    return findings
+
+
 def discover_undeclared(
     plist_dirs: list[Path],
     crontab_text: str,
@@ -602,6 +799,16 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true", help="declared pairs: live vs repo sha256")
     parser.add_argument("--discover", action="store_true", help="find undeclared HOME-executed payloads")
+    parser.add_argument(
+        "--strict-bak",
+        action="store_true",
+        help=(
+            "treat .bak shadows beside declared pairs as a failure too (default: "
+            "reported, exit unchanged — 83 pre-existing ones on Mini would make "
+            "every run red, and a check that is always red is a check somebody "
+            "turns off). Bit 8 in the exit code."
+        ),
+    )
     parser.add_argument("--json", action="store_true", help="machine-readable output")
     parser.add_argument(
         "--strict-checkout",
@@ -626,6 +833,18 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--plist-dir", type=Path, default=None, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
 
+    # `run_discover` below is `args.discover or not args.check`, so `--check
+    # --strict-bak` computes no shadows at all and bit 8 can never be set: the
+    # flag would be accepted, silently ignored, and the caller would read the
+    # green as "no backups". A flag that does nothing while looking like it did
+    # is superscar #2 in a single argument. Refuse it instead.
+    if args.strict_bak and args.check and not args.discover:
+        parser.error(
+            "--strict-bak has no effect with --check alone (the .bak scan lives in "
+            "--discover). Use --discover --strict-bak, or both modes."
+        )
+
+
     run_check = args.check or not args.discover
     run_discover = args.discover or not args.check
 
@@ -647,6 +866,7 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     breaches: list[str] = []
     undeclared: list[str] = []
+    bak_shadows: list[str] = []
     errors: list[str] = []
     stale_checkout: list[str] = []
     skipped_pairs: list[str] = []
@@ -703,8 +923,14 @@ def main(argv: Optional[list[str]] = None) -> int:
         undeclared = discover_undeclared(
             plist_dirs, crontab, args.home, args.repo_root, declared_lives, allow, errors
         )
+        bak_shadows = discover_bak_shadows(pairs, args.home, label, errors, args.system)
 
-    exit_code = (1 if breaches else 0) | (2 if undeclared else 0) | (4 if errors else 0)
+    exit_code = (
+        (1 if breaches else 0)
+        | (2 if undeclared else 0)
+        | (4 if errors else 0)
+        | (8 if (bak_shadows and args.strict_bak) else 0)
+    )
 
     if args.json:
         print(
@@ -718,6 +944,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                     "check_stale_checkout": stale_checkout,
                     "check_skipped_live_absent": skipped_pairs,
                     "discover_undeclared": undeclared,
+                    "discover_bak_shadows": bak_shadows,
                     "errors": errors,
                     "pairs_declared": len(pairs),
                     "exit": exit_code,
@@ -764,13 +991,36 @@ def main(argv: Optional[list[str]] = None) -> int:
             print(f"  - {f}")
         if not undeclared:
             print("  clean — every HOME-executed payload is declared, allowed, or repo-resident")
+        print(
+            f"[discover] .bak shadows beside declared pairs: {len(bak_shadows)} "
+            f"directory/ies{' (advisory — --strict-bak to fail on them)' if bak_shadows and not args.strict_bak else ''}"
+        )
+        for f in bak_shadows:
+            print(f"  ~ {f}")
+        if not bak_shadows:
+            # W84 in the OUTPUT layer, which is the layer a human actually reads:
+            # the exit code already carried bit 4, but the line above it said
+            # "clean" — so a scan that was DENIED printed the same word as a scan
+            # that found nothing. The refuter's own note: the existing test
+            # asserted the error bit and the error string, and never that the
+            # clean line was ABSENT, so a mutant printing it unconditionally
+            # survived. The verdict now names which of the two happened.
+            bak_scan_failed = [e for e in errors if e.startswith("bak-scan ")]
+            if bak_scan_failed:
+                print(
+                    f"  CANNOT-VERIFY — {len(bak_scan_failed)} director(y/ies) could not be "
+                    f"scanned; 'no shadows found' is not a claim this run can make"
+                )
+            else:
+                print("  clean — no .bak shadow beside any declared live payload")
     if errors:
         print(f"[errors] {len(errors)} operational error(s) — scan is PARTIAL, not clean:")
         for e in errors:
             print(f"  - {e}")
     if exit_code:
         print(
-            f"HOME-FORK LINT FAIL (exit {exit_code}: 1=diverged 2=undeclared 4=scan-error) — "
+            f"HOME-FORK LINT FAIL (exit {exit_code}: 1=diverged 2=undeclared 4=scan-error "
+            f"8=.bak shadows under --strict-bak) — "
             f"superscar #1: declare the pair in infra/home-fork/declared-pairs.json (then "
             f"realign), or allow-list a known-benign payload"
         )
