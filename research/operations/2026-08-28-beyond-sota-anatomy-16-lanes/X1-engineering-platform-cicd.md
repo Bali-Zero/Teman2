@@ -19,6 +19,7 @@ sources:
   - https://grafana.com/blog/ci-cd-observability-a-rich-new-opportunity-for-opentelemetry/
   - https://buildkite.com/docs/pipelines/best-practices/monitoring-and-observability
 status: DONE
+adversarial_review: kimi-k3
 ---
 
 > ## ⚠️ Read this before acting on anything below
@@ -224,3 +225,11 @@ Decisions only Zero can take:
 12. LaunchDarkly — Elite Performance with Trunk-based Development: https://launchdarkly.com/blog/elite-performance-with-trunk-based-development/
 13. Grafana Labs — CI/CD observability with OpenTelemetry: https://grafana.com/blog/ci-cd-observability-a-rich-new-opportunity-for-opentelemetry/
 14. Buildkite — Monitoring and observability best practices: https://buildkite.com/docs/pipelines/best-practices/monitoring-and-observability
+
+## Adversarial review
+
+**Reviewer: `kimi-k3` (Moonshot K3) and `codex` (OpenAI gpt-5.6-sol at xhigh effort), 2026-08-30 — cross-family, generator ≠ grader.** Neither seat wrote any part of this panel. Both read all 18 files of the set in full and were asked the *publication* question rather than a proof-reading one: what in this diff creates real incremental risk beyond what the repository already discloses, whether "it is already public elsewhere" is a sound argument or a rationalisation, whether the sequencing is wrong, and what is simply FALSE. Every concrete file claim either seat made was then re-derived independently with `grep`/`git` before being recorded, and objections that measurement falsified are kept as RETRACTED rather than quietly dropped. The full journal and the complete objection list, with per-objection status, are in this PR's evidence pack (`council-journal.jsonl` and the pack's `dissent` block).
+
+**Limits of this review, stated so it is not read as more than it was.** It happened at PUBLICATION time, not at authoring time: no seat re-derived this lane's technical findings against the codebase, so it is not a correctness review of the analysis. Nine numeric objections across the set were recorded PLAUSIBLE because the fact-checking pass ran out of time, not because they were investigated and cleared — an open list, not an all-clear.
+
+**Finding for this file:** The R9 deadline this lane presents as a live time bomb was already defused by #5190 before publication (verified by ancestry). The observation that a whitelist test corpus runs in no blocking workflow was NOT disputed and remains open.

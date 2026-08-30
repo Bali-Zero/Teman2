@@ -24,6 +24,7 @@ sources:
   - https://www.windmill.dev/docs/compared_to/peers
   - https://kestra.io/resources/infrastructure/temporal-alternatives
 status: DONE 2026-08-29
+adversarial_review: kimi-k3
 ---
 
 > ## ⚠️ Read this before acting on anything below
@@ -206,3 +207,11 @@ Decisions only Zero can take (business calls, spend, credentials, GUI):
 17. selfhosting.sh — Nomad vs Kubernetes for self-hosters: https://selfhosting.sh/compare/nomad-vs-kubernetes/
 18. Windmill — compared to peers (Temporal/Airflow/etc.): https://www.windmill.dev/docs/compared_to/peers
 19. Kestra — Temporal alternatives survey (incl. Inngest, Windmill): https://kestra.io/resources/infrastructure/temporal-alternatives
+
+## Adversarial review
+
+**Reviewer: `kimi-k3` (Moonshot K3) and `codex` (OpenAI gpt-5.6-sol at xhigh effort), 2026-08-30 — cross-family, generator ≠ grader.** Neither seat wrote any part of this panel. Both read all 18 files of the set in full and were asked the *publication* question rather than a proof-reading one: what in this diff creates real incremental risk beyond what the repository already discloses, whether "it is already public elsewhere" is a sound argument or a rationalisation, whether the sequencing is wrong, and what is simply FALSE. Every concrete file claim either seat made was then re-derived independently with `grep`/`git` before being recorded, and objections that measurement falsified are kept as RETRACTED rather than quietly dropped. The full journal and the complete objection list, with per-objection status, are in this PR's evidence pack (`council-journal.jsonl` and the pack's `dissent` block).
+
+**Limits of this review, stated so it is not read as more than it was.** It happened at PUBLICATION time, not at authoring time: no seat re-derived this lane's technical findings against the codebase, so it is not a correctness review of the analysis. Nine numeric objections across the set were recorded PLAUSIBLE because the fact-checking pass ran out of time, not because they were investigated and cleared — an open list, not an all-clear.
+
+**Finding for this file:** The sharpest disclosure in the whole panel sits here — an unauthenticated writable shell published tailnet-wide on the machine holding client PII. Both seats agreed it adds ZERO marginal exposure, because `infra/tailscale/policy.hujson` on the default branch already publishes it verbatim, with the same URL, port and writable flag. That scoping is the only form in which the 'already public elsewhere' argument survived review. Measured on 2026-08-30, the exposure itself is still open; it is ledgered.

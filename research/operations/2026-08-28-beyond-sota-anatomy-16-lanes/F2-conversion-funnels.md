@@ -19,6 +19,7 @@ sources:
   - https://www.xendit.co/en/payment-channel/qris/
   - https://www.zipchat.ai/blog/cart-abandonment-benchmarks-and-causes
 status: DONE 2026-08-29 (anatomy verified on worktree pinned at origin/main 11a3c89a2e)
+adversarial_review: kimi-k3
 ---
 
 > ## ⚠️ Read this before acting on anything below
@@ -233,3 +234,11 @@ Decisions only Zero can take:
 9. Snowplow server-side vs client-side tracking: https://snowplow.io/blog/server-side-tracking-vs-client-side-tracking · https://snowplow.io/blog/server-side-vs-client-side-tracking
 10. Klaviyo abandoned-cart benchmarks: https://www.klaviyo.com/uk/blog/abandoned-cart-email · https://attribuly.com/blogs/abandoned-cart-timing-cohort-benchmarks-templates/
 11. Xendit Indonesian payment methods / QRIS: https://www.xendit.co/en/payment-channel/qris/ · https://www.xendit.co/en/products/all-payment-methods/
+
+## Adversarial review
+
+**Reviewer: `kimi-k3` (Moonshot K3) and `codex` (OpenAI gpt-5.6-sol at xhigh effort), 2026-08-30 — cross-family, generator ≠ grader.** Neither seat wrote any part of this panel. Both read all 18 files of the set in full and were asked the *publication* question rather than a proof-reading one: what in this diff creates real incremental risk beyond what the repository already discloses, whether "it is already public elsewhere" is a sound argument or a rationalisation, whether the sequencing is wrong, and what is simply FALSE. Every concrete file claim either seat made was then re-derived independently with `grep`/`git` before being recorded, and objections that measurement falsified are kept as RETRACTED rather than quietly dropped. The full journal and the complete objection list, with per-objection status, are in this PR's evidence pack (`council-journal.jsonl` and the pack's `dissent` block).
+
+**Limits of this review, stated so it is not read as more than it was.** It happened at PUBLICATION time, not at authoring time: no seat re-derived this lane's technical findings against the codebase, so it is not a correctness review of the analysis. Nine numeric objections across the set were recorded PLAUSIBLE because the fact-checking pass ran out of time, not because they were investigated and cleared — an open list, not an all-clear.
+
+**Finding for this file:** One confirmed and embarrassing finding: this lane calls the magic-link flow complete and replay-safe, while at the pin it carried the ownership hole that #5298 later closed — a reader could have taken a reassurance from this file about the exact mechanism that was broken. Also: the hardcoded candidate name quoted from the assessment page has been redacted here, and the live page it points at is ledgered separately.

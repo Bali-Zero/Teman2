@@ -17,6 +17,7 @@ sources:
   - https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
   - https://www.netguru.com/blog/design-system-metrics
 status: DONE
+adversarial_review: kimi-k3
 ---
 
 > ## ⚠️ Read this before acting on anything below
@@ -207,3 +208,11 @@ Decisions only Zero can take (business calls, spend, risk):
 10. Deque — Automated testing identifies 57% of digital accessibility issues: https://www.deque.com/blog/automated-testing-study-identifies-57-percent-of-digital-accessibility-issues/
 11. Sentry — Next.js manual setup / production hardening: https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
 12. Netguru — Design system metrics (adoption rate): https://www.netguru.com/blog/design-system-metrics
+
+## Adversarial review
+
+**Reviewer: `kimi-k3` (Moonshot K3) and `codex` (OpenAI gpt-5.6-sol at xhigh effort), 2026-08-30 — cross-family, generator ≠ grader.** Neither seat wrote any part of this panel. Both read all 18 files of the set in full and were asked the *publication* question rather than a proof-reading one: what in this diff creates real incremental risk beyond what the repository already discloses, whether "it is already public elsewhere" is a sound argument or a rationalisation, whether the sequencing is wrong, and what is simply FALSE. Every concrete file claim either seat made was then re-derived independently with `grep`/`git` before being recorded, and objections that measurement falsified are kept as RETRACTED rather than quietly dropped. The full journal and the complete objection list, with per-objection status, are in this PR's evidence pack (`council-journal.jsonl` and the pack's `dissent` block).
+
+**Limits of this review, stated so it is not read as more than it was.** It happened at PUBLICATION time, not at authoring time: no seat re-derived this lane's technical findings against the codebase, so it is not a correctness review of the analysis. Nine numeric objections across the set were recorded PLAUSIBLE because the fact-checking pass ran out of time, not because they were investigated and cleared — an open list, not an all-clear.
+
+**Finding for this file:** Same as F3: the auth split-brain map is already cured upstream. An i18n-payload contradiction inside this file was raised but not settled.

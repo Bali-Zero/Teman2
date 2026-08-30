@@ -24,6 +24,7 @@ sources:
   - https://techcrunch.com/2026/06/03/metas-ai-agent-for-whatsapp-business-is-now-available-globally/
   - https://clonedesk.ai/blog/intercom-fin-limitations
 status: DONE 2026-08-28T23:40:00+08:00
+adversarial_review: kimi-k3
 ---
 
 > ## ⚠️ Read this before acting on anything below
@@ -309,3 +310,11 @@ Accessed 2026-08-28 unless noted.
 19. CloneDesk — Intercom Fin resolution 45–53% in production (search-derived, third-party): https://clonedesk.ai/blog/intercom-fin-limitations
 
 Internal ground (read this session): `.claude/skills/bot/SKILL.md` (§0–§7), `SYMBIOSIS.md` §LE LEGGI, `.claude/rules/cicatrix-scars.md` (W68/W72/W73/W77 WhatsApp guard family, W104), `.claude/skills/modus/PENDING-ARMS.md`, `research/operations/2026-08-25-due-bot-7-lens-research.md`, `2026-08-25-wa-webhook-api-redundancy.md`, `2026-07-20-wa-bot-latency.md`, `2026-08-15-adr-wa-runtime-openai-provider.md`, `2026-07-17-full-domain-cache-design.md`, `2026-08-11-zantara-wa-kbli-grounding-benchmark.md`, `2026-08-06-telegram-messaging-study.md`, `2026-07-24-zantara-bot-consultant-assistant-spec.md`, `2026-06-14-mythos-m2-whatsapp-brain.md`; memory `MEMORY_BOT_AND_LLM_LANES.md`, `project_live_bot_test_loop_2026_08_27.md`, `project_wa_lane_residuals_2026_08_26.md`.
+
+## Adversarial review
+
+**Reviewer: `kimi-k3` (Moonshot K3) and `codex` (OpenAI gpt-5.6-sol at xhigh effort), 2026-08-30 — cross-family, generator ≠ grader.** Neither seat wrote any part of this panel. Both read all 18 files of the set in full and were asked the *publication* question rather than a proof-reading one: what in this diff creates real incremental risk beyond what the repository already discloses, whether "it is already public elsewhere" is a sound argument or a rationalisation, whether the sequencing is wrong, and what is simply FALSE. Every concrete file claim either seat made was then re-derived independently with `grep`/`git` before being recorded, and objections that measurement falsified are kept as RETRACTED rather than quietly dropped. The full journal and the complete objection list, with per-objection status, are in this PR's evidence pack (`council-journal.jsonl` and the pack's `dissent` block).
+
+**Limits of this review, stated so it is not read as more than it was.** It happened at PUBLICATION time, not at authoring time: no seat re-derived this lane's technical findings against the codebase, so it is not a correctness review of the analysis. Nine numeric objections across the set were recorded PLAUSIBLE because the fact-checking pass ran out of time, not because they were investigated and cleared — an open list, not an all-clear.
+
+**Finding for this file:** The council's ONE blocking objection landed here, and measurement RETRACTED it. K3 held that documenting an unenforced Meta webhook signature — together with the exploitation probe written out in this file — was a live disclosure not already burned elsewhere. Measured against production on 2026-08-30: `WHATSAPP_APP_SECRET` and `META_WEBHOOK_REQUIRE_SIGNATURE` are deployed, and an unsigned `POST /webhook/whatsapp` answers **401 `Invalid signature`**. The exposure this file describes is closed; the file is stale, the seat was not wrong to raise it. Separately flagged and NOT retracted: this lane publishes private operational state — outage duration, human-handoff failure rate, a team-message corpus size, and that the pipeline captures team members' personal messaging accounts.

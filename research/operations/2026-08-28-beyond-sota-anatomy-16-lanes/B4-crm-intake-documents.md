@@ -20,6 +20,7 @@ sources:
   - https://arxiv.org/abs/2107.07511
   - https://arxiv.org/abs/2606.24420
 status: DONE 2026-08-28T12:40:00+08:00
+adversarial_review: kimi-k3
 ---
 
 > ## ⚠️ Read this before acting on anything below
@@ -534,3 +535,11 @@ Fetched with content (access date 2026-08-28):
 Consulted via search-result summaries only (page not fetched — claims marked as such above): Hyperscience "What is HITL", Google Document AI custom-extractor overview, Clio Grow document/intake help articles (fetch returned 403), HubSpot deduplicate-records (404), AWS A2I Textract task type (empty response).
 
 Internal (read this session): `.claude/skills/intake/SKILL.md`; `SYMBIOSIS.md` §LE LEGGI; `.claude/rules/cicatrix-scars-archive.md:666-741`; `.claude/skills/modus/PENDING-ARMS.md:294,450,660`; `research/operations/` 2026-06-09 pro-reader spec · 2026-06-14 mythos-m4 intake · 2026-06-21 review-time reduction · 2026-06-27 39k backlog · 2026-06-27 OCR bake-off · 2026-06-28 orphan leak · 2026-07-18 identity-backfill · 2026-07-18 station 1-2 rescue · 2026-07-18 SLM audit · 2026-07-19 drive-autocreate design · 2026-07-19 product-corners coherence · 2026-08-19 upsert-by-phone advisory; code files cited inline.
+
+## Adversarial review
+
+**Reviewer: `kimi-k3` (Moonshot K3) and `codex` (OpenAI gpt-5.6-sol at xhigh effort), 2026-08-30 — cross-family, generator ≠ grader.** Neither seat wrote any part of this panel. Both read all 18 files of the set in full and were asked the *publication* question rather than a proof-reading one: what in this diff creates real incremental risk beyond what the repository already discloses, whether "it is already public elsewhere" is a sound argument or a rationalisation, whether the sequencing is wrong, and what is simply FALSE. Every concrete file claim either seat made was then re-derived independently with `grep`/`git` before being recorded, and objections that measurement falsified are kept as RETRACTED rather than quietly dropped. The full journal and the complete objection list, with per-objection status, are in this PR's evidence pack (`council-journal.jsonl` and the pack's `dissent` block).
+
+**Limits of this review, stated so it is not read as more than it was.** It happened at PUBLICATION time, not at authoring time: no seat re-derived this lane's technical findings against the codebase, so it is not a correctness review of the analysis. Nine numeric objections across the set were recorded PLAUSIBLE because the fact-checking pass ran out of time, not because they were investigated and cleared — an open list, not an all-clear.
+
+**Finding for this file:** Two confirmed findings, both re-derived against `origin/main`. **(a)** This file contradicts itself: it states that OCR of identity documents never leaves the machine, and then, two paragraphs later, that OCR'd passport/NPWP/akta text is shipped to a cloud model by CRM-Guardian. The second statement is the true one; a reader who stops at the first gets a false assurance about client PII. **(b)** The defect that second statement describes is real and armed — the worker passes that text as a process argument, visible to any local user, and the organ is loaded on the machine holding the PII. Ledgered, not fixed by publishing this file.
