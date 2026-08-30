@@ -121,3 +121,76 @@ dissent:
       `test_the_workflow_filter_covers_every_file_the_lint_scans` rather than kept
       in sync by hand, and mutation-proved by adding a subject the filter cannot
       reach. Same shape, and the same reason, as tg-gateway's trigger-symmetry test.
+  - seat: codex gpt-5.6-sol (cross-family refuter, xhigh)
+    objection: >-
+      THE RESOLVER ANSWERED A DIFFERENT QUESTION THAN IT ASKED. It resolved
+      citations against `HEAD` while the subject files were read from the working
+      tree — so deleting a cited file and running the lint before committing read
+      GREEN, because HEAD still had it. Deleting the thing being cited is the
+      single most natural way to create a phantom, and the lint was blind to
+      exactly that.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed — the WORKING TREE is now the default and `--ref` is an
+      explicit opt-in that fails loudly on a ref it cannot read rather than
+      quietly answering against a different tree. Proven both ways by moving a
+      real cited target off disk: rc 1 naming `INDEX.md:18`, rc 0 when restored.
+  - seat: codex gpt-5.6-sol
+    objection: >-
+      The template heuristic treated ANY capitalised segment as a placeholder, so
+      `docs/API/x.md` and `docs/RESEARCH_LANDSCAPE_2026.md` — a real filename
+      shape in this repo — were silently unscannable. An under-match that hides
+      precisely the phantoms the lint exists to find. Also: `./`-relative link
+      targets were invisible, percent-encoded targets reported real files as
+      missing, and the extension pattern capped at six characters so `.markdown`
+      slipped through.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed — the heuristic now fires only on named placeholder
+      tokens, `./` is normalised, link targets are percent-decoded, and the
+      extension is matched by shape rather than length. Each has its own case;
+      each case was proven to fail against the pre-fix code.
+  - seat: codex gpt-5.6-sol
+    objection: >-
+      Two tests could not do their job. One MUTATED the production lint in place
+      and restored it in a `finally`, so a SIGKILL between the two left the repo's
+      real lint corrupted and a parallel run could read the temporary version. The
+      other computed a `fenced` flag and never asserted it. And every fence
+      fixture used backticks, so deleting the `~~~` branch survived.
+    status: CONFIRMED
+    resolution: >-
+      accepted-and-fixed — the empty-corpus case now runs a COPY in a temporary
+      directory and never touches the real file; the cure test asserts the two
+      properties that matter (green under the lint, carries a retraction marker)
+      instead of asserting its formatting; `~~~` has its own case.
+  - seat: codex gpt-5.6-sol
+    objection: >-
+      Only FENCED code was excluded, so the same example written as a 4-space
+      indented block was scanned as prose — and that is exactly what a reformat
+      could turn this PR's own retraction notes into.
+    status: CONFIRMED
+    resolution: >-
+      accepted, and answered by REMOVING rather than adding. An indented-block
+      rule was written and then withdrawn because it made a citation inside a
+      nested list continuation invisible — markdown gives both the same
+      indentation and no heuristic separated them. That is an UNDER-match, and
+      this guard's posture is that an under-match hides a phantom while an
+      over-match costs a finding nobody needed. The reformat worry it was meant to
+      answer is covered better and semantically by a RETRACTION MARKER
+      (`RETRACTED` / `RITIRATA`), which survives any reformat; all three cures now
+      carry it and name their dead path in plain prose rather than hiding it in a
+      fence. The absence of the indented rule is documented at the marker's
+      definition so nobody re-adds it without meeting the same case.
+  - seat: codex gpt-5.6-sol
+    objection: >-
+      The path filter covers the lint's SUBJECTS but not its TARGETS, so deleting
+      a cited file — the commonest way to create a phantom — does not start the
+      job that would catch it.
+    status: CONFIRMED
+    resolution: >-
+      DECLARED, NOT CLOSED. Closing it means triggering the heavy `antidotes` job
+      on every change under `docs/**` and `research/**`, which is a cost this lane
+      should not impose unilaterally on every other squad. The residual is stated
+      here and in the PR body rather than left for a reader to discover: a PR that
+      only DELETES a cited target can still land a phantom, and the next run on any
+      doctrine change catches it. A ledger row carries it.

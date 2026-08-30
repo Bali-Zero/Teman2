@@ -17,9 +17,12 @@ corpus fonda quelle tre affermazioni: la ricerca è stata rifatta questa
 sessione, non ricordata. La citazione ritirata, riportata qui dentro un blocco
 di codice perché è un LETTERALE citato, non un riferimento:
 
-```text
-research/operations/2026-05-30-sota-ai-architecture-methodology.md   # RITIRATA — mai esistita
-```
+RITIRATA — `research/operations/2026-05-30-sota-ai-architecture-methodology.md`, mai esistita.
+
+(La riga qui sopra porta il marcatore `RITIRATA`, che
+`scripts/lint_doctrine_citations.py` riconosce come "questo percorso è citato
+come letterale morto, non come fonte". Regge a una riformattazione, cosa che un
+blocco di codice non fa.)
 
 Le regole restano: sono la pratica istituzionale di questo organismo e reggono
 sulle proprie cicatrici, che sono verificabili. Ma reggono **senza** un backing

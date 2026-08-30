@@ -62,7 +62,18 @@ _SHELL_WORDS: frozenset[str] = frozenset({
 # the two, and without it this lint reported 47 findings of which the large
 # majority were bare prefixes: a lint that cries 47 times to be right 17 gets
 # switched off, which is the failure mode it exists to prevent.
-_HAS_EXTENSION_RE = re.compile(r"\.[A-Za-z0-9]{1,6}$")
+# No arbitrary length cap: `.markdown` is 8 and real. What the pattern must
+# exclude is a trailing version-ish number (`docs/v1.2`), not a long suffix.
+_HAS_EXTENSION_RE = re.compile(r"\.[A-Za-z][A-Za-z0-9]*$")
+
+
+def _normalise_relative(token: str) -> str:
+    """`./docs/x.md` and `docs/x.md` are the same citation. Markdown links are
+    routinely written with the `./` prefix, and dropping them made every such
+    citation invisible (Codex sol, 2026-08-31)."""
+    while token.startswith("./"):
+        token = token[2:]
+    return token
 
 
 def _starts_a_repo_path(token: str) -> bool:
@@ -75,6 +86,13 @@ def _is_file_citation(path: str) -> bool:
     return bool(_HAS_EXTENSION_RE.search(path)) and not _looks_like_template(path)
 
 
+# The only capitalised tokens that mean "fill this in". Everything else that
+# happens to be uppercase is a real name until proven otherwise.
+_PLACEHOLDER_TOKENS: frozenset[str] = frozenset(
+    {"YYYY", "MM", "DD", "HH", "NN", "N", "X", "SLUG", "TOPIC", "DOMAIN", "NAME", "ID"}
+)
+
+
 def _looks_like_template(path: str) -> bool:
     """Exclude paths that are clearly templates, not real references.
 
@@ -83,12 +101,15 @@ def _looks_like_template(path: str) -> bool:
     concrete file. Reporting those would create false positives the reader must
     then ignore, which trains people to disable the lint.
     """
-    if any(ch in path for ch in "*?{<>"):
+    if any(ch in path for ch in "*?{}<>[]"):
         return True
-    parts = path.replace("/", " ").replace("-", " ").split()
-    if any(part.isupper() and len(part) > 1 for part in parts):
-        return True
-    return False
+    # ONLY date/id placeholders, not "any uppercase segment". The earlier rule
+    # treated every capitalised part as a template, so `docs/API/x.md` and
+    # `docs/RESEARCH_LANDSCAPE_2026.md` — a real filename shape in this repo —
+    # were silently unscannable: an under-match that hid exactly the phantoms
+    # this lint exists to find (Codex sol, 2026-08-31).
+    parts = path.replace("/", " ").replace("-", " ").replace("_", " ").split()
+    return any(part in _PLACEHOLDER_TOKENS for part in parts)
 
 
 def _strip_suffixes_and_punctuation(raw: str) -> str:
@@ -103,7 +124,12 @@ def _strip_suffixes_and_punctuation(raw: str) -> str:
 
 def _candidates_from_link(url: str) -> list[str]:
     """Return citation candidates from a markdown link URL."""
-    url = _strip_suffixes_and_punctuation(url)
+    # A markdown link target is URL-encoded: a real file with a space in its name
+    # is written `%20`, and comparing the encoded form against the filesystem
+    # reported an existing file as missing.
+    from urllib.parse import unquote
+
+    url = _normalise_relative(_strip_suffixes_and_punctuation(unquote(url)))
     if _starts_a_repo_path(url) and _is_file_citation(url):
         return [url]
     return []
@@ -121,7 +147,11 @@ def _candidates_from_backtick_span(span: str) -> list[str]:
     # word happens to sit immediately before the path. `grep -n foo research/x.md`
     # has `foo` before the path, so the adjacency test passed it through as a
     # citation; the whole span is one command and none of it is a reference.
-    if tokens and tokens[0].lower().lstrip("$ ") in _SHELL_WORDS:
+    # Drop a leading prompt token so `$ grep x docs/y.md` is still recognised as
+    # a command; the prompt is punctuation, not a word.
+    if tokens and tokens[0] in ("$", "#", ">"):
+        tokens = tokens[1:]
+    if tokens and tokens[0].lower() in _SHELL_WORDS:
         return []
     for i, token in enumerate(tokens):
         if i > 0 and _starts_a_repo_path(token):
@@ -174,14 +204,53 @@ def _inside_fenced_code_block(lines: list[str]) -> list[bool]:
     return inside
 
 
+# A line that marks its own path as withdrawn is quoting a dead reference, not
+# making one. This is what lets a retraction note name the path it is retracting
+# without the note itself becoming a finding — and it is more durable than
+# relying on a code fence, which a reformat can turn into an indented block or a
+# blockquote (Codex sol, 2026-08-31, whose input was precisely this file's own
+# cure). The token is deliberately loud and bilingual: nobody types it by
+# accident, and it reads as an assertion in the text a human sees.
+_RETRACTION_RE = re.compile(r"\b(RETRACTED|RITIRATA|RITIRATO)\b")
+
+# NOT IMPLEMENTED, deliberately: excluding 4-space-INDENTED code blocks the way
+# fenced ones are excluded. Markdown gives the same indentation to a list
+# continuation, and no heuristic separated the two — the attempt made a citation
+# inside a nested bullet invisible, which is an UNDER-match, and this guard's
+# whole posture is that an under-match hides a phantom while an over-match costs
+# a finding nobody needed. The concrete worry that prompted it (a retraction note
+# reformatted from a fence into an indented block) is answered better by
+# _RETRACTION_RE above, which survives any reformat because it is semantic.
+# An indented example naming a non-existent path is therefore still a finding;
+# fence it, or mark it retracted.
+
+
 def _extract_citations(text: str) -> list[tuple[int, str]]:
     """Extract (1-based line number, cited path) pairs from a file's content."""
     lines = text.splitlines()
     in_fence = _inside_fenced_code_block(lines)
     citations: list[tuple[int, str]] = []
 
+    in_list = False
+    in_retraction = False
     for line_no, line in enumerate(lines, start=1):
+        stripped = line.strip()
+        if stripped.startswith(("- ", "* ", "+ ")) or (stripped[:2].rstrip(".").isdigit() and ". " in stripped[:4]):
+            in_list = True
+        elif not stripped:
+            in_list = False
+            in_retraction = False
         if in_fence[line_no - 1]:
+            continue
+        if _RETRACTION_RE.search(line):
+            # The marker opens a retraction BLOCK, not just a line. A human writes
+            # "RETRACTED 2026-08-31 — <why>" and then names the path a line or two
+            # down, inside the same paragraph or blockquote; matching only the
+            # marker's own line left that path a finding, which is how the cure
+            # for a phantom becomes a phantom (measured on this very file's three
+            # retractions). The block ends at the first blank line.
+            in_retraction = True
+        if in_retraction:
             continue
 
         # Mask out link spans and backtick spans so bare-text scanning does not
@@ -215,27 +284,46 @@ def _extract_citations(text: str) -> list[tuple[int, str]]:
 
 
 def _load_resolver(ref: str, cwd: Path) -> tuple[set[str], bool]:
-    """Load the set of resolvable paths. Returns (paths, used_git).
+    """Return (resolvable relative paths, whether git supplied them).
 
-    Prefer git so the lint can be run against any ref. Fall back to the
-    filesystem only when git is unavailable, and warn on stderr because a silent
-    resolver change is worse than an explicit failure mode.
+    THE WORKING TREE IS THE DEFAULT, and that is the correction that matters.
+    This resolved against `HEAD` while the SUBJECT files were read from disk — a
+    hybrid comparison in which deleting a cited file and running the lint before
+    committing reads GREEN, because HEAD still has it (Codex sol, 2026-08-31).
+    The single most natural way to create a phantom is to delete the thing being
+    cited, so a resolver blind to exactly that is a resolver blind to the disease.
+
+    `--ref` still exists for asking the question about another commit, and when
+    it is given the answer is honestly ref-shaped: git supplies the set, and both
+    sides of the comparison are that ref only if the caller also checked it out.
     """
-    try:
-        result = subprocess.run(
-            ["git", "ls-tree", "-r", "--name-only", ref],
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return set(result.stdout.splitlines()), True
-    except (FileNotFoundError, subprocess.CalledProcessError):
-        print("warning: git unavailable or ref invalid; falling back to filesystem", file=sys.stderr)
-        paths = {str(p) for p in cwd.rglob("*") if p.is_file()}
-        # Also include paths relative to cwd without leading './'.
-        paths = {p.removeprefix("./") for p in paths}
-        return paths, False
+    if ref:
+        try:
+            result = subprocess.run(
+                ["git", "ls-tree", "-r", "--name-only", ref],
+                cwd=cwd, capture_output=True, text=True, check=True,
+            )
+            return set(result.stdout.splitlines()), True
+        except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+            # A named ref that cannot be read is a usage error, not a reason to
+            # quietly answer a different question against the working tree. The
+            # earlier version fell through to the filesystem with a warning on
+            # stderr, which nobody reads in CI, and produced a green run whose
+            # meaning had silently changed.
+            raise SystemExit(
+                f"error: --ref {ref!r} could not be read ({type(exc).__name__}); "
+                "refusing to answer against a different tree instead"
+            )
+
+    # Relative POSIX paths, because that is the shape a citation is written in.
+    # The earlier fallback stored `str(p)` for absolute `p`, so nothing ever
+    # matched and every real citation read as missing.
+    paths: set[str] = set()
+    skip = {".git", "node_modules", ".venv", "__pycache__"}
+    for path in cwd.rglob("*"):
+        if path.is_file() and not any(part in skip for part in path.parts):
+            paths.add(path.relative_to(cwd).as_posix())
+    return paths, False
 
 
 def _collect_subjects(cwd: Path, overrides: list[str] | None) -> list[Path]:
@@ -278,8 +366,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--ref",
-        default="HEAD",
-        help="Git ref to resolve citations against (default: HEAD).",
+        default="",
+        help="git ref to resolve citations against; default is the WORKING TREE, because deleting a cited file is the commonest way to create a phantom",
     )
     parser.add_argument(
         "--json",

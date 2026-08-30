@@ -154,19 +154,26 @@ def test_an_empty_extraction_is_an_error_not_a_clean_bill(tmp_path: Path) -> Non
 
     # And the load-bearing half: on the DEFAULT corpus, an extractor that finds
     # nothing must be an error rather than a clean bill.
-    broken = REPO / "scripts" / "lint_doctrine_citations.py"
-    original = broken.read_text()
-    try:
-        broken.write_text(original.replace(
+    #
+    # Exercised through a COPY, never by editing the production lint in place.
+    # The earlier version wrote a mutated `scripts/lint_doctrine_citations.py` and
+    # restored it in a `finally` — so a SIGKILL between the two left the repo's
+    # real lint mutated, and a parallel test run could read the temporary version
+    # and pass or fail for reasons that had nothing to do with it (Codex sol,
+    # 2026-08-31). A test that can corrupt the thing it tests is not a test.
+    import tempfile
+
+    src = (REPO / "scripts" / "lint_doctrine_citations.py").read_text()
+    with tempfile.TemporaryDirectory() as td:
+        copy = Path(td) / "lint_copy.py"
+        copy.write_text(src.replace(
             'DEFAULT_SUBJECTS: tuple[str, ...] = (',
             'DEFAULT_SUBJECTS: tuple[str, ...] = ("__no_such_subject__.md",) if True else (', 1))
-        r2 = subprocess.run([sys.executable, str(_LINT)], cwd=REPO, capture_output=True, text=True)
-        assert r2.returncode == 2, (
-            "a corpus run that extracted zero citations reported clean — the exact "
-            f"failure this guard exists for:\n{r2.stdout}{r2.stderr}"
-        )
-    finally:
-        broken.write_text(original)
+        r2 = subprocess.run([sys.executable, str(copy)], cwd=REPO, capture_output=True, text=True)
+    assert r2.returncode == 2, (
+        "a corpus run that extracted zero citations reported clean — the exact "
+        f"failure this guard exists for:\n{r2.stdout}{r2.stderr}"
+    )
 
 
 def test_the_live_corpus_is_green() -> None:
@@ -175,17 +182,66 @@ def test_the_live_corpus_is_green() -> None:
     assert r.returncode == 0, f"live doctrine has an unresolved citation:\n{r.stdout}"
 
 
-def test_the_cured_skill_no_longer_cites_the_phantom() -> None:
-    text = (REPO / ".claude" / "skills" / "sota-architecture-loop" / "SKILL.md").read_text()
+def test_the_cured_skill_is_green_and_says_why() -> None:
+    """The cure is checked by the property that matters, not by its formatting.
+
+    The earlier version asserted the retracted path sat inside a code fence, and
+    computed a `fenced` flag it then never asserted (Codex sol, 2026-08-31 —
+    finding 11: a test that measures something and throws the measurement away).
+    Both are now replaced by the two things that are actually true and load-bearing:
+    the file is green under the lint, and it carries a RETRACTION MARKER, which is
+    what makes it survive a reformat that a fence would not.
+    """
+    skill = REPO / ".claude" / "skills" / "sota-architecture-loop" / "SKILL.md"
+    text = skill.read_text()
     assert "pratica istituzionale" in text, "the honest provenance statement is gone"
-    # The retracted path may still appear as a quoted LITERAL, but only inside a fence.
-    for i, line in enumerate(text.splitlines()):
-        if "2026-05-30-sota-ai-architecture-methodology" in line:
-            fenced = text.splitlines()[:i].count("```text") > text.splitlines()[:i].count("```") - text.splitlines()[:i].count("```text")
-            assert line.lstrip().startswith("research/"), (
-                "the retracted path reappeared outside its code fence — it would be "
-                "a citation again, and the lint would be red on the file that cures it"
-            )
+    assert lint._RETRACTION_RE.search(text), (
+        "the retraction marker is gone — without it the quoted dead path is a "
+        "citation again, and the file that cures the phantom becomes one"
+    )
+    r = _run(skill)
+    assert r.returncode == 0, f"the cured file is not green:\n{r.stdout}"
+
+
+def test_every_retraction_in_the_repo_is_green_under_the_lint() -> None:
+    """All three cures, by the same property. Naming them individually would let
+    a fourth retraction land unchecked."""
+    for rel in (
+        ".claude/skills/sota-architecture-loop/SKILL.md",
+        ".claude/skills/skill-catalog/SKILL.md",
+        "AUTONOMOUS_OPS.md",
+    ):
+        f = REPO / rel
+        assert lint._RETRACTION_RE.search(f.read_text()), f"{rel} lost its retraction marker"
+        assert _run(f).returncode == 0, f"{rel} is red under the lint"
+
+
+def test_a_retraction_marker_does_not_excuse_the_rest_of_the_file(tmp_path: Path) -> None:
+    """The marker opens a BLOCK, and the block ends at a blank line. If it excused
+    everything after it, one retraction anywhere would disarm the file."""
+    f = _write(
+        tmp_path,
+        "RETRACTED — `research/operations/dead-one.md` never existed.\n"
+        "\n"
+        "But this one is a live claim: `research/operations/also-missing.md`.\n",
+    )
+    try:
+        r = _run(f)
+        assert r.returncode == 1, "the marker excused a citation outside its own block"
+        assert "also-missing.md" in r.stdout
+        assert "dead-one.md" not in r.stdout, "the retracted path was still reported"
+    finally:
+        f.unlink()
+
+
+def test_tilde_fences_are_recognised_as_code(tmp_path: Path) -> None:
+    """Codex sol finding 12: every fence fixture used backticks, so deleting the
+    `~~~` branch survived. Markdown permits both."""
+    f = _write(tmp_path, "Example:\n\n~~~text\nresearch/operations/nope-tilde.md\n~~~\n")
+    try:
+        assert _run(f).returncode == 0, "a ~~~ fence was scanned as prose"
+    finally:
+        f.unlink()
 
 
 def test_the_workflow_filter_covers_every_file_the_lint_scans() -> None:
@@ -221,3 +277,75 @@ def test_the_workflow_filter_covers_every_file_the_lint_scans() -> None:
         "add them to immune-enforcement.yml's path filter, or drop them from "
         f"DEFAULT_SUBJECTS: {uncovered}"
     )
+
+
+def test_a_relative_prefixed_link_is_still_a_citation(tmp_path: Path) -> None:
+    """Codex sol finding 1: markdown links are routinely written `[x](./docs/y.md)`,
+    and accepting only tokens beginning exactly `docs/` made every one of them
+    invisible — an under-match in the one syntax a doc author is most likely to
+    use. Kept as its own case because a mutation dropping the `./` strip survived
+    the whole suite without it."""
+    f = _write(tmp_path, "See [the thing](./research/operations/nope-relative.md).\n")
+    try:
+        r = _run(f)
+        assert r.returncode == 1, f"a ./-prefixed citation was not seen:\n{r.stdout}"
+        assert "nope-relative.md" in r.stdout
+    finally:
+        f.unlink()
+
+
+def test_a_percent_encoded_link_resolves_to_the_real_file(tmp_path: Path) -> None:
+    """Codex sol finding 4: a markdown link target is URL-encoded, so a real file
+    whose name contains a space arrives as `%20` and was reported missing."""
+    real = REPO / "docs" / "plans" / "2026-08-29-beyond-sota-craft-wave" / "L03-architecture-decision-making.md"
+    assert real.is_file(), "premise: the fixture must cite a file that exists"
+    encoded = "docs/plans/2026-08-29-beyond-sota-craft-wave/L03%2Darchitecture%2Ddecision%2Dmaking.md"
+    f = _write(tmp_path, f"See [spec]({encoded}).\n")
+    try:
+        r = _run(f)
+        assert r.returncode == 0, f"a percent-encoded path to a real file read as missing:\n{r.stdout}"
+    finally:
+        f.unlink()
+
+
+def test_a_long_extension_is_still_a_citation(tmp_path: Path) -> None:
+    """Codex sol finding 3: the extension pattern capped at six characters, so
+    `.markdown` — eight, and real — slipped through unscanned."""
+    f = _write(tmp_path, "See `docs/nope-long-extension.markdown`.\n")
+    try:
+        assert _run(f).returncode == 1
+    finally:
+        f.unlink()
+
+
+def test_an_uppercase_directory_is_not_a_template(tmp_path: Path) -> None:
+    """Codex sol finding 2: any capitalised segment was read as a placeholder, so
+    `docs/API/x.md` — and `docs/RESEARCH_LANDSCAPE_2026.md`, a real filename shape
+    in this repo — became unscannable. That is an under-match that hides exactly
+    the phantoms this lint exists to find."""
+    f = _write(tmp_path, "See `docs/API/nope-uppercase.md` and `docs/NOPE_LANDSCAPE_2026.md`.\n")
+    try:
+        r = _run(f)
+        assert r.returncode == 1
+        assert "nope-uppercase.md" in r.stdout and "NOPE_LANDSCAPE_2026.md" in r.stdout
+    finally:
+        f.unlink()
+
+
+def test_an_indented_list_continuation_is_still_scanned(tmp_path: Path) -> None:
+    """Why this lint does NOT exclude 4-space-indented blocks.
+
+    An attempt to (Codex sol finding 5) made THIS case fail: markdown gives a
+    list continuation the same indentation as a code block, and no heuristic
+    separated them, so the rule hid a citation inside a nested bullet. That is an
+    under-match, and this guard's posture is that an under-match hides a phantom
+    while an over-match costs a finding nobody needed. The rule was removed and
+    its absence documented at `_RETRACTION_RE`; the reformat worry it was meant
+    to answer is covered semantically by the retraction marker instead."""
+    f = _write(tmp_path, "- a bullet\n\n    and its continuation cites `research/operations/nope-in-list.md`\n")
+    try:
+        r = _run(f)
+        assert r.returncode == 1, "a citation in a list continuation was skipped as code"
+        assert "nope-in-list.md" in r.stdout
+    finally:
+        f.unlink()

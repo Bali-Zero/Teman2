@@ -131,12 +131,13 @@ these rules. They are **part of the autonomy contract**: violating them
 counts as "modifying shared state without confirmation" and is out of
 scope for L2.
 
-> The strategy document this paragraph used to cite (a `2026-04-25` migrations
-> review under `docs/reviews/`) has never existed in this repository and no file
-> of that name exists anywhere in the tree. Retracted on 2026-08-31 rather than
-> replaced: there is nothing to replace it with, and a plausible-looking
-> substitute would be the same defect with a working link. The rules below stand
-> on their own — they are the contract, not a summary of a document.
+> RETRACTED 2026-08-31 — this paragraph cited
+> `docs/reviews/2026-04-25-strategy-01-database-migrations.md`, which has never
+> existed in this repository and for which no file of that name exists anywhere in
+> the tree. Retracted rather than replaced: there is nothing to replace it with,
+> and a plausible-looking substitute would be the same defect with a working link.
+> The rules below stand on their own — they are the contract, not a summary of a
+> document.
 
 | Rule                                                                                                     | Why                                                                                                                                            |
 | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |

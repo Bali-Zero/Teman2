@@ -75,6 +75,15 @@ jobs:
           # immune workflow as an exact self-trigger: removing or narrowing these
           # globs must not make a change to the required workflow auto-skip its
           # own contracts. The exact entry is therefore a deliberate overlap.
+          # `.claude/skills/*/*.md` below is EVERY markdown under a skill dir, not
+          # just SKILL.md: the doctrine citation lint's subjects are
+          # `.claude/skills/**/*.md`, and a filter enumerating only SKILL.md left a
+          # phantom in any other file free to land on a PR that never ran the
+          # finder. That pattern SUBSUMES the former explicit
+          # `.claude/skills/modus/PENDING-ARMS.md` entry, removed because actionlint
+          # reports the pair as SC2221 — the ledger file still triggers this job
+          # (verified by simulating this very case block), so nothing that depended
+          # on it is disarmed.
           while IFS= read -r f; do
             case "$f" in
               scripts/lint_home_fork.py|\
@@ -133,8 +142,7 @@ jobs:
               packages/*/package.json|\
               scripts/lint_doctrine_citations.py|\
               scripts/tests/test_lint_doctrine_citations.py|\
-              .claude/skills/*/SKILL.md|\
-              .claude/skills/*/AMENDMENTS.md|\
+              .claude/skills/*/*.md|\
               .claude/commands/*.md|\
               CLAUDE.md|\
               SYMBIOSIS.md|\
@@ -258,7 +266,6 @@ jobs:
               apps/evaluator/nlm_deep_research/nb10_pipeline.py|\
               apps/evaluator/nlm_deep_research/tests/test_run_verdict.py|\
               apps/evaluator/nlm_deep_research/tests/test_calendar_skip_marker_class.py|\
-              .claude/skills/modus/PENDING-ARMS.md|\
               scripts/ci/required_context_map.py|\
               scripts/ci/snapshot_required_contexts.py|\
               scripts/ci/check_required_workflow_conformance.py|\
