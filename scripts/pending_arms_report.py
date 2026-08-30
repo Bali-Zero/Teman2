@@ -179,12 +179,78 @@ OPERATOR_TAG_RE = re.compile(r"\boperator\s*\[\s*([a-z0-9-]+)\s*\]", re.IGNORECA
 # --strict-phantom): the owner field "next BUILD session (repo-side; not
 # operator-gated — this is a real code fix, just not a healer-tick-safe one)"
 # was classified PHANTOM-OPERATOR because plain substring matching on "operator"
-# cannot see the "not " sitting in front of it. Deliberately narrow: only
-# suppresses the phantom read when there is NO operator[cat] tag anywhere in the
-# owner (checked at the call site below) — an owner mixing a real tag with a
-# disclaiming aside elsewhere must still resolve through the tag logic, never
-# this exception, so a genuine phantom tag can't hide behind a nearby "not".
-NEGATED_OPERATOR_RE = re.compile(r"\bnot\s+operator\b", re.IGNORECASE)
+# cannot see the "not " sitting in front of it.
+#
+# WIDENED 2026-08-30 (round 2, PR #5233's own ledger row tripped it): "NOT this
+# implementer session, NOT a bare operator" was still flagged, because the
+# original regex required "not" immediately adjacent to "operator" — zero
+# words of slack — and "a bare" sits in between. The gap is bounded to a
+# small, CLOSED vocabulary of hedge/determiner words (article + a short
+# adjective/adverb list), not an open `\w+`: an open wildcard would let an
+# unrelated "not" anywhere upstream of a genuine bare "operator" (e.g. "not
+# yet resolved — assign to operator") rescue a real phantom claim, which is
+# the over-correction this classifier exists to avoid (team-lead's explicit
+# warning on this fix). "\boperator\b" stays word-bounded — this must never
+# become a bare substring match, or it re-opens W82 (the Italian "operatore"
+# under-match OPERATOR_TAG_RE's own comment guards against).
+NEGATED_OPERATOR_RE = re.compile(
+    r"\bnot\s+(?:(?:a|an|the|bare|just|merely|purely|simply|really|genuinely"
+    r"|truly|literally|plain|mere)\s+){0,3}operator\b",
+    re.IGNORECASE,
+)
+
+# Word-bounded "operator" mentions, used ONLY to enumerate candidate spans for
+# the completeness check below — never as a substitute for the deliberately
+# substring-based outer gate (`"operator" in owner.lower()`, W82 guard).
+OPERATOR_WORD_RE = re.compile(r"\boperator\b", re.IGNORECASE)
+
+
+def _all_operator_mentions_negated(owner: str) -> bool:
+    """True iff EVERY word-bounded "operator" mention in `owner` falls inside
+    a NEGATED_OPERATOR_RE match — not merely that at least one negated phrase
+    exists somewhere in the field. Closes a second latent gap alongside the
+    regex widening above: the original call site was `NEGATED_OPERATOR_RE
+    .search(owner)`, a bare existence check, so an owner naming TWO operator
+    mentions where only one is negated ("not operator, but flag for operator
+    eventually") would have been waved through on the strength of the first.
+    Callers invoke this only when `not tags` (checked at the call site) — no
+    `operator[<cat>]` bracket exists anywhere in `owner`, so every mention
+    OPERATOR_WORD_RE finds here is genuinely naked, never a tag fragment.
+    Returns False (not phantom-safe) when there is no mention at all —
+    defensive only; every real caller has already confirmed "operator" is
+    present via the outer substring gate.
+
+    DELIBERATE BIAS, independently verified by a second reviewer (team-lead,
+    2026-08-30) against this exact function, not merely against the regex:
+    the closed hedge-word vocabulary is intentionally narrow enough that it
+    still returns False (PHANTOM-OPERATOR, the guard's fail-closed state) on
+    text a human would also read as a denial once the gap or the trailing
+    shape gets unusual enough — e.g. `"not a completely unrelated distant
+    operator"` (a 4-word gap outside the closed vocabulary) and `"NOT a
+    human, operator"` (a second, bare, un-negated mention trailing after the
+    negated one — caught by the "EVERY mention" check above, not the regex).
+    Both are false positives, and both fail in the SAFE direction for this
+    guard: a row whose owner a human would read as a disclaimer still gets
+    classified PHANTOM-OPERATOR rather than TECH-DEBT, which only means it
+    surfaces for a manual reword (as every real incident in PR #4603/#4864/
+    #5273/#5233 already did) — never that a genuine bare-operator claim
+    slips through unflagged. Widen this vocabulary only for a phrasing that
+    has actually blocked a real PR (see the WIDENED history above); widening
+    it pre-emptively to cover a hypothetical phrasing re-opens exactly the
+    unbounded-regex problem this function was built to bound. If a THIRD
+    real phrasing defeats this function the way this one defeated PR #5273's
+    single-pattern fix, that is the signal the surface itself is
+    under-specified, not that the vocabulary needs a fourth entry — see
+    `docs/specs/pending-arms-owner-tag-v1.md` for the structured-field
+    alternative reserved for exactly that case."""
+    mentions = [m.span() for m in OPERATOR_WORD_RE.finditer(owner)]
+    if not mentions:
+        return False
+    negated_spans = [m.span() for m in NEGATED_OPERATOR_RE.finditer(owner)]
+    return all(
+        any(neg_start <= start and end <= neg_end for neg_start, neg_end in negated_spans)
+        for start, end in mentions
+    )
 
 # NATURAL-WAIT: the owner declares a PASSIVE wait on a dated natural trigger
 # (`me (passivo — verifica 07-12)`) — the arming is done, only the proof needs the
@@ -677,10 +743,12 @@ def parse_entry(raw: str, now: date) -> Entry:
         tags = [m.group(1).lower() for m in OPERATOR_TAG_RE.finditer(owner)]
         if tags and all(t in TRUE_OPERATOR_CATEGORIES for t in tags):
             cls = CLASS_OPERATOR_GATED
-        elif not tags and NEGATED_OPERATOR_RE.search(owner):
-            # No bracket tag at all AND the only "operator" mention is inside a
-            # "not operator..." disclaimer — this is prose DENYING an operator-lane
-            # claim, not making one. See NEGATED_OPERATOR_RE comment above.
+        elif not tags and _all_operator_mentions_negated(owner):
+            # No bracket tag at all AND EVERY naked "operator" mention is
+            # inside a "not [hedge-words] operator" disclaimer — this is
+            # prose DENYING an operator-lane claim, not making one. Full
+            # coverage, not mere existence: see _all_operator_mentions_negated's
+            # own docstring for why a bare .search() here was itself a gap.
             cls = CLASS_TECH_DEBT
         else:
             cls = CLASS_PHANTOM_OPERATOR

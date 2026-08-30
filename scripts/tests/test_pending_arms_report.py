@@ -279,6 +279,89 @@ def test_guilt_bare_operator_word_unaffected_by_negation_regex(tmp_path):
     assert e.cls == par.CLASS_PHANTOM_OPERATOR
 
 
+def test_innocence_negated_operator_with_hedge_words_is_not_phantom(tmp_path):
+    # Live 2026-08-30 (round 2): PR #5233's own PENDING-ARMS row — "NOT a bare
+    # operator" — was flagged PHANTOM-OPERATOR because the original
+    # NEGATED_OPERATOR_RE required "not" immediately adjacent to "operator"
+    # with zero words of slack, and "a bare" sits between them here. This
+    # pins the exact reported text (not a paraphrase) so the regression
+    # cannot silently reopen on a rewording of the fix.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-08-29 | pr5233 evidence pack artifact | step | "
+        "the independently-dispatched Gear-3 gate session (harness/fable-gate "
+        "poster) — NOT this implementer session, NOT a bare operator | proof",
+    )
+    assert e.cls == par.CLASS_TECH_DEBT
+
+
+def test_guilt_negated_operator_with_wide_gap_still_phantom(tmp_path):
+    # The hedge-word gap is a small CLOSED vocabulary, not an open wildcard:
+    # an unrelated "not" several ordinary words upstream of a genuinely bare
+    # "operator" must NOT rescue it — that would be the exact over-correction
+    # the fix was warned against (a fix that lets real phantom rows through
+    # is worse than the false positive it replaces).
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | wide gap artifact | step | "
+        "not yet resolved — assign to operator | proof",
+    )
+    assert e.cls == par.CLASS_PHANTOM_OPERATOR
+
+
+def test_guilt_mixed_naked_mentions_only_one_negated_is_phantom(tmp_path):
+    # Second latent gap closed alongside the widening: the original call site
+    # was NEGATED_OPERATOR_RE.search(owner), a bare EXISTENCE check — an
+    # owner naming two "operator" mentions where only the first is negated
+    # would have been waved through on the strength of that one match. Every
+    # naked mention must now be individually covered.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | mixed mentions artifact | step | "
+        "not operator, but flag for operator eventually | proof",
+    )
+    assert e.cls == par.CLASS_PHANTOM_OPERATOR
+
+
+def test_guilt_negation_gap_wider_than_closed_vocabulary_still_phantom(tmp_path):
+    # Independently verified 2026-08-30 (team-lead, re-exercising
+    # _all_operator_mentions_negated directly rather than taking the PR's
+    # report on trust). A 4-word gap of ordinary words ("a completely
+    # unrelated distant") falls outside the closed hedge-word vocabulary, so
+    # this reads as PHANTOM-OPERATOR even though a human would parse it as a
+    # denial. That is a false positive, and it fails in the SAFE direction
+    # for this guard (see the docstring on _all_operator_mentions_negated):
+    # a row a human would call innocent still surfaces for a manual reword,
+    # it never lets a genuine bare-operator claim through unflagged. Do not
+    # widen the vocabulary to rescue this specific phrasing unless it
+    # actually blocks a real PR — see the WIDENED history in the code for
+    # why open-ended widening is the failure mode this bounds against.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | wide-gap-vocab artifact | step | "
+        "not a completely unrelated distant operator | proof",
+    )
+    assert e.cls == par.CLASS_PHANTOM_OPERATOR
+
+
+def test_guilt_trailing_naked_mention_after_negation_still_phantom(tmp_path):
+    # Independently verified 2026-08-30 (team-lead). A second, bare, un-
+    # negated "operator" trailing after a negated one is not rescued by the
+    # negated mention earlier in the field — this is exactly what
+    # _all_operator_mentions_negated's "EVERY mention" check (not a bare
+    # existence check) exists to catch. Also a false positive in the SAFE
+    # direction: a human might read "NOT a human, operator" as a single
+    # disclaiming clause, but the classifier cannot tell that from a
+    # genuine trailing bare claim, and refusing to guess is the correct
+    # bias for a guard whose failure mode is a vanished obligation.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | trailing-mention artifact | step | "
+        "NOT a human, operator | proof",
+    )
+    assert e.cls == par.CLASS_PHANTOM_OPERATOR
+
+
 def test_firebreak_precedence_over_phantom_documented(tmp_path):
     # Pre-existing precedence: an explicit 'firebreak' in the raw text wins the
     # classification even with an untagged operator owner. Documented, not accidental.
