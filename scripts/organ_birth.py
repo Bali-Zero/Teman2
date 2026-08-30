@@ -74,11 +74,21 @@ def wrapper_template(organ_id: str, node: str, kind: str, description: str) -> s
     llm = kind == "llm-cron"
     daemon = kind == "daemon"
 
+    # W-underscore-header: the actual wrapper filename (computed in main() as
+    # `dash`) replaces BOTH "." and "_" with "-" — repo/live naming is
+    # hyphens-only, no underscores anywhere. This header's self-reference
+    # must match that, or it silently lies about its own filename for any
+    # organ_id whose descriptive segment is underscore_case (the house
+    # style: visa_freshness_sentinel, git_pull_main, ...). Scoped to the
+    # Canon:/Live: comment only — LOG_DIR/PIDFILE below stay dot-only on
+    # purpose, they name runtime artifacts this generator creates itself,
+    # so whatever it produces is correct-by-construction for them.
+    dash_name = organ_id.replace(".", "-").replace("_", "-")
     head = f'''#!/bin/bash
 # {organ_id} — {description}
 # Born via scripts/organ_birth.py (DNA/GENOME 2026-07-06): genes imprinted at birth.
-# Canon: infra/launchagents/wrappers/{organ_id.replace(".", "-")}.sh
-# Live:  ~/scripts/{organ_id.replace(".", "-")}.sh (declared pair, node={node})
+# Canon: infra/launchagents/wrappers/{dash_name}.sh
+# Live:  ~/scripts/{dash_name}.sh (declared pair, node={node})
 
 set -u   # G9_fail_visible: unset vars crash, they do not expand empty
 
