@@ -1,0 +1,31 @@
+council_run: journal.jsonl
+# The literal `evidence/brief.yml`, NEVER this pack's real per-PR path.
+# harness-floor.yml stages BOTH files under canonical names into a synthetic tree
+# and resolves brief_ref against THAT; its own comment calls the per-PR value
+# "exactly the trap this migration exists to remove", and
+# scripts/ci/evidence_paths.py says the same. Running the lint LOCALLY there is no
+# staging, so brief_ref resolves against the real repo root and lands on an
+# unrelated task's brief -- which emits an acceptance-probe NOTICE that looks like
+# a bug and is really just the absence of staging. Verified by reproducing CI's
+# layout locally (pack+brief+journal copied under canonical names, --repo-root
+# pointed at that tree) rather than by trusting the bare local run.
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  docs/plans/2026-08-29-beyond-sota-craft-wave/L13-security-secrets-pii.md
+  section "PR-1: feat(security): seat broker - exec-time minimal env for external LLM dispatch".
+
+lanes:
+  - lane: with-seat-build
+    role: build
+    seat: codex-gpt-5.6-terra (non-Anthropic, effort high) -- D3 build lane, never the grader
+  - lane: with-seat-refute
+    role: review
+    seat: kimi-code/k3 (non-Anthropic) -- blind adversarial refutation of the broker diff
+  - lane: with-seat-workflow-refute
+    role: review
+    seat: codex-gpt-5.6-sol xhigh -- blind adversarial refutation of the workflow diff
+  - lane: with-seat-gate
+    role: review
+    seat: claude opus-5 xhigh (this orchestrator) -- final on-disk gate, empirical
+
+pii_scan: clean
