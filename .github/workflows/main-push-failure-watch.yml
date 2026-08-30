@@ -195,6 +195,7 @@ on:
       - Root Guard
       - SBOM (Software Bill of Materials)
       - scripts/tests/ sweep (report-only)
+      - Seat broker env-minimization tests
       - Security Scanning
       - SAST — Bandit + ESLint Security
       - SonarQube Analysis
