@@ -294,7 +294,10 @@ def _starts_with_internal_monologue_leak(answer: str) -> bool:
 # can never drift apart. That coupling was live-ammunition: _canonical_value does
 # _AMOUNT_MULTIPLIERS[multiplier.lower()] with no .get(), so a token the pattern
 # matches and the dict lacks is a KeyError inside the finalize path, not a miss.
-# test_wa_finalize_price_veto.py asserts the derivation holds.
+# test_wa_finalize.py::test_pricing_veto_multiplier_pattern_is_derived_from_the_table
+# asserts the derivation holds. (The name cited here until 2026-08-30 was
+# test_wa_finalize_price_veto.py, a file that does not exist in this tree —
+# a citation pointing at nothing protects nothing.)
 #
 # NOT widened here, deliberately, and named so it is not mistaken for coverage: a
 # bare currency WORD ("2,5 miliar rupiah", with no Rp/IDR/USD marker) is still
@@ -469,6 +472,99 @@ def _currency_amounts(text: str) -> list[tuple[str, int]]:
     return out
 
 
+# ---------------------------------------------------------------------------
+# DERIVED AMOUNTS (added 2026-08-30)
+#
+# THE DEFECT, measured live and in isolation, not argued. `wa_outbox` row 387
+# was fired alone into a quiet thread — no sibling message, no coalescing — and
+# failed 5 of 5 attempts on `finalize_pricing_outside_package` answering
+#
+#     "Kalau visa saya overstay 5 hari, dendanya berapa per hari?"
+#
+# The evidence package for that query really does carry the rate (measured on
+# the production build endpoint: `IDR 1,000,000` per day, PP 45/2024). The
+# answer was rejected because it did what the client asked — it multiplied the
+# rate by the five days — and `5,000,000` appears in no source verbatim. The
+# client received an apology.
+#
+# The same mechanism makes the ONE rule this bot must obey unshippable. Zero's
+# 2026-07-17 ruling is a single all-inclusive client-facing price, which for an
+# Investor KITAS means 17,000,000 + 9,500,000 = 26,500,000 — a figure that,
+# again, appears in no source. Measured against the real package notation:
+#
+#     "Total all-in ... Rp26.500.000"       -> ['IDR:26500000']   VETOED
+#     "biaya layanan Rp17.000.000.
+#      PNBP pemerintah Rp9.500.000"          -> []                 passes
+#
+# So the anchoring veto was actively PUSHING the generator toward splitting the
+# government levy out of the client price: splitting is the only shape that
+# keeps every figure verbatim-anchored. The split-price defect this codebase is
+# separately guarding against was, in part, this veto's own output.
+#
+# THE CURE: an amount is anchored if it is a source amount OR an exact
+# arithmetic derivation of source amounts — an integer multiple (a per-day rate
+# times a number of days) or a sum of two or three of them (an all-inclusive
+# total). Nothing else: no differences, no percentages, no chains of both. The
+# generator may ADD UP what the sources say; it may not invent.
+#
+# WHAT THIS COSTS, stated rather than buried: a hallucinated figure that
+# happens to equal a sum or a small multiple of real source figures now passes.
+# That is a genuine widening. It is the right side of the exchange because the
+# measured alternative is not "a stricter guard" but "no answer at all" on the
+# two commonest question shapes the business has — how much does it cost, and
+# how much is the fine — plus a standing incentive toward the split-price
+# defect. The label gate, the PricingTool grounding and the split-fee veto
+# remain the primary controls on WHAT the answer claims.
+#
+# The bounds are deliberate and small. MULTIPLE caps at 366 because the real
+# multiplicand is a count of days (overstay days, rental days) and a year is
+# the honest ceiling; TERMS caps at 3 because a client price is a service fee
+# plus a levy plus at most one add-on, and every extra term multiplies the
+# surface on which a wrong number can land on a legal sum by coincidence.
+_DERIVED_MAX_MULTIPLE = 366
+_DERIVED_PAIRSUM_MAX_SOURCES = 200
+
+
+def _is_derived_from_sources(value: int, source_values: set[int]) -> bool:
+    """True when ``value`` is an exact multiple or 2-/3-term sum of sources.
+
+    Deliberately NOT a general subset-sum: the bounds above are what keep this
+    an arithmetic allowance rather than a hole. Pure and side-effect free so
+    the veto stays testable without fixtures.
+    """
+    if value in source_values:
+        return True
+
+    # Integer multiple of a single source amount (rate x count).
+    for src in source_values:
+        if src <= 0:
+            continue
+        if value % src == 0:
+            factor = value // src
+            if 2 <= factor <= _DERIVED_MAX_MULTIPLE:
+                return True
+
+    # Sum of exactly two source amounts.
+    for src in source_values:
+        if (value - src) in source_values:
+            return True
+
+    # Sum of exactly three. Guarded by a source-count cap: the pairwise set is
+    # O(n^2) and this runs inside the finalize path on every answer.
+    if len(source_values) <= _DERIVED_PAIRSUM_MAX_SOURCES:
+        ordered = sorted(source_values)
+        pair_sums = {
+            a + b
+            for i, a in enumerate(ordered)
+            for b in ordered[i:]
+        }
+        for src in source_values:
+            if (value - src) in pair_sums:
+                return True
+
+    return False
+
+
 def price_tokens_outside_sources(text: str, price_sources: Sequence[str]) -> list[str]:
     """Canonical amounts in ``text`` that no source contains, as "CUR:value" strings.
 
@@ -510,7 +606,7 @@ def price_tokens_outside_sources(text: str, price_sources: Sequence[str]) -> lis
     for cur, value in _currency_amounts(text):
         if value < _VETO_FLOORS[cur]:
             continue
-        if value not in source_values:
+        if not _is_derived_from_sources(value, source_values):
             offenders.append(f"{cur}:{value}")
     return offenders
 

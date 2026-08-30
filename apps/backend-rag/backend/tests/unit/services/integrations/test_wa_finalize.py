@@ -639,3 +639,82 @@ async def test_gemini_escalate_marker_is_stripped_and_a_human_is_told() -> None:
     assert "[ESCALATE]" not in result.text
     assert result.human_reason == "persona_escalate_marker"
     assert tell.reasons == ["persona_escalate_marker"]
+
+
+# ---------------------------------------------------------------------------
+# DERIVED AMOUNTS (2026-08-30)
+#
+# Every source string below uses the notation MEASURED on the production
+# package-build endpoint for these very queries (`IDR 1,000,000`,
+# `IDR 17,000,000`), not a convenient invention — the previous round of work on
+# this veto was misled for an hour by a fixture that wrote amounts in a
+# notation the live KB does not use.
+# ---------------------------------------------------------------------------
+
+_SRC_OVERSTAY = ["Overstay fine: IDR 1,000,000 per day per person. PP 45/2024."]
+_SRC_KITAS = [
+    "Investor KITAS 2 years - offshore IDR 17,000,000; onshore/transfer of "
+    "status IDR 19,000,000; extension IDR 18,000,000.",
+    "PNBP Investor KITAS 2 tahun IDR 9,500,000.",
+]
+
+
+def test_pricing_veto_allows_a_rate_multiplied_by_the_days_asked_about() -> None:
+    """The reproduced live failure: wa_outbox row 387, fired in isolation.
+
+    It failed 5 of 5 attempts on `finalize_pricing_outside_package` and the
+    client got an apology, because the answer did the multiplication the
+    question asked for and 5,000,000 is in no source verbatim.
+    """
+    text = "Denda overstay Rp1.000.000 per hari. Untuk 5 hari, totalnya Rp5.000.000."
+    assert price_tokens_outside_sources(text, _SRC_OVERSTAY) == []
+
+
+def test_pricing_veto_allows_the_all_inclusive_sum_the_ruling_requires() -> None:
+    """17,000,000 + 9,500,000. Zero's 2026-07-17 ruling asks for exactly this
+    one all-in client-facing figure, and before this change the veto rejected
+    it — which left splitting the levy out of the price as the only shape that
+    could pass."""
+    text = "Total all-in KITAS Investor 2 tahun Rp26.500.000, sudah termasuk PNBP."
+    assert price_tokens_outside_sources(text, _SRC_KITAS) == []
+
+
+def test_pricing_veto_allows_the_same_sum_written_in_english_magnitude() -> None:
+    text = "The all-in total is IDR 26.5 million, government fee included."
+    assert price_tokens_outside_sources(text, _SRC_KITAS) == []
+
+
+def test_pricing_veto_still_catches_an_invented_total() -> None:
+    """The allowance is arithmetic, not amnesty: 31,000,000 is neither a
+    source amount, nor a multiple of one, nor a sum of two or three."""
+    text = "Total all-in Rp31.000.000."
+    assert price_tokens_outside_sources(text, _SRC_KITAS) == ["IDR:31000000"]
+
+
+def test_pricing_veto_still_catches_an_invented_multiplication() -> None:
+    text = "Untuk 5 hari, totalnya Rp7.400.000."
+    assert price_tokens_outside_sources(text, _SRC_OVERSTAY) == ["IDR:7400000"]
+
+
+def test_pricing_veto_derivation_cannot_rescue_an_answer_with_no_sources() -> None:
+    """The file's own 999-billion control, re-run against the allowance: with
+    an empty source set there is nothing to derive FROM, so the widening can
+    never turn a groundless answer into a grounded one."""
+    text = "The fee is IDR 999,000,000,000."
+    assert price_tokens_outside_sources(text, []) == ["IDR:999000000000"]
+
+
+def test_pricing_veto_multiple_is_capped_at_a_year_of_days() -> None:
+    """400 x 1,000,000 is an exact multiple and is still vetoed: the cap is
+    what keeps 'multiple of a source amount' from meaning 'any round number'.
+    """
+    text = "Totalnya Rp400.000.000."
+    assert price_tokens_outside_sources(text, _SRC_OVERSTAY) == ["IDR:400000000"]
+
+
+def test_pricing_veto_derivation_does_not_admit_differences() -> None:
+    """Only multiples and 2-/3-term sums are anchored. A subtraction
+    (17,000,000 - 9,500,000) is not a shape any correct answer needs, and
+    admitting it would widen the surface for no measured benefit."""
+    text = "Selisihnya Rp7.500.000."
+    assert price_tokens_outside_sources(text, _SRC_KITAS) == ["IDR:7500000"]
