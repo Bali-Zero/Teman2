@@ -110,12 +110,33 @@ consumer_map:
     backend suite. The new real-Postgres file needs a database and reads
     TEST_DATABASE_URL exactly like its three siblings in that directory; CI's
     backend job provides one."
+  - "PR #5062 edits the dual-capability query in operational_preflight.py, which
+    this lane also touches — it adds `AND NOT role.rolsuper`, this lane qualifies
+    the same statement's catalog names. Same statement, different concerns;
+    whichever lands second needs a trivial rebase."
   - "PR #5302 (migration 299) touches the SAME two Python files. It ADDS the two
     GARUDA binders to RETENTION_BINDING_TRIGGER_FUNCTIONS and to the test's frozen
     authority — a list update. This lane adds the check that makes such an update
     unnecessary next time. Different hunks, no semantic conflict; whichever merges
     second may need a trivial rebase."
 risks:
+  - "TOP RESIDUAL, FOR THE GATE OWNER. Nothing automatic runs this preflight.
+    `collect_preflight_checks` has exactly two callers — the module's own
+    `__main__` and the tests — verified by grep across workflows and scripts. So
+    the new floor, and every check that predates it, fires when a human runs the
+    CLI and at no other time. This lane does not regress that (the pre-existing
+    checks were equally manual) but it does not close it either, and the code
+    comment that overstated it has been corrected. Arming it means calling the
+    census from `fullstack_smoke.py`, or having a test apply the real migration
+    chain — and BOTH need the sandbox to provision a role named
+    `visa_ledger_owner` first, or the census compares against a role that does
+    not exist and reddens on every function in the schema. That is its own
+    design, and this lane may not touch `.github/workflows/`."
+  - "Nothing pins migrations 281/286 to migration 300 at the ARGUMENT-TYPE level.
+    A static test asserts each of the five names is really created by a migration
+    on disk, which catches a rename or a deletion; an `integer` -> `bigint`
+    change would not be caught, because matching argument lists across SQL
+    formatting is a parser's job. Same closure as the item above."
   - "OPEN DECISION FOR THE GATE OWNER. The floor has no exemption mechanism at
     all, and the adversarial round supplied the case that would need one: some
     contrib extensions ship SECURITY DEFINER routines (`dblink_connect_u` is the
