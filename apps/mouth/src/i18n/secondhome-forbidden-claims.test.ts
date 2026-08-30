@@ -5,6 +5,8 @@
 import enMessages from "./locales/en.json";
 import itMessages from "./locales/it.json";
 import idMessages from "./locales/id.json";
+import frMessages from "./locales/fr.json";
+import ruMessages from "./locales/ru.json";
 
 /**
  * W82 guard — locale-aware forbidden-claims sweep (2026-08-20 spec §6).
@@ -30,7 +32,7 @@ import idMessages from "./locales/id.json";
  *             vetted copy from inside a test file.
  */
 
-type Locale = "en" | "it" | "id";
+type Locale = "en" | "it" | "id" | "fr" | "ru";
 
 const RULES: Record<Locale, RegExp[]> = {
   en: [
@@ -68,12 +70,68 @@ const RULES: Record<Locale, RegExp[]> = {
     // subtree (a duration, a code) is not this claim.
     /(?:1\.500|1,500)\s*(?:USD|\$)|(?:USD|\$)\s*(?:1\.500|1,500)/,
   ],
+  // fr/ru added 2026-08-31 with the secondHome dictionaries themselves. Two
+  // things are different about these two languages and both are load-bearing:
+  //
+  // (a) THE SEPARATOR. French and Russian both use a SPACE for thousands
+  //     (the copy reads `USD 130 000`, not `USD 130,000`), because a comma is
+  //     their DECIMAL marker. So a superseded `USD 1,500` would land here as
+  //     `USD 1 500` — and the en/it/id patterns, which only know `,` and `.`,
+  //     would sail straight past it. The character class below therefore
+  //     covers the plain space, NBSP (U+00A0) and the narrow no-break space
+  //     (U+202F) that French typography actually produces, alongside `.`/`,`.
+  //     This is the W82 under-match shape exactly: same claim, different
+  //     orthography, guard blind.
+  //
+  // (b) THE APOSTROPHE. The French copy uses the straight `'` (47 occurrences,
+  //     measured), but a later translator or a CMS paste can produce the
+  //     typographic `\u2019`. Any pattern spanning an elision accepts both, or
+  //     it silently stops matching the day the copy is retyped.
+  fr: [
+    /(?:1[\s\u00a0\u202f.,]?500)\s*(?:USD|\$)|(?:USD|\$)\s*(?:1[\s\u00a0\u202f.,]?500)/,
+    /\b(?:n['\u2019]importe\s+quelle|une\s+quelconque|toute)\s+banque\b/i,
+    /\bgaranti(?:e|s|es)?\b/i,
+    /\bnous\s+garantissons\b/i,
+    /\b(?:ITAP|KITAP)\s+automatique\b/i,
+    /\bautomatiquement\s+(?:un\s+|une\s+)?(?:ITAP|KITAP)\b/i,
+    /\bd[ée]p[ôo]ts?\s+(?:fractionn|divis|multipl|r[ée]parti)/i,
+    /\bLPS\b/,
+    /\bBSI\b/,
+    /\b(?:charia|sharia)\b/i,
+    /\bE33S\b/,
+    /\bE33R\b/,
+  ],
+  // (c) THE WORD BOUNDARY. `\b` and `\w` in JavaScript are ASCII-only: `\w`
+  //     is `[A-Za-z0-9_]`, so `\bдепозит` can NEVER match — there is no
+  //     ASCII word character adjacent to a Cyrillic one for the boundary to
+  //     sit on. Written the obvious way, every Cyrillic pattern below is a
+  //     guard that looks armed and cannot fire, which is W82 in its purest
+  //     form: it would have passed INNOCENCE on the live copy for the same
+  //     reason it passed on a planted claim. Caught by this file's own GUILT
+  //     test, not by review. The cure is a Unicode-aware boundary
+  //     (`(?<![\p{L}])` with the `u` flag) and `\p{L}` in place of `\w`.
+  ru: [
+    /(?:1[\s\u00a0\u202f.,]?500)\s*(?:USD|\$)|(?:USD|\$)\s*(?:1[\s\u00a0\u202f.,]?500)/,
+    /(?<![\p{L}])люб(?:ой|ом|ого|ые|ых)\s+банк/iu,
+    /(?<![\p{L}])гарантир\p{L}*/iu,
+    /(?<![\p{L}])гаранти(?:я|ю|и)\s+одобрения/iu,
+    /(?<![\p{L}])автоматическ\p{L}*\s+(?:ITAP|KITAP)(?![\p{L}])/iu,
+    /(?<![\p{L}])(?:раздел[её]нн\p{L}*|разбит\p{L}*)\s+депозит/iu,
+    /(?<![\p{L}])депозит\p{L}*\s+(?:раздел|разбит|в\s+нескольких)/iu,
+    /\bLPS\b/,
+    /\bBSI\b/,
+    /(?<![\p{L}])(?:шариат\p{L}*|sharia)(?![\p{L}])/iu,
+    /\bE33S\b/,
+    /\bE33R\b/,
+  ],
 };
 
 const DICTIONARIES: Record<Locale, unknown> = {
   en: enMessages,
   it: itMessages,
   id: idMessages,
+  fr: frMessages,
+  ru: ruMessages,
 };
 
 /** Recursively collects every string leaf under a JSON subtree. */
@@ -165,6 +223,135 @@ describe("secondHome dictionaries — W82 locale-aware forbidden-claims sweep", 
     const hits = sweep(fixture, RULES.it);
     for (const pattern of RULES.it) {
       expect(hits.some((h) => h.pattern === pattern.toString())).toBe(true);
+    }
+  });
+
+  it("STRUCTURAL: no Cyrillic pattern relies on an ASCII-only \\b or \\w", () => {
+    // The trap this file already fell into once: in JavaScript `\w` is
+    // `[A-Za-z0-9_]` and `\b` is defined in terms of it, so `\bдепозит`
+    // matches NOTHING — a pattern that reads like a guard and can never
+    // fire. It survives INNOCENCE for the same reason it fails GUILT, so a
+    // reviewer scanning the list sees nothing wrong.
+    //
+    // Asserted on the pattern SOURCE rather than on behaviour, because the
+    // behavioural test only covers the phrasings someone thought to plant;
+    // this covers every pattern, including ones added later.
+    const CYRILLIC = /[\u0400-\u04ff]/;
+    for (const locale of ["fr", "ru"] as const) {
+      for (const pattern of RULES[locale]) {
+        const src = pattern.source;
+        if (!CYRILLIC.test(src)) continue;
+        // A failure prints this object, so it names the offending pattern:
+        // an ASCII \\b or \\w beside Cyrillic can never match, and \\p{L} is
+        // inert without the u flag.
+        expect({
+          pattern: String(pattern),
+          asciiBoundary: /\\[bw]/.test(src),
+          unicodeFlag: pattern.flags.includes("u"),
+        }).toEqual({
+          pattern: String(pattern),
+          asciiBoundary: false,
+          unicodeFlag: true,
+        });
+      }
+    }
+  });
+
+  it("GUILT (fr): each forbidden pattern fires on a planted phrase", () => {
+    const fixture = {
+      faq: {
+        // NOTE the SPACE separator: this is the exact shape a superseded
+        // figure takes in French copy, and the one the en/it/id patterns
+        // cannot see.
+        p1: "Un dépôt de USD 1 500 suffit.",
+        p2: "Vous pouvez utiliser n\u2019importe quelle banque indonésienne.",
+        p3: "Votre approbation est garantie.",
+        p4: "Nous garantissons le résultat.",
+        p5: "KITAP automatique après trois ans.",
+        p6: "Vous obtenez automatiquement un ITAP.",
+        p7: "Nous proposons un dépôt fractionné sur deux banques.",
+        p8: "Couvert par la LPS.",
+        p9: "Dépôt BSI accepté.",
+        p10: "Compte conforme à la charia.",
+        p11: "Demandez le E33S dès aujourd\u2019hui.",
+        p12: "Demandez le E33R dès aujourd\u2019hui.",
+      },
+    };
+    const hits = sweep(fixture, RULES.fr);
+    for (const pattern of RULES.fr) {
+      expect(hits.some((h) => h.pattern === pattern.toString())).toBe(true);
+    }
+  });
+
+  it("GUILT (fr): the straight apostrophe is caught too, not only the typographic one", () => {
+    // The live copy uses ' (47 occurrences, measured). A pattern written
+    // against \u2019 alone would be innocent on a planted claim in the very
+    // orthography the dictionary actually uses.
+    const hits = sweep({ p: "Utilisez n'importe quelle banque." }, RULES.fr);
+    expect(hits.length).toBeGreaterThan(0);
+  });
+
+  it("GUILT (ru): each forbidden pattern fires on a planted phrase", () => {
+    const fixture = {
+      faq: {
+        p1: "Достаточно депозита USD 1 500.",
+        p2: "Подойдёт любой банк Индонезии.",
+        p3: "Мы гарантируем одобрение.",
+        p4: "Гарантия одобрения за три дня.",
+        p5: "Автоматический KITAP через три года.",
+        p6: "Мы предлагаем разделённый депозит.",
+        p7: "Депозит разделён между двумя банками.",
+        p8: "Покрывается LPS.",
+        p9: "Принимается депозит BSI.",
+        p10: "Счёт соответствует шариату.",
+        p11: "Подайте на E33S сегодня.",
+        p12: "Подайте на E33R сегодня.",
+      },
+    };
+    const hits = sweep(fixture, RULES.ru);
+    for (const pattern of RULES.ru) {
+      expect(hits.some((h) => h.pattern === pattern.toString())).toBe(true);
+    }
+  });
+
+  it("GUILT (fr+ru): the space-separated superseded figure is caught in BOTH", () => {
+    // The whole reason these two rulesets are not copies of the en one.
+    for (const locale of ["fr", "ru"] as const) {
+      for (const spaced of [
+        "USD 1 500",
+        "USD 1\u00a0500",
+        "USD 1\u202f500",
+        "1 500 USD",
+      ]) {
+        const hits = sweep({ p: `Le montant est ${spaced}.` }, RULES[locale]);
+        expect({ locale, spaced, caught: hits.length > 0 }).toEqual({
+          locale,
+          spaced,
+          caught: true,
+        });
+      }
+    }
+  });
+
+  it("INNOCENCE (fr+ru): the LEGITIMATE figures are not mistaken for the superseded one", () => {
+    // The money pattern must fire on 1 500 and nothing else. USD 130 000,
+    // USD 1 000 000, USD 50 000 and USD 3 000 all appear in the live copy
+    // with the same space separator; a pattern anchored loosely on "1" and
+    // a space would swallow USD 1 000 000 and turn the guard into noise.
+    for (const locale of ["fr", "ru"] as const) {
+      for (const ok of [
+        "USD 130 000",
+        "USD 1 000 000",
+        "USD 50 000",
+        "USD 3 000",
+      ]) {
+        const hits = sweep({ p: `Le montant est ${ok}.` }, RULES[locale]);
+        expect({ locale, figure: ok, hits }).toEqual({
+          locale,
+          figure: ok,
+          hits: [],
+        });
+      }
     }
   });
 
