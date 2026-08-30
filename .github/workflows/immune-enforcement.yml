@@ -170,6 +170,8 @@ jobs:
               scripts/tests/test_tcc_migrate_desktop_paths.py|\
               scripts/tests/test_lint_tcc_desktop_paths.py|\
               infra/tcc-desktop-paths/allowlist.txt|\
+              scripts/canon_blocks_publish.py|\
+              scripts/tests/test_canon_blocks.py|\
               scripts/launchd_liveness_detector.py|\
               scripts/tests/test_launchd_liveness_expected_nonzero.py|\
               scripts/tests/test_launchd_liveness_exit_status_decode.py|\
@@ -503,7 +505,8 @@ jobs:
             scripts/test_lint_test_reward_hacking.py \
             scripts/tests/test_required_context_map.py \
             scripts/tests/test_check_required_workflow_conformance.py \
-            scripts/tests/test_unreachable_workflow_conditions.py ; do
+            scripts/tests/test_unreachable_workflow_conditions.py \
+            scripts/tests/test_canon_blocks.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
               python -m pytest "$t" -q || fail=1
