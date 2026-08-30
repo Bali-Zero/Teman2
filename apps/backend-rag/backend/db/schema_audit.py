@@ -49,6 +49,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -139,15 +140,59 @@ class AuditReport:
 # hole: a blanket "ignore anything that says legacy" would let any future row
 # opt out of verification by storing that string.
 
+# A real checksum is a sha256 hex digest. ANYTHING ELSE is a SYMBOLIC value
+# written by a migration that deliberately did not execute the SQL it is
+# claiming, and it must be allowlisted or reported. Matching the SHAPE rather
+# than a list of known strings is what makes this close the CLASS: the first
+# draft allowlisted one literal, and a blind refuter found THREE symbolic
+# values in the tree -- `legacy_fake_checksum`, `tracked-by-migration-165` and
+# `tracked-by-migration-166` -- plus `legacy-107-bridge-outbox`. Comparing
+# those against real sha256 digests would have failed the `release_command` on
+# a PERFECTLY HEALTHY production database: a verifier turned into an outage,
+# which is the worst possible outcome for a check whose whole purpose is to
+# make deploys safer.
+_SHA256_HEX = re.compile(r"\A[0-9a-f]{64}\Z")
+
 LEGACY_CHECKSUM_SENTINEL = "legacy_fake_checksum"
 
-# migration_number -> why this row is allowed to carry the sentinel.
-LEGACY_CHECKSUM_ALLOWLIST: dict[int, str] = {
-    1: (
-        "001_baseline_v2.sql is marked applied WITHOUT executing its SQL when the "
-        "runner adopts a pre-existing database (migration_manager.py:451-462); the "
-        "text was never run, so there is no honest checksum to record."
+# (migration_number, migration_name) -> why this row may carry a symbolic
+# checksum. Keyed on the PAIR, not the number alone: a number-only key lets any
+# future row renumbered to 1 skip verification, and the divergence checker
+# compares numbers only, so nothing else would notice.
+SYMBOLIC_CHECKSUM_ALLOWLIST: dict[tuple[int, str], str] = {
+    (1, "001_baseline_v2.sql"): (
+        "marked applied WITHOUT executing its SQL when the runner adopts a "
+        "pre-existing database (migration_manager.py:451-462); the text never ran, "
+        "so there is no honest checksum to record."
     ),
+    (107, "107_bridge_outbox"): (
+        "the ledger row is BACKFILLED by migration 194 with the literal "
+        "'legacy-107-bridge-outbox'; 107 itself was promoted from a legacy Python "
+        "migration, so the row records the promotion rather than an execution of "
+        "this file's text."
+    ),
+    (165, "165_reconcile_schema_migrations_duplicates"): (
+        "this migration INSERTS ITS OWN ledger row with 'tracked-by-migration-165', "
+        "and `_log_migration` then uses ON CONFLICT DO NOTHING, so the symbolic "
+        "value is never replaced by a real digest."
+    ),
+    (166, "166_reconcile_client_email_duplicates"): (
+        "same self-inserting shape as 165, with 'tracked-by-migration-166'; the "
+        "ON CONFLICT DO NOTHING in `_log_migration` leaves the symbolic value in "
+        "place for the lifetime of the row."
+    ),
+}
+
+# NOTE ON THE NAMES: three of these four carry NO `.sql` suffix, and that is not
+# a typo. The runner writes `migration_name` from the FILENAME (with suffix),
+# but 165, 166 and 194 write their own rows with a hand-written name string that
+# omits it. The allowlist must match what is actually IN the column, not what
+# the filename looks like -- measured by reading those INSERT statements.
+
+# Kept as a derived view so callers and tests can ask "is this number allowed"
+# without duplicating the pair logic.
+LEGACY_CHECKSUM_ALLOWLIST: dict[int, str] = {
+    number: reason for (number, _name), reason in SYMBOLIC_CHECKSUM_ALLOWLIST.items()
 }
 
 
@@ -162,7 +207,9 @@ def _migration_sql_by_number() -> dict[int, Path]:
     return found
 
 
-async def _check_migration_checksums(manager: MigrationManager) -> list[Finding]:
+async def _check_migration_checksums(
+    manager: MigrationManager, *, table: str = "_schema_versions"
+) -> list[Finding]:
     """Recompute every applied migration's checksum from disk and compare.
 
     Rows whose file is absent are NOT reported here: that is the orphan case
@@ -174,7 +221,7 @@ async def _check_migration_checksums(manager: MigrationManager) -> list[Finding]
     on_disk = _migration_sql_by_number()
 
     async with manager.pool.acquire() as conn:
-        has_table = await _table_exists(conn, "_schema_versions")
+        has_table = await _table_exists(conn, table)
         if not has_table:
             return findings
         # SELECT * rather than naming the columns, and the reason is not style.
@@ -186,7 +233,7 @@ async def _check_migration_checksums(manager: MigrationManager) -> list[Finding]
         # The presence is then read off the ROWS, not from a second catalogue
         # round trip: fewer queries, and it cannot disagree with what was
         # actually fetched.
-        rows = await conn.fetch("SELECT * FROM _schema_versions ORDER BY migration_number")
+        rows = await conn.fetch(f"SELECT * FROM {table} ORDER BY migration_number")
 
     if not rows:
         return findings
@@ -207,19 +254,20 @@ async def _check_migration_checksums(manager: MigrationManager) -> list[Finding]
         # therefore made the entire allowlist UNREACHABLE: a branch that looks
         # like a guard and can never fire. Found 2026-08-31 by this check's own
         # corpus failing with KeyError, not by reading the code.
-        if stored == LEGACY_CHECKSUM_SENTINEL:
-            if number in LEGACY_CHECKSUM_ALLOWLIST:
+        if not _SHA256_HEX.match(stored or ""):
+            if (number, row["migration_name"]) in SYMBOLIC_CHECKSUM_ALLOWLIST:
                 continue
             findings.append(
                 Finding(
                     code="migration_checksum_unallowed_sentinel",
                     severity="error",
                     message=(
-                        f"migration {number} ({row['migration_name']}) stores the "
-                        f"{LEGACY_CHECKSUM_SENTINEL!r} sentinel but is not in "
-                        "LEGACY_CHECKSUM_ALLOWLIST. The sentinel means 'this SQL was "
-                        "never executed'; allowing it implicitly would let any row opt "
-                        "out of checksum verification by storing that string."
+                        f"migration {number} ({row['migration_name']}) stores "
+                        f"{stored!r}, which is not a sha256 digest, and the pair "
+                        "(number, name) is not in SYMBOLIC_CHECKSUM_ALLOWLIST. A "
+                        "symbolic checksum means 'this SQL was never executed'; "
+                        "allowing it implicitly would let any row opt out of "
+                        "verification by storing a non-digest string."
                     ),
                     details={"migration_number": number, "migration_name": row["migration_name"]},
                 )

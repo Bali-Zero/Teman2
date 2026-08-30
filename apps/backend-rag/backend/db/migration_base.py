@@ -41,16 +41,25 @@ def resolve_applied_via() -> str:
     * GitHub Actions sets `CI=true` (and `GITHUB_ACTIONS`).
     * Anything else is a human at a shell -- `manual`.
 
-    Fly is checked FIRST because a Fly machine is the narrower, more specific
-    fact: `CI` may also be set inside a container image for unrelated reasons,
-    and mislabelling a production release as `ci` would defeat the column's
-    only purpose. The value is CHECK-constrained by migration 299, so an
-    unexpected string is rejected by the database rather than silently stored.
+    CI IS CHECKED FIRST, and that ordering is a correction (2026-08-31, blind
+    refuter). The first version checked Fly first, reasoning that a Fly machine
+    is the more specific fact. It is not: this repository's CI runs
+    `flyctl ssh console` against a Fly machine, so a CI-driven apply executes
+    WITH `FLY_APP_NAME` set and would have been recorded as `release_command` --
+    the single label most likely to be trusted in an incident. `GITHUB_ACTIONS`
+    is the narrower signal and is what actually distinguishes the two.
+
+    Declared limit: this is SELF-REPORTED from the environment and a
+    determined caller can set these variables. It is a provenance HINT, unlike
+    `applied_as`, which the server answers. The CHECK constraint in migration
+    299 bounds the vocabulary so an unexpected string is rejected by the
+    database rather than silently stored, but it cannot make an environment
+    honest.
     """
+    if os.environ.get("GITHUB_ACTIONS") or os.environ.get("CI"):
+        return "ci"
     if os.environ.get("FLY_APP_NAME"):
         return "release_command"
-    if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
-        return "ci"
     return "manual"
 
 
@@ -69,18 +78,32 @@ def resolve_runner_version() -> str:
 async def resolve_applied_as(conn: asyncpg.Connection) -> str | None:
     """The effective PostgreSQL role, asked of the server.
 
-    `SELECT current_user` -- not `USER`, not an env var, not a DSN fragment.
-    W130's temporary `GRANT visa_ledger_owner TO backend_rag_v2` is precisely
-    the case this exists to make visible after the fact: the DSN's username
-    would have said `backend_rag_v2` either way, while `current_user` reports
-    what the session is actually acting as.
+    Records `current_user`, and `session_user` TOO when they differ -- as
+    `current_user (session_user)`. Both, because neither alone is the answer:
+    `current_user` is the EFFECTIVE role and moves under `SET ROLE`;
+    `session_user` is the role that authenticated and does not.
+
+    CORRECTED 2026-08-31 by a blind refuter, because the first version of this
+    docstring overclaimed: it said `current_user` makes W130's temporary
+    `GRANT visa_ledger_owner TO backend_rag_v2` visible. It does NOT. A role
+    MEMBERSHIP does not change `current_user` unless someone also issues
+    `SET ROLE`; the grant merely makes the privilege reachable. What this
+    column honestly gives is the effective role at apply time plus the
+    authenticated one when they diverge -- which catches `SET ROLE`, and does
+    not catch a bare membership. Said plainly rather than left as a claim the
+    mechanism cannot support.
 
     Returns None rather than raising if the query fails: provenance is
     valuable, but refusing to record a migration that APPLIED CLEANLY because
     a metadata read failed would turn a nice-to-have into an outage.
     """
     try:
-        return await conn.fetchval("SELECT current_user")
+        row = await conn.fetchrow("SELECT current_user AS cu, session_user AS su")
+        if row is None:
+            return None
+        if row["cu"] == row["su"]:
+            return str(row["cu"])
+        return f"{row['cu']} (session_user={row['su']})"
     except Exception:  # provenance must never block an apply that succeeded
         logger.warning("could not resolve current_user for provenance; recording NULL")
         return None
@@ -106,8 +129,13 @@ async def _schema_versions_has_provenance(conn: asyncpg.Connection) -> bool:
     try:
         return bool(
             await fetchval(
+                # table_schema scoped: an unrelated `_schema_versions` in another
+                # schema would otherwise make this claim the columns exist and
+                # send a 10-column INSERT at a table that has 9 -- aborting a
+                # migration that would have applied fine (refuter, 2026-08-31).
                 "SELECT EXISTS (SELECT 1 FROM information_schema.columns "
-                "WHERE table_name = '_schema_versions' AND column_name = 'applied_as')"
+                "WHERE table_schema = 'public' AND table_name = '_schema_versions' "
+                "AND column_name = 'applied_as')"
             )
         )
     except Exception:  # a metadata read must never abort a good apply

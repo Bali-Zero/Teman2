@@ -70,9 +70,14 @@ ALTER TABLE _schema_versions
 
 DO $$
 BEGIN
+    -- `conname` is NOT globally unique in PostgreSQL -- it is unique per
+    -- table. A constraint of this name on ANY other table would make this
+    -- guard skip the ADD and leave `_schema_versions` unconstrained, silently.
+    -- Scoped to conrelid after a blind refuter pointed it out (2026-08-31).
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint
         WHERE conname = 'schema_versions_applied_via_check'
+          AND conrelid = 'public._schema_versions'::regclass
     ) THEN
         ALTER TABLE _schema_versions
             ADD CONSTRAINT schema_versions_applied_via_check
@@ -95,6 +100,16 @@ COMMENT ON COLUMN _schema_versions.runner_version IS
 
 -- === ROLLBACK ===
 
+-- DELIBERATELY unconditional, and the reason is worth stating because the
+-- asymmetry is real: `ADD COLUMN IF NOT EXISTS` is a no-op if a column of that
+-- name already existed, so a strict inverse would have to know whether IT
+-- created the column. PostgreSQL does not record that. A blind refuter flagged
+-- the asymmetry (2026-08-31) and it is accepted rather than papered over:
+-- these three names are introduced by THIS migration and appear nowhere else
+-- in migrations_v2/ (grep-verified), so on any database this repository can
+-- produce, dropping them is the exact inverse. On a database where somebody
+-- added a column with one of these names OUT OF BAND, the rollback would take
+-- it -- which is a real, narrow, documented limit, not an unknown one.
 ALTER TABLE _schema_versions
     DROP CONSTRAINT IF EXISTS schema_versions_applied_via_check;
 ALTER TABLE _schema_versions DROP COLUMN IF EXISTS runner_version;
