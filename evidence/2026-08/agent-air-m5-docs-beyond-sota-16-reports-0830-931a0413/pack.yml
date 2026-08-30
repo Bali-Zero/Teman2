@@ -19,7 +19,7 @@ lanes:
     seat: "codex-gpt-5.6-sol (xhigh) + kimi-code/k3, cross-family; every concrete claim re-derived by an independent fact-checking seat"
 diff:
   files: 21
-  net_lines: "21 files, +4619/-69, commit count unmeasured (no --commit-count, no pull_request payload)"
+  net_lines: "21 files, +4772/-69, commit count unmeasured (no --commit-count, no pull_request payload)"
   behaviour_change: >-
     None. This diff adds markdown under research/operations/ and ships no code into any deployed
     artifact. What changes is what a session can READ: the memory index pointed at a directory
