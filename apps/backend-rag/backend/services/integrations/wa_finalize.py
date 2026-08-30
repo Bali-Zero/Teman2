@@ -272,18 +272,62 @@ def _starts_with_internal_monologue_leak(answer: str) -> bool:
 # * source numbers are extracted per TOKEN, never from a concatenation of the
 #   whole source ("Rp 12.345" followed by "67 days" can never authorize an
 #   invented "Rp 34.567").
+#
+# ENGLISH MAGNITUDE WORDS (added 2026-08-30): the Indonesian-only list below was
+# not merely incomplete — it was a TOTAL VETO BYPASS in both directions, measured
+# on origin/main before this change:
+#   price_tokens_outside_sources("...IDR 2.5 billion.", [])          -> []
+#   price_tokens_outside_sources("...IDR 999 billion.", [])          -> []   <- INVENTED
+#   price_tokens_outside_sources("Rp 2.500.000.000", [<curated_qa>]) -> ["IDR:2500000000"]
+# Mechanism: with "billion" unknown, the regex captures only the bare "2.5",
+# _canonical_value returns 25, and 25 < _VETO_FLOORS["IDR"] discards it BEFORE the
+# source-membership check ever runs. So an English-worded amount was never
+# validated as grounded AND never caught as hallucinated — the 999-billion control
+# proves that is the rule, not an accident of one value. Symmetrically, a source
+# stating the right figure in English prose (the live curated_qa entry for PT PMA
+# paid-up capital says "IDR 2.5 billion") could not be canonicalized either, so a
+# CORRECT digit-grouped answer was rejected against evidence that actually
+# supported it — the mechanism behind the finalize_pricing_outside_package
+# rejections measured on the live bot 2026-08-30.
+#
+# The pattern is DERIVED from the dict below, longest-alternative-first, so the two
+# can never drift apart. That coupling was live-ammunition: _canonical_value does
+# _AMOUNT_MULTIPLIERS[multiplier.lower()] with no .get(), so a token the pattern
+# matches and the dict lacks is a KeyError inside the finalize path, not a miss.
+# test_wa_finalize_price_veto.py asserts the derivation holds.
+#
+# NOT widened here, deliberately, and named so it is not mistaken for coverage: a
+# bare currency WORD ("2,5 miliar rupiah", with no Rp/IDR/USD marker) is still
+# invisible to this veto. Adding "rupiah" as a currency marker only ever ADDS
+# rejections, and the live bot is already over-rejecting (4 of 5 battery questions
+# blocked on 2026-08-30); widening the marker vocabulary is a separate change that
+# needs its own false-positive measurement, not a rider on this one.
 _AMOUNT_MULTIPLIERS: dict[str, float] = {
     "k": 1e3,
     "rb": 1e3,
     "ribu": 1e3,
+    "thousand": 1e3,
+    "thousands": 1e3,
     "jt": 1e6,
     "juta": 1e6,
+    "mn": 1e6,
+    "million": 1e6,
+    "millions": 1e6,
     "miliar": 1e9,
     "milyar": 1e9,
     "bn": 1e9,
+    "billion": 1e9,
+    "billions": 1e9,
     "triliun": 1e12,
+    "trillion": 1e12,
+    "trillions": 1e12,
 }
-_MULT_PATTERN = r"(?:jt|juta|rb|ribu|k|miliar|milyar|bn|triliun)"
+# Longest first so a longer token is never pre-empted by a prefix of itself
+# ("juta" by "jt" is safe only by luck of ordering; "millions" by "million" is not).
+_MULT_ALTERNATION = "|".join(
+    sorted((re.escape(k) for k in _AMOUNT_MULTIPLIERS), key=len, reverse=True)
+)
+_MULT_PATTERN = f"(?:{_MULT_ALTERNATION})"
 _CURRENCY_AMOUNT_RE = re.compile(
     r"(?:(?P<cur1>\bRp\.?|\bIDR|\bUSD|\$)[ \t]*(?P<amt1>\d(?:[\d.,]*\d)?)"
     r"(?:[ \t]*(?P<mul1>" + _MULT_PATTERN + r")\b)?)"
