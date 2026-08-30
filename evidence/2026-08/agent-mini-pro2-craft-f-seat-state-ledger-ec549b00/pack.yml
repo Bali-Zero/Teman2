@@ -1,0 +1,153 @@
+council_run: journal.jsonl
+brief_ref: evidence/2026-08/agent-mini-pro2-craft-f-seat-state-ledger-ec549b00/brief.yml
+plan_ref: >-
+  docs/plans/2026-08-29-beyond-sota-craft-wave/L09-multi-agent-orchestration-fleet-routing.md
+  section "PR-1: feat(fleet): seat-state ledger + cascade pre-dispatch check".
+
+lanes:
+  - lane: seat-state-build
+    role: build
+    seat: claude sonnet-5 (Anthropic) -- implementer subagent, never the grader
+  - lane: seat-state-refute
+    role: review
+    seat: kimi-k3 (non-Anthropic) -- blind adversarial refutation of the diff
+  - lane: seat-state-gate
+    role: review
+    seat: claude opus-5 xhigh (this orchestrator) -- final on-disk gate, empirical
+
+diff:
+  files: 5
+  net_lines: 1104
+  measured_at: af6369dd4a
+  note: >-
+    git diff --numstat $(git merge-base origin/main HEAD)..HEAD -> 5 files,
+    +1104/-0. Three of those are the code under review (seat_state.sh, its
+    corpus, the cascade hook); the rest are this squad's own MANDATE.md,
+    SQUAD-LEDGER.md and this evidence pack, carried as lane provenance. The code
+    half is over the <=400 net-line target of rules-of-engagement #2 and that is
+    declared rather than hidden: roughly half of it is the guilt+innocence
+    corpus the spec's acceptance criteria require, and splitting the corpus out
+    would ship a library with no guard.
+
+pii_scan: clean
+
+receipts:
+  - claim: "26/26 corpus green, and it bites: 20/20 mutants killed at real code sites."
+    cmd: "bash scripts/tests/test_seat_state.sh"
+    exit: 0
+    ts: "2026-08-30T02:48:45Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+  - claim: "The cascade edit causes no regression: 62 passed, identical to the pre-change baseline measured before any file was touched."
+    cmd: "python3 -m pytest scripts/tests/test_claude_cascade_shell.py -q"
+    exit: 0
+    ts: "2026-08-30T02:43:06Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+  - claim: "The library sources and executes safely under the cascade's real mode (set -uo pipefail) in zsh; exit 1 is the correct no-skip answer for an unmapped slot."
+    cmd: "zsh -c 'set -uo pipefail; . scripts/lib/seat_state.sh; seat_state_precheck_skip claude-token-1-env'"
+    exit: 1
+    ts: "2026-08-30T02:43:06Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+  - claim: "Measured on the real fleet: both live reports are stale (quota ~4.86 days, arsenal ~11.3h), so the pre-check resolves UNKNOWN and skips nothing today. Carried as PENDING-ARMS, not reported as a shipped win."
+    cmd: "bash -c '. scripts/lib/seat_state.sh; seat_state_lookup nobody@example.invalid'"
+    exit: 2
+    ts: "2026-08-30T02:43:06Z"
+    seat: "claude opus-5 xhigh (orchestrator, final on-disk gate)"
+
+dissent:
+  - seat: kimi-k3 (blind refutation)
+    objection: >-
+      A report dated in the FUTURE reads as fresh forever -- only age > max_age_s
+      was tested, so a negative age passes. A future-dated report carrying
+      weekly_pct=100 then SKIPS a possibly-live seat.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced (11.5 days ahead -> EXHAUSTED/skip), then fixed: ages below
+      -300s resolve UNKNOWN. 300s keeps ordinary NTP jitter usable; an innocence
+      case pins that a +60s skew still resolves EXHAUSTED.
+  - seat: kimi-k3 (blind refutation)
+    objection: >-
+      Python json accepts Infinity/NaN by default, so a strictly-invalid report
+      can force a skip.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced (weekly_pct Infinity -> EXHAUSTED/skip), then fixed with
+      parse_constant rejection; such a report is now UNKNOWN.
+  - seat: kimi-k3 (blind refutation)
+    objection: >-
+      A timezone-less timestamp is read in LOCAL time, shifting age by the
+      reading machine's offset.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced precisely on Mini (UTC+8): a naive-UTC report written THAT
+      SECOND reported "stale age=28800s", exactly the offset. Refused as
+      timestamp-without-timezone rather than guessed. Note the refuter's framing
+      needed correction -- a naive LOCAL stamp reads correctly here, so the test
+      had to target the direction that actually bites.
+  - seat: kimi-k3 (blind refutation)
+    objection: >-
+      The probe sentinel is exported, so "one probe per process" is really one
+      probe per process TREE; every cascade child inherits it.
+    status: CONFIRMED
+    resolution: "export dropped; a plain shell variable already gives the stated guarantee."
+  - seat: kimi-k3 (blind refutation)
+    objection: >-
+      The wiring guard asserts the kill switch is PRESENT but never its POLARITY;
+      inverting it to = "0" leaves every test green.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced (suite stayed 20/20 with the switch inverted); the guard now
+      pins the != "0" polarity and a mutant proves it red.
+  - seat: kimi-k3 (blind refutation)
+    objection: >-
+      Unvalidated report values reach the field-separated output line; a crafted
+      status can inject tabs.
+    status: CONFIRMED
+    resolution: >-
+      Values are sanitised before emission. The first guard for this asserted
+      field COUNT, which cannot distinguish the mutant (an unsanitised tab
+      TRUNCATES the reason rather than adding a field) -- corrected to assert the
+      value survives intact.
+  - seat: kimi-k3 (blind refutation)
+    objection: >-
+      The arsenal source is dead code on the cascade path: that path resolves an
+      account e-mail while arsenal is keyed by seat name, so it can never answer.
+      With both reports stale the whole feature is inert.
+    status: CONFIRMED
+    resolution: >-
+      Accepted as an honest LIMIT and documented rather than "fixed": the arsenal
+      branch serves direct seat-name lookups (kimi, codex, tp1-*), which is what
+      L09-PR2's fleet_burst will use. The inertness is real and is carried as a
+      PENDING-ARMS row instead of being reported as a working feature.
+  - seat: kimi-k3 (blind refutation)
+    objection: >-
+      The byte-identity check trusts whatever local ref is named origin/main.
+    status: PLAUSIBLE
+    resolution: >-
+      Acknowledged, not fixed: any local-ref comparison shares this, and the
+      check is a conflict tripwire against PR #4644 rather than a security
+      boundary. Declared here rather than silently accepted.
+  - seat: codex-gpt-5.6-sol (blind refutation, round 2, pointed at the FIXES)
+    objection: >-
+      The non-strict-JSON fix is incomplete: parse_constant rejects the literal
+      Infinity/NaN tokens, but JSON 1e400 overflows to inf through the ordinary
+      number path and never reaches it, so a crafted report still forces a SKIP.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced (weekly_pct 1e400 -> EXHAUSTED/skip), then fixed: a percentage
+      must be FINITE, not merely numeric. Half-fixing it turned the wrong SKIP
+      into a wrong LIVE (the decision fell through to the other field), so a
+      present-but-non-finite figure is now a malformed row answering UNKNOWN.
+  - seat: codex-gpt-5.6-sol (blind refutation, round 2, pointed at the FIXES)
+    objection: >-
+      Removing the sentinel export closed the process-tree leak but opened a
+      twin: a probe that re-enters the library no longer sees the flag and
+      recurses.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced (26 recursive invocations before an external timeout), then
+      fixed by passing the sentinel command-scoped to the probe alone. Both
+      properties are pinned by separate cases that must stay green together --
+      re-adding the export turns the leak case red while leaving re-entrancy
+      bounded, which proves they are independent rather than one masking the
+      other. This is the W94 shape: the first refuter could not have found this
+      defect, because it did not exist until its own finding was fixed.
