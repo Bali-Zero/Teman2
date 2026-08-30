@@ -46,26 +46,22 @@ const DICTIONARIES: Record<Locale, unknown> = {
  * the page falls back to English, not a design choice.
  *
  * `portal.*` is elided to the section name because the whole section is
- * absent; the five `common.consent.*` keys are the consent banner, which
- * therefore renders in English for French and Russian visitors.
+ * absent. It is the client-portal login and password-recovery flow
+ * (`/portal/login-upgraded`, `/portal/forgot-password`) — measured: 6
+ * consumers, none of them reachable from any `/visa/*` route — so it is a
+ * genuinely separate surface with its own owner, not part of this one.
+ *
+ * The five `common.consent.*` keys were the other half and are now CLOSED
+ * (same day): that banner mounts on `/visa/second-home` and
+ * `/visa/second-home/studio`, so it was rendering English to exactly the
+ * French and Russian visitors those dictionaries had just been written for.
+ * The ratchet is what forced the list to shrink here rather than outlive the
+ * translation — it went red on `expected ['portal'] to deeply equal [...6]`
+ * the moment the keys landed.
  */
 const KNOWN_GAPS: Partial<Record<Locale, string[]>> = {
-  fr: [
-    "common.consent.and",
-    "common.consent.dismiss",
-    "common.consent.privacyPolicy",
-    "common.consent.termsOfService",
-    "common.consent.text",
-    "portal",
-  ],
-  ru: [
-    "common.consent.and",
-    "common.consent.dismiss",
-    "common.consent.privacyPolicy",
-    "common.consent.termsOfService",
-    "common.consent.text",
-    "portal",
-  ],
+  fr: ["portal"],
+  ru: ["portal"],
 };
 
 /** Every string leaf's dotted path. Arrays keep their index, so a shortened
@@ -156,6 +152,36 @@ describe("locale key-set parity", () => {
       // so does a gap that was closed but left in KNOWN_GAPS. The second
       // direction is what stops this list from becoming a permanent excuse.
       expect(gapsFor(locale)).toEqual([...(KNOWN_GAPS[locale] ?? [])].sort());
+    });
+  }
+
+  // ── The consent banner specifically. Key parity above proves the keys
+  //    EXIST; it cannot tell a translation from the English string pasted
+  //    into a second file, and a banner that silently reads English is
+  //    indistinguishable from a missing key to the visitor. `t()` falls back
+  //    to `en` and then to the raw key path (src/i18n/index.tsx), so neither
+  //    failure mode throws — nothing surfaces it but an assertion.
+  const CONSENT_KEYS = [
+    "text",
+    "privacyPolicy",
+    "and",
+    "termsOfService",
+    "dismiss",
+  ] as const;
+
+  for (const locale of ["it", "id", "fr", "ru"] as const) {
+    it(`${locale}: the consent banner copy is present and actually translated`, () => {
+      const en = (enMessages as Record<string, any>).common.consent;
+      const mine = (DICTIONARIES[locale] as Record<string, any>).common
+        ?.consent;
+      expect({ locale, present: Boolean(mine) }).toEqual({
+        locale,
+        present: true,
+      });
+      // "and" is legitimately "e"/"dan"/"et"/"и" — short, but never the
+      // English word. Every one of the five must differ from the English.
+      const untranslated = CONSENT_KEYS.filter((k) => mine[k] === en[k]);
+      expect({ locale, untranslated }).toEqual({ locale, untranslated: [] });
     });
   }
 });
