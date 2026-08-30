@@ -38,6 +38,7 @@ from httpx import ASGITransport, AsyncClient
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.setup.route_walk import iter_leaf_routes
+from backend.tests.fixtures.prod_shaped_pool import create_prod_shaped_pool
 
 DSN = os.environ.get("INTAKE_TEST_DSN", "postgresql://localhost:5432/nuzantara_test")
 PIPELINE = "test-5a"
@@ -77,7 +78,7 @@ async def _dsn_reachable() -> bool:
 async def pool() -> AsyncIterator[asyncpg.Pool]:
     if not await _dsn_reachable():
         pytest.skip(f"local intake DB not reachable at {DSN}")
-    p = await asyncpg.create_pool(DSN, min_size=1, max_size=4)
+    p = await create_prod_shaped_pool(DSN, min_size=1, max_size=4)
     yield p
     await p.close()
 

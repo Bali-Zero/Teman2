@@ -28,6 +28,7 @@ import pytest
 
 asyncpg = pytest.importorskip("asyncpg")
 
+from backend.app.core.database import init_asyncpg_connection
 from backend.services.garuda_orders import journal
 from backend.services.garuda_orders.outbox_consumer import (
     DEFAULT_MAX_ATTEMPTS,
@@ -53,12 +54,25 @@ pytestmark = pytest.mark.asyncio
 
 
 async def _connect() -> asyncpg.Connection:
+    """A bare `asyncpg.connect()` -- no pool -- so it must register the SAME
+    canonical codec production pools do (2026-08-29): this file's own
+    docstring says rows are written through the production writers
+    (`journal.append_event`, `journal.enqueue_outbox`), and those writers now
+    hand a jsonb/json parameter a native Python container, relying on the
+    codec to encode it. Without `init_asyncpg_connection` here, this
+    connection has NO jsonb codec at all and asyncpg cannot bind a `dict` to
+    a jsonb-typed parameter -- exactly the test/production codec-parity gap
+    `backend/tests/fixtures/prod_shaped_pool.py` exists to close for pooled
+    connections; this is the same fix for a bare one.
+    """
     try:
-        return await asyncpg.connect(_DSN)
+        conn = await asyncpg.connect(_DSN)
     except (OSError, asyncpg.PostgresError) as exc:
         if os.environ.get("CI"):
             pytest.fail(f"no reachable Postgres in CI at {_DSN}: {exc}")
         pytest.skip(f"no reachable Postgres at {_DSN}: {exc}")
+    await init_asyncpg_connection(conn)
+    return conn
 
 
 @pytest.fixture
