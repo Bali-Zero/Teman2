@@ -1,0 +1,50 @@
+task_id: craft-s-l04-lane-check
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Wave-2 Squad S, lane 2: L04-PR1, the `lane_check` contract.
+
+  A worktree may carry a `.lane-check.json` at its root, emitted by a lane's
+  DESIGN stage: `{command, expected_exit, timeout, scope_globs}`. A shared
+  library evaluates it at the stop boundary, so a lane that broke its own
+  declared build check cannot end a turn quietly reporting success.
+
+  This is BUILD-side self-verification only. A PASS does NOT replace
+  generator≠grader — the diff still faces an independent cross-family refuter
+  afterwards — and the module's docstring says so, because the adjacent error
+  this could invite is "self-checked == graded".
+constraints:
+  - "ABSENT (no .lane-check.json) must be byte-identical to the behaviour before
+    this change: no subprocess, no git call. This module is imported by a surface
+    every session and every subagent passes through."
+  - "Fail CLOSED on a failure to MEASURE (INVALID, timeout), unlike the fail-open
+    safety guards beside it — those are imposed on the agent, this one relays a
+    check the LANE declared about itself."
+  - "The tautology rule is entity-wise after a quote-aware split, never a
+    substring: `pytest test_true_positive.py` must not be refused (superscar #3,
+    nine instances in this repo)."
+  - "An unknown OR an empty change set must keep the check RUNNING. Letting a
+    missing input silently disable a check is how a guard stops guarding."
+  - "Spec deviation, declared: the lane file says PR-1 touches no
+    `.github/workflows/`. It does — guard-conformance.yml gains the two
+    executors. Without them the corpora run only in the `scripts/tests` sweep,
+    which is `continue-on-error: true` and in no required context, i.e. a corpus
+    whose only executor cannot go red (W108). The spec is wrong on this point
+    and the deviation is stated rather than quietly taken."
+acceptance:
+  - text: "GUILT — a failing check blocks the stop and the stderr is quoted back."
+    probe: "test_lane_check_wiring.py"
+  - text:
+      "INNOCENCE — no .lane-check.json means behaviour byte-identical to pre-PR,
+      proved by a side-effect probe and by a callable that records whether the
+      change set was computed at all, not merely by the returned status."
+    probe: "test_absent_never_computes_the_change_set"
+  - text: "GUILT — a tautological command is refused, including the `|| true` tail."
+    probe: "test_or_true_tail_is_refused"
+  - text:
+      "ARMED — the decision reaches a real stop boundary, proved by driving the
+      hook as a subprocess with a real SubagentStop payload. Import is not honour."
+    probe: "python3 infra/claude-hooks/test_lane_check_wiring.py"
+  - text: "The corpora go RED on regression, not merely green on the fix."
+    probe: "eleven mutants, each asserted to have applied, each reverted"
