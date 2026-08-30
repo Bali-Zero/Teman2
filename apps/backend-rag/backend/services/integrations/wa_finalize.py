@@ -521,47 +521,58 @@ def _currency_amounts(text: str) -> list[tuple[str, int]]:
 # the honest ceiling; TERMS caps at 3 because a client price is a service fee
 # plus a levy plus at most one add-on, and every extra term multiplies the
 # surface on which a wrong number can land on a legal sum by coincidence.
-_DERIVED_MAX_MULTIPLE = 366
-_DERIVED_PAIRSUM_MAX_SOURCES = 200
+_SUMMABLE_OPERAND_FLOORS: dict[str, int] = {
+    "IDR": 100_000,
+    "USD": 10,
+    "EUR": 10,
+    "GBP": 10,
+    "SGD": 10,
+    "AUD": 10,
+}
 
 
-def _is_derived_from_sources(value: int, source_values: set[int]) -> bool:
-    """True when ``value`` is an exact multiple or 2-/3-term sum of sources.
+def _is_two_component_total(value: int, source_values: set[int], cur: str) -> bool:
+    """True when ``value`` is the sum of two DISTINCT price-sized source amounts.
 
-    Deliberately NOT a general subset-sum: the bounds above are what keep this
-    an arithmetic allowance rather than a hole. Pure and side-effect free so
-    the veto stays testable without fixtures.
+    Deliberately the narrowest rule that delivers the business requirement, and
+    everything it excludes was excluded because an adversarial reviewer broke
+    the wider version with a concrete case that then reproduced verbatim:
+
+    * NO multiples. The first cut allowed an integer multiple of a source
+      amount, reasoning that a per-day rate times a day count is honest
+      arithmetic. It is -- but the code could not see the count. It divided the
+      GENERATED figure by a source figure and accepted any whole quotient, so
+      with a single ``IDR 1,000,000/day`` source it authorized every whole
+      million up to 366 million: `Rp250.000.000` passed for a five-day
+      question. Divisibility is not derivation. Binding the multiplier to a
+      count actually present in the customer's question is the right shape and
+      is NOT attempted here -- it is a different change, specified rather than
+      guessed.
+    * TWO terms, not three. Three terms let unrelated chunks be laundered into
+      a plausible package total (a KITAS fee + a tax penalty + an overstay fine
+      summing to a "PT PMA setup price" no source states).
+    * DISTINCT operands. With replacement, one occurrence of a 17,000,000
+      service fee authorized 43,500,000 by charging it twice.
+    * An OPERAND FLOOR, separate from `_VETO_FLOORS`. Source values are
+      harvested from every numeric token in every retrieved chunk -- years,
+      article numbers, KBLI codes, quantities. Those are not money, and
+      summing them produced prices: `1,000,000 + 2024 + 45` authorized
+      `Rp1.002.069`, and a bare `2` from "2 years" authorized `Rp26.500.002`.
+      The answer-side floor cannot catch this because it only filters the
+      final amount, never the operands.
+
+    DECLARED RESIDUAL, not closed here: two REAL price amounts from unrelated
+    chunks can still sum to a total no source authorizes, because
+    `price_sources` is a flat sequence of strings and carries no provenance,
+    no currency family and no semantic role. Closing that requires typed
+    operands (source id, role, product, validity) -- a data-contract change,
+    not a predicate change.
     """
-    if value in source_values:
-        return True
-
-    # Integer multiple of a single source amount (rate x count).
-    for src in source_values:
-        if src <= 0:
-            continue
-        if value % src == 0:
-            factor = value // src
-            if 2 <= factor <= _DERIVED_MAX_MULTIPLE:
-                return True
-
-    # Sum of exactly two source amounts.
-    for src in source_values:
-        if (value - src) in source_values:
+    floor = _SUMMABLE_OPERAND_FLOORS.get(cur, _SUMMABLE_OPERAND_FLOORS["IDR"])
+    for a in (v for v in source_values if v >= floor):
+        b = value - a
+        if b > a and b in source_values and b >= floor:
             return True
-
-    # Sum of exactly three. Guarded by a source-count cap: the pairwise set is
-    # O(n^2) and this runs inside the finalize path on every answer.
-    if len(source_values) <= _DERIVED_PAIRSUM_MAX_SOURCES:
-        ordered = sorted(source_values)
-        pair_sums = {
-            a + b
-            for i, a in enumerate(ordered)
-            for b in ordered[i:]
-        }
-        for src in source_values:
-            if (value - src) in pair_sums:
-                return True
-
     return False
 
 
@@ -606,7 +617,9 @@ def price_tokens_outside_sources(text: str, price_sources: Sequence[str]) -> lis
     for cur, value in _currency_amounts(text):
         if value < _VETO_FLOORS[cur]:
             continue
-        if not _is_derived_from_sources(value, source_values):
+        if value in source_values:
+            continue
+        if not _is_two_component_total(value, source_values, cur):
             offenders.append(f"{cur}:{value}")
     return offenders
 
