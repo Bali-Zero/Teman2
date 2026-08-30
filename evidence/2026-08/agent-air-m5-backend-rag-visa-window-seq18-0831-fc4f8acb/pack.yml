@@ -18,16 +18,22 @@ lanes:
       without the brief; never the build seat
 
 diff:
-  files: 6
-  net_lines: 18697
-  measured_at: 9b22e99ff2
+  files: 13
+  net_lines: 19674
+  measured_at: 3accba68c3
   note: >-
     git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD, where the merge-base
-    is f537609969 (the seq-17 commit). Measured from the MERGE-BASE, never a two-dot diff against
-    a stale PR_BASE — that mistake pulls in ~200 unrelated commits and accuses this PR of main's
-    files (cicatrix #9 / W102). The two pack JSONs (9068 + 9005 lines) are generated artifacts of
-    the deterministic fold plus the offline signer; the hand-authored surface is the 262-line fold
-    script, its 24-test witness file, one content-keyed triage rule and its count/trail bump.
+    is f537609969, the commit that landed seq-17. Measured from the MERGE-BASE, never a two-dot
+    diff against a stale PR_BASE — that mistake pulls in hundreds of unrelated changes and accuses
+    this PR of main's files (cicatrix #9 / W102). The two pack JSONs (9068 + 9005 lines) are
+    generated artifacts of the deterministic fold plus the offline signer; the hand-authored
+    surface is the fold script, its witness file, the signer's forward guard and its tests, one
+    content-keyed triage rule with its contract test, and this evidence.
+
+    Wording note: an earlier revision of this note put the word "commit" immediately after a
+    sequence number, and the countable-claims lint read that adjacency as a claim about how many
+    commits the branch carries (two). The phrasing here keeps the two apart; the lint's own
+    over-match (superscar #3) is ledgered separately rather than worked around in silence.
 
 pii_scan: clean
 
