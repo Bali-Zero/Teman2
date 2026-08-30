@@ -270,5 +270,108 @@
     "errors": {
       "network": "Erreur réseau"
     }
+  },
+  "secondHome": {
+    "hero": {
+      "eyebrow": "E33 — Visa Second Home",
+      "title": "Vivez en Indonésie jusqu'à 5 ans — avec vos propres fonds",
+      "subtitle": "Le Visa Second Home est un permis de séjour de longue durée pour les demandeurs financièrement établis. Pas de sponsor, pas d'employeur — votre propre engagement financier en est la base. Commencez par un fit memo gratuit.",
+      "stat1v": "5 ans",
+      "stat1l": "Premier octroi, renouvelable",
+      "stat2v": "USD 130 000",
+      "stat2l": "Dépôt en banque d'État (BUMN) à votre nom",
+      "stat3v": "Gratuit",
+      "stat3l": "Évaluation du fit memo"
+    },
+    "routes": {
+      "eyebrow": "Conditions",
+      "title": "Deux façons de vous qualifier",
+      "a": {
+        "title": "Voie A — Dépôt bancaire",
+        "amount": "USD 130 000",
+        "body": "Un dépôt à votre propre nom auprès d'une banque d'État (BUMN) indonésienne. Les fonds restent les vôtres — le dépôt est la preuve de l'engagement financier.",
+        "note": "Nous préparons le dossier de preuves dans le format attendu par l'imigrasi, et coordonnons avec vous la confirmation bancaire."
+      },
+      "b": {
+        "title": "Voie B — Bien immobilier",
+        "amount": "USD 1 000 000",
+        "body": "Une unité en strata achevée (rumah susun ou appartement) d'une valeur d'au moins USD 1 000 000.",
+        "note": "Uniquement en strata-title achevée — les achats sur plan et le leasehold ne sont pas éligibles."
+      }
+    },
+    "who": {
+      "eyebrow": "Pour qui",
+      "title": "Trois filières, un seul séjour",
+      "base": {
+        "title": "E33 — Base (jusqu'à 5 ans)",
+        "body": "Pour les particuliers et familles financièrement établis. Premier octroi jusqu'à 5 ans, renouvelable — jusqu'à 10 ans de séjour cumulé."
+      },
+      "e33e": {
+        "title": "E33E — Senior, 5 ans",
+        "body": "55 ans et plus. Dépôt de USD 50 000 auprès d'une banque d'État plus un revenu de USD 3 000/mois. Validité de cinq ans."
+      },
+      "e33f": {
+        "title": "E33F — Senior, 1 an",
+        "body": "55 ans et plus. Revenu de USD 3 000/mois uniquement — aucun dépôt requis. Validité d'un an."
+      },
+      "family": {
+        "title": "Faire venir sa famille",
+        "body": "Une option famille est disponible : les membres de la famille éligibles peuvent se joindre via les filières de personnes à charge. Nous confirmons les règles et coûts actuels pour les personnes à charge dans votre fit memo."
+      },
+      "nowork": {
+        "title": "Aucun droit de travailler",
+        "body": "L'E33 est un permis de séjour — il n'autorise pas l'exercice d'un emploi en Indonésie. Le travail rémunéré exige un permis de travail/KITAS distinct."
+      },
+      "ageNote": "Seuil d'âge senior : nous appliquons 55 ans et plus, conformément au Permenkumham 11/2024 et aux directives actuelles de l'imigrasi. Une disposition du règlement mentionne encore 60 ans — pour les 55–59 ans, nous confirmons l'éligibilité au cas par cas avant tout dépôt de dossier."
+    },
+    "how": {
+      "eyebrow": "Comment ça marche",
+      "title": "Ce que fait Bali Zero",
+      "step1": {
+        "label": "Étape 1 — Gratuit",
+        "title": "Fit memo",
+        "body": "Écrivez-nous sur WhatsApp. Nous évaluons quelle voie et quelle filière correspondent réellement à votre situation — gratuitement, sans engagement."
+      },
+      "step2": {
+        "label": "Étape 2",
+        "title": "Vérification des preuves",
+        "body": "Nous vérifions vos preuves de dépôt ou de bien immobilier par rapport à ce que l'imigrasi demande réellement — avant tout dépôt de dossier."
+      },
+      "step3": {
+        "label": "Étape 3",
+        "title": "Dépôt du dossier",
+        "body": "Nous préparons et déposons la demande, coordonnons avec l'imigrasi, et en assurons le suivi jusqu'à l'octroi."
+      },
+      "priceLabel": "E33 de base — tout compris",
+      "priceNote": "Un seul montant, tout compris. Les filières senior et les options famille sont chiffrées dans votre fit memo gratuit."
+    },
+    "duty": {
+      "eyebrow": "Après l'octroi",
+      "title": "L'obligation de preuve à 90 jours",
+      "body": "Une fois votre permis accordé, vous disposez de 90 jours pour prouver que l'engagement est réel : le dépôt placé à votre propre nom, ou le bien immobilier éligible sécurisé. Nous suivons cette échéance avec vous dès le premier jour, afin que le permis reste en règle."
+    },
+    "faq": {
+      "eyebrow": "Questions",
+      "title": "Questions fréquentes",
+      "q1": "Qu'est-ce que le Visa Second Home E33 pour l'Indonésie ?",
+      "a1": "Le Visa Second Home E33 est un permis de séjour de longue durée pour les demandeurs financièrement établis. Le premier octroi est de 5 ans maximum et il est renouvelable, avec un plafond cumulé de 10 ans. C'est un permis de séjour pur et il n'autorise pas l'exercice d'un emploi en Indonésie.",
+      "q2": "Comment se qualifier pour le Visa Second Home ?",
+      "a2": "Deux voies possibles : un dépôt de USD 130 000 à votre propre nom auprès d'une banque d'État (BUMN) indonésienne, ou une unité en strata achevée (rumah susun ou appartement) d'une valeur de USD 1 000 000. Les biens sur plan et en leasehold ne sont pas éligibles.",
+      "q3": "Puis-je travailler en Indonésie avec un Visa Second Home ?",
+      "a3": "Non. L'E33 est uniquement un permis de séjour — il n'autorise pas l'exercice d'un emploi. Le travail rémunéré en Indonésie exige un permis de travail/KITAS distinct.",
+      "q4": "Existe-t-il une option senior pour le Visa Second Home ?",
+      "a4": "Oui. L'E33E (55 ans et plus, 5 ans) exige un dépôt de USD 50 000 auprès d'une banque d'État plus un revenu de USD 3 000/mois. L'E33F (55 ans et plus, 1 an) exige uniquement un revenu de USD 3 000/mois, sans dépôt.",
+      "q5": "Ma famille peut-elle me rejoindre avec un Visa Second Home ?",
+      "a5": "Une option famille est disponible — les membres de la famille éligibles peuvent se joindre via les filières de personnes à charge. Les règles et coûts actuels pour les personnes à charge sont confirmés individuellement lors du fit memo gratuit.",
+      "q6": "Combien coûte le Visa Second Home avec Bali Zero ?",
+      "a6": "{{price}} tout compris pour l'E33 de base — un seul montant, tout compris. Le fit memo qui évalue votre voie est gratuit."
+    },
+    "cta": {
+      "fitCheck": "Démarrer le fit-check",
+      "title": "Commencez par un fit memo gratuit",
+      "body": "Racontez-nous votre situation sur WhatsApp. Nous vous répondons avec une lecture honnête : quelle voie vous convient, quelles preuves seront nécessaires, et le prix exact pour votre cas. Sans engagement.",
+      "button": "Recevoir mon Fit Memo gratuit →",
+      "note": "Première réponse sur WhatsApp généralement en moins de 5 heures."
+    }
   }
 }
