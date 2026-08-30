@@ -986,13 +986,27 @@ def compute_counts(entries: List[Entry], check_pr_refs: bool = False) -> Dict[st
 # override attempt and must produce no output at all. A line that DOES start with
 # the token is an attempt, and a malformed attempt is reported loudly rather than
 # ignored: silence there would let a typo read as "no override was intended".
-# At most a markdown bullet and THREE spaces of indent. Four spaces is
-# Markdown's own threshold for a code block, so anything indented further is by
-# definition an example, not an instruction — and a documented example must not
-# authorise anything (found by the cross-family gate: a fenced or 4-space-
-# indented sample in this very ledger granted a live ceiling-999 blanket).
-_RATCHET_DECORATION_RE = re.compile(r"^ {0,3}(?:[>#*+-]\s{0,3})?(?:<!--\s*)?")
-_RATCHET_FENCE_RE = re.compile(r"^\s{0,3}(?:```|~~~)")
+# A LIST BULLET only — never `>` and never `#`. Round 2 of the cross-family
+# gate: `[>#*+-]` also stripped a blockquote, so a documented example written
+# the ordinary way, `> RATCHET-OVERRIDE: ...<=999 -- example`, parsed as a live
+# authorisation. A blockquote is the single most common way to QUOTE something
+# in this repo's prose; letting it through is the same "disarmed by its own
+# documentation" defect as the fenced case, wearing a different hat.
+#
+# Three spaces of indent, not four, because four is Markdown's own threshold for
+# a code block. DECLARED TRADE-OFF, not an oversight: four spaces under a list
+# item is ALSO a legal continuation, so a genuine override written that way is
+# refused. Refusing a real override costs a red PR the author fixes by
+# unindenting; accepting a documented example costs a silent blanket
+# authorisation. The safe direction is the refusal — and it is not silent: the
+# RED path below names any line that looked like an override and was rejected
+# for its indentation, so the author is told exactly what to change.
+_RATCHET_DECORATION_RE = re.compile(r"^ {0,3}(?:[*+-][ \t]+)?(?:<!--[ \t]*)?")
+# Rejected-for-indentation detector, used only to explain a RED verdict.
+_RATCHET_OVER_INDENTED_RE = re.compile(r"^\s+(?:[*+-][ \t]+)?(?:<!--[ \t]*)?RATCHET-OVERRIDE:")
+_RATCHET_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})\s*(\S*)")
+_HTML_COMMENT_OPEN = "<!--"
+_HTML_COMMENT_CLOSE = "-->"
 RATCHET_OVERRIDE_TOKEN = "RATCHET-OVERRIDE:"
 # \d{1,9} and not \d+ : Python raises ValueError above 4300 digits, so an
 # unbounded run turns a malformed override into a crash of the whole ratchet
@@ -1022,12 +1036,41 @@ def parse_ratchet_overrides(text: str) -> List[Dict[str, Any]]:
     uses the highest ceiling.
     """
     overrides: List[Dict[str, Any]] = []
-    in_fence = False
+    fence: Optional[str] = None      # the OPENING marker, verbatim
+    in_comment = False               # inside a multi-line <!-- ... -->
     for raw_line in text.splitlines():
-        if _RATCHET_FENCE_RE.match(raw_line):
-            in_fence = not in_fence
+        # HTML-comment state first. Round 2 of the gate: a fence marker that
+        # lives INSIDE a comment does not open a Markdown fence, but a naive
+        # tracker entered fence mode there and then silently swallowed a
+        # perfectly good override further down — an honest increase reddening
+        # for an invisible reason, which is worse than the hole it was closing.
+        line_for_fence = raw_line
+        if in_comment:
+            if _HTML_COMMENT_CLOSE in raw_line:
+                in_comment = False
+                line_for_fence = raw_line.split(_HTML_COMMENT_CLOSE, 1)[1]
+            else:
+                continue
+        elif _HTML_COMMENT_OPEN in raw_line and _HTML_COMMENT_CLOSE not in raw_line:
+            in_comment = True
+            line_for_fence = raw_line.split(_HTML_COMMENT_OPEN, 1)[0]
+
+        m_fence = _RATCHET_FENCE_RE.match(line_for_fence)
+        if m_fence:
+            marker = m_fence.group(1)
+            info = m_fence.group(2)
+            if fence is None:
+                fence = marker
+                continue
+            # CommonMark: a closer must be the SAME character, at least as long
+            # as the opener, and carry no info string. Backticks cannot close a
+            # tilde fence — the gate's round-2 finding, where ``` "closed" a
+            # ~~~ block and the example inside it became a live ceiling-999
+            # authorisation.
+            if marker[0] == fence[0] and len(marker) >= len(fence) and not info:
+                fence = None
             continue
-        if in_fence:
+        if fence is not None:
             # A fenced sample is documentation. Reading it as an instruction is
             # how a gate gets disarmed by its own runbook.
             continue
@@ -1158,19 +1201,65 @@ def _new_overrides(base_text: str, head_text: str) -> tuple[List[Dict[str, Any]]
     writing a word (found by the cross-family gate, and it makes the claim
     "the next increase needs a new, separately reviewed ceiling" false).
 
-    Identity is the normalised line text, compared as a SET: a `merge=union`
-    duplicate of an inherited line is still inherited, and raising the count
-    again therefore requires a genuinely different line — a new ceiling, or at
-    minimum a new reason someone had to type.
+    Identity is (ceiling, case-folded whitespace-collapsed reason) — NOT the raw
+    bytes. Round 2 of the cross-family gate: keying on `raw` meant that
+    re-typing an inherited line with one extra space, an em dash instead of
+    `--`, or an added `<!-- -->` wrapper made it "new" and handed back exactly
+    the standing blanket the round-1 cure removed. What a reviewer is being
+    asked to approve is a NUMBER and a REASON; a whitespace change is not a new
+    approval, and a genuinely new reason is (someone typed it).
+
+    Compared as a SET, so a `merge=union` duplicate of an inherited line is
+    still inherited.
     """
-    inherited = {ov["raw"] for ov in parse_ratchet_overrides(base_text)}
+    def key(ov: Dict[str, Any]) -> tuple:
+        reason = " ".join(str(ov.get("reason") or "").split()).casefold()
+        return (ov.get("ceiling"), reason)
+
+    inherited = {key(ov) for ov in parse_ratchet_overrides(base_text)}
     head = parse_ratchet_overrides(head_text)
-    fresh = [ov for ov in head if ov["raw"] not in inherited]
+    fresh = [ov for ov in head if key(ov) not in inherited]
     return fresh, len(head) - len(fresh)
 
 
-def run_ratchet(ledger_path: Path, now: date, base_ref: Optional[str]) -> int:
-    """0 clean / 0 override-accepted / 1 increased / 3 cannot-verify."""
+def _base_commit_date(ledger_path: Path, ref: str) -> Optional[date]:
+    """The committer date of `ref`, as a date. None if git cannot say."""
+    rc, out, _ = _git(["show", "-s", "--format=%cs", ref], cwd=ledger_path.parent)
+    if rc != 0 or not out:
+        return None
+    try:
+        return date.fromisoformat(out.splitlines()[0].strip())
+    except ValueError:
+        return None
+
+
+def run_ratchet(
+    ledger_path: Path, now: Optional[date], base_ref: Optional[str]
+) -> int:
+    """0 clean / 0 override-accepted / 1 increased / 3 cannot-verify.
+
+    THE CLOCK IS THE BASE COMMIT'S DATE, not today, and that is the whole
+    correctness argument. Round 2 of the cross-family gate demolished the
+    earlier "frozen now" story: freezing `now` cancels ageing only for rows
+    present on BOTH sides. A row this branch ADDS is in head and not in base, so
+    it ages on one side of the subtraction alone — measured, the same unmodified
+    PR reads delta 0 on the day it is opened and delta 1 three days later, with
+    no commit in between. The implementation's own comment claimed "reads 0
+    forever"; a test in this repo had even been written to bless the late red.
+
+    Reading both sides at the BASE COMMIT's date removes time from the
+    computation entirely: a row opened after that date has a negative age, is
+    FRESH by construction, and can never count. The verdict becomes a pure
+    function of (base commit, head tree) — re-run this a year later on the same
+    two trees and it answers the same thing. That IS the invariant the design
+    claimed and this is what actually delivers it.
+
+    What still counts against a branch, and should: a row it introduces that was
+    ALREADY overdue when the branch was cut — a backdated row, or an old row
+    resurrected. That is real debt arriving, not the calendar moving.
+
+    `now` overrides the derived date; it exists for the corpus, not for CI.
+    """
     resolved, how = _resolve_ratchet_base(ledger_path, base_ref)
     if resolved is None:
         print(
@@ -1180,6 +1269,20 @@ def run_ratchet(ledger_path: Path, now: date, base_ref: Optional[str]) -> int:
             file=sys.stderr,
         )
         return 3
+
+    if now is None:
+        now = _base_commit_date(ledger_path, resolved)
+        if now is None:
+            print(
+                f"ratchet CANNOT-VERIFY: cannot read the commit date of {resolved!r}; "
+                "the ratchet's clock IS that date and falling back to today would "
+                "silently reintroduce calendar drift.",
+                file=sys.stderr,
+            )
+            return 3
+        clock = f"base commit date {now.isoformat()}"
+    else:
+        clock = f"now={now.isoformat()} (explicit override)"
 
     # EVERY read is guarded, not only the base one. An unreadable HEAD — invalid
     # UTF-8, the file vanishing under a concurrent checkout, anything
@@ -1216,7 +1319,10 @@ def run_ratchet(ledger_path: Path, now: date, base_ref: Optional[str]) -> int:
     for note in verdict["notes"]:
         print(f"ratchet note: {note}", file=sys.stderr)
 
-    where = f"base {base_overdue} -> head {head_overdue} (delta {verdict['delta']}) at now={now.isoformat()} vs {resolved} ({how})"
+    where = (
+        f"base {base_overdue} -> head {head_overdue} (delta {verdict['delta']}) "
+        f"at {clock} vs {resolved} ({how})"
+    )
 
     if verdict["status"] == "clean":
         print(f"ratchet CLEAN: {where}")
@@ -1366,6 +1472,17 @@ def ratchet_selftest(return_cases: bool = False):
 
         v = verdict_for(fresh + "\n", fresh + "\n" + overdue + "\n```text\n" + OVERRIDE_1 + "\n```\n")
         cases.append(("guilt: a FENCED example override authorises nothing -> RED", v["status"] == "red", str(v["status"])))
+
+        v = verdict_for(fresh + "\n", fresh + "\n" + overdue + "\n> " + OVERRIDE_1 + "\n")
+        cases.append(("guilt: a BLOCKQUOTED example authorises nothing -> RED", v["status"] == "red", str(v["status"])))
+
+        v = verdict_for(fresh + "\n", fresh + "\n" + overdue + "\n~~~text\n" + OVERRIDE_1 + "\n```\n")
+        cases.append(("guilt: ``` cannot close a ~~~ fence -> RED", v["status"] == "red", str(v["status"])))
+
+        restyled = OVERRIDE_1.replace("<=1", " <= 1").replace("--", "—")
+        v = verdict_for(fresh + "\n" + OVERRIDE_1 + "\n", fresh + "\n" + overdue + "\n" + restyled + "\n")
+        cases.append(("guilt: RESTYLING an inherited override is not a new approval -> RED",
+                      v["status"] == "red", str(v["status"])))
 
         prose = parse_ratchet_overrides("the marker is RATCHET-OVERRIDE: tech_debt_overdue<=999 -- see the runbook\n")
         cases.append(("innocence: prose quoting an override is not an override", prose == [], repr(prose)[:50]))
@@ -1804,7 +1921,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # The ratchet is its own mode — it must not also print the normal report,
     # or a CI step reading its stdout gets 600 lines of ledger before the verdict.
     if args.ratchet:
-        return run_ratchet(ledger_path, now, args.base_ref)
+        # None, not `now`: the ratchet derives its clock from the base commit
+        # unless --now was given EXPLICITLY. Passing today's date here would
+        # reinstate exactly the drift this mode exists to avoid.
+        return run_ratchet(ledger_path, now if args.now else None, args.base_ref)
 
     try:
         entries = load_entries(ledger_path, now, ref=args.ref)

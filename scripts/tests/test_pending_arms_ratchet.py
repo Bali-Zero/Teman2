@@ -407,7 +407,7 @@ def test_ratchet_selftest_actually_runs_its_cases(capsys):
     passed, and must number what the design says they number.
     """
     cases = par.ratchet_selftest(return_cases=True)
-    assert isinstance(cases, list) and len(cases) >= 14, f"only {len(cases)} cases"
+    assert isinstance(cases, list) and len(cases) >= 17, f"only {len(cases)} cases"
     names = [c[0] for c in cases]
     assert all(c[1] for c in cases), [c for c in cases if not c[1]]
 
@@ -425,6 +425,9 @@ def test_ratchet_selftest_actually_runs_its_cases(capsys):
         "5000-digit ceiling",
         "malformed override dicts do not raise",
         "delta is identical at two far-apart dates",
+        "BLOCKQUOTED example authorises nothing",
+        "cannot close a ~~~ fence",
+        "RESTYLING an inherited override is not a new approval",
     ):
         assert any(needle in n for n in names), f"self-test lost its {needle!r} case"
 
@@ -473,27 +476,60 @@ def _git_repo_with_ledger(tmp_path, base_text: str, head_text: str):
     return ledger, base_sha
 
 
-def test_run_ratchet_freezes_now_on_BOTH_sides(tmp_path):
-    """Both fixture rows are FRESH at the frozen `now` and OVERDUE 90 days later.
+def test_run_ratchet_reads_both_sides_at_the_BASE_COMMIT_date(tmp_path):
+    """The verdict is a pure function of (base commit, head tree).
 
-    So the honest verdict at that `now` is CLEAN. Any implementation that lets
-    the two sides drift onto different dates — `date.today()` on one of them,
-    a stray `+ timedelta` — sees 0 vs 2 and reports RED on a branch that added
-    a row nobody has had time to be late on yet.
+    An earlier version of this test asserted the OPPOSITE and blessed it: it
+    expected the same unmodified branch to go RED ninety days later, which is
+    precisely the calendar drift the design claims to remove. Round 2 of the
+    cross-family gate caught the contradiction between the claim and the test.
+
+    Freezing a shared `now` is not enough, because it cancels ageing only for
+    rows present on BOTH sides — a row the branch ADDS ages on one side of the
+    subtraction alone. Reading both sides at the base commit's date removes time
+    from the computation instead of holding it still: a row opened after that
+    date has a negative age and is FRESH by construction.
+
+    The two calls below pass `now=None`, i.e. exactly what CI does.
     """
-    d1, d2 = "2026-06-01", "2026-06-02"
-    base = f"- opened {d1} (t) | **row A** | wire it | session | CI red\n"
-    head = base + f"- opened {d2} (t) | **row B** | wire it | session | CI red\n"
+    base = "- opened 2026-06-01 (t) | **row A** | wire it | session | CI red\n"
+    # A row THIS BRANCH adds, dated well after the base commit (which a fresh
+    # test repo makes 'today'). It must never count, today or in ten years.
+    head = base + "- opened 2099-01-01 (t) | **row B** | wire it | session | CI red\n"
     ledger, base_sha = _git_repo_with_ledger(tmp_path, base, head)
 
-    frozen = par._parse_now("2026-06-02")  # both rows younger than the 48h line
-    rc = par.run_ratchet(ledger, frozen, base_sha)
-    assert rc == 0, "a branch adding a row nobody is late on yet must not be red"
+    assert par.run_ratchet(ledger, None, base_sha) == 0
+    # Determinism, stated as an assertion rather than assumed: same inputs,
+    # same verdict, no hidden clock in between.
+    assert par.run_ratchet(ledger, None, base_sha) == 0
 
-    # And the counterpart, so this is not a test that only ever says 'clean':
-    # ninety days on, both rows are overdue and the delta is real.
-    late = par._parse_now("2026-09-01")
-    assert par.run_ratchet(ledger, late, base_sha) == 1
+
+def test_a_row_that_was_ALREADY_overdue_when_the_branch_was_cut_still_reddens(tmp_path):
+    """The other half — otherwise the fix above is just 'always clean'.
+
+    A backdated row, or an old row resurrected, IS debt arriving. It was overdue
+    before this branch existed and the branch put it back: that is the thing
+    worth a reviewer's attention, and the only thing the calendar cannot fake.
+    """
+    base = "- opened 2026-06-01 (t) | **row A** | wire it | session | CI red\n"
+    head = base + "- opened 2020-01-01 (t) | **resurrected row** | wire it | session | CI red\n"
+    ledger, base_sha = _git_repo_with_ledger(tmp_path, base, head)
+    assert par.run_ratchet(ledger, None, base_sha) == 1
+
+
+def test_a_head_only_FRESH_row_never_becomes_red_however_far_the_clock_moves(tmp_path):
+    """The exact scenario round 2 named: BASE has one old overdue row, HEAD adds
+    a row that is fresh on the day it is written, nobody commits again.
+
+    Under a shared-frozen-now design this reads CLEAN on day 0 and RED on day 3.
+    Under the base-commit clock there is no day 3 — the answer cannot move,
+    because no input to it moves. Asserted by calling with a `now` a century out
+    AND with the real derived clock, and demanding they agree.
+    """
+    base = "- opened 2020-01-01 (t) | **ancient row** | wire it | session | CI red\n"
+    head = base + "- opened 2099-06-01 (t) | **branch's own fresh row** | wire it | session | CI red\n"
+    ledger, base_sha = _git_repo_with_ledger(tmp_path, base, head)
+    assert par.run_ratchet(ledger, None, base_sha) == 0
 
 
 def test_run_ratchet_reports_cannot_verify_not_clean_when_the_base_is_unresolvable(tmp_path):
@@ -635,3 +671,127 @@ def test_selftest_premise_rejects_EACH_way_a_fixture_can_be_the_wrong_row(tmp_pa
     # wrong cardinality on either side
     assert par.selftest_premise_holds(_write(tmp_path, "x5.md", OVERDUE + "\n" + OVERDUE), good_fr) is False
     assert par.selftest_premise_holds(good_ov, _write(tmp_path, "x6.md", FRESH + "\n" + FRESH)) is False
+
+
+# ---------------------------------------------------------------------------
+# G. Round-2 findings — what the round-1 CURES broke or left open.
+# ---------------------------------------------------------------------------
+
+_OV999 = "RATCHET-OVERRIDE: tech_debt_overdue<=999 -- documentation example\n"
+
+
+def test_a_blockquoted_example_is_not_an_authorisation():
+    """`> ` was stripped along with list bullets, so the ordinary way to QUOTE
+    an override in prose granted a live ceiling-999 blanket. Blockquote is the
+    single most common quoting form in this repo's docs."""
+    assert par.parse_ratchet_overrides("> " + _OV999) == []
+    assert par.parse_ratchet_overrides(">" + _OV999) == []
+    assert par.parse_ratchet_overrides("# " + _OV999) == []
+
+
+def test_a_backtick_fence_cannot_close_a_tilde_fence():
+    """CommonMark: a closer is the SAME character, at least as long, no info
+    string. A boolean toggle left the fence early and the example inside became
+    live."""
+    text = "~~~text\ndocumented example\n```\n" + _OV999 + "```\n"
+    assert par.parse_ratchet_overrides(text) == []
+    # and a shorter run cannot close a longer opener
+    assert par.parse_ratchet_overrides("````\n```\n" + _OV999 + "````\n") == []
+    # innocence: a normal fenced block with a language tag closes properly, so
+    # an override AFTER it is still seen.
+    after = "```text\nexample\n```\n" + _OV999
+    assert [o["ceiling"] for o in par.parse_ratchet_overrides(after)] == [999]
+
+
+def test_a_fence_marker_inside_an_html_comment_does_not_swallow_a_real_override():
+    """The over-match twin of the fence fix: a ``` inside a comment is not a
+    fence, and treating it as one silently ate a valid override further down —
+    an honest increase reddening for an invisible reason."""
+    text = "<!--\n```text\n-->\n" + "RATCHET-OVERRIDE: tech_debt_overdue<=2 -- reviewed\n"
+    assert [o["ceiling"] for o in par.parse_ratchet_overrides(text)] == [2]
+
+
+def test_reformatting_an_inherited_override_does_not_make_it_new():
+    """Keying identity on raw bytes handed back the standing blanket: re-type
+    the inherited line with one extra space, or an em dash, or a comment
+    wrapper, and it counted as a fresh approval nobody reviewed."""
+    base = "RATCHET-OVERRIDE: tech_debt_overdue<=2 -- reviewed reason\n"
+    for restyled in (
+        "RATCHET-OVERRIDE: tech_debt_overdue <= 2 -- reviewed reason\n",
+        f"RATCHET-OVERRIDE: tech_debt_overdue<=2 {EM_DASH} reviewed reason\n",
+        "<!-- RATCHET-OVERRIDE: tech_debt_overdue<=2 -- reviewed  reason -->\n",
+        "- RATCHET-OVERRIDE: tech_debt_overdue<=2 -- Reviewed Reason\n",
+    ):
+        fresh, inherited = par._new_overrides(base, restyled)
+        assert fresh == [], f"restyling must not mint a new approval: {restyled!r}"
+        assert inherited == 1
+
+    # Innocence: a genuinely different reason IS a new approval — somebody typed
+    # it, and that is exactly what a reviewer is being asked to look at.
+    fresh, _ = par._new_overrides(
+        base, "RATCHET-OVERRIDE: tech_debt_overdue<=2 -- a different, newly written reason\n"
+    )
+    assert len(fresh) == 1
+    # ...and so is a different ceiling.
+    fresh, _ = par._new_overrides(base, "RATCHET-OVERRIDE: tech_debt_overdue<=3 -- reviewed reason\n")
+    assert len(fresh) == 1
+
+
+def test_the_clock_is_the_BASE_COMMIT_date_and_not_today(tmp_path):
+    """The discriminating case, and it needs a base commit in the PAST.
+
+    Measured: with a base commit dated today (what a throwaway repo gives you),
+    `date.today()` and the base-commit date are the same day, so every earlier
+    test in this file passes under BOTH implementations — the mutant that
+    reverts the clock to `date.today()` survived the whole suite. A fixture too
+    poor to reach the thing you meant to measure measures itself (W108).
+
+    Here the base commit is backdated 100 days and the branch adds a row opened
+    10 days ago. Under the base-commit clock that row is in the FUTURE, fresh,
+    and cannot count. Under a wall-clock it is 10 days old, overdue, and the
+    branch reddens for the calendar — the exact drift the design removes.
+    """
+    import datetime as _dt
+    import os as _os
+
+    today = _dt.date.today()
+    base_day = today - _dt.timedelta(days=100)
+    row_day = today - _dt.timedelta(days=10)
+
+    repo = tmp_path / "repo"
+    (repo / ".claude" / "skills" / "modus").mkdir(parents=True)
+    ledger = repo / ".claude" / "skills" / "modus" / "PENDING-ARMS.md"
+
+    env = dict(_os.environ)
+    stamp = f"{base_day.isoformat()}T12:00:00+00:00"
+    env.update(GIT_COMMITTER_DATE=stamp, GIT_AUTHOR_DATE=stamp)
+
+    def git(*argv, e=None):
+        r = _sp.run(["git", "-C", str(repo), *argv], capture_output=True, text=True, env=e)
+        assert r.returncode == 0, f"git {argv}: {r.stderr}"
+        return r.stdout.strip()
+
+    git("init", "-q")
+    git("config", "user.email", "t@example.invalid")
+    git("config", "user.name", "test")
+    old_row = f"- opened {(base_day - _dt.timedelta(days=30)).isoformat()} (t) | **row A** | wire it | session | CI red\n"
+    ledger.write_text(old_row, encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "base", e=env)
+    base_sha = git("rev-parse", "HEAD")
+
+    # Premise: the backdating actually took, or this test proves nothing.
+    assert par._base_commit_date(ledger, base_sha) == base_day
+
+    ledger.write_text(
+        old_row + f"- opened {row_day.isoformat()} (t) | **row B** | wire it | session | CI red\n",
+        encoding="utf-8",
+    )
+
+    # Premise 2: under a wall clock this WOULD be red — otherwise the assertion
+    # below is satisfied by an implementation that never reddens at all.
+    assert par.run_ratchet(ledger, _dt.date.today(), base_sha) == 1
+
+    assert par.run_ratchet(ledger, None, base_sha) == 0, (
+        "the branch's own row, opened after the base commit, must never count"
+    )

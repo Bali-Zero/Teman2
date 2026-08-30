@@ -361,3 +361,22 @@ def test_string_ages_do_not_misorder_or_crash_the_oldest_line(monkeypatch, tmp_p
     assert "row-10" in lines[0], f"10 is older than 9: {lines[0]!r}"
     assert lines[1].strip().startswith("· 10d row-10")
     assert lines[-1].strip().startswith("· ?d row-null"), "unknown age sorts LAST, never oldest"
+
+
+def test_pathological_ages_never_cost_the_alarm(monkeypatch, tmp_path):
+    """`true` became 1d and posed as a real age; JSON 1e309 decodes to inf and
+    `int(inf)` raised OverflowError, which the outer catch turned into a generic
+    "reporter failed" — losing the whole alarm to fix an ordering detail."""
+    entries = [
+        _entry("TECH-DEBT", artifact="row-bool") | {"age_days": True},
+        _entry("TECH-DEBT", artifact="row-inf") | {"age_days": float("inf")},
+        _entry("TECH-DEBT", artifact="row-real") | {"age_days": 12},
+    ]
+    root = _fake_reporter(tmp_path, {"counts": {"tech_debt_overdue": 3}, "entries": entries})
+    monkeypatch.setattr(organism_digest, "_repo_root", lambda: root)
+    monkeypatch.setenv("ORGANISM_DIGEST_PENDING_ARMS", "rows")
+    lines, errs = organism_digest.pending_arms_overdue()
+    assert errs == [], f"a pathological age must not cost the alarm: {errs}"
+    assert "row-real" in lines[0], f"the only real age must be the oldest: {lines[0]!r}"
+    assert lines[1].strip().startswith("· 12d row-real")
+    assert all(l.strip().startswith("· ?d") for l in lines[2:]), lines[2:]

@@ -403,9 +403,14 @@ def pending_arms_overdue() -> tuple[list[str], list[str]]:
             # one entry is an int and its neighbour is not — either way the line
             # would still be labelled "oldest" (cross-family gate finding).
             v = e.get("age_days")
+            if isinstance(v, bool):
+                return -1  # True would become 1d and pose as a real age
             try:
+                # OverflowError too: JSON 1e309 decodes to inf, and int(inf)
+                # raising here would be caught by the OUTER except and cost the
+                # entire alarm to fix an ordering detail.
                 return int(v)  # type: ignore[arg-type]
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
                 return -1  # unknown age sorts LAST, never masquerades as oldest
 
         oldest = sorted(overdue, key=_age, reverse=True)
