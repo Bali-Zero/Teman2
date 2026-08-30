@@ -59,6 +59,29 @@
 # comment self-corrects to "now clean" on a later push that resolves the
 # flag, instead of leaving a stale scare on the thread.
 #
+# CORRECTED 2026-08-30, second pass (found by an independent gate reviewing
+# this same PR before merge): the invariant-check step below used to pass
+# `--base-ref "$BASE_SHA"` — the PR's frozen `pull_request.base.sha` — to
+# the script. That SHA is, by construction, an ancestor of the PR's HEAD
+# (it IS the commit the branch forked from), so `check()`'s own
+# `git merge-base(base_ref, head)` always resolves back to that same
+# frozen commit, and `main_entries` (loaded FROM `base_ref`) never reflects
+# anything that happened on main after this branch diverged — the
+# invariant's own docstring requires "present at merge-base AND on CURRENT
+# origin/main", and the frozen SHA can only ever supply the first half.
+# Measured empirically (3 crafted scenarios run directly against `check()`,
+# see `scripts/tests/test_check_ledger_no_silent_loss.py`): the frozen SHA
+# never MISSES a real loss this branch itself introduces (that case is
+# caught either way — the branch's own accidental drop of an untouched row
+# doesn't depend on what main did afterward), but it DOES false-flag a row
+# that main legitimately closed after this branch forked and that this
+# branch's own `git merge origin/main` correctly, faithfully picked up —
+# the frozen-SHA invocation would call a clean, correct merge a "loss"
+# because it never saw main move. Fixed: `--base-ref origin/main`, fetched
+# by name (see the "Fetch PR base" step) so it resolves to a live ref
+# reflecting main as it actually is when this job runs, not the PR's
+# fork-point snapshot.
+#
 # Path-scoped: only runs when the ledger, this script, or this workflow
 # changes — a PR that touches none of them has nothing to check.
 
@@ -113,6 +136,11 @@ jobs:
         run: |
           set -euo pipefail
           git fetch --no-tags --depth=200 origin "$BASE_SHA"
+          # main BY NAME too, not only the PR's frozen base.sha — see the
+          # invariant-check step's comment for why the frozen SHA cannot be
+          # what `--base-ref` receives. This makes `origin/main` a real,
+          # resolvable remote-tracking ref for that step.
+          git fetch --no-tags --depth=200 origin main:refs/remotes/origin/main
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -140,8 +168,28 @@ jobs:
           # summary/comment, without running the check twice (which would
           # re-read git refs that could theoretically have moved, and would
           # double the runtime for no reason).
+          #
+          # --base-ref origin/main, NOT "$BASE_SHA" (CORRECTED same day,
+          # second pass): `pull_request.base.sha` is the PR's frozen fork
+          # point — an ancestor of HEAD by construction — so
+          # `check()`'s own `git merge-base(base_ref, head)` always
+          # resolves back to that SAME frozen commit, and `main_entries`
+          # (loaded FROM `base_ref`) ends up reading that frozen snapshot
+          # too, never anything that has happened on main SINCE this
+          # branch forked. Measured empirically (3 crafted scenarios run
+          # against this exact function): passing the frozen SHA never
+          # misses a real loss this branch itself introduced (a branch's
+          # own accidental drop of an untouched row is caught either way),
+          # but it DOES false-flag a row main legitimately closed AFTER
+          # this branch forked and that this branch's own `git merge
+          # origin/main` correctly picked up — the check would call a
+          # clean, correct merge "loss" because it never saw main move.
+          # `origin/main` (a live ref, fetched above) reads what main
+          # ACTUALLY is now, matching the invariant's own docstring
+          # definition ("present at merge-base AND on current
+          # origin/main").
           python scripts/check_ledger_no_silent_loss.py \
-            --base-ref "$BASE_SHA" --head-ref "$HEAD_SHA" \
+            --base-ref origin/main --head-ref "$HEAD_SHA" \
             2>&1 | tee /tmp/ledger-check-output.txt
           RC="${PIPESTATUS[0]}"
           echo "rc=$RC" >> "$GITHUB_OUTPUT"
