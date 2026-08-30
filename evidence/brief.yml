@@ -1,80 +1,133 @@
-task_id: visa-oracle-retention-scope-p0-0826
+task_id: visa-freshness-restamp-seq17-0830
 gear: 3
 l_level: L2
 gate_class: opus
 objective: |
-  Restore the Visa Oracle's retention gate, which has been refusing every evaluation since
-  a foreign-scope policy became active in production.
+  Restore the Visa Oracle, which stopped answering on every product at 2026-08-30T10:44:48Z.
 
-  Migration 264 built `public.visa_decision_retention_policies` with one active row per
-  environment and an exclusion constraint to match. Four readers were written against that
-  guarantee and resolve "the" active policy with nothing but
-  `environment = <env> AND effective_period @> <clock>`.
+  Each source record in a signed RulePack carries a freshness policy. For the OFFICIAL_PORTAL
+  authority that window is seven days, and `evaluate_path.py::_evaluate_source_freshness`
+  turns a source past its window into STALE. The decisive-source gate then folds the whole
+  decision into HUMAN_REVIEW_REQUIRED with an empty candidate list. seq-16's portal records
+  were stamped 2026-08-23T10:44:48Z, so the outage began exactly one window later.
 
-  Migration 281 (GARUDA VOA) made that table the single retention authority for four data
-  classes: it added `policy_scope` and widened the exclusion constraint to
-  `(environment WITH =, policy_scope WITH =, effective_period WITH &&)`. The invariant became
-  one active row per (environment, scope). 281 taught every GARUDA-side reader to filter by
-  scope and never revisited the four Visa Oracle readers, which stayed correct only while the
-  table held no foreign-scope row. The first GARUDA policy activated 2026-08-26 04:40:27Z.
+  Nothing was broken. The pack simply aged out and the weekly re-attestation lane that should
+  have re-stamped it never ran. The freshness sentinel DID fire; its alert was swallowed by the
+  Telegram gateway's dedup on key `visa-freshness:approaching:16`.
 
-  Gear 3 by PATH, deterministically: `apps/backend-rag/backend/db/migrations_v2/**` is hot-zone,
-  so the floor is 3 regardless of the diff being 4 files and +538/-2. Recomputed from the actual
-  changed-file list — receipt in the pack.
+  seq-17 therefore restamps and nothing else: the eighteen OFFICIAL_PORTAL records get a new
+  `verified_at`/`verified_by`, each backed by a live re-read of the page performed on the day.
+  No rule, product, price, hit policy or non-portal source is touched.
+
+  Gear 3 by SIZE, deterministically: the generated pack artifacts put the diff far past the
+  blast-radius floor. Recomputed from the real changed-file list — receipt in the pack.
+
 constraints:
-  - "Fix the FAMILY, not the instance. Four readers are unscoped; a fix that repairs one and
-    leaves three is a fix that converts a graceful outage into a different failure."
-  - "`CREATE OR REPLACE FUNCTION` must restate SECURITY DEFINER and SET search_path verbatim.
-    Replace preserves owner and ACL but takes those attributes from the statement — omitting
-    them silently demotes both binders to SECURITY INVOKER and re-opens the 2026-08-07 prod
-    incident that migration 268 closed."
-  - "No behaviour change beyond the scope predicate. Both function bodies are
-    `pg_get_functiondef()` of the LIVE functions plus one added line each, so the diff is
-    auditable against production rather than against 264's source."
-  - "No migration-number collision (W40). 289 is verified free across main and every open
-    remote branch."
-  - "Do not weaken any check. The one red this PR drew (`Harness floor recompute`) is answered
-    by supplying this pack, never by touching the gate."
+  - "A re-stamp is an ATTESTATION, not a formality. `verified_at` asserts that a human or agent
+    actually read the page at that instant, and `content_sha256` stays untouched on every record
+    because no page changed semantically — moving the digest would claim a content review that
+    did not happen. TWO WEAKNESSES, named rather than smoothed over: the stamp instant sits
+    after the LAST reader returned, where it should take the EARLIEST look that backs it; and
+    nothing in the artifact proves the reading happened at all — run the fold offline having
+    read nothing and it emits the same stamp. Both are recorded in
+    research/visa/2026-08-30-freshness-restamp-seq17-attestation.md, and the rule they produce
+    — write the ledger DURING the reading — binds the next ceremony in this lane."
+  - "Derive the restamped set by ENTITY, never from a frozen id list: it must equal exactly the
+    records whose `authority_type` is OFFICIAL_PORTAL, and the expected count is pinned
+    separately as a tripwire. A pack that gained or lost a portal source was authored against a
+    different world and must abort, not adapt."
+  - "The chain anchor is read from the DATABASE, not from disk: the anchor is the live payload,
+    re-hashed under RFC 8785 here and required to equal the `payload_sha256` of the active
+    activation before anything is built on it. CORRECTED after adversarial review — an earlier
+    version of this line said seq-16 'does not exist in this repository at all', which is FALSE:
+    the signed bundle is on the unmerged branch `origin/feature/visa-oracle` with exactly the
+    active digest. Reading from the database was still right, because a branch is not evidence
+    of what production ran; the claim about version control simply had not been checked."
+  - "`rule_pack_id` is the primary key of `visa_rule_packs` and packs are immutable there.
+    Every fold from seq-9 onward mints it as uuid5 of the sequence's canonical URL; seq-17 does
+    the same and VERIFIES the convention against the pack being folded before minting."
+  - "Do not weaken any check. The reds this PR drew are answered by supplying what they ask for
+    — a triage rule for the chain-anchor digest, copy for the newly reachable review reasons,
+    and this evidence — never by touching a gate."
+
 acceptance:
-  - "`active_policy_available` returns True in production's actual policy configuration
-    (1 VISA_DECISION + 3 GARUDA active) instead of False."
-  - "Both SQL binders resolve the VISA_DECISION policy and bind to ITS id, not a GARUDA one,
-    with a foreign-scope policy concurrently active."
-  - "289's forward half applies on top of the real main chain; its ROLLBACK half restores 264's
-    unscoped bodies verbatim, SECURITY DEFINER included."
-  - "The structural tripwire is red on origin/main and green here, and its historical exemption
-    for 264 is re-derived from the migration chain rather than asserted."
-  - "`Detect duplicate prefixes` and `Detect missing ROLLBACK markers` both green."
+  - text: >-
+      WHEN the new pack is activated, the production catalog SHALL report it as the active
+      sequence, with a digest equal to the one the fold and the signer independently computed.
+    probe: >-
+      scripts/pg.sh -c "SELECT p.sequence, encode(p.payload_sha256::bytea,'hex') FROM
+      visa_ruleset_activations a JOIN visa_rule_packs p ON p.id=a.rule_pack_id WHERE
+      upper_inf(a.system_period)"
+  - text: >-
+      WHEN a tourist case and an E31A spouse case are evaluated against the deployed service
+      after activation, the endpoint SHALL answer SUPPORTED_CANDIDATES, WHERE both previously
+      folded to HUMAN_REVIEW_REQUIRED with an empty candidate list.
+    probe: >-
+      PYTHONPATH=. python -m backend.scripts.visa_engine.probe_evaluate --url
+      https://nuzantara-rag.fly.dev/api/visa-oracle/evaluate --payload <case>
+  - text: >-
+      WHERE the folded payload is compared against the live seq-16 payload, the only differences
+      SHALL be verified_at and verified_by on the OFFICIAL_PORTAL records, plus the chain and
+      identity fields a new sequence necessarily moves.
+    probe: >-
+      pytest backend/tests/services/visa_engine/test_seq17_freshness_restamp.py
+      (TestFreshnessShape, TestIdentity)
+  - text: >-
+      IF any other payload key or record field moves, the fold SHALL abort; and WHEN the real
+      fold runs, it SHALL NOT abort.
+    probe: >-
+      pytest backend/tests/services/visa_engine/test_seq17_freshness_restamp.py
+      (TestGuardGuilt — eight mutations; TestGuardInnocence)
+  - text: >-
+      WHILE the repo formatter is free to rewrite the pack files, the signed bundle SHALL keep
+      verifying against the pinned PRODUCTION trust-store key.
+    probe: >-
+      pytest backend/tests/services/visa_engine/test_seq17_freshness_restamp.py
+      (TestSignatureAndChain)
+  - text: >-
+      WHEN each check this PR turned red is re-run, it SHALL be green for the reason the fix
+      claims, proven by running the thing itself.
+    probe: >-
+      python3 scripts/detect_secrets_check_unaudited.py ; cd apps/mouth && npx vitest run
+      "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts"
+
 consumer_map:
-  - "`services/visa_engine/evaluate_path.py:140,280,1466,1708` — imports and calls
-    `active_policy_available` at BOTH call sites, ungated on SHADOW vs ENFORCE. This is the
-    surface the outage is visible on."
-  - "`public.visa_decisions` — BEFORE INSERT trigger runs `bind_visa_decision_retention_policy`.
-    Every durable decision write passes through the predicate this PR changes."
-  - "`public.visa_evaluate_idempotency` — same, via
-    `bind_visa_evaluate_idempotency_retention_policy`. The table currently holds 0 rows."
-  - "`scripts/visa_engine/retention_worker.py` — the bounded purge worker. Broken by the same
-    cause; currently has nothing to purge (receipt below), so the repair is pre-emptive."
-  - "GARUDA VOA — `services/garuda_flow/retention.py`,
-    `active_garuda_magic_link_policy_available`, migration 284's order-policy function. All
-    three already filter their own scope and are NOT touched by this PR. Verified, not assumed."
-  - "`bind_visa_decision_payload_retention` — deliberately NOT touched: it resolves its parent
-    by `visa_decisions.id`, never by active-policy lookup."
+  - "`services/visa_engine/evaluate_path.py:1609` — calls `_resolve_active_pack_binding` inside
+    `run_evaluation()` on EVERY request. This is the surface the outage was visible on and the
+    surface the cure is proven on."
+  - "`services/visa_engine/shadow.py:340-400` — `_resolve_active_pack_binding` re-runs the
+    range-containment query against `visa_ruleset_activations` per call, with no lru_cache, no
+    module global and no TTL. A new activation is therefore live on the next request with no
+    restart. Verified in code, not assumed."
+  - "`services/visa_engine/shadow.py:599` — the SHADOW match path resolves the same binding
+    through the same function, so both paths move together."
+  - "`apps/mouth/.../engine-adapter.ts` — renders review-reason codes to human copy. seq-17 is
+    the first pack ON DISK carrying the E23 diplomatic and trade-office rules, so two codes
+    became reachable here for the first time and needed copy."
+  - "`scripts/visa_freshness_sentinel.py` — derives each boundary from the pack's own policy
+    per record, so it tracks the restamp with no change. Its alert path is NOT repaired by this
+    PR; the dedup that swallowed the warning is recorded as an open item, not as done."
+  - "`visa_rule_packs` / `visa_ruleset_activations` — the write surface of the activation
+    ceremony. Deliberately NOT modified by this PR: the ceremony is run, not shipped."
+
 risks:
-  - "A migration PR is auto-merge-OFF class per CLAUDE.md §2. Merged by the session after gates
-    are green and the Gear-3 verdict is posted, never armed with --auto."
-  - "The two binders are owned by `visa_ledger_owner`, and no role is a member of it. CREATE OR
-    REPLACE therefore requires the migration runner to be superuser — which it demonstrably is,
-    since 281 successfully ALTERed this same visa_ledger_owner-owned table on 2026-08-26."
-  - "Rolling 289 back re-arms the outage on any database that has applied 281 and activated a
-    GARUDA policy. Documented in the ROLLBACK section: it is only meaningful together with
-    rolling back 281."
-  - "This PR does NOT restore the client experience. Production runs SHADOW and the frontend's
-    public rendering boundary withholds the decision regardless — an unrelated, designed state.
-    What this PR restores is the shadow-evidence ledger the go-live gate accumulates."
+  - "This PR ships an artifact that is ALREADY ACTIVE in production. The activation preceded the
+    merge because the outage was live; the merge records what was done rather than authorising
+    it. If review rejects the artifact, the remedy is a forward pack, never an edit to this one."
+  - "seq-16's source never reached `main` — it lives on an unmerged branch while its signed
+    artifact ran in production. Narrower than the 'absent from version control' this brief
+    first claimed, and still open: this PR does not fix it."
+  - "The re-stamped window expires again one week out. Raising it is a separate, signed pack
+    ceremony — the value lives only inside the signed payload, with no environment or config
+    override anywhere. Tracked as its own task, not smuggled in here."
+  - "The generated pack artifacts dominate the line count. The hand-authored surface is small,
+    and the generated part is reproducible from the fold script plus the live payload."
+
 grader: |
-  Independent verification by this session against production's live catalog (read-only role)
-  and against the repo's own linters. Two adversarial subagents were dispatched WITHOUT this
-  brief: one to attack the diagnosis (it killed the timeline claim — see dissent), one to prove
-  the fix red-then-green on a throwaway Postgres. Generator != grader: the session that wrote
-  the diff does not post the Gear-3 verdict.
+  Independent verification by this session against the production catalog through the read-only
+  role, and against the deployed endpoint through the synthetic-driver probe path — never
+  against the writer's own output. One cross-family adversarial refuter (codex gpt-5.6-sol,
+  xhigh, non-Anthropic) was dispatched on the diff WITHOUT this brief, and was asked in
+  particular to attack the attestation itself: what in the diff proves anyone actually looked at
+  the pages. Generator != grader: the session that wrote the fold does not post the Gear-3
+  verdict.

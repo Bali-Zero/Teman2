@@ -403,13 +403,19 @@ export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
     "This case involves a minor without a confirmed guardian on file and needs a person to review it.",
     "Kasus ini melibatkan anak di bawah umur tanpa wali yang terkonfirmasi dan memerlukan peninjauan oleh seseorang.",
   ),
+  // Wording follows the pack's own product names verbatim — "Foreign Diplomat
+  // House Assistant (E23U)" / "Asisten Rumah Tangga Diplomat Asing" and "Trade
+  // and Economic Office (E23V)" / "Kantor Dagang dan Ekonomi". An adversarial
+  // review of the first draft caught it narrowing E23V to "trade representative
+  // office", dropping "and Economic": the applicant would then be told about a
+  // category that is not the one the rule actually names.
   E23U_DIPLOMATIC_HOUSEHOLD_STAFF_REVIEW: text(
-    "This case involves household staff employed by diplomatic personnel and needs a person to review it.",
-    "Kasus ini melibatkan staf rumah tangga yang dipekerjakan oleh personel diplomatik dan memerlukan peninjauan oleh seseorang.",
+    "This case involves a house assistant employed by a foreign diplomat and needs a person to review it.",
+    "Kasus ini melibatkan asisten rumah tangga yang dipekerjakan oleh diplomat asing dan memerlukan peninjauan oleh seseorang.",
   ),
   E23V_TRADE_OFFICE_STAFF_REVIEW: text(
-    "This case involves staff of a trade representative office and needs a person to review it.",
-    "Kasus ini melibatkan staf kantor perwakilan perdagangan dan memerlukan peninjauan oleh seseorang.",
+    "This case involves staff of a trade and economic office and needs a person to review it.",
+    "Kasus ini melibatkan staf kantor dagang dan ekonomi dan memerlukan peninjauan oleh seseorang.",
   ),
   // Renamed from STATUS_BRIDGING_REVIEW (QW-4a, 2026-08-17): same stale
   // situation — BRIDGING_ADVERSE_HISTORY is the current name for this rule
