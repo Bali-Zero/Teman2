@@ -11,10 +11,8 @@ lanes:
     seat: "conductor (independent verification session; model not asserted in this field)"
 diff:
   net_lines: >-
-    Before this evidence pair, commit ed1e050f3 changed 2 files and added 22 lines against its
-    parent: .github/workflows/tests.yml and .claude/skills/modus/PENDING-ARMS.md. The workflow
-    hot-zone fixes the deterministic floor at Gear 3. The post-evidence file count and floor are
-    re-measured after the amended commit rather than predicted here.
+    Measured with git diff --numstat against the merge-base, over the whole diff:
+    245 net lines. The workflow hot-zone fixes the deterministic floor at Gear 3.
   behaviour_change: >-
     The already-required frontend-tests (mouth, true) leg gains one named step. It changes into
     apps/admin-dashboard-local and runs `npx vitest run` with one explicit exclusion. No job,
