@@ -278,8 +278,11 @@ receipts:
       _canon_blocks; print(_canon_blocks('<!-- canon:ship -->\\nrule\\n<!-- /canon:ship -->\\n'));
       print(_canon_blocks('```markdown\\n<!-- CANON:example -->\\nx\\n<!-- /CANON:example -->\\n```\\n'))"
     result: >-
-      {} and {'example': 'c8c8c0a9ee6a2abb'} — the mis-cased marker vanished without a finding,
-      and a documentation example held a live comparable block.
+      An EMPTY dict for the mis-cased pair — it vanished without a finding — and, for the fenced
+      pair, a one-key dict whose key is `example`: a documentation example holding a live
+      comparable block. The digest itself is not quoted; it is a sha256 prefix of fixture text
+      and reads to detect-secrets as a high-entropy hex string, which is a real CI failure to
+      buy for a decorative sixteen characters (measured: it cost one).
     exit: 0
     ts: 2026-08-31T05:25Z
     seat: session (M5)
