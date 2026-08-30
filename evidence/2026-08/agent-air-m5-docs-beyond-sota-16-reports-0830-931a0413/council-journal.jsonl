@@ -1,0 +1,4 @@
+{"seat":"codex-gpt-5.6-sol","effort":"xhigh","door":"codex exec -m gpt-5.6-sol --sandbox read-only","role":"review","read":"all 18 staged files","verdict":"do not publish as-is","ts":"2026-08-30"}
+{"seat":"kimi-code/k3","door":"~/.kimi-code/bin/kimi -p ... -m kimi-code/k3","role":"review","read":"all 18 staged files + 15 sub-reviews","verdict":"one genuine HOLD (B3), a dozen redactions, systematic staleness","ts":"2026-08-30"}
+{"seat":"conductor (M5, Opus 5)","role":"build","note":"assembled the diff; did not gate it","ts":"2026-08-30"}
+{"seat":"relay+fact-check (Sonnet)","role":"review","note":"re-derived every concrete file claim with grep/sed/git before reporting; labelled CONFIRMED/RETRACTED/PLAUSIBLE","ts":"2026-08-30"}
