@@ -23,15 +23,33 @@ lanes:
       (NON-ANTHROPIC, cross-family, never the seat that built the diff)
 
 diff:
-  files: 15
-  net_lines: 525
-  measured_at: 6f9611022
+  files: 18
+  net_lines: 1247
+  measured_at: a1c710fbf
   note: >-
-    `git diff --no-renames --numstat $(git merge-base origin/main HEAD) HEAD`
-    -> 15 files, net 525 (435 at the first commit, +90 for the two defects the
-    blind refutation confirmed). The deterministic floor recomputed from
-    this PR's own changed-file set is 1 (`evidence_pack_lint.py --print-floor`);
-    the brief declares gear 2, so gear >= floor holds.
+    RE-MEASURED 2026-08-31 by the rescue session (orphaned-PR pickup after
+    squad D' orchestrator exited), as the last action before this commit,
+    because the figures this block previously declared (measured @6f9611022)
+    predate several later commits on this branch (the guarded init_asyncpg_connection close,
+    the canonical-files AST test, the five-pool docstring correction, and
+    this rescue's own CodeQL fix). `git diff --no-renames --numstat
+    $(git merge-base origin/main HEAD) HEAD` at a1c710fbf ->
+    `evidence_pack_lint.py --print-measured` reports "18 files, +1138/-146, 6
+    commits" (raw, unexcluded git-diff totals -- this is the figure the
+    countable-claims rule checks against). `net_lines: 1247` above is a
+    DIFFERENT number on purpose: CHURN (added+deleted) with the floor's own
+    fixtures/generated/vendor exclusion applied (`_size_term_net_lines()`),
+    which is 37 lower than the raw 1138+146=1284 because it excludes
+    tests/fixtures/prod_shaped_pool.py's 20+17 lines -- not a plain
+    add-minus-delete net, and not the raw countable-claims total either.
+    The deterministic floor recomputed from this PR's own final changed-file
+    set is now 2, source "size" (churn 1247 >= SIZE_GEAR2_THRESHOLD 400 but
+    below SIZE_GEAR3_THRESHOLD 1828; `evidence_pack_lint.py --print-floor` /
+    `--print-floor-source`) -- UP from the 1 this pack previously declared.
+    The brief already declares gear 2, so gear >= floor still holds; no gear
+    change needed, but a pack whose floor moved out from under it without a
+    note would have been exactly the kind of stale figure this rule exists
+    to catch.
 
 pii_scan: clean
 
@@ -231,6 +249,37 @@ receipts:
     ts: 2026-08-31T02:50Z
     seat: session (final gate, Opus 5 xhigh)
 
+  - claim: >-
+      RESCUE (2026-08-31): squad D''s orchestrator exited rc=0 and this PR
+      sat RED and unowned (CodeQL) until a rescue session picked it up.
+      CodeQL's own annotation (not the diff, per anti-hallucination
+      discipline) named a real py/uninitialized-local-variable-shaped gap
+      this diff introduced in _connect(): `conn` is assigned inside a try,
+      and CodeQL has no NoReturn model for pytest.fail/pytest.skip, so it
+      treats the except block as a possible fallthrough into a read of an
+      unset `conn`. Closed with an explicit terminal `raise` at the end of
+      BOTH except blocks (the second, guarding `init_asyncpg_connection`,
+      has the identical shape but was not itself flagged) rather than a
+      suppression comment, so the control flow is provably terminal to any
+      analyzer, not merely correct by pytest's actual unmodeled behavior.
+    cmd: >-
+      gh api repos/Bali-Zero/Teman2/check-runs/99294325113/annotations ;
+      then, after the fix, from apps/backend-rag: ruff check
+      backend/tests/services/garuda_orders/test_outbox_consumer.py ;
+      INTAKE_TEST_DSN=postgresql://test:test@localhost:55432/nuzantara_test
+      PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/services/garuda_orders/test_outbox_consumer.py
+    result: >-
+      Annotation: path test_outbox_consumer.py, line 81, "Local variable
+      'conn' may be used before it is initialized." ruff: "All checks
+      passed!". pytest: "23 passed in 1.43s" against local docker
+      craftd-pg (127.0.0.1:55432, container `craftd-pg`) -- unchanged
+      behavior, as expected from dead-code-by-construction lines. Pushed at
+      a1c710fbf.
+    exit: 0
+    ts: 2026-08-31T03:20Z
+    seat: session (rescue, Opus 5)
+
 dissent:
   - seat: glm-5.2 (Alibaba TP1, non-Anthropic counter-build lane)
     objection: >-
@@ -366,3 +415,8 @@ notes:
     garuda_order_outbox both hold 0 rows) because they need a Xendit key
     nobody has provisioned -- so this is a fix-before-first-write, not a data
     repair."
+  - "RESCUE 2026-08-31: squad D''s orchestrator (craft2_launch.sh D2) exited
+    rc=0 at 02:09 and this PR was found red (CodeQL) and unowned. A rescue
+    session fixed the CodeQL finding (see the last receipt) and pushed
+    a1c710fbf to this same branch -- no other content changed. #5327, which
+    stacks on this branch, is a separate PR handled by the same rescue pass."
