@@ -32,7 +32,7 @@ seat_diversity_note:
   the author's own tests did not cover."
 diff:
   net_lines:
-    "6 files, +1177/-0, computed by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
+    "6 files, +NETLINES, computed by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
     One new .sql migration, one new static test file, two touched Python files (the live preflight
     check and its independently frozen authority), and this evidence pair. Zero frontend, zero
     workflow, zero runtime request path."
@@ -114,7 +114,7 @@ receipts:
       information_schema.role_table_grants — that view is filtered by the calling role, so its empty
       answer means 'invisible to me', never 'absent'."
   - claim:
-      "The live catalog check that should have caught this on its first run had never been told these
+      "The live catalog check that could have caught this had never been told these
       functions exist; both GARUDA binders are now listed, and the frozen authority moved with them."
     cmd: "PYTHONPATH=. python -m pytest backend/tests/scripts/visa_engine/test_operational_preflight.py"
     exit: 0
@@ -287,7 +287,7 @@ dissent:
       acceptable is that the text lint is the CHEAP layer, not the only one — the live catalog check
       in operational_preflight.py reads `pg_proc.proowner` from the running database and cannot be
       evaded by any SQL formatting whatsoever. That check is what would have caught migration 285 on
-      its first run, and this PR is what finally tells it these two functions exist. A real SQL parser
+      its first run IF ANYTHING RAN IT -- see the correction below -- and this PR is what finally tells it these two functions exist. A real SQL parser
       (pglast/sqlglot) would close the text layer properly; that is a separate decision with a
       dependency attached, not something to smuggle into an outage fix."
   - seat: claude-opus-5 (Gear-3 final on-disk gate, round three — verdict PASS with one nit)
@@ -321,3 +321,22 @@ dissent:
       reads pg_proc.proowner from the live database, where a DROP+CREATE that reset ownership shows up
       immediately and no SQL formatting evades it. Closing the text layer properly means a real SQL
       parser (pglast/sqlglot), which is a dependency decision, not an outage fix."
+  - seat: claude-opus-5 (CORRECTION to this pack's own claim, measured after the gate passed)
+    objection:
+      "This pack twice called operational_preflight's live catalog check 'the backstop' and said it
+      'would have caught migration 285 on its first run'. That overstates it in exactly the way this
+      PR criticises elsewhere: the check CAN catch the shape, but NOTHING RUNS IT. Measured on this
+      branch: `collect_preflight_checks` has exactly two call sites — its own `__main__`
+      (operational_preflight.py:568) and the tests. `git grep` finds no reference to it anywhere under
+      .github/, infra/ or scripts/. It is a manual CLI, documented in a runbook. Esiste != armato,
+      superscar #2 — and the author walked into it while writing the pack that names it."
+    status: CONFIRMED
+    resolution:
+      "The two sentences are corrected above rather than deleted, so the overstatement stays visible.
+      What the claim actually supports: the catalog check is the layer no SQL formatting can evade
+      WHEN RUN, and this PR is what makes it aware of these functions — so a human running the
+      preflight, or a future workflow that runs it, now sees them. What it does NOT support: any
+      assurance that this class is caught automatically today. Arming it needs a CI step, which means
+      touching .github/workflows/, off-limits to this session, and a sandbox role literally named
+      visa_ledger_owner or the census reddens everything. Recorded as an operator item rather than
+      quietly assumed. Found by a sibling lane's cross-family reviewer, not by this session."
