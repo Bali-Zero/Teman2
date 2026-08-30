@@ -16,9 +16,9 @@ lanes:
       diff, dispatched without the brief; never the build seat
 
 diff:
-  files: 6
-  net_lines: 18329
-  measured_at: a1ddfcb292
+  files: 11
+  net_lines: 19276
+  measured_at: 467853de3c
   note: >-
     git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD.
     The two pack JSONs are generated artifacts of the deterministic fold plus
