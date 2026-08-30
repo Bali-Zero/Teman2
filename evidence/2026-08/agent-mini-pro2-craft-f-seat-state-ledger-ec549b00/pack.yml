@@ -16,9 +16,9 @@ lanes:
     seat: claude opus-5 xhigh (this orchestrator) -- final on-disk gate, empirical
 
 diff:
-  files: 5
-  net_lines: 1104
-  measured_at: af6369dd4a
+  files: 6
+  net_lines: 1194
+  measured_at: c224b3d682
   note: >-
     Measured with git diff --numstat $(git merge-base origin/main HEAD)..HEAD.
     The code under review is seat_state.sh, its corpus, and the cascade hook;
