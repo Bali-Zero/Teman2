@@ -53,4 +53,10 @@ description: Use when a user request does NOT match any currently-loaded skill �
 - **Tier 2 (installed selectively)**: engineering@knowledge-work-plugins (incident-response, deploy-checklist, etc.).
 - **Tier 3+ (catalogued in MOS, NOT installed)**: everything else — query the catalog to find + install on-demand.
 
-Reference: `research/operations/2026-05-31-global-claude-skills-study.md`, lesson `feedback_orchestration_first.md` (the decay this prevents).
+Reference: lesson `feedback_orchestration_first.md` (the decay this prevents).
+
+> A second reference was removed here on 2026-08-31: a `2026-05-31` global-skills
+> study that has never existed in this repository, and for which no file of that
+> name exists anywhere in the tree. It is retracted rather than replaced — there
+> is nothing to replace it with, and a plausible-looking substitute would be the
+> same defect with a working link.

@@ -131,6 +131,14 @@ jobs:
               package-lock.json|\
               apps/*/package.json|\
               packages/*/package.json|\
+              scripts/lint_doctrine_citations.py|\
+              scripts/tests/test_lint_doctrine_citations.py|\
+              .claude/skills/*/SKILL.md|\
+              .claude/commands/*.md|\
+              SYMBIOSIS.md|\
+              AUTONOMOUS_OPS.md|\
+              VADEMECUM.md|\
+              INDEX.md|\
               infra/doc-lint/*|\
               docs/wr2/*.md|\
               infra/home-fork/declared-pairs.json|\
@@ -423,6 +431,7 @@ jobs:
           fail=0
           for t in \
             scripts/tests/test_agent_start.py \
+            scripts/tests/test_lint_doctrine_citations.py \
             scripts/tests/test_lint_home_fork.py \
             scripts/tests/test_lint_public_asset_refs.py \
             scripts/tests/test_home_fork_stale_side_attribution.py \
