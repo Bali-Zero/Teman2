@@ -128,6 +128,56 @@ def _error(code: str) -> JSONResponse:
     return response
 
 
+#: Per-operation error-code membership — identical rationale and shape to
+#: `garuda_voa_public.py`'s twin (duplicated, not imported, per LANES.md
+#: file-ownership discipline). `RATE_LIMITED`/`INTERNAL_ERROR` are included
+#: for both operations even where no call site below raises them directly:
+#: they are cross-cutting (rate-limit middleware, the top-level exception
+#: handler) per that same established convention. Never hand-typed status
+#: codes elsewhere: `_error_responses()` below always derives from
+#: `_ERROR_CATALOG` through this map.
+_OPERATION_ERROR_CODES: dict[str, tuple[str, ...]] = {
+    "requestMagicLink": (
+        "IDEMPOTENCY_KEY_REQUIRED",
+        "GARUDA_PUBLIC_DISABLED",
+        "IDEMPOTENCY_CONFLICT",
+        "INVALID_REQUEST",
+        "RATE_LIMITED",
+        "INTERNAL_ERROR",
+        "PERSISTENCE_POLICY_UNAVAILABLE",
+    ),
+    "exchangeMagicLink": (
+        "IDEMPOTENCY_KEY_REQUIRED",
+        "MAGIC_LINK_INVALID",
+        "GARUDA_PUBLIC_DISABLED",
+        "IDEMPOTENCY_CONFLICT",
+        "INVALID_REQUEST",
+        "RATE_LIMITED",
+        "INTERNAL_ERROR",
+        "PERSISTENCE_POLICY_UNAVAILABLE",
+    ),
+}
+
+
+def _error_responses(operation_id: str) -> dict[int | str, dict[str, object]]:
+    """Build a FastAPI `responses=` dict for `operation_id` from
+    `_ERROR_CATALOG`, grouped by HTTP status — documentation only, changes no
+    behaviour. Identical shape to `garuda_voa_public.py`'s twin.
+
+    Measured 2026-08-30 (`test_garuda_voa_openapi_parity.py` widening): without
+    this, neither route below documented anything past the decorator's own
+    success code and the framework's automatic 422 — the exact drift that
+    test file's docstring already describes for L2, reproduced here for L4.
+    """
+    by_status: dict[int, list[str]] = {}
+    for code in _OPERATION_ERROR_CODES[operation_id]:
+        status_code, _retryable, _message_key = _ERROR_CATALOG[code]
+        by_status.setdefault(status_code, []).append(code)
+    return {
+        status_code: {"description": " / ".join(codes)} for status_code, codes in by_status.items()
+    }
+
+
 def _public_enabled() -> bool:
     return os.environ.get(_FEATURE_FLAG_ENV, "").strip().lower() in {"1", "true", "yes"}
 
@@ -301,6 +351,7 @@ def _set_account_session_cookie(response: Response, request: Request, secret: st
     "/magic-links",
     operation_id="requestMagicLink",
     status_code=202,
+    responses=_error_responses("requestMagicLink"),
 )
 async def request_magic_link(
     payload: MagicLinkRequest,
@@ -390,6 +441,7 @@ async def request_magic_link(
     "/sessions",
     operation_id="exchangeMagicLink",
     status_code=204,
+    responses=_error_responses("exchangeMagicLink"),
 )
 async def exchange_magic_link(
     request: Request,
@@ -439,9 +491,7 @@ async def exchange_magic_link(
     # magic_link_expired / magic_link_replay / magic_link_invalid, the HTTP
     # shape below is byte-identical: one 401, no other field.
     if not outcome.authorized:
-        logger.info(
-            "garuda_portal_auth: exchange denied (counter=%s)", outcome.security_counter
-        )
+        logger.info("garuda_portal_auth: exchange denied (counter=%s)", outcome.security_counter)
         return _error("MAGIC_LINK_INVALID")
 
     # Refuter finding #8: a store MUST NOT report authorized=True on a FRESH
@@ -455,9 +505,7 @@ async def exchange_magic_link(
         )
         return _error("INTERNAL_ERROR")
 
-    logger.info(
-        "garuda_portal_auth: exchange authorized (counter=%s)", outcome.security_counter
-    )
+    logger.info("garuda_portal_auth: exchange authorized (counter=%s)", outcome.security_counter)
     result = Response(status_code=204)
     result.headers.update(_PRIVACY_HEADERS)
     result.headers["Idempotency-Replayed"] = "true" if outcome.idempotency_replayed else "false"

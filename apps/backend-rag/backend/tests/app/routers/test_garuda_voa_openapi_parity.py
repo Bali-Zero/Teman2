@@ -59,12 +59,47 @@ skip — this repo already has one gate that skipped by exactly this
 mechanism (`products/garuda-voa/contracts/tests/test_contract_invariants.py`
 before its own hardening) and one instance of that pattern in a live
 codebase is the whole lesson.
+
+Widened 2026-08-30 (team-lead F1 mandate, PR #4959's gate-completeness
+follow-up): `_MOUNTED_OPERATION_IDS` used to be a hand-typed 3-item
+allowlist covering only `garuda_voa_public.py`'s three operations — a gate
+that "passes even if code and contract diverge on everything not in that
+list." Measured that day: the frozen contract declares **13** operations;
+**10** of them are genuinely mounted (this router's 3, plus L4
+`garuda_portal_auth.py`'s `requestMagicLink`/`exchangeMagicLink`, plus L3
+`garuda_orders_router.py`'s `createOrderFromCheck`/`getOrderAndPractice`/
+`observePaymentBrowserReturn`/`receivePaymentWebhook`/`resolveLateOrder`) and
+**3** have no router at all (`uploadIntakeDocument`, `listIntakeDocuments`,
+`transitionPractice`). None of the 7 L3/L4 operations were checked before
+this widening — 5 of them were not even *resolvable* by operationId (their
+decorators never set `operation_id=`, so FastAPI auto-generated one from the
+Python function name), and the 2 that were resolvable (`requestMagicLink`/
+`exchangeMagicLink`) had the identical missing-`responses=` disease this
+file's docstring already described for L2. Both routers were fixed
+alongside this widening (`garuda_orders_router.py` and
+`garuda_portal_auth.py`; `garuda_voa_public.py`'s `_NO_VALIDATION_ERROR_
+OPERATIONS` gained `getOrderAndPractice`, the same bare-`str`-path-param
+auto-422 already described above for L2).
+
+Three of the 10 mounted operations still do not fully match the frozen
+contract after that fix, for reasons that are real, separate product
+defects — not test-file bugs, and not fixable by touching this test file,
+a `responses=` kwarg, or the frozen contract (which every router's own
+docstring says none of them may edit). `_KNOWN_STATUS_CODE_GAPS` below
+names each one explicitly, cites the exact code path (or absence of one)
+responsible, and is guarded (`test_known_status_code_gaps_are_still_true`)
+so a future fix to the underlying defect — closing the gap without updating
+this dict — fails the suite rather than silently going unnoticed the other
+way. This mirrors, for a second kind of gap, the same "explicit + guarded,
+never silent" discipline `_NOT_YET_BUILT_OPERATION_IDS` already applies to
+the 3 never-mounted operations.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import yaml
 
 # Importing this module BUILDS the deployed `main_api` FastAPI app as a
@@ -76,24 +111,7 @@ import yaml
 from backend.app import main_api as _main_api_module
 
 _CONTRACT_PATH = (
-    Path(__file__).resolve().parents[6]
-    / "products"
-    / "garuda-voa"
-    / "contracts"
-    / "openapi.yaml"
-)
-
-# operationIds this router MOUNTS today (garuda_voa_public.py module
-# docstring: "Implements exactly three operations"). Everything else the
-# frozen contract declares (magic-link, intake documents, orders, webhooks,
-# staff practice transitions) belongs to a lane with no router landed yet —
-# the contract is contract-first and is allowed to be ahead of the build.
-_MOUNTED_OPERATION_IDS = frozenset(
-    {
-        "createEligibilityCheck",
-        "getEligibilityResult",
-        "deleteEligibilityResult",
-    }
+    Path(__file__).resolve().parents[6] / "products" / "garuda-voa" / "contracts" / "openapi.yaml"
 )
 
 
@@ -150,13 +168,143 @@ def _live_operations() -> dict[str, tuple[str, str, set[str]]]:
     return _operations_by_id(_main_api_module.app.openapi())
 
 
+def _live_path_methods() -> set[tuple[str, str]]:
+    """Every (path, HTTP method) the live app answers, independent of
+    operationId — used only to prove a NOT-YET-BUILT operation is genuinely
+    absent (an operationId-keyed lookup would trivially "miss" a route that
+    exists under some OTHER operationId at that same path/method, which is
+    not the claim this guard needs to prove)."""
+    out: set[tuple[str, str]] = set()
+    schema = _main_api_module.app.openapi()
+    for path, methods in schema["paths"].items():
+        if not isinstance(methods, dict):
+            continue
+        for method, op in methods.items():
+            if isinstance(op, dict):
+                out.add((path, method.upper()))
+    return out
+
+
+# operationIds the frozen contract declares that NO router file exposes a
+# path for at all today (measured 2026-08-30 via `_live_path_methods()`
+# against every path `_frozen_schema()` declares) — magic-link/customer-
+# intake/payment/staff-practice lanes ahead of a router landing, per
+# `products/garuda-voa/LANES.md`. Contract-first is allowed to be ahead of
+# the build; what is NOT allowed is this fact going unverified. Guarded by
+# `test_declared_not_yet_built_operations_are_genuinely_absent_from_the_live_app`
+# below — if a future PR mounts a router for one of these paths, that test
+# starts failing, forcing the operationId out of this set (removing it here
+# is sufficient: it then falls into `_MOUNTED_OPERATION_IDS` automatically
+# and gets full status-parity coverage from the parametrized test, with zero
+# new test code required).
+_NOT_YET_BUILT_OPERATION_IDS = frozenset(
+    {
+        "uploadIntakeDocument",
+        "listIntakeDocuments",
+        "transitionPractice",
+    }
+)
+
+# Mounted operations whose live status-code set does not fully match the
+# frozen contract for reasons that are real, separate product defects — see
+# the module docstring's "Widened 2026-08-30" paragraph for the one-line
+# summary of each. Each entry names EXACTLY the codes the frozen contract
+# declares that the live router cannot yet produce; nothing here is a status
+# code the live schema is missing merely for lack of `responses=`
+# documentation (`_assert_status_parity` below folds these into the live set
+# before comparing, so real drift beyond what is named here still fails the
+# suite). Guarded by `test_known_status_code_gaps_are_still_true`: if the
+# underlying defect is fixed and the code path starts producing one of these
+# statuses, that guard fails, forcing the fix's PR to shrink this entry (or
+# remove it, once its set is empty) rather than leaving a stale exemption
+# that quietly stops checking anything.
+_KNOWN_STATUS_CODE_GAPS: dict[str, frozenset[str]] = {
+    # `GarudaOrderRepository.record_browser_return_observation`
+    # (repository.py) unconditionally overwrites `browser_return_nonce` on a
+    # mismatch instead of raising `IdempotencyConflict` — the contract's
+    # declared 409 IDEMPOTENCY_CONFLICT has no code path that can raise it.
+    "observePaymentBrowserReturn": frozenset({"409"}),
+    # `receive_payment_webhook` (garuda_orders_router.py) never constructs a
+    # 202 (the quarantine response shape) and deliberately stopped reading
+    # Idempotency-Key (see that handler's own comment) — the frozen
+    # contract's `responses` block for 400/409 was not updated to match when
+    # the parameter was removed, and this module never edits the contract.
+    "receivePaymentWebhook": frozenset({"202", "400", "409"}),
+    # `_require_staff_actor` (garuda_orders_router.py) only ever returns 401
+    # or a verified actor — the real staff-authority verifier is "wired
+    # nowhere today" per that function's own docstring, so ACCESS_DENIED (403)
+    # has no code path that can raise it yet.
+    "resolveLateOrder": frozenset({"403"}),
+}
+
+# Derived, not hand-typed: every frozen operationId except the ones
+# EXPLICITLY declared not-yet-built above. A newly-mounted contract
+# operation is automatically included here (and therefore automatically
+# gets full parity coverage from the parametrized test below) the moment its
+# operationId stops appearing in `_NOT_YET_BUILT_OPERATION_IDS` — nobody has
+# to remember to add it to a second list.
+_MOUNTED_OPERATION_IDS: frozenset[str] = (
+    frozenset(_operations_by_id(_frozen_schema())) - _NOT_YET_BUILT_OPERATION_IDS
+)
+
+
 def test_contract_file_is_readable_and_declares_mounted_operations():
     """Guilt+innocence anchor for the fixture itself (cicatrix #6/#2): if this
-    fails, the two parametrized tests below would otherwise report a
+    fails, the parametrized parity test below would otherwise report a
     misleading per-operation KeyError instead of "the fixture is broken"."""
     frozen_ops = _operations_by_id(_frozen_schema())
     missing = _MOUNTED_OPERATION_IDS - frozen_ops.keys()
     assert not missing, f"frozen contract no longer declares: {sorted(missing)}"
+
+
+def test_declared_not_yet_built_operations_are_genuinely_absent_from_the_live_app():
+    """Guard for `_NOT_YET_BUILT_OPERATION_IDS` (cicatrix #3 discipline: a
+    static allowlist needs a test that fails when it goes stale, not a
+    silence). If a future PR mounts a router that answers one of these
+    paths, this test starts failing — the fix is to remove that operationId
+    from `_NOT_YET_BUILT_OPERATION_IDS`, which automatically moves it into
+    `_MOUNTED_OPERATION_IDS` and under full status-parity coverage."""
+    frozen_ops = _operations_by_id(_frozen_schema())
+    live_pairs = _live_path_methods()
+    for operation_id in _NOT_YET_BUILT_OPERATION_IDS:
+        path, method, _codes = frozen_ops[operation_id]
+        assert (path, method) not in live_pairs, (
+            f"{operation_id}: declared NOT YET BUILT in this test file, but "
+            f"{method} {path} now answers live — move it out of "
+            f"_NOT_YET_BUILT_OPERATION_IDS so it gets real parity coverage"
+        )
+
+
+def test_known_status_code_gaps_are_declared_only_for_mounted_operations():
+    """Guilt+innocence anchor for `_KNOWN_STATUS_CODE_GAPS`: every key must
+    be a real mounted operation (never one already covered by
+    `_NOT_YET_BUILT_OPERATION_IDS` — those two lists are disjoint by
+    construction, and a name in both would mean one of them is wrong)."""
+    declared = set(_KNOWN_STATUS_CODE_GAPS)
+    assert declared <= _MOUNTED_OPERATION_IDS, (
+        f"_KNOWN_STATUS_CODE_GAPS names operation(s) not in "
+        f"_MOUNTED_OPERATION_IDS: {sorted(declared - _MOUNTED_OPERATION_IDS)}"
+    )
+
+
+def test_known_status_code_gaps_are_still_true():
+    """The other half of the guard: each declared-missing code must
+    genuinely be ABSENT from the live schema today. If a fix lands that
+    makes one of these codes reachable without updating
+    `_KNOWN_STATUS_CODE_GAPS`, this fails — the parametrized parity test
+    below would otherwise silently start passing on a narrower comparison
+    than the contract actually requires, exactly the "gate that stops
+    checking and nobody notices" failure mode this whole file exists to
+    prevent."""
+    live_ops = _live_operations()
+    for operation_id, missing_codes in _KNOWN_STATUS_CODE_GAPS.items():
+        _path, _method, live_codes = live_ops[operation_id]
+        overlap = missing_codes & live_codes
+        assert not overlap, (
+            f"{operation_id}: _KNOWN_STATUS_CODE_GAPS declares {sorted(overlap)} "
+            f"as unreachable, but the live schema now documents them — shrink "
+            f"or remove this entry instead of leaving a stale exemption"
+        )
 
 
 def test_live_router_exposes_every_mounted_operation():
@@ -165,16 +313,9 @@ def test_live_router_exposes_every_mounted_operation():
     assert not missing, f"live router no longer exposes: {sorted(missing)}"
 
 
-def test_live_status_codes_match_frozen_contract_for_create_eligibility_check():
-    _assert_status_parity("createEligibilityCheck")
-
-
-def test_live_status_codes_match_frozen_contract_for_get_eligibility_result():
-    _assert_status_parity("getEligibilityResult")
-
-
-def test_live_status_codes_match_frozen_contract_for_delete_eligibility_result():
-    _assert_status_parity("deleteEligibilityResult")
+@pytest.mark.parametrize("operation_id", sorted(_MOUNTED_OPERATION_IDS))
+def test_live_status_codes_match_frozen_contract(operation_id: str) -> None:
+    _assert_status_parity(operation_id)
 
 
 def _assert_status_parity(operation_id: str) -> None:
@@ -186,26 +327,35 @@ def _assert_status_parity(operation_id: str) -> None:
         f"{operation_id}: path/method drifted — "
         f"live={live_method} {live_path} frozen={frozen_method} {frozen_path}"
     )
-    assert live_codes == frozen_codes, (
-        f"{operation_id}: live status codes {sorted(live_codes)} != "
+    known_gap = _KNOWN_STATUS_CODE_GAPS.get(operation_id, frozenset())
+    reconciled_codes = live_codes | known_gap
+    assert reconciled_codes == frozen_codes, (
+        f"{operation_id}: live status codes {sorted(live_codes)} "
+        f"(+ declared gap {sorted(known_gap)}) != "
         f"frozen contract {sorted(frozen_codes)} — "
-        f"missing from live schema: {sorted(frozen_codes - live_codes)}, "
+        f"missing and NOT declared as a known gap: "
+        f"{sorted(frozen_codes - reconciled_codes)}, "
         f"advertised by live but not in contract: {sorted(live_codes - frozen_codes)}"
     )
 
 
-def test_unmounted_frozen_operations_are_counted_not_failed():
-    """The frozen contract legitimately declares ~10 operations no lane has
-    mounted a router for yet (magic-links, sessions, documents, orders,
-    webhooks, staff transitions). This test exists to make that count
-    VISIBLE — never to fail the build over it. If a future PR mounts one of
-    these, move its operationId into `_MOUNTED_OPERATION_IDS` above and add
-    a dedicated `_assert_status_parity` call for it; do not widen this
-    test's assertion to cover it implicitly."""
+def test_not_yet_built_operations_are_counted_not_silently_ignored():
+    """The frozen contract legitimately declares 3 operations no lane has
+    mounted a router for yet. This test exists to make that count VISIBLE
+    — never to fail the build over it — and to catch accidental double-
+    counting between the two tracked sets."""
     frozen_ops = _operations_by_id(_frozen_schema())
-    unmounted = sorted(set(frozen_ops) - _MOUNTED_OPERATION_IDS)
-    print(f"garuda-voa: {len(unmounted)} frozen operation(s) not yet mounted: {unmounted}")
-    assert len(frozen_ops) >= len(_MOUNTED_OPERATION_IDS), (
-        "frozen contract declares fewer operations than this router mounts — "
-        "the contract file itself regressed"
+    accounted = _MOUNTED_OPERATION_IDS | _NOT_YET_BUILT_OPERATION_IDS
+    assert accounted == frozen_ops.keys(), (
+        "every frozen operationId must land in exactly one of "
+        "_MOUNTED_OPERATION_IDS / _NOT_YET_BUILT_OPERATION_IDS — "
+        f"unaccounted: {sorted(frozen_ops.keys() - accounted)}, "
+        f"phantom (declared but not in the frozen contract): "
+        f"{sorted(accounted - frozen_ops.keys())}"
+    )
+    print(
+        f"garuda-voa: {len(_NOT_YET_BUILT_OPERATION_IDS)} frozen operation(s) "
+        f"not yet mounted: {sorted(_NOT_YET_BUILT_OPERATION_IDS)}; "
+        f"{len(_MOUNTED_OPERATION_IDS)} mounted and checked for status "
+        f"parity ({len(_KNOWN_STATUS_CODE_GAPS)} with a declared, guarded gap)"
     )
