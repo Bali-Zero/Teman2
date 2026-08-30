@@ -274,6 +274,57 @@ receipts:
     ts: 2026-08-30T02:10:00Z
     seat: session (build lane)
 
+  - claim: >-
+      THIRD PASS (independent gate finding, corroborated in-repo): the
+      invariant-check step's own `set -uo pipefail` never disables errexit,
+      and GH Actions' default bash invocation already runs `-eo pipefail`
+      — so on a NON-CLEAN verdict (the piped python command's own nonzero
+      exit), the shell exited AT THE PIPE, before `RC=${PIPESTATUS[0]}` on
+      the next line ever ran. Neither `GITHUB_OUTPUT` nor
+      `GITHUB_STEP_SUMMARY` was ever written on the one verdict this whole
+      PR exists to make loud. My prior receipt (bash-step replay) never
+      caught this because it ran the step under plain `bash script.sh`,
+      never under GH Actions' actual `bash --noprofile --norc -eo
+      pipefail` default — the exact "verifying the script/step, not the
+      real invocation" gap named in this PR's own earlier dissent (receipt
+      9's framing), recurring one layer up.
+    cmd: >-
+      Replayed BOTH the pre-fix step body (no set +e/-e) and the fixed
+      step body under the authentic default shell:
+      `bash --noprofile --norc -eo pipefail <script>`, against CASE1
+      (real accidental loss, same throwaway repo as the earlier receipt).
+    result: >-
+      Pre-fix, under -e: raw check output printed to stdout (visible in
+      the job log), step's own exit code 1, but GITHUB_OUTPUT and
+      GITHUB_STEP_SUMMARY both EMPTY — confirms the silent failure exactly
+      as described. Fixed (set +e around the pipe, set -e right after
+      capturing PIPESTATUS[0]), under the same -e shell: exit 1,
+      GITHUB_OUTPUT contains "rc=1", GITHUB_STEP_SUMMARY contains the full
+      FAIL block and verdict line — matches receipt 10's result, this time
+      under the shell that actually matters.
+    exit: 0
+    ts: 2026-08-30T03:05:00Z
+    seat: session (build lane)
+
+  - claim: >-
+      The comment-upsert step's bare `if: always()` also fires when
+      `ledger_check` is SKIPPED (an earlier step failed first) or the run
+      is CANCELLED — in either case `steps.ledger_check.outputs.rc` is
+      empty, and the JS's `parseInt(RC || "1")` fallback reads that as
+      non-clean, posting a false "rows LOST" comment against a PR that was
+      never actually judged.
+    cmd: >-
+      Independent gate's measurement, not re-derived locally (no
+      cancelled-run corpus available outside real Actions history):
+      `gh run list` filtered to this workflow's last 40 runs.
+    result: '3 cancelled runs in the last 40 — accepted as the gate''s own
+      measurement; the code-level cause (empty outputs.rc read as
+      non-clean by the JS `|| "1"` fallback) is verified directly against
+      this step''s own source, independent of the run-count claim.'
+    exit: 0
+    ts: 2026-08-30T03:08:00Z
+    seat: session (build lane, citing an independent gate's run-history measurement)
+
 dissent:
   - seat: session (self-review pass, not a separate cross-family seat)
     objection: >-
@@ -394,3 +445,28 @@ notes:
     action, CLAUDE.md §13) — build first, observe over a dry-run window
     (now genuinely visible, unlike before this PR), promote later if
     warranted."
+  - "THIRD PASS, same day: an independent gate found the second pass's own
+    step-summary/PR-comment fix was itself unreachable on the exact
+    verdict it exists to surface (errexit at the pipe — receipt 15) and
+    that the comment-upsert's bare `if: always()` could post a false
+    accusation on a skipped/cancelled run (receipt 16). Both fixed:
+    `set +e`/`set -e` around the piped command (same idiom as
+    fly-deploy.yml's own PIPESTATUS use), and
+    `if: always() && steps.ledger_check.outputs.rc != ''`. Re-verified
+    under GH Actions' AUTHENTIC default shell
+    (`bash --noprofile --norc -eo pipefail`, not a plain `bash script.sh`
+    replay as the second pass had used) — the second pass's own bash-step
+    verification (receipt 10) had missed this precisely because it never
+    simulated the real default shell, the same generator-blind-spot shape
+    this PR's first dissent already named at the script level, recurring
+    at the workflow-invocation level."
+  - "The evidence-pack diff figures hit the same self-referential fixpoint
+    as PR #5237 (per team-lead): the pack's own bulk is part of the diff
+    it describes, so any prose number narrating it goes stale the instant
+    it's written. Cure taken: `diff.note` and brief.yml's acceptance
+    bullet now name FILES, never specific insertion/deletion/net-line
+    counts — the single `diff.net_lines`/`diff.files` structured fields
+    (not scanned by the countable-claims rule, which walks only string
+    scalars under `diff`/`lanes`, per `scripts/evidence_pack_lint.py`'s
+    own `COUNTABLE_SUBTREES`) remain the sole numeric source, snapshotted
+    at `measured_at`."

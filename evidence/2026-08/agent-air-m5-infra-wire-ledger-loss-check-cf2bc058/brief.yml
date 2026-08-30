@@ -38,6 +38,26 @@ objective: |
   (false-positive generator on legitimate closures, not a silent-pass
   instrument) differs from how it was described, and is surfaced rather than
   silently agreed with.
+
+  THIRD PASS, same day: the independent gate re-reviewed the second pass and
+  found it FAILED — three findings. (F1) The step's own `set -uo pipefail`
+  never disables errexit, and GH Actions' default shell already runs `-eo
+  pipefail`, so a NON-CLEAN verdict made the shell exit AT THE PIPE, before
+  `RC=${PIPESTATUS[0]}` — no rc written, no step summary, on exactly the
+  verdict this PR exists to surface. Fixed with the same `set +e`/`set -e`
+  idiom already proven at fly-deploy.yml's own PIPESTATUS use. My own prior
+  bash-step verification (SECOND PASS) never caught this because it ran
+  under plain `bash script.sh`, never GH Actions' authentic default shell
+  (`bash --noprofile --norc -eo pipefail`) — re-verified this pass under the
+  real shell (receipt 15/16). (F2) The pack's own diff-size prose narration
+  chases a number that can never converge (the pack's own bulk is inside the
+  diff it measures) — cured by dropping specific insertion/deletion/net-line
+  counts from prose everywhere, keeping only file names; the structured
+  `diff.net_lines`/`diff.files` fields are the sole numeric source (and are
+  not themselves scanned by the countable-claims rule — it walks only string
+  scalars). (F3) The comment-upsert's bare `if: always()` could false-accuse
+  a skipped/cancelled run — fixed to
+  `if: always() && steps.ledger_check.outputs.rc != ''`.
 constraints:
   - "Must stay NON-REQUIRED (team-lead's explicit instruction, and the check's
     own header comment/history): promoting to a required branch-protection
@@ -97,11 +117,26 @@ acceptance:
     flagged as a loss) without losing sensitivity to real accidental loss —
     both directions verified against `check()` directly (receipt 9) AND
     against the real bash step (receipt 10)."
-  - "Net diff: 2 files, 263 net lines — two commits within one
-    PR-one-concern scope (wiring the verdict to a reader; feeding it a
-    base_ref that doesn't false-flag legitimate closures), evidence/ pack
-    files excluded from this count per this repo's convention (they
-    document the change, not the change itself)."
+  - "Net diff stays within one PR-one-concern scope: the workflow file
+    (wiring the verdict to a reader; feeding it a base_ref that doesn't
+    false-flag legitimate closures; the errexit and skipped-run fixes
+    below) plus one new test file. No specific line count is narrated here
+    — see `diff:` for the single measured figure; this is the same
+    self-referential fixpoint #5237 hit (a pack's own bulk is part of the
+    diff it describes, so any prose number chasing it goes stale the
+    moment it's written)."
+  - "F1: a non-clean verdict does not go silent under GH Actions' actual
+    default shell (`bash --noprofile --norc -eo pipefail`) — verified by
+    replaying BOTH the pre-fix and fixed step bodies under that authentic
+    shell (not a plain `bash script.sh` replay, which is what let this
+    defect through the SECOND PASS's own verification): pre-fix,
+    GITHUB_OUTPUT/GITHUB_STEP_SUMMARY both empty on a real LOST-row case;
+    fixed, both correctly populated (receipt 15)."
+  - "F3: the comment-upsert step's `if:` condition is
+    `always() && steps.ledger_check.outputs.rc != ''` — verified directly
+    against the step's own source; a SKIPPED or CANCELLED
+    `ledger_check` leaves `outputs.rc` empty, and the new condition
+    excludes exactly that case (receipt 16)."
 consumer_map:
   - ".github/workflows/check-ledger-no-silent-loss.yml — the file itself; this
     PR is a self-contained wiring fix with no other file depending on its
@@ -132,6 +167,32 @@ risks:
     verified in code (receipt 5's mock output field), not yet observed
     against a real oversized output since no PR has flagged that many rows
     at once in this repo's history so far."
+  - "JUDGMENT CALL, answering team-lead's direct question rather than
+    silently deciding it: the independent gate's own measurement (7 clean
+    / 3 non-clean across ten recent runs, one of the three a legitimate
+    closure) is the residual noise this check's design accepts by
+    construction — it cannot see intent, only content, and F2/base-ref
+    only ever addressed the DIFFERENT false-positive class (a main-side
+    closure this branch correctly merged in). A branch's own deliberate
+    closure of a row it owns is indistinguishable from an accident by
+    content alone; no base_ref choice fixes that, and this PR does not
+    claim to. Recommendation: guidance text alone is not enough at a 30%
+    non-clean rate where a third is legitimate — the fix belongs in the
+    SURFACE, not the invariant: state the observed base rate explicitly in
+    both the step summary and the PR comment (e.g. 'roughly 1 in 3
+    non-clean flags on this check have been deliberate, correctly-explained
+    closures — confirm before treating this as accidental'), so a reader's
+    FIRST exposure sets the right prior rather than an accumulating
+    'this is always noise' impression. Deliberately NOT proposing to
+    suppress the deliberate-closure shape or add a threshold: suppression
+    needs a signal this check does not have (intent), and a threshold
+    trades a real, small population (this check has run on relatively few
+    PRs so far) for false confidence. This is a recommendation for
+    team-lead to weigh, not a change made in this pass — no PR history
+    yet exists to source the exact stated ratio without either
+    fabricating it or re-deriving the same measurement the gate already
+    ran, and doing that within this PR would risk the same
+    over-narrated-number fixpoint F2 exists to cure."
 grader: |
   generator != grader: this session (M5, ledger-conflicts lane, continuing the
   same thread that found the gap) is both author and the one running the

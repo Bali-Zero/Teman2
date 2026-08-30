@@ -188,10 +188,26 @@ jobs:
           # ACTUALLY is now, matching the invariant's own docstring
           # definition ("present at merge-base AND on current
           # origin/main").
+          #
+          # set +e / set -e around the pipe (CORRECTED same day, third
+          # pass — independent gate finding, corroborated in-repo): GitHub
+          # Actions' default bash invocation already runs `-eo pipefail`
+          # (harness-floor.yml's own comment says so), and this step's own
+          # `set -uo pipefail` never turns errexit OFF — so on a NON-CLEAN
+          # verdict (the pipeline's own nonzero exit), the shell exits
+          # immediately AT THE PIPE, before `RC="${PIPESTATUS[0]}"` on the
+          # next line ever runs: no rc written, no step summary — the
+          # surface goes silent exactly when the verdict is non-clean, the
+          # one case this whole PR exists to make loud. Same idiom already
+          # proven in this repo at fly-deploy.yml's own PIPESTATUS use:
+          # disable errexit only around the piped command, re-enable right
+          # after capturing the code.
+          set +e
           python scripts/check_ledger_no_silent_loss.py \
             --base-ref origin/main --head-ref "$HEAD_SHA" \
             2>&1 | tee /tmp/ledger-check-output.txt
           RC="${PIPESTATUS[0]}"
+          set -e
           echo "rc=$RC" >> "$GITHUB_OUTPUT"
 
           {
@@ -228,11 +244,22 @@ jobs:
 
       - name: Post/refresh a PR comment when the ledger check is not clean
         # Runs even when the step above failed (that IS the signal this
-        # step exists to surface) — `if: always()` is load-bearing, not
-        # decorative: without it, a real finding would skip straight past
-        # the one surface loud enough to be "impossible to miss" and leave
-        # only the step summary (click-through) and the raw log (buried).
-        if: always()
+        # step exists to surface) — bare `if: always()` is load-bearing,
+        # not decorative: without it, a real finding would skip straight
+        # past the one surface loud enough to be "impossible to miss" and
+        # leave only the step summary (click-through) and the raw log
+        # (buried).
+        #
+        # BUT bare always() also fires when `ledger_check` was SKIPPED (an
+        # earlier step in this job failed first) or the run was CANCELLED
+        # (CORRECTED same day, third pass — independent gate finding,
+        # measured: 3 cancelled runs in the last 40 on this workflow) — in
+        # either case `steps.ledger_check.outputs.rc` is empty, and the JS
+        # below's `RC || "1"` fallback reads that as non-clean, posting a
+        # "rows LOST" comment against a PR that was never actually judged.
+        # `outputs.rc != ''` gates on "the step that sets rc actually ran
+        # and set it", not merely "the job didn't exit early".
+        if: always() && steps.ledger_check.outputs.rc != ''
         uses: actions/github-script@v9
         env:
           RC: ${{ steps.ledger_check.outputs.rc }}
