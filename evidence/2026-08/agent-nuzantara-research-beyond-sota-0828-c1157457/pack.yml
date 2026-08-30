@@ -13,6 +13,14 @@ lanes:
     seat:
       claude-fable-5 headless `claude -p` at max effort, one OAuth seat per lane, incremental resumable reports
       (13 reports)
+  - lane: xfamily-blind-replica-lanes-01..13
+    role: build
+    seat:
+      codex-sol-ultra (gpt-5.6-sol at reasoning_effort=ultra, Codex CLI read-only sandbox) · kimi-code/k3
+      (Kimi CLI print mode) · agy-gemini-3.1-pro (Antigravity CLI, effort high) · tp1-deepseek-v4-pro and
+      tp1-qwen3.8-max (Alibaba TP1 gateway, thinking on) — five non-Anthropic seats answering the same 13 lane
+      briefs blind, from a snapshot taken at the merge-base so no seat could read a Fable report; one report per
+      lane per seat under research/operations/2026-08-28-beyond-sota-xfamily/
   - lane: r1-refute-lane-reports
     role: review
     seat:
@@ -26,14 +34,19 @@ lanes:
     seat: kimi-code/k3 — blind adversarial review of the INDEX and the PROTOCOL (second council seat, R9 quorum)
 seat_diversity: satisfied
 seat_diversity_note:
-  "Author family: Anthropic (Fable 5). Reviewers: Zhipu (GLM 5.2), Alibaba (Qwen3.8 Max), Moonshot
-  (Kimi K3), OpenAI (GPT-5.6 sol) — four non-Anthropic families; no reviewer saw another reviewer's output. The
-  reviewers are API/CLI seats without the ability to verify repository paths; path existence was verified independently
-  by the orchestrator's gate, so their objections concern logic, numbers, rule-compliance and SOTA claims."
+  "BUILD lanes, not review lanes, are what D3 counts — the earlier wording of this note claimed satisfaction from
+  the reviewer families alone, which is exactly the shape the rule exists to reject. The non-Anthropic BUILD lane
+  is the cross-family blind replica (PROTOCOL §7, coverage matrix in INDEX §I): OpenAI (GPT-5.6 sol at ultra),
+  Moonshot (Kimi K3), Google (Gemini 3.1 Pro via agy) and Alibaba TP1 (DeepSeek V4 Pro, Qwen3.8 Max) each answered
+  the same lane briefs blind, from a snapshot taken at the branch's merge-base so no seat could read a Fable
+  report. Anthropic (Fable 5) built the orchestration and the lane reports. Reviewers add Zhipu (GLM 5.2) on the
+  R1 lane; no reviewer saw another reviewer's output. The API seats cannot verify repository paths; path existence
+  was verified independently by the orchestrator's gate, so their objections concern logic, numbers,
+  rule-compliance and SOTA claims."
 diff:
   net_lines:
-    16 files, +4,969/-0 measured by `git diff --shortstat origin/main...HEAD` at PR open; this pack, the
-    journal and the review sections add docs-only lines on top.
+    78 files, +20985/-0 measured by `evidence_pack_lint.py --print-measured` against the merge-base, on
+    the cure commit, re-measured last after every other edit in this round was already final.
   behaviour_change:
     None. Research files, an evidence pack and one AMENDMENTS.md entry. Nothing executes, deploys
     or changes routing; Fable 5 is not routed to by anything in this diff.
@@ -44,16 +57,16 @@ pii_scan_note:
   product/repo names."
 receipts:
   - claim:
-      "Deterministic gear floor recomputed from THIS PR's changed-file list + numstat is 3 (source: size — 16
-      files, +4,969 lines), matching the `Harness floor recompute` FAIL message that demanded this pack; the declared
+      "Deterministic gear floor recomputed from THIS PR's changed-file list + numstat is 3 (source: size — 78
+      files, +20985/-0), matching the `Harness floor recompute` FAIL message that demanded this pack; the declared
       gear 3 satisfies it."
     cmd:
       git diff --name-only origin/main...HEAD > cf.txt; git diff --numstat origin/main...HEAD > ns.txt; python3
       scripts/evidence_pack_lint.py --print-floor --changed-files-file cf.txt --numstat-file ns.txt
     result: "3"
     exit: 0
-    ts: "2026-08-28T17:54:06Z"
-    seat: claude-fable-5 (orchestrator)
+    ts: "2026-08-30T03:07:32Z"
+    seat: claude-opus-5 (round-3 cure; re-measured, floor unchanged at 3)
   - claim:
       "Every research file in the diff carries `adversarial_review: <known cross-family seat>` and a `## Adversarial
       review` section (R1 generator≠grader gate)."

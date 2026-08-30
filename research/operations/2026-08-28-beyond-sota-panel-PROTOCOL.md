@@ -184,6 +184,83 @@ Index + synthesis at `research/operations/2026-08-28-beyond-sota-panel-INDEX.md`
 reports to `air:/Users/balizero/Desktop/beyond-sota-2026-08-28/` (M5 Desktop, per Zero); PR
 `docs(research): beyond-SOTA panel, 13 lanes` with auto-merge armed per CLAUDE.md §2.
 
+## 7. Cross-family blind replica (added 2026-08-29 — Zero's second order)
+
+> Zero, 2026-08-29 00:20 WITA, after reading the Fable panel: *"Dai lo stesso prompt che hai dato ai
+> tuoi agenti a ChatGPT 5.6 Sol Ultra, Kimi k3 max, Qwen3.8 Max, Deepseek V4 Pro, Gemini 3.1 Pro deep
+> think senza accennare i risultati. Così avremo ottimo quadro Cross family."*
+
+**What was sent.** Each of the 13 lane briefs, verbatim, plus §0–§4 of this protocol, behind a
+seat-neutral preamble — no mention of Fable, of the panel's results, or of any other seat. The prompt
+hash (`prompt_sha256_16`) sits in every output's header so the identity of the 13 × 5 prompts can be
+re-checked against the Fable lane prompts at any time. **The prompt was blind. The first run's
+filesystem was not — see "Run 1, discarded" below.**
+
+**Seats and doors (as measured, not as the roster names them).**
+
+| Zero's name | what actually ran | door | honest gap |
+|---|---|---|---|
+| ChatGPT 5.6 Sol Ultra | `gpt-5.6-sol`, `model_reasoning_effort=ultra`, live web search on | `codex --search exec -m gpt-5.6-sol -c model_reasoning_effort=ultra --sandbox read-only -o <file>` | none |
+| Kimi K3 max | `kimi-code/k3` | `kimi -p "<prompt>" -m kimi-code/k3` | the CLI has **no effort knob** — "max" does not exist as a setting |
+| Qwen3.8 Max | `qwen3.8-max` via TP1, `enable_thinking: true` | OpenAI-compatible `chat/completions`, streaming | 5 of 13 lanes still pending on the TP1 weekly quota (reset 2026-08-29 14:52 UTC) |
+| DeepSeek V4 Pro | `deepseek-v4-pro` via TP1, `reasoning_effort: max` | same endpoint | 1 of 13 lanes pending (same quota) |
+| Gemini 3.1 Pro Deep Think | `gemini-3.1-pro`, `--effort high` | `agy --model gemini-3.1-pro --effort high -p "<prompt>" --print-timeout 85m` | agy has **no Deep Think model or setting** (`low`/`high` only); the conductor profile `agy-gemini-deepthink` names a model agy does not know |
+
+**Access model.** Tool seats (Codex, Kimi, Gemini) run in a `git clone --shared` read-only snapshot of
+the repository, under `env -i HOME USER PATH TERM LANG TMPDIR` — no session token, no secret, no keychain
+reaches the child (the lane-13 "seat broker" move, applied by hand). API seats (Qwen, DeepSeek) cannot
+read files: they receive a **redacted ground pack** of the lane's hot files (≤12 KB per file, ≤150 KB
+total; emails, ids, tokens and IPs replaced by placeholders; the memory directory never included; **no
+panel file** — grep of all 26 API prompts for a panel file name = 0). Every run is one shot; a run counts
+as done at ≥800 words; quota/auth failures retried three times with a 15-minute sleep.
+
+**Run 1, discarded (tool seats only).** The first snapshot was taken at the panel commit `45fd97f5c` —
+the commit that ADDS the 15 Fable panel files under `research/operations/`, each named with the lane's
+own slug. The answer key was on the seats' disk. Measured afterwards (12-gram overlap and identical
+≥40-character lines against the Fable report of the same lane, plus the seats' own tool-narration
+streams): **Gemini lane 09 was a verbatim copy** (98.2 % overlap, 70 identical lines); Kimi lanes 06, 09,
+10 and Codex lanes 11, 12 returned grep hits containing lines of a Fable report; Kimi 02, 05, 07, 12, 13
+and Codex 07, 13 listed the file and wrote that they did not read it; agy logs no tool calls, so for the
+other 12 Gemini lanes non-exposure is unprovable (overlap ≤0.4 % rules out copying, not reading). All 39
+run-1 tool-seat outputs are therefore **archived, not shipped** (session scratchpad `xrun1/`; M5 desktop
+`xfamily/_run1-exposed-snapshot/` for the record). The 20 API-seat outputs of run 1 stand: their prompts
+carried no panel content, and the same measurement finds ≤0.6 % overlap with explicit references only to
+each lane's own intended output path (the protocol's §4 contract).
+
+**Run 2 (the one that ships, tool seats).** Same prompts, same doors, same minimal env; snapshot at the
+branch's **merge-base `11a3c89a2`** (the tree the Fable lanes themselves started from — zero panel
+files, verified by `ls` before launch). Launched 2026-08-29 02:24 WITA with two workers per seat.
+
+**Output contract.** `research/operations/2026-08-28-beyond-sota-xfamily/<NN-slug>--<seat>.md`, opening
+with a run header (`panel`, `lane`, `seat`, `model`, `started`/`finished`, `duration_s`, `exit`,
+`words`, `prompt_sha256_16`, `prompt_chars`, `blind: true`, `snapshot`) followed by the seat's report
+**untouched** — literally untouched, which is stronger than what an earlier draft of this paragraph
+claimed. That draft said Kimi's print-mode narration lines (`• …`) had been removed and its 2-space
+block indent stripped, "recorded per file as `normalized:` in the header". **None of that was applied
+and no such key exists**: measured on the shipped files, zero of them carry a `normalized:` key, and
+every Kimi body still opens with its narration bullets under the original block indent. The claim was
+written for a normalization step that was then not performed — exactly the "the artefact written is
+the thing in force" defect this panel keeps naming — so the contract is restated to match the disk:
+**no body is edited at all.** Should a seat ever emit a secret-shaped placeholder that Detect Secrets
+would block, the substitution is made and declared in that file's header; that has not been needed.
+
+**Why these files carry `adversarial_review: exempt-raw-external-seat-output`.** The R1 gate asks every
+research file for a cross-family refuter. These files are not the session's claims — they are the raw
+claims of a non-Anthropic seat, preserved as evidence. Refuting each one separately would put a second
+model's words between the reader and the seat's own; instead every seat's position, top moves and
+numbers are weighed **seat-against-seat** in INDEX §I, and nothing is adopted from an xfamily file
+directly. The exemption is declared in the open (the checker prints a NOTICE per file), and the reason
+is in the value itself.
+
+**Gate applied to every xfamily file** (session script `xgate.py`, checks restated so they can be
+re-run without it): sections 0–9 present · word count ≥800 · zero email-shaped and zero
+Indonesian-phone-shaped strings · Detect Secrets scan: 0 results · frontmatter opens on line 1 with the
+run header · **contamination measure vs the Fable report of the same lane recorded in INDEX §I**.
+
+**State at the time of this PR: see INDEX §I** (coverage matrix with words, minutes, sources and the
+contamination column per cell). The six API runs still missing (DeepSeek lane 13; Qwen lanes 07, 10, 11,
+12, 13) are queued behind the TP1 weekly quota and land in a follow-up PR with their own pack.
+
 ## Adversarial review
 
 Blind cross-family review (generator ≠ grader), 2026-08-29. The refuters received the full document and the panel's hard rules, nothing else; path existence had already been verified on disk by the orchestrator's gate, so they attack logic, numbers, rule-compliance and the SOTA claims. Dispositions by the orchestrator (claude-fable-5, Zero's manual selection): **survives** = recorded as a standing caveat, not fixed in this PR; **rejected** = the objection misreads the document or the rules (reason given); **accepted** = fixed in the text.

@@ -187,6 +187,103 @@ Rows for lanes 1-9 and 11-13 were extracted by a separate read-only lane and spo
 | 13 | PR-2 `feat(proprioception): tailnet policy drift receptor` | `scripts/tailnet_policy_drift.py`, receptor wiring, tests w/ recorded netmap fixtures | 2 | RED on 2026-08-11 allow-all fixture; GREEN on policy.hujson-matching fixture; BLIND → exit 2, never CLEAN | 1 |
 | 13 | PR-3 `feat(ledger): operator[secret] ager + weekly digest` | `scripts/pending_arms_report.py` (extend) + test | 1 | Digest lists ≥3 open rotation rows by fingerprint+age from ledger fixture; closed row does not appear | 1 |
 
+### I. Cross-family blind replica — coverage, contamination, and where five outside seats disagree
+
+Zero's second order of 2026-08-29 was to hand the same 13 lane briefs, blind, to five non-Anthropic
+seats. Method, doors, access model and the discarded first run are in
+`2026-08-28-beyond-sota-panel-PROTOCOL.md` §7; the outputs are one file per lane per seat under
+`research/operations/2026-08-28-beyond-sota-xfamily/`, each kept verbatim and each carrying
+`adversarial_review: exempt-raw-external-seat-output`. **Nothing below is adopted from an xfamily file
+directly** — that is the exemption's own condition: the seats are weighed against each other and
+against the panel's lane report here, and nowhere else.
+
+**Coverage matrix.** 13 lanes × 5 seats = 65 planned runs; 59 on disk. Each cell is
+`words · wall-clock minutes · distinct external URLs · 12-gram overlap with the panel's own report for
+that lane`. Overlap and URLs are recomputed from the shipped files, not copied from a run log.
+
+| lane | codex-sol-ultra | kimi-k3 | agy-gemini-3.1-pro | tp1-deepseek-v4-pro | tp1-qwen3.8-max |
+|---|---|---|---|---|---|
+| 1 intake/triage/spec | 4,935 w · 10.8 m · 14 src · 0.00% | 4,239 w · 13.1 m · 14 src · 0.59% | 2,337 w · 2.7 m · 13 src · 0.04% | 3,544 w · 7.0 m · 14 src · 0.02% | 5,513 w · 8.1 m · 16 src · 0.08% |
+| 2 context/grounding | 4,869 w · 9.0 m · 12 src · 0.02% | 3,979 w · 6.9 m · 12 src · 0.05% | 2,118 w · 4.3 m · 12 src · 0.48% | 3,622 w · 5.1 m · 13 src · 0.00% | 4,648 w · 7.4 m · 18 src · 0.59% |
+| 3 architecture | 5,285 w · 7.8 m · 15 src · 0.05% | 4,684 w · 10.9 m · 0 src · 0.23% | 1,568 w · 3.0 m · 11 src · 0.00% | 3,133 w · 3.5 m · 14 src · 0.09% | 4,788 w · 9.1 m · 19 src · 0.23% |
+| 4 implementation | 5,538 w · 10.4 m · 12 src · 0.15% | 4,444 w · 8.0 m · 14 src · 0.19% | 3,158 w · 3.4 m · 12 src · 0.32% | 2,934 w · 3.1 m · 13 src · 0.18% | 5,223 w · 10.1 m · 19 src · 0.64% |
+| 5 verification/gate | 5,305 w · 8.8 m · 12 src · 0.41% | 3,994 w · 10.2 m · 15 src · 0.44% | 1,851 w · 4.9 m · 12 src · 0.00% | 3,981 w · 4.5 m · 18 src · 0.14% | 4,803 w · 8.8 m · 20 src · 0.19% |
+| 6 CI/merge queue | 5,369 w · 10.0 m · 14 src · 0.00% | 4,955 w · 11.0 m · 20 src · 0.07% | 2,693 w · 3.1 m · 10 src · 0.20% | 3,841 w · 4.2 m · 15 src · 0.05% | 5,177 w · 5.8 m · 12 src · 0.27% |
+| 7 deploy/prove-live | 5,220 w · 8.4 m · 12 src · 0.00% | 4,036 w · 10.5 m · 11 src · 0.20% | 1,971 w · 3.3 m · 10 src · 0.00% | 4,257 w · 4.5 m · 15 src · 0.00% | deferred — TP1 quota |
+| 8 observability | 4,924 w · 8.5 m · 12 src · 0.06% | 4,345 w · 8.4 m · 16 src · 0.22% | 1,688 w · 4.0 m · 5 src · 0.00% | 4,049 w · 3.4 m · 17 src · 0.00% | 5,527 w · 8.2 m · 14 src · 0.54% |
+| 9 orchestration/fleet | 5,066 w · 8.5 m · 10 src · 0.02% | 4,525 w · 10.6 m · 15 src · 0.02% | 1,666 w · 3.6 m · 10 src · 4.14% | 4,259 w · 4.8 m · 22 src · 0.11% | 5,787 w · 10.2 m · 18 src · 0.02% |
+| 10 learning loop | 5,198 w · 9.3 m · 12 src · 0.00% | 5,093 w · 9.6 m · 20 src · 0.17% | 3,342 w · 4.8 m · 14 src · 0.03% | 3,882 w · 4.1 m · 12 src · 0.14% | deferred — TP1 quota |
+| 11 product/UX | 5,842 w · 12.2 m · 12 src · 0.01% | 4,415 w · 11.6 m · 14 src · 0.02% | 1,836 w · 3.5 m · 12 src · 0.00% | 4,655 w · 4.1 m · 14 src · 0.06% | deferred — TP1 quota |
+| 12 data/migrations | 5,912 w · 8.0 m · 14 src · 0.00% | 3,980 w · 8.0 m · 21 src · 0.25% | 2,189 w · 5.4 m · 10 src · 0.00% | 3,770 w · 3.5 m · 12 src · 0.00% | deferred — TP1 quota |
+| 13 security/PII | 5,944 w · 8.6 m · 12 src · 0.00% | 5,072 w · 6.2 m · 14 src · 0.19% | 2,430 w · 4.0 m · 12 src · 0.30% | deferred — TP1 quota | deferred — TP1 quota |
+
+**The six missing cells are deferrals, not failures, and they are all one cause**: the Alibaba TP1
+weekly quota. Qwen3.8-Max is short lanes 7, 10, 11, 12 and 13; DeepSeek V4 Pro is short lane 13. They
+land in a follow-up PR with their own pack — nothing in this section is derived from a cell that does
+not exist. Completed runs by seat: codex-sol-ultra 13, kimi-k3 13, agy-gemini-3.1-pro 13,
+tp1-deepseek-v4-pro 12, tp1-qwen3.8-max 8; 243,408 words in total.
+
+**Contamination, measured rather than asserted.** Across all 59 shipped cells there are exactly **two
+distinct lines of ≥40 characters shared with the panel report of the same lane**, and both are
+structural artefacts of the shared brief rather than content: the mandated heading
+`## 2. Scars & ledger evidence in this area` (31 cells) and one survey table header (1 cell). The
+highest 12-gram overlap in the whole matrix is 4.14%, and it has an explanation that is not
+contamination — see immediately below. Run 1, whose snapshot did hold the answer key, measured 98.2%
+overlap and 70 identical lines on its worst cell; that run was archived, not shipped (PROTOCOL §7).
+
+**One provenance correction this replica forced, and it changes how lane 9 must be read.** The panel's
+own lane-9 report declares `model: Gemini 3.1 Pro (pinned lane)` in its frontmatter — the only one of
+the 13 that is not `claude-fable-5`. So on lane 9 the "outside seat" `agy-gemini-3.1-pro` and the
+"panel report" are the same model family answering the same prompt, which is what the 4.14% overlap
+and that lane's near-identical recommendations actually measure. It is not independent corroboration
+and must never be counted as such: lane 9's genuine cross-family check is codex / kimi / deepseek /
+qwen only. Neither this index nor the protocol discloses the substitution anywhere else — the mandate
+line at the top of this file still reads "one Fable-5 max-effort lane per part" — so the correction
+belongs here, in the open, rather than only in that one file's frontmatter.
+
+**Per-lane agreement and divergence.** "Converges" counts only seats that reached a finding
+independently and that the panel's lane report also reaches.
+
+| # | converges with the panel | the seats add what the panel report does not have | contradicts the panel |
+|---|---|---|---|
+| 1 | gear floor+ceiling computed in CI rated AHEAD (4/5); EARS-shaped acceptance criteria as the top fix (4/5); rule-8 fix-of-fix should be mechanized, not prose (4/5) | codex names a live doctrine contradiction — `karpathy-discipline` says state your assumptions while `CLAUDE.md` says infer rather than ask — and flags `AUTONOMOUS_OPS.md` as 41 days past its own recertification interval; agy proposes a hard plan-mode filesystem lock | agy rates triage automation **BEHIND**, wanting semantic risk scoring over deterministic path/size floors |
+| 2 | boot-context bloat is the #1 diagnosis (5/5); the HOME-fork "3 copies, 3 answers" incident (5/5); the ~90K-token fork-lane inheritance (5/5); a scar-derived recall benchmark (panel + 2) | codex and qwen independently flag the 136,238-byte `visaoracle` corner skill as its own bloat defect; deepseek proposes a CI check failing when `MEMORY.md` exceeds its budget; agy proposes a tree-sitter dynamic repomap | agy rates the memory write-side **BEHIND** and calls the corpus "archaic" where the panel rates it AHEAD of Mem0/Letta write paths |
+| 3 | the decision loop and council doctrine rated AHEAD (5/5, unanimous); the ADR organ is dead and real decisions live in research dossiers (5/5); W100 as the central cautionary evidence (4/5); extend `genes.json` fitness functions to the decision layer (5/5) | kimi proposes an ex-ante calibration ledger scoring each seat's predictions against outcomes; kimi and codex both find the council-routing script still encoding the retired v2 architecture; codex finds `CLAUDE.md` self-contradicting on `max` vs `xhigh` for the gate | none found |
+| 4 | the worktree broker rated AHEAD (5/5); Sonnet dispatch overshoot against workhorse-first (3/5, codex measuring 127/148 = 85.8%); the 400-line PR contract is prose, not a gate (2/5); no build-outcome/rework metric exists (2/5) | agy proposes a declarative migration-dependency graph read from `-- depends:` headers; kimi proposes pushed WIP snapshot refs against the W80 class; deepseek moves generator≠grader from VERIFY into BUILD | agy would abandon the local pre-push suite entirely and validate frontend only in CI, where the panel restores local default-on |
+| 5 | the scar-gate arming crisis, 2 of 66 armed (4 sources); W100's 7-of-8 same-family false-clean (4); judge calibration from a scar-derived labelled corpus (4) | three seats make "arm the gates" their own #1, strictly stronger than the panel's re-qualify-only R5; codex proposes a cryptographic execution attestation for the verdict and a structural graph replacing workflow substring matching; qwen proposes a lint failing any PR that deletes a test, guard or workflow | codex disputes the guard-conformance denominator — "the defensible metric is 38/51 normalized bilateral declarations, not 51/51" — against the panel's 38/38; and the correction-tax metric spans 24× across seats (0.5% / 1.2% / 4.5% / 12.2%) on one question |
+| 6 | W111's stale merge-ref replay (5/5); W124's silent CI on a DIRTY PR's subset (4/5); the merge-gate-integrity-watch is a detector, not an enforcer (panel + kimi, and qwen measured it CANNOT-VERIFY for 26 consecutive executions); the DIRTY-PR structural-conflict class as the top unsolved gap (5/5, four different cures) | codex and qwen find a live doctrine contradiction the panel never flags — the runbook mandates a bare `--auto` while `auto-merge-whitelist.yml` invokes `--auto --squash --delete-branch`; three seats propose an always-on local webhook receiver instead of GitHub's blind poll; agy measures agent session tokens burned hand-polling CI | kimi, blind, reports queue batching was measured and deliberately **not** flipped (conditional re-entry rising 24%→85% at group size 3) against the panel body's `min_entries_to_merge` 1→3 — the panel's own appendix concedes this, its body was never corrected |
+| 7 | the 503-RAG shape (health=200 over a stopped worker) as the central diagnosis (5/5); a two-platform flag registry and parity check (5/5) | all four completed seats want the **deploy itself** gated on process-group functional proof rather than left to a cron-side restart detector — the panel treats the existing detector as adequate and puts this in no recommendation; three seats name the uncomputed DORA change-failure-rate and time-to-restore | deepseek rates deploy frequency medium (~2-3/week from a stale SLO doc) against the panel's AT-elite, and states no rollback action is taken where the panel cites an automatic `flyctl releases rollback --yes` — both are artefacts of an API seat with no file access, and are recorded as seat error, not as a finding |
+| 8 | the PENDING-ARMS ledger needs restructuring (panel + 4/5); MTTD/MTTR is uncomputable because no incident record carries both timestamps (panel + 3); burn-rate/SLO alerting against the alarm-cure dead zone (panel + 3) | codex and qwen find `heartbeat.py`'s `is_alive()` **fails open when Redis is down** — absent from the panel's own description of that organ; three seats independently propose chaos/fault-injection drills against the immune system itself | self-healing coverage: the panel rates it BEHIND on breadth (a sliver of 170 organs), agy and kimi rate it AHEAD and codex AT/AHEAD on architecture — the axis is being measured two different ways, and both readings are recorded rather than resolved |
+| 9 | *(cross-family = codex/kimi/deepseek/qwen only — see the provenance correction above)* cron tokens cannot read their own quota for want of the `user:profile` scope (5/5), all proposing a locally published quota | codex, kimi, deepseek and qwen all analyse `docs/factory/SEAT-MIX.md`'s measured 85.8% Sonnet dispatch share, which the lane report never cites; codex, kimi and qwen surface `infra/conductor`'s dormant calibration registry (`calibrations.v1.json` is `{"records": []}` against dozens of unconsumed endpoint profiles); kimi verified by `ls` that `scripts/seat_dispatch.py`, named in `FLEET_TOPOLOGY.json`, does not exist on disk | the lane report rates the cascade AHEAD unqualified; codex rates that dimension BEHIND on the same artefact (wrong Team-slot mapping, TP1 absent) and kimi calls it "BEHIND its own design" |
+| 10 | the meta-diagnosis that a lesson written is treated as a lesson armed — four independently worded restatements; a recidiva count that triggers mandatory escalation (4/4, thresholds differ); the 27-of-40 pointer-rot measurement; the bridge's byte-size drift against its own token claim | codex, kimi and deepseek each propose **mutation-testing the antidotes themselves** — does the cure still kill its own disease — which is strictly stronger than the panel's antidote-liveness lint that only checks a cure exists and is wired; kimi proposes diff-scoped scar retrieval instead of blanket injection; codex surfaces the 2-of-66 armed-gate census, sharper than the panel's 70%-named statistic | none found |
+| 11 | adopting the DTCG token format as the cure for measured fragmentation — **5/5, the strongest convergence in the whole replica**; W99 (a check that never acted) as the central cautionary scar (4/5); production journey sentinels as the top fix (4/5) | kimi proposes self-hosted component visual-regression testing and a "warn is a lie" sweep promoting warn-only brand guards to hard failures, naming a flag with many declarations and no readers; codex proposes a cross-channel durable service receipt | agy and deepseek both rank a VLM semantic critic as their #1 CI gate — agy naming the W99-recurrence risk itself — directly against the panel/codex/kimi position that a vision critic must stay subordinate to structural probes; kimi rejects the panel's CUPED/GrowthBook build as "cargo cult here" at current traffic. Separately, `isAuthenticated()` reference counts disagree across all five sources: trust none of them without a recount |
+| 12 | the runtime DSN is also the migration identity and CI is blind to it (4/4); the jsonb codec gap that test pools hide (3/4); the Qdrant estate drift, matched vs dead vs undocumented-live (4/4); a reader-map lint against silent invariant widening — the panel's R4 and kimi's R3 are the same idea reached independently | kimi and codex both propose pgTAP in-database testing, absent from the panel; deepseek proposes a migration risk scorecard trained on the organism's own scar corpus | agy reports a rollback-marker coverage of 32.5% against the panel's 97.7%; codex and kimi independently confirm the panel's figure, so agy is the outlier and is recorded as such |
+| 13 | external LLM CLIs inherit the full session environment — the top finding, 3/3 plus the panel; the tailnet allow-all with an unauthenticated writable shell on the machine holding raw PII (kimi, near-verbatim); the secrets auditor's filename-pattern blind spot (codex); the hooks-versus-kernel-sandboxing gap (3/3) | agy and codex both propose **automatic** credential revocation on exposure where the panel's R4 is only a reminder SLA; codex finds the prompt carried in the subprocess argument vector in `claude_oauth_client.py`; agy proposes actively denying the screen-capture entitlement where the panel proposes only a detection receptor; codex proposes Sigstore/SLSA release provenance | agy rates agent sandboxing **AT SOTA** and public-repo secret scanning **BEHIND** — both inverted against the panel, kimi and codex, who rate them BEHIND and AT respectively |
+
+**What the replica establishes that a same-family panel could not.** Three things, in order of weight.
+**(1)** On the questions where the organism claimed to be AHEAD, five outside families largely agree —
+the worktree broker, the CI-computed gear floor, the council doctrine, the guard guilt/innocence
+contract — and where they disagree they disagree *specifically*, on a denominator (5) or a scope (8) or
+a stale artefact (9), which is a usable finding rather than a mood. **(2)** Seat depth is not uniform
+and it is now measured: codex-sol-ultra and kimi-k3 carry the grounded weight of this replica, while
+agy-gemini-3.1-pro delivered roughly half their words at a ~3.6-minute median and produced both of the
+replica's clearest factual misses (the lane-12 rollback count, the lane-13 inverted verdicts) — a
+cheap fast seat is a real seat, but not one to take a lone verdict from. **(3)** Where four seats
+measured the same quantity and got four answers — the correction tax across a 24× spread, the
+boot-context byte count, the `isAuthenticated()` reference count — the *spread is the honest
+confidence interval*, and every one of those numbers appears in §A-§H as a single figure. That is the
+replica's most transferable result: a single measured number from a single seat is a point estimate
+wearing a fact's clothes.
+
+**Honest limits of this section.** Six of the 65 planned runs do not exist and are named as deferred
+above. The URL column counts links, not sources: lane 3's kimi cell shows `0 src` because that report
+cites its sources by archive and date in a `## 9. Sources` section without hyperlinks, not because it
+is unsourced. The overlap column measures copying, not reading — for the agy seat, which logs no tool
+calls, a low overlap rules out transcription but cannot prove non-exposure, and PROTOCOL §7 says so.
+And every verdict in the tables above is a *seat's* verdict: where the seats contradict the panel,
+this section records the contradiction and does not adjudicate it, because adjudicating would be
+adopting an xfamily file directly — the one thing the exemption forbids.
+
 ## Adversarial review
 
 Blind cross-family review (generator ≠ grader), 2026-08-29. The refuters received the full document and the panel's hard rules, nothing else; path existence had already been verified on disk by the orchestrator's gate, so they attack logic, numbers, rule-compliance and the SOTA claims. Dispositions by the orchestrator (claude-fable-5, Zero's manual selection): **survives** = recorded as a standing caveat, not fixed in this PR; **rejected** = the objection misreads the document or the rules (reason given); **accepted** = fixed in the text.
