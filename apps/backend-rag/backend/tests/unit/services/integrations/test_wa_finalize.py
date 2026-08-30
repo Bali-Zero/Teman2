@@ -775,3 +775,71 @@ def test_pricing_veto_still_rejects_an_honest_multiplication_declared_gap() -> N
         "Denda Rp1.000.000 per hari. Untuk 5 hari totalnya Rp5.000.000.",
         _SRC_OVERSTAY,
     ) == ["IDR:5000000"]
+
+
+# --- operand typing: the second refuter seat's cases (Kimi K3, cross-family) ---
+#
+# The first narrowing kept a magnitude FLOOR on operands (IDR 100,000). A second
+# adversarial seat broke it three ways with values, and its diagnosis was
+# sharper than the fix: a number's ROLE is not recoverable from its size. The
+# floor was simultaneously too low (7-digit non-money tokens sailed over it) and
+# too high (a real Rp10.000 stamp duty could not be a component). Operands are
+# now typed by being CURRENCY-MARKED and same-family, and the floor is gone.
+
+_SRC_LEGAL_PROSE = [
+    "Berdasarkan Pasal 45 PP No 28, proses memakan waktu 14 hari kerja. "
+    "UU No 6 Tahun 2011."
+]
+_SRC_TWO_CURRENCIES = [
+    "Paid-up capital minimum USD 100,000.",
+    "Biaya notaris Rp500.000.",
+]
+_SRC_WITH_STATISTIC = [
+    "Bali menerima 6.275.000 wisatawan pada 2024.",
+    "PNBP Rp1.000.000 per hari.",
+]
+_SRC_SMALL_LINE_ITEMS = ["Jasa notaris Rp2.500.000.", "Bea meterai Rp10.000."]
+
+
+def test_pricing_veto_never_sums_article_numbers_into_a_foreign_currency_fee() -> None:
+    """`USD 59 = 45 + 14` -- "Pasal 45" and "14 hari kerja". Under a magnitude
+    floor of 10 for foreign currencies the pair rule was vacuous: legal prose
+    is full of small integers, so almost any invented USD amount decomposed."""
+    assert price_tokens_outside_sources(
+        "The fee is USD 59.", _SRC_LEGAL_PROSE
+    ) == ["USD:59"]
+
+
+def test_pricing_veto_never_sums_a_year_into_a_foreign_currency_fee() -> None:
+    """`USD 2025 = 2011 + 14`."""
+    assert price_tokens_outside_sources(
+        "The fee is USD 2025.", _SRC_LEGAL_PROSE
+    ) == ["USD:2025"]
+
+
+def test_pricing_veto_does_not_sum_across_currency_families() -> None:
+    """A USD capital minimum plus an IDR notary fee authorized an IDR total:
+    `Rp600.000 = 100,000 (USD!) + 500,000`. The membership set is untyped by
+    documented design; the PAIR rule is not, because `_currency_amounts`
+    already returns the family and keeping it costs nothing."""
+    assert price_tokens_outside_sources(
+        "Total Rp600.000.", _SRC_TWO_CURRENCIES
+    ) == ["IDR:600000"]
+
+
+def test_pricing_veto_does_not_use_a_statistic_as_a_price_component() -> None:
+    """`Rp7.275.000 = 6.275.000 tourists + Rp1.000.000`. A magnitude floor
+    cannot catch this -- the non-money token is LARGER than the floor. Being
+    currency-marked can."""
+    assert price_tokens_outside_sources(
+        "Biayanya Rp7.275.000.", _SRC_WITH_STATISTIC
+    ) == ["IDR:7275000"]
+
+
+def test_pricing_veto_allows_a_small_but_real_line_item_as_a_component() -> None:
+    """`Rp2.510.000 = Rp2.500.000 notary + Rp10.000 stamp duty`. The floor
+    vetoed this correct total; typing admits it. Stamp duty is a real line on
+    a real invoice, and vetoing it costs a client an apology."""
+    assert price_tokens_outside_sources(
+        "Total Rp2.510.000.", _SRC_SMALL_LINE_ITEMS
+    ) == []
