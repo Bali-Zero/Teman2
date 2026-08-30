@@ -67,8 +67,17 @@ part below drives `journal.append_event`, `journal.enqueue_outbox`,
 FOUR REAL tables, and asserts `jsonb_typeof` is `object` (never `string`) on
 each. Rows are deleted in a `finally` wherever the schema allows it
 (`garuda_orders`, `garuda_order_outbox`); THREE of the four target tables
-structurally forbid it and the rows are left in place, tagged
-`jsonbparity-`, DOCUMENTED per-test rather than silently omitted:
+structurally forbid it and the rows are left in place, DOCUMENTED
+per-test rather than silently omitted. CORRECTED 2026-08-31 (blind
+cross-family refuter, Codex GPT-5.6 sol): this paragraph used to say the
+residues are "tagged `jsonbparity-`", which is only true for
+`garuda_order_journal` (whose `aggregate_id` and `event_name` carry the
+prefix in readable form). Both idempotency tables store ONLY the SHA-256
+DIGEST of the key, so the prefix is UNRECOVERABLE from the row -- a
+claim the schema cannot support. What IS recoverable there is the payload
+itself: `response_body ->> 'probe' = 'jsonb_codec_parity'`, which is the
+same expression the assertions below use, so an auditor has one
+identifier rather than a prefix that is not there:
 `garuda_order_journal` is append-only (migration 284
 `guard_garuda_order_journal_append_only` raises on ANY UPDATE OR DELETE),
 and both `garuda_order_idempotency` and `garuda_magic_link_idempotency`
@@ -431,6 +440,33 @@ async def test_pre_serialized_string_still_becomes_jsonb_string_scalar() -> None
 # --------------------------------------------------------------------------
 
 
+async def _require_table(conn: asyncpg.Connection, table_name: str) -> None:
+    """Skip locally when the table is absent; FAIL in CI.
+
+    pytest scores a skip as SUCCESS. A stale or wrongly-migrated CI database
+    would therefore give a fully green run in which not ONE of the four
+    production writers was ever executed -- a guard reporting green while
+    guarding nothing, which is the exact class this whole lane exists to
+    close. Confirmed by a blind cross-family refuter (Codex GPT-5.6 sol,
+    2026-08-31) and independently argued by the GLM-5.2 counter-build:
+    "skip locally, but in the CI lane that is contractually supposed to have
+    migrations applied, assert presence first and fail if absent."
+
+    Locally a skip stays correct: a developer database legitimately predates
+    the GARUDA migrations, and reddening an unrelated PR for that would teach
+    people to ignore this file. The `CI` env var is the same discriminator
+    `test_outbox_consumer.py::_connect` already uses in this repo.
+    """
+    if not await _table_exists(conn, table_name):
+        if os.environ.get("CI"):
+            pytest.fail(
+                f"{table_name} is absent from TEST_DATABASE_URL in CI. This is not a "
+                "reason to skip: skipping here would report green for a run in which "
+                "no production writer executed at all."
+            )
+        pytest.skip(f"{table_name} not present in TEST_DATABASE_URL target")
+
+
 async def _table_exists(conn: asyncpg.Connection, table_name: str) -> bool:
     return bool(
         await conn.fetchval(
@@ -454,8 +490,7 @@ async def test_journal_append_event_writes_a_real_jsonb_object_on_garuda_order_j
     pool = await create_prod_shaped_pool(TEST_DATABASE_URL, min_size=1, max_size=2)
     try:
         async with pool.acquire() as conn:
-            if not await _table_exists(conn, "garuda_order_journal"):
-                pytest.skip("garuda_order_journal not present in TEST_DATABASE_URL target")
+            await _require_table(conn, "garuda_order_journal")
 
             aggregate_id = f"jsonbparity-order-{uuid.uuid4().hex[:12]}"
             event_id = await garuda_orders_journal.append_event(
@@ -522,12 +557,8 @@ async def test_journal_enqueue_outbox_writes_a_real_jsonb_object_on_garuda_order
     order_id = f"jsonbparity-order-{uuid.uuid4().hex[:12]}"
     try:
         async with pool.acquire() as conn:
-            if not await _table_exists(conn, "garuda_order_outbox") or not await _table_exists(
-                conn, "garuda_orders"
-            ):
-                pytest.skip(
-                    "garuda_order_outbox/garuda_orders not present in TEST_DATABASE_URL target"
-                )
+            await _require_table(conn, "garuda_order_outbox")
+            await _require_table(conn, "garuda_orders")
 
             await conn.execute(
                 """
@@ -623,8 +654,7 @@ async def test_garuda_orders_idempotency_complete_writes_a_real_jsonb_object() -
     key_sha256 = hashlib.sha256(f"jsonbparity-orders-{uuid.uuid4().hex}".encode()).digest()
     try:
         async with pool.acquire() as conn:
-            if not await _table_exists(conn, "garuda_order_idempotency"):
-                pytest.skip("garuda_order_idempotency not present in TEST_DATABASE_URL target")
+            await _require_table(conn, "garuda_order_idempotency")
 
             payload_sha256 = hashlib.sha256(b"jsonbparity-orders-payload").digest()
             await garuda_orders_idempotency.reserve(
@@ -687,10 +717,7 @@ async def test_garuda_portal_idempotency_complete_writes_a_real_jsonb_object() -
     key_sha256 = hashlib.sha256(f"jsonbparity-portal-{uuid.uuid4().hex}".encode()).digest()
     try:
         async with pool.acquire() as conn:
-            if not await _table_exists(conn, "garuda_magic_link_idempotency"):
-                pytest.skip(
-                    "garuda_magic_link_idempotency not present in TEST_DATABASE_URL target"
-                )
+            await _require_table(conn, "garuda_magic_link_idempotency")
 
             payload_sha256 = hashlib.sha256(b"jsonbparity-portal-payload").digest()
             await garuda_portal_idempotency.reserve(
