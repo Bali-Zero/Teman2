@@ -64,6 +64,7 @@ from backend.services.garuda_flow.public_api import (
 
 logger = get_logger(__name__)
 
+
 class _FeatureDisabled(Exception):
     """Sentinel raised by the router-level `_require_public_enabled`
     dependency below — see that function's docstring for why this exists
@@ -242,8 +243,7 @@ def _error_responses(operation_id: str) -> dict[int | str, dict[str, object]]:
         status_code, _retryable, _message_key = _ERROR_CATALOG[code]
         by_status.setdefault(status_code, []).append(code)
     return {
-        status_code: {"description": " / ".join(codes)}
-        for status_code, codes in by_status.items()
+        status_code: {"description": " / ".join(codes)} for status_code, codes in by_status.items()
     }
 
 
@@ -278,7 +278,20 @@ def _error_responses(operation_id: str) -> dict[int | str, dict[str, object]]:
 # existing wrapper, never replacing one. `create_app()` already has exactly
 # this pattern for a different reason (`_openapi_with_visa_decision_conditionals`)
 # — this reuses that shape rather than inventing a new one.
-_NO_VALIDATION_ERROR_OPERATIONS = frozenset({"getEligibilityResult", "deleteEligibilityResult"})
+#
+# `getOrderAndPractice` (L3, `garuda_orders_router.py`) joined this set
+# 2026-08-30: identical shape — `order_id: str` is a bare, unconstrained path
+# capture validated by hand inside the handler (ownership-filtered query),
+# never a Pydantic path constraint — so FastAPI's blanket "any parameterized
+# route gets a 422" default fires there for exactly the same unreachable
+# reason as the two operations below. Measured by
+# `test_garuda_voa_openapi_parity.py`'s widened parity check, which is the
+# only place that noticed this router's schema at all before 2026-08-30 (see
+# that module's own docstring for L3's status-code documentation gap more
+# broadly).
+_NO_VALIDATION_ERROR_OPERATIONS = frozenset(
+    {"getEligibilityResult", "deleteEligibilityResult", "getOrderAndPractice"}
+)
 
 
 def strip_unreachable_validation_errors(schema: dict) -> dict:

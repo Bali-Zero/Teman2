@@ -15,9 +15,16 @@ const E2E_PORT = process.env.BZ_E2E_PORT ?? "3000";
 export default defineConfig({
   testDir: "./e2e",
   testMatch: "**/*.spec.ts",
-  // This fail-closed smoke requires the complete synthetic contract and is
-  // collected only by playwright.prodlike.config.ts.
-  testIgnore: "portal-prodlike-smoke.spec.ts",
+  testIgnore: [
+    // This fail-closed smoke requires the complete synthetic contract and is
+    // collected only by playwright.prodlike.config.ts.
+    "portal-prodlike-smoke.spec.ts",
+    // Production journey sentinels drive REAL production (balizero.com /
+    // my.balizero.com) as an anonymous visitor — never against the local
+    // build this config launches. Collected only by
+    // playwright.production.config.ts (no webServer, no mocked auth).
+    "production/**",
+  ],
 
   // Timeout per singolo test
   timeout: 60 * 1000,

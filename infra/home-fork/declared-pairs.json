@@ -423,6 +423,24 @@
       "machines": ["all"]
     },
     {
+      "live": "~/.claude/hooks/gate_coverage.py",
+      "repo": "infra/claude-hooks/gate_coverage.py",
+      "_note": "K1 (2026-08-27, spec §5bis K1 in 2026-08-26-PIANO-SPEC-receptor-live.md): shared library the 4 PreToolUse gates (host_boundary/worktree_isolation/orchestrate_gate/model_routing_gate) call at every one of their own exit paths to record allow/deny/exempt — the gap between what the transcript proves was gate-eligible and what got recorded IS the fail-open rate (timeout/crash/fork failure per the official Claude Code hooks doc: a `type=command` hook that times out does not block), read by gate_coverage_report.py. New file, declared at birth so it never has an undeclared window.",
+      "machines": ["all"]
+    },
+    {
+      "live": "~/.claude/hooks/gate_coverage_report.py",
+      "repo": "infra/claude-hooks/gate_coverage_report.py",
+      "_note": "K1 reporting half (2026-08-27): Stop hook, prints `gate coverage: <hook>: decided X of Y tool calls` per gate (matcher-eligible tool_use count from a bounded tail-read of the transcript vs recorded decisions) and appends a summary to ~/logs/gate-coverage.jsonl. Reporting only — never blocks Stop, fails open on any exception. New file, declared at birth.",
+      "machines": ["all"]
+    },
+    {
+      "live": "~/.claude/hooks/session_budget.py",
+      "repo": "infra/claude-hooks/session_budget.py",
+      "_note": "K3 artifact-on-death + F7 session visibility (2026-08-27): registered on SubagentStop + SessionEnd + PreCompact (one script, event told apart via payload.hook_event_name — same multi-event-registration pattern already used by mailbox_inject.py in this same directory). Writes ~/.claude/state/handoff/<session_id>.md with cwd/branch/git-diff(secret-redacted, 200KB cap)/transcript-MB/self-counted-compaction-count/last-20-tool-NAMES-only (never tool input/message content) — cicatrix lesson 'a subagent's idle is not its report'. Never blocks, always exits 0. New file, declared at birth.",
+      "machines": ["all"]
+    },
+    {
       "live": "~/.claude/hooks/host_boundary.py",
       "repo": "infra/claude-hooks/host_boundary.py",
       "_note": "Undeclared until 2026-08-12, and the live copy had carried 25 lines of ~/.claude carve-outs since 2026-06-16 that the repo never saw — live work never promoted, the dangerous direction of superscar #1. install_phase_aware.sh, the sanctioned deploy path, would have overwritten them and silently re-blocked the agent's own memory directory. Promoted and pinned by test_host_boundary_carveout.py.",
@@ -792,7 +810,8 @@
       "live": "~/.config/ghostty/machine.ghostty",
       "repo": "infra/ghostty/machines/mini.ghostty",
       "machines": ["mini"],
-      "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. See the pro entry for why this live path appears three times."
+      "live_may_extend_repo": true,
+      "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. See the pro entry for why this live path appears three times. 2026-08-28: this live copy may carry a host-local trailer on top of repo content (e.g. Zero's live-only colour override, marked in the dotfile itself) — proprioception's home_fork_scripts probe verifies repo is a byte-exact prefix of live before treating it as reconciled; a genuine mid-file drift still reports DIVERGED normally."
     },
     {
       "live": "~/scripts/login-healthcheck.sh",

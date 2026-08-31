@@ -10,13 +10,15 @@ port.
 This bridge is not the full Nuzantara MCP server. It creates a fresh FastMCP
 instance with an exact allowlist:
 
-- public-intended News Room review; the final approval remains a manual action
-  in `kita.balizero.com`;
+- public-intended News Room review plus the guarded update, cover, publish, and
+  live-verification contract;
 - sanitized WR2 human-review queue reads;
 - a confirmed, idempotent SOL 5.6 strategy selection that returns only closed,
   enumerated creative codes for human development in WR2 Control;
-- sanitized FlowKit health plus confirmed, idempotent image/video generation;
-- no publication action.
+- guarded WR2 re-render requests plus allowlisted Google Drive delivery;
+- sanitized FlowKit health, prompt-to-image/video generation, durable status,
+  and allowlisted Google media delivery;
+- no social publication action.
 
 The following domains are not exposed: CRM, client records,
 documents, raw OSINT, admin, arbitrary filesystem paths, email, WhatsApp,
@@ -72,14 +74,18 @@ bash scripts/setup_chatgpt_marketing_tunnel.sh \
   --arm-writes
 ```
 
-This does not allow publication. News Room has no write tool in this bridge;
-Damar reviews with the agent and performs the approval tap in Kita. SOL cannot
+This does not allow social publication. News Room write actions remain bounded
+by article completeness, cover, independent fact gate, explicit Damar request,
+idempotency, and live HTTP verification. SOL cannot
 execute the privileged WR2 writer, runs outside the repository, returns no
 free-form model text, and is capped at four accepted jobs per UTC day with one
 active job. A team member develops the returned strategy codes through governed
-WR2 Control, which stops in human review. Flow generation is capped at six
-accepted requests per UTC day, pins project/tier server-side, and accepts no
-paths. SOL and Flow calls require a unique request key and an explicit
+WR2 Control, which stops in human review. The private bridge can requeue an
+existing pre-publication WR2 draft through the official renderer without the
+force override, then return its allowlisted Drive delivery URL. Flow generation
+is capped at six accepted requests per UTC day, pins project/tier server-side,
+and accepts no paths. SOL, WR2 re-render, and Flow calls require a unique
+request key and an explicit
 `CONFIRM`, `CONFERMO`, or `SETUJU`; that string is a secondary intent marker,
 not a cryptographic proof of who typed it. The real gates are the runtime
 arming flag, the bounded non-publishing surface, and the visible approval step
@@ -100,30 +106,38 @@ While the managed runtime is healthy:
 2. Create a developer-mode app named `Nuzantara Marketing Bridge`.
 3. Choose **Tunnel** as the connection method and select or paste the tunnel
    id.
-4. Review discovered tools. The exact expected count is 10; any CRM, client,
-   document, admin, publish, email, WhatsApp, upload, or arbitrary-path tool is
-   a hard failure.
+4. Review discovered tools. The exact expected count is 22. The only tool whose
+   name contains `publish` must be `newsroom_publish`; any social-publish, CRM,
+   client, document, admin, email, WhatsApp, upload, or arbitrary-path tool is a
+   hard failure.
 5. Restrict the app to the Bali Zero marketing group inside the workspace. All
    users who can access the app can request every exposed tool; do not enable
    public plugin distribution or workspace-wide access for non-marketing roles.
-6. Attach the app to `Nuzantara — Bali Zero Desk` in Agent Studio and update
-   the agent.
+6. Restrict access to Damar's workspace identity `selamat@balizero.com`, attach
+   the app to `Nuzantara — Bali Zero Desk` in Agent Studio, and update the
+   agent. ChatGPT Business freezes the discovered tool snapshot when an app is
+   approved; after this manifest changes, an owner/admin must recreate or
+   republish the private app before Damar can see the new commands.
 
 ## Acceptance proof
 
 Run these in order:
 
-1. `workspace_health` reports `publication=manual_only` and writes disarmed.
+1. `workspace_health` reports the live News Room contract and writes disarmed.
 2. `newsroom_list_pending(limit=1)` returns only the documented public fields.
-3. `wr2_list_review_queue(limit=1)` returns no local path or private Drive URL.
+3. `wr2_list_review_queue(limit=1)` returns no local path or Drive URL; only an
+   explicit `wr2_get_delivery` call may return an allowlisted Drive URL.
 4. A write call while disarmed fails before side effects.
-5. Confirm that News Room review returns a Kita handoff and offers no approval
-   or publication tool.
+5. Confirm that `wr2_request_rerender` rejects a published item and that a
+   repeated request key cannot enqueue twice.
 6. After explicit arming, run one SOL strategy-code job using public subject
    data. Confirm the result contains only enumerated codes and a reference.
-7. Use one low-risk Flow image as the first credit-spending proof, then confirm
-   the same request key does not spend twice.
-8. Confirm no social post, email, WhatsApp, or client record was created.
+7. Use one low-risk Flow image as the first credit-spending proof, confirm the
+   same request key does not spend twice, then exercise
+   `flow_generate_video_from_prompt` only after owner approval for the credits.
+8. Use `flow_operation_status` and `flow_get_media` to confirm resumability and
+   delivery without receiving encoded bytes or a non-Google URL.
+9. Confirm no social post, email, WhatsApp, or client record was created.
 
 ## Operations and revocation
 

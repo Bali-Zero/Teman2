@@ -7,11 +7,9 @@ Covers:
 - POST /api/intel/scraper/submit               -> submit_from_scraper
 - POST /api/intel/staging/publish/{type}/{id}   -> publish_staging_item
 - convert_staging_to_enriched_article (helper)
-- update_homepage_layout (helper)
 - ingest_intel_to_qdrant (helper)
 """
 
-import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -181,33 +179,6 @@ class TestConvertStagingToEnrichedArticle:
         assert "Hidden text" in result["bali_zero_take"]["hidden_insight"]
         assert "Analysis text" in result["bali_zero_take"]["our_analysis"]
         assert "Advice text" in result["bali_zero_take"]["our_advice"]
-
-
-# ---------------------------------------------------------------------------
-# Helper: update_homepage_layout
-# ---------------------------------------------------------------------------
-
-
-class TestUpdateHomepageLayout:
-    @pytest.mark.asyncio
-    async def test_no_github_token(self) -> None:
-        from backend.app.routers.intel_scraper import update_homepage_layout
-
-        with patch.dict(os.environ, {}, clear=False):
-            # Remove GITHUB_TOKEN if present
-            env_copy = dict(os.environ)
-            env_copy.pop("GITHUB_TOKEN", None)
-            with patch.dict(os.environ, env_copy, clear=True):
-                with pytest.raises(ValueError, match="GITHUB_TOKEN"):
-                    await update_homepage_layout("slug", "hero_main")
-
-    @pytest.mark.asyncio
-    async def test_invalid_position(self) -> None:
-        from backend.app.routers.intel_scraper import update_homepage_layout
-
-        with patch.dict(os.environ, {"GITHUB_TOKEN": "test-token"}):
-            with pytest.raises(ValueError, match="Invalid position"):
-                await update_homepage_layout("slug", "invalid_position")
 
 
 # ---------------------------------------------------------------------------

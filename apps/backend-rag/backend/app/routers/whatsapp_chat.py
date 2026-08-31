@@ -15,6 +15,7 @@ v2: Upgraded brain — Sonnet 4.5, dynamic persona "Zan", client profile memory,
 import asyncio
 import json
 import logging
+import os
 import re
 import time
 from collections import defaultdict
@@ -998,6 +999,146 @@ def _change_belongs_to_meta_inbox(change: WhatsAppChange) -> bool:
     return _is_meta_inbox_public_number(_change_display_phone_number(change))
 
 
+# 2026-08-26 same-WABA finding (Zero, via WhatsApp Manager, relayed by the
+# I DUE BOT team lead): the team-bot number +62 881-0383-18896 lives on the
+# SAME WABA and the SAME Meta app as the public client number above. One app
+# means one webhook, two numbers — so this router's single endpoint receives
+# BOTH numbers' deliveries and must tell them apart itself; Meta gives no
+# other signal.
+#
+# This set is DELIBERATELY SEPARATE from META_INBOX_PHONE_NUMBER_IDS and
+# must NEVER be merged into it. Before this fix, the team-bot pnid matched
+# neither META_INBOX_PHONE_NUMBER_IDS (unlisted id) nor the public-number
+# display check (different visible number), so it fell through into the
+# legacy inline triage flow below and a staff message got processed as if
+# it were a client message. Simply adding the pnid to
+# META_INBOX_PHONE_NUMBER_IDS would "fix" that fall-through by routing
+# staff traffic into the CLIENT meta-inbox pipeline instead — a different
+# wrong destination, not a fix. Team-bot traffic needs its own branch,
+# checked BEFORE the meta-inbox check (see the webhook loop below), so it
+# reaches neither.
+#
+# Extra ids come from TEAM_BOT_PHONE_NUMBER_IDS (comma-separated); the
+# canonical id is always included even if the env var is unset or empty —
+# mirrors META_INBOX_PHONE_NUMBER_IDS's own env-configurability contract.
+TEAM_BOT_PHONE_NUMBER_ID = "1188469837692575"
+TEAM_BOT_PHONE_NUMBER_IDS: frozenset[str] = frozenset(
+    {TEAM_BOT_PHONE_NUMBER_ID}
+    | {
+        pid.strip()
+        for pid in os.environ.get("TEAM_BOT_PHONE_NUMBER_IDS", "").split(",")
+        if pid.strip()
+    }
+)
+
+
+def _change_belongs_to_team_bot_ingress(change: WhatsAppChange) -> bool:
+    """True if this webhook change targets the team-bot business number.
+
+    Id-only check, unlike ``_change_belongs_to_meta_inbox``'s two-signal
+    defense — there is exactly one team-bot number today and no
+    double-reply-style scar yet to defend against. If a second team-bot
+    subscription id shows up the same way the meta-inbox one did
+    (2026-08-25), extend this the same way: add a
+    ``display_phone_number``-based fallback keyed on the team-bot's own
+    public number, not this one's.
+    """
+    return _change_phone_number_id(change) in TEAM_BOT_PHONE_NUMBER_IDS
+
+
+def _team_bot_ingress_enabled() -> bool:
+    """Reads the ``TEAM_BOT_INGRESS_ENABLED`` kill switch (registered in
+    ``backend.services.client_bot.kill_switches``, owning lane B3 — "the
+    first rung of the promotion ladder"). Fail-closed and born OFF: only
+    the literal ``"true"`` (case-insensitive) turns it on. Unset, empty,
+    ``"0"``, ``"false"``, or any typo all leave it OFF, matching the
+    switch's own registered ``default_dark=True`` — a misconfigured value
+    must degrade to the safe state, not the armed one.
+    """
+    return os.environ.get("TEAM_BOT_INGRESS_ENABLED", "").strip().lower() == "true"
+
+
+async def _handle_team_bot_ingress_payload(change: WhatsAppChange) -> None:
+    """Seam for the real team-bot ingress handler.
+
+    Lane B3's handler does not exist on this branch as of this writing —
+    ``apps/team-bot`` has no webhook-facing ingress code yet (see
+    ``backend/tests/duebot/goldens/team_fixtures.py``'s own note on B3's
+    construction state, and ``backend/services/team_bot_ingress/`` today
+    only covers failover leader election, not per-message handling). This
+    function recognises team-bot traffic and DROPS it — logged, no
+    processing, no reply — which is exactly what
+    ``TEAM_BOT_INGRESS_ENABLED``'s registered ``effect_when_off`` describes
+    ("no inbound team-bot traffic is accepted at all"). Replace this body
+    with a call into the real handler once B3 lands it; do not remove the
+    kill-switch gate at the call site below when that happens — later
+    rungs (``TEAM_BOT_REPLY_ENABLED`` etc.) gate what happens *after*
+    ingress, not whether ingress itself runs.
+    """
+    # The id itself is deliberately NOT logged. It is a value WE configure
+    # (our own business number), so it carries no information this line does
+    # not already state — and CodeQL raises a HIGH clear-text-logging alert on
+    # it. The alert is a false positive: the same helper wraps a real client
+    # `phone` on 21 other lines of this file, none of them flagged, and it
+    # returns a salted digest ("id:<12 hex>"), never the value. Rather than
+    # argue with the scanner over a field that says nothing, drop the field.
+    # If TEAM_BOT_PHONE_NUMBER_IDS ever holds more than one id, log the INDEX
+    # that matched — not the id.
+    logger.info(
+        "Team-bot webhook message recognised — no ingress handler built yet "
+        "(lane B3); dropping without processing."
+    )
+
+
+def _payload_without_team_bot_changes(payload: dict[str, Any]) -> dict[str, Any] | None:
+    """Return ``payload`` with every team-bot *message* change removed, or
+    ``None`` when nothing else was in it.
+
+    Needed because the recovery net routes the payload as ONE unit (meta-inbox
+    pipeline or legacy route), not change by change like the fast path does.
+    Both numbers live on the SAME WABA, so a single ``entry`` can legitimately
+    carry a team-bot change beside a client change — and an unconditional
+    ``return`` after handling the team half would drop the client half in
+    silence, on the very path that exists to catch what the fast path missed.
+    That would be a worse defect than the one this lane cures: it loses a
+    paying client's message instead of misrouting a staff one.
+
+    Operates on the RAW dict (not the parsed model) because that dict is what
+    the downstream handlers receive verbatim. An entry that ends up with no
+    changes is kept (rebuilt with an empty ``changes`` list, not pruned) — the
+    shape the downstream handlers already tolerate is the shape they keep.
+
+    The "nothing else was in it" test counts EVERY surviving change, not only
+    ``messages`` ones. Counting messages alone would drop a payload whose only
+    remainder is some other change kind — and in this codebase status receipts
+    ride INSIDE a ``field == "messages"`` change (``value["statuses"]``, see
+    ``process_meta_inbox_payload``), so a message-only counter reads correctly
+    today and would start lying the moment Meta adds a field. Count broadly:
+    being wrong here means silently discarding a delivery.
+    """
+    remaining = 0
+    entries: list[Any] = []
+    for entry in payload.get("entry") or []:
+        if not isinstance(entry, dict):
+            entries.append(entry)
+            continue
+        kept: list[Any] = []
+        for change in entry.get("changes") or []:
+            if (
+                isinstance(change, dict)
+                and change.get("field") == "messages"
+                and (((change.get("value") or {}).get("metadata") or {}).get("phone_number_id"))
+                in TEAM_BOT_PHONE_NUMBER_IDS
+            ):
+                continue
+            kept.append(change)
+            remaining += 1
+        entries.append({**entry, "changes": kept})
+    if remaining == 0:
+        return None
+    return {**payload, "entry": entries}
+
+
 async def _apply_status_callback(conn: Any, status_obj: dict[str, Any]) -> None:
     """Apply one Meta status receipt to the ledger (or stage it if orphan).
 
@@ -1415,20 +1556,66 @@ async def route_whatsapp_recovery(
     ``process_meta_inbox_payload``'s internal catch-all silently discarded
     those retry semantics and a handler crash during recovery was permanent,
     silent message loss (round-2 finding).
+
+    Team-bot payloads (2026-08-26 same-WABA finding) get the identical
+    diversion as the fast-path webhook handler, for the same reason: a
+    payload only reaches this recovery net because the fast path missed it
+    (crash, unhandled exception, etc.), so a staff message that would have
+    been diverted on the fast path must be diverted here too — otherwise
+    recovery is a second, independent way for the exact defect this lane
+    fixes to reach production.
     """
     try:
         webhook = WhatsAppWebhook(**payload)
+        # Team-bot changes are excluded from this verdict rather than argued
+        # away by set-disjointness: `_change_belongs_to_meta_inbox` has a
+        # SECOND signal (the display_phone_number fallback, 2026-08-25
+        # double-reply scar), so a team-bot change carrying the public visible
+        # number — a misconfiguration, but a reachable one — would otherwise
+        # set this True and send a REMAINDER that is not meta-inbox traffic
+        # into the client pipeline. Computing the verdict on the changes that
+        # actually survive removes the class instead of reasoning about it.
         is_meta_inbox = any(
-            change.field == "messages" and _change_belongs_to_meta_inbox(change)
+            change.field == "messages"
+            and not _change_belongs_to_team_bot_ingress(change)
+            and _change_belongs_to_meta_inbox(change)
             for entry in webhook.entry
             for change in entry.changes
         )
+        team_bot_changes = [
+            change
+            for entry in webhook.entry
+            for change in entry.changes
+            if change.field == "messages" and _change_belongs_to_team_bot_ingress(change)
+        ]
     except Exception:
         logger.warning(
             "whatsapp recovery: payload parse failed, defaulting to legacy route",
             exc_info=True,
         )
         is_meta_inbox = False
+        team_bot_changes = []
+
+    if team_bot_changes:
+        if _team_bot_ingress_enabled():
+            for change in team_bot_changes:
+                await _handle_team_bot_ingress_payload(change)
+        else:
+            logger.info(
+                "whatsapp recovery: team-bot payload recognised but "
+                "TEAM_BOT_INGRESS_ENABLED is off — dropping."
+            )
+        remainder = _payload_without_team_bot_changes(payload)
+        if remainder is None:
+            return
+        # Mixed payload: the team half is handled (or dropped) above, and the
+        # rest MUST still be routed. `is_meta_inbox` was already computed with
+        # team-bot changes excluded, so it describes the remainder.
+        logger.info(
+            "whatsapp recovery: mixed payload — team-bot changes handled, "
+            "routing the remaining message change(s) onward."
+        )
+        payload = remainder
 
     if is_meta_inbox:
         success = await process_meta_inbox_payload(
@@ -1487,10 +1674,10 @@ def _verify_whatsapp_signature(body: bytes, signature_header: str | None) -> boo
     Returns:
         True if the signature is valid, or verification was skipped because
         no app secret is configured (dev mode) AND
-        ``settings.meta_webhook_require_signature`` is False (the default —
-        preserves today's fail-open behavior unconditionally). False on any
+        ``settings.meta_webhook_require_signature`` is False. False on any
         verification failure, including a missing secret when
-        ``meta_webhook_require_signature`` has been explicitly set True.
+        ``meta_webhook_require_signature`` is True (the default since
+        2026-08-26 — fail-closed by default on both WhatsApp and Instagram).
     """
     app_secret = settings.whatsapp_app_secret
     if not app_secret and not settings.meta_webhook_require_signature:
@@ -1629,6 +1816,27 @@ async def whatsapp_webhook(
         for change in entry.changes:
             if change.field != "messages":
                 logger.debug(f"Ignoring non-message change: {change.field}")
+                continue
+
+            # Team-bot number (2026-08-26 same-WABA finding) — checked
+            # BEFORE the meta-inbox branch below, on purpose: this number
+            # matches neither _change_belongs_to_meta_inbox's id check nor
+            # its display_phone_number fallback (it is a genuinely
+            # different number), so without this branch it would fall all
+            # the way through into the legacy inline triage flow and a
+            # staff message would be processed as a client message.
+            # Recognised regardless of the kill switch below — only whether
+            # the recognised change is handed to the ingress seam or safely
+            # dropped depends on that flag; either way it `continue`s here
+            # and never reaches the meta-inbox check or the legacy flow.
+            if _change_belongs_to_team_bot_ingress(change):
+                if _team_bot_ingress_enabled():
+                    background_tasks.add_task(_handle_team_bot_ingress_payload, change)
+                else:
+                    logger.info(
+                        "Team-bot webhook message recognised but "
+                        "TEAM_BOT_INGRESS_ENABLED is off — dropping."
+                    )
                 continue
 
             # Target Business number → handled by the meta-inbox task above.

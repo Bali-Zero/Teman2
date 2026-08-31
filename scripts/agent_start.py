@@ -1167,19 +1167,70 @@ def _is_union_merge_path(path: str, *, cwd: Path) -> bool:
     return proc.stdout.strip().endswith(": merge: union")
 
 
-def _content_subset_ok(head_ref: str, main_ref: str, path: str, *, cwd: Path) -> bool:
-    """For a declared merge=union path: True iff every non-blank line HEAD
-    authored is present in origin/main's current copy of the same path —
-    the append-only-superset half of W88's "diff VUOTO o pura-cancellazione
-    (subset)" rule, since exact blob equality can never hold again once any
-    other lane appends a line after this branch merges."""
-    branch_proc = _run_git(["show", f"{head_ref}:{path}"], cwd=cwd, check=False)
-    main_proc = _run_git(["show", f"{main_ref}:{path}"], cwd=cwd, check=False)
-    if branch_proc.returncode != 0 or main_proc.returncode != 0:
+def _content_subset_ok(
+    base_ref: str, head_ref: str, main_ref: str, path: str, *, cwd: Path
+) -> bool:
+    """For a declared merge=union path: True iff every non-blank line the
+    branch itself ADDED since its own merge-base is present in origin/main's
+    current copy of the same path.
+
+    Deliberately scoped to the branch's OWN added lines (`git diff
+    base_ref..head_ref`), not — as an earlier version of this function did —
+    every line present in HEAD's full snapshot. An append-only ledger is not
+    append-ONLY in practice: a healer tick routinely edits an EXISTING row
+    (correcting it, appending "NEW EVIDENCE", closing it) rather than only
+    adding new ones. Once any such edit lands on origin/main to a row that
+    predates this branch's merge-base, HEAD's frozen copy of that row no
+    longer byte-matches main's copy, and a full-snapshot subset check reads
+    the branch as unmerged even though the branch never touched that row and
+    its own contribution is fully present. Measured live 2026-08-29: a
+    merged, content-on-main ledger-append branch was refused reap for
+    exactly this reason — one line it never wrote (a Sentry-lane row a later
+    lane had edited) no longer matched, and that was read as the branch
+    being unmerged. Scoping to the branch's own additions answers "is what I
+    added still there", never "is the file exactly as I last saw it" — the
+    append-only-superset half of W88's "diff VUOTO o pura-cancellazione
+    (subset)" rule, applied to what the branch actually authored."""
+    diff_proc = _run_git(
+        ["diff", "--unified=0", "--no-color", base_ref, head_ref, "--", path],
+        cwd=cwd,
+        check=False,
+    )
+    if diff_proc.returncode != 0:
         return False
-    branch_lines = {ln for ln in branch_proc.stdout.splitlines() if ln.strip()}
+    added_lines = {
+        ln[1:]
+        for ln in diff_proc.stdout.splitlines()
+        if ln.startswith("+") and not ln.startswith("+++") and ln[1:].strip()
+    }
+    if not added_lines:
+        # The branch touched this union path but added no lines of its own —
+        # a pure deletion/rotation. Fail-safe to False (protect, do not
+        # reap): there is nothing here to verify a subset OF, and a branch
+        # whose only contribution to an append-only ledger is a removal is
+        # consequential enough (something someone else still wants could be
+        # what was removed) to deserve a human/PR path rather than an
+        # automatic pass.
+        return False
+    main_proc = _run_git(["show", f"{main_ref}:{path}"], cwd=cwd, check=False)
+    if main_proc.returncode != 0:
+        return False
     main_lines = {ln for ln in main_proc.stdout.splitlines() if ln.strip()}
-    return branch_lines.issubset(main_lines)
+    return added_lines.issubset(main_lines)
+
+
+def _worktree_head_branch(worktree: Path) -> str:
+    """Short branch name HEAD points to inside ``worktree``, or "" if detached
+    or unreadable. Factored out of ``_branch_in_origin_main`` so a caller can
+    tell "HEAD is on a different branch than the one under judgement" (e.g. a
+    mid-flight `git checkout -b <rename>`) apart from "HEAD's branch genuinely
+    has commits not in origin/main" — two distinct causes that function's own
+    fail-safe collapses to the same False, and reporting the wrong one wastes
+    a future reader's time re-deriving what was actually checked."""
+    head = _run_git(
+        ["symbolic-ref", "--quiet", "--short", "HEAD"], cwd=worktree, check=False
+    )
+    return head.stdout.strip() if head.returncode == 0 else ""
 
 
 def _branch_in_origin_main(worktree: Path, *, expect_branch: str | None = None) -> bool:
@@ -1264,10 +1315,7 @@ def _branch_in_origin_main(worktree: Path, *, expect_branch: str | None = None) 
         # Fail-safe to False on detached/renamed/unreadable HEAD: we have not
         # DISPROVEN the branch is merged, we have failed to ask about it, and
         # cannot-verify must never read as proven (W84).
-        head = _run_git(
-            ["symbolic-ref", "--quiet", "--short", "HEAD"], cwd=worktree, check=False
-        )
-        actual = head.stdout.strip() if head.returncode == 0 else ""
+        actual = _worktree_head_branch(worktree)
         if actual != expect_branch:
             logger.warning(
                 "content-merge probe declined for %s: HEAD is %s, not the branch "
@@ -1309,7 +1357,7 @@ def _branch_in_origin_main(worktree: Path, *, expect_branch: str | None = None) 
                 continue
 
             if _is_union_merge_path(f, cwd=worktree):
-                if not _content_subset_ok("HEAD", "origin/main", f, cwd=worktree):
+                if not _content_subset_ok(mb, "HEAD", "origin/main", f, cwd=worktree):
                     return False
                 continue
 
@@ -1549,16 +1597,39 @@ def cmd_cleanup(
                 )
                 continue
             if not _branch_in_origin_main(wt, expect_branch=meta.branch):
-                logger.warning(
-                    "cleanup skip %s — branch %s has commits not in origin/main "
-                    "(W80: unmerged work, refusing to reap its only checkout)",
-                    meta.task_id,
-                    meta.branch,
-                )
-                print(
-                    f"WARN: skip {meta.task_id} (branch '{meta.branch}' has "
-                    "unmerged commits not in origin/main) — protecting checkout"
-                )
+                actual_head = _worktree_head_branch(wt)
+                if actual_head and actual_head != meta.branch:
+                    # Not a merge-status finding at all — HEAD was renamed
+                    # mid-flight (e.g. `git checkout -b <new>` inside the
+                    # worktree) and the registry still names the old branch.
+                    # Reporting "has commits not in origin/main" here would be
+                    # a claim this code path never actually checked (W65 —
+                    # even a guard's own diagnostic can hallucinate a specific
+                    # cause it never verified).
+                    logger.warning(
+                        "cleanup skip %s — worktree HEAD is on branch %s, "
+                        "registered branch is %s (renamed mid-flight?) — "
+                        "cannot verify merge status, protecting checkout",
+                        meta.task_id,
+                        actual_head,
+                        meta.branch,
+                    )
+                    print(
+                        f"WARN: skip {meta.task_id} (HEAD is on '{actual_head}', "
+                        f"registered branch is '{meta.branch}') — cannot verify "
+                        "merge status, protecting checkout"
+                    )
+                else:
+                    logger.warning(
+                        "cleanup skip %s — branch %s has commits not in origin/main "
+                        "(W80: unmerged work, refusing to reap its only checkout)",
+                        meta.task_id,
+                        meta.branch,
+                    )
+                    print(
+                        f"WARN: skip {meta.task_id} (branch '{meta.branch}' has "
+                        "unmerged commits not in origin/main) — protecting checkout"
+                    )
                 continue
         try:
             _remove_worktree(wt, meta.branch, delete_branch=False)

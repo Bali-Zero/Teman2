@@ -276,7 +276,7 @@ class TestGuardian:
         logger.info("🕵️ Scanning codebase coverage...")
 
         # Run pytest coverage
-        cmd = ["pytest", "--cov=app", "--cov-report=json:coverage.json", "-q"]
+        cmd = ["pytest", "--cov=app", "--cov-report=json:coverage.json"]
 
         try:
             # Record operation start

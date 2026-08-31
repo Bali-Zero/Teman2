@@ -1,0 +1,177 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  "PR (agent/nuzantara/docs/craft-wave-specs) — beyond-SOTA craft wave: final build specs for the
+  13 engineering-craft lanes (39 first-PRs) + L00 R9 defuse + battle plan for parallel Opus 5
+  orchestrator squads. Governing mandate: Zero 2026-08-29 (interactive); source panel:
+  research/operations/2026-08-28-beyond-sota-panel-INDEX.md (PR #5177 branch)."
+council_run: journal.jsonl
+lanes:
+  - lane: spec-orchestrator
+    role: build
+    seat:
+      claude-fable-5 (Zero's manual /model selection for this interactive session; wrote
+      00-BATTLE-PLAN.md, L00, the on-disk gate, this pack)
+  - lane: spec-drafters-anthropic
+    role: build
+    seat:
+      claude-sonnet-5 subagents x4 (lanes L01-L11) + x1 fixer (applied the dispositioned review
+      fixes)
+  - lane: spec-drafter-openai
+    role: build
+    seat:
+      codex-gpt-5.6 at effort high, workspace-write sandbox (lanes L12-L13) — the wave pack's
+      non-Anthropic build lane
+  - lane: adversarial-review-round-1
+    role: review
+    seat:
+      kimi-code/k3 — blind FIX-FIRST review of 00-BATTLE-PLAN.md + L00/L06/L09/L12 in full, rest
+      skimmed; 20 objections, all dispositioned (4 HIGH accepted and fixed)
+  - lane: adversarial-review-round-2
+    role: review
+    seat:
+      codex-gpt-5.6 at effort high, read-only sandbox — second blind round on the FIXED battle
+      plan + L00 (files Codex did not write); 7 objections, all verified on disk and fixed
+seat_diversity: satisfied
+seat_diversity_note:
+  "Build lanes: Anthropic (Fable 5 under Zero's manual order; Sonnet 5 drafters) AND OpenAI
+  (GPT-5.6 wrote L12-L13) — a non-Anthropic builder is present (D3). Reviews: Moonshot (Kimi K3)
+  and OpenAI (GPT-5.6, on files it did not author — generator≠grader held per file, not per
+  pack). Every refuter claim was re-verified on disk by the orchestrator before a fix was
+  applied (W65)."
+diff:
+  net_lines:
+    "16 docs files, +2,468 lines measured by `git diff --cached --shortstat origin/main` before
+    this pack; the pack adds 3 evidence files on top."
+  behaviour_change:
+    "None. Specs and a battle plan under docs/plans/ plus this evidence pack. Nothing executes,
+    deploys or changes routing; no workflow, code or hot-zone path is touched; Fable 5 is not
+    routed to by anything in this diff."
+pii_scan: clean
+pii_scan_note:
+  "Secret/PII scan (key shapes, bearer tokens, emails, +62 phone shapes) over the whole spec
+  directory: 0 hits after cure — one team-email mention in L09 was found at the gate and replaced
+  with the slot reference before commit."
+receipts:
+  - claim:
+      "Deterministic gear floor recomputed from THIS PR's staged changed-file list + numstat is 3
+      (16 files, +2,468 lines, docs-only); the declared gear 3 satisfies it."
+    cmd:
+      "git diff --cached --name-only origin/main > cf.txt; git diff --cached --numstat
+      origin/main > ns.txt; git show origin/main:scripts/evidence_pack_lint.py > lint_main.py;
+      python3 lint_main.py --print-floor --changed-files-file cf.txt --numstat-file ns.txt"
+    result: "3"
+    exit: 0
+    ts: "2026-08-29T00:43:00Z"
+    seat: claude-fable-5 (orchestrator)
+  - claim:
+      "All 14 lane specs carry the six mandatory sections (Mission / Ground / PR blocks /
+      Needs-ruling / Suspend / Out of scope)."
+    cmd:
+      'for f in L*.md; do for s in ''## Mission'' ''## Ground'' ''## PR-'' ''## Needs-ruling''
+      ''## Suspend'' ''## Out of scope''; do grep -q "$s" "$f" || fail; done; done — counted'
+    result: "SECTIONS: 14/14 files OK"
+    exit: 0
+    ts: "2026-08-29T00:45:00Z"
+    seat: claude-fable-5 (orchestrator)
+  - claim:
+      "Secret/PII scan of docs/plans/2026-08-29-beyond-sota-craft-wave/: zero matches for key
+      shapes, bearer tokens, emails and +62 phone shapes (excluding declared fake/planted test
+      fixture wording)."
+    cmd:
+      "grep -rInE '(sk-[A-Za-z0-9]{8,}|ghp_[A-Za-z0-9]{8,}|AKIA[0-9A-Z]{16}|Bearer
+      [A-Za-z0-9._-]{20,}|<email-shapes>|\\+62[0-9 -]{8,})' . | grep -cviE
+      'example|fake|planted|placeholder'"
+    result: "0"
+    exit: 1
+    ts: "2026-08-29T00:45:00Z"
+    seat: claude-fable-5 (orchestrator)
+  - claim:
+      "Round-1 blind adversarial review (Kimi K3) returned verdict FIX-FIRST with 20 objections;
+      all were dispositioned by the orchestrator (accepted or folded, none ignored) and the 4
+      HIGH launch-day defects were fixed in the battle plan and lane specs."
+    cmd:
+      "timeout 540 kimi -m kimi-code/k3 -p '<adversarial review prompt>' (cwd = the spec
+      directory; full transcript in the session task log)"
+    result:
+      "FIX-FIRST; objections 1-4 HIGH (workflow-edit scattering, proprioception collisions,
+      specs-not-on-main at boot, Squad D seatless) — all fixed"
+    exit: 0
+    ts: "2026-08-29T00:37:48Z"
+    seat: kimi-code/k3 (blind refuter)
+  - claim:
+      "Round-2 blind review (Codex GPT-5.6, read-only, files it did not author) found 7 new
+      defects; every factual claim was re-verified on disk by the orchestrator before fixing
+      (council-journal.jsonl exists on main; agent_start.py KNOWN_LANES allowlist at line 268;
+      claude_seat_quota.py has no --read flag; harness/fable-gate publisher exists) and all 7
+      were fixed."
+    cmd:
+      "timeout 420 codex exec --sandbox read-only -c model_reasoning_effort=high '<second review
+      prompt>' + orchestrator verification greps (grep council_run evidence/; grep -n KNOWN_LANES
+      scripts/agent_start.py; grep -n add_argument scripts/claude_seat_quota.py; ls
+      scripts/harness_fable_gate.py)"
+    result: "FIX-FIRST; 7/7 objections verified true and fixed"
+    exit: 0
+    ts: "2026-08-29T00:50:31Z"
+    seat: codex-gpt-5.6 (blind refuter) + claude-fable-5 (verification)
+dissent:
+  - seat: kimi-code/k3 (cross-family refuter, blind)
+    file: docs/plans/2026-08-29-beyond-sota-craft-wave/00-BATTLE-PLAN.md
+    severity: HIGH
+    objection:
+      "'All .github/workflows/ diffs live in ONE squad (W)' is false as laid out: L08-PR1 wires
+      immune-enforcement.yml (Squad A), L11-PR2/PR3 create CI jobs (Squad P), L07-PR1 flips a job
+      to blocking — conflict-disjointness by construction is violated."
+    status: CONFIRMED
+    disposition:
+      "accepted — §2 now routes EVERY workflow edit from any lane through Squad W as a serialized
+      mini-PR handoff; immune-enforcement.yml added to the explicit shared-file list"
+  - seat: kimi-code/k3 (cross-family refuter, blind)
+    file: docs/plans/2026-08-29-beyond-sota-craft-wave/00-BATTLE-PLAN.md
+    severity: HIGH
+    objection:
+      "Squad worktrees are cut from main but nothing lands the spec pack on main before GO — a
+      fresh squad boots pointing at files that do not exist."
+    status: CONFIRMED
+    disposition:
+      "accepted — §3 gained a blocking Step 0: this PR merged before any squad launch, conductor
+      verifies the 16 files in each fresh worktree"
+  - seat: kimi-code/k3 (cross-family refuter, blind)
+    file: docs/plans/2026-08-29-beyond-sota-craft-wave/00-BATTLE-PLAN.md
+    severity: HIGH
+    objection:
+      "Squad D is told to launch Day 0 but its only seat (slot 1) is weekly-capped until 30/8
+      09:00 and no free seat exists — the timeline is unexecutable as written."
+    status: CONFIRMED
+    disposition: "accepted — Squad D launches at the 30/8 09:00 reset; §2 and §6 both corrected"
+  - seat: codex-gpt-5.6 (cross-family refuter, blind, round 2)
+    file: docs/plans/2026-08-29-beyond-sota-craft-wave/L00-r9-harness-floor-defuse.md
+    severity: HIGH
+    objection:
+      "L00 hardcodes journal.jsonl but council_run accepts any relative path and a pack on main
+      already uses council-journal.jsonl — valid Gear-3 PRs would keep failing."
+    status: CONFIRMED
+    disposition:
+      "accepted — L00 now parses the pack's own council_run value and stages THAT file,
+      path-confined to the pack dir (verified: evidence/ on main carries
+      council_run: council-journal.jsonl)"
+  - seat: codex-gpt-5.6 (cross-family refuter, blind, round 2)
+    file: docs/plans/2026-08-29-beyond-sota-craft-wave/00-BATTLE-PLAN.md
+    severity: HIGH
+    objection:
+      "agent_start.py refuses craft-<squad> lanes (KNOWN_LANES allowlist) and
+      claude_seat_quota.py has no --read flag — both launch commands fail on day 0."
+    status: CONFIRMED
+    disposition:
+      "accepted — --allow-unknown-lane added to the launch command; seat check corrected to
+      --json (Pro) / --from-report (Mini), both verified against the scripts' argparse"
+  - seat: codex-gpt-5.6 (cross-family refuter, blind, round 2)
+    file: docs/plans/2026-08-29-beyond-sota-craft-wave/00-BATTLE-PLAN.md
+    severity: HIGH
+    objection:
+      "No step publishes the required harness/fable-gate commit status for Gear-3 PRs — they
+      would sit red at the rollup with every other check green."
+    status: CONFIRMED
+    disposition:
+      "accepted — §5 gained the verdict-publishing step (scripts/harness_fable_gate.py, gate seat
+      Opus 5; the script name is historical, it never invokes Fable) plus the
+      rerun-original-pull_request-run note for the external-status case"

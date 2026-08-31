@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { useSessionState } from "@/hooks/useSessionState";
 import { logger } from "@/lib/logger";
 import { SystemHealthReport } from "@/lib/api/admin/admin.types";
 import { ServiceHealthCard } from "@/components/admin/ServiceHealthCard";
@@ -35,6 +36,7 @@ const PANEL: React.CSSProperties = {
 
 export default function SystemDashboardPage() {
   const router = useRouter();
+  const session = useSessionState();
   const [report, setReport] = useState<SystemHealthReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
@@ -58,16 +60,17 @@ export default function SystemDashboardPage() {
   useEffect(() => {
     // admin-only surface: DbExplorer (Postgres browser) + VectorExplorer (Qdrant) —
     // backend admin/system routes aren't mounted yet, so this frontend gate is the only guard today
-    if (!api.isAuthenticated()) {
+    if (session === "anonymous") {
       router.push("/login");
       return;
     }
+    if (session !== "authenticated") return;
     if (!api.isAdmin()) {
       router.push("/chat");
       return;
     }
     setIsAuthorized(true);
-  }, [router]);
+  }, [session, router]);
 
   useEffect(() => {
     if (!isAuthorized) return;

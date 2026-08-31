@@ -31,6 +31,10 @@ from backend.services.garuda_portal.magic_link_store import (
     _MAX_ISSUES_PER_EMAIL_PER_WINDOW,
     PostgresMagicLinkStore,
 )
+from backend.tests.fixtures.prod_shaped_pool import (
+    create_prod_shaped_pool,
+    init_prod_shaped_connection,
+)
 
 _DSN = (
     os.environ.get("GARUDA_L4_TEST_DSN")
@@ -110,7 +114,7 @@ async def _close_garuda_magic_link_test_policy(conn: asyncpg.Connection, policy_
 @pytest.fixture
 async def pool():
     try:
-        p = await asyncpg.create_pool(dsn=_DSN, min_size=1, max_size=4)
+        p = await create_prod_shaped_pool(dsn=_DSN, min_size=1, max_size=4)
     except (OSError, asyncpg.PostgresError) as exc:
         if os.environ.get("CI"):
             pytest.fail(
@@ -461,11 +465,24 @@ def _make_counting_connection_class(counts: list[int]) -> type:
 @pytest.fixture
 async def counting_pool():
     """A SEPARATE pool (own connection class) so this file's other tests'
-    connections are never instrumented — only exchange() calls made
-    through `counting_store` below are counted."""
+    connections are never instrumented -- only exchange() calls made
+    through `counting_store` below are counted.
+
+    Also needs the canonical codec (2026-08-29): `counting_store` below
+    calls `.exchange()`, which writes through `garuda_portal/idempotency.py
+    ::complete()` -- that writer now hands a jsonb parameter a native Python
+    container and relies on the codec to encode it. `create_prod_shaped_pool`
+    does not expose `connection_class`, so this pool is built directly with
+    BOTH `connection_class=...` (for counting) and
+    `init=init_prod_shaped_connection` -- the SAME canonical init object
+    production and `create_prod_shaped_pool` use, not a re-implementation."""
     counts = [0]
     p = await asyncpg.create_pool(
-        dsn=_DSN, min_size=1, max_size=2, connection_class=_make_counting_connection_class(counts)
+        dsn=_DSN,
+        min_size=1,
+        max_size=2,
+        connection_class=_make_counting_connection_class(counts),
+        init=init_prod_shaped_connection,
     )
     yield p, counts
     await p.close()
@@ -537,13 +554,27 @@ async def test_deny_path_timing_does_not_separate_under_repetition(pool, store):
     tight bound here would be exactly the kind of noisy, non-reproducible
     check this repo's verification discipline warns against. What IS
     reliably true, and what this test actually checks: averaged over many
-    repetitions, no deny path's MEAN latency should separate from the
-    others by an order of magnitude — a real "return immediately on no
-    row" shortcut would show up as a large, not a marginal, gap even
-    through CI noise. The tolerance below (5x) is deliberately generous;
-    it exists to catch a gross regression, not to certify constant-time
-    behaviour (the class docstring explains why true constant-time against
-    the underlying Postgres index is not attempted here at all).
+    repetitions, the unknown-token deny path's MEAN latency should never
+    come out an order of magnitude FASTER than the already-consumed deny
+    path's — a real "return immediately on no row" shortcut would show up
+    as exactly that gap, large not marginal, even through CI noise. The
+    tolerance below (5x) is deliberately generous; it exists to catch a
+    gross regression, not to certify constant-time behaviour (the class
+    docstring explains why true constant-time against the underlying
+    Postgres index is not attempted here at all).
+
+    Direction matters and is asserted deliberately, not incidentally: the
+    threat this test guards against only ever makes the unknown path
+    FASTER (it returns before doing the consumed-row comparison work), so
+    only that direction is evidence of it. A SLOWER unknown path is not
+    that vulnerability — 2026-08-27 CI run 33038395493 (Backend Shard 3)
+    failed on exactly this: unknown mean=8.935ms vs consumed mean=1.293ms
+    (unknown 6.9x SLOWER), which the previous direction-blind `max/min`
+    ratio treated as a violation. That gap was the sampling below, not the
+    adapter: all 30 unknown samples (fresh random token per call, always
+    an index miss) ran first, then all 30 consumed samples (one repeated
+    token, page hot after its first hit) ran second — a cold path
+    compared to a warm one by construction.
     """
     import time
 
@@ -565,15 +596,38 @@ async def test_deny_path_timing_does_not_separate_under_repetition(pool, store):
     consumed_raw_token = await _issue_and_capture_token(store, idempotency_key="issue-key-timing-consumed")
     await store.exchange(idempotency_key="exchange-key-timing-consumed-prime", token=consumed_raw_token)
 
-    unknown_samples = [await _time_unknown() for _ in range(trials)]
-    consumed_samples = [await _time_consumed(consumed_raw_token) for _ in range(trials)]
+    # Discarded warmup over BOTH paths before any sample is kept: the
+    # first query on a fresh asyncpg pool connection pays one-time
+    # statement-prepare/plan-cache cost that has nothing to do with
+    # either code path. Paying it here, uncounted, keeps it from landing
+    # entirely on whichever series happens to run first.
+    await _time_unknown()
+    await _time_consumed(consumed_raw_token)
+
+    # Interleaved sampling, not two consecutive blocks — see the
+    # docstring: running all of one series before the other compares a
+    # cold path to a warm one by construction. Interleaving spreads any
+    # residual warm-up or scheduler drift evenly across both series
+    # instead of concentrating it in whichever one goes first.
+    unknown_samples: list[float] = []
+    consumed_samples: list[float] = []
+    for _ in range(trials):
+        unknown_samples.append(await _time_unknown())
+        consumed_samples.append(await _time_consumed(consumed_raw_token))
 
     unknown_mean = sum(unknown_samples) / len(unknown_samples)
     consumed_mean = sum(consumed_samples) / len(consumed_samples)
-    ratio = max(unknown_mean, consumed_mean) / max(min(unknown_mean, consumed_mean), 1e-9)
 
-    assert ratio < 5.0, (
-        f"unknown-vs-consumed deny latency separated by {ratio:.1f}x "
+    if unknown_mean >= consumed_mean:
+        # Not the threat this test guards against (that shortcut only
+        # ever makes the unknown path FASTER) — nothing to assert in this
+        # direction; a slower unknown path is the ordinary shape of the
+        # comparison (see docstring), not a regression.
+        return
+
+    unknown_faster_ratio = consumed_mean / max(unknown_mean, 1e-9)
+    assert unknown_faster_ratio < 5.0, (
+        f"unknown-deny path is {unknown_faster_ratio:.1f}x FASTER than the consumed-deny path "
         f"(unknown mean={unknown_mean * 1000:.3f}ms, consumed mean={consumed_mean * 1000:.3f}ms) "
         f"— investigate for a short-circuit branch, not just CI noise"
     )

@@ -67,6 +67,16 @@ const INTENTIONALLY_UNLISTED: Record<string, string> = {
   "/visa/terms": "legal boilerplate, no search intent to serve",
   "/visa/voa":
     "shipping dark — GARUDA_PUBLIC_ENABLED is false and go-live (owner decision 0) is unsigned",
+  // The magic-link redemption flow. Unlisted for a reason that survives
+  // go-live, unlike /visa/voa above: these three are reached ONLY from a
+  // one-time link in an email, they carry a single-use credential, and two of
+  // them are route handlers that return a redirect rather than a document.
+  // A sitemap entry would invite crawlers onto a URL whose only meaningful
+  // form contains someone's token.
+  "/visa/voa/auth": "emailed magic-link landing — redirect only, no document",
+  "/visa/voa/auth/continue":
+    "reachable only via the landing redirect, and only with a token in flight",
+  "/visa/voa/auth/exchange": "POST-only token redemption handler",
 };
 
 /**

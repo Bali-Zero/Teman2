@@ -1,0 +1,61 @@
+task_id: craft-f2-l13-pr2-tailnet-drift-receptor
+gear: 3
+l_level: L2
+gate_class: opus
+council_run: journal.jsonl
+acceptance:
+  - text: "WHEN the recorded allow-all netmap is compared with policy.hujson, the receptor SHALL exit 1 and report DIVERGED."
+    probe: "python3 -m pytest scripts/tests/test_tailnet_policy_drift.py -q"
+  - text: "WHEN an enforced filter matches the declared grants, the receptor SHALL exit 0 and report CLEAN."
+    probe: "python3 -m pytest scripts/tests/test_tailnet_policy_drift.py -q"
+  - text: "IF the enforced state cannot be read — missing CLI, unreadable netmap, wrong schema, non-JSON, contradictory prefix — the receptor SHALL exit 2 and report BLIND, and SHALL NEVER report CLEAN."
+    probe: "python3 -m pytest scripts/tests/test_tailnet_policy_drift.py -q"
+  - text: "WHERE a probe exits 2, proprioception SHALL file it as UNPROBEABLE, never as DIVERGED."
+    probe: "python3 -m pytest scripts/tests/test_proprioception_tri_state_exit.py -q"
+  - text: "WHILE emitting any verdict, the receptor SHALL declare what it did NOT compare, and SHALL NOT emit a node name, address, identity or credential."
+    probe: "python3 -m pytest scripts/tests/test_tailnet_policy_drift.py -q"
+  - text: "IF the receptor is not registered in the proprioception registry with parse tri_state_exit, CI SHALL fail."
+    probe: "python3 scripts/proprioception.py --selftest"
+
+objective: |
+  L13-PR2 of the beyond-SOTA craft wave (squad F', fleet & security): a read-only
+  receptor that asks whether the tailnet policy this repo DECLARES is the policy the
+  node actually ENFORCES — plus a tri-state parse mode so "I could not look" stops
+  being filed as "I looked and they differ".
+
+  Measured live on Mini: exit 1, DIVERGED. Declared 8 rule-shapes on narrow TCP ports
+  (22, 443, 4317, 6379, 8990, 11434); enforced 2 rule-shapes, ALL ports, on
+  icmp+tcp+udp+ICMPv6. That is the allow-all tailnet policy.hujson's own header
+  records, detected with no node name, address or identity reaching the output.
+
+  DIVERGED is the correct answer here and no session can clear it: applying
+  policy.hujson is operator[GUI] in the Tailscale admin console, because the fleet
+  holds no API token. The receptor exists to keep that gap visible and dated.
+constraints:
+  - "It observes and never applies. Applying policy is out of scope by design."
+  - "BLIND may never resolve to CLEAN. Missing CLI, unreadable netmap, unknown
+    schema, non-JSON input and a self-contradictory prefix are all BLIND."
+  - "No node name, address, identity or credential in any output — evidence carries
+    rule SHAPE only. Sanitisation covers IPv4, IPv6 (a Tailscale netmap is half
+    IPv6), MagicDNS names and email, and applies to `reason` as well as `evidence`."
+  - "The comparison is SOURCE-BLIND and says so on every verdict. policy.hujson
+    grants by identity; the netmap has already resolved identities to addresses;
+    mapping between them would require the node<->identity table this tool must
+    never hold. Declared, not hidden."
+  - "Fixtures are sanitized recordings of the REAL schema (Srcs/Dsts), not the older
+    SrcIPs/DstPorts shape this tailnet never emits."
+grader: |
+  generator != grader with family exclusion. scripts/tailnet_policy_drift.py, its
+  corpus and its fixtures were BUILT by Codex GPT-5.6 terra (non-Anthropic, effort
+  high) and refuted blind by Kimi K3 (non-Anthropic, different family from its
+  builder) — which did not review but reconstructed the script in a scratch dir and
+  ran a battery against it. The proprioception wiring (tri_state_exit, the registry
+  entry, the boundary class) was written by this Anthropic orchestrator, and the
+  workflow class is refuted by Codex GPT-5.6 sol at xhigh. Final on-disk gate is this
+  orchestrator, empirical, this turn: every finding reproduced before being fixed and
+  every guard mutation-tested at a real code site.
+budget: |
+  Flat-subscription seats only: this session, Codex GPT-5.6 terra (build) and sol
+  (workflow refutation) on ChatGPT Pro, Kimi K3 (refutation) on the Allegro flat
+  plan. No metered API spend.
+pii: none

@@ -57,7 +57,15 @@ def app(mock_db_pool, channel_router_mock):
 
 @pytest.fixture
 def client(app: FastAPI) -> TestClient:
-    return TestClient(app, raise_server_exceptions=False)
+    """Signature enforcement OFF — this file tests ack-first persistence
+    ordering, not signature verification (that surface has its own tests in
+    ``test_meta_webhook_require_signature.py``). ``meta_webhook_require_signature``
+    defaults to True since 2026-08-26 (fail-closed by default), so unsigned
+    POSTs here would otherwise 401 before ever reaching the ack-first path."""
+    from backend.app.core.config import settings as real_settings
+
+    with patch.object(real_settings, "meta_webhook_require_signature", False):
+        yield TestClient(app, raise_server_exceptions=False)
 
 
 def _ig_payload(mid: str = "ig_msg_xyz") -> dict:
