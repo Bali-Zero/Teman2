@@ -41,7 +41,7 @@ council_run: council-journal.jsonl
 
 diff:
   files: 6
-  net_lines: 687
+  net_lines: 700
   measured_at: f940c583c
   note: >-
     Churn (added+deleted) via `git diff --no-renames --numstat --cached <merge-base>`,
@@ -227,29 +227,36 @@ receipts:
       read as evidence would have shipped a false confirmation of a false refutation.
 
   - claim: >-
-      THE FINAL ON-DISK GATE CAUGHT A FALSE NUMBER IN THIS PR'S OWN ARTIFACT, inherited
-      from a claim this session had already published elsewhere.
+      THE GATE'S FIRST VERDICT WAS ITSELF THE DEFECT — a true number was "corrected" into a
+      false one, and the reversal is recorded rather than erased.
     cmd: >-
-      Re-read the committed workflow header line by line, then re-measure the number it
-      cited: `gh run list --repo Bali-Zero/Teman2 --workflow with-seat-broker-tests.yml
-      --limit 500 --json event,createdAt,headBranch`, grouped by event and by branch.
+      1) Re-measure ALL runs: `gh run list --workflow with-seat-broker-tests.yml
+      --limit 500 --json event,createdAt,headBranch` -> 86 returned (not capped):
+      72 merge_group / 12 pull_request / 2 push. 2) THEN read the claim's own scope off
+      `git show origin/main:.github/workflows/with-seat-broker-tests.yml` and re-count
+      INSIDE it.
     result: >-
-      86 runs returned against a limit of 500, so the listing is COMPLETE, not capped:
-      72 merge_group, 12 pull_request, 2 push. The header asserted the referenced workflow
-      "ran 57 times in the queue and zero times on a PR" and both halves are false. The 57
-      was a `--limit 8`-class display cap read as a total (W97); the "zero" missed that the
-      12 pull_request runs split 4 / 7 / 1 across the PR that introduced the file, #5378
-      itself, and a third branch. Corrected in place, with the wrong figure and its two
-      distinct causes named rather than quietly overwritten.
+      The claim on main is window-scoped in its own text — "counted between this file
+      landing (2026-08-30T19:15:44Z) and the first run its own fix triggered". Inside that
+      window: 57 merge_group, 1 pull_request (at 21:47:21Z, which IS the closing boundary),
+      1 push. The 4 stray pull_request runs are at 17:08-17:33Z on the branch of the PR
+      that INTRODUCED the file — before the window opens. So **57 and ZERO are both
+      correct as scoped**, and the totals 72/12 do not contradict them. The gate's
+      intermediate "both halves are false" edit was WRONG and has been reverted.
     exit: 0
-    ts: "2026-08-31T00:58:00Z"
+    ts: "2026-08-31T01:06:00Z"
     seat: session (Pro) — final on-disk gate, sequential, not delegated
     note: >-
-      This is the gate doing the one job that cannot be delegated: the false number was not
-      invented here, it was COPIED from a header this session had already shipped on another
-      PR, where it will also be corrected. A wrong figure that travels between artifacts is
-      the failure mode the gate exists to interrupt — and it interrupted it after the commit
-      and before the arm, which is exactly the last moment it still could.
+      THE ORDER OF OPERATIONS WAS THE WHOLE DEFECT. A delegated measurement returned
+      unscoped totals with the verdict "CLAIM WRONG", and explicitly flagged its own open
+      question — whether the claim named a window it could not see. That caveat was in the
+      report and was read past. A confident, precise, wrong correction was then written,
+      committed and pushed on top of a statement that was accurate; only re-reading the
+      original text on main stopped it reaching main itself. This is the "a diagnosis can
+      be a regression" failure in its exact shape: an unscoped measurement cannot judge a
+      scoped claim, so the window is read off the claim BEFORE its number is judged — and
+      a subagent's DATA outranks its CONCLUSION. Kept as a receipt because a reversal that
+      leaves no trace teaches nothing to whoever reads this next.
 
 dissent:
   - seat: kimi-code/k3
