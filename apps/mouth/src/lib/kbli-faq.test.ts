@@ -245,7 +245,7 @@ describe("buildKbliFaq", () => {
     const restored = getCode("49213");
     expect(restored).toBeDefined();
     const licenseAnswer = buildKbliFaq(restored as KBLICode)[1].answer;
-    expect(licenseAnswer).toContain("Menengah Tinggi");
+    expect(licenseAnswer).toContain("Medium-High");
     expect(licenseAnswer).not.toContain("could not be verified");
     expect(licenseAnswer).not.toContain("Regulatory Divergence");
   });
