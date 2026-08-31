@@ -98,10 +98,16 @@ _LIVE_SNAPSHOT_PLIST = (
 # The SOLE source for the arithmetic test (see this directory's README.md
 # for full provenance) — the only copy guaranteed present in a fresh
 # origin/main checkout, a CI runner, or the worktree every agent session is
-# required to use.
+# required to use. Extension is deliberately `.plist.fixture`, NOT `.plist`:
+# infra/organ-conformance/check_organ_conformance.py discovers every tracked
+# `*.plist` as a candidate organ, and this fixture — a verbatim copy of a
+# real LaunchAgent — is structurally indistinguishable from one (found live
+# 2026-08-31; see this directory's README.md "Why the extension is
+# .plist.fixture" for the full story, including why a path-based exemption
+# in the gate was rejected in favor of this rename).
 _FIXTURE_PLIST = (
     Path(__file__).resolve().parent
-    / "fixtures/organ_heartbeat_cadence/com.nuzantara.launchagent-state-bridge.plist"
+    / "fixtures/organ_heartbeat_cadence/com.nuzantara.launchagent-state-bridge.plist.fixture"
 )
 
 BRIDGE_SCRIPT_PATH = REPO_ROOT / "scripts/launchagent-state-bridge.py"

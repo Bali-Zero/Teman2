@@ -1,11 +1,33 @@
 # organ_heartbeat_cadence fixtures
 
-`com.nuzantara.launchagent-state-bridge.plist` is a **verbatim, secret-free
+`com.nuzantara.launchagent-state-bridge.plist.fixture` is a **verbatim, secret-free
 copy** of the live LaunchAgent plist for `scripts/launchagent-state-bridge.py`,
 captured 2026-08-31 (re-verified byte-identical immediately before commit).
 Contains no secrets: only `HOME`/`PATH` env vars, program path, and schedule
 keys — nothing matching the redaction pattern `plist_snapshot_dr.sh` enforces
 for its own DR mirror.
+
+## Why the extension is `.plist.fixture`, not `.plist`
+
+Found live 2026-08-31: `infra/organ-conformance/check_organ_conformance.py`
+discovers its subjects via a raw `git ls-files -- scripts/**/*.plist` (among
+other scan roots) — ANY tracked file ending in `.plist` is a conformance-gate
+candidate, with exactly one structural escape (a payload lacking BOTH
+`ProgramArguments` and `Program`, written for macOS app-bundle `Info.plist`
+files). Because this fixture is a verbatim copy of a real LaunchAgent, it has
+both keys plus a real `Label` — structurally indistinguishable from an organ,
+so the gate correctly flagged it as `NEW organ without genes` (missing the
+home-fork-declared-pair and kill-switch genes a test fixture can never have).
+
+The fix is the file's own name, not an exemption in the gate: a path-keyed
+skip (`if "tests/fixtures" in rel: ...`) is cicatrix scar W109 — exemption by
+location silently protects everything that ever moves there later, and the
+gate stops being able to warn about drift. Renaming to `.plist.fixture`
+states "not a launchd plist" in the one place that cannot silently drift
+away from being true, costs the gate's suffix-match discovery nothing, and
+`plistlib.load()` does not care about the extension — the fixture keeps
+being real bytes through the real parser code path, which is the whole
+reason a fixture (not an inline string) was used in the first place.
 
 ## Why a committed copy exists here, instead of reading the live plist directly
 
