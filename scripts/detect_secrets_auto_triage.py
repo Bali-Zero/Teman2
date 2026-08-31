@@ -474,6 +474,28 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "of the active seq-16 RulePack payload, recomputed before folding; "
         "exact assignment and value pinned, never a credential",
     ),
+    # fold_pack_seq18.py: SEQ17_PAYLOAD_SHA256 is the chain anchor for the
+    # seq-17 RulePack payload — the digest activated in production on
+    # 2026-08-30T15:35:49Z. The fold recomputes sha256 over the canonical
+    # seq-17 payload under RFC 8785 and aborts unless it equals this value
+    # before producing seq-18, so the anchor is verified, never asserted.
+    #
+    # Content-keyed and pinned to the exact assignment and exact digest, for
+    # the same reason as every fold above it: this production file stays
+    # closed to any other value or line, and a ride-along statement cannot
+    # match because the pattern is end-anchored.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq18\.py$"
+        ),
+        re.compile(
+            r'^\s*SEQ17_PAYLOAD_SHA256\s*=\s*'
+            r'"97cb964780b114a2fa936230055327102a5af59efb010b6bf04090bb7321890b"\s*$'
+        ),
+        "fold_pack_seq18.py: seq-17 chain anchor — content-derived sha256 "
+        "of the active seq-17 RulePack payload, recomputed before folding; "
+        "exact assignment and value pinned, never a credential",
+    ),
     # scripts/kbli_bench/results/p2b_score.json (PR #4422, KBLI Navigator
     # Phase 2b benchmark run): corpus_sha256 is the content-derived sha256 of
     # the frozen benchmark corpus (scripts/kbli_bench/p2b_corpus.json), the

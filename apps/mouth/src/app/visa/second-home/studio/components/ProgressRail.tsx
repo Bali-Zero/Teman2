@@ -109,19 +109,19 @@ export function ProgressRail({ step, total }: ProgressRailProps) {
 
         .bz-shs-progress-sounding[data-state="complete"]::before,
         .bz-shs-progress-sounding[data-state="current"]::before {
-          border-top: 3px solid var(--accent-funnel-text, var(--accent-funnel));
+          border-top: 3px solid var(--accent-funnel);
         }
 
         .bz-shs-progress-sounding[data-state="complete"]::after {
           width: 3px;
           height: 9px;
-          background: var(--accent-funnel-text, var(--accent-funnel));
+          background: var(--accent-funnel);
         }
 
         .bz-shs-progress-sounding[data-state="current"]::after {
           width: 4px;
           height: 16px;
-          background: var(--accent-funnel-text, var(--accent-funnel));
+          background: var(--accent-funnel);
         }
 
         .bz-shs-progress-sounding[data-state="pending"]::before {

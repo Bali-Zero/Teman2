@@ -197,7 +197,7 @@ seats. Method, doors, access model and the discarded first run are in
 directly** — that is the exemption's own condition: the seats are weighed against each other and
 against the panel's lane report here, and nowhere else.
 
-**Coverage matrix.** 13 lanes × 5 seats = 65 planned runs; 59 on disk. Each cell is
+**Coverage matrix.** 13 lanes × 5 seats = 65 planned runs; 65 on disk. Each cell is
 `words · wall-clock minutes · distinct external URLs · 12-gram overlap with the panel's own report for
 that lane`. Overlap and URLs are recomputed from the shipped files, not copied from a run log.
 
@@ -209,27 +209,35 @@ that lane`. Overlap and URLs are recomputed from the shipped files, not copied f
 | 4 implementation | 5,538 w · 10.4 m · 12 src · 0.15% | 4,444 w · 8.0 m · 14 src · 0.19% | 3,158 w · 3.4 m · 12 src · 0.32% | 2,934 w · 3.1 m · 13 src · 0.18% | 5,223 w · 10.1 m · 19 src · 0.64% |
 | 5 verification/gate | 5,305 w · 8.8 m · 12 src · 0.41% | 3,994 w · 10.2 m · 15 src · 0.44% | 1,851 w · 4.9 m · 12 src · 0.00% | 3,981 w · 4.5 m · 18 src · 0.14% | 4,803 w · 8.8 m · 20 src · 0.19% |
 | 6 CI/merge queue | 5,369 w · 10.0 m · 14 src · 0.00% | 4,955 w · 11.0 m · 20 src · 0.07% | 2,693 w · 3.1 m · 10 src · 0.20% | 3,841 w · 4.2 m · 15 src · 0.05% | 5,177 w · 5.8 m · 12 src · 0.27% |
-| 7 deploy/prove-live | 5,220 w · 8.4 m · 12 src · 0.00% | 4,036 w · 10.5 m · 11 src · 0.20% | 1,971 w · 3.3 m · 10 src · 0.00% | 4,257 w · 4.5 m · 15 src · 0.00% | deferred — TP1 quota |
+| 7 deploy/prove-live | 5,220 w · 8.4 m · 12 src · 0.00% | 4,036 w · 10.5 m · 11 src · 0.20% | 1,971 w · 3.3 m · 10 src · 0.00% | 4,257 w · 4.5 m · 15 src · 0.00% | 4,588 w · 8.4 m · 13 src · 0.18% |
 | 8 observability | 4,924 w · 8.5 m · 12 src · 0.06% | 4,345 w · 8.4 m · 16 src · 0.22% | 1,688 w · 4.0 m · 5 src · 0.00% | 4,049 w · 3.4 m · 17 src · 0.00% | 5,527 w · 8.2 m · 14 src · 0.54% |
 | 9 orchestration/fleet | 5,066 w · 8.5 m · 10 src · 0.02% | 4,525 w · 10.6 m · 15 src · 0.02% | 1,666 w · 3.6 m · 10 src · 4.14% | 4,259 w · 4.8 m · 22 src · 0.11% | 5,787 w · 10.2 m · 18 src · 0.02% |
-| 10 learning loop | 5,198 w · 9.3 m · 12 src · 0.00% | 5,093 w · 9.6 m · 20 src · 0.17% | 3,342 w · 4.8 m · 14 src · 0.03% | 3,882 w · 4.1 m · 12 src · 0.14% | deferred — TP1 quota |
-| 11 product/UX | 5,842 w · 12.2 m · 12 src · 0.01% | 4,415 w · 11.6 m · 14 src · 0.02% | 1,836 w · 3.5 m · 12 src · 0.00% | 4,655 w · 4.1 m · 14 src · 0.06% | deferred — TP1 quota |
-| 12 data/migrations | 5,912 w · 8.0 m · 14 src · 0.00% | 3,980 w · 8.0 m · 21 src · 0.25% | 2,189 w · 5.4 m · 10 src · 0.00% | 3,770 w · 3.5 m · 12 src · 0.00% | deferred — TP1 quota |
-| 13 security/PII | 5,944 w · 8.6 m · 12 src · 0.00% | 5,072 w · 6.2 m · 14 src · 0.19% | 2,430 w · 4.0 m · 12 src · 0.30% | deferred — TP1 quota | deferred — TP1 quota |
+| 10 learning loop | 5,198 w · 9.3 m · 12 src · 0.00% | 5,093 w · 9.6 m · 20 src · 0.17% | 3,342 w · 4.8 m · 14 src · 0.03% | 3,882 w · 4.1 m · 12 src · 0.14% | 4,816 w · 11.1 m · 16 src · 0.15% |
+| 11 product/UX | 5,842 w · 12.2 m · 12 src · 0.01% | 4,415 w · 11.6 m · 14 src · 0.02% | 1,836 w · 3.5 m · 12 src · 0.00% | 4,655 w · 4.1 m · 14 src · 0.06% | 4,398 w · 9.2 m · 15 src · 0.21% |
+| 12 data/migrations | 5,912 w · 8.0 m · 14 src · 0.00% | 3,980 w · 8.0 m · 21 src · 0.25% | 2,189 w · 5.4 m · 10 src · 0.00% | 3,770 w · 3.5 m · 12 src · 0.00% | 5,460 w · 10.4 m · 14 src · 0.15% |
+| 13 security/PII | 5,944 w · 8.6 m · 12 src · 0.00% | 5,072 w · 6.2 m · 14 src · 0.19% | 2,430 w · 4.0 m · 12 src · 0.30% | 3,948 w · 5.7 m · 0 src · 0.25% | 4,879 w · 14.6 m · 14 src · 0.19% |
 
-**The six missing cells are deferrals, not failures, and they are all one cause**: the Alibaba TP1
-weekly quota. Qwen3.8-Max is short lanes 7, 10, 11, 12 and 13; DeepSeek V4 Pro is short lane 13. They
-land in a follow-up PR with their own pack — nothing in this section is derived from a cell that does
-not exist. Completed runs by seat: codex-sol-ultra 13, kimi-k3 13, agy-gemini-3.1-pro 13,
-tp1-deepseek-v4-pro 12, tp1-qwen3.8-max 8; 243,408 words in total.
+**The six deferred cells landed in a follow-up PR** (squad X, craft wave 2, 2026-08-31), all one cause
+resolved: the Alibaba TP1 weekly quota that had left Qwen3.8-Max short lanes 7, 10, 11, 12 and 13, and
+DeepSeek V4 Pro short lane 13. Same method, restated for anyone re-running it: ground-pack content
+pulled via `git show` from the branch's own merge-base `11a3c89a2` (protocol §7 "Run 2" commit — zero
+panel files present, verified), same TP1 door, same per-lane brief + protocol §0-§4 shape, `stream:
+true`, `max_tokens=24000`; all 6 succeeded on the first attempt, no retry/fallback needed. Completed
+runs by seat: codex-sol-ultra 13, kimi-k3 13, agy-gemini-3.1-pro 13, tp1-deepseek-v4-pro 13,
+tp1-qwen3.8-max 13; 271,497 words in total (all 65 cells now on disk).
 
-**Contamination, measured rather than asserted.** Across all 59 shipped cells there are exactly **two
-distinct lines of ≥40 characters shared with the panel report of the same lane**, and both are
-structural artefacts of the shared brief rather than content: the mandated heading
-`## 2. Scars & ledger evidence in this area` (31 cells) and one survey table header (1 cell). The
-highest 12-gram overlap in the whole matrix is 4.14%, and it has an explanation that is not
-contamination — see immediately below. Run 1, whose snapshot did hold the answer key, measured 98.2%
-overlap and 70 identical lines on its worst cell; that run was archived, not shipped (PROTOCOL §7).
+**Contamination, measured rather than asserted.** Across all 65 shipped cells (the last 6 measured by
+squad X with the same method: lowercase word 12-grams, containment against the panel report of the
+same lane — validated by first reproducing the original 59-cell figures below exactly, then extending
+to the full 65) there are exactly **two distinct lines of ≥40 characters shared with the panel report
+of the same lane**, and both are structural artefacts of the shared brief rather than content: the
+mandated heading `## 2. Scars & ledger evidence in this area` (35 cells, up from 31 — 4 of the 6 new
+cells reproduce it verbatim, expected since it is a literally-specified heading) and one survey table
+header (1 cell, unchanged — none of the 6 new cells hit it). The highest 12-gram overlap in the whole
+matrix is still the pre-existing 4.14% (agy-gemini-3.1-pro, lane 9 — the same-model-family exception
+explained below, not contamination); none of the 6 new cells comes close, sitting at 0.15%-0.25%. Run
+1, whose snapshot did hold the answer key, measured 98.2% overlap and 70 identical lines on its worst
+cell; that run was archived, not shipped (PROTOCOL §7).
 
 **One provenance correction this replica forced, and it changes how lane 9 must be read.** The panel's
 own lane-9 report declares `model: Gemini 3.1 Pro (pinned lane)` in its frontmatter — the only one of
@@ -275,14 +283,19 @@ confidence interval*, and every one of those numbers appears in §A-§H as a sin
 replica's most transferable result: a single measured number from a single seat is a point estimate
 wearing a fact's clothes.
 
-**Honest limits of this section.** Six of the 65 planned runs do not exist and are named as deferred
-above. The URL column counts links, not sources: lane 3's kimi cell shows `0 src` because that report
+**Honest limits of this section.** All 65 planned runs exist on disk as of 2026-08-31 (squad X, craft
+wave 2 — the deferred 6 above). The URL column counts links, not sources: lane 3's kimi cell shows `0 src` because that report
 cites its sources by archive and date in a `## 9. Sources` section without hyperlinks, not because it
 is unsourced. The overlap column measures copying, not reading — for the agy seat, which logs no tool
 calls, a low overlap rules out transcription but cannot prove non-exposure, and PROTOCOL §7 says so.
 And every verdict in the tables above is a *seat's* verdict: where the seats contradict the panel,
 this section records the contradiction and does not adjudicate it, because adjudicating would be
-adopting an xfamily file directly — the one thing the exemption forbids.
+adopting an xfamily file directly — the one thing the exemption forbids. One more anomaly, caught by
+squad X and confirmed independently by a kimi-k3 refuter pass on this PR: the DeepSeek lane-13 file's
+own inner frontmatter declares `model: Claude (Anthropic) (pinned lane)` — third-party-model
+self-identification confusion (a documented DeepSeek behavior, not evidence the file wasn't generated
+by that seat), left uncorrected per the body-is-never-edited contract above; the file's own run-header,
+which squad X controls, correctly records `seat: tp1-deepseek-v4-pro`.
 
 ## Adversarial review
 

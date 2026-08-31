@@ -1,0 +1,220 @@
+brief_ref: evidence/2026-08/agent-nuzantara-craft-d-jsonb-real-column-arming-48fc41e8/brief.yml
+plan_ref: >-
+  docs/plans/2026-08-29-beyond-sota-craft-wave/L12-data-schema-migrations.md
+  (PR-1), driven by SQUAD D' wave-2 issue #5317. PR 2 of the L12-PR1 split.
+  Originally STACKED on agent/nuzantara/craft-d/codec-jsonb-default-str
+  (these assertions are false without that PR's caller fix). That PR
+  (#5324) MERGED to main 2026-08-31T21:06:45Z: this branch was then rebased
+  onto fresh origin/main (`git rebase --onto origin/main df17f4b96 HEAD`,
+  clean, no conflicts -- df17f4b96 was #5324's tip when this PR forked; the
+  caller fix squash-merged under a different sha but identical content, so
+  the replay applied cleanly) and the PR's base retargeted to main (`gh pr
+  edit --base main`). Verified by CONTENT, not assumed: `git diff
+  origin/main...HEAD` after the rebase carries only this PR's own 4 files
+  (test_jsonb_codec_parity.py, PENDING-ARMS.md, this pack + its brief) --
+  none of #5324's files. The dependency is now satisfied by main already
+  containing the caller fix, not by branch topology.
+
+lanes:
+  - lane: real-column-build
+    role: build
+    seat: claude-sonnet-5 (rescued build) then claude-opus-5 xhigh (this
+      session — split, the content assertions, the CI-fail gate)
+  - lane: real-column-counterbuild
+    role: build
+    seat: glm-5.2 via Alibaba TP1 (NON-ANTHROPIC — D3 satisfied by a real
+      build lane, never seat_override). Blind on the problem statement.
+  - lane: real-column-refuter
+    role: review
+    seat: codex gpt-5.6-sol (NON-ANTHROPIC, cross-family). Kimi K3 also
+      dispatched; its run is INCOMPLETE and is recorded as such.
+
+diff:
+  files: 4
+  net_lines: 643
+  measured_at: f516ba296
+  base_sha: 55220a65d
+  note: >-
+    RE-MEASURED 2026-08-31 (second time), as the last action before this
+    commit, after #5324 MERGED and this branch was rebased onto fresh
+    origin/main + retargeted (base was PR#5324's branch, now main).
+    `base_sha` above is origin/main's tip at rebase time, confirmed
+    identical to the real merge-base (`git merge-base HEAD origin/main`
+    returns the same sha). `git diff --numstat origin/main...HEAD`,
+    measured at HEAD f516ba296 -- immediately prior, the same accepted
+    trailing-commit residual already documented on PR#5324's own pack --
+    reports 4 files, +641/-2. Cross-checked WITH and WITHOUT rename
+    detection (`git diff --no-renames --numstat`): both report the
+    identical totals, so the rename-vs-no-rename discrepancy that hit
+    a sibling PR tonight (two disagreeing file/line counts on the same
+    diff) does not apply here -- no renames are present. `net_lines: 643` is CHURN
+    (added+deleted, `_size_term_net_lines()`), not the same number as the
+    prior note's 629: the increase reflects the base change, not new
+    content in these 4 files (main now contains #5324's fix inline instead
+    of this PR sitting on #5324's branch tip). Floor recomputed against the
+    new base: still 2, source "size" (churn 643 >= SIZE_GEAR2_THRESHOLD
+    400, below SIZE_GEAR3_THRESHOLD 1828) -- same bracket as before, no
+    gear change. The brief already declares gear 2, so gear >= floor still
+    holds.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      The four real-column tests run against REAL tables and do not skip; the
+      whole file is green.
+    cmd: >-
+      PYTHONPATH=apps/backend-rag pytest backend/tests/db/test_jsonb_codec_parity.py
+      -p no:cacheprovider (TEST_DATABASE_URL -> local docker craftd-pg,
+      postgres:15, GARUDA migrations present)
+    result: "14 passed in 0.46s -- zero skipped, so all four executed."
+    exit: 0
+    ts: 2026-08-31T03:10Z
+    seat: session (final gate, Opus 5 xhigh)
+
+  - claim: >-
+      GUILT, and it is the lift this PR exists for: reverting JSONB_ENCODER
+      takes the file from 3 red (PR-1's arming) to 7 red. All four
+      real-column tests are among the seven.
+    cmd: >-
+      sed -i '' 's/^JSONB_ENCODER = functools.partial(json.dumps, default=str)$/
+      JSONB_ENCODER = json.dumps/' apps/backend-rag/backend/app/core/database.py
+      && pytest backend/tests/db/test_jsonb_codec_parity.py ; restore ;
+      git diff --exit-code
+    result: >-
+      "7 failed, 7 passed in 0.65s". The four real-column failures are
+      asyncpg.DataError on $9 (garuda_order_journal.detail), $4
+      (garuda_order_outbox.payload), $3 and $3 (both response_body). Restore
+      byte-exact.
+    exit: 1
+    ts: 2026-08-31T03:12Z
+    seat: session (final gate, Opus 5 xhigh)
+
+  - claim: >-
+      The content assertions added on the counter-build's argument are
+      LOAD-BEARING, not decorative: a writer that stores a well-shaped but
+      EMPTY object passes `jsonb_typeof` and is caught only by the path
+      extraction.
+    cmd: >-
+      mutate garuda_orders/journal.py:52 `detail or {}` -> `{}` (shape still
+      an object, content dropped); pytest the file; restore
+    result: >-
+      "1 failed, 13 passed". The failure is the NEW assertion, verbatim:
+      "garuda_order_journal.detail ->> 'probe' is None, expected
+      'jsonb_codec_parity' -- shape is an object but the VALUE did not
+      round-trip". `jsonb_typeof` passed throughout. Restore byte-exact.
+    exit: 1
+    ts: 2026-08-31T03:20Z
+    seat: session (final gate, Opus 5 xhigh)
+
+  - claim: >-
+      The CI-fail gate works in BOTH directions -- it fails in CI on an absent
+      table and still skips locally.
+    cmd: >-
+      copy the module with one `_require_table` pointed at a deliberately
+      non-existent table; run once with CI=1 and once without
+    result: >-
+      CI=1 -> "1 failed", message "…_DOES_NOT_EXIST is absent from
+      TEST_DATABASE_URL in CI. This is not a reason to skip: skipping here
+      would report green for a run in which no production writer executed at
+      all." Without CI -> "1 skipped". Probe file removed after.
+    exit: 0
+    ts: 2026-08-31T03:35Z
+    seat: session (final gate, Opus 5 xhigh)
+
+  - claim: >-
+      No regression against origin/main on the GARUDA suites, compared as a
+      FAILED+ERROR name set rather than counts.
+    cmd: >-
+      pytest backend/tests/services/garuda_{orders,portal,documents,ops}
+      -p no:cacheprovider ; diff the sorted name set against the origin/main
+      run captured earlier this session
+    result: >-
+      "1 failed, 383 passed, 2 skipped, 40 errors" -- IDENTICAL 41-line name
+      set. Residual failures are pre-existing and environmental (`relation
+      "practices" does not exist`).
+    exit: 1
+    ts: 2026-08-31T03:40Z
+    seat: session (final gate, Opus 5 xhigh)
+
+  - claim: >-
+      D3: a blind non-Anthropic BUILD lane materially improved this diff
+      rather than merely agreeing with it.
+    cmd: >-
+      POST token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
+      /chat/completions, model glm-5.2, prompt = problem statement only
+      (6 questions, diff withheld)
+    result: >-
+      4856 bytes. Converged on tag-and-leave for the append-only residues, on
+      skip-vs-fail, and on why the temp-table test cannot see the contract
+      ("Mechanism-correct != contract-correct"). DIVERGED usefully on the
+      assertion: it argued `jsonb_typeof` ALONE is insufficient and must be
+      paired with a server-side path extraction, listing seven false-green
+      modes typeof cannot see. The tests asserted only typeof. Adopted, and
+      then mutation-proved load-bearing.
+    exit: 0
+    ts: 2026-08-31T02:55Z
+    seat: glm-5.2 (TP1, non-Anthropic build lane)
+
+dissent:
+  - seat: codex gpt-5.6-sol (non-Anthropic refuter)
+    objection: >-
+      NO-DEFECT on tautology (A), pollution (C), isolation (D) and
+      writer->column mapping (E). TWO CONFIRMED-DEFECTs. B: "absent/non-public
+      tables cause skips, and pytest treats skips as success. A stale or
+      wrongly configured database can therefore produce a green run without
+      exercising any writer." F: "the two idempotency residues are not
+      observably 'tagged': only the SHA-256 digest is stored, making the
+      claimed `jsonbparity-` prefix unrecoverable."
+    status: CONFIRMED
+    note: >-
+      BOTH FIXED. B: `_require_table` fails in CI, skips locally, proven in
+      both directions. F: the docstring now names what is actually
+      recoverable (`response_body ->> 'probe'`) and states plainly that the
+      prefix survives only on garuda_order_journal -- the same overclaim class
+      as the `database.py` "every pool" line corrected in the base PR. Codex
+      also noted the diff it was given lacked the `->> 'probe'` assertions:
+      correct, and it was MY staleness -- the diff was generated before they
+      were added. Recorded because a refuter reading a stale artifact is a
+      failure of the dispatching process, not of its analysis.
+  - seat: kimi-code/k3 (non-Anthropic, second refuter)
+    objection: >-
+      INCOMPLETE — ran out of turn mid-investigation and never reached a
+      verdict on isolation or "anything else". What it did complete was
+      CONFIRMATORY rather than refutational: it read migration 284 directly
+      and verified the diff's claims about the guards ("Idempotency guard: on
+      UPDATE it forbids changes to key/payload/created/expires ... allows bind
+      and atomic complete. So `complete()` works. DELETE on unexpired raises.
+      Confirmed — test claims accurate"), the journal append-only guard, the
+      `order_id` CHECK regex against the probe's format, and the partial
+      UNIQUE on `result_id_ref`.
+    status: PLAUSIBLE
+    note: >-
+      Recorded as INCOMPLETE rather than dressed up as a clean pass. Its
+      verified half is real evidence and is why the trigger claims in the
+      docstring are trusted here; its unverified half is the reason Codex sol
+      was dispatched to finish the refutation instead of shipping on one seat.
+
+tests:
+  - "backend/tests/db/test_jsonb_codec_parity.py -- 14 tests. The four new ones
+    drive journal.append_event, journal.enqueue_outbox,
+    garuda_orders.idempotency.complete and garuda_portal.idempotency.complete
+    against garuda_order_journal.detail, garuda_order_outbox.payload and both
+    response_body columns, asserting BOTH jsonb_typeof = 'object' AND
+    col ->> 'probe' = 'jsonb_codec_parity'."
+  - "A/B against origin/main on the four GARUDA suite directories: identical
+    41-line FAILED+ERROR name set."
+
+static:
+  - "ruff check on both changed files -- All checks passed."
+
+notes:
+  - "This PR CLOSES the PENDING-ARMS row at PENDING-ARMS.md:1511, and the
+    closure states three things it does NOT claim: no production deploy or
+    probe happened (none is required by the row, whose proof-of-armed is the
+    test); the tripwire lint half of the original arming step ships in the
+    third PR with its own executor; and the cure is verified against a LOCAL
+    Postgres, not against nuzantara_rag."
+  - "Stacked on the codec PR by necessity, not by preference: every assertion
+    here is false without that PR's caller fix, so a base of origin/main would
+    have been a green PR that proved nothing."

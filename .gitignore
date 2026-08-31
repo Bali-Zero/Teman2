@@ -928,3 +928,4 @@ research/commercial/*-yield-opportunities.md
 # Runtime state appended by a cron on whichever machine runs the job, same class as the
 # DLQ/heartbeat state files already excluded here — not a source artifact.
 kb/ops/probe_history.jsonl
+scripts/tests/_fixtures_doctrine/

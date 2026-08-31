@@ -31,6 +31,70 @@ name: Seat broker env-minimization tests
 # semantics change such as `eol=crlf` breaks these shell scripts without appearing in any
 # of the other paths).
 #
+# BEING ADVISORY IS WHY THERE IS NO `merge_group:` TRIGGER (corrected 2026-08-31)
+# ------------------------------------------------------------------------------
+# This file shipped on 2026-08-30 19:15 with a bare `merge_group:` alongside the
+# `pull_request.paths` filter below. That pair is broken twice over:
+#
+#   1. `merge_group` accepts no `paths:` sub-key at all, so the queue run ALWAYS
+#      executed while the PR run fired only when a guarded file changed. Measured over
+#      the whole window: **57** `merge_group` runs, ZERO `pull_request` runs — counted
+#      between this file landing (2026-08-30T19:15:44Z) and the first run its own fix
+#      triggered, over `gh run list --limit 300` (an earlier draft of this line said
+#      "EIGHT", which was `--limit 8` read as a total — W97). The author
+#      never saw the job; the queue did. That is the head-green/queue-red split the
+#      L06-PR1 trigger-symmetry lint exists to forbid, and this file was its first live
+#      violation — red in every merge group, which is what kept ejecting that lint's own
+#      PR (#5340).
+#   2. Independently of the lint: Zero's 2026-08-27 queue-slim cure says advisory
+#      workflows stop triggering on `merge_group`, because each queue entry was spawning
+#      ~50 runs and the 11 gating contexts starved behind the ~40 that gate nothing. That
+#      policy is stated in the docstring of
+#      `scripts/tests/test_advisory_workflows_no_merge_group.py`. Read what that test
+#      actually asserts before citing it: it guards only the OPPOSITE direction — a
+#      REQUIRED workflow must never LOSE `merge_group` (the queue-deadlock tripwire). So
+#      the cure is UNENFORCED in the advisory direction. Measured on origin/main
+#      2026-08-31 by parsing every `on:` block (not by grep — a textual match hits
+#      comments and conditionals): 13 workflows carry a real `merge_group` trigger, 8 of
+#      them back one of the 11 required contexts, leaving 5 advisory ones — this file
+#      plus `voa-probe-tests.yml`, `pr-collision-check.yml`,
+#      `restore-drill-wiring-tests.yml` and `p1s2-mutation-incremental.yml`.
+#
+#      What separates them from this file is not the trigger, it is the ARGUMENT.
+#      Walking the comment block directly above each trigger: voa-probe (4 lines),
+#      pr-collision (9) and p1s2 (10) each state why they want the queue run;
+#      restore-drill states its case elsewhere in the file rather than adjacent to the
+#      trigger. p1s2 is the sharpest illustration and was nearly mis-cited here: its
+#      trigger was PRESENT on 2026-07-27, REMOVED by the 2026-08-27 cure, and
+#      deliberately RE-ADDED on 2026-08-30T18:14Z (#5329) behind an argued cost control.
+#      The cure works when someone applies it; it just cannot enforce itself.
+#
+#      This workflow is advisory on three independent measurements — absent from
+#      `infra/required.d/contexts.json` (11 contexts), absent from branch protection's
+#      12 required contexts, and its own header below says so. And it argued NOTHING: it
+#      acquired the trigger silently, paired with a filter that makes the pair
+#      incoherent. That is the difference. An advisory workflow CAN keep `merge_group`
+#      — the way its four peers do, by saying why, next to the trigger.
+#
+# So the `merge_group:` line goes and the `paths:` filter stays. Removing the FILTER
+# instead would also have satisfied the lint, but it would have kept an advisory job in
+# the queue against a standing repo-wide ruling and paid ~40s on every PR to do it. The
+# three workflows this file's own header names as its shape-siblings —
+# `fleet-burst-tests.yml`, `vercel-autopromote-tests.yml`, `intake-review-reader-liveness.yml`
+# — all carry `pull_request.paths` and no `merge_group`. This file was the outlier
+# against its own declared family; it now matches it.
+#
+# What is genuinely given up: a `merge_group` run tests the SYNTHETIC MERGE revision, so
+# it could catch two individually-green PRs whose combination breaks the broker. That is
+# the trade the 2026-08-27 cure asks advisory workflows to make — PR-time coverage is
+# unchanged and the post-merge `push` run below still detects it, one step later. Stated
+# rather than quietly dropped, because it IS a real loss and this file guards a
+# credential-isolation boundary. Two cross-family reviewers (kimi-code/k3,
+# tp1-qwen3.8-max) each argued that side and neither could refute the change; both
+# landed on it being a judgment call, not an error. If a future reader concludes the
+# prevention is worth the queue slot, the way to take it back is an argued exception
+# header — not a bare trigger, and not while a `paths:` filter sits beside it.
+#
 # "Starts on", not "runs on every PR that touches them": GitHub evaluates path filters
 # against at most the first 3,000 files of a diff, so a large enough PR can touch a guarded
 # file and still not trigger this workflow. That is a platform limit, not something this
@@ -54,11 +118,10 @@ on:
       - "scripts/fleet_burst.sh"
       - ".gitattributes"
       - ".github/workflows/with-seat-broker-tests.yml"
-  # Runs on the merge queue's synthetic revision too, so two individually-green
-  # PRs whose COMBINATION breaks the broker are caught before landing rather
-  # than after. Without this the only post-merge signal is the push run below,
-  # which is detection, not prevention.
-  merge_group:
+  # NO `merge_group:` — see the header block. This workflow is advisory, and
+  # advisory workflows deliberately do not run in the merge queue (Zero's
+  # 2026-08-27 queue-slim cure). It carried one from 2026-08-30 19:15 until
+  # this commit; in that window it ran 8 times in the queue and 0 times on a PR.
   push:
     branches:
       - main

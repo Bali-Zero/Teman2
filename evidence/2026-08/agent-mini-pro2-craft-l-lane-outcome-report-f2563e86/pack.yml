@@ -1,0 +1,193 @@
+# STAGING PATH, NOT THE REAL ONE — the documented contract, not an oversight.
+# harness-floor.yml copies both files into a synthetic tree at
+# /tmp/evidence-check/evidence/{brief,pack}.yml under their CANONICAL names,
+# whatever their real location, and evidence_pack_lint.py resolves brief_ref
+# against THAT root. So this field must read the literal evidence/brief.yml even
+# though the real brief for this PR lives at
+# evidence/2026-08/agent-mini-pro2-craft-l-lane-outcome-report-f2563e86/brief.yml.
+brief_ref: evidence/brief.yml
+plan_ref: "docs/plans/2026-08-29-beyond-sota-craft-wave/L04-implementation-craft.md — PR-2; squad ledger issue #5319"
+lanes:
+  - lane: report-core
+    role: build
+    seat: "kimi-code/kimi-for-coding (Moonshot — the D3 non-Anthropic build lane; drafted the module against a written contract that carried the measured ground truth: squash-only history, the (#NNNN) anchor, and the fact that the branch name is unrecoverable from git)"
+  - lane: integration-corpus-and-cures
+    role: build
+    seat: "claude-opus-5 (this session — found the inverted ordering by measuring the OUTPUT, extracted build_report and eligible_fix_commits so a corpus could reach them, wrote the corpus, applied every cure)"
+  - lane: refute-family-2
+    role: review
+    seat: "kimi-code/k3 (Moonshot, given the raw diff and a seven-point attack list). DO-NOT-SHIP, 6 findings."
+  - lane: refute-family-3
+    role: review
+    seat: "gpt-5.6-sol xhigh, --sandbox read-only (OpenAI, run in PARALLEL on the same diff and the same list, with no sight of the other round). DO-NOT-SHIP, 22 findings."
+  - lane: final-gate
+    role: review
+    seat: "claude-opus-5 (this orchestrator — every number re-measured here, and every refuter claim checked against the real repo before being acted on)"
+seat_diversity: ok
+seat_diversity_note: >-
+  Two build lanes across two families (Moonshot + Anthropic) and two review lanes
+  across two more (Moonshot + OpenAI). D3 is satisfied by a real build lane, not
+  by seat_override.
+
+  Recorded because it is the measurement: the two reviewers ran on the same diff
+  with the same attack list, in parallel, and overlapped on only three of
+  twenty-eight findings. Each caught defects the other did not — k3 found the
+  same-second tie rejection and the p90 truncation, sol found the duplicate-chain
+  emission and a real repo subject the fix-detector was silently dropping. And
+  sol found a defect in MY corpus that neither I nor k3 saw: a test that shells
+  out to `gh`, which would have gone red on a CI runner for the runner's auth
+  state rather than for the code.
+diff:
+  net_lines: >-
+    AS OF this commit (pinned — a bare byte count inside a file every subsequent
+    commit rewrites is a claim that decays by construction): 7 files, +1439/-0,
+    measured against the MERGE BASE with `git diff --cached --numstat`.
+
+    Over the ~350-line target the spec names, and said plainly rather than split:
+    439 of those lines are the test corpus, 25 are the SEAT-MIX section the tool
+    itself produced as prove-live, and three files are this evidence pack. The
+    executable surface is one module.
+
+    The count INCLUDES this pack, because that is what `git diff --numstat`
+    measures against the merge base and a number that quietly excluded itself
+    would be the same convenient half-truth these receipts spend their time
+    refusing.
+
+    Deterministic gear floor recomputed from this diff = 3 (source: path —
+    .github/workflows/immune-enforcement.yml, which is edited to ARM the corpus).
+    Gear 3 is the floor, not a choice.
+  behaviour_change: >-
+    A new read-only report. It writes nothing unless `--write` is passed, and
+    then only appends a dated section to docs/factory/SEAT-MIX.md.
+
+    The workflow edit adds the module and its corpus to the two lists
+    immune-enforcement.yml needs, so a PR touching either runs the tests. Nothing
+    else in CI changes; no required check is added or removed.
+receipts:
+  - claim: "The gear floor is 3, recomputed from this diff rather than taken from the brief"
+    cmd: "git diff --cached --name-only > changed.txt; scripts/evidence_pack_lint.py --print-floor --changed-files-file changed.txt"
+    result: "3 (floor-source: path — .github/workflows/immune-enforcement.yml)"
+    exit: 0
+    ts: "2026-08-31T04:12Z"
+    seat: "session (mini, final gate)"
+  - claim: "THE BITE, and the finding: the correction metric was measuring the exact opposite of its own docstring, and the BROKEN version passed the acceptance criterion while the correct one does not"
+    cmd: "python3 scripts/lane_outcome_report.py --since 2026-08-20 --until 2026-08-23 --no-gh --json   # before and after the ordering cure, then every reported origin re-checked against git show -s --format=%ct"
+    result: "Before: 26 chains, and the first pair inspected had origin 0c795f85 (ct 1787409648) reported as the origin of fix e952cd17 (ct 1787403089) — an origin 1h49m IN THE FUTURE of the fix. After: 21 chains, and 0 of 21 have an origin later than their fix. ZERO (fix, origin) pairs in common between the two runs. The broken 26 sits INSIDE the spec's 24-30 band; the correct 21 does not."
+    exit: 0
+    ts: "2026-08-31T04:03Z"
+    seat: "session (mini) — found by measuring the OUTPUT, not by reading the code"
+  - claim: "Builder attribution over the last 48h clears the >=80% acceptance, across all three fleet machines"
+    cmd: "python3 scripts/lane_outcome_report.py --since 2026-08-28 --until 2026-08-30 --json"
+    result: "117/118 = 99.2% attributed; by_host air-m5 53, nuzantara 37, mini-pro2 27. time to MERGE n=118, median 0.51h, p90 3.70h."
+    exit: 0
+    ts: "2026-08-31T04:08Z"
+    seat: "session (mini, live against the real API)"
+  - claim: "The branch name really is unrecoverable from git, so attribution really does need the API — measured, not assumed"
+    cmd: "git log --first-parent origin/main --since=2026-08-20 --until=2026-08-23 --pretty=format:'%B' | grep -cE 'agent/[a-z0-9-]+/'; gh api repos/Bali-Zero/Teman2/pulls/5339 --jq .head.ref; git ls-remote --heads origin '<that ref>'"
+    result: "2 of 204 commit bodies mention an agent branch, both incidental prose. Meanwhile gh still returns headRefName for #5339 while git ls-remote shows the branch is deleted — the API keeps it as PR metadata. (The grounding agent reported ZERO such mentions; the true figure is two, and I am not passing on its number.)"
+    exit: 0
+    ts: "2026-08-31T03:58Z"
+    seat: "session (mini, final gate)"
+  - claim: "A refuter's cited defect was checked against real history before being acted on, and it was real"
+    cmd: "git log --first-parent origin/main --since=2026-07-01 --pretty=format:'%s' | grep -cE '^fix[[:space:]]'"
+    result: "1 — `fix queue baseline census and public timing (#4047)`, commit 2184b00a63. Exactly the subject sol named. The fix-detector required conventional punctuation and was silently dropping it from BOTH the numerator and the denominator."
+    exit: 0
+    ts: "2026-08-31T04:52Z"
+    seat: "session (mini, final gate)"
+  - claim: "Publication is real, not promised: --write appended a dated section to the doc"
+    cmd: "python3 scripts/lane_outcome_report.py --since 2026-08-28 --until 2026-08-30 --write --host mini; diff <(cat SEAT-MIX.before) docs/factory/SEAT-MIX.md"
+    result: "18 lines appended, matching the shape of the file's one existing dated block (a `## <label> (host, params, timestamp)` heading plus a fenced block). The published block is a SUMMARY: the first version dumped all 21 chain details, 200-plus lines of JSON into a document a human is supposed to read, which is the same nobody-reads-it failure as not publishing at all."
+    exit: 0
+    ts: "2026-08-31T04:10Z"
+    seat: "session (mini)"
+  - claim: "Every cure is mutation-proved with bytecode disabled (W121), and the survivors were resolved rather than reported green"
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3.11 -B -m pytest -p no:cacheprovider scripts/tests/test_lane_outcome_report.py   # per mutant, __pycache__ cleared, restored from a byte cp never git checkout"
+    result: "31 tests; 18 mutants. 15 killed. 2 proven EQUIVALENT with the reason recorded (the `^` in FIX_PREFIX_RE is redundant because is_fix uses .match(); the high-churn filter on the earlier side is redundant because an element removed from the fix side can never be in the intersection). 1 was proven DEAD and deleted rather than kept as a guard that looks like a guard. Two survived at first and both were MY OWN vacuous tests."
+    exit: 0
+    ts: "2026-08-31T04:58Z"
+    seat: "session (mini, final gate)"
+  - claim: "The corpus is armed where it must be, and the neighbouring corpora did not regress"
+    cmd: "actionlint -shellcheck= .github/workflows/immune-enforcement.yml; grep -c lane_outcome_report .github/workflows/immune-enforcement.yml; pytest scripts/tests/test_lane_outcome_report.py scripts/tests/test_pending_arms_report.py scripts/tests/test_organism_digest_pending_arms.py"
+    result: "actionlint rc=0 at the version CI pins (1.7.12, -shellcheck=); 3 occurrences — the in-job paths detector (module AND corpus) and the unit-test runner; 149 passed. scripts-tests-sweep is continue-on-error and gates nothing, so a corpus resting on it would be armed to nothing."
+    exit: 0
+    ts: "2026-08-31T04:15Z"
+    seat: "session (mini, final gate)"
+  - claim: "Every acceptance probe was run by name, and each selector actually selects — a probe that deselects everything is a green over nothing"
+    cmd: "pytest scripts/tests/test_lane_outcome_report.py ; pytest scripts/tests/test_lane_outcome_report.py -k EARLIER or LATER ; pytest scripts/tests/test_lane_outcome_report.py -k SAME_SECOND ; pytest scripts/tests/test_lane_outcome_report.py -k skipping_gh ; pytest scripts/tests/test_lane_outcome_report.py -k p90"
+    result: "31 passed; then 2, 1, 1 and 3 selected respectively (29/30/30/28 deselected) — every selector matches at least one test, so none of the four is a green over an empty set."
+    exit: 0
+    ts: "2026-08-31T05:05Z"
+    seat: "session (mini, final gate)"
+  - claim: "The tool was generating output that fails this repo's own formatter — found by the pre-commit hook rejecting the section the tool had just written"
+    cmd: "npx prettier --check docs/factory/SEAT-MIX.md   # before and after the separator cure"
+    result: "Prettier's only complaint was a missing BLANK line before the appended heading. Without it, every PR that ran --write would have been blocked by the report it had just published — and with no terminal newline at all the `## ` heading concatenates onto the last line and renders as prose, i.e. a section that is published and is not a section. Cured in `separator_for`, extracted so a test can call it (the write path hardcodes the document location). Freshly generated file now passes prettier rc=0."
+    exit: 0
+    ts: "2026-08-31T05:14Z"
+    seat: "session (mini, final gate)"
+pii_scan: clean
+council_run: journal.jsonl
+dissent:
+  - seat: "kimi-code/k3"
+    objection: "`earlier.ts >= commit.ts` rejects every same-second pair, so a fix and the commit it corrected can never chain if a merge queue landed them together — and the docstring promised ties would resolve by position."
+    status: CONFIRMED
+    disposition: "Fixed to `>`, with ties resolved by list position as the docstring always claimed. sol independently cited a real same-second pair (20292599f3cd / 679806e7f26a, both ct=1779164922, sharing scripts/agent-library-evolver-run.sh)."
+  - seat: "kimi-code/k3"
+    objection: "`int((n-1)*0.9)` truncates to index 0 at n=2, so p90 of [1h, 100h] is reported as 1h — the minimum."
+    status: CONFIRMED
+    disposition: "Fixed with ceil, clamped to the last index. A percentile that can return the smallest sample is not a percentile."
+  - seat: "kimi-code/k3"
+    objection: "The rate denominator counts fixes that cannot chain, so the harder you tune the high-churn filter the better the rate looks."
+    status: CONFIRMED
+    disposition: "Fixed by reporting an eligible denominator alongside the raw one — extracted as `eligible_fix_commits` so a test can call the rule instead of recomputing it. Measured: on the real window it does not move (every fix there touches something besides the ledger), which is exactly why it is pinned by a fixture rather than left as unexercised code that looks like a safeguard."
+  - seat: "kimi-code/k3 + gpt-5.6-sol"
+    objection: "`gh --limit 1000` with no merged: search drops long-open PRs — precisely the p90-defining tail — and reports `fetched, 0/0` as if the window were empty."
+    status: CONFIRMED
+    disposition: "Fixed: the search now carries `base:main merged:<since>..<until>`. The 1000 ceiling remains and is declared in the brief; not reached today at 118 merges in 48h."
+  - seat: "kimi-code/k3 + gpt-5.6-sol"
+    objection: "The git window is local-timezone committer date and the gh window is UTC mergedAt — two populations presented as one cohort."
+    status: CONFIRMED
+    disposition: "Not collapsible (the two sources genuinely differ), so it is STATED in the published block where a reader meets it, with an explicit instruction not to compute a ratio across them. sol measured the gap on this very window: 120 git commits against 118 under explicit UTC bounds."
+  - seat: "gpt-5.6-sol"
+    objection: "A duplicated commit in the input emits two identical chains and inflates the rate."
+    status: CONFIRMED
+    disposition: "Fixed with a seen-fixes set. The report is about DISTINCT corrections."
+  - seat: "gpt-5.6-sol"
+    objection: "`is_fix` misses the real subject `fix queue baseline census and public timing (#4047)`, dropping it from both numerator and denominator."
+    status: CONFIRMED
+    disposition: "Fixed to `^fix[:(\\s]`. Verified against real history before acting: exactly 1 such subject in two months, commit 2184b00a63 — the one sol named. `fixup!` and `prefix:` are still excluded, pinned by test."
+  - seat: "gpt-5.6-sol"
+    objection: "Python's `$` also matches before a final newline, so `(#42)\\n` is accepted although the marker is not at the literal end."
+    status: CONFIRMED
+    disposition: "Fixed to `\\Z`."
+  - seat: "gpt-5.6-sol"
+    objection: "`number` is fetched and never used, so a duplicated PR row makes attribution 2/3 where the truth is 1/2."
+    status: CONFIRMED
+    disposition: "Fixed with `_dedupe_prs`. Rows with no usable number are kept rather than collapsed, since they cannot be shown to be duplicates of anything."
+  - seat: "gpt-5.6-sol"
+    objection: "No `--base main` filter: PRs merged into another base are counted as main-line work."
+    status: CONFIRMED
+    disposition: "Fixed — `base:main` is in the search."
+  - seat: "gpt-5.6-sol"
+    objection: "A mergedAt before createdAt puts a negative duration into the distribution and can drag the median and p90 negative."
+    status: CONFIRMED
+    disposition: "Fixed: negatives are discarded and COUNTED (`negative_discarded`), because silently dropping data is its own kind of lie."
+  - seat: "gpt-5.6-sol"
+    objection: "`--write` concatenates the heading onto the last line when the document has no terminal newline, producing a section no renderer shows as a heading."
+    status: CONFIRMED
+    disposition: "Fixed with a terminal-newline check before the append."
+  - seat: "gpt-5.6-sol"
+    objection: "`test_skipping_gh_is_reported_as_skipped_not_as_zero` performs a real unmocked `gh pr list`, so the pure unit corpus fails on a runner's auth state instead of on source behaviour."
+    status: CONFIRMED
+    disposition: "Fixed — `_fetch_prs` is stubbed. Measured side-effect: the suite went from 2.6s to 0.76s, which is itself the proof the network call was there. A red that can mean two things is worse than no test, and this one was mine."
+  - seat: "gpt-5.6-sol"
+    objection: "A commit can become its own origin when the same sha appears twice."
+    status: CONFIRMED
+    disposition: "A guard was written for it and then REMOVED after mutation proved it unreachable: the slice excludes the commit by index, and an origin must be a non-fix commit while any duplicate of a fix is a fix. Recorded at the site — dead code that looks like a guard tells the next reader a case is handled and stops them asking whether it can happen."
+  - seat: "gpt-5.6-sol"
+    objection: "The high-churn filter can be removed from the earlier side and the corpus stays green."
+    status: CONFIRMED
+    disposition: "Proven EQUIVALENT rather than cured: an element removed from the fix side can never appear in the intersection, so filtering the earlier side is unobservable while the fix side is filtered. Reported as an equivalence with its proof, not as a passing mutant."
+  - seat: "gpt-5.6-sol"
+    objection: "A revert commit is an actual corrective rollback and is excluded from the metric; a direct commit with no PR suffix is counted as a squash-merged fix; an uppercase host splits one machine into two buckets; a gh failure has no `source: failed` state in the report."
+    status: PLAUSIBLE
+    disposition: "NOT cured, declared. Widening to reverts changes the metric's DEFINITION, which is a spec question and not a bug fix; the others are cosmetic or already fail-loud (a gh failure exits 3 with stderr rather than emitting a report that could be misread). Named here rather than left for the next reader."

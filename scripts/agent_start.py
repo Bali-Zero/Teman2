@@ -1219,6 +1219,20 @@ def _content_subset_ok(
     return added_lines.issubset(main_lines)
 
 
+def _worktree_head_branch(worktree: Path) -> str:
+    """Short branch name HEAD points to inside ``worktree``, or "" if detached
+    or unreadable. Factored out of ``_branch_in_origin_main`` so a caller can
+    tell "HEAD is on a different branch than the one under judgement" (e.g. a
+    mid-flight `git checkout -b <rename>`) apart from "HEAD's branch genuinely
+    has commits not in origin/main" — two distinct causes that function's own
+    fail-safe collapses to the same False, and reporting the wrong one wastes
+    a future reader's time re-deriving what was actually checked."""
+    head = _run_git(
+        ["symbolic-ref", "--quiet", "--short", "HEAD"], cwd=worktree, check=False
+    )
+    return head.stdout.strip() if head.returncode == 0 else ""
+
+
 def _branch_in_origin_main(worktree: Path, *, expect_branch: str | None = None) -> bool:
     """True iff the worktree's HEAD is fully merged into ``origin/main``.
 
@@ -1301,10 +1315,7 @@ def _branch_in_origin_main(worktree: Path, *, expect_branch: str | None = None) 
         # Fail-safe to False on detached/renamed/unreadable HEAD: we have not
         # DISPROVEN the branch is merged, we have failed to ask about it, and
         # cannot-verify must never read as proven (W84).
-        head = _run_git(
-            ["symbolic-ref", "--quiet", "--short", "HEAD"], cwd=worktree, check=False
-        )
-        actual = head.stdout.strip() if head.returncode == 0 else ""
+        actual = _worktree_head_branch(worktree)
         if actual != expect_branch:
             logger.warning(
                 "content-merge probe declined for %s: HEAD is %s, not the branch "
@@ -1586,16 +1597,39 @@ def cmd_cleanup(
                 )
                 continue
             if not _branch_in_origin_main(wt, expect_branch=meta.branch):
-                logger.warning(
-                    "cleanup skip %s — branch %s has commits not in origin/main "
-                    "(W80: unmerged work, refusing to reap its only checkout)",
-                    meta.task_id,
-                    meta.branch,
-                )
-                print(
-                    f"WARN: skip {meta.task_id} (branch '{meta.branch}' has "
-                    "unmerged commits not in origin/main) — protecting checkout"
-                )
+                actual_head = _worktree_head_branch(wt)
+                if actual_head and actual_head != meta.branch:
+                    # Not a merge-status finding at all — HEAD was renamed
+                    # mid-flight (e.g. `git checkout -b <new>` inside the
+                    # worktree) and the registry still names the old branch.
+                    # Reporting "has commits not in origin/main" here would be
+                    # a claim this code path never actually checked (W65 —
+                    # even a guard's own diagnostic can hallucinate a specific
+                    # cause it never verified).
+                    logger.warning(
+                        "cleanup skip %s — worktree HEAD is on branch %s, "
+                        "registered branch is %s (renamed mid-flight?) — "
+                        "cannot verify merge status, protecting checkout",
+                        meta.task_id,
+                        actual_head,
+                        meta.branch,
+                    )
+                    print(
+                        f"WARN: skip {meta.task_id} (HEAD is on '{actual_head}', "
+                        f"registered branch is '{meta.branch}') — cannot verify "
+                        "merge status, protecting checkout"
+                    )
+                else:
+                    logger.warning(
+                        "cleanup skip %s — branch %s has commits not in origin/main "
+                        "(W80: unmerged work, refusing to reap its only checkout)",
+                        meta.task_id,
+                        meta.branch,
+                    )
+                    print(
+                        f"WARN: skip {meta.task_id} (branch '{meta.branch}' has "
+                        "unmerged commits not in origin/main) — protecting checkout"
+                    )
                 continue
         try:
             _remove_worktree(wt, meta.branch, delete_branch=False)

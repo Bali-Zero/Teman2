@@ -191,6 +191,7 @@ on:
       - PR size taxonomy (advisory)
       - Monthly PG Restore Drill
       - Restore drill wiring tests
+      - Promotion readiness tests
       - "runbook section numbers are unique"
       - Root Guard
       - SBOM (Software Bill of Materials)
@@ -331,6 +332,25 @@ on:
       # contract is name-set membership against this file's `name:`, not
       # alert-path reachability (see its own docstring).
       - PR collision check (advisory)
+      # Added with the workflows themselves (SQUAD S lane 5, 2026-08-31).
+      # Both differ from the entry directly above in a way worth stating,
+      # because "listed for coverage" and "actually alertable" are not the
+      # same claim and this file already carries several of the first kind:
+      # these two ARE reachable by this watcher.
+      #   - `mq state oracle tests` carries `push: branches: [main]` (with a
+      #     paths filter symmetric to its pull_request one), so a direct push
+      #     to main that breaks the mq state oracle produces a failing push
+      #     run on main — exactly the event the `alert` job below acts on.
+      #   - `Craft instruments (advisory)` is schedule-triggered (nightly
+      #     21:17 UTC). `schedule` has been in this trigger's scope since
+      #     2026-07-26 (task #37, see the note above), and a scheduled run's
+      #     head_branch is `main`, so a nightly failure alerts. Its NAME says
+      #     advisory about the two REPORTS it prints; the job itself goes red
+      #     when an instrument's own corpus fails, and that red is the thing
+      #     worth waking someone for — an instrument nobody can trust is
+      #     worse than no instrument.
+      - Craft instruments (advisory)
+      - mq state oracle tests
     types: [completed]
     # 2026-08-20 CI-churn cure — see the matching GOTCHA above for the
     # measurement and the empirical proof this narrows run CREATION, never

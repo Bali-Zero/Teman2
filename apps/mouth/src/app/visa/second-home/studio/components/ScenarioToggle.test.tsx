@@ -53,9 +53,25 @@ describe("ScenarioToggle", () => {
     );
     expect(restingRule).toContain("color: var(--text-secondary)");
     expect(restingRule).not.toContain("--accent-funnel");
-    expect(css).toMatch(
-      /\.bz-shs-scenario-toggle-trigger:is\(:hover, :focus-visible\)\s*\{[^}]*border-color:\s*var\(--accent-funnel\)[^}]*color:\s*color-mix\(in srgb, var\(--accent-funnel\) 70%, white\)[^}]*text-decoration-line:\s*underline/s,
-    );
+    // The hover label reads the FLAT accent token. It used to be
+    // color-mix(var(--accent-funnel) 70%, white), which was correct on the
+    // retired navy ground — lightening moved it away from a dark backdrop.
+    // On the day palette's carta that runs backwards: the mix lands ~#D8586D
+    // and measures 3.07:1 against this rule's own 8% hover tint, below the
+    // 4.5:1 this 16px/600 label needs, where flat #C8102E measures 4.77:1.
+    // The mix is also a hue no token declares. Both are pinned centrally by
+    // scripts/tests/test_merah_putih_day_contrast.py.
+    const hoverRule = css.match(
+      /\.bz-shs-scenario-toggle-trigger:is\(:hover, :focus-visible\)\s*\{([^}]*)\}/,
+    )?.[1];
+    // Judge the DECLARATIONS, not the rule's prose: the comment above this
+    // very rule explains why we no longer mix toward white, so a naive
+    // substring check on the raw body convicts its own documentation.
+    const hoverDecls = (hoverRule ?? "").replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(hoverDecls).toContain("border-color: var(--accent-funnel)");
+    expect(hoverDecls).toContain("color: var(--accent-funnel)");
+    expect(hoverDecls).toContain("text-decoration-line: underline");
+    expect(hoverDecls).not.toContain("color-mix(in srgb, var(--accent-funnel)");
     expect(css).toMatch(
       /\.bz-shs-scenario-toggle-trigger:focus-visible\s*\{[^}]*outline:\s*3px solid var\(--accent-funnel\)[^}]*outline-offset:\s*3px/s,
     );

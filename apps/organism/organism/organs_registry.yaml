@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 3ede4951893de04e7d112e5f9413d3470388cc6d5b33b821994d9e2105014a73
+checksum: e8b1df3fe4e0f184a8b59fe28a042b38dec5af221cc07296d552cc98995e19cf
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2554,8 +2554,9 @@ organs:
     label: com.nuzantara.visa-freshness-sentinel
   severity_on_silence: warning
   notes: Alerts Telegram BEFORE the active Visa Oracle RulePack OFFICIAL_PORTAL sources
-    cross their freshness_policy window (7-day), so DECISIVE_SOURCE_STALE never trips
-    silently (born via organ_birth.py, genes imprinted 2026+)
+    cross their freshness_policy window (32-day since seq-18, 2026-08-31; was 7-day),
+    so DECISIVE_SOURCE_STALE never trips silently (born via organ_birth.py, genes
+    imprinted 2026+)
   cicatrix_refs: []
   bridge_source:
     type: state_file
