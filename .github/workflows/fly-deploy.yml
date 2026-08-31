@@ -165,8 +165,15 @@ jobs:
     # 2026-08-31 took 6.8, 6.8 and 7.9 minutes -- but NOT for the depot fallback
     # below: a depot outage burns ~10 minutes in two 5-minute waits before
     # attempt 1 gives up, so the retry that is supposed to save the deploy would
-    # be killed mid-build and the fallback would be armed to nothing. 35 leaves
-    # room for the worst case (three ~10-minute attempts) and still bounds the job.
+    # be killed mid-build and the fallback would be armed to nothing. 35 still
+    # bounds the job. NOT "three 10-minute attempts": that case cannot
+    # occur, because attempts 2 and 3 run with --depot=false and never wait on
+    # depot at all. The real worst case is one 10m01s depot attempt plus two
+    # ordinary builds, and the honest gap in this number is that no non-depot
+    # build has been timed here — every measured build (6.8/6.8/7.9 min) went
+    # through depot, and a cold non-depot cache could be slower. If it ever does
+    # overrun, the job concludes `cancelled`, which the alert condition below was
+    # widened to catch — so the residual risk is loud, not silent.
     timeout-minutes: 35
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -179,7 +186,7 @@ jobs:
 
       - name: Deploy (rolling strategy, monorepo context)
         run: |
-          # `--depot=` is appended only from attempt 2 onward, and only after a
+          # `--depot=false` is appended only from attempt 2 onward, and only after a
           # depot-builder failure: a retry that changes nothing is a repetition,
           # not a retry. Measured 2026-08-31: FOUR consecutive deploys died on
           # `Waiting for depot builder...` -> `error releasing builder:

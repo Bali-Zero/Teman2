@@ -1,0 +1,442 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  "PR #5422 (agent/nuzantara/infra/fly-depot-retry, base main) — 'ci(deploy): fall back off the depot
+  builder, on the one string that means depot'. No separate governing mandate doc exists: this is a
+  direct infra fix dispatched ad hoc after the 2026-08-30/31 depot-outage pattern was diagnosed live
+  against real GitHub Actions job logs, not planned in advance."
+lanes:
+  - lane: fly-depot-retry-build
+    role: build
+    seat:
+      claude-opus-5 (conducting session — diagnosed the defect against real job logs, wrote the
+      retry branch + timeout + alert-condition diff, wrote this brief; per its own account relayed
+      2026-08-31, also ran the two council seats below itself, then hand-applied their findings to
+      the working tree and hand-wrote `journal.jsonl` from their text reports — neither reviewing
+      seat has write access to this worktree)
+  - lane: fly-depot-retry-refute
+    role: review
+    seat:
+      claude-sonnet-5 (adversarial subagent, dispatched WITHOUT the brief and told to attack the
+      trigger regex rather than confirm it — it killed an over-broad first draft and, on its own,
+      narrowed a second claim it had made after seeing more logs; see dissent[0])
+  - lane: fly-depot-retry-evidence
+    role: review
+    seat:
+      claude-sonnet-5 (this evidence-pack lane — independently re-fetched and grepped all 8 cited
+      GitHub Actions job logs via `gh api`, ran a live prod health check, built and ran an isolated
+      mock-flyctl harness against the loop extracted verbatim from the shipped workflow, and found
+      two of the build lane's chat-relayed claims stale or incorrect; see dissent[2] and dissent[3])
+  - lane: fly-depot-retry-council-kimi
+    role: review
+    seat:
+      kimi-code/k3 (verdict GO, journal.jsonl, ts 2026-08-31T04:14:03Z — text-only review, no write
+      access to this worktree; independently IDENTIFIED the SAME "three 10-minute attempts" framing
+      issue this evidence-pack lane also flagged, by a different method (static diff-reading vs. this
+      lane's mock-execution — see dissent[2]); the build lane then applied the corrected comment to
+      the working tree by hand, not kimi itself; separately re-verified that both retry branches
+      share one `[ "$attempt" -lt 3 ]` guard, no fall-through)
+  - lane: fly-depot-retry-council-codex
+    role: review
+    seat:
+      codex-gpt-5.6-sol (verdict GO, journal.jsonl, ts 2026-08-31T04:14:03Z — text-only review, no
+      write access to this worktree; confirmed loop boundedness and the unquoted `${depot_flag}`
+      reasoning independently; found a real inaccuracy, a stray `--depot=` where the argument is
+      `--depot=false` — the build lane applied the correction to the working tree by hand, not codex
+      itself; flagged that `tee` (not `tee -a`) overwriting fly-deploy.log per attempt is
+      load-bearing, and that a whole-workflow cancellation could still starve the alert job — see
+      risks)
+seat_diversity: cross_family_confirmed
+seat_diversity_note:
+  "Two cross-family council seats reported via the REAL council journal (`journal.jsonl`, in this
+  pack's own directory, found already present mid-session; see receipts). Per the build lane's own
+  account (relayed 2026-08-31, not independently verifiable by this evidence-pack lane): the build
+  lane ran both seats itself as the conducting session, then hand-wrote `journal.jsonl` from their
+  text reports and hand-applied their findings to the working tree — neither seat has write access
+  to this worktree, and neither wrote this journal autonomously. Both entries are `role: review`,
+  `ok: true`, timestamped 2026-08-31T04:14:03Z. tp1-qwen3.8-max was ALSO dispatched (per the build
+  lane) and is genuinely absent from the journal — but not because it silently failed to report: it
+  was invoked and failed with a read timeout, root cause identified as a non-streaming call against a
+  door that requires `stream: true` — the build lane's own operational error, not a defect in the
+  seat. This evidence-pack lane holds no receipt for that invocation attempt and states it as
+  attributed, not verified. Two seats reporting is still a real quorum (rule 9, >=2 distinct
+  COUNCIL_REVIEW_SEATS) — the third seat's absence is explained rather than papered over — verified
+  against the linter's own `_read_council_journal_seats` (receipts). Only one build lane exists
+  (claude-opus-5), so D3's build-seat-diversity floor does not apply regardless."
+council_run: "journal.jsonl"
+diff:
+  net_lines: |
+    1 file, +39/-3 (git diff --numstat against the merge-base with origin/main,
+    2d788a3855a708c907c693722f980db909605f99) — .github/workflows/fly-deploy.yml only, 1 commit.
+  behaviour_change: |
+    Two independent changes bundled in one small diff to one file. (a) The `deploy` job's
+    pre-existing 3-attempt retry loop gains a second, narrowly-scoped retry condition — a log match
+    on the literal string `error releasing builder` sets `depot_flag=--depot=false` and retries on
+    Fly's non-depot remote builder, instead of falling straight through to `exit "$status"` as every
+    other non-lease failure still does; `timeout-minutes` on that job rises from 20 to 35. (b) The
+    `deploy-failure-alert` job's `if:` condition widens from firing only on `failure` to also firing
+    on `cancelled`, for both `run-migrations` and `deploy`. No other file changes; no schema, no
+    dependency, no application code. Separately: this worktree's working tree currently also carries
+    an UNCOMMITTED, comment-only correction on top of the above (verified via `git diff --stat --
+    .github/workflows/fly-deploy.yml` from the worktree root: 1 file changed, 10 insertions(+), 3
+    deletions(-)) — identified by the council review (kimi-code/k3 + codex-gpt-5.6-sol per
+    `journal.jsonl`, text-only, no write access to this worktree) and applied to the working tree by
+    the build lane (conducting session) by hand, per the build lane's own account; not yet part of
+    commit 092f40f80. This diff's own LOGIC is unaffected:
+    actionlint's token set is byte-identical between the HEAD-committed run and a rerun against the
+    current working tree (14 findings both times — see receipts).
+receipts:
+  - claim:
+      "Deterministic gear floor recomputed from THIS PR's actual changed-file list is 3, sourced
+      from PATH (the `.github/workflows/*` hot-zone pattern) — matching the declared gear."
+    cmd:
+      "git -C <worktree> diff --name-only $(git merge-base origin/main HEAD)..HEAD >
+      /tmp/changed.txt && python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source
+      --changed-files-file /tmp/changed.txt"
+    result: "3 / path"
+    exit: 0
+    ts: "2026-08-31T~04:20Z"
+    seat: claude-sonnet-5 (evidence-pack lane)
+  - claim:
+      "The real diff is exactly 1 file, +39/-3, 1 commit ahead of origin/main's merge-base — matches
+      what the build lane reported, independently re-measured."
+    cmd:
+      "git -C <worktree> merge-base origin/main HEAD; git -C <worktree> diff --numstat
+      $(git merge-base origin/main HEAD)..HEAD; git -C <worktree> rev-list --count
+      $(git merge-base origin/main HEAD)..HEAD"
+    result:
+      "merge-base 2d788a3855a708c907c693722f980db909605f99 · numstat '39\\t3\\t
+      .github/workflows/fly-deploy.yml' · commit count 1"
+    exit: 0
+    ts: "2026-08-31T~04:20Z"
+    seat: claude-sonnet-5 (evidence-pack lane)
+  - claim:
+      "The shipped diff matches the described shape exactly: narrow trigger on `error releasing
+      builder` only (with an inline comment naming the 4 depot job ids and the 3 clean non-depot job
+      ids as the basis), `${depot_flag}` unquoted under `# shellcheck disable=SC2086`, timeout
+      20->35 with a comment explaining the tradeoff, and the alert `if:` widened to include
+      `needs.run-migrations.result == 'cancelled'` and `needs.deploy.result == 'cancelled'`."
+    cmd: "git -C <worktree> diff $(git merge-base origin/main HEAD)..HEAD --
+      .github/workflows/fly-deploy.yml"
+    result:
+      "Full diff read line-by-line; every element of the build lane's description is present on
+      disk exactly as described. No discrepancy in the diff's CONTENT (the two discrepancies found
+      this session are both about claims made ABOUT the diff in chat, not the diff itself — see
+      dissent[2] and dissent[3])."
+    exit: 0
+    ts: "2026-08-31T~04:20Z"
+    seat: claude-sonnet-5 (evidence-pack lane)
+  - claim:
+      "actionlint reports the identical finding set on HEAD and on origin/main's copy of the same
+      file: 14 findings each side, byte-identical SC-code/severity/message tuples once the line-
+      number shift from the diff's own insertions is accounted for, and every finding sits well
+      outside the new block (lines 188-241) on both sides."
+    cmd:
+      "actionlint .github/workflows/fly-deploy.yml (on HEAD, repo root) — 14 findings, all at lines
+      276/328/434/567/705; git show origin/main:.github/workflows/fly-deploy.yml >
+      /tmp/before/.github/workflows/fly-deploy.yml && (cd /tmp/before && actionlint
+      .github/workflows/fly-deploy.yml) — 14 findings, all at lines 234/286/392/525/662; both sets'
+      SC-code+message tokens diffed with `sort` + `diff`, empty diff"
+    result: "14 == 14, byte-identical token sets, zero findings inside lines 188-241 on either side"
+    exit: 0
+    ts: "2026-08-31T~04:20Z"
+    seat: claude-sonnet-5 (evidence-pack lane)
+  - claim:
+      "THE CENTRAL RECEIPT — the trigger-string measurement table, independently reproduced by
+      fetching and grepping all 8 cited job logs directly (not trusted from the build lane's
+      report): `error releasing builder` and `failed to fetch an image or build from source` are
+      each present in all 4 depot incidents and absent from all 4 clean samples (1 success + 3
+      unrelated release-command failures); `Waiting for depot builder` is present in all 8, depot
+      and clean alike."
+    cmd:
+      "gh api --allow-escape-sequences repos/Bali-Zero/Teman2/actions/jobs/<id>/logs for id in
+      99336828116 99344068116 99365231097 99367317411 (depot) and 99361567807 99306685764
+      99310369478 99317094020 (clean), then grep -ic '<string>' on each of the 3 strings against
+      each of the 8 logs"
+    result:
+      "depot incidents (4/4 each): error releasing builder=2 hits/log, Waiting for depot
+      builder=2 hits/log, failed to fetch an image or build from source=1 hit/log. Clean samples
+      (0/4, 4/4, 0/4 respectively): error releasing builder=0, Waiting for depot builder=1, failed
+      to fetch...=0, on every one of the 4."
+    exit: 0
+    ts: "2026-08-31T~04:20Z"
+    seat: claude-sonnet-5 (evidence-pack lane)
+  - claim:
+      "The '10m01s, identical to the second' claim is precise: in all 4 depot incidents, flyctl's
+      own two internal depot-builder waits are each exactly 5 minutes plus ~1 millisecond, and the
+      span from the first 'Waiting for depot builder' line to the final 'Error: failed to fetch...'
+      line is ~10m00.9s-10m01s in every case."
+    cmd:
+      "grep -n -E 'Waiting for depot builder|error releasing builder' on each of the 4 depot job
+      logs, timestamps compared by hand"
+    result:
+      "job 99336828116: 23:11:19.2889Z->23:16:19.2902Z (5:00.0013), 23:16:20.1161Z->23:21:20.1167Z
+      (5:00.0005) · 99344068116: 00:11:26.5696Z->00:16:26.5702Z, 00:16:27.4445Z->00:21:27.4458Z ·
+      99365231097: 02:39:44.8075Z->02:44:44.8086Z, 02:44:45.4953Z->02:49:45.4966Z · 99367317411:
+      02:54:20.6597Z->02:59:20.6611Z, 02:59:21.3880Z->03:04:21.3885Z. All 8 gaps are 5:00.0005-
+      5:00.0013."
+    exit: 0
+    ts: "2026-08-31T~04:20Z"
+    seat: claude-sonnet-5 (evidence-pack lane)
+  - claim:
+      "The 3 'clean, unrelated' failure samples are exactly what the build lane described: one
+      release-command machine timeout, two identical migration_checksum_mismatch triples (migrations
+      200/207/217) — none mention depot or a builder at all."
+    cmd: "grep -n -iE 'error|failed|mismatch|checksum|timeout' on jobs 99306685764/99310369478/99317094020"
+    result:
+      "99306685764: 'timeout reached waiting for machine's state to change' (release_command
+      timeout). 99310369478 and 99317094020: identical migration_checksum_mismatch on migrations
+      200_wa_copilot_infrastructure / 207_team_admin_runtime_grants / 217_intake_commit_audit,
+      same recomputed/stored checksum pairs in both."
+    exit: 0
+    ts: "2026-08-31T~04:20Z"
+    seat: claude-sonnet-5 (evidence-pack lane)
+  - claim:
+      "The run sequence confirms 'four of the last five production deploys failed' as an exact,
+      literal count over a specific 5-run window, and confirms the shipped comment's 'roughly 23:06Z
+      to 03:04Z' window to the second on both ends."
+    cmd:
+      "gh run list --repo Bali-Zero/Teman2 --workflow fly-deploy.yml --limit 8 --json
+      databaseId,headSha,status,conclusion,createdAt,event"
+    result:
+      "The 5 runs created 2026-08-30T23:06:48Z through 2026-08-31T02:50:08Z are, in order:
+      FAILURE(f74c5c3, =job 99336828116) / FAILURE(4a4c800, =99344068116) /
+      SUCCESS(40ecaf223, =99361567807) / FAILURE(0d0af00, =99365231097) /
+      FAILURE(b82eff9, =99367317411) — 4 failures, 1 success, exactly the window and count the build
+      lane named. First run created 23:06:48Z; last depot job completed 03:04:23Z."
+    exit: 0
+    ts: "2026-08-31T~04:20Z"
+    seat: claude-sonnet-5 (evidence-pack lane)
+  - claim:
+      "LIVE CONTRADICTION — production is NOT currently on build_sha 40ecaf223. A live health check
+      run while writing this pack shows a NEWER successful deploy has landed since the build lane's
+      own measurement window closed."
+    cmd: "curl -s --max-time 10 https://nuzantara-rag.fly.dev/health"
+    result:
+      '{"status":"healthy",...,"build_sha":"2d788a3855a708c907c693722f980db909605f99",...}
+      — cross-checked against `gh run list`: run 33354771934, push, SUCCESS, head_sha=2d788a385...,
+      created 2026-08-31T03:43:55Z. `git merge-base --is-ancestor 40ecaf223 2d788a385` confirms
+      40ecaf223 is 17 commits BEHIND this live SHA (`git rev-list --count 40ecaf223..2d788a385` =
+      17). This run used the CURRENT unpatched origin/main code (this PR is unmerged) and succeeded
+      because depot had already recovered by 03:43Z, ~40 minutes after the last incident ended.'
+    exit: 0
+    ts: "2026-08-31T~04:20Z"
+    seat: claude-sonnet-5 (evidence-pack lane)
+  - claim:
+      "The retry loop's control flow, extracted VERBATIM from the shipped file (lines 189-242,
+      `${{ github.sha }}` replaced with a literal since it is GitHub Actions templating, not bash)
+      and run against a mock `flyctl` on PATH, behaves exactly as the acceptance criteria require in
+      three independent scenarios."
+    cmd: "sed -n '189,242p' .github/workflows/fly-deploy.yml | sed
+      's/\\${{ github\\.sha }}/deadbeef0123456/' > loop_body.sh; a mock flyctl script logging its
+      own call count + argv per invocation; run_scenario.sh persistent_depot,
+      run_scenario.sh depot_recovers, run_scenario.sh unrelated_failure — each sets
+      MOCK_SCENARIO to that name and runs `bash -eo pipefail loop_body.sh` once, in a fresh tmpdir"
+    result:
+      "persistent_depot (mock always returns 'error releasing builder', exit 1): 3 flyctl calls,
+      loop exit 1, call 1 argv has no --depot flag, calls 2-3 both carry --depot=false. depot_recovers
+      (fails once, then succeeds): 2 calls, loop exit 0, --depot=false present only on call 2.
+      unrelated_failure (generic error text, never matches): 1 call, loop exit 1 — no retry
+      attempted at all."
+    exit: 0
+    ts: "2026-08-31T~04:20Z"
+    seat: claude-sonnet-5 (evidence-pack lane)
+  - claim: "PR #5422 is open against main, matches the described title/branch/stat exactly."
+    cmd: "gh pr view 5422 --repo Bali-Zero/Teman2 --json
+      number,title,headRefName,baseRefName,state,additions,deletions,changedFiles,url"
+    result:
+      "OPEN · agent/nuzantara/infra/fly-depot-retry -> main · +39/-3 · 1 file · 'ci(deploy): fall
+      back off the depot builder, on the one string that means depot' · zero reviews, two automated
+      bot comments (Vercel preview, PR-collision-check advisory), neither relevant to this file"
+    exit: 0
+    ts: "2026-08-31T~04:20Z"
+    seat: claude-sonnet-5 (evidence-pack lane)
+  - claim:
+      "UNEXPECTED FINDING, discovered via `git status` AFTER this pack's first draft was written: a
+      real council journal (`journal.jsonl`) and an uncommitted correction to
+      `.github/workflows/fly-deploy.yml` both already existed in this shared worktree — written by
+      the build lane (conducting session, claude-opus-5), working concurrently in this shared
+      worktree while this evidence-pack lane worked, per the build lane's own account relayed
+      2026-08-31 after this pack's own first draft of this claim; not by an autonomous tool, not by
+      either reviewed seat (neither has write access here), and not by this evidence-pack lane.
+      Investigated read-only rather than presumed; nothing of this lane's own was touched or lost."
+    cmd:
+      "ls -la evidence/2026-08/agent-nuzantara-infra-fly-depot-retry-092f40f8/; git status --short;
+      cat .../journal.jsonl; git diff --stat -- .github/workflows/fly-deploy.yml; git diff --
+      .github/workflows/fly-deploy.yml; stat -f '%Sm %N' .../journal.jsonl
+      .github/workflows/fly-deploy.yml"
+    result:
+      "journal.jsonl: 2 lines, valid JSON each, {seat, role:review, ok:true, ts, verdict:GO, note}
+      — kimi-code/k3 and codex-gpt-5.6-sol, both ts 2026-08-31T04:14:03Z, mtime 12:14:03 WITA.
+      fly-deploy.yml: 1 file changed, 10 insertions(+), 3 deletions(-), COMMENT-ONLY (two comment
+      blocks rewritten, zero logic/YAML-structure lines touched), mtime 12:13:48 WITA — both
+      predate this pack's own first-draft write (brief.yml mtime 12:25, pack.yml first write
+      13:35)."
+    exit: 0
+    ts: "2026-08-31T~04:20Z"
+    seat: claude-sonnet-5 (evidence-pack lane)
+  - claim:
+      "The council journal genuinely satisfies rule 9's quorum, verified against the LINTER'S OWN
+      function rather than by eye."
+    cmd:
+      'python3 -c "import sys; sys.path.insert(0,''scripts''); from pathlib import Path; import
+      evidence_pack_lint as epl; pd=Path(''evidence/2026-08/agent-nuzantara-infra-fly-depot-retry-
+      092f40f8''); print(epl._read_council_journal_seats(pd,''journal.jsonl''));
+      print(epl.check_council_run_gear3({''council_run'':''journal.jsonl''}, pd, 3))"'
+    result:
+      "seats found: {'codex-gpt-5.6-sol', 'kimi-code/k3'} · check_council_run_gear3 -> ([], None) —
+      zero violations, zero notice, quorum genuinely met (>=2 distinct COUNCIL_REVIEW_SEATS,
+      role=review, ok=true)."
+    exit: 0
+    ts: "2026-08-31T~04:20Z"
+    seat: claude-sonnet-5 (evidence-pack lane)
+  - claim:
+      "kimi-code/k3's note ('both continue branches carry the same `[ attempt -lt 3 ]` guard, no
+      fall-through') and codex-gpt-5.6-sol's note ('`tee` overwriting the log per attempt is
+      load-bearing') are both independently re-verified true against the file, not merely trusted
+      from the journal."
+    cmd:
+      "grep -n '\\[ \"\\$attempt\" -lt 3 \\]\\|tee fly-deploy.log' .github/workflows/fly-deploy.yml;
+      grep -n 'cancel-in-progress' .github/workflows/fly-deploy.yml"
+    result:
+      'line 213: `... | tee fly-deploy.log` (plain tee, NOT `tee -a` — confirms codex''s claim: each
+      attempt''s log is a fresh overwrite, so a stale depot-signature from a prior attempt cannot
+      leak into a later attempt''s grep decision). Lines 221 and 235: both retry conditions end in
+      the identical `&& [ "$attempt" -lt 3 ]` (confirms kimi''s claim — one shared guard, not two
+      independently-written ones that could drift). Line 22: `cancel-in-progress: false #
+      mai cancellare un deploy in corso` — same-workflow-group cancellation is disabled by design,
+      so codex''s flagged whole-workflow-cancellation risk is about a DIFFERENT vector (manual
+      cancel via the GitHub UI, or a runner-level kill), not this workflow''s own concurrency
+      setting — see risks.'
+    exit: 0
+    ts: "2026-08-31T~04:20Z"
+    seat: claude-sonnet-5 (evidence-pack lane)
+pii_scan: clean
+pii_scan_note:
+  "Checked: the full PR diff (CI workflow YAML/bash only), all 8 fetched GitHub Actions job logs
+  (Docker build output, flyctl CLI output, migration filenames/checksums, Fly machine ids), the
+  live /health response, and this pack's own text. Nothing here names or identifies a client, an
+  employee by personal data, or any regulated individual — job/run/commit ids, timestamps, and CI
+  plumbing only."
+dissent:
+  - seat: claude-sonnet-5 (refuter, dispatched without the brief)
+    objection:
+      "The first draft's retry trigger matched three strings, including `Waiting for depot builder`
+      (present in the 1 clean success too — 1/1 false-positive rate on the only success sample then
+      available) and `failed to fetch an image or build from source`, which this reviewer initially
+      called a generic build-failure wrapper broad enough to match almost any Dockerfile break."
+    status: CONFIRMED
+    resolution:
+      "The trigger was narrowed to `error releasing builder` alone, then the build lane re-measured
+      all 8 logs (not just the 1 it had first). On seeing 3 more clean samples, THIS SAME REVIEWER
+      narrowed its own second claim rather than defending it: `failed to fetch an image or build
+      from source` turned out to be scoped to the build phase (0/4 on the 3 non-depot release-
+      command failures too), not the generic wrapper it first described. Both corrections are
+      independently re-verified in this pack's own receipts against the raw logs, not merely
+      re-asserted."
+  - seat: session (self-review while extracting the retry loop for a mock test)
+    objection:
+      "The 'persistent_depot' mock scenario (all 3 flyctl calls return the depot-error text) is
+      useful for proving the loop TERMINATES at 3 calls with the right exit code, but it is not a
+      realistic timing scenario, and citing it as 'the worst case' would be wrong: once
+      `depot_flag=--depot=false` is set after call 1, a real flyctl invocation on calls 2-3 is no
+      longer talking to depot at all, so it structurally cannot reproduce the same two-5-minute-wait
+      failure shape a second and third time."
+    status: CONFIRMED
+    resolution:
+      "Documented as a bound/termination check only (see acceptance bullet 3's parenthetical), never
+      cited as a timing estimate. This is the SAME conclusion the CORRECTED comment reaches — that
+      comment is itself still UNCOMMITTED working-tree text, not shipped (see dissent[2] for the full
+      provenance: the correction was identified by kimi-code/k3's council review and applied to the
+      working tree by the build lane) — two independent readings agreeing is why this is CONFIRMED
+      rather than merely PLAUSIBLE."
+  - seat: session (evidence-pack lane, contradicting the build lane's own chat summary)
+    objection:
+      'The build lane told this lane, in chat, that the new worst case is ''three attempts = 30m28s,
+      ~13% slack under 35 minutes.'' The COMMITTED comment (`git diff origin/main..HEAD`, i.e.
+      commit 092f40f80 as it stands on PR #5422 right now) is vaguer but points the same way — ''35
+      leaves room for the worst case (three ~10-minute attempts) and still bounds the job'' — and
+      that framing is WRONG for the same structural reason this evidence-pack lane''s own mock test
+      independently found: once `depot_flag=--depot=false` is set after attempt 1, attempts 2-3 are
+      not talking to depot any more, so they cannot reproduce the same two-5-minute-wait failure a
+      second and third time. PROVENANCE CORRECTION (found investigating a dirty git status AFTER
+      this pack''s first draft — see receipts): the file ON DISK in this worktree right now carries a
+      LONGER, CORRECTED comment that states this explicitly (''NOT "three 10-minute attempts":
+      that case cannot occur...'') — but that text is an UNCOMMITTED working-tree edit, not part of
+      092f40f80. `journal.jsonl` (found in this pack''s own directory, not written by this
+      evidence-pack lane) attributes the DIAGNOSIS to kimi-code/k3''s council review, ts
+      2026-08-31T04:14:03Z. SECOND PROVENANCE CORRECTION (build lane, relayed 2026-08-31):
+      kimi-code/k3 reviewed and reported in TEXT ONLY, no write access to this worktree; the build
+      lane (conducting session) applied the corrected comment to the working tree BY HAND from that
+      report, per the build lane''s own account. This evidence-pack lane reached the SAME defect by
+      MOCK-EXECUTING the extracted loop against a scripted `flyctl` (dissent[1] above, receipts);
+      kimi-code/k3 reached it by READING the diff/comment statically, no execution at all. Two
+      independent methods — mock-execution vs. static diff-reading — neither aware of the other''s
+      work when produced, converging on one conclusion.'
+    status: CONFIRMED
+    resolution:
+      "This pack's objective and acceptance criteria state the corrected framing (one 10m01s depot
+      attempt plus two non-depot builds of UNMEASURED duration — an open gap, not a comfortable
+      margin), matching both this lane's own reasoning and the finding kimi-code/k3's council review
+      surfaced. The true margin under 35 minutes is UNMEASURED, not '~13%' — see risks. BUT the
+      corrected comment is NOT YET COMMITTED: it sits in this shared worktree's working tree only
+      (`git diff --stat` vs HEAD: 1 file, +10/-3, comment-only — see receipts), applied there by the
+      build lane by hand. The build lane (who owns commit/push/arm per this task's own instructions)
+      needs to fold this in before shipping, or it is lost. Reported loudly per instruction rather
+      than silently reconciled or silently committed on the build lane's behalf."
+  - seat: session (evidence-pack lane, contradicting the build lane's own chat summary)
+    objection:
+      "The build lane told this lane 'prod has been serving build_sha 40ecaf223, the last successful
+      deploy.' That was accurate for the exact 5-run window this pack's receipts reproduce
+      (job 99361567807, success, head_sha 40ecaf223). A live health check run while writing this
+      pack (see receipts) shows prod is now on build_sha 2d788a3855a708c907c693722f980db909605f99
+      — 17 commits ahead — from a run that started 2026-08-31T03:43:55Z, ~40 minutes after the
+      depot outage this PR responds to had already ended (03:04:23Z), using the CURRENT unpatched
+      code."
+    status: CONFIRMED
+    resolution:
+      "This pack frames the failure pattern in the past tense over the measured window, and states
+      the current live SHA separately with its own timestamp, rather than asserting prod is
+      presently stuck. The fix's value is unchanged (insurance against recurrence); only the
+      present-tense framing of 'currently stuck' was stale, and it is not carried into this pack."
+  - seat: session (declared limit, unresolved)
+    objection:
+      "Only ONE depot-failure signature has ever been observed — `error releasing builder:
+      deadline_exceeded` — and all four occurrences come from a single ~4-hour flapping window on
+      one calendar night. A differently-worded depot failure (auth, quota, region-unavailable) might
+      not match `error releasing builder` either, and nobody has a counter-example in hand either
+      way."
+    status: PLAUSIBLE
+    resolution:
+      "Left standing and labelled, not resolved. Widening the trigger further without a second real
+      incident to measure against would repeat exactly the over-match this PR's first draft already
+      made and had to walk back — narrower-and-wrong-sometimes was judged better than
+      broader-and-silently-wrong, but the residual risk is real and unmeasured."
+  - seat: session (declared limit, unresolved)
+    objection:
+      'A pre-existing, unchanged lease-retry branch (`sleep 90` on a machine-lease conflict) could in
+      principle land on one attempt while a depot-retry lands on another, within the same 3-attempt
+      budget — e.g. attempt 1 lease-conflict (+90s sleep), attempt 2 depot outage (~10m01s), attempt
+      3 an unmeasured non-depot build. Neither this pack nor the corrected comment bounds that mixed
+      case; only the pure single-cause cases were exercised (receipts). PARTIALLY NARROWED by
+      kimi-code/k3''s council review (journal.jsonl, re-verified this session): both the lease-continue
+      and the depot-continue branches share the identical `[ "$attempt" -lt 3 ]` guard, so there is
+      no ASYMMETRIC fall-through between the two conditions — but that confirms the GUARD is
+      consistent, not that the mixed-TIMING case is bounded or measured.'
+    status: PLAUSIBLE
+    resolution:
+      "Left standing and labelled. Not fixed here: the shipped `cancelled`-alert widening is the
+      backstop for any shape of overrun, mixed-cause included, so the failure mode this leaves open
+      is 'slow and eventually loud,' not 'silent.'"
+  - seat: codex-gpt-5.6-sol (council, journal.jsonl)
+    objection:
+      "A whole-workflow cancellation could still prevent `deploy-failure-alert` from running at all,
+      even after this diff's `cancelled`-condition widening — `if: always()` only protects against
+      the JOB's own outcome, not against the RUN never scheduling that job in the first place."
+    status: PLAUSIBLE
+    resolution:
+      "Re-verified this session (receipts): this workflow's own `concurrency: cancel-in-progress:
+      false` rules out same-group auto-cancellation as the cause, so the residual vector is a MANUAL
+      cancel via the GitHub UI or a runner-level kill — narrower than the note's own wording might
+      suggest, but not eliminated. Not fixed here — recorded as an intrinsic GitHub Actions
+      limitation (a cancelled RUN can skip jobs `always()` would otherwise guarantee), not a defect
+      this diff introduces or could itself close."
