@@ -1836,7 +1836,17 @@ def check_lanes_build_seat_diversity(
 # named human call, never a silent pass, reported so X3 (ASSEMBLY-LINE.md
 # gate-lifecycle ledger) can count how often it fires.
 # ---------------------------------------------------------------------------
-SEAT_RULES_ENFORCEMENT_DATE = datetime.date(2026, 9, 2)
+# MOVED FORWARD 2026-09-02 -> 2026-08-31 (Squad S lane 6, Zero: «anche subito
+# se siamo pronti»). "Ready" was MEASURED, not asserted: every one of the 43
+# open PRs was linted twice, once with today's dates and once with this
+# constant alone pulled into the past, staged exactly as harness-floor.yml
+# stages a pack (--source-path included, without which every pack falsely reads
+# as a deprecated evidence/ root). Moving THIS date alone turns ZERO open PRs
+# red. The other two were measured separately and are NOT moved here:
+# R9_R11 would redden 9, and EVIDENCE_ROOT_DEPRECATION 3 — see
+# research/operations/2026-08-31-two-nine-enforcement-readiness.md for the
+# per-PR table and the two independent causes behind the 9.
+SEAT_RULES_ENFORCEMENT_DATE = datetime.date(2026, 8, 31)
 
 #: R8 — ground-truth path classes: backend KB, visa_engine (any depth —
 #: services/scripts/tests alike, fnmatch's `*` already crosses `/`), the
