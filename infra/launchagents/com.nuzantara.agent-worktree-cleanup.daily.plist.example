@@ -116,6 +116,15 @@ grep literally; renaming it to match the cadence would silently stop those
 probes matching — the W120 shape, an alarm that zeroes itself in silence. The
 cadence is stated here and in the runbook; the identifier stays put.
 
+THE INSTALL STEP ALSO REPAIRS SOMETHING ELSE, measured 2026-08-31. The hyphen
+pair described above was not introduced by the cadence work: it shipped in the
+ORIGINAL W62 commit (2cf3b14a9), which means the plist currently loaded in
+~/Library/LaunchAgents on this machine carries it too and is rejected by
+plistlib at its line 6. audit_launchd_crons.py reads that live directory, so for
+this job's entire life the audit layer has been unable to parse it. Copying the
+cured template over is therefore not only a cadence change: it is what gives the
+audit its first readable view of this cron.
+
 Install (Pro):
     cp infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example \
        ~/Library/LaunchAgents/com.nuzantara.agent-worktree-cleanup.daily.plist

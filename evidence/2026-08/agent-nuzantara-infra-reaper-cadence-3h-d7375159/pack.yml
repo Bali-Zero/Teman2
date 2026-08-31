@@ -4,13 +4,28 @@
 # before validating, so brief_ref must always read "evidence/brief.yml".
 brief_ref: evidence/brief.yml
 plan_ref: PR #5424 — agent/nuzantara/infra/reaper-cadence-3h
-# Diff stats below are the LITERAL output of `git diff --numstat origin/main...HEAD`
-# (receipt 1), summed as 2+19+43+6=70 / 2+2+11+2=17 — the sum is a transcription
-# of that command's own rows, cross-checked against --shortstat (receipt 2),
-# which independently printed "4 files changed, 70 insertions(+), 17 deletions(-)".
+# DIFF STATS — corrected 2026-08-31 after the independent grader caught them false.
+# They said 4 / 70 / 17. They were the true figures for the FIRST commit of this
+# branch and were never re-taken as the branch grew; by the time the grader ran
+# `git diff --shortstat origin/main...HEAD` the real answer was 7 files / 561
+# insertions. That is the THIRD instance in this one PR of a receipt that was
+# honest when captured and false for the artifact shipped — see the two entries
+# in residual_risks. The other two were caught by a cross-family seat; this one
+# lives in the pack's own headline, which no reviewer had thought to re-measure.
+#
+# WHY CI DID NOT CATCH IT, verified by the grader: evidence_pack_lint's
+# countable-claims walker has COUNTABLE_SUBTREES = ("diff", "lanes") but inspects
+# only `str` nodes, so these very integers are structurally invisible to it. The
+# lint returns clean on a pack whose headline diff block is wrong by an order of
+# magnitude. Arming that is a separate mandate, named in residual_risks.
+#
+# Measured against aa8038dd4 (the commit these numbers describe). The successor
+# commit adds only this correction to pack.yml itself, so it necessarily grows
+# them again — a self-describing field cannot close over its own edit. Stating
+# the SHA is what makes the claim checkable instead of merely fresh.
 diff:
-  files: 4
-  insertions: 70
+  files: 7
+  insertions: 632
   deletions: 17
   hotzone_hits:
     - infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example
@@ -48,11 +63,11 @@ receipts:
     exit: 0
     ts: "2026-08-31T04:00:03Z"
     seat: general-purpose/sonnet-5
-  - claim: "Il diff è 4 file, 70 inserzioni, 17 cancellazioni."
-    cmd: "git diff --shortstat origin/main...HEAD   # stdout: 4 files changed, 70 insertions(+), 17 deletions(-)"
+  - claim: "RITIRATA E RIPRESA. La versione originale di questa ricevuta diceva «4 file, 70 inserzioni, 17 cancellazioni» ed era vera al primo commit del branch; il giudice indipendente l'ha rieseguita e ha trovato 7 file / 561 inserzioni. Ripresa qui contro uno SHA nominato: a aa8038dd4 il diff è 7 file, 632 inserzioni, 17 cancellazioni."
+    cmd: "git diff --shortstat origin/main...aa8038dd4   # stdout: 7 files changed, 632 insertions(+), 17 deletions(-)"
     exit: 0
-    ts: "2026-08-31T03:59:54Z"
-    seat: general-purpose/sonnet-5
+    ts: "2026-08-31T04:49:06Z"
+    seat: opus-5
   - claim: "Il plist è sintatticamente valido dopo la modifica."
     cmd: "plutil -lint infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example   # stdout: ...: OK"
     exit: 0
@@ -103,7 +118,20 @@ static:
   typecheck: n/a-no-typed-source-touched
   build: n/a
 
-runtime_proof: []
+runtime_proof:
+  - claim:
+      "LA COPIA VIVA INSTALLATA SU QUESTA MACCHINA PORTA IL DIFETTO, adesso.
+      Non è un problema del solo template: il plist realmente caricato in
+      ~/Library/LaunchAgents/ viene rifiutato da plistlib alla riga 6, che è il
+      `--cleanup` del commit W62 ORIGINALE. Il difetto è quindi VIVO da sempre,
+      non introdotto da questa PR, e per tutta la sua vita `audit_launchd_crons.py`
+      — che legge proprio quella directory — non ha mai potuto controllare questo
+      cron. Installare il template curato cura anche la copia viva: è la ragione
+      operativa per cui il passo di install conta, oltre alla cadenza."
+    cmd: 'python3 -c "import plistlib;plistlib.load(open(''~/Library/LaunchAgents/com.nuzantara.agent-worktree-cleanup.daily.plist''.replace(''~'',__import__(''os'').path.expanduser(''~'')),''rb''))"   # ExpatError: not well-formed (invalid token): line 6, column 33'
+    exit: 1
+    ts: "2026-08-31T04:49:06Z"
+    seat: opus-5
 
 dissent:
   - seat: spalla-review/sonnet-5
@@ -208,6 +236,55 @@ dissent:
       esaminati. I rilievi sopra sono quelli che ha fatto in tempo a produrre, ed
       erano già corredati dalle sue verifiche empiriche; il giro non è una
       copertura completa del delta e non va contato come tale.
+  - seat: spalla-review/sonnet-5 (secondo giro, sul delta)
+    status: CONFIRMED
+    objection: >
+      Verdetto CONCERNS. Il rilievo di livello BLOCCANTE è sulle STATISTICHE DI
+      DIFF DI QUESTO STESSO PACCHETTO: dichiaravano 4 file / 70 / 17, e
+      rieseguendo `git diff --shortstat origin/main...HEAD` il giudice ha
+      ottenuto 7 file / 561 inserzioni. Erano vere al PRIMO commit del branch e
+      non sono mai state riprese mentre il branch cresceva — la terza istanza,
+      in questa sola PR, di una ricevuta onesta alla cattura e falsa alla
+      consegna. Il giudice ha inoltre stabilito PERCHÉ il lint non se ne
+      accorge: COUNTABLE_SUBTREES vale ("diff","lanes") ma il walker ispeziona
+      solo nodi str, quindi proprio quegli interi gli sono strutturalmente
+      invisibili — ha eseguito il lint col numstat reale e ha ottenuto clean,
+      exit 0. Ha poi ricostruito la storia del difetto XML: era presente già nel
+      commit W62 ORIGINALE (2cf3b14a9), curato in 0b2aa121c, reintrodotto in
+      7bd68e81f, ereditato da 1b707630f — quindi «è tornato» è esatto, ed è la
+      terza occorrenza contando l'originale. Scope pulito: il diff tocca solo il
+      blocco di commento, Label/StartCalendarInterval/ProgramArguments e i path
+      di log restano intatti.
+    resolution: >
+      BLOCCANTE ACCOLTO e curato: il blocco diff e la ricevuta corrispondente
+      sono stati ripresi contro uno SHA NOMINATO (aa8038dd4), con la ricevuta
+      vecchia dichiarata RITIRATA invece che sovrascritta in silenzio. Il buco
+      del lint è registrato in residual_risks come mandato separato: tocca
+      evidence_pack_lint.py, cioè lo strumento che giudica OGNI PR, e non si
+      allarga questa PR per farlo. La storia del difetto è recepita nel testo.
+
+  - seat: general-purpose/sonnet-5 (copertura CI, sonda indipendente)
+    status: CONFIRMED
+    objection: >
+      Non un'obiezione al diff ma la misura che mancava, e che trasforma una
+      congettura di questa PR in un fatto. Sweep di plistlib su TUTTI i 169 file
+      infra/launchagents/*.plist*: 168 parsano, ne fallisce ESATTAMENTE UNO,
+      questo. E nessuno strumento in CI lo vedrebbe: lint_plist_keepalive.py
+      scopre i file con endswith(".plist"), quindi un .plist.example è escluso
+      PRIMA di qualunque parse; check_organ_conformance.py (che invece
+      fallirebbe davvero, exit_code |= 4) usa pathspec git *.plist, stessa
+      esclusione; audit_launchd_crons.py non legge affatto il repo, punta a
+      ~/Library/LaunchAgents — forma HOME-fork, famiglia #1.
+    resolution: >
+      ACCOLTA e usata per correggere questa PR in due punti. (1) Ha reso
+      falsificabile la tesi sulla portata: ho poi verificato la copia VIVA su
+      questa macchina e porta il difetto alla riga 6, ereditato dal commit W62
+      originale — vedi runtime_proof. Il consumatore che si ceca è reale, e si
+      cecava da sempre. (2) Conferma che la cura qui è un testo senza guardia:
+      il buco di copertura è ora nominato con precisione in residual_risks, col
+      punto esatto in cui andrebbe chiuso.
+
+# council_run is a PATH to a journal.jsonl relative to THIS pack's own
 # directory (not an inline list — the earlier draft got the shape wrong and
 # the lint's council_run NOTICE was correctly reporting it as absent). The
 # per-seat narrative lives in `dissent` above; the journal is the machine-
@@ -215,6 +292,33 @@ dissent:
 council_run: journal.jsonl
 
 residual_risks:
+  - "IL LINT DEGLI EVIDENCE PACK NON LEGGE I PROPRI NUMERI DI TESTATA, ed è il
+    buco che ha lasciato passare la ricevuta falsa qui sopra. Il giudice l'ha
+    stabilito eseguendo il lint col numstat reale: torna clean, exit 0, su un
+    pacchetto il cui blocco `diff` sbaglia di un ordine di grandezza. La causa è
+    strutturale, non una svista di taratura: il walker delle affermazioni
+    numerabili ha COUNTABLE_SUBTREES = (diff, lanes) ma ispeziona soltanto nodi
+    str, e `files`/`insertions`/`deletions` sono INTERI — invisibili per
+    costruzione. Vale per OGNI pacchetto di OGNI PR, non solo per questo.
+    NON CURATO QUI DI PROPOSITO: toccherebbe evidence_pack_lint.py, cioè lo
+    strumento che giudica ogni PR del repo, ed è esattamente il genere di
+    modifica che non si infila di straforo in una PR sulla cadenza di un cron.
+    È un mandato a sé, con un test di colpevolezza ovvio (un pacchetto con
+    `diff.files` palesemente falso deve diventare rosso)."
+  - "IL DIFETTO XML NON È COPERTO DA NULLA IN CI, misurato e non supposto. Sweep
+    indipendente su tutti i 169 `infra/launchagents/*.plist*`: 168 parsano, uno
+    solo fallisce ed è questo. Tre strumenti avrebbero potuto vederlo e nessuno
+    lo fa: lint_plist_keepalive.py filtra con endswith('.plist') e quindi scarta
+    un `.plist.example` PRIMA di tentare il parse; check_organ_conformance.py —
+    l'unico che fallirebbe davvero, exit_code |= 4 — usa pathspec git `*.plist`,
+    stessa esclusione; audit_launchd_crons.py non guarda affatto il repo, legge
+    ~/Library/LaunchAgents (forma HOME-fork, famiglia #1).
+    Conseguenza da tenere in conto quando si legge la cura: dopo questa PR il
+    file è corretto, ma nulla impedisce alla prossima mano di rimetterci la
+    coppia di trattini, e nessun rosso comparirà. La chiusura naturale è una
+    riga sola — estendere la scoperta di quei lint a `*.plist*` invece che
+    `*.plist` — e resta fuori da questa PR per la stessa ragione del punto
+    precedente."
   - "RECIDIVA DEL DIFETTO CHE QUESTA PR CURA, trovata sul commit già pubblicato.
     Il difetto ereditato è un doppio trattino letterale dentro il commento XML,
     che rende il file illeggibile a plistlib. L'ho curato, ho preso la ricevuta,

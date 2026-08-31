@@ -105,11 +105,20 @@ grader: |
   (2) I numeri dell'incidente erano asseriti senza provenienza — ora la
   provenienza è dichiarata nel plist, separando ciò che è stato MISURATO da ciò
   che è REPORT DEL PROPRIETARIO (vedi `residual_risks` nel pack).
-  (3) Difetto EREDITATO trovato di passaggio: il commento XML conteneva un `--`
-  letterale, vietato dentro un commento XML, per cui `plistlib.load()` sollevava
-  ExpatError e `audit_launchd_crons.py` registrava una riga di parse-error
-  invece di controllare davvero questo cron. Curato qui perché vive nelle righe
-  che questa PR riscrive; dichiarato come ereditato, non come introdotto.
+  (3) Difetto EREDITATO trovato di passaggio: il commento XML conteneva una
+  coppia di trattini letterale, che XML vieta, per cui `plistlib.load()`
+  sollevava ExpatError. Curato qui perché vive nelle righe che questa PR
+  riscrive; dichiarato come ereditato, non come introdotto.
+  PRECISATO DOPO VERIFICA (2026-08-31), perché la prima stesura saltava un
+  passaggio: `audit_launchd_crons.py` non legge affatto questo file: legge
+  `~/Library/LaunchAgents`. La catena vera è che il difetto viaggia dal template
+  alla COPIA VIVA quando si esegue l'install, ed è stato poi misurato proprio
+  lì — il plist installato su questa macchina viene rifiutato da plistlib alla
+  riga 6, sulla forma trattata del commit W62 ORIGINALE (vedi `runtime_proof`
+  nel pack). Quindi l'affermazione «l'audit non riesce a controllare questo
+  cron» è vera, ed è vera da sempre, ma per via della copia installata, non del
+  file di repo. Corollario operativo: installare il template curato non cambia
+  solo la cadenza, ripara anche la cecità dell'audit.
 
   Il grader ha inoltre RAFFORZATO una tesi della PR invece di limitarsi ad
   accettarla: la dipendenza dalla label letterale non è solo esplicita su
