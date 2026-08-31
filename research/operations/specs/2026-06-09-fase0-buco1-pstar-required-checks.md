@@ -7,18 +7,7 @@ sources:
   - gh api repos/Balizero1987/Teman2/branches/main/protection/required_status_checks (live read 2026-06-09)
   - .github/workflows/verify-the-verifiers.yml, p1s2-mutation-incremental.yml
   - .github/CODEOWNERS
-adversarial_review: >-
-  kimi-code/k3 (Moonshot, non-Anthropic cross-family, flat subscription) reviewed the
-  2026-08-31 PUT->PATCH correction on 2026-08-31 and returned SHIP. Substantive, not a
-  rubber stamp: it independently confirmed that GitHub documents only PATCH on
-  `.../protection/required_status_checks` (PUT exists solely on the parent
-  `branches/{branch}/protection` endpoint, which is why PUT 404s here); it refuted an
-  attack line put TO it about the rollback verb, establishing that this endpoint replaces
-  the whole `required_status_checks` object rather than JSON-merging, so replaying the
-  9-context snapshot restores the prior state exactly; and it opened by checking the file
-  on disk to test the correction note's own claim that every surviving "PUT" is
-  historical, rather than accepting it. The original 2026-06-09 spec body was authored by
-  a different session; this reviewer is not its author.
+adversarial_review: kimi-k3
 ---
 
 # FASE-0 BUCO #1 — make the P* workflows required-status-checks (sequenced, NOT executed)
@@ -177,3 +166,33 @@ each only after it is green-stable on main with its own sentinel.
 - `required_status_checks` updated via **PATCH** (NOT PUT — PUT 404s on this sub-resource; the original spec verb was wrong) to 11 contexts: the original 9 + `verify-the-verifiers` + `Canary self-test + incremental mutation`. strict=true preserved.
 - This markdown-only PR is the falsifiable canary: it MUST merge (path-miss → sentinel SUCCESS), proving the new required checks do NOT pending-forever-block doc PRs.
 - Rollback (if ever needed): `gh api -X PATCH .../required_status_checks --input <original-9-snapshot>`.
+## Adversarial review
+
+**Seat:** `kimi-code/k3` (Moonshot, non-Anthropic cross-family, flat subscription), fresh
+context, 2026-08-31. Reviewing the PUT→PATCH correction above. The seat is not the author
+of either the 2026-06-09 spec or the 2026-08-31 correction.
+
+**Surviving objections: none. Five attack lines raised, all resolved:**
+
+1. *"Is PATCH actually correct, or does this diff make the runbook worse?"* — RESOLVED,
+   and this was the one that mattered. Confirmed independently: GitHub documents only
+   `PATCH` for updating `.../protection/required_status_checks`; `PUT` exists solely on the
+   parent `branches/{branch}/protection` endpoint, which is exactly why PUT 404s on the
+   sub-resource.
+2. *Does changing "the PUT" to "the PATCH"/"write" break any meaning, particularly
+   "fully reversible in one command" and "PRESERVE ALL 9"?* — RESOLVED, meaning preserved.
+3. *Is PATCH right for the ROLLBACK too? PATCH merges, PUT replaces — could a rollback
+   leave extra contexts behind?* — RESOLVED, and the seat refuted the attack rather than
+   conceding it: this endpoint replaces the whole `required_status_checks` object
+   (`strict` + the full `contexts` array) rather than JSON-merging, so replaying the
+   9-context snapshot restores the prior state exactly.
+4. *Does the correction note overstate its own edit by claiming every surviving "PUT" is
+   historical?* — RESOLVED. The seat opened by reading the file on disk to test that claim
+   instead of accepting it, and found it true (noting that two apparent hits are
+   `GITHUB_OUTPUT` substring false positives).
+5. *Should a CLOSED historical spec be edited in place, or left with an erratum?* —
+   RESOLVED in favour of editing: an erratum at the bottom already existed since
+   2026-06-09 and demonstrably failed to stop readers executing the body's PUT. The dated
+   note preserves the record.
+
+**Verdict: SHIP.**
