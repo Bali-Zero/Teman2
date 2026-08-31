@@ -1,0 +1,497 @@
+# NOTE: brief_ref is the CANONICAL name, not this pack's own directory --
+# harness-floor.yml copies both discovered per-PR files into
+# /tmp/evidence-check/evidence/{brief,pack}.yml under these exact names before
+# validating, so brief_ref must always read "evidence/brief.yml".
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR (agent/nuzantara/infra/regwatch-ghcwd -> main) -- cure the two `gh`
+  calls in infra/launchagents/wrappers/regulatory-watcher-run.sh that fail
+  every day under launchd's non-git cwd, make the resulting promote-failure
+  visible on the organ heartbeat instead of silently reporting "ok", and add
+  a regression guard. Dispatched by the conducting session after it measured
+  the defect directly from ~/logs/regulatory-watcher.log.
+
+diff:
+  files: 2
+  insertions: 799
+  deletions: 2
+  measured_at: e453aa021
+  note: >-
+    `git diff --no-renames --numstat origin/main...HEAD` -> 2 files changed,
+    799 insertions, 2 deletions total (the per-file split is 33 inserted
+    and 2 deleted lines in the wrapper, 766 inserted and none deleted in
+    the test file), matching `git diff --shortstat`. Three commits on this
+    branch: 339fcb428 (the core fix), 2c245ac2f (checker hardening after
+    the first cross-family review round found two real gaps in the new
+    guard's own logic), e453aa021 (directory-wide scope per a teammate's
+    fleet-audit request, a real presence-check false-positive found while
+    doing so, and a second hardening round after a second independent
+    reviewer found one more live-code gap). Net line count is well above
+    the ~400-line PR-contract guideline; the production code change itself
+    stays tiny (33/-2 in the wrapper) -- the bulk is test infrastructure
+    (guilt/innocence fixtures, a directory-wide scan, heavily-commented
+    rationale) for a hand-rolled lexical scanner now validated against
+    every real file in its target directory, not scope creep into
+    unrelated concerns.
+  hotzone_hits:
+    - infra/launchagents/wrappers/regulatory-watcher-run.sh
+
+lanes:
+  - lane: regwatch-build
+    role: build
+    seat: claude (this session -- implementer lane dispatched by the
+      conducting session as a teammate)
+  - lane: regwatch-refuter
+    role: review
+    seat: agy (Gemini 3.1 Pro, non-Anthropic) -- cross-family, never the
+      same seat as the build lane
+  - lane: regwatch-refuter-2
+    role: review
+    seat: spalla-review/sonnet-5 -- second independent pass on the full
+      diff (all three commits), dispatched after the first round's fixes
+      landed; internally also cross-checked its own read against a manual
+      codex dispatch (codex-spalla.sh's --full-auto is broken on this
+      machine's codex-cli 0.149.1, worked around ad hoc) -- an
+      implementation detail of this lane's own methodology, not a separate
+      declared seat
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      --repo Bali-Zero/Teman2 gets a `gh` call PAST cwd/repo resolution and
+      to the real GitHub API, even from a cwd that is not a git checkout
+      (the actual launchd condition) -- proven non-destructively (a
+      nonexistent probe branch, nothing created).
+    cmd: >-
+      cd /tmp && gh pr create --repo Bali-Zero/Teman2 --head
+      probe-nonexistent-branch-xyz --base main --title t --body b
+    result: >-
+      "pull request create failed: GraphQL: Head sha can't be blank, Base
+      sha can't be blank, No commits between main and
+      probe-nonexistent-branch-xyz, Head ref must be a branch
+      (createPullRequest)" -- an API-side error naming the fake branch, not
+      a cwd-resolution error.
+    exit: 1
+    ts: "2026-08-31T06:24:00Z"
+    seat: claude (build lane)
+
+  - claim: >-
+      The SAME command WITHOUT --repo, from the same non-repo cwd,
+      reproduces the exact failure string measured in
+      ~/logs/regulatory-watcher.log for ten consecutive days -- confirming
+      cwd/repo resolution, not the API, was the real point of failure.
+    cmd: "cd /tmp && gh pr status"
+    result: >-
+      "failed to run git: fatal: not a git repository (or any of the parent
+      directories): .git"
+    exit: 1
+    ts: "2026-08-31T06:23:53Z"
+    seat: claude (build lane)
+
+  - claim: >-
+      infra/launchagents/wrappers/regulatory-watcher-run.sh matches the
+      HOTZONE_PATTERNS entry `infra/launchagents/*` -- confirmed with the
+      SAME matcher the lint tool itself uses (fnmatch.fnmatchcase), not
+      assumed from typical shell-glob semantics (fnmatch's `*` crosses `/`,
+      unlike a non-globstar shell glob).
+    cmd: >-
+      python3 -c "import fnmatch;
+      print(fnmatch.fnmatchcase('infra/launchagents/wrappers/regulatory-watcher-run.sh',
+      'infra/launchagents/*'))"
+    result: "True"
+    exit: 0
+    ts: "2026-08-31T06:24:44Z"
+    seat: claude (build lane)
+
+  - claim: >-
+      The deterministic gear floor for this PR's own changed-file set is 3,
+      sourced from PATH (the hot-zone hit above), not diff size.
+    cmd: >-
+      git diff --no-renames --name-only origin/main...HEAD >
+      /tmp/cf-regwatch-ghcwd.txt && python3 scripts/evidence_pack_lint.py
+      --print-floor --changed-files-file /tmp/cf-regwatch-ghcwd.txt
+    result: "3"
+    exit: 0
+    ts: "2026-08-31T06:24:11Z"
+    seat: claude (build lane)
+
+  - claim: "Floor source confirmed separately as path, matching the number above."
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-floor-source
+      --changed-files-file /tmp/cf-regwatch-ghcwd.txt
+    result: "path"
+    exit: 0
+    ts: "2026-08-31T06:24:11Z"
+    seat: claude (build lane)
+
+  - claim: >-
+      The wrapper parses with zero syntax errors under its ACTUAL shell
+      (zsh -- the shebang is #!/bin/zsh and the file uses zsh-only glob
+      qualifiers like `(N.om)`, which is why `bash -n` on this file is not
+      the right check and was not used as the pass/fail signal).
+    cmd: "zsh -n infra/launchagents/wrappers/regulatory-watcher-run.sh"
+    result: "(no output -- clean)"
+    exit: 0
+    ts: "2026-08-31T06:24:12Z"
+    seat: claude (build lane)
+
+  - claim: >-
+      The new guard test suite is fully green: 13/13, including the guilt
+      cases (both original bare-gh forms, plus the two forms a
+      cross-family reviewer found the checker missing), the innocence
+      cases (--repo, -R, the (cd ... && ...) subshell idiom, the real
+      echo-mentions-gh false-positive trap, and the heredoc-with-apostrophe
+      regression), and the live-wrapper checks.
+    cmd: "python -m pytest scripts/tests/test_regulatory_watcher_gh_context.py -q"
+    result: "13 passed in 0.11s"
+    exit: 0
+    ts: "2026-08-31T06:24:11Z"
+    seat: claude (build lane)
+
+  - claim: >-
+      RED PROOF: run alone, the regression-pin test -- which points the
+      SAME checker at origin/main's actual pre-fix blob via `git show
+      f70d7d4c5cee1b0feb7ee191871f00b176ce9673:infra/launchagents/wrappers/regulatory-watcher-run.sh`
+      -- passes BECAUSE it asserts the checker finds exactly the two known
+      violations there (gh pr create line 363, gh pr merge line 376 in that
+      historical blob's own numbering). A standalone ad-hoc script pointed
+      the checker directly at that historical content (outside the
+      committed suite, as a one-time verification) and printed genuine
+      pytest FAILURE output when asked to assert zero violations against
+      it -- i.e. the guard is provably not vacuous. Full AssertionError
+      text: "pre-fix wrapper has unguarded gh calls: [(363, '_pr_url=$(gh
+      pr create --base main --head \"$_branch\" \\\\'), (376, 'if gh pr
+      merge \"$_pr_num\" --auto >> \"$LOG\" 2>&1; then')]".
+    cmd: >-
+      pytest
+      scripts/tests/test_regulatory_watcher_gh_context.py::test_regression_pin_pre_fix_commit_fails_this_guard
+      -v
+    result: "1 passed in 0.10s"
+    exit: 0
+    ts: "2026-08-31T06:24:19Z"
+    seat: claude (build lane)
+
+  - claim: >-
+      Cross-family review seat 1 (kimi-code/k3) was attempted FIRST and
+      genuinely could not run -- weekly quota exhausted, not silently
+      skipped or worked around by trying a different-looking invocation.
+    cmd: 'kimi -p "ping" -m kimi-code/k3'
+    result: >-
+      "error: failed to run prompt: provider.auth_error: 403 You've reached
+      your weekly (7-day) usage limit."
+    exit: 1
+    ts: "2026-08-31T06:24:33Z"
+    seat: claude (build lane)
+
+  - claim: >-
+      ruff (the repo's Python linter) is clean on the new test file.
+    cmd: "python -m ruff check scripts/tests/test_regulatory_watcher_gh_context.py"
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-08-31T14:14:20+08:00"
+    seat: claude (build lane)
+
+  - claim: >-
+      The heartbeat-surfacing code exists verbatim in the wrapper: on a
+      non-zero promote_delta_via_pr return, organism_hb_set error "promote_delta_via_pr failed rc=<rc> is called, naming the reason.
+    cmd: >-
+      grep -n 'organism_hb_set error "promote_delta_via_pr failed rc='
+      infra/launchagents/wrappers/regulatory-watcher-run.sh
+    result: >-
+      "663:    organism_hb_set error \"promote_delta_via_pr failed
+      rc=${_PROMOTE_RC} — delta on disk, not promoted to main\""
+    exit: 0
+    ts: "2026-08-31T06:27:39Z"
+    seat: claude (build lane)
+
+  - claim: >-
+      The current (fixed) wrapper individually passes
+      test_current_wrapper_has_no_unguarded_gh_calls (the exact acceptance
+      criterion for the core fix, run in isolation from the rest of the
+      suite).
+    cmd: >-
+      pytest
+      scripts/tests/test_regulatory_watcher_gh_context.py::test_current_wrapper_has_no_unguarded_gh_calls
+      -v
+    result: "1 passed in 0.09s"
+    exit: 0
+    ts: "2026-08-31T06:27:33Z"
+    seat: claude (build lane)
+
+  - claim: >-
+      The over-match trap (an echo message merely mentioning "gh pr
+      create" as prose) individually passes
+      test_innocence_echo_mentioning_gh_is_not_flagged in isolation.
+    cmd: >-
+      pytest
+      scripts/tests/test_regulatory_watcher_gh_context.py::test_innocence_echo_mentioning_gh_is_not_flagged
+      -v
+    result: "1 passed in 0.08s"
+    exit: 0
+    ts: "2026-08-31T06:27:34Z"
+    seat: claude (build lane)
+
+  - claim: >-
+      Full guard suite after directory-wide extension + presence-check fix
+      + backtick fix: 20/20 green (was 13/13 before this round).
+    cmd: "pytest scripts/tests/test_regulatory_watcher_gh_context.py -q"
+    result: "20 passed in 0.21s"
+    exit: 0
+    ts: "2026-08-31T06:54:21Z"
+    seat: claude (build lane)
+
+  - claim: >-
+      Directory-wide floor: every *.sh file directly in
+      infra/launchagents/wrappers/ (53 files) has zero unguarded gh calls,
+      run in isolation from the rest of the suite.
+    cmd: >-
+      pytest
+      scripts/tests/test_regulatory_watcher_gh_context.py::test_all_wrappers_in_directory_have_no_unguarded_gh_calls
+      -v
+    result: "1 passed in 0.12s"
+    exit: 0
+    ts: "2026-08-31T06:54:22Z"
+    seat: claude (build lane)
+
+  - claim: >-
+      Precision floor: regulatory-watcher-run.sh is still the ONLY file in
+      the directory with a real gh invocation -- confirms the directory-wide
+      pass above isn't vacuously green from scanning nothing.
+    cmd: >-
+      pytest
+      scripts/tests/test_regulatory_watcher_gh_context.py::test_only_regulatory_watcher_has_real_gh_invocations_in_this_directory
+      -v
+    result: "1 passed in 0.11s"
+    exit: 0
+    ts: "2026-08-31T06:54:23Z"
+    seat: claude (build lane)
+
+  - claim: >-
+      The concrete counter-example that justified _GH_PRESENCE_CHECK_RE,
+      read from the two real files on disk (not a hand-fixture):
+      queue-baseline.sh and suite-growth-probe.sh's `command -v gh`
+      presence checks are correctly NOT flagged.
+    cmd: >-
+      pytest
+      scripts/tests/test_regulatory_watcher_gh_context.py::test_real_presence_check_files_are_not_falsely_flagged
+      -v
+    result: "1 passed in 0.08s"
+    exit: 0
+    ts: "2026-08-31T06:54:23Z"
+    seat: claude (build lane)
+
+  - claim: >-
+      spalla-review's finding (a gh call hiding inside backtick command
+      substitution nested in a dquoted string, the same class of gap as
+      agy's finding 1 but via the older syntax) is now correctly flagged.
+    cmd: >-
+      pytest
+      scripts/tests/test_regulatory_watcher_gh_context.py::test_guilt_gh_inside_backtick_inside_dquote_is_flagged
+      -v
+    result: "1 passed in 0.07s"
+    exit: 0
+    ts: "2026-08-31T06:54:24Z"
+    seat: claude (build lane)
+
+  - claim: >-
+      ruff clean and zsh syntax clean after the directory-wide/presence-
+      check/backtick round, plus confirmation that
+      test_declared_home_fork_pair_registered's failure (a DIFFERENT
+      declared pair, the regulatory-watcher AGENT SPEC not the wrapper
+      script) is pre-existing on origin/main and untouched by this branch
+      -- re-verified fresh this turn, not assumed from an earlier session.
+    cmd: >-
+      ruff check scripts/tests/test_regulatory_watcher_gh_context.py &&
+      zsh -n infra/launchagents/wrappers/regulatory-watcher-run.sh &&
+      pytest scripts/tests/test_regulatory_watcher_recover_delta.py
+      scripts/tests/test_regulatory_watcher_schema_fix.py
+      scripts/tests/test_cron_wrapper.py -q ; git diff --name-only
+      origin/main...HEAD | grep -i "home-fork\|declared-pairs"
+    result: >-
+      "All checks passed!" / zsh clean / "1 failed, 11 passed" (the
+      pre-existing, unrelated failure) / grep for home-fork paths in this
+      branch's diff: no match (exit 1) -- confirms this branch does not
+      touch infra/home-fork/declared-pairs.json at all.
+    exit: 1
+    ts: "2026-08-31T06:56:00Z"
+    seat: claude (build lane)
+
+dissent:
+  - seat: agy (Gemini 3.1 Pro, cross-family, non-Anthropic)
+    objection: >-
+      Dispatched on the FIRST commit (339fcb428) only, asked five specific
+      questions: does --repo actually solve real-launchd resolution; is the
+      heartbeat rc-capture correct zsh (quoting, EXIT-trap ordering,
+      possible clobber of _PROMOTE_RC); any risk from the hardcoded repo-slug
+      default; does find_unguarded_gh_calls have a constructible
+      false-positive or false-negative; anything else wrong or overstated.
+      Verdict returned: "VERDICT: CONFIRMED SAFE" on the core fix (--repo
+      resolution: "No failure mode identified"; heartbeat rc-capture:
+      "Correct" -- walked the EXIT trap / organism_hb_finalize logic itself
+      and confirmed a status already set to "error" survives finalize()
+      unchanged; default slug: "Negligible risk"). BUT it constructed two
+      concrete counter-examples against the checker itself: (1) a `gh` call
+      inside a `$(...)` nested inside a double-quoted string
+      (`summary="$(gh pr create --head feat)"`) was invisible to
+      find_unguarded_gh_calls -- a false negative; (2) an unrelated nested
+      subshell before a gh call inside the same cd-guard
+      (`(cd "$_wt" && (echo init) && gh pr view 123)`) made the old
+      last-open-paren heuristic conclude the guard had already closed -- a
+      false positive. Two minor additional observations: PR-number
+      extraction assumes `gh pr create`'s stdout is exactly the URL (already
+      handled gracefully downstream, pre-existing code, not introduced by
+      this diff); the test file needs the repo's venv pytest, not system
+      Python (expected, matches CLAUDE.md golden rule #1).
+    status: CONFIRMED
+    resolution: >-
+      Both counter-examples ACCEPTED and CURED before the second commit,
+      not merely noted: find_unguarded_gh_calls now tracks a `cmdsub`
+      lexical frame so a $(...) nested inside a double-quoted string is
+      correctly treated as live code, and _in_cd_subshell now walks a
+      proper paren stack (innermost STILL-OPEN paren) instead of
+      "last '(' with no ')' after it". The cmdsub fix introduced a new risk
+      of its own, found and cured in the SAME round before shipping: this
+      file's real commit-message heredoc contains a literal apostrophe in
+      its body ("checkout's"), which a naive "cmdsub content is just code"
+      treatment would misread as opening a stray single-quote -- heredocs
+      are now detected explicitly and their bodies treated as fully opaque.
+      Three new regression tests pin both fixes plus the heredoc-safety
+      correction (test_guilt_gh_inside_cmdsub_inside_dquote_is_flagged,
+      test_innocence_nested_subshell_before_gh_still_passes,
+      test_heredoc_with_apostrophe_in_body_does_not_corrupt_the_scan), all
+      passing (receipt above, 13/13). The two minor observations required
+      no code change (pre-existing/expected behavior) and are recorded
+      here, not silently dropped.
+
+  - seat: spalla-review/sonnet-5 (second independent pass, same-family but
+      dispatched fresh with no access to the build lane's reasoning beyond
+      the diff itself)
+    objection: >-
+      Dispatched on the full diff (both commits at the time: 339fcb428,
+      2c245ac2f), asked the same five questions as the agy round plus a
+      request for a counter-example DIFFERENT from agy's two. Own verdict
+      label: "CONCERNS, not a code-correctness problem -- everything in the
+      diff itself is sound and well-tested". Five findings: (1) the --repo
+      cure is correct AS CODE, but the live cron on Pro executes a SEPARATE
+      $HOME-fork copy (/Users/nuzantara/scripts/regulatory-watcher-run.sh,
+      declared pair infra/home-fork/declared-pairs.json, machines pro+m5)
+      that stays on the pre-fix version until refreshed post-merge --
+      `lint_home_fork.py --check` reports the pair clean today only because
+      it still compares against origin/main's pre-fix content, flipping to
+      DIVERGED the instant this PR merges; this is the single most
+      important finding. (2) heartbeat rc-capture is correct for the two
+      cases it handles (traced organism_hb_finalize's status=="starting"
+      guard by hand, confirmed no silent overwrite), but `gh pr merge
+      --auto` failing (line ~392) is PRE-EXISTING WARN-only/return-0 code
+      this diff does not touch -- an opened-but-unarmed PR would not
+      surface on the heartbeat, making the "cures the silence" framing
+      slightly broader than what is actually delivered. (3) no risk found
+      in the hardcoded REGWATCH_GH_REPO default. (4) four NEW checker
+      counter-examples, two found independently (backtick cmdsub nested in
+      a dquoted string -- false negative; a `case` statement pattern-arm's
+      `)` inside a `(cd && ...)` guard confusing the paren-stack heuristic
+      -- false positive) and two cross-checked from an ad hoc manual codex
+      dispatch after finding codex-spalla.sh's --full-auto broken on this
+      machine's codex-cli 0.149.1 (`--repo` appearing as a redirect-target
+      filename rather than a real flag -- false negative; two heredocs
+      opened on one physical line, only the first body correctly blanked
+      -- false positive); none of the four exist in any real file in
+      infra/launchagents/wrappers/ today (verified: no case statements
+      anywhere, backticks only inside comments, one isolated heredoc). (5)
+      scope/consistency across commits: clean, no dead code, no debug
+      artifacts, _PRE_FIX_SHA verified accurate.
+    status: CONFIRMED
+    resolution: >-
+      Findings (1) and (2) were NOT code-fixed in this diff -- both are
+      pre-existing/inherited (the HOME-fork copy predates this PR; the
+      auto-merge-arm WARN/return-0 path predates this PR too) and cicatrix-
+      superscar family #9 plus this repo's own "cure what the diff
+      introduces, spec what it inherits" discipline argue against a
+      fix-of-a-fix expanding this PR's blast radius. Both are instead
+      documented precisely: brief.yml risks now name the exact
+      lint_home_fork.py DIVERGED-flip mechanism for (1) and scope the
+      "cures the silence" claim exactly to the failure paths this diff
+      actually captures for (2), so neither is silently left implicit or
+      overclaimed. Of the four counter-examples in (4): the backtick gap
+      was FIXED (mirrors agy's $(...) fix, same "recognize live code inside
+      a dquoted string" strategy, new guilt test
+      test_guilt_gh_inside_backtick_inside_dquote_is_flagged, passing). The
+      other three (case-statement, argv-blind --repo, multi-heredoc) are
+      deliberately NOT fixed -- named explicitly in-code (bottom of
+      scripts/tests/test_regulatory_watcher_gh_context.py) and in this
+      pack's residual_risks, since none is exercised by any real file today
+      and each would meaningfully deepen an already hand-rolled lexer.
+      Finding (5) required no change. One thing this round's own
+      dispatch surfaced independently of its review content: while
+      re-verifying the teammate's directory-wide scope request (a
+      DIFFERENT ask from this dissent), the directory-wide scan found a
+      REAL false-positive (`command -v gh` presence checks in two actual
+      files) -- fixed the same round, receipt above.
+
+council_run: journal.jsonl
+
+residual_risks:
+  - "council_run (R9, Gear-3 quorum of >=2 distinct seats from
+    {codex-gpt-5.6-sol, kimi-code/k3, tp1-qwen3.8-max} posting to a
+    journal) carries only ONE qualifying seat (kimi-code/k3, logged as a
+    quota-exhaust attempt, not a completed review -- see journal.jsonl and
+    the R9 receipt above), plus TWO review rounds neither of which is a
+    COUNCIL_REVIEW_SEATS member (agy/Gemini, cross-family; spalla-review/
+    sonnet-5, same-family, which internally also cross-checked one finding
+    via an ad hoc manual codex dispatch after finding codex-spalla.sh
+    broken -- not a declared council seat either). R9 is NOTICE-only
+    through 2026-09-02 (one day after this pack's date); a NOTICE, not a
+    FAIL, is the expected and accepted outcome here. The hard requirement
+    -- `dissent` non-empty on a Gear-3 pack -- IS satisfied, twice over:
+    one cross-family seat (agy/Gemini) that found and fixed two real
+    defects in the checker, plus a same-family independent second pass
+    (spalla-review) that found and fixed one more checker defect plus two
+    real production-scope gaps (below), both pre-existing/inherited and
+    documented rather than patched inside this PR."
+  - "This PR cures the CODE path only. The live cron on Pro still runs
+    /Users/nuzantara/scripts/regulatory-watcher-run.sh (byte-identical to
+    origin/main's PRE-FIX version today, sha256 prefix af6715b64f039732 --
+    confirmed NOT a home-fork drift as of before this merge). Until that
+    copy is refreshed post-merge -- a separate, ledgered arming step the
+    conducting session owns, per this task's explicit instructions -- the
+    live cron keeps failing exactly as it has for ten days. Mechanism named
+    precisely by spalla-review: `scripts/lint_home_fork.py --check` reports
+    this declared pair CLEAN right now only because it still compares
+    against origin/main's pre-fix content -- it flips to DIVERGED the
+    moment this PR merges (the correct, existing antidote per
+    cicatrix-superscar family #1), provided that alert actually reaches
+    someone. A PENDING-ARMS ledger row was requested for this gap the same
+    round this pack was finalized (see PR body for the row/status)."
+  - "`gh pr merge --auto` failing (line ~392, PRE-EXISTING code this PR
+    does not change) only logs a WARN and still `return 0`s from
+    promote_delta_via_pr -- found by spalla-review, not fixed here per
+    'cure what the diff introduces, spec what it inherits': this diff's OWN
+    new failure paths (worktree-creation failure, push failure, `gh pr
+    create` failure) are all correctly captured and surfaced via the
+    heartbeat; the pre-existing WARN-only auto-merge-arm path is not. A PR
+    opened but left unarmed would not surface on the heartbeat. Narrower
+    than the ten-day silent failure this PR cures, not introduced or
+    widened by it -- the PR body's 'cures the silence' framing is scoped
+    precisely to avoid overclaiming this path."
+  - "find_unguarded_gh_calls remains a bounded, hand-written shell-lexeme
+    scanner, not a general shell parser, even after two rounds of
+    hardening. It is now validated directory-wide against every real *.sh
+    file in infra/launchagents/wrappers/ (53 files) plus a growing set of
+    hand-built guilt/innocence fixtures covering every concrete
+    counter-example found so far across both review rounds (echo-mentions-
+    gh, cmdsub-in-dquote, nested-subshell-before-gh, heredoc-with-
+    apostrophe, backtick-in-dquote, command-v/which/type presence checks).
+    Three further gaps found by spalla-review are named explicitly, not
+    silently accepted, at the bottom of
+    scripts/tests/test_regulatory_watcher_gh_context.py and left
+    deliberately unfixed because none is exercised by any real file in
+    this directory today: a `case` statement's pattern-terminating `)`
+    inside a `(cd && ...)` guard can false-positive a later legitimately-
+    guarded call; `--repo` detection is text-presence not argv-aware, so
+    `--repo` as a redirect-target filename would misread as a guard; two
+    heredocs opened on one physical line only have the first body
+    correctly blanked. Not claimed correct against arbitrary future shell
+    constructs this file's own author has not yet written."
+
+sources: []
