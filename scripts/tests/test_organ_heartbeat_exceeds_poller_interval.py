@@ -37,11 +37,32 @@ entirely — a test wired to it could never be proven GREEN anywhere except
 one machine's dirty disk. So the poller interval is read instead from a
 committed, byte-verified fixture copy of that same live plist (see
 scripts/tests/fixtures/organ_heartbeat_cadence/README.md for the full
-provenance note and its staleness caveat) — a real plist, parsed by the
-real plistlib code path, just living somewhere every checkout actually has
-it. This also sidesteps a second tension in the obvious source: content
-mirrored from `~/Library/LaunchAgents` is arguably itself a live-machine
-read, which this guard is required to avoid.
+provenance note) — a real plist, parsed by the real plistlib code path,
+just living somewhere every checkout actually has it. This also sidesteps
+a second tension in the obvious source: content mirrored from
+`~/Library/LaunchAgents` is arguably itself a live-machine read, which
+this guard is required to avoid.
+
+--- Why the fixture is the ONLY arithmetic source (no live-preferred read) ---
+An earlier revision of this test preferred `_snapshot-live` when present and
+fell back to the fixture otherwise. That is itself the exact disease this
+guard exists to cure, one level up: Pro's live checkout and every other
+checkout (CI, a fresh worktree) would silently compute the invariant from
+two DIFFERENT numbers with nothing anywhere flagging that they disagree. If
+the bridge's real interval ever drifted from the fixture, Pro would judge
+organs by one required-margin and CI by another — an instrument answering
+whichever question the machine it runs on happens to pose, exactly the
+under-match this repo's cicatrix family #3 doctrine warns about (silent
+per-machine divergence in a guard's own verdict). So
+`test_bridge_fed_organs_declare_a_safe_multiple_of_the_poller_interval`
+below reads ONLY the committed fixture — there is exactly one verdict,
+everywhere, always. `test_fixture_plist_matches_live_snapshot_when_present`
+is the armed drift check: it compares the fixture against the live
+snapshot WHENEVER the live snapshot is present (only ever true on Pro's
+live checkout, the one place the ground truth is observable) and is the
+ONLY assertion in this file allowed to skip — and only for the one
+legitimate reason, the live snapshot's absence, named explicitly in the
+skip reason. The arithmetic test itself never skips.
 
 Only organs present in BOTH the bridge and the registry are in scope: an
 id the bridge writes but the registry never declares is not iterated by
@@ -65,16 +86,19 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# The literal, obvious source — read preferentially when it happens to be
-# present (e.g. a live Pro checkout with a fresh DR-snapshot run) so this
-# guard reflects reality rather than a fixture the instant both exist.
+# The literal, obvious source. NEVER read by the arithmetic test below (see
+# "Why the fixture is the ONLY arithmetic source" above) — used only by
+# test_fixture_plist_matches_live_snapshot_when_present, the drift check
+# that runs when this happens to be present (in practice, only on Pro's
+# own live checkout).
 _LIVE_SNAPSHOT_PLIST = (
     REPO_ROOT
     / "infra/launchagents/_snapshot-live/com.nuzantara.launchagent-state-bridge.plist"
 )
-# The committed fallback (see this directory's README.md) — the only copy
-# guaranteed present in a fresh origin/main checkout, a CI runner, or the
-# worktree every agent session is required to use.
+# The SOLE source for the arithmetic test (see this directory's README.md
+# for full provenance) — the only copy guaranteed present in a fresh
+# origin/main checkout, a CI runner, or the worktree every agent session is
+# required to use.
 _FIXTURE_PLIST = (
     Path(__file__).resolve().parent
     / "fixtures/organ_heartbeat_cadence/com.nuzantara.launchagent-state-bridge.plist"
@@ -109,19 +133,19 @@ def _load_plist_interval(path: Path) -> int | None:
     return interval
 
 
-def _read_poller_interval_seconds() -> tuple[int, Path]:
-    live = _load_plist_interval(_LIVE_SNAPSHOT_PLIST)
-    if live is not None:
-        return live, _LIVE_SNAPSHOT_PLIST
-    fixture = _load_plist_interval(_FIXTURE_PLIST)
-    if fixture is not None:
-        return fixture, _FIXTURE_PLIST
+def _read_poller_interval_seconds() -> int:
+    """The SOLE arithmetic source — deliberately the fixture only, never a
+    live-preferred read. See this file's module docstring ("Why the fixture
+    is the ONLY arithmetic source") for why: preferring a live snapshot when
+    present would let this guard compute a different verdict on Pro than
+    everywhere else, silently, the moment the two ever disagreed."""
+    interval = _load_plist_interval(_FIXTURE_PLIST)
+    if interval is not None:
+        return interval
     pytest.fail(
-        "cannot read the bridge's poll interval from EITHER "
-        f"{_LIVE_SNAPSHOT_PLIST} (live DR snapshot, absent on this checkout "
-        "by design — see this file's module docstring) OR "
-        f"{_FIXTURE_PLIST} (committed fallback) — both missing or "
-        "unparseable. This must fail, not skip."
+        f"cannot read the bridge's poll interval from the committed fixture "
+        f"{_FIXTURE_PLIST} — missing or unparseable. This must fail, not "
+        "skip."
     )
 
 
@@ -172,7 +196,7 @@ def _is_liveness_exempt(organ: dict) -> bool:
 
 
 def test_bridge_fed_organs_declare_a_safe_multiple_of_the_poller_interval():
-    interval, interval_source = _read_poller_interval_seconds()
+    interval = _read_poller_interval_seconds()
     bridge_ids = _read_bridge_organ_ids()
     registry = _read_registry_organs()
 
@@ -209,7 +233,7 @@ def test_bridge_fed_organs_declare_a_safe_multiple_of_the_poller_interval():
             f"{len(violations)} bridge-fed organ(s) in {REGISTRY_PATH.relative_to(REPO_ROOT)} "
             "declare expected_hb_seconds below a safe multiple of the bridge's own poll "
             "interval — an organ cannot beat faster than the poller writing its heartbeat.",
-            f"poller interval (StartInterval, source={interval_source.relative_to(REPO_ROOT)}): "
+            f"poller interval (StartInterval, source={_FIXTURE_PLIST.relative_to(REPO_ROOT)}): "
             f"{interval}s",
             f"required minimum ({REQUIRED_MULTIPLE} x interval): {required_min}s",
             "",
@@ -223,3 +247,48 @@ def test_bridge_fed_organs_declare_a_safe_multiple_of_the_poller_interval():
                 f"staleness at {expected}s)"
             )
         pytest.fail("\n".join(lines))
+
+
+def test_fixture_plist_matches_live_snapshot_when_present():
+    """The armed half of the fixture's staleness caveat — NOT the arithmetic
+    guard above, which always reads the fixture and never this live path.
+
+    When Pro's live DR snapshot happens to be present (only ever true on
+    Pro's own live checkout, as an untracked side effect of its daily
+    plist_snapshot_dr.sh cron — see the module docstring), assert it is
+    structurally identical to the committed fixture. This is the ONLY
+    assertion in this file allowed to skip, and only for the one legitimate
+    reason: the live snapshot is a machine-local artifact that cannot exist
+    in CI or a fresh worktree by design, not a missing precondition this
+    test can do anything about. A present-but-unparseable live snapshot is
+    NOT the skip case — that fails loudly, same as everywhere else in this
+    file.
+
+    This is where fixture drift actually gets caught: the live snapshot is
+    only ever observable on the one machine that also runs the real organs,
+    so that is the only place a divergence CAN be caught.
+    """
+    if not _LIVE_SNAPSHOT_PLIST.is_file():
+        pytest.skip(
+            f"live DR snapshot absent at {_LIVE_SNAPSHOT_PLIST} — expected "
+            "off Pro's live main checkout (that whole directory is "
+            "gitignored everywhere else, see this file's module docstring) "
+            "— cannot check fixture freshness against it here"
+        )
+
+    try:
+        with _LIVE_SNAPSHOT_PLIST.open("rb") as fh:
+            live_data = plistlib.load(fh)
+    except Exception as exc:  # noqa: BLE001 - present-but-corrupt must FAIL, not skip
+        pytest.fail(f"cannot parse {_LIVE_SNAPSHOT_PLIST} with plistlib: {exc}")
+
+    with _FIXTURE_PLIST.open("rb") as fh:
+        fixture_data = plistlib.load(fh)
+
+    assert live_data == fixture_data, (
+        f"{_FIXTURE_PLIST} has drifted from the live plist at "
+        f"{_LIVE_SNAPSHOT_PLIST} — the arithmetic test above always reads "
+        "the fixture (never the live file), so a stale fixture silently "
+        "changes the required-margin computation everywhere, not just on "
+        "this machine. Update the fixture to match live, byte for byte."
+    )
