@@ -547,16 +547,16 @@ def _unarmed_dirty_removal_target(cmd_scan: str, cwd: str) -> pathlib.Path | Non
 
 # --- W79 B1: shell file-WRITE detection ----------------------------------------
 # Quick gate: does the command contain anything that could write a file?
-WRITE_HINT_RE = re.compile(r"(>>?|\btee\b|\bsed\b[^|]*-i|\bdd\b[^|]*\bof=|\b(?:cp|mv|install)\b)")
+WRITE_HINT_RE = re.compile(r"(>>?|\btee\b|\bsed\b[^|\n]*-i|\bdd\b[^|\n]*\bof=|\b(?:cp|mv|install)\b)")
 # Extractors for write TARGETS. Each yields candidate destination path(s).
 # Redirect:  ... > path   or  ... >> path   (NOT >&, NOT >/dev/null handled by classifier)
-REDIR_RE = re.compile(r"(?:[0-9]?>|&>)>?\s*([^\s|;&)]+)")  # stdout/stderr/combined redirects
+REDIR_RE = re.compile(r"(?:[0-9]?>|&>)>?[ \t]*([^\s|;&)]+)")  # stdout/stderr/combined redirects
 # tee [-a] path...   (path before next pipe/redirect)
-TEE_RE = re.compile(r"\btee\s+(?:-a\s+)?([^\s|;&)]+)")
+TEE_RE = re.compile(r"\btee[ \t]+(?:-a[ \t]+)?([^\s|;&)]+)")
 # sed -i ... LAST-non-flag-token is the file (best-effort: take tokens after the script)
-SEDI_RE = re.compile(r"\bsed\b[^|;&]*?-i\S*\s+(?:-e\s+\S+\s+|'[^']*'\s+|\"[^\"]*\"\s+|\S+\s+)([^\s|;&)]+)")
+SEDI_RE = re.compile(r"\bsed\b[^|;&\n]*?-i\S*[ \t]+(?:-e[ \t]+\S+[ \t]+|'[^'\n]*'[ \t]+|\"[^\"\n]*\"[ \t]+|\S+[ \t]+)*([^\s|;&)]+)")
 # dd of=path
-DDOF_RE = re.compile(r"\bdd\b[^|;&]*?\bof=([^\s|;&)]+)")
+DDOF_RE = re.compile(r"\bdd\b[^|;&\n]*?\bof=([^\s|;&)]+)")
 # cp/mv/install SRC... DEST  → DEST is the last non-flag token before pipe/sep
 # W119 (2026-08-18): same cross-line-bleed defect as RM_RF_RE / WT_REMOVE_GIT_RE
 # above — `\s+` as the inter-token separator inside a repeated group matches a
