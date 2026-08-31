@@ -2,7 +2,7 @@
 """imigrasi.go.id scoped mirror — crawl, snapshot, diff, alert.
 
 Usage:
-    run.py --tier daily              # 9 pages: 4 subject lists + FAQ + index + 3 regional
+    run.py --tier daily              # 15 pages (count asserted in urls.py, not narrated here)
     run.py --tier weekly             # 114 per-visa-code pages
     run.py --tier all                # everything
     run.py --select parent,voa,bvk,calling,faq-evoa   # ad-hoc subset (dry-run scope)

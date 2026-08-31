@@ -28,8 +28,17 @@ import type { CSSProperties } from "react";
  *
  * CONTRAST (WCAG 2.x, every ratio COMPUTED — R4 §4 forbids estimating them;
  * recomputed against these exact values by
- * `scripts/tests/test_merah_putih_day_contrast.py`, which fails the build if any
- * pair below drifts):
+ * `scripts/tests/test_merah_putih_day_contrast.py`, which goes red on any PR that
+ * touches this file if a pair below drifts — via `.github/workflows/
+ * merah-putih-day-contrast.yml`. That workflow was added 2026-08-31; before it, this
+ * sentence read "fails the build", and it was FALSE: no workflow named the guard at
+ * all, so the only place it ran was a nightly `continue-on-error` sweep that gates
+ * nothing. Prose claiming enforcement that CI does not back is worth less than no
+ * claim at all, because it stops the next reader from checking — which is why the
+ * replacement is deliberately narrow: that check is ADVISORY. It RUNS and it goes
+ * RED, visibly, on the pull request; it is not a required context and does not block
+ * the merge queue. Do not upgrade this sentence to "blocks" without first putting the
+ * context into branch protection):
  *   ink       #16213a on carta 14.79 · on elevated 16.00
  *   ink-soft  #475372 on carta  7.07 · on elevated  7.64
  *   muted     #6f6a5e on carta  4.98
@@ -99,8 +108,19 @@ export const MERAH_PUTIH_DAY_VARS = {
   // day ground before this line existed: banner body text 2.56:1, links
   // 2.90:1, and white on the dismiss button 2.90:1 — all under the 4.5:1
   // floor, on a fixed-bottom consent bar every non-consented visitor sees.
-  // That is a REGRESSION THIS MIGRATION CAUSED: the same #94a3b8 measured
-  // 6.25:1 against the navy ground it was chosen for.
+  //
+  // TWO OF THOSE THREE ARE THIS MIGRATION'S DOING; THE THIRD IS NOT, and the
+  // first version of this comment blamed all three (corrected 2026-08-31 after
+  // measuring the OLD design). Body text and links are ours: #94a3b8 measured
+  // 6.25:1 against the navy it was chosen for and 2.56:1 against paper — the
+  // ground moved, the token did not. The dismiss BUTTON is white on
+  // `--bz-accent`, and both of those colours are element-local: a page-ground
+  // change cannot move that ratio at all. A walk of the pre-migration
+  // production measured that same button at 2.9:1 — it was already failing,
+  // and this token mapping now fixes a defect that predates the lane rather
+  // than one it introduced. Keeping the true and the false attribution in one
+  // sentence would have taught the next reader that a ground change can break
+  // an element-local pair, which is exactly the reasoning error to avoid here.
   //
   // Restated here rather than edited in ConsentBanner, deliberately: that
   // component is shared with the rest of the /visa funnel, which is still on
