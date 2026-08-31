@@ -374,3 +374,102 @@ def test_seeder_does_not_read_a_pin_from_the_committed_roster() -> None:
         "was removed. If it was replaced, point this test at the replacement "
         "rather than deleting the check."
     )
+
+
+def test_the_voa_prices_are_the_ones_the_owner_ruled():
+    """e-VOA 790.000 IDR, extension 850.000 IDR — ruled by the owner on
+    2026-08-31 after the CRM was found quoting 750.000 for the same service.
+
+    This is a value tripwire, not a style check. `practice_types.base_price`
+    defaults a client quote (`crm_practices.py`), the JSON drives GARUDA and
+    the visa_engine adapter at request time, and nothing reconciles the two —
+    so a silent edit to either figure re-opens the divergence migration 302
+    closed. If the owner rules a new price, change it here in the same commit.
+    """
+    import json
+    import re
+    from pathlib import Path
+
+    from backend.services.pricing.pricing_service import _PRICING_FILENAME
+
+    backend_dir = Path(__file__).resolve().parents[1]
+
+    # --- side 1: the JSON sheet the live pricing service loads.
+    # The filename comes from the service, never typed here: a tripwire that
+    # watches a path the service has stopped reading is worse than none.
+    sheet = json.loads(
+        (backend_dir / "data" / _PRICING_FILENAME).read_text(encoding="utf-8")
+    )
+    single = sheet["services"]["single_entry_visas"]
+    assert single["B1 Visa on Arrival (VOA)"]["price"] == "790.000 IDR"
+    assert single["B1 Visa on Arrival Extension"]["price"] == "850.000 IDR"
+
+    # --- side 2: practice_types.base_price, which is the half that was WRONG.
+    # There is no live database in a unit test, and regex-parsing SQL to work
+    # out a column's final value would be a second, worse implementation of
+    # the migration runner. So this is a RATCHET, not a parser: the set of
+    # migrations that touch each code is frozen, and the ruled figure must
+    # appear in the newest of them. A future migration that moves either
+    # price cannot do so silently — it enters the set, the set stops matching,
+    # and whoever wrote it has to come here and say what the new price is.
+    ruled = {
+        "visa_b1_voa": (790000, {"221_practice_types_b1_voa.sql",
+                                 "302_practice_types_voa_price_790.sql"}),
+        "ext_b1_voa": (850000, {"221_practice_types_b1_voa.sql"}),
+    }
+    migrations = sorted(
+        (backend_dir / "db" / "migrations_v2").glob("*.sql"),
+        key=lambda f: int(f.name.split("_", 1)[0]),
+    )
+    assert migrations, "no migrations_v2/*.sql found — the glob is watching nothing"
+
+    for code, (expected, expected_files) in ruled.items():
+        touching = []
+        for path in migrations:
+            forward = path.read_text(encoding="utf-8").split("-- === ROLLBACK ===")[0]
+            # Comments narrate history — 302's header quotes the OLD price —
+            # so only executable lines count as touching the code.
+            body = "\n".join(
+                line for line in forward.splitlines()
+                if not line.lstrip().startswith("--")
+            )
+            if f"'{code}'" in body and "base_price" in body:
+                touching.append((path.name, body))
+
+        assert {name for name, _ in touching} == expected_files, (
+            f"the set of migrations that set base_price for {code!r} has "
+            f"changed: expected {sorted(expected_files)}, found "
+            f"{sorted(name for name, _ in touching)}. If a new migration "
+            "moves this price, update the ruled figure here in the same "
+            "commit — that is what this ratchet is for."
+        )
+        newest_name, newest_body = touching[-1]
+
+        # Read the value out of the ASSIGNMENT, never "the figure appears
+        # somewhere in the file". 302's guard clause and its exception message
+        # both contain the literal 790000, so a substring check is satisfied by
+        # a file whose SET clause says something else entirely — measured: the
+        # gate mutated only `SET base_price = 790000` to 750000 and the earlier
+        # version of this assertion stayed green.
+        assigned = [int(v) for v in re.findall(
+            r"\bSET\s+base_price\s*=\s*(\d+)", newest_body, re.I
+        )]
+        if not assigned:
+            # An INSERT rather than an UPDATE: 221 seeds both codes positionally.
+            # Slice the one VALUES tuple that names this code and read its
+            # numeric literals — bounded to that tuple, not a SQL parser.
+            start = newest_body.index(f"'{code}'")
+            tuple_text = newest_body[start:newest_body.index(")", start)]
+            assigned = [int(v) for v in re.findall(r"\b(\d{5,})\b", tuple_text)]
+
+        assert assigned, (
+            f"{newest_name} is the newest migration touching base_price for "
+            f"{code!r}, but no assignment could be read out of it. The shape "
+            "changed; re-read the file rather than loosening this check."
+        )
+        assert set(assigned) == {expected}, (
+            f"{newest_name} is the newest migration setting base_price for "
+            f"{code!r}, and it assigns {sorted(set(assigned))} rather than the "
+            f"ruled {expected}. The database half of the price has drifted "
+            "from the sheet half — exactly the divergence migration 302 closed."
+        )
