@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-raw-lane-output-synthesis-carries-the-review
+---
+
 ```markdown
 ---
 lane: X1 — THE GLOBAL STATE OF WEB DESIGN, 2026

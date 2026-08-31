@@ -4,6 +4,7 @@ seat: Qwen
 date: 2026-08-31
 sources_verified_live: 0
 sources_from_memory: 23
+adversarial_review: exempt-raw-lane-output-synthesis-carries-the-review
 ---
 
 ## Executive summary

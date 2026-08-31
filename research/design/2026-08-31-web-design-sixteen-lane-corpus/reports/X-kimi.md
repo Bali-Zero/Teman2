@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-raw-lane-output-synthesis-carries-the-review
+---
+
 • I'll verify a handful of load-bearing sources before writing, then produce the report.
 
 • Two sources verified. Let me try the Material 3 dark-theme page and one more before writing.

@@ -4,6 +4,7 @@ seat: Claude Opus 5 (1M context), effort xhigh
 date: 2026-08-31
 sources_verified_live: 23
 sources_from_memory: 5
+adversarial_review: exempt-raw-lane-output-synthesis-carries-the-review
 ---
 
 ## Executive summary

@@ -3,6 +3,7 @@ date: 2026-08-31
 domain: design
 client_case: none
 sources: 365
+adversarial_review: exempt-navigational-index-synthesis-carries-the-review
 ---
 
 # Web design sixteen-lane corpus — 2026-08-31

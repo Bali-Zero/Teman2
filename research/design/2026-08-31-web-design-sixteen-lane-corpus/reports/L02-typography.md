@@ -4,6 +4,7 @@ seat: Claude Sonnet 5
 date: 2026-08-31
 sources_verified_live: 27
 sources_from_memory: 5
+adversarial_review: exempt-raw-lane-output-synthesis-carries-the-review
 ---
 
 ## Executive summary

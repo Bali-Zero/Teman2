@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-input-brief-issued-before-the-research-not-a-finding
+---
+
 # RESEARCH CONTRACT — Bali Zero web design, 2026 state of the art
 
 Read this before you research anything. It defines who the client is, what the work is for, and the

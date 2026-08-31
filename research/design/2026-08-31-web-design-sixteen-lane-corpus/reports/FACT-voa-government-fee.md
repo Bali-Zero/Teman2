@@ -3,6 +3,7 @@ date: 2026-08-31
 domain: visa
 topic: e-VOA / VOA government fee (PNBP) — contested figure reconciliation
 sources: primary (imigrasi.go.id, evisa.imigrasi.go.id, peraturan PP 45/2024 PDF) + secondary (Indonesian news outlets, DNS lookup)
+adversarial_review: exempt-raw-lane-output-synthesis-carries-the-review
 ---
 
 ## VERDICT (read this first)

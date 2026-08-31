@@ -1,3 +1,7 @@
+---
+adversarial_review: qwen-3.8-max
+---
+
 # SYNTHESIS — sixteen lanes, read together
 
 **Corpus**: twelve web-grounded lanes (L01–L12) + four cross-family seats (X-agy Gemini 3.1 Pro, X-codex GPT-5.6, X-kimi Kimi K3, X-qwen Qwen 3.8 Max). Aggregate source ledger as declared by the lanes themselves: **254 `VERIFIED-LIVE`, 111 `FROM-MEMORY (unverified)`**.
@@ -654,3 +658,26 @@ was aimed at.
 
 `#141218` (§5, and gate 10) is a Material 3 hex carried without the `[M]` mark that §7.4's own rule
 requires. Marked here rather than left for the next reader to trip over.
+
+## Adversarial review
+
+Two rounds, two model families, neither of them the author, and the seat that repaired the lint
+was disqualified from reviewing it.
+
+- **Round 1 — kimi-code/k3** (38 findings), given the doctrine and its lint and asked to
+  RECOMPUTE, not to opine. Four of its findings landed in this file: WCAG SC 1.4.3 states its
+  large-text threshold in POINTS, not pixels (gate 2 is now 24px / 18.66px bold); gates 8 and 9
+  contradicted this document's own 1.2-1.6x dark-travel multiplier, so the dark step is now
+  DERIVED at >= +4.2 L; gate 112's success-state duration is clamped to the `slow` token at
+  300-320ms.
+- **Round 2 — tp1-qwen3.8-max** (18 findings), told what round 1 had already fixed so it could not
+  spend its pass re-finding them. Its findings fell on the lint rather than on this capture.
+- **One of round 1's own corrections was WRONG and was retracted the same day**: it struck a true,
+  live-verified Baymard figure on the grounds that the lane carried a different measurement. The
+  lane carries TWO distinct 60% figures and the cited one is verbatim the second. Recorded as
+  F9-bis in the doctrine's `## Corrections` table rather than reverted quietly.
+
+**Scope, stated so it is not over-read**: what was refuted is this synthesis and the doctrine
+derived from it. The individual lane reports under `reports/` were NOT each independently
+re-refuted — they are the raw material this file synthesises, and they carry
+`adversarial_review: exempt-...` saying exactly that.
