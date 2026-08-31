@@ -85,8 +85,35 @@ date,date) … AS $$ SELECT true $$` made the function form return `true` while
 against the live cluster read-only, `SELECT count(*) FROM pg_proc WHERE
 proname='overlaps'` returns **13** overloads, against a positive control of
 **0** for `coalesce`/`nullif`/`case`. The catalogue-presence probe is the
-cheaper of the two and needs no write: a name with zero `pg_proc` rows cannot
-be shadowed in function form, a name with rows can.
+cheaper of the two and needs no write: **provided the SQL spells the name
+unquoted**, a name with zero `pg_catalog.pg_proc` rows cannot be shadowed in
+function form, and a name with rows can.
+
+That proviso is not decoration, and the sentence was wrong without it. The
+property belongs to _(name x spelling)_, not to the name: a quoted identifier
+bypasses the grammar entirely and reaches the shadow even at zero catalogue
+rows. Measured on PG 17.10 under `search_path = public, pg_catalog`, with
+`trim` and `array` — both zero-row entries on the list above:
+
+    CREATE FUNCTION public."trim"(text)  ... AS $$ SELECT 'FORGED' $$;
+    "trim"('  x  ')  -> FORGED        trim('  x  ')  -> x
+    CREATE FUNCTION public."array"(text) ... AS $$ SELECT 'FORGED' $$;
+    "array"('x')     -> FORGED
+
+Not a live hole — this module never quotes an identifier — but an unqualified
+absolute in the artifact whose job is to stop unqualified absolutes is the
+defect this document exists to name, and it was mine. It sharpens **R1** and
+**R3**: an extractor must distinguish the quoted form, which is an ordinary
+`search_path` lookup for ANY name, from the bare form, where the grammar can
+win.
+
+The full 16-entry sweep, `pg_catalog`-scoped, has since been run: only
+`extract` (6 overloads) and `position` (3) have rows, and both were
+re-measured rather than inferred — `position('b','abc')` and
+`extract('year', date ...)` are syntax errors unquoted, while the grammar forms
+`position(a in b)` / `extract(y from d)` resolve to `pg_catalog` with a shadow
+installed. Both therefore stay on the list. Controls behaved: `overlaps` 13,
+`substring` 8, `count` 2, `string_agg` 2, `array_agg` 2.
 
 That this entry survived is the point of **R2** and **R3** below, not an
 exception to them: it was reasoned about ("OVERLAPS is SQL grammar") instead of
