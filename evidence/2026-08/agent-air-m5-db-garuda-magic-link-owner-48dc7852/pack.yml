@@ -50,7 +50,7 @@ seat_diversity_note:
   the author's own tests did not cover."
 diff:
   net_lines:
-    "8 files, +896/-0, computed by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
+    "8 files, +904/-0, computed by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
     One new .sql migration, two touched Python files (the live preflight check and its independently
     frozen authority), one new design spec, and this evidence set (pack, brief, council journal).
     Zero frontend, zero workflow, zero runtime request path. The count DROPPED from 1410: the static
