@@ -134,8 +134,8 @@ REPO_ROOT = _derive_repo_root()
 # `stash list` / `stash show` pass; bare `git stash` (= stash push) and every
 # mutating stash verb still match — the guard matches intent, not bare token.
 BLOCKED_SUBCMD_RE = re.compile(
-    r"\bgit\s+(?:-c\s+\S+\s+)*"  # optional -c key=val flags
-    r"(?:-C\s+\S+\s+)?"  # optional -C path
+    r"\bgit[ \t]+(?:-c[ \t]+\S+[ \t]+)*"  # optional -c key=val flags
+    r"(?:-C[ \t]+\S+[ \t]+)?"  # optional -C path
     r"(checkout|switch|stash(?!\s+(?:list|show)\b)|reset|merge|rebase|pull)\b"
     r"|\bgit\s+commit\s+(?:[^\s]+\s+)*(?:-[A-Za-z]*a|--all\b)"  # commit -a / -am / -a -m / --all
     r"|\bgit\s+add\s+(?:-A|-a|--all|\.)"  # add -A / add -a / add --all / add .
@@ -155,14 +155,21 @@ BLOCKED_SUBCMD_RE = re.compile(
     # spells only when `n` happens to come last). Form vs entity, family #3.
     # Declared limit: a stray ` -n…` elsewhere in the same segment spares the
     # command — erring toward NOT blocking on an exotic shape, never the reverse.
-    r"|\bgit\s+(?:-c\s+\S+\s+)*(?:-C\s+\S+\s+)?clean\b"
+    r"|\bgit[ \t]+(?:-c[ \t]+\S+[ \t]+)*(?:-C[ \t]+\S+[ \t]+)?clean\b"
     r"(?![^;&|\n]*(?:--dry-run\b|\s-[A-Za-z]*n))"  # -n anywhere in a cluster, or --dry-run
     r"[^;&|\n]*(?:--force\b|\s-[A-Za-z]*f)"  # --force, or -f anywhere in a cluster
-    r"|\bgit\s+(?:-c\s+\S+\s+)*(?:-C\s+\S+\s+)?restore\b"  # discards the worktree copy
+    r"|\bgit[ \t]+(?:-c[ \t]+\S+[ \t]+)*(?:-C[ \t]+\S+[ \t]+)?restore\b"  # discards the worktree copy
 )
 
 # Extract `git -C <path>` target.
-GIT_C_RE = re.compile(r"\bgit\s+(?:-c\s+\S+\s+)*-C\s+(\S+)")
+# W119c (2026-08-31): every `\s+` here is SAME-LINE (`[ \t]+`). A bash Tool call is
+# several statements joined by bare newlines, so an unbounded `\s+` let a line ENDING
+# in a dangling `git -C` pair with the first token of the NEXT statement: the guard
+# then judged that statement against a target it invented. Measured on main before
+# this fix: `"git -C\nsomething && git reset --hard"` returned target `something`
+# (external, allowed) where the same `git reset --hard` alone returned the main
+# checkout (blocked). Direction matters — this one is FAIL-OPEN, not a false block.
+GIT_C_RE = re.compile(r"\bgit[ \t]+(?:-c[ \t]+\S+[ \t]+)*-C[ \t]+(\S+)")
 
 # Extract `cd <path> && git ...` target.
 CD_GIT_RE = re.compile(r"\bcd\s+(\S+)\s*(?:&&|;)\s*git\b")
@@ -187,7 +194,7 @@ CD_GIT_RE = re.compile(r"\bcd\s+(\S+)\s*(?:&&|;)\s*git\b")
 #   worktree carries no runtime state, which is also the cheap way out when this
 #   block is wrong (never `AGENT_WORKTREE_ENFORCEMENT=false`).
 REMOTE_DISCARD_RE = re.compile(
-    r"\bgit\s+(?:-c\s+\S+\s+)*(?:-C\s+\S+\s+)?"
+    r"\bgit[ \t]+(?:-c[ \t]+\S+[ \t]+)*(?:-C[ \t]+\S+[ \t]+)?"
     # `[^;&|\n]*?` excludes \n on purpose: W84 was born of a class that ate
     # newlines and fused two commands into one phantom target.
     r"(?:reset\b[^;&|\n]*?--hard\b"  # reset --hard (flags may sit before it)
@@ -947,7 +954,7 @@ def _effective_git_target(cmd: str, default_cwd: str) -> str:
 # --ff-only as a real argument of the pull segment: after `git [...] pull`, only
 # non-separator, non-comment characters may precede it on the same segment.
 FFONLY_PULL_SEGMENT_RE = re.compile(
-    r"\bgit\s+(?:-c\s+\S+\s+)*(?:-C\s+\S+\s+)?pull\b[^|;&#\n]*--ff-only(?!\S)"
+    r"\bgit[ \t]+(?:-c[ \t]+\S+[ \t]+)*(?:-C[ \t]+\S+[ \t]+)?pull\b[^|;&#\n]*--ff-only(?!\S)"
 )
 
 

@@ -97,7 +97,11 @@ SEDI_RE = re.compile(r"\bsed\b[^|;&\n]*?-i\S*[ \t]+(?:-e[ \t]+\S+[ \t]+|'[^'\n]*
 DDOF_RE = re.compile(r"\bdd\b[^|;&\n]*?\bof=([^\s|;&)]+)")
 CPMV_RE = re.compile(r"\b(?:cp|mv|install)\b((?:[ \t]+(?:-\S+|[^\s|;&)]+))+)")
 # Read commands whose FIRST file arg, if a secret, triggers a WARN.
-READ_CMD_RE = re.compile(r"\b(cat|less|more|head|tail|bat)\b\s+((?:-\S+\s+)*)([^\s|;&)]+)")
+# W119c (2026-08-31): SAME-LINE whitespace only. With `\s+` a line ending in a bare
+# `cat` paired with the next statement's first token, and because `_read_hits_secret`
+# uses `.search()` (first match wins), that phantom consumed the one search — a REAL
+# secret read later in the same command was never reached and its WARN never fired.
+READ_CMD_RE = re.compile(r"\b(cat|less|more|head|tail|bat)\b[ \t]+((?:-\S+[ \t]+)*)([^\s|;&)]+)")
 
 
 def _strip_noise(cmd: str) -> str:
