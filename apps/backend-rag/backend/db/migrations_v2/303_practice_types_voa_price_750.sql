@@ -61,8 +61,16 @@ BEGIN
      WHERE code = 'visa_b1_voa';
 
     IF current_price IS NULL THEN
-        RAISE NOTICE 'practice_types row visa_b1_voa is absent -- skipping; this database has not applied migration 221';
-        RETURN;
+        -- RAISE, never NOTICE-and-RETURN. 302 took the softer path and the
+        -- codex-gpt-5.6-sol seat was right that it is a hole: the runner's
+        -- generic verification always returns True (migration_base.py:587) and
+        -- records the ledger regardless (migration_base.py:699), so a database
+        -- whose row was deleted or corrupted ends with 303 marked applied and
+        -- NO VOA price at all. There is no fresh-environment cost to raising:
+        -- 221 INSERTs this row unconditionally and runs first, so in ordered
+        -- application the row always exists by the time 303 runs.
+        RAISE EXCEPTION
+            'migration 303: practice_types row visa_b1_voa is ABSENT -- this database is missing what migration 221 seeds; refusing to record a price alignment that aligned nothing';
     END IF;
 
     IF current_price IS DISTINCT FROM 750000 THEN
@@ -75,9 +83,15 @@ $$;
 
 -- === ROLLBACK ===
 
--- Reinstates the superseded 2026-07-24 figure. Exists for local/CI teardown,
--- not as an operational option: running it puts the CRM back at a price the
--- owner has explicitly reversed.
+-- Reinstates the superseded 2026-07-24 figure. NOT an operational option, and
+-- weaker than "local/CI teardown" too -- the codex seat measured why, and it is
+-- a property of the runner rather than of this file: a rollback deletes only
+-- the _schema_versions row (migration_manager.py:250) and leaves the
+-- schema_migrations ledger, while _is_applied consults the surviving ledger by
+-- NAME (migration_base.py:488). So the next apply-all skips the forward section
+-- and silently re-creates the missing ledger row, leaving the price at 790000
+-- behind a green run. Rolling this back therefore needs BOTH ledgers cleared by
+-- hand. Ledgered as an inherited runner defect, not fixed here.
 UPDATE practice_types
    SET base_price = 790000,
        updated_at = CURRENT_TIMESTAMP

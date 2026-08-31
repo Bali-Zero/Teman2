@@ -428,6 +428,90 @@ def test_the_voa_prices_are_the_ones_the_owner_ruled():
     )
     assert migrations, "no migrations_v2/*.sql found — the glob is watching nothing"
 
+    def _forward_body(path: Path) -> str:
+        """Executable lines of the forward section — comments narrate history."""
+        forward = path.read_text(encoding="utf-8").split("-- === ROLLBACK ===")[0]
+        return "\n".join(
+            line for line in forward.splitlines()
+            if not line.lstrip().startswith("--")
+        )
+
+    def _base_price_assignments(body: str, code: str) -> tuple[list[int], list[str]]:
+        """Every site that assigns base_price, and every site not readable.
+
+        Returns (values, unreadable). A shape this cannot parse lands in
+        `unreadable` and reddens the test — silence is never the answer.
+        """
+        values: list[int] = []
+        unreadable: list[str] = []
+        consumed: list[tuple[int, int]] = []
+
+        for m in re.finditer(r"\bSET\s+base_price\s*=\s*(\d+)", body, re.I):
+            values.append(int(m.group(1)))
+            consumed.append(m.span())
+
+        # The upsert idiom: `INSERT ... ON CONFLICT DO UPDATE SET base_price =
+        # EXCLUDED.base_price` (migration 221). It carries no figure of its own
+        # — it forwards the VALUES tuple, which the INSERT branch below reads —
+        # so it is RECOGNISED and contributes nothing, rather than being
+        # mistaken for an unreadable spelling.
+        for m in re.finditer(r"\bbase_price\s*=\s*EXCLUDED\.base_price", body, re.I):
+            consumed.append(m.span())
+
+        # `SET (col, col) = (val, val)` — read base_price's value positionally.
+        for m in re.finditer(r"\bSET\s*\(([^)]*)\)\s*=\s*\(([^)]*)\)", body, re.I):
+            cols = [c.strip().lower() for c in m.group(1).split(",")]
+            vals = [v.strip() for v in m.group(2).split(",")]
+            consumed.append(m.span())
+            if "base_price" not in cols:
+                continue
+            raw = vals[cols.index("base_price")] if len(vals) == len(cols) else None
+            if raw is not None and raw.isdigit():
+                values.append(int(raw))
+            else:
+                unreadable.append(f"tuple SET with non-literal base_price: {m.group(0)[:80]}")
+
+        if not values and f"'{code}'" in body:
+            # An INSERT rather than an UPDATE: 221 seeds both codes positionally.
+            start = body.index(f"'{code}'")
+            tuple_text = body[start:body.index(")", start)]
+            values = [int(v) for v in re.findall(r"\b(\d{5,})\b", tuple_text)]
+
+        # Any remaining `base_price ... =` outside a site already consumed is a
+        # spelling this function does not know. Red, not silent.
+        for m in re.finditer(r"\bbase_price\b\s*=", body, re.I):
+            if not any(a <= m.start() < b for a, b in consumed):
+                unreadable.append(
+                    "unrecognised assignment near: "
+                    f"{body[max(0, m.start() - 40):m.start() + 40]!r}"
+                )
+        return values, unreadable
+
+    # A migration may only move base_price on rows it names LITERALLY. The same
+    # seat measured the second bypass: a migration whose predicate is
+    # `WHERE code LIKE 'visa_b1_vo%'` never enters the frozen setter set below,
+    # because the set is keyed on the literal code — so it can move a ruled
+    # price without any of this noticing. A pattern predicate is therefore
+    # refused outright rather than parsed: this tripwire is not a SQL engine and
+    # must not pretend to be one.
+    _OPAQUE_PREDICATE = re.compile(
+        r"\bcode\s*(?:LIKE|SIMILAR\s+TO|~\*?|!~|<>|!=)|\bcode\s+IN\s*\(\s*SELECT",
+        re.I,
+    )
+    for path in migrations:
+        body = _forward_body(path)
+        if "base_price" not in body:
+            continue
+        hit = _OPAQUE_PREDICATE.search(body)
+        assert hit is None, (
+            f"{path.name} assigns base_price while selecting rows by a "
+            f"NON-LITERAL code predicate: {hit.group(0) if hit else ''!r}. A "
+            "migration that moves a price must name the codes it targets "
+            "literally, or this "
+            "ratchet cannot see it move — which is precisely the bypass this "
+            "check exists to close."
+        )
+
     for code, (expected, expected_files) in ruled.items():
         touching = []
         for path in migrations:
@@ -456,16 +540,28 @@ def test_the_voa_prices_are_the_ones_the_owner_ruled():
         # a file whose SET clause says something else entirely — measured: the
         # gate mutated only `SET base_price = 790000` to 750000 and the earlier
         # version of this assertion stayed green.
-        assigned = [int(v) for v in re.findall(
-            r"\bSET\s+base_price\s*=\s*(\d+)", newest_body, re.I
-        )]
-        if not assigned:
-            # An INSERT rather than an UPDATE: 221 seeds both codes positionally.
-            # Slice the one VALUES tuple that names this code and read its
-            # numeric literals — bounded to that tuple, not a SQL parser.
-            start = newest_body.index(f"'{code}'")
-            tuple_text = newest_body[start:newest_body.index(")", start)]
-            assigned = [int(v) for v in re.findall(r"\b(\d{5,})\b", tuple_text)]
+        #
+        # But reading ONE spelling of the assignment is the other half of the
+        # same defect, and the codex-gpt-5.6-sol seat measured it: appending
+        #
+        #     UPDATE practice_types
+        #        SET (base_price, updated_at) = (790000, CURRENT_TIMESTAMP)
+        #      WHERE code = 'visa_b1_voa';
+        #
+        # leaves the database at 790000 while `assigned` still reads only the
+        # earlier scalar SET and the test stays GREEN. So the rule here is not
+        # "recognise the shapes I thought of" but "every assignment site must be
+        # READABLE, or the test goes red": an unparsed spelling is a failure,
+        # never a pass. Under-match is the quieter twin of over-match
+        # (superscar #3 / W82) and it is the one that lets a wrong price ship.
+        assigned, unreadable = _base_price_assignments(newest_body, code)
+        assert not unreadable, (
+            f"{newest_name} assigns base_price in a form this tripwire cannot "
+            f"read: {unreadable}. That is a RED, not a pass — an unrecognised "
+            "spelling is exactly how a wrong price would slip past. Either "
+            "write the assignment as `SET base_price = <n>`, or teach "
+            "_base_price_assignments the new shape in the same commit."
+        )
 
         assert assigned, (
             f"{newest_name} is the newest migration touching base_price for "
