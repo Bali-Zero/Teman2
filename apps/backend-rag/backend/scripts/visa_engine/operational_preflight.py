@@ -474,6 +474,16 @@ async def collect_preflight_checks(
             )
         )
 
+    # `pg_has_role` answers true for a superuser against ANY role, grant or no
+    # grant -- that is Postgres semantics, not a privilege-separation defect.
+    # Without `NOT role.rolsuper` this check reports `postgres` (and, on Fly,
+    # `flypgadmin` and `repmgr`) as logins that combine pack-write and
+    # activation, and since `postgres` exists and is superuser on every real
+    # install, the gate could never return 0 anywhere. The per-role checks
+    # above already exclude superusers for exactly this reason; this one did
+    # not. Measured on production 2026-08-26: the three roles it flagged were
+    # all rolsuper with zero actual membership in `pg_auth_members`, while the
+    # real operational login `visa_activation_operator` was correctly scoped.
     dual_capability_login = "roles-missing"
     if "visa_pack_writer" in roles and "visa_activation_executor" in roles:
         dual_capability_login = await connection.fetchval(
@@ -481,6 +491,7 @@ async def collect_preflight_checks(
             SELECT string_agg(role.rolname, ', ' ORDER BY role.rolname)
               FROM pg_roles AS role
              WHERE role.rolcanlogin
+               AND NOT role.rolsuper
                AND pg_has_role(role.oid, 'visa_pack_writer', 'MEMBER')
                AND pg_has_role(role.oid, 'visa_activation_executor', 'MEMBER')
             """
