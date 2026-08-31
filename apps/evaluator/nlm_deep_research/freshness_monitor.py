@@ -48,8 +48,19 @@ FRESHNESS_STATE_FILE = _DIR / "freshness_monitor_state.json"
 _BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 _CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "")
 
-# Gemini CLI timeout for web search queries
-GEMINI_TIMEOUT = 120
+# Web-search CLI used for regulatory monitoring. `agy` (Antigravity) — NOT the
+# legacy `gemini` CLI, whose auth tier is dead: it answers every call with
+# IneligibleTierError and that failure was being reported as "0 changes".
+WEB_SEARCH_CLI = "agy"
+
+# Timeout handed to the CLI itself, and the extra grace we give subprocess.run
+# on top of it so the CLI's own timeout fires first and we see its message
+# rather than a bare TimeoutExpired.
+WEB_SEARCH_TIMEOUT = 120
+WEB_SEARCH_GRACE = 30
+
+# Kept as an alias: external callers and older tests import this name.
+GEMINI_TIMEOUT = WEB_SEARCH_TIMEOUT
 
 # Max remediation queries per run (avoid NLM rate limiting)
 MAX_REMEDIATIONS_PER_RUN = 3
@@ -103,11 +114,20 @@ RESEARCH_TRIGGER_DELAY = 30  # seconds
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _run_gemini_search(query: str, timeout: int = GEMINI_TIMEOUT) -> str | None:
-    """Run Gemini CLI with web search for regulatory monitoring.
+def _run_web_search(query: str, timeout: int = WEB_SEARCH_TIMEOUT) -> str | None:
+    """Run a web-grounded search for regulatory monitoring via the `agy` CLI.
 
-    Uses gemini -p for headless mode with built-in web search.
-    No API SDK — uses CLI tool.
+    WHY NOT `gemini`: this function used to shell out to the legacy `gemini`
+    CLI, which has been answering every call with
+    `IneligibleTierError: This client is no longer supported for Gemini Code
+    Assist for individuals ... migrate to the Antigravity suite`. The monitor
+    swallowed that (see `run_scan`) and reported "Changes detected: 0" on every
+    domain of every recorded run — a green cron watching nothing. `agy` is the
+    Antigravity CLI the error message itself points at, and the one the repo's
+    own doctrine has named since the legacy CLI was deprecated.
+
+    The prompt is passed as an ARGUMENT to `-p`, never on stdin: `agy` reads
+    print-mode prompts from argv only, and a piped prompt is silently dropped.
     """
     prompt = (
         f"Search the web for: {query}\n\n"
@@ -117,21 +137,21 @@ def _run_gemini_search(query: str, timeout: int = GEMINI_TIMEOUT) -> str | None:
     )
     try:
         result = subprocess.run(
-            ["gemini", "-p", prompt, "--model", "gemini-3-flash-preview"],
-            capture_output=True, text=True, timeout=timeout,
+            [WEB_SEARCH_CLI, "-p", prompt, "--print-timeout", f"{timeout}s"],
+            capture_output=True, text=True, timeout=timeout + WEB_SEARCH_GRACE,
         )
         if result.returncode != 0:
-            logger.warning("Gemini CLI error: %s", result.stderr.strip()[:200])
+            logger.warning("%s error: %s", WEB_SEARCH_CLI, result.stderr.strip()[:200])
             return None
         return result.stdout.strip() or None
     except subprocess.TimeoutExpired:
-        logger.warning("Gemini search timeout after %ds", timeout)
+        logger.warning("web search timeout after %ds", timeout)
         return None
     except FileNotFoundError:
-        logger.error("gemini CLI not found — is it installed?")
+        logger.error("%s CLI not found — is it installed?", WEB_SEARCH_CLI)
         return None
     except Exception as exc:
-        logger.error("Gemini search error: %s", exc)
+        logger.error("web search error: %s", exc)
         return None
 
 
@@ -214,6 +234,12 @@ def run_scan(dry_run: bool = False) -> dict[str, Any]:
     result: dict[str, Any] = {
         "status": "ok",
         "domains_scanned": 0,
+        # domains_scanned counts ATTEMPTS; domains_answered counts the ones that
+        # came back with anything at all. The gap between them is the whole
+        # difference between "nothing changed" and "I cannot see" — and until
+        # 2026-08-31 only the first number existed, so five consecutive auth
+        # failures rendered as a calm "Changes detected: 0".
+        "domains_answered": 0,
         "changes_detected": 0,
         "research_triggered": 0,
         "dry_run": dry_run,
@@ -236,13 +262,15 @@ def run_scan(dry_run: bool = False) -> dict[str, Any]:
             logger.info("  DRY RUN: would search for '%s'", query[:60])
             continue
 
-        response = _run_gemini_search(query)
+        response = _run_web_search(query)
 
         if not response:
-            logger.warning("  No response from Gemini for %s", name)
-            result["errors"].append(f"{name}: no Gemini response")
+            logger.warning("  No response from the web-search CLI for %s", name)
+            result["errors"].append(f"{name}: no web-search response")
             time.sleep(5)
             continue
+
+        result["domains_answered"] += 1
 
         # Check if change detected — filter out error noise
         _noise_markers = ("MCP issues detected", "error", "failed to", "I am searching", "I will search")
@@ -302,8 +330,16 @@ def run_scan(dry_run: bool = False) -> dict[str, Any]:
             msg_lines.append(f"✅ {result['research_triggered']} ricerche NLM avviate")
         _send_telegram("\n".join(msg_lines))
 
+    # BLIND is not PARTIAL. A run where no domain answered at all has observed
+    # nothing, and its "changes_detected: 0" is not a finding — it is the
+    # absence of one. Reporting that as `partial` (which main() exits 0 on) is
+    # exactly how this organ ran green for its whole recorded log while every
+    # single call failed authentication. `dry_run` never counts as blind: it
+    # deliberately makes no calls.
     if result["errors"]:
         result["status"] = "partial"
+    if not dry_run and result["domains_scanned"] > 0 and result["domains_answered"] == 0:
+        result["status"] = "blind"
 
     return result
 
@@ -615,7 +651,14 @@ def main() -> None:
         result = run_scan(dry_run=args.dry_run)
         print(f"\nScan: {result['status']}")
         print(f"  Domains scanned: {result['domains_scanned']}")
-        print(f"  Changes detected: {result['changes_detected']}")
+        print(f"  Domains that answered: {result['domains_answered']}")
+        if result["status"] == "blind":
+            # Never print a bare "Changes detected: 0" for a run that saw
+            # nothing — that line is what made the failure look like a result.
+            print("  Changes detected: UNKNOWN — no domain answered, this run "
+                  "observed nothing")
+        else:
+            print(f"  Changes detected: {result['changes_detected']}")
         print(f"  Research triggered: {result['research_triggered']}")
         if result["errors"]:
             print(f"  Errors: {result['errors']}")

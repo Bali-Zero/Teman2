@@ -1,0 +1,120 @@
+task_id: craft-w-queue-field-lint
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  PR #5218 (`agent/nuzantara/craft-w/queue-field-lint`, "ci(queue): a regression guard with zero
+  catches today, and it says so") added scripts/ci/lint_queue_field_verdict.py — a CI guard against
+  a documented merge-queue trap (cicatrix W111/W123): `autoMergeRequest` reads `null` both when a
+  PR was never armed AND when the queue just accepted it (the field is consumed on entry), and a
+  file that derives "disarmed, re-arm needed" from that field alone, without also reading
+  `mergeQueueEntry`/`isInMergeQueue`, is wrong in the second case. The PR's own author is gone; it
+  sat two days as a draft; the conductor took it over and handed it to this session as a rescue.
+
+  An independent reader had already reviewed the PR and found three problems, verified and handed
+  to this session (not re-derived here): (1) the guard's two matching shapes — a direct
+  null-comparison and a negated-truthy test, both requiring the literal `autoMergeRequest` token at
+  the comparison site — do not catch the ACTUAL historical incident, which went through an
+  intermediate variable (`auto = pr.get("autoMergeRequest")` then, later, `if auto is None: ...`).
+  The guard's own test file admitted this in its authoring docstring: reproducing it faithfully
+  "would need real dataflow analysis, which this lint deliberately is not." (2) The PR is a GitHub
+  DRAFT, which GitHub will never merge regardless of quality. (3) The PR carries no evidence pack of
+  its own — it falls back to the shared root `evidence/pack.yml`/`brief.yml`, which on this branch
+  belong to an unrelated task (`visa-window-seq18-0831`) and hard-FAIL evidence_pack_lint.py's
+  countable-claims rule against this PR's real diff.
+
+  Gear 3 by the deterministic PATH floor, not by size: the diff touches
+  `.github/workflows/immune-enforcement.yml`, which matches HOTZONE_PATTERNS' `.github/workflows/*`
+  entry — this floors at 3 regardless of how small the rest of the diff is.
+
+  This session was directed to decide honestly between two paths for problem (1): (a) a bounded,
+  non-dataflow single-hop alias tracker if achievable in a modest amount of code with guilt AND
+  innocence fixtures, or (b) an explicit "I could not check this" runtime declaration if (a) is not
+  achievable. (a) was achievable and was built (Shape C, single-hop alias tracking bounded by
+  dedent/rebinding/a hard line cap) — then hardened through a full build-then-independent-adversarial-
+  review round (generator != grader): a cross-family, non-Anthropic seat (Kimi K3) was dispatched
+  against the new code alone (the pre-existing Shape A/B logic was already independently verified
+  and was not re-litigated), found 6 real, reproduced defects — including one where an earlier
+  revision of THIS SESSION's own docstring made a measurably false claim about two real files — and
+  every one was fixed and independently re-verified by this session before being believed.
+constraints:
+  - "Do not touch Shape A/B's already-verified logic (the direct null-comparison and negated-truthy
+    shapes, and the allowlist tripwire) — out of this rescue's scope, and touching verified code
+    risks a regression nobody asked for."
+  - "The extension must be honestly, narrowly scoped: single-hop alias tracking only, never real
+    dataflow analysis (no points-to, no cross-function, no container/attribute targets, no
+    multi-hop re-derivation). Every declared exclusion must be true when checked, not merely
+    asserted — the first attempt to document this made a claim about two real files that a
+    cross-family review proved false by direct measurement; that error was found and corrected in
+    the same session that made it."
+  - "No auto-merge arm and no `harness/fable-gate` verdict from this session — the conductor does
+    both per the rescue mandate."
+  - "Every guilt/innocence fixture claim must be reproduced with a real command before being
+    trusted, including this session's own — 'never cite output of a tool not executed this turn'."
+acceptance:
+  - text: |
+      WHEN a verdict is derived through an intermediate variable assigned from `autoMergeRequest`
+      on one line (`name = pr.get("autoMergeRequest")`, optionally type-annotated or
+      const/let/var-prefixed) and later null-compared or negated-truthy tested on that same name
+      within its bounded window, THE guard SHALL flag it as a violation (absent awareness), exactly
+      reproducing the real historical incident shape.
+    probe: "python3 scripts/ci/lint_queue_field_verdict.py --selftest"
+  - text: |
+      WHEN the same alias name is later rebound — reassigned to something unrelated, used as a
+      `for` loop target, or shadowed by a nested function parameter — before any null-check, THE
+      guard SHALL NOT flag the unrelated later usage.
+    probe: "python3 scripts/ci/lint_queue_field_verdict.py --selftest (innocent-aliased-* cases)"
+  - text: "WHERE a blank or comment-only line sits between the assignment and its usage, THE guard SHALL neither treat it as leaving the enclosing block NOR read it as a usage itself."
+    probe: "scripts/tests/test_lint_queue_field_verdict.py::test_guilt_aliased_usage_past_dedented_comment_is_violation and ::test_innocence_comment_mentioning_null_check_is_not_a_usage"
+  - text: "WHEN run against the real git-tracked tree, THE guard SHALL report zero violations (the live tree is clean) at every stage of this change."
+    probe: "python3 scripts/ci/lint_queue_field_verdict.py"
+  - text: "THE PR SHALL be undrafted only after the above hold and its own evidence pack lints clean."
+    probe: "gh pr ready 5218 ; python3 scripts/evidence_pack_lint.py evidence/2026-08/agent-nuzantara-craft-w-queue-field-lint-f5503848/pack.yml --repo-root <staged-tree>"
+consumer_map:
+  - "scripts/ci/lint_queue_field_verdict.py — the guard itself: new Shape C (alias tracking) plus
+    the 2026-08-31 hardening round (type annotations, for/def rebinding, comment transparency,
+    JS strict-equality, two corrected docstring claims)."
+  - "scripts/tests/test_lint_queue_field_verdict.py — 16 new guilt+innocence tests (8 for Shape C's
+    first cut, 8 for the hardening round), on top of the original 19."
+  - ".github/workflows/immune-enforcement.yml — unchanged in this session; the original PR's own
+    +21/-0 (case-list + executor-loop registration + unconditional --selftest step) stands as
+    independently verified by the reader before this rescue began."
+  - "evidence/2026-08/agent-nuzantara-craft-w-queue-field-lint-f5503848/{brief.yml,pack.yml,
+    council-journal.jsonl} — new, this session, replacing the fallback shared-root pack that
+    belonged to an unrelated task."
+risks:
+  - 'Shape C is deliberately bounded and will still miss a multi-line assignment (the literal
+    `autoMergeRequest` token must appear on the SAME line as `name =`), a second-hop alias
+    (`x = auto` then `x is None`), a container/attribute assignment target (`d["auto"] = ...`,
+    `self.auto = ...`), and a JS/TS arrow-function parameter shadow (`(auto) => ...` is not
+    recognized as a rebinding, only `def`/`function` parameter lists are). Each is stated in the
+    module docstring as a declared scope boundary, not a silent gap.'
+  - "The dedent-based block boundary is an indentation heuristic, not real Python scope analysis:
+    a variable assigned inside an `if` and read after it in the same function (still in scope in
+    real Python) is treated as having left the block and is missed. Corrected in the docstring
+    wording after the cross-family review flagged the original parenthetical ('left the enclosing
+    block') as overclaiming scope semantics the heuristic does not have."
+  - "The alias negated-truthy check can still match a negated function call wrapping the alias
+    (`not is_valid(state)`), which is broader than a direct truthiness test — this is the same
+    design already accepted for Shape B's literal-token case (`_COMPACT` filler), not a new
+    broadening introduced by Shape C, and was left as-is rather than narrowed, to avoid
+    reintroducing false negatives on the equivalent literal-token idiom."
+grader: |
+  Generator != grader. Build lane: this session (Claude implementer seat, Sonnet 5 per this repo's
+  subagent-dispatch routing doctrine — not independently verifiable from inside the session, stated
+  per doctrine rather than measured). Review lane: kimi-code/k3, cross-family and non-Anthropic,
+  dispatched against the new Shape C diff ALONE (the pre-existing Shape A/B logic was already
+  independently verified by the reader who handed off this rescue, and was deliberately not
+  re-litigated) with its own file access in this worktree. It returned "No BLOCKER" but 6 real,
+  reproduced findings (3 MEDIUM, 3 LOW) — every finding was independently re-reproduced by this
+  session with a direct python invocation before being believed (per this repo's own
+  anti-hallucination discipline: a second seat's tool output is not exempt from that rule), and
+  every one was fixed and re-verified. One build lane only, so D3's >=2-build-lane non-Anthropic
+  seat-diversity floor does not bind (same posture as the template pack this one follows,
+  agent-nuzantara-craft-w-gate-seat-conformance-0d36aef1) — the non-Anthropic contribution here is
+  the review lane, not a second build lane.
+budget: |
+  1 build lane (this session) + 1 cross-family review seat (kimi-code/k3, one round, ~5 minutes
+  wall). Two files touched by this session (the guard, its tests) plus this evidence pack; the
+  workflow file was already part of the PR before this session and was not touched again.
+pii: none
