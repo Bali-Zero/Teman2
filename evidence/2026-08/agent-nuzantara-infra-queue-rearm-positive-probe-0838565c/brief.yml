@@ -51,13 +51,16 @@ objective: |
      GitHub API call. A defensive `enriched_count != open_count` check exits 3 (fail-closed) if the
      jq enrichment silently drops a PR, rather than reporting a partial population as complete.
   3. `scripts/ci/test_queue_rearm_population.sh` — the guilt+innocence fixtures described above.
-  4. `scripts/lint_arm_probe.py` — a NEW `ALLOWLIST` mechanism (path-keyed, written reason per
-     entry) for 2 real false positives this whole-repo scanner would otherwise flag on files that
-     read `autoMergeRequest` for a reason unrelated to an armed/disarmed verdict. The lint's own
-     pre-existing `SUPPRESSION_MARKER` was considered and rejected for this purpose (see dissent) —
-     it is governed by its own test asserting it appears ONLY in synthetic test fixtures, and using
-     it on real production code or a historical evidence-pack receipt would misrepresent what those
-     lines are.
+  4. `scripts/lint_arm_probe.py` — a NEW `ALLOWLIST` mechanism, LINE-scoped (a `lines:` tuple of
+     exact decision-line numbers per entry, not a whole-path suppression — see dissent for why: a
+     research-fork of this build lane dispatched a real cross-family review, agy/Gemini 3.1 Pro,
+     which caught a genuine guard-over-match bug in this build lane's own first-draft PATH-scoped
+     design before it shipped), written reason per entry, for 2 real false positives this
+     whole-repo scanner would otherwise flag on files that read `autoMergeRequest` for a reason
+     unrelated to an armed/disarmed verdict. The lint's own pre-existing `SUPPRESSION_MARKER` was
+     considered and rejected for this purpose (see dissent) — it is governed by its own test
+     asserting it appears ONLY in synthetic test fixtures, and using it on real production code or
+     a historical evidence-pack receipt would misrepresent what those lines are.
   5. `scripts/ci/lint_queue_field_verdict.py` (a SIBLING, ALREADY-ARMED lint covering the identical
      `autoMergeRequest` hazard, wired into `.github/workflows/immune-enforcement.yml` since
      2026-08-29): its one pre-existing `ALLOWLIST` entry named `queue_rearm_population.sh` and
@@ -135,13 +138,16 @@ acceptance:
   - text: >
       WHERE `scripts/lint_arm_probe.py` is run against the full tracked tree, THE scan SHALL
       report 0 findings, exactly 2 allowlisted paths (each with a written reason), and 0 stale
-      allowlist entries. Measured this session: 7352 files scanned, 0/2/0.
+      allowlist entries. Measured this session: 7354 files scanned, 0/2/0 (re-measured after a
+      research-fork's line-scoping fix landed mid-session — see pack.yml dissent; an earlier
+      capture said 7352).
     probe: "python3 scripts/lint_arm_probe.py --repo-root . --root . --json"
   - text: >
       WHERE `scripts/ci/lint_queue_field_verdict.py` (the sibling, already-armed lint) is run after
       this diff removes its now-stale ALLOWLIST entry, THE scan SHALL report 0 violations and 0
       allowlisted paths (the entry's removal must not leave a dangling reference or a newly-blind
-      spot). Measured this session: 8386 files scanned, 0 violations, 0 allowlisted.
+      spot). Measured this session: 8388 files scanned, 0 violations, 0 allowlisted (8386 in an
+      earlier capture — see pack.yml dissent for the unrelated +2 repo-wide drift).
     probe: "python3 scripts/ci/lint_queue_field_verdict.py --repo-root ."
   - text: >
       WHERE `actionlint` is run against the shipped `.github/workflows/immune-enforcement.yml`,
