@@ -20,6 +20,12 @@ interface Props {
   placeholder?: string;
   /** Pre-fill the search input from ?q= URL param (homepage → KBLI deep-link). */
   initialQuery?: string;
+  /**
+   * One-tap starting points rendered under the input. Clicking one writes the
+   * term into the query, which is what actually runs the search — the chips
+   * own no state of their own.
+   */
+  quickFilters?: string[];
 }
 
 export function KBLISearch({
@@ -28,6 +34,7 @@ export function KBLISearch({
   className,
   placeholder = "Search KBLI codes (e.g. restaurant, villas, consulting)...",
   initialQuery = "",
+  quickFilters,
 }: Props) {
   const [query, setQuery] = React.useState(initialQuery);
   const [results, setResults] = React.useState<KBLISearchResult[]>([]);
@@ -37,6 +44,7 @@ export function KBLISearch({
   const [searchError, setSearchError] = React.useState<string | null>(null);
   const router = useRouter();
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
 
   // Sync initialQuery on mount only (URL ?q= pre-fill).
   // Not in dep array — intentional: user can freely edit after mount.
@@ -118,6 +126,17 @@ export function KBLISearch({
     }
   };
 
+  /**
+   * Quick chip → the query itself. The debounced effect above sees the new
+   * query and runs the same search a typed term would, so there is exactly one
+   * search path, not two.
+   */
+  const handleQuickFilter = (term: string) => {
+    setQuery(term);
+    setActiveIndex(-1);
+    inputRef.current?.focus();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -148,6 +167,7 @@ export function KBLISearch({
           )}
         </div>
         <input
+          ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -174,6 +194,31 @@ export function KBLISearch({
           </button>
         )}
       </div>
+
+      {quickFilters && quickFilters.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-2 justify-center lg:justify-start">
+          <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-2">
+            Quick:
+          </span>
+          {quickFilters.map((filter) => (
+            <button
+              key={filter}
+              type="button"
+              onClick={() => handleQuickFilter(filter)}
+              aria-label={`Search ${filter}`}
+              aria-pressed={query === filter}
+              className={cn(
+                "px-3.5 py-1.5 rounded-full text-xs font-medium backdrop-blur-md border shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-all duration-300",
+                query === filter
+                  ? "text-white bg-white/[0.10] border-red-500/30 shadow-[0_0_20px_rgba(220,38,38,0.08),inset_0_1px_0_rgba(255,255,255,0.06)]"
+                  : "text-zinc-400 bg-white/[0.04] border-white/[0.06] hover:bg-white/[0.07] hover:text-white hover:border-red-500/30 hover:shadow-[0_0_20px_rgba(220,38,38,0.08),inset_0_1px_0_rgba(255,255,255,0.06)]",
+              )}
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Results dropdown — also shown when there is a search error */}
       {isOpen && (results.length > 0 || searchError) && (

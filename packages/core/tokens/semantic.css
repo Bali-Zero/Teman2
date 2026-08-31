@@ -74,6 +74,8 @@
   --cta-secondary-fg: #1e3863;
   --cta-secondary-border: rgba(30, 56, 99, 0.28);
   --accent-whatsapp: #25d366;
+  /* ~6.45:1 on #25d366; ratified at apps/mouth/src/app/(visa-oracle)/visa-oracle/oracle.css:23-30. */
+  --accent-whatsapp-ink: #0d3a1f;
 
   /* ─── State (separate from funnels — "success green" ≠ "Property green") ── */
   --state-success: var(--color-state-success);

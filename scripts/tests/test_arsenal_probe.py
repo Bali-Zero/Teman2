@@ -934,7 +934,11 @@ def test_tp1_probe_max_tokens_budget_is_at_least_256():
 
 def test_probe_agy_pong_is_live(monkeypatch):
     monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/agy", True))
-    monkeypatch.setattr(ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(0, "PONG\n", ""))
+    # Patched at run_probe_cmd, not subprocess.run: since 2026-08-26 probe_agy captures
+    # via FILES (the grandchild-holds-the-pipe cure), so a fake that only fills a
+    # _FakeProc's .stdout attribute would be read back from an empty temp file and this
+    # test would fail for a reason that has nothing to do with agy's liveness.
+    monkeypatch.setattr(ap, "run_probe_cmd", lambda *a, **k: ap.ProbeResult(0, "PONG\n", ""))
     status, ev, latency = ap.probe_agy(timeout=5)
     assert status == ap.LIVE
 
@@ -2040,3 +2044,162 @@ def test_probe_claude_strips_custom_anthropic_session_env(monkeypatch):
     assert "ANTHROPIC_API_KEY" not in captured_env
     assert "ANTHROPIC_AUTH_TOKEN" not in captured_env
     assert "ANTHROPIC_BASE_URL" not in captured_env
+
+
+# ---------------------------------------------------------------------------
+# 2026-08-26 — the probe was lying about three LIVE seats. These cover the two
+# lies that were defects IN THE INSTRUMENT (the third, nlm, was a stale record,
+# not a code fault).
+#
+# DELIBERATE EXCEPTION to this module's "every subprocess boundary is
+# monkeypatched" rule, and it is load-bearing: the pipe-leak pair below spawns a
+# REAL local `/bin/sh` (no network, no LLM, no credentials). A monkeypatched
+# subprocess cannot reproduce a detached grandchild holding an inherited stdout
+# fd — the fake and the code would share the same imagination (scar W114) and
+# the test would pass against the very bug it exists to catch.
+# ---------------------------------------------------------------------------
+
+
+def test_run_probe_cmd_via_files_captures_what_a_pipe_would_lose():
+    """GUILT: a child that leaves a grandchild holding stdout.
+
+    Through a pipe, `communicate()` never sees EOF: the call burns its whole
+    timeout and hands back EMPTY stdout even though the answer was written
+    immediately. That is what made the fleet digest report `agy TIMEOUT` for a
+    seat answering in 11 s — and what silently defeated the "judge the REPLY"
+    mitigation, since the reply is exactly what the pipe withholds.
+    """
+    module = _load_module()
+    # Writes the answer at once, then leaves a background sleeper holding stdout.
+    # The direct child exits immediately; only the grandchild keeps the fd.
+    cmd = ["/bin/sh", "-c", "echo PONG; sleep 30 & exit 0"]
+    budget = 3.0
+
+    t0 = time.monotonic()
+    piped = module.run_probe_cmd(cmd, timeout=budget)
+    piped_wall = time.monotonic() - t0
+
+    # THE DEFECT, as a falsifiable property: through a pipe the call CANNOT return
+    # before its own timeout, because EOF never arrives — the answer was on disk in
+    # milliseconds but the probe still burns its entire budget and reports timed_out.
+    # (Whether the buffered bytes are also recoverable afterwards is platform-dependent
+    # and NOT the invariant: on Pro 2026-08-26 the real agy call returned nothing at all
+    # and hung past 120 s. The timeout is the part that is always true, so it is the
+    # part asserted here.)
+    assert piped.timed_out, (
+        "the pipe path did not time out — the grandchild-holds-the-fd defect is not "
+        "being reproduced on this platform, so the paired assertion below proves nothing"
+    )
+    assert piped_wall >= budget * 0.9
+
+    t0 = time.monotonic()
+    via_files = module.run_probe_cmd(cmd, timeout=budget, capture_via_files=True)
+    files_wall = time.monotonic() - t0
+
+    assert "PONG" in via_files.stdout
+    assert not via_files.timed_out
+    assert files_wall < budget * 0.5, (
+        f"file capture took {files_wall:.2f}s of a {budget}s budget — it should return "
+        "as soon as the DIRECT child exits, regardless of the lingering grandchild"
+    )
+
+
+def test_run_probe_cmd_via_files_is_transparent_for_an_ordinary_command():
+    """INNOCENCE: file capture must not change the reading of a well-behaved
+    child — same stdout, same stderr, same returncode, no timeout."""
+    module = _load_module()
+    cmd = ["/bin/sh", "-c", "echo PONG; echo noise >&2; exit 0"]
+
+    piped = module.run_probe_cmd(cmd, timeout=10)
+    via_files = module.run_probe_cmd(cmd, timeout=10, capture_via_files=True)
+
+    assert via_files.stdout.strip() == piped.stdout.strip() == "PONG"
+    assert "noise" in via_files.stderr and "noise" in piped.stderr
+    assert via_files.returncode == piped.returncode == 0
+    assert not via_files.timed_out and not piped.timed_out
+
+
+def _qwen_harness(monkeypatch, module, *, keychain, stdout, stderr=""):
+    """Wire probe_qwen_cloud_code to a fake CLI and capture the env it is handed."""
+    seen: dict = {}
+    monkeypatch.setattr(module, "resolve_bin", lambda *a, **k: ("/fake/qwen", True))
+    monkeypatch.setattr(
+        module, "load_keychain_token", lambda *a, **k: (keychain, "not found")
+    )
+
+    def fake_run(cmd, timeout, env=None, **kwargs):
+        seen["env"] = env or {}
+        return module.ProbeResult(0, stdout, stderr)
+
+    monkeypatch.setattr(module, "run_probe_cmd", fake_run)
+    return seen
+
+
+def test_probe_qwen_does_not_inject_the_keychain_token_into_the_child_env(monkeypatch):
+    """The bug, stated as an assertion: the probe used to OVERRIDE the credential
+    the CLI reads for itself from ~/.qwen/settings.json. On Pro the Keychain copy
+    answered `401 Invalid API-key` while the un-overridden CLI answered PONG — so
+    the probe was measuring its own credential, not the seat."""
+    module = _load_module()
+    monkeypatch.delenv("BAILIAN_TOKEN_PLAN_API_KEY", raising=False)
+    seen = _qwen_harness(monkeypatch, module, keychain="stale-keychain-value", stdout="PONG")
+
+    status, _ev, _ms = module.probe_qwen_cloud_code(15)
+
+    assert status == module.LIVE
+    assert seen["env"].get("BAILIAN_TOKEN_PLAN_API_KEY") != "stale-keychain-value"
+
+
+def test_probe_qwen_unreadable_keychain_no_longer_forces_auth_dead(monkeypatch):
+    """A locked/absent Keychain is a fact about THIS HOST, never a verdict on the
+    seat. It used to return AUTH_DEAD without invoking the CLI at all."""
+    module = _load_module()
+    seen = _qwen_harness(monkeypatch, module, keychain=None, stdout="PONG")
+
+    status, ev, _ms = module.probe_qwen_cloud_code(15)
+
+    assert status == module.LIVE
+    assert seen["env"] is not None
+    assert "keychain" in ev.lower(), "the Keychain miss must survive as a breadcrumb"
+
+
+def test_probe_qwen_still_reports_auth_dead_when_the_seat_itself_401s(monkeypatch):
+    """GUILT pair for the two tests above: loosening the Keychain gate must not
+    make this probe blind to a REAL credential failure. The string is the verbatim
+    one Alibaba returned on 2026-08-25."""
+    module = _load_module()
+    _qwen_harness(
+        monkeypatch,
+        module,
+        keychain=None,
+        stdout="",
+        stderr="[API Error: 401 Invalid API-key provided.]",
+    )
+
+    status, _ev, _ms = module.probe_qwen_cloud_code(15)
+
+    assert status == module.AUTH_DEAD
+
+
+def test_probe_agy_asks_for_file_capture_not_a_pipe(monkeypatch):
+    """Without this, nothing stops probe_agy silently going back to a pipe.
+
+    `test_probe_agy_pong_is_live` patches run_probe_cmd itself, and the pipe-leak
+    pair exercises run_probe_cmd directly — so both stay green if this seat's
+    call loses the flag. This is the only assertion that fails on that
+    regression, which is exactly the bug that produced `agy TIMEOUT` in the fleet
+    digest for a seat answering in 11 s.
+    """
+    module = _load_module()
+    seen: dict = {}
+    monkeypatch.setattr(module, "resolve_bin", lambda *a, **k: ("/fake/agy", True))
+
+    def fake_run(cmd, timeout, env=None, **kwargs):
+        seen.update(kwargs)
+        return module.ProbeResult(0, "PONG\n", "")
+
+    monkeypatch.setattr(module, "run_probe_cmd", fake_run)
+    status, _ev, _ms = module.probe_agy(timeout=15)
+
+    assert status == module.LIVE
+    assert seen.get("capture_via_files") is True

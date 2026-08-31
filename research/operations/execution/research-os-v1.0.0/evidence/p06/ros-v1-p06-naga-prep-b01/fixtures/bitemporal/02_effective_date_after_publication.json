@@ -1,0 +1,40 @@
+{
+  "synthetic": true,
+  "fixture_category": "bitemporal",
+  "adversarial_case_ref": "packet 06-naga-claim-ledger.md, 'Golden set and adversarial cases' paragraph: 'effective dates distinct from publication dates'",
+  "expected_behavior": "The claim's valid_from (2026-09-01, the regulation's stated 'berlaku sejak' date) must NOT equal evidence.times.published_at (2026-06-20, the gazette announcement date). An implementation that derives valid_from from published_at (instead of parsing the explicit effective-date clause) will produce a claim that is wrongly 'valid' for the Jun-Sep window. This is the concrete instance of adapter-mapping gap 'G1' in 02-p04-adapter-mapping.md.",
+  "claim": {
+    "claim_id": "b2f1a000-0000-4000-8000-000000000010",
+    "claim_family_id": "b2f1a000-0000-4000-8000-0000000000f2",
+    "contract_version": "research-os/v1.0.0",
+    "tenant": "bali-zero",
+    "statement": {
+      "subject_ref": { "object_kind": "regulation", "object_id": "pp-synth-44-2026", "object_hash": "2222222222222222222222222222222222222222222222222222222222222222" },
+      "predicate": "naga.eligibility_rule.effective",
+      "object_ref_or_value": true,
+      "modality": "obligation"
+    },
+    "scope": { "domain": "company.synthetic", "jurisdiction": "national (synthetic)" },
+    "time": { "valid_from": "2026-09-01T00:00:00Z", "valid_to": null, "recorded_at": "2026-06-21T08:00:00Z" },
+    "status": "supported",
+    "confidence": { "score": 0.88, "method": "naga.claim_scorer.v1" }
+  },
+  "evidence": [
+    {
+      "evidence_id": "b2f1a000-0000-4000-8000-0000000000e1",
+      "document_id": "https://example.go.id/pp-synth-44-2026.pdf",
+      "times": {
+        "published_at": "2026-06-20T00:00:00Z",
+        "observed_at": "2026-06-21T07:55:00Z",
+        "recorded_at": "2026-06-21T08:00:00Z"
+      },
+      "source_span": {
+        "locator": "https://example.go.id/pp-synth-44-2026.pdf#page=3",
+        "page": 3,
+        "quote_hash": "3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      "stance": "supports",
+      "note": "SYNTHETIC — page 3 of the (fictional) regulation contains the clause 'berlaku sejak 1 September 2026', which is the sole source of valid_from. The document itself was published/gazetted 2026-06-20."
+    }
+  ]
+}

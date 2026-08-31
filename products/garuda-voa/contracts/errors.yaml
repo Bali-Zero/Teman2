@@ -1,0 +1,187 @@
+# Stable error catalog. Customer copy is resolved from message_key outside this contract.
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: GARUDA VOA API errors
+version: "1.0.0"
+
+x-error-response-base: &errorResponseBase
+  type: object
+  additionalProperties: false
+  required: [code, retryable, message_key]
+
+$defs:
+  ErrorResponse:
+    description: >-
+      A closed catalog tuple. No rendered customer message, submitted value, identifier, or
+      personal data is returned.
+    oneOf:
+      - <<: *errorResponseBase
+        title: GARUDA_PUBLIC_DISABLED
+        x-http-status: 404
+        properties:
+          code: { const: GARUDA_PUBLIC_DISABLED }
+          retryable: { const: false }
+          message_key: { const: garuda_voa.error.unavailable }
+      - <<: *errorResponseBase
+        title: INVALID_REQUEST
+        x-http-status: 422
+        properties:
+          code: { const: INVALID_REQUEST }
+          retryable: { const: false }
+          message_key: { const: garuda_voa.error.invalid_request }
+      - <<: *errorResponseBase
+        title: IDEMPOTENCY_KEY_REQUIRED
+        x-http-status: 400
+        properties:
+          code: { const: IDEMPOTENCY_KEY_REQUIRED }
+          retryable: { const: false }
+          message_key: { const: garuda_voa.error.idempotency_key_required }
+      - <<: *errorResponseBase
+        title: IDEMPOTENCY_CONFLICT
+        x-http-status: 409
+        properties:
+          code: { const: IDEMPOTENCY_CONFLICT }
+          retryable: { const: false }
+          message_key: { const: garuda_voa.error.idempotency_conflict }
+      - <<: *errorResponseBase
+        title: PERSISTENCE_POLICY_UNAVAILABLE
+        x-http-status: 503
+        properties:
+          code: { const: PERSISTENCE_POLICY_UNAVAILABLE }
+          retryable: { const: false }
+          message_key: { const: garuda_voa.error.sale_unavailable }
+      - <<: *errorResponseBase
+        title: PRICE_UNRESOLVABLE
+        x-http-status: 503
+        properties:
+          code: { const: PRICE_UNRESOLVABLE }
+          retryable: { const: false }
+          message_key: { const: garuda_voa.error.sale_unavailable }
+      - <<: *errorResponseBase
+        title: NOTICE_ACKNOWLEDGEMENT_REQUIRED
+        x-http-status: 422
+        properties:
+          code: { const: NOTICE_ACKNOWLEDGEMENT_REQUIRED }
+          retryable: { const: false }
+          message_key:
+            { const: garuda_voa.error.notice_acknowledgement_required }
+      - <<: *errorResponseBase
+        title: RESULT_NOT_FOUND
+        x-http-status: 404
+        properties:
+          code: { const: RESULT_NOT_FOUND }
+          retryable: { const: false }
+          message_key: { const: garuda_voa.error.result_not_found }
+      - <<: *errorResponseBase
+        title: MAGIC_LINK_INVALID
+        x-http-status: 401
+        properties:
+          code: { const: MAGIC_LINK_INVALID }
+          retryable: { const: false }
+          message_key: { const: garuda_voa.error.magic_link_invalid }
+      - <<: *errorResponseBase
+        title: RATE_LIMITED
+        x-http-status: 429
+        properties:
+          code: { const: RATE_LIMITED }
+          retryable: { const: true }
+          message_key: { const: garuda_voa.error.rate_limited }
+      - <<: *errorResponseBase
+        title: SESSION_REQUIRED
+        x-http-status: 401
+        properties:
+          code: { const: SESSION_REQUIRED }
+          retryable: { const: false }
+          message_key: { const: garuda_voa.error.session_required }
+      - <<: *errorResponseBase
+        title: ACCESS_DENIED
+        x-http-status: 403
+        properties:
+          code: { const: ACCESS_DENIED }
+          retryable: { const: false }
+          message_key: { const: garuda_voa.error.access_denied }
+      - <<: *errorResponseBase
+        title: ORDER_NOT_FOUND
+        x-http-status: 404
+        properties:
+          code: { const: ORDER_NOT_FOUND }
+          retryable: { const: false }
+          message_key: { const: garuda_voa.error.order_not_found }
+      - <<: *errorResponseBase
+        title: ORDER_NOT_READY
+        x-http-status: 409
+        properties:
+          code: { const: ORDER_NOT_READY }
+          retryable: { const: false }
+          message_key: { const: garuda_voa.error.order_not_ready }
+      - <<: *errorResponseBase
+        title: PRACTICE_NOT_FOUND
+        x-http-status: 404
+        properties:
+          code: { const: PRACTICE_NOT_FOUND }
+          retryable: { const: false }
+          message_key: { const: garuda_voa.error.practice_not_found }
+      - <<: *errorResponseBase
+        title: INVALID_STATE_TRANSITION
+        x-http-status: 409
+        properties:
+          code: { const: INVALID_STATE_TRANSITION }
+          retryable: { const: false }
+          message_key: { const: garuda_voa.error.invalid_state_transition }
+      - <<: *errorResponseBase
+        title: UNSUPPORTED_DOCUMENT_MEDIA_TYPE
+        x-http-status: 415
+        properties:
+          code: { const: UNSUPPORTED_DOCUMENT_MEDIA_TYPE }
+          retryable: { const: false }
+          message_key:
+            { const: garuda_voa.error.unsupported_document_media_type }
+      - <<: *errorResponseBase
+        title: DOCUMENT_TOO_LARGE
+        x-http-status: 413
+        properties:
+          code: { const: DOCUMENT_TOO_LARGE }
+          retryable: { const: false }
+          message_key: { const: garuda_voa.error.document_too_large }
+      - <<: *errorResponseBase
+        title: UNREADABLE_DOCUMENT
+        x-http-status: 422
+        properties:
+          code: { const: UNREADABLE_DOCUMENT }
+          retryable: { const: false }
+          message_key: { const: garuda_voa.error.unreadable_document }
+      - <<: *errorResponseBase
+        title: DOCUMENT_PROCESSING_UNAVAILABLE
+        x-http-status: 503
+        properties:
+          code: { const: DOCUMENT_PROCESSING_UNAVAILABLE }
+          retryable: { const: true }
+          message_key:
+            { const: garuda_voa.error.document_processing_unavailable }
+      - <<: *errorResponseBase
+        title: WEBHOOK_SIGNATURE_INVALID
+        x-http-status: 401
+        properties:
+          code: { const: WEBHOOK_SIGNATURE_INVALID }
+          retryable: { const: false }
+          message_key: { const: garuda_voa.error.webhook_signature_invalid }
+      - <<: *errorResponseBase
+        title: PAYMENT_PROVIDER_UNAVAILABLE
+        x-http-status: 503
+        properties:
+          code: { const: PAYMENT_PROVIDER_UNAVAILABLE }
+          retryable: { const: true }
+          message_key: { const: garuda_voa.error.payment_provider_unavailable }
+      - <<: *errorResponseBase
+        title: SERVICE_UNAVAILABLE
+        x-http-status: 503
+        properties:
+          code: { const: SERVICE_UNAVAILABLE }
+          retryable: { const: true }
+          message_key: { const: garuda_voa.error.service_unavailable }
+      - <<: *errorResponseBase
+        title: INTERNAL_ERROR
+        x-http-status: 500
+        properties:
+          code: { const: INTERNAL_ERROR }
+          retryable: { const: true }
+          message_key: { const: garuda_voa.error.internal }

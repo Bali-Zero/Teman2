@@ -1,0 +1,82 @@
+brief_ref: evidence/brief.yml
+plan_ref: "PR #5000 (agent/m5/ops/tests-yml-cancelled-matrix) — frontend-tests must survive a cancelled Change map. Evidence pack authored separately from the workflow diff (PR was green on everything except Harness floor recompute for lacking one)."
+lanes:
+  - lane: ops-tests-yml-cancelled-matrix
+    role: build
+    seat: "diag/fix-4706 lane diagnosis; codex gpt-5.6-sol implementation; conductor session commit (sandbox blocked the seat's own git access, per PR body)"
+  - lane: ops-tests-yml-cancelled-matrix-evidence
+    role: review
+    seat: "session (this task — evidence pack authored + every claim independently re-verified against the actual diff and GitHub's own job-history API, generator != grader relative to the build lane)"
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Single build lane declared by the PR body itself (diagnosis + Codex implementation +
+  conductor commit already form a cross-seat chain) — the D3 seat-diversity floor for a
+  *council* dispatch does not apply to this narrow evidence-authoring task.
+diff:
+  net_lines: "1 file, +12/-14 measured by `git diff --stat origin/main...HEAD` on the PR's own head sha."
+  behaviour_change: >-
+    `.github/workflows/tests.yml`'s `frontend-tests` job gains `if: ${{ !cancelled() }}` at the
+    job level, replacing the implicit `success()` gate that comes from having `needs: [changes]`
+    with no job-level condition at all. No change to the job's internal DECIDE/path-filter step.
+receipts:
+  - claim: "Deterministic gear floor recomputed from THIS PR's actual diff is 3 — matches the declared gear, and matches the Harness floor recompute check's own FAIL message"
+    cmd: "git diff --name-only origin/main...HEAD > /tmp/changed-5000.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/changed-5000.txt"
+    exit: 0
+    ts: "2026-08-26T09:20:00Z"
+    seat: "session (evidence-pack task)"
+  - claim: "actionlint accepts the modified workflow file"
+    cmd: "actionlint .github/workflows/tests.yml"
+    result: "no output (clean)"
+    exit: 0
+    ts: "2026-08-26T09:21:00Z"
+    seat: "session (evidence-pack task)"
+  - claim: "The cited incident is independently reproducible from GitHub's own API, not merely quoted from the PR body: run 32866302767 (PR #4706) attempt 1 shows Change map=cancelled, Frontend Tests (Next.js)=skipped — the matrix job never instantiated, exactly the defect this fix addresses. Attempt 2 (post-fix rerun) shows both green."
+    cmd: "gh api repos/Bali-Zero/Teman2/actions/runs/32866302767/attempts/1/jobs --paginate | jq -r '.jobs[] | select(.name|test(\"Change map|Frontend\")) | \"\\(.name)|\\(.conclusion)\"'"
+    result: "Change map|cancelled ; Frontend Tests (Next.js)|skipped (attempt 1). run_attempt=2 overall conclusion=success."
+    exit: 0
+    ts: "2026-08-26T09:23:00Z"
+    seat: "session (evidence-pack task)"
+pii_scan: clean
+dissent:
+  - seat: "Harness floor recompute (CI, deterministic)"
+    objection: >-
+      PR #5000 touches only `.github/workflows/tests.yml`, which is hot-zone by path — floors at
+      Gear 3 regardless of the diff's small size (1 file, +12/-14) — and the PR shipped with no
+      `evidence/brief.yml`/`evidence/pack.yml` in its own diff, so the check correctly FAILED with
+      "this diff touches a hot-zone path (deterministic floor 3) but carries no evidence/brief.yml".
+    status: CONFIRMED
+    note: >-
+      Verified independently, not accepted on the FAIL message alone: recomputed the floor from
+      the PR's actual changed-file list via `evidence_pack_lint.py --print-floor` and got 3,
+      matching the check. Answered here by supplying both files, never by editing the check
+      (CLAUDE.md Agent PR Contract rule 3 precedent).
+  - seat: "session (this evidence-authoring task), against its own first instinct"
+    objection: >-
+      The mandate/PR body cites "Live incident: PR #4706, run 32866302767" as sufficient grounding
+      for the bug's reality. Quoting that citation verbatim without independently querying the run
+      would have been citing a tool output this turn never actually executed — the anti-
+      hallucination failure mode CLAUDE.md §6 exists to prevent, applied to a prior claim rather
+      than to memory. (First query against the run's LATEST state returned all-success, which
+      would have been a false negative had it been accepted uncritically — attempt history had to
+      be checked explicitly.)
+    status: RETRACTED
+    note: >-
+      Queried the run's attempt-1 job history directly via `gh api .../attempts/1/jobs` rather than
+      the bare run (which reflects only the latest, post-fix rerun attempt and shows success).
+      Attempt 1 matched the claimed failure mode exactly (Change map cancelled, frontend-tests
+      matrix skipped). Retracted because the underlying claim held up under independent, correctly
+      -scoped verification.
+tests: []
+static:
+  - "actionlint .github/workflows/tests.yml -> clean"
+notes:
+  - >-
+    This PR is deliberately narrow in this task's own scope: it is the evidence pack ONLY, for a PR
+    whose workflow diff was already committed and pushed. No workflow logic was authored or edited
+    as part of writing this pack — every receipt above is this task independently RE-VERIFYING the
+    incident and the fix, on the PR's actual head sha, in a dedicated worktree separate from any
+    other lane touching this repo (cicatrix-superscar.md family #5, sibling-race discipline).
+  - >-
+    `tests:` is empty because this fix has no unit-testable runtime logic of its own (a GitHub
+    Actions job-level conditional expression) — the acceptance criterion is structural (actionlint)
+    plus the independently-reproduced historical incident, not a pytest file.

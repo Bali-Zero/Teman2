@@ -1372,6 +1372,613 @@ class TestAddDocument:
             )
         assert exc_info.value.status_code == 404
 
+    # -- crm-mutation-scope (2026-08-25): RBAC gate --------------------------
+    # add_document_to_practice had NO scope check at all before this fix
+    # (reconciliation F7). These tests prove the admin-or-owner gate now
+    # mirrors update_practice's proven pattern.
+
+    @pytest.mark.asyncio
+    async def test_add_document_owner_created_by_allowed(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
+        """INNOCENCE: the practice's creator (non-admin) may add documents."""
+        from backend.app.routers.crm_practices import add_document_to_practice
+
+        mock_db_conn.fetchrow = AsyncMock(
+            return_value={
+                "documents": [],
+                "created_by": team_user["email"],
+                "assigned_to": "someone-else@balizero.com",
+            }
+        )
+        mock_db_conn.execute = AsyncMock(return_value=None)
+
+        with patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()):
+            result = await add_document_to_practice(
+                request=MagicMock(),
+                practice_id=1,
+                document_name="Passport Copy",
+                drive_file_id="drive123",
+                uploaded_by=team_user["email"],
+                db_pool=mock_db_pool,
+                current_user=team_user,
+            )
+        assert result["success"] is True
+        mock_db_conn.execute.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_add_document_owner_assigned_to_allowed(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
+        """INNOCENCE: the practice's assignee (non-admin) may add documents."""
+        from backend.app.routers.crm_practices import add_document_to_practice
+
+        mock_db_conn.fetchrow = AsyncMock(
+            return_value={
+                "documents": [],
+                "created_by": "someone-else@balizero.com",
+                "assigned_to": team_user["email"],
+            }
+        )
+        mock_db_conn.execute = AsyncMock(return_value=None)
+
+        with patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()):
+            result = await add_document_to_practice(
+                request=MagicMock(),
+                practice_id=1,
+                document_name="Passport Copy",
+                drive_file_id="drive123",
+                uploaded_by=team_user["email"],
+                db_pool=mock_db_pool,
+                current_user=team_user,
+            )
+        assert result["success"] is True
+        mock_db_conn.execute.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_add_document_denied_non_owner(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict, caplog
+    ) -> None:
+        """GUILT: a non-admin who neither created nor is assigned to the
+        practice gets 403, no write happens, and the attempt is logged
+        (auditable) — the exact gap the reconciliation found."""
+        import logging
+
+        from fastapi import HTTPException
+
+        from backend.app.routers.crm_practices import add_document_to_practice
+
+        mock_db_conn.fetchrow = AsyncMock(
+            return_value={
+                "documents": [],
+                "created_by": "owner@balizero.com",
+                "assigned_to": "other-owner@balizero.com",
+            }
+        )
+        mock_db_conn.execute = AsyncMock(return_value=None)
+
+        with caplog.at_level(logging.WARNING, logger="backend.app.routers.crm_practices"):
+            with pytest.raises(HTTPException) as exc_info:
+                await add_document_to_practice(
+                    request=MagicMock(),
+                    practice_id=1,
+                    document_name="Passport Copy",
+                    drive_file_id="drive123",
+                    uploaded_by=team_user["email"],
+                    db_pool=mock_db_pool,
+                    current_user=team_user,
+                )
+        assert exc_info.value.status_code == 403
+        mock_db_conn.execute.assert_not_awaited()
+        assert any("crm.rbac_practice_write_denied" in r.message for r in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# update_required_document — RBAC gate (crm-mutation-scope, 2026-08-25)
+# ---------------------------------------------------------------------------
+# update_required_document had NO scope check at all before this fix
+# (reconciliation F7: it is the backing route for the bot's would-be
+# `mark_document_received` tool). These tests prove the admin-or-owner
+# gate now mirrors update_practice's proven pattern.
+
+
+class TestUpdateRequiredDocument:
+    @pytest.mark.asyncio
+    async def test_update_required_document_admin_allowed(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        from backend.app.routers.crm_practices import (
+            RequiredDocumentUpdate,
+            update_required_document,
+        )
+
+        practice_row = {"created_by": "owner@balizero.com", "assigned_to": "other@balizero.com"}
+        doc_row = {
+            "id": 5,
+            "practice_id": 1,
+            "document_type": "passport",
+            "document_label": "Passport",
+            "description": None,
+            "is_required": True,
+            "uploaded_by_client": False,
+            "uploaded_file_id": None,
+            "uploaded_at": None,
+            "client_notes": None,
+            "team_member_notes": None,
+            "status": "verified",
+            "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+            "updated_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+        }
+        mock_db_conn.fetchrow = AsyncMock(side_effect=[practice_row, doc_row])
+
+        with patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()):
+            result = await update_required_document(
+                practice_id=1,
+                doc_id=5,
+                update=RequiredDocumentUpdate(status="verified"),
+                current_user=admin_user,
+                db_pool=mock_db_pool,
+            )
+        assert result["status"] == "verified"
+
+    @pytest.mark.asyncio
+    async def test_update_required_document_owner_created_by_allowed(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
+        """INNOCENCE: the practice's creator (non-admin) may review documents."""
+        from backend.app.routers.crm_practices import (
+            RequiredDocumentUpdate,
+            update_required_document,
+        )
+
+        practice_row = {"created_by": team_user["email"], "assigned_to": "other@balizero.com"}
+        doc_row = {
+            "id": 5,
+            "practice_id": 1,
+            "document_type": "passport",
+            "document_label": "Passport",
+            "description": None,
+            "is_required": True,
+            "uploaded_by_client": False,
+            "uploaded_file_id": None,
+            "uploaded_at": None,
+            "client_notes": None,
+            "team_member_notes": "looks good",
+            "status": "verified",
+            "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+            "updated_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+        }
+        mock_db_conn.fetchrow = AsyncMock(side_effect=[practice_row, doc_row])
+
+        with patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()):
+            result = await update_required_document(
+                practice_id=1,
+                doc_id=5,
+                update=RequiredDocumentUpdate(status="verified", team_member_notes="looks good"),
+                current_user=team_user,
+                db_pool=mock_db_pool,
+            )
+        assert result["status"] == "verified"
+
+    @pytest.mark.asyncio
+    async def test_update_required_document_owner_assigned_to_allowed(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
+        """INNOCENCE: the practice's assignee (non-admin) may review documents."""
+        from backend.app.routers.crm_practices import (
+            RequiredDocumentUpdate,
+            update_required_document,
+        )
+
+        practice_row = {"created_by": "other@balizero.com", "assigned_to": team_user["email"]}
+        doc_row = {
+            "id": 5,
+            "practice_id": 1,
+            "document_type": "passport",
+            "document_label": "Passport",
+            "description": None,
+            "is_required": True,
+            "uploaded_by_client": False,
+            "uploaded_file_id": None,
+            "uploaded_at": None,
+            "client_notes": None,
+            "team_member_notes": None,
+            "status": "verified",
+            "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+            "updated_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+        }
+        mock_db_conn.fetchrow = AsyncMock(side_effect=[practice_row, doc_row])
+
+        with patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()):
+            result = await update_required_document(
+                practice_id=1,
+                doc_id=5,
+                update=RequiredDocumentUpdate(status="verified"),
+                current_user=team_user,
+                db_pool=mock_db_pool,
+            )
+        assert result["status"] == "verified"
+
+    @pytest.mark.asyncio
+    async def test_update_required_document_denied_non_owner(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict, caplog
+    ) -> None:
+        """GUILT: a non-admin who neither created nor is assigned to the
+        practice gets 403, no write happens, and the attempt is logged
+        (auditable) — the exact gap the reconciliation found (backing
+        route for the would-be bot tool `mark_document_received`)."""
+        import logging
+
+        from fastapi import HTTPException
+
+        from backend.app.routers.crm_practices import (
+            RequiredDocumentUpdate,
+            update_required_document,
+        )
+
+        practice_row = {"created_by": "owner@balizero.com", "assigned_to": "other-owner@balizero.com"}
+        mock_db_conn.fetchrow = AsyncMock(return_value=practice_row)
+
+        with caplog.at_level(logging.WARNING, logger="backend.app.routers.crm_practices"):
+            with pytest.raises(HTTPException) as exc_info:
+                await update_required_document(
+                    practice_id=1,
+                    doc_id=5,
+                    update=RequiredDocumentUpdate(status="verified"),
+                    current_user=team_user,
+                    db_pool=mock_db_pool,
+                )
+        assert exc_info.value.status_code == 403
+        # Only the practice-ownership SELECT ran; the doc UPDATE never fired.
+        assert mock_db_conn.fetchrow.await_count == 1
+        assert any("crm.rbac_practice_write_denied" in r.message for r in caplog.records)
+
+    @pytest.mark.asyncio
+    async def test_update_required_document_practice_not_found(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        """A nonexistent practice_id 404s before any ownership check or
+        document lookup runs."""
+        from fastapi import HTTPException
+
+        from backend.app.routers.crm_practices import (
+            RequiredDocumentUpdate,
+            update_required_document,
+        )
+
+        mock_db_conn.fetchrow = AsyncMock(return_value=None)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await update_required_document(
+                practice_id=999,
+                doc_id=5,
+                update=RequiredDocumentUpdate(status="verified"),
+                current_user=admin_user,
+                db_pool=mock_db_pool,
+            )
+        assert exc_info.value.status_code == 404
+        assert mock_db_conn.fetchrow.await_count == 1
+
+
+# ---------------------------------------------------------------------------
+# add_required_document / delete_required_document — RBAC gate
+# (crm-mutation-scope, 2026-08-25, widening round)
+# ---------------------------------------------------------------------------
+# Both had NO scope check at all before this fix. update_required_document
+# (the PATCH sibling on the same sub-resource) was closed in the prior round;
+# leaving these two open would have been an incoherent half-fix on the same
+# RequiredDocumentsCard.tsx card. Caller census re-verified independently for
+# each — not assumed from the PATCH sibling: useRequiredDocuments.ts is the
+# only caller of either, consumed only by RequiredDocumentsCard.tsx on the
+# same /process/[id] page, with no client-side ownership gating and no
+# intake-pipeline or internal-Python caller of either route function.
+
+
+class TestAddRequiredDocument:
+    @pytest.mark.asyncio
+    async def test_add_required_document_admin_allowed(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        from backend.app.routers.crm_practices import (
+            RequiredDocumentCreate,
+            add_required_document,
+        )
+
+        practice_row = {
+            "id": 1,
+            "client_id": 42,
+            "created_by": "owner@balizero.com",
+            "assigned_to": "other@balizero.com",
+        }
+        doc_row = {
+            "id": 5,
+            "practice_id": 1,
+            "document_type": "passport",
+            "document_label": "Passport",
+            "description": None,
+            "is_required": True,
+            "uploaded_by_client": False,
+            "uploaded_file_id": None,
+            "uploaded_at": None,
+            "client_notes": None,
+            "team_member_notes": None,
+            "status": "pending",
+            "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+            "updated_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+        }
+        mock_db_conn.fetchrow = AsyncMock(side_effect=[practice_row, doc_row])
+        mock_db_conn.execute = AsyncMock(return_value=None)
+
+        with patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()):
+            result = await add_required_document(
+                practice_id=1,
+                doc=RequiredDocumentCreate(document_type="passport", document_label="Passport"),
+                current_user=admin_user,
+                db_pool=mock_db_pool,
+            )
+        assert result["document_type"] == "passport"
+
+    @pytest.mark.asyncio
+    async def test_add_required_document_owner_created_by_allowed(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
+        """INNOCENCE: the practice's creator (non-admin) may add a required doc."""
+        from backend.app.routers.crm_practices import (
+            RequiredDocumentCreate,
+            add_required_document,
+        )
+
+        practice_row = {
+            "id": 1,
+            "client_id": 42,
+            "created_by": team_user["email"],
+            "assigned_to": "other@balizero.com",
+        }
+        doc_row = {
+            "id": 5,
+            "practice_id": 1,
+            "document_type": "passport",
+            "document_label": "Passport",
+            "description": None,
+            "is_required": True,
+            "uploaded_by_client": False,
+            "uploaded_file_id": None,
+            "uploaded_at": None,
+            "client_notes": None,
+            "team_member_notes": None,
+            "status": "pending",
+            "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+            "updated_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+        }
+        mock_db_conn.fetchrow = AsyncMock(side_effect=[practice_row, doc_row])
+        mock_db_conn.execute = AsyncMock(return_value=None)
+
+        with patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()):
+            result = await add_required_document(
+                practice_id=1,
+                doc=RequiredDocumentCreate(document_type="passport", document_label="Passport"),
+                current_user=team_user,
+                db_pool=mock_db_pool,
+            )
+        assert result["document_type"] == "passport"
+
+    @pytest.mark.asyncio
+    async def test_add_required_document_owner_assigned_to_allowed(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
+        """INNOCENCE: the practice's assignee (non-admin) may add a required doc."""
+        from backend.app.routers.crm_practices import (
+            RequiredDocumentCreate,
+            add_required_document,
+        )
+
+        practice_row = {
+            "id": 1,
+            "client_id": 42,
+            "created_by": "other@balizero.com",
+            "assigned_to": team_user["email"],
+        }
+        doc_row = {
+            "id": 5,
+            "practice_id": 1,
+            "document_type": "passport",
+            "document_label": "Passport",
+            "description": None,
+            "is_required": True,
+            "uploaded_by_client": False,
+            "uploaded_file_id": None,
+            "uploaded_at": None,
+            "client_notes": None,
+            "team_member_notes": None,
+            "status": "pending",
+            "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+            "updated_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+        }
+        mock_db_conn.fetchrow = AsyncMock(side_effect=[practice_row, doc_row])
+        mock_db_conn.execute = AsyncMock(return_value=None)
+
+        with patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()):
+            result = await add_required_document(
+                practice_id=1,
+                doc=RequiredDocumentCreate(document_type="passport", document_label="Passport"),
+                current_user=team_user,
+                db_pool=mock_db_pool,
+            )
+        assert result["document_type"] == "passport"
+
+    @pytest.mark.asyncio
+    async def test_add_required_document_denied_non_owner(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict, caplog
+    ) -> None:
+        """GUILT: a non-admin who neither created nor is assigned to the
+        practice gets 403, no insert happens, and the attempt is logged
+        (auditable)."""
+        import logging
+
+        from fastapi import HTTPException
+
+        from backend.app.routers.crm_practices import (
+            RequiredDocumentCreate,
+            add_required_document,
+        )
+
+        practice_row = {
+            "id": 1,
+            "client_id": 42,
+            "created_by": "owner@balizero.com",
+            "assigned_to": "other-owner@balizero.com",
+        }
+        mock_db_conn.fetchrow = AsyncMock(return_value=practice_row)
+        mock_db_conn.execute = AsyncMock(return_value=None)
+
+        with caplog.at_level(logging.WARNING, logger="backend.app.routers.crm_practices"):
+            with pytest.raises(HTTPException) as exc_info:
+                await add_required_document(
+                    practice_id=1,
+                    doc=RequiredDocumentCreate(document_type="passport", document_label="Passport"),
+                    current_user=team_user,
+                    db_pool=mock_db_pool,
+                )
+        assert exc_info.value.status_code == 403
+        # Only the practice-ownership SELECT ran; the INSERT never fired.
+        assert mock_db_conn.fetchrow.await_count == 1
+        mock_db_conn.execute.assert_not_awaited()
+        assert any("crm.rbac_practice_write_denied" in r.message for r in caplog.records)
+
+    @pytest.mark.asyncio
+    async def test_add_required_document_practice_not_found(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        from fastapi import HTTPException
+
+        from backend.app.routers.crm_practices import (
+            RequiredDocumentCreate,
+            add_required_document,
+        )
+
+        mock_db_conn.fetchrow = AsyncMock(return_value=None)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await add_required_document(
+                practice_id=999,
+                doc=RequiredDocumentCreate(document_type="passport", document_label="Passport"),
+                current_user=admin_user,
+                db_pool=mock_db_pool,
+            )
+        assert exc_info.value.status_code == 404
+
+
+class TestDeleteRequiredDocument:
+    @pytest.mark.asyncio
+    async def test_delete_required_document_admin_allowed(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        from backend.app.routers.crm_practices import delete_required_document
+
+        practice_row = {"created_by": "owner@balizero.com", "assigned_to": "other@balizero.com"}
+        mock_db_conn.fetchrow = AsyncMock(return_value=practice_row)
+        mock_db_conn.execute = AsyncMock(return_value="DELETE 1")
+
+        with patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()):
+            result = await delete_required_document(
+                practice_id=1,
+                doc_id=5,
+                current_user=admin_user,
+                db_pool=mock_db_pool,
+            )
+        assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_delete_required_document_owner_created_by_allowed(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
+        """INNOCENCE: the practice's creator (non-admin) may delete a required doc."""
+        from backend.app.routers.crm_practices import delete_required_document
+
+        practice_row = {"created_by": team_user["email"], "assigned_to": "other@balizero.com"}
+        mock_db_conn.fetchrow = AsyncMock(return_value=practice_row)
+        mock_db_conn.execute = AsyncMock(return_value="DELETE 1")
+
+        with patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()):
+            result = await delete_required_document(
+                practice_id=1,
+                doc_id=5,
+                current_user=team_user,
+                db_pool=mock_db_pool,
+            )
+        assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_delete_required_document_owner_assigned_to_allowed(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
+        """INNOCENCE: the practice's assignee (non-admin) may delete a required doc."""
+        from backend.app.routers.crm_practices import delete_required_document
+
+        practice_row = {"created_by": "other@balizero.com", "assigned_to": team_user["email"]}
+        mock_db_conn.fetchrow = AsyncMock(return_value=practice_row)
+        mock_db_conn.execute = AsyncMock(return_value="DELETE 1")
+
+        with patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()):
+            result = await delete_required_document(
+                practice_id=1,
+                doc_id=5,
+                current_user=team_user,
+                db_pool=mock_db_pool,
+            )
+        assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_delete_required_document_denied_non_owner(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict, caplog
+    ) -> None:
+        """GUILT: a non-admin who neither created nor is assigned to the
+        practice gets 403, no delete happens, and the attempt is logged
+        (auditable)."""
+        import logging
+
+        from fastapi import HTTPException
+
+        from backend.app.routers.crm_practices import delete_required_document
+
+        practice_row = {"created_by": "owner@balizero.com", "assigned_to": "other-owner@balizero.com"}
+        mock_db_conn.fetchrow = AsyncMock(return_value=practice_row)
+        mock_db_conn.execute = AsyncMock(return_value="DELETE 1")
+
+        with caplog.at_level(logging.WARNING, logger="backend.app.routers.crm_practices"):
+            with pytest.raises(HTTPException) as exc_info:
+                await delete_required_document(
+                    practice_id=1,
+                    doc_id=5,
+                    current_user=team_user,
+                    db_pool=mock_db_pool,
+                )
+        assert exc_info.value.status_code == 403
+        mock_db_conn.execute.assert_not_awaited()
+        assert any("crm.rbac_practice_write_denied" in r.message for r in caplog.records)
+
+    @pytest.mark.asyncio
+    async def test_delete_required_document_practice_not_found(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        """A nonexistent practice_id 404s before any ownership check or
+        delete attempt runs."""
+        from fastapi import HTTPException
+
+        from backend.app.routers.crm_practices import delete_required_document
+
+        mock_db_conn.fetchrow = AsyncMock(return_value=None)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await delete_required_document(
+                practice_id=999,
+                doc_id=5,
+                current_user=admin_user,
+                db_pool=mock_db_pool,
+            )
+        assert exc_info.value.status_code == 404
+        mock_db_conn.execute.assert_not_awaited()
+
 
 # ---------------------------------------------------------------------------
 # Helper: _create_hr_bonus_on_completed

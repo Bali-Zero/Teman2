@@ -547,16 +547,16 @@ def _unarmed_dirty_removal_target(cmd_scan: str, cwd: str) -> pathlib.Path | Non
 
 # --- W79 B1: shell file-WRITE detection ----------------------------------------
 # Quick gate: does the command contain anything that could write a file?
-WRITE_HINT_RE = re.compile(r"(>>?|\btee\b|\bsed\b[^|]*-i|\bdd\b[^|]*\bof=|\b(?:cp|mv|install)\b)")
+WRITE_HINT_RE = re.compile(r"(>>?|\btee\b|\bsed\b[^|\n]*-i|\bdd\b[^|\n]*\bof=|\b(?:cp|mv|install)\b)")
 # Extractors for write TARGETS. Each yields candidate destination path(s).
 # Redirect:  ... > path   or  ... >> path   (NOT >&, NOT >/dev/null handled by classifier)
-REDIR_RE = re.compile(r"(?:[0-9]?>|&>)>?\s*([^\s|;&)]+)")  # stdout/stderr/combined redirects
+REDIR_RE = re.compile(r"(?:[0-9]?>|&>)>?[ \t]*([^\s|;&)]+)")  # stdout/stderr/combined redirects
 # tee [-a] path...   (path before next pipe/redirect)
-TEE_RE = re.compile(r"\btee\s+(?:-a\s+)?([^\s|;&)]+)")
+TEE_RE = re.compile(r"\btee[ \t]+(?:-a[ \t]+)?([^\s|;&)]+)")
 # sed -i ... LAST-non-flag-token is the file (best-effort: take tokens after the script)
-SEDI_RE = re.compile(r"\bsed\b[^|;&]*?-i\S*\s+(?:-e\s+\S+\s+|'[^']*'\s+|\"[^\"]*\"\s+|\S+\s+)([^\s|;&)]+)")
+SEDI_RE = re.compile(r"\bsed\b[^|;&\n]*?-i\S*[ \t]+(?:-e[ \t]+\S+[ \t]+|'[^'\n]*'[ \t]+|\"[^\"\n]*\"[ \t]+|\S+[ \t]+)*([^\s|;&)]+)")
 # dd of=path
-DDOF_RE = re.compile(r"\bdd\b[^|;&]*?\bof=([^\s|;&)]+)")
+DDOF_RE = re.compile(r"\bdd\b[^|;&\n]*?\bof=([^\s|;&)]+)")
 # cp/mv/install SRC... DEST  → DEST is the last non-flag token before pipe/sep
 # W119 (2026-08-18): same cross-line-bleed defect as RM_RF_RE / WT_REMOVE_GIT_RE
 # above — `\s+` as the inter-token separator inside a repeated group matches a
@@ -1284,16 +1284,34 @@ def _git_verb_verdict(cmd: str, cwd: str) -> GitVerbVerdict:
     return GitVerbVerdict("block", target_real)
 
 
+import sys as _gc_sys
+import os as _gc_os
+_gc_sys.path.insert(0, _gc_os.path.dirname(_gc_os.path.abspath(__file__)))
+try:
+    from gate_coverage import record as _gc_record
+except Exception:
+    def _gc_record(hook_name, decision, payload=None):
+        pass
+
+
 def main():
     if _kill_switch_active():
+        _gc_record("worktree_isolation", "exempt", None)
         sys.exit(0)
 
     try:
         payload = json.load(sys.stdin)
+        if not isinstance(payload, dict):
+            # Bug fixed 2026-08-27: same non-dict-JSON crash class model_routing_gate.py
+            # already guarded 2026-08-22 (payload.get() on null/42/[]/a string raises).
+            _gc_record("worktree_isolation", "exempt", None)
+            sys.exit(0)
     except Exception:
+        _gc_record("worktree_isolation", "exempt", None)
         sys.exit(0)
 
     if payload.get("tool_name") != "Bash":
+        _gc_record("worktree_isolation", "exempt", payload)
         sys.exit(0)
 
     cmd = payload.get("tool_input", {}).get("command", "")
@@ -1304,6 +1322,7 @@ def main():
     if offending is not None:
         _increment_block_counter()
         _probe_log(payload, "block_shell_write_main")
+        _gc_record("worktree_isolation", "deny", payload)
         sys.stderr.write(
             f"WORKTREE ISOLATION VIOLATION (Bash file-write into main checkout)\n"
             f"  cwd: {cwd}\n"
@@ -1327,6 +1346,7 @@ def main():
         if victim is not None:
             _increment_block_counter()
             _probe_log(payload, "block_unarmed_worktree_removal")
+            _gc_record("worktree_isolation", "deny", payload)
             sys.stderr.write(
                 f"WORKTREE REMOVAL BLOCKED (dirty + unarmed — scar W80)\n"
                 f"  worktree: {victim}\n"
@@ -1346,6 +1366,7 @@ def main():
 
     # Quick exit: cmd doesn't look git-mutating
     if "git" not in cmd:
+        _gc_record("worktree_isolation", "allow", payload)
         sys.exit(0)
 
     # --- W117: ssh-dispatched DISCARD of a remote main checkout ---
@@ -1357,6 +1378,7 @@ def main():
     if remote_discard is not None:
         _increment_block_counter()
         _probe_log(payload, "block_remote_discard_main")
+        _gc_record("worktree_isolation", "deny", payload)
         sys.stderr.write(
             f"WORKTREE ISOLATION VIOLATION (ssh-dispatched discard of a MAIN checkout)\n"
             f"  remote target: {remote_discard}\n"
@@ -1380,11 +1402,13 @@ def main():
 
     if verdict.decision != "block":
         _probe_log(payload, verdict.decision)
+        _gc_record("worktree_isolation", "allow", payload)
         sys.exit(0)
 
     # Block.
     _increment_block_counter()
     _probe_log(payload, "block")
+    _gc_record("worktree_isolation", "deny", payload)
 
     n_alive = _n_alive_cached()
     n_alive_str = f"{n_alive}" if n_alive >= 0 else "?"

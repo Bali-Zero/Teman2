@@ -1,0 +1,125 @@
+task_id: pending-arms-ratchet
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  L10-PR1 of the beyond-SOTA craft wave 2 (squad L, issue #5319): close the
+  loop between "a cure was written about" and "a cure is running" at the one
+  place the organism already keeps score — the W81 PENDING-ARMS ledger.
+
+  Measured on the live ledger 2026-08-31: 679 open rows, 440 TECH-DEBT
+  OVERDUE. The ledger's own overdue alarm had never fired once before W120
+  found it reading a key the reporter does not emit. Nothing today stops that
+  number from going up.
+
+  This adds the thing that does: a ratchet that reddens when a branch RAISES
+  the overdue count without saying why — and, just as important, does NOT
+  redden when the calendar raises it, which is what a snapshot-based gate
+  would have done to every squad in this wave about two days from now.
+constraints:
+  - "Read-only. The reporter is a pure signaler and stays one — the ratchet
+    reads the ledger at two refs and writes nothing, ever."
+  - "The gate must not redden a PR for a cause that PR did not create. This is
+    the whole design: `tech_debt_overdue` is a function of the CALENDAR, so
+    both sides are read at ONE frozen `now` and the delta is what the diff did.
+    Measured while building: 440 overdue of which 14 FRESH — a snapshot gate
+    would have produced up to 14 automatic reds in the next 48h, attributable
+    to nobody."
+  - "The base is `git merge-base origin/main HEAD`, NOT live origin/main. The
+    sibling check in the same workflow file uses origin/main on purpose,
+    because it asks the opposite question. W88/W102 are that pair; both sites
+    carry the warning, because a reader who knows only one scar breaks the
+    other."
+  - "Additive to the existing corpus, never a replacement. The `len(lines)==1`
+    assertions in test_organism_digest_pending_arms.py are load-bearing — they
+    are what keeps a boot-injected receptor terse on three machines — and were
+    not weakened to make room for the new detail lines."
+  - "No new required context. Promotion to a REQUIRED branch-protection check
+    is operator-only (CLAUDE.md §13) and is carried as a ledger row, not
+    claimed as done."
+acceptance:
+  - text: >-
+      WHEN a branch adds a ledger row that was ALREADY overdue at the base
+      commit's date, the ratchet SHALL exit 1 and name the row; and WHEN a
+      branch adds a row opened after that date, it SHALL exit 0 however long the
+      branch lives.
+    probe: "pytest scripts/tests/test_pending_arms_ratchet.py -k overdue_when_the_branch_was_cut or head_only_FRESH"
+  - text: >-
+      WHERE the base commit's date differs from today, the verdict SHALL be
+      computed from the base commit's date and SHALL NOT change with the wall
+      clock.
+    probe: "pytest scripts/tests/test_pending_arms_ratchet.py::test_the_clock_is_the_BASE_COMMIT_date_and_not_today"
+  - text: >-
+      IF a valid override that the branch itself ADDED covers the head count,
+      the ratchet SHALL exit 0; IF the override is inherited from the base,
+      restyled from an inherited one, blockquoted, fenced, indented as code, or
+      carries an empty reason, it SHALL NOT authorise.
+    probe: "python3 scripts/pending_arms_report.py --ratchet-selftest"
+  - text: >-
+      IF the base ref, the base commit's date, or either ledger read is
+      unavailable, the ratchet SHALL exit 3 and SHALL NOT exit 0 or 1.
+    probe: "pytest scripts/tests/test_pending_arms_ratchet.py -k cannot_verify"
+  - text: >-
+      WHEN `ORGANISM_DIGEST_PENDING_ARMS=rows` is set, the digest SHALL name the
+      ten OLDEST overdue rows oldest-first; and WHILE it is unset or "1", the
+      boot output SHALL be byte-for-byte what it is today.
+    probe: "pytest scripts/tests/test_organism_digest_pending_arms.py"
+  - text: >-
+      WHEN any cure in this diff is reverted, the corpus SHALL turn red — or the
+      mutant SHALL be shown to be equivalent rather than reported green.
+    probe: "PYTHONDONTWRITEBYTECODE=1 python3.11 -B -m pytest -q -p no:cacheprovider"
+consumer_map:
+  - "check-ledger-no-silent-loss.yml — the executor, and the only reason any of
+    this runs. Already path-triggered on the ledger and on
+    pending_arms_report.py; this PR adds the three new subjects to that trigger
+    so a PR editing the guard's own corpus cannot slip past the job that runs
+    it."
+  - "scripts/tests/test_organism_digest_pending_arms.py — the corpus that
+    CLOSED W120, measured 2026-08-31 to be named by NO workflow in this repo.
+    scripts-tests-sweep.yml is continue-on-error and gates nothing. It gets a
+    named executor here: the test proving the alarm is armed was itself
+    unarmed."
+  - "scripts/organism_digest.py — the boot receptor on all three machines. Its
+    default path is byte-for-byte unchanged; only the opt-in states move."
+  - "Squad F prime's L13-PR3 — an operator[secret] ager that also edits
+    pending_arms_report.py. Per the L10 spec this PR merges FIRST and L13-PR3
+    rebases onto it."
+risks:
+  - "NON-REQUIRED. A red here is loud on the checks list and does not block.
+    That is deliberate for a gate whose delta semantics are new on day 0 of a
+    six-squad parallel wave: had the attribution logic been wrong in a REQUIRED
+    check, it would have red-lined every squad at once. The promotion is a
+    ledger row owned by operator[control-plane], not a silent claim."
+  - "The ratchet cannot see a row edited IN PLACE from fresh to overdue-looking
+    without changing its opened date — it counts, it does not diff prose. The
+    RED path says so in words rather than printing an empty list under a
+    'newly-overdue' heading."
+  - "W121 bit this session, live and exact, and the first mutation battery was
+    INVALID because of it. A same-length mutation restored inside one
+    filesystem second left a .pyc whose (mtime, size) still validated, so
+    pytest ran mutated bytecode against restored source — source mtime
+    1788107352, .pyc recorded mtime 1788107352. The battery was discarded and
+    re-run under PYTHONDONTWRITEBYTECODE=1 / -B / -p no:cacheprovider with
+    __pycache__ cleared between every case. Every number in the pack comes from
+    the clean run. Recorded because an outcome obtained the first way is not
+    detectably wrong afterwards — which is the whole danger."
+  - "actionlint is not installed on Mini. It was fetched at the version and
+    with the flags CI itself pins (1.7.12, -shellcheck=) rather than assumed
+    green from a different version."
+grader: |
+  Cross-family adversarial refutation by Codex GPT-5.6 sol at xhigh effort,
+  read-only sandbox, given the DIFF and an attack list — never a narrative of
+  what the diff was supposed to do. Generator != grader holds strictly: sol
+  wrote none of this code, and the two seats that did (Kimi for the ratchet
+  core, a Sonnet 5 subagent for the corpus) do not grade their own output
+  either. Final on-disk gate is this orchestrator session (Opus 5, xhigh),
+  empirical, this turn: every command in the receipts was re-run here rather
+  than reported from an implementer's summary.
+budget: >-
+  3 build lanes (kimi-code/kimi-for-coding for the ratchet core, a Sonnet 5
+  subagent for the corpus, this session for integration and the digest half)
+  + 1 cross-family review lane (Codex sol xhigh). No council: a lint with
+  guilt+innocence fixtures and a 7-mutant battery does not meet the council
+  gate, and spending one here would be the meta-work trap this very lane
+  exists to measure.
+pii: none

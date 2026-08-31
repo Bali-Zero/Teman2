@@ -66,7 +66,7 @@ export function TeamModal({ member, open, onClose }: TeamModalProps) {
                     href={`${CONTACTS.whatsappUrl}?text=Ciao, vorrei parlare con ${encodeURIComponent(member.name)} del team Bali Zero`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block w-full text-center py-3 bg-[#25D366] text-white rounded-xl font-[family-name:var(--font-montserrat)] font-medium hover:bg-[#1fb855] transition-colors"
+                    className="block w-full text-center py-3 bg-[#25D366] text-[var(--accent-whatsapp-ink)] rounded-xl font-[family-name:var(--font-montserrat)] font-medium hover:bg-[#1fb855] transition-colors"
                   >
                     Contatta via WhatsApp
                   </a>

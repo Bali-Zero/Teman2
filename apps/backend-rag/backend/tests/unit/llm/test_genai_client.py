@@ -71,11 +71,23 @@ class TestGenAIClient:
         mock_chunk2 = MagicMock()
         mock_chunk2.text = "chunk2"
 
+        # CORRECTED 2026-08-26. This mock used to be an async GENERATOR function,
+        # with a comment asserting the mock "must return async generator directly".
+        # The real SDK has never had that shape: on both google-genai 1.75.0 (local
+        # venv) and 2.18.1 (the version requirements.lock.txt and
+        # requirements-prod.lock.txt pin, i.e. what CI and production actually run),
+        # `AsyncModels.generate_content_stream` is a COROUTINE FUNCTION --
+        # inspect.iscoroutinefunction() is True and isasyncgenfunction() is False.
+        # So this test was green over a call path that raised TypeError on every
+        # real invocation. The mock now matches the SDK: a coroutine that resolves
+        # to the async iterator.
         async def mock_stream(*args, **kwargs):
-            yield mock_chunk1
-            yield mock_chunk2
+            async def _chunks():
+                yield mock_chunk1
+                yield mock_chunk2
 
-        # Mock must return async generator directly, not wrapped in AsyncMock
+            return _chunks()
+
         genai_client._client.aio.models.generate_content_stream = mock_stream
 
         chunks = []

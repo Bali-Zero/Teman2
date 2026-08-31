@@ -1,6 +1,14 @@
 "use client";
 
-import { useId, type ReactNode, type Ref } from "react";
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  useId,
+  type KeyboardEvent,
+  type ReactNode,
+  type Ref,
+} from "react";
 import type { LucideIcon } from "lucide-react";
 import { ChevronRight } from "lucide-react";
 
@@ -23,6 +31,45 @@ export interface QuestionCardProps {
   children: ReactNode;
 }
 
+function handleRadioGroupKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+
+  const currentRadio = target.closest<HTMLButtonElement>('[role="radio"]');
+  if (!currentRadio || !event.currentTarget.contains(currentRadio)) return;
+
+  const radios = Array.from(
+    event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]'),
+  );
+  const currentIndex = radios.indexOf(currentRadio);
+  if (currentIndex < 0 || radios.length === 0) return;
+
+  let nextIndex: number;
+  switch (event.key) {
+    case "ArrowDown":
+    case "ArrowRight":
+      nextIndex = (currentIndex + 1) % radios.length;
+      break;
+    case "ArrowUp":
+    case "ArrowLeft":
+      nextIndex = (currentIndex - 1 + radios.length) % radios.length;
+      break;
+    case "Home":
+      nextIndex = 0;
+      break;
+    case "End":
+      nextIndex = radios.length - 1;
+      break;
+    default:
+      return;
+  }
+
+  event.preventDefault();
+  const nextRadio = radios[nextIndex];
+  nextRadio.focus();
+  nextRadio.click();
+}
+
 /** Chrome wrapper for one wizard screen: heading/body (from copy.ts),
  *  a collapsible "Why we ask" aside, an optional radiogroup-wrapped
  *  options slot, and a slot for anything else (option cards, a custom
@@ -36,6 +83,28 @@ export function QuestionCard({
   children,
 }: QuestionCardProps) {
   const headingId = useId();
+  const optionNodes = Children.toArray(options);
+  const radioIndexes = optionNodes.flatMap((option, index) =>
+    isValidElement<OptionButtonProps>(option) &&
+    option.type === OptionButton &&
+    option.props.variant === "radio"
+      ? [index]
+      : [],
+  );
+  const selectedRadioIndex = radioIndexes.find((index) => {
+    const option = optionNodes[index];
+    return isValidElement<OptionButtonProps>(option) && option.props.selected;
+  });
+  const tabbableRadioIndex = selectedRadioIndex ?? radioIndexes[0];
+  const radioOptions = optionNodes.map((option, index) =>
+    isValidElement<OptionButtonProps>(option) &&
+    option.type === OptionButton &&
+    option.props.variant === "radio"
+      ? cloneElement(option, {
+          tabIndex: index === tabbableRadioIndex ? 0 : -1,
+        })
+      : option,
+  );
 
   return (
     <div
@@ -54,8 +123,10 @@ export function QuestionCard({
         tabIndex={-1}
         style={{
           margin: 0,
+          // R4 §3: Cormorant is display-only and never below 24px — under that,
+          // low-DPI Android antialiasing shreds the serif.
           fontFamily: "var(--font-serif, Georgia, serif)",
-          fontSize: "clamp(1.25rem, 3vw, 1.6rem)",
+          fontSize: "clamp(1.5rem, 3vw, 1.6rem)",
           color: "var(--text-primary)",
         }}
       >
@@ -102,9 +173,10 @@ export function QuestionCard({
         <div
           role="radiogroup"
           aria-labelledby={headingId}
+          onKeyDown={handleRadioGroupKeyDown}
           style={{ display: "grid", gap: "var(--space-2, 0.5rem)" }}
         >
-          {options}
+          {radioOptions}
         </div>
       ) : null}
       <div style={{ display: "grid", gap: "var(--space-2, 0.5rem)" }}>
@@ -112,10 +184,7 @@ export function QuestionCard({
       </div>
       {/* Single instance per render (only one question stage is ever
        *  mounted at a time) — matches the local-<style> pattern already
-       *  used by ProgressRail/MemoPreview. Transitions here are already
-       *  covered by StudioApp's `.bz-shs-layout * { transition: none }`
-       *  reduced-motion rule, since QuestionCard only ever renders inside
-       *  that container — no separate media query needed. */}
+       *  used by ProgressRail/MemoPreview. */}
       <style>{`
         .bz-shs-why-summary::-webkit-details-marker {
           display: none;
@@ -135,20 +204,40 @@ export function QuestionCard({
         .bz-shs-option {
           border: 1px solid var(--color-border-subtle);
           background: transparent;
+          box-shadow: inset 0 0 0 0 transparent;
           transition:
             border-color 150ms ease-out,
-            background-color 150ms ease-out;
+            background-color 150ms ease-out,
+            box-shadow 150ms ease-out;
         }
         .bz-shs-option:hover {
           border-color: var(--accent-funnel);
           background: color-mix(in srgb, var(--accent-funnel) 6%, transparent);
         }
+        /* R4 §3/§4.5: the chosen option is an INK outline, never red. Red is
+           allowed exactly two duties on this page — structure (the progress
+           fill, brand marks) and action (the single primary CTA). Painting
+           "chosen" in the same red is the three-meaning collision the identity
+           law exists to remove, and it also made the selected option compete
+           with the Continue button for the eye. Ink at 14.79:1 on carta is a
+           stronger boundary than the red it replaces. */
         .bz-shs-option[data-selected="true"] {
-          border: 2px solid var(--accent-funnel);
-          background: color-mix(in srgb, var(--accent-funnel) 12%, transparent);
+          border-color: var(--text-primary);
+          background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+          box-shadow: inset 0 0 0 2px var(--text-primary);
         }
         .bz-shs-option[data-selected="true"]:hover {
-          background: color-mix(in srgb, var(--accent-funnel) 16%, transparent);
+          background: color-mix(in srgb, var(--text-primary) 9%, transparent);
+        }
+        .bz-shs-option:focus-visible {
+          outline: 3px solid var(--text-primary);
+          outline-offset: 3px;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .bz-shs-why-chevron,
+          .bz-shs-option {
+            transition: none !important;
+          }
         }
       `}</style>
     </div>
@@ -165,13 +254,15 @@ export interface OptionButtonProps {
    *  (`aria-pressed`) used by the family multi-select step, where more
    *  than one option can be true at once.
    *
-   *  Arrow-key roving-tabindex movement between radio options is left as
-   *  a future enhancement — Tab-order navigation between options still
-   *  works today; only the announced role/state changed here. */
+   *  The enclosing QuestionCard radiogroup owns roving tabindex and radio
+   *  keyboard movement. */
   variant?: "radio" | "toggle";
   /** Optional leading icon for route-style options. Rendered `aria-hidden`
    *  because the textual label already carries the meaning. */
   icon?: LucideIcon;
+  /** Injected by QuestionCard for radio variants. Toggle buttons deliberately
+   *  omit this so each remains in the document's normal Tab order. */
+  tabIndex?: 0 | -1;
 }
 
 /** Decorative leading affordance for a radio-variant option: an empty ring
@@ -190,9 +281,17 @@ function RadioAffordance({ selected }: { selected: boolean }) {
         width: 20,
         height: 20,
         borderRadius: "50%",
+        // R4 §3/§4.5: SELECTION IS NEVER RED. Red carries exactly two duties —
+        // structure and action — and letting it also mean "chosen" is the
+        // three-meaning collision the identity law exists to kill. Selected is
+        // an INK outline; the unselected ring uses border-input (#7a8093,
+        // 3.64:1 on carta), never the hairline (1.21:1), because this ring is
+        // what identifies an interactive control (WCAG 2.2 SC 1.4.11).
+        // The signal is not colour-alone either way: ring weight changes and
+        // the inner mark appears.
         border: selected
-          ? "2px solid var(--accent-funnel)"
-          : "1.5px solid var(--color-border-subtle)",
+          ? "2px solid var(--text-primary)"
+          : "1.5px solid var(--border-strong)",
       }}
     >
       {selected ? (
@@ -201,7 +300,7 @@ function RadioAffordance({ selected }: { selected: boolean }) {
             width: 10,
             height: 10,
             borderRadius: "50%",
-            background: "var(--accent-funnel)",
+            background: "var(--text-primary)",
           }}
         />
       ) : null}
@@ -224,11 +323,15 @@ function CheckAffordance({ selected }: { selected: boolean }) {
         width: 20,
         height: 20,
         borderRadius: 5,
+        // R4 §3/§4.5: selection is never red — ink box + white check. The
+        // unselected boundary is border-input, not the decorative hairline.
+        // White on ink measures 16.00:1; the check glyph is a second,
+        // non-colour channel on top of the fill.
         border: selected
-          ? "2px solid var(--accent-funnel)"
-          : "1.5px solid var(--color-border-subtle)",
-        background: selected ? "var(--accent-funnel)" : "transparent",
-        color: "var(--text-on-accent, #fff)",
+          ? "2px solid var(--text-primary)"
+          : "1.5px solid var(--border-strong)",
+        background: selected ? "var(--text-primary)" : "transparent",
+        color: "#ffffff",
         fontSize: 13,
         lineHeight: 1,
       }}
@@ -251,6 +354,7 @@ export function OptionButton({
   onSelect,
   variant = "toggle",
   icon: Icon,
+  tabIndex,
 }: OptionButtonProps) {
   const isRadio = variant === "radio";
   return (
@@ -260,6 +364,7 @@ export function OptionButton({
       role={isRadio ? "radio" : undefined}
       aria-checked={isRadio ? selected : undefined}
       aria-pressed={isRadio ? undefined : selected}
+      tabIndex={isRadio ? (tabIndex ?? 0) : undefined}
       className="bz-shs-option"
       data-selected={selected ? "true" : "false"}
       style={{
@@ -267,7 +372,7 @@ export function OptionButton({
         alignItems: "center",
         gap: "var(--space-3, 0.75rem)",
         padding: "var(--space-3, 0.85rem) var(--space-4, 1.1rem)",
-        borderRadius: 8,
+        borderRadius: 12,
         color: "var(--text-primary)",
         textAlign: "left",
         cursor: "pointer",

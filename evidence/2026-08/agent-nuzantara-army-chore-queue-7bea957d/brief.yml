@@ -1,0 +1,100 @@
+task_id: chore-queue-genes-0827
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  PR #5065 (agent/nuzantara/army/chore-queue -> main): ships
+  scripts/chore_dispatch.py, a generic chore-queue dispatcher for cheap
+  seats (jules/spark today) plus a new daily launchd organ
+  (com.nuzantara.chore-dispatch.daily.plist, receptor-live PART B). "Every
+  organ is born with its genes" was red on the pushed head: the new organ
+  had ALL THREE required genes missing (G1_registry, G2_heartbeat,
+  G5_kill_switch) — unlike #5071/#5047 tonight, this organ had no
+  pre-existing kill switch at all to build on.
+
+  Gear 3 by PATH, deterministic: touches `infra/launchagents/*`
+  (HOTZONE_PATTERNS hit) — a new plist is exactly the class of change that
+  floor exists to gate. Re-evidenced tonight under the queue-shepherd sweep
+  (post-#5049 size-term floor landing after tonight's PRs were originally
+  armed).
+constraints:
+  - "No PII/OSINT — pure ops-tooling (a generic chore dispatcher for cheap
+    LLM seats, a launchd plist, a registry entry, a heartbeat/kill-switch
+    pair, tests, doc pages). Nothing here touches client data."
+  - "The heartbeat/kill-switch wiring must live in the SAME invocation path
+    the daily organ actually takes (`main()`'s `--dispatch-next` branch,
+    the only thing `scripts/army/chore_dispatch_wrapper.sh` calls) — not
+    scattered across the other three interactive/session-driven
+    subcommands (`--list`/`--dispatch`/`--harvest`), which are not the cron
+    organ and must not silently gain a new env-gated behavior change."
+  - "Follow this repo's OWN established pattern for the gate's known
+    content-scan limitation (verified by reading
+    scripts/army/jules_lane_dispatch_wrapper.sh first) rather than
+    inventing a new one: the organ-conformance gate content-scans the
+    literal text of the FIRST wrapper file the plist resolves, not what
+    that wrapper execs into. A comment in the wrapper naming where the real
+    G2/G5 implementation lives, containing the literal trigger substrings
+    (`.organism/last_seen`, an `_ENABLED` token), is this repo's precedent
+    — not a workaround invented for this PR."
+acceptance:
+  - "infra/organ-conformance/check_organ_conformance.py reports 0
+    non-conformant births for com.nuzantara.chore-dispatch.daily.plist
+    (previously missing all 3 genes)."
+  - "apps/organism/organism/organs_registry.yaml's top-level checksum is
+    regenerated via `python -m organism.tools.validate_organs_registry
+    <path> --update-checksum` and the registry re-validates clean."
+  - "scripts/tests/test_chore_dispatch.py's existing 28-test suite passes
+    unchanged (no regression), plus 2 new guilt+innocence tests proving the
+    heartbeat actually fires with the right status on both the
+    kill-switch-disabled path and the real-dispatch-next path via main()."
+  - "The deterministic floor recomputed from this PR's own real changed-file
+    set (committed, not working-tree-only) is 3, and this brief declares
+    gear 3 — never below it."
+consumer_map:
+  - "`apps/organism/organism/organs_registry.yaml` — new `army.chore_dispatch`
+    entry (runtime: mini_launchd, host: mini, matching this organ's own
+    documented placement in the plist's install comment), consumed by the
+    fleet's organism-heartbeat proprioception sweep."
+  - "`infra/organ-conformance/check_organ_conformance.py` — the gate this PR
+    was red on; consumes the plist + registry entry + wrapper-comment
+    content signature to judge G1/G2/G5 from this PR forward."
+  - "`~/.organism/last_seen/army.chore_dispatch.json` — new heartbeat
+    sidecar file, read by the organism heartbeat health-check."
+risks:
+  - "The organ-conformance gate's content-scan only reads the FIRST
+    resolvable wrapper file in the plist's argv chain
+    (chore_dispatch_wrapper.sh), never the python file it execs — so the
+    gate is provably satisfiable by a comment alone, with zero guarantee
+    the described behavior is real. This is a PRE-EXISTING gate design
+    limitation (already exploited, knowingly, by the merged sibling
+    jules_lane_dispatch_wrapper.sh) — not introduced by this PR, and out of
+    scope for a mechanical gene-birth fix to harden. This session
+    independently verified the real python-level heartbeat/kill-switch code
+    exists and is tested (not just the comment), which is the actual
+    guarantee here, not the gate."
+  - "chore_dispatch.py's other three subcommands (--list/--dispatch/
+    --harvest) still have no heartbeat coverage — by design (they are
+    session-driven tools, not the cron organ this gate is judging), but a
+    future change that makes any of them cron-invoked would need its own
+    genes-birth pass; this is a real edge the registry entry's `notes`
+    field does not currently flag."
+  - "runtime/host in the new registry entry (mini_launchd / mini) follows
+    the plist's own documented placement, which is NOT consistent with
+    where its two sibling lanes (army.jules_dispatch, army.spark_lane) are
+    actually registered (both pro_launchd/pro) despite the plist's comment
+    claiming to match them — a pre-existing doc-accuracy question in the
+    PR's own plist comment, not something this mechanical fix resolves or
+    should resolve."
+grader: |
+  generator != grader: cross-family refuter (agy / Gemini 3.1 Pro,
+  non-Anthropic) reviewed the main()-only wiring scope and the
+  comment-satisfies-content-scan gate limitation before this pack was
+  finalized. This session independently re-ran the organ-conformance gate
+  and the existing+new test suite after the fix, and re-derived the
+  deterministic floor from the real (committed) changed-file enumeration.
+budget: |
+  Single-lane CI-plumbing/ops-tooling mechanical sweep task. Flat-
+  subscription seats only (Claude Sonnet 5 build via this session, agy
+  cross-family refuter). No metered API spend, no cloud LLM touching PII
+  (there is none in this diff).
+pii: none

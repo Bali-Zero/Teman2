@@ -7,8 +7,8 @@ import pytest
 from backend.services.council.cli_runners import (
     ClaudeCLIRunner,
     CLIRunnerError,
-    DeepSeekHTTPRunner,
     GeminiCLIRunner,
+    KimiCLIRunner,
     _extract_json,
 )
 
@@ -69,14 +69,20 @@ def test_gemini_runner_default():
     assert r.binary_path == "/fake/gemini"
 
 
-def test_deepseek_requires_api_key():
-    with pytest.raises(CLIRunnerError):
-        DeepSeekHTTPRunner(api_key="")
+def test_kimi_runner_default():
+    r = KimiCLIRunner(binary_path="/fake/kimi")
+    assert r.binary_path == "/fake/kimi"
+    assert r.name == "kimi"
 
 
-def test_deepseek_runner_default_model():
-    r = DeepSeekHTTPRunner(api_key="sk-test")
-    assert r.model == "deepseek-v4-pro"
+def test_kimi_runner_default_model():
+    r = KimiCLIRunner(binary_path="/fake/kimi")
+    assert r.model == "kimi-code/k3"
+
+
+def test_kimi_runner_custom_model():
+    r = KimiCLIRunner(binary_path="/fake/kimi", model="kimi-code/kimi-for-coding")
+    assert r.model == "kimi-code/kimi-for-coding"
 
 
 # ── ClaudeCLIRunner subprocess errors ──────────────────────────────────
@@ -92,6 +98,13 @@ async def test_claude_runner_missing_binary_raises():
 @pytest.mark.asyncio
 async def test_gemini_runner_missing_binary_raises():
     r = GeminiCLIRunner(binary_path="/does/not/exist/gemini_xyz_9999")
+    with pytest.raises(CLIRunnerError):
+        await r.run("hello", timeout=2)
+
+
+@pytest.mark.asyncio
+async def test_kimi_runner_missing_binary_raises():
+    r = KimiCLIRunner(binary_path="/does/not/exist/kimi_xyz_9999")
     with pytest.raises(CLIRunnerError):
         await r.run("hello", timeout=2)
 

@@ -26,6 +26,8 @@ from typing import Any
 
 import asyncpg
 
+from backend.security.pii_log_identifier import redact_identifier_for_log
+
 logger = logging.getLogger(__name__)
 
 
@@ -67,14 +69,20 @@ class MessagingIdentityService:
 
                 if row:
                     logger.info(
-                        f"Found user mapping for phone {normalized_phone}: {row['user_id']}",
+                        "Found user mapping for phone %s: %s",
+                        redact_identifier_for_log(normalized_phone),
+                        row["user_id"],
                     )
                     return dict(row)
 
                 return None
 
         except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
-            logger.error("Database error getting user by phone %s: %s", normalized_phone, e)
+            logger.error(
+                "Database error getting user by phone %s: %s",
+                redact_identifier_for_log(normalized_phone),
+                e,
+            )
             return None
 
     async def get_user_by_telegram(self, chat_id: int) -> dict[str, Any] | None:
@@ -99,13 +107,21 @@ class MessagingIdentityService:
                 )
 
                 if row:
-                    logger.info(f"Found user mapping for Telegram {chat_id}: {row['user_id']}")
+                    logger.info(
+                        "Found user mapping for Telegram %s: %s",
+                        redact_identifier_for_log(chat_id),
+                        row["user_id"],
+                    )
                     return dict(row)
 
                 return None
 
         except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
-            logger.error("Database error getting user by telegram %s: %s", chat_id, e)
+            logger.error(
+                "Database error getting user by telegram %s: %s",
+                redact_identifier_for_log(chat_id),
+                e,
+            )
             return None
 
     async def create_mapping(
@@ -172,12 +188,19 @@ class MessagingIdentityService:
                 )
 
                 logger.info(
-                    f"Created mapping: {channel} ({phone or telegram_chat_id}) → user {user_id}",
+                    "Created mapping: %s (%s) → user %s",
+                    channel,
+                    redact_identifier_for_log(phone or telegram_chat_id),
+                    user_id,
                 )
                 return True
 
         except asyncpg.UniqueViolationError:
-            logger.warning(f"Mapping already exists for {channel} ({phone or telegram_chat_id})")
+            logger.warning(
+                "Mapping already exists for %s (%s)",
+                channel,
+                redact_identifier_for_log(phone or telegram_chat_id),
+            )
             return False
         except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.error("Database error creating mapping: %s", e)
@@ -298,7 +321,10 @@ class MessagingIdentityService:
                         telegram_chat_id,
                     )
 
-                logger.info(f"Deactivated mapping for {phone or telegram_chat_id}")
+                logger.info(
+                    "Deactivated mapping for %s",
+                    redact_identifier_for_log(phone or telegram_chat_id),
+                )
                 return True
 
         except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:

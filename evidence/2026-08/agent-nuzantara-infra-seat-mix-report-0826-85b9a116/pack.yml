@@ -1,0 +1,321 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  A7/R12 -- daily seat-mix telemetry joined to PRs, per
+  /Users/nuzantara/Desktop/2026-08-26-PIANO-SPEC-receptor-live.md §3 A7,
+  §8 R12/E5. Single-PR mandate, dispatched as an implementer lane on Pro.
+
+lanes:
+  - lane: seat-mix-report-implementation
+    role: build
+    seat: claude-sonnet-5 (this session -- script, tests, plist, doc, real runs, and the fix round below)
+  - lane: seat-mix-adversarial-review
+    role: review
+    seat: kimi-code/k3 (cross-family refuter on the real shipping PR diff, gh pr diff 5047)
+
+diff:
+  files: 7
+  net_lines: 1721
+  measured_at: c89706c69
+  note: >-
+    UPDATED 2026-08-27 by the queue-shepherd sweep (organ-genes follow-up
+    fix) -- re-measured for real, not incremented by estimate:
+    `git diff --no-renames --numstat $(git merge-base origin/main HEAD) --
+    .` against merge-base 63bfa19ec5872519 (unchanged, origin/main at
+    original dispatch time): apps/organism/organism/organs_registry.yaml
+    +22/-1 (NEW file for this diff -- the pro.seat_mix_report entry added
+    tonight), docs/factory/SEAT-MIX.md +190, evidence/.../brief.yml +83,
+    evidence/.../pack.yml +316 (this file, self-counted per the existing
+    convention -- grew from the tonight's-fix receipt/dissent/notes
+    additions), infra/launchagents/com.nuzantara.seat-mix.daily.plist +25,
+    scripts/seat_mix_report.py +639 (was +595 -- +44 for the heartbeat
+    helper + kill switch + main() wiring), scripts/tests/test_seat_mix_report.py
+    +447 -- files 6->7, net 1533->1721 (+188 for the organ-genes fix).
+
+pii_scan: clean
+
+receipts:
+  - claim:
+      The deterministic gear floor recomputed from THIS PR's real changed-file
+      set is 3, matching the declared gear -- infra/launchagents/ is hot-zone.
+    cmd:
+      python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file
+      <4-line file listing docs/factory/SEAT-MIX.md, infra/launchagents/com.nuzantara.seat-mix.daily.plist,
+      scripts/seat_mix_report.py, scripts/tests/test_seat_mix_report.py>
+    result: "floor=3, printed alone on stdout."
+    exit: 0
+    ts: 2026-08-27T00:24Z
+    seat: session (Pro, implementer lane)
+
+  - claim: The new test suite is green, with exact counts on the mandate's own fixture shape.
+    cmd: ./apps/backend-rag/.venv/bin/python3 -m pytest scripts/tests/test_seat_mix_report.py -q
+    result: "40 passed in 0.12s -- includes the exact 3-Agent(2 sonnet/1 haiku)
+      + 2-Bash(codex-sol, kimi-k3) + 1-Workflow fixture, the PII-leak fixture, the
+      oversized-file-skip fixture, and 18 guilt/innocence pairs for classify_bash_seat."
+    exit: 0
+    ts: 2026-08-27T00:20Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      The Bash-seat classifier is exercised for BOTH guilt (matches the real
+      vocabulary) and innocence (does not over-match adjacent words) --
+      cicatrix family #3 discipline, not asserted, run.
+    cmd: >-
+      pytest -k test_classify_bash_seat_guilt or test_classify_bash_seat_innocence -v
+    result: >-
+      18 guilt cases (one per vocabulary entry incl. the kimi-for-coding vs
+      kimi-for-coding-highspeed longest-alternative-first ordering) all pass;
+      9 innocence cases pass including "echo the codex executable path" and
+      "codexy exec foo" (word-boundary: "codex exec" must not match inside a
+      longer word), and "echo mykimi -m kimi-code/k3" (kimi must be its own
+      token). One real bug caught and fixed during authoring: the initial
+      \b(?:nlm|notebooklm)\b regex rejected "python3 notebooklm_bridge.py"
+      because notebooklm is almost always a PREFIX of a real script name in
+      this repo -- relaxed to a leading-boundary-only match for that
+      alternative specifically, with the reasoning recorded in a code comment.
+    exit: 0
+    ts: 2026-08-27T00:19Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      PII inside a tool_result block, and PII embedded inside Bash command
+      text (both matching and non-matching the seat vocabulary), never
+      reaches the JSON or Markdown output.
+    cmd: pytest -k test_pii_in_tool_result_and_command_text_never_leaks -v
+    result: >-
+      1 passed. Fixture carries an email, a phone number, and an
+      sk-...-shaped secret inside a tool_result block, inside a
+      non-matching `echo` Bash command, and inside a matching `agy --model`
+      flag value; the test asserts none of the four literal strings appear
+      in json.dumps(report) or render_markdown(report), and that the one
+      seat_calls entry the agy line does produce does not contain the raw
+      email (only the narrow-charset regex capture survives).
+    exit: 0
+    ts: 2026-08-27T00:19Z
+    seat: session (Pro, implementer lane)
+
+  - claim: The output-safety guard (<=120 chars, fixed charset) is a real, enforced invariant, not a comment.
+    cmd: pytest -k test_guard_rejects_unsafe_strings or test_sanitize_str_strips_disallowed_chars_and_truncates -v
+    result: >-
+      2 passed -- assert_all_strings_safe raises ValueError on a string
+      containing '@' and on a 121-char string, and passes silently on
+      compliant input; sanitize_str strips disallowed characters and
+      truncates to the requested length rather than raising.
+    exit: 0
+    ts: 2026-08-27T00:19Z
+    seat: session (Pro, implementer lane)
+
+  - claim: The plist is structurally valid and keepalive-sane (superscar #7).
+    cmd: >-
+      plutil -lint infra/launchagents/com.nuzantara.seat-mix.daily.plist &&
+      python3 -c "import plistlib; plistlib.load(open('infra/launchagents/com.nuzantara.seat-mix.daily.plist','rb'))" &&
+      python3 scripts/lint_plist_keepalive.py --root infra/launchagents
+    result: >-
+      plutil OK; plistlib parses cleanly; lint_plist_keepalive.py reports
+      0 findings for this plist ("clean -- no KeepAlive=true wrapper shows
+      a one-shot smell"; the 2 pre-existing WARNs listed belong to
+      unrelated wa-codex-broker/wr2.pg-proxy plists, not this PR). One real
+      bug caught: the plist's own header comment used a literal "--" inside
+      an XML comment ("cron -- see the PR body"), which XML forbids inside
+      comments -- plutil accepted it (lenient) but plistlib raised
+      ExpatError "not well-formed (invalid token)". Fixed by rewording to
+      avoid the double-hyphen; re-verified both parsers agree after the fix.
+    exit: 0
+    ts: 2026-08-27T00:24Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      The script runs against real transcripts on Pro and produces a
+      plausible, non-empty, PII-free day-0 baseline -- not just green on
+      fixtures.
+    cmd: python3 scripts/seat_mix_report.py --since 48
+    result: >-
+      rc=0, 5.4s wall. sessions_scanned=113, files_skipped=0, Agent
+      dispatches=140 (sonnet 88.6%/haiku 0.7%/opus 0.7%/inherit 10.0%),
+      non_anthropic_seat_calls=96 (0.69 per Anthropic dispatch), workflow_runs=1,
+      2 sessions mapped to PRs (#5037, #5039), 28 unmapped. Manually
+      re-read the emitted Markdown before pasting it anywhere: no message
+      text, no client identifiers, only counts/labels/branch-derived PR
+      numbers. The 28-unmapped figure was cross-checked (not just accepted)
+      against a separate, branch-name-only scan of the same window: 45
+      sessions on `main`, 12 on detached HEAD, 39 on the long-lived
+      `feature/visa-oracle` integration branch -- none of which a
+      `head:<branch>` PR search can ever match by construction, so the
+      high unmapped count is explained, not hand-waved, in
+      docs/factory/SEAT-MIX.md.
+    exit: 0
+    ts: 2026-08-27T00:24Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      Both Kimi K3 findings (secret-shaped flag values, over-count on
+      read/edit references to vocabulary scripts) are actually fixed, with
+      new guilt+innocence coverage, and the fix did not regress anything.
+    cmd: >-
+      ./apps/backend-rag/.venv/bin/python3 -m pytest scripts/tests/test_seat_mix_report.py -q
+      && python3 scripts/seat_mix_report.py --since 48
+    result: >-
+      52 passed (was 40; +12 for this round: 6 read-verb innocence cases,
+      1 compound-command non-blinding case, 5 redaction guilt cases). Real
+      re-run against real transcripts still rc=0, 118 sessions, 148 Agent
+      dispatches, 112 non-Anthropic seat calls (0.76/dispatch) -- plausible,
+      no crash, no PII in the reviewed output. Pasted into the PR body and
+      docs/factory/SEAT-MIX.md as the post-review baseline, replacing the
+      pre-review numbers.
+    exit: 0
+    ts: 2026-08-27T00:39Z
+    seat: session (Pro, implementer lane)
+
+  - claim: >-
+      SAME-NIGHT FOLLOW-UP (queue-shepherd sweep, post-push CI): "Every
+      organ is born with its genes" failed on the pushed head --
+      infra/launchagents/com.nuzantara.seat-mix.daily.plist was a NEW organ
+      missing genes G1_registry, G2_heartbeat, G5_kill_switch. Fixed:
+      SEAT_MIX_REPORT_ENABLED kill switch + _write_heartbeat() (atomic
+      tmp+replace to ~/.organism/last_seen/pro.seat_mix_report.json,
+      status ok/error/disabled, wrapped so a heartbeat write can never
+      raise) wired into scripts/seat_mix_report.py's main(); an
+      `id: pro.seat_mix_report` entry added to
+      apps/organism/organism/organs_registry.yaml (registry checksum
+      regenerated via --update-checksum). No regression: existing test
+      suite and organ-conformance gate both re-run green after the fix.
+    cmd: >-
+      python3 -m py_compile scripts/seat_mix_report.py &&
+      python3 infra/organ-conformance/check_organ_conformance.py &&
+      apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_seat_mix_report.py -q
+    result: >-
+      py_compile: silent success, exit 0. organ-conformance: "✓ organ
+      conformance: 182 plists scanned, 121 grandfathered (report-only), 0
+      regressions, 0 non-conformant births" (no seat-mix mention -- prior
+      run before this fix printed "✗ NEW organ without genes:
+      infra/launchagents/com.nuzantara.seat-mix.daily.plist missing
+      ['G1_registry', 'G2_heartbeat', 'G5_kill_switch']" and exit 1; this
+      run is exit 0). pytest: "52 passed in 0.28s" -- identical count to
+      the pre-fix baseline above, confirming zero regression from the
+      heartbeat/kill-switch addition.
+    exit: 0
+    ts: 2026-08-27T07:45Z
+    seat: session (queue-shepherd sweep, implementer lane)
+
+dissent:
+  - seat: session self-refutation (own test suite, caught before any external review)
+    objection: >-
+      The initial nlm classifier regex, \b(?:nlm|notebooklm)\b, silently
+      under-matched the real usage: "python3 notebooklm_bridge.py" returned
+      None instead of "nlm", because a trailing word-boundary after
+      "notebooklm" fails when the next character is "_" (a word char) --
+      exactly the shape of most real script/module names in this repo.
+    status: CONFIRMED
+    note: >-
+      Caught by the guilt/innocence parametrized test itself
+      (test_classify_bash_seat_guilt), not by inspection. Fixed by requiring
+      only a LEADING boundary for the "notebooklm" alternative (it is almost
+      always a prefix of a longer name here), while keeping both boundaries
+      for the short "nlm" token. Re-ran the full suite after the fix: 40/40
+      green, including the case that had failed.
+
+  - seat: session self-refutation (plutil vs plistlib disagreement, caught before push)
+    objection: >-
+      The first draft of infra/launchagents/com.nuzantara.seat-mix.daily.plist
+      passed `plutil -lint` (OK) but failed Python's plistlib.load() with
+      ExpatError "not well-formed (invalid token)" -- a real, silent
+      correctness gap between the two validators this repo relies on.
+    status: CONFIRMED
+    note: >-
+      Root cause: the file's own header XML comment contained a literal
+      "--" ("cron -- see the PR body"), which the XML spec forbids inside
+      comments; plutil is lenient about it, plistlib (via expat) is not, and
+      scripts/lint_plist_keepalive.py uses plistlib -- so a plist that
+      "looks fine" under the tool most people reach for first would have
+      failed the actual lint this PR depends on. Fixed by rewording the
+      comment to a single hyphen; re-verified plutil, plistlib, and
+      lint_plist_keepalive.py all agree (clean) after the fix.
+
+  - seat: kimi-code/k3 (cross-family refuter, on the real PR #5047 diff via gh pr diff)
+    objection: >-
+      (1) The output-safety charset is a superset of common secret shapes --
+      an sk-...-style key or a bare-digit phone number sitting in a matching
+      --model/--seat/--tier/ollama-model flag value is made entirely of
+      letters/digits/hyphens and would survive sanitize_str's charset check
+      intact, contradicting the module's own overstated docstring claim.
+      (2) classify_bash_seat over-matches when a vocabulary script is merely
+      READ or EDITED (cat/grep/git log/vim on seat_build.sh,
+      jules_dispatch.py, review_routes), not invoked -- a systematic
+      inflation risk given this repo's own daily work is editing these
+      scripts, demonstrated with concrete examples the existing test suite
+      did not cover.
+    status: CONFIRMED
+    note: >-
+      Both re-measured against the code, not accepted on the refuter's
+      word: reproduced (1) by hand-tracing `agy --model sk-abc123secretvalue`
+      through _AGY_MODEL_RE + sanitize_str pre-fix and confirming it would
+      have passed both the charset check and assert_all_strings_safe
+      unredacted; reproduced (2) by running `cat scripts/seat_build.sh`
+      through the pre-fix classifier and confirming it returned
+      "seat_build:default" instead of None. Fixed in commit c89706c69:
+      _redact_if_sensitive() (secret-prefix match, or >=7 digits) gates
+      every free-captured flag value before sanitization; a per-segment
+      first-token check against a fixed read/inspect/edit-verb set skips
+      any shell-separator-delimited segment that only references a
+      vocabulary name rather than running it. 12 new guilt+innocence tests
+      added for both, full suite re-run green (52/52), real transcripts
+      re-run rc=0 with plausible output. Not found independently by the
+      session before the refuter ran -- recorded as external, not
+      self-refutation, unlike the two entries above.
+
+  - seat: agy (Gemini 3.1 Pro, cross-family refuter, same-night follow-up fix)
+    objection: >-
+      "launchd ignores user shell exports. Setting SEAT_MIX_REPORT_ENABLED
+      requires updating the plist or running launchctl setenv. A file-based
+      kill switch is far more reliable." Plus 3 related points: hangs/OOM/
+      SIGKILL never reach the heartbeat's error-write path; a pre-init
+      crash (syntax/import/interpreter-lookup error) fails before the
+      heartbeat wrapper ever executes; and the healer must explicitly
+      respect status=disabled, not just timestamp freshness.
+    status: CONFIRMED
+    note: >-
+      All 4 real. Grepped this repo's own launchagents (`grep -l _ENABLED
+      infra/launchagents/*.plist`, then checked EnvironmentVariables blocks
+      by hand): zero plists declare their own kill-switch var inline --
+      every organ using this `<SCOPE>_ENABLED` pattern (e.g.
+      scripts/queue_shepherd.py's QUEUE_SHEPHERD_ENABLED) relies on an
+      operator setting it externally (launchctl setenv, an edited
+      EnvironmentVariables block, or a wrapper). So point 1 is real but is
+      the EXISTING repo-wide convention this fix reused verbatim, not a
+      defect this PR introduced -- fixing it properly (a file-based switch)
+      is a cross-organ design change out of this single PR's scope. Points
+      2+3 are the inherent limit of any heartbeat-on-exit design: this is
+      exactly what genes.json's bridge_source `expected_hb_seconds`
+      staleness check exists to catch (a hung/killed/crashed-before-init
+      organ shows as a STALE heartbeat, not a missing one) -- not a gap in
+      this fix, the designed failure mode of the whole heartbeat mechanism.
+      Point 4 is real and out of scope: this PR ships the ORGAN's own
+      genes (G2/G5), not the healer's read-side logic that consumes them;
+      recorded here as a residual limit, not silently dropped.
+
+tests:
+  - "scripts/tests/test_seat_mix_report.py -- 52 collected, 52 passed, rc=0 (backend-rag venv python)."
+
+static:
+  - "pre-commit hooks passed on the feature commit (anti-reward-hacking test lint, print()
+    scan, secret scan, python lint, off-limits check)."
+  - "plutil -lint + plistlib.load + scripts/lint_plist_keepalive.py all clean on the new plist."
+
+notes:
+  - "BUILT IS NOT ARMED. infra/launchagents/com.nuzantara.seat-mix.daily.plist is not
+    installed by this PR -- install command for Pro + Mini is in the PR body and in
+    docs/factory/SEAT-MIX.md. M5 is deliberately excluded (no daemons/cron by design)."
+  - "No targets or thresholds are imposed anywhere -- per the 2026-08-26 retro's A5
+    rejection, this report is descriptive telemetry, and this pack does not smuggle one
+    in either."
+  - "scripts/usage/seat_usage_collector.py (Kimi's cited prior art) was read and verified
+    live before writing anything: it IS armed (installed LaunchAgent, log activity as
+    recently as 2026-08-26 23:53, snapshot file present) but measures a different thing
+    (token usage per Claude-profile seat, via seat_map.json's profile-dir-to-account-seat
+    join key) -- not Agent/Bash/Workflow dispatch counts joined to PRs. The two are
+    complementary, not duplicative; docs/factory/SEAT-MIX.md says so explicitly so a
+    future reader doesn't try to merge them."
+  - "The organ-genes fix (G1/G2/G5) above and its dissent entry were authored by
+    tonight's queue-shepherd sweep session, NOT the original PR author -- a same-night
+    follow-up after the pushed head tripped the pre-existing 'Every organ is born with
+    its genes' gate: the new plist itself was never birthed with a registry entry,
+    heartbeat, or kill switch, which the original authoring pass missed."

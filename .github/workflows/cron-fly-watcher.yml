@@ -116,20 +116,43 @@ jobs:
               )
               return bool(failing) and all(n in VM_PRESSURE for n in failing)
 
+          # Detail (W47 — "solo numero citato, nessun dettaglio"): the loop
+          # already holds the machine and the failing check name; name the
+          # offenders instead of discarding them into a bare counter. Capped
+          # so a mass failure can't blow up the line — and the cap SAYS it
+          # truncated (W97: a silent cap reads as the whole set).
+          MAX_DETAIL = 5
           unhealthy_svc = 0
           unhealthy_vm = 0
+          svc_detail = []
+          vm_detail = []
           for m in machines:
+              mid = m.get("id") or "?"
+              region = m.get("region")
+              mident = f"{mid}/{region}" if region else mid
               for c in (m.get("checks") or []):
                   if c.get("status") in ("passing", None):
                       continue
-                  if c.get("name") == "vm" and vm_pressure_only(c):
+                  name = c.get("name") or "?"
+                  if name == "vm" and vm_pressure_only(c):
                       unhealthy_vm += 1
+                      vm_detail.append(f"{mident}:{name}")
                   else:
                       unhealthy_svc += 1
+                      svc_detail.append(f"{mident}:{name}")
+
+          def fmt_detail(items):
+              if not items:
+                  return "none"
+              if len(items) > MAX_DETAIL:
+                  return ",".join(items[:MAX_DETAIL]) + f",+{len(items) - MAX_DETAIL} more"
+              return ",".join(items)
+
           print(
               f"total={total}|started={started}|expected_stopped={expected_stopped}|"
               f"unexpected_stopped={unexpected_stopped}|bad={','.join(bad_states) or 'none'}|"
-              f"unhealthy_svc={unhealthy_svc}|unhealthy_vm={unhealthy_vm}"
+              f"unhealthy_svc={unhealthy_svc}|unhealthy_vm={unhealthy_vm}|"
+              f"svc_detail={fmt_detail(svc_detail)}|vm_detail={fmt_detail(vm_detail)}"
           )
           PY
           )

@@ -174,7 +174,13 @@ export function VerdictPanel({ verdict, headingRef }: VerdictPanelProps) {
         style={{
           margin: 0,
           fontFamily: "var(--font-serif, Georgia, serif)",
-          fontSize: "clamp(2.2rem, 6vw, 3.5rem)",
+          // S13 verdict-crown: this is now the page's SOLE <h1> on the
+          // verdict stage (StudioApp's masthead recedes to a presentational
+          // label there) — raised from clamp(2.2rem,6vw,3.5rem)/56px so it
+          // reads as the page's crown. Capped at 3.75rem/60px, inside the
+          // 46-64px "whispered authority" band (never the masthead's 105px)
+          // per spec.
+          fontSize: "clamp(2.4rem, 6.5vw, 3.75rem)",
           lineHeight: 1.1,
           color: "var(--text-primary)",
         }}

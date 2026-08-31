@@ -221,7 +221,6 @@ class LocalWorktreeSandboxRunner:
             if argv != [
                 str(backend_root / ".venv" / "bin" / "pytest"),
                 "backend/tests/unit/services/autonomous_lab",
-                "-q",
             ]:
                 return "argv_not_allowlisted"
             return None

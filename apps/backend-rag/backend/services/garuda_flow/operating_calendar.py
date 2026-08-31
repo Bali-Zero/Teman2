@@ -140,16 +140,18 @@ def last_open_day_before(day: date) -> date | None:
     Returns ``None`` in two uncovered cases — this function must NEVER
     silently guess a date:
 
-    - ``day`` is at/before `COVERAGE_START` or after `COVERAGE_END`: a full
-      last-open-day calculation would cross materialized-data coverage, so
-      this returns ``None`` rather than certify an omitted date.
+    - ``day`` is at/before `COVERAGE_START` or more than one day after
+      `COVERAGE_END`: the first candidate would be outside materialized-data
+      coverage, so this returns ``None`` rather than certify an omitted date.
+      `COVERAGE_END + 1 day` remains computable because the search is strictly
+      before ``day`` and therefore begins on the covered boundary itself.
     - no open day was found within `_MAX_LOOKBACK_DAYS` (defensive only —
       not reachable with the current `OPERATING_CALENDAR` data, whose
       longest closed run is 4 days).
 
     Pure function of ``day`` alone — no wall-clock read.
     """
-    if day <= COVERAGE_START or day > COVERAGE_END:
+    if day <= COVERAGE_START or day > COVERAGE_END + timedelta(days=1):
         return None
 
     candidate = day - timedelta(days=1)

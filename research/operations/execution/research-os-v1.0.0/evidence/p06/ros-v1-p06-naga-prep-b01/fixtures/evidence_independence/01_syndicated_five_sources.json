@@ -1,0 +1,22 @@
+{
+  "synthetic": true,
+  "fixture_category": "evidence_independence",
+  "adversarial_case_ref": "packet 06-naga-claim-ledger.md, 'Include adversarial cases where': 'five websites repeat one original story'",
+  "expected_behavior": "cross_ref_count / corroboration strength must NOT simply count evidence items (5) as 5 independent confirmations. Only evidence_a (the original) is independent; evidence_b..evidence_f are syndicated copies of evidence_a and must be tagged as such (independence_class: syndicated, derived_from_evidence_id pointing at evidence_a). A claim scorer that treats 5 syndicated copies as equal to 5 independent sources is committing exactly the packet's Non-goal violation ('Do not use confidence as a substitute for evidence') by inflating corroboration through repetition. This directly targets 01-naga-baseline-inventory.md's finding that naga_sources dedup is per-session only, so the SAME syndicated story fetched across multiple sessions currently looks like fresh, independent corroboration to NAGA today.",
+  "evidence_original": {
+    "evidence_id": "b2f1a000-0000-4000-8000-0000000000e7",
+    "document_id": "https://example.go.id/synth-official-announcement",
+    "independence_class": "original",
+    "note": "SYNTHETIC — the one primary government announcement."
+  },
+  "evidence_syndicated": [
+    { "evidence_id": "b2f1a000-0000-4000-8000-0000000000e8", "document_id": "https://example-a.org/synth-copy-1", "independence_class": "syndicated", "derived_from_evidence_id": "b2f1a000-0000-4000-8000-0000000000e7" },
+    { "evidence_id": "b2f1a000-0000-4000-8000-0000000000e9", "document_id": "https://example-b.org/synth-copy-2", "independence_class": "syndicated", "derived_from_evidence_id": "b2f1a000-0000-4000-8000-0000000000e7" },
+    { "evidence_id": "b2f1a000-0000-4000-8000-0000000000ea", "document_id": "https://example-c.org/synth-copy-3", "independence_class": "syndicated", "derived_from_evidence_id": "b2f1a000-0000-4000-8000-0000000000e7" },
+    { "evidence_id": "b2f1a000-0000-4000-8000-0000000000eb", "document_id": "https://example-d.org/synth-copy-4", "independence_class": "syndicated", "derived_from_evidence_id": "b2f1a000-0000-4000-8000-0000000000e7" },
+    { "evidence_id": "b2f1a000-0000-4000-8000-0000000000ec", "document_id": "https://example-e.org/synth-copy-5", "independence_class": "syndicated", "derived_from_evidence_id": "b2f1a000-0000-4000-8000-0000000000e7" }
+  ],
+  "expected_independent_corroboration_count": 1,
+  "expected_raw_evidence_count": 6,
+  "note_on_p04_schema": "independence_class / derived_from_evidence_id are NOT fields on the P04 Evidence schema as read this session -- they are proposed extensions payload (extensions['naga.evidence_independence']), since the packet's deliverable #4 (evidence independence model) is NAGA-side analytical work layered on top of, not inside, the base Evidence object. See 02-p04-adapter-mapping.md §2 final row."
+}

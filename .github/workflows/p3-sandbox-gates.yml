@@ -22,8 +22,23 @@ name: P3 Sandbox Gates
 # "Did relevant paths change?" step; on a path-miss PR the job ENDS success.
 on:
   pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
-  merge_group:
   workflow_dispatch:
+
+# Dependabot branch: ALL Dependabot PRs share one group per workflow (not
+# per-run), bounding concurrent Dependabot runs of THIS workflow to <=2
+# (Agent PR Contract rule 5) instead of unbounded parallel.
+# cancel-in-progress:false protects whichever run is RUNNING; GitHub keeps
+# only one PENDING per group, so a 3rd+ near-simultaneous arrival cancels the
+# pending run rather than queuing behind it — visible in the PR's checks tab
+# (never silent), recoverable with `gh run rerun` (confirmed:
+# docs.github.com/en/actions/using-jobs/using-concurrency + kimi-code/k3
+# refuter round on PR #5043). Non-Dependabot branch is suffixed by
+# github.run_id, which is unique per run and therefore never collides — the
+# prior no-concurrency-block behavior (every run fully independent) is
+# preserved exactly.
+concurrency:
+  group: ${{ github.actor == 'dependabot[bot]' && format('dependabot-lockfile-{0}', github.workflow) || format('p3-sandbox-gates-{0}-{1}', github.ref, github.run_id) }}
+  cancel-in-progress: false
 
 jobs:
   p3-static-validation:
@@ -107,7 +122,7 @@ jobs:
           # installing the whole backend test stack just to collect 5 subprocess
           # tests, and this job's pip install (pyyaml/httpx/pytest/pytest-asyncio)
           # deliberately does not include asyncpg.
-          cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/integration/test_p3_sandbox_egress.py --collect-only -q --noconftest
+          cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/integration/test_p3_sandbox_egress.py --collect-only --noconftest
 
   p3-runtime-gates:
     name: P3 runtime gates G1/G1-DLP/G4 (monitor — runs on Pro)

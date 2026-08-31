@@ -1,0 +1,55 @@
+task_id: backend-rag-ig-signature-arm-evidence
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Supply the missing Evidence Pack for PR #5013 (agent/air-m5/backend-rag/ig-signature-arm),
+  which was fully green except "Harness floor recompute" (no evidence/brief.yml in the diff — the
+  PR touches `apps/backend-rag/backend/app/core/config.py`, a declared hot-zone path, so the
+  deterministic floor is 3 regardless of the change's small size). No production/test code is
+  edited by this task — the fix was already authored and pushed by the ig-signature-arm session;
+  this task independently re-verifies its claims and authors the evidence pack only.
+
+  The underlying change: WhatsApp and Instagram webhooks share one Meta App Secret (Zero's
+  ruling 2026-08-26, "si stessa app") — `Settings.effective_instagram_app_secret` falls back to
+  `whatsapp_app_secret` when `instagram_app_secret` is unset, and
+  `meta_webhook_require_signature` flips its default from False to True (fail-closed on both
+  webhooks by default). Safe because `WHATSAPP_APP_SECRET` is already live in production and
+  Instagram now inherits it via the fallback.
+constraints:
+  - "No code/test changes made by this evidence-authoring task — every receipt below independently
+    re-verifies claims the PR body already made, on a fresh checkout of the PR's own head commit."
+  - "Mutation-test probe (temporarily flipping the default back to False) must be reverted and the
+    working tree must be byte-identical clean before this task's commit — verified via
+    `git status --porcelain`."
+acceptance:
+  - "The PR's own declared test set (5 files, 78 tests across signature/ack-first/whatsapp-chat
+    coverage) passes clean on a fresh checkout of the PR's head sha."
+  - "A mutation probe reverting `meta_webhook_require_signature`'s default to False turns the new
+    pinning test red (`test_meta_webhook_require_signature_default_is_true`), proving the test
+    actually guards the behavior, not merely exercises a mocked path."
+  - "ruff check is clean on every file this diff touches."
+  - "The deterministic gear floor recomputed from this PR's actual changed-file set is 3, matching
+    the declared gear and matching the `Harness floor recompute` check's own FAIL message."
+consumer_map:
+  - "apps/backend-rag/backend/app/core/config.py — `effective_instagram_app_secret` property +
+    `meta_webhook_require_signature` default, hot-zone path (floor source)."
+  - "apps/backend-rag/backend/app/routers/instagram_chat.py — consumes the fallback."
+  - "apps/backend-rag/backend/app/routers/whatsapp_chat.py — unchanged signature-check call sites,
+    now exercised at the new default."
+  - "Post-merge PROVE-LIVE (owed by the shipping session, not this evidence task): unsigned POST to
+    `/webhook/instagram` on nuzantara-rag must still 401 under the new default, matching today's
+    WhatsApp posture."
+risks:
+  - "This task authors evidence only — it does not re-review the design decision (shared Meta App
+    Secret) itself, which is Zero's own ruling cited in the PR body, not something this task can or
+    should re-litigate."
+grader: |
+  Independent verification by this session, generator != grader relative to the PR's own author
+  (ig-signature-arm session) — re-ran the full declared test set on the PR's actual head sha in a
+  dedicated worktree (not the PR-author's own worktree, per sibling-race discipline), re-ran the
+  mutation-test proof, re-ran ruff, and recomputed the deterministic floor from the real diff.
+budget:
+  1 evidence-authoring lane (no code change) — a 6-file, +203/-25 diff whose runtime logic was
+  already implemented and tested by the ig-signature-arm session.
+pii: none
