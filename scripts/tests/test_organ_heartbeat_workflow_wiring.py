@@ -28,11 +28,21 @@ A path listed in one but not the other is armed for one event type and
 silently skipped for the other — the workflow's own comment (near its
 `scripts/lib/heartbeat.sh` entry) names this exact trap.
 
-Does NOT check whether a named pytest step for
-test_organ_heartbeat_exceeds_poller_interval.py exists inside the job — CI
-actually running this test file at all already proves that: an
-accidentally-removed step would take this file's collection down with it,
-a louder signal than a static assertion could add without duplicating it.
+CORRECTED 2026-08-31 (codex-gpt-5.6-sol, this PR's own council round): a
+prior draft of this docstring claimed a step invoking the two guard files
+did NOT need its own check, reasoning that CI running this file at all
+already proved the step's presence — an "accidentally-removed step would
+take this file's collection down with it." That reasoning was WRONG: this
+file's own collection does not depend on the required-workflow step at
+all — remove that step and this file simply falls back to running inside
+the continue-on-error `scripts/tests/` sweep, which gates nothing (the
+exact defect class this whole file exists to catch, one level up). Fixed
+below: test_a_step_actually_executes_both_guard_files() parses the job's
+`run:` bodies directly and asserts one of them names both guard files,
+closing the "step edited/typo'd/one file dropped" gap. It does NOT (and
+structurally cannot) prove survival of the step's OUTRIGHT deletion — see
+that test's own docstring for why, and for the residual risk this repo's
+Gear-3 hot-zone gate covers instead.
 
 YAML gotcha handled explicitly, because it bit the first draft of this
 test: PyYAML's `safe_load` follows YAML 1.1 rules, under which the bare key
@@ -162,6 +172,20 @@ def _read_injob_pathspec(data: dict) -> set[str]:
     return tokens
 
 
+def _read_conformance_job_run_texts(data: dict) -> list[str]:
+    try:
+        steps = data["jobs"]["conformance"]["steps"]
+    except (KeyError, TypeError) as exc:
+        pytest.fail(f"{WORKFLOW_PATH}: cannot find jobs.conformance.steps ({exc})")
+    if not isinstance(steps, list):
+        pytest.fail(f"{WORKFLOW_PATH}: jobs.conformance.steps is not a list")
+    return [
+        s["run"]
+        for s in steps
+        if isinstance(s, dict) and isinstance(s.get("run"), str)
+    ]
+
+
 def test_push_paths_cover_the_guard_read_set():
     data = _load_workflow()
     push_paths = _read_push_paths(data)
@@ -196,4 +220,49 @@ def test_injob_pathspec_covers_the_guard_read_set():
         "— a PR touching only these files would run the workflow "
         "(pull_request always triggers) but skip every gated step, "
         "including this guard's own test"
+    )
+
+
+def test_a_step_actually_executes_both_guard_files():
+    """Codex-gpt-5.6-sol review finding, 2026-08-31 (this PR's own council
+    round): the two superset assertions above prove the PATH LISTS are
+    wired, but neither checks that a STEP actually invokes pytest against
+    the two guard files — a step whose body is edited (wrong path, a typo,
+    accidentally dropping one of the two files while "cleaning up") would
+    sail through both superset checks untouched while silently running less
+    than it claims to.
+
+    Does NOT, and cannot, prove the step survives being deleted OUTRIGHT: if
+    the whole step disappears, this test's own only required-workflow
+    executor is gone with it, and it falls back to running inside the
+    continue-on-error `scripts/tests/` sweep, which gates nothing — the same
+    residual risk every OTHER named step in every required workflow in this
+    repo carries (no step can prove its own non-deletion from inside
+    itself). That broader class is covered by this repo's Gear-3 hot-zone
+    gate on any `.github/workflows/*` edit, which this very diff went
+    through — not by a test file trying to out-recurse it.
+    """
+    data = _load_workflow()
+    run_texts = _read_conformance_job_run_texts(data)
+    # Substring presence ALONE is not enough — caught live while verifying
+    # this very test: "Did organ surfaces change?" (id: relevant) mentions
+    # both filenames too, in its own explanatory comment and its pathspec
+    # list, without ever invoking pytest on either. Requiring the literal
+    # "pytest" token in the SAME run text excludes that step and anchors on
+    # an actual test invocation, not a passing mention (cicatrix family #3,
+    # guard-over-match on substring instead of intent).
+    matching = [
+        t
+        for t in run_texts
+        if "pytest" in t
+        and "test_organ_heartbeat_exceeds_poller_interval.py" in t
+        and "test_organ_heartbeat_workflow_wiring.py" in t
+    ]
+    assert matching, (
+        f"{WORKFLOW_PATH.relative_to(REPO_ROOT)}: no step in "
+        "jobs.conformance.steps has a 'run:' body invoking pytest against "
+        "both test_organ_heartbeat_exceeds_poller_interval.py AND "
+        "test_organ_heartbeat_workflow_wiring.py — the path lists can be "
+        "perfectly wired while no step actually runs these guards (a mere "
+        "MENTION of both filenames, e.g. in a comment, does not count)"
     )

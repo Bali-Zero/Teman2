@@ -233,16 +233,40 @@ jobs:
           # passed: pytest exits 0 when every case is deliberately skipped
           # too (measured the hard way on a sibling guard the same day,
           # test_queue_doctor.py — #5438 — cost a round for exactly this).
-          # This suite always carries exactly 3 must-pass cases (both
-          # test_bridge_fed_organs_declare_a_safe_multiple_of_the_poller_interval
-          # and this file's two wiring assertions) plus 1 legitimate skip in
-          # CI (the fixture/live-snapshot drift check — the live snapshot is
-          # only ever observable on Pro's own live checkout). Assert on the
-          # PASS count so a regression that turned every case into a skip
-          # (or a silently-empty collection) cannot read as green.
-          PASSED=$(printf '%s\n' "$OUT" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+' || echo 0)
-          if [ "$PASSED" -lt 3 ]; then
-            echo "::error::expected at least 3 passed (got $PASSED) — pytest exiting 0 is not proof these guards ran: this suite legitimately SKIPS 1 case in CI (the fixture/live-snapshot drift check, live snapshot absent off Pro) but must PASS the other 3"
+          # This suite always carries exactly 4 must-pass cases
+          # (test_bridge_fed_organs_declare_a_safe_multiple_of_the_poller_interval
+          # plus this file's three wiring assertions) plus 1 legitimate skip
+          # in CI (the fixture/live-snapshot drift check — the live snapshot
+          # is only ever observable on Pro's own live checkout). Assert on
+          # the PASS count so a regression that turned every case into a
+          # skip (or a silently-empty collection) cannot read as green.
+          #
+          # CORRECTED 2026-08-31 (codex-gpt-5.6-sol, this PR's own council
+          # round): an earlier draft here scanned the WHOLE output blob for
+          # every `\d+ passed` occurrence — if that substring ever appeared
+          # more than once (a warning line, a future assertion message that
+          # happens to contain the same shape), `PASSED` became multi-line,
+          # `[ "$PASSED" -lt 3 ]` errored ("integer expression expected")
+          # instead of comparing, `[` returned non-zero either way, and the
+          # `if` body was skipped — a SILENT PASS on a value this check could
+          # not actually parse. Reproduced live against a synthetic two-match
+          # string before landing this fix. Anchored fix: take only the
+          # LAST line matching pytest's own summary shape (that line is
+          # always exactly one occurrence of the leading count, on the run
+          # path below — a real failure already exits via $EXIT above before
+          # reaching this code, so "failed" never precedes "passed" here).
+          SUMMARY_LINE=$(printf '%s\n' "$OUT" | grep -E '^[0-9]+ (passed|failed|error|skipped|warning)' | tail -1)
+          if [ -z "$SUMMARY_LINE" ]; then
+            echo "::error::no pytest summary line found in the captured output — cannot verify how many cases passed"
+            exit 1
+          fi
+          if ! printf '%s\n' "$SUMMARY_LINE" | grep -qE '^[0-9]+ passed\b'; then
+            echo "::error::pytest's summary line does not start with '<N> passed' — got: $SUMMARY_LINE (this is exactly the regression this check exists to catch: an exit-0 run with zero passing cases, e.g. everything skipped)"
+            exit 1
+          fi
+          PASSED=$(printf '%s\n' "$SUMMARY_LINE" | grep -oE '^[0-9]+')
+          if [ "$PASSED" -lt 4 ]; then
+            echo "::error::expected at least 4 passed (got $PASSED) from summary line: $SUMMARY_LINE — pytest exiting 0 is not proof these guards ran: this suite legitimately SKIPS 1 case in CI (the fixture/live-snapshot drift check, live snapshot absent off Pro) but must PASS the other 4"
             exit 1
           fi
 
