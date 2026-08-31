@@ -38,6 +38,13 @@ what_changed: |
   count, which counts skipped cases too. The capture is guarded `|| RC=$?` so that pytest's own
   output, tracebacks included, survives to be printed before any verdict is reached.
 
+  ROUND 2 also added the FIFTH file, and it was CI that named it: `check_watcher_coverage.py` went
+  red with "`queue doctor tests` (queue-doctor-tests.yml) is not covered by
+  main-push-failure-watch.yml". A workflow that runs on `push: main` and is watched by nobody is
+  armed to the second layer only — the trigger exists and covers the right paths, but a red on main
+  reaches no one. The sibling `mq-oracle-tests.yml` IS in that list; this one was not, which is the
+  same failure-to-transfer as the shell defect, caught this time by a lint instead of a gate.
+
   ROUND 2. The first version of this file wrote that capture BARE and this summary claimed `set -e`
   was "deliberately absent" — both false. A `run:` block with no `shell:` key runs under GitHub's
   default `bash -e {0}`, which `set -uo pipefail` does not clear, so the bare capture aborted the
@@ -267,9 +274,19 @@ receipts:
     exit: 0
     ts: "2026-08-31T08:52Z"
     seat: claude-opus-5
+  - claim:
+      "LAYER 3 — the red has to reach someone: the new workflow is now in the failure watcher's
+      list, and the checker proves both directions."
+    cmd: "python3 scripts/check_watcher_coverage.py, with the entry present and then removed again"
+    result:
+      "present -> exit 0, 'all 118 live workflow(s) covered'; removed -> exit 1, '`queue doctor
+      tests` (queue-doctor-tests.yml) is not covered by main-push-failure-watch.yml'"
+    exit: 0
+    ts: "2026-08-31T08:12Z"
+    seat: claude-opus-5
   - claim: "The counts this pack states about its own diff are the counts git reports."
     cmd: "git diff --cached --numstat origin/main | awk '{a+=$1;f++} END{print f, a}'"
-    result: "4 531"
+    result: "5 549"
     exit: 0
     ts: "2026-08-31T07:52Z"
     seat: claude-opus-5
@@ -299,6 +316,6 @@ appetite_exceeded: |
 
 diff:
   net_lines: |
-    4 files, +531/-0 against the merge-base with origin/main
-    (ba7a8a8d55cd98bf7b7ad8d617c3c5da982e0e62), 2 commits — the new workflow plus this pack.
-    Every line is an addition because all four files are new.
+    5 files, +549/-0 against the merge-base with origin/main
+    (ba7a8a8d55cd98bf7b7ad8d617c3c5da982e0e62), 3 commits — the workflow, its watcher line, the pack.
+    Every line is an addition: four files are new, the fifth gains one list entry.
