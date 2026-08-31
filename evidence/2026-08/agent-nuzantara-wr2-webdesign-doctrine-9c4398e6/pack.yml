@@ -32,18 +32,21 @@ lanes:
       sixteen research lanes, one per family, on the same contract as the twelve topic lanes
 
 diff:
-  files: 8
-  net_lines: 5169
-  measured_at: 9c4398e6a
+  files: 29
+  net_lines: 9060
+  measured_at: HEAD (post-merge with origin/main)
   note: >-
-    git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD — 8 files,
-    5169 added, 0 deleted. FAR past the ~400-net-line target in the Agent PR Contract, and
-    declared rather than split: 1,647 lines are the research capture (an append-only
-    auditable record, not reviewable code), 806 are the spec, and the remaining 2,514 are
-    the lint plus its tests, which cannot be separated from each other — a guard without its
-    guilt-and-innocence tests is exactly what this repo's scar family #3 forbids shipping.
-    The three organs are also mutually citing: the lint's messages name the capture's gate
-    numbers, and the spec cites both.
+    29 files, +9060/-0 against origin/main. FAR past the ~400-net-line target in the Agent PR
+    Contract, and declared rather than split. The shape: the research capture is the bulk (17
+    lane reports plus SYNTHESIS/INDEX/CONTRACT — an append-only auditable record, not reviewable
+    code), then the spec, then the lint with its tests, which cannot be separated from each other
+    — a guard without its guilt-and-innocence tests is exactly what this repo's scar family #3
+    forbids shipping. The three organs are mutually citing: the lint's messages name the
+    capture's gate numbers, and the spec cites both. Corrected 2026-08-31: this block previously
+    carried a much smaller count, taken at 9c4398e6a and true only there — the lane reports the
+    corpus INDEX.md points at were being silently swallowed by a bare `reports/` in .gitignore,
+    so they were never in the counted diff at all. That figure was not merely stale: it measured
+    a commit which did not contain the evidence it claimed to ship.
 
 pii_scan: clean
 
