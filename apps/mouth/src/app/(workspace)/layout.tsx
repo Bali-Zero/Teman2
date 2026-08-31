@@ -119,7 +119,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         return;
       }
 
-      const profile = await api.getProfile();
+      const profile = await api.getProfile({ redirectOnUnauthorized: false });
       const userName =
         profile.name || (profile.email ? profile.email.split("@")[0] : "User");
       setUser({
@@ -260,6 +260,39 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
             // workspace is inspectable.
             setGateChecked(true);
             setIsLoading(false);
+            return;
+          }
+
+          // Cookie-only session fallback (auth-gates-cookie-primary, round 2
+          // — spec §6-bis). getProfile() failing here is NEVER, by itself,
+          // proof the visitor is anonymous: `/api/auth/profile` is
+          // bearer-only (HTTPBearer strict), and against the locked FastAPI
+          // 0.141.1 that dependency answers **401** to a request with no
+          // Authorization header — even one carrying a VALID cookie session
+          // (verified against the locked FastAPI 0.141.1 source, 2026-08-29:
+          // HTTPBearer never reads cookies at all; a prior version of this
+          // comment said 403, wrong for this backend version). So neither a
+          // 401 nor
+          // a 403 from getProfile can be trusted on its own — only the
+          // session probe can tell. Ask it unconditionally, every time.
+          const session = await api.hasSession();
+          if (session !== "anonymous") {
+            // Cookie-only session confirmed (or the probe was inconclusive
+            // — fail open rather than force a logout). The real profile/role
+            // is unrecoverable client-side here (residual: `/api/auth/profile`
+            // is bearer-only and the JWT is httpOnly), so seed a minimal
+            // placeholder instead of bouncing a genuinely logged-in visitor
+            // to /login.
+            setUser({
+              name: "Team member",
+              email: "",
+              role: "Member",
+              team: "Team",
+              avatar: undefined,
+              isOnline: true,
+              hoursToday: undefined,
+            });
+            await refetchGate();
             return;
           }
 

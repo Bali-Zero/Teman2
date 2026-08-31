@@ -10,6 +10,7 @@ const {
   mockGetGateStatus,
   mockGetUserProfile,
   mockGetProfile,
+  mockHasSession,
   mockLocationReplace,
   mockRouterPush,
   mockLogger,
@@ -17,6 +18,10 @@ const {
   mockGetGateStatus: vi.fn(),
   mockGetUserProfile: vi.fn(),
   mockGetProfile: vi.fn(),
+  // Cookie-only session probe (auth-gates-cookie-primary). Default resolves
+  // "anonymous" so a test that forgets to set it fails LOUD (a redirect) —
+  // never silently falls into the new "stay on the page" branch.
+  mockHasSession: vi.fn().mockResolvedValue("anonymous"),
   mockLocationReplace: vi.fn(),
   mockRouterPush: vi.fn(),
   mockLogger: {
@@ -57,6 +62,7 @@ vi.mock("@/lib/api", async () => {
       getUserProfile: mockGetUserProfile,
       getProfile: mockGetProfile,
       getGateStatus: mockGetGateStatus,
+      hasSession: mockHasSession,
       logout: vi.fn(),
       isAdmin: () => true,
     },
@@ -235,6 +241,119 @@ describe("WorkspaceLayout CELL access", () => {
 
       await waitFor(() => {
         expect(mockLogger.error).toHaveBeenCalled();
+      });
+    });
+  });
+
+  // auth-gates-cookie-primary (spec §4 #12; round 2 spec §6-bis): the outer
+  // catch used to treat ANY loadUserProfile() failure as "not logged in".
+  // `/api/auth/profile` is bearer-only (HTTPBearer strict) and — measured
+  // 2026-08-29 against the locked FastAPI 0.141.1 — answers **401**, not
+  // 403, to a request with no Authorization header, even one carrying a
+  // VALID cookie session (the §1 "403" was wrong for this version). So
+  // NEITHER a 401 NOR a 403 from getProfile can be trusted as "anonymous"
+  // on its own: only hasSession() can tell. The gate now asks it
+  // unconditionally, on every getProfile() failure.
+  describe("cookie-only session fallback (auth-gates-cookie-primary)", () => {
+    beforeEach(() => {
+      // Force the fallback path: no cached profile, so getProfile() is awaited.
+      mockGetUserProfile.mockReturnValue(null);
+    });
+
+    it("calls getProfile with redirectOnUnauthorized: false (the outer catch decides the redirect, not getProfile's own 401 handler)", async () => {
+      mockGetProfile.mockRejectedValue(new ApiError("Forbidden", 403));
+      mockHasSession.mockResolvedValue("authenticated");
+
+      render(
+        <WorkspaceLayout>
+          <div>Workspace content</div>
+        </WorkspaceLayout>,
+      );
+
+      await waitFor(() => {
+        expect(mockGetProfile).toHaveBeenCalledWith({
+          redirectOnUnauthorized: false,
+        });
+      });
+    });
+
+    it("does not redirect a cookie-only session: getProfile() 403 + hasSession() authenticated", async () => {
+      mockGetProfile.mockRejectedValue(new ApiError("Forbidden", 403));
+      mockHasSession.mockResolvedValue("authenticated");
+
+      render(
+        <WorkspaceLayout>
+          <div>Workspace content</div>
+        </WorkspaceLayout>,
+      );
+
+      await waitFor(() => {
+        expect(mockGetGateStatus).toHaveBeenCalled();
+      });
+      expect(window.location.href).toBe("https://kita.balizero.com/dashboard");
+      await waitFor(() => {
+        expect(screen.getByText("Workspace content")).toBeInTheDocument();
+      });
+    });
+
+    it("still redirects when the probe itself says anonymous: getProfile() 403 + hasSession() anonymous", async () => {
+      mockGetProfile.mockRejectedValue(new ApiError("Forbidden", 403));
+      mockHasSession.mockResolvedValue("anonymous");
+
+      render(
+        <WorkspaceLayout>
+          <div>Workspace must not render</div>
+        </WorkspaceLayout>,
+      );
+
+      await waitFor(() => {
+        expect(window.location.href).toEqual(expect.stringContaining("/login"));
+      });
+      expect(mockHasSession).toHaveBeenCalled();
+      expect(mockGetGateStatus).not.toHaveBeenCalled();
+    });
+
+    // Round 2: FastAPI 0.141.1 answers 401 (not 403) to a bearer-only route
+    // hit with no Authorization header — so a confirmed 401 from getProfile
+    // is now ALSO not proof of anonymity. This replaces the round-1 test
+    // that pinned the opposite (401 used to skip the probe entirely).
+    it("still redirects on a confirmed 401 when the probe also says anonymous", async () => {
+      mockGetProfile.mockRejectedValue(
+        new ApiError("Authentication required", 401),
+      );
+      mockHasSession.mockResolvedValue("anonymous");
+
+      render(
+        <WorkspaceLayout>
+          <div>Workspace must not render</div>
+        </WorkspaceLayout>,
+      );
+
+      await waitFor(() => {
+        expect(window.location.href).toEqual(expect.stringContaining("/login"));
+      });
+      expect(mockHasSession).toHaveBeenCalled();
+      expect(mockGetGateStatus).not.toHaveBeenCalled();
+    });
+
+    it("does not redirect a cookie-only visitor even on a bearer-only 401: getProfile() 401 + hasSession() authenticated", async () => {
+      mockGetProfile.mockRejectedValue(
+        new ApiError("Authentication required", 401),
+      );
+      mockHasSession.mockResolvedValue("authenticated");
+
+      render(
+        <WorkspaceLayout>
+          <div>Workspace content</div>
+        </WorkspaceLayout>,
+      );
+
+      await waitFor(() => {
+        expect(mockGetGateStatus).toHaveBeenCalled();
+      });
+      expect(window.location.href).toBe("https://kita.balizero.com/dashboard");
+      await waitFor(() => {
+        expect(screen.getByText("Workspace content")).toBeInTheDocument();
       });
     });
   });

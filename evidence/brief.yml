@@ -1,80 +1,116 @@
-task_id: visa-oracle-retention-scope-p0-0826
+task_id: price-review-0831
 gear: 3
 l_level: L2
 gate_class: opus
 objective: |
-  Restore the Visa Oracle's retention gate, which has been refusing every evaluation since
-  a foreign-scope policy became active in production.
+  Give Bali Zero's own price sheet an automatic re-check, so that "are the prices still current?"
+  stops being a question nobody is scheduled to ask.
 
-  Migration 264 built `public.visa_decision_retention_policies` with one active row per
-  environment and an exclusion constraint to match. Four readers were written against that
-  guarantee and resolve "the" active policy with nothing but
-  `environment = <env> AND effective_period @> <clock>`.
+  Ordered by Zero on 2026-08-31 as one half of a two-part mandate — "crea un trigger automatico che
+  fa partire una richiesta a NB-2 che fa anche una research live per confermare che ci sono o non
+  ci sono aggiornamenti a riguardo gli index e i prezzi" — and immediately scoped by the amendment
+  "per il prtezzo che si controlli solo il nostro pricing tool". That amendment is load-bearing and
+  is why this sentinel makes no external call at all: government PNBP is a different question with
+  a different owner, and conflating the two produces an alert nobody can act on. The 90-day review
+  interval was ratified separately by Zero ("va bene 90 giorni").
 
-  Migration 281 (GARUDA VOA) made that table the single retention authority for four data
-  classes: it added `policy_scope` and widened the exclusion constraint to
-  `(environment WITH =, policy_scope WITH =, effective_period WITH &&)`. The invariant became
-  one active row per (environment, scope). 281 taught every GARUDA-side reader to filter by
-  scope and never revisited the four Visa Oracle readers, which stayed correct only while the
-  table held no foreign-scope row. The first GARUDA policy activated 2026-08-26 04:40:27Z.
+  The obvious implementation — compare `metadata.last_updated` against today — would have shipped a
+  lie. Measured on disk at 2026-08-31: the field says 2026-05-06, while the file was last committed
+  2026-08-26 and carries entries stamped `verified_on: 2026-08-25`. The field is not a review date;
+  it is a literal somebody wrote once and nobody bumps. Its one honest use is asymmetric: it can
+  prove the sheet is OVERDUE, and it can never prove the sheet is FRESH.
 
-  Gear 3 by PATH, deterministically: `apps/backend-rag/backend/db/migrations_v2/**` is hot-zone,
-  so the floor is 3 regardless of the diff being 4 files and +538/-2. Recomputed from the actual
-  changed-file list — receipt in the pack.
+  So OK requires a conjunction — inside the interval AND no independent trace of the file having
+  moved since. Two traces, both lower bounds: the last git commit touching the file, and the newest
+  per-entry `verified_on`. A newer trace yields ATTESTATION_UNMAINTAINED, a distinct loud state
+  meaning the freshness question cannot be answered in either direction. That is the live verdict
+  today, and it is the correct one.
+
+  Gear 3 by PATH, deterministically: the diff adds a LaunchAgent wrapper and plist, which the
+  harness floors at 3 regardless of size (`--print-floor-source` returns `path`). 1827 net lines
+  across 10 files at this commit.
+
 constraints:
-  - "Fix the FAMILY, not the instance. Four readers are unscoped; a fix that repairs one and
-    leaves three is a fix that converts a graceful outage into a different failure."
-  - "`CREATE OR REPLACE FUNCTION` must restate SECURITY DEFINER and SET search_path verbatim.
-    Replace preserves owner and ACL but takes those attributes from the statement — omitting
-    them silently demotes both binders to SECURITY INVOKER and re-opens the 2026-08-07 prod
-    incident that migration 268 closed."
-  - "No behaviour change beyond the scope predicate. Both function bodies are
-    `pg_get_functiondef()` of the LIVE functions plus one added line each, so the diff is
-    auditable against production rather than against 264's source."
-  - "No migration-number collision (W40). 289 is verified free across main and every open
-    remote branch."
-  - "Do not weaken any check. The one red this PR drew (`Harness floor recompute`) is answered
-    by supplying this pack, never by touching the gate."
+  - "Absence must never read as freshness. 111 of 113 priced entries carry no `verified_on` at all;
+    they are UNKNOWN, not current, and the count travels in the alert body rather than being
+    silently dropped."
+  - "The sentinel must watch what the LIVE service loads. The filename is imported from
+    `pricing_service._PRICING_FILENAME`, never restated — a rename to a 2027 edition must not leave
+    this organ watching a dead file and reporting green (the proxy failure, superscar #9)."
+  - "A sentinel that errs must err toward noise. A reformat-only commit will trip
+    ATTESTATION_UNMAINTAINED; that false positive is accepted deliberately, because the opposite
+    error is a quiet false OK on a price sheet."
+  - "No external call, no NB-2, no web, no government fee schedule — Zero's amendment fixes the
+    scope to our own pricing tool."
+  - "WHEN the sentinel runs it SHALL emit only dates, counts and outcome names — probe:
+    `pytest scripts/tests/test_price_review_sentinel.py -k alert`. No client PII anywhere in
+    output, logs or alerts. The sheet carries only Bali Zero's own
+    published business contact block, which is already public on balizero.com."
+  - "Telegram only through the `scripts/tg_notify.py` gateway, never a direct bot call, and a
+    gateway failure must never crash the sentinel (house contract)."
+  - "Built is not armed. The organ ships unarmed and says so in PENDING-ARMS rather than letting the
+    repo read as if the price sheet were already being watched (superscar #2)."
+
 acceptance:
-  - "`active_policy_available` returns True in production's actual policy configuration
-    (1 VISA_DECISION + 3 GARUDA active) instead of False."
-  - "Both SQL binders resolve the VISA_DECISION policy and bind to ITS id, not a GARUDA one,
-    with a foreign-scope policy concurrently active."
-  - "289's forward half applies on top of the real main chain; its ROLLBACK half restores 264's
-    unscoped bodies verbatim, SECURITY DEFINER included."
-  - "The structural tripwire is red on origin/main and green here, and its historical exemption
-    for 264 is re-derived from the migration chain rather than asserted."
-  - "`Detect duplicate prefixes` and `Detect missing ROLLBACK markers` both green."
+  - "WHEN a review date sits inside the interval but a commit lands after it, classify() SHALL NOT return OK — probe: `pytest scripts/tests/test_price_review_sentinel.py::test_guilt_a_recent_review_date_contradicted_by_a_change_is_still_not_ok`. Full statement: `classify()` returns OK only when the review date is inside the interval AND no trace shows the
+    file changed after it — verified by a guilt test where the date is INSIDE the interval but a
+    commit lands after it, which must still not be OK."
+  - "WHEN run against the real sheet the sentinel SHALL print a machine-readable last line whose
+    rc= agrees with the code it exits with — probe: `pytest scripts/tests/test_price_review_sentinel.py::test_main_prints_a_state_line_whose_rc_matches_the_code_it_exits_with`.
+    NARROWED from an earlier 'SHALL exit 1': on 2026-08-31 it does exit 1 (ATTESTATION_UNMAINTAINED,
+    naming 2026-08-26 as the contradicting trace), but pinning that here would make the legitimate
+    cure — somebody re-attesting the sheet — break the suite. The freshness verdicts are pinned on
+    synthetic sheets by the classify() matrix, where they can be pinned honestly."
+  - "WHERE the classifier returns an outcome, that outcome SHALL have a mapped exit code — probe: `pytest scripts/tests/test_price_review_sentinel.py::test_every_outcome_the_classifier_actually_returns_has_an_exit_code`. None falls through to CANNOT_VERIFY."
+  - "IF the real sheet were empty the suite SHALL fail rather than pass vacuously — probe: `pytest scripts/tests/test_price_review_sentinel.py::test_the_real_sheet_is_classifiable_and_not_empty`. The real sheet parses and carries >= 100 priced entries before any
+    assertion is made about it."
+  - "WHEN any guard in the classifier is removed the suite SHALL go red — probe: the six single-anchor mutations recorded in the pack. Three of them: disabling the contradiction check,
+    widening the grace day, and moving the interval."
+  - "WHEN the organ is born the conformance check SHALL stay clean — probe: `python3 infra/organ-conformance/check_organ_conformance.py`. Result: clean, and `validate_organs_registry` valid after the birth."
+
 consumer_map:
-  - "`services/visa_engine/evaluate_path.py:140,280,1466,1708` — imports and calls
-    `active_policy_available` at BOTH call sites, ungated on SHADOW vs ENFORCE. This is the
-    surface the outage is visible on."
-  - "`public.visa_decisions` — BEFORE INSERT trigger runs `bind_visa_decision_retention_policy`.
-    Every durable decision write passes through the predicate this PR changes."
-  - "`public.visa_evaluate_idempotency` — same, via
-    `bind_visa_evaluate_idempotency_retention_policy`. The table currently holds 0 rows."
-  - "`scripts/visa_engine/retention_worker.py` — the bounded purge worker. Broken by the same
-    cause; currently has nothing to purge (receipt below), so the repair is pre-emptive."
-  - "GARUDA VOA — `services/garuda_flow/retention.py`,
-    `active_garuda_magic_link_policy_available`, migration 284's order-policy function. All
-    three already filter their own scope and are NOT touched by this PR. Verified, not assumed."
-  - "`bind_visa_decision_payload_retention` — deliberately NOT touched: it resolves its parent
-    by `visa_decisions.id`, never by active-policy lookup."
+  - "`scripts/price_review_sentinel.py` — the organ itself; runs under the backend venv interpreter
+    (3.11.11), because it imports backend code and /usr/bin/python3 is 3.9.6 on both Pro and M5 —
+    too old for the `str | None` annotation in the package __init__ chain. The first draft had
+    this backwards and pinned system python in the wrapper."
+  - "`apps/backend-rag/backend/services/pricing/pricing_service.py` — read-only, for
+    `_PRICING_FILENAME` alone. Nothing in the service changes."
+  - "`apps/backend-rag/backend/data/bali_zero_official_prices_2026.json` — observed, never written."
+  - "`infra/launchagents/wrappers/pro-price-review-sentinel.sh` + `com.nuzantara.price-review-sentinel.plist`
+    — the trigger, node=pro, StartInterval 86400. NOT yet installed on Pro."
+  - "`apps/organism/organism/organs_registry.yaml` + `infra/home-fork/declared-pairs.json` — so the
+    organ has a repo trace and the home-fork lint can see its live pair (superscar #1)."
+  - "`scripts/tg_notify.py` — the only alert door; tier p0 for findings, digest for APPROACHING."
+  - "`.claude/skills/modus/PENDING-ARMS.md` — two rows: the unarmed organ, and the inherited
+    organ_birth.py YAML-quoting bug."
+
 risks:
-  - "A migration PR is auto-merge-OFF class per CLAUDE.md §2. Merged by the session after gates
-    are green and the Gear-3 verdict is posted, never armed with --auto."
-  - "The two binders are owned by `visa_ledger_owner`, and no role is a member of it. CREATE OR
-    REPLACE therefore requires the migration runner to be superuser — which it demonstrably is,
-    since 281 successfully ALTERed this same visa_ledger_owner-owned table on 2026-08-26."
-  - "Rolling 289 back re-arms the outage on any database that has applied 281 and activated a
-    GARUDA policy. Documented in the ROLLBACK section: it is only meaningful together with
-    rolling back 281."
-  - "This PR does NOT restore the client experience. Production runs SHADOW and the frontend's
-    public rendering boundary withholds the decision regardless — an unrelated, designed state.
-    What this PR restores is the shadow-evidence ledger the go-live gate accumulates."
-grader: |
-  Independent verification by this session against production's live catalog (read-only role)
-  and against the repo's own linters. Two adversarial subagents were dispatched WITHOUT this
-  brief: one to attack the diagnosis (it killed the timeline claim — see dissent), one to prove
-  the fix red-then-green on a throwaway Postgres. Generator != grader: the session that wrote
-  the diff does not post the Gear-3 verdict.
+  - "The organ is BUILT and NOT ARMED. Until the plist is bootstrapped on Pro and a first heartbeat
+    is read back, nothing is being watched — and the repo now looks as though something is. This is
+    superscar #2 by construction, which is why it is a PENDING-ARMS row and not a claim of done."
+  - "The contradiction check depends on git being available in the cron environment. When git cannot
+    answer, the sentinel loses one of its two traces; it degrades toward silence on that trace, never
+    toward a pass, but the coverage is genuinely weaker in that state."
+  - "ATTESTATION_GRACE_DAYS = 1 is a judgment call covering MERGE LAG — the gap between reviewing a
+    price and the commit that records it. RETRACTED: an earlier draft of this line, and of the
+    code comment, justified it by the UTC-vs-WITA offset. That reasoning was inverted (WITA is
+    ahead of UTC, so the offset cannot make a same-day commit look like a later one) and it is
+    corrected at price_review_sentinel.py:104-116. A real edit made within a day of a genuine
+    review is still absorbed by the grace day; that cost is accepted, the stated reason was wrong."
+  - "The sentinel answers a narrower question than the mandate's word 'prices' might suggest: it
+    detects that OUR SHEET is overdue for review, not that the underlying prices have changed. That
+    narrowing is Zero's own amendment, stated here so nobody later reads the green as market truth."
+  - "The sheet is not the only price store. `practice_types.base_price` in Postgres is independent —
+    populated only by one-shot migrations, last price-bearing one 2026-06-09 — and
+    `crm_practices.py:491` uses it as the default `quoted_price`. Measured against the live DB
+    today: 74 of 112 rows match a sheet entry by normalized name and all 74 are IDENTICAL, so the
+    store has not broadly drifted; the one live divergence is `B1 - VOA` at 750.000 against the
+    sheet''s 790.000. This sentinel does NOT watch that store, and a green verdict from it says
+    nothing about what a client is quoted through the CRM. Recorded in PENDING-ARMS rather than
+    folded in here: the two stores do not share a naming scheme, so reconciling them is its own
+    mandate, not a widening of this one."
+
+grader:
+  "Opus 5 at xhigh — the final on-disk gate (CLAUDE.md §5, 2026-08-20 ruling). Generator is
+  this session's build lane; the grader never grades its own diff, and the council seats
+  (codex-gpt-5.6-sol, kimi-code/k3) are dispatched on the diff, not on a summary of it."

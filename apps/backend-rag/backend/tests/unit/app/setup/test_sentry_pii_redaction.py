@@ -26,7 +26,11 @@ from typing import Any
 
 import pytest
 
-from backend.app.setup.sentry_config import PII_REDACTION_PLACEHOLDER, _before_send
+from backend.app.setup.sentry_config import (
+    PII_REDACTION_PLACEHOLDER,
+    _before_send,
+    _init_sentry_blocking,
+)
 
 EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 
@@ -79,6 +83,34 @@ def _assert_no_pii(event: dict[str, Any]) -> None:
         if EMAIL_RE.search(leaf) and PII_REDACTION_PLACEHOLDER not in leaf:
             leaked.append(f"email-shaped string leaked: {leaf!r}")
     assert not leaked, "PII leaked through before_send:\n  " + "\n  ".join(leaked)
+
+
+# --------------------------------------------------------------------------- #
+# 0. Init configuration — frame locals bypass `_before_send` entirely
+#
+# `_before_send` walks the JSON-shaped event Sentry hands it, but the SDK
+# attaches raw frame-LOCAL values to `stacktrace.frames[].vars` at capture
+# time, before `before_send` ever runs, whenever `include_local_variables`
+# is left at its default of `True`. A value that only ever exists as a bare
+# local (e.g. `garuda_result_session` / `result_session_secret` in
+# `garuda_portal_auth.py`, never as a dict key `_scrub` walks) leaks
+# regardless of how complete `_PII_KEY_SUBSTRINGS` is — no amount of key-based
+# redaction downstream can reach it. The only structural fix is telling the
+# SDK not to collect locals at all.
+# --------------------------------------------------------------------------- #
+def test_init_sentry_disables_local_variable_capture(monkeypatch):
+    captured: dict[str, Any] = {}
+
+    def fake_init(**kwargs: Any) -> None:
+        captured.update(kwargs)
+
+    monkeypatch.setattr("sentry_sdk.init", fake_init)
+    _init_sentry_blocking("https://example.invalid/1")
+
+    assert captured.get("include_local_variables") is False, (
+        "sentry_sdk.init must be called with include_local_variables=False — "
+        "otherwise frame locals bypass _before_send's key-based redaction entirely"
+    )
 
 
 # --------------------------------------------------------------------------- #

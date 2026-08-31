@@ -1,0 +1,272 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR #5233 (agent/air-m5/infra/fly-deploy-md -> main) — dispatched by the orchestrating
+  session ("deploy-notifier" lane) with a mandate to falsify then fix the Telegram
+  Markdown-V1 defect in fly-deploy.yml. Scope corrected mid-flight by the dispatching
+  session from "2 named notifiers" to "the whole class in the file" (7 sites,
+  verified independently rather than taken on trust — see receipts).
+
+lanes:
+  - lane: fly-deploy-md-build
+    role: build
+    seat: claude-sonnet-5 (this implementer session — falsified the actor hazard
+      against real run history, fixed all 7 vulnerable sites, wrote the offline
+      guilt/innocence proof, re-derived the HTML-mode exemption on the correct
+      axis after a review-round correction)
+
+diff:
+  files: 1
+  net_lines: 33
+  measured_at: 00543d52f
+  note: >-
+    `git diff --no-renames --numstat <merge-base> HEAD` (merge-base anchored, NOT a
+    two-dot diff against a live origin/main — the local origin/main ref moved forward
+    during this session from other PRs merging, which a two-dot diff would have
+    misattributed to this PR per cicatrix #9/W102). 54 insertions(+), 21 deletions(-)
+    = net 33, single file: .github/workflows/fly-deploy.yml. Confirmed twice: once via
+    `git diff --shortstat` at commit time, once via merge-base-anchored numstat after
+    noticing origin/main had moved.
+
+pii_scan: clean
+
+receipts:
+  - claim:
+      github.actor on fly-deploy.yml's real run history is github-merge-queue[bot] on
+      every sampled run — the defect is LIVE (this repo merges via merge queue), not
+      merely latent.
+    cmd: >-
+      gh api "repos/Bali-Zero/Teman2/actions/workflows/fly-deploy.yml/runs?per_page=100"
+      --jq '[.workflow_runs[] | .actor.login] | group_by(.) | map({actor:.[0], n:length})
+      | .[] | "\(.n)  \(.actor)"'
+    result: "100  github-merge-queue[bot] — 100/100 sampled runs, zero other actor logins."
+    exit: 0
+    ts: "2026-08-29T10:02Z"
+    seat: session (Air-M5, implementer lane)
+
+  - claim:
+      triggering_actor (who kicked off the run) differs from actor (who the workflow
+      context reports) on 99/100 runs — confirms the merge-queue mechanism is what
+      substitutes the bot login into github.actor, not an artifact of the query.
+    cmd: >-
+      gh api "repos/Bali-Zero/Teman2/actions/workflows/fly-deploy.yml/runs?per_page=100"
+      --jq '[.workflow_runs[] | .triggering_actor.login] | group_by(.) | map({actor:.[0],
+      n:length}) | .[] | "\(.n)  \(.actor)"'
+    result: "99  github-merge-queue[bot], 1  Balizero1987 (a manual/direct trigger)."
+    exit: 0
+    ts: "2026-08-29T10:02Z"
+    seat: session (Air-M5, implementer lane)
+
+  - claim:
+      dependabot[bot] and github-actions[bot] independently hit the same actor-login
+      shape whenever either triggers a push build directly (not just the merge-queue
+      path) — sizing the secondary exposure, not just the primary one.
+    cmd: >-
+      git log --since="30 days ago" --author="dependabot" --oneline origin/main | wc -l ;
+      git log --since="30 days ago" --author="dependabot" --oneline origin/main --
+      apps/backend-rag/ | wc -l ;
+      git log --since="30 days ago" --author="github-actions" --oneline origin/main | wc -l
+    result:
+      "34 dependabot[bot] commits total (12 touching apps/backend-rag/, the path
+      that triggers this workflow); 2 github-actions[bot] commits, same 30-day window."
+    exit: 0
+    ts: "2026-08-29T (post-fix re-verification)"
+    seat: session (Air-M5, implementer lane)
+
+  - claim: >-
+      All 7 previously-vulnerable Telegram-notifier steps in fly-deploy.yml no longer
+      send parse_mode=Markdown, still send the same MESSAGE content, and surface a
+      non-200 via ::warning:: without an exit 1 in that block.
+    cmd: >-
+      python3 verify_tg_markdown_fix.py .github/workflows/fly-deploy.yml — a local,
+      no-network, no-token script that (a) builds the exact MESSAGE string the
+      workflow would build for actor=dependabot[bot] and for an ordinary actor,
+      checking each for Markdown V1 structural defects (odd _/*/` count; a `[...]`
+      not immediately followed by `(`), and (b) statically greps the live workflow
+      file, isolating each step's own run: block by name, asserting
+      parse_mode=Markdown is absent, text=${MESSAGE} is present, and the ::warning::
+      surfacing text is present.
+    result: >-
+      GUILT (dependabot[bot]): 1 malformed `[bot]` link-open, offset 180, not
+      followed by `(`. INNOCENCE (Balizero1987): zero defects — the checker does not
+      cry wolf on an ordinary login. LIVE-REPO CHECK: [OK] on all 7 named steps
+      (parse_mode=Markdown present=False, sends MESSAGE=True, surfaces non-200 via
+      ::warning::=True); [OK] the 8th (HTML) step confirmed unchanged
+      (parse_mode=HTML still present).
+    exit: 0
+    ts:
+      "2026-08-29 (post-fix, re-run after the MESSAGE-line restoration bug — see
+      notes below)"
+    seat: session (Air-M5, implementer lane)
+
+  - claim:
+      The one remaining parse_mode=HTML site ("Notifica Telegram — gate fallito")
+      interpolates exactly two GitHub-context values, neither of which can carry
+      `<`, `>`, or `&` — the axis that actually matters for HTML, not the Markdown
+      reserve set.
+    cmd: >-
+      Read .github/workflows/fly-deploy.yml lines 125-139 directly (not from memory
+      — a review-round finding was precisely that the first draft of this exemption
+      generalized from checking only github.actor, which is the wrong-axis mistake
+      this receipt exists to correct).
+    result: >-
+      MESSAGE="🔴 <b>Pre-deploy gate FALLITO</b>%0A%0ACommit: ${{ github.sha }}%0A
+      Autore: ${{ github.actor }}%0A%0ACheck GitHub Actions per dettagli." — exactly
+      two interpolations: github.sha (40-char lowercase-hex git object hash, cannot
+      contain <>&) and github.actor (GitHub login charset: alphanumeric + single
+      hyphens, plus the literal `[bot]` suffix on App logins — confirmed directly by
+      the two real bot logins observed in the falsification receipt above, neither
+      of which contains <>&). No commit message, branch/ref name, run URL, or step
+      output is interpolated into THIS message — those would need re-deriving
+      separately if this step's template ever changes.
+    exit: 0
+    ts: "2026-08-29 (post review-round correction)"
+    seat: session (Air-M5, implementer lane)
+
+  - claim:
+      actionlint — the exact invocation this repo's own actionlint.yml required
+      check runs (-shellcheck= disables the shellcheck pass CI deliberately skips)
+      — is clean on the changed file.
+    cmd: "actionlint -color -shellcheck= .github/workflows/fly-deploy.yml"
+    result: "exit 0, zero findings."
+    exit: 0
+    ts: "2026-08-29T10:0*Z"
+    seat: session (Air-M5, implementer lane)
+
+  - claim:
+      A plain (non-CI-matching) local actionlint invocation reports only pre-existing
+      info/style-level shellcheck findings, identical in count and nature on this
+      branch and on origin/main — not a regression this PR introduces.
+    cmd:
+      "actionlint .github/workflows/fly-deploy.yml (WITH the shellcheck pass, on
+      both this branch and a checkout of origin/main:.github/workflows/fly-deploy.yml)"
+    result: >-
+      Both report the same 14 SC2086 (info) / SC2129 (style) findings at the
+      corresponding (line-shifted) locations, none inside this PR's own changed
+      lines — pre-existing baseline noise, confirmed by direct comparison rather
+      than assumed.
+    exit: 1
+    ts: "2026-08-29T10:1*Z"
+    seat: session (Air-M5, implementer lane)
+
+  - claim: The changed file parses as valid YAML.
+    cmd: 'python3 -c "import yaml; yaml.safe_load(open(''.github/workflows/fly-deploy.yml''))"'
+    result: "YAML OK"
+    exit: 0
+    ts: "2026-08-29"
+    seat: session (Air-M5, implementer lane)
+
+  - claim: >-
+      The deterministic gear floor recomputed from THIS PR's real, merge-base-anchored
+      changed-file set is 3 (source=path), matching the declared gear — NOT computed
+      from a stale two-dot diff against a since-moved origin/main.
+    cmd: >-
+      MB=$(git merge-base origin/main HEAD); git diff --name-only "$MB" HEAD >
+      /tmp/changed.txt; python3 scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file /tmp/changed.txt; python3 scripts/evidence_pack_lint.py
+      --print-floor-source --changed-files-file /tmp/changed.txt
+    result: "1 file enumerated (.github/workflows/fly-deploy.yml); floor=3, source=path."
+    exit: 0
+    ts: "2026-08-29"
+    seat: session (Air-M5, implementer lane)
+
+  - claim: Pre-commit and pre-push hooks passed clean on the fix commit.
+    cmd: "git commit -F <msg>; git push -u origin agent/air-m5/infra/fly-deploy-md"
+    result: >-
+      Pre-commit: "All pre-commit checks passed!" (lease-check, anti-reward-hacking
+      lint, secret scan, python lint, off-limits check). Pre-push: "All pre-push
+      checks passed!" — backend suite correctly SKIPPED locally (path-aware
+      allowlist: only .github/workflows/**(.yml) changed, an innocent path per the
+      allowlist; the real gate is the required CI check, which ran the full suite on
+      the PR).
+    exit: 0
+    ts: "2026-08-29T10:0*Z"
+    seat: session (Air-M5, implementer lane)
+
+  - claim: >-
+      PR #5233 is open and armed with the nude `gh pr merge --auto` form the merge
+      queue requires (no strategy flag, which the queue rejects).
+    cmd:
+      "gh pr create ...; gh pr merge 5233 --repo Bali-Zero/Teman2 --auto; gh pr
+      view 5233 --json autoMergeRequest,state,mergeable,mergeStateStatus"
+    result: >-
+      autoMergeRequest.mergeMethod="MERGE" (no squash/rebase flag), enabledAt
+      populated, state=OPEN, mergeable=MERGEABLE.
+    exit: 0
+    ts: "2026-08-29T10:04-10:05Z"
+    seat: session (Air-M5, implementer lane)
+
+  - claim: >-
+      Every content-of-the-fix required check on PR #5233 is green; the only red was
+      "Harness floor recompute" (the mechanism this pack exists to satisfy), and it
+      failed for the documented, expected reason (floor=3, no evidence/brief.yml yet
+      touched by this PR's own diff) — not a defect in the fix itself.
+    cmd:
+      "gh pr checks 5233 --repo Bali-Zero/Teman2 (polled via a Monitor task through
+      CI landing); gh run view --job <id> --log for the one red job"
+    result: >-
+      ~50 required/advisory checks reported pass (actionlint, hot-zone enforcement,
+      R1 adversarial-review gate, secrets scan, guard-conformance, organ-conformance,
+      Bandit/Snyk/CodeQL/Safety security scans, Backend Tests all 3 shards, Frontend
+      Tests, E2E Tests, Vercel, npm audit, garuda-contract-parity, and more). The
+      single failure's own log states the exact, expected cause: "this diff's
+      deterministic floor is 3 (source: path) ... but carries no evidence/brief.yml."
+    exit: 0
+    ts: "2026-08-29T10:05-10:30Z (ongoing at pack-write time)"
+    seat: session (Air-M5, implementer lane)
+
+dissent:
+  - seat: harness-gate-m5
+    objection: "No test in this repo exercises the fly-deploy.yml notifier shell logic (parse_mode/curl/warning path) — any mutation of it would pass every test that runs today. Pre-existing across the whole file, not introduced by this PR."
+    status: PLAUSIBLE
+  - seat: harness-gate-m5
+    objection: "This PR's strategy (drop parse_mode entirely on 7 sites) diverges from outbox_alarm.py's escape-and-preserve-formatting strategy for the same class of defect, though it matches scripts/tg_notify.py's existing no-parse_mode precedent. Not a defect; flagged so the divergence is a recorded decision, not an accident."
+    status: RETRACTED
+
+tests:
+  - "No application test suite applies — this PR changes only GitHub Actions
+    workflow YAML (bash inside run: blocks), no Python/JS/TS source. The 'test' for
+    this change is the offline guilt/innocence proof (receipt above) plus the live
+    CI required checks, which exercised the real Backend Tests / E2E Tests suites
+    unrelated to but unaffected by this diff."
+
+static:
+  - "actionlint -color -shellcheck= (CI-matching invocation) — exit 0, zero findings."
+  - "python3 -m yaml (safe_load) — exit 0, valid YAML."
+  - "pre-commit hooks (lease-check, anti-reward-hacking lint, secret scan, python
+    lint, off-limits check) — passed."
+  - "pre-push hooks (prettier, path-aware suite classification) — passed."
+  - "Deterministic gear floor, merge-base anchored — floor=3, source=path, matching
+    the declared gear."
+
+notes:
+  - 'SELF-CAUGHT BUG DURING BUILD, WORTH RECORDING: the first pass of the 7-site
+    fix accidentally dropped the `MESSAGE="..."` assignment line at 6 of 7 sites
+    (the Edit tool''s old_string/new_string pair captured the MESSAGE line as
+    context but the replacement omitted it) — caught by grep-counting `MESSAGE=`
+    occurrences before vs after (expected 8 total: 7 fixed + 1 untouched HTML site;
+    found only 2), then restored all 6 via a targeted Python script with an assert
+    per insertion point, then re-verified with the same count. Recorded so a
+    reviewer knows this was caught and fixed BEFORE push, not left for the gate to
+    find — actionlint and the offline proof script both passed only after the
+    restoration, not before.'
+  - "SCOPE-COUNT CORRECTION MID-FLIGHT: the dispatching session initially relayed
+    a count of 8 `parse_mode=Markdown` sends; this session re-measured on
+    origin/main directly (git show + grep) and found 7 Markdown + 1 HTML = 8
+    parse_mode sends total, but only 7 are Markdown. No rework was needed — this
+    session had already fixed the whole 7-site Markdown class, not the 2 originally
+    named — but the discrepancy was reported back with its composition rather than
+    silently assumed correct in either direction."
+  - "AXIS CORRECTION MID-FLIGHT: the first draft of the HTML-site exemption
+    justified leaving it alone by checking only whether github.actor could contain
+    `<>&`. The dispatching session correctly flagged this as reasoning about one
+    interpolation rather than the whole payload, and asked for a full enumeration.
+    Re-derived (receipt above): the HTML message interpolates exactly two values
+    (github.sha, github.actor), both confirmed on the correct axis. The exemption
+    holds, but now for a stated, checkable reason rather than an unstated
+    generalization."
+  - "The 'Harness floor recompute' required check was NOT part of the original
+    mandate and was discovered only once the PR was open and checks landed. This
+    pack + brief exist specifically to satisfy it; the Gear-3 verdict itself
+    (harness/fable-gate) is posted by a separately dispatched, independent session
+    per generator != grader (CLAUDE.md §Agent PR Contract / §2) — this session
+    authored the brief/pack (mechanical) but does not adjudicate its own diff."

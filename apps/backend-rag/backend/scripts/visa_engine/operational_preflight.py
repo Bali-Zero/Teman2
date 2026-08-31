@@ -214,6 +214,16 @@ RETENTION_BINDING_TRIGGER_FUNCTIONS = (
     "public.bind_visa_evaluate_idempotency_retention_policy()",
     "public.bind_visa_decision_retention_policy()",
     "public.bind_visa_decision_payload_retention()",
+    # The GARUDA pair, added 2026-08-30. This inventory held only the three
+    # functions migration 268 cured, so the live owner check was blind to every
+    # retention-binding trigger written after it -- including the one that took
+    # magic-link issuance down for weeks. It is a catalog-driven check that
+    # would have caught the outage on its first run; it was simply never told
+    # these two exist. The check_retention_policy sibling is already correctly
+    # owned in production and is listed for the same reason: leaving it out is
+    # how this blind spot reopens.
+    "public.bind_garuda_voa_check_retention_policy()",
+    "public.bind_garuda_magic_link_token_retention_policy()",
 )
 SENSITIVE_FUNCTIONS = (
     ACTIVATION_FUNCTION,
@@ -223,6 +233,79 @@ SENSITIVE_FUNCTIONS = (
     *PRIVACY_FUNCTIONS,
     *RETENTION_BINDING_TRIGGER_FUNCTIONS,
 )
+
+# The role every governed object in this schema must belong to. Named here
+# because the class-level census below compares against it; the pre-existing
+# per-object checks still spell it inline and are deliberately left alone.
+LEDGER_OWNER = "visa_ledger_owner"
+
+# The class-level floor behind `definer:public-security-definer-ledger-owned`.
+# Held as a module constant, not inlined, so a real-Postgres test can run the
+# SHIPPED text against a real catalog instead of retyping it and drifting from
+# the code it is supposed to guard (scar #9 / W114: a fake and the code it
+# checks share the same imagination).
+#
+# It asks the catalog for EVERY SECURITY DEFINER function in `public` and who
+# owns it -- no list, no inventory to keep up to date. `prosecdef` is the
+# property that makes ownership load-bearing in the first place: a SECURITY
+# DEFINER function executes with its OWNER's privileges, so an owner that
+# cannot do what the body needs turns the whole construct into a no-op that
+# fails only on the first real call.
+# Every catalog name is `pg_catalog.`-qualified, and that is load-bearing, not
+# housekeeping. An adversarial round (codex gpt-5.6-sol, xhigh) supplied a
+# working evasion: the application role can CREATE in `public`, so a
+# `public.pg_get_userbyid(oid)` returning a constant plus a `search_path` of
+# `public, pg_catalog` makes an unqualified census report a FORGED owner and
+# answer ok=True with the ownership still wrong. A privilege check answerable by
+# an object the checked role may create is not a check. Qualified names cannot
+# be redirected by any search_path.
+#
+# `prokind` comes back so the remediation names the right statement: a SECURITY
+# DEFINER PROCEDURE carries the identical hazard and is censused on purpose, but
+# is moved with ALTER PROCEDURE, not ALTER FUNCTION. Cast to `text`: `prokind`
+# is Postgres's `"char"` type, which asyncpg decodes to BYTES, so the label
+# lookup silently missed and printed `[b'p']`. Found by the real-Postgres test,
+# never by the fake -- the fake had been told the answer.
+SECURITY_DEFINER_CENSUS_SQL = """
+SELECT proc.proname
+           || '('
+           || pg_catalog.pg_get_function_identity_arguments(proc.oid)
+           || ')' AS signature,
+       pg_catalog.pg_get_userbyid(proc.proowner) AS owner,
+       proc.prokind::pg_catalog.text AS kind
+  FROM pg_catalog.pg_proc AS proc
+  JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = proc.pronamespace
+ WHERE namespace.nspname = 'public'
+   AND proc.prosecdef
+ ORDER BY signature
+"""
+
+# pg_proc.prokind, spelled out for the operator-facing message.
+_PROKIND_LABEL = {"f": "function", "p": "procedure", "a": "aggregate", "w": "window"}
+
+
+def _security_definer_violations(
+    rows, *, expected_owner: str = LEDGER_OWNER
+) -> list[str]:
+    """Every censused routine whose owner is not `expected_owner`.
+
+    Split out from the check so a real-Postgres test can feed it rows read from
+    an actual catalog by `SECURITY_DEFINER_CENSUS_SQL`, rather than proving the
+    verdict only against a hand-written fake.
+
+    `expected_owner` is a parameter solely so that test can use a
+    uuid-suffixed throwaway role: a privilege boundary is cluster-wide, so a
+    test may not create a role literally named `visa_ledger_owner`. Nothing in
+    production passes it.
+    """
+
+    return [
+        f"{row['signature']} [{_PROKIND_LABEL.get(row['kind'], row['kind'])}] "
+        f"owned by {row['owner']}"
+        for row in rows
+        if row["owner"] != expected_owner
+    ]
+
 
 SENSITIVE_TABLES = (
     "visa_rule_packs",
@@ -327,7 +410,7 @@ async def collect_preflight_checks(
 
     checks: list[PreflightCheck] = []
     server_version_num = int(
-        await connection.fetchval("SELECT current_setting('server_version_num')::integer")
+        await connection.fetchval("SELECT pg_catalog.current_setting('server_version_num')::integer")
     )
     supported_table_privileges = TABLE_PRIVILEGES
     if server_version_num >= 170000:
@@ -341,8 +424,30 @@ async def collect_preflight_checks(
         "visa_privacy_operator": False,
         runtime_role: True,
     }
+    # Every catalog name in THIS function is `pg_catalog.`-qualified — CALLS and
+    # RELATIONS, and as of 2026-08-31 the TYPE CAST below too. That last one was
+    # found by the Gear-3 gate, which shadowed `text` on a throwaway PG 17.10:
+    # `CREATE DOMAIN public.text AS varchar(1)` makes `$1::text[]` truncate every
+    # role name to one character. Note the DIRECTION before reading this as a
+    # closed forgery vector — it is not one. A truncated array matches no
+    # `rolname`, so `role_rows` comes back empty and every `role:*` check goes
+    # ok=False: the attack makes this function fail LOUD, not answer green. It is
+    # qualified anyway because the sentence above claimed it already was, and a
+    # comment that overstates its own coverage is how the next reader stops
+    # checking. What remains genuinely uncovered: casts are a construct class NO
+    # guard in this repo can currently see — see
+    # docs/specs/2026-08-31-unqualified-catalog-call-lint.md, whose extractor
+    # requirement (R1) has to reach them. A second adversarial seat
+    # (kimi-code/k3) pointed out the inconsistency and was right: this file now
+    # states that "a privilege check answerable by an object the checked role may
+    # create is not a check", and then relied on `role:visa_ledger_owner` -- which
+    # probed an unqualified `pg_roles` -- to justify migration 300's role guard.
+    # A constant-returning `public.pg_roles` view, or a `public.pg_get_userbyid`,
+    # forges those green under `search_path = public, pg_catalog`. The doctrine
+    # cannot hold for the new code and be waived for the code it leans on.
     role_rows = await connection.fetch(
-        "SELECT rolname, rolcanlogin, rolsuper FROM pg_roles WHERE rolname = ANY($1::text[])",
+        "SELECT rolname, rolcanlogin, rolsuper FROM pg_catalog.pg_roles "
+        "WHERE rolname = ANY($1::pg_catalog.text[])",
         list(expected_roles),
     )
     roles = {str(row["rolname"]): row for row in role_rows}
@@ -367,9 +472,10 @@ async def collect_preflight_checks(
     for table in SENSITIVE_TABLES:
         owner = await connection.fetchval(
             """
-            SELECT pg_get_userbyid(class.relowner)
-              FROM pg_class AS class
-              JOIN pg_namespace AS namespace ON namespace.oid = class.relnamespace
+            SELECT pg_catalog.pg_get_userbyid(class.relowner)
+              FROM pg_catalog.pg_class AS class
+              JOIN pg_catalog.pg_namespace AS namespace
+                ON namespace.oid = class.relnamespace
              WHERE namespace.nspname = 'public' AND class.relname = $1
             """,
             table,
@@ -388,7 +494,8 @@ async def collect_preflight_checks(
     function_exists: dict[str, bool] = {}
     for signature in SENSITIVE_FUNCTIONS:
         owner = await connection.fetchval(
-            "SELECT pg_get_userbyid(proowner) FROM pg_proc WHERE oid = to_regprocedure($1)",
+            "SELECT pg_catalog.pg_get_userbyid(proowner) FROM pg_catalog.pg_proc "
+            "WHERE oid = pg_catalog.to_regprocedure($1)",
             signature,
         )
         function_exists[signature] = owner is not None
@@ -410,7 +517,7 @@ async def collect_preflight_checks(
             if role in roles and function_exists.get(signature, False):
                 actual = bool(
                     await connection.fetchval(
-                        "SELECT has_function_privilege($1, $2, 'EXECUTE')",
+                        "SELECT pg_catalog.has_function_privilege($1, $2, 'EXECUTE')",
                         role,
                         signature,
                     )
@@ -432,7 +539,7 @@ async def collect_preflight_checks(
                 if role in roles and table_exists.get(table, False):
                     actual = bool(
                         await connection.fetchval(
-                            "SELECT has_table_privilege($1, $2, $3)",
+                            "SELECT pg_catalog.has_table_privilege($1, $2, $3)",
                             role,
                             f"public.{table}",
                             privilege,
@@ -451,7 +558,7 @@ async def collect_preflight_checks(
         if runtime_role in roles and capability_role in roles:
             runtime_is_member = bool(
                 await connection.fetchval(
-                    "SELECT pg_has_role($1, $2, 'MEMBER')",
+                    "SELECT pg_catalog.pg_has_role($1, $2, 'MEMBER')",
                     runtime_role,
                     capability_role,
                 )
@@ -464,15 +571,28 @@ async def collect_preflight_checks(
             )
         )
 
+    # `pg_has_role` answers true for a superuser against ANY role, grant or no
+    # grant -- that is Postgres semantics, not a privilege-separation defect.
+    # Without `NOT role.rolsuper` this check reports `postgres` (and, on Fly,
+    # `flypgadmin` and `repmgr`) as logins that combine pack-write and
+    # activation, and since `postgres` exists and is superuser on every real
+    # install, the gate could never return 0 anywhere. The per-role checks
+    # above already exclude superusers for exactly this reason; this one did
+    # not. Measured on production 2026-08-26: the three roles it flagged were
+    # all rolsuper with zero actual membership in `pg_auth_members`, while the
+    # real operational login `visa_activation_operator` was correctly scoped.
     dual_capability_login = "roles-missing"
     if "visa_pack_writer" in roles and "visa_activation_executor" in roles:
         dual_capability_login = await connection.fetchval(
             """
-            SELECT string_agg(role.rolname, ', ' ORDER BY role.rolname)
-              FROM pg_roles AS role
+            SELECT pg_catalog.string_agg(role.rolname, ', ' ORDER BY role.rolname)
+              FROM pg_catalog.pg_roles AS role
              WHERE role.rolcanlogin
-               AND pg_has_role(role.oid, 'visa_pack_writer', 'MEMBER')
-               AND pg_has_role(role.oid, 'visa_activation_executor', 'MEMBER')
+               AND NOT role.rolsuper
+               AND pg_catalog.pg_has_role(role.oid, 'visa_pack_writer', 'MEMBER')
+               AND pg_catalog.pg_has_role(
+                       role.oid, 'visa_activation_executor', 'MEMBER'
+                   )
             """
         )
     checks.append(
@@ -516,7 +636,7 @@ async def collect_preflight_checks(
         """
         SELECT proname, prosrc
           FROM pg_catalog.pg_proc
-         WHERE proname = ANY($1::text[])
+         WHERE proname = ANY($1::pg_catalog.text[])
         """,
         list(SCOPE_BOUND_RETENTION_BINDERS),
     )
@@ -543,6 +663,93 @@ async def collect_preflight_checks(
                 "visa_evaluate_idempotency INSERT fail with the INTO STRICT ambiguity. "
                 "289's catalog guard declined (the runtime role does not own these "
                 "functions) -- re-apply it as visa_ledger_owner or a superuser."
+            ),
+        )
+    )
+
+    # ------------------------------------------------------------------
+    # definer:public-security-definer-ledger-owned
+    # ------------------------------------------------------------------
+    # A FLOOR, not a replacement for the `owner:{signature}` checks above.
+    # Those read a hand-maintained inventory (`SENSITIVE_FUNCTIONS`); this one
+    # reads the catalog and needs no list at all.
+    #
+    # The list is why nothing caught migration 285. That migration created a
+    # new SECURITY DEFINER trigger, `bind_garuda_magic_link_token_retention_
+    # policy`, left it owned by the runtime role `backend_rag_v2`, and nobody
+    # added it to `RETENTION_BINDING_TRIGGER_FUNCTIONS`. Its body takes a
+    # `SELECT ... FOR SHARE` on `visa_decision_retention_policies`, which is
+    # owned by `visa_ledger_owner` and on which the runtime role holds only
+    # SELECT; row locking needs more than SELECT. SECURITY DEFINER bought
+    # nothing because the DEFINER could not take the lock either, so
+    # `POST /api/visa/voa/auth/magic-links` answered 500 from the day it
+    # shipped and no magic link was ever minted. A list-driven check is exactly
+    # as good as the memory of whoever last edited the list.
+    #
+    # Migrations 281 and 286 are the same disease one step earlier: both NAME
+    # the ownership transfer, both were recorded APPLIED, and five functions
+    # stayed owned by `backend_rag_v2` for four days because their
+    # `insufficient_privilege` handler emitted a NOTICE and deferred. Migration
+    # 300 makes those two honest; this check is what notices the next one
+    # WHENEVER THIS PREFLIGHT IS RUN -- and that qualifier is not decoration.
+    #
+    # `collect_preflight_checks` has exactly two callers today: this module's
+    # own `__main__` and the tests. No workflow, script or deploy step invokes
+    # it, so every check in this file -- the pre-existing ones included -- fires
+    # when a human runs the CLI (see docs/runbooks/visa-oracle-privacy-enforce-
+    # gate.md) and at no other time. A second adversarial seat named this as the
+    # decisive limit of the floor and it is recorded rather than glossed:
+    # arming it means either calling this from `fullstack_smoke.py` or having a
+    # test apply the real migration chain, and BOTH need the sandbox to create a
+    # role named `visa_ledger_owner` first, or the census compares against a
+    # role that does not exist and reddens on every function in the schema.
+    # That is a piece of work with its own design, not a line to smuggle in
+    # here.
+    #
+    # Measured against the production primary on 2026-08-30: 21 SECURITY
+    # DEFINER functions in `public`, every one owned by `visa_ledger_owner`,
+    # and ZERO of them belonging to an extension (pg_depend deptype='e'), with
+    # postgis, pgcrypto, pg_trgm, btree_gist and uuid-ossp all installed into
+    # `public`. So there is no legitimate exception in THIS database and none is
+    # encoded here.
+    #
+    # A hypothetical one exists and is named rather than pre-exempted: some
+    # contrib extensions do ship SECURITY DEFINER routines (`dblink`'s
+    # `dblink_connect_u` is the standard example) which would be owned by
+    # whoever installed the extension. If one is ever installed here this check
+    # goes red and somebody argues the case in a diff. That is the intended
+    # cost: an exemption written before a real case exists is exactly how a
+    # floor turns back into the list that let migration 285 through.
+    #
+    # An empty census is reported in the detail rather than passing silently:
+    # zero rows means either a database with no governed functions or a probe
+    # reading the wrong catalog, and the two must not look alike in a log. It
+    # is deliberately NOT a failure -- the `owner:{signature}` checks above go
+    # red on their own the moment those functions are genuinely missing, so an
+    # empty schema is already loud without this check inventing a second alarm
+    # that would fire on a legitimately fresh database.
+    definer_rows = await connection.fetch(SECURITY_DEFINER_CENSUS_SQL)
+    violations = _security_definer_violations(definer_rows)
+    checks.append(
+        PreflightCheck(
+            name="definer:public-security-definer-ledger-owned",
+            ok=not violations,
+            detail=(
+                f"all {len(definer_rows)} SECURITY DEFINER function(s) in public "
+                f"are owned by {LEDGER_OWNER}"
+                if not violations
+                else (
+                    f"{len(violations)} of {len(definer_rows)} SECURITY DEFINER "
+                    f"function(s) in public are NOT owned by {LEDGER_OWNER}: "
+                    + ", ".join(violations)
+                    + ". A SECURITY DEFINER function runs with its OWNER's "
+                    "privileges, so one owned by the runtime role is a no-op "
+                    "that fails on its first real call -- the shape that kept "
+                    "magic-link issuance answering 500 (migration 285). "
+                    "Transfer it with ALTER FUNCTION (or ALTER PROCEDURE, for "
+                    f"a routine marked [procedure]) ... OWNER TO {LEDGER_OWNER} "
+                    "on a superuser connection."
+                )
             ),
         )
     )

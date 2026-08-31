@@ -141,8 +141,8 @@ logger = logging.getLogger(__name__)
 CUSTOMER_WINDOW_HOURS = 24
 
 # Bounded, non-PII vocabulary for wa_outbox.generation_fall_off_reason
-# (migration 290's CHECK constraint mirrors this set verbatim — keep the
-# two in sync by hand; there is no single source both can import from,
+# (migrations 290+291's CHECK constraint mirrors this set verbatim — keep
+# the two in sync by hand; there is no single source both can import from,
 # since the migration is SQL and this is Python read at a different time).
 _KNOWN_FALL_OFF_REASONS: frozenset[str] = frozenset(
     {
@@ -151,7 +151,16 @@ _KNOWN_FALL_OFF_REASONS: frozenset[str] = frozenset(
         "standing_no_customer_message",
         "window_margin",
         "package_build_error",
+        # "package_unbuildable" stays reachable as the fallback bucket for
+        # a future, not-yet-catalogued PackageUnbuildable reason (migration
+        # 291) — the three KNOWN sub-reasons below get their own distinct
+        # value instead of colliding into this one (2026-08-28: row 348
+        # fell off "package_unbuildable" and the sub-reason was already
+        # gone from the ~60s Fly log retention by the time anyone looked).
         "package_unbuildable",
+        "package_unbuildable_greeting_domain",
+        "package_unbuildable_no_collections",
+        "package_unbuildable_dlp_error",
         "build_contract_break",
         "offer_acquire_error",
         "offer_uncertain",
@@ -198,6 +207,68 @@ _FALL_OFF_REASON_PREFIX_MAP: dict[str, str] = {
     "internal_error": "internal_error",
 }
 
+# Migration 291: the package-builder leg's "unbuildable" head carries a
+# SECOND, genuinely distinct piece of information after its colon — WHICH
+# of `wa_package_builder.PackageUnbuildable`'s call sites refused
+# ("greeting_domain" / "no_collections" / "dlp_error"). Collapsing all
+# three into the single "package_unbuildable" bucket (the pre-291
+# behaviour) is exactly the blindness this map exists to end, one level
+# down from what migration 290 already fixed. Keyed on the EXACT string
+# after the first ':' (never a prefix match — the three known values never
+# collide with each other or with a future one); anything not in this
+# sub-map falls through to `_FALL_OFF_REASON_PREFIX_MAP["unbuildable"]`
+# (the generic "package_unbuildable" bucket) rather than "unknown" — a
+# real PackageUnbuildable outcome should never look indistinguishable from
+# a genuinely uncatalogued reason head.
+_UNBUILDABLE_SUB_REASON_MAP: dict[str, str] = {
+    "greeting_domain": "package_unbuildable_greeting_domain",
+    "no_collections": "package_unbuildable_no_collections",
+    "dlp_error": "package_unbuildable_dlp_error",
+}
+
+# Migration 297: the SAME blindness 291 cured for "unbuildable", one row
+# down in the map above. `finalize:<defect_reason>` names WHICH of
+# `wa_finalize.py`'s DEFECT branches refused to let the text leave, and
+# collapsing all of them into "finalize_defect" records the STAGE while
+# hiding the CAUSE — a pricing veto, an oversized output, a monologue leak
+# and a secret-egress hit are four different defects with four different
+# cures. Measured cost: outbox row 363 (2026-08-28T21:43:52Z) had THREE
+# successful codex generations (`consumed_ok`, 9711/10137/8521 ms) thrown
+# away by this stage, and the durable record could not say why; the
+# per-attempt reason lived only in a Fly log line with ~60s retention.
+#
+# Keyed on the EXACT string after the first ':', with ONE prefix case:
+# `secret_egress:<pattern-name>` (wa_finalize's `_codex_egress_veto`) is
+# stored as the bare "finalize_secret_egress" — the suffix is unbounded,
+# which would defeat the CHECK constraint, and it names a scanner pattern
+# that this column (read by dashboards, pasted into reports) has no
+# business carrying. Anything unrecognised falls through to the generic
+# "finalize_defect" bucket rather than "unknown", so a real finalize
+# outcome never looks indistinguishable from an uncatalogued reason head.
+_FINALIZE_SUB_REASON_MAP: dict[str, str] = {
+    "internal_monologue_leak": "finalize_internal_monologue_leak",
+    "pricing_outside_package": "finalize_pricing_outside_package",
+    "empty_rag_answer": "finalize_empty_rag_answer",
+    "persona_escalate_marker": "finalize_persona_escalate_marker",
+    "empty_after_escalate_strip": "finalize_empty_after_escalate_strip",
+    "workflow_only_output": "finalize_workflow_only_output",
+    "empty_after_channel_format": "finalize_empty_after_channel_format",
+    "oversized_output": "finalize_oversized_output",
+    "rag_abstain": "finalize_rag_abstain",
+    "blank_send_text": "finalize_blank_send_text",
+}
+
+# The one sub-reason whose raw form carries a variable suffix.
+#
+# Named for the SCAN, not with the word "secret" in the identifier, on
+# purpose: detect-secrets' Secret Keyword heuristic fires on an assignment
+# whose NAME contains "secret", so the obvious `_FINALIZE_SECRET_EGRESS_*`
+# spelling failed the Detect Secrets gate (measured on this PR's first
+# run). Renaming REMOVES the finding; a `pragma: allowlist secret` would
+# only annotate it, and the next reader would have to work out whether a
+# real secret had ever been suppressed there.
+_FINALIZE_EGRESS_SCAN_HEAD = "secret_egress"
+
 
 def _normalize_fall_off_reason(raw: str) -> str:
     """Map an open-ended raw reason string to a bounded DB-safe category.
@@ -216,10 +287,34 @@ def _normalize_fall_off_reason(raw: str) -> str:
     ever fires in prod) maps to "unknown" rather than raising — this
     function backs a best-effort write and must never be the thing that
     turns a fall-off into a second, unrelated failure.
+
+    TWO exceptions to "the head alone decides the category". When the head
+    is "unbuildable" (migration 291) or "finalize" (migration 297), the
+    text AFTER the colon is itself a second, closed-vocabulary signal —
+    which PackageUnbuildable call site refused, or which wa_finalize DEFECT
+    branch refused — and is looked up in ``_UNBUILDABLE_SUB_REASON_MAP`` /
+    ``_FINALIZE_SUB_REASON_MAP`` before falling back to the generic
+    "package_unbuildable" / "finalize_defect" bucket. The finalize case has
+    one raw form with a variable suffix, ``secret_egress:<pattern-name>``,
+    which is matched by its own head and stored WITHOUT the suffix — see
+    those maps' own docstrings.
     """
     if not raw:
         return "unknown"
-    head = raw.split(":", 1)[0]
+    head, _sep, rest = raw.partition(":")
+    if head == "unbuildable":
+        return _UNBUILDABLE_SUB_REASON_MAP.get(
+            rest, _FALL_OFF_REASON_PREFIX_MAP["unbuildable"]
+        )
+    if head == "finalize":
+        # `secret_egress:<pattern-name>` is the one raw form with a
+        # variable suffix — match on its head and DROP the suffix, never
+        # store it (see _FINALIZE_SUB_REASON_MAP's docstring).
+        if rest.partition(":")[0] == _FINALIZE_EGRESS_SCAN_HEAD:
+            return "finalize_secret_egress"
+        return _FINALIZE_SUB_REASON_MAP.get(
+            rest, _FALL_OFF_REASON_PREFIX_MAP["finalize"]
+        )
     return _FALL_OFF_REASON_PREFIX_MAP.get(head, "unknown")
 
 

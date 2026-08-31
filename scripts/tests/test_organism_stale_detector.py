@@ -314,13 +314,22 @@ def test_allow_list_is_documented_not_empty():
     assert "codex.spark_loop" in KNOWN_BENIGN_FAILED
 
 
-def test_ollama_pro_program_path_collision_suppressed(tmp_path):
-    """INNOCENCE: infra.ollama_pro reports failed (launchd exit 1) while the daemon
-    is actually alive — the launchd job binds the same :11434 the real `ollama serve`
-    already owns, so it exits 1 and keepalive re-spawns forever. The bridge tags it
-    'failed' from the launchd exit code, but the organ breathes (6 models served on
-    :11434). This is the same family as the other bridge false-positives: a non-zero
-    launchd exit that does NOT mean the organ is dead. (Live triage 2026-06-28.)
+def test_ollama_pro_failure_now_surfaces(tmp_path):
+    """GUILT (2026-08-31 — supersedes the old suppression contract below):
+    infra.ollama_pro reporting failed is now flagged, not swallowed.
+
+    Until 2026-08-31 this test asserted the OPPOSITE (INNOCENCE: suppressed) on the
+    theory that a non-zero launchd exit here was a benign port-collision artifact —
+    the real `ollama serve` already owned :11434 so the launchd job exited 1 forever
+    while the daemon stayed alive (Live triage 2026-06-28). That theory was built on
+    a label mismatch: launchagent-state-bridge.py's BRIDGED_LABELS entry for
+    infra.ollama_pro watched "homebrew.mxcl.ollama", a launchd label that was RETIRED
+    2026-08-18 and is not loaded on Pro at all — so every exit code it ever read was
+    stale noise, not evidence about the live daemon (which runs under a different
+    label, "com.nuzantara.ollama"). The bridge now watches the live label and the
+    KNOWN_BENIGN_FAILED entry was removed to match (see its removal comment) — a
+    failed status here means the live daemon is actually down, so it must surface
+    like any other real failure, or a genuine future death goes unreported again.
     """
     d = str(tmp_path)
     _write(
@@ -328,11 +337,11 @@ def test_ollama_pro_program_path_collision_suppressed(tmp_path):
         "infra.ollama_pro",
         {"ts": time.time(), "status": "failed", "last_error": "daemon not running"},
     )
-    # host pinned: `infra.` maps to Pro, so unpinned this suppression test is
-    # satisfied by jurisdiction on every other host.
+    # host pinned: `infra.` maps to Pro, so unpinned this test would be satisfied
+    # by jurisdiction (organ dropped as foreign) on every other host.
     findings = scan_sidecars_status(d, now=time.time(), host="nuzantara")
     flagged = {f.organ_id for f in findings if f.kind == "unhealthy"}
-    assert "infra.ollama_pro" not in flagged, f"ollama false-positive not suppressed: {flagged}"
+    assert "infra.ollama_pro" in flagged, f"real ollama failure no longer surfaces: {flagged}"
 
 
 # --- cross-host sidecar sync (2026-07-17, PENDING-ARMS "infra.eventbus_redis_mini

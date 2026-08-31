@@ -1,0 +1,79 @@
+task_id: infra-seat-broker-stale-count
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  A FILE ON MAIN CONTRADICTS ITSELF, AND THE WRONG HALF IS THE ONE PEOPLE READ.
+
+  `.github/workflows/with-seat-broker-tests.yml` states its own measurement twice:
+
+    :41  "the whole window: **57** `merge_group` runs, ZERO `pull_request` runs — counted
+          between this file landing (2026-08-30T19:15:44Z) and the first run its own fix
+          triggered, over `gh run list --limit 300` (an earlier draft of this line said
+          "EIGHT", which was `--limit 8` read as a total — W97)."
+
+    :124 "It carried one from 2026-08-30 19:15 until this commit; in that window it ran
+          8 times in the queue and 0 times on a PR."
+
+  The header NAMES the mistake and then corrects only itself. Eighty lines below, next to the
+  trigger — which is where a reader actually looks when asking "does this thing run in the
+  queue?" — the wrong figure survived the correction that was about it.
+
+  This is mine: both lines shipped in PR #5378 (merged 2026-08-30), and the contradiction sat on
+  the default branch for a day. It was surfaced by a delegated read of the merged file, and
+  re-verified here on `origin/main` before acting on the report.
+
+  Second, smaller defect fixed in the same line: "until this commit" is DEICTIC. It meant "the
+  commit removing the trigger" when written, and after that commit merged it reads as "the commit
+  you are looking at", which is now a different commit entirely. Replaced with the PR number.
+constraints:
+  - "COMMENT-ONLY. No `on:`, `jobs:`, `paths:` or any behavioural key changes. The workflow's
+    trigger shape is exactly what #5378 landed and this PR must not perturb it — verified by
+    diffing only comment lines and by actionlint."
+  - "The 57 figure is NOT re-litigated downward or upward: it was re-measured for this PR against
+    the COMPLETE run list (`--limit 500`, 86 runs returned, therefore uncapped) and restricted to
+    the window the claim itself declares. Where the totals and the windowed count disagree, the
+    window wins, because the claim is scoped in its own sentence."
+  - "The old wording is QUOTED in the replacement, not erased. A correction that leaves no trace
+    of what it corrected teaches the next reader nothing, and this file's whole problem is that a
+    previous correction did exactly that."
+  - "No paid API. Flat-subscription seats only."
+acceptance:
+  - "WHEN the file is read end to end THEN every statement of this measurement SHALL agree.
+    probe: `grep -nE '57|8 times' .github/workflows/with-seat-broker-tests.yml` — the only
+    surviving `8 times` is inside the sentence that quotes it as the former wrong value."
+  - "WHILE the fix lands the workflow's BEHAVIOUR SHALL be unchanged. probe: `actionlint` rc=0,
+    and the diff touches only `#`-prefixed lines."
+  - "WHERE the watcher-coverage contract applies it SHALL stay green. probe:
+    `python3 scripts/check_watcher_coverage.py` rc=0."
+consumer_map:
+  - "Anyone reading `with-seat-broker-tests.yml` to decide whether an advisory workflow may carry
+    a `merge_group:` trigger — the inline comment beside the trigger is the load-bearing one for
+    that question, and it was the wrong one."
+  - "PR #5378's own body, which still carries the superseded `8` figure. It is a merged PR: its
+    body is annotated rather than silently rewritten, in a separate gesture from this diff."
+  - "`.github/workflows/merah-putih-day-contrast.yml` (merged as #5395) cites this same
+    measurement in its own header and already carries the corrected 57 plus the window — checked,
+    no third stale copy there."
+risks:
+  - "A comment-only diff in a hot-zone file is exactly the shape that gets waved through. It is
+    gated at Gear 3 by PATH regardless of size, and that floor is correct here: the file governs
+    merge-queue behaviour and a careless edit inside the `on:` block would be behavioural."
+  - "The replacement comment is 13 lines of prose for a one-number fix. Deliberate, and
+    challengeable: the durable content is WHY the stale copy survived (correct the place that
+    names a mistake, and the copy that repeats it is the one that lives). A reviewer arguing this
+    is noise in a hot-zone file has a real point and it is put to the seats explicitly."
+  - "This PR does not add a machine check for the class. A lint that finds 'a file names a value
+    as wrong while still asserting it' is plausible but not specified, and inventing it here
+    would be a second concern in one PR."
+grader: |
+  generator != grader, twice over. The defect was FOUND by a delegated read of the merged file
+  (not by me re-reading my own work), and I re-verified it independently on `origin/main` with
+  `git show` before acting — the report is a lead, not a fact. The fix is then put to two
+  non-Anthropic cross-family seats on fresh context, with the off-by-one on the window boundary
+  and the prose-length objection named FOR them rather than hidden, because a refuter that has to
+  guess the weak points reviews the strong ones.
+budget: |
+  Flat-subscription only: this session (Claude MAX OAuth, Opus 5 xhigh) plus kimi-code/k3 and
+  codex-gpt-5.6-sol on their flat plans. Zero metered API spend.
+pii: none

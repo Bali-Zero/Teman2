@@ -81,14 +81,89 @@ export default function VisaClockResultPage({
     ...c,
     past: c.at < today,
   }));
-  const daysLeft = Math.max(
-    0,
-    Math.ceil((new Date(data.expiry_date).getTime() - Date.now()) / 86_400_000),
+  // SIGNED, deliberately un-clamped. This used to be `Math.max(0, …)`, which did
+  // not guard against NaN — it suppressed the negative, so someone 65 days into
+  // an overstay was shown "0 days from today" under the heading "Valid until".
+  // The number below is allowed to go negative precisely so the branch after it
+  // can exist.
+  const daysToExpiry = Math.ceil(
+    (new Date(data.expiry_date).getTime() - Date.now()) / 86_400_000,
   );
+  const isOverstay = daysToExpiry < 0;
+  const daysOverstayed = -daysToExpiry;
+  const daysLeft = Math.max(0, daysToExpiry);
   const publicUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/visa/clock/${data.hash}`
       : `/visa/clock/${data.hash}`;
+
+  // A permitted stay that already ended is not a timeline with zero days left —
+  // it is a different situation, and the countdown UI (stamp, five checkpoints,
+  // reminder emails for dates in the past) actively misleads. Hand over to a
+  // person instead. Deliberately states NO fines, thresholds or penalties: those
+  // are domain facts this page must not invent.
+  if (isOverstay)
+    return (
+      <AppFrame
+        funnel="visa"
+        title={`Your ${data.visa_type} stay has already ended`}
+        subtitle={`Permitted stay ended ${formatIsoDate(data.expiry_date)} — ${daysOverstayed} ${
+          daysOverstayed === 1 ? "day" : "days"
+        } ago.`}
+      >
+        <div ref={stampRef} />
+        <p style={{ lineHeight: 1.6 }}>
+          This tool counts down to an expiry date. Yours has already passed, so
+          there is nothing left to count — and showing you a timeline would be
+          misleading. What happens next is handled case by case and depends on
+          details this form does not ask for.
+        </p>
+        <p style={{ lineHeight: 1.6 }}>
+          Please talk to our visa team today, not in a few days. Bring your
+          passport and your entry stamp.
+        </p>
+        {/* `source` names the FUNNEL APP, and the overstay is a branch of the
+            Visa Clock, not a seventh app — its human_name and result_url_path
+            would be identical. A value the backend PublicLeadSource enum does
+            not carry is rejected with 422, the capture silently falls back to
+            the bare wa.me link, and the visitor arrives with no prefilled
+            message at all: no visa type, no expiry, no overstay count. That is
+            the homepage_hero bug (#2495, 10 days of unlogged leads) and it
+            would land on precisely the person least able to absorb it. The
+            overstay discriminator therefore travels in `context`, which is
+            free-form. */}
+        <AppWhatsAppCTA
+          source="visa_clock"
+          headline="Talk to our visa team today"
+          description="Send us the message below and we will pick it up — this is the kind of case that gets harder to fix the longer it waits."
+          resultHash={data.hash}
+          context={{
+            visa_type: data.visa_type,
+            entry_date: data.entry_date,
+            expiry_date: data.expiry_date,
+            overstay: true,
+            days_overstayed: daysOverstayed,
+          }}
+          whatsappContext={[
+            { label: "Visa", value: data.visa_type },
+            { label: "Entry", value: formatIsoDate(data.entry_date) },
+            { label: "Stay ended", value: formatIsoDate(data.expiry_date) },
+            { label: "Days overstayed", value: String(daysOverstayed) },
+          ]}
+          defaultLabel="Message the visa team →"
+          postScrollLabel="Message the visa team →"
+          stampRef={stampRef}
+          onCaptured={({ leadIntentId }) =>
+            tracker.whatsappHandoff(leadIntentId)
+          }
+        />
+        <AppShareBar
+          url={publicUrl}
+          title={`Bali Zero — ${data.visa_type}`}
+          onShare={(channel) => tracker.shareClicked(channel)}
+        />
+      </AppFrame>
+    );
 
   return (
     <AppFrame

@@ -48,9 +48,16 @@ FLOW_PAYGATE_TIER = "PAYGATE_TIER_TIER1P5"
 ALLOWED_PLATFORMS = frozenset({"instagram", "x", "facebook"})
 ALLOWED_LANGUAGES = frozenset({"id", "en"})
 ALLOWED_ORIENTATIONS = frozenset({"PORTRAIT", "LANDSCAPE"})
+WR2_PREPUBLISH_STATES = frozenset(
+    {"drafted", "reviewed", "rejected", "drafted_needs_human_edit", "render_incomplete"}
+)
+FLOW_OPERATION_KINDS = {
+    "image": "flow-image",
+    "video": "flow-video",
+}
 JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 ITEM_ID_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,158}[A-Za-z0-9])?$")
-MEDIA_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,256}$")
+MEDIA_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]+(?:/[A-Za-z0-9_.:-]+)*$")
 REQUEST_KEY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{7,63}$")
 CONFIRMATION_WORDS = frozenset({"CONFIRM", "CONFERMO", "SETUJU"})
 NEWSROOM_CONTRACT = "newsroom-publication-v2"
@@ -247,6 +254,52 @@ def _public_source_url(value: Any) -> str:
     return urlunsplit((parsed.scheme.lower(), parsed.netloc, parsed.path, "", ""))
 
 
+def _public_drive_url(value: Any) -> str:
+    """Return only a Google Drive delivery URL, without tracking fragments."""
+
+    candidate = str(value or "").strip()
+    try:
+        parsed = urlsplit(candidate)
+        port = parsed.port
+    except ValueError:
+        return ""
+    if (
+        parsed.scheme.lower() != "https"
+        or parsed.hostname not in {"drive.google.com", "docs.google.com"}
+        or parsed.username
+        or parsed.password
+        or port not in (None, 443)
+    ):
+        return ""
+    return urlunsplit(("https", parsed.netloc, parsed.path, parsed.query, ""))
+
+
+def _public_flow_media_url(value: Any) -> str:
+    """Return an expiring Google-hosted Flow media URL when host-safe."""
+
+    candidate = str(value or "").strip()
+    if len(candidate) > 8_000:
+        return ""
+    try:
+        parsed = urlsplit(candidate)
+        port = parsed.port
+    except ValueError:
+        return ""
+    hostname = (parsed.hostname or "").lower()
+    allowed_host = hostname == "flow-content.google" or hostname.endswith(
+        ".googleusercontent.com"
+    )
+    if (
+        parsed.scheme.lower() != "https"
+        or not allowed_host
+        or parsed.username
+        or parsed.password
+        or port not in (None, 443)
+    ):
+        return ""
+    return urlunsplit(("https", parsed.netloc, parsed.path, parsed.query, ""))
+
+
 def _bounded_limit(limit: int) -> int:
     if not isinstance(limit, int):
         raise ValueError("limit must be an integer")
@@ -271,7 +324,13 @@ def _validated_media_id(media_id: str, *, required: bool = True) -> str:
     candidate = str(media_id or "").strip()
     if not candidate and not required:
         return ""
-    if candidate.startswith("-") or not MEDIA_ID_RE.fullmatch(candidate):
+    segments = candidate.split("/")
+    if (
+        len(candidate) > 256
+        or candidate.startswith("-")
+        or not MEDIA_ID_RE.fullmatch(candidate)
+        or any(segment in {".", ".."} for segment in segments)
+    ):
         raise ValueError("Invalid Flow media id")
     return candidate
 
@@ -283,6 +342,12 @@ def _validated_request_key(request_key: str) -> str:
             "request_key must be 8-64 letters, numbers, dots, underscores, or dashes"
         )
     return candidate
+
+
+def _child_request_key(parent: str, label: str) -> str:
+    digest = hashlib.sha256(f"{parent}:{label}".encode("utf-8")).hexdigest()[:10]
+    prefix = parent[:45].rstrip("._-")
+    return f"{prefix}-{label}-{digest}"
 
 
 def _first_text(*values: Any) -> str:
@@ -771,6 +836,25 @@ def _load_review_queue(path: Path | None = None) -> list[dict[str, Any]]:
     return [item for item in items if isinstance(item, dict)]
 
 
+def _find_review_item(item_id: str) -> dict[str, Any]:
+    safe_id = _clean_text(item_id, limit=200)
+    if not safe_id:
+        raise ValueError("WR2 item id is required")
+    matches = [item for item in _load_review_queue() if _queue_item_id(item) == safe_id]
+    if len(matches) != 1:
+        raise ValueError("WR2 item id was not found or is ambiguous")
+    return matches[0]
+
+
+def _review_draft_id(item: dict[str, Any]) -> str:
+    candidate = str(item.get("draft_id") or "").strip()
+    try:
+        parsed = uuid.UUID(candidate)
+    except ValueError as exc:
+        raise ValueError("WR2 item has no valid render draft id") from exc
+    return str(parsed)
+
+
 def _queue_item_id(item: dict[str, Any]) -> str:
     return str(item.get("item_id") or item.get("id") or item.get("topic_slug") or "")
 
@@ -1124,6 +1208,66 @@ async def _spawn_wr2_worker(job_id: str) -> int:
     return int(process.pid or 0)
 
 
+async def _run_wr2_rerender(draft_id: str) -> None:
+    """Invoke the official pre-publication re-render verb with fixed arguments."""
+
+    wrapper = Path(
+        os.getenv(
+            "WORKSPACE_MARKETING_WR2_WRAPPER",
+            "/Users/nuzantara/.openclaw/bin/wr2/wr2-script-wrapper.sh",
+        )
+    )
+    if not wrapper.is_file():
+        raise RuntimeError("WR2 re-render runner is unavailable on Pro")
+    env = _worker_env()
+    env["WR2_CRON_ALERT"] = "false"
+    process = await asyncio.create_subprocess_exec(
+        str(wrapper),
+        "scripts/wr2_rerender_requeue.py",
+        draft_id,
+        stdin=asyncio.subprocess.DEVNULL,
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.DEVNULL,
+        env=env,
+    )
+    try:
+        return_code = await asyncio.wait_for(process.wait(), timeout=90)
+    except TimeoutError:
+        process.kill()
+        await process.wait()
+        raise RuntimeError("WR2 re-render request timed out") from None
+    if return_code != 0:
+        raise RuntimeError("WR2 re-render request was refused")
+
+
+def _public_operation_status(kind: str, request_key: str) -> dict[str, Any]:
+    safe_key = _validated_request_key(request_key)
+    path = _operation_path(kind, safe_key)
+    if not path.is_file():
+        raise ValueError("Operation was not found")
+    try:
+        operation = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise RuntimeError("Operation record is invalid") from exc
+    public: dict[str, Any] = {
+        "ok": operation.get("status") == "completed",
+        "status": _clean_text(operation.get("status"), limit=40),
+        "created_at": _clean_text(operation.get("created_at"), limit=80),
+        "started_at": _clean_text(operation.get("started_at"), limit=80),
+        "completed_at": _clean_text(operation.get("completed_at"), limit=80),
+    }
+    result = operation.get("result")
+    if kind.startswith("flow-") and isinstance(result, dict):
+        public["result"] = _safe_flow_result(result)
+    elif kind == "wr2-rerender" and isinstance(result, dict):
+        public["result"] = {
+            key: _clean_public_value(result[key])
+            for key in ("ok", "status", "item_id", "ref_code", "publication")
+            if key in result
+        }
+    return public
+
+
 def _safe_flow_result(payload: dict[str, Any]) -> dict[str, Any]:
     allowed = (
         "ok",
@@ -1140,6 +1284,9 @@ def _safe_flow_result(payload: dict[str, Any]) -> dict[str, Any]:
     result = {
         key: _clean_public_value(payload[key]) for key in allowed if key in payload
     }
+    delivery_url = _public_flow_media_url(payload.get("fife_url"))
+    if delivery_url:
+        result["download_url"] = delivery_url
     result["executed_on"] = "Pro"
     if not bool(result.get("ok", False)):
         result["message"] = "FlowKit is unavailable or not connected on Pro."
@@ -1934,21 +2081,126 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
     async def wr2_get_review_item(item_id: str) -> dict[str, Any]:
         """Read one sanitized WR2 review item without internal filesystem paths."""
 
-        safe_id = _clean_text(item_id, limit=200)
-        if not safe_id:
-            raise ValueError("WR2 item id is required")
-        matches = [
-            item for item in _load_review_queue() if _queue_item_id(item) == safe_id
-        ]
-        if len(matches) != 1:
-            raise ValueError("WR2 item id was not found or is ambiguous")
-        return _public_review_item(matches[0], detail=True)
+        return _public_review_item(_find_review_item(item_id), detail=True)
+
+    @mcp.tool(
+        annotations={
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": True,
+        }
+    )
+    async def wr2_get_delivery(item_id: str) -> dict[str, Any]:
+        """Return the safe Drive delivery link for one rendered carousel."""
+
+        item = _find_review_item(item_id)
+        public = _public_review_item(item)
+        delivery_url = _public_drive_url(item.get("drive_url"))
+        return {
+            "ok": bool(delivery_url),
+            "item_id": public.get("item_id"),
+            "ref_code": public.get("ref_code"),
+            "state": public.get("state"),
+            "delivery": "ready" if delivery_url else "processing",
+            "delivery_url": delivery_url,
+            "publication": "manual_only",
+        }
 
     @mcp.tool(
         annotations={
             "readOnlyHint": False,
             "destructiveHint": True,
-            "idempotentHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        }
+    )
+    async def wr2_request_rerender(
+        item_id: str,
+        request_key: str,
+        confirmation: str,
+    ) -> dict[str, Any]:
+        """Requeue one pre-publication carousel through the official renderer."""
+
+        _require_write_confirmation(confirmation)
+        item = _find_review_item(item_id)
+        public = _public_review_item(item)
+        state = str(item.get("state") or "").strip()
+        if state not in WR2_PREPUBLISH_STATES:
+            raise ValueError("Only a pre-publication WR2 item can be re-rendered")
+        draft_id = _review_draft_id(item)
+        safe_request_key = _validated_request_key(request_key)
+        fingerprint_payload = {"item_id": public["item_id"], "draft_id": draft_id}
+        operation_path, operation, _created = _claim_operation(
+            "wr2-rerender",
+            safe_request_key,
+            fingerprint_payload,
+            {"item_id": public["item_id"]},
+        )
+        operation, execute = _claim_operation_execution(
+            operation_path,
+            _operation_fingerprint(fingerprint_payload),
+        )
+        if not execute:
+            result = operation.get("result")
+            return result if isinstance(result, dict) else {
+                "ok": False,
+                "status": _clean_text(operation.get("status"), limit=40),
+            }
+        try:
+            await _run_wr2_rerender(draft_id)
+        except Exception as exc:
+            result = {
+                "ok": False,
+                "status": "failed",
+                "item_id": public["item_id"],
+                "ref_code": public["ref_code"],
+                "publication": "not_performed",
+            }
+            operation.update(
+                {
+                    "status": "failed",
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                    "result": result,
+                }
+            )
+            _write_json_atomic(operation_path, operation)
+            raise RuntimeError("WR2 re-render request failed on Pro") from exc
+        result = {
+            "ok": True,
+            "status": "queued_for_renderer",
+            "item_id": public["item_id"],
+            "ref_code": public["ref_code"],
+            "publication": "not_performed",
+        }
+        operation.update(
+            {
+                "status": "completed",
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "result": result,
+            }
+        )
+        _write_json_atomic(operation_path, operation)
+        return result
+
+    @mcp.tool(
+        annotations={
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        }
+    )
+    async def wr2_rerender_status(request_key: str) -> dict[str, Any]:
+        """Read one durable WR2 re-render request state."""
+
+        return _public_operation_status("wr2-rerender", request_key)
+
+    @mcp.tool(
+        annotations={
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "idempotentHint": True,
             "openWorldHint": True,
         }
     )
@@ -2119,9 +2371,60 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
 
     @mcp.tool(
         annotations={
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": True,
+        }
+    )
+    async def flow_get_media(media_id: str) -> dict[str, Any]:
+        """Read Flow media readiness and return an allowlisted delivery URL."""
+
+        safe_media_id = _validated_media_id(media_id)
+        payload = await _run_flowkit_cli(
+            ["media-info", "--media-id", safe_media_id], timeout_s=60
+        )
+        return _safe_flow_result(payload)
+
+    @mcp.tool(
+        annotations={
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        }
+    )
+    async def flow_operation_status(
+        request_key: str,
+        operation: str,
+    ) -> dict[str, Any]:
+        """Read durable Flow generation state after a timeout or reconnect."""
+
+        normalized = str(operation or "").strip().lower()
+        if normalized == "video_from_prompt":
+            safe_key = _validated_request_key(request_key)
+            statuses: dict[str, Any] = {}
+            for label, kind in (("image", "flow-image"), ("video", "flow-video")):
+                child_key = _child_request_key(safe_key, label)
+                try:
+                    statuses[label] = _public_operation_status(kind, child_key)
+                except ValueError:
+                    statuses[label] = {"ok": False, "status": "not_started"}
+            return {
+                "ok": statuses["video"].get("ok") is True,
+                "operation": normalized,
+                "stages": statuses,
+            }
+        kind = FLOW_OPERATION_KINDS.get(normalized)
+        if kind is None:
+            raise ValueError("operation must be image, video, or video_from_prompt")
+        return _public_operation_status(kind, request_key)
+
+    @mcp.tool(
+        annotations={
             "readOnlyHint": False,
             "destructiveHint": True,
-            "idempotentHint": False,
+            "idempotentHint": True,
             "openWorldHint": True,
         }
     )
@@ -2223,7 +2526,7 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         annotations={
             "readOnlyHint": False,
             "destructiveHint": True,
-            "idempotentHint": False,
+            "idempotentHint": True,
             "openWorldHint": True,
         }
     )
@@ -2328,3 +2631,55 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         )
         _write_json_atomic(operation_path, operation)
         return result
+
+    @mcp.tool(
+        annotations={
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "idempotentHint": True,
+            "openWorldHint": True,
+        }
+    )
+    async def flow_generate_video_from_prompt(
+        start_image_prompt: str,
+        video_prompt: str,
+        request_key: str,
+        confirmation: str,
+        orientation: str = "PORTRAIT",
+    ) -> dict[str, Any]:
+        """Generate a start image and Veo clip as one resumable Flow workflow."""
+
+        _require_write_confirmation(confirmation)
+        safe_request_key = _validated_request_key(request_key)
+        image_key = _child_request_key(safe_request_key, "image")
+        video_key = _child_request_key(safe_request_key, "video")
+        image_result = await flow_generate_image(
+            start_image_prompt,
+            image_key,
+            confirmation,
+            orientation,
+        )
+        if image_result.get("ok") is not True:
+            return {
+                "ok": False,
+                "status": "image_failed",
+                "image": image_result,
+                "publication": "not_performed",
+            }
+        media_id = _validated_media_id(str(image_result.get("media_id") or ""))
+        video_result = await flow_generate_video(
+            video_prompt,
+            media_id,
+            video_key,
+            confirmation,
+            orientation,
+        )
+        return {
+            "ok": video_result.get("ok") is True,
+            "status": "completed" if video_result.get("ok") is True else "video_failed",
+            "start_image_media_id": media_id,
+            "video_media_id": video_result.get("video_media_id", ""),
+            "project_id": video_result.get("project_id", ""),
+            "scene_id": video_result.get("scene_id", ""),
+            "publication": "not_performed",
+        }

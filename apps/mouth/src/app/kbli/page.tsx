@@ -4,7 +4,7 @@ import Link from "next/link";
 import { getAllCodes, getSections } from "@/lib/kbli-data";
 import { baliBlockedHint } from "@/lib/kbli-bali-block";
 import { KBLISearch } from "@/components/kbli/KBLISearch";
-import { KBLISectorGrid } from "@/components/kbli/KBLISectorGrid";
+import { KBLISectorBrowser } from "@/components/kbli/KBLISectorBrowser";
 import { ZantaraChat } from "@/components/kbli/ZantaraChat";
 import { KBLIPersonaDoors } from "@/components/kbli/KBLIPersonaDoors";
 import { FunnelFrame } from "@balizero/core";
@@ -250,7 +250,7 @@ export default async function KBLIHomePage({
           <h2 className="mb-4 text-xl font-semibold text-white/90">
             Browse by Sector
           </h2>
-          <KBLISectorGrid sections={sections} />
+          <KBLISectorBrowser sections={sections} />
         </section>
 
         {/* ── ZANTARA AI ── */}

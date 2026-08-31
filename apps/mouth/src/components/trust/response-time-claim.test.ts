@@ -202,12 +202,20 @@ function sweep(messages: unknown, patterns: RegExp[]): string[] {
 //      It is not removed and no pattern is aimed at it. If the owner rules it
 //      a claim, the pattern belongs beside Pattern 10, not in a widened
 //      Pattern 1.
-//   2. `fr.json` / `ru.json` get no per-language ruleset. Measured on
-//      2026-08-24: 188 string leaves each, zero hits under the English
-//      patterns, and neither carries `secondHome.cta.note` at all. So there is
-//      nothing to remove today — but a reply-time claim written in French or
-//      Russian would pass this guard unseen. Closing it means authoring two
-//      more rulesets and their guilt fixtures, which is a round of its own.
+//   2. `fr.json` / `ru.json` get no per-language ruleset. The measurement that
+//      stood here EXPIRED, and it is worth naming how: it read "2026-08-24:
+//      188 string leaves each … neither carries `secondHome.cta.note` at all,
+//      so there is nothing to remove today". Six days later `2306023b1`
+//      (#5381, 2026-08-30 22:18 UTC) added that key to both locales, claim
+//      included — a frozen measurement quietly became a false statement.
+//      Re-measured 2026-08-31: 259 string leaves each, both carrying the
+//      claim; this commit removes it from both by hand. Neither file was ever
+//      reachable by this guard — the imports above name en/it/id only, and
+//      the walk could not have reached them either (see the SCANNED note
+//      above). So nothing is left to remove today, but a reply-time claim
+//      written in French or Russian still passes unseen. Closing that means
+//      two more rulesets, their guilt fixtures, and two more imports — a
+//      round of its own, filed rather than fixed here.
 
 describe("no page claims a response time nobody measured", () => {
   it("scans a plausible number of files", () => {

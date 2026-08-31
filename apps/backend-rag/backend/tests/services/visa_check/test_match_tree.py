@@ -6,6 +6,7 @@ property accessors used by the router.
 
 from __future__ import annotations
 
+from backend.services.visa_check import match_tree
 from backend.services.visa_check.catalogue import VISA_META, VisaType
 from backend.services.visa_check.match_tree import (
     BudgetBand,
@@ -198,3 +199,89 @@ class TestCoverageSweep:
                     assert r.ranking or r.referral_mode, (
                         f"purpose={purpose} months={months} band={band} produced empty+no-referral"
                     )
+
+
+class TestPreArrivalStepsBelongToTheRecommendedVisa:
+    """A visitor's checklist must contain their route's money, and no other's.
+
+    Every caller presents this list as ONE visa's mandatory list: the frontend
+    renders it as an ordered list under "Pre-arrival checklist"
+    (app/visa/match/[hash]/page.tsx), and the funnel email introduces it as
+    "make sure you have the <visa> essentials"
+    (notifications/funnel_email/templates.py). A purpose-level list therefore
+    cannot carry a product-level figure — RETIREMENT ranks E33E and E33F, and
+    only E33E requires a deposit. Stating both in one checklist tells an E33F
+    client to place USD 50,000 they do not need, and shows an E33E client "no
+    deposit required" immediately above a deposit.
+    """
+
+    def _steps_for_recommendation(
+        self, months: int, band: BudgetBand
+    ) -> tuple[VisaType, list[str]]:
+        r = _call(purpose=Purpose.RETIREMENT, duration_months=months, budget_band=band)
+        assert r.recommended_visa is not None
+        return r.recommended_visa, r.pre_arrival_steps
+
+    def test_e33f_client_is_never_told_to_place_a_deposit(self):
+        """The defect this class exists to prevent."""
+        visa, steps = self._steps_for_recommendation(12, BudgetBand.MID_50_500M)
+        assert visa is VisaType.E33F
+        joined = " ".join(steps)
+        assert "50,000" not in joined, f"E33F client was shown E33E's deposit: {steps!r}"
+
+    def test_e33e_client_is_told_about_the_deposit(self):
+        visa, steps = self._steps_for_recommendation(60, BudgetBand.OVER_500M)
+        assert visa is VisaType.E33E
+        deposit = [s for s in steps if "50,000" in s]
+        assert len(deposit) == 1, f"expected exactly one deposit step, got {deposit!r}"
+        line = deposit[0].lower()
+        assert "bumn" in line or "state-owned" in line, (
+            f"the deposit is stated without naming the qualifying bank type: {line!r}"
+        )
+        assert "any bank" not in line and "any indonesian bank" not in line
+
+    def test_no_checklist_both_requires_and_waives_a_deposit(self):
+        """The two lines are mutually exclusive; one list must never hold both."""
+        for months, band in ((12, BudgetBand.MID_50_500M), (60, BudgetBand.OVER_500M)):
+            _, steps = self._steps_for_recommendation(months, band)
+            joined = " ".join(steps).lower()
+            waives = "no deposit" in joined or "requires no deposit" in joined
+            requires = "50,000" in joined
+            assert not (waives and requires), (
+                f"checklist both waives and requires a deposit: {steps!r}"
+            )
+
+    def test_both_routes_state_the_shared_income_requirement(self):
+        """E33E and E33F DO share the USD 3,000/month bar — only the deposit differs."""
+        for months, band in ((12, BudgetBand.MID_50_500M), (60, BudgetBand.OVER_500M)):
+            _, steps = self._steps_for_recommendation(months, band)
+            assert any("3,000" in s for s in steps), (
+                f"the shared income requirement is missing: {steps!r}"
+            )
+
+    def test_superseded_income_figure_appears_in_no_format(self):
+        """USD 1,500/month is the pre-2024 figure — a forbidden claim.
+
+        Checked in every separator style the model might emit, not just the
+        one this file happens to use.
+        """
+        for months, band in ((12, BudgetBand.MID_50_500M), (60, BudgetBand.OVER_500M)):
+            _, steps = self._steps_for_recommendation(months, band)
+            joined = " ".join(steps)
+            for form in ("1,500", "1.500", "1 500", "1500"):
+                assert form not in joined, f"superseded figure {form!r} in {steps!r}"
+
+    def test_other_purposes_keep_their_steps_unchanged(self):
+        """The per-visa layer must not disturb branches that never needed it."""
+        for purpose in (
+            Purpose.WORK_REMOTE,
+            Purpose.INVESTOR,
+            Purpose.WORK_EMPLOYEE,
+            Purpose.FAMILY,
+            Purpose.STUDENT,
+        ):
+            r = _call(purpose=purpose, duration_months=12)
+            if r.recommended_visa is not None:
+                assert r.pre_arrival_steps == match_tree._STEPS_BY_PURPOSE.get(purpose, []), (
+                    f"{purpose} steps changed"
+                )

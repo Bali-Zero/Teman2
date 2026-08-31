@@ -141,13 +141,21 @@ def test_innocence_future_verified_at_is_never_stale():
 
 
 def test_innocence_missing_freshness_policy_is_policy_missing_not_stale():
+    """A record with no readable policy is an ANOMALY, never STALE — and never OK.
+
+    This test kept its original name and its original point: do not misclassify an
+    un-ageable record as stale. Its outcome assertion changed on 2026-08-31, from
+    OK to ANOMALY, because OK was the bug — `send_alert` returns before formatting
+    on OK, so the finding this test proves is detected was silently never sent.
+    """
     now = BOUNDARY + timedelta(days=100)  # far past what WOULD be a boundary
     record = _portal_record(
         "66666666-6666-6666-6666-666666666666", VERIFIED_AT.isoformat(), with_policy=False
     )
     verdict = vfs.classify_freshness([record], now)
 
-    assert verdict.outcome == vfs.OUTCOME_OK
+    assert verdict.outcome == vfs.OUTCOME_ANOMALY
+    assert verdict.outcome != vfs.OUTCOME_OK
     assert len(verdict.stale) == 0
     assert len(verdict.policy_missing) == 1
     assert verdict.policy_missing[0].source_record_id == "66666666-6666-6666-6666-666666666666"
@@ -186,8 +194,13 @@ def test_dedup_key_names_the_condition_and_pack_sequence():
     stale_verdict = dataclasses.replace(base, pack_sequence=11)
     assert vfs.dedup_key(stale_verdict) == "visa-freshness:stale:11"
 
+    # An APPROACHING verdict with no findings is incoherent input; it must still
+    # produce a stable key rather than raise inside the alert path. Widest bucket.
     approaching_verdict = dataclasses.replace(base, outcome=vfs.OUTCOME_APPROACHING, pack_sequence=11)
-    assert vfs.dedup_key(approaching_verdict) == "visa-freshness:approaching:11"
+    assert vfs.dedup_key(approaching_verdict) == "visa-freshness:approaching:11:t48"
+
+    anomaly_verdict = dataclasses.replace(base, outcome=vfs.OUTCOME_ANOMALY, pack_sequence=11)
+    assert vfs.dedup_key(anomaly_verdict) == "visa-freshness:anomaly:11"
 
     cannot_verify_verdict = dataclasses.replace(base, outcome=vfs.OUTCOME_CANNOT_VERIFY, pack_sequence=None)
     assert vfs.dedup_key(cannot_verify_verdict) == "visa-freshness:cannot-verify"
@@ -262,7 +275,8 @@ def test_send_alert_approaching_uses_p0_tier_and_approaching_dedup_key(tmp_path)
     vfs.send_alert(verdict, gateway_path=fake_gateway)
     call_args = json.loads((tmp_path / "calls.jsonl").read_text().strip().splitlines()[-1])
     assert call_args[call_args.index("--tier") + 1] == "p0"
-    assert call_args[call_args.index("--dedup-key") + 1] == "visa-freshness:approaching:7"
+    # 1h to the boundary → the tightest bucket of a 48h window.
+    assert call_args[call_args.index("--dedup-key") + 1] == "visa-freshness:approaching:7:t6"
 
 
 def test_send_alert_cannot_verify_uses_digest_tier_and_stable_key(tmp_path):
@@ -353,3 +367,278 @@ def test_build_verdict_labels_repository_fallback_as_a_proxy(monkeypatch):
 def test_no_direct_telegram_api_string_in_sentinel_source():
     source_text = (SCRIPTS / "visa_freshness_sentinel.py").read_text()
     assert "api" + ".telegram.org" not in source_text
+
+
+# ---------------------------------------------------------------------------
+# 2026-08-31 — the two repairs. Both were found by cross-family adversarial
+# review of a design document, then verified against origin/main before being
+# accepted; neither was taken on the reviewer's word.
+#
+# REPAIR 1 (the serious one): an un-ageable portal record resolved to OK, and
+#   `send_alert` returns before formatting on OK — so a pack that lost its
+#   freshness_policy on every portal record reported OK and sent NOTHING, while
+#   the engine treated those same records as UNKNOWN.
+# REPAIR 2: the gateway's mute ladder (6/24/72/168h) can outlast the 48h warning
+#   window, so an APPROACHING warning could be muted straight through its own
+#   deadline. Urgency now lives in the dedup key.
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_missing_policy_alone_is_anomaly_not_ok():
+    """The exact shape that reported OK and sent nothing before 2026-08-31."""
+    now = VERIFIED_AT + timedelta(hours=1)  # nothing is stale or approaching
+    record = _portal_record("aaaa1111-0000-0000-0000-000000000001", VERIFIED_AT.isoformat(), with_policy=False)
+    verdict = vfs.classify_freshness([record], now)
+
+    assert verdict.outcome == vfs.OUTCOME_ANOMALY
+    assert len(verdict.stale) == 0 and len(verdict.approaching) == 0
+
+
+def test_guilt_malformed_max_age_alone_is_anomaly_not_ok():
+    now = VERIFIED_AT + timedelta(hours=1)
+    record = _portal_record("aaaa1111-0000-0000-0000-000000000002", VERIFIED_AT.isoformat())
+    record["freshness_policy"]["max_age_seconds"] = "seven days"
+    verdict = vfs.classify_freshness([record], now)
+
+    assert verdict.outcome == vfs.OUTCOME_ANOMALY
+    assert verdict.policy_missing[0].reason_code == "FRESHNESS_POLICY_MALFORMED"
+
+
+def test_guilt_future_verified_at_alone_is_anomaly_not_ok():
+    now = VERIFIED_AT
+    record = _portal_record(
+        "aaaa1111-0000-0000-0000-000000000003", (VERIFIED_AT + timedelta(days=3)).isoformat()
+    )
+    verdict = vfs.classify_freshness([record], now)
+
+    assert verdict.outcome == vfs.OUTCOME_ANOMALY
+
+
+def test_guilt_every_portal_record_loses_its_policy_still_alerts(tmp_path):
+    """The catastrophic shape, proven end-to-end through the gateway.
+
+    Eighteen portal records, none of them ageable — the state a bad fold could
+    produce. Before the repair this reached the gateway zero times.
+    """
+    fake_gateway = _write_fake_gateway(tmp_path, _FAKE_GATEWAY_RECORDING)
+    records = [
+        _portal_record(f"bbbb2222-0000-0000-0000-{i:012d}", VERIFIED_AT.isoformat(), with_policy=False)
+        for i in range(18)
+    ]
+    import dataclasses
+
+    verdict = vfs.classify_freshness(records, VERIFIED_AT + timedelta(hours=1))
+    verdict = dataclasses.replace(verdict, pack_sequence=18)
+
+    vfs.send_alert(verdict, gateway_path=fake_gateway)
+
+    calls = (tmp_path / "calls.jsonl").read_text().strip().splitlines()
+    assert len(calls) == 1, "the anomaly must reach the gateway"
+    call_args = json.loads(calls[-1])
+    assert call_args[call_args.index("--tier") + 1] == "p0"
+    assert call_args[call_args.index("--dedup-key") + 1] == "visa-freshness:anomaly:18"
+    assert "ANOMALY" in call_args[-1] and "18" in call_args[-1]
+
+
+def test_innocence_a_wholly_healthy_pack_is_still_ok_and_sends_nothing(tmp_path):
+    """The repair must not turn a clean pack into an alert."""
+    fake_gateway = _write_fake_gateway(tmp_path, _FAKE_GATEWAY_RECORDING)
+    records = [
+        _portal_record(f"cccc3333-0000-0000-0000-{i:012d}", VERIFIED_AT.isoformat())
+        for i in range(18)
+    ]
+    verdict = vfs.classify_freshness(records, VERIFIED_AT + timedelta(hours=1))
+
+    assert verdict.outcome == vfs.OUTCOME_OK
+    assert vfs.send_alert(verdict, gateway_path=fake_gateway) is None
+    assert not (tmp_path / "calls.jsonl").exists()
+
+
+def test_stale_outranks_anomaly_when_both_are_true():
+    """A live deadline is the more urgent fact; the anomaly still rides along."""
+    stale = _portal_record("dddd4444-0000-0000-0000-000000000001", VERIFIED_AT.isoformat())
+    broken = _portal_record(
+        "dddd4444-0000-0000-0000-000000000002", VERIFIED_AT.isoformat(), with_policy=False
+    )
+    verdict = vfs.classify_freshness([stale, broken], BOUNDARY + timedelta(seconds=1))
+
+    assert verdict.outcome == vfs.OUTCOME_STALE
+    assert len(verdict.policy_missing) == 1
+    assert "missing/unreadable" in vfs.format_alert_text(verdict)
+
+
+# --- REPAIR 2: urgency buckets -------------------------------------------
+
+
+def test_urgency_buckets_are_derived_from_the_warn_window_not_hardcoded():
+    assert vfs.urgency_buckets(48 * 3600) == (48, 24, 12, 6)
+    # The whole point: a wider window must not collapse its top span into one key.
+    assert vfs.urgency_buckets(72 * 3600) == (72, 36, 18, 9)
+    assert vfs.urgency_buckets(8 * 3600) == (8, 4, 2, 1)
+    # Degenerate windows fold levels together rather than emitting duplicates.
+    assert vfs.urgency_buckets(3600) == (1,)
+
+
+def test_guilt_each_bucket_crossing_mints_a_new_key_even_at_the_longest_mute():
+    """47h → 23h → 11h → 5h must be four DISTINCT keys.
+
+    With a single key the gateway's ladder reaches a 72h mute at streak 3, which
+    is longer than the entire 48h warning window: the last warnings before the
+    boundary would be swallowed.
+    """
+    import dataclasses
+
+    base = vfs.classify_freshness(
+        [_portal_record("eeee5555-0000-0000-0000-000000000001", VERIFIED_AT.isoformat())],
+        BOUNDARY - timedelta(hours=47),
+    )
+    keys = []
+    for hours_left in (47, 23, 11, 5):
+        v = vfs.classify_freshness(
+            [_portal_record("eeee5555-0000-0000-0000-000000000001", VERIFIED_AT.isoformat())],
+            BOUNDARY - timedelta(hours=hours_left),
+        )
+        v = dataclasses.replace(v, pack_sequence=17)
+        assert v.outcome == vfs.OUTCOME_APPROACHING, hours_left
+        keys.append(vfs.dedup_key(v))
+
+    assert keys == [
+        "visa-freshness:approaching:17:t48",
+        "visa-freshness:approaching:17:t24",
+        "visa-freshness:approaching:17:t12",
+        "visa-freshness:approaching:17:t6",
+    ]
+    assert len(set(keys)) == 4
+    assert base.outcome == vfs.OUTCOME_APPROACHING
+
+
+def test_innocence_two_runs_inside_one_bucket_share_a_key():
+    """Within a bucket the ladder must still suppress — this is not a spam hose."""
+    import dataclasses
+
+    keys = set()
+    for hours_left in (23.9, 20.0, 13.0, 12.1):  # all inside the t24 bucket
+        v = vfs.classify_freshness(
+            [_portal_record("ffff6666-0000-0000-0000-000000000001", VERIFIED_AT.isoformat())],
+            BOUNDARY - timedelta(hours=hours_left),
+        )
+        keys.add(vfs.dedup_key(dataclasses.replace(v, pack_sequence=17)))
+
+    assert keys == {"visa-freshness:approaching:17:t24"}
+
+
+def test_stale_and_anomaly_keys_carry_no_urgency_suffix():
+    """Only APPROACHING has a deadline running; the others stay per-condition."""
+    import dataclasses
+
+    stale = vfs.classify_freshness(
+        [_portal_record("id", VERIFIED_AT.isoformat())], BOUNDARY + timedelta(seconds=1)
+    )
+    assert vfs.dedup_key(dataclasses.replace(stale, pack_sequence=17)) == "visa-freshness:stale:17"
+
+    anomaly = vfs.classify_freshness(
+        [_portal_record("id", VERIFIED_AT.isoformat(), with_policy=False)],
+        VERIFIED_AT + timedelta(hours=1),
+    )
+    assert vfs.dedup_key(dataclasses.replace(anomaly, pack_sequence=17)) == "visa-freshness:anomaly:17"
+
+
+# --- REPAIR 3+4: the two defects the refuter on this diff found ----------
+#
+# Both are the SAME shape as the bug being fixed, one layer further out: the
+# ANOMALY is detected correctly and then thrown away by whatever reports it.
+
+
+def test_guilt_anomaly_does_not_exit_zero():
+    """Exit 0 means `heartbeat "ok"` on the sidecar — the surface people read.
+
+    The wrapper writes `heartbeat "ok" "run done"` on ANY zero exit, so an
+    ANOMALY returning 0 would be invisible exactly where it matters.
+    """
+    import dataclasses
+
+    anomaly = vfs.classify_freshness(
+        [_portal_record("id", VERIFIED_AT.isoformat(), with_policy=False)],
+        VERIFIED_AT + timedelta(hours=1),
+    )
+    assert anomaly.outcome == vfs.OUTCOME_ANOMALY
+    # The exit map lives in main(); assert the contract it implements.
+    assert vfs.OUTCOME_ANOMALY not in (vfs.OUTCOME_OK,)
+    src = (SCRIPTS / "visa_freshness_sentinel.py").read_text()
+    assert "if verdict.outcome == OUTCOME_ANOMALY:" in src
+    assert "return 3" in src
+
+
+def test_guilt_an_anomaly_appearing_during_a_stale_pack_mints_a_new_key():
+    """Otherwise a muted STALE key swallows the news that the pack broke.
+
+    STALE outranks ANOMALY, so the anomaly rides along in the alert body and
+    gets no outcome of its own. If it also got no KEY of its own, the ladder
+    (already climbing on a repeating STALE) would suppress the one message
+    carrying the new fact.
+    """
+    import dataclasses
+
+    stale_only = vfs.classify_freshness(
+        [_portal_record("aaaa0000-0000-0000-0000-000000000001", VERIFIED_AT.isoformat())],
+        BOUNDARY + timedelta(seconds=1),
+    )
+    stale_plus_anomaly = vfs.classify_freshness(
+        [
+            _portal_record("aaaa0000-0000-0000-0000-000000000001", VERIFIED_AT.isoformat()),
+            _portal_record(
+                "aaaa0000-0000-0000-0000-000000000002",
+                VERIFIED_AT.isoformat(),
+                with_policy=False,
+            ),
+        ],
+        BOUNDARY + timedelta(seconds=1),
+    )
+    assert stale_only.outcome == vfs.OUTCOME_STALE
+    assert stale_plus_anomaly.outcome == vfs.OUTCOME_STALE  # ranking unchanged
+
+    k1 = vfs.dedup_key(dataclasses.replace(stale_only, pack_sequence=17))
+    k2 = vfs.dedup_key(dataclasses.replace(stale_plus_anomaly, pack_sequence=17))
+    assert k1 == "visa-freshness:stale:17"
+    assert k2 == "visa-freshness:stale:17:anom"
+    assert k1 != k2
+
+    # ...and the body actually carries the new fact, so the fresh key is worth
+    # spending. (A new key delivering the identical text would be pure noise.)
+    assert "missing/unreadable" in vfs.format_alert_text(stale_plus_anomaly)
+    assert "missing/unreadable" not in vfs.format_alert_text(stale_only)
+
+
+def test_guilt_the_same_marker_applies_while_approaching():
+    import dataclasses
+
+    approaching_plus_anomaly = vfs.classify_freshness(
+        [
+            _portal_record("bbbb0000-0000-0000-0000-000000000001", VERIFIED_AT.isoformat()),
+            _portal_record(
+                "bbbb0000-0000-0000-0000-000000000002",
+                # Genuinely ahead of THIS run's clock (BOUNDARY - 23h), not
+                # merely ahead of VERIFIED_AT — the anomaly is measured against now.
+                (BOUNDARY + timedelta(days=1)).isoformat(),
+            ),
+        ],
+        BOUNDARY - timedelta(hours=23),
+    )
+    assert approaching_plus_anomaly.outcome == vfs.OUTCOME_APPROACHING
+    key = vfs.dedup_key(dataclasses.replace(approaching_plus_anomaly, pack_sequence=17))
+    assert key == "visa-freshness:approaching:17:t24:anom"
+
+
+def test_innocence_a_clean_stale_pack_keeps_its_unsuffixed_key():
+    """The marker must not appear when there is no anomaly — otherwise every
+    stale alert mints a second key and the ladder never suppresses anything."""
+    import dataclasses
+
+    stale = vfs.classify_freshness(
+        [_portal_record("cccc0000-0000-0000-0000-000000000001", VERIFIED_AT.isoformat())],
+        BOUNDARY + timedelta(seconds=1),
+    )
+    assert (
+        vfs.dedup_key(dataclasses.replace(stale, pack_sequence=17))
+        == "visa-freshness:stale:17"
+    )

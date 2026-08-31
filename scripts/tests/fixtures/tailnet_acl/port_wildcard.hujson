@@ -1,0 +1,12 @@
+// GUILT: the defect the first real draft actually shipped. Reads as "the fleet keeps talking to
+// itself"; means every port on every owned device, the shell port included, forever.
+// SHELL-ROUTE: /term -> 127.0.0.1:7681 is ttyd -W zsh.
+{
+  "hosts": {"pro": "100.107.22.111"},
+  "tagOwners": {"tag:team": ["autogroup:admin"]},
+  "acls": [
+    {"action": "accept", "src": ["antonellosiano@gmail.com"], "dst": ["antonellosiano@gmail.com:*"]}
+  ],
+  "ssh": [],
+  "tests": [{"src": "tag:team", "deny": ["pro:443"]}]
+}
