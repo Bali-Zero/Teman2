@@ -1,11 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-Agent worktree broker reaper — daily 08:15 WITA (W62 ANTIBODY #1).
+Agent worktree broker reaper — every 3h at :15 WITA (W62 ANTIBODY #1).
 Runbook: docs/runbooks/agent-worktree-broker.md §Auto-cleanup
 
-Invokes scripts/agent_start.py --cleanup (WIP-safe + skip-recent safe) so
-abandoned worktrees no longer accumulate into a storm. Scheduled 15min after
-the WR2 worktree-gc (00:00 UTC) to avoid two GC passes racing on .worktrees/.
+Invokes the cleanup mode of scripts/agent_start.py (WIP-safe + skip-recent) so
+abandoned worktrees no longer accumulate into a storm. Offset to :15 so a pass
+never races the WR2 worktree-gc (:00) or worktree_gc_universal (:30) on
+.worktrees/ — that offset is the reason for the odd minute, keep it.
+
+CADENCE, and why it is no longer daily (2026-08-31): a single daily pass cannot
+survive a burst. On the night of 2026-08-30→31 an agent wave minted 40 worktrees
+after the 00:15 run had already fired, and the next scheduled pass was 24h away.
+The reaper was neither dead nor mis-scheduled — its log carries real removals,
+and on the burst it correctly protected every worktree holding unmerged commits,
+a live process or WIP — it was simply out-cadenced. Eight passes a day bound the
+worst case to ~3h of accumulation instead of ~24h.
+
+Provenance of those numbers, so a later reader can weigh them: MEASURED in the
+2026-08-31 session were the worktree count (40 of 41 created inside 24h, via
+find -ctime -1), the per-checkout size (du -sh, ~1.2 GB each), and free space of
+753 MB immediately before the recovery pass. The "~80 GB free the previous
+evening" figure is the OWNER'S REPORT, not a reading anyone captured — no log on
+this fleet records free space at that moment. Corroborating trace that does
+exist: ~/logs/disk_watchdog.out.log shows the Data volume going 85% -> 97% used
+between 2026-08-30 09:00 and 2026-08-31 09:00.
+
+NOTE ON THE LABEL: it still ends in `.daily`, deliberately. The label is an
+opaque identifier that connectome probes (docs/connectome/edges/launchd-*.yaml)
+grep literally; renaming it to match the cadence would silently stop those
+probes matching — the W120 shape, an alarm that zeroes itself in silence. The
+cadence is stated here and in the runbook; the identifier stays put.
 
 Install (Pro):
     cp infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example \
@@ -28,14 +52,22 @@ Kill switch (without removing plist):
         <string>/Users/nuzantara/nuzantara/scripts/agent_worktree_cleanup_cron.sh</string>
     </array>
 
+    <!-- launchd reads StartCalendarInterval in LOCAL time (WITA on this fleet),
+         NOT UTC. The previous comment here claimed "00:15 UTC = 08:15 WITA";
+         measured 2026-08-31 it is the other way round — the wrapper logged
+         [2026-08-30T16:15:05Z] for a run the broker stamped 00:15:06+0800, i.e.
+         00:15 WITA = 16:15 UTC. Read these hours as WITA. -->
     <key>StartCalendarInterval</key>
-    <dict>
-        <key>Hour</key>
-        <integer>0</integer>
-        <key>Minute</key>
-        <integer>15</integer>
-    </dict>
-    <!-- 00:15 UTC = 08:15 WITA (15min after WR2 worktree-gc at 00:00) -->
+    <array>
+        <dict><key>Hour</key><integer>0</integer><key>Minute</key><integer>15</integer></dict>
+        <dict><key>Hour</key><integer>3</integer><key>Minute</key><integer>15</integer></dict>
+        <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>15</integer></dict>
+        <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>15</integer></dict>
+        <dict><key>Hour</key><integer>12</integer><key>Minute</key><integer>15</integer></dict>
+        <dict><key>Hour</key><integer>15</integer><key>Minute</key><integer>15</integer></dict>
+        <dict><key>Hour</key><integer>18</integer><key>Minute</key><integer>15</integer></dict>
+        <dict><key>Hour</key><integer>21</integer><key>Minute</key><integer>15</integer></dict>
+    </array>
 
     <key>WorkingDirectory</key>
     <string>/Users/nuzantara/nuzantara</string>

@@ -53,7 +53,24 @@ Due guard proteggono un worktree expired dal drop:
 
 ### Auto-cleanup (cron) — W62 ANTIBODY #1
 
-`--cleanup` NON è più solo manuale. Il LaunchAgent `com.nuzantara.agent-worktree-cleanup.daily` lo invoca ogni giorno alle 08:15 WITA via `scripts/agent_worktree_cleanup_cron.sh`.
+`--cleanup` NON è più solo manuale. Il LaunchAgent `com.nuzantara.agent-worktree-cleanup.daily` lo invoca **ogni 3 ore al minuto :15 WITA** (00:15, 03:15, … 21:15 — otto passate al giorno) via `scripts/agent_worktree_cleanup_cron.sh`.
+
+> **Due correzioni misurate il 2026-08-31, entrambe erano scritte sbagliate qui.**
+> **(1) L'ora è LOCALE, non UTC.** `launchd` legge `StartCalendarInterval` in ora locale: questo
+> file diceva «ogni giorno alle 08:15 WITA» e il plist diceva «00:15 UTC = 08:15 WITA», ma il
+> wrapper ha loggato `[2026-08-30T16:15:05Z]` per una passata che il broker ha timbrato
+> `00:15:06+0800`. Girava alle **00:15 WITA**, non alle 08:15. Leggi queste ore come WITA.
+> **(2) Il cadenzamento giornaliero non regge una raffica.** Nella notte 30→31/8 un'ondata di
+> agent ha creato **40 worktree** dopo che la passata delle 00:15 era già scattata; a ~1,2 GB di
+> checkout l'uno hanno portato il volume Data da ~80 GB liberi a **753 MB**, con la passata
+> successiva a 24h di distanza. Il reaper non era morto né mis-schedulato — il suo log porta
+> rimozioni vere — era semplicemente **fuori cadenza**. Otto passate limitano l'accumulo peggiore
+> a ~3h invece di ~24h.
+>
+> La label finisce ancora in `.daily` **di proposito**: è un identificatore che le sonde del
+> connettoma (`docs/connectome/edges/launchd-*.yaml`) grepano alla lettera, e rinominarla per
+> inseguire la cadenza le farebbe smettere di matchare in silenzio — la forma W120. La cadenza si
+> legge qui e nel plist; l'identificatore non si tocca.
 
 ```bash
 # install (Pro):
@@ -226,7 +243,7 @@ SUBAGENT EXEMPTION note). The contract that closes both gaps:
 Il TTL da solo non basta: nessun consumer lo applicava. La hygiene è ora a 3 livelli, in ordine di affidabilità decrescente:
 
 1. **Release esplicito (preferito)** — l'orchestratore/agent chiama `--release <task-id>` a fine task. Tear-down immediato, branch cancellato se merged. È l'unico path che pulisce _subito_.
-2. **Cron reaper (rete di sicurezza)** — `com.nuzantara.agent-worktree-cleanup.daily` reape i worktree idle+clean+expired senza intervento. Copre il caso "l'agent è morto senza release". Non tocca WIP né sessioni vive (skip-recent).
+2. **Cron reaper (rete di sicurezza)** — `com.nuzantara.agent-worktree-cleanup.daily` reape i worktree idle+clean+expired senza intervento, **ogni 3h al minuto :15 WITA**. Copre il caso "l'agent è morto senza release". Non tocca WIP né sessioni vive (skip-recent). Nota di taratura: la rete di sicurezza è una CADENZA, non una garanzia — fra due passate una raffica di agent può ancora riempire il disco (successo il 31/8, §Auto-cleanup). Se una lane conia worktree a ritmo sostenuto, il path corretto resta il `--release` esplicito del punto 1, non aspettare il reaper.
 3. **CI gate (backstop finale)** — `broker-hygiene.yml` impedisce che un orphan >24h si fossilizzi: la PR fallisce finché il `.worktrees/` non è pulito.
 
 Regole per chi dispatcha worktree (orchestratore o script):
