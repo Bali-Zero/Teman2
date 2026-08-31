@@ -66,8 +66,20 @@ async def test_no_two_migrations_share_a_number() -> None:
     on_disk = _migration_sql_by_number()
     directory = next(iter(on_disk.values())).parent
     by_number: dict[int, list[str]] = {}
-    for path in sorted(directory.glob("[0-9][0-9][0-9]_*.sql")):
-        by_number.setdefault(int(path.name[:3]), []).append(path.name)
+    # Glob and parse EXACTLY as migration_manager.py:278-291 does — `*.sql`
+    # with `int(stem.split("_")[0])`, any digit length — not a narrower
+    # 3-digit pattern. A guard that reads a smaller set than the runner it
+    # protects cannot see a collision the runner would die on: proven by the
+    # gate, `0299_dupe_probe.sql` beside `299_schema_versions_provenance.sql`
+    # collides into 299 for the runner while a `[0-9][0-9][0-9]_*` glob stayed
+    # green. Latent today — all 178 files are 3-digit — and latent is exactly
+    # when to fix it.
+    for path in sorted(directory.glob("*.sql")):
+        try:
+            number = int(path.stem.split("_")[0])
+        except ValueError:
+            continue  # the runner skips these too
+        by_number.setdefault(number, []).append(path.name)
 
     collisions = {n: sorted(v) for n, v in by_number.items() if len(v) > 1}
     assert not collisions, (

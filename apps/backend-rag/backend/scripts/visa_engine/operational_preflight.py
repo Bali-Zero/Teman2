@@ -414,8 +414,20 @@ async def collect_preflight_checks(
         "visa_privacy_operator": False,
         runtime_role: True,
     }
-    # Every catalog name in THIS function is `pg_catalog.`-qualified, including
-    # the checks that predate the definer floor below. A second adversarial seat
+    # Every catalog name in THIS function is `pg_catalog.`-qualified — CALLS and
+    # RELATIONS, and as of 2026-08-31 the TYPE CAST below too. That last one was
+    # found by the Gear-3 gate, which shadowed `text` on a throwaway PG 17.10:
+    # `CREATE DOMAIN public.text AS varchar(1)` makes `$1::text[]` truncate every
+    # role name to one character. Note the DIRECTION before reading this as a
+    # closed forgery vector — it is not one. A truncated array matches no
+    # `rolname`, so `role_rows` comes back empty and every `role:*` check goes
+    # ok=False: the attack makes this function fail LOUD, not answer green. It is
+    # qualified anyway because the sentence above claimed it already was, and a
+    # comment that overstates its own coverage is how the next reader stops
+    # checking. What remains genuinely uncovered: casts are a construct class NO
+    # guard in this repo can currently see — see
+    # docs/specs/2026-08-31-unqualified-catalog-call-lint.md, whose extractor
+    # requirement (R1) has to reach them. A second adversarial seat
     # (kimi-code/k3) pointed out the inconsistency and was right: this file now
     # states that "a privilege check answerable by an object the checked role may
     # create is not a check", and then relied on `role:visa_ledger_owner` -- which
@@ -425,7 +437,7 @@ async def collect_preflight_checks(
     # cannot hold for the new code and be waived for the code it leans on.
     role_rows = await connection.fetch(
         "SELECT rolname, rolcanlogin, rolsuper FROM pg_catalog.pg_roles "
-        "WHERE rolname = ANY($1::text[])",
+        "WHERE rolname = ANY($1::pg_catalog.text[])",
         list(expected_roles),
     )
     roles = {str(row["rolname"]): row for row in role_rows}

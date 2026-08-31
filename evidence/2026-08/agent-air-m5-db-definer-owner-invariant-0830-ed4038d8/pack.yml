@@ -52,7 +52,7 @@ seat_diversity_note:
   that made both the migration and the check answer clean with the ownership wrong, and it caught a
   rollback section that would have told the migration framework it had reversed something it had not."
 diff:
-  net_lines: "10 files, +2091/-28 (git diff --numstat over the merge-base)"
+  net_lines: "10 files, +2125/-28 (git diff --numstat over the merge-base)"
   behaviour_change:
     "No production behaviour changes. Migration 300 is a no-op against the production primary because
     the five ALTERs already landed there by hand on 2026-08-30 before this lane opened; it exists so an
@@ -262,13 +262,23 @@ receipts:
       "Whole regression pass after the qualification sweep, both directories: no new failure, and the
       three gold-coverage failures are the ones already baselined on origin/main."
     cmd: "PYTHONPATH=. python -m pytest backend/tests/scripts/visa_engine/ backend/tests/db/"
-    exit: 1
-    ts: "2026-08-30T12:47:00Z"
+    exit: 0
+    ts: "2026-08-31T08:35:00Z"
     seat: claude-opus-5
     result:
-      "3 failed, 568 passed, 16 skipped — the three are test_gold_coverage_eval /
-      test_gold_coverage_replay, identical to the origin/main baseline recorded above. The two test
-      files in this diff: 52 passed."
+      "593 passed, 16 skipped, exit 0. The two test files in this diff: 52 passed.
+      RE-RUN AND CORRECTED 2026-08-31, and this is the SECOND receipt on this pack to need it. The
+      earlier reading here (exit 1, '3 failed, 568 passed', ts 12:47) cited three gold-coverage
+      failures that no longer exist: they were the wall-clock fixture expiry cured on main by #5310,
+      absorbed when this branch was updated. The correction matters less than the pattern — its
+      neighbour at the pytest backend/tests/db/ receipt had the IDENTICAL staleness, was re-run and
+      corrected in an earlier commit, and this one was left. Fixing one instance of a class and
+      leaving its twin is the same incompleteness that made the second gate pass necessary at all.
+      Both are now measured against the current head.
+      A note on the number itself, because it differs from the gate's: the gate observed 594 / 53 at
+      97f7287f7f, one commit earlier. The difference is exactly the one test withdrawn since — the
+      unsound list-free detector. The figure written here is the one THIS head prints, measured
+      rather than copied from the reviewer, which is the whole reason a receipt exists."
 pii_scan: clean
 pii_scan_note:
   "No client data was touched, read or transcribed. Every production read was a catalog query
