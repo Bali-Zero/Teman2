@@ -13,7 +13,7 @@ lanes:
     role: review
     seat: kimi-code/k3
 diff:
-  files: 7
+  files: 8
   note: >-
     git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD. The insertion and
     deletion counts are deliberately NOT narrated: CI recomputes them every run and a copy here is
