@@ -149,9 +149,21 @@ query($owner:String!, $repo:String!, $cursor:String) {
 
 
 def _run(cmd: list[str], timeout: int = 30) -> tuple[int, str, str]:
-    """Run a command; never raises. Returns (rc, stdout, stderr)."""
+    """Run a command; never raises. Returns (rc, stdout, stderr).
+
+    `errors="replace"` is what makes "never raises" TRUE rather than merely
+    intended. With the default strict decoding, `text=True` raises
+    UnicodeDecodeError — a ValueError, caught by neither arm of the except
+    below — the moment git prints a path whose bytes are not valid UTF-8, which
+    `git diff -z --name-only` will happily do. A cross-family refuter found this
+    by reading the contract rather than the code; the docstring had been lying
+    since it was written, and the fail-quiet argument for every caller rests on
+    it being true.
+    """
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, errors="replace", timeout=timeout
+        )
         return proc.returncode, proc.stdout, proc.stderr
     except (OSError, subprocess.TimeoutExpired) as exc:
         return 127, "", f"{type(exc).__name__}: {exc}"
