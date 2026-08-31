@@ -1,0 +1,315 @@
+# The literal STAGING path, never this PR's real per-PR path. harness-floor.yml copies
+# THIS PR's own brief to /tmp/evidence-check/evidence/brief.yml and lints with
+# --repo-root pointing there, so the canonical name resolves to MY brief inside that
+# synthetic tree. evidence_paths.py's own module docstring says the same thing in the
+# same words. Learned the expensive way earlier tonight on #5378, where the
+# "obviously correct" per-PR value failed CI with "does not resolve to a file on disk".
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Arm the Merah Putih DAY contrast guard. It was written, merged, and never named by any
+  workflow — so the palette this lane just migrated had a correct, passing, mutation-proven
+  guard that no PR could ever be blocked by. Add a PR-triggered workflow whose paths filter
+  is derived from what the guard actually reads, with a guilt control so the job cannot
+  pass on nothing, and correct the token file's false claim that the guard "fails the
+  build".
+
+lanes:
+  - lane: arm-day-contrast-build
+    role: build
+    seat:
+      claude-opus-5 (interactive session, xhigh — the arming measurement, the workflow,
+      the guilt control, all verification)
+  - lane: arm-day-contrast-review-kimi
+    role: review
+    seat:
+      kimi-code/k3 (kimi CLI, Moonshot Allegro flat subscription, non-Anthropic
+      cross-family — adversarial review of the workflow, attacking the guilt-control
+      step's control flow and the paths filter)
+  - lane: arm-day-contrast-review-second-seat
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol at xhigh (ChatGPT Pro flat subscription, non-Anthropic cross-family
+      — second seat, fresh context, same adversarial brief). SUBSTITUTED, and the
+      substitution is recorded rather than tidied away: the seat this lane originally named
+      was tp1-qwen3.8-max, which was dispatched twice and returned NOTHING both times — the
+      second attempt was still hanging with an empty output file when it was killed. A seat
+      that does not answer is a seat that did not review; writing it into the journal
+      because it was invited would be a fabricated quorum. The journal
+      (`council-journal.jsonl`) therefore lists exactly the two seats that produced verdicts.
+
+council_run: council-journal.jsonl
+
+diff:
+  files: 6
+  net_lines: 655
+  measured_at: f940c583c
+  note: >-
+    Churn (added+deleted) via `git diff --no-renames --numstat --cached <merge-base>`,
+    measured with this exact pack STAGED — the only moment a self-counting field can be
+    true. Placeholder values above are replaced by a DIGIT-ONLY edit immediately before
+    the commit, so the final substitution cannot change the line count and therefore
+    cannot change the number it reports. CI supplies the authoritative numstat via
+    --numstat-file at merge time and prefers it over this self-declared value.
+    FLOOR is 3 by PATH: `.github/workflows/` is a hot zone and the ceiling rule cannot
+    override a floor. The CODE change here is one new workflow file plus a corrected
+    comment in one TypeScript file; the rest is this evidence pack.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      No workflow on origin/main names the guard — the finding this PR exists to fix.
+    cmd: >-
+      For each of the 116 files in `git ls-tree --name-only origin/main
+      .github/workflows/`, read `git show origin/main:<file>` and substring-match
+      "merah_putih_day_contrast" in-process (NOT `git grep <ref> -- <path>`).
+    result: >-
+      merah_putih_day_contrast -> NO WORKFLOW NAMES IT.
+      POSITIVE CONTROL in the same run: test_check_token_contrast ->
+      ['token-contrast-tests.yml']. That control is what makes the negative admissible.
+    exit: 0
+    ts: "2026-08-30T22:58:00Z"
+    seat: session (Pro)
+    note: >-
+      THE FIRST MEASUREMENT WAS DISCARDED, not corrected. It used `git grep
+      merah_putih_day_contrast origin/main -- .github/workflows/`, which returned empty —
+      and so did its positive control. A probe that cannot return a positive cannot
+      return a negative either, so its "no hit" was an absence impersonating an answer
+      and was thrown away rather than reported. Recorded because the discarded probe is
+      the interesting half: had the control not been run, this PR would rest on a blind
+      measurement that happened to agree with the conclusion.
+
+  - claim: The guard passes on the tree this PR ships.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python3 -m pytest
+      scripts/tests/test_merah_putih_day_contrast.py -q
+    result: >-
+      "43 passed in 0.18s" on the shipped tree. Recorded as 42 when this receipt was first
+      written, which was true THEN and false by the time it shipped: the refuter's finding
+      added a 43rd test to this same file. A receipt whose number silently ages into a lie
+      is the same defect as a comment claiming enforcement — corrected here rather than
+      left to be discovered by whoever next runs the command and gets a different answer.
+    exit: 0
+    ts: "2026-08-31T00:44:00Z"
+    seat: session (Pro)
+
+  - claim: >-
+      The guard can still go RED — the guilt control the workflow performs in CI, run
+      locally first, because a control that has never been executed is a claim.
+    cmd: >-
+      Replace `"--text-primary": "#16213a"` with the retired `"#ff3344"` in
+      merahPutihDayVars.ts, run the guard, restore, run again, compare bytes.
+    result: >-
+      MUTATED rc=1 ("3 failed, 39 passed") · RESTORED rc=0 ("42 passed", 43 on the final
+      shipped tree — see the note on the receipt above about a count that aged) · file
+      byte-identical after restore: True. The three failures name the ratios (3.34 /
+      3.62 / 3.06, all below 4.5), i.e. the guard fails for the right reason rather than
+      on a parse error.
+    exit: 0
+    ts: "2026-08-30T23:03:00Z"
+    seat: session (Pro)
+
+  - claim: >-
+      The paths filter covers what the guard reads — and the FIRST version of this receipt
+      was WRONG, in exactly the way the brief's own constraint warned about.
+    cmd: >-
+      Superseded probe: parse `REPO / "..."` literals and `.rglob(...)` calls out of
+      scripts/tests/test_merah_putih_day_contrast.py. Corrected probe: EXECUTE the guard's
+      own `_perimeter_sources()` and print the resolved set, partitioned by whether each
+      file lives under the route perimeter.
+    result: >-
+      Superseded result (believed until refuted): three surfaces — merahPutihDayVars.ts,
+      the *.tsx tree under app/visa/second-home/, packages/core/tokens/semantic.css.
+      EXECUTED result: 20 .tsx files, 18 in-perimeter and 2 OUTSIDE —
+      apps/mouth/src/components/lead/WhatsAppLeadButton.tsx and
+      apps/mouth/src/components/visa/ConsentBanner.tsx. `_perimeter_sources()` resolves
+      every `@/components/...` import found in the two wrappers (regex at line 169, anchored
+      to that prefix) and scans those files too. The filter shipped without them, so a real
+      contrast regression in either would have started NO check — and ConsentBanner is
+      precisely the component this guard caught at 2.56:1. Fixed with
+      `apps/mouth/src/components/**`, a TRUE superset by the regex's own anchor.
+    exit: 0
+    ts: "2026-08-31T00:12:00Z"
+    seat: session (Pro), after kimi-code/k3 refutation
+    note: >-
+      READING the source is what a static parse of string literals could not do: the third
+      surface was not a literal, it was a computation. The guard's own docstring says why
+      it is computed — "a hand-kept list would rot on its first commit" — and the filter I
+      hand-kept beside it rotted before it ever ran once.
+
+  - claim: The new workflow is schema-valid and introduces no trigger-symmetry violation.
+    cmd: >-
+      actionlint .github/workflows/merah-putih-day-contrast.yml ; then
+      scripts/ci/lint_trigger_symmetry.py (borrowed from #5340, run from inside the
+      worktree, removed again before commit and never staged)
+    result: >-
+      actionlint rc=0. Trigger-symmetry reports exactly ONE violation on this tree and it
+      is `.github/workflows/with-seat-broker-tests.yml` — the pre-existing defect #5378
+      fixes, present here only because this worktree branches from origin/main. This new
+      file produces no violation, and its pull_request.paths / push.paths are the same
+      anchored list (5 entries, `&guarded_paths` defined before `*guarded_paths` is used).
+    exit: 0
+    ts: "2026-08-30T23:01:00Z"
+    seat: session (Pro)
+
+  - claim: >-
+      The workflow is ADVISORY and adds nothing to the merge queue.
+    cmd: >-
+      Parse infra/required.d/contexts.json (11 contexts, 8 distinct workflow files) and
+      read the new file's `on:` block.
+    result: >-
+      This workflow backs no required context, and carries triggers [pull_request, push]
+      with no merge_group — so it contributes zero runs per queue entry, per the
+      2026-08-27 queue-slim cure.
+    exit: 0
+    ts: "2026-08-30T23:04:00Z"
+    seat: session (Pro)
+
+  - claim: >-
+      The token file's enforcement claim was FALSE and is now true.
+    cmd: >-
+      grep "fails the build" apps/mouth/src/lib/theme/merahPutihDayVars.ts, cross-checked
+      against the arming measurement above.
+    result: >-
+      Line 31 read "which fails the build if any pair below drifts" while no workflow
+      named the guard. Rewritten to name the workflow that now backs it, and to record
+      that the previous sentence was false — prose asserting enforcement CI does not have
+      is worse than no claim, because it stops the next reader from checking.
+    exit: 0
+    ts: "2026-08-30T23:05:00Z"
+    seat: session (Pro)
+
+  - claim: >-
+      The filter/guard sync is now MACHINE-CHECKED, and the check itself can go red.
+    cmd: >-
+      Added test #43, which parses this workflow's own `paths:` block and fails on any file
+      `_perimeter_sources()` reads that no pattern matches. Innocence: run the file.
+      Guilt: delete `apps/mouth/src/components/**` from the anchor, re-run, restore, re-run,
+      compare bytes.
+    result: >-
+      INNOCENCE 43 passed. GUILT "1 failed, 42 passed", the failure listing exactly
+      apps/mouth/src/components/lead/WhatsAppLeadButton.tsx and
+      apps/mouth/src/components/visa/ConsentBanner.tsx — i.e. it re-detects, unaided, the
+      defect a cross-family refuter had to find by hand an hour earlier. Workflow
+      byte-identical after restore; final run 43 passed.
+    exit: 0
+    ts: "2026-08-31T00:22:00Z"
+    seat: session (Pro)
+    note: >-
+      The test carries its OWN negative control in the same run (a path outside the filter
+      must NOT match), because a glob matcher that matches everything would make every
+      assertion after it vacuously green — the failure mode that produced a discarded
+      measurement earlier in this same pack.
+
+  - claim: >-
+      GitHub Actions DOES honour the YAML anchor/alias this workflow uses — the round-2
+      refuter's blocking verdict is REFUTED by measurement.
+    cmd: >-
+      Read every workflow on origin/main for an anchor definition, then query the Actions
+      API for the one that has it: registration state and run counts by event.
+    result: >-
+      `.github/workflows/with-seat-broker-tests.yml` is the only anchored workflow on main
+      and it uses the identical `paths: &guarded_paths` / `paths: *guarded_paths` shape.
+      The API reports it id=346020455 **state=active**, with 72 merge_group, 11
+      pull_request and 1 push runs. A file GitHub refused to parse would be unregistered
+      with zero runs of any event — and the `push` runs specifically exercise the trigger
+      whose paths come from the ALIAS. The claim "the workflow parser rejects anchors, the
+      file is invalid, the guard never arms" is therefore false here.
+    exit: 0
+    ts: "2026-08-31T00:31:00Z"
+    seat: session (Pro)
+    note: >-
+      THE FIRST ATTEMPT AT THIS PROBE APPEARED TO CONFIRM THE REFUTER: `gh` answered
+      "workflow not found on the default branch", which is also what GitHub says about a
+      workflow it never registered. It was the wrong REPO SLUG (`Balizero1987/nuzantara`;
+      the real one is `Bali-Zero/Teman2`), and the generic list-workflows endpoint 404'd
+      too — which is what exposed it as an instrument fault rather than a finding. A 404
+      read as evidence would have shipped a false confirmation of a false refutation.
+
+dissent:
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    round: 1
+    objection: >-
+      "the paths filter omits apps/mouth/src/components/**, which the guard reads via
+      wrapper import resolution, so a real regression in ConsentBanner/WhatsAppLeadButton
+      starts no check". VERDICT: DO-NOT-SHIP.
+    disposition: >-
+      ACTED ON — it reversed this PR's central artifact.
+      Verified independently by executing `_perimeter_sources()` (receipt above), not taken
+      on trust. Fixed by adding the superset path AND by making the sync machine-checked so
+      the class cannot recur silently. Without this seat the PR would have shipped a guard
+      armed behind a filter that misses two of the files it protects.
+
+  - seat: kimi-code/k3
+    status: RETRACTED
+    round: 2
+    objection: >-
+      "GitHub Actions does not support YAML anchors/aliases, so the workflow file is invalid
+      and the guard stays unarmed while the PyYAML-based conformance test passes on it."
+      VERDICT: DO-NOT-SHIP.
+    disposition: >-
+      Falsified against the live Actions API: the one anchored workflow already on main is
+      registered state=active with 84 runs across three events, including push (the trigger
+      fed by the alias). The seat's four other lines — matcher ordering, the YAML 1.1 `on:`
+      boolean trap, the pyyaml import path, the guilt-control flow under `set -euo pipefail`
+      — were each examined and found sound; recorded because a refuter that is right once
+      and wrong once is exactly why findings get re-measured rather than obeyed.
+
+  - seat: codex-gpt-5.6-sol (xhigh)
+    status: CONFIRMED
+    round: 2
+    objection: >-
+      "Fatal mismatch: the workflow explicitly remains advisory, absent from required
+      contexts and merge_group. A red PR is still mergeable; push detects the regression
+      only after it reaches main." VERDICT: DO-NOT-SHIP.
+    disposition: >-
+      CONFIRMED AS TO FACT, REMEDY DECLINED — the gap is real and is now stated on the
+      artifact instead of only in the risks; the prescribed cure is refused with its reason
+      on the record rather than in a session's head.
+      The FACT is accurate and was already declared in the brief's risks, but the artifact's
+      own framing ("makes it true", "ends this failure") invited the stronger reading — so
+      the header now carries an explicit WHAT THIS BUYS / WHAT IT DOES NOT paragraph and the
+      token file's comment says in as many words that the check is advisory, runs, goes red,
+      and does not block. The REMEDY is declined: promoting the context to required obliges
+      this workflow to carry a `merge_group:` trigger (a required context that never runs on
+      the queue's ref leaves entries waiting forever — the exact jam this session spent the
+      night clearing on #5378), which is the queue cost the 2026-08-27 slim cure exists to
+      prevent. That trade belongs in a branch-protection PR with its own analysis, not
+      smuggled into the PR that merely turns the guard on. Shipping the smaller true thing
+      beats shipping a bigger claim.
+    independent_agreement: >-
+      This seat also examined the anchor question on fresh context and reached the OPPOSITE
+      conclusion from kimi round 2, citing GitHub's own reusing-workflow-configurations
+      documentation: anchors/aliases are supported. Two cross-family seats disagreeing on a
+      blocking claim is why the live Actions API was queried instead of either being
+      believed.
+
+tests:
+  - "scripts/tests/test_merah_putih_day_contrast.py — 43 passed (innocence). Was 42 before
+    this PR; the 43rd is the trigger-coverage conformance test added here."
+  - "Same file with the DAY ink mutated to a retired colour — 3 failed, 39 passed (guilt on
+    the palette law), byte-identical after restore."
+  - "Same file with `apps/mouth/src/components/**` deleted from the workflow's anchor — 1
+    failed, 42 passed (guilt on the TRIGGER), the failure naming WhatsAppLeadButton.tsx and
+    ConsentBanner.tsx; byte-identical after restore, 43 passed again."
+  - "actionlint on the new workflow — rc=0, re-run after every header edit."
+
+static:
+  - "actionlint: clean on the added workflow."
+  - "trigger-symmetry lint: this file contributes 0 violations."
+
+notes: >-
+  WHAT THIS PR DOES NOT DO, stated rather than implied. It does not make the guard a
+  REQUIRED context — that is a branch-protection change, it would drag a `merge_group:`
+  trigger in with it, and it is deliberately not bundled; the check therefore RUNS and goes
+  RED without BLOCKING, which the header and the token file now both say in as many words
+  after a cross-family seat read the old framing as claiming more. What it no longer leaves
+  undone is the derivation: an earlier draft of this note said the filter and the guard's
+  file set are kept in sync BY HAND, "the same defect class one notch smaller", named in the
+  risks rather than hidden. Naming a defect is not surviving it — the hand-kept list was
+  already wrong when that sentence was written, and a refuter found it before CI could. The
+  sync is now machine-checked by test #43. And it does not touch
+  scripts-tests-sweep.yml: the nightly continue-on-error sweep still runs this test, it
+  simply was never a gate and was never claimed to be one by anything except the token
+  file's own comment.
