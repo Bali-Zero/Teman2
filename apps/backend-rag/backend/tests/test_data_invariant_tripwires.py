@@ -387,6 +387,7 @@ def test_the_voa_prices_are_the_ones_the_owner_ruled():
     closed. If the owner rules a new price, change it here in the same commit.
     """
     import json
+    import re
     from pathlib import Path
 
     from backend.services.pricing.pricing_service import _PRICING_FILENAME
@@ -443,9 +444,32 @@ def test_the_voa_prices_are_the_ones_the_owner_ruled():
             "commit — that is what this ratchet is for."
         )
         newest_name, newest_body = touching[-1]
-        assert str(expected) in newest_body, (
+
+        # Read the value out of the ASSIGNMENT, never "the figure appears
+        # somewhere in the file". 302's guard clause and its exception message
+        # both contain the literal 790000, so a substring check is satisfied by
+        # a file whose SET clause says something else entirely — measured: the
+        # gate mutated only `SET base_price = 790000` to 750000 and the earlier
+        # version of this assertion stayed green.
+        assigned = [int(v) for v in re.findall(
+            r"\bSET\s+base_price\s*=\s*(\d+)", newest_body, re.I
+        )]
+        if not assigned:
+            # An INSERT rather than an UPDATE: 221 seeds both codes positionally.
+            # Slice the one VALUES tuple that names this code and read its
+            # numeric literals — bounded to that tuple, not a SQL parser.
+            start = newest_body.index(f"'{code}'")
+            tuple_text = newest_body[start:newest_body.index(")", start)]
+            assigned = [int(v) for v in re.findall(r"\b(\d{5,})\b", tuple_text)]
+
+        assert assigned, (
+            f"{newest_name} is the newest migration touching base_price for "
+            f"{code!r}, but no assignment could be read out of it. The shape "
+            "changed; re-read the file rather than loosening this check."
+        )
+        assert set(assigned) == {expected}, (
             f"{newest_name} is the newest migration setting base_price for "
-            f"{code!r}, and the ruled figure {expected} does not appear in "
-            "its forward section. The database half of the price has drifted "
+            f"{code!r}, and it assigns {sorted(set(assigned))} rather than the "
+            f"ruled {expected}. The database half of the price has drifted "
             "from the sheet half — exactly the divergence migration 302 closed."
         )

@@ -56,10 +56,21 @@ receipts:
       pytest backend/tests/test_data_invariant_tripwires.py, then two mutations and a restore from
       a scratchpad copy (never `git checkout --`, the worktree had uncommitted work)
     result: >-
-      10 passed under the backend venv. Mutation A, rewriting migration 302's forward section to
-      750000: RED, naming 302 as the newest setter that lacks the ruled figure. Mutation B, adding
-      a migration that sets base_price for visa_b1_voa: RED, because the frozen set of setters
-      stops matching. Restored byte-identical, back to 10 passed.
+      CORRECTED — an earlier version of this receipt claimed "mutation-verified both ways" and the
+      claim was true of the mutations run and false of the property asserted. The gate found it by
+      running a mutation I had not: changing ONLY the effective `SET base_price = 790000` line to
+      750000, leaving the guard clause and the exception message — which independently contain the
+      literal 790000 — untouched. The assertion was `str(expected) in newest_body`, a
+      substring-anywhere check, so the guard's own literal covered for a wrong SET and the test
+      stayed GREEN against the exact failure this PR exists to catch. Same disease as the inert
+      tier_range mutation in the sibling lane: the mutation was dead against the ASSERTION, not
+      against the data. Cure: read the value out of the assignment — `SET base_price = (\d+)` for
+      an UPDATE, and for an INSERT the numeric literals inside the one VALUES tuple naming that
+      code — then require the set of assigned values to be exactly the ruled figure. Re-measured
+      after the cure, four mutations, each restored byte-identical: the gate's SET-only mutation
+      RED; the whole-forward-section mutation RED; a new migration setting base_price for
+      visa_b1_voa RED (the frozen setter set stops matching); 221's ext_b1_voa tuple moved
+      850000 -> 800000 RED. Baseline and final both 10 passed under the backend venv.
     exit: 0
     ts: 2026-08-31T02:30Z
     seat: session (build lane)
