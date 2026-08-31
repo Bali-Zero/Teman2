@@ -17,10 +17,9 @@ lanes:
 diff:
   files: 14
   note: >-
-    git diff --name-only $(git merge-base origin/main HEAD)..HEAD — the MERGE-BASE form, not the
-    two-dot `origin/main` one. Measured here: the two-dot count read 22 and was attributing to this
-    PR the five files of the one commit main had gained meanwhile (W102). Insertion and deletion
-    counts are deliberately NOT
+    git diff --name-only $(git merge-base origin/main HEAD)..HEAD — the MERGE-BASE form, never the
+    two-dot `origin/main` one. Measured here: the two-dot form over-counted, attributing to this PR
+    the files of whatever main had gained meanwhile (W102). Insertion and deletion counts are deliberately NOT
     narrated: CI recomputes them every run and a copy here is not evidence, only a tripwire that
     re-arms every time main moves. The file count survives a merge from main.
 pii_scan: clean
@@ -85,8 +84,9 @@ receipts:
       Migration 303 was EXECUTED, not merely read — including the absent-row branch the council
       made us change.
     cmd: >-
-      createdb a scratch database, extract the forward section with awk up to the ROLLBACK
-      marker, psql -f it against four states
+      psql against a scratch database, forward section only, rerun and absent-row scenarios — and
+      psql against a scratch database with the UPDATE predicate replaced by false. The forward
+      section is extracted with awk up to the ROLLBACK marker; four states in total.
     result: >-
       (a) row at 790000 -> UPDATE 1, row reads 750000. (b) rerun -> UPDATE 0, no churn. (c) row
       absent -> after the cure, ERROR "practice_types row visa_b1_voa is ABSENT ... refusing to
@@ -101,8 +101,8 @@ receipts:
       The tripwire is red against every mutation that would ship a wrong price, INCLUDING the two
       bypasses the council measured.
     cmd: >-
-      pytest the tripwire, five mutations, each restored from a scratchpad copy and the baseline
-      re-run afterwards
+      pytest backend/tests/test_data_invariant_tripwires.py — five mutations, each restored from a
+      scratchpad copy, with the baseline re-run afterwards
     result: >-
       RED on: 303's SET moved to 790000; the sheet moved to 700.000; 303 hidden from the setter
       set; the tuple form `SET (base_price, updated_at) = (790000, CURRENT_TIMESTAMP)` inserted
