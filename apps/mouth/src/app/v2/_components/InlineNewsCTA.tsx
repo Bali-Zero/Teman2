@@ -2,6 +2,13 @@
 
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 
+// 2026-08-28 brand-accent pass: this card was tinted with WhatsApp's own
+// brand green (#25D366) in all four places — gradient, border, eyebrow ink
+// and button fill. Repainted to brand gold + navy so the homepage speaks one
+// palette. The eyebrow goes NAVY rather than gold: gold ink on the light
+// paper surface is 2.38:1, far under AA, and it was already failing at
+// #25D366. Only paint changed — the lead payload/UTM is untouched.
+
 export function InlineNewsCTA() {
   return (
     <WhatsAppLeadButton
@@ -20,8 +27,8 @@ export function InlineNewsCTA() {
         padding: "1.25rem 1.5rem",
         borderRadius: "1rem",
         background:
-          "linear-gradient(135deg, color-mix(in srgb, #25D366 10%, transparent) 0%, rgba(255,255,255,0.02) 100%)",
-        border: "1px solid color-mix(in srgb, #25D366 28%, transparent)",
+          "linear-gradient(135deg, color-mix(in srgb, #D4A017 12%, transparent) 0%, rgba(255,255,255,0.02) 100%)",
+        border: "1px solid color-mix(in srgb, #D4A017 34%, transparent)",
         textDecoration: "none",
       }}
     >
@@ -32,7 +39,7 @@ export function InlineNewsCTA() {
             fontWeight: 700,
             textTransform: "uppercase",
             letterSpacing: "0.1em",
-            color: "#25D366",
+            color: "#1E3863",
             marginBottom: 4,
           }}
         >
@@ -59,8 +66,8 @@ export function InlineNewsCTA() {
           alignItems: "center",
           padding: "0.55rem 1.1rem",
           borderRadius: "0.7rem",
-          background: "#25D366",
-          color: "var(--accent-whatsapp-ink)",
+          background: "#D4A017",
+          color: "#1E3863",
           fontSize: 13,
           fontWeight: 600,
           whiteSpace: "nowrap",
