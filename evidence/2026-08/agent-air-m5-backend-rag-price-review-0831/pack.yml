@@ -15,11 +15,7 @@ diff:
     diff against a stale base (W102). The figure is stable across the commits that fill this block:
     each is a one-line-for-one-line replacement, so re-measuring after the fill returns 1493 again.
     Verified rather than assumed — measured at bc0f0f0e64 and again at the commit that filled it.
-pii_scan: >-
-  clean. The sentinel reads a price catalogue and emits dates, counts and outcome names; no client
-  identifier reaches stdout, the log, the sidecar or the Telegram body. The sheet's only contact
-  block is Bali Zero's own, already published on balizero.com. The live-DB comparison run during
-  scoping read service names and amounts only — no client row, and no value is transcribed here.
+pii_scan: clean
 receipts:
   - claim: >-
       metadata.last_updated is not maintained — it can prove OVERDUE but never FRESH. This is the

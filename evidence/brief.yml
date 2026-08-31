@@ -42,7 +42,9 @@ constraints:
     error is a quiet false OK on a price sheet."
   - "No external call, no NB-2, no web, no government fee schedule — Zero's amendment fixes the
     scope to our own pricing tool."
-  - "No client PII anywhere in output, logs or alerts. The sheet carries only Bali Zero's own
+  - "WHEN the sentinel runs it SHALL emit only dates, counts and outcome names — probe:
+    `pytest scripts/tests/test_price_review_sentinel.py -k alert`. No client PII anywhere in
+    output, logs or alerts. The sheet carries only Bali Zero's own
     published business contact block, which is already public on balizero.com."
   - "Telegram only through the `scripts/tg_notify.py` gateway, never a direct bot call, and a
     gateway failure must never crash the sentinel (house contract)."
@@ -50,17 +52,17 @@ constraints:
     repo read as if the price sheet were already being watched (superscar #2)."
 
 acceptance:
-  - "`classify()` returns OK only when the review date is inside the interval AND no trace shows the
+  - "WHEN a review date sits inside the interval but a commit lands after it, classify() SHALL NOT return OK — probe: `pytest scripts/tests/test_price_review_sentinel.py::test_guilt_a_recent_review_date_contradicted_by_a_change_is_still_not_ok`. Full statement: `classify()` returns OK only when the review date is inside the interval AND no trace shows the
     file changed after it — verified by a guilt test where the date is INSIDE the interval but a
     commit lands after it, which must still not be OK."
-  - "Running the sentinel against the real sheet at 2026-08-31 yields ATTESTATION_UNMAINTAINED with
+  - "WHEN run against the real sheet on 2026-08-31 the sentinel SHALL exit 1 — probe: `python3 scripts/price_review_sentinel.py --dry-run --json --now 2026-08-31`. It yields ATTESTATION_UNMAINTAINED with
     exit 1, naming 2026-08-26 as the contradicting trace."
-  - "Every OUTCOME_ constant has a deliberate exit code; none falls through to CANNOT_VERIFY."
-  - "The tests are non-vacuous: the real sheet parses and carries >= 100 priced entries before any
+  - "WHERE the classifier returns an outcome, that outcome SHALL have a mapped exit code — probe: `pytest scripts/tests/test_price_review_sentinel.py::test_every_outcome_the_classifier_actually_returns_has_an_exit_code`. None falls through to CANNOT_VERIFY."
+  - "IF the real sheet were empty the suite SHALL fail rather than pass vacuously — probe: `pytest scripts/tests/test_price_review_sentinel.py::test_the_real_sheet_is_classifiable_and_not_empty`. The real sheet parses and carries >= 100 priced entries before any
     assertion is made about it."
-  - "Three mutations of the classifier turn the suite red: disabling the contradiction check,
+  - "WHEN any guard in the classifier is removed the suite SHALL go red — probe: the six single-anchor mutations recorded in the pack. Three of them: disabling the contradiction check,
     widening the grace day, and moving the interval."
-  - "`check_organ_conformance.py` clean and `validate_organs_registry` valid after the birth."
+  - "WHEN the organ is born the conformance check SHALL stay clean — probe: `python3 infra/organ-conformance/check_organ_conformance.py`. Result: clean, and `validate_organs_registry` valid after the birth."
 
 consumer_map:
   - "`scripts/price_review_sentinel.py` — the organ itself; runs under plain /usr/bin/python3, no
