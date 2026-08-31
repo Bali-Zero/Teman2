@@ -2465,9 +2465,9 @@ pillow==12.3.0 \
     #   -r requirements-prod.txt
     #   pdfplumber
     #   reportlab
-portalocker==2.10.1 \
-    --hash=sha256:53a5984ebc86a025552264b459b46a2086e269b21823cb572f8f28ee759e45bf \
-    --hash=sha256:ef1bf844e878ab08aee7e40184156e1151f228f103aa5c6bd0724cc330960f8f
+portalocker==4.3.0 \
+    --hash=sha256:69bf8e46769d66eb0a23219b9550253d2c3b5f03400202a2333784c1e6395e32 \
+    --hash=sha256:aa91709ccfc322b8225171392d64a2f9fc833f15f5ab741cfba6d3fba285ce31
     # via qdrant-client
 preshed==3.0.13 \
     --hash=sha256:04d8f13f2986e5d11af5ac51f55ce3106c70c41b483d20ea392e6180bdd0f870 \
