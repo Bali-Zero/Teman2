@@ -113,11 +113,19 @@
 --   its third, so under rule 8 it went back to design rather than to a fifth
 --   patch: `docs/specs/2026-08-31-security-definer-ledger-lock-lint.md`.
 --
---   What DOES see these two functions now is the live preflight owner check,
---   whose inventory this PR extends. That check asks Postgres rather than
---   parsing SQL text, so none of the lint's holes apply to it — but it runs
---   against a cluster, not in CI on a diff, which is the coverage that is
---   genuinely missing until the spec is built.
+--   The live preflight owner check CAN see these two functions — this PR
+--   extends its inventory so that it can — and it asks Postgres rather than
+--   parsing SQL text, so none of the lint's holes apply to it. But "can see"
+--   is not "does see", and the honest statement is the stronger one:
+--   NOTHING RUNS THAT CHECK. Measured on this branch 2026-08-31, not
+--   inferred: `collect_preflight_checks` has exactly two non-test call
+--   sites, its own definition and its own `__main__`, and
+--   `git grep operational_preflight -- .github infra scripts` returns
+--   nothing at all. It is not a check that merely skips on a diff; it is a
+--   check that no workflow, scheduler or wrapper invokes anywhere. An
+--   earlier draft of this paragraph said it "runs against a cluster, not in
+--   CI on a diff", which reads as if it runs somewhere. It does not. The
+--   coverage is absent, not merely diff-time-absent.
 --
 --   `to_regprocedure` (not a `::regprocedure` cast) so an absent function
 --   yields NULL instead of raising -- the same review flagged the cast as a
