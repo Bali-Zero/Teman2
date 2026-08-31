@@ -8,13 +8,13 @@ lanes:
     seat: claude (this session — M5 interactive, sole build lane)
 diff:
   files: 10
-  net_lines: 1809
-  measured_at: cbc8858c93
+  net_lines: 1827
+  measured_at: f01a5ec5c0
   note: >-
     git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD — never a two-dot
     diff against a stale base (W102). Measured LAST, after every other edit: each earlier figure
     here was true when written and stale by the next commit, and one fossil 1493 survived three
-    rounds. The fill is digits-for-digits, one line for one, so re-measuring returns 1809 again.
+    rounds. The fill is digits-for-digits, one line for one, so re-measuring returns 1827 again.
 pii_scan: clean
 receipts:
   - claim: >-
