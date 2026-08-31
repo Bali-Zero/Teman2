@@ -201,9 +201,10 @@ jobs:
           # blocked for one continuous four-hour stretch. Each of the four
           # still burned exactly ONE of the three attempts: at the time, the
           # retry branch below only matched the LEASE signature (it has since
-          # been widened, in this same change, to also match the DEPOT
-          # signature a few lines down), so every one of these four failures
-          # fell straight through to `exit` on attempt 1. So on each of those
+          # been widened, in PR #5422 -- already merged, not part of this
+          # comment-only diff -- to also match the DEPOT signature a few
+          # lines down), so every one of these four failures fell straight
+          # through to `exit` on attempt 1. So on each of those
           # four runs the loop had two unused attempts. Depot stays the
           # default (it is faster); this only says that when depot itself is
           # the thing that is down, the retry must use a different builder.

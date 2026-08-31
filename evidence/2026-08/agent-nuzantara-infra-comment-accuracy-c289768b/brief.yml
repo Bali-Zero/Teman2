@@ -70,7 +70,7 @@ acceptance:
       rationale), the four-incident timing claim SHALL name the four specific job IDs and
       SHALL state explicitly that they were not consecutive, naming the intervening
       successful job.
-    probe: "grep -A2 '23:06Z and 03:04Z' .github/workflows/fly-deploy.yml | grep -c 'NOT'"
+    probe: "grep -c '99336828116/99344068116/99365231097/99367317411' .github/workflows/fly-deploy.yml (expect 1, all 4 job IDs named); grep -c 'did NOT form one unbroken run' .github/workflows/fly-deploy.yml (expect 1, the not-consecutive claim, naming job 99361567807 as the intervening success in the same sentence)"
   - text: >
       WHEN a reader reads the same block's conclusion about blocked delivery, it SHALL NOT
       claim a single continuous four-hour block -- it SHALL name the intermittent nature and

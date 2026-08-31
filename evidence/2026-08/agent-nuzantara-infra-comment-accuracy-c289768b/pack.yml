@@ -97,7 +97,8 @@ receipts:
       connection error: desc = "transport: authentication handshake failed: EOF"'' -- and
       each job''s log shows exactly ONE ''Fly deploy attempt X/3'' line (''attempt 1/3''), meaning
       the outer bash retry loop never reached attempt 2 on any of them (consistent with these
-      4 incidents predating this same PR''s depot-matching retry branch).'
+      4 incidents predating PR #5422''s depot-matching retry branch -- #5422 is a separate,
+      already-merged PR, not this diff, which is comment-only).'
     cmd: "gh run view --job <id> --log | grep -iE 'Fly deploy attempt|Waiting for depot|error releasing builder|Error: failed to fetch'"
     exit: 0
     ts: "2026-08-31T (this session)"
@@ -172,30 +173,50 @@ receipts:
     ts: "2026-08-31T (this session)"
     seat: gemini-3.1-pro
   - claim:
-      "Canonical measured diff total (evidence_pack_lint.py --print-measured), all three
-      staged files included (workflow fix + brief.yml + pack.yml itself): 3 files, +420/-16,
-      1 commits. This is the authoritative number for this pack -- restated here, not in the
-      diff.net_lines prose above, to avoid the self-reference problem of a pack describing its
-      own not-yet-final line count."
-    cmd: "git diff --cached --numstat > /tmp/numstat3.txt && python3 scripts/evidence_pack_lint.py --numstat-file /tmp/numstat3.txt --commit-count 1 --print-measured"
+      "Canonical measured diff total (evidence_pack_lint.py --print-measured), measured against
+      the origin/main merge-base (not HEAD~1, to avoid undercounting after the round-2
+      gate-fix commit), all three files included (workflow fix + brief.yml + pack.yml itself):
+      3 files, +466/-16, 2 commits. This is the authoritative number for this pack -- restated
+      here, not in the diff.net_lines prose above, to avoid the self-reference problem of a
+      pack describing its own not-yet-final line count."
+    cmd: 'MERGE_BASE=$(git merge-base HEAD origin/main) && git diff "$MERGE_BASE" --numstat > /tmp/numstat-total.txt && python3 scripts/evidence_pack_lint.py --numstat-file /tmp/numstat-total.txt --commit-count 2 --print-measured'
     exit: 0
     ts: "2026-08-31T (this session)"
     seat: claude
   - claim:
-      "All 4 brief.yml acceptance probes re-run against the FINAL (post-review-refinement)
-      file text and all pass: 'did NOT form one unbroken run' present (1x); a bare unqualified
-      'blocked for...four hours.' claim absent (0x); 'REASONED, not measured' present
-      case-insensitively (1x); the 5-job clean-sample list '99327541263/99318055618' present
-      (1x). The two probes as ORIGINALLY worded in the first brief.yml draft ('NOT' near the
-      timestamp line, exact-case 'Reasoned, not measured') returned 0 against this final text
-      because the adversarial-review refinement pass (see the gemini-3.1-pro receipt above)
-      reworded both sentences after the probes were first written -- brief.yml's probe text was
-      updated to match the refined wording rather than leaving a stale probe pointing at text
-      that no longer exists."
-    cmd: "grep -c 'did NOT form one unbroken run' .github/workflows/fly-deploy.yml; grep -c 'blocked for.*four hours\\.' .github/workflows/fly-deploy.yml; grep -ic 'REASONED, not measured' .github/workflows/fly-deploy.yml; grep -c '99327541263/99318055618' .github/workflows/fly-deploy.yml"
+      "All 4 brief.yml acceptance probes, AS CURRENTLY WORDED IN brief.yml (post-gate-round-1
+      fix, see the harness/fable-gate receipt below), pass against the final file text: the 4
+      job IDs are named (1x) and 'did NOT form one unbroken run' is present (1x); a bare
+      unqualified 'blocked for...four hours.' claim is absent (0x); 'REASONED, not measured' is
+      present case-insensitively (1x); the 5-job clean-sample list '99327541263/99318055618' is
+      present (1x)."
+    cmd: "grep -c '99336828116/99344068116/99365231097/99367317411' .github/workflows/fly-deploy.yml; grep -c 'did NOT form one unbroken run' .github/workflows/fly-deploy.yml; grep -c 'blocked for.*four hours\\.' .github/workflows/fly-deploy.yml; grep -ic 'REASONED, not measured' .github/workflows/fly-deploy.yml; grep -c '99327541263/99318055618' .github/workflows/fly-deploy.yml"
     exit: 0
-    ts: "2026-08-31T (this session)"
+    ts: "2026-08-31T (this session, post-gate-round-1)"
     seat: claude
+  - claim:
+      'harness/fable-gate round 1 verdict on commit 23fd1dd6e: failure, REWORK-BUILD, two named
+      findings, both CONFIRMED real on inspection (not stale-rollup/timing noise -- verified via
+      the team lead''s own timestamp-check discipline: this was the FIRST verdict for this head
+      SHA, nothing to be stale against). (1) ''probe A1 returns 0 while a receipt claims all 4
+      pass'': TRUE -- brief.yml acceptance item 1''s `probe:` field still read the ORIGINAL
+      pre-refinement text (`grep -A2 ''23:06Z and 03:04Z'' ... | grep -c ''NOT''`), literally
+      returns 0 against the final file (the -A2 window is too narrow to reach the reworded
+      sentence a few lines later), while a pack.yml receipt separately claimed all 4 probes
+      pass using DIFFERENT, already-corrected probe commands -- a real self-consistency defect:
+      the receipt''s claim and the brief''s own stated probe disagreed. Fixed: item 1''s `probe:`
+      field rewritten to the two greps actually used to verify it (job-ID citation + the
+      not-consecutive sentence). (2) "''in this same change'' credits this diff with #5422''s
+      merged widening": TRUE -- the LEASE-signature historical-framing sentence (added during
+      the Gemini-review refinement pass, see dissent entry 3) said the DEPOT-matching retry
+      branch ''...has since been widened, in this same change...'' -- factually wrong, since this
+      diff is comment-only and the DEPOT-matching branch was added by PR #5422 (already merged
+      on origin/main before this branch was ever cut). Fixed: reworded to name PR #5422
+      explicitly (''in PR #5422 -- already merged, not part of this comment-only diff'').'
+    cmd: 'gh api repos/Bali-Zero/Teman2/commits/23fd1dd6e6d600c5cffa2506fcbf63b752d1943a/status -q ''.statuses[] | select(.context=="harness/fable-gate")'''
+    exit: 0
+    ts: "2026-08-31T08:24:27Z (verdict) / 2026-08-31T (this session, fixes applied same session)"
+    seat: harness-fable-gate
   - claim:
       "PR #5434 (alert-stage `if:` fix, same-session earlier work) confirmed still OPEN,
       mergeable=MERGEABLE, auto-merge armed, base an ancestor of current origin/main with only
@@ -214,6 +235,25 @@ pii_scan_note: >
   phone, email, passport/KTP/NPWP, or chat content anywhere in the diff.
 
 dissent:
+  - seat: harness-fable-gate
+    objection:
+      "Round-1 verdict on commit 23fd1dd6e: REWORK-BUILD, two findings. (1) brief.yml
+      acceptance item 1's `probe:` field still read the pre-refinement text (`grep -A2
+      '23:06Z and 03:04Z' ... | grep -c 'NOT'`), which literally returns 0 against the final
+      file, while a pack.yml receipt separately claimed all 4 probes pass using different,
+      already-corrected commands -- the brief's own stated probe and the receipt's claim
+      disagreed. (2) the LEASE-signature historical-framing sentence said the DEPOT-matching
+      retry branch was widened 'in this same change' -- false attribution: this diff is
+      comment-only, the DEPOT branch was added by PR #5422 (already merged before this branch
+      was cut)."
+    status: CONFIRMED
+    resolution:
+      "Both are real defects, not stale-rollup noise (this was the first verdict on this head
+      SHA, so there was nothing to be stale against). (1) fixed: item 1's `probe:` field
+      rewritten to the two greps actually used (job-ID citation + not-consecutive sentence),
+      matching the corrected receipt. (2) fixed: reworded to name PR #5422 explicitly instead
+      of implying this diff added the DEPOT-matching branch. See the dedicated
+      harness-fable-gate receipt above for the full verdict text and fix detail."
   - seat: gemini-3.1-pro
     objection:
       "The inline 'Reasoned, not measured:' label mid-paragraph does not fully fix the
@@ -243,8 +283,13 @@ dissent:
     status: CONFIRMED
     resolution:
       'Added explicit historical framing: "at the time, the retry branch below only
-      matched the LEASE signature (it has since been widened, in this same change, to also
-      match the DEPOT signature a few lines down)".'
+      matched the LEASE signature (it has since been widened, in PR #5422 -- already merged,
+      not part of this comment-only diff -- to also match the DEPOT signature a few lines
+      down)". NOTE: the wording quoted here is the FINAL text, corrected after
+      harness-fable-gate round 1 caught this exact sentence attributing the DEPOT widening to
+      "this same change" instead of PR #5422 -- see the harness-fable-gate dissent entry above
+      for the full story. The intermediate (round-1) wording this entry originally described
+      is not reproduced here to avoid this entry itself going stale a second time.'
   - seat: claude
     objection:
       "Risk that this task's own corrected text, while independently re-verified, might
