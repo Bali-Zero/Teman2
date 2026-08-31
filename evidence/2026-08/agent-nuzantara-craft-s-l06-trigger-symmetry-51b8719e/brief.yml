@@ -1,0 +1,32 @@
+task_id: craft-s-l06-trigger-symmetry
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Wave-2 Squad S, lane 4: L06-PR1 follow-through.
+
+  L06-PR1 landed RESHAPED as the required-context guard (#5214), which asserts a
+  required workflow declares BOTH triggers. The subject the spec actually named —
+  that the two triggers' PATH semantics agree — was never built:
+  `scripts/ci/lint_trigger_symmetry.py` did not exist on origin/main.
+
+  `merge_group` supports no `paths:` sub-key at all, so a workflow with a
+  merge_group trigger AND a PR-shaped paths filter has semantics that can never
+  match. The PR run may be SKIPPED while the queue run always executes.
+constraints:
+  - "The rule is narrow: only merge_group present AND a PR-shaped paths filter.
+    `on.push.paths` is a declared scope limit — a push to main gates no PR."
+  - "Zero violations on the live tree (112 workflows), so this is preventive. A
+    preventive guard must have a demonstrable premise, not a plausible one."
+  - "An exemption must carry a reason and must be reported, never silent."
+acceptance:
+  - text: "GUILT — paths, paths-ignore, and pull_request_target each + merge_group."
+    probe: "test_lint_trigger_symmetry.py"
+  - text: "INNOCENCE — four legitimate shapes, including a push.paths filter."
+    probe: "test_clean_shapes_are_not_flagged"
+  - text: "An operational failure never reads as 0 violations."
+    probe: "test_operational_failure_is_not_zero_violations"
+  - text:
+      "ARMED — runs on the live tree inside the required `antidotes` job, and
+      a PR touching ANY workflow reaches it."
+    probe: "the relevance matcher, executed against real paths"

@@ -13,7 +13,11 @@ downstream-of-policy surface the client actually reads, a second independent
 witness to a rule change), and the TPI entry-point list — the 122 immigration
 checkpoints (airports / seaports / land-border posts) where VoA is actually
 granted, the operational counterpart to the subject lists (WHO may get VoA vs
-WHERE it is issued). ~127 pages total (13 "daily" + 114 "weekly").
+WHERE it is issued). v3 (2026-08-31) adds the last two RulePack
+OFFICIAL_PORTAL urls that were cited but never mirrored: the 2024 bridging-visa
+press release and the ITK-to-ITAS status-conversion page.
+129 pages total (15 "daily" + 114 "weekly"), asserted below so the number
+cannot go stale in prose the way it already had.
 
 Every URL below was verified live (200, real content — not a 404) before being
 committed here (anti-hallucination discipline, CLAUDE.md §6): the v1 set on
@@ -228,6 +232,39 @@ DAILY_PAGES: list[Page] = [
         tier="daily",
         category="regional",
     ),
+    # v3 (2026-08-31): the two OFFICIAL_PORTAL urls the signed RulePack cites
+    # that this catalog did not cover. Found by auditing the pack's 18
+    # OFFICIAL_PORTAL source records against the 127 slugs actually on disk:
+    # 16 were mirrored, these 2 never were, so the engine had a freshness
+    # policy on a page nobody was watching.
+    #
+    # Both are DAILY on purpose. 14 of the 16 already-covered portal urls sit
+    # on the weekly `code-*` tier, which means a change to them is invisible
+    # for up to six days. A bridging-visa announcement and a status-conversion
+    # service page are exactly the surfaces that must not be seen once a week.
+    #
+    # Extraction-stability probed live from Mini on 2026-08-31, two fetches
+    # each, per this file's own house rule:
+    #   bridging-visa-press-2024  200, 2436 chars, sha1 d58841c0fc69b58c x2
+    #   itk-to-itas               200, 3728 chars, sha1 604ea66a793f4610 x2
+    # Both land on the real content block, not the boilerplate banner that
+    # trapped extract_text() on 2026-08-08, so `default` is correct for both.
+    Page(
+        id="bridging-visa-press-2024",
+        url=f"{BASE}/siaran_pers/2024/04/23/izin-tinggal-peralihan-jembatani-proses-transisi-izin-tinggal-wna-di-ri",
+        slug="bridging-visa-press-2024",
+        label="Siaran pers 2024 — Izin Tinggal Peralihan (bridging visa)",
+        tier="daily",
+        category="berita",
+    ),
+    Page(
+        id="itk-to-itas",
+        url=f"{BASE}/wna/izin-tinggal-keimigrasian/izin-tinggal-kunjungan-menjadi-izin-tinggal-terbatas",
+        slug="itk-to-itas",
+        label="Alih status ITK -> ITAS — pagina di servizio izin tinggal",
+        tier="daily",
+        category="list",
+    ),
 ]
 
 # --- weekly tier: the ~114 per-visa-code detail pages -----------------------
@@ -245,8 +282,28 @@ WEEKLY_PAGES: list[Page] = [
 
 ALL_PAGES: list[Page] = DAILY_PAGES + WEEKLY_PAGES
 
+# Asserted, not narrated. The module docstring carried "~127 (13 daily + 114
+# weekly)" as prose and `run.py --help` still says "9 pages" from an earlier
+# era; prose drifts silently, an assert does not.
+assert len(DAILY_PAGES) == 15, f"expected 15 daily pages, got {len(DAILY_PAGES)}"
+assert len(ALL_PAGES) == 129, f"expected 129 pages, got {len(ALL_PAGES)}"
+
 _BY_ID = {p.id: p for p in ALL_PAGES}
 assert len(_BY_ID) == len(ALL_PAGES), "duplicate page id in catalog"
+
+# The slug is the snapshot FILENAME STEM (`snapshots/<date>/<slug>.txt`), and
+# until 2026-08-31 nothing checked it. Only `id` was guarded, and the two are
+# deliberately allowed to differ (`id="parent"` / `slug="voa-bvk-calling-parent"`
+# ships that way today) — so a hand-authored daily page could reuse another
+# page's slug and the two would overwrite each other's snapshot on EVERY run,
+# silently, with no error and no missing file to notice. The mirror would keep
+# reporting "no diffs" for whichever page lost the race.
+_BY_SLUG = {p.slug: p for p in ALL_PAGES}
+assert len(_BY_SLUG) == len(ALL_PAGES), (
+    "duplicate page slug in catalog — two pages would overwrite each other's "
+    "snapshot file every run: "
+    + repr(sorted({p.slug for p in ALL_PAGES if sum(q.slug == p.slug for q in ALL_PAGES) > 1}))
+)
 
 
 def pages_for_tier(tier: str) -> list[Page]:
