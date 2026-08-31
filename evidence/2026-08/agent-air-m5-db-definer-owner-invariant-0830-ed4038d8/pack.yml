@@ -52,7 +52,13 @@ seat_diversity_note:
   that made both the migration and the check answer clean with the ownership wrong, and it caught a
   rollback section that would have told the migration framework it had reversed something it had not."
 diff:
-  net_lines: "10 files, +2177/-29 (git diff --numstat over the merge-base)"
+  net_lines:
+    "10 files (git diff --numstat over the merge-base). The insertion and deletion
+    counts are deliberately NOT narrated here. CI recomputes them on every run and fails on
+    disagreement, so a copy in this field is not evidence — it is a tripwire that re-arms every
+    time main moves. It was wrong four times in about an hour (+2125, +2148, +2175, +2177 against
+    a true +2176) and the last two of those moved because main moved, not because anything was
+    committed here. The file count is kept because it is stable across a merge from main."
   behaviour_change:
     "No production behaviour changes. Migration 300 is a no-op against the production primary because
     the five ALTERs already landed there by hand on 2026-08-30 before this lane opened; it exists so an
@@ -91,7 +97,7 @@ receipts:
       "0. A companion read shows all 21 definer functions live in `public` and none in the only other
       non-system schema, `mata_garuda`."
   - claim:
-      "Migration number 300 does not collide. RE-MEASURED 2026-08-31 — BOTH premises of the original reading had moved, and this is the receipt whose only job is to prove non-collision: origin/main now tops out at 299 (299_schema_versions_provenance.sql merged), and #5302 adds 301, not 299. The CONCLUSION survives and was re-verified rather than assumed: main holds 092-299, this branch adds 300, #5302 adds 301, no duplicate, and this PR's own uniqueness guard agrees. Original reading, kept so the drift is visible: origin/main's highest is 298; PR #5302 adds 299; no
+      "Migration number 300 does not collide. RE-MEASURED 2026-08-31 — BOTH premises of the original reading had moved, and this is the receipt whose only job is to prove non-collision: origin/main now tops out at 301 — #5302 MERGED at 02:09:56Z, so 301 is no longer an open PR's number, it is on main. The CONCLUSION survives a THIRD re-measurement rather than being assumed: main holds 092-299 and 301, this branch adds 300, `cut -d_ -f1 | sort | uniq -d` over all 179 .sql files is empty, and this PR's own uniqueness guard agrees. Original reading, kept so the drift is visible: origin/main's highest is 298; PR #5302 adds 299; no
       other open PR touches migrations_v2 above 295."
     cmd:
       "git ls-tree --name-only origin/main .../migrations_v2/ | tail, plus `gh pr view <n> --json
@@ -100,7 +106,7 @@ receipts:
     ts: "2026-08-30T10:31:00Z"
     seat: claude-opus-5
     result:
-      "STALE AS WRITTEN, corrected above: origin/main tops out at 299 and #5302 -> 301. Original: origin/main tops out at 298. #5302 -> 299. #5072 -> 289 (a number already taken on main by a
+      "STALE TWICE, corrected above — first reading said main topped at 298 with #5302 at 299, second said 299 with #5302 at 301, and main now holds 301 itself. The number under test never moved; only the landscape around it did, which is exactly why this receipt is re-run rather than trusted. Original: origin/main tops out at 298. #5302 -> 299. #5072 -> 289 (a number already taken on main by a
       different file — that lane's problem, not this one's). #5037 -> 293/294/295. 300 is free."
   - claim:
       "RED before GREEN, and not a trivial red: with the new check wired in and the fake not yet
@@ -407,10 +413,15 @@ dissent:
       "Migration 301 (PR #5302, numbered 299 when this was written): on a fresh database without visa_ledger_owner it
       takes the identical NOTICE-and-RETURN branch and is recorded applied, so fixing 300 alone does
       not produce convergence."
-    status: PLAUSIBLE
+    status: CONFIRMED
     resolution:
-      "OUT OF THIS LANE'S SCOPE. Handed to the mandating session, which owns PR #5302 and this gate. 301 is not in this diff and
-      this lane does not edit another open PR's branch. The observation is correct as far as it goes;
+      "DEFERRAL REASON HAS EVAPORATED — recorded rather than quietly re-deferred. This said the finding
+      was out of scope because 301 belonged to another OPEN PR that this lane must not edit. #5302
+      merged at 02:09:56Z on 2026-08-31. There is no other open PR's branch: 301 is on main, the
+      finding is now a property of main, and it is owned by nobody. The technical claim is CONFIRMED
+      on disk, not merely plausible — 301:8-11 is a bare NOTICE-and-RETURN on a missing role. It is
+      ledgered as its own row rather than pulled into this diff, because 300 is what this lane
+      introduces and 301 is what it inherits. The observation is correct as far as it goes;
       the answer to it is the same measurement as above — with the role absent there is nothing to
       transfer to, and the `role:visa_ledger_owner` preflight check is the layer that reports that
       state."
