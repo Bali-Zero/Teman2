@@ -1335,3 +1335,68 @@ def test_classify_advertises_no_clock_it_does_not_read():
     assert not clock_reads, (
         f"classify() reads the wall clock at line(s) {clock_reads} — a pure verdict "
         "function whose answer depends on when it runs cannot be pinned by any fixture")
+
+
+# ---------------------------------------------------------------------------
+# Dual observation source (2026-08-31): `scripts/pg.sh` is the PROVEN path (measured
+# live: reaches the primary through Fly's HA-aware proxy, returned `in_recovery: false`).
+# `fly ssh console` is kept as a fallback and was never deleted — `read_archiver_state`'s
+# own docstring states the philosophy: probe both, in order, and LOG which one won.
+# ---------------------------------------------------------------------------
+
+def test_innocence_pg_sh_succeeding_means_fly_is_never_invoked(monkeypatch):
+    """pg.sh is tried FIRST. When it already produced a good observation, calling out to
+    `fly ssh console` too would be wasted latency and an unnecessary extra prod touch —
+    the dispatcher must short-circuit, not probe every source unconditionally."""
+    fly_calls: list[int] = []
+    monkeypatch.setattr(probe, "read_archiver_state_via_pg_sh",
+                        lambda timeout=60: (obs(), None))
+    monkeypatch.setattr(probe, "read_archiver_state_via_fly",
+                        lambda timeout=90: (fly_calls.append(1), (None, "must not run"))[1])
+    result, reason = probe.read_archiver_state()
+    assert reason is None
+    assert result == obs()
+    assert fly_calls == [], "fly ssh console ran even though pg.sh already succeeded"
+
+
+def test_innocence_pg_sh_failing_falls_through_to_fly_and_names_the_winner(capsys, monkeypatch):
+    """The 'add a source, never delete one' contract only means something if the
+    fallback actually runs on failure, and if a human reading the log can tell WHICH
+    source answered — the same requirement `read_archiver_state_via_fly` already
+    enforces one level down, between its two credentials."""
+    monkeypatch.setattr(probe, "read_archiver_state_via_pg_sh",
+                        lambda timeout=60: (None, "pg.sh: proxy on :15432 down"))
+    monkeypatch.setattr(probe, "read_archiver_state_via_fly",
+                        lambda timeout=90: (obs(), None))
+    result, reason = probe.read_archiver_state()
+    assert reason is None
+    assert result == obs()
+    out = capsys.readouterr().out
+    assert "fly ssh console" in out, "the log never named which source was accepted"
+
+
+def test_guilt_both_sources_failing_is_cannot_verify_never_clean(tmp_path, monkeypatch):
+    """pg.sh fails, falls through to fly, fly ALSO fails: the dispatcher must report
+    failure — never fabricate an observation — and the failure reason must preserve
+    BOTH sources' own words, not just the last one tried (a page that only shows the
+    final attempt hides the first cause from whoever reads it).
+
+    Exercised through the real CLI entry point `run()` uses when NOT --from-json, so
+    this is the guilt case for the actual code path cron drives, not only the pure
+    dispatcher in isolation.
+    """
+    monkeypatch.setattr(probe, "read_archiver_state_via_pg_sh",
+                        lambda timeout=60: (None, "pg.sh: proxy on :15432 down"))
+    monkeypatch.setattr(probe, "read_archiver_state_via_fly",
+                        lambda timeout=90: (None, "fly: no credential produced a parseable row"))
+
+    result, reason = probe.read_archiver_state()
+    assert result is None
+    assert reason is not None and "pg.sh" in reason and "fly" in reason
+    assert "proxy on :15432 down" in reason
+    assert "no credential produced a parseable row" in reason
+
+    state = tmp_path / "state.json"
+    rc = probe.main(["--dry-run", "--json", "--state-file", str(state)])
+    assert rc == EXIT_CANNOT_VERIFY
+    assert not state.exists(), "dry-run must still write no state, even on CANNOT_VERIFY"
