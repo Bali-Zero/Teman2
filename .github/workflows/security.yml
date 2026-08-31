@@ -376,7 +376,7 @@ jobs:
           CVE_EXCEPTIONS_PATH: .security/exceptions.yaml
 
       - name: Upload Snyk results
-        uses: github/codeql-action/upload-sarif@v4.37.7
+        uses: github/codeql-action/upload-sarif@v4.37.9
         if: always() && hashFiles('snyk.sarif') != ''
         continue-on-error: true
         with:
@@ -443,7 +443,7 @@ jobs:
           CVE_EXCEPTIONS_PATH: .security/exceptions.yaml
 
       - name: Upload Snyk results
-        uses: github/codeql-action/upload-sarif@v4.37.7
+        uses: github/codeql-action/upload-sarif@v4.37.9
         if: always() && hashFiles('snyk.sarif') != ''
         continue-on-error: true
         with:
