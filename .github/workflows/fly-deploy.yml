@@ -703,10 +703,27 @@ jobs:
       - name: Determine failing stage
         id: stage
         run: |
+          # This job's `if:` (above) fires on BOTH `failure` and `cancelled` for each upstream
+          # job (widened 2026-08-31 so a timeout-minutes kill — which concludes `cancelled`, not
+          # `failure` — no longer goes silent). This step used to test only for the literal
+          # string "failure", so a cancelled run-migrations fell through to the `else` branch and
+          # was reported as "deploy crashed" -- wrong stage AND wrong narrative, since deploy
+          # never even started (needs: run-migrations, no override `if:`, so deploy.result is
+          # `skipped` whenever run-migrations didn't succeed). `deploy` and `run-migrations` can
+          # never both be in a bad state in the same run -- whichever branch below matches is the
+          # one that actually broke.
           if [ "${{ needs.run-migrations.result }}" = "failure" ]; then
             echo "stage=run-migrations" >> $GITHUB_OUTPUT
             echo "icon=🧬" >> $GITHUB_OUTPUT
             echo "detail=DB migration failed before deploy. No new release shipped; previous release still live." >> $GITHUB_OUTPUT
+          elif [ "${{ needs.run-migrations.result }}" = "cancelled" ]; then
+            echo "stage=run-migrations" >> $GITHUB_OUTPUT
+            echo "icon=🧬" >> $GITHUB_OUTPUT
+            echo "detail=DB migration job was cancelled (its own timeout, or the workflow run was cancelled) before deploy. No new release shipped; previous release still live." >> $GITHUB_OUTPUT
+          elif [ "${{ needs.deploy.result }}" = "cancelled" ]; then
+            echo "stage=deploy" >> $GITHUB_OUTPUT
+            echo "icon=🚨" >> $GITHUB_OUTPUT
+            echo "detail=flyctl deploy was cancelled (its own timeout, or the workflow run was cancelled) before the rolling swap reached health check. Previous release still live." >> $GITHUB_OUTPUT
           else
             echo "stage=deploy" >> $GITHUB_OUTPUT
             echo "icon=🚨" >> $GITHUB_OUTPUT
