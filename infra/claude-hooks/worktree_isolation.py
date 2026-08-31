@@ -550,11 +550,11 @@ def _unarmed_dirty_removal_target(cmd_scan: str, cwd: str) -> pathlib.Path | Non
 WRITE_HINT_RE = re.compile(r"(>>?|\btee\b|\bsed\b[^|\n]*-i|\bdd\b[^|\n]*\bof=|\b(?:cp|mv|install)\b)")
 # Extractors for write TARGETS. Each yields candidate destination path(s).
 # Redirect:  ... > path   or  ... >> path   (NOT >&, NOT >/dev/null handled by classifier)
-REDIR_RE = re.compile(r"(?:[0-9]?>|&>)>?\s*([^\s|;&)]+)")  # stdout/stderr/combined redirects
+REDIR_RE = re.compile(r"(?:[0-9]?>|&>)>?[ \t]*([^\s|;&)]+)")  # stdout/stderr/combined redirects
 # tee [-a] path...   (path before next pipe/redirect)
 TEE_RE = re.compile(r"\btee[ \t]+(?:-a[ \t]+)?([^\s|;&)]+)")
 # sed -i ... LAST-non-flag-token is the file (best-effort: take tokens after the script)
-SEDI_RE = re.compile(r"\bsed\b[^|;&\n]*?-i\S*[ \t]+(?:-e[ \t]+\S+[ \t]+|'[^']*'[ \t]+|\"[^\"]*\"[ \t]+|\S+[ \t]+)([^\s|;&)]+)")
+SEDI_RE = re.compile(r"\bsed\b[^|;&\n]*?-i\S*[ \t]+(?:-e[ \t]+\S+[ \t]+|'[^'\n]*'[ \t]+|\"[^\"\n]*\"[ \t]+|\S+[ \t]+)*([^\s|;&)]+)")
 # dd of=path
 DDOF_RE = re.compile(r"\bdd\b[^|;&\n]*?\bof=([^\s|;&)]+)")
 # cp/mv/install SRC... DEST  → DEST is the last non-flag token before pipe/sep
