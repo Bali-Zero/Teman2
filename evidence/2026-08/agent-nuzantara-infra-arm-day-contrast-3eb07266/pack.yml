@@ -40,8 +40,8 @@ lanes:
 council_run: council-journal.jsonl
 
 diff:
-  files: 6
-  net_lines: 700
+  files: 7
+  net_lines: 728
   measured_at: f940c583c
   note: >-
     Churn (added+deleted) via `git diff --no-renames --numstat --cached <merge-base>`,
@@ -257,6 +257,33 @@ receipts:
       scoped claim, so the window is read off the claim BEFORE its number is judged — and
       a subagent's DATA outranks its CONCLUSION. Kept as a receipt because a reversal that
       leaves no trace teaches nothing to whoever reads this next.
+
+  - claim: >-
+      CI found a THIRD instance of this PR's own disease, one level further out, and it is
+      fixed here rather than deferred.
+    cmd: >-
+      `python3 scripts/check_watcher_coverage.py` — run by the "Watcher coverage" workflow
+      on PR #5395, then re-run locally after the fix.
+    result: >-
+      RED first: "✗ `Merah Putih DAY contrast guard` (merah-putih-day-contrast.yml) is not
+      covered by main-push-failure-watch.yml". The new workflow carries `push: branches:
+      [main]`, and this repo requires every such workflow's `name:` to appear in the
+      meta-watcher's `on.workflow_run.workflows:` list — otherwise a failure ON MAIN alerts
+      nobody. GREEN after adding the name: "✓ watcher-coverage: all 117 live workflow(s)
+      covered". actionlint rc=0 on both touched workflows.
+    exit: 0
+    ts: "2026-08-31T01:14:00Z"
+    seat: session (Pro), finding by CI
+    note: >-
+      Worth stating plainly: this is the SAME cicatrix #2 shape a third time in one PR — a
+      guard exists, runs, and its failure reaches no one. First the guard had no trigger;
+      then the trigger missed two files it protects; now the main-branch run had no watcher.
+      Each layer was caught by a different instrument (a session audit, a cross-family
+      refuter, and the repo's own conformance check), which is the argument for having all
+      three rather than trusting any one of them. Pre-existing and NOT touched: the checker
+      also warns about a stale entry, `AI PR review (advisory)`, left over from that
+      workflow being disabled on 2026-08-20 — a real but separate lane's cleanup, and
+      widening this PR to sweep it would break "one PR, one concern".
 
 dissent:
   - seat: kimi-code/k3
