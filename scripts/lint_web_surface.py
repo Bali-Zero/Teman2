@@ -190,16 +190,51 @@ class FileCtx:
         return "\n".join(self.code_lines[lo:hi])
 
 
-def parse_suppressions(raw: str) -> tuple[dict[int, set[str]], list[tuple[int, str]]]:
+def _comment_only_view(raw: str, code: str) -> str:
+    """The inverse of `code`: keep only the characters a comment scanner blanked
+    out, blank everything else (string/JSX/CSS-value content included).
+
+    `code` (built by `_decompose_js` / `_decompose_css` / the HTML pre-pass) is
+    ALWAYS the same length as `raw` and differs from it at exactly the offsets a
+    comment scanner replaced with a space -- ordinary comments, and nothing
+    else, because those decomposers blank comments but leave string/JSX-text
+    content intact. So the inverse -- "only the comment text is visible" -- is a
+    straight per-character diff, with no separate scanner needed. `.json` and
+    `.md`/`.mdx` have no comment blanking at all (`code == raw` there), so this
+    correctly returns an all-blank view for them: those formats have no native
+    comment syntax, so no suppression directive in them is ever a REAL comment.
+    """
+    out: list[str] = []
+    n = min(len(raw), len(code))
+    for i in range(n):
+        rc = raw[i]
+        if rc == "\n":
+            out.append("\n")
+        elif code[i] != rc:
+            out.append(rc)  # a comment scanner blanked this offset in `code`
+        else:
+            out.append(" ")
+    if len(raw) > n:
+        out.append(_blank_region(raw[n:]))
+    return "".join(out)
+
+
+def parse_suppressions(raw: str, code: str) -> tuple[dict[int, set[str]], list[tuple[int, str]]]:
     """Return ({line -> {gate ids suppressed}}, [(line, gate_id) reasonless]).
 
     A suppression on line L covers findings on L and on L+1 (the "comment above"
     convention). A suppression whose reason is missing or under MIN_REASON_CHARS
     suppresses NOTHING and is reported as its own finding.
+
+    Scans the COMMENT-ONLY view, never the raw line: a `SUPPRESS_RE` hit inside
+    a string literal or JSX text is shipped copy, not a lint directive, and
+    honouring it there is a universal bypass -- embed the directive in the very
+    string a gate flags, and the gate that would have caught it silences itself.
     """
     covered: dict[int, set[str]] = {}
     reasonless: list[tuple[int, str]] = []
-    for idx, text in enumerate(raw.splitlines(), start=1):
+    comments = _comment_only_view(raw, code)
+    for idx, text in enumerate(comments.splitlines(), start=1):
         m = SUPPRESS_RE.search(text)
         if not m:
             continue
@@ -224,6 +259,7 @@ def parse_suppressions(raw: str) -> tuple[dict[int, set[str]], list[tuple[int, s
 _JSX_TEXT_RE = re.compile(r">([^<>{}]+)<", re.S)
 _JSX_CODEISH_RE = re.compile(r"(?:=>|&&|\|\||===|!==|;|\breturn\b)")
 _HAS_LETTER_RE = re.compile(r"[A-Za-zÀ-ɏ]")
+_HEX4_RE = re.compile(r"[0-9a-fA-F]{4}")
 
 
 def _decompose_js(text: str) -> tuple[str, str, list[Span]]:
@@ -246,7 +282,16 @@ def _decompose_js(text: str) -> tuple[str, str, list[Span]]:
         # the start of a line comment. A full JS parser would be disproportionate
         # here; the preceding escape is the mechanically safe distinction needed
         # by the copy scanner.
-        if ch == "/" and nxt == "/" and (i == 0 or text[i - 1] != "\\"):
+        #
+        # A `//` immediately after `:` (http://, https://, mailto://, ...) is a
+        # URL, not a comment start -- this scanner has no JSX-text state, so a
+        # bare URL in JSX text (`<p>See https://x.com guaranteed approval</p>`)
+        # would otherwise blank everything after it, hiding real copy from
+        # every gate. Narrow on purpose: this does not catch `case 1://` style
+        # comments with no space before the slashes (rare, and arguably bad
+        # style); that under-match is the accepted trade-off for not hiding
+        # copy that follows a URL on the same line.
+        if ch == "/" and nxt == "/" and (i == 0 or text[i - 1] not in "\\:"):
             while i < n and text[i] != "\n":
                 code.append(" ")
                 bare.append(" ")
@@ -275,6 +320,24 @@ def _decompose_js(text: str) -> tuple[str, str, list[Span]]:
             while i < n:
                 c = text[i]
                 if c == "\\" and i + 1 < n:
+                    if (
+                        text[i + 1] == "u"
+                        and i + 6 <= n
+                        and _HEX4_RE.fullmatch(text[i + 2 : i + 6])
+                    ):
+                        # `\uXXXX` decodes to the real character at runtime --
+                        # decode it so a banned phrase spelled with a unicode
+                        # escape still lands in the copy corpus. `code`/`bare`
+                        # still get one entry per RAW byte consumed (6 of
+                        # them), so line numbers and the comment-view diff
+                        # stay offset-exact; only the span VALUE (what a copy
+                        # gate reads) gets the decoded character.
+                        buf.append(chr(int(text[i + 2 : i + 6], 16)))
+                        for k in range(6):
+                            code.append(text[i + k])
+                            bare.append(" ")
+                        i += 6
+                        continue
                     buf.append(text[i + 1])
                     code.append(c)
                     code.append(text[i + 1])
@@ -530,16 +593,31 @@ def _balanced_call(code: str, open_paren: int, cap: int = 600) -> str:
 
 # ── GATE-108-* — the string blocklist (SYNTHESIS Sec.3.10, gate 108) ───────────
 
+# DECLINED on purpose: `<p>official {role}</p>` / `` `official ${role}` `` --
+# a phrase assembled from a JSX expression or a template interpolation. This
+# scanner does not evaluate `{}`/`${}` (see `_decompose_js`'s docstring), so
+# catching it statically means either (a) matching "official" followed by ANY
+# `{...}`/`${...}`, which fires on "official {documentType}" and every other
+# innocent dynamic string with no affiliation sense at all -- exactly the
+# false-positive machine the guard-conformance rule (family #3) forbids -- or
+# (b) tracing the interpolated identifier back to a literal assignment, which
+# only ever covers the narrow case where that literal sits in the same file
+# and still misses a prop, a function call or an imported constant. Neither
+# is a mechanically decidable general fix; the review-only half of gate 108
+# (SYNTHESIS Sec.3.10) is where a human reviewer catches this shape.
+# `[\s-]+` (not `\s+`) between the words: "official-partner" and "agen-resmi"
+# preserve the claim through a hyphen -- a trivial reformulation, not a
+# different phrase.
 _AFFILIATION_PATTERNS = (
-    (re.compile(r"\bofficial\s+(?:partner|agent|agency|consultant|reseller|distributor|representative)\b", re.I),
+    (re.compile(r"\bofficial[\s-]+(?:partner|agent|agency|consultant|reseller|distributor|representative)\b", re.I),
      "official <affiliation noun>"),
-    (re.compile(r"\b(?:approved|authorized|authorised)\s+(?:partner|agent|agency|consultant|reseller|distributor|representative)\b", re.I),
+    (re.compile(r"\b(?:approved|authorized|authorised)[\s-]+(?:partner|agent|agency|consultant|reseller|distributor|representative)\b", re.I),
      "approved/authorised <affiliation noun>"),
     (re.compile(
         r"\b(?:agen|agent|mitra|partner|perwakilan|distributor|reseller|penyedia|biro|konsultan)"
-        r"(?:\s+(?:imigrasi|visa|e-?voa|kitas|pma))?\s+resmi\b", re.I),
+        r"(?:[\s-]+(?:imigrasi|visa|e-?voa|kitas|pma))?[\s-]+resmi\b", re.I),
      "<affiliation noun> resmi"),
-    (re.compile(r"\bresmi\s+(?:partner|mitra|agen|perwakilan|konsultan)\b", re.I),
+    (re.compile(r"\bresmi[\s-]+(?:partner|mitra|agen|perwakilan|konsultan)\b", re.I),
      "resmi <affiliation noun>"),
 )
 
@@ -575,31 +653,49 @@ _RANK_ENUMERATOR_RE = re.compile(
     r"(?i)\b(?:entry|item|no\.?|nomor|number|row|line|point|step|figure|fig\.?|note|ref|"
     r"rule|question|slide|phase|tier|option|section|pasal|ayat|lampiran)\s*$"
 )
-_RANK_HASH_RE = re.compile(r"(?<![\w#])#1(?![\w])")
+# A space between `#` and `1` ("# 1") preserves the primacy claim while
+# defeating a literal `#1` regex -- tolerate one optional space.
+_RANK_HASH_RE = re.compile(r"(?<![\w#])#\s?1(?![\w])")
 _FIRST_RESELLER_RE = re.compile(r"\bfirst\s+reseller\b", re.I)
 _RANK_SELF_RE = re.compile(r"(?i)\b(?:we|our|kami|kita|bali\s+zero|zantara)\b")
 _RANK_MARKET_RE = re.compile(
-    r"(?i)^\s*#1\s+(?:(?:ai[- ]powered|trusted|leading|best|top|independent|"
+    r"(?i)^\s*#\s?1\s+(?:(?:ai[- ]powered|trusted|leading|best|top|independent|"
     r"full[- ]service)\s+)*(?:visa|kitas|immigration|imigrasi|agency|agent|consultant|konsultan|"
     r"company|pma|tax|property|relocation|service|provider)\b"
 )
+# "#1 Jalan Raya Kerobokan" is a street/unit number, not a primacy claim --
+# measured as a real false positive. Narrow on purpose: an address-type noun
+# immediately after the match, nothing more general.
+_RANK_ADDRESS_RE = re.compile(
+    r"(?i)^\s*(?:jalan|jl\.?|street|st\.?|road|rd\.?|avenue|ave\.?|gang|blok|"
+    r"komplek|lantai|floor|unit|suite)\b"
+)
 
-# These prefixes change a matched phrase from Bali Zero's promise into an
+# These words change a matched phrase from Bali Zero's promise into an
 # explicit denial, warning or report about somebody else's promise. This is a
 # deliberately bounded carve-out, not a general sentiment classifier.
 _NEGATION_TAIL_RE = re.compile(
     r"(?i)\b(?:not|never|no|cannot|can't|can\s+not|tidak|bukan|tak)\b(?:\W+\w+){0,3}\W*$"
 )
-_REPORTING_PREFIX_RE = re.compile(
+# Checked on BOTH sides of the match: "Avoid official partner scams" reports
+# with the warning word first, but "Official partner claims are a scam" is the
+# same honest sentence with the warning word last -- the reporting register
+# does not commit to a word order, so the carve-out cannot either.
+_REPORTING_WORD_RE = re.compile(
     r"(?i)\b(?:avoid|beware|warning|warns?|check|verify|report(?:s|ed|ing)?|"
     r"do\s+not|don't|must\s+not|should\s+not|cannot|can't|scam)\b"
 )
 
 
-def _is_negated_or_reported(text: str, start: int) -> bool:
+def _is_negated_or_reported(text: str, start: int, end: int) -> bool:
     """Whether the match is explicitly denied or presented as warning/reporting copy."""
     prefix = text[max(0, start - 100):start]
-    return bool(_NEGATION_TAIL_RE.search(prefix) or _REPORTING_PREFIX_RE.search(prefix))
+    suffix = text[end:end + 100]
+    return bool(
+        _NEGATION_TAIL_RE.search(prefix)
+        or _REPORTING_WORD_RE.search(prefix)
+        or _REPORTING_WORD_RE.search(suffix)
+    )
 
 
 def gate_affiliation(ctx: FileCtx) -> Iterator[tuple[int, str]]:
@@ -609,7 +705,7 @@ def gate_affiliation(ctx: FileCtx) -> Iterator[tuple[int, str]]:
                 (
                     candidate
                     for candidate in pattern.finditer(span.text)
-                    if not _is_negated_or_reported(span.text, candidate.start())
+                    if not _is_negated_or_reported(span.text, candidate.start(), candidate.end())
                 ),
                 None,
             )
@@ -628,7 +724,7 @@ def gate_guarantee(ctx: FileCtx) -> Iterator[tuple[int, str]]:
                 (
                     candidate
                     for candidate in pattern.finditer(span.text)
-                    if not _is_negated_or_reported(span.text, candidate.start())
+                    if not _is_negated_or_reported(span.text, candidate.start(), candidate.end())
                 ),
                 None,
             )
@@ -648,7 +744,7 @@ def gate_absolute(ctx: FileCtx) -> Iterator[tuple[int, str]]:
             (
                 candidate
                 for candidate in _ABSOLUTE_RE.finditer(span.text)
-                if not _is_negated_or_reported(span.text, candidate.start())
+                if not _is_negated_or_reported(span.text, candidate.start(), candidate.end())
             ),
             None,
         )
@@ -673,6 +769,7 @@ def gate_rank(ctx: FileCtx) -> Iterator[tuple[int, str]]:
             m
             and _is_prose(span.text)
             and not _RANK_ENUMERATOR_RE.search(span.text[: m.start()])
+            and not _RANK_ADDRESS_RE.search(span.text[m.end():])
             and (
                 _RANK_SELF_RE.search(span.text[:m.start()])
                 or _RANK_MARKET_RE.search(span.text[m.start():])
@@ -756,8 +853,14 @@ def gate_compact(ctx: FileCtx) -> Iterator[tuple[int, str]]:
         if not _COMPACT_RE.search(args):
             continue
         line = ctx.line_of(m.start())
-        context_start = ctx._line_starts[max(0, line - 3)]
-        named_payable = bool(_id_tokens(ctx.code[context_start:m.start()]) & PAYABLE_PRICE_TOKENS)
+        # Backward AND forward: a module-level formatter is as often USED by a
+        # payable-price-named function a line or two BELOW its declaration
+        # (`const compact = new Intl.NumberFormat(...); export const
+        # formatPrice = (n) => compact.format(n);`) as it is named on the
+        # declaration line itself. A backward-only window missed that shape.
+        named_payable = bool(
+            _id_tokens(ctx.window(line, back=2, forward=3)) & PAYABLE_PRICE_TOKENS
+        )
         if not named_payable:
             continue  # compact currency aggregates are metrics, not payable prices
         yield line, (
@@ -808,8 +911,12 @@ def gate_clamp(ctx: FileCtx) -> Iterator[tuple[int, str]]:
 
 # ── GATE-088 — an asterisk touching a rendered price (Sec.3.8, gate 88) ────────
 
+# The lookahead exists to exempt genuine arithmetic ("IDR 790.000 * 2"), never
+# footnote prose ("IDR 790,000* see terms") -- so it stops at a following
+# digit/brace/paren/`$`/`_` (another operand) and no longer at a LETTER. A
+# footnote continues with words; multiplication continues with a number.
 _PRICE_ASTERISK_RE = re.compile(
-    r"(?<!\w)(?:Rp\.?|IDR|USD|EUR|SGD|\$|€)\s*[\d.,]+\s*\*(?!\*|\s*[\d{(A-Za-z_$])",
+    r"(?<!\w)(?:Rp\.?|IDR|USD|EUR|SGD|\$|€)\s*[\d.,]+\s*\*(?!\*|\s*[\d{(_$])",
     re.I,
 )
 _INTERP_ASTERISK_RE = re.compile(r"\{([^{}\n]{1,80})\}\s*\*(?!\*|/)")
@@ -820,7 +927,7 @@ def gate_asterisk(ctx: FileCtx) -> Iterator[tuple[int, str]]:
         m = _PRICE_ASTERISK_RE.search(span.text)
         if m:
             yield span.line, (
-                f'asterisk on a rendered price ("{m.group(0)}") — "IDR 790.000*" destroys '
+                f'asterisk on a rendered price ("{m.group(0)}") — "IDR 790,000*" destroys '
                 "in one glyph everything above it. Zero asterisks on a price, ever"
             )
     if ctx.ext in (".css", ".scss", ".json", ".md", ".mdx"):
@@ -859,6 +966,36 @@ _PENDING_CTX_RE = re.compile(
 )
 ARTIFICIAL_DELAY_MS = 250
 
+# The three common ways a scope gets a NAME in JS/TS: a `function` declaration,
+# an arrow assigned to `const`/`let`/`var`, and an arrow as an object property
+# (`onPaymentSuccess: () => {...}`, the common React-handler-prop shape).
+# Deliberately NOT the bare `name() {` method-shorthand form -- that pattern
+# also matches control-flow headers (`if (x) {`, `while (x) {`), which would
+# stop the backward search on an unrelated block instead of the real
+# enclosing function.
+_FUNCTION_HEADER_RE = re.compile(
+    r"\bfunction\s+([A-Za-z_$][\w$]*)\s*\("
+    r"|\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?\("
+    r"|\b([A-Za-z_$][\w$]*)\s*:\s*(?:async\s*)?\([^)]*\)\s*=>"
+)
+
+
+def _enclosing_function_is_success_named(ctx: FileCtx, line: int, back: int = 12) -> bool:
+    """Whether the NEAREST named function header at or above `line` (within
+    `back` lines) names itself after success/confirmation
+    (`onPaymentSuccess`, `handleSuccess`). A bounded backward scan, not a
+    brace-depth parse -- see the module docstring's "deliberately not a
+    parser" stance -- so it stops at the first header it finds, which keeps
+    it from crediting a distant, unrelated success-named sibling function."""
+    lo = max(0, line - 1 - back)
+    for idx in range(line - 1, lo - 1, -1):
+        m = _FUNCTION_HEADER_RE.search(ctx.code_lines[idx])
+        if not m:
+            continue
+        name = next((g for g in m.groups() if g), "")
+        return bool(_SUCCESS_WORD_RE.search(name))
+    return False
+
 
 def gate_artificial_delay(ctx: FileCtx) -> Iterator[tuple[int, str]]:
     if ctx.ext in (".css", ".scss", ".json", ".md", ".mdx"):
@@ -866,14 +1003,23 @@ def gate_artificial_delay(ctx: FileCtx) -> Iterator[tuple[int, str]]:
     for m in _SETTIMEOUT_RE.finditer(ctx.code):
         line = ctx.line_of(m.start())
         args = _balanced_call(ctx.code, m.end() - 1)
-        if not (_STATE_SET_RE.search(args) and _SUCCESS_WORD_RE.search(args)):
+        if _STATE_SET_RE.search(args) and _SUCCESS_WORD_RE.search(args):
+            if _DISMISS_ARG_RE.search(args):
+                continue  # auto-dismissing an already-shown toast is not a fake delay
+            yield line, (
+                "setTimeout drives a success/confirmation state transition — zero artificial "
+                "delay on any success path; bind the animation to the real promise instead"
+            )
             continue
-        if _DISMISS_ARG_RE.search(args):
-            continue  # auto-dismissing an already-shown toast is not a fake delay
-        yield line, (
-            "setTimeout drives a success/confirmation state transition — zero artificial "
-            "delay on any success path; bind the animation to the real promise instead"
-        )
+        # The argument list alone named neither a state setter nor a success
+        # word (`setTimeout(playCelebration, 3000)`) -- doctrine's W8.6 is
+        # "any success path", not "any success-named ARGUMENT", so a timer
+        # whose ENCLOSING function is itself the success handler still fails.
+        if _enclosing_function_is_success_named(ctx, line):
+            yield line, (
+                "setTimeout inside a success-named handler — zero artificial delay on any "
+                "success path (gate 30); bind the effect to the real event, not a timer"
+            )
     for m in _SETINTERVAL_RE.finditer(ctx.code):
         args = _balanced_call(ctx.code, m.end() - 1)
         if not _PROGRESS_SET_RE.search(args):
@@ -970,7 +1116,18 @@ def gate_ellipsis(ctx: FileCtx) -> Iterator[tuple[int, str]]:
     if ctx.is_css or ctx.ext in (".json", ".md", ".mdx"):
         return
     for idx, text in enumerate(ctx.code_lines, start=1):
-        if _TW_TRUNCATE_RE.search(text) and (_tailwind_target_tokens(text) & MONEY_VERDICT_TOKENS):
+        if not _TW_TRUNCATE_RE.search(text):
+            continue
+        # The `truncate` class and the element's own text/expression content
+        # are often on different lines once Prettier wraps the tag -- a
+        # same-line-only check missed the ordinary multiline shape:
+        #   <div className="truncate">
+        #     {price}
+        #   </div>
+        # A forward window (the class line plus the next couple of lines)
+        # catches that without reaching into an unrelated later element.
+        context = ctx.window(idx, back=0, forward=2)
+        if _tailwind_target_tokens(context) & MONEY_VERDICT_TOKENS:
             yield idx, (
                 "Tailwind truncation on a price/verdict/inclusion element — "
                 "same defect as text-overflow: ellipsis (gate 59). Wrap, do not truncate"
@@ -1067,7 +1224,18 @@ _LAYOUT_CONTROL_SUFFIX_RE = re.compile(
 _SQUARE_EXEMPT_RE = re.compile(r"(?i)(icon|avatar|dot|swatch|spinner|square|toggle|close|arrow)")
 _TW_FIXED_W_RE = re.compile(r"(?<![\w-])w-\[(\d+(?:\.\d+)?)(px|rem)\]")
 _TW_FIXED_H_RE = re.compile(r"(?<![\w-])h-\[(\d+(?:\.\d+)?)(px|rem)\]")
+# Tailwind's non-arbitrary fixed scale (spacing tokens, 1 unit = 0.25rem) is
+# just as fixed as an arbitrary value -- `w-28` is 7rem, not proportional.
+# Excluded on purpose, via the lookahead: fractions (`w-1/2`) and keywords
+# (`w-full`, `w-auto`, `w-screen`, `w-fit`, `w-min`, `w-max`) are NOT fixed
+# widths in this sense, and none of them is purely digits/`px`/`0` anyway.
+_TW_SCALE_FIXED_W_RE = re.compile(r"(?<![\w-])w-(0|px|\d+(?:\.\d+)?)(?![\w./-])")
+_TW_SCALE_FIXED_H_RE = re.compile(r"(?<![\w-])h-(0|px|\d+(?:\.\d+)?)(?![\w./-])")
 _JSX_OPEN_TAG_RE = re.compile(r"<(?P<tag>[A-Za-z][\w.]*)\b(?P<attrs>[^<>]*?)/?>")
+# An ARIA role makes a non-button element behave like one for the user; the
+# doctrine's "button/chip/badge/pill" control class is about the AFFORDANCE,
+# not the tag name.
+_ROLE_BUTTON_RE = re.compile(r"""role\s*=\s*["']button["']""")
 
 _FIXED_WIDTH_MSG = (
     "fixed {unit} width on a button/chip/badge/pill — reserve a working margin +35-50% "
@@ -1083,6 +1251,21 @@ def _is_control_selector(selector: str) -> bool:
         _BUTTONISH_RE.search(target) and not _LAYOUT_CONTROL_SUFFIX_RE.search(target)
         for target in targets
     )
+
+
+def _tw_fixed_dim(
+    attrs: str, arbitrary_re: re.Pattern[str], scale_re: re.Pattern[str]
+) -> tuple[str, str] | None:
+    """A (value, unit) pair for a fixed Tailwind width/height class in `attrs`,
+    arbitrary syntax (`w-[120px]`) checked first, the non-arbitrary fixed
+    scale (`w-28`) second. `None` if neither is present."""
+    m = arbitrary_re.search(attrs)
+    if m:
+        return (m.group(1), m.group(2))
+    m = scale_re.search(attrs)
+    if m:
+        return (m.group(1), "rem")  # Tailwind's scale tokens are rem-based
+    return None
 
 
 def gate_fixed_width(ctx: FileCtx) -> Iterator[tuple[int, str]]:
@@ -1105,22 +1288,28 @@ def gate_fixed_width(ctx: FileCtx) -> Iterator[tuple[int, str]]:
         return
     if ctx.ext in (".json", ".md", ".mdx"):
         return
-    for idx, text in enumerate(ctx.code_lines, start=1):
-        for tag_match in _JSX_OPEN_TAG_RE.finditer(text):
-            tag = tag_match.group("tag")
-            attrs = tag_match.group("attrs")
-            m = _TW_FIXED_W_RE.search(attrs)
-            control = _BUTTONISH_RE.search(tag) or (
-                tag.lower() == "a" and _BUTTONISH_RE.search(attrs)
-            )
-            if not m or not control:
-                continue
-            if _SQUARE_EXEMPT_RE.search(f"{tag} {attrs}"):
-                continue
-            h = _TW_FIXED_H_RE.search(attrs)
-            if h and h.group(1) == m.group(1) and h.group(2) == m.group(2):
-                continue
-            yield idx, _FIXED_WIDTH_MSG.format(unit=m.group(2))
+    # Scanned over the whole file, not line by line: a Prettier-wrapped tag
+    # (`<button\n  className="w-[120px]"\n>`) has no single line that contains
+    # `<button ... >`, so a per-line scan silently missed it. `[^<>]*?` in
+    # `_JSX_OPEN_TAG_RE` already matches across newlines (character classes
+    # aren't DOTALL-gated), so this needs no new regex, only a wider haystack.
+    for tag_match in _JSX_OPEN_TAG_RE.finditer(ctx.code):
+        tag = tag_match.group("tag")
+        attrs = tag_match.group("attrs")
+        dim = _tw_fixed_dim(attrs, _TW_FIXED_W_RE, _TW_SCALE_FIXED_W_RE)
+        control = (
+            _BUTTONISH_RE.search(tag)
+            or (tag.lower() == "a" and _BUTTONISH_RE.search(attrs))
+            or _ROLE_BUTTON_RE.search(attrs)
+        )
+        if not dim or not control:
+            continue
+        if _SQUARE_EXEMPT_RE.search(f"{tag} {attrs}"):
+            continue
+        h_dim = _tw_fixed_dim(attrs, _TW_FIXED_H_RE, _TW_SCALE_FIXED_H_RE)
+        if h_dim == dim:
+            continue  # a square control has no text to expand
+        yield ctx.line_of(tag_match.start()), _FIXED_WIDTH_MSG.format(unit=dim[1])
 
 
 # ── GATE-068 — type="number" on a form field (Sec.3.7, gate 68) ────────────────
@@ -1233,7 +1422,7 @@ def scan_file(path: Path, rel: str, only: set[str] | None = None) -> list[Findin
     except (UnicodeDecodeError, OSError):
         return []
     ctx = build_ctx(path, rel, raw)
-    covered, reasonless = parse_suppressions(raw)
+    covered, reasonless = parse_suppressions(raw, ctx.code)
     findings: list[Finding] = []
     for gate in GATES:
         if only and gate.id not in only:

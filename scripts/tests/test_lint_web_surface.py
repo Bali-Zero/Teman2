@@ -1102,6 +1102,283 @@ class TestCli:
         assert json.loads(r.stdout)["findings"][0]["gate"] == "GATE-108-GUARANTEE"
 
 
+# ══ second cross-family review (Qwen 3.8 Max) — findings Q1-Q12 ══════════════
+#
+# Q13-Q18 land on skills/bali-zero-brand/surfaces/web.md, not on this file (see
+# that file's Corrections table).
+
+class TestQwenReviewRegressions:
+    def test_q1_blocker_a_suppression_inside_a_string_literal_does_not_suppress(
+        self, tmp_path: Path
+    ) -> None:
+        """The universal-bypass shape: a suppression directive embedded in the
+        very copy string it would silence. `parse_suppressions` must read the
+        COMMENT view, never the raw line, or every gate in this file is dead."""
+        src = (
+            'const claim = "guaranteed lint-web-surface: ignore '
+            'GATE-108-GUARANTEE -- internal test copy";\n'
+        )
+        assert "GATE-108-GUARANTEE" in hits(tmp_path, "a.js", src)
+
+    def test_q1_innocent_a_real_trailing_comment_suppression_still_works(
+        self, tmp_path: Path
+    ) -> None:
+        src = (
+            'const claim = "guaranteed approval";  '
+            "// lint-web-surface: ignore GATE-108-GUARANTEE -- legacy copy, tracked in PENDING-ARMS\n"
+        )
+        got = hits(tmp_path, "b.js", src)
+        assert "GATE-108-GUARANTEE" not in got
+        assert "GATE-SUPPRESSION-NO-REASON" not in got
+
+    def test_q6_guilty_positive_affiliation_claim_still_fires(
+        self, tmp_path: Path
+    ) -> None:
+        """The reporting-word-after-the-match carve-out (Q6) must not swallow an
+        honest positive claim that has no reporting word anywhere near it."""
+        src = 'const s = "Bali Zero is the official partner of every client.";\n'
+        assert "GATE-108-AFFILIATION" in hits(tmp_path, "a.ts", src)
+
+    def test_q6_innocent_reporting_word_can_follow_the_match(
+        self, tmp_path: Path
+    ) -> None:
+        """`_is_negated_or_reported` only looked 100 chars BEFORE the match, so
+        an honest sentence with the warning word LAST ("Official partner claims
+        are a scam.") fired the gate. The reporting register does not commit to
+        a word order."""
+        src = 'const warning = "Official partner claims are a scam.";\n'
+        assert "GATE-108-AFFILIATION" not in hits(tmp_path, "b.ts", src)
+
+    def test_q7_guilty_self_rank_claim_with_ordinary_trailing_words_still_fires(
+        self, tmp_path: Path
+    ) -> None:
+        src = 'const hero = "We are #1 in Bali for visa services";\n'
+        assert "GATE-108-RANK" in hits(tmp_path, "a.ts", src)
+
+    def test_q7_innocent_hash_one_is_a_street_number(self, tmp_path: Path) -> None:
+        """MEASURED — the address-noun shape defeats `_RANK_SELF_RE`'s "Our"
+        just as readily as an actual primacy claim; `#1` needs a following
+        street/unit noun to be recognised as a locator, not a claim."""
+        src = 'const address = "Our office is at #1 Jalan Raya Kerobokan";\n'
+        assert "GATE-108-RANK" not in hits(tmp_path, "b.ts", src)
+
+    def test_q8_guilty_spaced_hash_one_still_fires(self, tmp_path: Path) -> None:
+        src = 'const claim = "We are # 1 visa agency";\n'
+        assert "GATE-108-RANK" in hits(tmp_path, "c.ts", src)
+
+    def test_q8_innocent_spaced_hash_still_respects_the_enumerator_carveout(
+        self, tmp_path: Path
+    ) -> None:
+        """The spaced form must not bypass the existing ordinal-locator
+        carve-out (`_RANK_ENUMERATOR_RE`) that already protects "entry #1"."""
+        src = 'const s = "Perpres 49/2021 Lampiran III, entry # 1 on the list";\n'
+        assert "GATE-108-RANK" not in hits(tmp_path, "d.ts", src)
+
+    def test_q3_guilty_hyphen_defeats_affiliation_patterns(self, tmp_path: Path) -> None:
+        src = 'const a = "official-partner";\nconst b = "agen-resmi";\n'
+        got = hits(tmp_path, "a.ts", src)
+        assert "GATE-108-AFFILIATION" in got
+
+    def test_q3_innocent_a_hyphenated_word_that_is_not_the_claim(
+        self, tmp_path: Path
+    ) -> None:
+        src = 'const s = "This is an official-looking envelope, not from us";\n'
+        assert "GATE-108-AFFILIATION" not in hits(tmp_path, "b.ts", src)
+
+    def test_q2_guilty_url_and_copy_on_the_same_line_is_not_a_comment(
+        self, tmp_path: Path
+    ) -> None:
+        """The scanner has no JSX-text state, so it treated `//` after `https:`
+        as a line-comment start and blanked "guaranteed approval" — the copy
+        never reached the corpus."""
+        src = 'export const Note = () => <p>See https://balizero.com guaranteed approval</p>;\n'
+        assert "GATE-108-GUARANTEE" in hits(tmp_path, "a.tsx", src)
+
+    def test_q2_innocent_a_real_line_comment_after_a_colon_is_still_blanked(
+        self, tmp_path: Path
+    ) -> None:
+        """The narrow exemption is keyed to `:` immediately before `//`, not to
+        every `//`; an ordinary comment (no colon right before it) must still
+        be blanked and never trip a gate."""
+        src = "const x = 1; // guaranteed approval, just a code comment\n"
+        assert "GATE-108-GUARANTEE" not in hits(tmp_path, "b.ts", src)
+
+    def test_q5_guilty_unicode_escape_decodes_to_the_banned_phrase(
+        self, tmp_path: Path
+    ) -> None:
+        """`\\u006f` is `o` at runtime, so `\\u006ffficial partner` renders as
+        `official partner`. The string scanner must decode it, not append the
+        literal escape text."""
+        src = 'const claim = "\\u006ffficial partner";\n'
+        assert "GATE-108-AFFILIATION" in hits(tmp_path, "a.js", src)
+
+    def test_q5_innocent_an_ordinary_escaped_character_is_unaffected(
+        self, tmp_path: Path
+    ) -> None:
+        src = 'const s = "line one\\nline two, official record of nothing";\n'
+        assert "GATE-108-AFFILIATION" not in hits(tmp_path, "b.js", src)
+
+    def test_q9_guilty_multiline_truncate_on_a_price_still_fires(
+        self, tmp_path: Path
+    ) -> None:
+        src = (
+            "export const PriceTag = () => (\n"
+            '  <div className="truncate">\n'
+            "    {price}\n"
+            "  </div>\n"
+            ");\n"
+        )
+        assert "GATE-059-ELLIPSIS" in hits(tmp_path, "a.tsx", src)
+
+    def test_q9_innocent_multiline_truncate_on_an_unrelated_field_stays_clean(
+        self, tmp_path: Path
+    ) -> None:
+        """The forward window is 2 lines, not the whole file -- a `truncate`
+        used on a client name a few lines above an unrelated price element
+        must not borrow that price's token."""
+        src = (
+            "export const Row = () => (\n"
+            "  <>\n"
+            '    <span className="truncate">\n'
+            "      {client.name}\n"
+            "    </span>\n"
+            "    <span>{price}</span>\n"
+            "  </>\n"
+            ");\n"
+        )
+        assert "GATE-059-ELLIPSIS" not in hits(tmp_path, "b.tsx", src)
+
+    def test_q10a_guilty_multiline_tag_still_fires(self, tmp_path: Path) -> None:
+        src = (
+            "export const Buy1 = () => (\n"
+            "  <button\n"
+            '    className="w-[120px]"\n'
+            "  >\n"
+            "    Buy\n"
+            "  </button>\n"
+            ");\n"
+        )
+        assert "GATE-058-FIXEDWIDTH" in hits(tmp_path, "a.tsx", src)
+
+    def test_q10a_innocent_multiline_non_control_stays_clean(
+        self, tmp_path: Path
+    ) -> None:
+        src = (
+            "export const Card = () => (\n"
+            "  <div\n"
+            '    className="w-[120px]"\n'
+            "  >\n"
+            "    Info\n"
+            "  </div>\n"
+            ");\n"
+        )
+        assert "GATE-058-FIXEDWIDTH" not in hits(tmp_path, "b.tsx", src)
+
+    def test_q10b_guilty_role_button_on_a_div_still_fires(self, tmp_path: Path) -> None:
+        src = 'export const Buy2 = () => <div role="button" className="w-[120px]">Buy</div>;\n'
+        assert "GATE-058-FIXEDWIDTH" in hits(tmp_path, "c.tsx", src)
+
+    def test_q10b_innocent_role_dialog_is_not_a_button(self, tmp_path: Path) -> None:
+        src = 'export const Panel = () => <div role="dialog" className="w-[120px]">Hi</div>;\n'
+        assert "GATE-058-FIXEDWIDTH" not in hits(tmp_path, "d.tsx", src)
+
+    def test_q10c_guilty_tailwind_fixed_scale_width_still_fires(
+        self, tmp_path: Path
+    ) -> None:
+        src = 'export const Buy3 = () => <button className="w-28">Buy</button>;\n'
+        assert "GATE-058-FIXEDWIDTH" in hits(tmp_path, "e.tsx", src)
+
+    def test_q10c_innocent_fractional_and_keyword_widths_are_not_fixed(
+        self, tmp_path: Path
+    ) -> None:
+        """`w-1/2` and `w-full` are proportional, not fixed -- the scale regex
+        must not treat the leading digit of a fraction as a fixed-scale hit."""
+        src = (
+            '<button className="w-1/2">Half</button>\n'
+            '<button className="w-full">Full</button>\n'
+        )
+        assert "GATE-058-FIXEDWIDTH" not in hits(tmp_path, "f.tsx", src)
+
+    def test_q10c_innocent_square_control_on_the_fixed_scale(
+        self, tmp_path: Path
+    ) -> None:
+        """A matched w-N/h-N pair on the fixed scale gets the same
+        square-control exemption the arbitrary-value form already had --
+        exercised with a name that avoids `_SQUARE_EXEMPT_RE`'s keyword list
+        on purpose, so this proves the w==h comparison, not that carve-out."""
+        src = '<button className="w-10 h-10" aria-label="Print">P</button>\n'
+        assert "GATE-058-FIXEDWIDTH" not in hits(tmp_path, "g.tsx", src)
+
+    def test_q11_guilty_footnote_text_after_the_asterisk_still_fires(
+        self, tmp_path: Path
+    ) -> None:
+        src = 'const price = "IDR 790,000* see terms";\n'
+        assert "GATE-088-ASTERISK" in hits(tmp_path, "a.js", src)
+
+    def test_q11_innocent_multiplication_after_the_asterisk_is_unaffected(
+        self, tmp_path: Path
+    ) -> None:
+        """The Q11 fix narrows the lookahead to letters only -- a genuine
+        arithmetic continuation (asterisk then a number) must stay excluded,
+        or the fix would just trade one false result for another."""
+        src = "const t = 'IDR 790.000 * 2';\n"
+        assert "GATE-088-ASTERISK" not in hits(tmp_path, "b.js", src)
+
+    def test_q17_the_gate_message_uses_the_en_comma_form_not_a_dot(
+        self, tmp_path: Path
+    ) -> None:
+        """W6.4: the `en` form is comma-grouped (`IDR 790,000`); `Rp790.000`
+        with a dot is the `id` form. The gate's own example must not
+        contradict the rule it enforces."""
+        found = findings(tmp_path, "c.js", 'const price = "IDR 790,000*";\n')
+        asterisk = next(f for f in found if f.gate_id == "GATE-088-ASTERISK")
+        assert "IDR 790,000*" in asterisk.message
+        assert "IDR 790.000*" not in asterisk.message
+
+    def test_q12_guilty_settimeout_inside_a_success_named_function_still_fires(
+        self, tmp_path: Path
+    ) -> None:
+        """The argument list (`playCelebration, 3000`) names neither a state
+        setter nor a success word — the old check missed this shape entirely
+        because it only ever inspected the arguments."""
+        src = (
+            "function onPaymentSuccess() {\n"
+            "  setTimeout(playCelebration, 3000);\n"
+            "}\n"
+        )
+        assert "GATE-030-DELAY" in hits(tmp_path, "a.ts", src)
+
+    def test_q12_innocent_plain_debounce_with_no_success_named_scope(
+        self, tmp_path: Path
+    ) -> None:
+        """The new enclosing-function check must not turn every bare
+        setTimeout into a finding — only one whose nearest named scope is
+        itself a success/confirmation handler."""
+        src = "function scheduleRefresh() {\n  setTimeout(fetchData, 400);\n}\n"
+        assert "GATE-030-DELAY" not in hits(tmp_path, "b.ts", src)
+
+    def test_q18_guilty_payable_token_used_a_line_after_the_formatter(
+        self, tmp_path: Path
+    ) -> None:
+        """The payable-price token (`formatPrice`) sits AFTER the
+        `Intl.NumberFormat` call, not before it — the old backward-only
+        lookback never saw it."""
+        src = (
+            "const compact = new Intl.NumberFormat('id', { notation: 'compact' });\n"
+            "export const formatPrice = (n: number) => compact.format(n);\n"
+        )
+        assert "GATE-056-COMPACT" in hits(tmp_path, "a.ts", src)
+
+    def test_q18_innocent_a_compact_count_formatter_used_later_stays_clean(
+        self, tmp_path: Path
+    ) -> None:
+        src = (
+            "const compact = new Intl.NumberFormat('id', { notation: 'compact' });\n"
+            "export const formatCaseCount = (n: number) => compact.format(n);\n"
+        )
+        assert "GATE-056-COMPACT" not in hits(tmp_path, "b.ts", src)
+
+
 # ══ the guard-conformance meta-test ═══════════════════════════════════════════
 
 class TestGuardConformance:
