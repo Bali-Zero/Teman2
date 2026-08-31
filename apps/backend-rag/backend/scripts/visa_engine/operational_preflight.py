@@ -214,6 +214,16 @@ RETENTION_BINDING_TRIGGER_FUNCTIONS = (
     "public.bind_visa_evaluate_idempotency_retention_policy()",
     "public.bind_visa_decision_retention_policy()",
     "public.bind_visa_decision_payload_retention()",
+    # The GARUDA pair, added 2026-08-30. This inventory held only the three
+    # functions migration 268 cured, so the live owner check was blind to every
+    # retention-binding trigger written after it -- including the one that took
+    # magic-link issuance down for weeks. It is a catalog-driven check that
+    # would have caught the outage on its first run; it was simply never told
+    # these two exist. The check_retention_policy sibling is already correctly
+    # owned in production and is listed for the same reason: leaving it out is
+    # how this blind spot reopens.
+    "public.bind_garuda_voa_check_retention_policy()",
+    "public.bind_garuda_magic_link_token_retention_policy()",
 )
 SENSITIVE_FUNCTIONS = (
     ACTIVATION_FUNCTION,

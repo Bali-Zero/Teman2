@@ -82,14 +82,20 @@ SECRET_READ_HINTS = (
     ".nuzantara-secrets", "token",
 )
 
-# --- W79 write-target extraction (CLONED VERBATIM from worktree_isolation.py) --
+# --- W79 write-target extraction (shared with worktree_isolation.py) ----------
+# This block is a COPY, and "verbatim" is a promise prose cannot keep: the
+# 2026-08-18 W119 cure fixed CPMV_RE in worktree_isolation.py and never reached
+# this file, which went on asserting it was verbatim for 13 days — which is
+# exactly why nobody looked. The five names below are now pinned identical by
+# `test_w119b_write_regex_newline_bleed.py::test_w119b_shared_regexes_are_identical_in_both_hooks`,
+# so a one-sided edit goes RED instead of going unnoticed. Change one, change both.
 # Quick gate: does the command contain anything that could write a file?
-WRITE_HINT_RE = re.compile(r"(>>?|\btee\b|\bsed\b[^|]*-i|\bdd\b[^|]*\bof=|\b(?:cp|mv|install)\b)")
-REDIR_RE = re.compile(r"(?<![0-9>&])>>?\s*([^\s|;&)]+)")
-TEE_RE = re.compile(r"\btee\s+(?:-a\s+)?([^\s|;&)]+)")
-SEDI_RE = re.compile(r"\bsed\b[^|;&]*?-i\S*\s+(?:-e\s+\S+\s+|'[^']*'\s+|\"[^\"]*\"\s+|\S+\s+)([^\s|;&)]+)")
-DDOF_RE = re.compile(r"\bdd\b[^|;&]*?\bof=([^\s|;&)]+)")
-CPMV_RE = re.compile(r"\b(?:cp|mv|install)\b((?:\s+(?:-\S+|[^\s|;&)]+))+)")
+WRITE_HINT_RE = re.compile(r"(>>?|\btee\b|\bsed\b[^|\n]*-i|\bdd\b[^|\n]*\bof=|\b(?:cp|mv|install)\b)")
+REDIR_RE = re.compile(r"(?:[0-9]?>|&>)>?[ \t]*([^\s|;&)]+)")  # stdout/stderr/combined redirects
+TEE_RE = re.compile(r"\btee[ \t]+(?:-a[ \t]+)?([^\s|;&)]+)")
+SEDI_RE = re.compile(r"\bsed\b[^|;&\n]*?-i\S*[ \t]+(?:-e[ \t]+\S+[ \t]+|'[^'\n]*'[ \t]+|\"[^\"\n]*\"[ \t]+|\S+[ \t]+)*([^\s|;&)]+)")
+DDOF_RE = re.compile(r"\bdd\b[^|;&\n]*?\bof=([^\s|;&)]+)")
+CPMV_RE = re.compile(r"\b(?:cp|mv|install)\b((?:[ \t]+(?:-\S+|[^\s|;&)]+))+)")
 # Read commands whose FIRST file arg, if a secret, triggers a WARN.
 READ_CMD_RE = re.compile(r"\b(cat|less|more|head|tail|bat)\b\s+((?:-\S+\s+)*)([^\s|;&)]+)")
 
@@ -117,8 +123,21 @@ def _strip_noise(cmd: str) -> str:
         return "\n".join(out)
 
     s = _drop_heredocs(cmd)
-    s = re.sub(r"'[^']*'", "''", s)
-    s = re.sub(r'"[^"]*"', '""', s)
+    # W84 (ported here 2026-08-31, 13 days after it was cured in
+    # worktree_isolation.py and never copied across — see the block comment
+    # there for the full reasoning): the char-class MUST exclude newline. With
+    # `[^']*`, an apostrophe on line A pairs with one on line C, and every line
+    # BETWEEN them is deleted from the scanned text. Measured fail-OPEN on this
+    # very guard:
+    #     echo don't panic
+    #     cp /tmp/evil ~/.ssh/config
+    #     echo it's done
+    # collapsed to `echo don''s done` — the `cp` line vanished and the write to
+    # a protected path was ALLOWED. A shell quote never legitimately spans a
+    # newline here, so confining the match to one line is both correct and the
+    # false-positive killer.
+    s = re.sub(r"'[^'\n]*'", "''", s)
+    s = re.sub(r'"[^"\n]*"', '""', s)
     return s
 
 

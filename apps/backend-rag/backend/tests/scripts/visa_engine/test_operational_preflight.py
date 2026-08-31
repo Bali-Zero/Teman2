@@ -30,6 +30,14 @@ CANONICAL_SENSITIVE_FUNCTIONS = {
     "public.bind_visa_evaluate_idempotency_retention_policy()",
     "public.bind_visa_decision_retention_policy()",
     "public.bind_visa_decision_payload_retention()",
+    # Added 2026-08-30 as a deliberate inventory update, per the note above.
+    # These two retention-binding triggers were written after migration 268 and
+    # this authority never learned they exist, so the live owner check could
+    # not see that bind_garuda_magic_link_token_retention_policy was owned by
+    # the application role instead of visa_ledger_owner -- the privilege defect
+    # that kept magic-link issuance answering 500 with zero tokens ever minted.
+    "public.bind_garuda_voa_check_retention_policy()",
+    "public.bind_garuda_magic_link_token_retention_policy()",
 }
 CANONICAL_SENSITIVE_TABLES = {
     "visa_rule_packs",
