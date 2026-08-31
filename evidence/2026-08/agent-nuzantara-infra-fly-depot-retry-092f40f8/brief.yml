@@ -179,7 +179,7 @@ consumer_map:
   - "GitHub Actions run history for the 'Fly.io rolling deploy' job — read-only, fetched this session
     via `gh api repos/Bali-Zero/Teman2/actions/jobs/<id>` and `.../jobs/<id>/logs` for all 8 cited job
     ids, plus `gh run list --workflow fly-deploy.yml` for the surrounding run sequence."
-  - "The Telegram alert path (`api.telegram.org` direct call in `deploy-failure-alert`, secrets
+  - "The Telegram alert path (a direct Bot API call in `deploy-failure-alert`, secrets
     `TELEGRAM_BOT_TOKEN`/`TELEGRAM_OWNER_CHAT_ID`) — UNCHANGED by this diff. Note for the record: this
     step calls the Telegram Bot API directly rather than through the repo's `scripts/tg_notify.py`
     gateway convention; that is a pre-existing pattern in this file, not something introduced or
