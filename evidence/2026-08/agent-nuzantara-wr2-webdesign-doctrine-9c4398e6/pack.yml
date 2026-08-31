@@ -33,7 +33,7 @@ lanes:
 
 diff:
   files: 29
-  net_lines: 9060
+  net_lines: 9119
   measured_at: HEAD (post-merge with origin/main)
   note: >-
     Far past the ~400-net-line target in the Agent PR Contract, and declared rather than split.
