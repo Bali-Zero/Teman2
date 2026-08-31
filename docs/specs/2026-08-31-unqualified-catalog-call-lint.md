@@ -45,9 +45,7 @@ Intended to invert the polarity: instead of "these names must be qualified"
 (a miss is loud). Three holes, all measured:
 
 1. **It read the wrong half of the file.** SQL was extracted with
-   `re.findall(r'"""(.*?)"""', source, re.DOTALL)`. Five of the module's SQL
-   statements are single-quoted one-liners — `operational_preflight.py:403, 474,
-497, 519, 538` — and were never scanned. Two of the blocks it _did_ scan are
+   `re.findall(r'"""(.*?)"""', source, re.DOTALL)`. It therefore never saw every `await connection.fetch*("...")` call that passes its SQL as a double-quoted one-liner rather than a triple-quoted block — five of them at the time of writing; cited by SHAPE and not by line number, because the previous citation (`403, 474, 497, 519, 538`) went stale the moment the same commit shifted four of them by +12, which is the third time a line-number citation in this lane has aged into a lie. Two of the blocks it _did_ scan are
    prose docstrings, not SQL. Demonstrated by appending
    `_NEW_PROBE_SQL = "SELECT array_agg(role.rolname) FROM pg_catalog.pg_roles AS role"`
    (`array_agg` in neither list, shadowable like `string_agg`): **46 passed**.
@@ -71,10 +69,31 @@ Intended to invert the polarity: instead of "these names must be qualified"
 
 Verified sound in that allowlist, so the next attempt need not re-derive them:
 `trim`, `position`, `extract`, `coalesce`, `least`, `greatest`, `nullif`,
-`cast`, `case`, `exists`, `in`, `any`, `all`, `values`, `row`, `array`,
-`overlaps` are genuinely grammar/`SystemFuncName`-resolved —
-`CREATE FUNCTION public.trim(text)` does not change `trim('  x  ')`, and
-`position(a,b)` / `extract(a,b)` are syntax errors.
+`cast`, `case`, `exists`, `in`, `any`, `all`, `values`, `row`, `array` are
+genuinely grammar/`SystemFuncName`-resolved — `CREATE FUNCTION public.trim(text)`
+does not change `trim('  x  ')`, and `position(a,b)` / `extract(a,b)` are syntax
+errors.
+
+**`overlaps` was in that list and is WRONG — removed 2026-08-31.** Unlike the
+names above, `overlaps` is a REAL `pg_catalog` function, not merely grammar:
+only the infix `(a,b) OVERLAPS (c,d)` form is parsed by the grammar, while
+`overlaps(a,b,c,d)` is an ordinary name resolved through `search_path` and is
+therefore shadowable exactly like `count`. Measured two independent ways: the
+gate seat forged it on PG 17.10 (`CREATE FUNCTION public.overlaps(date,date,
+date,date) … AS $$ SELECT true $$` made the function form return `true` while
+`pg_catalog.overlaps` returned `false`, and the infix form stayed sound); and
+against the live cluster read-only, `SELECT count(*) FROM pg_proc WHERE
+proname='overlaps'` returns **13** overloads, against a positive control of
+**0** for `coalesce`/`nullif`/`case`. The catalogue-presence probe is the
+cheaper of the two and needs no write: a name with zero `pg_proc` rows cannot
+be shadowed in function form, a name with rows can.
+
+That this entry survived is the point of **R2** and **R3** below, not an
+exception to them: it was reasoned about ("OVERLAPS is SQL grammar") instead of
+tested, which is the same mistake that put `count` and `substring` on the list.
+Whatever ships must treat an allowlist entry with no empirical citation as
+unproven, and must distinguish a keyword's grammar form from its function form
+— they are not the same name.
 
 ## Requirements for whatever ships
 

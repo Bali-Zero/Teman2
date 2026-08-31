@@ -1034,10 +1034,13 @@ def test_every_catalog_reference_in_this_module_is_schema_qualified() -> None:
     # THIS TUPLE IS HAND-MAINTAINED AND THAT IS A KNOWN, UNCLOSED WEAKNESS.
     # A list-free replacement was written on 2026-08-31 and WITHDRAWN the same
     # day: it extracted SQL with `re.findall(r'"""(.*?)"""')`, which reads only
-    # the triple-quoted blocks — five of this module's SQL statements are
-    # single-quoted one-liners (operational_preflight.py:403, 474, 497, 519,
-    # 538) and were never scanned at all, so it answered "are the triple-quoted
-    # blocks clean?" while appearing to answer "is the module's SQL clean?".
+    # the triple-quoted blocks. It never saw the SQL this module passes as a
+    # double-quoted one-liner to `connection.fetch*` — five such statements at
+    # the time of writing. They are named by SHAPE, not by line: the earlier
+    # citation (403, 474, 497, 519, 538) went stale within the same commit that
+    # wrote it, when an +18/-3 edit shifted four of them by +12. So the guard
+    # answered "are the triple-quoted blocks clean?" while appearing to answer
+    # "is the module's SQL clean?".
     # Two entries in its allowlist were also wrong, disproven on a real
     # PostgreSQL 17.10: `count` IS shadowable via `CREATE AGGREGATE
     # public.count(*)`, and `substring` is grammar-resolved only in its

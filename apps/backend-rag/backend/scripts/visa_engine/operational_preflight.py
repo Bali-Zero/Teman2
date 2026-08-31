@@ -262,7 +262,7 @@ SELECT proc.proname
            || pg_catalog.pg_get_function_identity_arguments(proc.oid)
            || ')' AS signature,
        pg_catalog.pg_get_userbyid(proc.proowner) AS owner,
-       proc.prokind::text AS kind
+       proc.prokind::pg_catalog.text AS kind
   FROM pg_catalog.pg_proc AS proc
   JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = proc.pronamespace
  WHERE namespace.nspname = 'public'
@@ -615,7 +615,7 @@ async def collect_preflight_checks(
         """
         SELECT proname, prosrc
           FROM pg_catalog.pg_proc
-         WHERE proname = ANY($1::text[])
+         WHERE proname = ANY($1::pg_catalog.text[])
         """,
         list(SCOPE_BOUND_RETENTION_BINDERS),
     )
