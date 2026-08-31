@@ -1,0 +1,98 @@
+task_id: wa-finalize-sub-reason-0828
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Migration 291 (PR #5151, merged 2026-08-28T08:17Z) taught
+  `_normalize_fall_off_reason` (`wa_codex_leg.py`) to preserve the
+  package-builder leg's sub-reason instead of collapsing three distinct
+  `PackageUnbuildable` outcomes into one stored value. It left the
+  identical defect in place one row down in the same map:
+  `"finalize": "finalize_defect"`.
+
+  `finalize:<defect_reason>` names WHICH of `wa_finalize.py`'s DEFECT
+  branches refused to let the generated text leave — a pricing veto
+  against the frozen package, an oversized output, an internal-monologue
+  leak, a secret-egress scan hit, and seven more. All of them are stored
+  as the single value `finalize_defect`, which records the STAGE and
+  hides the CAUSE.
+
+  Case measured that opened the mandate: `wa_outbox` row 363 (thread 394,
+  2026-08-28T21:43:52Z). The codex broker generated an answer THREE
+  times — every `broker_jobs` row `outcome = consumed_ok`, null
+  `error_class`, 9711/10137/8521 ms of real execution — and the finalize
+  stage discarded all three. Each attempt recorded `finalize_defect`. The
+  per-attempt `defect_reason` lived only in an app log line, and Fly
+  retains logs for roughly 60 seconds: by the time the incident was
+  investigated the window had closed, exactly as it had for row 348 the
+  previous morning (migration 291's own header records that one).
+
+  Gear 3 by PATH, not by blast radius: the diff touches
+  `apps/backend-rag/backend/db/migrations_v2/` (migration 297), hot-zone
+  for `scripts/evidence_pack_lint.py`. The floor is computed from the
+  diff, never chosen by whoever writes it — this PR's own
+  `Harness floor recompute` run reported `FLOOR: 3, SOURCE: path`, and
+  supplying this pack is the answer to that red, never touching the gate.
+constraints:
+  - "Keep `finalize_defect` itself reachable in the CHECK's allowed set — it is the
+    fallback bucket for a future, not-yet-catalogued defect_reason. Add DISTINCT values
+    for the KNOWN branches instead of replacing the generic bucket, exactly as 291 did
+    for `package_unbuildable`."
+  - "`secret_egress:<pattern-name>` must NEVER store its suffix. The suffix names which
+    scanner pattern hit; this column is read by dashboards and pasted into reports, the
+    scanner's own docstring keeps the matched content out of logs for the same reason,
+    and an unbounded suffix would defeat the closed vocabulary a CHECK exists to enforce."
+  - "The migration must CONVERGE (`DROP CONSTRAINT IF EXISTS` then re-`ADD`), mirroring
+    290 and 291 — a `CREATE ... IF NOT EXISTS` on a DB that already carries the narrower
+    constraint would be a no-op, leaving the suite green over a migration that never ran."
+  - "Migration numbering (W40): verify the chosen number free against `origin/main` AND
+    every open branch. Main's highest is 296, so 292 would have been the naive choice and
+    297 is the correct one."
+  - "The existing AST guard `test_fall_off_reason_map_covers_every_reason_the_module_can_emit`
+    must keep passing UNMODIFIED — the `finalize` key stays in
+    `_FALL_OFF_REASON_PREFIX_MAP` (that guard's extraction sees only the HEAD); the
+    sub-reason dispatch is a layer on top, never a replacement."
+acceptance:
+  - "Each known `defect_reason` maps to its OWN distinct stored value — one case per
+    branch, not one happy path."
+  - "An unrecognised sub-reason falls back to the GENERIC `finalize_defect` bucket, never
+    to the module-wide `unknown` a genuinely uncatalogued HEAD gets."
+  - "No value admitted by the pre-297 CHECK is lost — proven by set difference over the
+    parsed UP blocks, not by reading."
+  - "Guilt: the new cases go RED on the pre-change source with the tests in place."
+  - "A guard exists that fails when a FUTURE defect branch is added without teaching the
+    map — and it must read the source's AST, not its text."
+consumer_map:
+  - "`wa_outbox.generation_fall_off_reason` — the only durable record of why a bot reply
+    was not sent. Written by `record_fall_off_reason` on its own pool connection."
+  - "The CHECK constraint `wa_outbox_generation_fall_off_reason_check` — a value the code
+    can write but the constraint rejects is an exception on the write path, i.e. a second
+    reason nothing was recorded. Covered by a new test, not by inspection."
+  - "`wa_finalize.finalize_wa_answer` — the producer of every `finalize:` head. Not
+    modified by this PR; only its outcomes are labelled."
+  - "Dashboards and any future alert reading this column — they gain granularity and lose
+    nothing: every previously-possible value is still admitted."
+  - "Deliberately NOT touched: `_coalesce_thread_bursts`, the second and more serious half
+    of the same incident. It gets its own PR (#5188)."
+risks:
+  - "The eleven new values make the enum longer than migration 290's original nineteen.
+    Deliberate: the DB value stays traceable to the exact branch without a second lookup
+    table."
+  - "`_KNOWN_FALL_OFF_REASONS` (the Python mirror of the CHECK vocabulary) has no shared
+    source of truth with the SQL. This PR adds a test that cross-checks the two, which is
+    the closest thing to one that exists."
+  - "This PR does not change what happens to a fallen-off row operationally — only how
+    precisely the reason is stored. It does not, by itself, explain why row 363's three
+    answers were rejected: it makes the NEXT occurrence answerable."
+grader: |
+  Generator != grader. The session that authored the diff did not bless it: an adversarial
+  subagent was dispatched on fresh context, told to break the diff rather than confirm it,
+  and given the five claims to falsify one by one. It returned SHIP on the claims and THREE
+  real holes in the new coverage guard — all three reproduced, closed, and re-verified by
+  replaying the exact shapes that defeated them. See dissent[] in the pack.
+budget: |
+  Two rounds. Round 1: migration 297 + the sub-reason map + four tests. Round 2: the
+  Detect Secrets red (a constant whose NAME contained "secret"), then the three holes the
+  adversarial review found. Round 3 is not expected; if the same surface goes red a third
+  time for the same cause, rule 8 applies and this suspends.
+pii: none

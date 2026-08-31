@@ -1,0 +1,135 @@
+name: Craft instruments (advisory)
+
+# craft-instruments-daily.yml
+#
+# Arms two advisory instruments that previously had no executor anywhere in the
+# fleet: `scripts/council_yield_report.py` and `scripts/correction_tax.py`.
+# Measurement on 2026-08-31: `grep -rln` over `.github/workflows/` and
+# `infra/launchagents/` returned zero matches for either script name.
+#
+# "Armed" here means only that the instruments are now SCHEDULED and that their
+# output is READABLE in the GitHub Actions run summary. It does NOT mean the
+# numbers are READ, REVIEWED, or ACTED UPON. A consumer that closes the loop
+# is a separate concern; this workflow does not claim to be one.
+# See superscar #2 "exists != armed".
+#
+# cicatrix W108 applies: a degradation whose only channel is an absent line is
+# indistinguishable from health, which is why the EMPTINESS GATE below emits
+# explicit warnings instead of staying silent.
+
+on:
+  # Off-minute is deliberate: every scheduled job that asks for "9pm" lands on
+  # `0 21` and they all hit the GitHub API at the same instant. 17 past the
+  # hour spreads the load. The hour is deliberate too:
+  # `.github/workflows/pr-size-taxonomy.yml` already runs at 20:00, so this
+  # sits an hour later rather than contending with it.
+  schedule:
+    - cron: "17 21 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  # `contents: read` only. An earlier version also requested
+  # `pull-requests: read` on the belief that correction_tax queries the GitHub
+  # API; it reads `git log` (see the checkout below). Asking for a scope nothing
+  # uses is not free — it is a permission a future step inherits without anyone
+  # deciding to grant it.
+  contents: read
+
+concurrency:
+  # Keyed on the workflow. A cancelled report is a lost measurement, and
+  # nothing here is superseded by a later run.
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  craft-instruments:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # `fetch-depth: 0` is LOAD-BEARING, and an earlier version of this
+          # comment got it exactly backwards — it said full history was not
+          # required "because correction_tax queries the GitHub API". It does
+          # not: `scripts/correction_tax.py`'s own docstring opens with
+          # "Read-only against `git log`", and it drives
+          # `git log --since=... --until=...`. On the default shallow checkout
+          # that window contains one commit or none, and the script deliberately
+          # EXITS 1 rather than return a share over an empty window — so this
+          # workflow would have gone red every night, on a premise I had written
+          # into its own comment.
+          #
+          # `council_yield_report.py` needs only the working tree (it reads
+          # evidence packs), so the depth is here for the second instrument.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest
+        run: pip install --quiet pytest
+
+      - name: Run instrument corpora
+        # If an instrument's own corpus fails, the instrument is broken and
+        # every number it prints is worthless. This is the same rule stated in
+        # `scripts/pr_size_taxonomy.py`'s docstring: "report-only is a promise
+        # about PR CONTENT, never about this tool's own operational health".
+        # The reports below must not run on a broken instrument.
+        run: |
+          pytest scripts/tests/test_council_yield_report.py scripts/tests/test_correction_tax.py -q
+        continue-on-error: false
+
+      - name: Council yield report
+        # Capture to file as well as the summary so the emptiness gate can
+        # distinguish "found nothing" from "never ran".
+        run: |
+          python3 scripts/council_yield_report.py | tee council_yield_output.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Correction tax report
+        # Seven-day sliding window, computed with GNU date on ubuntu-latest.
+        # Output is captured to file as well as the summary for the gate.
+        run: |
+          since=$(date -u -d '7 days ago' +%F)
+          until=$(date -u +%F)
+          python3 scripts/correction_tax.py --since "$since" --until "$until" | tee correction_tax_output.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Emptiness gate
+        # cicatrix W108: a degradation whose only channel is an absent line is
+        # indistinguishable from health. The gate therefore emits warnings when
+        # an instrument produces no measurable output, but it does NOT fail the
+        # job — these are reports, and a warning is the right volume.
+        #
+        # `-u` and NOT `-e`, because grep returning 1 on no-match IS the control
+        # flow here. `pipefail` is set for consistency with the house style and
+        # for whatever gets added later; a refuter correctly noted there are no
+        # pipes in this step today, so it currently accomplishes nothing and is
+        # kept as a habit rather than a mechanism — said plainly instead of
+        # claiming it does work it does not do.
+        #
+        # REACHABILITY, stated because it bounds what this gate can promise: the
+        # report steps above have no `continue-on-error`, so if an instrument
+        # CRASHES the job is already red with the real cause and this step never
+        # runs. That is the right split — a crashed instrument is a failure, an
+        # instrument that ran and found nothing is a warning — but it means this
+        # gate covers the second case only.
+        shell: bash
+        run: |
+          set -uo pipefail
+          # THE PATTERNS ARE THE MEASUREMENT, so they were run against the real
+          # output rather than written from the shape the report is assumed to
+          # have. The first draft looked for `<n> packs scanned`; the instrument
+          # actually prints `packs scanned: 84` — number AFTER a colon — so that
+          # pattern could never match and this gate would have emitted its
+          # warning on EVERY run, forever. A permanent false alarm is worse than
+          # no alarm: it is the thing that teaches a reader to ignore the
+          # channel, and it would have done so while claiming to cure W108.
+          if ! grep -Eq 'packs scanned: *[1-9]' council_yield_output.txt; then
+            echo "::warning::council-yield scanned ZERO evidence packs. That is not 'nothing to report' — the report is over a corpus that exists; a zero means its input path moved. Check scripts/council_yield_report.py's evidence glob against the tree."
+          fi
+          if ! grep -q 'correction-tax: ' correction_tax_output.txt; then
+            echo "::warning::correction-tax produced no verdict line. Its window may be empty, or the GitHub query failed — either way the number below is absent rather than zero, and the two must not be read the same way."
+          fi

@@ -15,6 +15,16 @@ exercise a `_FakeStore` double, the exact same shape
 handling of an authorized/unauthorized/replayed outcome is what a red-first
 test can prove today; a real store adapter is a follow-up PR once L1's
 retention primitive covers this table too.
+
+`_FakeCheckStore` plays the identical role for `garuda_flow.public_api.
+CheckStore` — the ownership port `request_magic_link` now consults BEFORE
+`store.issue` (security fix 2026-08-30, see that handler's inline comment).
+Every test below that reaches the magic-link store must therefore also wire
+a `_FakeCheckStore` that recognises the (result_id, session_secret) pair it
+expects to succeed, via `_client_with_stores`; `UnconfiguredCheckStore`
+(this router's default when no override is given) always raises
+`PersistencePolicyUnavailable`, which is itself covered by
+`test_request_check_store_persistence_unavailable_is_visible_503` below.
 """
 
 from __future__ import annotations
@@ -24,6 +34,9 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend.app.routers import garuda_portal_auth as router_mod
+from backend.services.garuda_flow.public_api import (
+    PersistencePolicyUnavailable as CheckStorePersistencePolicyUnavailable,
+)
 from backend.services.garuda_portal.magic_link import (
     ExchangeOutcome,
     IdempotencyConflict,
@@ -33,6 +46,10 @@ from backend.services.garuda_portal.magic_link import (
 )
 
 VALID_RESULT_ID = "r" * 22
+#: A second, equally well-formed result_id the session cookie below does
+#: NOT own -- the ownership-check tests request a magic link for THIS one
+#: while presenting a cookie only valid for `VALID_RESULT_ID`.
+OTHER_RESULT_ID = "o" * 22
 VALID_RESULT_SESSION = "s" * 43
 VALID_IDEMPOTENCY_KEY = "test-key-0123456789abcdef"
 VALID_TOKEN = "t" * 43
@@ -126,6 +143,30 @@ class _FakeStore:
         return outcome
 
 
+class _FakeCheckStore:
+    """Minimal in-memory `garuda_flow.public_api.CheckStore` double.
+
+    `request_magic_link` now consults this port (security fix 2026-08-30)
+    to re-verify that the caller's `garuda_result_session` cookie actually
+    owns the `result_id` in the request body, BEFORE it may reach
+    `MagicLinkStore.issue` -- mirrors `_FakeStore` above (and
+    `test_garuda_voa_public.py`'s own fake) for the identical reason.
+    """
+
+    def __init__(self, *, owned: set[tuple[str, str]] | None = None) -> None:
+        self._owned = set(owned or set())
+        self.calls: list[tuple[str, str]] = []
+        self.raise_on_get: Exception | None = None
+
+    async def get(self, *, result_id: str, session_secret: str) -> object | None:
+        self.calls.append((result_id, session_secret))
+        if self.raise_on_get is not None:
+            raise self.raise_on_get
+        if (result_id, session_secret) not in self._owned:
+            return None
+        return object()  # the router only ever branches on None-ness
+
+
 @pytest.fixture(autouse=True)
 def _enable_flag(monkeypatch):
     monkeypatch.setenv("GARUDA_PUBLIC_ENABLED", "true")
@@ -136,9 +177,20 @@ def fake_store():
     return _FakeStore()
 
 
-def _client_with_store(store: _FakeStore) -> TestClient:
+def _client_with_store(
+    store: _FakeStore, check_store: _FakeCheckStore | None = None
+) -> TestClient:
+    """`check_store` defaults to one that recognises the (result_id,
+    session_secret) pair every pre-existing test in this file already used
+    before the ownership check existed -- so the happy-path tests below
+    keep proving what they always proved, and only the tests that care
+    about a DIFFERENT ownership pair pass their own `_FakeCheckStore`."""
+    resolved_check_store = check_store or _FakeCheckStore(
+        owned={(VALID_RESULT_ID, VALID_RESULT_SESSION)}
+    )
     app = _app()
     app.dependency_overrides[router_mod.get_garuda_magic_link_store] = lambda: store
+    app.dependency_overrides[router_mod.get_garuda_check_store] = lambda: resolved_check_store
     return TestClient(app)
 
 
@@ -204,9 +256,12 @@ def test_exchange_malformed_idempotency_key_is_422_not_400():
 
 
 def test_request_without_result_session_cookie_is_202_and_never_touches_store(fake_store):
-    """No ResultSession cookie -> 202, and the store must never see the call
-    (an absent cookie must be indistinguishable from "a link was queued")."""
-    client = _client_with_store(fake_store)
+    """No ResultSession cookie -> 202, and NEITHER store may see the call
+    (an absent cookie must be indistinguishable from "a link was queued");
+    the ownership check added 2026-08-30 short-circuits before it, same as
+    it always did before that check existed."""
+    check_store = _FakeCheckStore(owned={(VALID_RESULT_ID, VALID_RESULT_SESSION)})
+    client = _client_with_store(fake_store, check_store)
     resp = client.post(
         "/api/visa/voa/auth/magic-links",
         json={"result_id": VALID_RESULT_ID, "email": "a@example.com"},
@@ -215,9 +270,13 @@ def test_request_without_result_session_cookie_is_202_and_never_touches_store(fa
     assert resp.status_code == 202
     assert resp.json() == {}
     assert fake_store.issued == []
+    assert check_store.calls == []
 
 
 def test_request_with_valid_session_reaches_the_store(fake_store):
+    """Innocence: a cookie that DOES own the requested result_id must still
+    reach `MagicLinkStore.issue` exactly as before -- the ownership check
+    added 2026-08-30 must not regress the happy path."""
     client = _client_with_store(fake_store)
     resp = client.post(
         "/api/visa/voa/auth/magic-links",
@@ -228,6 +287,79 @@ def test_request_with_valid_session_reaches_the_store(fake_store):
     assert resp.status_code == 202
     assert len(fake_store.issued) == 1
     assert fake_store.issued[0]["result_id"] == VALID_RESULT_ID
+
+
+def test_request_for_a_result_id_the_cookie_does_not_own_is_202_and_never_touches_the_magic_link_store(
+    fake_store,
+):
+    """Guilt (security fix, 2026-08-30): a session cookie valid for result
+    A must NOT unlock a magic link for a DIFFERENT result_id B. Before this
+    fix, `garuda_result_session`'s mere presence was enough -- any caller
+    who knew or guessed a result_id they did not own could have its magic
+    link mailed to an email address THEY control, using only their own,
+    unrelated session cookie. The response must be the SAME non-enumerating
+    202 as an absent cookie / malformed id, and `MagicLinkStore.issue`
+    (hence the email it triggers) must never be reached."""
+    check_store = _FakeCheckStore(owned={(VALID_RESULT_ID, VALID_RESULT_SESSION)})
+    client = _client_with_store(fake_store, check_store)
+
+    resp = client.post(
+        "/api/visa/voa/auth/magic-links",
+        json={"result_id": OTHER_RESULT_ID, "email": "attacker@example.com"},
+        headers={"Idempotency-Key": VALID_IDEMPOTENCY_KEY},
+        cookies={"garuda_result_session": VALID_RESULT_SESSION},
+    )
+
+    assert resp.status_code == 202
+    assert resp.json() == {}
+    assert resp.headers["Idempotency-Replayed"] == "false"
+    assert fake_store.issued == []
+    assert check_store.calls == [(OTHER_RESULT_ID, VALID_RESULT_SESSION)]
+
+
+def test_request_check_store_persistence_unavailable_is_visible_503(fake_store):
+    """A misconfigured/unwired `CheckStore` must surface as an OBSERVABLE
+    503, never silently collapse into the enumeration-safe 202 above -- that
+    would look identical to "no magic link is ever issued", with no signal
+    that ownership could not even be checked. Mirrors the mapping
+    `garuda_voa_public.get_eligibility_result` already uses for the same
+    unconfigured-store state."""
+    check_store = _FakeCheckStore()
+    check_store.raise_on_get = CheckStorePersistencePolicyUnavailable("no check store")
+    client = _client_with_store(fake_store, check_store)
+
+    resp = client.post(
+        "/api/visa/voa/auth/magic-links",
+        json={"result_id": VALID_RESULT_ID, "email": "a@example.com"},
+        headers={"Idempotency-Key": VALID_IDEMPOTENCY_KEY},
+        cookies={"garuda_result_session": VALID_RESULT_SESSION},
+    )
+
+    assert resp.status_code == 503
+    assert resp.json()["code"] == "SERVICE_UNAVAILABLE"
+    assert fake_store.issued == []
+
+
+def test_request_with_no_check_store_wired_defaults_to_503_not_a_silent_202(fake_store):
+    """With no `get_garuda_check_store` override at all, this router's own
+    default (`UnconfiguredCheckStore`, wired via `get_garuda_check_store`)
+    must make the configuration gap OBSERVABLE rather than either silently
+    issuing an unverified magic link or silently pretending nothing was
+    requested."""
+    app = _app()
+    app.dependency_overrides[router_mod.get_garuda_magic_link_store] = lambda: fake_store
+    client = TestClient(app)
+
+    resp = client.post(
+        "/api/visa/voa/auth/magic-links",
+        json={"result_id": VALID_RESULT_ID, "email": "a@example.com"},
+        headers={"Idempotency-Key": VALID_IDEMPOTENCY_KEY},
+        cookies={"garuda_result_session": VALID_RESULT_SESSION},
+    )
+
+    assert resp.status_code == 503
+    assert resp.json()["code"] == "SERVICE_UNAVAILABLE"
+    assert fake_store.issued == []
 
 
 def test_request_persistence_unavailable_is_visible_503(fake_store):
@@ -600,3 +732,72 @@ def test_account_session_cookie_is_secure_on_loopback_https(fake_store):
     set_cookie_headers = resp.headers.get_list("set-cookie")
     account_cookie = next(h for h in set_cookie_headers if h.startswith("garuda_session="))
     assert "Secure" in account_cookie, account_cookie
+
+
+# ============================================================
+# A blind catch-all cannot be diagnosed (2026-08-30, measured in production)
+# ============================================================
+
+
+class _PolicyProbeFailed(Exception):
+    """Stands in for the class of store failure that took issuance down."""
+
+
+def _assert_named_but_silent(caplog, *, expected_name: str, forbidden: str) -> None:
+    records = [r for r in caplog.records if "unexpected error" in r.getMessage()]
+    assert records, "the handler must still log the failure"
+    message = records[-1].getMessage()
+    assert expected_name in message, (
+        "the exception's CLASS NAME must reach the log: on 2026-08-30 every call to this "
+        "endpoint answered INTERNAL_ERROR and the log said only 'unexpected error', which "
+        "cannot tell an absent SQL function from a bad cast from a dead pool"
+    )
+    assert forbidden not in message, "the exception MESSAGE must never be logged: it can quote a value"
+    assert records[-1].exc_info is None, (
+        "exc_info stays off — Sentry's LoggingIntegration turns it into a frame-locals dump, "
+        "which is where the session secret lives and where key-based redaction cannot reach"
+    )
+
+
+def test_issue_failure_logs_the_exception_class_and_nothing_else(fake_store, caplog):
+    fake_store.raise_on_issue = _PolicyProbeFailed("s3cret-session-value")
+    client = _client_with_store(fake_store)
+
+    with caplog.at_level("ERROR"):
+        resp = client.post(
+            "/api/visa/voa/auth/magic-links",
+            json={"result_id": VALID_RESULT_ID, "email": "traveller@example.com"},
+            headers={"Idempotency-Key": "11111111-1111-4111-8111-111111111111"},
+            # `VALID_RESULT_SESSION`, not an arbitrary literal: since the
+            # ownership check landed on this handler, a cookie the default
+            # `_FakeCheckStore` does not recognise takes the non-enumerating
+            # 202 path and `store.issue` — the thing THIS test is about — is
+            # never reached. Written as the ownership constant so the two
+            # facts stay coupled: this test asserts what the handler logs
+            # when issuance fails FOR A LEGITIMATE OWNER.
+            cookies={"garuda_result_session": VALID_RESULT_SESSION},
+        )
+
+    assert resp.status_code == 500
+    assert resp.json()["code"] == "INTERNAL_ERROR"
+    _assert_named_but_silent(
+        caplog, expected_name="_PolicyProbeFailed", forbidden="s3cret-session-value"
+    )
+
+
+def test_exchange_failure_logs_the_exception_class_and_nothing_else(fake_store, caplog):
+    fake_store.raise_on_exchange = _PolicyProbeFailed("s3cret-token-value")
+    client = _client_with_store(fake_store)
+
+    with caplog.at_level("ERROR"):
+        resp = client.post(
+            "/api/visa/voa/auth/sessions",
+            json={"token": "T" * 43},
+            headers={"Idempotency-Key": "22222222-2222-4222-8222-222222222222"},
+        )
+
+    assert resp.status_code == 500
+    assert resp.json()["code"] == "INTERNAL_ERROR"
+    _assert_named_but_silent(
+        caplog, expected_name="_PolicyProbeFailed", forbidden="s3cret-token-value"
+    )

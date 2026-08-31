@@ -13,7 +13,12 @@ export type CheckoutState =
   | { step: "idle" }
   | { step: "submitting" }
   | { step: "created"; order: OrderCheckout }
-  | { step: "error"; message: string; retryable: boolean };
+  | {
+      step: "error";
+      message: string;
+      retryable: boolean;
+      httpStatus: number | null;
+    };
 
 function stableKeyFor(resultId: string, applicant: Applicant): string {
   return JSON.stringify([resultId, applicant]);
@@ -56,6 +61,7 @@ export function useCheckout(resultId: string) {
             step: "error",
             message: messageFor(err.code),
             retryable: err.retryable,
+            httpStatus: err.httpStatus,
           });
           return;
         }
@@ -67,6 +73,7 @@ export function useCheckout(resultId: string) {
                 ? messageFor("SERVICE_UNAVAILABLE")
                 : messageForUnknownCode("__network__"),
             retryable: true,
+            httpStatus: err.httpStatus,
           });
           return;
         }
@@ -74,6 +81,7 @@ export function useCheckout(resultId: string) {
           step: "error",
           message: messageForUnknownCode("__unknown__"),
           retryable: true,
+          httpStatus: null,
         });
       }
     },

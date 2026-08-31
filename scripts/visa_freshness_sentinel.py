@@ -112,6 +112,7 @@ TG_NOTIFY = PROJECT_ROOT / "scripts" / "tg_notify.py"
 
 # Outcomes
 OUTCOME_OK = "OK"
+OUTCOME_ANOMALY = "ANOMALY"
 OUTCOME_APPROACHING = "APPROACHING"
 OUTCOME_STALE = "STALE"
 OUTCOME_NO_PORTAL_RECORDS = "NO_PORTAL_RECORDS"
@@ -380,6 +381,21 @@ def classify_freshness(
         outcome = OUTCOME_STALE
     elif approaching:
         outcome = OUTCOME_APPROACHING
+    elif policy_missing or future_verified:
+        # An anomaly must never resolve to OK. Both of these branches `continue`
+        # above — a record with no readable freshness_policy, or a verified_at in
+        # the future, enters NEITHER `stale` NOR `approaching` — so before this
+        # clause existed the outcome fell through to OK and `send_alert`'s
+        # `if outcome == OUTCOME_OK: return None` dropped the finding before
+        # `format_alert_text` (which has always printed these counts) was ever
+        # called. A pack that lost its freshness_policy on every portal record
+        # therefore reported OK and sent nothing, while the engine treated those
+        # same records as UNKNOWN. Cicatrix #2 (green silence) crossed with #3's
+        # under-match twin: the alarm watched two of the four ways a pack can be
+        # unfit to decide. Ranked below APPROACHING because a live deadline is
+        # the more urgent fact when both are true; the anomalies are still
+        # printed in that alert's body either way.
+        outcome = OUTCOME_ANOMALY
     else:
         outcome = OUTCOME_OK
 
@@ -551,13 +567,78 @@ def build_verdict(now: datetime, warn_seconds: int = DEFAULT_WARN_SECONDS) -> Ve
 # ---------------------------------------------------------------------------
 
 
+def urgency_buckets(warn_seconds: int) -> tuple[int, ...]:
+    """Hour-wide urgency buckets, DERIVED from the warning window: W, W/2, W/4, W/8.
+
+    Derived rather than hardcoded on purpose. A literal ``(48, 24, 12, 6)`` is
+    correct only while ``warn_seconds`` is 48h: raise the window to 72h and the
+    72→48h span collapses into a single key, re-opening the very gap the bucket
+    exists to close. Duplicates are dropped (a tiny window can fold levels
+    together) and the sequence stays strictly descending.
+    """
+    hours = max(1, warn_seconds // 3600)
+    out: list[int] = []
+    for divisor in (1, 2, 4, 8):
+        bucket = max(1, hours // divisor)
+        if bucket not in out:
+            out.append(bucket)
+    return tuple(out)
+
+
+def approaching_bucket(verdict: Verdict) -> int:
+    """The TIGHTEST urgency bucket the nearest boundary still sits inside.
+
+    An APPROACHING verdict carrying no findings is incoherent, but it must not
+    raise here: this runs inside the alert path, and the house contract is that a
+    formatting fault never costs the alert (`send_alert` swallows gateway errors
+    for the same reason). Degrade to the widest bucket — a stable key that still
+    sends — rather than crashing on an empty ``min()``.
+    """
+    buckets = urgency_buckets(verdict.warn_seconds)
+    if not verdict.approaching:
+        return buckets[0]
+    remaining_h = min(
+        (f.boundary - verdict.now).total_seconds() / 3600 for f in verdict.approaching
+    )
+    tightest = buckets[-1]
+    for bucket in buckets:
+        if remaining_h <= bucket:
+            tightest = bucket
+    return tightest
+
+
 def dedup_key(verdict: Verdict) -> str:
-    """Per-CONDITION, stable dedup key (never a raw measurement — W104/#2)."""
+    """Per-CONDITION, stable dedup key (never a raw measurement — W104/#2).
+
+    APPROACHING is the one outcome whose key also carries URGENCY, because it is
+    the one outcome with a deadline running against it. The gateway's mute ladder
+    climbs 6h → 24h → 72h → 168h per surviving repeat, while the warning window
+    is only 48h: at streak 3 the silence (72h) outlasts the entire window, so a
+    warning could be muted straight through the boundary it exists to announce.
+    Crossing into a tighter bucket mints a brand-new key at streak 0, which sends
+    immediately; inside one bucket the ladder still does its anti-spam job.
+
+    A bucket can be skipped entirely if launchd runs late — the guarantee is
+    "every bucket ENTERED fires", not "every bucket fires", which is the one that
+    matters. This deliberately reintroduces a moving producer key, which the
+    gateway's own docstring names as an anti-pattern; it is justified here by the
+    deadline and must not be copied to a consumer without one.
+    """
     seq = verdict.pack_sequence if verdict.pack_sequence is not None else "unknown"
+    # An anomaly that appears while the pack is ALREADY stale or approaching does
+    # not get its own outcome — it rides along in the alert body. Without this
+    # suffix it would also not get its own key, so if the stale/approaching key
+    # were already muted by the ladder, the new information would be swallowed
+    # and nobody would learn the pack had also become un-ageable. Adding the
+    # marker mints a fresh key at the moment anomalies first appear alongside a
+    # deadline condition. (Found by the cross-family refuter on this diff.)
+    anomalous = ":anom" if (verdict.policy_missing or verdict.future_verified) else ""
     if verdict.outcome == OUTCOME_STALE:
-        return f"visa-freshness:stale:{seq}"
+        return f"visa-freshness:stale:{seq}{anomalous}"
     if verdict.outcome == OUTCOME_APPROACHING:
-        return f"visa-freshness:approaching:{seq}"
+        return f"visa-freshness:approaching:{seq}:t{approaching_bucket(verdict)}{anomalous}"
+    if verdict.outcome == OUTCOME_ANOMALY:
+        return f"visa-freshness:anomaly:{seq}"
     if verdict.outcome == OUTCOME_NO_PORTAL_RECORDS:
         return f"visa-freshness:no-portal-records:{seq}"
     return "visa-freshness:cannot-verify"
@@ -598,6 +679,15 @@ def format_alert_text(verdict: Verdict) -> str:
         lines.append(f"Earliest boundary: {earliest.boundary.isoformat()} ({hrs:.1f}h from now)")
         lines.append("Action: run the weekly re-attestation lane (fold_pack_seqNN restamp).")
 
+    if verdict.outcome == OUTCOME_ANOMALY:
+        lines.append(
+            "ANOMALY: no source is stale or approaching, but "
+            f"{len(verdict.policy_missing) + len(verdict.future_verified)} "
+            "OFFICIAL_PORTAL source(s) cannot be aged at all — the engine treats "
+            "those as UNKNOWN. Action: inspect the pack's freshness_policy; a "
+            "forward pack is the only way to correct a signed artifact."
+        )
+
     if verdict.outcome == OUTCOME_NO_PORTAL_RECORDS:
         lines.append(f"NO_PORTAL_RECORDS: {verdict.reason}")
 
@@ -632,7 +722,14 @@ def send_alert(verdict: Verdict, gateway_path: Path = TG_NOTIFY) -> str | None:
     if verdict.outcome == OUTCOME_OK:
         return None
 
-    tier = "p0" if verdict.outcome in (OUTCOME_STALE, OUTCOME_APPROACHING) else "digest"
+    # ANOMALY is p0, not digest: a portal record the engine cannot age is a record
+    # the engine treats as UNKNOWN, which is a decision-integrity fact, not a
+    # housekeeping note.
+    tier = (
+        "p0"
+        if verdict.outcome in (OUTCOME_STALE, OUTCOME_APPROACHING, OUTCOME_ANOMALY)
+        else "digest"
+    )
     text = format_alert_text(verdict)
     key = dedup_key(verdict)
 
@@ -709,6 +806,22 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if verdict.outcome == OUTCOME_STALE:
         return 1
+    if verdict.outcome == OUTCOME_ANOMALY:
+        # NOT 0. `pro-visa-freshness-sentinel.sh` writes `heartbeat "ok"` on any
+        # zero exit, so an ANOMALY returning 0 would show as `ok` on the sidecar
+        # — the one surface anyone actually reads — and the repair above would be
+        # swallowed one layer down, exactly the way APPROACHING already is
+        # (PENDING-ARMS 2026-08-30, defect 2, still open and NOT fixed here:
+        # APPROACHING fires for 48h before every boundary, so making IT non-zero
+        # needs the wrapper's exit-code map changed too, and that wrapper is a
+        # HOME-fork declared pair that must be synced to Pro in the same gesture).
+        # 3 is safe to ship alone: the wrapper's else-branch writes
+        # `heartbeat "error" "rc=3"`, which is visible and true, and an
+        # un-ageable pack is a rare defect state rather than a recurring phase,
+        # so it cannot become a standing false red. Recovery is driven by
+        # SILENCE (`severity_on_silence: warning`), not by a fresh error
+        # heartbeat, so this does not put the healer in a kickstart loop.
+        return 3
     return 0
 
 

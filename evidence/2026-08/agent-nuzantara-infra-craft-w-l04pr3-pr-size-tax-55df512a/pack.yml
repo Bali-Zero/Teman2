@@ -1,0 +1,189 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: |
+  docs/plans/2026-08-29-beyond-sota-craft-wave/L04-implementation-craft.md, PR-3.
+  The spec declares "Gear: 2"; its own Files list includes a new `.github/workflows/*.yml`, which is
+  a hot-zone path, so the CI-recomputed floor is 3. The floor is derived from the diff and is never
+  the author's choice — the spec is wrong here, not the gate.
+lanes:
+  - lane: craft-w-l04pr3-build
+    role: build
+    seat: sonnet-5
+    scope: |
+      Three rounds, each dispatched on a finding the gate or a seat had already MEASURED, never on a
+      description: the original build; the refuter fix round (B1/B2/H3/H4/H5); the arming round that
+      gave the unknown() verdicts and the two silent exempt classes their first tests; then the
+      classifier correction.
+  - lane: craft-w-l04pr3-refute-r1
+    role: review
+    seat: codex-gpt-5.6-sol
+    scope: Round 1 on the first finished diff, six declared attack axes, read-only sandbox.
+  - lane: craft-w-l04pr3-refute-r2
+    role: review
+    seat: kimi-code/k3
+    scope:
+      Round 2 on the corrected diff. Classified every path in the live tree rather than reading the
+      regexes.
+seat_diversity: satisfied
+seat_diversity_note: |
+  Two DISTINCT non-Anthropic review seats, from different families, on different revisions of the
+  diff — not one seat consulted twice, and not a quorum filled after the fact. Each round's findings
+  changed the code; the journal records what each seat got wrong as well as right.
+diff: |
+  `scripts/pr_size_taxonomy.py` (new, 349 lines), its corpus `scripts/tests/test_pr_size_taxonomy.py`
+  (642 lines, 67 tests), `.github/workflows/pr-size-taxonomy.yml` (new, 47 lines, schedule +
+  workflow_dispatch only), and one line registering that workflow with the failure watcher.
+
+  CODE-CLASS NET 397 against the 400 contract — measured with the tool's own class rules, three
+  lines of headroom. This PR therefore cannot absorb another change without breaking the rule it
+  measures, which is stated here so the next person to add "just one more thing" is told.
+
+  NO BEHAVIOUR CHANGE ANYWHERE ELSE. The tool gates nothing: no `--check` flag exists, the workflow
+  is not in required-checks, and no job `needs:` it.
+receipts:
+  - claim: |
+      EVERY GUARD IS DEFENDED BY A TEST THAT GOES RED WHEN THE GUARD IS REMOVED — established by
+      mutation on the PRODUCTION file, re-run by the gate rather than read from any report.
+      PYTHONDONTWRITEBYTECODE=1 on every run (W121); every restore from a `cp` backup and verified
+      byte-identical with `cmp -s` (W125), never `git checkout --`.
+    cmd: |
+      cp scripts/pr_size_taxonomy.py /tmp/bak; <mutate>; PYTHONDONTWRITEBYTECODE=1 pytest -q
+      -p no:cacheprovider; cp /tmp/bak scripts/pr_size_taxonomy.py; cmp -s
+    result: |
+      unknown(no-file-detail) guard removed .............. 3 red
+      unknown(reconciliation-mismatch) removed ........... 1 red
+      EXEMPT_CLASSES truncated (lockfile, generated) ..... 2 red
+      composition trap forced open (`if True:`) ......... 11 red
+      `.md` -> docs rule disabled ........................ 2 red
+      code-extension exclusion removed ................... 4 red
+      Baseline 67 passed. Restore byte-identical after every one.
+    exit: 0
+    ts: "2026-08-29T15:12:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      THREE OF THOSE GUARDS WERE ARMED BY NOTHING WHEN THE GATE FIRST RAN THEM, and the gate found it
+      by running the mutations instead of reading the fix report. `grep -c unknown` on the corpus
+      returned 0: the entire DATA COMPLETENESS feature shipped as a helper, a docstring paragraph and
+      a new report field with no test. That is W81 — a shipped guard with no arming step — inside a
+      file whose own docstring cites W81 as the reason the `tests` class is exempt.
+    cmd: Same mutation protocol, run BEFORE the arming round.
+    result: |
+      no-file-detail 0 red -> 3 · reconciliation 0 red -> 1 · EXEMPT_CLASSES 0 red -> 2.
+      Only the composition trap was already armed (6 red, later 11).
+    exit: 0
+    ts: "2026-08-29T14:35:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      THE CLASSIFIER EXEMPTED THIS REPO'S OWN GUARDS. Measured over `git ls-files` with the real
+      `classify_files`, before and after the correction.
+    cmd:
+      classify every tracked path; count code-extension files landing in `docs` (exempt) and .md files
+      landing in `code`.
+    result: |
+      before: 44 code-extension files classified `docs` — including
+              .claude/hooks/codex-spalla-trigger.sh, .claude/hooks/memory_budget_gate.py,
+              .claude/scripts/codex-spalla.sh — and 503 .md files classified `code`.
+      after:  0 and 0. Histogram 20987 paths: code 13928, tests 3670, docs 3267, evidence 120, lockfile 2.
+      innocence held: scripts/tests/*.py -> tests · evidence/** -> evidence · docs/*.md -> docs ·
+                      package-lock.json -> lockfile · scripts/tests/notes.md -> tests (tests beats .md, deliberate).
+    exit: 0
+    ts: "2026-08-29T16:05:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      A GUILT ASSERTION THAT A BROKEN IMPLEMENTATION PASSED. The end-to-end test asserted
+      `"split-required" in out`, and that literal lives in a STATIC header line.
+    cmd: render_markdown(build_report([])) — an EMPTY report, zero PRs — then search it for the literal.
+    result: |
+      The empty report already contains "split-required". So an implementation classifying every PR
+      exempt still printed `#100` (row exists, label exempt) and still printed the header, and passed.
+      Now asserts PR #100's own table ROW and its verdict cell. Proof it is no longer vacuous: this
+      test is the 11th failure under the composition mutation, which it was blind to before.
+    exit: 0
+    ts: "2026-08-29T15:58:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: STATIC GATES on the final tree.
+    cmd: actionlint on the new workflow; py_compile -W error::SyntaxWarning on both python files.
+    result: actionlint rc=0 · py_compile rc=0 · pytest 67 passed.
+    exit: 0
+    ts: "2026-08-29T16:10:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      REGISTERED WITH THE FAILURE WATCHER. `watcher-coverage` went red because the new workflow was
+      absent from `main-push-failure-watch.yml`. The watcher's own header explains its list is
+      deliberately over-inclusive so that listing never requires a judgement call — and this workflow
+      carries a `schedule:` trigger, so it genuinely can fail on main with nobody told.
+    cmd: scripts/ci/check_watcher_coverage.py
+    result: rc=0 — 107 live workflows, all covered. Advisory does not mean unwatched.
+    exit: 0
+    ts: "2026-08-29T13:20:00Z"
+    seat: claude-opus-5 (gate)
+pii_scan: clean
+pii_note: |
+  A CI reporting tool. It reads PR numbers, titles and file paths from `gh`; it writes to a job
+  summary. No client data, no credentials, no PII.
+dissent:
+  - status: CONFIRMED
+    seat: codex-gpt-5.6-sol (review lane, round 1)
+    objection: |
+      BLOCKER — the docstring froze "31 of 100 / 11 residual" four lines after promising every number
+      is "never a constant (W106)". You could change it to 99/98 and nothing went red.
+    disposition: |
+      ACCEPTED. The RUN carries the numbers; the docstring carries the method. A 100-PR fixture was
+      considered and rejected — it decays into a false red on an unrelated PR (W129).
+  - status: CONFIRMED
+    seat: codex-gpt-5.6-sol (review lane, round 1)
+    objection: |
+      BLOCKER — "MANDATED" is an inference from a path, not a measurement. `path.startswith("evidence/")`
+      proves position. A PR dumping 9,000 unrequested lines into `evidence/` classifies identically
+      to a required pack.
+    disposition: |
+      ACCEPTED and generalised: "MANDATED" is gone from the docstring, the report and the PR title.
+      Every class now reads as an attribution by location. The gate notes this is the same error it
+      had made itself that morning one level up — reading a path as an entity.
+  - status: CONFIRMED
+    seat: kimi-code/k3 (review lane, round 2)
+    objection: |
+      HIGH — 44 executable files (its figure: "300+") are classified `docs` and therefore EXEMPT,
+      three of them live guards under `.claude/`; and 503 `.md` files are classified `code`.
+    disposition: |
+      ACCEPTED, both cured, both re-measured to 0 by the gate. Its magnitude was WRONG — the "300+"
+      counted `.json` artifacts as code. Measured with the real classifier: 44. The pack records the
+      gate's number, not the seat's (W65 — the refuter allucina too).
+  - status: CONFIRMED
+    seat: kimi-code/k3 (review lane, round 2)
+    objection: |
+      HIGH (test corpus) — `assert "split-required" in out` is satisfied by the static header, so the
+      guilt half of the end-to-end test is vacuous.
+    disposition: ACCEPTED, reproduced on an empty report, fixed to assert the row.
+  - status: CONFIRMED
+    seat: kimi-code/k3 (review lane, round 2)
+    objection: |
+      (g) — the taxonomy exempts this PR's own arming corpus, and being path-derived it cannot
+      distinguish a genuinely armed test suite from 10,000 lines of padding. It grades its author.
+    disposition: |
+      ACCEPTED AS A STATED LIMIT, deliberately not cured. It is a property of ANY path-derived
+      scheme, and the alternative — judging whether tests are "real" — is not something a path
+      classifier can do. Recorded here rather than answered, because a residual taciuto is the next
+      defect.
+  - status: CONFIRMED
+    seat: kimi-code/k3 (review lane, round 2)
+    objection: |
+      (c) — a PR whose `add`/`del` are present but NULL skips reconciliation entirely and proceeds to
+      a confident verdict on an unreconciled file list. Reachable via `--fixture`.
+    disposition: |
+      ACCEPTED as a real gap, NOT cured in this PR. Reconciliation fires only when both totals are
+      present, which is the correct behaviour for `gh` (which always supplies them) and a hole for a
+      hand-written fixture. Curing it means deciding whether a fixture without totals is
+      `unknown` — a semantic choice, not a bug fix, and this PR has 3 lines of budget left. Carried
+      as a declared limit rather than smuggled in under the line count it is about.
+tests: |
+  67 passed (scripts/tests/test_pr_size_taxonomy.py), 0.45s. Six mutations re-run by the gate on the
+  production file; no standing red count dropped across the three rounds, and two of them rose as the
+  corpus got sharper (composition 6 -> 10 -> 11).
+static: |
+  actionlint rc=0 · py_compile -W error::SyntaxWarning rc=0 · check_watcher_coverage.py rc=0
+  (107 workflows) · pre-commit hooks green, including the anti-reward-hacking test lint.
+notes: |
+  What this PR is really about is visible in its own history: a tool built to measure whether PRs
+  ship their mandated arming shipped three guards with no arming of their own, and the gate found it
+  only by running the mutations instead of reading the report that said they passed.

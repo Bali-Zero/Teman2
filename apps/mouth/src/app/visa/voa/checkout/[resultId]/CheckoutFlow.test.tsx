@@ -13,6 +13,27 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mocks.push, replace: mocks.replace }),
 }));
 
+// The tracker's own emitFunnelAppEvent posts through the SAME global fetch
+// mock the tests below use for /api/visa/voa/orders — mocked here (mirroring
+// visa/match's page.test.tsx) so `fetchMock.toHaveBeenCalledTimes(1)` below
+// still counts only the orders call, and tracker calls are assertable.
+const trackerMocks = vi.hoisted(() => ({
+  formSubmitted: vi.fn(),
+  formSubmitFailed: vi.fn(),
+}));
+
+vi.mock("@balizero/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@balizero/core")>();
+  return {
+    ...actual,
+    useFunnelApp: () => ({
+      viewed: vi.fn(),
+      formSubmitted: trackerMocks.formSubmitted,
+      formSubmitFailed: trackerMocks.formSubmitFailed,
+    }),
+  };
+});
+
 const fetchMock = global.fetch as unknown as ReturnType<typeof vi.fn>;
 
 function jsonResponse(status: number, body: unknown) {
@@ -37,6 +58,8 @@ describe("CheckoutFlow", () => {
     window.sessionStorage.clear();
     mocks.push.mockReset();
     mocks.replace.mockReset();
+    trackerMocks.formSubmitted.mockReset();
+    trackerMocks.formSubmitFailed.mockReset();
     // jsdom doesn't implement window.location.href assignment navigation; stub it so
     // the redirect-to-provider effect doesn't throw ("Not implemented: navigation").
     // @ts-expect-error -- test-only stub
@@ -104,6 +127,51 @@ describe("CheckoutFlow", () => {
       },
       review_confirmed: true,
     });
+
+    // Checkout attempt telemetry: field NAMES only (Law 2), never the
+    // applicant's own values.
+    expect(trackerMocks.formSubmitted).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        "full_name",
+        "email",
+        "phone",
+        "passport_number",
+      ]),
+    );
+    const wire = JSON.stringify(trackerMocks.formSubmitted.mock.calls);
+    expect(wire).not.toContain("Jane Doe");
+    expect(wire).not.toContain("customer@example.com");
+    expect(wire).not.toContain("X1234567");
+  });
+
+  it("a retryable order failure fires formSubmitFailed with endpoint + status, never the applicant", async () => {
+    writeCheckoutHandoff("result-1", {
+      full_name: "Jane Doe",
+      passport_number: "X1234567",
+    });
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(503, {
+        code: "PAYMENT_PROVIDER_UNAVAILABLE",
+        retryable: true,
+        message_key: "garuda_voa.error.payment_provider_unavailable",
+      }),
+    );
+
+    const user = userEvent.setup();
+    render(<CheckoutFlow resultId="result-1" />);
+    await screen.findByText(/Jane Doe/i);
+    await fillAndSubmit(user);
+
+    await waitFor(() =>
+      expect(trackerMocks.formSubmitFailed).toHaveBeenCalledWith(
+        "/api/visa/voa/orders",
+        503,
+      ),
+    );
+    const wire = JSON.stringify(trackerMocks.formSubmitFailed.mock.calls);
+    expect(wire).not.toContain("Jane Doe");
+    expect(wire).not.toContain("customer@example.com");
+    expect(wire).not.toContain("X1234567");
   });
 
   it("redirects the browser to checkout_url on a fresh awaiting_payment order — never renders success itself", async () => {

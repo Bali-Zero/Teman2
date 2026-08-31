@@ -68,7 +68,7 @@ export function WhatsAppHandoff({ plan, verdict }: WhatsAppHandoffProps) {
           alignItems: "center",
           gap: 8,
           padding: "var(--space-3, 0.85rem) var(--space-5, 1.5rem)",
-          borderRadius: 8,
+          borderRadius: 12,
           // WCAG AA fix (measured 2026-08-24): white on the WhatsApp brand
           // green computes to ~1.98:1, failing the 4.5:1 normal-text floor.
           // Ratified cure (app/(visa-oracle)/visa-oracle/oracle.css:23-30,
