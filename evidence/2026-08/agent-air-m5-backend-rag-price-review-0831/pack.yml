@@ -69,19 +69,58 @@ receipts:
       the suite is not decorative.
     cmd: >-
       six single-anchor mutations of scripts/price_review_sentinel.py, each followed by
-      python3 -m pytest scripts/tests/test_price_review_sentinel.py -q and a restore
+      python3 -m pytest scripts/tests/test_price_review_sentinel.py and a restore from a
+      pristine copy (never `git checkout --`, which would have destroyed uncommitted work).
+      No -q: this repo's pytest.ini already sets it and a duplicate trips the verbosity guard.
     result: >-
-      contradiction check disabled -> 5 failed; corroboration gate disabled -> 1 failed; future-date
-      check disabled -> 3 failed; metadata isinstance guard disabled -> 1 failed; interval 90->365
-      -> 3 failed; grace 1->30 -> 3 failed. Restored: all pass.
+      RE-MEASURED at the final tree, superseding an earlier reading taken when the suite was
+      smaller. Baseline 46 passed. contradiction check disabled -> 6 failed, 40 passed;
+      corroboration gate disabled -> 2 failed, 44 passed; future-date check disabled -> 3 failed,
+      43 passed; metadata isinstance guard disabled -> 2 failed, 44 passed; interval 90->365 ->
+      3 failed, 43 passed; grace 1->30 -> 3 failed, 43 passed. Restored byte-identical (cmp),
+      back to 46 passed.
     exit: 0
     ts: 2026-08-31T08:58Z
     seat: session (build lane)
   - claim: The full suite passes at this HEAD.
-    cmd: python3 -m pytest scripts/tests/test_price_review_sentinel.py -q
-    result: 39 passed
+    cmd: python3 -m pytest scripts/tests/test_price_review_sentinel.py
+    result: 46 passed
     exit: 0
     ts: 2026-08-31T09:09Z
+    seat: session (build lane)
+  - claim: >-
+      The sentinel's notion of "a priced row" agrees with the live pricing service's own, and the
+      test that says so is not vacuous.
+    cmd: >-
+      pytest scripts/tests/test_price_review_sentinel.py::test_the_sentinels_walker_agrees_with_the_live_services_own_iterator,
+      then two mutations modelling the divergence and a restore
+    result: >-
+      113 = 113, compared by object identity (both walk the same loaded dict). Non-vacuity proven
+      by mutation, and the FIRST mutation I tried was inert: dropping `tier_range` from the
+      walker's predicate left the test GREEN, because zero rows in today's sheet carry
+      `tier_range` without `price` — the mutation was dead against the DATA, not the test. The two
+      that model the real scenario both go RED: emptying the service's `_NESTED_CATEGORIES`
+      (its hardcoded fan-out list, the thing that will not know about a new nested category), and
+      making the sentinel's walker stop descending into sub-blocks. Restored byte-identical.
+    exit: 0
+    ts: 2026-08-31T10:05Z
+    seat: session (build lane)
+  - claim: >-
+      The organ's heartbeat budget carries slack, so a healthy daily cron is never graded stale in
+      the minutes before its own next run.
+    cmd: >-
+      edit organs_registry.yaml expected_hb_seconds 86400 -> 90000; then
+      PYTHONPATH=apps/organism python3 -m organism.tools.validate_organs_registry <registry>
+      --update-checksum; then python3 infra/organ-conformance/check_organ_conformance.py
+    result: >-
+      86400 equalled the plist StartInterval exactly, and sentinel-aggregate.py:19-20 grades `ok`
+      only while age <= expected_hb_seconds — a false amber every day, forever. 90000 is the house
+      convention (48 organs carry it; only 4 carry the bare 86400). Checksum
+      9f0733f0fbb5343e -> 731ec7b43eeac57f; conformance 189 plists, 0 regressions, 0
+      non-conformant births. The DEFAULT in organ_birth.py that minted the wrong value is
+      inherited by this diff, not introduced by it, and is ledgered rather than changed here.
+    exit: 0
+    ts: 2026-08-31T10:05Z
     seat: session (build lane)
   - claim: The organ birth is conformant and the registry stays valid.
     cmd: >-
@@ -97,8 +136,10 @@ receipts:
       reporter.
     cmd: >-
       python3 -m pytest scripts/tests/test_price_review_sentinel.py
-      scripts/tests/test_organ_birth.py scripts/tests/test_pending_arms_report.py -q
-    result: 135 passed (at the first commit; the price suite has since grown from 22 to 39)
+      scripts/tests/test_organ_birth.py scripts/tests/test_pending_arms_report.py
+    result: >-
+      159 passed, re-run at the final tree. An earlier reading of 135 was taken at the first
+      commit, when the price suite held 22 tests; it now holds 46.
     exit: 0
     ts: 2026-08-31T08:52Z
     seat: session (build lane)

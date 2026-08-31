@@ -470,7 +470,14 @@ def test_a_sheet_with_no_priced_entries_cannot_be_reported_current():
 # ---------------------------------------------------------------------------
 
 
-def test_main_exits_one_on_the_real_sheet_today_and_says_so_on_its_last_line(capsys):
+def test_main_prints_a_state_line_whose_rc_matches_the_code_it_exits_with(capsys):
+    """Deliberately NOT named "exits one": the assertion admits OK as well as
+    FINDING, and it must. Pinning REVIEW_DUE here would make the legitimate
+    cure — somebody actually re-attesting the sheet — break the suite. What is
+    genuinely invariant is the coupling: the last line is machine-readable and
+    its rc= agrees with the process's own exit code, which is the contract the
+    launchd wrapper reads. The freshness verdict itself is pinned by the
+    classify() matrix on synthetic sheets, where it can be pinned honestly."""
     rc = prs.main(["--dry-run", "--now", "2026-08-31"])
     last = capsys.readouterr().out.strip().splitlines()[-1]
     assert last.startswith("SENTINEL-STATE ")
@@ -644,3 +651,48 @@ def test_the_missing_state_flag_is_not_derived_from_a_magic_substring():
             assert len(line) < 200 + 40, (
                 f"heartbeat note is close to the registry's 200-char cap: {line!r}"
             )
+
+
+def test_the_sentinels_walker_agrees_with_the_live_services_own_iterator():
+    """`iter_priced_entries` is a SECOND implementation of "what is a priced
+    row". The live service has its own — `_iter_service_entries`, which fans
+    out nested categories from a hardcoded `_NESTED_CATEGORIES` list, where
+    the sentinel's walker recurses generically. They agree on today's sheet;
+    nothing made them agree, and nothing was checking.
+
+    The divergence is not hypothetical: the schema already nests
+    (`tax_accounting`), so a new nested category is how this file grows. Add
+    one and the two notions part company — the sentinel's `priced_entries`
+    count and its `verified_on` scan quietly move against the catalogue the
+    service actually serves, while "watches what the live service loads"
+    keeps reading true.
+
+    Object identity, not equality: both walk the SAME loaded dict, so any
+    divergence is a real structural disagreement and not two equal-looking
+    rows.
+    """
+    sheet = json.loads(prs.resolve_price_sheet().read_text(encoding="utf-8"))
+    services = sheet.get("services", {})
+
+    sys.path.insert(0, str(REPO / "apps" / "backend-rag"))
+    try:
+        from backend.services.pricing.pricing_service import (  # noqa: PLC0415
+            _iter_service_entries,
+        )
+    finally:
+        sys.path.pop(0)
+
+    mine = {id(entry) for _path, entry in prs.iter_priced_entries(sheet)}
+    theirs = {
+        id(entry)
+        for _category, _name, entry in _iter_service_entries(services)
+        if "price" in entry or "tier_range" in entry
+    }
+
+    assert mine, "the sentinel's walker found no priced rows at all"
+    assert mine == theirs, (
+        "the sentinel's notion of a priced row has drifted from the live "
+        f"service's: {len(mine)} vs {len(theirs)}, "
+        f"{len(mine - theirs)} only the sentinel sees, "
+        f"{len(theirs - mine)} only the service sees"
+    )

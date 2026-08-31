@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 9f0733f0fbb5343e46a74bc680cd1d8267d1061dee31df7b7d9c1030d61ab90b
+checksum: 731ec7b43eeac57fb21239a8a93924ebab9fbc707e1056e3e1f95b2f939a7a29
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2839,7 +2839,7 @@ organs:
 - id: pro.price_review_sentinel
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 86400
+  expected_hb_seconds: 90000
   owner_module: infra/launchagents/wrappers/pro-price-review-sentinel.sh
   dependencies: []
   recovery_action: launchctl_kickstart

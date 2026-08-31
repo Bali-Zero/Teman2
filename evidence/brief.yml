@@ -55,8 +55,12 @@ acceptance:
   - "WHEN a review date sits inside the interval but a commit lands after it, classify() SHALL NOT return OK — probe: `pytest scripts/tests/test_price_review_sentinel.py::test_guilt_a_recent_review_date_contradicted_by_a_change_is_still_not_ok`. Full statement: `classify()` returns OK only when the review date is inside the interval AND no trace shows the
     file changed after it — verified by a guilt test where the date is INSIDE the interval but a
     commit lands after it, which must still not be OK."
-  - "WHEN run against the real sheet on 2026-08-31 the sentinel SHALL exit 1 — probe: `python3 scripts/price_review_sentinel.py --dry-run --json --now 2026-08-31`. It yields ATTESTATION_UNMAINTAINED with
-    exit 1, naming 2026-08-26 as the contradicting trace."
+  - "WHEN run against the real sheet the sentinel SHALL print a machine-readable last line whose
+    rc= agrees with the code it exits with — probe: `pytest scripts/tests/test_price_review_sentinel.py::test_main_prints_a_state_line_whose_rc_matches_the_code_it_exits_with`.
+    NARROWED from an earlier 'SHALL exit 1': on 2026-08-31 it does exit 1 (ATTESTATION_UNMAINTAINED,
+    naming 2026-08-26 as the contradicting trace), but pinning that here would make the legitimate
+    cure — somebody re-attesting the sheet — break the suite. The freshness verdicts are pinned on
+    synthetic sheets by the classify() matrix, where they can be pinned honestly."
   - "WHERE the classifier returns an outcome, that outcome SHALL have a mapped exit code — probe: `pytest scripts/tests/test_price_review_sentinel.py::test_every_outcome_the_classifier_actually_returns_has_an_exit_code`. None falls through to CANNOT_VERIFY."
   - "IF the real sheet were empty the suite SHALL fail rather than pass vacuously — probe: `pytest scripts/tests/test_price_review_sentinel.py::test_the_real_sheet_is_classifiable_and_not_empty`. The real sheet parses and carries >= 100 priced entries before any
     assertion is made about it."
@@ -87,8 +91,12 @@ risks:
   - "The contradiction check depends on git being available in the cron environment. When git cannot
     answer, the sentinel loses one of its two traces; it degrades toward silence on that trace, never
     toward a pass, but the coverage is genuinely weaker in that state."
-  - "ATTESTATION_GRACE_DAYS = 1 is a judgment call covering the UTC-vs-WITA offset. A real edit made
-    within a day of a genuine review would be absorbed by it."
+  - "ATTESTATION_GRACE_DAYS = 1 is a judgment call covering MERGE LAG — the gap between reviewing a
+    price and the commit that records it. RETRACTED: an earlier draft of this line, and of the
+    code comment, justified it by the UTC-vs-WITA offset. That reasoning was inverted (WITA is
+    ahead of UTC, so the offset cannot make a same-day commit look like a later one) and it is
+    corrected at price_review_sentinel.py:104-116. A real edit made within a day of a genuine
+    review is still absorbed by the grace day; that cost is accepted, the stated reason was wrong."
   - "The sentinel answers a narrower question than the mandate's word 'prices' might suggest: it
     detects that OUR SHEET is overdue for review, not that the underlying prices have changed. That
     narrowing is Zero's own amendment, stated here so nobody later reads the green as market truth."
