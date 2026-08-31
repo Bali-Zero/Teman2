@@ -7,9 +7,9 @@ lanes:
     role: build
     seat: claude (this session — M5 interactive, sole build lane)
 diff:
-  files: PLACEHOLDER
-  net_lines: PLACEHOLDER
-  measured_at: PLACEHOLDER
+  files: 10
+  net_lines: 1496
+  measured_at: bc0f0f0e64
   note: >-
     git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD — never a two-dot
     diff against a stale base (W102).
