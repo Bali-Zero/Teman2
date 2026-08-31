@@ -25,14 +25,14 @@ objective: |
   Gear 3 by PATH, deterministically (`migrations_v2/` is a hot zone). Honored,
   not argued with.
 constraints:
-  - "Migration 300 copies migration 299's DISCIPLINE, not its text: role-guarded
+  - "Migration 300 copies migration 301's DISCIPLINE, not its text: role-guarded
     (skip when visa_ledger_owner is absent), `to_regprocedure` rather than a
     `::regprocedure` cast so an absent function yields NULL at lookup instead of
     raising there, the ALTER attempted inside an insufficient_privilege handler,
     and then a re-read of pg_proc.proowner that RAISES. It must not be possible
     for it to be recorded applied while the ownership is still wrong."
   - "Past the role guard, an ABSENT target is a failed postcondition, not
-    permission to continue — a divergence from 299, added after the adversarial
+    permission to continue — a divergence from 301, added after the adversarial
     round. The ledger role exists at that point and 281/286 create all five
     unconditionally beforehand, so an absence means the chain is broken."
   - "Every catalog relation and catalog function, in the migration AND in the
@@ -114,7 +114,7 @@ consumer_map:
     this lane also touches — it adds `AND NOT role.rolsuper`, this lane qualifies
     the same statement's catalog names. Same statement, different concerns;
     whichever lands second needs a trivial rebase."
-  - "PR #5302 (migration 299) touches the SAME two Python files. It ADDS the two
+  - "PR #5302 (migration 301 — 299 when this was written, renumbered under W40) touches the SAME two Python files. It ADDS the two
     GARUDA binders to RETENTION_BINDING_TRIGGER_FUNCTIONS and to the test's frozen
     authority — a list update. This lane adds the check that makes such an update
     unnecessary next time. Different hunks, no semantic conflict; whichever merges

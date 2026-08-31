@@ -29,13 +29,13 @@
 --
 --   That is the "esiste != armato" shape (superscar #2) in its migration form,
 --   and it is exactly the defect an adversarial reviewer rejected in migration
---   299's first draft for copying the same handler verbatim. This file is the
---   companion cure: 299 codifies the one transfer 285 forgot, 300 codifies the
+--   301's first draft for copying the same handler verbatim. This file is the
+--   companion cure: 301 codifies the one transfer 285 forgot, 300 codifies the
 --   five that 281 and 286 announced and did not perform.
 --
 -- WHY THIS IS NOT AN OUTAGE FIX
 -- =============================================================================
---   Unlike 299, no endpoint was answering 500 on account of these five. They
+--   Unlike 301, no endpoint was answering 500 on account of these five. They
 --   are not BEFORE INSERT trigger functions on a hot write path: they are the
 --   bounded purge / evidence / legal-hold / legacy-binding primitives, invoked
 --   by an operator or a scheduler that does not yet run. The ownership was a
@@ -80,7 +80,7 @@
 --   unprovisioned database and there would be nothing to transfer TO. And
 --   `to_regprocedure` rather than a `::regprocedure` cast, so an absent
 --   function yields NULL at lookup instead of raising there -- the
---   fresh-database ordering hazard 299's review flagged. Past the role guard
+--   fresh-database ordering hazard 301's review flagged. Past the role guard
 --   that NULL is treated as a FAILED postcondition, not as permission to skip:
 --   see the block's own comment.
 --
@@ -118,19 +118,19 @@ DECLARE
     signature text;
     fn oid;
     current_owner text;
-    still_wrong text[] := ARRAY[]::text[];
+    still_wrong text[] := ARRAY[]::pg_catalog.text[];
 BEGIN
     -- The one branch that legitimately returns without asserting anything.
     -- `visa_ledger_owner` is ABSENT on every unprovisioned database, including
     -- the local dev cluster and CI's Postgres service (measured 2026-08-30):
     -- there is no role to transfer TO, and raising here would block the whole
     -- migration chain on every environment that has not provisioned the
-    -- capability roles -- which is the same convention 251/253/268/281/286/299
+    -- capability roles -- which is the same convention 251/253/268/281/286
     -- all follow. This is NOT a silent hole: `operational_preflight.py` already
     -- carries a `role:visa_ledger_owner` check that goes red on exactly this
     -- state, so an environment missing the role is loud where it matters.
     IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = ledger_owner) THEN
-        RAISE NOTICE 'garuda retention (300): role % absent -- skipping ownership transfer, same convention as 251/253/268/281/286/299',
+        RAISE NOTICE 'garuda retention (300): role % absent -- skipping ownership transfer, same convention as 251/253/268/281/286',
             ledger_owner;
         RETURN;
     END IF;
@@ -193,7 +193,9 @@ $garuda_300_owner_transfer$;
 -- The mechanical inverse of this migration is `ALTER FUNCTION ... OWNER TO
 -- backend_rag_v2` on all five, which re-creates the exact latent trap that
 -- migration 285 later fell into and that cost the GARUDA magic-link endpoint
--- weeks of silent 500s. So the inverse is not performed.
+-- five days of silent 500s -- 285 landed 2026-08-26, measured with
+-- `git log --diff-filter=A`, not estimated. An earlier draft said "weeks",
+-- and it was the sentence justifying an irreversible rollback. So the inverse is not performed.
 --
 -- But a rollback that merely RAISE NOTICEs would be worse than the inverse,
 -- and the adversarial review of this PR was right to call it a lie:

@@ -6,7 +6,7 @@ council_run: journal.jsonl
 plan_ref:
   "agent/air-m5/db/definer-owner-invariant-0830 — codify the five ownership transfers migrations 281
   and 286 announced and never performed, and replace the hand-maintained list that let migration 285
-  through with a class-level invariant. Companion to PR #5302 (migration 299), which cures the one
+  through with a class-level invariant. Companion to PR #5302 (migration 301 — it was 299 when this pack was written and yielded to 301 under the W40 convention), which cures the one
   transfer migration 285 forgot."
 # R8 (ground_truth) seat_override. R8 fires on the PATTERN `*/visa_engine/*`, and
 # the only file in this diff that matches it is
@@ -91,7 +91,7 @@ receipts:
       "0. A companion read shows all 21 definer functions live in `public` and none in the only other
       non-system schema, `mata_garuda`."
   - claim:
-      "Migration number 300 does not collide. origin/main's highest is 298; PR #5302 adds 299; no
+      "Migration number 300 does not collide. RE-MEASURED 2026-08-31 — BOTH premises of the original reading had moved, and this is the receipt whose only job is to prove non-collision: origin/main now tops out at 299 (299_schema_versions_provenance.sql merged), and #5302 adds 301, not 299. The CONCLUSION survives and was re-verified rather than assumed: main holds 092-299, this branch adds 300, #5302 adds 301, no duplicate, and this PR's own uniqueness guard agrees. Original reading, kept so the drift is visible: origin/main's highest is 298; PR #5302 adds 299; no
       other open PR touches migrations_v2 above 295."
     cmd:
       "git ls-tree --name-only origin/main .../migrations_v2/ | tail, plus `gh pr view <n> --json
@@ -100,7 +100,7 @@ receipts:
     ts: "2026-08-30T10:31:00Z"
     seat: claude-opus-5
     result:
-      "origin/main tops out at 298. #5302 -> 299. #5072 -> 289 (a number already taken on main by a
+      "STALE AS WRITTEN, corrected above: origin/main tops out at 299 and #5302 -> 301. Original: origin/main tops out at 298. #5302 -> 299. #5072 -> 289 (a number already taken on main by a
       different file — that lane's problem, not this one's). #5037 -> 293/294/295. 300 is free."
   - claim:
       "RED before GREEN, and not a trivial red: with the new check wired in and the fake not yet
@@ -404,12 +404,12 @@ dissent:
       owns the verdict logic, the real catalog owns the SQL."
   - seat: codex-gpt-5.6-sol (adversarial grader)
     objection:
-      "Migration 299 (PR #5302) compounds the defect: on a fresh database without visa_ledger_owner it
+      "Migration 301 (PR #5302, numbered 299 when this was written): on a fresh database without visa_ledger_owner it
       takes the identical NOTICE-and-RETURN branch and is recorded applied, so fixing 300 alone does
       not produce convergence."
     status: PLAUSIBLE
     resolution:
-      "OUT OF THIS LANE'S SCOPE. Handed to the mandating session, which owns PR #5302 and this gate. 299 is not in this diff and
+      "OUT OF THIS LANE'S SCOPE. Handed to the mandating session, which owns PR #5302 and this gate. 301 is not in this diff and
       this lane does not edit another open PR's branch. The observation is correct as far as it goes;
       the answer to it is the same measurement as above — with the role absent there is nothing to
       transfer to, and the `role:visa_ledger_owner` preflight check is the layer that reports that
