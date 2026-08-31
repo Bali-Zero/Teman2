@@ -1,4 +1,10 @@
-brief_ref: evidence/2026-08/agent-air-m5-backend-rag-voa-price-790-0831-4cd8947a/brief.yml
+# MUST be the literal staging path, never the real per-PR one: CI stages the
+# pack and brief into /tmp/evidence-check/evidence/{pack,brief}.yml and the
+# lint resolves brief_ref against THAT root. Writing the obviously-correct
+# per-PR path here is the documented trap (harness-floor.yml, and
+# scripts/ci/evidence_paths.py's docstring) -- its failure message,
+# "does not resolve to a file on disk", says nothing about staging.
+brief_ref: evidence/brief.yml
 plan_ref: >-
   PR #5407 (agent/air-m5/backend-rag/voa-price-790-0831 -> main) — Zero's 2026-08-31 price ruling,
   carried into the one store that was contradicting it.
