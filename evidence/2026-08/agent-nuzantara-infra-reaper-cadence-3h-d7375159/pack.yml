@@ -66,12 +66,12 @@ receipts:
   - claim: "plistlib.load() parsa il file — cosa che PRIMA di questa PR falliva con ExpatError sul doppio trattino dentro il commento XML — e vede 8 voci con la label invariata. RI-ESEGUITO sul contenuto finale: la prima cattura di questa ricevuta era vera quando fu presa e FALSA per il commit che ne è seguito (vedi residual_risks, RECIDIVA)."
     cmd: 'python3 -c "import plistlib;d=plistlib.load(open(''infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example'',''rb''));print(len(d[''StartCalendarInterval'']), d[''Label''])"   # stdout: 8 com.nuzantara.agent-worktree-cleanup.daily'
     exit: 0
-    ts: "2026-08-31T05:12:00Z"
+    ts: "2026-08-31T04:41:29Z"
     seat: opus-5
   - claim: "Nessun doppio trattino letterale sopravvive in NESSUN commento XML del file — controllato su tutti i commenti, non solo sul primo errore che il parser riporta."
     cmd: 'python3 -c "import pathlib,re;t=pathlib.Path(''infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example'').read_text();print([l for m in re.finditer(r''<!--(.*?)-->'',t,re.S) for l in m.group(1).splitlines() if ''-''+''-'' in l])"   # stdout: []'
     exit: 0
-    ts: "2026-08-31T05:12:00Z"
+    ts: "2026-08-31T04:41:29Z"
     seat: opus-5
   - claim: "L'intervallo derivato dal numero di voci è 10800 s (86400//8), che è il valore che audit_launchd_crons.py calcola dallo stesso campo."
     cmd: 'python3 -c "import plistlib;d=plistlib.load(open(''infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example'',''rb''));print(86400//len(d[''StartCalendarInterval'']))"   # stdout: 10800'
@@ -183,7 +183,31 @@ dissent:
       piano di rientro no, e resta una domanda aperta per il proprietario, non
       una cosa che questa PR decide.
 
-# council_run is a PATH to a journal.jsonl relative to THIS pack's own
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection: >
+      SECONDO GIRO, convocato sul solo delta 1b70763..7a0bce0 perché quel commit
+      era nato DOPO il council di primo giro e nessun giudice l'aveva visto. Due
+      rilievi, entrambi verificati e accolti. (1) TIMESTAMP FABBRICATI: due
+      ricevute di questo pacchetto dichiaravano le 05:12Z mentre l'ora reale era
+      le 04:41Z, ~31 minuti nel futuro — non catturate ma scritte a mano. (2) LA
+      GUIDA NUOVA NELL'HEADER ERA SBAGLIATA in entrambe le direzioni: vietava di
+      nominare i flag, mentre XML vieta la COPPIA di trattini — un flag a
+      trattino singolo è legale, e la coppia è illegale anche come punteggiatura;
+      la guida inoltre taceva che un commento non può terminare su un trattino.
+      Il seggio ha anche RIPRODOTTO in proprio, su un plist sintetico, la
+      divergenza plutil/plistlib che questa PR asserisce, invece di crederle.
+    resolution: >
+      Entrambe accolte e curate nel diff prima di ri-pubblicare: i due comandi
+      ri-eseguiti con timestamp catturato da `date -u`, e il paragrafo di guida
+      riscritto sui CARATTERI anziché sui flag, con la clausola del trattino
+      finale. Nessuna respinta.
+      ONESTÀ SUL GIRO STESSO: la sessione kimi è morta a metà su quota
+      settimanale (403) prima di emettere una riga di verdetto, quindi ha coperto
+      i primi due angoli e parte del quarto, e gli altri NON sono stati
+      esaminati. I rilievi sopra sono quelli che ha fatto in tempo a produrre, ed
+      erano già corredati dalle sue verifiche empiriche; il giro non è una
+      copertura completa del delta e non va contato come tale.
 # directory (not an inline list — the earlier draft got the shape wrong and
 # the lint's council_run NOTICE was correctly reporting it as absent). The
 # per-seat narrative lives in `dissent` above; the journal is the machine-
@@ -201,16 +225,37 @@ residual_risks:
     vera quando fu presa e falsa per l'artefatto spedito.
     PERCHÉ È SFUGGITA, ed è la parte che vale: `plutil -lint` risponde OK su un
     file che plistlib rifiuta. Le due sonde non concordano, e quella permissiva è
-    quella che un autore usa per prima. La sonda giusta è plistlib, perché è
-    quella che usa il consumatore reale (audit_launchd_crons.py).
+    quella che un autore usa per prima.
+    PORTATA REALE, misurata e non presunta (2026-08-31): sul file rotto `plutil`
+    risponde OK **e** la sua modalità extract stampa lo schedule corretto. Il
+    parser Apple — quello che usa launchd — non se ne cura, quindi il cron
+    avrebbe continuato a girare. A cecarsi è lo STRATO DI AUDIT in Python
+    (audit_launchd_crons.py e chiunque faccia plistlib.load), non il job. La
+    prima stesura di questa voce lasciava intendere una severità maggiore.
     CURA APPLICATA QUI: entrambe le occorrenze rimosse, ri-verificato con
     plistlib sul contenuto finale, più un controllo che scandisce TUTTI i
     commenti invece di fermarsi al primo errore riportato dal parser; e una nota
-    nell'header stesso che dice al prossimo autore di non scrivere un flag nella
-    forma trattata. La cura è un TESTO, non una guardia: nulla in questa PR
-    impedisce a un contributore di ricommettere la stessa forma. Se la copertura
-    CI risultasse assente, la guardia è un mandato separato — non si allarga
-    questa PR per costruirla."
+    nell'header. La nota è stata RISCRITTA dopo il rilievo di kimi-code/k3: la
+    prima versione diceva di non nominare i flag, che è insieme troppo largo (un
+    flag a trattino singolo è legale, e questo commento ne nomina diversi) e
+    troppo stretto (la coppia di trattini è illegale anche come pura
+    punteggiatura, e un commento non può nemmeno terminare su un trattino). Ora
+    la regola è enunciata sui CARATTERI, che è ciò che XML vieta davvero.
+    La cura è un TESTO, non una guardia: nulla in questa PR impedisce a un
+    contributore di ricommettere la stessa forma. Se la copertura CI risultasse
+    assente, la guardia è un mandato separato — non si allarga questa PR per
+    costruirla."
+  - "TIMESTAMP FABBRICATI IN QUESTO STESSO PACCHETTO, trovati da kimi-code/k3 al
+    secondo giro e la scoperta più grave delle due. Due ricevute portavano
+    `ts: 2026-08-31T05:12:00Z` mentre l'ora reale era 04:41Z: ~31 minuti NEL
+    FUTURO. Non le avevo catturate, le avevo DIGITATE perché sembravano
+    plausibili — dentro un pacchetto di evidenze, il cui unico scopo è essere
+    verificabile. È la stessa malattia della recidiva qui sopra (una ricevuta
+    scritta invece che presa) applicata a un campo diverso, ed è esattamente ciò
+    che un refuter di famiglia diversa serve a trovare.
+    CURA: entrambi i comandi RI-ESEGUITI, timestamp catturato da `date -u` e
+    scritto quello. Regola operativa che ne discende: un campo `ts` si cattura
+    nello stesso comando che produce la ricevuta, mai a mano dopo."
   - "COUNCIL COMPLETO A DUE SEGGI, con un terzo irraggiungibile. kimi-code/k3 e
     tp1-qwen3.8-max hanno entrambi risposto CONCERNS in modo indipendente e
     convergente sui due rilievi sostanziali (nessuna mutua esclusione; `-ctime`

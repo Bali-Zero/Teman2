@@ -42,13 +42,29 @@ broker's own AGE_MIN column, printed by its list mode (which showed the bulk
 between 4 and 26 hours old).
 
 A WORD ON THE SHAPE OF THIS COMMENT, because it bit twice in one session. XML
-forbids a literal double hyphen inside a comment. The pre-existing defect this
-PR cures was exactly that, and BOTH times a reviewer's correction was written
-into this header it came back — once as a flag name, once as another. The trap
-is that `plutil -lint` accepts the file and answers OK, while plistlib (which
-audit_launchd_crons.py uses) raises ExpatError: the lenient probe is the one an
-author reaches for first. Name a flag in prose here, never in its literal
-dashed form.
+forbids TWO CONSECUTIVE HYPHEN CHARACTERS anywhere inside a comment, and also
+forbids a comment body that ends on a hyphen. That is the entire rule, and it is
+narrower than "avoid dashes": a single-hyphen flag such as -ctime is perfectly
+legal in here (this comment names several), while an ASCII double dash used as
+ordinary PUNCTUATION is not. The hazard is the character pair, not the fact that
+a word happens to be a flag. A cross-family reviewer rejected the first version
+of this very paragraph, which told authors to avoid naming flags: it banned
+something legal and missed the punctuation case entirely.
+
+The defect this PR cures was exactly that character pair, and both times a
+reviewer's correction got written into this header it came back, each time as a
+long-form flag name spelled out in full.
+
+The trap that let it through twice: plutil accepts such a file and answers OK,
+and its extract mode even reads the correct schedule out of it. Apple's parser —
+the one launchd itself uses — does not care, measured rather than assumed, so
+the job would have kept running. Python's plistlib raises ExpatError, and
+plistlib is what audit_launchd_crons.py uses. The blast radius is therefore the
+AUDIT layer going blind, not the cron dying; and the lenient probe is the one an
+author reaches for first. Verify this file with plistlib, and scan EVERY comment
+rather than the position expat names: it reports only the first offence, so
+curing what it points at can leave a second one alive. That is precisely how
+this survived its own first correction.
 
 The "40 of 41 inside 24h" count came from `find -ctime -1`, and a cross-family
 reviewer was right to flag it: `-ctime` is inode CHANGE time, not birth time

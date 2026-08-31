@@ -61,11 +61,20 @@ Due guard proteggono un worktree expired dal drop:
 > wrapper ha loggato `[2026-08-30T16:15:05Z]` per una passata che il broker ha timbrato
 > `00:15:06+0800`. Girava alle **00:15 WITA**, non alle 08:15. Leggi queste ore come WITA.
 > **(2) Il cadenzamento giornaliero non regge una raffica.** Nella notte 30→31/8 un'ondata di
-> agent ha creato **40 worktree** dopo che la passata delle 00:15 era già scattata; a ~1,2 GB di
-> checkout l'uno hanno portato il volume Data da ~80 GB liberi a **753 MB**, con la passata
-> successiva a 24h di distanza. Il reaper non era morto né mis-schedulato — il suo log porta
-> rimozioni vere — era semplicemente **fuori cadenza**. Otto passate limitano l'accumulo peggiore
-> a ~3h invece di ~24h.
+> agent ha creato **40 worktree** dopo che la passata delle 00:15 era già scattata, con la passata
+> successiva a 24h di distanza; il volume Data è sceso da ~80 GB liberi (report del proprietario,
+> nessun log lo registra) a **753 MB** (misurato).
+> ⚠️ **L'aritmetica NON chiude, e il racconto non deve far finta di sì.** ~40 checkout a ~1,2 GB
+> fanno ~48 GB, mentre quel salto ne implica ~79: i worktree sono il contributore **più grande
+> identificato** e l'unico che questa cura tocca, **non** l'intera caduta — restano ~30 GB non
+> attribuiti (candidati per sola dimensione: `~/.ollama` 49 GB, OSINT-Nexus 18 GB;
+> `/private/var/vm/sleepimage` è invece **escluso**, 26 GB ma mtime del 18/8). Il reaper non era morto né mis-schedulato — il suo log porta
+> rimozioni vere — era semplicemente **fuori cadenza**. Otto passate portano l'accumulo peggiore
+> **verso** ~3h invece di ~24h — «verso», non «limitano a»: la parola più forte è stata respinta da
+> tp1-qwen3.8-max ed è giusto così. La cifra vale solo a macchina sveglia, con ogni passata che
+> parte in orario e finisce in fretta; `launchd` **fonde** le esecuzioni di calendario perse
+> durante il sonno, quindi un portatile chiuso di notte ottiene **una** passata di recupero, non
+> le diverse che ha dormito. Otto voci sono otto occasioni nominali, mai otto passate garantite.
 >
 > La label finisce ancora in `.daily` **di proposito**: è un identificatore che le sonde del
 > connettoma (`docs/connectome/edges/launchd-*.yaml`) grepano alla lettera, e rinominarla per
