@@ -21,17 +21,35 @@ That has one hard consequence, and it is the whole design:
     `last_updated` can prove the sheet is OVERDUE. It can never prove the
     sheet is FRESH.
 
-So this sentinel refuses to report OK on the strength of that field alone. It
-reports OK only when the field is inside the review interval AND is at least
-as recent as every independent trace of the file changing. When the field is
-older than such a trace, the outcome is ATTESTATION_UNMAINTAINED — a distinct,
-loud state meaning "the review date is broken, I cannot answer the freshness
-question in either direction", never a quiet pass.
-
-The two independent traces, both LOWER bounds on when the content last moved:
+So this sentinel refuses to report OK on the strength of that field alone. OK
+requires the field to be inside the review interval AND corroborated: at least
+one independent trace of the file changing must exist, and none may be newer
+than the field. The two traces, both LOWER bounds on when the content moved:
 
   1. the last git commit touching the file;
   2. the newest per-entry `verified_on` in the sheet.
+
+Every way that conjunction can fail has its own loud outcome, and none of them
+is a quiet pass:
+
+  ATTESTATION_UNMAINTAINED  a trace is newer than the field — the review date
+                            is not tracking edits, so the freshness question
+                            cannot be answered in either direction.
+  ANOMALY                   a date in the sheet has not happened yet. A future
+                            date is trivially "inside the interval" and no real
+                            trace can ever be newer than it, so this shape slips
+                            past every other check.
+  CANNOT_VERIFY             no trace exists at all (git could not answer and no
+                            entry carries verified_on), so the contradiction
+                            check would pass VACUOUSLY rather than on evidence;
+                            or the sheet is malformed or unreadable.
+
+The asymmetry is preserved throughout: REVIEW_DUE is decided BEFORE the
+corroboration gate, because "overdue" is provable from the field alone.
+
+The last three outcomes were added after the kimi-code/k3 council seat found
+each as a reachable FALSE OK on the first draft, all reproduced here before
+being adopted.
 
 A commit that only reformatted the file would also trip this. That direction
 is deliberate: the error it produces is a loud false ATTESTATION_UNMAINTAINED,
@@ -48,8 +66,12 @@ Usage:
 
 Exit codes (house contract, `visa_freshness_sentinel.py`):
     0 — OK or APPROACHING (nothing to do, or a heads-up delivered)
-    1 — REVIEW_DUE or ATTESTATION_UNMAINTAINED (an actionable finding)
-    2 — CANNOT_VERIFY (the sheet could not be located, read, or parsed)
+    1 — REVIEW_DUE, ATTESTATION_UNMAINTAINED or ANOMALY (an actionable finding)
+    2 — CANNOT_VERIFY (unreadable, malformed, uncorroborated, or crashed)
+
+rc=1 means a finding was COMPUTED AND DELIVERED, and the wrapper reads it that
+way — so a crash must never be able to exit 1. Every unexpected exception is
+caught and turned into rc=2, in classify()'s caller and again around main().
 
 A gateway failure NEVER raises — logged and swallowed, matching the house
 contract that `tg_notify.py` never fails its caller.
@@ -78,15 +100,26 @@ TG_NOTIFY = PROJECT_ROOT / "scripts" / "tg_notify.py"
 PRICE_REVIEW_INTERVAL_DAYS = 90
 # Heads-up window before the interval expires.
 DEFAULT_WARN_DAYS = 14
-# A same-day-ish commit must not read as evidence the attestation is stale:
-# `last_updated` is a date, commits carry a UTC instant, and the office is
-# UTC+8 — a commit at 00:22Z is the evening of the previous WITA day.
+# One day of slack between writing the review date and the commit landing.
+#
+# The first version of this comment blamed the UTC/WITA offset, and that was
+# backwards: UTC is BEHIND WITA, so a commit's UTC date can never run ahead of
+# the WITA date a reviewer would have typed. The real reason is merge lag — a
+# reviewer stamps today's date, the PR lands tomorrow, and git honestly reports
+# the later day. Corrected after the kimi-code/k3 council seat called the
+# justification inverted; the value stays 1, only the reason is now true.
+#
+# The cost, stated rather than smoothed over: a genuine price edit made exactly
+# one day after a genuine review is absorbed and reads as OK. Widening the
+# grace buys nothing and hides more; narrowing it to zero makes every ordinary
+# same-PR lag look like a broken attestation.
 ATTESTATION_GRACE_DAYS = 1
 
 OUTCOME_OK = "OK"
 OUTCOME_APPROACHING = "APPROACHING"
 OUTCOME_REVIEW_DUE = "REVIEW_DUE"
 OUTCOME_UNMAINTAINED = "ATTESTATION_UNMAINTAINED"
+OUTCOME_ANOMALY = "ANOMALY"
 OUTCOME_CANNOT_VERIFY = "CANNOT_VERIFY"
 
 EXIT_OK = 0
@@ -232,7 +265,18 @@ def classify(
         "sheet_path": str(sheet_path) if sheet_path else None,
     }
 
-    last_updated = parse_date(sheet.get("metadata", {}).get("last_updated"))
+    metadata = sheet.get("metadata")
+    if not isinstance(metadata, dict):
+        return Verdict(
+            outcome=OUTCOME_CANNOT_VERIFY,
+            reason=(
+                f"metadata is {type(metadata).__name__}, not an object — the "
+                "sheet is malformed and carries no readable review date."
+            ),
+            **common,
+        )
+
+    last_updated = parse_date(metadata.get("last_updated"))
     if last_updated is None:
         return Verdict(
             outcome=OUTCOME_CANNOT_VERIFY,
@@ -244,6 +288,33 @@ def classify(
     age_days = (today - last_updated).days
     common["last_updated"] = last_updated
     common["age_days"] = age_days
+
+    # A date that has not happened yet is not a fresh review, it is a broken
+    # one — and it is the shape that slips past every other check here, since
+    # a negative age is trivially "inside the interval" and no real trace can
+    # ever be newer than a future date. Found by the kimi-code/k3 council seat
+    # and reproduced before adoption: last_updated=2027-01-01 with today
+    # 2026-08-31 returned OK, reason "reviewed -123 days ago".
+    future = [
+        (label, value)
+        for label, value in (
+            ("metadata.last_updated", last_updated),
+            ("the newest verified_on", newest_verified),
+        )
+        if value is not None and value > today
+    ]
+    if future:
+        detail = "; ".join(f"{label} is {value.isoformat()}" for label, value in future)
+        return Verdict(
+            outcome=OUTCOME_ANOMALY,
+            reason=(
+                f"a date in the sheet has not happened yet ({detail}, today is "
+                f"{today.isoformat()}). A review cannot be dated in the future, "
+                "so the attestation is not trustworthy and no freshness claim "
+                "can rest on it."
+            ),
+            **common,
+        )
 
     # The attestation is only worth reading if nothing contradicts it.
     traces = [d for d in (git_date, newest_verified) if d is not None]
@@ -268,6 +339,28 @@ def classify(
                 f"the price sheet was last reviewed {age_days} days ago "
                 f"({last_updated.isoformat()}), past the {interval_days}-day "
                 "review interval."
+            ),
+            **common,
+        )
+
+    # Past this point the answer would be OK or APPROACHING — both of which
+    # claim the sheet is current. That claim needs corroboration, and with no
+    # trace at all there is none: the contradiction check above passed
+    # VACUOUSLY, not on evidence. Reported by the kimi-code/k3 council seat and
+    # reproduced: git unavailable plus zero verified_on entries returned OK
+    # with the reason "nothing shows the sheet changed after that date", when
+    # in fact nothing COULD have shown it. Reachable in production — the whole
+    # sheet carries two verified_on stamps, and git_last_change() returns None
+    # on any git failure. Note the asymmetry is preserved: REVIEW_DUE above is
+    # provable from the field alone, so it is returned before this gate.
+    if not traces:
+        return Verdict(
+            outcome=OUTCOME_CANNOT_VERIFY,
+            reason=(
+                f"metadata.last_updated says {last_updated.isoformat()}, inside "
+                f"the {interval_days}-day interval, but there is no independent "
+                "trace to corroborate it — git could not answer and no entry "
+                "carries verified_on. The field alone cannot establish freshness."
             ),
             **common,
         )
@@ -308,6 +401,7 @@ def format_alert_text(verdict: Verdict) -> str:
         OUTCOME_REVIEW_DUE: "💰 Price sheet REVIEW DUE",
         OUTCOME_APPROACHING: "💰 Price sheet review approaching",
         OUTCOME_UNMAINTAINED: "🕳️ Price sheet review date UNMAINTAINED",
+        OUTCOME_ANOMALY: "🛑 Price sheet date ANOMALY",
         OUTCOME_CANNOT_VERIFY: "❓ Price sheet CANNOT VERIFY",
         OUTCOME_OK: "✅ Price sheet OK",
     }
@@ -320,7 +414,7 @@ def format_alert_text(verdict: Verdict) -> str:
             f"{missing} of {verdict.priced_entries} priced entries carry no "
             "verified_on — those are UNKNOWN, not fresh."
         )
-    if verdict.outcome == OUTCOME_UNMAINTAINED:
+    if verdict.outcome in (OUTCOME_UNMAINTAINED, OUTCOME_ANOMALY):
         lines.append("")
         lines.append(
             "Fix: bump metadata.last_updated when the sheet is reviewed, or the "
@@ -345,7 +439,11 @@ def send_alert(verdict: Verdict, gateway_path: Path = TG_NOTIFY) -> str | None:
 
     # UNMAINTAINED is p0 alongside REVIEW_DUE: a broken review date means every
     # future run of this sentinel is blind, which outranks a housekeeping note.
-    tier = "p0" if verdict.outcome in (OUTCOME_REVIEW_DUE, OUTCOME_UNMAINTAINED) else "digest"
+    tier = (
+        "p0"
+        if verdict.outcome in (OUTCOME_REVIEW_DUE, OUTCOME_UNMAINTAINED, OUTCOME_ANOMALY)
+        else "digest"
+    )
     text = format_alert_text(verdict)
     key = dedup_key(verdict)
 
@@ -380,6 +478,7 @@ EXIT_BY_OUTCOME = {
     OUTCOME_APPROACHING: EXIT_OK,
     OUTCOME_REVIEW_DUE: EXIT_FINDING,
     OUTCOME_UNMAINTAINED: EXIT_FINDING,
+    OUTCOME_ANOMALY: EXIT_FINDING,
     OUTCOME_CANNOT_VERIFY: EXIT_CANNOT_VERIFY,
 }
 
@@ -430,14 +529,30 @@ def main(argv: list[str] | None = None) -> int:
                 sheet_path=str(sheet_path),
             )
         else:
-            verdict = classify(
-                sheet,
-                today=today,
-                git_date=git_last_change(sheet_path),
-                sheet_path=sheet_path,
-                interval_days=args.interval_days,
-                warn_days=args.warn_days,
-            )
+            # Anything unexpected in here must land on CANNOT_VERIFY, never on
+            # an uncaught exception. Python exits 1 on a traceback, the wrapper
+            # reads rc=1 as "finding delivered", and the organism would then see
+            # a healthy organ that reported a finding it never computed. Found
+            # by the kimi-code/k3 council seat on a malformed `metadata`, and
+            # the laundering is general: this catch closes the class, the
+            # isinstance guard in classify() closes that particular instance.
+            try:
+                verdict = classify(
+                    sheet,
+                    today=today,
+                    git_date=git_last_change(sheet_path),
+                    sheet_path=sheet_path,
+                    interval_days=args.interval_days,
+                    warn_days=args.warn_days,
+                )
+            except Exception as exc:  # noqa: BLE001 — see above: never exit 1 on a crash
+                logger.exception("classification crashed")
+                verdict = Verdict(
+                    outcome=OUTCOME_CANNOT_VERIFY,
+                    reason=f"classification crashed on {sheet_path}: "
+                           f"{type(exc).__name__}: {exc}",
+                    sheet_path=str(sheet_path),
+                )
 
     if args.json:
         print(json.dumps(verdict.to_dict(), indent=2))
@@ -451,4 +566,14 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # Last line of defence for the same laundering: rc=1 must mean "a finding
+    # was computed and delivered", never "the process died". Anything that
+    # escapes main() exits 2 (CANNOT_VERIFY), which the wrapper reads as an
+    # organ malfunction — the truthful reading.
+    try:
+        sys.exit(main())
+    except SystemExit:
+        raise
+    except BaseException:  # noqa: BLE001 — a crash must not be readable as a finding
+        logging.getLogger("price-review-sentinel").exception("sentinel crashed")
+        sys.exit(EXIT_CANNOT_VERIFY)

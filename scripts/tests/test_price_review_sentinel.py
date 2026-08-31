@@ -279,3 +279,94 @@ def test_a_failing_gateway_never_raises(tmp_path):
     gateway, _ = _fake_gateway(tmp_path, exit_code=3)
     verdict = prs.classify(_sheet("2026-01-01"), today=TODAY, git_date=None)
     assert prs.send_alert(verdict, gateway_path=gateway) == "VERDICT: SENT"
+
+
+# ---------------------------------------------------------------------------
+# A date that has not happened yet — the shape that slipped past every other
+# check (found by the kimi-code/k3 council seat, reproduced before adoption)
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_a_future_review_date_is_an_anomaly_not_a_fresh_sheet():
+    """A negative age is trivially 'inside the interval', and no real trace can
+    ever be newer than a future date — so without this check the sentinel
+    reported OK with the reason 'reviewed -123 days ago'."""
+    verdict = prs.classify(
+        _sheet("2027-01-01"), today=TODAY, git_date=dt.date(2026, 8, 26)
+    )
+    assert verdict.outcome == prs.OUTCOME_ANOMALY
+    assert verdict.age_days == -123
+    assert "2027-01-01" in verdict.reason
+
+
+def test_guilt_a_future_verified_on_is_also_an_anomaly():
+    entries = {"X": {"price": 1, "verified_on": "2027-02-02"}}
+    verdict = prs.classify(
+        _sheet("2026-08-20", entries), today=TODAY, git_date=dt.date(2026, 8, 20)
+    )
+    assert verdict.outcome == prs.OUTCOME_ANOMALY
+    assert "2027-02-02" in verdict.reason
+
+
+def test_innocence_today_itself_is_not_a_future_date():
+    verdict = prs.classify(_sheet(TODAY.isoformat()), today=TODAY, git_date=TODAY)
+    assert verdict.outcome == prs.OUTCOME_OK
+
+
+def test_anomaly_is_p0_and_exits_one(tmp_path):
+    gateway, argv_log = _fake_gateway(tmp_path)
+    verdict = prs.classify(_sheet("2027-01-01"), today=TODAY, git_date=None)
+    prs.send_alert(verdict, gateway_path=gateway)
+    argv = json.loads(argv_log.read_text())
+    assert argv[argv.index("--tier") + 1] == "p0"
+    assert prs.EXIT_BY_OUTCOME[prs.OUTCOME_ANOMALY] == 1
+
+
+# ---------------------------------------------------------------------------
+# Corroboration, malformed input, and the rc=1 laundering hole
+# (all three reported by the kimi-code/k3 council seat, all three reproduced
+# against the classifier before being adopted)
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_no_trace_at_all_cannot_exonerate_the_sheet():
+    """git unavailable AND zero verified_on entries: the contradiction check
+    passes VACUOUSLY. That is not evidence of freshness, and it used to return
+    OK with the reason 'nothing shows the sheet changed after that date'."""
+    verdict = prs.classify(_sheet("2026-08-30"), today=TODAY, git_date=None)
+    assert verdict.outcome == prs.OUTCOME_CANNOT_VERIFY
+    assert "no independent trace" in verdict.reason
+
+
+def test_the_asymmetry_survives_no_overdue_is_still_provable_without_traces():
+    """A field-only signal can still prove OVERDUE — that direction needs no
+    corroboration. Losing it would be the wrong cure for the vacuity above."""
+    verdict = prs.classify(_sheet("2026-01-01"), today=TODAY, git_date=None)
+    assert verdict.outcome == prs.OUTCOME_REVIEW_DUE
+
+
+def test_innocence_one_trace_is_enough_to_corroborate():
+    entries = {"X": {"price": 1, "verified_on": "2026-08-30"}}
+    verdict = prs.classify(_sheet("2026-08-30", entries), today=TODAY, git_date=None)
+    assert verdict.outcome == prs.OUTCOME_OK
+
+
+def test_malformed_metadata_cannot_verify_instead_of_crashing():
+    for bad in (None, "2026-08-01", [], 7):
+        verdict = prs.classify(
+            {"metadata": bad, "services": {}}, today=TODAY, git_date=None
+        )
+        assert verdict.outcome == prs.OUTCOME_CANNOT_VERIFY, bad
+        assert "malformed" in verdict.reason
+
+
+def test_a_crash_never_exits_one_because_the_wrapper_reads_one_as_a_finding(monkeypatch):
+    """rc=1 means 'a finding was computed and delivered'. If a crash could also
+    exit 1, the wrapper's heartbeat would report a healthy organ that delivered
+    a finding it never computed."""
+    def boom(*_args, **_kwargs):
+        raise RuntimeError("synthetic")
+
+    monkeypatch.setattr(prs, "classify", boom)
+    rc = prs.main(["--dry-run", "--now", "2026-08-31"])
+    assert rc == prs.EXIT_CANNOT_VERIFY
