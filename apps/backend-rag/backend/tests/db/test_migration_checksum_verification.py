@@ -44,20 +44,59 @@ pytestmark = pytest.mark.asyncio
 # --------------------------------------------------------------------------
 
 
-async def test_migration_299_exists_and_is_the_next_free_number() -> None:
-    """The spec said 298. 298 was taken by the time this lane ran.
+async def test_no_two_migrations_share_a_number() -> None:
+    """The real W40 property: a DUPLICATE number fails the whole deploy,
+    including migrations unrelated to the collision.
 
-    Pinned as a test rather than a comment because a stale migration number is
-    how two migrations collide (W40), and the runner's uniqueness assertion
-    fails the WHOLE deploy -- including migrations unrelated to the collision.
+    This test used to assert `300 not in on_disk` as a tripwire for "299 was
+    next-free on 2026-08-31". That pin answered a neighbouring question: it
+    could only ever be true until the next migration was written, so it went
+    red on the first PR that added one -- not because anything had collided,
+    but because the tree had moved on exactly as intended. A guard that fires
+    on correct work teaches people to edit the guard, which is how it stops
+    being read at all.
+
+    What actually protects the deploy is uniqueness, so that is what is
+    asserted here. It holds no matter how high the numbers go, and it goes red
+    for the one thing that genuinely breaks -- two files claiming the same
+    number, which is precisely what happened on 2026-08-31 when
+    299_schema_versions_provenance and 299_garuda_magic_link_binding_owner
+    both existed and the second yielded to 301 under the W40 convention.
     """
+    # _migration_sql_by_number() is a dict, so it CANNOT express a collision --
+    # a second file with the same number silently replaces the first. Reading
+    # the directory directly is the point: the duplicate has to survive long
+    # enough to be seen.
     on_disk = _migration_sql_by_number()
-    assert 299 in on_disk, "migration 299 is missing"
-    assert on_disk[299].name == "299_schema_versions_provenance.sql"
-    assert 300 not in on_disk, (
-        "a migration numbered 300 appeared; 299 was chosen as next-free on "
-        "2026-08-31 and this test is the tripwire for that assumption"
+    directory = next(iter(on_disk.values())).parent
+    by_number: dict[int, list[str]] = {}
+    # Glob and parse EXACTLY as migration_manager.py:278-291 does — `*.sql`
+    # with `int(stem.split("_")[0])`, any digit length — not a narrower
+    # 3-digit pattern. A guard that reads a smaller set than the runner it
+    # protects cannot see a collision the runner would die on: proven by the
+    # gate, `0299_dupe_probe.sql` beside `299_schema_versions_provenance.sql`
+    # collides into 299 for the runner while a `[0-9][0-9][0-9]_*` glob stayed
+    # green. Latent today — all 178 files are 3-digit — and latent is exactly
+    # when to fix it.
+    for path in sorted(directory.glob("*.sql")):
+        try:
+            number = int(path.stem.split("_")[0])
+        except ValueError:
+            continue  # the runner skips these too
+        by_number.setdefault(number, []).append(path.name)
+
+    collisions = {n: sorted(v) for n, v in by_number.items() if len(v) > 1}
+    assert not collisions, (
+        "duplicate migration number(s) -- the runner's uniqueness assertion "
+        "fails the WHOLE deploy, not just these files. Per W40 the file that "
+        "arrived SECOND in git-log time yields and is renamed to the next free "
+        "number: " + repr(collisions)
     )
+
+    # And the specific claim this test was originally written to pin, kept
+    # because it is still true and still worth knowing.
+    assert 299 in by_number, "migration 299 is missing"
+    assert by_number[299] == ["299_schema_versions_provenance.sql"]
 
 
 async def test_299_carries_an_explicit_rollback_section() -> None:
