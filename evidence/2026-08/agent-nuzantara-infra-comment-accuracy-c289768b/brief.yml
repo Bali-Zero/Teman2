@@ -1,0 +1,126 @@
+task_id: comment-accuracy-0831
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Correct two self-descriptive comment blocks in `.github/workflows/fly-deploy.yml` (the
+  `deploy` job's depot-retry loop, merged via PR #5422 earlier today) whose "Measured
+  2026-08-31" claims do not match the real job logs. Both defects were found and reported by
+  the dispatching team lead, cross-checked against an independent judge's diagnosis, and
+  RE-MEASURED by this task from scratch (fresh `gh run list` / `gh run view --job <id> --log`
+  calls in this session, not copied from either party) before any text was written, per the
+  team lead's explicit standing instruction: "rimisura tu prima di scrivere ... se la tua
+  misura diverge dalla mia, la tua vince e voglio saperlo."
+
+  DEFECT 1 (lines 191-198 on the pre-fix blob, now the first edited block): the comment said
+  "FOUR consecutive deploys died ... roughly 23:06Z to 03:04Z ... delivery was blocked for
+  four hours." Re-measured this session via `gh run list --workflow=fly-deploy.yml` +
+  `gh run view <run> --json jobs` for the window: there ARE exactly four depot-signature
+  failures in that window (deploy jobs 99336828116/99344068116/99365231097/99367317411,
+  23:10:53Z-03:04:23Z), but they are NOT consecutive -- a fifth deploy in the same window
+  (job 99361567807, 02:14:54-02:21:40Z) used the same default depot builder and SUCCEEDED,
+  sitting chronologically between the second and third failures. So this was an intermittent
+  depot fault, not a sustained outage, and delivery was not blocked for one continuous
+  four-hour stretch. This matches the dispatching team lead's own `gh run list` measurement
+  exactly (their message gave the same 5-run table, same success job id, same timestamp).
+
+  DEFECT 2 (lines 227-234 on the pre-fix blob, now the second edited block): the comment's
+  "Measured 2026-08-31 against real job logs:" header covered a mix of two different kinds of
+  claim without saying so -- a MEASURED claim (grep results against real job logs: which two
+  banner strings appear in which jobs) and a REASONED claim (an inference about what
+  "failed to fetch an image or build from source" IS -- flyctl's generic build-phase wrapper
+  text, not a depot-specific signature -- which is not something a finite log sample can
+  measure into a universal "never depot-specific", it is argued from what the string means).
+  Presenting both under one "Measured" header lets the reasoned sentence borrow the measured
+  sentence's authority. Fix: split the block so the header covers only the grep-verified
+  facts, and the inference is explicitly labelled "Reasoned, not measured". The block's own
+  discriminating conclusion -- '"error releasing builder" was present in all four real depot
+  incidents and absent from every clean sample' -- is independently re-verified TRUE this
+  session (see receipts) and is left byte-for-byte unchanged, per the team lead's explicit
+  instruch not to weaken it. The original block cited 3 non-depot release-command failures as
+  its "clean sample" (99306685764/99310369478/99317094020); the team lead's follow-up message
+  named 2 more (99327541263/99318055618) that belong to the same clean-sample class and were
+  missing from the comment -- this task re-verified all 5 by reading their actual job logs
+  (not just conclusions) and adds all 5 to the corrected text.
+
+  Both defects are TEXT-ONLY (comments inside a `run: |` block) -- no change to the retry
+  loop's executable logic, no change to the alert-stage fix shipped separately in PR #5434
+  (different branch, different worktree, not touched by this diff).
+
+constraints:
+  - "Text-only: no change to any executable line in fly-deploy.yml. Verified via
+    `git diff --cached` review before commit -- every changed line is inside a `#`-prefixed
+    comment."
+  - "Do not touch PR #5434 (alert-stage `if:` fix, separate branch
+    agent/nuzantara/infra/alert-stage, open with auto-merge armed) or its worktree -- disjoint
+    line ranges (that PR touches the deploy-failure-alert job's 'Determine failing stage'
+    step, far below the `deploy` job this PR edits), disjoint branches, cut from the same
+    fresh origin/main independently."
+  - "Every job ID cited in the corrected text must resolve to a real GitHub Actions job with
+    log content matching the claim made about it -- verified this session via
+    `gh run view --job <id> --log` for all 4 depot-incident jobs + all 5 non-depot-failure
+    jobs + the 1 successful job (10 total), not merely via job conclusion/metadata."
+  - 'The block''s final, undisputed sentence (''"error releasing builder" was present in all
+    four real depot incidents and absent from every clean sample'') is preserved verbatim --
+    only the material BEFORE it is restructured to separate measured from reasoned.'
+
+acceptance:
+  - text: >
+      WHEN a reader reads the depot-retry loop's first comment block (the `--depot=false`
+      rationale), the four-incident timing claim SHALL name the four specific job IDs and
+      SHALL state explicitly that they were not consecutive, naming the intervening
+      successful job.
+    probe: "grep -A2 '23:06Z and 03:04Z' .github/workflows/fly-deploy.yml | grep -c 'NOT'"
+  - text: >
+      WHEN a reader reads the same block's conclusion about blocked delivery, it SHALL NOT
+      claim a single continuous four-hour block -- it SHALL name the intermittent nature and
+      point at the successful job sitting inside the window.
+    probe: "grep -c 'blocked for.*four hours\\.' .github/workflows/fly-deploy.yml (expect 0 as a bare, unqualified claim); grep -c 'did NOT form one unbroken run' .github/workflows/fly-deploy.yml (expect 1)"
+  - text: >
+      WHEN a reader reads the second comment block (why "error releasing builder" was chosen
+      as the trigger string), the claim about "Waiting for depot builder" SHALL cite five
+      non-depot release-command failure job IDs (not three), and the claim about
+      "failed to fetch an image or build from source" not being depot-specific SHALL be
+      labelled as reasoning, not measurement.
+    probe: "grep -ic 'REASONED, not measured' .github/workflows/fly-deploy.yml (expect >=1); grep -c '99327541263/99318055618' .github/workflows/fly-deploy.yml (expect 1)"
+  - text: >
+      WHILE the file is linted with `actionlint -shellcheck=` (the exact invocation the
+      REQUIRED CI gate runs), the finding count SHALL be 0, matching origin/main -- comment-only
+      changes cannot introduce a schema/expression finding, and shellcheck itself is disabled
+      on this gate.
+    probe: "actionlint -shellcheck= .github/workflows/fly-deploy.yml"
+  - text: >
+      WHERE bare `actionlint` (shellcheck enabled) is applied, the finding count SHALL stay at
+      the pre-existing baseline (14, all pre-existing SC2086/SC2129 findings in unrelated
+      `run:` blocks) -- this diff touches no shell code, only comments.
+    probe: "actionlint .github/workflows/fly-deploy.yml | wc -l (expect 56 lines / 4 lines-per-finding = 14)"
+
+consumer_map:
+  - "`.github/workflows/fly-deploy.yml`, `deploy` job -- human operators reading the retry
+    loop's own comments during an incident (the exact audience the two corrected claims were
+    misleading)."
+  - "PR #5422's own review trail / this Gear-3 gate's caveat history -- the caveat that started
+    this whole thread; this PR is the second, independent correction on the same file the same
+    day (first was the `if:` stage-attribution fix in #5434)."
+  - "No PENDING-ARMS row needed -- a merged GitHub Actions workflow file is armed by
+    construction (GitHub picks it up on the next matching push), same reasoning #5422's and
+    #5434's own packs recorded for the same file."
+
+risks:
+  - "Residual, LOW severity: this task did not attempt to independently re-derive the 'absent
+    from every clean sample' universal claim against a wider corpus than the 6 jobs actually
+    checked (1 success + 5 non-depot failures) -- the corrected text's own final sentence
+    scopes the claim to 'every clean sample' as defined by the jobs actually cited, not a
+    claim about all Fly deploy history. If a wider corpus later surfaces a non-depot failure
+    that DOES contain 'error releasing builder', that would falsify the trigger-string choice
+    itself (a defect in PR #5422's code, not in this PR's comment accuracy) -- out of scope
+    here, this PR only makes the comment match the sample it already cites."
+  - "This task could not obtain the OTHER agent's/judge's literal corrected sentence for the
+    second block (the summary handed to this session paraphrased its content and purpose but
+    did not preserve the exact string) -- rather than fabricate a quotation, this task wrote
+    its own corrected text grounded in its own fresh log reads, structured to satisfy the same
+    stated requirement (separate measured from reasoned; add the 2 missing job IDs; leave the
+    final sentence unweakened). If the dispatching team lead specifically wanted the other
+    party's exact wording reproduced verbatim, that is a follow-up, not a defect in the
+    underlying facts -- every fact stated in the new text was independently re-verified this
+    session against real job logs."

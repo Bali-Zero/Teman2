@@ -1,0 +1,261 @@
+brief_ref: evidence/brief.yml
+plan_ref: "none -- single-session text fix, no separate plan doc"
+
+lanes:
+  - lane: D1
+    role: build
+    seat: claude
+  - lane: D2
+    role: review
+    seat: gemini-3.1-pro
+
+seat_diversity_note: >
+  Two lanes declared: build (claude, this session) and review (gemini-3.1-pro via `agy`,
+  non-Anthropic). Cross-family adversarial review requirement satisfied by the review lane.
+  Kimi K3 was attempted first and returned a 403 weekly-quota-exhausted error (see receipts);
+  Codex was not attempted for this PR specifically -- superscar/memory flags `codex-spalla.sh`
+  exit 2 as meaning "codex never ran" on the currently pinned CLI version (`--full-auto`
+  removed in codex-cli 0.149.1, this repo pins 0.142.0 in doctrine) -- so agy was used directly
+  rather than burning a call on a known-broken invocation shape.
+
+diff:
+  net_lines: >
+    Measured via `git diff --cached --numstat` + `evidence_pack_lint.py --print-measured`
+    after staging BOTH the workflow fix and this pack: three files changed. The workflow
+    comment fix is 33 inserted lines and 16 deleted lines in one file
+    (.github/workflows/fly-deploy.yml). The evidence brief is 126 inserted lines, zero deleted,
+    in a new file. This pack file, once staged, adds its own inserted lines on top of that --
+    see the canonical sentence in receipts for the exact combined total this task actually
+    committed, which is authoritative over any number restated here.
+  behaviour_change: |
+    TEXT-ONLY. Zero executable-line changes in fly-deploy.yml -- every changed line is inside
+    a `#`-prefixed comment in the `deploy` job's "Deploy (rolling strategy, monorepo context)"
+    step. Confirmed by manual diff review before staging: every `+`/`-` line in the diff hunk
+    begins with whitespace then `#`.
+
+    WHAT CHANGED AND WHY (two independent corrections to the same retry-loop comment block,
+    both self-measured this session from `gh run list`/`gh run view --job <id> --log`, not
+    copied from any other party's report):
+
+    1. First comment block (the `--depot=false` rationale, right before the retry `for` loop):
+       replaced "FOUR consecutive deploys died ... delivery was blocked for four hours" with
+       an accurate account -- four depot-signature failures in the 23:06Z-03:04Z window
+       (jobs 99336828116/99344068116/99365231097/99367317411), but NOT an unbroken run: a
+       fifth deploy in the same window (job 99361567807, 02:14-02:21Z) used the same depot
+       builder and succeeded, landing between the second and third failures. So: intermittent
+       fault, not sustained outage; delivery was not blocked for one continuous four-hour
+       stretch. Also clarified (per adversarial review, see receipts) that "the retry branch
+       below only matched the LEASE signature" describes historical (pre-widening) behavior,
+       not the code as it reads today a few lines below -- to avoid the comment appearing to
+       contradict the code it sits above.
+
+    2. Second comment block (why "error releasing builder" was chosen as the retry-trigger
+       string): the original put a measured claim and a reasoned claim under one "Measured
+       2026-08-31" header, letting the reasoned claim (that "failed to fetch an image or build
+       from source" is generic, non-depot-specific flyctl wrapper text) borrow the measured
+       claim's authority. Split into two explicitly labelled paragraphs -- "MEASURED, ... :"
+       (grep-verified: which banner strings appear in which of 6 real job logs) and "REASONED,
+       not measured, from the above:" (the inference about what the generic string means).
+       Also added 2 more non-depot release-command failure job IDs (99327541263/99318055618)
+       to the measured clean-sample list, alongside the original 3, after independently
+       reading all 5 jobs' actual log content (not just their conclusion) and confirming each
+       one reached a successful build and died only at the release_command (DB migration)
+       step -- zero occurrence of any depot-specific string in any of the 5.
+       The block's own discriminating conclusion -- "error releasing builder" was present in
+       all four real depot incidents and absent from every clean sample -- is left BYTE-FOR-
+       BYTE UNCHANGED (verified via a de-wrapped text diff against origin/main's version of
+       the same sentence, see receipts): re-independently-confirmed true this session, not
+       weakened, not retracted, per explicit instruction not to touch it.
+
+    NOT changed: the retry loop's `if`/`grep`/`continue`/`exit` logic (0 lines), the LEASE
+    retry branch, the `timeout-minutes: 35` comment above the job (separate, already-accurate
+    block), PR #5434's alert-stage fix (different branch/worktree, disjoint line ranges).
+
+receipts:
+  - claim:
+      "Run-level table for the 23:06Z-03:04Z window: 7 runs total in a wider scan, exactly
+      5 within the disputed window, 4 failures NOT consecutive (1 success at 02:09:58Z-
+      02:34:36Z start, job 33349807468, sits between window-failure #2 and #3)."
+    cmd: 'gh run list --workflow=fly-deploy.yml --limit 60 --json databaseId,status,conclusion,createdAt,updatedAt,headBranch,event | python3 -c "...filter 2026-08-30T22:00Z..2026-08-31T04:00Z..."'
+    exit: 0
+    ts: "2026-08-31T (this session, re-measured independently of the dispatching team lead's own report -- numbers matched exactly)"
+    seat: claude
+  - claim:
+      "Deploy-job IDs + start/end timestamps for the 4 window failures: 99336828116
+      (23:10:53-23:21:22Z), 99344068116 (00:11:01-00:21:29Z), 99365231097 (02:39:20-02:49:47Z),
+      99367317411 (02:53:56-03:04:23Z). Last failure's completedAt (03:04:23Z) matches the
+      comment's 'to 03:04Z' claim exactly."
+    cmd: 'gh run view <runid> --json jobs -q ''.jobs[] | select(.name|contains("deploy")) | ...'''
+    exit: 0
+    ts: "2026-08-31T (this session)"
+    seat: claude
+  - claim:
+      'All 4 window-failure jobs'' actual log content confirmed identical depot signature:
+      ''Waiting for depot builder...'' then (twice) ''error releasing builder: deadline_exceeded:
+      context deadline exceeded'' then ''Error: failed to fetch an image or build from source:
+      error building: timed out connecting to machine: failed to list workers: Unavailable:
+      connection error: desc = "transport: authentication handshake failed: EOF"'' -- and
+      each job''s log shows exactly ONE ''Fly deploy attempt X/3'' line (''attempt 1/3''), meaning
+      the outer bash retry loop never reached attempt 2 on any of them (consistent with these
+      4 incidents predating this same PR''s depot-matching retry branch).'
+    cmd: "gh run view --job <id> --log | grep -iE 'Fly deploy attempt|Waiting for depot|error releasing builder|Error: failed to fetch'"
+    exit: 0
+    ts: "2026-08-31T (this session)"
+    seat: claude
+  - claim:
+      "Success job 99361567807 (inside run 33349807468) ran 02:14:54-02:21:40Z, deploy
+      conclusion=success -- confirms it sits chronologically between window-failure #2
+      (ends 00:21:29Z) and #3 (starts 02:39:20Z), i.e. genuinely 'in the middle', not merely
+      adjacent to one end."
+    cmd: 'gh run view 33349807468 --json jobs -q ''.jobs[] | select(.name|contains("deploy"))'''
+    exit: 0
+    ts: "2026-08-31T (this session)"
+    seat: claude
+  - claim:
+      "All 5 non-depot 'clean sample' jobs (99306685764/99310369478/99317094020 from the
+      original comment, plus 99327541263/99318055618 added by this task) independently
+      confirmed via actual log content, not just conclusion: every one reached 'Running
+      nuzantara-rag release_command: sh -c python -m backend.db.migrate apply-all && python -m
+      backend.db.schema_audit' (i.e. build succeeded) and then failed AT that step (either
+      'timeout reached waiting for machine's state to change' or 'exited with non-zero status
+      of 1') -- ZERO occurrence of 'error releasing builder' or 'failed to fetch an image' in
+      any of the 5."
+    cmd: "gh run view --job <id> --log | grep -iE 'Waiting for depot builder|error releasing builder|failed to fetch an image|release_command|Error:'"
+    exit: 0
+    ts: "2026-08-31T (this session)"
+    seat: claude
+  - claim:
+      "actionlint -shellcheck= (the exact REQUIRED-gate invocation) reports 0 findings on
+      the corrected file; bare actionlint (shellcheck enabled) reports 14 findings -- identical
+      count to origin/main's baseline, all pre-existing SC2086/SC2129 in unrelated `run:`
+      blocks this diff does not touch."
+    cmd: "actionlint -shellcheck= .github/workflows/fly-deploy.yml && actionlint .github/workflows/fly-deploy.yml | grep -c '^\\.worktrees'"
+    exit: 0
+    ts: "2026-08-31T (this session)"
+    seat: claude
+  - claim:
+      "python3 yaml.safe_load() parses the corrected file without error, both after the
+      initial 2-block edit and again after the 3-point adversarial-review refinement."
+    cmd: 'python3 -c "import yaml; yaml.safe_load(open(''.github/workflows/fly-deploy.yml''))"'
+    exit: 0
+    ts: "2026-08-31T (this session)"
+    seat: claude
+  - claim:
+      'The block''s closing sentence (''"error releasing builder" was present in all four
+      real depot incidents and absent from every clean sample.'') is byte-for-byte identical,
+      after de-wrapping both to single lines, between this branch and origin/main''s version of
+      the same sentence -- confirms the required-untouched claim was not accidentally reworded
+      during the 2-pass edit.'
+    cmd: "diff <(git show origin/main:.github/workflows/fly-deploy.yml | sed -n '227,234p' | sed 's/^ *# \\{0,1\\}//' | tr '\\n' ' ') <(sed -n '236,251p' .github/workflows/fly-deploy.yml | sed 's/^ *# \\{0,1\\}//' | tr '\\n' ' ')"
+    exit: 0
+    ts: "2026-08-31T (this session)"
+    seat: claude
+  - claim:
+      "Kimi K3 review attempt returned 403 weekly-quota-exhausted before this task started
+      (carried over from the same session's earlier alert-stage PR attempt, same weekly
+      window) -- not re-attempted for this second PR since the quota state does not reset
+      mid-session."
+    cmd: "kimi -p '<review prompt>' -m kimi-code/k3"
+    exit: 1
+    ts: "2026-08-31T (earlier in this session, alert-stage PR work)"
+    seat: kimi
+  - claim:
+      "Gemini 3.1 Pro (agy) cross-family adversarial review completed: confirmed (a) and
+      (b) sound, flagged (c) the inline 'Reasoned, not measured:' label as still creating
+      epistemic confusion under an authoritative 'Measured' header (fixed: split into two
+      explicitly labelled paragraphs, MEASURED / REASONED), flagged (d) the LEASE-signature
+      sentence as readable as contradicting the current code a few lines below if not marked
+      historical (fixed: added 'at the time ... it has since been widened' framing), found (e)
+      no YAML/bash mechanical defect."
+    cmd: 'agy -p "$(cat /tmp/comment-accuracy-full-prompt.txt)" --print-timeout 4m'
+    exit: 0
+    ts: "2026-08-31T (this session)"
+    seat: gemini-3.1-pro
+  - claim:
+      "Canonical measured diff total (evidence_pack_lint.py --print-measured), all three
+      staged files included (workflow fix + brief.yml + pack.yml itself): 3 files, +420/-16,
+      1 commits. This is the authoritative number for this pack -- restated here, not in the
+      diff.net_lines prose above, to avoid the self-reference problem of a pack describing its
+      own not-yet-final line count."
+    cmd: "git diff --cached --numstat > /tmp/numstat3.txt && python3 scripts/evidence_pack_lint.py --numstat-file /tmp/numstat3.txt --commit-count 1 --print-measured"
+    exit: 0
+    ts: "2026-08-31T (this session)"
+    seat: claude
+  - claim:
+      "All 4 brief.yml acceptance probes re-run against the FINAL (post-review-refinement)
+      file text and all pass: 'did NOT form one unbroken run' present (1x); a bare unqualified
+      'blocked for...four hours.' claim absent (0x); 'REASONED, not measured' present
+      case-insensitively (1x); the 5-job clean-sample list '99327541263/99318055618' present
+      (1x). The two probes as ORIGINALLY worded in the first brief.yml draft ('NOT' near the
+      timestamp line, exact-case 'Reasoned, not measured') returned 0 against this final text
+      because the adversarial-review refinement pass (see the gemini-3.1-pro receipt above)
+      reworded both sentences after the probes were first written -- brief.yml's probe text was
+      updated to match the refined wording rather than leaving a stale probe pointing at text
+      that no longer exists."
+    cmd: "grep -c 'did NOT form one unbroken run' .github/workflows/fly-deploy.yml; grep -c 'blocked for.*four hours\\.' .github/workflows/fly-deploy.yml; grep -ic 'REASONED, not measured' .github/workflows/fly-deploy.yml; grep -c '99327541263/99318055618' .github/workflows/fly-deploy.yml"
+    exit: 0
+    ts: "2026-08-31T (this session)"
+    seat: claude
+  - claim:
+      "PR #5434 (alert-stage `if:` fix, same-session earlier work) confirmed still OPEN,
+      mergeable=MERGEABLE, auto-merge armed, base an ancestor of current origin/main with only
+      one unrelated commit (#5430) landed since -- confirms this PR's disjoint-branch,
+      disjoint-line-range claim in constraints/consumer_map is accurate as of this task, not
+      stale."
+    cmd: "gh pr view 5434 --json state,mergeable,mergeStateStatus,autoMergeRequest,baseRefOid,headRefOid"
+    exit: 0
+    ts: "2026-08-31T (this session)"
+    seat: claude
+
+pii_scan: clean
+pii_scan_note: >
+  Diff touches only GitHub Actions job-run metadata (numeric job/run IDs, UTC timestamps,
+  flyctl/depot error strings) and a new evidence brief describing the same. No client name,
+  phone, email, passport/KTP/NPWP, or chat content anywhere in the diff.
+
+dissent:
+  - seat: gemini-3.1-pro
+    objection:
+      "The inline 'Reasoned, not measured:' label mid-paragraph does not fully fix the
+      defect -- it still sits under an authoritative 'Measured 2026-08-31 against real job
+      logs:' header covering the whole paragraph, creating epistemic confusion about which
+      sentences are measured vs reasoned."
+    status: CONFIRMED
+    resolution:
+      'Restructured into two separate comment paragraphs with their own headers
+      (MEASURED.../REASONED, not measured, from the above:...), separated by a blank `#` line
+      -- addresses the reviewer''s own suggested fix verbatim ("split the comment into two
+      explicit structural sections").'
+  - seat: gemini-3.1-pro
+    objection:
+      '"These four were NOT consecutive" could be colloquially misread as "no two of
+      these failures were consecutive", when in fact only claiming the four did not form one
+      unbroken run of four.'
+    status: CONFIRMED
+    resolution:
+      'Reworded to "These four did NOT form one unbroken run", matching the
+      reviewer''s own suggested stronger formulation in substance.'
+  - seat: gemini-3.1-pro
+    objection:
+      "The LEASE-signature sentence ('the retry branch below only ever matched the LEASE
+      signature') could read as contradicting the current code immediately below it, which now
+      also matches the DEPOT signature."
+    status: CONFIRMED
+    resolution:
+      'Added explicit historical framing: "at the time, the retry branch below only
+      matched the LEASE signature (it has since been widened, in this same change, to also
+      match the DEPOT signature a few lines down)".'
+  - seat: claude
+    objection:
+      "Risk that this task's own corrected text, while independently re-verified, might
+      not match the exact wording another agent/judge in the dispatching thread already
+      proposed verbatim -- the conversation summary handed to this session paraphrased that
+      party's content/purpose but did not preserve their literal string."
+    status: RETRACTED
+    resolution:
+      "Per the dispatching team lead's own explicit standing instruction
+      ('rimisura tu ... se la tua misura diverge dalla mia, la tua vince') this task's own
+      independently fresh-measured facts take precedence over reproducing anyone else's
+      prose; fabricating a 'verbatim quote' this task does not actually possess would itself
+      be an anti-hallucination violation. Flagged transparently in brief.yml risks and in the
+      final report to the team lead instead of silently guessing at the missing string."
