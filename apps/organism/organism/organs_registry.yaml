@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: e8b1df3fe4e0f184a8b59fe28a042b38dec5af221cc07296d552cc98995e19cf
+checksum: 9f0733f0fbb5343e46a74bc680cd1d8267d1061dee31df7b7d9c1030d61ab90b
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2834,5 +2834,26 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.seat_mix_report.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.price_review_sentinel
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 86400
+  owner_module: infra/launchagents/wrappers/pro-price-review-sentinel.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.price-review-sentinel
+  severity_on_silence: warning
+  notes: Alerts when the Bali Zero price sheet loaded by pricing_service is past its
+    90-day review interval, or when metadata.last_updated has stopped tracking edits
+    and can no longer answer the freshness question in either direction (born via
+    organ_birth.py, genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.price_review_sentinel.json
     timestamp_field: ts
     status_field: status
