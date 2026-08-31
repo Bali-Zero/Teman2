@@ -9,7 +9,9 @@ colpevolezza" — each guard needs BOTH proofs registered).
 
 from __future__ import annotations
 
+import contextlib
 import datetime
+import io
 import subprocess
 import sys
 from pathlib import Path
@@ -22,6 +24,7 @@ SCRIPTS = REPO / "scripts"
 
 sys.path.insert(0, str(SCRIPTS))
 from evidence_pack_lint import (  # noqa: E402
+    EVIDENCE_ROOT_BRIEF_DEPRECATION_DATE,
     EVIDENCE_ROOT_DEPRECATION_DATE,
     FLOOR_SOURCE_BOTH,
     FLOOR_SOURCE_NONE,
@@ -43,6 +46,7 @@ from evidence_pack_lint import (  # noqa: E402
     check_council_run_gear3,
     check_countable_claims,
     check_dissent_nonempty_on_gear3,
+    check_brief_not_at_deprecated_root,
     check_gear_floor,
     check_ground_truth_lane,
     check_lanes_build_seat_diversity,
@@ -2244,6 +2248,274 @@ def test_evidence_root_cli_explicit_source_path_overrides_default(tmp_repo):
     payload = _json.loads(result.stdout)
     assert payload["exit"] == 0
     assert not any("evidence_root_deprecated" in v for v in payload["violations"])
+
+
+# ---- rule 12: check_brief_not_at_deprecated_root ---------------------------
+#
+# Rule 9 above judges the PACK's path and is structurally blind to the BRIEF.
+# Measured on origin/main 2026-08-31: six open PRs wrote the root brief, and
+# #5158 had the shape rule 9 cannot see — pack already migrated to a per-task
+# directory, brief still at the root, rule 9 green while the collision was
+# live. These tests pin BOTH the new rule's guilt and the one innocence case
+# that would break the whole fleet if it regressed: the mandatory
+# `brief_ref: evidence/brief.yml` STRING must never be mistaken for a root
+# brief FILE write.
+
+_BRIEF_ROOT_PRE_FLIP = EVIDENCE_ROOT_BRIEF_DEPRECATION_DATE - datetime.timedelta(days=1)
+_BRIEF_ROOT_POST_FLIP = EVIDENCE_ROOT_BRIEF_DEPRECATION_DATE
+
+
+def test_brief_root_guilt_root_path_post_flip_rejected(tmp_path):
+    viol, notice = check_brief_not_at_deprecated_root(
+        "evidence/brief.yml", tmp_path, today=_BRIEF_ROOT_POST_FLIP
+    )
+    assert notice is None
+    assert any("evidence_root_brief_deprecated" in v for v in viol)
+    assert any("evidence/brief.yml is deprecated as a WRITE target" in v for v in viol)
+
+
+def test_brief_root_guilt_absolute_root_path_post_flip_rejected(tmp_path):
+    """An absolute path resolving to repo_root/evidence/brief.yml is judged the
+    same as its repo-relative form — a literal-string match alone would miss
+    it, so the shared resolution helper must be doing the work."""
+    absolute = tmp_path / "evidence" / "brief.yml"
+    viol, notice = check_brief_not_at_deprecated_root(
+        str(absolute), tmp_path, today=_BRIEF_ROOT_POST_FLIP
+    )
+    assert notice is None
+    assert any("evidence_root_brief_deprecated" in v for v in viol)
+
+
+def test_brief_root_guilt_dot_segments_normalize_to_root_post_flip(tmp_path):
+    """`evidence/x/../brief.yml` names the root brief; a textual comparison
+    would pass it as per-task. Same gap a cross-family review caught in rule 9
+    (see _pack_source_relpath's docstring) — it must not reopen here."""
+    viol, notice = check_brief_not_at_deprecated_root(
+        "evidence/x/../brief.yml", tmp_path, today=_BRIEF_ROOT_POST_FLIP
+    )
+    assert notice is None
+    assert any("evidence_root_brief_deprecated" in v for v in viol)
+
+
+def test_brief_root_innocence_pre_flip_notice_not_fail(tmp_path):
+    viol, notice = check_brief_not_at_deprecated_root(
+        "evidence/brief.yml", tmp_path, today=_BRIEF_ROOT_PRE_FLIP
+    )
+    assert viol == []
+    assert notice is not None
+    assert "evidence_root_brief_deprecated" in notice
+
+
+def test_brief_root_innocence_per_task_dir_clean_both_sides():
+    """A per-task brief is clean on EITHER side of the flip — this rule only
+    judges the literal root path, never the per-task shape."""
+    for today in (_BRIEF_ROOT_PRE_FLIP, _BRIEF_ROOT_POST_FLIP):
+        viol, notice = check_brief_not_at_deprecated_root(
+            "evidence/2026-08/ops-evidence-pertask-a0adff64/brief.yml",
+            Path("/repo"),
+            today=today,
+        )
+        assert viol == [] and notice is None
+
+
+def test_brief_root_innocence_no_brief_source_path_skipped(tmp_path):
+    """None/empty means the caller has no diff context — skip, don't guess.
+    This is also the LOCAL-invocation path: `evidence_pack_lint.py
+    evidence/pack.yml` knows the pack but not the brief, and there is
+    deliberately no positional fallback to invent one."""
+    for value in (None, ""):
+        viol, notice = check_brief_not_at_deprecated_root(
+            value, tmp_path, today=_BRIEF_ROOT_POST_FLIP
+        )
+        assert viol == [] and notice is None
+
+
+def test_brief_root_does_not_ride_the_pack_rules_flip_date():
+    """The two dates are deliberately separate (see the constant's comment):
+    adding the brief to the pack's 2026-09-05 would silently re-price the
+    readiness measurement taken the day this rule was written. On the pack's
+    flip date the brief must still only NOTICE."""
+    assert EVIDENCE_ROOT_BRIEF_DEPRECATION_DATE > EVIDENCE_ROOT_DEPRECATION_DATE
+    viol, notice = check_brief_not_at_deprecated_root(
+        "evidence/brief.yml", Path("/repo"), today=EVIDENCE_ROOT_DEPRECATION_DATE
+    )
+    assert viol == []
+    assert notice is not None
+
+
+def test_brief_root_innocence_mandatory_brief_ref_string_is_not_a_root_write(tmp_repo):
+    """THE load-bearing innocence case. Every conformant pack in this repo is
+    REQUIRED to declare the literal `brief_ref: evidence/brief.yml` — the
+    staging contract (scripts/ci/evidence_paths.py's module docstring). A rule
+    that judged that STRING instead of the PR's written PATH would fail every
+    correct pack in the fleet.
+
+    The pack below carries that mandatory string (asserted, not assumed) while
+    the PR's resolved brief path is per-task. The rule therefore RUNS — it is
+    given a real path, so it does not short-circuit — and must still find the
+    pack clean, which is only possible if it never reads `brief_ref` at all.
+
+    IT ASSERTS ON STDERR, NOT ONLY ON THE VIOLATION LIST, and that is the
+    whole point — two drafts of this test were insensitive before this one:
+
+      1. The first omitted `brief_source_path` entirely. VACUOUS: with no path
+         the function returns at its first line, so the assertion held whether
+         the rule existed or not. It pinned the skip-when-blind branch (already
+         covered by test_brief_root_innocence_no_brief_source_path_skipped)
+         while claiming to pin the string-vs-path distinction.
+      2. The second supplied the path but still asserted only `rc == 0` and an
+         empty violation list. Also insensitive: today is BEFORE the flip date,
+         so a rule that over-matched every path would emit a NOTICE and still
+         exit 0 — proven by mutation, `if False:` in place of the path
+         comparison left this test green.
+
+    A notice goes to stderr, so stderr is where an over-matching rule becomes
+    visible before its flip date. Verified by mutation both ways: neutering the
+    comparison kills the guilt tests, over-matching it kills this one."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    pack_file = write_pack()
+    assert "brief_ref: evidence/brief.yml" in pack_file.read_text(encoding="utf-8")
+    err = io.StringIO()
+    with contextlib.redirect_stderr(err):
+        rc, viol = lint(
+            tmp_path / "evidence" / "pack.yml",
+            tmp_path,
+            None,
+            brief_source_path="evidence/2026-08/some-task-a0adff64/brief.yml",
+        )
+    assert rc == 0
+    assert not any("evidence_root_brief_deprecated" in v for v in viol)
+    assert "evidence_root_brief_deprecated" not in err.getvalue()
+
+
+def test_brief_root_end_to_end_notice_pre_flip_does_not_fail(tmp_repo):
+    """End-to-end through lint() with a ROOT brief path: today is before the
+    flip date, so this NOTICEs and exits 0.
+
+    It asserts the notice IS EMITTED, not merely that nothing failed. Asserting
+    only `rc == 0` would leave this test green against a DELETED rule — the
+    guilt tests would still catch that, but a test that cannot tell "correctly
+    silent" from "not wired up at all" is not evidence of wiring, and wiring is
+    exactly what this end-to-end case exists to prove."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack()
+    err = io.StringIO()
+    with contextlib.redirect_stderr(err):
+        rc, viol = lint(
+            tmp_path / "evidence" / "pack.yml",
+            tmp_path,
+            None,
+            brief_source_path="evidence/brief.yml",
+        )
+    assert rc == 0
+    assert not any("evidence_root_brief_deprecated" in v for v in viol)
+    assert "evidence_root_brief_deprecated" in err.getvalue()
+
+
+def test_brief_root_resolver_seam_produces_diff_relative_paths_not_the_staged_name():
+    """THE SEAM TEST, and it exists because a cross-family reviewer refused to
+    take it on faith (tp1-glm-5.2, 2026-08-31, on this PR's own diff).
+
+    Its objection: the rule's safety rests entirely on `--brief-source-path`
+    carrying a DIFF-RELATIVE path. CI lints a synthetic tree where the brief is
+    always staged under the canonical name `evidence/brief.yml`; if the value
+    handed to this rule came from that tree, then on the flip date EVERY
+    conformant PR in the fleet would be judged as writing the root brief and
+    the whole queue would go red. The reviewer's verdict was DO-NOT-SHIP on the
+    grounds that the diff asserted the link in a docstring and pinned it
+    nowhere — the assertion spans two modules, so neither module's own tests
+    covered it.
+
+    The conclusion was wrong and the demand was right. `resolve_evidence_path`
+    is a pure function over the changed-files LIST — it never touches the
+    filesystem, so it cannot see the staged tree, and harness-floor.yml calls
+    it at Step 2b, before staging exists at all. This test pins that end to
+    end rather than restating it: the resolver's real output, for each of the
+    three diff shapes, fed to the real rule."""
+    # scripts/ci is not on sys.path for this module (only scripts/ is), and it
+    # is added HERE rather than at import time on purpose: a module-level
+    # sys.path mutation would change resolution for every other test in this
+    # file, which is a side effect nobody reading them would expect.
+    sys.path.insert(0, str(SCRIPTS / "ci"))
+    from evidence_paths import resolve_evidence_path  # noqa: PLC0415
+
+    per_task = "evidence/2026-08/agent-x-infra-thing-a0adff64/brief.yml"
+
+    # (1) a PR that wrote a per-task brief -> per-task path -> clean, even
+    #     past the flip date. This is the case the reviewer feared would
+    #     collapse to the staged canonical name. It does not.
+    resolved = resolve_evidence_path("brief", ["scripts/x.py", per_task])
+    assert resolved == per_task
+    viol, notice = check_brief_not_at_deprecated_root(
+        resolved, Path("/repo"), today=_BRIEF_ROOT_POST_FLIP
+    )
+    assert viol == [] and notice is None
+
+    # (2) a PR that wrote the ROOT brief -> root path -> flagged. The rule
+    #     must still bite, or it protects nothing.
+    resolved = resolve_evidence_path("brief", ["scripts/x.py", "evidence/brief.yml"])
+    assert resolved == "evidence/brief.yml"
+    viol, _ = check_brief_not_at_deprecated_root(
+        resolved, Path("/repo"), today=_BRIEF_ROOT_POST_FLIP
+    )
+    assert any("evidence_root_brief_deprecated" in v for v in viol)
+
+    # (3) a PR that wrote NO brief also resolves to the root path (documented
+    #     pre-migration fallback). That shape never reaches this rule, because
+    #     harness-floor.yml gates the lint step on the brief being present in
+    #     THIS PR's diff — recorded here so a future reader who finds the
+    #     fallback alarming can see it was considered, not missed.
+    assert resolve_evidence_path("brief", ["scripts/x.py"]) == "evidence/brief.yml"
+
+
+def test_brief_root_cli_accepts_and_threads_brief_source_path(tmp_repo):
+    """CLI contract: --brief-source-path is accepted and reaches the rule. Run
+    with a per-task value so the assertion is about THREADING, not about the
+    date — a value the rule must find clean, on stderr as well as in the
+    violation list (pre-flip, an over-matching rule shows up ONLY on stderr)."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack()
+    result = subprocess.run(
+        [
+            sys.executable, str(SCRIPTS / "evidence_pack_lint.py"),
+            "evidence/pack.yml", "--repo-root", str(tmp_path),
+            "--brief-source-path", "evidence/2026-08/some-task-a0adff64/brief.yml",
+            "--json",
+        ],
+        capture_output=True, text=True, timeout=30,
+    )
+    import json as _json
+
+    payload = _json.loads(result.stdout)
+    assert payload["exit"] == 0
+    assert not any("evidence_root_brief_deprecated" in v for v in payload["violations"])
+    assert "evidence_root_brief_deprecated" not in result.stderr
+
+
+def test_brief_root_cli_absent_flag_leaves_rule_inert(tmp_repo):
+    """CLI contract, and the DIVERGENCE from --source-path worth pinning:
+    --source-path defaults to the positional pack argument, --brief-source-path
+    has NO fallback. Omitted, rule 12 is inert — a local run must not invent a
+    brief location it cannot know."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack()
+    result = subprocess.run(
+        [
+            sys.executable, str(SCRIPTS / "evidence_pack_lint.py"),
+            "evidence/pack.yml", "--repo-root", str(tmp_path), "--json",
+        ],
+        capture_output=True, text=True, timeout=30,
+    )
+    import json as _json
+
+    payload = _json.loads(result.stdout)
+    assert payload["exit"] == 0
+    assert not any("evidence_root_brief_deprecated" in v for v in payload["violations"])
+    assert "evidence_root_brief_deprecated" not in result.stderr
 
 
 # --------------------------------------------------------- check_countable_claims
