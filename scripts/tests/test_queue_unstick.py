@@ -452,13 +452,18 @@ def test_hold_labels_are_case_insensitive():
     assert plan["skipped"][50] == "hold_label"
 
 
+
+
 # ---------------------------------------------------------------------------
-# _union_merged_changed_paths — guilt + innocence against a REAL git repo.
+# _driver_merged_changed_paths — guilt + innocence against a REAL git repo.
 #
 # These build an actual repository rather than stubbing `_run`, because the
-# behaviour under test is entirely `git check-attr`'s: a fake would encode my
-# belief about its output format and agree with itself (superscar #9 / W114 —
-# a fake and the code it checks share the same imagination).
+# behaviour under test is entirely `git check-attr`'s and `git diff`'s output
+# encoding — a fake would encode my belief about those formats and then agree
+# with itself (superscar #9 / W114: a fake and the code it checks share the
+# same imagination). Three of the cases below were written FROM defects an
+# adversarial reviewer found in the first shipped cut, and each is pinned here
+# because it was live in production for ~90 minutes.
 # ---------------------------------------------------------------------------
 
 import subprocess as _sp  # noqa: E402
@@ -469,7 +474,7 @@ def _git(repo, *args):
             capture_output=True, text=True)
 
 
-def _repo_with(tmp_path, gitattributes: str | None):
+def _repo_with(tmp_path, gitattributes: str | None, extra: str | None = None):
     repo = tmp_path / "r"
     repo.mkdir()
     _git(repo, "init", "-q", "-b", "main")
@@ -479,27 +484,65 @@ def _repo_with(tmp_path, gitattributes: str | None):
         (repo / ".gitattributes").write_text(gitattributes)
     (repo / "ledger.md").write_text("base\n")
     (repo / "plain.txt").write_text("base\n")
+    if extra:
+        (repo / extra).write_text("base\n")
     _git(repo, "add", "-A")
     _git(repo, "commit", "-qm", "base")
     _git(repo, "branch", "base-ref")
     (repo / "ledger.md").write_text("base\npr row\n")
     (repo / "plain.txt").write_text("base\npr line\n")
+    if extra:
+        (repo / extra).write_text("base\npr\n")
     _git(repo, "add", "-A")
     _git(repo, "commit", "-qm", "pr")
     _git(repo, "branch", "pr-ref")
     return repo
 
 
-def test_union_path_is_named_when_the_pr_touches_one(tmp_path):
-    """GUILT: the changed file carries merge=union -> it is reported."""
-    repo = _repo_with(tmp_path, "ledger.md merge=union\n")
-    found = qu._union_merged_changed_paths(
-        repo_root=repo, base_ref="base-ref", pr_ref="pr-ref"
+def _probe(repo, base="base-ref", head="pr-ref"):
+    return qu._driver_merged_changed_paths(
+        repo_root=repo, base_ref=base, pr_ref=head
     )
-    assert found == ["ledger.md"]
 
 
-def test_non_union_paths_are_not_named(tmp_path):
+def test_a_union_path_is_named_with_its_driver(tmp_path):
+    """GUILT: the changed file carries merge=union -> reported, with the driver."""
+    repo = _repo_with(tmp_path, "ledger.md merge=union\n")
+    assert _probe(repo) == [("ledger.md", "union")]
+
+
+def test_a_non_union_driver_is_also_caught(tmp_path):
+    """GUILT, and the reason this keys on the COMPLEMENT of ordinary values:
+    GitHub honours no driver at all, so `merge=ours` diverges exactly as
+    `merge=union` does. The first shipped cut compared against the literal
+    string "union" and returned [] here — a silent regression to the race
+    wording on a file that is permanently, not transiently, DIRTY."""
+    repo = _repo_with(tmp_path, "ledger.md merge=ours\n")
+    assert _probe(repo) == [("ledger.md", "ours")]
+
+
+def test_a_non_ascii_path_is_not_lost_to_quotepath(tmp_path):
+    """GUILT. `core.quotePath` defaults to true, so `git diff --name-only`
+    emits a non-ASCII path as the C-quoted literal "caf\\303\\251.md", which
+    check-attr then does not match -> `unspecified` -> a real detection lost
+    with no error. Measured against the first shipped cut: it returned []
+    where the truth was [('café.md', 'union')]. `-z` is the cure."""
+    name = "café.md"
+    repo = _repo_with(tmp_path, f"{name} merge=union\n", extra=name)
+    assert _probe(repo) == [(name, "union")]
+
+
+def test_explicit_ordinary_values_are_not_reported(tmp_path):
+    """INNOCENCE: `merge=text` and a bare `merge` are the ORDINARY merge, which
+    GitHub performs identically. Reporting them would invent a permanent
+    divergence where none exists."""
+    for i, attrs in enumerate(("ledger.md merge=text\n", "ledger.md merge\n")):
+        sub = tmp_path / f"case{i}"
+        sub.mkdir()
+        assert _probe(_repo_with(sub, attrs)) == [], attrs
+
+
+def test_non_driver_paths_are_not_named(tmp_path):
     """INNOCENCE: a PR touching only ordinary files reports nothing, so the
     caller keeps its pre-existing 'race' wording."""
     repo = _repo_with(tmp_path, "ledger.md merge=union\n")
@@ -507,36 +550,47 @@ def test_non_union_paths_are_not_named(tmp_path):
     (repo / "plain.txt").write_text("base\nonly this\n")
     _git(repo, "add", "-A")
     _git(repo, "commit", "-qm", "plain only")
-    found = qu._union_merged_changed_paths(
-        repo_root=repo, base_ref="base-ref", pr_ref="plain-only"
-    )
-    assert found == []
+    assert _probe(repo, head="plain-only") == []
 
 
 def test_no_gitattributes_at_all_reports_nothing(tmp_path):
-    """INNOCENCE: the same diff, with no merge driver declared anywhere."""
-    repo = _repo_with(tmp_path, None)
-    found = qu._union_merged_changed_paths(
-        repo_root=repo, base_ref="base-ref", pr_ref="pr-ref"
-    )
-    assert found == []
+    """INNOCENCE: the same diff with no merge driver declared anywhere."""
+    assert _probe(_repo_with(tmp_path, None)) == []
 
 
-def test_a_path_containing_a_colon_survives_the_parse(tmp_path):
-    """`check-attr` prints `<path>: merge: <value>`; splitting from the LEFT
-    would truncate a path that legitimately contains ': '."""
-    # DOUBLE quotes: `.gitattributes` rejects a single-quoted pattern outright
-    # ("name.md' is not a valid attribute name"), which silently yields
-    # `merge: unspecified` and would make this test pass for the wrong reason.
-    repo = _repo_with(tmp_path, '"weird: name.md" merge=union\n')
-    _git(repo, "checkout", "-q", "-b", "colon", "base-ref")
-    (repo / "weird: name.md").write_text("x\n")
+def test_a_path_containing_a_colon_survives(tmp_path):
+    """The old parse read `<path>: merge: <value>` and split on ': '. -z removes
+    that parse entirely; this pins that the removal actually holds.
+
+    NOTE the DOUBLE quotes: `.gitattributes` rejects a single-quoted pattern
+    ("name.md' is not a valid attribute name"), silently yielding `unspecified`,
+    which would make this test pass for the wrong reason."""
+    name = "weird: name.md"
+    repo = _repo_with(tmp_path, f'"{name}" merge=union\n', extra=name)
+    assert _probe(repo) == [(name, "union")]
+
+
+def test_every_path_is_examined_not_just_the_first_batch(tmp_path):
+    """GUILT for the silent-truncation bug: the first cut passed `paths[:200]`
+    and examined nothing beyond, so a large PR whose driver path sorted late
+    read as a race. The union file here is named `zz-...` so it sorts last
+    among 250 changed files."""
+    repo = tmp_path / "big"
+    repo.mkdir()
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "t@example.invalid")
+    _git(repo, "config", "user.name", "t")
+    (repo / ".gitattributes").write_text("zz-ledger.md merge=union\n")
     _git(repo, "add", "-A")
-    _git(repo, "commit", "-qm", "colon path")
-    found = qu._union_merged_changed_paths(
-        repo_root=repo, base_ref="base-ref", pr_ref="colon"
-    )
-    assert found == ["weird: name.md"]
+    _git(repo, "commit", "-qm", "attrs")
+    _git(repo, "branch", "base-ref")
+    for i in range(250):
+        (repo / f"f{i:04d}.txt").write_text("x\n")
+    (repo / "zz-ledger.md").write_text("row\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "many")
+    _git(repo, "branch", "pr-ref")
+    assert _probe(repo) == [("zz-ledger.md", "union")]
 
 
 def test_a_broken_repo_returns_empty_rather_than_raising(tmp_path):
@@ -544,6 +598,29 @@ def test_a_broken_repo_returns_empty_rather_than_raising(tmp_path):
     caller's existing wording, never crash the daemon's tick."""
     empty = tmp_path / "not-a-repo"
     empty.mkdir()
-    assert qu._union_merged_changed_paths(
+    assert qu._driver_merged_changed_paths(
         repo_root=empty, base_ref="base-ref", pr_ref="pr-ref"
     ) == []
+
+
+# --- the MESSAGE, which is the part that was dangerous ----------------------
+
+def test_the_message_never_prescribes_hand_resolving_or_rebasing(tmp_path):
+    """The shipped message told the fleet 'the cure is a hand rebase of that
+    file'. Hand-resolving a union file silently deletes the other lane's
+    appended row (the loss the driver exists to prevent, caught by
+    check-ledger-no-silent-loss on #5355); `git rebase` DOES apply the union
+    driver and duplicates the row instead (#4060). Both readings of that
+    sentence are documented failure modes, and it was broadcast to a fleet
+    mailbox that agents act on. This pins the replacement."""
+    import inspect
+    src = inspect.getsource(qu.get_conflicting_files)
+    msg_start = src.index("none locally, but this is NOT a race")
+    msg = src[msg_start:src.index("return \"none (merge-tree", msg_start)]
+    lowered = msg.lower()
+    assert "hand-resolve" in lowered and "do not" in lowered, \
+        "the message must explicitly forbid hand-resolving"
+    assert "origin/main" in msg, "the message must name the rebuild-from-fresh-main cure"
+    assert "+n/-0" in lowered or "+n / -0" in lowered, \
+        "the message must name the proof that the append is additive"
+    assert "the cure is a hand rebase" not in lowered, "the forbidden prescription is back"
