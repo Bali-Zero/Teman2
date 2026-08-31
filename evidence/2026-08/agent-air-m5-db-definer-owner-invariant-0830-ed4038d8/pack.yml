@@ -52,7 +52,7 @@ seat_diversity_note:
   that made both the migration and the check answer clean with the ownership wrong, and it caught a
   rollback section that would have told the migration framework it had reversed something it had not."
 diff:
-  net_lines: "10 files, +2125/-28 (git diff --numstat over the merge-base)"
+  net_lines: "10 files, +2148/-29 (git diff --numstat over the merge-base)"
   behaviour_change:
     "No production behaviour changes. Migration 300 is a no-op against the production primary because
     the five ALTERs already landed there by hand on 2026-08-30 before this lane opened; it exists so an
