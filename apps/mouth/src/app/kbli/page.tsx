@@ -43,7 +43,6 @@ export default async function KBLIHomePage({
       funnel="kbli"
       sessionId="SSR"
       trust={{
-        clientCount: 5000,
         rating: GOOGLE_RATING,
         reviewCount: GOOGLE_REVIEW_COUNT,
       }}
