@@ -16,14 +16,30 @@ and on the burst it correctly protected every worktree holding unmerged commits,
 a live process or WIP — it was simply out-cadenced. Eight passes a day bound the
 worst case to ~3h of accumulation instead of ~24h.
 
-Provenance of those numbers, so a later reader can weigh them: MEASURED in the
-2026-08-31 session were the worktree count (40 of 41 created inside 24h, via
-find -ctime -1), the per-checkout size (du -sh, ~1.2 GB each), and free space of
-753 MB immediately before the recovery pass. The "~80 GB free the previous
-evening" figure is the OWNER'S REPORT, not a reading anyone captured — no log on
-this fleet records free space at that moment. Corroborating trace that does
-exist: ~/logs/disk_watchdog.out.log shows the Data volume going 85% -> 97% used
-between 2026-08-30 09:00 and 2026-08-31 09:00.
+Provenance of those numbers, so a later reader can weigh them. MEASURED in the
+2026-08-31 session: the per-checkout size (du -sh, ~1.2 GB each), free space of
+753 MB immediately before the recovery pass, and per-worktree ages from the
+broker's own `--list` AGE_MIN column (which showed the bulk between 4 and 26
+hours old).
+
+The "40 of 41 inside 24h" count came from `find -ctime -1`, and a cross-family
+reviewer was right to flag it: `-ctime` is inode CHANGE time, not birth time
+(macOS spells that `-Btime`), so any metadata touch inside the window also
+counts. Treat that count as an upper bound corroborated by the AGE_MIN column,
+not as a birth-time census. It is left stated rather than quietly re-labelled,
+because the number did steer a real decision.
+
+The "~80 GB free the previous evening" figure is the OWNER'S REPORT, not a
+reading anyone captured — no log on this fleet records free space at that
+moment. Corroborating trace that does exist: ~/logs/disk_watchdog.out.log shows
+the Data volume going 85% -> 97% used between 2026-08-30 09:00 and 08-31 09:00.
+
+CLOCK FRAME of the two jobs this offset dodges, verified 2026-08-31 rather than
+inherited from the old comment: wr2.worktree-gc fires {Hour 0, Minute 0} and
+worktree-gc-universal {Hour 0, Minute 30}, both via StartCalendarInterval, i.e.
+both LOCAL like this one. The offset is therefore a real margin in a shared
+frame — and the superseded "00:00 UTC" wording was wrong about them too, not
+just about this job.
 
 NOTE ON THE LABEL: it still ends in `.daily`, deliberately. The label is an
 opaque identifier that connectome probes (docs/connectome/edges/launchd-*.yaml)

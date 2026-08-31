@@ -106,7 +106,7 @@ edges:
       kind: launchd,
       machine: pro,
       status: UNKNOWN,
-      consumer: "agent_worktree_cleanup_cron.sh (every 3h at :15 WITA)",
+      consumer: "agent_worktree_cleanup_cron.sh (every 3h at :15 WITA in the repo plist; the LIVE copy stays daily until install_agent_worktree_cleanup.sh is re-run on Pro)",
       notes: "W62 antibody — 2026-08-31 re-measured ON PRO: last exit code 0 and the log carries real removals, so the 'exit 1 / green on ZERO machines' reading above is stale FOR PRO (M5 twin NOT re-checked, its TCC claim stands). Cadence raised daily → 8×/day the same day: the reaper was healthy but out-cadenced by a 40-worktree night. Hours here are LOCAL (WITA), not UTC.",
     }
   # ── LYING_BY_PRESENCE (on disk, NOT loaded, no disable-override) ──

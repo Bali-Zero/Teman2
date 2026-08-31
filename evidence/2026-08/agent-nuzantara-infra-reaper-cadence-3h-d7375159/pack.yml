@@ -1,0 +1,237 @@
+# NOTE: brief_ref is the CANONICAL name, not this pack's own directory — the
+# harness-floor.yml CI workflow copies both discovered per-PR files into
+# /tmp/evidence-check/evidence/{brief,pack}.yml under these exact names
+# before validating, so brief_ref must always read "evidence/brief.yml".
+brief_ref: evidence/brief.yml
+plan_ref: PR #5424 — agent/nuzantara/infra/reaper-cadence-3h
+# Diff stats below are the LITERAL output of `git diff --numstat origin/main...HEAD`
+# (receipt 1), summed as 2+19+43+6=70 / 2+2+11+2=17 — the sum is a transcription
+# of that command's own rows, cross-checked against --shortstat (receipt 2),
+# which independently printed "4 files changed, 70 insertions(+), 17 deletions(-)".
+diff:
+  files: 4
+  insertions: 70
+  deletions: 17
+  hotzone_hits:
+    - infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example
+
+lanes:
+  - lane: build
+    role: build
+    seat: opus-5
+  - lane: review
+    role: review
+    seat: spalla-review/sonnet-5
+  - lane: review-crossfamily
+    role: review
+    seat: kimi-code/k3
+  - lane: review-crossfamily-2
+    role: review
+    seat: tp1-qwen3.8-max
+  - lane: receipts
+    role: read
+    seat: general-purpose/sonnet-5
+
+receipts:
+  - claim: "Il pavimento deterministico di questo diff è 3, e la sorgente è il PATH (non la dimensione)."
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/cf-5424.txt   # stdout: 3"
+    exit: 0
+    ts: "2026-08-31T04:00:00Z"
+    seat: general-purpose/sonnet-5
+  - claim: "Sorgente del pavimento = path, confermata separatamente dal numero."
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file /tmp/cf-5424.txt   # stdout: path"
+    exit: 0
+    ts: "2026-08-31T04:00:03Z"
+    seat: general-purpose/sonnet-5
+  - claim: "Il pattern hot-zone colpito è `infra/launchagents/*` (HOTZONE_PATTERNS, scripts/evidence_pack_lint.py)."
+    cmd: "grep -n 'infra/launchagents' scripts/evidence_pack_lint.py"
+    exit: 0
+    ts: "2026-08-31T04:00:03Z"
+    seat: general-purpose/sonnet-5
+  - claim: "Il diff è 4 file, 70 inserzioni, 17 cancellazioni."
+    cmd: "git diff --shortstat origin/main...HEAD   # stdout: 4 files changed, 70 insertions(+), 17 deletions(-)"
+    exit: 0
+    ts: "2026-08-31T03:59:54Z"
+    seat: general-purpose/sonnet-5
+  - claim: "Il plist è sintatticamente valido dopo la modifica."
+    cmd: "plutil -lint infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example   # stdout: ...: OK"
+    exit: 0
+    ts: "2026-08-31T04:00:06Z"
+    seat: general-purpose/sonnet-5
+  - claim: "Lo schedule che launchd leggerà è otto voci, tutte a Minute 15, alle ore 0/3/6/9/12/15/18/21 — letto il VALORE, non fermandosi a 'lint OK'."
+    cmd: 'plutil -extract StartCalendarInterval json -o - infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example   # stdout: [{"Hour":0,"Minute":15},{"Hour":3,"Minute":15},{"Hour":6,"Minute":15},{"Hour":9,"Minute":15},{"Hour":12,"Minute":15},{"Hour":15,"Minute":15},{"Hour":18,"Minute":15},{"Hour":21,"Minute":15}]'
+    exit: 0
+    ts: "2026-08-31T04:00:09Z"
+    seat: general-purpose/sonnet-5
+  - claim: "plistlib.load() ora parsa il file — cosa che PRIMA di questa PR falliva con ExpatError sul `--` dentro il commento XML — e vede 8 voci con la label invariata."
+    cmd: 'python3 -c "import plistlib;d=plistlib.load(open(''infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example'',''rb''));print(len(d[''StartCalendarInterval'']), d[''Label''])"   # stdout: 8 com.nuzantara.agent-worktree-cleanup.daily'
+    exit: 0
+    ts: "2026-08-31T04:00:12Z"
+    seat: general-purpose/sonnet-5
+  - claim: "L'intervallo derivato dal numero di voci è 10800 s (86400//8), che è il valore che audit_launchd_crons.py calcola dallo stesso campo."
+    cmd: 'python3 -c "import plistlib;d=plistlib.load(open(''infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example'',''rb''));print(86400//len(d[''StartCalendarInterval'']))"   # stdout: 10800'
+    exit: 0
+    ts: "2026-08-31T04:05:10Z"
+    seat: opus-5
+  - claim: "La label è rimasta invariata attraverso il cambio di cadenza — è ciò da cui dipendono le sonde che la grepano alla lettera."
+    cmd: 'python3 -c "import plistlib;print(plistlib.load(open(''infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example'',''rb''))[''Label''])"   # stdout: com.nuzantara.agent-worktree-cleanup.daily'
+    exit: 0
+    ts: "2026-08-31T04:05:10Z"
+    seat: opus-5
+  - claim: "Il YAML del connettoma si carica ancora dopo la modifica alla riga `consumer`."
+    cmd: 'python3 -c "import yaml;yaml.safe_load(open(''docs/connectome/edges/launchd-pro.yaml''));print(''yaml-ok'')"   # stdout: yaml-ok'
+    exit: 0
+    ts: "2026-08-31T04:00:15Z"
+    seat: general-purpose/sonnet-5
+  - claim: "La suite broker-hygiene (i test che il workflow omonimo esegue su questi path) resta verde."
+    cmd: "python -m pytest scripts/tests/test_agent_worktree_cleanup_cron.py scripts/tests/test_agent_start.py -q   # 86 passed, 1 skipped in 32.74s"
+    exit: 0
+    ts: "2026-08-31T04:00:52Z"
+    seat: general-purpose/sonnet-5
+
+tests:
+  cmd: "python -m pytest scripts/tests/test_agent_worktree_cleanup_cron.py scripts/tests/test_agent_start.py -q"
+  passed: 86
+  failed: 0
+static:
+  lint: ok
+  typecheck: n/a-no-typed-source-touched
+  build: n/a
+
+runtime_proof: []
+
+dissent:
+  - seat: spalla-review/sonnet-5
+    objection: >
+      Nessun blocco sollevato. Tre rilievi non bloccanti, tutti recepiti nel
+      diff prima del commit: (1) `docs/connectome/edges/launchd-pro.yaml:109`
+      restava a `consumer: "... (00:15)"`, stantio per effetto di questa stessa
+      PR — corretto; (2) i numeri dell'incidente erano asseriti senza puntatore
+      di provenienza, e il grader ha potuto corroborare la FORMA della tesi ma
+      non le cifre esatte di 753 MB / ~80 GB — la provenienza è ora dichiarata
+      esplicitamente nel plist; (3) difetto EREDITATO: il `--` letterale nel
+      commento XML rendeva il file illeggibile a plistlib, curato qui perché
+      giace nelle righe riscritte.
+    status: CONFIRMED
+    resolution: >
+      Tutti e tre applicati nel diff prima del commit. Nessuna obiezione
+      respinta, quindi nessun disaccordo residuo fra generatore e giudice su
+      questo diff. Marcati CONFIRMED e non PLAUSIBLE perché ciascuno è stato
+      ri-verificato con un comando in sessione, non accettato sulla parola:
+      la riga stantia del connettoma è stata riletta, e il difetto XML è stato
+      riprodotto (ExpatError) e poi provato risolto (plistlib parsa).
+
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection: >
+      Verdetto CONCERNS, quattro rilievi. DUE ERRORI DI FATTO nel testo della
+      PR, entrambi verificati e corretti: (1) "`find -ctime -1`" non misura il
+      tempo di CREAZIONE — `-ctime` è l'inode change time, su macOS la birth
+      time è `-Btime` — quindi la provenienza descriveva una misura diversa da
+      quella dichiarata; (2) il diff trattava i due GC come se condividessero il
+      quadrante orario del reaper mentre il vecchio commento li dava a "00:00
+      UTC", cambiando frame senza dirlo. Più un rilievo NON richiesto: i
+      documenti asserivano la nuova cadenza al presente mentre la copia viva
+      resta giornaliera fino al reload. Infine, un rischio strutturale: nessun
+      `flock` serializza il reaper contro `--release` o contro un GC che sfora,
+      e 1→8 passate moltiplica per otto l'esposizione a quella corsa.
+    resolution: >
+      (1) ACCETTATO e corretto: la provenienza ora dichiara che `-ctime` è un
+      limite superiore, corroborato dalla colonna AGE_MIN del broker, invece di
+      ri-etichettare furtivamente il comando. (2) ACCETTATO e RISOLTO A FAVORE
+      DELLA PR dopo misura diretta: `wr2.worktree-gc` è {Hour 0, Minute 0} e
+      `worktree-gc-universal` {Hour 0, Minute 30}, entrambi
+      StartCalendarInterval e quindi LOCALI — lo scarto di :15 è un margine
+      reale nello stesso quadrante, ed era il vecchio "00:00 UTC" a sbagliare
+      anche su di loro. (3) ACCETTATO: runbook e connettoma ora dicono
+      esplicitamente che la cadenza vale dopo il reload. (4) ACCETTATO come
+      rischio residuo dichiarato, non curato qui: `flock` è una PR separata,
+      una preoccupazione per PR.
+
+council_run:
+  - seat: kimi-code/k3
+    ok: true
+    cmd: 'kimi -p "$(cat review_prompt.txt)" -m kimi-code/k3'
+    exit: 0
+    verdict: CONCERNS
+    ts: "2026-08-31T04:10:00Z"
+    note: >
+      Quattro rilievi, nessuno bloccante. Due confermavano tesi della PR
+      (semantica dell'array; ritenzione della label). Due erano difetti REALI
+      nel testo della PR e sono stati corretti: `-ctime` non è il tempo di
+      creazione, e il diff cambiava quadrante orario per i due GC senza dirlo.
+      In più un rilievo non richiesto e centrato: i documenti asserivano la
+      nuova cadenza al presente mentre la copia viva resta giornaliera fino al
+      reload.
+  - seat: tp1-qwen3.8-max
+    ok: false
+    cmd: "POST https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions model=qwen3.8-max (diff completo + prompt di refutazione)"
+    exit: 3
+    verdict: NO_OUTPUT
+    ts: "2026-08-31T04:14:08Z"
+    note: >
+      NESSUN VERDETTO PRODOTTO — registrato come tale, non come 'pulito'. Tre
+      tentativi: read timeout a 120 s, a 280 s, e un terzo a 550 s ancora in
+      volo alla chiusura del pacchetto, con file di output a 0 byte. La porta NON
+      è morta: `scripts/arsenal_probe.py --seats tp1-qwen3.8-max --json` sullo
+      stesso endpoint e credenziale ha risposto LIVE, HTTP 200, 1665 ms con il
+      suo prompt breve. È latenza di ragionamento sul diff intero, non un
+      guasto della porta — e in nessun caso un'assoluzione.
+
+residual_risks:
+  - "COUNCIL INCOMPLETO, dichiarato invece che mascherato. Il pavimento Gear 3
+    vuole >=2 seggi cross-family con ok:true; questo pacchetto ne ha UNO
+    (kimi-code/k3). Il secondo seggio previsto, tp1-qwen3.8-max, è vivo ma non
+    ha restituito testo entro la finestra; il terzo, codex-gpt-5.6-sol, ha la
+    porta rotta (`--full-auto` rimosso in codex-cli 0.149.1, il wrapper esce 2
+    che il suo stesso header documenta come 'diff vuoto'). Il lint emette la
+    NOTICE `council_run` su questo pacchetto: è corretta, e non è stata aggirata."
+  - "NESSUNA MUTUA ESCLUSIONE, ed è questa PR a moltiplicarne l'esposizione.
+    Verificato: nessun `flock` in `agent_worktree_cleanup_cron.sh` né sul
+    percorso `--cleanup` di `agent_start.py`. `launchd` non esegue due istanze
+    della stessa label, quindi l'auto-sovrapposizione non è il pericolo; il
+    pericolo è l'incrocio con un `--release` di un orchestratore o con un GC che
+    sfora la fascia. La corsa PREESISTE, ma passare da 1 a 8 passate la espone
+    otto volte tanto. Non curata qui (una preoccupazione per PR); cura proposta:
+    `flock` sulla stessa risorsa che `--release` acquisisce."
+  - "LA CADENZA NON È VIVA FINCHÉ NON SI RICARICA. Questa PR cambia il repo; la
+    copia sotto ~/Library/LaunchAgents/ resta giornaliera finché non gira
+    `install_agent_worktree_cleanup.sh`. Il reload è deliberatamente DOPO il
+    merge, perché installarlo prima sarebbe la deriva HOME-fork (famiglia #1)
+    creata mentre si cura l'igiene. Nella finestra fra i due, runbook e
+    connettoma descrivono il repo e non la macchina: entrambi lo dicono ora
+    esplicitamente."
+  - "PROVENIENZA DEI NUMERI, dichiarata invece che asserita. MISURATI in
+    sessione: il conteggio dei worktree (40 su 41 creati entro 24h, via `find
+    -ctime -1`), la dimensione per checkout (`du -sh`, ~1,2 GB), e il minimo di
+    753 MB liberi letto immediatamente prima della passata di recupero. NON
+    misurato: gli '~80 GB liberi la sera prima' sono REPORT DEL PROPRIETARIO —
+    nessun log di questa flotta registra lo spazio libero in quel momento.
+    Traccia indipendente che invece esiste: ~/logs/disk_watchdog.out.log mostra
+    il volume Data passare dall'85% al 97% fra il 2026-08-30 09:00 e il
+    2026-08-31 09:00."
+  - "IL SEGGIO CODEX È ROTTO, e il modo in cui è rotto è la cosa da ricordare.
+    `.claude/scripts/codex-spalla.sh` passa ancora `--full-auto`, che codex-cli
+    0.149.1 ha rimosso; il fallimento esce con codice 2, che l'header dello
+    script stesso documenta come 'diff vuoto'. Una review MAI PARTITA si legge
+    quindi come 'girata, nulla da segnalare' — il fallimento indossa la faccia
+    del successo. Ogni second-opinion 'pulita' raccolta da quando il CLI è
+    driftato oltre 0.142.0 va trattata come NON GIUDICATA, non come
+    giudicata-pulita. Memoria:
+    discovery_codex_spalla_exit_2_means_codex_never_ran_2026_08_31.
+    Riparazione: PR separata, non questa."
+  - "La cadenza non è una garanzia. Fra due passate una raffica può ancora
+    riempire il disco: tre ore portano il caso peggiore da ~24h a ~3h. Misurato
+    mentre questa PR era aperta: i worktree sono risaliti da 34 a 36 in pochi
+    minuti. Le protezioni skip-recent e WIP non sono state ri-tarate per la
+    frequenza maggiore."
+  - "Il tetto (`compute_ceiling`) non è stato attivato e nessun `gear_override`
+    è dichiarato, perché il diff non ricade nella forma che il tetto punisce:
+    4 file superano CEILING_SMALL_DIFF_MAX_FILES=2, l'insieme non è
+    docs/ledger-only (contiene .plist.example e .sh oltre a .md/.yaml), e i
+    dispatch di grader sono 1 (più un raccoglitore di misure), sotto
+    CEILING_HEAVY_GRADER_DISPATCH_MIN=3. Nessun council è stato convocato."
+
+sources: []
+pii_scan: clean
+size_tokens: 3100

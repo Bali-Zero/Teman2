@@ -71,6 +71,23 @@ Due guard proteggono un worktree expired dal drop:
 > connettoma (`docs/connectome/edges/launchd-*.yaml`) grepano alla lettera, e rinominarla per
 > inseguire la cadenza le farebbe smettere di matchare in silenzio — la forma W120. La cadenza si
 > legge qui e nel plist; l'identificatore non si tocca.
+>
+> ⚠️ **DUE AVVERTENZE sollevate dalla review cross-family (Kimi K3, 2026-08-31), entrambe reali.**
+> **(1) La cadenza vale solo dopo il RELOAD.** Questa PR cambia il repo (`*.plist.example`) e
+> questi documenti; la copia viva sotto `~/Library/LaunchAgents/` resta a una passata al giorno
+> finché qualcuno non esegue `bash infra/launchagents/install_agent_worktree_cleanup.sh`. Fra il
+> merge e quel reload, ogni riga qui e nel connettoma che dice «ogni 3h» descrive il repo, non la
+> macchina — è lying-by-presence rovesciato. Chi legge questa nota e non ha ancora ricaricato:
+> ricarica, poi verifica con
+> `plutil -extract StartCalendarInterval json -o - ~/Library/LaunchAgents/com.nuzantara.agent-worktree-cleanup.daily.plist`.
+> **(2) Nessuna mutua esclusione, e ora ci sono otto occasioni invece di una.** Né
+> `agent_worktree_cleanup_cron.sh` né il percorso `--cleanup` di `agent_start.py` prendono un
+> `flock`: nulla serializza il reaper contro un `--release` di un orchestratore, o contro un GC
+> che sfora la propria fascia. `launchd` non esegue due istanze della STESSA label, quindi
+> l'auto-sovrapposizione non è il pericolo; il pericolo è l'incrocio con gli ALTRI. La corsa
+> preesiste a questa PR, ma passare da 1 a 8 passate ne moltiplica l'esposizione per otto, ed è
+> onesto dirlo qui invece che scoprirlo dopo. Cura proposta (PR separata, non questa — una sola
+> preoccupazione per PR): `flock` sul wrapper con la stessa risorsa che `--release` acquisisce.
 
 ```bash
 # install (Pro):
