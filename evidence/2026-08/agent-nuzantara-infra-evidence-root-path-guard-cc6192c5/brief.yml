@@ -48,7 +48,7 @@ acceptance:
     only NOTICE. probe: a test asserting the two constants are distinct and that the brief rule
     returns no violation on the pack's date."
   - "WHILE this change lands the existing corpus SHALL be unchanged. probe: the full
-    test_evidence_pack_lint.py file green (275 pre-existing + 25 new), actionlint rc=0 on the
+    test_evidence_pack_lint.py file green (288 pre-existing + 12 new), actionlint rc=0 on the
     edited workflow, ruff clean."
 
 risks:

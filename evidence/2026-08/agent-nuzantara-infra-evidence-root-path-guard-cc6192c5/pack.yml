@@ -35,7 +35,7 @@ council_run: council-journal.jsonl
 
 diff:
   files: 7
-  net_lines: 734
+  net_lines: 764
   measured_at: 494583042
   note: >-
     Churn (added+deleted) via `git diff --no-renames --numstat --cached <merge-base>`, measured
@@ -162,7 +162,27 @@ dissent:
       actually appears, and dies under over-match. The same insensitivity was found and fixed in
       two neighbouring tests by the same measurement.
 
-  - seat: kimi-code/k3
+  - seat: claude-opus-5 (final on-disk gate, fresh context, generator != grader)
+    status: CONFIRMED
+    round: 2
+    objection: >-
+      VERDICT: PASS-WITH-CONDITIONS. "The one defect is honesty, not safety: the pack's `tests:`
+      block and the brief's fifth acceptance criterion both claim '275 pre-existing, 25 new'; the
+      real split is 288 pre-existing, 12 new. The total (300) is right and the substantive claim
+      (whole corpus green) is true, so nothing behavioural rests on it — but this repo lints for
+      exactly this class of countable claim, the wrong split is internally consistent (275+25=300)
+      and would survive a naive check." It also asked the notes to name a limitation they did not:
+      a diff writing a per-task brief AND the root brief escapes the rule entirely.
+    disposition: >-
+      BOTH ADOPTED, and the first one is the sharper finding of the two rounds. RE-MEASURED before
+      believing it (the refuter hallucinates too, W65): `pytest -k brief_root` reports
+      `12 passed, 288 deselected` — 12 new, 288 pre-existing, exactly as the gate said, and my
+      figure was simply wrong. It is the same disease this PR's own Rule 13 neighbour exists to
+      catch, committed in the artifact that is supposed to BE the measured record, and it survived
+      an earlier reviewer because 275+25 sums to the right total. The split correction itself is
+      digit-only in both files; `diff.net_lines` below is nevertheless re-measured, because this
+      same commit also adds note (4) and this very entry. Limitation named as note (4), uncured:
+      it is inherited from the resolver's single-path contract and Rule 9 has it identically.
     status: RETRACTED
     round: 1
     objection: >-
@@ -194,7 +214,7 @@ dissent:
       in an unrelated lane). Recorded, not replaced silently.
 
 tests:
-  - "scripts/tests/test_evidence_pack_lint.py — 300 passed (275 pre-existing, 25 new)."
+  - "scripts/tests/test_evidence_pack_lint.py — 300 passed (288 pre-existing, 12 new)."
   - "Mutation control, both directions: neutered kills 6, over-match kills 4, seam test dies under both."
   - "actionlint on the edited workflow — rc=0. ruff — clean."
 
@@ -224,3 +244,13 @@ notes: >-
   describes". Rule 9 and Rule 12 are now symmetric by hand, not by construction, and a third
   root-path artifact would need a third rule. That is a real gap and deliberately not invented
   here — it is a second concern, and this PR is already a correction of an under-enforced cure.
+
+  (4) ONE SHAPE STILL ESCAPES, named by the final gate and left uncured on purpose. A diff that
+  writes BOTH a per-task brief AND the root brief resolves to the per-task path and is clean:
+  `resolve_evidence_path` returns the FIRST match, and the rule judges one resolved path, not the
+  changed-files list. Rule 9 has the identical hole for packs, so this is INHERITED from the
+  resolver's single-path contract, not introduced here — curing it means changing that contract
+  for both rules, which is a spec, not a patch (Regola 8: cure what the change introduces, send
+  to spec what it inherits). Consolation, measured not assumed: that shape still collides in the
+  queue exactly as before, so it is no worse off than today — it simply is not yet explained by
+  a lint.
