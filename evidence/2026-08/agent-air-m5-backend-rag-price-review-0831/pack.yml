@@ -8,7 +8,7 @@ lanes:
     seat: claude (this session — M5 interactive, sole build lane)
 diff:
   files: 10
-  net_lines: 1493
+  net_lines: 1593
   measured_at: bc0f0f0e64
   note: >-
     git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD — never a two-dot
