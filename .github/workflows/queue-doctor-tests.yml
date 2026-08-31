@@ -115,15 +115,44 @@ jobs:
       #     someone raises it deliberately. It is NOT auto-derived: a floor that
       #     recomputes itself from the tree it guards cannot notice that tree
       #     shrinking.
-      # `set -e` is deliberately NOT used: pytest's own output — traceback
-      # included — is printed before any verdict is reached, so a failure is
-      # diagnosable from this step rather than merely announced.
+      # `|| RC=$?` IS LOAD-BEARING, NOT STYLE. A `run:` block with no `shell:`
+      # key runs under GitHub's default `bash -e {0}`, and the `set -uo pipefail`
+      # below does NOT clear that `-e`. A BARE capture — `OUT="$(… pytest …)"` —
+      # therefore aborts the step on that very line the moment pytest exits
+      # non-zero, which is the only case anyone ever reads this log for: the
+      # `printf` never runs, the `::error::` never runs, and the step goes red
+      # with a COMPLETELY EMPTY log. This file was first written the bare way and
+      # the gate caught it. Measured 2026-08-31, same corpus, both shells:
+      #   corpus green      exit 0 + verdict line, identically under either shell
+      #   a test fails      bare: exit 1, ZERO lines · `|| RC=$?`: exit 1, traceback + ::error::
+      #   `-k` matches none bare: exit 5, ZERO lines · `|| RC=$?`: exit 1, "14 deselected" + ::error::
+      # Read the bare column carefully: it still goes RED, so the guard does
+      # DETECT — it just cannot say why, and it leaks pytest's own exit status in
+      # place of its own. A mute alarm is the one that gets rerun blindly. This
+      # is scar W101/W107's antidote verbatim (`|| EXIT_CODE=$?` is the only
+      # capture form immune to errexit).
+      #
+      # HOW IT GOT IN, because that is the part worth copying: the sibling
+      # `mq-oracle-tests.yml`, written a few hours EARLIER the same day by the
+      # same hand, already carries the identical diagnosis in its own comment —
+      # "`|| true`: under `set -euo pipefail` a suite that ABORTS kills the step
+      # at this assignment, so the [...] branch below is unreachable dead code on
+      # the only path it exists for (W101/W108)". The knowledge was not missing.
+      # It failed to transfer because the two files LOOK different: that one says
+      # `set -euo pipefail` and visibly owns its `-e`, this one says `set -uo` —
+      # and the `-e` this file appears to have "left out" was never this file's
+      # to leave out, because GitHub supplies it. An opt-out that reads as
+      # absence is the trap; the fix is to make the guard visible at the capture
+      # itself, which `|| RC=$?` does. The intent the
+      # bare form was reaching for — print pytest's output BEFORE any verdict, so
+      # a failure is diagnosable here rather than merely announced — is what the
+      # `|| RC=$?` actually delivers.
       - name: The queue doctor still refuses to fabricate a measurement
         run: |
           set -uo pipefail
           FLOOR=14   # the corpus size on main when this file was written
-          OUT="$(PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_queue_doctor.py -q 2>&1)"
-          RC=$?
+          RC=0
+          OUT="$(PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_queue_doctor.py -q 2>&1)" || RC=$?
           printf '%s\n' "$OUT"
           if [ "$RC" -ne 0 ]; then
             echo "::error::the queue-doctor corpus did not pass (pytest exit $RC) — output above"

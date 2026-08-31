@@ -35,8 +35,14 @@ what_changed: |
 
   One job step installs pytest and runs the corpus ONCE, then asserts on the number of cases that
   PASSED. Not on the exit code alone, which is 0 when every case is skipped; not on the collected
-  count, which counts skipped cases too. `set -e` is deliberately absent so pytest's own output,
-  tracebacks included, is printed before any verdict is reached.
+  count, which counts skipped cases too. The capture is guarded `|| RC=$?` so that pytest's own
+  output, tracebacks included, survives to be printed before any verdict is reached.
+
+  ROUND 2. The first version of this file wrote that capture BARE and this summary claimed `set -e`
+  was "deliberately absent" — both false. A `run:` block with no `shell:` key runs under GitHub's
+  default `bash -e {0}`, which `set -uo pipefail` does not clear, so the bare capture aborted the
+  step the instant pytest failed: no output, no `::error::`, red with an EMPTY log and pytest's exit
+  code in place of the step's own. Caught by the gate, then re-measured under `bash -e` (below).
 
 proof: |
   The absence, measured with a positive control in the same command:
@@ -54,6 +60,22 @@ proof: |
     guilt, corpus shrank (FLOOR=15)        -> "::error::... below the floor of 15", rc 1
     guilt, nothing collected (-k no-match) -> pytest exit 5, caught by the RC branch, rc 1
     guilt, corpus ENTIRELY SKIPPED         -> rc 1
+
+  ROUND 2 — the same branches RE-RUN under GitHub's own shell, which is what the first round got
+  wrong. Those four rows were measured under a bare local `bash`; CI runs `bash -e {0}`. Both
+  shells, same corpus, same step body, before and after the `|| RC=$?` guard:
+
+    probe                       BARE capture (as first shipped)      `|| RC=$?` (as shipped now)
+    innocence, corpus green     rc 0, verdict line                   rc 0, verdict line
+    guilt, a test really fails  rc 1, ZERO lines of log              rc 1, full traceback + ::error::
+    guilt, -k matches nothing   rc 5, ZERO lines of log              rc 1, "14 deselected" + ::error::
+    guilt, entirely skipped     rc 1, ::error:: printed              rc 1, ::error:: printed
+
+  Two things that table says and the prose above did not. First, the bare form still went RED on
+  every guilt probe — it DETECTED and could not SPEAK, which is a diagnosability defect, not a
+  fail-open; saying otherwise would overstate it. Second, the skipped-entirely branch was never
+  affected either way, because pytest exits 0 there and errexit has nothing to trip on: the defect
+  was confined to the pytest-non-zero class, which is the only class anyone reads this log for.
 
   That last one deserves its own line, because a branch that cannot be reached is not a guard. It
   was proved reachable on a scratch module carrying `pytestmark = pytest.mark.skip`: pytest exits 0
@@ -101,10 +123,15 @@ dissent:
       directly as a subprocess. Listing it would arm this workflow on edits it cannot judge."
   - seat: agy/gemini-3.1-pro
     objection: "`2>/dev/null` discards pytest's traceback, leaving only a generic message."
-    status: RETRACTED
+    status: CONFIRMED
     resolution:
-      "The single run step prints pytest's whole output, stderr included, BEFORE reaching any
-      verdict. The suppression the seat read was in a draft that ran the suite twice; it is gone."
+      "Retracted in round 1, reinstated in round 2 — the retraction was the error. The MECHANISM the
+      seat named was genuinely gone (the `2>/dev/null` belonged to a draft that ran the suite twice),
+      and refuting the mechanism was treated as refuting the OUTCOME. It was not: under GitHub's
+      `bash -e {0}` the bare capture aborted before the printf, so a failing corpus produced no
+      traceback at all — strictly worse than the generic message the seat feared. The seat was right
+      about what the reader would end up holding and wrong only about which line took it away.
+      Fixed by `|| RC=$?`; re-measured under `bash -e`, both columns in `proof:`."
   - seat: agy/gemini-3.1-pro
     objection: "push/pull_request asymmetry: push filters `branches: [main]`, pull_request names no branches."
     status: RETRACTED
@@ -161,10 +188,10 @@ receipts:
     ts: "2026-08-31T07:42Z"
     seat: claude-opus-5
   - claim: "GUILT — a run that collects nothing turns it red."
-    cmd: "same body, pytest -k <no match>"
-    result: "pytest exit 5, caught by the RC branch"
+    cmd: "same body, pytest -k <no match>, re-run under `bash -e` (GitHub's shell) after the fix"
+    result: "pytest exit 5 -> '14 deselected' printed, then ::error::, step rc 1"
     exit: 1
-    ts: "2026-08-31T07:42Z"
+    ts: "2026-08-31T08:58Z"
     seat: claude-opus-5
   - claim: "GUILT — a corpus skipped in its ENTIRETY turns it red, and that branch is reachable."
     cmd: "scratch module with `pytestmark = pytest.mark.skip`, then the step body"
@@ -208,9 +235,41 @@ receipts:
     exit: 0
     ts: "2026-08-31T07:39Z"
     seat: claude-opus-5
+  - claim:
+      "ROUND 2 — the step body under GitHub's OWN shell: the bare capture goes red with an EMPTY
+      log on every pytest-non-zero path, which is what round 1 measured under a bare local bash and
+      therefore could not see."
+    cmd:
+      "step body extracted verbatim to a file, run as `bash -e <file>` and as `bash <file>`, with
+      the venv interpreter (pytest 9.0.3 / py3.11.11), over three inputs"
+    result:
+      "bash -e: a real test failure -> rc 1 with 0 lines; -k no-match -> rc 5 with 0 lines. bare
+      bash: rc 1 with the full traceback + ::error:: in both. Innocence identical (rc 0) on both."
+    exit: 0
+    ts: "2026-08-31T08:55Z"
+    seat: claude-opus-5
+  - claim: "The `|| RC=$?` guard restores the diagnostic under `bash -e` on every probe."
+    cmd: 'same extraction, capture guarded `RC=0; OUT="$(...)" || RC=$?`, four inputs under bash -e'
+    result:
+      "green -> rc 0 + verdict; test fails -> rc 1 + traceback + ::error::; -k no-match -> rc 1 +
+      '14 deselected' + ::error::; all-skipped -> rc 1 + the no-'N passed' ::error::"
+    exit: 0
+    ts: "2026-08-31T08:57Z"
+    seat: claude-opus-5
+  - claim:
+      "The knowledge was already in the tree: the sibling written earlier the same day names this
+      exact defect in its own comment, so the cause is failure-to-transfer, not ignorance."
+    cmd: "sed -n '80,110p' .github/workflows/mq-oracle-tests.yml"
+    result:
+      'carries `set -euo pipefail` and the comment "`|| true`: under `set -euo pipefail` a suite
+      that ABORTS kills the step at this assignment, so the [...] branch below is unreachable dead
+      code on the only path it exists for (W101/W108)"'
+    exit: 0
+    ts: "2026-08-31T08:52Z"
+    seat: claude-opus-5
   - claim: "The counts this pack states about its own diff are the counts git reports."
     cmd: "git diff --cached --numstat origin/main | awk '{a+=$1;f++} END{print f, a}'"
-    result: "4 282"
+    result: "4 531"
     exit: 0
     ts: "2026-08-31T07:52Z"
     seat: claude-opus-5
@@ -223,11 +282,23 @@ pii_scan_note:
   never read, quoted, or counted here, in code or in prose."
 
 spend:
-  wall_clock_hours: 1
-  adversarial_rounds: 1
+  wall_clock_hours: 2
+  adversarial_rounds: 2
+
+appetite_exceeded: |
+  Both ceilings doubled, for one reason: the gate returned REWORK-BUILD on a defect this pack had
+  declared PROVEN. The round-1 proof ran the step body under a bare local `bash`; CI runs
+  `bash -e {0}`, so the three "each RUN rather than reasoned about" rows described a shell no run of
+  this workflow will ever use. Round 2 is the re-measurement under the right shell, the one-line
+  cure, and the reinstatement of a cross-family finding round 1 had wrongly retracted.
+
+  Recorded rather than absorbed, because the overrun is the useful part: an appetite set from how
+  big the change looks (one workflow file, four paths) cannot price a round spent discovering the
+  harness was wrong. The declared ceiling was honest and the estimate was still bad — which is an
+  argument for measuring under the target harness in round 1, not for declaring a larger appetite.
 
 diff:
   net_lines: |
-    4 files, +431/-0 against the merge-base with origin/main
-    (ba7a8a8d55cd98bf7b7ad8d617c3c5da982e0e62), 1 commit — the new workflow plus this pack.
+    4 files, +531/-0 against the merge-base with origin/main
+    (ba7a8a8d55cd98bf7b7ad8d617c3c5da982e0e62), 2 commits — the new workflow plus this pack.
     Every line is an addition because all four files are new.
