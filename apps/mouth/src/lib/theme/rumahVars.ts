@@ -52,15 +52,19 @@ export const RUMAH_VARS = {
   "--rp-glow": "none",
   "--rp-photo-inset": "24px",
   "--rp-photo-radius": "16px",
-  // P1 contrast fix: #FF2D4C (global token) = 3.66:1 on white — fails AA for 15px text.
-  // #D01033 = 4.64:1 on white, passes 4.5:1. Scoped here so only homepage + blog pages
-  // see the darker red; portal/other pages keep the global #FF2D4C token.
-  "--cta-primary-bg": "#D01033",
+  // P1 contrast fix: #FF2D4C (global token) puts white ink at 3.66:1 — fails AA.
+  // 2026-08-28: aligned to the logo red #C8102E (white ink 5.88:1, up from
+  // #D01033's 5.52:1) so the single page primary speaks the brand's own red
+  // rather than a near-miss of it. Scoped here so only homepage + blog pages
+  // see it; portal/other pages keep the global #FF2D4C token.
+  "--cta-primary-bg": "#C8102E",
 } as CSSProperties;
 
 /**
  * MYTHOS P4 masthead: persistent solid-navy band (brand navy #1e3863 =
- * editorial `--surface-base-solid`) + 3px red rule (NavShell `accentBar`).
+ * editorial `--surface-base-solid`). The 3px red rule (NavShell `accentBar`)
+ * was dropped 2026-08-28 — #FF2D4C read as a dashboard error state, and the
+ * navy/paper edge already carries the boundary. The prop still exists.
  * Set on the page wrapper that owns its own NavShell (e.g. the homepage).
  * Pages under `(blog)/layout.tsx` inherit the layout's NavShell, which is
  * already navy via the editorial `--nav-bg` token, so they do NOT need this.
