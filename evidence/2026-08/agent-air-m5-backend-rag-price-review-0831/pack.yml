@@ -41,9 +41,15 @@ receipts:
       grep -n "_PRICING_FILENAME" backend/services/pricing/pricing_service.py; then
       ./.venv/bin/python -c "from backend.services.pricing.pricing_service import _PRICING_FILENAME"
     result: >-
-      pricing_service.py:29 defines it; the import succeeds standalone (module-level imports are
-      stdlib only, settings is imported lazily inside _support_contacts), so it also works under
-      plain /usr/bin/python3, which is what the launchd wrapper uses.
+      pricing_service.py:29 defines it; the import succeeds under the backend venv (3.11.11).
+      CORRECTED 2026-08-31 after the Gear-3 gate: this receipt originally concluded "so it also
+      works under plain /usr/bin/python3, which is what the launchd wrapper uses", and BOTH halves
+      were wrong. The reasoning looked only at pricing_service.py''s own module-level imports
+      (stdlib only — true) and never at the package __init__ Python executes first, which reaches
+      a `str | None` annotation evaluated at class creation. /usr/bin/python3 is 3.9.6 on Pro AND
+      M5, where that is a TypeError. Measured: `/usr/bin/python3 scripts/price_review_sentinel.py
+      --dry-run` returns CANNOT_VERIFY, rc=2, every time. The wrapper now uses the venv
+      interpreter and a test asserts it does.
     exit: 0
     ts: 2026-08-31T08:44Z
     seat: session (build lane)
@@ -51,7 +57,10 @@ receipts:
     cmd: python3 scripts/price_review_sentinel.py --dry-run --json --now 2026-08-31
     result: >-
       outcome ATTESTATION_UNMAINTAINED, age_days 117, git_last_change 2026-08-26,
-      newest_verified_on 2026-08-25, EXIT=1. Ran under system python3, no venv.
+      newest_verified_on 2026-08-25, EXIT=1. CORRECTED: this said "ran under system python3, no
+      venv", which named the wrong instrument — `python3` on this PATH is mise 3.11.15, not
+      /usr/bin/python3 (3.9.6). The run was real and its verdict stands; what it did NOT establish
+      is the interpreter claim receipt[2] rested on.
     exit: 1
     ts: 2026-08-31T09:05Z
     seat: session (build lane)

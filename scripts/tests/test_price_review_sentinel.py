@@ -355,7 +355,7 @@ def test_guilt_no_trace_at_all_cannot_exonerate_the_sheet():
     OK with the reason 'nothing shows the sheet changed after that date'."""
     verdict = prs.classify(_sheet("2026-08-30"), today=TODAY, git_date=None)
     assert verdict.outcome == prs.OUTCOME_CANNOT_VERIFY
-    assert "no independent trace" in verdict.reason
+    assert "nothing independent can corroborate" in verdict.reason
 
 
 def test_the_asymmetry_survives_no_overdue_is_still_provable_without_traces():
@@ -490,3 +490,70 @@ def test_main_exits_three_when_the_finding_could_not_be_delivered(tmp_path, monk
     rc = prs.main(["--now", "2026-08-31"])
     assert rc == prs.EXIT_UNDELIVERED
     assert "delivery=FAILED" in capsys.readouterr().out
+
+
+
+# ---------------------------------------------------------------------------
+# A trace only corroborates if it COULD have contradicted (Gear-3 gate on 5400)
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_a_trace_older_than_the_review_date_corroborates_nothing():
+    """The vacuity gate, one layer down. An entry stamped 2026-01-01 cannot
+    contradict a review dated 2026-08-25 whatever the file did — but it is a
+    trace, so `if not traces` passed and the sheet read OK."""
+    entries = {"X": {"price": 1, "verified_on": "2026-01-01"}}
+    verdict = prs.classify(
+        _sheet("2026-08-25", entries), today=TODAY, git_date=None
+    )
+    assert verdict.outcome == prs.OUTCOME_CANNOT_VERIFY
+    assert "could never have contradicted" in verdict.reason
+
+
+def test_innocence_a_trace_on_the_review_date_does_corroborate():
+    entries = {"X": {"price": 1, "verified_on": "2026-08-25"}}
+    verdict = prs.classify(
+        _sheet("2026-08-25", entries), today=TODAY, git_date=None
+    )
+    assert verdict.outcome == prs.OUTCOME_OK
+
+
+def test_innocence_a_trace_one_grace_day_before_still_corroborates():
+    """Merge lag runs the other way too: a commit landing the day before the
+    date was typed is still evidence about the same edit."""
+    entries = {"X": {"price": 1, "verified_on": "2026-08-24"}}
+    verdict = prs.classify(
+        _sheet("2026-08-25", entries), today=TODAY, git_date=None
+    )
+    assert verdict.outcome == prs.OUTCOME_OK
+
+
+# ---------------------------------------------------------------------------
+# The wrapper's interpreter — the defect no unit test could have caught, so it
+# gets the one check that would have (Gear-3 gate on 5400)
+# ---------------------------------------------------------------------------
+
+
+def test_the_wrapper_does_not_run_this_sentinel_on_system_python():
+    """`/usr/bin/python3` is 3.9.6 on Pro and on M5. This sentinel imports
+    backend code to learn which file the live pricing service loads, and that
+    import chain reaches a `str | None` annotation evaluated at class creation
+    — a TypeError before 3.10. The first draft pinned /usr/bin/python3 and
+    would have returned CANNOT_VERIFY on every scheduled run, forever, while a
+    receipt in the evidence pack certified the opposite: the measurement had
+    been taken with the ambient `python3` (3.11 via mise), not the one the
+    wrapper names."""
+    wrapper = (REPO / "infra" / "launchagents" / "wrappers"
+               / "pro-price-review-sentinel.sh").read_text(encoding="utf-8")
+    payload = [
+        line for line in wrapper.splitlines()
+        if "price_review_sentinel.py" in line and not line.lstrip().startswith("#")
+    ]
+    assert len(payload) == 1, f"expected one payload line, got {payload}"
+    assert "/usr/bin/python3" not in payload[0], (
+        "the wrapper invokes this sentinel with system python — 3.9.6 on both "
+        "Pro and M5, which cannot import the backend package"
+    )
+    assert ".venv/bin/python" in payload[0], (
+        "the wrapper must use the backend venv interpreter; it imports backend code"
+    )

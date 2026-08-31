@@ -49,7 +49,15 @@ trap 'rm -f "$PIDFILE"' EXIT
 
 # ---- payload (cron one-shot; G8_keepalive_sane: plist uses StartInterval, no KeepAlive)
 log "run start"
-/usr/bin/python3 "$HOME/nuzantara/scripts/price_review_sentinel.py" >> "$LOG" 2>&1
+# NOT /usr/bin/python3. This sentinel imports backend code to learn which file
+# the live pricing service loads, and `/usr/bin/python3` is 3.9.6 on both Pro
+# and M5 — the backend package's __init__ chain reaches a `str | None`
+# annotation evaluated at class creation, which is a TypeError before 3.10. The
+# organ would have returned CANNOT_VERIFY on every scheduled run, forever, and
+# failed loud while never once answering the question it exists for. Measured on
+# Pro and M5; the venv is 3.11.11. Two sibling wrappers already use the venv for
+# exactly this reason.
+"$HOME/nuzantara/apps/backend-rag/.venv/bin/python" "$HOME/nuzantara/scripts/price_review_sentinel.py" >> "$LOG" 2>&1
 RC=$?
 
 # Heartbeat semantics DIVERGE from the organ_birth default, deliberately.

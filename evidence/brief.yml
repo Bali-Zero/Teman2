@@ -65,8 +65,10 @@ acceptance:
   - "WHEN the organ is born the conformance check SHALL stay clean — probe: `python3 infra/organ-conformance/check_organ_conformance.py`. Result: clean, and `validate_organs_registry` valid after the birth."
 
 consumer_map:
-  - "`scripts/price_review_sentinel.py` — the organ itself; runs under plain /usr/bin/python3, no
-    venv, because that is what the launchd wrapper uses."
+  - "`scripts/price_review_sentinel.py` — the organ itself; runs under the backend venv interpreter
+    (3.11.11), because it imports backend code and /usr/bin/python3 is 3.9.6 on both Pro and M5 —
+    too old for the `str | None` annotation in the package __init__ chain. The first draft had
+    this backwards and pinned system python in the wrapper."
   - "`apps/backend-rag/backend/services/pricing/pricing_service.py` — read-only, for
     `_PRICING_FILENAME` alone. Nothing in the service changes."
   - "`apps/backend-rag/backend/data/bali_zero_official_prices_2026.json` — observed, never written."

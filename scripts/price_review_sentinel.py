@@ -403,14 +403,28 @@ def classify(
     # sheet carries two verified_on stamps, and git_last_change() returns None
     # on any git failure. Note the asymmetry is preserved: REVIEW_DUE above is
     # provable from the field alone, so it is returned before this gate.
-    if not traces:
+    # A trace only corroborates if it COULD have contradicted. One that predates
+    # `last_updated` can never satisfy the check above no matter what the file
+    # did, so counting it as corroboration is the vacuity gate reintroduced one
+    # layer down: an entry stamped 2026-01-01 was silently "confirming" a review
+    # dated 2026-08-25, 236 days later. Found by the Gear-3 gate on this diff.
+    corroborating = [
+        d for d in traces if (last_updated - d).days <= ATTESTATION_GRACE_DAYS
+    ]
+    if not corroborating:
+        stale_note = (
+            f" The newest trace is {max(traces).isoformat()}, which predates the "
+            "review date and therefore could never have contradicted it."
+            if traces else
+            " git could not answer and no entry carries verified_on."
+        )
         return Verdict(
             outcome=OUTCOME_CANNOT_VERIFY,
             reason=(
                 f"metadata.last_updated says {last_updated.isoformat()}, inside "
-                f"the {interval_days}-day interval, but there is no independent "
-                "trace to corroborate it — git could not answer and no entry "
-                "carries verified_on. The field alone cannot establish freshness."
+                f"the {interval_days}-day interval, but nothing independent can "
+                "corroborate it." + stale_note +
+                " The field alone cannot establish freshness."
             ),
             **common,
         )
