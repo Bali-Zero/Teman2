@@ -1,0 +1,233 @@
+brief_ref: evidence/brief.yml
+council_run: "journal.jsonl"
+plan_ref:
+  "PR (agent/nuzantara/infra/queue-doctor-arm, base main) — 'ci(arm): give the queue-doctor corpus an
+  executor that can go red'. No separate governing mandate: this is the arming half of PR #5433,
+  split out because #5433 is armed and therefore frozen (Agent PR Contract rule 2)."
+lanes:
+  - lane: queue-doctor-arm-build
+    role: build
+    seat:
+      claude-opus-5 (conducting session — measured the absence with a positive control, wrote the
+      workflow, ran the three cross-family seats itself, applied the one seat's findings by hand,
+      and wrote this pack; no reviewing seat has write access to this tree)
+  - lane: queue-doctor-arm-council-kimi
+    role: review
+    seat: kimi-code/k3 (UNAVAILABLE — weekly quota, see journal.jsonl)
+  - lane: queue-doctor-arm-council-codex
+    role: review
+    seat: codex-gpt-5.6-sol (UNAVAILABLE — workspace out of credits, see journal.jsonl)
+  - lane: queue-doctor-arm-council-gemini
+    role: review
+    seat: >-
+      agy/gemini-3.1-pro (verdict NO-GO — the only seat that answered, and it changed the artifact:
+      three findings confirmed and fixed, four refuted by measurement, one written into the file as
+      a promotion instruction; see journal.jsonl and dissent below)
+
+what_changed: |
+  One new file, `.github/workflows/queue-doctor-tests.yml`, plus this evidence pack.
+
+  It triggers on `pull_request` and on `push` to main, over a path list that is the corpus's actual
+  read-set: the corpus, the script it drives as a subprocess, `scripts/tests/conftest.py` (autouse
+  fixtures), and the workflow itself. The two lists are symmetric, this file included. There is NO
+  `merge_group:` trigger, so the `paths:` filter has nothing to diverge from — the head-green /
+  queue-red split a filter can create needs both.
+
+  One job step installs pytest and runs the corpus ONCE, then asserts on the number of cases that
+  PASSED. Not on the exit code alone, which is 0 when every case is skipped; not on the collected
+  count, which counts skipped cases too. `set -e` is deliberately absent so pytest's own output,
+  tracebacks included, is printed before any verdict is reached.
+
+proof: |
+  The absence, measured with a positive control in the same command:
+    grep -rln 'test_queue_doctor' .github/   -> 0 hits
+    grep -rn  'test_organism_stale_detector' .github/workflows/*.yml -> 3 hits (organ-conformance.yml)
+
+  The floor, from the real tool rather than by inspection:
+    evidence_pack_lint.py --print-floor --changed-files-file <changed> -> 3   (hot-zone path)
+
+  actionlint on the new file: clean.
+
+  The step's three branches, each RUN rather than reasoned about, against the corpus as it stands on
+  main (fourteen cases):
+    innocence, FLOOR=14                     -> "queue doctor corpus: 14 passing cases (floor 14)", rc 0
+    guilt, corpus shrank (FLOOR=15)        -> "::error::... below the floor of 15", rc 1
+    guilt, nothing collected (-k no-match) -> pytest exit 5, caught by the RC branch, rc 1
+    guilt, corpus ENTIRELY SKIPPED         -> rc 1
+
+  That last one deserves its own line, because a branch that cannot be reached is not a guard. It
+  was proved reachable on a scratch module carrying `pytestmark = pytest.mark.skip`: pytest exits 0
+  and prints "2 skipped", no "N passed" line appears, and the step goes red saying so. Writing a
+  fail-closed branch that no input can reach is W101, and this one is not that.
+
+dissent:
+  - seat: agy/gemini-3.1-pro (cross-family review seat, verdict NO-GO)
+    objection:
+      "setup-python provisions a clean interpreter (pip/setuptools/wheel only) and the draft never
+      installed pytest, so the corpus would have died on `No module named pytest`."
+    status: CONFIRMED
+    resolution:
+      "Added `pip install --quiet pytest` — the same line organ-conformance.yml:155 carries, minus
+      pyyaml, since this corpus is stdlib-only."
+  - seat: agy/gemini-3.1-pro
+    objection:
+      "A green that hides an empty run: pytest exits 0 when every case is SKIPPED, and
+      `--collect-only` counts skipped cases, so the draft's collection floor could pass with zero
+      assertions executed."
+    status: CONFIRMED
+    resolution:
+      "The assertion is now on cases that PASSED, from one run. Proved reachable on a scratch module
+      carrying `pytestmark = pytest.mark.skip` — pytest exits 0, prints '2 skipped', no 'N passed'
+      line appears, step goes red. A fail-closed branch no input can reach is W101; this one is not."
+  - seat: agy/gemini-3.1-pro
+    objection:
+      "`scripts/tests/conftest.py` was missing from the path list, and its fixtures are autouse, so
+      a change there breaks this corpus while touching none of the listed paths."
+    status: CONFIRMED
+    resolution: "Added to both path lists, with the reason written beside it."
+  - seat: agy/gemini-3.1-pro
+    objection:
+      "`actions/checkout@v7` and `actions/setup-python@v7` do not exist (current are v4 and v5), so
+      the runner fails at step resolution."
+    status: RETRACTED
+    resolution:
+      "Measured: this repo uses checkout@v7 in 117 workflows and setup-python@v7 in 70. A
+      knowledge-cutoff error, not a defect. The file matches the house standard."
+  - seat: agy/gemini-3.1-pro
+    objection: "`scripts/mq.sh` belongs in the read-set, since it wraps queue_doctor in production."
+    status: RETRACTED
+    resolution:
+      "The corpus never invokes mq.sh — measured, zero references; it drives queue_doctor.py
+      directly as a subprocess. Listing it would arm this workflow on edits it cannot judge."
+  - seat: agy/gemini-3.1-pro
+    objection: "`2>/dev/null` discards pytest's traceback, leaving only a generic message."
+    status: RETRACTED
+    resolution:
+      "The single run step prints pytest's whole output, stderr included, BEFORE reaching any
+      verdict. The suppression the seat read was in a draft that ran the suite twice; it is gone."
+  - seat: agy/gemini-3.1-pro
+    objection: "push/pull_request asymmetry: push filters `branches: [main]`, pull_request names no branches."
+    status: RETRACTED
+    resolution:
+      "The comment's symmetry claim is scoped to the PATH list, which is symmetric. The sibling
+      mq-oracle-tests.yml has the identical branch shape."
+  - seat: agy/gemini-3.1-pro
+    objection:
+      "If this becomes a Required Status Check, a PR touching none of the filtered paths hangs
+      forever on 'Expected — Waiting for status to be reported'."
+    status: CONFIRMED
+    resolution:
+      "True, and not fixable here: promotion happens in repo settings. The instruction to drop the
+      pull_request filter first — the shape organ-conformance.yml already uses — is now written into
+      the workflow file, where the next reader meets it."
+  - seat: claude-opus-5 (conducting session, on its own council)
+    objection:
+      "Two of three cross-family seats were UNAVAILABLE on quota within the same hour, so this pack
+      rests on ONE outside opinion, not three."
+    status: CONFIRMED
+    resolution:
+      "Said plainly rather than presented as a council. The R9 council_run quorum NOTICE is expected
+      here and is not being explained away."
+
+receipts:
+  - claim: "The corpus has no executor in .github/, and the search itself is not what is broken."
+    cmd: "grep -rln 'test_queue_doctor' .github/ ; grep -rn 'test_organism_stale_detector' .github/workflows/*.yml"
+    result: "0 hits / 3 hits (organ-conformance.yml lines 50, 59, 135)"
+    exit: 0
+    ts: "2026-08-31T07:18Z"
+    seat: claude-opus-5
+  - claim: "Deterministic gear floor for this diff is 3, sourced from PATH."
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <changed>"
+    result: "3"
+    exit: 0
+    ts: "2026-08-31T07:20Z"
+    seat: claude-opus-5
+  - claim: "The new workflow is actionlint-clean."
+    cmd: "actionlint .github/workflows/queue-doctor-tests.yml"
+    result: "no findings"
+    exit: 0
+    ts: "2026-08-31T07:40Z"
+    seat: claude-opus-5
+  - claim: "INNOCENCE — the step passes on the corpus as it stands on main."
+    cmd: "the run step's body, verbatim, FLOOR=14"
+    result: "queue doctor corpus: 14 passing cases (floor 14)"
+    exit: 0
+    ts: "2026-08-31T07:42Z"
+    seat: claude-opus-5
+  - claim: "GUILT — a shrinking corpus turns it red."
+    cmd: "same body, FLOOR=15 (simulating one case removed)"
+    result: "::error::the queue-doctor corpus had 14 passing cases, below the floor of 15"
+    exit: 1
+    ts: "2026-08-31T07:42Z"
+    seat: claude-opus-5
+  - claim: "GUILT — a run that collects nothing turns it red."
+    cmd: "same body, pytest -k <no match>"
+    result: "pytest exit 5, caught by the RC branch"
+    exit: 1
+    ts: "2026-08-31T07:42Z"
+    seat: claude-opus-5
+  - claim: "GUILT — a corpus skipped in its ENTIRETY turns it red, and that branch is reachable."
+    cmd: "scratch module with `pytestmark = pytest.mark.skip`, then the step body"
+    result: "pytest exits 0 printing '2 skipped'; no 'N passed' line; step red"
+    exit: 1
+    ts: "2026-08-31T07:44Z"
+    seat: claude-opus-5
+  - claim: "Cross-family seat kimi-code/k3 was unavailable — recorded, not skipped silently."
+    cmd: "kimi -p <prompt> -m kimi-code/k3"
+    result: "provider.auth_error: 403 weekly (7-day) usage limit"
+    exit: 1
+    ts: "2026-08-31T07:26Z"
+    seat: kimi-code/k3
+  - claim: "Cross-family seat codex-gpt-5.6-sol was unavailable — recorded, not skipped silently."
+    cmd: "codex exec -m gpt-5.6-sol -c model_reasoning_effort=xhigh --sandbox read-only"
+    result: "ERROR: Your workspace is out of credits."
+    exit: 1
+    ts: "2026-08-31T07:28Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "Cross-family seat agy/gemini-3.1-pro reviewed and returned NO-GO with 7 findings."
+    cmd: "agy -p <prompt> --print-timeout 8m   (prompt as an ARGUMENT — piping stdin does not deliver it)"
+    result: "VERDICT: NO-GO, 7 numbered findings; 3 confirmed, 4 refuted, 1 kept as a caveat"
+    exit: 0
+    ts: "2026-08-31T07:36Z"
+    seat: agy/gemini-3.1-pro
+  - claim: "REFUTATION — @v7 actions are this repo's standard, not a nonexistent version."
+    cmd: "grep -rho 'actions/checkout@v[0-9]*' .github/workflows/*.yml | sort | uniq -c"
+    result: "117 x checkout@v7 (1 x v4); 70 x setup-python@v7 (1 x v5)"
+    exit: 0
+    ts: "2026-08-31T07:38Z"
+    seat: claude-opus-5
+  - claim: "REFUTATION — the corpus never invokes mq.sh, so mq.sh is not in its read-set."
+    cmd: grep -c 'mq[.]sh' scripts/tests/test_queue_doctor.py
+    result: "0"
+    exit: 0
+    ts: "2026-08-31T07:38Z"
+    seat: claude-opus-5
+  - claim: "CONFIRMATION — conftest.py exists and its fixtures are autouse, so it IS in the read-set."
+    cmd: "ls scripts/tests/conftest.py ; sed -n '1,30p' scripts/tests/conftest.py"
+    result: "233 lines; `@pytest.fixture(autouse=True)` isolation fixtures (W96)"
+    exit: 0
+    ts: "2026-08-31T07:39Z"
+    seat: claude-opus-5
+  - claim: "The counts this pack states about its own diff are the counts git reports."
+    cmd: "git diff --cached --numstat origin/main | awk '{a+=$1;f++} END{print f, a}'"
+    result: "4 282"
+    exit: 0
+    ts: "2026-08-31T07:52Z"
+    seat: claude-opus-5
+
+pii_scan: clean
+pii_scan_note:
+  "No client data of any kind is touched. The diff is one CI workflow plus this pack; the corpus it
+  arms fakes `gh` and `ssh` as executables and reads nothing from a real spool. The P0 spool records
+  that motivated the sibling PR #5433 carry a `text` field that can hold client PII — deliberately
+  never read, quoted, or counted here, in code or in prose."
+
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+diff:
+  net_lines: |
+    4 files, +431/-0 against the merge-base with origin/main
+    (ba7a8a8d55cd98bf7b7ad8d617c3c5da982e0e62), 1 commit — the new workflow plus this pack.
+    Every line is an addition because all four files are new.
