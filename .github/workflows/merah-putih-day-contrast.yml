@@ -65,7 +65,14 @@ name: Merah Putih DAY contrast guard
 # behind the ~40 that gate nothing. That cure is UNENFORCED in this direction (its
 # test guards only that REQUIRED workflows keep their trigger), so obeying it here
 # is a choice, stated rather than assumed — see #5378, which removed exactly such an
-# accidental trigger after it ran 57 times in the queue and zero times on a PR.
+# accidental trigger from `with-seat-broker-tests.yml`. Measured on that workflow
+# 2026-08-31 (`gh run list --limit 500`, 86 runs returned so the listing is complete):
+# 72 merge_group, 12 pull_request, 2 push. An earlier draft of this line said "57 times
+# in the queue and zero times on a PR" and BOTH halves were wrong — the first was a
+# `--limit 8` display cap read as a total (W97), the second missed that 4 of those
+# pull_request runs belong to the PR that introduced the file and 7 to #5378 itself.
+# The real shape is still lopsided (72 queue runs against a handful of PR runs), which
+# is the point; the invented precision was not.
 # `pull_request.paths` and `push.paths` are the same anchored list, so this file can
 # never develop the head-green/queue-red asymmetry that jammed the queue that night.
 

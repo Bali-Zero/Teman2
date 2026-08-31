@@ -41,7 +41,7 @@ council_run: council-journal.jsonl
 
 diff:
   files: 6
-  net_lines: 655
+  net_lines: 687
   measured_at: f940c583c
   note: >-
     Churn (added+deleted) via `git diff --no-renames --numstat --cached <merge-base>`,
@@ -225,6 +225,31 @@ receipts:
       the real one is `Bali-Zero/Teman2`), and the generic list-workflows endpoint 404'd
       too — which is what exposed it as an instrument fault rather than a finding. A 404
       read as evidence would have shipped a false confirmation of a false refutation.
+
+  - claim: >-
+      THE FINAL ON-DISK GATE CAUGHT A FALSE NUMBER IN THIS PR'S OWN ARTIFACT, inherited
+      from a claim this session had already published elsewhere.
+    cmd: >-
+      Re-read the committed workflow header line by line, then re-measure the number it
+      cited: `gh run list --repo Bali-Zero/Teman2 --workflow with-seat-broker-tests.yml
+      --limit 500 --json event,createdAt,headBranch`, grouped by event and by branch.
+    result: >-
+      86 runs returned against a limit of 500, so the listing is COMPLETE, not capped:
+      72 merge_group, 12 pull_request, 2 push. The header asserted the referenced workflow
+      "ran 57 times in the queue and zero times on a PR" and both halves are false. The 57
+      was a `--limit 8`-class display cap read as a total (W97); the "zero" missed that the
+      12 pull_request runs split 4 / 7 / 1 across the PR that introduced the file, #5378
+      itself, and a third branch. Corrected in place, with the wrong figure and its two
+      distinct causes named rather than quietly overwritten.
+    exit: 0
+    ts: "2026-08-31T00:58:00Z"
+    seat: session (Pro) — final on-disk gate, sequential, not delegated
+    note: >-
+      This is the gate doing the one job that cannot be delegated: the false number was not
+      invented here, it was COPIED from a header this session had already shipped on another
+      PR, where it will also be corrected. A wrong figure that travels between artifacts is
+      the failure mode the gate exists to interrupt — and it interrupted it after the commit
+      and before the arm, which is exactly the last moment it still could.
 
 dissent:
   - seat: kimi-code/k3
