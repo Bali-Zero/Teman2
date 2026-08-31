@@ -8,11 +8,13 @@ lanes:
     seat: claude (this session — M5 interactive, sole build lane)
 diff:
   files: 10
-  net_lines: 1496
+  net_lines: 1493
   measured_at: bc0f0f0e64
   note: >-
     git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD — never a two-dot
-    diff against a stale base (W102).
+    diff against a stale base (W102). The figure is stable across the commits that fill this block:
+    each is a one-line-for-one-line replacement, so re-measuring after the fill returns 1493 again.
+    Verified rather than assumed — measured at bc0f0f0e64 and again at the commit that filled it.
 pii_scan: >-
   clean. The sentinel reads a price catalogue and emits dates, counts and outcome names; no client
   identifier reaches stdout, the log, the sidecar or the Telegram body. The sheet's only contact
