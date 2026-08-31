@@ -49,6 +49,15 @@ trap 'rm -f "$PIDFILE"' EXIT
 
 # ---- payload (cron one-shot; G8_keepalive_sane: plist uses StartInterval, no KeepAlive)
 log "run start"
+
+# Byte offset of the log BEFORE this run, so the state line can be read from
+# THIS run's output only. Without it, `grep ... "$LOG" | tail -1` over an
+# append-only log returns the PREVIOUS run's outcome whenever the current run
+# prints none -- and the ${STATE:-...} fallback could then only ever fire on
+# the very first run ever. Staleness would be guaranteed, not merely possible.
+LOG_OFFSET=$(wc -c < "$LOG" 2>/dev/null || echo 0)
+LOG_OFFSET=${LOG_OFFSET// /}
+
 # NOT /usr/bin/python3. This sentinel imports backend code to learn which file
 # the live pricing service loads, and `/usr/bin/python3` is 3.9.6 on both Pro
 # and M5 — the backend package's __init__ chain reaches a `str | None`
@@ -74,13 +83,30 @@ RC=$?
 # The sentinel prints one machine-readable last line; carrying it into the
 # sidecar is what keeps "clean" distinguishable from "overdue for four months"
 # in the organism's own state, instead of every run looking identical.
-STATE=$(grep '^SENTINEL-STATE ' "$LOG" | tail -1)
-STATE=${STATE:-SENTINEL-STATE outcome=UNKNOWN delivery=unknown}
+# Read ONLY the bytes this run appended. A run that died before printing must
+# report that it printed nothing -- not the last thing a healthy run said.
+STATE=$(tail -c "+$((LOG_OFFSET + 1))" "$LOG" 2>/dev/null | grep '^SENTINEL-STATE ' | tail -1)
+STATE=${STATE:-SENTINEL-STATE outcome=UNKNOWN delivery=unknown note=this-run-printed-no-state-line}
+
+# rc=2 is overloaded: the sentinel returns it for a COMPUTED cannot-verify, and
+# CPython also exits 2 when it cannot open the script at all. The state line is
+# what tells them apart -- a computed verdict always prints one. With the venv
+# interpreter now load-bearing, and the venv being live infrastructure curated
+# a package at a time, a missing python gives rc=127 and no line, which must
+# not read as a verdict either.
+case "$STATE" in
+    *this-run-printed-no-state-line*) STATE_MISSING=1 ;;
+    *)                                STATE_MISSING=0 ;;
+esac
 
 case $RC in
     0) heartbeat "ok" "no finding | ${STATE#SENTINEL-STATE }" ;;
     1) heartbeat "ok" "finding delivered | ${STATE#SENTINEL-STATE }" ;;
-    2) heartbeat "error" "cannot verify the price sheet | ${STATE#SENTINEL-STATE }" ;;
+    2) if [ "$STATE_MISSING" = "1" ]; then
+           heartbeat "error" "the payload did not run to a verdict (rc=2, no state line -- interpreter or script missing, not a computed cannot-verify) | ${STATE#SENTINEL-STATE }"
+       else
+           heartbeat "error" "cannot verify the price sheet | ${STATE#SENTINEL-STATE }"
+       fi ;;
     3) heartbeat "error" "finding computed but NOT delivered | ${STATE#SENTINEL-STATE }" ;;
     *) heartbeat "error" "unexpected rc=$RC | ${STATE#SENTINEL-STATE }" ;;
 esac

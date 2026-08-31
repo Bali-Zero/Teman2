@@ -557,3 +557,58 @@ def test_the_wrapper_does_not_run_this_sentinel_on_system_python():
     assert ".venv/bin/python" in payload[0], (
         "the wrapper must use the backend venv interpreter; it imports backend code"
     )
+
+
+def test_the_wrapper_reads_only_the_state_line_this_run_printed():
+    """`grep '^SENTINEL-STATE ' "$LOG" | tail -1` over the WHOLE append-only
+    log returns the PREVIOUS run's outcome whenever this run prints none —
+    the ${STATE:-...} fallback could then only ever fire on the very first
+    run ever, so staleness would be guaranteed, not merely possible (see the
+    wrapper's own comment above LOG_OFFSET). This test fails if someone
+    reverts the offset-scoped read back to that whole-log form."""
+    wrapper = (REPO / "infra" / "launchagents" / "wrappers"
+               / "pro-price-review-sentinel.sh").read_text(encoding="utf-8")
+    lines = wrapper.splitlines()
+    non_comment = [
+        (i, line) for i, line in enumerate(lines)
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+
+    state_grep_lines = [
+        (i, line) for i, line in non_comment
+        if line.lstrip().startswith("STATE=")
+        and "grep" in line
+        and "SENTINEL-STATE" in line
+    ]
+    assert len(state_grep_lines) == 1, (
+        f"expected exactly one STATE= assignment that greps SENTINEL-STATE, "
+        f"got {state_grep_lines}"
+    )
+    grep_idx, grep_line = state_grep_lines[0]
+    assert 'tail -c "+$((LOG_OFFSET + 1))"' in grep_line, (
+        "STATE must be read from the offset-sliced tail of THIS run's output, "
+        f"not the whole log: got {grep_line!r}"
+    )
+
+    naive_whole_log_form = [
+        line for _, line in non_comment
+        if "grep '^SENTINEL-STATE '" in line
+        and '"$LOG"' in line
+        and "tail -c" not in line
+    ]
+    assert naive_whole_log_form == [], (
+        "found the un-scoped whole-log grep the offset fix was meant to "
+        f"remove: {naive_whole_log_form}"
+    )
+
+    offset_assignment_indices = [
+        i for i, line in non_comment
+        if line.lstrip().startswith("LOG_OFFSET=")
+    ]
+    assert offset_assignment_indices, (
+        "LOG_OFFSET is never assigned on a non-comment line"
+    )
+    assert offset_assignment_indices[0] < grep_idx, (
+        "LOG_OFFSET must be computed BEFORE the state line is read (and "
+        "before the payload runs), or it captures the wrong byte count"
+    )
