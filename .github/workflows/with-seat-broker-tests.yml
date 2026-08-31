@@ -38,10 +38,11 @@ name: Seat broker env-minimization tests
 #
 #   1. `merge_group` accepts no `paths:` sub-key at all, so the queue run ALWAYS
 #      executed while the PR run fired only when a guarded file changed. Measured over
-#      the whole window: **57** `merge_group` runs, ZERO `pull_request` runs — counted
-#      between this file landing (2026-08-30T19:15:44Z) and the first run its own fix
-#      triggered, over `gh run list --limit 300` (an earlier draft of this line said
-#      "EIGHT", which was `--limit 8` read as a total — W97). The author
+#      the whole window: **57** `merge_group` runs and NOT ONE `pull_request` run —
+#      between this file landing (2026-08-30T19:15:44Z) and, exclusive, the first run
+#      its own fix triggered, which is itself the next `pull_request` run this
+#      workflow ever had. (Figure corrected 2026-08-31: an earlier draft said
+#      "EIGHT", a `--limit 8` display cap read as a total — W97.) The author
 #      never saw the job; the queue did. That is the head-green/queue-red split the
 #      L06-PR1 trigger-symmetry lint exists to forbid, and this file was its first live
 #      violation — red in every merge group, which is what kept ejecting that lint's own
@@ -121,7 +122,10 @@ on:
   # NO `merge_group:` — see the header block. This workflow is advisory, and
   # advisory workflows deliberately do not run in the merge queue (Zero's
   # 2026-08-27 queue-slim cure). It carried one from 2026-08-30 19:15 until
-  # this commit; in that window it ran 8 times in the queue and 0 times on a PR.
+  # PR #5378: it ran 57 times in the queue and not once on a pull request, the
+  # next PR run being the one that triggered the fix. (Corrected 2026-08-31;
+  # this line said "8 times ... until this commit" — the figure the header
+  # block above already named as wrong.)
   push:
     branches:
       - main
