@@ -871,6 +871,16 @@
       "machines": ["mini"]
     },
     {
+      "live": "~/scripts/pro-price-review-sentinel.sh",
+      "repo": "infra/launchagents/wrappers/pro-price-review-sentinel.sh",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.price-review-sentinel.plist",
+      "repo": "infra/launchagents/com.nuzantara.price-review-sentinel.plist",
+      "machines": ["pro"]
+    },
+    {
       "live": "~/scripts/pro-visa-freshness-sentinel.sh",
       "repo": "infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh",
       "machines": ["pro"]
