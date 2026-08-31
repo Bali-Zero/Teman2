@@ -565,3 +565,39 @@ describe("proxy catch-all route — public Visa Oracle boundary", () => {
     );
   });
 });
+
+describe("proxy catch-all route — bodyless upstream statuses (204/205/304)", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // Regression: `new Response(buf, { status })` throws a TypeError when `buf`
+  // is passed for a "null body status" (204/205/304) — even an empty
+  // ArrayBuffer counts as a body under the Fetch spec. Before the fix, that
+  // thrown TypeError was caught by the proxy's outer catch block and
+  // surfaced as a fabricated 500 "Proxy error", even though the upstream
+  // mutation (e.g. a DELETE) had already succeeded.
+  it.each([204, 205, 304])(
+    "passes through a bodyless upstream %d instead of throwing Proxy error",
+    async (status) => {
+      process.env.NUZANTARA_API_URL = "https://nuzantara-rag.fly.dev";
+      vi.mocked(global.fetch).mockResolvedValue(
+        new Response(null, {
+          status,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+      const req = new MockNextRequest(
+        "http://localhost/api/portal/documents/5",
+        { method: "DELETE" },
+      );
+
+      const response = await DELETE(req as never);
+
+      expect(response.status).toBe(status);
+      const rawBody = await response.arrayBuffer();
+      expect(rawBody.byteLength).toBe(0);
+    },
+  );
+});

@@ -1,0 +1,127 @@
+{
+  "_comment": "Synthetic measurement fixture for restore_drill_verify.py's INNOCENCE case. Every count below is illustrative, not a real production snapshot: no row VALUES appear anywhere in this file (relation/column NAMES and COUNTS only), per SYMBIOSIS Law 2 / UU PDP.",
+  "relations": [
+    {
+      "relation": "conversations",
+      "exists": true,
+      "columns": [
+        "id",
+        "user_id",
+        "messages",
+        "session_id",
+        "rating",
+        "feedback",
+        "created_at",
+        "updated_at"
+      ],
+      "row_count": 842,
+      "violations": { "messages_not_json_array": 0 }
+    },
+    {
+      "relation": "clients",
+      "exists": true,
+      "columns": [
+        "id",
+        "uuid",
+        "full_name",
+        "email",
+        "phone",
+        "whatsapp",
+        "nationality",
+        "passport_number",
+        "tax_id",
+        "status",
+        "client_type",
+        "assigned_to",
+        "address",
+        "notes",
+        "tags",
+        "custom_fields",
+        "google_drive_folder_id",
+        "drive_folder_id",
+        "drive_folder_url",
+        "deleted_at",
+        "date_of_birth",
+        "passport_expiry",
+        "lead_metadata",
+        "created_at",
+        "updated_at"
+      ],
+      "row_count": 512,
+      "violations": { "client_type_unknown": 0, "lead_metadata_not_object": 0 }
+    },
+    {
+      "relation": "visa_decisions",
+      "exists": true,
+      "columns": [
+        "id",
+        "decision_id",
+        "environment",
+        "jurisdiction",
+        "decision_domain",
+        "engine_surface",
+        "engine_mode",
+        "rule_pack_id",
+        "ruleset_activation_id",
+        "rule_pack_sha256",
+        "verdict",
+        "citations",
+        "engine_version",
+        "effective_at",
+        "observed_at",
+        "evaluated_at",
+        "created_at"
+      ],
+      "row_count": 37,
+      "violations": {
+        "verdict_unknown": 0,
+        "environment_unknown": 0,
+        "citations_not_array": 0,
+        "temporarily_unavailable_missing_pack": 0
+      }
+    },
+    {
+      "relation": "events_outbox",
+      "exists": true,
+      "columns": [
+        "id",
+        "channel",
+        "payload",
+        "created_at",
+        "consumed_at",
+        "consumer_id"
+      ],
+      "row_count": 0,
+      "violations": {
+        "channel_blank": 0,
+        "payload_missing": 0,
+        "consumed_before_created": 0
+      }
+    },
+    {
+      "relation": "visa_decision_retention_policies",
+      "exists": true,
+      "columns": [
+        "id",
+        "environment",
+        "policy_version",
+        "retention_interval",
+        "idempotency_retention_interval",
+        "legal_hold_review_interval",
+        "retention_anchor",
+        "effective_period",
+        "approved_by",
+        "approval_reference",
+        "created_at"
+      ],
+      "row_count": 2,
+      "violations": {
+        "environment_unknown": 0,
+        "retention_anchor_unknown": 0,
+        "idempotency_interval_out_of_bounds": 0,
+        "effective_period_invalid": 0,
+        "duplicate_environment_policy_version": 0
+      }
+    }
+  ]
+}

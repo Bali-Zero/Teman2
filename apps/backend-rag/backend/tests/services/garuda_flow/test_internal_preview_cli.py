@@ -50,6 +50,8 @@ def test_accepted_issuance_uses_real_pricing_and_no_internal_checkpoints() -> No
     assert response.internal_checkpoints == []
     assert response.price_idr is not None
     assert response.price_source == "B1 Visa on Arrival (VOA)"
+    assert response.price_status == "confirmed"
+    assert response.price_warning is None
     assert response.generated_at == _NOW
     assert response.submit_by_date is not None
     assert response.submit_by_date < response.entry_date
@@ -57,6 +59,24 @@ def test_accepted_issuance_uses_real_pricing_and_no_internal_checkpoints() -> No
     assert response.calendar_coverage_start == date(2026, 7, 28)
     assert response.computed_stay_end == response.expiry_date
     assert "last_legal_day" not in response.model_dump()
+
+
+def test_unavailable_price_is_explicit_and_requires_staff_confirmation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "backend.services.garuda_flow.internal_preview_cli.price_for_case",
+        lambda _case_type, **_kwargs: (None, None),
+    )
+
+    response = build_internal_preview(_request(), today=_TODAY, generated_at=_NOW)
+
+    assert response.decision == "ACCEPT"
+    assert response.price_idr is None
+    assert response.price_source is None
+    assert response.price_status == "unavailable"
+    assert response.price_warning is not None
+    assert "staff must confirm the price rather than invent one" in response.price_warning
 
 
 @pytest.mark.parametrize(

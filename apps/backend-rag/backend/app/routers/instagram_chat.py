@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from backend.app.core.config import settings
 from backend.app.dependencies import get_database
+from backend.security.webhook_verifier import WebhookVerificationError, verify_meta_hmac
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/instagram", tags=["instagram"])
@@ -164,11 +165,76 @@ async def verify_instagram_webhook(request: Request) -> PlainTextResponse:
     raise HTTPException(status_code=403, detail="Invalid verify token")
 
 
+def _verify_instagram_signature(body: bytes, signature_header: str | None) -> bool:
+    """Verify X-Hub-Signature-256 HMAC-SHA256 from Meta Instagram webhook.
+
+    Mirrors ``backend.app.routers.whatsapp_chat._verify_whatsapp_signature``
+    in shape and contract — both are thin bool-returning wrappers over the
+    same shared, tested ``backend.security.webhook_verifier.verify_meta_hmac``
+    primitive (the actual HMAC comparison lives there, once). Kept as two
+    small per-router functions rather than one shared helper the routers
+    import from each other, so each stays independently patchable at its
+    own module path — the pattern the existing WhatsApp test suite already
+    relies on for ``_verify_whatsapp_signature``.
+
+    Until 2026-08-25 this router performed NO signature verification at
+    all on the POST handler (only the GET handshake checked a token) — see
+    ``research/operations/2026-07-17-mutating-routes-authz-ledger.md``'s
+    PENDING-ARMS entry for that gap.
+
+    The app secret is read via ``settings.effective_instagram_app_secret``,
+    not the raw ``instagram_app_secret`` field: WhatsApp and Instagram share
+    ONE Meta app (Zero's ruling, 2026-08-26), so absent an explicit
+    ``INSTAGRAM_APP_SECRET`` this falls back to ``WHATSAPP_APP_SECRET``,
+    which is already live in production.
+
+    Args:
+        body: Raw request body bytes.
+        signature_header: Value of X-Hub-Signature-256 header (format: "sha256=<hex>").
+
+    Returns:
+        True if the signature is valid, or verification was skipped because
+        no app secret is configured (dev mode) AND
+        ``settings.meta_webhook_require_signature`` is False.
+        False on any verification failure, including a missing secret when
+        ``meta_webhook_require_signature`` is True (the default since
+        2026-08-26).
+    """
+    app_secret = settings.effective_instagram_app_secret
+    if not app_secret and not settings.meta_webhook_require_signature:
+        # Fail-open is still the configured policy and no secret exists —
+        # skip verification (dev mode), but LOUDLY: a production deploy
+        # must never sit in this state quietly.
+        logger.warning(
+            "⚠️ Instagram webhook: no app secret resolved (INSTAGRAM_APP_SECRET "
+            "and WHATSAPP_APP_SECRET both unset) — signature verification "
+            "SKIPPED (fail-open). Set either secret to enable it, or "
+            "META_WEBHOOK_REQUIRE_SIGNATURE=true to reject instead."
+        )
+        return True
+
+    try:
+        verify_meta_hmac(
+            body,
+            signature_header,
+            app_secret,
+            provider="instagram",
+            require_secret=settings.meta_webhook_require_signature,
+        )
+    except WebhookVerificationError as exc:
+        logger.warning("⚠️ Instagram webhook signature verification failed: %s", exc.reason)
+        return False
+    return True
+
+
 @webhook_router.post("")
 async def instagram_webhook(request: Request) -> dict[str, Any]:
     """Handle incoming Instagram DMs — ack-first pattern (P0-6 audit 2026-04-29).
 
     Flow:
+      0. Verify X-Hub-Signature-256 HMAC (Meta App Secret) via
+         ``_verify_instagram_signature`` — added 2026-08-25; see that
+         function's docstring for the gap this closes.
       1. Parse payload + filter echo/read/delivery events.
       2. Persist each message to ``inbound_webhooks`` (idempotent on
          message.mid via UNIQUE(channel, dedup_key)).
@@ -179,8 +245,18 @@ async def instagram_webhook(request: Request) -> dict[str, Any]:
     any rows that the synchronous path missed (Fly machine crash, channel
     router exception, etc.) so no inbound DM is silently lost.
     """
+    body = await request.body()
+    signature = request.headers.get("X-Hub-Signature-256")
+
+    if not _verify_instagram_signature(body, signature):
+        logger.warning(
+            "❌ Instagram webhook signature verification failed (from %s)",
+            request.client.host if request.client else "unknown",
+        )
+        raise HTTPException(status_code=401, detail="Invalid signature")
+
     try:
-        raw_payload = await request.json()
+        raw_payload = json.loads(body)
         webhook = InstagramWebhook(**raw_payload)
     except Exception:
         return {"status": "ok"}

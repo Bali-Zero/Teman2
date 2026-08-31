@@ -1,0 +1,103 @@
+-- Migration 280: research_os_objects_truncate_guard
+-- (Research OS v1.0.0, Work Packet 04, follow-up hardening on D2's
+-- persistence substrate -- closes a measured integrity gap, not a new
+-- feature).
+--
+-- INTEGER BOUND LATE, AT INTEGRATION TIME, same rule 279 documents (scar
+-- W40 -- TOCTOU on a shared mutable counter): a packet reserves a SYMBOLIC
+-- name, never an integer; the integer is bound at commit time by the
+-- committing session, re-measured fresh, never copied from a prompt or a
+-- document.
+--
+-- Measurement (fresh in this turn, immediately before writing this file):
+--   * `git fetch origin main && git rev-parse origin/main` -> re-measured
+--     immediately before commit (see PR body for the exact SHA carried as
+--     `base:`).
+--   * `git ls-tree -r --name-only origin/main -- apps/backend-rag/backend/
+--     db/migrations_v2/ | sed -E 's#.*/([0-9]+)_.*#\1#' | sort -n | tail`
+--     -> highest present is 279 (279_research_os_contract_core.sql).
+--   -> next available integer: 280.
+--
+-- Purpose
+-- -------
+-- Migration 279 creates `public.research_os_objects` as the append-only
+-- polymorphic contract-core for research-os/v1.0.0 and enforces it with a
+-- ROW-level `BEFORE UPDATE OR DELETE` trigger
+-- (`research_os_objects_immutable` ->
+-- `public.reject_research_os_objects_mutation()`).
+--
+-- PostgreSQL never fires ROW-level triggers for the TRUNCATE statement --
+-- it is a statement-level operation with no per-row event. Proven
+-- empirically on a real `postgres:15` container (PostgreSQL 15.19, same
+-- image family as CI): with only 279 applied, INSERT succeeds, UPDATE/
+-- DELETE are correctly rejected by the row-level trigger, and emptying the
+-- table wholesale via the statement Postgres calls TRUNCATE succeeds
+-- silently -- rc 0, table emptied, zero trigger firings. So any role
+-- holding that privilege on this table could wipe the entire evidence
+-- substrate in one statement, with the append-only guarantee never
+-- engaged. `grep -ci truncate` on 279 returns 0 -- the gap is total, not
+-- partial.
+--
+-- This is the SAME class of gap, closed the SAME way, that migrations
+-- 250/251 (`reject_visa_immutable_mutation`), 252/253
+-- (`reject_visa_write_substrate_mutation`), and 264 (four more tables, same
+-- function) already closed for the visa engine's write substrate. This
+-- migration applies that established convention to Work Packet 04's table.
+--
+-- Why this reuses 279's existing function, unchanged (no companion
+-- function, no TG_OP branch)
+-- ---------------------------------------------------------------------
+-- `public.reject_research_os_objects_mutation()`'s entire body is:
+--   RAISE EXCEPTION '% is append-only', TG_TABLE_NAME;
+-- It references only the built-in `TG_TABLE_NAME` trigger variable -- never
+-- `NEW`/`OLD`, which do not exist in a statement-level trigger context on
+-- this event (there is no per-row data to bind). A function that never
+-- touches `NEW`/`OLD` is already valid for both a row-level trigger and a
+-- statement-level trigger on this event with zero code change (verified:
+-- 252's own `reject_visa_write_substrate_mutation()` is bound to a ROW
+-- trigger on UPDATE/DELETE and a STATEMENT trigger on this event via the
+-- identical function -- see 252 lines ~793-817 and 253's F9 section). So
+-- the fix here is additive-only: one new statement-level trigger on this
+-- event, reusing 279's function verbatim -- no ALTER FUNCTION, no new
+-- CREATE FUNCTION, no CREATE OR REPLACE FUNCTION. This also produces the
+-- clearer failure message: the caller sees the exact same
+-- '<table> is append-only' text as on UPDATE/DELETE, rather than a
+-- differently-worded companion error.
+--
+-- PostgreSQL 15 compatibility (target is PG15 -- CI runs `postgres:15` per
+-- `tests.yml` x2, `fly-deploy.yml`, `intel-router-tests.yml`,
+-- `scripts-tests-sweep.yml`). A statement-level BEFORE trigger on this DDL
+-- event is core trigger syntax, unchanged since support for it landed in
+-- PG8.4 (2009) -- no PG15+-only feature is used. Proven by actually
+-- applying this file on PostgreSQL 15.19 (Debian 15.19-1.pgdg13+2,
+-- aarch64) in an isolated Docker container -- see the PR body for the
+-- apply/rollback proof, not merely reasoned about below.
+--
+-- Additive only
+-- --------------
+-- This migration adds one new trigger only. It does not ALTER, DROP, or
+-- otherwise touch the table, its columns, its constraints, its indexes, or
+-- the existing row-level trigger/function from migration 279.
+--
+-- Rollback marker convention
+-- ----------------------------
+-- Per `backend/db/migration_base.py:29`, the `-- === ROLLBACK ===` marker
+-- below is mandatory for migrations numbered > 111 (this one is) and the
+-- runner's `split_migration_sql()` executes ONLY the forward portion above
+-- the marker via `ROLLBACK_MARKER_RE`, which anchors to a WHOLE LINE
+-- (`^\s*--\s*===\s*ROLLBACK\s*===\s*$`, MULTILINE) -- so a prose mention of
+-- the same string inside a comment (as this header does, above, safely
+-- indented as running text rather than standing alone on its own line)
+-- does not get misread as the split point. This file deliberately keeps
+-- the literal marker line to exactly one occurrence, unlike 279 (which has
+-- it twice -- once as the real delimiter, once inside a comment paragraph
+-- explaining the convention, each on its own line -- a real trap for any
+-- naive `split()` that is not anchored to a whole line).
+
+CREATE TRIGGER research_os_objects_no_wipe
+BEFORE TRUNCATE ON public.research_os_objects
+FOR EACH STATEMENT EXECUTE FUNCTION public.reject_research_os_objects_mutation();
+
+-- === ROLLBACK ===
+
+DROP TRIGGER IF EXISTS research_os_objects_no_wipe ON public.research_os_objects;

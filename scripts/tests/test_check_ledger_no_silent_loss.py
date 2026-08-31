@@ -242,6 +242,50 @@ def test_innocence_removing_a_duplicate_copy_is_the_cure_not_the_disease(tmp_pat
     assert check(ledger, NOW) == 0
 
 
+def test_innocence_a_frozen_base_sha_would_false_flag_a_legitimate_merge(tmp_path):
+    """CI passes `pull_request.base.sha` — the PR's frozen fork point — to
+    `--base-ref`. That SHA is structurally an ancestor of HEAD, so `check()`'s
+    own `git merge-base(base_ref, head)` always resolves back to that SAME
+    frozen commit and `main_entries` (loaded FROM `base_ref`) never reflects
+    anything main did after this branch diverged.
+
+    Reproduces the gap the CI workflow's original `--base-ref "$BASE_SHA"`
+    invocation had (fixed 2026-08-30, second pass): main legitimately closes
+    A after this branch forked, and this branch does the documented correct
+    thing — `git merge origin/main` — which faithfully picks up that
+    closure. Passing the FROZEN fork-point SHA as base_ref calls that a
+    'loss'; passing a ref that reflects CURRENT main (this test's default —
+    `_mark_as_origin_main` keeps `refs/remotes/origin/main` live, exactly
+    matching a real CI checkout's fetched `origin/main`) correctly reads it
+    as clean. Both invocations are exercised explicitly so a future change
+    to either code path is caught by name, not just by the passing case.
+    """
+    repo = _init_repo(tmp_path)
+    ledger = _write_ledger(repo, [ENTRY_A, ENTRY_B])
+    _commit(repo, "seed A+B")
+    fork_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
+    ).stdout.strip()
+    _mark_as_origin_main(repo)
+    _git(["checkout", "-q", "-b", "feature"], repo)
+
+    _git(["checkout", "-q", "main"], repo)
+    _write_ledger(repo, [ENTRY_B])  # main: legitimately closes A
+    _commit(repo, "main: legitimately closes A")
+    _mark_as_origin_main(repo)
+
+    _git(["checkout", "-q", "feature"], repo)
+    _write_ledger(repo, [ENTRY_A, ENTRY_B, ENTRY_C])
+    _commit(repo, "feature: adds C")
+    _git(["merge", "-q", "main", "-m", "feature: merge origin/main"], repo)  # picks up A's closure
+
+    # The CI workflow's OLD, buggy shape: --base-ref <frozen pull_request.base.sha>.
+    assert check(ledger, NOW, base_ref=fork_sha) == 1
+
+    # The fix, and this test's default: --base-ref <a ref reflecting CURRENT main>.
+    assert check(ledger, NOW) == 0
+
+
 def test_innocence_a_pr_that_never_touches_the_ledger_is_skipped(tmp_path):
     """Main independently closing A after this branch diverged must not be
     read as THIS branch's loss — the branch never touched the file at all.

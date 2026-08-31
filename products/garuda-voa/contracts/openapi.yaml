@@ -1,0 +1,1554 @@
+openapi: 3.1.0
+jsonSchemaDialect: "https://json-schema.org/draft/2020-12/schema"
+info:
+  title: GARUDA VOA API
+  version: "1.0.0"
+  description: >-
+    Frozen wire contract. Every operation is disabled unless GARUDA_PUBLIC_ENABLED is true.
+    Every mutation requires Idempotency-Key. An exact scoped key plus canonical-payload replay
+    returns the originally committed status and body with Idempotency-Replayed true and causes no
+    repeated effect; a different canonical payload under the same key returns
+    IDEMPOTENCY_CONFLICT. Security credentials are never re-issued on replay. The sole monetary
+    field is price_idr: one all-inclusive integer IDR value resolved by
+    apps/backend-rag/backend/services/garuda_flow/pricing.py:price_for_case.
+
+servers:
+  - url: /
+    description: Same-origin deployment; all operations remain behind GARUDA_PUBLIC_ENABLED.
+
+tags:
+  - name: Public eligibility
+    description: Anonymous check creation, creator-bound result read, and self-deletion.
+  - name: Magic-link authentication
+    description: Creator-bound account link request and single-use exchange.
+  - name: Customer intake
+    description: Authenticated documents, order creation, and customer-safe state reads.
+  - name: Payment provider
+    description: Signed raw webhook ingress.
+  - name: Staff practice
+    description: Authorized PR-02 through PR-11 transitions.
+
+x-feature-flag: GARUDA_PUBLIC_ENABLED
+
+# The numbers DECISIONS.md decided, in a form a lane is BOUND by rather than one it has to
+# remember. Q1 and Q9 were prose, and prose binds nobody: the money/date re-derivation found
+# that an implementer could ship any magic-link TTL and stay contract-valid, and that the
+# G-FRESHNESS-FAIL-CLOSED guardrail had no numbers to fail closed ON. That is the same
+# "declared and does not exist" shape this product already got bitten by once.
+x-magic-link:
+  ttl_minutes: 15
+  single_use: true
+  # DECISIONS.md Q1. A consumed token and an expired token MUST return the identical
+  # response: telling them apart is an oracle worth nothing to us and something to an
+  # attacker holding a leaked link. Session lifetime is a SEPARATE number and is not this
+  # one — conflating them is how a 15-minute link becomes a 15-minute portal.
+x-truth-freshness-max-age-days:
+  # DECISIONS.md Q9. Past the age the funnel declines to sell rather than quote. The wire
+  # outcome differs by source and BOTH are load-bearing: a stale nationality list or rule
+  # constant DECLINES the check with reason code ELIGIBILITY_UNCONFIRMED, while a stale price
+  # catalogue is a 503 PRICE_UNRESOLVABLE — the customer is never told a price we cannot
+  # stand behind, and never told "not eligible" when the truth is "we have not re-verified".
+  # Engineering safety margins, revisable with a one-line diff and a test.
+  nationality_eligibility: 90
+  rule_constants: 180
+  price_catalogue: 90
+  # The operating calendar is deliberately absent: it is the one truth source that already
+  # enforces its own bound (COVERAGE_START/COVERAGE_END), and it is the pattern the three
+  # above copy rather than a fourth entry.
+x-public-privacy-response-headers: &publicPrivacyHeaders
+  Cache-Control:
+    description: This representation must never be stored by a shared or private cache.
+    schema: { type: string, const: "no-store, private" }
+  Referrer-Policy:
+    description: The opaque result path must never be sent as a referrer.
+    schema: { type: string, const: no-referrer }
+  X-Robots-Tag:
+    description: The result must never be indexed or archived.
+    schema: { type: string, const: "noindex, nofollow, noarchive" }
+x-idempotency-replayed-header: &idempotencyReplayedHeader
+  description: True only when this is the previously committed response to an exact replay.
+  schema: { type: boolean }
+x-result-session-cookie-header: &resultSessionCookieHeader
+  description: >-
+    Creator-bound Secure, HttpOnly result-session cookie. It is separate from the result
+    identifier and is not an account session; omitted on an idempotent replay.
+  schema: { type: string }
+x-account-session-cookie-header: &accountSessionCookieHeader
+  description: Secure, HttpOnly magic-link account-session cookie; omitted on an exchange replay.
+  schema: { type: string }
+
+paths:
+  /api/visa/voa/eligibility-checks:
+    post:
+      operationId: createEligibilityCheck
+      tags: [Public eligibility]
+      summary: Create a preliminary eligibility check
+      description: >-
+        Persists only after the explicit policy acknowledgement and all fail-closed authorities
+        pass. The result identifier is returned only in Location. The response never represents
+        authority approval.
+      x-feature-flag: GARUDA_PUBLIC_ENABLED
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EligibilityCheckRequest"
+      responses:
+        "201":
+          description: Check persisted and creator-bound result session established. Exact replay returns this committed result without another row.
+          headers:
+            <<: *publicPrivacyHeaders
+            Location:
+              description: Public result route `/visa/voa/{result_id}`; contains no submitted value.
+              schema:
+                type: string
+                pattern: "^/visa/voa/[A-Za-z0-9_-]{22,128}$"
+            Set-Cookie: *resultSessionCookieHeader
+            Idempotency-Replayed: *idempotencyReplayedHeader
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EligibilityResult"
+        "400":
+          description: Idempotency-Key is absent. Code is IDEMPOTENCY_KEY_REQUIRED.
+          x-error-codes: [IDEMPOTENCY_KEY_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: &errorContent
+            application/json:
+              schema:
+                $ref: "./errors.yaml#/$defs/ErrorResponse"
+        "404":
+          description: Surface disabled. Code is GARUDA_PUBLIC_DISABLED.
+          x-error-codes: [GARUDA_PUBLIC_DISABLED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "409":
+          description: The idempotency key is bound to another payload. Code is IDEMPOTENCY_CONFLICT.
+          x-error-codes: [IDEMPOTENCY_CONFLICT]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "422":
+          description: Invalid closed request or missing explicit notice acknowledgement.
+          x-error-codes: [INVALID_REQUEST, NOTICE_ACKNOWLEDGEMENT_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "429":
+          description: Request rate limited. Code is RATE_LIMITED.
+          x-error-codes: [RATE_LIMITED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "500":
+          description: Unexpected internal failure. Code is INTERNAL_ERROR.
+          x-error-codes: [INTERNAL_ERROR]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "503":
+          description: >-
+            Sale fails closed before persistence. The distinct code identifies unavailable
+            retention authority, price, truth freshness, truth authority, or service.
+
+            The operating calendar is deliberately NOT among these. Past `COVERAGE_END` the
+            engine returns a 201 DECLINE carrying `ARRIVAL_DATE_UNCONFIRMED`, and that is the
+            correct answer rather than an outage: we are not unavailable, we simply cannot
+            confirm a date the 2027 decree has not yet fixed, and `intake.py` says so in as
+            many words — it "routes to a human rather than publishing a guessed date". A 503
+            would tell a 2027 traveller to come back later about something that will not
+            change for months, and an automated client would retry it forever.
+          x-error-codes:
+            - PERSISTENCE_POLICY_UNAVAILABLE
+            - PRICE_UNRESOLVABLE
+            - SERVICE_UNAVAILABLE
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+
+  /api/visa/voa/eligibility-checks/{result_id}:
+    parameters:
+      - $ref: "#/components/parameters/ResultId"
+    get:
+      operationId: getEligibilityResult
+      tags: [Public eligibility]
+      summary: Fetch a creator-bound eligibility result
+      description: >-
+        The identifier alone never authorizes access. Malformed, deleted, absent, or incorrectly
+        bound results use the same non-enumerating response.
+      x-feature-flag: GARUDA_PUBLIC_ENABLED
+      security:
+        - ResultSession: []
+      responses:
+        "200":
+          description: Creator-authorized public result.
+          headers: *publicPrivacyHeaders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EligibilityResult"
+        "404":
+          description: Surface disabled or non-enumerating unavailable result.
+          x-error-codes: [GARUDA_PUBLIC_DISABLED, RESULT_NOT_FOUND]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "500":
+          description: Unexpected internal failure. Code is INTERNAL_ERROR.
+          x-error-codes: [INTERNAL_ERROR]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "503":
+          description: Temporary storage/service failure. Code is SERVICE_UNAVAILABLE.
+          x-error-codes: [SERVICE_UNAVAILABLE]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+    delete:
+      operationId: deleteEligibilityResult
+      tags: [Public eligibility]
+      summary: Delete one's creator-bound pre-account result
+      description: >-
+        Always returns 204 for an exact replay, malformed or absent result, or missing/wrong
+        creator binding. Only a valid creator binding erases data; the response reveals no
+        existence oracle.
+      x-feature-flag: GARUDA_PUBLIC_ENABLED
+      security:
+        - {}
+        - ResultSession: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "204":
+          description: Authorized data erased, or no data disclosed or changed. Exact replay returns 204 and does not duplicate aggregate evidence.
+          headers:
+            <<: *publicPrivacyHeaders
+            Idempotency-Replayed: *idempotencyReplayedHeader
+        "400":
+          description: Idempotency-Key is absent. Code is IDEMPOTENCY_KEY_REQUIRED.
+          x-error-codes: [IDEMPOTENCY_KEY_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "404":
+          description: Surface disabled. Code is GARUDA_PUBLIC_DISABLED.
+          x-error-codes: [GARUDA_PUBLIC_DISABLED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "409":
+          description: The idempotency key is bound to another payload. Code is IDEMPOTENCY_CONFLICT.
+          x-error-codes: [IDEMPOTENCY_CONFLICT]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "500":
+          description: Unexpected internal failure. Code is INTERNAL_ERROR.
+          x-error-codes: [INTERNAL_ERROR]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "503":
+          description: Atomic deletion is temporarily unavailable. Code is SERVICE_UNAVAILABLE.
+          x-error-codes: [SERVICE_UNAVAILABLE]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+
+  /api/visa/voa/auth/magic-links:
+    post:
+      operationId: requestMagicLink
+      tags: [Magic-link authentication]
+      summary: Request a non-enumerating magic link
+      description: >-
+        Always returns 202 for an unknown or non-owned result and never returns the token. Exact
+        replay returns the original 202 without another email.
+      x-feature-flag: GARUDA_PUBLIC_ENABLED
+      security:
+        - ResultSession: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MagicLinkRequest"
+      responses:
+        "202":
+          description: Request accepted without revealing whether a link was queued.
+          headers:
+            <<: *publicPrivacyHeaders
+            Idempotency-Replayed: *idempotencyReplayedHeader
+        "400":
+          description: Idempotency-Key is absent. Code is IDEMPOTENCY_KEY_REQUIRED.
+          x-error-codes: [IDEMPOTENCY_KEY_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "404":
+          description: Surface disabled. Code is GARUDA_PUBLIC_DISABLED.
+          x-error-codes: [GARUDA_PUBLIC_DISABLED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "409":
+          description: The idempotency key is bound to another payload. Code is IDEMPOTENCY_CONFLICT.
+          x-error-codes: [IDEMPOTENCY_CONFLICT]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "422":
+          description: Invalid closed request. Code is INVALID_REQUEST.
+          x-error-codes: [INVALID_REQUEST]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "429":
+          description: Request rate limited. Code is RATE_LIMITED.
+          x-error-codes: [RATE_LIMITED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "500":
+          description: Unexpected internal failure. Code is INTERNAL_ERROR.
+          x-error-codes: [INTERNAL_ERROR]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "503":
+          description: Persistence or delivery service unavailable.
+          x-error-codes: [PERSISTENCE_POLICY_UNAVAILABLE, SERVICE_UNAVAILABLE]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+
+  /api/visa/voa/auth/sessions:
+    post:
+      operationId: exchangeMagicLink
+      tags: [Magic-link authentication]
+      summary: Exchange an unused magic link for one session
+      description: >-
+        Invalid, expired, and consumed tokens return one non-enumerating error. An exact
+        Idempotency-Key replay returns the original 204 but creates no second session and emits no
+        second Set-Cookie; a consumed token under a new key is invalid.
+      x-feature-flag: GARUDA_PUBLIC_ENABLED
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MagicLinkExchange"
+      responses:
+        "204":
+          description: One account session established, or its committed exchange replayed.
+          headers:
+            <<: *publicPrivacyHeaders
+            Set-Cookie: *accountSessionCookieHeader
+            Idempotency-Replayed: *idempotencyReplayedHeader
+        "400":
+          description: Idempotency-Key is absent. Code is IDEMPOTENCY_KEY_REQUIRED.
+          x-error-codes: [IDEMPOTENCY_KEY_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "401":
+          description: Invalid, expired, or consumed link. Code is MAGIC_LINK_INVALID.
+          x-error-codes: [MAGIC_LINK_INVALID]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "404":
+          description: Surface disabled. Code is GARUDA_PUBLIC_DISABLED.
+          x-error-codes: [GARUDA_PUBLIC_DISABLED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "409":
+          description: The idempotency key is bound to another payload. Code is IDEMPOTENCY_CONFLICT.
+          x-error-codes: [IDEMPOTENCY_CONFLICT]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "422":
+          description: Invalid closed request. Code is INVALID_REQUEST.
+          x-error-codes: [INVALID_REQUEST]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "429":
+          description: Request rate limited. Code is RATE_LIMITED.
+          x-error-codes: [RATE_LIMITED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "500":
+          description: Unexpected internal failure. Code is INTERNAL_ERROR.
+          x-error-codes: [INTERNAL_ERROR]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "503":
+          description: Session persistence is temporarily unavailable.
+          x-error-codes: [PERSISTENCE_POLICY_UNAVAILABLE, SERVICE_UNAVAILABLE]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+
+  /api/visa/voa/eligibility-checks/{result_id}/documents:
+    parameters:
+      - $ref: "#/components/parameters/ResultId"
+    post:
+      operationId: uploadIntakeDocument
+      tags: [Customer intake]
+      summary: Upload one authenticated intake document
+      description: >-
+        Bytes stay in the identified domain and OCR is local-first. Exact replay returns the
+        original success or UNREADABLE_DOCUMENT outcome without another row, job, or work item.
+      x-feature-flag: GARUDA_PUBLIC_ENABLED
+      security:
+        - MagicSession: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/DocumentUploadRequest"
+      responses:
+        "201":
+          description: Readable document accepted and ready for explicit customer review.
+          headers:
+            <<: *publicPrivacyHeaders
+            Idempotency-Replayed: *idempotencyReplayedHeader
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadyDocument"
+        "202":
+          description: Processing continues or customer confirmation/re-upload is required; no uncertain value is treated as verified.
+          headers:
+            <<: *publicPrivacyHeaders
+            Idempotency-Replayed: *idempotencyReplayedHeader
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ProcessingDocument"
+                  - $ref: "#/components/schemas/LowConfidenceDocument"
+        "400":
+          description: Idempotency-Key is absent. Code is IDEMPOTENCY_KEY_REQUIRED.
+          x-error-codes: [IDEMPOTENCY_KEY_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "401":
+          description: Account session required. Code is SESSION_REQUIRED.
+          x-error-codes: [SESSION_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "404":
+          description: Surface disabled or non-enumerating malformed/absent/non-owned intake.
+          x-error-codes: [GARUDA_PUBLIC_DISABLED, RESULT_NOT_FOUND]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "409":
+          description: The idempotency key is bound to another payload. Code is IDEMPOTENCY_CONFLICT.
+          x-error-codes: [IDEMPOTENCY_CONFLICT]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "413":
+          description: Document exceeds the governed upload bound. Code is DOCUMENT_TOO_LARGE.
+          x-error-codes: [DOCUMENT_TOO_LARGE]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "415":
+          description: Media type unsupported. Code is UNSUPPORTED_DOCUMENT_MEDIA_TYPE.
+          x-error-codes: [UNSUPPORTED_DOCUMENT_MEDIA_TYPE]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "422":
+          description: Closed request invalid or declared media contains unreadable bytes.
+          x-error-codes: [INVALID_REQUEST, UNREADABLE_DOCUMENT]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "500":
+          description: Unexpected internal failure. Code is INTERNAL_ERROR.
+          x-error-codes: [INTERNAL_ERROR]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "503":
+          description: Retention, document processing, or service unavailable.
+          x-error-codes:
+            [
+              PERSISTENCE_POLICY_UNAVAILABLE,
+              DOCUMENT_PROCESSING_UNAVAILABLE,
+              SERVICE_UNAVAILABLE,
+            ]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+    get:
+      operationId: listIntakeDocuments
+      tags: [Customer intake]
+      summary: List creator-authorized intake and delivered documents
+      description: Returns customer-safe metadata only; never raw OCR diagnostics or private staff notes.
+      x-feature-flag: GARUDA_PUBLIC_ENABLED
+      security:
+        - MagicSession: []
+      responses:
+        "200":
+          description: Authorized document list.
+          headers: *publicPrivacyHeaders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentList"
+        "401":
+          description: Account session required. Code is SESSION_REQUIRED.
+          x-error-codes: [SESSION_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "404":
+          description: Surface disabled or non-enumerating malformed/absent/non-owned intake.
+          x-error-codes: [GARUDA_PUBLIC_DISABLED, RESULT_NOT_FOUND]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "500":
+          description: Unexpected internal failure. Code is INTERNAL_ERROR.
+          x-error-codes: [INTERNAL_ERROR]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "503":
+          description: Temporary storage/service failure. Code is SERVICE_UNAVAILABLE.
+          x-error-codes: [SERVICE_UNAVAILABLE]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+
+  /api/visa/voa/orders:
+    post:
+      operationId: createOrderFromCheck
+      tags: [Customer intake]
+      summary: Create one order and checkout from a reviewed check
+      description: >-
+        Executes OP-00 then OP-01 only after review, retention, freshness, and the single catalogue
+        price pass. Exact replay returns the original order and checkout without another provider call.
+      x-feature-flag: GARUDA_PUBLIC_ENABLED
+      security:
+        - MagicSession: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Order created and one checkout session ready in awaiting_payment.
+          headers:
+            <<: *publicPrivacyHeaders
+            Idempotency-Replayed: *idempotencyReplayedHeader
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderCheckout"
+        "400":
+          description: Idempotency-Key is absent. Code is IDEMPOTENCY_KEY_REQUIRED.
+          x-error-codes: [IDEMPOTENCY_KEY_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "401":
+          description: Account session required. Code is SESSION_REQUIRED.
+          x-error-codes: [SESSION_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "404":
+          description: Surface disabled or non-enumerating malformed/absent/non-owned source check.
+          x-error-codes: [GARUDA_PUBLIC_DISABLED, RESULT_NOT_FOUND]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "409":
+          description: Idempotency conflict or reviewed intake not ready.
+          x-error-codes:
+            [IDEMPOTENCY_CONFLICT, ORDER_NOT_READY, INVALID_STATE_TRANSITION]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "422":
+          description: Invalid closed request. Code is INVALID_REQUEST.
+          x-error-codes: [INVALID_REQUEST]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "429":
+          description: Request rate limited. Code is RATE_LIMITED.
+          x-error-codes: [RATE_LIMITED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "500":
+          description: Unexpected internal failure. Code is INTERNAL_ERROR.
+          x-error-codes: [INTERNAL_ERROR]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "503":
+          description: A fail-closed authority, provider, or service is unavailable.
+          x-error-codes:
+            - PERSISTENCE_POLICY_UNAVAILABLE
+            - PRICE_UNRESOLVABLE
+            - PAYMENT_PROVIDER_UNAVAILABLE
+            - SERVICE_UNAVAILABLE
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+
+  /api/visa/voa/orders/{order_id}:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+    get:
+      operationId: getOrderAndPractice
+      tags: [Customer intake]
+      summary: Read authoritative order and customer-safe practice state
+      description: Browser-return observation is non-authoritative; only signed webhook reconciliation can show paid.
+      x-feature-flag: GARUDA_PUBLIC_ENABLED
+      security:
+        - MagicSession: []
+      responses:
+        "200":
+          description: Creator-authorized order and practice view.
+          headers: *publicPrivacyHeaders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderView"
+        "401":
+          description: Account session required. Code is SESSION_REQUIRED.
+          x-error-codes: [SESSION_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "404":
+          description: Surface disabled or non-enumerating malformed/absent/non-owned order.
+          x-error-codes: [GARUDA_PUBLIC_DISABLED, ORDER_NOT_FOUND]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "500":
+          description: Unexpected internal failure. Code is INTERNAL_ERROR.
+          x-error-codes: [INTERNAL_ERROR]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "503":
+          description: Temporary storage/service failure. Code is SERVICE_UNAVAILABLE.
+          x-error-codes: [SERVICE_UNAVAILABLE]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+
+  /api/visa/voa/orders/{order_id}/browser-return-observations:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+    post:
+      operationId: observePaymentBrowserReturn
+      tags: [Customer intake]
+      summary: Record the non-authoritative provider browser return
+      description: >-
+        Executes OP-07 only. The creator-bound session and untrusted return nonce may record the
+        browser observation, but can never change payment state, append a payment event, send an
+        email, or release a practice. The return nonce is the transition idempotency identity;
+        any exact repeat returns the committed 204 without another write.
+      x-feature-flag: GARUDA_PUBLIC_ENABLED
+      security:
+        - MagicSession: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrowserReturnObservationRequest"
+      responses:
+        "204":
+          description: OP-07 observation committed, or its exact return-nonce replay accepted as a no-op.
+          headers:
+            <<: *publicPrivacyHeaders
+            Idempotency-Replayed: *idempotencyReplayedHeader
+        "400":
+          description: Idempotency-Key is absent. Code is IDEMPOTENCY_KEY_REQUIRED.
+          x-error-codes: [IDEMPOTENCY_KEY_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "401":
+          description: Account session required. Code is SESSION_REQUIRED.
+          x-error-codes: [SESSION_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "404":
+          description: Surface disabled or non-enumerating malformed/absent/non-owned order.
+          x-error-codes: [GARUDA_PUBLIC_DISABLED, ORDER_NOT_FOUND]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "409":
+          description: The idempotency key is bound to another payload. Code is IDEMPOTENCY_CONFLICT.
+          x-error-codes: [IDEMPOTENCY_CONFLICT]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "422":
+          description: Return observation request is invalid. Code is INVALID_REQUEST.
+          x-error-codes: [INVALID_REQUEST]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "500":
+          description: Unexpected internal failure. Code is INTERNAL_ERROR.
+          x-error-codes: [INTERNAL_ERROR]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "503":
+          description: Atomic observation persistence is unavailable. Code is SERVICE_UNAVAILABLE.
+          x-error-codes: [SERVICE_UNAVAILABLE]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+
+  /api/visa/voa/webhooks/payment:
+    post:
+      operationId: receivePaymentWebhook
+      tags: [Payment provider]
+      summary: Verify and reconcile one raw provider webhook
+      description: >-
+        Signature verification precedes inbox insertion and business reconciliation. The signed
+        body remains opaque here so this contract cannot represent a monetary component or
+        ungrounded provider taxonomy. Valid duplicate or out-of-order events are durably accepted
+        or quarantined, not retried into a state mutation.
+
+
+        This path deliberately carries NO Idempotency-Key parameter, and adding one back would
+        break it. That header is a request-idempotency pattern for commands the CLIENT issues;
+        an inbound provider callback is not ours to key. Xendit sends no such header, so
+        requiring it 400s every real payment confirmation before the signature is even checked
+        — measured 2026-08-25 on `garuda_orders_router.py`, where the `$ref` this block used to
+        carry had been faithfully implemented. Webhook dedup does not need it and never did:
+        it is keyed on `(provider, provider_event_id)` in `garuda_payment_inbox`.
+      x-feature-flag: GARUDA_PUBLIC_ENABLED
+      security:
+        - ProviderSignature: []
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+              description: Exact raw bytes covered by the provider signature; never logged.
+      responses:
+        "204":
+          description: Event committed, exact replay acknowledged, or duplicate safely deduplicated.
+          headers:
+            <<: *publicPrivacyHeaders
+            Idempotency-Replayed: *idempotencyReplayedHeader
+        "202":
+          description: Valid signed event durably quarantined for reconciliation with no business-state mutation.
+          headers:
+            <<: *publicPrivacyHeaders
+            Idempotency-Replayed: *idempotencyReplayedHeader
+        "400":
+          description: Idempotency-Key absent. Code is IDEMPOTENCY_KEY_REQUIRED.
+          x-error-codes: [IDEMPOTENCY_KEY_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "401":
+          description: Signature missing or invalid. Code is WEBHOOK_SIGNATURE_INVALID.
+          x-error-codes: [WEBHOOK_SIGNATURE_INVALID]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "404":
+          description: Surface disabled. Code is GARUDA_PUBLIC_DISABLED.
+          x-error-codes: [GARUDA_PUBLIC_DISABLED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "409":
+          description: Idempotency identity is bound to different signed bytes. Code is IDEMPOTENCY_CONFLICT.
+          x-error-codes: [IDEMPOTENCY_CONFLICT]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "422":
+          description: Signed body cannot be parsed under the selected provider contract. Code is INVALID_REQUEST.
+          x-error-codes: [INVALID_REQUEST]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "500":
+          description: Unexpected internal failure. Code is INTERNAL_ERROR.
+          x-error-codes: [INTERNAL_ERROR]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "503":
+          description: Durable inbox or reconciliation service unavailable. Code is SERVICE_UNAVAILABLE.
+          x-error-codes: [SERVICE_UNAVAILABLE]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+
+  /api/visa/voa/staff/practices/{practice_id}/transitions:
+    parameters:
+      - $ref: "#/components/parameters/PracticeId"
+    post:
+      operationId: transitionPractice
+      tags: [Staff practice]
+      summary: Apply one authorized PR-02 through PR-11 transition
+      description: >-
+        The server derives and compare-and-sets the source state. Exact replay returns the committed
+        practice view without another state write, journal event, email, or work item.
+      x-feature-flag: GARUDA_PUBLIC_ENABLED
+      security:
+        - StaffSession: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PracticeTransitionRequest"
+      responses:
+        "200":
+          description: Transition committed or exact command replayed.
+          headers:
+            <<: *publicPrivacyHeaders
+            Idempotency-Replayed: *idempotencyReplayedHeader
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PracticeView"
+        "400":
+          description: Idempotency-Key absent. Code is IDEMPOTENCY_KEY_REQUIRED.
+          x-error-codes: [IDEMPOTENCY_KEY_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "401":
+          description: Staff session required. Code is SESSION_REQUIRED.
+          x-error-codes: [SESSION_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "403":
+          description: Staff actor lacks transition authority. Code is ACCESS_DENIED.
+          x-error-codes: [ACCESS_DENIED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "404":
+          description: Surface disabled or malformed/absent practice.
+          x-error-codes: [GARUDA_PUBLIC_DISABLED, PRACTICE_NOT_FOUND]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "409":
+          description: Idempotency conflict or forbidden/current-state mismatch.
+          x-error-codes: [IDEMPOTENCY_CONFLICT, INVALID_STATE_TRANSITION]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "422":
+          description: Transition-specific guard payload invalid. Code is INVALID_REQUEST.
+          x-error-codes: [INVALID_REQUEST]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "500":
+          description: Unexpected internal failure. Code is INTERNAL_ERROR.
+          x-error-codes: [INTERNAL_ERROR]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "503":
+          description: Journal, outbox, or storage unavailable. Code is SERVICE_UNAVAILABLE.
+          x-error-codes: [SERVICE_UNAVAILABLE]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+
+  /api/visa/voa/staff/orders/{order_id}/late-resolution:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+    post:
+      operationId: resolveLateOrder
+      tags: [Staff practice]
+      summary: Close one late-payment remediation case, honouring or refunding
+      description: >-
+        The only way to close a remediation case opened by `payment.late_paid_after_terminal`
+        (STATE-MACHINE.md OP-F05, grounded in DECISIONS.md Q10). Q2 permits staff exactly two
+        outcomes and forbids a third: honour the order and deliver late, or refund in full.
+        Never neither — an open case is money the customer paid and we have not answered for,
+        so the absence of this call is itself the alarm, not a quiet default. The terminal order
+        state is kept; this records the compensation beside it and emits `order.late_resolved`.
+        Exact replay returns the committed resolution without a second refund or a second practice.
+      x-feature-flag: GARUDA_PUBLIC_ENABLED
+      security:
+        - StaffSession: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LateOrderResolutionRequest"
+      responses:
+        "200":
+          description: Resolution committed or exact command replayed.
+          headers:
+            <<: *publicPrivacyHeaders
+            Idempotency-Replayed: *idempotencyReplayedHeader
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LateOrderResolutionView"
+        "400":
+          description: Idempotency-Key absent. Code is IDEMPOTENCY_KEY_REQUIRED.
+          x-error-codes: [IDEMPOTENCY_KEY_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "401":
+          description: Staff session required. Code is SESSION_REQUIRED.
+          x-error-codes: [SESSION_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "403":
+          description: Staff actor lacks remediation authority. Code is ACCESS_DENIED.
+          x-error-codes: [ACCESS_DENIED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "404":
+          description: Surface disabled, or no order with an open late-payment case.
+          x-error-codes: [GARUDA_PUBLIC_DISABLED, ORDER_NOT_FOUND]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "409":
+          description: >-
+            Idempotency conflict, or there is no open late-payment remediation case on this order —
+            a resolution must never be invented for an order that never took late money.
+          x-error-codes: [IDEMPOTENCY_CONFLICT, INVALID_STATE_TRANSITION]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "422":
+          description: Invalid closed request. Code is INVALID_REQUEST.
+          x-error-codes: [INVALID_REQUEST]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "500":
+          description: Unexpected internal failure. Code is INTERNAL_ERROR.
+          x-error-codes: [INTERNAL_ERROR]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "503":
+          description: >-
+            Journal, outbox, storage, or the payment provider is unavailable. A refund that cannot
+            be placed must fail loudly rather than record a resolution that did not happen.
+          x-error-codes: [SERVICE_UNAVAILABLE, PAYMENT_PROVIDER_UNAVAILABLE]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+
+components:
+  securitySchemes:
+    ResultSession:
+      type: apiKey
+      in: cookie
+      name: garuda_result_session
+      description: >-
+        Creator-bound pre-account authorization secret. It is separate from result_id; the opaque
+        result identifier is never accepted as authentication.
+    MagicSession:
+      type: apiKey
+      in: cookie
+      name: garuda_session
+      description: Creator-bound authenticated account session established by one magic-link exchange.
+    ProviderSignature:
+      type: apiKey
+      in: header
+      name: x-callback-token
+      description: >-
+        Bound to Xendit 2026-08-25, when owner decision 1 ratified the provider. Xendit Invoices
+        callbacks are authenticated by a STATIC verification token in `x-callback-token`,
+        compared constant-time against our stored token — there is no body HMAC and no signed
+        digest, so nothing here may be described as a signature over the payload. The raw body
+        still matters and is still never logged: it is hashed into `canonical_payload_sha256`
+        for inbox dedup, not for authenticity.
+
+
+        The name of this scheme is a legacy of the placeholder it replaced; it is the provider's
+        authenticity header, whatever shape that header takes.
+    StaffSession:
+      type: http
+      scheme: bearer
+      bearerFormat: staff-session
+      description: Existing authorized staff session; customer sessions are never accepted.
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: >-
+        Scoped to actor and operation. An exact canonical-payload replay returns the previously
+        committed status and body without repeating effects; the same key with another payload
+        returns IDEMPOTENCY_CONFLICT. Raw keys never enter logs, metrics labels, or journal prose.
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 200
+        pattern: "^[A-Za-z0-9._~-]+$"
+    ResultId:
+      name: result_id
+      in: path
+      required: true
+      description: >-
+        URL-safe opaque identifier generated from at least 128 effective bits of CSPRNG entropy.
+        It is non-sequential and is not derived from the payload. It is an identifier, never a
+        credential; a separate creator-bound session is required for access.
+      schema:
+        $ref: "#/components/schemas/ResultId"
+    OrderId:
+      name: order_id
+      in: path
+      required: true
+      description: Opaque order identifier; never personal data or an authorization credential.
+      schema:
+        $ref: "#/components/schemas/OpaqueId"
+    PracticeId:
+      name: practice_id
+      in: path
+      required: true
+      description: Opaque practice identifier; never personal data or an authorization credential.
+      schema:
+        $ref: "#/components/schemas/OpaqueId"
+
+  schemas:
+    ResultId:
+      type: string
+      format: garuda-result-id
+      minLength: 22
+      maxLength: 128
+      pattern: "^[A-Za-z0-9_-]{22,128}$"
+      description: >-
+        Base64url-safe output generated from at least 16 CSPRNG bytes, with at least 128 effective
+        random bits; non-sequential and not payload-derived. It is an identifier, never a credential.
+
+    OpaqueId:
+      type: string
+      minLength: 16
+      maxLength: 128
+      pattern: "^[A-Za-z0-9_-]+$"
+
+    CaseType:
+      type: string
+      enum: [issuance, extension]
+      x-source: "apps/backend-rag/backend/services/garuda_flow/intake.py:CaseType"
+
+    Purpose:
+      type: string
+      enum: [tourism, family, transit, business-meeting]
+      x-source: "apps/backend-rag/backend/services/garuda_flow/intake.py:Purpose"
+
+    EligibilityCheckRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - case_type
+        - nationality
+        - entry_date
+        - passport_expiry_date
+        - purpose
+        - travellers
+        - self_pay
+        - extension_already_used
+        - retention_notice_acknowledged
+      properties:
+        case_type:
+          $ref: "#/components/schemas/CaseType"
+        nationality:
+          type: string
+          pattern: "^[A-Z]{3}$"
+          description: ISO 3166-1 alpha-3 code; no nationality list is embedded in this contract.
+        entry_date:
+          type: string
+          format: date
+          x-civil-timezone: Asia/Makassar
+          description: >-
+            A civil calendar day in Asia/Makassar, never a UTC instant. The backend runs on
+            Fly.io in UTC, and reading these as UTC days moves the ACCEPT/DECLINE cutoff and
+            the published deadline by a full day for the first eight hours of every Bali day
+            — the defect `civil_clock.py::garuda_today` exists to prevent. A client that
+            derives this from a local `Date` in another zone reintroduces it here.
+        passport_expiry_date:
+          type: string
+          format: date
+          x-civil-timezone: Asia/Makassar
+          description: A civil calendar day in Asia/Makassar. See `entry_date`.
+        voa_expiry_date:
+          type: string
+          format: date
+          x-civil-timezone: Asia/Makassar
+          description: >-
+            Required only for extension; forbidden for issuance. A civil calendar day in
+            Asia/Makassar. See `entry_date`.
+        purpose:
+          $ref: "#/components/schemas/Purpose"
+        travellers:
+          type: integer
+          minimum: 1
+        self_pay:
+          type: boolean
+        extension_already_used:
+          type: boolean
+        retention_notice_acknowledged:
+          type: boolean
+          description: Explicit acknowledgement; never inferred or preselected.
+      allOf:
+        - if:
+            properties:
+              case_type: { const: extension }
+            required: [case_type]
+          then:
+            required: [voa_expiry_date]
+          else:
+            properties:
+              voa_expiry_date: false
+              extension_already_used: { const: false }
+
+    EligibilityResult:
+      oneOf:
+        - $ref: "#/components/schemas/AcceptedEligibilityResult"
+        - $ref: "#/components/schemas/DeclinedEligibilityResult"
+
+    AcceptedEligibilityResult:
+      type: object
+      additionalProperties: false
+      required: [verdict, reason_codes, published_filing_deadline, price_idr]
+      properties:
+        verdict: { const: ACCEPT }
+        reason_codes:
+          type: array
+          maxItems: 0
+          items:
+            $ref: "./reason-codes.yaml#/$defs/DeclineCode"
+        published_filing_deadline:
+          type: string
+          format: date
+          x-civil-timezone: Asia/Makassar
+          x-published-by-office: Ngurah Rai
+          description: >-
+            The only public Safe Clock date. A civil calendar day in Asia/Makassar, derived
+            from `constants.py:PUBLISHED_FILING_DEADLINE_DAYS` via
+            `civil_clock.py:GARUDA_CIVIL_TIMEZONE`. Naming the symbol is not the same as
+            stating the day — a client cannot resolve a Python constant — so the zone is
+            written here literally as well.
+
+            SCOPED TO ONE OFFICE. This is the deadline Ngurah Rai publishes, and
+            `safe_clock.py` attaches "verify per office" to this very checkpoint — yet the
+            intake collects no office at all. It is the one externally sourced number we show
+            a visitor whose correctness depends on a fact we never ask for (GROUND.md §5,
+            owner decision 6). Until that decision lands, a surface may display this date only
+            when the filing office is known to be Ngurah Rai; otherwise it suppresses the date
+            and routes to WhatsApp.
+        price_idr:
+          type: integer
+          minimum: 1
+          description: >-
+            The one all-inclusive integer IDR price from
+            apps/backend-rag/backend/services/garuda_flow/pricing.py:price_for_case.
+
+    DeclinedEligibilityResult:
+      type: object
+      additionalProperties: false
+      required: [verdict, reason_codes]
+      properties:
+        verdict: { const: DECLINE }
+        reason_codes:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: "./reason-codes.yaml#/$defs/DeclineCode"
+
+    MagicLinkRequest:
+      type: object
+      additionalProperties: false
+      required: [result_id, email]
+      properties:
+        result_id:
+          $ref: "#/components/schemas/ResultId"
+        email:
+          type: string
+          format: email
+          maxLength: 320
+
+    MagicLinkExchange:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token:
+          type: string
+          minLength: 32
+          maxLength: 2048
+          description: Single-use bearer secret supplied only in this request body; never logged.
+
+    DocumentUploadRequest:
+      type: object
+      additionalProperties: false
+      required: [document_kind, file]
+      properties:
+        document_kind:
+          const: PASSPORT_BIODATA
+        file:
+          type: string
+          format: binary
+
+    PassportReviewFieldName:
+      type: string
+      enum: [full_name, passport_number, nationality, passport_expiry_date]
+      description: >-
+        Closed authenticated passport-review vocabulary. Arbitrary labels, including monetary
+        component labels, are not representable.
+
+    ReviewField:
+      type: object
+      additionalProperties: false
+      required: [field_path, value, confirmation_required]
+      properties:
+        field_path:
+          $ref: "#/components/schemas/PassportReviewFieldName"
+        value:
+          type: string
+          maxLength: 512
+          description: Authenticated customer review value; never returned by a public operation.
+        confirmation_required:
+          type: boolean
+
+    UncertainReviewField:
+      type: object
+      additionalProperties: false
+      required: [field_path, confirmation_required]
+      properties:
+        field_path:
+          $ref: "#/components/schemas/PassportReviewFieldName"
+        confirmation_required: { const: true }
+
+    ReadyDocument:
+      type: object
+      additionalProperties: false
+      required: [document_id, processing_state, review_fields]
+      properties:
+        document_id:
+          $ref: "#/components/schemas/OpaqueId"
+        processing_state: { const: READY_FOR_REVIEW }
+        review_fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewField"
+
+    ProcessingDocument:
+      type: object
+      additionalProperties: false
+      required: [document_id, processing_state]
+      properties:
+        document_id:
+          $ref: "#/components/schemas/OpaqueId"
+        processing_state: { const: PROCESSING }
+
+    LowConfidenceDocument:
+      type: object
+      additionalProperties: false
+      required: [document_id, processing_state, uncertain_fields]
+      properties:
+        document_id:
+          $ref: "#/components/schemas/OpaqueId"
+        processing_state: { const: LOW_CONFIDENCE }
+        uncertain_fields:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/UncertainReviewField"
+
+    DocumentSummary:
+      type: object
+      additionalProperties: false
+      required:
+        [document_id, document_kind, processing_state, artifact_available]
+      properties:
+        document_id:
+          $ref: "#/components/schemas/OpaqueId"
+        document_kind:
+          type: string
+          enum: [PASSPORT_BIODATA, DELIVERED_VISA_ARTIFACT]
+        processing_state:
+          type: string
+          enum:
+            [PROCESSING, LOW_CONFIDENCE, READY_FOR_REVIEW, VERIFIED, DELIVERED]
+        artifact_available:
+          type: boolean
+          description: >-
+            True only when the existing authenticated portal retrieval primitive authorizes the
+            delivered artifact; no document identifier or capability is placed in a URL.
+
+    DocumentList:
+      type: object
+      additionalProperties: false
+      required: [documents]
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocumentSummary"
+
+    Applicant:
+      type: object
+      additionalProperties: false
+      required: [full_name, email, phone, passport_number]
+      properties:
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        phone:
+          type: string
+          minLength: 3
+          maxLength: 32
+        passport_number:
+          type: string
+          minLength: 1
+          maxLength: 64
+
+    CreateOrderRequest:
+      type: object
+      additionalProperties: false
+      required: [result_id, applicant, review_confirmed]
+      properties:
+        result_id:
+          $ref: "#/components/schemas/ResultId"
+        applicant:
+          $ref: "#/components/schemas/Applicant"
+        review_confirmed:
+          const: true
+
+    BrowserReturnObservationRequest:
+      type: object
+      additionalProperties: false
+      required: [return_nonce]
+      properties:
+        return_nonce:
+          type: string
+          minLength: 16
+          maxLength: 2048
+          description: >-
+            Opaque OP-07 correlation value received from the provider return. It is treated as
+            untrusted input, is never logged, and cannot authorize or prove payment.
+
+    LateOrderResolutionRequest:
+      type: object
+      additionalProperties: false
+      required: [resolution, staff_reference]
+      description: >-
+        Two outcomes and no third. `honoured` creates and delivers the practice the customer paid
+        for; `refunded_in_full` returns the whole amount — never a partial, because the customer
+        did nothing wrong and the fault is entirely ours for having stopped waiting.
+      properties:
+        resolution:
+          type: string
+          enum: [honoured, refunded_in_full]
+        staff_reference:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: >-
+            The internal case or approval reference the acting staff member is working from.
+            Never rendered to the customer.
+
+    LateOrderResolutionView:
+      type: object
+      additionalProperties: false
+      required: [order_id, order_state, resolution]
+      properties:
+        order_id:
+          $ref: "#/components/schemas/OpaqueId"
+        order_state:
+          $ref: "#/components/schemas/OrderState"
+          description: >-
+            Unchanged by this call. OP-F05 keeps the terminal state; the compensation is recorded
+            beside it, never by rewriting history to pretend the order never expired.
+        resolution:
+          type: string
+          enum: [honoured, refunded_in_full]
+
+    OrderState:
+      type: string
+      enum: [created, awaiting_payment, paid, failed, expired, refunded]
+
+    PracticeState:
+      type: string
+      enum:
+        [
+          Received,
+          "In review",
+          Blocked,
+          Submitted,
+          Approved,
+          Rejected,
+          Delivered,
+        ]
+
+    OrderCheckout:
+      type: object
+      additionalProperties: false
+      required: [order_id, order_state, price_idr, checkout_url]
+      properties:
+        order_id:
+          $ref: "#/components/schemas/OpaqueId"
+        # AMENDED 2026-08-25. This was `{ const: awaiting_payment }` — a contract able to
+        # express exactly one outcome, so the implementation hardcoded that literal and told
+        # a customer who had ALREADY PAID to pay again. The literal was not the lane being
+        # sloppy; it was this line, obeyed. Third instance in one day of the same disease:
+        # the contract describes a world with a single outcome, the lane implements it
+        # faithfully, and reality has more outcomes than the contract can say.
+        #
+        # `created` is deliberately absent. This operation either creates the checkout session
+        # itself — advancing the order to `awaiting_payment` before it answers — or resumes an
+        # order already past that point. A response claiming `created` would mean the funnel
+        # answered without having done either.
+        order_state:
+          type: string
+          enum: [awaiting_payment, paid, failed, expired, refunded]
+          description: >-
+            The order's REAL state at the moment of the answer, never an assumed one. A
+            provider webhook can advance an order while the customer's first attempt is
+            crashed or still in flight, so a resume may legitimately find any of these.
+        price_idr:
+          type: integer
+          minimum: 1
+          description: >-
+            The one all-inclusive integer IDR price from
+            apps/backend-rag/backend/services/garuda_flow/pricing.py:price_for_case.
+        checkout_url:
+          # Required but NULLABLE, and the pairing is deliberate: making it optional would let
+          # a response omit the key, and a consumer reading a missing key gets `undefined`,
+          # which renders as an enabled button just as happily as a URL does. Required-and-null
+          # forces every consumer to answer "is there something to pay?" out loud.
+          type: [string, "null"]
+          format: uri
+          description: >-
+            Creator-bound provider capability returned only to the authenticated creator. It
+            carries no personal data or stable order, payment, or result identifier and is never
+            logged.
+
+
+            NULL means there is no payment action: the order has moved past payment, or reached
+            a terminal state. It is never null while `order_state` is `awaiting_payment`, and
+            never a URL for any other state — that pairing is the whole point of this field and
+            is asserted in the contract suite.
+
+    PracticeView:
+      type: object
+      additionalProperties: false
+      required: [practice_id, state, artifact_available]
+      properties:
+        practice_id:
+          $ref: "#/components/schemas/OpaqueId"
+        state:
+          $ref: "#/components/schemas/PracticeState"
+        customer_reason_key:
+          type: string
+          pattern: "^garuda_voa\\.practice\\.[a-z0-9_]+$"
+          description: Customer-safe copy key; never a private note or rendered prose.
+        required_action_key:
+          type: string
+          pattern: "^garuda_voa\\.action\\.[a-z0-9_]+$"
+        artifact_available:
+          type: boolean
+
+    OrderView:
+      type: object
+      additionalProperties: false
+      required:
+        [order_id, order_state, price_idr, browser_observation, practice]
+      properties:
+        order_id:
+          $ref: "#/components/schemas/OpaqueId"
+        order_state:
+          $ref: "#/components/schemas/OrderState"
+        price_idr:
+          type: integer
+          minimum: 1
+          description: >-
+            The one all-inclusive integer IDR price from
+            apps/backend-rag/backend/services/garuda_flow/pricing.py:price_for_case.
+        browser_observation:
+          type: string
+          enum: [browser_not_returned, browser_return_observed]
+          description: Non-authoritative OP-07 observation; it can never produce paid.
+        practice:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/PracticeView"
+
+    BeginReviewTransition:
+      type: object
+      additionalProperties: false
+      required: [transition_id]
+      properties:
+        transition_id: { const: PR-02 }
+
+    BlockPracticeTransition:
+      type: object
+      additionalProperties: false
+      required: [transition_id, customer_reason_key, required_action_key]
+      properties:
+        transition_id:
+          type: string
+          enum: [PR-03, PR-05, PR-08]
+        customer_reason_key:
+          type: string
+          pattern: "^garuda_voa\\.practice\\.[a-z0-9_]+$"
+        required_action_key:
+          type: string
+          pattern: "^garuda_voa\\.action\\.[a-z0-9_]+$"
+        private_staff_note:
+          type: string
+          maxLength: 4000
+          description: Staff-only; forbidden from journal prose, customer responses, and outbox copy.
+
+    SubmitPracticeTransition:
+      type: object
+      additionalProperties: false
+      required: [transition_id, evidence_id]
+      properties:
+        transition_id: { const: PR-04 }
+        evidence_id:
+          $ref: "#/components/schemas/OpaqueId"
+
+    ApprovePracticeTransition:
+      type: object
+      additionalProperties: false
+      required: [transition_id, evidence_id]
+      properties:
+        transition_id: { const: PR-06 }
+        evidence_id:
+          $ref: "#/components/schemas/OpaqueId"
+
+    RejectPracticeTransition:
+      type: object
+      additionalProperties: false
+      required: [transition_id, evidence_id, customer_reason_key]
+      properties:
+        transition_id: { const: PR-07 }
+        evidence_id:
+          $ref: "#/components/schemas/OpaqueId"
+        customer_reason_key:
+          type: string
+          pattern: "^garuda_voa\\.practice\\.[a-z0-9_]+$"
+        private_staff_note:
+          type: string
+          maxLength: 4000
+          description: Staff-only; forbidden from customer responses and outbox copy.
+
+    ResumePracticeTransition:
+      type: object
+      additionalProperties: false
+      required: [transition_id, resolved_block_id]
+      properties:
+        transition_id:
+          type: string
+          enum: [PR-09, PR-10]
+        resolved_block_id:
+          $ref: "#/components/schemas/OpaqueId"
+
+    DeliverPracticeTransition:
+      type: object
+      additionalProperties: false
+      required: [transition_id, artifact_id, artifact_digest]
+      properties:
+        transition_id: { const: PR-11 }
+        artifact_id:
+          $ref: "#/components/schemas/OpaqueId"
+        artifact_digest:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+
+    PracticeTransitionRequest:
+      oneOf:
+        - $ref: "#/components/schemas/BeginReviewTransition"
+        - $ref: "#/components/schemas/BlockPracticeTransition"
+        - $ref: "#/components/schemas/SubmitPracticeTransition"
+        - $ref: "#/components/schemas/ApprovePracticeTransition"
+        - $ref: "#/components/schemas/RejectPracticeTransition"
+        - $ref: "#/components/schemas/ResumePracticeTransition"
+        - $ref: "#/components/schemas/DeliverPracticeTransition"

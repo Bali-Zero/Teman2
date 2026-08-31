@@ -242,6 +242,29 @@ describe("ApiClient", () => {
       expect(result).toEqual(mockProfile);
       expect(api.getUserProfile()).toEqual(mockProfile);
     });
+
+    it("forwards options to AuthApi.getProfile unchanged (auth-gates-cookie-primary round 2 wrapper pass-through)", async () => {
+      const spy = vi
+        .spyOn(
+          (
+            api as unknown as {
+              authApi: { getProfile: (o?: unknown) => Promise<unknown> };
+            }
+          ).authApi,
+          "getProfile",
+        )
+        .mockResolvedValue({
+          id: "1",
+          email: "x@example.com",
+          name: "X",
+          role: "user",
+        });
+
+      await api.getProfile({ redirectOnUnauthorized: false });
+
+      expect(spy).toHaveBeenCalledWith({ redirectOnUnauthorized: false });
+      spy.mockRestore();
+    });
   });
 
   // ============================================================================

@@ -1,0 +1,122 @@
+task_id: wa-codex-fall-off-reason-0827
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Rendere durevole, per riga wa_outbox, la ragione per cui la gamba codex
+  del worker WA non ha risposto — questo era ASSENTE fino ad ora, e
+  l'assenza è diventata operativa il 2026-08-27: PR #5097 (mergiata lo
+  stesso giorno) ha tolto per intero il ripiego su Gemini, quindi una
+  caduta della gamba codex oggi finisce nella scala di retry del worker e,
+  alla fine, in una scusa terminale — non in una risposta silenziosa
+  dell'altro generatore come accadeva prima.
+
+  Caso misurato che ha aperto il mandato: la riga wa_outbox 346 (arrivata
+  2026-08-27T13:34:35Z) È STATA risposta, ma non dalla gamba codex —
+  `generation_route` è rimasta NULL e nessuna riga `broker_jobs` è mai
+  stata creata, quindi la caduta è avvenuta PRIMA dell'offer. Quale delle
+  cinque condizioni di rotta (docstring di `wa_codex_leg.py`) abbia
+  rifiutato è irrecuperabile a posteriori: l'unica traccia era una riga di
+  log Fly con finestra di retention ~1 minuto (iniziata 10s DOPO l'arrivo
+  del messaggio), e `llm_cost_events` non può supplire (la riga più recente
+  era di 3 ore prima).
+
+  Gear 3 per PATH, non per raggio d'azione: il diff tocca
+  `apps/backend-rag/backend/db/migrations_v2/` (migrazione 290), hot-zone
+  per `scripts/evidence_pack_lint.py`. Il pavimento è calcolato dal diff,
+  mai scelto da chi scrive.
+constraints:
+  - "Il CAS/fence di `generation_route` (offer-time, `AND generation_route
+    IS NULL`) non si tocca in nessun modo — resta l'UNICA fonte di verità
+    per la spesa della gamba codex. La nuova colonna è SEPARATA e
+    indipendente, mai letta dal percorso di offer."
+  - "La ragione deve coprire anche le cadute PRE-offer (le 4 condizioni
+    prima del punto 5 della docstring), non solo i rifiuti di offer — è
+    esattamente la forma della riga 346."
+  - "Nessuna PII: solo un codice di ragione da un vocabolario chiuso e
+    non-arbitrario, mai testo cliente, numero di telefono o messaggio
+    d'eccezione libero."
+  - "Scrivere la ragione non deve MAI poter far fallire l'invio — un
+    fallimento nella registrazione del 'perché' non deve diventare un
+    secondo motivo per cui nulla è stato inviato."
+  - "Se si aggiunge una migrazione: il numero va verificato a mano contro
+    `origin/main` E contro ogni PR aperta — esiste una collisione nota
+    (due PR aperte reclamano entrambe 289)."
+acceptance:
+  - "Test che va ROSSO se la ragione non viene registrata, per almeno una
+    condizione pre-offer E per un rifiuto di offer — non basta il solo
+    percorso felice."
+  - "Test che dimostra che un fallimento nella scrittura non blocca
+    l'invio/il risultato."
+  - "Un futuro `CodexLegResult(fail='qualcosa_di_nuovo:...')` senza voce
+    nella mappa deve far fallire un test ORA, non arrivare in produzione
+    come 'unknown' silenzioso — quindi la copertura della mappa va provata
+    dal SORGENTE (AST), non da un elenco copiato a mano."
+risks:
+  - "Il vincolo CHECK della migrazione deve rimanere in sincronia MANUALE
+    con `_FALL_OFF_REASON_PREFIX_MAP` in Python — non esiste una fonte
+    unica condivisibile (SQL vs Python), verificato che oggi i due insiemi
+    coincidono esattamente (20 valori) ma un futuro cambio a una sola delle
+    due parti romperebbe la sincronia senza che nessun test locale lo veda,
+    a meno di girare la suite completa."
+  - "La colonna tiene solo l'ULTIMA ragione di caduta registrata, non uno
+    storico per-tentativo: se una riga cade 3 volte per 3 motivi diversi
+    prima di riuscire o fallire in modo terminale, sopravvive solo l'ultima.
+    Corrisponde esattamente a quanto richiesto dal mandato ('durevole, per
+    riga') — una tabella di storico sarebbe un cambiamento più grande, non
+    fatto qui."
+  - "`record_fall_off_reason` cattura `Exception`, non `BaseException`: una
+    cancellazione (`CancelledError`) durante la scrittura si propaga per
+    disegno (stesso contratto di `attempt()`), MAI ingoiata — dichiarato
+    correttamente nel docstring dopo la cura, non è un difetto da correggere
+    nel comportamento."
+grader: |
+  Nota di trasparenza, riportata per intero come richiesto: il seat
+  cross-family di refutazione dedicato a questa PR è andato IDLE due volte
+  senza consegnare un verdetto. La revisione avversariale effettiva è stata
+  svolta dal conduttore (team-lead, seat opus-5 orchestrator) su contesto
+  fresco rispetto al mio diff, non da un seat esterno indipendente — questo
+  fascicolo lo dichiara come limite del processo, non lo nasconde.
+
+  Reperti del conduttore, entrambi non bloccanti:
+
+  1. FIX-FIRST (CONFERMATO, curato): `_normalize_fall_off_reason` mappa
+     ogni testa non riconosciuta a "unknown" — comportamento a runtime
+     corretto — ma nessun test verificava che `_FALL_OFF_REASON_PREFIX_MAP`
+     coprisse davvero ogni ragione che il modulo può emettere. Un futuro
+     `CodexLegResult(fail="qualcosa_di_nuovo:...")` sarebbe passato
+     silenziosamente come "unknown", ripresentando mascherato il difetto
+     che questa PR esiste per curare. Cura: test AST
+     (`test_fall_off_reason_map_covers_every_reason_the_module_can_emit`)
+     che estrae dal SORGENTE ogni testa di ragione (dai siti di costruzione
+     di `CodexLegResult` più il letterale `raw_reason="provider_not_codex"`
+     del worker) e asserisce che ciascuna sia chiave della mappa. Dimostrato
+     che sa fallire: iniettato temporaneamente
+     `CodexLegResult(fail="totally_fake_reason_xyz:...")`, il test è andato
+     ROSSO, poi rimosso.
+  2. MINOR (CONFERMATO, curato): il docstring di `_normalize_fall_off_reason`
+     descriveva un "longest-prefix match... tried before the bare split"
+     che il codice non implementa — è un solo `split(':',1)[0]` più un
+     lookup esatto, e le teste non condividono mai un prefisso che possa
+     creare shadowing. Riscritto per descrivere il comportamento reale.
+
+  Limite dichiarato, non richiesto di curare nel comportamento (solo nella
+  descrizione): il docstring di `record_fall_off_reason` diceva "swallows
+  every exception" — vero solo per `Exception`, non per
+  `BaseException`/`CancelledError`, che si propaga di proposito. Corretto
+  il testo, non il comportamento (ingoiare una cancellazione sarebbe
+  peggio).
+
+  Quattro attacchi del conduttore che NON hanno rotto nulla (registrati
+  come dissent RETRACTED sotto, con le prove): PII per costruzione, nessuna
+  interpolazione di messaggio d'eccezione, il CHECK della migrazione non
+  può accettare un valore che il normalizzatore non produce, la
+  connessione propria evita la cicatrice InterfaceError con l'heartbeat
+  sulla connessione di claim.
+budget: |
+  Due round. Round 1: costruzione (migrazione 290, wiring in
+  `wa_codex_leg.py`/`wa_outbox_worker.py`, 4 test nuovi, verifica
+  migrazione su Postgres locale). Round 2: cura del FIX-FIRST (test di
+  copertura AST) e del MINOR (docstring) dalla review avversariale del
+  conduttore, più questo pacchetto di evidenze.
+pii: none

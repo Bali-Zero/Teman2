@@ -1,0 +1,97 @@
+{
+  "run_at": "2026-08-24T07:07:30+08:00",
+  "today": "2026-08-24",
+  "yesterday_seen_count": 22,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "WAF/Cloudflare block (HTTP 403 Forbidden) on fetch"
+    },
+    {
+      "url": "https://ortax.org/news",
+      "reason": "empty_shell",
+      "note": "HTTP 200 OK but 'Artikel tidak ditemukan' SPA shell, no extractable content"
+    },
+    {
+      "url": "https://jdih.kemenkumham.go.id/",
+      "reason": "timeout",
+      "note": "Host unreachable / DNS resolution failed"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "empty_shell",
+      "note": "Next.js client-side SPA shell without server-rendered regulation catalog"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "empty_shell",
+      "note": "Category hierarchy counters rendered only, no individual dated regulation list"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "Recent articles (22-24 Aug 2026) discuss tax policy directions (3 pillars), GloBE rules, PPh Final UMKM criteria, and RAPBN 2027; no new regulations promulgated"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "checked_no_new",
+      "note": "Articles (22-23 Aug 2026) cover TKA compliance socialization in Mempawah, PMK 51/2026 (promulgated 31 Jul 2026), and draft royalty tax rate; no new regulations promulgated in 48h window"
+    },
+    {
+      "url": "https://ortax.org/",
+      "reason": "checked_no_new",
+      "note": "Homepage articles cover PMK 44/2026 kuasa wajib pajak guidance, gold jewelry export PMK draft revision, and PENG-5/PJ/2026 CARF guidelines; no new regulations in 48h window"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "checked_no_new",
+      "note": "Articles cover illegal stamp syndicate investigation citing UU 10/2020; no new regulations in 48h window"
+    },
+    {
+      "url": "https://peraturan.go.id",
+      "reason": "outside_window",
+      "note": "Newest entries (Permen LH 11/2026, Permen ATR 8/9/2026, Permensos 8/2026) promulgated 11-14 August 2026, outside 48h window"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Newest regulatory entry PER-8/PJ/2026 dated 28 July 2026 (already seen); exchange rate KMK decrees are operational rate notices"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "outside_window",
+      "note": "Official portal lists services and general updates, no new immigration regulations promulgated in 48h window"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK Nomor 44 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026",
+    "Peraturan Menteri Hukum Nomor 13 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026",
+    "PMK Nomor 57 Tahun 2026"
+  ]
+}

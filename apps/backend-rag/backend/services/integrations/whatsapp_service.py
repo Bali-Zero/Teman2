@@ -17,6 +17,7 @@ from backend.app.core.config import settings
 from backend.app.core.constants import HttpTimeoutConstants
 from backend.services.rag.agentic._reasoning_stubs import get_localized_stub
 from backend.utils.message_chunker import chunk_message
+from backend.security.pii_log_identifier import redact_identifier_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -91,8 +92,9 @@ def fit_to_whatsapp_limit(text: str, language: str | None = None) -> str:
     # Broad on purpose: this is presentation. No failure of it may be the reason
     # a recipient gets nothing instead of a truncated something.
     except Exception as exc:
-        logger.warning("whatsapp: could not fit body to the %d-char limit: %s",
-                       WHATSAPP_BODY_LIMIT, exc)
+        logger.warning(
+            "whatsapp: could not fit body to the %d-char limit: %s", WHATSAPP_BODY_LIMIT, exc
+        )
         return text
 
 
@@ -203,7 +205,7 @@ class WhatsAppService:
                 logger.error("WhatsApp API error [%s]: %s", error_code, error_msg)
                 raise ValueError(f"WhatsApp API error [{error_code}]: {error_msg}")
 
-            logger.info("Message sent to %s", phone)
+            logger.info("Message sent to %s", redact_identifier_for_log(phone))
             return result
 
         except httpx.HTTPError as e:
@@ -228,7 +230,10 @@ class WhatsAppService:
         """
         # WhatsApp Cloud API doesn't support typing indicator
         # This is a placeholder for consistency with other messaging services
-        logger.debug("Typing action not supported for WhatsApp, skipping for %s", phone)
+        logger.debug(
+            "Typing action not supported for WhatsApp, skipping for %s",
+            redact_identifier_for_log(phone),
+        )
         return True
 
     async def mark_message_read(

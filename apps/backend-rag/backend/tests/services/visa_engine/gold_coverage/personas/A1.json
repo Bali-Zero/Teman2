@@ -1,0 +1,24 @@
+{
+  "expected_candidates": ["A1"],
+  "expected_state": "SUPPORTED_CANDIDATES",
+  "label": "Thai holidaymaker, 29, two-week Bali beach trip, no sponsor",
+  "overrides": {
+    "intent.desired_entry_date": {
+      "status": "KNOWN",
+      "value": "2026-09-12"
+    },
+    "intent.stay_days": {
+      "status": "KNOWN",
+      "value": 14
+    },
+    "person.birth_date": {
+      "status": "KNOWN",
+      "value": "1997-03-14"
+    },
+    "person.nationalities": {
+      "status": "KNOWN",
+      "value": ["TH"]
+    }
+  },
+  "product_code": "A1"
+}

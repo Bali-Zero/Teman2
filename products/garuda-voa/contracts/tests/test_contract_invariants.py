@@ -1,0 +1,450 @@
+"""The contract freeze, made re-runnable.
+
+The round-1 adversarial review established a set of properties by hand. A property
+established by hand once is a property that decays, and seven build lanes plus a second
+product on another machine are about to be written against these files — so every
+invariant that mattered enough to check is pinned here instead of living in a report.
+
+Two of these tests exist because the review found the property BROKEN, not because it was
+fine: the late-payment remediation path (`test_both_late_payment_outcomes_are_expressible`)
+and the privacy headers (`test_every_public_response_carries_the_privacy_headers`). Do not
+relax either one to make a diff pass — the first is money a customer really paid, and the
+second is the difference between a checkout URL that caches and one that does not.
+
+Deliberately mechanical: everything here parses the YAML (which expands the anchors) or
+imports the Python enum. A regex over the source would agree with a file that does not mean
+what it says.
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+import pytest
+
+yaml = pytest.importorskip("yaml")
+
+CONTRACTS = Path(__file__).resolve().parents[1]
+REPO_ROOT = CONTRACTS.parents[2]
+BACKEND_ROOT = REPO_ROOT / "apps" / "backend-rag"
+
+
+def _import_engine_decline_code():
+    """Import the live `DeclineCode` enum, from any working directory.
+
+    This suite lives under `products/` and the engine under `apps/backend-rag/`, so the
+    import only resolves when pytest happens to run with the backend on `sys.path`. It
+    did, once, from one directory — and the same assertion was a `ModuleNotFoundError`
+    from the repo root, which is where CI runs it.
+
+    Deliberately NOT `pytest.importorskip`: a skip here is green, and a green skip on a
+    parity check is precisely the failure this test exists to catch. If the engine cannot
+    be imported, that IS the finding — the path assertion below says so out loud.
+    """
+    assert BACKEND_ROOT.is_dir(), (
+        f"{BACKEND_ROOT} is not a directory — the contract test can no longer reach the "
+        "engine it is asserting parity against, so this suite is no longer checking "
+        "anything. Repoint it rather than skipping it."
+    )
+    if str(BACKEND_ROOT) not in sys.path:
+        sys.path.insert(0, str(BACKEND_ROOT))
+    from backend.services.garuda_flow.eligibility import DeclineCode  # noqa: PLC0415
+
+    return DeclineCode
+PUBLIC_FLAG = "GARUDA_PUBLIC_ENABLED"
+PRIVACY_HEADERS = ("Cache-Control", "Referrer-Policy", "X-Robots-Tag")
+HTTP_VERBS = ("get", "post", "put", "patch", "delete")
+
+
+def _load(name: str) -> dict:
+    path = CONTRACTS / name
+    assert path.is_file(), f"{path} is missing — the contract lost a file"
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+@pytest.fixture(scope="module")
+def openapi() -> dict:
+    return _load("openapi.yaml")
+
+
+@pytest.fixture(scope="module")
+def errors() -> dict:
+    return _load("errors.yaml")
+
+
+@pytest.fixture(scope="module")
+def events() -> dict:
+    return _load("events.yaml")
+
+
+def _operations(openapi: dict):
+    for route, item in openapi["paths"].items():
+        for verb, op in item.items():
+            if verb in HTTP_VERBS:
+                yield route, verb, op
+
+
+def _collect(node, key: str, out: set) -> None:
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if k == key and isinstance(v, list):
+                out.update(v)
+            else:
+                _collect(v, key, out)
+    elif isinstance(node, list):
+        for item in node:
+            _collect(item, key, out)
+
+
+def test_every_public_response_carries_the_privacy_headers(openapi: dict) -> None:
+    """Round 1 found these on 3 operations out of 8.
+
+    The eligibility surface had them and the checkout surface did not, which left
+    `OrderCheckout.checkout_url`, order and practice state, and document metadata with no
+    contractual no-store / no-referrer / no-index guarantee. Uniform coverage is asserted
+    rather than a curated subset, so a new operation cannot be added without inheriting it.
+    """
+    missing = [
+        f"{op['operationId']} {status}"
+        for _route, _verb, op in _operations(openapi)
+        if op.get("x-feature-flag") == PUBLIC_FLAG
+        for status, response in op["responses"].items()
+        if not all(h in (response.get("headers") or {}) for h in PRIVACY_HEADERS)
+    ]
+    assert not missing, f"public responses without the full privacy header set: {missing}"
+
+
+def test_error_codes_and_catalogue_match_exactly(openapi: dict, errors: dict) -> None:
+    """Both directions. A used-but-undeclared code is an error a client cannot parse; a
+    declared-but-dead one is a promise nothing keeps. Round 1 found two dead webhook codes
+    mid-review."""
+    catalogue = {
+        branch["properties"]["code"]["const"]
+        for branch in errors["$defs"]["ErrorResponse"]["oneOf"]
+    }
+    used: set[str] = set()
+    _collect(openapi, "x-error-codes", used)
+    assert used - catalogue == set(), f"used but undeclared: {sorted(used - catalogue)}"
+    assert catalogue - used == set(), f"declared but dead: {sorted(catalogue - used)}"
+
+
+def test_every_ref_resolves(openapi: dict, errors: dict, events: dict) -> None:
+    """Includes the cross-file refs into errors.yaml and reason-codes.yaml.
+
+    The `os.path.basename` is load-bearing: refs are written `./errors.yaml#/...`, and a
+    checker that keys on the raw string reports every one of them unresolved. That false
+    alarm happened once already; suspect the probe before the world.
+    """
+    docs = {
+        p.name: yaml.safe_load(p.read_text(encoding="utf-8")) for p in CONTRACTS.glob("*.yaml")
+    }
+
+    def resolves(doc: dict, fragment: str) -> bool:
+        cursor = doc
+        for raw in (p for p in fragment.split("/") if p and p != "#"):
+            part = raw.replace("~1", "/").replace("~0", "~")
+            if not isinstance(cursor, dict) or part not in cursor:
+                return False
+            cursor = cursor[part]
+        return True
+
+    broken: list[str] = []
+    seen = 0
+
+    def walk(node, origin: str) -> None:
+        nonlocal seen
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key == "$ref" and isinstance(value, str):
+                    seen += 1
+                    filename, _, fragment = value.partition("#")
+                    target = docs.get(os.path.basename(filename)) if filename else docs[origin]
+                    if target is None or not resolves(target, fragment):
+                        broken.append(f"{origin}: {value}")
+                else:
+                    walk(value, origin)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item, origin)
+
+    for name, doc in docs.items():
+        walk(doc, name)
+
+    assert seen > 100, f"only {seen} refs walked — the walker stopped finding them"
+    assert not broken, f"unresolved refs: {broken}"
+
+
+def test_the_price_is_one_field_and_never_a_computation(openapi: dict) -> None:
+    """The mandate's own seed text carried a formula (PNBP + 3jt) that quoted roughly 4.4x
+    the catalogue price. The contract must not be able to express a split at all: one
+    integer, no components, no fee line, no tax line."""
+    schemas = openapi["components"]["schemas"]
+    checkout = schemas["OrderCheckout"]["properties"]
+    assert "price_idr" in checkout, "OrderCheckout lost its price field"
+    assert checkout["price_idr"]["type"] == "integer"
+    assert checkout["price_idr"]["minimum"] >= 1
+
+    banned = ("fee", "pnbp", "subtotal", "discount", "surcharge", "breakdown", "component")
+    offenders = [
+        f"{name}.{prop}"
+        for name, schema in schemas.items()
+        if isinstance(schema, dict)
+        for prop in (schema.get("properties") or {})
+        if any(word in prop.lower() for word in banned)
+    ]
+    assert not offenders, f"price-splitting vocabulary reached a schema: {offenders}"
+
+
+def test_both_late_payment_outcomes_are_expressible(openapi: dict, events: dict) -> None:
+    """DECISIONS.md Q2: staff take exactly one of two paths — honour the order, or refund in
+    full. Never neither.
+
+    Round 1 found `payment.late_paid_after_terminal` missing entirely, so money arriving
+    after we had told a customer "expired" had no wire-representable resolution at all. A
+    contract that can express neither outcome makes "neither" the default.
+    """
+    defs = events["$defs"]
+    assert "PaymentLatePaidAfterTerminal" in defs, "the OP-F05 event is gone again"
+    assert "LateOrderResolved" in defs, "the resolution event is gone again"
+
+    ids = defs["TransitionId"]["enum"]
+    assert "OP-F04" in ids and "OP-F05" in ids, (
+        "the forbidden-input recovery ids left the enum — both late-paid events become "
+        "uninhabitable the moment they do (DECISIONS.md Q10)"
+    )
+
+    op = next(
+        o for _r, _v, o in _operations(openapi) if o.get("operationId") == "resolveLateOrder"
+    )
+    body = op["requestBody"]["content"]["application/json"]["schema"]["$ref"].split("/")[-1]
+    outcomes = openapi["components"]["schemas"][body]["properties"]["resolution"]["enum"]
+    assert sorted(outcomes) == ["honoured", "refunded_in_full"], (
+        f"the two permitted outcomes changed to {outcomes} — Q2 forbids a third, and "
+        "forbids removing either"
+    )
+
+
+def test_the_anonymous_check_carries_no_pii(openapi: dict) -> None:
+    """Architecture D1: the public eligibility route and the identified order are separate
+    data domains. Migration 261's header argues that the ABSENCE of PII is itself the safety
+    property that lets the route be public — so a new field here is not a small change."""
+    request = openapi["components"]["schemas"]["EligibilityCheckRequest"]
+    fields = set(request["properties"])
+    forbidden = {
+        "name",
+        "full_name",
+        "email",
+        "phone",
+        "passport_number",
+        "passport_no",
+        "address",
+    }
+    assert not fields & forbidden, (
+        f"PII reached the unauthenticated eligibility request: {sorted(fields & forbidden)}"
+    )
+    assert request.get("additionalProperties") is False, (
+        "the anonymous request stopped being a closed object — anything can be posted into it"
+    )
+
+
+def test_every_mutating_operation_requires_an_idempotency_key(openapi: dict) -> None:
+    """Every mutation WE issue is keyed. Inbound provider callbacks are not ours to key.
+
+    This test was written over-broad and stayed green while being wrong, because at freeze
+    time the webhook obediently carried the header too. It cost a real defect: the router
+    implemented the `$ref` faithfully and hard-400'd every genuine Xendit callback before
+    the signature check, leaving paid orders stranded in `awaiting_payment` with nothing
+    paged (measured 2026-08-25). An `Idempotency-Key` is a request-idempotency pattern for
+    commands a CLIENT issues; a payment provider POSTing an event to us sends no such
+    header and has no reason to invent one.
+
+    The exemption is by operationId and it cannot widen quietly: every exempt name must
+    still exist, and must be secured by `ProviderSignature`. That second assertion is the
+    one that matters — a customer-facing route cannot be waved through by adding its name
+    here, because it would not be provider-authenticated.
+    """
+    exempt = frozenset({"receivePaymentWebhook"})
+
+    all_operation_ids = {op["operationId"] for _route, _verb, op in _operations(openapi)}
+    stale = exempt - all_operation_ids
+    assert not stale, (
+        f"exemption names an operation the contract no longer has: {sorted(stale)} — an "
+        "exemption for a deleted operation is a hole that only ever widens. Delete it."
+    )
+
+    not_a_callback = []
+    for _route, _verb, op in _operations(openapi):
+        if op["operationId"] not in exempt:
+            continue
+        schemes = {name for req in (op.get("security") or []) for name in req}
+        if "ProviderSignature" not in schemes:
+            not_a_callback.append(op["operationId"])
+    assert not not_a_callback, (
+        f"exempted from Idempotency-Key but not provider-authenticated: {not_a_callback} — "
+        "only inbound provider callbacks may be exempt, and this one is reachable by a "
+        "client. Do not add a name here to make a diff pass."
+    )
+
+    offenders = []
+    for _route, verb, op in _operations(openapi):
+        if verb == "get" or op["operationId"] in exempt:
+            continue
+        params = op.get("parameters") or []
+        refs = [p.get("$ref", "") for p in params if isinstance(p, dict)]
+        if not any(r.endswith("/IdempotencyKey") for r in refs):
+            offenders.append(op["operationId"])
+    assert not offenders, f"mutating operations without Idempotency-Key: {offenders}"
+
+
+def test_the_inbound_callback_does_not_demand_a_client_header(openapi: dict) -> None:
+    """The guilt side of the exemption above: requiring the header here BREAKS the path.
+
+    Not a duplicate of the exemption — that one permits the absence, this one forbids the
+    presence. Restoring the `$ref` on this path is the exact shape of the 2026-08-25 defect,
+    and it would otherwise sail through a suite that only ever checked for a MISSING key.
+    """
+    for route, verb, op in _operations(openapi):
+        if op["operationId"] != "receivePaymentWebhook":
+            continue
+        refs = [
+            p.get("$ref", "") for p in (op.get("parameters") or []) if isinstance(p, dict)
+        ]
+        assert not any(r.endswith("/IdempotencyKey") for r in refs), (
+            f"{verb.upper()} {route} requires Idempotency-Key. The payment provider does not "
+            "send it, so this 400s every real payment confirmation before the signature is "
+            "verified. Webhook dedup is keyed on (provider, provider_event_id) in "
+            "garuda_payment_inbox and never needed this header."
+        )
+        return
+    pytest.fail(
+        "receivePaymentWebhook is gone from the contract — this guard now protects nothing. "
+        "Repoint it at the operation that replaced it rather than deleting it."
+    )
+
+
+def test_every_inbound_date_states_its_civil_day(openapi: dict) -> None:
+    """The engine already carries this scar: the backend runs on Fly.io in UTC, and reading a
+    Bali civil day as a UTC day moves the ACCEPT/DECLINE cutoff and the published deadline by
+    a full day for the first eight hours of every Bali day. `civil_clock.py::garuda_today`
+    cured it inside the engine; a `format: date` with nothing said about which day it means
+    lets it back in through the wire."""
+    offenders = []
+    for name, schema in openapi["components"]["schemas"].items():
+        if not isinstance(schema, dict):
+            continue
+        for prop, spec in (schema.get("properties") or {}).items():
+            if not isinstance(spec, dict) or spec.get("format") != "date":
+                continue
+            stated = spec.get("x-civil-timezone") or ""
+            if "Asia/Makassar" not in (stated + spec.get("description", "")):
+                offenders.append(f"{name}.{prop}")
+    assert not offenders, f"date fields that never say which civil day they mean: {offenders}"
+
+
+def test_the_prose_decisions_are_machine_readable(openapi: dict) -> None:
+    """Q1 and Q9 were decided in prose, and prose binds nobody.
+
+    The money/date re-derivation found that an implementer could ship any magic-link TTL and
+    stay contract-valid, and that `G-FRESHNESS-FAIL-CLOSED` — a declared guardrail — had no
+    numbers to fail closed on. A guardrail whose threshold does not exist is not a guardrail;
+    it is a sentence. These assertions are what turn the sentences into a contract.
+    """
+    link = openapi["x-magic-link"]
+    assert link["ttl_minutes"] == 15, "Q1's magic-link lifetime moved without a decision"
+    assert link["single_use"] is True
+
+    fresh = openapi["x-truth-freshness-max-age-days"]
+    assert fresh == {
+        "nationality_eligibility": 90,
+        "rule_constants": 180,
+        "price_catalogue": 90,
+    }, f"Q9's freshness windows changed to {fresh} — revisable, but not silently"
+
+    # NOT asserted here any more: that some 503 error code exists for staleness.
+    # It used to check `TRUTH_SHEET_STALE`, and that turned out to be the wrong shape —
+    # a stale nationality list means we cannot CONFIRM eligibility, which is a 201
+    # DECLINE carrying `ELIGIBILITY_UNCONFIRMED`, not an outage. The 503 was removed for
+    # the same reason `CALENDAR_COVERAGE_EXCEEDED` was. The decline code itself is
+    # pinned by `test_reason_codes_match_the_engine_enum_exactly` below, which is the
+    # assertion that actually keeps this guardrail honest.
+    from_engine: set = set()
+    _collect(openapi, "x-error-codes", from_engine)
+    assert "PRICE_UNRESOLVABLE" in from_engine, (
+        "nothing fails closed on a stale price catalogue any more — the windows are "
+        "back to being numbers nobody reads"
+    )
+
+
+def test_reason_codes_match_the_engine_enum_exactly() -> None:
+    """The parity this suite was missing — and the gap was found by it being missing.
+
+    During the freeze I diffed `reason-codes.yaml` against `eligibility.py::DeclineCode`
+    by hand, got an exact 18/18, and wrote that down in REVIEW.md. The refuter did the
+    same by hand and agreed. Neither of us pinned it. Two rounds later the freshness lane
+    legitimately added a nineteenth member, the contract could not express it, and all
+    nine tests here stayed green — a customer-facing wire vocabulary silently diverging
+    from what the engine emits, past a suite built to prevent exactly that.
+
+    REVIEW.md's own opening says "a property established by hand once is a property that
+    decays". This is that sentence collecting on itself.
+
+    Imported, never regexed: a pattern over the source agrees with a file that does not
+    mean what it says.
+    """
+    DeclineCode = _import_engine_decline_code()
+
+    engine = {member.value for member in DeclineCode}
+    contract = set(_load("reason-codes.yaml")["$defs"]["DeclineCode"]["enum"])
+
+    assert engine - contract == set(), (
+        f"the engine can emit codes the contract cannot express: {sorted(engine - contract)} "
+        "— a client parsing this contract would receive a reason code it has no case for"
+    )
+    assert contract - engine == set(), (
+        f"the contract promises codes the engine never emits: {sorted(contract - engine)} "
+        "— dead vocabulary that a consumer will write handling for and never exercise"
+    )
+
+
+def test_the_order_response_can_say_the_customer_already_paid(openapi: dict) -> None:
+    """A response schema that can express only one outcome forces the code to lie.
+
+    `OrderCheckout.order_state` was `const: "awaiting_payment"`. The implementation
+    hardcoded that literal — correctly, because the contract admitted nothing else — and a
+    customer whose order had already been paid was handed a payment action on resume. The
+    defect looked like sloppy code and was actually this schema, faithfully obeyed.
+
+    Two properties, and the second is the one with teeth: the state must be able to say
+    `paid`, AND the payment action must be able to be absent. Either alone still permits
+    the lie — a schema that admits `paid` but demands a non-null `checkout_url` just moves
+    the contradiction one field over.
+    """
+    checkout = openapi["components"]["schemas"]["OrderCheckout"]
+    state = checkout["properties"]["order_state"]
+
+    assert "const" not in state, (
+        "order_state is pinned to a single constant, so every response must claim that state "
+        "whatever the order is really doing. This is exactly the shape that told a paying "
+        "customer to pay again."
+    )
+    allowed = set(state.get("enum") or [])
+    assert "paid" in allowed, (
+        f"order_state cannot express `paid` (allows {sorted(allowed)}). An order can be paid "
+        "by a webhook while the customer's first attempt is still in flight; if the response "
+        "cannot say so, it must say something false."
+    )
+
+    url_type = checkout["properties"]["checkout_url"]["type"]
+    accepts_null = "null" in (url_type if isinstance(url_type, list) else [url_type])
+    assert accepts_null, (
+        "checkout_url cannot be null, so a paid order still has to carry a payment "
+        "capability. Required-and-nullable is deliberate here: optional would let the key be "
+        "omitted, and a consumer reading a missing key gets `undefined`, which renders as an "
+        "enabled button just as happily as a URL does."
+    )
+    assert "checkout_url" in checkout["required"], (
+        "checkout_url was made optional rather than nullable — see the reasoning above; the "
+        "consumer must be forced to answer 'is there anything to pay?' explicitly."
+    )

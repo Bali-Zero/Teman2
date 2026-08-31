@@ -1,0 +1,36 @@
+{
+  "expected_candidates": ["D12"],
+  "expected_state": "SUPPORTED_CANDIDATES",
+  "label": "41-year-old Dutch hospitality entrepreneur making repeated pre-investment scouting trips to Bali over six months before deciding on a PT PMA",
+  "overrides": {
+    "intent.desired_entry_date": {
+      "status": "KNOWN",
+      "value": "2026-09-15"
+    },
+    "intent.entry_pattern": {
+      "status": "KNOWN",
+      "value": "MULTIPLE"
+    },
+    "intent.purposes": {
+      "status": "KNOWN",
+      "value": ["INVESTMENT"]
+    },
+    "intent.stay_days": {
+      "status": "KNOWN",
+      "value": 180
+    },
+    "person.birth_date": {
+      "status": "KNOWN",
+      "value": "1984-11-06"
+    },
+    "person.nationalities": {
+      "status": "KNOWN",
+      "value": ["NL"]
+    },
+    "sponsor.type": {
+      "status": "KNOWN",
+      "value": "NONE"
+    }
+  },
+  "product_code": "D12"
+}

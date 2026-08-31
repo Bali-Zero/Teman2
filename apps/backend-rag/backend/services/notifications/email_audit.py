@@ -23,6 +23,7 @@ from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
 
 from backend.core.secret_log_redaction import install_telegram_token_redaction
+from backend.security.pii_log_identifier import redact_identifier_for_log
 
 install_telegram_token_redaction()
 
@@ -201,7 +202,7 @@ def notify_email_failure_critical(
         logger.warning(
             "email_audit: TELEGRAM_BOT_TOKEN not set; skipping alert for %s → %s",
             email_type,
-            to_email,
+            redact_identifier_for_log(to_email),
         )
         return
 
@@ -222,7 +223,7 @@ def notify_email_failure_critical(
     text = (
         "🚨 *Email delivery failure* — critical path\n\n"
         f"*Type:* `{email_type}`{practice_fragment}\n"
-        f"*To:* `{to_email}`\n"
+        f"*To:* `{redact_identifier_for_log(to_email)}`\n"
         f"*Subject:* {short_subj}\n"
         f"*Error:* `{short_err}`\n\n"
         f"{footer}"

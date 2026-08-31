@@ -1,0 +1,118 @@
+task_id: lane-outcome-report
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  L04-PR2 of the beyond-SOTA craft wave 2 (squad L, issue #5319): measure whether
+  a lane's work HELD UP, instead of leaving it to impression.
+
+  Three numbers over a window of squash-merged PRs — correction-chain rate, time
+  to merge, builder attribution — published as a dated section in
+  docs/factory/SEAT-MIX.md, because a metric nobody reads is theater.
+
+  The correction-chain rule is file-overlap and never the subject prefix alone.
+  A `fix:` subject over an unrelated surface corrects nothing in the window, and
+  counting it would pay contributors to relabel — Goodhart, straight into the
+  metric the PR exists to provide.
+constraints:
+  - "Read-only except one flag. `--write` appending a dated section to SEAT-MIX.md
+    is the only write this program may perform, and it is off by default."
+  - "No third-party imports. stdlib plus subprocess, so the report runs anywhere
+    git and gh run."
+  - "The branch name is NOT recoverable from git — measured: 2 of 204 commit
+    bodies in the frozen window mention an `agent/` branch, incidentally. So
+    attribution comes from the GitHub API's headRefName, which is PR metadata and
+    survives branch deletion (verified on #5339, whose branch git no longer has)."
+  - "Two existing parsers already read merged-PR history and the agent branch
+    namespace (queue_baseline_probe.py, queue_ejection_attribution.py, the second
+    of which DELIBERATELY duplicates classify_author with a documented
+    standalone-by-design rationale). This follows that established convention
+    rather than inventing a coupling the repo has already decided against."
+acceptance:
+  - text: >-
+      WHEN a `fix`-prefixed commit shares a file with an EARLIER non-fix commit in
+      the window, the report SHALL name that pair; and WHERE the only overlapping
+      commit came LATER, it SHALL NOT.
+    probe: "pytest scripts/tests/test_lane_outcome_report.py -k EARLIER or LATER"
+  - text: >-
+      WHILE a fix and its origin land in the SAME second, the pair SHALL still
+      chain, because a merge queue lands several squash commits at once.
+    probe: "pytest scripts/tests/test_lane_outcome_report.py -k SAME_SECOND"
+  - text: >-
+      IF the GitHub fetch was skipped, the report SHALL say so in a field, and
+      SHALL NOT be indistinguishable from a fetch that found nothing.
+    probe: "pytest scripts/tests/test_lane_outcome_report.py -k skipping_gh"
+  - text: >-
+      WHERE fewer than ten merge times are available, the reported p90 SHALL NOT
+      be below the median and SHALL NOT be the smallest sample.
+    probe: "pytest scripts/tests/test_lane_outcome_report.py -k p90"
+  - text: >-
+      WHEN any cure in this diff is reverted, the corpus SHALL turn red — or the
+      surviving mutant SHALL be shown EQUIVALENT rather than reported green.
+    probe: "PYTHONDONTWRITEBYTECODE=1 python3.11 -B -m pytest -p no:cacheprovider scripts/tests/test_lane_outcome_report.py"
+consumer_map:
+  - "docs/factory/SEAT-MIX.md — the publication surface, and the reason this is
+    not theater. `--write` appended a real dated section this session (18 lines),
+    matching the shape of the file's one existing dated block."
+  - "immune-enforcement.yml — the executor. The corpus is added to BOTH lists it
+    needs: the in-job paths detector and the unit-test runner. scripts-tests-sweep
+    is continue-on-error and gates nothing, so a corpus resting on it is armed to
+    nothing (W81)."
+  - "Anyone asking 'did this lane's work hold up' — today that is answered by
+    impression. After this it is answered by a number with a stated definition and
+    a stated population."
+risks:
+  - "THE ACCEPTANCE CRITERION IS NOT MET, deliberately, and this is the finding
+    rather than a shortfall. The spec asks the correction count to reproduce a
+    hand-measured 27-of-200 within ±3 (band 24-30). Measured with the
+    file-overlap rule the spec requires: 21 of 204. Outside the band.
+
+    I did not tune toward 27. The spec says in its own words that '±3 agreement
+    is not validation of the heuristic; report the number, don't claim it proves
+    the method', and tuning a measurement until it matches a hand count is
+    fitting the metric to its own acceptance gate — the Goodhart trap this PR
+    exists to avoid, one level up.
+
+    The evidence that this was the right call is measured, not argued: the FIRST
+    implementation had an inverted ordering bug and reported 26 chains, which
+    sits INSIDE the band, while the corrected one reports 21, which does not.
+    Zero of the 21 (fix, origin) pairs were in common. An implementation can pass
+    this acceptance criterion precisely by being wrong."
+  - "TWO POPULATIONS, stated in the published block rather than blurred: commit
+    counts come from `git log --since/--until` (committer date, local timezone)
+    and attribution and merge-time come from the GitHub API on `mergedAt` (UTC).
+    They cover nearly the same set, not exactly the same set — so no ratio should
+    mix a numerator from one with a denominator from the other, and the output
+    says so where a reader will meet it."
+  - "TIME TO MERGE, never time-to-green. Creation-to-merge is what is measured;
+    true time-to-green needs check-suite history this does not fetch. A test pins
+    the module's public symbols and emitted keys against the word 'green' so a
+    future edit cannot quietly upgrade the claim."
+  - "`--limit 1000` on the gh fetch is a ceiling, now with an explicit
+    `merged:<since>..<until>` search so the window's PRs are the ones fetched
+    rather than the most recent 1000 by another ordering. A window with more than
+    1000 merged PRs would still truncate silently; not reached today (118 in 48h)
+    and named rather than left implicit."
+  - "The tool must not generate output that fails the repo's formatter. It did:
+    prettier rejected the very section `--write` had just produced (a missing
+    blank line before the heading), which would have blocked every PR that ran
+    it. Cured in `separator_for`; a mutation removing the rule turns the corpus
+    red."
+  - "The unattended schedule is NOT armed here. `--write` runs on demand; a plist
+    or cron is operator[control-plane] on this machine and is a separate change.
+    Carried as a ledger row, not claimed as done."
+grader: |
+  TWO cross-family adversarial reviews on the DIFF with an explicit attack list —
+  Codex GPT-5.6 sol at xhigh (read-only) and Kimi K3, neither having written any
+  of this code. The D3 build lane is real: Kimi's coding model drafted the module
+  against a written contract, and this session integrated, corrected and gated it.
+
+  Final on-disk gate is this orchestrator session (Opus 5, xhigh), empirical —
+  every number in the receipts was produced in this session, and each refuter
+  claim was checked against the real files before being acted on.
+budget: >-
+  1 build lane (kimi-code/kimi-for-coding, against a written contract) + this
+  session for integration, correction and the corpus + 2 cross-family review
+  lanes. No extra council beyond those two, which is what the Gear-3 floor asks
+  for and what the diff's blast radius justifies.
+pii: none

@@ -42,7 +42,7 @@ measured or scarred by another lane today:
 
 Actions on what survives:
   - mergeStateStatus == BEHIND  -> `gh pr update-branch <N>`, hard cap
-    QUEUE_UNSTICK_CAP (default 5) per tick (anti-storm).
+    QUEUE_UNSTICK_CAP (default 1) per tick (anti-storm).
   - mergeStateStatus == DIRTY (true conflict) -> NEVER touch the branch
     (2026-08-21 scar: second-writer race). Signal ONCE per (PR, head SHA)
     to the fleet mailbox via scripts/fleet_mail.sh, deduped against a local
@@ -81,7 +81,8 @@ conductor verifies this script.
 Env overrides:
   QUEUE_UNSTICK_ENABLED         "false"/"0"/"no"/"off" -> no-op (default: on)
   QUEUE_UNSTICK_REPO            default "Bali-Zero/Teman2"
-  QUEUE_UNSTICK_CAP             default 5 (max update-branch calls per tick)
+  QUEUE_UNSTICK_CAP             default 1 (max update-branch calls per tick;
+                                a PLACEHOLDER — see the constant's comment)
   QUEUE_UNSTICK_RECENT_SECONDS  default 300 (second-writer-race guard window)
   QUEUE_UNSTICK_STATE_DIR       default ~/.agent/decisions/state
   QUEUE_UNSTICK_FLEET_MAIL_HOST default "pro" (host arg to fleet_mail.sh —
@@ -99,6 +100,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as _dt
+import hashlib
 import json
 import os
 import subprocess
@@ -109,7 +111,15 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS_DIR = Path(__file__).resolve().parent
 
 REPO = os.environ.get("QUEUE_UNSTICK_REPO", "Bali-Zero/Teman2")
-UPDATE_CAP = int(os.environ.get("QUEUE_UNSTICK_CAP", "5"))
+# PLACEHOLDER, NOT A TUNED NUMBER. A cross-family refuter (agy/Gemini 3.1 Pro,
+# 2026-08-25) showed every candidate cap is uncalibrated in BOTH directions until
+# two things are measured: (i) queued-to-start latency — a concurrency cap only
+# binds if jobs actually queue — and then (ii) baseline concurrent load at the hour
+# this cron fires. Research: research/operations/2026-08-23-runner-slot-audit.md
+# (§Adversarial review, findings 4 and 5). 1 is chosen because it is the only value
+# safe under EVERY unmeasured baseline, not because it was derived. Raising it
+# requires those measurements first — see PENDING-ARMS S12/C3 item (c).
+UPDATE_CAP = int(os.environ.get("QUEUE_UNSTICK_CAP", "1"))
 RECENT_COMMIT_SECONDS = int(os.environ.get("QUEUE_UNSTICK_RECENT_SECONDS", "300"))
 HOLD_LABELS = {"hold", "suspended"}
 STATE_DIR = Path(os.environ.get("QUEUE_UNSTICK_STATE_DIR", os.path.expanduser("~/.agent/decisions/state")))
@@ -139,9 +149,21 @@ query($owner:String!, $repo:String!, $cursor:String) {
 
 
 def _run(cmd: list[str], timeout: int = 30) -> tuple[int, str, str]:
-    """Run a command; never raises. Returns (rc, stdout, stderr)."""
+    """Run a command; never raises. Returns (rc, stdout, stderr).
+
+    `errors="replace"` is what makes "never raises" TRUE rather than merely
+    intended. With the default strict decoding, `text=True` raises
+    UnicodeDecodeError — a ValueError, caught by neither arm of the except
+    below — the moment git prints a path whose bytes are not valid UTF-8, which
+    `git diff -z --name-only` will happily do. A cross-family refuter found this
+    by reading the contract rather than the code; the docstring had been lying
+    since it was written, and the fail-quiet argument for every caller rests on
+    it being true.
+    """
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, errors="replace", timeout=timeout
+        )
         return proc.returncode, proc.stdout, proc.stderr
     except (OSError, subprocess.TimeoutExpired) as exc:
         return 127, "", f"{type(exc).__name__}: {exc}"
@@ -261,7 +283,9 @@ def plan_actions(
 
     Returns {
       "update_branch": [pr_number, ...],                 # in input order, capped
-      "signal_dirty": [{"number":..., "sha":...}, ...],   # excludes already-seen sha
+      "signal_dirty": [{"number":..., "sha":...}, ...],   # ALL dirty candidates;
+                                                         # dedup happens in main()
+                                                         # on the conflict fingerprint
       "skipped": {pr_number: reason, ...},
       "examined": N,
     }
@@ -287,11 +311,16 @@ def plan_actions(
             continue
 
         if c["action"] == "signal_dirty":
-            sha = pr.get("head_sha")
-            if seen_dirty.get(str(number)) == sha:
-                skipped[number] = "dirty_already_signalled"
-                continue
-            signal_dirty.append({"number": number, "sha": sha})
+            # DEDUP DELIBERATELY NOT DONE HERE ANYMORE (S12/C3 finding 2).
+            # It used to compare `seen_dirty[number] == head_sha`, which is
+            # blind to the exact case that matters: `main` advances, the SET
+            # OF CONFLICTING FILES changes, and the PR's head does NOT — so no
+            # new signal was emitted and the fleet mailbox kept stale paths.
+            # The real key needs the conflict fingerprint, which requires a
+            # local merge simulation; this function is pure and network-free
+            # by design, so the dedup now lives in main() where that
+            # fingerprint exists. See _dirty_fingerprint().
+            signal_dirty.append({"number": number, "sha": pr.get("head_sha")})
             continue
 
     return {
@@ -322,17 +351,164 @@ def save_dirty_seen(state: dict, path: Path = DIRTY_SEEN_FILE) -> None:
 # ── side-effecting actions ──────────────────────────────────────────────────
 
 
-def do_update_branch(number: int, *, repo: str = REPO, dry_run: bool) -> tuple[bool, str]:
+SINGLE_PR_QUEUE_QUERY = """
+query($owner:String!, $repo:String!, $number:Int!) {
+  repository(owner:$owner, name:$repo) {
+    pullRequest(number:$number) { mergeQueueEntry { state } }
+  }
+}
+"""
+
+
+def is_queued_now(number: int, *, repo: str = REPO, timeout: int = 20):
+    """Re-read `mergeQueueEntry` for THIS ONE PR, right now.
+
+    Returns (True, detail) queued · (False, detail) not queued ·
+    (None, detail) UNVERIFIABLE.
+
+    Why this exists (S12/C3 red-team finding, confirmed against the merged
+    source before being acted on): `classify()` decides "not queued" from a
+    BULK GraphQL read taken at the top of the tick. Between that read and
+    the mutation below, a PR can enter the merge queue — and
+    `gh pr update-branch` on a queued PR EVICTS it, which is the single most
+    destructive thing this script can do. The window is not theoretical:
+    PRs entered and left the queue continuously during the session that
+    measured this. Ordering the checks differently does not close it; only
+    re-reading immediately before the mutation does.
+
+    UNVERIFIABLE is deliberately NOT treated as "not queued": an
+    unverifiable queue state must never authorise an eviction.
+    """
+    owner, _, name = repo.partition("/")
+    rc, out, err = _run(
+        ["gh", "api", "graphql",
+         "-f", f"query={SINGLE_PR_QUEUE_QUERY}",
+         "-f", f"owner={owner}", "-f", f"repo={name}", "-F", f"number={number}",
+         "--jq", ".data.repository.pullRequest.mergeQueueEntry"],
+        timeout=timeout,
+    )
+    if rc != 0:
+        return None, f"queue re-check rc={rc}: {err.strip()[:200]}"
+    raw = out.strip()
+    if not raw:
+        return None, "queue re-check returned empty output"
+    if raw == "null":
+        return False, "not in merge queue at mutation time"
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return None, f"queue re-check unparseable: {raw[:120]!r}"
+    if parsed is None:
+        return False, "not in merge queue at mutation time"
+    state = parsed.get("state") if isinstance(parsed, dict) else None
+    return True, f"in merge queue (state={state})"
+
+
+def do_update_branch(
+    number: int, *, repo: str = REPO, dry_run: bool, queue_recheck=None
+) -> tuple[str, str]:
+    """Returns (outcome, detail) where outcome is "ok" | "aborted" | "failed".
+
+    "aborted" is a THIRD outcome on purpose. An abort means the guard did its
+    job — the PR entered the queue, or its state could not be verified — and
+    counting that as a failure would turn a correct refusal into a red cron
+    tick on an ordinary race (cicatrix W116: an alarm that fires on the right
+    outcome is an alarm nobody reads).
+    """
     # KNOWN SIDE EFFECT — cicatrix W123 ("hold disarmato si ri-arma al
     # push", cicatrix-superscar.md family #2): this push can re-arm
     # auto-merge-whitelist.yml for whitelisted-branch/allowlisted-author
     # PRs. See module docstring for scope + why no heuristic is added.
     if dry_run:
-        return True, f"[dry-run] would run: gh pr update-branch {number} --repo {repo}"
+        return "ok", f"[dry-run] would run: gh pr update-branch {number} --repo {repo}"
+
+    recheck = queue_recheck or is_queued_now
+    queued, why = recheck(number, repo=repo)
+    if queued is None:
+        return "aborted", (
+            f"update-branch ABORTED PR #{number}: queue state UNVERIFIABLE ({why}) — "
+            f"refusing to update; an unverifiable queue state must not authorise an eviction"
+        )
+    if queued:
+        return "aborted", (
+            f"update-branch ABORTED PR #{number}: {why} — it entered the queue after "
+            f"planning; updating now would EVICT it"
+        )
+
     rc, out, err = _run(["gh", "pr", "update-branch", str(number), "--repo", repo], timeout=60)
     if rc != 0:
-        return False, f"update-branch FAILED PR #{number} rc={rc}: {err.strip()[:300]}"
-    return True, f"update-branch OK PR #{number}: {out.strip() or 'requested'}"
+        return "failed", f"update-branch FAILED PR #{number} rc={rc}: {err.strip()[:300]}"
+    return "ok", f"update-branch OK PR #{number}: {out.strip() or 'requested'}"
+
+
+#: How many changed paths `check-attr` is asked about PER CALL. This is a batch
+#: size, NOT a limit: every path is examined, in successive calls. The first cut
+#: of this function truncated at 200 and examined nothing beyond, so a large PR
+#: whose union path sorted late was reported as a race — "0 found" and "not
+#: looked at" producing the same answer, which is the failure this whole probe
+#: exists to stop making.
+_ATTR_BATCH = 200
+
+#: `check-attr` values that mean "git merges this file the ordinary way", i.e. the
+#: same way GitHub's merge machinery does. Anything ELSE is a declared driver, and
+#: GitHub honours no merge driver at all — so the two disagree by construction.
+#: Keyed on the complement rather than on the literal "union" because `merge=ours`
+#: diverges identically and would have silently regressed to the race wording
+#: (superscar #3's under-match twin, W82: a guard watching one literal string).
+#: `unset` (`-merge`) is excluded deliberately: it makes git ALWAYS conflict, so a
+#: file carrying it cannot reach this code path, which only runs when git said clean.
+_ORDINARY_MERGE_VALUES = frozenset({"unspecified", "unset", "set", "text"})
+
+
+def _driver_merged_changed_paths(
+    *, repo_root: Path, base_ref: str, pr_ref: str, timeout: int = 25
+) -> list[tuple[str, str]]:
+    """`(path, driver)` for each changed path `.gitattributes` gives a merge driver.
+
+    Read-only, and deliberately fail-quiet: every failure returns `[]`, which
+    makes the caller fall back to its pre-existing "race" wording. An empty
+    list therefore means "no driver path FOUND", never "no driver path EXISTS" —
+    so this can only ever add a diagnosis, never suppress one.
+
+    Both git calls use `-z`. That is not a style choice: `core.quotePath` defaults
+    to true, so `git diff --name-only` emits a NON-ASCII path as the C-quoted
+    literal `"caf\303\251.md"`, which `check-attr` then fails to match, returning
+    `unspecified` for a file that is in fact union-merged. Measured against the
+    first cut of this function in a real repo: it returned [] where the truth was
+    ['café.md']. `-z` also removes the `<path>: merge: <value>` parse entirely,
+    and with it the class of bug where a path containing ": " is truncated.
+    """
+    rc, out, _err = _run(
+        ["git", "-C", str(repo_root), "diff", "-z", "--name-only", f"{base_ref}...{pr_ref}"],
+        timeout=timeout,
+    )
+    if rc != 0:
+        return []
+    paths = [p for p in out.split("\0") if p]
+    if not paths:
+        return []
+    # Paths go after `--` so a leading-dash filename is not read as a flag.
+    # Capped because a huge PR would otherwise blow argv; the cap is reported by
+    # the caller rather than silently swallowed.
+    found: list[tuple[str, str]] = []
+    for start in range(0, len(paths), _ATTR_BATCH):
+        batch = paths[start:start + _ATTR_BATCH]
+        rc, out, _err = _run(
+            ["git", "-C", str(repo_root), "check-attr", "-z", "merge", "--", *batch],
+            timeout=timeout,
+        )
+        if rc != 0:
+            return []
+        # -z output is a flat NUL-separated stream of (path, attr, value) triples.
+        fields = out.split("\0")
+        for i in range(0, len(fields) - 2, 3):
+            path, attr, value = fields[i], fields[i + 1], fields[i + 2]
+            if attr != "merge" or not path:
+                continue
+            if value in _ORDINARY_MERGE_VALUES:
+                continue
+            found.append((path, value))
+    return found
 
 
 def get_conflicting_files(pr: dict, *, repo_root: Path = REPO_ROOT, timeout: int = 25) -> str:
@@ -370,8 +546,48 @@ def get_conflicting_files(pr: dict, *, repo_root: Path = REPO_ROOT, timeout: int
         )
         lines = [line for line in out.splitlines() if line.strip()]
         if rc == 0:
-            # No conflict after all (race: PR was updated between the
-            # GraphQL read and this probe) — say so plainly, don't lie.
+            # GitHub says DIRTY and the local merge says clean. There are two
+            # causes, and they want OPPOSITE responses, so naming the right one
+            # is the whole value of this branch.
+            #
+            #   1. A race: the PR moved between the GraphQL read and this probe.
+            #      Transient — the next tick reports it correctly.
+            #   2. A declared merge driver (`merge=union`, `merge=ours`, ...).
+            #      git honours it and exits 0; GitHub's merge machinery honours
+            #      NO driver and reports a real conflict. PERMANENT — re-probing
+            #      can never clear it.
+            #
+            # Measured 2026-08-31 on PRs #5331 and #5373: both DIRTY on GitHub
+            # with `merge-tree` rc=0, both touching the repo's one union path,
+            # `.claude/skills/modus/PENDING-ARMS.md`. Reported as a race, that is
+            # a permanent condition wearing a transient label.
+            #
+            # WHAT THIS MESSAGE MUST NEVER SAY, and briefly did (2026-08-31):
+            # "hand rebase that file". Hand-resolving a union file is precisely
+            # how the other lane's appended row gets deleted in silence — the
+            # loss the driver exists to prevent, which `check-ledger-no-silent-loss`
+            # then catches in CI (seen live on #5355). And `git rebase` is no
+            # safer in the other reading: rebase DOES apply the union driver, so
+            # replaying an append over a base that already carries it duplicates
+            # the row (measured on #4060), which a set-based gate cannot see.
+            # The cure is neither. It is to rebuild the append on a branch cut
+            # from fresh origin/main and prove the file's diff is +N/-0.
+            drivers = _driver_merged_changed_paths(
+                repo_root=repo_root, base_ref=base_ref, pr_ref=pr_ref, timeout=timeout
+            )
+            if drivers:
+                shown = ", ".join(
+                    f"{path} (merge={driver})" for path, driver in drivers[:5]
+                ) + (" (+more)" if len(drivers) > 5 else "")
+                return (
+                    f"none locally, but this is NOT a race: {shown} — git honours that "
+                    "driver, GitHub's merge machinery honours none, so the two disagree "
+                    "permanently and re-probing will never clear it. DO NOT hand-resolve "
+                    "the file and DO NOT rebase onto it: the first silently deletes the "
+                    "other lane's appended row, the second replays the append and "
+                    "duplicates it. Rebuild your addition on a branch cut from fresh "
+                    "origin/main, then verify `git diff origin/main -- <file>` is +N/-0."
+                )
             return "none (merge-tree found no conflict at probe time)"
         # First line is the (conflicted) tree OID; the rest, with
         # --name-only, are the conflicting paths.
@@ -386,18 +602,44 @@ def get_conflicting_files(pr: dict, *, repo_root: Path = REPO_ROOT, timeout: int
             _run(["git", "-C", str(repo_root), "update-ref", "-d", ref], timeout=10)
 
 
-def send_dirty_signal(pr: dict, *, dry_run: bool, repo_root: Path = REPO_ROOT) -> tuple[bool, str]:
+def _dirty_fingerprint(sha: str | None, files_desc: str) -> str:
+    """Dedup key for a DIRTY signal: the head SHA AND the conflict set.
+
+    Keyed on head_sha alone (the pre-2026-08-25 behaviour) this cron went mute
+    exactly when it had something new to say — `main` moves, the conflicting
+    files change, the PR head does not. Hashing keeps the state file bounded
+    when a PR conflicts on twenty paths.
+    """
+    digest = hashlib.sha256((files_desc or "").encode("utf-8")).hexdigest()[:16]
+    return f"{sha or 'unknown'}:{digest}"
+
+
+def send_dirty_signal(
+    pr: dict, *, dry_run: bool, repo_root: Path = REPO_ROOT, files_desc: str | None = None
+) -> tuple[bool, str]:
     number = pr.get("number")
     sha = pr.get("head_sha") or "unknown"
     short_sha = sha[:12] if sha and sha != "unknown" else "unknown"
 
+    # S3 (2026-08-27): a state key, not the SHA/fingerprint the LOCAL
+    # dirty_seen dedup (below, in main()) already uses. This is a SEPARATE,
+    # complementary dedup at the mailbox layer: dirty_seen only guards
+    # sends from THIS machine's own state file, so if queue_unstick ever
+    # runs as a cron on more than one machine (or the state file is lost),
+    # each sender's local fingerprint check can't see the others' sends —
+    # the mailbox-side `key: queue_unstick:<PR>` still collapses them to
+    # the newest, fleet-wide, regardless of which host sent it.
+    mailbox_key = f"queue_unstick:{number}"
+
     if dry_run:
         return True, (
             f"[dry-run] would signal DIRTY PR #{number} at {short_sha} "
-            f"(conflicting files not computed in dry-run) via fleet_mail.sh {FLEET_MAIL_HOST} broadcast"
+            f"(conflicting files not computed in dry-run) via fleet_mail.sh {FLEET_MAIL_HOST} "
+            f"broadcast --key {mailbox_key}"
         )
 
-    files_desc = get_conflicting_files(pr, repo_root=repo_root)
+    if files_desc is None:
+        files_desc = get_conflicting_files(pr, repo_root=repo_root)
     msg = (
         f"queue_unstick: PR #{number} is DIRTY (merge conflict) at {short_sha}. "
         f"conflicting files: {files_desc}. Will NOT touch this branch — needs manual resolution."
@@ -405,7 +647,9 @@ def send_dirty_signal(pr: dict, *, dry_run: bool, repo_root: Path = REPO_ROOT) -
     fleet_mail = repo_root / "scripts" / "fleet_mail.sh"
     if not fleet_mail.is_file():
         return False, f"signal FAILED PR #{number}: fleet_mail.sh not found at {fleet_mail}"
-    rc, out, err = _run(["bash", str(fleet_mail), FLEET_MAIL_HOST, "broadcast", msg], timeout=30)
+    rc, out, err = _run(
+        ["bash", str(fleet_mail), FLEET_MAIL_HOST, "broadcast", "--key", mailbox_key, msg], timeout=30
+    )
     if rc != 0:
         return False, f"signal FAILED PR #{number} rc={rc}: {err.strip()[:300]}"
     return True, f"signal OK PR #{number}: {out.strip() or 'sent'}"
@@ -441,25 +685,52 @@ def main(argv: list[str] | None = None) -> int:
 
     updated: list[int] = []
     update_failed: list[int] = []
+    update_aborted: list[int] = []
     for number in plan["update_branch"]:
-        ok, detail = do_update_branch(number, repo=args.repo, dry_run=args.dry_run)
+        outcome, detail = do_update_branch(number, repo=args.repo, dry_run=args.dry_run)
         print(detail)
-        (updated if ok else update_failed).append(number)
+        if outcome == "ok":
+            updated.append(number)
+        elif outcome == "aborted":
+            # NOT a failure — the queue guard refused an eviction. Counted and
+            # printed separately so a normal race never reddens the tick (W116).
+            update_aborted.append(number)
+        else:
+            update_failed.append(number)
 
     prs_by_number = {pr["number"]: pr for pr in prs}
     signalled: list[int] = []
     signal_failed: list[int] = []
+    dirty_deduped: list[int] = []
     new_seen = dict(seen_dirty)
     for entry in plan["signal_dirty"]:
-        pr = prs_by_number.get(entry["number"], entry)
-        ok, detail = send_dirty_signal(pr, dry_run=args.dry_run)
+        number = entry["number"]
+        pr = prs_by_number.get(number, entry)
+
+        if args.dry_run:
+            ok, detail = send_dirty_signal(pr, dry_run=True)
+            print(detail)
+            signalled.append(number)
+            continue
+
+        # Compute the conflict set FIRST, because it is half the dedup key.
+        files_desc = get_conflicting_files(pr)
+        key = _dirty_fingerprint(entry.get("sha"), files_desc)
+        if seen_dirty.get(str(number)) == key:
+            dirty_deduped.append(number)
+            print(
+                f"dirty already signalled PR #{number}: same head AND same conflict set "
+                f"({files_desc[:80]}) — not repeating"
+            )
+            continue
+
+        ok, detail = send_dirty_signal(pr, dry_run=False, files_desc=files_desc)
         print(detail)
         if ok:
-            signalled.append(entry["number"])
-            if not args.dry_run:
-                new_seen[str(entry["number"])] = entry["sha"]
+            signalled.append(number)
+            new_seen[str(number)] = key
         else:
-            signal_failed.append(entry["number"])
+            signal_failed.append(number)
 
     if not args.dry_run and new_seen != seen_dirty:
         save_dirty_seen(new_seen)
@@ -472,11 +743,17 @@ def main(argv: list[str] | None = None) -> int:
     # cron-runner.sh's own receipt (job/status/exit_code/last_error) cannot
     # express "examined N, acted on M, skipped K (why)", so this line is the
     # thing that keeps this cron from being a mute one (superscar #2).
+    if dirty_deduped:
+        skip_reasons["dirty_already_signalled"] = len(dirty_deduped)
+
     summary = (
         f"QUEUE_UNSTICK_SUMMARY examined={plan['examined']} "
         f"updated={len(updated)} update_failed={len(update_failed)} "
+        f"update_aborted={len(update_aborted)} "
         f"dirty_signalled={len(signalled)} dirty_signal_failed={len(signal_failed)} "
-        f"skipped={len(plan['skipped'])} dry_run={str(args.dry_run).lower()} "
+        f"dirty_deduped={len(dirty_deduped)} "
+        f"cap={UPDATE_CAP} "
+        f"skipped={len(plan['skipped']) + len(dirty_deduped)} dry_run={str(args.dry_run).lower()} "
         f"skip_reasons={json.dumps(skip_reasons, sort_keys=True)}"
     )
     print(summary)

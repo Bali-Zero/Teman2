@@ -12,7 +12,9 @@ from datetime import date, timedelta
 
 import pytest
 
+from backend.services.garuda_flow import freshness
 from backend.services.garuda_flow.constants import (
+    EVOA_USABILITY_WINDOW_DAYS,
     MIN_PASSPORT_VALIDITY_DAYS,
     PUBLISHED_FILING_DEADLINE_DAYS,
 )
@@ -294,12 +296,16 @@ class TestIssuanceSubmissionWindowGate:
         # A 2027 arrival date -- the 2027 SKB does not exist yet, so the
         # cutoff cannot be computed without guessing. Must NEVER silently
         # guess a date, and must decline distinctly from "too soon".
-        today = date(2026, 6, 1)
+        # today is chosen so the date is still INSIDE the eVOA usability
+        # window: only the calendar-coverage gate may fire here.
+        today = date(2026, 12, 1)
         req = _issuance(entry_date=COVERAGE_END + timedelta(days=5))
+        assert (req.entry_date - today).days < EVOA_USABILITY_WINDOW_DAYS
         verdict = build_verdict(req, today=today)
         assert verdict.decision is Decision.DECLINE
         assert "ARRIVAL_DATE_UNCONFIRMED" in verdict.decline_codes
         assert "ARRIVAL_TOO_SOON" not in verdict.decline_codes
+        assert "ARRIVAL_TOO_FAR" not in verdict.decline_codes
         assert verdict.submit_by_date is None
 
     def test_extension_path_is_completely_unaffected_by_this_gate(self) -> None:
@@ -330,6 +336,69 @@ class TestIssuanceSubmissionWindowGate:
         req = _extension(entry_date=date(2026, 6, 20), voa_expiry_date=today + timedelta(days=18))
         verdict = build_verdict(req, today=today)
         assert verdict.accepted is True
+        assert verdict.submit_by_date is None
+
+
+class TestIssuanceUsabilityWindowGate:
+    """GARUDA B1 truth-sheet (line 41, verified 14 Jul 2026): an eVOA is
+    usable for 90 days from issuance. The engine has no issuance_date input,
+    so `today` is the anchor; this gate declines issuance requests whose
+    arrival is strictly later than `today + EVOA_USABILITY_WINDOW_DAYS`.
+    It is issuance-only and must never run for an extension case."""
+
+    def test_entry_91_days_out_declines_with_arrival_too_far(self) -> None:
+        # GUILT: 91 days is the first day outside the window.
+        today = date(2026, 8, 24)
+        entry = today + timedelta(days=91)
+        req = _issuance(entry_date=entry)
+        verdict = build_verdict(req, today=today)
+        assert verdict.decision is Decision.DECLINE
+        assert "ARRIVAL_TOO_FAR" in verdict.decline_codes
+        assert "ARRIVAL_DATE_UNCONFIRMED" not in verdict.decline_codes
+        assert "ARRIVAL_TOO_SOON" not in verdict.decline_codes
+        # A usability decline must not suppress a truthful calendar cutoff.
+        assert verdict.submit_by_date == date(2026, 11, 20)
+
+    def test_entry_exactly_at_90_days_accepts(self) -> None:
+        # BOUNDARY: the 90th day is still inside the window. The gate uses a
+        # strict `>` comparison, so today+90 itself is accepted.
+        today = date(2026, 8, 24)
+        entry = today + timedelta(days=EVOA_USABILITY_WINDOW_DAYS)
+        req = _issuance(entry_date=entry)
+        verdict = build_verdict(req, today=today)
+        assert verdict.accepted is True
+        assert "ARRIVAL_TOO_FAR" not in verdict.decline_codes
+
+    def test_ordinary_near_term_issuance_is_unaffected(self) -> None:
+        # INNOCENCE: existing near-term issuance shape stays ACCEPT.
+        today = date(2026, 8, 24)
+        req = _issuance(entry_date=today + timedelta(days=5))
+        verdict = build_verdict(req, today=today)
+        assert verdict.accepted is True
+        assert "ARRIVAL_TOO_FAR" not in verdict.decline_codes
+
+    def test_extension_far_future_date_is_not_hit_by_this_gate(self) -> None:
+        # EXTENSION INNOCENCE: the gate is structurally issuance-only.
+        # An extension case with a far-future-shaped original entry_date would
+        # exceed the window if misapplied; it must remain governed by the
+        # extension runway / max-stay rules, not this gate.
+        today = date(2026, 8, 24)
+        req = _extension(
+            entry_date=today + timedelta(days=120),
+            voa_expiry_date=today + timedelta(days=150),
+        )
+        verdict = build_verdict(req, today=today)
+        assert "ARRIVAL_TOO_FAR" not in verdict.decline_codes
+
+    def test_beyond_coverage_and_beyond_window_collects_both_reasons(self) -> None:
+        # Both independent gates report their reason; no cutoff is guessed.
+        today = date(2026, 6, 1)
+        req = _issuance(entry_date=COVERAGE_END + timedelta(days=5))
+        assert (req.entry_date - today).days > EVOA_USABILITY_WINDOW_DAYS
+        verdict = build_verdict(req, today=today)
+        assert verdict.decision is Decision.DECLINE
+        assert "ARRIVAL_TOO_FAR" in verdict.decline_codes
+        assert "ARRIVAL_DATE_UNCONFIRMED" in verdict.decline_codes
         assert verdict.submit_by_date is None
 
 
@@ -457,3 +526,105 @@ class TestPurity:
         assert v1.decision == v2.decision
         assert v1.decline_reasons == v2.decline_reasons
         assert v1.stay_window == v2.stay_window
+
+
+class TestTruthFreshnessGate:
+    """G-FRESHNESS-FAIL-CLOSED (DECISIONS.md Q9, `freshness.py`) at the
+    `build_verdict` integration point. `conftest.py`'s autouse fixture pins
+    both checks to FRESH for every OTHER test in this file — these tests
+    override that pin, on top of it, to exercise the STALE path
+    specifically. Proven to bite both ways: an otherwise-ACCEPT request
+    DECLINEs the moment either dependency goes stale, and reverts to its
+    original verdict the moment freshness is restored.
+    """
+
+    def _stale(self, source: str) -> freshness.FreshnessReport:
+        return freshness.FreshnessReport(
+            source=source,
+            verdict=freshness.FreshnessVerdict.STALE,
+            stamp="2020-01-01",
+            age_days=9999,
+            max_age_days=freshness.MAX_AGE_DAYS[source],
+            detail="test: forced stale",
+        )
+
+    def test_stale_nationality_eligibility_declines_an_otherwise_accepted_case(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        baseline = build_verdict(_issuance(), today=_TODAY)
+        assert baseline.accepted is True  # sanity: this request is a real ACCEPT
+
+        monkeypatch.setattr(
+            freshness,
+            "nationality_eligibility_freshness",
+            lambda *, today: self._stale("nationality_eligibility"),
+        )
+        verdict = build_verdict(_issuance(), today=_TODAY)
+        assert verdict.decision is Decision.DECLINE
+        assert "ELIGIBILITY_UNCONFIRMED" in verdict.decline_codes
+
+    def test_stale_rule_constants_declines_an_otherwise_accepted_case(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        baseline = build_verdict(_issuance(), today=_TODAY)
+        assert baseline.accepted is True
+
+        monkeypatch.setattr(
+            freshness,
+            "rule_constants_freshness",
+            lambda *, today: self._stale("rule_constants"),
+        )
+        verdict = build_verdict(_issuance(), today=_TODAY)
+        assert verdict.decision is Decision.DECLINE
+        assert "ELIGIBILITY_UNCONFIRMED" in verdict.decline_codes
+
+    def test_restoring_freshness_restores_the_original_verdict(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # The other direction of the same guard: once patched back to FRESH
+        # (conftest's own default, reapplied here explicitly for clarity),
+        # the request accepts again exactly as it did before the gate ever
+        # ran — the guard adds a decline path, it does not change the
+        # underlying eligibility computation.
+        monkeypatch.setattr(
+            freshness,
+            "nationality_eligibility_freshness",
+            lambda *, today: self._stale("nationality_eligibility"),
+        )
+        assert build_verdict(_issuance(), today=_TODAY).decision is Decision.DECLINE
+
+        monkeypatch.undo()
+        assert build_verdict(_issuance(), today=_TODAY).accepted is True
+
+    def test_stale_source_does_not_suppress_other_decline_reasons(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # House style: never short-circuit, collect every failing reason.
+        # A request that is ALSO ineligible on nationality must show BOTH
+        # codes when the truth sheet is stale, not just one.
+        monkeypatch.setattr(
+            freshness,
+            "nationality_eligibility_freshness",
+            lambda *, today: self._stale("nationality_eligibility"),
+        )
+        verdict = build_verdict(_issuance(nationality="PRK"), today=_TODAY)
+        assert verdict.decision is Decision.DECLINE
+        assert "ELIGIBILITY_UNCONFIRMED" in verdict.decline_codes
+        assert "NATIONALITY_NOT_ELIGIBLE" in verdict.decline_codes
+
+    def test_extension_path_is_also_covered_by_the_gate(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Unconditional per DECISIONS.md Q9 — both case shapes depend on
+        # the rule bundle, not issuance alone.
+        baseline = build_verdict(_extension(), today=_TODAY)
+        assert baseline.accepted is True
+
+        monkeypatch.setattr(
+            freshness,
+            "rule_constants_freshness",
+            lambda *, today: self._stale("rule_constants"),
+        )
+        verdict = build_verdict(_extension(), today=_TODAY)
+        assert verdict.decision is Decision.DECLINE
+        assert "ELIGIBILITY_UNCONFIRMED" in verdict.decline_codes

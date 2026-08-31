@@ -1,0 +1,488 @@
+<!-- Delegate-mode i18n — build-lane design deliverable (post-loop, R7 §4 item 5, quoted as
+     "sponsor i18n" — R7's own backlog label, not this file's term for the persona: R9).
+     POST-PANEL: joint round-grade panel with the delegate-flow (item 4) dossier ran
+     2026-08-28 (57 raw findings -> 27 register rows, disposition register + adversarial.json
+     in mockups/sponsor-i18n/panel/ and adversarial.json). §6 of the dossier is now ADOPTED
+     under the standing pre-confirmation, async veto open. Every ID string below was corrected
+     post-panel (R16, all sub-items) — this is DRAFT copy pending the native-speaker review
+     R16.ix now requires as a build acceptance item, not final translation.
+     This mockup designs language for a surface that does not exist as product code — the
+     delegate flow lives only in R5b's prototype (mockups/r5b-tree-as-journey/journey.html);
+     this file is the key-set + pattern for item 4's build lane, not a fix to a live screen.
+     R1 (agy F1/codex F6/qwen F1): the delegate-flow dossier's own draft mandated the OPPOSITE
+     pronoun mechanism for this same surface — the panel picked this file's authored-variant
+     contract as the winner; D §3.5/§4 are now amended to match.
+     Side-by-side EN|ID comparison layout (unlike the single-column shipped-surface mockups)
+     because THIS study's purpose is bilingual comparison, not one screen state. Same tokens
+     as checkout.html/a4-dates-consent.html (R4 Merah Putih law) for visual identity match.
+     Masked/placeholder figures only. GARUDA_PUBLIC_ENABLED untouched — study only. -->
+<style>
+  :root{
+    --carta:#f7f6f2; --elevated:#ffffff; --ink:#16213a; --ink-soft:#475372;
+    --border-input:#7a8093; --hairline:#e3e1da;
+    --merah:#C8102E; --merah-action:#D01033; --merah-pressed:#c40020;
+    --state-error:#a83a44; --state-ok:#2f6f4f;
+    --radius:12px; --radius-nested:8px; --radius-pill:9999px; --motion:220ms;
+    --font-display:"Cormorant Garamond",Georgia,serif;
+    --font-ui:"Inter",system-ui,sans-serif;
+    --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+    --t-body:1rem; --t-small:.8125rem; --t-label:.875rem; --t-h1:1.5rem; --t-h2:1.125rem; --t-h3:1rem;
+  }
+  .spi{background:var(--carta);color:var(--ink);font-family:var(--font-ui);font-size:var(--t-body);
+      line-height:1.55;max-width:64rem;margin:0 auto;padding:1rem 1rem 3rem}
+  /* Identity header — R4:108 law, slim carta variant; the EN/ID control mirrors
+     LanguageToggle.tsx's aria-pressed EN/ID pair (_components/LanguageToggle.tsx:46-56) —
+     never a third or fifth option inside this perimeter (§3.6). */
+  .spi .idh{display:flex;justify-content:space-between;align-items:center;min-height:2.75rem;
+      margin-bottom:.5rem}
+  .spi .idh .wm{font-family:var(--font-display);font-weight:600;font-size:var(--t-h2);
+      letter-spacing:.08em;color:var(--ink);text-decoration:none}
+  .spi .idh .langtoggle{display:inline-flex;border:1px solid var(--border-input);
+      border-radius:var(--radius-pill);overflow:hidden}
+  .spi .idh .langtoggle button{font:600 var(--t-small) var(--font-ui);border:0;background:var(--elevated);
+      color:var(--ink-soft);padding:.4rem .9rem;min-height:2.75rem;cursor:default}
+  .spi .idh .langtoggle button[aria-pressed="true"]{background:var(--merah-action);color:#fff}
+
+  .spi h1{font-family:var(--font-display);font-size:var(--t-h1);font-weight:600;margin:.25rem 0 .25rem}
+  .spi > p.lede{color:var(--ink-soft);font-size:var(--t-label);max-width:42rem;margin:0 0 1.5rem}
+
+  .spi .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  @media (max-width:44rem){ .spi .grid2{grid-template-columns:1fr} }
+  .spi .col-head{font:600 var(--t-small) var(--font-ui);text-transform:uppercase;letter-spacing:.08em;
+      color:var(--ink-soft);margin:0 0 .5rem}
+  .spi .col-head.en::before{content:"EN · ";color:var(--merah-action)}
+  .spi .col-head.id::before{content:"ID · ";color:var(--merah-action)}
+
+  .spi section.screen{margin-bottom:2rem}
+  .spi section.screen > h2{font-size:var(--t-h2);font-weight:600;margin:0 0 .25rem}
+  .spi section.screen > p.why-context{font-size:var(--t-small);color:var(--ink-soft);margin:0 0 .75rem}
+
+  .spi .card{background:var(--elevated);border:1px solid var(--border-input);border-radius:var(--radius);
+      box-shadow:0 1px 3px rgba(22,33,58,.08);padding:1rem;height:100%}
+  .spi .card h3{font-size:var(--t-h3);font-weight:600;margin:0 0 .25rem}
+  .spi .card .why{font-size:var(--t-small);color:var(--ink-soft);margin:.25rem 0 .75rem}
+  .spi .card .subprogress{display:inline-block;font-size:var(--t-small);color:var(--ink-soft);
+      border:1px solid var(--hairline);border-radius:var(--radius-pill);padding:.125rem .625rem;
+      margin-bottom:.5rem}
+  .spi .options{display:flex;flex-direction:column;gap:.5rem}
+  .spi .option{display:flex;align-items:center;gap:.5rem;min-height:2.75rem;width:100%;text-align:left;
+      border:1px solid var(--border-input);border-radius:var(--radius-nested);background:var(--elevated);
+      color:var(--ink);font:inherit;font-size:var(--t-label);padding:.5rem .75rem;cursor:default}
+  .spi .option .tick{width:1rem;color:var(--hairline)}
+
+  /* Custody component — consent-placement §6.1 pattern, HIGH-sensitivity tier (the delegate
+     banner discloses who sees the answer, the same reason A6/checkout/interview-start earned
+     the full module in that lane). */
+  .spi .custody{border-left:3px solid var(--merah);background:var(--elevated);
+      border:1px solid var(--border-input);border-radius:var(--radius-nested);
+      padding:.75rem 1rem;font-size:var(--t-label);margin-top:.75rem}
+  .spi .custody b{color:var(--ink)}
+  .spi .custody .ph{font-family:var(--font-mono);color:var(--ink-soft)}
+
+  .spi .hint-compact{border:1px solid var(--hairline);border-radius:var(--radius-nested);
+      background:var(--elevated);padding:.625rem .875rem;font-size:var(--t-small);color:var(--ink-soft)}
+  .spi .hint-compact .mono{font-family:var(--font-mono);color:var(--ink)}
+
+  .spi .trust{border-top:2px solid var(--ink);padding-top:.75rem;font-size:var(--t-small);color:var(--ink-soft)}
+  .spi .trust .role{color:var(--ink);font-weight:600}
+
+  .spi .talk{border:1px solid var(--border-input);border-radius:var(--radius);padding:.75rem 1rem;
+      font-size:var(--t-label);background:var(--elevated);box-shadow:0 1px 2px rgba(22,33,58,.06)}
+
+  /* Translation-strategy comparison panel (§3.4) */
+  .spi .strategy{background:var(--elevated);border:1px solid var(--border-input);border-radius:var(--radius);
+      padding:1.25rem;margin-top:1rem}
+  .spi .strategy h2{font-size:var(--t-h2);margin:0 0 .25rem}
+  .spi .strategy .row{display:grid;grid-template-columns:8rem 1fr;gap:.75rem;padding:.625rem 0;
+      border-top:1px solid var(--hairline)}
+  .spi .strategy .row:first-of-type{border-top:0}
+  .spi .strategy .row .label{font:600 var(--t-small) var(--font-ui);color:var(--ink-soft);
+      text-transform:uppercase;letter-spacing:.06em}
+  .spi .strategy .row.rejected .label{color:var(--state-error)}
+  .spi .strategy .row.recommended .label{color:var(--state-ok)}
+  .spi .strategy .row p{margin:0;font-size:var(--t-label)}
+  .spi .strategy .row .gloss{font-size:var(--t-small);color:var(--ink-soft);margin-top:.25rem}
+
+  .spi .pronoun-note{background:var(--elevated);border:1px dashed var(--border-input);
+      border-radius:var(--radius);padding:1rem;margin-top:1rem;font-size:var(--t-label)}
+  .spi .pronoun-note code{font-family:var(--font-mono);font-size:var(--t-small);
+      background:var(--carta);border-radius:4px;padding:.1rem .35rem}
+
+  .spi .findings{border-top:2px solid var(--ink);margin-top:2rem;padding-top:1rem;
+      font-size:var(--t-small);color:var(--ink-soft)}
+  .spi .findings li{margin-bottom:.5rem}
+</style>
+
+<div class="spi">
+  <!-- ══ Identity header — R4:108, EN/ID toggle rendered as the funnel's real two-option
+       control (LanguageToggle.tsx pattern). Shown once here; every screen below inherits it. ══ -->
+  <header class="idh">
+    <a class="wm" href="{HOME_LINK}">BALI ZERO</a>
+    <span class="langtoggle" role="group" aria-label="Switch language">
+      <button type="button" aria-pressed="true">EN</button>
+      <button type="button" aria-pressed="false">ID</button>
+    </span>
+  </header>
+
+  <h1>Delegate-mode i18n — the delegate flow, side by side</h1>
+  <p class="lede">R7 §4 item 5 ("sponsor i18n" — R7's own quoted mandate label; see the
+  dossier's "Retitled subject" note, R9). This surface is prospective — R5b's prototype only,
+  not product code (§1 of the dossier). Every string below is authored per-locale, never
+  derived by pronoun substitution (§3.1) — compare against journey.html's
+  <code>pron()</code>, which this design replaces for any locale beyond English (D aligned
+  post-panel, R1).</p>
+
+  <!-- ══ Screen 1 — who_answers (meta, fires before anything else) ══ -->
+  <section class="screen">
+    <h2>Screen 1 — who is answering</h2>
+    <p class="why-context">Meta question, fires first (journey.html:199). Symmetric in both
+    languages — nobody is "the delegate" yet at this point, so there is no pronoun-layer
+    decision to make here; §3.2's neutral-noun rule starts at Screen 2. EN why-text is
+    R5b's SOURCE quote, unedited (§1 of the dossier is explicit about this); the ID column
+    is this design's copy, where R9's vocabulary fix and R16.ii's noun fix both apply — a
+    declared amendment, not a translation of the EN column as shown. </p>
+    <div class="grid2">
+      <div>
+        <p class="col-head en">Self / delegate branch</p>
+        <div class="card">
+          <h3>Who is filling this in?</h3>
+          <p class="why">If someone is helping — a sponsor, a family member, an assistant — we
+          adapt the wording. The answers must still be the traveller's facts.</p>
+          <div class="options">
+            <div class="option"><span class="tick">○</span>I'm the traveller</div>
+            <div class="option"><span class="tick">○</span>I'm helping someone else</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="col-head id">Cabang mandiri / diwakilkan</p>
+        <div class="card">
+          <h3>Siapa yang mengisi formulir ini?</h3>
+          <p class="why">Jika ada yang membantu — anggota keluarga, teman, atau asisten —
+          kami menyesuaikan cara bertanya. Namun jawabannya harus tetap fakta milik pemohon.</p>
+          <div class="options">
+            <div class="option"><span class="tick">○</span>Saya sendiri yang bepergian</div>
+            <div class="option"><span class="tick">○</span>Saya membantu orang lain</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ Screen 2 — delegate_confirm (delegate-only checkpoint). NOTE: D's own dossier
+       renames its equivalent screen under R10 (a [D] row, NOT assigned to this lane — not
+       applied here to avoid asserting a disposition outside this lane's mandate); this
+       file's own heading below is this file's descriptive label only, not a design claim
+       about authorization status. ══ -->
+  <section class="screen">
+    <h2>Screen 2 — delegate confirmation (delegate path only)</h2>
+    <p class="why-context">journey.html:200, delegateOnly. Direct formal address to the
+    delegate ("Anda" — never "the sponsor", R9) + third-person "pemohon" for the traveller
+    (corrected post-panel, R16.ii; was "wisatawan") — never "dia" (§3.2). This is the register
+    split T1 exists to justify. ID label/heading rewritten post-panel (R16.i, R16.ii): "atas
+    nama" implied unwarranted legal proxy (agy F9) and is removed; the "atas nama
+    wisatawan"/"wisatawan" pairing is retired for the same two reasons as Screen 3's banner.</p>
+    <div class="grid2">
+      <div>
+        <p class="col-head en">Answering for the traveller</p>
+        <div class="card">
+          <h3>Answering for the traveller</h3>
+          <p class="why">Their immigration history is theirs to share. Confirm they asked you
+          to do this — and if you don't know an answer, say so instead of guessing.</p>
+          <div class="options">
+            <div class="option"><span class="tick">○</span>The traveller asked me to fill this
+            in, and I'll check with them when unsure</div>
+            <div class="option"><span class="tick">○</span>Actually, I'll let the traveller do it</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="col-head id">Membantu pengisian formulir untuk pemohon</p>
+        <div class="card">
+          <h3>Membantu pengisian formulir untuk pemohon</h3>
+          <p class="why">Riwayat keimigrasian adalah miliknya untuk dibagikan. Pastikan
+          pemohon sudah meminta Anda mengisi ini — dan jika Anda tidak yakin akan suatu
+          jawaban, katakan saja daripada menebak.</p>
+          <div class="options">
+            <div class="option"><span class="tick">○</span>Pemohon sudah meminta saya mengisi
+            ini, dan saya akan mengonfirmasi dengannya jika ragu</div>
+            <div class="option"><span class="tick">○</span>Sebaiknya pemohon yang mengisi
+            sendiri</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ Screen 3 — the delegate banner + custody disclosure, HIGH-sensitivity tier.
+       Density rule cross-referenced from the delegate-flow (item 4) dossier, stated once
+       there (R18, kimi F13): full-tier here because this banner rides PII-collecting
+       screens — contrast Screen 2's compact checkpoint copy, which collects no PII. ══ -->
+  <section class="screen">
+    <h2>Screen 3 — the delegate banner (custody component, full density)</h2>
+    <p class="why-context">journey.html:156-158 (pin corrected post-panel, R21 — was
+    :156-157), shown once delegate_confirm is "confirmed" (:444). ID is the RECOMMENDED,
+    panel-corrected string (§3.4, R16 i-v) — the strategy panel below shows the two drafts
+    this superseded and why each was rejected.</p>
+    <div class="grid2">
+      <div>
+        <p class="col-head en">Custody disclosure banner</p>
+        <div class="custody">
+          <b>You're answering for someone else.</b> Their case, their facts — answer as the
+          traveller would. Who sees what: <span class="ph">{CUSTODY_WHO_SEES}</span>.
+        </div>
+      </div>
+      <div>
+        <p class="col-head id">Panel pengungkapan kustodi</p>
+        <div class="custody">
+          <b>Anda sedang membantu pengisian formulir untuk pemohon.</b> Jawablah berdasarkan
+          fakta pemohon — siapa yang dapat melihat jawaban ini:
+          <span class="ph">{CUSTODY_WHO_SEES}</span>.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ Screen 4 — custody hint, low-sensitivity compact tier (retention/deletion).
+       REWRITTEN post-panel (R2: codex F2, kimi F1, qwen F4) — the draft's "the traveller can
+       delete this check at any time" was false twice: the deletion right is bound to the
+       session cookie (garuda_voa_public.py:578,590-595), typically the DELEGATE's browser,
+       not necessarily one the traveller can reach; and no deletion UI exists for the
+       traveller at all. Actor corrected to the session-holder; "at any time" replaced with
+       the honest session/browser qualifier. See dossier §4 for the matching acceptance item
+       (deletion copy never names an actor the session model cannot reach). Placeholder
+       fallback (R26): an unresolved token here suppresses the whole line, never renders raw. ══ -->
+  <section class="screen">
+    <h2>Screen 4 — compact custody hint (retention + deletion right)</h2>
+    <p class="why-context">Adapted from the consent-placement lane's compact-tier pattern
+    (a4-dates-consent.html) to the delegate context. Density cross-referenced from the
+    delegate-flow dossier (R18) — compact because no additional PII is collected on this
+    specific hint, unlike Screen 3's full-tier banner. Faithful/literal translation (§3.3) —
+    this is procedural, legal-adjacent copy, not persuasion.</p>
+    <div class="grid2">
+      <div>
+        <p class="col-head en">Retention + deletion</p>
+        <div class="hint-compact">These answers decide which visa paths are open for the
+        traveller. Kept for <span class="mono">{RETENTION_WINDOW}</span> · whoever ran this
+        check can delete it from this browser and session. Who sees what:
+        <span class="mono">{CUSTODY_WHO_SEES}</span>.</div>
+      </div>
+      <div>
+        <p class="col-head id">Retensi + hak hapus</p>
+        <div class="hint-compact">Jawaban ini menentukan jalur visa mana yang terbuka bagi
+        pemohon. Disimpan selama <span class="mono">{RETENTION_WINDOW}</span> · siapa pun yang
+        menjalankan pemeriksaan ini dapat menghapusnya dari peramban dan sesi ini. Siapa yang
+        dapat melihat apa: <span class="mono">{CUSTODY_WHO_SEES}</span>.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ Screen 5 — trust footer + talk-first card (funnel-wide law, R7 §2 amendment 4) ══ -->
+  <section class="screen">
+    <h2>Screen 5 — trust footer + talk-first card</h2>
+    <p class="why-context">Reused verbatim pattern from the checkout lane. Statutory terms
+    (Ditjen Imigrasi, PT, NPWP) preserved byte-identical across both columns (§3.7) — they are
+    not translated in the English copy either.</p>
+    <div class="grid2">
+      <div>
+        <p class="col-head en">Trust footer</p>
+        <footer class="trust">
+          <p class="role">We prepare your application; Ditjen Imigrasi decides and issues.</p>
+          <p>PT <span class="ph">{PT_LEGAL_NAME}</span> · NPWP <span class="ph">{NPWP}</span> ·
+          <a href="{REGISTRY_LINK}">registry entry</a><br>
+          <span class="ph">{OFFICE_STREET_ADDRESS}</span>, Bali — <span class="ph">{OFFICE_HOURS}</span></p>
+        </footer>
+        <div class="talk" style="margin-top:.75rem">Prefer to talk it through first? Our team
+        answers on WhatsApp within <span class="ph">{SLA}</span> — before you pay, not after.
+        <a href="{WA_LINK}">Message us →</a></div>
+      </div>
+      <div>
+        <p class="col-head id">Footer kepercayaan</p>
+        <footer class="trust">
+          <!-- R16.viii (codex F10): "menerbitkan" needs an explicit object; "tautan
+               pendaftaran" -> "entri registri perusahaan" (closer match to EN "registry
+               entry"). -->
+          <p class="role">Kami menyiapkan permohonan Anda; Ditjen Imigrasi yang memutuskan dan
+          menerbitkan visa atau izin tinggal.</p>
+          <p>PT <span class="ph">{PT_LEGAL_NAME}</span> · NPWP <span class="ph">{NPWP}</span> ·
+          <a href="{REGISTRY_LINK}">entri registri perusahaan</a><br>
+          <span class="ph">{OFFICE_STREET_ADDRESS}</span>, Bali — <span class="ph">{OFFICE_HOURS}</span></p>
+        </footer>
+        <div class="talk" style="margin-top:.75rem">Ingin bicara dulu? Tim kami merespons di
+        WhatsApp dalam <span class="ph">{SLA}</span> — sebelum Anda membayar, bukan sesudahnya.
+        <a href="{WA_LINK}">Kirim pesan →</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ Translation-strategy panel (§3.3-§3.4) — the split, made falsifiable. THREE rows
+       post-panel, not two: the panel rejected TWO successive drafts before the recommended
+       string, on independent grounds each time (R16, i-v). ══ -->
+  <div class="strategy">
+    <h2>Translation strategy — why the split, shown not asserted</h2>
+    <div class="row rejected">
+      <span class="label">Rejected · draft 1</span>
+      <div>
+        <p>Literal: <em>"Anda sedang menjawab untuk orang lain. Kasus mereka, fakta mereka —
+        jawablah seperti wisatawan akan menjawab. Siapa yang melihat apa:
+        {CUSTODY_WHO_SEES}."</em></p>
+        <p class="gloss">Word-for-word render of the English chiasmus ("their case, their
+        facts"). Reads as translated-not-written; "mereka" (they/them) is grammatically
+        PLURAL and disagrees in number with the single person it refers to — corrected
+        post-panel from an earlier "colder register" rationale (R16.iv, kimi F14ii: the real
+        defect is number-disagreement, not tone); "seperti wisatawan akan menjawab" is a
+        hypothetical construction where Indonesian prefers a direct instruction, and
+        "wisatawan" is itself the wrong default noun (R16.ii).</p>
+      </div>
+    </div>
+    <div class="row rejected">
+      <span class="label">Rejected · draft 2</span>
+      <div>
+        <p>Reformulated (this file's original recommendation, superseded): <em>"Anda sedang
+        menjawab atas nama wisatawan. Jawablah sesuai fakta miliknya, bukan pendapat Anda
+        sendiri — siapa yang dapat melihat jawaban ini: {CUSTODY_WHO_SEES}."</em></p>
+        <p class="gloss">Rejected on three independent grounds the panel raised separately:
+        (i) "atas nama" denotes formal legal proxy / power of attorney in Indonesian
+        administrative usage (agy F9) — the delegate has no such standing, so this phrase
+        makes an unintended legal claim; (ii) "bukan pendapat Anda sendiri" is an ID-only
+        added obligation with no EN source clause, breaking EN/ID parity, and reads as
+        accusatory against the warm-formal register this dictionary otherwise holds (codex
+        F10, kimi F14.iii); (iii) "fakta miliknya" is an unidiomatic possessive calque —
+        formal Indonesian does not take "-nya" on "fakta" this way (codex F10, kimi F14).</p>
+      </div>
+    </div>
+    <div class="row recommended">
+      <span class="label">Recommended</span>
+      <div>
+        <p>Corrected, post-panel synthesis: <em>"Anda sedang membantu pengisian formulir
+        untuk pemohon. Jawablah berdasarkan fakta pemohon — siapa yang dapat melihat jawaban
+        ini: {CUSTODY_WHO_SEES}."</em></p>
+        <p class="gloss">Replaces "atas nama" with agy's non-representative procedural
+        phrasing (F9); drops the added-obligation clause entirely rather than softening it
+        (EN/ID parity, not just tone); names the referent as an explicit noun ("fakta
+        pemohon") instead of a possessive-suffix calque; uses "pemohon" throughout (R16.ii).
+        Keeps every regulatory-honesty commitment of the English (answer as the fact-holder,
+        not a guesser; disclose who sees the answer) in the dictionary's own existing
+        direct-instruction register — compare <code>framing.body</code>: "Jawab dengan
+        jujur, termasuk 'Saya tidak tahu.'" (i18n.ts:831). <strong>Still draft copy</strong> —
+        R16.ix requires a native-speaker pass before this ships.</p>
+      </div>
+    </div>
+    <div class="row">
+      <span class="label">Contrast</span>
+      <div>
+        <p>The custody hint (Screen 4) took the OPPOSITE call — faithful/literal — because it
+        is procedural/legal-adjacent copy where R4 §5's "no invented reassurance, no dropped
+        nuance" constraint outweighs rhetorical smoothness. The split is by copy TYPE, not a
+        single blanket policy (§3.3).</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Pronoun-layer sequencing note (§3.2, §5.3) — noun corrected post-panel (R16.ii) ══ -->
+  <div class="pronoun-note">
+    <p><strong>Sequencing — before vs. after <code>family_relation</code> resolves.</strong>
+    <code>who_answers</code> and <code>delegate_confirm</code> both fire BEFORE
+    <code>family_relation</code> (journey.html:199-200 vs. :211) — at that point the specific
+    relation (spouse/parent/child) is not yet known, so both languages default to the neutral
+    noun: EN "the traveller", ID "pemohon" (corrected post-panel, R16.ii — was "wisatawan";
+    "pemohon" is the funnel-wide default, "wisatawan" reserved for explicitly tourism-VOA-
+    scoped copy only). Once <code>family_relation</code> resolves (e.g. "spouse"), a
+    downstream screen COULD narrow to the relation noun — EN "your spouse", ID "pasangan
+    Anda" — but no such string exists in the current prototype (R5b's own downstream
+    six-question sponsor sub-flow was not re-read for pronoun content this round). This is a
+    recommendation to item 4's build lane (§5.3 of the dossier), not a measured requirement.</p>
+    <p style="margin-top:.5rem"><strong>Branch note example</strong> — <code>family_relation</code>'s
+    own label (journey.html:211, template <code>"@Your@ sponsor — 6 questions"</code>;
+    "sponsor" here is CORRECT and untouched by R9 — this branch note names the family-route
+    sponsor sub-flow itself, the one place the word is reserved for):
+    EN self "Your sponsor — 6 questions" / EN delegate "The traveller's sponsor — 6
+    questions" · ID self "Sponsor Anda — 6 pertanyaan" / ID delegate "Sponsor milik
+    pemohon — 6 pertanyaan" (pemohon swap, R16.ii). Sub-progress badge, corrected post-panel
+    (R16.vii, codex F9 — "ke-{i}" attached to "Sponsor" miscounted SPONSORS, not questions):
+    EN "Sponsor {i} of {n}" (unchanged) / ID "Bagian sponsor · Pertanyaan {i} dari {n}"
+    (was "Sponsor ke-{i} dari {n}").</p>
+  </div>
+
+  <!-- ══ Not-sure escape (delegate mode). Declared edit (R23, kimi F12): the rendered EN
+       sentence below COMBINES two separate DOM text nodes from journey.html:396 — the shared
+       lead "Not sure? Asking doesn't decide the case — " (defined earlier in the same
+       function) and the delegate-mode button text at :396 itself. This mockup presents them
+       as one flowing sentence for readability; that combination is this file's own editorial
+       choice, not a single verbatim string in the source. ══ -->
+  <div class="strategy" style="margin-top:1rem">
+    <h2>Not-sure escape, delegate mode (journey.html:396, combined with its shared lead text
+    — declared edit, R23)</h2>
+    <div class="row">
+      <span class="label">EN</span>
+      <p>"Not sure? Asking doesn't decide the case — check with the traveller, or hand this to
+      a person."</p>
+    </div>
+    <div class="row">
+      <span class="label">ID</span>
+      <p>"Tidak yakin? Bertanya tidak menentukan hasil kasus — konfirmasi dengan pemohon,
+      atau serahkan ke tim kami."</p>
+    </div>
+  </div>
+
+  <!-- ══ Screen 6 — new keys from item 4's amended surface (R13: qwen F12, kimi F3).
+       Coordinated with the panel's D-side fixes (rows R3, R4, R8, R11) — without this, the
+       "also covers the wider funnel" claim would be true only against R5b's OLDER
+       prototype, not against what the panel actually amended for item 4. Sourced from the
+       register's own quoted text where marked (a-quote); the who-answers gate row is a
+       tracked KEY only — D's build lane owns the final EN wording, not authored here. ══ -->
+  <div class="strategy" style="margin-top:1rem">
+    <h2>Screen 6 — item 4's amended surface, new keys (draft, coordinated with D)</h2>
+    <div class="row">
+      <span class="label">Scope limit</span>
+      <div>
+        <p>EN (R8, quoted verbatim): "The online checkout is for travellers paying for
+        themselves. If someone else is paying, a consultant handles it on WhatsApp."</p>
+        <p class="gloss">ID (draft): "Pembayaran daring ini untuk pemohon yang membayar
+        sendiri. Jika ada pihak lain yang membayar, konsultan kami akan membantu lewat
+        WhatsApp."</p>
+      </div>
+    </div>
+    <div class="row">
+      <span class="label">Early-exit mirror</span>
+      <div>
+        <p>EN (R4, generic mirror per qwen F8): "You told us you need help arranging for
+        another person or a group."</p>
+        <p class="gloss">ID (draft): "Anda memberi tahu kami bahwa Anda perlu bantuan untuk
+        mengatur perjalanan orang lain atau kelompok."</p>
+      </div>
+    </div>
+    <div class="row">
+      <span class="label">Checkout contact</span>
+      <div>
+        <p>EN (R11, quoted verbatim): "Traveller's contact" + "Receipts and updates about
+        this application go to this contact."</p>
+        <p class="gloss">ID (draft): "Kontak pemohon" + "Kuitansi dan pembaruan tentang
+        permohonan ini dikirim ke kontak ini."</p>
+      </div>
+    </div>
+    <div class="row">
+      <span class="label">Who-answers gate</span>
+      <p class="gloss">Three explicit-fact options, anchored to payment and traveller count
+      (agy F8's proposal, the basis for R3's fix) — TRACKED as a key, not translated here:
+      D's build lane has not yet fixed the final EN wording, and authoring Indonesian against
+      unstable source text would manufacture false precision.</p>
+    </div>
+  </div>
+
+  <ul class="findings">
+    <li><strong>Zero live infrastructure to bind this to</strong> — the delegate flow exists
+    only in R5b's prototype (§1); GARUDA checkout's own mockup renders an EN/ID toggle with no
+    dictionary behind it at all (CheckoutFlow.tsx, 192 lines, zero i18n references). See dossier
+    §5.1 for the finding that matters most from this round.</li>
+    <li>This mockup is a study comparison layout (wide, two-column) — NOT the shipped
+    single-column mobile shape the checkout/consent lanes used, because bilingual comparison
+    was this round's own purpose. Item 4's actual build inherits the mobile-first single-column
+    contract those lanes already established, not this layout.</li>
+    <li><strong>Post-panel (2026-08-28):</strong> this mockup carries 27 register-row
+    corrections from a joint round-grade panel with D. Every Indonesian string above is
+    corrected DRAFT copy — R16.ix makes a native-speaker review pass a build requirement
+    before any of it ships. See <code>panel/</code> in this directory and
+    <code>adversarial.json</code> for the full disposition trail.</li>
+  </ul>
+</div>
