@@ -5,8 +5,11 @@ gate_class: opus
 objective: |
   PR #5302 (agent/air-m5/db/garuda-magic-link-owner -> main): cure the
   production outage that has kept the entire authenticated half of GARUDA VOA
-  unreachable since migration 285 shipped, and add the static lint that stops
-  the same omission from shipping a third time.
+  unreachable since migration 285 shipped. The static lint that was to stop the
+  same omission shipping a third time is WITHDRAWN from this PR — the Gear-3
+  gate proved it green on the very class it existed to catch, so the surface
+  went to docs/specs/2026-08-31-security-definer-ledger-lock-lint.md and the
+  gap is tracked in .claude/skills/modus/PENDING-ARMS.md.
 
   Measured against production 2026-08-30: POST /api/visa/voa/auth/magic-links
   answers 500 INTERNAL_ERROR to every call, and garuda_magic_link_tokens holds
@@ -31,9 +34,27 @@ objective: |
   Gear 3 by PATH, deterministically (migrations_v2 is a hot zone). Honored, not
   argued with.
 constraints:
-  - "Migration 299 reuses migration 281's role-guarded, idempotent, best-effort
-    DO block verbatim rather than inventing a new form — the ALTER is wrapped in
-    an insufficient_privilege handler and skips entirely when the role is absent."
+  # CORRECTED 2026-08-31. This constraint was written for a DRAFT and then
+  # contradicted the artifact it governs on both counts — a binding constraint
+  # describing something that does not ship is worse than no constraint.
+  #   (a) the number: this PR ships 301, not 299. 299 was taken by
+  #       299_schema_versions_provenance.sql (#5335) while this branch was open,
+  #       and under W40 the later arrival yielded.
+  #   (b) the SHAPE, which matters more: the shipped migration deliberately does
+  #       NOT reuse 281's handler "verbatim". codex-gpt-5.6-sol REJECTED exactly
+  #       the described form as a FALSE SUCCESS — 281 was codifying a transfer
+  #       already applied by hand, so its NOTICE path was a no-op confirmation,
+  #       whereas here the transfer has NOT happened, and a NOTICE would let the
+  #       runner record the migration as applied while the outage stands. That
+  #       rejection is in this pack's own dissent.
+  - "Migration 301 starts from migration 281's role-guarded, idempotent DO block
+    but does NOT end where 281 ends: after attempting the ALTER it re-reads
+    pg_proc.proowner and RAISE EXCEPTIONs if the owner is still wrong (301:151-155),
+    so the runner cannot record it applied while magic-link issuance is still
+    dead. The insufficient_privilege handler explains the failure; it no longer
+    excuses it. Two paths still return early without reaching that assert — role
+    absent, function absent — and the migration header now states that scope
+    explicitly rather than implying the guarantee is three paths wide."
   - "Against production the transfer is EXPECTED to NOTICE-and-defer: measured
     2026-08-30, nobody is a member of visa_ledger_owner and the migration runner
     connects as backend_rag_v2, so ALTER FUNCTION ... OWNER TO needs a superuser
@@ -73,11 +94,17 @@ acceptance:
     probe: "bash scratchpad/prove-live-garuda.sh (F2), then SELECT count(*) FROM garuda_magic_link_tokens via scripts/pg.sh"
 consumer_map:
   - "backend/db/migrations_v2/ — applied by migration_base.py's runner, forward
-    section only; the runner connects as backend_rag_v2, so 299 will NOTICE."
+    section only; the runner connects as backend_rag_v2, so 301's ALTER cannot
+    succeed there — and unlike 281 it then RAISES rather than recording itself
+    applied, which is the intended behaviour against production, not a failure."
   - "The live trigger on garuda_magic_link_tokens — the only consumer whose
     behavior actually changes, and only once the ALTER lands on a superuser
     connection."
-  - "backend/tests/db/ — the new static lint runs on every PR, no database
+  # WITHDRAWN 2026-08-31: this consumer does not exist. The lint is not in this
+  # PR, so nothing here "runs on every PR, no database needed" — that is exactly
+  # the diff-time coverage the withdrawal gives up, and pretending otherwise in
+  # the consumer map is how a gap becomes invisible.
+  - "backend/tests/db/ — NOT a consumer of this PR any more. The static lint runs
     needed, so it also guards migrations written by lanes that never touch prod."
   - "PR #5298 (magic-link ownership check) is queued against the SAME endpoint:
     it is orthogonal (router-level authorization vs database privilege) and
@@ -88,7 +115,9 @@ risks:
   - "The migration is a no-op against production until an operator or superuser
     connection runs the ALTER. Merging it does NOT end the outage, and this PR
     says so rather than declaring victory at merge."
-  - "The static lint reads SQL text, not a database. A migration that takes the
+  # WITHDRAWN 2026-08-31 — kept because the risk it names is now REALISED, not
+  # mitigated: with no lint, SQL text is read by nobody at diff time.
+  - "The static lint read SQL text, not a database. A migration that takes the
     lock through a helper function called from the trigger body, rather than
     inline, would not be caught — named explicitly as the known residual."
 grader: |

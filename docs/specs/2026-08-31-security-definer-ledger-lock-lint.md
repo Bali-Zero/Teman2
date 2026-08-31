@@ -1,8 +1,8 @@
 # Spec — the static lint for SECURITY DEFINER ledger-lockers
 
-**Status:** DESIGN. Not implemented. Three implementation attempts have been
-made and all three shipped a hole; this file exists because the fourth attempt
-is forbidden until the surface is specified.
+**Status:** DESIGN. Not implemented. FOUR implementation attempts have been made
+and all four shipped a hole; this file exists because the fifth is forbidden
+until the surface is specified.
 
 **Why this file and not a fourth patch.** `CLAUDE.md` §Agent PR Contract rule 8:
 _"A fix-of-a-fix chain stops at depth 1: if the correction is itself wrong, the
@@ -36,7 +36,7 @@ somewhere:
 - `_transfers_in` is STRICT and FAILS CLOSED — anything it cannot prove is a
   transfer is not one.
 
-## The measured holes in round 4
+## The measured holes
 
 Both reproduced by the Gear-3 gate and then independently by the session, on
 disk, not argued:
@@ -52,8 +52,8 @@ disk, not argued:
    remainder of the file is emitted un-stripped, with the same laundering
    result. Verified the same way → `True`.
 
-And one hole that PREDATES round 4, in the body-binding rather than the
-stripper:
+And two holes that PREDATE round 4, in the body-binding and the section split
+rather than the stripper:
 
 3. **`DOLLAR_TAG.search(sql, match.end())` is unbounded** — it does not stop at
    the end of the `CREATE FUNCTION` statement. For a legacy `AS '...'` body it
@@ -112,4 +112,7 @@ check is catalog-driven and is not affected by any of the holes above.
 
 The recurrence protection this lint was meant to add is therefore NOT in force,
 and that is stated rather than assumed. It is tracked in
-`.claude/skills/modus/PENDING-ARMS.md`.
+`.claude/skills/modus/PENDING-ARMS.md` — in a row added by the same commit as
+this file, because an earlier draft of this line asserted the row existed when
+it did not. A standing net claimed in prose that nothing implements is the
+disease this spec is about, one level up.

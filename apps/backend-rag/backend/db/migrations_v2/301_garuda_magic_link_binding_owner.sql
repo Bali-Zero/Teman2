@@ -45,9 +45,15 @@
 --   Migration 285 created a new SECURITY DEFINER trigger that locks the same
 --   table and simply omitted that transfer. Nothing failed at migration time --
 --   the defect is only observable on the first real INSERT, which is why it
---   surfaced as a silent 500 weeks later. The accompanying lint test added with
---   this migration is the part that stops a migration 30x from doing it a third
---   time; this file alone only fixes the one function.
+--   surfaced as a silent 500 weeks later. This file alone only fixes the one
+--   function.
+--
+--   AN EARLIER DRAFT OF THIS PARAGRAPH SAID a lint shipped alongside to stop a
+--   migration 30x doing it a third time. IT DOES NOT — see the section below on
+--   what is and is not in force. The sentence is corrected here, and not merely
+--   further down, because THIS is the section an author of migration 302 reads
+--   to learn whether the shape is guarded; a correction 52 lines later is a
+--   correction they never reach.
 --
 -- WHY THE TRANSFER IS ROLE-GUARDED, IDEMPOTENT AND BEST-EFFORT
 -- =============================================================================

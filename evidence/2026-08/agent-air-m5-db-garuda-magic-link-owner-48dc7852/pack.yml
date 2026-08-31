@@ -25,7 +25,7 @@ lanes:
     role: build
     seat:
       claude-opus-5 (conducting session — measured the outage against production, falsified four
-      competing hypotheses, authored migration 301, the static lint, the preflight extension, this pack)
+      competing hypotheses, authored migration 301, the preflight extension, this pack; also authored the static lint that was later WITHDRAWN — see dissent)
   - lane: garuda-magic-link-owner-refute
     role: review
     seat:
@@ -46,7 +46,7 @@ seat_diversity_note:
   the author's own tests did not cover."
 diff:
   net_lines:
-    "7 files, +856/-0, computed by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
+    "8 files, +896/-0, computed by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
     One new .sql migration, two touched Python files (the live preflight check and its independently
     frozen authority), one new design spec, and this evidence set (pack, brief, council journal).
     Zero frontend, zero workflow, zero runtime request path. The count DROPPED from 1410: the static
@@ -56,7 +56,7 @@ diff:
     "At apply time against production, migration 301 changes nothing and says so: the runner connects
     as backend_rag_v2, which is not a member of visa_ledger_owner, so the ALTER cannot succeed and the
     migration RAISES rather than recording itself applied. The cure itself landed out of band on a
-    superuser connection (receipt below). The static lint and the preflight extension change no
+    superuser connection (receipt below). The preflight extension changes no
     production behaviour at all."
 receipts:
   # NOTE ON THE LINT RECEIPTS BELOW (added 2026-08-31, on withdrawal).
