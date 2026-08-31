@@ -1,0 +1,254 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  team-lead mandate, 2026-08-31 ("Answer: option 1, and #5431 already
+  merged -- plus the trap I just fell into"): build a Gear-3 Evidence Pack
+  for this PR rather than treat it as a green-check-protection exception,
+  since #5431 had already merged before the floor issue was raised.
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-sonnet-5
+  - lane: review-cross-family-tp1
+    role: review
+    seat: tp1-qwen3.8-max
+  - lane: review-cross-family-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+
+what_changed: |
+  3 files, all under .github/workflows/organ-conformance.yml's own
+  "conformance" job:
+
+  1. .github/workflows/organ-conformance.yml -- added the 4 missing
+     GUARD_READ_SET paths (the two guard test files, the bridge script, and
+     the renamed plist fixture) to both `on.push.paths` and the in-job
+     `id: relevant` step's bash pathspec; added a new named step "An organ
+     cannot beat faster than its bridge's poller", gated on
+     `steps.relevant.outputs.hit == 'true'`, placed after "Install test
+     deps" (so pytest/pyyaml are on the runner) and after the sibling
+     stale-detector step. The step captures pytest's output via
+     `OUT=$(...) && EXIT=0 || EXIT=$?` (safe under bash's real default
+     `-eo pipefail {0}` invocation -- see team-lead's own PR #5438
+     REWORK-BUILD finding on the bare, unprotected form), echoes it
+     unconditionally, fails loudly with `::error::` on non-zero exit, then
+     additionally asserts the pytest summary line starts with "<N> passed"
+     with N >= 4 -- an exit-0 run where every case was skipped (or
+     collection came back empty) must not read as green.
+
+  2. scripts/tests/test_organ_heartbeat_exceeds_poller_interval.py --
+     added the GUARD_READ_SET frozenset constant (consumed by file 3) and
+     a code comment (no logic change) explaining the drift-check test's
+     whole-dict comparison.
+
+  3. scripts/tests/test_organ_heartbeat_workflow_wiring.py (new file) --
+     three pytest tests parsing the workflow's own YAML: two assert
+     `on.push.paths` and the in-job pathspec are supersets of
+     GUARD_READ_SET; the third (test_a_step_actually_executes_both_guard_files,
+     added in this PR's own council round after codex-gpt-5.6-sol's finding
+     1) asserts some step's `run:` text contains the literal token
+     "pytest" AND both guard filenames together -- catching the case where
+     the two superset checks are wired but no step actually executes the
+     guards, without the earlier version's guard-over-match bug (a
+     filenames-only match also matched the unrelated `id: relevant` step's
+     own explanatory comment).
+
+proof: |
+  - Deterministic Gear floor recomputed against this PR's own final diff
+    (merge-base ac6860156927e0b71a91895c3e1335c6e28e8d8a): 3, sourced from
+    PATH (`.github/workflows/*`).
+  - actionlint clean on the final workflow file.
+  - Guard suite green: `4 passed, 1 skipped` (the 1 skip is the
+    fixture/live-snapshot drift check, only observable on Pro's own live
+    checkout -- legitimately absent everywhere else).
+  - The new step's exact body, extracted verbatim from the committed YAML
+    via yaml.safe_load and run under the REAL GitHub Actions default shell
+    (`bash --noprofile --norc -eo pipefail {0}`, not a bare interactive
+    shell): success path reproduces `4 passed, 1 skipped`, exit 0; failure
+    path (pytest made unavailable on PATH) prints the captured error output
+    plus `::error::pytest exited 1 -- see output above` and exits 1 -- no
+    empty-log abort, which is the exact defect class team-lead's #5438
+    REWORK-BUILD finding flagged in a sibling PR the same night.
+  - test_a_step_actually_executes_both_guard_files guilt/innocence-verified
+    twice this session (once before this pack was written, once again
+    while writing it): a mutation dropping one guard filename from the real
+    step's pytest-invocation line turns it red with the exact
+    "assert []" failure named in the test's own message; restoring the file
+    byte-for-byte (diff -q confirmed) turns it green again.
+  - Both codex-gpt-5.6-sol council findings independently reproduced before
+    being accepted as real (never taken on the seat's word alone), then
+    fixed, then re-verified: the self-disarming docstring claim was
+    checked directly against this file's own collection mechanics; the
+    fragile PASS-count parser's exact failure (a two-match summary string
+    making `$PASSED` multi-line, `[ "$PASSED" -lt 3 ]` erroring with
+    "integer expression expected", and the `if` silently not firing) was
+    reproduced with a synthetic string, then the anchored fix was checked
+    against 5 constructed scenarios.
+  - Cross-family council: 2 of 3 qualifying seats (COUNCIL_REVIEW_SEATS)
+    returned a review this round -- tp1-qwen3.8-max (GO, no findings) and
+    codex-gpt-5.6-sol (NO-GO, 2 findings, both fixed) -- meeting R9's >=2
+    quorum. kimi-code/k3 was attempted twice (once for this diff, once as a
+    bare health-check near the end of this task) and returned the same 403
+    weekly-quota error both times; recorded as ok:false in journal.jsonl
+    rather than omitted, per team-lead's instruction.
+  - Worktree confirmed clean (no uncommitted changes) with HEAD matching PR
+    #5440's headRefOid; PR state OPEN, mergeable MERGEABLE, not yet merged.
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Self-disarming wiring check: test_organ_heartbeat_workflow_wiring.py's
+      module docstring claimed that CI running this file at all already
+      proves the required step exists ("no step actually executes the
+      guards" was asserted to be uncoverable). That claim is wrong -- this
+      file's own collection does not depend on the required step; on a
+      deletion of the whole step it would keep passing by falling back to
+      the gateless continue-on-error `scripts/tests/` sweep. The two
+      existing superset assertions prove the PATH LISTS are wired, not that
+      any step actually invokes pytest against the guard files.
+    status: CONFIRMED
+    resolution: >-
+      Added test_a_step_actually_executes_both_guard_files, requiring the
+      literal "pytest" token plus both guard filenames in the same step's
+      run: text (not merely mentioned in a comment or pathspec elsewhere --
+      caught live while first drafting this test: the `id: relevant` step's
+      own explanatory comment mentions both filenames without invoking
+      pytest on either). Guilt/innocence-verified via a mutation dropping
+      one filename from the real step (correctly RED with an `assert []`
+      failure) and a restore (correctly GREEN). The docstring was corrected
+      to state the honest residual risk instead: a step deleted OUTRIGHT
+      still escapes this specific test (its own executor is gone with it),
+      but that is a structural property of every named step in every
+      required workflow in this repo, not a gap unique to this one -- and
+      it is already covered by this repo's Gear-3 hot-zone gate on any
+      `.github/workflows/*` edit (the gate this very diff went through),
+      not by a test file trying to out-recurse its own deletion.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Fragile multi-match PASS-count parsing: an early draft of the new
+      step scanned the ENTIRE captured pytest output for every `\d+ passed`
+      occurrence. If that substring shape ever appeared more than once (a
+      warning line, or any future line that happens to contain the same
+      shape), `$PASSED` became multi-line, `[ "$PASSED" -lt 3 ]` errored
+      with "integer expression expected" instead of comparing, `[` returned
+      non-zero either way, and the `if` body was skipped -- a SILENT PASS
+      on a value the check could not actually parse, precisely on the
+      input shape this check exists to catch.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced the exact failure live against a synthetic two-match
+      string before accepting the finding. Fixed by anchoring extraction to
+      the LAST line matching pytest's own summary shape
+      (`grep -E '^[0-9]+ (passed|failed|error|skipped|warning)' | tail -1`),
+      asserting that line starts with "<N> passed" before parsing at all
+      (an early exit with a clear `::error::` if it does not), and only
+      then extracting the leading integer. Re-verified the anchored fix
+      against 5 constructed scenarios (clean pass, clean fail, an
+      all-skipped exit-0 run, the original two-match adversarial string,
+      and the real current output) -- correct verdict in all 5.
+
+receipts:
+  - claim: "this diff's deterministic Gear floor is 3, sourced from PATH (not SIZE)"
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <changed> --numstat-file <numstat>; --print-floor-source (same args)"
+    result: "3 / path"
+    exit: 0
+    ts: "2026-08-31T08:48:53Z"
+    seat: claude-sonnet-5
+  - claim: ".github/workflows/organ-conformance.yml is actionlint-clean"
+    cmd: "actionlint .github/workflows/organ-conformance.yml"
+    result: "no output"
+    exit: 0
+    ts: "2026-08-31T08:50:36Z"
+    seat: claude-sonnet-5
+  - claim: "the guard suite passes 4 cases and legitimately skips 1 (the fixture/live-snapshot drift check, only observable on Pro's own live checkout)"
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_organ_heartbeat_exceeds_poller_interval.py scripts/tests/test_organ_heartbeat_workflow_wiring.py -q"
+    result: "4 passed, 1 skipped in 0.16s"
+    exit: 0
+    ts: "2026-08-31T08:50:36Z"
+    seat: claude-sonnet-5
+  - claim: "the new step, extracted verbatim from the committed YAML and run under GitHub Actions' real default shell, passes end to end on the success path"
+    cmd: "bash --noprofile --norc -eo pipefail /tmp/extracted_step.sh (step body extracted via yaml.safe_load of jobs.conformance.steps)"
+    result: "4 passed, 1 skipped in 0.16s"
+    exit: 0
+    ts: "2026-08-31T08:51:00Z"
+    seat: claude-sonnet-5
+  - claim: "the same step, under the identical real default shell, on a genuine pytest failure (pytest made unavailable on PATH) prints the captured output plus an ::error:: annotation and exits 1 -- never a silent or empty-log abort, which is the defect a bare unprotected $(...) capture produces under bash -e (team-lead's own PR #5438 REWORK-BUILD finding)"
+    cmd: "PATH=/opt/homebrew/bin:/usr/bin:/bin bash --noprofile --norc -eo pipefail /tmp/extracted_step.sh"
+    result: "prints '...python3.14: No module named pytest' then '::error::pytest exited 1 -- see output above'"
+    exit: 1
+    ts: "2026-08-31T08:52:00Z"
+    seat: claude-sonnet-5
+  - claim: "GUILT: dropping the 'test_organ_heartbeat_workflow_wiring.py' filename from the pytest step's invocation line makes test_a_step_actually_executes_both_guard_files fail with the exact assert-[] message the test names"
+    cmd: "pytest scripts/tests/test_organ_heartbeat_workflow_wiring.py::test_a_step_actually_executes_both_guard_files -q, against a mutated copy of organ-conformance.yml"
+    result: "1 failed in 0.08s -- AssertionError: assert []"
+    exit: 1
+    ts: "2026-08-31T08:52:30Z"
+    seat: claude-sonnet-5
+  - claim: "INNOCENCE: restoring the real workflow file byte-for-byte (diff -q confirmed identical to the pre-mutation backup) makes the same test pass again"
+    cmd: "cp /tmp/organ-conformance.yml.bak_final_verify .github/workflows/organ-conformance.yml && diff -q <backup> <live> && pytest scripts/tests/test_organ_heartbeat_workflow_wiring.py::test_a_step_actually_executes_both_guard_files -q"
+    result: "restore verified identical; 1 passed in 0.06s"
+    exit: 0
+    ts: "2026-08-31T08:52:45Z"
+    seat: claude-sonnet-5
+  - claim: "cross-family review, tp1-qwen3.8-max: GO, no findings, against the 3-file diff and the shell-safety plus wiring-design questions in the review prompt"
+    cmd: 'qwen -p "$(cat /tmp/organ_hb_wiring_council_prompt.txt)" -m qwen3.8-max'
+    result: "VERDICT: GO -- no findings"
+    exit: 0
+    ts: "2026-08-31T08:05:00Z"
+    seat: tp1-qwen3.8-max
+  - claim: "cross-family review attempt, kimi-code/k3: unavailable this round"
+    cmd: 'kimi -p "$(cat /tmp/organ_hb_wiring_council_prompt.txt)" -m kimi-code/k3'
+    result: "403 You've reached your weekly (7-day) usage limit"
+    exit: 1
+    ts: "2026-08-31T08:09:00Z"
+    seat: kimi-code/k3
+  - claim: "kimi-code/k3 re-probed independently near the end of this task with a bare health-check prompt: still down, identical 403 weekly-quota message, no recovery"
+    cmd: 'kimi -p "reply with exactly the word PONG, nothing else" -m kimi-code/k3'
+    result: "kimi version 0.38.0; error: provider.auth_error: 403 You've reached your weekly (7-day) usage limit"
+    exit: 1
+    ts: "2026-08-31T08:53:25Z"
+    seat: kimi-code/k3
+  - claim: "cross-family review attempt, codex-gpt-5.6-sol: first try at a 180s wall-clock timeout did not complete at xhigh reasoning effort"
+    cmd: 'codex exec -m gpt-5.6-sol -c model_reasoning_effort="xhigh" --sandbox read-only --skip-git-repo-check "$(cat /tmp/organ_hb_wiring_council_prompt.txt)" < /dev/null (180s timeout)'
+    result: "timed out, no verdict obtained"
+    exit: 1
+    ts: "2026-08-31T08:10:24Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "cross-family review, codex-gpt-5.6-sol (retried at 480s timeout): NO-GO, 2 findings -- self-disarming wiring check, fragile multi-match PASS-count parsing"
+    cmd: 'codex exec -m gpt-5.6-sol -c model_reasoning_effort="xhigh" --sandbox read-only --skip-git-repo-check "$(cat /tmp/organ_hb_wiring_council_prompt.txt)" < /dev/null (480s timeout)'
+    result: "VERDICT: NO-GO -- finding 1 self-disarming wiring check, finding 2 fragile PASS-count parser"
+    exit: 0
+    ts: "2026-08-31T08:25:00Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "codex-sol finding 2 (fragile PASS-count parser) independently reproduced before being accepted as real: a synthetic two-match summary string made $PASSED multi-line and the -lt comparison error out, silently skipping the if-body instead of convicting"
+    cmd: "bash reproduction against a synthetic FAKE_OUT string containing two '<N> passed'-shaped substrings, using the pre-fix unanchored grep"
+    result: "reproduced: [: integer expression expected; if-body silently skipped -- confirmed as the live bug before fixing it"
+    exit: 0
+    ts: "2026-08-31T08:28:00Z"
+    seat: claude-sonnet-5
+  - claim: "the anchored last-summary-line fix was checked against 5 constructed scenarios (clean pass, clean fail, an all-skipped exit-0 run, the original two-match adversarial string, and the real 4-passed-1-skipped output) and produced the correct verdict in every case"
+    cmd: "check_summary() bash function exercised against 5 constructed strings"
+    result: "correct verdict in all 5 constructed cases"
+    exit: 0
+    ts: "2026-08-31T08:30:00Z"
+    seat: claude-sonnet-5
+  - claim: "worktree is clean (no uncommitted changes) and its HEAD matches PR #5440's headRefOid; PR is OPEN and MERGEABLE, not yet merged"
+    cmd: "git status --short && git rev-parse HEAD && gh pr view 5440 --json state,mergedAt,headRefOid,isDraft,mergeable"
+    result: "clean; HEAD=91612392b5b9248d28ef141a7cae204fce4ea16a; state=OPEN mergedAt=null headRefOid matches isDraft=false mergeable=MERGEABLE"
+    exit: 0
+    ts: "2026-08-31T08:49:30Z"
+    seat: claude-sonnet-5
+
+pii_scan: clean
+pii_scan_note: >-
+  Diff is entirely a CI workflow YAML file plus two pytest test files
+  covering launchd-organ heartbeat cadence config; no client data, OSINT,
+  or credentials touched or referenced.
+
+spend:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 1
+
+diff:
+  net_lines: "3 files, +395/-0, 2 commits"
