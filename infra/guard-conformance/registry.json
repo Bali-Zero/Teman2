@@ -682,6 +682,30 @@
             "test_countable_innocence_binary_file_downgrades_line_counts_to_notice",
             "test_countable_end_to_end_red_pack_fails_and_green_pack_passes"
           ]
+        },
+        "check_brief_not_at_deprecated_root": {
+          "scar": [
+            "#9-state-schema-mutation-drift",
+            "W82",
+            "PR-5435-2026-08-31"
+          ],
+          "guilt": [
+            "test_brief_root_guilt_root_path_post_flip_rejected",
+            "test_brief_root_guilt_absolute_root_path_post_flip_rejected",
+            "test_brief_root_guilt_dot_segments_normalize_to_root_post_flip",
+            "test_brief_root_resolver_seam_produces_diff_relative_paths_not_the_staged_name"
+          ],
+          "innocence": [
+            "test_brief_root_innocence_pre_flip_notice_not_fail",
+            "test_brief_root_innocence_per_task_dir_clean_both_sides",
+            "test_brief_root_innocence_no_brief_source_path_skipped",
+            "test_brief_root_innocence_mandatory_brief_ref_string_is_not_a_root_write",
+            "test_brief_root_does_not_ride_the_pack_rules_flip_date",
+            "test_brief_root_end_to_end_notice_pre_flip_does_not_fail",
+            "test_brief_root_cli_accepts_and_threads_brief_source_path",
+            "test_brief_root_cli_absent_flag_leaves_rule_inert",
+            "test_brief_root_resolver_seam_produces_diff_relative_paths_not_the_staged_name"
+          ]
         }
       }
     },

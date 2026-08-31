@@ -34,8 +34,8 @@ lanes:
 council_run: council-journal.jsonl
 
 diff:
-  files: 6
-  net_lines: 694
+  files: 7
+  net_lines: 734
   measured_at: 494583042
   note: >-
     Churn (added+deleted) via `git diff --no-renames --numstat --cached <merge-base>`, measured
@@ -106,6 +106,22 @@ receipts:
     result: "actionlint rc=0, YAML parses, ruff clean on both Python files."
     exit: 0
     ts: "2026-08-31T07:22:00Z"
+    seat: session (Pro)
+
+  - claim: >-
+      The new guard is REGISTERED in the #3 census, and that registration is measured rather
+      than assumed — the census actually reads this entry.
+    cmd: >-
+      `check_guard_conformance.py` before the entry, after the entry, and under two mutations OF
+      THE ENTRY (a phantom guilt ref; an emptied innocence list), then restored from a byte copy.
+    result: >-
+      Before: 1 violation, `C1 ... exists in code but is NOT registered`, rc=1 (16 checks).
+      After: 0 violations, rc=0 (17 checks). Mutation A -> `C3 ... phantom reference (W65)`, rc=1.
+      Mutation B -> `C2 ... has NO innocence test`, rc=1. Restored -> rc=0, `git diff --stat`
+      shows only the 20 added lines, no reformat. A green that cannot go red measures nothing;
+      this one goes red on both faces of the entry.
+    exit: 0
+    ts: "2026-08-31T08:05:00Z"
     seat: session (Pro)
 
 dissent:
