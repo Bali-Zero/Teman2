@@ -1,0 +1,197 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: |
+  Squad-P handoff H3, executed by Squad W. The governing artifact forbids making the contrast
+  tripwire blocking until a separate 6-item follow-up spec lands, so this PR ships the EXECUTOR
+  advisory and carries a PENDING-ARMS row for the flip. Shipping it blocking would be the session
+  overruling the spec it is executing.
+lanes:
+  - lane: craft-w-h3-build
+    role: build
+    seat: sonnet-5
+    scope: |
+      Build plus a five-finding fix round, each finding measured before it was dispatched.
+  - lane: craft-w-h3-refute-r1
+    role: review
+    seat: codex-gpt-5.6-sol
+    scope: Adversarial round on the final diff, xhigh, read-only sandbox, six declared attack axes.
+  - lane: craft-w-h3-refute-r2
+    role: review
+    seat: kimi-code/k3
+    scope: Second adversarial round, different family, same final diff.
+seat_diversity: satisfied
+seat_diversity_note: |
+  Two DISTINCT non-Anthropic families on the FINAL bytes. A previous session honestly recorded that
+  only ONE qualifying seat was reachable for this PR and refused to fill the quorum by running that
+  seat twice. Both seats were RE-MEASURED alive at the start of this session (`SEAT-ALIVE-CODEX` /
+  `SEAT-ALIVE-KIMI`, rc=0) — the SessionStart arsenal banner still reported `codex✗unknown_err` from
+  a stale 2-hour-old probe. The earlier shortfall was true when measured; it was not true tonight,
+  and the difference was found by calling the seats rather than by reading the banner.
+diff: |
+  `.github/workflows/token-contrast-tests.yml` (new, 271 lines — most of it header explaining why the
+  job is advisory and what `continue-on-error` does NOT buy), `.github/workflows/main-push-failure-watch.yml`
+  (+27, registering it), `.claude/skills/modus/PENDING-ARMS.md` (+2, the deferred flip).
+
+  NO PRODUCTION CODE. `scripts/check_token_contrast.py` and its 38-test corpus already exist on main
+  and are untouched here. This PR's entire payload is an EXECUTOR for code that had none.
+receipts:
+  - claim: |
+      THE SELF-GUARD IS IMMUNE TO COMMENTS OUTSIDE `run:` BODIES — AND ONLY THOSE. Narrowed after a
+      refuter falsified the stronger claim this receipt originally made. What IS true and measured:
+      the file contains `--tolerance 99` at line 146 inside explanatory prose, and the guard does not
+      fire on it, because it parses the YAML and walks each step's `run:` body rather than the file
+      text, excluding ITSELF by `id:` rather than by matching its own error message.
+      What is NOT true, and what this receipt originally claimed: that the guard judges the entity
+      rather than the form. It does not. A bare comment INSIDE another step's `run:` body trips it —
+      reproduced on the production workflow, rc=1 accusing a completely correct step. It scans that
+      body as TEXT. The guard's own comment describes exactly this trap as the reason it does not
+      filter on content; it moved the trap off itself and onto every other step.
+      A SECOND overstatement, from the other seat: the guilt value used here was `--tolerance 99`,
+      which `check_token_contrast.py` REFUSES outright (MAX_TOLERANCE = 0.1, rc=2). So this probe
+      demonstrated that the scanner reacts to a string; it did NOT demonstrate that the guard
+      prevents a false green, because that value could never produce one.
+    cmd: |
+      probe: inject `--tolerance 99` into the checker-invoking step; require rc=1 naming it
+      probe: run the guard unmodified on a file that mentions `--tolerance 99` in prose; require rc=0
+      extract the `no_tolerance_check` step body from the PARSED yaml; run it unmodified; then inject
+      `--tolerance 99` into the real checker step and run it again; restore; run once more
+    result: |
+      innocence rc=0  "OK — no other run: step passes --tolerance"
+      guilt     rc=1  "::error::--tolerance found in job 'contrast-tests' step 'The shipped token
+                       file's claims recompute clean (drift, floor, required-claims)'"
+      restore   cmp -s byte-identical · re-innocence rc=0
+    exit: 0
+    ts: "2026-08-30T02:20:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      THE CHECKER AND ITS CORPUS ACTUALLY RUN AND ACTUALLY PASS on the shipped token file — the whole
+      point of the PR, since until it merges neither is reachable from any automation.
+    cmd: |
+      probe: scripts/check_token_contrast.py against the live design/tokens/merah-putih.tokens.json
+      python3 scripts/check_token_contrast.py ; pytest scripts/tests/test_check_token_contrast.py
+    result: |
+      checker rc=0 — 28 claims recompute within ±0.02 and clear their duty's floor; all 16
+      required-claims-floor paths carry >=1 claim; 4 NOTICEs, all by design (icon-only / decorative
+      duties carry no WCAG obligation).
+      corpus  rc=0 — 38 passed.
+    exit: 0
+    ts: "2026-08-30T02:15:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: STATIC GATES on the post-`update-branch` head, re-run because the tree moved.
+    cmd: actionlint on both changed workflows; scripts/check_watcher_coverage.py
+    result: |
+      actionlint rc=0.
+      watcher-coverage rc=0 — 108 live workflows, all covered (one pre-existing `::warning::` for a
+      stale entry naming a workflow that no longer exists: `AI PR review (advisory)` — not this PR's).
+    exit: 0
+    ts: "2026-08-30T02:18:00Z"
+    seat: claude-opus-5 (gate)
+  - claim: |
+      AN EXIT CODE READ THROUGH A PIPE IS NOT AN EXIT CODE. My first watcher-coverage run reported
+      rc=0 from `echo "rc=$?"` placed AFTER a pipe into `tail` — which measures `tail`. The verdict
+      happened to be the same when re-taken correctly, but it stood on a number that meant nothing
+      until then. Recorded because the number was right by luck, not by method.
+    cmd: re-run with the exit code captured directly — `cmd > file 2>&1; echo RC=$?`
+    result: WATCHER_RC=0, ACTIONLINT_RC=0 — both genuine this time.
+    exit: 0
+    ts: "2026-08-30T02:18:30Z"
+    seat: claude-opus-5 (gate)
+pii_scan: clean
+pii_note: |
+  Two CI workflow files and one ledger row. Reads design-token hex values and writes to a job
+  summary. No client data, no credentials, no PII.
+dissent:
+  - status: CONFIRMED
+    seat: kimi-code/k3
+    objection: |
+      HIGH — the guard asserts a NEGATIVE and never the positive. Delete the invocation step
+      ("it duplicates scripts-tests-sweep.yml", a plausible refactor) and the guard prints
+      `OK — no other run: step passes --tolerance`, the corpus runs against its own fixtures rather
+      than the shipped token file, and the job is GREEN. Nothing asserts that any step actually
+      invokes the checker.
+    disposition: |
+      ACCEPTED — this is the sharpest finding of the wave. A PR whose whole purpose is curing
+      "exists != armed" never checked that the thing was armed. Measured on the old guard: invocation
+      deleted -> rc=0. The guard is INVERTED to a positive pin; the same case now gives rc=1 with
+      "this is the finding this guard exists to catch."
+  - status: CONFIRMED
+    seat: kimi-code/k3
+    objection: |
+      MEDIUM — false RED: the guard cannot distinguish flag-in-argv from flag-in-prose in ANOTHER
+      step's run body. A bare comment `# never add --tolerance here` inside the invocation step fails
+      a completely correct workflow.
+    disposition: |
+      ACCEPTED, and it FALSIFIED A RECEIPT THIS PACK HAD ALREADY MADE. The gate had written that the
+      guard "judges the entity, not the form" — having tested only a comment OUTSIDE any run body
+      (line 146), where it is indeed immune. Reproduced on the production workflow: rc=1 accusing a
+      correct step. The receipt above is narrowed to what was measured rather than deleted. The
+      guard's own comment describes exactly this trap as the reason it does not filter on content —
+      it had moved the trap off itself and onto every other step.
+  - status: CONFIRMED
+    seat: kimi-code/k3
+    objection: |
+      MEDIUM — the id-based self-exclusion is itself the evasion hole: append the flagged invocation
+      to the GUARD'S OWN run block and delete the separate step, and the one body never scanned is
+      exactly where a "simplify the workflow" refactor would put it.
+    disposition: |
+      ACCEPTED. The id-exclusion is GONE; the guard is now scanned like every other step and made
+      self-immune by building its needle from two fragments at runtime. Verified structurally: the
+      raw run body contains zero contiguous occurrences of the checker's name. Probe G (flag in the
+      guard's own body, real step deleted) -> rc=1, naming the guard's own step.
+  - status: CONFIRMED
+    seat: codex-gpt-5.6-sol
+    objection: |
+      HIGH — the guilt example is false: `--tolerance 0.5` and `99` are REFUSED by the checker, whose
+      maximum is 0.1. The test proves the substring scanner reacts, not that it prevents a false green.
+    disposition: |
+      ACCEPTED — a second falsification of this pack's own evidence, from the other seat. Measured:
+      MAX_TOLERANCE = 0.1; `--tolerance 99` -> rc=2 REFUSED. The guilt probe now uses 0.1, the largest
+      value the checker ACCEPTS and therefore the largest that genuinely widens the gate.
+  - status: CONFIRMED
+    seat: codex-gpt-5.6-sol
+    objection: |
+      HIGH — a contrast failure on main notifies nobody: job-level `continue-on-error: true` keeps the
+      workflow-run conclusion `success`, and the watcher gates on that conclusion. The registration is
+      inert.
+    disposition: |
+      CONFIRMED AND DECLARED, not cured — the job may not become blocking until the 6-item follow-up
+      lands. It also falsified this PR's BRIEF, which justified the registration by citing a
+      `schedule:` trigger: measured, the triggers are exactly ['pull_request', 'push'] and there is no
+      `schedule:`. That sentence was lifted from a sibling pack where it was true. Corrected in the
+      brief. THE TWO SEATS SPLIT HERE: Kimi did not count it against the verdict because the file
+      headers disclose it; Codex counted it HIGH. Both recorded; neither leniency saves the brief's
+      wording, which failed both tests.
+  - status: CONFIRMED
+    seat: codex-gpt-5.6-sol
+    objection: |
+      MEDIUM — PENDING-ARMS claims the corpus runs "on every PR", but fail-fast skips the pytest step
+      when the checker step fails, so a PR carrying both drift and a corpus regression reports no
+      corpus result at all.
+    disposition: |
+      ACCEPTED — `if: always()` on the corpus step; both now always run and both are visible.
+  - status: CONFIRMED
+    seat: kimi-code/k3
+    objection: |
+      HIGH — the guard is blind to indirection: env-split, shell construction, matrix values,
+      `uses:` composite actions, reusable workflows, and a shell-script file all pass a run-body scan.
+    disposition: |
+      MOSTLY CURED BY CONSTRUCTION, one residual DECLARED. Rules (1)+(2) mean the only permitted
+      invocation is a verbatim argument-free command and nothing else may reference the checker, so an
+      env-split invocation is no longer the pinned form (probe E -> rc=1) and a `uses:` reference is
+      caught (probe F -> rc=1). What they CANNOT catch is `run: bash some_wrapper.sh` where the
+      wrapper invokes the checker with a flag — stated explicitly in the guard's comment rather than
+      papered over. No such step exists in this job today.
+tests: |
+  38 passed (scripts/tests/test_check_token_contrast.py, unchanged by this PR). The self-guard's own
+  guilt/innocence run by the gate on the production workflow, restore verified byte-identical.
+static: |
+  actionlint rc=0 · check_watcher_coverage.py rc=0 (108 workflows) · pre-commit hooks green.
+notes: |
+  DECLARED LIMIT, not cured: the self-guard walks other steps' `run:` bodies via YAML. A future edit
+  that moves the checker invocation into a composite action, a `uses:` step, or a shell script file
+  takes it out of the guard's view — the guard would stay green while the off-switch became
+  reachable. Curing that means following invocations across files, which this diff does not carry.
+
+  DECLARED, not this PR's: `check_token_contrast.py:524` rounds to 2dp before the floor comparison
+  (`floor_check_value = round(computed, 2)`), so a raw 4.4951 passes a 4.50 floor. Pre-existing
+  behaviour; the workflow header now says so instead of claiming green proves no duty-floor violation.

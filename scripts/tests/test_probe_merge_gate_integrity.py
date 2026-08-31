@@ -359,9 +359,17 @@ def test_skipped_does_not_substitute_for_a_missing_job():
 
 def test_snapshot_file_is_present_and_non_empty():
     """The fallback is only a fallback if it exists. Pins the file this probe
-    now depends on in CI."""
+    now depends on in CI.
+
+    The floor was 20 when main required 27 contexts; Zero's 2026-08-27 ruling
+    cut required checks to 11 (queue-unblock — advisory workflows stopped
+    running on merge_group so the queue no longer waits on ~50 runs per entry
+    for only 11 that matter). 5 is a truncation tripwire, not a target count:
+    it still fails loud on a snapshot gutted to a handful of entries, without
+    hardcoding today's real count into a test that must keep passing as the
+    SSOT legitimately drifts."""
     names, generated_at = probe._required_contexts_from_snapshot(str(REPO_ROOT))
-    assert len(names) >= 20, f"snapshot looks truncated: {len(names)} contexts"
+    assert len(names) >= 5, f"snapshot looks truncated: {len(names)} contexts"
     assert all(isinstance(n, str) and n for n in names)
     assert generated_at and generated_at != "unknown", (
         "the snapshot must carry its own generation date — it is what makes the "
@@ -388,7 +396,9 @@ def test_snapshot_is_used_when_the_api_is_denied(monkeypatch):
 
     monkeypatch.setattr(probe, "_gh_api_json", _denied)
     contexts, source = probe.fetch_required_contexts("o/r", str(REPO_ROOT))
-    assert len(contexts) >= 20
+    # Same truncation tripwire as test_snapshot_file_is_present_and_non_empty —
+    # 5, not today's real count (11, per that test's docstring).
+    assert len(contexts) >= 5
     assert source.startswith("snapshot:")
 
 

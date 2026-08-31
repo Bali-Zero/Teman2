@@ -1,0 +1,211 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR #5071 (agent/nuzantara/infra/queue-shepherd -> main) — organ-genes
+  fix (G1 registry + G2 heartbeat + G5 disabled-state heartbeat) for the
+  new com.nuzantara.queue-shepherd.10min.plist organ, re-evidenced under
+  tonight's queue-shepherd mandate (post-#5049 size-term floor).
+
+lanes:
+  - lane: queue-shepherd-genes-build
+    role: build
+    seat: claude-sonnet-5 (this session — implementer lane, CLAUDE.md §5 default)
+  - lane: queue-shepherd-genes-refuter
+    role: review
+    seat: agy (Gemini 3.1 Pro, non-Anthropic) — cross-family, never the same
+      seat as the build lane
+
+diff:
+  files: 8
+  net_lines: 2139
+  measured_at: b3a4ce422
+  note: >-
+    `git diff --no-renames --numstat $(git merge-base origin/main HEAD) HEAD`
+    run AFTER commit (per the #5063 lesson: a pre-commit numstat against
+    working-tree-only changes undercounts) -> 8 files, net +2139: 1
+    .claude/skills/modus/PENDING-ARMS.md, 21 organs_registry.yaml, 62
+    docs/runbooks/merge-queue-discipline.md, 83 evidence brief.yml, 213
+    evidence pack.yml, 31 the new plist, 1017 scripts/queue_shepherd.py,
+    711 scripts/tests/test_queue_shepherd.py.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      "Every organ is born with its genes" was red because the new
+      com.nuzantara.queue-shepherd.10min.plist organ had no
+      organs_registry.yaml entry (G1) and no heartbeat sidecar (G2); the
+      pre-existing QUEUE_SHEPHERD_ENABLED env check already satisfied G5's
+      shallow gate requirement (a kill-switch pattern present in the file),
+      though not G5's full intent (see next receipts).
+    cmd: python3 infra/organ-conformance/check_organ_conformance.py
+    result: >-
+      Before fix: 1 non-conformant birth (pro.queue_shepherd, missing
+      registry entry + heartbeat). After fix: "182 plists scanned, 121
+      grandfathered (report-only), 0 regressions, 0 non-conformant births."
+    exit: 0
+    ts: 2026-08-27T07:40Z
+    seat: session (implementer lane)
+
+  - claim: >-
+      A `pro.queue_shepherd` registry entry was added to
+      apps/organism/organism/organs_registry.yaml (expected_hb_seconds: 900,
+      recovery_action: launchctl_kickstart) and the file's top-level
+      checksum was regenerated.
+    cmd: >-
+      cd apps/organism && PYTHONPATH=. python3 -m
+      organism.tools.validate_organs_registry
+      ../../apps/organism/organism/organs_registry.yaml --update-checksum
+    result: "checksum updated: 103b14904c66c1fee58a288274362fe6a0a7d33b93d8c04784aa1e0b26a84a2a"
+    exit: 0
+    ts: 2026-08-27T07:41Z
+    seat: session (implementer lane)
+
+  - claim: >-
+      An unconditional heartbeat helper (`_write_heartbeat`, atomic
+      tmp+os.replace write to ~/.organism/last_seen/pro.queue_shepherd.json)
+      was wired into tick()'s success path (status=ok) and its exception
+      path (status=error, then re-raise — the real exception still
+      propagates to launchd's exit code, superscar #2: exists != armed).
+    cmd: git diff -- scripts/queue_shepherd.py
+    result: >-
+      +_write_heartbeat() (mkdir parents, tmp-file write, atomic replace,
+      swallow-on-write-failure so a heartbeat bug can never break the
+      janitor/rearm passes it observes) + tick() wrapped in
+      try/except-heartbeat-then-reraise on the work path.
+    exit: 0
+    ts: 2026-08-27T07:42Z
+    seat: session (implementer lane)
+
+  - claim: >-
+      scripts/tests/test_queue_shepherd.py's full existing suite (54 tests)
+      passes unchanged after the heartbeat wrapping — no regression.
+    cmd: apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_queue_shepherd.py -q
+    result: "54 passed in 0.30s"
+    exit: 0
+    ts: 2026-08-27T07:43Z
+    seat: session (implementer lane)
+
+  - claim: >-
+      After the cross-family refuter's CONFIRMED gap on the disabled-state
+      path (see dissent below), a `status="disabled"` heartbeat write was
+      added to tick()'s early-return-on-kill-switch branch, plus a new test
+      asserting it, plus the missing `json` import the new test needed. Full
+      suite (now 55 tests) still green, no regression.
+    cmd: apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_queue_shepherd.py -q
+    result: "55 passed in 0.20s"
+    exit: 0
+    ts: 2026-08-27T07:52Z
+    seat: session (implementer lane)
+
+  - claim: >-
+      The deterministic floor recomputed from this PR's own real (committed)
+      changed-file set is 3 (`infra/launchagents/*` is touched — a
+      HOTZONE_PATTERNS hit), matching the brief's declared gear.
+    cmd: >-
+      git diff --no-renames --name-only $(git merge-base origin/main HEAD)
+      HEAD > /tmp/5071-committed-changed.txt && python3
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file
+      /tmp/5071-committed-changed.txt
+    result: "3"
+    exit: 0
+    ts: 2026-08-27T07:44Z
+    seat: session (implementer lane)
+
+dissent:
+  - seat: agy (Gemini 3.1 Pro, cross-family refuter)
+    objection: >-
+      "The Zombie Pulse Gap": a heartbeat written on both success and
+      failure paths means a crash-looping organ still ticks fresh
+      heartbeats every run — a naive mtime-only watchdog would read the
+      organ as 100% healthy while 0% of its real payload executes, unless
+      the payload explicitly differentiates status.
+    status: CONFIRMED
+    note: >-
+      The status-differentiation half is already handled — verified by
+      reading the actual diff, not assumed: `_write_heartbeat("error", ...)`
+      vs `_write_heartbeat("ok", ...)` are distinct branches, and the error
+      branch carries `str(exc)` in metadata, so a status-aware monitor CAN
+      distinguish a crash-loop from healthy work. The residual risk (a
+      naive mtime-only monitor still can't) is real but is a property of
+      EVERY heartbeat-based organ in this repo (100+ registered organs use
+      the identical status-field convention) — not something introduced or
+      fixable by this one PR's mechanical gene-birth fix. Declared residual
+      limit, not silently dropped.
+
+  - seat: agy (Gemini 3.1 Pro, cross-family refuter)
+    objection: >-
+      "Control Flow & Exception Bypasses": `except Exception` misses
+      `BaseException` subclasses (KeyboardInterrupt, SystemExit) and an
+      early `return` added by a future refactor would silently skip the
+      success heartbeat; a hang in a blocking I/O call inside tick() would
+      reach neither heartbeat path at all.
+    status: PLAUSIBLE
+    note: >-
+      Real in the general case but low-probability for THIS organ: it runs
+      non-interactively under launchd (no KeyboardInterrupt path), and
+      tick() has exactly one early return (the kill-switch branch — now
+      itself heartbeat-covered per the fix below) with no other return
+      before the success heartbeat, verified by reading the full function
+      body. The blocking-hang case is real and NOT mitigated here (no
+      timeout wrapping this PR's `gh api` calls) — out of scope for a
+      mechanical gene-birth fix; a hang would show up as a stale heartbeat
+      after `expected_hb_seconds`, which is exactly what the staleness
+      monitor this organ registers for is built to catch.
+
+  - seat: agy (Gemini 3.1 Pro, cross-family refuter)
+    objection: >-
+      "The G5 Kill-Switch Inconsistency": when QUEUE_SHEPHERD_ENABLED=false,
+      tick() returned 0 without writing any heartbeat at all — verified true
+      by reading the code — so the conformance gate has no way to tell
+      "alive but intentionally idle" from "dead", risking a false staleness
+      alert (or a false "healthy" read) for an organ deliberately switched
+      off.
+    status: CONFIRMED
+    note: >-
+      Confirmed by direct code inspection, then FIXED in this same PR (not
+      deferred): the kill-switch early-return branch in tick() now calls
+      `_write_heartbeat("disabled", {"reason": "QUEUE_SHEPHERD_ENABLED=false"})`
+      before returning. A new test
+      (test_kill_switch_writes_a_disabled_heartbeat_not_silence) asserts the
+      written JSON's status and reason field; full suite re-verified green
+      (55 passed) after the fix. This directly matches G5's documented
+      contract ("writes final heartbeat status=disabled") that the
+      pre-existing kill switch had not actually satisfied.
+
+  - seat: agy (Gemini 3.1 Pro, cross-family refuter)
+    objection: >-
+      "Filesystem & Concurrency Hazards": non-atomic writes could produce
+      torn reads for a concurrent watchdog, and the parent directory
+      (~/.organism/last_seen) might not exist on first run.
+    status: RETRACTED
+    note: >-
+      Investigated and does not hold against the actual shipped code —
+      retracted, not merely disputed. `_write_heartbeat()` already does
+      `ORGANISM_DIR.mkdir(parents=True, exist_ok=True)` then writes to a
+      pid-suffixed tmp file and atomically `Path.replace()`s it onto the
+      final path (read in the diff, not assumed) — exactly the tmp+rename
+      pattern the refuter itself recommended, already present before this
+      dissent round (mirrors dlq_autopilot.py's existing organ-heartbeat
+      pattern per the function's own docstring). The refuter's concern was
+      raised without having read that helper; this session verified the
+      atomic-write code before retracting.
+
+tests:
+  - "scripts/tests/test_queue_shepherd.py — 55 passed, 0 failed (rc=0, venv
+    python), including 1 new disabled-heartbeat test added this round."
+
+static:
+  - "python3 -m py_compile scripts/queue_shepherd.py — clean."
+  - "infra/organ-conformance/check_organ_conformance.py — 0 non-conformant
+    births (was 1 before this PR's fix)."
+  - "apps/organism/organism/organs_registry.yaml — re-validates clean with
+    the regenerated checksum."
+
+notes:
+  - "The disabled-heartbeat fix was prompted entirely by the cross-family
+    refuter round, not by the original CI gate (check_organ_conformance.py's
+    G5 check is satisfied by the mere PRESENCE of an ENABLED-pattern env
+    check, not by verifying a disabled heartbeat is actually written) — a
+    real generator!=grader catch: the mechanical gate passed on the
+    pre-existing kill switch alone, and the refuter caught a gap the gate
+    itself is blind to."

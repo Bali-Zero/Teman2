@@ -152,13 +152,37 @@ class Decision:
     details: dict[str, Any] = field(default_factory=dict)
 
 
-def order_queue(prs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def order_queue(
+    prs: list[dict[str, Any]], *, in_queue_numbers: set[int]
+) -> list[dict[str, Any]]:
     """FIFO by PR number, with the auto-revert priority lane at the head
-    (spec §10.1). Opt-out label excluded entirely."""
+    (spec §10.1). Opt-out label excluded entirely.
+
+    Eligibility answers "is this PR under active management?" —
+    `autoMergeRequest` non-null OR the PR's number is in `in_queue_numbers`
+    (GitHub's own merge-queue entries, the positive probe). `in_queue_numbers`
+    is required, not optional with an empty-set default: `autoMergeRequest`
+    ALONE used to gate this (pre-2026-08-30) and that was the bug — the field
+    reads null in (at least) three different states: a PR the queue has
+    ACCEPTED (the request is CONSUMED, not disarmed), a PR the queue EJECTED,
+    and a PR genuinely never armed. The old code treated all three as "not
+    eligible", silently dropping exactly the PRs deepest in the lifecycle
+    this coordinator exists to babysit — measured live on PR #5275
+    (`autoMergeRequest: null` simultaneously with `mergeQueueEntry
+    {state: QUEUED, position: 3}`) and the false re-arm alarms on #4756/
+    #5012. A required parameter with no default means a caller that forgets
+    to pass a real snapshot gets a loud TypeError, not a silent reversion to
+    the old, wrong, autoMergeRequest-only reading. `mergeQueueEntry` and
+    `isInMergeQueue` are GraphQL-only — not in `gh pr list`/`gh pr view
+    --json`'s field list (verified live against the gh CLI) — so
+    `in_queue_numbers` comes from a raw GraphQL `mergeQueue(branch:"main")
+    {entries}` snapshot (`fetch_queue_membership()` below), the same shape
+    scripts/queue_doctor.py and scripts/ci/queue_rearm.sh already use for
+    the identical cross-check."""
     eligible = [
         p
         for p in prs
-        if p.get("autoMergeRequest")
+        if (p.get("autoMergeRequest") or p["number"] in in_queue_numbers)
         and OPTOUT_LABEL not in {lbl["name"] for lbl in p.get("labels", [])}
     ]
     reverts = sorted(
@@ -285,6 +309,38 @@ def fetch_queue() -> list[dict[str, Any]]:
         "pr", "list", "--repo", REPO, "--state", "open", "--limit", "100",
         "--json", "number,labels,autoMergeRequest",
     ])
+
+
+_MERGE_QUEUE_QUERY = (
+    "query($owner:String!,$name:String!){repository(owner:$owner,name:$name){"
+    'mergeQueue(branch:"main"){entries(first:100){nodes{pullRequest{number}}}}}}'
+)
+
+
+def fetch_queue_membership() -> set[int]:
+    """PR numbers GitHub's native merge queue currently holds — the positive
+    probe `order_queue()` needs (2026-08-30 fix). `mergeQueueEntry` and
+    `isInMergeQueue` are GraphQL-only, absent from `gh pr list`/`gh pr view
+    --json`'s field list, so this is a raw `gh api graphql` call on the
+    branch-level snapshot — the same shape scripts/queue_doctor.py and
+    scripts/ci/queue_rearm.sh already use for the identical cross-check.
+    Raises like every other fetch_* here (RuntimeError/TimeoutExpired) —
+    the caller must fail closed, never treat a failed probe as an empty
+    queue (W104: never fabricate a zero)."""
+    owner, name = REPO.split("/", 1)
+    data = gh_json([
+        "api", "graphql",
+        "-f", f"query={_MERGE_QUEUE_QUERY}",
+        "-f", f"owner={owner}",
+        "-f", f"name={name}",
+    ])
+    repo = ((data or {}).get("data") or {}).get("repository") or {}
+    entries = ((repo.get("mergeQueue") or {}).get("entries") or {}).get("nodes") or []
+    return {
+        e["pullRequest"]["number"]
+        for e in entries
+        if e and e.get("pullRequest") and isinstance(e["pullRequest"].get("number"), int)
+    }
 
 
 def fetch_head_detail(number: int) -> dict[str, Any]:
@@ -537,7 +593,24 @@ def run_tick() -> dict[str, Any]:
         state["last_decision"] = {"action": "abort", "reason": "auth_failed"}
         return state
 
-    queue = order_queue(fetch_queue())
+    # Positive-probe preflight (2026-08-30 fix): order_queue()'s eligibility
+    # test needs to know who GitHub's queue currently holds, because
+    # autoMergeRequest alone cannot tell "accepted" apart from "ejected"/
+    # "never armed". A failed probe here must fail closed, exactly like the
+    # auth preflight above — silently falling back to an empty set would
+    # readmit the exact bug this fetch exists to close (W104: never
+    # fabricate a zero).
+    try:
+        in_queue_numbers = fetch_queue_membership()
+    except (RuntimeError, subprocess.TimeoutExpired) as exc:
+        state["last_decision"] = {
+            "action": "abort",
+            "reason": "queue_membership_probe_failed",
+            "details": {"error": str(exc)[:200]},
+        }
+        return state
+
+    queue = order_queue(fetch_queue(), in_queue_numbers=in_queue_numbers)
     state["queue_depth"] = len(queue)
     if not queue:
         state["head_pr"] = None

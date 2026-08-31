@@ -171,6 +171,9 @@ export function NewsHero({ articles }: { articles: ArticleListItem[] }) {
                 <Link
                   href={`/${s.category}/${s.slug}`}
                   key={s.id}
+                  data-homepage-position={
+                    i === 0 ? "hero_main" : `hero_${i + 1}`
+                  }
                   aria-hidden={i !== active}
                   tabIndex={i === active ? 0 : -1}
                   className="absolute inset-0 group"

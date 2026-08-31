@@ -9,10 +9,29 @@ allowed-tools: Read, Write, Edit, Bash, Skill, Agent, WebFetch
 # SOTA Architecture Loop
 
 Procedura per architettura codice + feature design con orchestrazione multi-LLM.
-Evidence-backed (paper 2024-2026), non opinione. Fonti + verifica in
-`research/operations/2026-05-30-sota-ai-architecture-methodology.md`.
 
-**Tre regole da cui tutto deriva** (verificate, vedi research file):
+**Provenienza delle tre regole qui sotto — corretta 2026-08-31.** Questo file
+citava un research file e diceva che le regole erano "verificate, vedi research
+file". Quel file non è mai esistito nel repository, e nessun altro file del
+corpus fonda quelle tre affermazioni: la ricerca è stata rifatta questa
+sessione, non ricordata. La citazione ritirata:
+
+RITIRATA — `research/operations/2026-05-30-sota-ai-architecture-methodology.md`, mai esistita.
+
+(La riga qui sopra porta il marcatore `RITIRATA` **e** il percorso, sulla stessa
+riga: `scripts/lint_doctrine_citations.py` lo legge come "questo percorso è
+citato come letterale morto, non come fonte". Il marcatore vale per la sua riga
+soltanto — un marcatore che esentasse tutto il paragrafo esenterebbe anche le
+citazioni VIVE che gli stanno accanto.)
+
+Le regole restano: sono la pratica istituzionale di questo organismo e reggono
+sulle proprie cicatrici, che sono verificabili. Ma reggono **senza** un backing
+paper in questo repo, e il modo onesto di scriverlo è così — una citazione
+fantasma è peggio di nessuna citazione, perché il lettore le concede la fiducia
+che darebbe a una fonte vera. `scripts/lint_doctrine_citations.py` impedisce
+alla prossima di atterrare.
+
+**Tre regole da cui tutto deriva** (pratica istituzionale, non un paper):
 
 > Eterogeneità batte numerosità · Adversarialità calibrata batte consenso · Verifica esterna batte autodichiarazione.
 

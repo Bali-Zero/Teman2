@@ -35,21 +35,37 @@ class _AlwaysIssuesStore:
         raise NotImplementedError
 
 
+class _AlwaysOwnsStore:
+    """A `CheckStore` double that recognises every (result_id,
+    session_secret) pair -- this file tests router MOUNTING/manifest
+    wiring, not the ownership check itself (that is
+    `test_garuda_portal_auth.py`'s job), so the ownership gate added
+    2026-08-30 must be made a no-op here rather than left unwired (which
+    would 503 every request via `UnconfiguredCheckStore`)."""
+
+    async def get(self, *, result_id, session_secret):
+        return object()
+
+
 @pytest.fixture
 def mounted_client(monkeypatch):
-    """The real `main_api.app`, with only the store dependency overridden
-    (the one seam `magic_link.py`'s own docstring names as the intended
-    wiring point) -- routing, manifest registration, and every other
-    dependency are the production ones.
+    """The real `main_api.app`, with only the store dependencies overridden
+    (the seams `magic_link.py`/`garuda_flow.public_api`'s own docstrings
+    name as the intended wiring points) -- routing, manifest registration,
+    and every other dependency are the production ones.
     """
     app = _main_api_module.app
     app.dependency_overrides[garuda_portal_auth.get_garuda_magic_link_store] = (
         lambda: _AlwaysIssuesStore()
     )
+    app.dependency_overrides[garuda_portal_auth.get_garuda_check_store] = (
+        lambda: _AlwaysOwnsStore()
+    )
     try:
         yield app
     finally:
         app.dependency_overrides.pop(garuda_portal_auth.get_garuda_magic_link_store, None)
+        app.dependency_overrides.pop(garuda_portal_auth.get_garuda_check_store, None)
 
 
 async def _post_magic_link(app, *, enabled: bool) -> int:

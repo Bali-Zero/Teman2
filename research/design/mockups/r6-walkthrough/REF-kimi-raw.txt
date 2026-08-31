@@ -1,0 +1,38 @@
+• I'll verify the report against the actual artifacts on disk before ruling.
+
+• Now the raw seat outputs, to check quotes and the "unanimous" claims.
+
+• Two more checks: the §Meta "28ms" claim and the byte-identity claim against the pre-rerun backup.
+
+• Verification complete. Findings below — everything not listed survived the attack (scores, mapping, 3-1 split, order-check arithmetic, §5's 7/0/1, 13/13, 0.25s→0s, zoom evidence, byte-identity and re-run claims in §Meta all check out against `perception.json`, `a11y-runtime.json`, the pre-rerun backup, and the four raw seat files).
+
+  ## Findings
+
+  **F1 — HIGH · Invented unanimity on the verifiability condition.**
+  Claim (§3): "all four seats — including the three who chose named — condition the named variant on the VERIFIABILITY of the person. An unverifiable name/photo scores below the control for every seat."
+  Fails: only 2 of 4 seats state this. kimi (watch-item: deceptive "if the photo were stock or the agent fictional") and qwen ("fake/stock 'agent' authority") do. codex's raw output contains no verifiability condition on the named person anywhere — his TASK A dark pattern is the WhatsApp forward action; his only "provided… genuine" remark (line 33) is about Google/Trustpilot review links in TASK B, not the agent. agy explicitly found "None" dark patterns and gave the named variant his lowest risk score with no condition attached. And "scores below the control for every seat" has zero tabulated basis — no seat scored an unverifiable-named scenario; kimi's "T=4 at best, 3 for the skeptical" is the only sub-control data point. This is load-bearing: §8.1's ruling rests on "unanimous panel condition" and §Meta calls it "the round's most durable output". The tabulation's `task_a_verdict.unanimous_condition` row contains the same overreach, contradicting its own seat rows.
+
+  **F2 — MED · "All four seats scored status CLARITY 5/5 on both variants" (§3 lead; repeated §2 M4a/M4b "copy clarity scored 5/5 by all four seats").**
+  Fails: qwen's minimal payload contains only T and S_risk — no C field in the tabulation, no clarity statement in `PERC-qwen-raw.txt`. Three seats scored clarity 5/5; the fourth never scored it. "All four" is unsupported by the cited tabulation.
+
+  **F3 — MED · §Meta overclaims the counterbalance: "without it, the 3-1 split would be confounded with presentation order and worth little."**
+  Fails: the split is still consistent with an order effect. Both named-first seats chose named (2/2); control-first went 1-1. What the data actually show — and what §3 correctly limits itself to — is that the *dissent* is not order-explainable (agy cross-over). With n=4 the counterbalance cannot de-confound the majority direction; §Meta's claim that it did is an overreach the tabulation does not license.
+
+  **F4 — LOW · §4 headline "3/3 INSTITUTIONAL, none scam-adjacent."**
+  The "3/3 institutional" part holds. "None scam-adjacent" does not: codex's raw LAND-2 verdict is literally "institutional-leaning, but with greater scam adjacency than LAND-1", and kimi names "the most scam-adjacent block on either landing". The report's own residual list contradicts its headline gloss; the tabulation verdict row says only "3/3 INSTITUTIONAL" — the "none scam-adjacent" is the report's addition.
+
+  **F5 — LOW · Systematic quote-splicing presented as verbatim.**
+  - §4 "kimi's mechanism is the round's best sentence": the phrases "wine-not-scarlet states" and "this palette does the opposite" do not exist in `PERC-kimi-raw.txt` ("does the opposite" appears only in the tabulation's own summary). Raw has "red as structure, not as alarm — is the Merah Putih / state-document register". The quoted "sentence" is a composite.
+  - §3 kimi: "anchors the case 'to the state, not to one individual's goodwill'" — raw is "anchoring it to the state, not to a person"; "one individual's goodwill" is spliced from a separate clause.
+  - §3 kimi: "IS the SEA agent-scam trust prop" — raw: "is the classic romance/agent-scam trust prop".
+  - §3 agy: "removes the fear of sending immigration infractions" — raw: "sending *sensitive* immigration infractions".
+  Substance survives in each case, but quotation marks promise verbatim.
+
+  **F6 — LOW · §Meta "a robot-pace squash criterion that flagged 28ms-apart ANSWERS".**
+  The pre-rerun backup's distinct-message squash pairs are dt 27.6 / 15.5 / 64.3 ms. "28ms" is one rounded value presented as the general figure; the flagged pairs span 15.5–64.3ms. Trivial but imprecise in a section about instrument exactness.
+
+  **F7 — LOW · Tabulation internal inconsistency inherited by the report on the "unanimous residual".**
+  §3: "the WhatsApp-only forward action is the one scam-anatomy overlap every seat flagged". The raw outputs mostly back this (kimi: "WhatsApp CTA is the only scam-adjacent pattern"; agy: "WhatsApp jump closely mimics… lead-funnels"; qwen: "unclear WhatsApp handoff"; codex: dark pattern) — but the tabulation's own seat-level `dark_pattern` fields record kimi and agy as "none", so the verdict row the report quotes is not derivable from the tabulation's own rows. The report cites `perception.json` as "full tabulation" without noting the discrepancy.
+
+  No findings on: the 3-1 split arithmetic, the order-bias argument as stated in §3, codex/agy/qwen scores and choices (including agy's S-scale normalization 4.5→1.5 and 3.0→3.0, which is arithmetically correct), §5's 7/0/1, 13/13, 0.25s→0s, 18×Tab/Shift+Tab, 10 keyboard steps, the `.jr{font-size:16px}` zoom finding and its PARTIAL verdict, and §Meta's byte-identity/re-run claims (verified: probes 3,4,5,7,8 byte-identical to backup; the single pre-rerun FAIL, probe 2, was re-run). No contrast ratios are cited anywhere; the only token value cited (16px) is confirmed by the probe notes.
+

@@ -1,0 +1,97 @@
+task_id: craft-wave-2-squad-x-xfamily-replicas
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Gear 3 is the deterministic FLOOR alone, via the SIZE term — churn (Σ added+deleted, per
+  `_size_term_net_lines()`) = 2671 over the full 10-file diff (all 6 new xfamily files + the
+  edited INDEX.md + this task's own 3 evidence-pack files), measured against origin/main
+  08ea5fb2f, over SIZE_GEAR3_THRESHOLD=1828 — measured, receipt below. An earlier version of
+  this objective scoped the count to only 7 files (excluding the evidence-pack files
+  themselves) and used insertions-minus-deletions instead of churn; both were wrong for what
+  CI actually measures and computes, though the floor conclusion (3) was unchanged either way
+  since both figures clear the threshold. Not the hot-zone path term (zero hot-zone hits). No
+  `gear_override:` is used or needed: `compute_ceiling()` only flags a Gear-3 declaration
+  on a docs-shaped diff when the pack ALSO carries a convened `council` or
+  `grader_dispatches >= 3` — this pack has neither (verified by reading compute_ceiling()'s own
+  logic before writing this brief, not assumed), so the ceiling has nothing to flag and the
+  declared gear simply matches the floor. The work itself is docs-only (6 research .md files + one
+  INDEX edit) and no council was convened — D3's non-Anthropic build-lane requirement is satisfied
+  by the two TP1 seats (tp1-qwen3.8-max, tp1-deepseek-v4-pro) that GENERATED the six replicas
+  themselves, named as the build lanes below with receipts from the runner's own run_summary.json.
+  Real precedent for this diff shape: PR #5177
+  (evidence/2026-08/agent-nuzantara-research-beyond-sota-0828-c1157457/), which landed 78 files /
+  +20,985 lines of the SAME kind of content (13 lane reports + these same 59 xfamily cells) as
+  Gear 3 by blast radius alone, same docs-only shape, same no-council reasoning.
+
+  Closes the 6 deferred cells named in research/operations/2026-08-28-beyond-sota-panel-INDEX.md
+  §I's coverage matrix (Qwen3.8-Max lanes 07/10/11/12/13, DeepSeek V4 Pro lane 13 — all held up
+  behind the Alibaba TP1 weekly quota per PROTOCOL §7). research/operations/2026-08-28-beyond-sota-
+  xfamily/ now holds 65/65 planned cells (13 lanes x 5 cross-family seats). No dedicated runner
+  survived from the original 59-run session (ephemeral scratchpad, per git log — the whole
+  directory landed in one squashed commit 433d8314f/#5177); this PR's own runner reuses
+  load_tp1_settings_key()/TP1_CHAT_COMPLETIONS_URL from scripts/arsenal_probe.py rather than
+  reimplementing the TP1 door.
+
+  Ground-pack content for the 6 new cells was pulled via `git show <merge-base>:<path>` from
+  commit 11a3c89a2 — the exact merge-base the original 59 runs used (protocol §7 "Run 2"),
+  verified to hold zero beyond-sota-* panel files — keeping these 6 cells apples-to-apples with
+  their 59 siblings instead of drifting to a later tree. Each new file carries the same run-header
+  contract as its 59 siblings, followed by the seat's raw output untouched (protocol §7: "no body
+  is edited at all"). All 6 succeeded on the first attempt; no retry, no fallback needed.
+
+  INDEX §I was edited: the 6 coverage-matrix cells filled with measured words/minutes/URLs/12-gram-
+  overlap; "59 on disk" -> "65 on disk"; seat-completion counts + total words (243,408 ->
+  271,497) updated; the now-false "six missing cells are deferrals" / "six ... do not exist"
+  paragraphs rewritten past-tense; the contamination-count paragraph recomputed and extended from
+  59 to 65 cells using a method validated by first reproducing the documented 59-cell figures
+  exactly (31+1=32 mandated-heading/table-header hits) before trusting it on the new cells. The
+  qualitative "Per-lane agreement and divergence" table (lanes 7/10/11/12/13 rows) was deliberately
+  NOT touched — integrating what the new seat output actually argues into that synthesis requires
+  interpretation this task did not ask for ("write the numbers into the table").
+constraints:
+  - "Body-never-edited (protocol §7): the 6 new files' seat output is verbatim from the TP1 API
+    response, byte-for-byte, including one honest anomaly (below) that was left uncorrected."
+  - "Same-shape ground pack, not byte-identical: API seats never had filesystem access in the
+    original run either (protocol §7 access model) — only a redacted hot-file pack embedded in
+    the prompt. This PR's ground pack is freshly built from the same merge-base commit, same
+    per-lane brief + protocol §0-§4 shape, not a replay of an unrecoverable original prompt."
+  - "PII/OSINT output boundary: every new file scanned for email-shaped and Indonesian-phone-shaped
+    strings — zero on all 6 (receipt below)."
+  - "Do not weaken any check. This diff answers the deterministic floor with a proportionate pack,
+    never by touching evidence_pack_lint.py or harness-floor.yml."
+acceptance:
+  - text:
+      "WHEN any of the 6 new xfamily replica files is read, THEN it SHALL carry the run-header
+      contract (panel/lane/seat/model/started/finished/duration_s/exit/words/prompt_sha256_16/
+      prompt_chars/snapshot/blind/note/adversarial_review) matching the 59 pre-existing siblings
+      byte-for-shape — the `adversarial_review:` field specifically is what the R1 generator!=
+      grader gate reads."
+    probe: "grep -l '^adversarial_review:'"
+  - text:
+      "WHEN section headings are counted on any of the 6 new files, THEN it SHALL find all 10
+      (## 0 through ## 9) present."
+    probe: "grep -c '^## [0-9]'"
+  - text:
+      "IF `ls research/operations/2026-08-28-beyond-sota-xfamily/` is piped to `wc -l`, THEN it
+      SHALL print 65."
+    probe: "ls research/operations/2026-08-28-beyond-sota-xfamily/ | wc -l"
+  - text:
+      "WHEN INDEX §I's coverage matrix is grepped for the deferral marker after this PR, THEN
+      it SHALL find zero remaining 'deferred — TP1 quota' cells."
+    probe: 'grep -c "deferred — TP1 quota" research/operations/2026-08-28-beyond-sota-panel-INDEX.md'
+consumer_map:
+  - "Human readers (Zero) and future sessions reading research/operations/2026-08-28-beyond-sota-
+    panel-INDEX.md §I for the cross-family coverage picture — it is now complete, not partial."
+  - "Any future session extending the xfamily replica matrix (e.g. a hypothetical 6th seat) reads
+    this PR's runner pattern (TP1 door reuse, merge-base-pinned ground pack) as the template."
+risks:
+  - "The DeepSeek lane-13 file's own inner frontmatter self-identifies as `model: Claude
+    (Anthropic) (pinned lane)` — a known third-party-model self-identification artifact (kimi-k3
+    refuter pass independently confirmed this is a documented DeepSeek behavior, not evidence the
+    file wasn't genuinely generated by that seat). Mitigation: left uncorrected per the body-never-
+    edited contract; the file's own run-header (squad X's own content) correctly records `seat:
+    tp1-deepseek-v4-pro`; INDEX §I's Honest-limits paragraph now names the anomaly explicitly."
+  - "Numbers measured on 2026-08-30/31 decay like every other cell's — INDEX §I already carries
+    this caveat for the whole matrix ('Numbers measured on 2026-08-28 decay...' §G analog); no new
+    risk specific to these 6 cells."

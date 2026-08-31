@@ -1,0 +1,172 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR #5092 (agent/nuzantara/ops/evidence-pertask -> main) — S12/C6
+  follow-through: rule 9 (evidence root path deprecation) in
+  scripts/evidence_pack_lint.py, per this PR's own commit message
+  ("root-level pack was a structural conflict generator (4 PRs DIRTY in
+  1h)"). Re-evidenced under tonight's queue-shepherd mandate (post-#5049
+  size-term floor).
+
+lanes:
+  - lane: evidence-pertask-build
+    role: build
+    seat: claude-sonnet-5 (this session — implementer lane, CLAUDE.md §5 default)
+  - lane: evidence-pertask-refuter
+    role: review
+    seat: agy (Gemini 3.1 Pro, non-Anthropic) — cross-family, never the same
+      seat as the build lane
+
+diff:
+  files: 6
+  net_lines: 418
+  measured_at: 669d20cb6
+  note: >-
+    `git diff --no-renames --numstat $(git merge-base origin/main HEAD) HEAD`
+    -> 6 files, +422/-4, net 418. Files: .claude/rules/cicatrix-scars.md,
+    .claude/skills/modus/PENDING-ARMS.md, .github/workflows/harness-floor.yml,
+    infra/guard-conformance/registry.json, scripts/evidence_pack_lint.py,
+    scripts/tests/test_evidence_pack_lint.py.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      The deterministic gear floor recomputed from this PR's own real
+      changed-file set is 3 (`.github/workflows/harness-floor.yml` is
+      touched — a HOTZONE_PATTERNS hit).
+    cmd: >-
+      git diff --no-renames --name-only $(git merge-base origin/main HEAD)
+      HEAD > /tmp/5092-changed.txt && python3 scripts/evidence_pack_lint.py
+      --print-floor --changed-files-file /tmp/5092-changed.txt
+    result: "3"
+    exit: 0
+    ts: 2026-08-27T07:10Z
+    seat: session (implementer lane)
+
+  - claim: >-
+      New rule 9 (`check_pack_not_at_deprecated_root`) is registered in
+      infra/guard-conformance/registry.json with both guilt (3 cases) and
+      innocence (10 cases) test-name pointers, satisfying the census
+      requirement every check_* guard function needs per this repo's
+      guard-conformance mandate.
+    cmd: >-
+      git diff $(git merge-base origin/main HEAD) HEAD -- infra/guard-conformance/registry.json
+    result: >-
+      New "check_pack_not_at_deprecated_root" entry with scar refs
+      ["#9-state-schema-mutation-drift", "S12/C6-2026-08-23"], 3 guilt test
+      names, 10 innocence test names — all real test function names in
+      scripts/tests/test_evidence_pack_lint.py (verified by the pytest run
+      below, not by inspection alone).
+    exit: 0
+    ts: 2026-08-27T07:11Z
+    seat: session (implementer lane)
+
+  - claim: >-
+      scripts/tests/test_evidence_pack_lint.py's full suite, including all
+      13 rule-9 guilt+innocence cases, passes.
+    cmd: apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_evidence_pack_lint.py -q
+    result: "140 passed in 2.33s"
+    exit: 0
+    ts: 2026-08-27T07:12Z
+    seat: session (implementer lane)
+
+  - claim: scripts/evidence_pack_lint.py compiles clean (no syntax defects
+      introduced by rule 9's addition).
+    cmd: python3 -m py_compile scripts/evidence_pack_lint.py
+    result: "(silent success, exit 0)"
+    exit: 0
+    ts: 2026-08-27T07:12Z
+    seat: session (implementer lane)
+
+  - claim: >-
+      This PR's OWN evidence pack lives under a per-task directory
+      (evidence/2026-08/agent-nuzantara-ops-evidence-pertask-99c496f7/), not
+      the deprecated root path — dogfooding the migration it ships, and the
+      slug matches what evidence_paths.py itself would compute for this
+      branch.
+    cmd: >-
+      python3 -c "import sys; sys.path.insert(0,'scripts/ci'); import
+      evidence_paths as ep;
+      print(ep.slug_for_ref('agent/nuzantara/ops/evidence-pertask'))"
+    result: "agent-nuzantara-ops-evidence-pertask-99c496f7"
+    exit: 0
+    ts: 2026-08-27T07:13Z
+    seat: session (implementer lane)
+
+  - claim: >-
+      The harness-floor.yml Gear-3 pack-validation step change is exactly
+      one added flag (`--source-path "$PACK_PATH"`) on the existing
+      evidence_pack_lint.py invocation, with an inline comment explaining
+      why the staged path would otherwise misjudge every PR as compliant.
+    cmd: git diff $(git merge-base origin/main HEAD) HEAD -- .github/workflows/harness-floor.yml
+    result: >-
+      One-line addition to the existing python3 scripts/evidence_pack_lint.py
+      invocation's argument list, preceded by an 8-line explanatory comment;
+      no other line in the step changed.
+    exit: 0
+    ts: 2026-08-27T07:14Z
+    seat: session (implementer lane)
+
+dissent:
+  - seat: agy (Gemini 3.1 Pro, cross-family refuter)
+    objection: >-
+      "Silent CI bypass: if CI invokes the linter programmatically (e.g.,
+      test harnesses, custom runners) without passing source_path,
+      violations are silently skipped." Plus: "Dangerous fail-open: library
+      callers should require source_path or fail closed when path metadata
+      is missing, rather than skipping rules uninspected."
+    status: CONFIRMED
+    note: >-
+      Real, and NOT fixed in this PR — this session verified it is the
+      SAME gap this pack's own `risks:` section already names: today's
+      only CI integration point (harness-floor.yml) explicitly passes
+      `--source-path "$PACK_PATH"` (confirmed in the receipt above), so
+      the bypass is inert in practice right now, but a future second
+      integration point that forgets the flag would silently pass. Not
+      hardened to fail-closed in this PR because doing so would also
+      break the documented, intentional use case of a plain Python library
+      caller inspecting a pack with no diff/path context at all (e.g. a
+      laptop spot-check) — narrowing that to fail-closed is a real design
+      question for a follow-up, not a defect introduced here. Declared
+      residual limit, not silently dropped.
+
+  - seat: agy (Gemini 3.1 Pro, cross-family refuter)
+    objection: >-
+      "Path normalization failures: positional PACK_PATH varies by
+      execution context (absolute paths, ./pack.yml, or temporary scratch
+      copies), easily breaking naive pattern checks."
+    status: RETRACTED
+    note: >-
+      Investigated and does not hold against the actual shipped code —
+      retracted, not merely disputed. `_pack_source_relpath()` explicitly
+      POSIX-normalizes and dot-segment-resolves the source path before
+      comparing it to EVIDENCE_ROOT_PACK_PATH (read in the diff — not
+      assumed), and the test suite carries two cases built specifically
+      for this: `test_evidence_root_guilt_dot_segments_normalize_to_root_post_flip`
+      and `test_evidence_root_innocence_dot_segments_normalize_to_per_task_clean`
+      (both real function names, present in the 140-pass pytest run
+      above, listed verbatim in the registry.json guilt/innocence arrays
+      too). The refuter's concern was raised without having read that
+      helper or those tests; this session verified both exist and pass
+      before retracting.
+
+tests:
+  - "scripts/tests/test_evidence_pack_lint.py — 140 passed, 0 failed (rc=0,
+    venv python), including 13 new rule-9 guilt+innocence cases."
+
+static:
+  - "python3 -m py_compile scripts/evidence_pack_lint.py — clean."
+  - "infra/guard-conformance/registry.json's new check_* entry carries both
+    guilt and innocence test-name arrays, matching this repo's
+    guard-conformance census requirement (superscar #3)."
+
+notes:
+  - "This pack is itself evidence that the migration works end-to-end: it
+    lives at evidence/2026-08/<slug>/, not evidence/pack.yml, and this PR's
+    own new rule 9 would NOTICE (not fail, pre-2026-09-05) a pack at the
+    deprecated root — a case this PR deliberately avoids by construction."
+  - "The --source-path default-skip semantics (only a Python-caller with
+    zero source_path info is skipped; every CLI invocation, bare or
+    flagged, is judged) mirrors rules 6/7's existing 'skip only on missing
+    context, never silently pass a judged case' shape — reused, not
+    reinvented, per this repo's own stated design continuity."
