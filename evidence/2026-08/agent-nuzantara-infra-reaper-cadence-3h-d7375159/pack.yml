@@ -63,11 +63,16 @@ receipts:
     exit: 0
     ts: "2026-08-31T04:00:09Z"
     seat: general-purpose/sonnet-5
-  - claim: "plistlib.load() ora parsa il file — cosa che PRIMA di questa PR falliva con ExpatError sul `--` dentro il commento XML — e vede 8 voci con la label invariata."
+  - claim: "plistlib.load() parsa il file — cosa che PRIMA di questa PR falliva con ExpatError sul doppio trattino dentro il commento XML — e vede 8 voci con la label invariata. RI-ESEGUITO sul contenuto finale: la prima cattura di questa ricevuta era vera quando fu presa e FALSA per il commit che ne è seguito (vedi residual_risks, RECIDIVA)."
     cmd: 'python3 -c "import plistlib;d=plistlib.load(open(''infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example'',''rb''));print(len(d[''StartCalendarInterval'']), d[''Label''])"   # stdout: 8 com.nuzantara.agent-worktree-cleanup.daily'
     exit: 0
-    ts: "2026-08-31T04:00:12Z"
-    seat: general-purpose/sonnet-5
+    ts: "2026-08-31T05:12:00Z"
+    seat: opus-5
+  - claim: "Nessun doppio trattino letterale sopravvive in NESSUN commento XML del file — controllato su tutti i commenti, non solo sul primo errore che il parser riporta."
+    cmd: 'python3 -c "import pathlib,re;t=pathlib.Path(''infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example'').read_text();print([l for m in re.finditer(r''<!--(.*?)-->'',t,re.S) for l in m.group(1).splitlines() if ''-''+''-'' in l])"   # stdout: []'
+    exit: 0
+    ts: "2026-08-31T05:12:00Z"
+    seat: opus-5
   - claim: "L'intervallo derivato dal numero di voci è 10800 s (86400//8), che è il valore che audit_launchd_crons.py calcola dallo stesso campo."
     cmd: 'python3 -c "import plistlib;d=plistlib.load(open(''infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example'',''rb''));print(86400//len(d[''StartCalendarInterval'']))"   # stdout: 10800'
     exit: 0
@@ -148,44 +153,85 @@ dissent:
       rischio residuo dichiarato, non curato qui: `flock` è una PR separata,
       una preoccupazione per PR.
 
-council_run:
-  - seat: kimi-code/k3
-    ok: true
-    cmd: 'kimi -p "$(cat review_prompt.txt)" -m kimi-code/k3'
-    exit: 0
-    verdict: CONCERNS
-    ts: "2026-08-31T04:10:00Z"
-    note: >
-      Quattro rilievi, nessuno bloccante. Due confermavano tesi della PR
-      (semantica dell'array; ritenzione della label). Due erano difetti REALI
-      nel testo della PR e sono stati corretti: `-ctime` non è il tempo di
-      creazione, e il diff cambiava quadrante orario per i due GC senza dirlo.
-      In più un rilievo non richiesto e centrato: i documenti asserivano la
-      nuova cadenza al presente mentre la copia viva resta giornaliera fino al
-      reload.
   - seat: tp1-qwen3.8-max
-    ok: false
-    cmd: "POST https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions model=qwen3.8-max (diff completo + prompt di refutazione)"
-    exit: 3
-    verdict: NO_OUTPUT
-    ts: "2026-08-31T04:14:08Z"
-    note: >
-      NESSUN VERDETTO PRODOTTO — registrato come tale, non come 'pulito'. Tre
-      tentativi: read timeout a 120 s, a 280 s, e un terzo a 550 s ancora in
-      volo alla chiusura del pacchetto, con file di output a 0 byte. La porta NON
-      è morta: `scripts/arsenal_probe.py --seats tp1-qwen3.8-max --json` sullo
-      stesso endpoint e credenziale ha risposto LIVE, HTTP 200, 1665 ms con il
-      suo prompt breve. È latenza di ragionamento sul diff intero, non un
-      guasto della porta — e in nessun caso un'assoluzione.
+    status: CONFIRMED
+    objection: >
+      Verdetto CONCERNS, indipendente da Kimi e convergente con esso sui due
+      rilievi sostanziali (nessuna mutua esclusione; `-ctime` non è tempo di
+      creazione). TRE sovra-affermazioni ulteriori, tutte nel mio testo:
+      (1) «lo scarto fa sì che una passata NON corra MAI contro i GC» è falso —
+      uno scarto è pianificazione, non mutua esclusione, e non fa nulla se un GC
+      sfora, se una passata parte tardi o se qualcuno lancia --cleanup a mano;
+      (2) «otto passate LIMITANO il caso peggiore a ~3h» vale solo a macchina
+      sveglia e passate puntuali e brevi — launchd FONDE le esecuzioni saltate
+      durante il sonno, quindi otto voci sono otto occasioni nominali, non otto
+      passate garantite; (3) L'ARITMETICA NON CHIUDE — ~40 checkout a ~1,2 GB
+      fanno ~48 GB, non i ~79 GB impliciti nel salto da ~80 GB a 753 MB.
+      Sul punto (c) diverge da Kimi: giudica la label `.daily` sostenibile solo
+      nel breve, e chiede che sia documentata come scialuppa di compatibilità
+      con un piano di rientro, non come scelta definitiva.
+    resolution: >
+      (1) e (2) ACCETTATE e riscritte nel plist: «tenere fuori dalle fasce»
+      invece di «non corre mai», con l'annotazione esplicita che nulla prende un
+      lock; e «porta verso ~3h» invece di «limita a ~3h», con il caveat sulla
+      fusione delle esecuzioni durante il sonno. (3) ACCETTATA ed è il rilievo
+      più importante del giro: la provenienza ora dichiara che i worktree sono
+      il contributore più grande IDENTIFICATO e non l'intera caduta, elenca i
+      candidati rimanenti come ipotesi per dimensione, ed esclude positivamente
+      sleepimage per mtime. Sulla divergenza (c): registrata senza scioglierla —
+      la scialuppa di compatibilità È documentata (plist, runbook, brief), il
+      piano di rientro no, e resta una domanda aperta per il proprietario, non
+      una cosa che questa PR decide.
+
+# council_run is a PATH to a journal.jsonl relative to THIS pack's own
+# directory (not an inline list — the earlier draft got the shape wrong and
+# the lint's council_run NOTICE was correctly reporting it as absent). The
+# per-seat narrative lives in `dissent` above; the journal is the machine-
+# readable half.
+council_run: journal.jsonl
 
 residual_risks:
-  - "COUNCIL INCOMPLETO, dichiarato invece che mascherato. Il pavimento Gear 3
-    vuole >=2 seggi cross-family con ok:true; questo pacchetto ne ha UNO
-    (kimi-code/k3). Il secondo seggio previsto, tp1-qwen3.8-max, è vivo ma non
-    ha restituito testo entro la finestra; il terzo, codex-gpt-5.6-sol, ha la
-    porta rotta (`--full-auto` rimosso in codex-cli 0.149.1, il wrapper esce 2
-    che il suo stesso header documenta come 'diff vuoto'). Il lint emette la
-    NOTICE `council_run` su questo pacchetto: è corretta, e non è stata aggirata."
+  - "RECIDIVA DEL DIFETTO CHE QUESTA PR CURA, trovata sul commit già pubblicato.
+    Il difetto ereditato è un doppio trattino letterale dentro il commento XML,
+    che rende il file illeggibile a plistlib. L'ho curato, ho preso la ricevuta,
+    e poi ho scritto DUE volte nello stesso header un nome di flag nella sua
+    forma trattata — una recependo un rilievo di kimi-code/k3, una nel paragrafo
+    di provenienza. Il commit 1b70763, quello che è stato pubblicato e su cui la
+    PR è rimasta aperta, NON parsava. La ricevuta che dichiarava il contrario era
+    vera quando fu presa e falsa per l'artefatto spedito.
+    PERCHÉ È SFUGGITA, ed è la parte che vale: `plutil -lint` risponde OK su un
+    file che plistlib rifiuta. Le due sonde non concordano, e quella permissiva è
+    quella che un autore usa per prima. La sonda giusta è plistlib, perché è
+    quella che usa il consumatore reale (audit_launchd_crons.py).
+    CURA APPLICATA QUI: entrambe le occorrenze rimosse, ri-verificato con
+    plistlib sul contenuto finale, più un controllo che scandisce TUTTI i
+    commenti invece di fermarsi al primo errore riportato dal parser; e una nota
+    nell'header stesso che dice al prossimo autore di non scrivere un flag nella
+    forma trattata. La cura è un TESTO, non una guardia: nulla in questa PR
+    impedisce a un contributore di ricommettere la stessa forma. Se la copertura
+    CI risultasse assente, la guardia è un mandato separato — non si allarga
+    questa PR per costruirla."
+  - "COUNCIL COMPLETO A DUE SEGGI, con un terzo irraggiungibile. kimi-code/k3 e
+    tp1-qwen3.8-max hanno entrambi risposto CONCERNS in modo indipendente e
+    convergente sui due rilievi sostanziali (nessuna mutua esclusione; `-ctime`
+    non è tempo di creazione). Il terzo, codex-gpt-5.6-sol, resta irraggiungibile:
+    `--full-auto` rimosso in codex-cli 0.149.1, il wrapper esce 2 che il suo
+    stesso header documenta come 'diff vuoto'. Nessuna copertura è stata
+    rivendicata per quel seggio."
+  - "L'ARITMETICA NON CHIUDE, ed è il rilievo più importante dell'intero giro.
+    ~40 checkout a ~1,2 GB fanno ~48 GB; il salto da ~80 GB liberi a 753 MB ne
+    implica ~79. I worktree sono il contributore PIÙ GRANDE IDENTIFICATO e
+    l'unico che questa PR cura, non l'intera caduta: restano ~30 GB non
+    attribuiti. Ri-misurato dopo il recupero, come STATO ATTUALE e mai come
+    delta notturno (nessuno aveva fotografato quei path prima): .worktrees
+    41 GB su 36 directory (media 1,14 GB), ~/.ollama 49 GB, e la cartella
+    autonomy di OSINT-Nexus 18 GB con uno scrittore autonomo vivo al momento
+    della misura. Questi ultimi due sono il resto plausibile PER DIMENSIONE, in
+    ipotesi. Un sospetto è invece ESCLUSO positivamente: /private/var/vm/sleepimage
+    pesa 26 GB ma ha mtime 2026-08-18, tredici giorni prima — occupante fisso,
+    non partecipante. Cura per la prossima volta, dato che la risposta onesta
+    qui è 'non esisteva una linea di base': catturare un `du -sh` datato di
+    questi path, così la domanda successiva si risolve per sottrazione."
   - "NESSUNA MUTUA ESCLUSIONE, ed è questa PR a moltiplicarne l'esposizione.
     Verificato: nessun `flock` in `agent_worktree_cleanup_cron.sh` né sul
     percorso `--cleanup` di `agent_start.py`. `launchd` non esegue due istanze

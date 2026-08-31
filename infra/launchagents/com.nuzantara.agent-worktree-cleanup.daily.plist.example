@@ -4,23 +4,51 @@ Agent worktree broker reaper — every 3h at :15 WITA (W62 ANTIBODY #1).
 Runbook: docs/runbooks/agent-worktree-broker.md §Auto-cleanup
 
 Invokes the cleanup mode of scripts/agent_start.py (WIP-safe + skip-recent) so
-abandoned worktrees no longer accumulate into a storm. Offset to :15 so a pass
-never races the WR2 worktree-gc (:00) or worktree_gc_universal (:30) on
+abandoned worktrees no longer accumulate into a storm. Offset to :15 to keep a
+pass out of the WR2 worktree-gc (:00) and worktree_gc_universal (:30) slots on
 .worktrees/ — that offset is the reason for the odd minute, keep it.
+
+But read that offset for exactly what it is. BOTH cross-family reviewers
+(kimi-code/k3 and tp1-qwen3.8-max, 2026-08-31) independently rejected the
+earlier wording "never races" as false, and they are right: an offset is
+SCHEDULING, not mutual exclusion. It separates two jobs that start on time and
+finish quickly; it does nothing if a :00 GC overruns 15 minutes, if a run is
+delayed by load or wake-from-sleep, or if someone invokes the cleanup mode by
+hand.
+Nothing anywhere takes a lock (verified: no flock in the wrapper, none on
+agent_start.py's cleanup path). launchd will not run two instances of THIS
+label, so self-overlap is not the hazard — crossing the others is, and eight
+passes expose that pre-existing race eight times as often as one did.
 
 CADENCE, and why it is no longer daily (2026-08-31): a single daily pass cannot
 survive a burst. On the night of 2026-08-30→31 an agent wave minted 40 worktrees
 after the 00:15 run had already fired, and the next scheduled pass was 24h away.
 The reaper was neither dead nor mis-scheduled — its log carries real removals,
 and on the burst it correctly protected every worktree holding unmerged commits,
-a live process or WIP — it was simply out-cadenced. Eight passes a day bound the
-worst case to ~3h of accumulation instead of ~24h.
+a live process or WIP — it was simply out-cadenced. Eight passes a day bring the
+worst case toward ~3h of accumulation instead of ~24h.
+
+"Toward", not "bound": tp1-qwen3.8-max rejected the stronger word and is right.
+The ~3h figure holds only while the machine is awake, each pass starts on time
+and finishes quickly. launchd COALESCES calendar firings missed during sleep —
+a laptop shut overnight gets one catch-up run, not the several it slept through
+— so eight entries mean eight nominal opportunities, never eight guaranteed
+passes.
 
 Provenance of those numbers, so a later reader can weigh them. MEASURED in the
 2026-08-31 session: the per-checkout size (du -sh, ~1.2 GB each), free space of
 753 MB immediately before the recovery pass, and per-worktree ages from the
-broker's own `--list` AGE_MIN column (which showed the bulk between 4 and 26
-hours old).
+broker's own AGE_MIN column, printed by its list mode (which showed the bulk
+between 4 and 26 hours old).
+
+A WORD ON THE SHAPE OF THIS COMMENT, because it bit twice in one session. XML
+forbids a literal double hyphen inside a comment. The pre-existing defect this
+PR cures was exactly that, and BOTH times a reviewer's correction was written
+into this header it came back — once as a flag name, once as another. The trap
+is that `plutil -lint` accepts the file and answers OK, while plistlib (which
+audit_launchd_crons.py uses) raises ExpatError: the lenient probe is the one an
+author reaches for first. Name a flag in prose here, never in its literal
+dashed form.
 
 The "40 of 41 inside 24h" count came from `find -ctime -1`, and a cross-family
 reviewer was right to flag it: `-ctime` is inode CHANGE time, not birth time
@@ -33,6 +61,31 @@ The "~80 GB free the previous evening" figure is the OWNER'S REPORT, not a
 reading anyone captured — no log on this fleet records free space at that
 moment. Corroborating trace that does exist: ~/logs/disk_watchdog.out.log shows
 the Data volume going 85% -> 97% used between 2026-08-30 09:00 and 08-31 09:00.
+
+THE ARITHMETIC DOES NOT CLOSE, and the narrative must not imply it does.
+tp1-qwen3.8-max caught this: ~40 checkouts at ~1.2 GB is ~48 GB, while "~80 GB
+free -> 753 MB" implies ~79 GB consumed. Worktrees are the LARGEST IDENTIFIED
+contributor and the only one this file fixes; they are not the whole drop, and
+roughly 30 GB stays unattributed.
+
+Re-measured after the recovery pass, as CURRENT STATE and never as an overnight
+delta — nothing snapshotted these paths before the incident, so no delta is
+recoverable: .worktrees is 41 GB over 36 directories (1.14 GB average, so the
+1.2 GB figure is a fair round number); ~/.ollama holds 49 GB of models; and
+~/Desktop/OSINT-Nexus/data/autonomy holds 18 GB with an autonomous writer
+confirmed running at the time of measurement. Those last two are the plausible
+remainder BY SIZE ONLY — a hypothesis, not a measurement.
+
+One suspect is positively ELIMINATED rather than merely unproven:
+/private/var/vm/sleepimage is 26 GB but its mtime is 2026-08-18, thirteen days
+earlier, so it consumed nothing that night. It is a standing occupant of the
+volume, not a participant in this incident.
+
+The count itself is approximate and moved while the session ran (36 live now,
+7 reaped by the recovery pass, 2 created by the session's own work). Cure for
+the next occurrence, since the honest answer here is "no baseline existed":
+capture a dated `du -sh` of these paths NOW so the next such question is
+answered by subtraction instead of by inference.
 
 CLOCK FRAME of the two jobs this offset dodges, verified 2026-08-31 rather than
 inherited from the old comment: wr2.worktree-gc fires {Hour 0, Minute 0} and
