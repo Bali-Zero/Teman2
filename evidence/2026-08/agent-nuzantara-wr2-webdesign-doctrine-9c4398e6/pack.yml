@@ -33,7 +33,7 @@ lanes:
 
 diff:
   files: 29
-  net_lines: 9119
+  net_lines: 9127
   measured_at: HEAD (post-merge with origin/main)
   note: >-
     Far past the ~400-net-line target in the Agent PR Contract, and declared rather than split.
@@ -174,9 +174,17 @@ receipts:
       resolved body background, following one level of var() indirection, over both rounds
     result: >-
       round 1: 15 documents, ONE distinct ground (#f7f6f2, 15/15), Cormorant Garamond 15/15,
-      Inter 15/15, 111 occurrences of the brief's own values. round 2: 12 documents, TWELVE
-      distinct grounds, 6 dark, 3 with the accent as FIELD rather than ink, 6 typefaces, and
-      ZERO occurrences of any round-1 value. Cross-checked independently: round 1's fifteen
+      Inter 15/15, 111 occurrences of the brief's own values. round 2: 15 documents, 15 distinct
+      DECLARED grounds, 7 typefaces, and ZERO occurrences of any round-1 value.
+      CORRECTED 2026-08-31, and the correction matters more than the figure: the round-2 number
+      above measures the CSS ground TOKEN, following one level of var() — not the pixels. Measured
+      again by dominant painted area, 11 of the 15 render a cream or white ground; only TWO carry a
+      true red field (69% and 56% of painted area) and only ONE a true dark (62%). Three entries
+      DECLARE a polarity flip to red-as-field and render a light page — one of them declares a
+      "deep red ground" and paints 2% red. The divergence between the two briefs stands and is
+      large (round 1: fifteen documents, ONE ground). What does not stand is reading declared
+      variety as rendered variety. The instrument answered a neighbouring question, which is the
+      same defect this whole capture exists to name. Cross-checked independently: round 1's fifteen
       entries used five different variable NAMES (--p, --pp, --paper) for the same colour.
     exit: 0
     ts: 2026-08-31T06:00Z
