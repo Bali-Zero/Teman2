@@ -65,8 +65,8 @@ seat_diversity_note:
 council_run: "journal.jsonl"
 diff:
   net_lines: |
-    1 file, +39/-3 (git diff --numstat against the merge-base with origin/main,
-    2d788a3855a708c907c693722f980db909605f99) — .github/workflows/fly-deploy.yml only, 1 commit.
+    4 files, +732/-3 (git diff --numstat against the merge-base with origin/main,
+    2d788a3855a708c907c693722f980db909605f99), 4 commits — the workflow file plus this pack.
   behaviour_change: |
     Two independent changes bundled in one small diff to one file. (a) The `deploy` job's
     pre-existing 3-attempt retry loop gains a second, narrowly-scoped retry condition — a log match
@@ -75,15 +75,15 @@ diff:
     other non-lease failure still does; `timeout-minutes` on that job rises from 20 to 35. (b) The
     `deploy-failure-alert` job's `if:` condition widens from firing only on `failure` to also firing
     on `cancelled`, for both `run-migrations` and `deploy`. No other file changes; no schema, no
-    dependency, no application code. Separately: this worktree's working tree currently also carries
-    an UNCOMMITTED, comment-only correction on top of the above (verified via `git diff --stat --
-    .github/workflows/fly-deploy.yml` from the worktree root: 1 file changed, 10 insertions(+), 3
-    deletions(-)) — identified by the council review (kimi-code/k3 + codex-gpt-5.6-sol per
-    `journal.jsonl`, text-only, no write access to this worktree) and applied to the working tree by
-    the build lane (conducting session) by hand, per the build lane's own account; not yet part of
-    commit 092f40f80. This diff's own LOGIC is unaffected:
-    actionlint's token set is byte-identical between the HEAD-committed run and a rerun against the
-    current working tree (14 findings both times — see receipts).
+    dependency, no application code. The comment-only corrections the council review raised
+    (kimi-code/k3 + codex-gpt-5.6-sol per `journal.jsonl`, text-only, no write access to this
+    worktree) were applied by the build lane (conducting session) by hand and are now COMMITTED:
+    they were an uncommitted working-tree edit when this pack was first written, which is why an
+    earlier draft described them that way. They change comments only — the real worst case named
+    honestly instead of a case that cannot occur, and `--depot=` corrected to `--depot=false` —
+    so this diff's own LOGIC is unchanged by them. Evidence that it is unchanged: actionlint's
+    token set is byte-identical between the run against commit 092f40f80 and a rerun against the
+    corrected text (14 findings both times — see receipts).
 receipts:
   - claim:
       "Deterministic gear floor recomputed from THIS PR's actual changed-file list is 3, sourced
