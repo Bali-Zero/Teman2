@@ -22,32 +22,39 @@ seat_diversity_note: >-
   out of credits.
 diff:
   net_lines: >-
-    Six files, THREE-DOT against the merge base, never two-dot (W102), and
-    measured with --no-renames because that is how evidence_pack_lint measures it;
-    the two invocations disagree on a diff that renames, and a number is verified
-    by re-measuring it the way the CHECKER will, not merely by re-measuring it.
-    The exact added/deleted pair is deliberately NOT narrated: writing it into this
-    file changes it, and chasing that fixed point is how a pack ends up with a
-    figure that was true one commit ago. The lint's own remedy text offers exactly
-    this choice, and CI recomputes the real pair from --numstat anyway.
-    Gear floor recomputed = 3 (hot-zone: .github/workflows/); declared Gear 3, at
-    the floor. Over the ~400-line target and stated rather than hidden: the lint is
-    ~316 lines and its corpus ~431, because nine cases pin defects a refuter found
-    and five more pin the message defect described below; three of the six files
-    are this evidence pack. The spec budgeted 150 net lines for the lint alone, and
-    was written before any of those findings existed.
-    THE FILE COUNT WENT 6 -> 7 -> 6, and the round trip is the point. This PR
-    briefly carried a seventh file: an EXEMPTION marker added to
-    .github/workflows/with-seat-broker-tests.yml, the one workflow whose shape this
-    lint flagged. Between that commit and this one, another lane CURED THE CAUSE
-    instead -- it removed that workflow's `merge_group:` trigger outright, on the
-    measured ground that an advisory workflow has no business in the merge queue
-    (57 queue runs, ZERO pull_request runs in its lifetime). The exemption then
-    excused a shape that no longer existed, so it was withdrawn in the rebase. The
-    lint now reports 116 workflows, 0 violations, and NO exemptions at all. That is
-    the better outcome and it was not mine: my instinct was to excuse the violation
-    because it was blocking me, and this lint's own docstring is what says an
-    exemption is a guard running in reverse.
+    THREE-DOT against the merge base, never two-dot (W102), and measured with
+    --no-renames because that is how evidence_pack_lint measures it; the two
+    invocations disagree on a diff that renames, and a number is verified by
+    re-measuring it the way the CHECKER will, not merely by re-measuring it.
+    NO SCALARS ARE NARRATED HERE AT ALL, and that is deliberate twice over.
+    Writing a figure into this file changes the figure, so chasing the fixed
+    point is how a pack ends up stating something that has stopped being true;
+    the lint's own remedy text offers exactly this choice, and CI recomputes the
+    real values from --numstat and the event payload anyway. And the rule reads
+    the WHOLE narration, not a headline field: an earlier draft of this block
+    used a number-word as a figure of speech, in a clause whose entire point was
+    that the figure would go stale -- and the lint convicted the clause as a
+    commit-count claim. Reworded rather than argued with. A pack may not use a
+    number-word rhetorically; if you want to say "recently", say recently.
+    Gear floor recomputed = 3 (hot-zone: .github/workflows/); declared Gear 3,
+    at the floor. Over the ~400-line guideline and stated rather than hidden:
+    the lint and its corpus are each a few hundred lines, because the corpus
+    pins every defect a refuter found -- the trigger-shape cases, the bare-key
+    message defect, and the exemption regex that swallowed a newline -- and part
+    of the changed set is this evidence pack. The spec budgeted 150 net lines
+    for the lint alone, and was written before any of those findings existed.
+    THE CHANGED SET GREW AND THEN SHRANK, and the round trip is the point. This
+    PR briefly carried an EXEMPTION marker on
+    .github/workflows/with-seat-broker-tests.yml, the one workflow whose shape
+    this lint flagged. Between that commit and this one, another lane CURED THE
+    CAUSE instead -- it removed that workflow's `merge_group:` trigger outright,
+    on the measured ground that an advisory workflow has no business in the
+    merge queue. The exemption then excused a shape that no longer existed, so
+    it was withdrawn in the rebase. The lint now reports zero violations and NO
+    exemptions at all. That is the better outcome and it was not mine: my
+    instinct was to excuse a violation because it was blocking me, and this
+    lint's own docstring is what says an exemption is a guard running in
+    reverse.
   behaviour_change: >-
     A new lint runs on the live tree inside the REQUIRED `antidotes` job, with no
     `continue-on-error`, and blocks a merge on a newly-introduced trigger

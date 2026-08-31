@@ -248,6 +248,19 @@ _OPT_OUT_OK = _GUILTY.replace("name: guilty\n",
 _OPT_OUT_NO_REASON = _GUILTY.replace("name: guilty\n",
     "name: excused-badly\n# trigger-symmetry: intentional\n")
 
+#: The dash forms. These are the ones that actually shipped broken: with `\s`
+#: on either side of the reason group, the bare dash swallowed the NEWLINE and
+#: captured the first token of the following YAML line, so the linter printed
+#: `EXEMPT — on:` and the guard was disarmable by typing one character. Found by
+#: a cross-family refuter; the corpus above tested only the DASHLESS marker and
+#: was green throughout. W119.
+_OPT_OUT_BARE_DASH = _GUILTY.replace("name: guilty\n",
+    "name: excused-by-a-dash\n# trigger-symmetry: intentional -\n")
+_OPT_OUT_BARE_EMDASH = _GUILTY.replace("name: guilty\n",
+    "name: excused-by-an-emdash\n# trigger-symmetry: intentional \u2014\n")
+_OPT_OUT_TRAILING_SPACE = _GUILTY.replace("name: guilty\n",
+    "name: excused-by-a-dash-and-spaces\n# trigger-symmetry: intentional -   \n")
+
 
 def _case_opt_out_marker_excuses_only_with_a_reason() -> list[str]:
     """The escape exists because the rule judges FORM where the hazard is about
@@ -261,10 +274,19 @@ def _case_opt_out_marker_excuses_only_with_a_reason() -> list[str]:
             fails.append(f"a marker WITH a reason did not excuse: rc={rc} — {out.strip()[:200]}")
         if "EXEMPT" not in out:
             fails.append("the exemption was silent — an exemption nobody can see is one nobody can revisit")
-    with tempfile.TemporaryDirectory() as td:
-        rc, _ = _run(_world(pathlib.Path(td), "w.yml", _OPT_OUT_NO_REASON))
-        if rc != 1:
-            fails.append(f"a marker WITHOUT a reason excused the violation: rc={rc}, expected 1")
+    for label, body in (
+        ("no dash at all", _OPT_OUT_NO_REASON),
+        ("a bare dash", _OPT_OUT_BARE_DASH),
+        ("a bare em-dash", _OPT_OUT_BARE_EMDASH),
+        ("a dash and trailing spaces", _OPT_OUT_TRAILING_SPACE),
+    ):
+        with tempfile.TemporaryDirectory() as td:
+            rc, out = _run(_world(pathlib.Path(td), "w.yml", body))
+            if rc != 1:
+                fails.append(
+                    f"a marker with {label} and NO reason excused the violation: "
+                    f"rc={rc}, expected 1 — {out.strip()[:160]}"
+                )
     return fails
 
 

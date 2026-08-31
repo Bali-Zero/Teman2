@@ -49,7 +49,7 @@ push), not the head-green / queue-red trap above. This guard is concerned only
 with the shape that blocks the PR itself. (Same style as
 scripts/ci/check_required_workflow_conformance.py's own declared scope limit.)
 
-NO ALLOWLIST. Measured on this repo 2026-08-31: 112 workflows, ZERO violations.
+NO ALLOWLIST. Measured on this repo 2026-08-31: 116 workflows, ZERO violations.
 There is no escape hatch because, with an empty violation set, an allowlist
 could only ever be used to admit the FIRST violation — and the fix is always
 available: remove the `pull_request` paths filter, or do not add the
@@ -101,9 +101,17 @@ def trigger_present(on_block: Any, name: str) -> bool:
     return False
 
 
-#: Per-file opt-out. NOT a central allowlist — the justification travels with
-#: the workflow it excuses, where the next reader of that workflow will meet it,
-#: instead of in a registry nobody opens. A blind refuter of this lint named a
+#: Per-file opt-out. NOT a central allowlist — the justification lives in the
+#: workflow it excuses rather than in a registry nobody opens.
+#:
+#: Stated exactly, because the first wording overstated it: this scans the raw
+#: file text, so the marker is honoured from ANY line — including inside a
+#: `run: |` block or an `env:` scalar, where a reader of the triggers will never
+#: meet it. A refuter smuggled one in from a shell heredoc. Not tightened to
+#: comment-lines-outside-`run` here, because the loud `EXEMPT — <reason>` line
+#: the linter prints on every run is the real backstop and a stricter parse
+#: would trade a visible exemption for an invisible parse bug. Placement is a
+#: convention this cannot enforce; the printout is what makes it reviewable. A blind refuter of this lint named a
 #: shape the rule forbids that a careful author could make safe: keep the
 #: pull_request `paths:` filter for PR-runner economy, and have the merge_group
 #: job self-skip with an in-job path filter. Whether that is equivalent is not
@@ -111,8 +119,19 @@ def trigger_present(on_block: Any, name: str) -> bool:
 #: hazard is about the ENTITY (can the queue run diverge from the PR run), which
 #: is superscar #3 pointed at this lint's own rule. Rather than pretend
 #: otherwise, the escape is explicit, one line, and must carry a reason.
+#: `[ \t]`, never `\s`. Under `re.MULTILINE` a `\s` on either side of the reason
+#: group matches the NEWLINE, so `# trigger-symmetry: intentional -` with no
+#: reason swallowed the line break and captured the first token of the NEXT YAML
+#: line as its justification — measured output: `EXEMPT — on:`. A cross-family
+#: refuter found it by typing a bare dash. That made the file's own stated
+#: invariant ("a marker with NO reason does not exempt") false, and made this
+#: guard disarmable on any workflow by adding one character. Superscar #3 / W119
+#: — the same `\s`-crosses-the-newline defect, landing in an EXEMPTION path,
+#: which is the worst place for it: an over-matching predicate cries wolf, an
+#: over-matching exemption goes quiet.
 _OPT_OUT_RE = re.compile(
-    r"^\s*#\s*trigger-symmetry:\s*intentional\s*(?:[-—]\s*(?P<reason>\S.*?))?\s*$",
+    r"^[ \t]*#[ \t]*trigger-symmetry:[ \t]*intentional"
+    r"(?:[ \t]*[-—][ \t]*(?P<reason>\S.*?))?[ \t]*$",
     re.MULTILINE,
 )
 
