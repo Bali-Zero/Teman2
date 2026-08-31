@@ -101,3 +101,17 @@ risks:
   - "The migration was executed only against a scratch Postgres created by hand, not by a harness
     the repo owns. That inherited gap — no execution harness for migrations_v2 at all — is the
     codex seat's standing finding from the previous PR and is still ledgered, not closed."
+  - "The R9 two-seat council quorum is NOT met, and the pack does not pretend otherwise.
+    codex-gpt-5.6-sol reviewed and returned REJECT with seven findings, every one re-verified
+    on disk and cured or ledgered. The other two roster seats are DEAD with measurements, not
+    silent: kimi-code/k3 answers HTTP 403 (weekly quota), and tp1-qwen3.8-max answers a 2s ping
+    but never returns on the review payload across three attempts and two transports. The
+    pack-level seat_override suppresses both R8 and R9 — that coupling is stated in the override
+    itself rather than discovered later, because an override that quietly covers a second rule is
+    the same defect as a verdict that exists only in prose."
+  - "Seven council findings were CURED IN THIS PR rather than deferred, which is a larger diff
+    than a price change warrants and is a deliberate call: three of them (the frontend snapshot,
+    the two 790-pinned live-path tests, the absent-row branch) would each have shipped a wrong
+    price or a red CI on their own, so splitting them out would have meant merging a correction
+    that does not correct. The genuinely inherited defects — no execution harness for
+    migrations_v2, and the runner's asymmetric rollback ledger — are ledgered, not fixed."

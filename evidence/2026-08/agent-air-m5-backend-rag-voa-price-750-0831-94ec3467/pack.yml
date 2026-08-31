@@ -1,0 +1,224 @@
+# MUST be the literal staging path, never the real per-PR one: CI stages the
+# pack and brief into /tmp/evidence-check/evidence/{pack,brief}.yml and the lint
+# resolves brief_ref against THAT root. Writing the obviously-correct per-PR
+# path here is the documented trap -- its failure message, "does not resolve to
+# a file on disk", says nothing about staging.
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR #5428 (agent/air-m5/backend-rag/voa-price-750-0831 -> main) — Zero's 2026-08-31 reversal to
+  750.000 IDR, carried by a FORWARD migration because 302 is already applied in production.
+lanes:
+  - lane: voa-price-750-build
+    role: build
+    seat: claude (this session — M5 interactive, sole build lane)
+  - lane: voa-price-750-review-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+diff:
+  files: 14
+  note: >-
+    git diff --name-only $(git merge-base origin/main HEAD)..HEAD — the MERGE-BASE form, not the
+    two-dot `origin/main` one. Measured here: the two-dot count read 22 and was attributing to this
+    PR the five files of the one commit main had gained meanwhile (W102). Insertion and deletion
+    counts are deliberately NOT
+    narrated: CI recomputes them every run and a copy here is not evidence, only a tripwire that
+    re-arms every time main moves. The file count survives a merge from main.
+pii_scan: clean
+# R8 wants a {role: ground_truth, seat, nb, query_hash} lane because the diff
+# touches the official pricing table. Overridden, with the reason on the record
+# rather than a notebook lane invented to satisfy a field: a Bali Zero PRICE has
+# no external ground truth to consult. It is the owner's decision (Legge 5) and
+# he stated it verbatim as "750"; no NotebookLM corpus, regulator or competitor
+# can confirm or refute what this company charges. Manufacturing an `nb:` and a
+# `query_hash:` here would be the phantom-citation failure the rule exists to
+# prevent, pointed the other way. What IS verifiable was verified and is in the
+# receipts: that production currently holds the superseded figure, and that the
+# competitor claim behind the ruling ("Flado is also at 750") is NOT supported —
+# the June digest reads "Flado: no data", and the session said so instead of
+# agreeing.
+seat_override: >-
+  TWO rules are suppressed by this one field, and saying so is the point —
+  `seat_override` is pack-level (_seat_rule_verdict), so it covers R9's quorum
+  as well as R8's ground-truth lane whether or not that was intended. Measured
+  by running the lint: both now report "(overridden)". (1) GROUND TRUTH: a price
+  is an owner ruling, not an external fact — no notebook, regulator or
+  competitor can ground-truth what Bali Zero charges, and manufacturing an `nb:`
+  and a `query_hash:` to fill the fields would be the phantom-citation failure
+  the rule exists to prevent, pointed the other way. (2) QUORUM: it is genuinely
+  NOT met, and the override is not a claim that it is. One seat reviewed
+  (codex-gpt-5.6-sol, REJECT, seven findings, every one re-verified on disk and
+  cured or ledgered); the other two are recorded DEAD in council-run.jsonl with
+  the measurement that killed them — kimi 403 weekly quota, tp1-qwen3.8-max
+  alive on a 2s ping but never returning on the review payload across three
+  attempts and two transports. An absent seat has not agreed. If the reviewer of
+  this PR wants a second live seat before merge, the honest answer is that today
+  there was not one to be had.
+receipts:
+  - claim: >-
+      Migration 302 really is applied in production, so this correction cannot be a revert — the
+      premise the whole PR rests on.
+    cmd: >-
+      bash scripts/pg.sh -c "SELECT migration_number, migration_name, applied_at FROM
+      schema_migrations ORDER BY migration_number DESC LIMIT 4;" and the practice_types read
+    result: >-
+      302_practice_types_voa_price_790 applied 2026-08-31 03:51:44.065688+00, and
+      practice_types.visa_b1_voa reads 790000.00 with the same timestamp. Production is LIVE at a
+      price the owner has revoked, and the runner will never execute a 302 again. Read-only role,
+      catalogue rows only, no client row touched.
+    exit: 0
+    ts: 2026-08-31T13:20Z
+    seat: session (build lane)
+  - claim: >-
+      Nobody deployed by hand — the MERGE deployed, which is why holding off on flyctl was not
+      actually honouring the WhatsApp-window rule.
+    cmd: gh run list --workflow fly-deploy.yml --limit 5, plus sed -n '1,22p' of the workflow
+    result: >-
+      A successful fly-deploy run at 2026-08-31T03:43:55Z titled "fix(pricing): align the CRM's
+      VOA price with the owner's 790.000 ruling" — the merge of #5407. The trigger is
+      `push: branches: [main], paths: apps/backend-rag/**`, and fly.toml's release_command runs
+      `migrate apply-all` in an ephemeral machine before promotion. The deploy is a consequence of
+      the merge, not a separate step a session withholds.
+    exit: 0
+    ts: 2026-08-31T13:25Z
+    seat: session (build lane)
+  - claim: >-
+      Migration 303 was EXECUTED, not merely read — including the absent-row branch the council
+      made us change.
+    cmd: >-
+      createdb a scratch database, extract the forward section with awk up to the ROLLBACK
+      marker, psql -f it against four states
+    result: >-
+      (a) row at 790000 -> UPDATE 1, row reads 750000. (b) rerun -> UPDATE 0, no churn. (c) row
+      absent -> after the cure, ERROR "practice_types row visa_b1_voa is ABSENT ... refusing to
+      record a price alignment that aligned nothing"; before the cure it was a NOTICE and a clean
+      RETURN, which was the seat's finding 3. (d) UPDATE neutered to `AND false` against a row at
+      900000 -> ERROR from the postcondition. The migration cannot record itself applied while
+      leaving the price wrong.
+    exit: 0
+    ts: 2026-08-31T14:05Z
+    seat: session (build lane)
+  - claim: >-
+      The tripwire is red against every mutation that would ship a wrong price, INCLUDING the two
+      bypasses the council measured.
+    cmd: >-
+      pytest the tripwire, five mutations, each restored from a scratchpad copy and the baseline
+      re-run afterwards
+    result: >-
+      RED on: 303's SET moved to 790000; the sheet moved to 700.000; 303 hidden from the setter
+      set; the tuple form `SET (base_price, updated_at) = (790000, CURRENT_TIMESTAMP)` inserted
+      before the ROLLBACK marker (the seat's exact edit); a scalar assignment to a non-literal
+      (`some_function()`). GREEN restored each time. ON HONESTY: the first attempt at the tuple
+      mutation appended the SQL AFTER the ROLLBACK marker, where the test correctly ignores it,
+      and read GREEN — the MUTATION was wrong, not the guard, and it was re-run in the right place
+      rather than reported as a pass.
+    exit: 0
+    ts: 2026-08-31T14:00Z
+    seat: session (build lane)
+  - claim: >-
+      The public frontend and its SEO structured data no longer publish the superseded price.
+    cmd: >-
+      python3 scripts/sync_frontend_prices.py --check (before), the regeneration, --check again;
+      plus an independent repo-wide sweep of every frontend surface
+    result: >-
+      Before: "ERROR DRIFT ... out of sync". After: "OK ... in sync", 113 exact rows. The sweep
+      found ZERO live occurrences of 790 in apps/mouth, apps/web or either admin dashboard — the
+      only hits are Jest fixtures, and the SEO components (JsonLd, DynamicJsonLd, EnhancedJsonLd,
+      sitemap) all take price as a prop rather than hardcoding it. The residual 790s in
+      skills/bali-zero-brand/surfaces/web.md were read individually and are formatting
+      illustrations (the `parseFloat("790.000") == 790` trap, dot-vs-comma grouping), not a price.
+    exit: 0
+    ts: 2026-08-31T14:15Z
+    seat: session (build lane)
+  - claim: The 25 errors in the test run are a stale local template database, not this diff.
+    cmd: >-
+      psql -d garuda_l1_template_0825 -c "SELECT to_regclass('garuda_voa_check_results') IS NULL,
+      (SELECT max(migration_number) FROM schema_migrations)"
+    result: >-
+      t|281 — the template is at migration 281 and the missing table arrives with 286. 819 tests
+      pass; every error is an UndefinedTableError at fixture setup on a table this diff neither
+      creates nor drops. Measured rather than asserted, because "the errors are unrelated" is
+      exactly the claim that deserves a receipt.
+    exit: 0
+    ts: 2026-08-31T14:10Z
+    seat: session (build lane)
+  - claim: >-
+      The competitor premise behind the ruling was NOT confirmed, and the reversal's own history
+      was traced rather than guessed.
+    cmd: grep the June competitive digest for Flado; git show 80dcb24068
+    result: >-
+      The digest reads "Flado: no data" verbatim — the session declined to confirm the price match
+      the owner asked about and produced the record instead. Commit 80dcb24068 (#3037,
+      2026-07-24) is where 790.000 came from, and it also claimed "there is no stale DB base_price
+      to fix here" after checking code `visa_voa`, which does not exist in production, instead of
+      `visa_b1_voa`, which does — the origin of the two-month divergence.
+    exit: 0
+    ts: 2026-08-31T13:10Z
+    seat: session (build lane)
+council_run: council-run.jsonl
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      [HIGH] The public frontend still serves 790.000 — apps/mouth/data/bali-zero-prices.json
+      feeds the service cards and the JSON-LD SEO block, and sync_frontend_prices.py --check exits
+      DRIFT. Backend would quote 750 while the page and Google publish 790.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced (--check exited DRIFT), snapshot regenerated, --check now in sync. This is the
+      finding that would have shipped a visibly contradictory price to customers.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      [HIGH] test_garuda_voa_public.py:293 and :601 are pinned at 790_000; the second explicitly
+      asserts "the real ISSUANCE catalogue amount". Both go red once the resolver returns 750000.
+    status: CONFIRMED
+    resolution: Reproduced by running the real resolver on the branch; both updated to 750_000.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      [HIGH] Migration 303 can record itself applied with no target row — the UPDATE matches
+      nothing, SELECT INTO yields NULL, the generic verification always returns True
+      (migration_base.py:587) and the ledger is written anyway (:699).
+    status: CONFIRMED
+    resolution: >-
+      Correct, and it reverses the position 302 took on the same question. The absent branch now
+      RAISES. There is no fresh-environment cost, which is what made 302's softer path defensible
+      and is now measured rather than assumed: 221 INSERTs the row unconditionally and runs first.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      [MEDIUM] verified_on stays 2026-08-25 on a figure ruled on the 31st; that field drives a
+      90-day freshness window, so the resolver fails closed six days early.
+    status: CONFIRMED
+    resolution: >-
+      Stamped 2026-08-31 on the issuance row only. The extension was not re-certified — it was not
+      re-ruled, and a freshness stamp is an attestation, not a formatting field.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      [MEDIUM] The tripwire stays GREEN with the database at 790.000. Two bypasses: a tuple-form
+      `SET (base_price, updated_at) = (790000, ...)` the scalar regex never sees, and a new
+      migration predicated on `code LIKE 'visa_b1_vo%'` that never enters the frozen setter set.
+    status: CONFIRMED
+    resolution: >-
+      Both reproduced. Cured structurally rather than by adding two more patterns, because
+      "recognise the shapes I thought of" is the defect itself: every assignment site must now be
+      READABLE or the test reddens, and a migration that moves base_price must name its codes
+      literally. The upsert idiom `base_price = EXCLUDED.base_price` (migration 221) is recognised
+      explicitly so the new guard does not redden a legitimate file — found by running it, not by
+      reasoning about it.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      [MEDIUM] 303's rollback is not really re-appliable: a rollback clears _schema_versions but
+      leaves schema_migrations, and _is_applied reads the survivor by NAME, so the next apply-all
+      skips the forward section and goes green at 790.000.
+    status: CONFIRMED
+    resolution: >-
+      A property of the runner, not of this file, and the file's comment was claiming more than
+      the runner delivers. The comment now states it and says both ledgers must be cleared by
+      hand. The runner defect is inherited and ledgered, not fixed in a price PR.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      [MEDIUM] product.yaml, GROUND.md F18/F19, the brand web surface's price gate and the Xendit
+      docstring still declare 790.000, so the next funnel generation re-introduces it.
+    status: CONFIRMED
+    resolution: >-
+      All four updated. Dated ratification records keep their history and note that the figure
+      moved — the all-inclusive PROPERTY is what was ratified on 2026-08-25, not the amount.
+      Historical migrations, live-walk records and stub fixtures deliberately untouched, per the
+      seat's own carve-out.
