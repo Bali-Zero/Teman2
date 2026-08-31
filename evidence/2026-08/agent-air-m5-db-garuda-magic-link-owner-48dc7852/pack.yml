@@ -5,8 +5,12 @@ brief_ref: evidence/brief.yml
 council_run: journal.jsonl
 plan_ref:
   "PR #5302 (agent/air-m5/db/garuda-magic-link-owner) — cure of the production outage that kept the
-  authenticated half of GARUDA VOA unreachable from the day migration 285 shipped, plus the static
-  lint that stops the omission recurring. Governing mandate: GARUDA VOA dark launch to production."
+  authenticated half of GARUDA VOA unreachable from the day migration 285 shipped. It ships the cure
+  ONLY: the static lint that was to stop the omission recurring is WITHDRAWN (four rounds, round 4
+  still green on the class it exists to catch) and the class is now specified, not guarded — see
+  docs/specs/2026-08-31-security-definer-ledger-lock-lint.md and the PENDING-ARMS row. Diff-time
+  coverage of this class is deliberately ABSENT. Governing mandate: GARUDA VOA dark launch to
+  production."
 # R8 (ground_truth) seat_override. R8 fires on the PATTERN `*/visa_engine/*`, and
 # the only file in this diff that matches it is
 # apps/backend-rag/backend/scripts/visa_engine/operational_preflight.py. Its diff

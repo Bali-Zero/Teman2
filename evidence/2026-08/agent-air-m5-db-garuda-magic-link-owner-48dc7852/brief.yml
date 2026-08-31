@@ -49,7 +49,10 @@ constraints:
   #       rejection is in this pack's own dissent.
   - "Migration 301 starts from migration 281's role-guarded, idempotent DO block
     but does NOT end where 281 ends: after attempting the ALTER it re-reads
-    pg_proc.proowner and RAISE EXCEPTIONs if the owner is still wrong (301:151-155),
+    pg_proc.proowner (301:155) and RAISE EXCEPTIONs if the owner is still wrong
+    (301:158-162) — the earlier citation 301:151-155 was wrong: that span is the
+    insufficient_privilege handler's RAISE NOTICE plus the re-read, and excludes
+    the assert entirely,
     so the runner cannot record it applied while magic-link issuance is still
     dead. The insufficient_privilege handler explains the failure; it no longer
     excuses it. Two paths still return early without reaching that assert — role
@@ -104,8 +107,9 @@ consumer_map:
   # PR, so nothing here "runs on every PR, no database needed" — that is exactly
   # the diff-time coverage the withdrawal gives up, and pretending otherwise in
   # the consumer map is how a gap becomes invisible.
-  - "backend/tests/db/ — NOT a consumer of this PR any more. The static lint runs
-    needed, so it also guards migrations written by lanes that never touch prod."
+  - "backend/tests/db/ — NOT a consumer of this PR any more. Nothing in this PR
+    guards migrations at diff time; the withdrawal gives that up, and the gap is
+    the PENDING-ARMS row, not a covered surface."
   - "PR #5298 (magic-link ownership check) is queued against the SAME endpoint:
     it is orthogonal (router-level authorization vs database privilege) and
     neither cure makes the other unnecessary — with #5298 alone the endpoint
