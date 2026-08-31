@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://balizero.com/schemas/wr3/language-package-v1.json",
+  "title": "Zantara WR3 language package",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "episode_id",
+    "status",
+    "canonical_language",
+    "source_script_sha256",
+    "source_script_hash",
+    "claim_ids",
+    "youtube_upload_status",
+    "languages"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "episode_id": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["READY", "BLOCKED"] },
+    "canonical_language": { "const": "en" },
+    "source_script_sha256": {
+      "type": "string",
+      "pattern": "^(MISSING|[a-f0-9]{64})$"
+    },
+    "source_script_hash": {
+      "type": "string",
+      "pattern": "^(MISSING|[a-f0-9]{64})$"
+    },
+    "claim_ids": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "youtube_upload_status": { "const": "DISABLED" },
+    "languages": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+      },
+      "additionalProperties": { "$ref": "#/$defs/language" }
+    }
+  },
+  "$defs": {
+    "nullableString": { "type": ["string", "null"] },
+    "language": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "language",
+        "multilingual_level",
+        "status",
+        "source_script_sha256",
+        "source_script_hash",
+        "translation_hash",
+        "claim_ids",
+        "validation_errors",
+        "artifact_sha256",
+        "glossary_version",
+        "voice_asset",
+        "voice_approval_status",
+        "full_mix_asset",
+        "captions_srt",
+        "captions_vtt",
+        "localized_title",
+        "localized_description",
+        "localized_thumbnail",
+        "duration",
+        "duration_drift",
+        "duration_qa_status",
+        "lip_sync_claim",
+        "semantic_qa_status",
+        "terminology_qa_status",
+        "human_review_status",
+        "youtube_upload_status"
+      ],
+      "properties": {
+        "language": { "type": "string", "minLength": 2 },
+        "multilingual_level": {
+          "oneOf": [
+            { "const": "CANONICAL" },
+            { "type": "integer", "enum": [1, 2, 3] }
+          ]
+        },
+        "status": { "enum": ["READY", "BLOCKED"] },
+        "source_script_sha256": {
+          "type": "string",
+          "pattern": "^(MISSING|[a-f0-9]{64})$"
+        },
+        "source_script_hash": {
+          "type": "string",
+          "pattern": "^(MISSING|[a-f0-9]{64})$"
+        },
+        "translation_hash": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "claim_ids": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "validation_errors": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "artifact_sha256": {
+          "type": "object",
+          "propertyNames": { "type": "string", "minLength": 1 },
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "glossary_version": { "$ref": "#/$defs/nullableString" },
+        "voice_asset": { "$ref": "#/$defs/nullableString" },
+        "voice_approval_status": { "type": "string", "minLength": 1 },
+        "full_mix_asset": { "$ref": "#/$defs/nullableString" },
+        "captions_srt": { "$ref": "#/$defs/nullableString" },
+        "captions_vtt": { "$ref": "#/$defs/nullableString" },
+        "localized_title": { "$ref": "#/$defs/nullableString" },
+        "localized_description": { "$ref": "#/$defs/nullableString" },
+        "localized_thumbnail": { "$ref": "#/$defs/nullableString" },
+        "duration": { "type": ["number", "null"], "minimum": 0 },
+        "duration_drift": { "type": ["number", "null"] },
+        "duration_qa_status": { "type": "string", "minLength": 1 },
+        "lip_sync_claim": { "type": "string", "minLength": 1 },
+        "semantic_qa_status": { "type": "string", "minLength": 1 },
+        "terminology_qa_status": { "type": "string", "minLength": 1 },
+        "human_review_status": { "enum": ["REQUIRED", "APPROVED"] },
+        "youtube_upload_status": { "const": "DISABLED" }
+      }
+    }
+  }
+}

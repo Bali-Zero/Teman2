@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0",
+  "purpose": "Synthetic evidence for the complete non-spending episode dry-run path",
+  "terminal_state": "READY_FOR_SPEND",
+  "contains_flow_render": false,
+  "files": {
+    "brief.json": {
+      "grounding_status": "GROUNDED",
+      "claim_ids": ["synthetic-claim-001"],
+      "synthetic": true
+    },
+    "script.json": {
+      "status": "FROZEN",
+      "language": "en",
+      "claim_ids": ["synthetic-claim-001"],
+      "text": "Synthetic fixture copy. It is not a production or legal claim.",
+      "synthetic": true
+    },
+    "story-lock.json": {
+      "status": "LOCKED",
+      "beats": [
+        {
+          "beat_id": "synthetic-beat-001",
+          "purpose": "Exercise deterministic lifecycle reconciliation"
+        }
+      ],
+      "synthetic": true
+    },
+    "wardrobe-reference-spec.json": {
+      "status": "LOCKED",
+      "views": ["front", "three_quarter", "full_body", "fabric_detail"],
+      "identity_continuity": true,
+      "generated_reference_exists": false,
+      "synthetic": true
+    },
+    "shot-pack.json": {
+      "status": "LOCKED",
+      "shots": [
+        {
+          "shot_id": "synthetic-shot-001",
+          "shot_class": "SYNC_FOREGROUND",
+          "rendered": false
+        }
+      ],
+      "synthetic": true
+    },
+    "pre-render-gate.json": {
+      "verdict": "PASS",
+      "shot_pack_sha256": "$CURRENT_SHOT_PACK_SHA256",
+      "flow_jobs_submitted": 0,
+      "flow_credits_consumed": 0,
+      "synthetic": true
+    }
+  }
+}

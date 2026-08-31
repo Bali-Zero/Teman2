@@ -1,0 +1,59 @@
+{
+  "candidate_id": "C07",
+  "created_at_utc": "2026-08-31T00:18:37.438553Z",
+  "episode_id": "S01E13",
+  "evidence": {
+    "PROPOSED": [
+      {
+        "path": "context-snapshot.json",
+        "sha256": "4f1df9ce8fcaa27f58c083d778d76369eadabfb907931b1b860166745e58f5ae",
+        "size_bytes": 2105
+      }
+    ],
+    "TOPIC_APPROVED": [
+      {
+        "path": "topic-approval.json",
+        "sha256": "4d16e7449fc054c4d139bfee378d0c3409b3dc02e0c0408a3e557da387e48862",
+        "size_bytes": 374
+      }
+    ]
+  },
+  "lineage": {
+    "factory_state": {
+      "path": "docs/wr3/factory/FACTORY_STATE.md",
+      "sha256": "da1f6d9636ebba77e662ec6289fe8c1c848c01362193f398c09aa349b99a717f"
+    },
+    "season_01": {
+      "path": "docs/wr3/factory/editorial/season-01.json",
+      "sha256": "4eba3b650c05d2926f8976e9458816565568abae490c2da43624b495249765e4"
+    }
+  },
+  "native_audio_canonical": true,
+  "publication_allowed": false,
+  "revision": 2,
+  "safety_switches": {
+    "ALLOW_DEPLOY": 0,
+    "ALLOW_EXTERNAL_PUBLISH": 0,
+    "ALLOW_FLOW_SPEND": 0,
+    "ALLOW_REAL_RENDER": 0,
+    "ALLOW_YOUTUBE_UPLOAD": 0
+  },
+  "schema_version": "1.0",
+  "state": "TOPIC_APPROVED",
+  "title": "What Your Residency Permit Does Not Come With",
+  "transitions": [
+    {
+      "at_utc": "2026-08-31T00:18:37.439891Z",
+      "evidence": [
+        {
+          "path": "topic-approval.json",
+          "sha256": "4d16e7449fc054c4d139bfee378d0c3409b3dc02e0c0408a3e557da387e48862",
+          "size_bytes": 374
+        }
+      ],
+      "from": "PROPOSED",
+      "to": "TOPIC_APPROVED"
+    }
+  ],
+  "updated_at_utc": "2026-08-31T00:18:37.439891Z"
+}

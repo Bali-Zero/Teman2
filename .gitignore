@@ -925,3 +925,5 @@ kb/ops/probe_history.jsonl
 
 # WR3 camera-probe adapter runtime lock (machine-local concurrency guard).
 docs/wr3/factory/**/.probe-adapter.lock
+# Runtime-only WR3 Factory transition locks.
+docs/wr3/factory/episodes/**/.factory.lock

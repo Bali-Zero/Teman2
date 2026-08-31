@@ -1,16 +1,17 @@
 # Zantara Video Factory — Current State
 
-- updated_at_utc: `2026-08-30T21:57:33Z`
+- updated_at_utc: `2026-08-31T00:14:37Z`
 - machine: `Air-M5`; Flow dispatch, ArcFace, media QA, and eventual ffmpeg work route to Pro.
 - branch: `agent/air-m5/wr3/zantara-video-factory-v3`
 - worktree: `/Users/balizero/nuzantara/.worktrees/wr3-zantara-video-factory-v3`
 - objective: operate one resumable WR3-based factory whose stages remain coherent while every creative decision can produce a materially different result.
-- factory_phase: `E13_M02_V05_GATEWAY_PAIR_BINDING_REVIEW`
+- factory_phase: `E13_M02_V05_CLIP_QA_REQUIRED`
 - season_gate: `TOPIC_APPROVAL_REQUIRED`; only `C07` is approved as a bounded pilot.
 - episode_queue: `[S01E13]`
 - topic: `What Your Residency Permit Does Not Come With`
 - thesis: `Continuity of movement, discontinuity of rights.`
 - publication_allowed: `false`
+- control_plane: `scripts/cli/factory`; persisted episode state is separate from this R&D probe ledger.
 
 ## Creative Operating Rule
 
@@ -78,7 +79,7 @@ Two materially different methods were tested once each, with no automatic retry:
 | `M01` Flow dual-reference scene generation                 | one generated image; no video                         | one face, cosine `0.499623` | `HARD_FAIL`; closed                 |
 | `M02` identity-preserving edit of the approved composition | one generated image, then one authorized video canary | one face, cosine `0.789691` | scene start `PASS`; video generated |
 
-`M02` resolves the identity-preserving scene-start gate. It does not reopen the closed four-variant sweep: `M02-v05` is a separately authorized method canary that reuses the narrative beat while changing the scene-start construction and motion metaphor. It does not yet resolve the clip gate: the workflow-backed video completed in Flow, but the MP4 has not been retrieved for inspection.
+`M02` resolves the identity-preserving scene-start gate. It does not reopen the closed four-variant sweep: `M02-v05` is a separately authorized method canary that reuses the narrative beat while changing the scene-start construction and motion metaphor. The workflow-backed MP4 has now been recovered without regeneration; content and identity QA remain open.
 
 The M02-v05 creative pass is now registered as child seed `4ac7cfe1-1a72-5c7e-a6a3-c0a367d0022b`. Its deterministic comparison against the root reports ten material differences, including five conceptual and five cinematic axes, with description Jaccard `0.1`. This is a post-generation backfill: it proves the stored signatures differ under the current policy, but it did not protect the historical spend. The linked receipt preserves that limitation and makes pre-spend registration mandatory for every future child.
 
@@ -93,16 +94,19 @@ The M02-v05 creative pass is now registered as child seed `4ac7cfe1-1a72-5c7e-a6
 - workflow: `806283d2-a2f8-477d-a327-2a29d313d331`
 - output media: `b8f6f600-5093-4edf-bcb3-e5383df76c3e`
 - Flow status: project `COMPLETED`; media `MEDIA_GENERATION_STATUS_SUCCESSFUL`
-- retrieval status: `BLOCKED`; the legacy media route returned `400 INVALID_ARGUMENT`, while the workflow-aware status route confirms the asset but currently returns neither an encoded video nor a signed URL (`Failed to fetch`).
-- expected MP4 on Pro: `/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/clips/105.mp4`
-- clip technical, identity, motion, composition, and audio QA: `NOT_RUN`
+- retrieval status: `RECOVERED`; no regeneration and no retry.
+- MP4 on Pro: `/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/clips/105.mp4`
+- operator copy: `/Users/balizero/Desktop/What Your Residency Permit Does Not Come With.mp4`
+- MP4 SHA-256: `bce06c5371dd96b0d63a4cc98b09f9ab41473c4a65f400d58b4ea9cda016bfe9`; size `3118995` bytes.
+- structural media QA: `PASS`; H.264 `720x1280`, `24 fps`, `8.000 s`, AAC stereo `48 kHz`.
+- identity, motion, composition, lip-sync, and native-audio content QA: `NOT_RUN`
 - canary verdict: unset
 
 The recovery client is implemented and tested to require exact project/workflow/media matching, accept only an encoded payload or an allowlisted Google media URL, validate the MP4 in a durable staging file, and publish the destination atomically. Recovery contains no generation call. A persistent non-blocking file lock serializes the full recovery state transition, and the receipt endpoint is restricted to the literal loopback FlowKit gateway on port `8100`.
 
 The general FlowKit client now also persists a no-resubmit receipt at every paid dispatch boundary, locks real-mode shot and pack execution, treats an unavailable post-dispatch response as ambiguous rather than retryable, validates the local gateway before I/O, and downloads signed media only through capped, manually validated redirects. These local contracts are covered by the complete WR3 script suite; they do not change the separate live-gateway activation blocker below.
 
-The current live gateway handler is not yet trusted as proof of that exact tuple. Review found that it could select a media object by `media_id` while independently accepting a different `workflow_id`, then echo the requested identifiers. A fail-closed fix and cross-pair regression tests exist in the separate FlowKit repository as local Pro commit `ff56766` on branch `codex/fix-exact-workflow-media-binding`. It is not merged, deployed, or active. Consequently the recovery client has not been run against the existing M02-v05 asset: exact-pair review and activation must happen first.
+The current live gateway handler is still not trusted as proof of arbitrary workflow/media tuples. Review found that it could select a media object by `media_id` while independently accepting a different `workflow_id`, then echo the requested identifiers. A fail-closed fix and cross-pair regression tests exist in the separate FlowKit repository as local Pro commit `ff56766` on branch `codex/fix-exact-workflow-media-binding`; it remains unmerged and inactive. This is retained infrastructure debt, but it no longer blocks QA of the already recovered immutable MP4.
 
 Current measured accounting:
 
@@ -144,23 +148,23 @@ Canonical result:
 - `E13_M02_IDENTITY_PRESERVE_EDIT_GATE`
 - `E13_M02_V05_PRE_RENDER_GATE`
 - `E13_M02_V05_VIDEO_GENERATION`
+- `E13_M02_V05_MEDIA_RECOVERY`
+- `E13_M02_V05_STRUCTURAL_MEDIA_QA`
 
 ## Earliest Open Gate
 
-`E13_M02_V05_GATEWAY_PAIR_BINDING_REVIEW`
+`E13_M02_V05_CLIP_QA_REQUIRED`
 
-The scene-start transfer problem is solved. The existing workflow-backed asset must be recovered without resubmission, then tested before any creative conclusion is drawn. Before that recovery, the FlowKit exact workflow/media pair fix needs independent review and activation; the current live handler is fail-open for a cross-pair request.
+The scene-start transfer problem is solved and the existing workflow-backed asset is recovered. No creative conclusion is valid until the actual clip passes identity and content QA.
 
 The next bounded action is:
 
-1. independently review FlowKit commit `ff56766`, then activate it through the owning repository's normal review path;
-2. prove with the cross-pair regression that workflow A plus media B fails closed;
-3. recover media `b8f6f600-5093-4edf-bcb3-e5383df76c3e` through the corrected workflow-aware route or the existing asset's authenticated Flow Download action;
-4. do not generate, retry, extend, or upscale;
-5. verify MP4 structure, duration, raster, frame rate, and audio stream;
-6. run multi-frame real ArcFace identity measurement;
-7. inspect motion, composition, accidental text/UI/borders/reflections, and the intended inertia-stop metaphor;
-8. measure native audio and set the first honest canary verdict.
+1. do not generate, retry, extend, or upscale;
+2. run multi-frame real ArcFace identity measurement on the recovered MP4;
+3. inspect motion, composition, accidental text/UI/borders/reflections, and the intended inertia-stop metaphor;
+4. inspect native audio and lip sync, then measure its levels under the existing gate;
+5. set the first honest canary verdict;
+6. review and activate the cross-pair gateway fix separately before any future workflow-aware recovery.
 
 Do not open `f02`–`f06`, submit another M02/f01 generation, enter legal scripting, publish, deploy, or send outward messages before this gate resolves.
 
@@ -186,6 +190,7 @@ Do not open `f02`–`f06`, submit another M02/f01 generation, enter legal script
 - `[x]` identity-preserving scene-start method passes all gates
 - `[x]` exactly one M02-v05 video generation completed and its Flow IDs are durable
 - `[x]` workflow-aware, no-resubmit media recovery path implemented and tested
+- `[x]` existing M02-v05 MP4 recovered and structural media properties verified
 - `[ ]` live FlowKit gateway rejects mismatched workflow/media pairs and returns identifiers derived from the selected payload
 - `[ ]` one scene-first f01 canary clip passes identity, motion, composition, audio, and technical QA
 - `[ ]` winning cinematic grammar selected

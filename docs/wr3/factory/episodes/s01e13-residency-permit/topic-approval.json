@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "episode_id": "S01E13",
+  "candidate_id": "C07",
+  "decision": "APPROVED",
+  "scope": "bounded_pilot",
+  "approved_by": "human",
+  "recorded_at_utc": "2026-08-31T00:14:37Z",
+  "source_evidence": {
+    "path": "docs/wr3/factory/FACTORY_STATE.md",
+    "statement": "only C07 is approved as a bounded pilot"
+  },
+  "publication_allowed": false
+}
