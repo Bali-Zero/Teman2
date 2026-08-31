@@ -1,0 +1,127 @@
+brief_ref: evidence/brief.yml
+plan_ref: "PR (agent/air-m5/ops/garuda-arming-workflow-0825) — adds .github/workflows/garuda-arm.yml, the first workflow in this repo that sets Fly secrets, arming GARUDA VOA's backend configuration on nuzantara-rag via a closed GARUDA_* allowlist."
+lanes:
+  - lane: garuda-arming-workflow
+    role: build
+    seat: "session (dispatched by team-lead per CLAUDE.md §5 implementer routing)"
+  - lane: garuda-arming-workflow-review
+    role: review
+    seat: "team-lead orchestrating session — independent review before merge, per CLAUDE.md §13/Agent PR Contract (generator != grader for the gate verdict and for the decision to actually run the workflow)"
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Single build lane — a single-file CI-workflow addition, not a
+  cross-family council dispatch. The D3 seat-diversity floor does not fire.
+diff:
+  net_lines: >-
+    1 file, +214/-0, measured by
+    `git diff --cached --numstat origin/main -- .github/workflows/garuda-arm.yml`.
+  behaviour_change: >-
+    New workflow only — no existing file is modified. Before this PR, no
+    mechanism in this repo could set a Fly secret at all; after, one
+    workflow_dispatch-only workflow can set exactly 8 hard-coded GARUDA_*
+    keys on nuzantara-rag, restart the app (default) or stage-only
+    (opt-in), and verify by curling /health and listing secret names.
+receipts:
+  - claim: "Deterministic gear floor recomputed from this PR's actual diff is 3 — .github/workflows/* is hot-zone by path"
+    cmd: "git diff --name-only --cached origin/main > /tmp/garuda-changed.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/garuda-changed.txt"
+    result: "3"
+    exit: 0
+    ts: "2026-08-25T16:03:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: "actionlint accepts the modified/new workflow"
+    cmd: "actionlint .github/workflows/garuda-arm.yml"
+    result: "no output (clean)"
+    exit: 0
+    ts: "2026-08-25T16:03:10Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: 'The set/skip bash logic mirrors the workflow''s own add_if_nonempty function verbatim; against the real 8-key list with both secret inputs empty (today''s actual state — no Xendit sandbox provisioned), it sets exactly the 6 non-secret keys and skips exactly the 2 secret keys, never emitting KEY="" for the skipped ones'
+    cmd: "bash <extracted add_if_nonempty function + the 8 real add_if_nonempty calls from garuda-arm.yml, secret args empty>"
+    result: "SET: GARUDA_PUBLIC_ENABLED GARUDA_ENVIRONMENT GARUDA_PUBLIC_BASE_URL GARUDA_MAGIC_LINK_BASE_URL GARUDA_XENDIT_FEE_BPS GARUDA_XENDIT_FEE_FIXED_IDR | SKIPPED: GARUDA_XENDIT_SECRET_KEY GARUDA_XENDIT_CALLBACK_TOKEN | ARGS_COUNT: 6"
+    exit: 0
+    ts: "2026-08-25T16:04:10Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: 'The workflow''s GARUDA_PUBLIC_ENABLED choice values (true/false) resolve to the SAME boolean on both real acceptance functions — backend''s _public_enabled() (garuda_voa_public.py: `os.environ.get(...).strip().lower() in {"1","true","yes"}`) and frontend''s isGarudaVoaPublicEnabled() (flag.ts: `.trim().toLowerCase() === "true"`) — both read verbatim off origin/feature/garuda-voa, the branch where this product''s code actually lives'
+    cmd: 'python3 -c "for v in [''true'',''false'']: print(v, v.strip().lower() in {''1'',''true'',''yes''}, (v or '''').strip().lower()==''true'')"'
+    result: "true True True | false False False"
+    exit: 0
+    ts: "2026-08-25T16:04:40Z"
+    seat: "session (this task, Air-M5 worktree)"
+  - claim: "Confirmed the exact set of GARUDA_* production-config env reads across the VOA payment/public surfaces on origin/feature/garuda-voa (service_initializer.py, garuda_voa_public.py, xendit.py, magic_link_store.py) matches this workflow's 8-key allowlist exactly — no key is missing, and the team-lead's named candidates (retention, civil timezone, practice type code, KB path, flow enabled) are confirmed NOT env-configurable: GARUDA_VOA_RETENTION_FK_DEPENDENTS and GARUDA_VOA_PRACTICE_TYPE_CODE are hard-coded Python constants (crm_handoff.py), GARUDA_CIVIL_TIMEZONE is a hard-coded ZoneInfo constant (civil_clock.py), GARUDA_KB_PATH does not exist (only unrelated MATA_GARUDA_KB_PATH does), and GARUDA_FLOW_ENABLED belongs to the separate GARUDA-FILIERA regulatory-watch system (app/core/config.py), not the VOA payment product"
+    cmd: "git archive origin/feature/garuda-voa | tar -x -C /tmp/garuda-branch-check && grep -rn 'GARUDA_[A-Z_0-9]*' /tmp/garuda-branch-check/apps/backend-rag/backend /tmp/garuda-branch-check/apps/mouth/src --include='*.py' --include='*.ts' -o | sed 's/^.*://' | sort -u; grep -rn 'os.environ.get(\"GARUDA_ENVIRONMENT\\|os.environ.get(\\s*\\n\\?\\s*\"GARUDA_XENDIT\\|os.getenv(\"GARUDA_MAGIC_LINK' apps/backend-rag/backend/app/setup/service_initializer.py apps/backend-rag/backend/services/garuda_portal/magic_link_store.py"
+    result: "unique env-var tokens: GARUDA_CHECK, GARUDA_CIVIL_TIMEZONE, GARUDA_ENVIRONMENT, GARUDA_FLOW_ENABLED, GARUDA_KB_PATH, GARUDA_L3_TEST_DSN, GARUDA_L4_TEST_DSN, GARUDA_MAGIC_LINK, GARUDA_MAGIC_LINK_BASE_URL, GARUDA_MIGRATION_NUMBERS, GARUDA_ORDER, GARUDA_PUBLIC_BASE_URL, GARUDA_PUBLIC_DISABLED, GARUDA_PUBLIC_ENABLED, GARUDA_VOA, GARUDA_VOA_PRACTICE_TYPE_CODE, GARUDA_VOA_RETENTION_FK_DEPENDENTS, GARUDA_XENDIT_CALLBACK_TOKEN, GARUDA_XENDIT_FEE_BPS, GARUDA_XENDIT_FEE_FIXED_IDR, GARUDA_XENDIT_SECRET_KEY — of these, exactly 8 are actual os.environ/os.getenv reads of production runtime config (the 6 non-secret + 2 secret keys this workflow sets); the rest are test-fixture constants, migration-number registries, error-code strings, or unrelated-system constants, confirmed by grepping each individually"
+    exit: 0
+    ts: "2026-08-25T16:02:00Z"
+    seat: "session (this task, Air-M5 worktree)"
+pii_scan: clean
+dissent:
+  - seat: "Harness floor recompute (CI, deterministic)"
+    objection: >-
+      This PR touches `.github/workflows/garuda-arm.yml` — hot-zone by path
+      (`.github/workflows/*` is a literal HOTZONE_PATTERNS entry) — floors
+      at Gear 3 regardless of the change being a net-new, additive file
+      with no existing workflow modified.
+    status: CONFIRMED
+    note: >-
+      Verified independently rather than accepted on a FAIL message alone:
+      recomputed the floor from this PR's actual staged changed-file list
+      via `evidence_pack_lint.py --print-floor` (receipt above) and got 3.
+      Answered by supplying this brief+pack at this PR's own per-branch
+      evidence path, per `scripts/ci/evidence_paths.py`.
+  - seat: "session, self-check on the workflow's own design"
+    objection: >-
+      Does defaulting `stage_only` to `false` (immediate restart) risk an
+      accidental production disruption if someone runs this workflow
+      without understanding the restart happens right away?
+    status: RETRACTED
+    note: >-
+      Investigated rather than assumed innocent: the workflow is
+      `workflow_dispatch`-only (no push/schedule trigger, cannot fire by
+      accident) and the `stage_only` input's description states the
+      restart behaviour explicitly at the point of choice, and the PR body
+      states the reasoning ("arming is meant to take effect immediately")
+      for the orchestrating session/Zero to confirm or override before the
+      first real run. The team-lead's own instruction (#8 in the mandate)
+      asked for a deliberate decision and stated justification, not
+      necessarily `--stage` by default — retracted because the concern is
+      already answered by the input's own description plus the PR body,
+      not because it was dismissed unexamined.
+  - seat: "session, self-check on secret-masking"
+    objection: >-
+      Does building `KEY=value` strings inside a bash array and passing
+      them as `flyctl secrets set` command-line arguments risk the value
+      leaking into Actions logs even though no `echo`/`set -x` touches it?
+    status: RETRACTED
+    note: >-
+      Checked rather than assumed safe: the two secret values are sourced
+      from `${{ secrets.GARUDA_XENDIT_SECRET_KEY }}` /
+      `${{ secrets.GARUDA_XENDIT_CALLBACK_TOKEN }}` into step-scoped env
+      vars — GitHub Actions registers every value read from the `secrets`
+      context for automatic log redaction (masked as `***`) everywhere it
+      appears in the log stream, including command-line invocations,
+      independent of this workflow's own `set -x` state (which is never
+      enabled here). The workflow's own discipline (never `echo`ing the
+      value, printing only key names in the summary) is a second,
+      independent layer on top of that platform guarantee, not a
+      substitute for checking it exists.
+tests:
+  - "actionlint against the real workflow file — receipt above."
+  - "Bash fixture replay of the workflow's own add_if_nonempty logic against the real 8-key list with the two secret env vars empty (today's actual production state) — receipt above."
+  - "Python fixture proving the GARUDA_PUBLIC_ENABLED choice values resolve identically on both the real backend and real frontend acceptance functions, read verbatim off origin/feature/garuda-voa — receipt above."
+static:
+  - "actionlint .github/workflows/garuda-arm.yml -> clean (binary at /opt/homebrew/bin/actionlint)"
+notes:
+  - >-
+    This workflow was NOT executed against production. Per the
+    orchestrating session's explicit instruction, the PR is armed for
+    auto-merge but the actual run is Zero's call on timing (Xendit sandbox
+    keys are not provisioned as GitHub Secrets yet).
+  - >-
+    `brief_ref:` names the literal `evidence/brief.yml` (not this pack's
+    own real per-PR path) because `harness-floor.yml` stages both files
+    under canonical names before linting — per `scripts/ci/evidence_paths.py`'s
+    module docstring, confirmed by an identical pattern in
+    `evidence/2026-08/agent-mini-pro2-infra-fly-watcher-detail-145c8438/pack.yml`.
+  - >-
+    This pack does not post a `harness/fable-gate` commit status — that is
+    the orchestrating session's own next step (generator != grader,
+    CLAUDE.md §13/Agent PR Contract).

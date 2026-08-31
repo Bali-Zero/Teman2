@@ -24,6 +24,7 @@ test = [
 
 [project.scripts]
 nuzantara-mcp = "nuzantara_mcp.server:main"
+nuzantara-mcp-workspace-marketing = "nuzantara_mcp.server_workspace_marketing:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -1,0 +1,12 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Staged for Termux:Boot. The add-on must be installed and opened once by the
+# device owner before Android will execute this script after a reboot.
+
+STATE_DIR="$HOME/.local/state/nuzantara-radar"
+mkdir -p "$STATE_DIR"
+chmod 700 "$STATE_DIR"
+if termux-wake-lock >/dev/null 2>&1; then
+    date -u '+%Y-%m-%dT%H:%M:%SZ' > "$STATE_DIR/wake-lock.requested"
+    chmod 600 "$STATE_DIR/wake-lock.requested"
+fi
+sshd

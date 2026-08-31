@@ -1,0 +1,105 @@
+# The tailnet ACL must stay deny-by-default, and must keep naming the shell it fences.
+#
+# `scripts/tests/` is swept in CI with continue-on-error, so a test file there does NOT gate a PR
+# unless a workflow runs it explicitly. This is that workflow.
+#
+# What it protects: infra/tailscale/policy.hujson replaced a draft that granted
+# `antonellosiano@gmail.com -> antonellosiano@gmail.com:*` — a blanket that reads as "the fleet
+# keeps talking to itself" and means "every port on every owned device", including the port
+# carrying the unauthenticated writable ttyd shell on Pro. That widening looked tidy in review.
+# The guard makes the next one go RED on the PR instead. Stated precisely, because an earlier
+# draft of this header said "fail the build" and that is not true while this check is
+# non-required (see below): a red here is a loud, attributable signal, not a merge block.
+#
+# NON-REQUIRED by design, same posture as check-cicatrix-scar-pointers.yml: a new signal observes
+# for a review cycle before it can block. Promoting it to a required branch-protection check is a
+# separate, later, operator action (CLAUDE.md §13).
+#
+# Path-scoped: runs only when the policy, the guard, its fixtures, or this workflow change.
+name: check-tailnet-acl
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "infra/tailscale/policy.hujson"
+      - "scripts/tests/test_tailnet_acl_deny_by_default.py"
+      - "scripts/tests/fixtures/tailnet_acl/**"
+      # L13-PR2: the drift receptor and its corpus live in the same domain as the ACL
+      # guard above, so they share this executor rather than growing a fourth workflow.
+      # The guard asks "is the DECLARED policy still deny-by-default"; the receptor asks
+      # "is the declared policy the one actually ENFORCED". Different questions, same
+      # blast radius, and a change to policy.hujson can redden either.
+      - "scripts/tailnet_policy_drift.py"
+      - "scripts/tests/test_tailnet_policy_drift.py"
+      - "scripts/tests/fixtures/tailnet_netmap_*.json"
+      - "scripts/proprioception.py"
+      - "scripts/tests/test_proprioception_tri_state_exit.py"
+      - "scripts/tests/test_proprioception_run_wrap_exit_code.py"
+      - ".github/workflows/check-tailnet-acl.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-tailnet-acl-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-tailnet-acl:
+    name: check-tailnet-acl
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install pytest
+        run: python -m pip install --quiet pytest
+
+      - name: ACL is deny-by-default and names the shell route (guilt AND innocence)
+        run: |
+          set -euo pipefail
+          python -m pytest scripts/tests/test_tailnet_acl_deny_by_default.py -q
+
+      # The receptor that asks whether the declared policy is the ENFORCED one.
+      # Its guilt fixture is the real allow-all shape recorded from `tailscale debug
+      # netmap`; its innocence fixture matches policy.hujson's grants. Neither makes a
+      # network call. The third state matters as much as the other two: an unreadable
+      # netmap must answer BLIND, never CLEAN.
+      - name: Declared policy vs enforced filter — DIVERGED, CLEAN and BLIND all pinned
+        run: |
+          set -euo pipefail
+          python -m pytest scripts/tests/test_tailnet_policy_drift.py -q
+
+      # The receptor is only useful if proprioception files its three states correctly.
+      # `parse: exit_code` maps every non-zero to DIVERGED, which would report BLIND
+      # ("could not read the enforced state") as observed drift — opposite remedies,
+      # same verdict. These two corpora pin the tri-state mapping and prove the old
+      # parser genuinely disagrees.
+      - name: A BLIND probe is filed as unprobeable, never as drift
+        run: |
+          set -euo pipefail
+          python -m pytest scripts/tests/test_proprioception_tri_state_exit.py \
+                           scripts/tests/test_proprioception_run_wrap_exit_code.py -q
+
+      # A registry entry the validator rejects is a receptor that never runs.
+      - name: The receptor is registered and the registry still validates
+        run: |
+          set -euo pipefail
+          python scripts/proprioception.py --selftest
+          python - <<'PY'
+          import importlib.util, sys
+          spec = importlib.util.spec_from_file_location("p", "scripts/proprioception.py")
+          m = importlib.util.module_from_spec(spec); sys.modules["p"] = m
+          spec.loader.exec_module(m)
+          ids = [e["id"] for e in m.DEFAULT_REGISTRY]
+          assert "tailnet_policy_drift" in ids, f"receptor not registered: {ids}"
+          entry = next(e for e in m.DEFAULT_REGISTRY if e["id"] == "tailnet_policy_drift")
+          assert entry["parse"] == "tri_state_exit", entry["parse"]
+          print("receptor registered with parse:", entry["parse"])
+          PY

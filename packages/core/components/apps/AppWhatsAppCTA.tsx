@@ -146,7 +146,7 @@ export const AppWhatsAppCTA: FC<AppWhatsAppCTAProps> = ({
           borderRadius: "4px",
           border: "none",
           background: "#25D366",
-          color: "#fff",
+          color: "var(--accent-whatsapp-ink)",
           fontWeight: 600,
           cursor: pending ? "wait" : "pointer",
           opacity: pending ? 0.7 : 1,

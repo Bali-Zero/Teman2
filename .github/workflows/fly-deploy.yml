@@ -98,7 +98,7 @@ jobs:
             backend/tests/services/rag/test_confidence.py \
             backend/tests/services/rag/test_kg_langgraph.py \
             backend/tests/services/rag/test_kg_subgraphs.py \
-            -q --tb=short -x \
+            --tb=short -x \
             --junit-xml=test-results-gate.xml
           echo "✅ Core tests OK"
 
@@ -315,10 +315,19 @@ jobs:
         if: success() && steps.migrate.outputs.applied_count != '0'
         run: |
           MESSAGE="🆕 *SQL v2 post-deploy applied*%0A%0A\`${{ steps.migrate.outputs.applied_count }}\` migrazioni sull'immagine fresca dopo deploy.%0A%0AImage tag: \`${{ steps.sentinel.outputs.tag }}\`%0AMachine: \`${{ steps.sentinel.outputs.machine }}\`%0ACommit: \`${{ github.sha }}\`%0AAutore: ${{ github.actor }}%0A%0ASegnale che il job pre-deploy stava mascherando nuovi SQL (cicatrix STRUCTURAL 2026-04-26 — fix verificato in produzione)."
-          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+          # NOTE: no parse_mode. github.actor is untrusted for Markdown V1 —
+          # a merge-queue/dependabot/app actor login routinely contains `[`
+          # (e.g. `github-merge-queue[bot]`, `dependabot[bot]`), which Markdown
+          # V1 reserves; Telegram then answers 400 "can't parse entities" and
+          # the alert never sends. Plain text loses bold/monospace, which is a
+          # trivial cost against silently dropping the alert (cicatrix #3).
+          STATUS=$(curl -s -o /tmp/tg_resp.json -w "%{http_code}" \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
-            -d "text=${MESSAGE}" \
-            -d "parse_mode=Markdown" || true
+            -d "text=${MESSAGE}" || echo "000")
+          if [ "$STATUS" != "200" ]; then
+            echo "::warning::Telegram notification failed (HTTP $STATUS): $(cat /tmp/tg_resp.json 2>/dev/null | head -c 300)"
+          fi
 
       - name: Fail loud on migration error
         if: failure()
@@ -329,10 +338,14 @@ jobs:
             head -100 migration_output.txt || true
           fi
           MESSAGE="🔴 *SQL v2 post-deploy FAILED*%0A%0AMigration runner errored on fresh image after deploy.%0A%0ACommit: \`${{ github.sha }}\`%0AAutore: ${{ github.actor }}%0ARun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}%0A%0A⚠️ Backend live ma schema potenzialmente disallineato. Investigare subito."
-          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+          # No parse_mode — see the identical comment in the "applied" step above.
+          STATUS=$(curl -s -o /tmp/tg_resp.json -w "%{http_code}" \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
-            -d "text=${MESSAGE}" \
-            -d "parse_mode=Markdown" || true
+            -d "text=${MESSAGE}" || echo "000")
+          if [ "$STATUS" != "200" ]; then
+            echo "::warning::Telegram notification failed (HTTP $STATUS): $(cat /tmp/tg_resp.json 2>/dev/null | head -c 300)"
+          fi
 
   # Python-idiom migrations must run AFTER the new image is live, because
   # the SQL v2 migration runner (in run-migrations above) doesn't discover
@@ -447,10 +460,14 @@ jobs:
         if: failure()
         run: |
           MESSAGE="⚠️ *Python migration FALLITA*%0A%0ACommit: ${{ github.sha }}%0AAutore: ${{ github.actor }}%0A%0ANote: la nuova immagine è già live e serve traffico. Il modulo che dipende dalla migration potrebbe essere in stato degraded. Investigare manualmente."
-          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+          # No parse_mode — see the identical comment in run-sql-v2-migrations-post-deploy above.
+          STATUS=$(curl -s -o /tmp/tg_resp.json -w "%{http_code}" \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
-            -d "text=${MESSAGE}" \
-            -d "parse_mode=Markdown" || true
+            -d "text=${MESSAGE}" || echo "000")
+          if [ "$STATUS" != "200" ]; then
+            echo "::warning::Telegram notification failed (HTTP $STATUS): $(cat /tmp/tg_resp.json 2>/dev/null | head -c 300)"
+          fi
 
   # Task #19 fix (2026-07-26): this job used to list run-python-migrations in
   # `needs:` with no `if:`, so GitHub's default "all needs must succeed" rule
@@ -560,10 +577,14 @@ jobs:
         if: failure()
         run: |
           MESSAGE="🔴 *Deploy Nuzantara FALLITO*%0A%0AHealth check non passato dopo 5 min.%0ARollback automatico eseguito (SOLO immagine — lo schema DB applicato dalle migration pre-deploy NON viene revertito).%0A%0ACommit: ${{ github.sha }}%0AAutore: ${{ github.actor }}"
-          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+          # No parse_mode — see the identical comment in run-sql-v2-migrations-post-deploy above.
+          STATUS=$(curl -s -o /tmp/tg_resp.json -w "%{http_code}" \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
-            -d "text=${MESSAGE}" \
-            -d "parse_mode=Markdown" || true
+            -d "text=${MESSAGE}" || echo "000")
+          if [ "$STATUS" != "200" ]; then
+            echo "::warning::Telegram notification failed (HTTP $STATUS): $(cat /tmp/tg_resp.json 2>/dev/null | head -c 300)"
+          fi
 
       # Task #19 follow-up (2026-07-26): this job's `if:` now runs even when a
       # post-deploy migration failed (see the header comment above), but
@@ -585,10 +606,14 @@ jobs:
           needs.run-sql-v2-migrations-post-deploy.result == 'success'
         run: |
           MESSAGE="✅ *Deploy Nuzantara OK*%0A%0ABackend sano. Health check passato. Migration post-deploy pulite.%0A%0ACommit: ${{ github.sha }}%0AAutore: ${{ github.actor }}"
-          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+          # No parse_mode — see the identical comment in run-sql-v2-migrations-post-deploy above.
+          STATUS=$(curl -s -o /tmp/tg_resp.json -w "%{http_code}" \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
-            -d "text=${MESSAGE}" \
-            -d "parse_mode=Markdown" || true
+            -d "text=${MESSAGE}" || echo "000")
+          if [ "$STATUS" != "200" ]; then
+            echo "::warning::Telegram notification failed (HTTP $STATUS): $(cat /tmp/tg_resp.json 2>/dev/null | head -c 300)"
+          fi
 
       - name: Notifica Telegram — deploy sano, migration post-deploy degradata
         if: |
@@ -597,10 +622,14 @@ jobs:
            needs.run-sql-v2-migrations-post-deploy.result != 'success')
         run: |
           MESSAGE="⚠️ *Deploy Nuzantara — servizio sano, migration degradata*%0A%0AHealth check passato: il backend risponde. MA una o più migration post-deploy NON sono andate a buon fine.%0A%0Arun-sql-v2-migrations-post-deploy: \`${{ needs.run-sql-v2-migrations-post-deploy.result }}\`%0Arun-python-migrations: \`${{ needs.run-python-migrations.result }}\`%0A%0ASchema state NON verificato — non è 'tutto ok', è 'il servizio non è stato riavviato'. Investigare la migration fallita PRIMA di considerare il deploy completo.%0A%0ACommit: ${{ github.sha }}%0AAutore: ${{ github.actor }}"
-          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+          # No parse_mode — see the identical comment in run-sql-v2-migrations-post-deploy above.
+          STATUS=$(curl -s -o /tmp/tg_resp.json -w "%{http_code}" \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
-            -d "text=${MESSAGE}" \
-            -d "parse_mode=Markdown" || true
+            -d "text=${MESSAGE}" || echo "000")
+          if [ "$STATUS" != "200" ]; then
+            echo "::warning::Telegram notification failed (HTTP $STATUS): $(cat /tmp/tg_resp.json 2>/dev/null | head -c 300)"
+          fi
 
   # ---------------------------------------------------------------------------
   # Edge-case coverage: upstream crashes *before* post-deploy-health runs.
@@ -645,8 +674,12 @@ jobs:
         run: |
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           MESSAGE="${{ steps.stage.outputs.icon }} *Deploy Nuzantara CRASH*%0A%0AStage fallito: \`${{ steps.stage.outputs.stage }}\`%0A${{ steps.stage.outputs.detail }}%0A%0ACommit: \`${{ github.sha }}\`%0AAutore: ${{ github.actor }}%0ARun: ${RUN_URL}%0A%0A⚠️ Nessun rollback necessario (vecchia release ancora attiva). Controlla i log del run."
-          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+          # No parse_mode — see the identical comment in run-sql-v2-migrations-post-deploy above.
+          STATUS=$(curl -s -o /tmp/tg_resp.json -w "%{http_code}" \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
             -d "text=${MESSAGE}" \
-            -d "parse_mode=Markdown" \
-            -d "disable_web_page_preview=true" || true
+            -d "disable_web_page_preview=true" || echo "000")
+          if [ "$STATUS" != "200" ]; then
+            echo "::warning::Telegram notification failed (HTTP $STATUS): $(cat /tmp/tg_resp.json 2>/dev/null | head -c 300)"
+          fi

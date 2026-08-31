@@ -1,0 +1,373 @@
+{
+  "_comment": "This registry pairs each machine-readable health/status EMITTER in the organism (a JSON payload built, and where applicable written to disk, by one script) with every known CONSUMER that parses that payload back (a reader script/hook). The one thing that makes this more than two lists nodding in agreement with each other: the lint that reads this file (scripts/lint_immune_contracts.py) does NOT trust its 'emits'/'reads' arrays as ground truth on faith -- it re-reads the cited producer and consumer source files, by path and (where pinnable) by function, on every run, and diffs the declared keys against what the code actually builds (C4) and actually parses (C3), plus cross-checks that every declared 'read' resolves against the declared 'emits'/'nested' shape (C1) and that every enum literal a consumer compares against lives inside the producer's declared enum domain (C2). That is the exact disease this registry exists to catch: W120 (scripts/organism_digest.py, cicatrix-scars.md) -- a producer (scripts/pending_arms_report.py) emitted per-entry key 'class'; a consumer read 'classification'; both sides shipped green; 262 real overdue TECH-DEBT entries went unseen for weeks because .get('classification') was always None and the alarm branch never fired against the real ledger. A contract entry here is therefore a claim anchored to file:line, not a description of intent -- where a key genuinely could not be pinned to one function (a bash script, an inline heredoc with no named function, a generic `**kwargs`-passthrough writer) it is marked 'function': null with an explicit 'unchecked_reason' rather than guessed, and the lint prints that reason as UNCHECKED (distinct from a VIOLATION) rather than silently passing it. Two of the four pairs below (heartbeat_to_digest, and one enum path on escalations) are LEFT AS GENUINE, LIVE LINT VIOLATIONS/UNCHECKED entries on purpose -- they are real cross-schema facts this registry found while being built, not solver artifacts to be papered over; see each contract's 'notes'.",
+  "version": 1,
+  "contracts": [
+    {
+      "id": "pending_arms_to_digest",
+      "producer": {
+        "path": "scripts/pending_arms_report.py",
+        "function": "build_json",
+        "kind": "python",
+        "on_disk_path": null,
+        "emits": ["now", "ledger", "freshness", "counts", "entries"],
+        "nested": {
+          "counts": [
+            "total",
+            "phantom_operator",
+            "tech_debt_overdue",
+            "operator_gated_overdue",
+            "firebreak",
+            "natural_wait",
+            "fresh",
+            "malformed",
+            "pr_already_merged"
+          ],
+          "entries[]": [
+            "opened",
+            "age_days",
+            "artifact",
+            "owner",
+            "class",
+            "overdue",
+            "raw_head",
+            "pr_refs",
+            "merged_pr_refs"
+          ]
+        },
+        "conditional_emits": {
+          "counts.pr_already_merged": "present only when the CLI was invoked with --check-pr-refs (build_json's check_pr_refs=True path, pending_arms_report.py:1092-1097,1103-1104); absent by default so the default entry/counts schema is byte-for-byte unchanged without the flag.",
+          "entries[].pr_refs": "same --check-pr-refs gate as above (pending_arms_report.py:1092-1096).",
+          "entries[].merged_pr_refs": "same --check-pr-refs gate as above (pending_arms_report.py:1092-1096)."
+        },
+        "enums": {
+          "entries[].class": [
+            "MALFORMED",
+            "FIREBREAK",
+            "NATURAL-WAIT",
+            "OPERATOR-GATED",
+            "TECH-DEBT",
+            "PHANTOM-OPERATOR"
+          ]
+        }
+      },
+      "consumer": {
+        "path": "scripts/organism_digest.py",
+        "function": "pending_arms_overdue",
+        "kind": "python",
+        "reads": [
+          "counts",
+          "counts.tech_debt_overdue",
+          "entries",
+          "entries[].overdue",
+          "entries[].class",
+          "entries[].artifact"
+        ],
+        "enum_literals": {
+          "entries[].class": ["TECH-DEBT"]
+        }
+      },
+      "notes": "This IS the W120 pair, already cured on this branch (organism_digest.py:353-378) but load-bearing precisely because it broke silently once: the reporter's authoritative key is per-entry 'class' (pending_arms_report.py Entry.bucket/'class' -> e.cls, build_json._entry_dict at line 1088: d['class'] = e.cls); the consumer used to read 'classification' (a key that was never emitted), so `e.get('classification')` was always None, the `overdue` filter list was always empty, and the branch that prints '<N> armamenti sospesi OVERDUE' never once fired against the real ledger. The current fix reads the COUNT from `counts.tech_debt_overdue` (a value the reporter computes itself, independent of any single entry's key spelling) as the authoritative alarm trigger, and only uses `entries[].class == 'TECH-DEBT'` + `entries[].overdue` for the cosmetic 'top: <artifact>' detail -- plus an explicit drift-detector line (organism_digest.py:374-378) that appends a source_error the moment `counts.tech_debt_overdue` and the length of the matched entries list disagree, so a FUTURE per-entry key rename can cost the detail line but can no longer silently zero the alarm. This whole read path is gated OFF by default (ORGANISM_DIGEST_PENDING_ARMS != '1', organism_digest.py:338-346) since 2026-08-22 for an unrelated behavioral reason (ledger-anxiety regression), which is orthogonal to the schema contract recorded here. Verified against scripts/lint_immune_contracts.py: 0 violations, 0 unchecked, 0 cannot-verify."
+    },
+    {
+      "id": "arsenal_probe_to_digest__arsenal_seats",
+      "producer": {
+        "path": "scripts/arsenal_probe.py",
+        "function": "run",
+        "writer_function": "write_report",
+        "kind": "python",
+        "on_disk_path": "~/.organism/arsenal/last.json",
+        "emits": [
+          "schema",
+          "machine",
+          "ts",
+          "context",
+          "seats",
+          "transitions",
+          "summary"
+        ],
+        "nested": {
+          "seats[]": [
+            "seat",
+            "status",
+            "healthy",
+            "latency_ms",
+            "evidence",
+            "required"
+          ],
+          "summary": ["live", "dead_strict", "context_limited", "transient"],
+          "transitions[]": ["seat", "from", "to"]
+        },
+        "enums": {
+          "seats[].status": [
+            "LIVE",
+            "AUTH_DEAD",
+            "CONTEXT_AUTH",
+            "QUOTA_DEAD",
+            "BALANCE_DEAD",
+            "MODEL_ERR",
+            "SHED",
+            "TIMEOUT",
+            "CRED_UNAVAILABLE",
+            "NOT_INSTALLED",
+            "UNKNOWN_ERR"
+          ]
+        },
+        "emit_helpers": ["probe_seat"],
+        "emit_helpers_note": "run() hands probe_seat to a ThreadPoolExecutor via pool.submit(probe_seat, ...), so the helper is named as an ARGUMENT and never as Call(func=Name). Declared explicitly rather than letting the lint follow every bare Name, which would be a wider net in the false-green direction."
+      },
+      "consumer": {
+        "path": "scripts/organism_digest.py",
+        "function": "arsenal_seats",
+        "kind": "python",
+        "reads": ["seats", "seats[].status", "seats[].seat"],
+        "enum_literals": {
+          "seats[].status": ["LIVE"]
+        }
+      },
+      "notes": "The NEGATIVE / attention-only view (organism_digest.py:125-142): one line per seat whose status != 'LIVE', feeding the digest's 'seats_not_live' bucket. See the sibling contract arsenal_probe_to_digest__arsenal_card for the second, POSITIVE consumer of the same file. Staleness ('report Nh old') is computed from the report FILE's own mtime (`report.stat().st_mtime`), never from a producer-emitted timestamp field inside the JSON body -- `ts` in the payload is present but unused for freshness by this reader. Verified against scripts/lint_immune_contracts.py: 0 violations, 0 unchecked, 0 cannot-verify."
+    },
+    {
+      "id": "arsenal_probe_to_digest__arsenal_card",
+      "producer": {
+        "path": "scripts/arsenal_probe.py",
+        "function": "run",
+        "writer_function": "write_report",
+        "kind": "python",
+        "on_disk_path": "~/.organism/arsenal/last.json",
+        "emits": [
+          "schema",
+          "machine",
+          "ts",
+          "context",
+          "seats",
+          "transitions",
+          "summary"
+        ],
+        "nested": {
+          "seats[]": [
+            "seat",
+            "status",
+            "healthy",
+            "latency_ms",
+            "evidence",
+            "required"
+          ],
+          "summary": ["live", "dead_strict", "context_limited", "transient"],
+          "transitions[]": ["seat", "from", "to"]
+        },
+        "enums": {
+          "seats[].status": [
+            "LIVE",
+            "AUTH_DEAD",
+            "CONTEXT_AUTH",
+            "QUOTA_DEAD",
+            "BALANCE_DEAD",
+            "MODEL_ERR",
+            "SHED",
+            "TIMEOUT",
+            "CRED_UNAVAILABLE",
+            "NOT_INSTALLED",
+            "UNKNOWN_ERR"
+          ]
+        },
+        "emit_helpers": ["probe_seat"],
+        "emit_helpers_note": "run() hands probe_seat to a ThreadPoolExecutor via pool.submit(probe_seat, ...), so the helper is named as an ARGUMENT and never as Call(func=Name). Declared explicitly rather than letting the lint follow every bare Name, which would be a wider net in the false-green direction."
+      },
+      "consumer": {
+        "path": "scripts/organism_digest.py",
+        "function": "arsenal_card",
+        "kind": "python",
+        "reads": ["seats", "seats[].seat", "seats[].status"],
+        "enum_literals": {
+          "seats[].status": ["LIVE"]
+        }
+      },
+      "notes": "The always-shown POSITIVE boot card (organism_digest.py:240-290, D4/docs/mandates/2026-08-22-arsenal-routing-mandate.md), reading the SAME on-disk file as arsenal_seats() and keying off the SAME literal ('LIVE' -> checkmark, else lowercase status tag). Split into its own contract entry (rather than folded into arsenal_probe_to_digest__arsenal_seats) purely so BOTH real consumer functions of this producer get independent AST anchoring from the lint (C3/C4) instead of only one of the two being checked. Neither this nor the sibling contract reads `latency_ms`, `evidence`, `required`, `transitions`, `context`, or `schema` -- those exist for other consumers (arsenal_probe.py's own render_table/summary_line, human --json/--table callers) not covered by either contract. A THIRD coupling exists that is a Python import, not a JSON read: `_known_seats()` (organism_digest.py:204-213) does `import arsenal_probe; return list(arsenal_probe.ALL_SEATS)` to compute which seats are MISSING from a partial probe report, used by this function's 'PARTIAL N/M' header -- a code-level dependency on arsenal_probe.py's module-level ALL_SEATS list (line 103), guarded by a dedicated drift selftest (`test_roster_seat_drift`, per organism_digest.py's own docstring reference to it), not by this JSON-contract registry. Verified against scripts/lint_immune_contracts.py: 0 violations, 0 unchecked, 0 cannot-verify."
+    },
+    {
+      "id": "heartbeat_to_digest",
+      "producer": {
+        "path": "scripts/lib/heartbeat.sh",
+        "function": "organism_heartbeat",
+        "internal_function": "_organism_heartbeat_write",
+        "kind": "shell",
+        "sibling": "scripts/lib/heartbeat.py :: organism_heartbeat (same on-disk schema, python implementation, used by `import`ing callers instead of `source`ing)",
+        "on_disk_path": "~/.organism/last_seen/<organ_id>.json",
+        "emits": ["ts", "status", "note"],
+        "enums": {
+          "status": [
+            "ok",
+            "error",
+            "warning",
+            "starting",
+            "degraded",
+            "success",
+            "healthy",
+            "disabled"
+          ]
+        }
+      },
+      "consumer": {
+        "path": "scripts/organism_digest.py",
+        "function": "stale_heartbeats",
+        "kind": "python",
+        "reads": ["status"],
+        "enum_literals": {
+          "status": ["ok", "live", "green"]
+        }
+      },
+      "unresolved_consumer_keys": [
+        {
+          "key": "checkout",
+          "consumer_site": "scripts/organism_digest.py:320-322 (stale_heartbeats)",
+          "finding": "NOT emitted by the declared producer -- heartbeat.sh/heartbeat.py only ever write {ts, status, note} (scripts/lib/heartbeat.sh:497, scripts/lib/heartbeat.py:32-36). It IS emitted by a SECOND, independent producer writing into the SAME ~/.organism/last_seen/ directory: scripts/lib/wr2_runtime_stamp.py::compute_runtime_stamp (dict literal at lines 91-100: {ts, pid, host, checkout, head_sha, dirty, stale_modules, errors}), written via write_runtime_stamp() to '<organ_id>.runtime.json'. stale_heartbeats()'s glob is `hb_dir.glob('*.json')`, which matches BOTH '<organ>.json' (heartbeat.sh/py schema) and '<organ>.runtime.json' (wr2_runtime_stamp schema) -- so this one consumer function is genuinely polymorphic over two producer schemas sharing a directory, not a single producer/consumer pair. This is DOCUMENTED as deliberate at the read site (organism_digest.py:310-319, citing a 2026-07-29 finding about a worktree-sourced runtime stamp reading as falsely 'silent'), so it is reported here as a structural fact this registry's one-producer-per-contract shape cannot represent cleanly. LIVE LINT RESULT (verified this session): scripts/lint_immune_contracts.py flags this as a genuine C1 violation ('consumer reads \"checkout\" but producer does not emit it') -- left unresolved deliberately rather than papered over, per this task's own instruction #3."
+        }
+      ],
+      "notes": "SECOND genuine, left-unresolved finding on this same pair: the consumer's ok-set is `{'ok','live','green'}` (organism_digest.py:326), but heartbeat.sh's canonicalization case-statement (lines 211-238, exhaustively read) NEVER produces 'live' or 'green' as an output value -- only ok/error/warning/starting/degraded/success/healthy/disabled. Searched for a second producer that might write 'live'/'green' directly into ~/.organism/last_seen/ (apps/cell/cell/utils/organ_emitter.py::emit_organ_last_seen, its two callers apps/cell/cell/sensors/health_sensor.py and channel_sensor.py): all three write status values from the disjoint set {ok, degraded, fail}, never 'live'/'green' either. LIVE LINT RESULT (verified this session): scripts/lint_immune_contracts.py flags both 'live' and 'green' as C2 violations ('consumer enum literal ... is not in producer domain'). Left as-is rather than fabricated into producer.enums (that would misrepresent code that provably never emits those two values) -- this reads as either a forward-looking/defensive addition for a producer that does not exist in this codebase today, or dead code in the consumer; either way it is a real, reportable gap, not a registry-authoring mistake. Separately (value-domain note, not a key-drift finding): several statuses heartbeat.sh DOES canonicalize to (`success`, `healthy`, `starting`, `disabled`, `degraded`, `warning`, `error`) are likewise outside the consumer's ok-set and would surface via stale_heartbeats() as `status=<value>` even on a fresh heartbeat -- almost certainly intentional (an organ self-declaring 'degraded' should be surfaced), recorded here for completeness rather than adjudicated.",
+      "known_gaps": [
+        {
+          "check": "C2",
+          "key": "status=live",
+          "reason": "organism_digest.stale_heartbeats accepts this status as healthy. NO CALLER in the tree passes it: measured 2026-08-31 across every call site of scripts/lib/heartbeat.sh's organism_heartbeat (ok|error|warning|starting|degraded|success|healthy|disabled) and apps/cell/cell/utils/organ_emitter.py (ok|degraded|fail). CORRECTED after a cross-family review: the earlier wording said no producer CAN emit it, which is false \u2014 organism_heartbeat writes whatever status string it is handed and validates nothing. The claim is about callers, not about the function's capability, and the two are not the same sentence. Inert either way today. Not deleted: removing a boot receptor's tolerance on three machines inside a contracts PR is a behaviour change with a real downside if some caller later passes it, and no upside now.",
+          "ledger": "squad-L issue #5319 \u2014 declare-or-delete decision, owner squad L"
+        },
+        {
+          "check": "C2",
+          "key": "status=green",
+          "reason": "organism_digest.stale_heartbeats accepts this status as healthy. NO CALLER in the tree passes it: measured 2026-08-31 across every call site of scripts/lib/heartbeat.sh's organism_heartbeat (ok|error|warning|starting|degraded|success|healthy|disabled) and apps/cell/cell/utils/organ_emitter.py (ok|degraded|fail). CORRECTED after a cross-family review: the earlier wording said no producer CAN emit it, which is false \u2014 organism_heartbeat writes whatever status string it is handed and validates nothing. The claim is about callers, not about the function's capability, and the two are not the same sentence. Inert either way today. Not deleted: removing a boot receptor's tolerance on three machines inside a contracts PR is a behaviour change with a real downside if some caller later passes it, and no upside now.",
+          "ledger": "squad-L issue #5319 \u2014 declare-or-delete decision, owner squad L"
+        },
+        {
+          "check": "C2b",
+          "key": "status=live",
+          "reason": "The SAME finding as the C2 gap above, seen from the source instead of from the registry. C2b was blind to it until an alias pass landed: the live shape is bind-then-compare \u2014 `status = str(data.get('status','')).lower()` then `status not in ('ok','live','green')` \u2014 and an inline-only Compare visitor never saw it. Declared here rather than silenced, so the day somebody deletes the tolerance BOTH gaps go stale and the lint says so.",
+          "ledger": "squad-L issue #5319 \u2014 declare-or-delete decision, owner squad L"
+        },
+        {
+          "check": "C2b",
+          "key": "status=green",
+          "reason": "The SAME finding as the C2 gap above, seen from the source instead of from the registry. C2b was blind to it until an alias pass landed: the live shape is bind-then-compare \u2014 `status = str(data.get('status','')).lower()` then `status not in ('ok','live','green')` \u2014 and an inline-only Compare visitor never saw it. Declared here rather than silenced, so the day somebody deletes the tolerance BOTH gaps go stale and the lint says so.",
+          "ledger": "squad-L issue #5319 \u2014 declare-or-delete decision, owner squad L"
+        }
+      ]
+    },
+    {
+      "id": "escalations_to_sessionstart_receptor",
+      "producer": {
+        "path": "scripts/sentinel_lib/escalations.py",
+        "function": "write_escalation",
+        "kind": "python",
+        "on_disk_path": "shared/escalations_pro.jsonl (per-machine sibling: shared/escalations_air.jsonl)",
+        "emits": [
+          "machine",
+          "ts",
+          "status",
+          "_writer",
+          "job",
+          "type",
+          "error_summary",
+          "priority",
+          "task_file",
+          "source",
+          "test_cmd",
+          "description",
+          "session",
+          "inbox_path",
+          "mandate",
+          "class",
+          "perimeter",
+          "severity",
+          "resolved_at"
+        ],
+        "emits_provenance": "Only {machine, ts, status, _writer} are literal dict keys / assignment targets inside write_escalation's OWN function body (escalations.py:54-60) -- these 4 are the only keys the AST-anchor check (C4) can verify against write_escalation's own source. Every other key listed in 'emits' above flows through the `{**entry, ...}` spread at escalations.py:55: write_escalation is a generic passthrough over whatever dict its CALLER supplies as `entry`, so those keys are real and grounded (each is cited to an exact call site in caller_supplied_variants below, and independently cross-checked by directly reading shared/escalations_pro.jsonl -- see 'notes') but structurally invisible to a single-function AST walk of write_escalation alone. This is why consumer.function is deliberately left null below (see unchecked_reason) instead of pointing it at some fabricated function name for the heredoc: doing so would make the lint's C4 check run against write_escalation and flag every one of these 15 genuinely-real, non-bug keys as a phantom 'registry emits X but producer code never writes it' violation -- which would be actively WRONG, not merely unhelpful.",
+        "caller_supplied_variants": [
+          {
+            "caller": "scripts/dlq_autopilot.py:820-826",
+            "keys": ["job", "type", "error_summary", "priority", "task_file"],
+            "notes": "priority is computed at dlq_autopilot.py:803-807 as 'HIGH' if classification.type == 'DETERMINISTIC' else 'NORMAL' -- these are the only two values this caller ever writes."
+          },
+          {
+            "caller": "scripts/army/jules_lane.py write_jules_escalation (415-426) / write_jules_stale_escalation (449-460)",
+            "keys": [
+              "job",
+              "type",
+              "source",
+              "priority",
+              "test_cmd",
+              "description",
+              "session",
+              "task_file",
+              "inbox_path"
+            ],
+            "notes": "priority is hardcoded literal 'NORMAL' in both call sites. Neither call site emits 'error_summary'."
+          },
+          {
+            "caller": "scripts/modus_enqueue.py enqueue_task (76-84)",
+            "keys": [
+              "job",
+              "source",
+              "mandate",
+              "class",
+              "perimeter",
+              "severity"
+            ],
+            "notes": "no 'priority' key at all -- severity defaults to the LOWERCASE literal 'normal' (modus_enqueue.py:57,119). This caller never emits 'error_summary', 'type', or 'task_file' either. NOTE: this 'class' key ('green'|'proposal', modus_enqueue.py:48) is unrelated to pending_arms_report.py's 'class' key in contract pending_arms_to_digest -- same field name, two unconnected schemas."
+          },
+          {
+            "caller": "scripts/sentinel_lib/escalations.py mark_resolved (line 137, self-call)",
+            "keys": ["job", "status", "resolved_at"],
+            "notes": "status is hardcoded literal 'resolved'; this is the ONLY caller that ever writes status='resolved' -- write_escalation's own default (line 58) is 'pending'."
+          }
+        ]
+      },
+      "consumer": {
+        "path": "scripts/hooks/escalations_alert_sessionstart.sh",
+        "function": null,
+        "unchecked_reason": "The key-reading logic is an inline python heredoc embedded inside a bash SessionStart hook (lines 57-187), not a named function in any file this lint could AST-parse-and-find -- keys are read directly at heredoc module scope, verbatim citations in 'notes' below.",
+        "kind": "python (embedded heredoc, invoked via `\"$PY\" - ... <<'PYEOF'`)",
+        "reads": [
+          "status",
+          "job",
+          "type",
+          "ts",
+          "resolved_at",
+          "priority",
+          "severity",
+          "error_summary"
+        ],
+        "enum_literals": {
+          "priority_or_severity_fallback_uppercased": ["HIGH"]
+        }
+      },
+      "notes": "Every key this consumer reads IS covered by producer.emits above (verified: 0 C1 violations against scripts/lint_immune_contracts.py) -- this pair is NOT a live schema-drift defect, unlike heartbeat_to_digest above; it is recorded here for its multi-writer enum-domain behavior. Read logic, verbatim from the source: `job = d.get('job') or d.get('type') or '?'` (line 102); `prio = str(d.get('priority') or d.get('severity') or 'NORMAL').upper()` (line 106); `summ = ' '.join((d.get('error_summary') or '').split())[:80]` (line 107) -- every read is defensive with an `or`/default, so a caller variant missing a key (e.g. modus_enqueue.py never emitting 'error_summary' or 'priority') degrades gracefully rather than crashing. The `.upper()` on the priority/severity fallback is exactly what absorbs the real, measured case+field-name split described below (that enum_literals key has no matching producer.enums domain to check against -- expected, and reported by the lint as UNCHECKED, not a violation, since 'priority-or-severity-uppercased' is a consumer-side normalization, not a single producer field name). Empirical value-frequency count over the live shared/escalations_pro.jsonl (14 lines, checked 2026-08-31), `priority` field only: {'NORMAL': 12, None: 2}. The 2 null-priority rows are the modus_enqueue.py-shaped rows (job='regulatory-delta-capture-2026-07-26' and '...-08-05'), which instead carry `'severity': 'normal'` (LOWERCASE, confirmed by directly reading both raw records) -- so the real-world split the reader's `.upper()` exists to absorb is genuine and currently live in production data: it is a field-name split (priority vs severity) COMPOUNDED with a case split (NORMAL vs normal) across two producer callers, not merely a same-field case inconsistency. No row in the current 14-line file carries priority/severity == 'HIGH', though 'HIGH' is a real, exercised value: dlq_autopilot.py writes it conditionally (see caller_supplied_variants above) and 4 fixtures in scripts/tests/test_escalations_alert_sessionstart.py assert on priority=='HIGH' rows."
+    },
+    {
+      "id": "wr2_runtime_stamp_to_digest",
+      "producer": {
+        "path": "scripts/lib/wr2_runtime_stamp.py",
+        "function": "compute_runtime_stamp",
+        "kind": "python",
+        "emits": [
+          "ts",
+          "pid",
+          "host",
+          "checkout",
+          "head_sha",
+          "dirty",
+          "stale_modules",
+          "errors"
+        ],
+        "nested": {},
+        "enums": {}
+      },
+      "consumer": {
+        "path": "scripts/organism_digest.py",
+        "function": "stale_heartbeats",
+        "kind": "python",
+        "reads": ["checkout"],
+        "enum_literals": {}
+      },
+      "notes": "The SECOND producer into the same sidecar directory. `stale_heartbeats` globs *.json and therefore reads two different schemas from one directory \u2014 heartbeat.sh's {ts,status,note} and this one's per-invocation provenance stamp. That is deliberate and documented at organism_digest.py:310-319, but it is not representable as one producer/consumer pair: modelled as one, `checkout` reads as a live C1 violation against a producer that never emits it. Two producers, two contracts \u2014 the registry describes the world rather than flattening it to fit."
+    }
+  ]
+}

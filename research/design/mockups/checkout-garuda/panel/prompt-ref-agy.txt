@@ -1,0 +1,290 @@
+You are an adversarial refuter for UX and doctrine coherence (SEA market context). Below: (A) a design report for the GARUDA VOA checkout page (Indonesian visa-on-arrival service, Bali, scam-wary audience), (B) its mockup HTML. Attack the DESIGN JUDGMENT: does the page actually reduce the 5-quits scam fear or add noise? Is the PNBP line ("Government charges: IDR 5XX.XXX (PNBP, set by the state) — included in the total above, not added to it") comprehensible to a first-time tourist or confusing? Is demoting rails to badges the right honesty call, or does it remove a reassurance? Is "What happens after you pay" placed and worded right? Does the team-control module + WhatsApp talk-first card BEFORE payment work for the calo/broker-burned population, or does WhatsApp itself pattern-match to the scam? Are the three §6 declarations sound, and are their rejected alternatives fairly stated? What is MISSING that this page needs (refund policy? official-fee disclaimers? language toggle for ID sponsors)? Output: numbered findings, severity HIGH/MED/LOW, with concrete counter-proposals where you have them. No praise.
+=== (A) REPORT ===
+---
+date: 2026-08-27
+domain: design
+client_case: none
+round: build-lane design deliverable (post-loop) — GARUDA checkout page, R7 §4 item 1
+sources:
+  - R7 doctrine + backlog — research/design/2026-08-27-r7-doctrine-loop-closure.md (PR #5091)
+  - R4 identity law (pricing surfaces, tokens) — research/design/2026-08-27-r4-identity-merah-putih-token-spec.md
+  - R5 M5 mockup (price contract) — research/design/mockups/r5-merah-putih/m5-vo-verdict-supported-payment.body.html
+  - R1 fragile moment A7 — research/design/2026-08-27-r1-psicologia-utente-personas-mappa-emotiva.md
+  - live surfaces read this round — apps/mouth/src/app/visa/voa/checkout/[resultId]/ (CheckoutFlow.tsx), apps/backend-rag/backend/services/payments/xendit.py, services/garuda_orders/{models,outbox_handlers}.py
+  - the mockup — research/design/mockups/checkout-garuda/checkout.{body.,}html
+adversarial_review: codex
+adversarial_review_detail: PENDING-PANEL
+---
+
+# GARUDA checkout — the design the funnel's highest-risk step never had
+
+**What this file is.** NOT a loop round — the Design Study Loop closed at R7. This is the first
+build-lane design deliverable of the R7 §4 backlog (item 1: "the funnel's highest-risk step has
+NO mockup"), executed under the loop's doctrine: R4 is the law, claims carry their evidence
+class (R7 §3.1), and the new declarations in §6 go through the round-grade process (report,
+panel, dispositions, async veto) because they decide surface behavior, not just styling.
+Study only: no product code, `GARUDA_PUBLIC_ENABLED` untouched.
+
+## §1 Ground — what actually exists (class a, read from origin/main eeeadaead this round)
+
+A live checkout page EXISTS, ship-dark: `apps/mouth/src/app/visa/voa/checkout/[resultId]/`
+behind `GARUDA_PUBLIC_ENABLED` (fail-closed, noindex). It collects email + phone, shows
+full name + passport read-only from the session handoff, and guards with "We need your
+reviewed passport details first." — exactly the only state R1's capture could reach (R1:169).
+On submit it creates the order and redirects to the PSP. Payments: Xendit **Invoices API**
+(hosted page; sandbox-key enforced in this build) — the payment rail (QRIS / VA / card) is
+chosen on Xendit's page, not ours; provider fee is absorbed into the one `price_idr`. The
+return route is deliberately single (no success/failure split): "the browser return is an
+OBSERVATION, never a truth" (xendit.py). Order shape (`models.py`): one `price_idr` figure,
+`order_id` opaque; **no BZ-XXXX case-code generator exists anywhere** — the codes in R5/R5b
+mockups are design placeholders (class a: repo-wide search found no generator).
+
+Correction recorded while grounding (class a vs class e): `outbox_handlers.py`'s docstring
+still claims nothing invokes the outbox drain in production — that text is STALE. Commit
+63bfa19ec (#5035) shipped the drain dark, armed by one variable, and `main_api.py:127` runs
+the scheduler. The R7 ladder's decay rule caught its second stale-doc claim in one day.
+
+## §2 The two live-vs-law tensions this design resolves
+
+**T1 — the live checkout shows NO price.** `CheckoutFlow.tsx:14-18` declares it by design
+("the price only appears once, on the order tracker"). But R4's pricing law (Q6c) requires
+the exact bundle price at quoted verdicts AND at payment, verbatim-identical; and R1-A7's own
+evidence (Baymard 2025, cited at R1:132) counts 12% checkout abandonment because "the total
+was not visible up front" — on the step R1 rated **5-quits** with "scam fear" as the dominant
+emotion. A pay button with no number next to it, on a brand fighting scam-adjacency (R6 §4),
+is the exact fear surface. The design puts the price ON the checkout page as Q6c's second
+rendering (verdict → checkout → CTA), and §6.1 declares it.
+
+**T2 — a rail selector we cannot honor.** M5's mockup renders QRIS/VA/card as a selectable
+radiogroup, but the shipped provider is Xendit's hosted Invoice: the user picks the rail on
+the NEXT page, not ours. A selector whose choice the product silently discards would be a
+dishonest control (R3's autopsy class). The design demotes the rails to informational badges
+inside "What happens after you pay" — the promise ("you choose how — there") is one the
+backend already keeps. §6.2 declares it; M5's radiogroup stays correct for a future direct
+rails integration and is not amended.
+
+## §3 Design decisions (mockup: `mockups/checkout-garuda/checkout.html`, mobile-first 390px, light)
+
+1. **Review-before-pay before anything else** (A7 cure; R4 question protocol): name and
+   passport read-only with Edit→ links back to review; email/phone fields preceded by
+   why-we-ask-and-who-sees-it copy — the backlog item 2 consent pattern applied at its first
+   surface (class c: expert application of R1/R4).
+2. **The price card** — Q6c rendering 2 of 3, verbatim-identical with the verdict and the CTA;
+   composition line (R6 §8 item 2 verbatim scope: categories, never figures); receipt-itemizes
+   promise (post-payment, outside the guardrail's surfaces); **the adopted PNBP line**
+   (R7 §5.1 ruling, standing 27/8): "Government charges: IDR 5XX.XXX (PNBP, set by the state)
+   — included in the total above, not added to it." One state-set figure, no fee split — the
+   wording makes the guardrail's point FOR the reader: the number is inside, not on top.
+   All figures masked; PricingTool remains the sole source (placeholders `{BUNDLE_EXACT}`).
+3. **"What happens after you pay"** above the CTA (A7's carried demand: "total, inclusions,
+   refund, time above the pay button" — R1:109): three steps with the rails as badges, the
+   order identity (`{ORDER_ID}` — honest: no case-code exists, §5.1), the processing window,
+   and the human-escalation promise.
+4. **Team-control human module** — the FIRST surface designed under R6 §8 item 1's flipped
+   production default: "our team answers within {SLA}", no named person, no photo. The named
+   variant may only enter via the A/B under the verifiability contract; this page does not
+   pre-empt it (class: doctrine application, not preference).
+5. **Trust block, full §2.4 contract**: role-separation line, PT/NPWP/registry link, physical
+   office address — and the talk-first WhatsApp card BELOW the trust block, offering contact
+   BEFORE payment ("before you pay, not after"): kimi's R6 scam-adjacency dissent answered on
+   the page where the fear peaks.
+6. **Sticky CTA** — Q6c rendering 3 of 3 — with the payment-window honesty line ("this total
+   holds for {PAYMENT_WINDOW}"): the R2/operator capture insight (Flado exposes a 30-day
+   window vs the official 120 minutes) turned into a stated promise instead of an implicit one.
+7. **Rem-native type scale** — the first surface applying R7 §2 amendment 3: every size in rem
+   over a 16px root, identical default rendering, text-only zoom no longer inert (class b at
+   build time: R6's runtime probe becomes this page's acceptance test).
+8. **Guard state kept verbatim** ("We need your reviewed passport details first.") — the live
+   copy already passes the walkthrough; only restyled under R4 tokens.
+
+## §4 Behavioral acceptance (what a build of this page must prove)
+
+- Price renders identically, to the rupiah, in the three Q6c places — a diff between any two
+  is a failed build (would_fail_if: string inequality across verdict/checkout/CTA fixtures).
+- The PNBP line renders ONLY when the state figure is resolved for the case type; no figure,
+  no line (C1 discipline extended: no state number renders without a resolved source).
+- Text-only zoom at 200% enlarges every line (would_fail_if: any computed font-size equal to
+  its default-zoom value under text-only zoom — R6 probe 5's exact instrument, now green by
+  construction).
+- The rails block never renders as a selectable control while the provider is hosted-invoice.
+- The guard state is reachable and the priced state is NOT, when the handoff is absent.
+
+## §5 Findings handed to product lanes (not design's to fix)
+
+1. **No case-code exists.** R7 backlog item 3 promises "the case code surviving onto the
+   receipt and the first WhatsApp message" — there is nothing to survive: no generator, no
+   column; the tracker/email use raw `order_id`. Either mint a human-grade code at order
+   creation or amend item 3 to speak `order_id`. (class a)
+2. **Price-at-checkout divergence** (T1): `CheckoutFlow.tsx` needs the price card once §6.1
+   stands — it currently cannot render one by design. (class a)
+3. **Stale outbox docstring** (§1 correction): `outbox_handlers.py` should stop claiming the
+   drain is unwired — #5035 wired it dark. A doc that contradicts main misleads the next
+   ground pass, and today it briefly did. (class a)
+4. **Email/phone are asked at checkout only** — the why-we-ask copy in §3.1 papers over a
+   structural question (should contact land earlier, with consent placement per backlog
+   item 2?) that belongs to the consent lane, not this page. (class c)
+
+## §6 Declarations (adopted under the standing pre-confirmation, async veto open)
+
+1. **The checkout page shows the exact bundle price** as Q6c's second rendering — the
+   tracker-only choice in the live code is superseded for the design. Alternative: keep the
+   priced surface at verdict+PSP only (rejected: Baymard's 12% + A7's 5-quits both point at
+   the unpriced pay step, and Q6c's "at payment" reads naturally as the page holding the pay
+   button).
+2. **Rails render as informational badges, not a selector, while the provider is a hosted
+   invoice.** Alternative: keep M5's radiogroup on checkout (rejected: a control whose choice
+   the product discards is a dishonest control; M5's component stays for a future direct
+   integration).
+3. **This page ships the team-control human module** per the flipped production default —
+   no named person until the R6/R7-gated A/B decides. Alternative: named module (barred by
+   doctrine until the human gate).
+
+## Adversarial review (§7)
+
+PENDING-PANEL — risk-tier: this deliverable carries three §6 declarations on the funnel's
+highest-risk surface, so it gets the round-grade panel (four cross-family seats, filesystem
+seat verifying §1/§2/§5 against the live tree, dispositions row-by-row) rather than the
+single-refuter ASSEMBLY-LINE floor.
+
+## §Meta
+
+The loop's doctrine got its first field test the same day it merged: the ladder's decay rule
+caught a stale docstring contradicting main (§1), the flipped default decided a surface
+without a debate (§3.4), and the adopted PNBP ruling went from register row to rendered line
+in one lane. The page itself tries to do one thing: make the moment of highest fear the
+moment of highest honesty — the number, what is inside it, what the state takes, what happens
+next, and a human reachable BEFORE the money moves.
+=== (B) MOCKUP ===
+<!-- GARUDA VOA checkout — build-lane design deliverable (post-loop, R7 §4 item 1).
+     First surface designed REM-NATIVE (R7 §2 amendment 3) and under the FLIPPED production
+     default (R6 §8 item 1: team control, no named person until the A/B decides).
+     Price contract Q6c: the exact bundle price renders here verbatim-identical to the verdict
+     and to the CTA (three renderings, bound by copy). Masked figures + {PLACEHOLDERS} only —
+     PricingTool is the sole source of real prices. Light theme; dark set lives in R5b. -->
+<style>
+  :root{
+    --carta:#f7f6f2; --elevated:#ffffff; --ink:#16213a; --ink-soft:#475372;
+    --border-input:#7a8093; --hairline:#e3e1da;
+    --merah:#C8102E; --merah-action:#D01033; --merah-pressed:#c40020;
+    --state-error:#a83a44;
+    --radius:12px; --radius-nested:8px; --radius-pill:9999px; --motion:220ms;
+    --font-display:"Cormorant Garamond",Georgia,serif;
+    --font-ui:"Inter",system-ui,sans-serif;
+    --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+    /* Type scale in REM (R7 §2.3): identical rendering at default 16px root; text-only zoom now works. */
+    --t-body:1rem; --t-small:.8125rem; --t-label:.875rem; --t-price:1.375rem; --t-h1:1.5rem; --t-h2:1.125rem;
+  }
+  .ck{background:var(--carta);color:var(--ink);font-family:var(--font-ui);font-size:var(--t-body);
+      line-height:1.55;max-width:26rem;margin:0 auto;padding:1rem 1rem 7rem}
+  .ck h1{font-family:var(--font-display);font-size:var(--t-h1);font-weight:600;margin:.25rem 0 .125rem}
+  .ck h2{font-size:var(--t-h2);font-weight:600;margin:0 0 .5rem}
+  .ck .steps{font-size:var(--t-small);color:var(--ink-soft);margin-bottom:1rem}
+  .ck .steps strong{color:var(--ink)}
+  .ck .card{background:var(--elevated);border:1px solid var(--border-input);border-radius:var(--radius);
+      box-shadow:0 1px 3px rgba(22,33,58,.08);padding:1rem;margin-bottom:1rem}
+  .ck .why{font-size:var(--t-small);color:var(--ink-soft);margin:.25rem 0 .75rem}
+  .ck .field{margin-bottom:.75rem}
+  .ck label{display:block;font-size:var(--t-label);font-weight:600;margin-bottom:.25rem}
+  .ck input{width:100%;min-height:2.75rem;font:inherit;color:var(--ink);background:var(--elevated);
+      border:1px solid var(--border-input);border-radius:var(--radius-nested);padding:.5rem .75rem}
+  .ck input:focus{outline:2px solid var(--ink);outline-offset:1px}
+  .ck .ro{display:flex;justify-content:space-between;align-items:baseline;gap:.5rem;
+      border:1px solid var(--hairline);border-radius:var(--radius-nested);padding:.5rem .75rem;
+      background:var(--carta);margin-bottom:.5rem}
+  .ck .ro .v{font-family:var(--font-mono);font-size:var(--t-label)}
+  .ck .edit{font-size:var(--t-small);color:var(--merah-action);text-decoration:underline;white-space:nowrap}
+  .ck .price{font-family:var(--font-mono);font-size:var(--t-price);font-weight:600}
+  .ck .allinc{font-size:var(--t-small);color:var(--ink-soft)}
+  .ck .pnbp{border-top:1px solid var(--hairline);margin-top:.75rem;padding-top:.75rem;
+      font-size:var(--t-small);color:var(--ink-soft)}
+  .ck .pnbp .n{font-family:var(--font-mono);color:var(--ink)}
+  .ck ol.after{margin:.25rem 0 0;padding-left:1.25rem}
+  .ck ol.after li{margin-bottom:.5rem}
+  .ck .rails{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.5rem}
+  .ck .rail{border:1px solid var(--border-input);border-radius:var(--radius-pill);
+      padding:.25rem .75rem;font-size:var(--t-small);background:var(--elevated)}
+  .ck .trust{border-top:2px solid var(--ink);padding-top:.75rem;font-size:var(--t-small);color:var(--ink-soft)}
+  .ck .trust .role{color:var(--ink);font-weight:600}
+  .ck .trust a{color:var(--merah-action)}
+  .ck .talk{border:1px solid var(--border-input);border-radius:var(--radius);padding:.75rem 1rem;
+      margin-top:.75rem;font-size:var(--t-label);background:var(--elevated);
+      box-shadow:0 1px 2px rgba(22,33,58,.06)}
+  .ck .cta-wrap{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(transparent,var(--carta) 30%);
+      padding:1rem;max-width:26rem;margin:0 auto}
+  .ck .cta{display:flex;justify-content:center;gap:.5rem;align-items:baseline;width:100%;
+      min-height:2.75rem;background:var(--merah-action);color:#fff;border:0;border-radius:var(--radius);
+      font:600 var(--t-body) var(--font-ui);padding:.75rem 1rem;cursor:pointer;
+      transition:background var(--motion)}
+  .ck .cta:active{background:var(--merah-pressed);transform:scale(.99)}
+  .ck .cta .mono{font-family:var(--font-mono)}
+  .ck .window{text-align:center;font-size:var(--t-small);color:var(--ink-soft);margin-top:.375rem}
+  .ck .guard{border-left:3px solid var(--state-error);padding:.75rem 1rem;background:var(--elevated);
+      border-radius:var(--radius-nested);font-size:var(--t-label)}
+  .ck .guard a{color:var(--merah-action)}
+  @media (prefers-reduced-motion: reduce){ .ck .cta{transition:none} }
+</style>
+
+<div class="ck">
+  <p class="steps">Passport → Review → <strong>Checkout</strong> → Payment</p>
+  <h1>Review &amp; pay</h1>
+  <p class="why">Everything below can still change — nothing is sent to immigration until after payment.</p>
+
+  <!-- ══ Review-before-pay (A7 cure: every fact editable, R4 question protocol) ══ -->
+  <section class="card" aria-labelledby="ck-review">
+    <h2 id="ck-review">Your details</h2>
+    <div class="ro"><span>Full name</span><span class="v">{FULL_NAME}</span><a class="edit" href="#review">Edit →</a></div>
+    <div class="ro"><span>Passport no.</span><span class="v">{PASSPORT_MASKED}</span><a class="edit" href="#review">Edit →</a></div>
+    <p class="why">Why we ask for the two fields below: your receipt and order tracker go to this
+    email, and this phone is where our team reaches you if anything needs a human. Nobody else
+    sees them.</p>
+    <div class="field"><label for="ck-email">Email</label><input id="ck-email" type="email" autocomplete="email" value="{EMAIL}"></div>
+    <div class="field"><label for="ck-phone">Phone (WhatsApp)</label><input id="ck-phone" type="tel" autocomplete="tel" value="{PHONE}"></div>
+  </section>
+
+  <!-- ══ Price card — Q6c rendering 2 of 3 + adopted PNBP line (R7 §5.1 ruling) ══ -->
+  <section class="card" aria-labelledby="ck-price">
+    <h2 id="ck-price">Total — the same number you saw at your result</h2>
+    <p><span class="price">IDR 8XX.XXX</span> <span class="allinc">all-inclusive · {BUNDLE_EXACT}</span></p>
+    <p class="allinc">Inside this price: our service, government charges, and follow-up until
+    your visa outcome. Your receipt itemizes after payment.</p>
+    <p class="pnbp">Government charges: <span class="n">IDR 5XX.XXX</span> (PNBP, set by the
+    state) — included in the total above, not added to it.</p>
+    <p class="allinc" style="margin-top:.5rem">Paying in another currency? Your bank's FX rate
+    applies · {FX_POLICY}</p>
+  </section>
+
+  <!-- ══ What happens after you pay (A7: time & outcome above the pay button) ══ -->
+  <section class="card" aria-labelledby="ck-after">
+    <h2 id="ck-after">What happens after you pay</h2>
+    <ol class="after">
+      <li>You pay on the next page — a secure payment page where you choose how:
+        <span class="rails"><span class="rail">QRIS</span><span class="rail">Virtual Account · BCA</span><span class="rail">Virtual Account · Mandiri</span><span class="rail">Card</span></span></li>
+      <li>Your receipt and order tracker arrive by email within minutes. Order
+        <span class="v" style="font-family:var(--font-mono)">{ORDER_ID}</span> appears on both.</li>
+      <li>We prepare and submit your application — {PROCESSING_WINDOW}. If anything needs a
+        human, our team messages you on WhatsApp within {SLA}.</li>
+    </ol>
+  </section>
+
+  <!-- ══ Trust block (R7 §2.4 full contract) — talk-first card BELOW it ══ -->
+  <footer class="trust">
+    <p class="role">We prepare your application; Ditjen Imigrasi decides and issues.</p>
+    <p>PT {PT_LEGAL_NAME} · NPWP {NPWP} · <a href="{REGISTRY_LINK}">registry entry</a><br>
+    {OFFICE_STREET_ADDRESS}, Bali — {OFFICE_HOURS}</p>
+    <div class="talk">Prefer to talk it through first? Our team answers on WhatsApp within
+    {SLA} — before you pay, not after. <a href="{WA_LINK}">Message us →</a></div>
+  </footer>
+
+  <!-- ══ Sticky CTA — Q6c rendering 3 of 3 + payment-window honesty ══ -->
+  <div class="cta-wrap">
+    <button class="cta" type="button">Pay &amp; start — <span class="mono">IDR 8XX.XXX</span></button>
+    <p class="window">This total holds for {PAYMENT_WINDOW} — no price change while you decide.</p>
+  </div>
+
+  <!-- ══ Guard state (live copy kept, restyled) — shown INSTEAD of the page when the
+       reviewed handoff is missing ══ -->
+  <template id="ck-guard">
+    <div class="guard"><p>We need your reviewed passport details first.</p>
+    <p><a href="#upload">Go back to upload your passport →</a></p></div>
+  </template>
+</div>

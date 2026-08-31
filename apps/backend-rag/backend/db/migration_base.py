@@ -5,7 +5,9 @@ Provides base classes and utilities for database migrations
 
 import hashlib
 import logging
+import os
 import re
+import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -14,6 +16,131 @@ import asyncpg
 from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+
+# ---------------------------------------------------------------------------
+# Provenance (migration 299)
+# ---------------------------------------------------------------------------
+# `_schema_versions` records WHAT and WHEN. Migration 299 added WHO, THROUGH
+# WHAT and WITH WHICH RUNNER. These helpers fill them, and the rule that makes
+# them worth anything is: `applied_as` is asked of POSTGRES, never taken from
+# something the caller can set. A provenance field a caller can spoof records
+# a claim, not a fact.
+
+_APPLIED_VIA_VALUES = ("release_command", "manual", "ci")
+
+
+def resolve_applied_via() -> str:
+    """Which invocation path is running: release_command | manual | ci.
+
+    Deterministic and derived from the ENVIRONMENT THE PLATFORM SETS, not from
+    a flag a human passes:
+
+    * Fly sets `FLY_APP_NAME` in the machine that runs `release_command`.
+    * GitHub Actions sets `CI=true` (and `GITHUB_ACTIONS`).
+    * Anything else is a human at a shell -- `manual`.
+
+    CI IS CHECKED FIRST, and that ordering is a correction (2026-08-31, blind
+    refuter). The first version checked Fly first, reasoning that a Fly machine
+    is the more specific fact. It is not: this repository's CI runs
+    `flyctl ssh console` against a Fly machine, so a CI-driven apply executes
+    WITH `FLY_APP_NAME` set and would have been recorded as `release_command` --
+    the single label most likely to be trusted in an incident. `GITHUB_ACTIONS`
+    is the narrower signal and is what actually distinguishes the two.
+
+    Declared limit: this is SELF-REPORTED from the environment and a
+    determined caller can set these variables. It is a provenance HINT, unlike
+    `applied_as`, which the server answers. The CHECK constraint in migration
+    299 bounds the vocabulary so an unexpected string is rejected by the
+    database rather than silently stored, but it cannot make an environment
+    honest.
+    """
+    if os.environ.get("GITHUB_ACTIONS") or os.environ.get("CI"):
+        return "ci"
+    if os.environ.get("FLY_APP_NAME"):
+        return "release_command"
+    return "manual"
+
+
+def resolve_runner_version() -> str:
+    """A NON-SECRET identifier of the runner that applied a row.
+
+    Deliberately boring: the module path plus the Python version. It must never
+    carry a token, a DSN, a hostname or a username -- this string is written to
+    a table that survives, and a provenance column is exactly the kind of place
+    a secret gets parked "temporarily". Kept short because it is stored per
+    row.
+    """
+    return f"migration_base/py{sys.version_info.major}.{sys.version_info.minor}"
+
+
+async def resolve_applied_as(conn: asyncpg.Connection) -> str | None:
+    """The effective PostgreSQL role, asked of the server.
+
+    Records `current_user`, and `session_user` TOO when they differ -- as
+    `current_user (session_user)`. Both, because neither alone is the answer:
+    `current_user` is the EFFECTIVE role and moves under `SET ROLE`;
+    `session_user` is the role that authenticated and does not.
+
+    CORRECTED 2026-08-31 by a blind refuter, because the first version of this
+    docstring overclaimed: it said `current_user` makes W130's temporary
+    `GRANT visa_ledger_owner TO backend_rag_v2` visible. It does NOT. A role
+    MEMBERSHIP does not change `current_user` unless someone also issues
+    `SET ROLE`; the grant merely makes the privilege reachable. What this
+    column honestly gives is the effective role at apply time plus the
+    authenticated one when they diverge -- which catches `SET ROLE`, and does
+    not catch a bare membership. Said plainly rather than left as a claim the
+    mechanism cannot support.
+
+    Returns None rather than raising if the query fails: provenance is
+    valuable, but refusing to record a migration that APPLIED CLEANLY because
+    a metadata read failed would turn a nice-to-have into an outage.
+    """
+    try:
+        row = await conn.fetchrow("SELECT current_user AS cu, session_user AS su")
+        if row is None:
+            return None
+        if row["cu"] == row["su"]:
+            return str(row["cu"])
+        return f"{row['cu']} (session_user={row['su']})"
+    except Exception:  # provenance must never block an apply that succeeded
+        logger.warning("could not resolve current_user for provenance; recording NULL")
+        return None
+
+
+async def _schema_versions_has_provenance(conn: asyncpg.Connection) -> bool:
+    """True when migration 299 has been applied to THIS database.
+
+    Necessary because the runner must work against a database that predates
+    299 -- including while 299 itself is the migration being applied. Asked of
+    the catalogue, not assumed from the file tree.
+    """
+    fetchval = getattr(conn, "fetchval", None)
+    if fetchval is None:
+        # A connection object that cannot answer a catalogue question cannot
+        # prove provenance columns exist. FAIL SAFE to the legacy INSERT rather
+        # than raising: this probe exists to ADD a metadata column, and it must
+        # never be the reason a migration that would otherwise apply cleanly
+        # does not. (Found by an existing test whose FakeConnection implements
+        # only `execute` -- the probe turned a passing test into an
+        # AttributeError, which is the probe breaking the thing it observes.)
+        return False
+    try:
+        return bool(
+            await fetchval(
+                # table_schema scoped: an unrelated `_schema_versions` in another
+                # schema would otherwise make this claim the columns exist and
+                # send a 10-column INSERT at a table that has 9 -- aborting a
+                # migration that would have applied fine (refuter, 2026-08-31).
+                "SELECT EXISTS (SELECT 1 FROM information_schema.columns "
+                "WHERE table_schema = 'public' AND table_name = '_schema_versions' "
+                "AND column_name = 'applied_as')"
+            )
+        )
+    except Exception:  # a metadata read must never abort a good apply
+        logger.warning("could not probe _schema_versions provenance columns; assuming absent")
+        return False
 
 
 class MigrationError(Exception):
@@ -414,6 +541,33 @@ class BaseMigration:
             execution_time_ms,
             rollback_sql,
         )
+        # Provenance (migration 299). Asked of the CATALOGUE, not assumed from
+        # the file tree: this runner must keep working against a database that
+        # predates 299 -- including during the apply of 299 itself, where the
+        # columns do not exist yet at the moment this row is written.
+        if await _schema_versions_has_provenance(conn):
+            await conn.execute(
+                """
+                INSERT INTO _schema_versions
+                (migration_name, migration_number, checksum, description,
+                 execution_time_ms, rollback_sql, applied_by,
+                 applied_as, applied_via, runner_version)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                ON CONFLICT (migration_name) DO NOTHING
+            """,
+                self.migration_name,
+                self.migration_number,
+                checksum,
+                self.description,
+                execution_time_ms,
+                rollback_sql,
+                "migration-base",
+                await resolve_applied_as(conn),
+                resolve_applied_via(),
+                resolve_runner_version(),
+            )
+            return
+
         await conn.execute(
             """
             INSERT INTO _schema_versions

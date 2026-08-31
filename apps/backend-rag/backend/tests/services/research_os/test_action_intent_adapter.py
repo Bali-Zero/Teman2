@@ -11,6 +11,15 @@ from backend.services.research_os.loss_report import (
 )
 from backend.tests.services.research_os.conftest import make_ops_intent_row
 
+# The classification fields `verify_action_intent_matches_action_item` requires
+# the two sibling objects to hold identically (that function compares six things
+# in total; these are the two that are also adapter-chosen placeholders). Written
+# out by hand ON PURPOSE: the invariant lives in imperative `if ... raise` code
+# with no runtime handle on its field list, so there is nothing honest to derive
+# this from. Adding a third shared placeholder means extending this tuple --
+# a real limitation, stated rather than dressed up as automatic coverage.
+_CLASSIFICATION_FIELDS_SHARED_BY_INVARIANT = ("risk_class", "sensitivity")
+
 
 def test_adapts_a_succeeded_row_into_a_valid_action_intent(ops_intent_row):
     result = adapt_ops_intent_to_action_intent(ops_intent_row)
@@ -78,6 +87,81 @@ def test_requested_action_spec_ref_and_risk_fields_match_sibling_exactly(ops_int
     assert intent.requested_action_spec_ref == item.requested_action_spec_ref
     assert intent.risk_class == item.risk_class
     assert intent.sensitivity == item.sensitivity
+
+
+def test_a_field_shared_by_invariant_is_declared_pending_by_both_siblings_or_neither(
+    ops_intent_row,
+):
+    """The structural half of the test above, and the reason it exists.
+
+    `test_requested_action_spec_ref_and_risk_fields_match_sibling_exactly`
+    proves the two objects carry the SAME VALUE. It says nothing about
+    whether they make the same CLAIM about that value -- and for eight
+    weeks they did not. `action_intent_adapter` declared `risk_class` and
+    `sensitivity` in its `pending_ruling` (a Kimi K3 review, 2026-08-24,
+    found an inherited placeholder disclosed only in prose is invisible to
+    a consumer reading the machine-checkable channel); `action_item_adapter`
+    -- the object that ORIGINATES both values, from which the intent
+    inherits them precisely to satisfy the invariant above -- did not. The
+    cure had landed on the heir and not on the source.
+
+    The observable consequence was a contradiction, not an untidiness: for
+    ONE legacy row, a consumer branching on `pending_ruling` distrusted the
+    ActionIntent's classification and trusted the ActionItem's, for the two
+    same fields holding the two same values by invariant. Whichever way it
+    resolved that, one of the two answers was wrong.
+
+    On the shape of the check, corrected after an adversarial review (Kimi
+    K3, 2026-08-26) refuted the first version of this docstring. That version
+    claimed the field set was "derived from the invariant, not a remembered
+    list". It was not: the names were hardcoded and equality merely FILTERED
+    them -- and that filter was the actual defect, not just an overclaim. If
+    the cross-object invariant ever broke on one of these fields, that field
+    would compare unequal, drop OUT of the set, and leave this guard silently
+    weaker exactly when the objects had started to disagree. A guard whose
+    coverage shrinks in the presence of the fault is worse than no guard.
+
+    So equality is now a PRECONDITION, not a filter: the package's own
+    `verify_action_intent_matches_action_item` runs first and raises on any
+    divergence, and only then -- with the two fields guaranteed equal by the
+    invariant itself -- is the declaration compared. The names stay written
+    out, honestly, because there is no runtime handle on that function's
+    field list; if a third shared placeholder is added, `_CLASSIFICATION_
+    FIELDS_SHARED_BY_INVARIANT` must be extended by hand, and that is a
+    stated limitation rather than a claim of automatic coverage.
+
+    GUILT: drop `risk_class`/`sensitivity` from either adapter's
+    `pending_ruling` tuple and this goes red. INNOCENCE: it passes when both
+    declare them, and equally when NEITHER does -- it forbids divergence,
+    not any particular resolution, because the resolution is a ruling that
+    is genuinely still open (`contract-pass-001.md` §9, under
+    `research/operations/execution/research-os-v1.0.0/evidence/p04/`).
+    """
+
+    item = adapt_ops_intent_to_action_item(ops_intent_row).canonical
+    intent = adapt_ops_intent_to_action_intent(ops_intent_row).canonical
+    assert item is not None and intent is not None
+
+    # PRECONDITION, not a filter. If the two objects have diverged on any
+    # shared field, this raises and names it -- rather than letting the
+    # diverged field quietly leave the set this guard then checks.
+    verify_action_intent_matches_action_item(item, intent)
+
+    ns = "com.balizero.research-os-adapters"
+    item_pending = set(item.extensions[ns].payload.get("pending_ruling", []))
+    intent_pending = set(intent.extensions[ns].payload.get("pending_ruling", []))
+
+    diverged = {
+        name
+        for name in _CLASSIFICATION_FIELDS_SHARED_BY_INVARIANT
+        if (name in item_pending) != (name in intent_pending)
+    }
+    assert not diverged, (
+        f"{sorted(diverged)}: these fields are equal across the two sibling objects by "
+        "invariant, but only one adapter declares them in pending_ruling. A consumer "
+        "branching on the machine-checkable channel gets two different answers about "
+        "the same value. Declare them on BOTH adapters, or on neither."
+    )
 
 
 def test_unbacked_refs_are_machine_checkable_not_only_prose(ops_intent_row):

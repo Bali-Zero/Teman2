@@ -452,6 +452,41 @@ def _promote(deployment_id: str, sha: str) -> bool:
     return _probe_until(sha, attempts=8)
 
 
+# How far back to look for an older bundle-relevant commit when the newest one has no READY
+# build yet. Bounds the worst case at this many `_ready_deployment_for` calls (one GET each).
+FALLBACK_SCAN_DEPTH = 10
+
+
+def _ready_deployment_among_recent_bundle_commits(
+    live: str | None,
+) -> tuple[str, str, str] | None:
+    """--promote-only's fallback: the newest bundle-relevant commit is the correct target, but
+    Vercel may not have built it yet (still building, or skipped it — see the BUNDLE_PATHS
+    comment). Walking backward through the last FALLBACK_SCAN_DEPTH bundle-relevant commits for
+    one that already has a READY build lets production advance to it instead of sitting on
+    whatever it already serves for another 15-minute cron tick.
+
+    This is NOT a relaxation of --promote-only's contract (still never builds). It only widens
+    which already-built commit counts as 'the thing to promote'.
+
+    Walks newest-first and stops at the first commit production already includes: on a linear
+    history that commit's parents are ancestors too, so scanning past it can only repeat 'already
+    current' — the caller does that check on the primary target already.
+
+    Returns (sha, deployment_id, readySubstate) for the first one found, or None.
+    """
+    shas = _git("log", f"-{FALLBACK_SCAN_DEPTH}", "--format=%H", "origin/main", "--", *BUNDLE_PATHS, *BUNDLE_EXCLUDE)
+    if not shas:
+        return None
+    for candidate in shas.splitlines():
+        if _production_includes(candidate, live):
+            break
+        existing = _ready_deployment_for(candidate)
+        if existing:
+            return candidate, existing[0], existing[1]
+    return None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--force", action="store_true", help="deploy even when production is already current")
@@ -481,9 +516,25 @@ def main() -> int:
     if existing:
         dpl, substate = existing
         print(f"already built     : {dpl} (readySubstate={substate}) — promote, do not rebuild")
+    # No READY build for the newest bundle-relevant commit yet — before giving up (dry-run's
+    # verdict and --promote-only's real behaviour must agree), look for an older bundle-relevant
+    # commit that IS already built. Only relevant to the two restricted paths below; the
+    # interactive default can just build sha itself, so it never needs this.
+    fallback = None
+    if not existing and (args.dry_run or args.promote_only):
+        fallback = _ready_deployment_among_recent_bundle_commits(live)
+        if fallback:
+            fb_sha, fb_dpl, fb_substate = fallback
+            print(
+                f"no READY build for {sha[:9]} (the newest bundle-relevant commit) — found an "
+                f"older one already built and unpromoted: {fb_sha[:9]} ({fb_dpl}, "
+                f"readySubstate={fb_substate})"
+            )
     if args.dry_run:
         if existing:
             print("dry-run: would PROMOTE the build above, changing nothing")
+        elif fallback:
+            print(f"dry-run: would PROMOTE the older commit {fallback[0][:9]} above, changing nothing")
         else:
             print("dry-run: no READY build for this commit — would deploy, changing nothing")
         return 0
@@ -495,6 +546,16 @@ def main() -> int:
     # and is deliberately NOT 1 — a wrapper reading one failure bit cannot tell "the promote
     # broke" from "there was nothing to promote", and those need different responses.
     if args.promote_only:
+        if not existing and fallback:
+            fb_sha, fb_dpl, _ = fallback
+            if _promote(fb_dpl, fb_sha):
+                print(
+                    f"OK — balizero.com serves {fb_sha[:9]} (promoted {fb_dpl}, no rebuild; "
+                    f"newest bundle-relevant commit {sha[:9]} still awaits its own build)"
+                )
+                return 0
+            print(f"::error::promote of {fb_dpl} did not move the domains to {fb_sha[:9]}")
+            return 1
         if not existing:
             print(f"no READY production build for {sha[:9]} — --promote-only will not create one")
             # 3, NOT 2. argparse exits 2 on an unrecognised flag, and an unattended wrapper

@@ -67,11 +67,12 @@ rule — and is ``None`` when it cannot be computed (see
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from enum import Enum
 
-from backend.services.garuda_flow import operating_calendar
+from backend.services.garuda_flow import freshness, operating_calendar
 from backend.services.garuda_flow.constants import (
+    EVOA_USABILITY_WINDOW_DAYS,
     MIN_PASSPORT_VALIDITY_DAYS,
     b1_max_total_stay_exceeded,
 )
@@ -201,10 +202,22 @@ _ARRIVAL_DATE_UNCONFIRMED_REASON = (
     "computed without guessing; hand off to a human"
 )
 
+_ARRIVAL_TOO_FAR_REASON = (
+    "arrival date is beyond the eVOA usability window from today — "
+    "hand off to the ordinary channel"
+)
+
 _MAX_STAY_EXCEEDED_REASON_TEMPLATE = (
     "printed extension expiry implies a stay beyond the legal B1 maximum "
     "of {max_total_stay_days} days total (arrival day counted as day 1) — "
     "hand off to the ordinary channel"
+)
+
+_ELIGIBILITY_UNCONFIRMED_REASON_TEMPLATE = (
+    "truth source '{source}' has not been re-verified within its "
+    "{max_age_days}-day window (last stamp: {stamp}, age: {age_days}d) — "
+    "declining to sell on data nobody has looked at recently, hand off to "
+    "the ordinary channel"
 )
 
 
@@ -233,6 +246,29 @@ def _issuance_submission_verdict(
     if today > submit_by:
         return submit_by, DeclineCode.ARRIVAL_TOO_SOON, _ARRIVAL_TOO_SOON_REASON
     return submit_by, None, None
+
+
+def _issuance_usability_window_verdict(
+    *, entry_date: date, today: date
+) -> tuple[DeclineCode | None, str | None]:
+    """Issuance-only eVOA usability-window gate (GARUDA B1 truth-sheet,
+    line 41, verified 14 Jul 2026): an eVOA is usable for
+    ``EVOA_USABILITY_WINDOW_DAYS`` from issuance.
+
+    There is no ``issuance_date`` input, and an eVOA for this request cannot
+    be issued before ``today``; the window therefore cannot start before
+    today. ``entry_date`` strictly later than ``today + window`` is outside
+    the window under the most generous possible assumption. The gate is
+    conservative by construction: it can only ever decline arrivals that
+    genuinely cannot be covered.
+
+    Never called for an extension case — the visa already exists and its
+    printed expiry is read directly.
+    """
+    last_covered_day = today + timedelta(days=EVOA_USABILITY_WINDOW_DAYS)
+    if entry_date > last_covered_day:
+        return DeclineCode.ARRIVAL_TOO_FAR, _ARRIVAL_TOO_FAR_REASON
+    return None, None
 
 
 def _build_eligibility_input(request: VoaIntakeRequest, *, today: date) -> EligibilityInput:
@@ -291,6 +327,33 @@ def build_verdict(request: VoaIntakeRequest, *, today: date) -> VoaVerdict:
     reasons = list(result.decline_reasons)
     codes = list(result.decline_codes)
 
+    # G-FRESHNESS-FAIL-CLOSED (DECISIONS.md Q9, `freshness.py`): the two
+    # truth sources every case shape depends on regardless of
+    # issuance/extension — the decree-sourced nationality list and the D-7/
+    # D-14/eVOA-window/passport-validity rule bundle — must have been
+    # re-verified inside their own window, or this DECLINEs exactly like the
+    # operating calendar's existing fail-closed path (GROUND.md §2). This is
+    # unconditional and checked first, but it does NOT short-circuit the
+    # collection below (house style, per `eligibility.screen`'s own
+    # docstring: never short-circuit, collect every failing reason) — a
+    # decline built on stale data should still show what ELSE was wrong, not
+    # hide it behind the staleness.
+    for report in (
+        freshness.nationality_eligibility_freshness(today=today),
+        freshness.rule_constants_freshness(today=today),
+    ):
+        if report.stale:
+            decision = Decision.DECLINE
+            reasons.append(
+                _ELIGIBILITY_UNCONFIRMED_REASON_TEMPLATE.format(
+                    source=report.source,
+                    max_age_days=report.max_age_days,
+                    stamp=report.stamp,
+                    age_days=report.age_days,
+                )
+            )
+            codes.append(DeclineCode.ELIGIBILITY_UNCONFIRMED.value)
+
     # Computed up front (moved ahead of the layered checks below, 2026-08-23)
     # so the max-total-stay guard can reuse `max_total_days` — the same
     # VISA_META-derived figure the CLI derives locally — instead of
@@ -337,12 +400,10 @@ def build_verdict(request: VoaIntakeRequest, *, today: date) -> VoaVerdict:
         )
         codes.append(DeclineCode.EXTENSION_EXCEEDS_MAX_STAY.value)
 
-    # Issuance-only submission-window gate (owner ruling 2026-07-27) — see
-    # `_issuance_submission_verdict` and the module docstring. `screen()`
-    # doesn't know about this either — it's a B1 operational rule,
-    # not a generic pilot-intake criterion — so it's layered on here,
-    # exactly like the extension-limit rule above. Never runs for an
-    # extension case.
+    # Issuance-only gates. `screen()` doesn't know about these — they are
+    # B1 operational / catalogue rules, not generic pilot-intake criteria —
+    # so they are layered on here exactly like the extension-limit rule above.
+    # Never run for an extension case.
     submit_by_date: date | None = None
     if request.case_type is CaseType.ISSUANCE:
         submit_by_date, issuance_code, issuance_reason = _issuance_submission_verdict(
@@ -352,6 +413,14 @@ def build_verdict(request: VoaIntakeRequest, *, today: date) -> VoaVerdict:
             decision = Decision.DECLINE
             reasons.append(issuance_reason)  # type: ignore[arg-type]
             codes.append(issuance_code.value)
+
+        usability_code, usability_reason = _issuance_usability_window_verdict(
+            entry_date=request.entry_date, today=today
+        )
+        if usability_code is not None:
+            decision = Decision.DECLINE
+            reasons.append(usability_reason)  # type: ignore[arg-type]
+            codes.append(usability_code.value)
 
     return VoaVerdict(
         decision=decision,

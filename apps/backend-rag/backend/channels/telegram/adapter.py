@@ -15,6 +15,7 @@ from backend.channels.base import BaseChannel, ChannelMessage, ChannelResponse
 from backend.channels.telegram.config import TelegramChannelConfig
 from backend.channels.telegram.formatter import TelegramMessageFormatter
 from backend.services.integrations.telegram_bot_service import TelegramBotService
+from backend.security.pii_log_identifier import redact_identifier_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +141,7 @@ class TelegramChannelAdapter(BaseChannel):
                 metadata.update(agent_context)
 
             logger.info(
-                f"📨 Telegram message received: chat_id={chat_id}, "
+                f"📨 Telegram message received: chat_id={redact_identifier_for_log(chat_id)}, "
                 f"user={first_name} (@{username}), text={text[:50]}...",
             )
 
@@ -190,7 +191,9 @@ class TelegramChannelAdapter(BaseChannel):
                 self._last_message_id = message.get("message_id")
                 self._last_chat_id = channel_id
 
-                logger.info("✅ Sent Telegram message to chat %s", channel_id)
+                logger.info(
+                    "✅ Sent Telegram message to chat %s", redact_identifier_for_log(channel_id)
+                )
             else:
                 logger.error("Failed to send Telegram message: %s", result)
 
@@ -221,7 +224,11 @@ class TelegramChannelAdapter(BaseChannel):
             # Send chat action (typing indicator)
             await self.bot_service.send_chat_action(chat_id=channel_id, action=action)
 
-            logger.debug("📍 Sent Telegram status '%s' to chat %s", status, channel_id)
+            logger.debug(
+                "📍 Sent Telegram status '%s' to chat %s",
+                status,
+                redact_identifier_for_log(channel_id),
+            )
 
         except Exception as e:
             # Non-critical error, just log
@@ -267,7 +274,7 @@ class TelegramChannelAdapter(BaseChannel):
                 logger.info(
                     "📝 Created initial Telegram message %s in chat %s",
                     message_id,
-                    channel_id,
+                    redact_identifier_for_log(channel_id),
                 )
 
             # Process stream events
@@ -377,7 +384,7 @@ class TelegramChannelAdapter(BaseChannel):
                 except Exception as edit_err:
                     logger.error(
                         "Telegram error-edit failed for %s/%s, falling back to DLQ-safe send: %s",
-                        channel_id,
+                        redact_identifier_for_log(channel_id),
                         message_id,
                         edit_err,
                     )

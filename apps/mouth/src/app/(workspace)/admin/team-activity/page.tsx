@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { useSessionState } from "@/hooks/useSessionState";
 import {
   Users,
   MessageSquare,
@@ -88,6 +89,7 @@ interface CrmAction {
 
 export default function TeamActivityPage() {
   const router = useRouter();
+  const session = useSessionState();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -212,16 +214,17 @@ export default function TeamActivityPage() {
   }, [loadOverview]);
 
   useEffect(() => {
-    if (!api.isAuthenticated()) {
+    if (session === "anonymous") {
       router.push("/login");
       return;
     }
+    if (session !== "authenticated") return;
     if (!api.isAdmin()) {
       router.push("/chat");
       return;
     }
     loadData();
-  }, [router, loadData]);
+  }, [session, router, loadData]);
 
   useEffect(() => {
     if (activeTab === "messages") loadMessages();

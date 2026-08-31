@@ -27,7 +27,6 @@ on:
       - "scripts/tests/test_vercel_prod_deploy_fetch_retry.py"
       - "scripts/tests/test_mini_vercel_autopromote_wrapper.sh"
       - ".github/workflows/vercel-autopromote-tests.yml"
-  merge_group:
   push:
     branches:
       - main

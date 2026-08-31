@@ -106,6 +106,12 @@
           "tests": ["scripts/tests/test_codex_spalla_trigger_redaction.sh"],
           "note": "PostToolUse hook logging tool_input.command verbatim to ~/logs/codex-spalla-trigger.jsonl -- secret-bearing by construction (a Bash call can carry a credential in argv). Found world-readable (0644) and never redacted. MAGNITUDE stated as the conclusion that survives re-measurement, not as a count: 3 runs carry secret material -- 1 whole token (ends at char 151 inside the 200-char logged field) plus 2 truncation-clipped partials (both ending EXACTLY at char 200, the truncation boundary itself). The raw line counts are NOT stable and are no longer quoted as facts: this hook logs the greps that measure it, so the literal matched 14 lines at 2026-08-21T15:56Z and 24 at 2026-08-21T20:28Z (histogram 20x10/5x13/1x46/1x87/1x108) while the 3 secret-bearing runs did not move; earlier drafts of this note said '11 values, 108 chars each' (a LINE count as a VALUE count) and then '2 whole tokens' (a truncation artifact as two more complete secrets). FIX, two independent defenses: umask 077 plus an explicit chmod 0600 for pre-existing files ('>>' never changes an existing file's mode), and redaction of the secret VALUE before the 200-char truncation. MATCHER, after three failed attempts on this branch in alternating directions (none of them ever released on main): a bare-substring version ate ordinary commands; a delimited-SEGMENT version over-corrected and leaked TWELVE undelimited forms IN FULL (APIKEY= apikey= apiKey= AUTHTOKEN= SECRETKEY= accesskey= mytoken= TOKENS= pass= auth=, a JSON api_key body, a postgres://user:pw@db URL); a vocabulary-bounded version closed those and still leaked PGPASSWORD= 99 times in the live log because nobody lists 'PG'. SHIPPED design splits by WORD: (a) ANY alphanumeric prefix + TOKEN/SECRET/PASSWORD/PASSWD/CREDENTIAL with optional plural and optional _/- suffix chain; (b) KEY -- and only KEY -- restricted to a bounded 21-word prefix vocabulary or no prefix, because KEY is the one credential word that routinely ENDS an innocent identifier (monkey, pubkey, nkeys, topkey, dictkeys); (c) bare generic pass=/pwd=/auth=; plus an optional quote between name and separator (JSON), a URL-userinfo rule, and a bare Bearer rule. RULE INTERACTION, and ORDER ALONE WAS NOT THE FIX -- two Gear-3 gates on this branch, in opposite directions. (i) With rule 2 first, a credential-ish NAME whose UNQUOTED value began with the word Bearer had exactly that word replaced -- 'X-Auth: Bearer <v>' logged as 'X-Auth=<REDACTED> <v>' -- destroying the only marker rule 4 had and leaving the token in the clear, LESS safe than not matching at all; the control 'Authorization: Bearer <v>' was unaffected, which is why a green suite hid it. The reorder to 1 -> 3 -> 4 -> 2 fixed that. (ii) THE MIRROR, which the reorder itself created and the SECOND gate found: rule 4 eats an 8+ char [A-Za-z0-9._-] run after Bearer, and a credential NAME is exactly such a run, so 'Bearer refresh_token=<v>' logged as 'Bearer <REDACTED>=<v>' -- marker on the NAME, value in the clear, output reading as if redaction fired; rule 1 does it too when a token prefix starts a NAME (echo ghp_MYTOKENS=<v>). So the cure is STRUCTURAL, not positional: every marker-anchored rule now carries ASSIGN_TAIL, an optional [=:] plus a full quoted-or-bare VALUE, and 7 guilt cases pin the class (both quote styles included -- the bare [^\\s\"']* tail first proposed would have left the quoted forms leaking). Order 1 -> 3 -> 4 -> 2 is kept because rule 4 before rule 3 still leaks a URL password, and all five non-current permutations of 2/3/4 fail the suite -- which proves the suite CONSTRAINS the order, never that the order is safe: the mirror leak passed all five permutation mutants and shipped anyway, because no case in the corpus had its shape. A mutation score is a statement about the corpus, not about the world. The Authorization-anchored Bearer alternation was MEASURED DEAD by the same test that removed the two wildcards -- replayed over the whole live log, keeping only the bare alternation is byte-identical (0 differing lines), keeping only the header one is not (3) -- and deleted. Both wildcards an earlier comment called load-bearing were MEASURED DEAD and deleted: the left (?:[A-Za-z0-9]+[_-])* (0/44 output differences -- the negative lookbehind does that work and the replacement re-emits group(1) verbatim) and the leading (?:--?)? (0/174), the latter also being the only mutant nothing could kill. PROOF: 149 cases (120 guilt / 26 innocence / 3 mode), widened from 3/1/1. (iv) THE FOURTH DIRECTION: MARKER guarded the anchors of rules 1, 3 and 4 and omitted rule 2 NAME, so the tempered tail could still cross TOKEN: / PASSWORD= / API_KEY = and swallow the anchor whose value it then left behind (github_pat_<8+>:TOKEN: <v> -> github_pat_<REDACTED> <v>); a regression against the pre-tail version, which redacts all five reproducers correctly. Cured by making MARKER mean what its comment always said: EVERY anchor a later rule needs. The prior fuzz reported 0 regressions because its deterministic core emitted three-fragment triples and the class needs four -- a fuzz score is a statement about the GENERATOR, as a mutation score is about the corpus; re-measured with 5 seeds and 3-7 fragments over 393,312 probes, 0 leaking that the pre-tail version does not. (iii) THE THIRD DIRECTION, found by the gate on the cure for (ii): the tail's bare branch runs to the next whitespace and could CROSS a later rule's marker -- github_pat_<8+>=bearer <v> had rule 1, which runs first, eat the word bearer as its own value, so rule 4 had nothing to anchor on; 258 inputs in a differential fuzz against the pre-tail version. Cured structurally: the bare branch is TEMPERED (may not cross a position where any later marker starts) and the URL-scheme marker is length-bounded so a value glued to a URL is not mistaken for one. Re-measured on the real hook over 271,874 probes: 0 inputs leak that the pre-tail version did not. Guilt spans both GitHub PAT families, bare + suffixed + undelimited names, one case per vocabulary prefix and per wide word, plurals, bare generics, BOTH quote styles, a JSON body, a URL userinfo password, a secret STRADDLING the 200-char truncation boundary (which is what pins redact-before-truncate), and Bearer. Innocence added three cases for RULES 3 AND 4 on 2026-08-22, which until then had NONE -- no case in the corpus contained 'Bearer' or '://' at all, so every over-match and boundary mutant in those two rules was unkillable: the URL rule's userinfo user class (a query string ?to=ops:admin@example.test), the Bearer rule's \\b (flagbearer) and its {8,} length floor (a 'Bearer v2' PR title). It also covers the 8 measured casualties of the substring version (monkey=patch, --keyfile=, jq '.key = 1', StrictHostKeyChecking=no, KEYSPACE=prod, --publicKeyPath=, sed s/keyword=old/keyword=new/, redis-cli KEYS '*') plus three NON-KEY keyword substrings (PasswordAuthentication=no, TOKENIZER=fast, -k 'secret_scanning') -- added because an earlier note claimed the corpus spanned TOKEN/KEY/SECRET substrings while every occurrence in it was 'key'. Mode covers BOTH defenses separately: a fresh log born 0600, and a PRE-EXISTING 0644 log repaired to 0600. MUTATION, SCOPED to an enumerated set rather than to 'every alternation' -- the previous universal wording was answered by the Gear-3 gate with five counterexamples: 63 mutants, 62 killed, 1 EQUIVALENT and excluded from the score (proven unkillable: its replacement re-emits group(1) verbatim, 0 distinguishing inputs over 883 adversarial strings, 200k fuzz cases and the whole live log), covering the 6 rules, 5 wide words, 21 vocabulary prefixes, 3 bare generics, 3 value alternations, 5 optional quantifiers, the lookbehind, both case flags, the colon separator, the Bearer word-boundary and length floor, the URL userinfo user AND password classes, the gh[pousr]_ class, the re-addition of the deleted Authorization alternation, 2 over-match wideners, all 5 non-current permutations of rules 2/3/4, redact-before-truncate and both mode defenses. Driver asserts sha256 CHANGED before running the suite and byte-identical after restore, and carries an atexit/SIGTERM restore guard -- an earlier run was killed mid-mutant by a tool timeout and left the hook mutated on disk. RESIDUAL RISK, both directions (cicatrix #3). UNDER-match, measured not guessed: <any-prefix>KEY= outside the vocabulary (PUBKEY=, M5KEY=, QKEY=, ORIGINALAPIKEY=, MACHINEHMACKEY=) leaks in full -- the deliberate price of keeping monkey=patch innocent, 40 distinct names / 136 occurrences on the live log that the substring version caught and this one does not, most of them that version's own over-match; credential words outside the six (--pin=, --otp=, --salt=, --cookie=); Authorization: with anything but Bearer (Basic <b64>, opaque token); a POSITIONAL secret with no name (mytool deploy s3cr3t, mysql -pS3cr3t, netrc-style password <v>) unless it carries a known prefix; an UNQUOTED value containing a space (first word only); the entry formerly titled 'a POSITIONAL secret with no name' RE-LABELLED 2026-08-22 because its title contradicted its own example -- the class is a secret NOT JOINED TO A CREDENTIAL-ISH NAME BY = OR :, which includes every --flag <value> form (gh auth login --token <v>, mytool --api-key <v>, mysql --password <v>, echo <v> | gh secret set FOO, and curl -u admin:<v> / --user admin:<v>, which carry a : but hang it off a USERNAME); and NEW 2026-08-22 the UNDER-MATCH half of the dot-lookbehind, described everywhere until now only as over-match protection -- a SINGLE-SEGMENT attribute assignment leaks in full (c.token = <v>, jq '.password = <v>') while multi-segment names are still caught (cfg.api_key), plus an INDEX between name and separator (SECRETS[0]=<v>, TOKEN[0]=<v>). OVER-match, with its full damage rather than value-only: a legitimately-named non-secret redacts just as hard (PWD=/tmp, FEATURE_FLAG_KEY=, redis-cli --pattern 'keys:*'), the replacement SWALLOWS the rest of an unquoted value so sed -i 's/key=old/key=new/' loses its second half, and it NORMALISES the separator to = so a header or JSON 'name: value' is logged as name=<REDACTED> and stops being a replayable command. Measured rate on the real log: 2291 lines / 0.686% of 333,832 at 2026-08-21T22:49:57Z, HIGHER than the 1875 / 0.562% of the substring version rejected for over-matching (and 1253 / 0.376% for the segment-only one). Accepted deliberately: over-redacting a non-secret beats under-redacting a real one. TWO SHAPES BELONGING TO RULES 3 AND 4 were undisclosed until 2026-08-22: the bare Bearer alternation eats the next >=8-char [A-Za-z0-9._-] run in ANY text with no name, assignment or separator, so a PR title or commit message containing the word 'bearer' is mangled -- and gh pr create is TRIGGER RULE 1 of this very hook, i.e. a line it exists to record (corpus at 2026-08-21T22:50:35Z / 333,833 lines: 8 lines match, 10 matches, 3 with no digit at all, one of them the measuring session's own probe string); and rule 3 redacts a PORT sitting in the userinfo PASSWORD position (curl 'https://example.com:8443@evil.test/'), and a claim that it cannot fire on a genuine host:port, which has no @ after it, was FALSIFIED 2026-08-22 -- see (xvi). Neither was fixed: narrowing Bearer to require a digit would trade a 3-occurrence over-match for an under-match on an all-lowercase token, and the all-digits carve-out for the port was rejected on a number -- 0 of 367 live URL-userinfo matches have an all-digit password, so it fixes nothing real and opens an under-match on any numeric credential. Scale on that rule: 354 of the 367 are one test-fixture DSN. NOTE ON THIS REGISTRATION: check_guard_conformance's is_armed() is substring-based, so it cannot detect deletion of the run: step that executes this test -- verified by simulation (step removed -> still reports armed). The step is genuine today; its removal would not be caught here. (v) THE FIFTH DIRECTION, and the one that ENDED the cascade instead of extending it: TEMPERED_VALUE tempered only its bare branch, and a comment asserted the two QUOTED branches were safe without it because they consume a COMPLETE delimited value, so whatever marker they swallow they also redact. False: the marker is swallowed INSIDE the quotes and the value it introduces sits BEHIND the closing quote. Reproduced on all four marker rules at once, single- and double-quoted alike -- ghp_<8+>='junk TOKEN=' <secret> logged as gh_<REDACTED> <secret>. ARCHITECTURE CHANGE, not a sixth patch: five directions of one defect is a statement about the design, not about the patches. The four consume-and-rewrite re.sub calls, the rule ORDER they depended on, and the whole tempering apparatus (MARKER, TEMPERED_VALUE, ASSIGN_TAIL) are DELETED. Each anchor is now searched independently against the ORIGINAL string and the cut runs from the EARLIEST anchor to end-of-string, so no rule can blind a later one and no text after a credential anchor reaches disk -- the class dies by construction rather than by enumeration. The anchors are the rules' own patterns at their own boundaries and length floors, deliberately NOT the old wide MARKER list, which was written to be conservative as a lookahead and is too wide as a trigger (its bearer alternative carried no left word-boundary and would fire on flagbearer). DECLARED COST: a command whose credential sits early loses the diagnostic tail after it; affordable only because the target field has no programmatic consumer -- the hook's own routing reads TARGET in memory, never the log. SIDE EFFECT, measured not assumed: the separately-ledgered backslash-escaped-quote class died with it, because VALUE no longer has to find where a value ENDS, only that an assignment BEGINS. Bite proof: the 9 new cases fail on the pre-change hook and nothing else does (9/114), and all 114 pass after. (vi) A REFUTER ON A FRESH CONTEXT then broke the redesign twice in one pass, and both were worth fixing: the backslash tolerance was written as one-backslash-optional, so a nested remote dispatch arriving with two or three anchored nothing again -- the point-patch reproducing the enumeration trap the redesign renounces, requantified to arbitrary depth; and a PEM PRIVATE KEY block anchored on NOTHING before or after, because PRE?KEY needs KEY glued to its prefix and PRIVATE KEY has a space. The second is a statement about the CORPUS: 105 cases had been built by attacking the matcher that existed, so they could only ever find shapes it nearly caught. Every other leak the refuter found (COOKIE=, SESSION_ID=, PAT=, redis-cli AUTH <v>, mysql -p<v>, API_KEY -> <v>, a secret before a later anchor) was re-measured on the PRE-change hook and leaks identically there -- pre-existing recall gaps, already in residual_risks, not regressions. NO-REGRESSION CHECK, which the corpus cannot give: differential old-vs-new fuzz failing only when the old output removed a token and the new one did not -- 18,480 structured plus 7,331 random token-bearing inputs, 0 regressions; a statement about the generator, not the world. Bite proof at that point: 17 new cases fail on the pre-change hook and nothing else does; the corpus later reached 125 and the bite count stayed 17, because the three URL-scheme cases added in (vii) PASS on the pre-change hook too -- they are PINS on the new bound, not witnesses to a defect, and counting them would have made the proof look stronger than it is (17/125, 125/125 after). THE ONE REAL REGRESSION is over-match DAMAGE: the trigger is unchanged and all 15 innocence cases still pass, but a firing now costs the rest of the line instead of one value -- accepted knowingly, recorded in residual_risks with the measured examples. (vii) PERFORMANCE, found by the author attacking the diff after the refuter had finished: the URL-userinfo anchor was UNBOUNDED, so its scheme part retried from every position of a long alphanumeric run and rescanned to the end -- 2278 ms against 2.53 ms bounded, on a 50KB command carrying no credential at all, in a hook that fires on EVERY PostToolUse event. Not a regression AGAINST MAIN, and the earlier wording of this claim was wrong: it said the rule was unbounded 'before this PR too', which is false. At the merge-base 062269dc9 the hook has NO redactor at all -- 95 lines, zero re.sub, zero <REDACTED> -- so the entire matcher, URL rule included, is introduced by this PR. The accurate statement is narrower: WITHIN the PR the URL rule was unbounded from its first commit (e89aca12b), and the sixteen-character bound existed only inside MARKER, which arrived later and was deleted with the cascade. Caught by the author re-deriving the claim against the merge-base rather than trusting it. That is the named cost of wholesale replacement: deleting an apparatus also deletes the reasoning attached to it. Bounded to sixteen and pinned by the longest REAL schemes as guilt cases (postgresql 10, mongodb+srv 11, redis 5) so a future tightening cannot silently drop one. Whole redactor now 6.16 ms at 50KB and 20.10 ms at 200KB, i.e. linear. (viii) THE BOUND IN (vii) WAS ITSELF A COVERAGE REGRESSION, found by a CROSS-FAMILY seat (GPT-5.6, harnesses only, asked for one counterexample) after TWO fuzzers written by this design author had reported zero: a SEVENTEEN-character scheme, a0123456789012345://u:<secret>@h, is redacted by the unbounded old rule and leaked in full by the bounded new one -- a regression at exactly the boundary the fix created. Neither author-written fuzzer could reach the shape STRUCTURALLY (the fragment product held only real schemes; a character-level run cannot randomly assemble a well-formed userinfo URL with an over-long scheme), which is the second time in this one PR that a fuzz reported clean on a class it could not emit. W100 in one line: cross-family beat same-author on the exact axis the author had declared verified twice. CURED by deleting the scheme pattern entirely and anchoring on the literal :// -- no length can escape it, it is FASTER than the bound (0.52 ms vs 1.75 ms vs 2462 ms unbounded on the same 50KB input), and the scheme still survives in the log because the cut starts AT the ://. Re-measured after the cure across three generators including the seat own family: 0 regressions. Whole redactor 2.42 ms at 50KB, 9.47 ms at 200KB. (ix) SECOND CROSS-FAMILY PASS, on the cured design, found two more. A URL PASSWORD MAY CONTAIN A SLASH and the class forbade one, so postgres://u:pa/ss@h anchored on nothing and leaked in full -- on the OLD design too; the seat dressed it as a regression via a contrived input where the old cascade consumed a token containing the slash and conjured a userinfo URL that was never in the original. Only the PASSWORD class was loosened; the USER class still forbids the slash, which is what keeps https://host/a:b@c innocent. And Authorization: BASIC had no anchor -- a NAMED residual risk, promoted precisely because a named hole nothing executes is indistinguishable from an unknown one; the 16-char floor and base64 alphabet keep the English word Basic innocent. INNOCENCE GREW 15 -> 18 for the first time in this PR, which is the correct response to adding anchors: every new anchor got its own innocence case. 133 cases, bite proof 19/133, 0 regressions across three generators. (x) THIRD CROSS-FAMILY PASS: the coverage-regression hunt returned NONE FOUND over 4,064 targeted inputs (3,704 of them actually redacted by the old design) -- the convergence signal, and the first INDEPENDENT confirmation of a property the author two generators had each been wrong about once. The same pass found a false positive shipped one commit earlier: the bare Basic anchor fired on PROSE (printf 'Basic telecommunications' -- eighteen characters of the base64 alphabet against a floor of sixteen), invisible to the author own innocence cases because they all used SHORT words, so the floor hid the defect from the corpus written to catch it. Re-anchored on the Authorization: header (3/3 guilt, 0 false positives vs 3/3 and 1). Bearer stays BARE by deliberate asymmetry -- its prose over-match is a pre-existing, measured, declared residual, and inheriting a known defect into a rule added today would be a choice. Bearer class also widened to full base64 (+ / = ~): a plus in a standard-base64 token had stopped the match dead. 137 cases, bite proof 21/137. (xi) FOURTH CROSS-FAMILY PASS: the slash-permitting URL password class from (ix) created a FALSE POSITIVE that truncated three ordinary commands in full, because host:port/path@segment reads exactly like user:password@host -- a registry digest URL, a release path, any :8080 URL with a later at-sign. Cured with a PORT DISCRIMINATOR (?!\\\\d+[/?#]) rather than by reverting: 6/6 guilt and 0 false positives, against 6/6 and 3 without the lookahead and 4/6 and 0 for the slash-forbidding original; an all-digit password immediately before the @ still anchors. The PEM anchor also missed PGP (-----BEGIN PGP PRIVATE KEY BLOCK-----, dashes not immediately after PRIVATE KEY) -- widened with a trailing [A-Z ]*, with CERTIFICATE / PUBLIC KEY / CERTIFICATE REQUEST still innocent. PATTERN WORTH NAMING: each of the last three cures created the next defect (tempering -> mirror; scheme bound -> coverage regression; slash-permitting password -> host:port false positive), and a different training family caught all three while this author corpus and both this author fuzzers passed. 144 cases, bite proof 23/144. (xii) FIFTH CROSS-FAMILY PASS, three findings, TWO of them the previous two fixes biting back. The port discriminator from (xi) rejected ANY digits-then-delimiter and so discarded a real password beginning with digits (https://alice:123?x@db.test/query) -- refined to be PATH-AWARE, since what separates the shapes is that host:port/path@segment has a SLASH between colon and at-sign while user:password@host does not (6/6 and 0, against 5/6 and 0). The header-anchored Basic rule still fired on prose inside a REAL header, because a long English word is valid base64 alphabet (documentationonly, internationalization) -- payload must now carry a digit or + / =; a multiple-of-four rule was tried first and rejected on measurement (1/3 guilt, padding uncounted, and internationalization still passed at 20 chars). A Slack xoxb- token rides in an Authorization header with no Bearer and no name, so nothing here would have seen one -- added as its own prefix. FOUR consecutive cures have now each created the next defect, and the corpus grows only from defects found OUTSIDE it. 148 cases, bite proof 24/148; all four cases added this round are witnesses, not pins. (xiii) THE WORST DEFECT OF THE WHOLE PR, and self-inflicted: the Basic anchor carried [A-Za-z-]* in front of the literal Authorization:, and an unbounded class in front of a literal makes the engine retry from every position of a long run -- 18,027 ms at 50KB and 346,045 ms (five and a half MINUTES) at 200KB, on a command with NO credential in it, in a hook that fires on every PostToolUse event. The prefix was never needed: Proxy-Authorization: CONTAINS Authorization:, so the bare literal matches it and the cut starts at the match so Proxy- survives. 18,027 ms -> 1.36 ms, same guilt, same innocence. THE SAME TRAP HAD SHIPPED FOUR COMMITS EARLIER on the URL scheme, and the comment forbidding it -- written by the same session -- was in the file when the second one landed. Documentation did not hold it, so the corpus now carries an EXECUTABLE wall-clock case: 200KB credential-free must redact under 10s (0.27s after the cure, 346s before). Budget loose on purpose: a catastrophe detector, not a benchmark, because this class regresses by four orders of magnitude and a tight budget on a noisy runner would be flaky -- and a flaky guard gets disabled. 181 cases (132/43/6). (xiv) AND A FOURTH TIME, found only because the family was audited instead of the instance. After curing (xiii) I swept every anchor for worse-than-linear growth rather than calling the class closed, and the URL userinfo rule -- untouched by that cure, green on all 151 cases -- was QUADRATIC: the engine restarts at every :// and each attempt scans the password class to the end of the whitespace-free run before failing for want of an @. 5,545 ms at 200KB and 23,015 ms at 400KB on a minified-JSON shape with no @ anywhere, which is a lockfile line, not an attack. Three shapes aimed at the port lookahead cost 3,716 / 4,250 / 5,023 ms. All three runs are now bounded to 2048 -- not only the one measured slowest, because patching the measured instance is exactly what let this family come back three times -- giving 92-123 ms at 200KB and 245 ms at 400KB, linear. TWO LESSONS FOR ANY GUARD IN THIS REGISTRY. First, the existing wall-clock case did not catch it: its payload is 200KB of the letter a, which anchors on no rule and is rejected on the first character, so a perf guard only guards the code path its payload walks. Second, the new case is 400KB and that number was MEASURED, not chosen: unbounded, 200KB costs 5,545 ms, under the 10s budget -- a 200KB version would have PASSED on the very hook it exists to catch. Bite-proved at 18.32s / FAILED 1 of 151, hook restored byte-identical. The bound is a declared trade: a userinfo password over 2048 characters no longer anchors (2047 and 2048 redact, 2049 and 5000 do not), accepted because a JWT, the longest credential that realistically travels there, is a few hundred characters, and because a bound can only make the leftmost match start later or vanish -- it can never invent a false positive. (xv) AN INDEPENDENT GEAR-3 GATE, fresh context and read-only, then found the LARGEST recall gap left in the matcher -- and it found it by DRIVING the hook, not by reading it. TOKEN_2= was caught and TOKEN2= was not, because a suffix could only arrive as a _- or --delimited segment; that split the commonest real names in half, and PGPASSWORD is not hypothetical (this repo already measured the undelimited form leaking 99 times in its own live log). 383 inputs driven through the real hook; 293 of 351 in one sweep leaked on shapes a bare-substring matcher would have caught. CURED NARROWLY, and the narrowness is the point: TAIL gained [0-9]* and NOT [A-Za-z0-9]*, because a bare alphanumeric suffix swallows TOKENIZER=fast -- credential words routinely END innocent identifiers, which is the same fact that gave KEY a bounded prefix vocabulary, and digits never appear in that role. Branch (c) got only the numeric half after the full TAIL was tried and REJECTED ON MEASUREMENT: it also admitted AUTH_MODE=oidc, AUTH_URL=, PWD_FILE= and PASS_THROUGH=true. Corpus 151 -> 165 (129/32/4), and the new cases run in BOTH directions because a WIDENING is only safe if its narrowness is asserted too: 8 guilt witnesses, 6 innocence pins. Bite proof 8/165 -- exactly the witnesses; the pins pass on both sides and are deliberately not counted, since counting them would make the proof look stronger than it is. The gate also falsified FOUR statements in the pack's own residual_risks by measurement (a 'only ONE class' claim, a multi-segment claim, an 'only the first word is redacted' claim describing the retired cascade, and a separator-normalisation claim), and found an undeclared over-match: a URL with a port and a query or fragment but NO PATH. All four are corrected and the over-match declared. LESSON FOR THIS REGISTRY: a residual that outlives its own cure is worse than no residual, because it reads as a known hole and hides that the hole was closed. (xvi) A PEER SESSION, 197 invented inputs, found the one finding that falsified a CLAIM rather than widening a declared class -- and the lesson is about the EVIDENCE, not the regex. The pack asserted rule 3 cannot fire on a genuine host:port, which has no @ after it, and cited two examples as verification. NEITHER EXAMPLE HAD AN AT-SIGN AFTER THE PORT, so neither could test the claim it was offered as proof of: the shape being ruled out was absent from the evidence ruling it out. The counterexample is ordinary -- https://staging.example.test:8443/@mentions/feed, a self-hosted Mastodon-style API on a non-default port -- and it was truncated in full, taking the SCHEME with it. The path-aware discriminator demands a slash AFTER the port delimiter and the at-sign arrives before any second slash. Cured by also rejecting \\\\d+/@, the at-sign immediately following the slash. The obvious cure (reject any \\\\d+/) was tried FIRST and scored WORSE: it discards a real password that begins with digits and contains a slash (6/7 guilt 1/7 FP, versus 7/7 and 1/7 shipped and 7/7 and 3/7 before). Corpus 165 -> 168; the bite proof runs in the INVERTED direction for once -- 2/168, and both witnesses are INNOCENCE cases, because the defect was an over-match. A guilt pin rides along to stop the next session adopting the cure that was measured worse. GENERAL RULE THIS REGISTRY SHOULD APPLY TO ITSELF: an example that does not contain the shape a claim excludes is not evidence for that claim, however many such examples are cited. Two of them verified nothing here for as long as anyone read them. (xvii) THE WIDENING IN (xv) WAS ITSELF AN OVER-MATCH, and a second re-gate falsified the RATIONALE I had written for it -- not the fix, the reason. The hook comment said digits do not appear in the role of ending an innocent identifier. True of TOKEN and PASSWORD, FALSE of a bare KEY: 180 of 276 digit-suffixed identifiers newly damaged, because key1/key2/key3 are the canonical placeholder names in form bodies, configmaps, dict literals and SQL, and on the generic branch AUTH2 is a protocol version, PASS2 a compiler pass, PWD2 a path. CURED BY SCOPING, not reverting: the digit suffix now requires a credential WORD -- branch (a) unconditionally, branch (b) only WITH a vocabulary prefix (APIKEY2 and SESSIONKEY8 redact, bare KEY1 does not), branch (c) back to bare. Every recall witness from (xv) survives. The revert also removed an S? that had ridden in undescribed by any artifact and unpinned by any case (AUTHS=, PASSS=, PWDS=). Corpus 168 -> 173, with bite proofs in OPPOSITE directions: 6/173 against the over-matching predecessor (the six new innocence pins) and 9/173 against the version before the round began. THE LESSON IS ABOUT PINS, and it generalises to every guard here: the six innocence pins written with the widening asserted the letter suffix and the delimited tail -- axes that ALREADY HELD -- while the digit axis, the one that actually changed, was pinned nowhere. A corpus that pins only the axes a change did not move reads as proof of narrowness and is not. Ask of any new pin: does it constrain the thing that moved, or the thing that did not? (xviii) THE FINAL GATE RETURNED REWORK-BUILD and was right three times. (1) AN UNDECLARED LEAK in an ORDINARY shape: redis://:<password>@host, the canonical Redis URL because Redis has no username, logged byte-for-byte -- one quantifier, {1,2048} on the user run refusing an empty user, one character away from a form that redacts. Eleven rounds of corpus built around the shape that HAS a username could not see it. (2) THE FIFTH APPEARANCE of the unbounded-run family, this time in the NAME anchor: 6.82s at 32KB and 46.66s at 64KB end-to-end, in a hook with NO runtime timeout -- and the file's own comment six commits earlier claimed the family had been bounded in EVERY run at once, which was true of the URL anchor and false of the one nobody had looked at. (3) SIX BEHAVIOURS NOTHING PINNED, out of 42 mutants: the worst was the 200-char TRUNCATION ITSELF, whose deletion passed the entire corpus while logging full command lines to disk. All cured, all pinned in the direction that failed, 7 of 7 mutants now die; corpus 173 -> 181. TWO RULES THIS REGISTRY SHOULD ADOPT. First, on perf cases: the NAME wall-clock case had to be RESIZED before it bit -- 32KB was under the budget on the mutant, so it would have passed on the very hook it exists to catch, the second time in one file. Mutate the fix away, raise the payload until the case goes red, keep that size. Second, and larger: FIVE FALSE CLAIMS were found in the hook's own comments, and THREE had already been corrected in the pack and in this registry while the code comment went on saying the opposite -- including a residual that was not merely stale but a standing TODO instructing the next session to widen a rule for a hole the redesign had closed. Correcting the artefacts and not the CODE COMMENT leaves the lie exactly where it does the most damage, because the comment is what a maintainer reads before touching the thing."
         },
+        ".claude/hooks/memory_budget_gate.py": {
+          "scar": ["W130-memory-budget-gate"],
+          "symbols": {},
+          "tests": ["scripts/tests/test_memory_budget_gate.py"],
+          "note": "PreToolUse guard on Write/Edit/MultiEdit targeting a `.claude/projects/*/memory/MEMORY.md` file (never `MEMORY_LATEST_WORK.md`-style topic files, which are exempt) — blocks (exit 2) a mutation that would push the file's UTF-8 byte length over the configured cap, but never blocks a mutation that shrinks it, even from an already-over-cap file (the core design property: compaction is never gated). Kill switch `MEMORY_BUDGET_GATE=off`; fails open on malformed JSON, unknown tool, or nonexistent target file. `scripts/tests/test_memory_budget_gate.py::test_memory_budget_gate_guilt_and_innocence` runs the hook as a real subprocess against temp files for 6 guilt cases (G1-G6: Write/Edit/MultiEdit over-limit, exact-one-byte-over boundary, multi-byte UTF-8 (emoji) byte-accuracy, path-aware gating across usernames) and 11 innocence cases (I1-I11: shrinking an already-over-limit file via Edit/Write, exact-at-limit boundary, staying-under Edit, topic-file exemption, MEMORY.md outside the memory dir, kill switch, malformed payload, unknown tool, absent old_string, nonexistent file) — bundled as labeled sub-checks inside one pytest function rather than per-case `def test_...`, which the command_hooks C2 schema accepts via a whole-file `tests` ref."
+        },
         "infra/claude-hooks/worktree_isolation.py": {
           "scar": [
             "W79",
@@ -275,6 +281,60 @@
           "scar": ["W80", "wave15-live-reap"],
           "symbols": {},
           "tests": ["infra/claude-hooks/test_subagent_stop_verify.py"]
+        },
+        "infra/claude-hooks/gate_coverage.py": {
+          "scar": ["superscar-2-generalization"],
+          "symbols": {},
+          "tests": [
+            "scripts/tests/test_gate_coverage_record_latency.py",
+            "scripts/tests/test_hooks_fail_open_on_garbage_payload.py"
+          ],
+          "note": "K1 (2026-08-27): shared library, not itself a registered hook event — a single record(hook_name, decision, payload) call imported by the four PreToolUse gates (host_boundary, worktree_isolation, orchestrate_gate, model_routing_gate) so a gate-eligible tool call that never produced a decision (fail-open on timeout/crash/fork-failure) is directly visible as a gap, see gate_coverage_report.py. Never blocks, never raises past its own try/except (contract: <5ms, fire-and-forget JSON-line append) — no allow/deny decision of its own to prove guilt/innocence on, so this entry carries file-level tests rather than a guilt+innocence pair: a latency-regression bound (200 calls, generous 20ms/call average — catches gross regressions, not a tight timing assertion) plus the cross-hook garbage-payload fail-open sweep. Kill switch GATE_COVERAGE_OFF=1."
+        },
+        "infra/claude-hooks/gate_coverage_report.py": {
+          "scar": ["superscar-2-generalization"],
+          "symbols": {},
+          "tests": [
+            "scripts/tests/test_gate_coverage_report.py",
+            "scripts/tests/test_hooks_fail_open_on_garbage_payload.py"
+          ],
+          "note": "K1 (2026-08-27): Stop hook, reporting only — prints `gate coverage: <hook>: decided X of Y tool calls` per PreToolUse gate by diffing gate_coverage.py's recorded decisions against the transcript's own gate-eligible tool_use count (GATE_MATCHERS, copied verbatim from settings.json matchers). Never blocks Stop: every exception degrades to printing nothing and exiting 0 (module docstring: 'Fail-open everywhere: this is a REPORTING hook, never a gate'). No block/allow contract of its own — the guilt+innocence antidote is expressed here as a trap-table instead: test_gate_coverage_report.py proves guilt (2 of 5 recorded decisions reports '2 of 5', not silently rounding to full coverage) and innocence (5 of 5 recorded reports '5 of 5', and 0 of 5 pure fail-open reports '0 of 5') against a real subprocess invocation, plus garbage/empty-stdin exit-0. Kill switch GATE_COVERAGE_OFF=1 (shared with gate_coverage.py)."
+        },
+        "infra/claude-hooks/session_budget.py": {
+          "scar": ["lesson_a_subagents_idle_is_not_its_report"],
+          "symbols": {},
+          "tests": [
+            "scripts/tests/test_session_budget_handoff.py",
+            "scripts/tests/test_hooks_fail_open_on_garbage_payload.py"
+          ],
+          "note": "K3/F7 (2026-08-27): registered on THREE hook events (SubagentStop, SessionEnd, PreCompact — one script, event told apart via payload['hook_event_name'], same precedent as mailbox_inject.py in this directory). Writes an on-death handoff artifact (cwd/branch/git-diff/last-tool-names) so a turn that dies without a final message still leaves a trace. Deliberately NO real budget enforcement (2026-08-26 retro §3bis, Sol's refutation of the original F7 proposal) — visibility only, never a gate: it never blocks, never raises past main(), degrades silently on every failure. No allow/deny decision to prove guilt/innocence on, so this entry carries file-level tests: test_session_budget_handoff.py proves the one real correctness property that IS a guilt/innocence pair — a secret-shaped diff line (`sk-...`) is redacted to `[REDACTED]` (guilt: the secret must never reach the written artifact) while the surrounding non-secret diff --stat filename survives verbatim (innocence: redaction must not eat innocent content) — plus exit-0 on empty/malformed stdin. Kill switch SESSION_BUDGET_OFF=1."
+        },
+        "infra/claude-hooks/lane_check.py": {
+          "scar": [
+            "L04-PR1",
+            "superscar-2-exists-not-armed",
+            "superscar-3-entity-not-form",
+            "W104",
+            "W108"
+          ],
+          "symbols": {
+            "evaluate": {
+              "tests": [
+                "infra/claude-hooks/test_lane_check.py",
+                "infra/claude-hooks/test_lane_check_wiring.py"
+              ],
+              "note": "The ABSENT path must be byte-identical to no-op — asserted by a side-effect probe AND by a callable that records whether the change set was computed at all. That second assertion exists because the promise was FALSE at the wiring: the first version evaluated the change set as a function ARGUMENT, so three git subprocesses ran on every termination in the fleet with no contract present, and the library's own tests were structurally blind to it (a blind refuter found it). Also pinned: an untrusted `origin` resolves ABSENT and SILENT, because a subagent that clones an external repo to read it must not have that repo's `.lane-check.json` executed with shell=True. SCOPE, same function: Both under-match gemelli pinned: an UNKNOWN change set (None) and an EMPTY one ([]) must each keep the check RUNNING, never resolve OUT_OF_SCOPE. The empty case was a corpus gap found by mutation. The wiring corpus adds the third: an untracked DIRECTORY must not collapse to `newdir/` and match no file glob, which is why the hook reads `git status --porcelain -uall -z`."
+            },
+            "blocks": {
+              "tests": ["infra/claude-hooks/test_lane_check.py"],
+              "note": "Fails CLOSED on FAIL, INVALID and ERROR (incl. timeout) — the opposite of the fail-open safety guards beside it, and deliberate: those are imposed on the agent, this relays a check the LANE declared about itself, and 'could not measure' recorded as 'measured fine' is W104/W108. Guilt on each of the three; innocence on ABSENT, PASS and OUT_OF_SCOPE."
+            },
+            "_is_tautology": {
+              "tests": ["infra/claude-hooks/test_lane_check.py"],
+              "note": "Entity-wise after a quote-aware split, never a substring (superscar #3): `pytest --assert=plain test_true_positive.py` must NOT be refused, and its innocence case asserts so. TWO guilty shapes: a wholly no-op command, and a real check whose failure is swallowed by an `||` tail (`pytest x || true`) — the second was missed on the first pass and is the likelier one in practice."
+            }
+          },
+          "note": "L04-PR1. `.lane-check.json` in a worktree root is the check a lane's DESIGN stage declares about ITSELF; this module evaluates it at the stop boundary so a lane that broke its own build check cannot end a turn quietly reporting success. It is BUILD-side self-verification and explicitly NOT review: generator!=grader still applies after it passes. Registered with two corpora because they answer different questions — test_lane_check.py proves the library decides correctly, test_lane_check_wiring.py drives subagent_stop_verify.py as a subprocess with a real SubagentStop payload and proves the decision REACHES a stop boundary. That split was earned: 'imports lane_check' is not 'honours lane_check', and the missing change set at the wiring was invisible to every library test."
         }
       },
       "exempt": {
@@ -420,6 +480,85 @@
             "test_gear_floor_innocence_skipped_without_changed_files"
           ]
         },
+        "check_acceptance_probe_pairing": {
+          "scar": ["#2-esiste-non-armato", "#3-over-match"],
+          "guilt": [
+            "test_acceptance_probe_guilt_legacy_bullets_notice",
+            "test_acceptance_probe_guilt_unbound_probe_notice",
+            "test_acceptance_probe_guilt_non_ears_text_notice",
+            "test_acceptance_probe_guilt_lowercase_ears_words_do_not_count",
+            "test_acceptance_probe_guilt_probe_not_bound_inside_longer_word"
+          ],
+          "innocence": [
+            "test_acceptance_probe_innocence_fully_probed_pack_silent",
+            "test_acceptance_probe_innocence_gear1_out_of_scope",
+            "test_acceptance_probe_innocence_absent_block_silent",
+            "test_acceptance_probe_innocence_probe_bound_via_claim",
+            "test_acceptance_probe_innocence_probe_binds_as_whole_token",
+            "test_acceptance_probe_innocence_duplicate_probes_counted_once",
+            "test_acceptance_probe_innocence_examples_sanitize_quotes_and_newlines",
+            "test_acceptance_probe_innocence_non_mapping_pack_does_not_crash",
+            "test_acceptance_probe_end_to_end_notice_reaches_stderr"
+          ]
+        },
+        "check_assumptions_register": {
+          "scar": ["#2-esiste-non-armato", "W82"],
+          "guilt": [
+            "test_assumptions_guilt_unverified_entry_notice",
+            "test_assumptions_guilt_status_pending_fires_n2_not_n1",
+            "test_assumptions_guilt_status_typo_fires_n2_not_n1",
+            "test_assumptions_guilt_bare_string_entry_fires_n2",
+            "test_assumptions_guilt_missing_status_key_fires_n2",
+            "test_assumptions_guilt_unverified_without_probe_fires_n1_and_n3",
+            "test_assumptions_guilt_whitespace_only_probe_is_not_a_probe",
+            "test_assumptions_guilt_bare_string_entry_names_itself"
+          ],
+          "innocence": [
+            "test_assumptions_innocence_all_verified_silent",
+            "test_assumptions_innocence_absent_block_silent",
+            "test_assumptions_innocence_empty_list_silent",
+            "test_assumptions_innocence_brief_none_does_not_crash",
+            "test_assumptions_innocence_non_list_assumptions_do_not_crash",
+            "test_assumptions_innocence_status_tolerates_whitespace_and_case",
+            "test_assumptions_innocence_unverified_with_probe_fires_n1_not_n3",
+            "test_assumptions_innocence_examples_sanitize_quotes_and_newlines",
+            "test_assumptions_end_to_end_notice_reaches_stderr",
+            "test_assumptions_innocence_control_bytes_never_reach_a_notice"
+          ]
+        },
+        "check_appetite_acknowledgment": {
+          "scar": ["#2-esiste-non-armato"],
+          "guilt": [
+            "test_appetite_guilt_over_wall_clock_hours_no_ack_violation",
+            "test_appetite_guilt_over_adversarial_rounds_names_both_numbers",
+            "test_appetite_guilt_over_two_dimensions_names_both",
+            "test_appetite_guilt_whitespace_only_ack_is_not_an_acknowledgment",
+            "test_appetite_guilt_non_str_ack_is_not_an_acknowledgment",
+            "test_appetite_guilt_acknowledgment_reason_is_sanitized_before_stderr",
+            "test_appetite_guilt_control_bytes_only_reason_is_not_an_acknowledgment",
+            "test_appetite_partial_coverage_breach_and_unmeasured_coexist",
+            "test_appetite_guilt_non_str_acknowledgment_message_does_not_lie",
+            "test_appetite_nan_and_inf_spend_are_UNMEASURED_not_silent"
+          ],
+          "innocence": [
+            "test_appetite_innocence_acknowledged_overrun_reports_not_fails",
+            "test_appetite_innocence_absent_block_silent",
+            "test_appetite_innocence_real_corpus_string_shape_silent",
+            "test_appetite_innocence_spend_absent_unmeasured_notice",
+            "test_appetite_innocence_spend_equal_to_ceiling_not_a_breach",
+            "test_appetite_innocence_spend_under_ceiling_silent",
+            "test_appetite_innocence_empty_mapping_silent",
+            "test_appetite_innocence_bool_ceiling_not_numeric",
+            "test_appetite_innocence_brief_none_pack_none_does_not_crash",
+            "test_appetite_innocence_non_mapping_spend_does_not_crash",
+            "test_appetite_end_to_end_violation_reaches_lint_and_rc1",
+            "test_appetite_innocence_non_ascii_reason_survives_sanitizing",
+            "test_appetite_innocence_over_long_reason_is_capped",
+            "test_appetite_innocence_nonsense_ceiling_is_not_a_ceiling",
+            "test_appetite_innocence_zero_is_a_real_value_on_both_sides",
+            "test_appetite_innocence_missing_acknowledgment_message_is_unchanged"
+          ]
+        },
         "check_lanes_build_seat_diversity": {
           "scar": ["D3", "fleet-order-spec-4"],
           "guilt": [
@@ -441,6 +580,107 @@
             "test_lanes_end_to_end_notice_pre_flip_does_not_fail",
             "test_is_anthropic_seat_innocence_non_anthropic_token_matches",
             "test_lanes_gear3_opus5_sonnet5_flip_behavior"
+          ]
+        },
+        "check_ground_truth_lane": {
+          "scar": ["E3-R8"],
+          "guilt": [
+            "test_ground_truth_guilt_hit_no_lane_rejected_post_flip",
+            "test_ground_truth_guilt_incomplete_lane_rejected"
+          ],
+          "innocence": [
+            "test_ground_truth_innocence_no_hit_skipped",
+            "test_ground_truth_innocence_well_formed_lane_passes",
+            "test_ground_truth_innocence_seat_override_reports_not_fails",
+            "test_ground_truth_innocence_pre_flip_notice_not_fail"
+          ]
+        },
+        "check_pii_local_seat": {
+          "scar": ["E3-R10"],
+          "guilt": [
+            "test_pii_local_guilt_cloud_seat_on_pii_path_rejected_post_flip",
+            "test_pii_local_guilt_cloud_ok_without_clean_still_rejected"
+          ],
+          "innocence": [
+            "test_pii_local_innocence_no_hit_skipped",
+            "test_pii_local_innocence_all_ollama_seats_passes",
+            "test_pii_local_innocence_cloud_ok_and_clean_passes",
+            "test_pii_local_innocence_pre_flip_notice_not_fail"
+          ]
+        },
+        "check_cheap_seat_floor": {
+          "scar": [
+            "#3-substring-trapping",
+            "2026-08-26-piano-spec-receptor-live-8"
+          ],
+          "guilt": [
+            "test_cheap_seat_floor_guilt_no_cheap_lane_rejected_post_flip",
+            "test_cheap_seat_floor_guilt_non_build_lane_does_not_count"
+          ],
+          "innocence": [
+            "test_cheap_seat_floor_innocence_not_100pct_mechanical_skipped",
+            "test_cheap_seat_floor_innocence_cheap_build_lane_passes",
+            "test_cheap_seat_floor_innocence_seat_override_reports_not_fails",
+            "test_cheap_seat_floor_innocence_pre_flip_notice_not_fail",
+            "test_compute_seat_floor_guilt_single_mechanical_file_is_true",
+            "test_compute_seat_floor_innocence_one_non_mechanical_file_flips_to_false",
+            "test_compute_seat_floor_innocence_empty_or_none_is_false",
+            "test_seat_floor_end_to_end_through_lint"
+          ]
+        },
+        "check_council_run_gear3": {
+          "scar": [
+            "#2-esiste-non-armato",
+            "2026-08-26-piano-spec-receptor-live-8"
+          ],
+          "guilt": [
+            "test_council_run_guilt_no_council_run_field_rejected_post_flip",
+            "test_council_run_guilt_dangling_or_escaping_path_rejected",
+            "test_council_run_guilt_single_seat_below_quorum_rejected",
+            "test_council_run_guilt_ok_false_or_wrong_role_does_not_count"
+          ],
+          "innocence": [
+            "test_council_run_innocence_gear_not_3_skipped",
+            "test_council_run_innocence_two_distinct_qualifying_seats_passes",
+            "test_council_run_innocence_seat_override_reports_not_fails",
+            "test_council_run_innocence_pre_flip_notice_not_fail",
+            "test_council_run_end_to_end_through_lint"
+          ]
+        },
+        "check_pack_not_at_deprecated_root": {
+          "scar": ["#9-state-schema-mutation-drift", "S12/C6-2026-08-23"],
+          "guilt": [
+            "test_evidence_root_guilt_root_path_post_flip_rejected",
+            "test_evidence_root_guilt_absolute_root_path_post_flip_rejected",
+            "test_evidence_root_guilt_dot_segments_normalize_to_root_post_flip"
+          ],
+          "innocence": [
+            "test_evidence_root_innocence_pre_flip_notice_not_fail",
+            "test_evidence_root_innocence_per_task_dir_clean_both_sides",
+            "test_evidence_root_innocence_no_source_path_skipped",
+            "test_evidence_root_innocence_empty_source_path_skipped",
+            "test_evidence_root_innocence_dot_segments_normalize_to_per_task_clean",
+            "test_evidence_root_end_to_end_notice_pre_flip_does_not_fail",
+            "test_evidence_root_end_to_end_per_task_source_path_clean",
+            "test_evidence_root_end_to_end_no_source_path_default_clean",
+            "test_evidence_root_cli_source_path_defaults_to_pack_path_argument",
+            "test_evidence_root_cli_explicit_source_path_overrides_default"
+          ]
+        },
+        "check_countable_claims": {
+          "scar": ["#6-anti-hallucination-blindness", "PR-5157-2026-08-28"],
+          "guilt": [
+            "test_countable_guilt_wrong_diff_stats_rejected",
+            "test_countable_guilt_wrong_commit_count_rejected_digit_and_word",
+            "test_countable_guilt_unsubstantiated_test_count_rejected",
+            "test_countable_end_to_end_red_pack_fails_and_green_pack_passes"
+          ],
+          "innocence": [
+            "test_countable_innocence_accurate_numbers_pass",
+            "test_countable_innocence_unmeasured_notices_never_convicts",
+            "test_countable_innocence_dissent_and_receipts_out_of_scope",
+            "test_countable_innocence_binary_file_downgrades_line_counts_to_notice",
+            "test_countable_end_to_end_red_pack_fails_and_green_pack_passes"
           ]
         }
       }
@@ -545,7 +785,7 @@
       }
     },
     "required_workflow_conformance": {
-      "_doc": "Merge-OS v2 Wave 0 trap-disarm (research/operations/2026-08-10-merge-os-v2-submission-system.md §4 Wave 0, Codex F12). scripts/ci/check_required_workflow_conformance.py reads infra/required.d/contexts.json and fails if a required context's defining workflow lacks a merge_group: trigger or carries a top-level pull_request.paths: filter — the exact defect docs-sync.yml and migration-lint.yml shipped (cured same PR): a required check gated by a top-level paths: filter never even starts a run on an innocent PR, so GitHub shows it 'Expected — waiting' forever. Each check_* function IS a guard in the superscar #3 sense, same shape as evidence_pack_lint.py/wr2_editorial_pregate.py.",
+      "_doc": "Merge-OS v2 Wave 0 trap-disarm (research/operations/2026-08-10-merge-os-v2-submission-system.md §4 Wave 0, Codex F12), extended 2026-08-29 (L06-PR1 trigger-symmetry, two cross-family refuter rounds). scripts/ci/check_required_workflow_conformance.py reads infra/required.d/contexts.json and fails if a required context's defining workflow: (2) lacks a merge_group: trigger; (3) lacks a pull_request: trigger entirely; (4) carries a top-level paths:/paths-ignore: filter under on.pull_request (the BRANCH axis is a declared, deliberately-unbuilt scope limit — flagging branches:/branches-ignore: by key-presence over-matched the innocent branches: [main], so the rule was withdrawn pending a directional test against the protected branch); or (5) narrows on.pull_request.types: without both opened and synchronize — each is a shape where a required check never starts a run for some legitimate PR and hangs 'Expected — waiting' forever (the exact defect docs-sync.yml and migration-lint.yml shipped, cured same PR as rule 4's paths half). No ALLOWLIST escape hatch — removed 2026-08-29: it was empty, unreachable, and silenced rules 2-5 together for any context sharing its workflow_file, wider than its own stated justification. Each check_* function IS a guard in the superscar #3 sense, same shape as evidence_pack_lint.py/wr2_editorial_pregate.py.",
       "source": "scripts/ci/check_required_workflow_conformance.py",
       "census": {
         "method": "ast-def-prefix",
@@ -558,12 +798,40 @@
           "guilt": ["test_guilt_missing_merge_group_flagged"],
           "innocence": ["test_innocence_merge_group_present_passes"]
         },
-        "check_no_pull_request_paths_filter": {
-          "scar": ["Codex-F12"],
-          "guilt": ["test_guilt_toplevel_pr_paths_filter_flagged"],
+        "check_pull_request_trigger_present": {
+          "scar": ["Codex-F12", "L06-PR1"],
+          "guilt": ["test_guilt_missing_pull_request_trigger_flagged"],
+          "innocence": [
+            "test_innocence_bare_pull_request_passes",
+            "test_innocence_pull_request_with_types_passes"
+          ]
+        },
+        "check_no_pull_request_trigger_filters": {
+          "scar": ["Codex-F12", "L06-PR1"],
+          "guilt": [
+            "test_guilt_toplevel_pr_paths_filter_flagged",
+            "test_guilt_toplevel_pr_paths_ignore_filter_flagged",
+            "test_guilt_both_paths_and_paths_ignore_flagged_once_each"
+          ],
           "innocence": [
             "test_innocence_pull_request_without_paths_passes",
+            "test_innocence_pull_request_branches_filter_is_out_of_scope",
             "test_innocence_push_paths_filter_is_out_of_scope"
+          ]
+        },
+        "check_pull_request_types_include_opened_and_synchronize": {
+          "scar": ["L06-PR1"],
+          "guilt": [
+            "test_guilt_types_missing_synchronize_flagged",
+            "test_guilt_types_missing_opened_flagged",
+            "test_guilt_types_missing_both_flagged"
+          ],
+          "innocence": [
+            "test_innocence_types_with_opened_and_synchronize_passes",
+            "test_innocence_types_with_all_three_passes",
+            "test_innocence_bare_pull_request_no_types_key_passes",
+            "test_innocence_pull_request_dict_without_types_key_passes",
+            "test_innocence_malformed_types_not_a_list_out_of_scope"
           ]
         },
         "check_context_workflow_file_exists": {

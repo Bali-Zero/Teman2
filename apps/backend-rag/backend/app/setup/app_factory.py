@@ -292,10 +292,26 @@ async def lifespan(app: FastAPI):
                         )
                     await cr.route_message(channel_name, payload)
 
+                # WhatsApp recovery is scope-aware (2026-08-25 double-reply
+                # scar prong 2): a meta-inbox-targeted payload must recover
+                # through process_meta_inbox_payload (idempotent, passes the
+                # wa_reply_claims gate), never through the retired
+                # ChannelRouter pipeline used for every other channel.
+                async def _route_whatsapp(payload: dict) -> None:
+                    from backend.app.routers.whatsapp_chat import (
+                        route_whatsapp_recovery,
+                    )
+
+                    await route_whatsapp_recovery(
+                        payload,
+                        db_pool=app.state.db_pool,
+                        legacy_route=lambda p: _route_via_channel_router("whatsapp", p),
+                    )
+
                 webhook_processor = WebhookProcessor(
                     db_pool=app.state.db_pool,
                     handlers={
-                        "whatsapp": lambda p: _route_via_channel_router("whatsapp", p),
+                        "whatsapp": _route_whatsapp,
                         "telegram": lambda p: _route_via_channel_router("telegram", p),
                         "instagram": lambda p: _route_via_channel_router("instagram", p),
                         "twitter": lambda p: _route_via_channel_router("twitter", p),
@@ -632,7 +648,6 @@ async def lifespan(app: FastAPI):
         ("backend.services.measurer.brevo_stats_client", "close_brevo_stats_client"),
         ("backend.services.measurer.ig_graph_sensor", "close_ig_graph_sensor_client"),
         ("backend.services.intel.intel_validators", "close_intel_validators_client"),
-        ("backend.services.council.cli_runners", "close_council_runner_client"),
         ("backend.self_healing.checks.http_api", "close_http_api_check_client"),
         ("backend.services.compliance.lkpm_ready_pack", "close_brevo_client"),
     )
@@ -704,6 +719,22 @@ def create_app() -> FastAPI:
         return schema
 
     app.openapi = _openapi_with_visa_decision_conditionals
+
+    # GARUDA VOA public router (`garuda_voa_public.py`) validates `result_id`
+    # by hand, never as a Pydantic path constraint, so FastAPI's automatic
+    # 422-on-any-parameterized-route default documents an outcome that
+    # cannot occur on two of its operations. Chained AFTER the visa-decision
+    # wrapper above, not replacing it — see that function's own call to
+    # `default_openapi()` for why chaining (not reassigning `app.openapi`
+    # directly) is required to keep both fixes live.
+    from backend.app.routers.garuda_voa_public import strip_unreachable_validation_errors
+
+    default_openapi_with_visa_conditionals = app.openapi
+
+    def _openapi_with_garuda_voa_fix() -> dict[str, Any]:
+        return strip_unreachable_validation_errors(default_openapi_with_visa_conditionals())
+
+    app.openapi = _openapi_with_garuda_voa_fix
 
     from backend.app.routers.root_endpoints import router as root_router
 

@@ -125,12 +125,18 @@ or auto-retry. Zero's Telegram is already notified by the failure path.
 
 ## Schema-change discipline (DB) — frozen state during 2026-04 stabilisation
 
-The migration runner is being consolidated (see
-`docs/reviews/2026-04-25-strategy-01-database-migrations.md`). Until the
-strategy is fully delivered, all agents — Claude included — must follow
+The migration runner is being consolidated. Until the strategy is fully
+delivered, all agents — Claude included — must follow
 these rules. They are **part of the autonomy contract**: violating them
 counts as "modifying shared state without confirmation" and is out of
 scope for L2.
+
+> RETRACTED 2026-08-31 — `docs/reviews/2026-04-25-strategy-01-database-migrations.md`,
+> which this paragraph used to cite, has never existed in this repository and for which no file of that name exists anywhere in
+> the tree. Retracted rather than replaced: there is nothing to replace it with,
+> and a plausible-looking substitute would be the same defect with a working link.
+> The rules below stand on their own — they are the contract, not a summary of a
+> document.
 
 | Rule                                                                                                     | Why                                                                                                                                            |
 | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |

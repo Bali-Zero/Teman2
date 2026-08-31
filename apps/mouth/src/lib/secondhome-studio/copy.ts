@@ -182,7 +182,7 @@ export const COPY = {
     },
     reasons: {
       propertyPendingStandard:
-        "Property-route cases go through our property validation standard (addendum 007) before we can confirm fit — that keeps the review honest on both sides.",
+        "Property-route cases go through our property validation standard before we can confirm fit — that keeps the review honest on both sides.",
       propertyDoesNotQualify:
         "Only a completed strata-title unit valued at USD 1,000,000 or more qualifies. Villas, land, leasehold, and off-plan purchases do not qualify for the property route.",
       unsureRoute:
@@ -329,7 +329,7 @@ export const COPY = {
       propertyEvidence: {
         title: "Provide your property evidence",
         range:
-          "Timing depends on our pending property validation standard (addendum 007), once published — typical, not a promise.",
+          "Timing depends on our pending property validation standard, once published — typical, not a promise.",
       },
       incomeEvidence: {
         title: "Prepare your income evidence",
@@ -413,6 +413,18 @@ export const COPY = {
       preparedLabel: "prepared",
       caption: "This tracks preparation, not approval odds.",
     },
+    groups: {
+      // P2-checklist-route-aware: the list stays a full union across routes
+      // (never hidden, never deleted — a "final application checklist"
+      // this deliberately is not), but it is split into what THIS plan's
+      // answers apply to and what remains open. "May also apply" reads as
+      // "not ruled out", never as "not needed" — we have not confirmed the
+      // route, not decided the document is irrelevant.
+      applicableHeading: "Applies to your answers",
+      mayApplyHeading: "May also apply",
+      mayApplyNote:
+        "We haven't ruled these out — either your route isn't fully confirmed yet, or these depend on details we haven't asked.",
+    },
   },
 
   price: {
@@ -464,6 +476,15 @@ export const COPY = {
     linkWarning:
       "Anyone who receives the link may be able to view the answers it contains.",
     clearButton: "Clear saved plan",
+    // Two-step destructive confirm (P0, 2026-08-24): the button arms on the
+    // first activation and only clears on the second — mouse, keyboard, and
+    // touch alike, since a touch tap (unlike the other two) has no hover
+    // state to warn you first. Copy says "press", not "tap", because a
+    // mouse click and an Enter/Space keypress both count as an activation
+    // too and neither is a tap.
+    clearConfirmButton: "Press again to clear your plan",
+    clearArmedStatus:
+      "Ready to clear — press again to confirm, or Escape to cancel.",
   },
 } as const;
 
