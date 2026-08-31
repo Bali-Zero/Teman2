@@ -1,0 +1,229 @@
+task_id: queue-rearm-positive-probe
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Cure a proven merge-queue defect and arm its regression-preventing lint. This PR was dispatched
+  by a team-lead teammate (in-session task delegation, no separate written mandate doc) who had
+  already diagnosed and proven the defect; this build lane's job was to re-verify the mechanism
+  (not re-derive it from scratch), fix it, give the fix a guilt test, and arm
+  `scripts/lint_arm_probe.py` — an executable whole-repo scanner for the same hazard class — into
+  CI.
+
+  THE DEFECT (as dispatched, re-verified this session by construction rather than by re-fetching a
+  now-unrepeatable historical snapshot — see below): GitHub's `autoMergeRequest` GraphQL field
+  reads `null` for a PR the merge queue has ALREADY ACCEPTED (the auto-merge request is CONSUMED
+  on entry to the queue, not disarmed), for one the queue EJECTED, and for one that was never
+  armed at all — null in three different states, non-null in only the "armed, not yet queued"
+  state. `mergeQueueEntry` / `isInMergeQueue` / `mergeQueue(branch:){entries}` are the only
+  POSITIVE probes that can tell these apart. This repo has paid for this exact confusion 3 times
+  before this PR, per the dispatching mandate's own citation: scars #4756, #5012, #5275 (this
+  build lane has not independently re-opened those 3 historical PRs to re-confirm their shape —
+  attributed to the dispatching mandate, not re-verified, per the discipline of marking relayed
+  claims as relayed).
+
+  THE LIVE PROOF POINT the mandate cited: PR #5422 ("ci(deploy): fall back off the depot builder,
+  on the one string that means depot") — while it sat in the merge queue at
+  `mergeQueueEntry {position: 1, state: AWAITING_CHECKS}` (genuinely armed and progressing), it
+  SIMULTANEOUSLY read `mergeable=MERGEABLE, autoMergeRequest=null`, so the OLD selector in
+  `scripts/ci/queue_rearm_population.sh` picked it up as an "unarmed candidate" needing re-arming
+  — a false positive on a PR that needed no intervention at all. IMPORTANT LIMIT ON THIS BUILD
+  LANE'S OWN VERIFICATION: PR #5422 merged at 2026-08-31T06:52:03Z (re-confirmed this session via
+  `gh pr view 5422`), before this build lane could independently re-fetch its in-flight
+  `mergeQueueEntry`/`autoMergeRequest` snapshot — a merged PR's transient in-queue state is not
+  retroactively fetchable via the GitHub API, so this specific historical data point is relayed
+  from the dispatching mandate's contemporaneous observation, not independently re-executed by
+  this build lane. What THIS build lane verified independently instead: the MECHANISM. Two
+  synthetic fixtures (`QUEUED`, `QUEUED_UNKNOWN` — both `mergeable:MERGEABLE`,
+  `autoMergeRequest:null`, plus a non-null `mergeQueueEntry`, i.e. the exact reported shape) were
+  added to `scripts/ci/test_queue_rearm_population.sh` and shown to fail against the OLD selector
+  (RED, reproduced fresh this session by temporarily swapping in the pre-fix file content via
+  `git show HEAD:scripts/ci/queue_rearm_population.sh`, running the new test file against it, then
+  restoring — see receipts) and pass against the NEW one (GREEN). The mechanism proves out even
+  though the exact historical GitHub API response for #5422 can no longer be re-fetched.
+
+  THE FIX:
+  1. `scripts/ci/queue_rearm_population.sh` — both the `--candidates` and `--undecidable`
+     selectors now ALSO require `mergeQueueEntry==null` before treating a PR as unarmed/orphaned.
+     Absent-key reads as null (jq default), preserving the 13 pre-existing tests unchanged.
+  2. `scripts/ci/queue_rearm.sh` — a new join step enriches the already-fetched open-PR list with
+     each PR's `mergeQueueEntry`, sourced from the ALREADY-fetched in-queue list (`$inq`) — no new
+     GitHub API call. A defensive `enriched_count != open_count` check exits 3 (fail-closed) if the
+     jq enrichment silently drops a PR, rather than reporting a partial population as complete.
+  3. `scripts/ci/test_queue_rearm_population.sh` — the guilt+innocence fixtures described above.
+  4. `scripts/lint_arm_probe.py` — a NEW `ALLOWLIST` mechanism (path-keyed, written reason per
+     entry) for 2 real false positives this whole-repo scanner would otherwise flag on files that
+     read `autoMergeRequest` for a reason unrelated to an armed/disarmed verdict. The lint's own
+     pre-existing `SUPPRESSION_MARKER` was considered and rejected for this purpose (see dissent) —
+     it is governed by its own test asserting it appears ONLY in synthetic test fixtures, and using
+     it on real production code or a historical evidence-pack receipt would misrepresent what those
+     lines are.
+  5. `scripts/ci/lint_queue_field_verdict.py` (a SIBLING, ALREADY-ARMED lint covering the identical
+     `autoMergeRequest` hazard, wired into `.github/workflows/immune-enforcement.yml` since
+     2026-08-29): its one pre-existing `ALLOWLIST` entry named `queue_rearm_population.sh` and
+     justified the waiver by saying the file "has no awareness of its own" — fix #1 above makes
+     that justification FALSE (the file now IS aware, via the literal `mergeQueueEntry` text this
+     diff adds). Found by this build lane mid-session, not flagged by the mandate — cured per
+     Regola 8 (cure what the diff introduces). The stale entry was removed (SHRINK-ONLY allowlist
+     policy, this lint's own documented convention) and its 2 `run_selftest()` tripwire cases plus
+     3 pytest tests reworked to use a SYNTHETIC subject/orchestrator pair instead of depending on
+     the real (now-cured) path.
+  6. `.github/workflows/immune-enforcement.yml` — `scripts/lint_arm_probe.py` (previously invoked
+     by NOTHING — 0 hits in workflows, guard-conformance registry, or hooks, per the mandate's own
+     measurement) is now wired in exactly the way its sibling `lint_queue_field_verdict.py` already
+     is: 3 new lines in the paths-filter `case` statement, 1 new line in the "Unit tests (guilt +
+     innocence per tool)" pytest loop, and a new unconditional
+     "--selftest, then scan every tracked file" step (a `--selftest` mode was added to
+     `lint_arm_probe.py` itself for this parity, mirroring the sibling's own "prove the guard, then
+     scan" shape).
+
+  Gear is 3, deterministically, by PATH — `.github/workflows/immune-enforcement.yml` is a hot-zone
+  pattern. Independently reproduced this session:
+  `python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <changed-files>` -> `3`,
+  `--print-floor-source` -> `path` (see receipts).
+
+constraints:
+  - 'The re-arm population selectors must keep treating `mergeable: UNKNOWN` as undecidable, never
+    as an empty/decided population — an unresolved GitHub mergeability computation is not the same
+    fact as "no orphans exist", and the pre-existing code already got this right. This diff adds
+    a further condition (`mergeQueueEntry==null`) without weakening that existing UNKNOWN handling
+    — verified via the pre-existing `QUEUED_UNKNOWN`-adjacent innocence tests, all 17 pass.'
+  - "The enrichment join in `queue_rearm.sh` must add ZERO new GitHub API calls — `mergeQueueEntry`
+    per PR is derived entirely from `$inq`, the SAME in-queue list `queue_rearm.sh` already fetches
+    for its own reporting, joined by `.number`. Verified by reading the diff: no new `gh api`/`gh pr`
+    invocation was added in this step."
+  - "A silent enrichment failure (e.g. a jq join that drops rows) must fail CLOSED, never report a
+    partial population as if it were complete — `enriched_count != open_count` exits 3."
+  - "The 13 pre-existing tests in `test_queue_rearm_population.sh` must keep passing unchanged —
+    the new `mergeQueueEntry==null` clause reads as true-by-jq-default on any fixture that never
+    mentions the key at all, so no existing fixture needed editing. Verified: all 13 pre-existing
+    checks pass alongside the 4 new ones (17/17)."
+  - "`lint_arm_probe.py`'s pre-existing `SUPPRESSION_MARKER` must not be reused for real-file false
+    positives — its own governing test asserts it appears only in the lint's own source and test
+    file. The new `ALLOWLIST` is a distinctly-named, separate mechanism for exactly this case,
+    modelled on (but simpler than) the sibling lint's own `ALLOWLIST`+tripwire pattern."
+  - "Appending an inline comment to the `evidence/.../pack.yml` false-positive's YAML block-scalar
+    lines was considered and rejected: unlike a Python `#` comment, YAML block-scalar (`|`) content
+    is not comment-stripped — an appended marker would become PART of the recorded historical
+    receipt data, corrupting it. The path-keyed `ALLOWLIST` avoids touching that file at all."
+
+acceptance:
+  - text: >
+      WHEN a PR reads `mergeable=MERGEABLE` AND `autoMergeRequest=null` AND a non-null
+      `mergeQueueEntry`, THE `--candidates` selector SHALL NOT list it as a re-arm candidate.
+    probe: "bash scripts/ci/test_queue_rearm_population.sh"
+  - text: >
+      WHEN the same PR additionally reads `mergeable=UNKNOWN`, THE `--undecidable` selector SHALL
+      NOT count it toward the undecidable total, and SHALL NOT let it mask a genuine UNKNOWN
+      orphan sitting alongside it.
+    probe: "bash scripts/ci/test_queue_rearm_population.sh"
+  - text: >
+      WHEN the enrichment join in `queue_rearm.sh` cannot account for every open PR, THE script
+      SHALL exit 3 rather than report a partial population as complete.
+    probe:
+      "NOT covered by an automated test — `queue_rearm.sh` shells out to `gh pr list` directly
+      and has no sourceable-function structure to stub that call against, unlike
+      `queue_rearm_population.sh` (a pure jq-over-stdin component, hence testable). Verified only
+      by direct code reading this session (`sed -n '140,150p' scripts/ci/queue_rearm.sh`) — a
+      genuine gap, not silently claimed as tested. See risks."
+  - text: >
+      WHERE `scripts/lint_arm_probe.py --selftest` is run, EVERY guilt fixture SHALL be flagged and
+      EVERY innocence fixture (including the ALLOWLIST-mechanism and stale-allowlist cases) SHALL
+      be clean. Measured 15/15 this session (re-counted from the unabridged run after an earlier
+      truncated view of the same output undercounted it as 11 — see dissent).
+    probe: "python3 scripts/lint_arm_probe.py --selftest"
+  - text: >
+      WHERE `scripts/lint_arm_probe.py` is run against the full tracked tree, THE scan SHALL
+      report 0 findings, exactly 2 allowlisted paths (each with a written reason), and 0 stale
+      allowlist entries. Measured this session: 7352 files scanned, 0/2/0.
+    probe: "python3 scripts/lint_arm_probe.py --repo-root . --root . --json"
+  - text: >
+      WHERE `scripts/ci/lint_queue_field_verdict.py` (the sibling, already-armed lint) is run after
+      this diff removes its now-stale ALLOWLIST entry, THE scan SHALL report 0 violations and 0
+      allowlisted paths (the entry's removal must not leave a dangling reference or a newly-blind
+      spot). Measured this session: 8386 files scanned, 0 violations, 0 allowlisted.
+    probe: "python3 scripts/ci/lint_queue_field_verdict.py --repo-root ."
+  - text: >
+      WHERE `actionlint` is run against the shipped `.github/workflows/immune-enforcement.yml`,
+      THE finding set SHALL be unchanged in count and message-shape from `origin/main`'s copy, and
+      SHALL contain none inside the new/changed lines. Measured: 4 shellcheck findings both sides,
+      identical SC-code/message shape once line-number shifts from this diff's own insertions are
+      normalized out.
+    probe: "actionlint .github/workflows/immune-enforcement.yml"
+
+consumer_map:
+  - '`scripts/ci/queue_rearm_population.sh` — called by `scripts/ci/queue_rearm.sh` (this diff''s
+    own new enrichment step feeds it) and, transitively, by
+    `.github/workflows/merge-queue-watch.yml`''s "queue_rearm.sh — dry-run" job. That job''s
+    exit-code contract (0/2/3) and its "PROOF-OF-ARMED" stdout match
+    (`grep -qE ''of [0-9]+ open pull request''`) are UNCHANGED by this diff — re-read in full this
+    session to confirm compatibility, not merely assumed.'
+  - "`scripts/lint_arm_probe.py` — previously consumed by NOTHING (0 hits in `.github/workflows/`,
+    `infra/guard-conformance/registry.json`, or hooks, per the dispatching mandate's own
+    measurement). Now consumed by `.github/workflows/immune-enforcement.yml` (new paths-filter
+    entries, pytest-loop entry, and a new unconditional selftest-then-scan step)."
+  - "`scripts/ci/lint_queue_field_verdict.py` — already consumed by
+    `.github/workflows/immune-enforcement.yml` before this diff (unchanged wiring); this diff only
+    changes the lint's OWN `ALLOWLIST` content and the tests that exercise it."
+  - "`infra/guard-conformance/registry.json` — NOT touched. Investigated whether
+    `scripts/lint_arm_probe.py` needed a registry entry there (its `ast-def-prefix` census
+    mechanism expects `_guard_`/`check_`-prefixed functions in a designated source file, which this
+    lint's actual structure does not naturally fit). Decided against registering, by precedent: the
+    most comparable, most recently-built sibling (`lint_queue_field_verdict.py`, same hazard class,
+    built 2026-08-29/31) is ITSELF not registered there either — this repo's established practice
+    for this class of lint (whole-repo scanner with its own `--selftest` + pytest corpus, wired
+    directly into a CI workflow step) is to skip that registry, not use it."
+  - "No PENDING-ARMS row is needed for the lint-arming work itself: it is fully wired into CI in
+    this same diff (paths-filter + pytest loop + unconditional selftest-then-scan step), not left
+    half-built. See risks for the two open items this build lane is flagging instead
+    (council-quorum reachability, and the untested enrichment fail-closed check) — neither is
+    lint-arming, which is complete."
+
+risks:
+  - "This diff's own Gear-3 `council_run` quorum (>=2 distinct COUNCIL_REVIEW_SEATS) was NOT
+    reached — see `pack.yml`'s `seat_diversity_note` and the real `journal.jsonl` in this same
+    directory for the two genuine, non-fabricated attempts and why they failed
+    (kimi-code/k3: 403 weekly quota exhausted; codex-gpt-5.6-sol: workspace out of credits — a new
+    failure mode, flagged to the operator separately). `check_council_run_gear3`'s own
+    `R9_R11_ENFORCEMENT_DATE` is 2026-09-02; today is 2026-08-31, so this is currently a NOTICE,
+    not a hard CI failure — but if this PR's merge is delayed past that date and CI re-runs the
+    check then, it would flip to a hard failure. The third possible seat, `tp1-qwen3.8-max`, was
+    last probed alive ~3h before this session (fleet arsenal probe) but was not attempted here: a
+    single successful seat could not reach the required >=2-seat quorum on its own, so standing up
+    an unfamiliar DashScope/HTTP invocation path for a result that would not change the CI verdict
+    either way was judged not worth the added risk of a fragile, first-time-used call chain. This
+    is a reasoned proportionality call, stated plainly rather than silently skipped."
+  - 'The 3 historical scar PRs the dispatching mandate cited (#4756, #5012, #5275) were not
+    independently re-opened and re-read by this build lane — relayed, not re-verified. If their
+    shape differs from what the mandate described, this brief''s framing of "paid for this 3
+    times before" would be relaying a stale or imprecise count, though the CURRENT mechanism fix
+    stands on its own independently-verified merits regardless.'
+  - "The exact historical GitHub API snapshot for PR #5422 while it was in the merge queue
+    (`mergeQueueEntry.state=AWAITING_CHECKS` simultaneous with `autoMergeRequest=null`) is no
+    longer independently re-fetchable now that the PR has merged (confirmed this session:
+    `gh pr view 5422` shows `state: MERGED`, `mergedAt: 2026-08-31T06:52:03Z`). This build lane
+    verified the MECHANISM via constructed fixtures reproducing the exact reported shape, not the
+    original historical API response itself."
+  - "`scripts/lint_arm_probe.py`'s new `ALLOWLIST` is, like its sibling's, a manually-curated,
+    path-keyed exemption list — its own SHRINK-ONLY discipline and `stale_allowlist` detection
+    (mirrored from the sibling lint) are the only guard against it silently accumulating unjustified
+    entries over time; this diff adds exactly 2, each independently re-verified this session against
+    the actual referenced source lines, not merely trusted from a prior description."
+  - "The `enriched_count != open_count` fail-closed guard added to `queue_rearm.sh` (the new
+    enrichment join) has NO automated test — unlike `queue_rearm_population.sh`,
+    `queue_rearm.sh` shells out to `gh pr list` directly and has no sourceable-function structure a
+    test could stub against. Verified only by direct code reading this session, not by a red/green
+    test cycle. A future refactor extracting the enrichment jq transform into a standalone,
+    testable component (mirroring how `queue_rearm_population.sh` and `queue_rearm_classify.sh`
+    already are) would close this gap; not attempted here as it would have widened this PR's scope
+    beyond the dispatched mandate (cure the selector defect, arm the lint) into a structural
+    refactor of a file the mandate did not ask to be restructured."
+
+grader:
+  "Opus 5 at xhigh/max — the final on-disk Gear-3 gate (CLAUDE.md Sec.5, 2026-08-20 ruling). The
+  generator (this build lane) does not grade its own diff; per `seat_diversity_note`, the intended
+  cross-family council could not be reached this session (2 of 3 seats measurably down for
+  provider-side reasons, the third not attempted for the proportionality reason stated in risks) —
+  this pack states that gap plainly rather than fabricating a verdict, and relies on the
+  NOTICE-not-FAIL grace period plus this build lane's own from-scratch guilt/innocence proof and
+  full-tree scan receipts as the substantive evidence of correctness in the meantime."

@@ -98,6 +98,17 @@ cure it instead. Each entry's justification is re-checked on every run
 reason is a violation wearing a green light (superscar #2, "esiste ≠
 armato").
 
+EMPTY AS OF 2026-08-31: its one entry, `scripts/ci/queue_rearm_population.sh`,
+was removed the day that file grew its own `mergeQueueEntry` co-occurrence
+(the positive-probe fix for the live #5422 defect scripts/lint_arm_probe.py
+documents) — exactly the SHRINK-ONLY trigger this policy names. The file now
+clears via `is_aware()` before ALLOWLIST is ever consulted; keeping the old
+entry on disk would have left a written "reason" (no awareness of its own)
+that this session's own fix made false. `run_selftest()`'s tripwire cases
+below no longer exercise a real production path for the same reason — they
+inject and remove a synthetic entry so the MECHANISM stays tested without
+being coupled to whichever real file happens to need a waiver today.
+
 Exit codes: 0 clean · 1 one or more violations · 3 cannot-verify (git
 unavailable, or zero files scanned — an empty sweep is not a pass, W84).
 """
@@ -119,21 +130,12 @@ _IN_SCOPE_SUFFIXES = (".py", ".sh", ".yml", ".yaml", ".js", ".mjs", ".ts")
 # actually lives; `orchestrator` + `orchestrator_requires` are the
 # tripwire re-checked every run so the waiver cannot silently outlive the
 # fact that justified it.
-ALLOWLIST: dict[str, dict[str, object]] = {
-    "scripts/ci/queue_rearm_population.sh": {
-        "reason": (
-            "pure jq-filter file, no network/awareness of its own by "
-            "design (split out for a guilt+innocence corpus without a "
-            "live queue). Awareness lives one file up: its caller "
-            "scripts/ci/queue_rearm.sh fetches the merge-queue snapshot "
-            "and subtracts every PR already inside it BEFORE acting on "
-            "anything this file marks as a null-autoMergeRequest "
-            "candidate — measured 2026-08-29."
-        ),
-        "orchestrator": "scripts/ci/queue_rearm.sh",
-        "orchestrator_requires": ("mergeQueue(", "already in the queue"),
-    },
-}
+#
+# EMPTY as of 2026-08-31 — see module docstring "EMPTY AS OF 2026-08-31".
+# The one entry this ever held (scripts/ci/queue_rearm_population.sh) was
+# removed the day that file grew its own `mergeQueueEntry` awareness; do
+# not re-add it without a genuinely new reason.
+ALLOWLIST: dict[str, dict[str, object]] = {}
 
 _AWARENESS_MARKERS = (
     "mergeQueueEntry",
@@ -480,26 +482,46 @@ def run_selftest() -> bool:
             ok = ok and status == "PASS"
             print(f"[{status}] {label}: expected_clean={expect_clean} got_clean={got_clean}")
 
-        _write(tmp, "scripts/ci/queue_rearm_population.sh", 'jq -r "select(.autoMergeRequest==null)"\n')
-        _write(
-            tmp, "scripts/ci/queue_rearm.sh",
-            'inq=$(gh api graphql -f query="{mergeQueue(branch:\\"main\\"){entries}}")\n'
-            'case " $inq " in *" $n "*) echo "already in the queue" ;; esac\n',
-        )
-        report = evaluate(["scripts/ci/queue_rearm_population.sh"], tmp)
-        got_clean = len(report["violations"]) == 0
-        ok = ok and got_clean
-        print(f"[{'PASS' if got_clean else 'FAIL'}] allowlist-tripwire-holds: expected_clean=True got_clean={got_clean}")
+        # ALLOWLIST is empty on disk as of 2026-08-31 (its one real entry
+        # cured — see module docstring). The tripwire mechanism itself still
+        # needs a live self-test, so this injects and removes a SYNTHETIC
+        # entry for these two cases only, rather than depending on whichever
+        # real file happens to need a waiver today (that coupling is exactly
+        # what made these two cases silently untestable the day the real
+        # entry's file got cured — a selftest that can only pass by relying
+        # on a specific production file never regressing is not testing the
+        # mechanism, it is testing that file).
+        _SELFTEST_SUBJECT = "scripts/ci/_selftest_allowlist_subject.sh"
+        _SELFTEST_ORCHESTRATOR = "scripts/ci/_selftest_allowlist_orchestrator.sh"
+        assert _SELFTEST_SUBJECT not in ALLOWLIST, "selftest subject collides with a real ALLOWLIST entry"
+        ALLOWLIST[_SELFTEST_SUBJECT] = {
+            "reason": "synthetic subject for the allowlist-tripwire selftest only",
+            "orchestrator": _SELFTEST_ORCHESTRATOR,
+            "orchestrator_requires": ("mergeQueue(", "already in the queue"),
+        }
+        try:
+            _write(tmp, _SELFTEST_SUBJECT, 'jq -r "select(.autoMergeRequest==null)"\n')
+            _write(
+                tmp, _SELFTEST_ORCHESTRATOR,
+                'inq=$(gh api graphql -f query="{mergeQueue(branch:\\"main\\"){entries}}")\n'
+                'case " $inq " in *" $n "*) echo "already in the queue" ;; esac\n',
+            )
+            report = evaluate([_SELFTEST_SUBJECT], tmp)
+            got_clean = len(report["violations"]) == 0
+            ok = ok and got_clean
+            print(f"[{'PASS' if got_clean else 'FAIL'}] allowlist-tripwire-holds: expected_clean=True got_clean={got_clean}")
 
-        _write(
-            tmp, "scripts/ci/queue_rearm.sh",
-            'inq=$(gh api graphql -f query="{mergeQueue(branch:\\"main\\"){entries}}")\n'
-            "# the subtraction line was removed\n",
-        )
-        report = evaluate(["scripts/ci/queue_rearm_population.sh"], tmp)
-        got_violation = len(report["violations"]) == 1
-        ok = ok and got_violation
-        print(f"[{'PASS' if got_violation else 'FAIL'}] allowlist-tripwire-broken: expected_violation=True got_violation={got_violation}")
+            _write(
+                tmp, _SELFTEST_ORCHESTRATOR,
+                'inq=$(gh api graphql -f query="{mergeQueue(branch:\\"main\\"){entries}}")\n'
+                "# the subtraction line was removed\n",
+            )
+            report = evaluate([_SELFTEST_SUBJECT], tmp)
+            got_violation = len(report["violations"]) == 1
+            ok = ok and got_violation
+            print(f"[{'PASS' if got_violation else 'FAIL'}] allowlist-tripwire-broken: expected_violation=True got_violation={got_violation}")
+        finally:
+            del ALLOWLIST[_SELFTEST_SUBJECT]
 
     return ok
 
