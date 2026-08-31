@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import re
 import stat
 import sys
 from pathlib import Path
@@ -560,55 +561,86 @@ def test_the_wrapper_does_not_run_this_sentinel_on_system_python():
 
 
 def test_the_wrapper_reads_only_the_state_line_this_run_printed():
-    """`grep '^SENTINEL-STATE ' "$LOG" | tail -1` over the WHOLE append-only
-    log returns the PREVIOUS run's outcome whenever this run prints none —
-    the ${STATE:-...} fallback could then only ever fire on the very first
-    run ever, so staleness would be guaranteed, not merely possible (see the
-    wrapper's own comment above LOG_OFFSET). This test fails if someone
-    reverts the offset-scoped read back to that whole-log form."""
+    """`grep '^SENTINEL-STATE ' "$LOG" | tail -1` over the WHOLE append-only log
+    returns the PREVIOUS run's outcome whenever this run prints none -- the
+    `${STATE:-...}` fallback could then only ever fire on the very first run in
+    the log's life, so staleness would be guaranteed, not merely possible.
+
+    This asserts the two PROPERTIES, not the byte string that happens to
+    express them today: a correct re-spelling (`tail -c +$((LOG_OFFSET+1))`,
+    unquoted, no inner spaces) must stay green, while the naive whole-log form
+    must go red. Pinning the literal was itself a defect -- family #3,
+    guard-over-match on spelling instead of intent.
+    """
     wrapper = (REPO / "infra" / "launchagents" / "wrappers"
                / "pro-price-review-sentinel.sh").read_text(encoding="utf-8")
-    lines = wrapper.splitlines()
     non_comment = [
-        (i, line) for i, line in enumerate(lines)
+        (i, line) for i, line in enumerate(wrapper.splitlines())
         if line.strip() and not line.lstrip().startswith("#")
     ]
 
-    state_grep_lines = [
+    # The one line that harvests the state line out of the log.
+    harvest = [
         (i, line) for i, line in non_comment
-        if line.lstrip().startswith("STATE=")
-        and "grep" in line
-        and "SENTINEL-STATE" in line
+        if "grep" in line and "SENTINEL-STATE" in line
     ]
-    assert len(state_grep_lines) == 1, (
-        f"expected exactly one STATE= assignment that greps SENTINEL-STATE, "
-        f"got {state_grep_lines}"
+    assert len(harvest) == 1, (
+        f"expected exactly one line that greps SENTINEL-STATE out of the log, "
+        f"got {[ln for _, ln in harvest]}"
     )
-    grep_idx, grep_line = state_grep_lines[0]
-    assert 'tail -c "+$((LOG_OFFSET + 1))"' in grep_line, (
-        "STATE must be read from the offset-sliced tail of THIS run's output, "
-        f"not the whole log: got {grep_line!r}"
+    harvest_idx, harvest_line = harvest[0]
+
+    # PROPERTY 1: it slices the log with `tail -c` at an offset derived from
+    # LOG_OFFSET. Any spelling of the arithmetic is fine.
+    assert "tail -c" in harvest_line and "LOG_OFFSET" in harvest_line, (
+        "the state line must be harvested from an offset slice of the log "
+        f"(`tail -c` at a LOG_OFFSET-derived position), got {harvest_line!r}"
     )
 
-    naive_whole_log_form = [
+    # PROPERTY 2: nothing reads the log wholesale. Match on the log VARIABLE in
+    # any spelling ($LOG / ${LOG}) rather than the literal `"$LOG"`, so renaming
+    # the quoting style cannot slip an unsliced read past this guard.
+    log_var = re.compile(r"\$\{?LOG\}?\b")
+    unsliced = [
         line for _, line in non_comment
-        if "grep '^SENTINEL-STATE '" in line
-        and '"$LOG"' in line
+        if "SENTINEL-STATE" in line and log_var.search(line)
         and "tail -c" not in line
     ]
-    assert naive_whole_log_form == [], (
-        "found the un-scoped whole-log grep the offset fix was meant to "
-        f"remove: {naive_whole_log_form}"
+    assert unsliced == [], (
+        f"found an unsliced whole-log read of the state line: {unsliced}"
     )
 
-    offset_assignment_indices = [
-        i for i, line in non_comment
-        if line.lstrip().startswith("LOG_OFFSET=")
+    # PROPERTY 3: the offset is computed before the harvest, or it measures the
+    # wrong thing.
+    offsets = [i for i, line in non_comment if line.lstrip().startswith("LOG_OFFSET=")]
+    assert offsets, "LOG_OFFSET is never assigned on a non-comment line"
+    assert offsets[0] < harvest_idx, (
+        "LOG_OFFSET must be computed BEFORE the state line is harvested "
+        "(and before the payload runs), or it captures the wrong byte count"
+    )
+
+
+def test_the_missing_state_flag_is_not_derived_from_a_magic_substring():
+    """STATE_MISSING must come from the EMPTINESS of the raw capture, not from
+    a phrase that also travels into the heartbeat note. A magic string that
+    both decides a branch and rides in the payload is a collision surface, and
+    it spends the 200-character note budget the healer registry truncates at.
+    """
+    wrapper = (REPO / "infra" / "launchagents" / "wrappers"
+               / "pro-price-review-sentinel.sh").read_text(encoding="utf-8")
+    non_comment = [
+        line for line in wrapper.splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
     ]
-    assert offset_assignment_indices, (
-        "LOG_OFFSET is never assigned on a non-comment line"
+    assigns = [ln for ln in non_comment if "STATE_MISSING=" in ln]
+    assert assigns, "STATE_MISSING is never assigned"
+    assert any("-z" in ln and "STATE_RAW" in ln for ln in assigns), (
+        "STATE_MISSING must be derived from an emptiness test on the raw "
+        f"capture, got {assigns}"
     )
-    assert offset_assignment_indices[0] < grep_idx, (
-        "LOG_OFFSET must be computed BEFORE the state line is read (and "
-        "before the payload runs), or it captures the wrong byte count"
-    )
+    # And no heartbeat note may exceed what the registry keeps.
+    for line in non_comment:
+        if line.lstrip().startswith("heartbeat "):
+            assert len(line) < 200 + 40, (
+                f"heartbeat note is close to the registry's 200-char cap: {line!r}"
+            )

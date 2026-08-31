@@ -85,25 +85,25 @@ RC=$?
 # in the organism's own state, instead of every run looking identical.
 # Read ONLY the bytes this run appended. A run that died before printing must
 # report that it printed nothing -- not the last thing a healthy run said.
-STATE=$(tail -c "+$((LOG_OFFSET + 1))" "$LOG" 2>/dev/null | grep '^SENTINEL-STATE ' | tail -1)
-STATE=${STATE:-SENTINEL-STATE outcome=UNKNOWN delivery=unknown note=this-run-printed-no-state-line}
+STATE_RAW=$(tail -c "+$((LOG_OFFSET + 1))" "$LOG" 2>/dev/null | grep '^SENTINEL-STATE ' | tail -1)
 
 # rc=2 is overloaded: the sentinel returns it for a COMPUTED cannot-verify, and
-# CPython also exits 2 when it cannot open the script at all. The state line is
-# what tells them apart -- a computed verdict always prints one. With the venv
-# interpreter now load-bearing, and the venv being live infrastructure curated
-# a package at a time, a missing python gives rc=127 and no line, which must
-# not read as a verdict either.
-case "$STATE" in
-    *this-run-printed-no-state-line*) STATE_MISSING=1 ;;
-    *)                                STATE_MISSING=0 ;;
-esac
+# CPython also exits 2 when it cannot open the script at all. The presence of a
+# state line is what tells them apart -- a computed verdict always prints one.
+# With the venv interpreter now load-bearing, and the venv being live
+# infrastructure curated a package at a time, a missing python gives rc=127 and
+# no line, which must not read as a verdict either. Derive the flag from the
+# EMPTINESS of the raw capture, never from a substring of the fallback text:
+# a magic phrase that both decides the branch and travels into the note is a
+# collision surface, and it costs 33 characters of a 200-character note budget.
+if [ -z "$STATE_RAW" ]; then STATE_MISSING=1; else STATE_MISSING=0; fi
+STATE=${STATE_RAW:-SENTINEL-STATE outcome=UNKNOWN delivery=unknown}
 
 case $RC in
     0) heartbeat "ok" "no finding | ${STATE#SENTINEL-STATE }" ;;
     1) heartbeat "ok" "finding delivered | ${STATE#SENTINEL-STATE }" ;;
     2) if [ "$STATE_MISSING" = "1" ]; then
-           heartbeat "error" "the payload did not run to a verdict (rc=2, no state line -- interpreter or script missing, not a computed cannot-verify) | ${STATE#SENTINEL-STATE }"
+           heartbeat "error" "no verdict printed: interpreter or script missing | ${STATE#SENTINEL-STATE }"
        else
            heartbeat "error" "cannot verify the price sheet | ${STATE#SENTINEL-STATE }"
        fi ;;
