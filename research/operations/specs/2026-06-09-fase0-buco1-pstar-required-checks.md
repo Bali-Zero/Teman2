@@ -7,6 +7,18 @@ sources:
   - gh api repos/Balizero1987/Teman2/branches/main/protection/required_status_checks (live read 2026-06-09)
   - .github/workflows/verify-the-verifiers.yml, p1s2-mutation-incremental.yml
   - .github/CODEOWNERS
+adversarial_review: >-
+  kimi-code/k3 (Moonshot, non-Anthropic cross-family, flat subscription) reviewed the
+  2026-08-31 PUT->PATCH correction on 2026-08-31 and returned SHIP. Substantive, not a
+  rubber stamp: it independently confirmed that GitHub documents only PATCH on
+  `.../protection/required_status_checks` (PUT exists solely on the parent
+  `branches/{branch}/protection` endpoint, which is why PUT 404s here); it refuted an
+  attack line put TO it about the rollback verb, establishing that this endpoint replaces
+  the whole `required_status_checks` object rather than JSON-merging, so replaying the
+  9-context snapshot restores the prior state exactly; and it opened by checking the file
+  on disk to test the correction note's own claim that every surviving "PUT" is
+  historical, rather than accepting it. The original 2026-06-09 spec body was authored by
+  a different session; this reviewer is not its author.
 ---
 
 # FASE-0 BUCO #1 — make the P* workflows required-status-checks (sequenced, NOT executed)
