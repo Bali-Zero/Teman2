@@ -28,6 +28,41 @@
 --   migration fixes the one divergence that exists today, not the mechanism
 --   that let it open.
 --
+-- "THE ONE DIVERGENCE THAT EXISTS TODAY" — THE PROOF, NOT THE CLAIM
+-- =============================================================================
+--   Two adversarial council seats challenged that sentence, and the second one
+--   was right to: it was an assertion with no receipt attached. The kimi-code/k3
+--   seat argued a SECOND live row is left behind — `visa_voa`, seeded at
+--   base_price 750000 by the legacy Python migrations 066 and 123, is_active
+--   true, which crm_practices.py would happily default a quote from. Recorded
+--   here rather than in a review thread, because the next reader will ask the
+--   same question.
+--
+--   It is refuted on two independent grounds, both measured 2026-08-31:
+--
+--   1. NOTHING EXECUTES THOSE FILES. migration_base.py:42-45 states it outright
+--      — the pre-2026-04-18 Python migrations "are applied manually (the
+--      automated loader only reads db/migrations_v2/*.sql)". There is no rerun
+--      path for 066 or 123 to re-assert 750000 through; the ON CONFLICT DO
+--      UPDATE the seat correctly read in 123 never fires unattended.
+--
+--   2. THE ROW IS NOT THERE. A read-only query against the production catalogue
+--      for every code or name matching VOA or "arrival" returns exactly two
+--      rows — `visa_b1_voa` (750000, active) and `ext_b1_voa` (850000, active).
+--      `visa_voa` does not exist in production and never did.
+--
+--   The same query is what settles the extension: `ext_b1_voa` is ALREADY
+--   850000, set by migration 221 and untouched since, so this migration
+--   deliberately does not write it. That is a measurement, not an assumption.
+--
+--   What the seats were right about is the ABSENT-ROW PATH below: if
+--   `visa_b1_voa` were missing, this migration raises a NOTICE, returns, and is
+--   recorded applied having changed nothing. That is deliberate — 221 creates
+--   the row and runs first, so in ordered application the row always exists,
+--   and raising on a legitimately empty catalogue would fail a fresh
+--   environment for no reason. It is a real gap only for a database that
+--   skipped 221, which the ordered runner cannot produce.
+--
 -- SCOPE
 -- =============================================================================
 --   One column of one row. No schema change, no ownership transfer, no grant.
