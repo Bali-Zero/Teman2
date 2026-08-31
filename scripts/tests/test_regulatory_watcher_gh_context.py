@@ -90,61 +90,159 @@ def _blank_comments_and_strings(text: str) -> str:
     of "gh" inside prose (a log message, a comment, a commit body) would
     register as a fake invocation — the over-match failure mode family #3
     warns about, mirrored here as under-guard against false alarms.
+
+    Two refinements added after cross-family adversarial review (agy /
+    Gemini 3.1 Pro, non-Anthropic, 2026-08-31 — generator != grader on this
+    very checker):
+
+    1. A `$(...)` command substitution INSIDE a double-quoted string is
+       live code, not string content — `summary="$(gh pr create --head
+       x)"` really does invoke `gh`. The blanker now tracks a `cmdsub`
+       frame (with its own bare-paren depth counter, so a nested plain
+       subshell inside the substitution doesn't close it early) and
+       leaves that frame's content UNBLANKED, popping back to `dquote`
+       when its matching `)` is reached. Counter-example that used to slip
+       past undetected, now caught: see `_GUILT_CMDSUB_INSIDE_DQUOTE`.
+    2. That same tracking made a HEREDOC opened inside such a `$(...)` —
+       exactly this file's own `-m "$(cat <<EOF ... EOF)"` commit-message
+       idiom — a correctness trap: a heredoc body is plain text (no quote
+       semantics at all), but treating it as ordinary "cmdsub" code would
+       let a stray apostrophe in the body (this file's body really has
+       one: "main checkout's tracked tree") open a single-quote that only
+       closes at the next unrelated `'` anywhere later in the file,
+       corrupting everything scanned in between. Heredocs are now detected
+       explicitly and their bodies treated as fully opaque (blanked)
+       regardless of any quote characters inside them, ending at the
+       physical line that matches the delimiter exactly (`<<-` strips
+       leading tabs from that comparison, matching real shell). See
+       `test_heredoc_with_apostrophe_in_body_does_not_corrupt_the_scan`.
     """
     out: list[str] = []
     i = 0
     n = len(text)
-    in_squote = False
-    in_dquote = False
-    in_comment = False
+    # Stack of open lexical frames. Each is ("code" | "comment" | "squote"
+    # | "dquote" | "cmdsub", depth) — `depth` is only meaningful for
+    # "cmdsub" (see above): it starts at 1 for the "$("'s own paren and
+    # counts additional bare "(" seen directly inside this substitution,
+    # so the matching ")" pops the RIGHT frame instead of an inner nested
+    # subshell's ")" closing us prematurely (agy's counter-example 2).
+    stack: list[list[object]] = [["code", None]]
+
     while i < n:
         ch = text[i]
+        mode = stack[-1][0]
+
         if ch == "\n":
-            in_comment = False  # comments end at newline; quotes do not
+            if mode == "comment":
+                stack.pop()
             out.append("\n")
             i += 1
             continue
-        if in_comment:
+
+        if mode == "comment":
             out.append(" ")
             i += 1
             continue
-        if in_squote:
+
+        if mode == "squote":
             out.append(" ")
             if ch == "'":
-                in_squote = False
+                stack.pop()
             i += 1
             continue
-        if in_dquote:
+
+        if mode == "dquote":
             if ch == "\\" and i + 1 < n and text[i + 1] != "\n":
-                out.append(" ")
-                i += 1
+                out.append("  ")
+                i += 2
+                continue
+            if ch == '"':
+                stack.pop()
                 out.append(" ")
                 i += 1
                 continue
-            if ch == '"':
-                in_dquote = False
+            if ch == "$" and i + 1 < n and text[i + 1] == "(":
+                # Live code starts here — do NOT blank it (agy gap 1).
+                stack.append(["cmdsub", 1])
+                out.append("$(")
+                i += 2
+                continue
             out.append(" ")
             i += 1
             continue
-        # Not inside any quote/comment right now.
+
+        # mode is "code" or "cmdsub" here: a live-code context. Heredocs
+        # can start in either (agy gap 2's fix applies uniformly).
+        heredoc = _HEREDOC_START_RE.match(text, i)
+        if heredoc:
+            delimiter = heredoc.group(1) or heredoc.group(2) or heredoc.group(3)
+            strip_tabs = text[i : i + 3] == "<<-"
+            out.append(text[i : heredoc.end()])
+            i = heredoc.end()
+            nl = text.find("\n", i)
+            if nl == -1:
+                out.append(text[i:])
+                i = n
+            else:
+                out.append(text[i : nl + 1])
+                i = nl + 1
+            while i < n:
+                line_end = text.find("\n", i)
+                line = text[i:line_end] if line_end != -1 else text[i:]
+                candidate = line.lstrip("\t") if strip_tabs else line
+                if candidate == delimiter:
+                    out.append(line)
+                    if line_end != -1:
+                        out.append("\n")
+                        i = line_end + 1
+                    else:
+                        i = n
+                    break
+                out.append(" " * len(line))
+                if line_end != -1:
+                    out.append("\n")
+                    i = line_end + 1
+                else:
+                    i = n
+            continue
         if ch == "#":
-            in_comment = True
+            stack.append(["comment", None])
             out.append(" ")
             i += 1
             continue
         if ch == "'":
-            in_squote = True
+            stack.append(["squote", None])
             out.append(" ")
             i += 1
             continue
         if ch == '"':
-            in_dquote = True
+            stack.append(["dquote", None])
             out.append(" ")
             i += 1
             continue
+        if mode == "cmdsub":
+            if ch == "(":
+                stack[-1][1] = stack[-1][1] + 1
+                out.append(ch)
+                i += 1
+                continue
+            if ch == ")":
+                depth = stack[-1][1] - 1
+                if depth <= 0:
+                    stack.pop()
+                else:
+                    stack[-1][1] = depth
+                out.append(ch)
+                i += 1
+                continue
         out.append(ch)
         i += 1
     return "".join(out)
+
+
+#: `<<EOF`, `<<-EOF`, `<<'EOF'`, `<<"EOF"` — the delimiter is group 1
+#: (single-quoted), group 2 (double-quoted) or group 3 (bare word).
+_HEREDOC_START_RE = re.compile(r"<<-?\s*(?:'([^']*)'|\"([^\"]*)\"|([A-Za-z_][A-Za-z0-9_]*))")
 
 
 def _iter_logical_lines(blanked_text: str) -> list[tuple[int, str]]:
@@ -169,14 +267,26 @@ def _in_cd_subshell(prefix: str) -> bool:
     """True if `prefix` (everything on the logical line before the `gh`
     occurrence) ends inside a still-open `(cd ... && ...` subshell — the
     idiom this file already uses for every `git` call in the same function
-    (`(cd "$REGWATCH_REPO_ROOT" && git show ...)`)."""
-    last_open = prefix.rfind("(")
-    if last_open == -1:
+    (`(cd "$REGWATCH_REPO_ROOT" && git show ...)`).
+
+    Walks a paren stack rather than `rfind("(")` + "any ')' after it means
+    closed": found wrong by cross-family review (agy/Gemini, 2026-08-31) —
+    `(cd "$_wt" && (echo init) && gh pr view 123)` has an unrelated nested
+    subshell BEFORE the `gh` call; its own closing ')' made the old check
+    conclude the outer group had already closed, and flag a legitimately
+    cd-guarded call as a violation. The innermost STILL-OPEN paren is what
+    matters, not the most recently seen one.
+    """
+    stack: list[int] = []
+    for idx, ch in enumerate(prefix):
+        if ch == "(":
+            stack.append(idx)
+        elif ch == ")" and stack:
+            stack.pop()
+    if not stack:
         return False
-    span = prefix[last_open:]
-    if ")" in span:
-        return False  # that subshell already closed before our gh call
-    return bool(re.search(r"\(\s*cd\b.*&&", span))
+    segment = prefix[stack[-1] :]
+    return bool(re.match(r"\(\s*cd\b", segment)) and "&&" in segment
 
 
 def find_unguarded_gh_calls(text: str) -> list[tuple[int, str]]:
@@ -239,6 +349,41 @@ _INNOCENCE_CD_SUBSHELL = (
     '    _n=$(cd "$_wt" && gh pr view "$_pr_num" --json number -q .number)\n'
 )
 
+# agy/Gemini adversarial-review finding 1 (2026-08-31): a `gh` invocation
+# living inside a `$(...)` command substitution THAT ITSELF sits inside a
+# double-quoted string is live code, not string content — the earlier
+# blanker treated all double-quoted content as inert and missed it.
+_GUILT_CMDSUB_INSIDE_DQUOTE = (
+    '    summary="PR opened: $(gh pr create --head feat)"\n'
+)
+
+# agy/Gemini adversarial-review finding 2 (2026-08-31): an unrelated nested
+# subshell BEFORE the gh call, inside the same cd-guard, used to make the
+# naive "last '(' with no ')' after it" check conclude the outer group had
+# already closed — a false-positive violation on a call that IS legitimately
+# guarded.
+_INNOCENCE_NESTED_SUBSHELL_BEFORE_GH = (
+    '    (cd "$_wt" && (echo init) && gh pr view 123)\n'
+)
+
+# The trap fixing finding 1 could have introduced: this file's OWN real
+# commit-message heredoc, MINIMIZED but keeping the one apostrophe that
+# matters ("checkout's") and a `gh`-free body — a naive "cmdsub is just
+# code" treatment would open a spurious single-quote on that apostrophe
+# and only close it at the next unrelated "'" anywhere later in the text,
+# corrupting the scan for everything in between.
+_HEREDOC_WITH_APOSTROPHE = (
+    '    git -C "$_wt" commit -m "$(cat <<EOF\n'
+    "chore: promote delta\n"
+    "\n"
+    "main checkout's tracked tree stays untouched by this commit.\n"
+    "EOF\n"
+    '    )" >> "$LOG" 2>&1\n'
+    "    if gh pr merge \"$_pr_num\" --auto; then\n"
+    "        echo ok\n"
+    "    fi\n"
+)
+
 
 def test_guilt_bare_gh_pr_create_is_flagged() -> None:
     violations = find_unguarded_gh_calls(_GUILT_GH_PR_CREATE)
@@ -268,6 +413,33 @@ def test_innocence_short_r_flag_passes() -> None:
 
 def test_innocence_cd_subshell_form_passes() -> None:
     assert find_unguarded_gh_calls(_INNOCENCE_CD_SUBSHELL) == []
+
+
+def test_guilt_gh_inside_cmdsub_inside_dquote_is_flagged() -> None:
+    """agy/Gemini finding 1: a live `gh` invocation must not hide behind an
+    enclosing double-quoted string just because it sits inside `$(...)`."""
+    violations = find_unguarded_gh_calls(_GUILT_CMDSUB_INSIDE_DQUOTE)
+    assert len(violations) == 1, violations
+    assert "gh pr create" in violations[0][1]
+
+
+def test_innocence_nested_subshell_before_gh_still_passes() -> None:
+    """agy/Gemini finding 2: an unrelated nested subshell earlier in the
+    same cd-guarded group must not make the outer guard look closed."""
+    assert find_unguarded_gh_calls(_INNOCENCE_NESTED_SUBSHELL_BEFORE_GH) == []
+
+
+def test_heredoc_with_apostrophe_in_body_does_not_corrupt_the_scan() -> None:
+    """The fix for finding 1 (treating a dquote-nested $(...) as live code)
+    could have reintroduced a worse bug: this file's own commit-message
+    heredoc contains a real apostrophe ("checkout's") that must NOT be
+    read as a single-quote opening — if it were, everything after it up to
+    the next unrelated "'" anywhere in the text would be silently
+    swallowed, and the real `gh pr merge` call below would vanish instead
+    of being correctly flagged."""
+    violations = find_unguarded_gh_calls(_HEREDOC_WITH_APOSTROPHE)
+    assert len(violations) == 1, violations
+    assert "gh pr merge" in violations[0][1]
 
 
 def test_checker_does_not_flag_a_file_with_no_gh_calls_at_all() -> None:
