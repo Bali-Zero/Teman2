@@ -1,0 +1,147 @@
+brief_ref: evidence/2026-08/agent-air-m5-backend-rag-voa-price-790-0831-4cd8947a/brief.yml
+plan_ref: >-
+  PR #5407 (agent/air-m5/backend-rag/voa-price-790-0831 -> main) — Zero's 2026-08-31 price ruling,
+  carried into the one store that was contradicting it.
+lanes:
+  - lane: voa-price-build
+    role: build
+    seat: claude (this session — M5 interactive, sole build lane)
+  - lane: voa-price-review-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: voa-price-review-kimi
+    role: review
+    seat: kimi-code/k3
+diff:
+  files: 7
+  note: >-
+    git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD. The insertion and
+    deletion counts are deliberately NOT narrated: CI recomputes them every run and a copy here is
+    not evidence, only a tripwire that re-arms every time main moves. The sibling lane on #5309
+    had that field wrong four times in one hour, twice from main moving rather than from a commit.
+    The file count is kept because it survives a merge from main.
+pii_scan: clean
+receipts:
+  - claim: >-
+      The database really did contradict the ruling, and the extension really did not — this is
+      the measurement the whole PR rests on.
+    cmd: >-
+      bash scripts/pg.sh -c "SELECT code, name, base_price, is_active FROM practice_types
+      WHERE code ILIKE '%voa%' OR name ILIKE '%arrival%' ORDER BY code;"
+    result: >-
+      Exactly two rows. visa_b1_voa "B1 - VOA" 750000.00 active; ext_b1_voa "Extension B1 - VOA"
+      850000.00 active. So the issuance was 40.000 IDR under the ruling and the extension was
+      already right. Read-only role, production catalogue, no client row touched.
+    exit: 0
+    ts: 2026-08-31T02:20Z
+    seat: session (build lane)
+  - claim: >-
+      No third VOA row exists to be left behind — the kimi seat's headline finding, refuted rather
+      than dismissed.
+    cmd: >-
+      the same production query (any code or name matching VOA or "arrival"), plus
+      sed -n '42,45p' apps/backend-rag/backend/db/migration_base.py
+    result: >-
+      The query returns two rows and neither is `visa_voa`. migration_base.py:42-45 states the
+      pre-2026-04-18 Python migrations "are applied manually (the automated loader only reads
+      db/migrations_v2/*.sql)", so the ON CONFLICT DO UPDATE the seat correctly read in
+      migration_123 has no unattended rerun path. Two independent grounds; both are now written
+      into 302's header where the next reader will ask the same question.
+    exit: 0
+    ts: 2026-08-31T02:44Z
+    seat: session (build lane)
+  - claim: >-
+      The tripwire now pins BOTH stores, and its database arm is not vacuous.
+    cmd: >-
+      pytest backend/tests/test_data_invariant_tripwires.py, then two mutations and a restore from
+      a scratchpad copy (never `git checkout --`, the worktree had uncommitted work)
+    result: >-
+      10 passed under the backend venv. Mutation A, rewriting migration 302's forward section to
+      750000: RED, naming 302 as the newest setter that lacks the ruled figure. Mutation B, adding
+      a migration that sets base_price for visa_b1_voa: RED, because the frozen set of setters
+      stops matching. Restored byte-identical, back to 10 passed.
+    exit: 0
+    ts: 2026-08-31T02:30Z
+    seat: session (build lane)
+  - claim: >-
+      The tripwire watches the file the LIVE service loads, not a filename typed twice.
+    cmd: >-
+      the test imports `_PRICING_FILENAME` from backend.services.pricing.pricing_service
+    result: >-
+      The path is built from the service's own constant. A rename to a 2027 edition moves the
+      tripwire with it instead of leaving it green against a dead file — the proxy failure,
+      superscar #9, and the same defect this session had already cured once in the price sentinel.
+    exit: 0
+    ts: 2026-08-31T02:30Z
+    seat: session (build lane)
+  - claim: >-
+      Migration 302 does not collide, is idempotent, and its rollback restores what production
+      actually held.
+    cmd: >-
+      git ls-tree HEAD migrations_v2/ | cut -d_ -f1 | sort | uniq -d, plus reading 302 and 221
+    result: >-
+      No duplicate number: main holds 299 and 301, this adds 302. The UPDATE is code-scoped and
+      value-guarded by base_price IS DISTINCT FROM 790000, so a rerun updates zero rows. The
+      ROLLBACK restores 750000, which is what migration 221 seeded on 2026-06-09 and what the
+      production query above still measured before this change — the rollback value is verified,
+      not assumed.
+    exit: 0
+    ts: 2026-08-31T02:20Z
+    seat: session (build lane)
+  - claim: >-
+      The seats' shared finding about the price-list document is resolved by removal, not by
+      argument.
+    cmd: >-
+      git show $(git merge-base origin/main HEAD):docs/pricing/Bali_Zero_Price_List_2026.md,
+      grepped for VOA / arrival / 790 / 850 and for the contact block
+    result: >-
+      The merge-base document lists NO VOA row at all and its contact block is internally
+      consistent. So the regeneration was adding new content, not correcting a price — and it was
+      the regeneration that introduced the href/display mismatch. Removing it removes the defect
+      and leaves the ruling carried by the JSON sheet and the migration. The document's own
+      staleness and its contact block are ledgered as inherited.
+    exit: 0
+    ts: 2026-08-31T02:50Z
+    seat: session (build lane)
+council_run: council-run.jsonl
+dissent:
+  - seat: kimi-code/k3
+    objection: >-
+      A second live row, `visa_voa`, is left at 750000 by legacy migrations 066 and 123, whose
+      ON CONFLICT DO UPDATE re-asserts the price on every rerun, so the divergence this PR claims
+      to close stays open on the surface staff actually pick from.
+    status: RETRACTED
+    resolution: >-
+      REFUTED on two measured grounds, both recorded in the receipts and in 302's header. The seat
+      itself marked the production link SPECULATIVE and said the burden was on the diff, which was
+      fair: the header asserted "the one divergence that exists today" with no receipt attached.
+      The burden is now discharged rather than argued away.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Migration 302 records itself applied when the row is absent — NOTICE, return, success — so a
+      database that never got the row keeps the under-quote behind a green migration log.
+    status: CONFIRMED
+    resolution: >-
+      Correct as stated and deliberately kept. Migration 221 creates the row and runs first, so in
+      ordered application the row always exists; raising on a legitimately empty catalogue would
+      fail a fresh environment for no reason. It is a real gap only for a database that skipped
+      221, which the ordered runner cannot produce. Written into the header rather than left for
+      the next reader to rediscover.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      The regenerated price list still reads "Last updated: 2026-05-06" while carrying twenty new
+      rows written today — a client-facing document misstating its own provenance.
+    status: CONFIRMED
+    resolution: >-
+      Found independently by the kimi seat as well. Resolved by removing the regeneration from
+      this PR entirely; the generator's stale-header behaviour is ledgered for the follow-up PR
+      that will do the regeneration on its own gate.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      No test executes migration 302 — rerun behaviour, absent-row handling, the rollback and the
+      SQL postcondition are all uncovered.
+    status: CONFIRMED
+    resolution: >-
+      True, and inherited: this repo has no execution harness for migrations_v2 at all, so the
+      finding is about the tier and not about 302. Not built here — a migration-execution harness
+      is a lane of its own, not a rider on a price fix. Ledgered.
