@@ -2136,9 +2136,9 @@ openinference-instrumentation==0.1.57 \
     #   openinference-instrumentation-anthropic
     #   openinference-instrumentation-google-genai
     #   openinference-instrumentation-openai
-openinference-instrumentation-anthropic==1.1.2 \
-    --hash=sha256:1fa115e318ef1f70dc7305e04e408d00fbe2944b43572d9f5f2df5d7955399ed \
-    --hash=sha256:46dbcf32732d9198bce0db419ecf79451d4b62dc141e605273ff0d81502c06a5
+openinference-instrumentation-anthropic==2.1.1 \
+    --hash=sha256:32f97e6395d11f16a57c6679e09548742378debfbb0d291b95901e36a2dfc2b8 \
+    --hash=sha256:854b57e1b848b4c6f5d261e0b7218870367718920761796c196e73d02770757a
     # via -r requirements-prod.txt
 openinference-instrumentation-google-genai==1.4.0 \
     --hash=sha256:265935f09845c73a770c8a82c46e5a88277aaa054ad9cdd816ce845e6aa5378c \

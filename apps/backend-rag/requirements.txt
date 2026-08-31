@@ -136,7 +136,7 @@ googleapis-common-protos>=1.75.1  # Fix pkg_resources deprecation warning
 # Langfuse POC (observability) - kill-switch via LANGFUSE_ENABLED env var
 # Added 2026-04-21 in feat/observability-langfuse-poc (see apps/backend-rag/README.md)
 langfuse>=4.14.4,<5.0.0  # LLM observability, OTEL-based v2+
-openinference-instrumentation-anthropic>=1.1.2  # Auto-trace Anthropic calls
+openinference-instrumentation-anthropic>=2.1.1  # Auto-trace Anthropic calls
 openinference-instrumentation-google-genai>=1.4.0  # Auto-trace google-genai SDK (Gemini)
 openinference-instrumentation-openai>=0.1.54  # Auto-trace OpenAI-compat (DeepSeek, Ollama)
 
