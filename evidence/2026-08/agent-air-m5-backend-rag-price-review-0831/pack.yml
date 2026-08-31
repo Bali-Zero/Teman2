@@ -158,6 +158,24 @@ receipts:
     exit: 0
     ts: 2026-08-31T09:14Z
     seat: session (build lane, refuting a subagent finding)
+risks:
+  - >-
+    EVERY MUTATION-VERIFIED RECEIPT IN THIS PACK IS A STATEMENT ABOUT ONE LAPTOP, NOT ABOUT CI.
+    The interpreter guard, the log-offset guard, the STATE_MISSING derivation guard and the
+    walker-parity pin execute in NO PR-time context: no workflow names
+    scripts/tests/test_price_review_sentinel.py, and the only thing that runs scripts/tests/ as a
+    directory triggers on schedule + workflow_dispatch, never on pull_request. This file's first
+    CI execution will be the nightly on main AFTER this merges. A reader who counts six
+    mutation-verified receipts here and infers CI coverage would be wrong, which is why the
+    sentence is in the pack and not only in the ledger. The gap is inherited — 174 of 235 files
+    under scripts/tests are named by nothing — and its two-part fix, the second part
+    operator-gated, is in PENDING-ARMS.
+  - >-
+    A REQUIRED, GREEN CHECK CURRENTLY ASSERTS THE OPPOSITE. `Every guard proves guilt AND
+    innocence` succeeds with the line "all armed in CI", and its census has never heard of these
+    four guards. That sentence, not the missing workflow, is what a future reader is most likely
+    to be misled by.
+
 council_run: council-run.jsonl
 dissent:
   - seat: kimi-code/k3
