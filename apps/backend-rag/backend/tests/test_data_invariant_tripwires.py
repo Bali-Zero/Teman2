@@ -377,14 +377,18 @@ def test_seeder_does_not_read_a_pin_from_the_committed_roster() -> None:
 
 
 def test_the_voa_prices_are_the_ones_the_owner_ruled():
-    """e-VOA 790.000 IDR, extension 850.000 IDR — ruled by the owner on
-    2026-08-31 after the CRM was found quoting 750.000 for the same service.
+    """e-VOA 750.000 IDR, extension 850.000 IDR — ruled by the owner on
+    2026-08-31, reversing his own 2026-07-24 directive that had moved issuance
+    to 790.000. Both stores now say 750.000; migration 303 is what moved the
+    table, migration 302 (already applied in production) is what had moved it
+    to 790.000 hours earlier, and both stay in the frozen set below because
+    both really do assign this column.
 
     This is a value tripwire, not a style check. `practice_types.base_price`
     defaults a client quote (`crm_practices.py`), the JSON drives GARUDA and
     the visa_engine adapter at request time, and nothing reconciles the two —
-    so a silent edit to either figure re-opens the divergence migration 302
-    closed. If the owner rules a new price, change it here in the same commit.
+    so a silent edit to either figure re-opens the divergence migrations 302
+    and 303 closed. If the owner rules a new price, change it here in the same commit.
     """
     import json
     import re
@@ -401,7 +405,7 @@ def test_the_voa_prices_are_the_ones_the_owner_ruled():
         (backend_dir / "data" / _PRICING_FILENAME).read_text(encoding="utf-8")
     )
     single = sheet["services"]["single_entry_visas"]
-    assert single["B1 Visa on Arrival (VOA)"]["price"] == "790.000 IDR"
+    assert single["B1 Visa on Arrival (VOA)"]["price"] == "750.000 IDR"
     assert single["B1 Visa on Arrival Extension"]["price"] == "850.000 IDR"
 
     # --- side 2: practice_types.base_price, which is the half that was WRONG.
@@ -413,8 +417,9 @@ def test_the_voa_prices_are_the_ones_the_owner_ruled():
     # price cannot do so silently — it enters the set, the set stops matching,
     # and whoever wrote it has to come here and say what the new price is.
     ruled = {
-        "visa_b1_voa": (790000, {"221_practice_types_b1_voa.sql",
-                                 "302_practice_types_voa_price_790.sql"}),
+        "visa_b1_voa": (750000, {"221_practice_types_b1_voa.sql",
+                                 "302_practice_types_voa_price_790.sql",
+                                 "303_practice_types_voa_price_750.sql"}),
         "ext_b1_voa": (850000, {"221_practice_types_b1_voa.sql"}),
     }
     migrations = sorted(
