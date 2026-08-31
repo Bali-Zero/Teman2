@@ -3,7 +3,6 @@ from __future__ import annotations
 import ast
 import io
 import pathlib
-import re
 import tokenize
 from typing import Any
 
@@ -1032,6 +1031,25 @@ def test_every_catalog_reference_in_this_module_is_schema_qualified() -> None:
         # `public`. An aggregate is shadowable exactly like a function.
         "string_agg",
     )
+    # THIS TUPLE IS HAND-MAINTAINED AND THAT IS A KNOWN, UNCLOSED WEAKNESS.
+    # A list-free replacement was written on 2026-08-31 and WITHDRAWN the same
+    # day: it extracted SQL with `re.findall(r'"""(.*?)"""')`, which reads only
+    # the triple-quoted blocks — five of this module's SQL statements are
+    # single-quoted one-liners (operational_preflight.py:403, 474, 497, 519,
+    # 538) and were never scanned at all, so it answered "are the triple-quoted
+    # blocks clean?" while appearing to answer "is the module's SQL clean?".
+    # Two entries in its allowlist were also wrong, disproven on a real
+    # PostgreSQL 17.10: `count` IS shadowable via `CREATE AGGREGATE
+    # public.count(*)`, and `substring` is grammar-resolved only in its
+    # `from ... for ...` form — the comma form is an ordinary search_path
+    # lookup. And it fired on correct work (a docstring mentioning a Python
+    # call; a legitimate `NOT (a OR b)`), with a message telling the author to
+    # grow the very allowlist that was wrong.
+    #
+    # Under rule 8 the surface went to a spec rather than a third patch:
+    # docs/specs/2026-08-31-unqualified-catalog-call-lint.md. Until that lands,
+    # this tuple is the only guard, and it can only catch names someone
+    # remembered to add.
     for name in forgeable:
         unqualified = code.replace(f"pg_catalog.{name}", "")
         assert name not in unqualified, (
@@ -1041,54 +1059,3 @@ def test_every_catalog_reference_in_this_module_is_schema_qualified() -> None:
         )
 
 
-def test_no_sql_call_in_this_module_is_unqualified_without_being_declared_safe():
-    """The tuple above is HAND-MAINTAINED, which is the exact anti-pattern the
-    census in this module exists to replace -- and it failed the way a hand
-    list always fails: `string_agg` was missing from it, so a real forgeable
-    call sat unqualified in a segregation-of-duties check and nothing was red.
-
-    So this check inverts the polarity. Instead of "these names must be
-    qualified" (where a name nobody thought of is a SILENT miss), it asserts
-    "every unqualified call site in this module's SQL must be explicitly
-    declared safe" (where a call nobody thought of is a LOUD failure). Adding
-    a new catalog call now forces a decision at review time rather than
-    depending on someone remembering to extend a tuple.
-
-    A name is safe to leave unqualified only if it cannot be shadowed by an
-    object the checked role may create in `public` -- which in practice means
-    reserved SQL syntax that is not resolved through `search_path` at all.
-    """
-    source = pathlib.Path(operational_preflight.__file__).read_text()
-    assert source, "could not read operational_preflight.py"
-
-    # Only look inside the triple-quoted SQL literals -- Python calls in this
-    # file are not resolved through a Postgres search_path.
-    sql_blocks = re.findall(r'"""(.*?)"""', source, re.DOTALL)
-    assert sql_blocks, "no SQL literals found -- this check would be vacuous"
-
-    #: Not resolved via search_path: SQL keywords/constructs the parser handles
-    #: directly. Anything NOT here must carry an explicit `pg_catalog.`.
-    NOT_SEARCH_PATH_RESOLVED = {
-        "coalesce", "cast", "nullif", "greatest", "least", "exists", "in",
-        "any", "all", "values", "case", "extract", "overlaps", "position",
-        "substring", "trim", "array", "row", "count",
-    }
-
-    offenders: set[str] = set()
-    for block in sql_blocks:
-        # An identifier immediately followed by `(`, not already preceded by a
-        # dot (which means it is schema- or alias-qualified).
-        for match in re.finditer(r"(?<![.\w])([a-z_][a-z0-9_]*)\s*\(", block, re.I):
-            name = match.group(1).lower()
-            if name in NOT_SEARCH_PATH_RESOLVED:
-                continue
-            offenders.add(name)
-
-    assert not offenders, (
-        "these calls appear unqualified inside this module's SQL. Under "
-        "`search_path = public, pg_catalog` the checked role can create an "
-        "object in `public` that shadows any of them and forge the check's "
-        "answer. Qualify each with `pg_catalog.`, or -- if it genuinely is not "
-        "resolved through search_path -- add it to NOT_SEARCH_PATH_RESOLVED "
-        "with the reason: " + repr(sorted(offenders))
-    )

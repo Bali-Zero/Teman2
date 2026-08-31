@@ -52,7 +52,7 @@ seat_diversity_note:
   that made both the migration and the check answer clean with the ownership wrong, and it caught a
   rollback section that would have told the migration framework it had reversed something it had not."
 diff:
-  net_lines: "8 files, +1986/-28 (git diff --numstat over the merge-base)"
+  net_lines: "10 files, +2091/-28 (git diff --numstat over the merge-base)"
   behaviour_change:
     "No production behaviour changes. Migration 300 is a no-op against the production primary because
     the five ALTERs already landed there by hand on 2026-08-30 before this lane opened; it exists so an
@@ -277,6 +277,32 @@ pii_scan_note:
   Every destructive experiment ran against throwaway local databases and uuid-suffixed roles created
   and dropped by the test fixtures. No secret value entered any transcript."
 dissent:
+  - seat: claude-opus-5 (Gear-3 final on-disk gate, second pass, fresh context)
+    objection:
+      'The list-free detector added to replace the hand-maintained `forgeable` tuple is blind to most
+      of the module''s SQL: it extracts with `re.findall(r''"""(.*?)"""'')`, and five of this module''s
+      SQL statements are single-quoted one-liners (operational_preflight.py:403, 474, 497, 519, 538)
+      that are never scanned — while two of the blocks it DOES scan are prose docstrings. Proven by
+      execution: `_NEW_PROBE_SQL = "SELECT array_agg(...) FROM pg_catalog.pg_roles AS role"` leaves
+      the suite at 46 passed; the same text inside a triple-quoted block goes red. Separately, two of
+      its allowlist entries are wrong on a real PostgreSQL 17.10 — `count` IS shadowable via
+      `CREATE AGGREGATE public.count(*)`, and `substring` is grammar-resolved only in its
+      `from ... for ...` form. And it fires on correct work (a docstring naming a Python call; a
+      legitimate `NOT (a OR b)`), with a message directing the author to grow the wrong allowlist.'
+    status: CONFIRMED
+    resolution:
+      "Reproduced independently by the session before acting: the five unscanned single-quoted
+      statements were enumerated on disk. The detector is WITHDRAWN, not patched a third time — round
+      1 was the hand tuple, round 2 was this, and round 2 failed in the same silent-miss direction
+      plus a new false-positive one, so under rule 8 the surface is under-specified and gets a spec:
+      docs/specs/2026-08-31-unqualified-catalog-call-lint.md. It records both rounds, the allowlist
+      entries the gate verified genuinely sound (so the next attempt need not re-derive them), and
+      six requirements — R1 an ast-based extractor rather than any regex, R2 an empirical probe per
+      allowlist entry, R6 decide whether a live-cluster shadowing test is the better instrument
+      before writing a parser at all. WHAT SHIPS is the security fix itself: `string_agg` qualified,
+      and added to the tuple. The tuple now carries a comment stating plainly that it is
+      hand-maintained, that this is a known uncovered class, and why the replacement was withdrawn —
+      so nobody reads it as sufficient. Gap ledgered in PENDING-ARMS."
   - seat: codex-gpt-5.6-sol (adversarial grader)
     objection:
       "A hostile search_path defeats both the migration and the preflight. Both called
