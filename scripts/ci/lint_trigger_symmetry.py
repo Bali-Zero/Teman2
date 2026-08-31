@@ -87,26 +87,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 WORKFLOW_DIR = Path(".github") / "workflows"
 
 
-def load_on_block(workflow_path: Path) -> dict[str, Any] | list[Any] | None:
-    """Return the parsed `on:` trigger block, or None if the file cannot be read
-    or parsed.
-
-    Handles the YAML 1.1 boolean-`True` gotcha for a bare `on:` key, and
-    accepts mapping, list, or scalar forms without normalising away the
-    information needed to detect presence.
-    """
-    try:
-        doc = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
-    except (OSError, yaml.YAMLError):
-        return None
-    if not isinstance(doc, dict):
-        return None
-    on_block = doc.get("on")
-    if on_block is None:
-        on_block = doc.get(True)
-    return on_block
-
-
 def trigger_present(on_block: Any, name: str) -> bool:
     """Whether trigger `name` is declared in `on_block`.
 
@@ -241,8 +221,16 @@ def evaluate(repo_root: Path) -> tuple[list[str], int]:
         # A refuter of this lint pointed out that a workflow which parses
         # perfectly but simply has no `on:` key was being reported as
         # "unparseable", which is false and sends a reader hunting for a syntax
-        # error that is not there. `load_on_block` cannot tell them apart, so the
-        # parse is done here and the two are reported separately.
+        # error that is not there. A single parse-or-None helper cannot tell them
+        # apart, so the parse is done here and the two are reported separately.
+        #
+        # That helper (`load_on_block`) used to live above this function and was
+        # DELETED rather than left as residue. A cross-family refuter noticed it
+        # was unreachable: it read authoritatively, and its YAML-1.1 fallback was
+        # the WEAKER one — it took `doc.get(True)` for any scalar, where the code
+        # below takes it only when the value is trigger-shaped (mapping or list).
+        # A dead function whose behaviour is subtly worse than the live path is
+        # not harmless: the next reader wires it back in and reopens the hole.
         try:
             doc = yaml.safe_load(text)
             parsed = True
