@@ -374,3 +374,25 @@ def test_seeder_does_not_read_a_pin_from_the_committed_roster() -> None:
         "was removed. If it was replaced, point this test at the replacement "
         "rather than deleting the check."
     )
+
+
+def test_the_voa_prices_are_the_ones_the_owner_ruled():
+    """e-VOA 790.000 IDR, extension 850.000 IDR — ruled by the owner on
+    2026-08-31 after the CRM was found quoting 750.000 for the same service.
+
+    This is a value tripwire, not a style check. `practice_types.base_price`
+    defaults a client quote (`crm_practices.py`), the JSON drives GARUDA and
+    the visa_engine adapter at request time, and nothing reconciles the two —
+    so a silent edit to either figure re-opens the divergence migration 302
+    closed. If the owner rules a new price, change it here in the same commit.
+    """
+    import json
+    from pathlib import Path
+
+    sheet = json.loads(
+        (Path(__file__).resolve().parents[1] / "data"
+         / "bali_zero_official_prices_2026.json").read_text(encoding="utf-8")
+    )
+    single = sheet["services"]["single_entry_visas"]
+    assert single["B1 Visa on Arrival (VOA)"]["price"] == "790.000 IDR"
+    assert single["B1 Visa on Arrival Extension"]["price"] == "850.000 IDR"
