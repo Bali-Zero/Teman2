@@ -94,6 +94,16 @@ proof: |
     rather than omitted, per team-lead's instruction.
   - Worktree confirmed clean (no uncommitted changes) with HEAD matching PR
     #5440's headRefOid; PR state OPEN, mergeable MERGEABLE, not yet merged.
+  - Self-correction, found by CI's own countable-claims rule rather than
+    caught first locally: the first push of this pack declared
+    `diff.net_lines` from the 3-file code diff alone (395 lines, 2 commits)
+    -- but `git diff --numstat` from merge-base is computed against
+    whatever this branch's HEAD actually is, and the Evidence Pack commit
+    is itself part of that same branch diff. The real, CI-measured figure
+    at that HEAD was 6 files / +723/-0 / 3 commits (the 3 code files plus
+    the pack's own 3 files). Corrected here to the figure this fix commit
+    itself produces -- see the receipt below for the exact CI failure this
+    was caught from.
 
 dissent:
   - seat: codex-gpt-5.6-sol
@@ -239,16 +249,23 @@ receipts:
     exit: 0
     ts: "2026-08-31T08:49:30Z"
     seat: claude-sonnet-5
+  - claim: "the first push of this pack (commit dad7ea4557e3cbfa76ad1dabdef17dfc22ed99b2) failed the real 'Harness floor recompute' CI check on countable-claims: diff.net_lines said '3 files, +395/-0, 2 commits' but CI's own git diff --numstat from merge-base measured 6 files / +723/-0 / 3 commits at that HEAD, because the Evidence Pack commit is itself part of the branch diff it describes -- corrected in this follow-up commit"
+    cmd: "gh run view 33375608294 --job 99436286850 --log (Harness floor recompute, PR #5440, head_sha dad7ea4557e3cbfa76ad1dabdef17dfc22ed99b2)"
+    result: "evidence_pack_lint: FAIL -- 3 violation(s): diff.net_lines narrates 3 files/+395-0/2 commits but the diff has 6 files/+723-0/3 commits"
+    exit: 1
+    ts: "2026-08-31T09:01:45Z"
+    seat: claude-sonnet-5
 
 pii_scan: clean
 pii_scan_note: >-
-  Diff is entirely a CI workflow YAML file plus two pytest test files
-  covering launchd-organ heartbeat cadence config; no client data, OSINT,
-  or credentials touched or referenced.
+  Diff is a CI workflow YAML file, two pytest test files covering
+  launchd-organ heartbeat cadence config, and this Evidence Pack's own
+  brief/pack/journal files; no client data, OSINT, or credentials touched
+  or referenced.
 
 spend:
   wall_clock_hours: 1.5
   adversarial_rounds: 1
 
 diff:
-  net_lines: "3 files, +395/-0, 2 commits"
+  net_lines: "6 files, +740/-0, 4 commits"
