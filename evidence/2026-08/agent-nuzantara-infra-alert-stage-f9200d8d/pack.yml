@@ -1,0 +1,204 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  "Team-lead dispatch (teammate message, this session, 2026-08-31): cure the Gear-3 gate caveat on
+  PR #5422 ('alert names wrong stage when run-migrations cancelled') in its own PR, from fresh
+  origin/main, without touching #5422's frozen branch. No separate governing mandate doc — a
+  direct, narrowly-scoped infra fix dispatched ad hoc off that caveat."
+lanes:
+  - lane: alert-stage-build
+    role: build
+    seat: >
+      claude (this session, conducting agent — diagnosed the defect by reading PR 5422's diff plus
+      the unchanged step body on origin/main, wrote the truth table, wrote the 4-branch fix, wrote
+      this pack). Per current CLAUDE.md Gear-3 routing doctrine the model is Opus 5; not
+      independently introspectable from inside the session, stated as doctrine rather than a
+      verified runtime fact.
+  - lane: alert-stage-review-gemini
+    role: review
+    seat: >
+      gemini-3.1-pro (agy CLI v1.1.22, cross-family, read-only sandbox implied by prompt scope —
+      dispatched WITH the full truth table and 4 explicit adversarial probes, labeled a through d:
+      reachability of the success/skipped pair; simultaneous-bad-state branch ordering; bash/YAML
+      mechanics; GHA cancelled semantics. Verdict CONFIRMED, all 4 probes addressed individually —
+      see receipts and dissent (each probed concern recorded as a RETRACTED objection, not
+      silently dropped).
+seat_diversity_note:
+  "One build lane only (claude) -> D3's non-Anthropic build-seat-diversity floor does not apply
+  (needs >=2 build lanes to trigger). Cross-family review WAS sought regardless, on the repo's own
+  generator!=grader default: Codex (gpt-5.6-sol, cross-family) was tried FIRST and failed with
+  'ERROR: Your workspace is out of credits' (real cascade exhaustion, not a health-check skip —
+  see receipts); Kimi K3 was tried SECOND and failed with a 403 weekly-quota-limit error (same);
+  Gemini 3.1 Pro via agy succeeded THIRD and delivered the real review this pack's dissent is
+  built from. This is the CLAUDE.md multi-LLM cascade working as designed, not a shortcut — two
+  real quota-exhaustion failures are recorded as receipts rather than silently omitted."
+diff:
+  net_lines: |
+    3 files, +351/-0, 1 commits (evidence_pack_lint.py --print-measured --commit-count 1, run
+    against this pack's own final staged content — the canonical sentence, pasted verbatim rather
+    than hand-computed, per this script's own documented anti-self-reference guidance). Of that
+    total, the actual behavior change is the .github/workflows/fly-deploy.yml edit alone: 17
+    inserted lines, zero deleted, confirmed via `git diff --numstat` scoped to that one path
+    against this branch's merge-base with origin/main, 80b460bc4d715f47fd30062f02dad8d5fa4b9585.
+    The rest of the measured total is this evidence pack itself (brief.yml and pack.yml), both
+    pure additions, same commit.
+  behaviour_change: |
+    One file changed, one step's shell logic only: `.github/workflows/fly-deploy.yml`, job
+    `deploy-failure-alert`, step "Determine failing stage". The pre-existing 2-branch if/else
+    (tests only the literal string "failure" against `needs.run-migrations.result`) becomes a
+    4-branch if/elif/elif/else that also tests "cancelled" for `run-migrations`, then both
+    "cancelled" and (the pre-existing, unchanged) "failure" fallback for `deploy`. No other job,
+    step, condition, secret, or trigger in the file is touched. No line-range overlap with PR
+    #5422's own diff (job-level `if:` widening, deploy timeout/retry loop) — verified: #5422's
+    hunk ends at the `steps:` context line; this diff's first changed line is the next step's
+    `run:` body, several unchanged lines later.
+
+    FULL TRUTH TABLE (reachable (run-migrations.result, deploy.result) pairs — deploy's ONLY gate
+    is `needs: run-migrations`, no override `if:`, confirmed by reading the file, R6 receipt):
+
+      run-migrations | deploy   | alert if: fires? | stage named        | detail says          | verdict
+      ---------------|----------|-------------------|---------------------|-----------------------|--------
+      success         success   no (neither term)  -                    -                       N/A, post-deploy-health takes over
+      success         failure   yes (deploy=fail)   deploy               "crashed"               correct, UNCHANGED behavior
+      success         cancelled yes (deploy=cancel) deploy               "was cancelled"         FIXED (was "crashed" pre-this-PR)
+      success         skipped   not reachable       -                    -                       deploy has no if beyond needs — see brief risks
+      failure         skipped   yes (rm=failure)    run-migrations       "failed"                correct, UNCHANGED behavior
+      cancelled       skipped   yes (rm=cancelled)  run-migrations       "was cancelled"          FIXED — THE BUG (was stage=deploy/"crashed" pre-this-PR)
+      skipped         skipped   no (neither term)   -                    -                       pre-deploy-gate failed upstream; out of scope, pre-existing, not touched by #5422 or this PR
+
+    run-migrations and deploy can never BOTH be in {failure, cancelled} simultaneously (deploy
+    only runs at all when run-migrations succeeded), so checking run-migrations first and falling
+    through to deploy's cases is not an ordering risk — whichever branch matches IS the one that
+    broke, by construction.
+receipts:
+  - claim: "actionlint baseline (bare, includes shellcheck) on origin/main is 14 findings, matching the dispatching team lead's stated baseline exactly."
+    cmd: "cd /Users/nuzantara/nuzantara && actionlint .github/workflows/fly-deploy.yml; grep -c '^\\.github' <output>"
+    result: "exit=1, 14 findings, all [shellcheck] SC2086 (info, unquoted $GITHUB_OUTPUT) or SC2129 (style, group redirects)"
+    exit: 1
+    ts: "2026-08-31T06:48:40Z"
+    seat: claude (this session)
+  - claim: "actionlint with the EXACT flags .github/workflows/actionlint.yml's REQUIRED gate uses (-shellcheck=, disabling shellcheck entirely) shows ZERO findings on origin/main."
+    cmd: "cd /Users/nuzantara/nuzantara && actionlint -shellcheck= .github/workflows/fly-deploy.yml"
+    result: "exit=0, 0 lines of output"
+    exit: 0
+    ts: "2026-08-31T06:48:40Z"
+    seat: claude (this session)
+  - claim: "After the fix, bare actionlint (incl. shellcheck) rises 14 -> 22 findings — all 8 new findings are the SAME two pre-existing categories (SC2086 unquoted $GITHUB_OUTPUT, SC2129 group-your-redirects), proportionally more because the step gained 2 more branches (2 -> 4) each replicating the file's own pre-existing style, not a new category of complaint. This file's own actionlint.yml explicitly disables shellcheck for the required gate because 'the corpus is not shellcheck-clean' — a declared, accepted, deferred style debt, not a bar this PR is expected to clear."
+    cmd: "cd /Users/nuzantara/nuzantara/.worktrees/infra-alert-stage && actionlint .github/workflows/fly-deploy.yml; grep -c '^\\.github' <output>; diff <(actionlint main-copy) <(actionlint fixed-copy) to classify SC-codes"
+    result: "exit=1, 22 findings — 6 unrelated to this step (unchanged from baseline) + 12 SC2086 + 4 SC2129 all within the fixed step's script block, vs. 6 SC2086 + 2 SC2129 there on baseline"
+    exit: 1
+    ts: "2026-08-31T06:48:43Z"
+    seat: claude (this session)
+  - claim: "After the fix, actionlint with the REQUIRED gate's exact flags (-shellcheck=) is still ZERO findings — this PR does not affect the check that actually gates merges."
+    cmd: "cd /Users/nuzantara/nuzantara/.worktrees/infra-alert-stage && actionlint -shellcheck= .github/workflows/fly-deploy.yml"
+    result: "exit=0, 0 lines of output"
+    exit: 0
+    ts: "2026-08-31T06:48:43Z"
+    seat: claude (this session)
+  - claim: "The workflow-fix diff (before adding this pack) is exactly 1 file, +17/-0."
+    cmd: "cd /Users/nuzantara/nuzantara/.worktrees/infra-alert-stage && git diff --numstat"
+    result: "17\\t0\\t.github/workflows/fly-deploy.yml"
+    exit: 0
+    ts: "2026-08-31T06:48:43Z"
+    seat: claude (this session)
+  - claim: "deploy job's ONLY gate is `needs: run-migrations` — no override `if:` exists anywhere in that job — confirmed by reading the job header directly, not inferred."
+    cmd: "sed -n '160,163p' .github/workflows/fly-deploy.yml"
+    result: "'deploy:' / 'name: Fly.io rolling deploy' / 'needs: run-migrations # BLOCCATO se migration fallisce' / 'runs-on: ubuntu-latest' -- no if: line present"
+    exit: 0
+    ts: "2026-08-31T06:48:43Z"
+    seat: claude (this session)
+  - claim: "PR #5422 is still OPEN, mergeStateStatus CLEAN, has not merged out from under this PR's base assumption; origin/main HEAD is unchanged (80b460bc4d715f47fd30062f02dad8d5fa4b9585) since this worktree was created — no rebase needed."
+    cmd: "gh pr view 5422 --json number,state,mergeStateStatus,autoMergeRequest ; git fetch origin --quiet && git rev-parse origin/main"
+    result: '{"autoMergeRequest":null,"mergeStateStatus":"CLEAN","number":5422,"state":"OPEN"} / 80b460bc4d715f47fd30062f02dad8d5fa4b9585 (unchanged)'
+    exit: 0
+    ts: "2026-08-31T06:48:53Z"
+    seat: claude (this session)
+    note:
+      "autoMergeRequest:null is NOT read as 'not armed' — per this repo's own cicatrix-scars.md
+      family #9 PR-1 landing note, that field does not prove armed/disarmed either way
+      (mergeQueueEntry is the real signal). Not re-litigated further: PR #5422's arm state is the
+      dispatching team lead's stated fact and out of this PR's scope to verify or dispute."
+  - claim: "Codex (gpt-5.6-sol, cross-family) was dispatched FIRST for adversarial review and failed with real quota exhaustion, not a health-check skip — the CLI itself passed a prior 1-token health-check ('ping'->'OK', exit 0) moments earlier, so this is a genuine mid-session exhaustion, matching the CLAUDE.md cascade-detection pattern."
+    cmd: 'codex exec --sandbox read-only --skip-git-repo-check -m gpt-5.6-sol -c model_reasoning_effort="high" "<truth-table + 4 probes prompt>" < /dev/null'
+    result: "ERROR: Your workspace is out of credits. Add credits to continue. (printed twice, session aborted before producing a review)"
+    exit: 1
+    ts: "2026-08-31, this session"
+    seat: claude (this session, dispatching)
+  - claim: "Kimi K3 was dispatched SECOND (same prompt) after Codex's exhaustion and also failed, on its own distinct quota class (weekly, not workspace-credits)."
+    cmd: 'kimi -p "<same prompt>" -m kimi-code/k3'
+    result: "error: failed to run prompt: provider.auth_error: 403 You've reached your weekly (7-day) usage limit."
+    exit: 1
+    ts: "2026-08-31, this session"
+    seat: claude (this session, dispatching)
+  - claim: "Gemini 3.1 Pro via agy was dispatched THIRD (same prompt, passed as an actual -p argument per this repo's own documented agy stdin gotcha, never piped) and returned a real, content-bearing review addressing all 4 named probes individually, verdict CONFIRMED."
+    cmd: 'agy -p "<same prompt>" --print-timeout 4m'
+    result:
+      "Full text in this pack's dissent[0..2] below. Summary: (a) (success,skipped) unreachable,
+      and even if it occurred the alert's own if: would not fire (no false alarm) — same
+      conclusion as this pack's brief; (b) run-migrations/deploy can never both be bad
+      simultaneously, run-migrations-first ordering is correct; (c) no bash/YAML mechanical
+      defect found (quoting, icon/detail pairing, elif chain all checked); (d) needs.<job>.result
+      is strictly one of {success,failure,cancelled,skipped}, all 4 covered."
+    exit: 0
+    ts: "2026-08-31, this session"
+    seat: gemini-3.1-pro (agy, review lane)
+pii_scan: clean
+pii_scan_note:
+  "Entire diff is CI workflow YAML/bash text (job names, GH Actions expressions, Telegram alert
+  copy). No client, employee, or regulated-individual data anywhere in the diff, this pack, or the
+  review transcripts consulted."
+dissent:
+  - seat: gemini-3.1-pro (agy, cross-family adversarial review)
+    objection:
+      "Probe (a): could `deploy.result == 'skipped'` be reachable even when `run-migrations.result
+      == 'success'`, through some GHA mechanism other than a custom `if:` (concurrency
+      cancellation, workflow_dispatch cancel, matrix quirks) — which would make this pack's 'not
+      reachable' truth-table row wrong?"
+    status: RETRACTED
+    resolution:
+      "No — reviewer concluded: 'If a workflow-level cancellation occurs while deploy is queued or
+      running, GHA marks deploy as cancelled, not skipped.' Additionally: even in the hypothetical
+      that it did occur, the alert job's own `if:` (from #5422) requires >=1 of {run-migrations,
+      deploy} in {failure, cancelled} — a (success, skipped) pair would simply not fire the alert
+      at all, so the failure mode this pack would need to worry about (a WRONG stage attributed)
+      cannot happen even under the hypothetical."
+  - seat: gemini-3.1-pro (agy, cross-family adversarial review)
+    objection:
+      "Probe (b): could run-migrations and deploy ever BOTH be simultaneously bad
+      (failure/cancelled), and if so does checking run-migrations first in the if/elif chain
+      produce a wrong verdict in that case rather than just an arbitrary-but-harmless one?"
+    status: RETRACTED
+    resolution:
+      "No — reviewer confirmed the same reachability argument this pack's brief makes: 'deploy
+      requires run-migrations to succeed [so] any failure or cancelled result in run-migrations
+      forces deploy into skipped. deploy never executes.' Checking run-migrations first is
+      therefore not an arbitrary tie-break, it is 'strictly correct because it is the causal
+      upstream failure' (reviewer's own words) — there is no tie to break."
+  - seat: gemini-3.1-pro (agy, cross-family adversarial review)
+    objection:
+      "Probes (c)+(d): possible bash/YAML mechanical defect in the diff (GHA expression quoting
+      inside `[ ... ]`, icon/detail pairing, elif-chain logic, a copy-paste wording slip), and
+      whether GHA's `cancelled`/`failure`/`success`/`skipped` enum could ever produce a value this
+      4-branch chain does not account for."
+    status: RETRACTED
+    resolution:
+      "None found on either count. Quoting 'handles any expansion cleanly'; 'details contain no
+      unescaped double quotes, backticks, or variable interpolations that could break downstream
+      bash'; 'stage names and icons are 100% consistently paired'; and `needs.<job>.result` is
+      'strictly restricted to {success, failure, cancelled, skipped}' with 'all 4 possible result
+      values across both jobs map deterministically to either a skipped alert job or the correct
+      stage diagnostic.'"
+  - seat: "claude (this session, self-review while sequencing this PR against PR 5422)"
+    objection:
+      "Could this PR's diff conflict with, or need to be sequenced relative to, PR #5422's own
+      diff — since both touch the same job (deploy-failure-alert) in the same file, and #5422 is
+      frozen so this PR cannot rebase onto it?"
+    status: RETRACTED
+    resolution:
+      "No conflict either order: #5422's hunk (job-level `if:`, lines ~654-656 on its branch)
+      ends at the unchanged `steps:` context line; this PR's hunk starts at the next step's `run:`
+      body (line 662 on origin/main), several unchanged lines later. A 3-way git merge does not
+      conflict on non-overlapping hunks separated by unchanged context, regardless of merge
+      order. Functionally: on pre-#5422 main, this PR's new `cancelled`-testing elif branches are
+      simply unreachable (the job-level if: does not yet admit cancelled), not wrong — they
+      activate automatically the instant #5422 lands, with no further change needed on either
+      side."
