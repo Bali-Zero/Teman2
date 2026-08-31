@@ -125,8 +125,15 @@ OUTCOME_CANNOT_VERIFY = "CANNOT_VERIFY"
 EXIT_OK = 0
 EXIT_FINDING = 1
 EXIT_CANNOT_VERIFY = 2
+# A finding was computed but the alert did NOT go out. Distinct from both a
+# delivered finding and a malfunction: an undelivered p0 must never be
+# representable as a successful delivery (codex-gpt-5.6-sol).
+EXIT_UNDELIVERED = 3
 
-_ISO_DATE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
+# End-anchored on the date, or on a full ISO-8601 instant. Unanchored, this
+# accepted "2026-05-06-whatever" and silently used the leading date — a
+# malformed field must be UNKNOWN, not partially believed (codex-gpt-5.6-sol).
+_ISO_DATE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})(?:[T ][0-9:.+Z-]+)?$")
 
 
 # ---------------------------------------------------------------------------
@@ -190,6 +197,27 @@ def iter_priced_entries(sheet: dict) -> list[tuple[str, dict]]:
     return found
 
 
+def git_worktree_dirty(path: Path, repo_root: Path = PROJECT_ROOT) -> bool:
+    """True when `path` has uncommitted changes.
+
+    Not theoretical: the Pro checkout routinely carries uncommitted files, and
+    a price edited in the working tree leaves git history untouched — so
+    `git_last_change` would report an old date and the sentinel would call an
+    edited sheet current (codex-gpt-5.6-sol). A dirty file is a change that
+    happened at some unknown time no earlier than the last commit, so it counts
+    as a trace dated today.
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(repo_root), "status", "--porcelain", "--", str(path)],
+            capture_output=True, text=True, timeout=30,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("git status failed: %s", exc)
+        return False
+    return proc.returncode == 0 and bool(proc.stdout.strip())
+
+
 def git_last_change(path: Path, repo_root: Path = PROJECT_ROOT) -> dt.date | None:
     """Date of the last commit touching `path`, or None if git cannot say.
 
@@ -222,6 +250,7 @@ class Verdict:
     last_updated: dt.date | None = None
     age_days: int | None = None
     interval_days: int = PRICE_REVIEW_INTERVAL_DAYS
+    worktree_dirty: bool = False
     priced_entries: int = 0
     entries_with_attestation: int = 0
     newest_verified_on: dt.date | None = None
@@ -245,6 +274,7 @@ def classify(
     *,
     today: dt.date,
     git_date: dt.date | None,
+    worktree_dirty: bool = False,
     sheet_path: Path | None = None,
     interval_days: int = PRICE_REVIEW_INTERVAL_DAYS,
     warn_days: int = DEFAULT_WARN_DAYS,
@@ -257,6 +287,7 @@ def classify(
     ]
     newest_verified = max(attested) if attested else None
     common = {
+        "worktree_dirty": worktree_dirty,
         "priced_entries": len(priced),
         "entries_with_attestation": len(attested),
         "newest_verified_on": newest_verified,
@@ -264,6 +295,17 @@ def classify(
         "interval_days": interval_days,
         "sheet_path": str(sheet_path) if sheet_path else None,
     }
+
+    if not priced:
+        return Verdict(
+            outcome=OUTCOME_CANNOT_VERIFY,
+            reason=(
+                "the sheet contains no priced entries at all — an empty or "
+                "structurally broken catalogue cannot be reported as current. "
+                "There is nothing here whose freshness could be assessed."
+            ),
+            **common,
+        )
 
     metadata = sheet.get("metadata")
     if not isinstance(metadata, dict):
@@ -318,6 +360,11 @@ def classify(
 
     # The attestation is only worth reading if nothing contradicts it.
     traces = [d for d in (git_date, newest_verified) if d is not None]
+    if worktree_dirty:
+        # An uncommitted edit happened at an unknown time, no earlier than the
+        # last commit. Dating it today is the conservative reading: it makes
+        # the sheet look changed-since-review, never fresher than it is.
+        traces.append(today)
     contradicting = [d for d in traces if (d - last_updated).days > ATTESTATION_GRACE_DAYS]
     if contradicting:
         newest_trace = max(contradicting)
@@ -332,7 +379,10 @@ def classify(
             **common,
         )
 
-    if age_days > interval_days:
+    # >= not >: at day 90 a 90-day interval HAS elapsed. The strict form
+    # delayed the verdict to day 91 and printed the absurd "due in 0
+    # day(s)" on day 90 (codex-gpt-5.6-sol).
+    if age_days >= interval_days:
         return Verdict(
             outcome=OUTCOME_REVIEW_DUE,
             reason=(
@@ -431,11 +481,39 @@ def extract_gateway_verdict(stderr: str) -> str | None:
     return None
 
 
-def send_alert(verdict: Verdict, gateway_path: Path = TG_NOTIFY) -> str | None:
-    """Route through `scripts/tg_notify.py`. Returns the gateway's verdict
-    string, or None when nothing was sent. NEVER raises."""
+@dataclasses.dataclass
+class Delivery:
+    """What actually happened to the alert — separate from what was decided.
+
+    The first draft returned only the gateway's verdict string and `main()`
+    ignored it, so a missing or failing `tg_notify.py` still exited 1 and the
+    wrapper wrote "finding delivered". Classification status and delivery
+    status are two facts and now travel as two fields.
+    """
+    attempted: bool = False
+    delivered: bool = False
+    gateway_verdict: str | None = None
+
+    @property
+    def label(self) -> str:
+        if not self.attempted:
+            return "skipped"
+        return "sent" if self.delivered else "FAILED"
+
+
+def send_alert(verdict: Verdict, gateway_path: Path | None = None) -> Delivery:
+    """Route through `scripts/tg_notify.py`. NEVER raises.
+
+    `gateway_path` resolves at CALL time, not at import. As a default argument
+    it froze the module constant, so a test that patched `TG_NOTIFY` silently
+    reached the REAL gateway instead — which is how a unit test came within one
+    missing token of firing a p0 to Zero's phone. Caught here; the shape is
+    worth remembering wherever a module constant is used as a default.
+    """
+    if gateway_path is None:
+        gateway_path = TG_NOTIFY
     if verdict.outcome == OUTCOME_OK:
-        return None
+        return Delivery(attempted=False)
 
     # UNMAINTAINED is p0 alongside REVIEW_DUE: a broken review date means every
     # future run of this sentinel is blind, which outranks a housekeeping note.
@@ -449,7 +527,7 @@ def send_alert(verdict: Verdict, gateway_path: Path = TG_NOTIFY) -> str | None:
 
     if not gateway_path.is_file():
         logger.warning("tg_notify.py not found at %s — alert NOT sent: %s", gateway_path, key)
-        return None
+        return Delivery(attempted=True, delivered=False)
 
     try:
         proc = subprocess.run(
@@ -467,10 +545,17 @@ def send_alert(verdict: Verdict, gateway_path: Path = TG_NOTIFY) -> str | None:
             "tg_notify: %s (rc=%s, tier=%s, key=%s)",
             gateway_verdict or "NO VERDICT", proc.returncode, tier, key,
         )
-        return gateway_verdict
+        # The gateway printing "VERDICT: SENT" is not delivery — its RETURN
+        # CODE is. The first draft believed the printed line and would have
+        # called a gateway that exited 3 a success.
+        return Delivery(
+            attempted=True,
+            delivered=proc.returncode == 0,
+            gateway_verdict=gateway_verdict,
+        )
     except Exception as exc:  # noqa: BLE001 — gateway failure must NEVER crash the sentinel
         logger.warning("tg_notify invocation failed: %s", exc)
-        return None
+        return Delivery(attempted=True, delivered=False)
 
 
 EXIT_BY_OUTCOME = {
@@ -541,6 +626,7 @@ def main(argv: list[str] | None = None) -> int:
                     sheet,
                     today=today,
                     git_date=git_last_change(sheet_path),
+                    worktree_dirty=git_worktree_dirty(sheet_path),
                     sheet_path=sheet_path,
                     interval_days=args.interval_days,
                     warn_days=args.warn_days,
@@ -559,10 +645,23 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(format_alert_text(verdict))
 
+    delivery = Delivery(attempted=False)
     if not args.dry_run:
-        send_alert(verdict)
+        delivery = send_alert(verdict)
 
-    return EXIT_BY_OUTCOME.get(verdict.outcome, EXIT_CANNOT_VERIFY)
+    rc = EXIT_BY_OUTCOME.get(verdict.outcome, EXIT_CANNOT_VERIFY)
+    if delivery.attempted and not delivery.delivered:
+        rc = EXIT_UNDELIVERED
+
+    # One machine-readable last line so the wrapper can put the CONDITION in
+    # the organism sidecar, not merely "a finding happened". A sheet overdue
+    # for four months must not look identical to a clean run in the heartbeat
+    # (codex-gpt-5.6-sol).
+    print(
+        f"SENTINEL-STATE outcome={verdict.outcome} "
+        f"delivery={delivery.label} rc={rc}"
+    )
+    return rc
 
 
 if __name__ == "__main__":

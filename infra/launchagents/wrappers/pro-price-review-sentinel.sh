@@ -53,18 +53,28 @@ log "run start"
 RC=$?
 
 # Heartbeat semantics DIVERGE from the organ_birth default, deliberately.
-# The sentinel exits 1 for a FINDING (price sheet overdue, or its review date
-# no longer tracks edits). A finding means the organ did its job: the alert
-# went out through tg_notify. The sidecar answers "am I alive and working",
-# not "is the world good" — mapping a delivered finding to "error" would park
-# this organ in permanent red until somebody edits a price, teaching the
-# healer to ignore it. Only rc=2 (CANNOT_VERIFY — the sheet could not be
-# located, read or parsed) is an organ malfunction.
+#
+# rc=1 is a FINDING that was computed AND delivered — the organ did its job, so
+# the sidecar says "ok". The sidecar answers "am I alive and working", not "is
+# the world good"; mapping a delivered finding to "error" would park this organ
+# in permanent red until somebody edits a price, teaching the healer to ignore
+# it. The condition itself is not discarded — it rides in the note.
+#
+# rc=2 (sheet unlocatable, unreadable, malformed, uncorroborated, or a crash)
+# and rc=3 (a finding whose alert did NOT go out) are real malfunctions: in
+# both cases the organism learned nothing this run.
+# The sentinel prints one machine-readable last line; carrying it into the
+# sidecar is what keeps "clean" distinguishable from "overdue for four months"
+# in the organism's own state, instead of every run looking identical.
+STATE=$(grep '^SENTINEL-STATE ' "$LOG" | tail -1)
+STATE=${STATE:-SENTINEL-STATE outcome=UNKNOWN delivery=unknown}
+
 case $RC in
-    0) heartbeat "ok" "run done, no finding" ;;
-    1) heartbeat "ok" "finding delivered (rc=1)" ;;   # working as designed
-    2) heartbeat "error" "cannot verify the price sheet (rc=2)" ;;
-    *) heartbeat "error" "rc=$RC" ;;                  # G9: failure is VISIBLE
+    0) heartbeat "ok" "no finding | ${STATE#SENTINEL-STATE }" ;;
+    1) heartbeat "ok" "finding delivered | ${STATE#SENTINEL-STATE }" ;;
+    2) heartbeat "error" "cannot verify the price sheet | ${STATE#SENTINEL-STATE }" ;;
+    3) heartbeat "error" "finding computed but NOT delivered | ${STATE#SENTINEL-STATE }" ;;
+    *) heartbeat "error" "unexpected rc=$RC | ${STATE#SENTINEL-STATE }" ;;
 esac
 log "run done rc=$RC"
 exit 0

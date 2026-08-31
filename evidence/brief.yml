@@ -88,6 +88,15 @@ risks:
   - "The sentinel answers a narrower question than the mandate's word 'prices' might suggest: it
     detects that OUR SHEET is overdue for review, not that the underlying prices have changed. That
     narrowing is Zero's own amendment, stated here so nobody later reads the green as market truth."
+  - "The sheet is not the only price store. `practice_types.base_price` in Postgres is independent —
+    populated only by one-shot migrations, last price-bearing one 2026-06-09 — and
+    `crm_practices.py:491` uses it as the default `quoted_price`. Measured against the live DB
+    today: 74 of 112 rows match a sheet entry by normalized name and all 74 are IDENTICAL, so the
+    store has not broadly drifted; the one live divergence is `B1 - VOA` at 750.000 against the
+    sheet''s 790.000. This sentinel does NOT watch that store, and a green verdict from it says
+    nothing about what a client is quoted through the CRM. Recorded in PENDING-ARMS rather than
+    folded in here: the two stores do not share a naming scheme, so reconciling them is its own
+    mandate, not a widening of this one."
 
 grader:
   "Opus 5 at xhigh — the final on-disk gate (CLAUDE.md §5, 2026-08-20 ruling). Generator is

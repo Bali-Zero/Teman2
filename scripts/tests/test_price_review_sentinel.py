@@ -131,13 +131,22 @@ def test_guilt_past_the_ninety_day_interval_is_review_due():
     assert "90-day" in verdict.reason
 
 
-def test_innocence_exactly_at_the_interval_is_not_yet_due():
+def test_exactly_at_the_interval_is_already_due():
+    """Day 90 of a 90-day interval has elapsed. The first draft used a strict
+    `>`, which delayed the verdict to day 91 and printed "due in 0 day(s)" on
+    day 90 — flagged by the codex-gpt-5.6-sol council seat."""
     at_boundary = TODAY - dt.timedelta(days=prs.PRICE_REVIEW_INTERVAL_DAYS)
     verdict = prs.classify(
         _sheet(at_boundary.isoformat()), today=TODAY, git_date=at_boundary
     )
-    assert verdict.outcome == prs.OUTCOME_APPROACHING
+    assert verdict.outcome == prs.OUTCOME_REVIEW_DUE
     assert verdict.age_days == 90
+
+
+def test_one_day_before_the_interval_is_still_only_approaching():
+    almost = TODAY - dt.timedelta(days=prs.PRICE_REVIEW_INTERVAL_DAYS - 1)
+    verdict = prs.classify(_sheet(almost.isoformat()), today=TODAY, git_date=almost)
+    assert verdict.outcome == prs.OUTCOME_APPROACHING
 
 
 def test_one_day_past_the_interval_is_due():
@@ -241,7 +250,9 @@ def _fake_gateway(tmp_path: Path, exit_code: int = 0) -> tuple[Path, Path]:
 def test_ok_sends_nothing(tmp_path):
     gateway, argv_log = _fake_gateway(tmp_path)
     verdict = prs.Verdict(outcome=prs.OUTCOME_OK, reason="fine")
-    assert prs.send_alert(verdict, gateway_path=gateway) is None
+    delivery = prs.send_alert(verdict, gateway_path=gateway)
+    assert delivery.attempted is False
+    assert delivery.label == "skipped"
     assert not argv_log.exists()
 
 
@@ -250,7 +261,9 @@ def test_unmaintained_is_p0_and_carries_a_stable_dedup_key(tmp_path):
     verdict = prs.classify(
         _sheet("2026-05-06"), today=TODAY, git_date=dt.date(2026, 8, 26)
     )
-    assert prs.send_alert(verdict, gateway_path=gateway) == "VERDICT: SENT"
+    delivery = prs.send_alert(verdict, gateway_path=gateway)
+    assert delivery.delivered is True
+    assert delivery.gateway_verdict == "VERDICT: SENT"
     argv = json.loads(argv_log.read_text())
     assert argv[argv.index("--tier") + 1] == "p0"
     assert argv[argv.index("--source") + 1] == "price-review-sentinel"
@@ -270,15 +283,22 @@ def test_approaching_is_digest_not_p0(tmp_path):
     assert argv[argv.index("--tier") + 1] == "digest"
 
 
-def test_a_missing_gateway_never_raises(tmp_path):
+def test_a_missing_gateway_is_an_attempted_but_undelivered_alert(tmp_path):
     verdict = prs.classify(_sheet("2026-01-01"), today=TODAY, git_date=None)
-    assert prs.send_alert(verdict, gateway_path=tmp_path / "absent.py") is None
+    delivery = prs.send_alert(verdict, gateway_path=tmp_path / "absent.py")
+    assert delivery.attempted is True
+    assert delivery.delivered is False
+    assert delivery.label == "FAILED"
 
 
-def test_a_failing_gateway_never_raises(tmp_path):
+def test_a_gateway_that_prints_sent_but_exits_nonzero_did_not_deliver(tmp_path):
+    """The printed line is not delivery; the RETURN CODE is. The first draft
+    believed the line and would have called this a success."""
     gateway, _ = _fake_gateway(tmp_path, exit_code=3)
     verdict = prs.classify(_sheet("2026-01-01"), today=TODAY, git_date=None)
-    assert prs.send_alert(verdict, gateway_path=gateway) == "VERDICT: SENT"
+    delivery = prs.send_alert(verdict, gateway_path=gateway)
+    assert delivery.gateway_verdict == "VERDICT: SENT"
+    assert delivery.delivered is False
 
 
 # ---------------------------------------------------------------------------
@@ -354,7 +374,8 @@ def test_innocence_one_trace_is_enough_to_corroborate():
 def test_malformed_metadata_cannot_verify_instead_of_crashing():
     for bad in (None, "2026-08-01", [], 7):
         verdict = prs.classify(
-            {"metadata": bad, "services": {}}, today=TODAY, git_date=None
+            {"metadata": bad, "services": {"a": {"X": {"price": 1}}}},
+            today=TODAY, git_date=None,
         )
         assert verdict.outcome == prs.OUTCOME_CANNOT_VERIFY, bad
         assert "malformed" in verdict.reason
@@ -370,3 +391,102 @@ def test_a_crash_never_exits_one_because_the_wrapper_reads_one_as_a_finding(monk
     monkeypatch.setattr(prs, "classify", boom)
     rc = prs.main(["--dry-run", "--now", "2026-08-31"])
     assert rc == prs.EXIT_CANNOT_VERIFY
+
+
+# ---------------------------------------------------------------------------
+# Codex-gpt-5.6-sol: the exit-code test enumerated CONSTANTS, not outcomes the
+# classifier actually returns — so `Verdict(outcome="TYPO")` stayed green.
+# ---------------------------------------------------------------------------
+
+
+def _outcome_matrix() -> list[tuple[str, dict]]:
+    """Inputs chosen to drive classify() down every branch it has."""
+    ten_days = (TODAY - dt.timedelta(days=10)).isoformat()
+    warn = (TODAY - dt.timedelta(days=prs.PRICE_REVIEW_INTERVAL_DAYS - 3)).isoformat()
+    return [
+        ("fresh", dict(sheet=_sheet(ten_days), git_date=dt.date.fromisoformat(ten_days))),
+        ("approaching", dict(sheet=_sheet(warn), git_date=dt.date.fromisoformat(warn))),
+        ("overdue", dict(sheet=_sheet("2026-01-01"), git_date=dt.date(2026, 1, 1))),
+        ("unmaintained", dict(sheet=_sheet("2026-05-06"), git_date=dt.date(2026, 8, 26))),
+        ("future", dict(sheet=_sheet("2027-01-01"), git_date=dt.date(2026, 8, 26))),
+        ("no-trace", dict(sheet=_sheet(ten_days), git_date=None)),
+        ("no-date", dict(sheet=_sheet(None), git_date=None)),
+        ("bad-metadata", dict(sheet={"metadata": None, "services": {"a": {"X": {"price": 1}}}}, git_date=None)),
+        ("empty-sheet", dict(sheet={"metadata": {"last_updated": TODAY.isoformat()}}, git_date=None)),
+        ("dirty", dict(sheet=_sheet(ten_days), git_date=dt.date.fromisoformat(ten_days), worktree_dirty=True)),
+    ]
+
+
+def test_every_outcome_the_classifier_actually_returns_has_an_exit_code():
+    seen = set()
+    for label, kwargs in _outcome_matrix():
+        verdict = prs.classify(today=TODAY, **kwargs)
+        assert verdict.outcome in prs.EXIT_BY_OUTCOME, f"{label}: {verdict.outcome}"
+        seen.add(verdict.outcome)
+    # Non-vacuity: the matrix must really exercise a spread of branches, or
+    # this test proves nothing about the ones it never reached.
+    assert len(seen) >= 5, f"matrix only reached {sorted(seen)}"
+
+
+def test_the_constant_list_and_the_exit_table_agree():
+    outcomes = {v for k, v in vars(prs).items() if k.startswith("OUTCOME_")}
+    assert outcomes == set(prs.EXIT_BY_OUTCOME)
+
+
+def test_an_uncommitted_edit_is_a_trace_the_commit_log_cannot_show():
+    """The Pro checkout routinely carries uncommitted files. A price edited in
+    the working tree leaves git history untouched, so without this the sheet
+    would read as reviewed-and-unchanged."""
+    ten_days = (TODAY - dt.timedelta(days=10)).isoformat()
+    clean = prs.classify(
+        _sheet(ten_days), today=TODAY, git_date=dt.date.fromisoformat(ten_days)
+    )
+    dirty = prs.classify(
+        _sheet(ten_days), today=TODAY, git_date=dt.date.fromisoformat(ten_days),
+        worktree_dirty=True,
+    )
+    assert clean.outcome == prs.OUTCOME_OK
+    assert dirty.outcome == prs.OUTCOME_UNMAINTAINED
+
+
+def test_a_trailing_garbage_date_is_unknown_not_partially_believed():
+    """`_ISO_DATE` was not end-anchored, so "2026-05-06-whatever" parsed."""
+    assert prs.parse_date("2026-05-06-whatever") is None
+    assert prs.parse_date("2026-05-06 extra") is None
+    assert prs.parse_date("2026-05-06T00:22:20Z") == dt.date(2026, 5, 6)
+
+
+def test_a_sheet_with_no_priced_entries_cannot_be_reported_current():
+    verdict = prs.classify(
+        {"metadata": {"last_updated": TODAY.isoformat()}}, today=TODAY, git_date=TODAY
+    )
+    assert verdict.outcome == prs.OUTCOME_CANNOT_VERIFY
+    assert "no priced entries" in verdict.reason
+
+
+# ---------------------------------------------------------------------------
+# main(): the exit code the wrapper actually reads
+# ---------------------------------------------------------------------------
+
+
+def test_main_exits_one_on_the_real_sheet_today_and_says_so_on_its_last_line(capsys):
+    rc = prs.main(["--dry-run", "--now", "2026-08-31"])
+    last = capsys.readouterr().out.strip().splitlines()[-1]
+    assert last.startswith("SENTINEL-STATE ")
+    assert f"rc={rc}" in last
+    assert rc in (prs.EXIT_OK, prs.EXIT_FINDING)
+
+
+def test_main_exits_three_when_the_finding_could_not_be_delivered(tmp_path, monkeypatch, capsys):
+    """An undelivered p0 must not be representable as a delivered one."""
+    # Point the module constant at a path that does not exist. `send_alert`
+    # resolves TG_NOTIFY at call time precisely so this cannot leak to the
+    # real gateway — an earlier draft used a default argument and did.
+    monkeypatch.setattr(prs, "TG_NOTIFY", tmp_path / "absent.py")
+    monkeypatch.setattr(
+        prs, "classify",
+        lambda *a, **k: prs.Verdict(outcome=prs.OUTCOME_REVIEW_DUE, reason="synthetic"),
+    )
+    rc = prs.main(["--now", "2026-08-31"])
+    assert rc == prs.EXIT_UNDELIVERED
+    assert "delivery=FAILED" in capsys.readouterr().out
