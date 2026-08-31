@@ -35,7 +35,7 @@ council_run: council-journal.jsonl
 
 diff:
   files: 7
-  net_lines: 764
+  net_lines: 807
   measured_at: 494583042
   note: >-
     Churn (added+deleted) via `git diff --no-renames --numstat --cached <merge-base>`, measured
@@ -124,6 +124,21 @@ receipts:
     ts: "2026-08-31T08:05:00Z"
     seat: session (Pro)
 
+  - claim: >-
+      This pack's `dissent:` block parses to what its TEXT shows — the property the lint cannot
+      check, and the one this pack broke once already.
+    cmd: >-
+      Count `^  - seat:` lines in the raw text, compare against `len(safe_load(text)["dissent"])`,
+      then run a custom PyYAML loader that reports duplicate keys with line numbers.
+    result: >-
+      7 raw seat lines, 7 parsed entries, MATCH=True; duplicate keys: NONE. Both gate rounds and
+      all three non-answering seats are individually present. The same probe run one commit
+      earlier returned 5 parsed against 6 raw, with duplicate `status`/`round`/`objection`/
+      `disposition` — which is how the corruption was proven rather than argued.
+    exit: 0
+    ts: "2026-08-31T08:20:00Z"
+    seat: session (Pro), on a finding by the final gate
+
 dissent:
   - seat: tp1-glm-5.2
     status: CONFIRMED
@@ -183,6 +198,34 @@ dissent:
       digit-only in both files; `diff.net_lines` below is nevertheless re-measured, because this
       same commit also adds note (4) and this very entry. Limitation named as note (4), uncured:
       it is inherited from the resolver's single-path contract and Rule 9 has it identically.
+
+  - seat: claude-opus-5 (final on-disk gate, fresh context, generator != grader)
+    status: CONFIRMED
+    round: 3
+    objection: >-
+      VERDICT: BLOCK — on the commit that ADOPTED its round-2 conditions. "The commit that applied
+      them corrupted the pack's `dissent:` block: the new gate entry was written OVER the line
+      `- seat: kimi-code/k3` instead of before it, so one YAML mapping now carries duplicate keys.
+      The kimi seat has vanished from the parsed record, and the final on-disk gate's round-2 entry
+      now parses as 'RETRACTED / round 1 / NONE — the seat never answered.' The artifact, as a
+      machine reads it, says the gate that reviewed this PR never answered. That is a worse
+      falsehood than the one it was fixing, and it is in the block whose entire purpose is that the
+      disagreement survives."
+    disposition: >-
+      CORRECT, cured, and the most instructive finding in this PR — bigger than the rule it ships.
+      Re-measured before believing it: `safe_load` returned 5 dissent entries where the text shows
+      6, entry[2] carrying this gate's seat with kimi's status/round/objection. PyYAML accepts
+      duplicate keys SILENTLY, last-wins. Cured by restoring the dropped `- seat: kimi-code/k3`
+      line; the raw `- seat:` count and the parsed length now agree, this entry reads CONFIRMED /
+      round 3, and a duplicate-key scan over the whole file returns nothing — see the receipt that
+      pins all three. WHAT THIS COSTS TO KNOW: the lint had already returned
+      `clean` rc=0 on the corrupted artifact, in the CI shape, with the countable-claims rule
+      active — because every rule reads the PARSED mapping, and the parse is exactly where the
+      damage hid. No machine in this repo could have caught it. Not fixed here (a duplicate-key
+      guard for the pack lint is a separate concern and this PR is already at its third round);
+      named so the next lane does not re-derive it.
+
+  - seat: kimi-code/k3
     status: RETRACTED
     round: 1
     objection: >-
