@@ -27,8 +27,8 @@ objective: |
   today, and it is the correct one.
 
   Gear 3 by PATH, deterministically: the diff adds a LaunchAgent wrapper and plist, which the
-  harness floors at 3 regardless of size (`--print-floor-source` returns `path`). 855 net lines
-  across 7 files at this commit.
+  harness floors at 3 regardless of size (`--print-floor-source` returns `path`). 1809 net lines
+  across 10 files at this commit.
 
 constraints:
   - "Absence must never read as freshness. 111 of 113 priced entries carry no `verified_on` at all;
