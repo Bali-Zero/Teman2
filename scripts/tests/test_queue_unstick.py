@@ -605,22 +605,70 @@ def test_a_broken_repo_returns_empty_rather_than_raising(tmp_path):
 
 # --- the MESSAGE, which is the part that was dangerous ----------------------
 
-def test_the_message_never_prescribes_hand_resolving_or_rebasing(tmp_path):
-    """The shipped message told the fleet 'the cure is a hand rebase of that
-    file'. Hand-resolving a union file silently deletes the other lane's
+#: The EXACT advice the daemon prints when it finds a permanent driver
+#: divergence, pinned character for character. This is deliberately a
+#: change-detector, not a content-guesser.
+#:
+#: The first cut of this test asserted that the message CONTAINS "hand-resolve"
+#: and "do not" and "origin/main". A cross-family refuter broke it in one line:
+#:
+#:   "Instead, reset the file to origin/main and manually re-apply your rows"
+#:
+#: — which IS hand-resolving, means the forbidden thing, and satisfies every one
+#: of those assertions. A substring test cannot decide what a sentence means, and
+#: one that pretends to is worse than none: it converts an unreviewed reword into
+#: a green tick. So the bar is lower and honest — ANY edit to this string fails
+#: here, and a human has to look at it and update this constant on purpose.
+_EXPECTED_DRIVER_ADVICE = (
+    "none locally, but this is NOT a race: {shown} — git honours that "
+    "driver, GitHub's merge machinery honours none, so the two disagree "
+    "permanently and re-probing will never clear it. DO NOT hand-resolve "
+    "the file and DO NOT rebase onto it: the first silently deletes the "
+    "other lane's appended row, the second replays the append and "
+    "duplicates it. Rebuild your addition on a branch cut from fresh "
+    "origin/main, then verify `git diff origin/main -- <file>` is +N/-0."
+)
+
+
+def test_the_driver_advice_is_exactly_what_was_reviewed(tmp_path):
+    """The shipped message once told the fleet 'the cure is a hand rebase of
+    that file'. Hand-resolving a union file silently deletes the other lane's
     appended row (the loss the driver exists to prevent, caught by
     check-ledger-no-silent-loss on #5355); `git rebase` DOES apply the union
     driver and duplicates the row instead (#4060). Both readings of that
-    sentence are documented failure modes, and it was broadcast to a fleet
-    mailbox that agents act on. This pins the replacement."""
-    import inspect
+    sentence are documented failure modes, and it is broadcast to a fleet
+    mailbox that agents act on.
+
+    So this string is security-relevant text. It is pinned exactly: any reword,
+    however well-meant, goes red here and has to be looked at by a person.
+    THIS TEST DOES NOT PROVE THE ADVICE IS SAFE — no substring test can. It
+    proves only that the advice is the one that was reviewed."""
+    import inspect, re
     src = inspect.getsource(qu.get_conflicting_files)
-    msg_start = src.index("none locally, but this is NOT a race")
-    msg = src[msg_start:src.index("return \"none (merge-tree", msg_start)]
-    lowered = msg.lower()
-    assert "hand-resolve" in lowered and "do not" in lowered, \
-        "the message must explicitly forbid hand-resolving"
-    assert "origin/main" in msg, "the message must name the rebuild-from-fresh-main cure"
-    assert "+n/-0" in lowered or "+n / -0" in lowered, \
-        "the message must name the proof that the append is additive"
-    assert "the cure is a hand rebase" not in lowered, "the forbidden prescription is back"
+    # Recover the message as source text, then undo the f-string concatenation
+    # the same way Python does, so the comparison is against the real template.
+    start = src.index('f"none locally, but this is NOT a race')
+    end = src.index("return \"none (merge-tree", start)
+    literal_src = src[start:end]
+    pieces = re.findall(r'f?"((?:[^"\\]|\\.)*)"', literal_src)
+    got = "".join(pieces)
+    assert got == _EXPECTED_DRIVER_ADVICE, (
+        "the driver-divergence advice changed. This is the string that told the "
+        "fleet to perform a data-destroying gesture once already. Read the new "
+        "wording, satisfy yourself it forbids BOTH hand-resolving and rebasing "
+        "and names the rebuild-from-fresh-main cure, then update "
+        "_EXPECTED_DRIVER_ADVICE deliberately.\n"
+        f"  got:      {got!r}\n  expected: {_EXPECTED_DRIVER_ADVICE!r}"
+    )
+
+
+def test_the_pinned_advice_still_forbids_both_gestures(tmp_path):
+    """A second, independent reading of the pinned constant — so that updating
+    the pin cannot silently drop the two prohibitions and the cure. Weak by
+    construction (see the note above), and kept only because a pin nobody
+    sanity-checks is a pin that can be updated to anything."""
+    lowered = _EXPECTED_DRIVER_ADVICE.lower()
+    assert "do not hand-resolve" in lowered
+    assert "do not rebase" in lowered
+    assert "origin/main" in lowered
+    assert "+n/-0" in lowered

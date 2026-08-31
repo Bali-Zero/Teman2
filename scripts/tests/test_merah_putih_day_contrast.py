@@ -515,3 +515,68 @@ def test_the_perimeter_sees_shared_components_rendered_inside_the_wrappers() -> 
         f"saw only: {sorted(names)}"
     )
     assert "SecondHomeLanding.tsx" in names and "StudioApp.tsx" in names
+
+
+WORKFLOW = REPO / ".github/workflows/merah-putih-day-contrast.yml"
+
+
+def _paths_glob_to_regex(pattern: str) -> re.Pattern[str]:
+    """GitHub's `paths:` glob, narrowed to the two wildcards this filter uses.
+
+    `**` crosses directory separators, a single `*` does not. Order matters:
+    `re.escape` turns `**` into `\\*\\*`, so that must be substituted BEFORE the
+    single-star rule, or the first star eats the second.
+    """
+    rx = re.escape(pattern).replace(r"\*\*", ".*").replace(r"\*", "[^/]*")
+    return re.compile(rx + r"\Z")
+
+
+def _workflow_trigger_paths() -> list[str]:
+    import yaml  # deliberately function-local: a missing pyyaml must break THIS
+    # test, not error out the other 42 — and it must FAIL, never skip. A guard
+    # that skips itself when its parser is absent is the disarmament this whole
+    # file exists to prevent.
+
+    doc = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    # PyYAML implements YAML 1.1, where a bare `on:` key parses as the BOOLEAN
+    # True, not the string "on". Reading doc["on"] here returns None on a
+    # perfectly valid workflow and the assertion below would pass on an empty
+    # list — vacuously green, which is worse than red.
+    trigger = doc.get("on", doc.get(True))
+    assert trigger, f"{WORKFLOW.name}: no trigger block parsed — check the YAML 1.1 `on:` key trap"
+    return list(trigger["pull_request"]["paths"])
+
+
+def test_the_workflow_trigger_covers_every_file_this_guard_reads() -> None:
+    """Arming a guard behind a filter that misses the files it protects is the
+    same defect one level up — and it is invisible, because the job simply never
+    starts and the PR is green with nothing having run.
+
+    This is why the coverage is COMPUTED from the guard's own read set rather
+    than eyeballed against the workflow: the perimeter resolves shared
+    `@/components/...` imports out of the two wrappers, so the painted set grows
+    whenever a wrapper adds an import — and the first version of that filter
+    named only the route tree and missed ConsentBanner and WhatsAppLeadButton
+    entirely.
+    """
+    patterns = [_paths_glob_to_regex(p) for p in _workflow_trigger_paths()]
+
+    # The instrument must be able to say NO, or every assertion below is
+    # vacuous. A probe that cannot return a negative cannot return a positive.
+    assert not any(
+        rx.match("packages/core/tokens/themes/editorial.css") for rx in patterns
+    ), "the glob matcher matches everything — it is not measuring the filter"
+
+    read_set = {TOKENS, SEMANTIC_CSS, Path(__file__).resolve(), WORKFLOW}
+    read_set.update(_perimeter_sources())
+
+    uncovered = sorted(
+        str(p.relative_to(REPO))
+        for p in read_set
+        if not any(rx.match(str(p.relative_to(REPO))) for rx in patterns)
+    )
+    assert not uncovered, (
+        "these files are READ by this guard but match no `paths:` pattern in "
+        f"{WORKFLOW.name}, so changing one starts no check run:\n  "
+        + "\n  ".join(uncovered)
+    )
