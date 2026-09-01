@@ -419,7 +419,25 @@ ensure_full_delta() {
 # prompt and file-landing contract. The canonical cascade must stop before
 # Gemini/Kimi/Codex/Ollama so ensure_full_delta remains the sole success gate.
 echo "[$(date)] tier 1 — Claude subscription seat cascade" >> "$LOG"
-if [ -x "$CASCADE_BIN" ]; then
+# Quota gate (tokenaudit Phase 7 / S3, canon since 2026-09-02): ask "may a headless
+# Claude job run now?" BEFORE spending a seat call that would die at the weekly cap.
+# Contract of quota_gate.sh: exit 0=GO, 3=SKIP (best seat >= 85%), 4=DEGRADE (>= 75%);
+# it FAILS OPEN (exit 0) on any error and never picks the Team seat. Here both SKIP and
+# DEGRADE skip the whole Claude tier and let the cascade fall to tier 2 exactly as an
+# ordinary tier-1 failure would; gate absent, disabled, or GO -> byte-identical to before.
+# Kill switch: REGWATCH_QUOTA_GATE=0. The gate lives outside the repo on purpose (it reads
+# ~/.claude/seat-quota.json, a per-machine measurement) — same shape as CASCADE_BIN above.
+QUOTA_GATE_BIN="${REGWATCH_QUOTA_GATE_BIN:-$HOME/.tokenaudit/ingest/quota_gate.sh}"
+QUOTA_GATE_RC=0
+if [ "${REGWATCH_QUOTA_GATE:-1}" != "0" ] && [ -x "$QUOTA_GATE_BIN" ]; then
+    "$QUOTA_GATE_BIN" >>"$LOG" 2>&1
+    QUOTA_GATE_RC=$?
+fi
+if [ "$QUOTA_GATE_RC" -eq 3 ] || [ "$QUOTA_GATE_RC" -eq 4 ]; then
+    echo "[$(date)] quota_gate rc=$QUOTA_GATE_RC ($([ "$QUOTA_GATE_RC" -eq 3 ] && echo SKIP || echo DEGRADE)) — skipping the whole Claude tier, cascading to tier 2" >> "$LOG"
+    echo "quota_gate: Claude tier skipped (rc=$QUOTA_GATE_RC)" >"$TMPOUT"
+    EXIT=75
+elif [ -x "$CASCADE_BIN" ]; then
     "$CASCADE_BIN" "$PROMPT_CLAUDE" --claude-only --model claude-sonnet-5 >"$TMPOUT" 2>&1
     EXIT=$?
 else
