@@ -242,6 +242,24 @@ query($n: Int!) {
 #: "why is this PR red?" when the instrument that was supposed to answer never
 #: replied. It groups into its own row in the causes table so the reader sees
 #: that the tally is incomplete rather than reading a short list as a full one.
+#: A rollup context is FAILING on any of these. The bug this replaces tested
+#: `verdict == "FAILURE"` alone, so a check that TIMED_OUT, was CANCELLED,
+#: needed ACTION_REQUIRED, hit a STARTUP_FAILURE, or (on a StatusContext)
+#: ERRORed left the PR counted as red while contributing to NO row in the
+#: causes table — it read as "nothing wrong here" by omission, which is worse
+#: than the unreadable sentinel, because not even a row said the tally was
+#: short. Found by adversarial review of the very commit that claimed to have
+#: cured this disease everywhere in this function.
+FAILING_VERDICTS = frozenset({
+    "FAILURE", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "STARTUP_FAILURE", "ERROR",
+})
+#: Explicitly NOT failing. Kept as its own list rather than "everything else",
+#: so a verdict in neither set is surfaced instead of silently bucketed.
+BENIGN_VERDICTS = frozenset({
+    "SUCCESS", "NEUTRAL", "SKIPPED", "STALE", "EXPECTED", "PENDING", "QUEUED",
+    "IN_PROGRESS", "WAITING", "REQUESTED", None,
+})
+
 PROBE_UNREADABLE = "\u00b7 la sonda dei controlli non ha risposto"
 
 
@@ -289,9 +307,39 @@ def failing_checks(number: int) -> list[str]:
     for ctx in rollup["contexts"]["nodes"]:
         name = ctx.get("name") or ctx.get("context") or "?"
         verdict = ctx.get("conclusion") or ctx.get("state")
-        if verdict == "FAILURE":
+        if verdict in BENIGN_VERDICTS:
+            continue
+        if verdict in FAILING_VERDICTS:
             names.append(name)
+            continue
+        # An verdict in NEITHER list is a value GitHub added after this was
+        # written. It is named, not dropped: a check the page cannot classify
+        # is news. Erring toward "failing" is the SAFE direction — it makes the
+        # page more alarming than reality, never more reassuring, which is the
+        # asymmetry every defect this file shipped got backwards.
+        names.append(f"{name} ({verdict})")
     return names
+
+
+def is_dependabot(pr: dict[str, Any]) -> bool:
+    """True only for Dependabot, judged on the ENTITY and its login together.
+
+    Two bugs are pinned here, one in each direction. A first cut tested
+    `login.endswith("[bot]")` and returned False for every real Dependabot PR:
+    the GraphQL Bot login is the bare string `dependabot`, and the `[bot]`
+    suffix exists only in REST renderings. The correction then tested
+    `__typename == "Bot"` alone, which answers "is ANY bot" — Renovate,
+    github-actions and Copilot share that concrete type — where this flag means
+    "is Dependabot" and drives the note about arming lockfile PRs one at a time.
+
+    It is a named function rather than an inline expression because the test
+    that guarded it could only grep the source, and grepping for two substrings
+    never pinned the `and` joining them: flipping it to `or` reinstated the bug
+    with the test still green. A predicate you can call is a predicate you can
+    actually pin.
+    """
+    author = pr.get("author") or {}
+    return author.get("__typename") == "Bot" and author.get("login") == "dependabot"
 
 
 def rollup_state(pr: dict[str, Any]) -> str:
@@ -435,20 +483,7 @@ def collect() -> dict[str, Any]:
         "green": [p["number"] for p in green],
         "ready": [
             {"n": p["number"], "title": p["title"],
-             # The ENTITY, not a substring of its name. A first cut tested
-             # `login.endswith("[bot]")` and returned False for every real
-             # Dependabot PR: GraphQL's Bot type has login `dependabot`, and the
-             # `[bot]` suffix only appears in REST/`gh pr view` renderings.
-             # Scar family #3, judged on the type GitHub actually declares.
-             # Narrowed after review: `__typename == "Bot"` answers "is ANY bot"
-             # (Renovate, github-actions, Copilot all share that concrete type)
-             # where this flag means "is Dependabot" — it drives a note about
-             # arming lockfile PRs one at a time. Measured today, 13/13 Bot
-             # authors in the last 100 PRs are `dependabot`, so there is no live
-             # counter-example; the pair is required so the flag stops being
-             # right by luck the day a second bot integration opens a PR.
-             "bot": ((p.get("author") or {}).get("__typename") == "Bot"
-                     and (p.get("author") or {}).get("login") == "dependabot")}
+             "bot": is_dependabot(p)}
             for p in ready
         ],
         "phantom_conflicts": sorted(phantom),

@@ -145,23 +145,98 @@ def test_innocence_a_content_conflict_is_real(fd, monkeypatch):
 
 # --------------------------------------------------------------------------
 # the Dependabot flag: the ENTITY and its login, not a substring of a name
-# --------------------------------------------------------------------------
-
-def test_the_bot_flag_requires_both_the_type_and_the_login(fd):
-    src = MODULE.read_text(encoding="utf-8")
-    assert '"dependabot"' in src, "narrowed from 'is any bot' to 'is Dependabot'"
-    assert '__typename") == "Bot"' in src
 
 
 # --------------------------------------------------------------------------
-# the main-checkout warning must not depend on a folder's NAME
+# a failing check is not only the one literally called "FAILURE"
 # --------------------------------------------------------------------------
 
-def test_the_checkout_warning_is_naming_independent(fd):
-    """In a linked worktree `.git` is a FILE; only a primary checkout has it as
-    a directory. A clone under any other name must still be caught."""
-    src = MODULE.read_text(encoding="utf-8")
-    body = src.split("def _warn_if_main_checkout()", 1)[1].split("\ndef ", 1)[0]
-    code = "\n".join(l for l in body.splitlines() if not l.strip().startswith("#"))
-    assert 'GIT_CWD.name ==' not in code
-    assert '.git").is_dir()' in code
+def _rollup(*contexts: dict) -> str:
+    import json as _j
+    return _j.dumps({"data": {"repository": {"pullRequest": {"commits": {"nodes": [
+        {"commit": {"statusCheckRollup": {"contexts": {"nodes": list(contexts)}}}}]}}}}})
+
+
+@pytest.mark.parametrize("verdict", sorted(v for v in
+    {"FAILURE", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "STARTUP_FAILURE", "ERROR"}))
+def test_guilt_every_failure_shaped_verdict_is_reported(fd, monkeypatch, verdict):
+    """Testing `== "FAILURE"` alone left a red PR contributing to NO row in the
+    causes table — it read as "nothing wrong here" by omission, which is worse
+    than the unreadable sentinel because not even a row said the tally was short.
+    """
+    monkeypatch.setattr(fd, "_run", _run_returning(
+        0, _rollup({"name": "CI / build", "conclusion": verdict}), ""))
+    monkeypatch.setattr(sys, "stderr", io.StringIO())
+    assert fd.failing_checks(1) == ["CI / build"], f"{verdict} was dropped"
+
+
+@pytest.mark.parametrize("verdict", ["SUCCESS", "NEUTRAL", "SKIPPED", "STALE", "PENDING"])
+def test_innocence_a_benign_verdict_is_never_reported_as_failing(fd, monkeypatch, verdict):
+    monkeypatch.setattr(fd, "_run", _run_returning(
+        0, _rollup({"name": "CI / build", "conclusion": verdict}), ""))
+    monkeypatch.setattr(sys, "stderr", io.StringIO())
+    assert fd.failing_checks(1) == []
+
+
+def test_an_unknown_verdict_is_named_not_silently_dropped(fd, monkeypatch):
+    """A value GitHub adds later belongs in neither list. Naming it errs toward
+    "failing", which makes the page more alarming than reality — the safe
+    direction, and the one every defect in this file got backwards."""
+    monkeypatch.setattr(fd, "_run", _run_returning(
+        0, _rollup({"name": "CI / build", "conclusion": "SOME_FUTURE_STATE"}), ""))
+    monkeypatch.setattr(sys, "stderr", io.StringIO())
+    names = fd.failing_checks(1)
+    assert names == ["CI / build (SOME_FUTURE_STATE)"], names
+
+
+def test_the_two_verdict_sets_do_not_overlap(fd):
+    assert not (fd.FAILING_VERDICTS & fd.BENIGN_VERDICTS)
+
+
+# --------------------------------------------------------------------------
+# the Dependabot predicate: called, not grepped
+# --------------------------------------------------------------------------
+
+def test_guilt_a_real_dependabot_pr_is_flagged(fd):
+    assert fd.is_dependabot({"author": {"__typename": "Bot", "login": "dependabot"}})
+
+
+@pytest.mark.parametrize("author,why", [
+    ({"__typename": "Bot", "login": "renovate"}, "another bot shares the Bot type"),
+    ({"__typename": "Bot", "login": "github-actions"}, "so does github-actions"),
+    ({"__typename": "User", "login": "dependabot"}, "a human could take the name"),
+    ({}, "no author fields at all"),
+    (None, "author absent"),
+])
+def test_innocence_only_dependabot_is_flagged(fd, author, why):
+    """Pins the AND. Flipping it to OR reinstated the 'is any bot' bug while the
+    old source-grep test stayed green — two substrings never pinned their join."""
+    assert not fd.is_dependabot({"author": author}), why
+
+
+# --------------------------------------------------------------------------
+# the main-checkout warning: behaviour, not a forbidden literal
+# --------------------------------------------------------------------------
+
+def test_guilt_a_primary_checkout_under_any_name_is_warned_about(fd, monkeypatch, tmp_path):
+    """Forbidding the literal `GIT_CWD.name ==` did not stop `!=` with an early
+    return from reinstating name-dependence. This calls the function instead."""
+    odd = tmp_path / "a-clone-named-something-else"
+    (odd / ".git").mkdir(parents=True)
+    buf = io.StringIO()
+    monkeypatch.setattr(fd, "GIT_CWD", odd)
+    monkeypatch.setattr(sys, "stderr", buf)
+    fd._warn_if_main_checkout()
+    assert "MAIN checkout" in buf.getvalue()
+
+
+def test_innocence_a_linked_worktree_is_not_warned_about(fd, monkeypatch, tmp_path):
+    """In a linked worktree `.git` is a FILE pointing at the real object store."""
+    wt = tmp_path / "nuzantara"
+    wt.mkdir()
+    (wt / ".git").write_text("gitdir: /somewhere/else\n")
+    buf = io.StringIO()
+    monkeypatch.setattr(fd, "GIT_CWD", wt)
+    monkeypatch.setattr(sys, "stderr", buf)
+    fd._warn_if_main_checkout()
+    assert buf.getvalue() == ""
