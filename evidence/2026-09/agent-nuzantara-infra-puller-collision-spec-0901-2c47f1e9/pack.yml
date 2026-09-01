@@ -88,7 +88,7 @@ seat_diversity_note: >-
 
 diff:
   files: 8
-  net_lines: 1875
+  net_lines: 1886
   measured_at: >-
     counted with `git diff --numstat --cached $(git merge-base origin/main HEAD)` — the CACHED
     form, not the three-dot one, and the difference is the whole point: the three files under
@@ -129,13 +129,24 @@ residual_risks:
     documented behaviour, not a source of red. A cross-family seat had AGREED with the deferral when
     asked, and that assent is withdrawn as evidence rather than cited: it was agreeing with the
     framing it was handed, which is what asking a reviewer to validate your own reason buys you.
-    THE REAL REASONS, stated now: COST — no job-level `if:` and no `paths:` filter, deliberately, so
-    a 10x-billed macOS runner starts on every PR and merge_group in the repo (1m55s measured), and
-    requiring it makes that cost mandatory rather than merely incurred; and BLAST RADIUS — a flake
-    there would block every lane rather than this one, which on the night this was written was not
-    hypothetical: the already-required `E2E Tests (Playwright)` went red on this PR from a webServer
-    startup timeout with no test executed, while an adjacent unrelated PR passed the same job in an
-    overlapping window. Neither reason is about correctness, and neither is about the 56. An earlier revision of this
+    A SECOND REASON I GAVE IS ALSO WRONG AND IS STRUCK, rather than left standing beside a real one.
+    I wrote that COST justified deferring — a 10x-billed macOS runner on every PR. It does not: the
+    job has no job-level `if:` and the workflow no `paths:` filter, deliberately, so it ALREADY runs
+    on every PR and merge_group whether or not it is required. Arming adds exactly ZERO runner
+    minutes. Cost argues for NARROWING the job, not for leaving it unarmed. ONE reason survives:
+    BLAST RADIUS — requiring it means a flake in one macOS job blocks every lane rather than this
+    one. The instance, with identifiers so a later reader can re-derive it rather than take it on
+    prose: run `33545600443`, job `99982871630`, head `fc9dc803be` — `E2E Tests (Playwright)`, an
+    ALREADY-required context, failed 18:48:27Z to 18:55:08Z on 2026-09-01 with `Timed out waiting
+    180000ms from config.webServer` and no spec executed, while run `33545688737` on the unrelated
+    branch `agent/nuzantara/mouth/oracle-honest-shadow-copy` passed the same job in an overlapping
+    window. Same job, same minutes, different verdict — a flake, not an outage. THE TRIGGER IS ALSO
+    NUMBERED NOW, because its first replacement was unfalsifiable (it said "inside the budget" and
+    "a stated window" while naming neither): arm when `collision-matrix-case-folding` completes 50
+    consecutive `pull_request`/`merge_group` runs with zero failures that are not a genuine
+    `MATRIX MOVED`. Baseline measured at filing: 7 runs, 7 success, first run `33544667199` at
+    2026-09-01T18:36:58Z — the job is under an hour old, which is why 7 green runs prove nothing.
+    Neither surviving reason is about correctness, and neither is about the 56. An earlier revision of this
     PR's own `Bites:`
     line said "two required-check jobs" and was FALSE; it has been corrected.
   - >-
