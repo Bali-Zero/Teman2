@@ -357,7 +357,7 @@ receipts:
     ts: "2026-09-01T18:45:00Z"
     seat: gemini-3.1-pro-agy
   - claim: "cross-family review attempt, kimi-code/k3: bare PONG health-check for council quorum"
-    cmd: "kimi -p \"reply with exactly the word PONG, nothing else\" -m kimi-code/k3"
+    cmd: 'kimi -p "reply with exactly the word PONG, nothing else" -m kimi-code/k3'
     result: "403 You've reached your weekly (7-day) usage limit"
     exit: 1
     ts: "2026-09-01T18:55:00Z"
