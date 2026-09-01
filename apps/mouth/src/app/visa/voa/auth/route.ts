@@ -9,6 +9,7 @@ import {
   TOKEN_MAX_LENGTH,
   TOKEN_MIN_LENGTH,
   encodePending,
+  expirePending,
   isLoopback,
 } from "./contract";
 
@@ -91,7 +92,11 @@ export async function GET(request: NextRequest): Promise<Response> {
     RESULT_ID_PATTERN.test(resultId);
 
   if (!usable) {
-    return seeOther(FAILURE_LOCATION);
+    // Clear any pending credential a PREVIOUS good link left behind. Without
+    // this the customer sees a failure page while link A stays redeemable
+    // from another tab for the rest of its Max-Age — the failure page is not
+    // the same thing as the failed state.
+    return seeOther(FAILURE_LOCATION, expirePending(!isLoopback(url.hostname)));
   }
 
   const cookie = [
