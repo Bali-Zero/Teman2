@@ -1,5 +1,5 @@
 task_id: l13-pr3
-gear: 1
+gear: 2
 l_level: L1
 gate_class: opus
 objective: |
@@ -15,6 +15,14 @@ objective: |
   build_operator_secret_digest) plus render/JSON wrappers and a new
   `--operator-secret-digest` CLI mode, reusing the existing parser/Entry
   machinery — no second ledger parser, per spec's explicit constraint.
+
+  Gear note: the plan's own L13-PR3 section declares "Gear: Gear 1" — that
+  is the SPEC AUTHOR's estimate, not the CI-recomputed floor this brief
+  must satisfy. The diff grew past the size-term threshold (617 net lines,
+  >= evidence_pack_lint.py's SIZE_GEAR2_THRESHOLD=400) across two
+  adversarial-review rounds' worth of fixes (fingerprint hardening, a
+  mode-exclusivity guard, tests, and a new PENDING-ARMS row) — the
+  deterministic floor for THIS diff is 2, declared here to match it.
 constraints:
   - "No second ledger parser: reuses load_entries/parse_entry/Entry.cls —
     selection is `cls == CLASS_OPERATOR_GATED` plus 'secret' in the owner's
