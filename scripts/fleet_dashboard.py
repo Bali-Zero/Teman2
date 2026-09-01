@@ -442,7 +442,12 @@ def collect() -> dict[str, Any]:
     # which those are, and a green PR has no failing check to name. Computed
     # once here and read twice below; the first version called it once per
     # caller and paid for every PR twice.
-    red = [p for p in live if rollup_state(p) == "FAILURE"]
+    # `== "FAILURE"` here was the same defect as in failing_checks(), one level
+    # up and worse: a PR whose rollup state is ERROR matched NEITHER this nor
+    # the SUCCESS test below, so it vanished from both cards and appeared only
+    # in the raw total — not "red with no reason", but absent. Found by
+    # adversarial review while tracing the fix to the function below it.
+    red = [p for p in live if rollup_state(p) in FAILING_VERDICTS]
     fail_map = {p["number"]: failing_checks(p["number"]) for p in red}
     causes: dict[str, list[int]] = defaultdict(list)
     for number, names in fail_map.items():
@@ -458,6 +463,22 @@ def collect() -> dict[str, Any]:
     unknown_merge = [p["number"] for p in live if p["mergeable"] == "UNKNOWN"]
 
     green = [p for p in live if rollup_state(p) == "SUCCESS"]
+    # Anything in neither set and not a known in-flight state is a rollup value
+    # this page cannot classify. It is COUNTED and reported, because the whole
+    # failure mode being cured here is a PR quietly belonging to no bucket.
+    unclassified = sorted(
+        p["number"] for p in live
+        if rollup_state(p) not in FAILING_VERDICTS
+        and rollup_state(p) not in BENIGN_VERDICTS
+        and rollup_state(p) != "—"
+    )
+    if unclassified:
+        sys.stderr.write(
+            "fleet_dashboard: rollup state not classifiable on "
+            f"{len(unclassified)} PR(s) {unclassified} — they are counted in the "
+            "total and in no card. Add the value to FAILING_VERDICTS or "
+            "BENIGN_VERDICTS.\n"
+        )
     # ready = green AND known-mergeable AND not queued: the pile that would move
     # with no work at all. `mergeable == "MERGEABLE"` is asserted positively,
     # never inferred from "not CONFLICTING" — that inference is what put a

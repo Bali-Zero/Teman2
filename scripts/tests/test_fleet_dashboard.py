@@ -240,3 +240,47 @@ def test_innocence_a_linked_worktree_is_not_warned_about(fd, monkeypatch, tmp_pa
     monkeypatch.setattr(sys, "stderr", buf)
     fd._warn_if_main_checkout()
     assert buf.getvalue() == ""
+
+
+# --------------------------------------------------------------------------
+# the rollup state: a PR must belong to a bucket, or be named
+# --------------------------------------------------------------------------
+
+#: Every value GitHub's GraphQL `StatusState` enum can take.
+STATUS_STATES = ["EXPECTED", "ERROR", "FAILURE", "PENDING", "SUCCESS"]
+
+
+def _pr_with_rollup(state):
+    return {"commits": {"nodes": [{"commit": {"statusCheckRollup": {"state": state}}}]}}
+
+
+@pytest.mark.parametrize("state", STATUS_STATES)
+def test_every_rollup_state_belongs_to_exactly_one_bucket(fd, state):
+    """The defect this pins: `red` tested `== "FAILURE"` and `green` tested
+    `== "SUCCESS"`, so a PR whose rollup state was ERROR matched NEITHER and
+    vanished from both cards while still counting in the total. Not "red with
+    no reason" — absent. A value in both sets, or in neither, is that bug."""
+    in_failing = state in fd.FAILING_VERDICTS
+    in_benign = state in fd.BENIGN_VERDICTS
+    assert in_failing != in_benign, (
+        f"{state} is in {'BOTH sets' if in_failing else 'NEITHER set'} — a PR "
+        "carrying it belongs to no card"
+    )
+
+
+def test_guilt_an_error_rollup_is_treated_as_failing(fd):
+    assert fd.rollup_state(_pr_with_rollup("ERROR")) in fd.FAILING_VERDICTS
+
+
+def test_innocence_a_success_rollup_is_not_treated_as_failing(fd):
+    assert fd.rollup_state(_pr_with_rollup("SUCCESS")) not in fd.FAILING_VERDICTS
+
+
+def test_innocence_a_pending_rollup_is_not_treated_as_failing(fd):
+    """Still running is not failing — erring the other way would put every
+    in-flight PR in the red card."""
+    assert fd.rollup_state(_pr_with_rollup("PENDING")) not in fd.FAILING_VERDICTS
+
+
+def test_a_pr_with_no_commits_yields_the_placeholder_not_a_crash(fd):
+    assert fd.rollup_state({"commits": {"nodes": []}}) == "—"
