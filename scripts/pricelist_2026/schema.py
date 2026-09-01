@@ -20,9 +20,13 @@ from typing import Any
 # document surfaces (the IT/ID notification templates, the lead-capture
 # deeplink, the welcome-practice and welcome-email services, the Canva renderer,
 # the rendered price list, the whole frontend) already used these digits —
-# among those, this sheet was the only dissenter. A separate set of email
-# footers and the chat CTA still carry the bot's inbound number; that is
-# ledgered as an owner decision, not silently corrected here.
+# among those, this sheet was the only dissenter. AMENDED 2026-09-01: this
+# comment used to end "A separate set of email footers and the chat CTA still
+# carry the bot's inbound number; that is ledgered as an owner decision." The
+# owner gave the decision the same day ("metti ari anche in quelle") and those
+# surfaces were moved, so the sentence is now false and would invite the next
+# maintainer to restore the bot's number on the authority of a stale comment.
+# Nothing client-facing in the backend carries it any more.
 #
 # `whatsapp` (human-readable) and `wa_link` (wa.me href) are both derived
 # from this one string below so they cannot disagree — that was the 2026-08-31
