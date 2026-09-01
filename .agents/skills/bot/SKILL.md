@@ -92,12 +92,27 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
     rows. **Consequence: every past cycle called "green" proves nothing about abstains — they are
     invisible to any automated check and visible only by reading the text.** This blocks the spec's
     golden-set criterion in production. Separate ledger item.
-  - **💰 THE E33E EXTENSION MAY BE PRICED BELOW THE GOVERNMENT FLOOR — BUSINESS DECISION, LEGGE 5,
-    NOT A SESSION FIX.** We sell it all-inclusive at **Rp 10.000.000**. Codex computes the renewal's
-    PNBP floor as ITAS Rp 7.000.000 + re-entry permit Rp 3.500.000 = **Rp 10.500.000** (PP 45/2024).
-    Corroborating smell from our own price list: `E33E Extend`, `E33F Extend` and
-    `Retirement Extend` are ALL Rp 10.000.000 — three distinct products, one inherited number.
-    **Verify the floor against PP 45/2024 and put it to Zero; do not "fix" the price.**
+  - **💰 CONFIRMED: THE E33E RENEWAL IS SOLD BELOW THE GOVERNMENT FLOOR. Rp 10.500.000 floor
+    vs our Rp 10.000.000 all-inclusive price — we lose Rp 500.000 per renewal before any margin.
+    BUSINESS DECISION (Legge 5), flagged to Zero 2026-09-01, NOT fixed by a session.** Verified by
+    direct fetch of `imigrasi.go.id/wna/daftar-visa-indonesia/E33E`, which itemizes the Rp 13.000.000
+    FIRST-ISSUANCE total verbatim as: `Biaya Visa tinggal terbatas Rp 500.000` + `Biaya Verifikasi
+Visa Rp 2.000.000` + `Biaya Izin Tinggal Terbatas (ITAS) masa berlaku 5 Tahun Rp 7.000.000` +
+    `Biaya Izin Masuk Kembali (IMK) masa berlaku 5 Tahun Rp 3.500.000`. A renewal is not an entry,
+    so visa and verification do not recur: **ITAS 7.000.000 + IMK 3.500.000 = 10.500.000**. Tariff
+    rows corroborated in PP 45/2024 Lampiran C (ITAS and IMK tables are keyed ONLY by duration —
+    there is no separate, cheaper "perpanjangan" schedule to find) and by Kanim Jakarta Pusat's
+    published fee table. **The escape hatch does NOT exist**: UU 63/2024 removed the separate IMK
+    _document/application_, NOT the _fee_ — PP 45/2024 postdates that law and still carries a
+    9-tier IMK tariff, and the government's own page bills IMK as its own line. **Root cause, and
+    the actionable part: one inherited number across three products of different durations.**
+    `E33E Extend` (5 years, floor 10.500.000), `E33F Extend` (1 year, floor ITAS 3.000.000 + IMK
+    1.500.000 = 4.500.000) and `Retirement Extend` are ALL priced at Rp 10.000.000. E33F carries a
+    healthy margin at that price; E33E is underwater — nobody recalculated when the duration went
+    from one year to five. Residual uncertainty, declared: no single official sentence states "an
+    E33E extension re-pays ITAS and IMK" — it is a strong convergent inference from duration-only
+    tariff keying plus the analogous ITAP-extension page listing IMK as a cost component. Risk is
+    ASYMMETRIC DOWNWARD: if a renewal also draws verification, the floor rises to 12.500.000.
   - **📘 REGULATORY FACTS ESTABLISHED FROM PRIMARY SOURCES (2026-09-01) — the corpus is WRONG on
     both, in opposite directions:**
     - **Passport validity is TWO rules, never one number.** NEW ITAS/VITAS application: _"Paspor
