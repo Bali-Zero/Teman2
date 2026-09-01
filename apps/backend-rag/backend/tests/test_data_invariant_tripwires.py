@@ -168,6 +168,37 @@ def test_openai_embedding_model_is_frozen() -> None:
 # ---------------------------------------------------------------------------
 
 _RETIRED_WHATSAPP = "+62 813 3805 1876"
+
+#: Separators a human might type INSIDE one number. Deliberately excludes
+#: newline: collapsing across lines would fuse two unrelated numbers into a
+#: match that is not there.
+_PHONE_SEPARATORS = re.compile("[ \\t.()+\"'-]")
+
+
+def _collapse_phone_separators(line: str) -> str:
+    """Strip in-number punctuation from ONE line so any spelling of a number
+    compares equal to its bare digit run."""
+    return _PHONE_SEPARATORS.sub("", line)
+
+
+def _forbidden_digit_runs() -> tuple[str, ...]:
+    """Digit runs that must never appear on a CLIENT-FACING surface, in ANY
+    spelling — DERIVED, never typed.
+
+    The first draft typed them as literals and got one wrong by a single digit
+    ("628138051876" for a 13-digit number), which made the retired-line guilt
+    case silently unenforceable. A test whose subject is "somebody typed the
+    wrong number" must not itself contain a typed number.
+    """
+    from backend.app.core.config import settings
+
+    runs: list[str] = []
+    for source in (settings.SUPPORT_WHATSAPP, _RETIRED_WHATSAPP):
+        intl = _collapse_phone_separators(source)
+        runs.append(intl)
+        if intl.startswith("62"):
+            runs.append("0" + intl[2:])  # Indonesian local form of the same line
+    return tuple(runs)
 _RETIRED_LOCATION = "Canggu, Bali, Indonesia"
 
 
@@ -189,30 +220,218 @@ def test_authoritative_pricing_json_never_reintroduces_retired_contact() -> None
     ``apps/backend-rag/backend/data/PRICING_DEPRECATED_2025.md``) and is
     excluded from every production code path by contract, not by accident.
     """
-    from backend.app.core.config import settings
+    import sys
+
+    repo_root = _repo_root()
+    if str(repo_root / "scripts") not in sys.path:
+        sys.path.insert(0, str(repo_root / "scripts"))
+    from pricelist_2026.schema import CANONICAL_CONTACT
 
     data_path = (
-        _repo_root() / "apps/backend-rag/backend/data/bali_zero_official_prices_2026.json"
+        repo_root / "apps/backend-rag/backend/data/bali_zero_official_prices_2026.json"
     )
     assert data_path.exists(), f"authoritative pricing JSON missing at {data_path}"
 
     contact = json.loads(data_path.read_text(encoding="utf-8"))["metadata"]["contact"]
 
-    assert contact["whatsapp"] == settings.SUPPORT_WHATSAPP, (
-        f"{data_path.name} contact.whatsapp={contact['whatsapp']!r} does not "
-        f"match settings.SUPPORT_WHATSAPP={settings.SUPPORT_WHATSAPP!r} (the "
-        "Meta-verified Bali Zero number) — PricingService answers and the "
-        "RAG-embedded text would drift from the number the bot itself "
-        "advertises."
+    # The sheet must match its GENERATOR, not the bot's inbound number.
+    #
+    # This assertion used to read `contact["whatsapp"] == settings.SUPPORT_WHATSAPP`,
+    # and that pin was wrong in a way that actively caused harm: on 2026-08-31 a
+    # PR fixing a real defect (the two contact halves named different numbers)
+    # resolved the tie toward SUPPORT_WHATSAPP *because this test said it had
+    # to*, and shipped the bot's inbound number onto the client-facing price
+    # list. The owner reversed it on 2026-09-01 ("lascia ari").
+    #
+    # They are different things and must be free to differ:
+    #   - `settings.SUPPORT_WHATSAPP` is the Meta-verified number the BOT
+    #     RECEIVES on — its inbound identity, which no human answers.
+    #   - `contact.whatsapp` is the number a CLIENT is invited to write to.
+    #     The lead-capture and document surfaces already use Ari's line: the
+    #     IT and ID notification templates, the lead-capture deeplink, the
+    #     welcome-practice and welcome-email services, the Canva renderer, the
+    #     rendered public price list and the whole apps/mouth frontend. Among
+    #     THOSE, the price sheet was the only one that disagreed.
+    #
+    #     NOT "every surface in the repo": a further eleven client-facing
+    #     surfaces — the CRM/invoice/birthday/welcome email footers, the shared
+    #     notification footer, the chat sanitizer's CTA and the website-widget
+    #     prompt — still emit SUPPORT_WHATSAPP to clients. They are measured,
+    #     listed by file:line in .claude/skills/modus/PENDING-ARMS.md, and left
+    #     to the owner: who answers a client's invoice reply is a business
+    #     decision, not a code cleanup.
+    #
+    # What is worth pinning is that the sheet cannot drift from the generator
+    # that produces it, and that its two halves cannot name different numbers —
+    # which is the defect the 2026-08-31 PR correctly identified.
+    assert contact == CANONICAL_CONTACT, (
+        f"{data_path.name} metadata.contact has drifted from CANONICAL_CONTACT "
+        "in scripts/pricelist_2026/schema.py. Change the generator's "
+        "_CANONICAL_WHATSAPP_DIGITS and regenerate, never hand-edit the sheet — "
+        "hand-editing is how `whatsapp` and `wa_link` came to name different "
+        "numbers in the first place. Do NOT resolve a mismatch here by copying "
+        "settings.SUPPORT_WHATSAPP: that is the bot's inbound number, not the "
+        "client-facing one (owner ruling 2026-09-01)."
     )
     assert contact["whatsapp"] != _RETIRED_WHATSAPP
     assert contact.get("location") != _RETIRED_LOCATION
 
 
-# ---------------------------------------------------------------------------
-# Invariant 4 — kbli_documents (Postgres) is NOT the flat KBLI payload
-# CLAUDE.md §9 describes (lever #8, 2026-07-19 KB activation-plan audit)
-# ---------------------------------------------------------------------------
+def test_client_contact_whatsapp_matches_the_price_list_generator():
+    """The two sides of the system must name the SAME client-facing number.
+
+    `settings.CLIENT_CONTACT_WHATSAPP` is what the backend hands a client when
+    the price sheet fails to load (pricing_plugin / zantara_tools fallback);
+    `_CANONICAL_WHATSAPP_DIGITS` in scripts/pricelist_2026/schema.py is what
+    the sheet and the rendered price list print. They live in different trees
+    and neither imports the other, so nothing but this test stops them from
+    drifting — and a client who reads one number on the PDF and is given a
+    different one by the bot has no way to tell which is real.
+
+    This does NOT pin either of them to `settings.SUPPORT_WHATSAPP`: that is
+    the bot's inbound identity, a deliberately different number (owner ruling
+    2026-09-01). See the comment on CLIENT_CONTACT_WHATSAPP in config.py.
+    """
+    import sys
+
+    from backend.app.core.config import settings
+
+    repo_root = _repo_root()
+    if str(repo_root / "scripts") not in sys.path:
+        sys.path.insert(0, str(repo_root / "scripts"))
+    from pricelist_2026.schema import CANONICAL_CONTACT
+
+    assert CANONICAL_CONTACT["whatsapp"] == settings.CLIENT_CONTACT_WHATSAPP, (
+        f"price-list generator says {CANONICAL_CONTACT['whatsapp']!r} but "
+        f"settings.CLIENT_CONTACT_WHATSAPP says "
+        f"{settings.CLIENT_CONTACT_WHATSAPP!r} — change BOTH, or the sheet "
+        "and the bot's own fallback will invite clients to different lines."
+    )
+    assert settings.CLIENT_CONTACT_WHATSAPP != settings.SUPPORT_WHATSAPP, (
+        "CLIENT_CONTACT_WHATSAPP has collapsed onto SUPPORT_WHATSAPP. That is "
+        "the 2026-08-31 regression: the bot's inbound number, which no human "
+        "answers, handed to clients as the line to write to."
+    )
+
+
+def test_pricing_fallback_contacts_read_the_setting_and_never_a_literal():
+    """The degraded path is the one nobody reads, so pin it by AST.
+
+    Both pricing entry points return a `fallback_contact` when the sheet fails
+    to load. Those two blocks carried a hand-typed number until 2026-09-01 and
+    were missed by every earlier contact-number sweep, because nothing pointed
+    at them.
+
+    This asserts on the PARSED SOURCE, not on text, after two earlier drafts
+    were broken by adversarial review in both directions:
+
+      - A phone-SHAPE regex over-matched an IDR price literal like
+        "18 500 000" and under-matched the same number in single quotes, split
+        across adjacent literals, or written with dots.
+      - Matching known DIGIT RUNS over raw text fixed those, and was still
+        wrong twice over: it false-flagged a docstring that merely MENTIONS the
+        bot's number, and it happily allowed any wrong number not on the list —
+        including a typo of Ari's own, and including hard-coding Ari's number
+        instead of reading the setting, which is what put the wrong number here
+        in the first place.
+
+    The question actually worth asking is not "does a forbidden number appear
+    in this file" but "is the value this dict hands a client computed from the
+    single source of truth". That has an exact answer in the AST: the value
+    bound to `whatsapp` inside a `fallback_contact` dict must be the
+    `settings.CLIENT_CONTACT_WHATSAPP` attribute — never a constant, never a
+    join, never an f-string. No text obfuscation can satisfy it, and prose that
+    merely names a number cannot violate it.
+    """
+    import ast
+
+    root = _repo_root() / "apps/backend-rag/backend"
+    sources = [
+        root / "plugins/bali_zero/pricing_plugin.py",
+        root / "services/misc/zantara_tools.py",
+    ]
+    for src in sources:
+        assert src.exists(), f"pricing fallback source moved: {src}"
+        tree = ast.parse(src.read_text(encoding="utf-8"), filename=str(src))
+        found = 0
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Dict):
+                continue
+            for key, value in zip(node.keys, node.values, strict=True):
+                if not (isinstance(key, ast.Constant) and key.value == "whatsapp"):
+                    continue
+                found += 1
+                assert isinstance(value, ast.Attribute) and (
+                    value.attr == "CLIENT_CONTACT_WHATSAPP"
+                    and isinstance(value.value, ast.Name)
+                    and value.value.id == "settings"
+                ), (
+                    f"{src.name}:{getattr(value, 'lineno', '?')} binds "
+                    '"whatsapp" to '
+                    f"{ast.dump(value)[:80]} instead of "
+                    "settings.CLIENT_CONTACT_WHATSAPP. A literal here — even "
+                    "the RIGHT number today — is how the wrong one survived "
+                    "the 2026-09-01 ruling's predecessor."
+                )
+        assert found >= 1, (
+            f'{src.name} no longer contains a dict with a "whatsapp" key — the '
+            "fallback_contact block was renamed or removed, and this guard has "
+            "silently stopped guarding anything."
+        )
+
+
+def test_every_repo_side_copy_of_the_client_number_agrees():
+    """One number, five places that spell it out — pinned to each other.
+
+    The adversarial seat's sharpest finding: introducing
+    `settings.CLIENT_CONTACT_WHATSAPP` does NOT create a single source of truth
+    while the same digits are independently typed in the price-list generator,
+    the Qdrant contact-patch script and the Visa Oracle's handoff URL. Change
+    Ari's line correctly in three of them and the other two go stale with every
+    test still green — which is precisely the failure mode this whole PR exists
+    to close, reproduced one layer up.
+
+    There is no import path that would let the backend read the two `scripts/`
+    modules at runtime, so they cannot share a constant. What they CAN share is
+    a test that fails the moment they disagree.
+    """
+    import re
+    import sys
+
+    from backend.app.core.config import settings
+
+    repo_root = _repo_root()
+    if str(repo_root / "scripts") not in sys.path:
+        sys.path.insert(0, str(repo_root / "scripts"))
+    from pricelist_2026.schema import CANONICAL_CONTACT
+
+    canonical = settings.CLIENT_CONTACT_WHATSAPP
+    digits = re.sub(r"\D", "", canonical)
+
+    assert CANONICAL_CONTACT["whatsapp"] == canonical, (
+        "scripts/pricelist_2026/schema.py disagrees with "
+        f"settings.CLIENT_CONTACT_WHATSAPP: {CANONICAL_CONTACT['whatsapp']!r} != {canonical!r}"
+    )
+    assert CANONICAL_CONTACT["wa_link"] == f"https://wa.me/{digits}", (
+        "the generator's wa_link does not carry the same digits as its own "
+        f"display string: {CANONICAL_CONTACT['wa_link']!r}"
+    )
+
+    patch_script = (repo_root / "scripts/patch_pricing_contact_block.py").read_text("utf-8")
+    assert f'CANONICAL_WHATSAPP = "{canonical}"' in patch_script, (
+        "scripts/patch_pricing_contact_block.py's CANONICAL_WHATSAPP is stale — "
+        "it would rewrite the LIVE Qdrant pricing payloads to a number that is "
+        "no longer the client-facing one."
+    )
+
+    oracle = (
+        repo_root / "apps/backend-rag/backend/services/visa_oracle/visa_oracle_service.py"
+    ).read_text("utf-8")
+    assert f'WHATSAPP_BASE_URL = "https://wa.me/{digits}"' in oracle, (
+        "visa_oracle_service.py's WHATSAPP_BASE_URL points somewhere else — the "
+        "Visa Oracle handoff deeplink and the price list would send a client to "
+        "two different numbers."
+    )
 
 
 def test_kbli_documents_queries_read_metadata_not_flat_business_columns() -> None:
