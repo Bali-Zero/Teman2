@@ -394,10 +394,10 @@
       "a6": "{{price}} all-inclusive for the base E33 — one figure, everything included. The fit memo that assesses your route is free."
     },
     "cta": {
+      "fitCheck": "Start the fit-check",
       "title": "Start with a free fit memo",
       "body": "Tell us your situation on WhatsApp. We reply with an honest read: which route fits, what evidence you'll need, and the exact price for your case. No obligation.",
-      "button": "Get my free Fit Memo →",
-      "note": "Typical first reply on WhatsApp in under 5 hours."
+      "button": "Get my free Fit Memo →"
     }
   }
 }

@@ -1,0 +1,70 @@
+{
+  "synthetic": true,
+  "fixture_category": "supersession",
+  "adversarial_case_ref": "packet 06-naga-claim-ledger.md, 'Golden set and adversarial cases': 'amended/repealed rules'",
+  "expected_behavior": "The successor edge below must be independently re-derivable from claim_v2.supersedes_claim_ref alone (per 02-p04-adapter-mapping.md §3's 'belt and suspenders' note on D10/D11 absence) -- i.e. if the edge object were lost or never written, a correct implementation can reconstruct the same supersession fact by reading claim_v2 directly. A test should delete the edge object and confirm the claim-level field alone still lets a reader find the current claim from the superseded one's claim_family_id.",
+  "claim_v1_original": {
+    "claim_id": "b2f1a000-0000-4000-8000-000000000040",
+    "claim_family_id": "b2f1a000-0000-4000-8000-0000000000f6",
+    "statement": {
+      "subject_ref": {
+        "object_kind": "regulation",
+        "object_id": "pp-synth-20-2025",
+        "object_hash": "7777777777777777777777777777777777777777777777777777777777777777"
+      },
+      "predicate": "naga.eligibility_rule.min_capital",
+      "object_ref_or_value": 2500000000,
+      "currency": "IDR"
+    },
+    "time": {
+      "valid_from": "2025-06-01T00:00:00Z",
+      "valid_to": null,
+      "recorded_at": "2025-05-20T00:00:00Z"
+    },
+    "status": "supported",
+    "note": "SYNTHETIC — original PMA paid-up capital rule, IDR 2.5B.",
+    "correction_2026_08_26": "CORRECTED per RULING Zero 2026-08-26 (Research OS B1): a claim's 'superseded' state is DERIVED AT READ from the successor edge and is NEVER written onto the predecessor -- 'il vecchio resta intatto'. This object previously carried status='superseded' with valid_to closed at the successor's boundary, which contradicted both the ruling and this bundle's own bitemporal/01 fixture (predecessor left supported / valid_to null). Both writes are removed: the status because it IS the derived state, and the closed valid_to because it was set as a consequence of the amendment rather than as an independent fact this bundle verified. A reader obtains 'superseded from 2026-05-15' from claim_v2.supersedes_claim_ref, which this fixture's own expected_behavior already requires to be independently re-derivable. RESIDUAL, deliberately not decided here: whether a predecessor's valid_to may ever be written when the amending instrument states an explicit cessation date as a fact of its own -- see 07 §B2."
+  },
+  "claim_v2_amendment": {
+    "claim_id": "b2f1a000-0000-4000-8000-000000000041",
+    "claim_family_id": "b2f1a000-0000-4000-8000-0000000000f6",
+    "statement": {
+      "subject_ref": {
+        "object_kind": "regulation",
+        "object_id": "pp-synth-31-2026",
+        "object_hash": "8888888888888888888888888888888888888888888888888888888888888888"
+      },
+      "predicate": "naga.eligibility_rule.min_capital",
+      "object_ref_or_value": 2500000000,
+      "currency": "IDR"
+    },
+    "time": {
+      "valid_from": "2026-05-15T00:00:00Z",
+      "valid_to": null,
+      "recorded_at": "2026-05-16T00:00:00Z"
+    },
+    "status": "supported",
+    "supersedes_claim_ref": {
+      "claim_id": "b2f1a000-0000-4000-8000-000000000040",
+      "object_hash": "9999999999999999999999999999999999999999999999999999999999999999"
+    },
+    "note": "SYNTHETIC — an amending regulation, same value, but a per-KBLI/per-location exception threshold above IDR 10B is unchanged from the abroga fact captured elsewhere (see this repo's real fact_bkpm_5_2025_paidup_capital_2_5_mld memory for the non-synthetic analogue this fixture's SHAPE is modeled on, not its content -- this fixture's regulation numbers and dates are invented)."
+  },
+  "object_successor_edge": {
+    "object_successor_edge_id": "b2f1a000-0000-4000-8000-0000000000ed",
+    "object_kind": "claim",
+    "family_id": "naga.claim_family.b2f1a000-0000-4000-8000-0000000000f6",
+    "predecessor_ref": {
+      "object_kind": "claim",
+      "object_id": "b2f1a000-0000-4000-8000-000000000040",
+      "object_hash": "7777777777777777777777777777777777777777777777777777777777777777"
+    },
+    "successor_ref": {
+      "object_kind": "claim",
+      "object_id": "b2f1a000-0000-4000-8000-000000000041",
+      "object_hash": "8888888888888888888888888888888888888888888888888888888888888888"
+    },
+    "reason_code": "naga.regulation_amended",
+    "recorded_at": "2026-05-16T00:00:00Z"
+  }
+}

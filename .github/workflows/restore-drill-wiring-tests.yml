@@ -1,0 +1,98 @@
+name: Restore drill wiring tests
+
+# Executor for the two corpora that prove restore-drill.yml's own restore/
+# verify/notify steps never let a swallowed exit code mask a genuine
+# restore-drill failure (test_restore_drill_workflow_wiring.py) and that
+# restore_drill_verify.py's Level-5 verification never conflates "could not
+# measure" with "measured zero" (test_restore_drill_verify.py).
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# Measured, not assumed: `grep -rn restore_drill .github/workflows/` before
+# this file existed returned ONLY restore-drill.yml itself -- no workflow
+# named either test file. The only sweep over scripts/tests/ is
+# scripts-tests-sweep.yml, whose own header states it is `continue-on-error:
+# true`, triggered by `schedule:` + `workflow_dispatch:` (verbatim
+# "deliberately NOT `pull_request:`"), and is not in branch protection. So a
+# PR that flipped `ON_ERROR_STOP=1` back to `0`, or reintroduced any of the
+# swallowed-exit-code shapes both corpora exist to catch, failed these tests
+# LOCALLY and NOWHERE ELSE, and merged green -- superscar #2 ("exists !=
+# armed") sitting one level inside a PR whose entire subject is curing that
+# same disease in the drill itself. Same shape and rationale as
+# `vercel-autopromote-tests.yml`, `s7-yield-dispatch-tests.yml`,
+# `check-wal-continuity-probe.yml`, `yield-optimizer-pii-gate-tests.yml`, and
+# `wr3-spend-gate-tests.yml`.
+#
+# The `pull_request:` paths filter is REMOVED so this workflow is SAFE TO REQUIRE. A required
+# status check is satisfied only by a run that reports it; a top-level `on.pull_request.paths:`
+# filter means a path-miss PR never starts a run at all, so the context reports "Expected --
+# waiting for status" forever and the PR is hard-blocked with nothing red (conformance guard
+# rule 4, cicatrix W69). Whether this context IS required lives in branch protection, not here.
+# `push:` keeps its filter: a push to main gates no PR, and the guard's declared scope excludes
+# `on.push.paths`.
+#
+# COST, measured 2026-08-31 rather than asserted. This job's median is 28s (n=5) on a PR ref.
+# That number does NOT by itself discharge a "no merge-queue latency regression" constraint --
+# queue latency is the CRITICAL PATH across required checks on each `merge_group` entry, not the
+# cost of any one job. Measured on the last 8 merge_group entries: the critical path median is
+# 415s, and it is `Frontend Tests (Next.js)` / `E2E Tests (Playwright)` (both median 413s) in 7
+# of 8. A 28s job running in parallel with a 415s critical path adds nothing to it, and would
+# have to slow by ~15x before it could become the path itself.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/restore-drill.yml"
+      - "scripts/ci/restore_drill_verify.py"
+      - "scripts/tests/test_restore_drill_workflow_wiring.py"
+      - "scripts/tests/test_restore_drill_verify.py"
+      - ".github/workflows/restore-drill-wiring-tests.yml"
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: restore-drill-wiring-tests-${{ github.ref }}
+  # `== 'pull_request'`, not the `!= 'merge_group'` this file used to carry. Both leave queue
+  # runs alone, which is the load-bearing part (a cancelled required check ejects the entry),
+  # but `!= 'merge_group'` is ALSO true on `push`, and the group is keyed on `github.ref` -- so
+  # a later push to main would cancel an in-flight main run of this corpus. `voa-probe-tests.yml`
+  # fixed exactly that and wrote down why; a cross-family refuter of this same change pointed out
+  # that the lesson had been applied to one of the two sibling files and not the other.
+  # Superseded pushes on a PR branch are a different case and may be cancelled freely: GitHub
+  # supersedes the cancelled check with the run for the new head.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  wiring-tests:
+    name: Restore drill wiring tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      # DELIBERATELY UNPINNED, and the reasoning is recorded because a cross-family refuter of
+      # the change that removed this file's `paths:` filter raised the opposite (REAL finding,
+      # rejected here with cause). The finding: this job now runs on every PR and every
+      # merge-queue entry, so an unpinned install makes PyPI availability and a pytest/PyYAML
+      # major bump into a gate on merges, for reasons unrelated to any diff. That is true.
+      # The proposed cure -- `"pytest>=7,<9"` -- was MEASURED and is worse than the disease:
+      # this repo runs pytest 9.0.3 in `apps/backend-rag/.venv`, `requirements-test.txt` lists a
+      # bare `pytest`, and 12+ sibling workflows install it bare. A `<9` ceiling here alone would
+      # make CI verify these two corpora under pytest 8 while every developer and every other
+      # workflow runs 9 -- a version skew between the checker and the checked, which is a
+      # state-schema drift (superscar #9) traded for a supply-availability risk. If this repo
+      # wants pinned test deps in CI, that is a repo-wide decision and its own PR; it is not a
+      # rider on a trigger-wiring diff, and doing it in one file is how the skew starts.
+      - name: Install pytest + PyYAML (the wiring corpus parses the workflow as YAML)
+        run: python3 -m pip install --quiet --disable-pip-version-check pytest pyyaml
+
+      - name: restore-drill.yml's own restore/verify/notify steps never swallow a failure
+        run: python3 -m pytest scripts/tests/test_restore_drill_workflow_wiring.py -v
+
+      - name: restore_drill_verify.py catches the degenerate shape, never accuses a healthy restore
+        run: python3 -m pytest scripts/tests/test_restore_drill_verify.py -v

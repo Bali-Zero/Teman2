@@ -1,0 +1,352 @@
+# kb/inventory/immigration.yaml — Lane A (immigration & visa), KB current-live campaign
+# MANDATE.md §2, third artifact. `kind: topic` — what the store ACTUALLY holds,
+# measured directly against production Qdrant (legal_unified, physical
+# legal_unified_hybrid_hybrid) on 2026-08-25 by lane A. Every count below came from a
+# live scroll/count against that collection in this session — none inherited
+# unverified from kb/inventory/legal_unified_2026.yaml (the retired-collection
+# triage), though several conclusions independently corroborate it.
+#
+# payload_shapes vocabulary is CLOSED and imported by the CI gate from
+# scripts/kb/kb_inventory_probe.py::PAYLOAD_SHAPES — never restated here.
+
+schema_version: 1
+kind: topic
+lane: A
+topic: immigration
+measured_at: "2026-08-25"
+
+measured_against:
+  collection: legal_unified
+  points: 1868
+  payload_shapes:
+    legacy_metadata_text: 352
+    orphan_no_identity: 0
+    modern_id_only: 1103
+    modern_id_chunk: 0
+    modern_full: 413
+
+instruments:
+  - id: UU_6_2011
+    points: 413
+    present: true
+    complete: true
+    note: >-
+      All 413 points are shape `modern_full` (document_id+chunk_key+section triple).
+      This is one of the two documents (with UU_40_2007) Work Item Zero repaired on
+      2026-08-25 to a clean state; lane A re-confirmed the live count matches (413)
+      and sampled points directly rather than trusting the repair claim un-verified.
+      `complete: true` on the strength of that repair + independent web-search
+      cross-check of the law's identity and amendment chain — NOT an article-by-
+      article re-audit, which lane A did not perform.
+
+  - id: UU_63_2024
+    points: 38
+    present: true
+    complete: false
+    incomplete_because: >-
+      38 points split across TWO ingestion generations for the same 10-article
+      amendment law: 10 points shape `modern_id_only` (document_id present, no
+      chunk_key) + 28 points shape `legacy_metadata_text` (CONTEXT-header form).
+      Content sampled from both generations matches the law's known provisions
+      (Pencegahan max 6mo, Penangkalan max 10y, firearms authorization, Travel
+      Document as citizenship proof) — nothing found to be MISSING content-wise —
+      but the dual-generation split itself is the kind of unreconciled state
+      Work Item Zero's triage flagged for UU_6_2011/UU_40_2007 before their repair,
+      and lane A has not proven these 38 points cover all 10 amended articles
+      (only confirmed the ones sampled). Marked incomplete on the honest gap between
+      "content sampled looks right" and "content count independently verified
+      against the official amendment's article list", not on any found damage.
+
+  - id: Permen_22_2023
+    points: 402
+    present: true
+    complete: true
+    note: >-
+      402 points, shape `modern_id_only`. Golden Visa provisions (BAB VI Pasal 198,
+      BAB V Pasal 184) confirmed present verbatim by direct scroll+substring search
+      of all 402 points — this is the strongest completeness evidence in this
+      inventory: not a sample, the FULL point set for this instrument was scanned.
+      Identity + amendment chain independently confirmed via a direct WebFetch of
+      the official peraturan.go.id page (200, genuine content, not the 74KB error
+      page). One live data-quality defect found on this instrument and NOT fixed
+      here (out of lane-A ingest-repair scope): every sampled point carries
+      `legal_status: dicabut` ("revoked") in its own payload, which is WRONG — this
+      is the current in-force regulation. See journey 4's note in
+      kb/journeys/immigration.yaml for the retrieval consequence this causes.
+
+  - id: Permen_11_2024
+    points: 345
+    present: true
+    complete: true
+    note: >-
+      345 points, shape `modern_id_only`. Identity confirmed both by the ingest's
+      own CONTEXT-header text and by cross-reference from Permen_22_2023's official
+      page (names this as the regulation that amends it). No journey targets this
+      instrument directly in this pass — it amends specific articles of Permen
+      22/2023 rather than restating the whole regulation, so a meaningful journey
+      needs a targeted article-level question this session did not have ground
+      truth to construct honestly. Recorded as a gap, not fabricated.
+
+  - id: PP_31_2013
+    points: 324
+    present: true
+    complete: false
+    incomplete_because: >-
+      324 points, shape `legacy_metadata_text` only (no modern-generation copy
+      exists for this instrument at all). Content sampled (immigration checkpoints,
+      travel-document issuance authority, sanction procedures) is consistent with
+      the regulation, but web search independently found PP 31/2013 has been
+      amended four times, most recently by PP 40/2023 — and lane A could not
+      determine, from the sampled points, whether the corpus text reflects the
+      ORIGINAL 2013 articles or the text AS AMENDED through PP 40/2023. This is a
+      genuinely UNDETERMINED gap, not a hedge: resolving it needs a side-by-side
+      diff against the official PP 40/2023 text, which this session did not do.
+
+  - id: Permen_29_2021
+    points: 340
+    present: true
+    complete: true
+    note: >-
+      340 points, shape `modern_id_only`. `complete` describes whether the WHOLE
+      instrument is indexed, and by that narrow reading it is — the identity is
+      sound and content sampled matches a full "Visa dan Izin Tinggal" regulation's
+      scope (definitions, visa refusal grounds, ITAS duration tiers, deportation
+      procedure). The problem this instrument poses is NOT incompleteness: it is
+      that it is SUPERSEDED (confirmed by two independent web sources: Permenkumham
+      22/2023 replaced both Permenkumham 16/2018 and 29/2021) yet still live and,
+      MEASURED via kb/ops/probe_retrieval.py on 2026-08-25, ranks at position 3 for
+      a current-ITAS-duration question — a confirmed live retrieval defect, not a
+      hypothetical. See journey 4.
+
+  - id: Permen_35_2012
+    points: 0
+    present: false
+    lookup_attempts:
+      - "by document_id filter (Qdrant count) against legal_unified — 0"
+      - "by metadata.document_id filter (Qdrant count) against legal_unified — 0"
+      - "by verbatim phrase from the instrument's own title block ('TATA NASKAH DINAS DI LINGKUNGAN PEMERINTAH KABUPATEN TEGAL') via kb/ops/probe_retrieval.py journey 2 against a real Golden Visa question — not found in retrieved context, 4 separate runs on 2026-08-25, all red"
+    note: >-
+      Correctly and confirmedly ABSENT from legal_unified. This is the poisoned
+      identity the orchestrator named directly: 1,240 points of Tegal regency
+      office-correspondence content labelled "Golden Visa C-318" exist in the
+      RETIRED legal_unified_2026 collection (kb/inventory/legal_unified_2026.yaml)
+      but were never promoted — must stay that way. Journey 2 is the standing canary.
+
+  - id: UU_14_2024
+    points: 0
+    present: false
+    lookup_attempts:
+      - "by document_id filter (Qdrant count) against legal_unified — 0"
+      - "by metadata.document_id filter (Qdrant count) against legal_unified — 0"
+      - "by verbatim phrase from the instrument's own title block ('STANDAR HARGA SATUAN BARANG DAN JASA PEMERINTAH KABUPATEN KLATEN') via kb/ops/probe_retrieval.py journey 8 against a Visa dan Izin Tinggal question — not found in retrieved context, red on 2026-08-25"
+    note: >-
+      Correctly and confirmedly ABSENT from legal_unified. Second poisoned identity:
+      632 points of a Klaten regency FY2025 unit-price schedule, labelled
+      "Permenkumham 22/2023 — Visa Dan Izin Tinggal", exist in the retired
+      legal_unified_2026 collection. A third check this session (web search for the
+      REAL UU 14/2024) found it is actually a Langkat Regency administrative law —
+      a third, unrelated subject, further confirming this instrument has no
+      coherent identity to promote under any name. Journey 8 is the standing canary.
+
+  - id: PP_45_2024
+    points: 0
+    present: false
+    lookup_attempts:
+      - "by document_id filter (Qdrant count) against legal_unified — 0"
+      - "by metadata.document_id filter (Qdrant count) against legal_unified — 0"
+      - "cross-checked against kb/inventory/legal_unified_2026.yaml's own record: 12 points total in the retired collection, `legal_status: dicabut`, disposition catalogue_only (too partial to be a document, §4.5) — no promotion was ever attempted for it"
+    note: >-
+      Correctly absent. Identity is sound (unlike the two poisons above) but only 12
+      points ever existed anywhere for this PNBP tariff schedule, which is itself
+      revoked. Catalogue entry only — never targetable by a journey (§4.5: 12 points
+      cannot be a whole tariff table).
+
+  - id: Permen_27_2021
+    points: 6
+    present: true
+    complete: false
+    incomplete_because: >-
+      Only 6 points in legal_unified, shape `modern_id_only`, against 402/345/340/324
+      for the four peer Permenkumham/PP instruments measured in this same topic —
+      not "a short regulation", the shape of a damaged or partially-read ingest
+      (MANDATE.md §4.5). Identity is sound (closing clause names the correct
+      Minister, date, and revoked predecessor Permenkumham 26/2020), so this is a
+      completeness defect, not an identity one. No re-ingest attempted this session
+      — repair ownership is ambiguous between a lane-A re-ingest and Lane P (parser
+      capability) if the root cause is structural; recorded rather than guessed at.
+
+# ── Findings measured this session that lane A does NOT chase (§8, rule 8) ─────
+open_findings:
+  - id: LANE-A-1
+    title: "`legal_status` is derivation-broken corpus-wide, not just mis-populated on two documents — decision 5's audit, closed"
+    owner: "Lane P (parser capability) — root cause is in the ingestion parser, not a lane-A data edit"
+    detail: >-
+      SECOND PASS (2026-08-25, same day, per MANDATE.md §7 decision 5 — the owner
+      chose MARK over REMOVE and required an audit before any filter is written).
+      Whole-scroll, not sampled: `scripts/kb/audit_legal_status.py` against all
+      84,283 points of legal_unified_hybrid_hybrid. Vocabulary is closed at exactly
+      two named values plus absence — `dicabut` (42,420 pts / 202 document_ids),
+      `berlaku` (26,107 pts / 168 document_ids), missing entirely (15,756 pts / 33
+      document_ids). Field location: 74.4% under `metadata.legal_status` (legacy
+      shape), 6.9% top-level (modern shape) — both read every scroll, per the
+      MANDATE §4.1 lesson. 14 document_ids hold BOTH values across their own
+      points (e.g. Permen_1_2026: 931 dicabut / 575 berlaku) — a single document
+      cannot honestly be both, which by itself proves the signal is per-chunk
+      noise, not a document-level fact.
+
+      ROOT CAUSE FOUND, read from the source, not inferred: `STATUS_PATTERNS` in
+      `apps/backend-rag/backend/core/legal/constants.py` is a bare regex —
+      `dicabut: DICABUT|TIDAK BERLAKU|DIGANTI`, `berlaku: BERLAKU|MASIH BERLAKU` —
+      searched against chunk text in `metadata_extractor.py` with dict-order
+      first-match-wins (dicabut checked before berlaku) and ZERO disambiguation of
+      WHAT or WHOM the match refers to. Sampled directly against production text
+      (not inferred): the DIGANTI pattern fires on the generic verb "digantikan" (a
+      guarantor being substituted — Permen_22_2023); TIDAK BERLAKU fires on "Izin
+      Tinggal yang tidak berlaku lagi" (an individual's STAY PERMIT expiring —
+      UU_6_2011) and on a provision not applying to a class of person ("tidak
+      berlaku terhadap warga negara Indonesia" — UU_6_2011 penjelasan); and, the
+      specific mechanism behind journey 4's defect, a law's own standard closing
+      clause revoking ITS PREDECESSORS ("Keputusan Presiden Nomor 31 Tahun 1998 ...
+      dicabut dan dinyatakan tidak berlaku" — PP_31_2013) gets read as the CURRENT,
+      still-valid document being revoked. This is family #3 (guard-over-match):
+      deciding legal status by bare substring, not by entity/intent.
+
+      SCALE, on ground truth verified this session (source_url fetch/search per
+      kb/topics/immigration.yaml): of lane A's 7 present, real-status-known
+      instruments, 4 of 5 `dicabut`-marked ones are WRONGLY marked — UU_6_2011
+      (413 pts), Permen_22_2023 (402 pts), Permen_11_2024 (345 pts), PP_31_2013
+      (324 pts) are all amended-but-valid or in-force, not revoked. Only
+      Permen_29_2021 (340 pts, genuinely superseded) is correctly `dicabut`, most
+      likely by the same coincidental mechanism rather than a correct
+      determination. UU_63_2024 (38 pts) is correctly `berlaku`. Outside lane A's
+      scope (bounding per the mandate: immigration's own instruments + the
+      highest-point documents corpus-wide), the two largest `dicabut`-marked
+      documents in the ENTIRE collection are also independently confirmed
+      (peraturan.go.id / JDIH Kemenkeu, web search 2026-08-25) to be currently
+      "Berlaku": UU_40_2007 (Company Law, 379 pts, 100% dicabut) and UU_6_2023
+      (Cipta Kerja ratification, 4,685 pts — the single largest dicabut-marked
+      document by point count in the whole corpus, 100% dicabut). Not chased
+      further (Lane B/C territory, MANDATE.md rule "a defect outside immigration:
+      inventory row, do not chase it") — recorded because it answers the
+      mandate's own scale question: this is not an immigration-lane quirk.
+
+      DRY-RUN REPAIR PROPOSED, NOT APPLIED: `scripts/kb/propose_legal_status_repair.py`
+      would flip exactly 4 document_ids / 1,484 points (`dicabut`→`berlaku`:
+      UU_6_2011 413, Permen_22_2023 402, Permen_11_2024 345, PP_31_2013 324) — the
+      only instruments this session can name a source for. Permen_27_2021
+      (dicabut, 6 pts) is deliberately EXCLUDED: its real status is recorded
+      `unknown` in kb/topics/immigration.yaml (source_verified: false) — proposing
+      a value would be guessing. No write was performed; this script has no
+      --apply flag by design.
+
+      MARKING PROBE BUILT AND RUN, makes decision 5 testable rather than declared:
+      `scripts/kb/probe_legal_status_marking.py` re-asks journey 4's exact question
+      through the real production path (`SearchService`, same as
+      kb/ops/probe_retrieval.py) and checks the retrieved chunks' own
+      `legal_status`. MEASURED 2026-08-25: Permen_22_2023 ranks 1st and is marked
+      `dicabut` (WRONG — should read as current) — OUTSTANDING; Permen_29_2021
+      ranks 3rd (matching journey 4's recorded rank) and is marked `dicabut`
+      (correct) — AT TARGET. Re-running this script after any repair is how a lane
+      proves the mark is correct in production, not just corrected in a report.
+
+      RECOMMENDATION (owner gesture — MANDATE §7 asked for one): the field is NOT
+      repairable by patching mismarked rows at large — the derivation mechanism
+      has no relationship to the fact it names, so a broader row-patch would make
+      hundreds of other document_ids' values look equally trustworthy with no
+      basis for that claim. Two separate actions: (1) apply the narrow, fully-
+      sourced 4-document /1,484-point correction above as a stopgap for THIS
+      lane's live defect — it is small enough to name every source and every
+      point; (2) declare `legal_status` corpus-wide UNTRUSTWORTHY for any
+      filter/exclude logic (the exact concern journey 4 already raised) until it
+      is re-derived from a document-level authoritative source, the way
+      kb/topics/*.yaml is built lane-by-lane, or the parser-level STATUS_PATTERNS
+      mechanism itself is retired/gated — a Lane P task, not a lane-A data edit.
+    severity: high
+
+  - id: LANE-A-2
+    title: "Superseded Permen_29_2021 outranks current Permen_22_2023 for a live ITAS-duration question"
+    owner: "lane A / whoever owns retrieval ranking + the legal_status defect above"
+    detail: >-
+      MEASURED via kb/ops/probe_retrieval.py, journey 4, on 2026-08-25: asking
+      "Berapa lama masa berlaku Izin Tinggal Terbatas (ITAS)...?" retrieves the
+      SUPERSEDED Permen_29_2021 duration text (a different tier structure:
+      5y/2y/1y/180d/90d) at rank 3, while the equivalent phrase from the CURRENT
+      Permen_22_2023 (journey 3) does not rank in the top 10 for the identical
+      question. This is MANDATE.md §7 decision 5's exact concern, confirmed live —
+      not repaired here (repair is a re-rank or an ingest-time supersession flag,
+      both outside a single lane-A PR's ~200-logic-line budget).
+    severity: high
+
+  - id: LANE-A-3
+    title: "immigration_circulars and visa_oracle are live, routed collections lane A did not build journeys against"
+    owner: "future lane-A work, or a dedicated cross-collection routing lane"
+    detail: >-
+      `surface_router.py:63` sends "visa"/"kitas"/"imigrasi" questions to
+      `visa_oracle` FIRST in production, with `immigration_circulars` as a
+      documented fallback — collection_registry.py, query_router.py and
+      fallback_manager.py all confirm both are live-wired, not scaffolding.
+      immigration_circulars (1,979 points, single ingestion generation, rich
+      per-chunk metadata: regulation_number/title/ministry/issuing_authority) holds
+      the SAME Golden Visa provisions (Permen_22_2023 BAB V/VI) under a different
+      chunking, plus PP 31/2013, UU 63/2024, and several instruments not measured
+      as part of this pass (Permen 8/2021, Permen 34/2021, UU 8/2019, etc. — see
+      the full regulation_number census this session captured but did not turn into
+      journeys). visa_oracle (90 points, curated per-visa-type "expert cards": C9,
+      C13, E28C, E31H, E31E, E28B, KITAS→KITAP conversion, overstay/deportation —
+      no dedicated Golden Visa card, but 5 of its cards mention Golden Visa in
+      passing) is the collection a REAL production Golden Visa chat message would
+      actually be routed to first, and lane A's 8 journeys never probe it. This is
+      a real coverage gap in what "current" means for this topic, named rather than
+      silently assumed equivalent to the legal_unified journeys above.
+    severity: medium
+
+  - id: LANE-A-4
+    title: "UU_63_2024 exists as two unreconciled ingestion generations"
+    owner: "Lane P (parser capability) or a lane-A follow-up re-ingest"
+    detail: >-
+      10 points shape `modern_id_only` + 28 points shape `legacy_metadata_text` for
+      the same 10-article law, with no cross-reference between the two. Not the
+      same defect class as the two poisoned identities (both generations here carry
+      the CORRECT identity) — it is an unreconciled-duplicate-generation defect,
+      the same shape Work Item Zero found and repaired for UU_6_2011/UU_40_2007,
+      just not yet repaired for this instrument.
+    severity: medium
+
+  - id: LANE-A-5
+    title: "The visa index codes real clients use (C1/C5/D12/E33/E31/E28) have zero lexical grounding in legal_unified's lane-A corpus"
+    owner: "future lane-A work, or the collection-routing question LANE-A-3 already names"
+    detail: >-
+      OWNER-SWITCHBOARD.md §1.3 (measured over 2,752 real immigration questions):
+      clients ask via bare index codes (C1, C5, C12, D1, D12, E33G, E31/E28A) or
+      colloquial handles, never a statute number. A targeted regex scroll of ALL 402
+      Permen_22_2023 points and ALL 345 Permen_11_2024 points (the two lane-A
+      instruments most likely to carry the index table) for the literal tokens
+      `C1`/`C5`/`D12`/`E33`/`E31`/`E28`/"Indeks" found ZERO hits in either — the
+      index-code vocabulary is not lexically present anywhere in this lane's scoped
+      legal_unified corpus. It IS present elsewhere: LANE-A-3 already recorded that
+      visa_oracle's 90 curated cards use index codes (C9, C13, E28C, E31H, E31E,
+      E28B — a different, non-overlapping set from OWNER-SWITCHBOARD's examples,
+      which is itself worth a second look). This sharpens LANE-A-3: a client
+      question phrased as a bare index code most likely needs visa_oracle's
+      per-visa-type cards, not legal_unified's statute text, regardless of retrieval
+      tuning — no amount of re-ranking legal_unified surfaces a token it does not
+      contain.
+    severity: medium
+
+  - id: LANE-A-6
+    title: "hak pakai / property-tenure mechanics for second-home KITAS are absent from legal_unified's lane-A corpus"
+    owner: "Lane D (property) or a joint A×D follow-up"
+    detail: >-
+      OWNER-SWITCHBOARD.md §1.4 names "secondary-home KITAS against hak pakai and
+      property value rather than a bank deposit" as a real A×D cross-lane question
+      shape. Pasal 185/186's "rumah kedua" (second-home) visa category, WITH an
+      explicit 60-plus "lanjut usia" (retirement) sub-clause, IS genuinely present
+      in Permen_22_2023 (confirmed by direct scroll, not assumed) — but a targeted
+      search for `hak pakai` and `deposit`/`deposito` across the same 402+345 points
+      found ZERO hits for either. MEASURED via kb/ops/probe_retrieval.py, journey
+      10, on 2026-08-25 (3 stable runs, all red): the retirement/second-home
+      question does not even clear the visa-eligibility half from Pasal 185/186, so
+      the property-tenure half's absence could not even be separately isolated this
+      session — both are open. Not chased here (property-tenure mechanics are Lane
+      D's domain by MANDATE.md's own lane split).
+    severity: medium

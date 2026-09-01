@@ -62,11 +62,14 @@ async def _active_policy(db_pool: asyncpg.Pool) -> ActiveRetentionPolicy:
                    retention_anchor, approved_by
               FROM public.visa_decision_retention_policies
              WHERE environment = 'PRODUCTION'
+               AND policy_scope = 'VISA_DECISION'
                AND effective_period @> clock_timestamp()
             """
         )
     if len(rows) != 1:
-        raise RuntimeError("exactly one active PRODUCTION retention policy is required")
+        raise RuntimeError(
+            "exactly one active PRODUCTION VISA_DECISION retention policy is required"
+        )
     row = rows[0]
     return ActiveRetentionPolicy(
         policy_version=str(row["policy_version"]),

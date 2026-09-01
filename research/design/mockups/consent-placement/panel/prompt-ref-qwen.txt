@@ -1,0 +1,8 @@
+You are a claim referee. For each claim below, verdict one of: Sound / Unsupported / Internally contradictory / In tension with itself — plus severity (Critical/High/Med/Low) and ONE sentence why. Output: numbered list only, format "N. Cn — verdict — severity — why".
+
+C1. A design declares "custody-before-ask is funnel law: the custody statement (why/who-sees/kept-for/policy-link) renders BEFORE the fields" — yet keeps the acknowledgement CHECKBOX as the LAST element of the same screen. Coherent or self-contradictory?
+C2. The design renders a retention duration sourced from a DB policy table ("no active policy, no rendered duration") on a screen whose INSERT is already refused by a DB trigger when no active policy exists. Is the conditional-render rule redundant, coherent, or in tension with the gate?
+C3. The live screen promises "I can delete this check any time"; no user-facing erasure path exists. The design REMOVES the deletion promise until the path is built and audited. Does removing the mention of a data-subject right strengthen honesty or weaken informed consent (UU PDP frame)?
+C4. The design ships a privacy-policy link on every funnel screen but gates its RENDER on the policy first being corrected (today the policy denies collecting data the funnel collects). Is a designed-but-dormant link an honest pattern?
+C5. The report grades the wrong privacy policy as an "arm-time trap BLOCKER" for a product currently behind a dark flag (no public users yet). Right severity or overclaim?
+C6. The custody module's why-we-ask states "nothing else on this page is used for the check". Can a static design honestly assert a negative about data use, or must this be placeholder/audited?

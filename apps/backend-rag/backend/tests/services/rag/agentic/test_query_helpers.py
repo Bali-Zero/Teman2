@@ -164,8 +164,22 @@ def test_english_homographs_never_decide_a_language_on_their_own() -> None:
     """
     # Assert the declaration itself, or the loop below passes vacuously the
     # moment someone empties the table — which is exactly the change it exists
-    # to catch.
-    assert LATIN_HOMOGRAPHS == {"ITALIAN": ["come"], "FRENCH": ["comment"]}
+    # to catch. Exact equality is deliberate: it makes every ADDITION a
+    # conscious act reviewed right here, next to the property it must satisfy.
+    #
+    # Grew on 2026-08-25, all three for the same reason — a token that names a
+    # language only by coincidence:
+    #   "dove"  — English, the bird.
+    #   "prego" — not an English word, but a supermarket pasta-sauce brand,
+    #             and this bot advises on food-import KBLI, so "Prego sauce
+    #             import licence" is a message it actually receives.
+    #   "qual"  — THE standard question word in PORTUGUESE. Decisive, it took
+    #             "Qual é o custo do visto?" from ENGLISH (wrong, but readable)
+    #             to ITALIAN (wrong AND unreadable). Italian keeps it via "è".
+    assert LATIN_HOMOGRAPHS == {
+        "ITALIAN": ["come", "dove", "prego", "qual"],
+        "FRENCH": ["comment"],
+    }
 
     for language, homographs in LATIN_HOMOGRAPHS.items():
         for word in homographs:

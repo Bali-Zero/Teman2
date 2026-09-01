@@ -26,7 +26,11 @@ from typing import Any
 
 import pytest
 
-from backend.app.setup.sentry_config import PII_REDACTION_PLACEHOLDER, _before_send
+from backend.app.setup.sentry_config import (
+    PII_REDACTION_PLACEHOLDER,
+    _before_send,
+    _init_sentry_blocking,
+)
 
 EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 
@@ -48,6 +52,11 @@ PII_SAMPLES: dict[str, str] = {
     "nik": "1234567890123456",
     "phone_local": "081234567890",
     "phone_jid": "6281234567890",
+    # Added 2026-08-25 (GARUDA VOA L4 magic-link auth, CodeQL
+    # py/clear-text-storage-sensitive-data #8755 review): the router's raw
+    # magic-link bearer and the session secret it establishes on success.
+    "token": "t0k3n-aB3dEf9K2mN8pQ7rS5uV1wX6yZ",
+    "account_session_secret": "sess-9xQ2mK7vL4pR8tY1wZ3nC6hJ0aB",
 }
 
 
@@ -74,6 +83,34 @@ def _assert_no_pii(event: dict[str, Any]) -> None:
         if EMAIL_RE.search(leaf) and PII_REDACTION_PLACEHOLDER not in leaf:
             leaked.append(f"email-shaped string leaked: {leaf!r}")
     assert not leaked, "PII leaked through before_send:\n  " + "\n  ".join(leaked)
+
+
+# --------------------------------------------------------------------------- #
+# 0. Init configuration — frame locals bypass `_before_send` entirely
+#
+# `_before_send` walks the JSON-shaped event Sentry hands it, but the SDK
+# attaches raw frame-LOCAL values to `stacktrace.frames[].vars` at capture
+# time, before `before_send` ever runs, whenever `include_local_variables`
+# is left at its default of `True`. A value that only ever exists as a bare
+# local (e.g. `garuda_result_session` / `result_session_secret` in
+# `garuda_portal_auth.py`, never as a dict key `_scrub` walks) leaks
+# regardless of how complete `_PII_KEY_SUBSTRINGS` is — no amount of key-based
+# redaction downstream can reach it. The only structural fix is telling the
+# SDK not to collect locals at all.
+# --------------------------------------------------------------------------- #
+def test_init_sentry_disables_local_variable_capture(monkeypatch):
+    captured: dict[str, Any] = {}
+
+    def fake_init(**kwargs: Any) -> None:
+        captured.update(kwargs)
+
+    monkeypatch.setattr("sentry_sdk.init", fake_init)
+    _init_sentry_blocking("https://example.invalid/1")
+
+    assert captured.get("include_local_variables") is False, (
+        "sentry_sdk.init must be called with include_local_variables=False — "
+        "otherwise frame locals bypass _before_send's key-based redaction entirely"
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -266,6 +303,75 @@ def test_redacts_extra_and_contexts():
         },
     }
     _assert_no_pii(_before_send(event, {}))
+
+
+# --------------------------------------------------------------------------- #
+# 11/12. GARUDA VOA L4 magic-link auth (2026-08-25, CodeQL #8755 review) —
+# the raw magic-link bearer and the account-session secret it establishes.
+# Mirrors the frame-locals shape from test #5 above: these are exactly the
+# names that would appear as dict keys if a future `MagicLinkStore` adapter's
+# kwargs, or `MagicLinkExchange.token`, ended up in a Sentry breadcrumb/frame.
+# --------------------------------------------------------------------------- #
+def test_redacts_magic_link_token_in_stacktrace_locals():
+    event = {
+        "exception": {
+            "values": [
+                {
+                    "type": "RuntimeError",
+                    "value": "store blew up",
+                    "stacktrace": {
+                        "frames": [
+                            {
+                                "filename": "backend/app/routers/garuda_portal_auth.py",
+                                "function": "exchange_magic_link",
+                                "vars": {"token": PII_SAMPLES["token"]},
+                            }
+                        ]
+                    },
+                }
+            ]
+        }
+    }
+    _assert_no_pii(_before_send(event, {}))
+
+
+def test_redacts_account_session_secret_in_extra():
+    event = {
+        "extra": {
+            "outcome_kwargs": {
+                "account_session_secret": PII_SAMPLES["account_session_secret"],
+                "result_session_secret": PII_SAMPLES["account_session_secret"],
+            }
+        }
+    }
+    _assert_no_pii(_before_send(event, {}))
+
+
+# --------------------------------------------------------------------------- #
+# Positive control — "token" is EXACT-match only (see sentry_config.py
+# comment), because this codebase logs `max_tokens`/`token_count`/`tokenizer`
+# constantly for LLM call debugging. If "token" were ever widened to a
+# substring match, this test goes red and that is the point: it is the
+# tripwire for the exact regression the review warned against.
+# --------------------------------------------------------------------------- #
+def test_llm_token_usage_fields_survive_redaction():
+    event = {
+        "extra": {
+            "max_tokens": 4096,
+            "token_count": 812,
+            "tokenizer": "cl100k_base",
+            "input_tokens": 512,
+            "output_tokens": 128,
+        }
+    }
+    scrubbed = _before_send(event, {})
+    assert scrubbed is not None
+    extra = scrubbed["extra"]
+    assert extra["max_tokens"] == 4096
+    assert extra["token_count"] == 812
+    assert extra["tokenizer"] == "cl100k_base"
+    assert extra["input_tokens"] == 512
+    assert extra["output_tokens"] == 128
 
 
 # --------------------------------------------------------------------------- #

@@ -38,6 +38,13 @@ import pathlib
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from gate_coverage import record as _gc_record
+except Exception:
+    def _gc_record(hook_name, decision, payload=None):
+        pass
+
 # --- Protected destinations (writes here are blocked, anywhere on the host) ----
 # Resolved against $HOME. Directory prefixes (a write to any descendant blocks)
 # and exact secret files.
@@ -75,16 +82,26 @@ SECRET_READ_HINTS = (
     ".nuzantara-secrets", "token",
 )
 
-# --- W79 write-target extraction (CLONED VERBATIM from worktree_isolation.py) --
+# --- W79 write-target extraction (shared with worktree_isolation.py) ----------
+# This block is a COPY, and "verbatim" is a promise prose cannot keep: the
+# 2026-08-18 W119 cure fixed CPMV_RE in worktree_isolation.py and never reached
+# this file, which went on asserting it was verbatim for 13 days — which is
+# exactly why nobody looked. The five names below are now pinned identical by
+# `test_w119b_write_regex_newline_bleed.py::test_w119b_shared_regexes_are_identical_in_both_hooks`,
+# so a one-sided edit goes RED instead of going unnoticed. Change one, change both.
 # Quick gate: does the command contain anything that could write a file?
-WRITE_HINT_RE = re.compile(r"(>>?|\btee\b|\bsed\b[^|]*-i|\bdd\b[^|]*\bof=|\b(?:cp|mv|install)\b)")
-REDIR_RE = re.compile(r"(?<![0-9>&])>>?\s*([^\s|;&)]+)")
-TEE_RE = re.compile(r"\btee\s+(?:-a\s+)?([^\s|;&)]+)")
-SEDI_RE = re.compile(r"\bsed\b[^|;&]*?-i\S*\s+(?:-e\s+\S+\s+|'[^']*'\s+|\"[^\"]*\"\s+|\S+\s+)([^\s|;&)]+)")
-DDOF_RE = re.compile(r"\bdd\b[^|;&]*?\bof=([^\s|;&)]+)")
-CPMV_RE = re.compile(r"\b(?:cp|mv|install)\b((?:\s+(?:-\S+|[^\s|;&)]+))+)")
+WRITE_HINT_RE = re.compile(r"(>>?|\btee\b|\bsed\b[^|\n]*-i|\bdd\b[^|\n]*\bof=|\b(?:cp|mv|install)\b)")
+REDIR_RE = re.compile(r"(?:[0-9]?>|&>)>?[ \t]*([^\s|;&)]+)")  # stdout/stderr/combined redirects
+TEE_RE = re.compile(r"\btee[ \t]+(?:-a[ \t]+)?([^\s|;&)]+)")
+SEDI_RE = re.compile(r"\bsed\b[^|;&\n]*?-i\S*[ \t]+(?:-e[ \t]+\S+[ \t]+|'[^'\n]*'[ \t]+|\"[^\"\n]*\"[ \t]+|\S+[ \t]+)*([^\s|;&)]+)")
+DDOF_RE = re.compile(r"\bdd\b[^|;&\n]*?\bof=([^\s|;&)]+)")
+CPMV_RE = re.compile(r"\b(?:cp|mv|install)\b((?:[ \t]+(?:-\S+|[^\s|;&)]+))+)")
 # Read commands whose FIRST file arg, if a secret, triggers a WARN.
-READ_CMD_RE = re.compile(r"\b(cat|less|more|head|tail|bat)\b\s+((?:-\S+\s+)*)([^\s|;&)]+)")
+# W119c (2026-08-31): SAME-LINE whitespace only. With `\s+` a line ending in a bare
+# `cat` paired with the next statement's first token, and because `_read_hits_secret`
+# uses `.search()` (first match wins), that phantom consumed the one search — a REAL
+# secret read later in the same command was never reached and its WARN never fired.
+READ_CMD_RE = re.compile(r"\b(cat|less|more|head|tail|bat)\b[ \t]+((?:-\S+[ \t]+)*)([^\s|;&)]+)")
 
 
 def _strip_noise(cmd: str) -> str:
@@ -110,8 +127,21 @@ def _strip_noise(cmd: str) -> str:
         return "\n".join(out)
 
     s = _drop_heredocs(cmd)
-    s = re.sub(r"'[^']*'", "''", s)
-    s = re.sub(r'"[^"]*"', '""', s)
+    # W84 (ported here 2026-08-31, 13 days after it was cured in
+    # worktree_isolation.py and never copied across — see the block comment
+    # there for the full reasoning): the char-class MUST exclude newline. With
+    # `[^']*`, an apostrophe on line A pairs with one on line C, and every line
+    # BETWEEN them is deleted from the scanned text. Measured fail-OPEN on this
+    # very guard:
+    #     echo don't panic
+    #     cp /tmp/evil ~/.ssh/config
+    #     echo it's done
+    # collapsed to `echo don''s done` — the `cp` line vanished and the write to
+    # a protected path was ALLOWED. A shell quote never legitimately spans a
+    # newline here, so confining the match to one line is both correct and the
+    # false-positive killer.
+    s = re.sub(r"'[^'\n]*'", "''", s)
+    s = re.sub(r'"[^"\n]*"', '""', s)
     return s
 
 
@@ -208,7 +238,8 @@ def _read_hits_secret(cmd: str, cwd: str) -> pathlib.Path | None:
     return resolved
 
 
-def _block(offending: pathlib.Path, surface: str) -> None:
+def _block(offending: pathlib.Path, surface: str, payload: dict | None = None) -> None:
+    _gc_record("host_boundary", "deny", payload)
     sys.stderr.write(
         "HOST BOUNDARY VIOLATION (write to host-sensitive path)\n"
         f"  surface: {surface}\n"
@@ -223,10 +254,20 @@ def _block(offending: pathlib.Path, surface: str) -> None:
 
 def main() -> int:
     if os.environ.get("HOST_BOUNDARY_OFF") == "1":
+        _gc_record("host_boundary", "exempt", None)
         return 0
     try:
         payload = json.load(sys.stdin)
+        if not isinstance(payload, dict):
+            # Bug fixed 2026-08-27: valid JSON that isn't a dict (`null`,
+            # `42`, `[]`, a bare string) used to crash the next line's
+            # `.get()` — genuine unhandled AttributeError, before any
+            # try/except here (model_routing_gate.py hit the identical class
+            # 2026-08-22 and already carries this guard).
+            _gc_record("host_boundary", "exempt", None)
+            return 0
     except Exception:
+        _gc_record("host_boundary", "exempt", None)
         return 0  # unparseable → never block on our own parse failure
 
     tool = payload.get("tool_name") or payload.get("name") or ""
@@ -237,7 +278,8 @@ def main() -> int:
         if fp:
             resolved = _resolve_target(fp, payload.get("cwd", ""))
             if resolved is not None and _is_protected(resolved):
-                _block(resolved, f"{tool} file_path")
+                _block(resolved, f"{tool} file_path", payload)  # exits, does not return
+        _gc_record("host_boundary", "allow", payload)
         return 0
 
     # --- Bash: shell writes + secret reads ---
@@ -246,7 +288,7 @@ def main() -> int:
         cwd = payload.get("cwd", "")
         offending = _write_hits_sensitive(cmd, cwd)
         if offending is not None:
-            _block(offending, "Bash write")
+            _block(offending, "Bash write", payload)  # exits, does not return
         secret = _read_hits_secret(cmd, cwd)
         if secret is not None:
             sys.stderr.write(
@@ -254,8 +296,10 @@ def main() -> int:
                 "  Allowed, but flagged — avoid printing secrets into transcripts "
                 "(cicatrix 2026-06-03 P0). Prefer reading config via code.\n"
             )
+        _gc_record("host_boundary", "allow", payload)
         return 0
 
+    _gc_record("host_boundary", "exempt", payload)
     return 0
 
 

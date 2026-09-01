@@ -1,0 +1,92 @@
+task_id: fly-watcher-detail-0824
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  `.github/workflows/cron-fly-watcher.yml` failed six consecutive runs on 2026-08-24
+  (09:25→13:13 UTC). Its entire payload every time was two lines, e.g.:
+
+    [nuzantara-rag]       total=4|started=3|expected_stopped=1|unexpected_stopped=0|bad=none|unhealthy_svc=0|unhealthy_vm=0
+    [nuzantara-postgres]  total=3|started=3|expected_stopped=0|unexpected_stopped=0|bad=none|unhealthy_svc=1|unhealthy_vm=0
+
+  `unhealthy_svc=1` on one of three `nuzantara-postgres` machines and the alarm never
+  says WHICH machine or WHICH check — every responder has to go find a Fly credential
+  before they can even tell whether it matters. This is the "solo numero citato, nessun
+  dettaglio" scar (W47) sitting inside a superscar #2 sentinel.
+
+  The inline Python heredoc already iterates `machines`, and for each failing check
+  holds the machine object AND `c.get("name")` AND `c.get("output")` before throwing
+  all of it away to increment a bare counter. PR #4825 adds two capped, additive
+  fields to the printed summary line — `svc_detail=<machine_id>/<region>:<check_name>,...`
+  and `vm_detail=...` — populated inside the SAME branch that already decides
+  `unhealthy_svc` vs `unhealthy_vm`, so a detail entry always lands in the bucket its
+  counter did. Capped at 5 entries; past that the field says `+N more` instead of
+  truncating silently (W97: a silently-capped list read as the whole set is its own
+  scar).
+
+  Gear 3 by PATH, not by blast radius: the diff is 1 file, +25/-2
+  (`.github/workflows/cron-fly-watcher.yml` is hot-zone — `.github/workflows/*` is a
+  literal HOTZONE_PATTERNS entry — floor is a deterministic lower bound, never the
+  author's choice). The evidence below is sized to the change: this PR shipped and was
+  graded clean by the orchestrating session before this pack existed; the pack is
+  supplied after the fact solely to satisfy `Harness floor recompute`, per the
+  orchestrating session's own instruction ("the cause is my brief, not your work").
+constraints:
+  - "No change to how `unhealthy_svc` / `unhealthy_vm` are computed, no change to any
+    `OVERALL_OK` condition, no change to the `VM_PRESSURE` pressure-only downgrade
+    logic. The new fields are appended AFTER the existing ones in the printed
+    f-string; no existing field's name or value changes."
+  - "The downstream `tr '|' '\\n' | grep ^field= | cut -d= -f2` consumers in the same
+    workflow must keep resolving every pre-existing field to the same value —
+    `svc_detail=`/`vm_detail=` must not collide with any existing `^field=` grep
+    pattern (verified: neither shares a prefix with `total=`, `started=`,
+    `expected_stopped=`, `unexpected_stopped=`, `bad=`, `unhealthy_svc=`,
+    `unhealthy_vm=`)."
+  - "One file changed: `.github/workflows/cron-fly-watcher.yml`. No Fly credential
+    used or requested — verification is against hand-written fixtures shaped like
+    `flyctl status --json`, never a live `fly` call."
+  - "Detail values must not break the pipe-delimited line: no `|` inside a
+    `svc_detail`/`vm_detail` value. Machine ids/regions/check names are Fly-internal
+    identifiers (alphanumeric + `-`/`_`), never PII/OSINT (SYMBIOSIS Law 2 does not
+    apply — see dissent below)."
+acceptance:
+  - "5 hand-written fixtures (all-passing / one svc check failing / vm check failing
+    pressure-only / vm check failing via a disk sub-check / more offenders than the
+    cap) all produce the expected `svc_detail`/`vm_detail` values with
+    `unhealthy_svc`/`unhealthy_vm` unchanged from the pre-change branching."
+  - "For fixtures 2 and 4, every pre-existing field's value, extracted via the exact
+    `tr '|' '\\n' | grep ^field= | cut -d= -f2` the workflow itself uses, is identical
+    before this diff and after it."
+  - "`actionlint` accepts the modified workflow."
+consumer_map:
+  - "`.github/workflows/cron-fly-watcher.yml` — the `Snapshot fly status (runtime
+    apps)` step prints the modified summary line; the `Telegram alert on anomaly`
+    step forwards it verbatim (via `$REPORT`) into the Telegram message body — the
+    new fields reach the alert text, which is the whole point of the fix."
+  - "No other workflow or script parses this printed line — it is consumed only
+    within this one job (`$GITHUB_OUTPUT` → `steps.snap.outputs.report` → the
+    Telegram step), never read back by a second file."
+risks:
+  - "Telegram message length grows by up to two short fields per app (bounded — the
+    5-entry cap plus a `+N more` suffix keeps each detail field short even under a
+    mass failure)."
+  - "None of the branching that decides PASS/FAIL for the job (`OVERALL_OK`,
+    `UNHEALTHY_SVC`/`UNHEALTHY_VM` gt-0 checks) reads the new fields — a defect in
+    `fmt_detail()` could at most corrupt the detail text, never flip the job's own
+    verdict, because `fmt_detail()`'s output is not consulted by any `if` in the
+    surrounding bash."
+grader: |
+  Generator == grader for the CODE diff (single-session task: this session authored
+  the workflow change and its own fixture verification). Generator != grader for the
+  GATE VERDICT specifically: the orchestrating session (team-lead) independently
+  reviewed the diff line by line BEFORE requesting this evidence pack ("I graded it
+  right — the diff holds") and owns posting the `harness/fable-gate` commit status
+  separately, per this repo's "the diff's author never gates its own diff" rule
+  (CLAUDE.md §13 Team perimeter rule / Agent PR Contract). This evidence pack does
+  not attempt to post that verdict.
+budget: >-
+  1 evidence-authoring/build lane (this session), no council, no cross-family
+  dispatch — a 1-file, +25/-2 CI-wiring diff whose own verification (5 fixtures +
+  before/after field-stability replay + actionlint) is fully reproducible without
+  network access or a Fly credential.
+pii: none

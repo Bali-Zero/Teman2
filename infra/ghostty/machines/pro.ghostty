@@ -8,14 +8,57 @@ working-directory = /Users/nuzantara/nuzantara
 # Cursor, split dividers and the Dock icon carry the machine colour, so a
 # screenshot, a screen-share or a Vision Pro virtual display names its own
 # machine without you reading the prompt.
-cursor-color = #fab387
-cursor-text = #1e1e2e
-split-divider-color = #fab387
+# Cursor darkened from #fab387 on 2026-08-29: that peach was picked against a
+# dark background and sits at ~1.5:1 on the light paper below. The Dock icon
+# keeps the pastel — it is drawn on the icon's own dark screen.
+cursor-color = #A0500A
+cursor-text = #E3ECF6
+split-divider-color = #A0500A
 
 macos-icon = custom-style
 macos-icon-frame = aluminum
 macos-icon-ghost-color = #fab387
 macos-icon-screen-color = #1e1e2e,#302438
+
+# ─── Window colour: "Blueprint" — cool light paper (Zero, 2026-08-29) ──────
+# Pro had NO background of its own: it fell through to the fleet's Catppuccin
+# Mocha, while `theme-pro` in ~/.config/nuzantara-fleet.zsh painted an SSH
+# session light blue. So the same machine looked one way locally and another
+# way over ssh — the opposite of what the per-machine colour is for. Unified
+# here on the light blue, which is the colour the fleet already advertises.
+#
+# Same two cures as M5, same causes (both measured, not deduced):
+#   · background-blur = macos-glass-regular keeps the window translucent on
+#     macOS 26 even at opacity 1.0, and the wallpaper washes the tint out.
+#   · every colour below clears 4.5:1 on #E3ECF6 — palette 8 (bright black,
+#     the dim/secondary text every TUI reaches for) included.
+# Companion change: ~/.claude/settings.json theme = light on this machine.
+# Needs a full Ghostty QUIT+relaunch.
+background-opacity = 1.0
+background-blur = false
+unfocused-split-opacity = 0.95
+
+background = #E3ECF6
+foreground = #17293F
+selection-background = #C6DCF2
+selection-foreground = #17293F
+
+palette = 0=#2A3A4D
+palette = 1=#BE3A2B
+palette = 2=#1B7440
+palette = 3=#96590A
+palette = 4=#1B5FCC
+palette = 5=#8330BF
+palette = 6=#0E6C8A
+palette = 7=#46586E
+palette = 8=#566A82
+palette = 9=#9F2C20
+palette = 10=#12653B
+palette = 11=#7C4708
+palette = 12=#1748A8
+palette = 13=#6C2597
+palette = 14=#0A5872
+palette = 15=#17293F
 
 # 48 GB of RAM, but swap measured at 10.3 GB of 11.3 GB in use on 2026-08-18.
 # The fleet's 32 MB per surface stands; raise it here only after re-measuring.

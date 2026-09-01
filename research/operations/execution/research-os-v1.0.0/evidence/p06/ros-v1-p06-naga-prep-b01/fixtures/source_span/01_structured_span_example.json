@@ -1,0 +1,17 @@
+{
+  "synthetic": true,
+  "fixture_category": "source_span",
+  "adversarial_case_ref": "02-p04-adapter-mapping.md gap G2 — shows the structured source_span shape NAGA's current source_span_hint (freeform TEXT) cannot produce",
+  "expected_behavior": "quote_hash must be sha256 of the EXACT quoted substring (locator + start + end define that substring). A conformance test should re-slice the document at [start:end] and confirm sha256(slice) == quote_hash. NAGA's current naga_claim_evidence.source_span_hint (see 01-naga-baseline-inventory.md) stores a human-readable hint string with no such invariant, and cannot be used to synthesize this object without re-fetching and re-hashing the actual source text.",
+  "naga_current_shape": {
+    "source_span_hint": "see paragraph 2 near the fee table"
+  },
+  "canonical_required_shape": {
+    "locator": "https://example.go.id/synth-fee-notice.pdf#page=2",
+    "page": 2,
+    "start": 412,
+    "end": 478,
+    "quote_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "note": "SYNTHETIC — quote_hash here is a placeholder pattern-valid hex string, NOT a real sha256 of real text, since this fixture's source document does not exist. A real implementation must compute this from an actual fetched document."
+  }
+}

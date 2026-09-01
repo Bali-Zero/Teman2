@@ -191,8 +191,13 @@ class TestCheckDuplicates:
         conn = AsyncMock()
         conn.fetchrow.return_value = {"id": 99, "assigned_to": "lead@x.com"}
         pool, _ = _make_pool(conn)
-        result = await check_duplicates(self._make_state(), pool)
+        result = await check_duplicates(
+            self._make_state(client_data={"email": " J@X.COM ", "phone": None}), pool
+        )
         assert result["is_duplicate"] is True
+        query, email, _ = conn.fetchrow.await_args.args
+        assert "LOWER(BTRIM(email)) = $1" in query
+        assert email == "j@x.com"
 
     async def test_no_duplicate(self):
         from backend.services.crm.assignment import check_duplicates

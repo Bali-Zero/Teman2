@@ -50,6 +50,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -277,8 +278,8 @@ _QUOTA_DEAD_PAT = re.compile(
     r"out of extra usage|usage limit|weekly limit|quota|\b429\b|rate.?limit|exhausted",
     re.IGNORECASE,
 )
-_BALANCE_DEAD_PAT = re.compile(r"\b402\b|insufficient balance", re.IGNORECASE)
-_MODEL_ERR_PAT = re.compile(r"\b1211\b|unknown model", re.IGNORECASE)
+_BALANCE_DEAD_PAT = re.compile(r"\b402\b|insufficient balance|out of credits", re.IGNORECASE)
+_MODEL_ERR_PAT = re.compile(r"\b1211\b|unknown model|model is not supported", re.IGNORECASE)
 _SHED_PAT = re.compile(r"\b529\b|overloaded", re.IGNORECASE)
 
 
@@ -335,21 +336,51 @@ class ProbeResult:
 
 
 def run_probe_cmd(
-    cmd: list[str], timeout: float, env: Optional[dict] = None, stdin_devnull: bool = True
+    cmd: list[str],
+    timeout: float,
+    env: Optional[dict] = None,
+    stdin_devnull: bool = True,
+    capture_via_files: bool = False,
 ) -> ProbeResult:
     """Run a probe subprocess. stdin_devnull defaults to True — NON-NEGOTIABLE (2026-08-07
     incident): every seat probe must never inherit an open stdin, because a hook/launchd/
     agent-harness caller can hand this process a pipe that is never explicitly closed. No
     caller in this file opts out; the parameter survives only so a test can override it.
+
+    ``capture_via_files=True`` gives the child real FILES for stdout/stderr instead of
+    pipes, and reads them back after the wait returns — timeout or not.
+
+    WHY THAT MATTERS (measured 2026-08-26, Pro, and it is not a micro-optimisation):
+    a CLI that leaves a detached grandchild holding the inherited stdout fd never lets
+    ``communicate()`` see EOF, so ``subprocess.run`` blocks until its own timeout AND
+    ``TimeoutExpired.stdout`` comes back **empty** — the bytes are sitting unread in the
+    pipe buffer. That is the exact shape of ``agy``: with a file it answered PONG in
+    **11 s**; through a pipe the same call was still hanging past **120 s**. The
+    consequence is worse than a slow probe — it silently defeats the "judge the REPLY,
+    not the exit code" mitigation this file already carries (scar W104), because the
+    reply the mitigation is supposed to read is exactly what the pipe withholds. A file
+    fd duplicated into a lingering grandchild does not block the parent from reading the
+    file, so both the answer and the seat's true latency survive.
     """
     try:
-        kwargs: dict[str, Any] = dict(
-            capture_output=True, text=True, timeout=timeout, env=env
-        )
+        kwargs: dict[str, Any] = dict(timeout=timeout, env=env)
         if stdin_devnull:
             kwargs["stdin"] = subprocess.DEVNULL
-        p = subprocess.run(cmd, **kwargs)
-        return ProbeResult(p.returncode, p.stdout, p.stderr)
+        if not capture_via_files:
+            p = subprocess.run(cmd, capture_output=True, text=True, **kwargs)
+            return ProbeResult(p.returncode, p.stdout, p.stderr)
+        with tempfile.TemporaryDirectory(prefix="arsenal-probe-") as td:
+            out_path = Path(td) / "stdout"
+            err_path = Path(td) / "stderr"
+            with open(out_path, "w+b") as fout, open(err_path, "w+b") as ferr:
+                try:
+                    p = subprocess.run(cmd, stdout=fout, stderr=ferr, **kwargs)
+                    rc, timed_out = p.returncode, False
+                except subprocess.TimeoutExpired:
+                    rc, timed_out = -1, True
+            out = out_path.read_text(encoding="utf-8", errors="replace")
+            err = err_path.read_text(encoding="utf-8", errors="replace")
+            return ProbeResult(rc, out, err, timed_out=timed_out)
     except subprocess.TimeoutExpired as e:
         out = e.stdout.decode() if isinstance(e.stdout, (bytes, bytearray)) else (e.stdout or "")
         err = e.stderr.decode() if isinstance(e.stderr, (bytes, bytearray)) else (e.stderr or "")
@@ -597,16 +628,18 @@ def probe_agy(timeout: float) -> tuple[str, str, int]:
     binp, via_path = resolve_bin("agy", ["~/.local/bin/agy"])
     if not binp:
         return NOT_INSTALLED, "agy binary not found (checked $PATH + common install dirs)", 0
-    res = run_probe_cmd([binp, "-p", PONG_PROMPT], timeout=timeout)
+    # capture_via_files: NOT optional for this seat. The 2026-08-07 incident diagnosed
+    # the grandchild-holds-the-pipe defect correctly but cured it only halfway — "judge
+    # the reply, not the exit" cannot fire when the pipe withholds the reply. Re-measured
+    # 2026-08-26 on Pro: through a pipe this call was still hanging past 120 s with EMPTY
+    # stdout, which is why the fleet digest read `agy TIMEOUT` for a seat that was fine;
+    # through a file the same call returned PONG, rc=0, in 11 s — comfortably inside the
+    # 15 s budget below. The file is what makes the W104 mitigation reachable at all.
+    res = run_probe_cmd([binp, "-p", PONG_PROMPT], timeout=timeout, capture_via_files=True)
     latency_ms = int((time.monotonic() - t0) * 1000)
     ev = _path_note(via_path) + evidence_tail(res.stdout + " " + res.stderr)
     live = "PONG" in res.stdout
-    # THE 2026-08-07 incident: agy's own process exits in ~1s but a detached
-    # grandchild keeps stdout's pipe fd open, so subprocess.run's communicate()
-    # never sees EOF — this probe ALWAYS hit its full timeout (verified live at
-    # 12s/15s/45s, PONG present in partial stdout every time) even though the
-    # seat is genuinely LIVE. Judge the reply, not the fact that the process
-    # never cleanly exited.
+    # Judge the reply, not the fact that the process never cleanly exited.
     if res.timed_out and not live:
         return TIMEOUT, ev or "probe timed out", latency_ms
     status = classify_generic(res.stdout + res.stderr, live, "agy", is_ssh_context())
@@ -805,21 +838,43 @@ def probe_qwen_cloud_code(timeout: float) -> tuple[str, str, int]:
     # Still deliberately NOT in REQUIRED_SEATS on any machine: machine-scoped candidate
     # seat (M5 only) whose promotion into required-fleet status is a separate operator+
     # Claude-lane decision from the PROBATION->ARMED promotion recorded in FLEET_TOPOLOGY.json.
+    # CORRECTED 2026-08-26 — this probe was REPORTING ITS OWN CREDENTIAL, NOT THE SEAT'S.
+    #
+    # It used to (a) hard-gate on the Keychain entry, returning AUTH_DEAD without ever
+    # invoking the CLI when Keychain was locked, and (b) when it did run, INJECT that
+    # Keychain token into the child's env — overriding the credential the CLI reads on
+    # its own from `~/.qwen/settings.json`. Measured on Pro 2026-08-26: the Keychain copy
+    # answered `401 Invalid API-key provided` (that verbatim string is what the fleet
+    # digest was reporting as a dead seat), while the same binary invoked WITHOUT the
+    # injection answered PONG on the first try. The seat was alive the whole time; the
+    # probe was killing it and then certifying the corpse.
+    #
+    # The rule this encodes: a probe measures the path PRODUCTION uses. Production uses
+    # settings.json (this file's own 2026-08-14 note records ~1330 calls / ~212M tokens
+    # through it, "independent of this probe"), so the probe must too. Nothing is
+    # weakened by dropping the injection — the credential's protection is the file's
+    # 0600 mode, never this probe's choice of env var. The Keychain read survives ONLY
+    # as a diagnostic breadcrumb attached to the evidence, and can no longer decide a
+    # verdict on its own.
     token, cred_note = load_keychain_token("qwen-cloud-code-token")
-    if not token:
-        return (
-            AUTH_DEAD,
-            path_note + f"keychain gate: {cred_note} — seat cannot authenticate at probe time (keychain locked/absent on this host)",
-            0,
-        )
+    keychain_note = "" if token else f"[keychain: {cred_note}] "
     env = dict(os.environ)
-    env["BAILIAN_TOKEN_PLAN_API_KEY"] = token
     # --safe-mode: this build boots MCP servers/hooks/skills on every invocation
     # (measured: pushed the 1-token probe past the 15 s fleet mandate); safe-mode
     # disables all customizations, which a probe does not need.
-    res = run_probe_cmd([binp, "-p", PONG_PROMPT, "--safe-mode"], timeout=timeout, env=env)
+    res = run_probe_cmd(
+        [binp, "-p", PONG_PROMPT, "--safe-mode"],
+        timeout=timeout,
+        env=env,
+        capture_via_files=True,
+    )
     latency_ms = int((time.monotonic() - t0) * 1000)
-    ev = path_note + evidence_tail(res.stdout + " " + res.stderr, extra_secrets=[token])
+    # extra_secrets still carries the Keychain value when there is one: it is no longer
+    # injected, but it may legitimately appear in CLI output, and the scrubber's job is
+    # to redact any secret it can name — not only the ones this process chose to use.
+    ev = path_note + keychain_note + evidence_tail(
+        res.stdout + " " + res.stderr, extra_secrets=[t for t in [token] if t]
+    )
     live = "PONG" in res.stdout
     if res.timed_out and not live:
         return TIMEOUT, ev or "probe timed out", latency_ms
@@ -1146,6 +1201,18 @@ _SELFTEST_CANNED = [
     ("deepseek", "HTTP 402 Insufficient Balance", BALANCE_DEAD, "deepseek 402"),
     ("claude", "out of extra usage for this session", QUOTA_DEAD, "claude quota string"),
     ("codex", "rate limit exceeded, 429", QUOTA_DEAD, "codex 429 quota"),
+    (
+        "codex",
+        "ERROR: Your workspace is out of credits. Add credits to continue.",
+        BALANCE_DEAD,
+        "codex out-of-credits (real observed evidence, 2026-08-31)",
+    ),
+    (
+        "codex-spark",
+        "The 'gpt-5.3-codex-spark' model is not supported when using Codex with a ChatGPT account.",
+        MODEL_ERR,
+        "codex-spark model unsupported on ChatGPT plan (real observed evidence, 2026-08-31)",
+    ),
 ]
 
 

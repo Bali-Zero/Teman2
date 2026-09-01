@@ -16,10 +16,24 @@
 
 **Level 2 — active since 2026-06-11**
 (Level 1 was active earlier same day; promoted to L2 once all activation gates closed.)
-(re-certified 2026-06-11 by Antonello after the Fable-5 system audit F04;
-the SessionStart staleness hook was fixed the same day to read this declared
-date — not the file mtime, which any edit silently reset, masking the lapse.)
-(re-certified 2026-07-19 by Antonello — routine 30-day refresh; Level 2 unchanged.)
+(re-certified 2026-06-11 by Antonello after the Fable-5 system audit F04.
+That same day the SessionStart staleness hook was fixed to read this declared
+date rather than the file mtime — see `2d26dea7d`, which records the fix and its
+verification. **Corrected 2026-08-31: that fix is gone.** Measured on Pro, the
+live hook in `~/.claude/settings.json` computes `AGE_DAYS` from `date -r "$F"`
+again, i.e. the mtime; Mini and M5 carry no such hook at all. So the mechanism
+that announces this contract's own expiry works on zero of three machines. The
+cure was real and it was lost, because it lived only in a file no repository
+tracks — scar family #1 in its purest form. Do not re-apply it there a third
+time: `scripts/check_autonomous_ops_staleness.py` now does the arithmetic in the
+repo, where it is version-controlled and tested, and the hook should call it.
+Two traps that script exists to avoid: the old hook's grep matches only the
+`**Level N — active since**` line, so a naive "parse the declared date" fix reads
+2026-06-11 and not the later re-certification below; and this file carries two
+dozen unrelated ISO dates that must never govern.)
+(re-certified 2026-07-19 by Antonello — routine 30-day refresh; Level 2 unchanged.
+As of 2026-08-31 that is 43 days: this contract is LAPSED by its own rule below,
+and no session was told, because of the defect described above.)
 
 If today's date is >30 days after "active since" without a refresh commit,
 Claude falls back to conservative mode and pings the user to re-certify.
@@ -125,12 +139,18 @@ or auto-retry. Zero's Telegram is already notified by the failure path.
 
 ## Schema-change discipline (DB) — frozen state during 2026-04 stabilisation
 
-The migration runner is being consolidated (see
-`docs/reviews/2026-04-25-strategy-01-database-migrations.md`). Until the
-strategy is fully delivered, all agents — Claude included — must follow
+The migration runner is being consolidated. Until the strategy is fully
+delivered, all agents — Claude included — must follow
 these rules. They are **part of the autonomy contract**: violating them
 counts as "modifying shared state without confirmation" and is out of
 scope for L2.
+
+> RETRACTED 2026-08-31 — `docs/reviews/2026-04-25-strategy-01-database-migrations.md`,
+> which this paragraph used to cite, has never existed in this repository and for which no file of that name exists anywhere in
+> the tree. Retracted rather than replaced: there is nothing to replace it with,
+> and a plausible-looking substitute would be the same defect with a working link.
+> The rules below stand on their own — they are the contract, not a summary of a
+> document.
 
 | Rule                                                                                                     | Why                                                                                                                                            |
 | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |

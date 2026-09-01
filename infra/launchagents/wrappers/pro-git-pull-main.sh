@@ -1,8 +1,8 @@
 #!/bin/bash
 # pro.git_pull_main — Pro auto-sync of ~/nuzantara main checkout (collision-robust; Mini has the 5min sibling)
 # Born via scripts/organ_birth.py (DNA/GENOME 2026-07-06): genes imprinted at birth.
-# Canon: infra/launchagents/wrappers/pro-git_pull_main.sh
-# Live:  ~/scripts/pro-git_pull_main.sh (declared pair, node=pro)
+# Canon: infra/launchagents/wrappers/pro-git-pull-main.sh
+# Live:  ~/scripts/pro-git-pull-main.sh (declared pair, node=pro)
 
 set -u   # G9_fail_visible: unset vars crash, they do not expand empty
 

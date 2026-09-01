@@ -38,11 +38,14 @@ WHITELIST_FILES: set[str] = {
     "AGENTS.md",
     "GEMINI.md",
     "codex.md",
-    # fleet-order per-CLI door files (human/prompt-referenced; see AGENTS.md
-    # §17 + FLEET_TOPOLOGY.json) — NOT auto-discovered by their CLIs yet,
-    # see PENDING-ARMS.
+    # fleet-order per-CLI door files. QWEN.md is CASE-SENSITIVE on purpose: it
+    # is the exact name the Qwen CLI opens, and it was `qwen.md` until
+    # 2026-08-31 — which on the APFS default is the same file, so the seat
+    # silently had no door on any case-sensitive volume. kimi.md stays
+    # lowercase: the Kimi CLI reads AGENTS.md, so that one really is
+    # human-referenced only (see AGENTS.md §17 + FLEET_TOPOLOGY.json).
     "kimi.md",
-    "qwen.md",
+    "QWEN.md",
     # Standard project files
     "README.md",
     "LICENSE",
@@ -141,6 +144,43 @@ WHITELIST_DIRS: set[str] = {
     # scripts/evidence_pack_lint.py and consumed by
     # .github/workflows/harness-floor.yml. Not a scratch/dump dir.
     "evidence",
+    # Per-product factory artifacts (docs/factory/ASSEMBLY-LINE.md, RULED Zero
+    # 2026-08-24): products/<name>/ holds product.yaml, journeys/, contracts/,
+    # ops/ — the contract-and-decision artifacts the factory doctrine defines,
+    # not code. One directory per product. First tenant: products/garuda-voa/.
+    "products",
+    # Knowledge-base artifacts (docs/plans/2026-08-25-kb-current-live/MANDATE.md
+    # §2): kb/topics/, kb/journeys/, kb/inventory/, kb/ops/. Data files a gate
+    # reads — the catalogue AS DATA, not prose — deliberately kept out of docs/
+    # and research/, which is where the previous draft of that mandate put them
+    # and precisely what the assembly line forbids.
+    #
+    # A new top-level directory needs TWO things, and the whitelist is only the
+    # first: MEASURED 2026-08-25, `products/` was whitelisted here but globbed by
+    # no workflow, so ten contract invariants under it ran nowhere and the defect
+    # they existed to catch shipped (MANDATE §4.9). The tests that read kb/ live
+    # under apps/backend-rag/backend/tests/, which scripts/ci/shard_tests.py's
+    # DEFAULT_TARGETS names, so they do run — verified by collection count, not
+    # by assumption. Anything added under kb/ that carries its own tests must
+    # check the same thing before trusting them.
+    "kb",
+    # Cross-app design-token SSOT (DTCG). Deliberately at root and NOT under
+    # apps/mouth/: the Merah Putih contract is meant to serve every surface, and
+    # it is a different store from the brand-cortex carousel tokens — conflating
+    # the two is the confusion the L11 spec warns about explicitly.
+    #
+    # THE SECOND THING IS NOT DONE YET, and per the paragraph above about
+    # `products/` that is the part that matters, so it is stated rather than
+    # implied: `scripts/check_token_contrast.py` — the gate that gives this
+    # directory its meaning — is run by NO blocking workflow today. The only
+    # thing that reaches its tests is `scripts-tests-sweep.yml`, which is
+    # scheduled and `continue-on-error: true`, i.e. it can fail forever without
+    # turning a PR red. A blocking job is handed to the workflow squad
+    # (SQUAD-LEDGER HANDOFF H3) and carried as a PENDING-ARMS row until it goes
+    # RED on a guilt fixture in a real run. Until then this directory is
+    # whitelisted but unguarded — exactly the state `products/` was in when ten
+    # contract invariants ran nowhere.
+    "design",
 }
 
 # Allowed tracked dotfiles directories.

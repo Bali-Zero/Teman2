@@ -1,0 +1,163 @@
+brief_ref: evidence/brief.yml
+plan_ref: "PR #5237 (agent/mini-pro2/infra/organ-birth-underscore-header) — organ_birth.py's Canon:/Live: header f-string converted only '.' to '-', never '_', while the real computed wrapper filename converts both. Evidence pack authored after the code diff, on the orchestrating session's instruction, to satisfy the Harness floor recompute gate the PR's hot-zone path (infra/launchagents/*) requires."
+lanes:
+  - lane: infra-organ-birth-underscore-header
+    role: build
+    seat: "Mini-Pro2 healer tick (autonomous cure session, Claude Sonnet 5 per this PR's own commit co-author line) — authored scripts/organ_birth.py's fix, the 3 hand-corrected wrapper headers, and scripts/tests/test_organ_birth.py. Exact model id/effort not independently queryable via a tool call this turn."
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Single build lane declared — the D3 seat-diversity floor (>=2 build lanes,
+  at least one non-Anthropic) does not fire. This is a narrow, hot-zone-by-path
+  CI-wiring fix, not a cross-family council dispatch.
+diff:
+  net_lines: >-
+    Not stated as a number, deliberately: this pack's own two files are part of
+    the branch's `git diff --no-renames --numstat origin/main...HEAD` against
+    which any stated count would be checked, so writing the measured value here
+    changes this file's own byte size, which changes the measured value — a
+    fixpoint with no stable answer. See `evidence/2026-08/agent-mini-pro2-infra-organ-birth-underscore-hea-b3b73aaf/brief.yml`
+    for the code-only diff's real shape (three wrapper files each carry a
+    two-line header-comment edit; one new local variable in
+    scripts/organ_birth.py; one new test file). Full changed-file list on this
+    branch's diff against origin/main: evidence/2026-08/agent-mini-pro2-infra-organ-birth-underscore-hea-b3b73aaf/brief.yml,
+    evidence/2026-08/agent-mini-pro2-infra-organ-birth-underscore-hea-b3b73aaf/pack.yml,
+    infra/launchagents/wrappers/pro-git-pull-main.sh,
+    infra/launchagents/wrappers/pro-llm-burn-alarm.sh,
+    infra/launchagents/wrappers/pro-tg-digest-flush.sh,
+    scripts/organ_birth.py, scripts/tests/test_organ_birth.py.
+  behaviour_change: >-
+    No runtime behaviour change. scripts/organ_birth.py gains one local variable
+    (dash_name) consumed only by the Canon:/Live: comment lines of future
+    generated wrapper headers — LOG_DIR, PIDFILE, and the heartbeat sidecar path
+    are byte-for-byte unchanged. The three hand-edited live wrapper files each
+    change only their two `#`-prefixed Canon:/Live: comment lines, never
+    executed by bash. The new test file adds coverage; it does not change any
+    production code path.
+receipts:
+  - claim: "Deterministic gear floor recomputed from THIS PR's actual diff is 3 — matches the declared gear and the Harness floor recompute check's own FAIL message (infra/launchagents/* is hot-zone by path)"
+    cmd: "git diff --name-only origin/main...HEAD > /tmp/organ-birth-changed-files.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/organ-birth-changed-files.txt"
+    result: "3"
+    exit: 0
+    ts: "2026-08-30T01:34:00Z"
+    seat: "session (this task, worktree .worktrees/infra-evidence-5237)"
+  - claim: "The fixed suite (scripts/tests/test_organ_birth.py against the post-fix scripts/organ_birth.py) is fully green: 5 passed, 0 failed"
+    cmd: "python3 -m pytest scripts/tests/test_organ_birth.py -v"
+    result: "test_underscore_organ_id_header_matches_actual_filename PASSED; test_no_underscore_organ_id_unaffected PASSED; test_multi_underscore_segment_all_converted PASSED; test_log_dir_and_pidfile_stay_dot_only_by_design PASSED; test_repo_wide_wrapper_headers_match_their_own_filenames PASSED — 5 passed in 0.08s"
+    exit: 0
+    ts: "2026-08-30T01:35:40Z"
+    seat: "session (this task, worktree .worktrees/infra-evidence-5237)"
+  - claim: "Red-before-green, reproduced independently (not taken on the PR body's word): reverting scripts/organ_birth.py alone to its pre-fix (parent commit f4514cd696) content, WHILE keeping the new test file at its post-fix content, fails exactly the two guilt tests and leaves the innocence/scope-pin/repo-wide-scan tests green"
+    cmd: "git show f4514cd696303ac1870be9ad43a636c6e7dedfdc:scripts/organ_birth.py > scripts/organ_birth.py (inside the worktree) && python3 -m pytest scripts/tests/test_organ_birth.py -v ; then restored the post-fix file and reran"
+    result: "2 failed (test_underscore_organ_id_header_matches_actual_filename, test_multi_underscore_segment_all_converted — AssertionError: assert 'pro-visa_freshness_sentinel' == 'pro-visa-freshness-sentinel'), 3 passed; after restore: 5 passed, 0 failed, working tree clean"
+    exit: 0
+    ts: "2026-08-30T01:37:20Z"
+    seat: "session (this task, worktree .worktrees/infra-evidence-5237)"
+  - claim: "A repo-wide scan of every wrapper's own # Canon: self-reference against its actual filename, run independently of the PR's own test (not merely trusting that test's PASSED line), finds zero mismatches among the wrapper files that actually carry a # Canon: line. CORRECTED after independent gate review (2026-08-30): this pack's first draft said 'zero mismatches across every wrapper on this branch', which is literally true but misleading — the check is vacuously true for any wrapper with no # Canon: line at all, and only a minority of wrapper files carry one"
+    cmd: "python3 -c \"import glob, os, re; total = 0; carry_canon = 0; mismatches = []\\nfor path in sorted(glob.glob('infra/launchagents/wrappers/*.sh')):\\n    total += 1\\n    fname = os.path.basename(path)\\n    text = open(path, encoding='utf-8').read()\\n    m = re.search(r'^# Canon: infra/launchagents/wrappers/(\\\\S+)', text, re.M)\\n    if m:\\n        carry_canon += 1\\n        if m.group(1) != fname:\\n            mismatches.append((fname, m.group(1)))\\nprint('total wrappers:', total); print('carry a # Canon: line:', carry_canon); print('mismatches among those:', mismatches)\""
+    result: "total wrappers: 50 ; carry a # Canon: line: 15 ; mismatches among those: [] — real coverage is 15/50, not 50/50; the other 35 wrapper files predate organ_birth.py or were hand-authored without this comment and are outside this check's scope entirely (it is silent on them, not passing on them)"
+    exit: 0
+    ts: "2026-08-30T01:33:10Z"
+    seat: "session (this task, worktree .worktrees/infra-evidence-5237)"
+  - claim: "shellcheck on the 3 hand-edited wrapper files introduces zero new findings versus their pre-fix (base) versions — the one finding present (SC1091, info-level, an unrelated pre-existing sourced-secrets-file note in pro-llm-burn-alarm.sh line 61) is byte-identical on both the pre-fix and post-fix file, well outside the 2-line diff hunk"
+    cmd: "shellcheck infra/launchagents/wrappers/pro-git-pull-main.sh infra/launchagents/wrappers/pro-llm-burn-alarm.sh infra/launchagents/wrappers/pro-tg-digest-flush.sh; then git show f4514cd696303ac1870be9ad43a636c6e7dedfdc:infra/launchagents/wrappers/pro-llm-burn-alarm.sh > /tmp/base.sh && shellcheck /tmp/base.sh"
+    result: "post-fix: 1 finding (SC1091 info, line 61, pro-llm-burn-alarm.sh); pre-fix base copy: the identical SC1091 info finding, same line 61, same text — confirmed pre-existing, not introduced by this diff"
+    exit: 1
+    ts: "2026-08-30T01:38:05Z"
+    seat: "session (this task, worktree .worktrees/infra-evidence-5237)"
+  - claim: "scripts/organ_birth.py::wrapper_template() has exactly one call site (main(), line 348) — the fix cannot be bypassed by a second code path that still builds a header some other way"
+    cmd: "grep -n 'wrapper_template(' scripts/organ_birth.py"
+    result: "line 71 (def wrapper_template(...)), line 348 (the one call site inside main())"
+    exit: 0
+    ts: "2026-08-30T01:32:15Z"
+    seat: "session (this task, worktree .worktrees/infra-evidence-5237)"
+  - claim: "scripts/lint_home_fork.py (the actual home-fork drift detector, cicatrix family #1's antidote) never reads the Canon:/Live: comment — it does its own independent sha256 pair-comparison, so this header is read-only prose for a human, not a machine-consumed contract"
+    cmd: "grep -n 'Canon:\\|Live:' scripts/lint_home_fork.py"
+    result: "zero matches"
+    exit: 0
+    ts: "2026-08-30T01:39:00Z"
+    seat: "session (this task, worktree .worktrees/infra-evidence-5237)"
+pii_scan: clean
+dissent:
+  - seat: "Harness floor recompute (CI, deterministic)"
+    objection: >-
+      PR #5237 touches infra/launchagents/wrappers/*.sh, which is hot-zone by
+      path (infra/launchagents/* is a literal HOTZONE_PATTERNS entry) — floors
+      at Gear 3 regardless of the diff's small, mechanical-looking size (a
+      handful of files, mostly a new test file, no runtime behaviour change)
+      or the fact that the change is a header-comment fix — and the PR shipped
+      with no evidence/brief.yml or evidence/pack.yml in its own diff, so the
+      check correctly FAILED with "this diff's deterministic floor is 3
+      (source: path) ... but carries no evidence/brief.yml ... it cannot
+      silently pass as 'not a harness task'".
+    status: CONFIRMED
+    note: >-
+      Verified independently rather than accepted on the FAIL message alone:
+      recomputed the floor from this PR's actual changed-file list via
+      evidence_pack_lint.py --print-floor (receipt above) and got 3, matching
+      the check. Answered here by supplying both files at this PR's own
+      per-branch evidence path (scripts/ci/evidence_paths.py --ref/--resolve),
+      never by editing the gate — same shape as the identical prior instance
+      documented in evidence/2026-08/agent-mini-pro2-infra-fly-watcher-detail-145c8438/.
+  - seat: "session, self-check on the diff's own scope"
+    objection: >-
+      scripts/organ_birth.py has THREE distinct self-reference naming schemes
+      for a wrapper's own identity, not one: (1) the Canon:/Live: header —
+      this PR's fix target, now dot+underscore -> hyphen; (2) LOG_DIR/PIDFILE
+      — dot-only -> hyphen, underscore survives, deliberately unchanged; (3)
+      the heartbeat sidecar path ($SIDECAR_DIR/$ORGAN_ID.json, ORGAN_ID set to
+      the raw organ_id verbatim) and registry_entry()'s declared `path:` field
+      — no conversion at all, dots and underscores both survive. Does scoping
+      this fix to ONLY scheme (1) leave scheme (3) — the sidecar/registry path
+      — silently inconsistent the same way scheme (1) was?
+    status: RETRACTED
+    note: >-
+      Investigated, not assumed innocent: read wrapper_template()'s full body
+      (SIDECAR_DIR="$HOME/.organism/last_seen", heartbeat() writes to
+      "$SIDECAR_DIR/$ORGAN_ID.json" with ORGAN_ID="{organ_id}" verbatim — no
+      .replace() at all) and registry_entry() (path: ~/.organism/last_seen/{organ_id}.json
+      — same raw, unconverted organ_id). The two sides agree with each other:
+      both use the raw organ_id, so nothing is inconsistent between what the
+      wrapper writes and what the registry declares it will write. Retracted
+      because scheme (3) was never claiming to match scheme (1)'s
+      hyphen-only file-naming convention in the first place — it names a JSON
+      sidecar path, not a wrapper filename, and this PR's fix (scoped to the
+      Canon:/Live: header only, per its own inline comment) never claimed to
+      touch it. Not a defect; the third scheme is out of scope by design, and
+      is internally consistent on its own terms.
+tests:
+  - "scripts/tests/test_organ_birth.py — 5 tests (2 guilt, 1 innocence, 1
+    scope-pin, 1 permanent repo-wide regression guard) — receipt above."
+  - "Independent red-before-green reproduction (revert organ_birth.py alone,
+    rerun the suite, restore) — receipt above, not merely trusting the PR
+    body's own claim of the same result."
+static:
+  - "shellcheck on the 3 hand-edited wrapper files -> zero new findings versus
+    their pre-fix versions (receipt above; the one SC1091 info-level finding
+    present is pre-existing and unrelated to this diff's 2-line hunks)."
+notes:
+  - >-
+    This evidence pack is deliberately after-the-fact: PR #5237's code+test
+    diff already existed, authored by a different session (a Mini-Pro2 healer
+    tick), before this pack was requested. Its only job is to satisfy Harness
+    floor recompute for a diff whose hot-zone PATH floors it at Gear 3
+    regardless of its small, mechanical size.
+  - >-
+    Written at this PR's own per-branch evidence directory
+    (evidence/2026-08/agent-mini-pro2-infra-organ-birth-underscore-hea-b3b73aaf/),
+    per scripts/ci/evidence_paths.py (S12/C6, 2026-08-23) — never at the fixed
+    evidence/brief.yml / evidence/pack.yml root pair, which a concurrent
+    Gear>=2 PR could be rewriting at the same time. brief_ref: still names the
+    literal evidence/brief.yml (not this pack's own real per-PR path) because
+    harness-floor.yml stages both files under canonical names before linting.
+  - >-
+    council_run: is deliberately omitted. R9 (check_council_run_gear3) NOTICEs
+    rather than FAILs on a Gear-3 pack with no council_run journal until
+    2026-09-02 (today is 2026-08-30) — this pack predates that enforcement
+    date, same known day-0 state as every other existing Gear-3 pack in this
+    repo.
+  - >-
+    This pack does not post a harness/fable-gate commit status — that is the
+    orchestrating session's own next step (an independent gate dispatch), kept
+    separate deliberately: this pack's author (this session) does not gate its
+    own pack, and did not author the code diff it evidences either
+    (generator != grader on both axes — see brief.yml's grader: field).

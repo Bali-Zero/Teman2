@@ -159,16 +159,23 @@ describe("StudioApp", () => {
   });
 
   it("checklist toggle updates the readiness meter", async () => {
+    // fullPlan() is a deposit-route, no-family plan: 7 of the 10 items apply
+    // (property_documents, passive_income_evidence and family_records read
+    // "may also apply" for this route/family combination — see
+    // checklist.ts's classifyChecklistItem) — the meter's denominator
+    // reflects only the applicable group, never the full union.
     window.location.hash = `#p=${encodePlanFragment(fullPlan())}`;
     render(<StudioApp />);
 
-    expect(await screen.findByText(/0 of 10 prepared/)).toBeInTheDocument();
+    expect(await screen.findByText(/0 of 7 prepared/)).toBeInTheDocument();
 
+    // All 10 items still render as checkboxes (both groups stay visible AND
+    // tickable) — only the meter narrows, nothing is hidden or deleted.
     const checkboxes = screen.getAllByRole("checkbox");
     expect(checkboxes).toHaveLength(10);
-    fireEvent.click(checkboxes[0]);
+    fireEvent.click(checkboxes[0]); // first item in the "applies" group
 
-    expect(await screen.findByText(/1 of 10 prepared/)).toBeInTheDocument();
+    expect(await screen.findByText(/1 of 7 prepared/)).toBeInTheDocument();
   });
 
   it("a crafted valid #p= fragment lands directly on the verdict page", async () => {
@@ -429,6 +436,23 @@ describe("StudioApp", () => {
     });
   });
 
+  describe("Print layout fix (2026-08-24) — verdict-stage nav control is print-hidden", () => {
+    it("the 'Back to your answers' control is wrapped in the class SavePlanBar's print stylesheet hides", async () => {
+      window.location.hash = `#p=${encodePlanFragment(fullPlan())}`;
+      render(<StudioApp />);
+      const backButton = await screen.findByRole("button", {
+        name: /back to your answers/i,
+      });
+
+      // Behavioural, not source-text: this proves the actual DOM node the
+      // print stylesheet's `.bz-shs-back-to-answers { display: none }`
+      // selector (see SavePlanBar's PRINT_STYLES) targets really exists
+      // and really wraps this control — not just that some string with
+      // that name appears somewhere in a CSS blob.
+      expect(backButton.closest(".bz-shs-back-to-answers")).not.toBeNull();
+    });
+  });
+
   describe("S13 verdict-crown — exactly one <h1> at every stage", () => {
     it("question stage: exactly one <h1>, and its text is the page masthead 'Check your fit'", () => {
       const { container } = render(<StudioApp />);
@@ -484,6 +508,35 @@ describe("StudioApp", () => {
         window.localStorage.getItem(PLAN_STORAGE_KEY) ?? "null",
       );
       expect(stored).toEqual(saved);
+    });
+  });
+
+  describe("NavRow contrast fix (WCAG AA, 2026-08-24)", () => {
+    // jsdom resolves neither `color-mix()` nor custom properties, so a
+    // computed-color assertion here would be vacuous (verified instead on a
+    // real Chromium render — see the commit body for the measured
+    // before/after contrast numbers). These pin the RULE: the resting style
+    // must not be the bare token that measured under the WCAG floor.
+    it("primary CTA's resting background is not the bare --accent-funnel token (white-on-red measured 3.62:1, below the 4.5:1 floor for 16px/600 text)", () => {
+      render(<StudioApp />);
+
+      const continueBtn = screen.getByRole("button", { name: "Continue" });
+      const styleAttr = continueBtn.getAttribute("style") ?? "";
+      const bg = styleAttr.match(/background:\s*([^;]+)/)?.[1]?.trim();
+
+      expect(bg).toBeDefined();
+      expect(bg).not.toBe("var(--accent-funnel)");
+    });
+
+    it("Back button's resting border is not the bare --color-border-subtle token (measured ~1.2:1 against the card backdrop, below the 3.0:1 non-text UI floor)", () => {
+      render(<StudioApp />);
+
+      const backBtn = screen.getByRole("button", { name: "Back" });
+      const styleAttr = backBtn.getAttribute("style") ?? "";
+      const border = styleAttr.match(/border:\s*([^;]+)/)?.[1]?.trim();
+
+      expect(border).toBeDefined();
+      expect(border).not.toBe("1px solid var(--color-border-subtle)");
     });
   });
 });

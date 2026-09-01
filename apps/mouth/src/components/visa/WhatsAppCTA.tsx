@@ -52,7 +52,7 @@ export function WhatsAppCTA({ whatsappUrl, onDismiss }: WhatsAppCTAProps) {
           href={whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-medium text-white transition-opacity hover:opacity-90"
+          className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-medium text-[var(--accent-whatsapp-ink)] transition-opacity hover:opacity-90"
           style={{ backgroundColor: "#25D366" }}
         >
           <svg
