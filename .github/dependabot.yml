@@ -4,6 +4,48 @@ updates:
   # Python backend
   - package-ecosystem: "pip"
     directory: "/apps/backend-rag"
+    # The two uv-compiled locks are OUTPUT, not input — Dependabot must not edit
+    # them.
+    #
+    # WHY IT WAS EDITING THEM: for pip, Dependabot "supports updates to any .txt
+    # file" (docs: supported-ecosystems-and-repositories, "pip and pip-compile").
+    # There is no heuristic that recognises compiled output, so
+    # requirements.lock.txt and requirements-prod.lock.txt were picked up as two
+    # more manifests purely because they end in .txt.
+    #
+    # WHAT THAT PRODUCED: this file already diagnosed the mechanism in the ignore
+    # block below ("Dependabot's pip lock updater bumps each package
+    # independently and does NOT honor sibling version pins"), but treated it as
+    # a per-package problem — hence the holds on fsspec, grpcio*, websockets,
+    # pdfplumber, pydantic*, mpmath, tokenizers. It is not per-package. Raising
+    # one == pin inside a compiled lock without re-running `uv pip compile`
+    # yields an internally unsatisfiable pin set, so the PR is born dead at
+    # `Install dependencies (uv, lock-pinned)` and its ~9 reds are ONE failure
+    # fanning out. Measured 2026-09-01, four distinct conflicts one mechanism:
+    # #5453 (openinference-semantic-conventions 0.1.32 vs >=0.1.33), #5452
+    # (portalocker 4.3.0 vs qdrant-client's <4.0), #5530 (transformers 5.16.1
+    # needs tokenizers>=0.23.1, lock has 0.22.2), #5454 (same profile). The
+    # tokenizers hold below was written for transformers 4.57 and the conflict
+    # returned at 5.16 — a per-package cure cannot outrun a mechanism.
+    #
+    # GLOB, NOT TWO FILENAMES — deliberate, and it is the npm block's lesson
+    # applied here: "scoping the fix to one dependency instead of the class is
+    # exactly why the disease came back through four other packages". A third
+    # compiled lock must be excluded by existing.
+    #
+    # WHAT THIS DOES NOT DO: a bump to a DIRECT dependency still opens a PR and
+    # still goes red — but on ONE check with a one-command fix, because the lock
+    # now lags its manifest and
+    # apps/backend-rag/backend/tests/test_lock_honors_requirements.py catches
+    # exactly that (it runs in backend-shard leg 3, feeding the REQUIRED
+    # "Backend Tests (Python)"; any requirements-file change forces the full
+    # unscoped suite, so it cannot be path-skipped). Fix: re-run the `uv pip
+    # compile` command in the lock's own header and commit the result. What
+    # disappears entirely is the lock-ONLY class — a transitive package like
+    # portalocker that appears in no source manifest — which is the class no
+    # recompile could ever have saved.
+    exclude-paths:
+      - "*.lock.txt"
     schedule:
       interval: "weekly"
       day: "monday"
