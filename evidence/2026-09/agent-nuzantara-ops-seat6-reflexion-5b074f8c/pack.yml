@@ -13,10 +13,10 @@ diff:
     production behaviour."
   net_lines:
     "measured merge-base-anchored, CUMULATIVE with unmerged siblings #4640 and
-    #4644: +384/-134, net +250; 19 files changed (eca4b258e..b9e5bddb7,
-    git diff --numstat). This session's own 2 commits, isolated (parent
-    4d8050f45, the seat6-cascade tip this branch forked from, to HEAD): +32/-12
-    net +20 across 3 files."
+    #4644: +737/-134, net +603; 21 files changed (929f67b01..80e5b3e3d,
+    git diff --no-renames --numstat). Re-measured after this PR's evidence moved
+    to its per-PR directory and main was merged in; the earlier sub-range figures
+    no longer describe this diff and were removed rather than left stale."
 receipts:
   - claim: "PR 4645 (branch agent/nuzantara/ops/seat6-reflexion), merge-base
       anchored against origin/main, touches 19 files: 384 insertions, 134
