@@ -4,7 +4,8 @@ No DB, no network — `plan_cure`, `build_cured_content`, `build_cured_metadata`
 `quarantined_codes`, and `archive_params` take plain dicts/lists and return
 plain dicts/dataclasses. These tests pin the 4th-consumer-surface cure
 (2026-07-19): `chat_kbli` injected `kbli_documents.content` verbatim (until v34,
-2026-08-15 — its direct path now reads only the PMA tuple off `metadata`) into the
+2026-08-15 — its direct path now reads only the PMA tuple and
+`official_description`/`uraian` off `metadata`) into the
 LLM context (see module docstring in
 `backend/scripts/kbli_documents_cure.py`), and this script must never
 synthesize a new licensing/risk/capital assertion for a code the canonical

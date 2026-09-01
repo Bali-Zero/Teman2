@@ -13,7 +13,8 @@ cure pathway (Fase 1 collision detach, `kg_kbli_license_fix.py`,
 (`POST /api/v1/kbli-notebook/chat`, `backend/app/routers/kbli_notebook_chat.py`)
 injected `kbli_documents.content` VERBATIM into the LLM context until v34
 (2026-08-15 — since then its direct path selects `judul, metadata` only and
-reads just the PMA tuple; see TWO NARROW MODES below) — via the
+reads off it the PMA tuple plus `official_description`/`uraian` via
+`_official_scope`, nothing else; see TWO NARROW MODES below) — via the
 direct 5-digit-code lookup path (`kbli_notebook_chat.py:699`) and via
 `_fetch_parent_documents_from_kbli_table()` (`kbli_notebook_chat.py:635`,
 used for every result the search/explanation step returns). For a
@@ -73,9 +74,11 @@ Both require `--only`, refuse every `--all-*` selector and refuse each other
 (two tuples, two cure runs). `--licensing-only` is one-directional: a code
 whose canonical `per_skala` is empty is REFUSED, never emptied — that is the
 quarantine class. They exist because since v34 the channel never injects the
-prose: `chat_kbli`'s direct path selects `judul, metadata` and reads ONLY the
-PMA tuple off it (`_pma_disclosure_fields`), so on a hand-written row the PMA
-tuple is the one thing a client can still be told wrong FROM THIS TABLE.
+prose: `chat_kbli`'s direct path selects `judul, metadata` and reads off it
+only the PMA tuple (`_pma_disclosure_fields`) and the official description
+(`_official_scope`: `official_description` / `uraian`), so on a hand-written
+row the PMA tuple is the one VERDICT a client can still be told wrong FROM
+THIS TABLE.
 The licensing tuple, by contrast, has NO runtime reader on this table
 (measured 2026-09-01: `per_skala`/`licensing_status`/`pp28_sources` reach a
 client from the canonical file, from the Qdrant point text via
@@ -365,8 +368,8 @@ PMA_METADATA_KEYS: tuple[str, ...] = (
 # moves with it; `licensing_status` follows the SAME rule the full rebuild
 # applies (gap marker on an empty set, otherwise carried over — this script
 # makes no independent claim about it). No runtime consumer reads these three
-# keys off THIS table (measured 2026-09-01 — module docstring); the PMA tuple
-# above is the one the channel reads.
+# keys off THIS table (measured 2026-09-01 — module docstring); the channel
+# reads the PMA tuple above and `official_description`/`uraian`, nothing else.
 LICENSING_METADATA_KEYS: tuple[str, ...] = (
     "per_skala",
     "pp28_sources",
