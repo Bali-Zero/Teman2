@@ -72,6 +72,7 @@ from backend.services.visa_engine.enums import (
     SourceAuthorityType,
     SourceLocatorKind,
     SourceStatus,
+    SponsorPermitBasis,
     SponsorType,
     StayPolicyKind,
     StudyLevel,
@@ -877,6 +878,19 @@ class KnownSponsorType(BaseModel):
     value: SponsorType
 
 
+class KnownSponsorPermitBasis(BaseModel):
+    """What activity basis the SPONSOR's own stay permit was granted under —
+    see ``enums.SponsorPermitBasis``'s docstring for the Pasal 33 ayat (7)
+    grounding. Distinct from ``KnownSponsorType`` (WHO the sponsor is, not
+    what basis their own permit rests on).
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    status: Literal["KNOWN"]
+    value: SponsorPermitBasis
+
+
 BooleanFact = Annotated[UnknownFact | KnownBoolean, Field(discriminator="status")]
 DateFact = Annotated[UnknownFact | KnownDate, Field(discriminator="status")]
 StringFact = Annotated[UnknownFact | KnownString, Field(discriminator="status")]
@@ -897,20 +911,25 @@ RelationFact = Annotated[UnknownFact | KnownRelation, Field(discriminator="statu
 ProposedRoleFact = Annotated[UnknownFact | KnownProposedRole, Field(discriminator="status")]
 StudyLevelFact = Annotated[UnknownFact | KnownStudyLevel, Field(discriminator="status")]
 SponsorTypeFact = Annotated[UnknownFact | KnownSponsorType, Field(discriminator="status")]
+SponsorPermitBasisFact = Annotated[
+    UnknownFact | KnownSponsorPermitBasis, Field(discriminator="status")
+]
 
 
 # ---------------------------------------------------------------------------
-# ApplicantFacts (spec §2) — the 41 applicant-collected fact paths, each
+# ApplicantFacts (spec §2) — the 45 applicant-collected fact paths, each
 # typed per its own *Fact union above. Field names use Python-safe
 # identifiers with the dotted wire name as the Pydantic alias (same pattern
 # as ``TimeRange.from_``/``alias="from"``) since a dotted path cannot be a
 # Python attribute name.
 # ---------------------------------------------------------------------------
 
-# Transitional default for ``sponsor.type`` ONLY — see the field's own comment
-# in ``ApplicantFactsData``. Named rather than inlined so the tripwire test can
-# assert against the same object the model uses, and so grepping this constant
-# finds every place the transition is still open.
+# Transitional default for ``sponsor.type`` — see the field's own comment in
+# ``ApplicantFactsData``, and (2026-08-23) the three ``family.stepchild_*``/
+# ``family.sponsor_permit_basis`` fields' own comments for the same
+# mechanism applied to three more facts. Named rather than inlined so the
+# tripwire test can assert against the same object the model uses, and so
+# grepping this constant finds every place the transition is still open.
 #
 # It is a built ``UnknownFact``, NOT the dict literal it looks like on the
 # wire: this model does not validate defaults (``validate_default`` is unset,
@@ -923,11 +942,51 @@ _SPONSOR_TYPE_ROLLOUT_DEFAULT: Final[UnknownFact] = UnknownFact(
     status="UNKNOWN", reason="NOT_ASKED"
 )
 
+# Same rollout mechanism, same rationale, for the three facts added
+# 2026-08-23 (three owner rulings — stepchild evidence, sponsor permit
+# basis, active-stay-permit). This PR adds vocabulary only; the rules that
+# would consume these facts, and the interview questions that ask them,
+# land in separate PRs/lanes. Widening the transitional-default set from one
+# field to four is a deliberate, tracked change — see
+# ``TestFactVocabularyExtensionRolloutDefaults0823`` in
+# ``test_sponsor_type_rollout.py``, which replaces that file's former
+# "sponsor_type is the ONLY optional field" invariant with an explicit,
+# named set. Each gets its own constant (rather than sharing
+# ``_SPONSOR_TYPE_ROLLOUT_DEFAULT``) purely so a reader grepping one fact's
+# name finds its own default in one hop — the value is identical and the
+# instances are safe to share (frozen, no per-key state) if that ever
+# matters.
+_STEPCHILD_MARRIAGE_CERTIFICATE_CONFIRMED_ROLLOUT_DEFAULT: Final[UnknownFact] = UnknownFact(
+    status="UNKNOWN", reason="NOT_ASKED"
+)
+_STEPCHILD_BIRTH_CERTIFICATE_CONFIRMED_ROLLOUT_DEFAULT: Final[UnknownFact] = UnknownFact(
+    status="UNKNOWN", reason="NOT_ASKED"
+)
+_SPONSOR_PERMIT_BASIS_ROLLOUT_DEFAULT: Final[UnknownFact] = UnknownFact(
+    status="UNKNOWN", reason="NOT_ASKED"
+)
+
+# Same rollout mechanism again, 2026-08-24, for ``immigration.renewal_paid``
+# (F4 — owner ruling on a renewal-in-process KITAS holder). No interview
+# asks this yet; the question ships in a following lane (mouth flow.ts),
+# deliberately sequenced after the P0 offshore-reachability fix (#4727)
+# lands, to avoid building the new conditional node against a flow.ts shape
+# that fix is actively replacing. Until that question ships, every request
+# omits this key and the derivation falls back to its pre-existing
+# code/expiry logic unchanged — fail-safe by construction, same as the three
+# fields above.
+_RENEWAL_PAID_ROLLOUT_DEFAULT: Final[UnknownFact] = UnknownFact(
+    status="UNKNOWN", reason="NOT_ASKED"
+)
+
 
 class ApplicantFactsData(BaseModel):
     """``ApplicantFacts.facts`` (spec §2) — ``additionalProperties: false``
-    with all keys required except the one transitional field documented on
-    ``sponsor_type`` below. Field order mirrors ``enums.FactPath``'s
+    with all keys required except the five transitional fields documented on
+    ``sponsor_type``, the three ``family.stepchild_*``/
+    ``family.sponsor_permit_basis`` fields (2026-08-23), and
+    ``immigration_renewal_paid`` (2026-08-24) below — all the same rollout
+    mechanism. Field order mirrors ``enums.FactPath``'s
     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
     ``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``
     grouping.
@@ -963,6 +1022,20 @@ class ApplicantFactsData(BaseModel):
     ]
     immigration_violation_history: Annotated[
         ViolationSetFact, Field(alias="immigration.violation_history")
+    ]
+    # immigration.renewal_paid — F4, 2026-08-24 (owner ruling: a
+    # renewal-in-process KITAS holder stays on the permit they extended,
+    # excluded from D12 the same as any other active-permit holder; a
+    # follow-up ruling made payment, not filing, the determinant — "il rinno
+    # si considera depositato se ce stato pagamento"). Same rollout-default
+    # treatment as the four fields below: no interview asks this yet.
+    # FOLLOW-UP (remove the default): once the conditional renewal-payment
+    # question ships in mouth's flow.ts and no client omits this key, per
+    # ``TestFactVocabularyExtensionRolloutDefault0824`` in
+    # ``test_sponsor_type_rollout.py``.
+    immigration_renewal_paid: Annotated[
+        BooleanFact,
+        Field(alias="immigration.renewal_paid", default=_RENEWAL_PAID_ROLLOUT_DEFAULT),
     ]
     intent_purposes: Annotated[PurposeSetFact, Field(alias="intent.purposes")]
     intent_stay_days: Annotated[NonNegativeIntegerFact, Field(alias="intent.stay_days")]
@@ -1001,6 +1074,39 @@ class ApplicantFactsData(BaseModel):
     family_sponsor_status_code: Annotated[StringFact, Field(alias="family.sponsor_status_code")]
     family_marriage_registered: Annotated[BooleanFact, Field(alias="family.marriage_registered")]
     family_sponsor_confirmed: Annotated[BooleanFact, Field(alias="family.sponsor_confirmed")]
+    # family.stepchild_* — evidence for RelationType.STEPCHILD (2026-08-23
+    # owner ruling: "figliastro = figlio del coniuge, serve akta nikah +
+    # akta lahir"). Optional/defaulted for the same rollout reason as
+    # ``sponsor_type`` above: no interview asks these yet, so an absent key
+    # must not 422 an existing 41(+)-key caller. FOLLOW-UP (remove the
+    # default): once the STEPCHILD interview branch ships and no client
+    # omits these keys, per ``TestFactVocabularyExtensionRolloutDefaults0823``
+    # in ``test_sponsor_type_rollout.py``.
+    family_stepchild_marriage_certificate_confirmed: Annotated[
+        BooleanFact,
+        Field(
+            alias="family.stepchild_marriage_certificate_confirmed",
+            default=_STEPCHILD_MARRIAGE_CERTIFICATE_CONFIRMED_ROLLOUT_DEFAULT,
+        ),
+    ]
+    family_stepchild_birth_certificate_confirmed: Annotated[
+        BooleanFact,
+        Field(
+            alias="family.stepchild_birth_certificate_confirmed",
+            default=_STEPCHILD_BIRTH_CERTIFICATE_CONFIRMED_ROLLOUT_DEFAULT,
+        ),
+    ]
+    # family.sponsor_permit_basis — the sponsor's OWN stay-permit basis
+    # (2026-08-23, Pasal 33 ayat (7) no-chaining exclusion — see
+    # ``enums.SponsorPermitBasis``). Same rollout-default treatment as the
+    # two stepchild facts above.
+    family_sponsor_permit_basis: Annotated[
+        SponsorPermitBasisFact,
+        Field(
+            alias="family.sponsor_permit_basis",
+            default=_SPONSOR_PERMIT_BASIS_ROLLOUT_DEFAULT,
+        ),
+    ]
     study_level: Annotated[StudyLevelFact, Field(alias="study.level")]
     study_admission_confirmed: Annotated[BooleanFact, Field(alias="study.admission_confirmed")]
     study_sponsor_confirmed: Annotated[BooleanFact, Field(alias="study.sponsor_confirmed")]

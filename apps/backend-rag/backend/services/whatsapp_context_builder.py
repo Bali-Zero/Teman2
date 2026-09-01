@@ -18,29 +18,52 @@ from typing import Any
 
 import asyncpg
 
+from backend.security.pii_log_identifier import redact_identifier_for_log
+
 logger = logging.getLogger(__name__)
 
 # Visa/service codes to detect in messages
 VISA_CODES = [
+    # Visit visas (single / multiple entry)
+    "a1",
+    "b1",
+    "b211",
+    "b211a",
+    "b211b",
     "c1",
     "c2",
+    "c6",
     "c7a",
     "c7b",
+    "c7c",
+    "c8a",
+    "c8b",
+    "c10",
     "c18",
     "c22a",
     "c22b",
+    "d1",
+    "d2",
     "d12",
+    # KITAS / limited-stay permits
+    "e23",
+    "e30a",
+    "e30b",
+    "e33",
+    "e33e",
+    "e33f",
     "e33g",
     "voa",
-    "b211",
     "kitas",
     "kitap",
     "merp",
     "epo",
     "erp",
+    # Company / tax / admin services
     "pma",
     "virtual office",
     "npwp",
+    "npwpd",
     "spt",
     "freelance",
     "investor",
@@ -48,9 +71,19 @@ VISA_CODES = [
     "spouse",
     "dependent",
     "working kitas",
+    "second home",
+    "rumah kedua",
     "sktt",
     "skck",
     "domicilie",
+]
+
+# Pre-compile word-boundary regexes once at import. This prevents substring
+# false positives ("e33" inside "e33g", "c1" inside "c18", "c2" inside "c22a")
+# while still matching tokens adjacent to punctuation: "E33.", "(E33G)",
+# "e33/e33e", "kitas?".
+_VISA_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"\b" + re.escape(code) + r"\b", re.IGNORECASE) for code in VISA_CODES
 ]
 
 # Interest keywords
@@ -150,8 +183,8 @@ def extract_visa_mentions(text: str) -> list[str]:
     """Extract visa/service codes mentioned in a message."""
     text_lower = text.lower()
     found = []
-    for code in VISA_CODES:
-        if code in text_lower:
+    for code, pattern in zip(VISA_CODES, _VISA_PATTERNS, strict=True):
+        if pattern.search(text_lower):
             found.append(code.upper())
     return list(set(found))
 
@@ -184,12 +217,18 @@ def infer_client_type(profile: dict[str, Any]) -> str:
     interests = set(profile.get("interests", []))
     visas = {v.lower() for v in profile.get("visa_discussed", [])}
 
-    if "retirement" in interests or "retirement" in visas:
+    # E33E/E33F are the senior (55+) retirement-shaped Second Home routes, so
+    # they map to the retiree bucket along with explicit retirement signals.
+    if "retirement" in interests or any(v in visas for v in ["retirement", "e33e", "e33f"]):
         return "retiree"
     if "company_setup" in interests or "pma" in visas:
         return "entrepreneur"
     if "remote_work" in interests or "e33g" in visas:
         return "digital_nomad"
+    # Base E33 Second Home Visa and its natural-language triggers. Placed after
+    # digital_nomad so E33G remote-worker leads stay typed as digital_nomad.
+    if any(v in visas for v in ["e33", "second home", "rumah kedua"]):
+        return "second_home_prospect"
     if "family_relocation" in interests:
         return "family_relocating"
     if "investment" in interests:
@@ -261,7 +300,7 @@ async def build_context(
                         client_profile = meta
 
         except Exception as e:
-            logger.warning("Failed to load context for %s: %s", phone, e)
+            logger.warning("Failed to load context for %s: %s", redact_identifier_for_log(phone), e)
 
     # Resolve sender identity (owner / team / CRM client / unknown) so the
     # reply pipeline can stop treating Zero, the team, and known clients as
@@ -271,7 +310,9 @@ async def build_context(
 
         sender_identity = await resolve_sender_identity(phone, db_pool)
     except Exception:
-        logger.exception("Sender identity resolution crashed for %s", phone)
+        logger.exception(
+            "Sender identity resolution crashed for %s", redact_identifier_for_log(phone)
+        )
         sender_identity = {"role": "unknown"}
 
     # Detect language from current message + history
@@ -329,7 +370,7 @@ async def build_context(
                     )
                 # If no existing row, it will be created when we save the conversation later
         except Exception as e:
-            logger.warning("Failed to save profile for %s: %s", phone, e)
+            logger.warning("Failed to save profile for %s: %s", redact_identifier_for_log(phone), e)
 
     return {
         "client_name": sender_name,

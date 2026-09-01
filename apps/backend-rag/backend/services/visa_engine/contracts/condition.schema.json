@@ -292,7 +292,7 @@
       "type": "object"
     },
     "FactPath": {
-      "description": "Every fact path the engine may ever reference \u2014 41 applicant-collected\n+ 3 derived (spec \u00a72 ``ApplicantFactPath`` + ``FactPath``, extended by the\n``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, and\nby ``sponsor.type`` for the sponsor-category question, 2026-08-10).\n\nClosed by design (spec \u00a75.2): a Condition's ``fact`` field and a Rule's\n``required_facts`` array are both typed against this enum, so a rule\nthat references an unknown fact path is a Pydantic ``ValidationError``\nat parse time, not a runtime surprise. ``fact_registry.py`` layers typed\nmetadata (value kind, PII class, commercial flag) on top of this same\nvocabulary \u2014 see that module's docstring for why both exist.",
+      "description": "Every fact path the engine may ever reference \u2014 45 applicant-collected\n+ 4 derived (spec \u00a72 ``ApplicantFactPath`` + ``FactPath``, extended by the\n``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by\n``sponsor.type`` for the sponsor-category question, 2026-08-10, by the\ntwo ``family.stepchild_*`` evidence facts, ``family.sponsor_permit_basis``\nand ``derived.has_active_stay_permit`` (2026-08-23, three owner rulings),\nand by ``immigration.renewal_paid`` (2026-08-24, F4 \u2014 see its own inline\ncomment for the grounding).\n\nClosed by design (spec \u00a75.2): a Condition's ``fact`` field and a Rule's\n``required_facts`` array are both typed against this enum, so a rule\nthat references an unknown fact path is a Pydantic ``ValidationError``\nat parse time, not a runtime surprise. ``fact_registry.py`` layers typed\nmetadata (value kind, PII class, commercial flag) on top of this same\nvocabulary \u2014 see that module's docstring for why both exist.",
       "enum": [
         "person.birth_date",
         "person.nationalities",
@@ -303,6 +303,7 @@
         "immigration.last_entry_date",
         "immigration.overstay_days",
         "immigration.violation_history",
+        "immigration.renewal_paid",
         "intent.purposes",
         "intent.stay_days",
         "intent.desired_entry_date",
@@ -322,6 +323,9 @@
         "family.sponsor_status_code",
         "family.marriage_registered",
         "family.sponsor_confirmed",
+        "family.stepchild_marriage_certificate_confirmed",
+        "family.stepchild_birth_certificate_confirmed",
+        "family.sponsor_permit_basis",
         "study.level",
         "study.admission_confirmed",
         "study.sponsor_confirmed",
@@ -337,7 +341,8 @@
         "commercial.wants_quote",
         "derived.age_years",
         "derived.is_minor",
-        "derived.has_indonesian_citizenship"
+        "derived.has_indonesian_citizenship",
+        "derived.has_active_stay_permit"
       ],
       "title": "FactPath",
       "type": "string"

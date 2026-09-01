@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """cswap.py — Claude-profile rotation across the Anthropic MAX/Team seats.
 
-Swaps `CLAUDE_CONFIG_DIR` (the pattern already proven by `scripts/claude-glm.sh`
-for the z.ai GLM seat) between the local profile directories mapped in
+Swaps `CLAUDE_CONFIG_DIR` between the local Claude profile directories mapped in
 `seat_map.json` (A1/A2/A3/AZ + the orphan/legacy entries flagged there).
 Lane-affine per the harness-flotta dossier (2026-08-09 §1): A1
 interactive/architect, A2 subagents/build, A3 cron/batch (donor), AZ = the

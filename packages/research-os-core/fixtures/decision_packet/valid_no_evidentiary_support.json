@@ -1,0 +1,56 @@
+{
+  "alternatives": [],
+  "claim_refs": [],
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "internal"
+  },
+  "contract_version": "research-os/v1.0.0",
+  "decision_packet_family_id": "com.example.decision_packet_family_002",
+  "decision_packet_id": "30000000-0000-4000-8000-000000000002",
+  "downstream_candidates": [],
+  "evidence_refs": [],
+  "evidence_summary": {
+    "citations": [],
+    "text": "No claim or evidence object applies; the recommendation is an internal scheduling optimization with no evidentiary basis, per CONTRACTS.md Rule 9."
+  },
+  "lineage": {
+    "input_hashes": [],
+    "workflow_run_ref": {
+      "object_hash": "5555555555555555555555555555555555555555555555555555555555555555",
+      "workflow_run_id": "30000000-0000-4000-8000-000000000302"
+    }
+  },
+  "novelty": {
+    "basis": "no prior synthetic packet proposed this scheduling change",
+    "compared_window": {
+      "ended_at": "2026-01-15T00:00:00Z",
+      "started_at": "2026-01-01T00:00:00Z"
+    },
+    "score": 0.1
+  },
+  "object_hash": "4890b9a1c4052355b5f698dc252866048f8f2d3c9aae51e4b0aceeec5675b0c8",
+  "outcome_family": "team_enablement",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "recommended_action": {
+    "action_type": "com.example.reschedule_meeting",
+    "target_surface": "com.example.team_calendar"
+  },
+  "recorded_at": "2026-01-15T00:05:00Z",
+  "retention": {
+    "legal_hold": false,
+    "retention_class": "operational"
+  },
+  "revision": 1,
+  "risk_analysis": {
+    "reasons": [],
+    "unresolved_questions": []
+  },
+  "source_document_refs": [],
+  "tenant": "bali-zero",
+  "title": "Synthetic weekly team ops sync should move off the Monday slot",
+  "why_now": "The current Monday slot conflicts with a synthetic recurring client onboarding call; this is a scheduling optimization with no incident, regulatory, or evidentiary driver."
+}

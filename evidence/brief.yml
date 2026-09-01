@@ -1,74 +1,116 @@
-task_id: ops-visaoracle-wrapper-header-0823
+task_id: price-review-0831
 gear: 3
-l_level: L1
+l_level: L2
 gate_class: opus
 objective: |
-  Split out of the visaoracle truth-first ledger backfill (PR #4592) because it touches
-  `infra/launchagents/wrappers/*.sh` and the Harness floor recompute correctly floors any diff
-  in that path at Gear 3, regardless of size (fleet-order-spec.md §4 "floor is a lower bound").
+  Give Bali Zero's own price sheet an automatic re-check, so that "are the prices still current?"
+  stops being a question nobody is scheduled to ask.
 
-  This PR is documentation-only, in the strict sense that it edits two comment lines in a
-  LaunchAgent wrapper and touches zero executable code. `pro-visa-freshness-sentinel.sh`'s own
-  header (lines 4-5) named a file that has never existed on disk anywhere: `Canon:` and `Live:`
-  pointed at `pro-visa_freshness_sentinel.sh` (underscore before "freshness"), while the real
-  repo path, the real live path on Pro, the plist's `ProgramArguments`, and
-  `infra/home-fork/declared-pairs.json` pair[146] all use the hyphen form
-  (`pro-visa-freshness-sentinel.sh`) — verified fresh this session, receipts below. The
-  home-fork lint (`scripts/lint_home_fork.py`) was never actually blind to this: it checks the
-  correct hyphen pair and always has. Only a human or agent reading the wrapper's own header
-  comment goes hunting for a file that isn't there — cicatrix-superscar family #1
-  ("HOME-fork drift") signal-precoce, not a live defect in the lint or the deploy path.
-  **Severity, stated precisely so a future reader does not over-read this**: because
-  `declared-pairs.json` already carried the hyphen form on BOTH sides for this pair before this
-  PR, this is a READER-MISDIRECTION defect (the file lies about its own name to a human/agent),
-  not a DRIFT defect (repo and live content disagreeing, or the lint failing to catch that they
-  do) — the two are different failure classes and this PR only ever claims to fix the former.
+  Ordered by Zero on 2026-08-31 as one half of a two-part mandate — "crea un trigger automatico che
+  fa partire una richiesta a NB-2 che fa anche una research live per confermare che ci sono o non
+  ci sono aggiornamenti a riguardo gli index e i prezzi" — and immediately scoped by the amendment
+  "per il prtezzo che si controlli solo il nostro pricing tool". That amendment is load-bearing and
+  is why this sentinel makes no external call at all: government PNBP is a different question with
+  a different owner, and conflating the two produces an alert nobody can act on. The 90-day review
+  interval was ratified separately by Zero ("va bene 90 giorni").
 
-  BE HONEST ABOUT THE SIZE: this is a 2-line comment correction inside a file that is
-  hot-zone by path, not by content. The evidence below is sized to match — it is not an
-  attempt to dress a trivial fix as a large one, and it is not padded to look thorough.
+  The obvious implementation — compare `metadata.last_updated` against today — would have shipped a
+  lie. Measured on disk at 2026-08-31: the field says 2026-05-06, while the file was last committed
+  2026-08-26 and carries entries stamped `verified_on: 2026-08-25`. The field is not a review date;
+  it is a literal somebody wrote once and nobody bumps. Its one honest use is asymmetric: it can
+  prove the sheet is OVERDUE, and it can never prove the sheet is FRESH.
+
+  So OK requires a conjunction — inside the interval AND no independent trace of the file having
+  moved since. Two traces, both lower bounds: the last git commit touching the file, and the newest
+  per-entry `verified_on`. A newer trace yields ATTESTATION_UNMAINTAINED, a distinct loud state
+  meaning the freshness question cannot be answered in either direction. That is the live verdict
+  today, and it is the correct one.
+
+  Gear 3 by PATH, deterministically: the diff adds a LaunchAgent wrapper and plist, which the
+  harness floors at 3 regardless of size (`--print-floor-source` returns `path`). 1827 net lines
+  across 10 files at this commit.
+
 constraints:
-  - "set -u and every executable line in the file are untouched — diff is exactly the two
-    comment lines, verified by `git diff --stat` (2 insertions, 2 deletions, 1 file) and by
-    reading the full post-diff file."
-  - "Do NOT rename, move, or re-declare the pair in infra/home-fork/declared-pairs.json — it
-    already carries the correct hyphen form on both sides and needs no change."
-  - 'Do NOT touch ORGAN_ID="pro.visa_freshness_sentinel" or LOG_DIR="$HOME/logs/pro-visa_freshness_sentinel"
-    lower in the same file — those underscores are legitimate (organ id / log-dir naming
-    convention, not a file path claim) and match the live log directory verified on Pro this
-    session. Only the two header comment lines that claim to NAME A FILE are in scope.'
+  - "Absence must never read as freshness. 111 of 113 priced entries carry no `verified_on` at all;
+    they are UNKNOWN, not current, and the count travels in the alert body rather than being
+    silently dropped."
+  - "The sentinel must watch what the LIVE service loads. The filename is imported from
+    `pricing_service._PRICING_FILENAME`, never restated — a rename to a 2027 edition must not leave
+    this organ watching a dead file and reporting green (the proxy failure, superscar #9)."
+  - "A sentinel that errs must err toward noise. A reformat-only commit will trip
+    ATTESTATION_UNMAINTAINED; that false positive is accepted deliberately, because the opposite
+    error is a quiet false OK on a price sheet."
+  - "No external call, no NB-2, no web, no government fee schedule — Zero's amendment fixes the
+    scope to our own pricing tool."
+  - "WHEN the sentinel runs it SHALL emit only dates, counts and outcome names — probe:
+    `pytest scripts/tests/test_price_review_sentinel.py -k alert`. No client PII anywhere in
+    output, logs or alerts. The sheet carries only Bali Zero's own
+    published business contact block, which is already public on balizero.com."
+  - "Telegram only through the `scripts/tg_notify.py` gateway, never a direct bot call, and a
+    gateway failure must never crash the sentinel (house contract)."
+  - "Built is not armed. The organ ships unarmed and says so in PENDING-ARMS rather than letting the
+    repo read as if the price sheet were already being watched (superscar #2)."
+
 acceptance:
-  - 'grep -n "pro-visa-freshness-sentinel.sh" infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
-    shows the Canon and Live lines using the hyphen form.'
-  - 'grep -c "pro-visa_freshness_sentinel.sh" infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
-    == 0 (underscore form gone).'
-  - "bash -n infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh exits clean."
-  - "python3 scripts/lint_home_fork.py passes (no regression — the pair was already correctly
-    declared; this PR only fixes the wrapper's self-description)."
-  - 'Live Pro state is unaffected: the organ stays ARMED (last_seen fresh, run.log
-    pack_source:"database") before and after — this is a comment edit, no restart/redeploy
-    needed or performed.'
+  - "WHEN a review date sits inside the interval but a commit lands after it, classify() SHALL NOT return OK — probe: `pytest scripts/tests/test_price_review_sentinel.py::test_guilt_a_recent_review_date_contradicted_by_a_change_is_still_not_ok`. Full statement: `classify()` returns OK only when the review date is inside the interval AND no trace shows the
+    file changed after it — verified by a guilt test where the date is INSIDE the interval but a
+    commit lands after it, which must still not be OK."
+  - "WHEN run against the real sheet the sentinel SHALL print a machine-readable last line whose
+    rc= agrees with the code it exits with — probe: `pytest scripts/tests/test_price_review_sentinel.py::test_main_prints_a_state_line_whose_rc_matches_the_code_it_exits_with`.
+    NARROWED from an earlier 'SHALL exit 1': on 2026-08-31 it does exit 1 (ATTESTATION_UNMAINTAINED,
+    naming 2026-08-26 as the contradicting trace), but pinning that here would make the legitimate
+    cure — somebody re-attesting the sheet — break the suite. The freshness verdicts are pinned on
+    synthetic sheets by the classify() matrix, where they can be pinned honestly."
+  - "WHERE the classifier returns an outcome, that outcome SHALL have a mapped exit code — probe: `pytest scripts/tests/test_price_review_sentinel.py::test_every_outcome_the_classifier_actually_returns_has_an_exit_code`. None falls through to CANNOT_VERIFY."
+  - "IF the real sheet were empty the suite SHALL fail rather than pass vacuously — probe: `pytest scripts/tests/test_price_review_sentinel.py::test_the_real_sheet_is_classifiable_and_not_empty`. The real sheet parses and carries >= 100 priced entries before any
+    assertion is made about it."
+  - "WHEN any guard in the classifier is removed the suite SHALL go red — probe: the six single-anchor mutations recorded in the pack. Three of them: disabling the contradiction check,
+    widening the grace day, and moving the interval."
+  - "WHEN the organ is born the conformance check SHALL stay clean — probe: `python3 infra/organ-conformance/check_organ_conformance.py`. Result: clean, and `validate_organs_registry` valid after the birth."
+
 consumer_map:
-  - "`infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh` — the file itself; a human or
-    agent reading its header is the only consumer of the changed lines."
-  - "`scripts/organ_birth.py:80` — the ONLY other hit for the literal `Canon:` in `scripts/*.py`;
-    it is a template string used to GENERATE a new wrapper's header text at organ-birth time
-    (f-string with `organ_id` substituted in), never a reader of an EXISTING wrapper's header.
-    Confirmed by reading the line: it does not touch this already-born organ."
-  - "`infra/home-fork/declared-pairs.json` pair[146] — already correct, unaffected by this PR."
-  - "`~/scripts/pro-visa-freshness-sentinel.sh` on Pro (the live copy) — not touched by this PR;
-    the header comment is repo-side documentation only, the live file's own header will match
-    once this lands and the deploy pattern for this pair (already-armed organ, header-only
-    change) next syncs it — no urgency, no functional drift in the meantime."
+  - "`scripts/price_review_sentinel.py` — the organ itself; runs under the backend venv interpreter
+    (3.11.11), because it imports backend code and /usr/bin/python3 is 3.9.6 on both Pro and M5 —
+    too old for the `str | None` annotation in the package __init__ chain. The first draft had
+    this backwards and pinned system python in the wrapper."
+  - "`apps/backend-rag/backend/services/pricing/pricing_service.py` — read-only, for
+    `_PRICING_FILENAME` alone. Nothing in the service changes."
+  - "`apps/backend-rag/backend/data/bali_zero_official_prices_2026.json` — observed, never written."
+  - "`infra/launchagents/wrappers/pro-price-review-sentinel.sh` + `com.nuzantara.price-review-sentinel.plist`
+    — the trigger, node=pro, StartInterval 86400. NOT yet installed on Pro."
+  - "`apps/organism/organism/organs_registry.yaml` + `infra/home-fork/declared-pairs.json` — so the
+    organ has a repo trace and the home-fork lint can see its live pair (superscar #1)."
+  - "`scripts/tg_notify.py` — the only alert door; tier p0 for findings, digest for APPROACHING."
+  - "`.claude/skills/modus/PENDING-ARMS.md` — two rows: the unarmed organ, and the inherited
+    organ_birth.py YAML-quoting bug."
+
 risks:
-  - "None identified to the running organ: the change is comment-only, `set -u` and all
-    executable lines are byte-identical before/after."
-  - "Residual, out of scope for this PR: the LIVE copy on Pro (`~/scripts/pro-visa-freshness-sentinel.sh`)
-    still carries the old wrong header comment until someone re-syncs it there — cosmetic only,
-    the home-fork lint compares the EXECUTABLE content of the pair, not comments, so this is not
-    a lint-blocking drift."
+  - "The organ is BUILT and NOT ARMED. Until the plist is bootstrapped on Pro and a first heartbeat
+    is read back, nothing is being watched — and the repo now looks as though something is. This is
+    superscar #2 by construction, which is why it is a PENDING-ARMS row and not a claim of done."
+  - "The contradiction check depends on git being available in the cron environment. When git cannot
+    answer, the sentinel loses one of its two traces; it degrades toward silence on that trace, never
+    toward a pass, but the coverage is genuinely weaker in that state."
+  - "ATTESTATION_GRACE_DAYS = 1 is a judgment call covering MERGE LAG — the gap between reviewing a
+    price and the commit that records it. RETRACTED: an earlier draft of this line, and of the
+    code comment, justified it by the UTC-vs-WITA offset. That reasoning was inverted (WITA is
+    ahead of UTC, so the offset cannot make a same-day commit look like a later one) and it is
+    corrected at price_review_sentinel.py:104-116. A real edit made within a day of a genuine
+    review is still absorbed by the grace day; that cost is accepted, the stated reason was wrong."
+  - "The sentinel answers a narrower question than the mandate's word 'prices' might suggest: it
+    detects that OUR SHEET is overdue for review, not that the underlying prices have changed. That
+    narrowing is Zero's own amendment, stated here so nobody later reads the green as market truth."
+  - "The sheet is not the only price store. `practice_types.base_price` in Postgres is independent —
+    populated only by one-shot migrations, last price-bearing one 2026-06-09 — and
+    `crm_practices.py:491` uses it as the default `quoted_price`. Measured against the live DB
+    today: 74 of 112 rows match a sheet entry by normalized name and all 74 are IDENTICAL, so the
+    store has not broadly drifted; the one live divergence is `B1 - VOA` at 750.000 against the
+    sheet''s 790.000. This sentinel does NOT watch that store, and a green verdict from it says
+    nothing about what a client is quoted through the CRM. Recorded in PENDING-ARMS rather than
+    folded in here: the two stores do not share a naming scheme, so reconciling them is its own
+    mandate, not a widening of this one."
+
 grader:
-  codex gpt-5.6-sol (cross-family, read-only sandbox, high effort) — independent adversarial
-  review of this exact diff, dispatched fresh, not the author
-budget: 1 external review seat, no council (task does not warrant one)
-pii: none
+  "Opus 5 at xhigh — the final on-disk gate (CLAUDE.md §5, 2026-08-20 ruling). Generator is
+  this session's build lane; the grader never grades its own diff, and the council seats
+  (codex-gpt-5.6-sol, kimi-code/k3) are dispatched on the diff, not on a summary of it."

@@ -33,12 +33,22 @@
     {
       "id": "e33_base_property_alternative",
       "topic": "Base E33 qualifying basis — property alternative",
-      "value": "USD 1,000,000 qualifying property — completed strata-title (hak milik atas satuan rumah susun) only; off-plan/leasehold do NOT qualify",
+      "value": "USD 1,000,000 qualifying property — completed strata unit (rumah susun / apartment) only; off-plan/leasehold do NOT qualify",
       "status": "confirmed",
       "confidence": "BERSYARAT",
-      "source": "live imigrasi.go.id E33 page fetch 2026-07-19; research/curated-qa-corrections-2026-07-21/visa-second-home-variants.jsonl Q2",
-      "source_date": "2026-07-19",
-      "notes": "BERSYARAT: the strata-title-only condition must always travel with the claim. How immigration validates the property (appraisal standard) is unknown (property_validation_standard)."
+      "source": "live imigrasi.go.id E33 page fetch 2026-07-19; research/curated-qa-corrections-2026-07-21/visa-second-home-variants.jsonl Q2; Ditjen Imigrasi E33 index page re-fetch 2026-08-23 states only 'properti berupa rumah susun atau apartemen' and is silent on title type",
+      "source_date": "2026-08-23",
+      "notes": "BERSYARAT: the completed-strata-unit condition must always travel with the claim. The Ditjen Imigrasi page is silent on title type; PP 18/2021 points to Hak Pakai for foreign holders, but the qualifying title type remains unresolved and must not be asserted. This is not covered by letters 001-006; the tracker has zero questions on the property route. How immigration validates the property (appraisal standard) is unknown (property_validation_standard)."
+    },
+    {
+      "id": "e33_base_property_title_type",
+      "topic": "Base E33 property route — qualifying title type",
+      "value": "Which legal title type qualifies for the USD 1,000,000 completed-strata-unit property route",
+      "status": "unknown",
+      "confidence": "BELUM_DIATUR_PUBLIK",
+      "source": "Ditjen Imigrasi E33 index page re-fetch 2026-08-23 (states only 'properti berupa rumah susun atau apartemen' and is silent on title type); PP 18/2021 review (points to Hak Pakai for foreign holders)",
+      "source_date": "2026-08-23",
+      "notes": "Unresolved: do not assert a qualifying title type. Not covered by letters 001-006; the tracker has zero questions on the property route. Candidate for a follow-up letter or addendum."
     },
     {
       "id": "e33_first_grant_duration",

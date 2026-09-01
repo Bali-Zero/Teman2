@@ -1231,6 +1231,287 @@ Citato come "sibling-race madre" nella famiglia #5 (sibling-race / shared-worktr
 
 ---
 
+### 🐛 W123 (2026-08-23): un HOLD ARMS onorato DISARMANDO si è ri-armato da solo al primo push — il hold durevole è il DRAFT, non il disarmo
+
+_Scoperto 2026-08-23 su Pro, lane wr3/P03, su PR #4658, mentre onoravo un HOLD ARMS chiesto dalla flotta per far passare #4647._
+
+**TRAUMA.** Ho disarmato #4658 alle `09:49:49Z` e l'ho dichiarato alla flotta. Poi ho pushato **una riga** di correzione al ledger. Cronologia dal timeline della PR:
+
+```
+09:49:27Z  auto_merge_enabled     (io, per errore)
+09:49:49Z  auto_merge_disabled    (io, per onorare l'hold)   <- qui la dichiarazione era VERA
+10:12:36Z  committed              (il mio push, una riga)
+10:12:43Z  run auto-merge-whitelist.yml sul mio branch -> success
+10:18:37Z  auto_merge_enabled     actor=Balizero1987          <- non l'ho fatto io
+```
+
+Trenta minuti dopo, `gh pr merge 4658 --auto` ha risposto **«already queued to merge»**: era in coda, posizione 2. La dichiarazione «sto tenendo ferma la PR» era diventata falsa alle 10:18:37 e nessuno — me compreso — se n'era accorto.
+
+**MECCANISMO**, letto dalla dichiarazione e non dedotto dalla coincidenza. `.github/workflows/auto-merge-whitelist.yml` gira su `pull_request_target` con `types: [opened, reopened, synchronize, ready_for_review, labeled]`, e il suo **unico** cancello è:
+
+```yaml
+if: github.event.pull_request.draft == false
+```
+
+`synchronize` = ogni push al branch della PR. Nella stessa lista di run, i branch in draft risultano `skipped`, i non-draft `success`.
+
+**⚠️ CORREZIONE (2026-08-27, Pro — letta su `origin/main`, non dedotta). La conclusione originale di questa cicatrice era «ogni push a una PR non-draft la ri-arma»: è FALSA per i branch che questa flotta usa.** `draft == false` è il cancello del *job*, non l'unica condizione. L'armamento passa da **tre step in cascata**, e il primo è il BRANCH:
+
+```yaml
+# auto-merge-whitelist.yml — step "Check branch whitelist"
+[[ "$BRANCH" =~ ^docs/auto-sync- ]] || [[ "$BRANCH" =~ ^dependabot/(pip|npm_and_yarn)/ ]] || [[ "$BRANCH" =~ ^chore/fmt- ]]
+```
+
+poi l'author allowlist (`dependabot[bot]` | `github-actions[bot]` | `Balizero1987`), poi l'assenza di path CODEOWNERS Tier-1. Solo se tutti e tre passano si arriva allo step `Enable auto-merge`.
+
+`#4658` viveva su `agent/nuzantara/wr3/p03-required-ledger`: **non matcha nessuno dei tre pattern** ⇒ `match=false` allo step 1 ⇒ il workflow non ha mai raggiunto lo step che arma. Lo stesso vale per **ogni** branch `agent/<host>/<lane>/…`, cioè per la totalità delle PR di lane.
+
+**Come l'evidenza è stata mal letta — è la parte riusabile.** La prova citata sopra è `10:12:43Z run auto-merge-whitelist.yml -> success`. Ma un job che esce `match=false` allo step 1 esce **anch'esso `success`**: `success` dice che il job non è fallito, non che ha armato. E «i draft `skipped`, i non-draft `success`» è compatibile con entrambe le tesi, quindi non ne distingue nessuna. **Un run verde non è la prova di un'azione**: la prova è l'effetto (`autoMergeRequest` / `isInMergeQueue`) o il log dello step che la esegue.
+
+**Cosa resta vero, cosa resta ignoto.** Resta vero che alle `10:18:37Z` #4658 è stata armata da qualcuno che non era la lane, e che l'`actor` del timeline non lo distingue (GOTCHA (a), intatto). Resta vero che il DRAFT è il freno più robusto. **Non è noto chi abbia armato:** `auto-merge-whitelist.yml` è l'unico workflow del repo che abilita auto-merge (verificato 2026-08-27, grep su `.github/workflows/`), e per quel branch non può essere stato lui. La causa non è stata determinata e non va inventata.
+
+**Conseguenza operativa, opposta a quella che si leggeva prima.** Su una PR di lane (`agent/*`), **disarmare È un hold che sopravvive ai push**, perché nessun workflow la ri-arma. Chi ha letto questa cicatrice come «tanto si ri-arma da sola» ha rinunciato a un freno che aveva in mano. Il draft resta comunque preferibile — per la ragione di W126, e perché non dipende da questa analisi.
+
+**Perché costa.** «Hold arms» è un protocollo di coordinamento che la flotta usa spesso, e chi lo onora disarmando crede di aver pagato un costo che non ha pagato. Il danno non è la PR accodata — nel mio caso era perfino desiderabile — è che **un impegno preso con altre lane decade in silenzio**, e le lane a valle pianificano sopra un fatto che non è più vero. Peggiora perché il gesto sembra durevole: nessun errore, nessun avviso, e la PR resta apparentemente com'era finché non la si interroga.
+
+**GOTCHA (a) — l'attore non dice chi è stato.** Il timeline riporta `actor=Balizero1987` sia quando armo io sia quando arma l'automazione: usa la stessa identità. «Chi ha armato questa PR» **non è leggibile dal timeline**; si legge da `gh run list --workflow=auto-merge-whitelist.yml` confrontando l'orario.
+
+**GOTCHA (b) — non riparare questo leggendo un campo solo.** La reazione naturale («allora controllo se è armata prima di fidarmi») cade dritta nel GOTCHA di **W111** (riga ~160 di questo file): né `autoMergeRequest` né `isInMergeQueue` da soli rispondono. `queue:true + auto:null` = armata già in coda · `queue:false + auto:enabledAt` = armata, entrerà a verde · `queue:false + auto:null` = disarmata davvero. Misurato di nuovo il 2026-08-23: due lane hanno enunciato la metà giusta per il proprio caso, e la metà è stata promossa a regola generale da una terza.
+
+**CURA.** Se devi davvero tenere ferma una PR: `gh pr ready --undo` (draft) — è l'unica cosa che quel workflow guarda — **oppure non pushare**. Il disarmo va bene solo se sei certo che non toccherai più il branch, il che è precisamente ciò che nessuno può promettere mentre corregge qualcosa.
+
+**Famiglia: superscar #2 (Esiste ≠ Armato), ROVESCIATA.** La forma classica è «lo credo armato ed è morto». Questa è «lo credo fermo ed è armato»: stessa radice — uno stato di attivazione creduto invece che misurato — con il segno invertito.
+
 ### ℹ️ W68b (no independent record)
 
 Citato nella famiglia #3 (guard-over-match) come variante minore di W68 — `_guard_property_zoning` che matcha "lease" — nessun dettaglio ulteriore oltre quello già coperto dall'entry W68 (villa-leasehold zoning, archiviata).
+
+---
+
+### 🐛 W124 (2026-08-23): una PR DIRTY riceve una CI silenziosa — il check-suite si dichiara `completed` su un sottoinsieme, non su zero corse
+
+_Scoperto 2026-08-23 su M5, lane visa-oracle fact-vocabulary, su PR #4650, dopo un push seguito da un rebase su `origin/main` mosso (7+ PR mergiate in un'ora)._
+
+**TRAUMA.** Dopo il push, `gh pr checks 4650` mostrava solo 4 righe (Vercel + due workflow di ammissione), invece delle ~40 richieste dal branch protection. `gh api .../commits/<sha>/check-runs` confermava: **3 check-run totali**, zero per `tests.yml` ("Tests & Coverage"). Ho interrogato `gh api .../actions/workflows/tests.yml/runs?branch=<branch>` per ~10 minuti a intervalli di 30s: nessuna corsa, nemmeno in stato `queued`, per quello SHA — non un rallentamento, un'assenza totale. Nel frattempo `gh pr view --json mergeable,mergeStateStatus` diceva `CONFLICTING`/`DIRTY`: il base era avanzato oltre il mio branch mentre facevo altro.
+
+**MECCANISMO, letto dal check-suite non dedotto dall'assenza.** `gh api .../commits/<sha>/check-suites` mostrava il suite `GitHub Actions` già **`completed`/`success`** — ma con lo stesso, piccolo sottoinsieme di workflow che *erano* effettivamente girati (quelli senza dipendenza dal contenuto del merge, es. `Auto-merge whitelist`). `tests.yml` è `on: pull_request: types: [opened, synchronize, reopened]` — nessun filtro `paths:` — quindi l'evento `synchronize` del push l'avrebbe innescato in condizioni normali. Con la PR `DIRTY`, il merge-ref sintetico che i workflow `pull_request` valutano non esiste (non c'è un contenuto da testare), e GitHub non mette la corsa in coda: la salta, e il check-suite si richiude come "completato" contando solo ciò che è realmente partito. Non è un rallentamento da smaltire aspettando: è la CI a **non promettere mai** di girare finché la PR non torna mergeable.
+
+**Perché costa.** Il segnale letto (`gh pr checks` corto, nessuna corsa nuova) è indistinguibile a colpo d'occhio da "CI lenta/in coda per il traffico" — la reazione naturale è aspettare. Ho aspettato ~10 minuti prima di controllare `mergeStateStatus`, tempo speso a fissare uno stato che non si sarebbe mai mosso. Il check-suite che si dichiara `completed`/`success` è la parte ingannevole: non dice "ho verificato tutto", dice "ho fatto girare tutto ciò che ho deciso di far girare" — famiglia #2 nella sua forma più letterale, il verde che nasconde un buco invece di un guasto.
+
+**CURA.** Prima di aspettare una CI silenziosa (zero check-run nuovi su uno SHA per più di un minuto o due), leggi `mergeStateStatus`/`mergeable` PRIMA di sospettare il workflow: `DIRTY`/`CONFLICTING` spiega l'assenza per costruzione, e nessuna attesa la risolve — solo un repoint (`git merge origin/main` risolto a mano, o `gh pr update-branch`) e un nuovo push la sblocca. Confermato empiricamente: al primo push post-repoint la corsa `tests.yml` è comparsa entro pochi secondi. In un periodo di traffico PR alto (più lane sullo stesso albero, es. più PR visa-oracle in parallelo) questo può ripetersi più volte di fila — non è segno di errore proprio, è la fisica della coda quando il base si muove più in fretta del tempo di un ciclo GROUND→VERIFY→push.
+
+**GOTCHA.** Non fidarti nemmeno del `check-suite` "completato": un `completed`/`success` prematuro su un sottoinsieme striminzito (qui: 3-4 check contro i ~40 attesi) è esso stesso il segnale che qualcosa non è partito, non la prova che tutto sia a posto — va incrociato col CONTEGGIO atteso (`branch protection required_status_checks`), non letto da solo.
+
+**Famiglia: superscar #2 (Esiste ≠ Armato / cron theater).** Variante "check-suite theater": il gate non mente sul proprio esito, mente per omissione — dichiara fatto ciò che non ha nemmeno tentato.
+
+### 🐛 W125 (2026-08-23): risolvere i marker A MANO non è `--ours` — git fonde in silenzio le righe non contese dentro un file conflittuale, e la resa «tengo il mio» se le porta dietro
+
+_Scoperto 2026-08-23 su Mini, lane S12 (ship-accelerators), sull'evidence pack di cinque PR che si sono contese gli stessi due path fissi. Severity: **P2** (nessun dato perso — la contaminazione è stata vista prima del commit; ma è invisibile per costruzione, e il file contaminato è quello che il gate legge per decidere la marcia di una PR)._
+
+**Famiglia: superscar #9 (state-schema drift / stato letto via PROXY).** Il proxy, qui, è _«ci sono marker di conflitto?»_: si legge la presenza dei marker come se fosse la mappa di ciò che il merge ha toccato. Non lo è. I marker mappano solo ciò che git **non ha saputo** decidere; ciò che ha deciso da solo non lascia traccia.
+
+**TRAUMA.** `evidence/brief.yml` e `evidence/pack.yml` vivono a due path FISSI nella radice, quindi due PR Gear≥2 qualsiasi collidono per costruzione. Su cinque PR S12, in una sessione, ho contato **11 commit `Merge remote-tracking branch 'origin/main'`** (verificabile: `gh pr view <n> --json commits`) — undici passaggi dentro la finestra. In uno di questi il pack della C1 è arrivato in working tree con `l_level: L2` in testa al file, **fuori da qualsiasi marker**, mentre i marker stavano dieci righe più sotto attorno a `objective:`. `L2` non era mai stato un valore della C1 (che dichiara `l_level: L1`): apparteneva al brief della C6, «De-serialize the Evidence Pack», il cui gear è davvero 2. Nessun marker, nessun avviso, nessun check rosso — e `l_level` è precisamente il campo su cui il gate decide quanta cerimonia pretendere da quella PR.
+
+**MECCANISMO — riprodotto, non dedotto.** Un conflitto è per HUNK, non per FILE. Se «loro» toccano due regioni separate da ≥3 righe di contesto e io ne ho toccata una sola, git mette i marker sulla regione contesa e applica l'altra **in silenzio**. Riproduzione minima, 9 righe con sei filler a separare le due regioni:
+
+```text
+PRE-MERGE HEAD:   l_level: L1 · objective: MINE
+DOPO IL MERGE:    1  l_level: L2          <- nessun marker
+                  9  <<<<<<< HEAD
+                 10  objective: MINE
+                 11  =======
+                 12  objective: THEIRS
+                 13  >>>>>>> theirs
+```
+
+Le due rese **non sono equivalenti**, misurato sullo stesso working tree:
+
+| gesto di resa                             | `l_level` risultante | identico all'HEAD pre-merge? |
+| ----------------------------------------- | -------------------- | ---------------------------- |
+| risolvo i marker a mano, «tengo il mio»   | **`L2`**             | **NO — contaminato**         |
+| `git checkout --ours -- <path>`           | `L1`                 | SÌ                           |
+
+`--ours` ripristina lo _stage 2_, cioè il file INTERO come stava in HEAD, e quindi annulla anche le fusioni pulite. Editare i marker no: tocca soltanto ciò che i marker delimitano. La differenza è tutta qui, ed è invisibile finché non la si misura.
+
+**CURA.** Per un file di cui la mia PR è l'UNICA proprietaria — l'evidence pack lo è: la versione su `main` appartiene a un'altra PR e lì dentro non c'è nulla che io voglia — la resa corretta è `git checkout --ours -- <path>`, mai l'editing a mano dei marker. E comunque, **prima di `git add`**:
+
+```bash
+git show "HEAD:evidence/pack.yml" | diff -q - evidence/pack.yml   # deve essere VUOTO
+```
+
+Vuoto = ho davvero tenuto il mio. Non vuoto = qualcosa è entrato dalla porta di servizio, e adesso lo vedo.
+
+**GOTCHA.** «Byte-identico all'HEAD pre-merge» vale per questa CLASSE di file (interamente miei), non per un merge qualunque: in un merge normale il contenuto altrui DEVE entrare, e un diff vuoto sarebbe il bug. Prima di applicare la cura, chiediti se il file ha un solo proprietario. E la vigilanza non è la cura strutturale: quella è togliere i path fissi — `scripts/ci/evidence_paths.py` è già su `main` (#4678) e dal 2026-08-27 `evidence_pack_lint.py` (rule 9) spinge l'adozione lato-scrittura con NOTICE oggi, FAIL da `EVIDENCE_ROOT_DEPRECATION_DATE` (2026-09-05) — finché la data non passa, e finché un produttore non migra davvero, la finestra resta aperta a ogni PR Gear≥2.
+
+---
+
+### 🐛 W126 (2026-08-23): convertire una PR in DRAFT non la espelle dalla merge queue — il hold durevole di W123 vale solo PRIMA dell'ingresso
+
+_Scoperto 2026-08-23 su PR #4681, leggendo la timeline API di GitHub dopo che una review avversariale aveva appena fallito il research capture con 2 CRITICAL._
+
+**TRAUMA.** La PR era stata convertita in draft per fermarla, ma dieci minuti dopo è finita su `main`. La sequenza è misurata dalla timeline API, non ricostruita per inferenza:
+
+```
+13:10:47Z  auto_merge_enabled
+13:16:50Z  added_to_merge_queue
+13:21:24Z  convert_to_draft
+13:31:20Z  merged
+13:31:21Z  head_ref_deleted
+```
+
+Il draft era reale e il hold era stato applicato; non aveva però rimosso l'entry che la coda aveva già accettato. `gh pr ready --undo` cambia `isDraft` in `true` e non cambia la queued entry.
+
+**MECCANISMO.** `.github/workflows/auto-merge-whitelist.yml` controlla `draft == false` quando decide se armare una PR — ma è solo il primo dei suoi cancelli, e per un branch `agent/*` il workflow si ferma prima di armare comunque (vedi la CORREZIONE 2026-08-27 dentro W123: la whitelist di branch copre solo `docs/auto-sync-*`, `dependabot/{pip,npm_and_yarn}/*`, `chore/fmt-*`). La merge queue non riconsulta quel campo per un'entry già accettata. W123 dice quindi la verità solo prima dell'ingresso in coda: il draft impedisce al workflow di ri-armare una PR non ancora accodata, ma non è un eject della coda.
+
+**IL VERO ERRORE È TEMPORALE.** `isInMergeQueue` era stato letto verso le 13:05 e valeva `false`. Era il campo giusto e la misura era vera in quell'istante. Alle 13:16 è diventato `true`; nessuno l'ha riletto, e il draft delle 13:21 è stato applicato sulla forza di un dato vecchio di sedici minuti. Non il campo sbagliato: **il campo giusto al momento sbagliato** — gemello temporale dell'errore registrato la stessa mattina da wr3/P03, dove il dato giusto era in mano ma veniva letto l'altro campo.
+
+**Perché costa, realmente.** È atterrato su `main` un research capture che la review aveva appena bocciato e che descriveva IDR 790.000 come _service fee_ Bali Zero da tenere separata dal PNBP governativo. È falso: le righe PricingTool sono all-inclusive e contengono già il PNBP (`apps/mouth/e2e/book-pricing.spec.ts:126`, test `public visa service cards expose only exact all-inclusive PricingTool rows`; conferma diretta del proprietario). Un lettore che agisse su quella frase potrebbe addebitare due volte un cliente. Una PR correttiva è in volo.
+
+**CURA.** Su una PR già accodata, il hold che funziona è **DEQUEUING** via GraphQL `dequeuePullRequest`. Prima dell'ingresso funziona anche `gh pr merge --disable-auto`; il draft resta il freno durevole contro il riarmo automatico solo finché la PR non è nella coda. Dopo qualunque gesto, la prova è una lettura GraphQL NUOVA di `isInMergeQueue` / `mergeQueueEntry`: `isDraft: true` non è prova di hold.
+
+**COMPLEMENTO (2026-08-23, riscoperto su PR #4713 di questa stessa cicatrice, tentando di pushare un fix mentre la PR era in coda).** GitHub applica "armare è congelare" anche a livello di ref, non solo per disciplina di repo: `git push` su un branch accodato viene RIFIUTATO da GitHub stesso — `GH006: ... A pull request for this branch has been added to a merge queue. Branches that are queued for merging cannot be updated` — quindi l'unica via per correggere una PR già in coda è dequeue-poi-push, mai un push diretto sperando che aggiorni l'entry.
+
+**GOTCHA.** Stato e prova devono essere contemporanei. Una lettura corretta di `isInMergeQueue` non autorizza un'azione minuti dopo senza una rilettura immediatamente precedente e una verifica immediatamente successiva; in mezzo, la coda può cambiare il fatto senza cambiare il branch.
+
+**GOTCHA-NEL-GOTCHA.** Il numero di questa stessa cicatrice è caduto nel difetto che descrive. Mentre veniva scritta, un'altra PR (#4714, lane diversa) leggeva anch'essa `origin/main`, vedeva W125 come il numero più alto e reclamava W126 per un difetto scollegato (un `Formatter` che muta `record.levelname` in place) — una lettura del ledger vera nel momento in cui è stata presa, stale nel momento in cui è stata agita: la stessa forma esatta dell'`isInMergeQueue` vecchio di sedici minuti descritto sopra, applicata al contatore invece che alla coda. «Questo numero è libero?» non si risponde da `main`: un contatore monotono con più scrittori concorrenti non ha una lettura sicura del prossimo valore senza controllare anche le PR aperte (`gh pr list --search "W12"`, o un grep sui loro diff), non solo il registro già atterrato. Risolto per precedenza di rivendicazione, misurata non dedotta — primo commit di questa PR alle 16:02:56Z (scoperta al merge delle 13:31Z di #4681) contro il primo commit di #4714 alle 16:06:03Z: #4714 ha accettato e si è rinumerata a W127.
+
+**Famiglia: superscar #2 (Esiste ≠ Armato), continuazione e correzione di W123.** La PR sembra fermata perché porta la forma del draft, mentre l'organo che decide il merge — la queued entry — è ancora armato.
+
+---
+
+### 🐛 W127 (2026-08-23): un `Formatter` mutava `record.levelname` IN PLACE — il test confrontava la stringa RESA (ANSI-colorata), non l'IDENTITÀ stabile del livello
+
+_Scoperto 2026-08-23, lane P04, diagnosticando la CI flake `test_prompt_manager.py::TestPromptManagerFailLoudOnUnknownVersion::test_unrecognized_explicit_value_logs_error`, che aveva espulso PR #4643 dalla merge queue due volte e sospeso PR #4653. La premessa "non riproducibile in locale" (5 tentativi) era falsa per assenza di corpus, non per assenza del difetto: riproducibile deterministicamente non appena il file giusto condivideva la sessione pytest._
+
+**TRAUMA.** Il test cattura i propri log con un sink (`_Sink(logging.Handler)`) attaccato al logger di `backend.llm.prompt_manager`, chiama `logger.error(...)`, e filtra `error_records = [r for r in captured if r.levelname == "ERROR"]`. `assert error_records` falliva con `assert []` — nonostante "Captured stdout call" e "Captured log call" mostrassero entrambi una riga ERROR pulita, e nonostante il sink avesse davvero ricevuto il record giusto.
+
+**MECCANISMO, riprodotto non dedotto.** `apps/backend-rag/backend/app/core/logging_config.py:68-77`:
+
+```python
+def format(self, record):
+    if ENVIRONMENT == "development":
+        color = self.COLORS.get(record.levelname, self.COLORS["RESET"])
+        record.levelname = f"{color}{record.levelname}{self.COLORS['RESET']}"  # MUTA IN PLACE
+    ...
+    return super().format(record)
+```
+
+Questo formatter si installa su ROOT come *side effect a import-time* (`setup_logging()`, riga 219, chiamata a livello di modulo) non appena qualcosa nel processo importa `backend.app.core.logging_config` — per questa coppia di test, transitivamente: `test_monitoring_rag.py` → `backend.app.routers.monitoring_rag` → il PACKAGE INIT di `evaluation` (`evaluation/__init__.py`) → `evaluation/benchmark.py:23` (`from backend.app.core.logging_config import get_performance_logger`).
+
+`Logger.callHandlers()` chiama prima gli handler del logger ORIGINANTE — il sink del test, che salva il `LogRecord` PER RIFERIMENTO, non per valore — poi risale a ROOT e chiama i suoi handler, incluso lo `StreamHandler` col `ColoredFormatter`, SINCRONAMENTE, prima che `logger.error()` ritorni. L'handler di root muta lo STESSO oggetto che il sink ha già salvato. Quando il test legge `r.levelname`, è `'\x1b[31mERROR\x1b[0m'`, non `"ERROR"` — mentre `r.levelno` (l'identità stabile, non-resa) resta `40`, intatto. Misurato direttamente, dentro il path dell'assert che fallisce:
+
+```
+record detail: levelno=40 levelname='\x1b[31mERROR\x1b[0m' getLevelName(levelno)='ERROR'
+```
+
+`ENVIRONMENT` (riga 23, `getattr(__import__("os").environ, "ENVIRONMENT", "development")`) risolve SEMPRE a `"development"` a prescindere dalla env var reale — `getattr` su `os.environ` cerca un'ATTRIBUTO letteralmente chiamato `ENVIRONMENT` sull'oggetto mapping, che `os._Environ` non ha mai, quindi cade sempre sul default. Il ramo di mutazione è quindi incondizionatamente vivo in ogni processo, produzione inclusa — non un artefatto solo-test.
+
+**NON è un flake — è pienamente deterministico data la selezione di file.** Due misure, non un'inferenza: (1) sequenziale (`pytest test_monitoring_rag.py test_prompt_manager.py`, niente `-n`, niente `--dist`) fallisce lo stesso, rc=1; (2) ordine dei file invertito, fallisce identico. Le due misure insieme collassano TRE assi che l'indagine aveva trattato come sospetti per ore — xdist, worker assignment (`gwN`), ordine argv — a rumore a valle: l'unica variabile è se qualcosa che raggiunge `evaluation/benchmark.py:23` (o l'import gemello in `ragas_evaluator.py:22`) condivide la stessa SESSIONE pytest con `test_prompt_manager.py`. La correlazione con lo shard-reshuffle di PR #4647 (S11, causa della sospensione originale di questa indagine) era REALE ma incidentale: il reshuffle non causava nulla di per sé, cambiava solo QUALI file condividessero una sessione — e ogni tentativo locale di "riprodurla girando solo il file incriminato" era garantito a passare, non per fortuna ma per costruzione.
+
+La lettura più probabile del MECCANISMO — dedotta dalle due misure sopra, non strumentata a livello di collection-hook: pytest COLLEZIONA (importa) ogni modulo specificato per costruire l'albero degli item PRIMA di eseguire qualunque test in quella sessione, quindi l'avvelenamento accade a IMPORT/COLLECTION TIME, non a EXECUTION TIME — ed è esattamente per questo che nessuna considerazione su ordine, sharding o worker può influenzarlo. Questo è più stretto della cornice "stesso processo" con cui l'indagine aveva iniziato a leggerla: non è una questione di timing/concorrenza, è una questione di APPARTENENZA A UN INSIEME decisa prima che un qualunque test giri.
+
+**GOTCHA — il display ha mascherato il difetto durante il debug.** `_pytest.logging.LogCaptureFixture.text` (e il renderer del report di fallimento) chiama `_remove_ansi_escape_sequences()` prima di stampare, quindi "Captured log call" mostrava sempre un `ERROR` pulito anche mentre l'attributo `record.levelname` sottostante portava i codici escape grezzi. L'attributo confrontato e il testo mostrato non sono la stessa stringa — fidarsi del report leggibile invece dell'input reale dell'assert è costato tempo di debug qui.
+
+**CURA.** La cura strutturale è a livello di classe — far sì che `ColoredFormatter.format()` operi su una COPIA del record (come fa `uvicorn.logging.ColourizedFormatter` per lo stesso motivo: non deve mai mutare ciò che vedono gli altri handler) — non una patch sul singolo sink: patchare solo il consumer che se n'è accorto cura questo test e lascia la trappola armata per il prossimo lettore per-riferimento dello stesso record.
+
+**Famiglia: superscar #3 (guard-over-match / gemello under-match).** Forma nuova per la famiglia: la guardia non ha sovra/sotto-matchato una substring — ha confrontato una STRINGA RESA (`levelname`, mutabile, di proprietà del formatter) dove l'IDENTITÀ STABILE (`levelno`, o `logging.getLevelName(levelno)` ricalcolato) era il confronto corretto. Ogni codice che confronta `record.levelname == "QUALCOSA"` dopo che un formatter colorante/decorante ha toccato il record nello stesso processo è esposto alla stessa classe di guasto.
+
+---
+
+### 🐛 W128 (2026-08-24): un numero di cicatrice è CLAIMED all'apertura della PR e RISOLTO solo al merge — leggere il solo `origin/main` sottoconta ogni claim in volo
+
+_Scoperto 2026-08-23, sibling di **W40** (collisione numerazione migrazioni) in un dominio diverso — stessa malattia: una riserva che vive solo in un documento nessuno ri-legge decade in modo monotòno._
+
+**TRAUMA, misurato non dedotto.** 15:20Z una sessione Mini trasmette in flotta "W125 è preso, si parte da W126". 16:03:33Z la PR #4713 reclama **W126**. 16:06:32Z la PR #4714 reclama **W126** indipendentemente — tre minuti dopo, stessa base. Collisione: #4714 si rinumera a **W127**. Per tutto l'intervallo `origin/main` era fermo a **W125**: un `git show origin/main:.claude/rules/cicatrix-scars.md | grep -oE 'W[0-9]+' | sort -n | tail -1` avrebbe detto «W126 libero» — ed era vero, per i tre minuti che sono bastati a farlo reclamare due volte.
+
+**MECCANISMO.** Il numero è un contatore monotono con **più scrittori concorrenti**, e la fonte di verità che chiunque legge (`origin/main`) è aggiornata SOLO al merge, non all'apertura della PR. Tra "PR aperta" e "PR mersa" un claim esiste ma è invisibile a chi guarda solo main — la stessa forma di superscar #2 (esiste ≠ armato) applicata a un contatore invece che a un demone: il numero "sembra libero" perché la sua unica fonte osservata non registra ancora chi lo sta già usando.
+
+**GOTCHA (a) — `sort -n` da solo non basta, e non nel modo in cui sembra.** Il trap noto è «`sort -n`, mai `sort` nudo, perché lessicalmente W99 finisce dopo W124». Vero ma INCOMPLETO per questo comando esatto: `grep -oE 'W[0-9]+' | sort -n` mantiene la lettera `W` davanti al numero, e `sort -n` legge solo un prefisso NUMERICO a inizio riga — una riga che comincia con una lettera vale `0` ai suoi occhi, quindi **tutte** le righe `W<n>` pareggiano a zero e la rottura è la stessa dell'ordinamento lessicale puro. Riprodotto ora: `printf 'W125\nW99\nW9\n' | sort -n` dà `W125 / W9 / W99` — identico, carattere per carattere, a `sort` nudo. La cura vera è togliere la lettera prima di ordinare (`sed 's/^W//' | sort -n`, o estrarre solo le cifre), non aggiungere `-n` a un grep che le lascia attaccate.
+
+**GOTCHA (b) — l'intestazione ha un'emoji tra `#` e `W`.** `### 🐛 W127 (2026-08-23): ...` — un pattern `^#+\s*W[0-9]+` non matcha MAI (il primo grep di questo stesso mandato ha fallito esattamente così). Bisogna riconoscere l'intestazione dal solo prefisso `#`/`##`/`###`/`####` e poi cercare il primo token `W<cifre>` ovunque nella riga.
+
+**GOTCHA (c) — il claim set non è solo `origin/main`.** «Questo numero è libero?» non si risponde da `main`: serve l'unione delle intestazioni su main CON le intestazioni AGGIUNTE (`+` nel diff) da ogni PR aperta sullo stesso file — `gh pr list --search "W12"` da solo non basta, va letto il diff di ogni PR aperta.
+
+**GOTCHA (d) — non ogni ripetizione dello stesso numero è una collisione.** `W81` (FIXED, 2026-06-14), `W81-armamento-sospeso` e `W81b-dlq-blind-heal-loop` convivono su `main` con lo stesso numero base: è la disambiguazione a suffisso, già risolta in storia (cicatrix-superscar.md #1), non un difetto nuovo. La collisione vera è quando **due sorgenti diverse, NESSUNA delle quali è `origin/main`**, reclamano lo stesso numero — o quando una PR reclama un numero che main ha già, entrambe da nomi bare senza suffisso.
+
+**CURA — antidoto eseguibile.** `scripts/lint_scar_number_collision.py`: calcola il claim set (main + ogni PR aperta via `gh api repos/.../pulls/{n}/files --jq '...select(.filename==...).patch'` — `gh pr diff <N> -- <path>` non accetta un pathspec, "accepts at most 1 arg(s)"), riporta il prossimo numero libero, ed esce non-zero se un numero è reclamato da 2+ fonti non-main o da una PR contro un numero già su main. Guilt test: due fixture che reclamano lo stesso W126 → rc=1 (`scripts/tests/test_lint_scar_number_collision.py`, verificato: con `find_collisions` svuotato a mano i due test di colpa falliscono, gli altri 12 restano verdi — non è un arm decorativo). `--fixture PATH` lo rende testabile offline; senza, gira live contro `origin/main` + PR aperte come pre-flight ("che numero prendo?") o come check.
+
+**Famiglia: orfana, sibling W40.** Stessa malattia di W40 (collisione numerazione migrazioni) — una riserva scritta in un documento che nessuno ri-legge in tempo reale decade in modo monotòno con il numero di scrittori concorrenti. Dominio diverso (scar counter vs migration counter), stesso antidoto strutturale: calcolare il claim set dalle FONTI VIVE (PR aperte), mai da un solo documento statico.
+
+### 🐛 W129 (2026-08-25): un test congela un orologio che il codice sotto test NON legge — il margine di sicurezza della fixture è un conto alla rovescia che inizia il giorno in cui è scritto
+
+_Scoperto 2026-08-25, sibling di **P3 FLAKY** (orologio-vs-test, CURATA 2026-08-02) in forma opposta: là il difetto era un TICK reale non congelato nel test; qui il difetto è un orologio congelato nel TEST che il PRODUTTORE ignora — il codice sotto test resta sul clock reale._
+
+**TRAUMA, misurato non dedotto.** `apps/backend-rag/backend/tests/services/measurer/test_ig_token_watchdog.py::test_cli_fresh_state_exits_zero_without_network` scriveva un file di stato con expiry `NOW + timedelta(days=50)`, `NOW = datetime(2026, 7, 13, ...)` — una costante ASSOLUTA fissata il giorno in cui il test fu scritto. Il codice sotto test, `ig_token_watchdog.py::run_from_env` → `run_watchdog`, non accettava alcun parametro `now` dal chiamante CLI: calcolava `days_remaining` contro `datetime.now(timezone.utc)` REALE. Il test è rimasto verde per 43 giorni per puro caso di calendario, poi ha attraversato la soglia di refresh (`DEFAULT_REFRESH_THRESHOLD_DAYS = 7.0`) il 2026-08-25 e ha iniziato a rosseggiare per chiunque lo girasse, ovunque, senza che nessuno avesse toccato una riga di codice.
+
+**MECCANISMO.** Due orologi nello stesso test: quello che COSTRUISCE la fixture (`NOW`, congelato) e quello che il PRODUTTORE consulta per giudicarla (`datetime.now()`, reale). Finché la distanza fra i due resta sotto la soglia di business logic, il test è verde per un motivo che non ha nulla a che fare con la sua asserzione — sta solo misurando "quanti giorni sono passati da quando ho scritto questo file". Non è un flake (non dipende da ordine/concorrenza, cf. P3): è deterministico E degradante, la forma più subdola perché la CI locale del giorno in cui viene scritto e mesi di CI successive concordano tutte, finché non concordano più — tutte insieme, nello stesso giorno.
+
+**GOTCHA — il resto del file era già corretto, e questo mascherava il buco.** Ogni altra chiamata a `run_watchdog`/`inspect_token`/`refresh_*` nello stesso file passava `now=NOW` esplicitamente — il seam esisteva già a livello di libreria (`civil_clock.py::garuda_today()` nel motore visa usa lo stesso pattern). Il buco era in UN SOLO punto di ingresso, `run_from_env` (il livello CLI/env-var), che non esponeva il parametro ai chiamanti — un audit che si fosse fermato al primo `now=NOW` trovato avrebbe concluso "il file è pattern-conforme" senza notare che l'unico varco reale (il CLI path, quello che il cron invoca davvero) non lo era.
+
+**CURA — in due mani, e la prima da sola non bastava.** Il seam è atterrato con **#4914** (un'altra sessione, stesso giorno, indipendentemente: il rosso ha colpito tutti insieme, che è la firma di questa malattia): `now: datetime | None = None` su `run_from_env`, inoltrato a `run_watchdog`; la produzione non cambia (nessun chiamante reale passa `now`, il fallback resta `datetime.now(timezone.utc)`), e il test guasto ora pinna `now=NOW` come ogni suo fratello. **Ma pinnare non è curare: è ri-armare il conto alla rovescia.** Con l'inoltro rimosso, `run_watchdog` ricade sull'orologio reale e il test tornerebbe verde *per coincidenza* in qualunque finestra di giorni attorno all'expiry della fixture — la coincidenza esatta che ha armato W129. Il guard che chiude il buco è quindi il secondo: `test_cli_injected_clock_governs_not_the_real_clock` — STESSA fixture da 50 giorni, `now` iniettato +1 giorno → fresh (exit 0), `now` iniettato +365 → stale (exit 2). Nessun orologio a muro può soddisfare entrambe nella stessa esecuzione, quindi un inoltro rotto fallisce in QUALUNQUE giorno di calendario invece di aspettarne uno. Verificato rosso-prima per exit code, non per parole: intatto 0 → inoltro sabotato 1 → ripristinato 0.
+
+**Famiglia: orfana, sibling P3 FLAKY.** Stessa malattia radice di P3 (un test e il suo produttore non condividono la stessa nozione di "adesso"), meccanismo opposto: P3 era un TICK reale che il test non congelava; qui è un CONGELAMENTO nel test che il produttore non legge. Entrambi i sensi della stessa asimmetria vanno cercati insieme: ogni `datetime(...)`/`NOW =` costante in un file di test è un candidato, e la domanda diagnostica è sempre "il codice sotto test consulta LO STESSO orologio della fixture, o il proprio?".
+
+### 🐛 W130 (2026-08-26): una migrazione scritta DOPO la riparazione D1 fa `ALTER TABLE` su una tabella che il ruolo applicativo non possiede più — e il gate pre-deploy non può vederlo, perché nel suo Postgres possiede tutto
+
+_Scoperto 2026-08-26 in produzione, sul `release_command` di Fly. Famiglia **#2 (esiste ≠ armato)** nella sua forma più pura: la sonda è verde per COSTRUZIONE, e nessuna cura scritta la renderà rossa, perché la condizione che rompe la cosa non esiste nell'ambiente in cui la sonda gira._
+
+**TRAUMA, misurato non dedotto.** Il deploy dopo l'atterraggio del backend GARUDA va rosso: `release_command failed ... exit code 1`. Cinque migrazioni pendenti, cinque fallimenti — `281` con `must be owner of table visa_decision_retention_policies`, `286` con `permission denied for table ...`, e `284`/`285`/`287` come pure cascate delle prime. Fly aborta prima di sostituire le macchine: il servizio non corre mai pericolo, ma il backend non è deployato e `main` resta non-deployabile per chiunque tocchi `apps/backend-rag/**` dopo.
+
+**MECCANISMO.** Le migrazioni si connettono con `settings.database_url` (`migration_manager.py:96`) — **lo stesso DSN del runtime**, senza alcun `SET ROLE` in tutta la catena. La riparazione «D1» di minimo privilegio aveva spostato la proprietà delle tabelle-registro del Visa Oracle a `visa_ledger_owner`, lasciando a `backend_rag_v2` la sola `SELECT`. `ALTER TABLE` esige la proprietà (o la membership nel ruolo proprietario); una FK esige `REFERENCES`. La 281 non aveva né l'una né l'altro. Non è una svista di chi ha scritto la 281: è che **la conoscenza esisteva solo in prosa**. L'header della migrazione **268**, quattro mesi prima, dice testualmente «*When [264] was written, the runtime role WAS the table owner and the gap was invisible*» — e la 268 applicò la cura alle FUNZIONI, mai alle TABELLE.
+
+**GOTCHA (a) — il gate pre-deploy è cieco per costruzione, non per svista.** `fly-deploy.yml:50` valida contro `postgresql://test:test@localhost:5432/nuzantara_test`, un Postgres effimero dove il ruolo `test` crea da zero ogni tabella e quindi **le possiede tutte**. Lì un `ALTER TABLE` non può fallire. Corollario operativo: per questa classe non esiste una cura lato-test che «renda rossa la CI» — l'unica difesa è una guardia STATICA sul testo delle migrazioni.
+
+**GOTCHA (b) — `ADD COLUMN IF NOT EXISTS` NON salva, ed è la falsa cura più naturale.** Il controllo di proprietà precede il cortocircuito: l'istruzione fallisce anche quando la colonna c'è già e non c'è nulla da fare. Riprodotto su un fixture locale da 12 righe che rifà entrambi gli errori di prod alla lettera: `ALTER TABLE ... ADD COLUMN IF NOT EXISTS <colonna già presente>` → `must be owner of table`; la stessa `ALTER` dentro `DO $$ IF NOT EXISTS (SELECT ... information_schema.columns) THEN EXECUTE ... END IF $$` → no-op pulito; una FK con la sola `SELECT` → `permission denied for table`. La guardia va messa sul **catalogo**, dove l'`ALTER` non viene proprio tentata.
+
+**GOTCHA (c) — il confine è 268, e non è un numero tondo scelto a occhio.** Su 169 file di migrazione ci sono **45** `ALTER TABLE` top-level che toccano tabelle che prod non lascia possedere all'app — **44 alterandole** (problema di PROPRIETÀ) e **1 nominandone una in una clausola `REFERENCES`** (problema di PRIVILEGIO, si cura con un `GRANT` non con una guardia; quell'uno sta dentro la 281 stessa). **37 stanno in migrazioni ≤268** e girarono senza incidenti, perché all'epoca il runtime ERA il proprietario; gli **8 restanti stanno in migrazioni >268** e sono esattamente i due file che la produzione ha rifiutato (281 ×5, 285 ×3). Zero falsi positivi, zero falsi negativi contro l'incidente osservato. Retrofittare i 37 storici non cambierebbe nulla in nessun database e seppellirebbe gli otto che contano.
+
+**GOTCHA (d) — editare le migrazioni già applicate non compra nulla.** Prod non le rieseguirà mai (sono in `_schema_versions`); un rollback userebbe il `rollback_sql` **salvato in colonna** al momento dell'apply, non il file; e un ambiente fresco non incontra il muro affatto, perché lì il runtime crea e quindi possiede. L'edit diverge soltanto il file dal checksum registrato accanto — e quel `checksum` in `_schema_versions` **è calcolato, salvato e non riletto da nessuno**: nessun confronto in `migration_manager.py` né in `migration_base.py`. Una prova conservata che nessuno verifica, cioè la stessa famiglia #2 dentro la cura della famiglia #2.
+
+**GOTCHA (e) — 22 tabelle, non una.** Misurato in prod: 11 a `visa_ledger_owner`, 9 a `zantara_rag_user` (fra cui `conversations`, il write-dead già noto dal W38), 1 a `postgres`, 1 — anomala — a `repmgr`. Qualunque futura migrazione che tocchi una di queste con DDL nudo fallirà in produzione e passerà in CI.
+
+**CURA — antidoto eseguibile.** Lo sblocco di produzione è stato fatto dalla sessione conductor con membership temporanea (`GRANT visa_ledger_owner TO backend_rag_v2`), rerun verde e **revoca ri-misurata** (`pg_has_role(...) = f`); esito verificato in modo indipendente da una seconda sessione, con il segnale che discrimina davvero — `POST /api/visa/voa/eligibility-checks` passa da `401` a `404`. L'antidoto strutturale è `apps/backend-rag/backend/tests/db/test_post_d1_migrations_guard_ledger_owned_ddl.py`: guardia STATICA sul testo delle migrazioni >268, con 281/285 in allowlist motivata più un test che fallisce se l'allowlist sopravvive alla sua ragione. Riconosce tre classi distinte, perché hanno tre cure diverse: `owner` (l'`ALTER` bersaglia una delle 22 tabelle misurate — si cura con la guardia di catalogo), `references` (il bersaglio è applicativo ma nomina una tabella dell'elenco in una clausola `REFERENCES` — **si cura con un `GRANT`, non con una guardia**), `unguarded-do` (un corpo `DO` che non contiene alcun condizionale, quindi la sua `EXECUTE` parte sempre). Conteggio sul corpus: **44 owner + 1 references + 2 unguarded-do**; dopo il 268 stanno tutti e soli dentro 281 e 285.
+
+**CURA, gotcha (f) — quattro round, e il quarto non l'ho trovato io.** Il primo scanner era una regex per riga e ha perso, nell'ordine: un `$` dentro un commento che ribaltava la parità dei dollari; i corpi `$tag$` (18 `$func$`, 18 `$grant_block$`, …) invisibili a un contatore di soli `$$`; un `$blk$` non chiuso che accecava il resto del file; `SELECT 1; ALTER TABLE …` su una riga sola; un `--` dentro una stringa che si mangiava il `;`. Al terzo round ho smesso di rattoppare e ho scritto **un lexer solo** (`_executable_text`) che riduce l'SQL ai caratteri che Postgres eseguirebbe davvero — commenti di riga, commenti a blocco, letterali con l'escape `''`, corpi dollar-quotati con tag — e ho spezzato le istruzioni sul `;` invece che sulla riga. Il **quarto** l'ha trovato un grader cross-family (Kimi K3, verdetto `REWORK_BUILD` su una copia già superata): l'attribuzione della tabella. Una FK da una tabella applicativa verso una dell'elenco veniva riportata come «ALTERa X» — verdetto giusto, **diagnosi sbagliata, cura sbagliata**: da lì nascono `_ALTER_TARGET` e la classe `references`. Della stessa consegna era reale anche il rilievo #5, ed era un falso negativo nella classe-bersaglio: `DO $$ BEGIN EXECUTE 'ALTER TABLE …'; END $$;` veniva **assolto** solo perché stava dentro due dollari. Ora il criterio non è «sta dentro `$$`» ma «può DECLINARE»: il corpo deve contenere un condizionale. Il primo tentativo di predicato — «interroga il catalogo» — era incoerente e l'ho buttato: un corpo che legge `information_schema` e poi esegue comunque fallisce identico a un'istruzione nuda, quindi assolveva una forma rotta condannandone un'altra senza principio.
+
+**CURA, gotcha (g) — un corpo di `DO` non è un corpo di FUNZIONE.** `DO $$ … $$` gira all'apply; `CREATE FUNCTION … AS $$ … $$` viene solo memorizzato e gira quando qualcuno lo CHIAMA, sotto il ruolo di chi chiama. Condannare i corpi di funzione avrebbe condannato **la cura della 268 stessa**. La distinzione si legge dal token che precede il delimitatore, non dal contenuto.
+
+**CURA, prova.** 32 test (15 fixture colpevoli, 10 innocenti, più le asserzioni sul corpus reale). Mutazione: forzando il rilevatore a non trovare mai nulla muoiono **18** test, forzandolo a trovare sempre qualcosa ne muoiono **12**, spegnendo la sola regola `DO` ne muoiono **2**. Rosso-prima verificato piantando una migrazione `299` con una `DO` incondizionata: 2 test rossi con un messaggio che nomina file, riga, tabella e la cura giusta *per quella classe*; 32/32 verdi dopo la rimozione. Limite scritto in chiaro nel file, non implicito: la guardia verifica che un condizionale ci SIA, non che l'`ALTER` stia dentro — deciderlo richiede analisi di flusso PL/pgSQL. E la deriva dello snapshot è coperta in una sola direzione (un `git grep` unico su tutto l'albero tracciato smaschera una voce morta); l'altra — una tabella ceduta a un ruolo non-applicativo DOPO il 2026-08-26 — **non è osservabile dal repository a nessuna profondità**, vive in `pg_class.relowner` sul leader. Deliberatamente non finta con una scadenza a calendario: un test che diventa rosso in una data, su un commit che nessuno ha toccato, espelle PR innocenti dalla coda (`W129`).
+
+**NOTA DI MANUTENZIONE.** Questa cicatrice **non ha una riga in `cicatrix-superscar.md`**: quel file è a 13.963 byte su un tetto CI di 14.000, cioè 37 byte liberi — non ci sta nemmeno la riga più corta. La saturazione dell'indice è essa stessa un reperto: il registro che ogni sessione legge non può più accettare membri nuovi, e la potatura è una concern separata da questa PR.
+
+**Famiglia: #2 (esiste ≠ armato)**, con un secondo #2 annidato dentro (il checksum mai riletto) e un sapore di #9 (lo stato di proprietà è cambiato e il flusso delle migrazioni non l'ha saputo).
+
+---
+
+### 🐛 W131 (2026-08-28): tre probe xdist clonavano il proprio database scratch dal database VIVO del worker, perché un solo nome serviva sia da namespace sia da sorgente del TEMPLATE
+
+_Scoperto 2026-08-28 sul job CI 98762263195, mentre bloccava una PR che non c'entrava nulla (#5147). Famiglia **#9 (state-schema mutation drift)**: `pytest_configure` MUTA uno stato condiviso — `TEST_DATABASE_URL` — e tre lettori a valle non sono stati allineati. Curata in #5150._
+
+**TRAUMA, misurato non dedotto.** `Backend Shard 2` rosso su una PR che tocca `main_api.py` e `outbox_alarm.py`, cioè nessuno dei file coinvolti:
+
+```
+asyncpg.exceptions.ObjectInUseError: source database "nuzantara_test_gw1"
+  is being accessed by other users
+DETAIL:  There are 2 other sessions using the database.
+```
+
+Sollevato dal **SETUP** di `test_old_shape_templating_off_a_live_worker_database_fails`, cioè dall'errore che quel probe esiste per dimostrare — ma **fuori** dal suo `pytest.raises`, quindi come fallimento e non come asserzione.
+
+**MECCANISMO.** Ogni probe faceva `base_db = _base_db_name(os.environ["TEST_DATABASE_URL"])` e usava quell'unico nome per due mestieri incompatibili: il **NAMESPACE** in cui battezzare i database scratch, e la **SORGENTE** da cui clonarli. Sotto xdist `pytest_configure` ha già ri-puntato quella variabile sul clone privato del worker, quindi la sorgente diventava `nuzantara_test_gw1` — il database in cui il worker sta girando i propri test. Postgres rifiuta `CREATE DATABASE … TEMPLATE` da un database con sessioni aperte.
+
+**GOTCHA (a) — non è un flake, e sembrarlo è il punto.** Diventa rosso solo quando il worker, in quell'istante, tiene una sessione aperta sul proprio database: verde in locale su un file solo, rosso in CI su uno shard pieno. Il segnale c'era e nessuno lo leggeva: `test_old_shape_` durava **36 secondi**, cioè il retry-loop di `_xdist_clone_worker_database` (3 tentativi, `sleep(2)`) che perdeva la stessa lotta a ogni run. **Una durata assurda è un sintomo, non una caratteristica.**
+
+**GOTCHA (b) — `maxfail` nasconde la FAMIGLIA.** `test_new_shape_clones_succeed_while_a_sibling_worker_is_busy` e `test_template_build_is_race_free_under_concurrent_workers` avevano lo stesso difetto, via `_xdist_ensure_template_database` che fa lo stesso `CREATE DATABASE … TEMPLATE base_db`. Non si vedevano perché lo shard si fermava al primo rosso. Dopo aver trovato una causa, cerca i fratelli **nello stesso file** prima di dichiarare curato.
+
+**GOTCHA (c) — la cura ovvia è peggiore della malattia.** Spostare *entrambi* i ruoli sulla base pristina fa diventare lo scratch `nuzantara_test_gw0`, cioè **il database vivo di un worker fratello**, che il `finally` poi droppa: famiglia #5 al posto della #9. Il namespace **deve** restare worker-derivato — è ciò che rende i nomi annidati (`nuzantara_test_gw1_gw0`) e quindi impossibili da confondere con uno slot reale. Si muove **solo** la sorgente.
+
+**GOTCHA (d) — `_XDIST_WORKER_DB_NAME_RE` vieta la scorciatoia.** Il regex `^[A-Za-z0-9_]+_gw\d+$` impedisce nomi scratch tipo `_probe<pid>` senza allargare una guardia di sicurezza. Il namespace annidato non è stile: è l'unica forma che passa la guardia **e** non collide.
+
+**CURA.** `_scratch_source_db()` restituisce `_base_db_name(_pristine_dsn())`, usata **soltanto** come sorgente; il probe di guilt clona il proprio scratch attraverso un template privato connectionless invece che da un database vivo.
+
+**CURA, gotcha (e) — un probe ancorato all'helper sotto test fallisce per il motivo sbagliato.** La precondizione era `namespace != _scratch_source_db()`: revertendo la cura scattava **quell'assert** e il test non arrivava mai al clone. Ri-ancorata a `_pristine_dsn()` **direttamente**, il revert fallisce con la stringa esatta del CI. Rosso in entrambi i casi, ma solo il secondo insegna qualcosa.
+
+**CURA, prova.** 6 passed sotto `-n 2 --dist loadfile`; seriale invariato (il probe nuovo salta, gli altri passano). Mutazione: revertendo `_scratch_source_db` a leggere `TEST_DATABASE_URL`, il probe fallisce con `ObjectInUseError: source database "nuzantara_test_gw1" is being accessed by other users`. Costo CI del probe: 1.04s (la prima stesura ne costava 35, perché ri-provava ciò che `test_old_shape_` già prova).
+
+**Famiglia: #9 (state-schema mutation drift)**, con la #3 (under-match) sul confine: la cura di #5111 era già stata applicata a un call site — `_pristine_dsn()` esisteva, ed era usata alla riga 186 — e lasciata sui fratelli.

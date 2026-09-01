@@ -3,26 +3,26 @@
   "id": "glm-5.2",
   "display_name": "GLM 5.2",
   "identity": {
-    "provider": "z.ai",
+    "provider": "alibaba",
     "family": "glm",
     "kind": "language",
     "aliases": [],
     "evidence": [
       {
-        "level": "declared",
-        "ref": "MODEL_ROSTER.md#z.ai",
-        "observed_at": "2026-08-21"
+        "level": "production",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+        "observed_at": "2026-08-14"
       }
     ]
   },
   "routing": {
-    "status": "eligible",
+    "status": "probation",
     "automated_routing": false,
     "evidence": [
       {
-        "level": "declared",
-        "ref": "MODEL_ROSTER.md#z.ai",
-        "observed_at": "2026-08-21"
+        "level": "production",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+        "observed_at": "2026-08-14"
       }
     ]
   },
@@ -32,9 +32,9 @@
       "value": true,
       "evidence": [
         {
-          "level": "declared",
-          "ref": "MODEL_ROSTER.md#z.ai",
-          "observed_at": "2026-08-21"
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
         }
       ]
     },
@@ -43,9 +43,9 @@
       "value": true,
       "evidence": [
         {
-          "level": "declared",
-          "ref": "MODEL_ROSTER.md#z.ai",
-          "observed_at": "2026-08-21"
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
         }
       ]
     }
@@ -56,8 +56,8 @@
       "evidence": [
         {
           "level": "unmeasured",
-          "ref": "MODEL_ROSTER.md#z.ai",
-          "observed_at": "2026-08-21"
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
         },
         {
           "level": "declared",
@@ -71,8 +71,8 @@
       "evidence": [
         {
           "level": "unmeasured",
-          "ref": "MODEL_ROSTER.md#z.ai",
-          "observed_at": "2026-08-21"
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
         }
       ]
     }
@@ -94,9 +94,9 @@
       "value": false,
       "evidence": [
         {
-          "level": "declared",
-          "ref": "MODEL_ROSTER.md#z.ai",
-          "observed_at": "2026-08-21"
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
         }
       ]
     },
@@ -105,9 +105,9 @@
       "value": true,
       "evidence": [
         {
-          "level": "declared",
-          "ref": "MODEL_ROSTER.md#z.ai",
-          "observed_at": "2026-08-21"
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
         }
       ]
     },
@@ -116,9 +116,20 @@
       "value": true,
       "evidence": [
         {
-          "level": "declared",
-          "ref": "MODEL_ROSTER.md#z.ai",
-          "observed_at": "2026-08-21"
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "id": "eligible_for_quorum",
+      "value": false,
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "MODEL_ROSTER.md#Alibaba-Token-Plan-TP1",
+          "observed_at": "2026-08-27"
         }
       ]
     }
@@ -126,14 +137,19 @@
   "task_scores": [],
   "evidence": [
     {
-      "level": "declared",
-      "ref": "MODEL_ROSTER.md#z.ai",
-      "observed_at": "2026-08-21"
+      "level": "production",
+      "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+      "observed_at": "2026-08-14"
     },
     {
       "level": "declared",
       "ref": "https://help.aliyun.com/en/model-studio/newly-released-models | Newly released models | accessed 2026-08-21 | Exact claim: glm-5.2 documents a 1M-token context and long-horizon reasoning, text generation, and coding capabilities.",
       "observed_at": "2026-08-21"
+    },
+    {
+      "level": "production",
+      "ref": "MODEL_ROSTER.md#Alibaba-Token-Plan-TP1",
+      "observed_at": "2026-08-27"
     }
   ]
 }

@@ -56,7 +56,7 @@ aiOptimization:
       sameAs: "https://www.dojobali.org"
 faq:
   - question: "What visa do digital nomads need for Bali?"
-    answer: "Options: E33G Digital Nomad Visa (1 year, renewable up to 6 years total; requires USD 60,000/year income proof), B211A Social Visa (60 days extendable to 180), Second Home Visa (5-10 years with IDR 2B savings). Tourist visas (30 days) technically don't allow working. The E33G is purpose-built for remote workers."
+    answer: "Options: E33G Digital Nomad Visa (1 year, renewable up to 6 years total; requires USD 60,000/year income proof), B211A Social Visa (60 days extendable to 180), Second Home Visa (5-year first grant, renewable up to a 10-year cumulative maximum, with IDR 2B savings). Tourist visas (30 days) technically don't allow working. The E33G is purpose-built for remote workers."
   - question: "What are the best coworking spaces in Bali for digital nomads?"
     answer: "Top picks: Dojo Bali (Canggu, $150/month), Outpost (Canggu/Ubud, $180/month), Hubud (Ubud, $170/month), BWork (Sanur, $120/month). Most offer high-speed internet, meeting rooms, community events, and day passes ($10-20). Canggu has the highest concentration."
   - question: "Is the internet fast enough in Bali for remote work?"
@@ -183,7 +183,7 @@ Let's address the elephant in the room first.
     },
     {
       id: "employee-assets",
-      question: "Do you have $130,000+ in savings/investments?",
+      question: "Do you have a USD 130,000 deposit in your own name at a state-owned (BUMN) Indonesian bank, or a USD 1,000,000 completed strata unit?",
       options: [
         { label: "Yes", nextNodeId: "result-second-home" },
         { label: "No", nextNodeId: "result-rotation-strategy" },
@@ -214,7 +214,7 @@ Let's address the elephant in the room first.
     },
     {
       id: "freelance-assets",
-      question: "Do you have $130,000+ in savings/investments?",
+      question: "Do you have a USD 130,000 deposit in your own name at a state-owned (BUMN) Indonesian bank, or a USD 1,000,000 completed strata unit?",
       options: [
         { label: "Yes", nextNodeId: "result-second-home-freelance" },
         {
@@ -283,9 +283,9 @@ Let's address the elephant in the room first.
       id: "result-second-home",
       isResult: true,
       title: "Second Home Visa",
-      description: "5-10 year legitimate stay",
+      description: "5-year legitimate stay, renewable to 10 years cumulative",
       recommendation:
-        "If you have $130k+ in bank/investments, the Second Home Visa offers 5-10 year legitimate residency. No work permit but allows you to manage overseas affairs.",
+        "If you have a USD 130,000 deposit in your own name at a state-owned (BUMN) Indonesian bank, or a USD 1,000,000 completed strata unit, the Second Home Visa offers a 5-year first-grant legitimate residency, renewable up to 10 years cumulative. No work permit but allows you to manage overseas affairs.",
       nextSteps: [
         "Verify asset requirements",
         "Apply through Immigration",
@@ -503,9 +503,9 @@ Let's address the elephant in the room first.
       name: "Second Home",
       subtitle: "Long-term residence",
       values: {
-        "Initial Duration": "5-10 years",
+        "Initial Duration": "5 years",
         Extensions: "Renewable",
-        "Max Stay": "5-10 years",
+        "Max Stay": "10 years (cumulative)",
         Cost: "~$1,500 + bank req.",
         "Work Permitted": "Overseas work OK",
         "Best For": "Long-term, wealthy",

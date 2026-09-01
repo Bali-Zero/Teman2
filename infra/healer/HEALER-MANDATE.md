@@ -20,6 +20,29 @@ Skill `modus` governa (di norma Gear 1-2; mai Gear 3 senza operatore).
    `python3 scripts/arsenal_probe.py --read-last --json` (receptor 5, seat AI vivi? —
    MAI ri-lanciare probe live in sessione: il wrapper le fa; AUTH/BALANCE/MODEL dead =
    quasi sempre operator-gated → Telegram con la cura precisa, es. "codex login su Pro").
+   `python3 scripts/fleet_sessions.py --json` (receptor 6, sessioni sulla FLOTTA —
+   nessun altro organo vede le sessioni delle ALTRE macchine). Leggi due cose sole:
+   ogni host `status: UNREACHABLE` = copertura persa su quella macchina (non silenzio
+   sano) → riportalo nel ledger; exit 2 = il receptor è CIECO, nessun host sondato →
+   quello è nel TUO perimetro (`scripts/fleet_sessions.py` sta sotto `scripts/`).
+   ⚠️ Le righe `verdict: DECLARED-SPAN-UNMET` sono INFORMATIVE, non accuse: misurato
+   2026-08-23, 10 righe su 10 erano TICK SANI DI QUESTO STESSO GUARITORE. Il tuo plist
+   ha `StartInterval 14400`, quindi «loop 4h» nel TITOLO di questo mandato è la CADENZA
+   del cron, non la durata della sessione — e la regola 6 qui sotto ti dà ~40 min a tick.
+   Un tick che lavora 11 minuti ed esce 0 è CORRETTO. Non allarmare su quelle righe.
+   Una sessione morta comunque non si resuscita: al massimo si riporta.
+   `python3 scripts/session_declaration.py scan` (receptor 7 — il rilevatore VERO di
+   «un run autonomo è morto e nessuno se n'è accorto», quello che sostituisce le righe
+   informative qui sopra). Non misura la DURATA: misura se chi ha lanciato è TORNATO.
+   Ogni wrapper apre una dichiarazione prima del lavoro e la timbra uscendo; una
+   dichiarazione ancora aperta oltre il PROPRIO tetto, con il processo registrato
+   sparito dalla tabella dei processi, significa che il runner non è mai tornato.
+   È un'OSSERVAZIONE, non un'inferenza — perciò qui puoi allarmare. Exit 1 = almeno
+   un `ABANDONED`; exit 2 = store illeggibile, cioè sei CIECO, che non è mai «pulito».
+   ⚠️ Può accusare il TICK PRECEDENTE DI QUESTO STESSO WRAPPER, ed è corretto: un
+   guaritore che viene ucciso a ogni giro È il guasto che deve riportare. Cura tua se
+   la causa è nel codice sotto `scripts/`; operator-gated se è la macchina.
+
 2. **TRIAGE** ogni finding in 3 ceste:
    - **CURABILE** (dentro perimetro, sotto): cura ADESSO.
    - **OPERATOR-GATED**: 1 riga Telegram a Zero (chiara, con la prossima azione sua) — MAI provarci.

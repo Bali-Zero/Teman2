@@ -217,6 +217,18 @@ def include_routers(api: FastAPI) -> None:
 
         api.include_router(garuda_voa.router)  # owner-only GET /api/visa/voa/{hash}
 
+    from backend.app.routers import garuda_voa_public
+
+    api.include_router(garuda_voa_public.router)  # public /api/visa/voa eligibility funnel — flag GARUDA_PUBLIC_ENABLED checked per-request, not at mount
+
+    from backend.app.routers import garuda_orders_router
+
+    api.include_router(garuda_orders_router.router)  # L3 checkout/orders — flag GARUDA_PUBLIC_ENABLED checked per-request, not at mount
+
+    from backend.app.routers import garuda_portal_auth
+
+    api.include_router(garuda_portal_auth.router)  # L4 magic-link auth — flag GARUDA_PUBLIC_ENABLED checked per-request, not at mount
+
     # CRM routers
     api.include_router(crm_clients.router)
     api.include_router(intake_review.router)  # [FASE 5A] doc-intake HITL review-queue
@@ -654,6 +666,18 @@ def include_light_routers(api: FastAPI) -> None:
         from backend.app.routers import garuda_voa
 
         api.include_router(garuda_voa.router)  # owner-only GET /api/visa/voa/{hash}
+
+    from backend.app.routers import garuda_voa_public
+
+    api.include_router(garuda_voa_public.router)  # public /api/visa/voa eligibility funnel — flag GARUDA_PUBLIC_ENABLED checked per-request, not at mount
+
+    from backend.app.routers import garuda_orders_router
+
+    api.include_router(garuda_orders_router.router)  # L3 checkout/orders — flag GARUDA_PUBLIC_ENABLED checked per-request, not at mount
+
+    from backend.app.routers import garuda_portal_auth
+
+    api.include_router(garuda_portal_auth.router)  # L4 magic-link auth — flag GARUDA_PUBLIC_ENABLED checked per-request, not at mount
 
     # Genome-backed registries (light: SQLite via cell-core, no ML deps)
     api.include_router(experience.router)  # [EXP] Experience Library (PR #54)

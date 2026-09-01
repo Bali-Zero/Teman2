@@ -13,6 +13,7 @@ import logging
 from enum import Enum
 
 from backend.app.core.config import settings
+from backend.security.pii_log_identifier import redact_identifier_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,9 @@ class WhatsAppTriageService:
 
         # 1. WHITELIST CHECK: Personal contacts always escalate
         if normalized_phone in self.personal_contacts:
-            logger.info("Escalating to human: whitelist contact %s", phone)
+            logger.info(
+                "Escalating to human: whitelist contact %s", redact_identifier_for_log(phone)
+            )
             return TriageDecision.ESCALATE_PERSONAL, "personal_contact"
 
         # 2. EXPLICIT HUMAN REQUEST
@@ -88,7 +91,10 @@ class WhatsAppTriageService:
 
         message_lower = message_text.lower().strip()
         if any(trigger in message_lower for trigger in explicit_triggers):
-            logger.info("Escalating to human: explicit request from %s", phone)
+            logger.info(
+                "Escalating to human: explicit request from %s",
+                redact_identifier_for_log(phone),
+            )
             return TriageDecision.ESCALATE_REQUEST, "explicit_request"
 
         # 3. PERSONAL CONTEXT DETECTION
@@ -130,7 +136,10 @@ class WhatsAppTriageService:
         ]
 
         if any(keyword in message_lower for keyword in personal_keywords):
-            logger.info("Escalating to human: personal context detected from %s", phone)
+            logger.info(
+                "Escalating to human: personal context detected from %s",
+                redact_identifier_for_log(phone),
+            )
             return TriageDecision.ESCALATE_CONTEXT, "personal_context"
 
         # 4. BUSINESS CONTEXT (AI can handle)
@@ -189,7 +198,7 @@ class WhatsAppTriageService:
         ]
 
         if any(keyword in message_lower for keyword in business_keywords):
-            logger.info("AI handling business query from %s", phone)
+            logger.info("AI handling business query from %s", redact_identifier_for_log(phone))
             return TriageDecision.BOT_CAN_HANDLE, "business_query"
 
         # 5. GREETING CHECK (first message)
@@ -211,11 +220,11 @@ class WhatsAppTriageService:
         if len(message_text.split()) <= 3 and any(
             greeting in message_lower for greeting in greetings
         ):
-            logger.info("AI handling greeting from %s", phone)
+            logger.info("AI handling greeting from %s", redact_identifier_for_log(phone))
             return TriageDecision.BOT_CAN_HANDLE, "greeting_only"
 
         # 6. DEFAULT: Let AI handle everything else (Zero style — always respond)
-        logger.info("AI handling general query from %s", phone)
+        logger.info("AI handling general query from %s", redact_identifier_for_log(phone))
         return TriageDecision.BOT_CAN_HANDLE, "general_query"
 
     def get_escalation_message(

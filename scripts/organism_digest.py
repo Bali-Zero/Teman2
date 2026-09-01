@@ -52,6 +52,10 @@ from pathlib import Path
 MAX_DELTA_LINES = 5
 MAX_PR_LINES = 5
 MAX_STALE_LINES = 4
+# Only ever emitted under ORGANISM_DIGEST_PENDING_ARMS=rows — an operator who
+# asks WHICH rows wants enough of them to act on, and none of this reaches the
+# default boot path.
+MAX_PENDING_ARMS_ROWS = 10
 HEARTBEAT_STALE_H = 26.0  # matches proprioception guardian_freshness for the arsenal report
 BUDGET_S = 6
 
@@ -152,14 +156,13 @@ def arsenal_seats() -> tuple[list[str], list[str]]:
 # keys off MODEL names (opus-5, codex-luna, kimi-for-coding...), never off the
 # arsenal_probe.py seat ids (codex-spark, qwen-cloud-code, nlm, jules...) — there
 # is no row in the roster keyed by probe-seat-id at all. What IS machine-
-# extractable, verified 2026-08-22 against the live file, is each PROVIDER
-# section's own "## <Provider> — ... door(s): <text>" header (6 of 7 provider
-# sections carry it; "## Local Ollama" does not — no "door:"/"doors:" substring
-# anywhere in that header, so it is a genuine, reportable gap, not a regex miss).
-# So this renders seat -> provider -> door, sourced live from the file, in place
-# of the seat -> role -> invocation the mandate asked for. Doors are grouped by
-# provider (not simplified). Do not invent a role or a fuller invocation string
-# to plug this gap — see the D4 report for the proposed smallest roster change.
+# extractable, verified 2026-08-26 against the live file, is each PROVIDER
+# section's own "## <Provider> — ... door(s): <text>" header — every provider
+# section now carries one, including "## Local Ollama" (closed the historical
+# gap: PENDING-ARMS "MODEL_ROSTER.md's ## Local Ollama section ... has no door:
+# segment"). So this renders seat -> provider -> door, sourced live from the
+# file, in place of the seat -> role -> invocation the mandate asked for. Doors
+# are grouped by provider (not simplified).
 _ROSTER_DOOR_RE = re.compile(r"^## (?P<provider>[^—\n]+?)\s+—.*?doors?:\s*(?P<door>.+?)\s*$", re.MULTILINE)
 _DOOR_CODE_RE = re.compile(r"`([^`]+)`")
 _DOOR_MAX_CHARS = 56
@@ -172,7 +175,6 @@ _DOOR_MAX_CHARS = 56
 # own ALL_SEATS so a missing/broken import still renders something honest.
 _SEAT_PROVIDER = {
     "claude": "Anthropic",
-    "glm": "z.ai",
     "kimi": "Moonshot",
     "agy": "Google",
     "codex": "OpenAI",
@@ -181,9 +183,26 @@ _SEAT_PROVIDER = {
     "nlm": "Google",
     "qwen-cloud-code": "Alibaba Token Plan (TP1)",
     "jules": "Google",
+    # 7 TP1 seats added 2026-08-29 (W-class: _SEAT_PROVIDER drifted behind
+    # arsenal_probe.py's ALL_SEATS — roster-drift selftest was RED, 27/28,
+    # before this fix). All seven share the SAME MODEL_ROSTER.md provider
+    # section as qwen-cloud-code: "## Alibaba Token Plan (TP1)" documents
+    # deepseek-v4-pro, deepseek-v4-flash-0731, glm-5.2, qwen3.8-max,
+    # qwen3.7-max, qwen3.7-plus and qwen3.6-flash side by side with
+    # qwen-cloud-code's own row (verified 2026-08-29 against the live file).
+    "tp1-deepseek-v4-pro": "Alibaba Token Plan (TP1)",
+    "tp1-deepseek-v4-flash-0731": "Alibaba Token Plan (TP1)",
+    "tp1-glm-5.2": "Alibaba Token Plan (TP1)",
+    "tp1-qwen3.8-max": "Alibaba Token Plan (TP1)",
+    "tp1-qwen3.7-max": "Alibaba Token Plan (TP1)",
+    "tp1-qwen3.7-plus": "Alibaba Token Plan (TP1)",
+    "tp1-qwen3.6-flash": "Alibaba Token Plan (TP1)",
 }
-_FALLBACK_ALL_SEATS = ["claude", "glm", "kimi", "agy", "codex", "codex-spark",
-                        "ollama", "nlm", "qwen-cloud-code", "jules"]
+_FALLBACK_ALL_SEATS = ["claude", "kimi", "agy", "codex", "codex-spark",
+                        "ollama", "nlm", "qwen-cloud-code", "jules",
+                        "tp1-deepseek-v4-pro", "tp1-deepseek-v4-flash-0731",
+                        "tp1-glm-5.2", "tp1-qwen3.8-max", "tp1-qwen3.7-max",
+                        "tp1-qwen3.7-plus", "tp1-qwen3.6-flash"]
 
 
 def _known_seats() -> list[str]:
@@ -327,7 +346,17 @@ def pending_arms_overdue() -> tuple[list[str], list[str]]:
     # correcting a previous commit's claim. The ledger is still read at modus TRIAGE and by
     # `pending_arms_report.py`; this only stops it from being the FIRST thing a
     # session sees at boot. Opt back in: ORGANISM_DIGEST_PENDING_ARMS=1.
-    if os.environ.get("ORGANISM_DIGEST_PENDING_ARMS", "0") != "1":
+    #
+    # THREE states, not two (added 2026-08-31): "0"/unset = silent (the default,
+    # unchanged); "1" = the one summary line (unchanged — every existing caller
+    # and every existing test in test_organism_digest_pending_arms.py asserts
+    # `len(lines) == 1`, and that assertion is load-bearing: it is what keeps a
+    # boot-injected receptor terse); "rows" = summary PLUS the ten oldest rows
+    # named. The detail is a THIRD state rather than a widening of "1" precisely
+    # so that opting into the count does not silently start costing ten lines of
+    # every session's boot on three machines.
+    _mode = os.environ.get("ORGANISM_DIGEST_PENDING_ARMS", "0")
+    if _mode not in ("1", "rows"):
         return lines, errs
     try:
         proc = subprocess.run(
@@ -361,12 +390,46 @@ def pending_arms_overdue() -> tuple[list[str], list[str]]:
                 f"pending-arms: {n_overdue} overdue by counts, {len(overdue)} matched "
                 "in entries (per-entry key drift?)"
             )
+        # OLDEST, not first-in-file. Measured on the live ledger 2026-08-31:
+        # `overdue[0]` (file order) had age 7d while the genuinely oldest row had
+        # age 56d — so the line said "top:" and showed something that was not the
+        # top of anything. The label and the value disagreed for the whole life of
+        # this branch; naming the oldest is also what makes the `rows` detail
+        # below worth reading. `or 0` because a drifted payload can carry
+        # age_days present-but-null, and sorting on None raises.
+        def _age(e: dict) -> int:
+            # int() and not `or 0`: a drifted payload can carry age_days as a
+            # STRING, and "9" sorts after "10" while raising outright the moment
+            # one entry is an int and its neighbour is not — either way the line
+            # would still be labelled "oldest" (cross-family gate finding).
+            v = e.get("age_days")
+            if isinstance(v, bool):
+                return -1  # True would become 1d and pose as a real age
+            try:
+                # OverflowError too: JSON 1e309 decodes to inf, and int(inf)
+                # raising here would be caught by the OUTER except and cost the
+                # entire alarm to fix an ordering detail.
+                return int(v)  # type: ignore[arg-type]
+            except (TypeError, ValueError, OverflowError):
+                return -1  # unknown age sorts LAST, never masquerades as oldest
+
+        oldest = sorted(overdue, key=_age, reverse=True)
         if n_overdue or overdue:
             # `or "?"` and not a get() default: a drifted payload can carry the
             # key with a null value, and None[:70] would raise inside the
             # catch-all below — losing the alarm to fix a detail.
-            top = (overdue[0].get("artifact") or "?")[:70] if overdue else "?"
-            lines.append(f"{n_overdue or len(overdue)} armamenti sospesi OVERDUE — top: {top}")
+            # str() before slicing: a drifted payload can carry artifact as an
+            # int, and 123[:70] raises inside the catch-all — the whole alarm
+            # lost to a formatting detail, which is exactly what _age was
+            # hardened against one field over (third-family gate).
+            top = (str(oldest[0].get("artifact") or "?"))[:70] if oldest else "?"
+            lines.append(f"{n_overdue or len(overdue)} armamenti sospesi OVERDUE — oldest: {top}")
+            if _mode == "rows":
+                for e in oldest[:MAX_PENDING_ARMS_ROWS]:
+                    a = _age(e)
+                    age_s = f"{a}d" if a >= 0 else "?d"
+                    art = (str(e.get("artifact") or "?"))[:70]
+                    lines.append(f"  · {age_s} {art}")
     except Exception as e:
         errs.append(f"pending-arms: reporter failed ({type(e).__name__})")
     return lines, errs
@@ -475,7 +538,6 @@ def _selftest() -> int:
         # gets a door line, so a healthy world has zero "no door: line" gaps.
         (fake_repo / "MODEL_ROSTER.md").write_text(
             "## Anthropic — door: `claude` CLI\n"
-            "## z.ai — door: `claude-glm` shim\n"
             "## Moonshot — door: `kimi` CLI\n"
             "## Google — door: `agy` CLI\n"
             "## OpenAI — door: `codex exec` CLI\n"
@@ -667,13 +729,13 @@ def _selftest() -> int:
     real_doors, real_door_errs = _roster_doors(_repo_root())
     expect("roster-drift: MODEL_ROSTER.md was readable for the door extraction",
            not real_door_errs)
-    expected_providers_with_doors = {p for p in _SEAT_PROVIDER.values() if p != "Local Ollama"}
-    expect("roster-drift: every provider _SEAT_PROVIDER names (except the "
-           "known Local-Ollama gap) still has a 'door(s):' header in MODEL_ROSTER.md",
+    expected_providers_with_doors = set(_SEAT_PROVIDER.values())
+    expect("roster-drift: every provider _SEAT_PROVIDER names has a "
+           "'door(s):' header in MODEL_ROSTER.md",
            expected_providers_with_doors <= set(real_doors.keys()))
-    expect("roster-drift: Local Ollama still has no door: line (update this "
-           "test, and the D4 report's proposed fix, the day it gains one)",
-           "Local Ollama" not in real_doors)
+    expect("roster-drift: Local Ollama now HAS a door: line (2026-08-26 "
+           "arming — update this test, and this comment, the day it loses one)",
+           "Local Ollama" in real_doors)
 
     print(f"SELFTEST {'OK' if not failures else 'FAILED'} — "
           f"{total - len(failures)}/{total} checks")

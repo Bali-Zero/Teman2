@@ -1,0 +1,97 @@
+task_id: research-os-p04-d3-magazine-action-chain-adapters-0824
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Research OS v1.0.0 Wave 0, Work Packet 04, deliverable D3 (legacy-to-canonical adapters, no
+  silent field dropping): first slice of the Magazine `ops_intents`/`ops_receipts` "action
+  chain" adapter subsystem under `apps/backend-rag/backend/services/research_os/`.
+
+  THIS IS PR SLICE 1 of 3 (see `constraints:` for why it split). It ships: the shared adapter
+  infrastructure (deterministic hash-object construction, a structured per-legacy-field loss
+  ledger, the Magazine legacy-row TypedDicts, a `sys.path` bootstrap for the not-yet-packaged
+  `research_os` core) plus ONE complete, tested adapter: `ops_intents` row -> canonical
+  `ActionItem` (CONTRACTS.md §13.1). `ActionIntent`, `OperationalReceipt`, the shadow
+  dual-write flag, and the parity probe are written and passing in this same worktree but are
+  DELIBERATELY NOT in this PR's diff -- they are staged as follow-up branches
+  (`ros-v1-p04-d3-adapters-2-action-intent`, `...-3-receipt-shadow-parity`), pushed but not
+  yet opened as PRs, per the fleet's own "one PR per lane at a time" serialization practice
+  observed live in the mailbox today.
+
+  SCOPE FINDING (verified this session, not assumed from the prior compatibility-matrix
+  snapshot): `ActionItem.decision_packet_ref` and `.requested_action_spec_ref` are NON-OPTIONAL
+  fields with no legacy source at all -- and `RequestedActionSpec` itself requires a real
+  `DecisionPacketRef`, which requires a real `WorkflowRunRef`. Building a genuinely valid
+  upstream `DecisionPacket`/`WorkflowRun` chain purely to backfill a pointer would fabricate
+  provenance Magazine's ops-action pipeline never had. This adapter instead populates those
+  refs with a disclosed, deterministic SYNTHESIZED_UNBACKED placeholder -- both in a structured
+  loss report AND, per this PR's own adversarial-review finding below, in the object's own
+  `extensions` field, so a downstream consumer can branch on it in code, not only read about it
+  in prose.
+constraints:
+  - "Additive only: new files under apps/backend-rag/backend/services/research_os/ and
+    apps/backend-rag/backend/tests/services/research_os/ (both new directories). Touches zero
+    existing file. Does not modify packages/research-os-core/ (owned by the P04-D1 lanes
+    landing today) or any domain model (Intel Lake, NAGA, NEXUS, WR2, WR3, Magazine, CRM)."
+  - 'Split from a single ~1670-line design into 3 PRs, one per canonical kind, because the
+    Agent PR Contract''s ~400-net-line target could not survive the packet''s own exit criterion
+    ("every legacy field is mapped, intentionally omitted with a reason, or rejected") without
+    gutting the per-field ledger the criterion demands. This slice alone is 801 lines because
+    the shared infrastructure (hash-object construction, loss-report ledger, legacy-row types)
+    is a one-time cost every later slice reuses without repeating -- PR 2 (ActionIntent) is
+    ~235 lines on its own, PR 3 (OperationalReceipt+shadow+parity) splits further to ~240 +
+    ~440.'
+  - "Does NOT touch scripts/wr3_*, docs/wr3/contracts/, apps/backend-rag/backend/tests/conftest.py,
+    or test_xdist_worker_isolation.py (other lanes' leases, per mandate)."
+  - "No PII: every row is a synthetic, fabricated fixture (conftest.py) -- no real Magazine row
+    was ever read, pasted, or referenced."
+  - "PR stays DRAFT. Nothing in this PR arms, enqueues, or un-drafts it."
+acceptance:
+  - "Every one of ops_intents' 26 legacy columns has an entry in the adapter's loss report with
+    a fate in {mapped, approximated, synthesized_unbacked, omitted, rejected} and a reason --
+    enforced by assert_every_legacy_field_accounted_for, called both inside the adapter and
+    independently from the test suite (test_every_legacy_field_is_accounted_for_never_silently_dropped)."
+  - "A row whose clock data is self-contradictory (expires_at <= created_at) is REJECTED with a
+    full field ledger, never silently coerced into a technically-valid-but-wrong object."
+  - "SYNTHESIZED_UNBACKED refs are disclosed twice: in loss_report.warnings (prose) AND in the
+    canonical object's own extensions['com.balizero.research-os-adapters'].payload['unbacked_refs']
+    (machine-checkable) -- the second channel added in direct response to this PR's own
+    adversarial-review dissent below."
+  - "`PYTHONPATH=. pytest backend/tests/services/research_os/test_action_item_adapter.py -q`
+    exits 0, and the pre-existing `backend/tests/unit/research_os/` suite (packages/research-os-core's
+    own tests) is untouched and still exits 0."
+consumer_map:
+  - "GitHub PR's `Harness floor recompute` required check -- Gear-2 evidence pack, floor=1
+    (no hot-zone-pattern file touched; verified against scripts/evidence_pack_lint.py's own
+    HOTZONE_PATTERNS list, not assumed)."
+  - "PR 2 (ActionIntent adapter, same worktree, staged branch): imports
+    action_item_adapter.adapt_ops_intent_to_action_item directly -- this PR's ActionItem is the
+    dependency, not a parallel, independent artifact."
+  - "PR 3 (OperationalReceipt + shadow + parity, staged branch): shadow.py imports both this
+    PR's action_item_adapter and PR 2's action_intent_adapter, so it cannot land before either."
+  - "Work Packet 04 Deliverable 5 (research_os_contract_core persistence, PR #4740, already
+    merged per this session's fresh origin/main fetch): the future canonical repository this
+    adapter's output would eventually be written into via the shadow flag -- not built here,
+    marked with an explicit TODO in shadow.py."
+risks:
+  - "SYNTHESIZED_UNBACKED refs are a disclosed judgment call, not a ruling -- an adversarial
+    review (Kimi K3, this session) confirmed the core concern is real: a consumer that reads
+    only the ref's presence (not its extensions marker) could still be misled. Mitigated by the
+    machine-checkable extensions marker added in response, but the underlying ruling question
+    (matrix items 0/1/6, and this PR's own scope finding above) is still open and belongs to
+    the conductor, not silently resolved here."
+  - "The uuid5 namespace used for synthetic ids (`_ADAPTER_NAMESPACE` in synthesis.py) is
+    adapter-private and documented as never shared with any real object-minting path -- but
+    this repo has no central registry of uuid5 namespaces, so that guarantee rests on this
+    file's own comment, not an enforced invariant."
+grader: |
+  session (this lane, Pro, worktree backend-rag-ros-v1-p04-d3-adapters) wrote the adapters,
+  tests, and evidence pack; a cross-family adversarial pass (Kimi K3, kimi-code/k3, this
+  session) reviewed the SYNTHESIZED_UNBACKED design decision specifically and is the source of
+  the dissent entries below (generator != grader) -- self-graded findings are marked as such,
+  never presented as independent review.
+budget: |
+  1 build lane (this session) + 1 adversarial review lane (Kimi K3) -- no full multi-LLM
+  council convened; the design surface (one adapter, additive, zero live consumers) does not
+  warrant one per Gear-2 doctrine.
+pii: none

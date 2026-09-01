@@ -377,6 +377,32 @@ def step5_nlm_push(reg_code: str, domain: str, jdih_url: str,
 # ──────────────────────────────────────────────────────────────────────────
 # Step 6 — Qdrant embed + upsert via LegalIngestionService
 # ──────────────────────────────────────────────────────────────────────────
+def _verdict_from_ingest_output(payload: dict) -> dict:
+    """Turn what the ingest SAID into this runner's ok / not-ok.
+
+    `LegalIngestionService.ingest_legal_document` catches everything internally
+    and reports failure by RETURNING ``{"success": False, "error": ...}``. It
+    does not raise. So "no exception reached me" is not a verdict, it is only
+    the absence of a crash -- and this runner used to print ``ok: True``
+    unconditionally on that basis. Step 8 then wrote ``in_qdrant: YES`` and the
+    orchestrator ran KG extraction, for a document the corpus never received.
+
+    Anything that is not an explicit success is a failure, including a missing
+    key and a malformed payload: a runner that cannot tell must not claim.
+    """
+    if not isinstance(payload, dict):
+        return {"ok": False, "error": f"ingest output was {type(payload).__name__}, not an object"}
+    # A subprocess from an older deploy still speaks "ok"; honour it rather than
+    # silently downgrading a real success to a failure.
+    verdict = payload.get("success", payload.get("ok"))
+    ok = verdict is True
+    out = dict(payload)
+    out["ok"] = ok
+    if not ok and not out.get("error"):
+        out["error"] = f"ingest reported success={verdict!r}"
+    return out
+
+
 def step6_qdrant_ingest(pdf_path: str, reg_code: str, official_title: str,
                         domain: str) -> dict:
     if not Path(pdf_path).exists():
@@ -396,16 +422,24 @@ load_dotenv('{backend_dir}/.env', override=True)
 from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
 
 async def main():
-    service = LegalIngestionService(collection_name="legal_unified_2026")
+    service = LegalIngestionService(collection_name="legal_unified")
     try:
         result = await service.ingest_legal_document(
             file_path={pdf_path!r},
             title={official_title + ' (' + reg_code + ')'!r},
             category={domain!r},
         )
-        print(json.dumps({{"ok": True, "result": str(result)[:500]}}))
+        # Report what the ingest SAID, not merely that it did not crash. The
+        # verdict is turned into this runner's ok/not-ok by the parent process,
+        # where it can be tested -- see _verdict_from_ingest_output.
+        print(json.dumps({{
+            "success": result.get("success") if isinstance(result, dict) else None,
+            "error": (result.get("error") if isinstance(result, dict) else str(result))
+                     and str(result.get("error") if isinstance(result, dict) else result)[:300],
+            "result": str(result)[:500],
+        }}))
     except Exception as e:
-        print(json.dumps({{"ok": False, "error": f"{{type(e).__name__}}: {{str(e)[:300]}}"}}))
+        print(json.dumps({{"success": False, "error": f"{{type(e).__name__}}: {{str(e)[:300]}}"}}))
 
 asyncio.run(main())
 """
@@ -421,7 +455,7 @@ asyncio.run(main())
         # Parse last JSON line
         last_line = result.stdout.strip().split("\n")[-1]
         try:
-            return json.loads(last_line)
+            return _verdict_from_ingest_output(json.loads(last_line))
         except json.JSONDecodeError:
             return {"ok": False, "error": f"output not JSON: {result.stdout[-300:]}"}
     except subprocess.TimeoutExpired:
@@ -442,7 +476,7 @@ def step7_kg_extract(domain: str, limit: int = 200) -> dict:
     try:
         result = subprocess.run(
             [str(venv_python), str(script),
-             "--collection", "legal_unified_2026",
+             "--collection", "legal_unified",
              "--limit", str(limit)],
             capture_output=True, text=True, timeout=900,
             cwd=str(backend_dir),

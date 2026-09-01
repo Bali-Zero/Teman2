@@ -335,7 +335,7 @@ A single interface may collect the two decisions consecutively, but must label t
 - The current Intel submit, approval, and internal publish code must remain available.
 - Packet 09 depends on the exported `PublicationState`, canonical classification, canonical content/artifact references, repository read API, and transition event schema.
 - Packet 09 may not begin integration against these interfaces until Packet 02 contract tests pass and an independent reviewer signs the contract.
-- Packet 04 owns canonical models/repositories and migration 270. Migration 271 is reserved for this packet. Packet 09 owns migration 274.
+- Packet 04 owns canonical models/repositories and the `research_os_contract_core` migration (a symbolic name — its integer is bound at integration time, not 270; see `research-os-v1.0.0/SESSION-BOARD.md` §0, Migration-ledger decision 001). Migration 271 is reserved for this packet. Packet 09 owns migration 274.
 
 ## Implementation sequence
 

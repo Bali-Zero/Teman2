@@ -368,6 +368,134 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "the public signed seq-11 RulePack payload, triple-derived at run "
         "time; exact value pinned, never a credential",
     ),
+    # fold_pack_seq13_rules.py: _EXPECTED_SEQ12_PAYLOAD_SHA256 is the chain
+    # anchor — same class/purpose as the seq10/11/12 rules immediately
+    # above (content-derived sha256 of the PUBLIC signed seq-12 RulePack
+    # payload, triple-derived at run time: declared == anchor == recomputed
+    # from the seq-12 source bytes). Content-keyed and pinned to the EXACT
+    # anchor value, not a hex shape, for the same reason as the seq12 rule:
+    # this is production code with an open surface for future edits.
+    #
+    # 2026-08-23: this reason string ends in the same "...chain anchor —
+    # content-derived sha256 ..." shape as the seq10/11/12 rules above, on
+    # purpose (four consecutive-sequence anchors reading in order). A test
+    # that looks a rule up via test_detect_secrets_auto_triage.py's
+    # _find_content_keyed_rule("chain anchor") would now match FIVE entries
+    # (a fifth landed the same day: fold_pack_seq13_source.py, the JOIN
+    # fold, also chains off seq-12 and so also reads "seq-12 chain anchor")
+    # and fail loudly (it asserts exactly one) — that is correct behavior,
+    # not a bug in the lookup. "seq-12 chain anchor" alone is no longer
+    # unique either, now that two files share it; a lookup for THIS rule
+    # must key on the file-qualified reason prefix, e.g.
+    # "fold_pack_seq13_rules.py: seq-12 chain anchor".
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq13_rules\.py$"
+        ),
+        re.compile(
+            r'^\s*"ff43d55e79e833a91820c4b68dd9ffdd086e7969b3b3a44dbd80747aa451406d"\s*$'
+        ),
+        "fold_pack_seq13_rules.py: seq-12 chain anchor — content-derived "
+        "sha256 of the public signed seq-12 RulePack payload, "
+        "triple-derived at run time; exact value pinned, never a "
+        "credential",
+    ),
+    # fold_pack_seq13_source.py: _EXPECTED_SEQ12_PAYLOAD_SHA256 is the chain
+    # anchor — the content-derived sha256 of the PUBLIC signed seq-12
+    # RulePack payload (same value class as the three fold_pack_seq1{0,1,2}
+    # rules above: hashes of public legal documents, never credentials). This
+    # JOIN fold pins it so the seq-13 chain link is triple-derived at run
+    # time (declared == anchor == recomputed from the seq-12 source bytes)
+    # and any mismatch aborts the fold.
+    #
+    # Content-keyed and pinned to the EXACT anchor value, not a hex shape:
+    # this is production code with an open surface for future edits — a real
+    # credential pasted anywhere else in the file (or even another 64-hex
+    # value on this line) stays flagged. The approved line is the bare
+    # continuation-string line of the parenthesized assignment, end-anchored.
+    #
+    # 2026-08-23: this fold and fold_pack_seq13_rules.py (the rule
+    # immediately above) both chain off seq-12 and so both read "seq-12
+    # chain anchor" in their reason string — deliberately not disambiguated
+    # by inventing a different anchor description for the same value. A
+    # lookup by that substring alone is ambiguous by construction; use the
+    # file-qualified prefix, e.g. "fold_pack_seq13_source.py: seq-12 chain
+    # anchor", to select this one specifically.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq13_source\.py$"
+        ),
+        re.compile(
+            r'^\s*"ff43d55e79e833a91820c4b68dd9ffdd086e7969b3b3a44dbd80747aa451406d"\s*$'
+        ),
+        "fold_pack_seq13_source.py: seq-12 chain anchor — content-derived "
+        "sha256 of the public signed seq-12 RulePack payload, "
+        "triple-derived at run time; exact value pinned, never a "
+        "credential",
+    ),
+    # fold_pack_seq14.py: _EXPECTED_SEQ13_PAYLOAD_SHA256 is the chain anchor —
+    # the content-derived sha256 of the PUBLIC signed seq-13 RulePack payload.
+    # The fold pins it so the seq-14 chain link is triple-derived at run time
+    # (declared == anchor == recomputed from the seq-13 source bytes), and any
+    # mismatch aborts the fold.
+    #
+    # Content-keyed and pinned to the EXACT anchor value, not a hex shape:
+    # this is production code with an open surface for future edits, so any
+    # different 64-hex value in the file stays flagged. Only the bare
+    # continuation-string line is approved, end-anchored.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq14\.py$"
+        ),
+        re.compile(
+            r'^\s*"b9edb809930ab486e49a4af7804fbae7f072caa3b6459b78a94ecb7f6bfe14f8"\s*$'
+        ),
+        "fold_pack_seq14.py: seq-13 chain anchor — content-derived sha256 "
+        "of the public signed seq-13 RulePack payload, triple-derived at "
+        "run time; exact value pinned, never a credential",
+    ),
+    # fold_pack_seq17.py: SEQ16_PAYLOAD_SHA256 is the chain anchor for the
+    # active seq-16 RulePack payload. The fold recomputes sha256 over the
+    # canonical seq-16 payload and aborts unless it equals this database-
+    # recorded digest before producing seq-17.
+    #
+    # Content-keyed and pinned to the exact assignment and exact digest:
+    # this production file remains closed to every other value or line, and
+    # a ride-along statement cannot match because the pattern is end-anchored.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq17\.py$"
+        ),
+        re.compile(
+            r'^\s*SEQ16_PAYLOAD_SHA256\s*=\s*'
+            r'"ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100"\s*$'
+        ),
+        "fold_pack_seq17.py: seq-16 chain anchor — content-derived sha256 "
+        "of the active seq-16 RulePack payload, recomputed before folding; "
+        "exact assignment and value pinned, never a credential",
+    ),
+    # fold_pack_seq18.py: SEQ17_PAYLOAD_SHA256 is the chain anchor for the
+    # seq-17 RulePack payload — the digest activated in production on
+    # 2026-08-30T15:35:49Z. The fold recomputes sha256 over the canonical
+    # seq-17 payload under RFC 8785 and aborts unless it equals this value
+    # before producing seq-18, so the anchor is verified, never asserted.
+    #
+    # Content-keyed and pinned to the exact assignment and exact digest, for
+    # the same reason as every fold above it: this production file stays
+    # closed to any other value or line, and a ride-along statement cannot
+    # match because the pattern is end-anchored.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq18\.py$"
+        ),
+        re.compile(
+            r'^\s*SEQ17_PAYLOAD_SHA256\s*=\s*'
+            r'"97cb964780b114a2fa936230055327102a5af59efb010b6bf04090bb7321890b"\s*$'
+        ),
+        "fold_pack_seq18.py: seq-17 chain anchor — content-derived sha256 "
+        "of the active seq-17 RulePack payload, recomputed before folding; "
+        "exact assignment and value pinned, never a credential",
+    ),
     # scripts/kbli_bench/results/p2b_score.json (PR #4422, KBLI Navigator
     # Phase 2b benchmark run): corpus_sha256 is the content-derived sha256 of
     # the frozen benchmark corpus (scripts/kbli_bench/p2b_corpus.json), the
@@ -420,6 +548,45 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         re.compile(r'^\s*ref_body = "0c" \+ "[A-Za-z0-9_-]+"\s*$'),
         "OAuth guard selftest fixture fragment — assembled at runtime to "
         "prove the guard fires; synthetic by construction, never a credential",
+    ),
+    # D12 active-stay-permit HARD_FILTER source record (2026-08-24, F4/D12):
+    # content_sha256 is the same class as the contracts/packs/rulepack-*.json
+    # rule and the gold-replay payload_sha256 rule above — a content-derived
+    # sha256 of a PUBLIC source document (Bali Zero's own policy card, cited
+    # by canonical_url in the same JSON object), never a credential.
+    #
+    # Content-keyed, not path-keyed to the whole `inc8-pack-edits/` directory:
+    # that directory is an open writer set for doctrine-factory pack edits, so
+    # a path-only rule would blanket-approve any future finding anywhere in
+    # it (superscar #3). Narrowed to this exact reviewed file and the exact
+    # `"content_sha256": "<64-hex>"` field, end-anchored.
+    (
+        re.compile(
+            r"(^|/)research/visa/doctrine-factory/e5/inc8-pack-edits/"
+            r"d12-active-stay-permit-rule-and-source\.json$"
+        ),
+        re.compile(r'^\s*"content_sha256"\s*:\s*"[0-9a-f]{64}"\s*,?\s*$'),
+        "D12 active-stay-permit source record: content_sha256 is the "
+        "content-derived sha256 of a public Bali Zero policy source, "
+        "not a credential",
+    ),
+    # Evidence Pack `diff.measured_at` field (harness-v2 evidence packs,
+    # scripts/evidence_pack_lint.py) — a short or full git commit SHA the
+    # pack author recorded as "which merge-base this diff was measured
+    # against". A 7-40 char lowercase-hex commit hash reads as a "Hex High
+    # Entropy String" to detect-secrets on every single evidence pack this
+    # repo produces (found 2026-08-27, PR #5054's own pack tripped it).
+    # Path-keyed to per-task pack.yml files under evidence/<month>/<slug>/
+    # (never the whole evidence/ tree — that also holds brief.yml, which
+    # this rule does not scope, and other pack fields that DO need human
+    # eyes), content-keyed to the exact `measured_at:` assignment so an
+    # unrelated real secret added to the SAME file on a different line is
+    # still left unaudited.
+    (
+        re.compile(r"(^|/)evidence/[^/]+/[^/]+/pack\.yml$"),
+        re.compile(r"^\s*measured_at:\s*[0-9a-f]{7,40}\s*$"),
+        "Evidence Pack diff.measured_at: a git commit SHA (merge-base "
+        "the diff was measured against), not a credential",
     ),
 ]
 

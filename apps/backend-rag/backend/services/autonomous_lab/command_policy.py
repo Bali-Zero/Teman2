@@ -15,7 +15,7 @@ SAFE_WORKTREE_COMMAND_PATTERN = re.compile(
 )
 
 PYTEST_AUTONOMOUS_LAB_COMMAND = (
-    "cd apps/backend-rag && PYTHONPATH=. pytest backend/tests/unit/services/autonomous_lab -q"
+    "cd apps/backend-rag && PYTHONPATH=. pytest backend/tests/unit/services/autonomous_lab"
 )
 ADMIN_DASHBOARD_LINT_COMMAND = "cd apps/admin-dashboard && npm run lint"
 GIT_DIFF_RESEARCH_COMMAND = "git diff --check -- research/operations/autonomous-lab"
@@ -117,7 +117,6 @@ def plan_for_allowlisted_command(
             argv=[
                 pytest,
                 "backend/tests/unit/services/autonomous_lab",
-                "-q",
             ],
             cwd=backend_root,
             env=autonomous_lab_pytest_env(),

@@ -1,6 +1,7 @@
 "use client";
 
 import { usePrimeNexus, type PrimeMode } from "@/contexts/PrimeNexusContext";
+import { api } from "@/lib/api";
 
 const MODES: {
   key: PrimeMode;
@@ -23,14 +24,22 @@ export function ModeSwitcher() {
       {MODES.map((m) => (
         <button
           key={m.key}
-          onClick={() => {
+          onClick={async () => {
             if (m.requiresAuth) {
-              // Check nz_access_token cookie — redirect to login if absent
-              const hasAuth = document.cookie.includes("nz_access_token=");
-              if (!hasAuth) {
+              // `document.cookie` can never see `nz_access_token` — it is
+              // httpOnly by design (SSO across .balizero.com subdomains), so
+              // the old check here always read an empty string and ALWAYS
+              // redirected: every visitor, cookie-only or not, who clicked
+              // CRM/Intel/Tempo/Folio was bounced to /login. Ask the
+              // server-aware probe instead (auth-gates-cookie-primary).
+              const session = await api.hasSession();
+              if (session === "anonymous") {
                 window.location.href = "/login?redirect=/prime";
                 return;
               }
+              // "unknown"/"authenticated" both proceed: this only gates a UI
+              // mode switch, not data — the domain panel behind each mode
+              // still enforces its own 401 server-side.
             }
             setMode(m.key);
           }}

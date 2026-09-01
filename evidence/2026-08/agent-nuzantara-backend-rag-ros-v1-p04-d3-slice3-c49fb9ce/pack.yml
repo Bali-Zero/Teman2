@@ -1,0 +1,180 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  "P04-D3 slice 3a of 3: OperationalReceipt adapter (ops_receipts -> OperationalReceipt),
+  BLOCKED by team-lead architecture ruling — adapter unconditionally rejects, not merely
+  disclosed-placeholder"
+diff:
+  net_lines: >-
+    Two commits on this branch, measured against this branch's own merge-base with
+    origin/main (0545d251d2f9e142b5bd8ae0c9d317e7fc7ae4ed, re-fetched fresh this session):
+    +383/-0 net across 4 files (the original commit's construction code was fully replaced by
+    the correction commit, not left alongside it -- git diff against merge-base shows only the
+    FINAL state). operational_receipt_adapter.py (154 lines, final: unconditional-rejection
+    design), test_operational_receipt_adapter.py (97 lines, final: 8 rejection-path tests),
+    PENDING-ARMS.md (+2/-0, one ledger row -- edited in place across both commits since it was
+    never pushed before the correction, not two separate rows), brief.yml (130 lines,
+    corrected). No existing file touched.
+  behaviour_change: >-
+    This adapter has never successfully adapted any row, in either commit version that reached
+    origin: the FIRST commit (060d23051) constructed a full OperationalReceipt with a
+    synthesized execution_attempt_ref -- that version was never pushed and is not part of this
+    diff's history as seen by origin/main; only the corrected, unconditional-rejection version
+    (37c02f485) is what this PR actually ships. Every ops_receipts row this adapter is given,
+    however well-formed, is rejected, citing the architectural blocker (no real ExecutionAttempt
+    object is constructible in this deliverable, and execution.result -- the only v1
+    receipt_type ops_receipts can express -- requires one). Row-level validity checks (pairing,
+    sibling-item admissibility, terminal status, clock skew) still run first and produce their
+    own distinct rejection reasons when they are what actually fails.
+receipts:
+  - claim: "Base SHA re-measured fresh in this session, not copied from any document/prompt"
+    cmd: "git fetch origin main && git rev-parse origin/main"
+    exit: 0
+    ts: "2026-08-24T09:50:00Z"
+    seat: "session (pro)"
+  - claim:
+      "This branch's merge-base with origin/main is the merge-queue selftest correction
+      PR's own merge commit (0545d251d), the last ledger-touching PR before this lane's slices"
+    cmd: "git merge-base HEAD origin/main"
+    exit: 0
+    ts: "2026-08-24T09:50:10Z"
+    seat: "session (pro)"
+  - claim:
+      "Diff against merge-base is +383/-0 across exactly 4 files (final state only, the
+      superseded first-commit construction code does not appear in this diff), zero existing
+      file touched"
+    cmd: "git diff --numstat $(git merge-base HEAD origin/main)..HEAD"
+    exit: 0
+    ts: "2026-08-24T09:51:00Z"
+    seat: "session (pro)"
+  - claim:
+      "Full research_os test suite (19 tests: 8 in this file + all pre-existing sibling
+      adapter tests) passes after the correction commit, exit 0"
+    cmd: "PYTHONPATH=. pytest backend/tests/services/research_os/ -q --no-header"
+    exit: 0
+    ts: "2026-08-24T09:52:00Z"
+    seat: "session (pro)"
+  - claim: "ruff check and ruff format --check both pass clean on both touched files"
+    cmd: "ruff check backend/services/research_os/operational_receipt_adapter.py backend/tests/services/research_os/test_operational_receipt_adapter.py && ruff format --check <same 2 files>"
+    exit: 0
+    ts: "2026-08-24T09:53:00Z"
+    seat: "session (pro)"
+  - claim:
+      "Evidence directory slug matches scripts/ci/evidence_paths.py's own computation for
+      this exact branch ref, not hand-typed"
+    cmd: "python3 scripts/ci/evidence_paths.py --ref agent/nuzantara/backend-rag/ros-v1-p04-d3-slice3a-operational-receipt --json"
+    exit: 0
+    ts: "2026-08-24T09:54:00Z"
+    seat: "session (pro)"
+  - claim:
+      "Neither touched/new file matches any of the 15 HOTZONE_PATTERNS -- floor stays 1
+      (Gear-2), verified programmatically against the lint script's own pattern list"
+    cmd: 'python3 -c "import re,sys; sys.path.insert(0,''../../scripts''); from evidence_pack_lint import HOTZONE_PATTERNS; [print(f, [p for p in HOTZONE_PATTERNS if re.search(p,f)] or ''no match'') for f in [''apps/backend-rag/backend/services/research_os/operational_receipt_adapter.py'',''apps/backend-rag/backend/tests/services/research_os/test_operational_receipt_adapter.py'']]"'
+    exit: 0
+    ts: "2026-08-24T09:55:00Z"
+    seat: "session (pro)"
+  - claim:
+      "The corrected PENDING-ARMS.md row (edited in place, since the original was never
+      pushed) parses cleanly, zero PHANTOM-OPERATOR/MALFORMED introduced"
+    cmd: "python3 scripts/pending_arms_report.py --strict-phantom"
+    exit: 0
+    ts: "2026-08-24T09:56:00Z"
+    seat: "session (pro)"
+  - claim:
+      "operational_receipt.py read in full (298 lines) to independently re-verify every
+      fact team-lead's correction cited before implementing the fix -- not applied on citation
+      alone: EXECUTION_ATTEMPT_CAPABLE_RECEIPT_TYPES has exactly one member (lines 101-103),
+      execution.result requires execution_attempt_ref (lines 170-175), close_execution_attempt
+      compares against a real ExecutionAttempt object (lines 224-249), and the 2026-08-23
+      revision comment recording the prior Kimi K3 blocklist-break incident (lines 84-100) all
+      read verbatim, matching team-lead's citations exactly"
+    cmd: "cat -n packages/research-os-core/research_os/models/operational_receipt.py"
+    exit: 0
+    ts: "2026-08-24T09:20:00Z"
+    seat: "session (pro)"
+  - claim: "Zero non-test consumer of operational_receipt_adapter anywhere in the repo"
+    cmd: "grep -rln 'operational_receipt_adapter' --include='*.py' apps/backend-rag/backend/ | grep -v test_operational_receipt_adapter; grep -rln 'from backend.services.research_os.operational_receipt_adapter import\\|from backend.services.research_os import operational_receipt_adapter' --include='*.py' apps/backend-rag/backend/ | grep -v test_operational_receipt_adapter"
+    exit: 1
+    ts: "2026-08-24T09:57:00Z"
+    seat: "session (pro), via a dispatched subagent"
+    # exit 1 on both greps (bare-name and precise-import) = zero hits, confirmed by direct
+    # command output, not assumed.
+tests:
+  - "backend/tests/services/research_os/test_operational_receipt_adapter.py -- 8 tests, all
+    exercising the CORRECTED unconditional-rejection design: every valid-shaped row is
+    rejected citing the architectural blocker (test_every_row_is_rejected_pending_the_s9_c0
+    _freeze_change_ruling), the blocker reason names execution_attempt_ref and S9-C0
+    specifically (test_rejection_reason_names_the_architectural_blocker), each row-level
+    validity check produces its OWN distinct rejection reason rather than collapsing into the
+    generic blocked-reason (mismatched pairing, parent-row rejection propagated from the
+    sibling ActionItem adapter, non-terminal status, clock skew -- 4 tests), every one of the
+    four terminal statuses still reaches the architectural block rather than an unrelated
+    earlier rejection (test_every_terminal_status_still_hits_the_architectural_block), and the
+    loss-report completeness guard itself is guilt-verified (truncating one field's report
+    entry is caught, not silently accepted)."
+  - "backend/tests/services/research_os/ (full suite, 19 tests including sibling ActionItem
+    adapter + the AST extensions-invariant test) -- exit 0."
+static:
+  - "ruff check: 0 issues on both touched files."
+  - "ruff format: 1 file reformatted by a prior subagent pass (a long function signature
+    line-wrapped), 0 issues after -- re-verified clean, not assumed."
+runtime_proof:
+  - >-
+    No live consumer (zero non-test consumers repo-wide, receipt above) and, by design, no
+    successful construction either: this adapter's "functional proof" is that it correctly
+    REFUSES to construct anything from any input, rather than a round-trip demonstration of a
+    working adapter. The 4 row-level-check tests prove those checks still fire independently
+    and correctly BEFORE the universal architectural rejection, which is the only thing this
+    adapter can currently do for any row that passes them.
+dissent:
+  - seat: "team-lead"
+    objection: "This lane's own resolution -- 'execution_attempt_ref is a bare
+      {execution_attempt_id, object_hash} pointer, not the full ExecutionAttempt object, so
+      synthesizing it is fine, same as other SYNTHESIZED_UNBACKED refs elsewhere in this
+      deliverable' -- is wrong. operational_receipt.py:170-175 makes execution_attempt_ref
+      MANDATORY for receipt_type='execution.result' (the only v1 receipt_type ops_receipts can
+      express), operational_receipt.py:101-103's EXECUTION_ATTEMPT_CAPABLE_RECEIPT_TYPES has
+      exactly one member so no other receipt_type may carry it either, and
+      close_execution_attempt() (operational_receipt.py:224-249) compares the ref against a
+      REAL ExecutionAttempt object -- a synthesized ref can never match an object that was
+      never constructed, making every receipt this adapter produced PERMANENTLY unclosable.
+      This is precisely the failure shape a 2026-08-23 revision to this same file was hardened
+      against, after a prior Kimi K3 review broke an earlier blocklist-shaped guard the same
+      way on an unregistered receipt_type."
+    status: CONFIRMED
+    # Outcome: FIXED. Every claim independently re-verified against operational_receipt.py
+    # directly (receipt above) before any code change was made. adapt_ops_receipt_to_
+    # operational_receipt rewritten to unconditionally reject rather than construct. The
+    # general rule this establishes (shared with the sibling ExecutionAttempt-exclusion
+    # PENDING-ARMS row on the slice-2 PR): SYNTHESIZED_UNBACKED is legitimate for descriptive
+    # fields and banned for authorization/closure-bearing ones, regardless of whether the
+    # field is mechanically "just a bare pointer."
+lanes:
+  - lane: "p04-d3-magazine-action-chain-adapters-slice3a-operational-receipt"
+    role: build
+    seat: "claude-sonnet-5"
+  - lane: "p04-d3-magazine-action-chain-adapters-slice3a-architecture-review"
+    role: review
+    seat: "team-lead"
+residual_risks:
+  - >-
+    This adapter adapts ZERO rows successfully, by design, until an S9-C0 freeze-change ruling
+    lands (see PENDING-ARMS.md row). It is NOT a working OperationalReceipt adapter for
+    Magazine as of this PR -- the value shipped is the row-level validity checks (reusable once
+    unblocked) and a structural, tested refusal that prevents reintroducing the unsafe
+    synthesized-ref form. No downstream consumer (slice 3b's shadow/parity probe, or any future
+    persistence work) should assume this adapter can produce output.
+  - >-
+    The PENDING-ARMS.md row this PR carries is a hard architectural blocker, not routine
+    disclosed-placeholder debt -- flagged explicitly in brief.yml's risks section so it is not
+    mistaken for an ordinary "ship with a caveat" row.
+sources:
+  - "operational_receipt.py, read in full (298 lines) this session to independently
+    re-verify team-lead's cited facts before implementing the fix."
+  - "The prior version of this adapter (commit 060d23051, corrected by 37c02f485 -- never
+    pushed to origin, so no public trace of the unsafe version exists on the remote)."
+  - "The sibling slice-2 PENDING-ARMS row (ExecutionAttempt exclusion, PR #4774) documenting
+    the same general rule (SYNTHESIZED_UNBACKED legitimate for descriptive fields, banned for
+    authorization-bearing ones) from an independent angle (a full ExecutionAttempt object
+    vs. this file's bare ref)."
+pii_scan: clean
+size_tokens: 1900

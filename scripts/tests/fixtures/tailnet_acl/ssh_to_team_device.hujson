@@ -1,0 +1,12 @@
+// GUILT (grader round 1, HIGH): the first guard claimed SSH must never reach a team device and
+// then never inspected the ssh `dst` at all.
+// SHELL-ROUTE: /term -> 127.0.0.1:7681 is ttyd -W zsh.
+{
+  "hosts": {"pro": "100.107.22.111", "m5": "100.110.186.116", "mini": "100.93.236.6"},
+  "tagOwners": {"tag:team-device": ["autogroup:admin"]},
+  "acls": [],
+  "ssh": [
+    {"action": "accept", "src": ["autogroup:member"], "dst": ["tag:team-device"], "users": ["autogroup:nonroot"]}
+  ],
+  "tests": [{"src": "tag:team-device", "deny": ["pro:443"]}]
+}

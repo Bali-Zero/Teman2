@@ -322,7 +322,7 @@
       "b": {
         "title": "Jalur B — Properti",
         "amount": "USD 1.000.000",
-        "body": "Properti strata-title yang sudah selesai dibangun (hak milik atas satuan rumah susun) senilai minimal USD 1.000.000.",
+        "body": "Unit rumah susun atau apartemen yang sudah selesai dibangun dengan nilai minimal USD 1.000.000.",
         "note": "Hanya strata-title yang sudah selesai — pembelian off-plan dan leasehold tidak memenuhi syarat."
       }
     },
@@ -383,7 +383,7 @@
       "q1": "Apa itu Visa Second Home E33 Indonesia?",
       "a1": "Visa Second Home E33 adalah izin tinggal jangka panjang bagi pemohon dengan kondisi finansial mapan. Izin pertama hingga 5 tahun dan dapat diperpanjang, dengan batas kumulatif 10 tahun. Ini murni izin tinggal dan tidak memberikan hak bekerja di Indonesia.",
       "q2": "Bagaimana cara memenuhi syarat Visa Second Home?",
-      "a2": "Dua jalur kualifikasi: deposito USD 130.000 atas nama Anda sendiri di bank BUMN Indonesia, atau properti strata-title yang sudah selesai dibangun senilai USD 1.000.000 (hak milik atas satuan rumah susun). Properti off-plan dan leasehold tidak memenuhi syarat.",
+      "a2": "Dua jalur kualifikasi: deposito USD 130.000 atas nama Anda sendiri di bank BUMN Indonesia, atau unit rumah susun atau apartemen yang sudah selesai dibangun senilai USD 1.000.000. Properti off-plan dan leasehold tidak memenuhi syarat.",
       "q3": "Apakah saya bisa bekerja di Indonesia dengan Visa Second Home?",
       "a3": "Tidak. E33 hanyalah izin tinggal — tidak memberikan hak bekerja. Pekerjaan berbayar di Indonesia memerlukan izin kerja/KITAS terpisah.",
       "q4": "Apakah ada opsi senior untuk Visa Second Home?",
@@ -394,10 +394,10 @@
       "a6": "{{price}} all-inclusive untuk E33 dasar — satu angka, semua sudah termasuk. Fit memo untuk menilai jalur Anda gratis."
     },
     "cta": {
+      "fitCheck": "Mulai fit-check",
       "title": "Mulai dengan fit memo gratis",
       "body": "Ceritakan situasi Anda di WhatsApp. Kami balas dengan penilaian jujur: jalur mana yang cocok, bukti apa yang Anda perlukan, dan harga pasti untuk kasus Anda. Tanpa kewajiban.",
-      "button": "Dapatkan Fit Memo gratis →",
-      "note": "Balasan pertama di WhatsApp biasanya kurang dari 5 jam."
+      "button": "Dapatkan Fit Memo gratis →"
     }
   }
 }

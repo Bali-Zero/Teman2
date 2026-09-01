@@ -63,6 +63,18 @@
 /scripts/ci/impact_map.py                             @Balizero1987
 /scripts/ci/test_impact_map.py                        @Balizero1987
 
+# Backend-test shard partitioner (tests.yml `backend-shard` + the
+# `Backend Tests (Python)` fan-in, S11 2026-08-23) — SAME trust boundary,
+# and the reason it is here is a refuter finding, not symmetry: this module
+# decides which test modules exist and who owns each one, so a PR that
+# widened its EXCLUDED_DIRS (or narrowed _is_test_file) would make the shards
+# AND the partition guard agree on a shrunken corpus, and the required
+# context would go green with tests silently dropped. The fan-in extracts it
+# from BASE_SHA and adjudicates with the trusted copy; this entry is the
+# defense in depth alongside that.
+/scripts/ci/shard_tests.py                            @Balizero1987
+/scripts/ci/test_shard_tests.py                       @Balizero1987
+
 # Ring-gating manual kill-switch (Merge-OS v2 round-2 Cure #1, adapted
 # 2026-08-18) — sits in the same trust boundary as the classifier files
 # above: a PR that neuters this script's ability to force the full suite
@@ -78,6 +90,14 @@
 # by editing THIS file's rules directly, leaving change_map.py untouched.
 /scripts/ci/security_gate_flags.py                   @Balizero1987
 /scripts/ci/test_security_gate_flags.py              @Balizero1987
+
+# Gear-3 council-journal staging (harness-floor.yml's pack-lint step, 2026-08-29) — added on a
+# refuter finding (codex-gpt-5.6-sol, HIGH), not by symmetry: harness-floor.yml runs this helper
+# from the BASE checkout, which makes it trusted decision code that a PR's own run never executes
+# its own copy of. Without this entry a change to it would be judged only after merge, by which
+# point it is already the thing deciding whether R9 sees a council journal at all.
+/scripts/ci/stage_council_journal.py                 @Balizero1987
+/scripts/tests/test_stage_council_journal.py         @Balizero1987
 
 # ---------------------------------------------------------------------------
 # Deploy / infra config — TIER 1

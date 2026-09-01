@@ -565,13 +565,56 @@ async def test_cli_refresh_with_persist_target_succeeds(clean_env, tmp_path):
 
 @pytest.mark.asyncio
 async def test_cli_fresh_state_exits_zero_without_network(clean_env, tmp_path):
+    """INNOCENCE: 50 days left → exit 0 and no network call.
+
+    `now=NOW` is load-bearing, not decoration. `_state` writes an expiry
+    relative to the FROZEN NOW (2026-07-13), so without a pinned clock this
+    test asked production — which reads the wall clock — whether an expiry of
+    2026-09-01 was more than 7 days away. It was, for 43 days. On 2026-08-25
+    it stopped being, the CLI refreshed, found no IG_TOKEN_ENV_FILE, exited 2,
+    and this test went red on a commit nobody had touched — taking a merge
+    queue entry down with it. Every sibling in this file already pinned the
+    clock via run_watchdog(now=NOW); this one could not, because run_from_env
+    did not forward `now`. Now it does.
+    """
     state_file = _state(tmp_path, days_left=50)
     clean_env.setenv("IG_LONG_LIVED_TOKEN", FAKE_TOKEN)
     clean_env.setenv("IG_TOKEN_STATE_FILE", str(state_file))
     handler = GraphHandler()
     async with _client(handler) as client:
-        assert await run_from_env(http_client=client) == 0
+        assert await run_from_env(http_client=client, now=NOW) == 0
     assert handler.ig_refresh_calls == 0
+
+
+@pytest.mark.asyncio
+async def test_cli_injected_clock_governs_not_the_real_clock(clean_env, tmp_path):
+    """GUARD: proves the `now` forwarding in `run_from_env` is load-bearing.
+
+    The sibling above pins the clock, but it would still pass if someone
+    dropped the `now=now` forwarding inside `run_from_env` — production would
+    fall back to the wall clock and, for a window of days around the fixture's
+    expiry, agree by coincidence. That is the same coincidence that armed W129
+    in the first place, so pinning alone is not a cure, only a reset of the
+    countdown.
+
+    This test cannot agree by coincidence: the SAME 50-day fixture must read
+    fresh at one injected instant and stale at another. No wall clock can
+    satisfy both in one run, so a broken forwarding fails here on any calendar
+    day rather than waiting for one.
+    """
+    state_file = _state(tmp_path, days_left=50)
+    clean_env.setenv("IG_LONG_LIVED_TOKEN", FAKE_TOKEN)
+    clean_env.setenv("IG_TOKEN_STATE_FILE", str(state_file))
+
+    handler_fresh = GraphHandler()
+    async with _client(handler_fresh) as client:
+        assert await run_from_env(http_client=client, now=NOW + timedelta(days=1)) == 0
+    assert handler_fresh.ig_refresh_calls == 0
+
+    handler_stale = GraphHandler()
+    async with _client(handler_stale) as client:
+        assert await run_from_env(http_client=client, now=NOW + timedelta(days=365)) == 2
+    assert handler_stale.ig_refresh_calls == 1
 
 
 @pytest.mark.asyncio

@@ -51,24 +51,42 @@ from scripts.detect_secrets_auto_triage import CONTENT_KEYED_RULES, classify, tr
 CHECK_WORKER_PLANE_REVIEW = "scripts/check_worker_plane_review.py"
 LAUNCH_WORKER_PLANE_REVIEW_PANEL = "scripts/launch_worker_plane_review_panel.py"
 
-# Line numbers re-verified against the actual files on disk 2026-08-22 (the
-# exact 18 findings `Detect Secrets` flagged on PR #3127).
-CHECK_WORKER_PLANE_REVIEW_PIN_LINES = [185, 186, 196, 197]
+# Line numbers re-verified against the actual files on disk 2026-08-29.
+#
+# THESE ARE INDEX ANCHORS AND THEY DRIFT. Any edit that inserts lines ABOVE a
+# pin moves it, and the test then fails on a file nobody broke: a docstring
+# correction in launch_worker_plane_review_panel.py shifted all 14 launcher
+# pins by +15 and turned this suite red. Eliminating index-anchored
+# CONTENT_KEYED_RULES tests is tracked separately (PR #4664); until that lands,
+# the completeness assertions below are what keeps a drift LOUD — without them
+# a shifted pin either fails with no explanation, or silently stops being
+# covered.
+#
+# The validator's list was ALSO stale, independently of that shift: two pins
+# added at 207/208 were never added here, so this suite has been covering 4 of
+# its 6 for an unknown time, passing the whole while — because "these lines are
+# approved" does not notice a line it was never told about. Hence the counts.
+CHECK_WORKER_PLANE_REVIEW_PIN_LINES = [185, 186, 196, 197, 207, 208]
+# Re-derived 2026-08-29 (SECOND time in this PR) by asking the classifier which
+# lines it approves — never by adding an offset to the previous list by hand.
+# A hand-shifted list is a list that was never checked; and this PR shifted
+# these lines twice, once per docstring edit, which is the whole argument for
+# eliminating index anchoring (tracked in PR #4664, not here).
 LAUNCH_WORKER_PLANE_REVIEW_PANEL_PIN_LINES = [
-    210,
-    211,
-    222,
-    223,
-    238,
-    239,
-    248,
-    249,
-    260,
-    261,
+    234,
+    235,
+    246,
+    247,
+    262,
+    263,
+    272,
     273,
-    274,
     284,
     285,
+    297,
+    298,
+    308,
+    309,
 ]
 
 
@@ -104,9 +122,37 @@ def test_guilt_production_artifact_sha256_dict_members_approved() -> None:
     don't say sha256=/cdhash= on their own line — they are the two findings
     a rule keyed ONLY on the literal names `sha256`/`cdhash` would have
     missed, which is why those two names are also in the content pattern."""
-    for line in (284, 285):
+    for line in LAUNCH_WORKER_PLANE_REVIEW_PANEL_PIN_LINES[-2:]:
         auto, _reason = classify(LAUNCH_WORKER_PLANE_REVIEW_PANEL, line)
         assert auto, f"{LAUNCH_WORKER_PLANE_REVIEW_PANEL}:{line} should be auto-approved"
+
+
+def _approved_lines(path: str) -> list[int]:
+    """Every line the classifier auto-approves in `path`, found by asking it."""
+    total = len(Path(path).read_text(encoding="utf-8").splitlines())
+    return [n for n in range(1, total + 1) if classify(path, n)[0]]
+
+
+def test_pin_line_lists_are_COMPLETE_not_merely_correct() -> None:
+    """The lists above must name EVERY approved line, not just some of them.
+
+    Without this, the suite degrades in silence twice over: a pin that drifts
+    out of the list stops being covered, and a pin added later never enters it
+    — which is exactly what happened to check_worker_plane_review.py's 207/208.
+    Asserting the set, not a subset, turns both into a red with a message that
+    says which lines to write down.
+    """
+    for path, pinned in (
+        (LAUNCH_WORKER_PLANE_REVIEW_PANEL, LAUNCH_WORKER_PLANE_REVIEW_PANEL_PIN_LINES),
+        (CHECK_WORKER_PLANE_REVIEW, CHECK_WORKER_PLANE_REVIEW_PIN_LINES),
+    ):
+        actual = _approved_lines(path)
+        assert actual == sorted(pinned), (
+            f"{path}: the classifier auto-approves {actual}, but this file pins "
+            f"{sorted(pinned)}. If lines were inserted above a pin, re-derive the "
+            "list (do not hand-shift it); if a pin was added or removed, say so "
+            "here — a list that is merely a SUBSET covers less than it claims."
+        )
 
 
 # --- INNOCENCE: unrelated lines/files must stay flagged --------------------
@@ -214,6 +260,41 @@ KBLI_GOLD_SENTENCE_SHA256_REAL_LINES = [
 ]
 
 
+def _find_content_keyed_rule(
+    reason_substring: str,
+) -> tuple[re.Pattern[str], re.Pattern[str], str]:
+    """Locate one CONTENT_KEYED_RULES entry by a substring unique to its
+    reason string, rather than by list position.
+
+    2026-08-23: three tests in this file indexed into CONTENT_KEYED_RULES
+    positionally (CONTENT_KEYED_RULES[1]/[13]/[14]) instead of by identity.
+    detect_secrets_auto_triage.py's own header comment above the list
+    documents why the list had become append-only-by-convention: "inserting
+    a rule mid-list shifts every later index and breaks the per-rule
+    registration tests (measured the hard way 2026-08-21: 8 red from one
+    mid-list insert)." That is the index-anchoring naming the symptom, not
+    a reason the list itself needs positional stability — nothing in
+    classify()'s matching loop depends on order for correctness (it returns
+    on first content+path match; two rules covering the same file+line
+    would only change WHICH reason string is reported, never whether the
+    line is approved). Looking a rule up by what makes it unique — a
+    substring of its own reason — removes the coupling instead of
+    documenting around it: a rule can be inserted anywhere in the list
+    without touching this file.
+
+    Fails loudly on zero or more than one match rather than silently
+    returning the wrong rule — a lookup that can return the wrong entry
+    without raising is not an improvement on the index it replaces.
+    """
+    matches = [rule for rule in CONTENT_KEYED_RULES if reason_substring in rule[2]]
+    assert len(matches) == 1, (
+        f"expected exactly 1 CONTENT_KEYED_RULES entry with reason containing "
+        f"{reason_substring!r}, found {len(matches)}: "
+        f"{[rule[2] for rule in matches] if matches else [rule[2] for rule in CONTENT_KEYED_RULES]}"
+    )
+    return matches[0]
+
+
 def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     """Sanity: the KBLI gold-set rule is path-scoped to kbli-gold-all.json
     only — not the other KBLI files, which stay on the closed-writer-set
@@ -228,12 +309,13 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     #
     # 2026-08-21: this branch (#4498) independently added the p2b_score.json
     # rule, but #4422 landed it on main first via a different path — same
-    # rule, registered once, not twice. The count below (15) and the comment
+    # rule, registered once, not twice. The count below (22 as of 2026-08-31)
+    # and the comment
     # trail are derived from the live registry post-merge, not summed by
     # hand (team-lead's call: a rule appears once in the trail regardless of
     # how many PRs tried to add it).
-    assert len(CONTENT_KEYED_RULES) == 15, (
-        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 15. "
+    assert len(CONTENT_KEYED_RULES) == 22, (
+        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 22. "
         "If you just ADDED a rule: bump this number AND append a `# +1: <what> "
         "(<date>, PR #NNNN)` line below, matching the existing trail's format — "
         "that comment IS the audit record this assert exists to force. "
@@ -244,13 +326,28 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # +1: apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver.py public_key (2026-08-13)
     # +1: research/visa/2026-08-12-gold-replay-live-report.json payload_sha256 (2026-08-13)
     # +1: scripts/kbli_bench/results/p2b_score.json corpus_sha256 (2026-08-21, #4422 via main merge)
-    # +2: scripts/lint_google_oauth_credentials.py KNOWN_COMPROMISED fingerprints + selftest fragment (2026-08-21, appended last — this list is positionally indexed)
+    # +2: scripts/lint_google_oauth_credentials.py KNOWN_COMPROMISED fingerprints + selftest fragment (2026-08-21)
     # +1: scripts/lint_telegram_tokens.py KNOWN_COMPROMISED sha256[:16] key (2026-08-14)
     # +1: traffic-source fail-closed proof identity/integrity anchors (2026-08-15)
     # +1: fold_pack_seq10.py seq-9 chain anchor exact-value pin (2026-08-19)
     # +1: fold_pack_seq11.py seq-10 chain anchor exact-value pin (2026-08-20)
     # +1: fold_pack_seq12.py seq-11 chain anchor exact-value pin (2026-08-20)
-    path_pat, _content_pat, reason = CONTENT_KEYED_RULES[1]
+    # +1: fold_pack_seq13_rules.py seq-12 chain anchor exact-value pin (2026-08-23, #4660)
+    # +1: fold_pack_seq13_source.py seq-12 chain anchor exact-value pin (2026-08-23, #4667)
+    # +1: research/visa/doctrine-factory/e5/inc8-pack-edits/d12-active-stay-permit-rule-and-source.json content_sha256 (2026-08-24, #4719)
+    # +1: fold_pack_seq14.py seq-13 chain anchor exact-value pin (2026-08-24, #4797)
+    # +1: evidence/<month>/<slug>/pack.yml diff.measured_at git SHA (2026-08-27, #5054)
+    # +1: fold_pack_seq17.py seq-16 chain anchor exact-value pin (2026-08-30, #5311)
+    # +1: fold_pack_seq18.py seq-17 chain anchor exact-value pin (2026-08-31, #5333)
+    #
+    # Note (2026-08-23): "appended last" is no longer a constraint. It was
+    # true only because this test and the two Google-OAuth tests below
+    # indexed into the list positionally; all three now look their rule up
+    # by content instead (see _find_content_keyed_rule above), so a new
+    # rule may be inserted anywhere in CONTENT_KEYED_RULES without breaking
+    # a registration test. The count assert immediately above is unaffected
+    # by this - it counts entries, not positions, and stays deliberate.
+    path_pat, _content_pat, reason = _find_content_keyed_rule("KBLI gold-set")
     assert path_pat.search(KBLI_GOLD_ALL)
     assert not path_pat.search("apps/mouth/data/KBLI_2025_FINAL_CLEAN.json")
     assert not path_pat.search("data/kbli-filiera/some_manifest.json")
@@ -1246,14 +1343,254 @@ def test_innocence_fold_seq12_keyed_assignment_not_approved() -> None:
     assert content_pat.match(keyed_line) is None
 
 
+# ---------------------------------------------------------------------------
+# fold_pack_seq13_source.py — seq-12 chain anchor exact-value pin (2026-08-23, #4667)
+# ---------------------------------------------------------------------------
+# The seq-13 JOIN fold. Same value as fold_pack_seq13_rules.py's own rule
+# above (both chain off seq-12), in a DIFFERENT file — pins the anchor to
+# the exact value, in exactly this one path. Looked up by content (a
+# substring unique to its reason once file-qualified), not by list
+# position, per the 2026-08-23 policy note above: a new rule may be
+# inserted anywhere in CONTENT_KEYED_RULES without breaking a registration
+# test — this entry is itself an example, inserted between the seq12 and
+# p2b_score.json rules without touching any positional test in this file.
+
+FOLD_PACK_SEQ13_SOURCE = (
+    "apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq13_source.py"
+)
+FOLD_PACK_SEQ13_SOURCE_ANCHOR = (
+    "ff43d55e79e833a91820c4b68dd9ffdd086e7969b3b3a44dbd80747aa451406d"
+)
+
+
+def test_fold_seq13_source_rule_registered_and_scoped_to_exactly_one_file() -> None:
+    path_pat, _content_pat, reason = _find_content_keyed_rule(
+        "fold_pack_seq13_source.py: seq-12 chain anchor"
+    )
+    assert path_pat.search(FOLD_PACK_SEQ13_SOURCE)
+    assert not path_pat.search(FOLD_PACK_SEQ12)
+    assert not path_pat.search(
+        "apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq13_rules.py"
+    )
+    assert not path_pat.search(
+        "scripts/detect_secrets_auto_triage.py"
+    )
+    assert "credential" in reason
+
+
+def test_guilt_fold_seq13_source_real_finding_approved() -> None:
+    """The exact real line 218 in the fold script must be approved — read
+    live off disk, so this fails if the file and rule ever drift, not
+    merely if someone edits a string literal in this test."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq13_source.py: seq-12 chain anchor"
+    )
+    lines = Path(FOLD_PACK_SEQ13_SOURCE).read_text(encoding="utf-8").splitlines()
+    real_line = lines[217]  # line 218, 1-indexed
+    assert real_line == f'    "{FOLD_PACK_SEQ13_SOURCE_ANCHOR}"'
+    assert content_pat.match(real_line), f"should be approved: {real_line!r}"
+
+
+def test_innocence_fold_seq13_source_other_hex_value_not_approved() -> None:
+    """A DIFFERENT 64-hex bare string line must not be approved — proves the
+    rule is pinned to the exact anchor value, not merely to the shape."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq13_source.py: seq-12 chain anchor"
+    )
+    other_hex_line = '    "' + "a" * 64 + '"'
+    assert content_pat.match(other_hex_line) is None
+
+
+def test_innocence_fold_seq13_source_uppercase_not_approved() -> None:
+    """The same value uppercased must not be approved — the anchor is
+    lowercase hex, matching hashlib.hexdigest's own output."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq13_source.py: seq-12 chain anchor"
+    )
+    uppercase_line = f'    "{FOLD_PACK_SEQ13_SOURCE_ANCHOR.upper()}"'
+    assert content_pat.match(uppercase_line) is None
+
+
+def test_innocence_fold_seq13_source_ride_along_statement_not_approved() -> None:
+    """The value followed by a second statement or token on the same line
+    must not launder the ride-along — end-anchored, same discipline as every
+    other rule in this list."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq13_source.py: seq-12 chain anchor"
+    )
+    for compound in (
+        f'    "{FOLD_PACK_SEQ13_SOURCE_ANCHOR}"; import os',
+        f'    "{FOLD_PACK_SEQ13_SOURCE_ANCHOR}" "second_token"',
+    ):
+        assert content_pat.match(compound) is None, f"must NOT be approved: {compound!r}"
+
+
+def test_innocence_fold_seq13_source_keyed_assignment_not_approved() -> None:
+    """A JSON-style keyed line carrying the same value must not be approved —
+    the rule approves only the bare continuation-string shape of the
+    parenthesized assignment, never a `"key": "value"` shape."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq13_source.py: seq-12 chain anchor"
+    )
+    keyed_line = f'    "payload_sha256": "{FOLD_PACK_SEQ13_SOURCE_ANCHOR}",'
+    assert content_pat.match(keyed_line) is None
+
+
+def test_fold_seq13_source_rule_does_not_launder_via_seq13_rules_path() -> None:
+    """The two seq-13 chain-anchor rules share the identical anchor VALUE
+    (both fold scripts chain off seq-12) but must stay path-scoped: this
+    rule's path pattern must reject fold_pack_seq13_rules.py even though
+    the content pattern alone would match a line copy-pasted from it."""
+    path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq13_source.py: seq-12 chain anchor"
+    )
+    real_line = f'    "{FOLD_PACK_SEQ13_SOURCE_ANCHOR}"'
+    assert content_pat.match(real_line)  # content alone matches...
+    assert not path_pat.search(  # ...but path must not, for the sibling file
+        "apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq13_rules.py"
+    )
+
+
+FOLD_PACK_SEQ14 = "apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq14.py"
+FOLD_PACK_SEQ14_ANCHOR = (
+    "b9edb809930ab486e49a4af7804fbae7f072caa3b6459b78a94ecb7f6bfe14f8"
+)
+
+
+def test_fold_seq14_rule_registered_and_scoped_to_exactly_one_file() -> None:
+    path_pat, _content_pat, reason = _find_content_keyed_rule(
+        "fold_pack_seq14.py: seq-13 chain anchor"
+    )
+    assert path_pat.search(FOLD_PACK_SEQ14)
+    assert not path_pat.search(FOLD_PACK_SEQ13_SOURCE)
+    assert not path_pat.search("scripts/fold_pack_seq14.py")
+    assert "credential" in reason
+
+
+def test_guilt_fold_seq14_real_finding_approved() -> None:
+    """The exact real anchor line must be approved from the live fold file."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq14.py: seq-13 chain anchor"
+    )
+    matching_lines = [
+        line
+        for line in Path(FOLD_PACK_SEQ14).read_text(encoding="utf-8").splitlines()
+        if FOLD_PACK_SEQ14_ANCHOR in line
+    ]
+    assert matching_lines == [f'    "{FOLD_PACK_SEQ14_ANCHOR}"']
+    assert content_pat.match(matching_lines[0])
+
+
+def test_innocence_fold_seq14_other_hex_value_not_approved() -> None:
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq14.py: seq-13 chain anchor"
+    )
+    assert content_pat.match('    "' + "a" * 64 + '"') is None
+
+
+def test_innocence_fold_seq14_uppercase_not_approved() -> None:
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq14.py: seq-13 chain anchor"
+    )
+    assert content_pat.match(f'    "{FOLD_PACK_SEQ14_ANCHOR.upper()}"') is None
+
+
+def test_innocence_fold_seq14_ride_along_statement_not_approved() -> None:
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq14.py: seq-13 chain anchor"
+    )
+    for compound in (
+        f'    "{FOLD_PACK_SEQ14_ANCHOR}"; import os',
+        f'    "{FOLD_PACK_SEQ14_ANCHOR}" "second_token"',
+    ):
+        assert content_pat.match(compound) is None
+
+
+def test_innocence_fold_seq14_keyed_assignment_not_approved() -> None:
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "fold_pack_seq14.py: seq-13 chain anchor"
+    )
+    keyed_line = f'    "payload_sha256": "{FOLD_PACK_SEQ14_ANCHOR}",'
+    assert content_pat.match(keyed_line) is None
+
+
+FOLD_PACK_SEQ17 = "apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq17.py"
+FOLD_PACK_SEQ17_ANCHOR = (
+    "ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100"
+)
+
+
+def test_fold_seq17_rule_is_exact_and_rejects_ride_alongs() -> None:
+    path_pat, content_pat, reason = _find_content_keyed_rule(
+        "fold_pack_seq17.py: seq-16 chain anchor"
+    )
+    real_line = f'SEQ16_PAYLOAD_SHA256 = "{FOLD_PACK_SEQ17_ANCHOR}"'
+    matching_lines = [
+        line
+        for line in Path(FOLD_PACK_SEQ17).read_text(encoding="utf-8").splitlines()
+        if FOLD_PACK_SEQ17_ANCHOR in line
+    ]
+
+    assert path_pat.search(FOLD_PACK_SEQ17)
+    assert not path_pat.search(FOLD_PACK_SEQ14)
+    assert matching_lines == [real_line]
+    assert content_pat.match(real_line)
+    assert content_pat.match('SEQ16_PAYLOAD_SHA256 = "' + "a" * 64 + '"') is None
+    assert content_pat.match(f'API_KEY = "{FOLD_PACK_SEQ17_ANCHOR}"') is None
+    assert content_pat.match(f'{real_line}; API_KEY = "real-secret"') is None
+    assert "credential" in reason
+
+
+FOLD_PACK_SEQ18 = "apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq18.py"
+FOLD_PACK_SEQ18_ANCHOR = (
+    "97cb964780b114a2fa936230055327102a5af59efb010b6bf04090bb7321890b"
+)
+
+
+def test_fold_seq18_rule_is_exact_and_rejects_ride_alongs() -> None:
+    """Same contract seq-17 gets, for the same reason.
+
+    The count assert above proves a rule was ADDED and named; it says nothing
+    about whether the rule is tight. Only this shape does — and adversarial
+    review of the seq-18 PR pointed out that seq-17 had it and seq-18 did not.
+    """
+    path_pat, content_pat, reason = _find_content_keyed_rule(
+        "fold_pack_seq18.py: seq-17 chain anchor"
+    )
+    real_line = f'SEQ17_PAYLOAD_SHA256 = "{FOLD_PACK_SEQ18_ANCHOR}"'
+    matching_lines = [
+        line
+        for line in Path(FOLD_PACK_SEQ18).read_text(encoding="utf-8").splitlines()
+        if FOLD_PACK_SEQ18_ANCHOR in line
+    ]
+
+    assert path_pat.search(FOLD_PACK_SEQ18)
+    # Scoped to THIS fold — the sibling that legitimately holds the same digest
+    # as its own OUTPUT must not be forgiven by this rule.
+    assert not path_pat.search(FOLD_PACK_SEQ17)
+    assert not path_pat.search(FOLD_PACK_SEQ14)
+    assert matching_lines == [real_line]
+    assert content_pat.match(real_line)
+    assert content_pat.match('SEQ17_PAYLOAD_SHA256 = "' + "a" * 64 + '"') is None
+    assert content_pat.match(f'API_KEY = "{FOLD_PACK_SEQ18_ANCHOR}"') is None
+    assert content_pat.match(f'SEQ17_PAYLOAD_SHA256_OTHER = "{FOLD_PACK_SEQ18_ANCHOR}"') is None
+    assert content_pat.match(f'{real_line}; API_KEY = "real-secret"') is None
+    assert "credential" in reason
+
+
 GOOGLE_OAUTH_LINT = "scripts/lint_google_oauth_credentials.py"
 
 
 def test_google_oauth_known_compromised_rule_registered() -> None:
-    """Appended-last rule (this list is positionally indexed): approves only
-    the 16-hex dict-key lines carrying the exact 2026-08-21 publication
-    marker, only in the OAuth guard's own file."""
-    path_pat, content_pat, reason = CONTENT_KEYED_RULES[13]
+    """Looks its rule up by content (a substring unique to its reason), not
+    by list position (2026-08-23 - previously CONTENT_KEYED_RULES[13], the
+    exact positional coupling s13-rules' mid-list insert broke elsewhere in
+    this file the same day). Approves only the 16-hex dict-key lines
+    carrying the exact 2026-08-21 publication marker, only in the OAuth
+    guard's own file."""
+    path_pat, content_pat, reason = _find_content_keyed_rule(
+        "Google OAuth gate: KNOWN_COMPROMISED"
+    )
     assert path_pat.search(GOOGLE_OAUTH_LINT)
     assert not path_pat.search("scripts/lint_telegram_tokens.py")
     assert "never key material" in reason
@@ -1265,10 +1602,81 @@ def test_google_oauth_known_compromised_rule_registered() -> None:
 
 
 def test_google_oauth_selftest_fragment_rule_registered() -> None:
-    path_pat, content_pat, _reason = CONTENT_KEYED_RULES[14]
+    """Same content-based lookup as the test above, not by list position."""
+    path_pat, content_pat, _reason = _find_content_keyed_rule(
+        "OAuth guard selftest fixture fragment"
+    )
     assert path_pat.search(GOOGLE_OAUTH_LINT)
     frag = '    ref_body = "0c" + "defghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-abcd"'
     assert content_pat.match(frag)
     # A bare 64-char assignment without the ref_body assembly shape stays flagged.
     bare = '    token = "defghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-abcd"'
     assert content_pat.match(bare) is None
+
+
+# --- Evidence Pack diff.measured_at (2026-08-27, found live on PR #5054's own pack) ---
+
+EVIDENCE_PACK_MEASURED_AT_REASON = "Evidence Pack diff.measured_at"
+
+
+def test_evidence_pack_measured_at_rule_registered_and_scoped() -> None:
+    """Path-keyed to per-task pack.yml under evidence/<month>/<slug>/ only —
+    never brief.yml (untouched by this rule) and never a pack.yml sitting
+    directly at evidence/ root (the old fixed-path convention)."""
+    path_pat, _content_pat, reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_MEASURED_AT_REASON
+    )
+    assert path_pat.search(
+        "evidence/2026-08/agent-nuzantara-infra-pack-lint-seat-rules-0826-414c0166/pack.yml"
+    )
+    assert not path_pat.search("evidence/2026-08/some-slug/brief.yml")
+    assert not path_pat.search("evidence/pack.yml")
+    assert "credential" in reason
+
+
+def test_guilt_evidence_pack_measured_at_short_sha_approved() -> None:
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_MEASURED_AT_REASON
+    )
+    assert content_pat.match("  measured_at: 63bfa19ec")
+
+
+def test_guilt_evidence_pack_measured_at_full_sha_approved() -> None:
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_MEASURED_AT_REASON
+    )
+    assert content_pat.match("  measured_at: " + "a" * 40)
+
+
+def test_innocence_evidence_pack_measured_at_too_short_not_approved() -> None:
+    """Below 7 hex chars is not a git SHA prefix this repo's tooling ever
+    prints (git's own minimum abbreviation is 7) — stays flagged rather than
+    silently widening the approved shape."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_MEASURED_AT_REASON
+    )
+    assert content_pat.match("  measured_at: abc123") is None
+
+
+def test_innocence_evidence_pack_measured_at_uppercase_not_approved() -> None:
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_MEASURED_AT_REASON
+    )
+    assert content_pat.match("  measured_at: 63BFA19EC") is None
+
+
+def test_innocence_evidence_pack_measured_at_ride_along_not_approved() -> None:
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_MEASURED_AT_REASON
+    )
+    assert content_pat.match("  measured_at: 63bfa19ec  # extra trailing note") is None
+
+
+def test_innocence_evidence_pack_other_key_not_approved() -> None:
+    """A different key holding the same hex shape (e.g. a real secret
+    smuggled under an unrelated field on the SAME line_number in a future
+    edit) must not ride the measured_at name through."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        EVIDENCE_PACK_MEASURED_AT_REASON
+    )
+    assert content_pat.match("  api_key: 63bfa19ec") is None

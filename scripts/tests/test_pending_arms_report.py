@@ -247,6 +247,121 @@ def test_innocence_operator_word_only_in_proof_not_flagged(tmp_path):
     assert e.cls == par.CLASS_TECH_DEBT
 
 
+def test_innocence_negated_operator_disclaimer_is_not_phantom(tmp_path):
+    # Live 2026-08-30 (healer tick): owner text explicitly DENIES claiming an
+    # operator lane ("not operator-gated") — plain substring matching on
+    # "operator" cannot see the negation and misread this as a phantom claim.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | negated disclaimer artifact | step | "
+        "next BUILD session (repo-side; not operator-gated) | proof",
+    )
+    assert e.cls == par.CLASS_TECH_DEBT
+
+
+def test_guilt_negation_does_not_rescue_a_real_operator_tag(tmp_path):
+    # A negated aside elsewhere in the owner must NOT rescue a genuinely
+    # untagged/mis-tagged operator claim living alongside it.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | mixed negation artifact | step | "
+        "operator[vibes] (not operator-gated for the other half) | proof",
+    )
+    assert e.cls == par.CLASS_PHANTOM_OPERATOR
+
+
+def test_guilt_bare_operator_word_unaffected_by_negation_regex(tmp_path):
+    # Regression pin: bare "operator" (no "not" nearby) must still phantom.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | bare operator artifact | step | operator | proof",
+    )
+    assert e.cls == par.CLASS_PHANTOM_OPERATOR
+
+
+def test_innocence_negated_operator_with_hedge_words_is_not_phantom(tmp_path):
+    # Live 2026-08-30 (round 2): PR #5233's own PENDING-ARMS row — "NOT a bare
+    # operator" — was flagged PHANTOM-OPERATOR because the original
+    # NEGATED_OPERATOR_RE required "not" immediately adjacent to "operator"
+    # with zero words of slack, and "a bare" sits between them here. This
+    # pins the exact reported text (not a paraphrase) so the regression
+    # cannot silently reopen on a rewording of the fix.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-08-29 | pr5233 evidence pack artifact | step | "
+        "the independently-dispatched Gear-3 gate session (harness/fable-gate "
+        "poster) — NOT this implementer session, NOT a bare operator | proof",
+    )
+    assert e.cls == par.CLASS_TECH_DEBT
+
+
+def test_guilt_negated_operator_with_wide_gap_still_phantom(tmp_path):
+    # The hedge-word gap is a small CLOSED vocabulary, not an open wildcard:
+    # an unrelated "not" several ordinary words upstream of a genuinely bare
+    # "operator" must NOT rescue it — that would be the exact over-correction
+    # the fix was warned against (a fix that lets real phantom rows through
+    # is worse than the false positive it replaces).
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | wide gap artifact | step | "
+        "not yet resolved — assign to operator | proof",
+    )
+    assert e.cls == par.CLASS_PHANTOM_OPERATOR
+
+
+def test_guilt_mixed_naked_mentions_only_one_negated_is_phantom(tmp_path):
+    # Second latent gap closed alongside the widening: the original call site
+    # was NEGATED_OPERATOR_RE.search(owner), a bare EXISTENCE check — an
+    # owner naming two "operator" mentions where only the first is negated
+    # would have been waved through on the strength of that one match. Every
+    # naked mention must now be individually covered.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | mixed mentions artifact | step | "
+        "not operator, but flag for operator eventually | proof",
+    )
+    assert e.cls == par.CLASS_PHANTOM_OPERATOR
+
+
+def test_guilt_negation_gap_wider_than_closed_vocabulary_still_phantom(tmp_path):
+    # Independently verified 2026-08-30 (team-lead, re-exercising
+    # _all_operator_mentions_negated directly rather than taking the PR's
+    # report on trust). A 4-word gap of ordinary words ("a completely
+    # unrelated distant") falls outside the closed hedge-word vocabulary, so
+    # this reads as PHANTOM-OPERATOR even though a human would parse it as a
+    # denial. That is a false positive, and it fails in the SAFE direction
+    # for this guard (see the docstring on _all_operator_mentions_negated):
+    # a row a human would call innocent still surfaces for a manual reword,
+    # it never lets a genuine bare-operator claim through unflagged. Do not
+    # widen the vocabulary to rescue this specific phrasing unless it
+    # actually blocks a real PR — see the WIDENED history in the code for
+    # why open-ended widening is the failure mode this bounds against.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | wide-gap-vocab artifact | step | "
+        "not a completely unrelated distant operator | proof",
+    )
+    assert e.cls == par.CLASS_PHANTOM_OPERATOR
+
+
+def test_guilt_trailing_naked_mention_after_negation_still_phantom(tmp_path):
+    # Independently verified 2026-08-30 (team-lead). A second, bare, un-
+    # negated "operator" trailing after a negated one is not rescued by the
+    # negated mention earlier in the field — this is exactly what
+    # _all_operator_mentions_negated's "EVERY mention" check (not a bare
+    # existence check) exists to catch. Also a false positive in the SAFE
+    # direction: a human might read "NOT a human, operator" as a single
+    # disclaiming clause, but the classifier cannot tell that from a
+    # genuine trailing bare claim, and refusing to guess is the correct
+    # bias for a guard whose failure mode is a vanished obligation.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | trailing-mention artifact | step | "
+        "NOT a human, operator | proof",
+    )
+    assert e.cls == par.CLASS_PHANTOM_OPERATOR
+
+
 def test_firebreak_precedence_over_phantom_documented(tmp_path):
     # Pre-existing precedence: an explicit 'firebreak' in the raw text wins the
     # classification even with an untagged operator owner. Documented, not accidental.
@@ -1411,3 +1526,204 @@ def test_check_pr_refs_report_section_appears_and_lists_entry(tmp_path, monkeypa
     assert "report merged pr artifact" in out
     assert out.index("## PHANTOM-OPERATOR") < out.index("## PR-ALREADY-MERGED")
     assert out.index("## PR-ALREADY-MERGED") < out.index("## TECH-DEBT overdue")
+
+
+# ---------------------------------------------------------------------------
+# Label-anchored owner/proof extraction (2026-08-23, v2-d12) — the fix for a
+# proven-live fail-open blind spot: `parts[-2]`/`parts[-1]` assumes owner and
+# proof are the LAST two fields, true only for the canonical unlabeled 5-field
+# shape. A trailing extra field (most commonly a hand-added `| source: ...`
+# provenance note) shifted that anchor, and the REAL, explicitly `owner:`-
+# labeled field sat unexamined — so a bare-phantom owner in that shape could
+# resolve TECH-DEBT instead of PHANTOM-OPERATOR. Proven exploitable against a
+# scratch copy of the real ledger before this fix landed (see the PR body for
+# the full empirical trail); one guilt test per shape found, per team-lead's
+# explicit instruction that a mutation-guard proven on one shape is not proven
+# on the class.
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_trailing_source_field_no_longer_hides_bare_phantom(tmp_path):
+    """THE exploit, reproduced as a permanent regression guard. Before this fix:
+    parts = [date, artifact, missing_step, 'owner: operator', 'proof: ...',
+    'source: ...'] — parts[-2] read the PROOF text as owner (no 'operator'
+    substring in it), so this parsed to TECH-DEBT and made --strict-phantom
+    exit 0 on a bare, untagged phantom. The label-anchored owner: field is now
+    found regardless of position.
+    """
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-08-23 | trailing-source phantom artifact | some step "
+        "| owner: operator | proof: this proof text does not contain the word phantom "
+        "| source: research/operations/some-audit.md",
+    )
+    assert e.owner == "operator"
+    assert e.cls == par.CLASS_PHANTOM_OPERATOR
+
+
+def test_innocence_trailing_source_field_with_valid_category_stays_operator_gated(tmp_path):
+    """Same trailing-field shape, but the labeled owner declares a real
+    true-operator category — must resolve OPERATOR-GATED, not phantom and not
+    misfiled as TECH-DEBT the way the pre-fix parser did for this exact shape
+    (8 real ledger entries were measured in this state before this fix).
+    """
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-08-23 | trailing-source operator-gated artifact | some step "
+        "| owner: operator[gui] | proof: the login is a browser device-code flow "
+        "| source: research/operations/some-audit.md",
+    )
+    assert e.owner == "operator[gui]"
+    assert e.cls == par.CLASS_OPERATOR_GATED
+    assert e.proof == "the login is a browser device-code flow"
+
+
+def test_guilt_proof_labeled_text_in_owner_slot_no_label_anywhere_is_malformed(tmp_path):
+    """Defense-in-depth for a shape not yet observed live but structurally
+    possible once a 6th field is appended after proof with no 'owner:' label
+    anywhere to rescue it: position-based fallback (parts[-2]) then lands on
+    text that is ITSELF explicitly labeled proof-of-armed: — an unambiguous
+    anchor-collision tell, not a phrasing choice. Must be a loud MALFORMED,
+    never silently accepted as ordinary TECH-DEBT. 5 fields, no 'owner:'
+    label: [date, artifact, missing_step, 'proof-of-armed: ...', trailing] —
+    parts[-2] lands exactly on the mislabeled field.
+    """
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-08-23 | anchor collision artifact | some step "
+        "| proof-of-armed: re-run the same measurement and confirm the fix holds "
+        "| a trailing final field with no label",
+    )
+    assert e.cls == par.CLASS_MALFORMED
+    assert any("anchor collision" in r for r in e.malformed_reasons)
+
+
+def test_guilt_bare_status_word_in_owner_slot_is_malformed(tmp_path):
+    """Third real shape: no 'owner:' label anywhere, and position-based
+    fallback lands on a bare status word lifted from a closure note elsewhere
+    in the entry — 'closed' cannot legitimately BE an owner under any
+    phrasing. Must be MALFORMED (this entry is NOT firebreak-worded, unlike
+    its real-ledger counterpart — see the innocence test below for that
+    exemption).
+    """
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-08-23 | bare status word artifact | some step "
+        "| a note about the resolution | closed | some final proof text",
+    )
+    assert e.cls == par.CLASS_MALFORMED
+    assert any("bare status word" in r for r in e.malformed_reasons)
+
+
+def test_innocence_bare_status_word_exempted_when_entry_is_firebreak(tmp_path):
+    """Real-ledger regression guard (found 2026-08-23 while shipping the fix
+    above): a genuine, pre-existing, harmless FIREBREAK entry
+    ('INTERACTIVE-DEFAULT RULING') has this exact bare-'closed'-in-owner-slot
+    shape, left over from its own closure prose. FIREBREAK is informational
+    only by design (never alarmed, never blocks a merge) — the unguarded
+    version of the bare-status-word backstop newly flagged this real entry as
+    MALFORMED, which fails --strict-phantom unconditionally and would have
+    shipped this fix CI-red against the real, UNCHANGED ledger. The backstop
+    must stay silent here; fixing the row's own prose is separate, future,
+    optional work — not a precondition of this fix landing.
+    """
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-08-23 | bare status word firebreak artifact | some step "
+        "| This is a FIREBREAK (Legge 5 / business), not tech debt: a closure note "
+        "| closed | some final proof text",
+    )
+    assert e.cls == par.CLASS_FIREBREAK
+    assert e.malformed is False
+
+
+def test_innocence_legitimately_phrased_owner_without_label_not_flagged(tmp_path):
+    """Guards against over-tightening: a real ledger entry's owner value is
+    'next war-room-lane session' — no 'owner:' label present, starts with
+    neither me/operator/session, but is a perfectly legitimate (if unusual)
+    owner phrasing, not corruption. An earlier draft of this fix's audit
+    heuristic flagged this as 'broken' and was itself a false positive — this
+    test pins that the shipped backstop (unlike that draft heuristic) does
+    NOT fire on mere unusual phrasing, only on the two unambiguous tells
+    (proof-of-armed:/proof: mislabeling, or an exact bare status word).
+    """
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-08-23 | unusual phrasing artifact | some step "
+        "| next war-room-lane session | some proof text",
+    )
+    assert e.owner == "next war-room-lane session"
+    assert e.cls == par.CLASS_TECH_DEBT
+    assert e.malformed is False
+
+
+def test_innocence_multiple_owner_labels_last_one_wins(tmp_path):
+    """The fourth real shape (2 real entries found: '77 phantom KBLI-2020
+    codes' and 'queue_rearm.sh scheduling'): a session appends a full restated
+    `owner: ... | proof: ...` pair after a progress-note paragraph, when the
+    update narrows or reassigns scope rather than just adding commentary (a
+    second full pair, not the `**UPDATE ...**`-only shape
+    `_split_trailing_update_notes` already handles). The LATEST restatement is
+    the current truth — same "latest wins" reading a human gives the line —
+    never flagged as an ambiguous/malformed entry: both real occurrences were
+    this legitimate growth pattern, not corruption.
+    """
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-08-23 | growing scope artifact | some step "
+        "| owner: me (original scope) | proof: original proof text "
+        "| UPDATE 2026-08-20: PR #1 merged for part of the scope, narrowing what remains "
+        "| owner: me (remaining scope only) | proof: remap PR closing the rest",
+    )
+    assert e.owner == "me (remaining scope only)"
+    assert e.proof == "remap PR closing the rest"
+    assert e.cls == par.CLASS_TECH_DEBT
+    assert e.malformed is False
+
+
+def test_innocence_canonical_unlabeled_five_field_entry_unaffected(tmp_path):
+    """Regression guard: the vast majority of the real ledger has NO 'owner:'/
+    'proof:' label at all — just the canonical positional 5-field shape. The
+    label-anchor fix must fall back to position exactly as before when no
+    label is present anywhere, byte-for-byte, for both the me-owner and the
+    operator[<category>]-owner cases.
+    """
+    e_me = _single_entry(
+        tmp_path,
+        "- opened 2026-08-23 | canonical me artifact | some step | me | some proof",
+    )
+    assert e_me.owner == "me"
+    assert e_me.cls == par.CLASS_TECH_DEBT
+
+    e_op = _single_entry(
+        tmp_path,
+        "- opened 2026-08-23 | canonical operator artifact | some step "
+        "| operator[secret] | some proof",
+    )
+    assert e_op.owner == "operator[secret]"
+    assert e_op.cls == par.CLASS_OPERATOR_GATED
+
+
+@pytest.mark.skipif(
+    not REAL_LEDGER_PATH.exists(),
+    reason=f"real ledger not found at {REAL_LEDGER_PATH} (CI checkout may not have it)",
+)
+def test_real_ledger_has_zero_malformed():
+    """The living enforcement half of the 2026-08-23 fix: an entry the parser
+    cannot confidently anchor (empty owner, anchor-collision, bare status
+    word) is exactly as untrustworthy as a phantom-operator entry and must
+    turn any new occurrence in the REAL ledger into a red CI check the moment
+    it is written — same construction as test_real_ledger_has_zero_phantom_operator
+    just above.
+    """
+    now = par._parse_now(NOW)
+    entries = par.load_entries(REAL_LEDGER_PATH, now)
+    malformed = [e for e in entries if e.cls == par.CLASS_MALFORMED]
+    assert not malformed, (
+        "MALFORMED entries in the real ledger (owner field could not be "
+        "confidently anchored — see e.malformed_reasons for why): "
+        + "; ".join(
+            f"{e.artifact or e.raw[:80]!r} ({'; '.join(e.malformed_reasons)})"
+            for e in malformed
+        )
+    )

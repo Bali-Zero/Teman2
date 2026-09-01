@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- pro.kb_probe_history — kb-current-live campaign (2026-08-25/26).
+     Records a kb/ops/probe_history.py snapshot of the legal KB retrieval
+     journeys four times a day, so the mandate's definition of done ("stayed
+     green for 48h under the scheduled job") has a scheduled job to point at
+     rather than a hand-run probe.
+
+     Born via scripts/organ_birth.py on 2026-08-26 so it carries its genes:
+     the payload lives in the wrapper below (registry entry, heartbeat sidecar
+     on every exit path, PRO_KB_PROBE_HISTORY_ENABLED kill switch, node guard,
+     single-instance pidfile). Before that it was an inline `zsh -lc` one-liner
+     with none of them — the organ-conformance gate refused it, correctly.
+
+     One-shot on a calendar interval (KeepAlive=false): superscar #7 is about
+     KeepAlive on one-shot scripts, and does not apply to this shape. The six-
+     hour cadence sits well inside kb/ops/probe_history.py's own MAX_GAP_HOURS=24
+     tolerance, so a single missed tick never breaks a real streak by itself.
+
+     NOT INSTALLED YET — see .claude/skills/modus/PENDING-ARMS.md. Built is not
+     armed: it becomes live only once the plist is bootstrapped on Pro, the live
+     pair is copied, and a first heartbeat is observed in
+     ~/.organism/last_seen/pro.kb_probe_history.json.
+
+     Pro-resident job: paths are Pro's user (nuzantara) by design. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.kb-probe-history.6h</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/scripts/pro-kb-probe-history.sh</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Hour</key><integer>0</integer><key>Minute</key><integer>5</integer></dict>
+        <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>5</integer></dict>
+        <dict><key>Hour</key><integer>12</integer><key>Minute</key><integer>5</integer></dict>
+        <dict><key>Hour</key><integer>18</integer><key>Minute</key><integer>5</integer></dict>
+    </array>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/kb-probe-history.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/kb-probe-history.error.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>

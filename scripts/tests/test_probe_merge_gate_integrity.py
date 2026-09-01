@@ -25,6 +25,7 @@ from __future__ import annotations
 import copy
 import importlib.util
 import json
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,13 @@ import pytest
 
 _SCRIPTS = Path(__file__).resolve().parents[1]
 _FIXTURES = Path(__file__).resolve().parent / "fixtures" / "merge_gate_integrity"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _shift_iso(ts: str, seconds: int) -> str:
+    """Return `ts` moved FORWARD by `seconds`, in the same Z-suffixed form."""
+    dt = datetime.fromisoformat(ts.replace("Z", "+00:00")) + timedelta(seconds=seconds)
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _load_module():
@@ -238,6 +246,182 @@ def test_in_progress_duplicate_never_masks_a_missing_completed_result():
     result = probe.evaluate(fx["merge_group_jobs"], fx["required_contexts"], fx["merged_at"])
     assert result["clean"] is False
     assert any(victim in f and "never evaluated" in f for f in result["findings"])
+
+
+# ---------------------------------------------------------------------------
+# S12/C1 — "skipped" satisfies branch protection, so it must not be a finding.
+#
+# Measured 2026-08-23: PR #4654 (docs-only) LANDED on main with four of the 27
+# required contexts concluding "skipped" in its merge_group run. A second lane
+# independently observed the same on pr-4658 the same morning. Before this,
+# every path-filtered merge produced a false VIOLATION — and because the
+# workflow's exit-code capture was also broken, it surfaced as 26 consecutive
+# CANNOT-VERIFY reds instead. Both directions are pinned here: skipped passes,
+# and NOTHING ELSE was widened along with it (superscar #3).
+# ---------------------------------------------------------------------------
+
+
+def _set_conclusion(fx: dict[str, Any], ctx: str, conclusion: str) -> None:
+    """Set every job carrying this context name to `conclusion`, reproducing
+    the timestamps GitHub really emits for that conclusion.
+
+    The skipped shape is MEASURED, not invented, and it is stranger than the
+    obvious guess. Live jobs on merge commit b72f1885f (2026-08-23):
+
+        {"name": "Bandit Python Security", "conclusion": "skipped",
+         "started_at": "2026-08-23T09:42:22Z",
+         "completed_at": "2026-08-23T09:42:21Z"}
+
+    completed_at is ONE SECOND BEFORE started_at — duration -1s, not 0. A test
+    that used started_at == completed_at would pass while pinning a shape
+    production never produces; worse, it would leave the negative-duration
+    path (the "phantom result" finding) unexercised on exactly the input that
+    reaches it in the real world."""
+    for job in fx["merge_group_jobs"]:
+        if job["name"] == ctx:
+            job["conclusion"] = conclusion
+            if conclusion == "skipped":
+                completed = job["completed_at"]
+                job["started_at"] = _shift_iso(completed, seconds=1)
+
+
+def test_skipped_required_context_is_not_a_finding():
+    fx = _clean_fixture()
+    victim = fx["required_contexts"][0]
+    _set_conclusion(fx, victim, "skipped")
+    result = probe.evaluate(fx["merge_group_jobs"], fx["required_contexts"], fx["merged_at"])
+    assert result["clean"] is True, f"skipped must satisfy the gate, findings={result['findings']}"
+    assert victim in result["skipped_contexts"], "a skipped context must still be REPORTED, just not as a finding"
+
+
+def test_skipped_context_survives_the_negative_duration_rule():
+    """A real skipped job completes BEFORE it starts (measured: -1s). The
+    phantom-result rule must not fire on it — otherwise the cure just moves
+    the false positive one line down instead of removing it. This is the
+    single most load-bearing test of the three C1 defects, because a naive
+    'skipped passes' that still ran the duration check would have kept ~26
+    reds a day while looking fixed."""
+    fx = _clean_fixture()
+    victim = fx["required_contexts"][0]
+    _set_conclusion(fx, victim, "skipped")
+    for job in fx["merge_group_jobs"]:
+        if job["name"] == victim:
+            assert job["started_at"] > job["completed_at"], (
+                "fixture no longer reproduces the measured skipped shape "
+                "(completed_at before started_at)"
+            )
+    result = probe.evaluate(fx["merge_group_jobs"], fx["required_contexts"], fx["merged_at"])
+    assert not any("phantom" in f for f in result["findings"]), result["findings"]
+    assert result["clean"] is True, result["findings"]
+
+
+def test_docs_only_merge_shape_four_skipped_contexts_is_clean():
+    """The exact measured #4654 shape — four required contexts skipped at once."""
+    fx = _clean_fixture()
+    victims = fx["required_contexts"][:4]
+    for ctx in victims:
+        _set_conclusion(fx, ctx, "skipped")
+    result = probe.evaluate(fx["merge_group_jobs"], fx["required_contexts"], fx["merged_at"])
+    assert result["clean"] is True, result["findings"]
+    assert sorted(result["skipped_contexts"]) == sorted(victims)
+
+
+@pytest.mark.parametrize("conclusion", ["failure", "cancelled", "timed_out", "action_required", "neutral", None])
+def test_no_other_conclusion_was_widened_along_with_skipped(conclusion):
+    """GUILT, one case per conclusion. `neutral` is in this list deliberately:
+    it is widely said to satisfy required checks too, but it was NOT measured
+    on this repo, so it stays a finding. A future lane that measures it may
+    move it — by adding evidence, not by assuming symmetry."""
+    fx = _clean_fixture()
+    victim = fx["required_contexts"][0]
+    _set_conclusion(fx, victim, conclusion)
+    result = probe.evaluate(fx["merge_group_jobs"], fx["required_contexts"], fx["merged_at"])
+    assert result["clean"] is False, f"conclusion={conclusion!r} must still be a finding"
+    assert victim not in result["skipped_contexts"]
+
+
+def test_skipped_does_not_substitute_for_a_missing_job():
+    """A context with NO merge_group job at all is still caught — the skipped
+    allowance must not degrade into 'absence is fine'."""
+    fx = _clean_fixture()
+    victim = fx["required_contexts"][0]
+    fx["merge_group_jobs"] = [j for j in fx["merge_group_jobs"] if j["name"] != victim]
+    result = probe.evaluate(fx["merge_group_jobs"], fx["required_contexts"], fx["merged_at"])
+    assert result["clean"] is False
+    assert any(victim in f and "never evaluated" in f for f in result["findings"])
+
+
+# ---------------------------------------------------------------------------
+# S12/C1 — required-context source: live API first, checked-in snapshot second,
+# CANNOT-VERIFY if both fail. Never an empty list (that would be fail-OPEN).
+# ---------------------------------------------------------------------------
+
+
+def test_snapshot_file_is_present_and_non_empty():
+    """The fallback is only a fallback if it exists. Pins the file this probe
+    now depends on in CI.
+
+    The floor was 20 when main required 27 contexts; Zero's 2026-08-27 ruling
+    cut required checks to 11 (queue-unblock — advisory workflows stopped
+    running on merge_group so the queue no longer waits on ~50 runs per entry
+    for only 11 that matter). 5 is a truncation tripwire, not a target count:
+    it still fails loud on a snapshot gutted to a handful of entries, without
+    hardcoding today's real count into a test that must keep passing as the
+    SSOT legitimately drifts."""
+    names, generated_at = probe._required_contexts_from_snapshot(str(REPO_ROOT))
+    assert len(names) >= 5, f"snapshot looks truncated: {len(names)} contexts"
+    assert all(isinstance(n, str) and n for n in names)
+    assert generated_at and generated_at != "unknown", (
+        "the snapshot must carry its own generation date — it is what makes the "
+        "declared drift risk visible in a run log instead of invisible"
+    )
+
+
+def test_api_is_preferred_when_it_answers(monkeypatch):
+    monkeypatch.setattr(
+        probe, "_gh_api_json",
+        lambda path: {"required_status_checks": {"contexts": ["Only From API"]}},
+    )
+    contexts, source = probe.fetch_required_contexts("o/r", str(REPO_ROOT))
+    assert contexts == ["Only From API"]
+    assert source == "api"
+
+
+def test_snapshot_is_used_when_the_api_is_denied(monkeypatch):
+    """The real CI shape: GITHUB_TOKEN cannot be granted `administration`, so
+    branches/main/protection raises. Before this fallback that raise WAS the
+    26-reds-a-day bug."""
+    def _denied(path):
+        raise RuntimeError("gh api ... failed (rc=1): HTTP 403 Resource not accessible by integration")
+
+    monkeypatch.setattr(probe, "_gh_api_json", _denied)
+    contexts, source = probe.fetch_required_contexts("o/r", str(REPO_ROOT))
+    # Same truncation tripwire as test_snapshot_file_is_present_and_non_empty —
+    # 5, not today's real count (11, per that test's docstring).
+    assert len(contexts) >= 5
+    assert source.startswith("snapshot:")
+
+
+def test_empty_api_contexts_falls_through_rather_than_passing_vacuously(monkeypatch):
+    """An empty required list would make EVERY commit vacuously clean — a
+    fail-OPEN detector. It must fall through to the snapshot, not be used."""
+    monkeypatch.setattr(
+        probe, "_gh_api_json",
+        lambda path: {"required_status_checks": {"contexts": []}},
+    )
+    contexts, source = probe.fetch_required_contexts("o/r", str(REPO_ROOT))
+    assert contexts, "empty API result must never be accepted as the required list"
+    assert source.startswith("snapshot:")
+
+
+def test_both_sources_failing_raises_cannot_verify(monkeypatch, tmp_path):
+    def _denied(path):
+        raise RuntimeError("HTTP 403")
+
+    monkeypatch.setattr(probe, "_gh_api_json", _denied)
+    with pytest.raises(RuntimeError) as exc:
+        probe.fetch_required_contexts("o/r", str(tmp_path))  # no snapshot here
+    assert "could not determine required contexts" in str(exc.value)
 
 
 if __name__ == "__main__":

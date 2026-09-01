@@ -53,6 +53,36 @@ DEFAULT_ADMIN_DSN = "postgresql://nuzantara@127.0.0.1:5432/postgres"
 DATABASE_PREFIX = "visa_oracle_smoke_"
 DATABASE_NAME_RE = re.compile(r"^visa_oracle_smoke_[a-z0-9_]{8,80}$")
 LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+# ORDER IS LOAD-BEARING: `_migration_paths()` walks this tuple literally and does
+# NOT re-sort it, so a dependency must appear before the migration that needs it.
+# Keep it ascending and the dependency edges hold for free.
+#
+# 261/276/281/289 added 2026-08-27. The earlier omission was NOT an oversight:
+# the full migrations_v2 chain is not standalone-applicable to an empty database
+# (108/132 and others assume the legacy baseline that real CI builds separately
+# via scripts/ci_bootstrap_schema.py), so this tuple is a deliberately curated
+# self-contained Visa Engine subset. Skipping 258-261 was correct — right up to
+# the moment the retention readers began querying `policy_scope`.
+#
+# That column is created by 281, which ALTERs `garuda_voa_checks` (created by
+# 261). With neither applied, the disposable smoke DB lacked the column and the
+# evaluate path raised `UndefinedColumnError` — raw PG: `column "policy_scope"
+# does not exist`. The failure was invisible because this job is advisory AND was
+# already red on main for an unrelated reason.
+#
+# 261 (standalone CREATE TABLE) and 276 (comment-only) are harmless additions to
+# the self-contained set — test_garuda_voa_retention.py already applies exactly
+# this extension against a real throwaway database, which is the empirical proof
+# that the sequence holds.
+#
+# NOTE: FOUR places now encode this list. Three are independent test-DB subsets
+# (this one, test_garuda_voa_retention.py, test_retention_binders_scope_to_
+# visa_decision.py) — independent by necessity, since each needs a different
+# subset. The fourth is a GUARD: test_fullstack_smoke.py::
+# test_migration_set_is_exact_and_forward_only pins THIS tuple literally, so it
+# goes red the moment these two disagree. That guard is why the list cannot drift
+# silently a second time — update it in the same commit, deliberately, and let it
+# also re-check that every added migration carries a ROLLBACK section.
 MIGRATION_NUMBERS = (
     250,
     251,
@@ -62,6 +92,7 @@ MIGRATION_NUMBERS = (
     255,
     256,
     257,
+    261,
     262,
     263,
     264,
@@ -69,6 +100,9 @@ MIGRATION_NUMBERS = (
     266,
     267,
     268,
+    276,
+    281,
+    289,
 )
 TEST_RULE_PACK_ID = "8a57d996-c7f2-5abc-9c31-4128a29ed848"
 
@@ -330,12 +364,28 @@ async def _stop_process(process: asyncio.subprocess.Process | None) -> None:
         await process.wait()
 
 
-async def _wait_for_http(url: str, process: asyncio.subprocess.Process, *, timeout: float) -> None:
+async def _wait_for_http(
+    url: str,
+    process: asyncio.subprocess.Process,
+    *,
+    timeout: float,
+    log_path: Path,
+) -> None:
+    # The caller only learns a returncode/timeout unless we fold the child's
+    # own output in here — the returncode alone (e.g. "1") is not
+    # diagnosable without a second round-trip to re-run and go read the log
+    # by hand. `log_path` is the same file `_start_process` is already
+    # streaming this child's combined stdout+stderr into, so the real cause
+    # (an import-time traceback, a bind failure, ...) is always sitting
+    # right there when this raises.
     deadline = asyncio.get_running_loop().time() + timeout
     async with httpx.AsyncClient(timeout=2.0, follow_redirects=True) as client:
         while asyncio.get_running_loop().time() < deadline:
             if process.returncode is not None:
-                raise RuntimeError(f"server exited before readiness: {process.returncode}")
+                raise RuntimeError(
+                    f"server exited before readiness: {process.returncode}\n"
+                    f"--- last 50 lines of {log_path} ---\n{_tail_log(log_path, lines=50)}"
+                )
             try:
                 response = await client.get(url)
                 if response.status_code == 200:
@@ -343,7 +393,10 @@ async def _wait_for_http(url: str, process: asyncio.subprocess.Process, *, timeo
             except httpx.HTTPError:
                 pass
             await asyncio.sleep(0.25)
-    raise TimeoutError(f"server did not become ready: {url}")
+    raise TimeoutError(
+        f"server did not become ready: {url}\n"
+        f"--- last 50 lines of {log_path} ---\n{_tail_log(log_path, lines=50)}"
+    )
 
 
 def _tail_log(path: Path, *, lines: int = 80) -> str:
@@ -417,11 +470,30 @@ async def run() -> int:
             await _insert_test_policy(database_dsn)
             await _activate_test_pack(database_dsn, backend_root)
 
+            # backend.app.core.config.Settings() is constructed at module
+            # scope the moment the child imports backend.app.main_api (see
+            # backend/app/core/config.py) and jwt_secret_key/api_keys have no
+            # default -- ValidationError, uvicorn exits 1, readiness never
+            # comes up. This child never issues or verifies a real JWT and
+            # never checks a caller-supplied API key (the Playwright spec
+            # never sends one) -- these two values only need to SATISFY the
+            # validators' shape (min 32 chars / non-empty comma-separated
+            # list), not match anything else. Generated fresh per run rather
+            # than a fixed literal: nothing else in this smoke depends on a
+            # specific value, and a random one never reads as a static
+            # secret-shaped string for a scanner to flag (a hardcoded literal
+            # here was exactly that on the first attempt -- self-inflicted
+            # Secret Keyword findings with no line in this file's history to
+            # inherit an audit decision from).
+            disposable_jwt_secret = secrets.token_urlsafe(32)
+            disposable_api_key = secrets.token_urlsafe(24)
             backend_env = _sanitized_child_env(
                 {
+                    "API_KEYS": disposable_api_key,
                     "DATABASE_URL": database_dsn,
                     "DISABLE_BACKGROUND_WORKERS": "1",
                     "ENVIRONMENT": "development",
+                    "JWT_SECRET_KEY": disposable_jwt_secret,
                     "PYTHONDONTWRITEBYTECODE": "1",
                     "PYTHONPATH": ".",
                     "RAG_PROXY_ENABLED": "false",
@@ -436,7 +508,7 @@ async def run() -> int:
             )
             backend_process = await _start_process(
                 (
-                    str(backend_root / ".venv" / "bin" / "python"),
+                    sys.executable,
                     "-m",
                     "uvicorn",
                     "backend.app.main_api:app",
@@ -453,6 +525,7 @@ async def run() -> int:
                 f"http://127.0.0.1:{backend_port}/health/ready",
                 backend_process,
                 timeout=60,
+                log_path=backend_log,
             )
 
             frontend_env = _sanitized_child_env(
@@ -483,6 +556,7 @@ async def run() -> int:
                 f"http://127.0.0.1:{frontend_port}/visa-oracle",
                 frontend_process,
                 timeout=180,
+                log_path=frontend_log,
             )
 
             exit_code = await _run_playwright(

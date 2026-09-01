@@ -1,0 +1,67 @@
+task_id: research-os-p04-d1-content-object-media-manifest-0823
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  P04-D1 of the Research OS foundation-contracts program: ship the canonical, machine-checkable
+  definitions of CONTRACTS.md §9 `ContentObject` and §10 `MediaManifest` — the two governance
+  objects that every downstream WR2/WR3/NAGA/Intel Lake surface anchors its content lineage and
+  media-asset receipts to. Concretely: two frozen Pydantic models (`extra="forbid"`,
+  `frozen=True`), their generated Draft 2020-12 JSON Schemas, a fixture corpus (valid + invalid
+  per the package's `_check_fixtures` idiom — the §9/§10 spec's own >=3-valid/>=3-invalid-per-kind
+  rule), unit tests, and registration in the three package entry points (`cli.py`
+  `CONTRACT_MODELS`, `models/__init__.py`, `schemas/__init__.py`).
+
+  THIS IS PR #4643 (branch `agent/nuzantara/backend-rag/ros-v1-p04-d1-content`). Its
+  `evidence/brief.yml` and `evidence/pack.yml` — fixed root paths every Gear>=2 PR overwrites —
+  were inherited unchanged from an ancestor commit and described unrelated foreign work (PR
+  #4592, task_id `ops-visaoracle-wrapper-header-0823`, a 2-line wrapper-header comment fix). This
+  revision replaces both files with the truthful account of what #4643 actually ships, verified
+  fresh against the real diff and the real gates in this worktree — not transcribed from the prior
+  (wrong) pack, not from memory of an earlier turn.
+
+  BE HONEST ABOUT THE SIZE: this is a real 53-file / +4264/-0-line PR (measured this session via
+  `git diff --numstat` against the merge-base with `origin/main`), the first and smallest of four
+  serialized P04-D1 PRs (#4643 -> #4653 -> #4610 -> #4621 per the fleet's ordering, 2026-08-23).
+  Most of the 53 files are the fixture corpus the spec itself mandates per object kind (>=3 valid
+  + >=3 invalid), not narrative padding.
+constraints:
+  - "Scope of THIS revision is evidence-only: `evidence/brief.yml` and `evidence/pack.yml`.
+    No product code, model, fixture, schema, or test file is touched by this commit."
+  - "The two touched files are unrelated to `scripts/wr3_*` / `docs/wr3/contracts/` (another
+    lane's lease) and to the ContentObject/MediaManifest model code itself (already shipped and
+    already reviewed by an independent lane, see dissent below) — neither is re-opened here."
+  - "PR stays DRAFT. Nothing here arms, enqueues, un-drafts, or merges #4643."
+acceptance:
+  - "`evidence/pack.yml` describes PR #4643 by task_id, diff shape, and content — not PR #4592."
+  - "`scripts/evidence_pack_lint.py evidence/pack.yml --repo-root . --changed-files-file <cf>
+    --net-lines 4264` exits 0 with no NOTICE mentioning `lanes:`."
+  - "Every `receipts:` entry is a command actually run in this worktree in this turn, with its
+    true exit code — including the one gate that came back red (`ruff format --check`), reported
+    red rather than adjusted to look green."
+consumer_map:
+  - "GitHub PR #4643 check suite / any Gear-3 gate that reads `evidence/pack.yml` as its sole
+    input (harness-v2 §5 doctrine: the pack IS the gate's input, not a report about one)."
+  - "The next lane in the P04-D1 serialization order (#4653) inherits whatever this branch merges
+    to main as ITS ancestor's evidence-pack content, exactly the defect this revision is fixing —
+    so getting this right here also protects that lane from re-inheriting the wrong pack."
+risks:
+  - "None to running systems: `packages/research-os-core` is a library package with no deployed
+    runtime surface of its own; the models it defines are consumed by CLI/schema tooling only,
+    already shipped in commit 126f7a000 and already independently reviewed (commit cf34c8ad7).
+    This revision changes zero lines of that code."
+  - "Residual, out of scope for this evidence-only revision: `cf34c8ad7`'s own review left four
+    items explicitly unfixed and reported rather than fixed — see dissent below for the two most
+    load-bearing (schema self-consistency exemption + ApprovalReceipt fixture-coverage gap) and
+    the fix commit's own message for the full list (ExtensionValue.payload jail scope,
+    `_UTC_OFFSET_PATTERN` anchor, `cli.py::_hash()` ordering, `_check_fixtures()` empty-tree
+    reporting). None of these are evidence-pack concerns; they belong to a future code PR."
+grader:
+  session (this lane, Pro, worktree backend-rag-ros-v1-p04-d1-content) — independent
+  evidence-only revision, dispatched fresh to verify the foreign-content claim itself before
+  acting on it (confirmed true) and to re-run the gates fresh rather than transcribe the prior
+  review commit's claims.
+budget:
+  1 lane, no council (evidence-pack correction does not warrant one; the code itself was
+  already gated by an independent Claude Opus 5 review lane per dissent below)
+pii: none

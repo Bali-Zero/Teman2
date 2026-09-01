@@ -1,0 +1,89 @@
+task_id: craft-w-h1-smoke-blocking
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  `tests.yml`'s `visa-oracle-fullstack-smoke` job carries `continue-on-error: true`. That does NOT
+  make its own check-run green — measured on its first real run (job 97222544510, PR #4709), a
+  failed step produced `conclusion: failure` like any other red job. What it DOES buy is that the
+  overall WORKFLOW RUN conclusion is not dragged down by this job. So today a smoke failure leaves
+  the run reporting success: the run's verdict is a lie about its own contents.
+
+  This is the only test in the tree that exercises the real browser -> Next -> FastAPI -> signed
+  TEST RulePack -> Postgres chain. Every visa-oracle spec the e2e job runs intercepts and mocks
+  `/api/visa-oracle/evaluate`, so nothing else can see an integration break.
+
+  Removing `continue-on-error` makes the run conclusion honest. It changes nothing else, and in
+  particular it does NOT make the job block a merge.
+constraints:
+  - "The flip must not be sold as more than it is. `continue-on-error` and branch-protection
+    required contexts are two different mechanisms, and the job's own comment already warns that
+    confusing them is the mistake to avoid. Blocking a merge is an operator/Zero ruleset action and
+    is NOT taken here."
+  - "The blast radius must be established by PARSING the workflow, not grepping it: a `needs:` list
+    spanning multiple lines is invisible to a single-line grep, and a dependent job would make the
+    flip change halt-behaviour as well as reporting."
+  - "The licensing evidence must be measured at JOB level, never at run level. Reading run
+    conclusions is precisely the misreading that let this job sit red for ~30 hours unnoticed in
+    August."
+acceptance:
+  - text: |
+      WHEN the smoke job's steps fail, the workflow run's conclusion SHALL no longer report success
+      — i.e. `continue-on-error` is absent from the job.
+    probe: "yaml.safe_load(tests.yml)['jobs']['visa-oracle-fullstack-smoke'].get('continue-on-error')"
+  - text: |
+      WHERE any other job declares this one in `needs:`, the flip WOULD change halt behaviour; the
+      diff SHALL only ship IF that set is empty, established by parsing rather than grep — AND the
+      diff SHALL name every consumer that binds this job's name or the run's conclusion at RUNTIME,
+      which a source search cannot find.
+    probe: "[n for n,x in d['jobs'].items() if 'visa-oracle-fullstack-smoke' in (x.get('needs') or [])]"
+  - text: |
+      WHILE the job remains absent from `main`'s required_status_checks, the flip SHALL NOT block a
+      merge, and the PR SHALL say so rather than implying otherwise.
+    probe: "gh api repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks"
+  - text: |
+      IF the job were still failing in CI the flip would be reckless, so it SHALL be licensed by a
+      JOB-level census over recent runs showing zero failures.
+    probe: 'gh api repos/Bali-Zero/Teman2/actions/runs/<id>/jobs --jq ''.jobs[]|select(.name|startswith("Visa Oracle fullstack smoke"))|.conclusion'''
+consumer_map:
+  - ".github/workflows/tests.yml — the only file changed. The job has zero dependents (parsed)."
+  - "Every PR's checks tab: the check-run's own conclusion is unchanged (it was already honest); it
+    is the RUN conclusion that stops lying."
+  - "A future branch-protection promotion: the context string is now `Visa Oracle fullstack smoke`
+    with no suffix. Flagged so a later promotion does not register a name that no longer exists."
+  - "Two PENDING-ARMS rows (2026-08-24, 2026-08-25) whose proof-of-armed condition was 'the job
+    reports success at JOB level on at least two consecutive PR runs, AND a guilt check'. Both
+    limbs are now satisfied; those rows are NOT edited here (a row is retired by a live probe, which
+    is a judgment call and a separate concern)."
+risks:
+  - "THE BLAST RADIUS IS LARGER THAN THIS BRIEF FIRST CLAIMED, and a refuter found it. `needs:` is
+    empty, but a run conclusion is an input: `main-red-breaker.yml` intersects failing JOB NAMES
+    across consecutive runs, so the rename costs ONE CYCLE of repeated-failure correlation, and
+    `test-summary` can print success inside a now-red workflow. Both are declared in the workflow
+    comment. The first version of this brief said the change touched nothing else — a source search
+    for the old name answers a narrower question than 'does anything depend on this name'."
+  - "THE GUILT PROOF IS NOT THIS LANE'S. Squad P mutated the evaluate path locally and observed the
+    smoke go red for that cause; this lane did NOT reproduce it and does not claim it. 40/40 presence
+    plus a successful smoke step proves AVAILABILITY and EXECUTION, not SENSITIVITY. Whether that
+    licenses the flip is the conductor's call."
+  - "The flip makes previously-invisible smoke failures newly visible as red runs. That is the
+    POINT, but it means the first genuine regression will surface as a run-level red on a PR whose
+    author did not touch the visa oracle. The job is not required, so it blocks nothing — but it
+    will be seen, which is the change."
+  - "The rename changes the check-run name. Nothing in CI config references the old string
+    (measured); the only hits are prose in historical evidence packs, research captures and
+    PENDING-ARMS rows, which are records of what was true when written and are correctly left alone."
+  - "The census is a window, not a proof of future health. 40 runs is what the API listing gives in
+    one bounded page; a regression tomorrow is still possible. The mitigation is that the flip makes
+    exactly that regression visible instead of silent."
+grader: |
+  Generator != grader. Build lane: this session (claude-opus-5, xhigh) — it re-measured every claim
+  in Squad P's handoff rather than accepting it, which mattered: two PENDING-ARMS rows in this repo
+  state that this job had failed 100% of runs for ~30 hours, and those rows are dated four days
+  before the handoff. Both accounts are true of their own moment; the flip is licensed by the
+  CURRENT one, measured independently. Review lane: a cross-family non-Anthropic seat on the
+  finished diff.
+budget: |
+  1 build lane + 1 cross-family review seat. One workflow file (3 edits: a removed key, a rename,
+  a rewritten comment block) plus this evidence pack.
+pii: none

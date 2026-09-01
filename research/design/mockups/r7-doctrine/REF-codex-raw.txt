@@ -1,0 +1,43 @@
+1. **HIGH** — “`PENDING-PANEL`” vs “`The loop CLOSES with this round.`” WHY: R7 closes before its own mandatory four-seat review and row-by-row dispositions exist, violating §3’s generator≠grader protocol.
+
+2. **HIGH** — “`nothing here ... decides anything`.” WHY: §2 declares amendments “BINDING NOW,” §3 adopts repo doctrine, and §8 closes the loop. The scope disclaimer contradicts the document’s operative effect.
+
+3. **HIGH** — “`R4 is the SSOT`” vs “`product lanes CITE R4 + this register`.” WHY: binding rules live outside R4 until an unspecified future touch. That creates a two-document authority while still claiming one SSOT.
+
+4. **HIGH** — “`never the conductor's own family as final gate (roster per the 2026-08-20 ruling)`.” WHY: the actual ruling says only “Togliere Fable 5 dal workflow” and moves the final gate to Opus 5; canonical Modus explicitly assigns architect, orchestrator, judge, and final on-disk gate to Opus 5. The ruling attribution is false.
+
+5. **MED** — §2.1 claims a verbatim D4 payload but inserts “`(the progress bar)`” and changes `non-action` to `NON-ACTION`. WHY: R5b §8.3 contains no parenthetical; the addition may narrow a plural graphical-fill exception to one component.
+
+6. **MED** — §2.2 claims verbatim nesting law but changes “`the CSS uses a declared floor ... R4 should absorb`” into “`the law gains the declared floor`.” WHY: this is a normative rewrite, not the source declaration verbatim.
+
+7. **MED** — §2.3 rewrites R6’s “`Type tokens move to rem ... px VALUES stay identical at default zoom; only the unit changes`” as “`the type scale's px values become rem at identical default rendering`.” WHY: substantively close, textually non-verbatim under an explicit “Verbatim payloads” guarantee.
+
+8. **HIGH** — §2.4 adds “`never beside the price`.” WHY: R6 §8.3 only declares that the card moves below the trust block. R7 invents an additional binding placement prohibition.
+
+9. **HIGH** — §2.5 reduces the verifiability contract to “`a verified staff record structurally backs it`.” WHY: R6 also requires a real employed person, client-findable consistent identity, real-or-no photo, never stock, and no fictional name. The alleged payload drops load-bearing conditions.
+
+10. **HIGH** — “`Nothing else in R4 changes.`” WHY: R5b §8.1 materially refines R4’s counter law with every-answer recomputation, pre-fork “Y or more,” shortest-branch calculation, and fork confirmation. That binding declaration is absent from the register.
+
+11. **HIGH** — “`Nothing else in R4 changes.`” also omits R6 §8.2’s adopted composition line and itemized receipt. WHY: this refines—and may conflict with—R4’s absolute “`The bundle never names the PNBP figure`”; R7 surfaces only the pre-payment question and never reconciles the post-payment declaration.
+
+12. **HIGH** — “`Seven rounds and one ENG side-lane`.” WHY: the paragraph itself enumerates eight pre-R7 rounds: R0, R1, R2, R3, R4, R5, R5b, R6. Including terminal R7 makes nine design rounds.
+
+13. **MED** — “`R5 rendered the ten worst screens`.” WHY: R5 declares ten mockups, not ten distinct worst screens; M2a/M2b and M4a/M4b are panel-forced splits of two original pages.
+
+14. **LOW** — “`Adversarial volume ... from ... seat counts ... R5b 42+1 runtime (15/10/11/6)`.” WHY: the seat vector sums to 42, and R5b calls the panel volume 42. The runtime bug is separately sourced, but it is not a seat finding and cannot belong to a seat-count series.
+
+15. **MED** — “`i18n ... is the P3 persona's single hardest block`.” WHY: R1 names the sponsor branch itself as the fragile moment; R6 only says Wharton Q1–Q3 cannot pass for an Indonesian sponsor until i18n. R5b also says no delegate product surface exists yet, so the superlative is unsupported.
+
+16. **MED** — “`rem migration`” plus “`A/B + device-pass infrastructure`” are “`the two items that unblock every human gate`.” WHY: §3.3 separately requires a human red-institutional-vs-scam perception study. No listed item explicitly provides that study, and rem migration does not unblock it.
+
+17. **HIGH** — “`any veto reopens its round's declaration, not this file`.” WHY: §2 copies—and sometimes alters—the declarations while calling them binding. A veto must invalidate/update R7 too, or its register remains stale and operative.
+
+18. **MED** — “`when two sondes disagree, one of them is broken`.” WHY: R6 itself documents legitimate disagreement caused by different stimuli, order effects, proxy scope, and evidence classes. Instrument disagreement does not logically prove instrument failure.
+
+19. **HIGH** — “`a doctrine file practices its own §3.1 rule`” and “`Every claim's class is declared`.” WHY: claims such as “seven rounds,” risk ordering, “flag stays OFF,” and “still runs in shadow” carry no evidence-class labels or R7 cite-time probes. The file does not practice its stated ladder.
+
+20. **HIGH** — “`Continuation happens ... each under its own mandate`.” WHY: §4 says the delegate surface is “`needing an owner lane`,” and §5 says the human-gate budget is uncommitted. R7 closes by referring open work to mandates and owners that it does not identify.
+
+21. **MED** — “`deviation ... through ... report, panel, dispositions, veto window`” vs repeated “`async veto open`.” WHY: no veto-window duration, start event, recording authority, status transition, or enforcement consumer is defined. The clause is procedural prose, not an enforceable governance mechanism.
+
+

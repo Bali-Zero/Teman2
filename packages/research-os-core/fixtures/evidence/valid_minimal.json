@@ -1,0 +1,40 @@
+{
+  "evidence_id": "40000000-0000-4000-8000-000000000002",
+  "evidence_family_id": "com.example.evidence_family_002",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "source_event_ref": {
+    "event_id": "30000000-0000-4000-8000-000000000002",
+    "object_hash": "000000000000000000000000000000000000000000000000000000000000006f"
+  },
+  "document_id": "doc-source-002",
+  "document_version_id": "rev-2026-01-02",
+  "document_content_hash": "0000000000000000000000000000000000000000000000000000000000000070",
+  "source_span": {
+    "locator": "para-1",
+    "quote_hash": "0000000000000000000000000000000000000000000000000000000000000071"
+  },
+  "source_tier": "com.example.secondary_source",
+  "stance": "contextualizes",
+  "times": {
+    "observed_at": "2026-01-06T00:05:00Z",
+    "recorded_at": "2026-01-06T00:10:00Z"
+  },
+  "provenance": {
+    "extractor": "com.example.html_extractor",
+    "extractor_version": "1.0.0",
+    "run_id": "40000000-0000-4000-8000-000000900002",
+    "extraction_input_hash": "0000000000000000000000000000000000000000000000000000000000000072"
+  },
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "public",
+    "rights": "public_domain"
+  },
+  "review_state": "unreviewed",
+  "retention": {
+    "retention_class": "operational",
+    "legal_hold": false
+  },
+  "object_hash": "265fef7b98a7ca151af63a3c86938060e8098194f96a9b8cb5a826a4993a0835"
+}

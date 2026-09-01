@@ -1,0 +1,52 @@
+{
+  "_comment": [
+    "Environment-name declarations for scripts/with_seat.sh. They are an allowlist: a child receives only declared names that exist in the broker parent.",
+    "ABSOLUTE RULE: this file holds NAMES ONLY, never values, tokens, paths containing credentials, or any other secret material. Values are resolved only at exec time from the broker parent.",
+    "WHY THIS FILE EXISTS (2026-08-31): external LLM CLIs previously inherited unrelated credential families. A subtractive blacklist cannot be complete; env -i makes this declaration the whole child environment."
+  ],
+  "seats": {
+    "codex": {
+      "env": ["HOME", "PATH", "TERM", "LANG", "LC_ALL", "TMPDIR"],
+      "exec_allowlist": ["codex"],
+      "note": "Measured on this machine: Codex authenticates through the config directory under $HOME (~/.codex), not an API-key environment variable. HOME, PATH, TERM, LANG, LC_ALL, and TMPDIR are the functional process minimum; no credential name is declared."
+    },
+    "agy": {
+      "env": ["HOME", "PATH", "TERM", "LANG", "LC_ALL", "TMPDIR"],
+      "exec_allowlist": ["agy"],
+      "note": "Measured on this machine: agy authenticates through config directories under $HOME (~/.gemini and ~/.antigravity), not an API-key environment variable. HOME, PATH, TERM, LANG, LC_ALL, and TMPDIR are the functional process minimum; no credential name is declared. Its binary lives in ~/.local/bin, outside the broker's fixed system search path, so the seat declares its own — measured: without this the seat could not resolve agy at all.",
+      "exec_search_path": [
+        "~/.local/bin",
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        "/usr/bin",
+        "/bin"
+      ]
+    },
+    "kimi": {
+      "env": ["HOME", "PATH", "TERM", "LANG", "LC_ALL", "TMPDIR"],
+      "exec_allowlist": ["kimi"],
+      "note": "Measured on this machine: Kimi authenticates through the config directory under $HOME (~/.kimi-code), not an API-key environment variable. HOME, PATH, TERM, LANG, LC_ALL, and TMPDIR are the functional process minimum; no credential name is declared. Its binary lives in ~/.kimi-code/bin, outside the broker's fixed system search path, so the seat declares its own — measured: without this the seat could not resolve kimi at all.",
+      "exec_search_path": [
+        "~/.kimi-code/bin",
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        "/usr/bin",
+        "/bin"
+      ]
+    },
+    "claude-seat": {
+      "env": [
+        "HOME",
+        "PATH",
+        "TERM",
+        "LANG",
+        "LC_ALL",
+        "TMPDIR",
+        "CLAUDE_CODE_OAUTH_TOKEN",
+        "CLAUDE_CONFIG_DIR"
+      ],
+      "exec_allowlist": ["claude"],
+      "note": "Measured seat kind for headless Claude lanes: it needs the ordinary process minimum plus CLAUDE_CODE_OAUTH_TOKEN and CLAUDE_CONFIG_DIR. This lets scripts/fleet_burst.sh use the broker through FLEET_BURST_SEAT_BROKER without widening the child environment."
+    }
+  }
+}

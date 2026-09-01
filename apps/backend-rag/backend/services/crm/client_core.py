@@ -683,8 +683,8 @@ class EnhancedCRMService:
             existing = await self._find_duplicate_client(validated.model_dump())
             if existing:
                 raise ValidationError(
-                    "Client already exists with email or phone",
-                    {"existing_id": existing},
+                    f"Client already exists with email or phone (existing_id={existing})",
+                    field="email",
                 )
 
             async with self.db_pool.acquire() as conn, conn.transaction():

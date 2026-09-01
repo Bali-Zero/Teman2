@@ -136,8 +136,8 @@ From the worktree:
 ```bash
 cd apps/backend-rag
 source .venv/bin/activate
-PYTHONPATH=. pytest backend/tests/unit/services/autonomous_lab -q
-PYTHONPATH=. pytest backend/tests/migrations/test_migration_124_autonomous_lab_runtime.py -q
+PYTHONPATH=. pytest backend/tests/unit/services/autonomous_lab
+PYTHONPATH=. pytest backend/tests/migrations/test_migration_124_autonomous_lab_runtime.py
 ruff check backend/services/autonomous_lab backend/migrations/migration_124_autonomous_lab_runtime.py ../../scripts/autonomous_lab_worker.py
 ```
 
