@@ -323,6 +323,21 @@ jobs:
             echo "::error::pytest's summary line does not start with '<N> passed' — got: $SUMMARY_LINE (this is exactly the regression this check exists to catch: an exit-0 run with zero passing cases, e.g. everything skipped)"
             exit 1
           fi
+          # Council round finding (codex-gpt-5.6-sol, 2026-09-02): the two
+          # checks above accept a summary line that STARTS WITH "<N> passed"
+          # even if it also reports skips, e.g. "9 passed, 1 skipped in
+          # 0.31s" satisfies both and PASSED=9 clears the >=9 floor below —
+          # despite this step's own comment above promising "this suite has
+          # NO legitimate skip case". Reject any status word beyond a clean
+          # pass outright, before counting: this guard suite has no
+          # DR-mirror fixture and no xfail markers, so skipped/xfailed/
+          # xpassed/deselected/warnings appearing here is always a real
+          # regression, never something to silently tolerate through a
+          # >=9-count floor that a skip can still clear.
+          if printf '%s\n' "$SUMMARY_LINE" | grep -qE 'skipped|xfailed|xpassed|deselected|warning'; then
+            echo "::error::pytest's summary line reports something other than a clean pass ($SUMMARY_LINE) — this suite has no legitimate skip case, so anything beyond a pure '<N> passed in <time>' summary is a real regression, not something a >=9 count floor should silently tolerate"
+            exit 1
+          fi
           PASSED=$(printf '%s\n' "$SUMMARY_LINE" | grep -oE '^[0-9]+')
           if [ "$PASSED" -lt 9 ]; then
             echo "::error::expected at least 9 passed (got $PASSED) from summary line: $SUMMARY_LINE — this suite has no legitimate skip case, so anything less than the full count is a real regression"
