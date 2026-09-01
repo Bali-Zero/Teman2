@@ -1513,3 +1513,168 @@ def test_apply_passes_cli_cure_run_to_archive_row_cure(monkeypatch):
 
     assert len(archive_calls) == 1
     assert archive_calls[0]["cure_run"] == "kbli_cure:2026-08-08"
+
+
+# ---------------------------------------------------------------------------
+# --pma-only (2026-09-01). Measured on prod that day: the conformance detector
+# named 11 `pma_status` divergences; 6 of the rows carried hand-written prose
+# the full rebuild (`plan_cure`) would have replaced wholesale (and 03110 would
+# have become a 55k-char document). Since v34 the channel never injects
+# `content` — it reads the structured PMA tuple off `metadata` — so the honest
+# cure for such a row is the tuple alone, with judul/content byte-identical.
+from backend.scripts.kbli_documents_cure import (  # noqa: E402
+    PMA_METADATA_KEYS,
+    plan_pma_only,
+    pma_tuple_delta,
+)
+
+HAND_WRITTEN_ROW_96210 = {
+    "judul": "AKTIVITAS PENATAAN DAN PANGKAS RAMBUT",
+    "content": (
+        "KBLI 96210: AKTIVITAS PENATAAN DAN PANGKAS RAMBUT\n\nWHAT IT MEANS:\n"
+        "Hair salon and barbershop — cutting, styling, coloring.\n\nBALI CONTEXT:\n"
+        "Bali's expat areas are packed with premium salons."
+    ),
+    "metadata": {
+        "judul": "AKTIVITAS PENATAAN DAN PANGKAS RAMBUT",
+        "kode_kbli_2025": "96210",
+        "licensing_status": "N/A",
+        "per_skala": [{"skala": "Mikro", "kategori_risiko": "Rendah"}],
+        "pma_status": "TERBUKA",
+        "pp28_sources": ["96111"],
+        "sektor_id": "S",
+        "status_mapping": "MATCH_LANGSUNG",
+    },
+}
+
+RECORD_96210_LOCATED = {
+    "kode_kbli_2025": "96210",
+    "judul": "Aktivitas Penataan dan Pangkas Rambut",
+    "uraian": "Kelompok ini mencakup usaha jasa pelayanan penataan dan pangkas rambut.",
+    "pma_status": "TERBATAS",
+    "pma_max_asing": 0,
+    "pma_verification_status": "located",
+    "pma_official_basis": "Perpres 49/2021 Lampiran II (DIALOKASIKAN untuk Koperasi dan UMKM) fixture",
+    "pma_source_vintage": "2021-05-25",
+    "pma_cap_verified": True,
+    # Deliberately DIFFERENT from the row's per_skala: a pma-only plan must not
+    # touch it even when canonical disagrees — that is the full rebuild's job.
+    "per_skala": [
+        {"skala": "Mikro", "kategori_risiko": "Rendah"},
+        {"skala": "Kecil", "kategori_risiko": "Rendah"},
+    ],
+}
+
+
+def test_pma_only_guilt_syncs_the_tuple_and_nothing_else():
+    plan = plan_pma_only("96210", RECORD_96210_LOCATED, HAND_WRITTEN_ROW_96210)
+    assert plan.pma_only is True
+    assert plan.update_row is True
+    # judul/content are never part of the plan — the apply path has nothing to write there.
+    assert plan.new_judul is None
+    assert plan.new_content is None
+    old = HAND_WRITTEN_ROW_96210["metadata"]
+    new = plan.new_metadata
+    assert new["pma_status"] == "TERBATAS"
+    assert new["pma_max_asing"] == 0
+    assert new["pma_verification_status"] == "located"
+    assert new["pma_official_basis"].startswith("Perpres 49/2021 Lampiran II")
+    assert new["pma_source_vintage"] == "2021-05-25"
+    assert new["pma_cap_verified"] is True
+    assert new["pma_cap_special"] is False
+    # Every key that is NOT in the tuple is carried over byte-identical —
+    # including per_skala, which canonical disagrees with in this fixture.
+    for key, value in old.items():
+        if key not in PMA_METADATA_KEYS:
+            assert new[key] == value, key
+    assert set(new) - set(old) <= set(PMA_METADATA_KEYS)
+
+
+def test_pma_only_writes_the_same_tuple_the_full_rebuild_would():
+    """Two paths, one disclosure: a pma-only sync may never disagree with what
+    `build_cured_metadata` writes for the same record (W105 — two tools that
+    must agree about one fact)."""
+    narrow = plan_pma_only("96210", RECORD_96210_LOCATED, HAND_WRITTEN_ROW_96210).new_metadata
+    full = build_cured_metadata("96210", RECORD_96210_LOCATED, HAND_WRITTEN_ROW_96210["metadata"])
+    assert {k: narrow[k] for k in PMA_METADATA_KEYS} == {k: full[k] for k in PMA_METADATA_KEYS}
+
+
+def test_pma_only_really_differs_from_the_full_rebuild_on_a_hand_written_row():
+    """The reason the mode exists: on this row the full rebuild REPLACES content."""
+    full = plan_cure("96210", RECORD_96210_LOCATED, HAND_WRITTEN_ROW_96210)
+    assert full.update_row is True
+    assert full.new_content is not None
+    assert full.new_content != HAND_WRITTEN_ROW_96210["content"]
+    assert full.new_metadata["per_skala"] == RECORD_96210_LOCATED["per_skala"]
+    narrow = plan_pma_only("96210", RECORD_96210_LOCATED, HAND_WRITTEN_ROW_96210)
+    assert narrow.new_content is None
+    assert narrow.new_metadata["per_skala"] == HAND_WRITTEN_ROW_96210["metadata"]["per_skala"]
+
+
+def test_pma_only_innocence_is_idempotent():
+    first = plan_pma_only("96210", RECORD_96210_LOCATED, HAND_WRITTEN_ROW_96210)
+    cured_row = {**HAND_WRITTEN_ROW_96210, "metadata": first.new_metadata}
+    second = plan_pma_only("96210", RECORD_96210_LOCATED, cured_row)
+    assert second.update_row is False
+    assert second.new_metadata is None
+    assert "already cured" in (second.skip_reason or "")
+
+
+def test_pma_only_fails_closed_on_a_declared_gap_record():
+    """A canonical record without a located basis+vintage must sync as
+    NOT_VERIFIED / declared_gap — never as its raw working `pma_status`."""
+    gap_record = {k: v for k, v in RECORD_96210_LOCATED.items() if k != "pma_official_basis"}
+    plan = plan_pma_only("96210", gap_record, HAND_WRITTEN_ROW_96210)
+    assert plan.update_row is True
+    assert plan.new_metadata["pma_status"] == "NOT_VERIFIED"
+    assert plan.new_metadata["pma_verification_status"] == "declared_gap"
+    assert plan.new_metadata["pma_max_asing"] is None
+    assert plan.new_metadata["pma_cap_verified"] is False
+
+
+def test_pma_only_skips_when_canonical_or_table_is_missing():
+    no_record = plan_pma_only("96210", None, HAND_WRITTEN_ROW_96210)
+    assert no_record.update_row is False
+    assert no_record.pma_only is True
+    assert no_record.skip_reason == "not in canonical dataset"
+    no_row = plan_pma_only("96210", RECORD_96210_LOCATED, None)
+    assert no_row.update_row is False
+    assert no_row.pma_only is True
+    assert no_row.skip_reason == "not in kbli_documents table"
+
+
+def test_pma_tuple_delta_names_only_the_keys_that_move():
+    old = HAND_WRITTEN_ROW_96210["metadata"]
+    new = plan_pma_only("96210", RECORD_96210_LOCATED, HAND_WRITTEN_ROW_96210).new_metadata
+    delta = pma_tuple_delta(old, new)
+    assert delta.startswith("pma_status: 'TERBUKA' -> 'TERBATAS'")
+    assert "pma_official_basis: None -> " in delta
+    # An unchanged tuple reports as empty, never as a list of no-ops.
+    assert pma_tuple_delta(new, dict(new)) == ""
+
+
+def test_parser_pma_only_requires_an_only_scope():
+    ap = _cure_build_parser()
+    args = ap.parse_args(["--pma-only"])
+    with pytest.raises(SystemExit):
+        _cure_validate_args(ap, args)
+
+
+@pytest.mark.parametrize(
+    "sweep", ["--all-quarantined", "--all-licensing-absent", "--all-machine-template"]
+)
+def test_parser_pma_only_refuses_every_sweep_selector(sweep):
+    ap = _cure_build_parser()
+    args = ap.parse_args(["--pma-only", "--only", "96210", sweep])
+    with pytest.raises(SystemExit):
+        _cure_validate_args(ap, args)
+
+
+def test_parser_pma_only_with_only_is_accepted_in_both_modes():
+    ap = _cure_build_parser()
+    dry = ap.parse_args(["--pma-only", "--only", "96210,03110"])
+    assert _cure_validate_args(ap, dry) == "dry-run"
+    live = ap.parse_args(
+        ["--pma-only", "--only", "96210", "--apply", "--cure-run", "kbli_cure:2026-09-01-pma-only"]
+    )
+    assert _cure_validate_args(ap, live) == "kbli_cure:2026-09-01-pma-only"

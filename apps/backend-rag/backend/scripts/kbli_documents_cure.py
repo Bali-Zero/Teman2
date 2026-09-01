@@ -297,6 +297,26 @@ class DocumentCurePlan:
     new_metadata: dict | None
     update_row: bool
     skip_reason: str | None
+    # True when the plan touches ONLY the PMA evidence tuple inside `metadata`:
+    # `judul` and `content` are left byte-identical by construction (see
+    # `plan_pma_only`), so the apply path must not rewrite them either.
+    pma_only: bool = False
+
+
+# The PMA evidence tuple `build_cured_metadata` writes — and the ONLY keys a
+# `--pma-only` plan may touch. Read by the channel as one atomic disclosure
+# (`_pma_disclosure_fields`): a partial sync (status without basis/vintage)
+# reads as NOT_VERIFIED at the surface, so the tuple moves together or not at
+# all.
+PMA_METADATA_KEYS: tuple[str, ...] = (
+    "pma_status",
+    "pma_max_asing",
+    "pma_verification_status",
+    "pma_official_basis",
+    "pma_source_vintage",
+    "pma_cap_special",
+    "pma_cap_verified",
+)
 
 
 def quarantined_codes(dataset: list[dict]) -> list[str]:
@@ -777,6 +797,81 @@ def plan_cure(code: str, record: dict | None, current_row: dict | None) -> Docum
     )
 
 
+def plan_pma_only(code: str, record: dict | None, current_row: dict | None) -> DocumentCurePlan:
+    """Pure decision function for `--pma-only` — no I/O.
+
+    Syncs the PMA evidence tuple in `metadata` from canonical and NOTHING else:
+    `judul`, `content` and every other metadata key (`per_skala`,
+    `licensing_status`, `pp28_sources`, ...) are carried over unchanged. This is
+    the cure for a row whose hand-written prose must survive: the full rebuild
+    (`plan_cure`) replaces `content` wholesale, which is exactly what the
+    content-preservation gate refuses on such rows — and since v34 the channel
+    never injects `content` anyway, so the structured tuple is the only thing
+    the client can still be told wrong.
+
+    The tuple comes from `disclose_pma(record)` — the same fail-closed reader
+    the channel uses — so a canonical record without a located basis+vintage
+    syncs as NOT_VERIFIED rather than as a bare status.
+    """
+    if record is None:
+        return DocumentCurePlan(
+            code=code,
+            found_in_canonical=False,
+            found_in_table=current_row is not None,
+            is_gap=None,
+            new_judul=None,
+            new_content=None,
+            new_metadata=None,
+            update_row=False,
+            skip_reason="not in canonical dataset",
+            pma_only=True,
+        )
+    if current_row is None:
+        return DocumentCurePlan(
+            code=code,
+            found_in_canonical=True,
+            found_in_table=False,
+            is_gap=None,
+            new_judul=None,
+            new_content=None,
+            new_metadata=None,
+            update_row=False,
+            skip_reason="not in kbli_documents table",
+            pma_only=True,
+        )
+
+    old_metadata = dict(current_row.get("metadata") or {})
+    pma = disclose_pma(record)
+    new_metadata = dict(old_metadata)
+    for key in PMA_METADATA_KEYS:
+        new_metadata[key] = pma[key]
+    update_row = new_metadata != old_metadata
+    return DocumentCurePlan(
+        code=code,
+        found_in_canonical=True,
+        found_in_table=True,
+        is_gap=(record.get("per_skala") == []),
+        new_judul=None,
+        new_content=None,
+        new_metadata=new_metadata if update_row else None,
+        update_row=update_row,
+        skip_reason=None if update_row else "already cured (metadata PMA tuple matches canonical)",
+        pma_only=True,
+    )
+
+
+def pma_tuple_delta(old_metadata: dict | None, new_metadata: dict | None) -> str:
+    """Pure. `key: old -> new` for every PMA key a `--pma-only` plan changes —
+    the run report must say WHAT moved, not just that a row was touched."""
+    old = old_metadata or {}
+    new = new_metadata or {}
+    return ", ".join(
+        f"{key}: {old.get(key)!r} -> {new.get(key)!r}"
+        for key in PMA_METADATA_KEYS
+        if old.get(key) != new.get(key)
+    )
+
+
 def archive_params(code: str, current_row: dict) -> tuple:
     """Pure — the exact, byte-unaltered params for the archive INSERT.
     Kept as a standalone function so the "archive is byte-exact" invariant
@@ -828,6 +923,15 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="comma-separated list of 5-digit codes to process "
         "(mandatory unless --all-quarantined or --all-licensing-absent)",
+    )
+    ap.add_argument(
+        "--pma-only",
+        action="store_true",
+        help="with --only: sync ONLY the PMA evidence tuple inside `metadata` from canonical "
+        "(pma_status, cap, verification status, official basis, source vintage). `judul`, "
+        "`content` and every other metadata key are left byte-identical — the cure for rows "
+        "whose hand-written prose the full rebuild would destroy. Refuses to combine with any "
+        "--all-* selector.",
     )
     ap.add_argument(
         "--all-quarantined",
@@ -903,6 +1007,25 @@ def validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> 
         parser.error(
             "--cure-run is REQUIRED when --apply is passed — each cure pass declares its own stable id"
         )
+    # --pma-only is a NARROWER write on an operator-named scope, never a sweep:
+    # the --all-* selectors each justify a WHOLESALE rebuild (marker / detector /
+    # stored text), and none of them says anything about the PMA tuple alone.
+    if getattr(args, "pma_only", False):
+        sweep = [
+            name
+            for name, on in (
+                ("--all-quarantined", getattr(args, "all_quarantined", False)),
+                ("--all-licensing-absent", getattr(args, "all_licensing_absent", False)),
+                ("--all-machine-template", getattr(args, "all_machine_template", False)),
+            )
+            if on
+        ]
+        if sweep:
+            parser.error(
+                f"--pma-only cannot be combined with {' or '.join(sweep)} — name the codes with --only"
+            )
+        if not args.only:
+            parser.error("--pma-only requires --only <codes> — it never guesses scope")
     if not args.cure_run:
         return "dry-run"
     cure_run = args.cure_run.strip()
@@ -1051,7 +1174,9 @@ async def main() -> int | None:
             if not codes:
                 logger.warning("gate refused every selected row — nothing to do")
                 return
-        elif not args.all_quarantined:
+        elif not args.all_quarantined and not args.pma_only:
+            # (`--pma-only` is exempt: it rewrites no prose, so the warning
+            # below would be a false alarm about an overwrite that cannot happen.)
             # `--only` BYPASSES the gate above, and that is the trap this block
             # exists to make loud. The gate cannot run here: a hand-written
             # scope means the operator, not a predicate, chose these codes, and
@@ -1103,19 +1228,32 @@ async def main() -> int | None:
                     "created_at": row["created_at"],
                     "updated_at": row["updated_at"],
                 }
-            plan = plan_cure(code, by_code.get(code), current_row)
+            if args.pma_only:
+                plan = plan_pma_only(code, by_code.get(code), current_row)
+            else:
+                plan = plan_cure(code, by_code.get(code), current_row)
             plans.append(plan)
 
             if not plan.update_row:
                 logger.info("SKIP %s: %s", code, plan.skip_reason)
                 continue
 
-            logger.info(
-                "  %s: would update kbli_documents (%d chars)%s",
-                code,
-                len(plan.new_content or ""),
-                " [GAP]" if plan.is_gap else " [RESTORED]",
-            )
+            if plan.pma_only:
+                assert current_row is not None
+                logger.info(
+                    "  %s: %s metadata PMA tuple only (judul/content byte-identical): %s",
+                    code,
+                    "syncing" if args.apply else "would sync",
+                    pma_tuple_delta(current_row.get("metadata"), plan.new_metadata),
+                )
+            else:
+                logger.info(
+                    "  %s: %s kbli_documents (%d chars)%s",
+                    code,
+                    "updating" if args.apply else "would update",
+                    len(plan.new_content or ""),
+                    " [GAP]" if plan.is_gap else " [RESTORED]",
+                )
             if args.apply:
                 assert current_row is not None  # update_row=True implies found_in_table=True
                 params = archive_params(code, current_row)
@@ -1124,14 +1262,22 @@ async def main() -> int | None:
                 # precedent): bind the pre-serialized json.dumps() string to a
                 # $N::text::jsonb placeholder so the server casts text->jsonb
                 # exactly once.
-                await conn.execute(
-                    "UPDATE kbli_documents SET judul = $2, content = $3, "
-                    "metadata = $4::text::jsonb, updated_at = now() WHERE kode_kbli = $1",
-                    code,
-                    plan.new_judul,
-                    plan.new_content,
-                    json.dumps(plan.new_metadata, ensure_ascii=False),
-                )
+                if plan.pma_only:
+                    await conn.execute(
+                        "UPDATE kbli_documents SET metadata = $2::text::jsonb, "
+                        "updated_at = now() WHERE kode_kbli = $1",
+                        code,
+                        json.dumps(plan.new_metadata, ensure_ascii=False),
+                    )
+                else:
+                    await conn.execute(
+                        "UPDATE kbli_documents SET judul = $2, content = $3, "
+                        "metadata = $4::text::jsonb, updated_at = now() WHERE kode_kbli = $1",
+                        code,
+                        plan.new_judul,
+                        plan.new_content,
+                        json.dumps(plan.new_metadata, ensure_ascii=False),
+                    )
     finally:
         await conn.close()
 
