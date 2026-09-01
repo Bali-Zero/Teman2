@@ -70,8 +70,11 @@ done
 
 # The path every cell is built around, and the target the `symlink` local state points at.
 # ($SIBLING was described here as "a second path that keeps the parent dir alive" -- true when
-# $P sat in a subdirectory, and stale since it moved to the repo root. Its only job now is to
-# give the symlink state something real to resolve to.)
+# $P sat in a subdirectory, and stale since it moved to the repo root.) Read the role precisely:
+# the `symlink` arm does NOT reference $SIBLING by name, it hardcodes the same literal string,
+# so grepping for the identifier under-reports how load-bearing this path is. Its existence IS
+# asserted -- delete it and the symlink state goes dangling and trips assert_local_state -- but
+# its CONTENT is not, and for `ordinary` cells nothing downstream would notice wrong bytes here.
 # Root-level and capitalised: the case-only axis renames Subject.md -> subject.md, and on a
 # case-insensitive filesystem the DIRECTION decides which spelling the resolver meets first.
 # The body is deliberately long: git only PAIRS a rename above a similarity threshold, and a
@@ -81,6 +84,24 @@ SIBLING="area/bystander.md"
 BODY="body long enough for git to pair this as a rename rather than a delete plus an add"
 
 fatal() { echo "FATAL fixture ($CELL): $1" >&2; exit 3; }
+
+# EXPECTED CONTENT, as blob hashes derived from the fixture's own constants -- because two
+# independent reviewers, working separately, found the same hole one level below the last fix:
+# the assertions verified an object's SHAPE (mode and type) and never its CONTENT.
+#   * `modify` with wrong bytes that merely share the real 14-byte prefix reproduced a full
+#     MATRIX STABLE across all 16 of its cells -- and "ORIGIN-V2 body" IS that prefix, so
+#     preserving it costs a saboteur nothing. `outcome` samples head -c 14 and sees nothing.
+#   * `rename_away`'s destination could hold entirely unrelated content, never moved at all,
+#     and no probe fired -- while that arm's whole point, stated in its own comment, is that
+#     the content is BYTE-IDENTICAL so git pairs it as R100. The one property that makes the
+#     cell a rename was the one property nothing checked.
+#   * a tree at the removed path could hold the wrong file, or an extra one beside it.
+# One cure closes all of them, and it is this spec's own design rule applied a level deeper:
+# assert the OBJECT, not its silhouette.
+H_BASE="$(printf '%s\n' "$BODY" | git hash-object --stdin)"          # the base blob at $P
+H_V2="$(printf 'ORIGIN-V2 %s\n' "$BODY" | git hash-object --stdin)"  # what `modify` writes
+H_PANEL="$(printf 'panel\n' | git hash-object --stdin)"              # the file inside a tree
+H_LINK="$(printf 'bystander.md' | git hash-object --stdin)"           # a symlink blob IS its target
 
 # ---- fixture construction ---------------------------------------------------------------
 # build_origin_action: mutate a scratch clone of origin, push. Echoes UNCONSTRUCTIBLE and
@@ -170,7 +191,7 @@ assert_local_state() {
 # incoming side is not what its label says. Note git's object store is case-SENSITIVE even when
 # the filesystem is not, which is what makes the case-only assertion meaningful.
 assert_origin_action() {
-  local wt src dst low inner
+  local wt src dst low inner nsub
   wt="$1"
   # THREE probes, not one. The first version asked a single question -- what stands at $P --
   # and `delete`, `rename_away` and `rename_case_only` all answer it identically ("nothing"),
@@ -182,31 +203,34 @@ assert_origin_action() {
   # comparator blind. The cure is the same one the A axis needed: give every action a UNIQUE
   # signature, so no arm can wear another's clothes. Source, destination, and the lowercase
   # spelling are read separately and all three are asserted, including their ABSENCE.
-  src="$(git -C "$wt" ls-tree HEAD -- "$P"                | awk '{print $1" "$2}')"
-  dst="$(git -C "$wt" ls-tree HEAD -- "moved/subject.md"  | awk '{print $1" "$2}')"
-  low="$(git -C "$wt" ls-tree HEAD -- "subject.md"        | awk '{print $1" "$2}')"
+  src="$(git -C "$wt" ls-tree HEAD -- "$P"                | awk '{print $1" "$2" "$3}')"
+  dst="$(git -C "$wt" ls-tree HEAD -- "moved/subject.md"  | awk '{print $1" "$2" "$3}')"
+  low="$(git -C "$wt" ls-tree HEAD -- "subject.md"        | awk '{print $1" "$2" "$3}')"
   # A FOURTH probe, for the one blind spot a reviewer found that BOTH the assertion and all
   # seven measured fields missed completely: the two tree-building arms are asserted to leave
   # "a tree at $P", and a tree holding the WRONG file satisfies that. Nothing downstream
   # notices -- the resolver's outcome for a directory does not depend on what is inside it --
   # so a fixture silently building an empty or misnamed tree would keep measuring, keep
   # matching the baseline, and keep certifying a cell that no longer exercises its own shape.
-  inner="$(git -C "$wt" ls-tree HEAD -- "$P/panel.json"   | awk '{print $1" "$2}')"
+  inner="$(git -C "$wt" ls-tree HEAD -- "$P/panel.json"   | awk '{print $1" "$2" "$3}')"
+  # ...and how many blobs live under $P in total, so a tree carrying an EXTRA file beside the
+  # expected one cannot pass a probe that only asks about the expected one.
+  nsub="$(git -C "$wt" ls-tree -r HEAD -- "$P" | wc -l | tr -d ' ')"
   case "$2" in
-    modify)               [ "$src" = "100644 blob" ] && [ -z "$dst" ]                && [ -z "$low" ] \
-                          && [ -z "$inner" ] ;;
-    delete)               [ -z "$src" ]              && [ -z "$dst" ]                && [ -z "$low" ] \
-                          && [ -z "$inner" ] ;;
-    rename_away)          [ -z "$src" ]              && [ "$dst" = "100644 blob" ]   && [ -z "$low" ] \
-                          && [ -z "$inner" ] ;;
-    rename_away_and_tree) [ "$src" = "040000 tree" ] && [ "$dst" = "100644 blob" ]   && [ -z "$low" ] \
-                          && [ "$inner" = "100644 blob" ] ;;
-    rename_case_only)     [ -z "$src" ]              && [ -z "$dst" ]                && [ "$low" = "100644 blob" ] \
-                          && [ -z "$inner" ] ;;
-    tree_at_path)         [ "$src" = "040000 tree" ] && [ -z "$dst" ]                && [ -z "$low" ] \
-                          && [ "$inner" = "100644 blob" ] ;;
-    typechange)           [ "$src" = "120000 blob" ] && [ -z "$dst" ]                && [ -z "$low" ] \
-                          && [ -z "$inner" ] ;;
+    modify)               [ "$src" = "100644 blob $H_V2" ] && [ -z "$dst" ] && [ -z "$low" ] \
+                          && [ -z "$inner" ] && [ "$nsub" = 1 ] ;;
+    delete)               [ -z "$src" ] && [ -z "$dst" ] && [ -z "$low" ] \
+                          && [ -z "$inner" ] && [ "$nsub" = 0 ] ;;
+    rename_away)          [ -z "$src" ] && [ "$dst" = "100644 blob $H_BASE" ] && [ -z "$low" ] \
+                          && [ -z "$inner" ] && [ "$nsub" = 0 ] ;;
+    rename_away_and_tree) [ "${src% *}" = "040000 tree" ] && [ "$dst" = "100644 blob $H_BASE" ] \
+                          && [ -z "$low" ] && [ "$inner" = "100644 blob $H_PANEL" ] && [ "$nsub" = 1 ] ;;
+    rename_case_only)     [ -z "$src" ] && [ -z "$dst" ] && [ "$low" = "100644 blob $H_BASE" ] \
+                          && [ -z "$inner" ] && [ "$nsub" = 0 ] ;;
+    tree_at_path)         [ "${src% *}" = "040000 tree" ] && [ -z "$dst" ] && [ -z "$low" ] \
+                          && [ "$inner" = "100644 blob $H_PANEL" ] && [ "$nsub" = 1 ] ;;
+    typechange)           [ "$src" = "120000 blob $H_LINK" ] && [ -z "$dst" ] && [ -z "$low" ] \
+                          && [ -z "$inner" ] && [ "$nsub" = 1 ] ;;
     *) return 1 ;;
   esac
 }
