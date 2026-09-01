@@ -62,9 +62,16 @@ residual_risks:
     finding rate on ~214 bytes of cross-family output was one confirmed defect, while ~40 minutes of
     same-family review found none. The remaining risk is therefore NOT "the seats agreed": it is
     that the deepseek answer was truncated mid-list and its findings 2..N were never seen. Its
-    prompt named eleven more shapes to attack and its findings 2..N were never emitted. Nine of
-    those shapes are being probed by hand as this pack is written; whatever they return is the
-    AUTHOR probing, not the refuter answering, and is recorded as such.
+    prompt named eleven more shapes to attack and its findings 2..N were never emitted. Nine were
+    then probed BY HAND (author probing, not refuter answering) and all nine matched the
+    prediction — but two of those predictions are "EXEMPTED, and that is a declared limit rather
+    than a passed test", so 9/9 must not be read as 9 clean: (a) a `uses:` line inside a `run:`
+    heredoc is indistinguishable from a real step to this parser, so a ref inside GENERATED content
+    can move under the exemption; the blast radius is bounded by condition 3 to a version string,
+    and no such workflow exists in this repo today; (b) appending a trailing `# comment` to a
+    `uses:` line is exempt, which is correct in YAML and would not be inside a heredoc feeding a
+    format where `#` is not a comment. Neither is cured here; both are named so the next reader
+    does not have to rediscover them.
   - >-
     A first-party action version could be compromised UPSTREAM, and this exemption does not defend
     against that. Neither did the Gear-3 ceremony it replaces, which reads a brief and a pack and
@@ -84,6 +91,20 @@ residual_risks:
 pii_scan: clean
 
 receipts:
+  - claim: >-
+      The nine shapes named in the cross-family prompt but never reached by its truncated answer
+      were probed by hand, and the two that come back EXEMPTED are limits I can state rather than
+      surprises
+    cmd: "python3 <scratchpad>/shapes.py — nine hand-built patches through compute_floor()"
+    result: >-
+      9/9 matched the prediction. Floor 3 (refused): shell command appended after the ref · YAML
+      anchor changed alongside the pin · block scalar indicator changed alongside the pin ·
+      brand-new file via `--- /dev/null` · uppercase owner `Actions/`. Floor 1 (exempted): pure pin
+      · CRLF line endings · `+++` with a TAB-separated timestamp · a trailing `# comment` added ·
+      a `uses:` line inside a `run:` heredoc. The last two are declared limits, see residual_risks.
+    exit: 0
+    ts: 2026-09-01T20:05Z
+    seat: session (Pro)
   - claim: >-
       The shape a peer named as adjacent to the reorder hole — two FULL steps swapping, where the
       surrounding `with:` blocks are identical — is real, git really does hide the move, and
