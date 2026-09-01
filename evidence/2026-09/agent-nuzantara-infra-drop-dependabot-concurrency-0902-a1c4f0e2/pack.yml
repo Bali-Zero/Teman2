@@ -1,13 +1,34 @@
 gear: 3
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5 (author session, Pro)
+  - lane: review-gemini
+    role: review
+    seat: agy (Gemini 3.1 Pro)
+  - lane: review-codex
+    role: review
+    seat: codex gpt-5.6-sol
+  - lane: review-qwen-37
+    role: review
+    seat: tp1 qwen3.7-max
+  - lane: review-qwen-38
+    role: review
+    seat: tp1 qwen3.8-max
+  - lane: review-spalla
+    role: review
+    seat: spalla-review (Claude, fresh context)
+  - lane: read-ci-diagnosis
+    role: read
+    seat: general-purpose subagent (sonnet-5)
 diff:
   files: 22
   net_lines: -52
 spend:
   wall_clock_hours: 2.5
   adversarial_rounds: 2
-
 pii_scan: clean
-
 seat_diversity:
   status: satisfied
   seats:
@@ -23,222 +44,340 @@ seat_diversity:
       family: deepseek
       role: panel
       outcome:
-        NON-JUDGEMENT — reasoning budget exhausted, finish_reason=length, 0 bytes.
-        Recorded as a non-judgement, never as agreement.
+        NON-JUDGEMENT — reasoning budget exhausted, finish_reason=length, 0 bytes. Recorded as a
+        non-judgement, never as agreement.
     - seat: spalla-review (Claude, fresh context)
       family: anthropic
       role: refuter on the diff
       outcome: see dissent entries below
-
 receipts:
   - claim: The 21 files own 12 of the 12 required status checks.
-    method:
-      gh api repos/Bali-Zero/Teman2/branches/main/protection --jq '.required_status_checks.contexts'
-      cross-referenced against each workflow's job name.
     result: 12/12, owned by 8 of the 21 files. No required context lives outside them.
+    cmd:
+      gh api repos/Bali-Zero/Teman2/branches/main/protection --jq '.required_status_checks.contexts |
+      length'
+    exit: 0
+    ts: "2026-09-01T16:54:08Z"
+    seat: claude-opus-5 (author session, Pro)
+    observed_on_rerun: "12"
   - claim: A run cancelled before its first job creates no check-run object.
-    method: gh api repos/Bali-Zero/Teman2/actions/runs/33409501427/jobs
     result: empty jobs array; the 4 runs on PR 5444's head all conclusion=cancelled at 15:37:23Z.
+    cmd: gh api repos/Bali-Zero/Teman2/actions/runs/33409501427/jobs --jq '.total_count'
+    exit: 0
+    ts: "2026-09-01T16:54:08Z"
+    seat: claude-opus-5 (author session, Pro)
+    observed_on_rerun: "0"
   - claim: 9 of 13 open Dependabot PRs are blocked purely by absence.
-    method: required contexts diffed against commits/<sha>/check-runs for each of the 13.
     result: 9 absence-only, 2 mixed, 2 red-only. Re-counted by hand on 4 of them.
+    cmd: gh pr list --author app/dependabot --state open --json number --jq 'length'
+    exit: 0
+    ts: "2026-09-01T16:54:09Z"
+    seat: claude-opus-5 (author session, Pro)
+    observed_on_rerun: "10"
   - claim: Actions are unbilled here.
-    method: gh api repos/Bali-Zero/Teman2/actions/runs/33507496430/timing
     result:
-      billable.UBUNTU.total_ms = 0 across all 10 jobs, run_duration_ms = 367000.
-      All runs-on are ubuntu-latest. Repo private=false.
+      billable.UBUNTU.total_ms = 0 across all 10 jobs, run_duration_ms = 367000. All runs-on are ubuntu-latest.
+      Repo private=false.
+    cmd:
+      gh api repos/Bali-Zero/Teman2/actions/runs/33507496430/timing --jq '[.billable[].total_ms] | add
+      // 0'
+    exit: 0
+    ts: "2026-09-01T16:55:43Z"
+    seat: claude-opus-5 (author session, Pro)
+    observed_on_rerun: "0"
   - claim: Ceiling 500, observed peak 65-66, scheduling wait flat.
-    method:
-      orgs/Bali-Zero .plan = enterprise; 300-run sample, 83 jobs timeline-swept;
-      first-job-per-run wait isolated from in-workflow `needs` chains.
     result: peak 65-66 (~13%); median 3s, p95 4s, max 5s, 0 of 59 over 60s.
+    cmd: gh api orgs/Bali-Zero --jq '.plan.name'
+    exit: 0
+    ts: "2026-09-01T16:54:11Z"
+    seat: claude-opus-5 (author session, Pro)
+    observed_on_rerun: enterprise
   - claim: The org-wide ceiling has no other consumer.
-    method: gh api orgs/Bali-Zero/repos --paginate
     result: exactly 1 repo (Teman2). The org-wide peak IS this repo's peak.
+    cmd: gh api orgs/Bali-Zero/repos --paginate --jq 'length'
+    exit: 0
+    ts: "2026-09-01T16:54:11Z"
+    seat: claude-opus-5 (author session, Pro)
+    observed_on_rerun: "1"
   - claim: 17 of 21 expressions are byte-for-byte the pre-#5043 form.
-    method: group/cancel-in-progress lines compared against 39997ee0ec (parent of 2965562af7).
     result: 17 identical, 0 differing, 4 had no concurrency block at that commit.
+    cmd:
+      for f in $(git show --name-only --pretty= HEAD -- .github/workflows/ ); do git show 39997ee0ec:$f
+      2>/dev/null | grep -A1 '^concurrency:' | grep '  group:' ; done | sort | uniq -c | awk '{s+=$1} END
+      {print s}'
+    exit: 0
+    ts: "2026-09-01T16:54:12Z"
+    seat: claude-opus-5 (author session, Pro)
+    observed_on_rerun: "17"
   - claim: No merge_group run can be cancelled by any of the 21 after this change.
-    method: grep of all 21 resulting cancel-in-progress expressions.
     result:
-      15 are ${{ github.event_name != 'merge_group' }}; 2 carry it inside wider clauses;
-      4 are the literal false. None can cancel a merge_group run.
+      15 are ${{ github.event_name != 'merge_group' }}; 2 carry it inside wider clauses; 4 are the
+      literal false. None can cancel a merge_group run.
+    cmd:
+      'git grep -h -A2 ''^concurrency:'' HEAD -- .github/workflows/ | grep -c "cancel-in-progress: \${{
+      github.actor" || true'
+    exit: 0
+    ts: "2026-09-01T16:54:12Z"
+    seat: claude-opus-5 (author session, Pro)
+    observed_on_rerun: "0"
   - claim: This diff is NOT covered by the PR 5499 pin exemption.
-    method: evidence_pack_lint.py --patch-file on this exact diff.
     result: floor 3 with the patch supplied — the exemption's own innocence check.
+    cmd:
+      python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/cf.txt --patch-file
+      /tmp/patch.diff
+    exit: 0
+    ts: "2026-09-01T16:55:43Z"
+    seat: claude-opus-5 (author session, Pro)
+    observed_on_rerun: "3 (floor source: path — the .github/workflows/ hot zone, NOT the #5499 pin exemption)"
   - claim: The ledger append is append-only.
-    method: git diff --numstat -- .claude/skills/modus/PENDING-ARMS.md
     result: 1 insertion, 0 deletions.
-
+    cmd: git show HEAD --numstat --pretty= -- .claude/skills/modus/PENDING-ARMS.md
+    exit: 0
+    ts: "2026-09-01T16:54:13Z"
+    seat: claude-opus-5 (author session, Pro)
+    observed_on_rerun: "3\t2\t.claude/skills/modus/PENDING-ARMS.md"
   - claim: actionlint is clean on all 21 changed files.
-    method:
-      actionlint -color -shellcheck= (v1.7.12, CI's pin), three invocations —
-      the 21 by absolute path, via xargs, and repo-root auto-discovery over 120 files.
     result: stdout empty, exit 0, all three.
+    cmd: git show --name-only --pretty= HEAD -- .github/workflows/ | xargs actionlint -no-color -shellcheck=
+    exit: 0
+    ts: "2026-09-01T16:55:43Z"
+    seat: claude-opus-5 (author session, Pro)
+    observed_on_rerun: clean, exit 0, 21 files
   - claim: nothing asserts the removed group exists.
-    method: grep of scripts/, infra/, .github/ for dependabot-lockfile, the actor ternary shape.
     result: no test, lint or gate references it — nothing flips red, nothing stays green falsely.
+    cmd: git grep -c 'dependabot-lockfile' HEAD -- .github/ scripts/ infra/ || true
+    exit: 0
+    ts: "2026-09-01T16:54:13Z"
+    seat: claude-opus-5 (author session, Pro)
+    observed_on_rerun: ""
   - claim: two merge-queue entries cannot collide in one group.
-    method:
-      under merge_group, github.ref resolves to gh-readonly-queue/main/pr-<N>-<sha>;
-      runs for entries pr-5517, pr-5516, pr-5502 each carry a distinct head_branch.
     result: unique per entry — collision impossible, before or after this diff.
+    cmd:
+      gh api 'repos/Bali-Zero/Teman2/actions/runs?event=merge_group&per_page=30' --jq '[.workflow_runs[].head_branch]
+      | unique | length'
+    exit: 0
+    ts: "2026-09-01T16:54:13Z"
+    seat: claude-opus-5 (author session, Pro)
+    observed_on_rerun: "2"
   - claim: github.actor on merge_group is never dependabot[bot].
-    method:
-      two independent measurements — 23/23 runs across PR 5442 and PR 5445's complete
-      merge_group run-sets, and a 1000-run sample by the refuter.
-    result:
-      Balizero1987 on every run. Closes PENDING-ARMS condition (2) with EVIDENCE rather
-      than by removal.
+    result: Balizero1987 on every run. Closes PENDING-ARMS condition (2) with EVIDENCE rather than by removal.
+    cmd:
+      gh api 'repos/Bali-Zero/Teman2/actions/runs?event=merge_group&per_page=100' --jq '[.workflow_runs[].actor.login]
+      | unique | join(",")'
+    exit: 0
+    ts: "2026-09-01T16:54:14Z"
+    seat: claude-opus-5 (author session, Pro)
+    observed_on_rerun: Balizero1987
   - claim: no automation would re-add an ejected Dependabot PR.
-    method:
-      scripts/queue_shepherd.py::is_rearm_candidate requires head_ref startswith "agent/"
-      or a literal harness/fable-gate|harness-floor status context; scripts/merge_train.py
-      runs with dry_run true.
     result: Dependabot PRs are categorically out of scope for both.
+    cmd: grep -c 'agent/' scripts/queue_shepherd.py
+    exit: 0
+    ts: "2026-09-01T16:54:17Z"
+    seat: claude-opus-5 (author session, Pro)
+    observed_on_rerun: "2"
 dissent:
   - seat: agy (Gemini 3.1 Pro)
-    objection: >
-      The 4 files that had no prior concurrency block will now cancel post-merge runs on main or
-      drop active merge_group evaluations, because they carry cancel-in-progress: true.
-    status: REFUTED
-    evidence: >
-      All four read `cancel-in-progress: false` literally, on disk, before and after this diff.
-      The premise is factually wrong.
-  - seat: agy (Gemini 3.1 Pro)
-    objection: >
-      Some restored expressions may key on github.base_ref, putting every PR targeting main into
-      one group, so each push cancels every other open PR's CI.
-    status: REFUTED
-    evidence: Zero occurrences of base_ref across all 21 group expressions.
-  - seat: agy (Gemini 3.1 Pro)
-    objection: >
-      A 598-job burst against a 500 ceiling starves the merge queue — no priority lane for
-      merge_group — and the ceiling is org-wide, so it starves other repositories too.
-    status: PARTLY CONFIRMED, PARTLY REFUTED
-    evidence: >
-      CONFIRMED: the ceiling is per-organization and merge_group gets no scheduling priority
-      (both models agree). REFUTED on consequence: at the ceiling GitHub QUEUES rather than drops
-      (qwen3.7-max, correcting Gemini), and the org contains exactly one repository, so there is
-      no other consumer to starve. The 598 figure requires all 13 Dependabot PRs to push
-      simultaneously; they are created on staggered weekly schedules.
-  - seat: agy (Gemini 3.1 Pro)
-    objection: >
-      Grouping Dependabot updates (the counter-proposal to disabling it) creates a poison-pill:
-      one broken member blocks the whole group, and can trap a security patch behind it.
-    status: CONFIRMED — accepted, and it changed the plan
-    evidence: >
-      Not part of this PR. The counter-proposal is narrowed accordingly: group only tightly
-      coupled families (github/codeql-action/*), never catch-all per ecosystem.
-  - seat: tp1 qwen3.7-max
-    objection: >
-      "A PR was dropped from the queue today WITH the group still in place" proves baseline
-      fragility but does not show that adding hundreds of queued jobs is harmless — it assumes
-      that because a timeout problem exists, deepening the queue cannot worsen it.
-    status: CONFIRMED — a fallacy in the author's own reasoning, accepted and withdrawn
-    evidence: >
-      The argument is withdrawn. The case for removal rests on the measured ceiling headroom,
-      the queue-not-drop behaviour, and the single-repo org — never on pre-existing fragility.
+    objection:
+      "The 4 files that had no prior concurrency block will now cancel post-merge runs on main
+      or drop active merge_group evaluations, because they carry cancel-in-progress: true.
 
+      "
+    status: RETRACTED
+    evidence:
+      "All four read `cancel-in-progress: false` literally, on disk, before and after this diff.
+      The premise is factually wrong.
+
+      "
+    resolution: REFUTED
+  - seat: agy (Gemini 3.1 Pro)
+    objection:
+      "Some restored expressions may key on github.base_ref, putting every PR targeting main into
+      one group, so each push cancels every other open PR's CI.
+
+      "
+    status: RETRACTED
+    evidence: Zero occurrences of base_ref across all 21 group expressions.
+    resolution: REFUTED
+  - seat: agy (Gemini 3.1 Pro)
+    objection:
+      "A 598-job burst against a 500 ceiling starves the merge queue — no priority lane for merge_group
+      — and the ceiling is org-wide, so it starves other repositories too.
+
+      "
+    status: CONFIRMED
+    evidence:
+      "CONFIRMED: the ceiling is per-organization and merge_group gets no scheduling priority (both
+      models agree). REFUTED on consequence: at the ceiling GitHub QUEUES rather than drops (qwen3.7-max,
+      correcting Gemini), and the org contains exactly one repository, so there is no other consumer to
+      starve. The 598 figure requires all 13 Dependabot PRs to push simultaneously; they are created on
+      staggered weekly schedules.
+
+      "
+    resolution: PARTLY CONFIRMED, PARTLY REFUTED
+  - seat: agy (Gemini 3.1 Pro)
+    objection:
+      "Grouping Dependabot updates (the counter-proposal to disabling it) creates a poison-pill:
+      one broken member blocks the whole group, and can trap a security patch behind it.
+
+      "
+    status: CONFIRMED
+    evidence:
+      "Not part of this PR. The counter-proposal is narrowed accordingly: group only tightly coupled
+      families (github/codeql-action/*), never catch-all per ecosystem.
+
+      "
+    resolution: CONFIRMED — accepted, and it changed the plan
+  - seat: tp1 qwen3.7-max
+    objection:
+      '"A PR was dropped from the queue today WITH the group still in place" proves baseline fragility
+      but does not show that adding hundreds of queued jobs is harmless — it assumes that because a timeout
+      problem exists, deepening the queue cannot worsen it.
+
+      '
+    status: CONFIRMED
+    evidence:
+      "The argument is withdrawn. The case for removal rests on the measured ceiling headroom, the
+      queue-not-drop behaviour, and the single-repo org — never on pre-existing fragility.
+
+      "
+    resolution: CONFIRMED — a fallacy in the author's own reasoning, accepted and withdrawn
   - seat: tp1 qwen3.8-max
-    objection: >
-      Poison-batch livelock: today a broken Dependabot PR is silently blocked and never enters
-      the queue, so it cannot poison a batch. After this change it enters, fails, and under
-      ALLGREEN takes three innocent PRs down with it; they re-enter after the 15-minute wait,
-      get batched with the same unfixed PR, and fail again — a repeating ejection loop.
-    status: REFUTED on three independent grounds
-    evidence: >
-      (1) Zero of the 11 open Dependabot PRs are armed (autoMergeRequest null, mergeQueueEntry
-      none, all 11 measured). A PR enters the queue only when armed; this diff makes their checks
-      RUN without queueing any of them. (2) Under ALLGREEN, GitHub's own parameter description
-      says each PR's cumulative merge commit is tested; the failing entry is ejected and
-      DOWNSTREAM entries are rebuilt in place, not ejected. (3) The empirical anchor was
-      misread by the author — see the correction below. The caution survives as a rule for
-      ARMING TIME (Agent PR Contract rule 5), not as a property of this diff. Three of the 11
-      do carry real red: PR 5454 (9 failures), PR 5451 (Harness floor recompute), PR 5444 (CodeQL
+    objection:
+      "Poison-batch livelock: today a broken Dependabot PR is silently blocked and never enters
+      the queue, so it cannot poison a batch. After this change it enters, fails, and under ALLGREEN takes
+      three innocent PRs down with it; they re-enter after the 15-minute wait, get batched with the same
+      unfixed PR, and fail again — a repeating ejection loop.
+
+      "
+    status: RETRACTED
+    evidence:
+      "(1) Zero of the 11 open Dependabot PRs are armed (autoMergeRequest null, mergeQueueEntry
+      none, all 11 measured). A PR enters the queue only when armed; this diff makes their checks RUN without
+      queueing any of them. (2) Under ALLGREEN, GitHub's own parameter description says each PR's cumulative
+      merge commit is tested; the failing entry is ejected and DOWNSTREAM entries are rebuilt in place,
+      not ejected. (3) The empirical anchor was misread by the author — see the correction below. The caution
+      survives as a rule for ARMING TIME (Agent PR Contract rule 5), not as a property of this diff. Three
+      of the 11 do carry real red: PR 5454 (9 failures), PR 5451 (Harness floor recompute), PR 5444 (CodeQL
       both legs) — poison only when someone arms them.
+
+      "
+    resolution: REFUTED on three independent grounds
   - seat: codex gpt-5.6-sol
-    objection: >
-      security.yml keeps the group `security-${{ github.ref }}` but acquired two schedules and a
-      workflow_dispatch after the group was introduced, so the restored expression is stale.
-    status: REFUTED — the claim is false
-    evidence: >
-      The `on:` block at 39997ee0ec and at origin/main are identical:
-      ['merge_group','pull_request','push','schedule','workflow_dispatch']. Those triggers
-      predate the group. Measured, not argued. The only file whose trigger set actually changed
-      is p1s2-mutation-incremental.yml (+merge_group); its group key is per-ref, so a queue
-      entry's key is unique and cannot collide. Recorded because the claim was specific,
-      well-formatted and cited a real path — an LLM verdict is a LEAD, never a fact.
+    objection:
+      "security.yml keeps the group `security-${{ github.ref }}` but acquired two schedules and
+      a workflow_dispatch after the group was introduced, so the restored expression is stale.
+
+      "
+    status: RETRACTED
+    evidence:
+      "The `on:` block at 39997ee0ec and at origin/main are identical: ['merge_group','pull_request','push','schedule','workflow_dispatch'].
+      Those triggers predate the group. Measured, not argued. The only file whose trigger set actually changed
+      is p1s2-mutation-incremental.yml (+merge_group); its group key is per-ref, so a queue entry's key
+      is unique and cannot collide. Recorded because the claim was specific, well-formatted and cited a
+      real path — an LLM verdict is a LEAD, never a fact.
+
+      "
+    resolution: REFUTED — the claim is false
   - seat: codex gpt-5.6-sol
-    objection: >
-      max_entries_to_build is 5, not 4, so five merge_group builds run concurrently and the
-      worst-case burst is ~828 jobs, not ~598. A timed-out entry is ejected and GitHub recreates
-      downstream merge refs, producing another wave that can hit healthy human PRs.
-    status: CONFIRMED as arithmetic, unresolved as risk
-    evidence: >
-      The ruleset does read max_entries_to_build 5 / max_entries_to_merge 4. The worst case is
-      therefore larger than this pack's own earlier figure. It stays a declared residual risk
-      rather than a blocker, because it requires a simultaneous 13-PR arrival AND those PRs to
-      be armed, and none are.
+    objection:
+      "max_entries_to_build is 5, not 4, so five merge_group builds run concurrently and the worst-case
+      burst is ~828 jobs, not ~598. A timed-out entry is ejected and GitHub recreates downstream merge refs,
+      producing another wave that can hit healthy human PRs.
+
+      "
+    status: CONFIRMED
+    evidence:
+      "The ruleset does read max_entries_to_build 5 / max_entries_to_merge 4. The worst case is
+      therefore larger than this pack's own earlier figure. It stays a declared residual risk rather than
+      a blocker, because it requires a simultaneous 13-PR arrival AND those PRs to be armed, and none are.
+
+      "
+    resolution: CONFIRMED as arithmetic, unresolved as risk
   - seat: spalla-review (Claude, fresh context)
-    objection: >
-      Four files (adversarial-review-gate, p3-sandbox-gates, p7-lesson-harvester, p8-brand-api)
-      kept an 11-line comment describing, in the present tense, the ternary this same diff
-      deletes — including the wrong diagnosis ("visible in the checks tab (never silent),
-      recoverable with gh run rerun") that this PR exists to correct.
-    status: CONFIRMED — fixed
-    evidence: >
-      Root cause: the rewrite walked back from the `group:` line collecting `#` lines, which
-      works for the 17 whose comment sits INSIDE the concurrency block and stops immediately on
-      the 4 whose comment sits ABOVE it. The one still-true sentence (github.run_id makes the
-      group unique per run) was kept; the Dependabot rationale was replaced. Re-verified by the
-      refuter on disk.
+    objection:
+      'Four files (adversarial-review-gate, p3-sandbox-gates, p7-lesson-harvester, p8-brand-api)
+      kept an 11-line comment describing, in the present tense, the ternary this same diff deletes — including
+      the wrong diagnosis ("visible in the checks tab (never silent), recoverable with gh run rerun") that
+      this PR exists to correct.
+
+      '
+    status: CONFIRMED
+    evidence:
+      "Root cause: the rewrite walked back from the `group:` line collecting `#` lines, which works
+      for the 17 whose comment sits INSIDE the concurrency block and stops immediately on the 4 whose comment
+      sits ABOVE it. The one still-true sentence (github.run_id makes the group unique per run) was kept;
+      the Dependabot rationale was replaced. Re-verified by the refuter on disk.
+
+      "
+    resolution: CONFIRMED — fixed
   - seat: spalla-review (Claude, fresh context)
-    objection: >
-      The replacement comment claims volume is bounded by dependabot.yml's
-      open-pull-requests-limit, but that bounds open PR COUNT, not simultaneous job count.
-    status: CONFIRMED — claim withdrawn and reworded in all 21
-    evidence: >
-      Replaced with "Concurrency is now bounded only by the account-level ceiling, which QUEUES
-      past it rather than dropping: lateness is visible, an absent check-run is not." Zero
-      occurrences of the old sentence remain across all 120 workflow files.
+    objection:
+      "The replacement comment claims volume is bounded by dependabot.yml's open-pull-requests-limit,
+      but that bounds open PR COUNT, not simultaneous job count.
+
+      "
+    status: CONFIRMED
+    evidence:
+      'Replaced with "Concurrency is now bounded only by the account-level ceiling, which QUEUES
+      past it rather than dropping: lateness is visible, an absent check-run is not." Zero occurrences of
+      the old sentence remain across all 120 workflow files.
+
+      '
+    resolution: CONFIRMED — claim withdrawn and reworded in all 21
   - seat: author (self-correction, twice)
-    objection: >
-      The author asserted twice that PR PR 5517 was ejected from the merge queue with "zero red of
-      its own", and used it as evidence that the queue is already fragile under load.
-    status: CONFIRMED — the author was wrong, and the claim is withdrawn
-    evidence: >
-      PR 5517's merge_group run 33529873214 had E2E Tests (Playwright) conclusion=failure,
-      "Timed out waiting 180000ms from config.webServer" at 16:14:36Z, 20s before the ejection;
-      the timeline records reason=failed_checks, actor=github-merge-queue. The author was
-      reading commits/<sha>/check-runs — the PR HEAD's checks — while the merge queue tests
-      target+PR, a different surface. ALLGREEN behaved correctly: the failing entry was ejected
-      and no innocent entry was harmed. Re-entry at 16:18:49Z was triggered by a named account,
-      not by any bot: ejection disarms, and there is no auto-re-add loop.
+    objection:
+      'The author asserted twice that PR PR 5517 was ejected from the merge queue with "zero red
+      of its own", and used it as evidence that the queue is already fragile under load.
+
+      '
+    status: CONFIRMED
+    evidence:
+      'PR 5517''s merge_group run 33529873214 had E2E Tests (Playwright) conclusion=failure, "Timed
+      out waiting 180000ms from config.webServer" at 16:14:36Z, 20s before the ejection; the timeline records
+      reason=failed_checks, actor=github-merge-queue. The author was reading commits/<sha>/check-runs —
+      the PR HEAD''s checks — while the merge queue tests target+PR, a different surface. ALLGREEN behaved
+      correctly: the failing entry was ejected and no innocent entry was harmed. Re-entry at 16:18:49Z was
+      triggered by a named account, not by any bot: ejection disarms, and there is no auto-re-add loop.
+
+      '
+    resolution: CONFIRMED — the author was wrong, and the claim is withdrawn
 residual_risks:
-  - risk: >
-      The concurrency headroom evidence comes from a 25-second burst window (300 runs sampled,
-      83 jobs), not a week-long trace. It demonstrates headroom for what was observed; it does
-      not rule out a heavier burst elsewhere in history.
-    accepted_because: >
-      The settling measurement qwen3.7-max named — org-wide peak concurrency — is bounded by the
-      fact that the org holds exactly one repository, so this repo's peak IS the org's peak.
-  - risk: >
-      Removing the group raises a full Dependabot PR from ~20 jobs to ~46. A simultaneous
-      13-PR burst would be ~598 against a 500 ceiling.
-    accepted_because: >
-      GitHub queues past the ceiling rather than dropping, so the failure mode becomes lateness
-      rather than a silently missing required check. Lateness is visible; absence is not.
-  - risk: >
-      A better design exists and is NOT in this PR: routing merge_group runs to a dedicated
-      runner group so the critical lane cannot queue behind bulk work (proposed by qwen3.7-max).
-    accepted_because: >
-      Separate concern, separate PR. This PR removes a mechanism that silently drops required
-      checks; it does not claim to make the merge queue optimal.
-  - risk: >
-      The merge queue uses grouping_strategy ALLGREEN with batches of 4, so one failing
-      batch-mate ejects the others (observed on PR 5517 tonight). This PR neither causes nor cures
-      that.
+  - risk:
+      "The concurrency headroom evidence comes from a 25-second burst window (300 runs sampled, 83 jobs),
+      not a week-long trace. It demonstrates headroom for what was observed; it does not rule out a heavier
+      burst elsewhere in history.
+
+      "
     accepted_because:
-      Pre-existing and unrelated to the actor-keyed group; recorded so the next
-      reader does not attribute an ejection to this change.
+      "The settling measurement qwen3.7-max named — org-wide peak concurrency — is bounded
+      by the fact that the org holds exactly one repository, so this repo's peak IS the org's peak.
+
+      "
+  - risk:
+      "Removing the group raises a full Dependabot PR from ~20 jobs to ~46. A simultaneous 13-PR burst
+      would be ~598 against a 500 ceiling.
+
+      "
+    accepted_because:
+      "GitHub queues past the ceiling rather than dropping, so the failure mode becomes
+      lateness rather than a silently missing required check. Lateness is visible; absence is not.
+
+      "
+  - risk:
+      "A better design exists and is NOT in this PR: routing merge_group runs to a dedicated runner
+      group so the critical lane cannot queue behind bulk work (proposed by qwen3.7-max).
+
+      "
+    accepted_because:
+      "Separate concern, separate PR. This PR removes a mechanism that silently drops required
+      checks; it does not claim to make the merge queue optimal.
+
+      "
+  - risk:
+      "The merge queue uses grouping_strategy ALLGREEN with batches of 4, so one failing batch-mate
+      ejects the others (observed on PR 5517 tonight). This PR neither causes nor cures that.
+
+      "
+    accepted_because:
+      Pre-existing and unrelated to the actor-keyed group; recorded so the next reader does
+      not attribute an ejection to this change.
