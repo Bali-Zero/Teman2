@@ -1,12 +1,16 @@
 ---
 name: wr2-layout-composer
-description: "MUST BE USED by wr2-design-architect at Step 4 of every carousel run. Use IMMEDIATELY after storyboarder returns slides.json. Receives slide-spec JSON + brief JSON verbatim, retrieves matching layout from skill library, parameterizes HTML/CSS, writes render-ready files for Playwright. ENFORCES no silent placeholder reuse (Article 5.10): every hero image_source must be `imagegen:<session>` or `anchor:<file>` with sha256(hero) ≠ sha256(anchor) verification. Does NOT render itself (orchestrator drives Playwright)."
+description: "MUST BE USED by wr2-design-architect at Step 4 of every carousel run. Use IMMEDIATELY after storyboarder returns slides.json. Builds render-ready HTML/CSS for Playwright. ENFORCES no silent placeholder reuse (Article 5.10)."
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 color: yellow
 skills:
   - bali-zero-brand
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Placeholder-reuse check: every hero image_source must be `imagegen:<session>` or `anchor:<file>` with sha256(hero) ≠ sha256(anchor). Does not render itself — the orchestrator drives Playwright. Retrieves the matching layout from the skill library and parameterizes it.
 
 > CANON: repo .claude/agents/ (vendored 2026-07-16, shadows ~/.claude/agents copy — do not edit the HOME copy).
 

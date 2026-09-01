@@ -1,7 +1,11 @@
 ---
 name: design
-description: "Design corner — the shared brain for every Bali Zero visual surface (front page, GARUDA VOA, Visa Oracle, brand pages). Load BEFORE designing, judging or measuring any page, or when Zero says /design, 'la home', 'il rendering', 'la pagina'. Holds: the derivability doctrine (a rule that cannot name its input is a fad), the calibrated probes, the 2026-09-01 front page and how to rebuild it, and the standing rule that a mechanical gate can tell you a page is well-built but never that it is TRUE."
+description: "Design corner — shared brain for Bali Zero visual surfaces (front page, GARUDA VOA, Visa Oracle, brand pages). Load before designing/judging a page, or when Zero says /design, 'la home'."
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Additional triggers: 'il rendering', 'la pagina'. Holds: the derivability doctrine (a rule that cannot name its input is a fad), the calibrated probes, the 2026-09-01 front page and how to rebuild it, and the standing rule that a mechanical gate can tell you a page is well-built but never that it is TRUE.
 
 # /design — the visual-surface corner
 

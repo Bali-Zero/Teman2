@@ -1,7 +1,11 @@
 ---
 name: bot
-description: "Zantara WA bot corner — the live shared context for ALL work on the Zantara WhatsApp Meta bot (+62 821-3465-159): outbox/inbox pipeline, agentic RAG brain, answer cache, model routing, prompt chain, team check-in program. Load BEFORE touching any WA-bot code or data, or when Zero says /bot, 'zantara wa', 'il bot', 'meta inbox', 'cache risposte'. Holds: established truths (verified, with method), Zero's rulings, LIVE STATE of the ship chain, blood-bought operating rules."
+description: "Zantara WA bot corner — shared context for the Zantara WhatsApp bot. Load before touching WA-bot code/data, or when Zero says /bot, 'zantara wa', 'il bot', 'meta inbox', 'cache risposte'."
 ---
+
+## Notes (moved from description 2026-09-02)
+
+The Zantara WhatsApp Meta bot number: +62 821-3465-159. Covers: outbox/inbox pipeline, agentic RAG brain, answer cache, model routing, prompt chain, team check-in program. Holds: established truths (verified, with method), Zero's rulings, LIVE STATE of the ship chain, blood-bought operating rules.
 
 # /bot — Zantara WA Meta bot corner
 

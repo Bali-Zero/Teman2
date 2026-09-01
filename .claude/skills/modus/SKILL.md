@@ -1,17 +1,11 @@
 ---
 name: modus
-description: >
-  USE FOR EVERY non-trivial mandate — feature, fix, refactor, research, audit, ops, content —
-  coding or not. The master operating loop of the organism: TRIAGE the mandate into a gear
-  (1 liscio / 2 standard / 3 profondo), then drive GROUND → DESIGN → BUILD → VERIFY → SHIP+ARM →
-  PROVE-LIVE → ALIGN-FLEET → CLEAN → CAPTURE, routing the full arsenal at maximum-without-waste
-  (Opus 5 xhigh effort architect+sequential final on-disk gate — Fable 5 out of the workflow,
-  RULED 2026-08-20 — Sonnet 5 implementers,
-  Codex GPT-5.6 red-team+sandbox, Gemini agy constructive width, Kimi K3 permanent refuter,
-  Ollama local for PII, NotebookLM ground-truth). Supersedes opus-mythos
-  (2026-07-02): Fable is native again — the width-surrogate retires; its deep/wide TAC patterns
-  live on as Gear 3. SKIP only true one-liners — and declare it: "GEAR 1: <why>".
+description: "USE FOR EVERY non-trivial mandate — feature, fix, refactor, research, audit, ops, content. TRIAGE into a gear (1/2/3), drive GROUND→BUILD→VERIFY→SHIP→CAPTURE. SKIP true one-liners — declare it."
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Full stage list: GROUND → DESIGN → BUILD → VERIFY → SHIP+ARM → PROVE-LIVE → ALIGN-FLEET → CLEAN → CAPTURE. Routes the full arsenal at maximum-without-waste: Opus 5 xhigh effort architect + sequential final on-disk gate (Fable 5 out of the workflow, RULED 2026-08-20), Sonnet 5 implementers, Codex GPT-5.6 red-team+sandbox, Gemini agy constructive width, Kimi K3 permanent refuter, Ollama local for PII, NotebookLM ground-truth. Supersedes opus-mythos (2026-07-02): Fable is native again — the width-surrogate retires; its deep/wide TAC patterns live on as Gear 3. Declare a skip as: "GEAR 1: <why>".
 
 # MODUS — the master loop (request → prod → fleet → clean → learned)
 

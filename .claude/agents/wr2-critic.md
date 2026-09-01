@@ -1,6 +1,6 @@
 ---
 name: wr2-critic
-description: MUST BE USED by wr2-design-architect at Step 5 of every carousel run as the mandatory quality gate. Use IMMEDIATELY after Playwright renders PNGs. Reviews rendered carousel slides against Bali Zero brand constitution + brief verbatim. Receives PNG paths + slide-spec JSON + brief JSON + brand cortex pointer. Returns 4-rubric scores AND a binary verdict per slide (PASS / FAIL with one-line reason) plus retry feedback. Verifies Article 6.2 bilingual assist on first occurrence, Article 6.3 bullet-promise, Article 5.10 no silent placeholder reuse via sha256 anchor check.
+description: "MUST BE USED by wr2-design-architect at Step 5 of every carousel run. Use IMMEDIATELY after Playwright renders PNGs. Returns 4-rubric scores + binary PASS/FAIL verdict per slide with retry feedback."
 tools: Read, Write, Glob, Grep, Bash
 model: opus
 color: red
@@ -8,6 +8,10 @@ memory: user
 skills:
   - bali-zero-brand
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Receives PNG paths + slide-spec JSON + brief JSON + brand cortex pointer. Verifies Article 6.2 bilingual assist on first occurrence, Article 6.3 bullet-promise, Article 5.10 no silent placeholder reuse via sha256 anchor check. This is the mandatory quality gate: reviews slides against brand constitution + brief verbatim.
 
 > CANON: repo .claude/agents/ (vendored 2026-07-16, shadows ~/.claude/agents copy — do not edit the HOME copy).
 
@@ -169,14 +173,14 @@ Read `~/.claude/skills/bali-zero-brand/_empirical-metrics-2026-05-12.md` once pe
 
 Inspect slide-1 heading + subhead **together** (combined string). The combined string MUST match AT LEAST ONE of these six anchor patterns:
 
-| #   | Anchor type                      | Detection regex / heuristic                                                                                                                                                                      |
+| # | Anchor type | Detection regex / heuristic |
 | --- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------ | --------- | ----- | ------ | ------- | ----------- | --------- | --------------------- |
-| 1   | Concrete number                  | `\d+([,.\s]\d+)*\s?[KMB]?` OR `\$\d+` OR `\d+%` OR `\d+\s+(hectares                                                                                                                              | villas       | days      | years | months | weeks)` |
-| 2   | Regulation / code                | `(PP                                                                                                                                                                                             | Permenkumham | Permen\w+ | UU    | KEP-   | Perpres | Permendagri | Permenkes | Perkap)\s\*\d+/\d{4}` |
-| 3   | Specific Indonesian location     | known place tokens: `BALI`, `JAKARTA`, `BADUNG`, `KEROBOKAN`, `UBUD`, `CANGGU`, `SEMINYAK`, `KUTA`, `DENPASAR`, `SANUR`, `TUKA`, `TIBUBENENG`, `PECATU`, `ULUWATU`, etc. (extend list as needed) |
-| 4   | Categorical verdict              | closed-outcome verbs: `WON`, `LOST`, `BANS`, `BANNED`, `RESCINDED`, `WAIVED`, `SHUTS DOWN`, `BLOCKED`, `RESTORED`, `EXPIRES`, `KILLED`                                                           |
-| 5   | Editorial contrast / parallelism | n-tuple parallelism: 2+ short clauses joined by `.` OR `/` OR colon, with same word repeated (`SAME ... SAME ...`) OR opposing structure (`PERMIT: X / BUILT: Y`) OR triple short statements     |
-| 6   | Time-specific event              | `AFTER\s+\w+`, `BY\s+\d+\s+\w+`, `\d{4}`, `Q\d`, named events: `NYEPI`, `EID`, `RAMADAN`, `INDEPENDENCE DAY`, `KKPR`, etc.                                                                       |
+| 1 | Concrete number | `\d+([,.\s]\d+)*\s?[KMB]?` OR `\$\d+` OR `\d+%` OR `\d+\s+(hectares                                                                                                                              | villas       | days      | years | months | weeks)` |
+| 2 | Regulation / code | `(PP                                                                                                                                                                                             | Permenkumham | Permen\w+ | UU    | KEP-   | Perpres | Permendagri | Permenkes | Perkap)\s\*\d+/\d{4}` |
+| 3 | Specific Indonesian location | known place tokens: `BALI`, `JAKARTA`, `BADUNG`, `KEROBOKAN`, `UBUD`, `CANGGU`, `SEMINYAK`, `KUTA`, `DENPASAR`, `SANUR`, `TUKA`, `TIBUBENENG`, `PECATU`, `ULUWATU`, etc. (extend list as needed) |
+| 4 | Categorical verdict | closed-outcome verbs: `WON`, `LOST`, `BANS`, `BANNED`, `RESCINDED`, `WAIVED`, `SHUTS DOWN`, `BLOCKED`, `RESTORED`, `EXPIRES`, `KILLED` |
+| 5 | Editorial contrast / parallelism | n-tuple parallelism: 2+ short clauses joined by `.` OR `/` OR colon, with same word repeated (`SAME ... SAME ...`) OR opposing structure (`PERMIT: X / BUILT: Y`) OR triple short statements |
+| 6 | Time-specific event | `AFTER\s+\w+`, `BY\s+\d+\s+\w+`, `\d{4}`, `Q\d`, named events: `NYEPI`, `EID`, `RAMADAN`, `INDEPENDENCE DAY`, `KKPR`, etc. |
 
 PASS = combined heading+subhead matches ≥1 of the 6 patterns.
 FAIL = ZERO patterns match → hard fail, cite Article 6.9.fail, "cover lacks any of the 6 empirical anchors — vague generality, expected 0% Explore push per `respect` post baseline".
