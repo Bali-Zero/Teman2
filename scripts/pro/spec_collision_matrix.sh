@@ -231,6 +231,13 @@ assert_origin_action() {
   # ...and how many blobs live under $P in total, so a tree carrying an EXTRA file beside the
   # expected one cannot pass a probe that only asks about the expected one.
   nsub="$(git -C "$wt" ls-tree -r HEAD -- "$P" | wc -l | tr -d ' ')"
+  # Why the two tree arms below compare only `${src% *}` and drop the tree's OWN sha: a tree
+  # object's hash is a pure function of its sorted (mode, name, blob) entry list, and `inner`
+  # (exact path, exact mode+type+hash) plus `nsub` (exactly one blob anywhere beneath) admit
+  # exactly one such list. Checking both IS checking the tree hash. THE CAVEAT, because it is
+  # not general: this holds only while the arms build a FLAT single-file tree. Nest content a
+  # level deeper and `nsub` no longer pins WHERE the blob sits relative to `inner`'s one
+  # checked path, and the equivalence has to be re-derived or the tree sha pinned directly.
   case "$2" in
     modify)               [ "$src" = "100644 blob $H_V2" ] && [ -z "$dst" ] && [ -z "$low" ] \
                           && [ -z "$inner" ] && [ "$nsub" = 1 ] ;;
