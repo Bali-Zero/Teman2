@@ -441,6 +441,60 @@ jobs:
           cat /tmp/net-lines-numstat.txt
 
       # -----------------------------------------------------------------
+      # Step 2b — capture the WORKFLOW-FILE patch, for the path term's
+      # first-party-pin exemption (2026-09-01, owner ruling "Cambio la
+      # regola adesso"). compute_floor() will not exempt a workflow file
+      # unless a patch PROVES its entire change is `uses:` version pins on
+      # actions/* or github/* — see the exemption's own comment block in
+      # scripts/evidence_pack_lint.py for the three conditions and the W98
+      # reason it is decided on CONTENT and never on the PR's author.
+      #
+      # Deliberately its OWN step with its OWN merge-base rather than a
+      # second output on Step 2: this file can only ever LOWER a floor, so
+      # every failure path here must end at available=false (no exemption,
+      # Gear 3 exactly as before) — whereas Step 2's file can only ever
+      # RAISE one. Sharing a step would couple two guards whose safe
+      # direction on failure is opposite, and a future edit that made one
+      # of them fail open would silently drag the other along.
+      #
+      # `-- .github/workflows/` is not an optimisation: it is the same
+      # confinement the parser enforces structurally, stated a second time
+      # at the producer so a reader of either half sees the boundary.
+      # -----------------------------------------------------------------
+      - name: Capture workflow patch for the path-term exemption
+        if: steps.kill_switch.outputs.disabled != 'true'
+        id: wfpatch
+        env:
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || 'main' }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -u
+          if ! python3 scripts/evidence_pack_lint.py --help 2>&1 | grep -q -- '--patch-file'; then
+            echo "::notice::the evidence_pack_lint.py copy in use (checked out from base $BASE_SHA) does not support --patch-file yet — no path-term exemption this run (floor unchanged from before the exemption existed); self-consistent once this PR merges and base's copy is updated"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          MERGE_BASE="$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || true)"
+          if [[ -z "$MERGE_BASE" ]]; then
+            echo "::notice::merge-base not resolvable — no path-term exemption this run (fail-closed: the floor stays exactly what the hot-zone paths alone impose)"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # W102: merge-base anchored, never a two-dot diff against the live
+          # base tip — a two-dot diff would carry lines from main that this
+          # PR never wrote, and here that means non-`uses:` lines from other
+          # people's merges would REFUSE an exemption this PR has earned.
+          # Wrong in the safe direction, but wrong.
+          if ! git diff --no-renames -U0 "$MERGE_BASE" "$HEAD_SHA" -- '.github/workflows/' > /tmp/workflow-patch.txt; then
+            echo "::notice::git diff for the workflow patch failed (merge-base $MERGE_BASE) — no path-term exemption this run (fail-closed)"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "available=true" >> "$GITHUB_OUTPUT"
+          echo "workflow patch captured (merge-base $MERGE_BASE), $(wc -l < /tmp/workflow-patch.txt) lines:"
+          cat /tmp/workflow-patch.txt
+
+      # -----------------------------------------------------------------
       # Step 3 — compute the deterministic floor UNCONDITIONALLY (brief or
       # not). Adversarial-review finding 2026-08-10: the first cut only
       # computed this INSIDE the "brief present" branch, so a hot-zone diff
@@ -464,6 +518,7 @@ jobs:
         id: detfloor
         env:
           NETLINES_AVAILABLE: ${{ steps.netlines.outputs.available }}
+          WFPATCH_AVAILABLE: ${{ steps.wfpatch.outputs.available }}
         run: |
           set -u
           # CORRECTED 2026-08-21 (independent cross-family review, Kimi K3,
@@ -492,6 +547,16 @@ jobs:
             EXTRA_ARGS+=(--numstat-file /tmp/net-lines-numstat.txt)
           else
             echo "::notice::no measured net-lines for this run — floor computed from hot-zone paths only (size term skipped, same as before this term existed)"
+          fi
+          # The exemption is OPT-IN on proof: absent this file the floor is
+          # computed exactly as it was before the exemption existed. Both
+          # --print-floor and --print-floor-source read the SAME EXTRA_ARGS,
+          # so the number and the reason can never disagree about what they
+          # were computed from.
+          if [[ "$WFPATCH_AVAILABLE" == "true" ]]; then
+            EXTRA_ARGS+=(--patch-file /tmp/workflow-patch.txt)
+          else
+            echo "::notice::no workflow patch for this run — no first-party-pin exemption applied (floor computed from hot-zone paths exactly as before that exemption existed)"
           fi
           FLOOR=$(python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/changed-files.txt "${EXTRA_ARGS[@]}")
           echo "floor=$FLOOR" >> "$GITHUB_OUTPUT"
