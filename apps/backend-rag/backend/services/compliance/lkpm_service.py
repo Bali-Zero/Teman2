@@ -798,7 +798,7 @@ class LKPMService:
         Cascade via `r.company_id` — shareholders of a PT see all reports of
         that PT even when `lkpm_reports.client_id` holds the primary contact's
         id (or the company_id per Lori's import convention). See SCAR in
-        `.claude/rules/cicatrix-scars.md` for the r.client_id bug fixed on
+        `docs/scars/cicatrix-scars.md` for the r.client_id bug fixed on
         2026-04-15.
         """
         async with self.db_pool.acquire() as conn:

@@ -40,14 +40,13 @@ REAL_STALL_CAUSES below deliberately excludes it. The other 4 causes
 next gate session should look at, and so does CANNOT-VERIFY — a row the classifier could not
 read is news (its own instrument failed to measure), not silence.
 
-DEDUP KEY ENCODES THE CAUSE, NOT JUST THE PR NUMBER: `queue_stall:<number>:<cause>`. The
-classifier holds no state of its own (unlike queue_unstick.py, which fingerprints a DIRTY signal
-on head-sha + conflict-digest across ticks) and the fleet mailbox reader
-(infra/claude-hooks/mailbox_inject.py) keeps only the newest file per key, marking a broadcast
-seen-once-per-session. A key of `queue_stall:<number>` alone would mean a PR whose stall CAUSE
-changes (say, `not-armed` today, `required-check-red` tomorrow, after someone manually armed it
-and CI then failed) never resurfaces once the first key's file already exists — the exact
-silent-drop shape this module exists to avoid.
+DEDUP KEY ENCODES THE CAUSE, NOT JUST THE PR NUMBER: `queue_stall:<number>:<cause>`. Every
+fleet_mail.sh send mints a fresh timestamped filename, and mailbox_inject.py's per-key
+supersession chooses only among files simultaneously on disk; delivery history is tracked by
+filename. Therefore a later broadcast with a changed cause was never at risk of being erased by
+the mailbox. The cause belongs in this notifier's local repeat-page state instead: a changed
+diagnosis (say, `not-armed` today, `required-check-red` tomorrow) is new information and must
+send immediately, while the unchanged `(number, cause)` pair is a repeat eligible for throttling.
 
 Kill switch: QUEUE_STALL_NOTIFY_ENABLED=false makes every invocation a no-op that still prints a
 receipt line (superscar #2: a mute cron is a dead cron — silence must never be the only signal
@@ -73,6 +72,13 @@ Env overrides:
   QUEUE_STALL_NOTIFY_CLASSIFIER_TIMEOUT default 180 (seconds, subprocess timeout for the
                                          classifier call — it pages through every open PR and
                                          can legitimately take a while on a busy queue)
+  QUEUE_STALL_NOTIFY_REPAGE_HOURS       default 6. At the documented 30-minute cadence this
+                                         reduces an unchanged stall from 48 broadcasts/day to at
+                                         most 4: frequent enough to re-surface a genuinely stuck
+                                         PR during an operator day, but far enough apart that the
+                                         alarm itself does not become fleet-mailbox noise.
+  QUEUE_STALL_NOTIFY_STATE_DIR          default ~/.agent/decisions/state (local repeat-page
+                                         state; tests may override it)
 
 Exit codes: 0 = ran clean (the classifier ran clean AND every attempted send succeeded, whether
 or not any PR was actually stalled); 1 = the classifier itself failed (non-zero rc — propagated
@@ -85,10 +91,15 @@ Tests: scripts/tests/test_queue_stall_notify.py.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import errno
+import fcntl
 import json
+import math
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -104,6 +115,9 @@ MIN_AGE_MINUTES = int(os.environ.get("QUEUE_STALL_NOTIFY_MIN_AGE_MINUTES", "30")
 CAP = int(os.environ.get("QUEUE_STALL_NOTIFY_CAP", "5"))
 FLEET_MAIL_HOST = os.environ.get("QUEUE_STALL_NOTIFY_FLEET_MAIL_HOST", "pro")
 CLASSIFIER_TIMEOUT = int(os.environ.get("QUEUE_STALL_NOTIFY_CLASSIFIER_TIMEOUT", "180"))
+REPAGE_SECONDS = 60 * 60 * int(os.environ.get("QUEUE_STALL_NOTIFY_REPAGE_HOURS", "6"))
+STATE_DIR = Path(os.environ.get("QUEUE_STALL_NOTIFY_STATE_DIR", os.path.expanduser("~/.agent/decisions/state")))
+SEEN_FILE = STATE_DIR / "queue_stall_notify_seen.json"
 
 # Duplicated from queue_stall_classifier.py's own CANNOT_VERIFY sentinel — see module docstring
 # "SUBPROCESS, NEVER IMPORT" for why this is a literal, not an import.
@@ -119,6 +133,9 @@ REAL_STALL_CAUSES = frozenset(
         "not-armed",
     }
 )
+# Explicitly ignored because the classifier defines it as "no known blocker", not an actionable
+# stall. Kept separate from unknown values so the vocabulary-drift test can make omissions loud.
+DELIBERATELY_IGNORED = frozenset({"queued-and-advancing"})
 
 
 def _enabled() -> bool:
@@ -235,6 +252,131 @@ def plan_notifications(rows: list[dict[str, Any]], *, cap: int) -> dict[str, lis
     return {"to_notify": to_notify, "suppressed_by_cap": suppressed, "skipped": skipped}
 
 
+# ---------------------------------------------------------------------------
+# Repeat-page state — local file, mutated only outside --dry-run.
+# ---------------------------------------------------------------------------
+
+
+def load_seen(path: Path = SEEN_FILE) -> dict[str, float]:
+    """Load last-successful-send times. Any state-file fault returns empty state so the next
+    run PAGES rather than silently suppressing an alarm."""
+    try:
+        raw = json.loads(path.read_text())
+        if not isinstance(raw, dict):
+            return {}
+        return {
+            str(key): float(value)
+            for key, value in raw.items()
+            if isinstance(key, str) and isinstance(value, (int, float)) and math.isfinite(float(value))
+        }
+    except (FileNotFoundError, json.JSONDecodeError, OSError, TypeError, ValueError):
+        return {}
+
+
+def save_seen(state: dict[str, float], path: Path = SEEN_FILE) -> None:
+    """Persist state atomically enough for a local cron receipt; callers only invoke after sends."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(state, sort_keys=True))
+    tmp.replace(path)
+
+
+# ---------------------------------------------------------------------------
+# Mutual exclusion over the repeat-page state.
+# ---------------------------------------------------------------------------
+
+LOCK_FILE = SEEN_FILE.with_name(SEEN_FILE.name + ".lock")
+
+
+@contextlib.contextmanager
+def state_lock(path: Path = LOCK_FILE, *, enabled: bool = True):
+    """Serialise the read-modify-write on the repeat-page state. Yields a status string.
+
+    WHY. Without this, `load_seen -> decide -> send -> save_seen` is a last-writer-wins full
+    overwrite. Adversarial review reproduced the loss directly: a SLOW process reads the state,
+    a FAST one starts later, correctly prunes a resolved PR and writes {}, and then the slow one
+    writes back its stale view — resurrecting a "sent" ghost. A genuinely re-stalled PR then
+    reads as a repeat and is SUPPRESSED for a whole repage window. That is the unsafe direction:
+    the alarm misses a real stall, which is worse than paging twice.
+
+    Three outcomes, deliberately distinct, because collapsing them is how a lock silences an
+    alarm it was added to protect:
+      "held"        -- we own it; proceed and mutate.
+      "busy"        -- another invocation owns it. Do NOT write. Its run covers this tick, so
+                       this is correct behaviour and not a failure.
+      "unavailable" -- the lock itself could not be created (read-only dir, bad perms...).
+                       Proceed WITHOUT it and say so. A broken lock must never be a reason to
+                       stop paging; a duplicate page is survivable, a missed stall is not.
+    """
+    if not enabled:
+        yield "held"
+        return
+    handle = None
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        handle = path.open("a+")
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        handle.close()
+        yield "busy"
+        return
+    except OSError as exc:
+        if handle is not None:
+            with contextlib.suppress(OSError):
+                handle.close()
+        sys.stderr.write(
+            f"queue_stall_notify: state lock unavailable ({type(exc).__name__}: "
+            f"{errno.errorcode.get(exc.errno, exc.errno)}) — proceeding UNLOCKED rather than "
+            "skipping; a broken lock must not silence the alarm\n"
+        )
+        yield "unavailable"
+        return
+    try:
+        # Stamp the acquisition so a later `busy` can report how long the holder has held it.
+        with contextlib.suppress(OSError):
+            os.utime(path, None)
+        yield "held"
+    finally:
+        with contextlib.suppress(OSError):
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            handle.close()
+
+
+def lock_holder_age(path: Path = LOCK_FILE) -> int:
+    """Seconds since the current holder acquired the lock, or -1 if unknowable.
+
+    -1 is deliberately not 0: "I could not tell" and "acquired just now" are different facts,
+    and rendering the first as the second is how a wedged holder reads as a healthy one.
+    """
+    try:
+        return max(0, int(time.time() - path.stat().st_mtime))
+    except OSError:
+        return -1
+
+
+def plan_repage(
+    candidates: list[dict[str, Any]], *, seen: dict[str, float], now: float, cap: int
+) -> dict[str, list]:
+    """Suppress unchanged recent keys, then apply the per-run delivery cap.
+
+    Applying repeat suppression before the cap means already-known stalls cannot consume the
+    entire delivery budget and hide a new diagnosis.
+    """
+    eligible: list[dict[str, Any]] = []
+    repeats: list[dict[str, Any]] = []
+    for item in candidates:
+        last_sent = seen.get(item["key"])
+        if last_sent is not None and last_sent <= now and now - last_sent < REPAGE_SECONDS:
+            repeats.append(item)
+        else:
+            eligible.append(item)
+    return {
+        "to_notify": eligible[:cap],
+        "suppressed_by_cap": eligible[cap:],
+        "suppressed_as_repeat": repeats,
+    }
+
+
 def _format_message(item: dict[str, Any]) -> str:
     """Pure: the fleet-mail body text. CANNOT-VERIFY gets a DISTINCT wording — "an instrument
     that could not read is news, not silence" (team-lead mandate, verbatim) — never the same
@@ -316,7 +458,8 @@ def main(argv: list[str] | None = None) -> int:
     if not _enabled():
         print(
             "QUEUE_STALL_NOTIFY_SUMMARY disabled=true examined=0 stalled=0 sent=0 "
-            f"send_failed=0 suppressed_by_cap=0 dry_run={str(args.dry_run).lower()}"
+            f"send_failed=0 suppressed_by_cap=0 suppressed_as_repeat=0 skipped=0 "
+            f"unrecognized_causes=- dry_run={str(args.dry_run).lower()}"
         )
         return 0
 
@@ -335,29 +478,96 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"QUEUE_STALL_NOTIFY_SUMMARY classifier_rc={rc} classifier_failed=true "
             "examined=0 stalled=0 sent=0 send_failed=0 suppressed_by_cap=0 "
+            f"suppressed_as_repeat=0 skipped=0 unrecognized_causes=- "
             f"dry_run={str(args.dry_run).lower()} error={detail!r}"
         )
         return 1
 
     rows = report.get("rows") or []
-    plan = plan_notifications(rows, cap=args.cap)
+    # First discover every candidate. Repeat suppression must precede the delivery cap so a
+    # known repeat cannot consume the limited budget and hide a changed/new diagnosis.
+    # NOTE: this `cap` is deliberately the row count, i.e. no cap at this layer. The real
+    # delivery cap lives in plan_repage() below, applied AFTER repeat suppression so a known
+    # repeat cannot consume the budget and hide a new diagnosis. plan_notifications keeps its
+    # own cap parameter for direct testing; main() never exercises it.
+    classification_plan = plan_notifications(rows, cap=len(rows))
+
+    # The lock spans load -> decide -> send -> save. A dry-run takes none: it writes nothing,
+    # and must never be able to block the real run that does.
+    # `path=` is passed EXPLICITLY. A default argument binds at import, so it does not follow a
+    # monkeypatch of LOCK_FILE — a test calling main() would have written the REAL state path on
+    # whatever machine ran it (scar W96: tests that write PRODUCTION state).
+    lock_ctx = state_lock(path=LOCK_FILE, enabled=not args.dry_run)
+    lock_state = lock_ctx.__enter__()
+    if lock_state == "busy":
+        lock_ctx.__exit__(None, None, None)
+        # Report the holder's AGE, not just "busy". One busy tick is an ordinary race and must
+        # not alert — alerting on it is how people learn to ignore the alerter. But a holder that
+        # is WEDGED rather than dead (nothing crashes, so the kernel never releases it) degrades
+        # to exactly the silence this lock was added to prevent, and nothing watching exit codes
+        # would see it. The age lets a log reader page on "busy AND old" without turning every
+        # race into a false failure.
+        print(
+            f"QUEUE_STALL_NOTIFY_SUMMARY classifier_rc={rc} "
+            f"classifier_failed={str(classifier_failed).lower()} examined="
+            f"{report.get('examined_total', 0)} stalled={len(classification_plan['to_notify'])} "
+            "sent=0 send_failed=0 suppressed_by_cap=0 suppressed_as_repeat=0 skipped=0 "
+            f"unrecognized_causes=- concurrent_run=true holder_age_s={lock_holder_age(LOCK_FILE)} "
+            "dry_run=false"
+        )
+        # A classifier that failed stays a failure even when another invocation holds the lock.
+        # Contention explains why WE did nothing; it says nothing about the instrument's health.
+        return 1 if classifier_failed else 0
+
+    seen = load_seen(path=SEEN_FILE)
+    now = time.time()
+    re_page_plan = plan_repage(
+        classification_plan["to_notify"], seen=seen, now=now, cap=args.cap
+    )
 
     sent = 0
     send_failed = 0
-    for item in plan["to_notify"]:
+    successful_keys: set[str] = set()
+    for item in re_page_plan["to_notify"]:
         ok, detail_line = send_notification(item, dry_run=args.dry_run)
         print(detail_line)
         if ok:
             sent += 1
+            successful_keys.add(item["key"])
         else:
             send_failed += 1
 
-    stalled = len(plan["to_notify"]) + len(plan["suppressed_by_cap"])
+    # Retain only still-stalled pairs, so resolving a PR clears it and a later re-stall sends
+    # immediately. Successful sends then refresh their own timestamp. Dry-runs remain read-only.
+    active_keys = {item["key"] for item in classification_plan["to_notify"]}
+    new_seen = {key: timestamp for key, timestamp in seen.items() if key in active_keys}
+    if not args.dry_run:
+        for key in successful_keys:
+            new_seen[key] = now
+        if new_seen != seen:
+            try:
+                save_seen(new_seen, path=SEEN_FILE)
+            except OSError as exc:
+                print(f"QUEUE_STALL_NOTIFY_STATE_WRITE_FAILED error={type(exc).__name__}: {exc}")
+    lock_ctx.__exit__(None, None, None)
+
+    unrecognized_causes = sorted(
+        {str(cause) for _, cause in classification_plan["skipped"] if cause not in DELIBERATELY_IGNORED}
+    )
+    unrecognized_text = ",".join(unrecognized_causes) if unrecognized_causes else "-"
+    stalled = (
+        len(re_page_plan["to_notify"])
+        + len(re_page_plan["suppressed_by_cap"])
+        + len(re_page_plan["suppressed_as_repeat"])
+    )
     summary = (
         f"QUEUE_STALL_NOTIFY_SUMMARY classifier_rc={rc} "
         f"examined={report.get('examined_total', 0)} stalled={stalled} sent={sent} "
-        f"send_failed={send_failed} suppressed_by_cap={len(plan['suppressed_by_cap'])} "
-        f"cap={args.cap} dry_run={str(args.dry_run).lower()}"
+        f"send_failed={send_failed} suppressed_by_cap={len(re_page_plan['suppressed_by_cap'])} "
+        f"suppressed_as_repeat={len(re_page_plan['suppressed_as_repeat'])} "
+        f"skipped={len(classification_plan['skipped'])} "
+        f"unrecognized_causes={unrecognized_text} cap={args.cap} "
+        f"dry_run={str(args.dry_run).lower()}"
     )
     print(summary)
 
