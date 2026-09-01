@@ -332,11 +332,26 @@ def state_lock(path: Path = LOCK_FILE, *, enabled: bool = True):
         yield "unavailable"
         return
     try:
+        # Stamp the acquisition so a later `busy` can report how long the holder has held it.
+        with contextlib.suppress(OSError):
+            os.utime(path, None)
         yield "held"
     finally:
         with contextlib.suppress(OSError):
             fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
             handle.close()
+
+
+def lock_holder_age(path: Path = LOCK_FILE) -> int:
+    """Seconds since the current holder acquired the lock, or -1 if unknowable.
+
+    -1 is deliberately not 0: "I could not tell" and "acquired just now" are different facts,
+    and rendering the first as the second is how a wedged holder reads as a healthy one.
+    """
+    try:
+        return max(0, int(time.time() - path.stat().st_mtime))
+    except OSError:
+        return -1
 
 
 def plan_repage(
@@ -471,21 +486,38 @@ def main(argv: list[str] | None = None) -> int:
     rows = report.get("rows") or []
     # First discover every candidate. Repeat suppression must precede the delivery cap so a
     # known repeat cannot consume the limited budget and hide a changed/new diagnosis.
+    # NOTE: this `cap` is deliberately the row count, i.e. no cap at this layer. The real
+    # delivery cap lives in plan_repage() below, applied AFTER repeat suppression so a known
+    # repeat cannot consume the budget and hide a new diagnosis. plan_notifications keeps its
+    # own cap parameter for direct testing; main() never exercises it.
     classification_plan = plan_notifications(rows, cap=len(rows))
 
     # The lock spans load -> decide -> send -> save. A dry-run takes none: it writes nothing,
     # and must never be able to block the real run that does.
-    lock_ctx = state_lock(enabled=not args.dry_run)
+    # `path=` is passed EXPLICITLY. A default argument binds at import, so it does not follow a
+    # monkeypatch of LOCK_FILE — a test calling main() would have written the REAL state path on
+    # whatever machine ran it (scar W96: tests that write PRODUCTION state).
+    lock_ctx = state_lock(path=LOCK_FILE, enabled=not args.dry_run)
     lock_state = lock_ctx.__enter__()
     if lock_state == "busy":
         lock_ctx.__exit__(None, None, None)
+        # Report the holder's AGE, not just "busy". One busy tick is an ordinary race and must
+        # not alert — alerting on it is how people learn to ignore the alerter. But a holder that
+        # is WEDGED rather than dead (nothing crashes, so the kernel never releases it) degrades
+        # to exactly the silence this lock was added to prevent, and nothing watching exit codes
+        # would see it. The age lets a log reader page on "busy AND old" without turning every
+        # race into a false failure.
         print(
-            "QUEUE_STALL_NOTIFY_SUMMARY classifier_rc=0 examined="
+            f"QUEUE_STALL_NOTIFY_SUMMARY classifier_rc={rc} "
+            f"classifier_failed={str(classifier_failed).lower()} examined="
             f"{report.get('examined_total', 0)} stalled={len(classification_plan['to_notify'])} "
             "sent=0 send_failed=0 suppressed_by_cap=0 suppressed_as_repeat=0 skipped=0 "
-            "unrecognized_causes=- concurrent_run=true dry_run=false"
+            f"unrecognized_causes=- concurrent_run=true holder_age_s={lock_holder_age(LOCK_FILE)} "
+            "dry_run=false"
         )
-        return 0
+        # A classifier that failed stays a failure even when another invocation holds the lock.
+        # Contention explains why WE did nothing; it says nothing about the instrument's health.
+        return 1 if classifier_failed else 0
 
     seen = load_seen(path=SEEN_FILE)
     now = time.time()
