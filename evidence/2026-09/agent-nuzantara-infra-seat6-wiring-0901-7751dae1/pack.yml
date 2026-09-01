@@ -45,8 +45,8 @@ seat_diversity_note: >-
   carrying a 403 weekly-limit error in its output, which is a non-judgement, not a clean one.
 
 diff:
-  files: 25
-  net_lines: 645
+  files: 26
+  net_lines: 677
   measured_at: >-
     counted with `git diff --numstat <merge-base>...HEAD` (three-dot: two-dot on this branch
     accuses it of deleting main's later additions, W102) immediately before this commit. Above the
@@ -54,6 +54,17 @@ diff:
     been mutually blocked for nine days, which is the cost the guideline exists to avoid.
 
 residual_risks:
+  - >-
+    MERGING THIS DOES NOT MAKE IT LIVE, and the reason is not the usual one. `~/scripts/claude-cascade.sh`
+    on Pro and Mini is a SYMLINK into the main checkout (the HOME-fork for this file was cured
+    2026-07-26, the old copy is archived), so there is no path drift. The gap is checkout
+    staleness: Pro's and Mini's main checkouts are separate clones that do not track origin/main,
+    and Pro's HEAD is already behind today, independently of this PR. Five loaded launchd
+    consumers resolve through that symlink — healer-pro.6h, nb-curator.daily,
+    competitor-monitor.monthly, regulatory-watcher.daily and meta-dispatcher (live PID, but it
+    re-execs the script per call, so no restart is needed). A single `git pull` in each checkout
+    re-arms all five. M5 is not a runtime consumer: no daemon infrastructure, no symlink, and a
+    checkout at an older HEAD entirely.
   - >-
     test_team_slot_is_not_spent_when_an_earlier_max_seat_succeeds passes VACUOUSLY against a
     wrapper that has no slot 6 at all — measured, not suspected. It is kept because it pins a
@@ -115,6 +126,17 @@ dissent:
       Not realised: run WITH and WITHOUT the slot in the environment, 8 passed both ways. The grep
       had matched fixture ranges, not the isolation helper — the instrument answered a
       neighbouring question, and the positive control is what caught it.
+  - seat: claude-opus-5 (session, own audit of the grader's classification)
+    status: CONFIRMED
+    objection: >-
+      The grader classified scripts/zantara-gateway/test_claude_client.py as "pre-existing class,
+      broadened by one slot, not newly introduced". Half right, and the half it missed was mine:
+      measured, the file reports 21 failed / 3 passed on a CLEAN environment AND on origin/main
+      (RuntimeError: no current event loop, a Python 3.14 artefact — genuinely inherited), but
+      slot 6 specifically pushed it to 22 while slot 5 did not. Exactly one test flipped,
+      test_token_chain_reaches_slot_five_in_order, and this diff is what flipped it. Cured by
+      pinning the new six-slot contract rather than by adding a delenv, which would have gone
+      green while leaving the ordering — the whole point of the slot — untested.
   - seat: claude-opus-5 (session, self-refutation)
     status: CONFIRMED
     objection: >-
