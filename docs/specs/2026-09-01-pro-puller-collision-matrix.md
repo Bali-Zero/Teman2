@@ -80,15 +80,60 @@ unreviewed behaviour change, and this surface's entire history is unreviewed beh
 that looked like improvements. Curing a cell means moving it _and_ rewriting its baseline row
 in the same diff, which is what makes the cure reviewable.
 
+## The filesystem is a coordinate
+
+The `rename_case_only` axis measures a defect that **exists only where the filesystem folds
+case**. On a case-sensitive volume, `Subject.md → subject.md` is an ordinary rename between two
+distinct paths: the cells still run, but they measure a different phenomenon, and the verdicts a
+human wrote against the folding behaviour do not describe it.
+
+This is not a hypothetical. The first CI run of this instrument went **red on those fourteen
+cells** while the identical command was green on every machine in the fleet — Pro, Mini and M5
+are APFS, GitHub's runners are ext4. Neither side was wrong. The baseline was: it had baked one
+volume's answers into a file the other volume was being asked to match.
+
+So the script **probes the filesystem it is actually running on** (in `mktemp`'s directory,
+which is where the fixtures are built) and:
+
+- on a **case-folding** volume, enumerates all seven origin actions and compares all 102 cells;
+- on a **case-sensitive** volume, drops the `rename_case_only` axis, holds the corresponding
+  baseline rows OUT of the comparison rather than counting them absent, and says so in its
+  output — a green run there covers 88 cells and never claims otherwise;
+- **refuses `--write-baseline` entirely** on a case-sensitive volume, because writing there
+  would silently delete fourteen reviewed human verdicts while leaving a file that still looks
+  complete. The baseline is authored on a folding volume or not at all.
+
+The consequence worth stating plainly: **CI is a weaker grader than a fleet machine on this
+surface**, by exactly one axis, and that axis is the one that produced the second regression on
+record. Running the matrix locally before shipping a change to the resolver is therefore not
+redundant with CI.
+
+## Two questions, not one: assertions vs verdicts
+
+A reader looking for an `assert_no_damage()` will not find one, and its absence is deliberate
+rather than an omission. The two mechanisms here answer different questions:
+
+- The **assertions** (`assert_local_state`, `assert_origin_action`) are PRE-conditions. They
+  ask "did this cell get built the way its name says?" and abort the run when the answer is no.
+  They exist because an arm that silently degenerates into its neighbour passes every downstream
+  check while measuring the wrong thing.
+- The **baseline verdicts** are POST-conditions, and they are human. They ask "is the behaviour
+  this cell measured correct?" — a judgement no probe can make, which is precisely why the
+  comparator refuses a row nobody has judged.
+
+A machine cannot write the second, and the first cannot be deferred to review. Collapsing them
+into one function would lose whichever half it kept.
+
 ## What this instrument does NOT cover
 
 Stated so the fifth "shape nobody asked about" has somewhere to be found. This list is not
 decoration: the `rename_case_only` axis was ON it as prose until someone measured it, and the
 measurement produced a live regression the previous pass's cure did not reach.
 
-- **The case-only axis is only PARTLY closed.** Measured: `Subject.md → subject.md` at the
-  repo root, against all seven local states. Not measured: a case-only rename whose source is
-  **allowlisted keep-local**, and a case-only rename of a **directory**.
+- **The case-only axis is only PARTLY closed, and only on some volumes.** Measured: `Subject.md
+→ subject.md` at the repo root, against all seven local states, **on a case-folding filesystem
+  only** (see above — it is held out entirely in CI). Not measured anywhere: a case-only rename
+  whose source is **allowlisted keep-local**, and a case-only rename of a **directory**.
 - **Object types at a removed path other than blob/tree.** A **submodule / gitlink** (`commit`
   object) standing at a renamed-away name is unmeasured, and it is the same clause that
   produced two of the three regressions on record.
@@ -105,3 +150,7 @@ measurement produced a live regression the previous pass's cure did not reach.
 - **Multi-path ticks.** Every cell moves exactly one path; real pulls move many, and an early
   abort hides the behaviour of every later path in the same set.
 - **Path shapes**: spaces, newlines, non-UTF-8, `.gitignore` interaction.
+- **What is INSIDE a tree that takes a removed path's name**, beyond the one file the fixture
+  asserts. The resolver's outcome does not depend on a directory's contents, so no measured
+  field would notice a tree built empty or misnamed — the assertion now pins `panel.json`
+  specifically, which closes the fixture-drift hole but not the behavioural question.

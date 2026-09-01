@@ -31,6 +31,29 @@
 # Run:  bash scripts/pro/spec_collision_matrix.sh [--puller PATH] [--write-baseline]
 
 set -u
+# BYTE SEMANTICS, NOT LOCALE SEMANTICS. The verdict guard below asks awk whether a field is
+# the literal string "OK". Under a UTF-8 locale, BWK awk compares by COLLATION, and a
+# zero-width character (U+200B, U+FEFF) collates EQUAL to nothing -- so "OK"+U+200B passes a
+# guard written as $8!="OK" while a human reading the baseline sees an ordinary OK. An
+# invisible character must never be able to forge a review verdict, so every comparison in
+# this script is made byte-exact.
+export LC_ALL=C
+
+# THE FILESYSTEM IS A COORDINATE, not an environment detail -- learned the hard way, in CI.
+# The rename_case_only axis measures a defect that EXISTS ONLY where the filesystem folds
+# case: on a case-SENSITIVE volume, Subject.md -> subject.md is an ordinary rename between two
+# distinct paths, so those cells measure a different phenomenon and their reviewed verdicts do
+# not describe it. Pro, Mini and M5 are all APFS (folding); GitHub's runners are not. The
+# first CI run of this instrument therefore went red on 14 cells while the same command was
+# green on every machine in the fleet -- the baseline was right, and so was the runner. The
+# cure is to record which filesystem a run measured on and compare only what that filesystem
+# can express, never to bake one volume's answers into a file the other must match.
+# Probed in mktemp's directory because that is where the fixtures are actually built.
+fs_folds_case() {
+  local d rc=1; d="$(mktemp -d)" || return 1
+  : > "$d/CaseFoldProbe"; [ -e "$d/casefoldprobe" ] && rc=0
+  rm -rf "$d"; return $rc
+}
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PULLER="$SCRIPT_DIR/pro-git-pull.sh"
 BASELINE="$SCRIPT_DIR/collision-matrix-baseline.tsv"
@@ -45,7 +68,10 @@ while [ $# -gt 0 ]; do
 done
 [ -f "$PULLER" ] || { echo "FATAL: puller not found: $PULLER" >&2; exit 3; }
 
-# The path every cell is built around, and a second path that keeps the parent dir alive.
+# The path every cell is built around, and the target the `symlink` local state points at.
+# ($SIBLING was described here as "a second path that keeps the parent dir alive" -- true when
+# $P sat in a subdirectory, and stale since it moved to the repo root. Its only job now is to
+# give the symlink state something real to resolve to.)
 # Root-level and capitalised: the case-only axis renames Subject.md -> subject.md, and on a
 # case-insensitive filesystem the DIRECTION decides which spelling the resolver meets first.
 # The body is deliberately long: git only PAIRS a rename above a similarity threshold, and a
@@ -144,7 +170,7 @@ assert_local_state() {
 # incoming side is not what its label says. Note git's object store is case-SENSITIVE even when
 # the filesystem is not, which is what makes the case-only assertion meaningful.
 assert_origin_action() {
-  local wt src dst low
+  local wt src dst low inner
   wt="$1"
   # THREE probes, not one. The first version asked a single question -- what stands at $P --
   # and `delete`, `rename_away` and `rename_case_only` all answer it identically ("nothing"),
@@ -159,14 +185,28 @@ assert_origin_action() {
   src="$(git -C "$wt" ls-tree HEAD -- "$P"                | awk '{print $1" "$2}')"
   dst="$(git -C "$wt" ls-tree HEAD -- "moved/subject.md"  | awk '{print $1" "$2}')"
   low="$(git -C "$wt" ls-tree HEAD -- "subject.md"        | awk '{print $1" "$2}')"
+  # A FOURTH probe, for the one blind spot a reviewer found that BOTH the assertion and all
+  # seven measured fields missed completely: the two tree-building arms are asserted to leave
+  # "a tree at $P", and a tree holding the WRONG file satisfies that. Nothing downstream
+  # notices -- the resolver's outcome for a directory does not depend on what is inside it --
+  # so a fixture silently building an empty or misnamed tree would keep measuring, keep
+  # matching the baseline, and keep certifying a cell that no longer exercises its own shape.
+  inner="$(git -C "$wt" ls-tree HEAD -- "$P/panel.json"   | awk '{print $1" "$2}')"
   case "$2" in
-    modify)               [ "$src" = "100644 blob" ] && [ -z "$dst" ]                && [ -z "$low" ] ;;
-    delete)               [ -z "$src" ]              && [ -z "$dst" ]                && [ -z "$low" ] ;;
-    rename_away)          [ -z "$src" ]              && [ "$dst" = "100644 blob" ]   && [ -z "$low" ] ;;
-    rename_away_and_tree) [ "$src" = "040000 tree" ] && [ "$dst" = "100644 blob" ]   && [ -z "$low" ] ;;
-    rename_case_only)     [ -z "$src" ]              && [ -z "$dst" ]                && [ "$low" = "100644 blob" ] ;;
-    tree_at_path)         [ "$src" = "040000 tree" ] && [ -z "$dst" ]                && [ -z "$low" ] ;;
-    typechange)           [ "$src" = "120000 blob" ] && [ -z "$dst" ]                && [ -z "$low" ] ;;
+    modify)               [ "$src" = "100644 blob" ] && [ -z "$dst" ]                && [ -z "$low" ] \
+                          && [ -z "$inner" ] ;;
+    delete)               [ -z "$src" ]              && [ -z "$dst" ]                && [ -z "$low" ] \
+                          && [ -z "$inner" ] ;;
+    rename_away)          [ -z "$src" ]              && [ "$dst" = "100644 blob" ]   && [ -z "$low" ] \
+                          && [ -z "$inner" ] ;;
+    rename_away_and_tree) [ "$src" = "040000 tree" ] && [ "$dst" = "100644 blob" ]   && [ -z "$low" ] \
+                          && [ "$inner" = "100644 blob" ] ;;
+    rename_case_only)     [ -z "$src" ]              && [ -z "$dst" ]                && [ "$low" = "100644 blob" ] \
+                          && [ -z "$inner" ] ;;
+    tree_at_path)         [ "$src" = "040000 tree" ] && [ -z "$dst" ]                && [ -z "$low" ] \
+                          && [ "$inner" = "100644 blob" ] ;;
+    typechange)           [ "$src" = "120000 blob" ] && [ -z "$dst" ]                && [ -z "$low" ] \
+                          && [ -z "$inner" ] ;;
     *) return 1 ;;
   esac
 }
@@ -259,6 +299,18 @@ LOCAL_STATES="clean modified del_unstaged del_staged dir_at_path dangling_symlin
 ORIGIN_ACTIONS="modify delete rename_away rename_away_and_tree rename_case_only tree_at_path typechange"
 ALLOWLIST="ordinary keeplocal"
 
+# Drop the axis this filesystem cannot express, and say so loudly enough that a red run is
+# never mistaken for one, nor a green one read as covering more than it did.
+SKIP_ACTIONS=""
+if fs_folds_case; then
+  echo "filesystem: case-FOLDING — all $(set -- $ORIGIN_ACTIONS; echo $#) origin actions in scope"
+else
+  SKIP_ACTIONS="rename_case_only"
+  ORIGIN_ACTIONS="$(echo "$ORIGIN_ACTIONS" | tr ' ' '\n' | grep -vx "rename_case_only" | tr '\n' ' ')"
+  echo "filesystem: case-SENSITIVE — SKIPPING the rename_case_only axis (it measures a"
+  echo "  case-folding defect that cannot occur here; its baseline verdicts do not apply)."
+fi
+
 MEASURED="$(mktemp)"
 for a in $LOCAL_STATES; do for b in $ORIGIN_ACTIONS; do for c in $ALLOWLIST; do
   run_cell "$a" "$b" "$c"
@@ -266,12 +318,23 @@ done; done; done
 sort -o "$MEASURED" "$MEASURED"
 
 if [ "$WRITE" = 1 ]; then
+  # A baseline written where an axis is out of scope would silently DELETE those reviewed rows
+  # -- fourteen human verdicts, gone, with the file still looking complete. Refuse: the
+  # baseline is only ever authored where the whole matrix is constructible.
+  if [ -n "$SKIP_ACTIONS" ]; then
+    echo "REFUSING to write the baseline on a case-SENSITIVE filesystem: the $SKIP_ACTIONS" >&2
+    echo "  axis is out of scope here, and writing would drop its reviewed rows. Author the" >&2
+    echo "  baseline on a case-folding volume (any Mac in this fleet)." >&2
+    rm -f "$MEASURED"; exit 3
+  fi
   # NEVER blind-copy. $MEASURED holds seven MEASURED fields; the eighth is a human VERDICT the
   # machine cannot produce. A `cp` here destroys every judgement in the file, and because the
   # comparator only diffs fields 1-7 it then reports STABLE forever against a baseline nobody
   # has ever reviewed -- the exact guarantee this instrument exists to give, with a hole in it.
   # So: carry each cell's verdict forward by its coordinate key when its MEASUREMENT is
   # unchanged, and stamp anything new or moved UNREVIEWED, which the comparator refuses.
+  prior_rows=0
+  [ -f "$BASELINE" ] && prior_rows=$(wc -l < "$BASELINE" | tr -d ' ')
   if [ -f "$BASELINE" ]; then
     awk -F'\t' -v OFS='\t' '
       NR==FNR { if (NF>7) { k=$1 FS $2 FS $3; m[k]=$4 FS $5 FS $6 FS $7; v[k]=substr($0, index($0,$8)) } ; next }
@@ -283,6 +346,10 @@ if [ "$WRITE" = 1 ]; then
     awk -F'\t' -v OFS='\t' '{print $0, "UNREVIEWED", "no prior baseline — every cell needs a first judgement"}' "$MEASURED" > "$BASELINE.new"
   fi
   mv "$BASELINE.new" "$BASELINE"
+  if [ "$prior_rows" -gt 0 ] && [ "$(wc -l < "$BASELINE" | tr -d ' ')" -lt "$prior_rows" ]; then
+    echo "NOTE: the baseline SHRANK ($prior_rows -> $(wc -l < "$BASELINE" | tr -d ' ') cells)."
+    echo "  Cells that stopped being enumerated took their reviewed verdicts with them."
+  fi
   carried=$(awk -F'\t' '$8!="UNREVIEWED"' "$BASELINE" | wc -l | tr -d ' ')
   todo=$(awk -F'\t' '$8=="UNREVIEWED"' "$BASELINE" | wc -l | tr -d ' ')
   echo "baseline written: $BASELINE ($(wc -l < "$BASELINE" | tr -d ' ') cells; $carried verdicts carried, $todo UNREVIEWED)"
@@ -305,7 +372,12 @@ echo "cells measured: $(wc -l < "$MEASURED" | tr -d ' ')  baseline: $(wc -l < "$
 # comment. That is the original defect one layer up: "no verdict" was closed and "not a
 # verdict" was left open. So the test is now an ALLOW-LIST of the two strings that mean
 # something, which also subsumes empty and UNREVIEWED without naming them.
-unjudged=$(awk -F'\t' 'NF<8 || ($8!="OK" && $8!="KNOWN_BAD")' "$BASELINE" | wc -l | tr -d ' ')
+# KNOWN_BAD without a reason is not a judgement, it is a silencer: it tells a future reader
+# that someone looked and decided nothing. The reason column is what makes a declared defect
+# auditable, so require it wherever the verdict claims one.
+unjudged=$(awk -F'\t' '
+  NF<8 || ($8!="OK" && $8!="KNOWN_BAD") ||
+  ($8=="KNOWN_BAD" && (NF<9 || $9 ~ /^[ \t]*$/))' "$BASELINE" | wc -l | tr -d ' ')
 if [ "$unjudged" -gt 0 ]; then
   echo "BASELINE NOT REVIEWED — $unjudged of $(wc -l < "$BASELINE" | tr -d ' ') cells carry no usable verdict." >&2
   echo "  Column 8 must be exactly OK or KNOWN_BAD (the reason goes in column 9). A verdict this" >&2
@@ -322,7 +394,15 @@ if [ -n "$dupes" ]; then
   printf '    %s\n' "$dupes" | tr '\t' '|' >&2
   rm -f "$MEASURED"; exit 2
 fi
-cut -f1-7 "$BASELINE" > "$BASELINE.cmp"
+# Compare like with like: on a filesystem that skipped an axis, the baseline's rows for that
+# axis describe behaviour this run never measured and are held out rather than counted absent.
+if [ -n "$SKIP_ACTIONS" ]; then
+  awk -F'\t' -v OFS='\t' -v skip="$SKIP_ACTIONS" \
+    '$2!=skip {print $1,$2,$3,$4,$5,$6,$7}' "$BASELINE" > "$BASELINE.cmp"
+  echo "  (held out: $(awk -F'\t' -v s="$SKIP_ACTIONS" '$2==s' "$BASELINE" | wc -l | tr -d ' ') baseline rows on the $SKIP_ACTIONS axis)"
+else
+  cut -f1-7 "$BASELINE" > "$BASELINE.cmp"
+fi
 if diff -u "$BASELINE.cmp" "$MEASURED" > "$MEASURED.diff"; then
   rm -f "$BASELINE.cmp"
   echo "MATRIX STABLE — every cell matches the reviewed baseline."
