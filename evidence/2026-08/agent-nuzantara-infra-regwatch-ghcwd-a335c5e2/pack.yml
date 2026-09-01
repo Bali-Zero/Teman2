@@ -25,8 +25,10 @@ diff:
     note counted only the code files and presented that as the diff's size,
     which the countable-claims rule correctly read as a claim about the whole
     diff and failed. The count here is now the rule's count, with the
-    code/paperwork split spelled out rather than silently assumed. Five
-    commits on this
+    code/paperwork split spelled out rather than silently assumed. A commit
+    COUNT is deliberately not narrated here: correcting one adds a commit and
+    invalidates the correction, so the commits are named instead of tallied.
+    On this
     branch: 339fcb428 (the core fix), 2c245ac2f (checker hardening after
     the first cross-family review round found two real gaps in the new
     guard's own logic), e453aa021 (directory-wide scope per a teammate's
@@ -54,7 +56,7 @@ lanes:
   - lane: regwatch-refuter-2
     role: review
     seat: spalla-review/sonnet-5 -- second independent pass on the full
-      diff (all three code-bearing commits -- 339fcb428, 2c245ac2f and
+      diff (the code-bearing commits -- 339fcb428, 2c245ac2f and
       e453aa021; the branch now carries five, the two later ones being an
       evidence correction and a merge of origin/main that added no code),
       dispatched after the first round's fixes
