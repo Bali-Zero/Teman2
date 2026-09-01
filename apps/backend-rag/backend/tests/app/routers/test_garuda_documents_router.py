@@ -159,22 +159,49 @@ async def _chunked_body(body: bytes, chunk_size: int = 4096):
         yield body[i : i + chunk_size]
 
 
+class _CountingChunks:
+    """An async-iterable body wrapper that records, cumulatively, how many
+    bytes it has actually yielded — `total_yielded`, read AFTER the request
+    completes. This is the one signal that distinguishes "the server stopped
+    pulling the request body early" (the streaming bound firing) from "the
+    server read the entire body, then rejected it" (a buffering backstop
+    elsewhere catching the same oversized upload). A bare 413 status cannot
+    tell those apart; this can. httpx treats an object with `__aiter__` the
+    same as an async generator function (`AsyncIteratorByteStream`,
+    `httpx._content.py`), so this can be passed directly as `content=`.
+    """
+
+    def __init__(self, body: bytes, chunk_size: int) -> None:
+        self._body = body
+        self._chunk_size = chunk_size
+        self.total_yielded = 0
+
+    async def __aiter__(self):
+        for i in range(0, len(self._body), self._chunk_size):
+            chunk = self._body[i : i + self._chunk_size]
+            self.total_yielded += len(chunk)
+            yield chunk
+
+
 async def _post_raw_multipart(
     client: AsyncClient,
     *,
     result_id: str = _ACTOR,
     idempotency_key: str = "idem-key-0000000000001",
     cookie: str | None = "cookie",
-    body: bytes,
+    body: bytes | None = None,
     content_length_header: str | None = None,
     streamed: bool = True,
+    content=None,
 ):
     """Posts a hand-built multipart body. `streamed=True` (default) sends it
     as an async generator so no `Content-Length` is ever computed — the
     no-Content-Length ("chunked") case. `streamed=False` sends the body as
     plain `bytes` (httpx would normally compute an accurate `Content-Length`
     for that), letting the caller override it via `content_length_header` to
-    build the understated-`Content-Length` case.
+    build the understated-`Content-Length` case. Pass `content=` directly
+    (e.g. a `_CountingChunks` instance) to control chunking/instrumentation
+    yourself — `body`/`streamed` are then ignored.
     """
     headers = {"Content-Type": f"multipart/form-data; boundary={_RAW_BOUNDARY}"}
     if idempotency_key is not None:
@@ -182,7 +209,8 @@ async def _post_raw_multipart(
     if content_length_header is not None:
         headers["Content-Length"] = content_length_header
     cookies = {_SESSION_COOKIE: cookie} if cookie is not None else None
-    content = _chunked_body(body) if streamed else body
+    if content is None:
+        content = _chunked_body(body) if streamed else body
     return await client.post(
         f"/api/visa/voa/eligibility-checks/{result_id}/documents",
         headers=headers,
@@ -441,28 +469,61 @@ class TestUpload413DocumentTooLarge:
         assert resp.status_code == 413, resp.text
         assert resp.json()["code"] == "DOCUMENT_TOO_LARGE"
 
+    #: Patched together in every test below so `body_limit` (computed inside
+    #: `_parse_upload_request` as `MAX_UPLOAD_BYTES + _MULTIPART_FRAMING_
+    #: ALLOWANCE_BYTES`) is small enough that a modest hand-built body can
+    #: genuinely exceed it. With the real 64 KiB default allowance, ANY body
+    #: a fast unit test can afford to send sits comfortably under `body_limit`
+    #: regardless of `MAX_UPLOAD_BYTES` — so the streaming bound never fires,
+    #: and a bare 413 assertion only ever proves the (separate) post-parse /
+    #: `service.py` buffering backstop caught it. Shrinking the allowance too
+    #: is what makes the streaming bound itself reachable from a test.
+    _TEST_MAX_UPLOAD_BYTES = 1000
+    _TEST_FRAMING_ALLOWANCE_BYTES = 200
+    _TEST_BODY_LIMIT = _TEST_MAX_UPLOAD_BYTES + _TEST_FRAMING_ALLOWANCE_BYTES  # 1200
+
+    def _patch_bounds(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            garuda_documents_router.byte_validation,
+            "MAX_UPLOAD_BYTES",
+            self._TEST_MAX_UPLOAD_BYTES,
+        )
+        monkeypatch.setattr(
+            garuda_documents_router,
+            "_MULTIPART_FRAMING_ALLOWANCE_BYTES",
+            self._TEST_FRAMING_ALLOWANCE_BYTES,
+        )
+
     async def test_oversized_upload_with_no_content_length_is_still_413(
         self, monkeypatch
     ):
-        """The sibling test above never reaches the streaming path: httpx's
-        `files=` helper always computes an accurate `Content-Length`, so the
-        cheap header pre-check answers first every time. This sends the exact
-        same oversized body with NO `Content-Length` at all (a genuinely
-        streamed/chunked request) — the shape the pre-check cannot see coming.
+        """The sibling test above never reaches the streaming path at all:
+        httpx's `files=` helper always computes an accurate `Content-Length`,
+        so the cheap header pre-check answers first every time. This sends a
+        body with NO `Content-Length` (genuinely streamed) that is not just
+        over `MAX_UPLOAD_BYTES` but over the full `body_limit` — 50 KB against
+        a ~1.2 KB limit — so `_bounded_body_stream` itself must be what fires,
+        not the post-parse/`service.py` buffering backstop (which would also
+        return 413 for a body this size, but only AFTER reading all of it).
+        `_CountingChunks` proves which one actually happened: the server must
+        stop pulling bytes far short of the 50 KB sent, bounded by `body_limit`
+        plus at most one 256-byte chunk of overshoot.
         """
-        monkeypatch.setattr(
-            garuda_documents_router.byte_validation, "MAX_UPLOAD_BYTES", 10
-        )
+        self._patch_bounds(monkeypatch)
         app = _app(
             garuda_magic_session_verifier=_verifier_returns_fixed_actor,
             garuda_document_store=_NeverCalledStore(),
         )
+        oversized_file = b"x" * 50_000  # ~40x body_limit — "substantially more"
         body = _build_raw_multipart_body(
-            document_kind="PASSPORT_BIODATA", file_bytes=b"x" * 200
+            document_kind="PASSPORT_BIODATA", file_bytes=oversized_file
         )
+        assert len(body) > self._TEST_BODY_LIMIT * 10  # sanity: the send is genuinely oversized
+        chunk_size = 256
+        counter = _CountingChunks(body, chunk_size=chunk_size)
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://t") as client:
-            resp = await _post_raw_multipart(client, body=body, streamed=True)
+            resp = await _post_raw_multipart(client, content=counter)
 
         # Degenerate-test guard: if this ever carries a Content-Length again
         # (e.g. someone "fixes" `_post_raw_multipart` to stop streaming), this
@@ -470,45 +531,73 @@ class TestUpload413DocumentTooLarge:
         assert "content-length" not in resp.request.headers
         assert resp.status_code == 413, resp.text
         assert resp.json()["code"] == "DOCUMENT_TOO_LARGE"
+        # The property under test: the server stopped pulling bytes early.
+        # A real ceiling, not merely "less than the 50 KB total" — at most
+        # one chunk of overshoot past body_limit.
+        assert counter.total_yielded <= self._TEST_BODY_LIMIT + chunk_size, (
+            f"server pulled {counter.total_yielded} bytes before rejecting — "
+            f"expected <= body_limit ({self._TEST_BODY_LIMIT}) + one chunk "
+            f"({chunk_size}); this means the streaming bound did NOT fire and "
+            "something downstream (the post-parse check, or service.py's "
+            "validate_size) caught it after buffering the whole body instead."
+        )
 
     async def test_understated_content_length_is_still_413(self, monkeypatch):
-        """Same shape as the no-Content-Length test above, but this time the
-        header IS present and LIES — declares a body far smaller than what
-        actually follows. A pre-check that trusts the declared value alone
-        would wave this through; the streaming/post-parse enforcement must
-        not."""
-        monkeypatch.setattr(
-            garuda_documents_router.byte_validation, "MAX_UPLOAD_BYTES", 10
-        )
+        """Same shape and same proof as the no-Content-Length test above, but
+        this time the header IS present and LIES — declares a body far
+        smaller than what actually follows. A pre-check that trusts the
+        declared value alone would wave this through; the streaming
+        enforcement must not, and the byte-count assertion again proves it is
+        the streaming bound (not a buffering backstop) doing the rejecting.
+        """
+        self._patch_bounds(monkeypatch)
         app = _app(
             garuda_magic_session_verifier=_verifier_returns_fixed_actor,
             garuda_document_store=_NeverCalledStore(),
         )
+        oversized_file = b"x" * 50_000
         body = _build_raw_multipart_body(
-            document_kind="PASSPORT_BIODATA", file_bytes=b"x" * 200
+            document_kind="PASSPORT_BIODATA", file_bytes=oversized_file
         )
+        chunk_size = 256
+        counter = _CountingChunks(body, chunk_size=chunk_size)
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://t") as client:
             resp = await _post_raw_multipart(
-                client, body=body, streamed=False, content_length_header="5"
+                client, content=counter, content_length_header="5"
             )
 
         assert resp.request.headers.get("content-length") == "5"
         assert resp.status_code == 413, resp.text
         assert resp.json()["code"] == "DOCUMENT_TOO_LARGE"
+        assert counter.total_yielded <= self._TEST_BODY_LIMIT + chunk_size, (
+            f"server pulled {counter.total_yielded} bytes before rejecting — "
+            f"expected <= body_limit ({self._TEST_BODY_LIMIT}) + one chunk "
+            f"({chunk_size})"
+        )
 
     async def test_upload_at_the_bound_with_no_content_length_still_succeeds(
         self, monkeypatch
     ):
         """Innocence control: a legitimately max-sized upload, streamed with
-        no `Content-Length`, must NOT be rejected. This is what catches a
-        framing allowance (`_MULTIPART_FRAMING_ALLOWANCE_BYTES`) sized too
-        small — the failure mode a naive fix for the two tests above could
-        introduce by shrinking the body bound to exactly `MAX_UPLOAD_BYTES`
-        with no slack for multipart's own boundary/header overhead."""
+        no `Content-Length`, must NOT be rejected. Patching the framing
+        allowance down to 320 bytes (instead of leaving the real 64 KiB
+        default) is what makes this test do real work: the measured framing
+        overhead of `_build_raw_multipart_body` for this exact payload is 292
+        bytes (boundary lines + Content-Disposition/Content-Type headers +
+        the `document_kind` field), so 320 is deliberately tight — enough to
+        fit the real overhead, not so much that a too-small allowance bug
+        would go uncaught. With the real default this test would pass even if
+        the allowance in production code were only, say, 200 bytes (too small
+        for a real single-file upload's framing) because 64 KiB would still
+        hide the difference.
+        """
         png = _valid_png_bytes()
         monkeypatch.setattr(
             garuda_documents_router.byte_validation, "MAX_UPLOAD_BYTES", len(png)
+        )
+        monkeypatch.setattr(
+            garuda_documents_router, "_MULTIPART_FRAMING_ALLOWANCE_BYTES", 320
         )
         _patch_ocr(monkeypatch, (_pass(_CONFIDENT_FIELDS), _pass(_CONFIDENT_FIELDS)))
         app = _app(
@@ -518,6 +607,7 @@ class TestUpload413DocumentTooLarge:
         body = _build_raw_multipart_body(
             document_kind="PASSPORT_BIODATA", file_bytes=png
         )
+        assert len(body) - len(png) == 292  # pins the framing-overhead measurement above
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://t") as client:
             resp = await _post_raw_multipart(client, body=body, streamed=True)
