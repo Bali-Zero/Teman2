@@ -1,0 +1,96 @@
+task_id: superscar-budget-gate
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Close PENDING-ARMS L747: `test_superscar_budget.py` (byte-budget <=14000 +
+  W-number completeness + .prettierignore coverage for
+  .claude/rules/cicatrix-superscar.md) has run only inside
+  scripts-tests-sweep.yml — a nightly, `continue-on-error: true`, report-only
+  sweep by that workflow's own explicit design. A PR that pushes
+  cicatrix-superscar.md past its byte budget lands clean today and only
+  surfaces the next morning in a report nobody is required to read — the
+  exact "exists != armed" disease the bridge file's own family #2 documents,
+  applied to its own guard.
+
+  Promote the SAME test (unchanged) into immune-enforcement.yml, the
+  workflow that already is the required, per-PR gate for this repo's other
+  guard corpora, gated on the sentinel's existing path-detect
+  (`steps.paths.outputs.relevant`) — which already matches `.claude/rules/*`
+  and `docs/scars/*` among many other paths, unchanged by this diff — so an
+  unrelated PR never pays for the extra pytest run. The nightly sweep is
+  left exactly as-is: this is an ADDITIONAL executor, not a replacement.
+constraints:
+  - "The test file itself is NOT touched — only a workflow step is added.
+    scripts-tests-sweep.yml (the nightly Stage-1 sweep) is NOT touched
+    either: Stage 3 of its own documented plan is 'promote the individual
+    file to a per-PR job', which is exactly what this does, leaving Stage 1
+    intact as a second, independent executor."
+  - "The new step must be gated on the SAME `steps.paths.outputs.relevant`
+    condition as its neighbours in the same job, not a new bespoke
+    condition — the path-detect case-block already lists
+    `.claude/rules/*` and `docs/scars/*`, the only two directories this
+    test's SUBJECT can ever touch (cicatrix-superscar.md lives in the
+    former, its two body files in the latter)."
+  - "No change to HOTZONE_PATTERNS, no change to branch-protection required
+    checks: immune-enforcement.yml is already a required workflow, so a new
+    step inside its existing job is covered by the existing required
+    context with no separate arming step."
+acceptance:
+  - text: >
+      WHEN a PR changes .claude/rules/cicatrix-superscar.md (or
+      docs/scars/cicatrix-scars.md / cicatrix-scars-archive.md) past the
+      14,000-byte budget, the PR SHALL fail a required, per-PR check instead
+      of only being reported the following night.
+    status: verified
+    probe: >-
+      local guilt+innocence on the live file: 12,484 bytes -> pytest green;
+      padded to 14,200 bytes -> pytest red on `assert 14200 <= 14000`;
+      reverted -> green again. See pack.yml receipts for the exact commands.
+  - text: >
+      WHEN a PR changes an unrelated path, the new step SHALL be skipped
+      (steps.paths.outputs.relevant stays false) so no unrelated PR pays for
+      the extra pytest run.
+    status: verified
+    probe: >-
+      read the sentinel's own case-block (unchanged by this diff): only
+      `.claude/rules/*`, `docs/scars/*` and a small fixed list of other
+      infra paths flip `relevant=true`; this PR's own diff (a workflow file)
+      also matches (`.github/workflows/immune-enforcement.yml` is itself
+      listed), so this PR's own CI run is a live self-test of the new step.
+  - text: >
+      WHEN this PR's own CI runs, the new step SHALL execute (not be
+      skipped) and pass, because immune-enforcement.yml is itself in the
+      sentinel's relevant-path list — giving real proof-of-armed inside this
+      very PR rather than a claim to be re-verified later.
+    status: verified
+    probe: "gh pr checks <this PR> — 'Superscar byte-budget + completeness' step present and green inside the immune-enforcement.yml run"
+risks:
+  - "The nightly sweep (scripts-tests-sweep.yml) and this new per-PR step
+    now both run the same test file. This is deliberate redundancy, not
+    drift: the nightly sweep also collects test_superscar_budget.py as part
+    of the whole scripts/tests/ directory, so removing it there would be a
+    silent narrowing of Stage-1's own stated scope. Two executors, same
+    test, is the same pattern already used for
+    test_prepush_failclosed.sh / test_prepush_tip_drift.sh (both run in
+    prepush-guards.yml AND this same job, per that step's own comment: 'a
+    single executor is a single point of silence')."
+  - "This does not fix the underlying headroom problem named in the second
+    PENDING-ARMS line on the same file (opened 2026-08-25: the budget has
+    almost no free bytes and a session was forced to trim a neighbour's
+    entry to fit a new one). That is a separate, owner-grade decision
+    (raise the cap / move Orfane out / accept eviction as policy) and is
+    explicitly out of scope here — this PR only arms the EXISTING budget
+    test at PR time, it does not change the budget or the file's content."
+instruction_to_the_grader: |
+  This is a small, surgical change: one new step in one workflow file,
+  reusing an existing test file and an existing path-detect gate verbatim.
+  The interesting failure modes are (a) wrong gating — did the new step
+  actually inherit the right `if:` and does the path-detect case-block
+  really already cover .claude/rules/* and docs/scars/*; (b) placement —
+  does it run in the same job as the sentinel step that sets
+  steps.paths.outputs.relevant, or did it silently land in a job where that
+  output does not exist; (c) does the promoted check actually block a PR
+  (required workflow) rather than merely running informationally. Read the
+  actual diff, not this paraphrase.
+pii: none
