@@ -657,12 +657,23 @@ async def preview_magic_link(
     asks the identical question of the store, just without consuming the
     answer.
 
-    Non-enumerating like `exchangeMagicLink`: an absent, malformed,
+    Non-enumerating like `exchangeMagicLink`, scoped the same way that
+    handler's own docstring scopes itself: a well-formed but unknown,
     expired, already-consumed, or foreign token all answer the identical
     401 `MAGIC_LINK_INVALID` -- `store.peek`'s own docstring is the
     authority on why those cases collapse into one `PeekOutcome(valid=
     False)` rather than a router-level distinction being layered back on
-    top of it.
+    top of it. An absent or malformed `token` (failing `MagicLinkExchange`'s
+    own `min_length=32`/`max_length=2048`) never reaches `store.peek` at
+    all -- Pydantic rejects it before this function runs, and
+    `_ContractErrorRoute` turns that into a 422 `INVALID_REQUEST`, not a
+    401. That is a DIFFERENT, orthogonal signal (the request didn't parse,
+    a fact the caller already knows about its own input) rather than a
+    second distinguishable outcome about any real token's existence -- the
+    same reason `exchange_magic_link`'s docstring never folds "malformed"
+    into its own non-enumeration claim either (Gear-3 council finding,
+    codex-gpt-5.6-sol, 2026-09-02: an earlier draft of this docstring did
+    make that overclaim).
 
     No `Idempotency-Key`: unlike `issue`/`exchange`, this mutates nothing
     (see `PostgresMagicLinkStore.peek`'s docstring), so the contract's
