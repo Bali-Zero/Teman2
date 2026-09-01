@@ -26,16 +26,22 @@ defects has been one mistake repeated: reading **one** coordinate and inferring 
 
 - **A — what the local worktree holds at the path.** `clean`, `modified`, `del_unstaged`
   (bare `rm`, index entry survives), `del_staged` (`git rm`, index entry gone),
-  `dir_at_path`, `dangling_symlink`, `untracked`.
+  `dir_at_path`, `symlink` (a link that RESOLVES), `dangling_symlink`, `untracked`.
 - **B — what the incoming change does to it.** `modify`, `delete`, `rename_away`,
   `rename_away_and_tree` (paired R100 rename whose old name a directory then takes),
   `rename_case_only` (`Subject.md` → `subject.md`), `tree_at_path`, `typechange`.
 - **C — whether the path is allowlisted** Pro-authoritative runtime state. `ordinary`,
   `keeplocal`.
 
-88 of the 98 combinations are constructible; the 10 that are not are an untracked local file
-meeting an incoming action on a path the base never tracked, and the runner skips them by
-construction rather than recording a cell that did not run.
+**102 of the 8 × 7 × 2 = 112 combinations are constructible**; the 10 that are not are an
+untracked local file meeting an incoming action on a path the base never tracked, and the runner
+skips them by construction rather than recording a cell that did not run. (`untracked` therefore
+carries 4 cells, not 14: only `× {modify, tree_at_path}`.) The arithmetic is checkable against
+the baseline itself — `awk -F'\t' '{s[$1];a[$2];p[$3]} END{print length(s)*length(a)*length(p), NR}'`
+must print `112 102`. Do not read the 102 here as the 102 in "How it is armed": that one is the
+number of cells a case-FOLDING run measures, which coincides only because every constructible
+cell is in scope there. On a case-sensitive volume the same run measures 88 — a different 88
+from any other figure in this document.
 
 Two properties of the fixtures are load-bearing and easy to get wrong. The body of the file is
 long, because git only PAIRS a rename above a similarity threshold and a five-byte file is
