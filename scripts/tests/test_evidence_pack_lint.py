@@ -2155,6 +2155,198 @@ def test_council_run_innocence_pre_flip_notice_not_fail(tmp_path):
     assert notice is not None and "council_run" in notice
 
 
+# ---- R9 second limb (Zero 2026-09-02): titolari/fallback roster split -----
+
+
+def test_council_run_quorum_reached_by_two_distinct_fallback_seats(tmp_path):
+    """QUORUM: before this ruling, tp1-deepseek-v4-pro/tp1-glm-5.2/
+    agy-gemini-3.1-pro were not COUNCIL_REVIEW_SEATS members at all and
+    counted toward nothing. Post-ruling they are COUNCIL_REVIEW_SEATS_FALLBACK
+    members, so 2 distinct ones DO reach the >=2 quorum — the guilt this
+    test proves is `council_fallback_reason` (all-reserve, no reason), NOT
+    `council_run` (quorum), which is exactly the evidence that quorum was
+    reached via the fallback seats rather than never satisfied at all."""
+    _write_journal(tmp_path, "journal.jsonl", [
+        {"seat": "tp1-deepseek-v4-pro", "role": "review", "ok": True, "ts": "a"},
+        {"seat": "tp1-glm-5.2", "role": "review", "ok": True, "ts": "b"},
+    ])
+    pack = {"council_run": "journal.jsonl"}
+    viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert viol and all("council_run" not in v for v in viol)
+    assert any("council_fallback_reason" in v for v in viol)
+    assert notice is None
+
+
+def test_council_run_guilt_all_fallback_no_reason_rejected(tmp_path):
+    """GUILT (second limb): quorum holds (2 distinct FALLBACK seats,
+    zero titolari) but no `seat_fallback_reason` and no `seat_override` ->
+    a `council_fallback_reason` violation, distinct from the quorum rule."""
+    _write_journal(tmp_path, "journal.jsonl", [
+        {"seat": "tp1-deepseek-v4-pro", "role": "review", "ok": True, "ts": "a"},
+        {"seat": "agy-gemini-3.1-pro", "role": "review", "ok": True, "ts": "b"},
+    ])
+    pack = {"council_run": "journal.jsonl"}
+    viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert len(viol) == 1
+    assert "council_fallback_reason" in viol[0]
+    assert "tp1-deepseek-v4-pro" in viol[0] and "agy-gemini-3.1-pro" in viol[0]
+    assert notice is None
+
+
+def test_council_run_innocence_fallback_reason_declared_passes(tmp_path):
+    """INNOCENCE a: same all-fallback shape as the guilt case above, but
+    with a non-empty `seat_fallback_reason` -> clean."""
+    _write_journal(tmp_path, "journal.jsonl", [
+        {"seat": "tp1-deepseek-v4-pro", "role": "review", "ok": True, "ts": "a"},
+        {"seat": "tp1-glm-5.2", "role": "review", "ok": True, "ts": "b"},
+    ])
+    pack = {
+        "council_run": "journal.jsonl",
+        "seat_fallback_reason": "codex + kimi + tp1-qwen3.8-max all 403/timeout at dispatch time",
+    }
+    viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert viol == [] and notice is None
+
+
+@pytest.mark.parametrize("empty_reason", ["", "   ", "\n\t "])
+def test_council_run_guilt_blank_fallback_reason_is_not_a_reason(tmp_path, empty_reason):
+    """GUILT: a `seat_fallback_reason` that is present but BLANK (empty, or
+    only whitespace) does not satisfy the substitution rule.
+
+    Written after a mutation test caught the gap: removing `.strip()` from
+    the source's emptiness guard reddened NOTHING in the suite, which meant
+    the rule could be satisfied by an empty gesture. That is the same defect
+    this file already carries a scar for one rule over — `dissent: [{}]`
+    passed check_dissent_nonempty_on_gear3 purely on length until an
+    adversarial review in 2026-08-10 caught it. A rule whose only job is to
+    make somebody WRITE the substitution down is worth nothing if the empty
+    string counts as writing it down."""
+    _write_journal(tmp_path, "journal.jsonl", [
+        {"seat": "tp1-deepseek-v4-pro", "role": "review", "ok": True, "ts": "a"},
+        {"seat": "tp1-glm-5.2", "role": "review", "ok": True, "ts": "b"},
+    ])
+    pack = {"council_run": "journal.jsonl", "seat_fallback_reason": empty_reason}
+    viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert any("council_fallback_reason" in v for v in viol), viol
+
+
+def test_council_run_guilt_non_string_fallback_reason_is_not_a_reason(tmp_path):
+    """GUILT, sibling of the blank case: a non-string `seat_fallback_reason`
+    (True, a number, a list) is not a stated reason either. Pinned because
+    the source's guard is `isinstance(reason, str) and reason.strip()` and a
+    future simplification to a bare truthiness check would silently accept
+    `seat_fallback_reason: true` — which reads, in YAML, exactly like
+    somebody ticking a box instead of naming the unavailable titolare."""
+    _write_journal(tmp_path, "journal.jsonl", [
+        {"seat": "tp1-deepseek-v4-pro", "role": "review", "ok": True, "ts": "a"},
+        {"seat": "tp1-glm-5.2", "role": "review", "ok": True, "ts": "b"},
+    ])
+    for bad in (True, 1, ["codex down"], {"seat": "codex"}):
+        pack = {"council_run": "journal.jsonl", "seat_fallback_reason": bad}
+        viol, _ = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+        assert any("council_fallback_reason" in v for v in viol), (bad, viol)
+
+
+def test_council_run_guilt_titolare_plus_fallback_no_reason_rejected(tmp_path):
+    """GUILT (regression, corrected mid-PR — source narrowed 2026-09-02 from
+    "entirely on reserves" to "any reserve, even beside a titolare"): Zero's
+    own correction reads "le riserve non intervengono se i titolari ci
+    sono" — a reserve is a SUBSTITUTION, not an equal alternative, so 1
+    titolare + 1 fallback seat with no `seat_fallback_reason` is STILL a
+    violation. This is exactly the gap the correction closed: the first
+    draft only asked for a reason when the council was seated ENTIRELY on
+    reserves, which let one reserve walk in beside an available titolare
+    with nothing said."""
+    _write_journal(tmp_path, "journal.jsonl", [
+        {"seat": "codex-gpt-5.6-sol", "role": "review", "ok": True, "ts": "a"},
+        {"seat": "tp1-deepseek-v4-pro", "role": "review", "ok": True, "ts": "b"},
+    ])
+    pack = {"council_run": "journal.jsonl"}
+    viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert len(viol) == 1
+    assert "council_fallback_reason" in viol[0]
+    assert "tp1-deepseek-v4-pro" in viol[0]
+    assert notice is None
+
+
+def test_council_run_innocence_titolare_plus_fallback_with_reason_passes(tmp_path):
+    """INNOCENCE: same mixed 1 titolare + 1 fallback shape as the guilt case
+    directly above, but with a non-empty `seat_fallback_reason` -> clean."""
+    _write_journal(tmp_path, "journal.jsonl", [
+        {"seat": "codex-gpt-5.6-sol", "role": "review", "ok": True, "ts": "a"},
+        {"seat": "tp1-deepseek-v4-pro", "role": "review", "ok": True, "ts": "b"},
+    ])
+    pack = {
+        "council_run": "journal.jsonl",
+        "seat_fallback_reason": "kimi-code/k3 was 403 weekly-quota-dead at dispatch time",
+    }
+    viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert viol == [] and notice is None
+
+
+def test_council_run_innocence_two_titolari_no_reason_needed(tmp_path):
+    """INNOCENCE c: 2 distinct titolari seats, no `seat_fallback_reason`
+    declared -> clean (the second limb only inspects `seat_fallback_reason`
+    when at least one COUNTED seat is a reserve — `benched` is empty here
+    since neither counted seat is a COUNCIL_REVIEW_SEATS_FALLBACK member;
+    contrast with test_council_run_guilt_titolare_plus_fallback_no_reason_rejected,
+    where a single reserve beside a titolare is NOT innocent)."""
+    _write_journal(tmp_path, "journal.jsonl", [
+        {"seat": "codex-gpt-5.6-sol", "role": "review", "ok": True, "ts": "a"},
+        {"seat": "kimi-code/k3", "role": "review", "ok": True, "ts": "b"},
+    ])
+    pack = {"council_run": "journal.jsonl"}
+    viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert viol == [] and notice is None
+
+
+def test_council_run_innocence_gear_not_3_skipped_even_all_fallback(tmp_path):
+    """INNOCENCE d: the second limb is Gear-3-only just like the first —
+    an all-fallback, no-reason journal on gear 1/2 is skipped entirely,
+    same convention as test_council_run_innocence_gear_not_3_skipped."""
+    _write_journal(tmp_path, "journal.jsonl", [
+        {"seat": "tp1-deepseek-v4-pro", "role": "review", "ok": True, "ts": "a"},
+        {"seat": "tp1-glm-5.2", "role": "review", "ok": True, "ts": "b"},
+    ])
+    pack = {"council_run": "journal.jsonl"}
+    for gear in (None, 1, 2):
+        viol, notice = check_council_run_gear3(pack, tmp_path, gear, today=_R9_R11_POST_FLIP)
+        assert viol == [] and notice is None
+
+
+def test_council_run_innocence_all_fallback_seat_override_reports_not_fails(tmp_path):
+    """INNOCENCE e: `seat_override` on the all-fallback/no-reason case wins
+    outright, same as it does for the quorum limb — reported, never failed."""
+    _write_journal(tmp_path, "journal.jsonl", [
+        {"seat": "tp1-deepseek-v4-pro", "role": "review", "ok": True, "ts": "a"},
+        {"seat": "tp1-glm-5.2", "role": "review", "ok": True, "ts": "b"},
+    ])
+    pack = {
+        "council_run": "journal.jsonl",
+        "seat_override": "titolari roster unreachable, verified live under active incident",
+    }
+    viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert viol == []
+    assert notice is not None and "(overridden)" in notice
+
+
+def test_council_run_guilt_single_fallback_seat_reports_quorum_only_not_stacked(tmp_path):
+    """GUILT (no double-stacking): a single FALLBACK seat is below the >=2
+    quorum -> the `council_run` violation fires alone, exactly like the
+    pre-existing single-seat-below-quorum test; the second limb must never
+    run (and stack a `council_fallback_reason` on top) when quorum itself
+    already failed."""
+    _write_journal(tmp_path, "journal.jsonl", [
+        {"seat": "tp1-deepseek-v4-pro", "role": "review", "ok": True, "ts": "a"},
+    ])
+    pack = {"council_run": "journal.jsonl"}
+    viol, notice = check_council_run_gear3(pack, tmp_path, gear=3, today=_R9_R11_POST_FLIP)
+    assert len(viol) == 1
+    assert "council_run" in viol[0]
+    assert "council_fallback_reason" not in viol[0]
+    assert notice is None
+
+
 # ---- end-to-end: lint() wires both R11 and R9 through one call site -------
 
 
