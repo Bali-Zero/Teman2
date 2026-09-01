@@ -50,14 +50,16 @@ seat_diversity_note: >-
   hook chain before the model is reached — the probe measured "answers within 15s" and reported
   "is the seat alive". So a whole class of Gear-3 PRs was believed owner-blocked on the strength
   of an instrument answering a neighbouring question. kimi is genuinely 403 (weekly quota).
-  tp1-qwen3.8-max is LIVE on a trivial probe but returned HTTP 200 with ZERO bytes twice on this
-  diff, at full and reduced prompt length: a NON-JUDGEMENT, recorded as ok:false, never counted as
-  a clean review. The honest state is therefore one seat, not two — and since that seat's verdict
+  tp1-qwen3.8-max is LIVE and fast in isolation (2.2s on a PONG probe) and rendered NO judgement
+  on this diff across THREE attempts: 600.2s client timeout at 115,902B, a gateway
+  ConnectionResetError at 431.8s on 39,774B, and a 600.1s timeout at 32,872B. Not a dead seat
+  and not a dispatch failure — a structural limit of this endpoint for review-scale prompts,
+  size-independent within that range. Recorded ok:false: an empty answer is not a clean one. The honest state is therefore one seat, not two — and since that seat's verdict
   is BLOCK, the quorum question is downstream of a finding that has to be answered first.
 
 diff:
   files: 7
-  net_lines: 1457
+  net_lines: 1459
   measured_at: >-
     counted with `git diff --numstat --cached $(git merge-base origin/main HEAD)` — the CACHED
     form, not the three-dot one, and the difference is the whole point: the three files under
