@@ -12,15 +12,21 @@ plan_ref: >-
   the defect directly from ~/logs/regulatory-watcher.log.
 
 diff:
-  files: 2
-  insertions: 799
+  files: 6
+  insertions: 1511
   deletions: 2
   measured_at: e453aa021
   note: >-
-    `git diff --no-renames --numstat origin/main...HEAD` -> 2 files changed,
-    799 insertions, 2 deletions total (the per-file split is 33 inserted
-    and 2 deleted lines in the wrapper, 766 inserted and none deleted in
-    the test file), matching `git diff --shortstat`. Three commits on this
+    `git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD`
+    -> 6 files changed, 1511 insertions, 2 deletions. Of those 6, only TWO are
+    production code -- 33 inserted and 2 deleted in the wrapper, 766 inserted in
+    the test file; the other four are this PR's own paperwork (brief, pack,
+    journal, and one appended PENDING-ARMS row). An earlier revision of this
+    note counted only the code files and presented that as the diff's size,
+    which the countable-claims rule correctly read as a claim about the whole
+    diff and failed. The count here is now the rule's count, with the
+    code/paperwork split spelled out rather than silently assumed. Five
+    commits on this
     branch: 339fcb428 (the core fix), 2c245ac2f (checker hardening after
     the first cross-family review round found two real gaps in the new
     guard's own logic), e453aa021 (directory-wide scope per a teammate's
@@ -48,7 +54,10 @@ lanes:
   - lane: regwatch-refuter-2
     role: review
     seat: spalla-review/sonnet-5 -- second independent pass on the full
-      diff (all three commits), dispatched after the first round's fixes
+      diff (all three code-bearing commits -- 339fcb428, 2c245ac2f and
+      e453aa021; the branch now carries five, the two later ones being an
+      evidence correction and a merge of origin/main that added no code),
+      dispatched after the first round's fixes
       landed; internally also cross-checked its own read against a manual
       codex dispatch (codex-spalla.sh's --full-auto is broken on this
       machine's codex-cli 0.149.1, worked around ad hoc) -- an
