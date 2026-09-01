@@ -91,6 +91,9 @@ Tests: scripts/tests/test_queue_stall_notify.py.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import errno
+import fcntl
 import json
 import math
 import os
@@ -278,6 +281,64 @@ def save_seen(state: dict[str, float], path: Path = SEEN_FILE) -> None:
     tmp.replace(path)
 
 
+# ---------------------------------------------------------------------------
+# Mutual exclusion over the repeat-page state.
+# ---------------------------------------------------------------------------
+
+LOCK_FILE = SEEN_FILE.with_name(SEEN_FILE.name + ".lock")
+
+
+@contextlib.contextmanager
+def state_lock(path: Path = LOCK_FILE, *, enabled: bool = True):
+    """Serialise the read-modify-write on the repeat-page state. Yields a status string.
+
+    WHY. Without this, `load_seen -> decide -> send -> save_seen` is a last-writer-wins full
+    overwrite. Adversarial review reproduced the loss directly: a SLOW process reads the state,
+    a FAST one starts later, correctly prunes a resolved PR and writes {}, and then the slow one
+    writes back its stale view — resurrecting a "sent" ghost. A genuinely re-stalled PR then
+    reads as a repeat and is SUPPRESSED for a whole repage window. That is the unsafe direction:
+    the alarm misses a real stall, which is worse than paging twice.
+
+    Three outcomes, deliberately distinct, because collapsing them is how a lock silences an
+    alarm it was added to protect:
+      "held"        -- we own it; proceed and mutate.
+      "busy"        -- another invocation owns it. Do NOT write. Its run covers this tick, so
+                       this is correct behaviour and not a failure.
+      "unavailable" -- the lock itself could not be created (read-only dir, bad perms...).
+                       Proceed WITHOUT it and say so. A broken lock must never be a reason to
+                       stop paging; a duplicate page is survivable, a missed stall is not.
+    """
+    if not enabled:
+        yield "held"
+        return
+    handle = None
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        handle = path.open("a+")
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        handle.close()
+        yield "busy"
+        return
+    except OSError as exc:
+        if handle is not None:
+            with contextlib.suppress(OSError):
+                handle.close()
+        sys.stderr.write(
+            f"queue_stall_notify: state lock unavailable ({type(exc).__name__}: "
+            f"{errno.errorcode.get(exc.errno, exc.errno)}) — proceeding UNLOCKED rather than "
+            "skipping; a broken lock must not silence the alarm\n"
+        )
+        yield "unavailable"
+        return
+    try:
+        yield "held"
+    finally:
+        with contextlib.suppress(OSError):
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            handle.close()
+
+
 def plan_repage(
     candidates: list[dict[str, Any]], *, seen: dict[str, float], now: float, cap: int
 ) -> dict[str, list]:
@@ -411,6 +472,21 @@ def main(argv: list[str] | None = None) -> int:
     # First discover every candidate. Repeat suppression must precede the delivery cap so a
     # known repeat cannot consume the limited budget and hide a changed/new diagnosis.
     classification_plan = plan_notifications(rows, cap=len(rows))
+
+    # The lock spans load -> decide -> send -> save. A dry-run takes none: it writes nothing,
+    # and must never be able to block the real run that does.
+    lock_ctx = state_lock(enabled=not args.dry_run)
+    lock_state = lock_ctx.__enter__()
+    if lock_state == "busy":
+        lock_ctx.__exit__(None, None, None)
+        print(
+            "QUEUE_STALL_NOTIFY_SUMMARY classifier_rc=0 examined="
+            f"{report.get('examined_total', 0)} stalled={len(classification_plan['to_notify'])} "
+            "sent=0 send_failed=0 suppressed_by_cap=0 suppressed_as_repeat=0 skipped=0 "
+            "unrecognized_causes=- concurrent_run=true dry_run=false"
+        )
+        return 0
+
     seen = load_seen(path=SEEN_FILE)
     now = time.time()
     re_page_plan = plan_repage(
@@ -441,6 +517,7 @@ def main(argv: list[str] | None = None) -> int:
                 save_seen(new_seen, path=SEEN_FILE)
             except OSError as exc:
                 print(f"QUEUE_STALL_NOTIFY_STATE_WRITE_FAILED error={type(exc).__name__}: {exc}")
+    lock_ctx.__exit__(None, None, None)
 
     unrecognized_causes = sorted(
         {str(cause) for _, cause in classification_plan["skipped"] if cause not in DELIBERATELY_IGNORED}

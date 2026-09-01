@@ -23,6 +23,7 @@ Covers the mandate's explicit cases:
 from __future__ import annotations
 
 import ast
+import json
 import sys
 from pathlib import Path
 
@@ -386,3 +387,79 @@ def test_cannot_verify_row_is_delivered_distinctly_even_though_classifier_failed
     msg = calls[0][-1]
     assert "COULD NOT VERIFY" in msg
     assert "sent=1" in out
+
+
+# ---------------------------------------------------------------------------
+# Mutual exclusion: a stale writer must not resurrect a pruned "sent" ghost
+# ---------------------------------------------------------------------------
+
+def test_lock_is_held_then_released(tmp_path):
+    lock = tmp_path / "s.lock"
+    with qsn.state_lock(lock) as status:
+        assert status == "held"
+    # released: a second acquisition succeeds
+    with qsn.state_lock(lock) as status:
+        assert status == "held"
+
+
+def test_guilt_a_second_holder_is_told_busy_not_held(tmp_path):
+    """The whole point: a concurrent invocation must NOT proceed to mutate state."""
+    import fcntl
+    lock = tmp_path / "s.lock"
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    other = lock.open("a+")
+    fcntl.flock(other.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    try:
+        with qsn.state_lock(lock) as status:
+            assert status == "busy", status
+    finally:
+        fcntl.flock(other.fileno(), fcntl.LOCK_UN)
+        other.close()
+
+
+def test_innocence_a_broken_lock_proceeds_unlocked_and_never_goes_silent(tmp_path):
+    """A lock that cannot be created must NOT stop the alarm. A duplicate page is
+    survivable; a missed stall is not. This is the failure direction that matters."""
+    blocker = tmp_path / "not-a-dir"
+    blocker.write_text("i am a file")
+    with qsn.state_lock(blocker / "sub" / "s.lock") as status:
+        assert status == "unavailable", status
+
+
+def test_disabled_lock_yields_held_so_dry_run_never_blocks_a_real_run(tmp_path):
+    with qsn.state_lock(tmp_path / "s.lock", enabled=False) as status:
+        assert status == "held"
+
+
+def test_the_reviewers_race_cannot_resurrect_a_pruned_entry(tmp_path, monkeypatch):
+    """Reproduces the reported loss, then shows the lock forecloses it.
+
+    Reported sequence: a SLOW process loads state, a FAST one starts later, correctly prunes a
+    resolved PR and writes {}, then the SLOW one writes back its stale view — resurrecting a
+    'sent' ghost, so a genuinely re-stalled PR reads as a repeat and is suppressed for a whole
+    repage window. Unsafe direction: the alarm misses a real stall.
+    """
+    state = tmp_path / "seen.json"
+    lock = tmp_path / "seen.json.lock"
+    key = "queue_stall:100:not-armed"
+
+    # WITHOUT the lock, the stale writer wins — this is the defect, pinned so it stays fixed.
+    state.write_text(json.dumps({key: 0.0}))
+    slow_view = qsn.load_seen(path=state)          # slow process reads
+    qsn.save_seen({}, path=state)                  # fast process prunes and writes
+    qsn.save_seen(slow_view, path=state)           # slow process writes its stale view
+    assert qsn.load_seen(path=state) == {key: 0.0}, "the race itself must be real"
+
+    # WITH the lock, the slow process cannot be inside the section while the fast one writes.
+    import fcntl
+    state.write_text(json.dumps({key: 0.0}))
+    holder = lock.open("a+")
+    fcntl.flock(holder.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    try:
+        with qsn.state_lock(lock) as status:
+            assert status == "busy"
+            # the losing process must not have written anything
+        assert qsn.load_seen(path=state) == {key: 0.0}
+    finally:
+        fcntl.flock(holder.fileno(), fcntl.LOCK_UN)
+        holder.close()
