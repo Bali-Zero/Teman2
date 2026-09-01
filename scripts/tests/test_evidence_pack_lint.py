@@ -660,6 +660,47 @@ def test_compute_floor_hotzone_hit_wins_over_small_size():
     assert compute_floor(["fly.toml"], numstat) == 3
 
 
+def test_compute_floor_innocence_pip_compile_lockfile_churn_does_not_floor_2026_09_02():
+    """INNOCENCE (2026-09-02): a diff whose churn is almost entirely inside
+    the pip-compile-generated `.lock.txt` files, with a small human-authored
+    `requirements*.txt` diff underneath, must NOT floor at Gear 3 on size.
+    This is the ACTUAL numstat of dependabot PR #5530 (verified via
+    `gh api repos/Bali-Zero/Teman2/pulls/5530/files`, not a hand-picked
+    approximation): 55-package minor-and-patch bump, 3672 raw lines total,
+    102 of them in the 5 human-reviewable `requirements*.txt` files, 3570
+    (97%) inside the two `.lock.txt` files this exemption targets."""
+    changed = [
+        "apps/backend-rag/requirements-ci-tools.txt",
+        "apps/backend-rag/requirements-livekit-worker.txt",
+        "apps/backend-rag/requirements-prod.lock.txt",
+        "apps/backend-rag/requirements-prod.txt",
+        "apps/backend-rag/requirements-test.txt",
+        "apps/backend-rag/requirements.lock.txt",
+        "apps/backend-rag/requirements.txt",
+    ]
+    numstat = (
+        "1\t1\tapps/backend-rag/requirements-ci-tools.txt\n"
+        "1\t1\tapps/backend-rag/requirements-livekit-worker.txt\n"
+        "827\t784\tapps/backend-rag/requirements-prod.lock.txt\n"
+        "21\t21\tapps/backend-rag/requirements-prod.txt\n"
+        "1\t1\tapps/backend-rag/requirements-test.txt\n"
+        "1001\t958\tapps/backend-rag/requirements.lock.txt\n"
+        "27\t27\tapps/backend-rag/requirements.txt\n"
+    )
+    assert compute_floor(changed, numstat) == 1
+
+
+def test_compute_floor_guilt_large_requirements_txt_source_diff_still_floors_2026_09_02():
+    """GUILT (2026-09-02): the exemption narrows the *counted* churn, it does
+    not exempt the PR from the floor outright — a diff that churns
+    SIZE_GEAR2_THRESHOLD lines in the human-authored `requirements.txt`
+    itself (not the generated lock file) must still floor at Gear 2, exactly
+    as any other ordinary source file would."""
+    changed = ["apps/backend-rag/requirements.txt"]
+    numstat = f"{SIZE_GEAR2_THRESHOLD}\t0\tapps/backend-rag/requirements.txt\n"
+    assert compute_floor(changed, numstat) == 2
+
+
 # --------------------------------------------------------- compute_floor_source (S2)
 # S2, 2026-08-27 (Gear-3 gate review round 2, PR #5049): compute_floor_source()
 # exposes WHY the floor is what it is, so harness-floor.yml's Step 5b can grant
@@ -815,6 +856,117 @@ def test_size_term_net_lines_innocence_not_fixtures_directory_not_excluded():
     is NOT excluded — only a genuine `fixtures/` component is."""
     numstat = "100\t0\tapps/x/not_fixtures/real.py\n"
     assert _size_term_net_lines(numstat) == 100
+
+
+def test_size_term_net_lines_pip_compile_lockfile_excluded_2026_09_02():
+    """GUILT->INNOCENCE (2026-09-02): this repo's pip-compile lockfiles
+    (`requirements.lock.txt`, `requirements-prod.lock.txt`) are the SAME
+    machine-derived object `poetry.lock`/`uv.lock` already are above, under
+    a naming convention the exact-name tuple previously could not match.
+    This is the ACTUAL, complete numstat of dependabot PR #5530 (verified
+    via `gh api repos/Bali-Zero/Teman2/pulls/5530/files`): the two
+    `.lock.txt` files carried 3570 of 3672 total churned lines (97%); the
+    remaining 102 lines are spread across 5 human-reviewable
+    `requirements*.txt` files and all still count."""
+    numstat = (
+        "1\t1\tapps/backend-rag/requirements-ci-tools.txt\n"
+        "1\t1\tapps/backend-rag/requirements-livekit-worker.txt\n"
+        "827\t784\tapps/backend-rag/requirements-prod.lock.txt\n"
+        "21\t21\tapps/backend-rag/requirements-prod.txt\n"
+        "1\t1\tapps/backend-rag/requirements-test.txt\n"
+        "1001\t958\tapps/backend-rag/requirements.lock.txt\n"
+        "27\t27\tapps/backend-rag/requirements.txt\n"
+    )
+    # only the 5 human-authored requirements*.txt files count:
+    # 2 + 2 + 42 + 2 + 54 = 102 (the two .lock.txt files, 3570, are excluded)
+    assert _size_term_net_lines(numstat) == 102
+
+
+def test_size_term_net_lines_innocence_similarly_named_file_not_matched():
+    """INNOCENCE (guard-over-match, superscar #3): the exemption is two
+    EXACT literals, not a `requirements*` prefix or `.lock.txt` suffix
+    match — a file that merely shares the `.lock.txt` suffix without being
+    one of the two names this repo's tooling actually writes (e.g. a
+    future hand-written lock-coordination file choosing a similar name) is
+    NOT exempted. Mirrors the existing named-lockfile-vs-custom.lock test
+    above for the same discipline."""
+    numstat = "50\t10\tinfra/coordination/myrequirements.lock.txt\n"
+    assert _size_term_net_lines(numstat) == 60
+
+
+def test_size_term_net_lines_guilt_glob_shaped_fabricated_lockfile_not_excluded_2026_09_02():
+    """GUILT (2026-09-02, adversarial finding from a codex-sol refuter on
+    this same PR): the FIRST cut of this exemption used an fnmatch glob
+    `requirements*.lock.txt`, which would have exempted ANY basename
+    matching that shape regardless of whether this repo's tooling actually
+    produces it — e.g. a hand-added `requirements-backdoor.lock.txt` could
+    smuggle arbitrary churn past the size term by name alone (W98-class:
+    content-based never name-speculative). The fix (exact-literal matching)
+    closes that hole: only the two lockfiles this repo's dependency
+    tooling actually writes are exempted; anything else sharing the naming
+    SHAPE — however lockfile-like — still counts in full."""
+    numstat = (
+        "2000\t0\tapps/backend-rag/requirements-backdoor.lock.txt\n"
+        "50\t0\tapps/backend-rag/requirements-handwritten.lock.txt\n"
+        "30\t0\tapps/backend-rag/requirementsfoo.lock.txt\n"
+    )
+    assert _size_term_net_lines(numstat) == 2080
+
+
+def test_size_term_net_lines_guilt_same_basename_wrong_directory_not_excluded_2026_09_02():
+    """GUILT (2026-09-02, round-2 adversarial finding from a codex-sol
+    refuter on this same PR): the ROUND-1 fix matched the two lockfiles by
+    BASENAME only (`PurePosixPath(path).name`) — same mechanism the
+    well-known package-manager names already use above. That is fine for
+    `poetry.lock`/`Cargo.lock`/etc (unambiguous single-ecosystem names),
+    but "requirements.lock.txt" is generic enough that a decoy at
+    `docs/requirements.lock.txt` or `research/requirements-prod.lock.txt`
+    would ALSO have matched by basename, exempting fabricated churn at a
+    path this repo's tooling never writes to. This repo already treats
+    exactly that shape as suspicious in the opposite direction — see
+    `test_guilt_requirements_family_under_an_allowlisted_prefix_forces_full`
+    in test_prepush_classify.py, which forces FULL attention on a
+    requirements manifest under an allowlisted-but-wrong prefix. The fix
+    (SIZE_TERM_EXCLUDE_EXACT_PATHS, matched by full repo-relative path, not
+    basename) closes this: only the two real paths are exempted."""
+    numstat = (
+        "2000\t0\tdocs/requirements.lock.txt\n"
+        "1500\t0\tresearch/requirements-prod.lock.txt\n"
+    )
+    assert _size_term_net_lines(numstat) == 3500
+
+
+def test_size_term_net_lines_innocence_real_lockfile_paths_still_excluded_2026_09_02():
+    """INNOCENCE companion to the guilt test above: the two REAL paths this
+    repo's pip-compile tooling actually writes to must still be excluded —
+    the round-2 fix narrows the match from basename to full path, it does
+    not accidentally stop matching the real files."""
+    numstat = (
+        "827\t784\tapps/backend-rag/requirements-prod.lock.txt\n"
+        "1001\t958\tapps/backend-rag/requirements.lock.txt\n"
+    )
+    assert _size_term_net_lines(numstat) == 0
+
+
+def test_size_term_net_lines_guilt_trailing_space_decoy_not_excluded_2026_09_02():
+    """GUILT (2026-09-02, round-3 adversarial finding from a codex-sol
+    refuter on this same PR): `_size_term_net_lines` used to call
+    `line.strip()` on the WHOLE numstat line before splitting it, silently
+    dropping a trailing space that is part of the actual filename. Git
+    permits a trailing space in a real committed filename, so a decoy
+    committed as `apps/backend-rag/requirements.lock.txt ` (note the
+    trailing space — a DIFFERENT file from the real lockfile) would
+    numstat as that literal string, get stripped down to the real
+    lockfile's exact name by the old code, and match
+    SIZE_TERM_EXCLUDE_EXACT_PATHS despite being a different file entirely
+    — hiding its churn from the floor. This is orthogonal to round 1/2
+    (it is a parsing bug in the shared numstat loop, not in the exclusion
+    tuples) but was demonstrated against these exact two new paths, so it
+    is pinned here. Verified empirically before the fix: this fixture's
+    net was 0 (fully hidden); after the fix (blankness checked without
+    mutating the line the path is sliced from) it must be 2000."""
+    numstat = "2000\t0\tapps/backend-rag/requirements.lock.txt \n"
+    assert _size_term_net_lines(numstat) == 2000
 
 
 # --------------------------------------------------------- end-to-end lint()
