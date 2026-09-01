@@ -8,6 +8,8 @@ sources:
   - "headscale.net + juanfont/headscale (GitHub) + HN production reports"
   - "local ground truth: memory reference_tailnet_topology.md (verified 2026-08-11) + live `tailscale status` on M5 2026-08-27"
   - "prior internal research: 2026-08-11-apple-vision-pro-tailnet-leverage.md, decision_two_iphones_tailnet_leverage_2026_08_03"
+adversarial_review: codex
+adversarial_review_detail: 4-seat cross-family panel (codex gpt-5.6-sol xhigh, kimi k3, agy gemini-3.1-pro, qwen) run same-day (2026-08-27) against this exact draft — companion capture research/operations/2026-08-27-tailnet-team-expansion-panel-round.md (PR #5100), raw per-seat outputs in research/operations/2026-08-27-tailnet-panel-raw/
 ---
 
 # Extending the balizero tailnet to all team members' computers — feasibility, benefits, risks, plan
@@ -78,3 +80,35 @@ Security model is honest for UU PDP: data plane is peer-to-peer WireGuard, end-t
 ## Meta-pattern
 
 The value of the idea is real but the tailnet's current shape is *single-operator trust* frozen into infrastructure (default ACL, unauthenticated serve endpoints, permissive SSH policy). Every expansion step is cheap EXCEPT the first one — converting implicit trust into explicit policy. Same famiglia as scar #2 (esiste≠armato): the tailnet "has" security features; none are armed.
+
+## Adversarial review
+
+Same-day (2026-08-27) 4-seat cross-family panel (codex gpt-5.6-sol xhigh, kimi k3, agy
+gemini-3.1-pro, qwen) reviewed this exact design. Full verbatim disposition + additions in the
+companion capture `2026-08-27-tailnet-team-expansion-panel-round.md` (PR #5100); summary of what
+the panel changed or reinforced, none of it praise:
+
+- **§5 sequencing overturned (4/4 unanimous)**: the panel rejected "zero-dev rooms first" (Phase
+  0 harden → Phase 1 pilot as written above) and replaced week-1 with Intake Drop + Coda Review
+  shipped as one workflow with an owner and same-day SLA — zero-dev rooms don't change anyone's
+  day, intake attacks the actual #1 legal exposure.
+- **§1's "personal-device enrollment" gap sharpened (codex, kimi)**: a company account on a
+  personal Mac is NOT a security boundary — the personal user stays machine admin. This document
+  did not say so; the panel's cure (FileVault + browser-only access to sensitive data + no local
+  copies) is now the standing constraint, not just "enroll by role."
+- **§3's `/term` risk (already flagged here) escalated (codex)**: not "gate it" but REMOVE it,
+  inspect the host, and rotate whatever transited it — the panel treated this document's
+  mitigation as insufficient.
+- **§6 exit-node caution reinforced (gemini, kimi)**: single office exit node is a SPOF (one
+  reboot locks 14 people out) and a fraud-heuristic pattern for gov portals from one residential
+  IP — pilot with 2-3 users only, never day-1 policy, consistent with but stronger than this
+  document's §5 phasing.
+- **New finding not in this document (4/4)**: bus factor (single technical operator) is the #1
+  year-one risk of the whole program — cheapest cure is a one-page runbook + one non-technical L1
+  continuity custodian, added to §Solo-operatore in the companion capture.
+- **Rejected by the panel, no change needed here**: none of this document's cost/plan figures
+  (§4) or the Headscale "not now" verdict (§4) were contested — panel treated both as settled.
+
+No seat raised the "op:known"/frontmatter-shape class of objection (out of scope for this
+design). Full findings, attribution, and the honesty flag on Qwen's two unverified citations:
+see the companion capture.
