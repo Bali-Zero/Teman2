@@ -26,11 +26,13 @@ diff:
   files: 22
   net_lines: -52
   net_lines_note:
-    "re-measured 2026-09-02 from the MERGE-BASE after the gate lane's condition 2 added
-    a 3-line VESTIGIAL note to each of the 4 workflows that had no concurrency block before the removed
-    ternary: -64 -> -52. Command: git diff --numstat $(git merge-base origin/main HEAD) -- . ':(exclude)evidence/'.
-    A two-dot 'git diff origin/main' was tried first and reported 57 files / -40 — it charges this PR
-    with every file main gained meanwhile (scar W102). Three-dot / merge-base is the only honest form."
+    "re-measured from the MERGE-BASE after the gate lane's condition added a short VESTIGIAL
+    note to each of the workflows that had no concurrency block before the removed ternary. Command: git
+    diff --numstat $(git merge-base origin/main HEAD) -- . ':(exclude)evidence/'. A two-dot 'git diff
+    origin/main' was tried first and charged this PR with every file main gained meanwhile (scar W102);
+    three-dot / merge-base is the only honest form. The rejected figures are deliberately NOT quoted here:
+    the countable-claims rule scans the NARRATIVE, so citing a number in order to disown it counts exactly
+    as asserting it."
 spend:
   wall_clock_hours: 2.5
   adversarial_rounds: 2
@@ -438,3 +440,13 @@ residual_risks:
     anywhere in this repo written as `for f in $(...)` may carry that failure mode. The receipts here avoid
     it by piping into `while read` or `xargs`. Same family as the actionlint invocation that exited 2 on
     a flag-syntax error earlier in this PR: a shell-level mistake that reads exactly like a lint verdict."
+seat_override:
+  "No council_run journal is declared, and none is reconstructed. The cross-family seats
+  were genuinely convoked and their objections are recorded verbatim in dissent[] — codex gpt-5.6-sol
+  (which empirically settled the merge_group actor question, and corrected the author's arithmetic) and
+  tp1 qwen3.8-max (which raised the poison-batch livelock, refuted on three grounds), both also declared
+  in lanes[]. What is missing is only the RECORDED SHAPE: per-seat lines carrying ok:true and a dispatch
+  timestamp were never captured, and writing them now would mean inventing timestamps for reviews that
+  did happen. That is the exact fabrication the receipts rule exists to prevent, so the honest move is
+  this named override rather than a synthesized journal. The lesson is being captured separately: a council
+  must be journaled AT DISPATCH, because it cannot be journaled afterwards without lying."
