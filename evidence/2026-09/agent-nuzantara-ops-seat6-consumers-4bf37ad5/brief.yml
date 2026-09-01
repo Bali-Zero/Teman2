@@ -1,0 +1,99 @@
+task_id: ops-seat6-consumers
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  14 consumers of the Claude OAuth seat cascade enumerated slots 1-5 and stopped —
+  slot 6, the Claude Team seat (`zero@balizero.com`), was invisible to every one of
+  them. A cron job could die with "usage limit" even while the Team seat sat idle at
+  full quota, because nothing in the cascade ever tried it. Zero's ruling
+  (2026-08-23): the Team seat enters the cascade ONLY as a last resort, after all
+  five MAX x20 seats (1-5) have been tried and failed — MAX seats have no weekly cap,
+  the Team seat does, so trying it first would burn the scarcer resource on ordinary
+  load.
+
+  This diff adds slot 6 to all 14 consumers: 4 shell/Python enumerations with
+  independently-comparable slot-5/slot-6 markers (`infra/launchagents/wrappers/
+  cron-agent.sh`, `wr2-ig-metrics-analyst-run.sh`, `scripts/ai-dispatch.sh`,
+  `apps/mata-garuda/mata_garuda/runtime/cli_runtime.py`), 7 Python consumers that
+  share one `for i in (1, 2, 3, 4, 5, 6):` tuple-loop shape (`scripts/
+  dlq_autopilot.py`, `scripts/wr2_html_renderer/claude_vision.py`, `scripts/
+  zantara-gateway/claude_client.py`, `apps/backend-rag/scripts/auto_verifier.py`,
+  `apps/backend-rag/scripts/verified_generator.py`, `apps/bali-intel-scraper/
+  scripts/bz_image_style.py`, `apps/evaluator/nlm_deep_research/t4_monitor.py`), and
+  3 mata-garuda callers that only import the shared `claude_token_chain()` helper
+  and carry no ordering of their own (`daily_briefing_agent.py`,
+  `weekly_digest_agent.py`, `run_ai_digest.py`).
+
+  Additional fix folded into the same diff because it lives in the same file this
+  change already touches: `cli_runtime.py`'s `CLAUDE_TOKEN_VARS` comment map (slot
+  identity -> Gmail account) was measured stale on 2026-08-23 — wrong on every slot
+  but 1. It said slot 3 was "RITIRATO — slot libero" when slot 3 had been re-armed
+  the same day that comment was written, and it labelled slot 5 "zero@balizero.com
+  (Team, last-resort)" when slot 5 is actually kaiser198719871987@gmail.com, a MAX
+  seat — the Team seat is slot 6, not 5. Corrected against `claude auth status` +
+  the fleet remap transcript, not carried forward.
+constraints:
+  - "Slot 6 is appended in TAIL position only, in every consumer — never inserted
+    mid-list, never reordered ahead of slots 1-5. The 'last resort' property comes
+    from list POSITION, not from any special-cased branch logic."
+  - "Where a consumer also has a legacy-token or keychain fallback (ai-dispatch.sh,
+    cron-agent.sh), slot 6 is inserted BEFORE those, not after — it is a numbered
+    seat, not a last-last-resort."
+  - "No behaviour change beyond adding the 6th slot: the equal-division attempt-
+    timeout logic in cron-agent.sh, the dedup-by-token-value logic, and the
+    keychain/legacy fallback chains are untouched and already scale by array
+    length, not a hardcoded '5'."
+  - "The renamed test file (slot5 -> slot6) must not silently drop any of the 14
+    consumer checks the old file had — verified below, not assumed."
+acceptance:
+  - "scripts/tests/test_claude_oauth_slot6_coverage.py (ex slot5, renamed) passes:
+    26 tests green — 14 presence checks (one per consumer), 1 identity-map pin
+    (all 6 slots), 4 marker-order proofs (slot 6 textually after slot 5), 7
+    tuple-tail proofs (slot 6 is the last element of the shared literal)."
+  - "The ordering proof is MECHANICAL, not narrative: for every consumer whose
+    shape allows it, a test asserts slot 6's marker position is strictly greater
+    than slot 5's — so the 'last resort' ruling cannot silently regress on a
+    future edit without a test going red."
+  - "bash -n clean on every modified .sh wrapper."
+  - "No consumer present in the old SLOT5_CONSUMERS tuple is absent from the new
+    SLOT6_CONSUMERS tuple — checked by diffing the two tuples directly against
+    origin/main's pre-PR copy of the old test file, not inferred from the rename."
+consumer_map:
+  - "infra/launchagents/wrappers/cron-agent.sh — the shared cascade helper invoked
+    by every LaunchAgent-wrapped cron job on Pro/Mini (pro-healer, nb-curator-daily,
+    regulatory-watcher, competitor-monitor, wr2-ig-metrics-analyst, and others via
+    run_claude_account())."
+  - "infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh — its own independent
+    run_claude_account() copy (does not call cron-agent.sh's version)."
+  - "scripts/ai-dispatch.sh — the federation-orchestrator dispatch CLI's run_claude()."
+  - "scripts/dlq_autopilot.py, scripts/wr2_html_renderer/claude_vision.py, scripts/
+    zantara-gateway/claude_client.py, apps/backend-rag/scripts/{auto_verifier,
+    verified_generator}.py, apps/bali-intel-scraper/scripts/bz_image_style.py,
+    apps/evaluator/nlm_deep_research/t4_monitor.py — 7 independent Python callers,
+    each with its own local token-chain loop."
+  - "apps/mata-garuda/mata_garuda/runtime/cli_runtime.py::claude_token_chain() — the
+    single shared helper consumed by daily_briefing_agent.py, weekly_digest_agent.py
+    and run_ai_digest.py; those 3 files needed no edit of their own, only the
+    upstream helper."
+risks:
+  - "cli_runtime.py's corrected identity-map comment now names 5 personal Gmail
+    addresses verbatim in a file (and a pinning test) on a PUBLIC repo. Checked
+    against origin/main's PRE-PR copy of the same file: all 5 addresses were
+    ALREADY present in that file's comments before this diff (the removed lines in
+    the diff show them). This PR corrects/completes an existing exposure, it does
+    not introduce a new one — not a regression to fix in this PR, noted for the
+    record."
+  - "None identified to running cron behaviour: the 6th slot is additive-only, and
+    the attempt-timeout/dedup logic in cron-agent.sh already derives from array
+    length rather than a hardcoded seat count, so it needs no companion change."
+grader:
+  session (nuzantara/Pro), independent of the diff's authorship — dispatched
+  to close the harness-floor Gear-3 evidence gap on an already-authored, already-
+  tested fix; verification performed by re-running the test suite and re-reading
+  the diff in this session, not by trusting the prior session's summary.
+budget: 1 session, no council (mechanical fallback-list extension, verified by a
+  pre-existing 26-test suite; not a shape that warrants cross-family dispatch)
+pii:
+  clean — the identities touched are the operator's own internal multi-account
+  routing config (pre-existing in the repo before this PR), not client PII/OSINT.

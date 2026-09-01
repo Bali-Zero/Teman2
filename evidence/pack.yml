@@ -1,117 +1,138 @@
 brief_ref: evidence/brief.yml
-plan_ref: "unblock harness-floor's required Gear-3 evidence gate on an already-
-  authored, already-tested seat-6 fix (Zero ruling 2026-08-23) — this pack is
-  written post-hoc by an independent session, not the diff's author"
-diff:
-  behaviour_change:
-    "additive only — a 6th fallback slot appended after slot 5 in
-    14 consumers; no existing slot's behaviour changes"
-  net_lines:
-    "measured merge-base-anchored: +233/-107, net +126; 13 files changed
-    (eca4b258e..3204fa225, git diff --no-renames --numstat)"
+plan_ref: "PR #4701 (agent/m5/wr3/wr3-spend-gate-enforce) — wire the submit_clip end-to-end guilt test into the already-armed wr3-spend-gate-tests.yml, 2026-08-23. Evidence pack authored separately from the code/test diff (PR was green on everything except Harness floor recompute for lacking one)."
 lanes:
-  - lane: "D1"
-    role: "build"
-    seat: "opus-5"
-  - lane: "D2"
-    role: "review"
-    seat: "sonnet-5"
+  - lane: wr3-spend-gate-enforce
+    role: build
+    seat: "claude-opus-5 (conducting session — authored the workflow widening + the new submit_clip guilt test; the diff this evidence pack describes)"
+  - lane: wr3-spend-gate-enforce-evidence
+    role: review
+    seat: "claude-sonnet-5 (this task — evidence pack authored + every claim independently re-verified against the actual diff, generator != grader relative to the build lane)"
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Single build lane — the D3 seat-diversity floor (>=2 build lanes, at least
+  one non-Anthropic) does not fire. Both lanes present here are Anthropic
+  seats by construction (this is a narrow evidence-authoring task, not a
+  cross-family council dispatch); declared rather than left to read as
+  satisfied.
+diff:
+  net_lines: >-
+    2 files, +73/-3 measured by `git diff --stat origin/main...HEAD`:
+    `.github/workflows/wr3-spend-gate-tests.yml` (+37/-3, paths/pytest-cmd/install-line/
+    sanity-compile widening) and `scripts/tests/test_wr3_zero_spend.py` (+36/-0, one new test
+    function). Zero lines changed in `wr3_spend_authority.py` or either charging call site —
+    the runtime gate itself is pre-existing, unmodified production code.
+  behaviour_change: >-
+    No runtime behaviour change to any shipped code path. The workflow now also runs
+    `test_submit_clip_real_mode_blocked_without_decision_no_http`, which exercises the PUBLIC
+    `submit_clip()` entrypoint rather than only the private `_generate_start_image`/
+    `_generate_video` helpers the pre-existing tests already covered.
 receipts:
-  - claim:
-      "PR #4640 (branch agent/nuzantara/ops/seat6-consumers) diff, merge-base
-      anchored, touches exactly 13 files: 233 insertions, 107 deletions"
-    cmd: 'MERGE_BASE=$(git merge-base origin/main HEAD); git diff --no-renames --numstat "$MERGE_BASE" HEAD | awk ''{a+=$1; d+=$2} END {print "added="a" deleted="d" net="a-d}'''
+  - claim: "Deterministic gear floor recomputed from THIS PR's actual diff is 3 — matches the declared gear, and matches the `Harness floor recompute` check's own FAIL message"
+    cmd: "git diff --name-only origin/main...HEAD > /tmp/wr3-changed-files.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/wr3-changed-files.txt"
+    result: "3 (.github/workflows/wr3-spend-gate-tests.yml is hot-zone by path)"
     exit: 0
-    ts: "2026-08-23T08:45:38Z"
-    seat: "session (Pro)"
-  - claim: "scripts/tests/test_claude_oauth_slot6_coverage.py passes in full: 26
-      tests green"
-    cmd: "cd ~/nuzantara/.worktrees/ops-seat6-consumers && python3 -m pytest scripts/tests/test_claude_oauth_slot6_coverage.py -q"
+    ts: "2026-08-23T23:05Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "The full spend-gate corpus the widened workflow now names (5 files, including the new test) is green on py3.11 — the interpreter CI's first matrix leg pins"
+    cmd: "PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
+    result: "127 passed, 15 skipped in 3.33s (15 skips are ffmpeg-only render tests — no ffmpeg on this machine, unrelated to spend authorization; python 3.11.15)"
     exit: 0
-    ts: "2026-08-23T08:43:00Z"
-    seat: "session (Pro)"
-    output: "26 passed in 0.14s"
-  - claim:
-      "infra/launchagents/wrappers/cron-agent.sh (the modified shell wrapper)
-      has clean bash syntax"
-    cmd: "bash -n infra/launchagents/wrappers/cron-agent.sh"
+    ts: "2026-08-23T23:07Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "...and on py3.14, matching the workflow's second matrix leg — built a fresh venv, not reused, so the install-line change (pytest-asyncio + Pillow) is genuinely exercised"
+    cmd: "python3.14 -m venv <scratch-venv> && <scratch-venv>/bin/pip install --quiet pytest pytest-asyncio Pillow && PYTHONPATH=. <scratch-venv>/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
+    result: "127 passed, 15 skipped in 3.99s (python 3.14.6)"
     exit: 0
-    ts: "2026-08-23T08:43:00Z"
-    seat: "session (Pro)"
-  - claim:
-      "the renamed test file preserves every one of the 14 consumer checks its
-      slot-5-named predecessor had — no coverage silently dropped in the rename"
-    cmd:
-      'git show "origin/main:scripts/tests/test_claude_oauth_slot5""_coverage.py" (adjacent-quote concatenation, same effective path — kept out of one contiguous token so this receipt itself does not read as a live import of the file this PR deletes) -> its SLOT5_CONSUMERS (14 entries) diffed by hand against the new scripts/tests/test_claude_oauth_slot6_coverage.py''s SLOT6_CONSUMERS (14 entries) — same 14 relative_paths, sentinel strings bumped
-      5->6, nothing removed'
+    ts: "2026-08-23T23:09Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "MUTATION-TEST PROOF, re-run independently rather than trusted from the PR body: commenting out assert_spend_authorized() in _generate_start_image turns BOTH the pre-existing guilt test AND the new one RED with the same AssertionError — proving they catch a real spend bypass, not merely exercise a mocked code path"
+    cmd: "sed the call `assert_spend_authorized(episode_id=ctx.project_name)` out of _generate_start_image; PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_zero_spend.py -k 'test_generate_start_image_direct_call_blocked_without_decision_no_http or test_submit_clip_real_mode_blocked_without_decision_no_http' -v"
+    result: "2 failed — both with `AssertionError: network path reached` (the HTTP mock fired, meaning the code path that should have been blocked by assert_spend_authorized reached the network call instead)"
+    exit: 1
+    ts: "2026-08-23T23:11Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "File restored byte-identical after the mutation probe, and the full corpus is clean+green again — no residual diff from the probe"
+    cmd: "cp <backup> scripts/wr3_flowkit_client.py && git status --porcelain && PYTHONPATH=. apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_wr3_gatekeeper_cost.py scripts/tests/test_wr3_ledger_isolation.py scripts/tests/test_wr3_credit_ledger.py scripts/tests/test_wr3_zero_spend.py scripts/tests/test_wr3_render_episode_zero_spend.py -q"
+    result: "git status --porcelain: empty (clean). Suite: 127 passed, 15 skipped in 3.29s"
     exit: 0
-    ts: "2026-08-23T08:44:10Z"
-    seat: "session (Pro)"
-  - claim: "cron-agent.sh's attempt-timeout division (remaining / attempts_left)
-      already derives attempts_left from ${#tokens[@]} array length, not a
-      hardcoded '5' — the 6th slot needs no companion change to that logic"
-    cmd:
-      "sed -n '440,520p' infra/launchagents/wrappers/cron-agent.sh (read in full;
-      the '5 healthy seats, 5 timeouts' text at line 502-503 is a dated 2026-08-07
-      incident narrative in a comment, not a live numeric assumption)"
+    ts: "2026-08-23T23:13Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "actionlint accepts the modified workflow"
+    cmd: "actionlint .github/workflows/wr3-spend-gate-tests.yml"
+    result: "no output (clean)"
     exit: 0
-    ts: "2026-08-23T08:44:40Z"
-    seat: "session (Pro)"
-  - claim: "the 5 personal Gmail identities named in cli_runtime.py's corrected
-      comment map were already present, verbatim, in that file before this PR —
-      not a new exposure this diff introduces"
-    cmd:
-      "git diff origin/main -- apps/mata-garuda/mata_garuda/runtime/cli_runtime.py
-      (the removed '-' lines carry the same 5 addresses as the added '+' lines,
-      only the slot-3/4/5 labels and the slot-6 addition differ)"
+    ts: "2026-08-23T23:14Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "Sanity-compile step (all 5 modules the workflow now compile-checks) is clean"
+    cmd: "python3 -m py_compile scripts/wr3_gatekeeper_check.py scripts/wr3_credit_ledger.py scripts/wr3_spend_authority.py scripts/wr3_flowkit_client.py scripts/wr3_render_episode.py"
+    result: "exit 0, no output"
     exit: 0
-    ts: "2026-08-23T08:43:40Z"
-    seat: "session (Pro)"
-dissent:
-  - seat: "session (Pro), reviewing a diff it did not author"
-    objection: "Did deleting the old slot-5-named coverage test and adding
-      scripts/tests/test_claude_oauth_slot6_coverage.py as two separate files
-      (git recorded it as delete+add, not a detected rename) silently drop any of
-      the original 14 consumer-presence checks?"
-    status: RETRACTED
-  - seat: "session (Pro), reviewing a diff it did not author"
-    objection:
-      "test_mata_runtime_documents_all_six_slot_identities hardcodes 5 personal
-      Gmail addresses verbatim into a test file that lands on a public repo — is
-      this a new PII/secret exposure this PR should not ship with?"
-    status: CONFIRMED
-    note: "Confirmed as a pre-existing condition (verified against origin/main's
-      copy of the same file, receipt above), not a regression this diff
-      introduces. Recorded in brief.yml risks — not a blocker for this PR, since
-      fixing it would mean scrubbing a file this diff does not otherwise touch
-      and would cost the PR its single-concern scope."
-  - seat: "session (Pro), reviewing a diff it did not author"
-    objection: "Does the equal-division attempt-timeout logic in cron-agent.sh
-      (attempt_timeout = remaining / attempts_left) need a companion edit for the
-      6th slot, the way the W-scar history in this same file warns an equal split
-      can starve the one seat that would have worked?"
-    status: RETRACTED
-residual_risks:
-  - "The 5 personal Gmail addresses in cli_runtime.py's comment map (pre-existing,
-    see dissent[1]) remain in cleartext on a public repo after this PR merges —
-    out of scope for this diff, tracked here for visibility, not for action here."
-  - "No runtime behaviour change to verify live: this PR only adds a 6th fallback
-    position that activates solely when slots 1-5 all fail, which does not occur
-    under normal operation — the 26-test static/structural suite is the available
-    proof, not a live cascade exercise."
-sources:
-  - "Team lead mandate (this session, 2026-08-23): diagnosis of harness-floor
-    FAILURE on #4640/#4644/#4645 (hot-zone diff, no evidence/brief.yml)."
-  - ".github/workflows/harness-floor.yml header + research/operations/2026-08-09-
-    harness-v2-teman2.md + scripts/evidence_pack_lint.py docstring — the Evidence
-    Pack contract this pack is shaped against."
-tests:
-  - "scripts/tests/test_claude_oauth_slot6_coverage.py -q -> 26 passed (receipt
-    above)."
-static:
-  - "bash -n infra/launchagents/wrappers/cron-agent.sh -> exit 0 (receipt above)."
-runtime_proof:
-  - "None claimed: additive fallback-position change only, exercised solely on a
-    5-seat exhaustion event; the static test suite is the proof for this PR."
+    ts: "2026-08-23T23:14Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "The watcher census already covers this workflow (armed by the predecessor PR #4649) — this PR did not need to touch it"
+    cmd: "python3 scripts/check_watcher_coverage.py"
+    result: "all 100 live workflow(s) covered by main-push-failure-watch.yml (one unrelated pre-existing stale-entry warning for a decommissioned AI-review workflow, not this one)"
+    exit: 0
+    ts: "2026-08-23T23:15Z"
+    seat: "session (M5, evidence-pack task)"
+  - claim: "assert_spend_authorized runs FIRST in both charging call sites, before any HTTP call — the premise this whole PR's evidence rests on, verified by reading the file, not assumed"
+    cmd: "grep -n assert_spend_authorized scripts/wr3_flowkit_client.py"
+    result: >-
+      Line 47: imported. Line 364: called inside `_generate_start_image`, immediately before the
+      first `urljoin(...)`/HTTP body construction. Line 465: called inside `_generate_video`,
+      same position relative to its own HTTP call. Both call sites precede any network code in
+      their respective functions.
+    exit: 0
+    ts: "2026-08-23T23:16Z"
+    seat: "session (M5, evidence-pack task)"
 pii_scan: clean
-size_tokens: 1475
+dissent:
+  - seat: "Harness floor recompute (CI, deterministic)"
+    objection: >-
+      PR #4701 touches `.github/workflows/wr3-spend-gate-tests.yml`, which is hot-zone by path —
+      floors at Gear 3 regardless of the diff's small size (2 files, +73/-3) or the fact that the
+      runtime logic it tests is unmodified — and the PR shipped with no `evidence/brief.yml` or
+      `evidence/pack.yml` in its own diff, so the check correctly FAILED with "hot-zone diff with
+      no evidence/brief.yml — a Gear-3-floor diff requires a brief+pack".
+    status: CONFIRMED
+    note: >-
+      Verified independently, not accepted on the FAIL message alone: recomputed the floor from
+      the PR's actual changed-file list via `evidence_pack_lint.py --print-floor` and got 3,
+      matching the check. Answered here by supplying both files, never by editing the check
+      (per this repo's Rule 3 precedent — CLAUDE.md §Agent PR Contract item 3 / the sibling
+      PR #4649's own notes field describes the identical shape of correctly-rejected-then-
+      complied-with).
+  - seat: "session (this evidence-authoring task), against its own first instinct"
+    objection: >-
+      The mandate offered the PR body's own self-reported mutation-test result (comment out
+      assert_spend_authorized, both tests go red, restore) as sufficient grounding. Quoting it
+      verbatim without re-running it would have been citing a tool output this turn never
+      actually executed — exactly the anti-hallucination failure mode CLAUDE.md §6 exists to
+      prevent, applied to a prior session's claim rather than to memory.
+    status: RETRACTED
+    note: >-
+      Re-ran the mutation probe independently in this task's own turn (see the mutation-test
+      receipt above) rather than trusting the PR body's report. Result matched: both tests went
+      red with the identical `AssertionError: network path reached`, file restored clean.
+      Retracted because the concern was real but the independent re-run resolved it — the
+      PR body's claim held up under a fresh execution, it was not merely repeated.
+tests:
+  - "scripts/tests/test_wr3_zero_spend.py::test_submit_clip_real_mode_blocked_without_decision_no_http — the new test this PR adds. PASS on both py3.11 and py3.14, RED under the mutation probe (receipts above)."
+  - "Full 5-file spend-gate corpus (127 passed, 15 skipped) — re-run twice (before and after the mutation probe) to prove the probe left no residue."
+static:
+  - "actionlint .github/workflows/wr3-spend-gate-tests.yml -> clean"
+  - "python3 -m py_compile on all 5 modules the sanity-compile step covers -> clean"
+  - "scripts/check_watcher_coverage.py -> exit 0, workflow already counted"
+notes:
+  - >-
+    This PR is deliberately narrow: it is the evidence pack ONLY, for a PR whose code+test diff
+    was already committed and pushed by a prior session/task. No production code, no test
+    content, and no workflow logic was authored or edited as part of writing this pack — every
+    receipt above is this task independently RE-VERIFYING claims the PR body already made, not
+    a first-time authoring of the underlying fix.
+  - >-
+    The predecessor PR #4649 (same workflow file, same afternoon, same author) hit this exact
+    same `Harness floor recompute` shape first and its own evidence pack documents the identical
+    resolution — supply brief+pack, never edit the gate. That pack (`git show
+    417ff45de:evidence/pack.yml`) was used as the structural template for this one; only the
+    content is specific to this PR's diff.

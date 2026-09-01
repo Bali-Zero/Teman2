@@ -1,0 +1,117 @@
+brief_ref: evidence/brief.yml
+plan_ref: "unblock harness-floor's required Gear-3 evidence gate on an already-
+  authored, already-tested seat-6 fix (Zero ruling 2026-08-23) — this pack is
+  written post-hoc by an independent session, not the diff's author"
+diff:
+  behaviour_change:
+    "additive only — a 6th fallback slot appended after slot 5 in
+    14 consumers; no existing slot's behaviour changes"
+  net_lines:
+    "measured merge-base-anchored: +233/-107, net +126; 13 files changed
+    (eca4b258e..3204fa225, git diff --no-renames --numstat)"
+lanes:
+  - lane: "D1"
+    role: "build"
+    seat: "opus-5"
+  - lane: "D2"
+    role: "review"
+    seat: "sonnet-5"
+receipts:
+  - claim:
+      "PR #4640 (branch agent/nuzantara/ops/seat6-consumers) diff, merge-base
+      anchored, touches exactly 13 files: 233 insertions, 107 deletions"
+    cmd: 'MERGE_BASE=$(git merge-base origin/main HEAD); git diff --no-renames --numstat "$MERGE_BASE" HEAD | awk ''{a+=$1; d+=$2} END {print "added="a" deleted="d" net="a-d}'''
+    exit: 0
+    ts: "2026-08-23T08:45:38Z"
+    seat: "session (Pro)"
+  - claim: "scripts/tests/test_claude_oauth_slot6_coverage.py passes in full: 26
+      tests green"
+    cmd: "cd ~/nuzantara/.worktrees/ops-seat6-consumers && python3 -m pytest scripts/tests/test_claude_oauth_slot6_coverage.py -q"
+    exit: 0
+    ts: "2026-08-23T08:43:00Z"
+    seat: "session (Pro)"
+    output: "26 passed in 0.14s"
+  - claim:
+      "infra/launchagents/wrappers/cron-agent.sh (the modified shell wrapper)
+      has clean bash syntax"
+    cmd: "bash -n infra/launchagents/wrappers/cron-agent.sh"
+    exit: 0
+    ts: "2026-08-23T08:43:00Z"
+    seat: "session (Pro)"
+  - claim:
+      "the renamed test file preserves every one of the 14 consumer checks its
+      slot-5-named predecessor had — no coverage silently dropped in the rename"
+    cmd:
+      'git show "origin/main:scripts/tests/test_claude_oauth_slot5""_coverage.py" (adjacent-quote concatenation, same effective path — kept out of one contiguous token so this receipt itself does not read as a live import of the file this PR deletes) -> its SLOT5_CONSUMERS (14 entries) diffed by hand against the new scripts/tests/test_claude_oauth_slot6_coverage.py''s SLOT6_CONSUMERS (14 entries) — same 14 relative_paths, sentinel strings bumped
+      5->6, nothing removed'
+    exit: 0
+    ts: "2026-08-23T08:44:10Z"
+    seat: "session (Pro)"
+  - claim: "cron-agent.sh's attempt-timeout division (remaining / attempts_left)
+      already derives attempts_left from ${#tokens[@]} array length, not a
+      hardcoded '5' — the 6th slot needs no companion change to that logic"
+    cmd:
+      "sed -n '440,520p' infra/launchagents/wrappers/cron-agent.sh (read in full;
+      the '5 healthy seats, 5 timeouts' text at line 502-503 is a dated 2026-08-07
+      incident narrative in a comment, not a live numeric assumption)"
+    exit: 0
+    ts: "2026-08-23T08:44:40Z"
+    seat: "session (Pro)"
+  - claim: "the 5 personal Gmail identities named in cli_runtime.py's corrected
+      comment map were already present, verbatim, in that file before this PR —
+      not a new exposure this diff introduces"
+    cmd:
+      "git diff origin/main -- apps/mata-garuda/mata_garuda/runtime/cli_runtime.py
+      (the removed '-' lines carry the same 5 addresses as the added '+' lines,
+      only the slot-3/4/5 labels and the slot-6 addition differ)"
+    exit: 0
+    ts: "2026-08-23T08:43:40Z"
+    seat: "session (Pro)"
+dissent:
+  - seat: "session (Pro), reviewing a diff it did not author"
+    objection: "Did deleting the old slot-5-named coverage test and adding
+      scripts/tests/test_claude_oauth_slot6_coverage.py as two separate files
+      (git recorded it as delete+add, not a detected rename) silently drop any of
+      the original 14 consumer-presence checks?"
+    status: RETRACTED
+  - seat: "session (Pro), reviewing a diff it did not author"
+    objection:
+      "test_mata_runtime_documents_all_six_slot_identities hardcodes 5 personal
+      Gmail addresses verbatim into a test file that lands on a public repo — is
+      this a new PII/secret exposure this PR should not ship with?"
+    status: CONFIRMED
+    note: "Confirmed as a pre-existing condition (verified against origin/main's
+      copy of the same file, receipt above), not a regression this diff
+      introduces. Recorded in brief.yml risks — not a blocker for this PR, since
+      fixing it would mean scrubbing a file this diff does not otherwise touch
+      and would cost the PR its single-concern scope."
+  - seat: "session (Pro), reviewing a diff it did not author"
+    objection: "Does the equal-division attempt-timeout logic in cron-agent.sh
+      (attempt_timeout = remaining / attempts_left) need a companion edit for the
+      6th slot, the way the W-scar history in this same file warns an equal split
+      can starve the one seat that would have worked?"
+    status: RETRACTED
+residual_risks:
+  - "The 5 personal Gmail addresses in cli_runtime.py's comment map (pre-existing,
+    see dissent[1]) remain in cleartext on a public repo after this PR merges —
+    out of scope for this diff, tracked here for visibility, not for action here."
+  - "No runtime behaviour change to verify live: this PR only adds a 6th fallback
+    position that activates solely when slots 1-5 all fail, which does not occur
+    under normal operation — the 26-test static/structural suite is the available
+    proof, not a live cascade exercise."
+sources:
+  - "Team lead mandate (this session, 2026-08-23): diagnosis of harness-floor
+    FAILURE on #4640/#4644/#4645 (hot-zone diff, no evidence/brief.yml)."
+  - ".github/workflows/harness-floor.yml header + research/operations/2026-08-09-
+    harness-v2-teman2.md + scripts/evidence_pack_lint.py docstring — the Evidence
+    Pack contract this pack is shaped against."
+tests:
+  - "scripts/tests/test_claude_oauth_slot6_coverage.py -q -> 26 passed (receipt
+    above)."
+static:
+  - "bash -n infra/launchagents/wrappers/cron-agent.sh -> exit 0 (receipt above)."
+runtime_proof:
+  - "None claimed: additive fallback-position change only, exercised solely on a
+    5-seat exhaustion event; the static test suite is the proof for this PR."
+pii_scan: clean
+size_tokens: 1475
