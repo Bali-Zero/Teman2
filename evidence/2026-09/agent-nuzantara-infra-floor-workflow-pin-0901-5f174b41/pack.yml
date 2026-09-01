@@ -54,6 +54,14 @@ diff:
 
 residual_risks:
   - >-
+    THE CROSS-FAMILY SEAT DID NOT SPEAK. tp1-qwen3.8-max was dispatched at effort xhigh against the
+    full diff and produced ZERO bytes in ~20 minutes; tp1-glm-5.2 was then dispatched on a tighter
+    prompt rather than letting the first one's silence pass as agreement. Neither is counted as a
+    review seat and the pack's council_run NOTICE is left STANDING rather than satisfied by a seat
+    that never answered — an empty answer is not a clean one. The adversarial pressure that DID
+    land is a Claude subagent on fresh context, which is same-family; that is a real limit on this
+    pack, stated rather than papered over.
+  - >-
     A first-party action version could be compromised UPSTREAM, and this exemption does not defend
     against that. Neither did the Gear-3 ceremony it replaces, which reads a brief and a pack and
     not the action's changelog — the real defences (SHA pinning, actionlint, CodeQL, the CODEOWNERS
@@ -68,3 +76,100 @@ residual_risks:
     The exemption widens only when someone edits FIRST_PARTY_ACTION_OWNERS or the parser. Nothing
     in this PR alarms on that beyond the test corpus — there is no lint that would notice a future
     diff adding a third owner to the frozenset. Recorded as unguarded rather than as covered.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      The exemption actually moves the floor on the REAL blocked PR, not on a fixture — and the
+      same call without the patch still floors at 3, which is the control that proves the patch is
+      what did it
+    cmd: "gh pr diff 5442 > /tmp/p.patch && python scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/cf.txt --patch-file /tmp/p.patch"
+    result: "without the patch: 3. With it: 1. Same command, same changed-files list."
+    exit: 0
+    ts: 2026-09-01T19:04Z
+    seat: session (Pro)
+  - claim: >-
+      FAIL-CLOSED is a behaviour, not a comment — an unreadable patch file lowers nothing and does
+      not paint the job red either
+    cmd: "evidence_pack_lint.py --print-floor --changed-files-file <#5442 files> --patch-file /tmp/NOPE.patch"
+    result: >-
+      prints 3, exits 0, and writes one stderr line naming the errno and saying "no path-term
+      exemption applied (fail-closed)". Deliberately not the `return 3` --numstat-file uses: that
+      file can only RAISE a floor, this one can only LOWER one.
+    exit: 0
+    ts: 2026-09-01T19:04Z
+    seat: session (Pro)
+  - claim: >-
+      EACH of the six conditions is independently load-bearing — measured by breaking them in the
+      SOURCE one at a time and re-running, not by reading the tests and agreeing with them
+    cmd: >-
+      for each condition: replace its `if <cond>:` with `if False:` in scripts/evidence_pack_lint.py,
+      then pytest scripts/tests/test_evidence_pack_lint.py -k path_term_exemption
+    result: >-
+      clean-line check -> 1 failed / multiset equality -> 3 failed / .github/workflows boundary ->
+      3 failed / the exempt filter in the path term -> 3 failed / first-party owner check -> 1
+      failed / no-hunk check -> 1 failed. Baseline 15 passed; restore verified back to 15 passed.
+      NONE of the six reddens the whole suite, which is the discriminating signature — a control
+      where every assertion goes red is indistinguishable from a broken test.
+    exit: 1
+    ts: 2026-09-01T18:41Z
+    seat: session (Pro)
+  - claim: "Acceptance probes 2, 3 and 5 — the guilt corpus and the structural-confinement test"
+    cmd: "python -m pytest scripts/tests/test_evidence_pack_lint.py -k path_term_exemption_guilt ; python -m pytest scripts/tests/test_evidence_pack_lint.py -k never_returns_a_non_workflow_path"
+    result: "green, inside a full-file run of 319 passed."
+    exit: 0
+    ts: 2026-09-01T19:04Z
+    seat: session (Pro)
+  - claim: "Acceptance probe 4 — no patch, missing patch and empty patch all exempt nothing"
+    cmd: "python -m pytest scripts/tests/test_evidence_pack_lint.py -k path_term_exemption_defaults_to_no_exemption"
+    result: "green. Asserts compute_floor([wf]) == compute_floor([wf], None, None) == compute_floor([wf], None, '') == 3."
+    exit: 0
+    ts: 2026-09-01T19:04Z
+    seat: session (Pro)
+  - claim: >-
+      Acceptance probe 6 — this PR's OWN diff still floors at 3, so the new rule does not exempt
+      the change that introduces it
+    cmd: "python scripts/evidence_pack_lint.py --print-floor-source --changed-files-file <this diff> --numstat-file <this diff>  # -> path, floor 3"
+    result: "floor=3, source=path."
+    exit: 0
+    ts: 2026-09-01T19:04Z
+    seat: session (Pro)
+  - claim: >-
+      The new helper is NOT a censused guard that needs its own registry entry — checked by
+      running the census rather than by reasoning about the `check_` prefix convention
+    cmd: "python3 infra/guard-conformance/check_guard_conformance.py"
+    result: >-
+      "10 bridge guards, 19 hook entries, 7 wr2-pregate checks, 17 evidence-pack-lint checks, 6
+      required-workflow-conformance checks, 0 violation(s)". Unchanged counts, exit 0.
+    exit: 0
+    ts: 2026-09-01T19:05Z
+    seat: session (Pro)
+  - claim: >-
+      hot-zone-pr-gate.yml needs no change, so HOTZONE_PATTERNS stays byte-identical to its
+      declared duplicate and this PR introduces no drift between the two lists
+    cmd: "gh pr checks 5442 / 5444 / 5445, filtered to non-pass"
+    result: >-
+      "Harness floor recompute" is the ONLY non-pass line on #5442 and #5445; #5444 has none and is
+      BLOCKED for an unrelated reason. The twin gate is not red on any of them.
+    exit: 0
+    ts: 2026-09-01T18:30Z
+    seat: session (Pro)
+
+dissent:
+  - seat: session (Pro), self-caught during BUILD
+    status: CONFIRMED
+    objection: >-
+      A write that reported success did not land on disk — the `..`-traversal guard was absent from
+      the file after the edit printed "traversal guard added". It was caught because the test
+      written for that line went RED, not because the write was trusted; re-applied and verified by
+      re-reading the file AND an independent grep in the same command. Recorded because the lesson
+      is the ORDER: the test existed before the guard was believed.
+  - seat: session (Pro), on the scope of the rule
+    status: CONFIRMED
+    objection: >-
+      An author-based exemption (skip the floor for dependabot[bot]) is far simpler and was the
+      obvious first design. REJECTED on W98: a Dependabot bump shipped a malicious fastapi to PROD
+      past a `!=` constraint the updater could not see. The rule is therefore content-based, which
+      costs a diff parser and buys the property that a human editing the same line is treated
+      identically and a bot changing anything else is not exempt at all.
