@@ -15,15 +15,15 @@ lanes:
     role: review
     seat: kimi-code/k3
 diff:
-  files: 3
-  net_lines: 261
+  files: 6
+  net_lines: 689
   net_lines_note:
     "measured from the merge-base: git diff --numstat $(git merge-base origin/main HEAD) HEAD.
-    All three files are pure additions (+261/-0, 1 commit 4189d0f2e2): 42 lines
-    .github/dependabot.yml (comment block + 2-line exclude-paths stanza), 3 lines
-    .github/workflows/immune-enforcement.yml (2 case-list entries + 1 test-invocation line),
-    216 lines scripts/tests/test_dependabot_excludes_compiled_locks.py (new guilt+innocence
-    test file, 9 test functions + 1 parametrized set)."
+    Pure additions (+689/-0) across 3 commits: the code diff is 42 lines .github/dependabot.yml,
+    3 lines .github/workflows/immune-enforcement.yml and 216 lines of new guard test; the
+    remainder is the Gear-3 evidence set this gate demanded — brief.yml, pack.yml and
+    council-journal.jsonl. The count exceeds the code diff for that reason, and it grows again
+    with the commit that corrects this very note, which is why 3 is stated and not 2."
 spend:
   wall_clock_hours: 1.0
   adversarial_rounds: 1
