@@ -52,8 +52,12 @@ future guard on this surface that asks an existence question is the same defect 
 
 ## The register, as measured on `origin/main` at `5f174b4126`
 
-54 cells behave correctly. 34 do not, in five named classes — only the first of which is the
-defect the `--no-renames` work set out to fix:
+54 cells behave correctly. **48 do not, in six named classes** — only the first of which is the
+defect the `--no-renames` work set out to fix. (This paragraph said "34 … five named classes"
+until a refuter counted the file: the entire `symlink × *` class, fourteen rows, was missing
+from a register whose whole purpose is that nobody has to re-derive the list. It is restored
+below, and the arithmetic is now checkable — `awk -F'\t' '$8=="KNOWN_BAD"' baseline | wc -l`
+must equal the sum of this table.):
 
 | cells | class                                                                                                                                                                                            |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -62,6 +66,7 @@ defect the `--no-renames` work set out to fix:
 | 12    | `dir_at_path × *` — a local directory where a tracked file belongs wedges every incoming action; there is no branch for a type mismatch                                                          |
 | 4     | `del_unstaged × {delete, tree_at_path}` — nothing to collide with, yet the tick wedges permanently on a `cp` whose source does not exist                                                         |
 | 2     | `untracked × tree_at_path` — an untracked local file meeting an incoming tree is neither backed up nor cleared, so the ff can never apply                                                        |
+| 14    | `symlink × *` — a RESOLVING local symlink is silently converted into a copy: `cp -p` dereferences it, so Pro-authoritative state that was a link comes back a file, for every incoming action    |
 
 A wedge is `rc=1` with HEAD unmoved. Most are **permanent**: they repeat every five minutes
 and nothing red ever fires, which is why they survived this long. The four cells marked `OK`
@@ -103,10 +108,24 @@ which is where the fixtures are built) and:
   would silently delete fourteen reviewed human verdicts while leaving a file that still looks
   complete. The baseline is authored on a folding volume or not at all.
 
-The consequence worth stating plainly: **CI is a weaker grader than a fleet machine on this
-surface**, by exactly one axis, and that axis is the one that produced the second regression on
-record. Running the matrix locally before shipping a change to the resolver is therefore not
-redundant with CI.
+That leaves an obvious question, and a refuter asked it in the sharpest possible form: if the
+axis is held out on the only runner CI has, then CI can never catch a regression in the
+case-collision path — not weakly, but never — and `test_pro_git_pull.sh`'s 55 assertions contain
+no case-only fixture either (measured: zero). The instrument would convert a red into a green
+that looks identical whether that path is healthy or freshly broken, and the class is not
+hypothetical: `qwen.md → QWEN.md` landed on main in #5371.
+
+**So the axis gets a runner that can express it.** `collision-matrix-case-folding` runs the same
+script on `macos-latest`, whose APFS folds, gated on the same four puller paths so a 10x-billed
+runner starts only when this surface moves. It opens with a probe that FAILS the job if the
+runner is not case-folding — a job whose whole purpose is this axis must not report green while
+the script holds it out.
+
+State the residual precisely rather than claiming the gap is shut: that job is **not yet in the
+repository's required checks**, so today it makes a regression VISIBLE (the PR goes red) without
+being able to BLOCK the merge. Adding it to branch protection is a settings change, tracked
+separately. Running the matrix locally on a fleet Mac is therefore still not redundant with CI —
+it is just no longer the only thing standing between this surface and a repeat of #5371.
 
 ## Two questions, not one: assertions vs verdicts
 
@@ -150,7 +169,9 @@ measurement produced a live regression the previous pass's cure did not reach.
 - **Multi-path ticks.** Every cell moves exactly one path; real pulls move many, and an early
   abort hides the behaviour of every later path in the same set.
 - **Path shapes**: spaces, newlines, non-UTF-8, `.gitignore` interaction.
-- **What is INSIDE a tree that takes a removed path's name**, beyond the one file the fixture
-  asserts. The resolver's outcome does not depend on a directory's contents, so no measured
-  field would notice a tree built empty or misnamed — the assertion now pins `panel.json`
-  specifically, which closes the fixture-drift hole but not the behavioural question.
+- **What a tree at a removed path's name contains, as a BEHAVIOURAL question.** The fixture
+  side is now closed: the assertion pins `panel.json`'s blob HASH and counts the blobs under
+  the path, so a tree built empty, misnamed, wrong-content, or carrying an extra file aborts
+  the run. What remains is inert rather than undetected — `resolve_collisions()` iterates leaf
+  paths and never inspects a directory's contents, so there is no behaviour here for a cell to
+  measure in the first place.

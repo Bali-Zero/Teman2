@@ -49,10 +49,25 @@ export LC_ALL=C
 # cure is to record which filesystem a run measured on and compare only what that filesystem
 # can express, never to bake one volume's answers into a file the other must match.
 # Probed in mktemp's directory because that is where the fixtures are actually built.
+# Probed with the SAME construction run_cell uses for $SANDBOX -- an explicit /tmp template,
+# never a bare `mktemp -d`. A refuter measured that on stock macOS the bare form lands in
+# /var/folders while the sandbox lands in /tmp, that the two are the same device TODAY, and
+# that nothing anywhere checked it: the congruence was coincidental. The failure it hides is
+# the bad direction -- probe reports case-sensitive, fixtures build case-folding, and the axis
+# is silently dropped where it would in fact have worked. Same construction, same filesystem,
+# by construction rather than by luck.
+#
+# Three outcomes, not two: a probe that could not RUN is not a case-sensitive filesystem.
+# Collapsing them made an unwritable /tmp print "filesystem: case-SENSITIVE" with total
+# confidence and drop the axis for a reason that was never measured.
+#   0 = folds case   1 = does not fold   2 = could not measure
 fs_folds_case() {
-  local d rc=1; d="$(mktemp -d)" || return 1
-  : > "$d/CaseFoldProbe"; [ -e "$d/casefoldprobe" ] && rc=0
-  rm -rf "$d"; return $rc
+  local d
+  d="$(mktemp -d /tmp/pgp-casefold-XXXXXX)" || return 2
+  : > "$d/CaseFoldProbe" 2>/dev/null || { rm -rf "$d"; return 2; }
+  [ -e "$d/CaseFoldProbe" ] || { rm -rf "$d"; return 2; }
+  if [ -e "$d/casefoldprobe" ]; then rm -rf "$d"; return 0; fi
+  rm -rf "$d"; return 1
 }
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PULLER="$SCRIPT_DIR/pro-git-pull.sh"
@@ -326,14 +341,18 @@ ALLOWLIST="ordinary keeplocal"
 # Drop the axis this filesystem cannot express, and say so loudly enough that a red run is
 # never mistaken for one, nor a green one read as covering more than it did.
 SKIP_ACTIONS=""
-if fs_folds_case; then
-  echo "filesystem: case-FOLDING — all $(set -- $ORIGIN_ACTIONS; echo $#) origin actions in scope"
-else
-  SKIP_ACTIONS="rename_case_only"
-  ORIGIN_ACTIONS="$(echo "$ORIGIN_ACTIONS" | tr ' ' '\n' | grep -vx "rename_case_only" | tr '\n' ' ')"
-  echo "filesystem: case-SENSITIVE — SKIPPING the rename_case_only axis (it measures a"
-  echo "  case-folding defect that cannot occur here; its baseline verdicts do not apply)."
-fi
+fs_folds_case; FS_RC=$?
+case "$FS_RC" in
+  0) echo "filesystem: case-FOLDING — all $(set -- $ORIGIN_ACTIONS; echo $#) origin actions in scope" ;;
+  1) SKIP_ACTIONS="rename_case_only"
+     ORIGIN_ACTIONS="$(echo "$ORIGIN_ACTIONS" | tr ' ' '\n' | grep -vx "rename_case_only" | tr '\n' ' ')"
+     echo "filesystem: case-SENSITIVE — SKIPPING the rename_case_only axis (it measures a"
+     echo "  case-folding defect that cannot occur here; its baseline verdicts do not apply)." ;;
+  *) echo "FATAL: the case-folding probe could not run (mktemp or /tmp unwritable)." >&2
+     echo "  Refusing to guess: an unmeasurable filesystem is not a case-sensitive one, and" >&2
+     echo "  guessing drops the one axis that pins a regression already on record." >&2
+     exit 3 ;;
+esac
 
 MEASURED="$(mktemp)"
 for a in $LOCAL_STATES; do for b in $ORIGIN_ACTIONS; do for c in $ALLOWLIST; do
@@ -384,7 +403,9 @@ if [ ! -f "$BASELINE" ]; then
   echo "FATAL: no baseline at $BASELINE — run with --write-baseline once, then REVIEW every row." >&2
   cat "$MEASURED" >&2; rm -f "$MEASURED"; exit 3
 fi
-echo "cells measured: $(wc -l < "$MEASURED" | tr -d ' ')  baseline: $(wc -l < "$BASELINE" | tr -d ' ')"
+# The count is printed AFTER the comparison set is built, and carries the held-out figure on
+# the SAME line: it used to print "88 vs 102" several lines above its own explanation, so
+# anything reading one line -- a summary bot, a skim -- saw an unexplained gap.
 # The baseline carries an 8th, human-written column: the VERDICT for that cell (OK, or
 # KNOWN_BAD with a reason). The machine measures 7 fields and must never overwrite the
 # judgement, so the comparison is on fields 1-7 only. A cell whose verdict is wrong is a
@@ -423,9 +444,11 @@ fi
 if [ -n "$SKIP_ACTIONS" ]; then
   awk -F'\t' -v OFS='\t' -v skip="$SKIP_ACTIONS" \
     '$2!=skip {print $1,$2,$3,$4,$5,$6,$7}' "$BASELINE" > "$BASELINE.cmp"
-  echo "  (held out: $(awk -F'\t' -v s="$SKIP_ACTIONS" '$2==s' "$BASELINE" | wc -l | tr -d ' ') baseline rows on the $SKIP_ACTIONS axis)"
+  held=$(awk -F'\t' -v s="$SKIP_ACTIONS" '$2==s' "$BASELINE" | wc -l | tr -d ' ')
+  echo "cells measured: $(wc -l < "$MEASURED" | tr -d ' ')  baseline: $(wc -l < "$BASELINE" | tr -d ' ') minus $held held out on the $SKIP_ACTIONS axis (this filesystem cannot express it)"
 else
   cut -f1-7 "$BASELINE" > "$BASELINE.cmp"
+  echo "cells measured: $(wc -l < "$MEASURED" | tr -d ' ')  baseline: $(wc -l < "$BASELINE" | tr -d ' ')"
 fi
 if diff -u "$BASELINE.cmp" "$MEASURED" > "$MEASURED.diff"; then
   rm -f "$BASELINE.cmp"
