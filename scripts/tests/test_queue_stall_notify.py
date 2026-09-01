@@ -38,6 +38,10 @@ import queue_stall_notify as qsn  # noqa: E402
 def isolated_repeat_state(monkeypatch, tmp_path):
     """No unit test may read or write the operator's real local paging state."""
     monkeypatch.setattr(qsn, "SEEN_FILE", tmp_path / "queue_stall_notify_seen.json")
+    # LOCK_FILE too, or a test calling main() non-dry-run flocks the REAL path under
+    # ~/.agent/decisions/state on whatever machine runs the suite (scar W96: tests that
+    # write PRODUCTION state). main() now passes path= explicitly so this patch is honoured.
+    monkeypatch.setattr(qsn, "LOCK_FILE", tmp_path / "queue_stall_notify_seen.json.lock")
 
 
 def make_row(number: int, cause: str, detail: str = "detail") -> dict:
@@ -98,6 +102,16 @@ def test_classifier_stall_vocabulary_is_fully_accounted_for_without_importing_it
         for node in tree.body
         if isinstance(node, ast.Assign)
         and any(isinstance(target, ast.Name) and target.id == "STALL_CAUSES" for target in node.targets)
+    )
+    # A drift guard that passes on an EMPTY read is the very disease it exists to catch:
+    # set(()) <= anything is trivially True, so an extraction that silently yields nothing
+    # would report "no drift" forever. Adversarial review could not force this by reformatting
+    # the classifier (six variants all fail loudly), but the vacuous shape is one assert away.
+    assert stall_causes, (
+        "extracted an EMPTY STALL_CAUSES from the classifier's source. The comparison below "
+        "would pass vacuously. Most likely the classifier moved STALL_CAUSES out of module "
+        "scope or wrapped it in a call (frozenset(...)/set(...)), which ast.literal_eval "
+        "cannot evaluate — fix the extraction, do not delete this assert."
     )
     accounted_for = qsn.REAL_STALL_CAUSES | qsn.DELIBERATELY_IGNORED
     assert set(stall_causes) <= accounted_for
@@ -463,3 +477,93 @@ def test_the_reviewers_race_cannot_resurrect_a_pruned_entry(tmp_path, monkeypatc
     finally:
         fcntl.flock(holder.fileno(), fcntl.LOCK_UN)
         holder.close()
+
+
+# ---------------------------------------------------------------------------
+# main()'s busy branch — the path no test exercised (found by adversarial review)
+# ---------------------------------------------------------------------------
+
+def _hold_lock(path):
+    """Take the real flock from a separate handle, the way a concurrent run would."""
+    import fcntl
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle = path.open("a+")
+    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    return handle
+
+
+def test_guilt_a_busy_lock_writes_no_state_and_says_so(monkeypatch, capsys, tmp_path):
+    report = make_report([make_row(1, "not-armed")])
+    monkeypatch.setattr(qsn, "run_classifier", lambda **kw: (0, report, "", ""))
+    monkeypatch.setattr(qsn, "_run", _fail_if_called)
+    holder = _hold_lock(qsn.LOCK_FILE)
+    try:
+        rc = qsn.main([])
+    finally:
+        holder.close()
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "concurrent_run=true" in out
+    assert not qsn.SEEN_FILE.exists(), "a losing invocation must not touch the state"
+
+
+def test_a_busy_lock_reports_the_holder_age_not_just_busy(monkeypatch, capsys):
+    """A single busy tick is an ordinary race. A holder that is WEDGED rather than dead is the
+    same silence this lock was added to prevent, and nothing watching exit codes would see it."""
+    report = make_report([make_row(1, "not-armed")])
+    monkeypatch.setattr(qsn, "run_classifier", lambda **kw: (0, report, "", ""))
+    monkeypatch.setattr(qsn, "_run", _fail_if_called)
+    holder = _hold_lock(qsn.LOCK_FILE)
+    try:
+        qsn.main([])
+    finally:
+        holder.close()
+    assert "holder_age_s=" in capsys.readouterr().out
+
+
+def test_guilt_a_busy_lock_does_not_swallow_a_classifier_failure(monkeypatch, capsys):
+    """Contention explains why WE did nothing. It says nothing about the instrument's health,
+    and reporting classifier_rc=0 here would hide a real failure behind a race."""
+    report = make_report([make_row(1, "not-armed")])
+    monkeypatch.setattr(qsn, "run_classifier", lambda **kw: (1, report, "", "cannot-verify"))
+    monkeypatch.setattr(qsn, "_run", _fail_if_called)
+    holder = _hold_lock(qsn.LOCK_FILE)
+    try:
+        rc = qsn.main([])
+    finally:
+        holder.close()
+    out = capsys.readouterr().out
+    assert rc == 1, "a failed classifier stays a failure even when the lock is busy"
+    assert "classifier_rc=1" in out
+    assert "classifier_failed=true" in out
+
+
+def test_innocence_a_busy_lock_with_a_healthy_classifier_is_not_a_failure(monkeypatch, capsys):
+    report = make_report([make_row(1, "not-armed")])
+    monkeypatch.setattr(qsn, "run_classifier", lambda **kw: (0, report, "", ""))
+    monkeypatch.setattr(qsn, "_run", _fail_if_called)
+    holder = _hold_lock(qsn.LOCK_FILE)
+    try:
+        assert qsn.main([]) == 0
+    finally:
+        holder.close()
+
+
+def test_holder_age_is_minus_one_when_unknowable_never_zero(tmp_path):
+    """-1 and 0 are different facts. Rendering "I cannot tell" as "acquired just now" is how a
+    wedged holder reads as a healthy one."""
+    assert qsn.lock_holder_age(tmp_path / "nope.lock") == -1
+    fresh = tmp_path / "fresh.lock"
+    fresh.write_text("")
+    assert qsn.lock_holder_age(fresh) >= 0
+
+
+def test_main_never_touches_the_real_lock_path(monkeypatch, capsys):
+    """W96: main() must honour a patched LOCK_FILE. A default argument binds at import and
+    would not, so main() passes path= explicitly."""
+    report = make_report([])
+    monkeypatch.setattr(qsn, "run_classifier", lambda **kw: (0, report, "", ""))
+    monkeypatch.setattr(qsn, "_run", _fail_if_called)
+    qsn.main([])
+    assert qsn.LOCK_FILE.exists(), "the patched lock path is the one that was used"
+    assert "/.agent/decisions/state/" not in str(qsn.LOCK_FILE)
