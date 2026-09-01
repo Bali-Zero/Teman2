@@ -59,7 +59,7 @@ seat_diversity_note: >-
 
 diff:
   files: 7
-  net_lines: 1617
+  net_lines: 1669
   measured_at: >-
     counted with `git diff --numstat --cached $(git merge-base origin/main HEAD)` — the CACHED
     form, not the three-dot one, and the difference is the whole point: the three files under
@@ -290,6 +290,58 @@ receipts:
     exit: 1
     ts: 2026-09-02T02:54Z
     seat: conductor (this session, on Pro)
+  - claim: >-
+      Every acceptance criterion declared in brief.yml is bound to the receipt that records its
+      outcome — and the one that had no receipt at all has been measured rather than quietly dropped
+    cmd: |-
+      Rule-12 binding index. Each probe below is reproduced VERBATIM so the lint's literal
+      whole-token match can find it; the receipt carrying the actual observation is named beside
+      it. Probe 6 is the exception and is measured in `result` — it is the only criterion that was
+      declared and then never receipted, found by running the lint rather than by reading.
+
+      [1] -> receipt 1 (CI run 33530625598, macOS leg)
+      CI job collision-matrix-case-folding on macos-latest, run 33530625598 @ bcd4643a6a: 'filesystem: case-FOLDING - all 7 origin actions in scope' / 'cells measured: 102  baseline: 102' / 'MATRIX STABLE'
+
+      [2] -> receipt 1 (CI run 33530625598, ubuntu leg)
+      CI job antidotes on ubuntu, run 33530625598 @ bcd4643a6a: 'filesystem: case-SENSITIVE - SKIPPING the rename_case_only axis' / 'cells measured: 88  baseline: 102 minus 14 held out'
+
+      [3] -> receipt 2 — outcome is NEVER FIRED, and the probe text says so itself
+      NEGATIVE BRANCH NEVER FIRED, by anyone. Corrected 2026-09-02 after an independent grader named this as the one criterion nobody exercised: GitHub's macos-latest is APFS, every machine in this fleet is APFS, and the in-YAML step (unlike the in-script fs_folds_case(), which WAS forced and is receipted) cannot be patched to take its other path. Only the POSITIVE branch has been observed - 'runner folds case - the rename_case_only axis is in scope' @ bcd4643a6a. The logic is three lines and correct by inspection, but inspection is not a run, and this criterion previously said `verified` on the strength of one.
+
+      [4] -> receipt 7 (abort on an unmeasurable filesystem, forced by an independent verifier)
+      fs_folds_case() returns 2 on any probe failure; caller's `*)` arm is a FATAL exit 3, not a fallback to either branch
+
+      [5] -> receipt 4 (five-sabotage guilt corpus)
+      5-sabotage guilt corpus, each CAUGHT on the correct origin action (modify / rename_away / tree_at_path x2 / rename_case_only), with the un-sabotaged innocence run green at 102/102
+
+      [6] -> THIS receipt — measured below, it had none
+      four ls-tree probes carry `$1 $2 $3` (mode/type/sha) against hashes derived from the fixture constants via git hash-object, plus a recursive blob count under the path
+
+      [7] -> receipt 8 (--write-baseline refuses)
+      --write-baseline refuses when SKIP_ACTIONS is non-empty
+
+      [8] -> receipt 6 (every KNOWN_BAD carries a reason)
+      the runner's `unjudged` awk guard rejects a row missing a verdict, a KNOWN_BAD with an empty reason, and the optimistic-side OK/backup=file/non-file case
+
+      [9] -> receipt 3 (content-blindness cure discriminates)
+      two files sharing the fixture's first 14 bytes and diverging after produced an IDENTICAL `outcome` before the cure (measured by an independent grader) and differ by blob hash after it; the field now reads `file:<prefix>:<8hex>`.
+
+      [10] -> receipt 9 (the hash is load-bearing)
+      all 14 rename_case_only cells moved from `absent` to `case-renamed:subject.md:10ed6daf`, and 10ed6daf is origin's base blob — which is what made four previously-`OK` cells recognisable as content loss with the puller unchanged.
+
+    result: >-
+      Nine of the ten already had a receipt and are now bound by name. PROBE 6 MEASURED NOW, in
+      scripts/pro/spec_collision_matrix.sh: FOUR ls-tree probes carry an awk projection of
+      $1 $2 $3 (mode/type/sha) at lines 221, 222, 223 and 230; FOUR expected hashes are derived
+      from the fixture's own constants via `git hash-object --stdin` at lines 116-119 (H_BASE,
+      H_V2, H_PANEL, H_LINK — the last encoding that a symlink's blob IS its target string); and
+      the recursive blob count under the path is a `git ls-tree -r HEAD` piped to `wc -l` at line
+      233. Every clause of the criterion is literally true of the shipped script. Probe 3's
+      outcome stays NEVER FIRED: GitHub's macos-latest is APFS and the in-YAML step cannot be
+      forced onto its other branch, so it is recorded as unexercised rather than claimed.
+    exit: 0
+    ts: 2026-09-02T03:12Z
+    seat: session (Pro), found by the lint's own NOTICE
 dissent:
   - seat: codex-gpt-5.6-sol (cross-family council seat, effort high, read-only)
     objection: >-
