@@ -1380,17 +1380,35 @@ jobs:
   # surface actually moves") — that was FALSE about code sitting three lines
   # below it, and an independent Gear-3 gate caught it.
   #
-  # The narrowing is refused on purpose, because it would trade a cost for a
-  # trap. A job that skips still reports, but a REQUIRED context whose job is
-  # skipped can sit `Expected` forever — the shape this repo has already been
-  # bitten by (W123, `success` != armed). This check is intended to BECOME a
-  # required context once the instrument it runs has no confirmed defects left,
-  # and the precondition for that is that it always reports, on every PR,
-  # including the ones that touch nothing near the puller. Buying back 1m55s by
-  # adding `needs:` + `if:` would destroy exactly the property that makes it
-  # safe to require. If it is ever decided that this check will NOT be made
-  # required, then narrowing it becomes correct and this comment is the reason
-  # to revisit.
+  # The narrowing is refused on purpose — but NOT for the reason first written
+  # here, which was itself wrong and is corrected below rather than quietly
+  # deleted. The first version said adding `needs:` + a job-level `if:` "would
+  # destroy the property that makes it safe to require". That is false in this
+  # repo, and its own required set disproves it: `tests.yml::backend-tests`,
+  # `tests.yml::e2e-tests` and `tests.yml::visa-oracle-fullstack-smoke` are all
+  # REQUIRED contexts and all three already run detect-job + `needs:` + `if:`.
+  #
+  # WHAT ACTUALLY MAKES THOSE SAFE IS POLARITY, NOT ARCHITECTURE. Their `if:`
+  # is written FAIL-OPEN: `!cancelled()` plus a disjunction that evaluates TRUE
+  # when the detect job errors, is skipped, or the event is unfamiliar — so a
+  # broken detector runs the job rather than silently skipping it. The obvious
+  # condition to reach for, `if: needs.detect.outputs.relevant == 'true'`, is
+  # FAIL-CLOSED: it skips whenever detection fails, which is precisely the
+  # "green because nothing was measured" shape this whole surface exists to
+  # end. The instinct to refuse was right; the reason given was not.
+  #
+  # A second reason stands on its own, and it is UNMEASURED rather than
+  # asserted: whether a REQUIRED context reporting `skipped` satisfies branch
+  # protection here has not been established. Across six recently merged PRs
+  # the only `skipped` conclusion found was `SonarQube Code Analysis`, which is
+  # not one of the twelve required contexts — so the decisive case has never
+  # been observed. `residual_risks[0]` plans to make THIS job required, which
+  # is exactly the moment a fail-closed `if:` would bite, and paying 1m55s to
+  # avoid an unmeasured failure mode is the cheaper side of that bet.
+  #
+  # So: comment-only for now. If the macOS minutes are ever wanted back, copy
+  # `tests.yml::changes`' fail-open polarity VERBATIM. Do not invent a new
+  # condition — inventing one is how the polarity gets flipped by accident.
   collision-matrix-case-folding:
     runs-on: macos-latest
     timeout-minutes: 20
