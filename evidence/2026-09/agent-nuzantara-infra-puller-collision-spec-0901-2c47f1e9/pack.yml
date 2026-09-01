@@ -59,7 +59,7 @@ seat_diversity_note: >-
 
 diff:
   files: 7
-  net_lines: 1459
+  net_lines: 1484
   measured_at: >-
     counted with `git diff --numstat --cached $(git merge-base origin/main HEAD)` — the CACHED
     form, not the three-dot one, and the difference is the whole point: the three files under
@@ -254,6 +254,30 @@ receipts:
     seat: claude-sonnet-5 (spalla-review, independent - generator != grader)
 
 dissent:
+  - seat: codex-gpt-5.6-sol (cross-family council seat, effort high, read-only)
+    objection: >-
+      VERDICT: BLOCK, four findings with file:line. (1) The case-only keeplocal fixture does not
+      construct keeplocal — the allowlist is written with the ORIGINAL spelling while the incoming
+      path is the lowercased one, and the resolver matches with a whole-line byte-literal
+      `grep -qxF`, so all seven rename_case_only keeplocal cells run the ORDINARY branch under a
+      keeplocal label. (2) The enumerator cannot observe a symlink-preserving cure. (3) Final-state
+      measurement is lossy: exact-spelling absence on the flagship axis, and only 14 bytes of
+      content sampled. (4) The macOS runner is not gated as claimed.
+    status: CONFIRMED
+    disposition: >-
+      THREE OF FOUR STAND, ONE FALLS, and each was adjudicated by execution rather than argument —
+      the distinction matters because a BLOCK accepted wholesale would have sent the cure to a
+      place that does not need it. (1) VERIFIED by the conductor at both named lines; NOT fixed
+      here — curing it changes what seven cells measure, so it changes the baseline and needs its
+      own reviewed round. (2) REFUTED by probe: substituting `cp -Pp` moves 12 cells and the
+      coherent three-site cure moves 10, so the predicted silent-STABLE does not occur; the literal
+      blind spot in the `backed=` field is real but nothing rides on it undetected. (3a) CONFIRMED
+      — `outcome=absent` is overloaded between "gone" and "renamed-but-recoverable"; bounded to one
+      axis and already narrated in all 14 reasons, so surfaced rather than hidden. (3b) CONFIRMED
+      and the sharpest of the four: `outcome=` samples 14 bytes, so content corrupted from byte 15
+      on is invisible — the SAME content-blindness cured on the origin side of this very
+      instrument this morning, left standing on the result side. Smallest close for both: a content
+      hash instead of the byte sample, and a distinct `case-renamed` outcome. NOT fixed here.
   - seat: claude-sonnet-5 (matrix-refuter, fresh context)
     objection: >-
       THE INSTRUMENT WAS CONTENT-BLIND. Its ls-tree probes asserted an object's silhouette —
