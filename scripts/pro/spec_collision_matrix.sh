@@ -1,0 +1,195 @@
+#!/bin/bash
+# SPEC — the collision matrix for scripts/pro/pro-git-pull.sh.
+#
+# WHY THIS EXISTS. Three consecutive adversarial passes over the `--no-renames` change each
+# found "the shape nobody asked about" on this one surface (PR #5492: a removed path the tree
+# had already deleted; PR #5496 review: the same guard's removal test resolving a TREE and
+# declining to fire). Each was cured by a one-token patch derived from that finding, and each
+# patch was itself wrong about a neighbouring cell. That is the builder contract's definition
+# of an UNDER-SPECIFIED surface, and its instruction is to write the spec instead of opening
+# the third patch.
+#
+# WHAT A CELL IS. resolve_collisions() decides, per incoming path, between four outcomes. What
+# it decides on is a triple, and the whole family of defects has been the same mistake: reading
+# ONE coordinate and inferring the other two.
+#
+#   A  what the LOCAL worktree holds at that path
+#   B  what the INCOMING change does to that path
+#   C  whether the path is allowlisted Pro-authoritative runtime state
+#
+# THE DESIGN RULE THE MATRIX ENFORCES, stated once so no future patch has to re-derive it:
+# classify B by the TYPE of the object at "$REMOTE:$f" -- blob, tree, or absent -- never by
+# its EXISTENCE. `git cat-file -e` answers "is there any object here", so a directory created
+# at a removed file's name answers YES and every existence-based guard silently declines.
+#
+# HOW TO READ A RUN. Every cell prints its measured outcome and is diffed against
+# collision-matrix-baseline.tsv, which records the outcome AND a verdict: OK where the
+# behaviour is correct, KNOWN_BAD where it is not, with the reason. A cell that MOVES in
+# either direction is a failure -- including a KNOWN_BAD that silently becomes OK, because an
+# undeclared improvement is an unreviewed behaviour change.
+#
+# Run:  bash scripts/pro/spec_collision_matrix.sh [--puller PATH] [--write-baseline]
+
+set -u
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PULLER="$SCRIPT_DIR/pro-git-pull.sh"
+BASELINE="$SCRIPT_DIR/collision-matrix-baseline.tsv"
+WRITE=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --puller) PULLER="$2"; shift 2 ;;
+    --baseline) BASELINE="$2"; shift 2 ;;
+    --write-baseline) WRITE=1; shift ;;
+    *) echo "unknown arg: $1" >&2; exit 2 ;;
+  esac
+done
+[ -f "$PULLER" ] || { echo "FATAL: puller not found: $PULLER" >&2; exit 3; }
+
+# The path every cell is built around, and a second path that keeps the parent dir alive.
+P="area/subject.md"
+SIBLING="area/bystander.md"
+
+fatal() { echo "FATAL fixture ($CELL): $1" >&2; exit 3; }
+
+# ---- fixture construction ---------------------------------------------------------------
+# build_origin_action: mutate a scratch clone of origin, push. Echoes UNCONSTRUCTIBLE and
+# returns 1 for a combination git cannot express.
+build_origin_action() {
+  local action="$1" tmp; tmp="$(mktemp -d)" || fatal "mktemp origin"
+  git clone -q "$ORIGIN" "$tmp/w" 2>/dev/null; [ -f "$tmp/w/.git/HEAD" ] || fatal "origin clone"
+  git -C "$tmp/w" config user.email t@t; git -C "$tmp/w" config user.name t
+  case "$action" in
+    modify)       # doubles as ADD when the base never tracked P (the untracked row)
+                  mkdir -p "$tmp/w/$(dirname "$P")"
+                  printf 'ORIGIN-V2\n' > "$tmp/w/$P"; git -C "$tmp/w" add "$P" ;;
+    delete)       git -C "$tmp/w" rm -q "$P" ;;
+    rename_away)  mkdir -p "$tmp/w/moved"; git -C "$tmp/w" mv "$P" "moved/subject.md" ;;
+    tree_at_path) # the shape the existence-based guard cannot see: a DIRECTORY takes the name.
+                  # `git rm` only when the base actually tracked P -- on the untracked row it
+                  # never did, and an unguarded `git rm` there fails the fixture and would have
+                  # recorded a cell that never ran.
+                  git -C "$tmp/w" ls-files --error-unmatch -- "$P" >/dev/null 2>&1 \
+                    && git -C "$tmp/w" rm -q "$P"
+                  mkdir -p "$tmp/w/$P"; printf 'panel\n' > "$tmp/w/$P/panel.json"
+                  git -C "$tmp/w" add "$P/panel.json" ;;
+    rename_away_and_tree)
+                  # THE CELL THAT CLOSED PR #5496. Content is moved BYTE-IDENTICAL so git pairs
+                  # it as R100, and a directory then takes the vacated name. Rename detection
+                  # hides the source; --no-renames reveals it; and an EXISTENCE-based removal
+                  # test resolves the TREE and declines to fire. Three coordinates, one cell.
+                  mkdir -p "$tmp/w/moved"; git -C "$tmp/w" mv "$P" "moved/subject.md"
+                  mkdir -p "$tmp/w/$P"; printf 'panel\n' > "$tmp/w/$P/panel.json"
+                  git -C "$tmp/w" add "$P/panel.json" ;;
+    typechange)   git -C "$tmp/w" rm -q "$P"
+                  ln -s "bystander.md" "$tmp/w/$P"; git -C "$tmp/w" add "$P" ;;
+    *) rm -rf "$tmp"; echo "UNCONSTRUCTIBLE"; return 1 ;;
+  esac
+  git -C "$tmp/w" commit -qm "origin: $action" >/dev/null || fatal "origin commit $action"
+  git -C "$tmp/w" push -q origin HEAD:main || fatal "origin push $action"
+  rm -rf "$tmp"; return 0
+}
+
+# apply_local_state: put the local worktree into state A at $P.
+apply_local_state() {
+  case "$1" in
+    clean)            : ;;                                   # tracked, untouched
+    modified)         printf 'PRO-LOCAL-EDIT\n' > "$LOCAL/$P" ;;
+    del_unstaged)     rm "$LOCAL/$P" ;;                       # index still holds it
+    del_staged)       git -C "$LOCAL" rm -q --cached "$P" >/dev/null 2>&1; rm -f "$LOCAL/$P" ;;
+    dir_at_path)      rm "$LOCAL/$P"; mkdir -p "$LOCAL/$P"; printf 'x\n' > "$LOCAL/$P/inner" ;;
+    dangling_symlink) rm "$LOCAL/$P"; ln -s "/nonexistent/target" "$LOCAL/$P" ;;
+    untracked)        printf 'UNTRACKED-LOCAL\n' > "$LOCAL/$P" ;;   # base never tracked it
+    *) return 1 ;;
+  esac
+}
+
+# ---- one cell ----------------------------------------------------------------------------
+run_cell() {
+  local A="$1" B="$2" C="$3"
+  CELL="$A|$B|$C"
+  # constructibility: an untracked local file only meets an incoming CREATE.
+  if [ "$A" = untracked ] && [ "$B" != modify ] && [ "$B" != tree_at_path ]; then return 0; fi
+  SANDBOX="$(mktemp -d "/tmp/pgp-matrix-XXXXXX")" || fatal "mktemp sandbox"
+  ORIGIN="$SANDBOX/origin.git"; LOCAL="$SANDBOX/local"
+  git init -q --bare "$ORIGIN" || fatal "init bare"
+  git -C "$ORIGIN" symbolic-ref HEAD refs/heads/main || fatal "symref"
+  git clone -q "$ORIGIN" "$LOCAL" 2>/dev/null; [ -f "$LOCAL/.git/HEAD" ] || fatal "clone"
+  git -C "$LOCAL" config user.email t@t; git -C "$LOCAL" config user.name t
+  mkdir -p "$LOCAL/area"
+  # An UNTRACKED local file can only collide with a path the incoming change CREATES, so for
+  # that row the base must not contain P at all. Pairing it with delete/rename/typechange of a
+  # path that never existed is not a cell git can express -- the first run of this matrix
+  # reported rc=1 for all ten of them, which was the fixture committing a local removal and
+  # diverging HEAD, not the puller refusing anything. A row that is uniformly red is a claim
+  # about the fixture until proven otherwise.
+  if [ "$1" != untracked ]; then printf 'BASE\n' > "$LOCAL/$P"; fi
+  printf 'bystander\n' > "$LOCAL/$SIBLING"
+  echo base > "$LOCAL/README.md"
+  git -C "$LOCAL" add -A && git -C "$LOCAL" commit -qm base >/dev/null || fatal "base commit"
+  git -C "$LOCAL" push -q origin HEAD:main || fatal "base push"
+
+  if ! build_origin_action "$B" >/dev/null; then rm -rf "$SANDBOX"; return 0; fi
+  apply_local_state "$A" || { rm -rf "$SANDBOX"; return 0; }
+
+  local allow="$SANDBOX/allow.json"
+  if [ "$C" = keeplocal ]; then
+    printf '{"entries":[{"path":"%s","machines":["pro"]}]}\n' "$P" > "$allow"
+  else
+    printf '{"entries":[]}\n' > "$allow"
+  fi
+
+  git -C "$LOCAL" fetch -q origin main 2>/dev/null
+  local before; before="$(git -C "$LOCAL" rev-parse HEAD)"
+  PRO_GIT_PULL_REPO="$LOCAL" PRO_GIT_PULL_LOG="$SANDBOX/pull.log" \
+  PRO_GIT_PULL_LOCK="$SANDBOX/lock.d" PRO_GIT_PULL_BACKUP_ROOT="$SANDBOX/backup" \
+  PRO_GIT_PULL_ALLOWLIST="$allow" PRO_GIT_PULL_NO_ALERT=1 \
+    bash "$PULLER" >/dev/null 2>&1
+  local rc=$?
+  local after moved outcome
+  after="$(git -C "$LOCAL" rev-parse HEAD)"
+  [ "$before" != "$after" ] && moved=ff || moved=stuck
+  # what survived where the local machine's content was
+  if   [ -d "$LOCAL/$P" ];                 then outcome=dir
+  elif [ -L "$LOCAL/$P" ];                 then outcome=symlink
+  elif [ -f "$LOCAL/$P" ];                 then outcome="file:$(head -c 20 "$LOCAL/$P" | tr -d '\n' | tr ' ' '_')"
+  else                                          outcome=absent
+  fi
+  local backed=no; [ -d "$SANDBOX/backup" ] && backed=yes
+  printf '%s\t%s\t%s\trc=%s\t%s\t%s\tbackup=%s\n' "$A" "$B" "$C" "$rc" "$moved" "$outcome" "$backed" >> "$MEASURED"
+  rm -rf "$SANDBOX"
+}
+
+LOCAL_STATES="clean modified del_unstaged del_staged dir_at_path dangling_symlink untracked"
+ORIGIN_ACTIONS="modify delete rename_away rename_away_and_tree tree_at_path typechange"
+ALLOWLIST="ordinary keeplocal"
+
+MEASURED="$(mktemp)"
+for a in $LOCAL_STATES; do for b in $ORIGIN_ACTIONS; do for c in $ALLOWLIST; do
+  run_cell "$a" "$b" "$c"
+done; done; done
+sort -o "$MEASURED" "$MEASURED"
+
+if [ "$WRITE" = 1 ]; then
+  cp "$MEASURED" "$BASELINE"; echo "baseline written: $BASELINE ($(wc -l < "$BASELINE" | tr -d ' ') cells)"
+  rm -f "$MEASURED"; exit 0
+fi
+if [ ! -f "$BASELINE" ]; then
+  echo "FATAL: no baseline at $BASELINE — run with --write-baseline once, then REVIEW every row." >&2
+  cat "$MEASURED" >&2; rm -f "$MEASURED"; exit 3
+fi
+echo "cells measured: $(wc -l < "$MEASURED" | tr -d ' ')  baseline: $(wc -l < "$BASELINE" | tr -d ' ')"
+# The baseline carries an 8th, human-written column: the VERDICT for that cell (OK, or
+# KNOWN_BAD with a reason). The machine measures 7 fields and must never overwrite the
+# judgement, so the comparison is on fields 1-7 only. A cell whose verdict is wrong is a
+# review defect; a cell whose MEASUREMENT moved is what this script exists to catch.
+cut -f1-7 "$BASELINE" > "$BASELINE.cmp"
+if diff -u "$BASELINE.cmp" "$MEASURED" > "$MEASURED.diff"; then
+  rm -f "$BASELINE.cmp"
+  echo "MATRIX STABLE — every cell matches the reviewed baseline."
+  rm -f "$MEASURED" "$MEASURED.diff"; exit 0
+fi
+rm -f "$BASELINE.cmp"
+echo "MATRIX MOVED — a cell changed behaviour. Both directions are failures:"
+echo "  a KNOWN_BAD that became OK is an unreviewed improvement; review it and rewrite the baseline."
+sed -n '3,200p' "$MEASURED.diff"
+rm -f "$MEASURED" "$MEASURED.diff"; exit 1

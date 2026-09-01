@@ -219,6 +219,10 @@ jobs:
               scripts/ci/test_apt_install.sh|\
               scripts/install-claude-code.sh|\
               scripts/tests/test_install_claude_code_version_skew.sh|\
+              scripts/pro/pro-git-pull.sh|\
+              scripts/pro/test_pro_git_pull.sh|\
+              scripts/pro/spec_collision_matrix.sh|\
+              scripts/pro/collision-matrix-baseline.tsv|\
               .husky/pre-commit|\
               scripts/tests/test_husky_pii_pass_overmatch.py|\
               scripts/tests/test_pii_gate_merge_scope.sh|\
@@ -1246,6 +1250,34 @@ jobs:
       - name: Tailnet node verifier keys on DNSName, not HostName or an ssh alias
         if: steps.paths.outputs.relevant == 'true'
         run: bash scripts/tests/test_verify_tailnet_node.sh
+
+      # ------------------------------------------------------------------
+      # THE PRO MAIN PULLER'S COLLISION SURFACE (2026-09-01)
+      #
+      # Both corpora below existed and neither was run by any workflow. The
+      # repo-wide census that exists to find such orphans matched `test_*.sh`
+      # with an underscore and could not see `test-*.sh` with a hyphen;
+      # re-measured with `test[-_]*.sh`, 45 of 101 corpora are invoked by no
+      # workflow at all. Named here because in this repo a corpus runs only
+      # because a workflow says so.
+      #
+      # The second step is the one that matters. Three adversarial passes over
+      # one small change to this puller each found "the shape nobody asked
+      # about", and each cure was itself wrong about a neighbouring shape --
+      # the builder contract's definition of an under-specified surface. The
+      # matrix enumerates local-state x incoming-action x allowlist and diffs
+      # every cell against a REVIEWED baseline, so the next unexpected shape
+      # is a named cell instead of a discovery. A cell that moves in EITHER
+      # direction fails: a KNOWN_BAD that silently becomes OK is an unreviewed
+      # behaviour change, and this surface's whole history is unreviewed
+      # behaviour changes that looked like improvements.
+      - name: Pro main-puller corpus (the collision resolver)
+        if: steps.paths.outputs.relevant == 'true'
+        run: bash scripts/pro/test_pro_git_pull.sh
+
+      - name: Pro main-puller collision matrix stays on its reviewed baseline
+        if: steps.paths.outputs.relevant == 'true'
+        run: bash scripts/pro/spec_collision_matrix.sh
 
       # ------------------------------------------------------------------
       # IMMUNE CONTRACTS (2026-08-31, squad L / L08-PR1)

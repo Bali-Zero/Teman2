@@ -1,0 +1,76 @@
+clean	delete	keeplocal	rc=0	ff	absent	backup=no	OK
+clean	delete	ordinary	rc=0	ff	absent	backup=no	OK
+clean	modify	keeplocal	rc=0	ff	file:ORIGIN-V2	backup=no	OK
+clean	modify	ordinary	rc=0	ff	file:ORIGIN-V2	backup=no	OK
+clean	rename_away	keeplocal	rc=0	ff	absent	backup=no	OK
+clean	rename_away	ordinary	rc=0	ff	absent	backup=no	OK
+clean	rename_away_and_tree	keeplocal	rc=0	ff	dir	backup=no	OK
+clean	rename_away_and_tree	ordinary	rc=0	ff	dir	backup=no	OK
+clean	tree_at_path	keeplocal	rc=0	ff	dir	backup=no	OK
+clean	tree_at_path	ordinary	rc=0	ff	dir	backup=no	OK
+clean	typechange	keeplocal	rc=0	ff	symlink	backup=no	OK
+clean	typechange	ordinary	rc=0	ff	symlink	backup=no	OK
+dangling_symlink	delete	keeplocal	rc=1	stuck	symlink	backup=yes	KNOWN_BAD	an unresolved local symlink wedges every incoming action; no branch of the resolver handles a non-regular file
+dangling_symlink	delete	ordinary	rc=1	stuck	symlink	backup=yes	KNOWN_BAD	an unresolved local symlink wedges every incoming action; no branch of the resolver handles a non-regular file
+dangling_symlink	modify	keeplocal	rc=1	stuck	symlink	backup=yes	KNOWN_BAD	an unresolved local symlink wedges every incoming action; no branch of the resolver handles a non-regular file
+dangling_symlink	modify	ordinary	rc=1	stuck	symlink	backup=yes	KNOWN_BAD	an unresolved local symlink wedges every incoming action; no branch of the resolver handles a non-regular file
+dangling_symlink	rename_away	keeplocal	rc=1	stuck	symlink	backup=no	KNOWN_BAD	an unresolved local symlink wedges every incoming action; no branch of the resolver handles a non-regular file
+dangling_symlink	rename_away	ordinary	rc=1	stuck	symlink	backup=no	KNOWN_BAD	an unresolved local symlink wedges every incoming action; no branch of the resolver handles a non-regular file
+dangling_symlink	rename_away_and_tree	keeplocal	rc=1	stuck	symlink	backup=no	KNOWN_BAD	an unresolved local symlink wedges every incoming action; no branch of the resolver handles a non-regular file
+dangling_symlink	rename_away_and_tree	ordinary	rc=1	stuck	symlink	backup=no	KNOWN_BAD	an unresolved local symlink wedges every incoming action; no branch of the resolver handles a non-regular file
+dangling_symlink	tree_at_path	keeplocal	rc=1	stuck	symlink	backup=yes	KNOWN_BAD	an unresolved local symlink wedges every incoming action; no branch of the resolver handles a non-regular file
+dangling_symlink	tree_at_path	ordinary	rc=1	stuck	symlink	backup=yes	KNOWN_BAD	an unresolved local symlink wedges every incoming action; no branch of the resolver handles a non-regular file
+dangling_symlink	typechange	keeplocal	rc=1	stuck	symlink	backup=yes	KNOWN_BAD	an unresolved local symlink wedges every incoming action; no branch of the resolver handles a non-regular file
+dangling_symlink	typechange	ordinary	rc=1	stuck	symlink	backup=yes	KNOWN_BAD	an unresolved local symlink wedges every incoming action; no branch of the resolver handles a non-regular file
+del_staged	delete	keeplocal	rc=0	ff	absent	backup=no	OK
+del_staged	delete	ordinary	rc=0	ff	absent	backup=no	OK
+del_staged	modify	keeplocal	rc=1	stuck	absent	backup=no	OK	fail-safe: origin has new content for a path the machine deleted; abort keeps the deletion and mutates nothing
+del_staged	modify	ordinary	rc=1	stuck	absent	backup=no	OK	fail-safe: origin has new content for a path the machine deleted; abort keeps the deletion and mutates nothing
+del_staged	rename_away	keeplocal	rc=0	ff	absent	backup=no	OK
+del_staged	rename_away	ordinary	rc=0	ff	absent	backup=no	OK
+del_staged	rename_away_and_tree	keeplocal	rc=0	ff	dir	backup=no	OK
+del_staged	rename_away_and_tree	ordinary	rc=0	ff	dir	backup=no	OK
+del_staged	tree_at_path	keeplocal	rc=0	ff	dir	backup=no	OK
+del_staged	tree_at_path	ordinary	rc=0	ff	dir	backup=no	OK
+del_staged	typechange	keeplocal	rc=1	stuck	absent	backup=no	OK	fail-safe: origin has new content for a path the machine deleted; abort keeps the deletion and mutates nothing
+del_staged	typechange	ordinary	rc=1	stuck	absent	backup=no	OK	fail-safe: origin has new content for a path the machine deleted; abort keeps the deletion and mutates nothing
+del_unstaged	delete	keeplocal	rc=1	stuck	absent	backup=yes	KNOWN_BAD	nothing to collide with (the file is already gone) yet the tick wedges permanently on a cp of a source that does not exist
+del_unstaged	delete	ordinary	rc=1	stuck	absent	backup=yes	KNOWN_BAD	nothing to collide with (the file is already gone) yet the tick wedges permanently on a cp of a source that does not exist
+del_unstaged	modify	keeplocal	rc=1	stuck	absent	backup=yes	OK	fail-safe: origin has new content for a path the machine deleted; abort keeps the deletion and mutates nothing
+del_unstaged	modify	ordinary	rc=1	stuck	absent	backup=yes	OK	fail-safe: origin has new content for a path the machine deleted; abort keeps the deletion and mutates nothing
+del_unstaged	rename_away	keeplocal	rc=0	ff	absent	backup=no	OK
+del_unstaged	rename_away	ordinary	rc=0	ff	absent	backup=no	OK
+del_unstaged	rename_away_and_tree	keeplocal	rc=0	ff	dir	backup=no	OK
+del_unstaged	rename_away_and_tree	ordinary	rc=0	ff	dir	backup=no	OK
+del_unstaged	tree_at_path	keeplocal	rc=1	stuck	absent	backup=yes	KNOWN_BAD	nothing to collide with (the file is already gone) yet the tick wedges permanently on a cp of a source that does not exist
+del_unstaged	tree_at_path	ordinary	rc=1	stuck	absent	backup=yes	KNOWN_BAD	nothing to collide with (the file is already gone) yet the tick wedges permanently on a cp of a source that does not exist
+del_unstaged	typechange	keeplocal	rc=1	stuck	absent	backup=yes	OK	fail-safe: origin has new content for a path the machine deleted; abort keeps the deletion and mutates nothing
+del_unstaged	typechange	ordinary	rc=1	stuck	absent	backup=yes	OK	fail-safe: origin has new content for a path the machine deleted; abort keeps the deletion and mutates nothing
+dir_at_path	delete	keeplocal	rc=1	stuck	dir	backup=yes	KNOWN_BAD	a local DIRECTORY where a tracked file belongs wedges every incoming action; the resolver has no branch for a type mismatch
+dir_at_path	delete	ordinary	rc=1	stuck	dir	backup=yes	KNOWN_BAD	a local DIRECTORY where a tracked file belongs wedges every incoming action; the resolver has no branch for a type mismatch
+dir_at_path	modify	keeplocal	rc=1	stuck	dir	backup=yes	KNOWN_BAD	a local DIRECTORY where a tracked file belongs wedges every incoming action; the resolver has no branch for a type mismatch
+dir_at_path	modify	ordinary	rc=1	stuck	dir	backup=yes	KNOWN_BAD	a local DIRECTORY where a tracked file belongs wedges every incoming action; the resolver has no branch for a type mismatch
+dir_at_path	rename_away	keeplocal	rc=1	stuck	dir	backup=no	KNOWN_BAD	a local DIRECTORY where a tracked file belongs wedges every incoming action; the resolver has no branch for a type mismatch
+dir_at_path	rename_away	ordinary	rc=1	stuck	dir	backup=no	KNOWN_BAD	a local DIRECTORY where a tracked file belongs wedges every incoming action; the resolver has no branch for a type mismatch
+dir_at_path	rename_away_and_tree	keeplocal	rc=1	stuck	dir	backup=no	KNOWN_BAD	a local DIRECTORY where a tracked file belongs wedges every incoming action; the resolver has no branch for a type mismatch
+dir_at_path	rename_away_and_tree	ordinary	rc=1	stuck	dir	backup=no	KNOWN_BAD	a local DIRECTORY where a tracked file belongs wedges every incoming action; the resolver has no branch for a type mismatch
+dir_at_path	tree_at_path	keeplocal	rc=1	stuck	dir	backup=yes	KNOWN_BAD	a local DIRECTORY where a tracked file belongs wedges every incoming action; the resolver has no branch for a type mismatch
+dir_at_path	tree_at_path	ordinary	rc=1	stuck	dir	backup=yes	KNOWN_BAD	a local DIRECTORY where a tracked file belongs wedges every incoming action; the resolver has no branch for a type mismatch
+dir_at_path	typechange	keeplocal	rc=1	stuck	dir	backup=yes	KNOWN_BAD	a local DIRECTORY where a tracked file belongs wedges every incoming action; the resolver has no branch for a type mismatch
+dir_at_path	typechange	ordinary	rc=1	stuck	dir	backup=yes	KNOWN_BAD	a local DIRECTORY where a tracked file belongs wedges every incoming action; the resolver has no branch for a type mismatch
+modified	delete	keeplocal	rc=0	ff	file:PRO-LOCAL-EDIT	backup=yes	OK
+modified	delete	ordinary	rc=0	ff	absent	backup=yes	OK
+modified	modify	keeplocal	rc=0	ff	file:PRO-LOCAL-EDIT	backup=yes	OK
+modified	modify	ordinary	rc=0	ff	file:ORIGIN-V2	backup=yes	OK
+modified	rename_away	keeplocal	rc=1	stuck	file:PRO-LOCAL-EDIT	backup=no	KNOWN_BAD	THE MOTIVATING DEFECT: rename detection hides the source, the local mod is never classified as a collision, the ff aborts every tick forever
+modified	rename_away	ordinary	rc=1	stuck	file:PRO-LOCAL-EDIT	backup=no	KNOWN_BAD	THE MOTIVATING DEFECT: rename detection hides the source, the local mod is never classified as a collision, the ff aborts every tick forever
+modified	rename_away_and_tree	keeplocal	rc=1	stuck	file:PRO-LOCAL-EDIT	backup=no	KNOWN_BAD	THE MOTIVATING DEFECT: rename detection hides the source, the local mod is never classified as a collision, the ff aborts every tick forever
+modified	rename_away_and_tree	ordinary	rc=1	stuck	file:PRO-LOCAL-EDIT	backup=no	KNOWN_BAD	THE MOTIVATING DEFECT: rename detection hides the source, the local mod is never classified as a collision, the ff aborts every tick forever
+modified	tree_at_path	keeplocal	rc=0	ff	dir	backup=yes	OK
+modified	tree_at_path	ordinary	rc=0	ff	dir	backup=yes	OK
+modified	typechange	keeplocal	rc=0	ff	symlink	backup=yes	OK
+modified	typechange	ordinary	rc=0	ff	symlink	backup=yes	OK
+untracked	modify	keeplocal	rc=0	ff	file:ORIGIN-V2	backup=yes	OK
+untracked	modify	ordinary	rc=0	ff	file:ORIGIN-V2	backup=yes	OK
+untracked	tree_at_path	keeplocal	rc=1	stuck	file:UNTRACKED-LOCAL	backup=no	KNOWN_BAD	an untracked local FILE meeting an incoming TREE is neither backed up nor cleared, so the ff can never apply
+untracked	tree_at_path	ordinary	rc=1	stuck	file:UNTRACKED-LOCAL	backup=no	KNOWN_BAD	an untracked local FILE meeting an incoming TREE is neither backed up nor cleared, so the ff can never apply
