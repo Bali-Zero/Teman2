@@ -103,7 +103,7 @@ Companion: `scripts/outbox_prune.py` (daily, retention 30d), `~/.claude/agents/.
 
 **Trade-off**: 1 extra INSERT per event + 1 cron drainer + 1 DLQ + 1 pruner vs eventi persi su listener-disconnect (max_age_minutes=60 per `PG_CHANNEL_MAP` per Symbiosis Law 4). Costo accettabile su event critical (regulatory deltas, intel signals, CRM mutations).
 
-**Scar correlato**: `.claude/rules/cicatrix-scars.md` (EventBus PG LISTEN/NOTIFY entry — Phase 1 PR #342 shipped outbox.publish/acknowledge/replay).
+**Scar correlato**: `docs/scars/cicatrix-scars.md` (EventBus PG LISTEN/NOTIFY entry — Phase 1 PR #342 shipped outbox.publish/acknowledge/replay).
 
 ---
 
@@ -135,7 +135,7 @@ Due canali ridondanti (DB row + file) — se uno fail, l'altro tiene. Watchdog s
 
 **Trade-off**: 1 INSERT/scrittura per intervallo HEARTBEAT_INTERVAL_SEC + 1 cron watchdog vs silent-stuck daemon discovered hours later. Cap pratico: heartbeat ogni 30-60s per daemon critical, ogni 5-15min per batch jobs.
 
-**Scar correlato**: `.claude/rules/cicatrix-scars.md` (Backend prod down — drive_poll_service flood non-rilevato per 18min causa `Application startup complete` never logged — login healthcheck probe + `_lifespan_stuck_check` shipped post-incident).
+**Scar correlato**: `docs/scars/cicatrix-scars.md` (Backend prod down — drive_poll_service flood non-rilevato per 18min causa `Application startup complete` never logged — login healthcheck probe + `_lifespan_stuck_check` shipped post-incident).
 
 ---
 

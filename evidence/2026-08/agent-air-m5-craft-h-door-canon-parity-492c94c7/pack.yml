@@ -1,0 +1,276 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  docs/plans/2026-08-29-beyond-sota-craft-wave/01-INVENTORY-AND-WAVE-2-PLAN.md — SQUAD H lane 6
+  (L10-PR2b), added by the conductor on Zero GO 2026-08-31 00:50 WITA.
+
+lanes:
+  - lane: door-parity-ground
+    role: read
+    seat: >-
+      claude-sonnet-5 subagent, read-only. Verbatim extraction of five binding rule families across
+      the five door files, quoted with file:line. It is what set the block's contents, and it
+      showed the gap is not cosmetic — see brief.context.
+  - lane: door-parity-build
+    role: build
+    seat: >-
+      claude-opus-5 (conducting session, M5). Block authored and inserted programmatically into
+      four doors from ONE source so the copies cannot diverge at birth; probe written against the
+      SHARED _canon_blocks parser; qwen.md renamed to QWEN.md; corpus armed in
+      immune-enforcement.yml.
+  - lane: door-parity-gap-cover
+    role: build
+    seat: >-
+      codex gpt-5.6-terra (NON-ANTHROPIC build lane, --sandbox workspace-write in a scratch tree
+      with proprioception.py read-only to it). Handed the one gap the session had DECLARED rather
+      than covered — every path through _git_tracked_names returning None was untested — and told
+      the bar was that each test must die on the mutation it exists to catch. Delivered three,
+      named its own mutations, reported red-then-green.
+  - lane: door-parity-refute-kimi
+    role: review
+    seat: >-
+      kimi-code/k3, blind on the diff, no brief and no narrative. REFUTED — 10+ findings, 1
+      BLOCKER.
+  - lane: door-parity-refute-codex
+    role: review
+    seat: >-
+      codex gpt-5.6-sol at xhigh, --sandbox read-only, same blind diff. REFUTED — 17 findings, 2
+      declared BLOCKER.
+  - lane: door-parity-grade
+    role: review
+    seat: >-
+      claude-opus-5 (session grading work it did NOT author — the Codex build lane's tests — by
+      re-running its mutations rather than reading its report).
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  Three vendors and four models. The build lane that covered the declared gap is non-Anthropic and
+  really ran (its diff is in this PR); the two refuters are cross-family and were each handed the
+  diff alone. No seat_override anywhere.
+
+diff:
+  files: 17
+  net_lines: 3288
+  measured_at: >-
+    counted against origin/main as the last action before this commit, so it INCLUDES the parent
+    branch's files — this PR is stacked and is not independently mergeable until the parent lands.
+    Its own contribution is the eight non-evidence files listed in the diff. Retargeting the base
+    to the parent branch WOULD have made the harness resolve one pack instead of two, and was
+    tried; the repo refuses it, correctly: `Base branch protected` reports that no ruleset covers
+    `agent/*`, and that 52 PRs merged into uncovered integration branches with zero required
+    checks in the 2026-08-25/26 window. A stacked PR is not worth teaching the repo to accept an
+    ungated base, so the ambiguous-pack red stands until the parent merges — it is self-explaining
+    and it disappears on its own.
+
+stacked_on: >-
+  agent/air-m5/craft-h/canon-comparator2 (PR #5353). NOT a convenience: the parser this probe
+  compares with, `_canon_blocks`, ships there and is not on main (measured: 0 occurrences in
+  origin/main's scripts/proprioception.py). Writing a second parser for the doors is exactly the
+  defect #5353's own test_publisher_and_probe_share_one_definition_of_a_block exists to prevent —
+  two implementations of "what is a canon block" drift, and the drift reads as doctrine drift.
+  MERGE #5353 FIRST.
+
+receipts:
+  - claim: >-
+      The gap this lane closes was measured on origin/main before anything was written, not
+      assumed from the amendment
+    cmd: >-
+      grep -c 'CANON:' CLAUDE.md AGENTS.md GEMINI.md ; git ls-tree --name-only origin/main | grep -i '^qwen'
+    result: >-
+      0, 0, 0 — and `qwen.md` only. No door declared any canon, and the Qwen seat's door did not
+      exist under the name its CLI opens.
+    exit: 0
+    ts: 2026-08-31T05:55Z
+    seat: session (M5)
+  - claim: >-
+      QWEN.md and qwen.md were THE SAME FILE on this machine — the shell cannot be used to decide
+      whether that door exists
+    cmd: stat -f '%i %N' QWEN.md qwen.md
+    result: >-
+      343120045 for both. APFS is case-insensitive by default, so `[ -f QWEN.md ]`, `ls` and `wc`
+      all answered for the lowercase file while git's index — and any Linux runner — had only
+      `qwen.md`. This is why the probe asks git for existence and why the rename is a rename.
+    exit: 0
+    ts: 2026-08-31T05:52Z
+    seat: session (M5)
+  - claim: The bite — four doors now carry the same block, and the probe says so
+    cmd: python3 -c "…; pp.probe_door_canon_parity(Path('.'), {}, 15)"
+    result: >-
+      RECONCILED, 0 findings, "1 canon block(s) identical across CLAUDE.md and 3 other door(s):
+      AGENTS.md, GEMINI.md, QWEN.md" — where the same call before the block was inserted returned
+      UNPROBEABLE naming the absence.
+    exit: 0
+    ts: 2026-08-31T06:15Z
+    seat: session (M5)
+  - claim: >-
+      THE ARMING IS PROVEN BY MUTATION. Deleting this PR's sentinel path from
+      immune-enforcement.yml turns the trigger-symmetry check RED
+    cmd: >-
+      sed -i '' '/test_door_canon_parity.py|\\/d' .github/workflows/immune-enforcement.yml &&
+      pytest scripts/tests/test_immune_enforcement_trigger_symmetry.py ; restore
+    result: >-
+      "1 failed, 11 passed" on test_every_looped_test_is_also_a_trigger_path, then 12 passed once
+      restored. The workflow's own paths list carries the four door files too, so a PR that edits
+      only a door still runs this gate.
+    exit: 1
+    ts: 2026-08-31T06:20Z
+    seat: session (M5)
+  - claim: >-
+      Every load-bearing branch of the probe is covered — measured by mutation, not by the suite
+      being green
+    cmd: >-
+      PYTHONDONTWRITEBYTECODE=1 pytest scripts/tests/test_door_canon_parity.py -p no:cacheprovider,
+      once per mutant: toplevel check disabled; git-failure returns an empty set; git-failure falls
+      back to the filesystem; the read guard returns "" instead of None; the degenerate-door-list
+      guard disabled; the reference dropped from the git query; the comparison made one-way
+    result: >-
+      1 / 3 / 2 / 2 / 1 / 1 / 1 tests died respectively, and 22 pass restored. Bytecode writing off
+      and pytest's cache off throughout (W121).
+    exit: 0
+    ts: 2026-08-31T07:05Z
+    seat: session (M5)
+  - claim: >-
+      One mutant appeared to SURVIVE and the survival was my own measurement error, not a hole —
+      recorded because the error is more instructive than the result
+    cmd: >-
+      the read-guard mutation anchored on `except OSError:\n        return None`, which matches the
+      FIRST of FOUR identical sites in proprioception.py (lines 130, 302, 534, 1406) and patched an
+      unrelated one; re-run with an anchor including the read_text line
+    result: >-
+      "20 passed" (false survivor) became "2 failed" once the anchor was unambiguous. A mutation
+      applied to the wrong site reports a corpus hole that does not exist — the same
+      form-instead-of-entity failure the guards in this repo keep being bitten by, committed by the
+      instrument measuring them.
+    exit: 0
+    ts: 2026-08-31T07:00Z
+    seat: session (M5)
+  - claim: >-
+      The build lane's three tests were GRADED, not trusted — its own mutations re-run here rather
+      than its report accepted
+    cmd: >-
+      mutate _git_tracked_names to return set() on git failure, then to return the filesystem
+      listing, running the ported tests each time
+    result: >-
+      3 and 2 of its tests died respectively. The filesystem-fallback mutant is the one that
+      matters: it is exactly the refactor that would silently reopen the case hole this lane
+      exists to close, and before the build lane no test could see it.
+    exit: 0
+    ts: 2026-08-31T07:10Z
+    seat: session (M5)
+  - claim: >-
+      The two refuters' findings were reproduced on disk before being cured — the reviewer's word
+      was the lead, the probe was the evidence
+    cmd: >-
+      a scratch git repo with four identical doors, then: rm AGENTS.md ; probe with a subdirectory
+      as root ; probe with doors=["CLAUDE.md"]
+    result: >-
+      FileNotFoundError uncaught (the BLOCKER — one deleted door would have killed the whole
+      proprioception run, every OTHER boundary going dark with it) · UNPROBEABLE, so that finding
+      was already handled for a SUBDIRECTORY though not for an enclosing decoy repo · "RECONCILED,
+      0, 1 canon block(s) identical across CLAUDE.md and 0 other door(s)" — a guard reporting green
+      while comparing a file to itself.
+    exit: 0
+    ts: 2026-08-31T06:40Z
+    seat: session (M5)
+  - claim: The repo's own gates accept this diff
+    cmd: >-
+      pytest on the door, canon, trigger-symmetry and six proprioception corpora ;
+      proprioception.py --selftest ; actionlint ; root_guard.py --check ;
+      lint_test_reward_hacking.py ; ruff check and format
+    result: >-
+      179 passed · SELFTEST OK (17 probes) · actionlint clean · root_guard exit 0, and exit 1 when
+      QWEN.md is removed from its allowlist, so that edit was required rather than cosmetic ·
+      anti-reward-hacking clean · ruff clean on the new file, with main's 3 pre-existing
+      proprioception errors unchanged at the same lines.
+    exit: 0
+    ts: 2026-08-31T07:15Z
+    seat: session (M5)
+
+dissent:
+  - seat: codex gpt-5.6-sol (finding 1, declared BLOCKER)
+    status: RETRACTED
+    objection: >-
+      REFUTED, and the cause was mine. It reported that the diff modifies only CLAUDE.md and copies
+      the block into no other door. That is true of the diff I HANDED IT — I excluded AGENTS.md,
+      GEMINI.md and QWEN.md from the refutation input to keep it under 30 KB, and then asked a
+      question those files answer. A refuter fed a partial diff returns a confident BLOCKER about
+      the part you withheld. Recorded rather than quietly dropped, because the next session will be
+      tempted to trim a diff the same way.
+  - seat: codex gpt-5.6-sol (finding 2, declared BLOCKER) and kimi-code/k3
+    status: CONFIRMED
+    objection: >-
+      ACCEPTED AS A LIMIT, not cured, and it is the deepest thing either seat said. An identical
+      tracked QWEN.md proves a filename agrees; it does not prove the installed Qwen CLI, in its
+      real invocation directory, with its real config, LOADS it. A CLI pointed elsewhere yields
+      RECONCILED over a dead seat — family #2 at the top of this lane rather than inside it.
+      Closing it needs a liveness probe: a unique canary in each door, read back through each CLI's
+      real resolution path. That is a separate lane with its own blast radius (it runs four
+      external CLIs), and shipping a parity probe is not the same as claiming the doors are read.
+      The probe's own name says parity, and its evidence line says "identical across", never "in
+      force".
+  - seat: codex gpt-5.6-sol (findings 3, 9, 11)
+    status: CONFIRMED
+    objection: >-
+      ACCEPTED AS LIMITS. (3) Text AFTER the block can contradict it and still hash equal — the
+      probe compares the marked region, it does not adjudicate a door's whole meaning. (9)
+      errors="replace" collapses two different invalid byte sequences to the same U+FFFD run, and
+      text-mode reading erases CRLF. (11) A paragraph reflowed at a different column hashes
+      unequal though it reads the same. All three are properties of `_canon_blocks`, which is
+      SHARED with the fleet comparator and the publisher; changing it here would change all three
+      organs, so it is named rather than quietly widened.
+  - seat: codex gpt-5.6-sol (finding 10)
+    status: CONFIRMED
+    objection: >-
+      ACCEPTED and the test changed. Two trailing spaces are a Markdown hard line break, so the
+      normaliser erases a difference a renderer honours — and my innocence fixture used exactly
+      that, blessing it. Rewritten to use CRLF, which is genuinely insignificant, with the
+      trailing-space cost written into the docstring so nobody reads the fixture as a ruling.
+  - seat: codex gpt-5.6-sol (finding 12)
+    status: CONFIRMED
+    objection: >-
+      ACCEPTED and the DOCTRINE changed, not the code. The ban was written as a spelling —
+      "never `from anthropic import Anthropic`" — which an alias, a wrapper or a Bedrock route
+      satisfies while reaching the same paid endpoint. The block now names the ENTITY (a paid
+      per-token Anthropic endpoint) and keeps the two literals as the shapes that usually carry
+      it. This is the repo's own family-#3 lesson applied to a rule ABOUT guards.
+  - seat: codex gpt-5.6-sol (finding 13)
+    status: CONFIRMED
+    objection: >-
+      ACCEPTED and the test rebuilt. The case fixture created an uppercase file and left it
+      untracked, which a generic tracked-file check passes without ever exercising case. It now
+      builds the real disease state — the LOWERCASE name in git, the uppercase lookup succeeding
+      through the filesystem — and asserts the premise (`_git_tracked_names` returns exactly
+      {"qwen.md"}), so on a case-SENSITIVE volume it fails loudly instead of passing for the wrong
+      reason.
+  - seat: codex gpt-5.6-sol (finding 17) and kimi-code/k3 (finding 7)
+    status: PLAUSIBLE
+    objection: >-
+      SPLIT. The root_guard half is REFUTED by measurement: `.github/workflows/root-guard.yml:51`
+      runs `root_guard.py --check`, and reverting QWEN.md in the allowlist makes it exit 1 — an
+      existing job already catches it. The nested-door half is ACCEPTED as a limit: a conflicting
+      AGENTS.md deeper in the tree would change a subtree's instructions without touching parity.
+      The arming-evaporates-on-deletion half is ACCEPTED as PRE-EXISTING: the `[ -f "$t" ]` guard
+      is the workflow's own documented choice for the window before a lane's PR merges, it is not
+      introduced here, and narrowing it is a change to a shared gate rather than to this lane.
+  - seat: kimi-code/k3 (finding 2, index vs HEAD)
+    status: PLAUSIBLE
+    objection: >-
+      OVERRULED WITH REASONS, and the reasons are in the probe's docstring rather than here alone.
+      It argued existence should come from HEAD, since the property that matters is what a fresh
+      clone gets. The counter-argument is that a session editing a door in THIS checkout is
+      precisely the reader who most needs the verdict, and a HEAD-based probe would report parity
+      on a tree where parity is already broken. The costs of the index choice are stated in the
+      docstring — a staged-uncommitted door reads present, a `git rm --cached` door reads absent —
+      so the trade is visible rather than assumed.
+  - seat: kimi-code/k3 (finding 8) and codex (finding 8, git absence)
+    status: RETRACTED
+    objection: >-
+      REFUTED by measurement. `scripts/proprioception.py` IS in the workflow's trigger path list
+      (line 81) — Kimi correctly flagged its own inability to see that from the diff window rather
+      than asserting it, which is why the finding cost nothing to check.
+
+pii_scan: clean
+pii_scan_note: >-
+  Nothing here transcribes client data. The probe reads four repo-tracked doctrine files and emits
+  sha256 digests and block ids; no path leaves the repository. The doors' own content is doctrine,
+  not client material.

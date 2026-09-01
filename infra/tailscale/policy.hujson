@@ -178,9 +178,10 @@
     //         tunnel (scripts/intake_qwen_autocatalog_worker.sh forwards 11434 over ssh), and
     //         infra/launchagents/install_fly_pg_tunnel.sh reading Pro's own keychain.
     //   6379  Redis EventBus, password-gated since 2026-06-29 (infra/eventbus/publisher.py).
-    //   11434 Ollama on Mini — WR2 image VLM scorer
-    //         (infra/launchagents/com.balizero.wr2.image-generator.plist) and the MOS+
-    //         compression worker (scripts/mos-plus-compression-worker.py).
+    //   11434 Ollama on Mini — WR2 image VLM scorer (retired 2026-09-01, WR2 runs only on
+    //         command: infra/launchagents/com.balizero.wr2.image-generator.plist.disabled-2026-09-01-wr2-runs-only-on-command)
+    //         and the MOS+ compression worker (scripts/mos-plus-compression-worker.py), which
+    //         still needs this port open.
     //   8990  Mata Garuda KG query API (infra/launchagents/com.matagaruda.kg-query-api.plist,
     //         consumed by apps/nuzantara-mcp/nuzantara_mcp/tools/kg_intel.py).
     {

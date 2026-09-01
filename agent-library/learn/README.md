@@ -10,7 +10,7 @@ This slice implements ONLY the proposal generator. There is **no code path** her
 
 ## What `lesson_harvester.py` does
 
-Reads the cicatrix scar ledger (`.claude/rules/cicatrix-scars.md`) — the rich, already-abundant **objective** signal that breaks the starvation cascade (§3.3) — and classifies each scar:
+Reads the cicatrix scar ledger (`docs/scars/cicatrix-scars.md`) — the rich, already-abundant **objective** signal that breaks the starvation cascade (§3.3) — and classifies each scar:
 
 | bucket | meaning | gate |
 |---|---|---|

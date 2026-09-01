@@ -90,7 +90,7 @@ phase("Sweep");
 const SWEEPS = [
   {
     key: "scars",
-    prompt: `Read .claude/rules/cicatrix-superscar.md and the tail of .claude/rules/cicatrix-scars.md (last ~${days} days of entries), then read .claude/skills/modus/SKILL.md. Question: which recent scars would the CURRENT modus loop NOT have prevented — which stage or probe was missing or too weak? Propose only changes anchored to a specific scar.`,
+    prompt: `Read .claude/rules/cicatrix-superscar.md and the tail of docs/scars/cicatrix-scars.md (last ~${days} days of entries), then read .claude/skills/modus/SKILL.md. Question: which recent scars would the CURRENT modus loop NOT have prevented — which stage or probe was missing or too weak? Propose only changes anchored to a specific scar.`,
   },
   {
     key: "loop-misfires",

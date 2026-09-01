@@ -9,6 +9,32 @@ const originalPrintDescriptor = Object.getOwnPropertyDescriptor(
   "print",
 );
 
+describe("SavePlanBar resting-state boundary (WCAG 2.2 SC 1.4.11)", () => {
+  // Regression guard (2026-09-01): Save/Copy-Link/Print share `buttonStyle`,
+  // whose border is their ONLY resting-state boundary (transparent fill).
+  // --color-border-subtle composites to 1.21:1 on carta / 1.31:1 on white —
+  // decorative-only per merahPutihDayVars.ts's own comment, and below the
+  // 3:1 non-text UI floor (WCAG 1.4.11). --border-strong (#7a8093) measures
+  // 3.64:1 on carta / 3.94:1 on white — the same token StudioApp.tsx's
+  // navButtonStyle already uses for its Back button boundary. The "Clear
+  // saved plan" button is deliberately excluded: it owns a separate
+  // treatment via CLEAR_BUTTON_STYLES, pinned by its own tests below.
+  it("gives Save, Copy-Link and Print an AA-clearing resting border, never the decorative hairline", () => {
+    render(<SavePlanBar plan={emptyPlan()} onClear={vi.fn()} />);
+
+    for (const name of [
+      "Save on this device",
+      "Copy plan link",
+      "Print / Save as PDF",
+    ]) {
+      const button = screen.getByRole("button", { name });
+      const inlineStyle = button.getAttribute("style") ?? "";
+      expect(inlineStyle).toContain("border: 1px solid var(--border-strong)");
+      expect(inlineStyle).not.toContain("--color-border-subtle");
+    }
+  });
+});
+
 describe("SavePlanBar print action", () => {
   afterEach(() => {
     vi.restoreAllMocks();

@@ -227,6 +227,77 @@ if [ "$ACTIONABLE" -eq 0 ]; then
     exit 0
 fi
 
+# ---- G11_memoize: skip the LLM spawn when the organ-state fingerprint is
+# unchanged AND the last verdict was "incurable" (D-004, ~/.tokenaudit/DECISIONS.md
+# — measured 5/9 ticks in T3 spawning an identical $10-budget session against an
+# already-incurable, unchanged organ set). Fail-open toward spawning: any error
+# in the memo tooling below degrades to "spawn anyway", never to a silently
+# skipped cure (#2 Esiste≠Armato) — MEMO_RC not in {0,3} falls through untouched.
+export _HM_REG_OUT="$REG_OUT"
+export _HM_PROP_JSON="$PROP_JSON"
+export _HM_LHF_OUT="$LHF_CHECK_OUT"
+export _HM_NEW_DEAD="${NEW_DEAD:-}"
+export _HM_REASONS="$REASONS"
+RECEPTOR_STATE_JSON=$(python3 - <<'PY'
+import json, os
+
+def _load(name):
+    raw = os.environ.get(name, "")
+    try:
+        return json.loads(raw) if raw.strip() else {}
+    except Exception:
+        return {}
+
+reg = _load("_HM_REG_OUT")
+prop = _load("_HM_PROP_JSON")
+lhf_out = os.environ.get("_HM_LHF_OUT", "")
+new_dead_raw = os.environ.get("_HM_NEW_DEAD", "")
+reasons = os.environ.get("_HM_REASONS", "")
+
+dead_organs = reg.get("dead") if isinstance(reg, dict) else []
+if not isinstance(dead_organs, list):
+    dead_organs = []
+
+diverged_probes = []
+for p in (prop.get("probes") if isinstance(prop, dict) else []) or []:
+    if not isinstance(p, dict):
+        continue
+    verdict = str(p.get("status") or p.get("verdict") or "").upper()
+    if verdict == "DIVERGED":
+        diverged_probes.append(str(p.get("id", "")))
+
+# lint_home_fork.py --check prints breach lines as "  - <text>"; a stale-checkout
+# notice ("  ~ <text>") is NOT a breach and must not perturb the fingerprint.
+drifted_pairs = [
+    ln.strip()[2:].strip()
+    for ln in lhf_out.splitlines()
+    if ln.strip().startswith("- ")
+]
+
+arsenal_new_dead = [t for t in new_dead_raw.split(",") if t]
+
+print(json.dumps({
+    "dead_organs": dead_organs,
+    "diverged_probes": diverged_probes,
+    "drifted_pairs": drifted_pairs,
+    "arsenal_new_dead": arsenal_new_dead,
+    "reasons": reasons,
+}))
+PY
+)
+FINGERPRINT=$(printf '%s' "$RECEPTOR_STATE_JSON" | python3 scripts/healer_memo.py fingerprint 2>>"$LOG")
+MEMO_STATE="$HOME/.organism/healer-pro/memo.json"
+MEMO_RC=0
+MEMO_OUT=$(python3 scripts/healer_memo.py check --state "$MEMO_STATE" --fingerprint "$FINGERPRINT" 2>&1) || MEMO_RC=$?
+log "healer_memo check (rc=$MEMO_RC): $MEMO_OUT"
+if [ "$MEMO_RC" -eq 3 ]; then
+    log "memoized: same organ-state fingerprint as last spawn, last verdict incurable — LLM spawn skipped ($MEMO_OUT)"
+    heartbeat "ok" "memoized: skipped LLM spawn ($MEMO_OUT)"
+    exit 0
+elif [ "$MEMO_RC" -ne 0 ]; then
+    log "healer_memo check errored (rc=$MEMO_RC) — fail-open, spawning anyway: $MEMO_OUT"
+fi
+
 log "ACTIONABLE: ${REASONS}— spawning healer-pro session (model $MODEL, cap ${MAX_WALL_S}s)"
 heartbeat "running" "spawned: ${REASONS}"
 
@@ -247,6 +318,7 @@ if [ ! -x "$CASCADE_BIN" ]; then
 fi
 
 SESSION_LOG="$LOG_DIR/session-$(date +%Y%m%d-%H%M%S).log"
+SPAWN_TS_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 export HEALER_RUN=1
 "$CASCADE_BIN" "$(cat "$MANDATE")
 
@@ -287,6 +359,23 @@ wait "$WPID" 2>/dev/null || true
 
 TAIL=$(tail -c 600 "$SESSION_LOG" 2>/dev/null | tr '\n' ' ' | tr -s ' ')
 log "session exit=$RC — tail: ${TAIL:0:300}"
+
+# G11_memoize (continued): record this tick's outcome so the NEXT tick can
+# memoize against it. The verdict comes from the healer's own escalation
+# write (shared/escalations_pro.jsonl), never from $RC — a session can exit 0
+# after concluding "0/N curable" (that IS success: the diagnosis is correct).
+MEMO_VERDICT=$(python3 scripts/healer_memo.py verdict-from-escalations \
+    --file shared/escalations_pro.jsonl --since "$SPAWN_TS_ISO" 2>>"$LOG")
+[ -n "$MEMO_VERDICT" ] || MEMO_VERDICT="unknown"
+if [ -n "${FINGERPRINT:-}" ]; then
+    python3 scripts/healer_memo.py record --state "$MEMO_STATE" \
+        --fingerprint "$FINGERPRINT" --verdict "$MEMO_VERDICT" \
+        --spawned-at "$SPAWN_TS_ISO" >>"$LOG" 2>&1 \
+        || log "WARN: healer_memo record failed (fingerprint=${FINGERPRINT:0:12}... verdict=$MEMO_VERDICT)"
+else
+    log "WARN: no fingerprint computed this tick — memo not recorded"
+fi
+
 if [ $RC -eq 0 ]; then
     heartbeat "ok" "session done: ${REASONS}"
     telegram digest "healer-pro:run-complete" "🩹 HEALER-PRO: run completato su ${REASONS}. Esito: ${TAIL:0:400}"

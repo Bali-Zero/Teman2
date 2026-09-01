@@ -388,7 +388,13 @@ def _decompose_js(text: str) -> tuple[str, str, list[Span]]:
     return code_s, bare_s, spans
 
 
-_CSS_STRING_RE = re.compile(r"""(['"])((?:\\.|(?!\1).)*)\1""", re.S)
+# The second branch excludes the backslash DELIBERATELY. With `(?!\1).` there, a
+# backslash could be consumed either by `\\.` or by that branch, so every escaped
+# character doubled the number of parses the engine had to try: on an unterminated
+# string of 38 `\a` pairs the match never returned (CodeQL py/redos, found on the PR
+# that shipped this file). Excluding `\\` makes the alternation unambiguous and the
+# scan linear, without changing what it matches — `\\.` already owns every escape.
+_CSS_STRING_RE = re.compile(r"""(['"])((?:\\.|(?!\1)[^\\])*)\1""", re.S)
 _HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
 
 

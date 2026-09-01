@@ -1,0 +1,548 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  '"Zero''s ruling of 2026-09-01, verbatim and entire: \"1 lascia ari\" — leave Ari''s line on
+  the price list. It reverses PR#5418 (merged 2026-08-31), which resolved a real two-literals-drifted
+  defect onto the wrong one of the two candidate numbers. Governing lifecycle: CLAUDE.md §2 ship-ownership."'
+lanes:
+  - lane: wa-contact-ari-build
+    role: build
+    seat:
+      claude-opus-5 xhigh (conducting session, M5 — traced why PR#5418 chose as it did, named the distinction
+      in config, rewrote the tripwire that caused the defect, widened the Qdrant patch script's stale list,
+      and authored this pack)
+  - lane: wa-contact-ari-sweep
+    role: review
+    seat:
+      claude-sonnet-5 (Explore subagent, dispatched read-only and WITHOUT any conclusion to confirm
+      — asked to classify every WhatsApp-number emission in the repo into client-facing / inbound-identity
+      / test / doc, and to answer independently whether generate.py reads the contact from the JSON or from
+      CANONICAL_CONTACT. Its answer to that question corrected my working assumption; its census is what
+      established that eleven further client-facing surfaces carry the same defect)
+  - lane: wa-contact-ari-refute
+    role: review
+    seat:
+      claude-sonnet-5 (adversarial spalla, dispatched on the DIFF with instructions to REJECT if it
+      could substantiate a defect, and pointed at the tripwire rewrite specifically — the artefact most
+      likely to be wrong, since a tripwire is what caused the defect being reversed)
+  - lane: wa-contact-ari-council
+    role: review
+    seat:
+      codex-gpt-5.6-sol at xhigh, read-only sandbox (cross-family). Dispatched on the DIFF with the
+      two-number context and no conclusions to confirm. Returned REJECT with ten numbered findings; six
+      of them changed this diff. The second council seat, kimi-code/k3, DID NOT RUN — 403 provider.auth_error,
+      weekly quota exhausted — so this council is one seat deep, not two. Recorded ok:false in journal.jsonl
+      rather than quietly dropped.
+  - lane: wa-contact-ari-refute-2
+    role: review
+    seat:
+      claude-sonnet-5 (second adversarial spalla, dispatched on the FIXES rather than the original diff
+      — told to attack each repair specifically, since a cure is exactly where this PR has already been
+      wrong once). Returned SHIP-WITH-FIXES with three findings that changed the diff again.
+seat_diversity: not_applicable
+seat_diversity_note:
+  '"All three lanes are Anthropic seats, declared rather than left to read as satisfied.
+  Every load-bearing question in this diff is settled by a probe with a binary answer — does the guard
+  go red when mutated, does the number appear at this file:line, does the suite pass — not by a judgment
+  where divergent priors could change the outcome. The one genuinely contestable question (should the
+  eleven out-of-scope surfaces move too?) is explicitly NOT decided here: it is a Legge 5 business decision,
+  ledgered to Zero, and no cross-family seat is entitled to settle it either. The two external seats that
+  found the ORIGINAL defect on 2026-08-31 (codex-gpt-5.6-sol and kimi-code/k3) were right about the mechanics
+  and are not re-convened: their finding stands and is preserved by this diff. What they could not know
+  is which number a human answers."'
+diff:
+  net_lines:
+    "Sixteen files, measured from the merge-base with `git diff --cached --numstat $(git merge-base
+    HEAD origin/main)`, never two-dot (W102). The line counts are deliberately not restated here: this
+    pack is itself one of the files, so any figure written into it is stale the moment it is written —
+    run the command. Two of the files are this pack and its brief; a further two are the council journal
+    and the modus ledger. The bulk of the rest is test and comment rather than behaviour: the AST guard
+    on the pricing fallbacks, the cross-file agreement guard, the Qdrant patch script's line-anchored
+    rewrite with its two regression tests, the QR-provenance assertion, and a ruff-format normalisation
+    restoring one test file to the parity it had at base. Zero migrations, zero workflows, zero frontend."
+  behaviour_change:
+    The client-facing WhatsApp number on the price list, in both pricing tools' degraded-path
+    fallback, and in the Qdrant contact-patch script's target value changes from the bot's inbound number
+    (+62 821 3465 159) back to Ari's line (+62 821 3454 721). `settings.SUPPORT_WHATSAPP` and every inbound
+    webhook path are untouched. One dead module constant is deleted. No schema, no endpoint, no request/response
+    shape changes.
+receipts:
+  - claim:
+      Deterministic gear floor recomputed from THIS PR's actual changed-file list is 3, matching the
+      declared gear — driven by config.py alone; every other path in the diff floors at 1
+    cmd:
+      git diff --cached --name-only $(git merge-base HEAD origin/main) > /tmp/wa-changed.txt && python3
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/wa-changed.txt, then the same
+      command once per file
+    result: 3 overall; apps/backend-rag/backend/app/core/config.py -> 3, all 12 other paths -> 1
+    exit: 0
+    ts: 2026-09-01T04:05Z
+    seat: session (M5)
+  - claim:
+      THE CENTRAL RECEIPT — the assertion this diff removes is the one that caused the defect. Before
+      the rewrite, the tripwire demanded the sheet's contact equal settings.SUPPORT_WHATSAPP, so Ari's number
+      FAILED it
+    cmd:
+      pytest backend/tests/test_data_invariant_tripwires.py -k retired_contact, with the sheet set to
+      Ari's line and the assertion still in its pre-diff form
+    result:
+      '"AssertionError: bali_zero_official_prices_2026.json contact.whatsapp=''+62 821 3454 721''
+      does not match settings.SUPPORT_WHATSAPP=''+62 821 3465 159'' — the owner''s ruling failing a test
+      that called the bot''s inbound number ''the Meta-verified Bali Zero number''"'
+    exit: 1
+    ts: 2026-09-01T03:12Z
+    seat: session (M5)
+  - claim:
+      The replacement assertion (contact == CANONICAL_CONTACT) catches drift in BOTH directions, so
+      the coverage the old form had against a half-edited contact block is not lost
+    cmd:
+      two mutations, each restored — (A) sheet `whatsapp` reverted to the bot number while `wa_link`
+      stays on Ari, i.e. exactly the 2026-08-31 defect shape; (B) the generator's _CANONICAL_WHATSAPP_DIGITS
+      changed while the sheet stays put
+    result: A -> FAILED, B -> FAILED, restored -> 10 passed
+    exit: 1 / 1 / 0
+    ts: 2026-09-01T03:20Z
+    seat: session (M5)
+  - claim:
+      The two new tripwires are guilt-tested, not just green — each goes red under the specific regression
+      it exists to catch
+    cmd:
+      mutate settings.CLIENT_CONTACT_WHATSAPP to equal SUPPORT_WHATSAPP; separately re-hardcode the number
+      in pricing_plugin.py's fallback_contact; restore both
+    result:
+      '"collapse -> FAILED test_client_contact_whatsapp_matches_the_price_list_generator; re-hardcode
+      -> FAILED test_pricing_fallback_contacts_do_not_hardcode_a_whatsapp_number; restored -> 2 passed"'
+    exit: 1 / 1 / 0
+    ts: 2026-09-01T04:30Z
+    seat: session (M5)
+  - claim:
+      The Qdrant patch script's stale list is pinned by CONTENT, not only exercised by parametrised
+      guilt tests — because deleting an entry from the list also deletes its own test case
+    cmd:
+      mutate — (A) drop '+62 821 3465 159' from STALE_WHATSAPP_NUMBERS; (B) add the canonical number
+      to the stale list, creating a tail-chase; restore
+    result:
+      '"A -> FAILED test_every_historically_wrong_number_is_still_listed_as_stale (and the parametrised
+      guilt tests stayed green, which is precisely why that assertion exists); B -> FAILED test_canonical_number_is_not_itself_listed_as_stale
+      plus one idempotency case; restored -> 10 passed"'
+    exit: 1 / 1 / 0
+    ts: 2026-09-01T04:45Z
+    seat: session (M5)
+  - claim:
+      A stale __pycache__ silently poisoned one mutation cycle — recorded because the first 'restored'
+      reading was FALSE (W121), and every mutation above was re-run clean afterwards
+    cmd:
+      the digit mutation showed 6 failed; after restore the suite STILL showed 6 failed with the file
+      on disk correct. `find scripts/pricelist_2026 -name __pycache__ -exec rm -rf {} +` then re-run, and
+      every subsequent probe ran with PYTHONDONTWRITEBYTECODE=1 -p no:cacheprovider
+    result: post-clear 17 passed; mutation re-run clean -> 6 failed, restore -> 17 passed
+    exit: 0
+    ts: 2026-09-01T04:00Z
+    seat: session (M5)
+  - claim:
+      The removed `WHATSAPP_NUMBER` constant in visa_oracle_service.py was genuinely dead — no importer
+      breaks
+    cmd:
+      grep -rn "WHATSAPP_NUMBER" over the whole repo excluding .git/node_modules/.worktrees, then import
+      the module under the backend venv
+    result:
+      '"the only hits are an unrelated HELD_NO_WHATSAPP_NUMBER sentinel in scripts/s7_yield_dispatch.py
+      and this diff''s own STALE_WHATSAPP_NUMBERS; module imports, WHATSAPP_BASE_URL = https://wa.me/628213454721"'
+    exit: 0
+    ts: 2026-09-01T04:55Z
+    seat: session (M5)
+  - claim: The sheet and its generator agree, and the frontend mirror needs no change
+    cmd:
+      python3 comparing the sheet's metadata.contact against CANONICAL_CONTACT, then scripts/sync_frontend_prices.py
+      --check
+    result: '"match: True; ''OK: apps/mouth/data/bali-zero-prices.json is in sync with PricingTool canonical''"'
+    exit: 0
+    ts: 2026-09-01T03:35Z
+    seat: session (M5)
+  - claim:
+      The census of every WhatsApp-number emission in the repo — the basis for the scope decision,
+      and independently spot-verified rather than taken on the subagent's word (W65/W90)
+    cmd:
+      Explore subagent sweep, then my own re-grep of the claims I acted on — visa_oracle_service.py:125-140
+      read directly, and grep -rn for the bot number across the tree
+    result:
+      '"11 client-facing surfaces still on the bot''s number (all outside the price list), 2 inside
+      it (both cured here), and ~20 surfaces already on Ari''s line including the whole apps/mouth frontend
+      and packages/core deeplink canon. The subagent also corrected my working assumption about generate.py:
+      it reads the contact from the JSON, but only after schema.validate() has proven the JSON equals CANONICAL_CONTACT"'
+    exit: 0
+    ts: 2026-09-01T04:20Z
+    seat: claude-sonnet-5 (Explore, read-only) + session re-verification
+  - claim: Lint clean on every changed Python file, and formatting parity is not made worse
+    cmd:
+      ruff check on all 9 changed .py files; ruff format --check on the same set, and on their origin/main
+      versions extracted to /tmp for comparison
+    result:
+      '"ruff check: All checks passed. ruff format: 5 of the 6 unformatted files were ALREADY unformatted
+      at origin/main and CI does not run ruff format, so they are left alone; the one file I unformatted
+      (scripts/test_patch_pricing_contact_block.py, clean at base) was reformatted back to parity"'
+    exit: 0
+    ts: 2026-09-01T05:05Z
+    seat: session (M5)
+  - claim:
+      The ledger reconciles — the superseded 2026-08-31 row is closed with the reason its cure was
+      reversed, and the new out-of-scope row is well-formed with a real operator category
+    cmd: python3 scripts/pending_arms_report.py
+    result: "the new row appears with owner=operator[business]; MALFORMED: none; no PHANTOM-OPERATOR"
+    exit: 0
+    ts: 2026-09-01T05:15Z
+    seat: session (M5)
+  - claim:
+      The three test failures and 202 errors in the full backend suite on this branch are PRE-EXISTING
+      local-environment state, not caused by this diff — proven by running the same tests on a detached
+      origin/main worktree against the same local Postgres
+    cmd:
+      git worktree add --detach /tmp/probe-main-0901 origin/main, then pytest the three named failures
+      there; separately pytest backend/tests/services/visa_engine/ on BOTH trees
+    result:
+      "identical on both: the 3 named tests fail on origin/main too (migration 285 absent from the
+      local schema; an unrelated notifications AttributeError; google-genai 2.7.0 against the lockfile pin),
+      and services/visa_engine/ returns 1 failed / 2050 passed / 39 errors on origin/main exactly as on
+      this branch — the errors are one ExclusionViolationError from pre-existing rows in the local database"
+    exit: 1
+    ts: 2026-09-01T06:40Z
+    seat: session (M5)
+  - claim:
+      The full backend suite is reproducible, not a saturation artefact — two independent runs on this
+      tree returned byte-identical counts
+    cmd: pytest backend/tests -p no:cacheprovider, run twice (905s and 988s)
+    result: 3 failed, 28297 passed, 343 skipped, 6 xfailed, 202 errors — both times
+    exit: 0
+    ts: 2026-09-01T06:20Z
+    seat: session (M5)
+  - claim:
+      The first version of the fallback guard was broken in BOTH directions and the adversarial seat
+      found it; the replacement matches DIGIT RUNS, not a phone shape, and the runs are DERIVED from settings.SUPPORT_WHATSAPP
+      and _RETIRED_WHATSAPP rather than typed — the first draft typed one of them wrong by a digit
+    cmd: pytest backend/tests/test_data_invariant_tripwires.py::test_the_fallback_digit_guard_catches_every_spelling_and_spares_prices
+    result:
+      13 passed. The unit pins six guilty spellings (single quotes, adjacent literals, dots, dashes,
+      bare digits, local 08... form) and four innocent ones (an IDR price '18 500 000', an underscore literal,
+      and both halves of the client-facing number)
+    exit: 0
+    ts: 2026-09-01T06:55Z
+    seat: session (M5)
+  - claim:
+      Every acceptance probe was executed as a mutation pair, not merely written down — each guard
+      goes RED under the specific regression it exists to catch and GREEN when restored
+    cmd:
+      pytest -k 'test_authoritative_pricing_json_never_reintroduces_retired_contact or test_client_contact_whatsapp_matches_the_price_list_generator
+      or test_pricing_fallback_contacts_read_the_setting_and_never_a_literal or test_every_repo_side_copy_of_the_client_number_agrees',
+      each run once per mutation and once restored
+    result:
+      sheet half-drift RED; generator-only change RED; CLIENT_CONTACT_WHATSAPP collapsed onto SUPPORT_WHATSAPP
+      RED; fallback hard-coding ARI'S OWN (correct) number RED; fallback built by "".join(...) RED; patch
+      script's CANONICAL_WHATSAPP staled RED; Visa Oracle WHATSAPP_BASE_URL staled RED; a comment merely
+      naming the bot number GREEN; all restored GREEN (13 passed)
+    exit: 1
+    ts: 2026-09-01T07:30Z
+    seat: session (M5)
+  - claim:
+      The Qdrant patch script's two new regressions are guilt-proved by reverting the cure, not merely
+      asserted
+    cmd:
+      pytest scripts/test_patch_pricing_contact_block.py, run once with rewrite_contact_block reverted
+      to the substring form and once restored — covers test_a_line_carrying_both_stale_numbers_is_fully_replaced,
+      test_a_line_that_merely_quotes_a_trailer_is_left_alone, test_every_historically_wrong_number_is_still_listed_as_stale
+      and test_canonical_number_is_not_itself_listed_as_stale
+    result: substring form -> both new tests FAILED; line-anchored form -> 12 passed
+    exit: 1
+    ts: 2026-09-01T07:20Z
+    seat: session (M5)
+  - claim:
+      The rendered price list's QR is pinned to the validated wa_link — test_generate_html_contains_qr_link
+      now recomputes the expected image rather than counting base64 blobs
+    cmd:
+      pytest scripts/pricelist_2026/tests/, with generate.py's _make_qr_data_uri argument pointed at
+      the bot number and then restored
+    result: QR pointed elsewhere -> FAILED; restored -> 17 passed
+    exit: 1
+    ts: 2026-09-01T07:40Z
+    seat: session (M5)
+  - claim:
+      The full backend suite on this branch is one PASS better than origin/main and no worse in any
+      other column — the honest number on this machine is not zero, and the comparison is against main,
+      never against zero
+    cmd:
+      pytest backend/tests -p no:cacheprovider (this branch vs a detached origin/main worktree), run
+      serially against the same local Postgres — no extra -q, because pytest.ini already sets it and a duplicate
+      trips the verbosity guard, which is what made one earlier run exit 0 having executed nothing
+    result:
+      "this branch: 3 failed, 28298 passed, 343 skipped, 6 xfailed, 202 errors. Two earlier runs of
+      an intermediate tree returned 28297 passed with the identical failure and error sets, so the delta
+      is exactly the tests this PR adds. All 3 failures reproduce on a detached origin/main worktree (local
+      schema missing migration 285; an unrelated notifications AttributeError; google-genai 2.7.0 against
+      the lockfile pin), and services/visa_engine/ returns the same 1 failed / 2050 passed / 39 errors on
+      origin/main as here — the errors are one pre-existing ExclusionViolationError in the local database,
+      reproduced with only one suite running, so not a saturation artefact"
+    exit: 1
+    ts: 2026-09-01T08:05Z
+    seat: session (M5)
+pii_scan: clean
+pii_scan_note:
+  No client data anywhere in the diff, brief or pack. The two phone numbers handled throughout
+  are Bali Zero's OWN business lines — one the company's Meta-verified inbound WhatsApp Business number,
+  the other the staff line the company already publishes on its public price list, its website and its
+  brochures. Both are already published by Bali Zero itself; neither is a client's number, and no client
+  identifier, message body or OSINT record appears in any receipt.
+dissent:
+  - seat: claude-sonnet-5 (Explore, dispatched without a conclusion to confirm)
+    objection:
+      '"generate.py does not use CANONICAL_CONTACT for rendering — it reads `data[''metadata''][''contact'']`
+      from the input JSON (generate.py:181, 201) and feeds that same dict to the QR builder. So changing
+      CANONICAL_CONTACT alone would not have changed the rendered document; it would have made schema.validate()
+      REJECT the fixture and raise SchemaError before any assertion ran."'
+    status: CONFIRMED
+    resolution:
+      '"Accepted. It sharpens rather than breaks the design: the generator reads the JSON, but
+      `_validate_or_raise` runs schema.validate() first (generate.py:163-166) and every contact field must
+      equal CANONICAL_CONTACT, so a mismatched sheet cannot render at all. That is why the fixture had to
+      move in lockstep with the constant, and why the two test assertions are now derived from CANONICAL_CONTACT
+      instead of restating literals. The corrected mechanism is written into brief.yml''s consumer_map rather
+      than left in my head."'
+  - seat: session (M5), self-caught
+    objection:
+      '"The parametrised guilt tests over STALE_WHATSAPP_NUMBERS cannot prove the list is COMPLETE.
+      I mutated the list by deleting the 2026-08-31 number and the suite stayed GREEN — deleting an entry
+      deletes its own test case. A guard that iterates over the thing it is guarding is not a guard."'
+    status: CONFIRMED
+    resolution:
+      '"test_every_historically_wrong_number_is_still_listed_as_stale added, pinning both historical
+      numbers by literal, and re-mutated: the deletion now goes RED. Recorded here rather than quietly fixed,
+      because the same shape — a check derived from the value it checks — is the exact reason the price-list
+      tripwire was able to endorse the wrong number for a day."'
+  - seat: session (M5), self-caught
+    objection:
+      '"A ''restored, green'' reading was false: after a mutation cycle the file on disk was correct
+      and the suite still reported 6 failures, because __pycache__ held the mutated module (W121)."'
+    status: CONFIRMED
+    resolution:
+      '"Cleared the bytecode, re-ran every mutation with PYTHONDONTWRITEBYTECODE=1 and -p no:cacheprovider,
+      and kept the poisoned reading in the receipts instead of deleting it — a mutation receipt whose restore
+      step was never trustworthy is not evidence, and pretending the first run was clean would make this
+      pack the kind of artefact it exists to prevent."'
+  - seat: claude-sonnet-5 (adversarial spalla, dispatched on the diff)
+    objection:
+      'The fallback guard''s regex is wrong in both directions. Over-match, demonstrated: an IDR
+      price literal "18 500 000" is exactly that phone shape and fails the build for nothing. Under-match,
+      demonstrated: ''+62 821 3465 159'' in single quotes, "+62 821 " "3465 159" as adjacent literals, and
+      "+62.821.3465.159" with dots all return no match — three realistic ways a re-hardcoding walks through
+      a green suite.'
+    status: CONFIRMED
+    resolution:
+      Accepted in full and the guard replaced, not patched. It now collapses in-number separators
+      per line and looks for the specific forbidden digit runs, so it answers the question actually being
+      asked instead of a neighbouring one. All four of the reviewer's inputs are now pinned as test cases.
+      Two of its other items (an env-override blind spot that no source-tree test can see, and a dormant
+      duplicate-filename risk across the repo's two scripts/ directories) are real, predate this diff and
+      are recorded in brief.yml's risks rather than fixed here. Its two UNRESOLVED items — the eleven out-of-scope
+      surfaces and the removed WHATSAPP_NUMBER constant — it ran out of turns before reaching; both are
+      covered by receipts above, verified by me directly rather than credited to a review that did not happen.
+  - seat: codex-gpt-5.6-sol xhigh (cross-family council seat, dispatched on the diff)
+    objection:
+      "The tripwire file does not parse: an `assert` after `pass  # placeholder` has invalid indentation,
+      `forbidden` is undefined, and the next test references an undefined `_FORBIDDEN_DIGIT_RUNS`. Pytest
+      fails at collection, so NONE of these tripwires executes."
+    status: CONFIRMED
+    resolution:
+      "True of the snapshot the seat was given, and my own fault: an edit was interrupted by a
+      tool-gate mid-repair and the council captured the diff in that state. Repaired and re-run before this
+      pack was finalised — 13 passed. Kept on the record rather than dropped as 'stale', because it is
+      the sharpest possible reminder that a guard which does not COLLECT is indistinguishable from a guard
+      that passes."
+  - seat: codex-gpt-5.6-sol xhigh (cross-family council seat, dispatched on the diff)
+    objection:
+      'The digit-run guard misses obfuscated hard-codes (adjacent literals, `"".join(...)`, f-strings,
+      non-breaking spaces), allows ANY unlisted wrong number including a typo of Ari''s own, and even permits
+      hard-coding today''s correct number — contradicting its own contract. It also FALSE-FLAGS innocent
+      prose: a docstring saying "never use <the bot number> here" fails the build.'
+    status: CONFIRMED
+    resolution:
+      'Accepted in full and the guard replaced a second time, now on the AST rather than on text:
+      the value bound to `whatsapp` inside a `fallback_contact` dict must BE the `settings.CLIENT_CONTACT_WHATSAPP`
+      attribute — not a constant, not a join, not an f-string. That answers every item at once: no text
+      obfuscation can satisfy it, a literal is rejected even when it holds the right number, and prose naming
+      a number cannot violate it. Probed: hard-coding Ari''s own number -> RED, `"".join((...))` -> RED,
+      a comment naming the bot number -> GREEN.'
+  - seat: codex-gpt-5.6-sol xhigh (cross-family council seat, dispatched on the diff)
+    objection:
+      config.py does not establish a genuine single source of truth. The client number stays separately
+      hard-coded in scripts/pricelist_2026/schema.py, scripts/patch_pricing_contact_block.py and visa_oracle_service.py's
+      WHATSAPP_BASE_URL. Change it correctly in three places and the other two go stale with every test
+      green.
+    status: CONFIRMED
+    resolution:
+      "The most valuable finding in the review: it is this PR's own defect reproduced one layer
+      up. The backend cannot import the two `scripts/` modules at runtime, so they cannot share a constant
+      — but they can share a test. `test_every_repo_side_copy_of_the_client_number_agrees` now pins all
+      five spellings to `settings.CLIENT_CONTACT_WHATSAPP`. Probed: staling the patch script -> RED, staling
+      the Visa Oracle deeplink -> RED."
+  - seat: codex-gpt-5.6-sol xhigh (cross-family council seat, dispatched on the diff)
+    objection:
+      "patch_pricing_contact_block.py is idempotent only in the byte-equality sense and mishandles
+      a trailer carrying BOTH stale numbers: the first replacement rewrites the prefix and strands the second
+      number, and a second pass cannot match. It also rewrites text outside the promised trailer — a `**Notes**:`
+      line that merely quotes `**WhatsApp**: <stale>` is edited."
+    status: CONFIRMED
+    resolution:
+      "Both accepted. `rewrite_contact_block` is now line-anchored: it replaces a whole line,
+      and only a line that IS the trailer. The both-numbers line comes out fully canonical, the quoting
+      Notes line is untouched, and a second pass is a true no-op. Two regression tests added and guilt-proved
+      by reverting to the substring form — both go RED."
+  - seat: codex-gpt-5.6-sol xhigh (cross-family council seat, dispatched on the diff)
+    objection:
+      "The diff contradicts itself: comments in the tripwire file, schema.py and brief.yml claim
+      every other client-facing surface already uses Ari, while the new PENDING-ARMS row says eleven still
+      emit the bot number."
+    status: CONFIRMED
+    resolution:
+      "A real contradiction and exactly the kind that misleads the next reader, since the wrong
+      half is the one written as a code comment. Corrected in all three places: the claim is now scoped
+      to the lead-capture and document surfaces, and each comment names the eleven email/chat surfaces as
+      still outstanding and ledgered."
+  - seat: codex-gpt-5.6-sol xhigh (cross-family council seat, dispatched on the diff)
+    objection:
+      "test_generate.py does not protect the original failure mode: it checks only that the display
+      string appears somewhere and that some base64 PNG exists. The renderer could hard-code the wrong number
+      into the QR payload and still pass."
+    status: CONFIRMED
+    resolution:
+      "Accepted. This page carries no anchor — it is a print document and the QR IS the link —
+      so the test now recomputes `_make_qr_data_uri(CANONICAL_CONTACT['wa_link'])` and asserts that exact
+      image is embedded. Guilt-proved by pointing the generator's QR at the bot number: RED."
+  - seat: codex-gpt-5.6-sol xhigh (cross-family council seat, dispatched on the diff)
+    objection:
+      "Consistency is not correctness: change CLIENT_CONTACT_WHATSAPP, the generator digits, the
+      JSON and the fixture together to a typo like +62 821 3454 722 and every assertion still passes."
+    status: CONFIRMED
+    resolution:
+      True, and NOT fixed — recorded rather than papered over. There is no oracle inside this
+      repo for what Bali Zero's own phone number is; the owner is the oracle. Every guard here can prove
+      the surfaces AGREE and that they do not agree with the bot's inbound line. Proving the digits are
+      Ari's would need an external attestation this organism does not have. Stated in brief.yml's risks.
+  - seat: codex-gpt-5.6-sol xhigh (cross-family council seat, dispatched on the diff)
+    objection:
+      A third pricing surface could still read settings.SUPPORT_WHATSAPP; the AST guard scans only
+      two named files.
+    status: PLAUSIBLE
+    resolution:
+      Accurate as stated and deliberately not widened here. A repo-wide ban on SUPPORT_WHATSAPP
+      in client-facing code would fail on the eleven surfaces that legitimately still carry it pending the
+      owner's decision — the guard would have to encode the answer to a question that has not been asked
+      yet. It becomes buildable the moment that row is closed, and the PENDING-ARMS row's proof-of-armed
+      names extending this guard as part of closing it.
+  - seat: codex-gpt-5.6-sol xhigh (cross-family council seat, dispatched on the diff)
+    objection:
+      "evidence/.../pack.yml contains `result: FILL_SUITE_RESULT` while claiming exit 0 and a green
+      suite. That is incomplete evidence and the pack cannot substantiate readiness."
+    status: CONFIRMED
+    resolution:
+      "Correct, and the seat was right to call it: a placeholder sitting next to `exit: 0` is
+      a pack asserting something nobody measured. Removed, and replaced by three receipts that record what
+      the suite ACTUALLY returns on this machine, including the pre-existing failures — because the honest
+      number here is not zero."
+  - seat: kimi-code/k3 (second council seat)
+    objection:
+      "Seat never ran: `403 provider.auth_error — You've reached your weekly (7-day) usage limit`,
+      kimi CLI v0.39.1, rc=1, no review text produced."
+    status: CONFIRMED
+    resolution:
+      "Recorded as ok:false in journal.jsonl and named in seat_override. This is a quota wall,
+      not a transient error, so retrying today would not clear it. The consequence is stated rather than
+      absorbed: this diff had ONE independent adversarial seat plus one same-family spalla, not the two
+      cross-family seats R9 asks for."
+  - seat: session (M5), self-caught while probing the codex fix
+    objection:
+      "The line-anchored rewrite I wrote to CURE a defect introduced a smaller one. Rebuilding
+      the trailer from its label alone discarded whatever else the line carried: on a CRLF payload the rewritten
+      line came out with a bare LF while every neighbour kept its CR, and a line with leading whitespace
+      lost its indentation. Measured directly, not reasoned about."
+    status: CONFIRMED
+    resolution:
+      "The rewrite now preserves the line's indentation and its trailing CR, and a test asserts
+      both, guilt-proved by removing the preservation. Recorded because it is the same shape as the defect
+      this whole PR reverses: a repair that is right about the thing it was aimed at and quietly wrong about
+      something adjacent. A cure gets probed like any other change."
+  - seat: claude-sonnet-5 (second spalla, on the fixes)
+    objection:
+      'The AST guard checks SHAPE, not resolution. A local shim — `class _Shadow: CLIENT_CONTACT_WHATSAPP
+      = "<the bot number>"` bound to the name `settings` — produces a byte-identical Attribute node and
+      would ship the wrong number through a green suite. Executed the test''s own matching code against
+      a synthetic file: found=1, match ok=True, PASS.'
+    status: CONFIRMED
+    resolution:
+      "Closed. The guard now also requires the module-level `from backend.app.core.config import
+      settings` and refuses any rebinding of that name (assign, annotated assign, class or function). Probed:
+      the shim -> RED naming the rebinding line, the import removed -> RED, unchanged -> GREEN. The seat
+      also worked through eight other evasions I had not enumerated (assignment after the dict, dict(),
+      **unpacking, .update(), a variable key, the block moved to another module) and confirmed each already
+      fails loudly via the found>=1 assertion rather than passing silently — which is the answer I wanted
+      and did not have."
+  - seat: claude-sonnet-5 (second spalla, on the fixes)
+    objection:
+      "`_forbidden_digit_runs()`, `_collapse_phone_separators()` and `_PHONE_SEPARATORS` are defined
+      and called NOWHERE — zero call sites repo-wide. Their docstring claims they fix a hand-typed-literal
+      defect, while the retired-line assertion still compares against a hand-typed literal. The protection
+      the docstring claims does not exist in the shipped diff, and ruff's default rules do not flag an
+      unused module-level function, so nothing in CI would catch it."
+    status: CONFIRMED
+    resolution:
+      "Deleted. They were the previous revision of the fallback guard, orphaned when the AST version
+      replaced it, and I left the scaffolding behind — dead code whose docstring overclaims is worse than
+      no code, because the next reader budgets for a protection that is not there. The surfaces they were
+      meant to cover are covered: the fallbacks by AST, the sheet by whole-dict equality against CANONICAL_CONTACT."
+  - seat: claude-sonnet-5 (second spalla, on the fixes)
+    objection:
+      "Two of the four copies in the cross-file agreement guard are matched by SUBSTRING against
+      source text, which couples the test to incidental formatting: adding a `: str` annotation breaks it
+      with nothing actually wrong. And patch_pricing_contact_block.py has no import-time side effects, so
+      it could be imported directly — the text scan is inconsistency, not necessity."
+    status: CONFIRMED
+    resolution:
+      "Both switched to importing the module and comparing the VALUE. Probed both ways: staling
+      the value -> RED; the same value written with a `: str` annotation -> GREEN, where the substring form
+      would have false-failed."
+  - seat: claude-sonnet-5 (second spalla, on the fixes)
+    objection:
+      "The QR assertion is not fully independent: it recomputes _make_qr_data_uri(wa_link), so
+      a systematic bug INSIDE that encoder would reproduce identically in the test and pass. (It confirmed
+      the function is deterministic — three calls, byte-identical — so the test is not flaky, and it does
+      catch the actual defect class of feeding the encoder the wrong value.)"
+    status: PLAUSIBLE
+    resolution:
+      Accepted as stated and NOT fixed. Catching a mis-encoding inside the QR library would need
+      an independent decode-and-compare, i.e. a second QR implementation as an oracle. The defect this PR
+      is about is the encoder being fed the wrong value, which the test does catch — proved by pointing
+      the generator's QR at the bot number and watching it go red. Recorded so the limit is on the record
+      rather than assumed away.
+seat_override:
+  'Two rules, both named explicitly so neither hides behind the other.
+
+  R8 (ground_truth): the diff touches apps/backend-rag/backend/data/bali_zero_official_prices_2026.json,
+  so R8 asks for a NotebookLM lane. There is no external ground truth for WHICH OF BALI ZERO''S OWN TWO
+  PHONE LINES a client should be invited to write to — no NotebookLM corpus, regulator or competitor can
+  confirm or refute it. It is the owner''s decision (Legge 5), stated verbatim as "1 lascia ari" on 2026-09-01.
+  Manufacturing an `nb:` and a `query_hash:` would be the phantom-citation failure R8 exists to prevent.
+  No price is changed by this diff.
+
+  R9 (council quorum): the council is ONE seat deep, not two, and I am not pretending otherwise. codex-gpt-5.6-sol
+  ran at xhigh and returned a REJECT that changed six things in this diff. kimi-code/k3 could not run:
+  `403 provider.auth_error — you have reached your weekly (7-day) usage limit`, a hard cap that will not
+  clear by retrying today. tp1-qwen3.8-max was not attempted. journal.jsonl records kimi as ok:false with
+  that reason, so the shortfall is on the record in the artefact the rule reads, not only in this prose.
+  What the single seat bought is not nothing: it found a broken test file, an evasion-prone guard, a false
+  single-source-of-truth, a non-idempotent rewrite and a self-contradicting comment — all fixed and re-probed
+  below. What it did not buy is a second, independent opinion on the FIX.'
+council_run: journal.jsonl
+brief_ref_note:
+  "The literal `evidence/brief.yml`, NOT this pack's own directory, and that is not a mistake:
+  harness-floor.yml stages the pack and the brief side by side under /tmp/evidence-check/evidence/ (`cp
+  /tmp/brief.yml /tmp/evidence-check/evidence/brief.yml`) and runs the lint with `--repo-root /tmp/evidence-check`,
+  so a repo-relative per-task path does not resolve there. The real brief for this task is evidence/2026-09/agent-air-m5-backend-rag-wa-contact-ari-0901-5a45dbee/brief.yml
+  and CI reads it via BRIEF_PATH. Consequence to know when running the lint LOCALLY: brief_ref resolves
+  to the stale root evidence/brief.yml from an older PR, so a local run judges the wrong brief. Point
+  the local run at the real one instead of trusting the local verdict on Rule 12."
