@@ -418,7 +418,7 @@ class FragilityScorer:
     WEIGHT_CHURN = 0.10
     WEIGHT_CICATRIX = 0.15
 
-    _CICATRIX_FILE = _PROJECT_ROOT / ".claude" / "rules" / "cicatrix-scars.md"
+    _CICATRIX_FILE = _PROJECT_ROOT / "docs" / "scars" / "cicatrix-scars.md"
 
     def __init__(
         self,
@@ -623,7 +623,7 @@ class FragilityScorer:
         Files with more historical bug recurrences get higher scores.
         Score = recurrence count (raw), normalized later in score_files().
         """
-        cicatrix_file = self.project_root / ".claude" / "rules" / "cicatrix-scars.md"
+        cicatrix_file = self.project_root / "docs" / "scars" / "cicatrix-scars.md"
         if not cicatrix_file.exists():
             return {}
 

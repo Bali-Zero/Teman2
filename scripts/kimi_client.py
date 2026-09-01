@@ -60,11 +60,12 @@ DECLARED RESIDUAL (parity with qwen-cloud-code.sh v3 §3): kimi -p persists a
 resumable session transcript under ~/.kimi-code/sessions/; retention control
 is harness state, not wrapper state.
 
-HARD RULE — Chinese cloud (SYMBIOSIS Law 2, non-negotiable): NEVER pass
-client PII (KTP, passport, NPWP, akta, CRM rows, any UU PDP-regulated field)
-in a prompt to this client. Kimi is for non-PII work only (research,
-code review, cascade fallback, aggregate/health/intel synthesis) — same
-posture as the DeepSeek client it replaces.
+PII POSTURE — vendor-parity (RULED Zero 2026-08-24: the Chinese-cloud-
+specific limit is abolished system-wide). Kimi sits under the SAME common
+rules as Anthropic/OpenAI seats: SYMBIOSIS Law 2 output boundary (never
+transcribe client PII in persisted outputs/logs/memories) and the Art. 56
+basis (DPA+consent) for PROD transfers. The numeric backstop gate below is
+retained as a vendor-NEUTRAL minimization control, not a China fence.
 
 Stdlib-only (subprocess, argparse, os, re, sys, shutil) — no new dependencies.
 """
@@ -233,8 +234,9 @@ def _check_prompt(prompt: str) -> None:
             "prompt refused by the Law-2 PII gate: >= 15-digit numeric shape "
             "detected (identity-number class; the gate is fail-closed — long "
             "numeric lists like KBLI codes or date ranges are refused too, "
-            "reword the prompt). Kimi is a Chinese-cloud, non-PII seat — "
-            "route this work to a local model (pii_intake chain) instead."
+            "reword the prompt). This backstop is vendor-neutral data "
+            "minimization (Zero 2026-08-24 vendor-parity ruling) — reword, "
+            "or route identity-number work to a local model (pii_intake)."
         )
 
 

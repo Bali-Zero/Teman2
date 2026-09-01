@@ -151,8 +151,20 @@ export const MERAH_PUTIH_DAY_VARS = {
   "--state-error": "#a83a44",
   "--color-error": "#a83a44",
 
-  // WhatsApp is the ICON of the human exit — never a green button with white
-  // text on it (white on #25d366 measures 1.98). The ink is what carries text.
+  // WhatsApp is the ICON of the human exit — never a green button, and
+  // never a green TEXT surface even at a passing ratio (R4 §3/§4: the
+  // 2026-08-24 ink-on-green cure measured AA-passing at ~6.45:1 and was
+  // superseded anyway, because it answered "what ink passes on a green
+  // button" when the real defect was the button SHAPE — a solid-green pill
+  // reads as the WhatsApp app icon, breaking the platform's mental model).
+  // The call sites (SecondHomeLanding.tsx, WhatsAppHandoff.tsx) now render
+  // the card-with-icon component instead: elevated surface + border-input
+  // boundary + ink label, with `--accent-whatsapp` confined to the Phone
+  // glyph alone (icon-only, ~1.98:1 on `--surface-raised` — spec-sanctioned
+  // because the adjacent ink label carries the meaning independently).
+  // `--accent-whatsapp-ink` is kept as a token — some other surface may
+  // still legitimately need ink-on-green — but no consumer in this lane's
+  // perimeter uses it for label text any more.
   "--accent-whatsapp": "#25d366",
   "--accent-whatsapp-ink": "#0d3a1f",
 
@@ -169,11 +181,35 @@ export const MERAH_PUTIH_DAY_VARS = {
   // our own wrapper, rather than editing the shared visa layout — the rest of
   // the funnel is a different lane's perimeter.
   // Inter and Cormorant are self-hosted and mounted on <html> by the root
-  // layout. IBM Plex Mono is NOT loaded in this app (only 4 woff2 files exist:
-  // cormorant, inter, league-spartan, montserrat), so `--font-mono` resolves to
-  // ui-monospace — the same fallback every other mono surface in this app
-  // already uses. Declared, not pretended: loading a fifth face is a perf decision of
-  // its own, tracked in PENDING-ARMS, not smuggled into a palette change.
+  // layout; no IBM Plex Mono webfont exists in this repo (packages/core/fonts
+  // ships exactly 4: cormorant, inter, league-spartan, montserrat), and loading
+  // a fifth face is a perf decision of its own, not one to smuggle into a
+  // palette change.
+  // CORRECTED 2026-09-01: the previous wording claimed `--font-mono` "resolves
+  // to ui-monospace — the same fallback every other mono surface in this app
+  // already uses" and cited a PENDING-ARMS entry. Both were false, and together
+  // they made an omission read as a settled decision. The token DOES exist
+  // (packages/core/tokens/primitives.css) as `"IBM Plex Mono", ui-monospace,
+  // Menlo, monospace`, with ~29 consumers elsewhere in the app, every one of
+  // them naming Plex FIRST — so using it here would need no new file and would
+  // put this surface exactly where those 29 already are. No ledger row for
+  // "Plex" or "font-mono" exists.
+  //
+  // SETTLED 2026-09-01 (Zero, Legge 5 — «dobbiamo restare coerenti e non
+  // passare a plex mono»): the divergence the paragraph above left open is now
+  // a decision, not an omission. IDR amounts on THESE TWO ROUTES keep the
+  // surface's own faces with `tabular-nums` + `tnum` (VerdictPanel and the
+  // landing already render them that way); coherence of one small surface beat
+  // adding a second numeric voice to it. `--font-mono` is NOT deprecated and
+  // its ~29 consumers elsewhere are untouched, the VOA payment screen still
+  // renders IDR in mono, and the never-wrap-mid-amount constraint is
+  // typeface-independent and still binds here. The hero statistics are the
+  // deliberate counter-example — prose figures, NOT a column, and
+  // second-home/page.test.tsx pins them proportional; the ruling is about the
+  // price figures, not about every digit on the page. Written down in
+  // research/design/2026-08-27-r4-identity-merah-putih-token-spec.md (the
+  // amendment note under the typography table) — this comment is the pointer,
+  // that file is the law.
   fontFamily: "var(--font-sans), Inter, ui-sans-serif, system-ui, sans-serif",
 } as CSSProperties;
 

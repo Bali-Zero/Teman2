@@ -481,6 +481,24 @@ describe("StudioApp", () => {
       expect(masthead).toBeInTheDocument();
       expect(masthead.closest("h1,h2,h3,h4,h5,h6")).toBeNull();
     });
+
+    it("verdict stage: the demoted masthead label is Inter 600, not Cormorant, at its 1.05rem (16.8px) size — below the R4 §3 24px display floor", async () => {
+      window.location.hash = `#p=${encodePlanFragment(fullPlan())}`;
+      render(<StudioApp />);
+      await screen.findByRole("heading", { name: /strong match/i });
+
+      const masthead = screen.getByText("Check your fit");
+      const styleAttr = masthead.getAttribute("style") ?? "";
+      const fontFamily = styleAttr.match(/font-family:\s*([^;]+)/)?.[1]?.trim();
+      const fontSize = styleAttr.match(/font-size:\s*([^;]+)/)?.[1]?.trim();
+      const fontWeight = styleAttr.match(/font-weight:\s*([^;]+)/)?.[1]?.trim();
+
+      expect(fontFamily).toBe(
+        "var(--font-sans, ui-sans-serif, system-ui, sans-serif)",
+      );
+      expect(fontSize).toBe("1.05rem");
+      expect(fontWeight).toBe("600");
+    });
   });
 
   describe("ScenarioToggle — saved-plan immutability", () => {

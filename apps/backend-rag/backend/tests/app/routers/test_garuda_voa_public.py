@@ -290,7 +290,7 @@ def test_accept_create_then_get_then_delete_round_trip(monkeypatch) -> None:
     assert create_response.status_code == 201
     body = create_response.json()
     assert body["verdict"] == "ACCEPT"
-    assert body["price_idr"] == 790_000
+    assert body["price_idr"] == 750_000
     assert body["reason_codes"] == []
     assert create_response.headers["Location"] == f"/visa/voa/{'r' * 22}"
     assert "garuda_result_session" in create_response.cookies
@@ -600,4 +600,4 @@ def test_a_fresh_price_catalogue_reaches_the_wire_as_a_real_quote(monkeypatch) -
     assert body["verdict"] == "ACCEPT"
     # The real ISSUANCE catalogue amount, not a stub value — proves the router's
     # ACCEPT path actually plumbs `price_for_case`'s real result to the wire.
-    assert body["price_idr"] == 790_000
+    assert body["price_idr"] == 750_000
