@@ -104,15 +104,41 @@ build_origin_action() {
   rm -rf "$tmp"; return 0
 }
 
+# assert_local_state: the POST-CONDITION. A fixture arm that fails silently does not skip the
+# cell -- it records a row LABELLED one state while MEASURING another, and `del_staged` degrades
+# into exactly `del_unstaged`, whose cells carry the opposite verdict. So every arm is checked
+# against the disk before the puller is allowed to run, and a mismatch aborts the whole run
+# rather than publishing a mislabelled row.
+assert_local_state() {
+  local tracked=no exists=no
+  git -C "$LOCAL" ls-files --error-unmatch -- "$P" >/dev/null 2>&1 && tracked=yes
+  { [ -e "$LOCAL/$P" ] || [ -L "$LOCAL/$P" ]; } && exists=yes
+  case "$1" in
+    clean)            [ "$tracked" = yes ] && [ "$exists" = yes ] && git -C "$LOCAL" diff --quiet HEAD -- "$P" ;;
+    modified)         [ "$tracked" = yes ] && [ "$exists" = yes ] && ! git -C "$LOCAL" diff --quiet HEAD -- "$P" ;;
+    del_unstaged)     [ "$tracked" = yes ] && [ "$exists" = no ] ;;
+    del_staged)       [ "$tracked" = no ]  && [ "$exists" = no ] ;;
+    dir_at_path)      [ -d "$LOCAL/$P" ] && [ ! -L "$LOCAL/$P" ] ;;
+    dangling_symlink) [ -L "$LOCAL/$P" ] && [ ! -e "$LOCAL/$P" ] ;;
+    symlink)          [ -L "$LOCAL/$P" ] && [ -e "$LOCAL/$P" ] ;;
+    untracked)        [ "$tracked" = no ] && [ -f "$LOCAL/$P" ] && [ ! -L "$LOCAL/$P" ] ;;
+    *) return 1 ;;
+  esac
+}
+
 # apply_local_state: put the local worktree into state A at $P.
 apply_local_state() {
   case "$1" in
     clean)            : ;;                                   # tracked, untouched
     modified)         printf 'PRO-LOCAL-EDIT %s\n' "$BODY" > "$LOCAL/$P" ;;
     del_unstaged)     rm "$LOCAL/$P" ;;                       # index still holds it
-    del_staged)       git -C "$LOCAL" rm -q --cached "$P" >/dev/null 2>&1; rm -f "$LOCAL/$P" ;;
-    dir_at_path)      rm "$LOCAL/$P"; mkdir -p "$LOCAL/$P"; printf 'x\n' > "$LOCAL/$P/inner" ;;
-    dangling_symlink) rm "$LOCAL/$P"; ln -s "/nonexistent/target" "$LOCAL/$P" ;;
+    del_staged)       git -C "$LOCAL" rm -q --cached "$P" >/dev/null 2>&1 && rm -f "$LOCAL/$P" ;;
+    dir_at_path)      rm "$LOCAL/$P" && mkdir -p "$LOCAL/$P" && printf 'x\n' > "$LOCAL/$P/inner" ;;
+    dangling_symlink) rm "$LOCAL/$P" && ln -s "/nonexistent/target" "$LOCAL/$P" ;;
+    symlink)          # a VALID symlink, distinct from the dangling one: it does not wedge, but
+                      # `cp -p` DEREFERENCES it into the backup, so recovery hands back another
+                      # file's bytes under this name with no record it was ever a link.
+                      rm "$LOCAL/$P" && ln -s "area/bystander.md" "$LOCAL/$P" ;;
     untracked)        printf 'UNTRACKED-LOCAL\n' > "$LOCAL/$P" ;;   # base never tracked it
     *) return 1 ;;
   esac
@@ -144,7 +170,8 @@ run_cell() {
   git -C "$LOCAL" push -q origin HEAD:main || fatal "base push"
 
   if ! build_origin_action "$B" >/dev/null; then rm -rf "$SANDBOX"; return 0; fi
-  apply_local_state "$A" || { rm -rf "$SANDBOX"; return 0; }
+  apply_local_state "$A" || fatal "local-state arm '$A' failed"
+  assert_local_state "$A" || fatal "local state '$A' is NOT what is on disk — the row would be mislabelled"
 
   local allow="$SANDBOX/allow.json"
   if [ "$C" = keeplocal ]; then
@@ -171,12 +198,19 @@ run_cell() {
   elif [ -L "$LOCAL/$P" ];                 then outcome=symlink
   else                                          outcome="file:$(head -c 14 "$LOCAL/$P" | tr -d '\n' | tr ' ' '_')"
   fi
-  local backed=no; [ -d "$SANDBOX/backup" ] && backed=yes
+  # `backup=` used to mean "the directory exists", which `mkdir -p` guarantees even when the
+  # `cp` that follows fails -- so it read as "recoverable" on cells where nothing was saved.
+  # Measure a FILE, and distinguish an empty backup dir from an absent one.
+  local backed=no
+  if [ -d "$SANDBOX/backup" ]; then
+    if [ -n "$(find "$SANDBOX/backup" \( -type f -o -type l \) 2>/dev/null | head -1)" ]
+      then backed=file; else backed=empty; fi
+  fi
   printf '%s\t%s\t%s\trc=%s\t%s\t%s\tbackup=%s\n' "$A" "$B" "$C" "$rc" "$moved" "$outcome" "$backed" >> "$MEASURED"
   rm -rf "$SANDBOX"
 }
 
-LOCAL_STATES="clean modified del_unstaged del_staged dir_at_path dangling_symlink untracked"
+LOCAL_STATES="clean modified del_unstaged del_staged dir_at_path dangling_symlink symlink untracked"
 ORIGIN_ACTIONS="modify delete rename_away rename_away_and_tree rename_case_only tree_at_path typechange"
 ALLOWLIST="ordinary keeplocal"
 
@@ -187,7 +221,27 @@ done; done; done
 sort -o "$MEASURED" "$MEASURED"
 
 if [ "$WRITE" = 1 ]; then
-  cp "$MEASURED" "$BASELINE"; echo "baseline written: $BASELINE ($(wc -l < "$BASELINE" | tr -d ' ') cells)"
+  # NEVER blind-copy. $MEASURED holds seven MEASURED fields; the eighth is a human VERDICT the
+  # machine cannot produce. A `cp` here destroys every judgement in the file, and because the
+  # comparator only diffs fields 1-7 it then reports STABLE forever against a baseline nobody
+  # has ever reviewed -- the exact guarantee this instrument exists to give, with a hole in it.
+  # So: carry each cell's verdict forward by its coordinate key when its MEASUREMENT is
+  # unchanged, and stamp anything new or moved UNREVIEWED, which the comparator refuses.
+  if [ -f "$BASELINE" ]; then
+    awk -F'\t' -v OFS='\t' '
+      NR==FNR { if (NF>7) { k=$1 FS $2 FS $3; m[k]=$4 FS $5 FS $6 FS $7; v[k]=substr($0, index($0,$8)) } ; next }
+      { k=$1 FS $2 FS $3
+        if (k in v && m[k]==($4 FS $5 FS $6 FS $7)) print $0, v[k]
+        else print $0, "UNREVIEWED", "measurement is new or has MOVED — a human must judge this cell before the matrix can pass" }
+    ' "$BASELINE" "$MEASURED" > "$BASELINE.new"
+  else
+    awk -F'\t' -v OFS='\t' '{print $0, "UNREVIEWED", "no prior baseline — every cell needs a first judgement"}' "$MEASURED" > "$BASELINE.new"
+  fi
+  mv "$BASELINE.new" "$BASELINE"
+  carried=$(awk -F'\t' '$8!="UNREVIEWED"' "$BASELINE" | wc -l | tr -d ' ')
+  todo=$(awk -F'\t' '$8=="UNREVIEWED"' "$BASELINE" | wc -l | tr -d ' ')
+  echo "baseline written: $BASELINE ($(wc -l < "$BASELINE" | tr -d ' ') cells; $carried verdicts carried, $todo UNREVIEWED)"
+  [ "$todo" -gt 0 ] && echo "REVIEW REQUIRED: $todo cell(s) marked UNREVIEWED — the matrix will FAIL until each is judged."
   rm -f "$MEASURED"; exit 0
 fi
 if [ ! -f "$BASELINE" ]; then
@@ -199,6 +253,17 @@ echo "cells measured: $(wc -l < "$MEASURED" | tr -d ' ')  baseline: $(wc -l < "$
 # KNOWN_BAD with a reason). The machine measures 7 fields and must never overwrite the
 # judgement, so the comparison is on fields 1-7 only. A cell whose verdict is wrong is a
 # review defect; a cell whose MEASUREMENT moved is what this script exists to catch.
+# An unjudged baseline is not a baseline. Before comparing anything, require that EVERY row
+# carries a verdict the machine did not write. Without this, `--write-baseline` followed by a
+# normal run reports STABLE against a file no human ever read.
+unjudged=$(awk -F'\t' 'NF<8 || $8=="" || $8=="UNREVIEWED"' "$BASELINE" | wc -l | tr -d ' ')
+if [ "$unjudged" -gt 0 ]; then
+  echo "BASELINE NOT REVIEWED — $unjudged of $(wc -l < "$BASELINE" | tr -d ' ') cells carry no verdict (or UNREVIEWED)." >&2
+  echo "  The verdict column is written by a human, never by this script. Judge each cell OK or" >&2
+  echo "  KNOWN_BAD (with a reason) before this matrix can pass. Offending cells:" >&2
+  awk -F'\t' 'NF<8 || $8=="" || $8=="UNREVIEWED" {print "    " $1 "|" $2 "|" $3}' "$BASELINE" >&2
+  rm -f "$MEASURED"; exit 2
+fi
 cut -f1-7 "$BASELINE" > "$BASELINE.cmp"
 if diff -u "$BASELINE.cmp" "$MEASURED" > "$MEASURED.diff"; then
   rm -f "$BASELINE.cmp"
