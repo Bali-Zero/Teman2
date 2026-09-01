@@ -828,6 +828,37 @@ SIZE_TERM_EXCLUDE_FILENAMES: tuple[str, ...] = (
     "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "poetry.lock",
     "Cargo.lock", "uv.lock", "Gemfile.lock", "composer.lock",
 )
+#: Exact repo-relative PATHS (never a basename, never a glob) for this
+#: repo's own pip-compile-style, hash-pinned, machine-derived lockfiles —
+#: added 2026-09-02 after measurement on PR #5530 (a routine 55-package pip
+#: dependabot bump, `gh api repos/Bali-Zero/Teman2/pulls/5530/files`): the
+#: two files carried 3570 of 3672 total churned lines (97%); the remaining
+#: 102 lines, spread across 5 human-reviewable `requirements*.txt` files,
+#: still count in full.
+#:
+#: Went through TWO adversarial rounds on this same PR before landing here:
+#: (1) a glob `requirements*.lock.txt` matched any basename in that shape,
+#: including a hand-added `requirements-backdoor.lock.txt` nobody's tooling
+#: produced; (2) fixing that to two exact LITERALS still matched by
+#: basename only (`PurePosixPath(path).name`), so the same fabricated
+#: content at `docs/requirements.lock.txt` or any other directory still
+#: exempted itself — the well-known package-manager names above accept
+#: that basename-only risk because they are unambiguous, single-ecosystem
+#: conventions; "requirements.lock.txt" is generic enough that a decoy
+#: elsewhere in the tree is a real, not hypothetical, shape. This repo
+#: already treats exactly that shape as suspicious in the OTHER direction
+#: (`scripts/prepush_classify.py`'s `NEVER_INNOCENT_BASENAMES`, proven by
+#: `test_guilt_requirements_family_under_an_allowlisted_prefix_forces_full`
+#: in `scripts/tests/test_prepush_classify.py`: a requirements manifest
+#: under an allowlisted prefix it doesn't really live under must force
+#: full attention, never read as innocent) — matching that discipline here
+#: means exempting by FULL PATH, not name. Only these two exact,
+#: currently-real paths are exempted; a genuine future sibling (e.g. a
+#: split requirements-dev.lock.txt) needs its own literal added here.
+SIZE_TERM_EXCLUDE_EXACT_PATHS: tuple[str, ...] = (
+    "apps/backend-rag/requirements.lock.txt",
+    "apps/backend-rag/requirements-prod.lock.txt",
+)
 SIZE_TERM_EXCLUDE_SUFFIXES: tuple[str, ...] = (
     ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".bmp",
     ".pdf", ".zip", ".gz", ".woff", ".woff2", ".ttf", ".otf", ".eot",
@@ -839,15 +870,25 @@ def _is_size_term_excluded(path: str) -> bool:
     """True when `path` should NOT count toward the size term (S1):
     generated/vendored output, well-known lockfiles, minified bundles, and
     binary/image assets. See the SIZE_TERM_EXCLUDE_* tuples above for what
-    and why. Deliberately NOT a blanket `*.lock` suffix match (adversarial
-    review, PR #5049): the mandate's "lockfiles" meant the well-known
-    package-manager ones enumerated above, not every file a script happens
-    to name `*.lock` — this repo's own coordination primitives use that
-    suffix for real hand-written state (CLAUDE.md's `agent_lock:<resource>`
-    Redis keys), and a blanket suffix match would have let a diff touching
-    real lock-coordination code hide behind the same exemption."""
+    and why. Deliberately NOT a blanket `*.lock`/`*.lock.txt` suffix or glob
+    match (adversarial review, PR #5049 and again PR #5531): the mandate's
+    "lockfiles" meant the well-known, actually-produced ones enumerated
+    above, not every file a script happens to name that way — this repo's
+    own coordination primitives use `*.lock` for real hand-written state
+    (CLAUDE.md's `agent_lock:<resource>` Redis keys), and a blanket
+    suffix/glob match would let a diff touching real lock-coordination
+    code — or a fabricated file chosen to LOOK like a lockfile — hide
+    behind the same exemption (superscar #3, W98-class). The well-known
+    package-manager names in SIZE_TERM_EXCLUDE_FILENAMES match by BASENAME
+    (any directory) because each is an unambiguous single-ecosystem
+    convention; SIZE_TERM_EXCLUDE_EXACT_PATHS matches by FULL repo-relative
+    PATH ONLY (PR #5531 round 2) because "requirements.lock.txt" is a
+    generic enough name that a same-named decoy elsewhere in the tree is a
+    real risk, not a hypothetical one."""
     p = PurePosixPath(path)
     if any(part in SIZE_TERM_EXCLUDE_DIR_NAMES for part in p.parts[:-1]):
+        return True
+    if p.as_posix() in SIZE_TERM_EXCLUDE_EXACT_PATHS:
         return True
     name = p.name
     if name in SIZE_TERM_EXCLUDE_FILENAMES:
@@ -876,11 +917,21 @@ def _size_term_net_lines(numstat: str) -> int:
     excludes generated/vendored/binary paths (_is_size_term_excluded) that
     inflate churn without inflating review burden. Binary rows
     ("-\\t-\\tpath") and malformed lines are skipped, same as
-    sum_numstat()."""
+    sum_numstat(). CORRECTED again 2026-09-02 (adversarial review, codex-sol,
+    PR #5531, round 3): the blankness check used to be `line = line.strip()`
+    on the WHOLE line before splitting, which silently strips leading/
+    trailing whitespace off the PATH field too — git permits a trailing
+    space in a real filename, so a decoy committed as
+    "apps/backend-rag/requirements.lock.txt " (note the space) numstat's as
+    that literal string, gets stripped to the real lockfile's exact name,
+    and its churn vanishes from the size term entirely. `sum_numstat()`
+    above does the identical whole-line strip but is safe from this class —
+    it never looks at `path` for a decision, only at the two numeric
+    fields. Here, where `path` gates an exclusion, blankness is checked
+    without mutating the line the path is sliced from."""
     net = 0
     for line in numstat.splitlines():
-        line = line.strip()
-        if not line:
+        if not line.strip():
             continue
         parts = line.split("\t")
         if len(parts) < 3:

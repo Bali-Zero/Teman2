@@ -1,7 +1,11 @@
 ---
 name: pipeline-ship
-description: Use when opening/arming/merging a PR, pushing a branch, or wondering why CI or the merge queue is behaving oddly. Covers the merge-queue-era ship mechanics (live since 2026-07-27), the path-aware pre-push gate, the machine-wide suite lock, and the specific ways this pipeline lies to you. Complements agent-session-discipline (which owns worktree creation).
+description: "Use when opening/arming/merging a PR, pushing a branch, or CI/merge-queue behaves oddly. Covers merge-queue-era ship mechanics, the path-aware pre-push gate, and the ways this pipeline lies to you."
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Also covers the machine-wide suite lock. Merge-queue-era ship mechanics have been live since 2026-07-27. Complements agent-session-discipline, which owns worktree creation.
 
 > **CANON**: repo `.claude/` — shadows the `~/.claude/` HOME copy. Edit HERE, never in `$HOME`.
 

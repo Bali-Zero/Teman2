@@ -1,7 +1,11 @@
 ---
 name: kbli-navigator
-description: "KBLI Navigator corner — the live shared context AND the full plan-to-the-end for ALL KBLI corpus/product work (dataset, gold, KG, editorial, kbli pages on balizero.com). Load BEFORE touching any KBLI data or code, or when Zero says /kbli-navigator, 'kbli corpus', 'filiera', 'garuda', or references the July 2026 disease cluster. Holds: the north star (re-validate all 1,559 codes), established truths (verified, with method), LIVE STATE, the GARUDA-FILIERA roadmap (phases 0-3, D0-D6 protocol, batches, seats), artifacts & access, blood-bought operating rules."
+description: "KBLI Navigator corner — shared context + plan for ALL KBLI corpus/product work. Load before touching KBLI data/code, or when Zero says /kbli-navigator, 'kbli corpus', 'garuda'."
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Covers dataset, gold, KG, editorial, and the kbli pages on balizero.com. Additional triggers: 'filiera', or a reference to the July 2026 disease cluster. Holds: the north star (re-validate all 1,559 codes), established truths (verified, with method), LIVE STATE, the GARUDA-FILIERA roadmap (phases 0-3, D0-D6 protocol, batches, seats), artifacts & access, blood-bought operating rules.
 
 # /kbli-navigator — KBLI corpus & product corner (project brain)
 

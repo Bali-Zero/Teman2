@@ -1,16 +1,11 @@
 ---
 name: workflow
-description: >
-  Strategic multi-agent orchestration playbook — the Workflow tool wired to the full
-  cross-family arsenal (Sonnet 5 implementers, Codex red-team, Gemini agy width, Kimi K3,
-  GLM refuter, Ollama PII-local). USE when the mandate is strategic/wide: architectural
-  decision, exhaustive audit/review, corpus research, design tournament, council panel —
-  anything needing many independent perspectives or scale one context can't hold. Also the
-  shared protocol for TWIN OPUS SESSIONS (e.g. M5 + Pro) doing joint strategic work:
-  disjoint lanes, durable artifacts on disk, handoff via ledger. Invoking this skill IS the
-  user's explicit opt-in to the Workflow tool. SKIP for single-lane fixes — that's plain
-  modus Gear 1/2 with at most one spalla.
+description: "Strategic multi-agent orchestration playbook for the Workflow tool. USE when the mandate is strategic/wide: architectural decision, exhaustive audit, design tournament. SKIP for single-lane fixes."
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Wired to the full cross-family arsenal: Sonnet 5 implementers, Codex red-team, Gemini agy width, Kimi K3, GLM refuter, Ollama PII-local. Also covers corpus research and council panel work, and is the shared protocol for TWIN OPUS SESSIONS (e.g. M5 + Pro) doing joint strategic work: disjoint lanes, durable artifacts on disk, handoff via ledger. Invoking this skill IS the user's explicit opt-in to the Workflow tool. SKIP-for detail: that's plain modus Gear 1/2 with at most one spalla.
 
 # /workflow — strategic orchestration (the arsenal, made deterministic)
 

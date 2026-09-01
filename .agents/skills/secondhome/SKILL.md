@@ -1,7 +1,11 @@
 ---
 name: secondhome
-description: "E33 Second Home Visa corner — the live shared context for ALL work on the E33 vertical (base E33 deposit/property route, E33E/E33F senior). Load BEFORE touching any E33 code, content, pricing, engine rule, or the letters pipeline — or when Zero says /secondhome, 'second home', 'E33', 'visa rumah kedua'. Holds: where the truth lives (fact registry + letter tracker), verified facts, owner decisions, what is LIVE vs merely BUILT, the open phases F4-F8, and the blood-bought gotchas."
+description: "E33 Second Home Visa corner — shared context for the E33 vertical (deposit/property route, senior). Load before touching E33 code/content/pricing, or when Zero says /secondhome, 'second home', 'E33'."
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Senior route detail: E33E/E33F. Also covers the letters pipeline. Additional trigger: 'visa rumah kedua'. Holds: where the truth lives (fact registry + letter tracker), verified facts, owner decisions, what is LIVE vs merely BUILT, the open phases F4-F8, and the blood-bought gotchas.
 
 # /secondhome — E33 Second Home Visa corner
 

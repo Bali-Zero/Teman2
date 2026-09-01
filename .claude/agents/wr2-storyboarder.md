@@ -1,12 +1,16 @@
 ---
 name: wr2-storyboarder
-description: "MUST BE USED by wr2-design-architect at Step 3 of every carousel run. Use IMMEDIATELY when brief-interpreter returns its structured brief. Receives the brief verbatim, returns 4-10 slide narrative spec (Hook + Frame + Discovery + Closing arc + optional elegant-close). Each slide-spec includes layout family, heading, body (with English assist for non-always-untranslated ID terms — Article 6.2), hero flag, image prompt. ENFORCES bullet-promise rule (Article 6.3): if heading/sub announces N items, body MUST deliver N bullets, never paragraph mappazza. No HTML. No rendering."
+description: "MUST BE USED by wr2-design-architect at Step 3 of every carousel run. Use IMMEDIATELY when brief-interpreter returns its brief. Returns 4-10 slide narrative spec. ENFORCES bullet-promise rule (Article 6.3). No HTML, no rendering."
 tools: Read, Glob, Grep, Bash
 model: sonnet
 color: purple
 skills:
   - bali-zero-brand
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Slide arc: Hook + Frame + Discovery + Closing (+ optional elegant-close). Each slide-spec includes layout family, heading, body (English assist for non-always-untranslated ID terms — Article 6.2), hero flag, image prompt. Bullet-promise (Article 6.3): if heading/sub announces N items, body MUST deliver N bullets, never paragraph mappazza. Receives the brief verbatim.
 
 > CANON: repo .claude/agents/ (vendored 2026-07-16, shadows ~/.claude/agents copy — do not edit the HOME copy).
 

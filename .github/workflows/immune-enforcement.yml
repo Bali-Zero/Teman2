@@ -92,6 +92,8 @@ jobs:
               CLAUDE.md|\
               .claude/rules/*|\
               docs/scars/*|\
+              .prettierignore|\
+              scripts/tests/test_superscar_budget.py|\
               scripts/lint_home_fork.py|\
               scripts/proprioception.py|\
               scripts/agent_start.py|\
@@ -131,6 +133,8 @@ jobs:
               scripts/tests/test_proprioception_executed_code_currency.py|\
               scripts/tests/test_secrets_permissions_audit.py|\
               scripts/tests/test_pending_arms_report.py|\
+              .github/dependabot.yml|\
+              scripts/tests/test_dependabot_excludes_compiled_locks.py|\
               scripts/lane_outcome_report.py|\
               scripts/tests/test_lane_outcome_report.py|\
               scripts/tests/test_lint_plist_keepalive.py|\
@@ -495,6 +499,7 @@ jobs:
             scripts/tests/test_secrets_permissions_audit.py \
             scripts/tests/test_lane_outcome_report.py \
             scripts/tests/test_pending_arms_report.py \
+            scripts/tests/test_dependabot_excludes_compiled_locks.py \
             scripts/tests/test_lint_decision_registry.py \
             scripts/tests/test_lint_plist_keepalive.py \
             scripts/tests/test_arsenal_probe.py \
@@ -592,6 +597,25 @@ jobs:
         # only reads the loop's `scripts/**.py` entries, so it cannot vouch for
         # this step.
         run: python -m pytest scripts/tests/test_zantara_media_suite_has_a_runner.py -q
+
+      - name: Superscar byte-budget + completeness (cicatrix-superscar.md stays a bridge)
+        if: steps.paths.outputs.relevant == 'true'
+        # PENDING-ARMS L747: `test_superscar_budget.py` (born 2026-08-21) has run only inside
+        # `scripts-tests-sweep.yml` — nightly, `continue-on-error: true`, report-only by explicit
+        # design (Stage 1 of that workflow's own staged plan). A PR that pushed
+        # `.claude/rules/cicatrix-superscar.md` past its 14,000-byte boot-tax budget landed clean
+        # and only surfaced the next morning in a report nobody is required to read — exactly the
+        # "exists != armed" disease this bridge file's own family #2 documents. This step is
+        # Stage 3 of that plan: the same corpus, promoted to a required, per-PR blocking check,
+        # gated on the sentinel's existing `.claude/rules/*` + `docs/scars/*` path-detect entries
+        # (both already present above) so an unrelated PR never pays for it.
+        #
+        # Guilt+innocence proven locally before wiring this step (PR body carries the numbers):
+        # the live file passes at 12,484 bytes; padded to 14,200 bytes the same test fails on
+        # `assert 14200 <= 14000`; reverted, it passes again. The completeness assertion (every
+        # W-number in the bridge resolves to a real heading in cicatrix-scars.md or its archive)
+        # and the `.prettierignore` coverage assertion ride along in the same file.
+        run: python -m pytest scripts/tests/test_superscar_budget.py -q
 
       - name: PII gate merge-scope guilt+innocence (.husky/pre-commit)
         if: steps.paths.outputs.relevant == 'true'

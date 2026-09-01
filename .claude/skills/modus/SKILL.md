@@ -1,17 +1,11 @@
 ---
 name: modus
-description: >
-  USE FOR EVERY non-trivial mandate — feature, fix, refactor, research, audit, ops, content —
-  coding or not. The master operating loop of the organism: TRIAGE the mandate into a gear
-  (1 liscio / 2 standard / 3 profondo), then drive GROUND → DESIGN → BUILD → VERIFY → SHIP+ARM →
-  PROVE-LIVE → ALIGN-FLEET → CLEAN → CAPTURE, routing the full arsenal at maximum-without-waste
-  (Opus 5 xhigh effort architect+sequential final on-disk gate — Fable 5 out of the workflow,
-  RULED 2026-08-20 — Sonnet 5 implementers,
-  Codex GPT-5.6 red-team+sandbox, Gemini agy constructive width, Kimi K3 permanent refuter,
-  Ollama local for PII, NotebookLM ground-truth). Supersedes opus-mythos
-  (2026-07-02): Fable is native again — the width-surrogate retires; its deep/wide TAC patterns
-  live on as Gear 3. SKIP only true one-liners — and declare it: "GEAR 1: <why>".
+description: "USE FOR EVERY non-trivial mandate — feature, fix, refactor, research, audit, ops, content. TRIAGE into a gear (1/2/3), drive GROUND→BUILD→VERIFY→SHIP→CAPTURE. SKIP true one-liners — declare it."
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Full stage list: GROUND → DESIGN → BUILD → VERIFY → SHIP+ARM → PROVE-LIVE → ALIGN-FLEET → CLEAN → CAPTURE. Routes the full arsenal at maximum-without-waste: Opus 5 xhigh effort architect + sequential final on-disk gate (Fable 5 out of the workflow, RULED 2026-08-20), Sonnet 5 implementers, Codex GPT-5.6 red-team+sandbox, Gemini agy constructive width, Kimi K3 permanent refuter, Ollama local for PII, NotebookLM ground-truth. Supersedes opus-mythos (2026-07-02): Fable is native again — the width-surrogate retires; its deep/wide TAC patterns live on as Gear 3. Declare a skip as: "GEAR 1: <why>".
 
 # MODUS — the master loop (request → prod → fleet → clean → learned)
 
@@ -39,11 +33,15 @@ tasks that merely look small is the systematic failure mode. Read the ledgers:
 `.claude/skills/modus/PENDING-ARMS.md` (anything suspended from previous runs that this task
 touches?) — AMENDMENTS.md is maintained at CAPTURE, read by the bench.
 
-Alongside the gear, declare an OPTIONAL `appetite:` block in `evidence/brief.yml` — three
+Before creating an evidence pack, compute its directory; never derive it by hand:
+`python3 scripts/ci/evidence_paths.py --ref "$(git rev-parse --abbrev-ref HEAD)"`.
+Write its sibling `brief.yml`, `pack.yml`, and optional `journal.jsonl` under the emitted
+`evidence/<YYYY-MM>/<slug>/` directory. Alongside the gear, declare an OPTIONAL `appetite:`
+block in that dated `brief.yml` — three
 ceilings, each optional: `wall_clock_hours`, `adversarial_rounds`, `tokens`.
 `scripts/evidence_pack_lint.py`'s `check_appetite_acknowledgment` (rule 14, the ONLY rule in
 the evidence-pack lane that can FAIL — every other rule there is NOTICE-only) compares them
-ex-post against `spend:` in `evidence/pack.yml`; exceeding a declared ceiling with no
+ex-post against `spend:` in that dated `pack.yml`; exceeding a declared ceiling with no
 non-empty `appetite_exceeded: "<reason>"` acknowledgment in the pack is a lint FAIL,
 mirroring `gear_override`'s acknowledgment discipline exactly. This is EX-POST / PR-LIFETIME
 ACCOUNTING, NEVER AN IN-FLIGHT BREAKER: the linter has no clock and no session-runtime
@@ -74,7 +72,7 @@ acknowledgment after the fact. Absence of the block is silent, never a gap.
 - **The FLOOR is enforced by `harness-floor.yml`; the CEILING is enforced too** (`compute_ceiling()`
   in `scripts/evidence_pack_lint.py`, PR #4474): a docs/ledger-only diff, or a ≤2-file/≤60-net-line
   diff outside hot zones, is Gear-1-shaped by construction — declaring it Gear 3 with a council or
-  ≥3 grader dispatches FAILS the lint unless `evidence/pack.yml` carries a `gear_override:` naming
+  ≥3 grader dispatches FAILS the lint unless the dated `pack.yml` carries a `gear_override:` naming
   the reason (then it's a NOTICE, not a fail). The ceiling never overrides the floor — a hot-zone
   hit still floors at Gear 3 regardless of how small the diff looks.
 
