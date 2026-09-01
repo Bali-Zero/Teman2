@@ -7,6 +7,8 @@ that get injected into the system prompt at runtime.
 
 from dataclasses import dataclass
 
+from backend.app.core.config import settings
+
 
 @dataclass(frozen=True)
 class ChannelConfig:
@@ -105,7 +107,7 @@ CHANNEL_CONFIGS: dict[str, ChannelConfig] = {
             "Keep answers concise and helpful — this is a lead generation context. "
             "After the user's 3rd question, naturally suggest a personal consultation: "
             '"For a personalized consultation, reach us at '
-            'info@balizero.com or WhatsApp +62 821 3465 159."'
+            f'info@balizero.com or WhatsApp {settings.CLIENT_CONTACT_WHATSAPP}."'
         ),
     ),
 }

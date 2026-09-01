@@ -1,0 +1,487 @@
+brief_ref: evidence/brief.yml
+brief_ref_note: >-
+  The literal path is required: harness-floor.yml stages the brief to
+  /tmp/evidence-check/evidence/brief.yml and lints with --repo-root /tmp/evidence-check, so a
+  per-task path here does not resolve in CI. A LOCAL lint therefore judges the stale root brief,
+  not this task's -- the real one is the sibling file in this directory.
+plan_ref: >-
+  Zero's ruling of 2026-09-01, verbatim and entire: "metti ari anche in quelle" -- put Ari on those
+  too. "Those" is the eleven client-facing surfaces this organism ledgered the day before, while
+  shipping PR #5486, as an open operator[business] question. Governing lifecycle: CLAUDE.md section 2
+  ship-ownership.
+lanes:
+  - lane: wa-contact-all-surfaces-build
+    role: build
+    seat: >-
+      claude-opus-5 xhigh (conducting session, M5) -- swept every WhatsApp-number emission under
+      backend/, moved the literal sites onto settings.CLIENT_CONTACT_WHATSAPP, wrote both guards,
+      and authored this pack.
+  - lane: wa-contact-all-surfaces-sweep
+    role: review
+    seat: >-
+      claude-sonnet-5 (Explore subagent, read-only, dispatched WITHOUT a conclusion to confirm) --
+      asked to classify the WR2 renderer, the wa-meta-inbox tool and the frontend as client-facing
+      or internal. Its frontend answer was re-verified by the session directly before being relied
+      on (W65/W90).
+  - lane: wa-contact-all-surfaces-refute-1
+    role: review
+    seat: >-
+      claude-sonnet-5 (adversarial spalla) -- dispatched on TWO FALSIFIABLE CLAIMS of mine rather
+      than on a request to agree: that response_sanitizer's CTA and WELCOME_EMAIL_CTA are dead code.
+      Both survived, with its own independent evidence. Returned SHIP-WITH-FIXES with six findings.
+  - lane: wa-contact-all-surfaces-refute-2
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol at xhigh, read-only sandbox (cross-family) -- dispatched on the DIFF with the
+      two-number context and no conclusions to confirm, pointed specifically at the new guard.
+      Returned REJECT with five findings. The most valuable one is a surface nobody else could see.
+  - lane: wa-contact-all-surfaces-measure
+    role: review
+    seat: >-
+      claude-sonnet-5 (Explore subagent, read-only) -- dispatched to SETTLE a disagreement between me
+      and the cross-family seat by measurement instead of argument, and told to report raw numbers
+      and commands, not a verdict.
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One cross-family seat (codex-gpt-5.6-sol) and three Anthropic seats in distinct roles. The
+  cross-family seat earned its place here rather than filling a quota: it found the one surface
+  (pricing_service.py) that my sweep, my grep AND my own first guard were all structurally blind to,
+  because that file contains no digits at all.
+diff:
+  net_lines: >-
+    Measured from the merge-base with `git diff --cached --numstat $(git merge-base HEAD
+    origin/main)`, never two-dot (W102). The figures are deliberately not restated here: this pack is
+    itself one of the files, so any number written into it is stale the moment it is written -- run
+    the command. Shape rather than size: fourteen one-literal-to-one-attribute edits across ten
+    modules; one helper renamed with its five call sites; one hand-typed constant made derived; two
+    comments corrected; two new guards in the tripwire file; one doc banner amended; one ledger row
+    closed by append. Zero migrations, zero workflows, zero frontend, zero endpoint or schema change.
+  behaviour_change: >-
+    Every client-facing WhatsApp emission in apps/backend-rag/backend now names the client-contact
+    line (+62 821 3454 721) instead of the bot's Meta inbound line (+62 821 3465 159): the invoice
+    email, five CRM lifecycle emails, the shared notification footer, the balizero.com website-widget
+    prompt, and three pricing fallbacks (two fallback_contact blocks and the LLM pricing context's
+    Contact: line). settings.SUPPORT_WHATSAPP is untouched and every inbound webhook path is
+    unchanged. Two of the edited surfaces are dormant and are declared as such below.
+receipts:
+  - claim: >-
+      Deterministic gear floor recomputed from THIS PR's actual changed-file list is 3, matching the
+      declared gear.
+    cmd: >-
+      git diff --cached --name-only $(git merge-base HEAD origin/main) > /tmp/f3.txt && python3
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/f3.txt
+    result: "3"
+    exit: 0
+    ts: 2026-09-01T09:40Z
+    seat: session (M5)
+  - claim: >-
+      THE CENTRAL RECEIPT for the digit guard -- it goes RED under the specific regression it exists
+      to catch, in both the spelling my own grep found and the spelling my own grep MISSED.
+    cmd: >-
+      pytest backend/tests/test_data_invariant_tripwires.py::test_no_backend_module_hands_a_client_the_bots_inbound_number
+      after writing a client-facing literal into backend/services/pricing/_probe_tmp.py, once as
+      "+62 821 3465 159" and once dash-separated, then restore with cp (never git checkout --,
+      which twice reverted an entire edit during PR #5486)
+    result: spaced -> FAILED; dash-separated -> FAILED; restored -> passed
+    exit: 1
+    ts: 2026-09-01T08:20Z
+    seat: session (M5)
+  - claim: >-
+      The guard caught a real occurrence my own grep had missed -- direct evidence that the
+      separator-collapsing design is not theoretical.
+    cmd: grep for the spaced form, then run the guard over the whole backend
+    result: >-
+      wa_outbox_worker.py:4 writes the number as +62 821-3465-159 with dashes; the grep returned
+      nothing for it, the guard flagged it. It is now a budgeted inbound-identity occurrence.
+    exit: 0
+    ts: 2026-09-01T08:05Z
+    seat: session (M5)
+  - claim: >-
+      All fourteen edited sites are live interpolations, not plain strings shipping literal braces to
+      a client. Proven by AST, not by eye.
+    cmd: >-
+      ast walk for str constants containing CLIENT_CONTACT_WHATSAPP, over the ten modules: (a) str
+      Constants carrying the placeholder text, (b)
+      settings.CLIENT_CONTACT_WHATSAPP attribute reads, (c) a module-level import of settings, (d)
+      any rebinding of the name `settings`
+    result: >-
+      plain-string placeholder leaks - NONE; 14 attribute sites total; module_import True on all ten;
+      rebinds none on all ten
+    exit: 0
+    ts: 2026-09-01T08:35Z
+    seat: session (M5)
+  - claim: >-
+      The rendered output actually carries the client line -- the modules were exercised, not just
+      read.
+    cmd: >-
+      import the modules under the backend venv and collapse-check WELCOME_EMAIL_CTA in all five
+      languages and build_channel_context() for all six channels
+    result: >-
+      all five languages ari=True bot=False; build_channel_context("website") ari=True bot=False;
+      module SOURCE carries the bot number in NONE of the nine
+    exit: 0
+    ts: 2026-09-01T08:40Z
+    seat: session (M5)
+  - claim: >-
+      THE FINDING NOBODY ELSE COULD SEE, and the reason a cross-family seat is on this diff: a THIRD
+      pricing fallback producer, invisible to the sweep, the grep and the first guard alike because
+      the file contains no digits -- it reads the setting by NAME.
+    cmd: >-
+      codex-gpt-5.6-sol read pricing_service.py during its review; the session then verified directly
+      with grep -rn "_support_contacts|fallback_contact" and read all five call sites
+    result: >-
+      _support_contacts() returned (SUPPORT_EMAIL, SUPPORT_WHATSAPP); three of its five call sites
+      ship the second element to a client -- get_pricing's fallback_contact, get_all_prices's
+      fallback_contact, and the Contact: line of get_pricing_context. Renamed
+      _client_facing_contacts(), returns CLIENT_CONTACT_WHATSAPP; zero references to the old name
+      remain anywhere in the repo.
+    exit: 0
+    ts: 2026-09-01T09:05Z
+    seat: codex-gpt-5.6-sol xhigh + session re-verification
+  - claim: >-
+      The twin guard that would have caught that surface is guilt-proved against the REAL defect, not
+      an invented one.
+    cmd: >-
+      pytest backend/tests/test_data_invariant_tripwires.py::test_only_the_meta_webhook_router_reads_the_bots_inbound_number
+      after reverting _client_facing_contacts to `return settings.SUPPORT_EMAIL,
+      settings.SUPPORT_WHATSAPP`; separately after adding a new module reading the setting;
+      separately after adding a stale allowlist row; restore each with cp
+    result: >-
+      the exact reverted defect -> FAILED; new reader module -> FAILED; stale row -> FAILED;
+      restored -> passed
+    exit: 1
+    ts: 2026-09-01T09:20Z
+    seat: session (M5)
+  - claim: >-
+      ROUND 2. Every bypass the two adversarial seats DEMONSTRATED against the guards is now red, and
+      the one that is not is declared in the guard's own docstring rather than left to be discovered.
+    cmd: >-
+      replay each reviewer payload into a temporary backend module, run the relevant guard, restore
+      with cp
+    result: >-
+      U+2011 non-breaking hyphen -> FAILED (was a miss); literal wrapped across two lines -> FAILED
+      (was a miss); "".join([...]) -> FAILED (was a miss); "a" + "b" chain -> FAILED (was a miss);
+      getattr(settings, "SUPPORT_WHATSAPP") -> FAILED (was a miss on BOTH guards);
+      os.getenv("SUPPORT_WHATSAPP") -> FAILED (was a miss on both); cross-variable f-string -> still
+      passes, and is the DECLARED RESIDUAL LIMIT
+    exit: 1
+    ts: 2026-09-01T10:15Z
+    seat: session (M5)
+  - claim: >-
+      The reviewers' two false-flag scenarios are now green, so the guard was not hardened by making
+      it blunter.
+    cmd: >-
+      a historical comment narrating the number; a test file outside backend/tests/; an IDR price
+      literal beside the client number in three spellings
+    result: comment -> passed; backend/scripts/test_*.py -> passed; IDR + three spellings -> passed
+    exit: 0
+    ts: 2026-09-01T10:15Z
+    seat: session (M5)
+  - claim: >-
+      The whole-file exemption is gone. It is a per-file occurrence BUDGET, and it fails in BOTH
+      directions -- including the concrete scenario the cross-family seat described.
+    cmd: >-
+      append a client-facing CTA to a budgeted file; append one to each of the two files the budget
+      DROPPED; remove the single budgeted occurrence from wa_outbox_worker.py; restore each with cp
+    result: >-
+      budgeted file gains one -> FAILED; whatsapp_chat.py gains a CTA -> FAILED (it was wholly exempt
+      before); _memory_identity.py gains a CTA -> FAILED (likewise); budget of 1 spent 0 times ->
+      FAILED; restored -> 15 passed
+    exit: 1
+    ts: 2026-09-01T10:40Z
+    seat: session (M5)
+  - claim: >-
+      Two of the five files were exempted for NOTHING. Re-measured with the live guard's own logic
+      rather than trusting the number a subagent counted.
+    cmd: >-
+      run the guard's exact collapse + fold + f-string-segment logic over the five formerly-exempt
+      files and count occurrences per file
+    result: >-
+      config.py 1 (line 28, the definition); pii_log_identifier.py 2 (two docstrings);
+      wa_outbox_worker.py 1 (module docstring); whatsapp_chat.py 0 and _memory_identity.py 0 -- their
+      occurrences are `#` comments, which an AST walk never sees. The last two are dropped from the
+      budget and are now fully guarded.
+    exit: 0
+    ts: 2026-09-01T10:35Z
+    seat: session (M5)
+  - claim: >-
+      THE DISAGREEMENT I LOST AND THE ONE I WON. The cross-family seat called the guard's over-match a
+      false-positive class. Settled by measuring the corpus, not by arguing about it.
+    cmd: >-
+      Explore subagent, read-only, told to report raw numbers and commands and no verdict: walk every
+      text file in the repo, apply the guard's collapse rule per line, and print every hit
+    result: >-
+      19,822 files scanned. 76 hits on 628213465159 and 6 on 08213465159 -- all 82 are the real Bali
+      Zero bot number in a legitimate spelling, and ZERO are the reviewer's kind of collision. The
+      longest digit run of any real IDR price in the tree is 8; the only 10-11 digit runs are the
+      statutory PT PMA minimum capital, and the only 12-digit non-phone string in the whole repo is
+      the reviewer's own example, quoted inside the guard's docstring as the hypothesis it answers.
+    exit: 0
+    ts: 2026-09-01T10:30Z
+    seat: claude-sonnet-5 (Explore, read-only) + session re-measurement of the counts it produced
+  - claim: >-
+      Two of the eleven ledgered surfaces are DORMANT, and this is recorded rather than counted as
+      reach the diff does not have.
+    cmd: >-
+      trace the caller chain of add_contact_if_appropriate and of WELCOME_EMAIL_CTA across the whole
+      repo; independently re-checked by the adversarial spalla, which was asked to FALSIFY both
+      claims
+    result: >-
+      response_sanitizer's CTA reaches only ResponseHandler, referenced nowhere outside
+      docs/LIVING_ARCHITECTURE.md; WELCOME_EMAIL_CTA is read by nothing (welcome_email_service.py
+      imports WELCOME_EMAIL_SUBJECT from the same module, not it). Both claims SURVIVED the
+      falsification attempt. Cured anyway -- a dormant constant holding the wrong number is a
+      landmine for whoever wires it up.
+    exit: 0
+    ts: 2026-09-01T09:00Z
+    seat: session (M5) + claude-sonnet-5 (adversarial, dispatched to falsify)
+  - claim: >-
+      A SIXTH hand-typed copy of the client number, already correct and therefore invisible to every
+      guard that looks for the WRONG number.
+    cmd: >-
+      found by the adversarial spalla at welcome_email_service.py:334; session read the consumers at
+      :346 and the render sites at :582/:599, then derived the constant and pinned it
+    result: >-
+      _BZ_WHATSAPP is now derived from settings.CLIENT_CONTACT_WHATSAPP; re-typing the digits by hand
+      -> test_every_repo_side_copy_of_the_client_number_agrees FAILED; restored -> passed
+    exit: 1
+    ts: 2026-09-01T10:00Z
+    seat: claude-sonnet-5 (adversarial) + session
+  - claim: >-
+      Two comments this PR makes FALSE are corrected -- the single most dangerous item in the review,
+      because #5418 chose the wrong number on the authority of a TEST and a comment carries the same
+      authority to the next reader.
+    cmd: >-
+      read config.py:36 and scripts/pricelist_2026/schema.py:23; both still asserted that eleven
+      client-facing surfaces emit SUPPORT_WHATSAPP
+    result: >-
+      both amended with the retired sentence quoted and dated rather than deleted, and both now name
+      the two guards that enforce the corrected statement
+    exit: 0
+    ts: 2026-09-01T09:55Z
+    seat: codex-gpt-5.6-sol xhigh + session
+  - claim: >-
+      The frontend needs no change, and this is verified by me rather than credited to the subagent
+      that reported it (W65/W90).
+    cmd: >-
+      read apps/mouth/src/lib/whatsapp-utm.ts directly, then run a separator-collapsing sweep of all
+      of apps/mouth for both the bot's and the retired number
+    result: 'WA_NUMBER = "628213454721"; total hits for either wrong number: 0'
+    exit: 0
+    ts: 2026-09-01T08:55Z
+    seat: session (M5)
+  - claim: >-
+      No existing test asserted the bot's number on a client-facing surface, so nothing was silently
+      loosened to make this diff pass.
+    cmd: grep the whole test tree for the bot digits, then run every suite that names them
+    result: >-
+      every hit is an inbound-identity test -- the double-reply defense, team-bot ingress routing, WA
+      memory-subject anchoring -- and all 154 of those tests pass unchanged
+    exit: 0
+    ts: 2026-09-01T09:15Z
+    seat: session (M5)
+  - claim: >-
+      A formatting-parity probe of mine ANSWERED A NEIGHBOURING QUESTION and I acted on its answer
+      before catching it. Recorded rather than quietly fixed.
+    cmd: >-
+      ruff format --check on copies in a scratchpad directory -- where the project config does not
+      resolve -- reported email_branding.py FORMATTED at base; I reformatted the file on that reading
+      and it silently collapsed an unrelated SQL string concatenation
+    result: >-
+      reverted. The corrected probe pipes `git show origin/main:<path>` into `ruff format --check
+      --stdin-filename <path>`, which resolves the repo config, and reports all four touched files as
+      already unformatted at base -- so none is reformatted and parity is preserved.
+    exit: 0
+    ts: 2026-09-01T09:30Z
+    seat: session (M5)
+  - claim: >-
+      Lint clean on every changed Python file, with no out-of-scope reformatting left behind.
+    cmd: ruff check on all changed .py files; git diff read hunk by hunk on the reverted file
+    result: >-
+      All checks passed. email_branding.py's diff is two hunks, both mine -- the settings import and
+      the footer line.
+    exit: 0
+    ts: 2026-09-01T10:45Z
+    seat: session (M5)
+  - claim: >-
+      The full backend suite is one PASS better per guard added and no worse in any other column,
+      compared against main rather than against zero.
+    cmd: >-
+      pytest backend/tests -p no:cacheprovider (no extra -q -- pytest.ini already sets it, and a
+      duplicate trips the verbosity guard, which is what made one earlier run exit 0 having executed
+      nothing)
+    result: >-
+      3 failed, 28300 passed, 343 skipped, 6 xfailed, 202 errors. PR #5486's baseline on the same
+      local database was 3 failed / 28298 passed / 343 skipped / 6 xfailed / 202 errors, so the delta
+      is exactly the two guards this PR adds and the failure and error SETS are identical. All three
+      failures were proven on a detached origin/main worktree during #5486 -- local schema missing
+      migration 285, an unrelated notifications AttributeError, and google-genai 2.7.0 against the
+      lockfile pin -- and none of them touches a WhatsApp number.
+    exit: 1
+    ts: 2026-09-01T11:00Z
+    seat: session (M5)
+  - claim: >-
+      Every mutation probe in this pack ran with the bytecode cache disabled, because a stale
+      __pycache__ made a 'restored, green' reading FALSE during PR #5486 (W121).
+    cmd: >-
+      find backend -name __pycache__ -exec rm -rf {} + before each cycle, and
+      PYTHONDONTWRITEBYTECODE=1 -p no:cacheprovider on every run
+    result: every restore step in this pack was verified against a cold cache
+    exit: 0
+    ts: 2026-09-01T11:05Z
+    seat: session (M5)
+  - claim: The ledger reconciles and carries no phantom operator.
+    cmd: python3 scripts/pending_arms_report.py
+    result: "MALFORMED: none; no PHANTOM-OPERATOR; the closed row appended, the open row byte-identical"
+    exit: 0
+    ts: 2026-09-01T09:45Z
+    seat: session (M5)
+council_run: journal.jsonl
+cloud_ok: >-
+  SYMBIOSIS Law 2 output boundary, CLAUDE.md section 14. The pii_local rule fires on the PATH
+  (backend/services/crm/**, the WhatsApp channel), not on the CONTENT, and it is right to: those are
+  PII-bearing modules. What travelled to the non-local seats is not. Each cross-family and subagent
+  dispatch carried the DIFF and the two Bali Zero business phone numbers, both of which the company
+  publishes itself on its price list, its website and its brochures. No client identifier, no message
+  body, no CRM row, no OSINT record appears in any prompt, any receipt, or this pack -- and none
+  could, because the diff changes email TEMPLATE text and never touches the data interpolated into
+  it. The paid-endpoint boundary is likewise untouched: codex-gpt-5.6-sol runs on the ChatGPT Pro
+  flat subscription in a read-only sandbox, and every Anthropic seat is a CLI session on the MAX/Team
+  OAuth path. No paid per-token key, Anthropic or otherwise, was used or installed.
+pii_scan: clean
+pii_scan_note: >-
+  No client data anywhere in the diff, brief or pack. The two numbers handled throughout are Bali
+  Zero's OWN business lines -- one the company's Meta-verified inbound WhatsApp Business number, the
+  other the staff line the company already publishes on its price list, its website and its
+  brochures. Neither is a client's number, and no client identifier, message body or OSINT record
+  appears in any receipt.
+dissent:
+  - seat: codex-gpt-5.6-sol xhigh (cross-family)
+    objection: >-
+      pricing_service.py::_support_contacts returns (SUPPORT_EMAIL, SUPPORT_WHATSAPP) and three call
+      sites ship the second element to a client. The diff claims to have swept the backend and has
+      not.
+    status: CONFIRMED
+    resolution: >-
+      The most valuable finding in either review, and the one that justifies keeping a cross-family
+      seat on a diff this mechanical. It was invisible to my sweep, my grep AND my own first guard
+      for the same reason: the file contains no digits: it reads the setting by name. Helper renamed
+      _client_facing_contacts, returns CLIENT_CONTACT_WHATSAPP, five call sites updated, zero
+      references to the old name left. The twin guard exists because of this finding and is
+      guilt-proved by reverting exactly it.
+  - seat: codex-gpt-5.6-sol xhigh (cross-family)
+    objection: >-
+      getattr(settings, "SUPPORT_WHATSAPP") and os.getenv("SUPPORT_WHATSAPP") walk through BOTH
+      guards -- no attribute node for one to see, no digits for the other.
+    status: CONFIRMED
+    resolution: >-
+      Accepted in full. The reader guard now treats the NAME as a string too: any constant equal to
+      "SUPPORT_WHATSAPP" counts as a read, wherever it appears. That over-matches slightly -- a module
+      merely mentioning the name in a string fails -- which is the right direction, because the
+      escape is one budget row with a reason while the miss it replaces is a client silently handed
+      the wrong number. Both forms probed RED.
+  - seat: codex-gpt-5.6-sol xhigh (cross-family)
+    objection: >-
+      The allowlist is a path fence, not a content fence. Five files, 5,132 lines, entirely
+      unexamined. If whatsapp_chat.py grows a literal CTA, nothing intercepts it.
+    status: CONFIRMED
+    resolution: >-
+      Accepted, and the fix went further than the finding. The allowlist is now a per-file occurrence
+      BUDGET that fails in both directions: one more occurrence is red, and so is a budget nobody
+      spends (an unused budget is a standing exemption for whatever lands in that file next).
+      Re-measuring the five files with the live guard's own logic then showed TWO of them at zero --
+      whatsapp_chat.py and _memory_identity.py name the number only in `#` comments, which an AST walk
+      never sees, so they had been exempted for nothing. Both dropped from the budget and now fully
+      guarded; the reviewer's exact scenario probes RED.
+  - seat: codex-gpt-5.6-sol xhigh (cross-family)
+    objection: >-
+      config.py:36 and scripts/pricelist_2026/schema.py:23 still say eleven client-facing surfaces
+      emit SUPPORT_WHATSAPP. The next maintainer follows the authoritative comment and puts the bot's
+      number back.
+    status: CONFIRMED
+    resolution: >-
+      The sharpest framing in the review. This is exactly the mechanism that produced the defect being
+      finished here: #5418 chose the wrong number because a TEST said so, and a comment carries the
+      same authority. Both amended, with the retired sentence quoted and dated rather than deleted,
+      and both now name the two guards that enforce the corrected statement.
+  - seat: codex-gpt-5.6-sol xhigh (cross-family)
+    objection: >-
+      The digit guard false-flags innocent strings -- "IDR 628.213.465.159", a UUID beginning
+      62821346-5159, "migration_628213465159", a base64 blob containing the run.
+    status: RETRACTED
+    resolution: >-
+      RETRACTED on measurement, not on my say-so, and the status field is the honest one: the
+      objection describes a real property of the guard but not a real defect in this repo. I
+      answered it by measuring the corpus instead of arguing about it. Every "innocent" it offers was CONSTRUCTED to contain the bot's twelve digits
+      in order. Across 19,822 files there are 82 occurrences of those digits and all 82 are the real
+      number; the longest digit run of any real IDR price in the tree is 8, and the only 10-11 digit
+      runs anywhere are the statutory PT PMA minimum capital. The only 12-digit non-phone string in
+      the whole repo is the reviewer's own example, quoted inside the guard's docstring as the
+      hypothesis it answers. Narrowing the guard (refusing to collapse dots, demanding a phone-like
+      prefix) would buy that contrived case back by reintroducing a spelling this same reviewer had
+      already broken the guard with -- a trade, not a fix. Recorded as a declared over-match with an
+      escape hatch, not as a cure.
+  - seat: codex-gpt-5.6-sol xhigh (cross-family)
+    objection: >-
+      Runtime assembly still evades the digit guard: "a" + "b", "".join([...]), and values bound to
+      separate names then interpolated.
+    status: CONFIRMED
+    resolution: >-
+      Two of the four are folded and now probe RED -- BinOp Add chains of constants, and SEP.join over
+      a constant list. The other two need real constant propagation, which is a larger and more
+      fragile instrument inside a tripwire than the defect warrants, so they are a NAMED RESIDUAL
+      LIMIT written into the guard's own docstring rather than left for a reader to discover. What
+      makes that acceptable is that the realistic version of the same hole -- reaching the value with
+      no digits at all -- is now closed completely.
+  - seat: claude-sonnet-5 (adversarial spalla)
+    objection: >-
+      The guard misses a non-breaking hyphen (U+2011) and a literal wrapped across two lines by a
+      formatter, and it FALSE-FLAGS a comment narrating the number's history -- the exact prose style
+      this PR itself writes.
+    status: CONFIRMED
+    resolution: >-
+      All three accepted and the guard REPLACED rather than patched: it now walks the AST instead of
+      the text. Python concatenates adjacent literals at parse time so the wrapped case arrives as one
+      constant; comments are not in the tree at all; and the separator class is defined by Unicode
+      category (Pd, Zs, Cf) rather than by a list of characters somebody remembered. All three probes
+      replayed against the rewrite.
+  - seat: claude-sonnet-5 (adversarial spalla)
+    objection: >-
+      welcome_email_service.py:334 hard-codes the client digits as _BZ_WHATSAPP = "628213454721",
+      feeding the welcome email's CTA button and footer. Correct today, unpinned, and it will drift
+      silently.
+    status: CONFIRMED
+    resolution: >-
+      Accepted. It is the most instructive finding of the two reviews because the value was ALREADY
+      RIGHT -- which is precisely why no guard looking for the wrong number could ever see it. Now
+      derived from the setting and pinned as a sixth copy; re-typing the digits by hand probes RED.
+  - seat: claude-sonnet-5 (adversarial spalla)
+    objection: >-
+      The test exclusion is directory-shaped (backend/tests/ only), so a legitimate test dropped in
+      backend/agents/ or backend/scripts/ would trip the guard.
+    status: CONFIRMED
+    resolution: >-
+      Accepted. The exclusion now judges the FILE (a basename starting test_ or ending _test.py) as
+      well as the tree. Probed with a file under backend/scripts/.
+  - seat: claude-sonnet-5 (adversarial spalla)
+    objection: >-
+      The PR's framing overstates its reach: six of the fourteen edits are unreachable code, so it
+      does not move fourteen client-facing surfaces.
+    status: CONFIRMED
+    resolution: >-
+      Accepted and written into the brief, the ledger and this pack rather than rounded away. The
+      honest count is eleven LIVE client-facing emissions across nine live modules -- eight from the
+      ledgered eleven (two of which are dormant) plus the three pricing_service call sites the
+      cross-family seat found. The dormant pair is cured anyway, and said to be dormant.
+  - seat: session (M5), self-caught
+    objection: >-
+      My formatting-parity probe ran ruff against copies in a scratchpad directory, where the project
+      config does not resolve. It answered a neighbouring question, told me email_branding.py was
+      FORMATTED at base when it is not, and I acted on that -- reformatting the file and silently
+      collapsing an unrelated SQL string.
+    status: CONFIRMED
+    resolution: >-
+      Reverted, and the probe corrected to pipe git show into ruff with --stdin-filename so the repo
+      config is in scope. Kept on the record rather than deleted: it is the same disease as the
+      defect this PR is finishing -- an instrument that answers confidently about something adjacent
+      to what you asked.

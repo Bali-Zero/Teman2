@@ -386,8 +386,306 @@ def test_pricing_fallback_contacts_read_the_setting_and_never_a_literal():
         )
 
 
+def test_no_backend_module_hands_a_client_the_bots_inbound_number():
+    """The whole-backend version of the fallback guard, buildable only now.
+
+    Until 2026-09-01 this could not exist: eleven client-facing surfaces —
+    the CRM, invoice, birthday and welcome email footers, the shared
+    notification footer, the chat sanitizer's CTA and the website-widget
+    prompt — legitimately still carried `settings.SUPPORT_WHATSAPP`, because
+    whether a client replying to an invoice should reach Ari or the bot was an
+    open BUSINESS question, not a code defect. A repo-wide ban would have had
+    to encode an answer nobody had given. The owner gave it ("metti ari anche
+    in quelle"), every one of those surfaces now reads
+    `settings.CLIENT_CONTACT_WHATSAPP`, and the ban becomes statable.
+
+    So: no STRING a module under backend/ can produce may contain the bot's
+    inbound digits, UNLESS the module is listed below — each of which needs the
+    number for INBOUND IDENTITY (matching what Meta delivers, or hashing a
+    phone for log correlation), never to tell a client where to write.
+
+    WHY THE AST AND NOT THE TEXT. The first version of this guard read the file
+    line by line and collapsed a fixed set of ASCII separators. An independent
+    reviewer broke it three ways in one pass, all reproduced before this
+    rewrite:
+
+      * a NON-BREAKING HYPHEN (U+2011) is not U+002D, so `+62 821‑3465‑159`
+        collapsed to `62821‑3465‑159` and the forbidden run was not a substring;
+      * a literal WRAPPED ACROSS TWO LINES by a formatter — `"…+62 821 3465 "`
+        then `"159"` — put the two halves on different lines, and a per-line
+        scan sees neither;
+      * a COMMENT narrating the history ("before the fix this read …") failed
+        the build for prose that emits nothing. This file, and `config.py`,
+        write exactly that kind of comment.
+
+    Walking the AST answers all three at once and is not a patch on a patch:
+    Python concatenates adjacent string literals at parse time, so the wrapped
+    case arrives as ONE constant; comments are not in the tree at all; and the
+    separator class is now defined by Unicode category (Pd dash punctuation, Zs
+    space separator) rather than by a list of characters somebody remembered.
+
+    The cross-family reviewer then demonstrated four ways to assemble the
+    number from pieces no single constant contains. Two of them are cheap to
+    fold and are folded here — `"+62 821 3465 " + "159"` (a `BinOp` chain of
+    constants) and `"".join(["+62 821", " 3465 159"])`. The other two need real
+    dataflow (values bound to separate names, then interpolated) and are a
+    NAMED RESIDUAL LIMIT rather than an oversight: closing them means a
+    constant-propagation pass in a tripwire, which is a larger and more
+    fragile instrument than the defect warrants. What makes that acceptable is
+    that the realistic version of the hole — reaching the value without any
+    digits at all, by reading the setting — is closed completely by the twin
+    guard below, and that guard now catches the name as a string too.
+
+    KNOWN OVER-MATCH, measured rather than argued. Any string that contains the
+    bot's twelve digits in order fails, including a contrived one that is not a
+    phone number at all (the reviewer offered `"IDR 628.213.465.159"` and a UUID
+    beginning `62821346-5159`). No such string exists anywhere in this tree —
+    the guard is green across the whole backend today — and the digits are
+    specific enough that a collision is a thing somebody would have to write on
+    purpose. Narrowing it (refusing to collapse dots, or demanding a phone-like
+    prefix) would buy that back by reintroducing a spelling the reviewer
+    already broke this guard with, which is a trade, not a fix. The escape for
+    a genuine collision is one allowlist row carrying its reason.
+
+    The allowlist is the whole point. A new file that hard-codes the number
+    fails until somebody adds it here WITH a reason, which is the moment to
+    ask whether it is an inbound-identity surface at all.
+    """
+    import ast
+    import unicodedata
+
+    #: file -> (how many strings in it may carry the number, and why).
+    #:
+    #: A BUDGET, not a pass. The first version skipped these files whole, and
+    #: the cross-family reviewer priced that correctly: 5,132 lines nothing
+    #: looked at, so a CTA growing inside `whatsapp_chat.py` would ship. Pinning
+    #: the COUNT keeps the legitimate occurrences and still fails the build the
+    #: moment one more appears — the same deliberate act as adding a row, and
+    #: the moment to ask whether the new one is an invitation rather than an
+    #: identity.
+    #:
+    #: Two files the first version exempted are NOT here any more, because
+    #: measuring them returned zero: `whatsapp_chat.py` and `_memory_identity.py`
+    #: name the number only in `#` comments, which an AST walk never sees. They
+    #: are now fully guarded rather than trusted. (`whatsapp_chat.py` still needs
+    #: its row in the READER allowlist below — that is a different question.)
+    INBOUND_IDENTITY_BUDGET = {
+        "backend/app/core/config.py": (
+            1,
+            "line 28 IS the definition — SUPPORT_WHATSAPP's literal default",
+        ),
+        "backend/security/pii_log_identifier.py": (
+            2,
+            "two docstrings (module, and the normaliser at ~182) listing the "
+            "spellings that must collapse to one HMAC digest",
+        ),
+        "backend/services/integrations/wa_outbox_worker.py": (
+            1,
+            "module docstring names the Meta Business number whose send-intent "
+            "queue it drains — inbound identity, and written +62 821-3465-159 "
+            "with dashes, which a plain grep for the spaced form did not find. "
+            "That one line is why this guard collapses separators.",
+        ),
+    }
+
+    def collapse(text: str) -> str:
+        """Drop every dash and space, in any Unicode spelling, plus the ASCII
+        punctuation a phone number is written with."""
+        out = []
+        for ch in unicodedata.normalize("NFKC", text):
+            if ch in '.()+"\'' or ch == "\t":
+                continue
+            if unicodedata.category(ch) in ("Pd", "Zs", "Cf"):
+                continue
+            out.append(ch)
+        return "".join(out)
+
+    def is_a_test_file(rel: str) -> bool:
+        """Tests legitimately exercise the inbound number. Judge by the FILE,
+        not by the directory: `backend/tests/` is only one of the places tests
+        live in this repo (`backend/agents/agents/test_guardian.py`,
+        `backend/scripts/test_ollama_vs_gemini.py` are others)."""
+        name = rel.rsplit("/", 1)[-1]
+        return (
+            rel.startswith("backend/tests/")
+            or name.startswith("test_")
+            or name.endswith("_test.py")
+        )
+
+    def _fold(node) -> str | None:
+        """Best-effort constant fold to the string a node PRODUCES.
+
+        Handles the three shapes a hard-coded number can hide in without any
+        single literal containing it: a plain constant, a `+` chain of
+        constants (Python only auto-concatenates ADJACENT literals, not ones
+        joined by an operator), and `SEP.join([...])` over constants.
+        Returns None for anything it cannot resolve — deliberately, so an
+        unresolvable node is not reported as innocent OR guilty by this helper;
+        it simply is not folded, and its own constants are still visited by the
+        walk.
+        """
+        if isinstance(node, ast.Constant):
+            return node.value if isinstance(node.value, str) else None
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+            left, right = _fold(node.left), _fold(node.right)
+            return None if left is None or right is None else left + right
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "join"
+            and len(node.args) == 1
+            and isinstance(node.args[0], (ast.List, ast.Tuple))
+        ):
+            sep = _fold(node.func.value)
+            if sep is None:
+                return None
+            parts = [_fold(el) for el in node.args[0].elts]
+            return None if any(part is None for part in parts) else sep.join(parts)
+        return None
+
+    def _string_values(node):
+        """Yield (text, lineno) for every string this node can produce."""
+        folded = _fold(node)
+        if folded is not None:
+            yield folded, node.lineno
+        if isinstance(node, ast.JoinedStr):
+            # an f-string's literal segments, so `f"...{x}... +62 821 3465 159"`
+            # is seen even though the whole f-string is not a constant
+            for value in node.values:
+                if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                    yield value.value, node.lineno
+
+    root = _repo_root() / "apps/backend-rag"
+    forbidden = ("628213465159", "08213465159")
+
+    offenders = []
+    counted: dict[str, list[int]] = {}
+    for path in sorted((root / "backend").rglob("*.py")):
+        rel = path.relative_to(root).as_posix()
+        if is_a_test_file(rel):
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"), rel)
+        except SyntaxError:  # pragma: no cover - a broken file fails elsewhere
+            continue
+        for node in ast.walk(tree):
+            for text, lineno in _string_values(node):
+                if any(run in collapse(text) for run in forbidden):
+                    if rel in INBOUND_IDENTITY_BUDGET:
+                        counted.setdefault(rel, []).append(lineno)
+                    else:
+                        offenders.append(f"{rel}:{lineno}")
+                    break
+
+    assert not offenders, (
+        "these backend modules build a STRING carrying the bot's INBOUND "
+        f"WhatsApp number, which no human answers: {offenders}. If the surface "
+        "is client-facing, read settings.CLIENT_CONTACT_WHATSAPP instead. If it "
+        "genuinely needs the inbound identity, give it a row in "
+        "INBOUND_IDENTITY_BUDGET above with a count and the reason — and be "
+        "sure it is not simply telling a client where to write."
+    )
+
+    # A budgeted file must spend exactly its budget: no more (a new occurrence
+    # is the CTA this guard exists to stop), and no fewer (a budget nothing uses
+    # is a standing exemption for whatever lands there next).
+    for rel, (expected, reason) in INBOUND_IDENTITY_BUDGET.items():
+        assert (root / rel).exists(), (
+            f"{rel} has an inbound-number budget but no longer exists — drop the "
+            "row rather than leaving a name nothing checks."
+        )
+        found = counted.get(rel, [])
+        assert len(found) == expected, (
+            f"{rel} carries {len(found)} strings with the bot's inbound number "
+            f"(lines {found}), budgeted for {expected} — {reason}. If the new "
+            "one is a client-facing CTA, read settings.CLIENT_CONTACT_WHATSAPP. "
+            "If the occurrence legitimately went away, lower the number here."
+        )
+
+
+def test_only_the_meta_webhook_router_reads_the_bots_inbound_number():
+    """The twin of the guard above, and the one that would have caught the miss.
+
+    The literal guard matches DIGITS. It is blind to the other half of the same
+    defect: a module that reads `settings.SUPPORT_WHATSAPP` by NAME and puts the
+    result in front of a client. That is precisely what
+    `pricing_service.py::_support_contacts` did — it returned
+    `(SUPPORT_EMAIL, SUPPORT_WHATSAPP)` and three call sites shipped the second
+    element to clients, in two `fallback_contact` blocks and in the `Contact:`
+    line of the LLM pricing context. No digits appeared anywhere in that file,
+    so the digit guard passed it, and the cross-family reviewer found it instead.
+
+    So this guard walks the AST rather than the text and asserts that
+    `settings.SUPPORT_WHATSAPP` is READ in exactly one non-test module: the Meta
+    webhook router, where the value is an inbound routing identity compared
+    against `display_phone_number`. config.py defines it and is exempt as the
+    definition site.
+
+    AMENDED after the cross-family reviewer broke the first draft: it matched
+    only `ast.Attribute`, so `getattr(settings, "SUPPORT_WHATSAPP")` and
+    `os.getenv("SUPPORT_WHATSAPP")` walked through BOTH guards — no attribute
+    node for this one to see, and no digits for the other one to see. The name
+    is now also treated as a string: any constant equal to `"SUPPORT_WHATSAPP"`
+    counts as a read, wherever it appears. That over-matches slightly (a module
+    that merely mentions the name in a string fails), which is the right
+    direction here — the escape is one allowlist row with a reason, while the
+    miss it replaces is a client silently handed the wrong number.
+    """
+    import ast
+
+    #: file -> why it may READ the bot's inbound identity setting.
+    READERS_ALLOWLIST = {
+        "backend/app/core/config.py":
+            "the definition site — declares SUPPORT_WHATSAPP, does not consume it",
+        "backend/app/routers/whatsapp_chat.py":
+            "_is_meta_inbox_public_number compares it with the webhook's "
+            "display_phone_number (the 2026-08-25 double-reply defense). This is "
+            "the ONLY legitimate consumer: it is routing, not an invitation.",
+    }
+
+    root = _repo_root() / "apps/backend-rag"
+    offenders = []
+    for path in sorted((root / "backend").rglob("*.py")):
+        rel = path.relative_to(root).as_posix()
+        if rel.startswith("backend/tests/"):
+            continue
+        if rel in READERS_ALLOWLIST:
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"), rel)
+        except SyntaxError:  # pragma: no cover - a broken file fails elsewhere
+            continue
+        for node in ast.walk(tree):
+            # settings.SUPPORT_WHATSAPP
+            if isinstance(node, ast.Attribute) and node.attr == "SUPPORT_WHATSAPP":
+                offenders.append(f"{rel}:{node.lineno}")
+            # getattr(settings, "SUPPORT_WHATSAPP") / os.getenv("SUPPORT_WHATSAPP")
+            # / anything else that reaches the same value through its NAME.
+            elif (
+                isinstance(node, ast.Constant)
+                and isinstance(node.value, str)
+                and node.value == "SUPPORT_WHATSAPP"
+            ):
+                offenders.append(f"{rel}:{node.lineno}")
+
+    assert not offenders, (
+        "these backend modules read settings.SUPPORT_WHATSAPP, the bot's INBOUND "
+        f"identity that no human answers: {offenders}. If the value reaches a "
+        "client — a fallback_contact block, an email footer, a prompt, an LLM "
+        "context line — read settings.CLIENT_CONTACT_WHATSAPP instead. If it is "
+        "genuinely inbound routing, add the file to READERS_ALLOWLIST with the "
+        "reason. The name is the trap: 'support' reads like the number a client "
+        "contacts for support, and it is the one number that is not."
+    )
+
+    for rel in READERS_ALLOWLIST:
+        assert (root / rel).exists(), (
+            f"{rel} is allow-listed as a SUPPORT_WHATSAPP reader but no longer "
+            "exists — drop the row rather than leaving a name nothing checks."
+        )
+
 def test_every_repo_side_copy_of_the_client_number_agrees():
-    """One number, five places that spell it out — pinned to each other.
+    """One number, six places that spell it out — pinned to each other.
 
     The adversarial seat's sharpest finding: introducing
     `settings.CLIENT_CONTACT_WHATSAPP` does NOT create a single source of truth
@@ -441,6 +739,22 @@ def test_every_repo_side_copy_of_the_client_number_agrees():
         f"visa_oracle_service.py's WHATSAPP_BASE_URL is {WHATSAPP_BASE_URL!r} — "
         "the Visa Oracle handoff deeplink and the price list would send a "
         "client to two different numbers."
+    )
+
+    # Sixth copy, added 2026-09-01 after an independent reviewer found it. This
+    # one was ALREADY correct, which is exactly why it is dangerous: a
+    # hand-typed duplicate that agrees today drifts silently on the next move,
+    # with the whole suite green. It is the same shape as the five above and
+    # gets the same treatment. It is now derived rather than typed, so this
+    # assertion pins the DERIVATION, not a literal — it goes red if somebody
+    # types the digits back in.
+    from backend.services.crm.welcome.welcome_email_service import _BZ_WHATSAPP
+
+    assert _BZ_WHATSAPP == digits, (
+        "welcome_email_service.py's _BZ_WHATSAPP is "
+        f"{_BZ_WHATSAPP!r} — the welcome email's WhatsApp CTA button and its "
+        "footer link would send a client to a different number from every "
+        "other surface. Derive it from settings.CLIENT_CONTACT_WHATSAPP."
     )
 
 
