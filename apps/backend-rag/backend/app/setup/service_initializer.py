@@ -1481,6 +1481,29 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
             bool(garuda_xendit_secret_key),
         )
 
+    # 5.8 GARUDA VOA — document intake store wiring (L5 hinge, router-owned
+    # sentinel). Unconditional (no db_pool needed): L1's retention-covered
+    # store has not merged for `garuda_documents` (no migration exists —
+    # `garuda_documents/ports.py`'s own docstring says so), and LANES.md is
+    # explicit that a lane must not persist a row before L1 covers it.
+    # `garuda_documents/ports.py` therefore ships only `InMemoryDocumentStore`,
+    # whose own docstring forbids wiring it into a running service (an
+    # in-memory PII store is worse than no endpoint — PR #5120's ledger entry).
+    # Wiring `_UnconfiguredDocumentStore` here — the documents-lane analogue of
+    # `PostgresCheckStore`'s `UnconfiguredCheckStore` fallback at 5.6 above,
+    # minus the Postgres half, which does not exist yet for this table — means
+    # the route mounted by `garuda_documents_router.py` is live and testable
+    # today, and answers 503 PERSISTENCE_POLICY_UNAVAILABLE/SERVICE_UNAVAILABLE
+    # on every real request until L1 ships. Never raises: the sentinel takes no
+    # constructor arguments and touches no pool, so this needs no try/except.
+    from backend.app.routers.garuda_documents_router import _UnconfiguredDocumentStore
+
+    app.state.garuda_document_store = _UnconfiguredDocumentStore()
+    logger.info(
+        "ℹ️ GARUDA VOA document store wired fail-closed (L1 retention-covered store "
+        "not merged yet for garuda_documents — see garuda_documents_router.py docstring)"
+    )
+
 
 async def initialize_services(app: FastAPI) -> None:
     """
