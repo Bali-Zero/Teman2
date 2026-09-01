@@ -28,11 +28,24 @@ const SUBMIT_TIMEOUT_MS = 20_000;
 /**
  * The URL is guessable and the page is public. Nothing identifying — not the
  * candidate's name, not the question about the two dates in her file — renders
- * before this code is entered. The panel reads it out in the room; it is a
+ * before a code is entered. The panel reads one out in the room; it is a
  * shutter, not an authentication system, and it is not asked to be one.
+ *
+ * Two codes, because the panel needs to walk the page before the candidate
+ * does and the first rehearsal already caused the problem this fixes: a
+ * started session left a running clock and saved answers in the browser, and
+ * the next person to open the URL would have inherited them.
+ *
+ * INTERNAL leaves nothing behind — it wipes any stored session on entry, saves
+ * nothing while it runs, and tags what it sends so a rehearsal can never be
+ * read as the candidate's work.
  */
-const ACCESS_CODE = "SUNSET-2026";
+const ACCESS_CODES: Record<string, Mode> = {
+  "SUNSET-2026": "candidate",
+  "BZ-2026": "internal",
+};
 
+type Mode = "candidate" | "internal";
 type Phase = "locked" | "intro" | "running" | "done";
 
 interface Persisted {
@@ -83,6 +96,7 @@ function newExerciseTelemetry(
 
 export default function InterviewNataliePage() {
   const [phase, setPhase] = useState<Phase>("locked");
+  const [mode, setMode] = useState<Mode>("candidate");
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState(false);
   const [index, setIndex] = useState(0);
@@ -136,10 +150,12 @@ export default function InterviewNataliePage() {
   }, []);
 
   useEffect(() => {
-    // Only while an exercise is open. Persisting on "done" too would re-write
-    // the record the final submit had just deleted, and leave her salary
-    // expectation in the fields for whoever opens this URL next.
-    if (phase !== "running") return;
+    // Only while an exercise is open, and never in internal mode. Persisting on
+    // "done" too would re-write the record the final submit had just deleted,
+    // and leave her salary expectation in the fields for whoever opens this URL
+    // next; persisting a rehearsal would hand the candidate the panel's own
+    // half-finished answers.
+    if (phase !== "running" || mode === "internal") return;
     try {
       window.localStorage.setItem(
         STORAGE_KEY,
@@ -153,7 +169,7 @@ export default function InterviewNataliePage() {
     } catch {
       setStorageWorks(false);
     }
-  }, [answers, index, submitted, phase]);
+  }, [answers, index, submitted, phase, mode]);
 
   // ── Countdown ───────────────────────────────────────────────────
   const tick = useCallback(() => {
@@ -315,7 +331,15 @@ export default function InterviewNataliePage() {
       const flags = flagsFor(telem);
       const usedSec = Math.round(telem.elapsedMs / 1000);
 
-      let body = `<h2>Exercise ${exercise.letter} — ${exercise.title}</h2>`;
+      let body = "";
+      if (mode === "internal") {
+        body +=
+          `<p style="background:#ffe9e6;border:1px solid #c23c2c;padding:10px;` +
+          `border-radius:6px"><strong>INTERNAL REHEARSAL — not the candidate's ` +
+          `work.</strong> Sent from a session opened with the internal code. ` +
+          `Nothing from it was saved in the browser.</p>`;
+      }
+      body += `<h2>Exercise ${exercise.letter} — ${exercise.title}</h2>`;
       body += `<p><strong>Candidate:</strong> ${esc(CANDIDATE)} · ${esc(ROLE)}<br/>`;
       body += `<strong>Submitted:</strong> ${wita()} WITA<br/>`;
       body += `<strong>Time used:</strong> ${mmss(usedSec)} of ${exercise.minutes}:00${auto ? " (window expired — auto-submitted)" : ""}<br/>`;
@@ -358,7 +382,7 @@ export default function InterviewNataliePage() {
           signal: AbortSignal.timeout(SUBMIT_TIMEOUT_MS),
           body: JSON.stringify({
             to: PANEL_INBOX,
-            subject: `[Round 2] ${CANDIDATE} — Exercise ${exercise.letter} ${exercise.title} · ${mmss(usedSec)} · ${flagSummary(flags)}`,
+            subject: `${mode === "internal" ? "[INTERNAL REHEARSAL] " : ""}[Round 2] ${CANDIDATE} — Exercise ${exercise.letter} ${exercise.title} · ${mmss(usedSec)} · ${flagSummary(flags)}`,
             body,
           }),
         });
@@ -406,17 +430,34 @@ export default function InterviewNataliePage() {
         setPhase("done");
       }
     },
-    [answers, exercise, index, sending, storageWorks, submitted],
+    [answers, exercise, index, mode, sending, storageWorks, submitted],
   );
 
   submitRef.current = submitExercise;
 
   const unlock = () => {
-    if (code.trim().toUpperCase() !== ACCESS_CODE) {
+    const entered = ACCESS_CODES[code.trim().toUpperCase()];
+    if (!entered) {
       setCodeError(true);
       return;
     }
     setCodeError(false);
+    setMode(entered);
+    if (entered === "internal") {
+      // Clear the slate, so a rehearsal starts from zero and leaves nothing for
+      // the candidate to inherit.
+      try {
+        window.localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        /* nothing to clear */
+      }
+      setAnswers({});
+      setSubmitted([]);
+      setFailed([]);
+      setIndex(0);
+      setRestoredSession(false);
+      restoredStartRef.current = null;
+    }
     setPhase("intro");
   };
 
@@ -492,6 +533,11 @@ export default function InterviewNataliePage() {
                 width: `${Math.max(0, Math.min(100, (remaining / (exercise.minutes * 60)) * 100))}%`,
               }}
             />
+          </div>
+        )}
+        {mode === "internal" && phase !== "locked" && (
+          <div className="border-t border-amber-400/30 bg-amber-400/10 px-6 py-2 text-center text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">
+            Internal rehearsal · nothing is saved · submissions are tagged
           </div>
         )}
         {notice && (
@@ -625,7 +671,7 @@ export default function InterviewNataliePage() {
               </p>
             </div>
 
-            {restoredSession && (
+            {restoredSession && mode === "candidate" && (
               <p className="text-sm text-amber-400/80">
                 A previous session was found in this browser and your answers
                 have been restored. You are resuming at Exercise{" "}
