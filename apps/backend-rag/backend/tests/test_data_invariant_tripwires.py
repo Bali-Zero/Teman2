@@ -490,12 +490,18 @@ def _wa_scan(path, rel):
     pins an exact number, and a maintainer chasing `found 3, expected 1` would
     be chasing an AST-shape artefact rather than three occurrences.
 
+    Returns (sorted_line_numbers, unscannable_reason). The second element is
+    None on success and an exception class name when the file could not be
+    read or parsed — the caller must FAIL on it rather than treat the file as
+    clean, because "I could not look" and "I looked and found nothing" are
+    different answers and only one of them is a pass.
+
     Exceptions are caught by CLASS, not by the one class that first came to
     mind: a >2000-term `+` chain raises RecursionError out of ast.parse, a
     deep chain raises it out of the fold itself, and a mis-encoded file raises
     UnicodeDecodeError out of read_text. None of the three is a SyntaxError,
     and any of them would otherwise abort BOTH guards for the whole PR with an
-    opaque traceback instead of skipping one unparseable file.
+    opaque traceback instead of naming the one file at fault.
     """
     import ast
 
@@ -507,10 +513,19 @@ def _wa_scan(path, rel):
                 if any(run in _wa_collapse(text) for run in _WA_FORBIDDEN_RUNS):
                     hits.add(lineno)
                     break
-    except (SyntaxError, RecursionError, UnicodeDecodeError, ValueError):
-        # pragma: no cover - an unreadable file fails its own tests elsewhere
-        return []
-    return sorted(hits)
+    except (SyntaxError, RecursionError, UnicodeDecodeError, ValueError) as exc:
+        # NOT swallowed. Returning [] here would mark the file clean, and a
+        # guard that reports "clean" for a file it never read is vacuous
+        # exactly where it matters: drop a merge-conflict marker into a module
+        # that hard-codes the bot number and the guard goes green. The old
+        # comment excused this with "an unreadable file fails its own tests
+        # elsewhere" — an assumption, never a verified fact, and the whole
+        # point of a tripwire is not to rely on one. Measured 2026-09-01:
+        # 0 of 1582 non-test backend modules are unparseable, so surfacing
+        # this costs nothing today and refuses to lie tomorrow.
+        # Raised by the tp1-qwen3.8-max seat reviewing these guards.
+        return [], f"{type(exc).__name__}"
+    return sorted(hits), None
 
 def test_no_backend_module_hands_a_client_the_bots_inbound_number():
     """The whole-backend version of the fallback guard, buildable only now.
@@ -614,6 +629,7 @@ def test_no_backend_module_hands_a_client_the_bots_inbound_number():
     root = _repo_root() / "apps/backend-rag"
 
     offenders = []
+    unscannable = []
     counted: dict[str, list[int]] = {}
     for path in sorted((root / "backend").rglob("*.py")):
         rel = path.relative_to(root).as_posix()
@@ -627,11 +643,24 @@ def test_no_backend_module_hands_a_client_the_bots_inbound_number():
         # narrowing the rule costs nothing and closes a dormant blind spot.
         if rel.startswith("backend/tests/"):
             continue
-        for lineno in _wa_scan(path, rel):
+        linenos, unreadable = _wa_scan(path, rel)
+        if unreadable:
+            unscannable.append(f"{rel} ({unreadable})")
+            continue
+        for lineno in linenos:
             if rel in INBOUND_IDENTITY_BUDGET:
                 counted.setdefault(rel, []).append(lineno)
             else:
                 offenders.append(f"{rel}:{lineno}")
+
+    # "I could not look" is not "I looked and found nothing". A guard that
+    # silently skips what it cannot parse can be disarmed for one file by
+    # making that file unparseable — so the skip is named and fails instead.
+    # Measured 2026-09-01: 0 of 1582 non-test backend modules trip this.
+    assert not unscannable, (
+        "these backend modules could not be parsed, so this guard did NOT "
+        f"check them and must not report them clean: {unscannable}"
+    )
 
     assert not offenders, (
         "these backend modules build a STRING carrying the bot's INBOUND "
@@ -704,6 +733,7 @@ def test_only_the_meta_webhook_router_reads_the_bots_inbound_number():
 
     root = _repo_root() / "apps/backend-rag"
     offenders = []
+    unscannable = []
     for path in sorted((root / "backend").rglob("*.py")):
         rel = path.relative_to(root).as_posix()
         if rel.startswith("backend/tests/"):
@@ -712,8 +742,11 @@ def test_only_the_meta_webhook_router_reads_the_bots_inbound_number():
             continue
         try:
             tree = ast.parse(path.read_text(encoding="utf-8"), rel)
-        except (SyntaxError, RecursionError, UnicodeDecodeError, ValueError):
-            continue  # pragma: no cover - an unreadable file fails elsewhere
+        except (SyntaxError, RecursionError, UnicodeDecodeError, ValueError) as exc:
+            # Recorded, not skipped — see _wa_scan's docstring: a file this
+            # guard could not read is not a file it cleared.
+            unscannable.append(f"{rel} ({type(exc).__name__})")
+            continue
         for node in ast.walk(tree):
             # settings.SUPPORT_WHATSAPP
             if isinstance(node, ast.Attribute) and node.attr == "SUPPORT_WHATSAPP":
@@ -728,6 +761,14 @@ def test_only_the_meta_webhook_router_reads_the_bots_inbound_number():
             folded = _wa_fold(node)
             if folded == "SUPPORT_WHATSAPP":
                 offenders.append(f"{rel}:{node.lineno}")
+
+    # Same rule as the twin guard above: an unparsed file is not a cleared
+    # file. Both guards walk the same tree, so a file that defeats one by being
+    # unreadable would otherwise defeat this one silently too.
+    assert not unscannable, (
+        "these backend modules could not be parsed, so this guard did NOT "
+        f"check them and must not report them clean: {unscannable}"
+    )
 
     assert not offenders, (
         "these backend modules read settings.SUPPORT_WHATSAPP, the bot's INBOUND "
