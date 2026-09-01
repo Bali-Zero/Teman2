@@ -1,0 +1,69 @@
+{
+  "verification_receipt_id": "50000000-0000-4000-8000-000000000002",
+  "verification_receipt_family_id": "com.example.verification_receipt.family_001",
+  "contract_version": "research-os/v1.0.0",
+  "tenant": "bali-zero",
+  "target_objects": [
+    {
+      "object_kind": "com.example.claim",
+      "object_id": "synthetic-claim-001",
+      "object_hash": "1111111111111111111111111111111111111111111111111111111111111111"
+    }
+  ],
+  "verification_type": "com.example.fact_check",
+  "verifier": {
+    "name": "com.example.verifier_service",
+    "version": "1.0.0",
+    "independence_class": "independent"
+  },
+  "criteria_version": "1.0.0",
+  "temporal_scope": {
+    "checked_at": "2026-04-01T00:00:00Z"
+  },
+  "checks": [
+    {
+      "check_id": "source_exists",
+      "result": "pass",
+      "evidence_refs": [
+        {
+          "object_kind": "com.example.evidence",
+          "object_id": "synthetic-evidence-001",
+          "object_hash": "2222222222222222222222222222222222222222222222222222222222222222"
+        }
+      ],
+      "note_code": "com.example.partial_coverage"
+    },
+    {
+      "check_id": "cross_reference",
+      "result": "insufficient_evidence",
+      "evidence_refs": []
+    }
+  ],
+  "verdict": "pass_with_limits",
+  "limits": ["reduced_sample_size"],
+  "source_versions": [
+    {
+      "source_id": "synthetic-source-001",
+      "version_id": "v1",
+      "content_hash": "3333333333333333333333333333333333333333333333333333333333333333"
+    }
+  ],
+  "classification": {
+    "risk_class": "green",
+    "sensitivity": "internal"
+  },
+  "issued_at": "2026-04-01T00:00:01Z",
+  "recorded_at": "2026-04-01T00:00:02Z",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "lineage": {
+    "input_hashes": []
+  },
+  "retention": {
+    "retention_class": "audit",
+    "legal_hold": false
+  },
+  "object_hash": "00c977f682b9dc6473b4aac4961926a0eb7591034fdb9e2204c0cf2202f10499"
+}

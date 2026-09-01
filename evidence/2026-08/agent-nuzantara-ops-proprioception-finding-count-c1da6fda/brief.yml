@@ -1,0 +1,86 @@
+task_id: proprioception-finding-count-0826
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Every surface that renders a DIVERGED proprioception probe prints ONE finding, and the finding
+  COUNT reached the reader only when there was no evidence at all:
+
+      ev = p["evidence"][0] if p.get("evidence") else f"{n} findings"
+
+  `evidence` holds at most 5 items (run_wrap's `items[:5]`); `n_findings` is the true total.
+  Measured live on Pro 2026-08-26 via `python3 scripts/proprioception.py --json`:
+  launchagent_canon 55 findings -> 1 line; launchd_liveness 22 -> 1; organs_heartbeat 7 -> 1;
+  worktree_gate_shim 4 -> 1.
+
+  The last one is the damage, not the illustration. THIS session read that line as "one worktree
+  pushes with no gate", repaired the one named path, and a hand census then found THREE more
+  worktrees whose core.hooksPath pointed at a .husky/_ that does not exist — so git ran no hooks
+  at all and every push from them was ungated. They are repaired on disk; this diff is why the
+  next four will be visible.
+
+  This is W97 (a truncated list read downstream as complete) one level BELOW where W97 was already
+  cured on this same file: the receptor's [:4] cap over PROBES was fixed 2026-07-26 and its comment
+  cites W97 by name; the per-probe truncation over FINDINGS was left uncured. Same defect, two
+  depths — superscar family #2 (esiste != armato: a sentinel that under-reports is a sentinel that
+  lies) with the #3 truncation mechanism.
+
+  Gear 3 by PATH: `scripts/evidence_pack_lint.py --print-floor` computes 3 because
+  .github/workflows/immune-enforcement.yml is a hot-zone path. Functional diff: 4 files,
+  +319/-4.
+constraints:
+  - "Silent at n <= 1. A '[1 of 1]' on every single-finding line would be pure noise on a report
+    injected into every session on three machines, and the token cost is paid by the whole fleet
+    forever. Asserted as an innocence case, not left to judgement."
+  - "The count goes next to the probe id, NOT appended after the evidence string: run_wrap
+    truncates each evidence item to 160 chars upstream, so anything trailing can be the part that
+    falls off — the marker would disappear exactly on the largest findings."
+  - "Three render sites share one function rather than three copies of the same expression. The
+    third site (the per-host fleet summary, proprioception.py:~1121) was NOT in the original scope:
+    it was found because the test's source-shape grep, once it actually matched, pointed at it."
+  - "No behaviour of the 2026-07-26 receptor fix is altered — its own corpus
+    (test_proprioception_receptor_ranking.sh) is re-run and still passes 7/7."
+acceptance:
+  - "A probe carrying 55 findings prints a line naming that it is showing 1 of 55, while still
+    printing the evidence and the 'as of ... re-verify before acting' framing."
+  - "A probe carrying exactly 1 finding prints no count marker at all."
+  - "A probe carrying findings but NO evidence keeps the pre-existing 'N findings' fallback."
+  - "finding_label is exercised BEHAVIOURALLY (imported and called), not asserted about by grepping
+    its source — including the bool/None/absent-key edges."
+  - "Mutation-proved in both directions: green on the fix, red on the reverted source. That
+    covers finding_label ITSELF and the receptor rendering. Its two CALL SITES are covered
+    separately and more weakly: an AST check that main() and fleet_probe() call it at all, NOT
+    that they render its output correctly. Spelled out because the first version of this brief
+    let 'mutation-proved' plus a three-surface consumer_map read as call-site coverage that did
+    not exist — the Gear-3 gate proved the gap by unplugging one call site and watching the
+    corpus stay green."
+  - "The two shell corpora actually RUN in CI, and the receptor file is in the path filter that
+    triggers the job."
+consumer_map:
+  - "scripts/hooks/proprioception_sessionstart.sh — the SessionStart receptor. Injected into EVERY
+    session on Pro, Mini and M5. The surface where the real damage happened."
+  - "scripts/proprioception.py main() CLI line — what a human sees running the organ by hand."
+  - "scripts/proprioception.py per-host fleet summary (~:1121) — the remote-probe rollup; also
+    truncated its PROBE list at div[:4] with nothing saying so, now names how many it dropped."
+  - "No other reader: `finding_label` is new, and the JSON report (--json) is untouched, so every
+    machine consumer of last.json is unaffected by construction."
+risks:
+  - "The SessionStart line grows by ~10 characters per multi-finding probe. Bounded and deliberate:
+    the alternative is the line continuing to under-report by a factor of 55."
+  - "Residual, NOT fixed here: the four repaired worktrees were repaired on disk only. Nothing
+    prevents the next bare `git worktree add` from recreating the hole — `scripts/agent_start.py`
+    symlinks .husky/_ but a hand-made worktree bypasses it. Detection (the linter) plus a now-honest
+    count is the mitigation; prevention is not attempted in this diff."
+  - "Noted and NOT fixed: the pre-commit anti-reward-hacking lint reported 'no staged test files'
+    while a new test file WAS staged — it appears to scan .py only. Same family, out of scope."
+grader: >-
+  Independent refuter dispatched on the pushed diff, separate context, instructed to REFUTE and to
+  default to SUSPECT — not the seat that wrote the diff. Its brief attacked seven specific author
+  claims by measurement (is there a FOURTH uncured site; the bool/None edges of finding_label; an
+  independent re-run of the mutation proof; whether the path-filter lines actually sit inside the
+  case block; whether a two-command `run:` step can mask the first failure; whether `host` is in
+  scope at the fleet call site; sh-vs-bash divergence in the corpus). Verdicts recorded in pack.yml.
+budget: >-
+  No paid API. Local shell, python3, git, gh, actionlint, and one Sonnet-5 subagent on the Claude
+  MAX OAuth seat. No ANTHROPIC_API_KEY at any point.
+pii: none

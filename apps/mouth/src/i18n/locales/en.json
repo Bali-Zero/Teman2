@@ -322,7 +322,7 @@
       "b": {
         "title": "Route B — Property",
         "amount": "USD 1,000,000",
-        "body": "A completed strata-title property (hak milik atas satuan rumah susun) worth at least USD 1,000,000.",
+        "body": "A completed strata unit (rumah susun or apartment) worth at least USD 1,000,000.",
         "note": "Completed strata-title only — off-plan purchases and leasehold do not qualify."
       }
     },
@@ -383,7 +383,7 @@
       "q1": "What is the E33 Second Home Visa for Indonesia?",
       "a1": "The E33 Second Home Visa is a long-term residence permit for financially established applicants. The first grant is up to 5 years and it is renewable, with a 10-year cumulative cap. It is a pure residence permit and does not authorize employment in Indonesia.",
       "q2": "How do I qualify for the Second Home Visa?",
-      "a2": "Two qualifying routes: a USD 130,000 deposit in your own name at a state-owned (BUMN) Indonesian bank, or a USD 1,000,000 completed strata-title property (hak milik atas satuan rumah susun). Off-plan and leasehold property do not qualify.",
+      "a2": "Two qualifying routes: a USD 130,000 deposit in your own name at a state-owned (BUMN) Indonesian bank, or a USD 1,000,000 completed strata unit (rumah susun or apartment). Off-plan and leasehold property do not qualify.",
       "q3": "Can I work in Indonesia on a Second Home Visa?",
       "a3": "No. The E33 is a residence permit only — it does not authorize employment. Paid work in Indonesia requires a separate work permit/KITAS.",
       "q4": "Is there a senior option for the Second Home Visa?",
@@ -394,10 +394,10 @@
       "a6": "{{price}} all-inclusive for the base E33 — one figure, everything included. The fit memo that assesses your route is free."
     },
     "cta": {
+      "fitCheck": "Start the fit-check",
       "title": "Start with a free fit memo",
       "body": "Tell us your situation on WhatsApp. We reply with an honest read: which route fits, what evidence you'll need, and the exact price for your case. No obligation.",
-      "button": "Get my free Fit Memo →",
-      "note": "Typical first reply on WhatsApp in under 5 hours."
+      "button": "Get my free Fit Memo →"
     }
   }
 }

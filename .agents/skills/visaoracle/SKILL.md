@@ -47,7 +47,12 @@ until all of the following are true:
   untouched and this does not authorize ENFORCE);
 - the DPIA is complete, signed and its residual privacy risks are accepted;
 - the real analytics destination/provider is identified and a fresh,
-  closed-schema 90-day TTL proof has been independently reproduced; and
+  closed-schema **365-day (12-month)** TTL proof has been independently
+  reproduced (corrected 2026-08-23 — Zero's 2026-08-20 retention ruling,
+  DPIA V2 §A, superseded the old 90-day provisional; §8 signed 2026-08-23,
+  `docs/audits/2026-08-20-visa-oracle-dpia-v2.md`; still unsatisfiable
+  today — the destination itself remains unidentified, see LIVE STATE
+  below); and
 - Zero explicitly authorizes the ENFORCE flip after the preceding blockers
   close.
 
@@ -101,7 +106,7 @@ not an automated ENFORCE threshold.
   `agy --print-timeout 15m --model "Gemini 3.1 Pro (High)" -p "<prompt>"`; the old
   `agy -p --print-timeout 5m` feeds the FLAGS as prompt (RC=0, garbage out).
 - Codex GPT-5.6-sol ultra — ARMED (PONG).
-- GLM 5.2 via `claude-glm` — ARMED (PONG).
+- GLM 5.2 via TP1 seat `tp1-glm-5.2` (OpenAI-compatible base `https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`, key loaded by `load_tp1_settings_key()` from `~/.qwen/settings.json`) — ARMED (PONG). TP1 seats are roster lines, not CLIs.
 - DeepSeek V4 — **DEAD** (balance -0.04 USD, is_available:false). Operator-only top-up. Declared
   substitute: house Sonnet web-grounded lane (live WebSearch, URL-verified).
 - Harness scar (2026-07-17): Agent spawns WITH `name:` can be born dead (mailbox never delivered) —
@@ -116,6 +121,22 @@ hook-enforced — RULED 2026-08-20: Fable is out of the workflow, CLAUDE.md §5)
 as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 ## LIVE STATE (update on every state change — whoever changes state updates this section)
+
+- 2026-08-29 (M5, gold-coverage lane, PR #5182): **the 4/20 zero-movement wall now has a first
+  instrument and a first corpus.** New offline helper `gold_coverage_eval.py` (single persona →
+  exact replay path vs highest signed pack) + `gold_coverage_replay.py` (fail-closed corpus runner)
+  - **18 synthetic personas** — one per SUPPORT-reachable product the 20 canonical expectations
+    never name — each proven `SUPPORTED_CANDIDATES`, behind `test_gold_coverage_floor.py` (any
+    persona losing its product's support goes red). Report
+    `research/visa/2026-08-28-visa-oracle-gold-coverage-and-divergence-adjudication.md`: full
+    16-divergence matrix vs seq-13 with PROPOSED causes (no acceptance — owner act), **E31B/E31D
+    fail-open re-confirmed live by probe** (sponsor_status_code="NONE" still SUPPORTED; FAMILY intent
+    alone → E31D), the two stepchild evidence facts confirmed referenced by ZERO rules, blocked
+    census 9. Limits: cross-family tie-breaks and realism refutation did NOT complete (session caps;
+    per-lane artifacts lost) — 9 disagreement personas flagged in the report; 7 products still
+    uncovered (E31E,E31G,E31H,E31J,E33,E33E,E33F — mechanical follow-up). The 4/20 gold-persona
+    divergence PRECONDITION of the enforce-gate is NOT closed by this: expectations remain
+    un-ratified; this entry adds the measuring instrument, not the ruling.
 
 - 2026-08-23 (M5, dedicated verification lane — kill-switch rollback proof; **corrected same day
   after a real cross-family adversarial review found the first version's pack-rollback proof
@@ -184,11 +205,15 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   already used live for the 2026-08-08 Cameroon/Guinea Calling Visa fix above. Proved three ways,
   all today, all local, no production DB touched: (i) the existing reviewed integration suites
   re-run fresh against an ephemeral pytest-xdist-cloned throwaway Postgres database
-  (`test_activation_writer.py` 44 passed/1 skipped, `test_replace_activation_set.py` 11 passed,
-  `test_activate_pack.py` 18 passed — never the shared `nuzantara_test`/`nuzantara_dev` DB their
-  own docstrings warn against); (ii) a custom end-to-end ceremony test using REAL Ed25519-signed
-  packs over the real evaluatable TEST rule pack (not placeholder hashes — see correction note
-  above): activate real pack A seq1 → real decision via the unmocked evaluator =
+  (`test_activation_writer.py` 43 passed/1 skipped, `test_replace_activation_set.py` 10 passed,
+  `test_activate_pack.py` 17 passed — never the shared `nuzantara_test`/`nuzantara_dev` DB their
+  own docstrings warn against; corrected 2026-08-23, count fix — the original entry read
+  44/11/18, each inflated +1 by transcribing pytest's "N collected" as "N passed" without
+  subtracting the 1 skip; re-measured against merge commit `292795a26364d` with `pytest -n 1 -q`
+  on each file, zero failures, see the report's own correction note for detail); (ii) a custom
+  end-to-end ceremony test using REAL Ed25519-signed packs over the real evaluatable TEST rule
+  pack (not placeholder hashes — see correction note above): activate real pack A seq1 → real
+  decision via the unmocked evaluator =
   `SUPPORTED_CANDIDATES [C1]` → activate real "bad deploy" pack B seq2 (tightened HARD_FILTER,
   chained from A's real hash) → SAME facts now genuinely EXCLUDE C1 through the real evaluator →
   naive reactivation of A REJECTED while B is head, B verified untouched → re-sign A's exact
@@ -344,6 +369,14 @@ PARENT`. No `sponsor_nationalities` conjunct, no `marriage_registered` conjunct.
     pending — the retention preflight (`scripts/visa_oracle_analytics_retention_preflight.py`,
     `EXPECTED_TTL_DAYS = 90`) stays hard-locked at 90 days until §8 is actually signed
     (PENDING-ARMS row, unchanged by this entry — a separate PR).
+    **Overtaken later the same day (correction, 2026-08-23):** §8 WAS signed — Zero, in person,
+    same date, recorded in `docs/audits/2026-08-20-visa-oracle-dpia-v2.md` §8. PR #4593 merged
+    (`adf37ca99e5`) carrying the signature and the runbook+preflight 90→365 amendment in one
+    atomic commit — `EXPECTED_TTL_DAYS` is now `365`, not `90`. This does not close the
+    ENFORCE-GATE analytics-TTL precondition: the destination behind
+    `NEXT_PUBLIC_ANALYTICS_ENDPOINT` remains unidentified, and no real attestation (only the
+    schema contract + tests against fabricated fixtures) exists yet. Independently verified via
+    gate-review audit, 2026-08-23.
   - **noindex on `/visa-oracle`: RESTORE now, RATIFY at ENFORCE.** The `index: false` directive
     removed in the G0–G6 rebuild (`63234a12a`, PR #3732, 2026-08-07 — see the POSTURE FINDING
     below) is to be put back immediately; indexability itself is ratified only once ALL of:

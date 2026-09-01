@@ -1,0 +1,16 @@
+{
+  "synthetic": true,
+  "fixture_category": "abstention",
+  "adversarial_case_ref": "packet 06-naga-claim-ledger.md, 'Golden set and adversarial cases': 'intentionally unanswerable questions'",
+  "expected_behavior": "The query below has ZERO matching claims anywhere in the golden set by design. A correct implementation returns an explicit abstention response (not an empty-list-treated-as-negative-fact — see packet Non-goal 'Do not infer that an absent record proves a negative fact'). The abstention response must be distinguishable from 'we checked and confirmed this is false' -- e.g. a distinct response code/field, not just an empty claims array, since an empty array is ambiguous between 'searched and found nothing' and 'never searched this topic at all'.",
+  "query": {
+    "question_synthetic": "What is the SYNTHETIC processing fee, in IDR, for a fictional 'Golden Falcon Visa' category that does not exist in any real or synthetic Indonesian visa regulation in this golden set?",
+    "domain": "visa.synthetic",
+    "expected_matching_claim_count": 0
+  },
+  "expected_response_shape": {
+    "abstained": true,
+    "reason_code": "naga.no_matching_claim",
+    "distinct_from": "an empty claims array with no reason_code, which would be ambiguous per the packet's own Non-goal about absent-record inference"
+  }
+}

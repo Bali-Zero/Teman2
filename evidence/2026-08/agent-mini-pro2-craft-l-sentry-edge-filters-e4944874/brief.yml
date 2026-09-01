@@ -1,0 +1,73 @@
+task_id: sentry-edge-filters
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  L08-PR2 of the beyond-SOTA craft wave 2 (squad L, issue #5319), credential-free
+  half.
+
+  Measured on `bali-zero-7p` over 7 days (2026-08-28): the `error` category took
+  1,952 accepted against 753 rate_limited. 28% of production errors are dropped
+  for quota, and which ones get dropped is decided by arrival order rather than
+  by importance. That is not a billing problem, it is a blindness problem.
+
+  This deprioritizes un-actionable events at the edge, on both sides, so the
+  quota is spent on errors somebody could act on.
+constraints:
+  - "RE-GROUND FIRST, per the L08 spec: no committed probe references either
+    Sentry org. `grep -rn 'bali-zero-cf|bali-zero-7p'` hits `research/` and the
+    PENDING-ARMS ledger and nothing else, so the spec's probe-repoint half is
+    void as written and minting a credential for it is operator[secret]."
+  - "A false positive DELETES a production error with no trace anywhere. The
+    innocence half of every test matters more than the guilt half."
+  - "Both predicates fail OPEN: Sentry drops an event silently when its hook
+    raises, so a bug in a noise filter deletes real errors rather than noise."
+  - "401/403 are NOT filtered. That is the #5096 signature, and muting a symptom
+    whose cause was cured is how the recurrence arrives invisibly."
+acceptance:
+  - text: >-
+      WHEN a health-check TRANSACTION reaches the SDK, it SHALL be dropped; and
+      WHEN an ERROR occurs on the same path, it SHALL be kept.
+    probe: "pytest apps/backend-rag/backend/tests/unit/app/setup/test_sentry_health_transaction_drop.py"
+  - text: >-
+      WHERE the SDK routes transactions to `before_send_transaction` rather than
+      `before_send`, the filter SHALL be registered on the hook the SDK actually
+      calls.
+    probe: "pytest apps/backend-rag/backend/tests/unit/app/setup/test_sentry_health_transaction_drop.py -k WIRED"
+  - text: >-
+      IF an event's ROOT exception is actionable, it SHALL be kept even when a
+      linked CAUSE matches a noise rule or carries only foreign frames.
+    probe: "vitest run src/lib/__tests__/sentry-noise.test.ts"
+  - text: >-
+      WHILE running in the server or edge runtime, an abort SHALL NOT be treated
+      as noise — there is no navigation there to have cancelled it.
+    probe: "vitest run src/lib/__tests__/sentry-noise.test.ts"
+consumer_map:
+  - "`apps/mouth/sentry.{client,server,edge}.config.ts` — the three Sentry inits
+    the Next app actually runs. Client gets browser+universal noise; server and
+    edge get universal only."
+  - "`apps/backend-rag/backend/app/setup/sentry_config.py` — the FastAPI init.
+    `before_send_transaction` is a NEW registration: without it the transaction
+    filter is code the SDK never calls."
+  - "Sentry's `bali-zero-7p` error quota — the surface this exists for, and the
+    one this session cannot measure."
+risks:
+  - "NOT PROVEN, and stated rather than implied: I cannot measure the 28% moving.
+    That needs Sentry API access this session does not have, and the probe that
+    would read it does not exist in the repo. What is proven is the predicates'
+    behaviour on every shape named in the tests."
+  - "Every filter is a deletion. The mitigation is that both predicates fail OPEN
+    and that each needle is anchored to an exact engine-emitted form rather than
+    an English phrase — `The operation was aborted while committing invoice 42`
+    survives, and there is a test that says so."
+  - "The `logger.warn`-forwards-to-Sentry path in apps/mouth/src/lib/logger.ts is
+    UNCHANGED. It is the mechanism behind #5096 and it remains a foot-gun; this
+    PR deliberately does not mute it, because seeing the next recurrence is worth
+    more than the quota it costs."
+grader: |
+  Cross-family adversarial refutation by Codex GPT-5.6 sol at xhigh effort,
+  read-only, given the raw diff and an attack list. Verdict DO-NOT-SHIP with two
+  blockers, one of which it found by reading the sentry_sdk source rather than
+  the diff. Final on-disk gate is this orchestrator session, empirical.
+budget: 1 build lane (this session) + 1 cross-family review lane. Gear 2, no council gate.
+pii: none

@@ -1,0 +1,68 @@
+# The WAL-continuity probe must keep being able to go RED.
+#
+# `scripts/tests/` is swept in CI with continue-on-error, so a test file there does NOT gate
+# a PR unless a workflow runs it explicitly. This is that workflow. Without it the suite
+# below would be exactly the thing it exists to prevent: built, green, and load-bearing on
+# nothing (superscar #2, esiste != armato).
+#
+# What it protects: on 2026-08-09 WAL archiving on nuzantara-postgres was found disabled by
+# a legacy override. The nightly backup reported DONE every night and the monthly restore
+# drill passed, because both measure a logical dump and a logical dump does not observe the
+# WAL chain. The probe reads pg_stat_archiver itself. A regression that quietly removes one
+# of its RED paths — the stall check losing its write-pressure comparison, the sequence-gap
+# arithmetic being "simplified" away — would restore that silence, and the only thing that
+# can catch it is a guilt test that fails.
+#
+# NON-REQUIRED by design, same posture as check-tailnet-acl.yml: a new signal observes for a
+# review cycle before it can block. Promoting it to a required branch-protection check is a
+# separate, later operator action (CLAUDE.md §13).
+#
+# Path-scoped: runs only when the probe, its tests, its wrapper, or this workflow change.
+name: check-wal-continuity-probe
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "scripts/wal_continuity_probe.py"
+      - "scripts/tests/test_wal_continuity_probe.py"
+      - "infra/launchagents/wrappers/wal-continuity-probe.sh"
+      - ".github/workflows/check-wal-continuity-probe.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-wal-continuity-probe-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-wal-continuity-probe:
+    name: check-wal-continuity-probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install pytest
+        run: python -m pip install --quiet pytest
+
+      - name: The probe can go RED on every declared condition (guilt AND innocence)
+        run: |
+          set -euo pipefail
+          python -m pytest scripts/tests/test_wal_continuity_probe.py -q
+
+      - name: The probe's own selftest passes as a subprocess
+        run: |
+          set -euo pipefail
+          python3 scripts/wal_continuity_probe.py --selftest
+
+      - name: The wrapper is shell-clean
+        run: |
+          set -euo pipefail
+          bash -n infra/launchagents/wrappers/wal-continuity-probe.sh

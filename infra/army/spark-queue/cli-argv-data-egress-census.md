@@ -8,7 +8,7 @@ ENTIRE message as `claude -p <prompt>` — on the command line, readable by
 census hunts the class.
 
 Sweep `scripts/`, `infra/`, and `apps/` for invocations of LLM CLIs
-(`claude`, `codex`, `agy`, `kimi`, `claude-glm`, `qwen`, `ollama run`) where
+(`claude`, `codex`, `agy`, `kimi`, `qwen`, `ollama run`) where
 the prompt argument is built from VARIABLE free text (an email body, a chat
 message, file contents, DB rows) rather than a fixed literal string.
 

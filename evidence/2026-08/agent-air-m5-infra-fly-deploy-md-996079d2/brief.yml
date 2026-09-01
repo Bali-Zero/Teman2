@@ -1,0 +1,121 @@
+task_id: fly-deploy-md-0829
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Stop fly-deploy.yml's Telegram deploy alerts from being silently dropped when the
+  interpolated GitHub actor login contains a Markdown V1 reserve character.
+
+  7 of the 8 Telegram-notifier steps in this workflow build MESSAGE with
+  `${{ github.actor }}` interpolated bare, then send with `parse_mode=Markdown` and
+  swallow the curl/Telegram result via `|| true`. Telegram Markdown V1 reserves
+  `_ * \` [`. This repo already carries a measured, merged precedent for the same
+  reserve-character family: PR #5221 ("the outbox alarm's page was dropped on odd
+  underscore parity", apps/backend-rag/backend/services/garuda_orders/outbox_alarm.py).
+
+  Falsified before fixing, not assumed: `gh api
+  repos/Bali-Zero/Teman2/actions/workflows/fly-deploy.yml/runs?per_page=100` shows
+  github.actor = `github-merge-queue[bot]` on 100/100 sampled runs — this repo merges
+  via merge queue, so the actor context on every push-triggered run of this workflow
+  is the queue bot, not the PR author, and that login carries an unescaped `[` not
+  followed by `](` (malformed Markdown V1 link-open syntax). This makes the defect
+  LIVE and deterministic, not merely latent: every run of a notifier that fires with
+  parse_mode=Markdown carries this shape. Separately, dependabot[bot] (34 commits on
+  origin/main in the last 30 days, 12 touching apps/backend-rag/) and
+  github-actions[bot] (2 commits) would hit the identical shape whenever either
+  triggers a push build directly.
+
+  Gear 3 by PATH, deterministically: `.github/workflows/**` is hot-zone, so the floor
+  is 3 regardless of the diff's size (1 file, +54/-21 net 33 lines — recomputed via
+  `evidence_pack_lint.py --print-floor`, receipt in the pack).
+constraints:
+  - "Cure the CLASS in this file, not the two instances first pointed at (per the
+    dispatching session's own correction: `Prefer the smallest change that removes
+    the class, not the instance`). All 7 parse_mode=Markdown sites in
+    fly-deploy.yml are in scope; the 8th (parse_mode=HTML, `Notifica Telegram — gate
+    fallito`) is out of scope because it is not in the vulnerable class — see the
+    enumerated proof below, added after a review-round correction."
+  - "A deploy must never fail because a notification failed. The `|| true` this PR
+    removes was hiding a real failure; its replacement must surface a non-2xx via a
+    `::warning::` annotation without failing the step or the job."
+  - "Prefer the smallest change that removes the class: drop `parse_mode` entirely
+    (matches `scripts/tg_notify.py`'s existing stdlib-only pattern, verified by
+    reading that file) rather than re-implementing a Markdown escaper 7 times in
+    bash heredocs. This repo also has an escape-and-keep-parse_mode pattern
+    (`outbox_alarm.py::_escape_markdown`/`_code_span`, `telegram_notifier.py::_md_escape`)
+    — that is the right choice for Python call sites, not for a YAML workflow with
+    7 near-duplicate bash blocks."
+  - "The one parse_mode=HTML site must be justified on the axis that actually
+    matters for HTML (`< > &`), by enumerating EVERY value that specific message
+    interpolates — not by checking only `github.actor` and generalizing (a
+    review-round finding: the first draft of this exemption was argued on the
+    wrong axis)."
+acceptance:
+  - text: >-
+      WHEN this PR is authored, the session SHALL falsify — not assume — whether
+      github.actor on fly-deploy.yml's real run history has ever carried a
+      Markdown-V1 reserve character, with counts and run IDs, before any fix is
+      written.
+    probe: 'gh api "repos/Bali-Zero/Teman2/actions/workflows/fly-deploy.yml/runs?per_page=100"'
+  - text: >-
+      WHEN each of the 7 parse_mode=Markdown Telegram-notifier sites in
+      fly-deploy.yml is inspected, it SHALL have parse_mode removed, MESSAGE
+      content sent intact, and a captured HTTP status surfaced via ::warning::
+      on non-200 without an exit 1 anywhere in that block.
+    probe: "verify_tg_markdown_fix.py"
+  - text: >-
+      WHERE the 8th (HTML) site interpolates GitHub-context values, every
+      interpolated value SHALL be enumerated and checked against `< > &`
+      specifically (not the Markdown reserve set), with the reasoning stated
+      explicitly rather than asserted.
+    probe: "lines 125-139"
+  - text: >-
+      WHEN `actionlint -color -shellcheck=` — the exact invocation this repo's
+      own actionlint.yml required check runs — is run against the changed
+      file, it SHALL exit 0.
+    probe: "actionlint -color -shellcheck="
+  - text: >-
+      WHEN the changed file is parsed with `yaml.safe_load`, it SHALL parse
+      without error.
+    probe: "import yaml; yaml.safe_load"
+  - text: >-
+      WHEN the offline guilt/innocence checker (no network, no real bot token)
+      runs against the un-escaped github-merge-queue[bot]/dependabot[bot]
+      actor string substituted into the real MESSAGE template, it SHALL flag a
+      structurally malformed `[...]` per the legacy Markdown link grammar; WHEN
+      it runs against an ordinary actor login (e.g. Balizero1987), it SHALL NOT
+      flag anything.
+    probe: "verify_tg_markdown_fix.py"
+consumer_map:
+  - "TELEGRAM_OWNER_CHAT_ID (secrets.TELEGRAM_OWNER_CHAT_ID) — Zero's own Telegram,
+    the sole consumer of every message this PR touches. No other consumer reads
+    these curl calls; this is a pure notifier, not a data producer any other system
+    depends on."
+  - "GitHub Actions Annotations tab on each of the 7 steps — the new `::warning::`
+    surface a human would see if Telegram itself starts rejecting a payload again."
+risks:
+  - "A `.github/workflows/**` PR is CODEOWNERS-TIER1 / hot-zone; auto-merge is the
+    normal path for this class per CLAUDE.md §2's SHIP-LIFECYCLE rule (sensitivity
+    raises the adversarial gate's rigor, it does not move the merge to a human) —
+    armed `gh pr merge --auto` nude, per the merge-queue doctrine (strategy flags
+    are rejected by the queue)."
+  - "Plain text loses Markdown bold/monospace rendering on all 7 previously-Markdown
+    alerts. Accepted: a Telegram alert that renders with literal `*`/`` ` `` around
+    words is a trivial cost against one that never arrives."
+  - "The offline guilt/innocence checker's malformed-`[...]`-link-syntax property is
+    a defensible, verifiable STRING-STRUCTURE claim per the Markdown V1 spec's own
+    `[text](url)` grammar — it deliberately does NOT claim to know Telegram's exact
+    undocumented HTTP-400 trigger algorithm, which would be an unverifiable claim
+    this repo's anti-hallucination discipline forbids making without hitting the
+    real API (explicitly out of scope: no real bot token, no send to the real owner
+    chat). The fix's correctness does not depend on resolving that ambiguity, since
+    dropping parse_mode removes entity-parsing entirely, regardless of the exact
+    rejection mechanics."
+grader: |
+  Independent Gear-3 gate dispatched separately by the orchestrating session with
+  posting authority for `harness/fable-gate` — generator != grader: this session
+  wrote the diff and this brief, and does not post its own verdict.
+budget: |
+  Single-lane infra fix. Flat-subscription seats only; no metered API spend, no
+  external LLM call, no network call to Telegram (proof is entirely offline/local).
+pii: none

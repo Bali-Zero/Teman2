@@ -33,6 +33,8 @@ import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
+from zoneinfo import ZoneInfo
 
 # The file has no sys.path setup today — the siblings below live next to
 # this script, not on the default import path when invoked from elsewhere.
@@ -56,6 +58,109 @@ n = len(shots)
 target_dur = shot_pack.get("total_duration_s", brief.get("target_duration_s", 145.4))
 
 
+_LEDGER_UNREADABLE = -1
+
+
+def _ledger_unreachable_reason(ledger_path: Path) -> str | None:
+    """None when the ledger's ABSENCE can be believed; otherwise why it cannot.
+
+    `Path.exists()` answers False both for a file that is not there and for one
+    it cannot reach because an ancestor directory is unreadable — measured, not
+    assumed. To a spend gate those two answers mean opposite things: absent is
+    "0 spent today"; unreachable is "UNKNOWN spent today". Only the first is
+    safe to spend against, and every reader downstream here — `read_integrity`,
+    the malformed scan, `read_records` — collapses both into the same
+    clean-looking zero without raising anything. No OSError handler can see
+    this case, which is why it needs a check of its own.
+
+    Walking up to the first ancestor that answers at all is what makes it
+    correct: if `~/.cache` is unreadable then `~/.cache/wr3` reports "does not
+    exist", and a check that stopped at the immediate parent would believe it.
+
+    `os.access` is still a pre-check, not the belt — it can disagree with the
+    kernel under ACLs or on a network filesystem. The OSError handlers at the
+    call sites remain the actual guarantee for everything that raises; this
+    function exists for what does NOT raise anywhere in the chain.
+    """
+    # `os.access(p, F_OK)` was the first spelling of this walk and it was WRONG
+    # in the one direction that matters: it answers False both for "not there"
+    # and for "there but unresolvable", collapsing the exact distinction this
+    # function exists to make. Measured with a self-referencing symlink at the
+    # ledger's directory, on 3.11 and 3.14 alike: `os.access(F_OK)` False,
+    # `Path.exists()` False, and `open()` raising OSError errno 62 (ELOOP) — so
+    # the walk stepped straight past the loop, found a perfectly readable
+    # grandparent, and reported believable absence. End to end that meant the
+    # gate read "0 spent today" and PASSED against a ledger it could not open:
+    # the same silent under-count, through a different door.
+    #
+    # `os.stat` is used instead because it does not collapse them — it raises,
+    # and the errno says which. ENOENT alone means "keep walking up, absence is
+    # real"; anything else (ELOOP, EACCES, ENOTDIR, ENAMETOOLONG, …) means the
+    # path cannot be resolved and must not be read as empty.
+    probe = ledger_path.parent
+    while True:
+        try:
+            os.stat(probe)
+        except FileNotFoundError:
+            # Genuinely not there. Keep going up: the ledger simply has not
+            # been created yet, and that IS a believable zero.
+            if probe.parent == probe:
+                return None
+            probe = probe.parent
+            continue
+        except OSError as e:
+            return f"ledger path {probe} is unreachable ({e.strerror or e})"
+        break
+    if not probe.is_dir():
+        # An ancestor is a regular file. Nothing under it can ever be a ledger,
+        # and no permission bit can make it one — reported separately from a
+        # permissions fault because the cure is different.
+        return f"ledger path {probe} is not a directory"
+    if not os.access(probe, os.R_OK | os.X_OK):
+        return f"ledger directory {probe} is not readable (permissions?)"
+    return None
+
+# The daily ceiling is a BUSINESS quantity, so its day must be the business's
+# day — and it must not depend on the process environment. The obvious spelling,
+# `datetime.now(timezone.utc).astimezone().tzinfo`, honours $TZ: under TZ=UTC
+# (the default in most cron, launchd and container contexts) it silently reverts
+# to UTC-date bucketing, which UNDER-counts spend — the direction that burns
+# credits — and the one test written to catch that skips itself under exactly
+# that condition, so the failure is invisible.
+#
+# A NAMED ZONE, resolved explicitly, never inherited:
+#   * `ZoneInfo` + `timedelta(days=1)` does wall-clock arithmetic — measured, it
+#     spans 25 hours across a fall-back day — so the window is DST-correct. A
+#     fixed offset would not be.
+#   * `/usr/share/zoneinfo` is present on every image this repo builds on
+#     (python:3.11-slim, python:3.12-slim) and on alpine — measured, not assumed.
+#     The PyPI `tzdata` package is deliberately NOT added: `wr3_credit_ledger.py`
+#     documents a stdlib-only invariant, and `zoneinfo` is stdlib.
+#   * If the zone cannot be resolved anyway (an exotic stripped base), this does
+#     NOT refuse. Refusing would turn a missing tz database into a gate that
+#     blocks every episode. It falls back to fixed UTC+8 — exact for this
+#     business, one distinct offset across 1990-2030, verified — and records the
+#     fallback so the degradation is visible instead of silent.
+#
+# What this does NOT protect against: a syntactically valid but WRONG zone
+# (`WR3_BUSINESS_TZ=UTC`) resolves fine and no validation can reject it. The
+# resolved zone stamped into gate-verdict.json is the mitigation for that.
+_DEFAULT_BUSINESS_TZ = "Asia/Makassar"
+_FALLBACK_BUSINESS_UTC_OFFSET_H = 8
+
+
+def _business_tz() -> tuple[Any, str]:
+    """(tzinfo, label) for the business day. Never reads $TZ."""
+    name = os.environ.get("WR3_BUSINESS_TZ", "").strip() or _DEFAULT_BUSINESS_TZ
+    try:
+        return ZoneInfo(name), name
+    except Exception:
+        return (
+            timezone(timedelta(hours=_FALLBACK_BUSINESS_UTC_OFFSET_H)),
+            f"UTC+{_FALLBACK_BUSINESS_UTC_OFFSET_H} (fallback: zone {name!r} unresolvable)",
+        )
+
+
 def _scan_ledger_for_malformed_lines(ledger_path: Path) -> int:
     """Count non-blank ledger lines that are not a valid JSON object.
 
@@ -70,10 +175,24 @@ def _scan_ledger_for_malformed_lines(ledger_path: Path) -> int:
     concurrent writer). Both are checked because they catch different
     failure modes.
     """
-    if not ledger_path.exists():
-        return 0
     bad = 0
-    with ledger_path.open("r", encoding="utf-8") as fh:
+    try:
+        # `exists()` is INSIDE the guard because it can itself raise: on Python
+        # 3.9/3.11 it propagates PermissionError, while on 3.14 it answers False
+        # — measured. Like the read_records handler, reaching it now needs a
+        # TOCTOU window, since the caller short-circuits on an unreadable
+        # directory before getting here; the `open()` below is the part this
+        # try/except actually earns, and mutation-checked as a real gate.
+        if not ledger_path.exists():
+            return 0
+        fh = ledger_path.open("r", encoding="utf-8")
+    except OSError:
+        # UNREADABLE is a different finding from MALFORMED and must not be
+        # folded into the same count: a permissions fault and a corrupt line
+        # need different cures. The sentinel keeps them distinct, and keeps
+        # this function from killing the gate before any verdict is written.
+        return _LEDGER_UNREADABLE
+    with fh:
         for line in fh:
             line = line.strip()
             if not line:
@@ -112,6 +231,7 @@ hard_ceiling = 209
 cost_fail = False
 cost_reasons = []
 cost_mode = "real"
+business_tz_label = None
 projected_cr = n * CR_PER_CLIP
 balance = None
 daily_ceiling_cr = None
@@ -186,9 +306,47 @@ else:
         # spend, not the quota file's frozen daily_spent_cr. A degraded
         # ledger (either kind of corruption) must not silently read as "0
         # spent today" — that is ALSO a refusal.
-        integrity = read_integrity()
-        malformed_lines = _scan_ledger_for_malformed_lines(_resolve_ledger_path(None))
-        if integrity["status"] != "ok" or malformed_lines:
+        ledger_path_for_gate = _resolve_ledger_path(None)
+        unreachable = _ledger_unreachable_reason(ledger_path_for_gate)
+        if unreachable is not None:
+            # Nothing below can be believed — and on some interpreters nothing
+            # below even raises. MEASURED on this repo's own interpreters, with
+            # the ledger's directory unreadable:
+            #
+            #   Python 3.9 / 3.11 (what CI pins) -> Path.exists() RAISES
+            #     PermissionError; the gate dies without writing a verdict.
+            #   Python 3.14 (what `#!/usr/bin/env python3` resolves to on the
+            #     Pro and M5 render hosts) -> Path.exists() returns False;
+            #     integrity reads "ok", the scan reads 0, read_records() reads
+            #     [], and the gate PASSES with "0 spent today".
+            #
+            # So the SILENT failure is the one that happens on the machine that
+            # actually spends credits, while the interpreter CI runs would have
+            # shown a crash instead: a defect that cannot reproduce where it is
+            # tested. That asymmetry is why this is a positive `os.access`
+            # probe and not one more exception handler.
+            integrity = {"status": "unreadable", "failure_count": 0, "since": None}
+            malformed_lines = _LEDGER_UNREADABLE
+        else:
+            try:
+                integrity = read_integrity()
+            except OSError as e:
+                # read_integrity() opens the failures sidecar with no handler of
+                # its own, and it runs FIRST — so an unreadable sidecar killed
+                # the gate before either guard below could fire, and before any
+                # verdict was written. Handled at the call site, like the
+                # read_records guard, because report/backfill also call it.
+                integrity = {"status": "unreadable", "failure_count": 0, "since": None}
+                unreachable = f"ledger failures sidecar unreadable ({e})"
+            malformed_lines = _scan_ledger_for_malformed_lines(ledger_path_for_gate)
+        if unreachable is not None or malformed_lines == _LEDGER_UNREADABLE:
+            cost_fail = True
+            detail = unreachable or f"ledger unreadable at {ledger_path_for_gate}"
+            cost_reasons.append(
+                f"cannot certify today's spend total — {detail} — refusing to "
+                "spend rather than silently reading 0 spent today"
+            )
+        elif integrity["status"] != "ok" or malformed_lines:
             cost_fail = True
             parts = []
             if integrity["status"] != "ok":
@@ -218,13 +376,33 @@ else:
             # credits, not the one that blocks a render.
             # Compared as absolute instants against local-day boundaries, so
             # rows written in any offset land in the right bucket.
-            local_tz = datetime.now(timezone.utc).astimezone().tzinfo
+            local_tz, business_tz_label = _business_tz()
             day_start = datetime.now(local_tz).replace(
                 hour=0, minute=0, second=0, microsecond=0
             )
             day_end = day_start + timedelta(days=1)
             spent_today_cr = 0
-            for rec in read_records():
+            try:
+                ledger_rows = read_records()
+            except OSError as e:
+                # BELT, and honestly a TOCTOU-only one. This branch is reached
+                # only after the malformed scan already opened the same path
+                # successfully, so no test can enter it deterministically —
+                # mutation-checked: deleting this handler leaves the whole suite
+                # green. It is kept anyway because the window is real (a chmod
+                # or an unmount landing between the two opens) and the
+                # difference it makes is a verdict saying "cannot certify"
+                # instead of a crash with no verdict at all. Guarded here rather
+                # than inside read_records() because report/backfill/dedupe also
+                # call it and their contract is not this PR's concern.
+                # Do not read its presence as coverage.
+                cost_fail = True
+                cost_reasons.append(
+                    f"ledger unreadable while summing today's spend ({e}) — "
+                    "refusing to spend rather than reading 0 spent today"
+                )
+                ledger_rows = []
+            for rec in ledger_rows:
                 if rec.get("mode") != "real":
                     continue
                 ts = _parse_ts(rec.get("ts"))
@@ -347,7 +525,10 @@ out = {
                  "mode": cost_mode,
                  "daily_ceiling_cr": daily_ceiling_cr,
                  "spent_today_cr": spent_today_cr,
-                 "spent_today_source": "ledger (local-day window)" if spent_today_cr is not None else None,
+                 "spent_today_source": "ledger (business-day window)" if spent_today_cr is not None else None,
+                 # Which zone actually resolved is otherwise an unlogged runtime
+                 # fact — the exact shape of the defect this fixes.
+                 "business_tz": business_tz_label,
                  "quota_as_of": quota_as_of,
                  "reasons": cost_reasons,
                  "passed": not cost_fail},

@@ -5,11 +5,16 @@ Refactored router using service layer architecture.
 """
 
 import base64
+import hmac
+import importlib.util
 import logging
 import os
+import re
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path as PathLib
 from typing import Any, Literal
+from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -186,6 +191,38 @@ class PublishToSiteRequest(BaseModel):
     )
 
 
+class WorkspaceNewsPublishRequest(BaseModel):
+    """Explicit authorization carried by the Damar workspace agent."""
+
+    confirmation: Literal["DAMAR_CONFIRMED"]
+    position: Literal["latest", "hero_main", "hero_2", "hero_3", "hero_4", "hero_5"] = "latest"
+
+
+class WorkspaceNewsUpdateRequest(BaseModel):
+    """Public editorial fields the Damar agent may update before review."""
+
+    title: str = Field(..., min_length=8, max_length=200)
+    # Keep the writable maximum aligned with the Bridge's public/fact-gate
+    # projection so no unreviewed tail can be published.
+    content: str = Field(..., min_length=200, max_length=12_000)
+    category: Literal["immigration", "business", "tax", "property", "lifestyle", "tech", "legal"]
+    seo_title: str = Field(..., min_length=8, max_length=60)
+    seo_description: str = Field(..., min_length=40, max_length=155)
+    slug: str = Field(..., min_length=3, max_length=80)
+    cover_image_alt: str = Field(..., min_length=8, max_length=160)
+
+
+class WorkspaceNewsCoverRequest(BaseModel):
+    cover_image_base64: str = Field(..., min_length=100, max_length=16_000_000)
+    cover_image_filename: str = Field(..., min_length=5, max_length=160)
+
+
+class WorkspacePublicationConfirmedRequest(BaseModel):
+    """Durable transition allowed only after the MCP live verifier passes."""
+
+    confirmation: Literal["LIVE_VERIFIED"]
+
+
 VALID_HOMEPAGE_POSITIONS = {
     "hero_main",
     "hero_2",
@@ -197,11 +234,652 @@ VALID_HOMEPAGE_POSITIONS = {
     "insight_3",
 }
 
+_WORKSPACE_CATEGORY_FOLDERS = {
+    "immigration": "immigration",
+    "business": "business",
+    "tax": "tax-legal",
+    "property": "property",
+    "lifestyle": "lifestyle",
+    "tech": "tech",
+    "legal": "tax-legal",
+}
+
+
+def _workspace_article_path(category: str, slug: str) -> str:
+    folder = _WORKSPACE_CATEGORY_FOLDERS.get(category, category)
+    return f"apps/mouth/src/content/articles/{folder}/{slug}.mdx"
+
 
 # HELPER FUNCTIONS & SCRAPER → intel_scraper.py
 # ANALYTICS → intel_analytics.py
 
 # --- STAGING ENDPOINTS ---
+
+
+def require_workspace_marketing_key(request: Request) -> None:
+    """Accept only the dedicated, route-scoped workspace credential."""
+
+    configured = settings.workspace_marketing_api_key
+    provided = request.headers.get("X-Workspace-Marketing-Key", "")
+    if (
+        not configured
+        or not provided
+        or not hmac.compare_digest(
+            provided.encode("utf-8", "surrogateescape"),
+            configured.encode("utf-8", "surrogateescape"),
+        )
+    ):
+        logger.warning(
+            "Workspace marketing route authentication rejected",
+            extra={"method": request.method},
+        )
+        raise HTTPException(status_code=401, detail="Workspace marketing key required")
+
+
+_WORKSPACE_OMIT = object()
+
+
+def _workspace_text(value: Any, *, max_chars: int = 50_000) -> str | object:
+    """Admit text only; arbitrary nested input is structurally unreachable."""
+
+    return value[:max_chars] if isinstance(value, str) else _WORKSPACE_OMIT
+
+
+def _workspace_text_list(
+    value: Any,
+    *,
+    max_items: int = 25,
+    max_chars: int = 5_000,
+) -> list[str] | object:
+    if not isinstance(value, list):
+        return _WORKSPACE_OMIT
+    return [entry[:max_chars] for entry in value[:max_items] if isinstance(entry, str)]
+
+
+def _workspace_brief(value: Any) -> str | dict[str, str] | object:
+    scalar = _workspace_text(value, max_chars=5_000)
+    if scalar is not _WORKSPACE_OMIT:
+        return scalar
+    if not isinstance(value, dict):
+        return _WORKSPACE_OMIT
+    public: dict[str, str] = {}
+    for field in ("what", "why_it_matters", "who", "risk_level"):
+        safe = _workspace_text(value.get(field), max_chars=2_000)
+        if isinstance(safe, str):
+            public[field] = safe
+    return public
+
+
+def _workspace_faq(value: Any) -> list[dict[str, str]] | object:
+    if not isinstance(value, list):
+        return _WORKSPACE_OMIT
+    public: list[dict[str, str]] = []
+    for entry in value[:10]:
+        if not isinstance(entry, dict):
+            continue
+        question = _workspace_text(entry.get("question", entry.get("q")), max_chars=2_000)
+        answer = _workspace_text(entry.get("answer", entry.get("a")), max_chars=5_000)
+        if isinstance(question, str) and isinstance(answer, str):
+            public.append({"question": question, "answer": answer})
+    return public
+
+
+def _workspace_bali_zero_take(value: Any) -> str | dict[str, str] | object:
+    scalar = _workspace_text(value)
+    if scalar is not _WORKSPACE_OMIT:
+        return scalar
+    if not isinstance(value, dict):
+        return _WORKSPACE_OMIT
+    public: dict[str, str] = {}
+    for field in ("hidden_insight", "our_analysis", "our_advice"):
+        safe = _workspace_text(value.get(field))
+        if isinstance(safe, str):
+            public[field] = safe
+    return public
+
+
+def _workspace_next_steps(value: Any) -> str | dict[str, list[str]] | object:
+    scalar = _workspace_text(value)
+    if scalar is not _WORKSPACE_OMIT:
+        return scalar
+    if not isinstance(value, dict):
+        return _WORKSPACE_OMIT
+    public: dict[str, list[str]] = {}
+    for audience in ("expat", "investor"):
+        safe = _workspace_text_list(value.get(audience), max_items=10)
+        if isinstance(safe, list):
+            public[audience] = safe
+    return public
+
+
+def _workspace_marketing_summary(item: dict[str, Any]) -> dict[str, Any]:
+    fields = (
+        "id",
+        "item_id",
+        "title",
+        "category",
+        "status",
+        "detected_at",
+        "published_at",
+        "source_name",
+    )
+    public: dict[str, Any] = {}
+    for field in fields:
+        if field not in item:
+            continue
+        safe = item[field]
+        if safe is None or isinstance(safe, (str, int, float, bool)):
+            public[field] = safe
+    return public
+
+
+def _workspace_marketing_article(item: dict[str, Any]) -> dict[str, Any]:
+    public = _workspace_marketing_summary(item)
+    for field in ("seo_title", "seo_description", "slug", "cover_image_alt"):
+        if field in item:
+            safe_field = _workspace_text(item[field], max_chars=500)
+            if safe_field is not _WORKSPACE_OMIT:
+                public[field] = safe_field
+    if "content" in item:
+        safe_content = _workspace_text(item["content"])
+        if safe_content is not _WORKSPACE_OMIT:
+            public["content"] = safe_content
+    source_url = item.get("source_url")
+    if isinstance(source_url, str):
+        parsed = urlsplit(source_url)
+        if (
+            parsed.scheme == "https"
+            and parsed.hostname
+            and not parsed.username
+            and not parsed.password
+        ):
+            public["source_url"] = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
+    enrichment = item.get("enrichment")
+    if isinstance(enrichment, dict):
+        projectors = {
+            "headline": lambda value: _workspace_text(value, max_chars=500),
+            "thirty_second_brief": _workspace_brief,
+            "the_facts": _workspace_text,
+            "in_practice": _workspace_text,
+            "next_steps": _workspace_next_steps,
+            "bali_zero_take": _workspace_bali_zero_take,
+            "faq": _workspace_faq,
+        }
+        safe_enrichment: dict[str, Any] = {}
+        for field, projector in projectors.items():
+            if field not in enrichment:
+                continue
+            safe = projector(enrichment[field])
+            if safe is not _WORKSPACE_OMIT:
+                safe_enrichment[field] = safe
+        public["enrichment"] = safe_enrichment
+    return public
+
+
+@router.get(
+    "/api/workspace-marketing/capabilities",
+    dependencies=[Depends(require_workspace_marketing_key)],
+)
+async def workspace_marketing_capabilities() -> dict[str, Any]:
+    """Describe the deployed, route-scoped marketing contract."""
+
+    from backend.services.integrations.github_publisher import github_publisher
+
+    staging_readable = staging_service.news_staging_dir.is_dir()
+    staging_writable = staging_readable and os.access(
+        staging_service.news_staging_dir, os.W_OK
+    )
+    publisher_ready = github_publisher.is_configured
+    pillow_available = importlib.util.find_spec("PIL") is not None
+    write_ready = staging_writable and publisher_ready
+    cover_ready = write_ready and pillow_available
+
+    return {
+        "contract": "newsroom-publication-v2",
+        "ready": write_ready and cover_ready,
+        "capabilities": {
+            "list_pending": "ready" if staging_readable else "unavailable",
+            "get_article": "ready" if staging_readable else "unavailable",
+            "update_article": "ready" if write_ready else "unavailable",
+            "attach_cover": "ready" if cover_ready else "unavailable",
+            "publish": "ready" if write_ready else "unavailable",
+            "publication_status": "ready" if staging_readable else "unavailable",
+            "confirm_live": "ready" if write_ready else "unavailable",
+        },
+        "prerequisites": {
+            "staging_readable": staging_readable,
+            "staging_writable": staging_writable,
+            "github_publisher_configured": publisher_ready,
+            "pillow_available": pillow_available,
+        },
+    }
+
+
+@router.get(
+    "/api/workspace-marketing/news/pending",
+    dependencies=[Depends(require_workspace_marketing_key)],
+)
+async def workspace_marketing_pending_news(
+    limit: int = 100,
+    offset: int = 0,
+) -> dict[str, Any]:
+    """Return a bounded News Room projection to the private marketing bridge."""
+
+    bounded_limit = max(1, min(limit, 500))
+    bounded_offset = max(0, min(offset, 100_000))
+    payload = staging_service.list_pending_items(
+        intel_type="news",
+        filter_type=None,
+        sort_type=None,
+        search=None,
+        include_enrichment=False,
+    )
+    raw_items = payload.get("items", []) if isinstance(payload, dict) else []
+    items = raw_items if isinstance(raw_items, list) else []
+    pending_items = [
+        item
+        for item in items
+        if (
+            isinstance(item, dict)
+            and item.get("status", "pending") == "pending"
+            and not item.get("published_url")
+        )
+    ]
+    page = pending_items[bounded_offset : bounded_offset + bounded_limit]
+    projected = [_workspace_marketing_summary(item) for item in page]
+    detected_times = [
+        item.get("detected_at")
+        for item in pending_items
+        if isinstance(item.get("detected_at"), str) and item.get("detected_at")
+    ]
+    next_offset = bounded_offset + len(projected)
+    if next_offset >= len(pending_items):
+        next_offset = None
+    return {
+        "count": len(projected),
+        "total": len(pending_items),
+        "offset": bounded_offset,
+        "next_offset": next_offset,
+        "complete": next_offset is None,
+        "latest_item_at": max(detected_times) if detected_times else None,
+        "items": projected,
+    }
+
+
+@router.put(
+    "/api/workspace-marketing/news/{item_id}/editorial",
+    dependencies=[Depends(require_workspace_marketing_key)],
+)
+async def workspace_marketing_update_news(
+    item_id: str,
+    body: WorkspaceNewsUpdateRequest,
+) -> dict[str, Any]:
+    """Replace the public editorial package for one still-pending article."""
+
+    try:
+        assert_valid_item_id(item_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Item not found") from exc
+    if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", body.slug):
+        raise HTTPException(status_code=422, detail="Slug must be lowercase kebab-case")
+    item = staging_service.load_staging_item("news", item_id)
+    if not isinstance(item, dict):
+        raise HTTPException(status_code=404, detail="Item not found")
+    if item.get("status", "pending") != "pending" or item.get("published_url"):
+        raise HTTPException(status_code=409, detail="Article is not editable")
+    from backend.services.integrations.github_publisher import github_publisher
+
+    if not github_publisher.is_configured:
+        raise HTTPException(status_code=503, detail="Publication Bridge is not configured")
+    public_path = _workspace_article_path(body.category, body.slug)
+    if await github_publisher.check_file_exists(public_path, branch="main"):
+        raise HTTPException(
+            status_code=409,
+            detail="Slug already belongs to a public article",
+        )
+    item.update(body.model_dump())
+    staging_service.save_staging_item("news", item_id, item)
+    return {
+        "success": True,
+        "item_id": item_id,
+        "updated": list(type(body).model_fields),
+    }
+
+
+@router.post(
+    "/api/workspace-marketing/news/{item_id}/cover",
+    dependencies=[Depends(require_workspace_marketing_key)],
+)
+async def workspace_marketing_attach_cover(
+    item_id: str,
+    body: WorkspaceNewsCoverRequest,
+) -> dict[str, Any]:
+    """Attach one native-ImageGen cover to a still-pending article."""
+
+    item = staging_service.load_staging_item("news", item_id)
+    if not isinstance(item, dict):
+        raise HTTPException(status_code=404, detail="Item not found")
+    if item.get("status", "pending") != "pending" or item.get("published_url"):
+        raise HTTPException(status_code=409, detail="Article cover is not editable")
+    try:
+        image_bytes = base64.b64decode(body.cover_image_base64, validate=True)
+    except (ValueError, base64.binascii.Error) as exc:
+        raise HTTPException(status_code=422, detail="Cover image is not valid base64") from exc
+    is_supported_image = (
+        image_bytes.startswith(b"\xff\xd8\xff")
+        or image_bytes.startswith(b"\x89PNG\r\n\x1a\n")
+        or (image_bytes.startswith(b"RIFF") and image_bytes[8:12] == b"WEBP")
+    )
+    if len(image_bytes) < 5_000 or not is_supported_image:
+        raise HTTPException(
+            status_code=422, detail="Cover must be a valid JPEG, PNG, or WebP image"
+        )
+    try:
+        from io import BytesIO
+
+        from PIL import Image, UnidentifiedImageError
+
+        with Image.open(BytesIO(image_bytes)) as image:
+            width, height = image.size
+            image_format = str(image.format or "").upper()
+            if width * height > 40_000_000:
+                raise ValueError("cover exceeds pixel limit")
+            image.verify()
+    except (UnidentifiedImageError, OSError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="Cover image is corrupt") from exc
+    expected_suffixes = {
+        "JPEG": {".jpg", ".jpeg"},
+        "PNG": {".png"},
+        "WEBP": {".webp"},
+    }
+    suffix = PathLib(body.cover_image_filename).suffix.lower()
+    if suffix not in expected_suffixes.get(image_format, set()):
+        raise HTTPException(
+            status_code=422,
+            detail="Cover filename extension does not match the image format",
+        )
+    if width < 1200 or height < 630 or width * height > 40_000_000:
+        raise HTTPException(
+            status_code=422,
+            detail="Cover dimensions must be at least 1200x630 and at most 40 megapixels",
+        )
+
+    result = await upload_cover_image(
+        "news",
+        item_id,
+        CoverImageUploadRequest(
+            cover_image_base64=body.cover_image_base64,
+            cover_image_filename=body.cover_image_filename,
+        ),
+    )
+    return {"success": result.get("success") is True, "item_id": item_id}
+
+
+@router.get(
+    "/api/workspace-marketing/news/{item_id}",
+    dependencies=[Depends(require_workspace_marketing_key)],
+)
+async def workspace_marketing_news_article(item_id: str) -> dict[str, Any]:
+    """Return one field-projected News Room article to the private bridge."""
+
+    try:
+        assert_valid_item_id(item_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Item not found") from exc
+    item = staging_service.load_staging_item("news", item_id)
+    if not isinstance(item, dict):
+        raise HTTPException(status_code=404, detail="Item not found")
+    if item.get("status", "pending") != "pending" or item.get("published_url"):
+        raise HTTPException(status_code=404, detail="Item not found")
+    return _workspace_marketing_article(item)
+
+
+def _workspace_publish_blockers(item: dict[str, Any]) -> list[str]:
+    """Return public editorial requirements that are still missing."""
+
+    blockers: list[str] = []
+    required_text = {
+        "title": 8,
+        "content": 200,
+        "category": 2,
+    }
+    for field, minimum in required_text.items():
+        value = item.get(field)
+        if not isinstance(value, str) or len(value.strip()) < minimum:
+            blockers.append(field)
+
+    source_url = item.get("source_url")
+    try:
+        source = urlsplit(source_url.strip()) if isinstance(source_url, str) else None
+    except ValueError:
+        source = None
+    if (
+        source is None
+        or source.scheme != "https"
+        or not source.hostname
+        or source.username
+        or source.password
+    ):
+        blockers.append("source_url")
+
+    cover_reference = item.get("image_drive_file_id") or item.get("cover_image")
+    if not isinstance(cover_reference, str) or not cover_reference.strip():
+        blockers.append("cover_image")
+    return blockers
+
+
+@router.post(
+    "/api/workspace-marketing/news/{item_id}/publish",
+    dependencies=[Depends(require_workspace_marketing_key)],
+)
+async def workspace_marketing_publish_news(
+    item_id: str,
+    body: WorkspaceNewsPublishRequest,
+) -> dict[str, Any]:
+    """Publish one ready News Room item after Damar explicitly confirms."""
+
+    try:
+        assert_valid_item_id(item_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Item not found") from exc
+    item = staging_service.load_staging_item("news", item_id)
+    if not isinstance(item, dict):
+        raise HTTPException(status_code=404, detail="Item not found")
+    current_status = str(item.get("status", "pending"))
+    if current_status in {"publication_pending", "published"}:
+        if item.get("publish_position", "latest") != body.position:
+            raise HTTPException(
+                status_code=409,
+                detail="Article was already submitted with a different position",
+            )
+        return {
+            "success": True,
+            "github_published": True,
+            "item_id": item_id,
+            "title": item.get("title"),
+            "published_url": item.get("published_url"),
+            "published_at": item.get("published_at"),
+            "publication_requested_at": item.get("publication_requested_at"),
+            "message": "Publication request already exists",
+            "position": body.position,
+            "status": current_status,
+            "idempotent": True,
+        }
+    recovering = False
+    now = datetime.now(timezone.utc)
+    if current_status == "publishing":
+        if item.get("publish_position", "latest") != body.position:
+            raise HTTPException(
+                status_code=409,
+                detail="Article is already publishing with a different position",
+            )
+        raw_lease = item.get("publication_lease_until")
+        try:
+            lease_until = datetime.fromisoformat(str(raw_lease))
+            if lease_until.tzinfo is None:
+                lease_until = lease_until.replace(tzinfo=timezone.utc)
+        except (TypeError, ValueError):
+            lease_until = datetime.min.replace(tzinfo=timezone.utc)
+        if lease_until > now:
+            raise HTTPException(
+                status_code=409,
+                detail="Article publication is currently in progress",
+            )
+        recovering = True
+    elif current_status != "pending" or item.get("published_url"):
+        raise HTTPException(status_code=409, detail="Article is not pending publication")
+    blockers = _workspace_publish_blockers(item)
+    if blockers:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Article is not ready for publication",
+                "missing": blockers,
+            },
+        )
+
+    lease_until = (now + timedelta(minutes=10)).isoformat()
+    transitioned, current = staging_service.compare_and_set_status(
+        "news",
+        item_id,
+        expected={"publishing" if recovering else "pending"},
+        new_status="publishing",
+        updates={
+            "publication_requested_at": now.isoformat(),
+            "publish_position": body.position,
+            "publication_operation_id": item_id,
+            "publication_lease_until": lease_until,
+        },
+        expected_values=(
+            {"publication_lease_until": item.get("publication_lease_until")}
+            if recovering
+            else None
+        ),
+    )
+    if not transitioned:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Article publication is already in state {(current or {}).get('status')}",
+        )
+
+    from backend.app.routers.intel_scraper import publish_staging_item_internal
+
+    try:
+        result = await publish_staging_item_internal(
+            "news",
+            item_id,
+            actor="workspace-agent:damar",
+            allow_generated_cover=False,
+            position=body.position,
+        )
+    except Exception:
+        staging_service.compare_and_set_status(
+            "news",
+            item_id,
+            expected={"publishing"},
+            new_status="pending",
+            updates={
+                "last_publication_failed_at": datetime.now(timezone.utc).isoformat(),
+                "publication_lease_until": None,
+            },
+        )
+        raise
+    return {
+        "success": result.get("success") is True,
+        "github_published": result.get("github_published") is True,
+        "item_id": item_id,
+        "title": result.get("title"),
+        "published_url": result.get("published_url"),
+        "published_at": result.get("published_at"),
+        "publication_requested_at": result.get("publication_requested_at"),
+        "message": result.get("message"),
+        "position": body.position,
+        "status": "publication_pending" if result.get("success") else "pending",
+        "pull_request_number": result.get("pull_request_number"),
+        "auto_merge_enabled": result.get("auto_merge_enabled"),
+    }
+
+
+@router.get(
+    "/api/workspace-marketing/news/{item_id}/publication-status",
+    dependencies=[Depends(require_workspace_marketing_key)],
+)
+async def workspace_marketing_publication_status(item_id: str) -> dict[str, Any]:
+    """Return only the public publication proof fields retained in staging."""
+
+    try:
+        assert_valid_item_id(item_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Item not found") from exc
+    item = staging_service.load_staging_item("news", item_id)
+    if not isinstance(item, dict):
+        raise HTTPException(status_code=404, detail="Item not found")
+    public_source_url = _workspace_marketing_article(item).get("source_url")
+    return {
+        "item_id": item_id,
+        "title": item.get("title"),
+        "status": item.get("status"),
+        "published_url": item.get("published_url"),
+        "published_at": item.get("published_at"),
+        "publication_requested_at": item.get("publication_requested_at"),
+        "live_verified_at": item.get("live_verified_at"),
+        "position": item.get("publish_position", "latest"),
+        "github_commit_sha": item.get("github_commit_sha"),
+        "published_cover_path": item.get("published_cover_path"),
+        "seo_title": item.get("seo_title"),
+        "seo_description": item.get("seo_description"),
+        "cover_image_alt": item.get("cover_image_alt"),
+        "pull_request_number": item.get("pull_request_number"),
+        "auto_merge_enabled": item.get("auto_merge_enabled"),
+        "source_url": public_source_url,
+    }
+
+
+@router.post(
+    "/api/workspace-marketing/news/{item_id}/confirm-live",
+    dependencies=[Depends(require_workspace_marketing_key)],
+)
+async def workspace_marketing_confirm_live(
+    item_id: str,
+    body: WorkspacePublicationConfirmedRequest,
+) -> dict[str, Any]:
+    """Persist ``published`` only after the external live proof has passed."""
+
+    try:
+        assert_valid_item_id(item_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Item not found") from exc
+    item = staging_service.load_staging_item("news", item_id)
+    if not isinstance(item, dict):
+        raise HTTPException(status_code=404, detail="Item not found")
+    if item.get("status") == "published":
+        return {
+            "success": True,
+            "item_id": item_id,
+            "status": "published",
+            "published_at": item.get("published_at"),
+            "idempotent": True,
+        }
+    now = datetime.now(timezone.utc).isoformat()
+    transitioned, current = staging_service.compare_and_set_status(
+        "news",
+        item_id,
+        expected={"publication_pending"},
+        new_status="published",
+        updates={"published_at": now, "live_verified_at": now},
+    )
+    if not transitioned:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Article cannot be confirmed from state {(current or {}).get('status')}",
+        )
+    return {
+        "success": True,
+        "item_id": item_id,
+        "status": "published",
+        "published_at": now,
+        "idempotent": False,
+    }
 
 
 @router.get("/api/intel/staging/pending")

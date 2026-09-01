@@ -1,0 +1,144 @@
+brief_ref: evidence/brief.yml
+plan_ref: "PR #4825 (agent/mini-pro2/infra/fly-watcher-detail) — cron-fly-watcher.yml alarm names the offending machine+check instead of a bare count, 2026-08-24. Evidence pack authored after the code diff, on the orchestrating session's instruction, to satisfy the Harness floor recompute gate the PR's hot-zone path (`.github/workflows/*`) requires."
+lanes:
+  - lane: infra-fly-watcher-detail
+    role: build
+    seat: "session (Mini-Pro2 teammate agent 'fly-watcher-detail', dispatched by team-lead per CLAUDE.md §5 implementer routing; exact model id not independently queryable via a tool call this turn — effort=xhigh per this run's env CLAUDE_EFFORT)"
+  - lane: infra-fly-watcher-detail-review
+    role: review
+    seat: 'team-lead orchestrating session — independent line-by-line diff review performed BEFORE this evidence pack was requested ("I graded it line by line and it holds"); owns posting the harness/fable-gate verdict separately, generator != grader for that decision'
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  Single build lane — the D3 seat-diversity floor (>=2 build lanes, at least
+  one non-Anthropic) does not fire. Declared rather than left to read as
+  satisfied: this is a narrow, single-file CI-wiring fix, not a cross-family
+  council dispatch.
+diff:
+  net_lines: >-
+    1 file, +25/-2 (net +23), measured by
+    `git diff --no-renames --numstat origin/main...HEAD`:
+    `.github/workflows/cron-fly-watcher.yml` only.
+  behaviour_change: >-
+    No runtime/CI-decision behaviour change. `unhealthy_svc`/`unhealthy_vm` counting,
+    every `OVERALL_OK` condition, and the `VM_PRESSURE` pressure-only downgrade logic
+    are byte-for-byte unchanged. Two new fields (`svc_detail`, `vm_detail`) are
+    appended after the existing ones in the printed summary line, and therefore also
+    forwarded verbatim into the Telegram alert body via `$REPORT`.
+receipts:
+  - claim: "Deterministic gear floor recomputed from THIS PR's actual diff is 3 — matches the declared gear and the Harness floor recompute check's own FAIL message (.github/workflows/* is hot-zone by path)"
+    cmd: "git diff --name-only origin/main...HEAD > /tmp/wfd-changed-files.txt && apps/backend-rag/.venv/bin/python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/wfd-changed-files.txt"
+    result: "3"
+    exit: 0
+    ts: "2026-08-24T14:31:09Z"
+    seat: "session (this task, Mini-Pro2 worktree)"
+  - claim: "Fixture 1 (all checks passing on both machines) produces detail fields 'none' and both counters 0"
+    cmd: "RAW='<2-machine all-passing Machines[] fixture>' apps/backend-rag/.venv/bin/python3 <heredoc extracted verbatim from cron-fly-watcher.yml>"
+    result: "total=2|started=2|expected_stopped=0|unexpected_stopped=0|bad=none|unhealthy_svc=0|unhealthy_vm=0|svc_detail=none|vm_detail=none"
+    exit: 0
+    ts: "2026-08-24T14:31:09Z"
+    seat: "session (this task, Mini-Pro2 worktree)"
+  - claim: "Fixture 2 (one service check — pg — failing on one of two machines) names the machine+check in svc_detail and leaves unhealthy_svc/unhealthy_vm unchanged from the pre-change branching"
+    cmd: "RAW='<fixture 2 JSON>' apps/backend-rag/.venv/bin/python3 <extracted heredoc>"
+    result: "total=2|started=2|expected_stopped=0|unexpected_stopped=0|bad=none|unhealthy_svc=1|unhealthy_vm=0|svc_detail=aaa111/sin:pg|vm_detail=none"
+    exit: 0
+    ts: "2026-08-24T14:31:09Z"
+    seat: "session (this task, Mini-Pro2 worktree)"
+  - claim: "Fixture 3 (vm check failing with ONLY pressure sub-checks — cpu/io) still downgrades to unhealthy_vm, and vm_detail names it while svc_detail stays 'none'"
+    cmd: "RAW='<fixture 3 JSON>' apps/backend-rag/.venv/bin/python3 <extracted heredoc>"
+    result: "total=1|started=1|expected_stopped=0|unexpected_stopped=0|bad=none|unhealthy_svc=0|unhealthy_vm=1|svc_detail=none|vm_detail=ccc333/cdg:vm"
+    exit: 0
+    ts: "2026-08-24T14:31:09Z"
+    seat: "session (this task, Mini-Pro2 worktree)"
+  - claim: "Fixture 4 (vm check failing via a checkDisk sub-check, not pressure-only) still pages as unhealthy_svc (never unhealthy_vm) — the disk/memory-failure branch this PR must not touch — and svc_detail names the offending machine+check"
+    cmd: "RAW='<fixture 4 JSON>' apps/backend-rag/.venv/bin/python3 <extracted heredoc>"
+    result: "total=1|started=1|expected_stopped=0|unexpected_stopped=0|bad=none|unhealthy_svc=1|unhealthy_vm=0|svc_detail=ddd444/cdg:vm|vm_detail=none"
+    exit: 0
+    ts: "2026-08-24T14:31:09Z"
+    seat: "session (this task, Mini-Pro2 worktree)"
+  - claim: "Fixture 5 (7 failing service checks across 7 machines, cap=5) truncates svc_detail to the first 5 entries and appends '+2 more' — the field SAYS it truncated (W97), it does not silently drop offenders"
+    cmd: "RAW='<fixture 5 JSON, 7 machines each with one critical check>' apps/backend-rag/.venv/bin/python3 <extracted heredoc>"
+    result: "total=7|started=7|expected_stopped=0|unexpected_stopped=0|bad=none|unhealthy_svc=7|unhealthy_vm=0|svc_detail=m1/sin:pg,m2/sin:role,m3/sin:app,m4/sin:pg,m5/sin:role,+2 more|vm_detail=none"
+    exit: 0
+    ts: "2026-08-24T14:31:09Z"
+    seat: "session (this task, Mini-Pro2 worktree)"
+  - claim: "For fixtures 2 and 4, ALL 7 pre-existing fields (total/started/expected_stopped/unexpected_stopped/bad/unhealthy_svc/unhealthy_vm) resolve to the IDENTICAL value before this diff and after it, via the workflow's own real `tr '|' '\\n' | grep ^field= | cut -d= -f2` extraction run against both a pre-change and post-change copy of the heredoc"
+    cmd: "for each of the 7 field names, extract from both the BEFORE-diff heredoc output and the AFTER-diff heredoc output on fixtures 2 and 4, and diff the two extracted values"
+    result: "fixture2: all 7 pre-existing fields identical before/after (verified via tr|grep|cut); fixture4: all 7 pre-existing fields identical before/after (verified via tr|grep|cut) — zero mismatches"
+    exit: 0
+    ts: "2026-08-24T14:28:52Z"
+    seat: "session (this task, Mini-Pro2 worktree)"
+  - claim: "actionlint accepts the modified workflow (no PATH install available on this host — a leftover downloaded binary was located and run directly, not assumed clean)"
+    cmd: "/private/tmp/actionlint .github/workflows/cron-fly-watcher.yml"
+    result: "no output (clean); /private/tmp/actionlint -version reports 1.7.12, built with go1.26.1 for darwin/arm64, 'installed by downloading from release page'"
+    exit: 0
+    ts: "2026-08-24T14:28:40Z"
+    seat: "session (this task, Mini-Pro2 worktree)"
+  - claim: "The actual diff touches exactly one file and is additive-shaped: new statements (MAX_DETAIL, svc_detail/vm_detail lists, fmt_detail()) plus two appended f-string segments; every pre-existing statement (unhealthy_svc/unhealthy_vm increments, the vm-pressure branch condition, the OVERALL_OK bash checks below the heredoc) is present unmodified in the diff context"
+    cmd: "git diff --stat origin/main...HEAD -- .github/workflows/cron-fly-watcher.yml && git diff origin/main...HEAD -- .github/workflows/cron-fly-watcher.yml"
+    result: "1 file changed, 25 insertions(+), 2 deletions(-); the 2 deletions are the two lines whose only change is an appended trailing '|' so the print f-string can continue onto the new fields — no line inside the pre-existing OVERALL_OK/UNHEALTHY_SVC/UNHEALTHY_VM bash block (outside the heredoc) appears in the diff at all"
+    exit: 0
+    ts: "2026-08-24T14:31:15Z"
+    seat: "session (this task, Mini-Pro2 worktree)"
+pii_scan: clean
+dissent:
+  - seat: "Harness floor recompute (CI, deterministic)"
+    objection: >-
+      PR #4825 touches `.github/workflows/cron-fly-watcher.yml`, which is hot-zone by
+      path (`.github/workflows/*` is a literal HOTZONE_PATTERNS entry) — floors at
+      Gear 3 regardless of the diff's small size (1 file, +25/-2) or the fact that
+      every counting/paging decision it makes is unchanged — and the PR shipped with
+      no `evidence/brief.yml` or `evidence/pack.yml` in its own diff, so the check
+      correctly FAILED with "hot-zone diff with no evidence/brief.yml — a Gear-3-floor
+      diff requires a brief+pack".
+    status: CONFIRMED
+    note: >-
+      Verified independently rather than accepted on the FAIL message alone:
+      recomputed the floor from this PR's actual changed-file list via
+      `evidence_pack_lint.py --print-floor` (receipt above) and got 3, matching the
+      check. Answered here by supplying both files at this PR's own per-branch
+      evidence path (`evidence/ci/evidence_paths.py --resolve`), never by editing the
+      gate — per this repo's Agent PR Contract rule 3 precedent and the identical
+      shape documented in the predecessor PRs #4649/#4701.
+  - seat: "session, self-check on the diff's own design"
+    objection: >-
+      Does printing `<machine_id>/<region>` into a Telegram alert body risk exposing
+      something SYMBIOSIS Law 2 (no client PII/OSINT in clear, in any shared
+      output/alert) would forbid?
+    status: RETRACTED
+    note: >-
+      Investigated rather than assumed innocent: Fly machine ids and region codes are
+      Bali Zero's own infrastructure identifiers (e.g. `ddd444`, `sin`/`cdg`), never
+      client data or OSINT — the existing alert already names `total`/`started`/`bad`
+      counts for these same machines with no PII boundary implicated. Law 2 governs
+      client PII/OSINT specifically (names, phone numbers, passport/KTP/NPWP, private
+      chat content); infra telemetry about our own Fly fleet is outside its scope.
+      Retracted because the concern, once checked against the actual rule text, does
+      not hold — not because it was dismissed unexamined.
+tests:
+  - "5 hand-written fixtures (`Machines[].checks[]` shaped like `flyctl status --json`) run against the heredoc extracted verbatim from cron-fly-watcher.yml, no Fly token used or requested — receipts above."
+  - "Before/after field-stability replay on fixtures 2 and 4 via the workflow's own downstream `tr | grep | cut` extraction — receipt above."
+static:
+  - "/private/tmp/actionlint .github/workflows/cron-fly-watcher.yml -> clean (actionlint not on PATH on this host; this repo's own pre-push quickcheck independently reported the same absence and deferred to CI's actionlint.yml as the real required gate)"
+notes:
+  - >-
+    This evidence pack is deliberately after-the-fact: PR #4825's code+test diff was
+    already reviewed independently by the orchestrating session ("I graded it line by
+    line and it holds") before this pack was requested. Its only job is to satisfy
+    `Harness floor recompute` for a diff whose hot-zone PATH floors it at Gear 3
+    regardless of its small size — per the orchestrating session's own framing, "the
+    cause is my brief, not your work".
+  - >-
+    Written at this PR's own per-branch evidence directory
+    (`evidence/2026-08/agent-mini-pro2-infra-fly-watcher-detail-145c8438/`), per
+    `scripts/ci/evidence_paths.py` (S12/C6, 2026-08-23) — never at the fixed
+    `evidence/brief.yml`/`evidence/pack.yml` root pair, which a concurrent Gear>=2 PR
+    could be rewriting at the same time. `brief_ref:` still names the literal
+    `evidence/brief.yml` (not this pack's own real per-PR path) because
+    `harness-floor.yml` stages both files under canonical names before linting — see
+    `scripts/ci/evidence_paths.py`'s own module docstring for why the "obviously
+    correct" per-PR-looking value is a trap.
+  - >-
+    This pack does not post a `harness/fable-gate` commit status — that is the
+    orchestrating session's own next step, kept separate deliberately: this PR's
+    author (this session) does not gate its own diff (generator != grader,
+    CLAUDE.md §13 / Agent PR Contract).

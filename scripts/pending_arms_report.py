@@ -124,8 +124,9 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
@@ -173,6 +174,84 @@ TRUE_OPERATOR_CATEGORIES = frozenset(
 # tag itself is structural, while phantom DETECTION below stays substring-based on the
 # owner ("operatore" in Italian prose must not slip through as TECH-DEBT — W82 under-match).
 OPERATOR_TAG_RE = re.compile(r"\boperator\s*\[\s*([a-z0-9-]+)\s*\]", re.IGNORECASE)
+
+# Explicit disclaimer of an operator-lane claim ("not operator-gated", "not
+# operator[<cat>]") — found live 2026-08-30 (healer tick, PR #5269 blocked by
+# --strict-phantom): the owner field "next BUILD session (repo-side; not
+# operator-gated — this is a real code fix, just not a healer-tick-safe one)"
+# was classified PHANTOM-OPERATOR because plain substring matching on "operator"
+# cannot see the "not " sitting in front of it.
+#
+# WIDENED 2026-08-30 (round 2, PR #5233's own ledger row tripped it): "NOT this
+# implementer session, NOT a bare operator" was still flagged, because the
+# original regex required "not" immediately adjacent to "operator" — zero
+# words of slack — and "a bare" sits in between. The gap is bounded to a
+# small, CLOSED vocabulary of hedge/determiner words (article + a short
+# adjective/adverb list), not an open `\w+`: an open wildcard would let an
+# unrelated "not" anywhere upstream of a genuine bare "operator" (e.g. "not
+# yet resolved — assign to operator") rescue a real phantom claim, which is
+# the over-correction this classifier exists to avoid (team-lead's explicit
+# warning on this fix). "\boperator\b" stays word-bounded — this must never
+# become a bare substring match, or it re-opens W82 (the Italian "operatore"
+# under-match OPERATOR_TAG_RE's own comment guards against).
+NEGATED_OPERATOR_RE = re.compile(
+    r"\bnot\s+(?:(?:a|an|the|bare|just|merely|purely|simply|really|genuinely"
+    r"|truly|literally|plain|mere)\s+){0,3}operator\b",
+    re.IGNORECASE,
+)
+
+# Word-bounded "operator" mentions, used ONLY to enumerate candidate spans for
+# the completeness check below — never as a substitute for the deliberately
+# substring-based outer gate (`"operator" in owner.lower()`, W82 guard).
+OPERATOR_WORD_RE = re.compile(r"\boperator\b", re.IGNORECASE)
+
+
+def _all_operator_mentions_negated(owner: str) -> bool:
+    """True iff EVERY word-bounded "operator" mention in `owner` falls inside
+    a NEGATED_OPERATOR_RE match — not merely that at least one negated phrase
+    exists somewhere in the field. Closes a second latent gap alongside the
+    regex widening above: the original call site was `NEGATED_OPERATOR_RE
+    .search(owner)`, a bare existence check, so an owner naming TWO operator
+    mentions where only one is negated ("not operator, but flag for operator
+    eventually") would have been waved through on the strength of the first.
+    Callers invoke this only when `not tags` (checked at the call site) — no
+    `operator[<cat>]` bracket exists anywhere in `owner`, so every mention
+    OPERATOR_WORD_RE finds here is genuinely naked, never a tag fragment.
+    Returns False (not phantom-safe) when there is no mention at all —
+    defensive only; every real caller has already confirmed "operator" is
+    present via the outer substring gate.
+
+    DELIBERATE BIAS, independently verified by a second reviewer (team-lead,
+    2026-08-30) against this exact function, not merely against the regex:
+    the closed hedge-word vocabulary is intentionally narrow enough that it
+    still returns False (PHANTOM-OPERATOR, the guard's fail-closed state) on
+    text a human would also read as a denial once the gap or the trailing
+    shape gets unusual enough — e.g. `"not a completely unrelated distant
+    operator"` (a 4-word gap outside the closed vocabulary) and `"NOT a
+    human, operator"` (a second, bare, un-negated mention trailing after the
+    negated one — caught by the "EVERY mention" check above, not the regex).
+    Both are false positives, and both fail in the SAFE direction for this
+    guard: a row whose owner a human would read as a disclaimer still gets
+    classified PHANTOM-OPERATOR rather than TECH-DEBT, which only means it
+    surfaces for a manual reword (as every real incident in PR #4603/#4864/
+    #5273/#5233 already did) — never that a genuine bare-operator claim
+    slips through unflagged. Widen this vocabulary only for a phrasing that
+    has actually blocked a real PR (see the WIDENED history above); widening
+    it pre-emptively to cover a hypothetical phrasing re-opens exactly the
+    unbounded-regex problem this function was built to bound. If a THIRD
+    real phrasing defeats this function the way this one defeated PR #5273's
+    single-pattern fix, that is the signal the surface itself is
+    under-specified, not that the vocabulary needs a fourth entry — see
+    `docs/specs/pending-arms-owner-tag-v1.md` for the structured-field
+    alternative reserved for exactly that case."""
+    mentions = [m.span() for m in OPERATOR_WORD_RE.finditer(owner)]
+    if not mentions:
+        return False
+    negated_spans = [m.span() for m in NEGATED_OPERATOR_RE.finditer(owner)]
+    return all(
+        any(neg_start <= start and end <= neg_end for neg_start, neg_end in negated_spans)
+        for start, end in mentions
+    )
 
 # NATURAL-WAIT: the owner declares a PASSIVE wait on a dated natural trigger
 # (`me (passivo — verifica 07-12)`) — the arming is done, only the proof needs the
@@ -351,6 +430,58 @@ def _split_trailing_update_notes(parts: Sequence[str]) -> tuple[List[str], List[
     return core, notes
 
 
+# Owner/proof extraction by LABEL, not position — the fix for a live blind spot
+# proven 2026-08-23 (v2-d12): `parts[-2]`/`parts[-1]` assumes owner and proof are
+# the LAST two fields, true only for the canonical 5-field shape. A hand-added
+# trailing field (most commonly `| source: <path>`, a provenance note appended
+# after proof) shifts that anchor one slot — `owner` reads what is actually the
+# PROOF text, `proof` reads the trailing extra field, and the real, explicitly
+# `owner:`-labeled field sits unexamined, absorbed into `missing_step` by
+# `_extract_missing_step`'s own `parts[2:-2]` recovery. Measured against the live
+# ledger the day this was found: 34 of 396 open entries carry an `owner:` label
+# that `parts[-2]` misses this way. Proven exploitable, not just untidy: a
+# synthetic row shaped `... | owner: operator | proof: ... | source: ...` (a
+# textbook bare-phantom, no category tag) parsed to `class: TECH-DEBT` and made
+# `--strict-phantom` exit 0 on a scratch copy of the real ledger — the classifier
+# never saw the word "operator" in the field it thought was `owner`, because that
+# field was actually the proof text. A label match is unambiguous wherever it
+# fires (a field starting with `owner:` unambiguously IS the owner, regardless of
+# position), so it is tried FIRST; position is the fallback only when no label is
+# present anywhere — which is still most of the ledger's canonical unlabeled
+# 5-field entries (`me`, `operator[secret]`, no label at all) and must keep
+# resolving exactly as before.
+_LABEL_PATTERNS = {
+    "owner": re.compile(r"^\s*[`\"'*_]*\s*owner\s*:\s*", re.IGNORECASE),
+    "proof-of-armed": re.compile(r"^\s*[`\"'*_]*\s*proof-of-armed\s*:\s*", re.IGNORECASE),
+    "proof": re.compile(r"^\s*[`\"'*_]*\s*proof\s*:\s*", re.IGNORECASE),
+}
+
+
+def _find_labeled_fields(parts: Sequence[str], label: str) -> List[tuple[int, str]]:
+    """Return every (index, stripped-value-after-label) pair among `parts` whose
+    text starts with `<label>:` (case-insensitive, tolerant of surrounding
+    markdown emphasis/backtick markup), in file order. Returns ALL matches, not
+    just the first: a live ledger pattern (confirmed against 2 real entries,
+    #128/"77 phantom KBLI codes" and #263/"queue_rearm.sh scheduling") is a
+    session appending a restated `owner: ... | proof: ...` pair AFTER a `**UPDATE
+    ...**`-style progress note, when the update narrows or reassigns scope rather
+    than just adding commentary — a second full pair, not just the trailing-note
+    shape `_split_trailing_update_notes` already handles. The caller takes the
+    LAST hit as current (same "latest restatement wins" reading a human gives the
+    line, and the same philosophy trailing UPDATE notes already use) — never the
+    first, and never flags multiple hits as an error: every multi-hit case found
+    in the real corpus was this legitimate growth pattern, not corruption.
+    """
+    pattern = _LABEL_PATTERNS[label]
+    hits: List[tuple[int, str]] = []
+    for idx, p in enumerate(parts):
+        stripped = p.strip()
+        m = pattern.match(stripped)
+        if m:
+            hits.append((idx, stripped[m.end() :].strip()))
+    return hits
+
+
 def _truncate(text: str, limit: int = 120) -> str:
     if len(text) <= limit:
         return text
@@ -510,9 +641,37 @@ def parse_entry(raw: str, now: date) -> Entry:
     parts, trailing_notes = _split_trailing_update_notes(all_parts)
 
     artifact = _safe_get(parts, 1)
-    missing_step = _extract_missing_step(parts)
-    owner = _safe_get(parts, -2)
-    proof_core = _safe_get(parts, -1)
+
+    # Label-anchored extraction FIRST (see _find_labeled_fields docstring for why):
+    # a field starting with `owner:`/`proof:`/`proof-of-armed:` unambiguously IS
+    # that field, wherever it sits. Position is the fallback only when no label
+    # exists anywhere in the entry — the canonical unlabeled 5-field shape.
+    owner_hits = _find_labeled_fields(parts, "owner")
+    proof_hits = _find_labeled_fields(parts, "proof-of-armed") or _find_labeled_fields(parts, "proof")
+
+    owner_idx: Optional[int] = None
+    if owner_hits:
+        owner_idx, owner = owner_hits[-1]
+    else:
+        owner = _safe_get(parts, -2)
+
+    proof_idx: Optional[int] = None
+    if proof_hits:
+        proof_idx, proof_core = proof_hits[-1]
+    else:
+        proof_core = _safe_get(parts, -1)
+
+    if owner_idx is not None or proof_idx is not None:
+        # At least one field was label-anchored — missing_step is everything
+        # between artifact and the FIRST anchored field, not the fixed
+        # `parts[2:-2]` outside-in guess (which assumes owner/proof are the
+        # last two fields, false once a label anchors one of them elsewhere).
+        anchor = min(x for x in (owner_idx, proof_idx) if x is not None)
+        middle = parts[2:anchor]
+        missing_step = "|".join(p.strip() for p in middle).strip() if middle else _safe_get(parts, 2)
+    else:
+        missing_step = _extract_missing_step(parts)
+
     proof = "|".join([proof_core, *trailing_notes]).strip() if trailing_notes else proof_core
 
     if date_match and len(all_parts) >= 3 and not owner:
@@ -532,6 +691,37 @@ def parse_entry(raw: str, now: date) -> Entry:
         # shape (verified: 45/225 real entries, all with real, nonempty,
         # correctly-extracted owners).
         reasons.append("owner field is empty after parsing (unparseable/corrupted owner)")
+
+    # Strong-signal owner-corruption backstop for the entries a LABEL cannot
+    # rescue (no `owner:` label exists anywhere to correct the position-based
+    # fallback) — 2 of 36 audited live cases had none. Deliberately narrow:
+    # only two unambiguous tells, never a loose "doesn't start with
+    # me/operator/session" shape check. That looser check has real false
+    # positives in this corpus — a legitimately-phrased owner like "next
+    # war-room-lane session" starts with neither token and is not corrupt; a
+    # shape check flags it anyway. These two tells fire only on content that
+    # cannot legitimately BE an owner under any phrasing: text explicitly
+    # re-labeled as proof (an anchor collision, not a phrasing choice), or an
+    # exact bare status word lifted from elsewhere in the entry.
+    #
+    # Exempted for FIREBREAK-classified entries (`"firebreak" in raw.lower()`,
+    # checked the same way `cls` itself is decided below): a FIREBREAK is
+    # informational-only by design (never alarmed, never blocks a merge) — the
+    # entire point of this backstop is to stop an owner-shape defect from
+    # silently hiding a live CI risk, and a firebreak entry carries no such
+    # risk regardless of how its owner field reads. Found live 2026-08-23: the
+    # unguarded version of this check newly flagged a real, pre-existing,
+    # harmless FIREBREAK row (`INTERACTIVE-DEFAULT RULING`, owner text reduced
+    # to the stray word "closed" by its own closure prose) as MALFORMED —
+    # which fails `--strict-phantom` unconditionally, so shipping this fix
+    # without the exemption would have gone CI-red on the real, UNCHANGED
+    # ledger. The fix is for the READER, not a mandate to also correct every
+    # row's prose in the same PR (see this fix's own PR description).
+    if date_match and len(all_parts) >= 3 and owner and "firebreak" not in raw.lower():
+        if _LABEL_PATTERNS["proof-of-armed"].match(owner) or _LABEL_PATTERNS["proof"].match(owner):
+            reasons.append("owner field holds text labeled proof:/proof-of-armed: — anchor collision")
+        elif owner.strip().rstrip(".").lower() in {"closed", "tech-debt"}:
+            reasons.append(f"owner field is a bare status word ({owner.strip()!r}), not an owner")
 
     age_days: Optional[int] = None
     overdue = False
@@ -554,6 +744,13 @@ def parse_entry(raw: str, now: date) -> Entry:
         tags = [m.group(1).lower() for m in OPERATOR_TAG_RE.finditer(owner)]
         if tags and all(t in TRUE_OPERATOR_CATEGORIES for t in tags):
             cls = CLASS_OPERATOR_GATED
+        elif not tags and _all_operator_mentions_negated(owner):
+            # No bracket tag at all AND EVERY naked "operator" mention is
+            # inside a "not [hedge-words] operator" disclaimer — this is
+            # prose DENYING an operator-lane claim, not making one. Full
+            # coverage, not mere existence: see _all_operator_mentions_negated's
+            # own docstring for why a bare .search() here was itself a gap.
+            cls = CLASS_TECH_DEBT
         else:
             cls = CLASS_PHANTOM_OPERATOR
     else:
@@ -752,6 +949,698 @@ def compute_counts(entries: List[Entry], check_pr_refs: bool = False) -> Dict[st
     return counts
 
 
+# =============================================================================
+# The overdue ratchet — "no NEW overdue rows without saying why"
+# =============================================================================
+#
+# WHY A DELTA AND NOT A SNAPSHOT. The obvious ratchet is a committed number
+# ("overdue must not exceed 440") compared against a live count. That shape is
+# a countdown, not a gate: `tech_debt_overdue` grows with the CALENDAR — a row
+# opened today becomes OVERDUE at 48h all by itself — so a committed snapshot
+# goes red, on every innocent PR, roughly two days after anyone opens a row.
+# A gate that reddens for a cause no PR created is a gate everyone learns to
+# disarm (family #2 arriving by way of #3). Measured while building this: 440
+# overdue rows, 14 of them fresh — i.e. up to 14 automatic reds in the next 48h,
+# none attributable to any diff.
+#
+# So both sides are evaluated at ONE frozen `now`. Aging then cancels exactly,
+# and the delta is what the DIFF did and nothing else. An innocent PR reads 0
+# forever, whatever the calendar says.
+#
+# WHICH BASE. `git merge-base origin/main HEAD` — the commit this branch forked
+# from — because the question is "what did THIS BRANCH author" (W102).
+#
+# ⚠️ Do NOT "fix" this to `origin/main`. The sibling check that runs beside this
+# one in the same workflow (`check_ledger_no_silent_loss.py`) uses `origin/main`
+# ON PURPOSE and was corrected INTO that on 2026-08-30, because it asks the
+# opposite question: "is this row still on CURRENT main?". Two adjacent checks,
+# one file, opposite correct bases. Unify them and one of the two starts lying —
+# exactly the W88/W102 pair, where reading only one scar breaks the other.
+#
+# CANNOT-VERIFY IS NOT CLEAN. A shallow clone with no `origin/main`, or no git
+# at all, exits 3 with the reason — never 0. A scan that could not look is not a
+# clean scan (W84).
+
+# Anchored at the start of the line (after markdown/HTML decoration) on purpose:
+# prose that merely MENTIONS the token — this very file's comments do — is not an
+# override attempt and must produce no output at all. A line that DOES start with
+# the token is an attempt, and a malformed attempt is reported loudly rather than
+# ignored: silence there would let a typo read as "no override was intended".
+# A LIST BULLET only — never `>` and never `#`. Round 2 of the cross-family
+# gate: `[>#*+-]` also stripped a blockquote, so a documented example written
+# the ordinary way, `> RATCHET-OVERRIDE: ...<=999 -- example`, parsed as a live
+# authorisation. A blockquote is the single most common way to QUOTE something
+# in this repo's prose; letting it through is the same "disarmed by its own
+# documentation" defect as the fenced case, wearing a different hat.
+#
+# Three spaces of indent, not four, because four is Markdown's own threshold for
+# a code block. DECLARED TRADE-OFF, not an oversight: four spaces under a list
+# item is ALSO a legal continuation, so a genuine override written that way is
+# refused. Refusing a real override costs a red PR the author fixes by
+# unindenting; accepting a documented example costs a silent blanket
+# authorisation. The safe direction is the refusal — and it is not silent: the
+# RED path below names any line that looked like an override and was rejected
+# for its indentation, so the author is told exactly what to change.
+_RATCHET_DECORATION_RE = re.compile(r"^ {0,3}(?:[*+-][ \t]+)?(?:<!--[ \t]*)?")
+# Rejected-for-indentation detector, used only to explain a RED verdict.
+_RATCHET_OVER_INDENTED_RE = re.compile(r"^\s+(?:[*+-][ \t]+)?(?:<!--[ \t]*)?RATCHET-OVERRIDE:")
+_RATCHET_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})\s*(\S*)")
+_HTML_COMMENT_OPEN = "<!--"
+_HTML_COMMENT_CLOSE = "-->"
+RATCHET_OVERRIDE_TOKEN = "RATCHET-OVERRIDE:"
+# \d{1,9} and not \d+ : Python raises ValueError above 4300 digits, so an
+# unbounded run turns a malformed override into a crash of the whole ratchet
+# instead of a reported invalid one. A ceiling past a billion is not a number
+# anyone means; longer runs simply fail the shape and are reported.
+RATCHET_OVERRIDE_RE = re.compile(
+    r"^RATCHET-OVERRIDE:\s*tech_debt_overdue\s*<=\s*(\d{1,9})\s*(?:--|—)\s*(.*?)\s*(?:-->)?\s*$"
+)
+
+
+def _strip_html_comments(line: str, in_comment: bool) -> tuple[str, bool]:
+    """The part of `line` that is OUTSIDE an HTML comment, plus the new state.
+
+    A single-line `<!-- ... -->` wrapper is a documented override form, so the
+    wrapper's own markers are kept in the visible text (the decoration strip
+    handles them). Only MULTI-line comment interiors are removed, and the scan
+    is left-to-right so a close followed by a re-open on the same line ends
+    inside a comment rather than outside it.
+    """
+    out: List[str] = []
+    i = 0
+    while i < len(line):
+        if in_comment:
+            j = line.find(_HTML_COMMENT_CLOSE, i)
+            if j == -1:
+                return "".join(out), True
+            i = j + len(_HTML_COMMENT_CLOSE)
+            in_comment = False
+            continue
+        j = line.find(_HTML_COMMENT_OPEN, i)
+        if j == -1:
+            out.append(line[i:])
+            return "".join(out), False
+        k = line.find(_HTML_COMMENT_CLOSE, j + len(_HTML_COMMENT_OPEN))
+        if k == -1:
+            # Opens here and does not close on this line: everything from the
+            # opener onward is comment interior.
+            out.append(line[i:j])
+            return "".join(out), True
+        # Opens AND closes on this line — a wrapper, kept verbatim.
+        out.append(line[i : k + len(_HTML_COMMENT_CLOSE)])
+        i = k + len(_HTML_COMMENT_CLOSE)
+    return "".join(out), in_comment
+
+
+def parse_ratchet_overrides(text: str) -> List[Dict[str, Any]]:
+    """Every RATCHET-OVERRIDE attempt in `text`, each validated.
+
+    Recognised form, at the start of a line (markdown bullet / `<!-- -->`
+    wrapper allowed):
+
+        RATCHET-OVERRIDE: tech_debt_overdue<=443 -- three rows aged out mid-wave
+
+    An em dash is accepted in place of `--`. A mention of the token anywhere
+    other than the start of a line is prose and is ignored silently. An attempt
+    that is malformed, or whose reason is empty, comes back `valid=False` with
+    `why_invalid` set — never silently dropped.
+
+    Duplicates are expected, not an error: PENDING-ARMS.md is declared
+    `merge=union` in .gitattributes, so a union merge legitimately keeps two
+    copies of a header line both sides touched. All are returned; the caller
+    uses the highest ceiling.
+    """
+    overrides: List[Dict[str, Any]] = []
+    fence: Optional[str] = None      # the OPENING marker, verbatim
+    in_comment = False               # inside a multi-line <!-- ... -->
+    for raw_line in text.splitlines():
+        # HTML-comment state first. Round 2 of the gate: a fence marker that
+        # lives INSIDE a comment does not open a Markdown fence, but a naive
+        # tracker entered fence mode there and then silently swallowed a
+        # perfectly good override further down — an honest increase reddening
+        # for an invisible reason, which is worse than the hole it was closing.
+        # Comment state, scanning the line LEFT TO RIGHT rather than testing for
+        # the two markers independently. The independent test missed
+        # `<!-- x --> prose <!--` — a close followed by a re-open on one line —
+        # and read everything below as OUTSIDE a comment, so an override hidden
+        # in that trailing comment AUTHORISED while rendering invisibly
+        # (third-family gate; the hidden-authorisation direction is the bad one).
+        # It also dropped whatever followed a `-->`, which is live Markdown.
+        visible, in_comment = _strip_html_comments(raw_line, in_comment)
+        if not visible.strip():
+            continue
+        line_for_fence = visible
+
+        m_fence = _RATCHET_FENCE_RE.match(line_for_fence)
+        if m_fence:
+            marker = m_fence.group(1)
+            info = m_fence.group(2)
+            if fence is None:
+                fence = marker
+                continue
+            # CommonMark: a closer must be the SAME character, at least as long
+            # as the opener, and carry no info string. Backticks cannot close a
+            # tilde fence — the gate's round-2 finding, where ``` "closed" a
+            # ~~~ block and the example inside it became a live ceiling-999
+            # authorisation.
+            if marker[0] == fence[0] and len(marker) >= len(fence) and not info:
+                fence = None
+            continue
+        if fence is not None:
+            # A fenced sample is documentation. Reading it as an instruction is
+            # how a gate gets disarmed by its own runbook.
+            continue
+        stripped = _RATCHET_DECORATION_RE.sub("", visible, count=1)
+        if not stripped.startswith(RATCHET_OVERRIDE_TOKEN):
+            continue
+        m = RATCHET_OVERRIDE_RE.match(stripped)
+        if not m:
+            overrides.append(
+                {
+                    "ceiling": None,
+                    "reason": "",
+                    "raw": raw_line.strip(),
+                    "valid": False,
+                    "why_invalid": (
+                        "malformed override; expected "
+                        "'RATCHET-OVERRIDE: tech_debt_overdue<=<int> -- <reason>'"
+                    ),
+                }
+            )
+            continue
+        ceiling = int(m.group(1))
+        reason = m.group(2).strip()
+        if not reason:
+            overrides.append(
+                {
+                    "ceiling": ceiling,
+                    "reason": "",
+                    "raw": raw_line.strip(),
+                    "valid": False,
+                    "why_invalid": "override reason is empty — a ceiling without a why is not a why",
+                }
+            )
+            continue
+        overrides.append(
+            {
+                "ceiling": ceiling,
+                "reason": reason,
+                "raw": raw_line.strip(),
+                "valid": True,
+                "why_invalid": None,
+            }
+        )
+    return overrides
+
+
+def _override_is_usable(ov: Any) -> bool:
+    """A dict is only an override if it actually carries the shape of one.
+
+    `ratchet_verdict` is called by the corpus with hand-built dicts and by a
+    future caller with whatever it has; a missing key or a stringly-typed
+    ceiling used to raise KeyError / TypeError, i.e. the ratchet died instead of
+    judging. A malformed dict is now simply not an authorisation.
+    """
+    return (
+        isinstance(ov, dict)
+        and ov.get("valid") is True
+        and isinstance(ov.get("ceiling"), int)
+        and not isinstance(ov.get("ceiling"), bool)
+        and bool(str(ov.get("reason") or "").strip())
+    )
+
+
+def ratchet_verdict(
+    base_overdue: int, head_overdue: int, overrides: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """Pure decision over three numbers: clean, override, or red.
+
+    Takes data, not argv, so the corpus can hit it directly instead of through
+    a subprocess that would need git and a ledger to say anything at all.
+
+    A valid override authorises HEAD only when its ceiling covers `head_overdue`
+    — a ceiling naming a number below the count authorises nothing, which is what
+    keeps an override from becoming a permanent blanket: the next increase needs a
+    new, higher, separately-reviewed ceiling.
+
+    A stale override (present while delta <= 0) is inert. An override may never
+    turn a clean run red; it can only ever authorise.
+    """
+    delta = head_overdue - base_overdue
+    notes: List[str] = []
+    valid: List[Dict[str, Any]] = []
+    for ov in overrides:
+        if _override_is_usable(ov):
+            valid.append(ov)
+            continue
+        why = (ov.get("why_invalid") if isinstance(ov, dict) else None) or "not a well-formed override"
+        raw = (ov.get("raw") if isinstance(ov, dict) else None) or repr(ov)[:80]
+        notes.append(f"invalid override ignored — {why} :: {raw}")
+
+    if delta <= 0:
+        return {"status": "clean", "delta": delta, "ceiling_used": None,
+                "reason_used": None, "notes": notes}
+
+    sufficient = [ov for ov in valid if ov["ceiling"] >= head_overdue]
+    if sufficient:
+        best = max(sufficient, key=lambda ov: ov["ceiling"])
+        return {"status": "override", "delta": delta, "ceiling_used": best["ceiling"],
+                "reason_used": best["reason"], "notes": notes}
+
+    if valid:
+        ceilings = ", ".join(str(ov["ceiling"]) for ov in valid)
+        notes.append(
+            f"override ceiling(s) {ceilings} do not cover head count {head_overdue}"
+        )
+    return {"status": "red", "delta": delta, "ceiling_used": None,
+            "reason_used": None, "notes": notes}
+
+
+def _resolve_ratchet_base(ledger_path: Path, base_ref: Optional[str]) -> tuple[Optional[str], str]:
+    """(resolved_ref, how) — or (None, why-not). See the header for WHICH base."""
+    if base_ref is not None:
+        return base_ref, f"--base-ref {base_ref}"
+    rc, out, err = _git(["merge-base", "origin/main", "HEAD"], cwd=ledger_path.parent)
+    if rc != 0:
+        return None, err or f"git merge-base exited {rc}"
+    if not out:
+        return None, "git merge-base produced no output"
+    return out, "git merge-base origin/main HEAD"
+
+
+def _new_overrides(base_text: str, head_text: str) -> tuple[List[Dict[str, Any]], int]:
+    """Overrides this branch ADDED, and how many it merely inherited.
+
+    An override already present in BASE authorises nothing. Without this, the
+    first PR to write `<=445` grants a standing blanket: every later branch
+    inherits a sufficient ceiling and can raise the count to 445 without
+    writing a word (found by the cross-family gate, and it makes the claim
+    "the next increase needs a new, separately reviewed ceiling" false).
+
+    Identity is (ceiling, case-folded whitespace-collapsed reason) — NOT the raw
+    bytes. Round 2 of the cross-family gate: keying on `raw` meant that
+    re-typing an inherited line with one extra space, an em dash instead of
+    `--`, or an added `<!-- -->` wrapper made it "new" and handed back exactly
+    the standing blanket the round-1 cure removed. What a reviewer is being
+    asked to approve is a NUMBER and a REASON; a whitespace change is not a new
+    approval, and a genuinely new reason is (someone typed it).
+
+    Compared as a SET, so a `merge=union` duplicate of an inherited line is
+    still inherited.
+    """
+    def key(ov: Dict[str, Any]) -> tuple:
+        reason = " ".join(str(ov.get("reason") or "").split()).casefold()
+        return (ov.get("ceiling"), reason)
+
+    # Only VALID overrides take part in the inherited/new comparison. Every
+    # malformed one parses to (ceiling=None, reason=""), so a single garbage
+    # line in the BASE would make every malformed attempt in HEAD look
+    # "inherited" and vanish without the loud note this file promises — the
+    # author's typo swallowed by someone else's older typo (third-family gate).
+    # The two filters below are individually redundant and jointly load-bearing:
+    # an invalid head override short-circuits past the set anyway, and an
+    # invalid base override can never collide with a VALID head key. Measured,
+    # not assumed — mutating either alone leaves the corpus green, reverting
+    # BOTH (the exact pre-fix behaviour) turns it red. Belt and braces on the
+    # path where a silent drop costs an author their own error message.
+    inherited = {key(ov) for ov in parse_ratchet_overrides(base_text) if ov["valid"]}
+    head = parse_ratchet_overrides(head_text)
+    fresh = [ov for ov in head if not ov["valid"] or key(ov) not in inherited]
+    return fresh, len(head) - len(fresh)
+
+
+def _base_commit_date(ledger_path: Path, ref: str) -> Optional[date]:
+    """The committer date of `ref`, as a date. None if git cannot say."""
+    rc, out, _ = _git(["show", "-s", "--format=%cs", ref], cwd=ledger_path.parent)
+    if rc != 0 or not out:
+        return None
+    try:
+        return date.fromisoformat(out.splitlines()[0].strip())
+    except ValueError:
+        return None
+
+
+def _branch_start_date(ledger_path: Path, base_ref: str) -> Optional[date]:
+    """The AUTHOR date of this branch's oldest commit since `base_ref`.
+
+    This, and not the base commit's date, is when the branch's work began — and
+    it is the only one of the two that survives a rebase. Third-family gate:
+    with the base commit's date as the clock, a branch that adds a genuinely
+    fresh row and is then rebased three days later (which the merge queue and
+    "branch must be up to date" force routinely) sees its own row become
+    "already overdue at the base date" and reddens, demanding an override for a
+    row nobody is late on. Same tree, different verdict, moved by hygiene rather
+    than by authorship.
+
+    Rebase preserves AUTHOR dates, so a row the branch opened on day X is still
+    age 0 against a clock of day X after any number of rebases. A row backdated
+    to before the branch began still counts, which is the whole point.
+
+    None when git cannot answer or the range is empty; the caller falls back to
+    the base commit's date and says so.
+    """
+    rc, out, _ = _git(
+        ["log", "--format=%as", f"{base_ref}..HEAD"], cwd=ledger_path.parent
+    )
+    if rc != 0 or not out:
+        return None
+    for line in reversed(out.splitlines()):  # oldest commit last in git log order
+        try:
+            return date.fromisoformat(line.strip())
+        except ValueError:
+            continue
+    return None
+
+
+def run_ratchet(
+    ledger_path: Path, now: Optional[date], base_ref: Optional[str]
+) -> int:
+    """0 clean / 0 override-accepted / 1 increased / 3 cannot-verify.
+
+    THE CLOCK IS THE BASE COMMIT'S DATE, not today, and that is the whole
+    correctness argument. Round 2 of the cross-family gate demolished the
+    earlier "frozen now" story: freezing `now` cancels ageing only for rows
+    present on BOTH sides. A row this branch ADDS is in head and not in base, so
+    it ages on one side of the subtraction alone — measured, the same unmodified
+    PR reads delta 0 on the day it is opened and delta 1 three days later, with
+    no commit in between. The implementation's own comment claimed "reads 0
+    forever"; a test in this repo had even been written to bless the late red.
+
+    Reading both sides at the BASE COMMIT's date removes time from the
+    computation entirely: a row opened after that date has a negative age, is
+    FRESH by construction, and can never count. The verdict becomes a pure
+    function of (base commit, head tree) — re-run this a year later on the same
+    two trees and it answers the same thing. That IS the invariant the design
+    claimed and this is what actually delivers it.
+
+    What still counts against a branch, and should: a row it introduces that was
+    ALREADY overdue when the branch was cut — a backdated row, or an old row
+    resurrected. That is real debt arriving, not the calendar moving.
+
+    `now` overrides the derived date; it exists for the corpus, not for CI.
+    """
+    resolved, how = _resolve_ratchet_base(ledger_path, base_ref)
+    if resolved is None:
+        print(
+            f"ratchet CANNOT-VERIFY: no base to compare against ({how}). "
+            "This is not a clean result — fetch origin/main (unshallow if needed) "
+            "or pass --base-ref.",
+            file=sys.stderr,
+        )
+        return 3
+
+    if now is None:
+        now = _branch_start_date(ledger_path, resolved)
+        origin = "branch start (oldest author date since the base — rebase-stable)"
+        if now is None:
+            now = _base_commit_date(ledger_path, resolved)
+            origin = "base commit date (no commits since the base, or git could not say)"
+        if now is None:
+            print(
+                f"ratchet CANNOT-VERIFY: cannot date {resolved!r} or this branch's own "
+                "commits; the ratchet's clock IS one of those dates and falling back "
+                "to today would silently reintroduce the calendar drift this mode "
+                "exists to remove.",
+                file=sys.stderr,
+            )
+            return 3
+        # A committer/author date can be skewed or forged. A clock far in the
+        # FUTURE makes every row the branch adds look overdue, so every
+        # row-adding PR reddens until main moves — a gate that fires on a wrong
+        # wall clock is a gate people disarm. CANNOT-VERIFY, loudly, rather than
+        # a wrong verdict.
+        #
+        # TOLERANCE, and it is not slack for its own sake — found by the FIRST
+        # live CI run of this gate. `%as` is the author's date in the AUTHOR's
+        # timezone; `date.today()` is the runner's. Commits authored on Mini
+        # (WITA, UTC+8) at 01:00 local carry 2026-08-31 while a UTC runner is
+        # still on 2026-08-30, so an ordinary branch read as "forged" and the
+        # gate refused to judge it. Legitimate offsets span UTC-12..UTC+14, i.e.
+        # up to two calendar days either way. Two days of tolerance still leaves
+        # the case this guard exists for — a clock stuck in 2030 — caught by a
+        # wide margin. Timezone skew is not forgery.
+        today = date.today()
+        tolerance = timedelta(days=2)
+        if now > today + tolerance:
+            print(
+                f"ratchet CANNOT-VERIFY: the derived clock {now.isoformat()} is more than "
+                f"{tolerance.days} days in the future (today is {today.isoformat()}) — "
+                "further than any timezone can explain, so a skewed or forged commit date. "
+                "Refusing to judge rather than judging from it.",
+                file=sys.stderr,
+            )
+            return 3
+        clock = f"{origin} = {now.isoformat()}"
+    else:
+        clock = f"now={now.isoformat()} (explicit override)"
+
+    # EVERY read is guarded, not only the base one. An unreadable HEAD — invalid
+    # UTF-8, the file vanishing under a concurrent checkout, anything
+    # load_entries chooses to raise — used to escape as a traceback, which the
+    # process reports as exit 1: CANNOT-VERIFY silently wearing the costume of
+    # "this branch raised the count". Those two must never be the same number.
+    try:
+        base_text = _ledger_text_at_ref(ledger_path, resolved)
+        base_entries = [parse_entry(raw, now) for raw in extract_open_entries(base_text)]
+        head_text = ledger_path.read_text(encoding="utf-8")
+        head_entries = [parse_entry(raw, now) for raw in extract_open_entries(head_text)]
+    except LedgerRefUnreadable as exc:
+        print(f"ratchet CANNOT-VERIFY: base ref {resolved!r} unreadable: {exc}", file=sys.stderr)
+        return 3
+    except (OSError, UnicodeError, ValueError) as exc:
+        print(
+            f"ratchet CANNOT-VERIFY: could not read the ledger at both refs: "
+            f"{type(exc).__name__}: {exc}",
+            file=sys.stderr,
+        )
+        return 3
+
+    base_overdue = compute_counts(base_entries)["tech_debt_overdue"]
+    head_overdue = compute_counts(head_entries)["tech_debt_overdue"]
+    overrides, n_inherited = _new_overrides(base_text, head_text)
+    if n_inherited:
+        print(
+            f"ratchet note: {n_inherited} override line(s) already present in the base "
+            "authorise nothing — an inherited ceiling is not a licence",
+            file=sys.stderr,
+        )
+    verdict = ratchet_verdict(base_overdue, head_overdue, overrides)
+
+    for note in verdict["notes"]:
+        print(f"ratchet note: {note}", file=sys.stderr)
+
+    where = (
+        f"base {base_overdue} -> head {head_overdue} (delta {verdict['delta']}) "
+        f"at {clock} vs {resolved} ({how})"
+    )
+
+    if verdict["status"] == "clean":
+        print(f"ratchet CLEAN: {where}")
+        return 0
+
+    if verdict["status"] == "override":
+        print(f"ratchet OVERRIDE ACCEPTED: {where}")
+        print(f"  ceiling {verdict['ceiling_used']} — {verdict['reason_used']}")
+        valid = [ov for ov in overrides if _override_is_usable(ov)]
+        if len(valid) > 1:
+            for ov in valid:
+                print(f"  (also present) ceiling {ov['ceiling']} — {ov['reason']}")
+        return 0
+
+    print(f"ratchet RED: {where}")
+    # Name the rows, not just the number. Compare on the FULL raw line: two
+    # distinct rows can share an 80-char prefix, and a truncated key would
+    # silently drop one of them from the report.
+    base_raw = {e.raw for e in base_entries if e.bucket == f"{CLASS_TECH_DEBT}-OVERDUE"}
+    newly = [
+        e for e in head_entries
+        if e.bucket == f"{CLASS_TECH_DEBT}-OVERDUE" and e.raw not in base_raw
+    ]
+    if newly:
+        print("newly-overdue rows introduced by this branch:")
+        for e in newly:
+            opened = e.opened_date.isoformat() if e.opened_date else "?"
+            print(f"  - {e.artifact or '(no artifact parsed)'} (opened {opened}, age {e.age_days}d)")
+    else:
+        # Possible when a row's TEXT changed while staying overdue. Say so
+        # rather than printing an empty list under a "newly-overdue" heading.
+        print("  (count rose but no row is textually new — a row was edited in place)")
+    # The promised diagnostic, and it was DEAD until the third-family gate found
+    # it: the comment above _RATCHET_DECORATION_RE justified the 3-space rule
+    # with "the RED path below names any line that looked like an override and
+    # was rejected for its indentation", and that path referenced the detector
+    # nowhere. An author who HAD written an override, indented under a list
+    # item, was told only "add an override" (W116 — dead code on the one path it
+    # exists for, wearing a comment that says otherwise).
+    rejected = [
+        ln for ln in head_text.splitlines() if _RATCHET_OVER_INDENTED_RE.match(ln)
+    ]
+    for ln in rejected:
+        print(
+            "note: this line looks like an override but is indented four or more "
+            "spaces, which Markdown reads as a code block — unindent it to at most "
+            f"three:\n    {ln.strip()[:120]}"
+        )
+    print(
+        "To authorise deliberately, add to the ledger:\n"
+        f"  RATCHET-OVERRIDE: tech_debt_overdue<={head_overdue} -- <why this is the right trade>"
+    )
+    return 1
+
+
+def selftest_premise_holds(overdue_entries: List[Entry], fresh_entries: List[Entry]) -> bool:
+    """Are the self-test's fixtures the rows it thinks they are?
+
+    Asserted on CLASS and BUCKET, never on counts alone. A row the real parser
+    silently classifies MALFORMED also counts zero overdue, so a count-only
+    premise is satisfied by garbage and every innocence case downstream becomes
+    vacuously true — the exact shape of W108, found here by the cross-family
+    gate against the first version of this self-test.
+
+    Named and separate so the corpus can hit it with a genuinely malformed row;
+    inline, this check could be weakened back to counts with nothing turning red.
+
+    The bucket and the cls/overdue clauses below are deliberately REDUNDANT —
+    `bucket == "TECH-DEBT-OVERDUE"` is by construction `cls == TECH-DEBT and
+    overdue`. Measured, not assumed: mutating either clause of a coupled pair on
+    its own leaves the corpus green (an equivalent mutant — no input can tell
+    them apart), while mutating BOTH halves together turns it red. Kept because
+    a premise is the check that makes every other case non-vacuous, and belt
+    plus braces costs one boolean.
+    """
+    return (
+        len(overdue_entries) == 1
+        and overdue_entries[0].cls == CLASS_TECH_DEBT
+        and overdue_entries[0].bucket == f"{CLASS_TECH_DEBT}-OVERDUE"
+        and overdue_entries[0].overdue
+        and len(fresh_entries) == 1
+        and fresh_entries[0].cls == CLASS_TECH_DEBT
+        and fresh_entries[0].bucket == "FRESH"
+        and not fresh_entries[0].overdue
+    )
+
+
+def ratchet_selftest(return_cases: bool = False):
+    """Guilt AND innocence on synthetic ledgers in a temp dir. No git, no real ledger.
+
+    This runs in CI on every triggering PR, so "the ratchet reddens on +1 overdue
+    row" is proven by a real run's log rather than asserted from a laptop. If the
+    detector ever stops detecting, this step is what goes red.
+
+    The fixtures go through the REAL parser, not a hand-built count: a fixture
+    the parser quietly classified MALFORMED would make every case below
+    vacuously true (W108 — a fake world too poor to reach the thing you meant to
+    measure ends up measuring itself). The premise case therefore asserts the
+    parsed CLASS and BUCKET, not merely that the counts come out 0 and 1: a
+    malformed row also counts 0, so a count-only premise passes on garbage
+    (found by the cross-family gate).
+
+    `return_cases=True` hands back the case list so a test can pin the corpus
+    itself. Without that, `return 0` is a valid implementation of this function
+    and the test asserting `== 0` is a tautology (also the gate's finding).
+    """
+    now = date(2026, 8, 30)
+    fresh = "- opened 2026-08-29 (selftest) | **fresh row** | wire it | session | CI red"
+    overdue = "- opened 2026-08-01 (selftest) | **overdue row** | wire it | session | CI red"
+    other = "- opened 2026-08-02 (selftest) | **another overdue row** | wire it | session | CI red"
+
+    cases: List[tuple[str, bool, str]] = []
+
+    with tempfile.TemporaryDirectory() as td:
+        tmp = Path(td)
+
+        def entries_of(text: str, name: str) -> List[Entry]:
+            p = tmp / name
+            p.write_text(text, encoding="utf-8")
+            return load_entries(p, now)
+
+        def counts(text: str, name: str) -> int:
+            return compute_counts(entries_of(text, name))["tech_debt_overdue"]
+
+        # PREMISE. Assert what each fixture row IS, not only what it counts.
+        ov_e = entries_of(overdue + "\n", "p1.md")
+        fr_e = entries_of(fresh + "\n", "p2.md")
+        premise = selftest_premise_holds(ov_e, fr_e)
+        detail = f"overdue={[(e.cls, e.bucket) for e in ov_e]} fresh={[(e.cls, e.bucket) for e in fr_e]}"
+        cases.append(("premise: fixtures parse as REAL TECH-DEBT rows, right buckets", premise, detail))
+
+        def verdict_for(base_text: str, head_text: str) -> Dict[str, Any]:
+            new_ovs, _ = _new_overrides(base_text, head_text)
+            return ratchet_verdict(counts(base_text, "b.md"), counts(head_text, "h.md"), new_ovs)
+
+        OVERRIDE_1 = "RATCHET-OVERRIDE: tech_debt_overdue<=1 -- deliberate, reviewed"
+
+        v = verdict_for(fresh + "\n", fresh + "\n" + overdue + "\n")
+        cases.append(("guilt: +1 overdue row -> RED", v["status"] == "red" and v["delta"] == 1, str(v["status"])))
+
+        v = verdict_for(fresh + "\n", fresh + "\n")
+        cases.append(("innocence: identical ledgers -> CLEAN", v["status"] == "clean", str(v["status"])))
+
+        v = verdict_for(fresh + "\n", fresh + "\n" + fresh + "\n")
+        cases.append(("innocence: a FRESH row added -> CLEAN", v["status"] == "clean", str(v["status"])))
+
+        v = verdict_for(overdue + "\n" + other + "\n", overdue + "\n")
+        cases.append(("innocence: a row CLOSED -> CLEAN", v["status"] == "clean" and v["delta"] == -1, str(v["status"])))
+
+        v = verdict_for(fresh + "\n", fresh + "\n" + overdue + "\n<!-- " + OVERRIDE_1 + " -->\n")
+        cases.append(("innocence: a NEW sufficient override -> OVERRIDE", v["status"] == "override" and v["ceiling_used"] == 1, str(v["status"])))
+
+        # The blocker the cross-family gate found: an override already on the
+        # base must not license this branch's increase.
+        v = verdict_for(fresh + "\n" + OVERRIDE_1 + "\n", fresh + "\n" + overdue + "\n" + OVERRIDE_1 + "\n")
+        cases.append(("guilt: an INHERITED override authorises nothing -> RED", v["status"] == "red", str(v["status"])))
+
+        v = verdict_for(fresh + "\n", fresh + "\n" + overdue + "\nRATCHET-OVERRIDE: tech_debt_overdue<=0 -- ceiling too low\n")
+        cases.append(("guilt: ceiling below the count -> RED", v["status"] == "red", str(v["status"])))
+
+        v = verdict_for(fresh + "\n", fresh + "\n" + overdue + "\nRATCHET-OVERRIDE: tech_debt_overdue<=1 --   \n")
+        cases.append(("guilt: empty reason -> RED", v["status"] == "red", str(v["status"])))
+
+        v = verdict_for(fresh + "\n", fresh + "\n" + overdue + "\n```text\n" + OVERRIDE_1 + "\n```\n")
+        cases.append(("guilt: a FENCED example override authorises nothing -> RED", v["status"] == "red", str(v["status"])))
+
+        v = verdict_for(fresh + "\n", fresh + "\n" + overdue + "\n> " + OVERRIDE_1 + "\n")
+        cases.append(("guilt: a BLOCKQUOTED example authorises nothing -> RED", v["status"] == "red", str(v["status"])))
+
+        v = verdict_for(fresh + "\n", fresh + "\n" + overdue + "\n~~~text\n" + OVERRIDE_1 + "\n```\n")
+        cases.append(("guilt: ``` cannot close a ~~~ fence -> RED", v["status"] == "red", str(v["status"])))
+
+        restyled = OVERRIDE_1.replace("<=1", " <= 1").replace("--", "—")
+        v = verdict_for(fresh + "\n" + OVERRIDE_1 + "\n", fresh + "\n" + overdue + "\n" + restyled + "\n")
+        cases.append(("guilt: RESTYLING an inherited override is not a new approval -> RED",
+                      v["status"] == "red", str(v["status"])))
+
+        prose = parse_ratchet_overrides("the marker is RATCHET-OVERRIDE: tech_debt_overdue<=999 -- see the runbook\n")
+        cases.append(("innocence: prose quoting an override is not an override", prose == [], repr(prose)[:50]))
+
+        huge = parse_ratchet_overrides("RATCHET-OVERRIDE: tech_debt_overdue<=" + "9" * 5000 + " -- boom\n")
+        cases.append(("guilt: a 5000-digit ceiling is reported invalid, not a crash",
+                      len(huge) == 1 and huge[0]["valid"] is False, repr(huge)[:50]))
+
+        drifted = ratchet_verdict(440, 441, [{}, {"valid": True, "ceiling": "999", "reason": "x"}])
+        cases.append(("guilt: malformed override dicts do not raise and do not authorise",
+                      drifted["status"] == "red", str(drifted["status"])))
+
+        # Calendar independence — the property the whole design rests on.
+        far = date(2026, 12, 25)
+        b_txt, h_txt = fresh + "\n", fresh + "\n" + overdue + "\n"
+        p_b, p_h = tmp / "cb.md", tmp / "ch.md"
+        p_b.write_text(b_txt, encoding="utf-8"); p_h.write_text(h_txt, encoding="utf-8")
+        d_now = (compute_counts(load_entries(p_h, now))["tech_debt_overdue"]
+                 - compute_counts(load_entries(p_b, now))["tech_debt_overdue"])
+        d_far = (compute_counts(load_entries(p_h, far))["tech_debt_overdue"]
+                 - compute_counts(load_entries(p_b, far))["tech_debt_overdue"])
+        cases.append(("invariant: delta is identical at two far-apart dates", d_now == d_far == 1, f"{d_now} vs {d_far}"))
+
+    failed = 0
+    for name, ok, detail in cases:
+        print(f"ratchet-selftest: {'PASS' if ok else 'FAIL'}  {name}  [{detail}]")
+        if not ok:
+            failed += 1
+    print(f"ratchet-selftest: {len(cases) - failed}/{len(cases)} cases behaved as specified")
+    if return_cases:
+        return cases
+    return 1 if failed else 0
 def _freshness_line(freshness: Optional[Dict[str, Any]], ref: Optional[str] = None) -> str:
     """One line, always printed. Silence about freshness is what made this necessary."""
     if not freshness:
@@ -1081,12 +1970,63 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "mutates the ledger."
         ),
     )
+    parser.add_argument(
+        "--ratchet",
+        action="store_true",
+        help=(
+            "Compare the TECH-DEBT-OVERDUE count between this branch's base "
+            "(git merge-base origin/main HEAD, or --base-ref) and the working "
+            "tree, BOTH evaluated at the date this BRANCH's work began (its "
+            "oldest author date since the base; the base commit's date if there "
+            "is none) — so a row the branch itself opened can never age into a "
+            "verdict, and a rebase cannot change one. Exit 0 clean or override-"
+            "accepted, 1 if it increased without an override, 3 if the base "
+            "cannot be resolved (never 0 — a scan that could not look is not a "
+            "clean scan). Read-only."
+        ),
+    )
+    parser.add_argument(
+        "--base-ref",
+        type=str,
+        default=None,
+        metavar="GITREF",
+        help=(
+            "Ratchet base override (default: git merge-base origin/main HEAD). "
+            "For the corpus and for local reproduction. Only meaningful with "
+            "--ratchet."
+        ),
+    )
+    parser.add_argument(
+        "--ratchet-selftest",
+        action="store_true",
+        help=(
+            "Run the ratchet's guilt+innocence fixtures in a temporary directory "
+            "and exit non-zero if the detector stops detecting. Touches no git "
+            "and no real ledger; this is what proves the gate armed, in CI, on "
+            "every run."
+        ),
+    )
     return parser
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
+
+    # Self-test first: it needs neither a ledger nor git, and a caller asking
+    # "does the detector still detect?" must get an answer even on a machine
+    # where the ledger is missing.
+    if args.ratchet_selftest:
+        return ratchet_selftest()
+
+    # A flag that silently does nothing is how a gate ends up believed-armed
+    # and inert. Say so instead.
+    if args.base_ref is not None and not args.ratchet:
+        print(
+            "pending_arms_report: --base-ref has no effect without --ratchet",
+            file=sys.stderr,
+        )
+        return 2
 
     ledger_path: Path = args.ledger if args.ledger is not None else _default_ledger_path()
 
@@ -1105,6 +2045,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             file=sys.stderr,
         )
         return 2
+
+    # The ratchet is its own mode — it must not also print the normal report,
+    # or a CI step reading its stdout gets 600 lines of ledger before the verdict.
+    if args.ratchet:
+        # None, not `now`: the ratchet derives its clock from the base commit
+        # unless --now was given EXPLICITLY. Passing today's date here would
+        # reinstate exactly the drift this mode exists to avoid.
+        return run_ratchet(ledger_path, now if args.now else None, args.base_ref)
 
     try:
         entries = load_entries(ledger_path, now, ref=args.ref)

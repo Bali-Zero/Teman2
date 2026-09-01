@@ -1,0 +1,77 @@
+{
+  "channel_intent": [
+    {
+      "cta": "synthetic cta: book a consult",
+      "objective": "synthetic awareness objective",
+      "surface": "com.example.instagram_carousel"
+    }
+  ],
+  "classification": {
+    "risk_class": "amber",
+    "sensitivity": "internal"
+  },
+  "contract_version": "research-os/v1.0.0",
+  "creative_lock_family_id": "com.example.creative_lock_family_001",
+  "creative_lock_id": "32000000-0000-4000-8000-000000000001",
+  "lineage": {
+    "input_hashes": [],
+    "workflow_run_ref": {
+      "object_hash": "4444444444444444444444444444444444444444444444444444444444444444",
+      "workflow_run_id": "30000000-0000-4000-8000-000000000301"
+    }
+  },
+  "lock_version": 1,
+  "must_avoid": [
+    {
+      "constraint": "no synthetic client names"
+    }
+  ],
+  "must_keep": [
+    {
+      "constraint": "cite the synthetic effective date"
+    }
+  ],
+  "narrative_arc": [
+    {
+      "beat": "hook",
+      "note": "synthetic hook beat"
+    },
+    {
+      "beat": "resolution",
+      "note": "synthetic resolution beat"
+    }
+  ],
+  "object_hash": "26fb0bdd41f664f0c291231262a415d46ad10a989710ba8cce023608b2b62bba",
+  "producer": {
+    "name": "com.example.fixture_builder",
+    "version": "1.0.0"
+  },
+  "promise": "Synthetic promise: readers know exactly what changed in 5 slides",
+  "recorded_at": "2026-01-15T00:15:00Z",
+  "reference_assets": [
+    {
+      "asset_ref": {
+        "asset_id": "com.example.synthetic-asset-002",
+        "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "purpose": "synthetic hero image with an under-declared classification",
+      "rights_state": "com.example.licensed_internal_use",
+      "risk_class": "red",
+      "sensitivity": "internal"
+    }
+  ],
+  "retention": {
+    "legal_hold": false,
+    "retention_class": "operational"
+  },
+  "state": "current",
+  "tenant": "bali-zero",
+  "tone": {
+    "register": "com.example.plain_advisory",
+    "warmth": "neutral"
+  },
+  "topic_lock_ref": {
+    "object_hash": "19afbd0716c55827f55de921d0460d14dc9e902ec027c26e6fc4a457b33324e6",
+    "topic_lock_id": "31000000-0000-4000-8000-000000000001"
+  }
+}

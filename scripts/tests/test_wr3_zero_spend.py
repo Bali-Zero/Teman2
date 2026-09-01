@@ -647,6 +647,42 @@ async def test_generate_start_image_direct_call_blocked_without_decision_no_http
             await fk._generate_start_image(ctx, prompt="p")
 
 
+@pytest.mark.asyncio
+async def test_submit_clip_real_mode_blocked_without_decision_no_http(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The PUBLIC entrypoint wr3-clip-renderer actually calls — submit_clip,
+    not _generate_start_image/_generate_video directly — must refuse the same
+    way. No WR3_ZERO_SPEND, no WR3_SPEND_DECISION -> SpendNotAuthorizedError
+    before any charging HTTP call. Scene creation is faked to succeed so the
+    assertion is isolated to the charging call site (_generate_start_image,
+    the first one submit_clip reaches when no start image is preset), proving
+    the whole real-mode spend-submission path is unreachable end-to-end
+    through the same call chain wr3_render_episode.py drives, not merely
+    through its internal helpers."""
+    import wr3_flowkit_client as fk
+
+    monkeypatch.delenv("WR3_ZERO_SPEND", raising=False)
+    monkeypatch.delenv("WR3_SPEND_DECISION", raising=False)
+
+    async def _ok_scene(ctx, *, shot_index, positive_prompt, timeout_s=30):
+        return f"scene-{shot_index}"
+
+    async def _boom_http(*_a, **_k):
+        raise AssertionError("network path reached")
+
+    ctx = fk.EpisodeContext(
+        project_id="p", video_id="v", project_name="EP-submit-clip-guard",
+        endpoint="http://127.0.0.1:8100", paygate="PAYGATE_TIER_ONE",
+    )
+    req = fk.ClipRequest(shot_index=3, positive_prompt="unauthorized shot")
+
+    with patch.object(fk, "_create_scene", new=_ok_scene), \
+         patch.object(fk, "_http_post_json", new=_boom_http):
+        with pytest.raises(SpendNotAuthorizedError):
+            await fk.submit_clip(req, episode_dir=tmp_path, episode_context=ctx)
+
+
 @requires_ffmpeg
 @pytest.mark.asyncio
 async def test_submit_clip_zero_spend_placeholders_differ_by_shot_index(

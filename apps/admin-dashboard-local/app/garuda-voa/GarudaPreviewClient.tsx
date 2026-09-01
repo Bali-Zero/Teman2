@@ -38,6 +38,8 @@ interface PreviewResult {
   internal_checkpoints: InternalCheckpoint[];
   price_idr: number | null;
   price_source: string | null;
+  price_status: "confirmed" | "unavailable";
+  price_warning: string | null;
   calendar_coverage_start: string;
   calendar_coverage_end: string;
   calendar_status: "confirmed" | "uncovered" | "not_applicable";
@@ -443,8 +445,12 @@ export function GarudaPreviewClient() {
                 <span>PricingTool result</span>
                 <strong>{formatIdr(result.price_idr)}</strong>
                 <small>
-                  {result.price_source ?? "No catalogue source returned"}
+                  Price status: {result.price_status}
+                  {result.price_source ? ` · ${result.price_source}` : null}
                 </small>
+                {result.price_warning ? (
+                  <div className="garuda-warning">{result.price_warning}</div>
+                ) : null}
               </div>
 
               <div className="garuda-calendar">

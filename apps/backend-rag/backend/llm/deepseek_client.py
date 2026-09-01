@@ -1,4 +1,4 @@
-"""DeepSeek API client (async, OpenAI-compatible).
+"""DeepSeek model client (async, OpenAI-compatible) — via the TP1 gateway.
 
 Used by backend paths that previously ran Claude via Max OAuth but
 suffered from the upstream `claude` CLI non-TTY hang inside the Fly
@@ -6,19 +6,45 @@ container (see `memory/feedback_claude_cli_linux_hang.md`). DeepSeek is
 cheaper than Claude Sonnet for structured JSON generation and
 returns usage counters properly.
 
-Endpoint: `https://api.deepseek.com/v1/chat/completions` (OpenAI-style).
+RE-POINTED 2026-08-29 (misroute fix, not a replacement): this module used
+to call DeepSeek's own metered endpoint (``api.deepseek.com`` +
+``DEEPSEEK_API_KEY``) directly. That direct-billing door was RETIRED
+2026-07-19 (pre-authorization revoked, balance dead — HTTP-402; CLAUDE.md
+§"Cost constraint"). The SAME model family stayed live the whole time
+through a second, distinct door: the Alibaba **TP1** (Token Plan) OpenAI-
+compatible gateway, which `FLEET_TOPOLOGY.json` records as a 2026-08-10
+"DeepSeek re-admission" — ``deepseek-v4-flash-0731`` measured ARMED (806
+calls / 131.2M tokens, 2026-08-08→14 window); ``deepseek-v4-pro`` is
+listed PROBATION with zero measured calls in that same window — do not
+conflate the two tiers' maturity. Endpoint + slugs below now target that
+door. See ``scripts/tp1_call.py`` / ``scripts/arsenal_probe.py`` for the
+sibling non-backend TP1 caller this mirrors.
+
 Models (DeepSeek V4 release 2026-04-24, ref api-docs.deepseek.com/news/news260424):
 - ``deepseek-v4-pro``: V4 Pro flagship (1.6T params, 49B activated, 1M ctx).
-- ``deepseek-v4-flash``: V4 Flash (284B params, 13B activated, 1M ctx).
+- ``deepseek-v4-flash-0731``: V4 Flash (284B params, 13B activated, 1M ctx)
+  — this is TP1's exact live slug; it does NOT resolve to the bare
+  ``deepseek-v4-flash`` string DeepSeek's own docs use, and the two must
+  not be assumed interchangeable on this door (confirmed live 2026-08-23,
+  ``scripts/arsenal_probe.py::TP1_SEAT_MODELS``).
 - Legacy aliases ``deepseek-chat`` (→ V4-Flash non-think) and
-  ``deepseek-reasoner`` (→ V4-Flash thinking) are deprecated 2026-07-24.
+  ``deepseek-reasoner`` (→ V4-Flash thinking) were DeepSeek's own aliases,
+  deprecated 2026-07-24 on the now-retired direct door — unverified
+  whether TP1 recognizes them at all; do not rely on them here.
 
-V4 supports three reasoning modes via ``reasoning_effort`` parameter:
-- ``"low"``  : Non-think (fast, cheap)
-- ``"high"`` : Think High (balanced)
-- ``"max"``  : Think Max (deep chain-of-thought, recommended for Consiglio)
+V4 supports reasoning modes via the ``reasoning_effort`` parameter. TP1's
+gateway accepts exactly ``none|minimal|low|medium|high|xhigh`` — NOT
+``max`` (HTTP 400, confirmed live 2026-08-27 per
+``scripts/tp1_call.py::EFFORT_TO_REASONING_EFFORT``); ``complete_async``
+below clamps ``"max"`` to ``"xhigh"`` for exactly that reason, mirroring
+that script's mapping instead of drifting a second copy of it.
 
-Auth: ``DEEPSEEK_API_KEY`` env var (already deployed on `nuzantara-rag`).
+Auth: ``BAILIAN_TOKEN_PLAN_API_KEY`` env var — the TP1 credential name,
+NOT ``DEEPSEEK_API_KEY`` (that name now names only the retired direct
+door and must never be topped up). On Fly this must exist as a real Fly
+secret on `nuzantara-rag` (``fly secrets set BAILIAN_TOKEN_PLAN_API_KEY=...
+-a nuzantara-rag``) — provisioning it is an operator[secret] action, not
+something this module or its author can do; see PENDING-ARMS.md.
 """
 
 from __future__ import annotations
@@ -33,11 +59,22 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL: Final[str] = "deepseek-v4-pro"
-DEFAULT_BASE_URL: Final[str] = "https://api.deepseek.com/v1"
+DEFAULT_MODEL: Final[str] = "deepseek-v4-flash-0731"
+DEFAULT_BASE_URL: Final[str] = (
+    "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
+)
 DEFAULT_TIMEOUT_S: Final[float] = 60.0
 
 ReasoningEffort = Literal["low", "high", "max"]
+
+# TP1 rejects "max" literally (HTTP 400) — it wants "xhigh" for the same
+# intent. Kept here (not just clamped inline) so the mapping has one place
+# to read, matching scripts/tp1_call.py::EFFORT_TO_REASONING_EFFORT.
+_REASONING_EFFORT_TP1_MAP: Final[dict[str, str]] = {
+    "low": "low",
+    "high": "high",
+    "max": "xhigh",
+}
 
 
 class DeepSeekError(RuntimeError):
@@ -106,8 +143,10 @@ async def complete_async(
     Args:
         prompt: User prompt. Kept as a single string for call-site parity
             with the old ``claude -p`` subprocess wrapper.
-        model: Model slug. Defaults to ``deepseek-v4-pro`` (V4 flagship).
-            Use ``deepseek-v4-flash`` for cheaper general-purpose calls.
+        model: Model slug. Defaults to ``deepseek-v4-flash-0731`` (TP1's
+            confirmed-live slug — NOT the bare ``deepseek-v4-flash``
+            string). Use ``deepseek-v4-pro`` for the flagship tier (TP1
+            PROBATION, less production mileage than flash-0731).
         system: Optional system prompt.
         max_tokens: Upper bound on completion tokens.
         temperature: Sampling temperature. 0.3 is a reasonable default
@@ -133,8 +172,8 @@ async def complete_async(
         counters.
 
     Raises:
-        :class:`DeepSeekAuthError`: if ``DEEPSEEK_API_KEY`` is missing or
-            the API returns 401.
+        :class:`DeepSeekAuthError`: if ``BAILIAN_TOKEN_PLAN_API_KEY`` is
+            missing or TP1 returns 401.
         :class:`DeepSeekError`: on any other HTTP error, empty response,
             or malformed JSON.
     """
@@ -148,10 +187,12 @@ async def complete_async(
     error_class: str | None = None
 
     try:
-        api_key = os.getenv("DEEPSEEK_API_KEY", "").strip()
+        api_key = os.getenv("BAILIAN_TOKEN_PLAN_API_KEY", "").strip()
         if not api_key:
             raise DeepSeekAuthError(
-                "DEEPSEEK_API_KEY env var is not set. Cannot call DeepSeek API.",
+                "BAILIAN_TOKEN_PLAN_API_KEY env var is not set. Cannot call "
+                "DeepSeek via the TP1 gateway (the direct DEEPSEEK_API_KEY "
+                "door is retired — see this module's docstring).",
             )
 
         messages: list[dict[str, str]] = []
@@ -169,8 +210,13 @@ async def complete_async(
         if response_format is not None:
             payload["response_format"] = response_format
         if reasoning_effort is not None:
-            payload["reasoning_effort"] = reasoning_effort
+            payload["reasoning_effort"] = _REASONING_EFFORT_TP1_MAP.get(
+                reasoning_effort, reasoning_effort,
+            )
 
+        # DEEPSEEK_BASE_URL name kept for escape-valve continuity (a caller
+        # can still point this client elsewhere); the DEFAULT is now TP1,
+        # not the retired direct door.
         base_url = os.getenv("DEEPSEEK_BASE_URL", DEFAULT_BASE_URL).rstrip("/")
         url = f"{base_url}/chat/completions"
 
@@ -188,7 +234,9 @@ async def complete_async(
             raise DeepSeekError(f"DeepSeek HTTP transport error: {exc}") from exc
 
         if resp.status_code == 401:
-            raise DeepSeekAuthError(f"DeepSeek rejected API key (401): {resp.text[:200]}")
+            raise DeepSeekAuthError(
+                f"TP1 gateway rejected BAILIAN_TOKEN_PLAN_API_KEY (401): {resp.text[:200]}",
+            )
         if resp.status_code >= 400:
             raise DeepSeekError(
                 f"DeepSeek HTTP {resp.status_code}: {resp.text[:500]}",

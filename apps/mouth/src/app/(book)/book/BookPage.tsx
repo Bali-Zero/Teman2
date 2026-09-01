@@ -364,7 +364,7 @@ export function BookPage({ initialChapter }: BookPageProps) {
               href={`${CONTACTS.whatsappUrl}?text=${encodeURIComponent(t.contactCta)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-[#25D366] text-white font-[family-name:var(--font-montserrat)] font-semibold text-lg hover:bg-[#1fb855] transition-colors shadow-[0_0_24px_rgba(37,211,102,0.25)]"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-[#25D366] text-[var(--accent-whatsapp-ink)] font-[family-name:var(--font-montserrat)] font-semibold text-lg hover:bg-[#1fb855] transition-colors shadow-[0_0_24px_rgba(37,211,102,0.25)]"
             >
               {CONTACTS.whatsapp}
             </a>

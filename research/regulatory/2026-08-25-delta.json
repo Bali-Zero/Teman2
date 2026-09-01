@@ -1,0 +1,114 @@
+{
+  "run_at": "2026-08-25T07:04:19+08:00",
+  "today": "2026-08-25",
+  "yesterday_seen_count": 22,
+  "new_today_count": 0,
+  "partial": true,
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "WAF/Cloudflare block (HTTP 403), persisted after 1 retry with Mozilla UA"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "HTTP 403, persisted after 1 retry with Mozilla UA"
+    },
+    {
+      "url": "https://ortax.org/news",
+      "reason": "empty_shell",
+      "note": "HTTP 200 but 'Artikel tidak ditemukan' SPA shell, no extractable content (same as 2026-08-24)"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "Connection failed, curl exit non-zero, no response"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "Freshest items (13-17 jam lalu) discuss RUU Kewarganegaraan (draft), Rencana PPh Final Royalti (draft), IEU-CEPA ratification prep; only numbered act found is SE-6/PJ/2026 (DJP internal appeal/litigation handling circular), procedural not client-actionable, not a promulgated regulation type per Step 4 filter"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "checked_no_new",
+      "note": "24/08/2026 items are LCC competition news + Wamenkeu policy remarks (growth target, budget), no numbered regulation promulgated"
+    },
+    {
+      "url": "https://peraturan.go.id",
+      "reason": "outside_window",
+      "note": "Newest entries (Permen Pendidikan Dasar Menengah 20/2026, Permen PANRB 15/2026, Permen LH 11/2026) dated 'diundangkan 1 minggu yang lalu' (~18 Aug 2026), outside 48h window"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "outside_window",
+      "note": "Newest result PP Nomor 30 Tahun 2026, 'berlaku mulai 24 hari yang lalu', outside 48h window"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "checked_no_new",
+      "note": "Only content is a 21 Aug 2026 enforcement press release (deportation case), no new immigration regulation listed"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Newest regulatory entry still PER-8/PJ/2026 dated 2026-07-28 (already in seen_citations); subsequent entries are KMK exchange-rate operational notices"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "checked_no_new",
+      "note": "2,567 results, default sort is hierarchy not date; no Permenaker/Permenkes item dated within 48h window found in the visible listing"
+    }
+  ],
+  "nb_query_errors": [
+    {
+      "nb": "NB-INTEL-Regulation — Daily Regulatory Intelligence",
+      "reason": "auth_expired",
+      "note": "nlm query notebook exited 1: 'Authentication expired. Run nlm login to re-authenticate.'"
+    },
+    {
+      "nb": "NB-INTEL-Press — Daily Press Intelligence",
+      "reason": "auth_expired",
+      "note": "nlm query notebook exited 1: 'Authentication expired. Run nlm login to re-authenticate.'"
+    },
+    {
+      "nb": "NB-INTEL-Immigration — Daily Immigration Intelligence",
+      "reason": "auth_expired",
+      "note": "nlm query notebook exited 1: 'Authentication expired. Run nlm login to re-authenticate.'"
+    },
+    {
+      "nb": "NB-INTEL-Tax — Daily Tax/Fiscal Intelligence",
+      "reason": "auth_expired",
+      "note": "nlm query notebook exited 1: 'Authentication expired. Run nlm login to re-authenticate.'"
+    }
+  ],
+  "deltas": [],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK Nomor 44 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026",
+    "Peraturan Menteri Hukum Nomor 13 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026",
+    "PMK Nomor 57 Tahun 2026"
+  ],
+  "note": "All 4 NB-INTEL queries failed with auth_expired (nlm CLI). Antonello: run 'nlm login' manually to restore the NotebookLM path. Web cross-check ran on all 11 sources (5 primary + 6 backup); zero deltas matching the Step-4 service-line filter found within the 48h window."
+}

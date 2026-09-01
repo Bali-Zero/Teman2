@@ -1,0 +1,412 @@
+{
+  "$defs": {
+    "ActorRef": {
+      "additionalProperties": false,
+      "properties": {
+        "key_version": {
+          "minLength": 1,
+          "title": "Key Version",
+          "type": "string"
+        },
+        "pseudonym": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Pseudonym",
+          "type": "string"
+        },
+        "purpose": {
+          "enum": [
+            "approval",
+            "verification",
+            "queue_decision",
+            "assignment",
+            "execution",
+            "audit"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        },
+        "scheme": {
+          "const": "hmac-sha256",
+          "title": "Scheme",
+          "type": "string"
+        }
+      },
+      "required": ["scheme", "key_version", "purpose", "pseudonym"],
+      "title": "ActorRef",
+      "type": "object"
+    },
+    "AuthorityRequired": {
+      "additionalProperties": false,
+      "properties": {
+        "expires_after_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Expires After Seconds",
+          "type": "integer"
+        },
+        "role": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Role",
+          "type": "string"
+        },
+        "scope": {
+          "minLength": 1,
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": ["role", "scope", "expires_after_seconds"],
+      "title": "AuthorityRequired",
+      "type": "object"
+    },
+    "DecisionPacketRef": {
+      "additionalProperties": false,
+      "description": "``{decision_packet_id, object_hash}`` -- the typed pointer every\noperator-decision kind in this producer family (TopicLock, CreativeLock\nvia TopicLock, RequestedActionSpec) binds back to its originating packet.",
+      "properties": {
+        "decision_packet_id": {
+          "format": "uuid",
+          "title": "Decision Packet Id",
+          "type": "string"
+        },
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        }
+      },
+      "required": ["decision_packet_id", "object_hash"],
+      "title": "DecisionPacketRef",
+      "type": "object"
+    },
+    "ExactObjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "object_id": {
+          "minLength": 1,
+          "title": "Object Id",
+          "type": "string"
+        },
+        "object_kind": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Object Kind",
+          "type": "string"
+        }
+      },
+      "required": ["object_kind", "object_id", "object_hash"],
+      "title": "ExactObjectRef",
+      "type": "object"
+    },
+    "ExtensionValue": {
+      "additionalProperties": false,
+      "properties": {
+        "extension_version": {
+          "title": "Extension Version",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        }
+      },
+      "required": ["extension_version", "payload"],
+      "title": "ExtensionValue",
+      "type": "object"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["name", "version"],
+      "title": "Producer",
+      "type": "object"
+    },
+    "RequiredWorkflowLineage": {
+      "additionalProperties": false,
+      "description": "``lineage: {workflow_run_ref: {workflow_run_id, object_hash}, input_hashes: []}``.\n\nSections 8.1, 8.2, and 8.3 all spell this exact two-field shape\nverbatim, with ``workflow_run_ref`` MANDATORY -- unlike\n``primitives.Lineage``, whose ``workflow_run_ref`` is optional for kinds\nthat may run outside a workflow. TopicLock, CreativeLock, and\nRequestedActionSpec import this type rather than each redefining it.",
+      "properties": {
+        "input_hashes": {
+          "items": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "title": "Input Hashes",
+          "type": "array"
+        },
+        "workflow_run_ref": {
+          "$ref": "#/$defs/WorkflowRunRef"
+        }
+      },
+      "required": ["workflow_run_ref", "input_hashes"],
+      "title": "RequiredWorkflowLineage",
+      "type": "object"
+    },
+    "Retention": {
+      "additionalProperties": false,
+      "properties": {
+        "legal_hold": {
+          "title": "Legal Hold",
+          "type": "boolean"
+        },
+        "retain_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retain Until"
+        },
+        "retention_class": {
+          "enum": ["public_record", "operational", "audit", "restricted"],
+          "title": "Retention Class",
+          "type": "string"
+        },
+        "rights_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "pattern": "(?:Z|\\+00:00)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rights Expires At"
+        }
+      },
+      "required": ["retention_class", "legal_hold"],
+      "title": "Retention",
+      "type": "object"
+    },
+    "RiskClass": {
+      "enum": ["green", "amber", "red"],
+      "title": "RiskClass",
+      "type": "string"
+    },
+    "Sensitivity": {
+      "enum": [
+        "public",
+        "internal",
+        "confidential",
+        "restricted_osint",
+        "client_pii"
+      ],
+      "title": "Sensitivity",
+      "type": "string"
+    },
+    "Target": {
+      "additionalProperties": false,
+      "description": "``target: {system, object_ref, surface?}``. ``object_ref`` reuses the\ngeneric ``ExactObjectRef`` -- section 8.3 names it identically to how\n``PropagationTarget.object_ref`` already uses that same primitive.",
+      "properties": {
+        "object_ref": {
+          "$ref": "#/$defs/ExactObjectRef"
+        },
+        "surface": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Surface"
+        },
+        "system": {
+          "pattern": "^[a-z][a-z0-9_-]*(?:\\.[a-z0-9_-]+)*$",
+          "title": "System",
+          "type": "string"
+        }
+      },
+      "required": ["system", "object_ref"],
+      "title": "Target",
+      "type": "object"
+    },
+    "WorkflowRunRef": {
+      "additionalProperties": false,
+      "properties": {
+        "object_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Hash",
+          "type": "string"
+        },
+        "workflow_run_id": {
+          "format": "uuid",
+          "title": "Workflow Run Id",
+          "type": "string"
+        }
+      },
+      "required": ["workflow_run_id", "object_hash"],
+      "title": "WorkflowRunRef",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "action_type": {
+      "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+      "title": "Action Type",
+      "type": "string"
+    },
+    "arguments_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Arguments Hash",
+      "type": "string"
+    },
+    "arguments_ref": {
+      "minLength": 1,
+      "title": "Arguments Ref",
+      "type": "string"
+    },
+    "authority_required": {
+      "$ref": "#/$defs/AuthorityRequired"
+    },
+    "contract_version": {
+      "const": "research-os/v1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "decision_packet_ref": {
+      "$ref": "#/$defs/DecisionPacketRef"
+    },
+    "expected_outcome_types": {
+      "items": {
+        "pattern": "^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]|\\.[a-z0-9])*$",
+        "type": "string"
+      },
+      "title": "Expected Outcome Types",
+      "type": "array"
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExtensionValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extensions"
+    },
+    "input_revision_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Input Revision Hash",
+      "type": "string"
+    },
+    "lineage": {
+      "$ref": "#/$defs/RequiredWorkflowLineage"
+    },
+    "object_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Object Hash",
+      "type": "string"
+    },
+    "producer": {
+      "$ref": "#/$defs/Producer"
+    },
+    "recorded_at": {
+      "format": "date-time",
+      "pattern": "(?:Z|\\+00:00)$",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "requested_action_spec_id": {
+      "format": "uuid",
+      "title": "Requested Action Spec Id",
+      "type": "string"
+    },
+    "retention": {
+      "$ref": "#/$defs/Retention"
+    },
+    "risk_class": {
+      "$ref": "#/$defs/RiskClass"
+    },
+    "sensitivity": {
+      "$ref": "#/$defs/Sensitivity"
+    },
+    "suggested_due_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "pattern": "(?:Z|\\+00:00)$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Suggested Due At"
+    },
+    "suggested_owner_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ActorRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "target": {
+      "$ref": "#/$defs/Target"
+    },
+    "tenant": {
+      "const": "bali-zero",
+      "title": "Tenant",
+      "type": "string"
+    }
+  },
+  "required": [
+    "requested_action_spec_id",
+    "contract_version",
+    "tenant",
+    "decision_packet_ref",
+    "action_type",
+    "target",
+    "arguments_ref",
+    "arguments_hash",
+    "input_revision_hash",
+    "risk_class",
+    "sensitivity",
+    "authority_required",
+    "expected_outcome_types",
+    "recorded_at",
+    "producer",
+    "lineage",
+    "retention",
+    "object_hash"
+  ],
+  "title": "RequestedActionSpec",
+  "type": "object"
+}

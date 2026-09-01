@@ -58,10 +58,37 @@ on:
       - "scripts/proprioception.py"
       - "scripts/tests/test_organism_stale_detector.py"
       - ".github/workflows/organ-conformance.yml"
+      # GUARD_READ_SET from test_organ_heartbeat_exceeds_poller_interval.py:
+      # a bridge-fed organ's expected_hb_seconds must stay >= 3x the bridge's
+      # poll interval, and that invariant can regress via ANY of these four
+      # files — not just the registry entry above. A new organ_id added to
+      # the bridge with too-low a registry threshold touches only
+      # scripts/launchagent-state-bridge.py, never organs_registry.yaml.
+      # Found live 2026-08-31: this guard existed, ran clean locally, and was
+      # named by NO workflow (cicatrix #2, Esiste≠Armato — the same defect
+      # class W108 fixed for a different corpus). Must also be in the in-job
+      # pathspec below, or armed here and silently skipped there (or the
+      # reverse) — test_organ_heartbeat_workflow_wiring.py asserts both
+      # lists cover this set so the correspondence is calculated, not
+      # hand-maintained.
+      - "scripts/tests/test_organ_heartbeat_exceeds_poller_interval.py"
+      - "scripts/tests/test_organ_heartbeat_workflow_wiring.py"
+      - "scripts/launchagent-state-bridge.py"
+      - "scripts/tests/fixtures/organ_heartbeat_cadence/com.nuzantara.launchagent-state-bridge.plist.fixture"
 
 concurrency:
-  group: organ-conformance-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+  # Dependabot branch: ALL Dependabot PRs share one group per workflow (not
+  # per-ref), bounding concurrent Dependabot runs of THIS workflow to <=2
+  # (Agent PR Contract rule 5) instead of unbounded parallel.
+  # cancel-in-progress:false protects whichever run is RUNNING; GitHub keeps
+  # only one PENDING per group, so a 3rd+ near-simultaneous arrival cancels
+  # the pending run rather than queuing behind it — visible in the PR's
+  # checks tab (never silent), recoverable with `gh run rerun` (confirmed:
+  # docs.github.com/en/actions/using-jobs/using-concurrency + kimi-code/k3
+  # refuter round on PR #5043). Non-Dependabot branch is byte-for-byte the
+  # pre-existing expression — untouched.
+  group: ${{ github.actor == 'dependabot[bot]' && format('dependabot-lockfile-{0}', github.workflow) || format('organ-conformance-{0}', github.ref) }}
+  cancel-in-progress: ${{ github.actor != 'dependabot[bot]' && github.event_name != 'merge_group' }}
 
 jobs:
   conformance:
@@ -115,6 +142,11 @@ jobs:
           # (and only this job installs the zsh those cases need). Without the
           # entry, a PR touching only the library ran none of its own corpus —
           # which is how a zsh-fatal `local status=` sat in it undetected.
+          # GUARD_READ_SET from test_organ_heartbeat_exceeds_poller_interval.py
+          # (below): a bridge-fed organ's expected_hb_seconds must stay >= 3x
+          # the bridge's poll interval. Must be in BOTH this pathspec and the
+          # push.paths list above — test_organ_heartbeat_workflow_wiring.py
+          # asserts the correspondence so it is calculated, not remembered.
           CHANGED=$(git diff --name-only "$BASE" "$HEAD" -- \
             'infra/organ-conformance/' 'infra/home-fork/declared-pairs.json' \
             'apps/organism/organism/organs_registry.yaml' \
@@ -124,6 +156,10 @@ jobs:
             'scripts/organism_stale_detector.py' 'scripts/proprioception.py' \
             'scripts/tests/test_organism_stale_detector.py' \
             '.github/workflows/organ-conformance.yml' \
+            'scripts/tests/test_organ_heartbeat_exceeds_poller_interval.py' \
+            'scripts/tests/test_organ_heartbeat_workflow_wiring.py' \
+            'scripts/launchagent-state-bridge.py' \
+            'scripts/tests/fixtures/organ_heartbeat_cadence/com.nuzantara.launchagent-state-bridge.plist.fixture' \
             '*.plist' '**/*.plist' \
             'infra/launchagents/' 'infra/healer/')
           if [ -n "$CHANGED" ]; then
@@ -164,6 +200,75 @@ jobs:
           # somebody can still READ it. Both halves, or the channel is decorative.
           PYTHONDONTWRITEBYTECODE=1 python3 -m pytest \
             scripts/tests/test_organism_stale_detector.py -q
+
+      - name: An organ cannot beat faster than its bridge's poller
+        if: steps.relevant.outputs.hit == 'true'
+        run: |
+          set -uo pipefail
+          # Named explicitly, NOT left to the `scripts/tests/` sweep — that
+          # sweep is continue-on-error, so a corpus parked there is green by
+          # construction and gates nothing (cicatrix #2, Esiste≠Armato).
+          # Found live 2026-08-31: this exact guard sat unnamed by any
+          # workflow until this step was added — it ran clean locally and
+          # gated nothing in CI. Runs AFTER "Install test deps" above (same
+          # `hit`-gated job), which is what actually installs pytest/pyyaml
+          # into this runner's interpreter — a step placed before it would
+          # die on "No module named pytest", not on a real test failure.
+          #
+          # Two files: the arithmetic guard itself (expected_hb_seconds >=
+          # 3x the bridge's poll interval for every bridge-fed organ), and
+          # the wiring guard that asserts THIS workflow's own push.paths +
+          # in-job pathspec actually cover the arithmetic guard's read-set —
+          # so the correspondence added above cannot silently drift out of
+          # date again.
+          OUT=$(PYTHONDONTWRITEBYTECODE=1 python3 -m pytest \
+            scripts/tests/test_organ_heartbeat_exceeds_poller_interval.py \
+            scripts/tests/test_organ_heartbeat_workflow_wiring.py -q 2>&1) && EXIT=0 || EXIT=$?
+          echo "$OUT"
+          if [ "$EXIT" -ne 0 ]; then
+            echo "::error::pytest exited $EXIT — see output above"
+            exit 1
+          fi
+          # A bare exit-code-0 is NOT proof these guards actually ran and
+          # passed: pytest exits 0 when every case is deliberately skipped
+          # too (measured the hard way on a sibling guard the same day,
+          # test_queue_doctor.py — #5438 — cost a round for exactly this).
+          # This suite always carries exactly 4 must-pass cases
+          # (test_bridge_fed_organs_declare_a_safe_multiple_of_the_poller_interval
+          # plus this file's three wiring assertions) plus 1 legitimate skip
+          # in CI (the fixture/live-snapshot drift check — the live snapshot
+          # is only ever observable on Pro's own live checkout). Assert on
+          # the PASS count so a regression that turned every case into a
+          # skip (or a silently-empty collection) cannot read as green.
+          #
+          # CORRECTED 2026-08-31 (codex-gpt-5.6-sol, this PR's own council
+          # round): an earlier draft here scanned the WHOLE output blob for
+          # every `\d+ passed` occurrence — if that substring ever appeared
+          # more than once (a warning line, a future assertion message that
+          # happens to contain the same shape), `PASSED` became multi-line,
+          # `[ "$PASSED" -lt 3 ]` errored ("integer expression expected")
+          # instead of comparing, `[` returned non-zero either way, and the
+          # `if` body was skipped — a SILENT PASS on a value this check could
+          # not actually parse. Reproduced live against a synthetic two-match
+          # string before landing this fix. Anchored fix: take only the
+          # LAST line matching pytest's own summary shape (that line is
+          # always exactly one occurrence of the leading count, on the run
+          # path below — a real failure already exits via $EXIT above before
+          # reaching this code, so "failed" never precedes "passed" here).
+          SUMMARY_LINE=$(printf '%s\n' "$OUT" | grep -E '^[0-9]+ (passed|failed|error|skipped|warning)' | tail -1)
+          if [ -z "$SUMMARY_LINE" ]; then
+            echo "::error::no pytest summary line found in the captured output — cannot verify how many cases passed"
+            exit 1
+          fi
+          if ! printf '%s\n' "$SUMMARY_LINE" | grep -qE '^[0-9]+ passed\b'; then
+            echo "::error::pytest's summary line does not start with '<N> passed' — got: $SUMMARY_LINE (this is exactly the regression this check exists to catch: an exit-0 run with zero passing cases, e.g. everything skipped)"
+            exit 1
+          fi
+          PASSED=$(printf '%s\n' "$SUMMARY_LINE" | grep -oE '^[0-9]+')
+          if [ "$PASSED" -lt 4 ]; then
+            echo "::error::expected at least 4 passed (got $PASSED) from summary line: $SUMMARY_LINE — pytest exiting 0 is not proof these guards ran: this suite legitimately SKIPS 1 case in CI (the fixture/live-snapshot drift check, live snapshot absent off Pro) but must PASS the other 4"
+            exit 1
+          fi
 
       - name: Baseline is a one-way ratchet (panel round-2)
         if: steps.relevant.outputs.hit == 'true'

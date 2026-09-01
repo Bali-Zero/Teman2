@@ -29,6 +29,8 @@ const VALID_RESULT = {
   internal_checkpoints: [],
   price_idr: 790_000,
   price_source: "B1 Visa on Arrival (VOA)",
+  price_status: "confirmed",
+  price_warning: null,
   generated_at: "2026-08-19T08:00:00Z",
   calendar_coverage_start: "2026-07-28",
   calendar_coverage_end: "2026-12-31",
@@ -36,7 +38,7 @@ const VALID_RESULT = {
   calendar_warning: null,
   warnings: [
     "Internal preliminary pre-screen only; it is not an immigration decision or an approval guarantee.",
-    "Nationality and entry-point eligibility are not yet checked against an authoritative dataset and require manual verification.",
+    "The nationality code is checked against the decree-sourced VOA list; this pre-screen does not collect an entry point, so staff must confirm entry-point eligibility.",
     "Passport type, document authenticity, and prior overstay, refusal, or blacklist history require human review.",
     "The expiry is an estimate; the printed immigration expiry is authoritative and must be verified before action.",
   ],
@@ -199,6 +201,31 @@ describe("GARUDA Python execFile adapter", () => {
   });
 
   it.each([
+    {
+      price_status: "unavailable",
+      price_warning:
+        "The official catalogue price is unavailable. No price is shown; staff must confirm the price rather than invent one.",
+    },
+    {
+      price_status: "confirmed",
+      price_warning:
+        "The official catalogue price is unavailable. No price is shown; staff must confirm the price rather than invent one.",
+    },
+    {
+      price_idr: null,
+      price_source: null,
+      price_status: "unavailable",
+      price_warning: "Official price lookup failed.",
+    },
+  ])("rejects an inconsistent official price status: %o", async (change) => {
+    engineResult({ ...VALID_RESULT, ...change });
+
+    await expect(runGarudaPreview("{}")).rejects.toMatchObject({
+      code: "preview_unavailable",
+    });
+  });
+
+  it.each([
     { decision: "ACCEPT", reason_codes: ["ARRIVAL_TOO_SOON"] },
     { decision: "DECLINE", reason_codes: [] },
     { decision: "DECLINE", reason_codes: ["not bounded code prose"] },
@@ -214,6 +241,7 @@ describe("GARUDA Python execFile adapter", () => {
   it.each([
     { reasonCodes: ["PURPOSE_NOT_ELIGIBLE"] },
     { reasonCodes: ["GROUP_CASE"] },
+    { reasonCodes: ["ARRIVAL_TOO_FAR"] },
     { reasonCodes: ["PURPOSE_NOT_ELIGIBLE", "GROUP_CASE"] },
   ])(
     "accepts unique bounded decline code sets: $reasonCodes",
@@ -268,6 +296,16 @@ describe("GARUDA Python execFile adapter", () => {
     await expect(runGarudaPreview("{}")).rejects.toMatchObject({
       code: "preview_unavailable",
     });
+  });
+
+  it("accepts an uncovered far arrival when manual routing is also present", async () => {
+    const result = {
+      ...VALID_UNCOVERED_RESULT,
+      reason_codes: ["ARRIVAL_DATE_UNCONFIRMED", "ARRIVAL_TOO_FAR"],
+    };
+    engineResult(result);
+
+    await expect(runGarudaPreview("{}")).resolves.toEqual(result);
   });
 
   it.each([

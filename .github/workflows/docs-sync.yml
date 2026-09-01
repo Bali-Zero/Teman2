@@ -6,7 +6,6 @@ on:
   pull_request:
   push:
     branches: [main]
-  merge_group:
 
 concurrency:
   group: docs-sync-${{ github.ref }}

@@ -322,7 +322,7 @@
       "b": {
         "title": "Percorso B — Proprietà",
         "amount": "USD 1.000.000",
-        "body": "Una proprietà strata-title completata (hak milik atas satuan rumah susun) del valore di almeno USD 1.000.000.",
+        "body": "Un'unità completata in un rumah susun o appartamento del valore di almeno USD 1.000.000.",
         "note": "Solo strata-title completata — acquisti off-plan e leasehold non sono validi."
       }
     },
@@ -383,7 +383,7 @@
       "q1": "Cos'è il visto Second Home E33 per l'Indonesia?",
       "a1": "Il visto Second Home E33 è un permesso di soggiorno a lungo termine per richiedenti con solide disponibilità economiche. Il primo rilascio dura fino a 5 anni ed è rinnovabile, con un limite cumulativo di 10 anni. È un puro permesso di soggiorno e non autorizza il lavoro in Indonesia.",
       "q2": "Come ci si qualifica per il visto Second Home?",
-      "a2": "Due percorsi: un deposito di USD 130.000 intestato a te presso una banca statale indonesiana (BUMN), oppure una proprietà strata-title completata del valore di USD 1.000.000 (hak milik atas satuan rumah susun). Off-plan e leasehold non sono validi.",
+      "a2": "Due percorsi: un deposito di USD 130.000 intestato a te presso una banca statale indonesiana (BUMN), oppure un'unità completata in un rumah susun o appartamento del valore di USD 1.000.000. Off-plan e leasehold non sono validi.",
       "q3": "Posso lavorare in Indonesia con il visto Second Home?",
       "a3": "No. L'E33 è solo un permesso di soggiorno — non autorizza il lavoro. Il lavoro retribuito in Indonesia richiede un permesso di lavoro/KITAS separato.",
       "q4": "Esiste un'opzione senior per il visto Second Home?",
@@ -394,10 +394,10 @@
       "a6": "{{price}} tutto incluso per l'E33 base — una cifra sola, tutto compreso. Il fit memo che valuta il tuo percorso è gratuito."
     },
     "cta": {
+      "fitCheck": "Inizia il fit-check",
       "title": "Inizia con un fit memo gratuito",
       "body": "Raccontaci la tua situazione su WhatsApp. Ti rispondiamo con una valutazione onesta: quale percorso conviene, quali prove serviranno e il prezzo esatto per il tuo caso. Senza impegno.",
-      "button": "Richiedi il Fit Memo gratuito →",
-      "note": "Prima risposta su WhatsApp in genere entro 5 ore."
+      "button": "Richiedi il Fit Memo gratuito →"
     }
   }
 }

@@ -234,7 +234,7 @@ def test_execute_runs_only_allowlisted_commands_without_shell(
     assert all("shell" not in kwargs for _, kwargs in calls)
     assert calls[0][1]["cwd"] == run_cli.BACKEND_ROOT
     assert calls[0][1]["env"] == autonomous_lab_pytest_env()
-    assert calls[0][0][-2:] == ["backend/tests/unit/services/autonomous_lab", "-q"]
+    assert calls[0][0][-1:] == ["backend/tests/unit/services/autonomous_lab"]
     assert calls[1][0] == [
         "git",
         "diff",

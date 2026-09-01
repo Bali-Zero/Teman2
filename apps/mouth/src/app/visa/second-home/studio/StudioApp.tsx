@@ -10,8 +10,13 @@ import {
   type QuestionId,
 } from "@/lib/secondhome-studio/sequence";
 import {
+  MERAH_PUTIH_DAY_BODY_CSS,
+  MERAH_PUTIH_DAY_CLASS,
+  MERAH_PUTIH_DAY_VARS,
+} from "@/lib/theme/merahPutihDayVars";
+import {
   E33_LIVE_PRICE_CATEGORY,
-  E33_LIVE_PRICE_KEY,
+  resolveSecondHomePriceKey,
 } from "@/lib/secondhome-studio/pricing-key";
 import {
   clearPlan,
@@ -41,6 +46,8 @@ import { TimelineView } from "./components/TimelineView";
 import { ReadinessChecklist } from "./components/ReadinessChecklist";
 import { WhatsAppHandoff } from "./components/WhatsAppHandoff";
 import { SavePlanBar } from "./components/SavePlanBar";
+import { ScenarioToggle } from "./components/ScenarioToggle";
+import { StudioAtmosphere } from "./components/StudioAtmosphere";
 
 /**
  * Second Home Studio — the wizard state machine (spec §4).
@@ -98,29 +105,90 @@ function nowIso(): string {
 }
 
 const eyebrowStyle: React.CSSProperties = {
-  fontSize: "0.62rem",
-  letterSpacing: "0.15em",
+  fontSize: "0.68rem",
+  letterSpacing: "0.24em",
   textTransform: "uppercase",
-  opacity: 0.5,
   color: "var(--color-text-muted)",
   margin: 0,
 };
 
+const mastheadHeadingStyle: React.CSSProperties = {
+  margin: 0,
+  fontFamily: "var(--font-serif, Georgia, serif)",
+  fontSize: "clamp(3.4rem, 8vw, 6.6rem)",
+  fontWeight: 500,
+  letterSpacing: "-0.035em",
+  lineHeight: 0.92,
+  maxWidth: "11ch",
+  textWrap: "balance",
+  color: "var(--text-primary)",
+};
+
+/** S13 verdict-crown: on the verdict stage the masthead recedes to a quiet,
+ *  PRESENTATIONAL label (paired with the "Second Home Studio" eyebrow as one
+ *  identifier block) so it stops competing with VerdictPanel's <h1>, which
+ *  becomes the page's sole <h1> at that point (INVARIANT — exactly one <h1>
+ *  at every stage). Words unchanged ("Check your fit") — demoted, never
+ *  deleted or reworded; not a heading tag, so heading-rank navigation never
+ *  sees it here. */
+const mastheadLabelStyle: React.CSSProperties = {
+  margin: 0,
+  fontFamily: "var(--font-serif, Georgia, serif)",
+  fontSize: "1.05rem",
+  fontWeight: 500,
+  letterSpacing: "-0.01em",
+  color: "var(--text-secondary, var(--color-text-muted))",
+};
+
+/** WCAG contrast fix (2026-08-24): `--color-border-subtle` composites to
+ *  ~1.2:1 against the editorial card backdrop — invisible, and below the
+ *  3.0:1 floor for non-text UI boundaries (WCAG 1.4.11). No shipped border
+ *  token cleared that floor on the editorial theme (`--border-strong` topped
+ *  out at ~1.9:1 there), so this derived an opaque-enough value from
+ *  `--text-primary`: `color-mix(--text-primary 45%, transparent)`, which
+ *  composited to ~3.5:1 against the editorial backdrop.
+ *
+ *  MERAH PUTIH DAY (2026-08-31): that mix claimed to "stay theme-adaptive",
+ *  and it does not. A FIXED percentage is tuned to one ground: composited over
+ *  the day palette it lands #969ba6 on the white QuestionCard (2.79:1) and
+ *  #92969f on carta (2.74:1) — under the same 3:1 floor the comment invokes.
+ *  This is the Back button, rendered on EVERY question step and again at the
+ *  verdict stage, so it is not an edge case. On a light ground the shipped
+ *  token finally works: `--border-strong` (#7a8093) measures 3.94:1 on the
+ *  card and 3.64:1 on carta. Mixing a token toward transparent is safe for a
+ *  TINT, but a boundary's contrast has to be re-measured whenever the ground
+ *  flips — the percentage is not the invariant, the ratio is. */
 const navButtonStyle: React.CSSProperties = {
   padding: "var(--space-2, 0.5rem) var(--space-4, 1.2rem)",
-  borderRadius: 8,
-  border: "1px solid var(--color-border-subtle)",
+  borderRadius: 12,
+  border: "1px solid var(--border-strong)",
   background: "transparent",
   color: "var(--text-primary)",
   cursor: "pointer",
   minHeight: 44,
 };
 
+/** The primary CTA takes the ACTION red, `--cta-bg` (#D01033 under the Merah
+ *  Putih DAY set): white on it measures 5.52:1, clearing the 4.5:1 floor for
+ *  this 16px/600 normal-size text (the large-text carve-out needs >=24px, or
+ *  >=18.66px at weight>=700 — never a reason to stretch a label instead of
+ *  fixing the fill, least of all on a funnel selling senior visas to a 55+
+ *  audience whose contrast tolerance skews lower, not higher).
+ *
+ *  This REPLACES a 2026-08-24 fix that read
+ *  `color-mix(in srgb, var(--accent-funnel) 85%, black)`. That was correct for
+ *  the dark theme it was written under — white on the then-current `#ff3344`
+ *  measured 3.62:1, so the fill was darkened until it cleared. Under the DAY
+ *  palette the premise is gone (white on #D01033 already clears), and the
+ *  workaround had two costs worth removing: it painted a colour that exists in
+ *  no token (measured live as rgb(170, 14, 39)), and it built the CTA out of the
+ *  STRUCTURE red when R4 §3 assigns primary CTAs to the ACTION red — the two
+ *  duties red is allowed to have, and the whole point of keeping them apart. */
 const primaryNavButtonStyle: React.CSSProperties = {
   ...navButtonStyle,
   marginLeft: "auto",
   border: "none",
-  background: "var(--accent-funnel)",
+  background: "var(--cta-bg, var(--accent-funnel-text))",
   color: "var(--text-on-accent, #fff)",
   fontWeight: 600,
 };
@@ -464,7 +532,16 @@ export function StudioApp() {
   const [plan, setPlan] = useState<PlanState>(emptyPlan);
   const [stepIndex, setStepIndex] = useState(0);
   const hydratedOnce = useRef(false);
-  const { price } = usePricingData(E33_LIVE_PRICE_KEY, E33_LIVE_PRICE_CATEGORY);
+
+  const sequence = computeSequence(plan);
+  const isVerdictStage = stepIndex >= sequence.length;
+  const currentQuestion = isVerdictStage ? null : sequence[stepIndex];
+  const verdict = isVerdictStage ? evaluatePlan(plan) : null;
+  const priceKey = resolveSecondHomePriceKey(
+    verdict?.product ?? null,
+    plan.location,
+  );
+  const { price } = usePricingData(priceKey, E33_LIVE_PRICE_CATEGORY);
 
   // P2-3: the stage heading (QuestionCard's <h2> or VerdictPanel's <h1> —
   // only one is ever mounted at a time) is focused on a user-driven step
@@ -536,10 +613,6 @@ export function StudioApp() {
     setStepIndex(0);
   }
 
-  const sequence = computeSequence(plan);
-  const isVerdictStage = stepIndex >= sequence.length;
-  const currentQuestion = isVerdictStage ? null : sequence[stepIndex];
-  const verdict = isVerdictStage ? evaluatePlan(plan) : null;
   // P1-C9: CustodyMap only makes sense for deposit-holding routes — a
   // property or E33F (income-only, no deposit) verdict never shows it.
   const showCustodyMap =
@@ -559,131 +632,162 @@ export function StudioApp() {
       // `funnel="visa"` prop (packages/core/components/apps/AppFrame.tsx);
       // this route has no AppFrame ancestor, so it sets the attribute here.
       data-funnel="visa"
+      className={`bz-shs-studio ${MERAH_PUTIH_DAY_CLASS}`}
       style={{
-        display: "grid",
-        gap: "var(--space-5, 2rem)",
-        maxWidth: "1120px",
-        margin: "0 auto",
-        padding: "var(--space-5, 2rem) var(--space-4, 1.5rem)",
+        // MERAH PUTIH DAY (R4 identity law) — see merahPutihDayVars.ts for the
+        // scoping contract and every computed ratio. Inline HERE so it beats the
+        // editorial theme's navy ground and the retired #ff3344 on this route
+        // only, and so /visa/layout.tsx's forced Montserrat stops here.
+        ...MERAH_PUTIH_DAY_VARS,
+        background: "var(--surface-base)",
+        color: "var(--text-primary)",
+        minHeight: "100vh",
       }}
     >
-      <header style={{ display: "grid", gap: "var(--space-2, 0.5rem)" }}>
-        <p style={eyebrowStyle}>Second Home Studio</p>
-        <h1
+      {/* See SecondHomeLanding: <body> is an ancestor and keeps the editorial
+          navy otherwise — measured 88px of it below this wrapper. */}
+      <style>{MERAH_PUTIH_DAY_BODY_CSS}</style>
+      <StudioAtmosphere />
+      <div
+        className="bz-shs-content"
+        style={{
+          display: "grid",
+          gap: "var(--space-5, 2rem)",
+          maxWidth: "1120px",
+          margin: "0 auto",
+          padding: "var(--space-5, 2rem) var(--space-4, 1.5rem)",
+        }}
+      >
+        <header
           style={{
-            margin: 0,
-            fontFamily: "var(--font-serif, Georgia, serif)",
-            fontSize: "clamp(1.7rem, 4.5vw, 2.4rem)",
-            color: "var(--text-primary)",
+            display: "grid",
+            gap: isVerdictStage
+              ? "var(--space-1, 0.3rem)"
+              : "var(--space-3, 0.75rem)",
+            padding: isVerdictStage
+              ? "clamp(1rem, 3vw, 1.75rem) 0 clamp(0.5rem, 1vw, 0.75rem)"
+              : "clamp(2rem, 7vw, 5rem) 0 clamp(1rem, 2vw, 1.5rem)",
           }}
         >
-          Check your fit
-        </h1>
-      </header>
+          <p style={eyebrowStyle}>Second Home Studio</p>
+          {isVerdictStage ? (
+            <p style={mastheadLabelStyle}>Check your fit</p>
+          ) : (
+            <h1 style={mastheadHeadingStyle}>Check your fit</h1>
+          )}
+        </header>
 
-      {!isVerdictStage ? (
-        <ProgressRail step={stepIndex + 1} total={sequence.length} />
-      ) : null}
+        {!isVerdictStage ? (
+          <ProgressRail step={stepIndex + 1} total={sequence.length} />
+        ) : null}
 
-      {isVerdictStage && verdict ? (
-        <div style={{ display: "grid", gap: "var(--space-4, 1.5rem)" }}>
-          <div>
-            <button
-              type="button"
-              onClick={goBack}
-              style={{ ...navButtonStyle, padding: "6px 14px" }}
-            >
-              ← Back to your answers
-            </button>
-          </div>
-          <VerdictPanel verdict={verdict} headingRef={stageHeadingRef} />
-          {showCustodyMap ? <CustodyMap /> : null}
-          <RouteComparator highlight={plan.route === "unsure"} />
-          <TimelineView
-            horizon={plan.horizon ?? "exploring"}
-            location={plan.location ?? "in_indonesia"}
-            route={plan.route}
-            product={verdict.product}
-          />
-          <ReadinessChecklist plan={plan} onToggle={toggleChecklistItem} />
-          {price ? (
-            <section
-              style={{
-                display: "grid",
-                gap: "var(--space-1, 0.3rem)",
-                background: "var(--surface-raised)",
-                border: "1px solid var(--accent-funnel)",
-                borderRadius: 12,
-                padding: "var(--space-4, 1.5rem)",
-                textAlign: "center",
-                justifyItems: "center",
-              }}
-            >
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: "0.7rem",
-                  letterSpacing: "0.15em",
-                  textTransform: "uppercase",
-                  color: "var(--color-text-muted)",
-                }}
+        {isVerdictStage && verdict ? (
+          <div
+            className="bz-shs-verdict-stack"
+            style={{ display: "grid", gap: "var(--space-4, 1.5rem)" }}
+          >
+            <div className="bz-shs-back-to-answers">
+              <button
+                type="button"
+                onClick={goBack}
+                style={{ ...navButtonStyle, padding: "6px 14px" }}
               >
-                {getCopy("price.label")}
-              </p>
-              <div
-                style={{
-                  fontFamily: "var(--font-serif, Georgia, serif)",
-                  fontSize: "clamp(1.8rem, 4.5vw, 2.4rem)",
-                  color: "var(--accent-funnel-text, var(--accent-funnel))",
-                }}
-              >
-                {price}
-              </div>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: "var(--text-sm, 0.88rem)",
-                  color: "var(--color-text-muted)",
-                }}
-              >
-                {getCopy("price.note")}
-              </p>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: "var(--text-sm, 0.85rem)",
-                  color: "var(--color-text-muted)",
-                }}
-              >
-                {getCopy("price.dependentsNote")}
-              </p>
-            </section>
-          ) : null}
-          <WhatsAppHandoff plan={plan} verdict={verdict} />
-          <SavePlanBar plan={plan} onClear={handleClear} />
-        </div>
-      ) : currentQuestion ? (
-        <div className="bz-shs-layout">
-          <main>
-            <QuestionStage
-              question={currentQuestion}
-              plan={plan}
-              onSelect={selectAnswer}
-              onBack={goBack}
-              onContinue={continueStep}
-              canGoBack={stepIndex > 0}
-              headingRef={stageHeadingRef}
+                ← Back to your answers
+              </button>
+            </div>
+            <VerdictPanel verdict={verdict} headingRef={stageHeadingRef} />
+            {showCustodyMap ? <CustodyMap /> : null}
+            <RouteComparator highlight={plan.route === "unsure"} />
+            <ScenarioToggle plan={plan} />
+            <TimelineView
+              horizon={plan.horizon ?? "exploring"}
+              location={plan.location ?? "in_indonesia"}
+              route={plan.route}
+              product={verdict.product}
             />
-          </main>
-          <aside>
-            <MemoPreview plan={plan} />
-          </aside>
-        </div>
-      ) : null}
+            <ReadinessChecklist
+              plan={plan}
+              verdict={verdict}
+              onToggle={toggleChecklistItem}
+            />
+            {price ? (
+              <section
+                style={{
+                  display: "grid",
+                  gap: "var(--space-1, 0.3rem)",
+                  background: "var(--surface-raised)",
+                  border: "1px solid var(--accent-funnel)",
+                  borderRadius: 12,
+                  padding: "var(--space-4, 1.5rem)",
+                  textAlign: "center",
+                  justifyItems: "center",
+                }}
+              >
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "0.7rem",
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase",
+                    color: "var(--color-text-muted)",
+                  }}
+                >
+                  {getCopy("price.label")}
+                </p>
+                <div
+                  style={{
+                    fontFamily: "var(--font-serif, Georgia, serif)",
+                    fontSize: "clamp(1.8rem, 4.5vw, 2.4rem)",
+                    color: "var(--accent-funnel-text, var(--accent-funnel))",
+                  }}
+                >
+                  {price}
+                </div>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "var(--text-sm, 0.88rem)",
+                    color: "var(--color-text-muted)",
+                  }}
+                >
+                  {getCopy("price.note")}
+                </p>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "var(--text-sm, 0.85rem)",
+                    color: "var(--color-text-muted)",
+                  }}
+                >
+                  {getCopy("price.dependentsNote")}
+                </p>
+              </section>
+            ) : null}
+            <WhatsAppHandoff plan={plan} verdict={verdict} />
+            <SavePlanBar plan={plan} onClear={handleClear} />
+          </div>
+        ) : currentQuestion ? (
+          <div className="bz-shs-layout">
+            <main>
+              <QuestionStage
+                question={currentQuestion}
+                plan={plan}
+                onSelect={selectAnswer}
+                onBack={goBack}
+                onContinue={continueStep}
+                canGoBack={stepIndex > 0}
+                headingRef={stageHeadingRef}
+              />
+            </main>
+            <aside>
+              <MemoPreview plan={plan} />
+            </aside>
+          </div>
+        ) : null}
 
-      <ConsentBanner />
+        <ConsentBanner />
 
-      <style>{`
+        <style>{`
         .bz-shs-layout {
           display: grid;
           gap: var(--space-4, 1.5rem);
@@ -712,6 +816,7 @@ export function StudioApp() {
           }
         }
       `}</style>
+      </div>
     </div>
   );
 }

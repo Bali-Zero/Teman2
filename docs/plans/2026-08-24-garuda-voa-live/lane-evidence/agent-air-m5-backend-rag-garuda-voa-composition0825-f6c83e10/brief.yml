@@ -1,0 +1,144 @@
+task_id: garuda-voa-composition-0825
+gear: 3
+l_level: L1
+gate_class: hot-zone-migration
+objective: >
+  Wire the GARUDA VOA composition last mile: seven lanes (L1-L7) had merged
+  individually into feature/garuda-voa but nothing was connected
+  end-to-end. This PR (#4920) stands up the real persistence for L2's
+  CheckStore Protocol and L3's EligibilityCheckLookup Protocol, closing the
+  gap between "seven lanes merged" and "the seam between them has ever
+  executed once". Concretely: migration 286 adds garuda_voa_check_results
+  (a new, standalone table keyed by the product-era result_id, NOT an
+  extension of the retired garuda_voa_checks archive -- see the migration's
+  own header and ARCHITECTURE.md D2 for why), PostgresCheckStore implements
+  the CheckStore port with idempotent create/get/delete, and
+  PostgresEligibilityCheckLookup implements the L3 lookup port. A follow-up
+  commit (dissent #1 from team-lead's review) adds
+  purge_expired_garuda_voa_check_results, the Python caller for migration
+  286's own purge_garuda_voa_check_results SQL function, which shipped
+  with zero callers otherwise (family #2, esiste != armato).
+constraints:
+  - >
+    Extend the retention authority by SCOPE REUSE, not a new authority --
+    the new table binds to the existing GARUDA_CHECK policy_scope
+    (migration 281), never a second one (ARCHITECTURE.md D2).
+  - >
+    No PII columns on garuda_voa_check_results by design, mirroring the
+    "shape of this table IS the safety argument" convention from the
+    retired archive table's own header.
+  - >
+    session_secret is stored HASHED (sha256) only; the raw value is
+    returned to the caller exactly once (on create) and never persisted.
+  - >
+    Do not touch service_initializer.py in this PR -- PR #4910 was
+    concurrently editing the same function block (garuda_staff_session_
+    verifier wiring); the composition wiring commit is deliberately
+    deferred to a follow-up once #4910 merges, per explicit sequencing
+    instruction from the orchestrating session.
+  - >
+    Never assign an async callable to app.state without confirming its
+    reader is `async def` and awaits it (team-lead's async-without-await
+    auth-bypass warning on this exact class of wiring) -- verified by grep
+    against every call site this diff touches; see dissent below.
+  - >
+    Take the next free migration number at file-creation time, never
+    reserve in advance (scar W40) -- checked immediately before writing,
+    re-checked before push after the branch moved under the task and a
+    rebase was required.
+acceptance:
+  - >
+    A check created through L2's real PostgresCheckStore is fetchable by
+    L3's real PostgresEligibilityCheckLookup and turns into an order -- the
+    seam that had never once executed -- proven in
+    test_check_to_order_journey.py against real Postgres with migrations
+    applied through 286.
+  - >
+    A result_id that does not exist, one belonging to another session, and
+    a malformed one each produce the contract's non-enumerating shape
+    (None / 404, never an exception, never a different error for
+    "exists but not yours" vs "does not exist").
+  - >
+    purge_expired_garuda_voa_check_results (dissent fix) rejects
+    out-of-range input, deletes an expired row via the bounded DB
+    primitive, and stays inert (0 rows) with no signed GARUDA_CHECK
+    policy -- proven against real Postgres in test_check_store_purge.py.
+  - >
+    The visa_engine retention FK registry tripwire
+    (test_visa_engine_retention_fk_registry.py) passes with 286 registered
+    in _GARUDA_VOA_RETENTION_FK_DEPENDENTS.
+  - >
+    ruff clean on every touched Python file; pre-commit/pre-push hooks
+    (anti-reward-hacking lint, secret scan, FastAPI import-chain check)
+    all pass.
+consumer_map:
+  - >
+    backend/app/routers/garuda_voa_public.py -- get_garuda_check_store()
+    reads app.state.garuda_check_store (this PR's wiring point), falling
+    back to UnconfiguredCheckStore until service_initializer.py's deferred
+    follow-up commit sets it.
+  - >
+    backend/services/garuda_orders/repository.py --
+    GarudaOrderRepository.create_order_and_checkout() awaits
+    self._lookup.get_reviewed_check(result_id); once wired, this will be
+    PostgresEligibilityCheckLookup.get_reviewed_check().
+  - >
+    backend/tests/services/visa_engine/conftest.py --
+    _GARUDA_VOA_RETENTION_FK_DEPENDENTS registry (shared tripwire, also
+    consumed by test_evaluate_endpoint.py, test_shadow_evidence.py,
+    test_shadow_match.py -- none of which touch GARUDA-VOA code directly).
+  - >
+    garuda_voa_check_results and garuda_voa_check_idempotency (migration
+    286) currently have NO production writer -- the composition wiring
+    commit that will make PostgresCheckStore.create() the first live
+    writer is explicitly deferred (see constraints). Today these tables
+    are reachable only from this PR's own test suite.
+  - >
+    services/garuda_ops/synthetic_probe.py -- NOT modified by this PR.
+    PersistenceStage, SandboxCheckoutStage and the other stages remain
+    BLOCKED; unblocking them is scoped to the deferred
+    service_initializer.py follow-up commit, once the real blockers this
+    PR removes are actually load-bearing in production.
+risks:
+  - >
+    The composition wiring commit (app.state.garuda_check_store,
+    garuda_order_repository, garuda_payment_provider) is NOT in this PR --
+    it is a known, declared gap, not an oversight. Consequence: this PR
+    alone does not make GARUDA VOA live; a follow-up PR is required and
+    is blocked on PR #4910 merging first (same service_initializer.py
+    function block).
+  - >
+    purge_expired_garuda_voa_check_results (dissent fix) has no
+    scheduler/cron wiring -- the erasure CAPABILITY exists and is tested,
+    but nothing invokes it on a cadence yet. This mirrors the archive
+    table's own purge primitive before it (also caller-less until wired),
+    not a new gap this PR introduces.
+  - >
+    The L1 fail-closed data gap -- no migration seeds a GARUDA_CHECK-scope
+    retention policy row. Today this means garuda_voa_check_results is
+    completely unreachable (every INSERT trigger-rejects), which is the
+    correct fail-closed state -- but it also means the new purge wrapper
+    is currently a no-op in every environment. Signing that policy row is
+    a Zero business decision (Legge 5), not something this PR can or
+    should fabricate.
+grader: >
+  team-lead (integration-branch merger, generator != grader -- this
+  lane's own session never grades its own diff)
+budget: >
+  1 migration (286, ~476 lines) + 2 new adapters (check_store.py,
+  eligibility_lookup.py) + 1 dissent-fix addition (purge wrapper, ~35
+  lines) + 2 new test files (journey test, purge test) + 1 conftest
+  registry line; 1 build lane (this session, Opus-5-seated), 1 independent
+  adversarial review lane (team-lead, this integration-branch orchestrator).
+pii: >
+  garuda_voa_check_results holds one row per anonymous eligibility check --
+  result_id (opaque >=128-bit id, not a credential), a hashed session
+  secret (sha256, raw value never persisted), nationality (3-letter ISO
+  code), entry/passport-expiry/VOA-expiry dates, case_type, purpose,
+  traveller count, decision, and price. No name, no passport number, no
+  email, no phone, no document image, no free-text field. This mirrors
+  the "no PII columns by design" convention from the retired
+  garuda_voa_checks archive table's own header. No cleartext PII appears
+  in any log, test fixture, migration comment, or this evidence pack --
+  the test fixtures use synthetic result_ids and a fixed test nationality
+  (USA) with no real client data anywhere in this diff.

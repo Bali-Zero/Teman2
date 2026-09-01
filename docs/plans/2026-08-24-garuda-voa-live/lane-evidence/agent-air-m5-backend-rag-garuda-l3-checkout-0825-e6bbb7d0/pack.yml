@@ -1,0 +1,208 @@
+brief_ref: "evidence/brief.yml"
+lanes:
+  - lane: L3
+    role: build
+    seat: sonnet-5
+receipts:
+  - claim: >
+      Router manifest + registration parity gates pass with
+      garuda_orders_router registered (_API, no mount-time condition,
+      mirroring garuda_voa_public) -- 370 tests, zero failures.
+    cmd: >
+      cd apps/backend-rag && PYTHONPATH=.:../crm-cell .venv/bin/python -m
+      pytest backend/tests/setup/test_router_manifest.py
+      backend/tests/setup/test_manifest_registration_parity.py -q
+    exit: 0
+    ts: "2026-08-25T07:05:00Z"
+    seat: sonnet-5
+  - claim: >
+      Migration 284_garuda_orders.sql (renamed from 282 after team-lead's
+      independently-verified number collision) applies cleanly immediately
+      after 281_garuda_voa_retention.sql on three separate freshly-created
+      Postgres databases -- no rename fallout in any dependent statement.
+    cmd: >
+      createdb garuda_l3_verify7_<pid> && JWT_SECRET_KEY=... API_KEYS=...
+      DATABASE_URL=postgresql://localhost:5432/garuda_l3_verify7_<pid>
+      PYTHONPATH=.:../crm-cell .venv/bin/python -m backend.db.migrate
+      apply-all
+    exit: 0
+    ts: "2026-08-25T07:51:24Z"
+    seat: sonnet-5
+  - claim: >
+      An early fixture draft (bare `DELETE FROM
+      visa_decision_retention_policies` in teardown) fails outright: the
+      table carries a live BEFORE UPDATE OR DELETE trigger
+      (guard_visa_decision_retention_policy_mutation, migration 264) that
+      unconditionally raises RaiseError('visa_decision_retention_policies
+      is append-only') on any DELETE. 10 of 10
+      test_repository_integration.py tests errored with this exception on
+      first real run against a freshly migrated database -- proving the
+      review's DELETE-based fallback was not actually implementable here,
+      before any redesign was attempted.
+    cmd: >
+      INTAKE_TEST_DSN=postgresql://localhost:5432/garuda_l3_verify2_<pid>
+      PYTHONPATH=.:../crm-cell .venv/bin/python -m pytest
+      backend/tests/services/garuda_orders/ -v
+    exit: 1
+    ts: "2026-08-25T07:44:00Z"
+    seat: sonnet-5
+  - claim: >
+      A second fixture draft (UPDATE-based close with a per-run uuid4
+      policy_version, no lower-bound change) silently reuses a stale
+      leftover open row instead of installing a fresh one: on a database
+      contaminated by the failed first draft's leftover open row, this
+      draft's own bare `ON CONFLICT DO NOTHING` swallowed the EXCLUDE-
+      constraint conflict between the new row's backdated (-1 day) lower
+      bound and the just-closed old row's window, so the test still passed
+      but against the WRONG (stale) row -- reproduced live by querying the
+      table directly after a run: 1 row total, unclosed, version still
+      reading the old fixed string, though the executing code had already
+      switched to uuid4 versions.
+    cmd: >
+      psql postgresql://localhost:5432/garuda_l3_verify2_<pid> -c
+      "SELECT policy_version, upper(effective_period) IS NOT NULL AS
+      closed FROM visa_decision_retention_policies WHERE
+      policy_scope='GARUDA_ORDER';"
+    exit: 0
+    ts: "2026-08-25T07:47:00Z"
+    seat: sonnet-5
+  - claim: >
+      Removing the copied-uncritically 1-day lower-bound backdate (the
+      actual root cause: any two open-ended-or-recently-closed
+      GARUDA_ORDER/TEST rows within a day of each other still overlap
+      under the EXCLUDE constraint even after a close) fixes the
+      self-collision. Re-run against the SAME already-contaminated
+      database: self-heals the stale row (closes it), inserts a genuinely
+      fresh row, all 47 tests pass, and a direct query shows every row the
+      run touched is closed with none left open.
+    cmd: >
+      INTAKE_TEST_DSN=postgresql://localhost:5432/garuda_l3_verify2_<pid>
+      PYTHONPATH=.:../crm-cell .venv/bin/python -m pytest
+      backend/tests/services/garuda_orders/ -v
+      && psql postgresql://localhost:5432/garuda_l3_verify2_<pid> -c
+      "SELECT count(*), count(*) FILTER (WHERE upper(effective_period) IS
+      NOT NULL) AS closed, count(*) FILTER (WHERE upper(effective_period)
+      IS NULL) AS still_open FROM visa_decision_retention_policies WHERE
+      policy_scope='GARUDA_ORDER';"
+    exit: 0
+    ts: "2026-08-25T07:56:00Z"
+    seat: sonnet-5
+  - claim: >
+      Final design verified clean on TWO separate freshly-created Postgres
+      databases, each run TWICE back-to-back (proving both first-run
+      correctness on a pristine database and idempotent non-collision on a
+      repeat run against the same database, the CI-realistic shape): 47
+      collected, 47 passed, 0 skipped, 0 errors on all 4 invocations. Final
+      policy-table state after 2 runs on the same database: 20 total rows
+      (10 test functions x 2 runs), 20 closed, 0 still open -- proving the
+      fixture leaves zero live GARUDA_ORDER policy state behind (scar W96)
+      on either run.
+    cmd: >
+      createdb garuda_l3_verify7_<pid> && (migrate apply-all through 284)
+      && for i in 1 2; do INTAKE_TEST_DSN=postgresql://localhost:5432/garuda_l3_verify7_<pid>
+      PYTHONPATH=.:../crm-cell .venv/bin/python -m pytest
+      backend/tests/services/garuda_orders/ -q; done
+      && psql ... -c "SELECT count(*), count(*) FILTER (...) AS closed,
+      count(*) FILTER (...) AS still_open FROM
+      visa_decision_retention_policies WHERE policy_scope='GARUDA_ORDER';"
+    exit: 0
+    ts: "2026-08-25T07:58:00Z"
+    seat: sonnet-5
+  - claim: >
+      Router manifest + registration parity gates re-verified green after
+      all fixture/migration edits (unaffected by them, checked anyway
+      since the same PR touches router_manifest.py) -- 370 tests, zero
+      failures.
+    cmd: >
+      cd apps/backend-rag && PYTHONPATH=.:../crm-cell .venv/bin/python -m
+      pytest backend/tests/setup/test_router_manifest.py
+      backend/tests/setup/test_manifest_registration_parity.py -q
+    exit: 0
+    ts: "2026-08-25T08:01:00Z"
+    seat: sonnet-5
+dissent:
+  - seat: sonnet-5 (self, bite-proof -- generator!=grader holds even
+      against one's own reading of the router file's docstring)
+    objection: >
+      garuda_orders_router.py's own module docstring stated mounting was
+      "orchestrator-scoped per LANES.md" and deliberately NOT this lane's
+      job. Read literally, editing router_registration.py here contradicts
+      the file's own stated intent.
+    status: RETRACTED
+    resolution: >
+      test_router_manifest.py structurally requires every router file
+      under backend/app/routers/ to have either a manifest entry or an
+      explicit NON_ROUTER_FILES/DEAD_ROUTER_FILE_HASHES whitelist entry --
+      "orchestrator wires it later" was never a state this repo's own gate
+      allows a live router file to sit in indefinitely. Mirrored the exact
+      shape L2 used for garuda_voa_public (commit 20ef324d1) and updated
+      the stale docstring to match.
+  - seat: sonnet-5 (self, bite-proof)
+    objection: >
+      Before reading repository.py and the migration, considered whether
+      PersistencePolicyUnavailable might indicate the DB function
+      active_garuda_order_policy_available() itself was broken or reading
+      the wrong scope -- i.e. that the defect was in product code.
+    status: RETRACTED
+    resolution: >
+      The function is correctly defined (mirrors L1's
+      active_garuda_check_policy_available exactly). The only thing
+      missing was a policy row, which per DECISIONS.md must never come
+      from a migration -- the fix is the test-fixture pattern L1's own
+      suite already established for GARUDA_CHECK, applied here for
+      GARUDA_ORDER.
+  - seat: team-lead (external reviewer, round 1 -- 3 pointed questions on
+      the first fixture draft)
+    objection: >
+      (1) Does the policy row live only in the test database, and could it
+      reach a real one via INTAKE_TEST_DSN misconfiguration? (2) Does the
+      fixture remove the row afterward, or leave production-shaped state
+      behind (scar W96)? (3) Does bare ON CONFLICT DO NOTHING swallow more
+      than the intended duplicate, and does the test still fail correctly
+      for a different cause?
+    status: CONFIRMED
+    resolution: >
+      All three were real gaps in the first draft: (1) same DSN-misroute
+      exposure as the file's pre-existing TRUNCATE, mitigated but not
+      eliminated by an environment='TEST' label (was 'PRODUCTION', changed
+      this round); (2) the draft never deleted the row -- confirmed via
+      direct inspection, not assumed; (3) verified the actual constraint
+      set on visa_decision_retention_policies (PK + 2 unique/exclusion
+      constraints) and confirmed CHECK/NOT NULL are outside ON CONFLICT's
+      scope, so (3) alone was already sound. (1) and (2) required the
+      redesign captured in the receipts above -- and that redesign then
+      surfaced two FURTHER real defects (the append-only guard rejecting
+      DELETE outright, and the EXCLUDE-constraint self-collision from a
+      copied backdated lower bound) that neither the review nor the first
+      redesign attempt had anticipated. Both are now closed and verified
+      live, not merely reasoned about.
+  - seat: sonnet-5 (self, bite-proof, round 2)
+    objection: >
+      Is there any remaining scenario where a crashed test run (not a
+      clean teardown) leaves a dangling open GARUDA_ORDER/TEST policy row
+      that a LATER run cannot self-heal past -- specifically, could two
+      concurrent pytest-xdist workers race the self-heal-then-insert
+      sequence against the SAME database and reintroduce the silent-swallow
+      round 1's fix closed for the sequential case?
+    status: RETRACTED
+    resolution: >
+      Checked the actual CI wiring rather than assuming: this repo's own
+      backend/tests/conftest.py (lines ~347-386) already solves exactly
+      this class of problem for a DIFFERENT reason (a prior, unrelated
+      xdist flake dated 2026-08-21, referenced in tests.yml's own comment)
+      -- at import time, when `PYTEST_XDIST_WORKER` is set, it clones a
+      throwaway per-worker database and REWRITES `INTAKE_TEST_DSN` (and
+      `TEST_DATABASE_URL`/`DATABASE_URL`) to point at that worker's own
+      isolated clone, before any test module's DSN read. Two xdist workers
+      therefore never share one physical database at all -- this
+      fixture's self-heal-then-insert sequence cannot race a sibling
+      worker's, because there is no shared table to race over. Separately,
+      `--dist loadfile` (tests.yml) keeps this file's 10 tests together on
+      ONE worker regardless, which is the exact shape already verified
+      live above (two full runs back-to-back on one database, sequential,
+      self-healing, zero rows left open). The self-heal's coverage is
+      therefore for the case actually exercised in this repo (a crashed
+      run's leftover row, on the same worker's own database on a later
+      run) -- not a hypothetical concurrent-worker race that this
+      codebase's own isolation mechanism already forecloses.
+pii_scan: clean

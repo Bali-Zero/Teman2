@@ -114,6 +114,31 @@ class KnownUngatedMutation:
 # against its PUBLIC_ENDPOINTS entry AND/OR its router handler source in this
 # sweep — not copied from the registry's own `reason` text blind.
 INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
+    # ── Private marketing bridge: middleware bypass, route-key gated ──
+    IntentionalPublicMutation(
+        "PUT",
+        "/api/workspace-marketing/news/{item_id}/editorial",
+        "Private workspace bridge route; an exact dedicated API-key Depends "
+        "runs before the handler and returns 401 without the bridge credential.",
+    ),
+    IntentionalPublicMutation(
+        "POST",
+        "/api/workspace-marketing/news/{item_id}/cover",
+        "Private workspace bridge route; an exact dedicated API-key Depends "
+        "runs before the handler and returns 401 without the bridge credential.",
+    ),
+    IntentionalPublicMutation(
+        "POST",
+        "/api/workspace-marketing/news/{item_id}/publish",
+        "Private workspace bridge route; an exact dedicated API-key Depends "
+        "runs before the handler and returns 401 without the bridge credential.",
+    ),
+    IntentionalPublicMutation(
+        "POST",
+        "/api/workspace-marketing/news/{item_id}/confirm-live",
+        "Private workspace bridge route; an exact dedicated API-key Depends "
+        "runs before the handler and returns 401 without the bridge credential.",
+    ),
     # ── Auth flows: must be reachable BEFORE the caller has a credential ──
     IntentionalPublicMutation(
         "POST",
@@ -130,6 +155,55 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "/api/auth/request-magic-link",
         "Passwordless magic-link request (FASE 6) — enumeration-safe by design "
         "per public_endpoints.py; an unauthenticated client asks for a link.",
+    ),
+    IntentionalPublicMutation(
+        "POST",
+        "/api/visa/voa/auth/magic-links",
+        "GARUDA VOA magic-link request (L4, PR #4901/#4902) — precedes any "
+        "credential by construction, same shape as the FASE-6 row above: an "
+        "unauthenticated visitor asks for a login link. Reviewed 2026-08-25 "
+        "against the handler (request_magic_link in garuda_portal_auth.py), "
+        "corrected same day after a team-lead finding that an earlier draft "
+        "of this reason misdescribed the short-circuit: the ONLY early "
+        "return (before the 202 that always follows) fires on 'no "
+        "ResultSession cookie' or 'malformed result_id' — both facts the "
+        "CALLER already knows about its own request, requiring no server "
+        "lookup, so neither can leak server-side existence. A well-formed "
+        "result_id that is simply UNKNOWN or NOT OWNED does not short-circuit "
+        "at all: it reaches store.issue() exactly like a real match does, and "
+        "both emerge as the identical 202. Enumeration safety therefore rests "
+        "on the STORE returning the same shape for unknown/not-owned/real "
+        "alike, not on the router skipping work for the unknown case -- a "
+        "property PostgresMagicLinkStore (same branch) must keep preserving, "
+        "not one this route's early return provides by itself. Also "
+        "throttled email-scoped, 5 issues per 15 minutes "
+        "(PostgresMagicLinkStore.issue), closing the one abuse vector this "
+        "route has (mailbox flooding).",
+    ),
+    IntentionalPublicMutation(
+        "POST",
+        "/api/visa/voa/auth/sessions",
+        "GARUDA VOA magic-link exchange (L4, PR #4901/#4902) — must be public "
+        "for the same reason as the row above: the token IS the credential, "
+        "so a route that consumes it cannot itself require one. Reviewed "
+        "2026-08-25 against the handler (exchange_magic_link): unknown, "
+        "expired, and already-consumed tokens collapse to one byte-identical "
+        "401 (MAGIC_LINK_INVALID) — ExchangeOutcome carries no reason field a "
+        "router could leak through. Residual, stated honestly rather than "
+        "omitted: there is NO IP-scoped throttle on this route — deliberately "
+        "out of PostgresMagicLinkStore's scope (its exchange() Protocol "
+        "signature carries no client IP; an IP-scoped throttle is a "
+        "router/middleware concern, same precedent as visa_check's "
+        "RateLimitMiddleware) and not added at the router layer in this PR "
+        "either. Judged safe anyway, not a declared hole: the token is a "
+        "32-byte (256-bit) urlsafe secret with a 15-minute TTL "
+        "(MAGIC_LINK_TTL_MINUTES) — no per-IP guess rate makes brute-forcing "
+        "that space inside its lifetime remotely feasible, so the missing "
+        "throttle does not weaken the actual security property this route "
+        "depends on. (A separate, narrower resource-exhaustion concern — "
+        "unbounded garuda_magic_link_idempotency growth from repeated invalid "
+        "attempts under fresh Idempotency-Keys — is tracked as a dissent "
+        "finding in this PR's evidence pack, not as an authz gap.)",
     ),
     # ── Signed/verified webhooks: identity SHOULD be proven by signature, not
     #    JWT — architecturally these two routes are correctly public. (A third,
@@ -446,6 +520,121 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "Docstring says scraper-only — VERIFIED: Depends(verify_internal_api_key) "
         "(preview.py:46) is a real in-router dependency, independent of the "
         "middleware's public-path skip.",
+    ),
+    # ── GARUDA VOA L2/L3 (PR #4946 allowlist additions) — reviewed 2026-08-26,
+    #    against the handlers in garuda_voa_public.py / garuda_orders_router.py,
+    #    NOT copied from either module's own docstrings. ──
+    IntentionalPublicMutation(
+        "POST",
+        "/api/visa/voa/eligibility-checks",
+        "GARUDA VOA public eligibility-check creation "
+        "(garuda_voa_public.py::create_eligibility_check) — the anonymous "
+        "eligibility-funnel entrypoint the product exists to serve; the "
+        "module's own docstring names this one of the three operations this "
+        "lane owns. No credential can be required here because none exists "
+        "yet — same 'must be reachable before a credential exists' category "
+        "as /api/auth/request-magic-link above. Verified 2026-08-26: requires "
+        "a caller-supplied Idempotency-Key matching `_IDEMPOTENCY_KEY_PATTERN` "
+        "(400 IDEMPOTENCY_KEY_REQUIRED otherwise) and an explicit "
+        "`retention_notice_acknowledged=True` (422 otherwise); a replay under "
+        "the same key with a different payload raises IdempotencyConflict "
+        "rather than silently re-running eligibility/pricing logic. The "
+        "result is bound to a freshly-minted, server-only `session_secret` "
+        "delivered EXCLUSIVELY via an httponly Set-Cookie to the creator "
+        "(`_set_result_session_cookie`) — that secret is the sole credential "
+        "the GET/DELETE routes below accept, so this call is the root of "
+        "trust the rest of the funnel is built on, not an unprotected write. "
+        "Feature-flagged off by default (`GARUDA_PUBLIC_ENABLED`) and behind "
+        "the app's shared rate-limit middleware.",
+    ),
+    IntentionalPublicMutation(
+        "DELETE",
+        "/api/visa/voa/eligibility-checks/{result_id}",
+        "GARUDA VOA eligibility-check self-deletion "
+        "(garuda_voa_public.py::delete_eligibility_result). Verified "
+        "2026-08-26 against the store (`check_store.py::delete`, ~line 263): "
+        "a row is erased ONLY when the caller's `garuda_result_session` "
+        "cookie hashes (`_hash_secret`) to the SAME `session_secret_hash` "
+        "stored at creation — a missing, mismatched, or malformed-result_id "
+        "cookie makes the router pass `session_secret=None`, and the store "
+        "then skips the DELETE entirely (`deleted=False`) without ever "
+        "touching the row. The route still answers 204 either way (contract, "
+        "verbatim: 'the response reveals no existence oracle'), so a caller "
+        "without the secret cannot even distinguish 'not yours' from 'does "
+        "not exist'. The session secret is server-minted and never exposed "
+        "except as an httponly cookie to the original creator — same "
+        "self-service-with-unforgeable-bearer-secret shape as the magic-link "
+        "exchange row above, not an open hole. Also requires a valid "
+        "Idempotency-Key (double-submit guard against replay).",
+    ),
+    IntentionalPublicMutation(
+        "POST",
+        "/api/visa/voa/orders",
+        "GARUDA VOA order creation from a completed eligibility check "
+        "(garuda_orders_router.py::create_order_from_check). Public per "
+        "PUBLIC_ENDPOINTS/HybridAuthMiddleware, but independently re-gated "
+        "in-router by `_require_magic_session_actor` (verified 2026-08-26): "
+        "the dependency reads the `garuda_session` cookie and awaits "
+        "`app.state.garuda_magic_session_verifier`, raising 401 "
+        "SESSION_REQUIRED before any mutation runs if either is missing or "
+        "the cookie fails to resolve to a session. This is REAL, LIVE auth "
+        "in production, not a theoretical gate: `service_initializer.py` "
+        "wires `app.state.garuda_magic_session_verifier = "
+        "garuda_magic_link_store.verify_session` whenever `db_pool is not "
+        "None` (~line 1352), which it is on every deployed instance — a "
+        "caller reaches this route only by first obtaining a valid magic-link "
+        "session (see the `/api/visa/voa/auth/sessions` row above). The "
+        "verified session's own `result_id` becomes `actor`, and the handler "
+        "additionally requires the request body's `result_id` to equal "
+        "`actor` — a session for one eligibility check cannot open an order "
+        "against a different one; a mismatch collapses to the same 404 "
+        "RESULT_NOT_FOUND used for 'no such result' (non-enumerating, per "
+        "`ResultNotFound`'s own docstring). (If `db_pool` were ever None the "
+        "slot is never set and the route degrades to 401 for everyone — a "
+        "degradation path, not the normal state, per the wiring site's own "
+        "'non-critical: fail-closed exactly as with no adapter at all' "
+        "comment.) Same class of middleware-invisible, real in-router auth "
+        "Depends as the existing `/api/knowledge/visa/` rows above.",
+    ),
+    IntentionalPublicMutation(
+        "POST",
+        "/api/visa/voa/orders/{order_id}/browser-return-observations",
+        "Twin of the /api/visa/voa/orders row above — same "
+        "`_require_magic_session_actor` in-router gate "
+        "(garuda_orders_router.py::observe_payment_browser_return, verified "
+        "2026-08-26), live and wired in production per the same "
+        "`service_initializer.py` (~line 1352) `db_pool is not None` check. "
+        "The mutation itself (recording a one-time `return_nonce`) is "
+        "additionally scoped to the caller's own `order_id` via "
+        "`record_browser_return_observation(order_id=..., result_id=actor, "
+        "...)`; an order that is not the caller's raises `OrderNotFound` -> "
+        "404, never written.",
+    ),
+    IntentionalPublicMutation(
+        "POST",
+        "/api/visa/voa/webhooks/payment",
+        "Xendit Invoices payment-callback webhook "
+        "(garuda_orders_router.py::receive_payment_webhook). A provider "
+        "callback, not a user action — identity is proven by a signature, "
+        "the same category this registry already grants `/webhook/whatsapp` "
+        "and `/webhook/instagram` above. Verified 2026-08-26, and verified "
+        "STRICTER than those two siblings: `provider.verify_signature()` "
+        "(`XenditPaymentProvider.verify_signature`, xendit.py:164-175) runs "
+        "and can raise `WebhookSignatureInvalid` -> 401 BEFORE `parse_event()` "
+        "or any of the three `repository.handle_*_event()` mutation calls — "
+        "no code path reaches persistence without a valid token. The check "
+        "is a constant-time `hmac.compare_digest` against "
+        "`GARUDA_XENDIT_CALLBACK_TOKEN` (wired in "
+        "`service_initializer.py:1490-1493`) and is fail-closed even if that "
+        "env var is left unset: `compare_digest(received, \"\")` only "
+        "succeeds for `received == ''`, and an empty/missing header is "
+        "already rejected by the preceding `if not received` branch — so a "
+        "misconfiguration cannot silently open this route the way the "
+        "WhatsApp entry's missing-secret fail-open can. (An earlier draft of "
+        "the frozen contract required an `Idempotency-Key` header here too; "
+        "that broke real Xendit callbacks, which never send one, and 400'd "
+        "them before signature verification ran — the contract's own `$ref` "
+        "is the orchestrator's fix, this router no longer requires it.)",
     ),
 )
 

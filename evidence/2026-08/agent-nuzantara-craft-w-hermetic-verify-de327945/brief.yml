@@ -1,0 +1,111 @@
+task_id: craft-w-hermetic-verify
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Every number `.github/workflows/p1s2-mutation-incremental.yml` prints — the mutation kill-count
+  that this repo quotes in PR bodies as evidence a corpus bites — was produced under an environment
+  that W121 proved can silently lie.
+
+  W121 (cicatrix-scars.md, 2026-08-21): Python validates a `.pyc` against its source on mtime + size
+  ONLY. A mutation cycle of the shape "mutate -> run -> restore" is corrupted whenever the mutation
+  preserves byte length (`return 1` -> `return 0`, the textbook operator mutation this driver
+  performs) and the cycle completes inside one second. Both are the NORM for a fast loop. When they
+  hold, a fresh interpreter reads the OLD bytecode — silently, in EITHER direction: a survivor
+  reported as a kill, or a kill reported as a survivor.
+
+  Measured on this machine before trusting anyone else's account of it: probe returning 11111,
+  imported; mutated to 22222 same-length; mtime restored with `touch -r`; re-imported in a fresh
+  interpreter -> 11111. The trap is live here, today. And `scripts/mutation_incremental.py` carried
+  ZERO occurrences of PYTHONDONTWRITEBYTECODE, dont_write_bytecode, __pycache__ or cacheprovider
+  (grepped, not assumed), invoked bare by the workflow.
+
+  This PR makes the environment provably hermetic BEFORE any instrument runs, DETECTS the ordinary
+  ways a command defeats it during the run, and censuses workflows so a bare instrument invocation
+  by its declared path turns a check red.
+
+  All three verbs are deliberately weaker than the first draft's. A round-2 refuter falsified
+  "proves it kept that property" with a measured reproducer (a cache redirected out of the repo via
+  PYTHONPYCACHEPREFIX is invisible to the post-run count, and the wrapper exited 0 on a command that
+  read stale bytecode), and falsified "no instrument can be invoked outside the wrapper" with seven
+  textual evasions. Both are now enumerated where they live — the wrapper's "WHAT THIS CANNOT DO"
+  block and the lint's DECLARED SCOPE LIMIT — with their reproducers.
+constraints:
+  - "The wrapper must PROVE hermeticity, not configure it. An env-var check answers 'was the
+    variable set', which is not the question — the question is 'can this machine reuse stale
+    bytecode', and only reproducing W121's exact shape answers it."
+  - "PYTHONDONTWRITEBYTECODE suppresses WRITES, never READS. Any design that treats the export as
+    sufficient leaves an already-poisoned checkout poisoned. The sweep is what makes it safe, so the
+    sweep's SCOPE is the load-bearing constant, not the export."
+  - "Exit-code propagation must never pass through a bare assignment under `set -e` — that aborts on
+    the very failure it exists to report (W101, and W108's sixteen silent wrappers)."
+  - "The census lint must not become the thing it guards against: a wrapper mention that is not
+    actually wrapping this invocation must not excuse it, or the lint certifies a bare call."
+acceptance:
+  - text: |
+      WHEN the hermetic environment is removed, a same-length mutation whose mtime is restored
+      SHALL still return the STALE value on this machine — the canary therefore has real
+      discriminative power here rather than passing by construction.
+    probe: "python3 -c 'import probe; print(probe.v())'"
+  - text: |
+      WHEN the wrapped command strips the hermetic environment and exits 0, the wrapper SHALL exit
+      3; WHEN the identical command runs without stripping it, the wrapper SHALL exit 0.
+    probe: "bash scripts/hermetic_verify.sh -- env -u PYTHONDONTWRITEBYTECODE python3 -c '<import probe>'"
+  - text: |
+      WHERE a workflow invokes a declared instrument outside the wrapper — whether via a completed
+      wrapper call on an earlier line or behind a `run: |2` block-scalar indicator — the census
+      SHALL report exactly one violation, WHILE same-line and backslash-continued wrapping SHALL
+      report none.
+    probe: "find_run_blocks + find_unwrapped_mentions over four inline YAML fixtures"
+  - text: |
+      WHEN the census runs against the live tree it SHALL report zero violations, so the lint
+      reddens nothing today and its first red IF it ever fires SHALL be a real one.
+    probe: "python3 scripts/ci/lint_hermetic_instruments.py"
+  - text: |
+      WHEN the wrapper is handed a command it SHALL run it and propagate its exit status, and WHEN
+      it is handed no command at all it SHALL exit 2 — an empty command never reads as success.
+    probe: "bash scripts/hermetic_verify.sh -- {true | bash -c 'exit 7' | no_such_binary}"
+consumer_map:
+  - ".github/workflows/p1s2-mutation-incremental.yml — the only current consumer. Its three work
+    steps now run through the wrapper; its trigger and relevance filter now include the wrapper, the
+    lint and this corpus, so a change to any of them executes the gate."
+  - "scripts/mutation_incremental.py — the wrapped instrument. NOT modified by this diff."
+  - "Every future measurement instrument: INSTRUMENTS in scripts/ci/lint_hermetic_instruments.py is
+    the registry. An instrument added there and then invoked BY ITS DECLARED PATH without a wrapper
+    protecting that invocation fails the census — which is the careless case, not every case; the
+    seven shapes it cannot see are enumerated in that file's docstring."
+  - "Every PR body in this repo that quotes a mutation kill-count — the reason this matters at all."
+risks:
+  - "The census is a TEXTUAL rule, not a shell parser. It cannot see `cd scripts && python3
+    mutation_incremental.py`, `PYTHONPATH=scripts python3 -m mutation_incremental`, an intermediate
+    `make` target, a path built by string concatenation, a `${{ matrix.* }}` indirection, or a `run:`
+    inside a composite action under .github/actions/. The refuter enumerated all of these and they
+    are all real; they are DECLARED in the module docstring rather than papered over, and named in
+    dissent below. Basename matching would catch the first but false-positives on
+    `test_mutation_incremental.py`, so it is deferred rather than bolted on."
+  - "The post-run check DETECTS the ordinary defeat; it neither prevents one nor sees every one.
+    Measured limits, both reproduced on this machine: a cache redirected outside the repo with
+    PYTHONPYCACHEPREFIX is not counted, so a command CAN still strip the env, read stale bytecode
+    and have this wrapper exit 0; and `python3 -m compileall` — a legitimate command whose job is
+    writing bytecode — is a false positive, converted from 0 to 3. Both are written into the
+    wrapper's own header rather than left for the next reader to rediscover."
+  - "SWEPT_TREES is pinned as a superset of ONE instrument's include_glob. An instrument that imports
+    from a tree outside the list would be measured on stale bytecode; the corpus is what will say so
+    when it is added, and only if the pin's premise check still matches."
+  - "This diff is over the ~400 net-line guidance — the figure is emitted by
+    `evidence_pack_lint.py --print-measured` and quoted in the pack, never narrated here, because a
+    number written in two places goes stale in one of them. Declared, not split: the wrapper without the census is unenforced, and the census without the corpus is a
+    guard nobody proved bites. See net_lines in the pack."
+grader: |
+  Generator != grader, and it changed the diff twice. The build lane is this session (claude-opus-5,
+  xhigh) plus one Sonnet 5 implementer for the wrapper/lint and one for the corpus extension; the
+  review seats are cross-family and non-Anthropic, dispatched on the FINISHED diff with their own
+  file access. Round 1 (codex-gpt-5.6-sol, effort high) returned DO-NOT-SHIP with 3 BLOCKER, 4 HIGH
+  and 1 MEDIUM. Two BLOCKERs were real defects inside this diff and are fixed here; the third is
+  real, pre-existing, outside the diff, and is ledgered rather than silently bundled. Every finding
+  was re-verified in THIS worktree against source before being believed — that seat's on-disk reads
+  resolve to the stale main checkout (W106b), so its file references are leads, not facts.
+budget: |
+  1 orchestrator (final on-disk gate, all measurements re-run this turn) + 2 Sonnet implementers +
+  2 cross-family review seats. 4 production/config files, 1 test corpus, this evidence pack.
+pii: none

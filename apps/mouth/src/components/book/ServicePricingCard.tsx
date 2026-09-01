@@ -131,7 +131,7 @@ export function ServicePricingCard({
           href={`${CONTACTS.whatsappUrl}?text=${encodeURIComponent(waMessage)}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="block w-full text-center py-3 rounded-xl bg-[#25D366]/90 hover:bg-[#25D366] text-white text-sm font-medium font-[family-name:var(--font-montserrat)] transition-colors motion-reduce:transition-none shadow-[0_0_16px_rgba(37,211,102,0.15)]"
+          className="block w-full text-center py-3 rounded-xl bg-[#25D366]/90 hover:bg-[#25D366] text-[var(--accent-whatsapp-ink)] text-sm font-medium font-[family-name:var(--font-montserrat)] transition-colors motion-reduce:transition-none shadow-[0_0_16px_rgba(37,211,102,0.15)]"
         >
           {ctaLabel}
         </a>

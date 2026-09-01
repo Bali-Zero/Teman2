@@ -1,0 +1,65 @@
+task_id: infra-evidence-root-path-guard
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Close the half of the evidence root-path deprecation that was never enforced.
+
+  Rule 9 (`check_pack_not_at_deprecated_root`, `EVIDENCE_ROOT_DEPRECATION_DATE` = 2026-09-05)
+  deprecates writing the evidence PACK to the fixed repo-root `evidence/pack.yml`, because a
+  fixed shared path makes any two Gear>=2 PRs mutually exclusive in the merge queue by
+  construction — `scripts/ci/evidence_paths.py`'s module docstring measures the original harm
+  (those two root files rewritten 4 times in 8 hours, each rewrite dirtying every open Gear>=2 PR).
+
+  MEASURED 2026-08-31 by executing the function from origin/main with `today` past the flip date:
+  it compares only the resolved PACK path against EVIDENCE_ROOT_PACK_PATH and returns clean
+  otherwise. It takes no brief argument at all, so it is structurally blind to where the BRIEF
+  lives. A PR whose pack is correctly migrated to `evidence/<YYYY-MM>/<slug>/pack.yml` but whose
+  diff still MODIFIES the repo-root `evidence/brief.yml` is therefore clean under Rule 9 at ANY
+  date, while still colliding with every other PR that writes that file.
+
+  Not hypothetical. Of the 31 open PRs that day, SIX modify the root brief (#5158 #5072 #5037
+  #4645 #4644 #4640). Five have pack AND brief at root, so Rule 9 already sees them. #5158 has
+  the invisible shape exactly: pack at `evidence/2026-08/agent-air-m5-ops-watcher-coverage-
+  0828-2dd63838/pack.yml` (ADDED), brief at the root (MODIFIED), Rule 9 green, collision live.
+  That PR is one of the DIRTY PRs the fleet-watch mailbox reported this session.
+
+  HOW THIS SURFACED, because the provenance matters for how much to trust it: not from reading
+  the code. Three `queue_unstick` messages from mini-pro2 named `evidence/brief.yml` as the
+  conflicting file on different PRs. Counting how many open PRs touch that path gave 6; the
+  readiness report written the same morning named 3. Chasing that discrepancy — not the code —
+  is what exposed the asymmetry.
+
+acceptance:
+  - "WHEN a PR's own diff writes the repo-root evidence/brief.yml AND the date is on/after the
+    declared flip THEN evidence_pack_lint exits 1 with an `evidence_root_brief_deprecated`
+    violation. probe: the direct-call guilt tests pin `today` on the flip date; they must FAIL
+    if the rule's path comparison is neutered (mutation control required, not optional)."
+  - "WHILE the mandatory `brief_ref: evidence/brief.yml` staging contract is unchanged, a
+    conformant pack declaring that literal string SHALL never trip the new rule. probe: the
+    tmp_repo fixture's write_pack() emits exactly that string; lint() with no brief path supplied
+    must stay silent. This is the failure that would break the entire fleet, so it is pinned
+    twice — once with no brief path, once with a per-task brief path alongside the root string."
+  - "WHILE the flag is absent from the copy of the lint that CI actually runs (this job checks
+    out BASE, so the flag only exists after this PR merges) THEN the rule SHALL be inert and say
+    so, never fall back to the staged canonical name. probe: read the workflow's else-branch —
+    staging always names the file evidence/brief.yml, so a fallback would accuse every pack."
+  - "WHEN the pack's own deprecation date arrives (2026-09-05) THEN the brief rule SHALL still
+    only NOTICE. probe: a test asserting the two constants are distinct and that the brief rule
+    returns no violation on the pack's date."
+  - "WHILE this change lands the existing corpus SHALL be unchanged. probe: the full
+    test_evidence_pack_lint.py file green (288 pre-existing + 12 new), actionlint rc=0 on the
+    edited workflow, ruff clean."
+
+risks:
+  - "A false positive here blocks a hot-zone CI gate for the whole fleet. The single highest-risk
+    shape is confusing the mandatory brief_ref STRING with a root brief FILE write; it is the
+    first thing both cross-family reviewers were pointed at."
+  - "The date is deliberately NOT the pack's 2026-09-05. Riding it would silently re-price a
+    measurement taken the same morning (research/operations/2026-08-31-two-nine-enforcement-
+    readiness.md priced '3 newly RED' for EVIDENCE_ROOT), turning 3 into 6 with nobody
+    re-measuring. Zero's standing instruction in that report is to move dates only 'if we are
+    ready'. This rule therefore arrives with its own constant and its own window."
+  - "This PR does NOT migrate the six in-flight PRs. They are other lanes' branches; pushing to
+    them is sibling territory. They are already blocked by DIRTY today, so the new rule does not
+    break working PRs — it explains why already-broken ones are broken, and prevents the seventh."

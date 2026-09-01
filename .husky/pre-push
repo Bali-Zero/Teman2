@@ -29,6 +29,36 @@ echo "🔍 Running pre-push hooks..."
 echo "✅ Skipping full test suite (covered by pre-commit hooks)"
 
 # ============================================================================
+# quickcheck (advisory, 2026-08-23, S12 C4) — scripts/quickcheck.sh
+#
+# Fast local companion to the heavy gates in this file: impact-scoped pytest
+# (via scripts/ci/impact_map.py — the SAME engine the PR lane's test
+# selection uses), `prettier --check` on changed files, `actionlint` when
+# `.github/workflows/` changed, and an R1 literal '## Adversarial review'
+# heading check against the branch's open PR (if any). Exists to name a
+# purely mechanical red-CI cause locally in minutes instead of a ~30min CI
+# round-trip — see scripts/quickcheck.sh's own header for the full rationale.
+#
+# ADVISORY ONLY — WARNS, NEVER BLOCKS. `|| true` below is load-bearing under
+# this hook's production `sh -e` invocation (see the file-level gotcha notes
+# near the top of this file): a bare non-zero exit from quickcheck.sh would
+# otherwise abort the ENTIRE hook right here, silently skipping every gate
+# below it — exactly the decapitated-guard shape this repo already has scars
+# for (W101 family). quickcheck.sh's own exit code is unconditionally 0 by
+# design (see its header), so `|| true` is redundant defense-in-depth, not
+# the only thing standing between this block and blocking a push.
+#
+# This block's own success/failure is therefore NEVER read by anything
+# downstream in this file — it cannot change what PREPUSH_RUN_BACKEND,
+# BACKEND_SUITE_RAN, or the final verdict end up being.
+#
+# Kill switch: QUICKCHECK_SKIP=1.
+# ============================================================================
+if [ "${QUICKCHECK_SKIP:-0}" != "1" ] && [ -f "$PREPUSH_TRUST_ROOT/scripts/quickcheck.sh" ] && command -v bash >/dev/null 2>&1; then
+    bash "$PREPUSH_TRUST_ROOT/scripts/quickcheck.sh" || true
+fi
+
+# ============================================================================
 # Path-aware backend-suite gate (2026-07-17, Zero GO)
 #
 # A PR that never touches the backend should not pay for the 17,384-test,
@@ -667,7 +697,7 @@ else
                OLLAMA_URL="http://127.0.0.1:9" \
                PYTHONPATH=.:../crm-cell \
                "$PREPUSH_SUITE_LOCK_SCRIPT" "$PREPUSH_SUITE_LOCKFILE" \
-               python -m pytest backend/tests/ --ignore=backend/tests/e2e --tb=short -q ) || TEST_RC=$?
+               python -m pytest backend/tests/ --ignore=backend/tests/e2e --tb=short ) || TEST_RC=$?
         if [ "$TEST_RC" -eq 0 ]; then
             # The ONLY place the suite genuinely ran to a pass. Every other
             # path out of this block either exits 1 or leaves a skip reason.

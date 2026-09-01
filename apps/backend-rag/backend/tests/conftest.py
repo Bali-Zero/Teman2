@@ -201,14 +201,15 @@ def mock_redis():
 # `backend/tests/`. It is also import-cached per worker process, so this is
 # a one-time setup, not a per-test cost.
 #
-# DESIGN CHOICE — clone from the ALREADY-migrated base DB itself, not a
-# separate `test_template`: CI's "Bootstrap SQLModel tables" + "Apply
-# database migrations" steps migrate `nuzantara_test` ONCE before pytest
-# ever starts, and `.husky/pre-push` has done exactly this clone-from-base
-# pattern in production since 2026-07-16 (`CLONE_DB=nuzantara_test_run_$$_
-# $RANDOM`, `CREATE DATABASE … TEMPLATE nuzantara_test`) — reusing that
-# instead of inventing a second template avoids re-running bootstrap+migrate
-# here and inherits two lessons pre-push already paid for:
+# DESIGN CHOICE — clone every worker DB from a DEDICATED, CONNECTIONLESS
+# template, never from `nuzantara_test` (the migrated base) directly and
+# NEVER from another worker's own database (corrected 2026-08-25 — see SCAR
+# below): CI's "Bootstrap SQLModel tables" + "Apply database migrations"
+# steps migrate `nuzantara_test` ONCE before pytest ever starts, and
+# `.husky/pre-push` has done exactly this clone-from-base pattern in
+# production since 2026-07-16 (`CLONE_DB=nuzantara_test_run_$$_$RANDOM`,
+# `CREATE DATABASE … TEMPLATE nuzantara_test`) — this still inherits two
+# lessons pre-push already paid for:
 #   1. OWNER clause: a clone created by a role that is not the template's
 #      owner silently loses CREATE on `public` (PG15 `public` is owned by
 #      the pseudo-role pg_database_owner) — measured there as 39 failed +
@@ -221,6 +222,41 @@ def mock_redis():
 # very next run at that slot, rather than pre-push's unbounded PID space
 # (its own #60 needed a random suffix to bound that).
 #
+# SCAR (2026-08-25, job 97847958574, Backend Shard 2): the FIRST version of
+# this design templated every worker DB directly off `nuzantara_test`, on the
+# reasoning that nobody holds a connection to the un-suffixed base once
+# workers switch to their own clones. That reasoning has a hole: `base_db`
+# was derived from `TEST_DATABASE_URL`, the SAME env var this file overwrites
+# with a worker-specific DSN a few lines down. Any path that re-derives
+# `base_db` AFTER that overwrite — this module re-imported under a second
+# qualified name for an unusual invocation shape, an xdist worker-registry
+# bug reusing a slot's env (the `KeyError: <WorkerController gwN>` bug noted
+# below is exactly this class) — makes a WORKER'S OWN LIVE DATABASE look like
+# a legitimate template name. Postgres correctly refuses to template off a
+# database with an active session, and the failure observed in CI was
+# literally that: `CREATE DATABASE 'nuzantara_test_gw0_gw1' TEMPLATE
+# 'nuzantara_test_gw0'` while gw0 was mid-test with an open connection to its
+# own database. The retry loop cannot fix this — gw0 holds that connection
+# for its entire session, so all 3 attempts see the same `ObjectInUseError`.
+#
+# The fix is structural, not a longer retry: `_xdist_ensure_template_database`
+# builds ONE throwaway template per Postgres instance (`<base>_xdist_template`)
+# with `ALLOW_CONNECTIONS false` — Postgres still permits templating FROM a
+# connectionless database, it only refuses ordinary sessions TO it (verified
+# empirically: `ALTER DATABASE t WITH ALLOW_CONNECTIONS false` then `CREATE
+# DATABASE clone TEMPLATE t` succeeds while a direct `psql -d t` fails with
+# "is not currently accepting connections"). No test code — including this
+# file's own per-worker clones — EVER opens a session against that database,
+# so it can never be "busy": the entire failure class is structurally
+# unreachable regardless of how `base_db` resolution goes wrong upstream.
+# Every worker, gw0 included, clones from this same template; a Postgres
+# advisory lock (not a Python lock — each worker is a separate OS process)
+# serializes the one-time build so N workers starting simultaneously don't
+# all race to CREATE it, and `_XDIST_PRISTINE_TEST_DATABASE_URL` freezes the
+# ORIGINAL DSN under a name this file never mutates, so a second execution of
+# this block in the same process can no longer derive `base_db` from its own
+# prior overwrite.
+#
 # INNOCENCE (unchanged behaviour when xdist is inactive): PYTEST_XDIST_WORKER
 # is pytest-xdist's own convention, set as an OS env var in the worker
 # subprocess before any Python/pytest code runs — a serial run (`pytest ...`,
@@ -229,6 +265,7 @@ def mock_redis():
 # ============================================================================
 
 _XDIST_WORKER_DB_NAME_RE = re.compile(r"^[A-Za-z0-9_]+_gw\d+$")
+_XDIST_TEMPLATE_DB_NAME_RE = re.compile(r"^[A-Za-z0-9_]+_xdist_template$")
 _XDIST_WORKER_ID_RE = re.compile(r"^gw(\d+)$")
 
 
@@ -262,6 +299,13 @@ def _xdist_worker_db_name(base_db: str, worker_id: str) -> str:
     return name
 
 
+def _xdist_template_db_name(base_db: str) -> str:
+    name = f"{base_db}_xdist_template"
+    if not _XDIST_TEMPLATE_DB_NAME_RE.fullmatch(name):
+        raise RuntimeError(f"refusing to operate on unsafe database name {name!r}")
+    return name
+
+
 def _xdist_swap_db(dsn: str, new_db: str) -> str:
     base_part, sep, db_and_query = dsn.rpartition("/")
     if not sep:
@@ -270,7 +314,63 @@ def _xdist_swap_db(dsn: str, new_db: str) -> str:
     return f"{base_part}/{new_db}" + (f"?{query}" if query else "")
 
 
-async def _xdist_clone_worker_database(admin_dsn: str, base_db: str, worker_db: str) -> None:
+async def _xdist_ensure_template_database(admin_dsn: str, base_db: str, template_db: str) -> None:
+    """Build, once per Postgres instance, a template no test session ever opens.
+
+    Every worker clones its own throwaway database from `template_db`
+    instead of from `base_db` directly. `ALLOW_CONNECTIONS false` makes the
+    template immune to the exact race this file used to be exposed to
+    (SCAR above): Postgres refuses ordinary sessions against it but still
+    permits `CREATE DATABASE ... TEMPLATE` off it, so it can never be
+    "busy" the way a worker's own live database can.
+
+    Guarded by a Postgres ADVISORY LOCK, not a Python lock — every xdist
+    worker is a separate OS process (verified empirically: `os.getppid()`
+    is identical across all workers of one session, but that is the
+    CONTROLLER's pid, not a shared lock domain), so N workers starting at
+    once must serialize through Postgres itself. The second and later lock
+    holders see `datallowconn = false` already set on `template_db` and
+    return immediately without touching it again.
+    """
+    import asyncpg  # lazy: only imported when actually running under xdist
+
+    if not _XDIST_TEMPLATE_DB_NAME_RE.fullmatch(template_db):
+        raise RuntimeError(f"refusing to operate on unsafe database name {template_db!r}")
+
+    conn = await asyncpg.connect(admin_dsn)
+    try:
+        lock_key = f"xdist-template:{template_db}"
+        await conn.execute("SELECT pg_advisory_lock(hashtext($1)::bigint)", lock_key)
+        try:
+            already_built = await conn.fetchval(
+                "SELECT NOT datallowconn FROM pg_database WHERE datname = $1",
+                template_db,
+            )
+            if already_built:
+                return
+
+            owner_row = await conn.fetchrow(
+                "SELECT pg_get_userbyid(datdba) AS owner FROM pg_database WHERE datname = $1",
+                base_db,
+            )
+            owner = owner_row["owner"] if owner_row else None
+            owner_clause = f' OWNER "{owner}"' if owner else ""
+
+            # Defensive pre-drop: heals a template leaked by a crashed prior
+            # run — safe because nothing has an open session against it
+            # (that is the entire point of ALLOW_CONNECTIONS false below).
+            await conn.execute(f'DROP DATABASE IF EXISTS "{template_db}" WITH (FORCE)')
+            await conn.execute(
+                f'CREATE DATABASE "{template_db}" TEMPLATE "{base_db}"{owner_clause}'
+            )
+            await conn.execute(f'ALTER DATABASE "{template_db}" WITH ALLOW_CONNECTIONS false')
+        finally:
+            await conn.execute("SELECT pg_advisory_unlock(hashtext($1)::bigint)", lock_key)
+    finally:
+        await conn.close()
+
+
+async def _xdist_clone_worker_database(admin_dsn: str, template_db: str, worker_db: str) -> None:
     import asyncpg  # lazy: only imported when actually running under xdist
 
     if not _XDIST_WORKER_DB_NAME_RE.fullmatch(worker_db):
@@ -280,7 +380,7 @@ async def _xdist_clone_worker_database(admin_dsn: str, base_db: str, worker_db: 
     try:
         owner_row = await conn.fetchrow(
             "SELECT pg_get_userbyid(datdba) AS owner FROM pg_database WHERE datname = $1",
-            base_db,
+            template_db,
         )
         owner = owner_row["owner"] if owner_row else None
         owner_clause = f' OWNER "{owner}"' if owner else ""
@@ -293,7 +393,7 @@ async def _xdist_clone_worker_database(admin_dsn: str, base_db: str, worker_db: 
         for attempt in range(3):
             try:
                 await conn.execute(
-                    f'CREATE DATABASE "{worker_db}" TEMPLATE "{base_db}"{owner_clause}'
+                    f'CREATE DATABASE "{worker_db}" TEMPLATE "{template_db}"{owner_clause}'
                 )
                 return
             except Exception as exc:  # noqa: BLE001 — bounded retry, re-raised below if exhausted
@@ -301,7 +401,7 @@ async def _xdist_clone_worker_database(admin_dsn: str, base_db: str, worker_db: 
                 if attempt < 2:
                     await asyncio.sleep(2)
         raise RuntimeError(
-            f"could not CREATE DATABASE {worker_db!r} TEMPLATE {base_db!r} after 3 "
+            f"could not CREATE DATABASE {worker_db!r} TEMPLATE {template_db!r} after 3 "
             "attempts (template busy, permissions, or Postgres under load)"
         ) from last_error
     finally:
@@ -316,6 +416,34 @@ async def _xdist_drop_worker_database(admin_dsn: str, worker_db: str) -> None:
     conn = await asyncpg.connect(admin_dsn)
     try:
         await conn.execute(f'DROP DATABASE IF EXISTS "{worker_db}" WITH (FORCE)')
+    finally:
+        await conn.close()
+
+
+async def _xdist_drop_template_database(admin_dsn: str, template_db: str) -> None:
+    """Drop the shared template at session end — every worker registers this.
+
+    Safe to run more than once (`DROP DATABASE IF EXISTS`): whichever worker's
+    cleanup runs first actually drops it, the rest are no-ops. Dropping here
+    rather than leaving it around matters for LOCAL DEV, where the same
+    Postgres instance persists across pytest invocations: `nuzantara_test`
+    (the true base) can pick up a NEW migration between two runs, and a
+    template left alive from the PRIOR run would make `_xdist_ensure_
+    template_database`'s `datallowconn = false` check look "already built" —
+    silently cloning every worker off STALE schema. Dropping it here forces
+    the next session's first worker to rebuild fresh off whatever
+    `nuzantara_test` currently looks like. Always safe to run: by the time
+    any worker's session-end cleanup fires, module-import-time cloning (the
+    only thing that ever reads FROM the template) is long finished for every
+    worker in this session.
+    """
+    if not _XDIST_TEMPLATE_DB_NAME_RE.fullmatch(template_db):
+        raise RuntimeError(f"refusing to operate on unsafe database name {template_db!r}")
+    import asyncpg
+
+    conn = await asyncpg.connect(admin_dsn)
+    try:
+        await conn.execute(f'DROP DATABASE IF EXISTS "{template_db}" WITH (FORCE)')
     finally:
         await conn.close()
 
@@ -346,6 +474,7 @@ async def _xdist_drop_worker_database(admin_dsn: str, worker_db: str) -> None:
 
 _xdist_admin_dsn: str | None = None
 _xdist_worker_db: str | None = None
+_xdist_template_db: str | None = None
 
 _xdist_worker_id = os.environ.get("PYTEST_XDIST_WORKER")
 if _xdist_worker_id:
@@ -365,10 +494,50 @@ if _xdist_worker_id:
     # role "..." does not exist`. The try/except below adds only an
     # actionable next step on top of that already-clean wrapping.
     try:
-        _xdist_admin_dsn, _xdist_base_db = _xdist_split_admin_dsn(os.environ["TEST_DATABASE_URL"])
+        # Freeze the PRISTINE DSN under a name this file never mutates again,
+        # SCOPED TO THIS PROCESS'S OWN PID. `TEST_DATABASE_URL` itself gets
+        # overwritten with a worker-specific DSN a few lines below — deriving
+        # `base_db` from that same variable is exactly the bug this block
+        # used to carry (see the SCAR comment above this module's template
+        # helpers): any re-derivation after the overwrite would silently pick
+        # up this worker's OWN database name instead of the true base.
+        #
+        # The PID guard matters as much as the freeze itself: a naive
+        # `os.environ.setdefault("_XDIST_PRISTINE_...", ...)` protects a
+        # SECOND EXECUTION IN THE SAME PROCESS (an unusual invocation shape
+        # re-importing this file under a second qualified name), but it also
+        # LEAKS INTO ANY CHILD SUBPROCESS that inherits a copy of this
+        # process's full environ — `backend/tests/db/test_xdist_worker_
+        # isolation.py`'s own nested `pytest -n 2` guilt test does exactly
+        # that (`env = dict(os.environ)`), and a bare setdefault there
+        # silently kept reusing the OUTER worker's pristine value instead of
+        # the DSN the nested test deliberately passed, caught empirically
+        # 2026-08-25 while proving this fix (the nested run's own worker
+        # names stopped matching the test's own regex). Storing `f"{pid}:
+        # {dsn}"` and only trusting it when `pid == os.getpid()` keeps the
+        # same-process idempotency without leaking across a fork/exec or
+        # `subprocess.Popen(env=...)` boundary: a new process has a new pid,
+        # so it always re-derives from its OWN current TEST_DATABASE_URL.
+        _xdist_pristine_marker = os.environ.get("_XDIST_PRISTINE_TEST_DATABASE_URL", "")
+        _xdist_marker_pid, _, _xdist_marker_dsn = _xdist_pristine_marker.partition(":")
+        if _xdist_marker_pid == str(os.getpid()) and _xdist_marker_dsn:
+            _xdist_pristine_dsn = _xdist_marker_dsn
+        else:
+            _xdist_pristine_dsn = os.environ["TEST_DATABASE_URL"]
+            os.environ["_XDIST_PRISTINE_TEST_DATABASE_URL"] = (
+                f"{os.getpid()}:{_xdist_pristine_dsn}"
+            )
+
+        _xdist_admin_dsn, _xdist_base_db = _xdist_split_admin_dsn(_xdist_pristine_dsn)
+        _xdist_template_db = _xdist_template_db_name(_xdist_base_db)
         _xdist_worker_db = _xdist_worker_db_name(_xdist_base_db, _xdist_worker_id)
 
-        asyncio.run(_xdist_clone_worker_database(_xdist_admin_dsn, _xdist_base_db, _xdist_worker_db))
+        asyncio.run(
+            _xdist_ensure_template_database(_xdist_admin_dsn, _xdist_base_db, _xdist_template_db)
+        )
+        asyncio.run(
+            _xdist_clone_worker_database(_xdist_admin_dsn, _xdist_template_db, _xdist_worker_db)
+        )
     except Exception as exc:
         raise RuntimeError(
             f"per-xdist-worker Postgres isolation failed for worker {_xdist_worker_id!r}: "
@@ -377,7 +546,7 @@ if _xdist_worker_id:
             "serial pass."
         ) from exc
 
-    _xdist_worker_dsn = _xdist_swap_db(os.environ["TEST_DATABASE_URL"], _xdist_worker_db)
+    _xdist_worker_dsn = _xdist_swap_db(_xdist_pristine_dsn, _xdist_worker_db)
     os.environ["TEST_DATABASE_URL"] = _xdist_worker_dsn
     os.environ["INTAKE_TEST_DSN"] = _xdist_worker_dsn
     # Some steps (CI's "Run unit tests") export DATABASE_URL identically to
@@ -399,4 +568,9 @@ def pytest_configure(config: pytest.Config) -> None:
         return  # serial / non-xdist run — current behaviour, unchanged.
     admin_dsn = _xdist_admin_dsn
     worker_db = _xdist_worker_db
+    template_db = _xdist_template_db
     config.add_cleanup(lambda: asyncio.run(_xdist_drop_worker_database(admin_dsn, worker_db)))
+    # Every worker registers this — see `_xdist_drop_template_database`'s
+    # docstring for why dropping it (not leaving it around) is the correct
+    # behaviour, and why it is safe for N workers to all attempt it.
+    config.add_cleanup(lambda: asyncio.run(_xdist_drop_template_database(admin_dsn, template_db)))

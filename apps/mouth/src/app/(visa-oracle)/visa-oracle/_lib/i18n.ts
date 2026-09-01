@@ -46,6 +46,69 @@ const en = {
   "q.current_status_code.opt.other": "Another code — needs human review",
   "why.current_status_code":
     "The engine receives the printed status code unchanged; the interface never guesses it from the permit name.",
+  "q.holds_stay_permit":
+    "Do you currently hold a limited or permanent stay permit (KITAS / KITAP)?",
+  "why.holds_stay_permit":
+    "The E-code catalogue only applies to KITAS/KITAP holders; everyone else answers the shorter code list below.",
+  "q.stay_permit_code": "Which code is printed on your permit?",
+  "q.stay_permit_code.hint":
+    "Enter the exact code from your card. Use Not sure rather than guessing.",
+  "q.stay_permit_code.opt.E23": "E23 — Working Visa",
+  "q.stay_permit_code.opt.E23U":
+    "E23U — Working Visa — Foreign Diplomat House Assistant",
+  "q.stay_permit_code.opt.E23V":
+    "E23V — Working Visa — Trade and Economic Office",
+  "q.stay_permit_code.opt.E28A": "E28A — Investor Visa",
+  "q.stay_permit_code.opt.E28B":
+    "E28B — Investor Golden Visa — Company Establishment",
+  "q.stay_permit_code.opt.E28C": "E28C — Investor Golden Visa — Capital Market",
+  "q.stay_permit_code.opt.E28D":
+    "E28D — Investor Golden Visa — Branch or Subsidiary",
+  "q.stay_permit_code.opt.E28F":
+    "E28F — Investor Golden Visa — New Capital (IKN) Subsidiary",
+  "q.stay_permit_code.opt.E30": "E30 — Education Visa",
+  "q.stay_permit_code.opt.E30A": "E30A — Primary/Secondary Education Visa",
+  "q.stay_permit_code.opt.E30B": "E30B — Higher Education Visa",
+  "q.stay_permit_code.opt.E30E": "E30E — SEZ Education Visa",
+  "q.stay_permit_code.opt.E30F": "E30F — Student Exchange Visa",
+  "q.stay_permit_code.opt.E31A":
+    "E31A — Family Visa — Spouse of Indonesian Citizen",
+  "q.stay_permit_code.opt.E31B":
+    "E31B — Family Visa — Spouse of ITAS/ITAP Holder",
+  "q.stay_permit_code.opt.E31C":
+    "E31C — Family Visa — Child of Legal Mixed Marriage",
+  "q.stay_permit_code.opt.E31D":
+    "E31D — Family Visa — Stepchild of Foreigner in Legal Mixed Marriage",
+  "q.stay_permit_code.opt.E31E":
+    "E31E — Family Visa — Child of ITAS/ITAP Holder",
+  "q.stay_permit_code.opt.E31F":
+    "E31F — Family Visa — Child of Indonesian Citizen Parent",
+  "q.stay_permit_code.opt.E31G":
+    "E31G — Family Visa — Parent of Indonesian Citizen Child",
+  "q.stay_permit_code.opt.E31H":
+    "E31H — Family Visa — Parent of Child ITAS/ITAP Holder",
+  "q.stay_permit_code.opt.E31J":
+    "E31J — Family Visa — Child Joining Sibling ITAS/ITAP Holder",
+  "q.stay_permit_code.opt.E33": "E33 — Second Home Visa",
+  "q.stay_permit_code.opt.E33A":
+    "E33A — Second Home Visa — Special-Expertise Government Invitation",
+  "q.stay_permit_code.opt.E33B":
+    "E33B — Second Home Golden Visa — Special-Expertise Collaboration",
+  "q.stay_permit_code.opt.E33C":
+    "E33C — Second Home Golden Visa — World-Figure Government Invitation",
+  "q.stay_permit_code.opt.E33E":
+    "E33E — Second Home Golden Visa — Elderly 5-Year",
+  "q.stay_permit_code.opt.E33F": "E33F — Second Home Visa — Elderly 1-Year",
+  "q.stay_permit_code.opt.E33G": "E33G — Second Home Visa — Remote Worker",
+  "why.stay_permit_code":
+    "The engine receives the printed code unchanged, the same as the code list above — the interface never guesses it from the permit name.",
+
+  "q.renewal_paid": "Have you paid for the renewal of this stay permit?",
+  "q.renewal_paid.hint":
+    "Answer about payment, not paperwork — this is separate from whether the renewal has been submitted.",
+  "why.renewal_paid":
+    "A renewal counts as filed once payment has been made, not once documents are submitted — a renewal-in-process holder stays on the permit they extended, the same as anyone else with an active permit.",
+
   "q.overstay_days": "How many overstay days are active right now?",
   "q.overstay_days.hint":
     "Enter 0 if there is no active overstay. Do not include past overstay history here.",
@@ -261,6 +324,7 @@ const en = {
   "q.family_relation.opt.PARENT": "Parent",
   "q.family_relation.opt.SIBLING": "Sibling",
   "q.family_relation.opt.DEPENDENT": "Other dependent",
+  "q.family_relation.opt.STEPCHILD": "Stepchild",
   "q.family_relation.opt.OTHER": "Another relationship",
   "why.family_relation":
     "The selected closed-enum relationship is sent unchanged to the engine.",
@@ -287,11 +351,45 @@ const en = {
   "q.family_sponsor_status_code.label": "Sponsor permit code",
   "why.family_sponsor_status_code":
     "The code is sent exactly as typed. The interface does not translate a description into a permit code.",
+  "q.family_sponsor_permit_basis":
+    "What is the basis of your sponsor's own stay permit?",
+  "q.family_sponsor_permit_basis.hint":
+    "Choose the closest match to what your sponsor's Indonesian stay permit is for.",
+  "q.family_sponsor_permit_basis.opt.EXPERT": "Expert",
+  "q.family_sponsor_permit_basis.opt.WORKER": "Sponsored worker",
+  "q.family_sponsor_permit_basis.opt.MARITIME_CREW": "Maritime crew",
+  "q.family_sponsor_permit_basis.opt.CLERGY": "Religious worker (clergy)",
+  "q.family_sponsor_permit_basis.opt.FOREIGN_INVESTMENT": "Foreign investor",
+  "q.family_sponsor_permit_basis.opt.SCIENTIFIC_RESEARCH":
+    "Scientific researcher",
+  "q.family_sponsor_permit_basis.opt.EDUCATION": "Student",
+  "q.family_sponsor_permit_basis.opt.FAMILY_REUNIFICATION":
+    "Family reunification",
+  "q.family_sponsor_permit_basis.opt.REPATRIATION":
+    "Repatriation (former Indonesian citizen)",
+  "q.family_sponsor_permit_basis.opt.SECOND_HOME": "Second Home visa holder",
+  "q.family_sponsor_permit_basis.opt.MEDICAL_TREATMENT": "Medical treatment",
+  "q.family_sponsor_permit_basis.opt.WORKING_HOLIDAY": "Working holiday",
+  "q.family_sponsor_permit_basis.opt.OTHER": "Another basis",
+  "why.family_sponsor_permit_basis":
+    "Some permit bases block a family-reunification permit from being layered on top of them. We can't verify your answer automatically, so our team reviews it directly rather than the system deciding on its own.",
   "q.family_marriage_registered": "Is the marriage officially registered?",
   "q.family_marriage_registered.hint":
     "If your sponsor is your parent, this asks about your parents' marriage. Choose Not applicable if the family relationship involves no marriage.",
   "why.family_marriage_registered":
     "The engine receives yes, no, or UNKNOWN; no registration status is inferred.",
+  "q.family_stepchild_marriage_certificate_confirmed":
+    "Can you provide the marriage certificate of your Indonesian parent and their foreign spouse?",
+  "q.family_stepchild_marriage_certificate_confirmed.hint":
+    "This is the marriage certificate for the mixed Indonesian–foreign marriage the stepchild relationship comes from.",
+  "why.family_stepchild_marriage_certificate_confirmed":
+    "The engine checks this evidence fact directly; it is not inferred from the marriage-registered answer above.",
+  "q.family_stepchild_birth_certificate_confirmed":
+    "Can you provide the stepchild's birth certificate?",
+  "q.family_stepchild_birth_certificate_confirmed.hint":
+    "The birth certificate should show the biological parent who is part of the mixed marriage.",
+  "why.family_stepchild_birth_certificate_confirmed":
+    "Birth-certificate evidence is sent as its own boolean decision fact.",
   "q.family_sponsor_confirmed":
     "Has the family sponsor confirmed they will support the process?",
   "q.family_sponsor_confirmed.hint":
@@ -467,6 +565,8 @@ const en = {
   "question.invalid_country_codes":
     "Choose a country from the verified list, or select Not listed.",
   "question.country_picker.placeholder": "Choose a country",
+  "question.country_picker.search": "Search countries",
+  "question.country_picker.search_placeholder": "Type a country name…",
   "question.country_picker.not_listed": "Other / not listed",
   "question.country_picker.add": "Add country",
   "question.country_picker.selected": "Selected countries",
@@ -483,14 +583,17 @@ const en = {
   "tree.framing": "Start",
   "tree.in_indonesia": "Where you are",
   "tree.permit_expiry": "Permit window",
+  "tree.holds_stay_permit": "Stay permit",
   "tree.current_status_code": "Current status",
+  "tree.stay_permit_code": "Permit code",
+  "tree.renewal_paid": "Renewal payment",
   "tree.overstay_days": "Active overstay",
   "tree.wants_onshore_conversion": "Conversion intent",
   "tree.application_channel": "Application channel",
   "tree.nationalities": "Passports",
   "tree.birth_date": "Age check",
   "tree.category": "Category",
-  "tree.trip_scope": "Purpose overlap",
+  "tree.trip_scope": "Trip purpose",
   "tree.entry_pattern": "Entry pattern",
   "tree.sponsor_category": "Sponsor category",
   "tree.business_activity": "Business activity",
@@ -512,7 +615,11 @@ const en = {
   "tree.marital_status": "Marital status",
   "tree.family_sponsor_nationalities": "Sponsor passports",
   "tree.family_sponsor_status_code": "Sponsor status",
+  "tree.family_sponsor_permit_basis": "Sponsor permit basis",
   "tree.family_marriage_registered": "Marriage record",
+  "tree.family_stepchild_marriage_certificate_confirmed":
+    "Parents' marriage certificate",
+  "tree.family_stepchild_birth_certificate_confirmed": "Birth certificate",
   "tree.family_sponsor_confirmed": "Family sponsor",
   "tree.retirement_basis": "Long-stay basis",
   "tree.secondhome_deposit_usd": "Bank deposit",
@@ -536,8 +643,9 @@ const en = {
   "tree.sr_status.pending": "not yet reached",
   "tree.sr_status.pruned": "different interview branch",
 
-  "paths.counter.label": "{{count}} interview branches",
-  "paths.counter.aria": "{{count}} interview branches remaining",
+  "paths.counter.label": "{{count}} interview {{plural:branch|branches}}",
+  "paths.counter.aria":
+    "{{count}} interview {{plural:branch|branches}} remaining",
 
   "confirmation.title": "Here’s what you told us",
   "confirmation.your_answers": "Your answers",
@@ -548,7 +656,8 @@ const en = {
   "confirmation.group.review": "Review signals",
   "confirmation.assumptions_title": "Assumptions we made",
   "confirmation.edit": "Edit",
-  "confirmation.paths_remaining": "{{count}} interview branches remain",
+  "confirmation.paths_remaining":
+    "{{count}} interview {{plural:branch|branches}} remaining",
   "confirmation.price_preview":
     "If a supported Bali Zero service has verified pricing, it will appear as one all-inclusive amount.",
   "confirmation.cta": "See my options",
@@ -754,6 +863,66 @@ const id: Record<Keys, string> = {
   "q.current_status_code.opt.other": "Kode lain — perlu tinjauan manusia",
   "why.current_status_code":
     "Mesin menerima kode status yang tercetak tanpa perubahan; antarmuka tidak pernah menebaknya dari nama izin.",
+  "q.holds_stay_permit":
+    "Apakah Anda saat ini memegang izin tinggal terbatas atau tetap (KITAS / KITAP)?",
+  "why.holds_stay_permit":
+    "Katalog kode-E hanya berlaku untuk pemegang KITAS/KITAP; yang lain menjawab daftar kode yang lebih pendek di bawah.",
+  "q.stay_permit_code": "Kode apa yang tercantum pada izin Anda?",
+  "q.stay_permit_code.hint":
+    "Masukkan kode persis dari kartu Anda. Pilih Tidak yakin daripada menebak.",
+  "q.stay_permit_code.opt.E23": "E23 — Visa Kerja",
+  "q.stay_permit_code.opt.E23U":
+    "E23U — Visa Kerja Asisten Rumah Tangga Diplomat Asing",
+  "q.stay_permit_code.opt.E23V": "E23V — Visa Kerja Kantor Dagang dan Ekonomi",
+  "q.stay_permit_code.opt.E28A": "E28A — Visa Investor",
+  "q.stay_permit_code.opt.E28B": "E28B — Visa Investor Pendirian Perusahaan",
+  "q.stay_permit_code.opt.E28C":
+    "E28C — Visa Investor Tanpa Mendirikan Perusahaan",
+  "q.stay_permit_code.opt.E28D":
+    "E28D — Visa Investor Pendirian Kantor Cabang atau Anak Perusahaan",
+  "q.stay_permit_code.opt.E28F":
+    "E28F — Visa Investor Anak Perusahaan Ibukota Nusantara",
+  "q.stay_permit_code.opt.E30": "E30 — Visa Pendidikan",
+  "q.stay_permit_code.opt.E30A": "E30A — Visa Pendidikan Dasar dan Menengah",
+  "q.stay_permit_code.opt.E30B": "E30B — Visa Pendidikan Tinggi",
+  "q.stay_permit_code.opt.E30E":
+    "E30E — Visa Pendidikan Kawasan Ekonomi Khusus",
+  "q.stay_permit_code.opt.E30F": "E30F — Visa Pertukaran Pelajar",
+  "q.stay_permit_code.opt.E31A": "E31A — Visa Keluarga Suami/Istri WNI",
+  "q.stay_permit_code.opt.E31B":
+    "E31B — Visa Keluarga Suami/Istri Pemegang ITAS/ITAP",
+  "q.stay_permit_code.opt.E31C":
+    "E31C — Visa Keluarga Anak Hasil Perkawinan Sah WNA-WNI",
+  "q.stay_permit_code.opt.E31D":
+    "E31D — Visa Keluarga Anak Bawaan WNA Perkawinan Sah WNA-WNI",
+  "q.stay_permit_code.opt.E31E": "E31E — Visa Keluarga Anak Pemegang ITAS/ITAP",
+  "q.stay_permit_code.opt.E31F":
+    "E31F — Visa Keluarga Anak dengan Orang Tua WNI",
+  "q.stay_permit_code.opt.E31G": "E31G — Visa Keluarga Orang Tua dari Anak WNI",
+  "q.stay_permit_code.opt.E31H":
+    "E31H — Visa Keluarga Orang Tua dari Anak Pemegang ITAS/ITAP",
+  "q.stay_permit_code.opt.E31J":
+    "E31J — Visa Keluarga Anak yang Bergabung dengan Saudara Kandung Pemegang ITAS/ITAP",
+  "q.stay_permit_code.opt.E33": "E33 — Visa Rumah Kedua",
+  "q.stay_permit_code.opt.E33A":
+    "E33A — Visa Rumah Kedua Tenaga Ahli Undangan Pemerintah",
+  "q.stay_permit_code.opt.E33B":
+    "E33B — Visa Rumah Kedua Kolaborasi Keahlian Khusus",
+  "q.stay_permit_code.opt.E33C":
+    "E33C — Visa Rumah Kedua Tokoh Dunia Undangan Pemerintah",
+  "q.stay_permit_code.opt.E33E":
+    "E33E — Visa Rumah Kedua Lansia untuk 5 Tahun Golden Visa",
+  "q.stay_permit_code.opt.E33F": "E33F — Visa Rumah Kedua Lansia untuk 1 Tahun",
+  "q.stay_permit_code.opt.E33G": "E33G — Visa Rumah Kedua Pekerja Jarak Jauh",
+  "why.stay_permit_code":
+    "Mesin menerima kode yang tercetak tanpa perubahan, sama seperti daftar kode di atas — antarmuka tidak pernah menebaknya dari nama izin.",
+
+  "q.renewal_paid": "Apakah Anda sudah membayar perpanjangan izin tinggal ini?",
+  "q.renewal_paid.hint":
+    "Jawab soal pembayaran, bukan berkas — ini terpisah dari apakah perpanjangan sudah diserahkan.",
+  "why.renewal_paid":
+    "Perpanjangan dianggap telah diserahkan begitu pembayaran dilakukan, bukan begitu dokumen diserahkan — pemegang izin yang sedang dalam proses perpanjangan tetap berada pada izin yang mereka perpanjang, sama seperti pemegang izin aktif lainnya.",
+
   "q.overstay_days": "Berapa hari overstay yang aktif saat ini?",
   "q.overstay_days.hint":
     "Masukkan 0 jika tidak ada overstay aktif. Jangan masukkan riwayat overstay lama di sini.",
@@ -976,6 +1145,7 @@ const id: Record<Keys, string> = {
   "q.family_relation.opt.PARENT": "Orang tua",
   "q.family_relation.opt.SIBLING": "Saudara kandung",
   "q.family_relation.opt.DEPENDENT": "Tanggungan lain",
+  "q.family_relation.opt.STEPCHILD": "Anak tiri",
   "q.family_relation.opt.OTHER": "Hubungan lain",
   "why.family_relation":
     "Hubungan enum tertutup yang dipilih dikirim tanpa perubahan ke mesin.",
@@ -1002,11 +1172,44 @@ const id: Record<Keys, string> = {
   "q.family_sponsor_status_code.label": "Kode izin sponsor",
   "why.family_sponsor_status_code":
     "Kode dikirim persis seperti yang diketik. Antarmuka tidak menerjemahkan deskripsi menjadi kode izin.",
+  "q.family_sponsor_permit_basis":
+    "Apa dasar izin tinggal sponsor Anda sendiri?",
+  "q.family_sponsor_permit_basis.hint":
+    "Pilih yang paling sesuai dengan tujuan izin tinggal sponsor Anda di Indonesia.",
+  "q.family_sponsor_permit_basis.opt.EXPERT": "Tenaga ahli",
+  "q.family_sponsor_permit_basis.opt.WORKER": "Pekerja (disponsori)",
+  "q.family_sponsor_permit_basis.opt.MARITIME_CREW": "Awak kapal",
+  "q.family_sponsor_permit_basis.opt.CLERGY": "Rohaniwan",
+  "q.family_sponsor_permit_basis.opt.FOREIGN_INVESTMENT": "Investor asing",
+  "q.family_sponsor_permit_basis.opt.SCIENTIFIC_RESEARCH": "Peneliti",
+  "q.family_sponsor_permit_basis.opt.EDUCATION": "Pelajar",
+  "q.family_sponsor_permit_basis.opt.FAMILY_REUNIFICATION":
+    "Penyatuan keluarga",
+  "q.family_sponsor_permit_basis.opt.REPATRIATION":
+    "Repatriasi (eks warga negara Indonesia)",
+  "q.family_sponsor_permit_basis.opt.SECOND_HOME": "Pemegang visa Second Home",
+  "q.family_sponsor_permit_basis.opt.MEDICAL_TREATMENT": "Pengobatan medis",
+  "q.family_sponsor_permit_basis.opt.WORKING_HOLIDAY": "Working holiday",
+  "q.family_sponsor_permit_basis.opt.OTHER": "Dasar lain",
+  "why.family_sponsor_permit_basis":
+    "Beberapa dasar izin dapat menghalangi penerbitan izin penyatuan keluarga di atasnya. Kami tidak dapat memverifikasi jawaban Anda secara otomatis, sehingga tim kami yang meninjau langsung, bukan sistem yang memutuskan sendiri.",
   "q.family_marriage_registered": "Apakah pernikahan tercatat secara resmi?",
   "q.family_marriage_registered.hint":
     "Jika sponsor Anda adalah orang tua, pertanyaan ini mengenai pernikahan orang tua Anda. Pilih Tidak berlaku jika hubungan keluarga tidak melibatkan pernikahan.",
   "why.family_marriage_registered":
     "Mesin menerima ya, tidak, atau UNKNOWN; status pencatatan tidak disimpulkan.",
+  "q.family_stepchild_marriage_certificate_confirmed":
+    "Dapatkah Anda memberikan akta nikah orang tua WNI Anda dan pasangan WNA-nya?",
+  "q.family_stepchild_marriage_certificate_confirmed.hint":
+    "Ini adalah akta nikah untuk pernikahan campuran WNI-WNA yang menjadi dasar hubungan anak tiri.",
+  "why.family_stepchild_marriage_certificate_confirmed":
+    "Mesin memeriksa fakta bukti ini secara langsung; tidak disimpulkan dari jawaban pernikahan tercatat di atas.",
+  "q.family_stepchild_birth_certificate_confirmed":
+    "Dapatkah Anda memberikan akta lahir anak tiri?",
+  "q.family_stepchild_birth_certificate_confirmed.hint":
+    "Akta lahir sebaiknya menunjukkan orang tua kandung yang merupakan bagian dari pernikahan campuran.",
+  "why.family_stepchild_birth_certificate_confirmed":
+    "Bukti akta lahir dikirim sebagai fakta keputusan boolean tersendiri.",
   "q.family_sponsor_confirmed":
     "Apakah sponsor keluarga sudah mengonfirmasi dukungan proses?",
   "q.family_sponsor_confirmed.hint":
@@ -1176,6 +1379,8 @@ const id: Record<Keys, string> = {
   "question.invalid_country_codes":
     "Pilih negara dari daftar terverifikasi, atau pilih Tidak tercantum.",
   "question.country_picker.placeholder": "Pilih negara",
+  "question.country_picker.search": "Cari negara",
+  "question.country_picker.search_placeholder": "Ketik nama negara…",
   "question.country_picker.not_listed": "Lainnya / tidak tercantum",
   "question.country_picker.add": "Tambah negara",
   "question.country_picker.selected": "Negara terpilih",
@@ -1192,14 +1397,17 @@ const id: Record<Keys, string> = {
   "tree.framing": "Mulai",
   "tree.in_indonesia": "Posisi Anda",
   "tree.permit_expiry": "Jendela izin tinggal",
+  "tree.holds_stay_permit": "Izin tinggal",
   "tree.current_status_code": "Status saat ini",
+  "tree.stay_permit_code": "Kode izin",
+  "tree.renewal_paid": "Pembayaran perpanjangan",
   "tree.overstay_days": "Overstay aktif",
   "tree.wants_onshore_conversion": "Niat konversi",
   "tree.application_channel": "Kanal permohonan",
   "tree.nationalities": "Paspor",
   "tree.birth_date": "Pemeriksaan usia",
   "tree.category": "Kategori",
-  "tree.trip_scope": "Tujuan tumpang tindih",
+  "tree.trip_scope": "Tujuan perjalanan",
   "tree.entry_pattern": "Pola masuk",
   "tree.sponsor_category": "Kategori sponsor",
   "tree.business_activity": "Kegiatan bisnis",
@@ -1221,7 +1429,11 @@ const id: Record<Keys, string> = {
   "tree.marital_status": "Status perkawinan",
   "tree.family_sponsor_nationalities": "Paspor sponsor",
   "tree.family_sponsor_status_code": "Status sponsor",
+  "tree.family_sponsor_permit_basis": "Dasar izin sponsor",
   "tree.family_marriage_registered": "Catatan pernikahan",
+  "tree.family_stepchild_marriage_certificate_confirmed":
+    "Akta nikah orang tua",
+  "tree.family_stepchild_birth_certificate_confirmed": "Akta lahir",
   "tree.family_sponsor_confirmed": "Sponsor keluarga",
   "tree.retirement_basis": "Dasar tinggal panjang",
   "tree.secondhome_deposit_usd": "Deposito bank",
@@ -1437,8 +1649,19 @@ export const dict = { en, id };
  * hardcoding the EN ordering everywhere. */
 export const BODY_FIRST: Record<Language, boolean> = { en: false, id: true };
 
-/** Simple `{{var}}` interpolation — no ICU pluralization needed at this
- * scale. Missing keys return the raw key (visibly broken, never silent). */
+/** Matches `{{plural:singular|plural}}` markers — see `translate()` below.
+ * Kept as a plain literal-string marker (not a `{{count}}`-style var) so an
+ * English string can carry the ONE irregular plural it needs ("branch" →
+ * "branches") without a second interpolation pass at every call site. */
+const PLURAL_MARKER_RE = /\{\{plural:([^|{}]*)\|([^{}]*)\}\}/g;
+
+/** Simple `{{var}}` interpolation, plus one narrow pluralization escape
+ * hatch: `{{plural:singular|plural}}` resolves to `singular` when
+ * `vars.count === 1`, else `plural` — still not full ICU pluralization
+ * (this file does not need that at its current scale), just enough to stop
+ * "1 interview branches" reading as a typo. Bahasa Indonesia does not
+ * inflect nouns for number, so ID strings simply never use the marker.
+ * Missing keys return the raw key (visibly broken, never silent). */
 export function translate(
   language: Language,
   key: Keys,
@@ -1449,6 +1672,14 @@ export function translate(
   if (vars) {
     for (const [name, v] of Object.entries(vars)) {
       value = value.replaceAll(`{{${name}}}`, String(v));
+    }
+    if (typeof vars.count === "number") {
+      const count = vars.count;
+      value = value.replace(
+        PLURAL_MARKER_RE,
+        (_match, singular: string, plural: string) =>
+          count === 1 ? singular : plural,
+      );
     }
   }
   return value;
