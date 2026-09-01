@@ -32,8 +32,8 @@ lanes:
     role: review
     seat: >-
       claude-sonnet-5 subagent (spalla-review), grading a diff it did not author, told to build a
-      control tree and RUN the new tests against origin/main's wrapper rather than read their
-      docstrings.
+      control tree and RUN the new tests rather than read their docstrings. Returned BLOCK with
+      two blockers, both reproduced independently before being accepted, both CURED in this PR.
 
 seat_diversity: satisfied
 seat_diversity_note: >-
@@ -45,8 +45,8 @@ seat_diversity_note: >-
   carrying a 403 weekly-limit error in its output, which is a non-judgement, not a clean one.
 
 diff:
-  files: 21
-  net_lines: 425
+  files: 25
+  net_lines: 645
   measured_at: >-
     counted with `git diff --numstat <merge-base>...HEAD` (three-dot: two-dot on this branch
     accuses it of deleting main's later additions, W102) immediately before this commit. Above the
@@ -92,6 +92,29 @@ dissent:
       here would change behaviour on five slots this PR does not otherwise touch. The
       disagreement with the refuter is about SCOPE, not about the defect; carried in
       residual_risks.
+  - seat: claude-sonnet-5 (independent grader)
+    status: CONFIRMED
+    objection: >-
+      "test_claude_oauth_slot6_coverage.py is named by ZERO pull_request-triggered workflows, so
+      the 259-line proof that all 16 consumers reach slot 6 has no standing CI enforcement."
+      Reproduced: `grep -rln` across .github/workflows/ returned NOTHING — not even the sweep,
+      which would not have counted anyway (schedule-triggered, continue-on-error). The PR that
+      exists to close an enforcement gap had reproduced it for its own artifact. CURED.
+  - seat: claude-sonnet-5 (independent grader)
+    status: CONFIRMED
+    objection: >-
+      "test_vision_circuit_breaker.py breaks when CLAUDE_CODE_OAUTH_TOKEN_6 is set, which it is on
+      every fleet machine." Reproduced exactly: 2 failed / 5 passed with the slot present, 7
+      passed after the fix. Green on a clean runner, red on the machines that actually run it.
+      CURED.
+  - seat: claude-opus-5 (session, own hypothesis)
+    status: RETRACTED
+    objection: >-
+      While checking the grader's second finding the session suspected the SAME ambient leak in
+      test_wr3_dispatch_v2_oauth_fleet.py, on the strength of three `range(1, 6)` occurrences.
+      Not realised: run WITH and WITHOUT the slot in the environment, 8 passed both ways. The grep
+      had matched fixture ranges, not the isolation helper — the instrument answered a
+      neighbouring question, and the positive control is what caught it.
   - seat: claude-opus-5 (session, self-refutation)
     status: CONFIRMED
     objection: >-
@@ -169,4 +192,18 @@ receipts:
       _fake_fleet was deliberately NOT taught to set it by default so they keep doing so.
     exit: 0
     ts: 2026-09-01T12:00Z
+    seat: session (Pro)
+  - claim: >-
+      THE TWO BLOCKERS WERE CURED AND EACH CURE WAS MEASURED — not declared
+    cmd: >-
+      CLAUDE_CODE_OAUTH_TOKEN_6=<dummy> pytest test_vision_circuit_breaker.py ; pytest
+      test_immune_enforcement_trigger_symmetry.py ; actionlint immune-enforcement.yml on
+      origin/main vs this branch
+    result: >-
+      vision suite 2-failed/5-passed -> 7 passed with the slot present; trigger symmetry 12 passed
+      (the check whose whole job is to catch a looped test that is not also a trigger path);
+      actionlint reports the SAME 4 pre-existing shellcheck warnings before and after, so wiring
+      the test into a required workflow introduced no lint regression.
+    exit: 0
+    ts: 2026-09-01T12:20Z
     seat: session (Pro)
