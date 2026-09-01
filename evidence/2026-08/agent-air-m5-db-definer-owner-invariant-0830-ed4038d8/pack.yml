@@ -1,0 +1,485 @@
+# brief_ref is the LITERAL 'evidence/brief.yml' even though this pack lives in a per-PR
+# directory: harness-floor.yml stages both files into a synthetic tree under those fixed
+# names before validating, so any other value fails to resolve in CI.
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref:
+  "agent/air-m5/db/definer-owner-invariant-0830 — codify the five ownership transfers migrations 281
+  and 286 announced and never performed, and replace the hand-maintained list that let migration 285
+  through with a class-level invariant. Companion to PR #5302 (migration 301 — it was 299 when this pack was written and yielded to 301 under the W40 convention), which cures the one
+  transfer migration 285 forgot."
+# R8 (ground_truth) seat_override. R8 fires on the PATTERN `*/visa_engine/*`, and
+# the only file in this diff that matches it is
+# apps/backend-rag/backend/scripts/visa_engine/operational_preflight.py. Its diff
+# here is a Postgres SECURITY DEFINER ownership census -- pg_catalog queries,
+# LEDGER_OWNER, prosecdef -- and asserts no regulatory fact: no visa rule, no fee,
+# no eligibility condition, no KBLI code. There is therefore no NotebookLM query
+# for a ground_truth lane to hash, and fabricating one to go green would be
+# inventing evidence, which is strictly worse than the red. Verified by reading
+# the diff, not inferred from the path: the rule cannot see that a file living
+# under visa_engine/ makes no ground-truth claim (guard-over-match, superscar
+# family #3 -- recorded as a finding against the RULE).
+seat_override: "the only ground-truth-path hit is scripts/visa_engine/operational_preflight.py, whose diff here is a Postgres SECURITY DEFINER ownership census asserting no regulatory fact -- no visa rule, fee, eligibility condition or KBLI code -- so there is no NotebookLM query for a ground_truth lane to hash"
+
+lanes:
+  - lane: definer-owner-invariant-build
+    role: build
+    seat:
+      claude-opus-5 (this session — verified the production census independently, authored migration
+      300, the class-level preflight check, both test surfaces and this pack)
+  - lane: definer-owner-invariant-refute
+    role: review
+    seat:
+      codex-gpt-5.6-sol at xhigh effort (OpenAI, ChatGPT Pro flat subscription) — given the full diff
+      plus the production measurements and told to break the migration, the census SQL and the tests.
+      Returned REJECT with six findings; four fixed, one answered with a measurement, one handed to
+      the gate owner. See dissent.
+  - lane: definer-owner-invariant-refute-2
+    role: review
+    seat:
+      kimi-code/k3 (Moonshot, flat subscription) — a THIRD family, run on the already-hardened diff
+      and told not to re-report what codex had found. Returned REJECT with three findings the first
+      round had not reached, and confirmed the ROLLBACK refusal was sound.
+  - lane: definer-owner-invariant-gate
+    role: review
+    seat:
+      the mandating session (claude-opus-5), which owns the Gear-3 gate and the merge and did not
+      author this diff. This lane does not arm auto-merge.
+seat_diversity: satisfied
+seat_diversity_note:
+  "Build lane Anthropic, adversarial lanes OpenAI and Moonshot — three families, and no grader is the
+  author. It earned its keep rather than being ceremony: it produced a working search_path evasion
+  that made both the migration and the check answer clean with the ownership wrong, and it caught a
+  rollback section that would have told the migration framework it had reversed something it had not."
+diff:
+  net_lines:
+    "10 files (git diff --numstat over the merge-base). The insertion and deletion
+    counts are deliberately NOT narrated here. CI recomputes them on every run and fails on
+    disagreement, so a copy in this field is not evidence — it is a tripwire that re-arms every
+    time main moves. It was wrong four times in about an hour (+2125, +2148, +2175, +2177 against
+    a true +2176) and the last two of those moved because main moved, not because anything was
+    committed here. The file count is kept because it is stable across a merge from main."
+  behaviour_change:
+    "No production behaviour changes. Migration 300 is a no-op against the production primary because
+    the five ALTERs already landed there by hand on 2026-08-30 before this lane opened; it exists so an
+    unattended environment converges instead of coming up with the trap re-armed, and it now RAISES
+    rather than recording a cure that did not happen. The preflight gains one extra read-only
+    `connection.fetch` per run. Zero frontend, zero workflow, zero runtime request path."
+receipts:
+  - claim:
+      "The production census is clean and the invariant is therefore satisfiable as written: every
+      SECURITY DEFINER function in schema public is owned by visa_ledger_owner. Read independently by
+      this lane, not taken from the mandating session's report."
+    cmd: 'env -u FLY_API_TOKEN scripts/pg.sh -A -F''|'' -c "SELECT p.proname,
+      pg_get_function_identity_arguments(p.oid), pg_get_userbyid(p.proowner), p.prosecdef FROM pg_proc
+      p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=''public'' AND p.prosecdef ORDER
+      BY 3,1"'
+    exit: 0
+    ts: "2026-08-30T10:47:00Z"
+    seat: claude-opus-5
+    result:
+      "21 rows, every owner visa_ledger_owner. The five signatures this migration names appear with
+      exactly the identity arguments hardcoded into it, including
+      `set_garuda_voa_check_legal_hold(p_hash character varying, ..., p_review_due_at timestamp with
+      time zone)`."
+  - claim:
+      "There is no legitimate exemption to encode: ZERO of the SECURITY DEFINER functions in public
+      belong to an extension, even though postgis, pgcrypto, pg_trgm, btree_gist and uuid-ossp are all
+      installed into public. This is the measurement the extension risk in the brief rests on."
+    cmd:
+      'env -u FLY_API_TOKEN scripts/pg.sh -A -F''|'' -c "SELECT count(*) FROM pg_proc p JOIN
+      pg_namespace n ON n.oid=p.pronamespace LEFT JOIN pg_depend d ON d.objid=p.oid AND
+      d.deptype=''e'' WHERE n.nspname=''public'' AND p.prosecdef AND d.objid IS NOT NULL"'
+    exit: 0
+    ts: "2026-08-30T11:05:00Z"
+    seat: claude-opus-5
+    result:
+      "0. A companion read shows all 21 definer functions live in `public` and none in the only other
+      non-system schema, `mata_garuda`."
+  - claim:
+      "Migration number 300 does not collide. RE-MEASURED 2026-08-31 — BOTH premises of the original reading had moved, and this is the receipt whose only job is to prove non-collision: origin/main now tops out at 301 — #5302 MERGED at 02:09:56Z, so 301 is no longer an open PR's number, it is on main. The CONCLUSION survives a THIRD re-measurement rather than being assumed: main holds 092-299 and 301, this branch adds 300, `cut -d_ -f1 | sort | uniq -d` over all 179 .sql files is empty, and this PR's own uniqueness guard agrees. Original reading, kept so the drift is visible: origin/main's highest is 298; PR #5302 adds 299; no
+      other open PR touches migrations_v2 above 295."
+    cmd:
+      "git ls-tree --name-only origin/main .../migrations_v2/ | tail, plus `gh pr view <n> --json
+      files` over every open PR"
+    exit: 0
+    ts: "2026-08-30T10:31:00Z"
+    seat: claude-opus-5
+    result:
+      "STALE TWICE, corrected above — first reading said main topped at 298 with #5302 at 299, second said 299 with #5302 at 301, and main now holds 301 itself. The number under test never moved; only the landscape around it did, which is exactly why this receipt is re-run rather than trusted. Original: origin/main tops out at 298. #5302 -> 299. #5072 -> 289 (a number already taken on main by a
+      different file — that lane's problem, not this one's). #5037 -> 293/294/295. 300 is free."
+  - claim:
+      "RED before GREEN, and not a trivial red: with the new check wired in and the fake not yet
+      taught the census query, the existing preflight suite fails."
+    cmd: "PYTHONPATH=. python -m pytest backend/tests/scripts/visa_engine/test_operational_preflight.py"
+    exit: 1
+    ts: "2026-08-30T10:58:00Z"
+    seat: claude-opus-5
+    result:
+      "12 failed, 24 passed — every case that drives collect_preflight_checks died on `AssertionError:
+      unexpected fetch query`, i.e. the new catalog read is really being issued."
+  - claim:
+      "GREEN, both surfaces, after the adversarial round's fixes: the fake-driven verdict cases and the
+      real-Postgres cases for the shipped SQL and the migration."
+    cmd: "PYTHONPATH=. python -m pytest
+      backend/tests/scripts/visa_engine/test_security_definer_owner_invariant.py
+      backend/tests/scripts/visa_engine/test_operational_preflight.py"
+    exit: 0
+    ts: "2026-08-30T11:38:00Z"
+    seat: claude-opus-5
+    result: "50 passed in 1.37s."
+  - claim:
+      "The tests have teeth. EIGHT mutations of the shipped code, each applied alone and reverted, each
+      turning the suite RED — so no case in this diff is trivially true."
+    cmd:
+      "apply one mutation, run the two test files, restore from a copy, `diff -q` the restore; repeated
+      for: ok=True; drop `AND proc.prosecdef`; replace the public-schema filter with `WHERE true`;
+      blind `_security_definer_violations`; unqualify `pg_get_userbyid`; restore CONTINUE-on-absent in
+      migration 300; restore the NOTICE-only rollback; drop the `::text` cast on prokind"
+    exit: 1
+    ts: "2026-08-30T11:33:00Z"
+    seat: claude-opus-5
+    result:
+      "RED every time — 4/21/1/8 failures for the four verdict-and-query mutations and 2/1/1/2 for the
+      four hardening mutations, each naming the case that caught it. Both files byte-identical to their
+      copies afterwards, and 50 passed on the restored tree. The first attempt at this probe printed
+      NOTHING for all four mutations: zsh does not word-split an unquoted variable, so `pytest $T`
+      passed one joined path and pytest never ran. Recorded because a silent probe reads exactly like a
+      passing one."
+  - claim:
+      "The three failures in the visa_engine directory are pre-existing on origin/main and untouched by
+      this diff — baselined by running them on a detached worktree of origin/main, not asserted."
+    cmd:
+      "git worktree add --detach /tmp/nz-main-baseline origin/main && PYTHONPATH=. python -m pytest
+      backend/tests/scripts/visa_engine/test_gold_coverage_eval.py
+      backend/tests/scripts/visa_engine/test_gold_coverage_replay.py"
+    exit: 1
+    ts: "2026-08-30T11:07:00Z"
+    seat: claude-opus-5
+    result:
+      "origin/main: 3 failed, 5 passed — the identical three gold-coverage persona failures. This
+      branch: 3 failed, 168 passed over the whole directory. Worktree removed afterwards."
+  - claim:
+      "No regression in the migration/database suite, which is where a new migration file would show
+      up if any lint or chain test disliked it."
+    cmd: "PYTHONPATH=. python -m pytest backend/tests/db/"
+    exit: 0
+    ts: "2026-08-31T05:20:00Z"
+    seat: claude-opus-5
+    result:
+      "455 passed, 17 skipped (re-measured at this head after the origin/main merge; the pack read 420/16 before it, and main brought the extra cases — no failure moved). Pre-commit's own migration-number and ROLLBACK-marker lints pass.
+      RE-RUN and CORRECTED 2026-08-31: the earlier reading on this line (398 passed, ts 11:40) no
+      longer reproduced. It was taken before #5335 landed, and #5335 added
+      `assert 300 not in on_disk` — a next-free-number tripwire that migration 300 in this diff
+      fails deterministically. So the claim above was FALSE for several hours: the suite was red,
+      and the receipt said it was green. Caught by the Gear-3 gate, which re-ran the command
+      instead of reading the recorded outcome. The tripwire is replaced in this diff by the
+      property it was proxying for — no two migrations share a number — and the figure here is
+      what the command actually printed on re-run."
+  - claim:
+      "The rollback finding is real, read from the source rather than reasoned about: the framework
+      deletes the ledger row and reports success after running whatever the ROLLBACK section contains."
+    cmd: "sed -n '225,270p' backend/db/migration_manager.py"
+    exit: 0
+    ts: "2026-08-30T11:19:00Z"
+    seat: claude-opus-5
+    result:
+      "`async with conn.transaction(): await conn.execute(row['rollback_sql'])` then `DELETE FROM
+      _schema_versions WHERE migration_name = $1`, then `return True`. A NOTICE-only body would
+      therefore erase the record of a migration whose entire effect is still in place."
+  - claim:
+      "The role guard's exemption is measured, not assumed: `visa_ledger_owner` genuinely does not
+      exist outside production, so raising there would block the chain on every dev and CI database."
+    cmd:
+      'psql postgresql://nuzantara@localhost:5432/postgres -Atc "SELECT rolname FROM pg_roles WHERE
+      rolname IN (''visa_ledger_owner'',''backend_rag_v2'')"'
+    exit: 0
+    ts: "2026-08-30T11:21:00Z"
+    seat: claude-opus-5
+    result: "Empty. Both roles absent on the local cluster; CI's Postgres service is the same shape."
+  - claim:
+      "`ruff check` is clean on all three touched Python files. `ruff format` is NOT run: it is not
+      enforced by any workflow and origin/main's own copy of operational_preflight.py already fails it,
+      so reformatting would be pure diff noise."
+    cmd: "ruff check backend/scripts/visa_engine/operational_preflight.py
+      backend/tests/scripts/visa_engine/test_operational_preflight.py
+      backend/tests/scripts/visa_engine/test_security_definer_owner_invariant.py"
+    exit: 0
+    ts: "2026-08-30T11:39:00Z"
+    seat: claude-opus-5
+    result:
+      "All checks passed. `ruff format --check` on origin/main's version of the same file reports
+      `Would reformat` — measured, so this is a pre-existing condition and not something this diff
+      introduces."
+  - claim:
+      "Kimi's decisive finding, verified independently rather than taken on trust: nothing automatic
+      runs this preflight. `collect_preflight_checks` has exactly two callers — the module's own
+      `__main__` and the tests."
+    cmd:
+      "grep -rn 'collect_preflight_checks|operational_preflight' over *.py *.yml *.yaml *.sh *.toml,
+      excluding .venv, docs/, research/, .agents/ and evidence/"
+    exit: 0
+    ts: "2026-08-30T12:26:00Z"
+    seat: claude-opus-5
+    result:
+      "Hits are: the module itself (line 705, its `__main__`), the two test files in this diff, and
+      `test_retention_binder_scope_survives_a_non_owner_runner.py`. Zero hits in .github/workflows/,
+      zero in scripts/. The overstated comment was corrected rather than defended."
+  - claim:
+      "Every `pg_catalog.`-qualified query shape in the module executes on a real Postgres 17 — the
+      qualification is valid SQL, not merely plausible. The fake cannot answer this question."
+    cmd:
+      "psql -Atc over all seven shapes: current_setting, has_function_privilege, has_table_privilege,
+      pg_has_role, the dual-capability pg_roles scan, the pg_class owner read, the pg_proc owner read"
+    exit: 0
+    ts: "2026-08-30T12:44:00Z"
+    seat: claude-opus-5
+    result: "170010 / t / t / t / 3 / balizero / balizero — every shape returns, none errors."
+  - claim:
+      "The qualification tripwire bites on each shape it guards, and it took two failures of its own
+      to get there — both recorded in the file because they are the class it exists to catch."
+    cmd:
+      "unqualify, one at a time and reverting each: `FROM pg_catalog.pg_roles AS role`,
+      `pg_catalog.has_table_privilege($1,$2,$3)`, `pg_catalog.pg_get_userbyid(class.relowner)`; run
+      test_every_catalog_reference_in_this_module_is_schema_qualified"
+    exit: 1
+    ts: "2026-08-30T12:41:00Z"
+    seat: claude-opus-5
+    result:
+      "RED on all three, each naming the offending identifier. Its first version matched `pg_roles`
+      inside the COMMENT explaining qualification; its second treated every argument-position SQL
+      literal as a docstring, so it read a file with no queries, PASSED under the unqualify-pg_roles
+      mutation, and its single innocence control passed too because the one string it checked was a
+      module-level assignment that survived. It now finds docstrings by AST position and carries one
+      innocence control per query shape."
+  - claim:
+      "The 281/286 -> 300 pin bites: renaming one of the five in migration 300's array reddens the
+      static test, which nothing in the file did before."
+    cmd:
+      "rewrite `public.purge_garuda_voa_check_results(integer, text)` to `..._RENAMED(...)` in
+      migration 300, run both test files, restore"
+    exit: 1
+    ts: "2026-08-30T12:33:00Z"
+    seat: claude-opus-5
+    result: "4 failed, 48 passed — including
+      test_every_function_migration_300_names_is_really_created_by_a_migration, which names the
+      function and says no migration creates it."
+  - claim:
+      "Whole regression pass after the qualification sweep, both directories: no new failure, and the
+      three gold-coverage failures are the ones already baselined on origin/main."
+    cmd: "PYTHONPATH=. python -m pytest backend/tests/scripts/visa_engine/ backend/tests/db/"
+    exit: 0
+    ts: "2026-08-31T08:35:00Z"
+    seat: claude-opus-5
+    result:
+      "628 passed, 17 skipped, exit 0 (re-measured at this head; 593/16 was the pre-merge figure). The THREE test files this diff touches: 96 passed — the pack previously read 'the two test files in this diff: 52 passed', which undercounted the files as well as the tests.
+      RE-RUN AND CORRECTED 2026-08-31, and this is the SECOND receipt on this pack to need it. The
+      earlier reading here (exit 1, '3 failed, 568 passed', ts 12:47) cited three gold-coverage
+      failures that no longer exist: they were the wall-clock fixture expiry cured on main by #5310,
+      absorbed when this branch was updated. The correction matters less than the pattern — its
+      neighbour at the pytest backend/tests/db/ receipt had the IDENTICAL staleness, was re-run and
+      corrected in an earlier commit, and this one was left. Fixing one instance of a class and
+      leaving its twin is the same incompleteness that made the second gate pass necessary at all.
+      Both are now measured against the current head.
+      A note on the number itself, because it differs from the gate's: the gate observed 594 / 53 at
+      97f7287f7f, one commit earlier. The difference is exactly the one test withdrawn since — the
+      unsound list-free detector. The figure written here is the one THIS head prints, measured
+      rather than copied from the reviewer, which is the whole reason a receipt exists."
+pii_scan: clean
+pii_scan_note:
+  "No client data was touched, read or transcribed. Every production read was a catalog query
+  (pg_proc, pg_namespace, pg_roles, pg_extension, pg_depend) through scripts/pg.sh as
+  nuzantara_readonly; no table row contents left the database and no DDL was issued from this lane.
+  Every destructive experiment ran against throwaway local databases and uuid-suffixed roles created
+  and dropped by the test fixtures. No secret value entered any transcript."
+dissent:
+  - seat: claude-opus-5 (Gear-3 final on-disk gate, second pass, fresh context)
+    objection:
+      'The list-free detector added to replace the hand-maintained `forgeable` tuple is blind to most
+      of the module''s SQL: it extracts with `re.findall(r''"""(.*?)"""'')`, and five of this module''s
+      SQL statements are single-quoted one-liners (operational_preflight.py:403, 474, 497, 519, 538)
+      that are never scanned — while two of the blocks it DOES scan are prose docstrings. Proven by
+      execution: `_NEW_PROBE_SQL = "SELECT array_agg(...) FROM pg_catalog.pg_roles AS role"` leaves
+      the suite at 46 passed; the same text inside a triple-quoted block goes red. Separately, two of
+      its allowlist entries are wrong on a real PostgreSQL 17.10 — `count` IS shadowable via
+      `CREATE AGGREGATE public.count(*)`, and `substring` is grammar-resolved only in its
+      `from ... for ...` form. And it fires on correct work (a docstring naming a Python call; a
+      legitimate `NOT (a OR b)`), with a message directing the author to grow the wrong allowlist.'
+    status: CONFIRMED
+    resolution:
+      "Reproduced independently by the session before acting: the five unscanned single-quoted
+      statements were enumerated on disk. The detector is WITHDRAWN, not patched a third time — round
+      1 was the hand tuple, round 2 was this, and round 2 failed in the same silent-miss direction
+      plus a new false-positive one, so under rule 8 the surface is under-specified and gets a spec:
+      docs/specs/2026-08-31-unqualified-catalog-call-lint.md. It records both rounds, the allowlist
+      entries the gate verified genuinely sound (so the next attempt need not re-derive them), and
+      six requirements — R1 an ast-based extractor rather than any regex, R2 an empirical probe per
+      allowlist entry, R6 decide whether a live-cluster shadowing test is the better instrument
+      before writing a parser at all. WHAT SHIPS is the security fix itself: `string_agg` qualified,
+      and added to the tuple. The tuple now carries a comment stating plainly that it is
+      hand-maintained, that this is a known uncovered class, and why the replacement was withdrawn —
+      so nobody reads it as sufficient. Gap ledgered in PENDING-ARMS."
+  - seat: codex-gpt-5.6-sol (adversarial grader)
+    objection:
+      "A hostile search_path defeats both the migration and the preflight. Both called
+      `pg_get_userbyid` unqualified; the migration runner is `backend_rag_v2`, which can CREATE in
+      `public`, so `CREATE FUNCTION public.pg_get_userbyid(oid) RETURNS name AS $$ SELECT
+      'visa_ledger_owner'::name $$` plus `SET search_path = public, pg_catalog` makes the census report
+      a forged owner and answer ok=True, and makes the migration skip its ALTER, pass its own
+      assertion and be recorded applied with the ownership still wrong."
+    status: CONFIRMED
+    resolution:
+      "Every catalog relation and catalog function in both is now `pg_catalog.`-qualified. The evasion
+      is a live test — it plants the shadow, asserts the shadow is really reachable (otherwise the test
+      would pass for the wrong reason), then asserts the census still reports the real owners and the
+      migration still raises. Unqualifying `pg_get_userbyid` turns it red."
+  - seat: codex-gpt-5.6-sol (adversarial grader)
+    objection:
+      "An absent target function was a false-success path: `to_regprocedure` returns NULL, the loop
+      CONTINUEs, and 300 is recorded applied with the ownership never established for that target —
+      the exact defect the file claims to make impossible."
+    status: CONFIRMED
+    resolution:
+      "An absent target is now a collected failure, reported as `<signature> (ABSENT)`. Safe because
+      the branch is only reachable past the role guard, where the ledger role exists and migrations
+      281/286 — which create all five unconditionally — have already run. A test drops one of the five
+      and asserts the raise names it."
+  - seat: codex-gpt-5.6-sol (adversarial grader)
+    objection:
+      "The rollback lies to the migration framework. `MigrationManager.rollback_migration` runs the
+      rollback SQL and then deletes the `_schema_versions` row and returns True, so a NOTICE-only body
+      advertises a successful reversal while preserving the entire effect — corrupting schema history
+      and poisoning any dependent rollback of 281/286."
+    status: CONFIRMED
+    resolution:
+      "Verified at backend/db/migration_manager.py:249-263 before acting. The section now RAISES, so
+      the transaction aborts, the ledger row survives, and the operator is told the migration is
+      irreversible and why. Restoring the NOTICE turns the test red."
+  - seat: codex-gpt-5.6-sol (adversarial grader)
+    objection:
+      "The census ignores `prokind`: a SECURITY DEFINER PROCEDURE is reported as a function and the
+      remediation tells the operator to run ALTER FUNCTION, which is the wrong statement."
+    status: CONFIRMED
+    resolution:
+      'The census returns `prokind::text` and the violation line carries `[function]` / `[procedure]`,
+      with the detail naming ALTER PROCEDURE where it applies. Filtering procedures OUT was rejected —
+      a definer procedure carries the identical hazard and must be caught. The `::text` cast is
+      load-bearing: `"char"` decodes to BYTES in asyncpg and the label printed `[b''p'']`, which the
+      real-Postgres test found on its first run and the fake could not have.'
+  - seat: codex-gpt-5.6-sol (adversarial grader)
+    objection:
+      "Migration 300 is recorded applied when `visa_ledger_owner` is absent while the five remain
+      wrongly owned. Missing prerequisites become permanent schema history."
+    status: CONFIRMED
+    resolution:
+      "NOT CHANGED, deliberately. Measured rather than argued: both `visa_ledger_owner` and `backend_rag_v2` are ABSENT on the
+      local cluster and on CI's Postgres service, so raising would block the migration chain on every
+      unprovisioned database — and there is no role to transfer to in that state anyway. It is not a
+      silent hole: `operational_preflight` already carries a `role:visa_ledger_owner` check that goes
+      red on exactly it. The reasoning is written into the block so the next reader does not have to
+      re-derive it."
+  - seat: codex-gpt-5.6-sol (adversarial grader)
+    objection:
+      "The census produces guaranteed false reds for legitimate extension routines: `CREATE EXTENSION
+      dblink WITH SCHEMA public` installs `dblink_connect_u`, SECURITY DEFINER and owned by the
+      installer, so a healthy database would fail this preflight."
+    status: CONFIRMED
+    resolution:
+      "NOT EXEMPTED, and handed to the gate owner. The mandate is explicit that a legitimate
+      exception must be reported, not silently exempted. So
+      no `pg_depend deptype='e'` carve-out was added, and the case is named in the code, in the brief's
+      risks and in the handback. It is a hypothetical HERE: measured on production, zero of the 21
+      definer functions belong to an extension, with postgis/pgcrypto/pg_trgm/btree_gist/uuid-ossp all
+      installed into public. If dblink or a similar extension is ever installed the check goes red and
+      the exemption becomes a deliberate diff — which is the intended cost, because an exemption
+      written before a real case is how a floor turns back into the list that let migration 285
+      through."
+  - seat: codex-gpt-5.6-sol (adversarial grader)
+    objection:
+      "The tests certify the implementation's blind spots. The migration test seeded only two of the
+      five targets and treated the other three as a successful `not present` path, so misspelling any
+      of the unseeded three changed nothing; the absent-role branch was untested; and the fake returns
+      fabricated rows whenever the query merely contains `prosecdef`, so `WHERE NOT proc.prosecdef`
+      would still pass it."
+    status: CONFIRMED
+    resolution:
+      "All five targets are now seeded and asserted, so a typo in any one of the five reddens the
+      suite. The fake's weakness is real and is precisely why the real-Postgres file exists: `WHERE NOT
+      proc.prosecdef` fails there, because that file asserts the invoker function is NOT censused and
+      the definer ones ARE. Named openly in the file's docstring rather than papered over — the fake
+      owns the verdict logic, the real catalog owns the SQL."
+  - seat: codex-gpt-5.6-sol (adversarial grader)
+    objection:
+      "Migration 301 (PR #5302, numbered 299 when this was written): on a fresh database without visa_ledger_owner it
+      takes the identical NOTICE-and-RETURN branch and is recorded applied, so fixing 300 alone does
+      not produce convergence."
+    status: CONFIRMED
+    resolution:
+      "DEFERRAL REASON HAS EVAPORATED — recorded rather than quietly re-deferred. This said the finding
+      was out of scope because 301 belonged to another OPEN PR that this lane must not edit. #5302
+      merged at 02:09:56Z on 2026-08-31. There is no other open PR's branch: 301 is on main, the
+      finding is now a property of main, and it is owned by nobody. The technical claim is CONFIRMED
+      on disk, not merely plausible — 301:8-11 is a bare NOTICE-and-RETURN on a missing role. It is
+      ledgered as its own row rather than pulled into this diff, because 300 is what this lane
+      introduces and 301 is what it inherits. The observation is correct as far as it goes;
+      the answer to it is the same measurement as above — with the role absent there is nothing to
+      transfer to, and the `role:visa_ledger_owner` preflight check is the layer that reports that
+      state."
+  - seat: kimi-code/k3 (second adversarial grader)
+    objection:
+      "The diff declares `an unqualified catalog call is a forgeable check`, then leaves the three
+      sibling checks in the same file forgeable. Under the very evasion this PR accepts as real, a
+      `public.pg_get_userbyid(oid)` or a constant-returning `public.pg_roles` forges
+      `owner:{table}`, every `owner:{signature}` and — decisively — `role:visa_ledger_owner` green.
+      That role check is the entire justification given for migration 300's role-guard RETURN."
+    status: CONFIRMED
+    resolution:
+      "Every catalog relation and catalog function in the module is now `pg_catalog.`-qualified,
+      including `pg_has_role`, `has_function_privilege`, `has_table_privilege` and `current_setting`,
+      which the finding did not name but which forge the whole least-privilege matrix the same way.
+      Each shape was then EXECUTED against a real Postgres 17 to prove the qualification is valid SQL.
+      A source-level tripwire guards it and bites on all three shapes. It touches the dual-capability
+      query PR #5062 also edits — flagged to the merge owner rather than avoided, because leaving a
+      forgeable check while writing a test that exempts it is the failure this file exists to prevent."
+  - seat: kimi-code/k3 (second adversarial grader)
+    objection:
+      "The floor is never armed. `collect_preflight_checks` has two callers — the module's `__main__`
+      and the tests. No workflow, script or deploy step invokes it, so a migration 30x repeating the
+      281/286 pattern applies green in CI, deploys, and this check goes red only on the day a human
+      runs the CLI. The defense chain for the one surviving false-success path (the role-absent
+      RETURN) terminates in a CLI nobody is scheduled to run."
+    status: CONFIRMED
+    resolution:
+      "NOT FIXED HERE, and the claim it undermined was corrected rather than defended: the comment
+      that said this check notices the next offender `regardless of what any migration claims` now
+      says it notices it WHENEVER THE PREFLIGHT IS RUN, and records what arming costs. Verified
+      independently by grep before accepting it. Arming means either calling the census from
+      `fullstack_smoke.py` or having a test apply the real migration chain — and BOTH need the sandbox
+      to provision a role named `visa_ledger_owner` first, or the census compares against a role that
+      does not exist and reddens on every function in the schema. That is its own design, and this
+      lane may not touch `.github/workflows/`. Handed to the gate owner as the highest-value
+      follow-up. Note it is not a regression: every check in this file was equally manual before."
+  - seat: kimi-code/k3 (second adversarial grader)
+    objection:
+      "The real-Postgres test never runs the real migration chain. `_seed_functions` hand-writes
+      signatures transcribed FROM migration 300, so the pin is seed-to-cure; nothing pins 281/286 to
+      300, and 281 is the file that actually failed in production. Rename a function over there and
+      every database-backed test still passes."
+    status: CONFIRMED
+    resolution:
+      "Half closed, half declared. A static test now asserts each of the five functions migration 300
+      names is really created by a `CREATE [OR REPLACE] FUNCTION public.<name>(` somewhere in
+      migrations_v2, with an innocence control that the parse found five. It catches a rename or a
+      deletion and says in its own docstring that it does NOT catch an argument-type change, because
+      matching argument lists across SQL formatting is a parser's job. The full closure is the same
+      chain-applying test the finding above needs, and it is handed up with it rather than faked here."
+  - seat: claude-opus-5 (declared limit)
+    objection:
+      "The class check covers schema `public` only, as the mandate scoped it. A SECURITY DEFINER
+      function created in `mata_garuda` — the only other non-system schema on production — would not be
+      seen."
+    status: PLAUSIBLE
+    resolution:
+      "Measured: `mata_garuda` holds zero SECURITY DEFINER functions today. Named in the brief's risks
+      rather than widened, because widening the schema set is a governance decision about which schemas
+      the ledger role is supposed to own, not a bug fix."

@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: e8b1df3fe4e0f184a8b59fe28a042b38dec5af221cc07296d552cc98995e19cf
+checksum: dda387afc1f6d9a204948eaa0e285e40dcfb2171130c276fc0a29ce32cda2708
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -280,7 +280,8 @@ organs:
 - id: pro.zombie_hunter
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 90
+  # 900 = 3x the bridge's 300s poll interval (this sidecar is bridge-fed) - bound to the poller, not to how fast this organ moves.
+  expected_hb_seconds: 900
   owner_module: .claude/scripts/zombie-hunter.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -970,7 +971,8 @@ organs:
 - id: wr2.pg_proxy
   runtime: pro_launchd
   type: daemon
-  expected_hb_seconds: 60
+  # 900 = 3x the bridge's 300s poll interval (this sidecar is bridge-fed) - bound to the poller, not to how fast this organ moves.
+  expected_hb_seconds: 900
   owner_module: apps/war-room/scripts/wr2_pg_proxy.py
   dependencies:
   - wr2.supervisor
@@ -1567,7 +1569,8 @@ organs:
 - id: pro.launchagent_state_bridge
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 600
+  # 900 = 3x the bridge's own 300s poll interval (it bridges its own launchd label too) - bound to the poller, not to how fast this organ moves.
+  expected_hb_seconds: 900
   owner_module: scripts/launchagent-state-bridge.py
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -1643,7 +1646,8 @@ organs:
 - id: pro.post_publish_webhook
   runtime: pro_launchd
   type: webhook
-  expected_hb_seconds: 300
+  # 900 = 3x the bridge's 300s poll interval (this sidecar is bridge-fed) - bound to the poller, not to how fast this organ moves.
+  expected_hb_seconds: 900
   owner_module: apps/bali-intel-scraper/scripts/post_publish_webhook.py
   dependencies:
   - backend.api
@@ -1742,7 +1746,8 @@ organs:
 - id: pro.prime_tunnel
   runtime: pro_launchd
   type: daemon
-  expected_hb_seconds: 300
+  # 900 = 3x the bridge's 300s poll interval (this sidecar is bridge-fed) - bound to the poller, not to how fast this organ moves.
+  expected_hb_seconds: 900
   owner_module: cloudflared/config-prime.yml
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2834,5 +2839,26 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.seat_mix_report.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.price_review_sentinel
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: infra/launchagents/wrappers/pro-price-review-sentinel.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.price-review-sentinel
+  severity_on_silence: warning
+  notes: Alerts when the Bali Zero price sheet loaded by pricing_service is past its
+    90-day review interval, or when metadata.last_updated has stopped tracking edits
+    and can no longer answer the freshness question in either direction (born via
+    organ_birth.py, genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.price_review_sentinel.json
     timestamp_field: ts
     status_field: status

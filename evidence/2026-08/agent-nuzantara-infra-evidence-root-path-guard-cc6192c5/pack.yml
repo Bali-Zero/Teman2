@@ -1,0 +1,299 @@
+# The literal STAGING path, never this PR's real per-PR path — harness-floor.yml copies this
+# PR's own brief to /tmp/evidence-check/evidence/brief.yml and lints with --repo-root pointing
+# there, so the canonical name resolves to MY brief inside that synthetic tree. Writing the real
+# per-task path here would fail `brief_ref does not resolve to a file on disk`. This PR is about
+# that very distinction, so getting it wrong here would be its own refutation.
+brief_ref: evidence/brief.yml
+
+plan_ref: >-
+  Close the BRIEF half of the evidence root-path deprecation. Rule 9 judges only the pack's path
+  and takes no brief argument, so a PR with a migrated pack and a root brief is clean at any date
+  while still colliding. Add Rule 12 mirroring Rule 9's shape, a --brief-source-path flag with no
+  positional fallback, and pass the value harness-floor.yml already resolves. Its own flip date,
+  deliberately later than the pack's, so today's readiness measurement is not silently re-priced.
+
+lanes:
+  - lane: rule12-build
+    role: build
+    seat: >-
+      claude-opus-5 (interactive session, xhigh) — found the gap, wrote the rule, ran every
+      verification below.
+  - lane: rule12-review-crossfamily
+    role: review
+    seat: >-
+      tp1-glm-5.2 (Zhipu GLM via the Alibaba TP1/DashScope gateway, flat token plan,
+      non-Anthropic cross-family, fresh context). The ONLY cross-family seat that answered
+      tonight — see `notes` for the three that did not.
+  - lane: rule12-review-independent
+    role: review
+    seat: >-
+      claude-sonnet-5 subagent on fresh context, given the diff and told to find vacuous tests.
+      In-family, so it does NOT satisfy cross-family review — recorded because it found the
+      single realest defect in this PR (a vacuous test), not to pad the seat count.
+
+council_run: council-journal.jsonl
+
+diff:
+  files: 7
+  net_lines: 807
+  measured_at: 494583042
+  note: >-
+    Churn (added+deleted) via `git diff --no-renames --numstat --cached <merge-base>`, measured
+    with this exact pack STAGED, so the pack counts itself; the final substitution is DIGIT-ONLY
+    and therefore cannot change the line count it reports. FLOOR is 3 by PATH — `.github/workflows/`
+    is a hot zone and the ceiling never overrides a floor.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      Rule 9 is structurally blind to the brief — the gap is real, not inferred from reading.
+    cmd: >-
+      Executed `check_pack_not_at_deprecated_root` from origin/main's copy with today=2026-09-10,
+      once with source_path="evidence/pack.yml" and once with a per-task pack path.
+    result: >-
+      Root pack -> (["evidence_root_deprecated: ..."], None) = VIOLATION. Per-task pack ->
+      ([], None) = clean, no notice. The function takes no brief argument at all. Independently
+      re-executed by a refuter on fresh context, same result.
+    exit: 0
+    ts: "2026-08-31T06:35:00Z"
+    seat: session (Pro) + refuter subagent
+
+  - claim: >-
+      The collision is live, not theoretical, and this exact shape exists in the open queue.
+    cmd: >-
+      `gh pr list --state open` cross-referenced with each PR's file list; `gh pr view 5158 --json files`.
+    result: >-
+      6 open PRs modify the root evidence/brief.yml (#5158 #5072 #5037 #4645 #4644 #4640). #5158
+      carries `evidence/2026-08/agent-air-m5-ops-watcher-coverage-0828-2dd63838/pack.yml` (ADDED)
+      AND `evidence/brief.yml` (MODIFIED) — a file-level diff entry, not a brief_ref string
+      occurrence. Rule 9 green on it. Three fleet-watch queue_unstick messages independently named
+      evidence/brief.yml as the conflicting file on PRs in that set.
+    exit: 0
+    ts: "2026-08-31T06:38:00Z"
+    seat: session (Pro)
+
+  - claim: >-
+      The tests measure the rule in BOTH directions rather than agreeing with it.
+    cmd: >-
+      Two mutations of the single path comparison, each followed by the brief_root test selection:
+      `if True:` (rule always clean) and `if False:` (rule always fires).
+    result: >-
+      Neutered kills 6 (three guilt cases, the pre-flip notice, the separate-dates test, and the
+      end-to-end wiring case). Over-matching kills 4 (per-task clean, the mandatory-brief_ref
+      innocence case, the CLI threading case, and the resolver seam). The seam test dies under
+      BOTH. Restored: 300 passed.
+    exit: 0
+    ts: "2026-08-31T07:20:00Z"
+    seat: session (Pro)
+
+  - claim: >-
+      The value the workflow passes is diff-relative, so the rule cannot mistake the staged
+      canonical name for a root write — the objection that produced the only DO-NOT-SHIP.
+    cmd: >-
+      Read `resolve_evidence_path` on disk; traced harness-floor.yml Step 2b vs Step 7b ordering.
+    result: >-
+      `resolve_evidence_path(kind, changed_files)` is a pure function over the changed-files LIST
+      — no filesystem access anywhere in its body, so it cannot see the staged tree — and Step 2b
+      runs it long before Step 7b creates /tmp/evidence-check. Now pinned by an executable test
+      across the module seam rather than asserted in a docstring.
+    exit: 0
+    ts: "2026-08-31T07:25:00Z"
+    seat: session (Pro)
+
+  - claim: The change cannot alter the workflow's behaviour beyond passing one more flag.
+    cmd: "`actionlint .github/workflows/harness-floor.yml`; yaml.safe_load; ruff check."
+    result: "actionlint rc=0, YAML parses, ruff clean on both Python files."
+    exit: 0
+    ts: "2026-08-31T07:22:00Z"
+    seat: session (Pro)
+
+  - claim: >-
+      The new guard is REGISTERED in the #3 census, and that registration is measured rather
+      than assumed — the census actually reads this entry.
+    cmd: >-
+      `check_guard_conformance.py` before the entry, after the entry, and under two mutations OF
+      THE ENTRY (a phantom guilt ref; an emptied innocence list), then restored from a byte copy.
+    result: >-
+      Before: 1 violation, `C1 ... exists in code but is NOT registered`, rc=1 (16 checks).
+      After: 0 violations, rc=0 (17 checks). Mutation A -> `C3 ... phantom reference (W65)`, rc=1.
+      Mutation B -> `C2 ... has NO innocence test`, rc=1. Restored -> rc=0, `git diff --stat`
+      shows only the 20 added lines, no reformat. A green that cannot go red measures nothing;
+      this one goes red on both faces of the entry.
+    exit: 0
+    ts: "2026-08-31T08:05:00Z"
+    seat: session (Pro)
+
+  - claim: >-
+      This pack's `dissent:` block parses to what its TEXT shows — the property the lint cannot
+      check, and the one this pack broke once already.
+    cmd: >-
+      Count `^  - seat:` lines in the raw text, compare against `len(safe_load(text)["dissent"])`,
+      then run a custom PyYAML loader that reports duplicate keys with line numbers.
+    result: >-
+      7 raw seat lines, 7 parsed entries, MATCH=True; duplicate keys: NONE. Both gate rounds and
+      all three non-answering seats are individually present. The same probe run one commit
+      earlier returned 5 parsed against 6 raw, with duplicate `status`/`round`/`objection`/
+      `disposition` — which is how the corruption was proven rather than argued.
+    exit: 0
+    ts: "2026-08-31T08:20:00Z"
+    seat: session (Pro), on a finding by the final gate
+
+dissent:
+  - seat: tp1-glm-5.2
+    status: CONFIRMED
+    round: 1
+    objection: >-
+      "Here is the fatal flaw ... The diff provides ZERO EVIDENCE that BRIEF_PATH actually
+      contains a per-task path. If `scripts/ci/evidence_paths.py` resolves the brief path by
+      inspecting the synthetic tree (which is what runs in CI), its output will be
+      `evidence/brief.yml` for every single PR ... every correct PR in the fleet will ... return a
+      violation. The whole fleet goes red." VERDICT: DO-NOT-SHIP. (It endorsed the no-fallback
+      asymmetry, the inert-not-fail-closed direction and the separate flip date on their merits.)
+    disposition: >-
+      CONCLUSION REFUTED, DEMAND ADOPTED — and the split matters. The mechanism it feared does not
+      exist: `resolve_evidence_path` is a pure function over the changed-files list with no
+      filesystem access, and Step 2b calls it before the staged tree is created. But its actual
+      complaint was that the diff ASSERTED this in a docstring and pinned it nowhere, which was
+      true: the claim spans two modules, so neither module's own corpus covered it. Added
+      `test_brief_root_resolver_seam_produces_diff_relative_paths_not_the_staged_name`, which runs
+      the real resolver over all three diff shapes and feeds each result to the real rule. It is
+      now the only test in this corpus that dies under BOTH mutations.
+
+  - seat: claude-sonnet-5 (independent subagent, in-family)
+    status: CONFIRMED
+    round: 1
+    objection: >-
+      "`test_brief_root_innocence_mandatory_brief_ref_string_is_not_a_root_write`, labeled 'THE
+      load-bearing innocence case', calls lint() without ever passing brief_source_path ... Its
+      assertion would hold identically if the function were deleted — it never exercises the code
+      path it claims to pin."
+    disposition: >-
+      CORRECT, and it was the realest defect in the PR: my own test measured the question next
+      door. Fixing it exposed a SECOND layer the reviewer had not reached — supplying the path
+      still left the test insensitive, because today is before the flip date and an over-matching
+      rule only NOTICEs, which `rc == 0` cannot distinguish from clean. Proven by mutation, not
+      argued: `if False:` left the "fixed" test green. It now asserts on stderr, where a notice
+      actually appears, and dies under over-match. The same insensitivity was found and fixed in
+      two neighbouring tests by the same measurement.
+
+  - seat: claude-opus-5 (final on-disk gate, fresh context, generator != grader)
+    status: CONFIRMED
+    round: 2
+    objection: >-
+      VERDICT: PASS-WITH-CONDITIONS. "The one defect is honesty, not safety: the pack's `tests:`
+      block and the brief's fifth acceptance criterion both claim '275 pre-existing, 25 new'; the
+      real split is 288 pre-existing, 12 new. The total (300) is right and the substantive claim
+      (whole corpus green) is true, so nothing behavioural rests on it — but this repo lints for
+      exactly this class of countable claim, the wrong split is internally consistent (275+25=300)
+      and would survive a naive check." It also asked the notes to name a limitation they did not:
+      a diff writing a per-task brief AND the root brief escapes the rule entirely.
+    disposition: >-
+      BOTH ADOPTED, and the first one is the sharper finding of the two rounds. RE-MEASURED before
+      believing it (the refuter hallucinates too, W65): `pytest -k brief_root` reports
+      `12 passed, 288 deselected` — 12 new, 288 pre-existing, exactly as the gate said, and my
+      figure was simply wrong. It is the same disease this PR's own Rule 13 neighbour exists to
+      catch, committed in the artifact that is supposed to BE the measured record, and it survived
+      an earlier reviewer because 275+25 sums to the right total. The split correction itself is
+      digit-only in both files; `diff.net_lines` below is nevertheless re-measured, because this
+      same commit also adds note (4) and this very entry. Limitation named as note (4), uncured:
+      it is inherited from the resolver's single-path contract and Rule 9 has it identically.
+
+  - seat: claude-opus-5 (final on-disk gate, fresh context, generator != grader)
+    status: CONFIRMED
+    round: 3
+    objection: >-
+      VERDICT: BLOCK — on the commit that ADOPTED its round-2 conditions. "The commit that applied
+      them corrupted the pack's `dissent:` block: the new gate entry was written OVER the line
+      `- seat: kimi-code/k3` instead of before it, so one YAML mapping now carries duplicate keys.
+      The kimi seat has vanished from the parsed record, and the final on-disk gate's round-2 entry
+      now parses as 'RETRACTED / round 1 / NONE — the seat never answered.' The artifact, as a
+      machine reads it, says the gate that reviewed this PR never answered. That is a worse
+      falsehood than the one it was fixing, and it is in the block whose entire purpose is that the
+      disagreement survives."
+    disposition: >-
+      CORRECT, cured, and the most instructive finding in this PR — bigger than the rule it ships.
+      Re-measured before believing it: `safe_load` returned 5 dissent entries where the text shows
+      6, entry[2] carrying this gate's seat with kimi's status/round/objection. PyYAML accepts
+      duplicate keys SILENTLY, last-wins. Cured by restoring the dropped `- seat: kimi-code/k3`
+      line; the raw `- seat:` count and the parsed length now agree, this entry reads CONFIRMED /
+      round 3, and a duplicate-key scan over the whole file returns nothing — see the receipt that
+      pins all three. WHAT THIS COSTS TO KNOW: the lint had already returned
+      `clean` rc=0 on the corrupted artifact, in the CI shape, with the countable-claims rule
+      active — because every rule reads the PARSED mapping, and the parse is exactly where the
+      damage hid. No machine in this repo could have caught it. Not fixed here (a duplicate-key
+      guard for the pack lint is a separate concern and this PR is already at its third round);
+      named so the next lane does not re-derive it.
+
+  - seat: kimi-code/k3
+    status: RETRACTED
+    round: 1
+    objection: >-
+      NONE — the seat never answered. `403 You've reached your weekly (7-day) usage limit.`
+    disposition: >-
+      A seat that does not answer did not review. Recorded with ok:false rather than omitted, so
+      the council's real size is visible; never counted as a pass.
+
+  - seat: tp1-qwen3.8-max
+    status: RETRACTED
+    round: 1
+    objection: >-
+      NONE — non-answer. `tp1_call: unparseable response (JSONDecodeError)`, RC=3. The gateway
+      reported 20086 completion tokens (16590 of them reasoning), so the model appears to have
+      produced a review that the wrapper could not parse; no content survived to be read.
+    disposition: >-
+      Recorded as a transport/parse failure, not a verdict. Worth carrying beyond this PR: this is
+      a WRAPPER defect, not a quota one — the seat had capacity and the answer was lost on the way
+      back. Not fixed here (different concern, different file); named so the next lane that loses
+      an answer this way recognises it instead of re-diagnosing it.
+
+  - seat: codex-gpt-5.6-sol
+    status: RETRACTED
+    round: 1
+    objection: >-
+      NONE — the seat never answered. `ERROR: Your workspace is out of credits.`
+    disposition: >-
+      Second distinct failure of this door tonight (it died on a workspace spend cap ~5h earlier
+      in an unrelated lane). Recorded, not replaced silently.
+
+tests:
+  - "scripts/tests/test_evidence_pack_lint.py — 300 passed (288 pre-existing, 12 new)."
+  - "Mutation control, both directions: neutered kills 6, over-match kills 4, seam test dies under both."
+  - "actionlint on the edited workflow — rc=0. ruff — clean."
+
+static:
+  - "ruff: clean on evidence_pack_lint.py and its test file."
+  - "actionlint: clean on harness-floor.yml."
+
+notes: >-
+  WHAT THIS DOES NOT DO, stated rather than left to be discovered.
+
+  (1) It does not migrate the six in-flight PRs that write the root brief. They are other lanes'
+  branches and pushing to them is sibling territory. They are ALREADY blocked by DIRTY today, so
+  this rule breaks no working PR — it explains why already-broken ones are broken, and stops the
+  seventh. Their migration is a separate mandate.
+
+  (2) THE CROSS-FAMILY COUNCIL WAS NEARLY DARK TONIGHT, and this PR does not pretend otherwise.
+  Four seats were dispatched on the real diff; three returned non-answers for three DIFFERENT
+  reasons — kimi a weekly quota ceiling, codex a workspace credit exhaustion, tp1-qwen3.8-max a
+  response the wrapper could not parse despite the model having produced 20k tokens. Only
+  tp1-glm-5.2 answered. GLM is NOT in the lint's COUNCIL_REVIEW_SEATS allowlist (codex-gpt-5.6-sol,
+  kimi-code/k3, tp1-qwen3.8-max), so R9's "two allowlisted seats ok:true" requirement is NOT met
+  and will NOTICE — correctly, and it is left to notice rather than worked around. That three of
+  three allowlisted doors were down simultaneously is the more useful finding here than anything
+  about this diff: any lane relying on that panel tonight got, or will get, silence.
+
+  (3) It adds no lint for the class of "a rule enforces half the surface its own docstring
+  describes". Rule 9 and Rule 12 are now symmetric by hand, not by construction, and a third
+  root-path artifact would need a third rule. That is a real gap and deliberately not invented
+  here — it is a second concern, and this PR is already a correction of an under-enforced cure.
+
+  (4) ONE SHAPE STILL ESCAPES, named by the final gate and left uncured on purpose. A diff that
+  writes BOTH a per-task brief AND the root brief resolves to the per-task path and is clean:
+  `resolve_evidence_path` returns the FIRST match, and the rule judges one resolved path, not the
+  changed-files list. Rule 9 has the identical hole for packs, so this is INHERITED from the
+  resolver's single-path contract, not introduced here — curing it means changing that contract
+  for both rules, which is a spec, not a patch (Regola 8: cure what the change introduces, send
+  to spec what it inherits). Consolation, measured not assumed: that shape still collides in the
+  queue exactly as before, so it is no worse off than today — it simply is not yet explained by
+  a lint.

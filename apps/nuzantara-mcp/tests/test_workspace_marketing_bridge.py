@@ -1822,3 +1822,65 @@ def test_worker_environment_is_explicit_allowlist(monkeypatch) -> None:
         "TMPDIR",
         "WORKSPACE_MARKETING_STATE_DIR",
     }
+
+
+# ── Independent-reviewer context isolation ────────────────────────────────
+# Regression cover for the 2026-09-01 fact-gate outage: the reviewer inherited
+# the machine's $HOME/.claude, so SessionStart hooks prepended fleet-mailbox
+# text to its context and it answered THAT instead of emitting verdict JSON.
+# Every article failed identically, which read as a per-article defect.
+
+
+def test_reviewer_config_dir_is_isolated_from_the_machine_profile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The reviewer must never be pointed at the machine's own ~/.claude."""
+
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+
+    env = marketing._verification_env("claude")
+
+    config_dir = env.get("CLAUDE_CONFIG_DIR")
+    assert config_dir, "reviewer must always run with an explicit CLAUDE_CONFIG_DIR"
+    assert Path(config_dir).is_dir(), "the isolated config dir must exist before launch"
+    assert Path(config_dir) != Path(tmp_path / "home") / ".claude"
+    assert str(tmp_path / "state") in config_dir
+
+
+def test_reviewer_does_not_inherit_an_ambient_claude_config_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Guilt test: inheriting CLAUDE_CONFIG_DIR is the outage itself.
+
+    With the ambient value inherited, the reviewer loads that profile's hooks
+    and its verdict JSON is replaced by whatever those hooks injected.
+    """
+
+    hooked_profile = tmp_path / "machine-profile"
+    hooked_profile.mkdir()
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(hooked_profile))
+
+    env = marketing._verification_env("claude")
+
+    assert env["CLAUDE_CONFIG_DIR"] != str(hooked_profile), (
+        "the ambient profile leaked into the reviewer — its SessionStart hooks "
+        "will prepend other sessions' text to a fact-gate verdict"
+    )
+
+
+def test_verification_env_still_withholds_app_secrets(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Isolation must not widen the allow-list."""
+
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("WA_MIRROR_DATABASE_URL", "postgres://should-not-leak")
+    monkeypatch.setenv("WORKSPACE_MARKETING_API_KEY", "should-not-leak")
+
+    env = marketing._verification_env("claude")
+
+    assert "WA_MIRROR_DATABASE_URL" not in env
+    assert "WORKSPACE_MARKETING_API_KEY" not in env
+    assert not any("should-not-leak" in value for value in env.values())

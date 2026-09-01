@@ -184,6 +184,10 @@ jobs:
               infra/tcc-desktop-paths/allowlist.txt|\
               scripts/canon_blocks_publish.py|\
               scripts/tests/test_canon_blocks.py|\
+              scripts/tests/test_door_canon_parity.py|\
+              AGENTS.md|\
+              GEMINI.md|\
+              QWEN.md|\
               scripts/launchd_liveness_detector.py|\
               scripts/tests/test_launchd_liveness_expected_nonzero.py|\
               scripts/tests/test_launchd_liveness_exit_status_decode.py|\
@@ -229,6 +233,11 @@ jobs:
               scripts/tests/test_docs_inventory_render_is_clock_free.py|\
               scripts/lib/fly_credential.sh|\
               scripts/test_fly_credential.sh|\
+              scripts/ci/lint_queue_field_verdict.py|\
+              scripts/tests/test_lint_queue_field_verdict.py|\
+              scripts/lint_arm_probe.py|\
+              scripts/tests/test_lint_arm_probe.py|\
+              scripts/queue_baseline_probe.py|\
               scripts/lib/offsite_verify.sh|\
               scripts/test_offsite_verify.sh|\
               scripts/fly-pg-backup.sh|\
@@ -300,6 +309,8 @@ jobs:
               scripts/tests/test_check_required_workflow_conformance.py|\
               scripts/ci/lint_unreachable_workflow_conditions.py|\
               scripts/tests/test_unreachable_workflow_conditions.py|\
+              scripts/ci/lint_trigger_symmetry.py|\
+              scripts/tests/test_lint_trigger_symmetry.py|\
               infra/required.d/contexts.json|\
               infra/guard-conformance/registry.json|\
               infra/guard-conformance/check_guard_conformance.py|\
@@ -486,6 +497,8 @@ jobs:
             scripts/tests/test_lint_plist_keepalive.py \
             scripts/tests/test_arsenal_probe.py \
             scripts/tests/test_adversarial_review_gate.py \
+            scripts/tests/test_lint_queue_field_verdict.py \
+            scripts/tests/test_lint_arm_probe.py \
             scripts/tests/test_nb_curator_artifact_gate.py \
             scripts/tests/test_jules_dispatch.py \
             scripts/tests/test_codex_autofix_selector.py \
@@ -521,7 +534,9 @@ jobs:
             scripts/tests/test_required_context_map.py \
             scripts/tests/test_check_required_workflow_conformance.py \
             scripts/tests/test_unreachable_workflow_conditions.py \
-            scripts/tests/test_canon_blocks.py ; do
+            scripts/tests/test_canon_blocks.py \
+            scripts/tests/test_lint_trigger_symmetry.py \
+            scripts/tests/test_door_canon_parity.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
               python -m pytest "$t" -q || fail=1
@@ -647,6 +662,44 @@ jobs:
           # No `if [ -f ]` skip here: this file is on main, so absent means deleted, and a
           # deleted corpus must go red rather than quietly pass.
           bash scripts/test_fly_credential.sh
+
+      - name: Queue-field verdict lint — prove the guard, then scan every tracked file
+        # DELIBERATELY UNCONDITIONAL — no `steps.paths.outputs.relevant` gate.
+        #
+        # This lint scans the WHOLE tree, so the file that introduces the disease
+        # is by definition one nobody has listed in a sentinel yet. Gating it on
+        # a path list would make it a guardian whose only executor cannot go red
+        # on the PR that needs it (W108). The whole-tree scan is 2.7s measured on
+        # this repository, which buys that unconditionally for the price of noise
+        # nobody will notice.
+        #
+        # --selftest FIRST, always: a clean verdict from a scanner that has lost
+        # the ability to fail is the exact green-but-dead shape this battery
+        # exists to catch. It runs 8 guilt+innocence fixtures in 0.05s and exits
+        # non-zero if any of them stops discriminating.
+        run: |
+          python3 scripts/ci/lint_queue_field_verdict.py --selftest
+          python3 scripts/ci/lint_queue_field_verdict.py
+
+      - name: Arm-probe lint — prove the guard, then scan every tracked file
+        # DELIBERATELY UNCONDITIONAL — no `steps.paths.outputs.relevant` gate,
+        # same reasoning as the queue-field verdict lint right above: this
+        # scans the WHOLE tree for the autoMergeRequest null-ambiguity trap
+        # (a decision-position read of the field with no mergeQueueEntry/
+        # isInMergeQueue/mergeQueue( co-occurrence anywhere in the same
+        # file), so the file that introduces it is by definition one nobody
+        # has listed in a sentinel yet (W108). Sibling to, not a replacement
+        # for, lint_queue_field_verdict.py above — narrower pattern set,
+        # simpler file-level (not alias-tracking) co-occurrence check, its
+        # own ALLOWLIST for the handful of real files that match by text
+        # alone without ever deriving a verdict from the field.
+        #
+        # --selftest FIRST, always: proves the guard (plus its ALLOWLIST
+        # mechanism) can still fail before trusting a clean verdict from the
+        # real scan.
+        run: |
+          python3 scripts/lint_arm_probe.py --selftest
+          python3 scripts/lint_arm_probe.py
 
       - name: Off-site artifact gate corpus (guilt + innocence)
         if: steps.paths.outputs.relevant == 'true'
@@ -1029,6 +1082,32 @@ jobs:
           # clean today — a censused guard that no workflow actually runs against
           # live data is theater (W81).
           python3 scripts/ci/check_required_workflow_conformance.py
+
+      - name: Trigger symmetry — a queue-only path filter is a head-green/queue-red split
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # L06-PR1 follow-through. `merge_group:` does NOT support a `paths:`
+          # sub-key in GitHub Actions at all, so a workflow carrying BOTH a
+          # merge_group trigger AND a pull_request paths filter has path
+          # semantics that can never match: the pull_request run may be SKIPPED
+          # while the queue run always executes. The author never sees the job,
+          # the queue runs it, it fails, and the entry is ejected with a red
+          # nobody was shown. For a required context it is worse — the PR
+          # reports "Expected — waiting for status" forever (W69).
+          #
+          # ZERO violations on the live tree (112 workflows, measured
+          # 2026-08-31), so this is preventive, and its premise is demonstrable
+          # rather than hypothetical: in this same wave THREE of the four
+          # workflows made queue-aware carried pull_request paths filters, and
+          # "make it queue-aware" is naturally done by adding `merge_group:` and
+          # leaving the filter alone. That is the violation, one keystroke away,
+          # on files a squad was editing this week.
+          #
+          # The guilt+innocence corpus in the batch above proves the CHECKER can
+          # still bite; this step proves the REAL repo tree is clean today — a
+          # censused guard that no workflow runs against live data is theater
+          # (W81), which is the same reason its two neighbours below exist.
+          python3 scripts/ci/lint_trigger_symmetry.py
 
       - name: "Unreachable workflow if: conditions (security.yml orphaned-alarm class)"
         if: steps.paths.outputs.relevant == 'true'

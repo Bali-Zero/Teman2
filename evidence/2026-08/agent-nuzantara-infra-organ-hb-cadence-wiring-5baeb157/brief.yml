@@ -1,0 +1,70 @@
+task_id: organ-hb-cadence-wiring
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Wire scripts/tests/test_organ_heartbeat_exceeds_poller_interval.py — the
+  pytest guard (added in #5431) asserting every bridge-fed organ's
+  expected_hb_seconds in apps/organism/organism/organs_registry.yaml is >= 3x
+  scripts/launchagent-state-bridge.py's polling interval — into a CI workflow
+  that actually gates on it. It ran clean locally after #5431 merged, but was
+  named by NO CI workflow: its only executor was the continue-on-error
+  `scripts/tests/` sweep, which gates nothing. Cicatrix family #2
+  (Esiste != Armato) — the same defect class as W108, on a different corpus.
+
+  Measured 2026-08-31 by team-lead (independent review of already-merged
+  #5431, merge commit ac6860156927e0b71a91895c3e1335c6e28e8d8a — 4 files:
+  registry, README, a renamed fixture, and the test itself; no workflow
+  file): `git grep -c test_organ_heartbeat_exceeds_poller_interval
+  origin/main -- .github/` returns 0.
+
+  Gear is 3 DETERMINISTICALLY, sourced from PATH: the fix requires editing
+  .github/workflows/organ-conformance.yml, a hardcoded hot-zone pattern in
+  scripts/evidence_pack_lint.py's HOTZONE_PATTERNS, matched regardless of
+  diff size. Reproduced against this PR's own final diff (merge-base
+  ac6860156927e0b71a91895c3e1335c6e28e8d8a, 3 files, +395/-0, 2 commits):
+  `--print-floor` -> 3, `--print-floor-source` -> path.
+
+acceptance:
+  - text: >-
+      WHEN a push touches any file in the guard's read-set (the two guard
+      test files, scripts/launchagent-state-bridge.py,
+      apps/organism/organism/organs_registry.yaml, or the renamed plist
+      fixture), organ-conformance.yml SHALL run a named, gated step that
+      invokes pytest against both guard test files.
+    probe: test_organ_heartbeat_workflow_wiring.py
+  - text: >-
+      WHEN a step's body is edited so it no longer actually invokes pytest
+      against both guard files (a dropped filename, a typo, an accidental
+      narrowing while "cleaning up"), the wiring test SHALL turn red. A mere
+      mention of both filenames in a comment or in the path-filter step's
+      own pathspec SHALL NOT satisfy this.
+    probe: test_a_step_actually_executes_both_guard_files
+  - text: >-
+      WHILE the guard suite is intact, the new workflow step SHALL pass
+      (4 passed, 1 skipped) when run under GitHub Actions' real default
+      shell for an unmarked `run:` block.
+    probe: bash --noprofile --norc -eo pipefail
+  - text: >-
+      IF pytest exits non-zero, OR every case is skipped / collection comes
+      back empty (an exit-0 run with zero passing cases), the step SHALL
+      fail loudly with an `::error::` annotation and a non-empty log —
+      never a silent or empty abort.
+    probe: extracted_step.sh
+  - text: IF the workflow YAML is malformed or unlintable, CI SHALL reject it.
+    probe: actionlint
+
+assumptions:
+  - text: >-
+      The "conformance" job's runner already has pytest/pyyaml installed by
+      the job's pre-existing "Install test deps" step, and the new step is
+      placed after it (and after the sibling stale-detector step) in the
+      same `hit`-gated job — never before, or it dies on "No module named
+      pytest" instead of a real test failure.
+    status: verified
+    probe: read the merged workflow YAML; step index confirmed by parsing
+      jobs.conformance.steps in order
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 3

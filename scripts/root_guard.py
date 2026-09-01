@@ -38,11 +38,14 @@ WHITELIST_FILES: set[str] = {
     "AGENTS.md",
     "GEMINI.md",
     "codex.md",
-    # fleet-order per-CLI door files (human/prompt-referenced; see AGENTS.md
-    # §17 + FLEET_TOPOLOGY.json) — NOT auto-discovered by their CLIs yet,
-    # see PENDING-ARMS.
+    # fleet-order per-CLI door files. QWEN.md is CASE-SENSITIVE on purpose: it
+    # is the exact name the Qwen CLI opens, and it was `qwen.md` until
+    # 2026-08-31 — which on the APFS default is the same file, so the seat
+    # silently had no door on any case-sensitive volume. kimi.md stays
+    # lowercase: the Kimi CLI reads AGENTS.md, so that one really is
+    # human-referenced only (see AGENTS.md §17 + FLEET_TOPOLOGY.json).
     "kimi.md",
-    "qwen.md",
+    "QWEN.md",
     # Standard project files
     "README.md",
     "LICENSE",

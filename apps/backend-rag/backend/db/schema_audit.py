@@ -220,16 +220,47 @@ LEGACY_CHECKSUM_ALLOWLIST: dict[int, str] = {
 # onward, stranding 25+ merged commits, because a row written in January can
 # never become verifiable no matter how long the deploy stays broken.
 #
-# So the two checksum findings default to WARNING: still computed, still
-# printed, still in the JSON, but they do not abort a deploy on state that was
-# already there. Enforcement is one env var away -- the same canary shape the
-# rest of this repo uses (E33_CLAIM_GUARD_ENFORCE, VISA_ENGINE_EVALUATE_MODE)
-# -- so arming it later is `fly secrets set`, not a revert of the check.
+# The first cure (#5376) demoted the two checksum findings to WARNING for the
+# whole CLASS. That unblocked the deploy and it was the wrong shape: a
+# class-wide demotion disarms the check for FUTURE drift too, so the price of
+# ending the outage was a permanent blind spot -- exactly the trade that turns
+# an incident into a silent hole nobody re-opens.
 #
-# What must be true before flipping it: the 17 symbolic rows are in
-# SYMBOLIC_CHECKSUM_ALLOWLIST with their MEASURED values, and the 8 mismatches
-# are reconciled or given a mechanism of their own (they have none today --
-# there is no allowlist for a mismatch, by design).
+# THIS IS NO LONGER WHAT THE CODE DOES. #5383 replaced the class demotion with
+# LEGACY_CHECKSUM_BASELINE below: the two checksum findings are ERROR again by
+# default, and ONLY the 25 exact rows in that table are demoted to warning, and
+# only while their fingerprint still matches -- `stored` for all 25, plus
+# `recomputed` for the 8 mismatches. Edit the file behind a baselined mismatch,
+# or change the stored value of any baselined row, and it is an error again.
+# A migration that is not in the table has never been covered.
+#
+# So the 8 mismatches DO have a mechanism of their own now; the sentence that
+# stood here until 2026-08-31 said they had none, which was true of #5376 and
+# false of the code it was sitting in.
+#
+# SCHEMA_AUDIT_CHECKSUM_ENFORCE promotes even the baselined rows to error --
+# the same canary shape the rest of this repo uses (E33_CLAIM_GUARD_ENFORCE,
+# VISA_ENGINE_EVALUATE_MODE), so arming it is `fly secrets set`, not a revert.
+# It RAISES on a value it does not recognise rather than failing open, because
+# a flag that silently ignores a typo disarms a gate exactly when someone
+# believes they armed it.
+#
+# What must be true before flipping it: somebody reads the 8 mismatch diffs and
+# writes down, per migration, whether the file was edited after it was applied
+# or the recorded hash was wrong -- and then DELETES that row from the baseline.
+# A row that stays in the table is still unguarded, whatever comment sits
+# beside it.
+#
+# LIMIT, stated because "baselined" reads like "verified" and is not: for the
+# 17 SENTINEL rows the file is never hashed AT ALL. `_check_migration_checksums`
+# takes the `if not _SHA256_HEX.match(stored)` branch and `continue`s before it
+# reaches `actual = hashlib.sha256(path.read_text(...))`, so rewriting the .sql
+# behind migration 2, 3, ... 182 produces no finding at any severity. That is
+# inherent to a stored value that was never a digest -- there is nothing to
+# compare against -- and it is NOT introduced by the baseline; the baseline
+# only decides the severity of a finding that the sentinel branch has already
+# raised about the stored VALUE. Do not read a green checksum audit as evidence
+# that those 17 files are unchanged.
 #
 # DELIBERATELY NOT DEMOTED: every other finding in this module. A pending
 # migration, a duplicate number, a tracking divergence or a missing required

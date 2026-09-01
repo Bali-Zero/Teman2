@@ -134,6 +134,34 @@ def _state_dir() -> Path:
     return Path.home() / ".nuzantara" / "workspace-marketing"
 
 
+def _verifier_config_dir() -> Path:
+    """Isolated CLAUDE_CONFIG_DIR for the independent editorial reviewer.
+
+    The reviewer judges untrusted public copy, so it must start from a clean
+    context. When it inherits the machine's own ``$HOME/.claude``, the
+    SessionStart hooks fire and prepend fleet-mailbox messages, memory and
+    machine-check output to its context — text written by OTHER sessions. The
+    model then answers THAT instead of emitting its verdict JSON,
+    ``_extract_json_object`` returns None, and every fact gate fails
+    identically whatever the article says.
+
+    Measured 2026-09-01 on Mini, same argv and same stdin both times:
+    inheriting ``$HOME/.claude`` returned prose about queued PRs and zero JSON;
+    with this directory it returned the exact verdict object. The prompt
+    already refuses instructions inside EVIDENCE_PACKAGE — this closes the
+    channel that arrives BEFORE the prompt does.
+    """
+
+    configured = os.getenv("WORKSPACE_MARKETING_VERIFIER_CONFIG_DIR", "").strip()
+    path = (
+        Path(configured).expanduser()
+        if configured
+        else _state_dir() / "verifier-config"
+    )
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def _writes_enabled() -> bool:
     return os.getenv("WORKSPACE_MARKETING_WRITES_ENABLED", "").strip().lower() == "true"
 
@@ -716,18 +744,18 @@ def _verification_env(provider: str) -> dict[str, str]:
 
     allowed = {"HOME", "LANG", "LC_ALL", "PATH", "TMPDIR"}
     if provider == "claude":
-        allowed.update(
-            {
-                "CLAUDE_CONFIG_DIR",
-                "CLAUDE_CODE_OAUTH_TOKEN",
-                "ANTHROPIC_AUTH_TOKEN",
-            }
-        )
+        # CLAUDE_CONFIG_DIR is deliberately NOT inherited — it is forced to the
+        # isolated verifier directory below, so the machine's SessionStart hooks
+        # can never prepend other sessions' text to a verdict. See
+        # _verifier_config_dir().
+        allowed.update({"CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_AUTH_TOKEN"})
     env = {key: value for key, value in os.environ.items() if key in allowed}
     standard_path = (
         "/opt/homebrew/bin:/Users/nuzantara/.local/bin:/usr/local/bin:/usr/bin:/bin"
     )
     env["PATH"] = f"{standard_path}:{env.get('PATH', '')}"
+    if provider == "claude":
+        env["CLAUDE_CONFIG_DIR"] = str(_verifier_config_dir())
     if provider == "claude" and not env.get("CLAUDE_CODE_OAUTH_TOKEN"):
         batch_oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN_3", "").strip()
         if batch_oauth_token:

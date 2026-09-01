@@ -28,8 +28,17 @@ import type { CSSProperties } from "react";
  *
  * CONTRAST (WCAG 2.x, every ratio COMPUTED — R4 §4 forbids estimating them;
  * recomputed against these exact values by
- * `scripts/tests/test_merah_putih_day_contrast.py`, which fails the build if any
- * pair below drifts):
+ * `scripts/tests/test_merah_putih_day_contrast.py`, which goes red on any PR that
+ * touches this file if a pair below drifts — via `.github/workflows/
+ * merah-putih-day-contrast.yml`. That workflow was added 2026-08-31; before it, this
+ * sentence read "fails the build", and it was FALSE: no workflow named the guard at
+ * all, so the only place it ran was a nightly `continue-on-error` sweep that gates
+ * nothing. Prose claiming enforcement that CI does not back is worth less than no
+ * claim at all, because it stops the next reader from checking — which is why the
+ * replacement is deliberately narrow: that check is ADVISORY. It RUNS and it goes
+ * RED, visibly, on the pull request; it is not a required context and does not block
+ * the merge queue. Do not upgrade this sentence to "blocks" without first putting the
+ * context into branch protection):
  *   ink       #16213a on carta 14.79 · on elevated 16.00
  *   ink-soft  #475372 on carta  7.07 · on elevated  7.64
  *   muted     #6f6a5e on carta  4.98
@@ -160,11 +169,21 @@ export const MERAH_PUTIH_DAY_VARS = {
   // our own wrapper, rather than editing the shared visa layout — the rest of
   // the funnel is a different lane's perimeter.
   // Inter and Cormorant are self-hosted and mounted on <html> by the root
-  // layout. IBM Plex Mono is NOT loaded in this app (only 4 woff2 files exist:
-  // cormorant, inter, league-spartan, montserrat), so `--font-mono` resolves to
-  // ui-monospace — the same fallback every other mono surface in this app
-  // already uses. Declared, not pretended: loading a fifth face is a perf decision of
-  // its own, tracked in PENDING-ARMS, not smuggled into a palette change.
+  // layout; no IBM Plex Mono webfont exists in this repo (packages/core/fonts
+  // ships exactly 4: cormorant, inter, league-spartan, montserrat), and loading
+  // a fifth face is a perf decision of its own, not one to smuggle into a
+  // palette change.
+  // CORRECTED 2026-09-01: the previous wording claimed `--font-mono` "resolves
+  // to ui-monospace — the same fallback every other mono surface in this app
+  // already uses" and cited a PENDING-ARMS entry. Both were false, and together
+  // they made an omission read as a settled decision. The token DOES exist
+  // (packages/core/tokens/primitives.css) as `"IBM Plex Mono", ui-monospace,
+  // Menlo, monospace`, with ~29 consumers elsewhere in the app, every one of
+  // them naming Plex FIRST — so using it here would need no new file and would
+  // put this surface exactly where those 29 already are. No ledger row for
+  // "Plex" or "font-mono" exists. What is genuinely open, and NOT settled by
+  // this comment: R4 asks for Plex Mono on IDR amounts while the price figures
+  // here use Cormorant + tabular-nums, and nothing on disk records why.
   fontFamily: "var(--font-sans), Inter, ui-sans-serif, system-ui, sans-serif",
 } as CSSProperties;
 
