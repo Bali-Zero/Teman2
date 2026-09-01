@@ -168,7 +168,7 @@ def run_classifier(
     *,
     repo: str,
     min_age_minutes: int,
-    classifier_path: Path = CLASSIFIER,
+    classifier_path: Path | None = None,
     timeout: int = CLASSIFIER_TIMEOUT,
 ) -> tuple[int, dict[str, Any] | None, str, str]:
     """Invoke queue_stall_classifier.py as a SUBPROCESS with `--json`. Returns
@@ -181,6 +181,13 @@ def run_classifier(
     row among otherwise-fine rows, for instance — and this notifier must still be able to act on
     and report those rows precisely, not collapse "the classifier's rc was 1" into "there is
     nothing here to look at"."""
+    # Resolved HERE, never as a `Path = CLASSIFIER` default: a default argument binds at
+    # IMPORT, so it does not follow a monkeypatch of CLASSIFIER. That is the exact shape that
+    # had this suite flocking the real ~/.agent state path (scar W96). Today's only caller
+    # passes classifier_path= explicitly, so the landmine is unarmed — it is removed rather
+    # than commented, so a future caller cannot arm it by writing less code.
+    if classifier_path is None:
+        classifier_path = CLASSIFIER
     argv = [
         sys.executable,
         str(classifier_path),
