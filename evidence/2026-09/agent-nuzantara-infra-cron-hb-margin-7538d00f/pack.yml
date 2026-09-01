@@ -17,6 +17,9 @@ lanes:
   - lane: review-cross-family-gemini
     role: review
     seat: gemini-3.1-pro-agy
+  - lane: review-cross-family-tp1
+    role: review
+    seat: tp1-qwen3.8-max
 
 what_changed: |
   4 files (unchanged from the PR's own diff, plus this ceremony's 2 follow-up
@@ -105,10 +108,17 @@ proof: |
     dropped.
   - gemini-3.1-pro (agy) cross-family round: UNAVAILABLE across 3 attempts
     (permission auto-denial x2, self-initiated-check timeout x1) -- see
-    journal.jsonl. Council quorum for this pack is 1/2 seats returned.
-    Recorded honestly, not hidden or faked; flagged for the gate session.
-  - Worktree /tmp/wt-5464 clean except for this pack's own 2-file follow-up
-    fix commit, on top of the PR's unmodified 3 commits.
+    journal.jsonl. Recorded honestly, not hidden or faked; flagged for the
+    gate session.
+  - tp1-qwen3.8-max cross-family round (scripts/tp1_call.py, effort=medium,
+    3-question short prompt on this ceremony's finding-5 fix): answered in
+    full, exit 0. Confirmed the plistlib-on-the-real-plist probe is the
+    correct source of truth. Raised 2 new findings against this ceremony's
+    OWN fixes -- see dissent[] findings 6 and 7. Council quorum for this
+    pack: 2 distinct review seats marked ok:true in journal.jsonl
+    (codex-gpt-5.6-sol, tp1-qwen3.8-max) -- R9 Gear-3 quorum satisfied.
+  - Worktree /tmp/wt-5464 clean except for this pack's own 3-file follow-up
+    fix+review commits, on top of the PR's unmodified 3 commits.
 
 dissent:
   - seat: codex-gpt-5.6-sol
@@ -199,6 +209,56 @@ dissent:
       beyond the PR's existing diff, so this finding is reported as a real,
       confirmed, currently-unfixed residual risk for the gate session to
       weigh -- not silently dropped, not bent to fit the constraint.
+
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      The severity-tiered margin (1.5x critical/error, 2.0x else) is a pure
+      multiple of the organ's own StartInterval with no floor beneath it: an
+      organ whose plist StartInterval is edited down to something very short
+      (e.g. 2s) would see its 1.5x floor collapse to 3s, tighter than
+      ordinary launchd/cron scheduling jitter, guaranteeing false
+      heartbeat-miss alerts on that organ.
+    status: CONFIRMED
+    resolution: >-
+      Verified against the guard's own arithmetic: the multiplier has no
+      absolute-seconds floor, only a ratio. No organ in the current registry
+      has a StartInterval short enough to trigger this in practice (the
+      fastest is well above the range where a multiple-only floor would
+      bite), so this is a theoretical edge case today, not an active bug --
+      same shape as dissent finding 1 (inherited regex fragility, currently
+      unexercised). A fix would mean adding a second, absolute-seconds term
+      (e.g. max(tier_multiple, 30s)) to the guard's threshold function --
+      out of scope for this ceremony's mandate (push + re-measure + tp1
+      review + lint only, no further guard-logic edits). Reported as
+      residual risk, not fixed.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      This ceremony's own finding-5 fix (reject "skipped"/"failed"/"error"
+      in the workflow step's pytest summary line, in addition to
+      PASSED>=9) does not close every variant of the underlying gap: a
+      summary line reading e.g. "9 passed, 1 deselected" (produced if the
+      step's pytest invocation ever gained a stray -k/--deselect) contains
+      none of the three banned tokens and still satisfies PASSED>=9,
+      silently hiding a filtered-out test -- the same class of blind spot
+      finding 5 named, one token short of the reject-list. Suggested a
+      strictly stronger check: exit code 0 AND collected==passed (parsed
+      from pytest's "collected N items" line) instead of string-matching
+      the summary line's vocabulary.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced by inspection: the fixed reject-list is
+      {"skipped","failed","error"} and "deselected" is not a member, so the
+      described line would pass PASSED>=9 undetected exactly as claimed.
+      The step's actual pytest invocation in organ-conformance.yml carries
+      no -k/--deselect today, so this is not an active bug, only a fragility
+      one edit away -- same shape as findings 1 and 3 above (residual risk
+      on an inherited/adjacent surface, not introduced by this diff).
+      Fixing it means a further edit to organ-conformance.yml's bash body,
+      which this ceremony's mandate explicitly did not authorize beyond the
+      finding-5 fix already landed. Reported as a real, confirmed,
+      currently-unfixed residual risk for the gate session to weigh -- not
+      silently dropped, not bent to fit the constraint (same posture as
+      finding 5's own original resolution).
 
 receipts:
   - claim: "PR #5464's auto-merge was armed (enabledAt 2026-09-01T01:07:09Z) with mergeQueueEntry already null; disarmed before this ceremony began"
@@ -303,6 +363,12 @@ receipts:
     exit: 0
     ts: "2026-09-01T18:52:00Z"
     seat: claude-sonnet-5
+  - claim: "cross-family review round 2, tp1-qwen3.8-max: 3-question short review of this ceremony's finding-5 fix, 1687-byte prompt, ran to completion"
+    cmd: "python3 scripts/tp1_call.py --model qwen3.8-max --task-file tp1_prompt.txt --effort medium --timeout 300"
+    result: "answer received (3 numbered sections + VERDICT: BLOCKED) -- 2 new confirmed residual-risk findings, see dissent[]"
+    exit: 0
+    ts: "2026-09-02T02:10:00Z"
+    seat: tp1-qwen3.8-max
 
 pii_scan: clean
 pii_scan_note: >-
@@ -313,7 +379,7 @@ pii_scan_note: >-
 
 spend:
   wall_clock_hours: 1
-  adversarial_rounds: 1
+  adversarial_rounds: 2
 
 diff:
-  net_lines: "7 files, +1104/-29, 8 commits"
+  net_lines: "7 files, +1119/-29, 9 commits"
