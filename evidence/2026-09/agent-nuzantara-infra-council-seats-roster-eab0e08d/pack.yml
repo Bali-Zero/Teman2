@@ -68,14 +68,19 @@ diff:
     scripts/tests/test_evidence_pack_lint.py (its tests).
 
 seat_fallback_reason: >-
-  Two of the three titolari were unavailable at dispatch and both were observed, not assumed.
-  kimi-code/k3 returned HTTP 403 "You've reached your weekly (7-day) usage limit" (a weekly
-  window, not an hourly dip). tp1-qwen3.8-max answered but its door did not: scripts/tp1_call.py
-  failed twice with an unparseable-response JSONDecodeError on the streamed thinking-model shape,
-  at effort high and again at medium, with finish_reason "stop" visible in the raw error trailer —
-  the seat is alive and the CLIENT is the defect. Only codex-gpt-5.6-sol was recordable among the
-  three titolari, so the reserve agy-gemini-3.1-pro was seated to reach quorum. This is the rule
-  this very PR introduces, applying to its own pack on day one.
+  NO RESERVE IS COUNTED IN THE FINAL STATE OF THIS PACK, so this field is inert and is kept only
+  because the sequence it records is the honest history of the dispatch. At first dispatch two of
+  the three titolari were unavailable, both observed rather than assumed: kimi-code/k3 returned
+  HTTP 403 "You've reached your weekly (7-day) usage limit" (a weekly window, not an hourly dip),
+  and tp1-qwen3.8-max answered while its door did not — scripts/tp1_call.py failed twice with an
+  unparseable-response JSONDecodeError, the seat alive and the CLIENT the defect. The reserve
+  agy-gemini-3.1-pro was therefore seated and returned a PASS. That client defect was then
+  root-caused (it scrubbed the raw body before json.loads, and its length-based redaction broke
+  the JSON), repaired, and tp1-qwen3.8-max re-dispatched: exit 0 at effort medium, verdict GO.
+  Quorum now stands on two titolari, codex-gpt-5.6-sol and tp1-qwen3.8-max, and the reserve was
+  stood back down to ok:false — because the ruling is that reserves do not play while the titolari
+  are available, and a titolare that was only unreachable through a broken door was never truly
+  unavailable. Gemini's verdict stays in the journal because it happened, not because it counts.
 
 residual_risks:
   - >-
@@ -88,7 +93,16 @@ residual_risks:
     "a single quota reset can take the quorum to zero" shape the roster expansion itself was ruled
     to fix, one client-failure-domain deeper than the seat-slug count shows. Declared as a real,
     stated limitation of this change, not a defect in it: the roster counts distinct seat slugs,
-    not distinct failure domains, and fixing that is future work.
+    not distinct failure domains, and fixing that is future work. UPDATE, same day: the specific
+    parsing defect that caused this pack's own outage has been root-caused and repaired on branch
+    agent/nuzantara/infra/tp1-scrub-before-parse, and the repaired client is what let
+    tp1-qwen3.8-max return the GO recorded in the journal. That repair is NOT merged, so the
+    shared-failure-domain risk above stands in full on origin/main until it is — and it will not
+    stop standing merely because this pack says the cure exists. A second, separate over-match
+    defect in the same client remains unrepaired and was measured while writing this pack: its
+    redaction eats any token longer than about 24 characters, so a council verdict passed through
+    it loses long identifiers — this pack's own qwen verdict reads <REDACTED> where the model
+    named COUNCIL_REVIEW_SEATS_FALLBACK and COUNCIL_REVIEW_SEATS_TITOLARI.
   - >-
     check_council_run_gear3 cannot verify the TRUTH of a seat_fallback_reason string, only that a
     non-empty one was written (constraints section of brief.yml, deliberate — the lint has no
