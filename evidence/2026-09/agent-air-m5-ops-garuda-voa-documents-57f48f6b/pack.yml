@@ -79,9 +79,11 @@ diff:
   measured_at: >-
     git diff --numstat <merge-base ae5740b59798a1bab2d07744301a18cbc7b170a0>...HEAD
     (three-dot, merge-base anchored, per W102) — 366+284+485 additions, 0 deletions,
-    across 3 new files, 2 commits (the feature commit plus this evidence-pack commit
-    added on top of it — recomputed after the fix below, not the count at authoring
-    time). Measured LAST, after every other check in this pack.
+    across 3 new files, spanning the feature commit plus the evidence-pack commit
+    added on top of it (recomputed after the fix below, not the state at authoring
+    time — the branch has since gained a rework round on top of both, so even a
+    commit count taken now would already be stale by the time this is read).
+    Measured LAST, after every other check in this pack.
 
 residual_risks:
   - >-
@@ -128,6 +130,31 @@ residual_risks:
     tp1-qwen3.8-max's PASS verdict is recorded but not counted as clearing anything — it
     ran on a short prompt with no diff attached (its documented failure mode on long
     prompts) and did not engage with the migration text at all.
+  - >-
+    REWORK ROUND (added on top of this pack, not by its original author): three further
+    defects were found and fixed after this pack's original BLOCKED verdict, independent
+    of the cross-owner-DDL blocker above (which this round deliberately left untouched —
+    see the first residual risk in this list, still true). (1) The new
+    garuda_documents.retention_policy_id FK onto visa_decision_retention_policies was
+    never registered in conftest.py's _GARUDA_VOA_RETENTION_FK_DEPENDENTS, so any test
+    that rolls migration 264 back (test_evaluate_endpoint.py, on Backend Shard 2/3)
+    failed closed with DependentObjectsStillExistError the moment 304 merged — fixed by
+    registering it, the same one-line pattern 281/285/286 already use; confirmed by
+    test_visa_engine_retention_fk_registry.py going from RED to GREEN. (2) The idempotency
+    key stored in garuda_documents.key_sha256 was a bare sha256(idempotency_key), not
+    scoped to actor as the contract's IdempotencyKey parameter requires ("Scoped to actor
+    and operation") — two different actors reusing the same literal key would have
+    collided on the same PRIMARY KEY row; fixed by hashing a length-prefixed
+    (actor_id, operation, environment, idempotency_key) tuple instead, with new tests
+    proving no cross-actor collision/read and no separator-boundary ambiguity, mutation-
+    verified. (3) Replaying an already-committed READY_FOR_REVIEW document unconditionally
+    raised ReadyOutcomeValueNotPersisted even when the caller was a commit-race loser
+    holding its own matching in-memory outcome (from OCR on the identical bytes) — fixed
+    in service.py by reconciling the loser's outcome against the winner's persisted
+    field-structure (never a value) and re-tagging it with the winner's document_id; an
+    ordinary sequential replay (no independent outcome to reconcile against) still raises,
+    proven by a paired innocence test. All three fixes are mutation-verified (production
+    fix reverted, new test observed RED, fix restored, test observed GREEN again).
 
 pii_scan: clean
 

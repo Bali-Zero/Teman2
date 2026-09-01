@@ -74,9 +74,23 @@
 -- (0) Widen the one retention authority with a fifth scope
 -- ----------------------------------------------------------------------------
 
+-- CATALOG-GUARDED, both halves (DROP and ADD) — the D1 ownership split means
+-- `backend_rag_v2` cannot ALTER this table at all (test_post_d1_migrations_
+-- guard_ledger_owned_ddl.py). `ADD CONSTRAINT ... IF NOT EXISTS` does not
+-- exist for CHECK constraints and, per that guard's docstring, `IF NOT
+-- EXISTS` would not help anyway: Postgres runs the ownership check BEFORE
+-- the short-circuit. The only construction that survives is a dollar-quoted
+-- block that reads the catalog FIRST and can decline to EXECUTE the ALTER
+-- at all -- so both the DROP and the ADD live inside ONE such block, gated
+-- by a real "is this already widened" test (not just a shape probe to
+-- satisfy the guard's scanner): on a database where the enum already lists
+-- 'GARUDA_DOCUMENT' (a re-applied migration, or a prior emergency
+-- `GRANT visa_ledger_owner` application) this is a clean no-op that never
+-- attempts the ALTER.
 DO $garuda_304_widen_scope_check$
 DECLARE
     scope_check_name text;
+    scope_check_def text;
 BEGIN
     -- Same find-by-shape discipline 285/281 use: the inline
     -- `policy_scope ... CHECK (policy_scope IN (...))` constraint renders
@@ -84,7 +98,8 @@ BEGIN
     -- `visa_decision_retention_policies_scope_anchor` (which renders as
     -- `CHECK ((policy_scope <> 'GARUDA_CHECK'::text) OR ...)`). Never a
     -- hardcoded constraint name.
-    SELECT conname INTO scope_check_name
+    SELECT conname, pg_get_constraintdef(oid)
+      INTO scope_check_name, scope_check_def
       FROM pg_constraint
      WHERE conrelid = 'public.visa_decision_retention_policies'::regclass
        AND contype = 'c'
@@ -92,16 +107,23 @@ BEGIN
     IF scope_check_name IS NULL THEN
         RAISE EXCEPTION 'garuda 304: could not locate the policy_scope enum CHECK to widen';
     END IF;
+
+    IF scope_check_def LIKE '%GARUDA_DOCUMENT%' THEN
+        -- Already widened. Do not touch the constraint at all -- there is
+        -- nothing this migration needs the app role to own for.
+        RETURN;
+    END IF;
+
     EXECUTE format(
         'ALTER TABLE public.visa_decision_retention_policies DROP CONSTRAINT %I',
         scope_check_name
     );
+    EXECUTE
+        'ALTER TABLE public.visa_decision_retention_policies '
+        'ADD CONSTRAINT visa_decision_retention_policies_policy_scope_check '
+        'CHECK (policy_scope IN (''VISA_DECISION'', ''GARUDA_CHECK'', ''GARUDA_ORDER'', ''GARUDA_MAGIC_LINK'', ''GARUDA_DOCUMENT''))';
 END;
 $garuda_304_widen_scope_check$;
-
-ALTER TABLE public.visa_decision_retention_policies
-    ADD CONSTRAINT visa_decision_retention_policies_policy_scope_check
-        CHECK (policy_scope IN ('VISA_DECISION', 'GARUDA_CHECK', 'GARUDA_ORDER', 'GARUDA_MAGIC_LINK', 'GARUDA_DOCUMENT'));
 
 -- ----------------------------------------------------------------------------
 -- (1) garuda_documents -- one row per idempotency key
@@ -145,9 +167,9 @@ CREATE TABLE public.garuda_documents (
 );
 
 COMMENT ON TABLE public.garuda_documents IS
-    'GARUDA VOA document-upload intake (product step 5). One row per Idempotency-Key. Never stores raw document bytes or extracted passport field VALUES -- see postgres_store.py / garuda_document_review_fields for the PII-boundary rationale.';
+    'GARUDA VOA document-upload intake (product step 5). One row per (actor, operation, environment, Idempotency-Key) scope. Never stores raw document bytes or extracted passport field VALUES -- see postgres_store.py / garuda_document_review_fields for the PII-boundary rationale.';
 COMMENT ON COLUMN public.garuda_documents.key_sha256 IS
-    'sha256 of the Idempotency-Key header value. Raw key is never persisted.';
+    'sha256 of the (actor_id, operation, environment, Idempotency-Key header value) tuple, length-prefixed and unambiguous -- see postgres_store.py::_scoped_key_sha256. NOT a bare hash of the key alone: the contract scopes Idempotency-Key to actor and operation, so two different actors reusing the same literal key must never collide on this PRIMARY KEY. Raw key is never persisted.';
 COMMENT ON COLUMN public.garuda_documents.canonical_payload_sha256 IS
     'sha256 of (document_kind || raw upload bytes) -- service.py::_payload_hash. Raw bytes are never persisted anywhere.';
 
