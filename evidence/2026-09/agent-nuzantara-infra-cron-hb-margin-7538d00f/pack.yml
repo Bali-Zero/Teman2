@@ -113,9 +113,15 @@ proof: |
   - tp1-qwen3.8-max cross-family round (scripts/tp1_call.py, effort=medium,
     3-question short prompt on this ceremony's finding-5 fix): answered in
     full, exit 0. Confirmed the plistlib-on-the-real-plist probe is the
-    correct source of truth. Raised 2 new findings against this ceremony's
-    OWN fixes -- see dissent[] findings 6 and 7. Council quorum for this
-    pack: 2 distinct review seats marked ok:true in journal.jsonl
+    correct source of truth. Raised 2 findings against this ceremony's own
+    fixes -- see dissent[]: finding 6 (no absolute-seconds floor beneath
+    the severity-tiered multiplier) CONFIRMED as a residual risk; finding 7
+    (a "deselected" summary line escapes the reject-list) REFUTED against
+    the pushed code -- .github/workflows/organ-conformance.yml line 337
+    already rejects `skipped|xfailed|xpassed|deselected|warning`, covering
+    exactly the line tp1 described; the reviewed seat answered a prose
+    summary of the fix, not the diff itself. Council quorum for this pack:
+    2 distinct review seats marked ok:true in journal.jsonl
     (codex-gpt-5.6-sol, tp1-qwen3.8-max) -- R9 Gear-3 quorum satisfied.
   - Worktree /tmp/wt-5464 clean except for this pack's own 3-file follow-up
     fix+review commits, on top of the PR's unmodified 3 commits.
@@ -233,32 +239,31 @@ dissent:
       residual risk, not fixed.
   - seat: tp1-qwen3.8-max
     objection: >-
-      This ceremony's own finding-5 fix (reject "skipped"/"failed"/"error"
-      in the workflow step's pytest summary line, in addition to
-      PASSED>=9) does not close every variant of the underlying gap: a
-      summary line reading e.g. "9 passed, 1 deselected" (produced if the
-      step's pytest invocation ever gained a stray -k/--deselect) contains
-      none of the three banned tokens and still satisfies PASSED>=9,
-      silently hiding a filtered-out test -- the same class of blind spot
-      finding 5 named, one token short of the reject-list. Suggested a
-      strictly stronger check: exit code 0 AND collected==passed (parsed
-      from pytest's "collected N items" line) instead of string-matching
-      the summary line's vocabulary.
-    status: CONFIRMED
+      This ceremony's own finding-5 fix (reject a pytest summary line
+      reporting anything beyond a clean pass, in addition to PASSED>=9)
+      does not close every variant of the underlying gap: a summary line
+      reading e.g. "9 passed, 1 deselected" (produced if the step's pytest
+      invocation ever gained a stray -k/--deselect) would contain none of
+      the reject-list's tokens and still satisfy PASSED>=9, silently
+      hiding a filtered-out test.
+    status: REFUTED
     resolution: >-
-      Reproduced by inspection: the fixed reject-list is
-      {"skipped","failed","error"} and "deselected" is not a member, so the
-      described line would pass PASSED>=9 undetected exactly as claimed.
-      The step's actual pytest invocation in organ-conformance.yml carries
-      no -k/--deselect today, so this is not an active bug, only a fragility
-      one edit away -- same shape as findings 1 and 3 above (residual risk
-      on an inherited/adjacent surface, not introduced by this diff).
-      Fixing it means a further edit to organ-conformance.yml's bash body,
-      which this ceremony's mandate explicitly did not authorize beyond the
-      finding-5 fix already landed. Reported as a real, confirmed,
-      currently-unfixed residual risk for the gate session to weigh -- not
-      silently dropped, not bent to fit the constraint (same posture as
-      finding 5's own original resolution).
+      REFUTED against the pushed code, not accepted on tp1's word: this
+      ceremony's own prior recording of this objection (see git history)
+      mis-stated the reject-list as {"skipped","failed","error"} when
+      writing it up -- an error in MY OWN transcription, not tp1's, but one
+      that let a false objection stand unchecked. The actual fix landed in
+      commit 2723855d4f, .github/workflows/organ-conformance.yml line 337:
+      `grep -qE 'skipped|xfailed|xpassed|deselected|warning'` -- "deselected"
+      IS a member of the reject-list, verbatim, already covering exactly the
+      line tp1 described. A synthetic "9 passed, 1 deselected in 0.30s"
+      summary line matches that regex and is rejected before the PASSED>=9
+      check ever runs. tp1 was given a prose summary of the fix in the
+      review prompt, not the diff itself, and answered the summary rather
+      than the code -- a caution for how this seat's short-prompt reviews get
+      built, not a defect in the fix. Recorded as REFUTED rather than
+      silently dropped, per the same non-negotiable-honesty posture as every
+      other finding in this pack.
 
 receipts:
   - claim: "PR #5464's auto-merge was armed (enabledAt 2026-09-01T01:07:09Z) with mergeQueueEntry already null; disarmed before this ceremony began"
