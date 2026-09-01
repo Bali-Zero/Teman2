@@ -1,0 +1,86 @@
+task_id: pull-renames-v2-0901
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Make the Pro main-checkout puller see a locally-modified path that origin RENAMED
+  AWAY — without wedging on the removed paths the same flag newly makes visible.
+
+  Supersedes #5492, which was CLOSED at merge-queue position 1 rather than merged.
+  That PR carried the flag and its guilt proof, and argued in its own residual_risks
+  that the abort shapes were INHERITED. An adversarial refuter said one of them was
+  not, and it was right. This brief exists because the first one was wrong about the
+  boundary it was most confident about.
+
+  The wedge, measured on the live checkout rather than inferred:
+
+    git -C ~/nuzantara diff --name-only HEAD origin/main        -> 119 paths
+    git -C ~/nuzantara diff --no-renames --name-only HEAD ...   -> 121 paths
+
+  the two that appear are .claude/rules/cicatrix-scars{,-archive}.md, both ' M',
+  moved to docs/scars/ by #5331 while a HOME-only rotation cron kept writing the
+  old paths. Family #1 (HOME-fork drift) feeding #2 (a cron that runs, exits and
+  reports while only its OUTPUT is wrong).
+constraints:
+  - "Cure what the diff INTRODUCES; spec what it inherits. --no-renames admits
+    REMOVED paths into a set that previously held only additions and modifications,
+    so every shape reachable ONLY through a removal is this diff's to fix, and the
+    same shape reachable through a plain modification is not. Case L2 pins that
+    boundary from the other side: if a guard leaks into the modify case it goes red."
+  - "Pro-authoritative runtime state is never traded for tidiness. Where the choice
+    is between losing a local superset and leaving an announced untracked orphan,
+    the orphan wins — a regressed dedup index means re-publishing, which is a
+    business event, while an orphan is a logged divergence."
+  - "The core Pro guarantee is unchanged: a tracked local modification origin did
+    NOT touch survives the ff untouched. The checkout is permanently dirty with
+    pipeline output (132 lines at the time of writing)."
+acceptance:
+  - text: >
+      WHEN origin renames a tracked file the local tree has modified, the puller
+      SHALL classify the renamed-away SOURCE as a collision, back its local content
+      up, and let the fast-forward land.
+    status: verified
+    probe: "case J — 5 of its 6 assertions fail against origin/main's script, innocence arm green"
+  - text: >
+      WHEN origin REMOVES a path the local tree has already deleted with a bare rm,
+      the puller SHALL treat it as no collision at all and let the ff land.
+    status: verified
+    probe: "case L — 4 of 5 fail with guard #1 excised; passes against origin/main because pre-flag the path was invisible"
+  - text: >
+      WHILE that guard exists, an incoming MODIFY of a locally-deleted path SHALL
+      still abort fail-safe — the inherited shape is deliberately not cured.
+    status: verified
+    probe: "case L2 — 3 assertions fail when the guard is widened past removals"
+  - text: >
+      WHEN origin renames a keep-local allowlisted path OUT of its directory, the
+      Pro-authoritative superset SHALL survive the ff and the orphan SHALL be announced.
+    status: verified
+    probe: "case M — 2 assertions fail with the restore mkdir excised, while case K stays fully green"
+  - text: >
+      WHERE a keep-local path origin merely MODIFIES is concerned, no announcement
+      SHALL fire.
+    status: verified
+    probe: "case K innocence arm; a positive control replacing the guard with `if true` turns exactly that assertion red"
+  - text: >
+      WHEN this corpus changes, a workflow SHALL run it — no workflow ran it before.
+    status: verified
+    probe: "grep -rn test_pro_git_pull .github/workflows/ empty on origin/main; after: in-job case sentinel + run step in job `antidotes`, a required check; test_immune_enforcement_trigger_symmetry.py 12 passed"
+risks:
+  - "This is Pro's only automatic main-sync path, running every 5 minutes on a
+    permanently dirty checkout. A wrong reset destroys pipeline output. Mitigated by
+    backup-before-clear, and by every new case asserting RECOVERABILITY rather than
+    only rc=0."
+  - "Two inherited abort shapes remain: a bare-rm local deletion and a STAGED
+    deletion, both on a path origin MODIFIES. Both abort fail-safe (loud in the log,
+    nothing touched) and both predate the flag — reproduced with a plain modify plus
+    delete, no rename involved. --no-renames enlarges the set of paths that can reach
+    them, which is why L2 exists."
+  - "A renamed keep-local path is ANNOUNCED, not MIGRATED. Following it to its new
+    home needs --name-status rename topology plus a migration rule for the allowlist
+    itself; that is a redesign and was refused inside a flag fix."
+  - "This PR does not cure the fleet. Mini's 5-minute sync runs
+    scripts/mini/mini-git-pull.sh — a SECOND, independently versioned implementation
+    (with its own 7-file corpus) whose line 203 carries the byte-identical defective
+    call. It is not a HOME-fork drift: sha(live) == sha(repo). The cure has to be
+    applied twice because the code exists twice."
+pii: none

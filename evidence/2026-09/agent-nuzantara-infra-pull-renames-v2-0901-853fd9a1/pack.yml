@@ -1,0 +1,256 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  Successor to #5492, which was CLOSED at merge-queue position 1 rather than merged. That PR
+  carried the flag and a real guilt proof, and was graded PASS by two independent Opus-5 peer
+  sessions — neither of whom was wrong, because neither was asked about the shape that killed it.
+  An adversarial refuter on fresh context returned ~60 minutes later with two regressions the PR's
+  own residual_risks had argued were inherited. One was reproduced here before being accepted, the
+  PR was ejected from the queue, and both are cured in this diff with guilt AND scope-boundary
+  cases. The originating mandate is unchanged: Zero's 2026-09-01 ruling "(a) commit the cicatrix
+  rotation output" — replaced by a durable fix after investigation showed those paths were moved
+  by #5331 and committing them would resurrect an abandoned location.
+
+lanes:
+  - lane: pull-renames-ground
+    role: read
+    seat: >-
+      claude-opus-5 (conducting session, Pro). Root-caused by measurement on the live wedged
+      checkout — 119 incoming paths seen against 121 real — and established the scope limit by
+      reading the launchd chains on both machines rather than assuming a shared implementation.
+  - lane: pull-renames-build
+    role: build
+    seat: >-
+      claude-opus-5 (conducting session, Pro). Every case written and run RED before its cure,
+      each against a control proved non-inert first. Where a case could not be red against
+      origin/main (L, L2 — their shapes did not exist pre-flag) the control is the
+      flag-without-guard tree instead, which is the point the intermediate-control finding makes.
+  - lane: pull-renames-refute-agy
+    role: review
+    seat: >-
+      agy / Gemini 3.1 Pro, cross-family, fresh context. 7 findings on the first draft; every one
+      re-run rather than accepted. Its findings 2 and 3 named the abort shapes the FIRST PR then
+      mis-classified as inherited — the cross-family seat was closer to right than the session was,
+      and the session's own re-run is what produced the wrong classification.
+  - lane: pull-renames-refute-opus
+    role: review
+    seat: >-
+      claude-opus-5 subagent, fresh context, adversarial. Returned BLOCK with the two confirmed
+      regressions that ejected #5492. Notable for refuting ITSELF mid-report: its Linux claim
+      initially rested on alpine/busybox coreutils, it said so unprompted, and re-ran on
+      ubuntu:24.04 + GNU + python3 to reach 61/61 honestly rather than leaving the weaker proxy.
+  - lane: pull-renames-gate
+    role: review
+    seat: >-
+      TWO independent claude-opus-5 peer sessions (nuzantara-1b, nuzantara-a6), working separately,
+      graded #5492 PASS. Their verdicts stand for what they tested and are carried here because the
+      diff they graded is a strict subset of this one. This session's own subagent mechanism
+      delivered nothing for most of the run (14 spawned, 0 returned at the time), which is why the
+      gate was routed to peer sessions rather than waited on.
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane, so D3's non-Anthropic BUILD-seat requirement does not apply by its own terms
+  (">= 2 build lanes"). Cross-family pressure is present on REVIEW and was load-bearing: agy's
+  findings are why this diff contains an announcement, a wedge guard and a restore guard at all.
+  tp1-qwen3.8-max returned "tp1_call: timed out" after ~7 minutes and is recorded ok:false rather
+  than dropped; codex and kimi were already dead at session start (arsenal probe: codex
+  UNKNOWN_ERR, kimi QUOTA_DEAD). Note for whoever maintains the lint: its council_run check
+  recognises review seats only from ('codex-gpt-5.6-sol','kimi-code/k3','tp1-qwen3.8-max'), so
+  agy — a first-class seat in this repo's doctrine, and the seat that actually judged — cannot
+  satisfy it. No seat was renamed to fit that string list.
+
+diff:
+  files: 3
+  net_lines: 201
+  measured_at: >-
+    `git diff --numstat <merge-base>...HEAD` (three-dot; two-dot accuses a branch of deleting
+    main's later additions, W102), taken after the code commit and before this pack was written.
+    Above the ~400 guideline's spirit in test volume rather than behaviour: the behavioural change
+    is one flag plus two guards totalling 4 executable lines; the other ~190 are five test cases
+    and the comments explaining which half of each shape is introduced and which inherited.
+
+residual_risks:
+  - >-
+    THIS DOES NOT CURE THE FLEET, ONLY PRO. Mini's 5-minute sync runs
+    `scripts/mini/mini-git-pull.sh`, a SECOND independently versioned implementation with its own
+    7-file corpus, whose line 203 carries the byte-identical defective call. Corrected from the
+    first PR, which called it an unversioned HOME fork: `sha(live) == sha(repo)` = cd887be82a9c,
+    no drift at all. It is not superscar #1 — it is the same operation implemented twice, so the
+    cure must be applied twice. Its corpus is also unarmed, and invisible to the 13-orphan census
+    because that census matches `test_*.sh` while these are named `test-*.sh` (12 hyphen-named
+    corpora in the repo, 11 run by no workflow).
+  - >-
+    Two inherited abort shapes stay: a bare-rm local deletion and a STAGED deletion, both on a
+    path origin MODIFIES rather than removes. Both were reproduced with a plain modify plus
+    delete, NO rename involved, so they predate the flag. `--no-renames` enlarges the set of paths
+    that can reach them, which is exactly why case L2 pins the guard to removals — a guard that
+    also cured the modify case would be curing what this diff inherits.
+  - >-
+    A renamed keep-local path is ANNOUNCED, not MIGRATED: the superset survives at the old path as
+    an untracked orphan while origin's copy lives at the new one, and the log plus a P0 alert say
+    so. Following it needs `--name-status` topology plus an allowlist migration rule. That is the
+    redesign this diff refuses, and it is the honest residual: content preserved, divergence loud.
+  - >-
+    Arming this corpus makes a previously invisible suite blocking, in a job that is a required
+    check. It is hermetic (local bare repo, no network, per-case tmp dirs, PRO_GIT_PULL_NO_ALERT=1)
+    and now has one Linux run behind it (ubuntu:24.04, GNU coreutils, python3.12, 61/61 on the
+    pre-L/M corpus), but macOS is where it has been exercised.
+  - >-
+    The 12 other orphan shell corpora stay unarmed on purpose — that ledger row's own reasoning
+    (W95: triaging thirteen files beside an unrelated diff is how findings get waved through).
+
+pii_scan: clean
+
+dissent:
+  - seat: claude-opus-5 refuter (fresh context)
+    status: CONFIRMED
+    objection: >-
+      "'no new behaviour class' is false: a locally-deleted file at a renamed-away path goes from
+      rc=0 to rc=1 and wedges forever." Reproduced here before acceptance, same fixture two
+      scripts: pre-flag `rc=0` and "OK pulled to 14e043d"; post-flag `rc=1` and
+      "cp: .../old/R.md: No such file or directory". CURED (guard #1, case L), and the PR that
+      claimed otherwise was closed at queue position 1 rather than allowed to merge.
+  - seat: claude-opus-5 refuter (fresh context)
+    status: CONFIRMED
+    objection: >-
+      "keep-local is not unaffected — two new rc=0 damage paths on allowlisted renames." Worse than
+      modelled once measured: pre-flag rc=1 with the local superset intact and tracked; post-flag
+      rc=0, ff landing, the tracked path holding origin's OLDER snapshot and the superset GONE from
+      the working tree, because restore_kept_local's cp hit ENOENT on a parent directory the ff had
+      removed. For a dedup index that is a re-publish. CURED with one `mkdir -p` (guard #2, case M).
+  - seat: session (self-refute, and the one that mattered)
+    status: CONFIRMED
+    objection: >-
+      My own classification of those two shapes as INHERITED was wrong, and #5492 shipped it as a
+      measurement in both residual_risks and dissent. The error has a precise shape worth naming:
+      I reproduced the `cp` failure using a plain modify plus rm, saw origin/main's script fail
+      identically, and concluded "predates this change". True of the MODIFY case; false as a
+      defence of the flag, because in the RENAME case there was no wedge pre-flag at all — the path
+      was invisible to the resolver. Two scenarios merged and called one. The cross-family seat had
+      split them correctly and I overrode it with my own re-run.
+  - seat: agy-gemini-3.1-pro
+    status: RETRACTED
+    objection: >-
+      "A dir<->file type change makes the untracked branch `mv -n` the whole directory away." The
+      wedge is real; the mechanism is not, and it is not this diff's. `git ls-files --error-unmatch
+      dir` returns 0 (the pathspec matches `dir/file`), so it never reaches the untracked branch,
+      and origin/main's own script produces an identical rc=1 and identical log line on the same
+      fixture.
+  - seat: agy-gemini-3.1-pro
+    status: RETRACTED
+    objection: >-
+      "`--name-only` without `-z` splits filenames containing embedded newlines." Measured on a
+      real file named `a<newline>b`: git emits `"a\\nb"` — quoted, C-escaped, ONE line, 7 bytes.
+      `core.quotepath=false` disables non-ASCII quoting only. Marked CERTAIN by the seat and
+      speculative in fact.
+  - seat: claude-opus-5 peer gate (nuzantara-a6)
+    status: CONFIRMED
+    objection: >-
+      "The pack's `5 FAIL` receipt is accurate and NOT reproducible — it was taken at a corpus of
+      61, before case K existed; a reader gets 9 today." Accepted and generalised: every count in
+      this pack now carries its denominator and the tree it was taken against, because a receipt
+      whose measured context moved by the PR's own hand looks wrong to the next reader while
+      nobody lied. Also accepted: the arming is an in-job bash `case` sentinel, not a YAML `paths:`
+      filter, and the first PR described it wrongly while reaching the right conclusion.
+
+receipts:
+  - claim: >-
+      The refuter's blocking finding was reproduced independently BEFORE it was accepted
+    cmd: >-
+      one fixture (origin renames old/R.md to new/R.md; local does a bare `rm old/R.md`) run twice
+      — once against `git show origin/main:scripts/pro/pro-git-pull.sh`, once against this branch's
+    result: >-
+      pre-flag rc=0, ff lands, "OK pulled to 14e043d (1 commits from origin)"; post-flag rc=1, ff
+      does not land, "cp: .../old/R.md: No such file or directory" then "ERROR: backup cp failed
+      for tracked old/R.md — aborting tick (fail-safe)"
+    exit: 1
+    ts: 2026-09-01T17:47Z
+    seat: session (Pro)
+  - claim: >-
+      Guard #1 is non-vacuous and does NOT leak past removals
+    cmd: >-
+      two mutants of this branch's script — (a) the guard block excised, (b) the guard widened by
+      dropping its `git cat-file -e "$REMOTE:$f"` removal test — each run against this branch's corpus
+    result: >-
+      (a) 72 passed / 4 failed, all four L's, with L's innocence arm still GREEN; (b) 73 passed /
+      3 failed, all three L2's, including "the guard leaked into the modify case"
+    exit: 1
+    ts: 2026-09-01T17:52Z
+    seat: session (Pro)
+  - claim: >-
+      Guard #2 is non-vacuous, and case K cannot stand in for case M
+    cmd: 'mutant with only the `mkdir -p "$(dirname "$REPO/$kf")"` line removed'
+    result: >-
+      80 passed / 2 failed — "M superset LOST" and "M restore failed (parent directory gone)" —
+      while ALL SEVEN of case K's assertions stay green, because K's rename stays inside its own
+      directory and never exercises the missing parent
+    exit: 1
+    ts: 2026-09-01T17:57Z
+    seat: session (Pro)
+  - claim: >-
+      The corpus numbers reproduce, with denominators
+    cmd: >-
+      three runs — both files at origin/main; this corpus against origin/main's script; this branch
+    result: >-
+      55 passed / 0 failed; 69 passed / 13 failed (J 5, K 4, M 4 — L and L2 PASS there, correctly,
+      because pre-flag their shapes did not exist); 82 passed / 0 failed. 82 - 55 = 27 = the new
+      assertions (J 6, K 7, L 5, L2 3, M 6).
+    exit: 0
+    ts: 2026-09-01T17:58Z
+    seat: session (Pro)
+  - claim: >-
+      The cure works on the REAL defect, in production, not only in fixtures
+    cmd: >-
+      this branch's script run against Pro's wedged main checkout with production defaults and the
+      production lock, exactly as the launchd wrapper invokes its payload
+    result: >-
+      "backed up + reset colliding tracked mod (origin wins)" for both cicatrix paths, "Neutralised
+      2 colliding local path(s) (recoverable)", "OK pulled to 3a239be7b0 (9 commits from origin)".
+      HEAD 1d9baf3b76 -> 3a239be7b0 == origin/main. Dirty 134 -> 132: only the two colliding files
+      cleared, 132 lines of pipeline output preserved.
+    exit: 0
+    ts: 2026-09-01T17:18Z
+    seat: session (Pro)
+  - claim: >-
+      Ejecting an already-queued PR needs `close`; `--disable-auto` is a no-op there
+    cmd: "gh pr merge 5492 --disable-auto, then the GraphQL pair, then gh pr close 5492"
+    result: >-
+      "! Pull request Bali-Zero/Teman2#5492 is already queued to merge" and the entry unchanged at
+      {position:1, state:AWAITING_CHECKS}; after close, {mergeQueueEntry:null, merged:false,
+      state:CLOSED}. The queue nulls autoMergeRequest on admission, so --disable-auto finds nothing
+      to act on.
+    exit: 0
+    ts: 2026-09-01T17:48Z
+    seat: session (Pro)
+  - claim: >-
+      Editing the workflow introduced no new actionlint finding
+    cmd: "actionlint on origin/main's copy in a scratch tree, then on this tree"
+    result: "6 findings each, identical SC2221/SC2222 set"
+    exit: 0
+    ts: 2026-09-01T17:58Z
+    seat: session (Pro)
+  - claim: >-
+      The corpus was armed by no workflow, and the arming mechanism is not what the first PR said
+    cmd: >-
+      grep -rn test_pro_git_pull .github/workflows/ on origin/main; then
+      python -m pytest scripts/tests/test_immune_enforcement_trigger_symmetry.py -q
+    result: >-
+      before: no output, rc=1. After: 12 passed. Corrected by an independent gate: the mechanism is
+      an in-job bash `case` sentinel (`id: paths`, "Detect immune-relevant changes"), not a YAML
+      `paths:` filter; both literal paths were added by this diff and `main` has neither.
+    exit: 0
+    ts: 2026-09-01T17:58Z
+    seat: session (Pro)
+  - claim: >-
+      Mini runs a second implementation, not a drifted copy of this one
+    cmd: >-
+      ssh mini, read-only: grep -n name-only on ~/scripts/mini-git-pull.sh, shasum of live vs
+      `git show origin/main:scripts/mini/mini-git-pull.sh`
+    result: >-
+      line 203 carries the identical `diff --name-only HEAD "$TARGET_REF"` with no --no-renames;
+      sha(live) == sha(repo) == cd887be82a9c, so there is no drift — the repo simply holds two
+      implementations of one operation, and the first PR's "unversioned HOME fork" was wrong
+    exit: 0
+    ts: 2026-09-01T17:00Z
+    seat: session (Pro)
