@@ -1,0 +1,81 @@
+task_id: cicatrix-fix-consumer-map-1747
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Close PENDING-ARMS line 1747 (opened 2026-08-31, SQUAD H): `consumer_map.py` — the
+  pre-push guard that finds live consumers of deleted/renamed files by basename — still
+  reported 73 false LIVE consumers of the moved scar corpus (#5331). PR #5373 had already
+  cured one class (segment-built repoints, 72->63 on a different move); the remaining class
+  is a BARE BASENAME with no directory component at all, used as DATA: a tuple of filenames
+  (`CORPUS_FILES = ("cicatrix-scars.md", ...)`), a header string being written, a mapping
+  value, a commit-message string inside a shell script, a line of prose. A line naming only a
+  basename names no location, so treating it as a stale consumer is a category error.
+
+  Added a BARE-BASENAME FILTER: a hit whose line carries no directory syntax adjacent to the
+  basename (no `/` operator, no literal path string containing `/`, no `join(`/`joinpath(`
+  call) downgrades from LIVE to a new verdict "bare-basename" (excluded from the blocking
+  count, same as "docs-mention"). Per-kind precision, not one blanket rule, was required to
+  avoid regressing FIVE pre-existing tests during development: python hits are judged by the
+  basename literal's exact AST parent (Tuple/List/Dict/Set/Call downgrade; a bare `Assign` RHS
+  or `/`-BinOp stays conservatively LIVE, since the value could be composed into a real path
+  on another line — the ledger's own guilt corpus); shell/config-kind hits require the
+  occurrence to sit inside a quoted string (distinguishing `git commit -m "...basename..."`
+  from the tool's own pre-existing, intentional over-match example `cat conftest.py`, a bare
+  unquoted command-line word); the "other" catch-all (.txt/.yaml/.json/.sql) uses pure
+  directory-adjacency with no quote requirement, since the real docs/army-prompts/S15.txt
+  prose line this filter exists to catch has no quotes around it at all. Unparseable python
+  fails CLOSED (no downgrade attempted), same discipline as the pre-existing docstring filter.
+constraints:
+  - "One PR, one concern: only scripts/consumer_map.py and its test file touched. No
+    workflow, no hot-zone, no migration."
+  - "Never widen the RENAME SAFETY / PROSE-MENTION / docstring filters' own semantics — the
+    new filter runs strictly AFTER them, only acting on a hit still LIVE once they are done,
+    so an existing docs-mention classification is never overwritten by the new verdict."
+  - "Safety asymmetry preserved throughout (module docstring's own stated design): every
+    ambiguous case defaults to staying LIVE (over-match, costs a human one extra row), never
+    to silently downgrading (under-match, the actual defect class this whole tool exists to
+    prevent). Verified empirically: development history includes a first, simpler
+    line-only-heuristic version that DID regress test_guilt_segments_OUT_OF_ORDER_do_not_
+    count_as_a_repoint and test_common_basename_include_common_forces_the_scan (the tool's
+    own intentional `cat conftest.py` over-match example) — both were the trigger for the
+    per-kind AST/quote redesign actually shipped."
+  - "No PII: this is a repo-hygiene tool operating on tracked source, no client data."
+acceptance:
+  - "28/28 tests green in scripts/tests/test_consumer_map.py (22 pre-existing + 6 new,
+    covering the ledger's own guilt+innocence corpus verbatim: 'a basename in a tuple joined
+    to a repointed directory constant must not' block, and 'a consumer that builds the old
+    path across two lines must STILL block'), plus scripts/tests/test_injected_surface_
+    budget.py and test_injected_surface_attest.py (40/40 combined) — observed this session,
+    `python3 -m pytest scripts/tests/test_consumer_map.py scripts/tests/test_injected_
+    surface_budget.py scripts/tests/test_injected_surface_attest.py -q`."
+  - "MEASURED on the real #5331 move commit (8c1b6d1d14, parent 152fe67d): re-running
+    `python3 scripts/consumer_map.py --base <parent>` with the fixed script against that
+    exact historical diff gives CONSUMER_MAP_LIVE_COUNT=24 (was 73 before this filter,
+    matching the ledger's own before-count within measurement noise from #5373 already being
+    on main). 49 downgraded to bare-basename. Reproduced twice, identical result both times."
+  - 'The remaining 24 are NOT declared clean by this PR — verified one by one (per the
+    ledger''s own proof-of-armed clause) and split into two groups, both intentional: (a)
+    genuinely-stale literal-old-path mentions (e.g. a real LEGACY_FILE-style assignment
+    embedding the old directory inline) and evidence/*.yml prose narrating the old path
+    verbatim; (b) a declared, NOT-cured residual this PR is explicit about NOT fixing — a
+    directory constant defined on an EARLIER line (`SCARS_DIR = ... / "docs" / "scars"`,
+    `SCARS_DIR / "cicatrix-scars.md"` on the hit''s own line) reads as directory-adjacent on
+    its own line and stays conservatively LIVE even when already correctly repointed; plus a
+    handful of `assert "basename" in x` / `x == "basename"` Compare-shaped python hits the
+    AST design deliberately leaves conservative. Both groups are named in the module
+    docstring''s own text, not swept under a changed number.'
+consumer_map:
+  - "`.husky/pre-push`'s consumer-map gate (line ~384, greps CONSUMER_MAP_LIVE_COUNT=): reads
+    only the machine-parseable summary line and the exit code, both unaffected by the new
+    verdict string — verified by reading that call site, not by assumption."
+  - "scripts/prepush_classify.py's `--check-consumers` path: calls `consumer_map.main()`
+    directly, same interface, unaffected."
+  - "Every future MOVE/DELETE in this repo that runs consumer_map.py at push time — the class
+    this PR exists to stop from over-blocking."
+risks:
+  - "The per-kind precision is a heuristic, not a full dataflow analysis — declared residuals
+    above are real, accepted over-matches (safe direction), not silently hidden ones."
+  - "The quote-parity check (`_line_has_quoted_occurrence`) has no escape/nesting awareness;
+    acceptable per the module docstring's own note, since the measured real corpus never
+    needed it."

@@ -573,3 +573,170 @@ def test_guilt_segments_OUT_OF_ORDER_do_not_count_as_a_repoint(tmp_path: Path) -
     result = _run(repo, "--base", base)
     assert result.returncode == 1, result.stdout + result.stderr
     assert "scripts/wordy.py" in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# BARE-BASENAME FILTER (ledger row opened 2026-08-31, "63 falsi" — the class
+# PR #5373 named and deliberately left uncured). Measured on the real
+# scar-corpus move (#5331): 73 LIVE before this filter, 24 after (49
+# downgraded) — see scripts/consumer_map.py's own module docstring for the
+# breakdown of what the remaining 24 are.
+# ---------------------------------------------------------------------------
+
+
+def test_innocence_bare_basename_in_tuple_joined_to_repointed_dir_is_not_live(
+    tmp_path: Path,
+) -> None:
+    """LEDGER row 1747 innocence case, verbatim: 'a basename in a tuple
+    joined to a repointed directory constant must not' count as stale. The
+    real scripts/scar_query.py `CORPUS_FILES = (...)` shape — the tuple line
+    itself names no location, so it cannot be pointing at the OLD one
+    either."""
+    repo = _init_repo(tmp_path)
+    _write(repo / ".claude" / "rules" / "cicatrix-scars.md", "# scars\n")
+    _write(
+        repo / "scripts" / "scar_query.py",
+        'from pathlib import Path\n'
+        'NEW_DIR = Path(__file__).resolve().parent.parent / "docs" / "scars"\n'
+        'CORPUS_FILES = ("cicatrix-scars.md", "cicatrix-scars-archive.md")\n'
+        'FULL = [NEW_DIR / f for f in CORPUS_FILES]\n',
+    )
+    base = _commit_all(repo, "base")
+
+    (repo / "docs" / "scars").mkdir(parents=True, exist_ok=True)
+    _git(repo, "mv", ".claude/rules/cicatrix-scars.md", "docs/scars/cicatrix-scars.md")
+    _git(repo, "commit", "-q", "-m", "move the scar corpus")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "CONSUMER_MAP_LIVE_COUNT=0" in result.stdout
+    assert "bare-basename" in result.stdout
+
+
+def test_guilt_basename_built_from_an_OLD_dir_constant_on_another_line_still_blocks(
+    tmp_path: Path,
+) -> None:
+    """LEDGER row 1747 guilt case, verbatim: 'a consumer that builds the old
+    path across two lines must STILL block.' The directory constant
+    (`OLD_DIR`) is defined on an earlier line, but the hit's OWN line still
+    carries a `/` operator right before the basename — the bare-basename
+    filter must not touch a hit it cannot itself verify as already
+    repointed; it stays on the safe (still-LIVE) side."""
+    repo = _init_repo(tmp_path)
+    _write(repo / ".claude" / "rules" / "cicatrix-scars.md", "# scars\n")
+    _write(
+        repo / "scripts" / "stale_reader_two_line.py",
+        'from pathlib import Path\n'
+        'OLD_DIR = Path(".claude") / "rules"\n'
+        'LEGACY = OLD_DIR / "cicatrix-scars.md"\n',
+    )
+    base = _commit_all(repo, "base")
+
+    (repo / "docs" / "scars").mkdir(parents=True, exist_ok=True)
+    _git(repo, "mv", ".claude/rules/cicatrix-scars.md", "docs/scars/cicatrix-scars.md")
+    _git(repo, "commit", "-q", "-m", "move the scar corpus")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "scripts/stale_reader_two_line.py" in result.stdout
+    assert "CONSUMER_MAP_LIVE_COUNT=1" in result.stdout
+
+
+def test_guilt_basename_as_tail_of_a_literal_path_string_still_blocks(
+    tmp_path: Path,
+) -> None:
+    """A basename that is the TAIL of one longer literal path string (the
+    `/` sits INSIDE the same quotes, not as a separate pathlib operator)
+    must still be caught — the real
+    scripts/tests/test_injected_surface_attest.py shape
+    (`"**/.claude" + "/rules/cicatrix-scars.md"`)."""
+    repo = _init_repo(tmp_path)
+    _write(repo / ".claude" / "rules" / "cicatrix-scars.md", "# scars\n")
+    _write(
+        repo / "scripts" / "excluded_globs.py",
+        'excluded = "**/.claude" + "/rules/cicatrix-scars.md"\n',
+    )
+    base = _commit_all(repo, "base")
+
+    (repo / "docs" / "scars").mkdir(parents=True, exist_ok=True)
+    _git(repo, "mv", ".claude/rules/cicatrix-scars.md", "docs/scars/cicatrix-scars.md")
+    _git(repo, "commit", "-q", "-m", "move the scar corpus")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "scripts/excluded_globs.py" in result.stdout
+
+
+def test_innocence_bare_basename_as_dict_value_on_delete_target_is_not_live(
+    tmp_path: Path,
+) -> None:
+    """The filter applies to plain DELETEs too, not only renames — a
+    mapping value naming a deleted file's bare basename is data, not a
+    location."""
+    repo = _init_repo(tmp_path)
+    target = repo / "apps" / "backend-rag" / "tests" / "test_orphan.py"
+    _write(target, "def test_x(): pass\n")
+    _write(
+        repo / "scripts" / "registry.py",
+        'KNOWN = {"orphan": "test_orphan.py"}\n',
+    )
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete orphan test")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "CONSUMER_MAP_LIVE_COUNT=0" in result.stdout
+    assert "bare-basename" in result.stdout
+
+
+def test_innocence_bare_basename_as_written_header_string_is_not_live(
+    tmp_path: Path,
+) -> None:
+    """The real scripts/archive_cicatrix_scars.py shape: a header string
+    being WRITTEN (`f.write("# cicatrix-scars-archive.md\\n\\n")`) names the
+    file in the CONTENT it produces, not a location it opens."""
+    repo = _init_repo(tmp_path)
+    target = repo / "apps" / "backend-rag" / "tests" / "test_archive.py"
+    _write(target, "def test_x(): pass\n")
+    _write(
+        repo / "scripts" / "archiver.py",
+        'def write_header(f):\n'
+        '    f.write("# test_archive.py\\n\\n")\n',
+    )
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete orphan test")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "CONSUMER_MAP_LIVE_COUNT=0" in result.stdout
+    assert "bare-basename" in result.stdout
+
+
+def test_innocence_python_bare_stem_import_reference_unaffected_by_bare_basename_filter(
+    tmp_path: Path,
+) -> None:
+    """The bare-basename filter must never apply to a `.py` target's bare
+    import-stem search — `import test_migrations` never contains
+    `test_migrations.py` at all, so "directory-adjacent" is not a
+    meaningful question on that hit and must not downgrade a real import
+    dependency."""
+    repo = _init_repo(tmp_path)
+    target = repo / "apps" / "backend-rag" / "tests" / "test_migrations.py"
+    _write(target, "def test_x(): pass\n")
+    _write(
+        repo / "apps" / "backend-rag" / "importer.py",
+        "from apps.backend_rag.tests import test_migrations\n",
+    )
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete orphan tests tree")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "importer.py" in result.stdout
+    assert "| LIVE" in result.stdout
