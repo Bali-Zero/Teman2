@@ -52,21 +52,56 @@ future guard on this surface that asks an existence question is the same defect 
 
 ## The register, as measured on `origin/main` at `5f174b4126`
 
-54 cells behave correctly. **48 do not, in six named classes** — only the first of which is the
-defect the `--no-renames` work set out to fix. (This paragraph said "34 … five named classes"
-until a refuter counted the file: the entire `symlink × *` class, fourteen rows, was missing
-from a register whose whole purpose is that nobody has to re-derive the list. It is restored
-below, and the arithmetic is now checkable — `awk -F'\t' '$8=="KNOWN_BAD"' baseline | wc -l`
-must equal the sum of this table.):
+**51 cells behave correctly. 51 do not, in six named classes** — only the first of which is the
+defect the `--no-renames` work set out to fix. These figures moved on 2026-09-01 when an
+independent audit graded the HUMAN half of this instrument for the first time; what it found is
+recorded under "What the verdicts cost" below, because the numbers alone hide the lesson. The
+arithmetic is self-checking: `awk -F'\t' '$8=="KNOWN_BAD"' baseline | wc -l` must equal the sum
+of this table.
 
-| cells | class                                                                                                                                                                                            |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 4     | **the motivating defect** — `modified × rename_away{,_and_tree}`: rename detection hides the source, the local modification is never classified as a collision, the ff aborts every tick forever |
-| 12    | `dangling_symlink × *` — an unresolved local symlink wedges every incoming action; no branch of the resolver handles a non-regular file                                                          |
-| 12    | `dir_at_path × *` — a local directory where a tracked file belongs wedges every incoming action; there is no branch for a type mismatch                                                          |
-| 4     | `del_unstaged × {delete, tree_at_path}` — nothing to collide with, yet the tick wedges permanently on a `cp` whose source does not exist                                                         |
-| 2     | `untracked × tree_at_path` — an untracked local file meeting an incoming tree is neither backed up nor cleared, so the ff can never apply                                                        |
-| 14    | `symlink × *` — a RESOLVING local symlink is silently converted into a copy: `cp -p` dereferences it, so Pro-authoritative state that was a link comes back a file, for every incoming action    |
+| cells | class                                                                                                                                                                                                                                                                                                                                 |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 5     | **`modified × *`** — 4 are the motivating defect (`× rename_away{,_and_tree}`: rename detection hides the source, the local modification is never classified as a collision, the ff aborts forever); the 5th is `× tree_at_path × keeplocal`, where the keep-local restore reports success and nests Pro's content inside a directory |
+| 12    | `dangling_symlink × *` — an unresolved local symlink wedges every incoming action; no branch of the resolver handles a non-regular file                                                                                                                                                                                               |
+| 12    | `dir_at_path × *` — a local directory where a tracked file belongs wedges every incoming action; there is no branch for a type mismatch                                                                                                                                                                                               |
+| 12    | `symlink × *` — a RESOLVING local symlink is silently converted into a copy: `cp -p` dereferences it, so Pro-authoritative state that was a link comes back a file                                                                                                                                                                    |
+| 8     | `del_unstaged × {delete, tree_at_path, modify, typechange}` — nothing to collide with, yet the tick wedges permanently on a `cp` whose source does not exist                                                                                                                                                                          |
+| 2     | `untracked × tree_at_path` — an untracked local file meeting an incoming tree is neither backed up nor cleared, so the ff can never apply                                                                                                                                                                                             |
+
+## What the verdicts cost, and which side the guard was on
+
+Every adversarial pass before 2026-09-01 graded the MACHINE half — the fixtures, the assertions,
+the comparator. The 8th column is a judgement no machine can produce, and nobody had graded it.
+An audit that read all 102 rows and rebuilt seven of them against the real puller found:
+
+- **Two `OK` verdicts that were false**, and one of them reproduced exactly:
+  `modified × tree_at_path × keeplocal` loses Pro-authoritative content. `restore_kept_local`'s
+  `cp -p` targets a path that is now a directory, so cp's directory-target semantics put the
+  file INSIDE it — the content lands at `Subject.md/Subject.md`, cp exits 0, and the puller logs
+  `restored kept-local Pro-authoritative runtime-state`. A false success. Now `KNOWN_BAD`.
+- **Four `OK` rows carrying another cell's reason.** `del_unstaged × {modify, typechange}` was
+  annotated with the `del_staged` fail-safe story ("mutates nothing"). Their own measurement
+  refutes it: they record `backup=empty`, which is the resolver attempting a backup `cp` and
+  crashing, where the genuine fail-safe rows record `backup=no` because the resolver never
+  touches them. Same defect as their `KNOWN_BAD` siblings, opposite verdict, identical fields.
+- **Two `KNOWN_BAD` rows that were too harsh.** `symlink × rename_case_only` carried the
+  `cp -p` dereference reason, but git's pathspec is byte-literal even on a case-folding
+  filesystem, so the resolver takes the untracked `mv` branch and the backup is a real symlink.
+  Reproduced: `readlink` returns the target. Now `OK`.
+
+**Not every claim in that audit survived checking, and that is the point of checking.** It also
+reported `modified × typechange × keeplocal` as a silent no-op with a false-success log. Measured:
+`cp -p` onto a broken symlink exits **1**, not 0, and `restore_kept_local` inspects that exit
+code — it logs `ERROR: restore FAILED` and fires a P0 alert. The cell degrades loudly and stays
+`OK`, now with the mechanism written down. A grader can be right about a defect and wrong about
+its mechanism; the verdict that gets recorded has to survive its own reproduction.
+
+**The structural lesson is where the guard was.** The baseline already refused a `KNOWN_BAD`
+with no reason. It accepted an `OK` with no reason — and 46 of 102 rows were exactly that,
+including both false ones. An unargued `KNOWN_BAD` is merely pessimistic; an unargued `OK` is a
+defect blessed in writing, which the instrument then certifies forever. The guard now demands a
+reason on the optimistic side too, wherever `OK` is a CLAIM rather than an observation: content
+was set aside (`backup=file`) and the tracked path did not come back a regular file.
 
 A wedge is `rc=1` with HEAD unmoved. Most are **permanent**: they repeat every five minutes
 and nothing red ever fires, which is why they survived this long. The four cells marked `OK`

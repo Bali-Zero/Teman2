@@ -420,9 +420,21 @@ fi
 # KNOWN_BAD without a reason is not a judgement, it is a silencer: it tells a future reader
 # that someone looked and decided nothing. The reason column is what makes a declared defect
 # auditable, so require it wherever the verdict claims one.
+#
+# AND THE SAME DEMAND ON THE OTHER SIDE, which is where this guard was originally wrong. A
+# KNOWN_BAD nobody argued is merely pessimistic; an OK nobody argued is a defect blessed in
+# writing, and the instrument then certifies it forever. Measured 2026-09-01: an independent
+# audit of the human half found 46 of 102 rows carried an unargued OK, and TWO of them were
+# false — `modified x tree_at_path x keeplocal` was reproduced against the real puller losing
+# Pro-authoritative content into a nested path while the log said `restored kept-local`.
+# So an OK must also be argued wherever it is a CLAIM rather than an observation: content was
+# set aside (`backup=file`) AND the tracked path did not come back a regular file. In that
+# shape "this is fine" asserts that Pro's content is somewhere recoverable and that a consumer
+# reading the path can cope with what it found — neither of which any measured field shows.
 unjudged=$(awk -F'\t' '
   NF<8 || ($8!="OK" && $8!="KNOWN_BAD") ||
-  ($8=="KNOWN_BAD" && (NF<9 || $9 ~ /^[ \t]*$/))' "$BASELINE" | wc -l | tr -d ' ')
+  ($8=="KNOWN_BAD" && (NF<9 || $9 ~ /^[ \t]*$/)) ||
+  ($8=="OK" && $7=="backup=file" && $6 !~ /^file:/ && (NF<9 || $9 ~ /^[ \t]*$/))' "$BASELINE" | wc -l | tr -d ' ')
 if [ "$unjudged" -gt 0 ]; then
   echo "BASELINE NOT REVIEWED — $unjudged of $(wc -l < "$BASELINE" | tr -d ' ') cells carry no usable verdict." >&2
   echo "  Column 8 must be exactly OK or KNOWN_BAD (the reason goes in column 9). A verdict this" >&2
