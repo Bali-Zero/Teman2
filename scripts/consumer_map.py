@@ -161,18 +161,21 @@ fixture assigns `NAME = "cicatrix-scars.md"` on one line and later opens
 and per-kind precision is what keeps this filter from swallowing it anyway:
 
   - **python**: the basename's immediate AST parent at that exact line must
-    be a collection literal or a call argument (`Tuple`/`List`/`Dict`/
-    `Set`/`Call`) — never a bare `Assign` RHS, which is exactly the
-    "could be composed into a path via this name, elsewhere" shape and
-    stays conservatively LIVE. Fails CLOSED (no downgrade attempted) when
-    the file will not parse, same discipline as the docstring filter right
+    be a collection literal (`Tuple`/`List`/`Dict`/`Set`) — never a bare
+    `Assign` RHS, `BinOp`, or `Call` argument, any of which could be
+    composed into, or IS itself, a real path reference and stays
+    conservatively LIVE. Fails CLOSED (no downgrade attempted) when the
+    file will not parse, same discipline as the docstring filter right
     below it, reusing the same cached AST.
-  - **shell/workflow/husky/docker-compose/makefile/pyproject/pytest.ini/
-    package.json/plist**: the occurrence must sit inside a QUOTED string
-    (an odd count of `"` or `'` before it on the line) — `git commit -m
-    "chore: update cicatrix-scars.md"` qualifies, `cat conftest.py` (a bare,
-    unquoted command-line word — the tool's own pre-existing, intentional
-    over-match example) does not, and is therefore left untouched.
+  - **shell**: the occurrence must sit inside a QUOTED string, AND that
+    quoted span must hold nothing besides the basename (past whitespace) —
+    `git commit -m "chore: update cicatrix-scars.md"` qualifies (the
+    quotes hold a whole sentence), `cat "victim.txt"` does NOT (the quotes
+    hold nothing else — a real, shell-quoted WORD, the same reference as
+    the unquoted `cat conftest.py` case, just quoted for shell-safety),
+    and neither does the unquoted `cat conftest.py` itself. The ONLY kind
+    this rule has real, measured corpus coverage for
+    (`scripts/hermetic_verify.sh:310`).
   - **other** (the catch-all for prose/data formats with neither an AST nor
     a shell-quoting convention — `.txt`, `.yaml`, `.json`, `.sql`
     comments): directory-adjacency alone decides, no quote requirement —
@@ -182,13 +185,82 @@ and per-kind precision is what keeps this filter from swallowing it anyway:
     reference (e.g. a `.gitignore`-style exact-basename pattern) would be
     downgraded too — not observed in the measured corpus, and "other" was
     already this tool's least-precise bucket before this filter existed.
+    A related, also-declared residual: `_classify_kind` (pre-existing,
+    unmodified by this filter) only recognizes `.github/workflows/*.yml`
+    as "workflow" and has no `.zsh`/`.bash`/extensionless case — such a
+    file falls into "other" and inherits its weaker, quote-free check.
+    Zero real corpus instances of any of these three shapes exist in this
+    repo today (verified 2026-09-02: no `.yaml` workflow, no `.zsh`/
+    `.bash` tracked file) — declared rather than fixed, since fixing
+    `_classify_kind` itself is a wider-blast-radius change shared by every
+    OTHER caller of that function, out of proportion for an unobserved
+    risk.
 
-This filter ONLY applies when the search used the FULL basename (with its
-extension) — never to a `.py` target's bare import-stem search (`import
-test_migrations` never contains `test_migrations.py` at all, so it is not
-"bare basename data", it is a real import naming a real dependency
-regardless of directory context; running this filter against it would be a
-straightforward under-match).
+DECLARED RESIDUAL, THE OTHER DIRECTION (a refuter, round 2, 2026-09-02):
+the python collection-literal branch above treats EVERY `Tuple`/`List`/
+`Dict`/`Set` element as safe-to-downgrade data — that is what correctly
+identifies this filter's own primary motivating example, `CORPUS_FILES =
+("cicatrix-scars.md", "cicatrix-scars-archive.md")`, as data. But it
+cannot distinguish that from `FILES = ["victim.txt"]` later consumed as
+`for f in FILES: open(f)` — a real, cwd-relative consumer with no
+directory context on the LITERAL's own line. Telling these apart requires
+tracing how the collection NAME is used elsewhere in the file — the exact
+same "resolve what a NAME resolves to across multiple lines" question the
+SCARS_DIR-shaped residual below already declares out of scope, just
+manifesting as an UNDER-match here instead of an over-match there. Same
+fix-of-a-fix boundary, not chased in this PR; not observed in the measured
+#5331 corpus (verified: none of its 49 downgraded hits are a
+later-iterated collection).
+
+This filter ONLY DOWNGRADES when the search used the FULL basename (with
+its extension) — never on a `.py` target's bare import-stem search alone
+(`import test_migrations` never contains `test_migrations.py` at all, so
+it is not "bare basename data", it is a real import naming a real
+dependency regardless of directory context; running this filter against it
+would be a straightforward under-match). A `.py` target still searches
+BOTH stems, and the same physical line can match both (the stem is always
+a prefix of the full basename) — when it does, the bare-stem pass's own
+verdict can UPGRADE an already-recorded row for that location, but ONLY
+when the stem is confirmed, via the AST, as a genuine `import`/`from …
+import` at that exact line (`_python_stem_is_real_import_at_line`); a
+merely-coincidental substring match (the stem inside the SAME string the
+full-basename pass already correctly downgraded) does not upgrade.
+
+REFUTER ROUND 1 (codex sol, REFUTE stance, 2026-09-02, this PR's own
+first diff, before ship): reproduced FOUR under-match bugs in the filter
+as first written — `Call` originally sat in the collection-literal set
+above, downgrading `open("victim.txt")`; `join(`/`joinpath(` detection's
+regex only matched `join(`, never `joinpath(`; the quote-detector's
+independent-parity check read `victim.txt` in `echo "it's data"; cat
+victim.txt` as quoted, tripped by the stray apostrophe; and the original
+first-stem-wins dedup silently dropped a real `import victim` that shared
+a line with a `# victim.py` trailing comment. All four fixed in place.
+
+REFUTER ROUND 2 (codex sol, REFUTE stance, 2026-09-02, reviewing round
+1's own fixes): reproduced the MIRROR regression round 1's import-stem
+fix itself introduced (the AST-import gate above closes it), PLUS three
+more real under-match bugs — the standalone-quoted-word distinction now
+in the shell bullet above (`cat "victim.txt"` was still being read as
+data purely because it was quoted); the import-verification gate only
+compared the FIRST dotted segment (`import pkg.victim` failed it — the
+FILE genuinely loads regardless of which segment binds a name) and only
+the `Import`/`ImportFrom` node's own line (missing a multi-line `from pkg
+import (\n    victim,\n)`), both now fixed by checking every segment
+and each alias's OWN `.lineno`. Also flagged: python collection-literal
+elements consumed elsewhere in the file (declared residual above,
+deliberately not chased — same fix-of-a-fix boundary as the SCARS_DIR
+residual) and `.yaml`/`.zsh`/`.bash` classification gaps (declared above,
+zero real corpus instances).
+
+All findings from both rounds that had a bounded, corpus-safe fix are
+fixed in place (see `scripts/tests/test_consumer_map.py`'s two "REFUTER
+ROUND" sections for the guilt/innocence pairs); the two genuinely
+architectural gaps (collection-literal dataflow, `_classify_kind`
+extension coverage) are declared residuals above, not silently dropped.
+Re-measured on the real #5331 corpus after every fix, both rounds: still
+73 → 24 — none of the real corpus hits depended on any of the buggy
+paths, so the fixes changed no measured result, only closed unverified
+risk.
 
 Exit codes: 0 = clean (no LIVE consumer found for any target). 1 = at least
 one LIVE consumer found — this diff is not safe to push as-is. 2 = usage
@@ -254,32 +326,41 @@ HASH_COMMENT_KINDS: frozenset[str] = frozenset(
 )
 
 # AST parent-node type names that mean "this string literal is a collection
-# element or a call argument" — the BARE-BASENAME FILTER's python branch
-# (module docstring). Deliberately excludes "Assign"/"AnnAssign"/"BinOp" —
-# a bare `Assign` RHS could be composed into a real path on ANOTHER line
-# (the filter's own guilt corpus), and a `/`-BinOp is already caught, same
-# line, by `_line_has_directory_adjacent` before this ever runs.
-DATA_CONTAINER_PARENT_KINDS: frozenset[str] = frozenset({"Tuple", "List", "Dict", "Set", "Call"})
+# element" — the BARE-BASENAME FILTER's python branch (module docstring).
+# Deliberately excludes "Assign"/"AnnAssign"/"BinOp" — a bare `Assign` RHS
+# could be composed into a real path on ANOTHER line (the filter's own
+# guilt corpus), and a `/`-BinOp is already caught, same line, by
+# `_line_has_directory_adjacent` before this ever runs. Also deliberately
+# excludes "Call": a refuter (2026-09-02, this PR's own adversarial round)
+# reproduced `open("victim.txt")` / `Path("victim.txt")` — a bare string
+# that IS the sole argument of a call reading the path — downgrading to
+# bare-basename and hiding the hit (`CONSUMER_MAP_LIVE_COUNT=0` on a
+# genuinely deleted, still-consumed file). A call argument cannot be told
+# apart, syntactically, from a real path reference without knowing the
+# callee's semantics — out of scope here — so it stays on the safe
+# (conservatively LIVE) side, same as Assign/BinOp.
+DATA_CONTAINER_PARENT_KINDS: frozenset[str] = frozenset({"Tuple", "List", "Dict", "Set"})
 
 # Kinds where the BARE-BASENAME FILTER (module docstring) requires the
-# occurrence to sit inside a QUOTED string before downgrading — shell/config
+# occurrence to sit inside a QUOTED string before downgrading — shell
 # formats where a bare, UNQUOTED word is a command-line argument (a genuine,
 # if imprecise, file reference: `cat conftest.py`) and must stay untouched,
 # distinct from a quoted string's contents (`git commit -m "...basename..."`,
-# safely DATA). "other" is deliberately excluded — see the module docstring.
-QUOTE_REQUIRED_KINDS: frozenset[str] = frozenset(
-    {
-        "shell",
-        "workflow",
-        "husky",
-        "docker-compose",
-        "makefile",
-        "pyproject",
-        "pytest.ini",
-        "package.json",
-        "plist",
-    }
-)
+# safely DATA). Deliberately limited to "shell" — the ONLY kind this rule
+# has real, measured corpus coverage for (`scripts/hermetic_verify.sh:310`,
+# a diagnostic `echo` string). A refuter (2026-09-02) pointed out that
+# "quoted" does not, in general, mean "data" for the other kinds this set
+# used to include: `run: cat "victim.txt"` (workflow) or `"scripts":
+# {"check": "cat victim.txt"}` (package.json) are QUOTED but are real
+# command invocations, not prose — the same quote that marks a commit
+# message as data also marks a shell argument as live. Zero real corpus
+# hits exist for workflow/husky/docker-compose/makefile/pyproject/
+# pytest.ini/package.json/plist under this filter (verified this session,
+# `#5331` real move), so removing them changes no measured result and
+# closes an unverified under-match risk; re-add a kind here only with real
+# corpus evidence it needs the rule, same discipline as "shell". "other" is
+# deliberately excluded from this set — see the module docstring.
+QUOTE_REQUIRED_KINDS: frozenset[str] = frozenset({"shell"})
 
 EXCLUDE_DIR_PREFIXES: tuple[str, ...] = ("docs/archive/", "research/")
 EXCLUDE_EXACT_PATHS: frozenset[str] = frozenset(
@@ -426,7 +507,12 @@ def _line_names_new_path(content: str, new_path: str) -> bool:
     return True
 
 
-_JOIN_CALL_RE = re.compile(r"\bjoin\s*\(")
+# `\bjoin\s*\(` alone does NOT match `joinpath(` — "path" sits between
+# "join" and "(", so `\b` plus the immediate `(` never lines up. A refuter
+# (2026-09-02) reproduced `OLD_DIR.joinpath("victim.txt")` failing to count
+# as directory-adjacent despite the module docstring explicitly promising
+# "join(`/`joinpath(` call" is recognized. `(?:path)?` closes the gap.
+_JOIN_CALL_RE = re.compile(r"\bjoin(?:path)?\s*\(")
 
 
 def _line_has_directory_adjacent(content: str, basename: str) -> bool:
@@ -461,19 +547,78 @@ def _line_has_directory_adjacent(content: str, basename: str) -> bool:
     return False
 
 
+def _position_is_inside_a_quote(before: str) -> bool:
+    """Is the position right after `before` inside an open quoted span?
+
+    A single-pass scan tracking which quote type (if any) is currently
+    open — `"` only toggles the double-quote state while single is closed,
+    and vice versa — so an apostrophe inside a double-quoted string (`"it's
+    data"`) does not itself look like an unmatched quote. A refuter
+    (2026-09-02) reproduced the PREVIOUS per-character-parity version
+    (independent odd/even count of `"` and of `'`) mis-reading `echo "it's
+    data"; cat victim.txt` as `victim.txt` being quoted — the apostrophe's
+    own odd count of `'` was enough to trip the OR, even though
+    `victim.txt` sits, unquoted, after the closed double-quoted string.
+    Still line-scoped and un-escaping-aware, same as the rest of this
+    module — no `\\"` handling, which the measured corpus never needed.
+    """
+    in_double = False
+    in_single = False
+    for ch in before:
+        if ch == '"' and not in_single:
+            in_double = not in_double
+        elif ch == "'" and not in_double:
+            in_single = not in_single
+    return in_double or in_single
+
+
+def _quoted_span_is_only_the_basename(content: str, idx: int, basename: str) -> bool:
+    """Does the quote enclosing `content[idx:idx+len(basename)]` open
+    immediately before it (past only whitespace) and close immediately
+    after (past only whitespace) — i.e. is the basename the ENTIRE quoted
+    span, not one word embedded in a longer one?
+
+    Distinguishes `cat "victim.txt"` (the quotes hold NOTHING but the
+    basename — a real, shell-quoted WORD, same as the unquoted `cat
+    conftest.py` case this filter already leaves untouched) from `git
+    commit -m "chore: update victim.txt"` (the quotes hold a whole
+    sentence the basename is embedded IN — data). Still line-scoped and
+    un-escaping-aware, same discipline as `_position_is_inside_a_quote`.
+    """
+    before = content[:idx]
+    quote_char = None
+    for ch in reversed(before):
+        if ch in ('"', "'"):
+            quote_char = ch
+            break
+        if ch not in (" ", "\t"):
+            return False
+    if quote_char is None:
+        return False
+    after = content[idx + len(basename):]
+    close_idx = after.find(quote_char)
+    if close_idx == -1:
+        return False
+    return after[:close_idx].strip() == ""
+
+
 def _line_has_quoted_occurrence(content: str, basename: str) -> bool:
-    """Is `basename` — at least once on this line — inside a quoted string,
-    as opposed to a bare, unquoted command-line word ("BARE-BASENAME
-    FILTER", shell branch, module docstring)? Approximated by parity: an ODD
-    count of `"` (or of `'`) before the occurrence means it sits inside an
-    open quote of that kind. Simple and line-scoped like the rest of this
-    module — no escaping/nesting awareness, which the measured corpus never
-    needed.
+    """Is `basename` — at least once on this line — inside a quoted string
+    ALONGSIDE OTHER CONTENT, as opposed to a bare unquoted command-line
+    word OR a standalone quoted word ("BARE-BASENAME FILTER", shell
+    branch, module docstring)?
+
+    A refuter (2026-09-02, round 2) reproduced `cat "victim.txt"` — a
+    REAL, quoted shell argument — being treated the same as `git commit -m
+    "chore: update victim.txt"` — a commit message that merely MENTIONS
+    the basename. Quoting alone does not distinguish them (both are
+    "quoted"); `_quoted_span_is_only_the_basename` is what does.
     """
     idx = content.find(basename)
     while idx != -1:
-        before = content[:idx]
-        if before.count('"') % 2 == 1 or before.count("'") % 2 == 1:
+        if _position_is_inside_a_quote(
+            content[:idx]
+        ) and not _quoted_span_is_only_the_basename(content, idx, basename):
             return True
         idx = content.find(basename, idx + 1)
     return False
@@ -501,6 +646,53 @@ def _python_basename_parent_kinds_at_line(
             ):
                 kinds.add(type(node).__name__)
     return kinds
+
+
+def _python_stem_is_real_import_at_line(tree: ast.AST, stem: str, lineno: int) -> bool:
+    """Is `stem` used as an actual `import stem` / `from stem import ...` /
+    `from pkg.stem import ...` Python import AT THIS EXACT LINE?
+
+    The bare import-stem search (module docstring: "and by bare import-stem
+    for .py targets") is a plain substring match with none of the
+    BARE-BASENAME FILTER's AST precision — `stem` is always a PREFIX of the
+    full basename (`"victim"` of `"victim.py"`), so it structurally matches
+    every occurrence the full-basename search already found, real import or
+    not. That is harmless on its own (its default verdict is a redundant
+    second LIVE at the same location the first pass already got right) but
+    became dangerous once same-location hits UPGRADE by severity (see the
+    call site): a refuter (2026-09-02) reproduced a real `import victim`
+    hidden behind a `# victim.py` trailing comment getting correctly
+    resurrected to LIVE by that upgrade — and, chasing that fix, reproduced
+    the MIRROR regression: `KNOWN = {"orphan": "test_orphan.py"}` and
+    `f.write("# test_archive.py\n\n")`, where the stem is ONLY a
+    coincidental substring of the SAME string the full-basename pass
+    already correctly downgraded, wrongly resurrecting it to LIVE too. This
+    check is the gate that tells the two apart: only a genuine `Import`/
+    `ImportFrom` AST node at this line, naming `stem`, may upgrade.
+    """
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                alias_lineno = getattr(alias, "lineno", node.lineno)
+                if alias_lineno != lineno:
+                    continue
+                # ANY segment, not just [0]: a refuter (2026-09-02, round
+                # 2) reproduced `import pkg.victim` failing this check
+                # (only the FIRST segment "pkg" was compared) even though
+                # it genuinely loads victim.py. Per-ALIAS lineno (not the
+                # `Import` node's own) also closes a multi-line miss the
+                # same round found: `from pkg import (\n    victim,\n)`
+                # has the alias on a LATER line than `node.lineno`.
+                if stem in alias.name.split("."):
+                    return True
+        elif isinstance(node, ast.ImportFrom):
+            if node.module and node.lineno == lineno and stem in node.module.split("."):
+                return True
+            for alias in node.names:
+                alias_lineno = getattr(alias, "lineno", node.lineno)
+                if alias_lineno == lineno and alias.name == stem:
+                    return True
+    return False
 
 
 def _git_grep_basename(needle: str, cwd: Path | None) -> list[tuple[str, int, str]]:
@@ -643,7 +835,23 @@ def find_consumers(
         if basename.endswith(".py"):
             stems.append(basename[:-3])
 
-        seen_locations: set[str] = set()
+        # loc -> index into `rows`. A `.py` target searches TWO stems (the
+        # full basename, then the bare import-stem) and the same physical
+        # line can match both — e.g. `import victim  # victim.py` matches
+        # the full-basename search via the trailing comment AND the
+        # import-stem search via the real `import victim`. A refuter
+        # (2026-09-02) reproduced the PREVIOUS "first stem wins, second is
+        # silently skipped" dedup turning that exact line into
+        # `CONSUMER_MAP_LIVE_COUNT=0` — the comment's classification (now
+        # `bare-basename` under the filter below) suppressed the real
+        # import's classification (`LIVE`) entirely, because the full
+        # basename is searched first and its loc was already "seen". The
+        # fix tracks severity instead of first-wins: a later stem's hit at
+        # an already-recorded location UPGRADES the row if its own verdict
+        # is more severe, and is otherwise silently merged (never
+        # downgrades an already-LIVE row, never adds a duplicate).
+        _VERDICT_SEVERITY = {"LIVE": 2, "bare-basename": 1, "docs-mention": 0}
+        seen_locations: dict[str, int] = {}
         for stem in stems:
             for path, lineno, content in _git_grep_basename(stem, cwd):
                 if path in all_target_paths:
@@ -653,9 +861,6 @@ def find_consumers(
                 if new_path and _line_names_new_path(content, new_path):
                     continue  # RENAME SAFETY — already points at the new path
                 loc = f"{path}:{lineno}"
-                if loc in seen_locations:
-                    continue
-                seen_locations.add(loc)
                 kind = _classify_kind(path)
                 verdict = "docs-mention" if kind == "docs-mention" else "LIVE"
 
@@ -720,6 +925,25 @@ def find_consumers(
                         ) and not _line_has_directory_adjacent(content, basename):
                             verdict = "bare-basename"
 
+                if loc in seen_locations:
+                    existing_idx = seen_locations[loc]
+                    existing_verdict = rows[existing_idx][3]
+                    upgrade_allowed = True
+                    if kind == "python" and stem != basename and verdict == "LIVE":
+                        # The bare import-stem pass hitting a location the
+                        # FULL-basename pass already classified — see
+                        # `_python_stem_is_real_import_at_line` for why this
+                        # gate exists.
+                        tree = _get_python_tree(path)
+                        upgrade_allowed = tree is not None and _python_stem_is_real_import_at_line(
+                            tree, stem, lineno
+                        )
+                    if upgrade_allowed and _VERDICT_SEVERITY.get(
+                        verdict, -1
+                    ) > _VERDICT_SEVERITY.get(existing_verdict, -1):
+                        rows[existing_idx] = (loc, kind, basename, verdict)
+                    continue
+                seen_locations[loc] = len(rows)
                 rows.append((loc, kind, basename, verdict))
 
     return rows

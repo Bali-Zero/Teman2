@@ -740,3 +740,213 @@ def test_innocence_python_bare_stem_import_reference_unaffected_by_bare_basename
     assert result.returncode == 1, result.stdout + result.stderr
     assert "importer.py" in result.stdout
     assert "| LIVE" in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# REFUTER ROUND (codex sol, REFUTE stance, 2026-09-02, this PR's own final
+# diff): the bare-basename filter above shipped with FOUR reproducible
+# under-match bugs — the risk the tool's own docstring calls worse than an
+# over-match. Fixed in the same PR; these are the guilt/innocence pairs the
+# refuter's repro cases became.
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_import_stem_hidden_behind_a_full_basename_trailing_comment(
+    tmp_path: Path,
+) -> None:
+    """Refuter repro, verbatim: `import victim  # victim.py` — the full-
+    basename search hits the trailing comment first (downgraded to
+    bare-basename, since a comment has no AST role), and the PREVIOUS
+    first-stem-wins dedup then silently skipped the bare import-stem
+    search's hit at the SAME location — `CONSUMER_MAP_LIVE_COUNT=0` on a
+    genuinely deleted, still-imported module."""
+    repo = _init_repo(tmp_path)
+    target = repo / "victim.py"
+    _write(target, "X = 1\n")
+    _write(repo / "scripts" / "c.py", "import victim  # victim.py\n")
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete victim.py")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "scripts/c.py:1" in result.stdout
+    assert "| LIVE" in result.stdout
+
+
+def test_innocence_stem_substring_of_an_already_downgraded_dict_value_stays_down(
+    tmp_path: Path,
+) -> None:
+    """Mirror of the guilt case above, reproduced WHILE fixing it: `KNOWN =
+    {"orphan": "test_orphan.py"}` — the bare stem "test_orphan" is a
+    coincidental SUBSTRING of the SAME dict value the full-basename pass
+    already correctly downgraded, not a separate real import. The
+    severity-upgrade must not resurrect it to LIVE without a real `Import`/
+    `ImportFrom` AST node backing the stem at that line."""
+    repo = _init_repo(tmp_path)
+    target = repo / "apps" / "backend-rag" / "tests" / "test_orphan.py"
+    _write(target, "def test_x(): pass\n")
+    _write(repo / "scripts" / "registry.py", 'KNOWN = {"orphan": "test_orphan.py"}\n')
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete orphan test")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "CONSUMER_MAP_LIVE_COUNT=0" in result.stdout
+
+
+def test_guilt_bare_basename_as_sole_argument_to_a_reading_call_stays_live(
+    tmp_path: Path,
+) -> None:
+    """Refuter repro, verbatim: `open("victim.txt")` — a bare string that
+    IS the sole argument of a call that reads the path. `Call` used to be
+    in DATA_CONTAINER_PARENT_KINDS (same tier as a Tuple/List/Dict/Set
+    element), downgrading this to bare-basename and hiding a genuinely
+    live consumer. A call argument cannot be told apart, syntactically,
+    from a real path reference without knowing the callee — it must stay
+    conservatively LIVE, same as a bare Assign RHS."""
+    repo = _init_repo(tmp_path)
+    target = repo / "victim.txt"
+    _write(target, "data\n")
+    _write(repo / "scripts" / "c.py", 'data = open("victim.txt").read()\n')
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete victim.txt")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "| LIVE" in result.stdout
+
+
+def test_guilt_joinpath_call_is_recognized_as_directory_adjacent(
+    tmp_path: Path,
+) -> None:
+    r"""Refuter repro, verbatim: `OLD_DIR.joinpath("victim.txt")` -- the
+    module docstring promises `join(`/`joinpath(` are both recognized, but
+    the regex `\bjoin\s*\(` never matched `joinpath(` ("path" sits
+    between "join" and "("). Must stay LIVE (directory-adjacent), not
+    downgrade to bare-basename.
+
+    A second refuter pass (2026-09-02, round 2) pointed out that a PLAIN
+    `.joinpath("victim.txt")` no longer discriminates this fix at all:
+    once `Call` was removed from DATA_CONTAINER_PARENT_KINDS (a SEPARATE
+    fix, same round), the string's immediate AST parent is already `Call`
+    -- outside the data-container set -- so the hit stays LIVE regardless
+    of whether the join-detection regex works, and reverting the regex
+    fix alone would still leave this test green. `*(...)` unpacks the
+    string through a TUPLE literal instead, whose immediate parent IS
+    `Tuple` -- IN the data-container set -- so this hit only stays LIVE
+    because `_line_has_directory_adjacent` recognizes `joinpath(` on the
+    line; with the OLD regex (`\bjoin\s*\(`, no `joinpath` match) this
+    would wrongly downgrade to bare-basename."""
+    repo = _init_repo(tmp_path)
+    target = repo / "old_dir" / "victim.txt"
+    _write(target, "data\n")
+    _write(
+        repo / "scripts" / "c.py",
+        'from pathlib import Path\n'
+        'OLD_DIR = Path("old_dir")\n'
+        'DATA = OLD_DIR.joinpath(*("victim.txt",))\n',
+    )
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete old_dir/victim.txt")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "| LIVE" in result.stdout
+
+def test_guilt_apostrophe_inside_a_double_quoted_string_does_not_fake_a_quote(
+    tmp_path: Path,
+) -> None:
+    """Refuter repro, verbatim: `echo "it's data"; cat victim.txt` — the
+    PREVIOUS per-character quote-parity check (independent odd/even count
+    of `"` and of `'`) mis-read `victim.txt` as quoted because the stray
+    apostrophe in "it's" made the single-quote count odd, even though
+    `victim.txt` sits unquoted, after the closed double-quoted string, as
+    a real `cat` argument. Must stay LIVE."""
+    repo = _init_repo(tmp_path)
+    target = repo / "victim.txt"
+    _write(target, "data\n")
+    _write(
+        repo / "scripts" / "c.sh",
+        "#!/bin/bash\n"
+        "echo \"it's data\"; cat victim.txt\n",
+    )
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete victim.txt")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "| LIVE" in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# REFUTER ROUND 2 (codex sol, REFUTE stance, 2026-09-02, reviewing round 1's
+# own fixes): three more reproducible under-match bugs, all fixed in place.
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_standalone_quoted_basename_is_a_real_shell_argument(
+    tmp_path: Path,
+) -> None:
+    """Refuter repro, round 2, verbatim: `cat "victim.txt"` — a REAL,
+    quoted shell argument, previously treated the same as `git commit -m
+    "chore: update victim.txt"` (a commit message that merely MENTIONS the
+    basename) because "quoted" alone does not distinguish them. The
+    basename being the ENTIRE content of its enclosing quotes (nothing
+    else shares them) is what makes it a real, shell-quoted WORD, not
+    data. Must stay LIVE."""
+    repo = _init_repo(tmp_path)
+    target = repo / "victim.txt"
+    _write(target, "data\n")
+    _write(repo / "scripts" / "c.sh", '#!/bin/bash\ncat "victim.txt"\n')
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete victim.txt")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "| LIVE" in result.stdout
+
+
+def test_guilt_qualified_and_multiline_import_still_upgrades_to_live(
+    tmp_path: Path,
+) -> None:
+    """Refuter repro, round 2, verbatim: `import pkg.victim  # victim.py`
+    and a multi-line `from pkg import (\n    victim,  # victim.py\n)` both
+    failed the round-1 import-verification gate — it compared only the
+    FIRST dotted segment (`pkg`, never `victim`) and only the `Import`/
+    `ImportFrom` node's OWN lineno (the `from` line, not the alias's own
+    line on a multi-line import). Both are real imports of victim.py and
+    must upgrade to LIVE despite sharing a line/module with a `# victim.py`
+    comment."""
+    repo = _init_repo(tmp_path)
+    target = repo / "pkg" / "victim.py"
+    _write(target, "X = 1\n")
+    _write(repo / "pkg" / "__init__.py", "")
+    _write(
+        repo / "scripts" / "a.py",
+        "import pkg.victim  # victim.py\n",
+    )
+    _write(
+        repo / "scripts" / "b.py",
+        "from pkg import (\n    victim,  # victim.py\n)\n",
+    )
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete pkg/victim.py")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "scripts/a.py:1 | python | victim.py | LIVE" in result.stdout
+    assert "scripts/b.py:2 | python | victim.py | LIVE" in result.stdout
