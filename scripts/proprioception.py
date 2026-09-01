@@ -78,6 +78,7 @@ KNOWN_BOUNDARY_CLASSES = [
     "declared<->enforced",      # policy-as-code in the repo vs what the node actually enforces (L13, 2026-08-31)
     "home<->home",              # the SAME control-plane file on two machines (global CLAUDE.md, 2026-08-31)
     "door<->door",              # the SAME rule in each CLI's auto-loaded door file (2026-08-31)
+    "process<->cwd",            # a headless claude CLI process vs. its own working dir / worktree registration (2026-09-01)
 ]
 
 SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
@@ -1454,6 +1455,248 @@ def _git_tracked_names(root: Path, names: list[str], timeout: int) -> set[str] |
     return {n for n in out.stdout.split("\0") if n}
 
 
+# -------------------------------------------------------- headless zombies
+
+# Twin of fleet_sessions.is_session_process / SESSION_BINARY_BASENAMES (kept
+# local rather than imported: this module is also loaded standalone via
+# spec_from_file_location, as every proprioception test does, and a cross-module
+# import there is fragile in a way a small twin is not — same tradeoff
+# origin_main_sha's docstring above already makes, for the same reason). If the
+# session-process shape ever changes, update BOTH.
+_CLAUDE_CLI_BASENAMES = frozenset({"claude", "claude.exe"})
+
+
+def _is_claude_headless_argv(argv: str) -> bool:
+    """Is `argv` a Claude Code CLI process (headless-capable), not the desktop app?
+
+    Narrowed at the EXECUTABLE IDENTITY — argv[0]'s basename — never a substring
+    of the whole command line: a bare `"claude" in argv` over-matches
+    `claude-science`, `not-claude`, and any tool whose argv merely mentions a path
+    under `~/.claude/` (superscar #3, guard-over-match). Case is load-bearing: the
+    desktop app's binary is `.../Claude.app/Contents/MacOS/Claude` — capital C, a
+    DIFFERENT basename — so its helper processes ("Claude Helper (Renderer)",
+    chrome_crashpad_handler under Contents/Frameworks) already fail on the
+    basename alone; the `.../claude.app/` marker below is defense-in-depth, not
+    the primary discriminator. Matches the two shapes this receptor's design
+    names: `bin/claude.exe` (npm-installed CLI) and bare `claude`/
+    `claude interactive` (PATH-resolved).
+    """
+    if not argv or not argv.strip():
+        return False
+    first = argv.split()[0]
+    base = first.rsplit("/", 1)[-1]
+    if base not in _CLAUDE_CLI_BASENAMES:
+        return False
+    if "/applications/claude.app/" in argv.lower():
+        return False
+    return True
+
+
+def _parse_lsof_cwd_by_pid(text: str) -> dict[str, str]:
+    """Parse `lsof -a -p <pids> -d cwd -Fn` output: a `p<pid>` marker line
+    followed eventually by an `n<path>` line naming that pid's cwd. Twin of
+    fleet_sessions.parse_lsof_cwd (str-keyed here — this collector already
+    carries pid as the string `ps` printed, and round-tripping it through int
+    and back is a pure liability, not a safeguard)."""
+    pid_cwd: dict[str, str] = {}
+    current_pid: str | None = None
+    for line in text.splitlines():
+        if not line:
+            continue
+        tag, rest = line[0], line[1:]
+        if tag == "p":
+            current_pid = rest.strip()
+        elif tag == "n" and current_pid is not None:
+            pid_cwd[current_pid] = rest
+    return pid_cwd
+
+
+def _own_uid() -> str:
+    return str(os.getuid())
+
+
+def _collect_claude_headless_processes(timeout: int) -> tuple[list[dict], str | None]:
+    """ps (own-user only) -> claude-CLI argv filter -> lsof cwd per matched pid.
+
+    Returns (processes, blind_reason). `blind_reason` is None on success — an
+    empty `processes` list on success IS the honest "nothing headless is
+    running" answer, never coerced from a tool failure. It is set only when
+    `ps` or `lsof` itself could not be asked (missing binary, timeout, non-zero
+    exit with no usable output) — the caller turns that into UNPROBEABLE rather
+    than a quiet 0-finding RECONCILED that never actually looked (W84: a probe
+    that could not see must never read as calm).
+
+    Each process dict: {"pid", "etime", "argv", "cwd", "cwd_exists"}. `cwd` is
+    None when lsof did not attribute one to this pid (the ps/lsof race, or a
+    process lsof cannot introspect); `cwd_exists` is None in that same case, and
+    also when the existence check itself raised — never coerced to True or
+    False without having actually looked.
+    """
+    try:
+        rc, out, err = sh(["ps", "-u", _own_uid(), "-o", "pid=", "-o", "etime=", "-o", "args="],
+                          timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return [], f"ps unavailable: {type(e).__name__}: {str(e)[:100]}"
+    if rc != 0:
+        return [], f"ps exited {rc}: {err.strip()[:120]}"
+
+    candidates: list[tuple[str, str, str]] = []  # (pid, etime, argv)
+    for line in out.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split(None, 2)
+        if len(parts) < 3:
+            continue
+        pid, etime, argv = parts
+        if _is_claude_headless_argv(argv):
+            candidates.append((pid, etime, argv))
+
+    if not candidates:
+        return [], None
+
+    pids = [pid for pid, _, _ in candidates]
+    try:
+        rc, out, err = sh(["lsof", "-a", "-p", ",".join(pids), "-d", "cwd", "-Fn"], timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return [], f"lsof unavailable: {type(e).__name__}: {str(e)[:100]}"
+    # lsof exits non-zero when SOME pid has already exited between the ps and
+    # lsof calls -- a real race, not a tool failure. `out` is a real partial
+    # answer even then (same tolerance fleet_sessions.probe_local already
+    # established for the identical race), so it is parsed regardless of rc.
+    pid_cwd = _parse_lsof_cwd_by_pid(out)
+
+    processes = []
+    for pid, etime, argv in candidates:
+        cwd = pid_cwd.get(pid)
+        cwd_exists = None
+        if cwd is not None:
+            try:
+                cwd_exists = Path(cwd).exists()
+            except OSError:
+                cwd_exists = None
+        processes.append({"pid": pid, "etime": etime, "argv": argv,
+                          "cwd": cwd, "cwd_exists": cwd_exists})
+    return processes, None
+
+
+def _registered_worktrees(root: Path, timeout: int) -> set[str] | None:
+    """`git worktree list --porcelain`'s `worktree <path>` lines, normalized.
+
+    None (not an empty set) when git itself failed to answer — an empty set
+    would read as "git checked and there are truly zero worktrees", a state a
+    repo with a main checkout can never actually be in. classify_headless_zombies
+    treats None as "P2 coverage unavailable this run", never as "everything is
+    unregistered".
+    """
+    try:
+        rc, out, _ = sh(["git", "worktree", "list", "--porcelain"], timeout=timeout, cwd=root)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if rc != 0:
+        return None
+    return {os.path.normpath(ln[len("worktree "):]) for ln in out.splitlines()
+            if ln.startswith("worktree ")}
+
+
+def classify_headless_zombies(processes: list[dict],
+                              registered_worktrees: set[str] | None) -> tuple[str, int, list[str]]:
+    """Pure classifier — no subprocess, no filesystem access beyond what the
+    caller already resolved into `cwd_exists`. This is the half
+    scripts/tests/test_proprioception_headless_zombies.py exercises directly
+    with synthetic process lists; no live process is ever needed in CI.
+
+    THE MINI INCIDENT this receptor was born from (2026-08-31): a `claude`
+    headless pid was up 3d11h, its task's PR had merged 2.5 days earlier, the
+    parent session had ended cleanly, and the worktree it was launched in had
+    been DELETED under it by the worktree reaper — `lsof`'s cwd for that pid
+    named a path `stat` could no longer find. The reaper reaps DIRECTORIES;
+    nothing reaps the PROCESS still holding one open. CPU sat at an idle
+    heartbeat the whole time: nothing about the process's own resource usage
+    would ever have flagged it.
+
+    Two signals, deliberately asymmetric in severity:
+
+    P1  DEAD CWD — the process's cwd no longer exists on disk. A process cannot
+        read, write, or spawn a child relative to a directory that is gone:
+        this is structurally INCAPABLE of producing work, not merely idle or
+        slow. Conservative by construction — it fires only on a positive
+        `cwd_exists is False` ("I looked, and it is gone"), never on "I don't
+        know" (see below).
+
+    P2  UNREGISTERED WORKTREE (notice) — cwd is alive and sits under
+        `.worktrees/`, but `git worktree list` on the main checkout no longer
+        knows it: the reaper (or a hand `git worktree remove`) took the
+        registration while this process kept running. Lower severity than P1
+        on purpose — the directory still exists, so the process COULD still be
+        doing something, even though nothing will ever fold that worktree's
+        state back into git. Skipped entirely when `registered_worktrees` is
+        None (the git call itself failed this run) — silence there is a real
+        "P2 coverage unavailable", never miscoded as "every worktree is
+        orphaned".
+
+    A cwd this collector never attributed to a pid (`cwd` is None) and a cwd
+    whose existence could not be checked (`cwd_exists` is None) are both left
+    un-flagged: asserting "dead" or "unregistered" about a cwd never actually
+    observed is exactly the calm-liar failure mode this organ refuses by
+    design (W84) — absence of evidence is reported as absence of evidence, not
+    folded into either verdict.
+
+    REPORT-ONLY, like every receptor in this organ: no kill, no cleanup, no
+    actuation of any kind (W80's class — an automated kill on a false positive
+    would end a live, working session; a session reading the report decides
+    what a stuck pid means before acting on it).
+    """
+    ev: list[str] = []
+    findings = 0
+    for p in processes:
+        pid, etime, argv = p["pid"], p.get("etime", "?"), p.get("argv", "")
+        cwd, cwd_exists = p.get("cwd"), p.get("cwd_exists")
+        label = argv.strip()[:70]
+        if cwd is None or cwd_exists is None:
+            continue
+        if cwd_exists is False:
+            findings += 1
+            ev.append(f"P1: pid {pid} etime={etime} cwd DELETED ({cwd}) -- {label}")
+            continue
+        if registered_worktrees is not None and ".worktrees/" in cwd \
+                and os.path.normpath(cwd) not in registered_worktrees:
+            findings += 1
+            ev.append(f"P2 notice: pid {pid} etime={etime} cwd {cwd} not in "
+                      f"`git worktree list` -- {label}")
+    if not ev:
+        ev = [f"{len(processes)} headless claude process(es) checked, all cwds "
+              "live and registered"] if processes else ["no headless claude CLI process found"]
+    return (DIVERGED if findings else RECONCILED), findings, ev
+
+
+def probe_headless_zombies(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
+    """Collector: shells out to `ps`+`lsof`+`git worktree list`, then hands the
+    result to the pure classifier above. See classify_headless_zombies's
+    docstring for the two signals and the Mini incident this receptor exists
+    to catch.
+
+    Degrades to UNPROBEABLE, never a crash or a false-clean RECONCILED, when
+    `ps` or `lsof` itself is unavailable (missing binary, timed out, non-zero
+    exit with no usable output) — see _collect_claude_headless_processes's
+    docstring. A failed `git worktree list` does NOT blind the whole probe: P1
+    (dead cwd) needs no worktree registry at all, so it still runs; only the P2
+    signal is skipped for this run (classify_headless_zombies treats
+    `registered_worktrees=None` as "coverage unavailable", never as "everything
+    unregistered"). `git worktree list` is not even invoked when `ps` found no
+    claude-shaped candidate at all — there is nothing left for it to judge, the
+    same "don't ask a question with no subject" reasoning that already skips
+    `lsof` in that case.
+    """
+    processes, blind_reason = _collect_claude_headless_processes(timeout)
+    if blind_reason is not None:
+        return UNPROBEABLE, 0, [blind_reason]
+    if not processes:
+        return RECONCILED, 0, ["no headless claude CLI process found"]
+    registered = _registered_worktrees(root, timeout)
+    return classify_headless_zombies(processes, registered)
+
+
 BUILTINS = {
     "git_alignment": probe_git_alignment,
     "executed_code_currency": probe_executed_code_currency,
@@ -1463,6 +1706,7 @@ BUILTINS = {
     "repomap_size": probe_repomap_size,
     "canon_blocks": probe_canon_blocks,
     "door_canon_parity": probe_door_canon_parity,
+    "headless_zombies": probe_headless_zombies,
 }
 
 
@@ -1921,6 +2165,41 @@ DEFAULT_REGISTRY: list[dict] = [
         "machines": ["m5"], "tags": ["fast", "wr2"], "timeout_sec": 15,
         "severity": "P2", "parse": "exit_code",
         "fix_hint": "launchctl print gui/$(id -u)/com.balizero.flowkit-pro-tunnel; tail ~/Library/Logs/flowkit-pro-tunnel.err — WR2 falls back to Playwright automatically (auto backend), no data loss while down",
+    },
+    {
+        # THE MINI INCIDENT (2026-08-31, evidence this receptor exists to
+        # catch): a headless `claude` pid was up 3d11h, its task's PR had
+        # merged 2.5 days earlier, the parent session had ended cleanly, and
+        # the worktree reaper had deleted the worktree it was launched in
+        # WHILE THE PROCESS KEPT RUNNING -- `lsof`'s cwd for that pid named a
+        # path `stat` could no longer find. The reaper
+        # (scripts/agent_worktree_cleanup_cron.sh) reaps DIRECTORIES; nothing
+        # reaps the PROCESS still holding one open, and CPU sat at an idle
+        # heartbeat throughout -- resource usage alone would never have
+        # flagged it.
+        #
+        # Core signal (P1) is conservative BY CONSTRUCTION: it fires only on a
+        # positive "I looked at this pid's cwd and it is gone", never on a cwd
+        # this collector could not attribute or could not stat (see
+        # classify_headless_zombies's docstring). Secondary signal (P2,
+        # notice) is lower severity: a cwd under `.worktrees/` still alive on
+        # disk but no longer in `git worktree list` -- the registration was
+        # reaped, the process was not.
+        #
+        # REPORT-ONLY like every receptor here (W80's class): no kill logic
+        # anywhere in this probe or its classifier. A stuck pid is a fact for
+        # a session to act on, never something this organ ends on its own.
+        "id": "headless_zombies", "type": "builtin", "target": "headless_zombies",
+        "class": "process<->cwd",
+        "boundary": "a headless claude CLI process <-> its own working directory / worktree registration",
+        "machines": ["all"], "tags": ["fast"], "timeout_sec": 20,
+        "severity": "P1",
+        "args": {},
+        "fix_hint": "P1 (dead cwd): the process cannot do anything from a directory that no "
+                    "longer exists -- read its transcript/task before deciding whether to kill "
+                    "it, this receptor never does. P2 (unregistered worktree): `git worktree "
+                    "list` no longer knows this path -- re-register with `git worktree add` if "
+                    "the work is still wanted, or let the process finish and clean up by hand.",
     },
 ]
 
