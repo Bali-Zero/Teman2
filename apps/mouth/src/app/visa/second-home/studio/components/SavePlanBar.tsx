@@ -294,7 +294,14 @@ const buttonStyle: React.CSSProperties = {
   // (var(--space-4, 1.5rem)), well clear of that section's own 12px
   // corner curve, so there's no tight-nesting mismatch to avoid.
   borderRadius: 12,
-  border: "1px solid var(--color-border-subtle)",
+  // WCAG 2.2 SC 1.4.11 (2026-09-01): this is the ONLY resting-state boundary
+  // for Save/Copy-Link/Print (transparent fill) — --color-border-subtle
+  // composited to 1.21:1 on carta / 1.31:1 on white, decorative-only per
+  // merahPutihDayVars.ts's own comment. --border-strong (#7a8093) measures
+  // 3.64:1 on carta / 3.94:1 on white, clearing the 3:1 non-text floor — the
+  // same token StudioApp.tsx's navButtonStyle already uses for its Back
+  // button boundary.
+  border: "1px solid var(--border-strong)",
   background: "transparent",
   color: "var(--text-primary)",
   cursor: "pointer",

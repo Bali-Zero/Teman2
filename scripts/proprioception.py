@@ -77,6 +77,8 @@ KNOWN_BOUNDARY_CLASSES = [
     "tunnel<->reachable",       # declared network tunnel/forward vs live reachability (2026-08-21)
     "declared<->enforced",      # policy-as-code in the repo vs what the node actually enforces (L13, 2026-08-31)
     "home<->home",              # the SAME control-plane file on two machines (global CLAUDE.md, 2026-08-31)
+    "door<->door",              # the SAME rule in each CLI's auto-loaded door file (2026-08-31)
+    "process<->cwd",            # a headless claude CLI process vs. its own working dir / worktree registration (2026-09-01)
 ]
 
 SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
@@ -1227,6 +1229,474 @@ def probe_canon_blocks(root: Path, args: dict, timeout: int) -> tuple[str, int, 
     ]
 
 
+DOOR_REFERENCE = "CLAUDE.md"
+DOOR_FILES = ("CLAUDE.md", "AGENTS.md", "GEMINI.md", "QWEN.md")
+
+
+def probe_door_canon_parity(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
+    """Do the repo's DOOR files bind every builder with the same rules?
+
+    THE BOUNDARY: `CLAUDE.md` <-> `AGENTS.md` <-> `GEMINI.md` <-> `QWEN.md`, the
+    files each CLI auto-loads at the top of a session. The CI and repo layer
+    already binds every model equally — a gate does not care which family opened
+    the PR. The HARNESS layer does not: an external seat that BUILDS starts with
+    whatever its own door says, and nothing has ever compared those doors. This
+    probe closes that gap at the door, which is the only place it can be closed
+    before the first edit rather than after the first PR.
+
+    BLOCK LEVEL, NEVER WHOLE FILE — the same rule as the fleet comparator, for
+    the same reason. These files are SUPPOSED to differ: each carries its own
+    CLI's invocation, its own model roster, its own sandbox flags. Only regions a
+    human marked as canon are compared, and the parser is the one `_canon_blocks`
+    shared with the fleet probe and the publisher, never a second copy of the
+    definition (two parsers drift, and the drift reads as doctrine drift).
+
+    CLAUDE.md IS THE REFERENCE, and that is a decision rather than an accident:
+    it is the door the codeowner reads and the one the rulings land in first, so
+    "the others agree with it" is the direction that means something. A block
+    present in a peer and absent from the reference is still a finding — it is
+    doctrine that binds one seat and not the others, which is the disease.
+
+    CASE MATTERS AND THE SHELL WILL LIE ABOUT IT. `QWEN.md` is the name the Qwen
+    CLI opens, and on the APFS default (case-insensitive) `[ -f QWEN.md ]`,
+    `ls` and `wc` all answer for a lowercase `qwen.md` — measured 2026-08-31, the
+    two names shared inode 343120045 on this machine while git's index held only
+    the lowercase one. EXISTENCE is therefore established from git, never from
+    the filesystem.
+
+    TWO SOURCES, NAMED RATHER THAN BLURRED. Existence comes from `git ls-files`
+    (the INDEX of this checkout); CONTENT comes from the working tree. Neither
+    choice is free and both were argued (kimi-code/k3, 2026-08-31, which called
+    for HEAD and for hashing git blobs):
+
+      - The INDEX, not HEAD, because the question is "does the seat that opens a
+        door in THIS checkout get the rules" — a door staged here is a door here.
+        The cost is real and declared: a staged-but-uncommitted door reads as
+        present although a fresh clone would not get it, and `git rm --cached`
+        on a door still in HEAD reads as absent. Neither is silent — both change
+        the probe's verdict, which is what makes them arguable rather than
+        hidden.
+      - The WORKING TREE for content, because that is the byte sequence the CLI
+        actually loads. Hashing git blobs would make the probe immune to a dirty
+        tree, which is precisely the state in which a session is editing a door
+        and most wants to know whether it has broken parity.
+
+    The consequence is that the two sources can disagree — a tracked name whose
+    file was deleted with a plain `rm` — and that disagreement is REPORTED, never
+    allowed to raise: see `_read_door`.
+
+    UNPROBEABLE WHEN NOTHING IS MARKED, never RECONCILED — four files containing
+    zero blocks agreeing about nothing is the purest form of the disease.
+    """
+    root = Path(args.get("root") or root)
+    reference = str(args.get("reference") or DOOR_REFERENCE)
+    doors = list(dict.fromkeys([reference, *(args.get("doors") or DOOR_FILES)]))
+
+    # The reference is queried even when a caller left it out of `doors` — asking
+    # only for the names in `doors` and then reporting "the reference is not
+    # tracked" would be a false factual claim about a file nobody looked for
+    # (kimi-code/k3, 2026-08-31).
+    toplevel = _git_toplevel(root, timeout)
+    if toplevel is not None and toplevel != root.resolve():
+        # `git -C <any nested dir>` answers for the enclosing repository, so a
+        # caller pointed at a subdirectory — or at a directory inside SOMEONE
+        # ELSE'S worktree that happens to hold four decoy doors — would get a
+        # confident verdict about the wrong boundary (codex gpt-5.6-sol,
+        # 2026-08-31). Refusing is the only honest answer: this probe cannot
+        # know which repo the caller meant.
+        return UNPROBEABLE, 0, [
+            f"{root} is not a repository toplevel — git answers there for {toplevel}, so any "
+            "verdict would be about a boundary the caller did not name"
+        ]
+
+    tracked = _git_tracked_names(root, doors, timeout)
+    if tracked is None:
+        return UNPROBEABLE, 0, [
+            f"could not ask git which doors exist under {root} — the filesystem cannot be "
+            "asked instead: on a case-insensitive volume it answers for the wrong case"
+        ]
+
+    if reference not in tracked:
+        return UNPROBEABLE, 0, [
+            f"the reference door {reference} is not tracked under {root} — nothing to compare against"
+        ]
+
+    ref_text = _read_door(root, reference)
+    if ref_text is None:
+        return UNPROBEABLE, 0, [
+            f"{reference} is tracked but could not be read from {root} — git's index and the "
+            "working tree disagree (a plain `rm`, a directory of that name, or a permission "
+            "problem). Nothing can be compared until they agree"
+        ]
+    ref_blocks = _canon_blocks(ref_text)
+    if not ref_blocks:
+        why = (
+            f"{reference} carries no <!-- CANON:<id> --> markers — no rule is declared binding "
+            "across doors yet, so there is nothing to compare (marking the block is the step)"
+        )
+        fenced = _canon_shaped_lines_in_fences(ref_text)
+        if fenced:
+            why += (
+                f" — note that {fenced} canon-shaped line(s) sit inside fenced code blocks, where "
+                "they read as examples and are deliberately ignored"
+            )
+        return UNPROBEABLE, 0, [why]
+
+    findings: list[str] = []
+    for bid in sorted(ref_blocks):
+        if _is_malformed(bid):
+            base, why = bid.split("!", 1)
+            findings.append(
+                f"CANON:{base} is malformed in {reference} ({why}) — a malformed marker in the "
+                "REFERENCE door removes that rule from every comparison at once"
+            )
+
+    for door in doors:
+        if door == reference:
+            continue
+        if door not in tracked:
+            findings.append(
+                f"{door} is not tracked in this repo — that seat opens no door at all and starts "
+                "with none of the shared rules (check git, not the filesystem: a case-insensitive "
+                "volume will happily answer for the wrong case)"
+            )
+            continue
+        door_text = _read_door(root, door)
+        if door_text is None:
+            findings.append(
+                f"{door} is tracked but could not be read — git's index and the working tree "
+                "disagree about it, so its doctrine cannot be compared to anything"
+            )
+            continue
+        blocks = _canon_blocks(door_text)
+        for bid in sorted(set(ref_blocks) | set(blocks)):
+            if _is_malformed(bid):
+                if bid in blocks:
+                    base, why = bid.split("!", 1)
+                    findings.append(f"CANON:{base} is malformed in {door} ({why})")
+                continue
+            here, there = blocks.get(bid), ref_blocks.get(bid)
+            if there is None:
+                findings.append(
+                    f"CANON:{bid} is in {door} but ABSENT from {reference} — a rule that binds one "
+                    "seat and not the reference is not shared doctrine"
+                )
+            elif here is None:
+                findings.append(f"CANON:{bid} is in {reference} but ABSENT from {door}")
+            elif here != there:
+                findings.append(
+                    f"CANON:{bid} differs between {door} and {reference} ({here} vs {there})"
+                )
+
+    compared = [d for d in doors if d != reference and d in tracked]
+    if not compared:
+        # A file compared to itself is not agreement. Reaching RECONCILED here
+        # would be the purest instance of the disease this probe is named after
+        # (kimi-code/k3, 2026-08-31): a guard reporting green while comparing
+        # nothing at all.
+        return UNPROBEABLE, 0, [
+            f"only {reference} participates — no other door is both configured and tracked, so "
+            "there is no second copy to compare it against and 'they agree' would mean nothing"
+        ]
+    if findings:
+        return DIVERGED, len(findings), findings
+    return RECONCILED, 0, [
+        f"{len(ref_blocks)} canon block(s) identical across {reference} and "
+        f"{len(compared)} other door(s): {', '.join(compared)}"
+    ]
+
+
+def _git_toplevel(root: Path, timeout: int) -> Path | None:
+    """The repository root `git` would use from `root`, or None if it cannot say."""
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, timeout=timeout,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0 or not out.stdout.strip():
+        return None
+    return Path(out.stdout.strip()).resolve()
+
+
+def _read_door(root: Path, name: str) -> str | None:
+    """A door's text, or None if it cannot be read.
+
+    Existence is established from git and CONTENT is read from the working tree,
+    and those two sources routinely disagree: a plain `rm` leaves the name in the
+    index, a directory can be staged under a file's name, a mode can deny the
+    read. Letting any of those raise turns one unreadable door into a dead
+    proprioception run for every OTHER boundary too.
+    """
+    try:
+        return (root / name).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+
+
+def _git_tracked_names(root: Path, names: list[str], timeout: int) -> set[str] | None:
+    """Which of `names` git actually tracks at `root` — None if git cannot answer.
+
+    Asks git rather than the filesystem ON PURPOSE. See the case note in
+    probe_door_canon_parity: on APFS the shell answers for a name that differs
+    only in case, so a door that is genuinely absent to a Linux runner tests as
+    present on every Mac in this fleet.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-z", "--", *names],
+            capture_output=True, text=True, timeout=timeout,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return None
+    return {n for n in out.stdout.split("\0") if n}
+
+
+# -------------------------------------------------------- headless zombies
+
+# Twin of fleet_sessions.is_session_process / SESSION_BINARY_BASENAMES (kept
+# local rather than imported: this module is also loaded standalone via
+# spec_from_file_location, as every proprioception test does, and a cross-module
+# import there is fragile in a way a small twin is not — same tradeoff
+# origin_main_sha's docstring above already makes, for the same reason). If the
+# session-process shape ever changes, update BOTH.
+_CLAUDE_CLI_BASENAMES = frozenset({"claude", "claude.exe"})
+
+
+def _is_claude_headless_argv(argv: str) -> bool:
+    """Is `argv` a Claude Code CLI process (headless-capable), not the desktop app?
+
+    Narrowed at the EXECUTABLE IDENTITY — argv[0]'s basename — never a substring
+    of the whole command line: a bare `"claude" in argv` over-matches
+    `claude-science`, `not-claude`, and any tool whose argv merely mentions a path
+    under `~/.claude/` (superscar #3, guard-over-match). Case is load-bearing: the
+    desktop app's binary is `.../Claude.app/Contents/MacOS/Claude` — capital C, a
+    DIFFERENT basename — so its helper processes ("Claude Helper (Renderer)",
+    chrome_crashpad_handler under Contents/Frameworks) already fail on the
+    basename alone; the `.../claude.app/` marker below is defense-in-depth, not
+    the primary discriminator. Matches the two shapes this receptor's design
+    names: `bin/claude.exe` (npm-installed CLI) and bare `claude`/
+    `claude interactive` (PATH-resolved).
+    """
+    if not argv or not argv.strip():
+        return False
+    first = argv.split()[0]
+    base = first.rsplit("/", 1)[-1]
+    if base not in _CLAUDE_CLI_BASENAMES:
+        return False
+    if "/applications/claude.app/" in argv.lower():
+        return False
+    return True
+
+
+def _parse_lsof_cwd_by_pid(text: str) -> dict[str, str]:
+    """Parse `lsof -a -p <pids> -d cwd -Fn` output: a `p<pid>` marker line
+    followed eventually by an `n<path>` line naming that pid's cwd. Twin of
+    fleet_sessions.parse_lsof_cwd (str-keyed here — this collector already
+    carries pid as the string `ps` printed, and round-tripping it through int
+    and back is a pure liability, not a safeguard)."""
+    pid_cwd: dict[str, str] = {}
+    current_pid: str | None = None
+    for line in text.splitlines():
+        if not line:
+            continue
+        tag, rest = line[0], line[1:]
+        if tag == "p":
+            current_pid = rest.strip()
+        elif tag == "n" and current_pid is not None:
+            pid_cwd[current_pid] = rest
+    return pid_cwd
+
+
+def _own_uid() -> str:
+    return str(os.getuid())
+
+
+def _collect_claude_headless_processes(timeout: int) -> tuple[list[dict], str | None]:
+    """ps (own-user only) -> claude-CLI argv filter -> lsof cwd per matched pid.
+
+    Returns (processes, blind_reason). `blind_reason` is None on success — an
+    empty `processes` list on success IS the honest "nothing headless is
+    running" answer, never coerced from a tool failure. It is set only when
+    `ps` or `lsof` itself could not be asked (missing binary, timeout, non-zero
+    exit with no usable output) — the caller turns that into UNPROBEABLE rather
+    than a quiet 0-finding RECONCILED that never actually looked (W84: a probe
+    that could not see must never read as calm).
+
+    Each process dict: {"pid", "etime", "argv", "cwd", "cwd_exists"}. `cwd` is
+    None when lsof did not attribute one to this pid (the ps/lsof race, or a
+    process lsof cannot introspect); `cwd_exists` is None in that same case, and
+    also when the existence check itself raised — never coerced to True or
+    False without having actually looked.
+    """
+    try:
+        rc, out, err = sh(["ps", "-u", _own_uid(), "-o", "pid=", "-o", "etime=", "-o", "args="],
+                          timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return [], f"ps unavailable: {type(e).__name__}: {str(e)[:100]}"
+    if rc != 0:
+        return [], f"ps exited {rc}: {err.strip()[:120]}"
+
+    candidates: list[tuple[str, str, str]] = []  # (pid, etime, argv)
+    for line in out.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split(None, 2)
+        if len(parts) < 3:
+            continue
+        pid, etime, argv = parts
+        if _is_claude_headless_argv(argv):
+            candidates.append((pid, etime, argv))
+
+    if not candidates:
+        return [], None
+
+    pids = [pid for pid, _, _ in candidates]
+    try:
+        rc, out, err = sh(["lsof", "-a", "-p", ",".join(pids), "-d", "cwd", "-Fn"], timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return [], f"lsof unavailable: {type(e).__name__}: {str(e)[:100]}"
+    # lsof exits non-zero when SOME pid has already exited between the ps and
+    # lsof calls -- a real race, not a tool failure. `out` is a real partial
+    # answer even then (same tolerance fleet_sessions.probe_local already
+    # established for the identical race), so it is parsed regardless of rc.
+    pid_cwd = _parse_lsof_cwd_by_pid(out)
+
+    processes = []
+    for pid, etime, argv in candidates:
+        cwd = pid_cwd.get(pid)
+        cwd_exists = None
+        if cwd is not None:
+            try:
+                cwd_exists = Path(cwd).exists()
+            except OSError:
+                cwd_exists = None
+        processes.append({"pid": pid, "etime": etime, "argv": argv,
+                          "cwd": cwd, "cwd_exists": cwd_exists})
+    return processes, None
+
+
+def _registered_worktrees(root: Path, timeout: int) -> set[str] | None:
+    """`git worktree list --porcelain`'s `worktree <path>` lines, normalized.
+
+    None (not an empty set) when git itself failed to answer — an empty set
+    would read as "git checked and there are truly zero worktrees", a state a
+    repo with a main checkout can never actually be in. classify_headless_zombies
+    treats None as "P2 coverage unavailable this run", never as "everything is
+    unregistered".
+    """
+    try:
+        rc, out, _ = sh(["git", "worktree", "list", "--porcelain"], timeout=timeout, cwd=root)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if rc != 0:
+        return None
+    return {os.path.normpath(ln[len("worktree "):]) for ln in out.splitlines()
+            if ln.startswith("worktree ")}
+
+
+def classify_headless_zombies(processes: list[dict],
+                              registered_worktrees: set[str] | None) -> tuple[str, int, list[str]]:
+    """Pure classifier — no subprocess, no filesystem access beyond what the
+    caller already resolved into `cwd_exists`. This is the half
+    scripts/tests/test_proprioception_headless_zombies.py exercises directly
+    with synthetic process lists; no live process is ever needed in CI.
+
+    THE MINI INCIDENT this receptor was born from (2026-08-31): a `claude`
+    headless pid was up 3d11h, its task's PR had merged 2.5 days earlier, the
+    parent session had ended cleanly, and the worktree it was launched in had
+    been DELETED under it by the worktree reaper — `lsof`'s cwd for that pid
+    named a path `stat` could no longer find. The reaper reaps DIRECTORIES;
+    nothing reaps the PROCESS still holding one open. CPU sat at an idle
+    heartbeat the whole time: nothing about the process's own resource usage
+    would ever have flagged it.
+
+    Two signals, deliberately asymmetric in severity:
+
+    P1  DEAD CWD — the process's cwd no longer exists on disk. A process cannot
+        read, write, or spawn a child relative to a directory that is gone:
+        this is structurally INCAPABLE of producing work, not merely idle or
+        slow. Conservative by construction — it fires only on a positive
+        `cwd_exists is False` ("I looked, and it is gone"), never on "I don't
+        know" (see below).
+
+    P2  UNREGISTERED WORKTREE (notice) — cwd is alive and sits under
+        `.worktrees/`, but `git worktree list` on the main checkout no longer
+        knows it: the reaper (or a hand `git worktree remove`) took the
+        registration while this process kept running. Lower severity than P1
+        on purpose — the directory still exists, so the process COULD still be
+        doing something, even though nothing will ever fold that worktree's
+        state back into git. Skipped entirely when `registered_worktrees` is
+        None (the git call itself failed this run) — silence there is a real
+        "P2 coverage unavailable", never miscoded as "every worktree is
+        orphaned".
+
+    A cwd this collector never attributed to a pid (`cwd` is None) and a cwd
+    whose existence could not be checked (`cwd_exists` is None) are both left
+    un-flagged: asserting "dead" or "unregistered" about a cwd never actually
+    observed is exactly the calm-liar failure mode this organ refuses by
+    design (W84) — absence of evidence is reported as absence of evidence, not
+    folded into either verdict.
+
+    REPORT-ONLY, like every receptor in this organ: no kill, no cleanup, no
+    actuation of any kind (W80's class — an automated kill on a false positive
+    would end a live, working session; a session reading the report decides
+    what a stuck pid means before acting on it).
+    """
+    ev: list[str] = []
+    findings = 0
+    for p in processes:
+        pid, etime, argv = p["pid"], p.get("etime", "?"), p.get("argv", "")
+        cwd, cwd_exists = p.get("cwd"), p.get("cwd_exists")
+        label = argv.strip()[:70]
+        if cwd is None or cwd_exists is None:
+            continue
+        if cwd_exists is False:
+            findings += 1
+            ev.append(f"P1: pid {pid} etime={etime} cwd DELETED ({cwd}) -- {label}")
+            continue
+        if registered_worktrees is not None and ".worktrees/" in cwd \
+                and os.path.normpath(cwd) not in registered_worktrees:
+            findings += 1
+            ev.append(f"P2 notice: pid {pid} etime={etime} cwd {cwd} not in "
+                      f"`git worktree list` -- {label}")
+    if not ev:
+        ev = [f"{len(processes)} headless claude process(es) checked, all cwds "
+              "live and registered"] if processes else ["no headless claude CLI process found"]
+    return (DIVERGED if findings else RECONCILED), findings, ev
+
+
+def probe_headless_zombies(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
+    """Collector: shells out to `ps`+`lsof`+`git worktree list`, then hands the
+    result to the pure classifier above. See classify_headless_zombies's
+    docstring for the two signals and the Mini incident this receptor exists
+    to catch.
+
+    Degrades to UNPROBEABLE, never a crash or a false-clean RECONCILED, when
+    `ps` or `lsof` itself is unavailable (missing binary, timed out, non-zero
+    exit with no usable output) — see _collect_claude_headless_processes's
+    docstring. A failed `git worktree list` does NOT blind the whole probe: P1
+    (dead cwd) needs no worktree registry at all, so it still runs; only the P2
+    signal is skipped for this run (classify_headless_zombies treats
+    `registered_worktrees=None` as "coverage unavailable", never as "everything
+    unregistered"). `git worktree list` is not even invoked when `ps` found no
+    claude-shaped candidate at all — there is nothing left for it to judge, the
+    same "don't ask a question with no subject" reasoning that already skips
+    `lsof` in that case.
+    """
+    processes, blind_reason = _collect_claude_headless_processes(timeout)
+    if blind_reason is not None:
+        return UNPROBEABLE, 0, [blind_reason]
+    if not processes:
+        return RECONCILED, 0, ["no headless claude CLI process found"]
+    registered = _registered_worktrees(root, timeout)
+    return classify_headless_zombies(processes, registered)
+
+
 BUILTINS = {
     "git_alignment": probe_git_alignment,
     "executed_code_currency": probe_executed_code_currency,
@@ -1235,6 +1705,8 @@ BUILTINS = {
     "guardian_freshness": probe_guardian_freshness,
     "repomap_size": probe_repomap_size,
     "canon_blocks": probe_canon_blocks,
+    "door_canon_parity": probe_door_canon_parity,
+    "headless_zombies": probe_headless_zombies,
 }
 
 
@@ -1466,6 +1938,15 @@ DEFAULT_REGISTRY: list[dict] = [
         "fix_hint": "port the DIVERGED block, never the whole file — it is per-machine by design; publish again from the machine that is ahead",
     },
     {
+        "id": "door_canon_parity", "type": "builtin", "target": "door_canon_parity",
+        "class": "door<->door",
+        "boundary": "the canon block of CLAUDE.md <-> AGENTS.md <-> GEMINI.md <-> QWEN.md",
+        "machines": ["all"], "tags": ["fast", "remote-safe"], "timeout_sec": 15,
+        "severity": "P1",
+        "args": {"reference": "CLAUDE.md", "doors": ["CLAUDE.md", "AGENTS.md", "GEMINI.md", "QWEN.md"]},
+        "fix_hint": "copy the reference door's block VERBATIM into the diverging door — the block is shared doctrine, so the cure is never to reword it locally; if the reference is the one that is wrong, fix it there and re-copy outward",
+    },
+    {
         "id": "repomap_size", "type": "builtin", "target": "repomap_size",
         "class": "home<->repo",
         "boundary": "build_repomap.sh hard cap <-> the ~/.nuzantara-repomap.txt a session is actually handed",
@@ -1684,6 +2165,41 @@ DEFAULT_REGISTRY: list[dict] = [
         "machines": ["m5"], "tags": ["fast", "wr2"], "timeout_sec": 15,
         "severity": "P2", "parse": "exit_code",
         "fix_hint": "launchctl print gui/$(id -u)/com.balizero.flowkit-pro-tunnel; tail ~/Library/Logs/flowkit-pro-tunnel.err — WR2 falls back to Playwright automatically (auto backend), no data loss while down",
+    },
+    {
+        # THE MINI INCIDENT (2026-08-31, evidence this receptor exists to
+        # catch): a headless `claude` pid was up 3d11h, its task's PR had
+        # merged 2.5 days earlier, the parent session had ended cleanly, and
+        # the worktree reaper had deleted the worktree it was launched in
+        # WHILE THE PROCESS KEPT RUNNING -- `lsof`'s cwd for that pid named a
+        # path `stat` could no longer find. The reaper
+        # (scripts/agent_worktree_cleanup_cron.sh) reaps DIRECTORIES; nothing
+        # reaps the PROCESS still holding one open, and CPU sat at an idle
+        # heartbeat throughout -- resource usage alone would never have
+        # flagged it.
+        #
+        # Core signal (P1) is conservative BY CONSTRUCTION: it fires only on a
+        # positive "I looked at this pid's cwd and it is gone", never on a cwd
+        # this collector could not attribute or could not stat (see
+        # classify_headless_zombies's docstring). Secondary signal (P2,
+        # notice) is lower severity: a cwd under `.worktrees/` still alive on
+        # disk but no longer in `git worktree list` -- the registration was
+        # reaped, the process was not.
+        #
+        # REPORT-ONLY like every receptor here (W80's class): no kill logic
+        # anywhere in this probe or its classifier. A stuck pid is a fact for
+        # a session to act on, never something this organ ends on its own.
+        "id": "headless_zombies", "type": "builtin", "target": "headless_zombies",
+        "class": "process<->cwd",
+        "boundary": "a headless claude CLI process <-> its own working directory / worktree registration",
+        "machines": ["all"], "tags": ["fast"], "timeout_sec": 20,
+        "severity": "P1",
+        "args": {},
+        "fix_hint": "P1 (dead cwd): the process cannot do anything from a directory that no "
+                    "longer exists -- read its transcript/task before deciding whether to kill "
+                    "it, this receptor never does. P2 (unregistered worktree): `git worktree "
+                    "list` no longer knows this path -- re-register with `git worktree add` if "
+                    "the work is still wanted, or let the process finish and clean up by hand.",
     },
 ]
 

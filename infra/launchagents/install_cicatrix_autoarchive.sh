@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # install_cicatrix_autoarchive.sh — install/reload the daily cicatrix-scars
-# auto-archive LaunchAgent (keeps .claude/rules/cicatrix-scars.md under 40k).
+# auto-archive LaunchAgent (keeps docs/scars/cicatrix-scars.md under 40k).
 #
 # Usage:
 #   bash infra/launchagents/install_cicatrix_autoarchive.sh            # install

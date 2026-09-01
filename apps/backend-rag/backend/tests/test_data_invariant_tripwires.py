@@ -170,7 +170,6 @@ def test_openai_embedding_model_is_frozen() -> None:
 _RETIRED_WHATSAPP = "+62 813 3805 1876"
 _RETIRED_LOCATION = "Canggu, Bali, Indonesia"
 
-
 def test_authoritative_pricing_json_never_reintroduces_retired_contact() -> None:
     """``bali_zero_official_prices_2026.json`` — the file `PricingService`
     loads and ``scripts/prepare_payloads.py`` embeds into
@@ -189,30 +188,260 @@ def test_authoritative_pricing_json_never_reintroduces_retired_contact() -> None
     ``apps/backend-rag/backend/data/PRICING_DEPRECATED_2025.md``) and is
     excluded from every production code path by contract, not by accident.
     """
-    from backend.app.core.config import settings
+    import sys
+
+    repo_root = _repo_root()
+    if str(repo_root / "scripts") not in sys.path:
+        sys.path.insert(0, str(repo_root / "scripts"))
+    from pricelist_2026.schema import CANONICAL_CONTACT
 
     data_path = (
-        _repo_root() / "apps/backend-rag/backend/data/bali_zero_official_prices_2026.json"
+        repo_root / "apps/backend-rag/backend/data/bali_zero_official_prices_2026.json"
     )
     assert data_path.exists(), f"authoritative pricing JSON missing at {data_path}"
 
     contact = json.loads(data_path.read_text(encoding="utf-8"))["metadata"]["contact"]
 
-    assert contact["whatsapp"] == settings.SUPPORT_WHATSAPP, (
-        f"{data_path.name} contact.whatsapp={contact['whatsapp']!r} does not "
-        f"match settings.SUPPORT_WHATSAPP={settings.SUPPORT_WHATSAPP!r} (the "
-        "Meta-verified Bali Zero number) — PricingService answers and the "
-        "RAG-embedded text would drift from the number the bot itself "
-        "advertises."
+    # The sheet must match its GENERATOR, not the bot's inbound number.
+    #
+    # This assertion used to read `contact["whatsapp"] == settings.SUPPORT_WHATSAPP`,
+    # and that pin was wrong in a way that actively caused harm: on 2026-08-31 a
+    # PR fixing a real defect (the two contact halves named different numbers)
+    # resolved the tie toward SUPPORT_WHATSAPP *because this test said it had
+    # to*, and shipped the bot's inbound number onto the client-facing price
+    # list. The owner reversed it on 2026-09-01 ("lascia ari").
+    #
+    # They are different things and must be free to differ:
+    #   - `settings.SUPPORT_WHATSAPP` is the Meta-verified number the BOT
+    #     RECEIVES on — its inbound identity, which no human answers.
+    #   - `contact.whatsapp` is the number a CLIENT is invited to write to.
+    #     The lead-capture and document surfaces already use Ari's line: the
+    #     IT and ID notification templates, the lead-capture deeplink, the
+    #     welcome-practice and welcome-email services, the Canva renderer, the
+    #     rendered public price list and the whole apps/mouth frontend. Among
+    #     THOSE, the price sheet was the only one that disagreed.
+    #
+    #     NOT "every surface in the repo": a further eleven client-facing
+    #     surfaces — the CRM/invoice/birthday/welcome email footers, the shared
+    #     notification footer, the chat sanitizer's CTA and the website-widget
+    #     prompt — still emit SUPPORT_WHATSAPP to clients. They are measured,
+    #     listed by file:line in .claude/skills/modus/PENDING-ARMS.md, and left
+    #     to the owner: who answers a client's invoice reply is a business
+    #     decision, not a code cleanup.
+    #
+    # What is worth pinning is that the sheet cannot drift from the generator
+    # that produces it, and that its two halves cannot name different numbers —
+    # which is the defect the 2026-08-31 PR correctly identified.
+    assert contact == CANONICAL_CONTACT, (
+        f"{data_path.name} metadata.contact has drifted from CANONICAL_CONTACT "
+        "in scripts/pricelist_2026/schema.py. Change the generator's "
+        "_CANONICAL_WHATSAPP_DIGITS and regenerate, never hand-edit the sheet — "
+        "hand-editing is how `whatsapp` and `wa_link` came to name different "
+        "numbers in the first place. Do NOT resolve a mismatch here by copying "
+        "settings.SUPPORT_WHATSAPP: that is the bot's inbound number, not the "
+        "client-facing one (owner ruling 2026-09-01)."
     )
     assert contact["whatsapp"] != _RETIRED_WHATSAPP
     assert contact.get("location") != _RETIRED_LOCATION
 
 
-# ---------------------------------------------------------------------------
-# Invariant 4 — kbli_documents (Postgres) is NOT the flat KBLI payload
-# CLAUDE.md §9 describes (lever #8, 2026-07-19 KB activation-plan audit)
-# ---------------------------------------------------------------------------
+def test_client_contact_whatsapp_matches_the_price_list_generator():
+    """The two sides of the system must name the SAME client-facing number.
+
+    `settings.CLIENT_CONTACT_WHATSAPP` is what the backend hands a client when
+    the price sheet fails to load (pricing_plugin / zantara_tools fallback);
+    `_CANONICAL_WHATSAPP_DIGITS` in scripts/pricelist_2026/schema.py is what
+    the sheet and the rendered price list print. They live in different trees
+    and neither imports the other, so nothing but this test stops them from
+    drifting — and a client who reads one number on the PDF and is given a
+    different one by the bot has no way to tell which is real.
+
+    This does NOT pin either of them to `settings.SUPPORT_WHATSAPP`: that is
+    the bot's inbound identity, a deliberately different number (owner ruling
+    2026-09-01). See the comment on CLIENT_CONTACT_WHATSAPP in config.py.
+    """
+    import sys
+
+    from backend.app.core.config import settings
+
+    repo_root = _repo_root()
+    if str(repo_root / "scripts") not in sys.path:
+        sys.path.insert(0, str(repo_root / "scripts"))
+    from pricelist_2026.schema import CANONICAL_CONTACT
+
+    assert CANONICAL_CONTACT["whatsapp"] == settings.CLIENT_CONTACT_WHATSAPP, (
+        f"price-list generator says {CANONICAL_CONTACT['whatsapp']!r} but "
+        f"settings.CLIENT_CONTACT_WHATSAPP says "
+        f"{settings.CLIENT_CONTACT_WHATSAPP!r} — change BOTH, or the sheet "
+        "and the bot's own fallback will invite clients to different lines."
+    )
+    assert settings.CLIENT_CONTACT_WHATSAPP != settings.SUPPORT_WHATSAPP, (
+        "CLIENT_CONTACT_WHATSAPP has collapsed onto SUPPORT_WHATSAPP. That is "
+        "the 2026-08-31 regression: the bot's inbound number, which no human "
+        "answers, handed to clients as the line to write to."
+    )
+
+
+def test_pricing_fallback_contacts_read_the_setting_and_never_a_literal():
+    """The degraded path is the one nobody reads, so pin it by AST.
+
+    Both pricing entry points return a `fallback_contact` when the sheet fails
+    to load. Those two blocks carried a hand-typed number until 2026-09-01 and
+    were missed by every earlier contact-number sweep, because nothing pointed
+    at them.
+
+    This asserts on the PARSED SOURCE, not on text, after two earlier drafts
+    were broken by adversarial review in both directions:
+
+      - A phone-SHAPE regex over-matched an IDR price literal like
+        "18 500 000" and under-matched the same number in single quotes, split
+        across adjacent literals, or written with dots.
+      - Matching known DIGIT RUNS over raw text fixed those, and was still
+        wrong twice over: it false-flagged a docstring that merely MENTIONS the
+        bot's number, and it happily allowed any wrong number not on the list —
+        including a typo of Ari's own, and including hard-coding Ari's number
+        instead of reading the setting, which is what put the wrong number here
+        in the first place.
+
+    The question actually worth asking is not "does a forbidden number appear
+    in this file" but "is the value this dict hands a client computed from the
+    single source of truth". That has an exact answer in the AST: the value
+    bound to `whatsapp` inside a `fallback_contact` dict must be the
+    `settings.CLIENT_CONTACT_WHATSAPP` attribute — never a constant, never a
+    join, never an f-string. No text obfuscation can satisfy it, and prose that
+    merely names a number cannot violate it.
+    """
+    import ast
+
+    root = _repo_root() / "apps/backend-rag/backend"
+    sources = [
+        root / "plugins/bali_zero/pricing_plugin.py",
+        root / "services/misc/zantara_tools.py",
+    ]
+    for src in sources:
+        assert src.exists(), f"pricing fallback source moved: {src}"
+        tree = ast.parse(src.read_text(encoding="utf-8"), filename=str(src))
+
+        # `settings.CLIENT_CONTACT_WHATSAPP` is only the right value if
+        # `settings` is the real one. The AST sees SHAPE, not resolution, so a
+        # local shim — a `class _Shadow: CLIENT_CONTACT_WHATSAPP = "<wrong>"`
+        # bound to the name `settings` — produces a byte-identical node and
+        # would ship the wrong number through a green suite. Contrived as a
+        # typo, entirely plausible as a leftover test shim or a bad merge, and
+        # cheap to close: require the real import, and require nothing to
+        # rebind the name afterwards.
+        imported = any(
+            isinstance(n, ast.ImportFrom)
+            and n.module == "backend.app.core.config"
+            and any(a.name == "settings" and a.asname is None for a in n.names)
+            for n in ast.walk(tree)
+        )
+        assert imported, (
+            f"{src.name} does not import `settings` from backend.app.core.config, "
+            "so `settings.CLIENT_CONTACT_WHATSAPP` below means something else."
+        )
+        rebound = [
+            n
+            for n in ast.walk(tree)
+            if isinstance(n, (ast.Assign, ast.AnnAssign, ast.ClassDef, ast.FunctionDef))
+            and (
+                (isinstance(n, ast.Assign) and any(
+                    isinstance(t, ast.Name) and t.id == "settings" for t in n.targets
+                ))
+                or (isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name)
+                    and n.target.id == "settings")
+                or (isinstance(n, (ast.ClassDef, ast.FunctionDef)) and n.name == "settings")
+            )
+        ]
+        assert not rebound, (
+            f"{src.name}:{rebound[0].lineno} rebinds the name `settings` — the "
+            "AST check below would then be satisfied by a shim carrying any "
+            "number at all."
+        )
+
+        found = 0
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Dict):
+                continue
+            for key, value in zip(node.keys, node.values, strict=True):
+                if not (isinstance(key, ast.Constant) and key.value == "whatsapp"):
+                    continue
+                found += 1
+                assert isinstance(value, ast.Attribute) and (
+                    value.attr == "CLIENT_CONTACT_WHATSAPP"
+                    and isinstance(value.value, ast.Name)
+                    and value.value.id == "settings"
+                ), (
+                    f"{src.name}:{getattr(value, 'lineno', '?')} binds "
+                    '"whatsapp" to '
+                    f"{ast.dump(value)[:80]} instead of "
+                    "settings.CLIENT_CONTACT_WHATSAPP. A literal here — even "
+                    "the RIGHT number today — is how the wrong one survived "
+                    "the 2026-09-01 ruling's predecessor."
+                )
+        assert found >= 1, (
+            f'{src.name} no longer contains a dict with a "whatsapp" key — the '
+            "fallback_contact block was renamed or removed, and this guard has "
+            "silently stopped guarding anything."
+        )
+
+
+def test_every_repo_side_copy_of_the_client_number_agrees():
+    """One number, five places that spell it out — pinned to each other.
+
+    The adversarial seat's sharpest finding: introducing
+    `settings.CLIENT_CONTACT_WHATSAPP` does NOT create a single source of truth
+    while the same digits are independently typed in the price-list generator,
+    the Qdrant contact-patch script and the Visa Oracle's handoff URL. Change
+    Ari's line correctly in three of them and the other two go stale with every
+    test still green — which is precisely the failure mode this whole PR exists
+    to close, reproduced one layer up.
+
+    There is no import path that would let the backend read the two `scripts/`
+    modules at runtime, so they cannot share a constant. What they CAN share is
+    a test that fails the moment they disagree.
+    """
+    import re
+    import sys
+
+    from backend.app.core.config import settings
+
+    repo_root = _repo_root()
+    if str(repo_root / "scripts") not in sys.path:
+        sys.path.insert(0, str(repo_root / "scripts"))
+    from pricelist_2026.schema import CANONICAL_CONTACT
+
+    canonical = settings.CLIENT_CONTACT_WHATSAPP
+    digits = re.sub(r"\D", "", canonical)
+
+    assert CANONICAL_CONTACT["whatsapp"] == canonical, (
+        "scripts/pricelist_2026/schema.py disagrees with "
+        f"settings.CLIENT_CONTACT_WHATSAPP: {CANONICAL_CONTACT['whatsapp']!r} != {canonical!r}"
+    )
+    assert CANONICAL_CONTACT["wa_link"] == f"https://wa.me/{digits}", (
+        "the generator's wa_link does not carry the same digits as its own "
+        f"display string: {CANONICAL_CONTACT['wa_link']!r}"
+    )
+
+    # Import and compare the VALUES. A substring match on source text was the
+    # first draft and it couples the guard to incidental formatting: adding a
+    # `: str` annotation, or a formatter moving the assignment, breaks the test
+    # without anything being wrong. Both modules are importable — the patch
+    # script has no import-time side effects, only `async def` bodies do I/O.
+    from patch_pricing_contact_block import CANONICAL_WHATSAPP
+
+    from backend.services.visa_oracle.visa_oracle_service import WHATSAPP_BASE_URL
+
+    assert CANONICAL_WHATSAPP == canonical, (
+        "scripts/patch_pricing_contact_block.py's CANONICAL_WHATSAPP is stale "
+        f"({CANONICAL_WHATSAPP!r}) — it would rewrite the LIVE Qdrant pricing "
+        "payloads to a number that is no longer the client-facing one."
+    )
+    assert WHATSAPP_BASE_URL == f"https://wa.me/{digits}", (
+        f"visa_oracle_service.py's WHATSAPP_BASE_URL is {WHATSAPP_BASE_URL!r} — "
+        "the Visa Oracle handoff deeplink and the price list would send a "
+        "client to two different numbers."
+    )
 
 
 def test_kbli_documents_queries_read_metadata_not_flat_business_columns() -> None:
@@ -377,14 +606,18 @@ def test_seeder_does_not_read_a_pin_from_the_committed_roster() -> None:
 
 
 def test_the_voa_prices_are_the_ones_the_owner_ruled():
-    """e-VOA 790.000 IDR, extension 850.000 IDR — ruled by the owner on
-    2026-08-31 after the CRM was found quoting 750.000 for the same service.
+    """e-VOA 750.000 IDR, extension 850.000 IDR — ruled by the owner on
+    2026-08-31, reversing his own 2026-07-24 directive that had moved issuance
+    to 790.000. Both stores now say 750.000; migration 303 is what moved the
+    table, migration 302 (already applied in production) is what had moved it
+    to 790.000 hours earlier, and both stay in the frozen set below because
+    both really do assign this column.
 
     This is a value tripwire, not a style check. `practice_types.base_price`
     defaults a client quote (`crm_practices.py`), the JSON drives GARUDA and
     the visa_engine adapter at request time, and nothing reconciles the two —
-    so a silent edit to either figure re-opens the divergence migration 302
-    closed. If the owner rules a new price, change it here in the same commit.
+    so a silent edit to either figure re-opens the divergence migrations 302
+    and 303 closed. If the owner rules a new price, change it here in the same commit.
     """
     import json
     import re
@@ -401,7 +634,7 @@ def test_the_voa_prices_are_the_ones_the_owner_ruled():
         (backend_dir / "data" / _PRICING_FILENAME).read_text(encoding="utf-8")
     )
     single = sheet["services"]["single_entry_visas"]
-    assert single["B1 Visa on Arrival (VOA)"]["price"] == "790.000 IDR"
+    assert single["B1 Visa on Arrival (VOA)"]["price"] == "750.000 IDR"
     assert single["B1 Visa on Arrival Extension"]["price"] == "850.000 IDR"
 
     # --- side 2: practice_types.base_price, which is the half that was WRONG.
@@ -413,8 +646,9 @@ def test_the_voa_prices_are_the_ones_the_owner_ruled():
     # price cannot do so silently — it enters the set, the set stops matching,
     # and whoever wrote it has to come here and say what the new price is.
     ruled = {
-        "visa_b1_voa": (790000, {"221_practice_types_b1_voa.sql",
-                                 "302_practice_types_voa_price_790.sql"}),
+        "visa_b1_voa": (750000, {"221_practice_types_b1_voa.sql",
+                                 "302_practice_types_voa_price_790.sql",
+                                 "303_practice_types_voa_price_750.sql"}),
         "ext_b1_voa": (850000, {"221_practice_types_b1_voa.sql"}),
     }
     migrations = sorted(
@@ -422,6 +656,90 @@ def test_the_voa_prices_are_the_ones_the_owner_ruled():
         key=lambda f: int(f.name.split("_", 1)[0]),
     )
     assert migrations, "no migrations_v2/*.sql found — the glob is watching nothing"
+
+    def _forward_body(path: Path) -> str:
+        """Executable lines of the forward section — comments narrate history."""
+        forward = path.read_text(encoding="utf-8").split("-- === ROLLBACK ===")[0]
+        return "\n".join(
+            line for line in forward.splitlines()
+            if not line.lstrip().startswith("--")
+        )
+
+    def _base_price_assignments(body: str, code: str) -> tuple[list[int], list[str]]:
+        """Every site that assigns base_price, and every site not readable.
+
+        Returns (values, unreadable). A shape this cannot parse lands in
+        `unreadable` and reddens the test — silence is never the answer.
+        """
+        values: list[int] = []
+        unreadable: list[str] = []
+        consumed: list[tuple[int, int]] = []
+
+        for m in re.finditer(r"\bSET\s+base_price\s*=\s*(\d+)", body, re.I):
+            values.append(int(m.group(1)))
+            consumed.append(m.span())
+
+        # The upsert idiom: `INSERT ... ON CONFLICT DO UPDATE SET base_price =
+        # EXCLUDED.base_price` (migration 221). It carries no figure of its own
+        # — it forwards the VALUES tuple, which the INSERT branch below reads —
+        # so it is RECOGNISED and contributes nothing, rather than being
+        # mistaken for an unreadable spelling.
+        for m in re.finditer(r"\bbase_price\s*=\s*EXCLUDED\.base_price", body, re.I):
+            consumed.append(m.span())
+
+        # `SET (col, col) = (val, val)` — read base_price's value positionally.
+        for m in re.finditer(r"\bSET\s*\(([^)]*)\)\s*=\s*\(([^)]*)\)", body, re.I):
+            cols = [c.strip().lower() for c in m.group(1).split(",")]
+            vals = [v.strip() for v in m.group(2).split(",")]
+            consumed.append(m.span())
+            if "base_price" not in cols:
+                continue
+            raw = vals[cols.index("base_price")] if len(vals) == len(cols) else None
+            if raw is not None and raw.isdigit():
+                values.append(int(raw))
+            else:
+                unreadable.append(f"tuple SET with non-literal base_price: {m.group(0)[:80]}")
+
+        if not values and f"'{code}'" in body:
+            # An INSERT rather than an UPDATE: 221 seeds both codes positionally.
+            start = body.index(f"'{code}'")
+            tuple_text = body[start:body.index(")", start)]
+            values = [int(v) for v in re.findall(r"\b(\d{5,})\b", tuple_text)]
+
+        # Any remaining `base_price ... =` outside a site already consumed is a
+        # spelling this function does not know. Red, not silent.
+        for m in re.finditer(r"\bbase_price\b\s*=", body, re.I):
+            if not any(a <= m.start() < b for a, b in consumed):
+                unreadable.append(
+                    "unrecognised assignment near: "
+                    f"{body[max(0, m.start() - 40):m.start() + 40]!r}"
+                )
+        return values, unreadable
+
+    # A migration may only move base_price on rows it names LITERALLY. The same
+    # seat measured the second bypass: a migration whose predicate is
+    # `WHERE code LIKE 'visa_b1_vo%'` never enters the frozen setter set below,
+    # because the set is keyed on the literal code — so it can move a ruled
+    # price without any of this noticing. A pattern predicate is therefore
+    # refused outright rather than parsed: this tripwire is not a SQL engine and
+    # must not pretend to be one.
+    _OPAQUE_PREDICATE = re.compile(
+        r"\bcode\s*(?:LIKE|SIMILAR\s+TO|~\*?|!~|<>|!=)|\bcode\s+IN\s*\(\s*SELECT",
+        re.I,
+    )
+    for path in migrations:
+        body = _forward_body(path)
+        if "base_price" not in body:
+            continue
+        hit = _OPAQUE_PREDICATE.search(body)
+        assert hit is None, (
+            f"{path.name} assigns base_price while selecting rows by a "
+            f"NON-LITERAL code predicate: {hit.group(0) if hit else ''!r}. A "
+            "migration that moves a price must name the codes it targets "
+            "literally, or this "
+            "ratchet cannot see it move — which is precisely the bypass this "
+            "check exists to close."
+        )
 
     for code, (expected, expected_files) in ruled.items():
         touching = []
@@ -451,16 +769,28 @@ def test_the_voa_prices_are_the_ones_the_owner_ruled():
         # a file whose SET clause says something else entirely — measured: the
         # gate mutated only `SET base_price = 790000` to 750000 and the earlier
         # version of this assertion stayed green.
-        assigned = [int(v) for v in re.findall(
-            r"\bSET\s+base_price\s*=\s*(\d+)", newest_body, re.I
-        )]
-        if not assigned:
-            # An INSERT rather than an UPDATE: 221 seeds both codes positionally.
-            # Slice the one VALUES tuple that names this code and read its
-            # numeric literals — bounded to that tuple, not a SQL parser.
-            start = newest_body.index(f"'{code}'")
-            tuple_text = newest_body[start:newest_body.index(")", start)]
-            assigned = [int(v) for v in re.findall(r"\b(\d{5,})\b", tuple_text)]
+        #
+        # But reading ONE spelling of the assignment is the other half of the
+        # same defect, and the codex-gpt-5.6-sol seat measured it: appending
+        #
+        #     UPDATE practice_types
+        #        SET (base_price, updated_at) = (790000, CURRENT_TIMESTAMP)
+        #      WHERE code = 'visa_b1_voa';
+        #
+        # leaves the database at 790000 while `assigned` still reads only the
+        # earlier scalar SET and the test stays GREEN. So the rule here is not
+        # "recognise the shapes I thought of" but "every assignment site must be
+        # READABLE, or the test goes red": an unparsed spelling is a failure,
+        # never a pass. Under-match is the quieter twin of over-match
+        # (superscar #3 / W82) and it is the one that lets a wrong price ship.
+        assigned, unreadable = _base_price_assignments(newest_body, code)
+        assert not unreadable, (
+            f"{newest_name} assigns base_price in a form this tripwire cannot "
+            f"read: {unreadable}. That is a RED, not a pass — an unrecognised "
+            "spelling is exactly how a wrong price would slip past. Either "
+            "write the assignment as `SET base_price = <n>`, or teach "
+            "_base_price_assignments the new shape in the same commit."
+        )
 
         assert assigned, (
             f"{newest_name} is the newest migration touching base_price for "

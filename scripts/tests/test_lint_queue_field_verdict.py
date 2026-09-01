@@ -12,8 +12,15 @@ guard.
 MEASURED (2026-08-29): 22 tracked files in this repo mention
 `autoMergeRequest`/`isInMergeQueue`/`mergeQueueEntry`; exactly 2 match this
 lint's null-comparison shape (`scripts/queue_unstick.py`, aware, and
-`scripts/ci/queue_rearm_population.sh`, not aware in-file -- the sole live
-allowlist entry). Two of those 22 files were near-miss false positives
+`scripts/ci/queue_rearm_population.sh`, which carried the sole live
+allowlist entry until 2026-08-31 -- that file grew its own `mergeQueueEntry`
+co-occurrence that day (the positive-probe fix for the live #5422 defect
+scripts/lint_arm_probe.py documents), clears via awareness now, and the
+entry was removed per this lint's own SHRINK-ONLY policy. ALLOWLIST is
+empty as of that date; the allowlist-tripwire tests below inject and remove
+a synthetic entry via `monkeypatch` so the MECHANISM stays tested without
+depending on whichever real file happens to need a waiver today. Two of
+those 22 files were near-miss false positives
 during authoring -- `scripts/lane_ship.sh`'s prose ("...not armed after gh
 pr merge --auto (autoMergeRequest...") and a test fixture's
 `! grep -qi "autoMergeRequest"` -- both matched an early, looser
@@ -461,57 +468,86 @@ def test_innocence_real_lane_ship_alias_idiom_is_not_flagged():
 # ------------------------------------------------------------- allowlist tripwire
 
 
-def test_allowlist_tripwire_holds_when_orchestrator_carries_both_substrings(tmp_path):
-    _write(
-        tmp_path,
-        "scripts/ci/queue_rearm_population.sh",
-        'jq -r "select(.autoMergeRequest==null)"\n',
+# ALLOWLIST is empty on disk (2026-08-31 SHRINK-ONLY removal -- see module
+# docstring). These three tests inject a SYNTHETIC entry via `monkeypatch`
+# so the tripwire mechanism itself stays covered, independent of whichever
+# real file (if any) needs a waiver on a given day. `monkeypatch.setitem`
+# restores `mod.ALLOWLIST` to its real (currently empty) state on teardown.
+_SUBJECT = "scripts/ci/_test_allowlist_subject.sh"
+_ORCHESTRATOR = "scripts/ci/_test_allowlist_orchestrator.sh"
+
+
+def test_allowlist_tripwire_holds_when_orchestrator_carries_both_substrings(tmp_path, monkeypatch):
+    monkeypatch.setitem(
+        mod.ALLOWLIST, _SUBJECT,
+        {
+            "reason": "synthetic subject for this test only",
+            "orchestrator": _ORCHESTRATOR,
+            "orchestrator_requires": ("mergeQueue(", "already in the queue"),
+        },
     )
+    _write(tmp_path, _SUBJECT, 'jq -r "select(.autoMergeRequest==null)"\n')
     _write(
         tmp_path,
-        "scripts/ci/queue_rearm.sh",
+        _ORCHESTRATOR,
         'inq=$(gh api graphql -f query="{mergeQueue(branch:\\"main\\"){entries}}")\n'
         'case " $inq " in *" $n "*) echo "already in the queue" ;; esac\n',
     )
-    report = mod.evaluate(["scripts/ci/queue_rearm_population.sh"], tmp_path)
+    report = mod.evaluate([_SUBJECT], tmp_path)
     assert report["violations"] == []
     assert len(report["allowlisted"]) == 1
-    assert report["allowlisted"][0]["path"] == "scripts/ci/queue_rearm_population.sh"
+    assert report["allowlisted"][0]["path"] == _SUBJECT
 
 
-def test_allowlist_tripwire_breaks_when_subtraction_line_removed(tmp_path):
+def test_allowlist_tripwire_breaks_when_subtraction_line_removed(tmp_path, monkeypatch):
     """The orchestrator still fetches the queue snapshot (`mergeQueue(`)
     but the line that subtracts it before acting is gone -- the waiver's
     stated justification no longer holds, so the allowlist entry stops
     silencing the violation instead of silently continuing to."""
-    _write(
-        tmp_path,
-        "scripts/ci/queue_rearm_population.sh",
-        'jq -r "select(.autoMergeRequest==null)"\n',
+    monkeypatch.setitem(
+        mod.ALLOWLIST, _SUBJECT,
+        {
+            "reason": "synthetic subject for this test only",
+            "orchestrator": _ORCHESTRATOR,
+            "orchestrator_requires": ("mergeQueue(", "already in the queue"),
+        },
     )
+    _write(tmp_path, _SUBJECT, 'jq -r "select(.autoMergeRequest==null)"\n')
     _write(
         tmp_path,
-        "scripts/ci/queue_rearm.sh",
+        _ORCHESTRATOR,
         'inq=$(gh api graphql -f query="{mergeQueue(branch:\\"main\\"){entries}}")\n'
         "# the subtraction line was removed\n",
     )
-    report = mod.evaluate(["scripts/ci/queue_rearm_population.sh"], tmp_path)
+    report = mod.evaluate([_SUBJECT], tmp_path)
     assert report["allowlisted"] == []
     assert len(report["violations"]) == 1
     assert "no longer hold" in report["violations"][0]["reason"]
 
 
-def test_allowlist_tripwire_breaks_when_orchestrator_missing_entirely(tmp_path):
-    _write(
-        tmp_path,
-        "scripts/ci/queue_rearm_population.sh",
-        'jq -r "select(.autoMergeRequest==null)"\n',
+def test_allowlist_tripwire_breaks_when_orchestrator_missing_entirely(tmp_path, monkeypatch):
+    monkeypatch.setitem(
+        mod.ALLOWLIST, _SUBJECT,
+        {
+            "reason": "synthetic subject for this test only",
+            "orchestrator": _ORCHESTRATOR,
+            "orchestrator_requires": ("mergeQueue(", "already in the queue"),
+        },
     )
-    # scripts/ci/queue_rearm.sh deliberately not written.
-    report = mod.evaluate(["scripts/ci/queue_rearm_population.sh"], tmp_path)
+    _write(tmp_path, _SUBJECT, 'jq -r "select(.autoMergeRequest==null)"\n')
+    # the orchestrator file is deliberately not written.
+    report = mod.evaluate([_SUBJECT], tmp_path)
     assert report["allowlisted"] == []
     assert len(report["violations"]) == 1
     assert "no longer hold" in report["violations"][0]["reason"]
+
+
+def test_allowlist_is_empty_on_disk():
+    """SHRINK-ONLY, verified rather than assumed: as of 2026-08-31 nothing
+    needs a waiver -- if this ever fails because a new entry was ADDED to
+    silence a violation instead of curing it, that is exactly the drift
+    the module docstring's ALLOWLIST policy forbids."""
+    assert mod.ALLOWLIST == {}
 
 
 # ------------------------------------------------------------------ empty-set guard

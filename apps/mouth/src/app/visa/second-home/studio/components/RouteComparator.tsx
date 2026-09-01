@@ -305,9 +305,15 @@ export function RouteComparator({ highlight = false }: RouteComparatorProps) {
           align-items: center;
           gap: var(--space-2, 0.5rem);
           min-width: 0;
-          font-family: var(--font-serif, Georgia, serif);
+          /* R4 §3 24px floor: at 1rem (16px) Cormorant would sit below the
+             display-only floor — low-DPI Android antialiasing shreds the
+             serif — so this heading (shared by the table th and the mobile
+             card h3) uses the UI/body face at Inter 600 instead, per R4 §3's
+             own remedy ("smaller headings are Inter 600"). Size/hierarchy
+             unchanged — only the face and weight move. */
+          font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
           font-size: 1rem;
-          font-weight: 700;
+          font-weight: 600;
           line-height: 1.25;
         }
 

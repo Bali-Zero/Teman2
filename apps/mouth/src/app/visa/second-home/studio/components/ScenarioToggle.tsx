@@ -25,7 +25,7 @@ import { TimelineView } from "./TimelineView";
 import { VerdictPanel } from "./VerdictPanel";
 
 type RestingScenarioTriggerStyle = {
-  borderColor: "var(--color-border-subtle)";
+  borderColor: "var(--border-strong)";
   color: "var(--text-secondary)";
 };
 
@@ -33,8 +33,16 @@ type RestingScenarioTriggerStyle = {
 // points to it or focuses it, preserving the funnel accent for the price box.
 // These values belong to the class rule only; putting them on the element's
 // inline style would prevent the interaction selectors below from winning.
+//
+// WCAG 2.2 SC 1.4.11 (2026-09-01): borderColor used to read
+// --color-border-subtle, which composites to 1.21:1 on carta / 1.31:1 on
+// white — decorative-only per merahPutihDayVars.ts's own comment, and this
+// is the trigger's ONLY resting-state boundary (transparent fill). Now reads
+// --border-strong (#7a8093), 3.64:1 on carta / 3.94:1 on white — the same
+// token StudioApp.tsx's navButtonStyle and QuestionCard.tsx's affordance
+// rings already use for the identical reason.
 const restingScenarioTriggerStyle = {
-  borderColor: "var(--color-border-subtle)",
+  borderColor: "var(--border-strong)",
   color: "var(--text-secondary)",
 } satisfies RestingScenarioTriggerStyle;
 

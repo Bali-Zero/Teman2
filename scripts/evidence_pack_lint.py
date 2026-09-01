@@ -367,13 +367,24 @@ CLI:
                     of --net-lines, the FLOOR's size term (S1, 2026-08-27 —
                     see compute_floor()'s docstring), which needs the raw
                     per-file rows rather than one pre-summed integer.
+  --patch-file PATH  raw `git diff` text for the `.github/workflows/`
+                    files in this diff (any -U level). Feeds ONE thing: the
+                    FLOOR's path-term EXEMPTION for first-party action
+                    version pins (2026-09-01 — see
+                    workflow_paths_exempt_from_path_term()). Strictly
+                    opt-in and strictly fail-closed: omitted, missing or
+                    unreadable, NOTHING is exempted and the floor is
+                    exactly what it was before the exemption existed —
+                    which is why, unlike --numstat-file, an unreadable
+                    --patch-file is a stderr notice and not exit 3.
   --print-floor    given --changed-files-file, print the computed floor int
                     and exit 0 (no pack read) — lets any caller (CI, a human)
                     ask "what floor would this diff impose" without spinning
                     up a second implementation of HOTZONE_PATTERNS. Also
                     honors --numstat-file when given (S1's size term) — omit
                     it for the path-only floor exactly as before that term
-                    existed.
+                    existed. Honors --patch-file the same way (the
+                    first-party-pin exemption).
   --print-floor-source  given --changed-files-file, print WHY the floor is
                     what it is (S2, 2026-08-27) — one of "none"/"path"/
                     "size"/"both" (see compute_floor_source()'s docstring)
@@ -433,6 +444,243 @@ HOTZONE_PATTERNS: tuple[str, ...] = (
     "fly.toml",
     "apps/backend-rag/fly.toml",
 )
+
+# ---------------------------------------------------------------------------
+# Path-term EXEMPTION: first-party action version pins (2026-09-01, owner
+# ruling "Cambio la regola adesso").
+#
+# `.github/workflows/*` is in HOTZONE_PATTERNS because a workflow edit can
+# disarm a gate. A version bump of an action it already uses cannot: it adds
+# no step, removes no step, and changes no `if:`, `permissions:` or `paths:`.
+# Yet it floored at Gear 3 and demanded a full evidence pack — measured
+# 2026-09-01 on PRs #5442 / #5444 / #5445, each a ONE-to-TWO-line `uses:` pin
+# whose ONLY red check was "Harness floor recompute". Three mechanical bumps
+# sat blocked behind a ceremony that reads none of what they changed.
+#
+# The exemption is decided by the DIFF's CONTENT, never by its AUTHOR. That is
+# deliberate and is the whole safety argument: scar W98 is a Dependabot bump
+# that shipped a malicious `fastapi` to PROD past a constraint the updater
+# could not see, so "dependabot[bot] opened it" must never be a key that opens
+# a gate. A human hand-editing the same line gets the same treatment, and a
+# bot that changes anything else gets none.
+#
+# Three conditions, ALL required, per workflow file:
+#   1. every ADDED and REMOVED line parses as a `uses: <owner>/<repo>@<ref>`
+#      line — one non-conforming changed line re-arms the path term for the
+#      whole file;
+#   2. every such owner is FIRST-PARTY (FIRST_PARTY_ACTION_OWNERS) — a
+#      third-party action IS a live supply-chain surface and keeps its floor;
+#   3. the multiset of action IDENTITIES on the minus side EQUALS the one on
+#      the plus side — so only refs may move. This is what stops the swap
+#      attack (`actions/checkout` -> `actions/chekcout`): the identities would
+#      differ and the file falls back to Gear 3.
+#
+# FAIL-CLOSED by construction: the exemption needs a patch to be PROVEN, and
+# `patch=None` (every caller that does not pass one) exempts nothing at all —
+# so a missing, unreadable or truncated patch floors exactly as it did before
+# this existed. A file with no parsed hunks (mode change only) is likewise not
+# proven safe and is not exempted.
+#
+# What this does NOT touch: `.github/workflows/*` stays in HOTZONE_PATTERNS
+# verbatim, so hot-zone-pr-gate.yml's deliberately duplicated case-block still
+# matches these PRs and no drift is introduced between the two lists. This is
+# an exemption applied to the FLOOR term, not a change to hot-zone membership.
+# ---------------------------------------------------------------------------
+FIRST_PARTY_ACTION_OWNERS: frozenset[str] = frozenset({"actions", "github"})
+
+WORKFLOW_DIR_PREFIX = ".github/workflows/"
+
+#: A single `uses:` step reference. Tolerates the list-item dash, quotes, and
+#: the trailing `# v4.37.9` comment that accompanies a SHA pin (PR #5444's
+#: exact shape) — the comment is discarded, the identity and ref are not.
+_USES_LINE_RE = re.compile(
+    r"""^\s*(?:-\s+)?uses:\s*
+        ["']?(?P<identity>[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9._/-]+)
+        @(?P<ref>[^\s"'\#]+)["']?
+        \s*(?:\#.*)?$""",
+    re.VERBOSE,
+)
+
+
+#: A ref that PINS. Either a full 40-hex commit SHA (what Dependabot writes when
+#: a repo pins by SHA, and what GitHub Actions requires — an abbreviated SHA is
+#: not a valid `uses:` ref) or a version-shaped tag: `v4`, `v7`, `4.37.9`,
+#: `v4.37.9`, `v1.2.3-beta.1`. Deliberately NOT `main`, `master`, `latest`,
+#: `release` or any other branch name.
+_PINNED_REF_RE = re.compile(
+    r"^(?:[0-9a-f]{40}|v?\d+(?:\.\d+)*(?:-[A-Za-z0-9.]+)?)$"
+)
+
+
+def _first_party_uses_identity(line: str) -> str | None:
+    """The `<owner>/<repo>[/<path>]` of a first-party `uses:` line, else None.
+
+    None means BOTH "this is not a uses: line at all" and "this is a uses:
+    line for a third-party action" — the caller treats them identically
+    (the file keeps its Gear-3 floor), so they deliberately share a return."""
+    m = _USES_LINE_RE.match(line)
+    if m is None:
+        return None
+    identity = m.group("identity")
+    if identity.split("/", 1)[0] not in FIRST_PARTY_ACTION_OWNERS:
+        return None
+    # The ref must PIN. "Only refs may move" was under-specified: it permitted
+    # `actions/checkout@v4` -> `@main`, which is not a version bump at all but an
+    # UNPINNING — the action stops being fixed and starts tracking a branch
+    # somebody else can move. That is a supply-chain change of exactly the kind
+    # this hot zone exists to catch, and the rule is named for version PINS.
+    # Found 2026-09-01 by the adversarial reviewer as attack 1b, which it called
+    # "worth a conscious decision, not obviously a blocker" — the decision is to
+    # refuse it. Both sides are checked (each line goes through here), so a
+    # re-pin `@main` -> `@v4` also floors at 3: rare, deliberate, and worth a
+    # human look in the direction that adds a constraint as well as the one that
+    # removes it.
+    if not _PINNED_REF_RE.match(m.group("ref")):
+        return None
+    return identity
+
+
+def workflow_paths_exempt_from_path_term(patch: str) -> set[str]:
+    """Workflow files in `patch` whose ENTIRE change is first-party version pins.
+
+    `patch` is raw `git diff` text (any -U level; -U0 is what harness-floor.yml
+    produces). Returns a subset of the `.github/workflows/` paths it contains —
+    never any other path, so this can only ever narrow the path term for the
+    one directory it was written for (asserted by its own innocence test).
+
+    Pure function, no I/O — guilt+innocence tests drive it directly."""
+    per_file: dict[str, dict[str, Any]] = {}
+    current: str | None = None
+    in_hunk = False
+
+    for raw in patch.splitlines():
+        if raw.startswith("diff --git "):
+            # b-side is the post-image path; refined by the `+++ ` line below
+            # when there is one (a pure deletion has `+++ /dev/null`).
+            current, in_hunk = None, False
+            _, _, b_side = raw.partition(" b/")
+            if b_side:
+                current = b_side
+                per_file.setdefault(current, {"minus": [], "plus": [], "clean": True})
+            continue
+        if raw.startswith("+++ ") and not in_hunk:
+            # `and not in_hunk` is load-bearing, not defensive tidiness. A diff
+            # ADDS a single "+", so a workflow line that itself begins "++ " is
+            # emitted as "+++ …" — indistinguishable, by prefix alone, from a
+            # new-file header. Reading it as a header reassigned `current` to a
+            # phantom path AND set in_hunk=False, after which every remaining
+            # line of that hunk was SILENTLY SKIPPED: a `+permissions:
+            # write-all` following the forged line never reached the parser, so
+            # a privilege escalation rode along inside a diff the floor scored
+            # as a pure version pin. Found 2026-09-01 by the independent gate.
+            #
+            # It also falsified this function's own comment ("one non-conforming
+            # changed line re-arms the path term for the whole file") — a
+            # non-conforming ADDED line did not re-arm. Inside a hunk these
+            # bytes are CONTENT: they fall through to the +/- branch below,
+            # fail to parse as a `uses:` line, and set clean=False, which is
+            # what the comment always claimed.
+            #
+            # `diff --git ` needs no such guard: git prefixes every content line
+            # with " ", "+", "-" or "\\", so column 0 can never be "d" inside a
+            # hunk. `--- ` needs none either — in a hunk it is already read as a
+            # removed line whose body "-- …" does not parse.
+            candidate = raw[4:].split("\t", 1)[0]
+            if candidate.startswith("b/"):
+                candidate = candidate[2:]
+            if candidate and candidate != "/dev/null":
+                current = candidate
+                per_file.setdefault(current, {"minus": [], "plus": [], "clean": True})
+            in_hunk = False
+            continue
+        if current is None:
+            continue
+        if raw.startswith("@@"):
+            in_hunk = True
+            continue
+        if not in_hunk:
+            # `index`, `old mode`, `--- a/...`, `similarity index` — headers,
+            # not content. Checked BEFORE the +/- branch below precisely so a
+            # `--- a/path` line is never mistaken for a removed content line.
+            continue
+        state = per_file[current]
+        if raw.startswith("+"):
+            body, bucket = raw[1:], "plus"
+        elif raw.startswith("-"):
+            body, bucket = raw[1:], "minus"
+        else:
+            continue  # context line, or `\ No newline at end of file`
+        identity = _first_party_uses_identity(body)
+        if identity is None:
+            state["clean"] = False
+        else:
+            state[bucket].append(identity)
+
+    exempt: set[str] = set()
+    for path, state in per_file.items():
+        if not path.startswith(WORKFLOW_DIR_PREFIX) or ".." in path.split("/"):
+            # `.github/workflows/../../fly.toml` passes a naive
+            # startswith() and names ANOTHER hot zone. It is already
+            # harmless — compute_floor intersects this set against the
+            # REAL changed-file list, where git records the normalised
+            # path — but a defence that only holds because of a property
+            # two functions away is one refactor from not holding, so
+            # the boundary is restated at the parser too.
+            continue
+        if not state["clean"]:
+            continue
+        if not state["plus"] and not state["minus"]:
+            continue  # no content hunk parsed -> not PROVEN safe -> no exemption
+        if state["minus"] != state["plus"]:
+            # SEQUENCE equality, not multiset. The first cut compared
+            # sorted() and was defeated by a REORDER: two bare one-line
+            # steps whose `uses:` lines swap places have an identical
+            # multiset of identities, so they were exempted — while
+            # actually changing execution order, which is a semantic change
+            # and can vacuously disarm a scan that ran before the step
+            # producing what it scans. Found 2026-09-01 by a cross-family
+            # refuter (tp1 deepseek-v4-flash-0731), whose answer was cut off
+            # at 214 bytes and still contained this. Both lists are in file
+            # order, so a pure ref change leaves them identical and anything
+            # that adds, removes, swaps or REORDERS an action does not.
+            continue
+        exempt.add(path)
+    return exempt
+
+
+def _read_patch_file(path: str | None) -> str | None:
+    """Read a --patch-file, or None. Unreadable is None, NOT an error exit.
+
+    Deliberately asymmetric with --numstat-file's `return 3`: that file can
+    only ever RAISE a floor, so losing it silently would under-gate; this one
+    can only ever LOWER a floor, so losing it fails CLOSED all by itself —
+    no patch, no exemption, Gear 3 exactly as before. Turning an unreadable
+    patch into a usage error would instead take a workflow that is behaving
+    conservatively and paint it red."""
+    if not path:
+        return None
+    try:
+        return Path(path).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        # UnicodeDecodeError is NOT an OSError — it is a ValueError — so an
+        # earlier cut of this caught only OSError and let a patch containing one
+        # invalid UTF-8 byte raise straight through: traceback, no floor on
+        # stdout, exit 1. That could never UNDER-gate (the crash precedes
+        # compute_floor), but it broke the contract this docstring promises and
+        # the comment above it was therefore false. Found 2026-09-01 by the
+        # adversarial reviewer, which graded it a suggestion rather than a hole;
+        # a comment that lies about a fail-closed path is worth curing anyway,
+        # because the next reader trusts it. Discards the WHOLE patch rather
+        # than decoding with errors="replace": a workflow file that is not valid
+        # UTF-8 is anomalous, and refusing every exemption in that patch is the
+        # conservative reading.
+        print(
+            f"evidence_pack_lint: --patch-file unreadable ({exc}) — "
+            "no path-term exemption applied (fail-closed)",
+            file=sys.stderr,
+        )
+        return None
+
 
 RECEIPT_REQUIRED_FIELDS = ("claim", "cmd", "exit", "ts", "seat")
 SIZE_TOKEN_CAP = 30_000
@@ -657,7 +905,7 @@ FLOOR_SOURCES = (FLOOR_SOURCE_NONE, FLOOR_SOURCE_PATH, FLOOR_SOURCE_SIZE, FLOOR_
 
 
 def _compute_floor_with_source(
-    changed_files: list[str], numstat: str | None = None
+    changed_files: list[str], numstat: str | None = None, patch: str | None = None
 ) -> tuple[int, str]:
     """Single source of truth for compute_floor()/compute_floor_source() — the
     two public entry points are thin wrappers over this so they can never
@@ -703,8 +951,17 @@ def _compute_floor_with_source(
     directly without a filesystem fixture; the caller is responsible for
     producing `numstat` (e.g. `git diff --numstat`, merge-base anchored —
     never a two-dot diff, W102)."""
+    # Files PROVEN to be nothing but first-party action version pins are
+    # skipped by the path term (2026-09-01) — see
+    # workflow_paths_exempt_from_path_term()'s own block for the three
+    # conditions and the W98 reason the test is on CONTENT, not on author.
+    # `patch=None` yields an empty set, so every caller that does not supply
+    # a patch computes exactly the floor it computed before this existed.
+    exempt = workflow_paths_exempt_from_path_term(patch) if patch else frozenset()
     path_hit = False
     for f in changed_files:
+        if f in exempt:
+            continue
         for pat in HOTZONE_PATTERNS:
             if fnmatch.fnmatchcase(f, pat):
                 path_hit = True
@@ -736,12 +993,17 @@ def _compute_floor_with_source(
     return floor, source
 
 
-def compute_floor(changed_files: list[str], numstat: str | None = None) -> int:
+def compute_floor(
+    changed_files: list[str], numstat: str | None = None, patch: str | None = None
+) -> int:
     """The deterministic floor (rule 6 docstring): the HIGHER of two
     independent terms.
 
-    PATH TERM (original, unchanged): 3 on any hot-zone hit
-    (HOTZONE_PATTERNS), else 1.
+    PATH TERM: 3 on any hot-zone hit (HOTZONE_PATTERNS), else 1 — EXCEPT
+    for a `.github/workflows/` file whose entire change is first-party
+    action version pins, when an optional `patch` proves it (2026-09-01;
+    see workflow_paths_exempt_from_path_term). `patch=None` exempts
+    nothing, so the term is unchanged for every caller that omits it.
 
     SIZE TERM (S1, 2026-08-27, optional — only asserted when `numstat` is
     given): a blast-radius measure over raw `git diff --numstat` text — see
@@ -756,10 +1018,12 @@ def compute_floor(changed_files: list[str], numstat: str | None = None) -> int:
     Thin wrapper over _compute_floor_with_source() — see that function for
     the shared implementation and compute_floor_source() for the sibling
     entry point that returns WHY, not just the number (S2, 2026-08-27)."""
-    return _compute_floor_with_source(changed_files, numstat)[0]
+    return _compute_floor_with_source(changed_files, numstat, patch)[0]
 
 
-def compute_floor_source(changed_files: list[str], numstat: str | None = None) -> str:
+def compute_floor_source(
+    changed_files: list[str], numstat: str | None = None, patch: str | None = None
+) -> str:
     """Sibling of compute_floor(), same inputs, returns WHY the floor is
     what it is instead of the floor itself — one of FLOOR_SOURCES
     ("none"/"path"/"size"/"both"). Added S2 (2026-08-27, gate round 2 on PR
@@ -772,7 +1036,7 @@ def compute_floor_source(changed_files: list[str], numstat: str | None = None) -
 
     Thin wrapper over _compute_floor_with_source() — never duplicates its
     logic, so the two can never drift apart."""
-    return _compute_floor_with_source(changed_files, numstat)[1]
+    return _compute_floor_with_source(changed_files, numstat, patch)[1]
 
 
 # ---------------------------------------------------------------------------
@@ -3935,6 +4199,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--changed-files-file", default=None)
     parser.add_argument("--net-lines", type=int, default=None, metavar="INT")
     parser.add_argument("--numstat-file", default=None, metavar="PATH")
+    parser.add_argument("--patch-file", default=None, metavar="PATH")
     parser.add_argument("--source-path", default=None, metavar="PATH")
     # Rule 12's input: THIS PR's own real brief path, as resolved from its
     # changed-files list (`scripts/ci/evidence_paths.py --resolve brief`).
@@ -3981,7 +4246,8 @@ def main(argv: list[str] | None = None) -> int:
             except OSError as exc:
                 print(f"evidence_pack_lint: --numstat-file unreadable: {exc}", file=sys.stderr)
                 return 3
-        print(compute_floor(changed, numstat_text_for_floor))
+        patch_text_for_floor = _read_patch_file(args.patch_file)
+        print(compute_floor(changed, numstat_text_for_floor, patch_text_for_floor))
         return 0
 
     if args.print_floor_source:
@@ -3997,7 +4263,8 @@ def main(argv: list[str] | None = None) -> int:
             except OSError as exc:
                 print(f"evidence_pack_lint: --numstat-file unreadable: {exc}", file=sys.stderr)
                 return 3
-        print(compute_floor_source(changed, numstat_text_for_source))
+        patch_text_for_source = _read_patch_file(args.patch_file)
+        print(compute_floor_source(changed, numstat_text_for_source, patch_text_for_source))
         return 0
 
     changed_files = _read_changed_files(args.changed_files_file)
