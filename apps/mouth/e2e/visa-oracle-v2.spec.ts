@@ -209,9 +209,16 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
       fulfillJson(route, curated),
     );
     await page.goto("/visa-oracle");
+    // A pure CURATED response is NON_ENGINE_MODE, not a client-guard
+    // failure — an evaluation genuinely happened and was sealed, just not
+    // rendered as public authority. OracleShell.tsx routes this to the
+    // honest SHADOW headline (fix(visa-oracle): stop telling the visitor
+    // they submitted nothing when they did), matching the unit test in
+    // OracleShell.test.tsx. The malformed-JSON case below is unaffected —
+    // it is MALFORMED_RESPONSE, which stays CLIENT_GUARD.
     await expect(
       page.getByRole("heading", {
-        name: translate("en", "verdict.provenance_headline.CLIENT_GUARD"),
+        name: translate("en", "verdict.provenance_headline.SHADOW"),
       }),
     ).toBeVisible();
     await expect(page.getByText("Visit Visa C1")).toHaveCount(0);

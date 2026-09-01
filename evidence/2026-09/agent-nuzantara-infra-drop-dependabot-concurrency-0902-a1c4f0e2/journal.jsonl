@@ -1,0 +1,10 @@
+{"t":"2026-09-01T11:57Z","step":"diagnose","note":"PR #5444 BLOCKED with zero failing checks; 4 workflows cancelled at 15:37:23Z with empty jobs arrays"}
+{"t":"2026-09-01T12:05Z","step":"measure","note":"21 of 118 workflow files carry the actor-keyed group; those 21 own 12 of 12 required contexts"}
+{"t":"2026-09-01T12:20Z","step":"measure","note":"9 of 13 open Dependabot PRs blocked purely by absence; 2 mixed; 2 red-only"}
+{"t":"2026-09-01T12:31Z","step":"measure","note":"billable.UBUNTU.total_ms=0 across 630 sampled runs; all runners ubuntu-latest; repo public"}
+{"t":"2026-09-01T15:55Z","step":"measure","note":"org plan enterprise -> 500 ceiling; observed peak 65-66; first-job scheduling wait median 3s p95 4s max 5s, 0/59 over 60s"}
+{"t":"2026-09-02T00:10Z","step":"build","note":"actor branch removed from 21 group lines and 17 cancel-in-progress lines; 17 comment blocks replaced"}
+{"t":"2026-09-02T00:15Z","step":"verify","note":"17 of 21 group expressions now byte-for-byte identical to 39997ee0ec (pre-#5043); 4 had no prior block"}
+{"t":"2026-09-02T00:20Z","step":"verify","note":"floor recomputes to 3 WITH the patch supplied — the #5499 exemption correctly does not cover a logic change"}
+{"t":"2026-09-02T00:40Z","step":"panel","note":"cross-family panel dispatched: agy/Gemini answered 6968B; tp1 qwen3.7-max 1401B; tp1 deepseek-v4-flash-0731 truncated in reasoning, 0B — recorded as NON-JUDGEMENT"}
+{"t":"2026-09-02T00:50Z","step":"measure","note":"org Bali-Zero contains exactly 1 repo — the org-wide ceiling concern has no other consumer"}
