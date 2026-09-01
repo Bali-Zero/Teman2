@@ -214,6 +214,8 @@ jobs:
               scripts/lib/claude_seat.sh|\
               scripts/tests/test_claude_seat_helper.sh|\
               scripts/tests/test_cron_agent_alert_verdict.sh|\
+              scripts/pro/pro-git-pull.sh|\
+              scripts/pro/test_pro_git_pull.sh|\
               scripts/ci/prepush_tip_drift.sh|\
               scripts/ci/apt_install.sh|\
               scripts/ci/test_apt_install.sh|\
@@ -933,6 +935,21 @@ jobs:
           # half runs the wrapper in a fake world (W107) so "did not rotate" is
           # distinguishable from "never got there".
           bash scripts/tests/test_cron_agent_oauth_cascade.sh
+
+      - name: Pro main-puller corpus (the collision resolver, incl. incoming renames)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # scripts/pro/pro-git-pull.sh keeps Pro's and Mini's main checkouts in sync
+          # every 5 minutes while they are permanently tracked-dirty with pipeline
+          # output. Its corpus existed since 2026-07-16 and was run by NO workflow —
+          # one of the 13 orphan shell corpora censused in modus PENDING-ARMS. It is
+          # armed here because this is the surface whose silent failure wedges the
+          # whole fleet's sync: measured 2026-09-01, git's default rename detection
+          # hid a locally-modified renamed-AWAY path from the collision resolver, so
+          # the fast-forward aborted every tick on both machines with nothing red
+          # anywhere. Hermetic (local bare repo, no network, own lock/log/backup).
+          # Arming the OTHER 12 orphans stays a separate line, not this diff.
+          bash scripts/pro/test_pro_git_pull.sh
 
       - name: apt helper corpus (a bounded install that still fails closed)
         if: steps.paths.outputs.relevant == 'true'

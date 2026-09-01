@@ -166,7 +166,16 @@ acquire_lock() {
 # merge, everything recoverable).
 resolve_collisions() {
   local changed f backup n=0 first="" ts keeplist kl_rc
-  changed=$(git -c core.quotepath=false diff --name-only HEAD "$REMOTE" 2>/dev/null)
+  # --no-renames is load-bearing, not tidiness. With git's default rename detection a
+  # rename R->D collapses into ONE entry naming only D, so a LOCAL modification to R is
+  # never seen as a collision: it is not backed up, not reset, and the fast-forward aborts
+  # on it every tick, forever. Measured 2026-09-01 on Pro: main renamed .claude/rules/
+  # cicatrix-scars{,-archive}.md to docs/scars/ (#5331) while a HOME-only cron kept writing
+  # the old paths -> 2 paths seen instead of 4, puller wedged. Turning detection off makes
+  # the source visible as a deletion, which the existing tracked-collision branch already
+  # handles correctly (backup + reset). Deletions were always in this set, so an untracked
+  # local file at a deleted path is handled exactly as before -- no new behaviour.
+  changed=$(git -c core.quotepath=false diff --no-renames --name-only HEAD "$REMOTE" 2>/dev/null)
   [ -z "$changed" ] && return 0
   keeplist="$(_runtime_state_paths)"; kl_rc=$?   # Pro-authoritative paths to keep-local on collision
   if [ "$kl_rc" -ne 0 ]; then

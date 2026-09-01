@@ -166,6 +166,33 @@ eq_ne "$(head_of)" "$(remote_head)" "D3 HEAD advanced"
 [ "$(cat "$LOCAL/*")" = "ORIGIN STAR" ] && ok "D3 the '*' file got ORIGIN content" || bad "D3 '*' file wrong content"
 rm -rf "$SANDBOX"
 
+# ── J: origin RENAMES a tracked file the local tree has modified → ff must land ──
+# Guilt: with rename detection ON (git's default), `diff --name-only` prints ONLY the
+# destination, so the modified SOURCE path is never seen as a collision, never backed up,
+# never reset — and the fast-forward aborts on it every tick, forever. Innocence: a sibling
+# tracked file modified locally and untouched by the rename must survive unreset.
+echo "[J] incoming RENAME + local mod on the renamed-away source → collision seen, ff lands"
+setup_case J
+mkdir -p "$LOCAL/old"; printf '%s' "corpus line one" > "$LOCAL/old/corpus.md"
+printf '%s' "sibling base" > "$LOCAL/sibling.md"
+git -C "$LOCAL" add old/corpus.md sibling.md && git -C "$LOCAL" commit -qm 'add corpus+sibling' \
+  && git -C "$LOCAL" push -q origin HEAD:main || fatal "J base"
+tmp="$(mktemp -d)"; git clone -q "$ORIGIN" "$tmp/w"; git -C "$tmp/w" config user.email t@t; git -C "$tmp/w" config user.name t
+mkdir -p "$tmp/w/new"; git -C "$tmp/w" mv old/corpus.md new/corpus.md || fatal "J mv"
+git -C "$tmp/w" commit -qm 'move corpus to new/' && git -C "$tmp/w" push -q origin HEAD:main || fatal "J rename push"
+rm -rf "$tmp"
+printf '%s' "corpus line one\nLOCAL APPEND" > "$LOCAL/old/corpus.md"   # local mod on the renamed-AWAY path
+printf '%s' "sibling LOCAL EDIT" > "$LOCAL/sibling.md"                 # non-colliding tracked mod
+git -C "$LOCAL" fetch -q origin main
+RC=$(run_puller); eq_ne "$RC" "0" "J rc=0 (ff landed despite mod on renamed-away source)"
+eq_ne "$(head_of)" "$(remote_head)" "J HEAD advanced (rename did not wedge the puller)"
+[ ! -e "$LOCAL/old/corpus.md" ] && ok "J renamed-away source removed by ff" || bad "J old path still present (ff blocked)"
+[ "$(cat "$LOCAL/new/corpus.md" 2>/dev/null)" = "corpus line one" ] && ok "J rename destination present with ORIGIN content" || bad "J destination missing/wrong"
+BK=$(find "$SANDBOX/backup" -path '*old/corpus.md' 2>/dev/null | head -1)
+[ -n "$BK" ] && grep -q 'LOCAL APPEND' "$BK" && ok "J local mod on the renamed-away path recoverable in backup" || bad "J local mod NOT backed up (silent LOSS on rename!)"
+[ "$(cat "$LOCAL/sibling.md")" = "sibling LOCAL EDIT" ] && ok "J innocence: non-colliding tracked mod NOT reset" || bad "J innocence broken: --no-renames widened the reset blast radius"
+rm -rf "$SANDBOX"
+
 # ── E: up to date → no-op ──
 echo "[E] up-to-date → no-op"
 setup_case E; git -C "$LOCAL" fetch -q origin main
