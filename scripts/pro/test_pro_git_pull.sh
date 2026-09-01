@@ -166,6 +166,148 @@ eq_ne "$(head_of)" "$(remote_head)" "D3 HEAD advanced"
 [ "$(cat "$LOCAL/*")" = "ORIGIN STAR" ] && ok "D3 the '*' file got ORIGIN content" || bad "D3 '*' file wrong content"
 rm -rf "$SANDBOX"
 
+# ── J: origin RENAMES a tracked file the local tree has modified → ff must land ──
+# Guilt: with rename detection ON (git's default), `diff --name-only` prints ONLY the
+# destination, so the modified SOURCE path is never seen as a collision, never backed up,
+# never reset — and the fast-forward aborts on it every tick, forever. Innocence: a sibling
+# tracked file modified locally and untouched by the rename must survive unreset.
+echo "[J] incoming RENAME + local mod on the renamed-away source → collision seen, ff lands"
+setup_case J
+mkdir -p "$LOCAL/old"; printf '%s' "corpus line one" > "$LOCAL/old/corpus.md"
+printf '%s' "sibling base" > "$LOCAL/sibling.md"
+git -C "$LOCAL" add old/corpus.md sibling.md && git -C "$LOCAL" commit -qm 'add corpus+sibling' \
+  && git -C "$LOCAL" push -q origin HEAD:main || fatal "J base"
+tmp="$(mktemp -d)"; git clone -q "$ORIGIN" "$tmp/w"; git -C "$tmp/w" config user.email t@t; git -C "$tmp/w" config user.name t
+mkdir -p "$tmp/w/new"; git -C "$tmp/w" mv old/corpus.md new/corpus.md || fatal "J mv"
+git -C "$tmp/w" commit -qm 'move corpus to new/' && git -C "$tmp/w" push -q origin HEAD:main || fatal "J rename push"
+rm -rf "$tmp"
+printf '%s' "corpus line one\nLOCAL APPEND" > "$LOCAL/old/corpus.md"   # local mod on the renamed-AWAY path
+printf '%s' "sibling LOCAL EDIT" > "$LOCAL/sibling.md"                 # non-colliding tracked mod
+git -C "$LOCAL" fetch -q origin main
+RC=$(run_puller); eq_ne "$RC" "0" "J rc=0 (ff landed despite mod on renamed-away source)"
+eq_ne "$(head_of)" "$(remote_head)" "J HEAD advanced (rename did not wedge the puller)"
+[ ! -e "$LOCAL/old/corpus.md" ] && ok "J renamed-away source removed by ff" || bad "J old path still present (ff blocked)"
+[ "$(cat "$LOCAL/new/corpus.md" 2>/dev/null)" = "corpus line one" ] && ok "J rename destination present with ORIGIN content" || bad "J destination missing/wrong"
+BK=$(find "$SANDBOX/backup" -path '*old/corpus.md' 2>/dev/null | head -1)
+[ -n "$BK" ] && grep -q 'LOCAL APPEND' "$BK" && ok "J local mod on the renamed-away path recoverable in backup" || bad "J local mod NOT backed up (silent LOSS on rename!)"
+[ "$(cat "$LOCAL/sibling.md")" = "sibling LOCAL EDIT" ] && ok "J innocence: non-colliding tracked mod NOT reset" || bad "J innocence broken: --no-renames widened the reset blast radius"
+rm -rf "$SANDBOX"
+
+# ── K: origin REMOVES a keep-local allowlisted path → kept local, but LOUD ──
+# The edge --no-renames introduces: a Pro-authoritative runtime-state file that origin
+# renames away is now VISIBLE, takes the keep-local branch, and survives the ff as an
+# UNTRACKED orphan while origin's copy lives at the new path. Keeping it is correct —
+# Pro-authoritative content is never traded for tidiness — but the divergence is silent
+# by construction, so the script must announce it. Innocence in the same case: an
+# allowlisted file origin merely MODIFIES must NOT be announced.
+echo "[K] keep-local path removed by incoming → kept local + announced (renamed only)"
+setup_case K
+mkdir -p "$LOCAL/data" "$LOCAL/state"
+printf '%s' 'pub-base'  > "$LOCAL/data/pub.json"
+printf '%s' 'keep-base' > "$LOCAL/state/keep.jsonl"
+git -C "$LOCAL" add data/pub.json state/keep.jsonl && git -C "$LOCAL" commit -qm 'add two runtime-state' \
+  && git -C "$LOCAL" push -q origin HEAD:main || fatal "K base"
+tmp="$(mktemp -d)"; git clone -q "$ORIGIN" "$tmp/w"; git -C "$tmp/w" config user.email t@t; git -C "$tmp/w" config user.name t
+git -C "$tmp/w" mv data/pub.json data/pub_v2.json || fatal "K mv"          # origin RENAMES one away
+printf '%s' 'keep-origin' > "$tmp/w/state/keep.jsonl"                      # origin MODIFIES the other
+git -C "$tmp/w" add -A && git -C "$tmp/w" commit -qm 'rename one, modify other' \
+  && git -C "$tmp/w" push -q origin HEAD:main || fatal "K origin"
+rm -rf "$tmp"
+printf '%s' 'pub-LOCAL'  > "$LOCAL/data/pub.json"      # both dirty locally
+printf '%s' 'keep-LOCAL' > "$LOCAL/state/keep.jsonl"
+write_allowlist "$SANDBOX/allowlist.json" "data/pub.json" "state/keep.jsonl"
+git -C "$LOCAL" fetch -q origin main
+TEST_ALLOWLIST="$SANDBOX/allowlist.json"; RC=$(run_puller); unset TEST_ALLOWLIST
+eq_ne "$RC" "0" "K rc=0"
+eq_ne "$(head_of)" "$(remote_head)" "K HEAD advanced"
+[ "$(cat "$LOCAL/data/pub.json" 2>/dev/null)" = 'pub-LOCAL' ] && ok "K removed keep-local path kept its LOCAL content" || bad "K keep-local content lost on a removed path"
+[ "$(cat "$LOCAL/state/keep.jsonl")" = 'keep-LOCAL' ] && ok "K surviving keep-local path kept its LOCAL content" || bad "K keep-local content reset to origin"
+WARN=$(grep -c 'REMOVED by the incoming change' "$SANDBOX/pull.log" 2>/dev/null || true); WARN=${WARN:-0}
+[ "$WARN" -ge 1 ] && ok "K the orphaning WAS announced (not silent)" || bad "K silent orphan: no warning logged"
+grep 'REMOVED by the incoming change' "$SANDBOX/pull.log" 2>/dev/null | grep -q 'data/pub.json' \
+  && ok "K the warning names the renamed-away path" || bad "K warning does not name data/pub.json"
+grep 'REMOVED by the incoming change' "$SANDBOX/pull.log" 2>/dev/null | grep -q 'state/keep.jsonl' \
+  && bad "K innocence broken: warned about a path origin only MODIFIED" || ok "K innocence: the merely-modified keep-local path was NOT announced"
+rm -rf "$SANDBOX"
+
+# ── L: incoming REMOVAL of a path the local tree already deleted → not a collision ──
+# The regression --no-renames introduces if left unguarded: the flag newly puts rename
+# SOURCES into the incoming set, and a source the local machine deleted with a bare `rm`
+# has no file for `cp -p` to back up, so the tick aborts fail-safe FOREVER — a pull that
+# worked before the flag becomes a permanent wedge. Guilt below. Innocence has TWO halves,
+# and the second is the scope boundary: a path origin MODIFIES (rather than removes) that
+# is locally deleted must STILL abort, because that shape predates the flag and curing it
+# here would be curing what this diff inherits rather than what it introduces.
+echo "[L] incoming removal + already-deleted locally → skipped, ff lands"
+setup_case L
+mkdir -p "$LOCAL/old"; printf '%s' 'body' > "$LOCAL/old/R.md"; printf '%s' 'k' > "$LOCAL/keep.md"
+git -C "$LOCAL" add old/R.md keep.md && git -C "$LOCAL" commit -qm 'add R+keep' \
+  && git -C "$LOCAL" push -q origin HEAD:main || fatal "L base"
+tmp="$(mktemp -d)"; git clone -q "$ORIGIN" "$tmp/w"; git -C "$tmp/w" config user.email t@t; git -C "$tmp/w" config user.name t
+mkdir -p "$tmp/w/new"; git -C "$tmp/w" mv old/R.md new/R.md || fatal "L mv"
+git -C "$tmp/w" commit -qm 'rename R away' && git -C "$tmp/w" push -q origin HEAD:main || fatal "L rename push"
+rm -rf "$tmp"
+rm "$LOCAL/old/R.md"                                     # bare rm, NOT git rm — index still has it
+printf '%s' 'keep LOCAL' > "$LOCAL/keep.md"              # an ordinary non-colliding local mod
+git -C "$LOCAL" fetch -q origin main
+RC=$(run_puller); eq_ne "$RC" "0" "L rc=0 (removal of an already-deleted path is not a wedge)"
+eq_ne "$(head_of)" "$(remote_head)" "L HEAD advanced"
+[ -f "$LOCAL/new/R.md" ] && ok "L rename destination arrived" || bad "L destination missing"
+[ "$(cat "$LOCAL/keep.md")" = 'keep LOCAL' ] && ok "L innocence: unrelated local mod preserved" || bad "L clobbered an unrelated mod"
+[ ! -d "$SANDBOX/backup" ] && ok "L no backup dir (nothing was there to back up)" || bad "L backed up a file that does not exist"
+rm -rf "$SANDBOX"
+
+# ── L2: SCOPE BOUNDARY — origin MODIFIES a locally-deleted path → still aborts (inherited) ──
+echo "[L2] incoming MODIFY + already-deleted locally → still fail-safe abort (not cured here)"
+setup_case L2
+printf '%s' 'body' > "$LOCAL/M.md"
+git -C "$LOCAL" add M.md && git -C "$LOCAL" commit -qm 'add M' \
+  && git -C "$LOCAL" push -q origin HEAD:main || fatal "L2 base"
+advance_origin "M.md" "ORIGIN BODY"                      # origin MODIFIES it, does not remove it
+rm "$LOCAL/M.md"                                          # same bare rm as case L
+BEFORE=$(head_of); git -C "$LOCAL" fetch -q origin main
+RC=$(run_puller); eq_ne "$RC" "1" "L2 rc=1 (the inherited abort is deliberately NOT cured)"
+eq_ne "$(head_of)" "$BEFORE" "L2 HEAD unchanged (skipped, nothing touched)"
+grep -q 'backup cp failed for tracked M.md' "$SANDBOX/pull.log" \
+  && ok "L2 aborted for the INHERITED reason, so the guard did not widen past removals" \
+  || bad "L2 the guard leaked into the modify case (scope creep past what the flag introduced)"
+rm -rf "$SANDBOX"
+
+# ── M: keep-local path renamed OUT OF ITS DIRECTORY → local superset must survive ──
+# The rc=0 damage path --no-renames introduces, and the worst outcome in this file: when
+# origin moves the LAST file out of a directory, the ff removes the directory too, so
+# restore_kept_local's `cp` fails with ENOENT. The tick still reports rc=0 and HEAD has
+# already advanced, so no later tick retries — the tracked path is left holding origin's
+# OLDER snapshot while the Pro-authoritative superset is simply gone from the tree. For the
+# dedup index that means re-publishing. Distinct from case K, whose rename stays INSIDE the
+# same directory and therefore never exercises the missing parent.
+echo "[M] keep-local renamed to another directory → superset survives, not regressed"
+setup_case M
+mkdir -p "$LOCAL/data"; printf '%s' '{"published":["a"]}' > "$LOCAL/data/pub.json"
+git -C "$LOCAL" add data/pub.json && git -C "$LOCAL" commit -qm 'add dedup index' \
+  && git -C "$LOCAL" push -q origin HEAD:main || fatal "M base"
+tmp="$(mktemp -d)"; git clone -q "$ORIGIN" "$tmp/w"; git -C "$tmp/w" config user.email t@t; git -C "$tmp/w" config user.name t
+mkdir -p "$tmp/w/moved"; git -C "$tmp/w" mv data/pub.json moved/pub.json || fatal "M mv"
+git -C "$tmp/w" commit -qm 'origin moves it out of its dir' && git -C "$tmp/w" push -q origin HEAD:main || fatal "M push"
+rm -rf "$tmp"
+printf '%s' '{"published":["a","b","c"]}' > "$LOCAL/data/pub.json"   # live Pro-authoritative superset
+write_allowlist "$SANDBOX/allowlist.json" "data/pub.json"
+git -C "$LOCAL" fetch -q origin main
+TEST_ALLOWLIST="$SANDBOX/allowlist.json"; RC=$(run_puller); unset TEST_ALLOWLIST
+eq_ne "$RC" "0" "M rc=0"
+eq_ne "$(head_of)" "$(remote_head)" "M HEAD advanced"
+[ "$(cat "$LOCAL/data/pub.json" 2>/dev/null)" = '{"published":["a","b","c"]}' ] \
+  && ok "M the superset SURVIVED the ff (dedup index not regressed)" \
+  || bad "M superset LOST — tracked path holds origin's older snapshot, re-publish risk"
+grep -q 'restore FAILED for kept-local' "$SANDBOX/pull.log" 2>/dev/null \
+  && bad "M restore failed (parent directory gone) — the rc=0 damage path is live" \
+  || ok "M restore succeeded despite the vanished parent directory"
+BK=$(find "$SANDBOX/backup" -path '*data/pub.json' ! -path '*.keep-local*' 2>/dev/null | head -1)
+[ -n "$BK" ] && [ "$(cat "$BK")" = '{"published":["a","b","c"]}' ] && ok "M superset also recoverable from backup" || bad "M superset not in backup"
+grep -q 'REMOVED by the incoming change' "$SANDBOX/pull.log" 2>/dev/null \
+  && ok "M the resulting orphan was announced" || bad "M silent orphan"
+rm -rf "$SANDBOX"
+
 # ── E: up to date → no-op ──
 echo "[E] up-to-date → no-op"
 setup_case E; git -C "$LOCAL" fetch -q origin main

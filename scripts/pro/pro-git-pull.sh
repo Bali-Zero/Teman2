@@ -166,7 +166,16 @@ acquire_lock() {
 # merge, everything recoverable).
 resolve_collisions() {
   local changed f backup n=0 first="" ts keeplist kl_rc
-  changed=$(git -c core.quotepath=false diff --name-only HEAD "$REMOTE" 2>/dev/null)
+  # --no-renames is load-bearing, not tidiness. With git's default rename detection a
+  # rename R->D collapses into ONE entry naming only D, so a LOCAL modification to R is
+  # never seen as a collision: it is not backed up, not reset, and the fast-forward aborts
+  # on it every tick, forever. Measured 2026-09-01 on Pro: main renamed .claude/rules/
+  # cicatrix-scars{,-archive}.md to docs/scars/ (#5331) while a HOME-only cron kept writing
+  # the old paths -> 2 paths seen instead of 4, puller wedged. Turning detection off makes
+  # the source visible as a deletion, which the existing tracked-collision branch already
+  # handles correctly (backup + reset). Deletions were always in this set, so an untracked
+  # local file at a deleted path is handled exactly as before -- no new behaviour.
+  changed=$(git -c core.quotepath=false diff --no-renames --name-only HEAD "$REMOTE" 2>/dev/null)
   [ -z "$changed" ] && return 0
   keeplist="$(_runtime_state_paths)"; kl_rc=$?   # Pro-authoritative paths to keep-local on collision
   if [ "$kl_rc" -ne 0 ]; then
@@ -184,6 +193,20 @@ resolve_collisions() {
     if git ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then
       # tracked: a collision ONLY if locally modified (else ff updates it cleanly, mod-free)
       git diff --quiet HEAD -- "$f" 2>/dev/null && continue
+      # ...but "locally modified" includes "locally DELETED", and --no-renames newly puts
+      # REMOVED paths (rename sources, above) into this set. A path the incoming change
+      # removes, whose working-tree file the local machine already deleted, is not a
+      # collision at all: there is nothing to overwrite and nothing to back up, and the ff
+      # simply drops an index entry whose file is already gone. Without this the `cp -p`
+      # below fails on a non-existent source and the tick aborts fail-safe FOREVER — turning
+      # a pull that worked before the flag into a permanent wedge. Measured pre-flag rc=0 /
+      # post-flag rc=1 on exactly this shape, which is why the guard is scoped to it: the
+      # same `cp` failure on a path origin MODIFIES predates the flag and is NOT cured here.
+      # -e misses a dangling symlink, so -L is checked too (same reason as the untracked arm).
+      if [ ! -e "$REPO/$f" ] && [ ! -L "$REPO/$f" ] && ! git cat-file -e "$REMOTE:$f" 2>/dev/null; then
+        log "  incoming removal of an already-locally-deleted path — nothing to collide with: $f"
+        continue
+      fi
       mkdir -p "$backup/$(dirname "$f")" 2>>"$LOG_FILE" || { log "  ERROR: mkdir backup for $f"; return 1; }
       # cp -p saves only the WORKING-TREE version; if a distinct STAGED version exists,
       # `git checkout HEAD` would discard it unrecoverably — back the index blob up too.
@@ -209,6 +232,17 @@ resolve_collisions() {
 "
           n=$((n + 1)); [ -z "$first" ] && first="$f (runtime-state, kept local)"
           log "  colliding Pro-authoritative runtime-state — will KEEP LOCAL (deferred clear): $f"
+          # ...unless the incoming change REMOVES this path (origin deleted it, or renamed it
+          # away and --no-renames is now showing us the source). Keeping it local is still the
+          # right call — Pro-authoritative content is never traded for tidiness — but after the
+          # ff the restored file is an UNTRACKED orphan at a path git no longer knows, while
+          # the pipeline keeps writing it and origin's copy lives elsewhere. That divergence is
+          # silent by construction, so it is announced here rather than discovered later.
+          if ! git cat-file -e "$REMOTE:$f" 2>/dev/null; then
+            log "  WARNING: kept-local $f is REMOVED by the incoming change — it will survive as an UNTRACKED orphan"
+            telegram_alert "keep-local-path-removed" \
+              "Pro pull: kept-local runtime-state '$f' is deleted/renamed away by origin. Local content is preserved but becomes an UNTRACKED orphan; git and the pipeline now disagree about where this file lives. Repoint the writer, then remove the orphan."
+          fi
         else
           log "  ERROR: keep-local stage failed for $f — aborting tick (fail-safe)"; return 1
         fi
@@ -266,6 +300,14 @@ restore_kept_local() {
   [ -n "$KEEP_LOCAL_DIR" ] && [ -d "$KEEP_LOCAL_DIR" ] || { KEEP_LOCAL_VULNERABLE=0; return 0; }
   while IFS= read -r kf; do
     [ -z "$kf" ] && continue
+    # The ff may have removed the file's PARENT DIRECTORY — when origin renames the last
+    # file out of a directory, `data/` itself disappears and `cp` then fails with ENOENT.
+    # Before --no-renames that could not happen here (a renamed-away keep-local path was
+    # invisible, so the ff aborted and nothing was restored); with the flag the ff SUCCEEDS
+    # and a failed restore leaves the tracked path holding origin's OLDER snapshot with HEAD
+    # already advanced — rc=0, green tick, dedup index silently regressed, re-publish. That
+    # is the worst outcome in this function and it costs one mkdir to remove.
+    mkdir -p "$(dirname "$REPO/$kf")" 2>>"$LOG_FILE" || true
     if cp -p "$KEEP_LOCAL_DIR/$kf" "$REPO/$kf" 2>>"$LOG_FILE"; then
       log "  restored kept-local Pro-authoritative runtime-state: $kf"
     else
