@@ -8,6 +8,7 @@ sources:
   - "Paperless-ngx guides (pistack.xyz, techfuelhq.com, elest.io)"
   - "wz-it.com — local AI for law firms (on-prem Open WebUI+Ollama pattern)"
   - "cloudzy.com — self-hosted password managers 2026 (Vaultwarden)"
+adversarial_review: exempt-this-file-is-the-4-llm-panel-synthesis-itself-not-a-reviewed-deliverable
 ---
 
 # Tailnet team expansion — 4-LLM panel round + external scan (companion to 2026-08-27-tailnet-team-expansion-research.md)

@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-shared-panel-prompt-not-a-research-deliverable
+---
+
 You are one seat of a 4-LLM advisory panel. Answer directly, in English, max ~900 words. No preamble.
 
 # Context: Bali Zero "digital campus" on Tailscale
