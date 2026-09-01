@@ -43,7 +43,31 @@ session reads this corner; it does not browse `research/`.
 Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
 is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
-## 1. LIVE STATE (last update 2026-08-20 — keep current)
+## 1. LIVE STATE (last update 2026-09-01 — keep current)
+
+**🟢 2026-09-01 — THE 11 `pma_status` DIVERGENCES ARE 0, AND THE CONSUMER MAP GAINED THE LINE IT
+WAS MISSING: AT RUNTIME QDRANT WINS.** The Pro conformance detector (armed 2026-09-01) named 11
+`kbli_documents` rows whose `pma_status` disagreed with the VERIFIED canonical. Curing the table
+first proved nothing on the channel: `chat_kbli`'s direct lookup reads `kbli_documents.metadata`,
+but `_fill_bali_verdicts` (`kbli_notebook_chat.py:211-295`) re-reads the **Qdrant** BPS point for
+every result with `bali_blocked is None` and overwrites the whole PMA tuple, and `inspect_kbli`
+reads Qdrant first (`kg_nodes` fallback) — so §4 rule 6's four stores have a precedence, and it is
+Qdrant → KG → Postgres, not "keep them all in sync" as equals. What shipped: Qdrant PMA layer
+synced on the **54 canonical-`located` codes** (`kbli_qdrant_pma_sync.py --layer pma --codes`, 53
+written, 54/54 re-verified), inspect cache busted, KG resynced 54/54; `kbli_documents` 5 rows by
+full rebuild + 6 hand-written rows by the new **`--pma-only`** mode of `kbli_documents_cure.py`
+(PR #5489 — syncs the 7-key PMA tuple via a server-side jsonb merge, judul/content byte-identical
+by md5 before/after; 3 Codex adversarial rounds, 116 tests). Detector now: `pma_status disagrees
+with VERIFIED canonical: 0`; `licensing presence disagrees: 25` is the next PR. Proven live:
+`inspect_kbli 65111` TERBATAS 80% PP 14/2018; `96220` TERBATAS 0% Lampiran II; `chat_kbli` 65201
+TERBATAS 80%. **Two things this cure surfaced, both ledgered in PENDING-ARMS (2026-09-01 rows):**
+(1) the canonical is `located` on 54 codes only — the other 1,505 answer `NOT_VERIFIED` by design
+of the 15/8 fail-closed disclosure (56101 included) while the mouth cites a residual Pasal 3(1)(d)
+locator for all 1,559; a whole-catalog sync would relabel ~1,500 answers, so it was NOT run —
+Legge 5 decision; (2) `archive_params` snapshots rows through a Python round-trip (inherited debt,
+declared by the refuter, did not bite tonight — probed first). Discipline that paid for itself:
+cure → cache-bust → probe, never probe first (`inspect_kbli` caches 30 days); `--pma-only` for
+hand-written rows, never full `--only` (03110 would have become a 55k-char document).
 
 **🔴 2026-08-20 (later) — P2b BENCHMARK EXECUTED: GATE RED, P2c STAYS CLOSED — two surgical
 product defects, ZERO fabrication found.** The seat's usage window reset early (probed
