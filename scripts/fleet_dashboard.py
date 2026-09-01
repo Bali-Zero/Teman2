@@ -321,6 +321,30 @@ def failing_checks(number: int) -> list[str]:
     return names
 
 
+def is_armed(pr: dict[str, Any]) -> bool:
+    """Has someone asked GitHub to merge this on its own? NEITHER field alone answers it.
+
+    This module's header already records half of this: `autoMergeRequest` is null in
+    three different states — never armed, armed-then-ejected, and armed-then-CONSUMED
+    by the queue — so a PR holding queue position 1 reports "not armed" (measured on
+    #5458/#5459/#5460, and again on #5490 while it sat at position 1). The cure recorded
+    there was "read mergeQueueEntry instead".
+
+    That cure has its OWN blind spot, and it is the one that matters for a stuck board:
+    a RED PR never receives a queue entry at all. GitHub admits a PR to the merge queue
+    only once its required checks pass, so `mergeQueueEntry` is null for every armed PR
+    that is failing — precisely the population a reader needs to see. Measured 2026-09-01:
+    #5158 carried `autoMergeRequest.enabledAt = 2026-09-01T00:48:51Z` with
+    `mergeQueueEntry = null` and one failing check.
+
+    So `mergeQueueEntry` answers "is it in the queue?" and `autoMergeRequest` answers
+    "is a request still pending?" — and ARMED is the union, never either one. Each field
+    is null in a state the other covers, which is why a single-field probe reads as a
+    confident answer to a neighbouring question.
+    """
+    return pr.get("autoMergeRequest") is not None or pr.get("mergeQueueEntry") is not None
+
+
 def is_dependabot(pr: dict[str, Any]) -> bool:
     """True only for Dependabot, judged on the ENTITY and its login together.
 
@@ -488,6 +512,16 @@ def collect() -> dict[str, Any]:
         if p["mergeable"] == "MERGEABLE" and not p["mergeQueueEntry"]
     ]
 
+    # ARMED AND RED: the shape that cannot clear itself. Arming freezes the branch
+    # (THE BUILDER CONTRACT §1), and several gates are designed so the only possible
+    # fix lives INSIDE that same PR's files — check_adversarial_review.py's own
+    # docstring says it outright ("the fix for a FAIL is always 'edit THIS file in THIS
+    # commit', never a follow-up PR"). A PR in this set therefore waits for a
+    # deliberate disarm, and nothing on the board said so before this row existed:
+    # `queued` cannot show it (a red PR never gets a queue entry) and `red` shows it
+    # without saying it is also frozen.
+    stalled_armed = [p for p in red if is_armed(p)]
+
     return {
         "measured_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         "repo": REPO,
@@ -506,6 +540,11 @@ def collect() -> dict[str, Any]:
             {"n": p["number"], "title": p["title"],
              "bot": is_dependabot(p)}
             for p in ready
+        ],
+        "stalled_armed": [
+            {"n": p["number"], "title": p["title"],
+             "why": fail_map.get(p["number"], [])}
+            for p in stalled_armed
         ],
         "phantom_conflicts": sorted(phantom),
         "real_conflicts": sorted(real),
@@ -645,6 +684,7 @@ def render(d: dict[str, Any]) -> str:
         ("is-wait", len(d["queued"]), "in coda, si fondono da sole"),
         ("is-ok", len(d["ready"]), "verdi e pronte, nessun lavoro da fare"),
         ("is-merah", red_n, "ferme su un controllo rosso"),
+        ("is-merah", len(d["stalled_armed"]), "armate E rosse: congelate, non si sbloccano da sole"),
         ("is-warn", len(d["real_conflicts"]), "conflitti veri, serve una persona"),
         ("is-wait", len(d["phantom_conflicts"]), "conflitti finti (li scioglie una fusione)"),
         ("is-wait", len(d["draft"]), "bozze, non ancora proposte"),
@@ -682,6 +722,12 @@ def render(d: dict[str, Any]) -> str:
         f'<td><span class="pill p-ok">verde</span></td></tr>'
         for r in d["ready"]
     ) or '<tr><td colspan="3">Nessuna in attesa: tutto ciò che è verde è già in coda.</td></tr>'
+
+    stalled_rows = "".join(
+        f'<tr><td>{prlink(x["n"])}</td><td>{esc(x["title"])}</td>'
+        f'<td>{esc(", ".join(x["why"])) or "&mdash;"}</td></tr>'
+        for x in d["stalled_armed"]
+    ) or '<tr><td colspan="3">Nessuna: niente è insieme armato e rosso.</td></tr>'
 
     # The "ready" pile is routinely dominated by dependency bumps, and they are
     # the one case where "all green, arm them all" is the WRONG move: bumps that
@@ -799,11 +845,26 @@ def render(d: dict[str, Any]) -> str:
       <tr><th>Pos.</th><th>Proposta</th><th>Titolo</th></tr>
       {queue_rows}
     </table></div>
-    <div class="note"><b>Nota tecnica, per chi verrà dopo:</b> lo stato «armata» qui è letto da
-    <span class="mono">mergeQueueEntry</span>. Il campo che sembra dirlo,
-    <span class="mono">autoMergeRequest</span>, è vuoto in tre situazioni diverse — mai armata,
-    armata e poi espulsa, armata e <em>consumata dalla coda</em> — quindi una proposta in prima
-    posizione risulterebbe «non armata».</div>
+    <div class="note"><b>Nota tecnica, per chi verrà dopo:</b> «armata» si legge dall\u2019<em>unione</em>
+    di due campi, mai da uno solo. <span class="mono">autoMergeRequest</span> è vuoto in tre
+    situazioni diverse — mai armata, armata e poi espulsa, armata e <em>consumata dalla coda</em> —
+    quindi una proposta in prima posizione risulterebbe «non armata».
+    <span class="mono">mergeQueueEntry</span> ha il difetto opposto: una proposta <em>rossa</em> non
+    entra mai in coda, quindi risulterebbe «non armata» proprio quando è armata e bloccata. Ogni
+    campo è vuoto in uno stato che l\u2019altro copre.</div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Ferme e congelate</div>
+    <h2>Armate e rosse</h2>
+    <p class="sub">Queste hanno chiesto di fondersi da sole, ma un controllo è rosso. Armare
+    <em>congela</em> il ramo, e diversi controlli si riparano solo modificando un file
+    <em>dentro la proposta stessa</em>. Finché nessuno la disarma di proposito, una proposta qui
+    non si sblocca da sola.</p>
+    <div class="scroll"><table>
+      <tr><th>Proposta</th><th>Titolo</th><th>Cosa è rosso</th></tr>
+      {stalled_rows}
+    </table></div>
   </section>
 
   <section>

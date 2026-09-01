@@ -284,3 +284,48 @@ def test_innocence_a_pending_rollup_is_not_treated_as_failing(fd):
 
 def test_a_pr_with_no_commits_yields_the_placeholder_not_a_crash(fd):
     assert fd.rollup_state({"commits": {"nodes": []}}) == "—"
+
+
+# ---------------------------------------------------------------------------
+# is_armed — the union rule. Each field is null in a state the OTHER covers, so
+# a single-field probe is a confident answer to a neighbouring question. Both
+# arms below are guilt tests against a real, previously-shipped single-field
+# reading; the third is the innocence arm (superscar #3: a guard with only one
+# of the two is half a guard).
+# ---------------------------------------------------------------------------
+
+def test_guilt_armed_but_red_is_armed_even_though_it_holds_no_queue_entry(fd):
+    """The blind spot this pins. GitHub admits a PR to the merge queue only once
+    its required checks pass, so `mergeQueueEntry` is null for EVERY armed PR that
+    is failing — exactly the population a stuck board needs to show. Reading armed
+    from mergeQueueEntry alone (what this module did) reports these as unarmed.
+    Measured on #5158, 2026-09-01: autoMergeRequest.enabledAt set, queue entry
+    null, one failing check."""
+    pr = {"autoMergeRequest": {"enabledAt": "2026-09-01T00:48:51Z"}, "mergeQueueEntry": None}
+    assert fd.is_armed(pr), (
+        "an armed PR that is red holds no queue entry; reading mergeQueueEntry "
+        "alone makes the frozen-and-stuck population invisible"
+    )
+
+
+def test_guilt_queued_is_armed_even_though_the_queue_consumed_the_request(fd):
+    """The mirror blind spot, already recorded in this module's header: the queue
+    CONSUMES autoMergeRequest, so a PR at position 1 reports null there. Measured
+    on #5458/#5459/#5460 and again on #5490."""
+    pr = {"autoMergeRequest": None, "mergeQueueEntry": {"position": 1, "state": "AWAITING_CHECKS"}}
+    assert fd.is_armed(pr), (
+        "the merge queue nulls autoMergeRequest on admission; reading it alone "
+        "reports a PR at position 1 as unarmed"
+    )
+
+
+def test_innocence_a_pr_with_neither_field_is_not_armed(fd):
+    assert not fd.is_armed({"autoMergeRequest": None, "mergeQueueEntry": None})
+
+
+def test_innocence_missing_keys_do_not_read_as_armed(fd):
+    """A shape the bulk query cannot currently produce, pinned anyway: if either
+    key is ever dropped from GRAPHQL, `is_armed` must answer "no", never raise and
+    never default to yes — a probe that errors on a schema change is better than
+    one that quietly calls every PR armed."""
+    assert not fd.is_armed({})
