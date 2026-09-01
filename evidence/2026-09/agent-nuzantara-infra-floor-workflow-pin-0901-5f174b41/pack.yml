@@ -85,6 +85,21 @@ pii_scan: clean
 
 receipts:
   - claim: >-
+      The shape a peer named as adjacent to the reorder hole — two FULL steps swapping, where the
+      surrounding `with:` blocks are identical — is real, git really does hide the move, and
+      sequence equality really does catch it
+    cmd: >-
+      scratch `git init`, write the two steps, commit, swap them, `git diff -U0 --no-renames`,
+      then feed that ACTUAL output to workflow_paths_exempt_from_path_term
+    result: >-
+      git emits a minimal diff whose ONLY changed lines are the two `uses:` lines — the identical
+      `with:` blocks align as CONTEXT, so "a non-uses line would have changed too" is not a
+      defence. exempt set: empty. floor: 3. Pinned as a test carrying that command's real bytes;
+      under the superseded sorted() comparison the same test goes RED.
+    exit: 0
+    ts: 2026-09-01T19:55Z
+    seat: session (Pro), on a peer session's lead
+  - claim: >-
       The reorder hole the cross-family refuter named was REAL, and the cure discriminates — the
       old comparison is what let it through, and restoring it reddens exactly one test while its
       innocence twin stays green

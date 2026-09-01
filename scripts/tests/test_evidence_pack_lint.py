@@ -3756,3 +3756,32 @@ def test_path_term_exemption_innocence_two_pins_keep_their_order():
         "+      - uses: actions/setup-node@v5\n"
     )
     assert compute_floor([_WF], None, both_bumped) == 1
+
+
+def test_path_term_exemption_guilt_two_full_steps_swap_when_their_with_blocks_align():
+    """The shape a peer session named as adjacent to the reorder hole, and the
+    reason this fixture is a REAL git-produced diff rather than a hand-written
+    one: when two steps carry IDENTICAL `with:` blocks, git aligns those blocks
+    as context and the minimal diff it emits changes ONLY the two `uses:` lines.
+    So "the surrounding block moved too, therefore a non-uses line changed" is
+    NOT a defence — git can hide the move entirely. Verified by initialising a
+    scratch repo, swapping the two steps and capturing `git diff -U0` (2026-09-01);
+    the bytes below are that command's actual output.
+
+    Sequence equality is what refuses it — the identities appear in opposite
+    order on the two sides. Under the superseded sorted() comparison this would
+    have been EXEMPTED."""
+    real_git_diff = (
+        "diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml\n"
+        "index 731c10d..8cd8c2c 100644\n"
+        "--- a/.github/workflows/ci.yml\n"
+        "+++ b/.github/workflows/ci.yml\n"
+        "@@ -4 +4 @@ jobs:\n"
+        "-      - uses: actions/upload-artifact@v4\n"
+        "+      - uses: actions/download-artifact@v4\n"
+        "@@ -7 +7 @@ jobs:\n"
+        "-      - uses: actions/download-artifact@v4\n"
+        "+      - uses: actions/upload-artifact@v4\n"
+    )
+    assert workflow_paths_exempt_from_path_term(real_git_diff) == set()
+    assert compute_floor([_WF], None, real_git_diff) == 3

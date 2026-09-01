@@ -104,4 +104,23 @@ risks:
     combined diff (`diff --cc`, merge commits) is not exercised. CI never
     feeds it one — the producer step runs `git diff <merge-base> <head>` — so
     the exposure is a future caller, not this one."
+instruction_to_the_grader: |
+  READ THE EXEMPTION'S SOURCE, NOT THIS BRIEF'S DESCRIPTION OF IT.
+
+  Stated verbatim because a peer session measured the failure mode today: three of six
+  "violations" in a parallel audit it ran were defects in ITS OWN brief, not in the code — the
+  auditors faithfully applied a rule the brief had paraphrased too tightly, and the reports came
+  back with file:line and numbers, i.e. disguised as measurement. The rigour of a report
+  AUTHENTICATES a bad paraphrase instead of correcting it.
+
+  So: the three conditions as this brief states them are a summary. The contract is
+  `workflow_paths_exempt_from_path_term()` in scripts/evidence_pack_lint.py. If they disagree, the
+  code is what ships and the brief is the defect.
+
+  Second: treat the guilt corpus as UNDER-SELECTED, not as coverage. It has already been beaten
+  once — a cross-family answer truncated at 214 bytes named the reorder hole after ten attacks had
+  passed. Shapes still unattacked as far as the author knows: `uses:` inside a `run:` heredoc where
+  `#` is not a comment, YAML anchors/aliases, block scalars, a workflow file added wholesale, and
+  `diff --cc` (refused, but never parsed).
+
 pii: none
