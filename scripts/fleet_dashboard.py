@@ -57,6 +57,7 @@ import html
 import json
 import subprocess
 import sys
+import time
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
@@ -69,20 +70,24 @@ REPO = "Bali-Zero/Teman2"
 GIT_CWD = Path(__file__).resolve().parent.parent
 
 
-def _run(args: list[str], timeout: int = 90) -> tuple[int, str]:
-    """Run a command, returning (rc, stdout). Never raises on a non-zero rc.
+def _run(args: list[str], timeout: int = 90) -> tuple[int, str, str]:
+    """Run a command, returning (rc, stdout, stderr). Never raises on non-zero rc.
 
     The captured-rc form is deliberate: under `bash -e` (and in CI) a bare
     `out = $(cmd)` aborts the whole step at the assignment, taking the
     diagnostic with it. Here the caller always gets to see what happened.
+
+    stderr is returned, not discarded: when a git plumbing command fails, the
+    REASON is the only thing that distinguishes "these branches conflict" from
+    "this probe could not run", and those two demand opposite reactions.
     """
     try:
         p = subprocess.run(
             args, cwd=str(GIT_CWD), capture_output=True, text=True, timeout=timeout
         )
     except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
-        return 1, f"{type(exc).__name__}: {exc}"
-    return p.returncode, p.stdout
+        return 125, "", f"{type(exc).__name__}: {exc}"
+    return p.returncode, p.stdout, p.stderr
 
 
 GRAPHQL = """
@@ -110,11 +115,64 @@ query {
 """ % tuple(REPO.split("/"))
 
 
+RESOLVE_ONE = """
+query($n: Int!) {
+  repository(owner: "%s", name: "%s") {
+    pullRequest(number: $n) { mergeable mergeStateStatus }
+  }
+}
+""" % tuple(REPO.split("/"))
+
+
+def resolve_mergeable(number: int, attempts: int = 3, delay: float = 2.0) -> tuple[str, str]:
+    """Force GitHub to compute one PR's mergeability, and return it.
+
+    WHY THIS EXISTS (found by adversarial review, 2026-09-01 — the defect was
+    live in the first published version of this page). GitHub computes
+    mergeability LAZILY, and a bulk connection query
+    (`pullRequests(first:100){ mergeable }`) very often returns `UNKNOWN` for
+    most rows: measured 34 of 40 open PRs `UNKNOWN` in a single run. The first
+    version treated anything that was not the literal string `CONFLICTING` as
+    "no conflict", so #4717 — genuinely `CONFLICTING`, confirmed by a direct
+    single-PR fetch seconds later — was rendered under "green, nothing to do".
+    A dashboard that says "nothing to do" about a conflicted PR is worse than
+    one that says nothing at all.
+
+    A single-PR query is what triggers the computation, so the first answer can
+    still be UNKNOWN while GitHub works; hence the retry. If it is still
+    unknown after the attempts, the caller must keep it UNKNOWN and say so —
+    never silently fold it into "fine".
+    """
+    for i in range(attempts):
+        rc, out, _ = _run(
+            ["gh", "api", "graphql", "-f", f"query={RESOLVE_ONE}", "-F", f"n={number}"]
+        )
+        if rc == 0 and out.strip():
+            try:
+                pr = json.loads(out)["data"]["repository"]["pullRequest"]
+            except (KeyError, TypeError, json.JSONDecodeError):
+                return "UNKNOWN", "UNKNOWN"
+            if pr["mergeable"] != "UNKNOWN":
+                return pr["mergeable"], pr["mergeStateStatus"]
+        if i < attempts - 1:
+            time.sleep(delay)
+    return "UNKNOWN", "UNKNOWN"
+
+
 def fetch_open_prs() -> list[dict[str, Any]]:
-    rc, out = _run(["gh", "api", "graphql", "-f", f"query={GRAPHQL}"])
+    rc, out, err = _run(["gh", "api", "graphql", "-f", f"query={GRAPHQL}"])
     if rc != 0 or not out.strip():
-        raise SystemExit(f"gh graphql failed (rc={rc}): {out[:400]}")
-    return json.loads(out)["data"]["repository"]["pullRequests"]["nodes"]
+        raise SystemExit(f"gh graphql failed (rc={rc}): {(err or out)[:400]}")
+    prs = json.loads(out)["data"]["repository"]["pullRequests"]["nodes"]
+    # Re-ask, per PR, for every row the bulk query left uncomputed. This is the
+    # only field on the page whose wrongness points a reader AWAY from work that
+    # exists, so it is the one worth up to N extra API calls.
+    for pr in prs:
+        if pr["mergeable"] == "UNKNOWN":
+            pr["mergeable"], mss = resolve_mergeable(pr["number"])
+            if mss != "UNKNOWN":
+                pr["mergeStateStatus"] = mss
+    return prs
 
 
 def failing_checks(pr: dict[str, Any]) -> list[str]:
@@ -154,17 +212,34 @@ def conflict_kind(pr: dict[str, Any]) -> str:
         return "none"
     branch = pr["headRefName"]
     _run(["git", "fetch", "origin", branch, "--quiet"], timeout=120)
-    rc, sha = _run(["git", "rev-parse", f"origin/{branch}"])
+    rc, sha, err = _run(["git", "rev-parse", f"origin/{branch}"])
     if rc != 0:
         return "unknown"
-    rc, _ = _run(
+    rc, _, err = _run(
         ["git", "merge-tree", "--write-tree", "--name-only", "origin/main", sha.strip()]
     )
-    return "phantom" if rc == 0 else "real"
+    # THREE outcomes, not two (adversarial review, 2026-09-01). Per
+    # git-merge-tree(1): 0 = clean, 1 = content conflict, anything else = the
+    # merge could not START — unrelated histories, a merge-base lost to a
+    # force-push, a bad ref. The first version read `rc == 0 else "real"`, so a
+    # plumbing failure was rendered as a genuine conflict, and the "never
+    # hand-resolve this, it deletes other lanes' rows" warning is attached to
+    # the phantom row only. That is the destructive direction: a probe that
+    # merely failed to run would have sent a reader to hand-resolve a
+    # `merge=union` ledger. An unrunnable probe now says so.
+    if rc == 0:
+        return "phantom"
+    if rc == 1:
+        return "real"
+    sys.stderr.write(
+        f"fleet_dashboard: merge-tree probe unusable for #{pr['number']} "
+        f"({branch}): rc={rc} {err.strip()[:200]}\n"
+    )
+    return "unknown"
 
 
 def merged_today() -> list[dict[str, Any]]:
-    rc, out = _run(
+    rc, out, _ = _run(
         ["gh", "pr", "list", "--state", "merged", "--limit", "80",
          "--json", "number,title,mergedAt"]
     )
@@ -193,14 +268,20 @@ def collect() -> dict[str, Any]:
     conflicts = {p["number"]: conflict_kind(p) for p in prs if p["mergeable"] == "CONFLICTING"}
     phantom = [n for n, k in conflicts.items() if k == "phantom"]
     real = [n for n, k in conflicts.items() if k == "real"]
+    unprobeable = [n for n, k in conflicts.items() if k == "unknown"]
+    # Mergeability GitHub still would not compute after being asked directly.
+    # Kept as its own bucket and kept OUT of `ready`: "not known" is not "fine".
+    unknown_merge = [p["number"] for p in live if p["mergeable"] == "UNKNOWN"]
 
     red = [p for p in live if rollup_state(p) == "FAILURE"]
     green = [p for p in live if rollup_state(p) == "SUCCESS"]
-    # ready = green, no conflict, not yet in the queue: the pile that would
-    # move with no work at all, which is the most useful thing to surface.
+    # ready = green AND known-mergeable AND not queued: the pile that would move
+    # with no work at all. `mergeable == "MERGEABLE"` is asserted positively,
+    # never inferred from "not CONFLICTING" — that inference is what put a
+    # genuinely conflicted PR under "nothing to do" in the first version.
     ready = [
         p for p in green
-        if p["mergeable"] != "CONFLICTING" and not p["mergeQueueEntry"]
+        if p["mergeable"] == "MERGEABLE" and not p["mergeQueueEntry"]
     ]
 
     return {
@@ -220,6 +301,8 @@ def collect() -> dict[str, Any]:
         "ready": [{"n": p["number"], "title": p["title"]} for p in ready],
         "phantom_conflicts": sorted(phantom),
         "real_conflicts": sorted(real),
+        "unprobeable_conflicts": sorted(unprobeable),
+        "unknown_mergeability": sorted(unknown_merge),
         "causes": sorted(
             ({"check": k, "prs": sorted(v)} for k, v in causes.items()),
             key=lambda d: -len(d["prs"]),
@@ -358,6 +441,11 @@ def render(d: dict[str, Any]) -> str:
         ("is-wait", len(d["phantom_conflicts"]), "conflitti finti (li scioglie una fusione)"),
         ("is-wait", len(d["draft"]), "bozze, non ancora proposte"),
     ]
+    # Shown only when non-zero, and never merged into another count: a state the
+    # page could not measure must look different from a state it measured as OK.
+    blind = len(d["unprobeable_conflicts"]) + len(d["unknown_mergeability"])
+    if blind:
+        cards.append(("is-merah", blind, "non misurabili — GitHub o git non hanno risposto"))
     cards_html = "\n".join(
         f'<div class="card {cls}"><div class="n">{n}</div><div class="k">{esc(k)}</div></div>'
         for cls, n, k in cards
@@ -406,24 +494,43 @@ def render(d: dict[str, Any]) -> str:
         for m in d["merged_today"]
     ) or '<tr><td colspan="2">Niente ancora oggi.</td></tr>'
 
+    # GitHub computes mergeability lazily; this page asks per-PR for every row
+    # the bulk query left blank, and says so when even that does not settle.
+    unknown_note = ""
+    if d["unknown_mergeability"]:
+        unknown_note = (
+            '<div class="note"><b>Mergeabilità ancora non calcolata da GitHub per '
+            + " ".join(prlink(n) for n in d["unknown_mergeability"])
+            + ".</b> Sono state richieste una per una e GitHub non ha risposto in tempo. "
+            "Non compaiono fra le «pronte»: <em>non so</em> non è <em>a posto</em>.</div>"
+        )
+
     conf = ""
-    if d["phantom_conflicts"] or d["real_conflicts"]:
+    if d["phantom_conflicts"] or d["real_conflicts"] or d["unprobeable_conflicts"]:
         conf = f"""
 <section>
   <div class="eyebrow">Conflitti</div>
-  <h2>Due malattie con lo stesso nome</h2>
-  <p class="sub">GitHub scrive «conflitto» in due casi che non si curano allo stesso modo.
-  Questa pagina li separa provando la fusione in locale, dove git applica la regola
-  <span class="mono">merge=union</span> che GitHub ignora.</p>
+  <h2>Tre esiti, non due</h2>
+  <p class="sub">GitHub scrive «conflitto» in casi che non si curano allo stesso modo.
+  Questa pagina prova la fusione in locale, dove git applica la regola
+  <span class="mono">merge=union</span> che GitHub ignora — e distingue anche il caso in cui
+  la prova <em>non è potuta partire</em>, che non è né l'uno né l'altro.</p>
   <div class="scroll"><table>
-    <tr><th>Tipo</th><th>Proposte</th><th>Cosa serve</th></tr>
+    <tr><th>Esito</th><th>Proposte</th><th>Cosa serve</th></tr>
     <tr><td><span class="pill p-wait">finto</span></td>
         <td class="num">{" ".join(prlink(n) for n in d["phantom_conflicts"]) or "—"}</td>
         <td>Git le fonde pulite. Basta fondere <span class="mono">origin/main</span> nel ramo
             e ripubblicare. <b>Mai</b> risolvere il file a mano: cancella le righe di altri.</td></tr>
     <tr><td><span class="pill p-warn">vero</span></td>
         <td class="num">{" ".join(prlink(n) for n in d["real_conflicts"]) or "—"}</td>
-        <td>Due modifiche incompatibili sullo stesso punto. Qui serve una decisione.</td></tr>
+        <td>Due modifiche incompatibili sullo stesso punto: git lo dice esplicitamente.
+            Qui serve una decisione — ma <b>se il file in conflitto è un registro ad
+            accodamento</b> vale comunque il divieto di risolverlo a mano.</td></tr>
+    <tr><td><span class="pill p-merah">non misurabile</span></td>
+        <td class="num">{" ".join(prlink(n) for n in d["unprobeable_conflicts"]) or "—"}</td>
+        <td>La prova di fusione non è partita affatto — storie non imparentate, una base
+            persa dopo una riscrittura, un riferimento rotto. <b>Non è un conflitto: è
+            l'assenza di una misura.</b> Va rifatta, non interpretata.</td></tr>
   </table></div>
 </section>"""
 
@@ -489,6 +596,7 @@ def render(d: dict[str, Any]) -> str:
       {ready_rows}
     </table></div>
     {ready_note}
+    {unknown_note}
   </section>
 {conf}
   <section>
