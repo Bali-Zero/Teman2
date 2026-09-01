@@ -42,12 +42,14 @@ constraints:
     per-kind AST/quote redesign actually shipped."
   - "No PII: this is a repo-hygiene tool operating on tracked source, no client data."
 acceptance:
-  - "28/28 tests green in scripts/tests/test_consumer_map.py (22 pre-existing + 6 new,
-    covering the ledger's own guilt+innocence corpus verbatim: 'a basename in a tuple joined
-    to a repointed directory constant must not' block, and 'a consumer that builds the old
-    path across two lines must STILL block'), plus scripts/tests/test_injected_surface_
-    budget.py and test_injected_surface_attest.py (40/40 combined) — observed this session,
-    `python3 -m pytest scripts/tests/test_consumer_map.py scripts/tests/test_injected_
+  - "35/35 tests green in scripts/tests/test_consumer_map.py (22 pre-existing + 13 new —
+    refreshed 2026-09-02, follow-up to PR #5544: the shipped PR grew the filter through two
+    adversarial refuter rounds after this brief's acceptance section was first drafted, adding
+    more guilt+innocence pairs than the 6 originally estimated, verbatim: 'a basename in a
+    tuple joined to a repointed directory constant must not' block, and 'a consumer that
+    builds the old path across two lines must STILL block'), plus scripts/tests/test_injected_
+    surface_budget.py and test_injected_surface_attest.py (47/47 combined) — re-measured
+    2026-09-02, `python3 -m pytest scripts/tests/test_consumer_map.py scripts/tests/test_injected_
     surface_budget.py scripts/tests/test_injected_surface_attest.py -q`."
   - "MEASURED on the real #5331 move commit (8c1b6d1d14, parent 152fe67d): re-running
     `python3 scripts/consumer_map.py --base <parent>` with the fixed script against that
