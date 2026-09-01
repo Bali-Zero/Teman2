@@ -176,13 +176,20 @@ def test_every_measured_default_names_a_real_slug_and_a_sendable_value():
 
 
 class _FakeResponse:
-    """Minimal stand-in for urlopen's return: a context manager that iterates
-    raw SSE lines, exactly as urllib yields them (bytes, newline-terminated)."""
+    """Serves the SSE body the way urllib actually does — as byte blocks from
+    read1() — NOT as a list of pre-split lines.
+
+    The first version of this fake yielded whole lines, which quietly assumed
+    away the very thing the parser has to get right. `block_size` therefore
+    defaults to something that CUTS FRAMES IN HALF, so every test here
+    exercises the reassembly buffer instead of trusting it."""
 
     status = 200
 
-    def __init__(self, lines):
-        self._lines = [ln.encode("utf-8") for ln in lines]
+    def __init__(self, lines, block_size=7):
+        self._data = "".join(lines).encode("utf-8")
+        self._pos = 0
+        self._block = block_size
 
     def __enter__(self):
         return self
@@ -190,21 +197,28 @@ class _FakeResponse:
     def __exit__(self, *exc):
         return False
 
-    def __iter__(self):
-        return iter(self._lines)
+    def read1(self, n=-1):
+        if self._pos >= len(self._data):
+            return b""
+        block = self._data[self._pos : self._pos + self._block]
+        self._pos += len(block)
+        return block
 
 
 def _frame(**delta):
     return "data: " + json.dumps({"choices": [{"delta": delta}]}) + "\n"
 
 
-def _stream(monkeypatch, lines, budget=60.0):
+_DONE = "data: [DONE]\n"
+
+
+def _stream(monkeypatch, lines, budget=60.0, block_size=7):
     import tp1_call
 
     monkeypatch.setattr(
         tp1_call.urllib.request,
         "urlopen",
-        lambda req, timeout=None: _FakeResponse(lines),
+        lambda req, timeout=None: _FakeResponse(lines, block_size),
     )
     return tp1_call.stream_chat_completion(
         "https://example.invalid/v1/chat/completions",
@@ -227,7 +241,7 @@ def test_stream_survives_a_terminal_frame_carrying_no_choices(monkeypatch):
             _frame(content="hello "),
             _frame(content="world"),
             'data: {"choices": [], "usage": {"completion_tokens": 9020}}\n',
-            "data: [DONE]\n",
+            _DONE,
         ],
     )
     assert status == 200
@@ -245,7 +259,7 @@ def test_stream_reassembles_into_the_shape_extract_answer_consumes(monkeypatch):
         [
             _frame(content="ans"),
             'data: {"choices":[{"finish_reason":"stop"}]}\n',
-            "data: [DONE]\n",
+            _DONE,
         ],
     )
     assert json.loads(full)["choices"][0]["finish_reason"] == "stop"
@@ -261,7 +275,7 @@ def test_stream_keeps_reasoning_out_of_the_answer(monkeypatch):
         [
             _frame(reasoning_content="thinking..."),
             _frame(content="VERDICT"),
-            "data: [DONE]\n",
+            _DONE,
         ],
     )
     parsed = json.loads(full)["choices"][0]["message"]
@@ -280,7 +294,7 @@ def test_stream_tolerates_one_malformed_frame(monkeypatch):
             _frame(content="a"),
             "data: {not json\n",
             _frame(content="b"),
-            "data: [DONE]\n",
+            _DONE,
         ],
     )
     assert extract_answer(full)[0] == "ab"
@@ -294,7 +308,7 @@ def test_stream_ignores_sse_comments_and_non_data_fields(monkeypatch):
             "event: message\n",
             "\n",
             _frame(content="x"),
-            "data: [DONE]\n",
+            _DONE,
         ],
     )
     assert extract_answer(full)[0] == "x"
@@ -306,20 +320,22 @@ def test_budget_expiry_raises_still_generating_carrying_the_evidence(monkeypatch
     conflation is what wrote ok:false for this live seat in PR #5494."""
     import tp1_call
 
-    # t0, then one reading per loop iteration: two frames arrive comfortably
-    # inside the budget, and only then does the clock jump past it.
-    ticks = iter([0.0, 1.0, 2.0, 999.0])
+    # t0, then one reading per read-block iteration. Small blocks mean the
+    # frames need several reads to arrive, so the clock can jump past the
+    # budget mid-generation with chunks already banked.
+    ticks = iter([0.0, 1.0, 2.0, 3.0, 999.0])
     monkeypatch.setattr(tp1_call.time, "monotonic", lambda: next(ticks))
 
     with pytest.raises(StillGenerating) as caught:
         _stream(
             monkeypatch,
-            [_frame(content="partial"), _frame(content=" more"), "data: [DONE]\n"],
+            [_frame(content="partial"), _frame(content=" more"), _DONE],
             budget=50.0,
+            block_size=40,
         )
     err = caught.value
-    assert err.chunks == 2, "must prove chunks arrived — that is the ALIVE evidence"
-    assert err.content_len == len("partial more")
+    assert err.chunks >= 1, "must prove chunks arrived — that is the ALIVE evidence"
+    assert err.content_len > 0
     assert "NOT a dead seat" in str(err)
 
 
@@ -327,7 +343,7 @@ def test_a_seat_that_never_speaks_is_not_reported_as_still_generating(monkeypatc
     """The other side of the same distinction: no frames at all is the shape
     of a dead seat, and it must come back as a normal transport failure
     (status None), never as StillGenerating."""
-    status, full, _ = _stream(monkeypatch, ["data: [DONE]\n"])
+    status, full, _ = _stream(monkeypatch, [_DONE])
     assert status == 200
     assert extract_answer(full)[2] is not None, (
         "empty generation must be an error, not silence"
@@ -345,7 +361,85 @@ def test_budget_expiry_with_zero_frames_is_reported_as_a_dead_seat(monkeypatch):
     ticks = iter([0.0, 999.0])
     monkeypatch.setattr(tp1_call.time, "monotonic", lambda: next(ticks))
 
-    status, full, tail = _stream(monkeypatch, [_frame(content="x")], budget=50.0)
+    status, full, tail = _stream(
+        monkeypatch, [_frame(content="x")], budget=50.0, block_size=5
+    )
     assert status is None
     assert "never started responding" in full
     assert tail == "never responded"
+
+
+# ------------------------------------- defects found by qwen3.8-max reviewing this diff
+
+
+def test_a_dropped_connection_is_not_reported_as_a_complete_answer(monkeypatch):
+    """Q4, found by the qwen3.8-max seat reviewing the very diff that repaired it.
+
+    The stream stops with content already banked but no `[DONE]` and no
+    finish_reason on any frame — a killed pod or a reset load balancer. The
+    first version returned HTTP 200 with the partial text, so the caller got a
+    truncated review that looked complete and exit 0. This script's own
+    exit-code contract says an answer that never arrived is 'never SILENTLY
+    treated as success'. The non-streaming path cannot have this failure (a cut
+    body fails json.loads); streaming introduced it, so streaming must close it."""
+    status, full, tail = _stream(
+        monkeypatch, [_frame(content="half an ans"), _frame(content="wer that stops")]
+    )
+    assert status is None, "a truncated stream must not come back as HTTP 200"
+    assert "truncated" in full
+    assert tail == "truncated stream"
+
+
+def test_a_stream_that_declares_finish_reason_but_no_done_is_complete(monkeypatch):
+    """The other side of the same line: some gateways close the socket right
+    after the last content frame without sending the `[DONE]` sentinel. If the
+    server DECLARED completion via finish_reason, that is a finished answer and
+    must not be rejected as truncated."""
+    status, full, _ = _stream(
+        monkeypatch,
+        [_frame(content="done"), 'data: {"choices":[{"finish_reason":"stop"}]}\n'],
+    )
+    assert status == 200
+    assert extract_answer(full)[0] == "done"
+
+
+def test_the_wall_clock_budget_is_checked_between_reads_not_between_frames(monkeypatch):
+    """Q2, found by the same review. The first version iterated `for line in
+    resp`, so the deadline could only be tested once a whole newline-terminated
+    frame had arrived. A server trickling bytes without a newline keeps every
+    recv() inside the socket timeout while readline() never returns, and
+    --timeout — documented as a wall-clock budget — is then unenforceable.
+
+    Here the body is served in blocks that never complete a frame. If the
+    deadline were still checked per-FRAME it would never fire and this test
+    would hang or read to EOF; checked per-READ it fires."""
+    import tp1_call
+
+    ticks = iter([0.0, 1.0, 2.0, 5000.0])
+    monkeypatch.setattr(tp1_call.time, "monotonic", lambda: next(ticks))
+
+    # One enormous frame with no newline until the very end: no line ever
+    # completes within the first few reads.
+    huge = (
+        "data: "
+        + json.dumps({"choices": [{"delta": {"content": "x" * 100000}}]})
+        + "\n"
+    )
+    status, full, tail = _stream(monkeypatch, [huge], budget=50.0, block_size=8)
+    assert status is None, "the budget must be enforced even mid-frame"
+    assert tail == "never responded", (
+        "no frame completed, so there is no evidence of life"
+    )
+
+
+def test_a_final_frame_without_a_trailing_newline_is_not_lost(monkeypatch):
+    """Servers are not obliged to newline-terminate the last frame before
+    closing. The buffer only emits on '\\n', so without an explicit flush at EOF
+    that frame — often the one carrying finish_reason — vanishes, and a
+    complete answer is then misreported as a truncated stream."""
+    status, full, _ = _stream(
+        monkeypatch,
+        [_frame(content="body"), 'data: {"choices":[{"finish_reason":"stop"}]}'],
+    )
+    assert status == 200, "the unterminated final frame carried finish_reason"
+    assert extract_answer(full)[0] == "body"
