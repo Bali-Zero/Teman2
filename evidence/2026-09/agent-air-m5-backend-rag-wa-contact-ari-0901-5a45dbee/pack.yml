@@ -1,4 +1,4 @@
-brief_ref: evidence/2026-09/agent-air-m5-backend-rag-wa-contact-ari-0901-5a45dbee/brief.yml
+brief_ref: evidence/brief.yml
 plan_ref:
   '"Zero''s ruling of 2026-09-01, verbatim and entire: \"1 lascia ari\" — leave Ari''s line on
   the price list. It reverses PR#5418 (merged 2026-08-31), which resolved a real two-literals-drifted
@@ -538,3 +538,11 @@ seat_override:
   single-source-of-truth, a non-idempotent rewrite and a self-contradicting comment — all fixed and re-probed
   below. What it did not buy is a second, independent opinion on the FIX.'
 council_run: journal.jsonl
+brief_ref_note:
+  "The literal `evidence/brief.yml`, NOT this pack's own directory, and that is not a mistake:
+  harness-floor.yml stages the pack and the brief side by side under /tmp/evidence-check/evidence/ (`cp
+  /tmp/brief.yml /tmp/evidence-check/evidence/brief.yml`) and runs the lint with `--repo-root /tmp/evidence-check`,
+  so a repo-relative per-task path does not resolve there. The real brief for this task is evidence/2026-09/agent-air-m5-backend-rag-wa-contact-ari-0901-5a45dbee/brief.yml
+  and CI reads it via BRIEF_PATH. Consequence to know when running the lint LOCALLY: brief_ref resolves
+  to the stale root evidence/brief.yml from an older PR, so a local run judges the wrong brief. Point
+  the local run at the real one instead of trusting the local verdict on Rule 12."
