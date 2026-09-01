@@ -168,39 +168,7 @@ def test_openai_embedding_model_is_frozen() -> None:
 # ---------------------------------------------------------------------------
 
 _RETIRED_WHATSAPP = "+62 813 3805 1876"
-
-#: Separators a human might type INSIDE one number. Deliberately excludes
-#: newline: collapsing across lines would fuse two unrelated numbers into a
-#: match that is not there.
-_PHONE_SEPARATORS = re.compile("[ \\t.()+\"'-]")
-
-
-def _collapse_phone_separators(line: str) -> str:
-    """Strip in-number punctuation from ONE line so any spelling of a number
-    compares equal to its bare digit run."""
-    return _PHONE_SEPARATORS.sub("", line)
-
-
-def _forbidden_digit_runs() -> tuple[str, ...]:
-    """Digit runs that must never appear on a CLIENT-FACING surface, in ANY
-    spelling — DERIVED, never typed.
-
-    The first draft typed them as literals and got one wrong by a single digit
-    ("628138051876" for a 13-digit number), which made the retired-line guilt
-    case silently unenforceable. A test whose subject is "somebody typed the
-    wrong number" must not itself contain a typed number.
-    """
-    from backend.app.core.config import settings
-
-    runs: list[str] = []
-    for source in (settings.SUPPORT_WHATSAPP, _RETIRED_WHATSAPP):
-        intl = _collapse_phone_separators(source)
-        runs.append(intl)
-        if intl.startswith("62"):
-            runs.append("0" + intl[2:])  # Indonesian local form of the same line
-    return tuple(runs)
 _RETIRED_LOCATION = "Canggu, Bali, Indonesia"
-
 
 def test_authoritative_pricing_json_never_reintroduces_retired_contact() -> None:
     """``bali_zero_official_prices_2026.json`` — the file `PricingService`
@@ -353,6 +321,44 @@ def test_pricing_fallback_contacts_read_the_setting_and_never_a_literal():
     for src in sources:
         assert src.exists(), f"pricing fallback source moved: {src}"
         tree = ast.parse(src.read_text(encoding="utf-8"), filename=str(src))
+
+        # `settings.CLIENT_CONTACT_WHATSAPP` is only the right value if
+        # `settings` is the real one. The AST sees SHAPE, not resolution, so a
+        # local shim — a `class _Shadow: CLIENT_CONTACT_WHATSAPP = "<wrong>"`
+        # bound to the name `settings` — produces a byte-identical node and
+        # would ship the wrong number through a green suite. Contrived as a
+        # typo, entirely plausible as a leftover test shim or a bad merge, and
+        # cheap to close: require the real import, and require nothing to
+        # rebind the name afterwards.
+        imported = any(
+            isinstance(n, ast.ImportFrom)
+            and n.module == "backend.app.core.config"
+            and any(a.name == "settings" and a.asname is None for a in n.names)
+            for n in ast.walk(tree)
+        )
+        assert imported, (
+            f"{src.name} does not import `settings` from backend.app.core.config, "
+            "so `settings.CLIENT_CONTACT_WHATSAPP` below means something else."
+        )
+        rebound = [
+            n
+            for n in ast.walk(tree)
+            if isinstance(n, (ast.Assign, ast.AnnAssign, ast.ClassDef, ast.FunctionDef))
+            and (
+                (isinstance(n, ast.Assign) and any(
+                    isinstance(t, ast.Name) and t.id == "settings" for t in n.targets
+                ))
+                or (isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name)
+                    and n.target.id == "settings")
+                or (isinstance(n, (ast.ClassDef, ast.FunctionDef)) and n.name == "settings")
+            )
+        ]
+        assert not rebound, (
+            f"{src.name}:{rebound[0].lineno} rebinds the name `settings` — the "
+            "AST check below would then be satisfied by a shim carrying any "
+            "number at all."
+        )
+
         found = 0
         for node in ast.walk(tree):
             if not isinstance(node, ast.Dict):
@@ -417,20 +423,24 @@ def test_every_repo_side_copy_of_the_client_number_agrees():
         f"display string: {CANONICAL_CONTACT['wa_link']!r}"
     )
 
-    patch_script = (repo_root / "scripts/patch_pricing_contact_block.py").read_text("utf-8")
-    assert f'CANONICAL_WHATSAPP = "{canonical}"' in patch_script, (
-        "scripts/patch_pricing_contact_block.py's CANONICAL_WHATSAPP is stale — "
-        "it would rewrite the LIVE Qdrant pricing payloads to a number that is "
-        "no longer the client-facing one."
-    )
+    # Import and compare the VALUES. A substring match on source text was the
+    # first draft and it couples the guard to incidental formatting: adding a
+    # `: str` annotation, or a formatter moving the assignment, breaks the test
+    # without anything being wrong. Both modules are importable — the patch
+    # script has no import-time side effects, only `async def` bodies do I/O.
+    from patch_pricing_contact_block import CANONICAL_WHATSAPP
 
-    oracle = (
-        repo_root / "apps/backend-rag/backend/services/visa_oracle/visa_oracle_service.py"
-    ).read_text("utf-8")
-    assert f'WHATSAPP_BASE_URL = "https://wa.me/{digits}"' in oracle, (
-        "visa_oracle_service.py's WHATSAPP_BASE_URL points somewhere else — the "
-        "Visa Oracle handoff deeplink and the price list would send a client to "
-        "two different numbers."
+    from backend.services.visa_oracle.visa_oracle_service import WHATSAPP_BASE_URL
+
+    assert CANONICAL_WHATSAPP == canonical, (
+        "scripts/patch_pricing_contact_block.py's CANONICAL_WHATSAPP is stale "
+        f"({CANONICAL_WHATSAPP!r}) — it would rewrite the LIVE Qdrant pricing "
+        "payloads to a number that is no longer the client-facing one."
+    )
+    assert WHATSAPP_BASE_URL == f"https://wa.me/{digits}", (
+        f"visa_oracle_service.py's WHATSAPP_BASE_URL is {WHATSAPP_BASE_URL!r} — "
+        "the Visa Oracle handoff deeplink and the price list would send a "
+        "client to two different numbers."
     )
 
 

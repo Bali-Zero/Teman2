@@ -32,6 +32,12 @@ lanes:
       of them changed this diff. The second council seat, kimi-code/k3, DID NOT RUN — 403 provider.auth_error,
       weekly quota exhausted — so this council is one seat deep, not two. Recorded ok:false in journal.jsonl
       rather than quietly dropped.
+  - lane: wa-contact-ari-refute-2
+    role: review
+    seat:
+      claude-sonnet-5 (second adversarial spalla, dispatched on the FIXES rather than the original diff
+      — told to attack each repair specifically, since a cure is exactly where this PR has already been
+      wrong once). Returned SHIP-WITH-FIXES with three findings that changed the diff again.
 seat_diversity: not_applicable
 seat_diversity_note:
   '"All three lanes are Anthropic seats, declared rather than left to read as satisfied.
@@ -461,6 +467,58 @@ dissent:
       both, guilt-proved by removing the preservation. Recorded because it is the same shape as the defect
       this whole PR reverses: a repair that is right about the thing it was aimed at and quietly wrong about
       something adjacent. A cure gets probed like any other change."
+  - seat: claude-sonnet-5 (second spalla, on the fixes)
+    objection:
+      'The AST guard checks SHAPE, not resolution. A local shim — `class _Shadow: CLIENT_CONTACT_WHATSAPP
+      = "<the bot number>"` bound to the name `settings` — produces a byte-identical Attribute node and
+      would ship the wrong number through a green suite. Executed the test''s own matching code against
+      a synthetic file: found=1, match ok=True, PASS.'
+    status: CONFIRMED
+    resolution:
+      "Closed. The guard now also requires the module-level `from backend.app.core.config import
+      settings` and refuses any rebinding of that name (assign, annotated assign, class or function). Probed:
+      the shim -> RED naming the rebinding line, the import removed -> RED, unchanged -> GREEN. The seat
+      also worked through eight other evasions I had not enumerated (assignment after the dict, dict(),
+      **unpacking, .update(), a variable key, the block moved to another module) and confirmed each already
+      fails loudly via the found>=1 assertion rather than passing silently — which is the answer I wanted
+      and did not have."
+  - seat: claude-sonnet-5 (second spalla, on the fixes)
+    objection:
+      "`_forbidden_digit_runs()`, `_collapse_phone_separators()` and `_PHONE_SEPARATORS` are defined
+      and called NOWHERE — zero call sites repo-wide. Their docstring claims they fix a hand-typed-literal
+      defect, while the retired-line assertion still compares against a hand-typed literal. The protection
+      the docstring claims does not exist in the shipped diff, and ruff's default rules do not flag an
+      unused module-level function, so nothing in CI would catch it."
+    status: CONFIRMED
+    resolution:
+      "Deleted. They were the previous revision of the fallback guard, orphaned when the AST version
+      replaced it, and I left the scaffolding behind — dead code whose docstring overclaims is worse than
+      no code, because the next reader budgets for a protection that is not there. The surfaces they were
+      meant to cover are covered: the fallbacks by AST, the sheet by whole-dict equality against CANONICAL_CONTACT."
+  - seat: claude-sonnet-5 (second spalla, on the fixes)
+    objection:
+      "Two of the four copies in the cross-file agreement guard are matched by SUBSTRING against
+      source text, which couples the test to incidental formatting: adding a `: str` annotation breaks it
+      with nothing actually wrong. And patch_pricing_contact_block.py has no import-time side effects, so
+      it could be imported directly — the text scan is inconsistency, not necessity."
+    status: CONFIRMED
+    resolution:
+      "Both switched to importing the module and comparing the VALUE. Probed both ways: staling
+      the value -> RED; the same value written with a `: str` annotation -> GREEN, where the substring form
+      would have false-failed."
+  - seat: claude-sonnet-5 (second spalla, on the fixes)
+    objection:
+      "The QR assertion is not fully independent: it recomputes _make_qr_data_uri(wa_link), so
+      a systematic bug INSIDE that encoder would reproduce identically in the test and pass. (It confirmed
+      the function is deterministic — three calls, byte-identical — so the test is not flaky, and it does
+      catch the actual defect class of feeding the encoder the wrong value.)"
+    status: PLAUSIBLE
+    resolution:
+      Accepted as stated and NOT fixed. Catching a mis-encoding inside the QR library would need
+      an independent decode-and-compare, i.e. a second QR implementation as an oracle. The defect this PR
+      is about is the encoder being fed the wrong value, which the test does catch — proved by pointing
+      the generator's QR at the bot number and watching it go red. Recorded so the limit is on the record
+      rather than assumed away.
 seat_override:
   'Two rules, both named explicitly so neither hides behind the other.
 
