@@ -22,12 +22,22 @@ Covers the mandate's explicit cases:
 
 from __future__ import annotations
 
+import ast
+import json
 import sys
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import queue_stall_notify as qsn  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def isolated_repeat_state(monkeypatch, tmp_path):
+    """No unit test may read or write the operator's real local paging state."""
+    monkeypatch.setattr(qsn, "SEEN_FILE", tmp_path / "queue_stall_notify_seen.json")
 
 
 def make_row(number: int, cause: str, detail: str = "detail") -> dict:
@@ -63,15 +73,13 @@ def test_real_stall_cause_is_notify_worthy_key_has_number_and_cause():
     assert item["cannot_verify"] is False
 
 
-def test_same_pr_number_different_cause_yields_different_keys():
-    # This is the exact property the mandate calls out: "the dedup key must encode the CAUSE,
-    # not just the PR number" — a PR-number-only key would collapse these two into one.
-    plan = qsn.plan_notifications(
-        [make_row(707, "not-armed", "x"), make_row(707, "conflict", "y")], cap=10
-    )
-    keys = [item["key"] for item in plan["to_notify"]]
-    assert keys == ["queue_stall:707:not-armed", "queue_stall:707:conflict"]
-    assert len(set(keys)) == 2
+def test_same_pr_across_invocations_changed_cause_is_not_a_repeat():
+    first = qsn.plan_notifications([make_row(707, "not-armed", "x")], cap=1)["to_notify"]
+    first_key = first[0]["key"]
+    second = qsn.plan_notifications([make_row(707, "conflict", "y")], cap=1)["to_notify"]
+    re_page = qsn.plan_repage(second, seen={first_key: 1_000.0}, now=1_001.0, cap=1)
+    assert [item["key"] for item in re_page["to_notify"]] == ["queue_stall:707:conflict"]
+    assert re_page["suppressed_as_repeat"] == []
 
 
 def test_queued_and_advancing_is_not_notify_worthy():
@@ -79,6 +87,20 @@ def test_queued_and_advancing_is_not_notify_worthy():
     assert plan["to_notify"] == []
     assert plan["suppressed_by_cap"] == []
     assert plan["skipped"] == [(303, "queued-and-advancing")]
+
+
+def test_classifier_stall_vocabulary_is_fully_accounted_for_without_importing_it():
+    """The subprocess boundary stays intact: inspect source AST, never import the classifier."""
+    source = qsn.CLASSIFIER.read_text()
+    tree = ast.parse(source)
+    stall_causes = next(
+        ast.literal_eval(node.value)
+        for node in tree.body
+        if isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Name) and target.id == "STALL_CAUSES" for target in node.targets)
+    )
+    accounted_for = qsn.REAL_STALL_CAUSES | qsn.DELIBERATELY_IGNORED
+    assert set(stall_causes) <= accounted_for
 
 
 def test_cannot_verify_is_notify_worthy_and_flagged_distinctly():
@@ -139,6 +161,55 @@ def test_dry_run_zero_subprocess_calls_intended_payload_printed(monkeypatch, cap
     assert "[dry-run] would signal PR #101" in out
     assert "queue_stall:101:conflict" in out
     assert "sent=1" in out
+    assert not qsn.SEEN_FILE.exists()
+
+
+def test_repeat_is_suppressed_then_repages_after_interval(monkeypatch, capsys):
+    monkeypatch.delenv("QUEUE_STALL_NOTIFY_ENABLED", raising=False)
+    report = make_report([make_row(111, "conflict", "mergeStateStatus=DIRTY")])
+    monkeypatch.setattr(qsn, "run_classifier", lambda **kw: (0, report, "", ""))
+    monkeypatch.setattr(qsn.time, "time", lambda: 10_000.0)
+    calls = []
+    monkeypatch.setattr(qsn, "_run", lambda cmd, timeout=30: (calls.append(cmd) or (0, "ok", "")))
+
+    assert qsn.main([]) == 0
+    assert qsn.main([]) == 0
+    assert len(calls) == 1
+    assert "suppressed_as_repeat=1" in capsys.readouterr().out
+
+    monkeypatch.setattr(qsn.time, "time", lambda: 10_000.0 + qsn.REPAGE_SECONDS)
+    assert qsn.main([]) == 0
+    assert len(calls) == 2
+
+
+def test_changed_cause_sends_immediately_even_when_same_pr_was_just_sent(monkeypatch, capsys):
+    monkeypatch.delenv("QUEUE_STALL_NOTIFY_ENABLED", raising=False)
+    first = make_report([make_row(222, "not-armed", "not queued")])
+    second = make_report([make_row(222, "required-check-red", "statusCheckRollup=FAILURE")])
+    reports = iter((first, second))
+    monkeypatch.setattr(qsn, "run_classifier", lambda **kw: (0, next(reports), "", ""))
+    monkeypatch.setattr(qsn.time, "time", lambda: 20_000.0)
+    calls = []
+    monkeypatch.setattr(qsn, "_run", lambda cmd, timeout=30: (calls.append(cmd) or (0, "ok", "")))
+
+    assert qsn.main([]) == 0
+    assert qsn.main([]) == 0
+    assert len(calls) == 2
+    assert calls[1][calls[1].index("--key") + 1] == "queue_stall:222:required-check-red"
+    assert "suppressed_as_repeat=0" in capsys.readouterr().out
+
+
+def test_corrupt_state_file_still_pages(monkeypatch, capsys):
+    monkeypatch.delenv("QUEUE_STALL_NOTIFY_ENABLED", raising=False)
+    qsn.SEEN_FILE.write_text("this is not json")
+    report = make_report([make_row(333, "conflict", "mergeStateStatus=DIRTY")])
+    monkeypatch.setattr(qsn, "run_classifier", lambda **kw: (0, report, "", ""))
+    calls = []
+    monkeypatch.setattr(qsn, "_run", lambda cmd, timeout=30: (calls.append(cmd) or (0, "ok", "")))
+
+    assert qsn.main([]) == 0
+    assert len(calls) == 1
+    assert "sent=1" in capsys.readouterr().out
 
 
 # ── main(): a real stall row -> exactly one send ────────────────────────────
@@ -204,6 +275,18 @@ def test_queued_and_advancing_row_produces_no_send(monkeypatch, capsys):
     assert rc == 0
     assert "stalled=0" in out
     assert "sent=0" in out
+
+
+def test_unrecognized_cause_is_visible_in_summary(monkeypatch, capsys):
+    monkeypatch.delenv("QUEUE_STALL_NOTIFY_ENABLED", raising=False)
+    report = make_report([make_row(304, "new-classifier-cause", "future vocabulary drift")])
+    monkeypatch.setattr(qsn, "run_classifier", lambda **kw: (0, report, "", ""))
+    monkeypatch.setattr(qsn, "_run", _fail_if_called)
+
+    assert qsn.main([]) == 0
+    out = capsys.readouterr().out
+    assert "skipped=1" in out
+    assert "unrecognized_causes=new-classifier-cause" in out
 
 
 # ── main(): classifier failure propagates ───────────────────────────────────
@@ -304,3 +387,79 @@ def test_cannot_verify_row_is_delivered_distinctly_even_though_classifier_failed
     msg = calls[0][-1]
     assert "COULD NOT VERIFY" in msg
     assert "sent=1" in out
+
+
+# ---------------------------------------------------------------------------
+# Mutual exclusion: a stale writer must not resurrect a pruned "sent" ghost
+# ---------------------------------------------------------------------------
+
+def test_lock_is_held_then_released(tmp_path):
+    lock = tmp_path / "s.lock"
+    with qsn.state_lock(lock) as status:
+        assert status == "held"
+    # released: a second acquisition succeeds
+    with qsn.state_lock(lock) as status:
+        assert status == "held"
+
+
+def test_guilt_a_second_holder_is_told_busy_not_held(tmp_path):
+    """The whole point: a concurrent invocation must NOT proceed to mutate state."""
+    import fcntl
+    lock = tmp_path / "s.lock"
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    other = lock.open("a+")
+    fcntl.flock(other.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    try:
+        with qsn.state_lock(lock) as status:
+            assert status == "busy", status
+    finally:
+        fcntl.flock(other.fileno(), fcntl.LOCK_UN)
+        other.close()
+
+
+def test_innocence_a_broken_lock_proceeds_unlocked_and_never_goes_silent(tmp_path):
+    """A lock that cannot be created must NOT stop the alarm. A duplicate page is
+    survivable; a missed stall is not. This is the failure direction that matters."""
+    blocker = tmp_path / "not-a-dir"
+    blocker.write_text("i am a file")
+    with qsn.state_lock(blocker / "sub" / "s.lock") as status:
+        assert status == "unavailable", status
+
+
+def test_disabled_lock_yields_held_so_dry_run_never_blocks_a_real_run(tmp_path):
+    with qsn.state_lock(tmp_path / "s.lock", enabled=False) as status:
+        assert status == "held"
+
+
+def test_the_reviewers_race_cannot_resurrect_a_pruned_entry(tmp_path, monkeypatch):
+    """Reproduces the reported loss, then shows the lock forecloses it.
+
+    Reported sequence: a SLOW process loads state, a FAST one starts later, correctly prunes a
+    resolved PR and writes {}, then the SLOW one writes back its stale view — resurrecting a
+    'sent' ghost, so a genuinely re-stalled PR reads as a repeat and is suppressed for a whole
+    repage window. Unsafe direction: the alarm misses a real stall.
+    """
+    state = tmp_path / "seen.json"
+    lock = tmp_path / "seen.json.lock"
+    key = "queue_stall:100:not-armed"
+
+    # WITHOUT the lock, the stale writer wins — this is the defect, pinned so it stays fixed.
+    state.write_text(json.dumps({key: 0.0}))
+    slow_view = qsn.load_seen(path=state)          # slow process reads
+    qsn.save_seen({}, path=state)                  # fast process prunes and writes
+    qsn.save_seen(slow_view, path=state)           # slow process writes its stale view
+    assert qsn.load_seen(path=state) == {key: 0.0}, "the race itself must be real"
+
+    # WITH the lock, the slow process cannot be inside the section while the fast one writes.
+    import fcntl
+    state.write_text(json.dumps({key: 0.0}))
+    holder = lock.open("a+")
+    fcntl.flock(holder.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    try:
+        with qsn.state_lock(lock) as status:
+            assert status == "busy"
+            # the losing process must not have written anything
+        assert qsn.load_seen(path=state) == {key: 0.0}
+    finally:
+        fcntl.flock(holder.fileno(), fcntl.LOCK_UN)
+        holder.close()
