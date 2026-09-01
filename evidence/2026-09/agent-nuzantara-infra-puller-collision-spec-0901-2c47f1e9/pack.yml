@@ -41,19 +41,23 @@ lanes:
 
 seat_diversity: NOT-SATISFIED
 seat_diversity_note: >-
-  STATED AS A GAP, NOT ARGUED AWAY. Every lane above is Anthropic-family: opus-5 conducting,
-  sonnet-5 grading. R9's Gear-3 council quorum requires distinct cross-family review seats and
-  this pack does not have them — measured, not assumed, on 2026-09-01 and re-measured 2026-09-02:
-  codex returns 401 Unauthorized (its OAuth token needs an interactive `codex login`, which is a
-  GUI action only the owner can perform) and kimi returns 403 weekly-limit. Only tp1-qwen3.8-max
-  answers, and one seat is not a quorum. R9 moved from NOTICE to hard violation on
-  R9_R11_ENFORCEMENT_DATE = 2026-09-02, i.e. today — so this pack is honest about failing it
-  rather than dressing a same-family review as a council. The blocker is owner-only and repo-wide:
-  it stops every Gear-3 PR, not this one.
+  ONE council seat rendered a judgement, and it said BLOCK. R9 wants two distinct seats from
+  (codex-gpt-5.6-sol, kimi-code/k3, tp1-qwen3.8-max) marked ok:true; this journal has one.
+  Measured 2026-09-02, and the earlier version of this note was WRONG in a way worth recording:
+  it said codex returns 401 and called the blocker owner-only and repo-wide. It does not. codex
+  answers in ~20s with a correct answer; it only LOOKED dead because scripts/arsenal_probe.py
+  applies a flat 15s DEFAULT_TIMEOUTS to every seat and codex-cli 0.149.1 now executes this repo's
+  hook chain before the model is reached — the probe measured "answers within 15s" and reported
+  "is the seat alive". So a whole class of Gear-3 PRs was believed owner-blocked on the strength
+  of an instrument answering a neighbouring question. kimi is genuinely 403 (weekly quota).
+  tp1-qwen3.8-max is LIVE on a trivial probe but returned HTTP 200 with ZERO bytes twice on this
+  diff, at full and reduced prompt length: a NON-JUDGEMENT, recorded as ok:false, never counted as
+  a clean review. The honest state is therefore one seat, not two — and since that seat's verdict
+  is BLOCK, the quorum question is downstream of a finding that has to be answered first.
 
 diff:
   files: 7
-  net_lines: 1346
+  net_lines: 1432
   measured_at: >-
     counted with `git diff --numstat --cached $(git merge-base origin/main HEAD)` — the CACHED
     form, not the three-dot one, and the difference is the whole point: the three files under
@@ -64,6 +68,27 @@ diff:
     other six are new.
 
 residual_risks:
+  - >-
+    THE CASE-FOLDING JOB IS NOT A REQUIRED CHECK, SO THE AXIS IS MEASURED AND NOT GATED. Found by
+    the independent Gear-3 gate, confirmed by measurement:
+    `gh api repos/Bali-Zero/Teman2/branches/main/protection --jq '.required_status_checks.contexts[]'`
+    returns 12 contexts, includes `antidotes`, and does NOT include
+    `collision-matrix-case-folding`. So a regression in the 14 rename_case_only cells goes red in
+    the run and blocks nothing — scar family #2, "Esiste != Armato", introduced by the very PR
+    that exists to end that shape on this surface. It is disclosed rather than silently fixed
+    because adding a required context is a branch-protection change that reaches every PR in the
+    repo: ledgered as `operator[github-settings]`. An earlier revision of this PR's own `Bites:`
+    line said "two required-check jobs" and was FALSE; it has been corrected.
+  - >-
+    THIS DIFF ARMS A SECOND CORPUS IT DID NOT WRITE, AND THIS PACK DID NOT SAY SO UNTIL AN
+    INDEPENDENT GRADER FOUND IT (added 2026-09-02). `scripts/pro/test_pro_git_pull.sh` — 55
+    assertions, pre-existing on origin/main since #2576, absent from this diff's own --numstat —
+    is wired into the `antidotes` job by the workflow hunk here, and had never been run by ANY
+    workflow before. That is a real CI-behaviour change beyond the instrument this pack is about,
+    and the omission is the more interesting half: the PR body disclosed it, the pack did not, so
+    the artifact a future reader would consult was the one that stayed silent. It is disclosed
+    rather than removed because arming an existing unrun corpus is the same concern as arming the
+    new one — but a reviewer must be told they are grading two, not one.
   - >-
     THE VERDICT COLUMN IS THE UNGUARDED HALF AND IT WAS MEASURED WRONG. On 2026-09-01 an
     independent audit graded it for the first time and found two false OK verdicts and forty
@@ -176,6 +201,37 @@ receipts:
     exit: 0
     ts: 2026-09-02T00:25Z
     seat: session (Pro)
+  - claim: >-
+      The runner ABORTS on an unmeasurable filesystem rather than guessing a coordinate - EXECUTED
+      by an independent grader, not read in the source as this pack previously claimed
+    cmd: >-
+      a fake `mktemp` placed earlier in PATH that always exits 1, forcing fs_folds_case()'s
+      `mktemp -d ... || return 2` to trip on the REAL unpatched script:
+      `PATH=/tmp/fakebin:$PATH bash scripts/pro/spec_collision_matrix.sh`
+    result: >-
+      "FATAL: the case-folding probe could not run (mktemp or /tmp unwritable). Refusing to guess:
+      an unmeasurable filesystem is not a case-sensitive one, and guessing drops the one axis that
+      pins a regression already on record." Exit 3.
+    exit: 3
+    ts: 2026-09-02T00:58Z
+    seat: claude-sonnet-5 (spalla-review, independent - generator != grader)
+  - claim: >-
+      --write-baseline REFUSES from a run that could not measure every axis, and leaves the
+      baseline BYTE-IDENTICAL - EXECUTED, not read
+    cmd: >-
+      fs_folds_case() body patched to `return 1` on a scratch COPY (every other line, including
+      the real fixture-building git operations, ran unmodified), then
+      `bash /tmp/spec_test_writebaseline.sh --baseline /tmp/baseline-test-copy.tsv
+      --write-baseline` followed by `diff` against the real baseline
+    result: >-
+      "REFUSING to write the baseline on a case-SENSITIVE filesystem: the rename_case_only axis is
+      out of scope here, and writing would drop its reviewed rows. Author the baseline on a
+      case-folding volume (any Mac in this fleet)." Exit 3, and `diff` printed nothing - the
+      scratch baseline was untouched. The refusal is not merely announced; it is observed to have
+      written nothing.
+    exit: 3
+    ts: 2026-09-02T00:56Z
+    seat: claude-sonnet-5 (spalla-review, independent - generator != grader)
 
 dissent:
   - seat: claude-sonnet-5 (matrix-refuter, fresh context)

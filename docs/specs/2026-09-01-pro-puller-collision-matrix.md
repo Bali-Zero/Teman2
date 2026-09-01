@@ -154,6 +154,14 @@ deleted, and aborting keeps the deletion while mutating nothing.
 
 ## How it is armed
 
+> **Armed on one leg only, and this is the honest statement of it.** `antidotes` (ubuntu) IS a
+> required context on `main`; `collision-matrix-case-folding` (macOS) is NOT — measured, not
+> assumed: `gh api repos/Bali-Zero/Teman2/branches/main/protection` returns 12 contexts and this
+> job is not among them. The 14 `rename_case_only` cells are therefore MEASURED on every run and
+> GATED on none: a regression there turns one job red and blocks no merge. Adding the context is a
+> branch-protection change (`operator[github-settings]`), tracked in the ledger rather than
+> claimed here. Until it lands, read this section as "88 cells are gated, 102 are measured".
+
 `spec_collision_matrix.sh` measures seven fields per cell and diffs them against
 `collision-matrix-baseline.tsv`. The baseline carries an eighth, human-written column: the
 verdict. The comparison is on fields 1-7 only, so the machine can never overwrite the

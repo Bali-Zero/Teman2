@@ -1377,16 +1377,29 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          # Same partial clone as the sibling job above, for the same measured
+          # reason (2,289 MB full vs 23.3 MB in 21s) and here it matters MORE,
+          # not less: this is the 10x-billed macOS runner. Omitted in the first
+          # revision of this job — caught by the Gear-3 gate, which noticed the
+          # sibling documents the flag as load-bearing while this job dropped it.
+          filter: blob:none
 
       - name: Does this PR touch the puller's collision surface?
         id: paths
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # merge_group carries its OWN base/head, under a different key. Reading
+          # only `pull_request.*` made both empty there, so the sentinel below fell
+          # straight through to `relevant=true` and this 10x-billed runner started
+          # on EVERY merge group in the repo — measured at 2m38s, and flatly
+          # contradicting the comment above that says it "starts only when this
+          # surface actually moves". Fail-open was the safe DIRECTION but it was
+          # not the stated behaviour, and the bill is real.
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         run: |
           if [ -z "$BASE_SHA" ] || [ -z "$HEAD_SHA" ]; then
             echo "relevant=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::no PR context — running the case-folding axis"
+            echo "::notice::no PR and no merge_group context — running the case-folding axis rather than skipping it (fail-open is the safe direction for a gate)"
             exit 0
           fi
           MB=$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || echo "$BASE_SHA")

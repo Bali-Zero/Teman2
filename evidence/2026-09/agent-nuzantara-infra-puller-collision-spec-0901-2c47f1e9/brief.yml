@@ -71,8 +71,15 @@ acceptance:
       IF the macOS runner were ever handed a case-SENSITIVE filesystem, the
       case-folding job SHALL go RED rather than measure 88 cells and pass -
       a green run there must mean the axis was actually exercised.
-    status: verified
-    probe: "step 'The runner's filesystem must actually fold case' emits ::error:: and exit 1 on a non-folding volume; observed emitting its positive branch 'runner folds case - the rename_case_only axis is in scope' @ bcd4643a6a"
+    status: unverified
+    probe: >-
+      NEGATIVE BRANCH NEVER FIRED, by anyone. Corrected 2026-09-02 after an independent grader
+      named this as the one criterion nobody exercised: GitHub's macos-latest is APFS, every
+      machine in this fleet is APFS, and the in-YAML step (unlike the in-script fs_folds_case(),
+      which WAS forced and is receipted) cannot be patched to take its other path. Only the
+      POSITIVE branch has been observed - 'runner folds case - the rename_case_only axis is in
+      scope' @ bcd4643a6a. The logic is three lines and correct by inspection, but inspection is
+      not a run, and this criterion previously said `verified` on the strength of one.
   - text: >
       WHERE the volume cannot be probed at all, the runner SHALL abort (exit
       3) rather than guess a coordinate it could not measure.
