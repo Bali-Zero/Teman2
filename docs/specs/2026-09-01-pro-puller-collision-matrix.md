@@ -122,6 +122,16 @@ defect blessed in writing, which the instrument then certifies forever. The guar
 reason on the optimistic side too, wherever `OK` is a CLAIM rather than an observation: content
 was set aside (`backup=file`) and the tracked path did not come back a regular file.
 
+**The motivating defect is not 4 cells, it is 16.** The table above groups by LOCAL state, which
+hides that one mechanism cuts across four of those groups: wherever the incoming action is a
+rename, git's rename detection hides the source from `git diff --name-only`, `resolve_collisions`
+is never handed the path, and `git merge --ff-only` refuses by itself. Measured across
+`modified`, `dangling_symlink`, `dir_at_path` and `symlink`: **no backup directory is created at
+all** — the resolver did not try and fail, it never ran. Twelve of those rows previously carried a
+reason blaming a missing branch inside the resolver, which is accurate for their non-rename
+siblings and false for them. It matters because a cure aimed at "add a branch for non-regular
+files" would leave every one of them untouched: the bug sits upstream of every branch.
+
 A wedge is `rc=1` with HEAD unmoved. Most are **permanent**: they repeat every five minutes
 and nothing red ever fires, which is why they survived this long. The four cells marked `OK`
 that also wedge are genuine fail-safes — origin has new content for a path the machine
