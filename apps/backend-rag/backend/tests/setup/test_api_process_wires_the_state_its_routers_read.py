@@ -368,6 +368,7 @@ class TestTheWiringActuallyRuns:
         from fastapi import FastAPI
 
         from backend.app.setup.service_initializer import initialize_garuda_services
+        from backend.services.garuda_documents.postgres_store import PostgresDocumentStore
 
         class _FakePool:
             """Adapters only stash the pool at construction; nothing is queried here."""
@@ -389,6 +390,24 @@ class TestTheWiringActuallyRuns:
         assert getattr(app.state, "garuda_magic_link_store", None) is not None
         assert getattr(app.state, "garuda_magic_session_verifier", None) is not None
 
+        # Documents lane (L5 hinge, PR #5526's postgres_store.py) — same proof
+        # shape as check_store above: a pool present must produce the REAL
+        # adapter, not the router's fail-closed sentinel.
+        document_store = getattr(app.state, "garuda_document_store", None)
+        assert document_store is not None, (
+            "initialize_garuda_services ran with a pool and left "
+            "garuda_document_store unset — the upload route would still "
+            "answer 503 PERSISTENCE_POLICY_UNAVAILABLE with a real pool present"
+        )
+        assert isinstance(document_store, PostgresDocumentStore), (
+            f"garuda_document_store is a {type(document_store).__name__}, not "
+            "PostgresDocumentStore — the placeholder (or something else) is "
+            "still what a request with a real pool would get"
+        )
+        assert type(document_store).__name__ != "_UnconfiguredDocumentStore", (
+            "the fail-closed placeholder is still what a request would get"
+        )
+
     @pytest.mark.asyncio
     async def test_it_never_raises_when_there_is_no_pool(self) -> None:
         """Boot safety, executed rather than argued.
@@ -406,4 +425,11 @@ class TestTheWiringActuallyRuns:
 
         assert getattr(app.state, "garuda_check_store", None) is None, (
             "with no pool the adapters must stay unset and the routes fail closed"
+        )
+        assert getattr(app.state, "garuda_document_store", None) is None, (
+            "with no pool garuda_document_store must stay UNSET, not assigned the "
+            "placeholder here — garuda_documents_router.py's own "
+            "get_document_store() already falls back to its module-level "
+            "_UnconfiguredDocumentStore whenever this key is unset. If this ever "
+            "reads a real store's type, the no-pool branch stopped fail-closing."
         )

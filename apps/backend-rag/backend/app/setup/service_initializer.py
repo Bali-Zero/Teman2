@@ -1481,28 +1481,45 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
             bool(garuda_xendit_secret_key),
         )
 
-    # 5.8 GARUDA VOA — document intake store wiring (L5 hinge, router-owned
-    # sentinel). Unconditional (no db_pool needed): L1's retention-covered
-    # store has not merged for `garuda_documents` (no migration exists —
-    # `garuda_documents/ports.py`'s own docstring says so), and LANES.md is
-    # explicit that a lane must not persist a row before L1 covers it.
-    # `garuda_documents/ports.py` therefore ships only `InMemoryDocumentStore`,
-    # whose own docstring forbids wiring it into a running service (an
-    # in-memory PII store is worse than no endpoint — PR #5120's ledger entry).
-    # Wiring `_UnconfiguredDocumentStore` here — the documents-lane analogue of
-    # `PostgresCheckStore`'s `UnconfiguredCheckStore` fallback at 5.6 above,
-    # minus the Postgres half, which does not exist yet for this table — means
-    # the route mounted by `garuda_documents_router.py` is live and testable
-    # today, and answers 503 PERSISTENCE_POLICY_UNAVAILABLE/SERVICE_UNAVAILABLE
-    # on every real request until L1 ships. Never raises: the sentinel takes no
-    # constructor arguments and touches no pool, so this needs no try/except.
-    from backend.app.routers.garuda_documents_router import _UnconfiguredDocumentStore
+    # 5.8 GARUDA VOA — document intake store wiring (L5 hinge). Gated on
+    # db_pool, same shape as 5.5/5.6 above: `PostgresDocumentStore` (migration
+    # 304) needs a real asyncpg pool at construction time, so with no pool
+    # there is nothing safe to build. CORRECTED 2026-09-02 — this block used
+    # to unconditionally wire `_UnconfiguredDocumentStore` here on the
+    # premise that "L1's retention-covered store has not merged for
+    # `garuda_documents`"; that premise is gone (PR #5526 shipped
+    # `postgres_store.py` + migration 304), so the fail-closed placeholder is
+    # no longer this file's job to construct — `garuda_documents_router.py`'s
+    # own `get_document_store()` already falls back to its module-level
+    # `_UnconfiguredDocumentStore` instance whenever `app.state.
+    # garuda_document_store` is unset, the exact same `getattr(...) or
+    # default` shape `get_garuda_check_store` uses. Leaving the key UNSET on
+    # the no-pool branch (rather than assigning the placeholder here too) is
+    # deliberate: it matches 5.5's magic-link idiom above, and it means this
+    # file no longer needs to import the router's private sentinel class at
+    # all — the router owns its own fail-closed default, this file only ever
+    # wires the real thing.
+    if db_pool is not None:
+        try:
+            from backend.services.garuda_documents.postgres_store import PostgresDocumentStore
 
-    app.state.garuda_document_store = _UnconfiguredDocumentStore()
-    logger.info(
-        "ℹ️ GARUDA VOA document store wired fail-closed (L1 retention-covered store "
-        "not merged yet for garuda_documents — see garuda_documents_router.py docstring)"
-    )
+            # Read independently rather than reusing an earlier block's local
+            # `garuda_environment` — same reasoning as 5.6's own comment: this
+            # block must not silently no-op just because a DIFFERENT domain's
+            # wiring failed first.
+            garuda_environment_for_documents = (
+                os.environ.get("GARUDA_ENVIRONMENT", "PRODUCTION").strip() or "PRODUCTION"
+            )
+            app.state.garuda_document_store = PostgresDocumentStore(
+                db_pool, environment=garuda_environment_for_documents
+            )
+            logger.info("✅ GARUDA VOA document store wired")
+        except Exception as e:
+            logger.warning(
+                "⚠️ GARUDA VOA document store wiring failed (non-critical, fail closed): %s", e
+            )
+    else:
+        logger.warning("⚠️ GARUDA VOA document store wiring skipped: no db_pool (fail closed)")
 
 
 async def initialize_services(app: FastAPI) -> None:

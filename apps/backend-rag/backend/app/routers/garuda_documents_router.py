@@ -29,10 +29,24 @@ must not pretend to: `get_document_store()` below defaults to
 `garuda_flow.public_api.UnconfiguredCheckStore` — every real call answers 503
 `PERSISTENCE_POLICY_UNAVAILABLE`/`SERVICE_UNAVAILABLE`, and OCR is never reached
 in that path (the store rejection happens before `service.submit_document` gets
-to the OCR call). The moment L1 ships a real `DocumentStorePort` adapter and (2)
-is resolved, swapping `app.state.garuda_document_store` in `service_initializer.py`
-is the only change needed — no router or contract edit — exactly the seam
-`garuda_flow/public_api.py`'s own module docstring describes for CheckStore.
+to the OCR call). The moment L1 ships a real `DocumentStorePort` adapter, (1) is
+resolved by swapping `app.state.garuda_document_store` in
+`service_initializer.py` — exactly the seam `garuda_flow/public_api.py`'s own
+module docstring describes for CheckStore.
+
+CORRECTED 2026-09-02: the previous paragraph claimed the swap needs "no router
+or contract edit". That was true against the `DocumentStorePort` this router
+was written against, and stopped being true the moment PR #5526 threaded a
+required, non-defaulted `actor_id` keyword through `ports.py`/`service.py` to
+close a cross-actor idempotency-key collision — a store swap alone left every
+call site here calling the new shape with one argument short, failing with a
+raw `TypeError`/500 before ever reaching this router's own 503 handling (see
+`_UnconfiguredDocumentStore`'s docstring). `upload_intake_document`'s call to
+`service.submit_document` and `_ReplayTrackingStore`'s two methods were
+updated in the same change that wired the real store, so this file is current
+with `ports.py` again — but the seam is no longer contract-stable across a
+store swap alone, and the next `DocumentStorePort` signature change will need
+the same three call sites revisited.
 """
 
 from __future__ import annotations
@@ -177,20 +191,37 @@ class _UnconfiguredDocumentStore:
     `garuda_flow.public_api.UnconfiguredCheckStore`.
 
     Not a placeholder to delete later: it is the correct behaviour for as long
-    as no retention-covered store exists for `garuda_documents` (module
-    docstring above). Holds no bytes and no state; every call raises
-    `_PersistenceUnavailable`, which the handlers below map to the contract's
-    503 codes. `list_for_actor` is not part of `DocumentStorePort` (`ports.py`
-    has no enumeration method at all — a genuine gap, not an oversight this
-    router papers over); it is this router's own minimal extension so
-    `listIntakeDocuments` has something to call, structurally satisfied by
-    duck typing rather than a change to L5's frozen `ports.py`.
+    as `app.state.garuda_document_store` is unset (no db_pool at wiring time —
+    `service_initializer.py::initialize_garuda_services`). Holds no bytes and
+    no state; every call raises `_PersistenceUnavailable`, which the handlers
+    below map to the contract's 503 codes. `list_for_actor` is not part of
+    `DocumentStorePort` (`ports.py` has no enumeration method at all — a
+    genuine gap, not an oversight this router papers over); it is this
+    router's own minimal extension so `listIntakeDocuments` has something to
+    call, structurally satisfied by duck typing rather than a change to
+    `ports.py`.
+
+    `actor_id` is accepted (never used — every call raises before touching
+    it) purely to keep this Protocol-shaped fake callable the same way
+    `service.py` calls a real `DocumentStorePort`: PR #5526 threaded a
+    required, non-defaulted `actor_id` keyword through `ports.py`/`service.py`
+    to close a cross-actor idempotency-key collision, and a fake missing the
+    parameter fails with `TypeError` at the call site — BEFORE its body ever
+    raises `_PersistenceUnavailable` — which reaches the caller as a raw 500,
+    not this store's documented 503. Measured empirically 2026-09-02: this was
+    exactly the shape of the regression, not a hypothetical.
     """
 
-    async def get_existing(self, _idempotency_key: str, _payload_hash: str) -> DocumentOutcome | None:
+    async def get_existing(
+        self, _idempotency_key: str, _payload_hash: str, *, actor_id: str
+    ) -> DocumentOutcome | None:
+        del actor_id  # unused — every call raises before it would matter
         raise _PersistenceUnavailable()
 
-    async def commit(self, _idempotency_key: str, _payload_hash: str, _outcome: DocumentOutcome) -> bool:
+    async def commit(
+        self, _idempotency_key: str, _payload_hash: str, _outcome: DocumentOutcome, *, actor_id: str
+    ) -> bool:
+        del actor_id  # unused — every call raises before it would matter
         raise _PersistenceUnavailable()
 
     async def list_for_actor(self, _actor: str) -> list[dict]:
@@ -224,20 +255,30 @@ class _ReplayTrackingStore:
     second `get_existing` call after `commit` loses a race) — correct: the response
     the caller receives there IS a previously (concurrently) committed outcome, not
     freshly produced by this call, which is exactly what the header promises.
+
+    Forwards `actor_id` unchanged (PR #5526 made it a required keyword on
+    `DocumentStorePort` — see `_UnconfiguredDocumentStore`'s docstring for why
+    a wrapper that drops it breaks every caller with a `TypeError`, not a
+    documented error shape): this class adds observation only, never a second
+    scoping decision the real store underneath already makes.
     """
 
     def __init__(self, inner: DocumentStorePort) -> None:
         self._inner = inner
         self.replayed = False
 
-    async def get_existing(self, idempotency_key: str, payload_hash: str) -> DocumentOutcome | None:
-        existing = await self._inner.get_existing(idempotency_key, payload_hash)
+    async def get_existing(
+        self, idempotency_key: str, payload_hash: str, *, actor_id: str
+    ) -> DocumentOutcome | None:
+        existing = await self._inner.get_existing(idempotency_key, payload_hash, actor_id=actor_id)
         if existing is not None:
             self.replayed = True
         return existing
 
-    async def commit(self, idempotency_key: str, payload_hash: str, outcome: DocumentOutcome) -> bool:
-        return await self._inner.commit(idempotency_key, payload_hash, outcome)
+    async def commit(
+        self, idempotency_key: str, payload_hash: str, outcome: DocumentOutcome, *, actor_id: str
+    ) -> bool:
+        return await self._inner.commit(idempotency_key, payload_hash, outcome, actor_id=actor_id)
 
 
 async def _require_magic_session_actor(request: Request) -> str:
@@ -497,6 +538,7 @@ async def upload_intake_document(
             declared_media_type=declared_media_type,
             document_kind=document_kind,
             idempotency_key=scoped_key,
+            actor_id=actor,
         )
     except UnsupportedMediaTypeError as exc:
         raise HTTPException(
