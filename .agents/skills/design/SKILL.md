@@ -50,9 +50,17 @@ whether it is TRUE.
 - **The August filing count** (`47 KITAS / 9 PT PMA`) is a SHAPE, not a measurement.
   Replace with the real CRM figure or delete the clause. Its methodology line
   (counted on submission, not approval; as-of date) is correct and must survive.
-- **`since 2019` vs `since 2020`** contradict each other across `apps/mouth`
-  (10 vs 14 occurrences), and `lib/trust-figures.ts` contradicts `app/layout.tsx`.
-- **Five live `#1` claims** in `(marketing)/page.tsx` and `layout.tsx` — blocklist class.
+- **`since 2019` vs `since 2020`** contradict each other in the live marketing
+  copy: `apps/mouth/src/lib/trust-figures.ts` says in its own docstring that the
+  "5,000+ clients since 2019" claim has no verifiable source in any system we
+  run, while `apps/mouth/src/app/layout.tsx:49,98` publishes "5000+ clients
+  since **2020**". Same claim, two years, one of them disowned by the file that
+  owns the figures. No repo-wide count is given on purpose — a bare grep for
+  "since 2020" also catches KBLI regulatory dates in `.mdx`/`.json`, so any
+  headline number here would be measuring the wrong thing.
+- **Five live `#1` claims** in `(marketing)/page.tsx` (2) and `layout.tsx` (3) —
+  blocklist class. A raw grep returns 8; three are false positives (the hex
+  colour `#16213a` and two `#1216` issue references).
 - The 5-LLM contest vote.
 
 ## 2. The doctrine, in four rules
@@ -105,10 +113,12 @@ to a photograph and a working answer.
 8. **Prices come from PricingTool only** (CLAUDE.md golden rule #11), and the
    stores disagree: `practice_types.base_price` diverges from the sheet on
    `B1 - VOA` (750k vs 790k). A mockup shows no price.
-9. **Client PII never reaches a mockup.** The one clean-consent image class is
-   `apps/mouth/public/static/team/*.jpg` — staff cards, carrying their own name
-   and role. The immigration-queue photograph in the same tree shows ~15–20
-   identifiable strangers and must NOT be published.
+9. **Client PII never reaches a mockup.** The one clean-consent image class of
+   PEOPLE is `apps/mouth/public/static/team/*.jpg` — staff cards, carrying their
+   own name and role. The immigration-queue photograph in the same tree shows
+   ~15–20 identifiable strangers and must NOT be published. The hero,
+   `static/news/perfect-storm-bali.jpg`, is landscape with no identifiable
+   person and is the one non-staff image this corner uses.
 
 ## 4. What is here
 
