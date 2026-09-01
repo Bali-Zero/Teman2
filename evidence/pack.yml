@@ -1,229 +1,59 @@
 brief_ref: evidence/brief.yml
-plan_ref: "close the harness-floor Gear-3 evidence gap on PR 4645 (branch
-  agent/nuzantara/ops/seat6-reflexion), whose code fix was already diagnosed and
-  committed before this session started (Zero ruling 2026-08-23) — this pack is
-  written post-hoc by a session independent of that authorship, mirroring the
-  same-lineage packs already written for PR 4640 and PR 4644"
+plan_ref: "pro-visa-freshness-sentinel.sh wrapper header self-reference fix, split out of PR #4592 (2026-08-23)"
 diff:
-  behaviour_change:
-    "additive only: the seat loop's exclusive upper bound moves from 6 to 7
-    (reaching slot 6 for the first time), and the Team label moves from slot 5 to
-    slot 6 — same fallback-of-last-resort semantics, correct slot now. The
-    test_claude_cascade_shell.py repair changes only test expectations, not
-    production behaviour."
-  net_lines:
-    "measured merge-base-anchored, CUMULATIVE with unmerged siblings #4640 and
-    #4644: +384/-134, net +250; 19 files changed (eca4b258e..b9e5bddb7,
-    git diff --numstat). This session's own 2 commits, isolated (parent
-    4d8050f45, the seat6-cascade tip this branch forked from, to HEAD): +32/-12
-    net +20 across 3 files."
+  net_lines: "+2/-2, 1 file, measured by `git show HEAD --numstat` at HEAD f27cb936f (this PR's only commit)."
+  behaviour_change: "none — two `#` comment lines only; `set -u` and every executable line byte-identical before/after"
 receipts:
-  - claim: "PR 4645 (branch agent/nuzantara/ops/seat6-reflexion), merge-base
-      anchored against origin/main, touches 19 files: 384 insertions, 134
-      deletions (cumulative with unmerged #4640 and #4644)"
-    cmd: 'MERGE_BASE=$(git merge-base origin/main HEAD); git diff --no-renames --numstat "$MERGE_BASE" HEAD | awk ''{a+=$1; d+=$2} END {print "added="a" deleted="d" net="a-d}'''
+  - claim: "The diff is exactly the two header comment lines; ORGAN_ID and LOG_DIR (legitimate underscores) are untouched"
+    cmd: "git show HEAD --numstat -- infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh"
     exit: 0
-    ts: "2026-08-23T09:16:23Z"
-    seat: "session (nuzantara)"
-    output: "added=384 deleted=134 net=250"
-  - claim: "isolated to this session's own 2 commits (parent 4d8050f45, the
-      seat6-cascade branch tip this branch forked from): 3 files, +32/-12"
-    cmd: "git diff --no-renames --stat 4d8050f45 HEAD -- scripts/wr3_reflexion_synthesis.py scripts/tests/test_wr3_reflexion_oauth_fleet.py scripts/tests/test_claude_cascade_shell.py"
+    ts: "2026-08-23T10:31:22Z"
+    seat: "session (m5)"
+  - claim: "The old header named a file that has never existed: repo history never has the underscore path; the live Pro copy resolves the hyphen path; the plist's ProgramArguments uses the hyphen path"
+    cmd: "grep -c pro-visa_freshness_sentinel.sh infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh (post-fix, ->0); ssh pro 'ls ~/scripts/pro-visa-freshness-sentinel.sh' (exists) and 'ls ~/scripts/pro-visa_freshness_sentinel.sh' (No such file or directory); ssh pro 'launchctl print gui/501/com.nuzantara.visa-freshness-sentinel' shows program ~/scripts/pro-visa-freshness-sentinel.sh"
     exit: 0
-    ts: "2026-08-23T09:18:20Z"
-    seat: "session (nuzantara)"
-    output: "3 files changed, 32 insertions(+), 12 deletions(-)"
-  - claim: "the diagnosed fix itself, isolated to the reflexion cron's own 2
-      files, is exactly range(1, 6) -> range(1, 7) and the matching
-      slot5-team -> slot6-team label rename, +19/-10 across 2 files"
-    cmd: "git diff --no-renames --stat 4d8050f45 50c43364b"
+    ts: "2026-08-23T10:32Z"
+    seat: "session (m5)"
+  - claim: "infra/home-fork/declared-pairs.json pair[146] already declares the hyphen form on both live and repo sides for this organ -- scripts/lint_home_fork.py was never blind to the real pair, only the wrapper's own header comment was wrong"
+    cmd: 'python3 -c "import json; d=json.load(open(''infra/home-fork/declared-pairs.json'')); print(d[146])" -> {''live'': ''~/scripts/pro-visa-freshness-sentinel.sh'', ''repo'': ''infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh'', ''machines'': [''pro'']}'
     exit: 0
-    ts: "2026-08-23T09:16:23Z"
-    seat: "session (nuzantara)"
-    output: "2 files changed, 19 insertions(+), 10 deletions(-)"
-  - claim: "scripts/tests/test_wr3_reflexion_oauth_fleet.py — the file's own,
-      dedicated coverage for _collect_claude_seats() / _run_claude_fleet(): 7
-      passed"
-    cmd: "cd ~/nuzantara/.worktrees/ops-seat6-consumers && source apps/backend-rag/.venv/bin/activate && python3 -m pytest scripts/tests/test_wr3_reflexion_oauth_fleet.py -q"
+    ts: "2026-08-23T10:29Z"
+    seat: "session (m5)"
+  - claim: "No script in the repo parses the # Canon: / # Live: comment lines back out of an EXISTING wrapper to do anything functional. The only other hit for the literal 'Canon:' in scripts/*.py is scripts/organ_birth.py:80, and that line is inside wrapper_template() -- an f-string that GENERATES a new wrapper's header text at organ-birth time, never a reader of an existing file"
+    cmd: "grep -rl 'Canon:' scripts/*.py -> scripts/organ_birth.py only; sed -n '75,85p' scripts/organ_birth.py confirms it is inside an f-string head='''...''' template, not a file read"
     exit: 0
-    ts: "2026-08-23T09:16:23Z"
-    seat: "session (nuzantara)"
-    output: "7 passed in 0.85s"
-  - claim: "the range(1, 7) + slot6-team fix is load-bearing: reverting it to
-      range(1, 6) + slot5-team in a scratch copy (never committed) turns exactly
-      2 of the 7 tests red — test_slot6_team_succeeds_after_quota_auth_empty_and_429
-      and test_token_chain_is_deduplicated_and_keychain_is_last — with the file
-      restored from a pre-revert backup immediately after"
-    cmd: "cd ~/nuzantara/.worktrees/ops-seat6-consumers && cp scripts/wr3_reflexion_synthesis.py /tmp/backup && python3 - <<'PYEOF'\npath='scripts/wr3_reflexion_synthesis.py'; c=open(path).read(); c2=c.replace('for slot in range(1, 7):','for slot in range(1, 6):').replace('\"slot6-team\" if slot == 6','\"slot5-team\" if slot == 5'); open(path,'w').write(c2)\nPYEOF\nsource apps/backend-rag/.venv/bin/activate && python3 -m pytest scripts/tests/test_wr3_reflexion_oauth_fleet.py -q; cp /tmp/backup scripts/wr3_reflexion_synthesis.py"
-    exit: 1
-    ts: "2026-08-23T09:12:00Z"
-    seat: "session (nuzantara)"
-    output: "2 failed, 5 passed in 0.88s -- confirms the load-bearing claim in
-      the diagnosis handed to this session, rather than accepting the commit
-      message's own claim unverified"
-  - claim: "scripts/tests/test_claude_oauth_slot6_coverage.py — the 16-consumer
-      cross-file coverage census (wr3_reflexion_synthesis.py is deliberately NOT
-      one of its censused consumers; it has its own dedicated test file): 31
-      passed"
-    cmd: "cd ~/nuzantara/.worktrees/ops-seat6-consumers && python3 -m pytest scripts/tests/test_claude_oauth_slot6_coverage.py -q"
+    ts: "2026-08-23T10:33Z"
+    seat: "session (m5)"
+  - claim: "python3 scripts/lint_home_fork.py passes (no regression) and bash -n is clean on the fixed file"
+    cmd: "python3 scripts/lint_home_fork.py -> '25 live copy/copies match their repo twin' + 'clean' on the 1 undeclared-payload discovery pass; bash -n infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh -> exit 0, no output"
     exit: 0
-    ts: "2026-08-23T09:16:24Z"
-    seat: "session (nuzantara)"
-    output: "31 passed in 0.10s"
-  - claim: "scripts/tests/test_claude_cascade_shell.py had 2 of 62 tests RED
-      against this PR's own diff BEFORE this session's fix -- the SAME 2 tests
-      PR 4644 already fixed once on commit cd01a1ffc, reintroduced here by a
-      branch-topology gap (this branch forked from 4d8050f45, before cd01a1ffc
-      existed on the sibling branch) -- independently confirmed against this
-      PR's own live required CI check, not inferred from #4644's history"
-    cmd: "gh run view 32628773506 --repo Bali-Zero/Teman2 --log-failed"
+    ts: "2026-08-23T10:29Z"
+    seat: "session (m5)"
+  - claim: 'The organ stays ARMED and unaffected: Pro''s launchd job is loaded, last_seen is fresh, and today''s run already reports pack_source:"database" -- this comment edit needs no restart/redeploy'
+    cmd: 'ssh pro ''launchctl print gui/$(id -u)/com.nuzantara.visa-freshness-sentinel'' (loaded, program path correct); ssh pro ''cat ~/.organism/last_seen/pro.visa_freshness_sentinel.json'' -> {"ts":"2026-08-22T21:58:09Z","status":"ok","note":"run done"}; ssh pro ''tail -5 ~/logs/pro-visa_freshness_sentinel/run.log'' -> pack_sequence 12, pack_source "database"'
     exit: 0
-    ts: "2026-08-23T08:54:00Z"
-    seat: "session (nuzantara)"
-    output:
-      "2 failed, 60 passed in 15.54s -- test_explicit_order_reaches_team_then_legacy_then_keychain
-      (AssertionError: 'team-wrapper' != 'legacy' at index 5) and
-      test_team_wrapper_is_only_used_when_explicit_team_token_is_absent (assert
-      'used: claude-token-5-team-wrapper' in stderr, actual stderr already said
-      'claude-token-6-team-wrapper')"
-  - claim: "reproduced the same 2 failures locally, byte-for-byte matching CI's
-      own failure text, before writing the fix"
-    cmd: "cd ~/nuzantara/.worktrees/ops-seat6-consumers && python3 -m pytest scripts/tests/test_claude_cascade_shell.py -q"
-    exit: 1
-    ts: "2026-08-23T08:56:30Z"
-    seat: "session (nuzantara)"
-    output: "2 failed, 60 passed in 46.94s"
-  - claim: "after fixing the 2 stale assertions (insert the slot-6 team-wrapper
-      step into the expected label chain; correct the stale
-      claude-token-5-team-wrapper string to claude-token-6-team-wrapper), the
-      full file is 62/62 green"
-    cmd: "cd ~/nuzantara/.worktrees/ops-seat6-consumers && python3 -m pytest scripts/tests/test_claude_cascade_shell.py -q"
-    exit: 0
-    ts: "2026-08-23T09:16:25Z"
-    seat: "session (nuzantara)"
-    output: "62 passed in 48.69s"
-  - claim: "grep sweep of the whole repo for the stale patterns
-      (slot5-team / claude-token-5-team / range(1, 6)) beyond this PR's own 2
-      target files finds only: (a) generic unrelated range(1, 6) loops in
-      unrelated code (weekday indices, retry counters, KBLI reservation
-      fixtures, exit-code loops -- none seat-related), (b) tests for consumers
-      #4640/#4644 already fixed and independently re-run green here
-      (zantara-gateway/test_claude_client.py: 24 passed,
-      tests/nlm_deep_research/test_t4_monitor.py: 24 passed,
-      apps/backend-rag/.../test_wr2_html_render_apply.py: all green,
-      scripts/tests/test_wr3_dispatch_v2_oauth_fleet.py: 8 passed), and (c) 3
-      pre-existing, unrelated test failures in
-      test_claude_oauth_runtime_fallback.py (see brief.yml risks) confirmed NOT
-      caused by this PR/#4640/#4644 by reverting the one relevant wrapper line
-      in a scratch copy and observing the same 3 failures unchanged"
-    cmd: "cd ~/nuzantara/.worktrees/ops-seat6-consumers && grep -rn 'slot5-team\\|claude-token-5-team\\|range(1, 6)\\|range(1,6)' --include='*.py' --include='*.sh' . 2>/dev/null"
-    exit: 0
-    ts: "2026-08-23T09:05:00Z"
-    seat: "session (nuzantara)"
-  - claim: "python3 -m py_compile scripts/wr3_reflexion_synthesis.py: clean, no
-      syntax defect introduced"
-    cmd: "cd ~/nuzantara/.worktrees/ops-seat6-consumers && python3 -m py_compile scripts/wr3_reflexion_synthesis.py"
-    exit: 0
-    ts: "2026-08-23T09:17:31Z"
-    seat: "session (nuzantara)"
-dissent:
-  - seat: "session (nuzantara), reviewing a diff it did not author"
-    objection:
-      "Does the diagnosis handed to this session (a 2-file, self-contained fix
-      to wr3_reflexion_synthesis.py) actually hold when this PR's own required
-      CI is checked, not just the file the diagnosis named?"
-    status: CONFIRMED
-    note: "CONFIRMED as a real gap: 2 of 62 tests in
-      scripts/tests/test_claude_cascade_shell.py were RED against this PR's own
-      diff, visible on this PR's own required 'antidotes' check
-      (run 32628773506) -- the SAME 2 tests PR 4644 already fixed once, on a
-      commit (cd01a1ffc) this branch never inherited because it forked from an
-      earlier point on the seat6-cascade lineage. Not part of the diagnosis
-      handed to this session. Fixed in a separate commit (b9e5bddb7) before this
-      evidence pack."
-  - seat: "session (nuzantara), reviewing its own fix"
-    objection:
-      "Is the test_claude_cascade_shell.py fix a genuine re-derivation from
-      this PR's own CI failure, or did it just copy #4644's fix text without
-      verifying it still applies to this branch's own state (which could be
-      subtly different, e.g. if this branch's cascade.sh differs from
-      #4644's)?"
-    status: RETRACTED
-    note: "Checked: this branch's infra/launchagents/wrappers/claude-cascade.sh
-      is byte-identical to #4644's (both inherit it from the same commit
-      4d8050f45, and this session never modified it) -- so the fix IS the same
-      fix, correctly, not a coincidence. Verified independently anyway by
-      reading claude-cascade.sh's own compat-branch logic (lines ~838-861) and
-      reproducing the exact stderr string it emits, rather than trusting
-      #4644's pack.yml prose alone."
-  - seat: "session (nuzantara), reviewing a diff it did not author"
-    objection:
-      "The diagnosis claims this is the LAST of 3 stale consumers (#4640, #4644,
-      #4645). Is that actually true, or does another live consumer still carry
-      range(1, 6) / slot5-team that nobody has found yet?"
-    status: PLAUSIBLE
-    note: "Not falsified, but not exhaustively provable either: the grep sweep
-      (receipt above) found no OTHER seat-cascade consumer with the stale
-      pattern outside what #4640/#4644/#4645 already cover, and
-      test_claude_oauth_slot6_coverage.py's 16-consumer census (31 passed) is
-      independent corroboration for the consumers it censuses. But a consumer
-      that reaches CLAUDE_CODE_OAUTH_TOKEN via a DIFFERENT code shape (not a
-      numbered range/tuple loop, e.g. reading a config file or an env-var list
-      built elsewhere) would not surface in a textual grep for 'range(1, 6)' at
-      all. Left PLAUSIBLE rather than CONFIRMED or RETRACTED because this
-      session did not attempt a semantic (non-textual) audit of every seat
-      consumer in the repo -- that would be a materially larger task than the
-      one handed down."
-  - seat: "session (nuzantara), reviewing this pack's own risk disclosure"
-    objection:
-      "The 3 pre-existing test_claude_oauth_runtime_fallback.py failures — are
-      they really unrelated, or does this PR's diff make them WORSE (e.g. a
-      longer timeout, an extra hang) even if it didn't cause them outright?"
-    status: RETRACTED
-    note: "Checked by reverting ONLY the #4640 wrapper change
-      (infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh's 1-line
-      CLAUDE_CODE_OAUTH_TOKEN_6 addition) in a scratch copy and re-running the
-      3 tests: all 3 still failed, with the identical subprocess.TimeoutExpired
-      after 10 seconds -- same shape, same duration, same failure mode.
-      wr3_reflexion_synthesis.py (this PR's own target) is not exercised by
-      these 3 tests at all."
-residual_risks:
-  - "This PR's diff, evaluated today while #4640 and #4644 are still open, is
-    cumulative with both (GitHub PR-diff semantics for a stacked, unmerged
-    branch) -- once they merge and this branch rebases/updates, this PR's own
-    diff against main will narrow to just its 2 substantive commits. Not a
-    defect, a reading note for whoever reviews this pack before the siblings
-    merge."
-  - "No runtime behaviour change to verify live: slot 6 only activates on an
-    actual quota/auth failure cascade through slots 1-5 in the weekly reflexion
-    cron, which does not occur under normal operation -- the hermetic test
-    suite (7 + 31 + 62 = 100 tests across the 3 files this diff touches or
-    repairs) is the available proof, not a live cron run. Same disclosure as
-    the sibling #4640/#4644 packs."
-  - "3 pre-existing, unrelated test failures in
-    test_claude_oauth_runtime_fallback.py remain unfixed (see dissent above and
-    brief.yml risks) -- flagged, not silently left out of this pack."
-sources:
-  - "Team lead mandate (this session, 2026-08-23): diagnosis of harness-floor
-    FAILURE on PR 4645, code fix already committed, evidence pack requested."
-  - "GitHub Actions run 32628773506 ('antidotes' / 'Codex seat corpus (two paid
-    subscriptions, and a 401 default seat)') -- independent confirmation of the
-    test_claude_cascade_shell.py regression on THIS PR, read via
-    gh run view --log-failed, not inferred from #4644's history."
-  - "evidence/brief.yml + evidence/pack.yml from PR 4644 (seat6-cascade, commit
-    6b405786f on origin) -- same-lineage sibling pack, referenced for the fix
-    style and for confirming this is a re-derivation, not a fresh invention."
+    ts: "2026-08-23T10:30Z"
+    seat: "session (m5)"
 tests:
-  - "scripts/tests/test_wr3_reflexion_oauth_fleet.py -q -> 7 passed."
-  - "scripts/tests/test_claude_oauth_slot6_coverage.py -q -> 31 passed."
-  - "scripts/tests/test_claude_cascade_shell.py -q -> 62 passed (2 were RED
-    against this branch's own diff before this session's fix; receipts above)."
+  - "No unit test exists or is warranted for a 2-line comment change with zero executable delta; bash -n (syntax) and lint_home_fork.py (the ONE guard whose job includes this file's identity) are the applicable checks and both pass, per receipts above."
 static:
-  - "python3 -m py_compile scripts/wr3_reflexion_synthesis.py -> exit 0
-    (receipt above)."
+  - "bash -n infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh -> clean"
+  - "scripts/lint_home_fork.py -> clean (25/25 checkable pairs on m5 match; this pair is pro-only so its LIVE side is not checkable from m5 -- see dissent #3 below for the post-merge consequence)"
 runtime_proof:
-  - "None claimed: the slot-6 fallback path is exercised only by the hermetic
-    test corpus, never against a live account -- consistent with the sibling
-    #4640/#4644 packs' same disclosure."
+  - "Not applicable in the classic sense (no code path executes differently). The closest runtime proof is that the organ this wrapper launches is independently confirmed ARMED and HEALTHY on Pro before and after this diff (receipts above) -- the fix changes documentation the organ never reads."
+dissent:
+  - seat: "kimi-code/k3 (Moonshot, cross-family, fresh context, dispatched via `kimi -p ... -m kimi-code/k3`, independent of the diff's author)"
+    objection: "Tried to refute all 4 of the author's claims by re-running the underlying commands itself (git show --numstat, ssh pro ls/launchctl, python declared-pairs read, grep Canon: across scripts/*.py and .github/workflows/) rather than trusting the brief. All 4 confirmed true. Found 3 things beyond the claims, none blocking: (a) evidence/brief.yml existed in the worktree but was UNCOMMITTED at review time -- a real process gap, since the whole reason this fix was split out of #4592 was to carry a floor-3 evidence pack; (b) the root cause is unfixed and will recur: scripts/organ_birth.py:80's wrapper_template() does organ_id.replace('.', '-'), which only replaces the dot and leaves internal underscores alone, so ANY future organ_id containing '_' is born with the same wrong header; 3 sibling wrappers carry the identical live bug today (pro-tg-digest-flush.sh, pro-git-pull-main.sh, pro-llm-burn-alarm.sh -- declared-pairs indices 32/68/151), correctly left untouched by this PR's tight scope but flagged so the pattern is not lost; (c) merging this diff will transiently desynchronize declared-pairs pair[146] -- the live copy on Pro still carries the pre-fix underscore header (confirmed by ssh), so lint_home_fork.py --check run FROM PRO will read the pair as sha256-divergent until the repo-authoritative content is synced to the live path; expected/self-healing under the existing repo-is-canon model, not a defect of this diff, but the sync should be confirmed rather than assumed."
+    status: PLAUSIBLE
+residual_risks:
+  - "The organ_birth.py:80 template bug (dot-only replace, underscores in organ_id survive into the generated header) is NOT fixed here -- deliberately out of scope for a 2-line self-reference correction. 3 sibling wrappers (pro-tg-digest-flush.sh, pro-git-pull-main.sh, pro-llm-burn-alarm.sh) carry the same wrong header today and any future organ with an underscore in its id will be born with it again. A follow-up PENDING-ARMS line is warranted; not opened in this PR to keep scope tight (constraints in brief.yml)."
+  - "Transient post-merge divergence: until the live copy on Pro (~/scripts/pro-visa-freshness-sentinel.sh) is synced from the repo-authoritative content, `scripts/lint_home_fork.py --check` run on Pro will report pair[146] as sha256-divergent (comment-only bytes differ). This is the normal repo-is-canon flow and self-heals on the next sync of this pair -- confirmed the sync mechanism exists (this repo has synced this exact pair before, per the pair's own presence in declared-pairs.json since the organ's birth) but did NOT independently re-verify a sync fires automatically post-merge; flagged rather than assumed."
+sources:
+  - infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh (this PR's only changed file)
+  - infra/home-fork/declared-pairs.json (pair[146], read-only reference)
+  - scripts/organ_birth.py:75-85 (read-only reference, root-cause template)
+  - Pro live state via ssh (launchctl, last_seen json, run.log) -- re-verified fresh this session, not recalled
 pii_scan: clean
-size_tokens: 3544
+# ESTIMATE per fleet-order-spec.md §5 convention: raw bytes / 4. Measured `wc -c evidence/pack.yml`
+# at write time = 7701 bytes -> ~1925 tokens, well inside the 30,000 hard cap.
+size_tokens: 1925
