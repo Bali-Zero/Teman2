@@ -174,7 +174,15 @@ def test_a_step_actually_executes_the_guard_file():
     sol, 2026-08-31): path-list coverage alone does not prove a STEP invokes
     pytest against the guard file. Requiring the literal 'pytest' token in
     the SAME run text as the filename excludes a step that only MENTIONS the
-    file (e.g. in a pathspec list or a comment) without ever running it."""
+    file (e.g. in a pathspec list or a comment) without ever running it.
+
+    Requires BOTH guard files' names (not just the arithmetic guard's) in the
+    same matching run text — codex-gpt-5.6-sol council finding, 2026-09-02:
+    an earlier draft checked only for
+    test_self_reporting_cron_own_plist_margin.py, so a step edit that dropped
+    THIS file's own name from the pytest invocation line (while keeping its
+    sibling's) would leave this very test — this file's sole proof that CI
+    still runs it — silently passing while its own executor was gone."""
     data = _load_workflow()
     run_texts = _read_conformance_job_run_texts(data)
     matching = [
@@ -182,11 +190,13 @@ def test_a_step_actually_executes_the_guard_file():
         for t in run_texts
         if "pytest" in t
         and "test_self_reporting_cron_own_plist_margin.py" in t
+        and "test_self_reporting_cron_workflow_wiring.py" in t
     ]
     assert matching, (
         f"{WORKFLOW_PATH.relative_to(REPO_ROOT)}: no step in "
         "jobs.conformance.steps has a 'run:' body invoking pytest against "
-        "test_self_reporting_cron_own_plist_margin.py — the path lists can "
-        "be perfectly wired while no step actually runs this guard (a mere "
-        "MENTION of the filename, e.g. in a comment, does not count)"
+        "BOTH test_self_reporting_cron_own_plist_margin.py AND "
+        "test_self_reporting_cron_workflow_wiring.py — the path lists can "
+        "be perfectly wired while no step actually runs one or both guards "
+        "(a mere MENTION of a filename, e.g. in a comment, does not count)"
     )

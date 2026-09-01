@@ -165,7 +165,7 @@ organs:
 - id: m5.auth_sentinel
   runtime: air_launchd
   type: cron
-  # 43200 = 2x this organ's own 21600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  # 43200 = 2x this organ's own 21600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.167x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
   expected_hb_seconds: 43200
   owner_module: scripts/auth_sentinel_cron.sh
   dependencies: []
@@ -300,7 +300,7 @@ organs:
 - id: pro.dlq_autopilot
   runtime: pro_launchd
   type: cron
-  # 3600 = 2x this organ's own 1800s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  # 3600 = 2x this organ's own 1800s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.5x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
   expected_hb_seconds: 3600
   owner_module: scripts/dlq_autopilot.py
   dependencies: []
@@ -2576,7 +2576,7 @@ organs:
 - id: pro.wa_mirror_freshness_liveness
   runtime: pro_launchd
   type: cron
-  # 1800 = 2x this organ's own 900s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  # 1800 = 2x this organ's own 900s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.5x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
   expected_hb_seconds: 1800
   owner_module: scripts/wa_mirror_freshness_liveness.py
   dependencies: []
@@ -2710,7 +2710,7 @@ organs:
 - id: mini.voa_deadman
   runtime: mini_launchd
   type: cron
-  # 600 = 2x this organ's own 300s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  # 600 = 2x this organ's own 300s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.5x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
   expected_hb_seconds: 600
   owner_module: infra/launchagents/wrappers/voa-deadman-wrapper.sh
   dependencies:
@@ -2741,7 +2741,7 @@ organs:
 - id: pro.wa_bot_throughput_sentinel
   runtime: pro_launchd
   type: cron
-  # 1800 = 2x this organ's own 900s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  # 1800 = 2x this organ's own 900s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.5x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
   expected_hb_seconds: 1800
   owner_module: scripts/wa_bot_throughput_sentinel.py
   dependencies: []
@@ -2809,7 +2809,7 @@ organs:
 - id: mini.journey_sentinel
   runtime: mini_launchd
   type: cron
-  # 7200 = 2x this organ's own 3600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  # 7200 = 2x this organ's own 3600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.5x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
   expected_hb_seconds: 7200
   owner_module: scripts/journey_sentinel.sh
   dependencies: []
@@ -2861,7 +2861,7 @@ organs:
 - id: pro.queue_shepherd
   runtime: pro_launchd
   type: cron
-  # 1200 = 2x this organ's own 600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  # 1200 = 2x this organ's own 600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.5x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
   expected_hb_seconds: 1200
   owner_module: scripts/queue_shepherd.py
   dependencies: []
@@ -2925,7 +2925,7 @@ organs:
 - id: pro.price_review_sentinel
   runtime: pro_launchd
   type: cron
-  # 172800 = 2x this organ's own 86400s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  # 172800 = 2x this organ's own 86400s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.042x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
   expected_hb_seconds: 172800
   owner_module: infra/launchagents/wrappers/pro-price-review-sentinel.sh
   dependencies: []
