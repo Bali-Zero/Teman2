@@ -181,9 +181,23 @@ export const MERAH_PUTIH_DAY_VARS = {
   // Menlo, monospace`, with ~29 consumers elsewhere in the app, every one of
   // them naming Plex FIRST — so using it here would need no new file and would
   // put this surface exactly where those 29 already are. No ledger row for
-  // "Plex" or "font-mono" exists. What is genuinely open, and NOT settled by
-  // this comment: R4 asks for Plex Mono on IDR amounts while the price figures
-  // here use Cormorant + tabular-nums, and nothing on disk records why.
+  // "Plex" or "font-mono" exists.
+  //
+  // SETTLED 2026-09-01 (Zero, Legge 5 — «dobbiamo restare coerenti e non
+  // passare a plex mono»): the divergence the paragraph above left open is now
+  // a decision, not an omission. IDR amounts on THESE TWO ROUTES keep the
+  // surface's own faces with `tabular-nums` + `tnum` (VerdictPanel and the
+  // landing already render them that way); coherence of one small surface beat
+  // adding a second numeric voice to it. `--font-mono` is NOT deprecated and
+  // its ~29 consumers elsewhere are untouched, the VOA payment screen still
+  // renders IDR in mono, and the never-wrap-mid-amount constraint is
+  // typeface-independent and still binds here. The hero statistics are the
+  // deliberate counter-example — prose figures, NOT a column, and
+  // second-home/page.test.tsx pins them proportional; the ruling is about the
+  // price figures, not about every digit on the page. Written down in
+  // research/design/2026-08-27-r4-identity-merah-putih-token-spec.md (the
+  // amendment note under the typography table) — this comment is the pointer,
+  // that file is the law.
   fontFamily: "var(--font-sans), Inter, ui-sans-serif, system-ui, sans-serif",
 } as CSSProperties;
 
