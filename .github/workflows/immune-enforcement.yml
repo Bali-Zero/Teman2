@@ -86,6 +86,15 @@ jobs:
           # on it is disarmed.
           while IFS= read -r f; do
             case "$f" in
+              scripts/injected_surface_attest.py|\
+              scripts/hooks/injected_surface_sessionstart.sh|\
+              scripts/tests/test_injected_surface_budget.py|\
+              scripts/tests/test_injected_surface_attest.py|\
+              scripts/scar_query.py|\
+              scripts/test_scar_query.py|\
+              CLAUDE.md|\
+              .claude/rules/*|\
+              docs/scars/*|\
               scripts/lint_home_fork.py|\
               scripts/proprioception.py|\
               scripts/agent_start.py|\
@@ -138,6 +147,7 @@ jobs:
               scripts/tests/test_codex_seat_lib.py|\
               scripts/tests/test_claude_cascade_shell.py|\
               infra/launchagents/wrappers/claude-cascade.sh|\
+              scripts/tests/test_claude_oauth_slot6_coverage.py|\
               scripts/auth_sentinel.py|\
               scripts/tests/test_tri_llm_claude_seat_token.py|\
               scripts/lint_doc_executable_refs.py|\
@@ -175,6 +185,10 @@ jobs:
               infra/tcc-desktop-paths/allowlist.txt|\
               scripts/canon_blocks_publish.py|\
               scripts/tests/test_canon_blocks.py|\
+              scripts/tests/test_door_canon_parity.py|\
+              AGENTS.md|\
+              GEMINI.md|\
+              QWEN.md|\
               scripts/launchd_liveness_detector.py|\
               scripts/tests/test_launchd_liveness_expected_nonzero.py|\
               scripts/tests/test_launchd_liveness_exit_status_decode.py|\
@@ -222,6 +236,9 @@ jobs:
               scripts/test_fly_credential.sh|\
               scripts/ci/lint_queue_field_verdict.py|\
               scripts/tests/test_lint_queue_field_verdict.py|\
+              scripts/lint_arm_probe.py|\
+              scripts/tests/test_lint_arm_probe.py|\
+              scripts/queue_baseline_probe.py|\
               scripts/lib/offsite_verify.sh|\
               scripts/test_offsite_verify.sh|\
               scripts/fly-pg-backup.sh|\
@@ -461,6 +478,8 @@ jobs:
           python -m pip install --quiet pytest PyYAML==6.0.3
           fail=0
           for t in \
+            scripts/tests/test_injected_surface_budget.py \
+            scripts/tests/test_injected_surface_attest.py \
             scripts/tests/test_agent_start.py \
             scripts/tests/test_lint_doctrine_citations.py \
             scripts/tests/test_lint_home_fork.py \
@@ -480,6 +499,7 @@ jobs:
             scripts/tests/test_arsenal_probe.py \
             scripts/tests/test_adversarial_review_gate.py \
             scripts/tests/test_lint_queue_field_verdict.py \
+            scripts/tests/test_lint_arm_probe.py \
             scripts/tests/test_nb_curator_artifact_gate.py \
             scripts/tests/test_jules_dispatch.py \
             scripts/tests/test_codex_autofix_selector.py \
@@ -516,7 +536,8 @@ jobs:
             scripts/tests/test_check_required_workflow_conformance.py \
             scripts/tests/test_unreachable_workflow_conditions.py \
             scripts/tests/test_canon_blocks.py \
-            scripts/tests/test_lint_trigger_symmetry.py ; do
+            scripts/tests/test_lint_trigger_symmetry.py \
+            scripts/tests/test_door_canon_parity.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
               python -m pytest "$t" -q || fail=1
@@ -660,6 +681,26 @@ jobs:
         run: |
           python3 scripts/ci/lint_queue_field_verdict.py --selftest
           python3 scripts/ci/lint_queue_field_verdict.py
+
+      - name: Arm-probe lint — prove the guard, then scan every tracked file
+        # DELIBERATELY UNCONDITIONAL — no `steps.paths.outputs.relevant` gate,
+        # same reasoning as the queue-field verdict lint right above: this
+        # scans the WHOLE tree for the autoMergeRequest null-ambiguity trap
+        # (a decision-position read of the field with no mergeQueueEntry/
+        # isInMergeQueue/mergeQueue( co-occurrence anywhere in the same
+        # file), so the file that introduces it is by definition one nobody
+        # has listed in a sentinel yet (W108). Sibling to, not a replacement
+        # for, lint_queue_field_verdict.py above — narrower pattern set,
+        # simpler file-level (not alias-tracking) co-occurrence check, its
+        # own ALLOWLIST for the handful of real files that match by text
+        # alone without ever deriving a verdict from the field.
+        #
+        # --selftest FIRST, always: proves the guard (plus its ALLOWLIST
+        # mechanism) can still fail before trusting a clean verdict from the
+        # real scan.
+        run: |
+          python3 scripts/lint_arm_probe.py --selftest
+          python3 scripts/lint_arm_probe.py
 
       - name: Off-site artifact gate corpus (guilt + innocence)
         if: steps.paths.outputs.relevant == 'true'
@@ -939,6 +980,7 @@ jobs:
           python -m pip install --quiet pytest
           python -m pytest scripts/tests/test_codex_seat_lib.py -q
           python -m pytest scripts/tests/test_claude_cascade_shell.py -q
+          python -m pytest scripts/tests/test_claude_oauth_slot6_coverage.py -q
 
       - name: Claude seat helper corpus (a plain script must reach a live seat)
         if: steps.paths.outputs.relevant == 'true'

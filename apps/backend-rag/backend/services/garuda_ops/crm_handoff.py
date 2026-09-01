@@ -49,9 +49,10 @@ logger = get_logger(__name__)
 # "garuda_voa"`, whose own comment conceded the row was "not yet seeded in
 # `practice_types`". That constant was not merely unseeded, it was WRONG:
 # issuance and extension are different products at different prices
-# (Rp 790,000 vs Rp 850,000 -- 221 seeded issuance at 750,000 and migration
-# 302 corrected it to the owner's 2026-08-31 ruling), and one shared code would have
-# priced, reported and routed them as one service.
+# (Rp 750,000 vs Rp 850,000 -- 221 seeded issuance at 750,000; migration 302
+# moved it to 790,000 and migration 303 moved it back, per the owner's
+# 2026-08-31 ruling), and one shared code would have priced, reported and
+# routed them as one service.
 #
 # Derived per ORDER, never per SERVICE INSTANCE: there is deliberately no
 # constructor override any more. An override is exactly how one code silently

@@ -1,0 +1,35 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Innocent control</title>
+<style>
+ :root{--ink:#12181B;--ground:#F4F6F7;--rule:#C9D2D6}
+ body{margin:0;background:var(--ground);color:var(--ink);font:16px/1.55 system-ui,sans-serif;padding:24px}
+ h1{font-size:32px;margin:0 0 4px} h2{font-size:20px;margin:24px 0 8px}
+ .btn{min-height:44px;min-width:44px;font:inherit;background:var(--ink);color:var(--ground);border:0;padding:0 16px}
+ .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+ hr{border:0;border-top:1px solid var(--rule)}
+</style></head><body>
+ <h1>Your most likely path</h1>
+ <p class="lead">The verdict for this applicant, with the evidence that produced it.</p>
+ <h2>What the evidence shows</h2>
+ <ul><li>Passport validity exceeds the required window.</li>
+     <li>Declared income clears the stated threshold.</li>
+     <li>Accommodation is documented for the whole stay.</li></ul>
+ <div class="meter" role="img" aria-label="Three of four requirements match."><hr></div>
+ <p class="note">A different sentence sits beside the meter, so nothing is announced twice.</p>
+ <h2>What happens next</h2>
+ <p>Choose one of the routes below.</p>
+ <p><a href="https://example.org/guide">Read the published guide</a> ·
+    <a href="mailto:desk@example.org">Write to the desk</a></p>
+ <button class="btn" type="button">Send this onward</button>
+ <button class="btn" type="button">See the five answers this came from</button>
+ <div style="overflow-x:auto;border:1px solid var(--rule)">
+   <table style="min-width:600px;border-collapse:collapse;width:100%">
+     <tr><th style="text-align:left;padding:8px">Requirement</th>
+         <th style="text-align:left;padding:8px">State</th>
+         <th style="text-align:left;padding:8px">Provenance</th></tr>
+     <tr><td style="padding:8px">Employed by a company registered outside Indonesia</td>
+         <td style="padding:8px">MATCH</td><td style="padding:8px">from your answer 2</td></tr>
+   </table>
+ </div>
+ <p>A wide data table inside its own scroller is the accepted pattern and must not be reported.</p>
+</body></html>
