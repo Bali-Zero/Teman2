@@ -5,9 +5,12 @@ client_case: none
 sources:
   - apps/backend-rag/backend/db/migrations_v2/281_garuda_voa_retention.sql
   - apps/backend-rag/backend/db/migrations_v2/285_garuda_magic_link.sql
+  - apps/backend-rag/backend/db/migrations_v2/301_garuda_magic_link_binding_owner.sql
   - apps/backend-rag/backend/db/migrations_v2/304_garuda_documents.sql
   - apps/backend-rag/backend/tests/db/test_post_d1_migrations_guard_ledger_owned_ddl.py
   - apps/backend-rag/backend/tests/services/visa_engine/conftest.py
+  - evidence/2026-09/agent-air-m5-ops-garuda-voa-documents-57f48f6b/journal.jsonl
+  - docs/specs/2026-08-31-security-definer-ledger-lock-lint.md
 ---
 
 # The retention `policy_scope` enum is a CHECK on someone else's table
@@ -15,6 +18,14 @@ sources:
 **Status:** spec, not a change. Written under the rule "cure what the diff introduces,
 spec what it inherits" — PR #5526 introduced the third instance and cures its own; the
 mechanism that keeps producing instances is older than that diff and is not its to fix.
+
+**Update 2026-09-02:** the cross-family adversarial gate on #5526 BLOCKED three rounds
+running, on the same underlying cause, and what it found widens the scope of this spec.
+The recurring cost documented below is not one CHECK — it is a **privilege protocol** with
+three distinct requirements, and 304 needed all three of them. Two are now satisfied in
+production; the third is not, and the PR is suspended on it (ledger row at the bottom of
+this repo's `.claude/skills/modus/PENDING-ARMS.md`). See "The privilege protocol is three
+requirements, not one" below.
 
 ## The disease, stated once
 
@@ -34,12 +45,70 @@ The consequence is not theoretical. It has happened three times:
 |---|---|---|
 | 281 | `garuda_voa_checks` | failed in production 2026-08-26, took four other migrations down with it, aborted the deploy; applied afterwards under a temporary grant |
 | 285 | `garuda_magic_link_tokens` | same class, same emergency path; both sit in `GRANDFATHERED` |
-| 304 | `garuda_documents` | caught before production by `test_post_d1_migrations_guard_ledger_owned_ddl.py`, the guard written *because* of 281/285 |
+| 304 | `garuda_documents` | caught before production by `test_post_d1_migrations_guard_ledger_owned_ddl.py`, the guard written *because* of 281/285 — but the round-2/3 adversarial gate found the catch was partial (see below) |
 
-The guard works. That is the good news and also the point: it converts a production outage
-into a blocked PR, but it does not remove the manual step. Each new surface still costs a
-human-held grant on the production database, plus a follow-up commit recording the
-application as grandfathered. Three surfaces have paid it. Every future one will.
+The guard works, partially. That is the good news and also the point: it converts a
+production outage into a blocked PR, but it does not remove the manual step, and — per the
+finding below — it cannot see every shape the manual step can take. Each new surface still
+costs a human-held grant on the production database. 281 and 285 both needed a follow-up
+commit recording the application as `GRANDFATHERED`; 304 will not need one, for a reason
+that is itself a finding (see "A guard that cannot see this" below) — but it still needed
+two human-held grants before it could be caught as fixed rather than caught as broken, and
+a third grant is still outstanding.
+
+## The privilege protocol is three requirements, not one
+
+The thesis above understated the disease: "a schema change to a table the application
+cannot alter" is exactly one of *three* distinct privilege requirements 304 turned out to
+need, each with a different remedy shape.
+
+| # | Requirement | What it needs | Status on `visa_decision_retention_policies` for 304 |
+|---|---|---|---|
+| 1 | Widen the `policy_scope` CHECK to add `GARUDA_DOCUMENT` | table ownership (`ALTER TABLE`) | **Done in production**, verified read-only 2026-09-01T22:05:43Z: the CHECK's `ARRAY` now includes `GARUDA_DOCUMENT` (before: four values without it) |
+| 2 | `garuda_documents.retention_policy_id` FK REFERENCES the table | the `REFERENCES` privilege (a `GRANT`, not ownership) | **Done**, same verification pass: `has_table_privilege('backend_rag_v2', 'public.visa_decision_retention_policies', 'REFERENCES')` went `false` → `true` |
+| 3 | `bind_garuda_document_retention_policy()` (the `BEFORE INSERT` trigger function) must be owned by `visa_ledger_owner`, not `backend_rag_v2`, so its `SECURITY DEFINER` body can take the `FOR SHARE` lock the table owner already holds | role membership in `visa_ledger_owner`, or a superuser connection, at `ALTER FUNCTION ... OWNER TO` time | **Not done.** `pg_has_role('backend_rag_v2', 'visa_ledger_owner', 'MEMBER')` is `false`; the migration-runner role's `rolsuper` is `false`. `304_garuda_documents.sql`'s `DO $garuda_304_owner_transfer$` block (lines 266-304) attempts `ALTER FUNCTION public.bind_garuda_document_retention_policy() OWNER TO visa_ledger_owner` (line 289), catches the resulting `insufficient_privilege` and converts it to a `RAISE NOTICE` (lines 290-293), re-reads the owner, and then, finding it still `backend_rag_v2`, `RAISE EXCEPTION`s at line 299. Because `migration_base.py` applies the whole file in one transaction, that abort rolls back the `CREATE FUNCTION` earlier in the same block — the remedy the error message itself names ("run the ALTER on a superuser connection, then re-apply") has nothing left to `ALTER` once the transaction unwinds. |
+
+Requirement 3 is not a corner case this repo has never handled — it is the norm. Six
+sibling trigger functions already do, in production, exactly what 304's cannot yet do:
+`bind_garuda_magic_link_token_retention_policy`, `bind_garuda_voa_check_result_retention_policy`,
+`bind_garuda_voa_check_retention_policy`, `bind_legacy_garuda_voa_checks_retention_policy`,
+`bind_visa_decision_retention_policy`, and `bind_visa_evaluate_idempotency_retention_policy`
+are all `SECURITY DEFINER` and all owned by `visa_ledger_owner`.
+
+**Correction against the disk** (an earlier draft of this section said this protocol was
+"never written down anywhere" — false, and worth stating plainly rather than quietly fixed):
+migration `301_garuda_magic_link_binding_owner.sql`'s own header documents the exact
+sequence at length — measured 2026-08-30, nobody was a member of `visa_ledger_owner`, so
+301's copy of this block was *expected* to `RAISE EXCEPTION` on first attempt (its own words:
+"it fails loudly until an operator runs the ALTER, which is the honest state: the cure is
+not in force"), and only after an operator ran `ALTER FUNCTION ... OWNER TO` on a superuser
+connection and 301 was re-applied did the postcondition hold and the migration record as
+applied. 304's header explicitly inherits this ("replicated from 301's shape verbatim...
+301's own honest caveat carries over unchanged"). So the actual gap is narrower than "tribal
+knowledge": the protocol is written down, repeatedly, **inside each migration's own header**
+(251/253/268/281/301/304, each pointing back to the last) — but never distilled into one
+operator-facing runbook a future author is sent to instead of re-deriving it from a chain of
+SQL comments. That is what "the apply protocol" below actually is: not a discovery of a
+hidden step, but the first attempt to write the six-times-repeated narrative down as a
+checklist instead of a comment thread.
+
+**Also on the disk, and distinct from this spec's findings**: the general version of
+requirement 3 — "no CI guard exists to catch a *future* SECURITY DEFINER ledger-locker that
+omits the transfer" — already has its own spec, suspended under rule 8 after four
+withdrawn implementation rounds:
+`docs/specs/2026-08-31-security-definer-ledger-lock-lint.md`, tracked by its own
+`PENDING-ARMS.md` row (opened 2026-08-31, PR #5302). That spec's lexer-based lint targets
+a *different* test (`test_retention_lock_triggers_are_ledger_owned.py`, never shipped) than
+the one this spec's "guard-over-match" finding below concerns
+(`test_post_d1_migrations_guard_ledger_owned_ddl.py`, which does exist and does run) — the
+two are adjacent instances of the same underlying disease, not the same open item. This
+spec does not attempt to resolve that other one; R6 there (whether a hand-written SQL lexer
+should exist at all, given the catalog-driven `SECURITY_DEFINER_CENSUS_SQL` from PR #5309)
+is still open and is not this document's to close.
+
+Writing the apply protocol down, and giving the codeowner an explicit choice for closing
+requirement 3 on 304, is what the rest of this update does — it does not replace the
+lookup-table repair below, which addresses requirement 1 only.
 
 ## What is NOT the problem
 
@@ -95,7 +164,180 @@ one more human-held grant. This spec argues that paying once is cheaper than pay
 surface — but it is a real fourth payment, not a free lunch, and it should be scheduled
 deliberately rather than smuggled into a feature PR.
 
+The lookup-table repair above closes requirement 1 for good. It says nothing about
+requirements 2 and 3 — a FK REFERENCES grant and a trigger-function ownership transfer are
+not schema changes to the enum's own CHECK, so a future GARUDA surface that needs its own
+retention-bound trigger still needs requirement 3 solved, lookup table or not. The rest of
+this update is about requirement 3, which is the one blocking #5526 today.
+
+## The apply protocol (the actual missing artifact)
+
+304's `DO $garuda_304_owner_transfer$` block is not defective SQL — it is a faithful copy of
+a pattern this repo has shipped at least six times. What was missing is that **the repo has
+never written down what a human must do, and when, before a migration using that pattern is
+merged.** On this repo, merging `apps/backend-rag/**` *is* the deploy: `fly-deploy.yml`
+fires on push to `main`, and its `release_command` applies pending migrations forward,
+automatically, before the new release serves traffic. There is no separate "apply" step for
+a human to interpose between merge and production — so any privileged precondition has to
+be true *before the merge*, not "during a deploy window":
+
+1. **Before the merge**: every privileged step the migration's forward section cannot
+   perform as `backend_rag_v2` must already be true in production. For 304, requirements 1
+   and 2 were satisfied this way — the codeowner ran the CHECK-widen and the `GRANT
+   REFERENCES` directly over a superuser `psql` session, and the session verified the result
+   read-only afterward (`pg_get_constraintdef`, `has_table_privilege`).
+2. **The migration's own catalog guards are what make step 1 safe to do out of band.**
+   304's `DO $garuda_304_widen_scope_check$` block reads `pg_constraint` first and no-ops
+   the `ALTER` entirely once the value is already present, so establishing the CHECK ahead
+   of the merge does not create a second competing writer — the migration, when it runs,
+   finds nothing left to do for that requirement and moves on.
+3. **Requirement 3 cannot be pre-satisfied the same way**, and this is the actual gap in the
+   protocol, not a flaw in 304: `to_regprocedure('public.bind_garuda_document_retention_policy()')`
+   can only resolve *after* the `CREATE FUNCTION` earlier in the same file, and that
+   `CREATE` lives inside this migration's own transaction. The ownership-transfer attempt
+   therefore necessarily happens *inside* the merge-triggered apply, never before it. What
+   must exist before the merge fires the deploy is not the transfer itself but the
+   *privilege that lets the transfer succeed* — see the two options below.
+4. **After the merge**, verify against production the way round 2 did: read the actual
+   catalog state (`pg_get_constraintdef`, `has_table_privilege`,
+   `pg_get_userbyid(proowner)`), not the migration's exit code. A green `release_command`
+   proves the transaction committed — it does not say which branch of a `DO` block it took.
+
+## Two ways to close requirement 3 — undecided by design
+
+Both named routes below clear the block on #5526 (one of them, checked against the disk,
+turns out to have a precedented variant worth naming separately — see (A′)). Neither is
+chosen here: the choice trades an operational risk window against a functional gap, and
+that is a business-risk call for the codeowner, not this spec.
+
+**(A) Temporary membership.** `GRANT visa_ledger_owner TO backend_rag_v2` immediately
+before the merge; `REVOKE` immediately after the post-merge verification in step 4 above
+confirms the transfer landed. **Correction against the disk**: an earlier draft of this
+paragraph claimed this "matches what the six sibling migrations relied on" — checked against
+301's own header and found wrong. What 301 actually documents is a *different* mechanism:
+"the ALTER lands on a superuser connection (CI, a fresh clone, or the operator's provisioning
+step)... the cure was applied to production in one manual superuser transaction." That is an
+operator's own already-privileged session executing the transfer (or the whole migration)
+directly — never a grant that elevates `backend_rag_v2` itself. So (A) as stated here is a
+genuinely different proposal from precedent, not a restatement of it, and should be judged on
+its own cost: for the length of the window, `backend_rag_v2` — the application's own runtime
+role, reachable from ordinary request-handling code — can do anything `visa_ledger_owner` can,
+against a live production database, not a sandbox. That is a broader blast radius than an
+operator's own session doing one `ALTER FUNCTION` by hand, which is the precedented
+alternative — call it **(A′) manual superuser application**: the operator runs 304's full SQL
+directly against production over a superuser connection, before the automated
+`fly-deploy.yml` release path ever attempts it, and the migration-tracking table records it as
+applied so the automated runner skips it on merge. Cost, stated honestly: this takes one
+migration's actual application to production outside the automated, CI-reviewed deploy
+pipeline — the merged file becomes a record of what was run rather than what runs the schema
+change, so the operator's manual execution and the committed file must match exactly, and
+nothing mechanical enforces that they do. Also note this is not the *permanent* membership
+already rejected under "Why the obvious repairs do not work" above (which was rejected as an
+indefinite workaround for the enum specifically): both (A) and (A′) here are bounded and
+verified, not indefinite — the earlier rejection does not settle either of these on its own.
+
+**(C) Split forward.** 304 creates `garuda_documents` and `garuda_document_review_fields`
+without the ownership transfer and without the trigger depending on it — ship the tables
+now, bind the retention policy in a follow-up migration once requirement 3 is closed by
+whichever means. No escalation of any kind. Cost, stated honestly: a declared window, from
+this migration's merge to the follow-up, in which `postgres_store.py::commit()` has no
+active `GARUDA_DOCUMENT` policy to bind against. The module's own docstring already names
+`PERSISTENCE_POLICY_UNAVAILABLE` as the fail-closed behavior when no policy is active for a
+scope; for the length of the window that extends to "no scope wired at all," so document
+intake answers a clean 5xx on every write rather than persisting an unretained row — no
+data-integrity risk, a functional gap instead. How long that window is acceptable depends
+on how soon requirement 3 is actually closed, which this spec cannot settle either.
+
+A third option was considered — raised by the gate during round 2/3 — and rejected here:
+**changing what the trigger function requires**, i.e. dropping `SECURITY DEFINER` from
+`bind_garuda_document_retention_policy()` so it runs as the caller (`backend_rag_v2`)
+instead of the table owner, which needs no ownership transfer at all. Rejected by the
+session on one ground: it would leave this seventh surface on a different privilege model
+from the six that already exist, and two coexisting models for how a
+`visa_decision_retention_policies`-adjacent trigger acquires its lock is worse than the
+problem it removes — the next author has to know which model applies to which table before
+writing a guard, an ownership audit, or a guilt/innocence test pair. Kept here for the
+record, not as a live third option.
+
+## A guard that cannot see this: guard-over-match on `END IF` (scar family #3)
+
+`test_post_d1_migrations_guard_ledger_owned_ddl.py` is the repo's antidote for exactly this
+failure class — a DDL statement against a ledger-owned object the app role cannot execute.
+Its rule for exempting a `DO` block from scanning is `_HAS_CONDITIONAL = re.compile(r"\bEND
+\s+IF\b", re.IGNORECASE)` (`:236`), applied at `:396` for table ALTERs
+(`find_unguarded_alters`) and `:975` for function DDL (`find_unguarded_function_ddl`): *any*
+`END IF` anywhere in a `DO` body exempts the whole block from every finding, independent of
+what the condition actually tests. The guard's own comment (`:229-234`) names this as a
+deliberate, known limit — "a body carrying an unrelated `IF ... END IF` plus an
+unconditional ALTER still passes... written down because a limit on paper can be closed
+later" — citing 285's rollback `DROP CONSTRAINT` as the first live instance. 304 supplies a
+second, and a cleaner one, because the same file shows both the correct case and the false
+one side by side:
+
+- `304`'s `DO $garuda_304_owner_transfer$` (lines 266-304) genuinely tests the thing an
+  ownership guard needs to test — `pg_get_userbyid(proowner)` against `ledger_owner` — before
+  attempting the `ALTER FUNCTION ... OWNER TO` at line 289. This is the shape the exemption
+  exists *for*.
+- `304`'s rollback, `DO $garuda_304_narrow_policy_scope$` (lines 373-388), reads `IF EXISTS
+  (SELECT 1 FROM ... WHERE policy_scope = 'GARUDA_DOCUMENT') ... ELSE <unconditional ALTER
+  TABLE DROP CONSTRAINT / ADD CONSTRAINT> END IF` (lines 375-386). Its conditional tests
+  whether a row exists — never who owns `visa_decision_retention_policies` — and the `ALTER
+  TABLE` in the `ELSE` branch runs exactly when that is false, with no ownership check
+  anywhere on that path. Because the block contains `END IF` at all, `_HAS_CONDITIONAL`
+  matches and `find_unguarded_alters` never scans it — even though the scanner does reach
+  rollback sections in general (that is why `FUNCTION_GRANDFATHERED` exists at all: both its
+  entries, 281 and 286, are rollback-section findings, `:889-905`). The blindness here is
+  the exemption's coarseness, not the scanner's reach.
+
+The practical consequence is narrow but real: rolling back 304 against a database where
+`backend_rag_v2` does not own `visa_decision_retention_policies` and no `GARUDA_DOCUMENT`
+row has ever been inserted hits the exact "must be owner of table" failure that started
+this whole class on 2026-08-26 — and the guard built specifically to catch that failure
+shape says nothing about it, for a reason unrelated to whether the rollback path is
+actually safe.
+
+**Acceptance criterion for fixing this** (guard-conformance rule: a guard needs a guilt case
+and an innocence case on the entity/intent it actually claims to test, never a bare
+substring/shape proxy):
+
+- **Guilt case**: a `DO` block containing `END IF` whose conditional does not read the
+  ownership catalog (`pg_proc` / `pg_roles` / `pg_get_userbyid` / `pg_has_role`) — row
+  existence, like 304's rollback, is the concrete example on file — wrapped around an
+  unconditional `ALTER TABLE` or `ALTER FUNCTION ... OWNER TO` against a
+  `NON_APP_OWNED_TABLES` / `NON_APP_OWNED_FUNCTIONS` target must FAIL the guard.
+- **Innocence case**: a `DO` block whose conditional does read the ownership catalog before
+  attempting the ALTER — 304's own `$garuda_304_owner_transfer$`, or 289's `pg_has_role`
+  pre-check — must continue to PASS.
+
+The distinction the current regex cannot draw is exactly the one that separates these two
+cases: not "is there a conditional anywhere in this body" but "does the conditional test the
+thing the ALTER needs to be safe."
+
+## The missing proof: first application as the real role
+
+The 11/11-green integration suite cited in round 1 (`test_postgres_store.py`) proves 304's
+schema and store logic once the schema already exists — it applies the forward migration
+through `_ADMIN_URL`, which that fixture itself requires to be a superuser connection. It
+never exercises the one path that actually failed in production on 2026-08-26: the
+migration applied by the real, low-privilege migration-runner role while
+`visa_ledger_owner` exists and holds no membership from it. A test that would actually
+prove first-application safety needs to create both roles with production's real privilege
+split (SELECT-only for the app role, full ownership for the ledger role), apply the
+migration as the app role with no membership grant in place, and assert on the *specific*
+failure the current code produces — a `RAISE EXCEPTION` naming the still-wrong owner
+(line 299-301), not a generic Postgres `insufficient_privilege` — so a future regression
+that turns this explicit message back into an opaque failure is caught too. No such test
+exists today under any name in `apps/backend-rag/backend/tests/`.
+
 ## Acceptance, if this is built
+
+This list covers requirement 1 (the enum CHECK) only — it was written before the round-2/3
+findings above, and requirements 2 (the REFERENCES grant) and 3 (trigger-function
+ownership) need their own acceptance criteria, not these four items. Requirement 2 has no
+open acceptance criterion yet — a single `GRANT` is not a class the way the enum is.
+Requirement 3's are the guard-conformance guilt/innocence pair and the missing first-
+application test, both specified above; deliberately, this spec does not turn "which of
+option A or C" into an acceptance criterion, since that choice is the codeowner's.
 
 1. A migration, applied under the ledger owner, that creates the lookup table, seeds it
    with the values the CHECK currently lists, swaps the CHECK for the FK, and grants
@@ -110,7 +352,29 @@ deliberately rather than smuggled into a feature PR.
 
 ## Until then
 
-304 carries a catalog guard, is applied to production under the same temporary grant as
-281 and 285, and is added to `GRANDFATHERED` **after** the application, in a commit citing
-the before/after `pg_constraint` observation and its timestamp — never before, or the list
-records a state that does not exist.
+Corrected 2026-09-02, after three rounds of adversarial gate on #5526: the paragraph this
+replaces predicted a single temporary-grant application of 304 followed by a
+`GRANDFATHERED` entry. Neither happened, and the reason why is itself part of the record.
+
+**Requirements 1 and 2 are done, and done differently than predicted.** Not by applying
+304 itself under a temporary grant, but by the codeowner establishing the target state
+directly over a superuser `psql` session — widen the CHECK, `GRANT REFERENCES` — verified
+read-only by the session afterward against `pg_get_constraintdef` and
+`has_table_privilege` (2026-09-01T22:05:43Z; before/after values recorded in "three
+requirements, not one" above). Because 304's own catalog guard for the CHECK reads the
+constraint definition before touching it, this out-of-band preparation makes 304's forward
+section a no-op for requirement 1 the moment the migration runs. It is also why **304 is
+not going into `GRANDFATHERED`**: that list exists to excuse a bare, ungated ALTER the
+static guard cannot help but convict — 281's and 285's shape. 304's ALTER is gated, the
+static guard passes on its own once the CHECK is pre-widened, and adding an unneeded entry
+would misrepresent 304 as the same shape as its two predecessors when it deliberately is
+not.
+
+**Requirement 3 is not done, and #5526 does not merge while it is not**: on this repo the
+merge IS the deploy, so an armed PR would apply the migration before any privileged step
+could run, reproducing 2026-08-26 a third time — precisely what round 2 refused to let
+through on a PASS-WITH-CONDITIONS. Closing it needs a codeowner decision between the two
+options above (temporary membership, or a split-forward migration), made and executed
+*before* the merge, per "the apply protocol." Until that decision is made, #5526 is
+suspended per Agent PR Contract rule 8 — not retried a fourth time on the same cause, and
+not merged on an assumption about which option will be chosen.
