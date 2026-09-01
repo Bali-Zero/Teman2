@@ -1,94 +1,77 @@
-task_id: ops-practice-status-log
+task_id: wr3-spend-gate-enforce-0823
 gear: 3
-l_level: L2
+l_level: L1
 gate_class: opus
 objective: |
-  `practice_status_log` is read by four live surfaces and NO migration in this repo ever created it:
-  `backend/app/routers/portal_process_timeline.py`, its unit test, and the frontend's
-  `apps/mouth/src/lib/api/portal/portal.types.ts` + `apps/mouth/src/lib/schemas/process.ts`.
-  Measured against PROD on 2026-08-27: `relation "practice_status_log" does not exist`. The earliest
-  reference is a plan dated 2026-03-30, so the table has been typed end-to-end and absent for
-  ~5 months.
+  Close the last named-by-nothing gap in the WR3 zero-spend guilt+innocence corpus. The runtime
+  spend-authority gate — `assert_spend_authorized()` in `scripts/wr3_spend_authority.py` — already
+  refuses a real Veo spend without a valid, logged `WR3_SPEND_DECISION` token. It runs FIRST in
+  both charging call sites (`_generate_start_image` and `_generate_video` in
+  `scripts/wr3_flowkit_client.py`, PR #4606), before any socket opens, and the existing tests in
+  `scripts/tests/test_wr3_zero_spend.py` already proved this locally against the two PRIVATE
+  helper functions. `.github/workflows/wr3-spend-gate-tests.yml` (armed by PR #4649, same session,
+  same afternoon) already runs that corpus on pull requests — this PR does not create that arming,
+  it widens what the armed corpus actually proves.
 
-  It survived that long because the failure was SILENT, not loud — superscar #2 in its purest form.
-  The reader wrapped its query in a bare `except Exception: pass` commented "Table may not exist
-  yet", so every tracker request fell through to a one-step timeline and answered 200. The
-  parcel-style progression the client portal promises could not render, and nothing anywhere went
-  red: no error, no log line, no failing check.
+  The gap: nothing in the existing corpus exercised the PUBLIC entrypoint `wr3-clip-renderer`
+  itself calls — `submit_clip()` — so a regression that broke the wiring between `submit_clip` and
+  `_generate_start_image`/`_generate_video` (as opposed to a regression inside those two functions)
+  could ship green. This PR adds ONE new test,
+  `test_submit_clip_real_mode_blocked_without_decision_no_http`, that drives `submit_clip` with no
+  `WR3_ZERO_SPEND`/`WR3_SPEND_DECISION` set, fakes scene creation to succeed so the assertion is
+  isolated to the charging call site, and asserts `SpendNotAuthorizedError` before any HTTP call —
+  proving the whole real-mode spend-submission path is unreachable end-to-end through the same call
+  chain `scripts/wr3_render_episode.py` drives, not merely through internal helpers reached by a
+  direct unit call.
 
-  Fix: migration 289 creates the table plus an `AFTER UPDATE OF status` trigger that fills it, and
-  the reader's except is narrowed so a degraded path announces itself.
+  Gear 3 by PATH, not by blast radius: the diff is 2 files, +73/-3
+  (`.github/workflows/wr3-spend-gate-tests.yml` is hot-zone — floor is a deterministic lower bound,
+  never the author's choice). The evidence below is sized to the change.
 constraints:
-  - "A TRIGGER, not application code. `practices.status` is written from many services; a history
-    table fed by N call sites is wrong the first time someone adds the N+1th, while the database
-    observes every UPDATE regardless of origin. Migration 075 already installs a trigger on this
-    same column for pg_notify, so the shape is established in this repo rather than invented here."
-  - "`IS DISTINCT FROM`, never `<>`. `NULL <> 'x'` evaluates to NULL, not TRUE, so an
-    `IF OLD.status <> NEW.status` guard SKIPS the row and the first transition of a practice created
-    with a NULL status vanishes."
-  - "MEASURED SCHEMA DIVERGENCE, and it is why the accompanying test branches instead of asserting
-    one shape. PROD: `practices.status` is NULLABLE with default 'inquiry', `client_id` is NULLABLE,
-    and there is no `practice_type` column. The MIGRATED TEST DATABASE: `status` NOT NULL,
-    `client_id` NOT NULL, `practice_type` present and NOT NULL. The two schemas diverge on the exact
-    column this migration keys on. Reported, NOT fixed here — a separate concern from creating the
-    missing table."
-  - "`current_setting('app.actor', true)` — the `true` (missing_ok) is load-bearing. Without it
-    `current_setting` RAISES on any session that has not set the GUC, and because the trigger fires
-    inside the caller's transaction that would abort the practice UPDATE itself. A history table
-    that can veto the state change it observes is worse than no history table."
-  - "`changed_by` is nullable and never required. The trigger cannot know an application actor and
-    inventing one would be worse than recording none. The client-facing query deliberately does not
-    select it — it holds internal staff emails, per the identity-leak guard already in that router."
-  - "The narrowed except must NOT become a new catch-all. `UndefinedTableError` degrades and says so;
-    a `PostgresError` logs with a traceback; anything else PROPAGATES rather than being rendered as
-    an empty history, which is indistinguishable from a practice that never moved."
-  - "Nothing in this diff touches a running database. Applying 289 to prod is a separate step, and
-    at the time of writing `flyctl deploy` / `flyctl secrets set` are both refused in this session by
-    the auto-mode classifier."
+  - "No change to `wr3_spend_authority.py` itself or to either charging call site — the runtime
+    gate is pre-existing, unmodified production code. This PR only widens the workflow's `paths:`
+    filter/pytest command to cover the two modules the new test exercises
+    (`wr3_flowkit_client.py`, `wr3_render_episode.py`) and adds `pytest-asyncio`+`Pillow` to the
+    install line (both are already required by the widened set — omitting either turns a real
+    `ImportError` into a false red, verified empirically on a bare venv, not assumed)."
+  - "Not a branch-protection change. `wr3-spend-gate-tests.yml` stays in its existing advisory
+    (non-required) status — promoting it to required is a separate, `operator[control-plane]`-gated
+    action tracked elsewhere, and out of scope here."
+  - "Do not weaken any existing check. The one red this PR drew (`Harness floor recompute`, no
+    brief+pack in the diff) is answered by supplying this pack, never by touching the gate."
 acceptance:
-  - "The trigger is proven by EXECUTION against a live Postgres, not by reading the SQL — the defect
-    being fixed is precisely an artifact that looked correct and was never run. Seven cases: an
-    INSERT writes no history; a status change records old and new; an UPDATE that does not touch
-    `status` writes nothing; rewriting the same value writes nothing; a NULL -> value transition IS
-    recorded (or, where the live column is NOT NULL, the constraint itself is asserted); the
-    `app.actor` GUC is recorded when set; and the practice UPDATE still commits when it is not."
-  - "Three mutations of the MIGRATION each turn the suite red, each caught by the intended test:
-    firing on `INSERT OR UPDATE` (caught by test_insert_alone_writes_no_history + 2 more), dropping
-    `current_setting`'s missing_ok (test_a_status_change_records_old_and_new), replacing the guard
-    with `IF TRUE` (test_rewriting_the_same_status_records_nothing). Baseline back to 7 passed with
-    no residual diff."
-  - "The migration is idempotent (`CREATE TABLE IF NOT EXISTS`, `CREATE OR REPLACE FUNCTION`,
-    `DROP TRIGGER IF EXISTS`) so the test applies it itself. This is deliberate: SKIPPING when the
-    table is absent would make the test vacuous on exactly the databases where 289 has not landed,
-    which are the only ones where it matters."
-  - "Two pre-existing tests raised a bare `Exception` to simulate the missing table; the narrowed
-    except no longer catches that, so they are repointed to `asyncpg.UndefinedTableError` rather
-    than left to pass for the wrong reason."
-  - "386 passed / 15 skipped across `backend/tests/db/` — the migration contract and ROLLBACK-marker
-    suites accept 289 — plus 8 passed on the router's own unit tests."
+  - "The new test, `test_submit_clip_real_mode_blocked_without_decision_no_http`, passes on both
+    workflow matrix legs (py3.11, py3.14)."
+  - "The full spend-gate corpus the workflow now names (5 files) runs clean together, not just the
+    new test in isolation."
+  - "Both pre-existing guilt tests AND the new one independently prove a REAL bypass: commenting
+    out `assert_spend_authorized()` in `_generate_start_image` must turn them red with
+    `AssertionError: network path reached`, not merely pass because the mock never gets exercised."
+  - "actionlint accepts the modified workflow; every path newly added to its `paths:` filter exists
+    on disk."
 consumer_map:
-  - "`backend/app/routers/portal_process_timeline.py` — the only backend reader; builds the client
-    tracker. Modified in this diff."
-  - "`apps/mouth/src/lib/api/portal/portal.types.ts` + `apps/mouth/src/lib/schemas/process.ts` — the
-    frontend types and browser-side validation for that response. NOT modified: they already
-    describe the shape the table now actually produces, which is the point."
-  - "`practices` (via trigger `trg_practice_status_log`) — every service that writes
-    `practices.status` becomes a producer, without any of them changing."
-  - "migration 075's `trg_practice_changed` — a SECOND trigger on the same column. Both fire; they
-    are independent (pg_notify vs INSERT) and neither reads the other's effect."
+  - "`.github/workflows/wr3-spend-gate-tests.yml` — widened `paths:` (both `pull_request:` and
+    `merge_group:` blocks), pytest command, sanity-compile step, install line."
+  - "`scripts/tests/test_wr3_zero_spend.py` — the file the new test lives in, alongside the 27
+    pre-existing guilt+innocence tests for the same runtime gate."
+  - "`scripts/wr3_flowkit_client.py` — unmodified; `submit_clip`, `_generate_start_image`,
+    `_create_scene`, `_http_post_json` are the surface the new test drives/mocks."
+  - "`scripts/wr3_spend_authority.py` — unmodified; `assert_spend_authorized` is the function the
+    mutation-test receipt below proves the new test actually guards."
 risks:
-  - "289 IS NOT APPLIED TO PROD by this diff, so the tracker keeps taking its degraded path until an
-    operator applies it. The difference from today is only that the path now announces itself."
-  - "The prod/test schema divergence above is DISCLOSED, not closed. In particular the NULL-status
-    arm of the trigger is exercised only where the live column admits NULL — on the migrated test
-    database that arm asserts the constraint instead, so CI does not prove the prod-shaped path."
-  - "A second trigger on a hot column adds one INSERT per status transition inside the caller's
-    transaction. Accepted: the table has a single narrow index and the write is one row."
-  - "`changed_by` will be NULL for every writer until someone sets the `app.actor` GUC. That is
-    honest emptiness rather than an invented actor, but it does mean the column is not yet useful
-    for audit — nothing in this diff sets it."
-grader: independent-review-session (fresh context, not the author)
-budget: ~2 subagents, no council
-pii:
-  none — no client data read or written; the table stores a status string and an internal actor,
-  and the client-facing query never selects the actor column.
+  - "A `pull_request:` workflow that is not a REQUIRED check is visible, not blocking — same
+    caveat PR #4649 named for the workflow itself. This PR does not change that status."
+  - "`paths:` filtering means a change from outside the filtered set would not trigger this
+    workflow. Accepted, pre-existing cost of the pattern this repo already uses for every
+    per-module CI workflow."
+grader: |
+  Independent verification by this session, generator != grader relative to the PR's own author
+  (the PR was opened by a prior conductor session; this task is exclusively the missing
+  evidence pack, no code/test edits made here) — re-ran both matrix-equivalent interpreters
+  locally, re-ran the mutation-test proof (comment out the assertion, confirm both guilt tests go
+  red, restore, confirm clean+green again), re-ran actionlint, and recomputed the deterministic
+  floor from the actual diff.
+budget:
+  1 evidence-authoring lane (no code change), no council — a 2-file CI-wiring diff whose
+  runtime logic was already proven by the predecessor PR #4649
+pii: none

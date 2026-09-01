@@ -1,0 +1,308 @@
+brief_ref: evidence/brief.yml
+plan_ref: "the portal tracker reads a table no migration ever created (2026-08-27)"
+diff:
+  net_lines: >-
+    +459/-6 (net +453) across 4 files, measured at SHA 5b790247b by
+    `git diff --shortstat 10c1a1729 5b790247b`. Base is the MERGE-BASE, so main's own landings are
+    not counted as this PR's. The SHA is the load-bearing part: this line lives inside its own diff,
+    so re-running the command at whatever the head is NOW returns a larger number, and a bare figure
+    with no SHA would be false the moment the next commit lands.
+  behaviour_change: >-
+    New table + trigger (not applied to any running database by this diff). One behaviour change in
+    the reader: a non-Postgres exception in the history query now PROPAGATES where it was previously
+    swallowed, and the two degraded paths now log.
+receipts:
+  - claim: "practice_status_log DOES NOT EXIST in prod, while four surfaces reference it"
+    cmd: "scripts/pg.sh -c 'SELECT count(*) FROM practice_status_log' -> ERROR relation does not exist; then information_schema.columns for that table -> 0 rows; then `git grep -ln practice_status_log origin/main` -> 6 files (router, its test, portal.types.ts, schemas/process.ts, a schemas test, a 2026-03-30 plan)"
+    exit: 1
+    ts: "2026-08-27T03:5x"
+    seat: "session (m5)"
+  - claim: "NO migration anywhere in the repo creates it — the table was designed, typed end-to-end, and never built"
+    cmd: "grep -rn practice_status_log apps/backend-rag/backend/db/migrations_v2/ apps/backend-rag/backend/migrations/ -> 0 matches (count of matching files: 0)"
+    exit: 1
+    ts: "2026-08-27T03:5x"
+    seat: "session (m5)"
+  - claim: "The reader swallowed the failure with a bare except, which is why five months passed with nothing red"
+    cmd: "sed -n on portal_process_timeline.py -> `except Exception:` / `# Table may not exist yet — fallback to single-step` / `pass` at lines 96-98"
+    exit: 0
+    ts: "2026-08-27T03:5x"
+    seat: "session (m5)"
+  - claim: "The trigger works on real Postgres: 7 behaviours driven through actual UPDATEs, not inferred from the SQL"
+    cmd: "createdb throwaway; apply 289 (NOTICE: trigger does not exist, skipping — expected on first apply); then INSERT/UPDATE sequence -> after_insert_rows=0; after_change=inquiry->on_process by=<null>; after_noop_update_rows=1 (unchanged); after_same_value_rows=1 (unchanged); null_transition old=<null> new=completed; with_guc by=ops@balizero.com; TOTAL_ROWS=3"
+    exit: 0
+    ts: "2026-08-27T03:5x"
+    seat: "session (m5)"
+  - claim: "IS DISTINCT FROM is load-bearing, and the proof is the DELTA between two runs, not a single green"
+    cmd: "sed the migration to `OLD.status <> NEW.status`, apply to a second throwaway db, replay the same two inserts -> MUTANT null_transition_rows=0 (the NULL->completed transition VANISHES) while MUTANT normal_transition_rows=1 (an ordinary transition still logs)"
+    exit: 0
+    ts: "2026-08-27T03:5x"
+    seat: "session (m5)"
+  - claim: "CORRECTION to the receipt above, found by the test suite and recorded rather than quietly fixed. That mutation ran against a table the session had created ITSELF, without the NOT NULL constraint — a probe demonstrating a difference the real schema under test could not produce"
+    cmd: 'the live-PG test then failed with `null value in column "status" of relation "practices" violates not-null constraint`; re-measured properly on BOTH databases: prod status is_nullable=YES default ''inquiry'' and client_id is_nullable=YES; the migrated test db has status NOT NULL, client_id NOT NULL, and a practice_type column prod does not have'
+    exit: 1
+    ts: "2026-08-27T04:00"
+    seat: "session (m5), on its own earlier claim. IS DISTINCT FROM remains correct and load-bearing FOR PROD, where the NULL path is reachable; the test now branches on the live constraint and asserts the constraint itself in the arm where the case cannot occur"
+  - claim: "A schema probe run to diagnose that failure read a DIFFERENT database than the suite connects to, and reported client_id as nullable while the suite was rejecting NULLs on it"
+    cmd: "asyncpg connect to the guessed default DSN -> current_database()='test', client_id is_nullable=YES; the suite's own error simultaneously said NotNullViolation on client_id. conftest rewrites TEST_DATABASE_URL to a per-worker clone at import time"
+    exit: 0
+    ts: "2026-08-27T03:5x"
+    seat: "session (m5). Cure: the fixture now asks the catalog THROUGH THE SAME CONNECTION the test uses, so the column list cannot be guessed wrong"
+  - claim: "Three mutations of the migration each turn the live-PG suite RED, each caught by the intended test — the suite constrains the migration, not merely the file's text"
+    cmd: "M1 `AFTER UPDATE OF status` -> `AFTER INSERT OR UPDATE` : rc=1, 3 failed/4 passed, caught by test_insert_alone_writes_no_history + test_rewriting_the_same_status_records_nothing + test_the_actor_guc_is_recorded_when_the_caller_sets_one. M2 drop missing_ok : rc=1, 1 failed/6 passed, caught by test_a_status_change_records_old_and_new. M3 guard -> `IF TRUE` : rc=1, 1 failed/6 passed, caught by test_rewriting_the_same_status_records_nothing. BASELINE restored -> rc=0, 7 passed, git status shows no residual mutation"
+    exit: 0
+    ts: "2026-08-27T04:0x"
+    seat: "session (m5)"
+  - claim: "The migration number was WRONG on the first attempt and the error came from reading a stale checkout — superscar #1 / W106b, the checkout itself as the lying proxy"
+    cmd: "`ls migrations_v2 | tail -8` in the M5 MAIN checkout (deliberately held hundreds of commits back) showed a max of 278, so the file was written as 279 — which already exists as 279_research_os_contract_core.sql. `ls | sort -n | tail` in the FRESH worktree shows the real max is 288. Renumbered to 289; the pre-commit W41 lint then independently confirmed 171 files with all-unique prefixes"
+    exit: 0
+    ts: "2026-08-27T03:5x"
+    seat: "session (m5)"
+  - claim: "The narrowed except changed the meaning of two pre-existing tests, which were repointed rather than left passing for the wrong reason"
+    cmd: 'both raised a bare `Exception("relation practice_status_log does not exist")`, which `except asyncpg.UndefinedTableError` does not catch; repointed to asyncpg.UndefinedTableError -> 8 passed on backend/tests/unit/routers/test_portal_process_timeline.py'
+    exit: 0
+    ts: "2026-08-27T03:5x"
+    seat: "session (m5)"
+  - claim: "The migration contract and ROLLBACK-marker suites accept 289"
+    cmd: "PYTHONPATH=. pytest backend/tests/unit/routers/test_portal_process_timeline.py backend/tests/db/ -> 386 passed, 15 skipped; pre-commit W42 lint -> 166 post-cutoff migrations, all have ROLLBACK marker"
+    exit: 0
+    ts: "2026-08-27T04:0x"
+    seat: "session (m5)"
+  - claim: "This diff cannot be taken live from this session: prod mutation is refused here"
+    cmd: "flyctl secrets import --stage / flyctl secrets set --stage / flyctl deploy -> all three refused by the auto-mode classifier. Not routed to a subagent (that would be permission laundering); surfaced to the owner instead"
+    exit: 1
+    ts: "2026-08-26T19:4x"
+    seat: "session (m5)"
+
+pii_scan: clean
+
+lanes:
+  - lane: D1
+    role: build
+    seat: opus-5
+  - lane: D2
+    role: review
+    seat: codex-gpt-5.6-sol
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      BLOCKER — the trigger aborts the caller's UPDATE. `new_status` was declared NOT NULL while
+      PROD's `practices.status` is nullable, so `UPDATE practices SET status = NULL` entered the
+      trigger, violated the constraint, and rolled back the whole transaction — including migration
+      075's trigger effects. This contradicted the migration's own comment, three lines above, that
+      "history must never be able to block the transition it records".
+    status: CONFIRMED
+    resolution: >-
+      Reproduced before accepting, on a prod-shaped throwaway database: after `UPDATE ... SET
+      status = NULL`, the row still read `status=inquiry` — the transition was vetoed. `new_status`
+      is now nullable, a convergence ALTER carries that to databases holding an earlier shape, and
+      the live test drives BOTH NULL directions and asserts the UPDATE commits.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      BLOCKER — the ROLLBACK section is a no-op the runner reports as success. All three DROP
+      statements were commented out, so the runner executes a comments-only string, deletes the
+      version row, and leaves table, function and trigger installed. The accompanying assertion
+      `assert rollback is not None` passes on that string, so the suite could never catch it.
+    status: CONFIRMED
+    resolution: >-
+      Verified via the repo's own `split_migration_sql`: the section returned 165 characters and
+      ZERO executable lines. Statements uncommented; the test now asserts executable statements and
+      names DROP TRIGGER / DROP FUNCTION / DROP TABLE specifically.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      SHOULD-FIX — `DEFAULT NOW()` is TRANSACTION-START time while the reader does
+      `ORDER BY changed_at ASC` and treats the last row as current. Two concurrent transitions on
+      one practice can therefore be recorded in the reverse of their commit order, showing the
+      timeline out of sequence and marking the wrong step current.
+    status: CONFIRMED
+    resolution: "Changed to clock_timestamp() in both the CREATE and a convergence ALTER."
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      SHOULD-FIX — the NULL test does not constrain what it names. On a database where the column
+      is NOT NULL it always took the `pytest.raises` arm and returned, so the trigger was never
+      driven with `OLD.status IS NULL`; replacing IS DISTINCT FROM with `<>` would leave it green.
+    status: CONFIRMED
+    resolution: >-
+      Confirmed by mutation, not by agreement. The test now makes the database prod-shaped inside
+      its own transaction (`ALTER TABLE ... DROP NOT NULL`, transactional in Postgres, undone by the
+      rollback) instead of branching, and the `<>` mutation is now KILLED by that test.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      SHOULD-FIX — the test named "..._is_logged_not_swallowed" asserts `len(steps) == 1`, i.e. it
+      asserts the swallowing. `asyncpg.PostgresError` also covers QueryCanceledError and
+      UndefinedColumnError, so a timeout or a schema drift still renders as a synthetic one-step 200.
+    status: CONFIRMED
+    resolution: >-
+      The name overclaimed and is corrected to `..._still_degrades_but_is_no_longer_SILENT`. The
+      degradation is deliberate and unchanged — a client asking about their own practice should not
+      get a 500 because history is unavailable — and the docstring now names the classes that share
+      that path. Surfacing any of them to the client is a product decision, not made here.
+  - seat: session (self, on its own mutation battery)
+    objection: >-
+      The mutation battery had a BLIND SPOT the refuter's findings exposed: `CREATE TABLE IF NOT
+      EXISTS` is a no-op against a database that already holds the table, so mutating the CREATE
+      clause changes the FILE without changing the SCHEMA and every executing test stays green.
+      Restoring the NOT NULL blocker and removing the convergence ALTER left the live suite at
+      7 passed — a real defect, invisible to execution.
+    status: CONFIRMED
+    resolution: >-
+      Closed with a deliberately weaker instrument that names its own weakness:
+      `test_the_migration_declares_the_shape_its_execution_cannot_prove` pins both properties in the
+      SQL TEXT. M5 and M6 are now killed by it. Disclosed rather than presented as full coverage —
+      only a fresh database proves these by execution, and the suite does not control that.
+  - seat: codex-gpt-5.6-sol (round 2, fresh context, on the fixed SHA)
+    objection: >-
+      BLOCKER — making the NULL transition RECORDABLE made it REACHABLE, and the reader crashes on
+      it. `STATUS_LABELS.get(status, status.replace("_", " ").title())` evaluates the dict.get
+      DEFAULT eagerly, so a NULL status raises AttributeError before the lookup ever happens.
+    status: CONFIRMED
+    resolution: >-
+      Confirmed AND RESCOPED by measurement: the FALLBACK path crashes on the same input, and that
+      is the path production takes TODAY — so this is a LIVE 500 on the client tracker for any
+      practice with a NULL status, not a defect 289 introduced. 289 only makes a second path reach
+      it. Fixed here anyway, because shipping 289 without it would widen a live crash: a NULL-safe
+      `_status_label` helper, with tests proving BOTH paths raised before the fix.
+  - seat: codex-gpt-5.6-sol (round 2)
+    objection: >-
+      SHOULD-FIX — the source-level convergence guard is satisfied by COMMENTED-OUT ALTERs. Both
+      assertions are bare substring checks, so prefixing the statements with `--` leaves them green,
+      which is exactly the no-op-rollback defect the guard was written to prevent.
+    status: CONFIRMED
+    resolution: >-
+      Correct, and it is this repo's scar family #3 committed by the very guard written to close a
+      neighbouring blind spot. The guard now strips comment lines from the forward SQL before
+      asserting, and BOTH directions are proven: commenting the ALTERs turns it RED (rc=1), the
+      unmutated file passes with 398 green.
+  - seat: codex-gpt-5.6-sol (round 2)
+    objection: >-
+      SHOULD-FIX — the history path renders a TERMINAL status as active: after `on_process ->
+      completed` the last step carries `completed=False, is_current=True`, so the client shows a
+      spinning loader on finished work. The fallback path, ten lines below, gets the same practice
+      right — the two paths disagree about the same practice.
+    status: CONFIRMED
+    resolution: >-
+      Fixed — a terminal status is never current, and the two paths now agree. Reachable only
+      because 289 makes the history path run at all, so it belongs to this diff. Guilt AND innocence
+      tested: a non-terminal last step is still current.
+  - seat: codex-gpt-5.6-sol (round 2)
+    objection: >-
+      SHOULD-FIX — the fixture applies 289 PERMANENTLY, outside any transaction, and the db-test
+      configuration permits pointing TEST_DATABASE_URL at a tunnel. A mistyped DSN is the whole
+      distance between a test run and unreviewed DDL on a real database.
+    status: CONFIRMED
+    resolution: >-
+      Fixture now refuses when the database name matches nuzantara_rag/prod/production. Guilt
+      proven: with TEST_DATABASE_URL pointed at nuzantara_rag the suite fails with "refusing to
+      apply migration DDL to database 'nuzantara_rag'"; innocence proven on the normal DSN.
+  - seat: codex-gpt-5.6-sol (round 2)
+    objection: >-
+      BLOCKER — rollback followed by reapply silently leaves the migration ABSENT while both ledgers
+      report it applied. The runner's rollback deletes from `_schema_versions`
+      (migration_manager.py:257) but `_is_applied` reads `schema_migrations`
+      (migration_base.py:365), so a reapply finds the surviving canonical row, skips the SQL, and
+      recreates only the secondary entry.
+    status: CONFIRMED
+    resolution: >-
+      The two cited lines were re-read this turn and say exactly what the objection claims. NOT
+      FIXED HERE, and deliberately: this is a defect of the migration RUNNER, not of 289, and it
+      would affect every migration in the tree. Curing it inside a migration file would be the wrong
+      layer and a far larger blast radius than this PR's concern. Reported as a separate finding;
+      289's own rollback statements are executable and correctly ordered. An independent seat was
+      asked to establish the precise CONDITION under which the two ledgers actually meet (both
+      paths reachable from the same runner) rather than to agree with the claim.
+  - seat: codex-gpt-5.6-sol (round 2)
+    objection: >-
+      BLOCKER — the convergence ALTERs converge only two attributes. A pre-existing table with the
+      right column names but no sequence/default on `id`, or missing the PK or the FK, survives
+      migration 289 unchanged, and the trigger's INSERT then aborts caller transactions — the very
+      failure mode round 1 closed.
+    status: PLAUSIBLE
+    resolution: >-
+      The mechanism is real and the counterexample is sound. NOT FIXED, and the reason is scope
+      rather than disagreement: 289 has never shipped, so no database can hold a partial earlier
+      shape except one a developer hand-built. Full catalog convergence (or a fail-loud shape
+      assertion) is the right long-term answer and is out of scope for the PR that creates the
+      table. DISCLOSED here rather than closed, so the next person meets it as a known limit and not
+      as a surprise.
+  - seat: codex-gpt-5.6-sol (round 3, fresh context, xhigh, on the round-2 fixes)
+    objection: >-
+      BLOCKER — the round-2 NULL fix is at the WRONG LAYER. `ProcessStepState` in
+      apps/mouth/src/lib/schemas/process.ts is a CLOSED `z.enum`, and both `ProcessStep.status` and
+      `ProcessTimelineData.current_status` are non-nullable members of it. A NULL (or any
+      out-of-enum) status makes Zod reject the ENTIRE response, so the portal shows "Unable to load
+      the timeline". Making `_status_label` NULL-safe only moves the failure from a 500 to a schema
+      rejection; the user sees the same broken screen.
+    status: CONFIRMED
+    resolution: >-
+      Verified by reading the schema this turn, not by agreeing: `ProcessStepState` is a `z.enum`
+      of 12 members and neither field is `.nullable()`. The round-2 correction is therefore
+      insufficient rather than wrong. This is the finding that triggers Agent PR Contract rule 8 —
+      a fix-of-a-fix that is itself incomplete means the surface is under-specified. PR SUSPENDED;
+      spec written at docs/specs/practice-timeline-semantics-v1.md, Q1.
+  - seat: codex-gpt-5.6-sol (round 3)
+    objection: >-
+      BLOCKER — no baseline. The trigger is `AFTER UPDATE OF status` only, so a practice's FIRST
+      status is never recorded; after the first transition the timeline shows only the destination
+      and the starting point is gone. The reader SELECTs `old_status` and then ignores it.
+    status: CONFIRMED
+    resolution: >-
+      Verified: `grep -n old_status` on the router returns exactly ONE line (:119, the SELECT) — the
+      column is written, fetched, and discarded. Also correct that the SQL comment at
+      289_practice_status_log.sql:75 is false as written: for a pre-existing practice the trigger
+      records OLD.status, not NULL. Not fixed — whether the timeline should show where a practice
+      STARTED is a modelling decision. Spec Q3.
+  - seat: codex-gpt-5.6-sol (round 3)
+    objection: >-
+      SHOULD-FIX — a REGRESSION the narrowing itself introduced: `asyncpg.InterfaceError` does not
+      descend from `PostgresError`, so a connection dropped between `fetchrow()` and `fetch()`
+      escapes both handlers and reaches the client as a 500, where the bare `except Exception` this
+      replaced degraded to a 200.
+    status: CONFIRMED
+    resolution: >-
+      Measured, not assumed — `issubclass(asyncpg.InterfaceError, asyncpg.PostgresError)` is False
+      and its MRO is InterfaceError -> InterfaceMessage -> Exception. This one is FIXED here even
+      though the PR is suspended, because it needs no product decision: it restores behaviour the
+      diff had removed. Guilt proven (dropping InterfaceError from the handler tuple turns exactly
+      the new test RED, the neighbouring PostgresError test stays green); innocence proven
+      (415 collected, 400 passed, 15 skipped, rc=0).
+  - seat: codex-gpt-5.6-sol (round 3)
+    objection: >-
+      SHOULD-FIX ×3 — (a) `ORDER BY changed_at ASC` alone is non-deterministic on ties, needs
+      `, id`; (b) the current status and the history are read in two separate statements with no
+      shared snapshot, so a concurrent commit yields a payload whose current_status matches no step;
+      (c) `cancelled` renders `completed=true` on the history path and `completed=false` on the
+      fallback — the same practice, two answers, depending only on whether the table exists.
+    status: CONFIRMED
+    resolution: >-
+      All three confirmed by reading both paths. (c) is the one that touches real rows: production
+      holds 124 cancelled practices out of 893, so applying 289 would silently flip 124
+      client-visible practices from a grey circle to a green checkmark. Which of the two is CORRECT
+      is not a bug question — a cancelled practice is finished but not achieved, and the step model
+      has only two booleans. Spec Q2 and Q4.
+  - seat: session (m5), REFUTING a round-3 finding rather than accepting it
+    objection: >-
+      The reviewer graded SHOULD-FIX that `VARCHAR(64)` on the audit columns can still abort the
+      observed UPDATE — the R1 mechanism surviving via a second domain mismatch — citing
+      scripts/qa/portal_qa_schema.sql:102, which permits 100 characters.
+    status: RETRACTED
+    resolution: >-
+      REFUTED against production. `information_schema.columns` reports `practices.status` as
+      `character varying(50)` — NARROWER than the audit columns' 64 — so any value that fits the
+      source always fits the audit and the trigger cannot abort on width. The reviewer had measured
+      a QA FIXTURE, not the live schema, and said plainly that it could not reach production; the
+      honest disclosure is what made the gap cheap to close. Residual, non-blocking: the audit width
+      is wider by coincidence rather than derived from the source width. Recorded in the spec under
+      "What is NOT wrong" so it is not re-litigated in round 4.
+  - seat: session (m5), correcting its OWN earlier report to the owner
+    objection: >-
+      This session told the owner "the crash is already live in production today" about the NULL
+      status path. That claim was never measured.
+    status: RETRACTED
+    resolution: >-
+      FALSE, and corrected in the same turn it was checked. Production holds 893 practices and
+      `count(*) FILTER (WHERE status IS NULL)` is ZERO; the six statuses actually present
+      (completed 669, cancelled 124, on_process 68, sending_invoice 17, inquiry 8,
+      waiting_documents 7) are all inside the frontend enum. The NULL path is REACHABLE — the column
+      is nullable with no CHECK — but nothing exercises it. It is latent, not live, which moves it
+      from incident to hygiene. Recorded rather than quietly dropped because the owner acted on the
+      stronger claim.
