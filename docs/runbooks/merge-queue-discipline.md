@@ -97,6 +97,74 @@ the specific race the queue closes** — not a separate future improvement, the 
 
 ---
 
+## 2bis. Required vs advisory checks — reinstatement rule
+
+Zero ruled on 2026-08-27 that main's required status checks be cut from 27 to 9 — applied live the
+same day. Within the hour the reinstatement rule fired twice, on two real catches, bringing live
+required back to **11**:
+
+- `actionlint — workflow schema + expression gate` — reinstated after PR #5050 shipped a new job
+  with `timeout-minutes: 5`, under the repo's own 10-minute checkout-budget floor
+  (`scripts/lint_workflow_timeout_floor.py`). Only a required actionlint run would have caught this
+  before merge.
+- `Every guard proves guilt AND innocence` — reinstated after PR #5045 registered 3 new hooks that
+  were never entered into `infra/guard-conformance/registry.json` (superscar family #3's own C1
+  discipline: no guard without a guilt+innocence pair on record).
+
+**The rule**: a check demoted from required to advisory on 2026-08-27 is reinstated to required —
+by anyone, no further ruling needed — the moment either of two things happens:
+
+1. **Main Red Breaker** — the advisory workflow goes red on `main` itself (not merely on a PR).
+2. **A real catch** — the advisory check is the one that would have (or did) stop a genuine defect
+   from landing, the way actionlint and guard-conformance just did.
+
+Everything else stays advisory (non-required, non-blocking, still runs and still reports) for **30
+days from 2026-08-27, through 2026-09-26**. At that date each surviving advisory context gets an
+explicit call: reinstate, or rule it advisory-permanent. Ledger: `.claude/skills/modus/PENDING-ARMS.md`
+(opened 2026-08-27, "16 advisory contexts under 30-day reinstatement watch").
+
+As with §2 above: **do not hand-copy the live required-context list into this doc.** The count here
+(11, up from the 9 first applied) is already the second number this rule has produced in one day —
+re-measure with the query in §2, or read `infra/required.d/contexts.json`
+(`scripts/ci/snapshot_required_contexts.py` regenerates it).
+
+**Re-adding a context to required** (the reinstatement mechanism, whether triggered by this rule or
+by any future ruling):
+
+```bash
+gh api -X PATCH repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks \
+  --input <file>
+```
+
+`<file>` is a JSON body using the `checks` form, one object per context:
+
+```json
+{
+  "strict": false,
+  "checks": [
+    {
+      "context": "actionlint — workflow schema + expression gate",
+      "app_id": -1
+    }
+  ]
+}
+```
+
+`app_id: -1` matches any app reporting that context name (GitHub Actions included) — this repo does
+not pin a specific app id here. After the PATCH lands, regenerate the snapshot
+(`python3 scripts/ci/snapshot_required_contexts.py --branch main --out infra/required.d/contexts.json`)
+in the same PR so the checked-in file and live protection never drift apart.
+
+**Trap, measured 2026-08-27**: `--input <file>` reads `<file>` from the **filesystem of the machine
+running `gh`**, not from wherever the JSON was drafted. Zero's first attempt at this PATCH from M5
+failed with `unexpected end of JSON input` — the body file existed on Pro, not on M5, so `gh` read an
+empty/nonexistent path and sent an empty body. Same class as cicatrix-superscar #1 (HOME-fork drift):
+the payload has to be physically present on the machine issuing the command, `scp`/sync it over first
+or write it fresh on that machine — do not assume a path is shared across the fleet just because the
+repo is.
+
+---
+
 ## 3. Whitelist: auto-merge eligible patterns
 
 The workflow `.github/workflows/auto-merge-whitelist.yml` auto-enables
@@ -332,18 +400,39 @@ update-branch` first (`lesson_gh_run_rerun_replays_the_stale_merge_commit_2026_0
 
 ## 6bis. Queue parameters, and the one knob NOT to turn
 
-Live values on ruleset `19779175`, read 2026-07-27 (re-read them, do not trust this list — the point
-of writing them down is to have something to diff against):
+Live values on ruleset `19779175`, read 2026-09-01 after the batching change below (re-read them, do
+not trust this list — the point of writing them down is to have something to diff against):
 
 | parameter                           | value      |
 | ----------------------------------- | ---------- |
 | `grouping_strategy`                 | `ALLGREEN` |
 | `max_entries_to_build`              | 5          |
 | `max_entries_to_merge`              | 4          |
-| `min_entries_to_merge`              | 1          |
-| `min_entries_to_merge_wait_minutes` | 2          |
+| `min_entries_to_merge`              | 4          |
+| `min_entries_to_merge_wait_minutes` | 15         |
 | `check_response_timeout_minutes`    | 90         |
 | `merge_method`                      | `SQUASH`   |
+
+**2026-09-01 — the queue now BATCHES (RULED by Zero: «procedi impostazione della coda»).**
+`min_entries_to_merge` 1 → 4 and `min_entries_to_merge_wait_minutes` 2 → 15; nothing else moved
+(before/after diff of the whole ruleset verified: those two fields only). Semantics: a green PR
+waits in the queue up to 15 minutes for companions; at 4 ready entries — or when the 15 minutes
+run out, whichever first — the group lands on `main` as ONE ref update, so `fly-deploy.yml`
+(trigger `push`, 100/100 runs measured) fires ONCE for the whole batch. 15 minutes is the ceiling
+a lone urgent PR pays, not a wait for "the queue to fill".
+
+Why this and not a deploy window: the 08:00–20:00 WITA "WhatsApp window" was measured dead
+(62 of the last 100 deploys landed inside it, no gate enforces it anywhere) and the per-deploy
+gap it guards against has never been measured (`research/operations/2026-08-25-wa-webhook-api-redundancy.md`
+§6 says so itself). Batching is the cheapest answer to «fondere le PR in blocchi di deploy» that
+adds no day-long "merged but not live" lag; it also relaxes the queue stability condition measured
+2026-08-31 (mean gap between landings 285 s vs a 590 s merge-group critical path → livelock), whose
+own conclusion was "widen the batch, do not re-arm faster". The definitive cure — a second `api`
+machine once the two SQLite files leave the volume — is a separate lane.
+
+Cost to expect: under `ALLGREEN` a red PR is ejected and the rest of the group is rebuilt, so
+batch CI can restart once; that is the price of batching, not a fault. Rollback: PUT the saved
+pre-change ruleset JSON back, or set the two fields to 1 / 2 by hand.
 
 ```bash
 gh api /repos/Bali-Zero/Teman2/rulesets/19779175 \
@@ -751,3 +840,65 @@ verifying the first live receipt is a separate ALIGN-FLEET step tracked in
 `.claude/skills/modus/PENDING-ARMS.md`. Wave 1's own acceptance criterion — 7 consecutive
 daily records, each carrying billed/PR computed via the attribution rule above — cannot be
 satisfied until that arming happens.
+
+---
+
+## Queue Shepherd organ (Codex F7 disposition, Zero GO 2026-08-27)
+
+`scripts/queue_shepherd.py` is the launchd organ the council spec named but declared not yet
+built (`research/operations/2026-08-14-merge-os-v3-research-council.md` §5, row "Codex F7"):
+"a durable (PR, head SHA) retry budget or no autonomous rearm ... a launchd organ on Pro can
+own the counter file". It runs two independent actions every tick:
+
+**(a) Budgeted re-arm.** A PR counts as "armed by this repo's own convention" when its branch
+is under `agent/` (Agent PR Contract §6) or it carries a `harness/fable-gate`/`harness-floor`
+status. Among those, a PR is a candidate only when it is truly disarmed (per W111 above: BOTH
+`autoMergeRequest` and `mergeQueueEntry` null — either alone is ambiguous) and its
+`mergeStateStatus` is CLEAN/UNSTABLE, or BLOCKED with a green status-check rollup. For each
+candidate the organ reads the PR's own GraphQL timeline for its most recent
+`RemovedFromMergeQueueEvent` (the agy-F3 disposition: attribute from the PR timeline, never
+from a `merge_group` run's `actor`, which is always the queue's own service account) and
+classifies the reason:
+
+| class      | meaning                                                                           | action                                                                          |
+| ---------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `INFRA`    | `failed_checks` correlated to a cancelled/timed-out/setup-signature job           | re-arm, **≤3 per (PR, head SHA) per rolling 24h**                               |
+| `CODE`     | `failed_checks` with no infra signature (or unresolved — conservative default)    | **never** auto-rearm                                                            |
+| `CONFLICT` | `merge_conflict`                                                                  | never (needs a human/new head)                                                  |
+| `MANUAL`   | a human explicitly dequeued it                                                    | never — a human's call is not this organ's to override                          |
+| `UNKNOWN`  | no readable ejection reason at all, or a reason string this module has never seen | **fail-closed**, never re-armed; one Telegram alert, deduped per (PR, head SHA) |
+
+The budget is a JSON file keyed `(pr_number, head_sha)` — **not** the queue entry, which resets
+every time GitHub creates/destroys the entry and would let the counter reset itself. A new push
+(new head SHA) is a fresh key by construction: this **is** the council's "head moved = reset"
+rule, with no separate reset code path needed. Re-arm itself is `gh pr merge N --auto`
+**bare** — this repo's queue rejects every strategy flag, `--squash` included (§ Session
+discipline above).
+
+**(b) Stale-run janitor.** Cancels QUEUED (never in_progress/completed) Actions runs that can
+no longer build anything useful: a `pull_request`-event run whose `head_sha` is not the
+current head of any open PR, or a `merge_group`-event run whose `head_branch`
+(`gh-readonly-queue/main/pr-N-<sha>`) no longer exists. Liveness is re-verified with a fresh
+fetch **immediately before each cancel call**, never from the list used to discover the
+candidate — a run can flip from stale to live in the seconds a tick takes to walk its
+candidates (`scripts/tests/test_queue_shepherd.py::test_janitor_recheck_at_cancel_time_never_cancels_a_run_that_became_live`
+is the regression test for exactly this race).
+
+**Fail-closed discipline**: any `gh` fetch failure raises inside the fetch function and is
+caught at the pass level as CANNOT-VERIFY — a failed fetch is logged and the pass does zero
+actions that tick, never read as "nothing to do" (scar family #2/#9).
+
+**Files**: `scripts/queue_shepherd.py` (`--tick [--dry-run]`, `--report`) +
+`scripts/tests/test_queue_shepherd.py` +
+`infra/launchagents/com.nuzantara.queue-shepherd.10min.plist` (`StartInterval=600`, no
+`KeepAlive`, lint-clean per `scripts/lint_plist_keepalive.py`). State lives in
+`~/logs/queue-shepherd/rearm-budget.json` + `~/logs/queue-shepherd/alerted-unknown.json`;
+receipts in `~/logs/queue-shepherd.log`.
+
+**Kill switch**: `QUEUE_SHEPHERD_ENABLED=false` — every invocation still prints a receipt line
+(superscar #2: a silent cron reads as a dead cron).
+
+**Built, not armed** (scar family #2, same pattern as the baseline organ above): the plist
+ships in this PR but installing it on Pro (`launchctl bootstrap`) is a separate operator step —
+see `.claude/skills/modus/PENDING-ARMS.md`. Proof-of-armed is the first live `--tick` log line
+in `~/logs/queue-shepherd.log` after install.

@@ -719,3 +719,223 @@ def test_rewarm_refetch_failure_does_not_swallow_a_programming_error():
 
     with pytest.raises(KeyError):
         qu.rewarm_if_blind(_blind(30, 9), "o/r", fetch=schema_change, sleep=lambda s: None)
+
+
+# ---------------------------------------------------------------------------
+# _driver_merged_changed_paths — guilt + innocence against a REAL git repo.
+#
+# These build an actual repository rather than stubbing `_run`, because the
+# behaviour under test is entirely `git check-attr`'s and `git diff`'s output
+# encoding — a fake would encode my belief about those formats and then agree
+# with itself (superscar #9 / W114: a fake and the code it checks share the
+# same imagination). Three of the cases below were written FROM defects an
+# adversarial reviewer found in the first shipped cut, and each is pinned here
+# because it was live in production for ~90 minutes.
+# ---------------------------------------------------------------------------
+
+import subprocess as _sp  # noqa: E402
+
+
+def _git(repo, *args):
+    _sp.run(["git", "-C", str(repo), *args], check=True,
+            capture_output=True, text=True)
+
+
+def _repo_with(tmp_path, gitattributes: str | None, extra: str | None = None):
+    repo = tmp_path / "r"
+    repo.mkdir()
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "t@example.invalid")
+    _git(repo, "config", "user.name", "t")
+    if gitattributes is not None:
+        (repo / ".gitattributes").write_text(gitattributes)
+    (repo / "ledger.md").write_text("base\n")
+    (repo / "plain.txt").write_text("base\n")
+    if extra:
+        (repo / extra).write_text("base\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "base")
+    _git(repo, "branch", "base-ref")
+    (repo / "ledger.md").write_text("base\npr row\n")
+    (repo / "plain.txt").write_text("base\npr line\n")
+    if extra:
+        (repo / extra).write_text("base\npr\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "pr")
+    _git(repo, "branch", "pr-ref")
+    return repo
+
+
+def _probe(repo, base="base-ref", head="pr-ref"):
+    return qu._driver_merged_changed_paths(
+        repo_root=repo, base_ref=base, pr_ref=head
+    )
+
+
+def test_a_union_path_is_named_with_its_driver(tmp_path):
+    """GUILT: the changed file carries merge=union -> reported, with the driver."""
+    repo = _repo_with(tmp_path, "ledger.md merge=union\n")
+    assert _probe(repo) == [("ledger.md", "union")]
+
+
+def test_a_non_union_driver_is_also_caught(tmp_path):
+    """GUILT, and the reason this keys on the COMPLEMENT of ordinary values:
+    GitHub honours no driver at all, so `merge=ours` diverges exactly as
+    `merge=union` does. The first shipped cut compared against the literal
+    string "union" and returned [] here — a silent regression to the race
+    wording on a file that is permanently, not transiently, DIRTY."""
+    repo = _repo_with(tmp_path, "ledger.md merge=ours\n")
+    assert _probe(repo) == [("ledger.md", "ours")]
+
+
+def test_a_non_ascii_path_is_not_lost_to_quotepath(tmp_path):
+    """GUILT. `core.quotePath` defaults to true, so `git diff --name-only`
+    emits a non-ASCII path as the C-quoted literal "caf\\303\\251.md", which
+    check-attr then does not match -> `unspecified` -> a real detection lost
+    with no error. Measured against the first shipped cut: it returned []
+    where the truth was [('café.md', 'union')]. `-z` is the cure."""
+    name = "café.md"
+    repo = _repo_with(tmp_path, f"{name} merge=union\n", extra=name)
+    assert _probe(repo) == [(name, "union")]
+
+
+def test_explicit_ordinary_values_are_not_reported(tmp_path):
+    """INNOCENCE: `merge=text` and a bare `merge` are the ORDINARY merge, which
+    GitHub performs identically. Reporting them would invent a permanent
+    divergence where none exists."""
+    for i, attrs in enumerate(("ledger.md merge=text\n", "ledger.md merge\n")):
+        sub = tmp_path / f"case{i}"
+        sub.mkdir()
+        assert _probe(_repo_with(sub, attrs)) == [], attrs
+
+
+def test_non_driver_paths_are_not_named(tmp_path):
+    """INNOCENCE: a PR touching only ordinary files reports nothing, so the
+    caller keeps its pre-existing 'race' wording."""
+    repo = _repo_with(tmp_path, "ledger.md merge=union\n")
+    _git(repo, "checkout", "-q", "-b", "plain-only", "base-ref")
+    (repo / "plain.txt").write_text("base\nonly this\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "plain only")
+    assert _probe(repo, head="plain-only") == []
+
+
+def test_no_gitattributes_at_all_reports_nothing(tmp_path):
+    """INNOCENCE: the same diff with no merge driver declared anywhere."""
+    assert _probe(_repo_with(tmp_path, None)) == []
+
+
+def test_a_path_containing_a_colon_survives(tmp_path):
+    """The old parse read `<path>: merge: <value>` and split on ': '. -z removes
+    that parse entirely; this pins that the removal actually holds.
+
+    NOTE the DOUBLE quotes: `.gitattributes` rejects a single-quoted pattern
+    ("name.md' is not a valid attribute name"), silently yielding `unspecified`,
+    which would make this test pass for the wrong reason."""
+    name = "weird: name.md"
+    repo = _repo_with(tmp_path, f'"{name}" merge=union\n', extra=name)
+    assert _probe(repo) == [(name, "union")]
+
+
+def test_every_path_is_examined_not_just_the_first_batch(tmp_path):
+    """GUILT for the silent-truncation bug: the first cut passed `paths[:200]`
+    and examined nothing beyond, so a large PR whose driver path sorted late
+    read as a race. The union file here is named `zz-...` so it sorts last
+    among 250 changed files."""
+    repo = tmp_path / "big"
+    repo.mkdir()
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "t@example.invalid")
+    _git(repo, "config", "user.name", "t")
+    (repo / ".gitattributes").write_text("zz-ledger.md merge=union\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "attrs")
+    _git(repo, "branch", "base-ref")
+    for i in range(250):
+        (repo / f"f{i:04d}.txt").write_text("x\n")
+    (repo / "zz-ledger.md").write_text("row\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "many")
+    _git(repo, "branch", "pr-ref")
+    assert _probe(repo) == [("zz-ledger.md", "union")]
+
+
+def test_a_broken_repo_returns_empty_rather_than_raising(tmp_path):
+    """The probe is fail-quiet by design: an unusable repo must degrade to the
+    caller's existing wording, never crash the daemon's tick."""
+    empty = tmp_path / "not-a-repo"
+    empty.mkdir()
+    assert qu._driver_merged_changed_paths(
+        repo_root=empty, base_ref="base-ref", pr_ref="pr-ref"
+    ) == []
+
+
+# --- the MESSAGE, which is the part that was dangerous ----------------------
+
+#: The EXACT advice the daemon prints when it finds a permanent driver
+#: divergence, pinned character for character. This is deliberately a
+#: change-detector, not a content-guesser.
+#:
+#: The first cut of this test asserted that the message CONTAINS "hand-resolve"
+#: and "do not" and "origin/main". A cross-family refuter broke it in one line:
+#:
+#:   "Instead, reset the file to origin/main and manually re-apply your rows"
+#:
+#: — which IS hand-resolving, means the forbidden thing, and satisfies every one
+#: of those assertions. A substring test cannot decide what a sentence means, and
+#: one that pretends to is worse than none: it converts an unreviewed reword into
+#: a green tick. So the bar is lower and honest — ANY edit to this string fails
+#: here, and a human has to look at it and update this constant on purpose.
+_EXPECTED_DRIVER_ADVICE = (
+    "none locally, but this is NOT a race: {shown} — git honours that "
+    "driver, GitHub's merge machinery honours none, so the two disagree "
+    "permanently and re-probing will never clear it. DO NOT hand-resolve "
+    "the file and DO NOT rebase onto it: the first silently deletes the "
+    "other lane's appended row, the second replays the append and "
+    "duplicates it. Rebuild your addition on a branch cut from fresh "
+    "origin/main, then verify `git diff origin/main -- <file>` is +N/-0."
+)
+
+
+def test_the_driver_advice_is_exactly_what_was_reviewed(tmp_path):
+    """The shipped message once told the fleet 'the cure is a hand rebase of
+    that file'. Hand-resolving a union file silently deletes the other lane's
+    appended row (the loss the driver exists to prevent, caught by
+    check-ledger-no-silent-loss on #5355); `git rebase` DOES apply the union
+    driver and duplicates the row instead (#4060). Both readings of that
+    sentence are documented failure modes, and it is broadcast to a fleet
+    mailbox that agents act on.
+
+    So this string is security-relevant text. It is pinned exactly: any reword,
+    however well-meant, goes red here and has to be looked at by a person.
+    THIS TEST DOES NOT PROVE THE ADVICE IS SAFE — no substring test can. It
+    proves only that the advice is the one that was reviewed."""
+    import inspect, re
+    src = inspect.getsource(qu.get_conflicting_files)
+    # Recover the message as source text, then undo the f-string concatenation
+    # the same way Python does, so the comparison is against the real template.
+    start = src.index('f"none locally, but this is NOT a race')
+    end = src.index("return \"none (merge-tree", start)
+    literal_src = src[start:end]
+    pieces = re.findall(r'f?"((?:[^"\\]|\\.)*)"', literal_src)
+    got = "".join(pieces)
+    assert got == _EXPECTED_DRIVER_ADVICE, (
+        "the driver-divergence advice changed. This is the string that told the "
+        "fleet to perform a data-destroying gesture once already. Read the new "
+        "wording, satisfy yourself it forbids BOTH hand-resolving and rebasing "
+        "and names the rebuild-from-fresh-main cure, then update "
+        "_EXPECTED_DRIVER_ADVICE deliberately.\n"
+        f"  got:      {got!r}\n  expected: {_EXPECTED_DRIVER_ADVICE!r}"
+    )
+
+
+def test_the_pinned_advice_still_forbids_both_gestures(tmp_path):
+    """A second, independent reading of the pinned constant — so that updating
+    the pin cannot silently drop the two prohibitions and the cure. Weak by
+    construction (see the note above), and kept only because a pin nobody
+    sanity-checks is a pin that can be updated to anything."""
+    lowered = _EXPECTED_DRIVER_ADVICE.lower()
+    assert "do not hand-resolve" in lowered
+    assert "do not rebase" in lowered
+    assert "origin/main" in lowered
+    assert "+n/-0" in lowered

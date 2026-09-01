@@ -46,6 +46,7 @@ HEAVY_PREFIXES = (
     "/api/dashboard",
     "/api/ingest",
     "/api/intel",
+    "/api/workspace-marketing",
     "/api/legal",
     "/api/oracle",
     "/api/naga",

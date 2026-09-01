@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getSections } from "@/lib/kbli-data";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
-import { KBLISectorGrid } from "@/components/kbli/KBLISectorGrid";
+import { KBLISectorBrowser } from "@/components/kbli/KBLISectorBrowser";
 
 export const metadata: Metadata = {
   title: "KBLI 2025 Sectors — Browse All Business Categories",
@@ -32,7 +32,7 @@ export default function SectorsPage() {
           {sections.length} economic sectors.
         </p>
       </div>
-      <KBLISectorGrid sections={sections} />
+      <KBLISectorBrowser sections={sections} />
     </div>
   );
 }

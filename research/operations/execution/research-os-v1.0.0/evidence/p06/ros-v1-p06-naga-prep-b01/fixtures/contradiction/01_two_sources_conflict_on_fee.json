@@ -1,0 +1,35 @@
+{
+  "synthetic": true,
+  "fixture_category": "contradiction",
+  "adversarial_case_ref": "packet 06-naga-claim-ledger.md, 'Golden set and adversarial cases': 'conflicting secondary sources'",
+  "expected_behavior": "Two evidence items attach to the SAME claim_id with opposite stances (supports vs. contradicts) on the same statement. Aggregate claim.status must resolve to 'contradicted' or 'inconclusive' — never 'supported' — per the G4 derivation rule in 02-p04-adapter-mapping.md ('a claim can have both supporting and contradicting evidence simultaneously'). An implementation that resolves status by 'first evidence wins' or 'higher confidence wins' without surfacing the conflict fails this fixture.",
+  "claim": {
+    "claim_id": "b2f1a000-0000-4000-8000-000000000030",
+    "claim_family_id": "b2f1a000-0000-4000-8000-0000000000f4",
+    "statement": {
+      "subject_ref": { "object_kind": "regulation", "object_id": "permenkumham-synth-07-2026", "object_hash": "5555555555555555555555555555555555555555555555555555555555555555" },
+      "predicate": "naga.fee_change.amount",
+      "object_ref_or_value": 900000,
+      "currency": "IDR"
+    },
+    "status": "contradicted",
+    "confidence": { "score": 0.4, "method": "naga.claim_scorer.v1" },
+    "note": "SYNTHETIC — the two evidence items below disagree on the fee amount for the same synthetic regulation."
+  },
+  "evidence": [
+    {
+      "evidence_id": "b2f1a000-0000-4000-8000-0000000000e2",
+      "document_id": "https://example-news-a.org/synth-visa-fee-update",
+      "stance": "supports",
+      "source_tier": "naga.tier.medium",
+      "note": "SYNTHETIC outlet A reports IDR 900,000."
+    },
+    {
+      "evidence_id": "b2f1a000-0000-4000-8000-0000000000e3",
+      "document_id": "https://example-news-b.org/synth-visa-fee-update-2",
+      "stance": "contradicts",
+      "source_tier": "naga.tier.medium",
+      "note": "SYNTHETIC outlet B, reporting on the same regulation the same week, states IDR 1,100,000. Neither outlet is a primary government source (that case is fixture invalidation/... 'missing official sources' variant)."
+    }
+  ]
+}

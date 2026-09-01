@@ -1,0 +1,205 @@
+You are an ADVERSARIAL REFUTER on the TERMINAL round (R7, doctrine + loop closure) of a design study loop. You did not write it — refute it. Hunt: register rows that misquote their source round, fabricated or wrong counts, doctrine rules that contradict the loop's own record, unenforceable or self-contradicting clauses, closure logic that hides open work. Number every finding, severity (high/med/low), quote the failing fragment, say WHY. Only findings — no padding. Compact EN.
+
+Your scope: EXACTNESS. Below is the full doctrine file. Check: internal consistency of every number and cross-reference (§2 items vs §5.2's 'five amendments'; §6's arithmetic 32+23+14+10 etc.; §4's ordering claims vs the rounds cited); whether §3's rules are stated so they can actually be violated detectably (a rule that cannot be violated is not a rule); whether any §2 'verbatim' payload contains language that smells paraphrased rather than quoted; whether §8's three declarations each really carry a live alternative.
+
+=== FILE ===
+---
+date: 2026-08-27
+domain: design
+client_case: none
+round: R7 — doctrine and loop closure (Design Study Loop, Zero mandate 2026-08-27)
+sources:
+  - R4 identity law, THE design SSOT this file cites and never restates — research/design/2026-08-27-r4-identity-merah-putih-token-spec.md (PR #5078)
+  - the loop's rounds — R0 census (#5058), R1 psychology (#5060), R2 SOTA (#5064), R3 autopsy (#5074), R5 mockups (#5079), R5b prototype (#5087), R6 walkthrough/panel/runtime (#5090), ENG lane (#5077)
+  - each round's adversarial record — the per-round adversarial.json files in the artifact and mockup dirs (per-round volumes cited in §6)
+  - Zero's rulings — Q1-Q9, Q-R3.1/2/3, the 2026-08-27 STANDING pre-confirmation, and the 2026-08-20 Fable ruling that shaped the panel roster
+adversarial_review: codex
+adversarial_review_detail: PENDING-PANEL
+---
+
+# R7 — The doctrine: how this identity is governed, verified, and allowed to change
+
+**What this file is.** The loop's terminal round. It does NOT restate the design law — that
+lives in R4 (one SSOT) with R5's component set, R5b's behavioral contracts and R6's
+declarations layered on top by reference. R7 fixes the four things a terminal round owes the
+organism: the AMENDMENT REGISTER R4 absorbs at its next touch (§2), the VERIFICATION DOCTRINE
+the loop learned the hard way (§3), the ADOPTION PATH and build backlog for product lanes
+(§4), and the consolidated OPEN-QUESTIONS REGISTER for Zero plus the honesty register of what
+this loop never established (§5-§6). Study only: no product code, nothing here files, prices,
+or decides anything.
+
+## §1 The loop in one paragraph
+
+Seven rounds and one ENG side-lane, 2026-08-27, all under Zero's standing pre-confirmation:
+R0 measured what actually ships (the de-facto design system, screenshot-anchored); R1 built
+the psychology baseline (three personas, Fogg×commitment, the emotion map); R2 imported the
+state of the art with tags that travel; R3 performed the autopsy (27 defects, measured
+contrast floors); R4 wrote the identity LAW (Merah Putih token set, contrast law, restraint
+budget, component contracts); R5 rendered the ten worst screens as mockups; R5b made the tree
+a testable interactive journey (counter law, delegate flow, dark set, node selftest + runtime
+smoke); R6 walked the redesign under the personas, ran the loop's only blind perception panel
+and the runtime a11y floor — and took the harshest refuter round of the loop against the
+author's own claims. Every round shipped: a repo report behind the R1 gate, an
+adversarial record with row-by-row dispositions, and an Italian section on the single
+artifact URL.
+
+## §2 Amendment register — what R4 absorbs at its next touch
+
+R4 is the SSOT; these amendments are BINDING NOW by their rounds' declarations (standing
+pre-confirmation, veto open) and land in R4's text the first time a lane touches that file
+after the loop's PRs merge. Verbatim payloads:
+
+1. **D4 graphical exception** (R5b §8.3): «#ff2d4c in dark = text, plus graphical NON-ACTION
+   fills that clear SC 1.4.11 (the progress bar); action FILLS stay in the #D01033 class in
+   both themes.» D4's risk is text legibility; a non-action fill at 4.44 vs the 3.0 bar of
+   SC 1.4.11 is not that risk.
+2. **Nesting-law floor** (R5 §6): «inner radius = outer − padding» yields negative radii at
+   realistic paddings; the law gains the declared floor `--radius-nested: 8px` =
+   max(8, outer − padding).
+3. **Type tokens in rem** (R6 §8.4): the type scale's px values become rem at identical
+   default rendering — R6's runtime FAIL proved px-fixed type is inert under text-only zoom.
+4. **Identity/trust block gains the physical-address mark** (R6 §8.3): no funnel page ships
+   without role-separation line + PT/NPWP/registry line + a visible physical office address
+   in the trust block; the talk-first WhatsApp card sits below the trust block, never beside
+   the price.
+5. **The honest-human module is verification-gated** (R6 §8.1): the named variant renders
+   only when a verified staff record structurally backs it; the PRODUCTION default is the
+   team control until the R7-gated real-user A/B decides (§3.3). R4's Q5-PROVISIONAL module
+   text absorbs this gate.
+
+Nothing else in R4 changes. An amendment not on this register is a new declaration owed to
+its own round's process, not a silent edit.
+
+## §3 Verification doctrine — what the loop actually learned
+
+The loop's deepest output is not a palette; it is a discipline for what may be claimed.
+Adopted as doctrine for every future design/product round in this repo:
+
+**3.1 The evidence ladder.** Every claim carries its class, and the class bounds what it can
+license: (a) MEASURED on the live tree/DB/screens this round (strongest — licenses
+contracts); (b) EXECUTABLE — a selftest or runtime probe that can go red (licenses
+behavioral claims; a probe without a stated `would_fail_if` is not evidence); (c) EXPERT
+WALKTHROUGH (hypothesis-grade — licenses design direction, never production defaults); (d)
+LLM-PROXY PANEL (structured judgment — licenses coherence findings and residual lists, NEVER
+perception truth); (e) CITED MEMORY/AUDIT — expires: on a fast-moving tree it is stale in
+HOURS and must be re-verified at cite time (R6's "zero welds" was falsified within a day of
+its audit). Rung (e) never outranks a lower-numbered rung read fresh.
+
+**3.2 The panel protocol** (now standard): generator≠grader always; four cross-family seats,
+never the conductor's own family as final gate (roster per the 2026-08-20 ruling); when
+comparing VARIANTS, blind the stimulus and counterbalance the order — and state the design's
+limits honestly (n=2 per condition cannot exclude order effects; a rubric that names the
+dichotomy is label-blind, not hypothesis-blind); at least one refuter seat gets FILESYSTEM
+ACCESS on ground-heavy reports — R6 proved that seat carries the most weight; every finding
+gets a row-by-row disposition, contested findings get conductor verification AGAINST SOURCE
+before disposal (the refuter also hallucinates — and the refuter also under-claims: two R6
+"instrument bugs" were one real bug and one mid-flight read of a sibling's file); a failed
+seat is recorded honestly with zero findings, and a recovered seat gets a minimal payload
+before a full one.
+
+**3.3 The human gate.** Three question classes in this loop are answerable ONLY by real
+users, and no proxy result may set their production state: (1) named-human vs team-control
+(the A/B the R6 default flip waits for); (2) red-institutional vs scam-adjacent perception in
+the SEA context (proxy-tested at R6 with declared demand contamination; the human test is
+open); (3) the assistive-tech floor (real VoiceOver timing, soft keyboard, device folds — a
+device pass, not headless). A production commitment on any of these before its human gate is
+a doctrine violation, whatever any panel says.
+
+**3.4 Instrument discipline.** Every probe states what would make it red; a pass whose
+technique demonstrably did nothing is a FAIL of the instrument, not a PARTIAL of the world
+(R6 probe 5); verdict logic may never short-circuit its own declared fail conditions; a live
+sibling's output file is not ground truth until the sibling is done writing it; and when two
+sondes disagree, one of them is broken — find it before concluding.
+
+## §4 Adoption path — the product-lane backlog, ordered
+
+The loop binds design; lanes build. The backlog, ordered by the walkthrough's own risk
+findings (each item cites its round):
+
+1. **GARUDA checkout page** — the funnel's highest-risk step has NO mockup (R6-P1's open
+   half); it inherits M5's price contract (verbatim ×3, local rails, review-before-pay) and
+   the §2.4 trust marks. First build item because R1 rated its live state 5-quits.
+2. **Consent placement** (R1-A4, unmocked): why-and-who-sees-it BEFORE the fields, M2b's
+   custody pattern as template — plus the custody-line AUDIT that unlocks M2b's own
+   placeholders (R4 §5's honesty constraint stands: no audited facts, no reassurance copy).
+3. **Portal weld prove-live** — the weld exists on main (R6-corrected); what is owed is the
+   production attestation: a paid GARUDA order observably creating a portal account, and the
+   case code surviving onto the receipt and the first WhatsApp message (the spine's two
+   missing links).
+4. **i18n for the sponsor** — the delegate flow cannot pass Wharton for an Indonesian sponsor
+   until it speaks Bahasa (R6-P3 scope limit); this is the P3 persona's single hardest block.
+5. **Delegate flow as product surface** (R5b §5): who-answers gate, authorization checkpoint,
+   pronoun layer, custody split — the design answer to the sponsor persona, now needing an
+   owner lane.
+6. **rem migration** (§2.3) and the **A/B + device-pass infrastructure** (§3.3) — the two
+   items that unblock every human gate.
+
+Sequencing within lanes stays the lanes' own (capacity is Legge 5); the ORDER above is the
+risk order, not a schedule.
+
+## §5 Open-questions register — consolidated for Zero (async, non-blocking)
+
+1. **PNBP pre-payment line** (R6 §8.2): may a single state-set «government charges: IDR X
+   (PNBP)» line appear before payment inside ruling Q7's bundle-only frame — or is
+   bundle-only absolute? (P2's trust trigger is only partially answered without it.)
+2. **The R4 amendment register** (§2): five amendments adopted under standing
+   pre-confirmation — any veto reopens its round's declaration, not this file.
+3. **M3-dark static mockup** (R5's declared veto point): rendered on request; the dark
+   component set otherwise lives in R5b's prototype.
+4. **Q-R3.1 my-migration timing** — ruled yes, lane unscheduled (capacity).
+5. **The human-gate budget** (§3.3): the A/B and the device pass need real users and a
+   device — both are operational spends only Zero can commit.
+
+## §6 Honesty register — what this loop did NOT establish
+
+No real-user data of any kind (every perception result is LLM-proxy, declared); no production
+code (flag stays OFF; the Visa Oracle engine still runs in shadow — no visitor has ever seen
+a verdict); no live A/B; no assistive-tech device pass; no custody audit (M2b's custody line
+still renders placeholders); no KBLI/tax/property conformance (declared debt, Legge 5); the
+institutional-perception question remains HUMAN-open. Adversarial volume per round, from each
+round's own declared seat counts (citable in the round reports and their adversarial.json
+files): R3 79 (32/23/14/10) · R4 63 (30/18/15/0 — qwen seat failed) · R5 63 (25/18/20/0 —
+qwen failed again) · R5b 42+1 runtime (15/10/11/6 — qwen recovered on a minimal payload) ·
+R6 36 (11/7/10/8). Earlier rounds' verification volumes live in their own records and are not
+restated here; no loop total is asserted — a doctrine file practices its own §3.1 rule, and
+this paragraph is exactly the kind of aggregate a refuter should re-derive from disk rather
+than trust.
+
+## Adversarial review (§7)
+
+PENDING-PANEL — four seats refute this file under its own §3 protocol: the filesystem seat
+verifies every §2 amendment payload verbatim against its round's report, every §4 item
+against the round that raised it, and §6's per-round counts against the adversarial records
+on disk; dispositions row-by-row in `adversarial.json`.
+
+## §8 Final declarations (adopted under the standing pre-confirmation, async veto open)
+
+1. **The doctrine's adoption rule**: product lanes CITE R4 + this register; a deviation is a
+   declared amendment through a round-grade process (report, panel, dispositions, veto
+   window) — never a silent edit. Alternative: doctrine-as-guideline (rejected: the loop's
+   whole record shows undeclared drift is how the pre-loop incoherence grew).
+2. **The verification doctrine (§3) binds future DESIGN rounds and design-adjacent product
+   claims** in this repo — evidence ladder, panel protocol, human gates, instrument
+   discipline. Alternative: per-round improvisation (rejected: §3 is the distilled cost of
+   this loop's own failures — three author claims killed in R6 alone).
+3. **The loop CLOSES with this round.** Continuation happens as product lanes (§4) and as
+   the human-gate studies (§3.3), each under its own mandate — not as an R8. Alternative:
+   a standing design loop (rejected: without new ground truth — real users, shipped
+   surfaces — further rounds would iterate on the same evidence and manufacture confidence).
+
+## §Meta
+
+A doctrine round's temptation is grandeur; its duty is the opposite — to say what may NOT be
+claimed. The loop's most valuable artifacts, in hindsight: R0's screenshot-anchored census
+(every later round stood on it), R3's measured contrast floors (they ended every color
+argument), kimi's R6 dissent (it turned a winner question into a condition question), and
+the refuter-with-filesystem pattern (it falsified the author three times in one round). The
+identity is carta and logo-red; the method is: measure, declare the class, let a hostile
+reader at the ground, and keep the human questions for humans.
+
+## §Solo-operatore
+
+One person reviews this loop asynchronously. This file is the entry point: R4 for the law,
+the §2 register for what changes, §4 for what to build, §5 for what awaits a ruling. Every
+claim's class is declared, every register row cites its round, and the round records — 8 PRs,
+per-round adversarial logs, one artifact URL — are the audit trail.

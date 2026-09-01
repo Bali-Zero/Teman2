@@ -1,0 +1,22 @@
+// GUILT: `proto` present but not TCP. Presence alone was checked, so a rule could name a
+// TCP service in the comment above it and grant UDP between the same pair.
+// SHELL-ROUTE: /term -> 127.0.0.1:7681 is ttyd -W zsh.
+{
+  "hosts": {
+    "pro":              "100.107.22.111",
+    "mini":             "100.93.236.6",
+    "m5":               "100.110.186.116",
+    "iphone-14":        "100.113.83.92",
+    "iphone175":        "100.77.16.7",
+    "apple-vision-pro": "100.97.28.18"
+  },
+  "acls": [
+    // Only SSH.
+    {"action": "accept", "proto": "udp", "src": ["m5"], "dst": ["pro:443"]}
+  ],
+  "ssh": [],
+  "tests": [
+    {"src": "m5", "accept": ["pro:443"]},
+    {"src": "tag:team-device", "deny": ["pro:443"]}
+  ]
+}

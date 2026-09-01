@@ -53,7 +53,50 @@ Due guard proteggono un worktree expired dal drop:
 
 ### Auto-cleanup (cron) — W62 ANTIBODY #1
 
-`--cleanup` NON è più solo manuale. Il LaunchAgent `com.nuzantara.agent-worktree-cleanup.daily` lo invoca ogni giorno alle 08:15 WITA via `scripts/agent_worktree_cleanup_cron.sh`.
+`--cleanup` NON è più solo manuale. Il LaunchAgent `com.nuzantara.agent-worktree-cleanup.daily` lo invoca **ogni 3 ore al minuto :15 WITA** (00:15, 03:15, … 21:15 — otto passate al giorno) via `scripts/agent_worktree_cleanup_cron.sh`.
+
+> **Due correzioni misurate il 2026-08-31, entrambe erano scritte sbagliate qui.**
+> **(1) L'ora è LOCALE, non UTC.** `launchd` legge `StartCalendarInterval` in ora locale: questo
+> file diceva «ogni giorno alle 08:15 WITA» e il plist diceva «00:15 UTC = 08:15 WITA», ma il
+> wrapper ha loggato `[2026-08-30T16:15:05Z]` per una passata che il broker ha timbrato
+> `00:15:06+0800`. Girava alle **00:15 WITA**, non alle 08:15. Leggi queste ore come WITA.
+> **(2) Il cadenzamento giornaliero non regge una raffica.** Nella notte 30→31/8 un'ondata di
+> agent ha creato **40 worktree** dopo che la passata delle 00:15 era già scattata, con la passata
+> successiva a 24h di distanza; il volume Data è sceso da ~80 GB liberi (report del proprietario,
+> nessun log lo registra) a **753 MB** (misurato).
+> ⚠️ **L'aritmetica NON chiude, e il racconto non deve far finta di sì.** ~40 checkout a ~1,2 GB
+> fanno ~48 GB, mentre quel salto ne implica ~79: i worktree sono il contributore **più grande
+> identificato** e l'unico che questa cura tocca, **non** l'intera caduta — restano ~30 GB non
+> attribuiti (candidati per sola dimensione: `~/.ollama` 49 GB, OSINT-Nexus 18 GB;
+> `/private/var/vm/sleepimage` è invece **escluso**, 26 GB ma mtime del 18/8). Il reaper non era morto né mis-schedulato — il suo log porta
+> rimozioni vere — era semplicemente **fuori cadenza**. Otto passate portano l'accumulo peggiore
+> **verso** ~3h invece di ~24h — «verso», non «limitano a»: la parola più forte è stata respinta da
+> tp1-qwen3.8-max ed è giusto così. La cifra vale solo a macchina sveglia, con ogni passata che
+> parte in orario e finisce in fretta; `launchd` **fonde** le esecuzioni di calendario perse
+> durante il sonno, quindi un portatile chiuso di notte ottiene **una** passata di recupero, non
+> le diverse che ha dormito. Otto voci sono otto occasioni nominali, mai otto passate garantite.
+>
+> La label finisce ancora in `.daily` **di proposito**: è un identificatore che le sonde del
+> connettoma (`docs/connectome/edges/launchd-*.yaml`) grepano alla lettera, e rinominarla per
+> inseguire la cadenza le farebbe smettere di matchare in silenzio — la forma W120. La cadenza si
+> legge qui e nel plist; l'identificatore non si tocca.
+>
+> ⚠️ **DUE AVVERTENZE sollevate dalla review cross-family (Kimi K3, 2026-08-31), entrambe reali.**
+> **(1) La cadenza vale solo dopo il RELOAD.** Questa PR cambia il repo (`*.plist.example`) e
+> questi documenti; la copia viva sotto `~/Library/LaunchAgents/` resta a una passata al giorno
+> finché qualcuno non esegue `bash infra/launchagents/install_agent_worktree_cleanup.sh`. Fra il
+> merge e quel reload, ogni riga qui e nel connettoma che dice «ogni 3h» descrive il repo, non la
+> macchina — è lying-by-presence rovesciato. Chi legge questa nota e non ha ancora ricaricato:
+> ricarica, poi verifica con
+> `plutil -extract StartCalendarInterval json -o - ~/Library/LaunchAgents/com.nuzantara.agent-worktree-cleanup.daily.plist`.
+> **(2) Nessuna mutua esclusione, e ora ci sono otto occasioni invece di una.** Né
+> `agent_worktree_cleanup_cron.sh` né il percorso `--cleanup` di `agent_start.py` prendono un
+> `flock`: nulla serializza il reaper contro un `--release` di un orchestratore, o contro un GC
+> che sfora la propria fascia. `launchd` non esegue due istanze della STESSA label, quindi
+> l'auto-sovrapposizione non è il pericolo; il pericolo è l'incrocio con gli ALTRI. La corsa
+> preesiste a questa PR, ma passare da 1 a 8 passate ne moltiplica l'esposizione per otto, ed è
+> onesto dirlo qui invece che scoprirlo dopo. Cura proposta (PR separata, non questa — una sola
+> preoccupazione per PR): `flock` sul wrapper con la stessa risorsa che `--release` acquisisce.
 
 ```bash
 # install (Pro):
@@ -226,7 +269,7 @@ SUBAGENT EXEMPTION note). The contract that closes both gaps:
 Il TTL da solo non basta: nessun consumer lo applicava. La hygiene è ora a 3 livelli, in ordine di affidabilità decrescente:
 
 1. **Release esplicito (preferito)** — l'orchestratore/agent chiama `--release <task-id>` a fine task. Tear-down immediato, branch cancellato se merged. È l'unico path che pulisce _subito_.
-2. **Cron reaper (rete di sicurezza)** — `com.nuzantara.agent-worktree-cleanup.daily` reape i worktree idle+clean+expired senza intervento. Copre il caso "l'agent è morto senza release". Non tocca WIP né sessioni vive (skip-recent).
+2. **Cron reaper (rete di sicurezza)** — `com.nuzantara.agent-worktree-cleanup.daily` reape i worktree idle+clean+expired senza intervento, **ogni 3h al minuto :15 WITA**. Copre il caso "l'agent è morto senza release". Non tocca WIP né sessioni vive (skip-recent). Nota di taratura: la rete di sicurezza è una CADENZA, non una garanzia — fra due passate una raffica di agent può ancora riempire il disco (successo il 31/8, §Auto-cleanup). Se una lane conia worktree a ritmo sostenuto, il path corretto resta il `--release` esplicito del punto 1, non aspettare il reaper.
 3. **CI gate (backstop finale)** — `broker-hygiene.yml` impedisce che un orphan >24h si fossilizzi: la PR fallisce finché il `.worktrees/` non è pulito.
 
 Regole per chi dispatcha worktree (orchestratore o script):

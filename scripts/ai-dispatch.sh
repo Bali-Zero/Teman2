@@ -512,7 +512,7 @@ run_claude() {
     check_safety "$prompt"
 
     # Multi-account fallback: numbered seats, legacy token, then keychain.
-    local token_vars=("CLAUDE_CODE_OAUTH_TOKEN_1" "CLAUDE_CODE_OAUTH_TOKEN_2" "CLAUDE_CODE_OAUTH_TOKEN_3" "CLAUDE_CODE_OAUTH_TOKEN_4" "CLAUDE_CODE_OAUTH_TOKEN_5" "CLAUDE_CODE_OAUTH_TOKEN")
+    local token_vars=("CLAUDE_CODE_OAUTH_TOKEN_1" "CLAUDE_CODE_OAUTH_TOKEN_2" "CLAUDE_CODE_OAUTH_TOKEN_3" "CLAUDE_CODE_OAUTH_TOKEN_4" "CLAUDE_CODE_OAUTH_TOKEN_5" "CLAUDE_CODE_OAUTH_TOKEN_6" "CLAUDE_CODE_OAUTH_TOKEN")
     local tried=0
     local claude_bin
     claude_bin="$(command -v claude)"

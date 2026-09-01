@@ -1,0 +1,224 @@
+# Lane C — Tax. Scope: UU KUP / PPh / PPN, PMK, e-Faktur & Coretax, expatriate-relevant
+# obligations (SPT Tahunan, NIK-NPWP). MANDATE §2: this file is the SCOPE — the instruments
+# a client tax question must be answered against. Presence/measurement lives in
+# kb/inventory/tax.yaml; probe questions live in kb/journeys/tax.yaml.
+#
+# Every declared_identity / verified_identity pair below was measured against production
+# Qdrant (legal_unified_hybrid_hybrid) and, where noted, the retired legal_unified_2026 on
+# 2026-08-25 — never inherited from the mandate's head start without a fresh lookup (mandate
+# rule: re-verify before acting). Two corrections to that head start are recorded inline
+# because they change what a downstream reader should trust:
+#
+#   1. UU_13_2016 is NOT a tax instrument and is NOT the identity collision the mandate
+#      described. All 118 points of legal_unified's UU_13_2016 were pulled and are 100%
+#      consistent Indonesian Patent Law (book_title "UU No 13 Tahun 2016 Tentang PATEN",
+#      legal_type=UU/number=13/year=2016 on every point) — real, correctly identified, and
+#      outside this lane's scope (it belongs with company/IP, not tax). The "PMK 9/2018 /
+#      PBB-KB governor's annex" contradiction the mandate cites lives in a SEPARATE, tiny
+#      (7-point) fragment inside the RETIRED legal_unified_2026 collection that merely shares
+#      the same document_id string by coincidence. `leaked_to_production: true` on that
+#      fragment's row in kb/inventory/legal_unified_2026.yaml is therefore not supported by
+#      what is actually in production and should be revisited by whoever owns that file — not
+#      chased further here (mandate §8: a defect outside tax is an inventory row, not a chase).
+#   2. The head start's proposed real_identity for "Permen_32_2022" — "PER-7/PJ/2025 —
+#      NIK-NPWP Coretax", drawn from that point's METADATA and FILENAME — does not survive
+#      reading its own TEXT. Six independently pulled chunks are a Peraturan Gubernur Sumatera
+#      Selatan on non-auction sale of regional government property (Penjualan Tanpa Lelang
+#      Barang Milik Daerah), with zero mention of NIK, NPWP or Coretax. Per mandate §4.3 the
+#      document's own text outranks its metadata/filename. So Permen_32_2022 is RETRACTED as a
+#      match for PER-7/PJ/2025 (see instruments below): that instrument remains genuinely
+#      unidentified anywhere in this KB, not merely mislabeled.
+#
+# A third corpus, `tax_genius_hybrid` (340 points, single Qdrant point-id namespace, ALL
+# `orphan_no_identity` shape — no document_id anywhere), is a curated consultant-dialogue
+# guide (Q&A on e-Faktur errors, PPh 21 examples, VAT filing deadlines — categories
+# value_added_tax/income_tax/general_tax/corporate_tax/tax_registration/social_security/
+# tax_residency) rather than primary legal text. It carries no citable instrument identity, so
+# it is out of scope for the `instruments` list below and for kb/journeys/tax.yaml's
+# instrument_id-anchored probes this pass — noted here so its absence from the list below
+# reads as a decision, not an oversight.
+
+schema_version: 1
+lane: C
+topic: tax
+
+instruments:
+  # ── KUP (Ketentuan Umum dan Tata Cara Perpajakan) chain ─────────────────────────────────
+  - id: UU_6_1983
+    declared_identity: "UU No. 6 Tahun 1983 tentang Ketentuan Umum dan Tata Cara Perpajakan (KUP), sebagaimana telah diubah"
+    verified_identity: "UU No. 6 Tahun 1983 tentang Ketentuan Umum dan Tata Cara Perpajakan (KUP), sebagaimana telah diubah"
+    identity_verdict: consistent
+    status: in_force
+    source_url: "https://peraturan.go.id/id/uu-no-6-tahun-1983"
+    source_verified: false
+
+  - id: UU_28_2007
+    declared_identity: "UU No. 28 Tahun 2007 tentang Perubahan Ketiga atas Undang-Undang Nomor 6 Tahun 1983 tentang Ketentuan Umum dan Tata Cara Perpajakan"
+    verified_identity: "UU No. 28 Tahun 2007 tentang Perubahan Ketiga atas Undang-Undang Nomor 6 Tahun 1983 tentang Ketentuan Umum dan Tata Cara Perpajakan"
+    identity_verdict: consistent
+    status: in_force
+    source_url: "https://peraturan.go.id/id/uu-no-28-tahun-2007"
+    source_verified: true # WebFetch 2026-08-25: title matches exactly, status "Berlaku", PDF link present
+
+  - id: UU_16_2009
+    declared_identity: "UU No. 16 Tahun 2009 tentang Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 5 Tahun 2008 tentang Perubahan Keempat atas Undang-Undang Nomor 6 Tahun 1983 tentang Ketentuan Umum dan Tata Cara Perpajakan Menjadi Undang-Undang"
+    verified_identity: "UU No. 16 Tahun 2009 tentang Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 5 Tahun 2008 tentang Perubahan Keempat atas Undang-Undang Nomor 6 Tahun 1983 tentang Ketentuan Umum dan Tata Cara Perpajakan Menjadi Undang-Undang"
+    identity_verdict: consistent
+    status: in_force
+    source_url: "https://peraturan.go.id/id/uu-no-16-tahun-2009"
+    source_verified: false
+
+  - id: PP_6_1983
+    declared_identity: "PP No. 6 Tahun 1983 tentang Ketentuan Umum dan Tata Cara Perpajakan"
+    verified_identity: "PP No. 6 Tahun 1983 tentang Ketentuan Umum dan Tata Cara Perpajakan"
+    identity_verdict: consistent
+    status: in_force
+    source_url: "https://peraturan.go.id/id/pp-no-6-tahun-1983"
+    source_verified: false
+    note: >-
+      Internally consistent (id, legal_type=PP, and the title-block CONTEXT header inside the
+      text all agree) but historically unusual: KUP is normally enacted at UU level, not PP.
+      Not contradicted by anything found in this pass — flagged for an independent check
+      against the official gazette before a client answer leans on it, not asserted as wrong.
+
+  # ── PPh (Pajak Penghasilan / income tax) chain ──────────────────────────────────────────
+  - id: UU_7_1983
+    declared_identity: "UU No. 7 Tahun 1983 tentang Pajak Penghasilan"
+    verified_identity: "UU No. 7 Tahun 1983 tentang Pajak Penghasilan"
+    identity_verdict: consistent
+    status: in_force
+    source_url: "https://peraturan.go.id/id/uu-no-7-tahun-1983"
+    source_verified: false
+
+  - id: TASSE_7_1983
+    declared_identity: "TASSE - No 7 - Tahun 1983 (the corpus's own legal_type field literally stores the string 'TASSE' — Italian for 'taxes', the category label this ingest used as a type — on all 250 points; not a real Indonesian legal instrument type)"
+    verified_identity: "UU No. 7 Tahun 1983 tentang Pajak Penghasilan sebagaimana telah diubah terakhir dengan Undang-Undang Nomor 36 Tahun 2008 (consolidated PPh text through the 4th amendment)"
+    identity_verdict: mistyped
+    status: amended
+    source_url: "https://peraturan.go.id/id/uu-no-7-tahun-1983"
+    source_verified: false
+    note: >-
+      A SEPARATE document_id from UU_7_1983 above, carrying a different edition (250 points,
+      consolidated through the 2008 amendment) of the same underlying law. Its own title says
+      it stops at UU 36/2008 — it predates the 2021 HPP changes, so status=amended (not
+      in_force as the current text) rather than superseded.
+
+  - id: UU_36_2008
+    declared_identity: "UU No. 36 Tahun 2008 tentang Perubahan Keempat atas Undang-Undang Nomor 7 Tahun 1983 tentang Pajak Penghasilan"
+    verified_identity: "UU No. 36 Tahun 2008 tentang Perubahan Keempat atas Undang-Undang Nomor 7 Tahun 1983 tentang Pajak Penghasilan"
+    identity_verdict: consistent
+    status: in_force
+    source_url: "https://peraturan.go.id/id/uu-no-36-tahun-2008"
+    source_verified: false
+
+  # ── HPP (Harmonisasi Peraturan Perpajakan) — 2021 reform, absent from the corpus ────────
+  - id: UU_7_2021
+    declared_identity: "UU No. 7 Tahun 2021 tentang Harmonisasi Peraturan Perpajakan (HPP)"
+    verified_identity: "UU No. 7 Tahun 2021 tentang Harmonisasi Peraturan Perpajakan (HPP)"
+    identity_verdict: consistent
+    status: in_force
+    source_url: "https://peraturan.go.id/id/uu-no-7-tahun-2021"
+    source_verified: true # WebFetch 2026-08-25: title matches exactly, PDF links present, real detail page
+    note: >-
+      The 2021 omnibus tax-law reform (new PPh brackets, PPN rate path to 11%/12%, carbon
+      tax, UMKM threshold). Confirmed real and current; confirmed ABSENT from legal_unified —
+      see kb/inventory/tax.yaml. Its absence is exactly why PP_8_1983's 10% VAT-rate text
+      (still in the corpus) is dangerous if surfaced for a rate question — see journey J2.
+
+  # ── HPP content under a garbled identity — same-pass discovery via J13's boilerplate-check, ──
+  # ── distinct from the UU_7_2021 row above: that row is the CORRECT identity, confirmed ──
+  # ── absent; this row is the MISLABELED fragment, confirmed present. See TAXC-5, ──
+  # ── kb/inventory/tax.yaml, for the full finding. ──────────────────────────────────────────
+  - id: UU_7_1945
+    declared_identity: "UU No 7 Tahun 1945 Tentang HARMONI SASI PERATURAN PERPAJAI(AN (the corpus's own book_title/legal_type/legal_number/legal_year fields literally store this — UU/7/1945 — on all 31 points; Indonesia enacted no tax-administration law in 1945)"
+    verified_identity: "Content-level evidence, not a clean title match (the title itself is garbled), indicates this is HPP — UU No. 7 Tahun 2021 tentang Harmonisasi Peraturan Perpajakan — text: (1) its Pasal 2 chunk carries ayat (1a), the NIK-as-NPWP provision ('Nomor Pokok Wajib Pajak sebagaimana dimaksud pada ayat (1) bagi Wajib Pajak orang pribadi yang merupakan penduduk Indonesia menggunakan nomor induk kependudukan'), which UU_28_2007's own 2007-vintage Pasal 2 chunk does not carry, because that provision did not exist until HPP introduced it in 2021; (2) the garbled book_title itself decodes to 'UU No. 7 Tahun 2021 tentang Harmonisasi Peraturan Perpajakan' once the OCR errors ('1945' for '2021', 'HARMONI SASI'/'PERPAJAI(AN' for 'HARMONISASI'/'PERPAJAKAN') are accounted for. Inferred, not independently source-verified against an official gazette page for THIS specific 31-point fragment."
+    identity_verdict: mistyped
+    status: unknown
+    source_url: "https://peraturan.go.id/id/uu-no-7-tahun-2021"
+    source_verified: true # this is the same URL already WebFetched for the UU_7_2021 row above (title matches exactly, PDF links present) — reused here because the claimed identity is the same instrument; NOT a fresh byte-for-byte diff of this 31-point fragment against that page
+    note: >-
+      status is 'unknown' rather than mirroring UU_7_2021's 'in_force': this corpus fragment's
+      OWN metadata.legal_status reads 'dicabut' (revoked), which directly conflicts with HPP's
+      real-world in-force status — but that 'dicabut' tag may itself be an OCR/mislabel artifact
+      of the same ingest defect that produced the wrong year, not a genuine status determination.
+      Recorded honestly as unknown rather than asserting either value with more confidence than
+      the evidence supports. See TAXC-5 (kb/inventory/tax.yaml) for the full discovery.
+
+  # ── PPN (Pajak Pertambahan Nilai / VAT) chain ───────────────────────────────────────────
+  - id: PP_8_1983
+    declared_identity: "PP No. 8 Tahun 1983 tentang Pajak Pertambahan Nilai Barang dan Jasa dan Pajak Penjualan atas Barang Mewah"
+    verified_identity: "PP No. 8 Tahun 1983 tentang Pajak Pertambahan Nilai Barang dan Jasa dan Pajak Penjualan atas Barang Mewah"
+    identity_verdict: consistent
+    status: amended # its own 10% rate text is stale relative to HPP-era rates; see UU_7_2021 note
+    source_url: "https://peraturan.go.id/id/pp-no-8-tahun-1983"
+    source_verified: false
+    note: >-
+      Same PP-vs-UU caveat as PP_6_1983 above. Independently of that: its stored text sets
+      the VAT rate at 10% ("Tarif Pajak Pertambahan Nilai berjumlah 10%"), which HPP (UU
+      7/2021, absent from this corpus) has since moved past — see journey J2.
+
+  - id: UU_42_2009
+    declared_identity: "UU No. 42 Tahun 2009 tentang Perubahan Ketiga atas Undang-Undang Nomor 8 Tahun 1983 tentang Pajak Pertambahan Nilai Barang dan Jasa dan Pajak Penjualan atas Barang Mewah"
+    verified_identity: "UU No. 42 Tahun 2009 tentang Perubahan Ketiga atas Undang-Undang Nomor 8 Tahun 1983 tentang Pajak Pertambahan Nilai Barang dan Jasa dan Pajak Penjualan atas Barang Mewah"
+    identity_verdict: consistent
+    status: in_force
+    source_url: "https://peraturan.go.id/id/uu-no-42-tahun-2009"
+    source_verified: false
+
+  # ── Coretax / PMK 81-2024 amendment chain ───────────────────────────────────────────────
+  - id: Permen_81_2024
+    declared_identity: "Permen No. 81 Tahun 2024 (the corpus's legal_type field literally stores 'Permen' — a generic ministerial-regulation label — on all 430 points, not the specific PMK type)"
+    verified_identity: "PMK No. 81 Tahun 2024 tentang Petunjuk Pelaksanaan Administrasi Nomor Pokok Wajib Pajak, Pengusaha Kena Pajak, Objek Pajak Pajak Bumi dan Bangunan serta Perincian Jenis, Dokumen, dan Saluran untuk Pelaksanaan Hak dan Pemenuhan Kewajiban Perpajakan"
+    identity_verdict: mistyped
+    status: amended # PMK 1/2026 (Permen_1_2026 below) is its 4th amendment
+    source_url: "https://peraturan.go.id/id/pmk-no-81-tahun-2024"
+    source_verified: false # the guessed peraturan.go.id URL 404'd; not yet located under a working path
+
+  - id: Permen_1_2026
+    declared_identity: "Permen No. 1 Tahun 2026 (generic 'Permen' type; this exact document_id is shared in production with an unrelated instrument — see note)"
+    verified_identity: "PMK No. 1 Tahun 2026 tentang Perubahan Keempat atas Peraturan Menteri Keuangan Nomor 81 Tahun 2024 tentang Ketentuan Perpajakan dalam Rangka Pelaksanaan Sistem Inti Administrasi Perpajakan"
+    identity_verdict: contradictory
+    status: in_force
+    source_url: "https://peraturan.go.id/id/pmk-no-1-tahun-2026"
+    source_verified: false
+    note: >-
+      CONFIRMED LIVE DEFECT, 2026-08-25. Of the 544 points carrying a top-level
+      document_id=Permen_1_2026, 494 are genuinely PMK 1/2026 (tax, Coretax 4th amendment) and
+      50 are genuinely Permenimipas 1/2026 (immigration — "Perubahan atas Peraturan Menteri
+      Imigrasi dan Pemasyarakatan Nomor 13 Tahun 2025 tentang Pelaksanaan Pencegahan dan
+      Penangkalan"). Two different ministries' regulations collided under one id because the
+      ingest kept only "Permen No 1 Tahun 2026" and dropped the ministry qualifier. A
+      retrieval for either topic risks surfacing the other ministry's text under a citation
+      that reads as correct. legal_unified also holds a further 962 points of this id under
+      metadata-only (legacy shape), not yet split by this same check. See journey J4.
+
+  # ── Coretax NIK-NPWP integration — absent, identity re-verified this pass ──────────────
+  - id: PER_7_PJ_2025
+    declared_identity: "PER-7/PJ/2025 — Peraturan Direktur Jenderal Pajak tentang penerapan Nomor Induk Kependudukan (NIK) sebagai Nomor Pokok Wajib Pajak (NPWP) dan petunjuk pelaksanaan administrasi NPWP/PKP/PBB dalam Coretax"
+    verified_identity: "PER-7/PJ/2025 — Peraturan Direktur Jenderal Pajak tentang penerapan Nomor Induk Kependudukan (NIK) sebagai Nomor Pokok Wajib Pajak (NPWP) dan petunjuk pelaksanaan administrasi NPWP/PKP/PBB dalam Coretax"
+    identity_verdict: consistent
+    status: in_force
+    source_url: "https://www.online-pajak.com/pajak/lakukan-segera-ini-cara-pemadanan-nik-menjadi-npwp/"
+    source_verified: false # a WebSearch summary corroborates this instrument's existence and a 2025-05-21 enactment date; no primary-source page was byte-verified this pass
+    note: >-
+      RETRACTS the mandate head start's lead. That note proposed "Permen_32_2022" (26 pts,
+      retired legal_unified_2026) as this instrument, citing its METADATA/filename. Six
+      independently pulled chunks of that point's own TEXT are consistently a Peraturan
+      Gubernur Sumatera Selatan on non-auction sale of regional government property — zero
+      mention of NIK/NPWP/Coretax. Per §4.3 text outranks metadata, so Permen_32_2022 is not
+      this instrument, and PER-7/PJ/2025 is genuinely unidentified anywhere in this KB, not
+      merely mislabeled. Re-acquire officially; do not repair Permen_32_2022 in place.
+
+  # ── SPT Tahunan 2025 penalty deferral — lost identity, whole in a retired collection ────
+  - id: KEP_55_PJ_2026
+    declared_identity: "TAX_UNKNOWN_UNKNOWN — in the retired legal_unified_2026 ingest, legal_type/legal_number/legal_year are all stored literally as the string 'UNKNOWN' on all 21 points"
+    verified_identity: "Keputusan Direktur Jenderal Pajak Nomor KEP-55/PJ/2026 tentang Penundaan Sanksi Administratif atas Keterlambatan Penyampaian Surat Pemberitahuan (SPT) Tahunan Pajak Penghasilan Orang Pribadi Tahun Pajak 2025 (confirmed 2026-08-25 from that document's own book_title metadata and a consistent title-block CONTEXT header repeated across all 21 chunks)"
+    identity_verdict: lost
+    status: in_force
+    source_url: "https://www.pajak.go.id"
+    source_verified: false
+    note: >-
+      Whole in the retired legal_unified_2026 collection (21/21 chunks, confirmed complete —
+      see kb/inventory/tax.yaml). Confirmed ABSENT from legal_unified. Per mandate §4.4,
+      re-acquire officially under this corrected identity; do not merely relabel the retired
+      fragment in place.

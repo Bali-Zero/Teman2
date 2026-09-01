@@ -8,7 +8,15 @@ factory default. This directory is the repo-side record and the policy as code.
 |---|---|
 | `policy.hujson` | The ACL, **proposed, not yet applied**. Applying it is `operator[GUI]`. |
 | `enroll-team-device.md` | Runbook to bring a team member's company laptop into the tailnet. |
+| `../../docs/runbooks/tailnet-acl-apply.md` | How to apply the ACL, verify it (both directions), roll it back. |
+| `../../scripts/tests/test_tailnet_acl_deny_by_default.py` | CI guard: the ACL stays deny-by-default and keeps naming `/term`. |
 | `../../scripts/verify_tailnet_node.sh` | Proves a node is present **and is not the machine asking**. |
+
+`policy.hujson` was rewritten 2026-08-29. The first draft granted
+`antonellosiano@gmail.com -> antonellosiano@gmail.com:*` — every port on every owned device, which
+reproduced the flat default among the fleet and left `pro:443` (the shell port) open to all six
+nodes. It now carries a per-direction, per-port matrix derived from what the repo actually
+connects to, with the evidence cited on each rule.
 
 This repo is **public**, so nothing here names which teammate holds which device, or carries
 anyone's contact details or performance data. That mapping lives in private fleet memory. The

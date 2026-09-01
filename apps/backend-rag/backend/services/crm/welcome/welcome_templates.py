@@ -13,6 +13,8 @@ Substitution variables:
 
 from __future__ import annotations
 
+from backend.app.core.config import settings
+
 # ─────────────────────────────────────────────────────────
 # ADVISOR FALLBACK NAMES (when client.assigned_to is NULL)
 # ─────────────────────────────────────────────────────────
@@ -217,11 +219,11 @@ WELCOME_EMAIL_TEAM_UNASSIGNED: dict[str, str] = {
 }
 
 WELCOME_EMAIL_CTA: dict[str, str] = {
-    "en": "Have a question right now? Reply to this email or WhatsApp us at +62 821 3465 159",
-    "it": "Hai una domanda adesso? Rispondi a questa email o scrivici su WhatsApp al +62 821 3465 159",
-    "ru": "Есть вопрос прямо сейчас? Ответьте на это письмо или напишите нам в WhatsApp: +62 821 3465 159",
-    "uk": "Є питання зараз? Відповідайте на цей лист або пишіть у WhatsApp: +62 821 3465 159",
-    "id": "Ada pertanyaan sekarang? Balas email ini atau hubungi kami di WhatsApp +62 821 3465 159",
+    "en": f"Have a question right now? Reply to this email or WhatsApp us at {settings.CLIENT_CONTACT_WHATSAPP}",
+    "it": f"Hai una domanda adesso? Rispondi a questa email o scrivici su WhatsApp al {settings.CLIENT_CONTACT_WHATSAPP}",
+    "ru": f"Есть вопрос прямо сейчас? Ответьте на это письмо или напишите нам в WhatsApp: {settings.CLIENT_CONTACT_WHATSAPP}",
+    "uk": f"Є питання зараз? Відповідайте на цей лист або пишіть у WhatsApp: {settings.CLIENT_CONTACT_WHATSAPP}",
+    "id": f"Ada pertanyaan sekarang? Balas email ini atau hubungi kami di WhatsApp {settings.CLIENT_CONTACT_WHATSAPP}",
 }
 
 

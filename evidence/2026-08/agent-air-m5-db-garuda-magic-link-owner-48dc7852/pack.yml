@@ -1,0 +1,442 @@
+# brief_ref is the LITERAL 'evidence/brief.yml' even though this pack lives in a per-PR
+# directory: harness-floor.yml stages both files into a synthetic tree under those fixed
+# names before validating, so any other value fails to resolve in CI.
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref:
+  "PR #5302 (agent/air-m5/db/garuda-magic-link-owner) — cure of the production outage that kept the
+  authenticated half of GARUDA VOA unreachable from the day migration 285 shipped. It ships the cure
+  ONLY: the static lint that was to stop the omission recurring is WITHDRAWN (four rounds, round 4
+  still green on the class it exists to catch) and the class is now specified, not guarded — see
+  docs/specs/2026-08-31-security-definer-ledger-lock-lint.md and the PENDING-ARMS row. Diff-time
+  coverage of this class is deliberately ABSENT. Governing mandate: GARUDA VOA dark launch to
+  production."
+# R8 (ground_truth) seat_override. R8 fires on the PATTERN `*/visa_engine/*`, and
+# the only file in this diff that matches it is
+# apps/backend-rag/backend/scripts/visa_engine/operational_preflight.py. Its diff
+# here is a Postgres SECURITY DEFINER ownership census -- pg_catalog queries,
+# LEDGER_OWNER, prosecdef -- and asserts no regulatory fact: no visa rule, no fee,
+# no eligibility condition, no KBLI code. There is therefore no NotebookLM query
+# for a ground_truth lane to hash, and fabricating one to go green would be
+# inventing evidence, which is strictly worse than the red. Verified by reading
+# the diff, not inferred from the path: the rule cannot see that a file living
+# under visa_engine/ makes no ground-truth claim (guard-over-match, superscar
+# family #3 -- recorded as a finding against the RULE).
+seat_override: "the only ground-truth-path hit is scripts/visa_engine/operational_preflight.py, whose diff here is a Postgres SECURITY DEFINER ownership census asserting no regulatory fact -- no visa rule, fee, eligibility condition or KBLI code -- so there is no NotebookLM query for a ground_truth lane to hash"
+
+lanes:
+  - lane: garuda-magic-link-owner-build
+    role: build
+    seat:
+      claude-opus-5 (conducting session — measured the outage against production, falsified four
+      competing hypotheses, authored migration 301, the preflight extension, this pack; also authored the static lint that was later WITHDRAWN — see dissent)
+  - lane: garuda-magic-link-owner-refute
+    role: review
+    seat:
+      codex-gpt-5.6-sol at xhigh effort (OpenAI, ChatGPT Pro flat subscription) — given the diff plus
+      the production measurements and told to break both the migration and the lint. Returned REJECT
+      with three findings, all CONFIRMED and all fixed; see dissent.
+  - lane: garuda-magic-link-owner-gate
+    role: review
+    seat:
+      claude-opus-5 on a FRESH context, dispatched as the Gear-3 final on-disk gate (the author never
+      gates its own diff). It ran the receipts rather than reading them, and broke the lint with two
+      shapes the first adversarial round had not reached — see dissent.
+seat_diversity: satisfied
+seat_diversity_note:
+  "Build lane Anthropic, adversarial lane OpenAI — different families, and the grader is not the
+  author. It earned its keep rather than being ceremony: the REJECT killed a migration that would have
+  recorded false success, and one counterexample it supplied (a commented-out transfer) was a shape
+  the author's own tests did not cover."
+diff:
+  net_lines:
+    "8 files, +912/-0, computed by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
+    One new .sql migration, two touched Python files (the live preflight check and its independently
+    frozen authority), one new design spec, and this evidence set (pack, brief, council journal).
+    Zero frontend, zero workflow, zero runtime request path. The count DROPPED from 1410: the static
+    lint file (729 lines) was withdrawn after the Gear-3 gate proved it unsound, and the spec that
+    replaces it is smaller than the code it refuses to ship a fifth time."
+  behaviour_change:
+    "At apply time against production, migration 301 changes nothing and says so: the runner connects
+    as backend_rag_v2, which is not a member of visa_ledger_owner, so the ALTER cannot succeed and the
+    migration RAISES rather than recording itself applied. The cure itself landed out of band on a
+    superuser connection (receipt below). The preflight extension changes no
+    production behaviour at all."
+receipts:
+  # NOTE ON THE LINT RECEIPTS BELOW (added 2026-08-31, on withdrawal).
+  # Several receipts in this list measure
+  # `test_retention_lock_triggers_are_ledger_owned.py`, which is NO LONGER IN
+  # THIS PR. They are kept, not deleted: every one of them records something
+  # that actually happened, and together they are the most instructive part of
+  # this pack — four rounds of a guard being corrected and still being wrong.
+  # Deleting them would erase exactly the evidence that justifies sending the
+  # surface to a spec. Read them as history of a withdrawn artifact, not as
+  # coverage this PR ships.
+  - claim:
+      "The ownership cure landed on the production PRIMARY and the trigger function is now owned by
+      visa_ledger_owner — read back from a SEPARATE read-only connection, not from the output of the
+      command that wrote it."
+    cmd:
+      'env -u FLY_API_TOKEN scripts/pg.sh -A -t -c "SELECT proname||'' ''||pg_get_userbyid(proowner)
+      FROM pg_proc WHERE proname=''bind_garuda_magic_link_token_retention_policy''"'
+    exit: 0
+    ts: "2026-08-30T07:09:20Z"
+    seat: claude-opus-5
+    result:
+      "bind_garuda_magic_link_token_retention_policy visa_ledger_owner — all three bind_garuda_*
+      binders now ledger-owned. scripts/pg.sh routes through haproxy to the primary
+      (pg_is_in_recovery = f, verified in the same session)."
+  - claim:
+      "PROVE-LIVE: magic-link issuance answers 202 in production, for the first time since it was
+      written. Before the cure every call returned 500 and garuda_magic_link_tokens had zero rows
+      ever; after it, the table holds the rows those calls minted."
+    cmd: "bash scratchpad/prove-live-garuda.sh (F2: two POSTs to
+      https://nuzantara-rag.fly.dev/api/visa/voa/auth/magic-links sharing one Idempotency-Key), then
+      `SELECT count(*) FROM garuda_magic_link_tokens` via scripts/pg.sh"
+    exit: 0
+    ts: "2026-08-30T07:03:06Z"
+    seat: claude-opus-5
+    result:
+      "F2 owner path: '202 false' then '202 true'. Table count 0 -> 2, both rows PRODUCTION, both with
+      retention_policy_id and retention_until populated — i.e. the trigger that used to raise 42501
+      ran to completion. The response body is deliberately non-enumerating and identical either way,
+      so the Idempotency-Replayed header is the observable signal, not the status code."
+  - claim:
+      "The static lint would have blocked migration 285. GUILT control, run this turn: with 301
+      removed — the real state of production until today — the lint fails and names the offender and
+      the file."
+    cmd:
+      "mv 301_garuda_magic_link_binding_owner.sql /tmp && PYTHONPATH=. python -m pytest
+      backend/tests/db/test_retention_lock_triggers_are_ledger_owned.py -k transferred"
+    exit: 1
+    ts: "2026-08-30T07:10:04Z"
+    seat: claude-opus-5
+    result:
+      "Failure names `bind_garuda_magic_link_token_retention_policy` in `285_garuda_magic_link.sql`.
+      The migration was restored immediately and `git status --porcelain` returned zero lines."
+  - claim:
+      "INNOCENCE control: with 299 present the whole guarded surface is green, and the lint does not
+      accuse prepare_visa_evaluate_idempotency_reservation (migration 264), which production confirms
+      is correctly owned and does not read the ledger."
+    cmd:
+      "PYTHONPATH=. python -m pytest backend/tests/db/test_retention_lock_triggers_are_ledger_owned.py
+      backend/tests/scripts/visa_engine/test_operational_preflight.py"
+    exit: 0
+    ts: "2026-08-30T07:09:19Z"
+    seat: claude-opus-5
+    result:
+      "43 passed in 0.38s. Includes a third control asserting the detector matches the shape at all,
+      so a guard that has quietly stopped matching anything cannot pass forever."
+  - claim:
+      "The cause is ownership, not a missing grant on the app role: the trigger is SECURITY DEFINER
+      but was owned by backend_rag_v2, which cannot take FOR SHARE on a visa_ledger_owner-owned
+      table. Its working twin differs by owner and by nothing else that touches the lock."
+    cmd:
+      'env -u FLY_API_TOKEN scripts/pg.sh -A -F''|'' -c "SELECT proname, prosecdef,
+      pg_get_userbyid(proowner) FROM pg_proc WHERE proname LIKE ''bind_garuda%'' ORDER BY proname"'
+    exit: 0
+    ts: "2026-08-30T07:02:00Z"
+    seat: claude-opus-5
+    result:
+      "Before the ALTER: magic_link binder prosecdef=t owner=backend_rag_v2; voa_check binder
+      prosecdef=t owner=visa_ledger_owner. Grants were read from pg_class.relacl, NOT from
+      information_schema.role_table_grants — that view is filtered by the calling role, so its empty
+      answer means 'invisible to me', never 'absent'."
+  - claim:
+      "The live catalog check that could have caught this had never been told these
+      functions exist; both GARUDA binders are now listed, and the frozen authority moved with them."
+    cmd: "PYTHONPATH=. python -m pytest backend/tests/scripts/visa_engine/test_operational_preflight.py"
+    exit: 0
+    ts: "2026-08-30T07:09:19Z"
+    seat: claude-opus-5
+    result:
+      "36 passed. RETENTION_BINDING_TRIGGER_FUNCTIONS in operational_preflight.py now lists
+      bind_garuda_voa_check_retention_policy and bind_garuda_magic_link_token_retention_policy, and
+      CANONICAL_SENSITIVE_FUNCTIONS in the test was updated in the same commit so the two cannot
+      drift apart silently."
+  - claim:
+      "The Gear-3 gate's two counterexamples were real: with the pre-fix detectors both shapes pass
+      GREEN with the defect present. RED captured before the fix, GREEN after — the new tests are not
+      trivially true."
+    cmd:
+      "temporarily restore the old detectors (header-only SECURITY DEFINER scan; collect every quoted
+      signature in a DO block), then PYTHONPATH=. python -m pytest
+      backend/tests/db/test_retention_lock_triggers_are_ledger_owned.py"
+    exit: 1
+    ts: "2026-08-30T10:24:00Z"
+    seat: claude-opus-5
+    result:
+      "RED: 2 failed, 8 passed — test_security_definer_declared_after_the_body_is_still_an_offender
+      and test_a_do_block_does_not_launder_a_signature_it_merely_names. File restored from a copy and
+      `git status --porcelain` showed only the intended edit. With the fixes in place: 46 passed."
+  - claim:
+      "Round three: all four of the gate's second-round counterexamples are RED against the previous
+      detectors and GREEN against the polarity fix. The fix is a reframing, not a fourth patch."
+    cmd:
+      "reconstruct the file from `git show HEAD:<path>` (round-2 detectors) plus the four new tests
+      only, then PYTHONPATH=. python -m pytest
+      backend/tests/db/test_retention_lock_triggers_are_ledger_owned.py"
+    exit: 1
+    ts: "2026-08-30T10:41:00Z"
+    seat: claude-opus-5
+    result:
+      "RED: 4 failed, 10 passed — no-dollar-quoted body, assignment-to-a-different-variable,
+      reassigned variable, two ALTERs in one block. File restored from a copy afterwards; the test
+      count is 14 and the full surface is 50 passed."
+pii_scan: clean
+pii_scan_note:
+  "No client data was touched, read or transcribed. Production reads were catalog queries (pg_proc,
+  pg_class, information_schema.columns) and one row COUNT; no row contents left the database. The two
+  synthetic eligibility checks the prove-live harness created were deleted by it (204 each). The
+  magic links minted during the proof were addressed to zantara@balizero.com, our own alias — no third
+  party received anything. No secret value entered any transcript: the ownership ALTER referenced
+  $OPERATOR_PASSWORD in place on the target machine rather than printing it."
+dissent:
+  - seat: claude-opus-5 (Gear-3 final on-disk gate, fresh context)
+    objection:
+      "REWORK-DESIGN. The static lint ships green on the exact class it exists to catch. Two measured
+      holes in its comment scanner: an `E'...'` escape string (Postgres ends `E'\\''` at the backslash
+      escape; the scanner reads the following `''` as an escaped quote and stays inside the literal
+      for the rest of the file) and an unclosed dollar tag (`closing == -1` emits the whole remainder
+      un-stripped). After either, a commented-out `-- ALTER FUNCTION ... OWNER TO visa_ledger_owner;`
+      is read as a REAL transfer — laundering, against the detector whose declared polarity is
+      FAIL-CLOSED. Plus a pre-existing hole the scanner does not touch: `DOLLAR_TAG.search` is
+      unbounded, so a legacy `AS '...'` body binds to a LATER statement's dollar body and a real
+      offender goes unreported."
+    status: CONFIRMED
+    resolution:
+      "Reproduced independently by the session on disk before acting — both laundering cases return
+      True. The lint is WITHDRAWN from this PR rather than patched a fifth time. Rule 8: the fourth
+      attempt failed in the same direction as the third, so the surface is under-specified and gets a
+      spec, not another patch — docs/specs/2026-08-31-security-definer-ledger-lock-lint.md, which
+      records all four rounds, the measured holes, and six requirements for whatever ships (including
+      R6: decide explicitly whether a hand-written SQL lexer should exist at all, given the
+      catalog-driven census in #5309 answers the same question by asking Postgres). Migration 301 and
+      the preflight inventory extension — which the gate found clean and said it would land as-is —
+      ship here."
+  - seat: claude-opus-5 (Gear-3 final on-disk gate, fresh context)
+    objection:
+      "The withdrawn lint had five tests, both polarities, and was mutation-proven. That was all true
+      and it was still unsound."
+    status: CONFIRMED
+    resolution:
+      "Recorded because it is the transferable lesson, not a footnote: an innocence control proves a
+      guard does not fire on correct input, and says NOTHING about the inputs the guard cannot see.
+      Mutation testing has the same blind spot — it only mutates code that exists, so a missing branch
+      is invisible to it. Neither technique can find a hole in the SET OF CASES CONSIDERED; only an
+      adversary constructing inputs from the spec can."
+  - seat: kimi-code/k3 (adversarial grader, second council seat)
+    objection:
+      "The header claims the block 'ends by asserting the POSTCONDITION', but the two early RETURNs
+      (role absent; function not present) exit before that assert. A staging environment that
+      provisions visa_ledger_owner after migrations run records 301 as applied with the transfer
+      never performed -- the same 'esiste != armato' false green the file says it refuses."
+    status: CONFIRMED
+    resolution:
+      "Verified on disk before adoption: RETURN at lines 95 and 101, RAISE EXCEPTION at 118. The
+      header was corrected to state exactly how far the guarantee reaches. The deferral itself is
+      kept: it is the inherited 251/253/268/281 convention, and raising would refuse to bootstrap
+      any clone that has not provisioned the role. Cure what the diff introduces (the false claim),
+      spec what it inherits (the convention)."
+  - seat: kimi-code/k3 (adversarial grader, second council seat)
+    objection:
+      "The static lint's comment stripper `--[^\\n]*` is applied to the whole forward section,
+      including inside string literals and dollar-quoted bodies. Postgres treats `--` inside a
+      literal as data. A SECURITY DEFINER function whose body contains a literal with a double
+      hyphen ahead of its FOR SHARE loses the lock clause to the stripper and is not reported --
+      a miss in the detector whose own spec says it must be PERMISSIVE because a miss is a silent
+      production 500."
+    status: CONFIRMED
+    resolution:
+      "Verified, and not merely synthetic: the stripper mangles migration 301's own text
+      `-- the SECURITY DEFINER trigger cannot take its FOR SHARE lock`. Replaced with a
+      character-scanning stripper that tracks single-quoted literals (including '' escapes) and
+      dollar-quoted bodies. Four tests added -- two guilt, two innocence -- plus one pinned to
+      migration 301 itself. Reverting to the regex reddens three of them."
+  - seat: kimi-code/k3 (adversarial grader, second council seat)
+    objection:
+      "Moving a SECURITY DEFINER function to a more privileged owner increases the search_path
+      hijack surface: any object created in a schema on the path could shadow an unqualified
+      reference in the body."
+    status: RETRACTED
+    resolution:
+      "REFUTED by the session against 285_garuda_magic_link.sql:214-218 -- the function is declared
+      `SET search_path = pg_catalog, public` and references
+      `public.visa_decision_retention_policies` fully qualified. Not adopted."
+  - seat: codex-gpt-5.6-sol (adversarial grader)
+    objection:
+      "The migration would record FALSE SUCCESS. Its first draft caught insufficient_privilege and
+      emitted a NOTICE, mirroring migration 268 — but a declined migration is still written to
+      _schema_versions as applied and is never retried, so production would carry a migration claiming
+      to have cured an outage that was still live, and nothing downstream would ever say otherwise."
+    status: CONFIRMED
+    resolution:
+      "Rewritten to assert its own postcondition and RAISE: after attempting the ALTER it re-reads
+      pg_proc.proowner and, if the function is still not owned by visa_ledger_owner, raises an
+      exception naming the consequence ('magic-link issuance still answers 500') and refuses to be
+      recorded applied. The ROLLBACK section is a deliberate no-op that says why — restoring
+      backend_rag_v2 as owner would re-create the outage."
+  - seat: codex-gpt-5.6-sol (adversarial grader)
+    objection:
+      "The lint's transfer collector was too permissive: it treated any appearance of a function name
+      near an ownership transfer as evidence that THAT function was transferred, so an unrelated
+      transfer in the same file laundered an offender, and a mere mention counted as a cure."
+    status: CONFIRMED
+    resolution:
+      "Rewritten to parse real ALTER FUNCTION ... OWNER TO statements and the DO-block transfer arrays
+      used by migrations 268/281, binding each transfer to its own function name. Five tests now
+      encode the grader's counterexamples directly: unrelated transfer, mere mention, commented-out
+      transfer, SECURITY DEFINER inside a comment, and DO-block array."
+  - seat: codex-gpt-5.6-sol (adversarial grader)
+    objection:
+      "Comments produced false results in both directions — a commented-out transfer read as a real
+      one, and the words SECURITY DEFINER inside a comment read as a real offender."
+    status: CONFIRMED
+    resolution:
+      "Line comments are stripped before analysis, and dollar-quoted bodies are matched by their real
+      tags rather than split coarsely. This also removed a false positive against
+      prepare_visa_evaluate_idempotency_reservation that the author's own innocence control had caught."
+  - seat: claude-opus-5 (self-refutation during build, RESOLVED)
+    objection:
+      "The lint's own MIGRATIONS path was wrong (parents[3] instead of parents[2]), so it globbed a
+      directory that does not exist. A glob over a missing directory returns empty silently — the lint
+      was green because it was looking at nothing."
+    status: CONFIRMED
+    resolution:
+      "Caught by the innocence control the lint carries. Path corrected and an explicit
+      MIGRATIONS.is_dir() assertion added, so the same failure can never be silent again."
+  - seat: claude-opus-5 (declared limit, unresolved)
+    objection:
+      "The lint reads SQL text, not a database. A migration whose trigger takes the lock through a
+      helper function rather than inline would not be caught."
+    status: PLAUSIBLE
+    resolution:
+      "Left standing and named in the brief's risks. The live catalog check in operational_preflight,
+      now aware of both GARUDA binders, is the layer that would catch that shape at runtime."
+  - seat: claude-opus-5 (measured during PROVE-LIVE, out of scope for this PR)
+    objection:
+      "F3 of the prove-live harness shows the magic-link endpoint still issues for a result_id the
+      caller does not own: a second, unrelated session cookie got '202 false' then '202 true',
+      i.e. it reached store.issue and minted one of the two tokens."
+    status: CONFIRMED
+    resolution:
+      "Orthogonal defect, already cured in PR #5298 (router-level ownership check) which is open and
+      queued. Named here rather than left implicit: this PR ends the outage, it does not close that
+      hole, and neither cure makes the other unnecessary — with #5298 alone the endpoint would still
+      have answered 500."
+  - seat: claude-opus-5 (Gear-3 final on-disk gate, fresh context)
+    objection:
+      "The lint missed SECURITY DEFINER declared AFTER the body — `AS $b$...$b$ LANGUAGE plpgsql
+      SECURITY DEFINER;`, ordinary valid Postgres. The detector read only the text before the
+      dollar-tag, so an offender written that way passed green with the defect present. Zero of the
+      twelve migrations on disk use that ordering, which is exactly why nothing caught it."
+    status: CONFIRMED
+    resolution:
+      "The attribute is now read from both sides of the body, up to the statement's terminating
+      semicolon. The gate's own counterexample is kept as a test, and it fails against the previous
+      detector (RED captured, see receipts) — a corpus that happens to be uniform is not a guarantee
+      about the next file."
+  - seat: claude-opus-5 (Gear-3 final on-disk gate, fresh context)
+    objection:
+      "DO-block laundering, one level below the file-level laundering codex rejected: a block that
+      transfers one function while merely NAMING another marked both transferred, because every
+      quoted signature in the block was collected. `to_regprocedure('public.<name>()')` is migration
+      299's own idiom, so this is not an exotic shape."
+    status: CONFIRMED
+    resolution:
+      "A signature now counts only if it REACHES the ALTER: it is read from the variable that
+      `format('ALTER FUNCTION %s OWNER TO %I', <var>, ...)` passes — assigned directly (299's scalar),
+      held in the array that variable iterates with FOREACH (281), or subscripted from it. Three
+      tests pin it: the laundering case, and both real migration shapes as innocence controls."
+  - seat: claude-opus-5 (Gear-3 final on-disk gate, fresh context)
+    objection:
+      "The brief's constraints said the superuser ALTER and #5298 were 'not in this PR by design'
+      while the pack recorded both as already landed — the two documents contradicted each other."
+    status: CONFIRMED
+    resolution:
+      "The brief now says what is true: neither is part of this DIFF, and both happened out of band
+      during the work (ALTER 07:03Z, #5298 merged and deployed 08:19Z with F3 green)."
+  - seat: claude-opus-5 (Gear-3 final on-disk gate, round two)
+    objection:
+      "All three of the round-two fixes were still evadable, by three shapes of one class. (a) The
+      transfer binding matched `\\b<var>\\b[^;]*?:=`, which walks from a MENTION of the ALTER variable
+      — inside an `IF to_regprocedure(signature) IS NULL THEN`, migration 301's own idiom — into the
+      NEXT line's assignment to a DIFFERENT variable, because nothing between them is a semicolon. A
+      throwaway migration carrying a live offender reported it transferred and the file-level test
+      passed. (b) The same regex counted both literals when a variable is reassigned. (c) A function
+      body written `AS '...' LANGUAGE plpgsql` instead of `$tag$...$tag$` has no dollar tag, so the
+      offender detector skipped the statement before reading any attribute."
+    status: CONFIRMED
+    resolution:
+      "Not patched a third time — CLAUDE.md rule 8 says a correction that is itself wrong means the
+      surface is under-specified, so the SPEC was written and the detectors were reframed around it.
+      The two have OPPOSITE polarity, and getting that backwards is what produced every round: the
+      OFFENDER detector must be PERMISSIVE (a miss is a silent production 500) and now reads the whole
+      CREATE FUNCTION statement in either body-quoting form; the TRANSFER detector must FAIL CLOSED (a
+      false transfer launders an offender into silence) and now recognises exactly one binding shape —
+      a single `format('ALTER FUNCTION %s OWNER TO %I', <var>, <role>)` whose variable has exactly one
+      statement-anchored assignment — yielding the empty set for anything ambiguous. Both spec notes
+      are in the file. Four tests, all RED against the previous detectors (receipt above)."
+  - seat: claude-opus-5 (declared limit, deliberately not chased)
+    objection:
+      "A text-based detector can always be evaded by a sufficiently unusual SQL formatting. This is
+      the third round of exactly that, and a fourth is not promised."
+    status: PLAUSIBLE
+    resolution:
+      "Named rather than papered over, and rule 8 applied: no fourth patch round. What makes this
+      acceptable is that the text lint is the CHEAP layer, not the only one — the live catalog check
+      in operational_preflight.py reads `pg_proc.proowner` from the running database and cannot be
+      evaded by any SQL formatting whatsoever. That check is what would have caught migration 285 on
+      its first run IF ANYTHING RAN IT -- see the correction below -- and this PR is what finally tells it these two functions exist. A real SQL parser
+      (pglast/sqlglot) would close the text layer properly; that is a separate decision with a
+      dependency attached, not something to smuggle into an outage fix."
+  - seat: claude-opus-5 (Gear-3 final on-disk gate, round three — verdict PASS with one nit)
+    objection:
+      "The spec docstring claimed the offender detector 'reports the function anyway rather than
+      skipping it' when it cannot parse a statement confidently, but the code still `continue`d. The
+      substantive polarity was right; that clause overstated it — a spec promising more than the code
+      delivers is exactly the failure mode this file exists to prevent."
+    status: CONFIRMED
+    resolution:
+      "Corrected by making the code true rather than by softening the claim. A SECURITY DEFINER
+      function with no readable body in either quoting form is now reported, and so is one written
+      `LANGUAGE c` / `internal`, where what looks like a body is an object file and a link symbol.
+      Two tests pin it — the accusation and its innocence control (unreadable alone is not an
+      accusation; unreadable AND SECURITY DEFINER is). RED captured first: `1 failed, 51 passed`.
+      52 passed now."
+  - seat: claude-opus-5 (Gear-3 final on-disk gate, round three — residual limits, PLAUSIBLE)
+    objection:
+      "Three text-layer evasions survive, demonstrated end-to-end: (1) ORDER-BLINDNESS — a later
+      migration that DROPs and re-CREATEs a binder resets its ownership in Postgres, but the transfer
+      lives in an earlier file, so the lint passes (throwaway migration 904: 14 passed with the
+      defect on disk); (2) an ARRAY subscript `target_function[2]` marks every entry of the array;
+      (3) a correctly-bound ALTER inside `IF false THEN` counts, because text cannot evaluate control
+      flow."
+    status: PLAUSIBLE
+    resolution:
+      "Recorded against the boundary this pack already declares, not chased — rule 8, no fourth patch
+      round. (1) is the most reachable and worth naming precisely: migration 289 already re-creates
+      two transferred binders and is safe only because it uses CREATE OR REPLACE, which preserves the
+      owner; its own header says so. The backstop for all three is not textual — operational_preflight
+      reads pg_proc.proowner from the live database, where a DROP+CREATE that reset ownership shows up
+      immediately and no SQL formatting evades it. Closing the text layer properly means a real SQL
+      parser (pglast/sqlglot), which is a dependency decision, not an outage fix."
+  - seat: claude-opus-5 (CORRECTION to this pack's own claim, measured after the gate passed)
+    objection:
+      "This pack twice called operational_preflight's live catalog check 'the backstop' and said it
+      'would have caught migration 285 on its first run'. That overstates it in exactly the way this
+      PR criticises elsewhere: the check CAN catch the shape, but NOTHING RUNS IT. Measured on this
+      branch: `collect_preflight_checks` has exactly two call sites — its own `__main__`
+      (operational_preflight.py:568) and the tests. `git grep` finds no reference to it anywhere under
+      .github/, infra/ or scripts/. It is a manual CLI, documented in a runbook. Esiste != armato,
+      superscar #2 — and the author walked into it while writing the pack that names it."
+    status: CONFIRMED
+    resolution:
+      "The two sentences are corrected above rather than deleted, so the overstatement stays visible.
+      What the claim actually supports: the catalog check is the layer no SQL formatting can evade
+      WHEN RUN, and this PR is what makes it aware of these functions — so a human running the
+      preflight, or a future workflow that runs it, now sees them. What it does NOT support: any
+      assurance that this class is caught automatically today. Arming it needs a CI step, which means
+      touching .github/workflows/, off-limits to this session, and a sandbox role literally named
+      visa_ledger_owner or the census reddens everything. Recorded as an operator item rather than
+      quietly assumed. Found by a sibling lane's cross-family reviewer, not by this session."

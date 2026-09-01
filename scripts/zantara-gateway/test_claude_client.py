@@ -375,8 +375,16 @@ def test_sdk_options_omit_effort_for_long_query(monkeypatch):
 # ── env hygiene ──
 
 
-def test_token_chain_reaches_slot_five_in_order(monkeypatch):
-    for slot in range(1, 6):
+def test_token_chain_reaches_slot_six_in_order(monkeypatch):
+    # Slot 6 is the Team premium seat since the 2026-08-23 remap: weekly-capped
+    # with no rolling reset, so it must come LAST. This asserts the ORDER, not
+    # just membership — the whole point of the slot is where it sits.
+    #
+    # It also has to set slot 6 rather than only delenv it: _token_chain() reads
+    # ambient os.environ, and the previous version of this test set 1..5 while
+    # leaving 6 to whatever the machine had. That is green on a clean CI runner
+    # and red on every fleet machine, where slot 6 is exported today.
+    for slot in range(1, 7):
         monkeypatch.setenv(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", f"tok{slot}")
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
 
@@ -386,6 +394,7 @@ def test_token_chain_reaches_slot_five_in_order(monkeypatch):
         ("token_3", "tok3"),
         ("token_4", "tok4"),
         ("token_5", "tok5"),
+        ("token_6", "tok6"),
         ("keychain", ""),
     ]
 
@@ -401,6 +410,7 @@ def test_sdk_env_strips_anthropic_api_key(monkeypatch):
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_4", raising=False)
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_5", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_6", raising=False)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-should-not-leak")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "oauth-token")
 

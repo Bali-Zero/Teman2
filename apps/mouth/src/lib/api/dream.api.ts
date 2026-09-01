@@ -78,6 +78,12 @@ export const dreamApi = {
   ): Promise<{ success: boolean; timestamp: string }> {
     return apiClient.request("/api/dream/state", {
       method: "POST",
+      // `/dream` is a PUBLIC page and this is a background autosave, so a 401
+      // here means "this visitor is not logged in", not "your session died".
+      // Without this opt-out the shared 401 handler navigates the browser to
+      // the login page — measured 2026-08-28, an anonymous visitor who typed
+      // one character was ejected to kita.balizero.com/login?expired=true.
+      redirectOnUnauthorized: false,
       // Mock user_id logic if auth not fully integrated in this view yet
       body: JSON.stringify({ state }),
       // Query param for user_id to match backend expectation for now,

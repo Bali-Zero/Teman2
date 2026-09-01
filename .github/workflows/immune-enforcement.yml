@@ -21,6 +21,13 @@ on:
   merge_group:
 
 concurrency:
+  # Per-PR/per-ref for every author. A shared per-workflow group keyed on
+  # github.actor was removed 2026-09-02: GitHub keeps only ONE pending run per
+  # group, so a 3rd near-simultaneous arrival was cancelled BEFORE any job
+  # started — no check-run object is created, so a required context sits at
+  # "Expected — waiting for status" with nothing red to see. Concurrency is now
+  # bounded only by the account-level ceiling, which QUEUES past it rather than
+  # dropping: lateness is visible, an absent check-run is not.
   group: immune-enforcement-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
@@ -65,16 +72,47 @@ jobs:
           # immune workflow as an exact self-trigger: removing or narrowing these
           # globs must not make a change to the required workflow auto-skip its
           # own contracts. The exact entry is therefore a deliberate overlap.
+          # `.claude/skills/*/*.md` below is EVERY markdown under a skill dir, not
+          # just SKILL.md: the doctrine citation lint's subjects are
+          # `.claude/skills/**/*.md`, and a filter enumerating only SKILL.md left a
+          # phantom in any other file free to land on a PR that never ran the
+          # finder. That pattern SUBSUMES the former explicit
+          # `.claude/skills/modus/PENDING-ARMS.md` entry, removed because actionlint
+          # reports the pair as SC2221 — the ledger file still triggers this job
+          # (verified by simulating this very case block), so nothing that depended
+          # on it is disarmed.
           while IFS= read -r f; do
             case "$f" in
+              scripts/injected_surface_attest.py|\
+              scripts/hooks/injected_surface_sessionstart.sh|\
+              scripts/tests/test_injected_surface_budget.py|\
+              scripts/tests/test_injected_surface_attest.py|\
+              scripts/scar_query.py|\
+              scripts/test_scar_query.py|\
+              CLAUDE.md|\
+              .claude/rules/*|\
+              docs/scars/*|\
               scripts/lint_home_fork.py|\
               scripts/proprioception.py|\
               scripts/agent_start.py|\
               scripts/tests/test_agent_start.py|\
               scripts/tests/test_proprioception_run_wrap_exit_code.py|\
+              scripts/hooks/proprioception_sessionstart.sh|\
+              scripts/tests/test_proprioception_receptor_ranking.sh|\
+              scripts/tests/test_proprioception_finding_count.sh|\
               scripts/secrets_permissions_audit.py|\
               scripts/pending_arms_report.py|\
+              scripts/lint_immune_contracts.py|\
+              scripts/tests/test_lint_immune_contracts.py|\
+              infra/immune-contracts/contracts.json|\
+              scripts/organism_digest.py|\
+              scripts/arsenal_probe.py|\
+              scripts/lib/heartbeat.sh|\
+              scripts/lib/wr2_runtime_stamp.py|\
               scripts/lint_plist_keepalive.py|\
+              scripts/lint_decision_registry.py|\
+              scripts/tests/test_lint_decision_registry.py|\
+              docs/decisions/registry.yaml|\
               scripts/arsenal_probe.py|\
               scripts/check_adversarial_review.py|\
               scripts/nb_curator_artifact_gate.py|\
@@ -85,6 +123,7 @@ jobs:
               scripts/codex/codex-nightly-autofix-ci.sh|\
               scripts/tests/test_lint_home_fork.py|\
               scripts/tests/test_home_fork_stale_side_attribution.py|\
+              scripts/tests/test_home_fork_bak_shadows.py|\
               scripts/tests/test_home_fork_skipped_visibility.py|\
               scripts/tests/test_proprioception_home_fork_merge.py|\
               scripts/tests/test_proprioception_remedy_selection.py|\
@@ -92,6 +131,8 @@ jobs:
               scripts/tests/test_proprioception_executed_code_currency.py|\
               scripts/tests/test_secrets_permissions_audit.py|\
               scripts/tests/test_pending_arms_report.py|\
+              scripts/lane_outcome_report.py|\
+              scripts/tests/test_lane_outcome_report.py|\
               scripts/tests/test_lint_plist_keepalive.py|\
               scripts/tests/test_arsenal_probe.py|\
               scripts/tests/test_adversarial_review_gate.py|\
@@ -103,6 +144,7 @@ jobs:
               scripts/tests/test_codex_seat_lib.py|\
               scripts/tests/test_claude_cascade_shell.py|\
               infra/launchagents/wrappers/claude-cascade.sh|\
+              scripts/tests/test_claude_oauth_slot6_coverage.py|\
               scripts/auth_sentinel.py|\
               scripts/tests/test_tri_llm_claude_seat_token.py|\
               scripts/lint_doc_executable_refs.py|\
@@ -118,14 +160,32 @@ jobs:
               package-lock.json|\
               apps/*/package.json|\
               packages/*/package.json|\
+              scripts/lint_doctrine_citations.py|\
+              scripts/tests/test_lint_doctrine_citations.py|\
+              .claude/skills/*/*.md|\
+              .claude/commands/*.md|\
+              CLAUDE.md|\
+              SYMBIOSIS.md|\
+              AUTONOMOUS_OPS.md|\
+              VADEMECUM.md|\
+              INDEX.md|\
               infra/doc-lint/*|\
               docs/wr2/*.md|\
               infra/home-fork/declared-pairs.json|\
+              scripts/build_repomap.sh|\
+              scripts/repomap_cap.py|\
+              scripts/tests/test_repomap_cap.py|\
               scripts/tcc_migrate_desktop_paths.py|\
               scripts/lint_tcc_desktop_paths.py|\
               scripts/tests/test_tcc_migrate_desktop_paths.py|\
               scripts/tests/test_lint_tcc_desktop_paths.py|\
               infra/tcc-desktop-paths/allowlist.txt|\
+              scripts/canon_blocks_publish.py|\
+              scripts/tests/test_canon_blocks.py|\
+              scripts/tests/test_door_canon_parity.py|\
+              AGENTS.md|\
+              GEMINI.md|\
+              QWEN.md|\
               scripts/launchd_liveness_detector.py|\
               scripts/tests/test_launchd_liveness_expected_nonzero.py|\
               scripts/tests/test_launchd_liveness_exit_status_decode.py|\
@@ -171,6 +231,11 @@ jobs:
               scripts/tests/test_docs_inventory_render_is_clock_free.py|\
               scripts/lib/fly_credential.sh|\
               scripts/test_fly_credential.sh|\
+              scripts/ci/lint_queue_field_verdict.py|\
+              scripts/tests/test_lint_queue_field_verdict.py|\
+              scripts/lint_arm_probe.py|\
+              scripts/tests/test_lint_arm_probe.py|\
+              scripts/queue_baseline_probe.py|\
               scripts/lib/offsite_verify.sh|\
               scripts/test_offsite_verify.sh|\
               scripts/fly-pg-backup.sh|\
@@ -235,7 +300,6 @@ jobs:
               apps/evaluator/nlm_deep_research/nb10_pipeline.py|\
               apps/evaluator/nlm_deep_research/tests/test_run_verdict.py|\
               apps/evaluator/nlm_deep_research/tests/test_calendar_skip_marker_class.py|\
-              .claude/skills/modus/PENDING-ARMS.md|\
               scripts/ci/required_context_map.py|\
               scripts/ci/snapshot_required_contexts.py|\
               scripts/ci/check_required_workflow_conformance.py|\
@@ -243,6 +307,8 @@ jobs:
               scripts/tests/test_check_required_workflow_conformance.py|\
               scripts/ci/lint_unreachable_workflow_conditions.py|\
               scripts/tests/test_unreachable_workflow_conditions.py|\
+              scripts/ci/lint_trigger_symmetry.py|\
+              scripts/tests/test_lint_trigger_symmetry.py|\
               infra/required.d/contexts.json|\
               infra/guard-conformance/registry.json|\
               infra/guard-conformance/check_guard_conformance.py|\
@@ -409,9 +475,13 @@ jobs:
           python -m pip install --quiet pytest PyYAML==6.0.3
           fail=0
           for t in \
+            scripts/tests/test_injected_surface_budget.py \
+            scripts/tests/test_injected_surface_attest.py \
             scripts/tests/test_agent_start.py \
+            scripts/tests/test_lint_doctrine_citations.py \
             scripts/tests/test_lint_home_fork.py \
             scripts/tests/test_lint_public_asset_refs.py \
+            scripts/tests/test_home_fork_bak_shadows.py \
             scripts/tests/test_home_fork_stale_side_attribution.py \
             scripts/tests/test_home_fork_skipped_visibility.py \
             scripts/tests/test_proprioception_home_fork_merge.py \
@@ -419,10 +489,14 @@ jobs:
             scripts/tests/test_proprioception_self_code_staleness.py \
             scripts/tests/test_proprioception_executed_code_currency.py \
             scripts/tests/test_secrets_permissions_audit.py \
+            scripts/tests/test_lane_outcome_report.py \
             scripts/tests/test_pending_arms_report.py \
+            scripts/tests/test_lint_decision_registry.py \
             scripts/tests/test_lint_plist_keepalive.py \
             scripts/tests/test_arsenal_probe.py \
             scripts/tests/test_adversarial_review_gate.py \
+            scripts/tests/test_lint_queue_field_verdict.py \
+            scripts/tests/test_lint_arm_probe.py \
             scripts/tests/test_nb_curator_artifact_gate.py \
             scripts/tests/test_jules_dispatch.py \
             scripts/tests/test_codex_autofix_selector.py \
@@ -440,6 +514,7 @@ jobs:
             scripts/tests/test_wa_session_liveness.py \
             scripts/tests/test_prepush_classify.py \
             scripts/tests/test_husky_pii_pass_overmatch.py \
+            scripts/tests/test_repomap_cap.py \
             scripts/tests/test_docs_audit.py \
             scripts/tests/test_docs_inventory_refresh_liveness.py \
             scripts/tests/test_docs_inventory_regen.py \
@@ -456,7 +531,10 @@ jobs:
             scripts/test_lint_test_reward_hacking.py \
             scripts/tests/test_required_context_map.py \
             scripts/tests/test_check_required_workflow_conformance.py \
-            scripts/tests/test_unreachable_workflow_conditions.py ; do
+            scripts/tests/test_unreachable_workflow_conditions.py \
+            scripts/tests/test_canon_blocks.py \
+            scripts/tests/test_lint_trigger_symmetry.py \
+            scripts/tests/test_door_canon_parity.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
               python -m pytest "$t" -q || fail=1
@@ -523,6 +601,25 @@ jobs:
           # rather than quietly pass.
           bash scripts/tests/test_pii_gate_merge_scope.sh
 
+      - name: A probe line reports 1 of N as 1 of N (proprioception receptor + CLI)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Both files are shell corpora, so pytest below cannot reach them.
+          #
+          # test_proprioception_receptor_ranking.sh has existed since 2026-07-26
+          # and was named by NO workflow — it has never run in CI once. Its five
+          # .py siblings all run in the pytest sweep below; being a .sh file is
+          # the only reason it was invisible. It is named here now, in the same
+          # PR that adds its neighbour, because a test nothing invokes is not a
+          # weaker guard than none — it is a guard that reports protection it is
+          # not providing.
+          #
+          # No `if [ -f ]` skip, per the convention this file's fly-credential
+          # step argues: both land on main with this step, so "absent" afterwards
+          # means DELETED, and that must go red rather than quietly pass.
+          bash scripts/tests/test_proprioception_receptor_ranking.sh
+          bash scripts/tests/test_proprioception_finding_count.sh
+
       - name: print() gate guilt+innocence+cannot-verify (.husky/pre-commit, Golden Rule #8)
         if: steps.paths.outputs.relevant == 'true'
         run: |
@@ -563,6 +660,44 @@ jobs:
           # No `if [ -f ]` skip here: this file is on main, so absent means deleted, and a
           # deleted corpus must go red rather than quietly pass.
           bash scripts/test_fly_credential.sh
+
+      - name: Queue-field verdict lint — prove the guard, then scan every tracked file
+        # DELIBERATELY UNCONDITIONAL — no `steps.paths.outputs.relevant` gate.
+        #
+        # This lint scans the WHOLE tree, so the file that introduces the disease
+        # is by definition one nobody has listed in a sentinel yet. Gating it on
+        # a path list would make it a guardian whose only executor cannot go red
+        # on the PR that needs it (W108). The whole-tree scan is 2.7s measured on
+        # this repository, which buys that unconditionally for the price of noise
+        # nobody will notice.
+        #
+        # --selftest FIRST, always: a clean verdict from a scanner that has lost
+        # the ability to fail is the exact green-but-dead shape this battery
+        # exists to catch. It runs 8 guilt+innocence fixtures in 0.05s and exits
+        # non-zero if any of them stops discriminating.
+        run: |
+          python3 scripts/ci/lint_queue_field_verdict.py --selftest
+          python3 scripts/ci/lint_queue_field_verdict.py
+
+      - name: Arm-probe lint — prove the guard, then scan every tracked file
+        # DELIBERATELY UNCONDITIONAL — no `steps.paths.outputs.relevant` gate,
+        # same reasoning as the queue-field verdict lint right above: this
+        # scans the WHOLE tree for the autoMergeRequest null-ambiguity trap
+        # (a decision-position read of the field with no mergeQueueEntry/
+        # isInMergeQueue/mergeQueue( co-occurrence anywhere in the same
+        # file), so the file that introduces it is by definition one nobody
+        # has listed in a sentinel yet (W108). Sibling to, not a replacement
+        # for, lint_queue_field_verdict.py above — narrower pattern set,
+        # simpler file-level (not alias-tracking) co-occurrence check, its
+        # own ALLOWLIST for the handful of real files that match by text
+        # alone without ever deriving a verdict from the field.
+        #
+        # --selftest FIRST, always: proves the guard (plus its ALLOWLIST
+        # mechanism) can still fail before trusting a clean verdict from the
+        # real scan.
+        run: |
+          python3 scripts/lint_arm_probe.py --selftest
+          python3 scripts/lint_arm_probe.py
 
       - name: Off-site artifact gate corpus (guilt + innocence)
         if: steps.paths.outputs.relevant == 'true'
@@ -842,6 +977,7 @@ jobs:
           python -m pip install --quiet pytest
           python -m pytest scripts/tests/test_codex_seat_lib.py -q
           python -m pytest scripts/tests/test_claude_cascade_shell.py -q
+          python -m pytest scripts/tests/test_claude_oauth_slot6_coverage.py -q
 
       - name: Claude seat helper corpus (a plain script must reach a live seat)
         if: steps.paths.outputs.relevant == 'true'
@@ -945,6 +1081,32 @@ jobs:
           # clean today — a censused guard that no workflow actually runs against
           # live data is theater (W81).
           python3 scripts/ci/check_required_workflow_conformance.py
+
+      - name: Trigger symmetry — a queue-only path filter is a head-green/queue-red split
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # L06-PR1 follow-through. `merge_group:` does NOT support a `paths:`
+          # sub-key in GitHub Actions at all, so a workflow carrying BOTH a
+          # merge_group trigger AND a pull_request paths filter has path
+          # semantics that can never match: the pull_request run may be SKIPPED
+          # while the queue run always executes. The author never sees the job,
+          # the queue runs it, it fails, and the entry is ejected with a red
+          # nobody was shown. For a required context it is worse — the PR
+          # reports "Expected — waiting for status" forever (W69).
+          #
+          # ZERO violations on the live tree (112 workflows, measured
+          # 2026-08-31), so this is preventive, and its premise is demonstrable
+          # rather than hypothetical: in this same wave THREE of the four
+          # workflows made queue-aware carried pull_request paths filters, and
+          # "make it queue-aware" is naturally done by adding `merge_group:` and
+          # leaving the filter alone. That is the violation, one keystroke away,
+          # on files a squad was editing this week.
+          #
+          # The guilt+innocence corpus in the batch above proves the CHECKER can
+          # still bite; this step proves the REAL repo tree is clean today — a
+          # censused guard that no workflow runs against live data is theater
+          # (W81), which is the same reason its two neighbours below exist.
+          python3 scripts/ci/lint_trigger_symmetry.py
 
       - name: "Unreachable workflow if: conditions (security.yml orphaned-alarm class)"
         if: steps.paths.outputs.relevant == 'true'
@@ -1081,6 +1243,66 @@ jobs:
       - name: Tailnet node verifier keys on DNSName, not HostName or an ssh alias
         if: steps.paths.outputs.relevant == 'true'
         run: bash scripts/tests/test_verify_tailnet_node.sh
+
+      # ------------------------------------------------------------------
+      # IMMUNE CONTRACTS (2026-08-31, squad L / L08-PR1)
+      #
+      # W120's shape, generalised: `pending_arms_report.py --json` emitted
+      # `"class"` while `organism_digest.py` read `"classification"`. The key
+      # was never emitted, `.get()` returned None forever, the filter stayed
+      # empty, and 262 overdue rows read as silence — with nothing red anywhere.
+      # The registry pairs every machine-readable health EMITTER with its
+      # CONSUMERS and this lint checks the pairing.
+      #
+      # The load-bearing part, and the reason this is not just two lists: the
+      # lint AST-parses the declared producer and consumer FUNCTIONS and checks
+      # the registry against the real source. A registry whose halves only agree
+      # with each other is a fixture, not a contract (W114).
+      #
+      # Runs on EVERY PR, like the two ledger gates below it — parsing one JSON
+      # file and a handful of python functions is cheap, and a contract gate
+      # that only fires when someone remembers to touch the registry is the
+      # family-#2 defect it exists to catch.
+      # ------------------------------------------------------------------
+      # NO `if [ -f ... ]` GUARD on any of the three steps below, deliberately.
+      # The guard reads as defensive and is a disarm vector: a PR that deletes
+      # the linter and its corpus makes every body a no-op, and this REQUIRED
+      # job goes green with the entire gate removed (cross-family gate). This
+      # job checks out the PR HEAD, so the files are present unless a PR removed
+      # them — which is exactly the case that must be red.
+      - name: Immune contracts self-test (the detector still detects)
+        run: python scripts/lint_immune_contracts.py --selftest
+
+      - name: Immune contracts registry matches the real emitters and consumers
+        run: python scripts/lint_immune_contracts.py --check
+
+      # Separate step from the one above ON PURPOSE: the contract check answers
+      # "does the registry match the code", the shrink check answers "is the
+      # debt list growing". One step for both would leave a reader unable to
+      # tell which question failed.
+      #
+      # `origin/main` is fetched BY NAME first. `actions/checkout` with
+      # fetch-depth: 0 does not reliably leave a resolvable
+      # refs/remotes/origin/main on a pull_request event, and the lint treats an
+      # unresolvable base as CANNOT-VERIFY (exit 3, never a pass) — correct
+      # behaviour, and it would redden every innocent PR on a REQUIRED job. The
+      # sibling check-ledger-no-silent-loss.yml fetches main by name for exactly
+      # this reason.
+      - name: known_gaps may only shrink (fetch main by name, then compare)
+        run: |
+          set -uo pipefail
+          # The fetch is allowed to fail — a shallow or offline runner is a real
+          # state — but its failure is REPORTED, not swallowed. `|| true` alone
+          # would let a STALE origin/main stand in for the real baseline, and a
+          # stale baseline can approve growth it never saw (cross-family gate).
+          if ! git fetch --no-tags --depth=200 origin main:refs/remotes/origin/main; then
+            echo "::warning::could not fetch origin/main; the shrink check below is comparing "\
+                 "against whatever origin/main this checkout already had, which may be stale"
+          fi
+          python scripts/lint_immune_contracts.py --check --no-regrowth origin/main
+
+      - name: Immune contracts corpus (named, because scripts/tests/ gates nothing)
+        run: python -m pytest -q scripts/tests/test_lint_immune_contracts.py
 
       - name: PENDING-ARMS ledger parses (report smoke, exit 0 signaler)
         run: |

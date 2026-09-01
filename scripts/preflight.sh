@@ -44,7 +44,7 @@ pre_deploy() {
     echo "Core tests (Pro):"
     check "confidence tests" \
         ssh -o ConnectTimeout=5 -o BatchMode=yes pro \
-        "cd ~/nuzantara/apps/backend-rag && source .venv/bin/activate 2>/dev/null || source venv/bin/activate 2>/dev/null; PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py -q --tb=no -x 2>/dev/null"
+        "cd ~/nuzantara/apps/backend-rag && source .venv/bin/activate 2>/dev/null || source venv/bin/activate 2>/dev/null; PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py --tb=no -x 2>/dev/null"
 
     # 3. Ruff check
     echo "Lint:"

@@ -93,9 +93,7 @@ class TestB1_NoUndocumentedPublicRoutes:
         so prod returned 401 to unauthenticated clients requesting a link —
         the feature was dead-on-arrival until added here."""
         # Request: exact match, must not open sibling paths.
-        assert middleware.is_public_endpoint(
-            self._mock_request("/api/auth/request-magic-link")
-        )
+        assert middleware.is_public_endpoint(self._mock_request("/api/auth/request-magic-link"))
         assert not middleware.is_public_endpoint(
             self._mock_request("/api/auth/request-magic-link/extra")
         )
@@ -104,9 +102,7 @@ class TestB1_NoUndocumentedPublicRoutes:
             self._mock_request("/api/auth/verify-magic/some-raw-token")
         )
 
-    def test_crm_internal_document_upload_is_public_only_for_service_key_path(
-        self, middleware
-    ):
+    def test_crm_internal_document_upload_is_public_only_for_service_key_path(self, middleware):
         """The WA Mirror headless delivery path bypasses JWT middleware but still
         enforces X-CRM-Write-Key in-router. Do not open sibling internal paths."""
         assert middleware.is_public_endpoint(
@@ -225,6 +221,47 @@ class TestHelperFunctions:
         assert entry.match == "exact"
         assert entry.prefix == "/"
 
+    def test_workspace_marketing_template_matches_exactly_one_segment(self):
+        route_auth_prefixes = {
+            endpoint.prefix for endpoint in PUBLIC_ENDPOINTS if endpoint.requires_route_auth
+        }
+        assert route_auth_prefixes == {
+            "/api/workspace-marketing/capabilities",
+            "/api/workspace-marketing/news/pending",
+            "/api/workspace-marketing/news/{item_id}",
+            "/api/workspace-marketing/news/{item_id}/editorial",
+            "/api/workspace-marketing/news/{item_id}/cover",
+            "/api/workspace-marketing/news/{item_id}/publish",
+            "/api/workspace-marketing/news/{item_id}/publication-status",
+            "/api/workspace-marketing/news/{item_id}/confirm-live",
+        }
+        pending_entry = next(
+            endpoint
+            for endpoint in PUBLIC_ENDPOINTS
+            if endpoint.prefix == "/api/workspace-marketing/news/pending"
+        )
+        entry = next(
+            endpoint
+            for endpoint in PUBLIC_ENDPOINTS
+            if endpoint.prefix == "/api/workspace-marketing/news/{item_id}"
+        )
+        publish_entry = next(
+            endpoint
+            for endpoint in PUBLIC_ENDPOINTS
+            if endpoint.prefix == "/api/workspace-marketing/news/{item_id}/publish"
+        )
+        assert pending_entry.requires_route_auth
+        assert entry.requires_route_auth
+        assert entry.match == "template"
+        assert entry.matches("/api/workspace-marketing/news/news_123")
+        assert not entry.matches("/api/workspace-marketing/news/")
+        assert not entry.matches("/api/workspace-marketing/news/news_123/extra")
+        assert not entry.matches("/api/workspace-marketing/news/news_123/delete")
+        assert publish_entry.requires_route_auth
+        assert publish_entry.match == "template"
+        assert publish_entry.matches("/api/workspace-marketing/news/news_123/publish")
+        assert not publish_entry.matches("/api/workspace-marketing/news/news_123/publish/extra")
+
 
 class TestVisaCheckPublicRegistration:
     """Guilt+innocence for the /api/visa/* Visa Check v1 funnel.
@@ -327,3 +364,31 @@ class TestVisaCheckPublicRegistration:
         call_next.assert_awaited_once()
         assert result is response
         assert result.headers["X-Auth-Type"] == "public"
+
+
+class TestGarudaVoaAuthAllowlistIsExactNotPrefix:
+    """Gear-3 gate finding E (PR #4959): the block comment above the GARUDA
+    VOA entries claims "Every entry below is EXACT or TEMPLATE, never
+    PREFIX" -- the `/api/visa/voa/auth/` entry used to omit `match=`, which
+    defaults to "prefix", directly contradicting that claim. No live leak
+    (the staff late-resolution path is a disjoint literal string), but any
+    future route mounted under `/api/visa/voa/auth/` would have become
+    anonymous with no review.
+    """
+
+    def test_the_two_real_auth_routes_are_public(self):
+        assert is_public_path("/api/visa/voa/auth/magic-links")
+        assert is_public_path("/api/visa/voa/auth/sessions")
+
+    def test_an_unrelated_future_path_under_the_same_root_is_not_public(self):
+        """The literal repro from the finding -- this must be False now."""
+        assert not is_public_path("/api/visa/voa/auth/anything-future-added-here")
+
+    def test_no_entry_under_the_garuda_voa_auth_root_uses_prefix_matching(self):
+        for entry in PUBLIC_ENDPOINTS:
+            if entry.prefix.startswith("/api/visa/voa/auth"):
+                assert entry.match in ("exact", "template"), (
+                    f"{entry.prefix!r} uses match={entry.match!r} -- a PREFIX "
+                    f"entry under this root can leak any future route mounted "
+                    f"under it, exactly the finding-E defect this test guards."
+                )

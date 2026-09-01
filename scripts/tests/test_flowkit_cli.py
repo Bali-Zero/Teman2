@@ -215,3 +215,32 @@ async def test_generate_video_uploads_start_image_before_submit(monkeypatch) -> 
     assert captured["path"] == "/api/flow/generate-video"
     assert captured["body"]["start_image_media_id"] == "media/start-image-1"
     assert captured["body"]["user_paygate_tier"] == "PAYGATE_TIER_TIER1P5"
+
+
+@pytest.mark.asyncio
+async def test_media_info_returns_url_without_encoded_video(monkeypatch) -> None:
+    async def fake_request(client, method, path, **kwargs):
+        assert method == "GET"
+        assert path == "/api/flow/media/media%2Fvideo-1"
+        return {
+            "status": "READY",
+            "video": {
+                "fifeUrl": "https://lh3.googleusercontent.com/video.mp4?sig=abc",
+                "encodedVideo": "must-not-be-returned",
+            },
+        }
+
+    monkeypatch.setattr(flowkit_cli, "_request_json", fake_request)
+    parser = flowkit_cli.build_parser()
+    args = parser.parse_args(["media-info", "--media-id", "media/video-1"])
+
+    result = await flowkit_cli.run(args)
+
+    assert result == {
+        "ok": True,
+        "media_id": "media/video-1",
+        "status": "READY",
+        "ready": True,
+        "fife_url": "https://lh3.googleusercontent.com/video.mp4?sig=abc",
+    }
+    assert "encodedVideo" not in result

@@ -363,10 +363,21 @@ const nextConfig: NextConfig = {
   // and can cause Mixed Content issues in production.
 };
 
-// Sentry configuration options
-const sentryWebpackPluginOptions = {
-  // Suppresses source map uploading logs during build
-  silent: true,
+// Sentry configuration options.
+//
+// `silent` is deliberately NOT set. Its own type says it "suppresses all build
+// logs (ALL log levels, INCLUDING errors)" — not just the upload chatter the
+// comment here used to claim. That matters because the plugin's default on a
+// failed release/source-map upload is to THROW and stop the build: with
+// `silent: true` the deploy still failed, but with no line saying why. An
+// expired or revoked SENTRY_AUTH_TOKEN is exactly that failure, and it was
+// costing a blind red instead of a named one.
+//
+// `errorHandler` is deliberately NOT set either: providing one makes
+// compilation CONTINUE past an upload failure, which would turn a loud broken
+// deploy into a silent release with no source maps. The default throw is the
+// behaviour we want.
+export const sentryWebpackPluginOptions = {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   // Only upload source maps in production

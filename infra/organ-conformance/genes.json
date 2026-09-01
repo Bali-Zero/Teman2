@@ -223,113 +223,11 @@
       "G2_heartbeat",
       "G3_declared_pair"
     ],
-    "infra/launchagents/com.balizero.wr2.connector.plist": [
-      "G2_heartbeat",
-      "G5_kill_switch"
-    ],
-    "infra/launchagents/com.balizero.wr2.daily-metrics.plist": [
-      "G1_registry",
-      "G2_heartbeat",
-      "G3_declared_pair",
-      "G5_kill_switch"
-    ],
-    "infra/launchagents/com.balizero.wr2.deploy-puller.plist": [
-      "G5_kill_switch"
-    ],
-    "infra/launchagents/com.balizero.wr2.dossier-compiler.plist": [
-      "G2_heartbeat",
-      "G5_kill_switch"
-    ],
-    "infra/launchagents/com.balizero.wr2.draft-generator.plist": [
-      "G2_heartbeat",
-      "G3_declared_pair",
-      "G5_kill_switch"
-    ],
-    "infra/launchagents/com.balizero.wr2.e2e-probe.daily.plist": [
-      "G1_registry",
-      "G2_heartbeat",
-      "G5_kill_switch"
-    ],
-    "infra/launchagents/com.balizero.wr2.fact-checker.plist": [
-      "G2_heartbeat",
-      "G3_declared_pair",
-      "G5_kill_switch"
-    ],
-    "infra/launchagents/com.balizero.wr2.fact-extractor.plist": [
-      "G2_heartbeat",
-      "G3_declared_pair",
-      "G5_kill_switch"
-    ],
-    "infra/launchagents/com.balizero.wr2.hardening.plist": [
-      "G2_heartbeat",
-      "G5_kill_switch"
-    ],
-    "infra/launchagents/com.balizero.wr2.html-apply.plist": [
-      "G1_registry",
-      "G2_heartbeat",
-      "G5_kill_switch",
-      "G9_fail_visible"
-    ],
-    "infra/launchagents/com.balizero.wr2.ig-metrics-scrape.daily.plist": [
-      "G1_registry",
-      "G2_heartbeat",
-      "G5_kill_switch"
-    ],
-    "infra/launchagents/com.balizero.wr2.image-generator.plist": [
-      "G2_heartbeat",
-      "G3_declared_pair",
-      "G5_kill_switch"
-    ],
-    "infra/launchagents/com.balizero.wr2.learner-nightly.plist": [
-      "G2_heartbeat",
-      "G5_kill_switch"
-    ],
-    "infra/launchagents/com.balizero.wr2.measurer.plist": [
-      "G2_heartbeat",
-      "G5_kill_switch"
-    ],
     "infra/launchagents/com.balizero.wr2.newsletter.plist": [
       "G2_heartbeat",
       "G5_kill_switch"
     ],
-    "infra/launchagents/com.balizero.wr2.oracle.plist": [
-      "G2_heartbeat",
-      "G5_kill_switch"
-    ],
     "infra/launchagents/com.balizero.wr2.pg-proxy.plist": [
-      "G2_heartbeat",
-      "G5_kill_switch"
-    ],
-    "infra/launchagents/com.balizero.wr2.plist-watchdog.plist": [
-      "G1_registry",
-      "G2_heartbeat",
-      "G5_kill_switch",
-      "G9_fail_visible"
-    ],
-    "infra/launchagents/com.balizero.wr2.sla-worker.plist": [
-      "G2_heartbeat",
-      "G5_kill_switch"
-    ],
-    "infra/launchagents/com.balizero.wr2.strategos.plist": [
-      "G2_heartbeat",
-      "G5_kill_switch"
-    ],
-    "infra/launchagents/com.balizero.wr2.supervisor-watchdog.plist": [
-      "G2_heartbeat",
-      "G3_declared_pair",
-      "G5_kill_switch"
-    ],
-    "infra/launchagents/com.balizero.wr2.supervisor.plist": [
-      "G2_heartbeat",
-      "G3_declared_pair",
-      "G5_kill_switch"
-    ],
-    "infra/launchagents/com.balizero.wr2.topic-selector.plist": [
-      "G2_heartbeat",
-      "G3_declared_pair",
-      "G5_kill_switch"
-    ],
-    "infra/launchagents/com.balizero.wr2.trend-hunter.plist": [
       "G2_heartbeat",
       "G5_kill_switch"
     ],
@@ -455,10 +353,6 @@
       "G5_kill_switch"
     ],
     "infra/launchagents/com.matagaruda.wr-topic.plist": [
-      "G2_heartbeat",
-      "G5_kill_switch"
-    ],
-    "infra/launchagents/com.matagaruda.wr2-bridge.hourly.plist": [
       "G2_heartbeat",
       "G5_kill_switch"
     ],

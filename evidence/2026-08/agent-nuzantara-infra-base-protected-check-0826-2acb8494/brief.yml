@@ -1,0 +1,119 @@
+task_id: base-protected-check-0826
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  S5 check-half (research/operations/2026-08-26-retro-fleet-sessions-25-26.md
+  §3 ADOPT table, ASSEMBLY-LINE.md "The integration branch must be protected
+  BEFORE the first lane opens a PR"): an integration branch inherits main's
+  gates or the PR into it goes red.
+
+  Verified live at authoring time (2026-08-27): exactly 2 GitHub rulesets
+  exist in Bali-Zero/Teman2 — `merge-queue-main` (id 19779175, scoped to
+  refs/heads/main) and `Copilot review for default branch` (id 20608865,
+  scoped to ~DEFAULT_BRANCH). Neither covers refs/heads/feature/*. 52 PRs
+  merged into feature/kb-current (26), feature/garuda-voa (23),
+  feature/due-bot (2) in the 2026-08-25/26 window with zero required checks —
+  the incident is already documented in ASSEMBLY-LINE.md's narrative section
+  (a 15-file customer-facing PR merged unreviewed; a magic-link PR merged
+  with two backend shards red).
+
+  Gear 3 by PATH, deterministic: the floor recomputed from this PR's own
+  6-file changed set is 3 (`python3 scripts/evidence_pack_lint.py
+  --print-floor --changed-files-file <enumeration>` -> 3), because
+  `.github/workflows/hot-zone-pr-gate.yml` is touched. Honored, not argued
+  with.
+
+  Deliverable is the CHECK-half only (the ARM-half — actually creating a
+  ruleset on refs/heads/feature/* — is an operator[control-plane] repo-
+  settings mutation, explicitly out of scope for this lane):
+  scripts/ci/check_base_protected.py + a new `base-branch-protected` job in
+  hot-zone-pr-gate.yml + a print-only `--branch-pattern` extension to
+  scripts/ci/setup_merge_queue_ruleset.sh (the command the check's own
+  failure message names) + 34 guilt/innocence tests.
+constraints:
+  - "Never mutate repo settings/rulesets/branch-protection — this lane ships
+    the CHECK-half only. `--branch-pattern` without `--apply` only PRINTS the
+    `gh api` body it would send; `--apply` is never invoked by this PR or by
+    the CI job itself."
+  - "Fail CLOSED, not fail-open: a base that cannot be verified (rulesets API
+    unreadable) reports BLIND (exit 1), never a silent pass. Distinguished
+    from the UNPROTECTED guilt case only by message prefix, per the mandate's
+    own spec — both are exit 1."
+  - "No PII/OSINT in any artifact — this is pure CI-plumbing (ruleset JSON,
+    Python, bash, YAML, tests). Nothing here touches client data."
+  - "Do not re-derive the pinned minimum-contexts list from ruleset
+    19779175's `.rules` — verified live it carries none (only a
+    `merge_queue` rule); the list is hand-picked from classic branch
+    protection's 27 real contexts instead, in
+    infra/required.d/integration-branch-minimum-contexts.json, so this
+    script and the shell script's ARM-half never drift apart (one SSOT)."
+acceptance:
+  - "check_base_protected.py's own 34 pytest cases pass, including the four
+    fixtures the mandate specifies verbatim: base main covered -> 0; base
+    feature/x with no ruleset -> 1 (guilt); base feature/x with a covering
+    ruleset -> 0 (innocence); API error -> 1 with a distinct (BLIND)
+    message."
+  - "actionlint passes on the modified hot-zone-pr-gate.yml (it caught a
+    real defect during authoring: `administration` is not a valid Actions
+    `permissions:` scope at all — removed, documented as a confirmed,
+    named residual gap rather than hidden)."
+  - "bash -n on the modified setup_merge_queue_ruleset.sh, and its new
+    `--branch-pattern 'feature/*'` dry-run actually prints a well-formed
+    ruleset body with all 5 pinned contexts, byte-for-byte matching live
+    `branches/main/protection/required_status_checks` context names."
+  - "The deterministic floor recomputed from the real changed-file
+    enumeration is 3, and this brief declares gear 3 — never below it."
+consumer_map:
+  - "`.github/workflows/hot-zone-pr-gate.yml` — new `base-branch-protected`
+    job runs on every pull_request/merge_group (no paths filter, matching
+    the file's own C1/C3 contracts)."
+  - "`scripts/ci/check_base_protected.py` — invoked by that job; also
+    invokable standalone/locally, and by scripts/tests/test_check_base_protected.py."
+  - "`infra/required.d/integration-branch-minimum-contexts.json` — read by
+    both check_base_protected.py (the check) and setup_merge_queue_ruleset.sh
+    --branch-pattern (the arm-half), so the two never hand-maintain two
+    diverging lists."
+  - "`scripts/ci/setup_merge_queue_ruleset.sh` — the ARM-half; this PR only
+    adds a print-only mode, no invocation with `--apply` anywhere in CI or
+    in this session."
+  - "`docs/factory/ASSEMBLY-LINE.md` — narrative section updated in place to
+    record the check-half as shipped and the arm-half as still pending."
+risks:
+  - "The CI job's own `gh api repos/.../rulesets` call may 403: the ambient
+    GITHUB_TOKEN has no grantable `administration` scope at all (confirmed
+    via actionlint's own valid-permissions list, not assumed) — repository
+    rulesets are documented as requiring Administration access, and that
+    scope simply does not exist in the Actions token permission model. On
+    the default-branch base (most PRs) this job never calls that API and is
+    unaffected; on a non-default base it will very likely observe BLIND
+    (fail-closed) rather than a false pass, which is the documented,
+    intended degraded posture, not a crash. Confirming/curing this (an
+    admin-scoped PAT wired as a repo secret) is a named follow-up, not done
+    here — it is a credential/secret action, operator[secret]."
+  - "The ARM-half (creating the refs/heads/feature/* ruleset with `--apply`)
+    is not performed by this PR. Until an operator runs it, this check will
+    correctly report every feature/* PR as UNPROTECTED (or BLIND, per the
+    risk above) — that IS the intended visible signal this PR ships, not a
+    silent no-op."
+  - "The 5 pinned contexts are a hand-picked subset of main's 27 real
+    required checks (declared rationale in the JSON file's own
+    `selection_rationale` field), not a generated/exhaustive list — a
+    narrower net than main's full required-check set, by design, to keep
+    the arm-half's ruleset body small and reviewable."
+grader: |
+  generator != grader: a cross-family refuter (Codex gpt-5.6-sol, high
+  effort, read-only sandbox; falls back to Kimi K3 if empty) reviews the
+  real PR diff before merge, per this lane's own mandate. This session
+  independently verified its own design against live GitHub state THREE
+  times before writing any code (rulesets list, ruleset 19779175 full body,
+  Copilot-review ruleset full body, classic branch-protection contexts,
+  default branch) rather than trusting the mandate's own stated assumption
+  about where main's required-checks rule lives — which that verification
+  falsified, and the corrected premise is documented in the shipped code's
+  own module docstring, not silently absorbed.
+budget: |
+  Single-lane CI-plumbing task. Flat-subscription seats only (Claude Sonnet
+  5 build via this session, Codex/Kimi cross-family refuter). No metered
+  API spend, no cloud LLM touching PII (there is none in this diff).
+pii: none

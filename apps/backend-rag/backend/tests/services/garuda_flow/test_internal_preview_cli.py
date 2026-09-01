@@ -66,7 +66,7 @@ def test_unavailable_price_is_explicit_and_requires_staff_confirmation(
 ) -> None:
     monkeypatch.setattr(
         "backend.services.garuda_flow.internal_preview_cli.price_for_case",
-        lambda _case_type: (None, None),
+        lambda _case_type, **_kwargs: (None, None),
     )
 
     response = build_internal_preview(_request(), today=_TODAY, generated_at=_NOW)

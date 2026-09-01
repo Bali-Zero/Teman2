@@ -251,11 +251,6 @@
       "machines": ["pro"]
     },
     {
-      "live": "~/Library/LaunchAgents/com.balizero.wr2.daily-reconciler.plist",
-      "repo": "infra/launchagents/com.balizero.wr2.daily-reconciler.plist",
-      "machines": ["pro"]
-    },
-    {
       "live": "~/scripts/mini-fleet-watch.sh",
       "repo": "infra/launchagents/wrappers/mini-fleet-watch.sh",
       "machines": ["mini"]
@@ -378,12 +373,6 @@
       "machines": ["pro"]
     },
     {
-      "live": "~/Library/LaunchAgents/com.balizero.wr2.image-generator.plist",
-      "repo": "infra/launchagents/com.balizero.wr2.image-generator.plist",
-      "_note": "2026-07-16: added WR2_IMAGE_VLM_URL=http://100.93.236.6:11434 (Mini tailscale IP) so the VLM quality-scorer routes off Pro's contended Ollama (176 daemons, ~60s+ under load) onto Mini's dedicated Ollama. Was undeclared before this pair was created.",
-      "machines": ["pro"]
-    },
-    {
       "live": "~/scripts/pro-git-pull-main.sh",
       "repo": "infra/launchagents/wrappers/pro-git-pull-main.sh",
       "machines": ["pro"]
@@ -420,6 +409,24 @@
       "live": "~/.claude/hooks/model_routing_gate.py",
       "repo": "infra/claude-hooks/model_routing_gate.py",
       "_note": "Undeclared from 2026-07-14 until 2026-08-22, so lint_home_fork.py reported clean over a live Agent-gating hook it was never looking at — W107, census the producers not the one that bit you. Installed by infra/claude-hooks/install_phase_aware.sh. Doctrine correction 2026-08-20 (Fable 5 out of the workflow, Opus 5 xhigh is the final on-disk gate) and the arsenal-routing floor (docs/mandates/2026-08-22-arsenal-routing-mandate.md D2) both ship in this same PR — the live copy under ~/.claude/hooks/ is operator[control-plane] on each machine until refreshed, so lint_home_fork.py --check will report DRIFT here on every machine until then; that is expected, not a regression.",
+      "machines": ["all"]
+    },
+    {
+      "live": "~/.claude/hooks/gate_coverage.py",
+      "repo": "infra/claude-hooks/gate_coverage.py",
+      "_note": "K1 (2026-08-27, spec §5bis K1 in 2026-08-26-PIANO-SPEC-receptor-live.md): shared library the 4 PreToolUse gates (host_boundary/worktree_isolation/orchestrate_gate/model_routing_gate) call at every one of their own exit paths to record allow/deny/exempt — the gap between what the transcript proves was gate-eligible and what got recorded IS the fail-open rate (timeout/crash/fork failure per the official Claude Code hooks doc: a `type=command` hook that times out does not block), read by gate_coverage_report.py. New file, declared at birth so it never has an undeclared window.",
+      "machines": ["all"]
+    },
+    {
+      "live": "~/.claude/hooks/gate_coverage_report.py",
+      "repo": "infra/claude-hooks/gate_coverage_report.py",
+      "_note": "K1 reporting half (2026-08-27): Stop hook, prints `gate coverage: <hook>: decided X of Y tool calls` per gate (matcher-eligible tool_use count from a bounded tail-read of the transcript vs recorded decisions) and appends a summary to ~/logs/gate-coverage.jsonl. Reporting only — never blocks Stop, fails open on any exception. New file, declared at birth.",
+      "machines": ["all"]
+    },
+    {
+      "live": "~/.claude/hooks/session_budget.py",
+      "repo": "infra/claude-hooks/session_budget.py",
+      "_note": "K3 artifact-on-death + F7 session visibility (2026-08-27): registered on SubagentStop + SessionEnd + PreCompact (one script, event told apart via payload.hook_event_name — same multi-event-registration pattern already used by mailbox_inject.py in this same directory). Writes ~/.claude/state/handoff/<session_id>.md with cwd/branch/git-diff(secret-redacted, 200KB cap)/transcript-MB/self-counted-compaction-count/last-20-tool-NAMES-only (never tool input/message content) — cicatrix lesson 'a subagent's idle is not its report'. Never blocks, always exits 0. New file, declared at birth.",
       "machines": ["all"]
     },
     {
@@ -689,18 +696,6 @@
       "machines": ["pro"]
     },
     {
-      "live": "~/Library/LaunchAgents/com.balizero.wr2.external-bench.monthly.plist",
-      "repo": "infra/launchagents/com.balizero.wr2.external-bench.monthly.plist",
-      "_note": "PROMOTED 2026-08-09 (PENDING-ARMS 2026-08-08 entry). Was undeclared while both its wrapper (~/scripts/wr2-external-bench-run.sh, promoted 2026-08-08) and this schedule lived on Pro alone — the two ARE the same superscar #1 finding, only the wrapper got closed first. Fixed in the same commit: the XML comment's 'Per agent spec at ~/.claude/agents/wr2-external-bench.md' was stale documentation, not a runtime path — the wrapper cd's into ${HOME}/nuzantara before invoking claude and passes the spec path as a RELATIVE --append-system-prompt reference, so it always resolved against the repo checkout's .claude/agents/, never against ~/.claude/agents/ (attic'd 2026-08-08). Nothing was broken at runtime; the comment now says what the code actually does.",
-      "machines": ["pro"]
-    },
-    {
-      "live": "~/Library/LaunchAgents/com.balizero.wr2.ig-metrics-analyst.weekly.plist",
-      "repo": "infra/launchagents/com.balizero.wr2.ig-metrics-analyst.weekly.plist",
-      "_note": "PROMOTED 2026-08-09 (PENDING-ARMS 2026-08-08 entry). Same shape and same day as the external-bench.monthly pair above: wrapper (~/scripts/wr2-ig-metrics-analyst-run.sh) was promoted 2026-08-08, this schedule was left behind. Same comment-staleness fix applied — the spec-path reference resolves against the repo checkout, not the attic'd ~/.claude/agents/.",
-      "machines": ["pro"]
-    },
-    {
       "live": "~/.openclaw/bin/guardian-board-report",
       "repo": "infra/openclaw/guardian-board-report",
       "_note": "PROMOTED 2026-08-09 (organ ward-round). Was HOME-only and undeclared, invoked by plist com.nuzantara.openclaw.guardian-board (daily 08:30). Promoted together with a fix: the flat 120s subprocess timeout in run_tool() applied to every MCP tool call including guardian_risk_score (RBAC/API-contract/cache/dead-code scoring across the full codebase), which was seen degraded (timeout) 3 times in the last 15 runs. Repo canon adds a per-tool timeout override (guardian_risk_score -> 240s), all other tools stay at 120s. Live HOME copy still needs manual sync post-merge — do NOT treat this pair as aligned until the operator re-copies and sha256-verifies.",
@@ -792,7 +787,8 @@
       "live": "~/.config/ghostty/machine.ghostty",
       "repo": "infra/ghostty/machines/mini.ghostty",
       "machines": ["mini"],
-      "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. See the pro entry for why this live path appears three times."
+      "live_may_extend_repo": true,
+      "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. See the pro entry for why this live path appears three times. 2026-08-28: this live copy may carry a host-local trailer on top of repo content (e.g. Zero's live-only colour override, marked in the dotfile itself) — proprioception's home_fork_scripts probe verifies repo is a byte-exact prefix of live before treating it as reconciled; a genuine mid-file drift still reports DIVERGED normally."
     },
     {
       "live": "~/scripts/login-healthcheck.sh",
@@ -850,6 +846,16 @@
       "live": "~/Library/LaunchAgents/com.nuzantara.secrets-perms-sweep.plist",
       "repo": "infra/launchagents/com.nuzantara.secrets-perms-sweep.plist",
       "machines": ["mini"]
+    },
+    {
+      "live": "~/scripts/pro-price-review-sentinel.sh",
+      "repo": "infra/launchagents/wrappers/pro-price-review-sentinel.sh",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.price-review-sentinel.plist",
+      "repo": "infra/launchagents/com.nuzantara.price-review-sentinel.plist",
+      "machines": ["pro"]
     },
     {
       "live": "~/scripts/pro-visa-freshness-sentinel.sh",
@@ -924,6 +930,18 @@
       "live": "~/Library/LaunchAgents/com.nuzantara.mini-iqoo-radar-relay.plist",
       "repo": "infra/launchagents/com.nuzantara.mini-iqoo-radar-relay.plist",
       "machines": ["mini"]
+    },
+    {
+      "live": "~/scripts/pro-kb-probe-history.sh",
+      "repo": "infra/launchagents/wrappers/pro-kb-probe-history.sh",
+      "machines": ["pro"],
+      "_note": "Born with pro.kb_probe_history via scripts/organ_birth.py (2026-08-26). Pro-resident: the probe reads the legal KB from the Pro checkout, so the live pair exists on Pro only — declaring 'all' would make --check chase a pair that is not there on M5/Mini, the exact mistake the fly_pg_tunnel_supervisor entry above already records."
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.kb-probe-history.6h.plist",
+      "repo": "infra/launchagents/com.nuzantara.kb-probe-history.6h.plist",
+      "machines": ["pro"],
+      "_note": "The plist twin of the pair above; installed on Pro only."
     }
   ],
   "allow": [

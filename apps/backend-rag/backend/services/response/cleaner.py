@@ -423,7 +423,9 @@ _MARKER_PATTERNS: tuple[str, ...] = (
     r"^ACTION:\s*[a-z_]+\([^)]*\)\.?\s*",
     r"^ACTION:\s*No tool call needed[^.]*\.\s*",
     r"^vector_search\([^)]*\)\s*",
-    r"^User Query:\s*[^\n]*\n*",
+    # W119c (2026-08-31): same-line separator. `\s*` crossed the newline on an
+    # EMPTY marker, so the client received the answer with its first line gone.
+    r"^User Query:[^\S\n]*[^\n]*\n*",
     # `internal_monologue` — the model emitting the name of the section the
     # system prompt tells it to run SILENTLY (`<internal_monologue_instructions>`
     # in zantara_core.py). Measured live 2026-08-11: 2 of 16 cold answers opened

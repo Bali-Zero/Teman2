@@ -6,6 +6,8 @@ Fixes Phase 1 & 2: Remove training data artifacts and enforce quality standards
 import logging
 import re
 
+from backend.app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -64,9 +66,16 @@ def sanitize_zantara_response(response: str) -> str:
 
     # CRITICAL: Remove agentic reasoning artifacts (THOUGHT:, ACTION:, etc.)
     # These should NEVER appear in user-facing responses
-    cleaned = re.sub(r"^THOUGHT:\s*.*?\n", "", cleaned, flags=re.MULTILINE | re.IGNORECASE)
-    cleaned = re.sub(r"^ACTION:\s*.*?\n", "", cleaned, flags=re.MULTILINE | re.IGNORECASE)
-    cleaned = re.sub(r"^OBSERVATION:\s*.*?\n", "", cleaned, flags=re.MULTILINE | re.IGNORECASE)
+    # W119c (2026-08-31): the separator is SAME-LINE (`[^\S\n]`), never `\s`. With
+    # `\s*` an EMPTY marker line let the separator swallow its own newline, after
+    # which `.*?\n` consumed the FOLLOWING line — so `"THOUGHT:\n<the real answer>"`
+    # reached the client with the answer deleted. Each rule removes its own marker
+    # LINE; binding to same-line whitespace is what makes it do exactly that.
+    cleaned = re.sub(r"^THOUGHT:[^\S\n]*.*?\n", "", cleaned, flags=re.MULTILINE | re.IGNORECASE)
+    cleaned = re.sub(r"^ACTION:[^\S\n]*.*?\n", "", cleaned, flags=re.MULTILINE | re.IGNORECASE)
+    cleaned = re.sub(
+        r"^OBSERVATION:[^\S\n]*.*?\n", "", cleaned, flags=re.MULTILINE | re.IGNORECASE
+    )
     cleaned = re.sub(r"^Final Answer:\s*", "", cleaned, flags=re.MULTILINE | re.IGNORECASE)
 
     # Remove placeholder markers
@@ -161,7 +170,7 @@ def add_contact_if_appropriate(response: str, query_type: str) -> str:
         and "whatsapp" not in response.lower()
         and "+62" not in response
     ):
-        contact = "\n\nNeed help? Contact us on WhatsApp +62 821 3465 159"
+        contact = f"\n\nNeed help? Contact us on WhatsApp {settings.CLIENT_CONTACT_WHATSAPP}"
         return response + contact
 
     return response

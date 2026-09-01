@@ -26,6 +26,28 @@ class Settings(BaseSettings):
     # BALI ZERO, GREEN). The old personal number (+62 822 64xx, Antonello's)
     # no longer exists — replaced fleet-wide 2026-06-18.
     SUPPORT_WHATSAPP: str = "+62 821 3465 159"
+    # The number a CLIENT is invited to write to — NOT the same thing as
+    # SUPPORT_WHATSAPP above, and the two must be free to differ.
+    # SUPPORT_WHATSAPP is the bot's INBOUND identity: the line Meta delivers
+    # webhooks for, which no human answers. This is Ari's line, where a human
+    # does. On 2026-08-31 a fix for a real defect (two halves of the price
+    # list naming different numbers) resolved the tie toward SUPPORT_WHATSAPP
+    # and shipped the bot's inbound number to clients; the owner reversed it
+    # on 2026-09-01. AMENDED 2026-09-01: this comment used to end "It is NOT yet
+    # used everywhere it should be: eleven other client-facing surfaces still
+    # emit SUPPORT_WHATSAPP". That is no longer true, and leaving it would be
+    # worse than saying nothing — the next maintainer reads an authoritative
+    # comment and puts the bot's number back. Every client-facing emission in
+    # backend/ now reads THIS field; SUPPORT_WHATSAPP is read by exactly one
+    # module, whatsapp_chat.py, where it is inbound routing rather than an
+    # invitation. Both halves are enforced:
+    # test_no_backend_module_hands_a_client_the_bots_inbound_number (nobody
+    # writes the digits) and
+    # test_only_the_meta_webhook_router_reads_the_bots_inbound_number (nobody
+    # reads the setting). Kept in sync with the price-list generator's
+    # _CANONICAL_WHATSAPP_DIGITS (scripts/pricelist_2026/schema.py) by
+    # test_client_contact_whatsapp_matches_the_price_list_generator.
+    CLIENT_CONTACT_WHATSAPP: str = "+62 821 3454 721"
     API_V1_STR: str = "/api/v1"
     environment: str = "development"  # Set via ENVIRONMENT env var (production/development)
 
@@ -702,16 +724,18 @@ class Settings(BaseSettings):
         description="WhatsApp App Secret for HMAC-SHA256 webhook signature verification. Set via WHATSAPP_APP_SECRET env var.",
     )
     meta_webhook_require_signature: bool = Field(
-        default=False,
+        default=True,
         description=(
-            "Shared WhatsApp + Instagram knob: when True, webhook signature "
-            "verification fails CLOSED (rejects the request) if no app "
-            "secret is configured for that surface, instead of skipping "
-            "verification. Default False preserves today's fail-open "
-            "behavior — flipping this to True is a deliberate production "
-            "decision (provision the secret first), not something this "
-            "code changes on its own. Set via META_WEBHOOK_REQUIRE_SIGNATURE "
-            "env var."
+            "Shared WhatsApp + Instagram knob: when True (the default, since "
+            "2026-08-26), webhook signature verification fails CLOSED "
+            "(rejects the request) if no app secret is configured for that "
+            "surface, instead of skipping verification. Safe as the default "
+            "because both surfaces resolve an app secret today — WhatsApp "
+            "from WHATSAPP_APP_SECRET, Instagram via "
+            "Settings.effective_instagram_app_secret's fallback to the same "
+            "value (same underlying Meta app). Set to False only to "
+            "deliberately restore fail-open dev behavior. Set via "
+            "META_WEBHOOK_REQUIRE_SIGNATURE env var."
         ),
     )
     whatsapp_api_token: str | None = Field(
@@ -735,6 +759,16 @@ class Settings(BaseSettings):
             "so a generic admin key cannot read/write the Meta inbox. The key SHOULD "
             "still contain the substring 'secret' so the HybridAuthMiddleware grants it "
             "POST capability before the route-level dependency runs."
+        ),
+    )
+    workspace_marketing_api_key: str | None = Field(
+        default=None,
+        repr=False,
+        description=(
+            "Dedicated least-privilege key for GET-only ChatGPT Business marketing "
+            "projections under /api/workspace-marketing/news/*. Set via "
+            "WORKSPACE_MARKETING_API_KEY. It is not part of API_KEYS and is accepted "
+            "only by the route-level marketing dependency."
         ),
     )
     whatsapp_personal_contacts: str | None = Field(
@@ -878,6 +912,21 @@ class Settings(BaseSettings):
     )
     instagram_access_token: str | None = None  # Set via INSTAGRAM_ACCESS_TOKEN env var
     instagram_account_id: str | None = None  # Set via INSTAGRAM_ACCOUNT_ID env var
+
+    @property
+    def effective_instagram_app_secret(self) -> str | None:
+        """Instagram App Secret, falling back to the WhatsApp one.
+
+        WhatsApp and Instagram webhooks share ONE Meta app (Zero's ruling,
+        2026-08-26: "si stessa app"), so today the App Secret value IS the
+        same for both surfaces. INSTAGRAM_APP_SECRET was never provisioned
+        as its own Fly secret; without this fallback Instagram signature
+        verification silently fail-opens even when WHATSAPP_APP_SECRET is
+        live. The two settings fields stay separate on purpose: if the apps
+        are ever split, setting INSTAGRAM_APP_SECRET explicitly overrides
+        this fallback with no further code change.
+        """
+        return self.instagram_app_secret or self.whatsapp_app_secret
 
     # ========================================
     # X/TWITTER INTEGRATION

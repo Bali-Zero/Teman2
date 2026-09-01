@@ -211,12 +211,40 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="frontend_metrics", process_groups=_API, tags=("observability", "frontend")),
     # ── Funnel (cross-funnel lead tracking, pre-auth) ──
     RouterEntry(name="funnel", process_groups=_API, tags=("funnel",)),
+    # ── GARUDA VOA L3 checkout + orders (contract-frozen) ──
+    # No mount-time condition: mirrors garuda_voa_public below — the flag
+    # (GARUDA_PUBLIC_ENABLED) is re-checked per-request by the router's own
+    # dependencies, not gated at mount. One authoritative gate, not two.
+    RouterEntry(
+        name="garuda_orders_router",
+        process_groups=_API,
+        tags=("visa", "garuda", "checkout", "orders"),
+    ),
     # ── GARUDA VOA (owner-only historical archive; preview is stateless) ──
     RouterEntry(
         name="garuda_voa",
         process_groups=_API,
         condition=_is_garuda_flow_enabled,
         tags=("visa", "internal", "garuda"),
+    ),
+    # ── GARUDA VOA public eligibility funnel (contract-frozen, L2) ──
+    # No mount-time condition: the router mounts unconditionally and each of
+    # its 3 routes re-checks GARUDA_PUBLIC_ENABLED from the environment on
+    # every request (garuda_voa_public.py::_public_enabled), returning 404
+    # via the closed error vocabulary when unset/false. Default OFF.
+    RouterEntry(
+        name="garuda_voa_public",
+        process_groups=_API,
+        tags=("visa", "garuda", "public"),
+    ),
+    # ── GARUDA VOA magic-link authentication (contract-frozen, L4) ──
+    # Same no-mount-time-condition posture as garuda_voa_public/
+    # garuda_orders_router above: GARUDA_PUBLIC_ENABLED is re-checked
+    # per-request by the router's own dependency, not gated at mount.
+    RouterEntry(
+        name="garuda_portal_auth",
+        process_groups=_API,
+        tags=("visa", "garuda", "public", "auth"),
     ),
     # ── Google Drive / Integrations ──
     RouterEntry(name="google_drive", process_groups=_API, tags=("integrations",)),

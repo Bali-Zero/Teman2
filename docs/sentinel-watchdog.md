@@ -127,7 +127,7 @@ the repo — uninstall only affects the running launchd job.
 
 This addresses the same class of bug as
 `✅ RESOLVED: Backend prod down — drive_poll_service called missing method`
-([cicatrix-scars.md](../.claude/rules/cicatrix-scars.md#-resolved-backend-prod-down--drive_poll_service-called-missing-method-on-serviceaccountdriveservice-2026-04-29)):
+([cicatrix-scars.md](../scars/cicatrix-scars.md#-resolved-backend-prod-down--drive_poll_service-called-missing-method-on-serviceaccountdriveservice-2026-04-29)):
 the system was deterministically broken and the only signal was a
 downstream user-facing failure. Here we add an upstream signal so
 sentinel breakage surfaces independently.
