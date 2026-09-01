@@ -45,6 +45,31 @@ is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
 ## 1. LIVE STATE (last update 2026-09-01 — keep current)
 
+**🟢 2026-09-01 (later) — THE 25 LICENSING-PRESENCE GAPS ARE 0 AND THE TABLE READS `conformant`; THE
+CONSUMER MAP GAINED ITS SECOND MISSING LINE: NOBODY READS LICENSING OFF `kbli_documents`, AND THE KG IS
+WHERE THE CLIENT IS STILL TOLD "PENDING".** PR #5513 (`fbebfc31f2`) added `--licensing-only` to
+`kbli_documents_cure.py` — twin of `--pma-only`: server-side jsonb merge of
+`per_skala`/`pp28_sources`/`licensing_status`, prose byte-identical, one derivation shared with the
+full rebuild, one direction only (a canonical `per_skala == []` or a malformed row-set is refused,
+never written). Applied from Pro on the 25 hand-written rows after deploy run 33510533088:
+`APPLIED: 25 of 25 asked cured`; md5(judul)/md5(content) unchanged on 25/25; archive +25; second run
+`0 of 25 cured | 25 skipped`; detector `kbli-surface-conformance-20260901T131200Z.log` →
+`pma_status 0 · licensing presence 0 · result=conformant`. Three refuter rounds (Codex sol):
+BLOCKED(1) → FIX-FIRST(3) → FIX-FIRST(1, docs-only), 149 tests. **Grounded before arming and written
+into the script:** `chat_kbli`'s direct path selects `judul, metadata` and reads only the PMA tuple
+(`_pma_disclosure_fields`) plus `official_description`/`uraian` (`_official_scope`); the PP 28
+per-scale rows reach a client from the Qdrant point TEXT (`sanitize_kbli_search_result`, via the
+agentic multi-collection tool) and from `kg_nodes` (`inspect_kbli`: `REQUIRES` edges +
+`props.licensing_status`). So the table cure closes the detector class and gives any future reader
+government rows instead of `[]` — and changes nothing a client hears. What the client hears is the
+KG: **22 of the 25 codes serve `PENDING_REGULATION` with 0–1 edges** against 3–52 canonical rows
+(live: `inspect_kbli 85510` → `licenses: []`); neither KG script covers the class — ledger row, spec
+first. Consumer-map rule for this corner, now with two data points (PMA: Qdrant wins; licensing:
+KG + Qdrant text, table unread): **before curing a store, name its reader; before declaring a cure,
+probe the reader.** The PR's first body claimed a channel effect; the grounding agent's map and the
+refuter's BLOCKER said otherwise, and it was corrected before arming — the correction must not lie
+either (W113).
+
 **🟢 2026-09-01 — THE 11 `pma_status` DIVERGENCES ARE 0, AND THE CONSUMER MAP GAINED THE LINE IT
 WAS MISSING: AT RUNTIME QDRANT WINS.** The Pro conformance detector (armed 2026-09-01) named 11
 `kbli_documents` rows whose `pma_status` disagreed with the VERIFIED canonical. Curing the table
