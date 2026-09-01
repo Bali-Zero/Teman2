@@ -22,6 +22,7 @@ from typing import Any
 import asyncpg
 import httpx
 
+from backend.app.core.config import settings
 from backend.app.utils.logging_utils import get_logger
 from backend.services.crm.automation import ProcessAutomationService
 from backend.services.notifications.email_branding import logo_header_html, team_email_html
@@ -243,7 +244,7 @@ Warmly,
 Zantara — Bali Zero Team
 
 ---
-📧 asya@balizero.com | 🌐 www.balizero.com | 📱 WhatsApp: +62 821 3465 159
+📧 asya@balizero.com | 🌐 www.balizero.com | 📱 WhatsApp: {settings.CLIENT_CONTACT_WHATSAPP}
 """
             try:
                 await self._send_via_internal_api(

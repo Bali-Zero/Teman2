@@ -65,6 +65,7 @@ from evidence_pack_lint import (  # noqa: E402
     measured_commit_count,
     parse_numstat_totals,
     sum_numstat,
+    workflow_paths_exempt_from_path_term,
 )
 
 GOOD_RECEIPT = {
@@ -3472,3 +3473,461 @@ def test_appetite_innocence_missing_acknowledgment_message_is_unchanged():
     assert len(violations) == 1
     assert "no `appetite_exceeded:` acknowledgment" in violations[0]
     assert "not a reason" not in violations[0]
+
+
+# ------------------------- path-term exemption: first-party action pins (2026-09-01)
+# Owner ruling "Cambio la regola adesso": a mechanical `uses:` version bump under
+# .github/workflows/ floored at Gear 3 and demanded a full evidence pack. Measured
+# that day, PRs #5442 / #5444 / #5445 were each a one-to-two-line pin whose ONLY red
+# check was "Harness floor recompute".
+#
+# These tests carry BOTH directions on purpose. An exemption is a hole in a gate, so
+# the guilt half is the load-bearing half: if every case here went green the suite
+# would be indistinguishable from one that exempts unconditionally. The parametrized
+# guilt corpus below is therefore the primary artifact, and the innocence cases exist
+# to prove it is not simply refusing everything.
+
+_WF = ".github/workflows/ci.yml"
+
+
+def _patch(body: str, path: str = _WF) -> str:
+    """A minimal but REAL unified-diff envelope — headers included, because the
+    `--- a/<path>` line is exactly the trap a naive `line.startswith("-")` parser
+    falls into, and a fixture that omitted it would not exercise it."""
+    return (
+        f"diff --git a/{path} b/{path}\n"
+        f"index 1111111..2222222 100644\n"
+        f"--- a/{path}\n"
+        f"+++ b/{path}\n"
+        f"{body}"
+    )
+
+
+_PIN_ONLY = _patch(
+    "@@ -1 +1 @@\n"
+    "-      - uses: actions/checkout@v4\n"
+    "+      - uses: actions/checkout@v5\n"
+)
+
+
+@pytest.mark.parametrize(
+    "why,patch,changed",
+    [
+        (
+            "a permissions: change rides along in the same file",
+            _patch(
+                "@@ -1,2 +1,2 @@\n"
+                "-      - uses: actions/checkout@v4\n"
+                "+      - uses: actions/checkout@v5\n"
+                "@@ -9 +9 @@\n"
+                "-    permissions: read-all\n"
+                "+    permissions: write-all\n"
+            ),
+            [_WF],
+        ),
+        (
+            "the action is THIRD-party — the live supply-chain surface",
+            _patch(
+                "@@ -1 +1 @@\n"
+                "-      - uses: snyk/actions/python@0.4.0\n"
+                "+      - uses: snyk/actions/python@0.5.0\n"
+            ),
+            [_WF],
+        ),
+        (
+            "the identity is SWAPPED, not the ref (typosquat)",
+            _patch(
+                "@@ -1 +1 @@\n"
+                "-      - uses: actions/checkout@v4\n"
+                "+      - uses: actions/chekcout@v4\n"
+            ),
+            [_WF],
+        ),
+        (
+            "a new first-party step is ADDED",
+            _patch(
+                "@@ -1 +1,2 @@\n"
+                "       - uses: actions/checkout@v4\n"
+                "+      - uses: actions/setup-node@v4\n"
+            ),
+            [_WF],
+        ),
+        (
+            "a step is REMOVED",
+            _patch(
+                "@@ -1,2 +1 @@\n"
+                "       - uses: actions/checkout@v4\n"
+                "-      - uses: actions/setup-node@v4\n"
+            ),
+            [_WF],
+        ),
+        (
+            "the pin is clean but another hot-zone file rides in the same PR",
+            _PIN_ONLY,
+            [_WF, "fly.toml"],
+        ),
+        (
+            "no content hunk at all (mode change) — not PROVEN safe",
+            f"diff --git a/{_WF} b/{_WF}\nold mode 100644\nnew mode 100755\n",
+            [_WF],
+        ),
+        (
+            "a second workflow in the same PR disarms a gate",
+            _PIN_ONLY
+            + _patch(
+                "@@ -3 +3 @@\n-  if: always()\n+  if: false\n",
+                ".github/workflows/gate.yml",
+            ),
+            [_WF, ".github/workflows/gate.yml"],
+        ),
+        (
+            "uses-only lines but the path is fly.toml — exemption must not leak",
+            _patch(
+                "@@ -1 +1 @@\n"
+                "-      - uses: actions/checkout@v4\n"
+                "+      - uses: actions/checkout@v5\n",
+                "fly.toml",
+            ),
+            ["fly.toml"],
+        ),
+        (
+            "uses-like lines under .github/CODEOWNERS — exemption must not leak",
+            _patch(
+                "@@ -1 +1 @@\n"
+                "-      - uses: actions/checkout@v4\n"
+                "+      - uses: actions/checkout@v5\n",
+                ".github/CODEOWNERS",
+            ),
+            [".github/CODEOWNERS"],
+        ),
+    ],
+)
+def test_path_term_exemption_guilt_these_all_keep_gear_three(why, patch, changed):
+    assert compute_floor(changed, None, patch) == 3, why
+    assert compute_floor_source(changed, None, patch) == FLOOR_SOURCE_PATH, why
+
+
+def test_path_term_exemption_innocence_pure_pin_drops_to_one():
+    assert compute_floor([_WF], None, _PIN_ONLY) == 1
+    assert compute_floor_source([_WF], None, _PIN_ONLY) == FLOOR_SOURCE_NONE
+
+
+def test_path_term_exemption_innocence_sha_pin_with_trailing_version_comment():
+    """PR #5444's exact shape: the ref is a SHA and the version lives in a
+    trailing comment. A parser that stopped at the `#` would read the two sides
+    as different identities and never exempt it. The SHAs are #5444's real ones,
+    full 40 hex: an abbreviated SHA is not a valid `uses:` ref, and since the
+    pinned-ref rule landed a short one correctly floors at 3 — a fixture using
+    one was testing a shape that cannot reach production."""
+    patch = _patch(
+        "@@ -1 +1 @@\n"
+        "-        uses: github/codeql-action/autobuild@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7\n"
+        "+        uses: github/codeql-action/autobuild@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9\n"
+    )
+    assert compute_floor([_WF], None, patch) == 1
+
+
+def test_path_term_exemption_innocence_two_pins_in_one_file():
+    patch = _patch(
+        "@@ -1 +1 @@\n"
+        "-        uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7\n"
+        "+        uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9\n"
+        "@@ -8 +8 @@\n"
+        "-        uses: actions/cache@v3\n"
+        "+        uses: actions/cache@v4\n"
+    )
+    assert compute_floor([_WF], None, patch) == 1
+
+
+def test_path_term_exemption_defaults_to_no_exemption_at_all():
+    """FAIL-CLOSED: the exemption must be PROVEN by a patch. Every caller that
+    omits one — and every run where the patch file was missing or unreadable —
+    gets exactly the floor this function returned before the exemption existed."""
+    assert compute_floor([_WF]) == 3
+    assert compute_floor([_WF], None, None) == 3
+    assert compute_floor([_WF], None, "") == 3
+
+
+def test_path_term_exemption_never_returns_a_non_workflow_path():
+    """The exemption set is structurally confined to .github/workflows/, so it
+    can only ever narrow the path term for the one directory it was written for
+    — no future edit to the parser can widen it without failing here."""
+    patch = (
+        _PIN_ONLY
+        + _patch(
+            "@@ -1 +1 @@\n"
+            "-      - uses: actions/checkout@v4\n"
+            "+      - uses: actions/checkout@v5\n",
+            "fly.toml",
+        )
+        + _patch(
+            "@@ -1 +1 @@\n"
+            "-      - uses: actions/checkout@v4\n"
+            "+      - uses: actions/checkout@v5\n",
+            "scripts/dlq_autopilot.py",
+        )
+    )
+    exempt = workflow_paths_exempt_from_path_term(patch)
+    assert exempt == {_WF}
+    assert all(p.startswith(".github/workflows/") for p in exempt)
+
+
+def test_path_term_exemption_a_path_only_the_patch_claims_exempts_nothing():
+    """STRUCTURAL defence, stated as a test because it is the one that holds
+    when every other condition is satisfied: the exemption set is INTERSECTED
+    against the real changed-file list. A patch can therefore claim whatever
+    path it likes — the floor is still computed over the files git says
+    changed, and a name that appears only in the patch matches nothing."""
+    lying_patch = _patch(
+        "@@ -1 +1 @@\n"
+        "-      - uses: actions/checkout@v4\n"
+        "+      - uses: actions/checkout@v5\n",
+        ".github/workflows/not-actually-in-this-pr.yml",
+    )
+    assert compute_floor(["fly.toml"], None, lying_patch) == 3
+    assert compute_floor(["apps/backend-rag/backend/app/auth/jwt.py"], None, lying_patch) == 3
+
+
+def test_path_term_exemption_rejects_a_traversal_path():
+    """`.github/workflows/../../fly.toml` passes a naive startswith() and names
+    another hot zone. Refused at the parser, not only by the intersection."""
+    patch = _patch(
+        "@@ -1 +1 @@\n"
+        "-      - uses: actions/checkout@v4\n"
+        "+      - uses: actions/checkout@v5\n",
+        ".github/workflows/../../fly.toml",
+    )
+    assert workflow_paths_exempt_from_path_term(patch) == set()
+
+
+def test_path_term_exemption_rejects_a_non_ascii_homoglyph_owner():
+    """A Cyrillic 'а' in `аctions/checkout` is a different owner to GitHub and
+    to this parser. It must not be read as first-party."""
+    patch = _patch(
+        "@@ -1 +1 @@\n"
+        "-      - uses: аctions/checkout@v4\n"
+        "+      - uses: аctions/checkout@v5\n"
+    )
+    assert compute_floor([_WF], None, patch) == 3
+
+
+def test_path_term_exemption_rejects_a_combined_diff():
+    """A merge-commit `diff --cc` puts TWO status columns on each line, so the
+    body of a `++`/`--` line still carries a leading +/-. CI never produces one
+    (the producer runs a two-endpoint `git diff`), but a future caller might."""
+    patch = (
+        ".github/workflows/ci.yml\n"
+        "diff --cc .github/workflows/ci.yml\n"
+        "index 111,222..333\n"
+        "--- a/.github/workflows/ci.yml\n"
+        "+++ b/.github/workflows/ci.yml\n"
+        "@@@ -1,1 -1,1 +1,1 @@@\n"
+        "- -      - uses: actions/checkout@v4\n"
+        "++      - uses: actions/checkout@v5\n"
+    )
+    assert compute_floor([_WF], None, patch) == 3
+
+
+def test_path_term_exemption_guilt_reordering_two_bare_steps_keeps_gear_three():
+    """Found by a cross-family refuter (deepseek-v4-flash-0731) whose answer was
+    truncated at 214 bytes and still contained it. Two bare one-line steps whose
+    `uses:` lines swap places have an IDENTICAL multiset of action identities, so
+    the first cut of condition 3 — `sorted(minus) != sorted(plus)` — exempted a
+    reorder. Reordering steps is a semantic change: it can put a scan before the
+    step that produces what it scans, which passes vacuously. Condition 3 now
+    compares the SEQUENCES, both of which are in file order."""
+    reorder = _patch(
+        "@@ -1,2 +1,2 @@\n"
+        "-      - uses: actions/checkout@v4\n"
+        "-      - uses: actions/setup-node@v4\n"
+        "+      - uses: actions/setup-node@v4\n"
+        "+      - uses: actions/checkout@v4\n"
+    )
+    assert compute_floor([_WF], None, reorder) == 3
+    assert workflow_paths_exempt_from_path_term(reorder) == set()
+
+
+def test_path_term_exemption_innocence_two_pins_keep_their_order():
+    """The control for the test above: the same two actions, both bumped, order
+    unchanged. If sequence-equality were over-tight this would go red too, and a
+    guilt test whose innocence twin also fails proves nothing."""
+    both_bumped = _patch(
+        "@@ -1,2 +1,2 @@\n"
+        "-      - uses: actions/checkout@v4\n"
+        "-      - uses: actions/setup-node@v4\n"
+        "+      - uses: actions/checkout@v5\n"
+        "+      - uses: actions/setup-node@v5\n"
+    )
+    assert compute_floor([_WF], None, both_bumped) == 1
+
+
+def test_path_term_exemption_guilt_two_full_steps_swap_when_their_with_blocks_align():
+    """The shape a peer session named as adjacent to the reorder hole, and the
+    reason this fixture is a REAL git-produced diff rather than a hand-written
+    one: when two steps carry IDENTICAL `with:` blocks, git aligns those blocks
+    as context and the minimal diff it emits changes ONLY the two `uses:` lines.
+    So "the surrounding block moved too, therefore a non-uses line changed" is
+    NOT a defence — git can hide the move entirely. Verified by initialising a
+    scratch repo, swapping the two steps and capturing `git diff -U0` (2026-09-01);
+    the bytes below are that command's actual output.
+
+    Sequence equality is what refuses it — the identities appear in opposite
+    order on the two sides. Under the superseded sorted() comparison this would
+    have been EXEMPTED."""
+    real_git_diff = (
+        "diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml\n"
+        "index 731c10d..8cd8c2c 100644\n"
+        "--- a/.github/workflows/ci.yml\n"
+        "+++ b/.github/workflows/ci.yml\n"
+        "@@ -4 +4 @@ jobs:\n"
+        "-      - uses: actions/upload-artifact@v4\n"
+        "+      - uses: actions/download-artifact@v4\n"
+        "@@ -7 +7 @@ jobs:\n"
+        "-      - uses: actions/download-artifact@v4\n"
+        "+      - uses: actions/upload-artifact@v4\n"
+    )
+    assert workflow_paths_exempt_from_path_term(real_git_diff) == set()
+    assert compute_floor([_WF], None, real_git_diff) == 3
+
+
+@pytest.mark.parametrize(
+    "old_ref,new_ref,why",
+    [
+        ("v4", "main", "unpinning to a branch is not a version bump"),
+        ("v4", "master", "same, other branch name"),
+        ("v4", "latest", "a floating alias is not a pin"),
+        ("v4", "HEAD", "nor is a symbolic ref"),
+        ("main", "v4", "re-pinning is rare and deliberate — it gets a look too"),
+    ],
+)
+def test_path_term_exemption_guilt_a_ref_that_does_not_pin(old_ref, new_ref, why):
+    """Attack 1b from the adversarial reviewer, which it called "worth a
+    conscious decision, not obviously a blocker" — the decision is to refuse it.
+    "Only refs may move" permitted `actions/checkout@v4` -> `@main`, which is not
+    a bump at all but an UNPINNING: the action stops being fixed and starts
+    tracking a branch somebody else can move. That is precisely the supply-chain
+    change this hot zone exists to catch."""
+    patch = _patch(
+        "@@ -1 +1 @@\n"
+        f"-      - uses: actions/checkout@{old_ref}\n"
+        f"+      - uses: actions/checkout@{new_ref}\n"
+    )
+    assert compute_floor([_WF], None, patch) == 3, why
+
+
+@pytest.mark.parametrize(
+    "old_ref,new_ref",
+    [
+        ("v4", "v5"),
+        ("v4.37.7", "v4.37.9"),
+        ("4.37.7", "4.37.9"),
+        ("v1.2.3-beta.1", "v1.2.4"),
+        (
+            "ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd",
+            "cdf488f595d80d6e07e03d4674febd5ab45fa938",
+        ),
+    ],
+)
+def test_path_term_exemption_innocence_every_real_pin_shape_still_exempts(old_ref, new_ref):
+    """The innocence half of the rule above, and it is the half that matters:
+    a guilt corpus that also rejects every legitimate bump has not tightened the
+    rule, it has deleted it. These are the shapes Dependabot actually writes —
+    bare major tags, full semver, unprefixed semver, a prerelease suffix, and a
+    full 40-hex SHA pin."""
+    patch = _patch(
+        "@@ -1 +1 @@\n"
+        f"-      - uses: actions/checkout@{old_ref}\n"
+        f"+      - uses: actions/checkout@{new_ref}\n"
+    )
+    assert compute_floor([_WF], None, patch) == 1
+
+
+def test_read_patch_file_fails_closed_on_invalid_utf8(tmp_path, capsys):
+    """UnicodeDecodeError is a ValueError, NOT an OSError, so catching only
+    OSError let one bad byte in a patch raise straight through: traceback, no
+    floor on stdout, exit 1. It could never under-gate — the crash precedes
+    compute_floor — but the fail-closed comment above it was false, and the next
+    reader trusts a comment. Found by the adversarial reviewer, 2026-09-01."""
+    from evidence_pack_lint import _read_patch_file
+
+    corrupt = tmp_path / "corrupt.patch"
+    corrupt.write_bytes(
+        b"diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml\n"
+        b"--- a/.github/workflows/ci.yml\n+++ b/.github/workflows/ci.yml\n"
+        b"@@ -1 +1 @@\n-      - uses: actions/checkout@v4\n"
+        b"+      - uses: actions/check\xffout@v5\n"
+    )
+    assert _read_patch_file(str(corrupt)) is None
+    assert "fail-closed" in capsys.readouterr().err
+
+
+def test_read_patch_file_fails_closed_on_a_missing_file(tmp_path, capsys):
+    """The innocence twin's sibling: the OSError path still behaves, so the
+    widened except did not swallow the case it already handled."""
+    from evidence_pack_lint import _read_patch_file
+
+    assert _read_patch_file(str(tmp_path / "does-not-exist.patch")) is None
+    assert "fail-closed" in capsys.readouterr().err
+    assert _read_patch_file(None) is None
+    assert capsys.readouterr().err == ""
+
+
+def test_path_term_exemption_guilt_a_forged_plus_plus_plus_header_hides_the_rest_of_the_hunk():
+    """The independent gate's one successful bypass, 2026-09-01. The fixture is a
+    REAL `git diff -U0` — the whole attack depends on what git actually emits.
+
+    A diff prefixes an added line with ONE "+". So a workflow line that itself
+    begins `++ ` is emitted as `+++ …`, which by prefix alone is indistinguishable
+    from a new-file header. The parser read it as one: it reassigned the current
+    path to a phantom file AND set in_hunk=False, after which every remaining line
+    of that hunk was SILENTLY SKIPPED. The `+permissions: write-all` that followed
+    never reached the parser, and a privilege escalation rode along inside a diff
+    the floor scored as a pure version pin — floor 1.
+
+    It also falsified the function's own comment: a non-conforming ADDED line did
+    NOT re-arm the path term. Header recognition is now gated on `not in_hunk`, so
+    inside a hunk these bytes are content, fail to parse, and set clean=False.
+
+    (The gate judged this unreachable-to-merge because every payload is an invalid
+    workflow that required actionlint rejects. That is true and it is the reason
+    this was not a merge blocker — but it made the floor's non-gameability
+    CONDITIONAL on another gate's strictness, and CLAUDE.md leans on the floor
+    being non-gameable on its own. Hence the cure rather than a ledger entry.)"""
+    forged = (
+        "diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml\n"
+        "index aacf948..9f4aa46 100644\n"
+        "--- a/.github/workflows/ci.yml\n"
+        "+++ b/.github/workflows/ci.yml\n"
+        "@@ -7 +7,3 @@ jobs:\n"
+        "-      - uses: actions/checkout@v4\n"
+        "+      - uses: actions/checkout@v5\n"
+        '+++ b/zzz: "x"\n'
+        "+permissions: write-all\n"
+    )
+    assert workflow_paths_exempt_from_path_term(forged) == set()
+    assert compute_floor([_WF], None, forged) == 3
+
+
+def test_path_term_exemption_innocence_a_real_new_file_header_is_still_a_header():
+    """The innocence twin of the guard above, and the one that matters: gating
+    header recognition on `not in_hunk` must not stop the parser reading the REAL
+    `+++ b/<path>` header, or it would lose track of the file and exempt nothing
+    ever — a guard that passes its guilt test by breaking everything."""
+    two_files = (
+        "diff --git a/.github/workflows/a.yml b/.github/workflows/a.yml\n"
+        "--- a/.github/workflows/a.yml\n"
+        "+++ b/.github/workflows/a.yml\n"
+        "@@ -1 +1 @@\n"
+        "-      - uses: actions/checkout@v4\n"
+        "+      - uses: actions/checkout@v5\n"
+        "diff --git a/.github/workflows/b.yml b/.github/workflows/b.yml\n"
+        "--- a/.github/workflows/b.yml\n"
+        "+++ b/.github/workflows/b.yml\n"
+        "@@ -1 +1 @@\n"
+        "-      - uses: actions/setup-node@v3\n"
+        "+      - uses: actions/setup-node@v4\n"
+    )
+    assert workflow_paths_exempt_from_path_term(two_files) == {
+        ".github/workflows/a.yml",
+        ".github/workflows/b.yml",
+    }

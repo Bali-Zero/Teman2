@@ -1,0 +1,115 @@
+task_id: healer-memo
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Memoize pro-healer's LLM spawn on the organ-state fingerprint (D-004,
+  ~/.tokenaudit/DECISIONS.md), so it stops spawning an identical
+  `--max-budget-usd 10` headless Claude session on ticks where the organ
+  state and the verdict have not changed since the last spawn.
+
+  Grounding, measured this session, not assumed:
+
+    ~/.tokenaudit/reports/04-rightsizing.md:27,49 (real file, read this
+    session): "9 tick nel ledger: organi morti 5,5,5,5,5,4,8,9,6 — 5/9 con
+    stato identico e verdetto «0/N curabili»" -> "5/9 tick evitabili ⇒
+    ≈55% [misurato]" -> row R5 recommends "ADOTTA skip-if-unchanged".
+
+    shared/escalations_pro.jsonl, read at task start this session (verbatim
+    `job`/`priority`/`error_summary` JSON): 9 lines with
+    `"job": "healer_pro_tick"`, 8 carrying `"priority": "HIGH"`, each
+    `error_summary` of the shape "N dead organs ... re-verified fresh (W65)
+    -- 0/N curable" — the SAME organs, the SAME incurable verdict, tick
+    after tick. This is a LIVE shared JSONL other processes on this
+    machine also write and prune (CLAUDE.md §14: "Delete file after fix +
+    verify") — by the time this pack was written those 9 lines had already
+    rotated out (`wc -l` dropped from 194 to 14, 0 `healer_pro_tick` lines
+    remaining); the 9/8 counts above are what this session actually read
+    at start, not a claim about the file's current content.
+
+  Task-lead mandate (delivered mid-task): also produce this Evidence Pack,
+  since the harness-floor gate blocked #5502 on a Gear-3 hot-zone hit
+  (infra/launchagents/wrappers/pro-healer.sh) with none present.
+constraints:
+  - "Fail-open toward SPAWNING, never toward silently SKIPping a real cure
+    (superscar #2, Esiste≠Armato). Any memo-tooling error (a `check` exit
+    code outside {0,3}) must fall through to spawning, in the wrapper AND
+    in the memo tool's own error handling."
+  - "The fingerprint MUST include the HEARTBEAT STATUS of each dead organ,
+    not just their count — D-004's own explicit revision criterion, so two
+    ticks with the same organ COUNT but a different organ's status text
+    (or a different organ dying) are never treated as the same state."
+  - "No secrets, no client PII/OSINT — the wrapper reads only its own
+    already-computed receptor JSON and a shared ops escalation log; tests
+    use synthetic (author-constructed) escalation lines, never real ones."
+  - "The live ~/scripts/pro-healer.sh copy (declared HOME-fork pair,
+    superscar #1) is out of scope for this PR by the task-lead's own
+    instruction — refreshed by the orchestrating session after merge."
+acceptance:
+  - text: >
+      WHEN the organ-state fingerprint is identical to the last spawn's AND
+      the last recorded verdict was "incurable" AND the spawn is under
+      --max-age-h AND the skip streak is under --max-skips, the memo tool
+      SHALL exit 3 (SKIP) and the wrapper SHALL NOT spawn a session.
+    status: verified
+    probe: "python3 scripts/healer_memo.py check --state <f> --fingerprint <h>  # after a matching record()"
+  - text: >
+      IF the fingerprint differs, OR the last verdict was not "incurable",
+      OR the last spawn is stale, OR the skip streak is exhausted, OR no
+      state file exists, the memo tool SHALL exit 0 (SPAWN).
+    status: verified
+    probe: "python -m pytest scripts/tests/test_healer_memo.py -k 'spawns'"
+  - text: >
+      WHILE PRO_HEALER_MEMO=0 is set, `check` SHALL always exit 0 (SPAWN),
+      regardless of any persisted state.
+    status: verified
+    probe: "python -m pytest scripts/tests/test_healer_memo.py -k kill_switch"
+  - text: >
+      WHERE the memo tool itself errors (a non-{0,3} exit from `check`),
+      the wrapper SHALL fall through to spawning, never to silently
+      exiting on a SKIP-shaped code path.
+    status: verified
+    probe: "bash -n infra/launchagents/wrappers/pro-healer.sh; grep -n 'MEMO_RC.*-ne 0' infra/launchagents/wrappers/pro-healer.sh"
+  - text: >
+      WHEN `record` persists a new fingerprint/verdict, the skip counter
+      SHALL reset to 0 and the write SHALL be atomic (temp file + rename).
+    status: verified
+    probe: "python -m pytest scripts/tests/test_healer_memo.py -k record"
+  - text: >
+      WHEN classifying the newest `healer_pro_tick` escalation line since a
+      timestamp, the tool SHALL read "0/N curable" as incurable, "N/N
+      curable" (N>0) or "cured"/"healed" as cured, and everything else
+      (including a partial "k/N curable", 0<k<N) as unknown — never
+      memoized as an all-clear.
+    status: verified
+    probe: "python -m pytest scripts/tests/test_healer_memo.py -k verdict_from_escalations"
+risks:
+  - "Solo build, no independent cross-family council seat (COUNCIL_REVIEW_SEATS)
+    convened — R9 (council_run) is NOTICE-only before 2026-09-02 (today,
+    2026-09-01) and this pack declares no `council_run`, by design rather
+    than omission. A same-repo `spalla-review` subagent WAS dispatched on
+    fresh context for an independent adversarial pass (see dissent) — it is
+    not one of the three COUNCIL_REVIEW_SEATS tokens, so it does not count
+    toward that quorum even after enforcement, but it is real, independent
+    review, not self-grading."
+  - "The wrapper wiring (infra/launchagents/wrappers/pro-healer.sh) cannot be
+    exercised end-to-end in this session (it requires launchd + a live Pro
+    receptor tick) — verified by `bash -n`, `shellcheck -S warning`
+    (clean), and inline python-heredoc probes reproducing the exact JSON
+    shapes the wrapper's own REG_OUT/PROP_JSON/LHF_CHECK_OUT variables
+    carry, not by a real launchd invocation. First real tick after merge is
+    the actual proof (see PR #5502's Bites: line)."
+  - "The ARG_MAX ceiling on the env-var-passed receptor JSON
+    (`getconf ARG_MAX` on Pro this session: 1048576 bytes) is not tested —
+    today's dead-organ counts (single digits) are nowhere near it; declared
+    as an unexercised limit, not a measured failure."
+instruction_to_the_grader: |
+  This is a narrow follow-up PR (memoization only) on top of an already
+  independently-verified diff (#5502's original review, by the task-lead
+  session, on fresh context: 19/19 new tests + 45 pre-existing consumer
+  tests, `bash -n` clean, a real SPAWN->record->SKIP(rc 3)->kill-switch(rc 0)
+  dry run). This pack's own NEW content is the evidence-pack files
+  themselves plus the adversarial dissent pass recorded below — read the
+  dissent for what was actually attacked and found, not this paraphrase of
+  it.
+pii: none

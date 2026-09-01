@@ -25,8 +25,8 @@ the failure-memory asset the organism uniquely possesses.
 
 ## Ground to load (orchestrator first reads)
 
-- `.claude/rules/cicatrix-scars.md` [exists, 296,243 bytes] and
-  `.claude/rules/cicatrix-scars-archive.md` [exists, 397 KB — header line 3: "not auto-loaded per
+- `docs/scars/cicatrix-scars.md` [exists, 296,243 bytes] and
+  `docs/scars/cicatrix-scars-archive.md` [exists, 397 KB — header line 3: "not auto-loaded per
   session", contradicted by measured injection]
 - `.claude/rules/cicatrix-superscar.md` [exists, 13,986 bytes — the bridge that STAYS injected]
 - `scripts/tests/test_superscar_budget.py` [exists, 8.6 KB — `BYTE_BUDGET = 14_000` at line 47;
@@ -34,7 +34,7 @@ the failure-memory asset the organism uniquely possesses.
   real heading-body somewhere in `cicatrix-scars.md`/`-archive.md` — moving the bodies changes
   where that check must look]
 - `scripts/lint_scar_number_collision.py` [exists, 11 KB — `DEFAULT_FILE =
-".claude/rules/cicatrix-scars.md"` hardcoded at line 68; MUST be repointed if the file moves]
+"docs/scars/cicatrix-scars.md"` hardcoded at line 68; MUST be repointed if the file moves]
 - `.claude/commands/scar.md` [exists — the `scar` skill/command that appends to
   `cicatrix-scars.md`; also references the fixed path and must be repointed]
 - `scripts/build_repomap.sh` [exists, 8.5 KB, executable — target band at line 16 ("Target:
@@ -57,7 +57,7 @@ grep [exists] to the new path
 **Gear**: 2
 **Build**:
 
-- `git mv .claude/rules/cicatrix-scars.md docs/scars/cicatrix-scars.md` and same for
+- `git mv docs/scars/cicatrix-scars.md docs/scars/cicatrix-scars.md` and same for
   `cicatrix-scars-archive.md` — out of the auto-injected `.claude/rules/` directory; the 14 KB
   superscar bridge (`cicatrix-superscar.md`) STAYS in `.claude/rules/` with its own budget
 - Repoint all 4 tools found this session: `scripts/lint_scar_number_collision.py`

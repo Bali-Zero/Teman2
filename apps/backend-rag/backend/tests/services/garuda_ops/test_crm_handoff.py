@@ -354,9 +354,10 @@ async def test_each_case_type_writes_its_own_catalogue_service(
 ) -> None:
     """RED-if-wrong: the version this replaces passed ONE constant
     (`"garuda_voa"`) for both case types. Issuance and extension are separate
-    products at separate prices in `practice_types` — Rp 790,000 vs
-    Rp 850,000 (221 seeded issuance at 750,000; migration 302 corrected it to
-    the owner's 2026-08-31 ruling) — so a shared code prices, reports and routes
+    products at separate prices in `practice_types` — Rp 750,000 vs
+    Rp 850,000 (221 seeded issuance at 750,000; migration 302 moved it to
+    790,000 and migration 303 moved it back, per the owner's 2026-08-31
+    ruling) — so a shared code prices, reports and routes
     them as one service. Parametrized precisely so re-hardcoding either side
     reddens exactly one case, not the pair."""
     writer = FakeCrmWriter()

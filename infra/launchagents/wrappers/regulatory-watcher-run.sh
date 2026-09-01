@@ -298,6 +298,22 @@ sys.exit(0 if d.get("partial") else 1)
 # Kill switch: REGWATCH_PROMOTE_ENABLED=false skips this step (deliberate stop,
 # the delta itself and its Telegram alert/eventbus emission are unaffected).
 REGWATCH_REPO_ROOT="$HOME/nuzantara"
+
+# gh-cwd fix (2026-08-31, W-promote-silence twin): cwd-safety in this function
+# was applied per-TOOL (every `git` call below is `git -C "$_wt" ...`), not per
+# REQUIREMENT ("this command needs to know which repo it's in") — the two `gh`
+# calls were missed. `gh` resolves its target repo from the PROCESS cwd, which
+# under launchd is not inside any git checkout, so both calls failed resolution
+# before ever reaching the GitHub API: `fatal: not a git repository (or any of
+# the parent directories): .git`, ten consecutive days in
+# ~/logs/regulatory-watcher.log, every day right after the push succeeded.
+# `-C "$_wt"` (the flag the `git` calls use) has no `gh` equivalent that helps
+# here; `--repo owner/repo` is `gh`'s own cwd-independent form. Proved live:
+# `(cd /tmp && gh pr create --repo Bali-Zero/Teman2 --head <nonexistent> ...)`
+# reaches the GraphQL API (fails on the fake branch, not on repo resolution),
+# while the same command without `--repo` reproduces the exact log string
+# above. Matches the existing convention in scripts/lane_ship.sh.
+REGWATCH_GH_REPO="${REGWATCH_GH_REPO:-Bali-Zero/Teman2}"
 promote_delta_via_pr() {
     local _rel="research/regulatory/${DELTA_BASENAME}"
     [ -f "$DELTA_JSON" ] || return 0
@@ -360,7 +376,7 @@ EOF
     fi
 
     local _pr_url
-    _pr_url=$(gh pr create --base main --head "$_branch" \
+    _pr_url=$(gh pr create --repo "$REGWATCH_GH_REPO" --base main --head "$_branch" \
         --title "chore(regulatory): promote ${DATE} delta" \
         --body "Automated promotion of $_rel. See infra/launchagents/wrappers/regulatory-watcher-run.sh." \
         2>>"$LOG")
@@ -373,7 +389,7 @@ EOF
     _pr_num=$(print -r -- "$_pr_url" | grep -oE '[0-9]+$')
     # NOT --squash: once a merge queue governs main, the ruleset owns the merge
     # method and --squash is rejected outright (pipeline-ship skill).
-    if gh pr merge "$_pr_num" --auto >> "$LOG" 2>&1; then
+    if gh pr merge "$_pr_num" --repo "$REGWATCH_GH_REPO" --auto >> "$LOG" 2>&1; then
         echo "[$(date)] promote: auto-merge armed on PR #$_pr_num" >> "$LOG"
     else
         echo "[$(date)] promote: WARN could not arm auto-merge on PR #$_pr_num — needs manual arm" >> "$LOG"
@@ -630,7 +646,22 @@ fi
 # Promote whatever delta landed on disk this run (SUCCESS or DEGRADED — a
 # degraded/partial-accepted tier-4 delta is still worth committing; only "ALL
 # TIERS FAILED" leaves no $DELTA_JSON for promote_delta_via_pr to act on).
+#
+# W-promote-silence (2026-08-31): called bare, this function's `return 1` used
+# to vanish — organism_hb_finalize (the EXIT trap) reads only the SCRIPT's own
+# rc, which is an unconditional `exit 0` below no matter how promotion went.
+# Result, measured live: pro.regulatory_watcher_daily said "ok" every day for
+# ten days while gh pr create failed every single run (cwd bug, cured above) —
+# detection+alerting genuinely succeeded each day, so the script exiting 0 was
+# correct, but the heartbeat's NOTE kept saying "used <tier>" as if delivery
+# had too. Capture the rc and surface it WITHOUT failing the run: the fix is
+# to stop the heartbeat lying, not to turn a successful scan into a failed one.
 promote_delta_via_pr
+_PROMOTE_RC=$?
+if [ "$_PROMOTE_RC" -ne 0 ]; then
+    echo "[$(date)] promote: FAILED rc=$_PROMOTE_RC — delta detected but not promoted to main (see promote: lines above for cause)" >> "$LOG"
+    organism_hb_set error "promote_delta_via_pr failed rc=${_PROMOTE_RC} — delta on disk, not promoted to main"
+fi
 
 
 # --- modus autoloop enqueue (PR #2307) ---

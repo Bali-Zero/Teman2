@@ -14,7 +14,12 @@
 # repo already treats these models: freeze_worker_plane_review.py's retired
 # glm/deepseek council routes used them as opinion-only review seats, never as
 # file-editors. MODEL_ROSTER.md's own TP1 table agrees: "Implementer/refuter
-# only" for all seven, with quorum/final-gate explicitly "no".
+# only" for all seven, and final-gate "no" for all seven. Quorum is NOT uniform:
+# six say "no", but qwen3.8-max says YES — it is in COUNCIL_REVIEW_SEATS
+# (scripts/evidence_pack_lint.py, R9) because it is the one TP1 seat promoted
+# ARMED (2026-08-14, 459 calls / 74.1M tokens). This line claimed "no" for all
+# seven until 2026-09-02, which was the doc side of a live contradiction with
+# that lint; see the note under MODEL_ROSTER.md's TP1 table.
 #
 # This file only ever runs SOURCED (from seat_build.sh); it defines no top-level
 # side effects of its own.

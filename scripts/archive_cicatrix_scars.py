@@ -59,8 +59,8 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-ACTIVE = REPO_ROOT / ".claude" / "rules" / "cicatrix-scars.md"
-ARCHIVE = REPO_ROOT / ".claude" / "rules" / "cicatrix-scars-archive.md"
+ACTIVE = REPO_ROOT / "docs" / "scars" / "cicatrix-scars.md"
+ARCHIVE = REPO_ROOT / "docs" / "scars" / "cicatrix-scars-archive.md"
 
 # Limit raised 40k→10M (decision 2026-06-16): the magazzino is NOT loaded into
 # agent context (only the ponte cicatrix-superscar.md is), so there is no practical

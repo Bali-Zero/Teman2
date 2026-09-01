@@ -43,7 +43,105 @@ session reads this corner; it does not browse `research/`.
 Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
 is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
-## 1. LIVE STATE (last update 2026-08-20 — keep current)
+## 1. LIVE STATE (last update 2026-09-02 — keep current)
+
+**🔴 2026-09-02 — THE KG LICENSING LANE HAS ITS SPEC, AND THE SPEC IS SUSPENDED (RULE 8): THREE REFUTER
+ROUNDS EACH FALSIFIED PART OF THE PREVIOUS DRAFT; THE MEASUREMENTS BELOW STAND, THE DESIGN DOES NOT YET.**
+`docs/specs/2026-09-02-kbli-kg-licensing-class-cure-spec.md` (Gear 2; Codex sol round 1 BLOCKED(9) →
+round 2 BLOCKED(11) → round 3 BLOCKED(6) ⇒ no fourth round; the six open findings and their minimal
+fixes are tabled in the spec — reopen from THERE: the live state counts the 16 placeholder codes as S3
+(54/99/22) until the placeholder lot runs; canonical `01122` has 8 rows and NO KG node; the S3 relabel
+would assert an unverified legacy licence set; `PHASE_1B_ENABLED` needs `procedure` rendered and
+prove-live on Fly AND Vercel; detectors must run both directions; one exact `node_properties` object.
+Nothing implemented). Measured read-only on PROD
+2026-09-01 and RE-measured 2026-09-02 with the router's OWN admission predicate —
+`classify_requires_target` AND `permit_name_verdict` (`kbli_notebook.py:674-689`) — because
+"permit-typed" ≠ "rendered": 5,318 permit-typed `REQUIRES` edges, 4,699 admitted, 352 + 241 demoted
+by name. **(1) The class is 175 codes in three DISJOINT states — not "22 of 25", not "148 + 76"** —
+S1 70 (`PENDING_REGULATION`, 0 admitted permits), S2 99 (`REGULATED`, 0 admitted — the mouth prints
+"Not listed in our data"), S3 6 (`PENDING` with one legacy licence rendered: 25920, 52322, 55400,
+65303, 85694, 90200); the 25 detector codes are 20 S1 + 2 S3 + 03231/03232/03233 legacy-served.
+**(2) "edge count == row count" is not a metric** — a licence is (permit name × risk tier), a row is
+(scope × scale): 03231's 20 rows are 3 licences. **(3) `inspect_kbli` reads the tier data from the
+TARGET NODE's `properties`, not from the edge** (`kbli_notebook.py:664-668,691-699` — `edge_props` is
+selected and unused): a cure that puts the data on the edge renders every licence as `All / Unknown
+/ N/A`; and a SHARED target node hashed on five fields collides on 196 ids with different payloads
+(worst: 175 instances × 18 payloads) — the spec uses code-scoped ids
+`perizinan:pp28v10:<code>:<full-payload-hash>` (0 collisions). **(4) Three placeholder nodes named
+`PENDING_REGULATION` are served to clients AS LICENCES on 17 codes** — `pending` is not an admission
+marker (`kbli_requires_kind.py:178`); live `inspect_kbli 65121` → `licenses: [{"type":
+"PENDING_REGULATION", "scale": ["All"], "risk_level": "Tinggi"}]`; 85586 has 0 rows and 4 of the 17
+are non-OSS, so removal is a phase-independent `--placeholders-only` gesture. **(5) The legal basis
+is PRIMARY** — PP 28/2025 read from the BPK gazette PDF (sha256 in spec §4.1): Pasal 128 tiers; 130
+Rendah → NIB; 131 Menengah Rendah → NIB + Sertifikat Standar as a self-declaration (131(2)); 132
+Menengah Tinggi → NIB + VERIFIED Sertifikat Standar (132(2),(6)); 133 Tinggi → NIB + Izin.
+**Corrections to §4 rule 6 and to the entry below:** for LICENSING the KG is **primary and
+mandatory** after the Redis cache (`kbli_notebook.py:609-614` cache first; `:626-635` 404s without
+the node; Qdrant last, only for `pma_status`/`kategori_risiko`) — the "Qdrant first" line holds for
+the PMA tuple only. Aetiology: the February import that built the graph is **out-of-tree** (`git grep
+kbli_2025_import` → 0 files); it read the LEGACY `per_skala_legacy` shape (2,702 rows, permit strings
+present), and all 25 codes — 86 in total — entered the canonical with v10 rows and an empty legacy
+block. v10 rows store no permit name on 1,336/1,342 codes; the name follows the statute's tier (the
+legacy rows agree as a dominant mapping WITH counter-examples: Rendah→NIB 704/707, MR→NIB+SS 674/738,
+MT→NIB+SS 760/842, Tinggi→NIB+Izin 378/415). The canonical has **no `licensing_status` field**; the
+verdict is a function of `per_skala` plus one frozen, NOT-adjudicated exception (`NOT_APPLICABLE_OSS`,
+75 codes — now data in `scripts/kbli_filiera/kg_oss_not_applicable_codes.json`; 0 admitted permits on
+all 75, measured). **Product decision for Zero (spec §9):** 61 of the 175 are non-OSS-issued ("OSS
+hanya menerbitkan NIB", 85510 among them) — the spec cures the 114 OSS-issued first (Phase 1a) and
+gates the 61 (Phase 1b) on the F2 router increment that renders the issuer, unless Zero rules to
+relabel now. Also: `91300` is `REGULATED` over a canonical `[]`; node `skala_usaha` disagrees with the
+canonical union on 881/1,341 codes. Next (ledgered): the cure script, Phase-1a apply in lots (+
+`--placeholders-only` on the 17), F5 classifier fix, detector KG dimension (4 checks) DECLARED →
+ENFORCED per manifest.
+
+**🟢 2026-09-01 (later) — THE 25 LICENSING-PRESENCE GAPS ARE 0 AND THE TABLE READS `conformant`; THE
+CONSUMER MAP GAINED ITS SECOND MISSING LINE: NOBODY READS LICENSING OFF `kbli_documents`, AND THE KG IS
+WHERE THE CLIENT IS STILL TOLD "PENDING".** PR #5513 (`fbebfc31f2`) added `--licensing-only` to
+`kbli_documents_cure.py` — twin of `--pma-only`: server-side jsonb merge of
+`per_skala`/`pp28_sources`/`licensing_status`, prose byte-identical, one derivation shared with the
+full rebuild, one direction only (a canonical `per_skala == []` or a malformed row-set is refused,
+never written). Applied from Pro on the 25 hand-written rows after deploy run 33510533088:
+`APPLIED: 25 of 25 asked cured`; md5(judul)/md5(content) unchanged on 25/25; archive +25; second run
+`0 of 25 cured | 25 skipped`; detector `kbli-surface-conformance-20260901T131200Z.log` →
+`pma_status 0 · licensing presence 0 · result=conformant`. Three refuter rounds (Codex sol):
+BLOCKED(1) → FIX-FIRST(3) → FIX-FIRST(1, docs-only), 149 tests. **Grounded before arming and written
+into the script:** `chat_kbli`'s direct path selects `judul, metadata` and reads only the PMA tuple
+(`_pma_disclosure_fields`) plus `official_description`/`uraian` (`_official_scope`); the PP 28
+per-scale rows reach a client from the Qdrant point TEXT (`sanitize_kbli_search_result`, via the
+agentic multi-collection tool) and from `kg_nodes` (`inspect_kbli`: `REQUIRES` edges +
+`props.licensing_status`). So the table cure closes the detector class and gives any future reader
+government rows instead of `[]` — and changes nothing a client hears. What the client hears is the
+KG: **22 of the 25 codes serve `PENDING_REGULATION` with 0–1 edges** against 3–52 canonical rows
+(live: `inspect_kbli 85510` → `licenses: []`); neither KG script covers the class — ledger row, spec
+first. Consumer-map rule for this corner, now with two data points (PMA: Qdrant wins; licensing:
+KG + Qdrant text, table unread): **before curing a store, name its reader; before declaring a cure,
+probe the reader.** The PR's first body claimed a channel effect; the grounding agent's map and the
+refuter's BLOCKER said otherwise, and it was corrected before arming — the correction must not lie
+either (W113).
+
+**🟢 2026-09-01 — THE 11 `pma_status` DIVERGENCES ARE 0, AND THE CONSUMER MAP GAINED THE LINE IT
+WAS MISSING: AT RUNTIME QDRANT WINS.** The Pro conformance detector (armed 2026-09-01) named 11
+`kbli_documents` rows whose `pma_status` disagreed with the VERIFIED canonical. Curing the table
+first proved nothing on the channel: `chat_kbli`'s direct lookup reads `kbli_documents.metadata`,
+but `_fill_bali_verdicts` (`kbli_notebook_chat.py:211-295`) re-reads the **Qdrant** BPS point for
+every result with `bali_blocked is None` and overwrites the whole PMA tuple, and `inspect_kbli`
+reads Qdrant first (`kg_nodes` fallback) — so §4 rule 6's four stores have a precedence, and it is
+Qdrant → KG → Postgres, not "keep them all in sync" as equals. What shipped: Qdrant PMA layer
+synced on the **54 canonical-`located` codes** (`kbli_qdrant_pma_sync.py --layer pma --codes`, 53
+written, 54/54 re-verified), inspect cache busted, KG resynced 54/54; `kbli_documents` 5 rows by
+full rebuild + 6 hand-written rows by the new **`--pma-only`** mode of `kbli_documents_cure.py`
+(PR #5489 — syncs the 7-key PMA tuple via a server-side jsonb merge, judul/content byte-identical
+by md5 before/after; 3 Codex adversarial rounds, 116 tests). Detector now: `pma_status disagrees
+with VERIFIED canonical: 0`; `licensing presence disagrees: 25` is the next PR. Proven live:
+`inspect_kbli 65111` TERBATAS 80% PP 14/2018; `96220` TERBATAS 0% Lampiran II; `chat_kbli` 65201
+TERBATAS 80%. **Two things this cure surfaced, both ledgered in PENDING-ARMS (2026-09-01 rows):**
+(1) the canonical is `located` on 54 codes only — the other 1,505 answer `NOT_VERIFIED` by design
+of the 15/8 fail-closed disclosure (56101 included) while the mouth cites a residual Pasal 3(1)(d)
+locator for all 1,559; a whole-catalog sync would relabel ~1,500 answers, so it was NOT run —
+Legge 5 decision; (2) `archive_params` snapshots rows through a Python round-trip (inherited debt,
+declared by the refuter, did not bite tonight — probed first). Discipline that paid for itself:
+cure → cache-bust → probe, never probe first (`inspect_kbli` caches 30 days); `--pma-only` for
+hand-written rows, never full `--only` (03110 would have become a 55k-char document).
 
 **🔴 2026-08-20 (later) — P2b BENCHMARK EXECUTED: GATE RED, P2c STAYS CLOSED — two surgical
 product defects, ZERO fabrication found.** The seat's usage window reset early (probed
