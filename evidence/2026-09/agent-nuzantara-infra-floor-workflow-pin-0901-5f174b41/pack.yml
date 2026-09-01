@@ -92,6 +92,20 @@ pii_scan: clean
 
 receipts:
   - claim: >-
+      Every attack the reviewer tried and FAILED to break — recorded because a review that lists
+      only its hits is indistinguishable from one that stopped early
+    cmd: "reviewer-constructed patches through compute_floor / workflow_paths_exempt_from_path_term"
+    result: >-
+      Held: quoted refs · CRLF · SHA pin with trailing version comment · tab-separated timestamps
+      on the +++/--- lines · a path literally containing " b/" (the `diff --git` partition IS
+      corrupted, and the following `+++ b/<path>` line re-sets it — self-healing, confirmed rather
+      than assumed) · Cyrillic homoglyph owner · wrong-case `Actions/` · `diff --cc` · brand-new
+      and fully-deleted workflow files (structurally excluded: one side's list is empty, so
+      sequence equality can never hold) · rename · `..` traversal.
+    exit: 0
+    ts: 2026-09-01T20:35Z
+    seat: claude-sonnet-5 subagent (spalla-review)
+  - claim: >-
       The pinned-ref rule is load-bearing in BOTH directions — it is neither refusing everything
       nor accepting everything, which is the only measurement that distinguishes a real constraint
       from a broken one
@@ -227,6 +241,17 @@ receipts:
     seat: session (Pro)
 
 dissent:
+  - seat: claude-sonnet-5 subagent (spalla-review), fresh context
+    status: CONFIRMED
+    objection: >-
+      "_read_patch_file catches OSError only. A patch file with invalid UTF-8 bytes raises
+      UnicodeDecodeError (a ValueError subclass), uncaught." Reproduced verbatim before curing: one
+      0xff byte gave a traceback, no floor on stdout, exit 1. The reviewer graded it a SUGGESTION,
+      correctly noting it can never under-gate because the crash precedes compute_floor — cured
+      anyway, because the comment sitting above that except block promised the opposite and the
+      next reader trusts a comment. Now catches (OSError, UnicodeDecodeError): floor 3, exit 0,
+      one stderr notice. Reverting to `except OSError` reddens the new test and leaves its
+      missing-file twin green.
   - seat: claude-sonnet-5 subagent (spalla-review), fresh context
     status: CONFIRMED
     objection: >-

@@ -640,7 +640,19 @@ def _read_patch_file(path: str | None) -> str | None:
         return None
     try:
         return Path(path).read_text(encoding="utf-8")
-    except OSError as exc:
+    except (OSError, UnicodeDecodeError) as exc:
+        # UnicodeDecodeError is NOT an OSError — it is a ValueError — so an
+        # earlier cut of this caught only OSError and let a patch containing one
+        # invalid UTF-8 byte raise straight through: traceback, no floor on
+        # stdout, exit 1. That could never UNDER-gate (the crash precedes
+        # compute_floor), but it broke the contract this docstring promises and
+        # the comment above it was therefore false. Found 2026-09-01 by the
+        # adversarial reviewer, which graded it a suggestion rather than a hole;
+        # a comment that lies about a fail-closed path is worth curing anyway,
+        # because the next reader trusts it. Discards the WHOLE patch rather
+        # than decoding with errors="replace": a workflow file that is not valid
+        # UTF-8 is anomalous, and refusing every exemption in that patch is the
+        # conservative reading.
         print(
             f"evidence_pack_lint: --patch-file unreadable ({exc}) — "
             "no path-term exemption applied (fail-closed)",

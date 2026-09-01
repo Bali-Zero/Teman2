@@ -3840,3 +3840,33 @@ def test_path_term_exemption_innocence_every_real_pin_shape_still_exempts(old_re
         f"+      - uses: actions/checkout@{new_ref}\n"
     )
     assert compute_floor([_WF], None, patch) == 1
+
+
+def test_read_patch_file_fails_closed_on_invalid_utf8(tmp_path, capsys):
+    """UnicodeDecodeError is a ValueError, NOT an OSError, so catching only
+    OSError let one bad byte in a patch raise straight through: traceback, no
+    floor on stdout, exit 1. It could never under-gate — the crash precedes
+    compute_floor — but the fail-closed comment above it was false, and the next
+    reader trusts a comment. Found by the adversarial reviewer, 2026-09-01."""
+    from evidence_pack_lint import _read_patch_file
+
+    corrupt = tmp_path / "corrupt.patch"
+    corrupt.write_bytes(
+        b"diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml\n"
+        b"--- a/.github/workflows/ci.yml\n+++ b/.github/workflows/ci.yml\n"
+        b"@@ -1 +1 @@\n-      - uses: actions/checkout@v4\n"
+        b"+      - uses: actions/check\xffout@v5\n"
+    )
+    assert _read_patch_file(str(corrupt)) is None
+    assert "fail-closed" in capsys.readouterr().err
+
+
+def test_read_patch_file_fails_closed_on_a_missing_file(tmp_path, capsys):
+    """The innocence twin's sibling: the OSError path still behaves, so the
+    widened except did not swallow the case it already handled."""
+    from evidence_pack_lint import _read_patch_file
+
+    assert _read_patch_file(str(tmp_path / "does-not-exist.patch")) is None
+    assert "fail-closed" in capsys.readouterr().err
+    assert _read_patch_file(None) is None
+    assert capsys.readouterr().err == ""
