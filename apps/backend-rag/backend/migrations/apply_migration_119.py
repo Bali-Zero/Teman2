@@ -24,6 +24,7 @@ import asyncpg
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from migrations._lock_guard import run_ddl_with_lock_timeout
 from migrations.migration_119_partners import apply
 
 logging.basicConfig(
@@ -57,7 +58,11 @@ async def main() -> None:
             "Applying migration 119: partners + partner_referrals + "
             "partner_commissions + partner_audit_log + team_members.partner_id column",
         )
-        await apply(conn)
+        try:
+            await run_ddl_with_lock_timeout(conn, apply)
+        except asyncpg.exceptions.LockNotAvailableError:
+            logger.error("Migration 119 failed: DDL lock unavailable after retries")
+            sys.exit(3)
 
         # Verify core tables exist
         tables = await conn.fetch(

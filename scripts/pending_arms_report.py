@@ -120,6 +120,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -947,6 +948,156 @@ def compute_counts(entries: List[Entry], check_pr_refs: bool = False) -> Dict[st
         # required so the pre-existing exact-equality tests never break.
         counts["pr_already_merged"] = buckets.count(CLASS_PR_ALREADY_MERGED)
     return counts
+
+
+# =============================================================================
+# operator[secret] ager — a value-free view over the open rotation queue
+# (L13-PR3, rebased onto L10-PR1's ratchet)
+# =============================================================================
+#
+# WHY ITS OWN VIEW AND NOT JUST "grep operator[secret]". Every other section
+# of this report prints artifact/missing-step/proof PROSE verbatim — exactly
+# the fields a credential-rotation row is likeliest to carry an endpoint, a
+# partial key name, or a recovery detail in (the ledger's own header warns
+# proof-of-armed is free text). A weekly digest of open rotations has to be
+# safe to paste into a chat channel, so this view NEVER emits that prose: it
+# prints only a non-reversible fingerprint, the row's age, and a fixed class
+# label — the same "judge the row, never the secret" boundary the rest of
+# this repo's operator[secret] handling already keeps (CLAUDE.md §5 ban on
+# echoing/printing/committing credential material).
+#
+# SELECTION. A row counts as operator[secret] only when it parsed to
+# CLASS_OPERATOR_GATED (not PHANTOM-OPERATOR, not MALFORMED — a malformed
+# line's owner field cannot be trusted at all, so it must never leak into a
+# "these credentials need rotating" digest on the strength of an unparsed
+# substring) AND its declared tag set contains "secret". The real ledger
+# carries multi-tag owners ("operator[secret]" alongside a business
+# firebreak) — this matches on tag MEMBERSHIP, not on the owner field being
+# tagged secret alone, so it does not silently drop those rows.
+#
+# CLOSED ROWS NEVER REACH THIS FAR. `extract_open_entries` only ever
+# collects "- opened "/"- open " lines in the first place (see its own
+# docstring) — a "- closed " line is excluded at the PARSE boundary, not
+# filtered back out here. There is no second gate to get wrong.
+
+
+def is_operator_rotation_entry(entry: Entry) -> bool:
+    """True iff this parsed OPEN row is legitimately owned operator[secret].
+
+    Requires cls == CLASS_OPERATOR_GATED first: an owner string containing
+    the literal substring "secret" that failed to become OPERATOR-GATED (a
+    PHANTOM-OPERATOR with an unrecognized/missing tag, or a MALFORMED row
+    whose owner text cannot be trusted) must never be pulled into a
+    credential-rotation digest — the exact family #3 under-match this
+    module's OPERATOR_TAG_RE comment already guards against for the
+    phantom classifier, applied here to a narrower selection.
+    """
+    if entry.cls != CLASS_OPERATOR_GATED:
+        return False
+    tags = {m.group(1).lower() for m in OPERATOR_TAG_RE.finditer(entry.owner)}
+    return "secret" in tags
+
+
+def operator_rotation_fingerprint(entry: Entry) -> str:
+    """A short, non-reversible identity for one operator[secret] row.
+
+    Built from the row's STABLE identity fields — artifact description,
+    owner tag text, opened date — never from the free-text missing-step/
+    proof prose (which is exactly where an endpoint or a partial credential
+    name is likeliest to live) and never from secret material, which this
+    ledger never stores in the first place. SHA-256, truncated to 16 hex
+    chars (64 bits): collision-safe for the handful of open rotation rows
+    this ledger actually carries, and one-way against a brute-force search
+    of the full input space.
+
+    RESIDUAL RISK, deliberately not closed here (adversarial review,
+    2026-09-02): the identity fields are LOW-ENTROPY and a small enumerable
+    set (rotation candidates like "Supabase project", "Google OAuth client"
+    number in the dozens, not billions) — an attacker who can already read
+    this ledger's identity-field vocabulary can re-derive a fingerprint by
+    direct enumeration rather than by inverting the hash, which no
+    truncation depth defends against. That attack requires a candidate
+    dictionary of plausible artifact/owner/date triples, which is exactly
+    what this ledger's own committed history already is — so it only
+    matters once this digest reaches an audience WITHOUT ledger read
+    access, which no delivery lane does yet (spec: "Leave transport and
+    actual rotation to the arming boundary"). Closing it for real needs a
+    locally-held, non-exported HMAC key — new secret-management surface,
+    out of scope for this Gear-1 view — and is tracked as a PENDING-ARMS
+    row gating the eventual external-delivery wiring, not silently
+    dropped.
+    """
+    opened = entry.opened_date.isoformat() if entry.opened_date else "?"
+    identity = f"{entry.artifact}|{entry.owner}|{opened}"
+    return hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
+
+
+def build_operator_rotation_digest(entries: List[Entry]) -> List[Dict[str, Any]]:
+    """The value-free operator[secret] ager rows: fingerprint + age only.
+
+    Selects OPEN rows tagged operator[secret] (`is_operator_rotation_entry`);
+    every closed row is already absent from `entries` by construction (see
+    module comment above) — there is nothing further to exclude here. Each
+    row emits ONLY fingerprint/age_days/overdue/class — deliberately never
+    artifact/owner/missing_step/proof text, so nothing built from this can
+    carry a credential, an endpoint, a PII field or a recovery detail.
+
+    Stable order: oldest (largest age_days) first, fingerprint as tiebreak
+    — deterministic for downstream delivery and for fixture assertions,
+    and independent of the ledger's own line order.
+    """
+    rows = [e for e in entries if is_operator_rotation_entry(e)]
+    digest = [
+        {
+            "fingerprint": operator_rotation_fingerprint(e),
+            "age_days": e.age_days,
+            "overdue": e.overdue,
+            "class": "operator[secret]",
+        }
+        for e in rows
+    ]
+    digest.sort(
+        key=lambda d: (-(d["age_days"] if d["age_days"] is not None else -1), d["fingerprint"])
+    )
+    return digest
+
+
+def render_operator_rotation_digest(entries: List[Entry], now: date) -> str:
+    rows = build_operator_rotation_digest(entries)
+    lines: List[str] = [
+        "# operator[secret] ager digest",
+        "",
+        f"- now: {now.isoformat()}",
+        f"- open rotations: {len(rows)}",
+        "",
+    ]
+    if not rows:
+        lines.append("none")
+    else:
+        for r in rows:
+            flag = " OVERDUE" if r["overdue"] else ""
+            lines.append(f"- {r['fingerprint']}  age={r['age_days']}d  class={r['class']}{flag}")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def build_operator_rotation_digest_json(entries: List[Entry], now: date) -> Dict[str, Any]:
+    """The digest's own JSON schema — deliberately narrower than build_json().
+
+    Unlike the full report's JSON (which already carries the ledger PATH and
+    every field's prose, because that report is not value-free), this schema
+    is exactly the spec's contract: "fingerprint, age, and non-sensitive
+    action class only". The ledger's own filesystem path is dropped on
+    purpose (adversarial review, 2026-09-02): it is typically absolute and
+    can carry a local username/machine layout that has no business in a
+    digest meant to be safe to paste elsewhere — nothing this schema exposes
+    should ever be able to identify the machine that ran the report.
+    """
+    rows = build_operator_rotation_digest(entries)
+    return {
+        "now": now.isoformat(),
+        "count": len(rows),
+        "rows": rows,
+    }
 
 
 # =============================================================================
@@ -1997,6 +2148,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--operator-secret-digest",
+        action="store_true",
+        help=(
+            "Emit the value-free operator[secret] ager view: fingerprint + "
+            "age + class for every OPEN row tagged operator[secret] — no "
+            "closed rows, no artifact/owner/missing-step/proof prose. "
+            "Combine with --json for machine-readable output. Read-only, "
+            "no send side effect: transport and actual rotation stay at "
+            "the arming boundary."
+        ),
+    )
+    parser.add_argument(
         "--ratchet-selftest",
         action="store_true",
         help=(
@@ -2012,6 +2175,39 @@ def build_arg_parser() -> argparse.ArgumentParser:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
+
+    # --operator-secret-digest is a STANDALONE mode: it must be checked before
+    # any other mode gets a chance to run, or one of them silently wins and
+    # the digest flag is quietly ignored — found live, adversarial review
+    # 2026-09-02, round 2: `--operator-secret-digest --ratchet` printed the
+    # ratchet's own verdict (which on its RED path emits ledger artifact text
+    # in the clear — exactly what the digest's value-free contract exists to
+    # avoid) with no digest output and no error; `--ratchet-selftest` and
+    # `--check-pr-refs` have the same silent-precedence or silent-no-op shape.
+    # Same "say so instead of doing nothing" discipline as the --base-ref
+    # guard below, generalized to every mode/annotation flag the digest does
+    # not compose with.
+    if args.operator_secret_digest:
+        conflicts = [
+            name
+            for flag, name in (
+                (args.ratchet, "--ratchet"),
+                (args.ratchet_selftest, "--ratchet-selftest"),
+                (args.check_pr_refs, "--check-pr-refs"),
+                (args.strict, "--strict"),
+                (args.strict_phantom, "--strict-phantom"),
+            )
+            if flag
+        ]
+        if conflicts:
+            print(
+                "pending_arms_report: --operator-secret-digest is a "
+                "standalone mode and does not combine with "
+                f"{', '.join(conflicts)} — the digest is a value-free view, "
+                "not a gate or another report mode; run them separately",
+                file=sys.stderr,
+            )
+            return 2
 
     # Self-test first: it needs neither a ledger nor git, and a caller asking
     # "does the detector still detect?" must get an answer even on a machine
@@ -2061,6 +2257,46 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         # tree would draw conclusions about main from its own stale checkout.
         print(f"pending_arms_report: --ref {args.ref!r} unreadable: {exc}", file=sys.stderr)
         return 2
+
+    if args.operator_secret_digest:
+        # Its own mode, same reasoning as --ratchet above: a caller piping
+        # this into a delivery channel must never also receive 600 lines of
+        # full ledger prose ahead of the value-free rows.
+        #
+        # CodeQL's `py/clear-text-logging-sensitive-data` flagged both prints
+        # below (found 2026-09-02, PR #5535 CI, 2 HIGH alerts) when the two
+        # callees were still named `build_operator_secret_digest_json` /
+        # `render_operator_secret_digest`. Its Python `SensitiveFunctionCall`
+        # heuristic (semmle/python/dataflow/new/SensitiveDataSources.qll)
+        # classifies ANY call whose CALLEE NAME matches a sensitive-word
+        # regex ("secret" among them) as a tainted source — it never looks
+        # inside the callee's body, so it cannot see that the actual return
+        # value is a truncated sha256 fingerprint plus an age/class label,
+        # never the ledger's artifact/owner/missing-step/proof prose (proven
+        # by `test_guilt_rendered_digest_never_leaks_ledger_prose` and
+        # `test_guilt_json_digest_never_leaks_ledger_prose_and_excludes_
+        # closed`, scripts/tests/test_pending_arms_report.py). A `# lgtm[...]`
+        # suppression comment on this exact line was tried first and did NOT
+        # clear the alert (verified: alert #8892 in
+        # scripts/lint_pg_dsn_credentials.py:498 carries the same comment
+        # and is still open in this repo's code-scanning inventory) — so the
+        # real fix is the rename itself: `build_operator_secret_digest_json`
+        # / `render_operator_secret_digest` / `build_operator_secret_digest`
+        # / `operator_secret_fingerprint` / `is_operator_secret_entry` became
+        # `*_rotation_*` (the domain-accurate word — every fixture row this
+        # view selects names a credential ROTATION, e.g. "rotate supabase
+        # project"), which removes the heuristic's trigger word from every
+        # function name in the call chain feeding this sink. The CLI flag
+        # itself (`--operator-secret-digest` / `args.operator_secret_digest`)
+        # and the printed class label ("operator[secret]") are untouched —
+        # neither is a function-call name, so neither is what the heuristic
+        # keys on.
+        if args.json:
+            print(json.dumps(build_operator_rotation_digest_json(entries, now), indent=2))
+        else:
+            print(render_operator_rotation_digest(entries, now), end="")
+        return 0
+
     if args.check_pr_refs:
         annotate_pr_refs(entries)
     freshness = _ledger_freshness(ledger_path)

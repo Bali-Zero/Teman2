@@ -452,6 +452,273 @@ def test_hold_labels_are_case_insensitive():
     assert plan["skipped"][50] == "hold_label"
 
 
+# ── re-warm: the first read after a base-branch merge is the warm-up ─────
+#
+# Measured 2026-08-25 (main frozen at b5b1be8e3, HEAD checked before AND
+# after): 37 UNKNOWN -> 1 -> 1 -> 3 across three minutes of repeated
+# querying, no merges in between. Asking is what fixes it, so a tick that
+# asks ONCE classifies on the blind answer and silently acts on nothing.
+
+
+def _blind(n_unknown: int, n_other: int, *, other_status: str = "BLOCKED") -> list[dict]:
+    prs = [make_pr(100 + i, merge_state_status="UNKNOWN") for i in range(n_unknown)]
+    prs += [make_pr(900 + i, merge_state_status=other_status) for i in range(n_other)]
+    return prs
+
+
+def test_rewarm_GUILT_a_blind_read_is_refetched_and_the_FRESH_values_are_returned():
+    """Delete the re-warm and this goes red: the blind list would come back."""
+    blind = _blind(30, 9)
+    fresh = [make_pr(100, merge_state_status="BEHIND")] + _blind(1, 8)
+    slept: list[int] = []
+    out, info = qu.rewarm_if_blind(
+        blind, "o/r", fetch=lambda repo: fresh, sleep=slept.append, wait_seconds=45
+    )
+    assert out is fresh, "must classify on the refetched values, not the blind ones"
+    assert info["rewarmed"] is True
+    assert info["unknown_before"] == 30
+    assert info["unknown_after"] == 1
+    assert slept == [45], "must actually wait — refetching instantly re-reads the same cache"
+
+
+def test_rewarm_GUILT_main_acts_on_the_refetched_values_not_the_blind_ones(
+    monkeypatch, tmp_path, capsys
+):
+    """End-to-end: a PR that is really BEHIND is invisible on the blind read."""
+    monkeypatch.delenv("QUEUE_UNSTICK_ENABLED", raising=False)
+    monkeypatch.delenv("QUEUE_UNSTICK_REWARM", raising=False)
+    monkeypatch.setattr(qu, "STATE_DIR", tmp_path)
+    monkeypatch.setattr(qu, "DIRTY_SEEN_FILE", tmp_path / "seen.json")
+    monkeypatch.setattr(qu, "REWARM_WAIT_SECONDS", 0)
+
+    real_now = _dt.datetime.now(_dt.timezone.utc)
+    old = _iso(real_now - _dt.timedelta(minutes=30))
+
+    def stamp(prs):
+        for pr in prs:
+            pr["last_commit_date"] = old
+        return prs
+
+    blind = stamp(_blind(30, 9))
+    fresh = stamp([make_pr(100, merge_state_status="BEHIND")] + _blind(1, 8))
+
+    calls = {"n": 0}
+
+    def fetch(repo):
+        calls["n"] += 1
+        return blind if calls["n"] == 1 else fresh
+
+    monkeypatch.setattr(qu, "fetch_open_prs", fetch)
+
+    rc = qu.main(["--dry-run"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert calls["n"] == 2, "the blind read must have been followed by exactly one refetch"
+    assert "updated=1" in out, "the BEHIND PR is only visible on the refetched read"
+
+
+def test_rewarm_GUILT_the_summary_line_reports_it(monkeypatch, tmp_path, capsys):
+    """A behaviour that changes what the tick acts on must not be silent (#2)."""
+    monkeypatch.delenv("QUEUE_UNSTICK_ENABLED", raising=False)
+    monkeypatch.delenv("QUEUE_UNSTICK_REWARM", raising=False)
+    monkeypatch.setattr(qu, "STATE_DIR", tmp_path)
+    monkeypatch.setattr(qu, "DIRTY_SEEN_FILE", tmp_path / "seen.json")
+    monkeypatch.setattr(qu, "REWARM_WAIT_SECONDS", 0)
+    monkeypatch.setattr(qu, "fetch_open_prs", lambda repo: _blind(30, 9))
+
+    qu.main(["--dry-run"])
+    out = capsys.readouterr().out
+    assert "rewarmed=true" in out
+    assert "rewarm_reason=" in out
+    assert "rewarm:" in out, "the human-readable line must name why the read was blind"
+
+
+# ── innocence ────────────────────────────────────────────────────────────
+
+
+def test_rewarm_INNOCENCE_a_warm_read_never_refetches_and_never_sleeps():
+    """A warm read must cost nothing.
+
+    Uses 6/100 rather than the measured 3/38 baseline on purpose: 3 is below
+    REWARM_UNKNOWN_MIN, so it would exit on the absolute floor and never reach
+    the ratio branch this test exists to cover. 6 clears the floor and still
+    sits far under the ratio.
+    """
+    warm = _blind(6, 94)
+    extra: list[str] = []
+    slept: list[int] = []
+    out, info = qu.rewarm_if_blind(
+        warm,
+        "o/r",
+        fetch=lambda repo: extra.append(repo) or [],
+        sleep=slept.append,
+        wait_seconds=45,
+    )
+    assert out is warm
+    assert info["rewarmed"] is False
+    assert extra == [], "a warm tick must not spend a second API call"
+    assert slept == [], "a warm tick must not add 45s of wall clock"
+    assert "already_warm" in info["reason"]
+
+
+def test_rewarm_BOUNDED_at_most_one_extra_fetch_even_if_still_blind():
+    """If the base keeps moving the honest outcome is 'still blind', not a loop."""
+    fetches: list[str] = []
+
+    def fetch(repo):
+        fetches.append(repo)
+        return _blind(30, 9)
+
+    out, info = qu.rewarm_if_blind(
+        _blind(30, 9), "o/r", fetch=fetch, sleep=lambda s: None, wait_seconds=45
+    )
+    assert len(fetches) == 1, "exactly one extra fetch, never a retry loop inside a cron"
+    assert info["rewarmed"] is True
+    assert info["unknown_after"] == 30, "must report honestly that it is still blind"
+
+
+def test_rewarm_INNOCENCE_kill_switch_disables_it(monkeypatch):
+    monkeypatch.setenv("QUEUE_UNSTICK_REWARM", "false")
+    extra: list[str] = []
+    blind = _blind(30, 9)
+    out, info = qu.rewarm_if_blind(
+        blind, "o/r", fetch=lambda repo: extra.append(repo) or [], sleep=lambda s: None
+    )
+    assert out is blind
+    assert info["rewarmed"] is False
+    assert info["reason"] == "disabled"
+    assert extra == []
+
+
+def test_rewarm_INNOCENCE_empty_pr_list_does_not_divide_by_zero_or_refetch():
+    extra: list[str] = []
+    out, info = qu.rewarm_if_blind(
+        [], "o/r", fetch=lambda repo: extra.append(repo) or [], sleep=lambda s: None
+    )
+    assert out == []
+    assert info["reason"] == "no_open_prs"
+    assert extra == []
+
+
+def test_rewarm_DEGRADES_refetch_failure_falls_back_to_the_first_read():
+    """Blind was the old normal — degrading back to it must not raise or redden."""
+    blind = _blind(30, 9)
+
+    def boom(repo):
+        raise RuntimeError("gh api graphql failed rc=1: simulated flap")
+
+    out, info = qu.rewarm_if_blind(blind, "o/r", fetch=boom, sleep=lambda s: None)
+    assert out is blind
+    assert info["rewarmed"] is False
+    assert "refetch_failed" in info["reason"]
+
+
+def test_rewarm_threshold_separates_the_two_MEASURED_populations():
+    """Pins the derivation, so a later tweak has to argue with the data.
+
+    Warm baseline measured 1-3 of ~38 (3-8%); blind measured 29-37 of 38-39
+    (75-95%). The default separator must sit strictly between them.
+    """
+    quiet = lambda s: None  # noqa: E731
+    never = lambda repo: (_ for _ in ()).throw(AssertionError("must not refetch"))
+
+    for unknown, other in ((1, 37), (3, 35)):
+        _, info = qu.rewarm_if_blind(
+            _blind(unknown, other), "o/r", fetch=never, sleep=quiet
+        )
+        assert info["rewarmed"] is False, f"{unknown}/{unknown + other} is a WARM baseline"
+
+    for unknown, other in ((29, 10), (37, 2)):
+        _, info = qu.rewarm_if_blind(
+            _blind(unknown, other), "o/r", fetch=lambda repo: [], sleep=quiet
+        )
+        assert info["rewarmed"] is True, f"{unknown}/{unknown + other} is BLIND"
+
+
+def test_rewarm_GUILT_runs_in_PRODUCTION_not_only_in_dry_run(monkeypatch, tmp_path, capsys):
+    """The gutting a cross-family refuter found: gate the re-warm on
+    `args.dry_run` and every other test here stays green while production goes
+    back to reading blind. This is the only test that can see that."""
+    monkeypatch.delenv("QUEUE_UNSTICK_ENABLED", raising=False)
+    monkeypatch.delenv("QUEUE_UNSTICK_REWARM", raising=False)
+    monkeypatch.setattr(qu, "STATE_DIR", tmp_path)
+    monkeypatch.setattr(qu, "DIRTY_SEEN_FILE", tmp_path / "seen.json")
+    monkeypatch.setattr(qu, "REWARM_WAIT_SECONDS", 0)
+
+    real_now = _dt.datetime.now(_dt.timezone.utc)
+    old = _iso(real_now - _dt.timedelta(minutes=30))
+
+    def stamp(prs):
+        for pr in prs:
+            pr["last_commit_date"] = old
+        return prs
+
+    blind = stamp(_blind(30, 9))
+    fresh = stamp([make_pr(100, merge_state_status="BEHIND")] + _blind(1, 8))
+
+    fetches = {"n": 0}
+
+    def fetch(repo):
+        fetches["n"] += 1
+        return blind if fetches["n"] == 1 else fresh
+
+    monkeypatch.setattr(qu, "fetch_open_prs", fetch)
+
+    # Record the real mutation instead of performing it — no network, but this
+    # is the PRODUCTION code path, not the --dry-run one.
+    updates: list[int] = []
+
+    def fake_update(number, *, repo=qu.REPO, dry_run, queue_recheck=None):
+        assert dry_run is False, "this test must exercise the production path"
+        updates.append(number)
+        return "ok", f"updated #{number}"
+
+    monkeypatch.setattr(qu, "do_update_branch", fake_update)
+
+    rc = qu.main([])  # NO --dry-run
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert fetches["n"] == 2, "production must re-warm too, not just --dry-run"
+    assert updates == [100], "the BEHIND PR is visible only on the refetched read"
+    assert "rewarmed=true" in out
+
+
+def test_rewarm_INNOCENCE_small_repo_with_one_stuck_UNKNOWN_never_pays_the_wait():
+    """A ratio alone is trivially satisfied on a small repo: 1/1 = 1.0 and
+    1/4 = 0.25 both clear the ratio, so without an absolute floor the tick
+    would sleep and refetch forever without ever converging."""
+    quiet = lambda s: None  # noqa: E731
+    never = lambda repo: (_ for _ in ()).throw(AssertionError("must not refetch"))
+
+    for unknown, other in ((1, 0), (1, 3), (2, 2), (4, 8)):
+        _, info = qu.rewarm_if_blind(
+            _blind(unknown, other), "o/r", fetch=never, sleep=quiet
+        )
+        assert info["rewarmed"] is False, f"{unknown}/{unknown + other} must not re-warm"
+        assert "below_floor" in info["reason"]
+
+
+def test_rewarm_reports_STILL_BLIND_rather_than_claiming_success():
+    """A second read that is still blind must not be reported as a warm one —
+    monitoring has to be able to tell the two apart."""
+    _, info = qu.rewarm_if_blind(
+        _blind(30, 9), "o/r", fetch=lambda repo: _blind(30, 9), sleep=lambda s: None
+    )
+    assert info["rewarmed"] is True, "a refetch DID happen — that part is honest"
+    assert info["still_blind"] is True
+    assert "STILL_BLIND" in info["reason"]
+
+
+def test_rewarm_refetch_failure_does_not_swallow_a_programming_error():
+    """`except Exception` would downgrade a GraphQL schema change (KeyError)
+    into 'network flap' and hide it behind a successful exit."""
+    import pytest
+
+    def schema_change(repo):
+        raise KeyError("mergeStateStatus")
+
+    with pytest.raises(KeyError):
+        qu.rewarm_if_blind(_blind(30, 9), "o/r", fetch=schema_change, sleep=lambda s: None)
 
 
 # ---------------------------------------------------------------------------

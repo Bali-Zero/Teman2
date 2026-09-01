@@ -92,6 +92,8 @@ jobs:
               CLAUDE.md|\
               .claude/rules/*|\
               docs/scars/*|\
+              .prettierignore|\
+              scripts/tests/test_superscar_budget.py|\
               scripts/lint_home_fork.py|\
               scripts/proprioception.py|\
               scripts/agent_start.py|\
@@ -216,6 +218,10 @@ jobs:
               scripts/ci/test_apt_install.sh|\
               scripts/install-claude-code.sh|\
               scripts/tests/test_install_claude_code_version_skew.sh|\
+              scripts/pro/pro-git-pull.sh|\
+              scripts/pro/test_pro_git_pull.sh|\
+              scripts/pro/spec_collision_matrix.sh|\
+              scripts/pro/collision-matrix-baseline.tsv|\
               .husky/pre-commit|\
               scripts/tests/test_husky_pii_pass_overmatch.py|\
               scripts/tests/test_pii_gate_merge_scope.sh|\
@@ -588,6 +594,25 @@ jobs:
         # only reads the loop's `scripts/**.py` entries, so it cannot vouch for
         # this step.
         run: python -m pytest scripts/tests/test_zantara_media_suite_has_a_runner.py -q
+
+      - name: Superscar byte-budget + completeness (cicatrix-superscar.md stays a bridge)
+        if: steps.paths.outputs.relevant == 'true'
+        # PENDING-ARMS L747: `test_superscar_budget.py` (born 2026-08-21) has run only inside
+        # `scripts-tests-sweep.yml` — nightly, `continue-on-error: true`, report-only by explicit
+        # design (Stage 1 of that workflow's own staged plan). A PR that pushed
+        # `.claude/rules/cicatrix-superscar.md` past its 14,000-byte boot-tax budget landed clean
+        # and only surfaced the next morning in a report nobody is required to read — exactly the
+        # "exists != armed" disease this bridge file's own family #2 documents. This step is
+        # Stage 3 of that plan: the same corpus, promoted to a required, per-PR blocking check,
+        # gated on the sentinel's existing `.claude/rules/*` + `docs/scars/*` path-detect entries
+        # (both already present above) so an unrelated PR never pays for it.
+        #
+        # Guilt+innocence proven locally before wiring this step (PR body carries the numbers):
+        # the live file passes at 12,484 bytes; padded to 14,200 bytes the same test fails on
+        # `assert 14200 <= 14000`; reverted, it passes again. The completeness assertion (every
+        # W-number in the bridge resolves to a real heading in cicatrix-scars.md or its archive)
+        # and the `.prettierignore` coverage assertion ride along in the same file.
+        run: python -m pytest scripts/tests/test_superscar_budget.py -q
 
       - name: PII gate merge-scope guilt+innocence (.husky/pre-commit)
         if: steps.paths.outputs.relevant == 'true'
@@ -1245,6 +1270,34 @@ jobs:
         run: bash scripts/tests/test_verify_tailnet_node.sh
 
       # ------------------------------------------------------------------
+      # THE PRO MAIN PULLER'S COLLISION SURFACE (2026-09-01)
+      #
+      # Both corpora below existed and neither was run by any workflow. The
+      # repo-wide census that exists to find such orphans matched `test_*.sh`
+      # with an underscore and could not see `test-*.sh` with a hyphen;
+      # re-measured with `test[-_]*.sh`, 45 of 101 corpora are invoked by no
+      # workflow at all. Named here because in this repo a corpus runs only
+      # because a workflow says so.
+      #
+      # The second step is the one that matters. Three adversarial passes over
+      # one small change to this puller each found "the shape nobody asked
+      # about", and each cure was itself wrong about a neighbouring shape --
+      # the builder contract's definition of an under-specified surface. The
+      # matrix enumerates local-state x incoming-action x allowlist and diffs
+      # every cell against a REVIEWED baseline, so the next unexpected shape
+      # is a named cell instead of a discovery. A cell that moves in EITHER
+      # direction fails: a KNOWN_BAD that silently becomes OK is an unreviewed
+      # behaviour change, and this surface's whole history is unreviewed
+      # behaviour changes that looked like improvements.
+      - name: Pro main-puller corpus (the collision resolver)
+        if: steps.paths.outputs.relevant == 'true'
+        run: bash scripts/pro/test_pro_git_pull.sh
+
+      - name: Pro main-puller collision matrix stays on its reviewed baseline
+        if: steps.paths.outputs.relevant == 'true'
+        run: bash scripts/pro/spec_collision_matrix.sh
+
+      # ------------------------------------------------------------------
       # IMMUNE CONTRACTS (2026-08-31, squad L / L08-PR1)
       #
       # W120's shape, generalised: `pending_arms_report.py --json` emitted
@@ -1319,3 +1372,129 @@ jobs:
           if [ -f scripts/pending_arms_report.py ]; then
             python scripts/pending_arms_report.py --strict-phantom > /dev/null
           fi
+
+  # ------------------------------------------------------------------
+  # THE CASE-FOLDING LEG (2026-09-01)
+  #
+  # The collision matrix's `rename_case_only` axis measures a defect that exists
+  # ONLY where the filesystem folds case. `antidotes` runs on ubuntu-latest,
+  # whose ext4 does not, so the script detects that and holds those fourteen
+  # cells out — honest, and a narrowing. Measured consequence of leaving it
+  # there: CI could never catch a regression in the case-collision path, not
+  # weakly but literally never, while `test_pro_git_pull.sh`'s 55 assertions
+  # contain no case-only fixture either. The class is not hypothetical —
+  # `qwen.md -> QWEN.md` landed on main in #5371 and wedged Pro's puller.
+  #
+  # So the axis gets a runner that can express it. macOS runners are APFS, which
+  # folds.
+  #
+  # THIS JOB IS DELIBERATELY NOT NARROWED, AND THE COST IS REAL. It has no
+  # job-level `if:` and this workflow has no `paths:` filter, so a macOS runner
+  # is allocated on EVERY pull_request and EVERY merge_group in this repo, not
+  # only when the puller moves. Measured on PR #5497 at fc9dc803be: 18:46:53Z ->
+  # 18:48:48Z, 1m55s, billed at the macOS 10x rate; the checkout runs
+  # unconditionally and only the last two steps skip. An earlier version of this
+  # comment claimed the opposite ("a 10x-billed runner starts only when this
+  # surface actually moves") — that was FALSE about code sitting three lines
+  # below it, and an independent Gear-3 gate caught it.
+  #
+  # The narrowing is refused on purpose — but NOT for the reason first written
+  # here, which was itself wrong and is corrected below rather than quietly
+  # deleted. The first version said adding `needs:` + a job-level `if:` "would
+  # destroy the property that makes it safe to require". That is false in this
+  # repo, and its own required set disproves it: `tests.yml::backend-tests`,
+  # `tests.yml::e2e-tests` and `tests.yml::visa-oracle-fullstack-smoke` are all
+  # REQUIRED contexts and all three already run detect-job + `needs:` + `if:`.
+  #
+  # WHAT ACTUALLY MAKES THOSE SAFE IS POLARITY, NOT ARCHITECTURE. Their `if:`
+  # is written FAIL-OPEN: `!cancelled()` plus a disjunction that evaluates TRUE
+  # when the detect job errors, is skipped, or the event is unfamiliar — so a
+  # broken detector runs the job rather than silently skipping it. The obvious
+  # condition to reach for, `if: needs.detect.outputs.relevant == 'true'`, is
+  # FAIL-CLOSED: it skips whenever detection fails, which is precisely the
+  # "green because nothing was measured" shape this whole surface exists to
+  # end. The instinct to refuse was right; the reason given was not.
+  #
+  # A second reason stands on its own, and it is UNMEASURED rather than
+  # asserted: whether a REQUIRED context reporting `skipped` satisfies branch
+  # protection here has not been established. Across six recently merged PRs
+  # the only `skipped` conclusion found was `SonarQube Code Analysis`, which is
+  # not one of the twelve required contexts — so the decisive case has never
+  # been observed. `residual_risks[0]` plans to make THIS job required, which
+  # is exactly the moment a fail-closed `if:` would bite, and paying 1m55s to
+  # avoid an unmeasured failure mode is the cheaper side of that bet.
+  #
+  # So: comment-only for now. If the macOS minutes are ever wanted back, copy
+  # `tests.yml::changes`' fail-open polarity VERBATIM. Do not invent a new
+  # condition — inventing one is how the polarity gets flipped by accident.
+  collision-matrix-case-folding:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          # Same partial clone as the sibling job above, for the same measured
+          # reason (2,289 MB full vs 23.3 MB in 21s) and here it matters MORE,
+          # not less: this is the 10x-billed macOS runner. Omitted in the first
+          # revision of this job — caught by the Gear-3 gate, which noticed the
+          # sibling documents the flag as load-bearing while this job dropped it.
+          filter: blob:none
+
+      - name: Does this PR touch the puller's collision surface?
+        id: paths
+        env:
+          # merge_group carries its OWN base/head under a different key, and this
+          # job reads it — deliberately UNLIKE the `antidotes` sentinel above, which
+          # reads only `pull_request.*`. That is not a defect there: this file's
+          # header sanctions over-triggering ("an under-match would skip real
+          # guards"), and `antidotes` IS a required check, so running it too often
+          # is the safe direction. This job is neither. It gates nothing (it is not
+          # in main's required contexts) and it costs 10x, so on `merge_group` the
+          # unread key meant the sentinel fell through to `relevant=true` and a
+          # 10x-billed macOS runner started on EVERY merge group — 2m38s measured,
+          # every batch — while the comment above claimed it "starts only when this
+          # surface actually moves". The claim was false, not the direction.
+          # The key itself is repo convention, not an invention: adversarial-review-
+          # gate.yml, hot-zone-pr-gate.yml, docs-sync.yml and docs-guardian.yml all
+          # read it, merge_group operand first, and two of those ARE required.
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
+        run: |
+          if [ -z "$BASE_SHA" ] || [ -z "$HEAD_SHA" ]; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::no PR and no merge_group context — running the case-folding axis rather than skipping it (fail-open is the safe direction for a gate)"
+            exit 0
+          fi
+          MB=$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || echo "$BASE_SHA")
+          RELEVANT=false
+          for f in $(git diff --name-only "$MB" "$HEAD_SHA"); do
+            case "$f" in
+              scripts/pro/pro-git-pull.sh|\
+              scripts/pro/test_pro_git_pull.sh|\
+              scripts/pro/spec_collision_matrix.sh|\
+              scripts/pro/collision-matrix-baseline.tsv|\
+              .github/workflows/immune-enforcement.yml) RELEVANT=true ;;
+            esac
+          done
+          echo "relevant=$RELEVANT" >> "$GITHUB_OUTPUT"
+
+      # A job whose entire purpose is the folding axis must FAIL, not quietly
+      # pass, if its runner stops folding. Without this the job would keep
+      # reporting green while the script held the axis out — exactly the
+      # "green means nothing was measured" shape this whole PR exists to end.
+      - name: The runner's filesystem must actually fold case
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          d=$(mktemp -d /tmp/casefold-XXXXXX)
+          : > "$d/CaseFoldProbe"
+          if [ ! -e "$d/casefoldprobe" ]; then
+            echo "::error::this runner is case-SENSITIVE — the axis this job exists for would be held out, and a green run here would mean nothing was measured"
+            rm -rf "$d"; exit 1
+          fi
+          rm -rf "$d"
+          echo "runner folds case — the rename_case_only axis is in scope"
+
+      - name: Pro main-puller collision matrix, case-folding axis INCLUDED
+        if: steps.paths.outputs.relevant == 'true'
+        run: bash scripts/pro/spec_collision_matrix.sh

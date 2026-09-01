@@ -1,7 +1,11 @@
 ---
 name: subhi
-description: Subhi corner for the Subhi and Zero collaboration on Indonesian article translation and polish batches for balizero.com. Use when Zero pastes a /subhi update, asks for a reply to Subhi, or works on the Indonesian .id.mdx article pipeline.
+description: "Subhi corner for the Subhi/Zero collaboration on Indonesian article translation for balizero.com. Use when Zero pastes a /subhi update, asks for a reply, or works on the .id.mdx pipeline."
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Also covers polish batches, and replies specifically to Subhi.
 
 # Subhi Corner
 
