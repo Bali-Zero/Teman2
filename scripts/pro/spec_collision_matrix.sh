@@ -324,18 +324,49 @@ run_cell() {
   # what survived where the local machine's content was
   local present
   present="$(ls -1 "$LOCAL/$(dirname "$P")" 2>/dev/null | grep -Fx "$(basename "$P")" || true)"
-  if   [ -z "$present" ];                  then outcome=absent
+  if [ -z "$present" ]; then
+    # `absent` USED TO BE OVERLOADED and that is a measurement defect, not a nicety:
+    # the exact-spelling listing above cannot see a case-only rename, but on a folding
+    # volume the old spelling still RESOLVES to the new file. So a genuine content-loss
+    # regression printed exactly what a benign case-rename prints, and no reviewed
+    # verdict could tell them apart. Split them.
+    if [ -e "$LOCAL/$P" ] || [ -L "$LOCAL/$P" ]; then
+      # CARRY THE CONTENT HASH HERE TOO. The first version of this branch reported only
+      # the new spelling — which replaced one silhouette with another: it proved the file
+      # had been renamed and said nothing about WHAT survived under the new name, so a
+      # cell where Pro's authoritative edit was silently replaced by origin's content
+      # would print exactly what a lossless rename prints. Same rule, same field.
+      outcome="case-renamed:$(ls -1 "$LOCAL/$(dirname "$P")" 2>/dev/null \
+                              | grep -Fix "$(basename "$P")" | head -1)"
+      if [ -f "$LOCAL/$P" ] && [ ! -L "$LOCAL/$P" ]; then
+        outcome="$outcome:$(git hash-object "$LOCAL/$P" | cut -c1-8)"
+      fi
+    else
+      outcome=absent
+    fi
   elif [ -d "$LOCAL/$P" ];                 then outcome=dir
   elif [ -L "$LOCAL/$P" ];                 then outcome=symlink
-  else                                          outcome="file:$(head -c 14 "$LOCAL/$P" | tr -d '\n' | tr ' ' '_')"
+  else
+    # SAME RULE AS THE ORIGIN SIDE: assert the object, not its silhouette. This field
+    # sampled 14 bytes, so a file corrupted from byte 15 on — sharing the fixture's
+    # "ORIGIN-V2 body" prefix — printed an IDENTICAL outcome and the comparator said
+    # STABLE over corrupted content. Proved with two files differing only past byte 14.
+    # The readable prefix is KEPT because a human reviews this column; the hash is what
+    # makes it complete.
+    outcome="file:$(head -c 14 "$LOCAL/$P" | tr -d '\n' | tr ' ' '_'):$(git hash-object "$LOCAL/$P" | cut -c1-8)"
   fi
   # `backup=` used to mean "the directory exists", which `mkdir -p` guarantees even when the
   # `cp` that follows fails -- so it read as "recoverable" on cells where nothing was saved.
   # Measure a FILE, and distinguish an empty backup dir from an absent one.
+  # `-type f -o -type l` folded a regular file and a preserved symlink into ONE value, so
+  # this field alone could not see a `cp -p` -> `cp -Pp` cure. A probe showed other fields
+  # DO move on that cure (12 cells), so nothing rode on the blindness undetected — but the
+  # field is introduced by this diff, so it is cured here rather than inherited.
   local backed=no
   if [ -d "$SANDBOX/backup" ]; then
-    if [ -n "$(find "$SANDBOX/backup" \( -type f -o -type l \) 2>/dev/null | head -1)" ]
-      then backed=file; else backed=empty; fi
+    if   [ -n "$(find "$SANDBOX/backup" -type l 2>/dev/null | head -1)" ]; then backed=symlink
+    elif [ -n "$(find "$SANDBOX/backup" -type f 2>/dev/null | head -1)" ]; then backed=file
+    else backed=empty; fi
   fi
   printf '%s\t%s\t%s\trc=%s\t%s\t%s\tbackup=%s\n' "$A" "$B" "$C" "$rc" "$moved" "$outcome" "$backed" >> "$MEASURED"
   rm -rf "$SANDBOX"

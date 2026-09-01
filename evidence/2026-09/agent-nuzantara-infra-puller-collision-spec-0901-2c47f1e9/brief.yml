@@ -111,6 +111,24 @@ acceptance:
       fields show a backup was taken on a path with no local file.
     status: verified
     probe: "the runner's `unjudged` awk guard rejects a row missing a verdict, a KNOWN_BAD with an empty reason, and the optimistic-side OK/backup=file/non-file case"
+  - text: >
+      WHILE the RESULT is measured, the runner SHALL assert the surviving object's CONTENT and not
+      a truncated sample of it — the same rule already imposed on the origin side — so a file
+      corrupted past the sampled prefix cannot report an unchanged outcome.
+    status: verified
+    probe: >-
+      two files sharing the fixture's first 14 bytes and diverging after produced an IDENTICAL
+      `outcome` before the cure (measured by an independent grader) and differ by blob hash after
+      it; the field now reads `file:<prefix>:<8hex>`.
+  - text: >
+      WHERE the exact spelling of a path is absent from the directory listing but the path still
+      RESOLVES (a case-only rename on a folding volume), the runner SHALL report a distinct
+      outcome carrying the surviving content, never the same `absent` a real content loss prints.
+    status: verified
+    probe: >-
+      all 14 rename_case_only cells moved from `absent` to `case-renamed:subject.md:10ed6daf`,
+      and 10ed6daf is origin's base blob — which is what made four previously-`OK` cells
+      recognisable as content loss with the puller unchanged.
 risks:
   - "THE VERDICT COLUMN IS THE UNGUARDED HALF, and it was measured to be
     wrong. An independent audit on 2026-09-01 graded the human half for the

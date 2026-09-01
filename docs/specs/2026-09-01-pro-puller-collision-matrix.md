@@ -58,21 +58,24 @@ future guard on this surface that asks an existence question is the same defect 
 
 ## The register, as measured on `origin/main` at `5f174b4126`
 
-**50 cells behave correctly. 52 do not, in six named classes** — only the first of which is the
-defect the `--no-renames` work set out to fix. These figures moved on 2026-09-01 when an
-independent audit graded the HUMAN half of this instrument for the first time; what it found is
-recorded under "What the verdicts cost" below, because the numbers alone hide the lesson. The
-arithmetic is self-checking: `awk -F'\t' '$8=="KNOWN_BAD"' baseline | wc -l` must equal the sum
-of this table.
+**46 cells behave correctly. 56 do not, in six named classes** — only the first of which is the
+defect the `--no-renames` work set out to fix. These figures have moved TWICE, and both moves are
+the same lesson: on 2026-09-01 an independent audit graded the HUMAN half of this instrument for
+the first time (54/48 → 50/52), and on 2026-09-02 a cross-family council seat returned BLOCK on
+the instrument's own blindness (50/52 → 46/56). The second move is the one worth reading: four
+cells did not change behaviour at all — the instrument simply became able to SEE what they had
+been doing all along. See "What the verdicts cost" and "What the case-only axis was hiding".
+The arithmetic is self-checking: `awk -F'\t' '$8=="KNOWN_BAD"' baseline | wc -l` must equal the
+sum of this table.
 
-| cells | class                                                                                                                                                                                                                                                                                                                                                               |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 6     | **`modified × *`** — 4 are the motivating defect (`× rename_away{,_and_tree}`: rename detection hides the source, the local modification is never classified as a collision, the ff aborts forever); the other 2 are `× {tree_at_path, typechange} × keeplocal`, where the keep-local restore reports success while putting Pro's content somewhere nobody declared |
-| 12    | `dangling_symlink × *` — TWO mechanisms, not one: on the non-rename actions the resolver's tracked branch RUNS and crashes inside `cp -p`, which dereferences the dangling link; on the rename actions it never runs at all                                                                                                                                         |
-| 12    | `dir_at_path × *` — same split: on the non-rename actions the tracked branch RUNS and `cp` refuses a directory; on the rename actions the resolver never sees the path                                                                                                                                                                                              |
-| 12    | `symlink × *` — a RESOLVING local symlink is silently converted into a copy: `cp -p` dereferences it, so Pro-authoritative state that was a link comes back a file                                                                                                                                                                                                  |
-| 8     | `del_unstaged × {delete, tree_at_path, modify, typechange}` — nothing to collide with, yet the tick wedges permanently on a `cp` whose source does not exist                                                                                                                                                                                                        |
-| 2     | `untracked × tree_at_path` — an untracked local file meeting an incoming tree is neither backed up nor cleared, so the ff can never apply                                                                                                                                                                                                                           |
+| cells | class                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 7     | **`modified × *`** — 4 are the motivating defect (`× rename_away{,_and_tree}`: rename detection hides the source, the local modification is never classified as a collision, the ff aborts forever); 2 are `× {tree_at_path, typechange} × keeplocal`, where the keep-local restore reports success while putting Pro's content somewhere nobody declared; the 7th is `× rename_case_only × keeplocal`, added 2026-09-02 — Pro's authoritative edit is displaced into a backup and the live path is left holding origin's OLDER content |
+| 13    | `symlink × *` — a RESOLVING local symlink is silently converted into a copy: `cp -p` dereferences it, so Pro-authoritative state that was a link comes back a file. The 13th is `× rename_case_only × keeplocal` (added 2026-09-02): a different mechanism reaching the same harm — the untracked branch `mv`s the link into the backup and the ff installs origin's blob at the live path                                                                                                                                              |
+| 13    | `dangling_symlink × *` — TWO mechanisms, not one: on the non-rename actions the resolver's tracked branch RUNS and crashes inside `cp -p`, which dereferences the dangling link; on the rename actions it never runs at all. The 13th is the case-only keeplocal cell added 2026-09-02                                                                                                                                                                                                                                                  |
+| 13    | `dir_at_path × *` — same split: on the non-rename actions the tracked branch RUNS and `cp` refuses a directory; on the rename actions the resolver never sees the path. The 13th, added 2026-09-02, is the case-only keeplocal cell where a whole DIRECTORY and its payload are moved into a backup and replaced by origin's blob, under a plain `rc=0`                                                                                                                                                                                 |
+| 8     | `del_unstaged × {delete, tree_at_path, modify, typechange}` — nothing to collide with, yet the tick wedges permanently on a `cp` whose source does not exist                                                                                                                                                                                                                                                                                                                                                                            |
+| 2     | `untracked × tree_at_path` — an untracked local file meeting an incoming tree is neither backed up nor cleared, so the ff can never apply                                                                                                                                                                                                                                                                                                                                                                                               |
 
 ## What the verdicts cost, and which side the guard was on
 
@@ -151,6 +154,40 @@ A wedge is `rc=1` with HEAD unmoved. Most are **permanent**: they repeat every f
 and nothing red ever fires, which is why they survived this long. The four cells marked `OK`
 that also wedge are genuine fail-safes — origin has new content for a path the machine
 deleted, and aborting keeps the deletion while mutating nothing.
+
+## What the case-only axis was hiding
+
+Four cells moved from `OK` to `KNOWN_BAD` on 2026-09-02 **without the puller changing at all.**
+They moved because two fields stopped lying:
+
+- `outcome` sampled **14 bytes** of the surviving file. Two files sharing the fixture's
+  `ORIGIN-V2 body` prefix and differing from byte 15 printed the same value, so the comparator
+  said STABLE over corrupted content. It now carries the blob hash as well — the same rule
+  ("assert the object, not its silhouette") this document already imposed on the ORIGIN side and
+  had not applied to the RESULT side.
+- `outcome=absent` was **overloaded**. The exact-spelling listing cannot see a case-only rename,
+  but on a folding volume the old spelling still resolves — so a genuine content loss printed
+  exactly what a benign rename printed. All fourteen `rename_case_only` cells said `absent` and
+  none of them said what had survived. They now say `case-renamed:<new name>:<hash>`.
+
+With those two fields fixed, every case-only cell reports content hash `10ed6daf` — **origin's
+base blob**. On the `keeplocal` rows that is the finding: Pro's authoritative content is not
+there. It is in a timestamped backup directory, and the live path — the one every consumer reads
+— holds origin's older bytes, under a plain `rc=0`.
+
+**The mechanism is not what it first looked like, and the difference decides where a cure goes.**
+The obvious reading is that the fixture writes the allowlist with the old spelling while the
+incoming path is the new one. Measured with three allowlists — the original spelling, the
+incoming spelling, and an empty one — the outcomes are **byte-identical**. The keeplist check
+lives only inside the branch gated on `git ls-files --error-unmatch -- "$f"` against the LOCAL
+index; git pairs the rename as R100, so `git diff --name-only` hands the resolver only the NEW
+spelling, which the local index never tracks until after the fast-forward. The path therefore
+always takes the untracked branch, **which never consults the allowlist at all.** Keep-local is
+not mis-spelled here. It is unreachable.
+
+That is why the `keeplocal` and `ordinary` rows of this axis are byte-identical on all seven
+measured fields, for all seven local states. That identity was visible in the baseline from the
+first day and nobody compared the two blocks.
 
 ## How it is armed
 

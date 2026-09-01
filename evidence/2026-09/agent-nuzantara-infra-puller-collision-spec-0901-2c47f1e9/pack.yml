@@ -59,7 +59,7 @@ seat_diversity_note: >-
 
 diff:
   files: 7
-  net_lines: 1484
+  net_lines: 1617
   measured_at: >-
     counted with `git diff --numstat --cached $(git merge-base origin/main HEAD)` — the CACHED
     form, not the three-dot one, and the difference is the whole point: the three files under
@@ -118,10 +118,19 @@ residual_risks:
     reason cannot check that the reason is TRUE — that remains a human-review surface with no
     automated backstop, and it has a measured failure rate rather than a hypothetical one.
   - >-
-    FIFTY-TWO DEFECTS ARE MADE LEGIBLE AND NONE IS CURED. This is the intended trade — the surface
-    was under-specified, so the spec ships first and each cure lands later as a reviewable diff of
-    baseline rows — but it must not be read as "the puller is now safe". It is exactly as unsafe as
-    it was, and now says so in a file.
+    FIFTY-SIX DEFECTS ARE MADE LEGIBLE AND NONE OF THEM IS CURED — and the count grew because the
+    INSTRUMENT was cured, not because the puller got worse. Four cells moved OK -> KNOWN_BAD on
+    2026-09-02 with `scripts/pro/pro-git-pull.sh` untouched: they had always behaved that way and
+    the measurement could not see it. This is the intended trade — the surface was under-specified,
+    so the spec ships first and each cure lands later as a reviewable diff of baseline rows — but it
+    must not be read as "the puller is now safe". It is exactly as unsafe as it was; it is now more
+    accurately described. The four newly-visible ones share a shape worth naming: on a case-only
+    rename the keep-local allowlist is STRUCTURALLY UNREACHABLE, so anything the operator declared
+    Pro-authoritative at that path is moved into a timestamped backup and the live path is left
+    holding origin's older content, under a plain rc=0. The keep-local exception exists precisely to
+    prevent that class of loss (the puller's own header cites published_articles.json: a reset drops
+    dedup history and re-publishes already-published intel), and a file recoverable from a backup
+    nobody reads does not prevent it.
   - >-
     THE GUILT CORPUS IS UNDER-SELECTED, and is treated as such rather than as coverage. Five
     sabotages, each caught on the correct origin action. Known-unattacked: a fixture whose ORIGIN
@@ -203,10 +212,13 @@ receipts:
       "112 102" — so 8 states x 7 actions x 2 policies, 102 constructible, 10 not. The document
       said "88 of the 98" and its A-axis list omitted `symlink`, which has a 12-cell row in the
       register directly below it. The register itself was correct throughout:
-      12+12+12+8+6+2 = 52 = the baseline's KNOWN_BAD count exactly, and every per-class action list
-      matches row for row. Fixed in 644a9fe0d2.
+      13+13+13+8+7+2 = 56 = the baseline's KNOWN_BAD count exactly, and every per-class action list
+      matches row for row. Fixed in 644a9fe0d2. RE-MEASURED after the instrument cure: the same two
+      commands now answer "112 102" (unchanged — no coordinate was added or removed) and a per-class
+      breakdown of 13/13/13/8/7/2. The four rows that moved are all rename_case_only x keeplocal, so
+      symlink, dir_at_path and dangling_symlink each gained one and modified gained one.
     exit: 0
-    ts: 2026-09-02T00:20Z
+    ts: 2026-09-02T02:58Z
     seat: session (Pro), self-caught
   - claim: >-
       Every KNOWN_BAD carries a reason and no reason field is empty — the guard is not passing
@@ -215,11 +227,13 @@ receipts:
       awk -F'\t' '$8=="KNOWN_BAD" && (NF<9 || $9 ~ /^[ \t]*$/)' baseline | wc -l ; awk -F'\t'
       '$8=="OK"' baseline | wc -l
     result: >-
-      0 KNOWN_BAD without a reason; 0 rows with an empty reason field; 52 KNOWN_BAD / 50 OK, of
-      which 17 OKs carry a reason and 33 do not (an OK is allowed to be a bare observation; it is
-      required to argue only where it is a CLAIM — backup taken on a path with no local file).
+      0 KNOWN_BAD without a reason; 0 rows with an empty reason field. RE-MEASURED after the cure:
+      56 KNOWN_BAD / 46 OK, of which 24 OKs carry a reason and 22 do not (an OK is allowed to be a
+      bare observation; it is required to argue only where it is a CLAIM — backup taken on a path
+      with no local file). Both invariants still hold at the new counts: no unreasoned KNOWN_BAD,
+      no empty reason.
     exit: 0
-    ts: 2026-09-02T00:25Z
+    ts: 2026-09-02T02:58Z
     seat: session (Pro)
   - claim: >-
       The runner ABORTS on an unmeasurable filesystem rather than guessing a coordinate - EXECUTED
@@ -253,6 +267,29 @@ receipts:
     ts: 2026-09-02T00:56Z
     seat: claude-sonnet-5 (spalla-review, independent - generator != grader)
 
+  - claim: >-
+      The content-hash added to the case-renamed outcome is LOAD-BEARING on the register, not
+      decoration — and the honest scope of what it fixes is narrower than "it discriminates"
+    cmd: >-
+      innocence: the shipped enumerator against the judged baseline. guilt: the SAME enumerator
+      with only the three lines of the cure deleted (sed '341,343d'; `bash -n` clean; the grep for
+      the appended hash-object call returns 0), run against that same baseline
+    result: >-
+      Innocence — "cells measured: 102  baseline: 102 / MATRIX STABLE", exit 0. Guilt — exit 1,
+      mismatching on exactly the rename_case_only rows, each losing the suffix:
+      "-symlink rename_case_only keeplocal ... case-renamed:subject.md:10ed6daf" becomes
+      "+symlink rename_case_only keeplocal ... case-renamed:subject.md". So the baseline is pinned
+      on the hash. STATED PRECISELY, because the stronger claim is false: all seven
+      A x rename_case_only x keeplocal cells emit the IDENTICAL outcome string
+      "case-renamed:subject.md:10ed6daf", and backup=file is shared by clean (OK) and by modified
+      and dir_at_path (KNOWN_BAD). The measured fields therefore do NOT separate OK from KNOWN_BAD
+      on this axis; the A coordinate and the judgment do. What the hash supplies is the missing
+      FACT — whose bytes sit at the live path — and that fact is what moved four cells from OK to
+      KNOWN_BAD with the puller unchanged. Before the cure the field named only the new spelling,
+      which is equally true of a correct arrival and of a silent overwrite.
+    exit: 1
+    ts: 2026-09-02T02:54Z
+    seat: conductor (this session, on Pro)
 dissent:
   - seat: codex-gpt-5.6-sol (cross-family council seat, effort high, read-only)
     objection: >-
@@ -265,19 +302,27 @@ dissent:
       content sampled. (4) The macOS runner is not gated as claimed.
     status: CONFIRMED
     disposition: >-
-      THREE OF FOUR STAND, ONE FALLS, and each was adjudicated by execution rather than argument —
-      the distinction matters because a BLOCK accepted wholesale would have sent the cure to a
-      place that does not need it. (1) VERIFIED by the conductor at both named lines; NOT fixed
-      here — curing it changes what seven cells measure, so it changes the baseline and needs its
-      own reviewed round. (2) REFUTED by probe: substituting `cp -Pp` moves 12 cells and the
-      coherent three-site cure moves 10, so the predicted silent-STABLE does not occur; the literal
-      blind spot in the `backed=` field is real but nothing rides on it undetected. (3a) CONFIRMED
-      — `outcome=absent` is overloaded between "gone" and "renamed-but-recoverable"; bounded to one
-      axis and already narrated in all 14 reasons, so surfaced rather than hidden. (3b) CONFIRMED
-      and the sharpest of the four: `outcome=` samples 14 bytes, so content corrupted from byte 15
-      on is invisible — the SAME content-blindness cured on the origin side of this very
-      instrument this morning, left standing on the result side. Smallest close for both: a content
-      hash instead of the byte sample, and a distinct `case-renamed` outcome. NOT fixed here.
+      THREE OF FOUR STAND, ONE FALLS, and all three that stand are now CURED — adjudicated by
+      execution rather than argument, because a BLOCK accepted wholesale sends the cure where it
+      is not needed. (1) STANDS, but the MECHANISM codex named is wrong and that difference is the
+      whole cure: it read the defect as the fixture writing the allowlist with the old spelling.
+      Measured with three allowlists — original spelling, incoming spelling, and EMPTY — the
+      outcomes are byte-identical, so re-spelling fixes nothing. The keeplist check lives only
+      inside the branch gated on `git ls-files --error-unmatch` against the LOCAL index; git pairs
+      the rename R100 so the resolver is handed only the NEW spelling, which the index never tracks
+      until after the ff, so the path always takes the untracked branch, which never consults the
+      allowlist. Keep-local is not mis-spelled here, it is UNREACHABLE. The fixture is therefore
+      correct and unchanged; four VERDICTS moved OK -> KNOWN_BAD instead. (2) REFUTED by probe —
+      `cp -Pp` moves 12 cells, so the predicted silent-STABLE does not occur; the literal blind spot
+      in `backed=` is cured anyway (it now distinguishes `symlink` from `file`) because that field
+      is introduced by this diff. (3a) CURED: `outcome=absent` was overloaded between "gone" and
+      "renamed-but-recoverable" and now reports `case-renamed:<name>:<hash>`. (3b) CURED: the
+      14-byte content sample now carries the blob hash — the same rule this instrument already
+      imposed on the origin side and had not applied to the result side. (4) disclosed and
+      ledgered in b257a0cba1.
+      THE PAYOFF IS MEASURABLE: four cells moved from OK to KNOWN_BAD **with the puller unchanged**.
+      They moved because the instrument stopped lying about what survived. Register 50/52 -> 46/56.
+
   - seat: claude-sonnet-5 (matrix-refuter, fresh context)
     objection: >-
       THE INSTRUMENT WAS CONTENT-BLIND. Its ls-tree probes asserted an object's silhouette —
