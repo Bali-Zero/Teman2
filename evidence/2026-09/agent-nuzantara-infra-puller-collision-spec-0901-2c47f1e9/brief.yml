@@ -142,9 +142,13 @@ risks:
     intended trade (the surface was under-specified, so the spec comes
     first), but it must not be read as 'the puller is now safe'."
   - "The case-only axis is only PARTLY closed and only on some volumes: a
-    case-only rename whose source is allowlisted keep-local, and a case-only
-    rename of a DIRECTORY, are unmeasured everywhere. A submodule/gitlink
-    (commit object) at a renamed-away name is unmeasured - and that same
+    case-only rename of a DIRECTORY is unmeasured everywhere (a case-only
+    rename whose source is allowlisted keep-local IS measured - all seven
+    local states x both allowlist policies - and is what produced four of
+    this pack's own KNOWN_BAD cells; an earlier revision of this bullet said
+    otherwise and was stale, corrected 2026-09-02 by a cross-family review
+    seat). A submodule/gitlink (commit object) at a renamed-away name is
+    unmeasured - and that same
     clause produced two of the three regressions on record."
   - "Every cell is a single tick against a quiet origin: no second puller, no
     lock contention, no origin advancing mid-tick, and exactly one moved path
