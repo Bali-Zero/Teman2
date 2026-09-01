@@ -75,6 +75,18 @@ on:
       - "scripts/tests/test_organ_heartbeat_workflow_wiring.py"
       - "scripts/launchagent-state-bridge.py"
       - "scripts/tests/fixtures/organ_heartbeat_cadence/com.nuzantara.launchagent-state-bridge.plist.fixture"
+      # GUARD_READ_SET from test_self_reporting_cron_own_plist_margin.py: the
+      # sibling guard, for the DISJOINT population of type:cron organs that
+      # write their OWN heartbeat (excluded from the bridge's organ set
+      # above) — expected_hb_seconds must stay a safe multiple of the
+      # organ's OWN plist StartInterval. Its other two inputs
+      # (organs_registry.yaml above, and every tracked plist via the
+      # '*.plist'/'**/*.plist' entries below) are already covered; only its
+      # own test files need a new literal entry.
+      # test_self_reporting_cron_workflow_wiring.py asserts both this list
+      # and the in-job pathspec below cover this set.
+      - "scripts/tests/test_self_reporting_cron_own_plist_margin.py"
+      - "scripts/tests/test_self_reporting_cron_workflow_wiring.py"
 
 concurrency:
   # Per-PR/per-ref for every author. A shared per-workflow group keyed on
@@ -157,6 +169,8 @@ jobs:
             'scripts/tests/test_organ_heartbeat_workflow_wiring.py' \
             'scripts/launchagent-state-bridge.py' \
             'scripts/tests/fixtures/organ_heartbeat_cadence/com.nuzantara.launchagent-state-bridge.plist.fixture' \
+            'scripts/tests/test_self_reporting_cron_own_plist_margin.py' \
+            'scripts/tests/test_self_reporting_cron_workflow_wiring.py' \
             '*.plist' '**/*.plist' \
             'infra/launchagents/' 'infra/healer/')
           if [ -n "$CHANGED" ]; then
@@ -264,6 +278,66 @@ jobs:
           PASSED=$(printf '%s\n' "$SUMMARY_LINE" | grep -oE '^[0-9]+')
           if [ "$PASSED" -lt 4 ]; then
             echo "::error::expected at least 4 passed (got $PASSED) from summary line: $SUMMARY_LINE — pytest exiting 0 is not proof these guards ran: this suite legitimately SKIPS 1 case in CI (the fixture/live-snapshot drift check, live snapshot absent off Pro) but must PASS the other 4"
+            exit 1
+          fi
+
+      - name: A self-reporting cron cannot beat faster than its own plist
+        if: steps.relevant.outputs.hit == 'true'
+        run: |
+          set -uo pipefail
+          # Sibling of "An organ cannot beat faster than its bridge's
+          # poller" above, for the DISJOINT population: type:cron organs
+          # that write their OWN heartbeat (excluded from the bridge's
+          # organ set, not fed by its 300s poller). Named explicitly for
+          # the same reason as its sibling — a corpus left to the
+          # continue-on-error `scripts/tests/` sweep gates nothing.
+          #
+          # Two files: the arithmetic guard (expected_hb_seconds >= a
+          # severity-tiered multiple of the organ's own plist
+          # StartInterval), and its wiring guard (asserts THIS workflow's
+          # push.paths + in-job pathspec actually cover the arithmetic
+          # guard's read-set). Unlike its sibling, this suite has NO
+          # legitimate skip case (no DR-mirror fixture involved) — every
+          # tracked plist is read directly, so a bare exit-0 with the
+          # expected fixed pass count (9: 6 in the arithmetic file incl.
+          # guilt/innocence units, 3 in the wiring file) is real proof,
+          # same anchored-parsing discipline as above (last summary line,
+          # not a whole-output substring scan).
+          OUT=$(PYTHONDONTWRITEBYTECODE=1 python3 -m pytest \
+            scripts/tests/test_self_reporting_cron_own_plist_margin.py \
+            scripts/tests/test_self_reporting_cron_workflow_wiring.py -q 2>&1) && EXIT=0 || EXIT=$?
+          echo "$OUT"
+          if [ "$EXIT" -ne 0 ]; then
+            echo "::error::pytest exited $EXIT — see output above"
+            exit 1
+          fi
+          SUMMARY_LINE=$(printf '%s\n' "$OUT" | grep -E '^[0-9]+ (passed|failed|error|skipped|warning)' | tail -1)
+          if [ -z "$SUMMARY_LINE" ]; then
+            echo "::error::no pytest summary line found in the captured output — cannot verify how many cases passed"
+            exit 1
+          fi
+          if ! printf '%s\n' "$SUMMARY_LINE" | grep -qE '^[0-9]+ passed\b'; then
+            echo "::error::pytest's summary line does not start with '<N> passed' — got: $SUMMARY_LINE (this is exactly the regression this check exists to catch: an exit-0 run with zero passing cases, e.g. everything skipped)"
+            exit 1
+          fi
+          # Council round finding (codex-gpt-5.6-sol, 2026-09-02): the two
+          # checks above accept a summary line that STARTS WITH "<N> passed"
+          # even if it also reports skips, e.g. "9 passed, 1 skipped in
+          # 0.31s" satisfies both and PASSED=9 clears the >=9 floor below —
+          # despite this step's own comment above promising "this suite has
+          # NO legitimate skip case". Reject any status word beyond a clean
+          # pass outright, before counting: this guard suite has no
+          # DR-mirror fixture and no xfail markers, so skipped/xfailed/
+          # xpassed/deselected/warnings appearing here is always a real
+          # regression, never something to silently tolerate through a
+          # >=9-count floor that a skip can still clear.
+          if printf '%s\n' "$SUMMARY_LINE" | grep -qE 'skipped|xfailed|xpassed|deselected|warning'; then
+            echo "::error::pytest's summary line reports something other than a clean pass ($SUMMARY_LINE) — this suite has no legitimate skip case, so anything beyond a pure '<N> passed in <time>' summary is a real regression, not something a >=9 count floor should silently tolerate"
+            exit 1
+          fi
+          PASSED=$(printf '%s\n' "$SUMMARY_LINE" | grep -oE '^[0-9]+')
+          if [ "$PASSED" -lt 9 ]; then
+            echo "::error::expected at least 9 passed (got $PASSED) from summary line: $SUMMARY_LINE — this suite has no legitimate skip case, so anything less than the full count is a real regression"
             exit 1
           fi
 
