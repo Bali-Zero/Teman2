@@ -1,0 +1,17 @@
+## Five High-Leverage Ideas
+
+1. **Offline-first field capture with auto-sync.** Field officers at DIP/imigrasi/Kemenkumham photograph documents in queues with no signal. A Tailscale-routed intake app on their phone stores captures locally, then auto-pushes to the OCR queue the instant the device re-joins the mesh — no manual upload, no WhatsApp compression destroying document quality.
+
+2. **Exit-node session pinning + audit trail.** Indonesian gov portals (OSS, SIMPASI, e-POA) break on IP changes mid-session. A dedicated exit node per employee gives them a stable exit IP so cookies survive. Bonus: exit-node logs become a free UU PDP audit trail — who accessed which portal, when.
+
+3. **Local-LLM PII redaction as a pre-processor.** Before any document enters the review queue, run a local Qwen/GLM pass (Ollama, free, on-prem) that tags KTP, NPWP, passport numbers, names, addresses. Creates a PII boundary layer so even if OCR or the review UI leaks, raw identifiers are already flagged — satisfies UU PDP's technical-measures requirement.
+
+4. **Tailscale SCP replaces the "WhatsApp me the file" dance.** Field staff currently WhatsApp documents to the office — lossy, no audit trail, metadata stripped. `tailscale scp` from phone/laptop directly into the intake folder preserves full resolution and logs the transfer. Zero extra infra.
+
+5. **Device key expiry as your UU PDP compliance control.** UU PDP Article 23 requires "appropriate technical measures." Tailscale's 30-day device key expiry + ACL rules that deny mesh access from unauthenticated devices = a documented, enforceable technical control. No MDM purchase needed; the Tailscale admin console becomes your compliance evidence.
+
+## Single Biggest Failure Risk
+
+**The solo-TOFU problem: you are the entire IT department.** If you are unavailable — illness, travel, burnout — 14 employees cannot enroll devices, reset accounts, or recover from breakage. The mesh degrades silently; people revert to WhatsApp.
+
+**Cheapest countermeasure:** Write a one-page runbook covering account provisioning, device enrollment, and the top 5 break-fix scenarios. Store it in the wiki (accessible via the mesh itself). Designate one trusted employee as L1 contact and walk them through it once. Cost: ~2 hours of your time, zero rupiah. This converts a bus-factor-of-1 into a recoverable system.
