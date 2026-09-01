@@ -1,4 +1,5 @@
-brief_ref: evidence/2026-09/agent-nuzantara-infra-tokenaudit-intake-keepaliv-a4882011/brief.yml
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
 
 lanes:
   - lane: intake-keepalive-build
@@ -17,6 +18,15 @@ lanes:
       receipts/dissent below; Kimi K3 (the doctrinal permanent refuter)
       was 403 weekly-quota-dead and Codex timed out on the 15 s arsenal
       probe at dispatch time (~/.organism/arsenal/last.json 2026-09-01T18:02Z).
+  - lane: intake-keepalive-review-codex
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol at effort xhigh (`codex exec --sandbox read-only`),
+      cross-family, fresh context, fed the same task file as the TP1 seat and
+      convened 2026-09-02 by a session that did NOT author this diff. The
+      arsenal probe had reported this seat TIMEOUT: that is the probe's flat
+      15 s ceiling, not the seat — called directly it answered in well under
+      its 900 s budget. Verbatim verdict in journal.jsonl.
 
 seat_diversity: satisfied
 seat_diversity_note: >-
@@ -100,6 +110,15 @@ residual_risks:
     on the night cohort only.
 
 dissent:
+  - seat: codex-gpt-5.6-sol at effort xhigh, cross-family, fresh context
+    status: RETRACTED
+    objection: >-
+      Second independent cross-family seat, convened 2026-09-02 on the same
+      task file with no shared context. Attacked the same claim — that "15m"
+      is a valid value and that nothing parses this env var as integer seconds
+      — and found no defeating input: the value is an opaque environment
+      string and the diff shows no integer parser. Tried and found nothing, so
+      recorded as a retraction rather than as agreement.
   - seat: tp1-qwen3.8-max (DashScope/TP1), cross-family, fresh context
     status: RETRACTED
     objection: >-
