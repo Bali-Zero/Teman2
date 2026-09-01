@@ -116,7 +116,7 @@ proof: |
     correct source of truth. Raised 2 findings against this ceremony's own
     fixes -- see dissent[]: finding 6 (no absolute-seconds floor beneath
     the severity-tiered multiplier) CONFIRMED as a residual risk; finding 7
-    (a "deselected" summary line escapes the reject-list) REFUTED against
+    (a "deselected" summary line escapes the reject-list) RETRACTED against
     the pushed code -- .github/workflows/organ-conformance.yml line 337
     already rejects `skipped|xfailed|xpassed|deselected|warning`, covering
     exactly the line tp1 described; the reviewed seat answered a prose
@@ -246,9 +246,9 @@ dissent:
       invocation ever gained a stray -k/--deselect) would contain none of
       the reject-list's tokens and still satisfy PASSED>=9, silently
       hiding a filtered-out test.
-    status: REFUTED
+    status: RETRACTED
     resolution: >-
-      REFUTED against the pushed code, not accepted on tp1's word: this
+      RETRACTED against the pushed code, not accepted on tp1's word: this
       ceremony's own prior recording of this objection (see git history)
       mis-stated the reject-list as {"skipped","failed","error"} when
       writing it up -- an error in MY OWN transcription, not tp1's, but one
@@ -261,7 +261,7 @@ dissent:
       check ever runs. tp1 was given a prose summary of the fix in the
       review prompt, not the diff itself, and answered the summary rather
       than the code -- a caution for how this seat's short-prompt reviews get
-      built, not a defect in the fix. Recorded as REFUTED rather than
+      built, not a defect in the fix. Recorded as RETRACTED rather than
       silently dropped, per the same non-negotiable-honesty posture as every
       other finding in this pack.
 
