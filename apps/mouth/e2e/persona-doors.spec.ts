@@ -6,7 +6,7 @@ import { test, expect } from "@playwright/test";
  * Pins the FOUR "Start where you are." doors (B2R2: tax added as the THIRD
  * door), their targets + copy + order, and the load-bearing brand rule:
  * exactly ONE red primary CTA on the page (`.cta-primary`, computed
- * background = #C8102E via the rumah theme override of --cta-primary-bg —
+ * background = #D01033 via the rumah theme override of --cta-primary-bg —
  * NOT --color-red-500 #ff2d4c), with zero red CTAs inside the doors band
  * (rule: NO red in that section).
  *
@@ -74,9 +74,8 @@ test.describe("persona doors homepage page Page", () => {
     // breaking CI. Wording is deliberately NOT frozen here. What is
     // load-bearing is that the one primary is the WhatsApp hero, painted red.
     //
-    // The red is the logo red #C8102E = rgb(200,16,46), from the rumah theme
-    // override in
-    // apps/mouth/src/lib/theme/rumahVars.ts (`--cta-primary-bg`). It is
+    // The red is #D01033 = rgb(208,16,51), from the rumah theme override in
+    // apps/mouth/src/lib/theme/rumahVars.ts:58 (`--cta-primary-bg`). It is
     // NOT --color-red-500 (#ff2d4c, packages/core/tokens/primitives.css:15);
     // the homepage overrides that token and an older comment here said
     // otherwise. The href pattern avoids pinning the business number.
@@ -88,7 +87,7 @@ test.describe("persona doors homepage page Page", () => {
     const bg = await primary.evaluate(
       (el) => getComputedStyle(el).backgroundColor,
     );
-    expect(bg).toBe("rgb(200, 16, 46)");
+    expect(bg).toBe("rgb(208, 16, 51)");
   });
 
   test("doors band contains no red primary styling", async ({ page }) => {
