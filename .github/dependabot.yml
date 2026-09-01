@@ -44,6 +44,42 @@ updates:
     # disappears entirely is the lock-ONLY class — a transitive package like
     # portalocker that appears in no source manifest — which is the class no
     # recompile could ever have saved.
+    #
+    # THE HOLE THIS DOES NOT CLOSE — read it before trusting the block above:
+    # `exclude-paths` has NO EFFECT ON SECURITY UPDATES (dependabot-core #14408,
+    # OPEN, verbatim: "has no effect on security update PRs") — and line 1 of
+    # this file describes it as being about security updates. So the
+    # lock-editing vector stays open on exactly the path that matters most.
+    #
+    # BE PRECISE ABOUT THE RESIDUE, because an overstatement here is the kind
+    # that gets a real gap dismissed (this paragraph was corrected before merge:
+    # two cross-family reviewers, gpt-5.6-sol and qwen3.8-max, independently
+    # refuted its first draft). The second layer,
+    # apps/backend-rag/backend/tests/test_lock_honors_requirements.py, checks
+    # every manifest requirement THAT CARRIES A SPECIFIER against the lock pin.
+    # So a lock-only bump is NOT automatically invisible to it: if the new pin
+    # breaks an existing `!=`, ceiling or exact bound, that test goes red. That
+    # is precisely the MAL-2026-4750 shape — a fastapi lock bump to the 0.136.3
+    # that requirements.txt excludes with `!=`, pulling the malicious `fastar` —
+    # and it is the shape the net DOES catch.
+    #
+    # What escapes BOTH layers is narrower and still real: a lock-only change to
+    # a package that appears in NO source manifest (a transitive like
+    # portalocker — nothing declares a bound, so no bound can be violated), or
+    # one that lands on a version still satisfying every existing bound. For
+    # those there is no specifier to fail against. Combined with the
+    # auto-merge-patch posture on line 1, such a PR can be green and mergeable
+    # on its own. A Dependabot PR touching ONLY a .lock.txt therefore gets read
+    # by hand until the enforcement gate the reviewers asked for exists —
+    # tracked in .claude/skills/modus/PENDING-ARMS.md (2026-09-02, owner
+    # session[ci]).
+    #
+    # AND THIS IS BELIEVED, NOT YET OBSERVED: the option has two OPEN
+    # non-honoring bugs upstream — #15102 (`"exclude-paths": []` ignored in the
+    # graph builder) and #13526 (matched files updated anyway). What proves it
+    # works here is a Monday pip run that declines to touch these two files, not
+    # this config existing. Tracked in .claude/skills/modus/PENDING-ARMS.md
+    # (2026-09-02, condition 1 of 3 — "believed, not observed").
     exclude-paths:
       - "*.lock.txt"
     schedule:
