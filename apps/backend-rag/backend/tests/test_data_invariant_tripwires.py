@@ -386,6 +386,132 @@ def test_pricing_fallback_contacts_read_the_setting_and_never_a_literal():
         )
 
 
+
+# ── shared machinery for the two inbound-number guards below ────────────────
+#
+# Module scope on purpose. The name guard's first draft did its own bare
+# `node.value == "SUPPORT_WHATSAPP"` check while the digit guard had a folder,
+# and an independent reviewer walked through the name guard with
+# `getattr(settings, "SUPPORT" + "_WHATSAPP")` — a one-line change a bored
+# refactor could produce. Two guards against the same defect must not disagree
+# about what a string IS.
+
+_WA_FORBIDDEN_RUNS = ("628213465159", "08213465159")
+
+
+def _wa_collapse(text: str) -> str:
+    """Drop every dash and space, in any Unicode spelling, plus the ASCII
+    punctuation a phone number is written with."""
+    import unicodedata
+
+    out = []
+    for ch in unicodedata.normalize("NFKC", text):
+        if ch in '.()+"\'' or ch == "\t":
+            continue
+        if unicodedata.category(ch) in ("Pd", "Zs", "Cf"):
+            continue
+        out.append(ch)
+    return "".join(out)
+
+
+def _wa_fold(node) -> str | None:
+    """Best-effort constant fold to the string a node PRODUCES.
+
+    Handles the shapes a hard-coded value can hide in without any single
+    literal containing it: a plain constant, a `+` chain (Python only
+    auto-concatenates ADJACENT literals, not ones joined by an operator),
+    `SEP.join([...])` over constants, and `str(<literal>)` — which a reviewer
+    used to walk a whole number past the first version of the fold as
+    `"+62 821 3465 " + str(159)`.
+
+    Returns None for anything it cannot resolve, deliberately: an unresolvable
+    node is not reported innocent OR guilty by this helper, it simply is not
+    folded, and its own constants are still visited by the caller's walk.
+    """
+    import ast
+
+    if isinstance(node, ast.Constant):
+        if isinstance(node.value, str):
+            return node.value
+        return None
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        left, right = _wa_fold(node.left), _wa_fold(node.right)
+        return None if left is None or right is None else left + right
+    if isinstance(node, ast.Call):
+        func = node.func
+        # str(<literal>) — the fold's own blind spot, closed. Only a bare
+        # `str` NAME with one literal argument; anything with keywords, star-args
+        # or a shadowed name is left unresolved rather than guessed at.
+        if (
+            isinstance(func, ast.Name)
+            and func.id == "str"
+            and len(node.args) == 1
+            and not node.keywords
+            and isinstance(node.args[0], ast.Constant)
+            and isinstance(node.args[0].value, (str, int, float))
+        ):
+            return str(node.args[0].value)
+        if (
+            isinstance(func, ast.Attribute)
+            and func.attr == "join"
+            and len(node.args) == 1
+            and isinstance(node.args[0], (ast.List, ast.Tuple))
+        ):
+            sep = _wa_fold(func.value)
+            if sep is None:
+                return None
+            parts = [_wa_fold(el) for el in node.args[0].elts]
+            return None if any(part is None for part in parts) else sep.join(parts)
+    return None
+
+
+def _wa_string_values(node):
+    """Yield (text, lineno) for every string this node can produce."""
+    import ast
+
+    folded = _wa_fold(node)
+    if folded is not None:
+        yield folded, node.lineno
+    if isinstance(node, ast.JoinedStr):
+        # an f-string's literal segments, so `f"...{x}... +62 821 3465 159"` is
+        # seen even though the whole f-string is not a constant
+        for value in node.values:
+            if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                yield value.value, node.lineno
+
+
+def _wa_scan(path, rel):
+    """Return the sorted DISTINCT line numbers at which `path` produces a string
+    carrying a forbidden run.
+
+    DISTINCT is load-bearing. `ast.walk` visits a JoinedStr AND each of its
+    Constant children, so a single f-string with the number in it was counted
+    two or three times — harmless for a pass/fail check, but the budget below
+    pins an exact number, and a maintainer chasing `found 3, expected 1` would
+    be chasing an AST-shape artefact rather than three occurrences.
+
+    Exceptions are caught by CLASS, not by the one class that first came to
+    mind: a >2000-term `+` chain raises RecursionError out of ast.parse, a
+    deep chain raises it out of the fold itself, and a mis-encoded file raises
+    UnicodeDecodeError out of read_text. None of the three is a SyntaxError,
+    and any of them would otherwise abort BOTH guards for the whole PR with an
+    opaque traceback instead of skipping one unparseable file.
+    """
+    import ast
+
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"), rel)
+        hits = set()
+        for node in ast.walk(tree):
+            for text, lineno in _wa_string_values(node):
+                if any(run in _wa_collapse(text) for run in _WA_FORBIDDEN_RUNS):
+                    hits.add(lineno)
+                    break
+    except (SyntaxError, RecursionError, UnicodeDecodeError, ValueError):
+        # pragma: no cover - an unreadable file fails its own tests elsewhere
+        return []
+    return sorted(hits)
+
 def test_no_backend_module_hands_a_client_the_bots_inbound_number():
     """The whole-backend version of the fallback guard, buildable only now.
 
@@ -451,9 +577,6 @@ def test_no_backend_module_hands_a_client_the_bots_inbound_number():
     fails until somebody adds it here WITH a reason, which is the moment to
     ask whether it is an inbound-identity surface at all.
     """
-    import ast
-    import unicodedata
-
     #: file -> (how many strings in it may carry the number, and why).
     #:
     #: A BUDGET, not a pass. The first version skipped these files whole, and
@@ -488,94 +611,27 @@ def test_no_backend_module_hands_a_client_the_bots_inbound_number():
         ),
     }
 
-    def collapse(text: str) -> str:
-        """Drop every dash and space, in any Unicode spelling, plus the ASCII
-        punctuation a phone number is written with."""
-        out = []
-        for ch in unicodedata.normalize("NFKC", text):
-            if ch in '.()+"\'' or ch == "\t":
-                continue
-            if unicodedata.category(ch) in ("Pd", "Zs", "Cf"):
-                continue
-            out.append(ch)
-        return "".join(out)
-
-    def is_a_test_file(rel: str) -> bool:
-        """Tests legitimately exercise the inbound number. Judge by the FILE,
-        not by the directory: `backend/tests/` is only one of the places tests
-        live in this repo (`backend/agents/agents/test_guardian.py`,
-        `backend/scripts/test_ollama_vs_gemini.py` are others)."""
-        name = rel.rsplit("/", 1)[-1]
-        return (
-            rel.startswith("backend/tests/")
-            or name.startswith("test_")
-            or name.endswith("_test.py")
-        )
-
-    def _fold(node) -> str | None:
-        """Best-effort constant fold to the string a node PRODUCES.
-
-        Handles the three shapes a hard-coded number can hide in without any
-        single literal containing it: a plain constant, a `+` chain of
-        constants (Python only auto-concatenates ADJACENT literals, not ones
-        joined by an operator), and `SEP.join([...])` over constants.
-        Returns None for anything it cannot resolve — deliberately, so an
-        unresolvable node is not reported as innocent OR guilty by this helper;
-        it simply is not folded, and its own constants are still visited by the
-        walk.
-        """
-        if isinstance(node, ast.Constant):
-            return node.value if isinstance(node.value, str) else None
-        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
-            left, right = _fold(node.left), _fold(node.right)
-            return None if left is None or right is None else left + right
-        if (
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Attribute)
-            and node.func.attr == "join"
-            and len(node.args) == 1
-            and isinstance(node.args[0], (ast.List, ast.Tuple))
-        ):
-            sep = _fold(node.func.value)
-            if sep is None:
-                return None
-            parts = [_fold(el) for el in node.args[0].elts]
-            return None if any(part is None for part in parts) else sep.join(parts)
-        return None
-
-    def _string_values(node):
-        """Yield (text, lineno) for every string this node can produce."""
-        folded = _fold(node)
-        if folded is not None:
-            yield folded, node.lineno
-        if isinstance(node, ast.JoinedStr):
-            # an f-string's literal segments, so `f"...{x}... +62 821 3465 159"`
-            # is seen even though the whole f-string is not a constant
-            for value in node.values:
-                if isinstance(value, ast.Constant) and isinstance(value.value, str):
-                    yield value.value, node.lineno
-
     root = _repo_root() / "apps/backend-rag"
-    forbidden = ("628213465159", "08213465159")
 
     offenders = []
     counted: dict[str, list[int]] = {}
     for path in sorted((root / "backend").rglob("*.py")):
         rel = path.relative_to(root).as_posix()
-        if is_a_test_file(rel):
+        # Tests legitimately exercise the inbound number. The exclusion is the
+        # DIRECTORY and nothing else: a `name.startswith("test_")` heuristic
+        # also excluded seven real production modules under backend/agents/ and
+        # backend/scripts/ that merely carry that prefix (test_guardian.py is an
+        # autonomous agent, not a test — zero `def test_` functions in six of
+        # the seven), and it made this guard disagree with its twin below about
+        # what a test IS. None of those seven names the number today, so
+        # narrowing the rule costs nothing and closes a dormant blind spot.
+        if rel.startswith("backend/tests/"):
             continue
-        try:
-            tree = ast.parse(path.read_text(encoding="utf-8"), rel)
-        except SyntaxError:  # pragma: no cover - a broken file fails elsewhere
-            continue
-        for node in ast.walk(tree):
-            for text, lineno in _string_values(node):
-                if any(run in collapse(text) for run in forbidden):
-                    if rel in INBOUND_IDENTITY_BUDGET:
-                        counted.setdefault(rel, []).append(lineno)
-                    else:
-                        offenders.append(f"{rel}:{lineno}")
-                    break
+        for lineno in _wa_scan(path, rel):
+            if rel in INBOUND_IDENTITY_BUDGET:
+                counted.setdefault(rel, []).append(lineno)
+            else:
+                offenders.append(f"{rel}:{lineno}")
 
     assert not offenders, (
         "these backend modules build a STRING carrying the bot's INBOUND "
@@ -599,7 +655,10 @@ def test_no_backend_module_hands_a_client_the_bots_inbound_number():
             f"{rel} carries {len(found)} strings with the bot's inbound number "
             f"(lines {found}), budgeted for {expected} — {reason}. If the new "
             "one is a client-facing CTA, read settings.CLIENT_CONTACT_WHATSAPP. "
-            "If the occurrence legitimately went away, lower the number here."
+            "If the occurrence legitimately went away, lower the number here. "
+            "Note the lines are where each STRING STARTS, so a multi-line "
+            "docstring reports its opening quotes, not the line you can see the "
+            "number on."
         )
 
 
@@ -653,19 +712,21 @@ def test_only_the_meta_webhook_router_reads_the_bots_inbound_number():
             continue
         try:
             tree = ast.parse(path.read_text(encoding="utf-8"), rel)
-        except SyntaxError:  # pragma: no cover - a broken file fails elsewhere
-            continue
+        except (SyntaxError, RecursionError, UnicodeDecodeError, ValueError):
+            continue  # pragma: no cover - an unreadable file fails elsewhere
         for node in ast.walk(tree):
             # settings.SUPPORT_WHATSAPP
             if isinstance(node, ast.Attribute) and node.attr == "SUPPORT_WHATSAPP":
                 offenders.append(f"{rel}:{node.lineno}")
-            # getattr(settings, "SUPPORT_WHATSAPP") / os.getenv("SUPPORT_WHATSAPP")
-            # / anything else that reaches the same value through its NAME.
-            elif (
-                isinstance(node, ast.Constant)
-                and isinstance(node.value, str)
-                and node.value == "SUPPORT_WHATSAPP"
-            ):
+                continue
+            # getattr(settings, "SUPPORT_WHATSAPP"), os.getenv("SUPPORT_WHATSAPP"),
+            # or the same name ASSEMBLED — "SUPPORT" + "_WHATSAPP",
+            # "".join(["SUPPORT", "_WHATSAPP"]). The first draft compared a bare
+            # Constant and a reviewer walked straight through it with the `+`
+            # form, so this reuses the digit guard's folder rather than keeping
+            # a second, weaker idea of what a string is.
+            folded = _wa_fold(node)
+            if folded == "SUPPORT_WHATSAPP":
                 offenders.append(f"{rel}:{node.lineno}")
 
     assert not offenders, (

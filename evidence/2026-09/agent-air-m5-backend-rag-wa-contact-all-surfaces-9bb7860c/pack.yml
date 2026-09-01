@@ -35,6 +35,13 @@ lanes:
       codex-gpt-5.6-sol at xhigh, read-only sandbox (cross-family) -- dispatched on the DIFF with the
       two-number context and no conclusions to confirm, pointed specifically at the new guard.
       Returned REJECT with five findings. The most valuable one is a surface nobody else could see.
+  - lane: wa-contact-all-surfaces-refute-3
+    role: review
+    seat: >-
+      claude-sonnet-5 (adversarial spalla, third round) -- dispatched on ONE question the earlier
+      rounds had not asked: can either guard PASS VACUOUSLY while a real hard-code exists? Told to
+      run its probes rather than reason, and to say "nothing found" per axis rather than pad.
+      Returned SHIP-WITH-FIXES with five run-verified findings; all five applied.
   - lane: wa-contact-all-surfaces-measure
     role: review
     seat: >-
@@ -330,6 +337,49 @@ receipts:
     exit: 0
     ts: 2026-09-01T11:05Z
     seat: session (M5)
+  - claim: >-
+      ROUND 3. Five further defects, each found by a probe the reviewer RAN rather than reasoned
+      about, and each replayed against the fix.
+    cmd: >-
+      pytest backend/tests/test_data_invariant_tripwires.py::test_no_backend_module_hands_a_client_the_bots_inbound_number
+      and ::test_only_the_meta_webhook_router_reads_the_bots_inbound_number, once per reviewer payload
+      written into a throwaway backend module, restored with cp
+    result: >-
+      "+62 821 3465 " + str(159) -> FAILED (was a miss); getattr(settings, "SUPPORT" + "_WHATSAPP")
+      -> FAILED (was a miss); the same via "".join([...]) -> FAILED (was a miss); a production module
+      named test_*.py outside backend/tests/ -> FAILED (was silently excluded); a 6000-term + chain ->
+      passed, the file skipped instead of aborting both guards with a RecursionError traceback; an
+      undecodable file -> passed, likewise. Every earlier guilt case still RED and both innocence
+      cases still GREEN.
+    exit: 1
+    ts: 2026-09-01T11:55Z
+    seat: claude-sonnet-5 (adversarial, round 3) + session
+  - claim: >-
+      The f-string over-count against the pinned budget is proved fixed by COUNTING, not by a
+      pass/fail that would look identical either way.
+    cmd: import _wa_scan directly and run it on the reviewer's three inputs
+    result: >-
+      one f-string with two matching segments -> [1] (the reviewer measured [3,3,3] before); one
+      f-string with one matching segment -> [1] (was [3,3]); two genuinely separate occurrences ->
+      [1, 2], so the dedupe did not flatten real ones
+    exit: 0
+    ts: 2026-09-01T12:00Z
+    seat: session (M5)
+  - claim: >-
+      The council is ONE cross-family seat deep, not three, and the two that did not run are recorded
+      as not-run rather than left to read as approval.
+    cmd: >-
+      kimi -p ... -m kimi-code/k3; then python3 scripts/tp1_call.py --model qwen3.8-max three times
+      (full diff at 540s, full diff again, then a prompt cut to the two guards with --max-tokens 8000
+      --timeout 900); then python3 scripts/arsenal_probe.py --seat tp1-qwen3.8-max to tell a dead seat
+      from a slow one
+    result: >-
+      kimi -> 403 provider.auth_error, weekly quota exhausted. tp1-qwen3.8-max -> LIVE on the
+      liveness probe (HTTP 200, 1757ms) but `tp1_call: timed out` on all three review dispatches. Live
+      on a 1-shot is not usable for a real task; both journalled ok:false.
+    exit: 1
+    ts: 2026-09-01T11:40Z
+    seat: session (M5)
   - claim: The ledger reconciles and carries no phantom operator.
     cmd: python3 scripts/pending_arms_report.py
     result: "MALFORMED: none; no PHANTOM-OPERATOR; the closed row appended, the open row byte-identical"
@@ -473,6 +523,52 @@ dissent:
       honest count is eleven LIVE client-facing emissions across nine live modules -- eight from the
       ledgered eleven (two of which are dormant) plus the three pricing_service call sites the
       cross-family seat found. The dormant pair is cured anyway, and said to be dormant.
+  - seat: claude-sonnet-5 (adversarial spalla, round 3)
+    objection: >-
+      The digit guard's fold does not handle str(<literal>), so `"+62 821 3465 " + str(159)` ships
+      silently; and the NAME guard does no folding AT ALL -- a bare Constant comparison -- so
+      `getattr(settings, "SUPPORT" + "_WHATSAPP")` walks through the only thing standing between
+      pricing_service.py-style code and shipping the inbound number by name.
+    status: CONFIRMED
+    resolution: >-
+      Both accepted, and the second one is the sharper of the two: it is the same defect class this
+      whole PR is about, reproduced inside my own guard -- two checks against one defect, disagreeing
+      about what a string IS. The fold now handles str(<literal>) and is HOISTED TO MODULE SCOPE so
+      both guards share one answer instead of keeping a second, weaker idea. Three payloads replayed
+      RED.
+  - seat: claude-sonnet-5 (adversarial spalla, round 3)
+    objection: >-
+      `is_a_test_file()` excludes seven real production modules that merely start with test_ --
+      backend/agents/agents/test_guardian.py is an autonomous agent with zero `def test_` functions --
+      and it makes the two guards disagree about what a test is.
+    status: CONFIRMED
+    resolution: >-
+      Accepted; the heuristic is deleted rather than tuned. The exclusion is now the DIRECTORY and
+      nothing else, which both guards already agreed on. None of the seven names the number today, so
+      narrowing costs nothing and closes a dormant blind spot. Probed with a file under
+      backend/agents/agents/.
+  - seat: claude-sonnet-5 (adversarial spalla, round 3)
+    objection: >-
+      ast.walk visits a JoinedStr AND its Constant children, so one f-string carrying the number is
+      counted two or three times against a budget that pins an exact number. A maintainer would chase
+      "found 3, expected 1" as three occurrences when it is an AST-shape artefact.
+    status: CONFIRMED
+    resolution: >-
+      Accepted even though the direction is safe (over-count fails loudly, it does not let anything
+      through). The scanner now returns DISTINCT line numbers. Proved by counting rather than by a
+      pass/fail that would look the same either way: [3,3,3] -> [1], [3,3] -> [1], and two genuinely
+      separate occurrences still [1, 2].
+  - seat: claude-sonnet-5 (adversarial spalla, round 3)
+    objection: >-
+      RecursionError (a >2000-term + chain, out of ast.parse or out of the fold itself) and
+      UnicodeDecodeError (a mis-encoded file) are not SyntaxError, and the walk is a SIBLING of the
+      try block, not inside it. One pathological file anywhere under backend/ takes down BOTH
+      tripwires for the whole PR with an opaque traceback.
+    status: CONFIRMED
+    resolution: >-
+      Accepted. Parse AND walk are now inside one try, catching SyntaxError, RecursionError,
+      UnicodeDecodeError and ValueError by class. Probed with a 6000-term chain and an undecodable
+      file: both skip the one file and leave the guard green rather than aborting it.
   - seat: session (M5), self-caught
     objection: >-
       My formatting-parity probe ran ruff against copies in a scratchpad directory, where the project
