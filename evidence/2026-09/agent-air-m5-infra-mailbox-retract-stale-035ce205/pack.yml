@@ -1,0 +1,215 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: >-
+  One concern: sender-side retraction + shortened TTL for stale queue_unstick fleet-mailbox
+  broadcasts (measured 97% stale on Pro, well above the 50% ship threshold), plus a UNKNOWN-
+  mergeStateStatus fail-closed fix on that same resolved_dirty_prs() function found by
+  codex-gpt-5.6-sol's round-1 review and fixed on this branch in commit 6369c1b3d7.
+
+lanes:
+  - lane: retraction-and-ttl
+    role: build
+    seat: >-
+      claude-sonnet-5 (this session, air-m5). Measured staleness against real `gh pr view` data
+      (34 sampled, 33 stale) rather than assuming the reported symptom described reality. Built
+      fleet_mail.sh's `retract --key` subcommand, wired queue_unstick.py's resolved_dirty_prs()
+      to detect resolved PRs each tick and retract+drop them from dirty_seen state, shortened TTL
+      to 12h on both queue_unstick.py and queue_stall_notify.py. Also found and fixed an unrelated
+      production-state-corruption bug along the way: main()'s bare load_dirty_seen()/
+      save_dirty_seen() calls relied on a default-parameter snapshot of DIRTY_SEEN_FILE frozen at
+      import time, silently ignoring test monkeypatches and clobbering the real on-disk state file
+      during test runs -- fixed by passing the path explicitly at both call sites. Same seat then
+      fixed the UNKNOWN-mergeStateStatus fail-closed defect codex-gpt-5.6-sol's round-1 review
+      found on this same function (commit 6369c1b3d7): resolved_dirty_prs() treated GitHub's
+      transient UNKNOWN status as resolved-and-retractable, when this file's own documented
+      rewarm logic treats UNKNOWN as a state a genuinely-still-DIRTY PR can show for tens of
+      seconds after main moves. Rewrote fail-closed -- only an absent PR (merged/closed) or a
+      present PR with a status that is definitely neither DIRTY nor UNKNOWN nor None resolves --
+      with a guilt test (UNKNOWN must not resolve) and an innocence test (CLEAN and absent-PR
+      still resolve).
+  - lane: adversarial-review-1
+    role: review
+    seat: codex-gpt-5.6-sol (foreground, --sandbox read-only, effort=high, round 1 on 5b22365c3a)
+    note_ref: council-journal.jsonl
+  - lane: adversarial-review-2
+    role: review
+    seat: tp1-qwen3.8-max (effort=medium, streaming, round 1 on 5b22365c3a, prompt <4KB)
+    note_ref: council-journal.jsonl
+  - lane: adversarial-review-3
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (foreground, --sandbox read-only, effort=high, round 2 on the fixed head
+      6369c1b3d7 -- a fresh full re-review of the whole diff, not a diff-of-the-fix)
+    note_ref: council-journal.jsonl
+
+seat_diversity: SATISFIED
+seat_diversity_note: >-
+  Single build lane (Anthropic, claude-sonnet-5) -- D3's cross-family floor is exempt below 2
+  build lanes, per evidence_pack_lint.py's own rule text. Three review rounds across 2 distinct
+  non-Anthropic seats (codex-gpt-5.6-sol, tp1-qwen3.8-max), each posting an ok:true journal line
+  on at least one round -- quorum met without kimi-code/k3. codex's round-1 line is ok:false (a
+  real, confirmed finding, not a miss); its round-2 line on the fixed head is ok:true and is what
+  the quorum counts.
+
+diff:
+  files: 9
+  net_lines: 1093
+  measured_at: >-
+    `scripts/evidence_pack_lint.py --print-measured` against `git diff --numstat`/`--name-only`
+    from the merge-base with origin/main to this pack's own finalized commit, run LAST as its own
+    invocation after every other edit (see receipts for the exact command and its output) -- the
+    fixed point this repo's own countable-claims rule requires, since the commit that adds this
+    evidence directory is itself part of the diff being measured. Spans both fix commits
+    (5b22365c3a, 6369c1b3d7), the staleness-audit research capture, and this evidence directory.
+
+residual_risks:
+  - >-
+    THE FIRST LIVE queue_unstick_cron.sh TICK AGAINST A REAL RESOLVED PR IS THE ACTUAL PROOF, not
+    this pack. Everything above is local simulation (pytest, direct script invocation, a mocked
+    `_run()`) -- no live dispatch against Pro's real mailbox state was run as part of this PR. The
+    cron is already installed and armed on Pro (10-min interval); its next natural tick against a
+    genuinely resolved PR still in dirty_seen state is the receipt, observable via
+    dirty_retracted=N in its own summary line and `*.retracted-*` files in the mailbox.
+  - >-
+    tp1-qwen3.8-max's round-1 review missed the same UNKNOWN misclassification codex caught in the
+    same round -- its own scenario table simply omits UNKNOWN as a distinct case. Recorded
+    honestly in council-journal.jsonl rather than silently reconciled; not re-run against the
+    fixed head because team-lead's instruction treats tp1 round-1 as already discharged and codex
+    round-2 alone satisfies the "on the head under review" requirement for the seat that actually
+    found the defect.
+  - >-
+    codex round-2 left 3 LOW-severity items open, non-blocking: (1) fleet_mail.sh's retract does
+    not guard a symlinked `broadcast/` directory itself (only symlinked message files) and could
+    block opening a crafted FIFO named `*.md`; (2) the "key shared" test only exercises
+    `_mailbox_key()` twice and the remote-routing test proves SSH is reached but not that real
+    remote parsing/rename happens; (3) the staleness audit's headline 97% figure includes the
+    OPEN-but-UNKNOWN bucket (5/34) in "stale" -- the UNKNOWN-excluded floor is still 28/34 = 82%,
+    comfortably above the 50% ship threshold, so the decision is unaffected.
+  - >-
+    queue_stall_notify.py's broadcast surface got the TTL shortening only, no retraction -- 0
+    live queue_stall:* broadcasts existed in the sampled evidence, so retraction there would be
+    speculative (cure what the diff introduces, spec what it inherits).
+  - >-
+    A pre-existing, unrelated test-quality gap in test_fleet_mail_hosts.py (its own routing-stub
+    assertion passes partly by accident via command-substitution pollution) was found but NOT
+    fixed here -- out of scope, unrelated file, documented in test_fleet_mail_retract.py's own
+    docstring and flagged in the PR body as a follow-up.
+
+pii_scan: clean
+
+receipts:
+  - claim: "97% of Pro's live queue_unstick broadcasts refer to PRs no longer genuinely DIRTY"
+    cmd: >-
+      for each of 34 live broadcast keys on Pro: gh -R Bali-Zero/Teman2 pr view <n> --json
+      state,mergeStateStatus
+    result: "18 MERGED + 10 CLOSED + 5 OPEN-but-not-DIRTY = 33/34 stale (97%); 1/34 still genuinely DIRTY"
+    exit: 0
+    ts: 2026-09-02T05:00:00Z
+    seat: session (air-m5)
+  - claim: "the full local test suite for every touched file is green, both before and after the UNKNOWN fix"
+    cmd: >-
+      python3 -m pytest scripts/tests/test_queue_unstick.py scripts/tests/test_queue_stall_notify.py
+      scripts/tests/test_fleet_mail_hosts.py scripts/tests/test_fleet_mail_retract.py -p no:cacheprovider
+    result: "129 passed"
+    exit: 0
+    ts: 2026-09-02T09:00:00Z
+    seat: session (air-m5)
+  - claim: "ruff is clean on the touched source and test files"
+    cmd: "ruff check scripts/queue_unstick.py scripts/tests/test_fleet_mail_retract.py"
+    result: "All checks passed!"
+    exit: 0
+    ts: 2026-09-02T09:02:00Z
+    seat: session (air-m5)
+  - claim: "the UNKNOWN guilt test is non-vacuous -- it fails against the pre-fix comparison"
+    cmd: >-
+      hand-simulated the pre-fix `status != \"DIRTY\"` comparison against the guilt test's fixture
+      (PR present, status=UNKNOWN)
+    result: "pre-fix comparison returns ['506'] (wrongly resolved); fixed comparison returns [] (correctly not resolved)"
+    exit: 0
+    ts: 2026-09-02T09:05:00Z
+    seat: session (air-m5)
+  - claim: "codex-gpt-5.6-sol round 1 found the UNKNOWN misclassification on commit 5b22365c3a"
+    cmd: >-
+      codex exec -m gpt-5.6-sol -c model_reasoning_effort=high --sandbox read-only
+      --skip-git-repo-check "..." < /dev/null
+    result: "VERDICT: FAIL -- UNKNOWN mergeStateStatus mis-classified as resolved-and-retractable"
+    exit: 0
+    ts: 2026-09-02T09:14:00Z
+    seat: codex-gpt-5.6-sol
+  - claim: "tp1-qwen3.8-max round 1 reviewed the same commit and passed with non-blocking findings, missing the UNKNOWN case"
+    cmd: >-
+      python3 scripts/tp1_call.py --model qwen3.8-max --task-file /tmp/tp1_prompt.txt --effort
+      medium --timeout 220
+    result: "VERDICT: PASS (with findings) -- 3 LOW/INFO items, no mention of UNKNOWN as a distinct scenario"
+    exit: 0
+    ts: 2026-09-02T09:22:00Z
+    seat: tp1-qwen3.8-max
+  - claim: "codex-gpt-5.6-sol round 2 re-reviewed the whole diff fresh on the fixed head and confirmed the fix"
+    cmd: >-
+      codex exec -m gpt-5.6-sol -c model_reasoning_effort=high --sandbox read-only
+      --skip-git-repo-check "..." < /dev/null
+    result: "VERDICT: PASS -- CONFIRMED FIXED, both new tests valid, no new defects, 3 LOW open non-blocking"
+    exit: 0
+    ts: 2026-09-02T10:05:00Z
+    seat: codex-gpt-5.6-sol
+  - claim: "the pack's own diff.files/diff.net_lines match the measured merge-base diff, run LAST as its own step"
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --repo-root . --numstat-file /tmp/numstat.txt
+      --changed-files-file /tmp/changed-files.txt --print-measured
+    result: "9 files, +1104/-11"
+    exit: 0
+    ts: 2026-09-02T10:30:00Z
+    seat: session (air-m5)
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      resolved_dirty_prs() compared `merge_state_status != "DIRTY"`, which mis-classifies GitHub's
+      transient UNKNOWN mergeStateStatus as resolved-and-retractable. This file's own rewarm logic
+      elsewhere already documents UNKNOWN as a state a genuinely-still-DIRTY PR can show for tens
+      of seconds right after main moves while GitHub recomputes -- so this comparison could
+      retract a live "act now" page for a PR that is, in fact, still dirty.
+    status: CONFIRMED
+    disposition: >-
+      FIXED, commit 6369c1b3d7. Rewrote the comparison fail-closed: `continue` (never resolved) on
+      status in ("DIRTY", "UNKNOWN", None); only an absent PR (merged/closed) or a present PR with
+      a definite other status resolves. Added a guilt test (UNKNOWN must not resolve, verified
+      non-vacuous against the pre-fix comparison) and an innocence test (CLEAN and absent-PR still
+      resolve). Re-reviewed fresh by codex round 2 on the new head: CONFIRMED FIXED, no new defect.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      (round 1, non-blocking) confirm retract_dirty_signal's failure path is inside a try/except
+      wrapping the subprocess call, or an uncaught OSError from a missing fleet_mail.sh would
+      crash main() and exit non-zero despite the `return 0 if not update_failed and not
+      signal_failed else 1` guard line.
+    status: CONFIRMED
+    disposition: >-
+      VERIFIED SAFE, not cured further: `retract_dirty_signal()` itself catches the subprocess
+      call inside `_run()`, which already wraps every external call this script makes (the same
+      helper `send_dirty_signal` and `apply_status_updates` use) in a try/except that returns a
+      failure tuple rather than raising -- `dirty_retract_failed` is incremented from that tuple,
+      never from an uncaught exception. No code change needed; documented here per tp1's own ask.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      (round 1, non-blocking) no assertion or fallback if a broadcast's `key:` front-matter line
+      falls outside the 10-line/2048-byte header-parsing window -- retraction would silently no-op
+      and the stale file rides out its TTL.
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED, not cured: the writer (`send_dirty_signal`) always emits `key:` as one of the
+      first two front-matter fields, so this is a format-contract assumption already relied on
+      elsewhere in the mailbox (mailbox_inject.py's own MAX_FRONT_MATTER_LINES), not a new risk
+      introduced by this PR. Left as a residual risk rather than adding a write-time assertion,
+      which would be a second, unrelated PR.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      (round 1, non-blocking) `load_dirty_seen`/`save_dirty_seen` still carry a
+      `path: Path = DIRTY_SEEN_FILE` default parameter -- the two patched call-sites in main() now
+      pass it explicitly, but any future bare caller would silently regress into the frozen-default
+      bug this PR fixed.
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED as a residual risk, not cured: removing the default entirely (making `path`
+      mandatory) is a wider-blast-radius signature change on functions with an unknown caller
+      set outside this diff -- out of scope for a one-concern PR. Grepped this file for other bare
+      callers: none found (only the two patched main() call-sites exist).
