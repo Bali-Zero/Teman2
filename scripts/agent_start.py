@@ -1219,6 +1219,99 @@ def _content_subset_ok(
     return added_lines.issubset(main_lines)
 
 
+def _gh_pr_state_for_branch(
+    branch: str, *, cwd: Path, timeout: int = 15
+) -> str | None:
+    """Best-effort GitHub PR state for `branch`'s most recently created PR.
+
+    ``gh pr list --search head:<branch> --state all`` — the third, authoritative
+    arm added 2026-09-01 alongside the pre-existing ancestry/content arms (see
+    `_branch_merge_status`): GitHub is the only party that knows a SQUASH
+    merge landed, which is how every PR in this repo merges (W88) — the
+    ancestor test can never be true for a squash-merged branch, and the
+    content/blob-equality fallback answers a different question ("is main's
+    CURRENT copy byte-identical to mine", not "did my work land") and reads a
+    fully-landed branch as unmerged the moment anyone edits one of its files
+    afterward. Measured 2026-09-01: PR #5434 (MERGED) has 3 authored files of
+    which 1 now differs from main; PR #5354 (MERGED) has 15 of which 2 differ.
+
+    Returns one of GitHub's own state strings — "MERGED" / "OPEN" / "CLOSED" —
+    for the most recently created PR whose head is this branch (a branch can
+    accumulate more than one PR over its life — closed-then-reopened, or
+    rebuilt after a squash — ties are broken by `createdAt`, latest wins).
+    Returns "NONE" when `gh` succeeded but no PR was ever opened for this
+    branch — the single most dangerous row on the reaper's board (measured
+    2026-09-01: `wr2/websurface-cure`, `infra/hookw119`, `ops/fix5331` — real
+    committed work that exists nowhere else), which the caller must protect
+    and report distinctly, never fold silently into the generic "unmerged"
+    message.
+
+    Returns None on ANY failure to get a trustworthy answer — `gh` missing,
+    timeout, non-zero exit, unparseable JSON, or an unrecognized `state`
+    value. The caller MUST treat that as "cannot verify via GitHub" and fall
+    through to the offline ancestry/content path, never as "NONE" and never
+    as "MERGED" (W84: cannot-verify must never read as proven — an API
+    failure may only ever make the verdict MORE conservative, never less).
+    """
+    try:
+        proc = subprocess.run(
+            [
+                "gh", "pr", "list",
+                "--search", f"head:{branch}",
+                "--state", "all",
+                "--json", "number,state,createdAt",
+            ],
+            cwd=str(cwd),
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError) as exc:
+        logger.warning(
+            "gh pr list failed for branch %s (%s) — falling back to offline "
+            "ancestry/content check",
+            branch, exc,
+        )
+        return None
+    if proc.returncode != 0:
+        logger.warning(
+            "gh pr list exited %s for branch %s (%s) — falling back to "
+            "offline ancestry/content check",
+            proc.returncode, branch, (proc.stderr or "").strip(),
+        )
+        return None
+    try:
+        data = json.loads(proc.stdout or "[]")
+    except json.JSONDecodeError:
+        logger.warning(
+            "gh pr list returned unparseable JSON for branch %s — falling "
+            "back to offline ancestry/content check",
+            branch,
+        )
+        return None
+    if not isinstance(data, list):
+        return None
+    if not data:
+        return "NONE"
+
+    def _created_at(row: object) -> str:
+        return row.get("createdAt") or "" if isinstance(row, dict) else ""
+
+    latest = max(data, key=_created_at)
+    if not isinstance(latest, dict):
+        return None
+    state = latest.get("state")
+    if state not in ("MERGED", "OPEN", "CLOSED"):
+        logger.warning(
+            "gh pr list returned unrecognized state %r for branch %s — "
+            "falling back to offline ancestry/content check",
+            state, branch,
+        )
+        return None
+    return state
+
+
 def _worktree_head_branch(worktree: Path) -> str:
     """Short branch name HEAD points to inside ``worktree``, or "" if detached
     or unreadable. Factored out of ``_branch_in_origin_main`` so a caller can
@@ -1233,24 +1326,67 @@ def _worktree_head_branch(worktree: Path) -> str:
     return head.stdout.strip() if head.returncode == 0 else ""
 
 
-def _branch_in_origin_main(worktree: Path, *, expect_branch: str | None = None) -> bool:
-    """True iff the worktree's HEAD is fully merged into ``origin/main``.
+def _branch_merge_status(
+    worktree: Path, *, expect_branch: str | None = None
+) -> tuple[bool, str]:
+    """(merged, reason) — the full verdict AND why, behind `_branch_in_origin_main`
+    (now a thin bool-only wrapper around this).
 
     W80 ANTIBODY guard #2. The reaper must NOT remove a worktree whose work is
     not yet consolidated upstream — a branch that is pushed-but-not-merged (open
     PR) carries the only physical checkout the operator may still be iterating on.
 
-    Implementation: ``git -C <wt> merge-base --is-ancestor HEAD origin/main``
-    (exit 0 ⇒ HEAD is an ancestor of origin/main ⇒ every commit is already in
-    main upstream; exit 1 ⇒ HEAD has commits NOT in origin/main — but the
-    ancestor test is a PROXY that lies on squash-merged/reworked branches
-    (W88), so exit 1 falls through to a per-file CONTENT check: the branch is
-    merged iff every file it authored since its merge-base matches on
-    origin/main. Never the three-dot diff — post-squash the merge-base
-    regresses and three-dot counts main's own progress as branch-only
-    changes, the W88 second-degree trap).
+    Returning the reason alongside the verdict lets a caller's skip message
+    name what was ACTUALLY checked instead of re-deriving (or, worse,
+    assuming) a cause after the fact — the exact W65/W105 trap this file was
+    already burned by once (a skip message asserted "unmerged commits not in
+    origin/main" for a worktree whose real problem was a mid-flight branch
+    rename, which the merge-status check never even looked at). `reason` is
+    one of:
 
-    The per-file check is TWO checks, not one, because "matches" means a
+      "dir-gone"           — worktree directory no longer exists (merged=True)
+      "head-mismatch"      — HEAD is on a different branch than expect_branch (merged=False)
+      "ancestor"           — HEAD is a git ancestor of origin/main (merged=True)
+      "gh-merged"          — branch's most recent PR is MERGED (merged=True)
+      "gh-open"            — branch's most recent PR is still OPEN (merged=False)
+      "gh-closed"          — branch's most recent PR was CLOSED unmerged (merged=False)
+      "gh-no-pr"           — gh succeeded, no PR ever existed for this branch (merged=False)
+      "content-match"      — gh unusable; every changed file matches origin/main by content (merged=True)
+      "content-mismatch"   — gh unusable; at least one changed file differs from origin/main (merged=False)
+      "probe-inconclusive" — merge-base itself failed, or gh unusable AND the
+                              merge-base-vs-origin/main probe failed too (merged=False)
+
+    Three arms, tried in order, on a HEAD that is not a plain ancestor of
+    origin/main:
+
+      1. ``git -C <wt> merge-base --is-ancestor HEAD origin/main`` (exit 0 ⇒
+         HEAD is an ancestor of origin/main ⇒ every commit is already in main
+         upstream). This is the only arm that needs neither `gh` nor a fresh
+         fetch, and it is exact — never a proxy — for a branch with no
+         commits of its own yet.
+      2. The PULL REQUEST arm (added 2026-09-01): ``gh pr list --search
+         head:<branch>`` — GitHub is the only party that knows a SQUASH merge
+         landed, which is how every PR in this repo merges (W88), so the
+         ancestor test in arm 1 can NEVER be true for a squash-merged branch.
+         This arm is AUTHORITATIVE: a MERGED PR means landed regardless of
+         what arm 3 would conclude from current file content (which can go
+         stale the moment anyone else edits a touched file post-merge — see
+         `_gh_pr_state_for_branch`'s docstring for the measured cases). A PR
+         that is OPEN or CLOSED-unmerged, or a branch with NO PR at all,
+         protects immediately — none of those fall through to arm 3, because
+         "no PR" and "PR still open" are answers, not "cannot verify".
+      3. The pre-existing per-file CONTENT check — used only when `gh` itself
+         is unusable (missing/timeout/non-zero exit/bad JSON, i.e.
+         `_gh_pr_state_for_branch` returns None, "cannot verify via GitHub").
+         The branch is judged merged iff every file it authored since its
+         merge-base matches on origin/main. Never the three-dot diff —
+         post-squash the merge-base regresses and three-dot counts main's own
+         progress as branch-only changes (the W88 second-degree trap). This
+         arm is intentionally the LAST resort, not the primary check: it asks
+         "is main's CURRENT copy byte-identical to mine", not "did my work
+         land", and goes stale the instant anyone else touches a shared file.
+
+    Arm 3's per-file check is TWO checks, not one, because "matches" means a
     different thing depending on the path (both findings opened 2026-08-09
     while curing the broker, see PENDING-ARMS.md):
 
@@ -1283,8 +1419,9 @@ def _branch_in_origin_main(worktree: Path, *, expect_branch: str | None = None) 
         bug case, but it ALSO reads >0 for the merge-base check, so we use the
         unambiguous ancestor test against the integration branch directly.
 
-    FAIL-SAFE TO FALSE ("treat as NOT merged ⇒ do NOT reap") on any git error or
-    missing origin/main. A worktree we cannot prove is merged is protected.
+    FAIL-SAFE TO FALSE ("treat as NOT merged ⇒ do NOT reap") on any git error,
+    any `gh` failure, or missing origin/main. A worktree we cannot prove is
+    merged is protected.
 
     `expect_branch` is how a caller that is about to DELETE a branch says which
     entity the verdict must be about. Without it this function answers only
@@ -1294,14 +1431,16 @@ def _branch_in_origin_main(worktree: Path, *, expect_branch: str | None = None) 
     deletes; an earlier version of this docstring claimed detached HEAD failed
     safe, and that was simply not true.
 
-    Note: this does not fetch — it tests against the locally-known origin/main
-    ref. The daily cron environment refreshes refs out of band; a stale
-    origin/main only ever makes us MORE conservative (protect, not reap).
+    Note on freshness: arm 1 and arm 3 test against the locally-known
+    origin/main ref and do NOT fetch themselves — `cmd_cleanup` fetches once
+    per run (`_refresh_origin_main_once`) before calling this at all, so a
+    stale ref here is a fetch-failure/offline case, not the normal path. Arm 2
+    (the PR check) needs no fetch at all — it asks GitHub directly.
     """
     if not worktree.is_dir():
         # Directory already gone — nothing to protect; let cleanup proceed to
         # prune the stale metadata/pointer.
-        return True
+        return True, "dir-gone"
 
     if expect_branch is not None:
         # Every question below is answered by the worktree's HEAD, but the
@@ -1322,7 +1461,7 @@ def _branch_in_origin_main(worktree: Path, *, expect_branch: str | None = None) 
                 "under judgement (%s) — cannot prove that branch is merged",
                 worktree, actual or "detached/unknown", expect_branch,
             )
-            return False
+            return False, "head-mismatch"
 
     proc = _run_git(
         ["merge-base", "--is-ancestor", "HEAD", "origin/main"],
@@ -1330,26 +1469,43 @@ def _branch_in_origin_main(worktree: Path, *, expect_branch: str | None = None) 
         check=False,
     )
     if proc.returncode == 0:
-        return True
+        return True, "ancestor"
     if proc.returncode == 1:
-        # Ancestor check failed (unmerged commits present) — BUT squash merges
-        # and reworks break the ancestor proxy (W88). We must verify by CONTENT
-        # before refusing to reap. A branch is safe to reap if every file it
-        # authored (changed since its merge-base) matches on origin/main —
-        # by ls-tree entry (mode+type+blob) normally, by line-subset for a
-        # declared merge=union path (see this function's own docstring).
+        # Ancestor check failed (unmerged commits present, by ancestry) — the
+        # NORMAL case for a squash-merged branch (W88). Try the authoritative
+        # PR arm before falling to the content check.
+        branch_for_pr = expect_branch or _worktree_head_branch(worktree)
+        if branch_for_pr:
+            pr_state = _gh_pr_state_for_branch(branch_for_pr, cwd=worktree)
+            if pr_state == "MERGED":
+                return True, "gh-merged"
+            if pr_state == "OPEN":
+                return False, "gh-open"
+            if pr_state == "CLOSED":
+                return False, "gh-closed"
+            if pr_state == "NONE":
+                return False, "gh-no-pr"
+            # pr_state is None: gh unusable (missing/timeout/error/bad JSON) —
+            # fall through to the offline content check exactly as before
+            # this arm was added.
+
+        # ARM 3 (offline path): verify by CONTENT. A branch is safe to reap if
+        # every file it authored (changed since its merge-base) matches on
+        # origin/main — by ls-tree entry (mode+type+blob) normally, by
+        # line-subset for a declared merge=union path (see this function's
+        # own docstring).
         mb_proc = _run_git(
             ["merge-base", "origin/main", "HEAD"], cwd=worktree, check=False
         )
         if mb_proc.returncode != 0:
-            return False
+            return False, "probe-inconclusive"
         mb = mb_proc.stdout.strip()
 
         diff_proc = _run_git(
             ["diff", "--name-only", mb, "HEAD"], cwd=worktree, check=False
         )
         if diff_proc.returncode != 0:
-            return False
+            return False, "probe-inconclusive"
 
         for f in diff_proc.stdout.splitlines():
             f = f.strip()
@@ -1358,17 +1514,17 @@ def _branch_in_origin_main(worktree: Path, *, expect_branch: str | None = None) 
 
             if _is_union_merge_path(f, cwd=worktree):
                 if not _content_subset_ok(mb, "HEAD", "origin/main", f, cwd=worktree):
-                    return False
+                    return False, "content-mismatch"
                 continue
 
             bh = _ls_tree_entry("HEAD", f, cwd=worktree)
             mh = _ls_tree_entry("origin/main", f, cwd=worktree)
             if bh != mh:
-                return False
+                return False, "content-mismatch"
 
         # If all changed files match origin/main (entry or line-subset), the
         # content is merged.
-        return True
+        return True, "content-match"
 
     # rc >= 128 (bad ref, not a git dir, unknown HEAD): fail-safe to protect.
     logger.warning(
@@ -1378,7 +1534,20 @@ def _branch_in_origin_main(worktree: Path, *, expect_branch: str | None = None) 
         proc.returncode,
         (proc.stderr or "").strip(),
     )
-    return False
+    return False, "probe-inconclusive"
+
+
+def _branch_in_origin_main(worktree: Path, *, expect_branch: str | None = None) -> bool:
+    """True iff the worktree's HEAD is fully merged into ``origin/main``.
+
+    Thin bool-only wrapper around `_branch_merge_status` — see that function's
+    docstring for the full three-arm rationale (ancestor / GitHub PR / content)
+    and the meaning of every `reason` value. Callers that need to explain a
+    "not merged" verdict (e.g. `cmd_cleanup`'s skip messages) should call
+    `_branch_merge_status` directly rather than re-deriving the reason here.
+    """
+    merged, _reason = _branch_merge_status(worktree, expect_branch=expect_branch)
+    return merged
 
 
 def _resolve_worktree_gitdir(worktree: Path) -> Path | None:
@@ -1505,6 +1674,54 @@ def cmd_list() -> int:
 # ---------------------------------------------------------------------------
 
 
+def _refresh_origin_main_once(*, cwd: Path, timeout: int = 30) -> bool:
+    """``git fetch origin main`` once per ``--cleanup`` run, so the ancestry/
+    content merge-status arms compare against a fresh ``origin/main`` instead
+    of whatever the last fetch — possibly days old — left in place. Cause (1)
+    of the reaper-never-reaps defect measured 2026-09-01: `_branch_merge_status`
+    (formerly `_branch_in_origin_main`)'s own docstring already said neither
+    arm fetches, so a daily cron comparing against a stale `origin/main`
+    called recently-merged work unmerged.
+
+    Called ONCE per `cmd_cleanup` invocation, before the per-worktree loop —
+    not once per worktree: linked worktrees share the same underlying git
+    object database and remote-tracking refs, so a single fetch from any one
+    of them (here, the main checkout) refreshes `origin/main` for every
+    worktree's `_branch_merge_status` call in the same run.
+
+    Best-effort: a failed/offline fetch is logged and `cmd_cleanup` proceeds
+    against the locally-known `origin/main` ref, which only ever makes the
+    ancestry/content arms MORE conservative (protect, never reap) — the
+    authoritative GitHub PR arm doesn't need a fresh `origin/main` at all, it
+    asks GitHub directly. Returns True on success, False otherwise (the
+    caller only logs; cleanup proceeds unconditionally either way).
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "fetch", "origin", "main"],
+            cwd=str(cwd),
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError) as exc:
+        logger.warning(
+            "cleanup: git fetch origin main raised %s — continuing with the "
+            "locally-known origin/main ref",
+            exc,
+        )
+        return False
+    if proc.returncode != 0:
+        logger.warning(
+            "cleanup: git fetch origin main exited %s (%s) — continuing "
+            "with the locally-known origin/main ref",
+            proc.returncode, (proc.stderr or "").strip(),
+        )
+        return False
+    return True
+
+
 def cmd_cleanup(
     *, force: bool = False, skip_recent_minutes: int = RECENT_ACTIVITY_MINUTES
 ) -> int:
@@ -1524,6 +1741,10 @@ def cmd_cleanup(
     skip_recent_minutes=0 disables only the recent-activity guard.
     Returns 0 if every expired worktree was removed cleanly OR no work
     needed; 1 if at least one removal was skipped for WIP / errored.
+
+    Refreshes `origin/main` ONCE for the whole run (`_refresh_origin_main_once`)
+    before any merge-status comparison — see that function's docstring for why
+    once-per-run rather than once-per-worktree is sufficient.
     """
     if _kill_switch_active():
         raise SystemExit(
@@ -1534,6 +1755,8 @@ def cmd_cleanup(
     if not rows:
         print("(nothing to cleanup)")
         return 0
+
+    _refresh_origin_main_once(cwd=REPO_ROOT)
 
     now = datetime.now(timezone.utc)
     issues = 0
@@ -1596,16 +1819,14 @@ def cmd_cleanup(
                     "— active session, will reap when idle"
                 )
                 continue
-            if not _branch_in_origin_main(wt, expect_branch=meta.branch):
-                actual_head = _worktree_head_branch(wt)
-                if actual_head and actual_head != meta.branch:
-                    # Not a merge-status finding at all — HEAD was renamed
-                    # mid-flight (e.g. `git checkout -b <new>` inside the
-                    # worktree) and the registry still names the old branch.
-                    # Reporting "has commits not in origin/main" here would be
-                    # a claim this code path never actually checked (W65 —
-                    # even a guard's own diagnostic can hallucinate a specific
-                    # cause it never verified).
+            merged, reason = _branch_merge_status(wt, expect_branch=meta.branch)
+            if not merged:
+                # Call `_branch_merge_status` ONCE and branch on its own
+                # `reason` — never re-derive a cause after the fact (the
+                # exact W65/W105 trap this file was already burned by: a skip
+                # message must only ever name what was ACTUALLY checked).
+                if reason == "head-mismatch":
+                    actual_head = _worktree_head_branch(wt)
                     logger.warning(
                         "cleanup skip %s — worktree HEAD is on branch %s, "
                         "registered branch is %s (renamed mid-flight?) — "
@@ -1619,7 +1840,50 @@ def cmd_cleanup(
                         f"registered branch is '{meta.branch}') — cannot verify "
                         "merge status, protecting checkout"
                     )
+                elif reason == "gh-no-pr":
+                    # The single most dangerous row on the board (measured
+                    # 2026-09-01: wr2/websurface-cure, infra/hookw119,
+                    # ops/fix5331 — real committed work that exists nowhere
+                    # else) — report it distinctly, never fold it into the
+                    # generic "unmerged commits" message below.
+                    logger.warning(
+                        "cleanup skip %s — branch %s has no pull request at "
+                        "all — this work exists nowhere else, protecting checkout",
+                        meta.task_id,
+                        meta.branch,
+                    )
+                    print(
+                        f"WARN: skip {meta.task_id} (branch '{meta.branch}' has "
+                        "no pull request at all) — protecting checkout, this "
+                        "work exists nowhere else"
+                    )
+                elif reason == "gh-open":
+                    logger.info(
+                        "cleanup skip %s — branch %s has an OPEN pull request",
+                        meta.task_id,
+                        meta.branch,
+                    )
+                    print(
+                        f"skip {meta.task_id} (branch '{meta.branch}' has an "
+                        "OPEN pull request) — protecting checkout, will reap "
+                        "once merged or closed"
+                    )
+                elif reason == "gh-closed":
+                    logger.warning(
+                        "cleanup skip %s — branch %s's pull request was "
+                        "CLOSED without merging",
+                        meta.task_id,
+                        meta.branch,
+                    )
+                    print(
+                        f"WARN: skip {meta.task_id} (branch '{meta.branch}''s "
+                        "pull request was CLOSED without merging) — "
+                        "protecting checkout, operator must inspect"
+                    )
                 else:
+                    # "content-mismatch" / "probe-inconclusive": gh was
+                    # unusable (missing/timeout/error) and the offline
+                    # ancestry/content check also could not prove merged.
                     logger.warning(
                         "cleanup skip %s — branch %s has commits not in origin/main "
                         "(W80: unmerged work, refusing to reap its only checkout)",
@@ -1736,9 +2000,12 @@ def cmd_release(task_id: str, *, force: bool = False) -> int:
         # of safety whatever the recorded base was — the work is upstream, so
         # deleting the branch loses nothing — and `_branch_in_origin_main`
         # fail-safes to False on any git error or missing ref.
-        merged = _branch_in_origin_main(wt, expect_branch=meta.branch)
+        merged, merge_reason = _branch_merge_status(wt, expect_branch=meta.branch)
         if merged:
-            proven_by = "content already on origin/main"
+            proven_by = (
+                "merged PR" if merge_reason == "gh-merged"
+                else "content already on origin/main"
+            )
     if not merged and not force:
         if not _rev_exists(base):
             reason = (
