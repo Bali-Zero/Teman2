@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # 2026-09-02 — fleet-mailbox broadcast staleness audit
 
 **Context**: follow-up to the `mailbox_deliver_once` mandate (2026-09-01 tokenaudit finding, "decine,
@@ -65,3 +69,26 @@ back" step — once sent, a page lives until its TTL expires, sender-blind to th
 
 Team-lead's threshold: ship the fix only if ≥50% of sampled broadcasts were stale. Measured 97% —
 well above threshold.
+
+## Adversarial review
+
+codex-gpt-5.6-sol reviewed the cure this audit's finding drove (`scripts/queue_unstick.py`'s
+`resolved_dirty_prs()`, commits 5b22365c3a + 6369c1b3d7) across two rounds — full detail in
+`evidence/2026-09/agent-air-m5-infra-mailbox-retract-stale-035ce205/council-journal.jsonl`.
+
+- **Round 1 (FAIL, CONFIRMED):** `resolved_dirty_prs()` compared `merge_state_status != "DIRTY"`,
+  mis-classifying GitHub's transient `UNKNOWN` mergeStateStatus as resolved-and-retractable — a
+  genuinely-still-DIRTY PR can read `UNKNOWN` for tens of seconds right after `main` moves, per
+  this same file's own documented rewarm logic. This audit's own 97% headline figure includes 5
+  OPEN-but-non-DIRTY PRs in the stale bucket; excluding the ones that could plausibly have been a
+  transient `UNKNOWN` at sample time still leaves the floor at 82% (28/34), unaffected as a ship
+  decision but the finding was real and fixed on the branch, not spec'd away.
+- **Round 2 (PASS, on the fixed head):** re-reviewed the whole diff fresh — confirmed `UNKNOWN`
+  and `None` both now `continue` (never resolved); only an absent PR (merged/closed) or a present
+  PR with a definite non-DIRTY, non-UNKNOWN status resolves. Verified both new tests (guilt:
+  `UNKNOWN` must not resolve; innocence: `CLEAN` and absent-PR still resolve) are non-vacuous. No
+  new defect introduced by the fix. Zero objections survived against this audit's own numbers.
+
+tp1-qwen3.8-max also reviewed round 1 (PASS with non-blocking findings) but did not catch the
+`UNKNOWN` case codex found in the same round — recorded honestly in the council journal rather
+than reconciled.

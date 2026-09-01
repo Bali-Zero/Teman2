@@ -53,7 +53,7 @@ seat_diversity_note: >-
 
 diff:
   files: 9
-  net_lines: 1093
+  net_lines: 1120
   measured_at: >-
     `scripts/evidence_pack_lint.py --print-measured` against `git diff --numstat`/`--name-only`
     from the merge-base with origin/main to this pack's own finalized commit, run LAST as its own
@@ -156,7 +156,7 @@ receipts:
     cmd: >-
       python3 scripts/evidence_pack_lint.py --repo-root . --numstat-file /tmp/numstat.txt
       --changed-files-file /tmp/changed-files.txt --print-measured
-    result: "9 files, +1104/-11"
+    result: "9 files, +1131/-11"
     exit: 0
     ts: 2026-09-02T10:30:00Z
     seat: session (air-m5)
