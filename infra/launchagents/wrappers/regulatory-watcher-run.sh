@@ -424,7 +424,12 @@ echo "[$(date)] tier 1 — Claude subscription seat cascade" >> "$LOG"
 # Contract of quota_gate.sh: exit 0=GO, 3=SKIP (best seat >= 85%), 4=DEGRADE (>= 75%);
 # it FAILS OPEN (exit 0) on any error and never picks the Team seat. Here both SKIP and
 # DEGRADE skip the whole Claude tier and let the cascade fall to tier 2 exactly as an
-# ordinary tier-1 failure would; gate absent, disabled, or GO -> byte-identical to before.
+# ordinary tier-1 failure would; gate absent, disabled, or GO -> the cascade behaves
+# exactly as before. NOT byte-identical, and the distinction was earned: two cross-family
+# review seats (tp1-qwen3.8-max, codex-gpt-5.6-sol), convened separately with no shared
+# context on 2026-09-02, independently named the same defeating state — a gate that exits 0
+# but PRINTS still appends its own output to $LOG through the redirection below, so the log
+# bytes differ even on GO. The tier-1 call itself is untouched.
 # Kill switch: REGWATCH_QUOTA_GATE=0. The gate lives outside the repo on purpose (it reads
 # ~/.claude/seat-quota.json, a per-machine measurement) — same shape as CASCADE_BIN above.
 QUOTA_GATE_BIN="${REGWATCH_QUOTA_GATE_BIN:-$HOME/.tokenaudit/ingest/quota_gate.sh}"

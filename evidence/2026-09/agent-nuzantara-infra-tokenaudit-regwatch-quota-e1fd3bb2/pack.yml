@@ -1,4 +1,5 @@
-brief_ref: evidence/2026-09/agent-nuzantara-infra-tokenaudit-regwatch-quota-e1fd3bb2/brief.yml
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
 
 lanes:
   - lane: regwatch-quota-gate-build
@@ -17,6 +18,15 @@ lanes:
       and wrapper contracts). Verbatim findings in receipts/dissent below.
       Kimi K3 was 403 weekly-quota-dead and Codex timed out on the arsenal
       probe at dispatch time (~/.organism/arsenal/last.json 2026-09-01T18:02Z).
+  - lane: regwatch-quota-gate-review-codex
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol at effort xhigh (`codex exec --sandbox read-only`),
+      cross-family, fresh context, fed the same task file as the TP1 seat and
+      convened 2026-09-02 by a session that did NOT author this diff. It
+      converged independently on the TP1 seat's finding — a gate that exits 0
+      but prints still changes the log bytes — which is why that finding was
+      cured rather than argued. Verbatim verdict in journal.jsonl.
 
 seat_diversity: satisfied
 seat_diversity_note: >-
@@ -121,6 +131,19 @@ residual_risks:
     launchd run of this wrapper — first real run after merge is the proof.
 
 dissent:
+  - seat: codex-gpt-5.6-sol at effort xhigh, cross-family, fresh context
+    status: CONFIRMED
+    objection: >-
+      Convened 2026-09-02 and converged, with no shared context, on the same
+      defeating input the TP1 seat found on the same day: a gate that exits 0
+      but prints (for example `echo GO; exit 0`) still appends to $LOG through
+      the redirection on the gate call, so this block's own comment claiming a
+      GO gate is "byte-identical to before" was FALSE. The label was wrong, not
+      the code — the Claude tier-1 call still proceeds exactly as before. CURED
+      in this push by rewriting that sentence to say the cascade behaves as
+      before while the gate's own line is appended to the log. Two independent
+      seats naming the identical mechanism is why this was cured rather than
+      argued.
   - seat: tp1-qwen3.8-max (DashScope/TP1), cross-family, fresh context
     status: RETRACTED
     objection: >-
