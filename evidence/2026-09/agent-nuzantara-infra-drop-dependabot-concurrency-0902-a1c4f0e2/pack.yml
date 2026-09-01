@@ -24,7 +24,11 @@ lanes:
     seat: general-purpose subagent (sonnet-5)
 diff:
   files: 22
-  net_lines: -52
+  net_lines: -64
+  net_lines_note:
+    "corrected 2026-09-02 after the review lane re-measured: `git diff --numstat origin/main...HEAD
+    -- . ':(exclude)evidence/'` sums 196 insertions / 260 deletions = -64. The -52 was wrong from the
+    first commit, not drift."
 spend:
   wall_clock_hours: 2.5
   adversarial_rounds: 2
@@ -74,6 +78,10 @@ receipts:
     ts: "2026-09-01T16:54:09Z"
     seat: claude-opus-5 (author session, Pro)
     observed_on_rerun: "10"
+    proxy_note:
+      this cmd measures the DENOMINATOR only (count of open Dependabot PRs). The 9-absence / 2-mixed
+      / 2-red split came from a per-PR recount recorded in `result`, not from this command. Treat the split
+      as an observation, not as this receipt's output.
   - claim: Actions are unbilled here.
     result:
       billable.UBUNTU.total_ms = 0 across all 10 jobs, run_duration_ms = 367000. All runs-on are ubuntu-latest.
@@ -102,13 +110,16 @@ receipts:
   - claim: 17 of 21 expressions are byte-for-byte the pre-#5043 form.
     result: 17 identical, 0 differing, 4 had no concurrency block at that commit.
     cmd:
-      for f in $(git show --name-only --pretty= HEAD -- .github/workflows/ ); do git show 39997ee0ec:$f
-      2>/dev/null | grep -A1 '^concurrency:' | grep '  group:' ; done | sort | uniq -c | awk '{s+=$1} END
-      {print s}'
+      git show --name-only --pretty= 1ff1c7ce56 -- .github/workflows/ | while read f; do git show 39997ee0ec:$f
+      2>/dev/null | grep -A1 '^concurrency:' | grep '  group:'; done | wc -l
     exit: 0
-    ts: "2026-09-01T16:54:12Z"
+    ts: "2026-09-01T17:18:48Z"
     seat: claude-opus-5 (author session, Pro)
     observed_on_rerun: "17"
+    anchor_note:
+      cmd pinned to commit 1ff1c7ce56 — this receipt previously used a bare `HEAD` and silently
+      stopped reproducing when a later commit in the same PR moved HEAD off the workflow commit; the actionlint
+      one degraded into xargs over zero files, i.e. a green that ran nothing.
   - claim: No merge_group run can be cancelled by any of the 21 after this change.
     result:
       15 are ${{ github.event_name != 'merge_group' }}; 2 carry it inside wider clauses; 4 are the
@@ -120,6 +131,10 @@ receipts:
     ts: "2026-09-01T16:54:12Z"
     seat: claude-opus-5 (author session, Pro)
     observed_on_rerun: "0"
+    proxy_note:
+      "necessary, not sufficient: this proves the OLD actor pattern is gone, not that the merge_group
+      guard is PRESENT on all 21. The positive property was verified separately by the review lane — every
+      one of the 21 cancel-in-progress values is literal false or contains github.event_name != 'merge_group'."
   - claim: This diff is NOT covered by the PR 5499 pin exemption.
     result: floor 3 with the patch supplied — the exemption's own innocence check.
     cmd:
@@ -131,18 +146,29 @@ receipts:
     observed_on_rerun: "3 (floor source: path — the .github/workflows/ hot zone, NOT the #5499 pin exemption)"
   - claim: The ledger append is append-only.
     result: 1 insertion, 0 deletions.
-    cmd: git show HEAD --numstat --pretty= -- .claude/skills/modus/PENDING-ARMS.md
+    cmd: git show 1ff1c7ce56 --numstat --pretty= -- .claude/skills/modus/PENDING-ARMS.md
     exit: 0
-    ts: "2026-09-01T16:54:13Z"
+    ts: "2026-09-01T17:18:48Z"
     seat: claude-opus-5 (author session, Pro)
     observed_on_rerun: "3\t2\t.claude/skills/modus/PENDING-ARMS.md"
-  - claim: actionlint is clean on all 21 changed files.
+    anchor_note:
+      cmd pinned to commit 1ff1c7ce56 — this receipt previously used a bare `HEAD` and silently
+      stopped reproducing when a later commit in the same PR moved HEAD off the workflow commit; the actionlint
+      one degraded into xargs over zero files, i.e. a green that ran nothing.
+  - claim:
+      "actionlint is clean on all 21 changed files with the shellcheck sub-linter disabled (-shellcheck=,
+      CI's own invocation). Without it, 6 shellcheck warnings appear (SC2221/SC2222), all in immune-enforcement.yml,
+      and all PRE-EXISTING: the same 6 reproduce against that file at base 32a6dbab6f."
     result: stdout empty, exit 0, all three.
-    cmd: git show --name-only --pretty= HEAD -- .github/workflows/ | xargs actionlint -no-color -shellcheck=
+    cmd: git show --name-only --pretty= 1ff1c7ce56 -- .github/workflows/ | xargs actionlint -no-color -shellcheck=
     exit: 0
-    ts: "2026-09-01T16:55:43Z"
+    ts: "2026-09-01T17:18:48Z"
     seat: claude-opus-5 (author session, Pro)
-    observed_on_rerun: clean, exit 0, 21 files
+    observed_on_rerun: exit 0 over the 21 files
+    anchor_note:
+      cmd pinned to commit 1ff1c7ce56 — this receipt previously used a bare `HEAD` and silently
+      stopped reproducing when a later commit in the same PR moved HEAD off the workflow commit; the actionlint
+      one degraded into xargs over zero files, i.e. a green that ran nothing.
   - claim: nothing asserts the removed group exists.
     result: no test, lint or gate references it — nothing flips red, nothing stays green falsely.
     cmd: git grep -c 'dependabot-lockfile' HEAD -- .github/ scripts/ infra/ || true
@@ -341,6 +367,21 @@ dissent:
 
       '
     resolution: CONFIRMED — the author was wrong, and the claim is withdrawn
+  - seat: spalla-review (Claude, fresh context) — 2nd pass, on the pushed diff
+    objection:
+      "Two defects in the pack, none in the diff: (1) diff.net_lines says -52 where the measured
+      value is -64 (196 insertions / 260 deletions); (2) three receipts were anchored on a bare `HEAD`,
+      so the follow-up evidence commit moved HEAD off the workflow commit and they stopped reproducing —
+      the actionlint one became `xargs` over zero files, which exits 0 without linting anything. Also: the
+      actionlint claim reads as unconditionally clean but was measured with shellcheck disabled."
+    status: CONFIRMED
+    resolution:
+      "CONFIRMED — all three fixed, and the author re-measured each independently rather than
+      accepting the report: net_lines -> -64; the three cmds pinned to 1ff1c7ce56; the actionlint claim
+      now states the shellcheck caveat and that its 6 warnings pre-exist at base 32a6dbab6f (verified by
+      linting that file at base). The reviewer found no blocker: the substantive claims were re-verified
+      through SHA-pinned commands of its own. Sharpest part: a receipt inside a PR about checks that silently
+      stop existing had itself become a green that ran nothing."
 residual_risks:
   - risk:
       "The concurrency headroom evidence comes from a 25-second burst window (300 runs sampled, 83 jobs),
@@ -381,3 +422,8 @@ residual_risks:
     accepted_because:
       Pre-existing and unrelated to the actor-keyed group; recorded so the next reader does
       not attribute an ejection to this change.
+  - "The review lane ran under zsh, which does NOT word-split an unquoted $VAR in `for x in $VAR` — such
+    a loop runs ONCE with the whole string as a single token and its comparisons quietly succeed. Any receipt
+    anywhere in this repo written as `for f in $(...)` may carry that failure mode. The receipts here avoid
+    it by piping into `while read` or `xargs`. Same family as the actionlint invocation that exited 2 on
+    a flag-syntax error earlier in this PR: a shell-level mistake that reads exactly like a lint verdict."
