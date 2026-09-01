@@ -113,6 +113,28 @@ _FIXTURE_PLIST = (
 BRIDGE_SCRIPT_PATH = REPO_ROOT / "scripts/launchagent-state-bridge.py"
 REGISTRY_PATH = REPO_ROOT / "apps/organism/organism/organs_registry.yaml"
 
+#: Every repo-relative path this guard reads. A change to ANY of these — not
+#: just the registry — can regress the invariant this file checks (e.g. the
+#: bridge gaining a new bridged organ whose registry threshold is too low
+#: touches only scripts/launchagent-state-bridge.py, never the registry).
+#: `.github/workflows/organ-conformance.yml` must trigger this file's test
+#: on a change to any member, in BOTH its `push.paths` list (post-merge
+#: arming) and its in-job `git diff --name-only` pathspec (PR-time
+#: relevance) — see cicatrix #2 (Esiste≠Armato): a guard that only ever
+#: runs inside the continue-on-error `scripts/tests/` sweep gates nothing.
+#: `test_organ_heartbeat_workflow_wiring.py` asserts both lists are a
+#: superset of this set, so the correspondence is CALCULATED, not a
+#: second copy someone has to remember to update by hand.
+GUARD_READ_SET: frozenset[str] = frozenset(
+    {
+        "scripts/tests/test_organ_heartbeat_exceeds_poller_interval.py",
+        "scripts/tests/test_organ_heartbeat_workflow_wiring.py",
+        "scripts/launchagent-state-bridge.py",
+        "scripts/tests/fixtures/organ_heartbeat_cadence/com.nuzantara.launchagent-state-bridge.plist.fixture",
+        "apps/organism/organism/organs_registry.yaml",
+    }
+)
+
 # Three missed poller ticks before calling an organ dead is the standard
 # this repo already uses elsewhere (scripts/healer_receptor_registry.py's
 # DEAD_MULTIPLIER = 3) — one late poller run must never look like an
@@ -291,6 +313,16 @@ def test_fixture_plist_matches_live_snapshot_when_present():
     with _FIXTURE_PLIST.open("rb") as fh:
         fixture_data = plistlib.load(fh)
 
+    # Deliberately whole-dict, not narrowed to StartInterval: this fixture's
+    # only job is standing in for a real, verbatim LaunchAgent plist (see the
+    # README's "Why a committed copy exists here" section) — its value is
+    # that check_organ_conformance.py, plistlib, and every other reader see
+    # a real plist, not a hand-trimmed stub of one. If Label/Program/
+    # ProgramArguments/etc. ever drift from the live file, that means this
+    # fixture has quietly become a copy of something else entirely (a
+    # different organ's plist, a hand-edit, a stale capture) — worth failing
+    # loudly on, not narrowing away. Do not "tighten" this to StartInterval
+    # alone without re-reading that rationale.
     assert live_data == fixture_data, (
         f"{_FIXTURE_PLIST} has drifted from the live plist at "
         f"{_LIVE_SNAPSHOT_PLIST} — the arithmetic test above always reads "

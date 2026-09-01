@@ -170,3 +170,23 @@ updates:
     labels:
       - "dependencies"
       - "ci"
+    groups:
+      # The three github/codeql-action/* steps are ONE contract, not three
+      # dependencies: `init` writes the CodeQL config that `autobuild` reads,
+      # and `analyze` consumes what autobuild produced. Ungrouped, Dependabot
+      # opens a separate PR per step, so the refs diverge the moment one lands
+      # without the others — security.yml then runs init at one version and
+      # autobuild at another. That happened: PR #5444 carried only the
+      # `autobuild` half of 4.37.7 -> 4.37.9, and its CodeQL jobs failed for
+      # exactly that reason (cured out-of-band by PR #5517, which moved all
+      # three refs in one commit; #5444 was closed as superseded).
+      #
+      # Deliberately NARROW. A catch-all group over this whole ecosystem would
+      # be a poison-batch risk: one bad action bump would block every other
+      # action update behind it, with no way to merge the innocent ones
+      # separately. That is the same reasoning the `openai-stack` comment
+      # records for pip above, and it is why this groups a single coupled
+      # family rather than "all github-actions minor+patch".
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"

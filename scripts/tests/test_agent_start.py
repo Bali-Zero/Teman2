@@ -1024,6 +1024,408 @@ def test_cleanup_reaps_when_no_process_and_merged(fake_repo, monkeypatch):
     assert not wt.exists()  # reaped — both guards cleared
 
 
+# ---------------------------------------------------------------------------
+# cleanup — GitHub PR arm (2026-09-01): the reaper-never-reaps defect
+#
+# `_branch_in_origin_main` (now `_branch_merge_status`) never fetched
+# `origin/main` and judged "landed" by blob equality against main's CURRENT
+# content — the wrong question the instant anyone edits a touched file after
+# a squash merge lands (W88: every PR in this repo merges by squash, so the
+# ancestor arm can never fire either). Measured 2026-09-01: PR #5434 (MERGED)
+# has 1/3 authored files since diverged from main; PR #5354 (MERGED) has 2/15
+# diverged. 39 worktrees accumulated this way and filled the disk to 97%.
+# ---------------------------------------------------------------------------
+
+
+def test_cleanup_reaps_branch_with_merged_pr_even_when_content_now_differs(
+    fake_repo, monkeypatch
+):
+    """GUILT: a branch whose most recent PR is MERGED must be reap-eligible
+    even when the pre-existing blob-equality content check would say
+    otherwise, because a later, unrelated edit to a file the branch also
+    touched has made main's CURRENT copy differ from what the branch itself
+    authored. This is the defect itself: the OLD content-only check protects
+    such a branch forever once anyone edits a shared file after merge.
+
+    Proof this exercises the new PR arm and not a fluke: revert the PR-arm
+    change (or run this test against the pre-fix module) and it goes RED —
+    `assert not wt.exists()` fails because the content check alone (the only
+    arm the old code had) reads `shared.txt` as diverged and protects the
+    worktree. `monkeypatch.setattr(..., raising=False)` lets this SAME test
+    run unmodified against both the old module (attribute doesn't exist yet,
+    created but never consulted -> red) and the new one (attribute exists,
+    consulted by the PR arm -> green).
+    """
+    mod, repo = fake_repo
+    wt = mod.cmd_create("wr2", "merged-pr-diverged", ttl_minutes=5)
+    _backdate_metadata(wt, mod, minutes=120)
+    (wt / "shared.txt").write_text("mine\n")
+    _commit_in_worktree(wt, mod, "shared.txt", "add shared.txt")
+    branch = mod._worktree_head_branch(wt)
+    _backdate_worktree_mtime(wt, minutes=120)  # idle
+    monkeypatch.setattr(mod, "_worktree_has_live_process", lambda p: False)
+    monkeypatch.setattr(
+        mod,
+        "_gh_pr_state_for_branch",
+        lambda b, **kw: "MERGED" if b == branch else None,
+        raising=False,
+    )
+    # main moves on WITHOUT ever containing this branch's exact content —
+    # modelling a later, unrelated edit to the same file after the (squash)
+    # merge landed, which is what actually happened on PR #5434 / #5354.
+    env = dict(os.environ)
+    env.update(
+        GIT_AUTHOR_NAME="Test",
+        GIT_AUTHOR_EMAIL="test@example.com",
+        GIT_COMMITTER_NAME="Test",
+        GIT_COMMITTER_EMAIL="test@example.com",
+    )
+    (repo / "shared.txt").write_text("someone changed it after merge\n")
+    subprocess.run(
+        ["git", "add", "shared.txt"], cwd=repo, check=True, capture_output=True,
+        text=True, env=env,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "later unrelated edit"],
+        cwd=repo, check=True, capture_output=True, text=True, env=env,
+    )
+    subprocess.run(
+        ["git", "push", "origin", "main"], cwd=repo, check=True,
+        capture_output=True, text=True, env=env,
+    )
+    rc = mod.cmd_cleanup()
+    assert rc == 0
+    assert not wt.exists()  # reaped: the PR arm overrides the stale content mismatch
+
+
+def test_cleanup_wip_protects_even_with_merged_pr(fake_repo, monkeypatch):
+    """INNOCENCE (1/4): uncommitted changes protect a worktree even when its
+    branch's PR is MERGED — the WIP guard still runs before ANY merge-status
+    check (existing guard ORDER, unweakened by the new PR arm)."""
+    mod, _ = fake_repo
+    wt = mod.cmd_create("wr2", "wip-merged-pr", ttl_minutes=5)
+    _backdate_metadata(wt, mod, minutes=120)
+    (wt / "wip.txt").write_text("not committed\n")
+    _backdate_worktree_mtime(wt, minutes=120)
+    monkeypatch.setattr(
+        mod, "_gh_pr_state_for_branch", lambda b, **kw: "MERGED", raising=False
+    )
+    rc = mod.cmd_cleanup()
+    assert rc == 1  # WIP failure, unchanged
+    assert wt.exists()
+
+
+def test_cleanup_recent_activity_protects_even_with_merged_pr(fake_repo, monkeypatch):
+    """INNOCENCE (2/4): a recently-touched (live-session) worktree stays
+    protected even when its branch's PR is MERGED — the recent-activity
+    guard still runs before the merge-status check."""
+    mod, _ = fake_repo
+    wt = mod.cmd_create("wr2", "recent-merged-pr", ttl_minutes=5)
+    _backdate_metadata(wt, mod, minutes=120)  # expired by the clock
+    work_file = wt / "live.txt"
+    work_file.write_text("active session output\n")
+    _commit_in_worktree(wt, mod, "live.txt", "active work")  # clean, fresh mtime
+    monkeypatch.setattr(
+        mod, "_gh_pr_state_for_branch", lambda b, **kw: "MERGED", raising=False
+    )
+    rc = mod.cmd_cleanup()
+    assert rc == 0
+    assert wt.exists()  # preserved — recent-activity guard fires first
+
+
+def test_cleanup_protects_branch_with_open_pr(fake_repo, monkeypatch):
+    """INNOCENCE (3/4): a branch whose most recent PR is still OPEN must not
+    be reaped — its only checkout may still be under active iteration. This
+    also proves the PR arm is consulted BEFORE the content check: content
+    here would happen to protect anyway (real unpushed commit), but the PR
+    arm must be the one deciding, short-circuiting before any content diff."""
+    mod, _ = fake_repo
+    wt = mod.cmd_create("wr2", "open-pr", ttl_minutes=5)
+    _backdate_metadata(wt, mod, minutes=120)
+    (wt / "work.txt").write_text("work in review\n")
+    _commit_in_worktree(wt, mod, "work.txt", "feature commit")
+    branch = mod._worktree_head_branch(wt)
+    _backdate_worktree_mtime(wt, minutes=120)  # idle on mtime
+    monkeypatch.setattr(mod, "_worktree_has_live_process", lambda p: False)
+    monkeypatch.setattr(
+        mod,
+        "_gh_pr_state_for_branch",
+        lambda b, **kw: "OPEN" if b == branch else None,
+        raising=False,
+    )
+    rc = mod.cmd_cleanup()
+    assert rc == 0
+    assert wt.exists()
+
+
+def test_cleanup_protects_branch_with_closed_unmerged_pr(fake_repo, monkeypatch):
+    """CLOSED (not merged) is NOT landed — protect, same as OPEN."""
+    mod, _ = fake_repo
+    wt = mod.cmd_create("wr2", "closed-pr", ttl_minutes=5)
+    _backdate_metadata(wt, mod, minutes=120)
+    (wt / "work.txt").write_text("abandoned work\n")
+    _commit_in_worktree(wt, mod, "work.txt", "feature commit")
+    branch = mod._worktree_head_branch(wt)
+    _backdate_worktree_mtime(wt, minutes=120)
+    monkeypatch.setattr(mod, "_worktree_has_live_process", lambda p: False)
+    monkeypatch.setattr(
+        mod,
+        "_gh_pr_state_for_branch",
+        lambda b, **kw: "CLOSED" if b == branch else None,
+        raising=False,
+    )
+    rc = mod.cmd_cleanup()
+    assert rc == 0
+    assert wt.exists()
+
+
+def test_cleanup_protects_branch_with_no_pr_at_all_and_reports_distinctly(
+    fake_repo, capsys, monkeypatch
+):
+    """INNOCENCE (4/4): a branch with real committed work but NO pull request
+    at all is the single most dangerous row on the reaper's board (real work
+    that exists nowhere else) — it must stay protected AND the skip message
+    must say so distinctly, never folded into the generic 'has commits not
+    in origin/main' line (measured 2026-09-01: wr2/websurface-cure,
+    infra/hookw119, ops/fix5331)."""
+    mod, _ = fake_repo
+    wt = mod.cmd_create("wr2", "no-pr-at-all", ttl_minutes=5)
+    _backdate_metadata(wt, mod, minutes=120)
+    (wt / "work.txt").write_text("orphaned work\n")
+    _commit_in_worktree(wt, mod, "work.txt", "feature commit")
+    branch = mod._worktree_head_branch(wt)
+    _backdate_worktree_mtime(wt, minutes=120)
+    monkeypatch.setattr(mod, "_worktree_has_live_process", lambda p: False)
+    monkeypatch.setattr(
+        mod,
+        "_gh_pr_state_for_branch",
+        lambda b, **kw: "NONE" if b == branch else None,
+        raising=False,
+    )
+    rc = mod.cmd_cleanup()
+    assert rc == 0
+    assert wt.exists()
+    out = capsys.readouterr().out
+    assert "no-pr-at-all" in out
+    assert "no pull request" in out.lower()
+    assert "unmerged commits not in origin/main" not in out
+
+
+def test_cleanup_gh_unreachable_falls_back_to_content_check_still_protects(
+    fake_repo, monkeypatch
+):
+    """OFFLINE: `gh` failing/timing out must fall back to the pre-existing
+    ancestry/content check, never silently reap. A branch the content check
+    would protect (real unmerged content, differs from origin/main) must
+    still be protected when gh is unreachable — an API failure may only ever
+    make the verdict MORE conservative, never less (W84)."""
+    mod, _ = fake_repo
+    wt = mod.cmd_create("wr2", "gh-down", ttl_minutes=5)
+    _backdate_metadata(wt, mod, minutes=120)
+    (wt / "work.txt").write_text("unmerged work\n")
+    _commit_in_worktree(wt, mod, "work.txt", "feature commit")
+    _backdate_worktree_mtime(wt, minutes=120)  # idle on mtime
+    monkeypatch.setattr(mod, "_worktree_has_live_process", lambda p: False)
+    monkeypatch.setattr(
+        mod, "_gh_pr_state_for_branch", lambda b, **kw: None, raising=False
+    )
+    rc = mod.cmd_cleanup()
+    assert rc == 0  # protection, not a failure
+    assert wt.exists()  # content check (offline path) still protects correctly
+
+
+def test_cleanup_fetches_origin_main_once_per_run_not_per_worktree(
+    fake_repo, monkeypatch
+):
+    """`_refresh_origin_main_once` must be called exactly ONCE per `--cleanup`
+    invocation, even with multiple expired worktrees pending — not once per
+    worktree (cause (1) of the 2026-09-01 defect: the reaper never refreshed
+    `origin/main` at all; the fix is one fetch per run, not a per-worktree
+    fetch storm)."""
+    mod, _ = fake_repo
+    wt1 = mod.cmd_create("wr2", "multi-a", ttl_minutes=5)
+    wt2 = mod.cmd_create("wr2", "multi-b", ttl_minutes=5)
+    _backdate_metadata(wt1, mod, minutes=120)
+    _backdate_metadata(wt2, mod, minutes=120)
+    _backdate_worktree_mtime(wt1, minutes=120)
+    _backdate_worktree_mtime(wt2, minutes=120)
+    calls: list[int] = []
+    real = mod._refresh_origin_main_once
+
+    def counting(*a, **kw):
+        calls.append(1)
+        return real(*a, **kw)
+
+    monkeypatch.setattr(mod, "_refresh_origin_main_once", counting)
+    mod.cmd_cleanup()
+    assert len(calls) == 1
+
+
+def test_cleanup_continues_when_git_fetch_actually_fails(fake_repo, monkeypatch):
+    """A genuinely failed `git fetch origin main` (offline / unreachable
+    remote) must not abort cleanup — it logs and continues comparing against
+    the locally-known `origin/main` ref, exactly as before this fetch was
+    added (a stale ref only ever makes the ancestry/content arms MORE
+    conservative, never less)."""
+    mod, repo = fake_repo
+    wt = mod.cmd_create("wr2", "fetch-fail-real", ttl_minutes=5)
+    _backdate_metadata(wt, mod, minutes=120)
+    _backdate_worktree_mtime(wt, minutes=120)
+    # Break the remote so `git fetch origin main` genuinely fails.
+    subprocess.run(
+        ["git", "remote", "set-url", "origin", "/nonexistent/path.git"],
+        cwd=repo, check=True, capture_output=True, text=True,
+    )
+    rc = mod.cmd_cleanup()
+    assert rc == 0
+    # A trivial branch (no commits beyond what was already pushed before the
+    # remote broke) is still an ancestor of the LOCALLY-known origin/main —
+    # reaped via arm 1, which needs no fetch to have succeeded at all.
+    assert not wt.exists()
+
+
+# ---------------------------------------------------------------------------
+# `_gh_pr_state_for_branch` — direct subprocess-level tests (fake `gh` on PATH)
+# ---------------------------------------------------------------------------
+
+
+def _install_fake_gh(bin_dir: Path, body: str) -> None:
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    script = bin_dir / "gh"
+    script.write_text(body, encoding="utf-8")
+    script.chmod(0o755)
+
+
+def test_gh_pr_state_for_branch_picks_most_recently_created_pr(
+    fake_repo, monkeypatch, tmp_path
+):
+    mod, repo = fake_repo
+    bin_dir = tmp_path / "fakebin"
+    _install_fake_gh(
+        bin_dir,
+        "#!/bin/sh\n"
+        "echo '["
+        '{"number": 41, "state": "CLOSED", "createdAt": "2026-08-20T00:00:00Z", '
+        '"headRefName": "some/branch"}, '
+        '{"number": 42, "state": "MERGED", "createdAt": "2026-08-25T00:00:00Z", '
+        '"headRefName": "some/branch"}'
+        "]'\n",
+    )
+    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
+    assert mod._gh_pr_state_for_branch("some/branch", cwd=repo) == "MERGED"
+
+
+def test_gh_pr_state_for_branch_uses_exact_head_flag_and_discards_prefix_sibling_rows(
+    fake_repo, monkeypatch, tmp_path
+):
+    """GUILT (found in review, 2026-09-01): `gh pr list --search head:<branch>`
+    is a SEARCH QUALIFIER — prefix-matching and index-backed, superscar
+    family #3 (guard-over-match) — not an exact filter. Measured live on a
+    real sibling pair in this repo: `agent/nuzantara/infra/organ-hb-cadence`
+    is a strict prefix of `agent/nuzantara/infra/organ-hb-cadence-wiring`;
+    `--search head:` for the SHORTER branch returned BOTH PRs, including the
+    longer sibling's newer MERGED one (#5440), while `--head` (exact)
+    returned only the branch's own (#5431). Because this function is the
+    AUTHORITATIVE arm — a MERGED verdict overrides the content check — the
+    search-qualifier form would let a sibling's newer MERGED PR reap a
+    DIFFERENT worktree whose own PR is still OPEN: silent deletion of live,
+    unmerged work, the fail-OPEN direction this function is everywhere else
+    deliberately fail-CLOSED against.
+
+    Two independent things must hold, so this test cannot pass by accident
+    if the flag regresses back to `--search`/`head:`:
+      1. The exact argv the fake `gh` receives must use `--head`, never
+         `--search` — asserted directly, not inferred from the return value.
+      2. Even given a raw JSON payload shaped exactly like what `--search
+         head:` really returns (both the sibling's row AND this branch's own
+         row), the function's own defensive `headRefName` filter must still
+         discard the sibling's row and return this branch's OWN state
+         ("OPEN"), never the sibling's ("MERGED") — the belt-and-suspenders
+         half of the fix, independent of the flag itself.
+    """
+    mod, repo = fake_repo
+    branch = "agent/nuzantara/infra/organ-hb-cadence"
+    sibling = "agent/nuzantara/infra/organ-hb-cadence-wiring"
+    bin_dir = tmp_path / "fakebin"
+    argv_file = tmp_path / "argv.txt"
+    _install_fake_gh(
+        bin_dir,
+        "#!/bin/sh\n"
+        f'printf \'%s\\n\' "$@" > "{argv_file}"\n'
+        "echo '["
+        f'{{"number": 5440, "state": "MERGED", '
+        f'"createdAt": "2026-08-31T08:00:32Z", "headRefName": "{sibling}"}}, '
+        f'{{"number": 5431, "state": "OPEN", '
+        f'"createdAt": "2026-08-31T06:46:29Z", "headRefName": "{branch}"}}'
+        "]'\n",
+    )
+    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
+
+    state = mod._gh_pr_state_for_branch(branch, cwd=repo)
+
+    assert state == "OPEN"  # NOT "MERGED" — the sibling's row must be discarded
+    argv_lines = argv_file.read_text().splitlines()
+    assert "--head" in argv_lines
+    assert branch in argv_lines
+    assert "--search" not in argv_lines
+    assert f"head:{branch}" not in argv_lines
+
+
+def test_gh_pr_state_for_branch_no_pr_returns_none_sentinel(
+    fake_repo, monkeypatch, tmp_path
+):
+    mod, repo = fake_repo
+    bin_dir = tmp_path / "fakebin"
+    _install_fake_gh(bin_dir, "#!/bin/sh\necho '[]'\n")
+    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
+    assert mod._gh_pr_state_for_branch("some/branch", cwd=repo) == "NONE"
+
+
+def test_gh_pr_state_for_branch_nonzero_exit_returns_python_none(
+    fake_repo, monkeypatch, tmp_path
+):
+    mod, repo = fake_repo
+    bin_dir = tmp_path / "fakebin"
+    _install_fake_gh(bin_dir, "#!/bin/sh\necho 'boom' >&2\nexit 1\n")
+    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
+    assert mod._gh_pr_state_for_branch("some/branch", cwd=repo) is None
+
+
+def test_gh_pr_state_for_branch_missing_gh_returns_none(
+    fake_repo, monkeypatch, tmp_path
+):
+    mod, repo = fake_repo
+    empty_bin = tmp_path / "emptybin"
+    empty_bin.mkdir()
+    monkeypatch.setenv("PATH", str(empty_bin))
+    assert mod._gh_pr_state_for_branch("some/branch", cwd=repo) is None
+
+
+def test_gh_pr_state_for_branch_timeout_returns_none(
+    fake_repo, monkeypatch, tmp_path
+):
+    mod, repo = fake_repo
+    bin_dir = tmp_path / "fakebin"
+    _install_fake_gh(bin_dir, "#!/bin/sh\nsleep 3\necho '[]'\n")
+    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
+    assert mod._gh_pr_state_for_branch("some/branch", cwd=repo, timeout=1) is None
+
+
+def test_gh_pr_state_for_branch_unrecognized_state_returns_none(
+    fake_repo, monkeypatch, tmp_path
+):
+    mod, repo = fake_repo
+    bin_dir = tmp_path / "fakebin"
+    _install_fake_gh(
+        bin_dir,
+        "#!/bin/sh\n"
+        "echo '[{\"number\": 1, \"state\": \"DRAFT\", "
+        '"createdAt": "2026-08-20T00:00:00Z", "headRefName": "some/branch"}]\'\n',
+    )
+    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
+    assert mod._gh_pr_state_for_branch("some/branch", cwd=repo) is None
+
+
 def test_worktree_has_live_process_real_lsof(fake_repo):
     """Empirical (no-mock) test of `_worktree_has_live_process` against the REAL
     `lsof` (W64: prove the guard with the actual kernel call, not just bash -n).

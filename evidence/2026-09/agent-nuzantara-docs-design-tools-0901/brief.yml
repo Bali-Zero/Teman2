@@ -1,0 +1,72 @@
+task_id: design-corner-tools-0901
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Bring the calibrated design probes into git. They were written during the 2026-08-31 design
+  study and have lived only under ~/Desktop/Design-Dossier-2026-08-31/strumenti/ — outside the
+  repo, on a TCC-denied directory where a glob returns empty WITHOUT an error, i.e. one
+  accidental cleanup away from gone. This PR is half of Zero's 2026-09-01 order to open a
+  /design corner ("salva tutto in un nuovo corner /design"); the SKILL.md brain and the
+  front-page build chain are the sibling PR, deliberately split because the two halves together
+  are 2,048 lines of churn and the Agent PR Contract's rule 1 forbids that in one concern.
+
+  What the tools are: six probes that read the RENDERED accessibility DOM, not source text.
+  measure.py sweeps 6 states (mobile/desktop x light/system-dark/forced-dark) for 27-pair
+  contrast, horizontal overflow, 44px tap targets, external requests, no-JS text and derived
+  palette/type metrics. defects.py mechanises six defect classes a human had to notice once
+  each — dead-control, duplicate-string, heading-order, double-announce, struck-copy,
+  clipped-sentence — and, crucially, ships its own INNOCENCE and GUILT controls and prints
+  their result BEFORE any verdict: a run whose innocence is noisy or whose guilt is silent
+  proves nothing, and the tool says so rather than leaving the reader to remember it.
+  occlusion.py, regression.py and judge.py are the overlap, before/after and rubric passes.
+
+  ONE BEHAVIOUR CHANGE, made while lifting them out of the dossier: the headless-Chromium path
+  was a hardcoded /Users/nuzantara/... literal in all four Playwright probes. M5's home is
+  /Users/balizero, so every one of these probes was dead on M5 — and dead silently, which is
+  the failure class the repo's own cicatrix #1/#2 families exist for. Replaced with a
+  per-machine resolver: CHROME_HEADLESS if set, else the newest ms-playwright cache dir, else
+  a loud SystemExit naming the env var. No other line of probe logic is touched.
+constraints:
+  - "Additive only: 13 new files under .agents/skills/design/strumenti/. Touches zero existing
+    file, no workflow, no product code, no migration."
+  - "Fresh worktree cut from origin/main after PR #5505 (the unsplit version) was closed."
+  - "The calibration controls are copied VERBATIM. Their whole value is that they are the
+    fixtures the probes were tuned against; editing them would silently decalibrate every
+    future verdict."
+  - "No PII: the calibration fixtures are synthetic HTML written for this purpose. No client
+    data, no staff photograph, no OSINT — this half of the corner contains no image at all."
+acceptance:
+  - "defects.py, run against the calibration directory it ships, prints `innocence: CLEAN` /
+    `guilt: ALL FIRE` / `-> probe trusted for this run` — observed 2026-09-01 on this content."
+  - "measure.py runs to completion on a real page and reports its 6 states with an empty
+    `errors` list — observed 2026-09-01."
+  - "No absolute /Users/... path survives in live code: every remaining occurrence is inside
+    the _find_chrome() docstring that explains the M5-vs-Pro home split. Verified by an
+    independent read, not by the author's grep."
+consumer_map:
+  - "The sibling PR's SKILL.md §4/§5, which names these files and gives the command block that
+    runs them. That PR is serialized AFTER this one for exactly this reason — if it landed
+    first, its file inventory would name a directory that does not yet exist."
+  - "Any future session judging a Bali Zero visual surface. Before this PR the only copy was
+    outside git on a TCC-denied path; after it, `python3 .agents/skills/design/strumenti/
+    defects.py <root>` is reachable from any checkout on any of the three machines."
+risks:
+  - "The probes are Playwright-dependent and are NOT wired into CI by this PR, deliberately:
+    they are an on-demand instrument for a design session, not a required check. Nothing here
+    can turn a PR red, which also means nothing here is exercised automatically — a future
+    session must run them and read their controls, exactly as the tools' own output insists."
+  - "judge.py is a rubric scorer and is the least exercised of the five; it is included for
+    completeness of the set rather than because this session leaned on it."
+grader: |
+  Generator != grader held. This session wrote the corner; an independent subagent on fresh
+  context verified the claims against disk rather than against the description — it confirmed
+  the symlink resolution, the file inventory in both directions, that all 14 remaining
+  /Users/ hits are docstring and not live code, that every script's argv arity matches the
+  documented command block, and that defects.py's main() really does read <root>/*/ui.html and
+  <root>/../calib. It also found and reddened one claim in the sibling PR's SKILL.md that did
+  not reproduce, which was removed rather than adjusted.
+budget: |
+  Gear 2, solo-orchestrator, 1 independent verification dispatch. No council: the divergent-
+  priors test does not fire on a file move plus a path-portability fix.
+pii: none
