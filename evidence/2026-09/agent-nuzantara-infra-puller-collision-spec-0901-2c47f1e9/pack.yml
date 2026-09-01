@@ -59,7 +59,7 @@ seat_diversity_note: >-
 
 diff:
   files: 7
-  net_lines: 1669
+  net_lines: 1670
   measured_at: >-
     counted with `git diff --numstat --cached $(git merge-base origin/main HEAD)` — the CACHED
     form, not the three-dot one, and the difference is the whole point: the three files under
