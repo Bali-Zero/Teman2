@@ -41,8 +41,13 @@ was measured lying, in this repo, on 2026-09-01):
      the actionable fact — it is the difference between "twelve problems"
      and "one problem, twelve times".
 
-Read-only. Runs `gh` and `git`; writes exactly one HTML file. Never mutates
-a PR, never arms, never merges.
+Read-only in the sense that matters, and NOT write-free — worth stating
+precisely rather than claiming more than is true. It never mutates a PR, never
+arms, never merges, and never touches an index or a working tree. It does
+write: the HTML file, the JSON dump when `--json` is passed, and — via
+`git fetch` and `git merge-tree --write-tree` — objects and remote-tracking
+refs in the SHARED `.git` store. Per git-merge-tree(1) that last pair cannot
+disturb a concurrent session's work.
 
 Usage:
     python3 scripts/fleet_dashboard.py --out /tmp/dashboard.html
@@ -64,10 +69,29 @@ from typing import Any
 
 REPO = "Bali-Zero/Teman2"
 
-# git is refused in the main checkout by the worktree-isolation hook, and a
-# worktree shares the object database, so every git probe runs from wherever
-# this script lives — which is always inside a worktree or the checkout root.
+# The fleet is in Bali. Every date boundary on this page is WITA, never UTC —
+# a UTC "today" drops the 00:00-08:00 local window, which is exactly when the
+# overnight autonomous runs land.
+WITA = dt.timedelta(hours=8)
+
+# Every git probe runs from wherever this script lives. That is normally a
+# worktree, which shares the object database and is what the worktree-isolation
+# hook expects. If it ever resolves to the guarded MAIN checkout, the hook
+# refuses each git call and the page renders with every conflict verdict
+# missing and nothing saying why — so that case is named out loud at startup
+# rather than degrading quietly (adversarial review, 2026-09-01).
 GIT_CWD = Path(__file__).resolve().parent.parent
+
+
+def _warn_if_main_checkout() -> None:
+    if GIT_CWD.name == "nuzantara" and not GIT_CWD.parent.name == ".worktrees":
+        if (GIT_CWD / ".git").is_dir():
+            sys.stderr.write(
+                f"fleet_dashboard: running from what looks like the MAIN checkout "
+                f"({GIT_CWD}). If the worktree-isolation hook is armed it will refuse "
+                "every git call and the conflict section will be empty for the wrong "
+                "reason. Run this from a worktree.\n"
+            )
 
 
 def _run(args: list[str], timeout: int = 90) -> tuple[int, str, str]:
@@ -97,17 +121,10 @@ query {
       nodes {
         number title isDraft mergeable mergeStateStatus headRefName headRefOid
         updatedAt
-        author { login }
+        author { __typename login }
         autoMergeRequest { enabledAt }
         mergeQueueEntry { position state }
-        commits(last: 1) { nodes { commit { statusCheckRollup {
-          state
-          contexts(first: 100) { nodes {
-            __typename
-            ... on CheckRun { name conclusion }
-            ... on StatusContext { context state }
-          } }
-        } } } }
+        commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }
       }
     }
   }
@@ -160,10 +177,28 @@ def resolve_mergeable(number: int, attempts: int = 3, delay: float = 2.0) -> tup
 
 
 def fetch_open_prs() -> list[dict[str, Any]]:
-    rc, out, err = _run(["gh", "api", "graphql", "-f", f"query={GRAPHQL}"])
-    if rc != 0 or not out.strip():
-        raise SystemExit(f"gh graphql failed (rc={rc}): {(err or out)[:400]}")
-    prs = json.loads(out)["data"]["repository"]["pullRequests"]["nodes"]
+    # This query is heavy — 100 PRs each with up to 100 check contexts — and
+    # GitHub answers "We couldn't respond to your request in time" often enough
+    # that a single attempt fails roughly half the time. Measured on 2026-09-01:
+    # attempt 1 timed out, attempt 2 succeeded. A one-shot version is unusable
+    # from cron, so the retry is a requirement of the use case, not polish.
+    prs = None
+    for attempt in range(3):
+        rc, out, err = _run(["gh", "api", "graphql", "-f", f"query={GRAPHQL}"], timeout=120)
+        if rc == 0 and out.strip():
+            prs = json.loads(out)["data"]["repository"]["pullRequests"]["nodes"]
+            break
+        sys.stderr.write(
+            f"fleet_dashboard: bulk query attempt {attempt + 1}/3 failed "
+            f"(rc={rc}): {(err or out).strip()[:200]}\n"
+        )
+        if attempt < 2:
+            time.sleep(4.0)
+    if prs is None:
+        raise SystemExit(
+            "fleet_dashboard: gh graphql failed 3 times — refusing to render a "
+            "page from no data."
+        )
     # Re-ask, per PR, for every row the bulk query left uncomputed. This is the
     # only field on the page whose wrongness points a reader AWAY from work that
     # exists, so it is the one worth up to N extra API calls.
@@ -175,20 +210,57 @@ def fetch_open_prs() -> list[dict[str, Any]]:
     return prs
 
 
-def failing_checks(pr: dict[str, Any]) -> list[str]:
-    commits = pr["commits"]["nodes"]
+CONTEXTS_ONE = """
+query($n: Int!) {
+  repository(owner: "%s", name: "%s") {
+    pullRequest(number: $n) {
+      commits(last: 1) { nodes { commit { statusCheckRollup {
+        contexts(first: 100) { nodes {
+          __typename
+          ... on CheckRun { name conclusion }
+          ... on StatusContext { context state }
+        } }
+      } } } }
+    }
+  }
+}
+""" % tuple(REPO.split("/"))
+
+
+def failing_checks(number: int) -> list[str]:
+    """Names of the checks that are FAILURE on this PR's head commit.
+
+    WHY THIS IS A SEPARATE, PER-PR QUERY. The first version asked for
+    `contexts(first:100)` inside the bulk 100-PR query — 100 x 100 nodes in one
+    request. GitHub answered "We couldn't respond to your request in time" on
+    every attempt with a 3x retry, measured 2026-09-01: the retry made a heavy
+    query fail more slowly, it did not make it succeed. The contexts are only
+    needed for PRs whose ROLLUP is already FAILURE — about twenty, not a
+    hundred — so the bulk query now carries the rollup state alone (cheap) and
+    the detail is fetched only where it is actually read.
+    """
+    rc, out, err = _run(
+        ["gh", "api", "graphql", "-f", f"query={CONTEXTS_ONE}", "-F", f"n={number}"]
+    )
+    if rc != 0 or not out.strip():
+        sys.stderr.write(f"fleet_dashboard: checks unreadable for #{number}: {err[:160]}\n")
+        return []
+    try:
+        commits = json.loads(out)["data"]["repository"]["pullRequest"]["commits"]["nodes"]
+    except (KeyError, TypeError, json.JSONDecodeError):
+        return []
     if not commits:
         return []
     rollup = commits[0]["commit"]["statusCheckRollup"]
     if not rollup:
         return []
-    out = []
+    names = []
     for ctx in rollup["contexts"]["nodes"]:
         name = ctx.get("name") or ctx.get("context") or "?"
         verdict = ctx.get("conclusion") or ctx.get("state")
         if verdict == "FAILURE":
-            out.append(name)
-    return out
+            names.append(name)
+    return names
 
 
 def rollup_state(pr: dict[str, Any]) -> str:
@@ -211,7 +283,18 @@ def conflict_kind(pr: dict[str, Any]) -> str:
     if pr["mergeable"] != "CONFLICTING":
         return "none"
     branch = pr["headRefName"]
-    _run(["git", "fetch", "origin", branch, "--quiet"], timeout=120)
+    # The fetch's rc is READ, not discarded (adversarial review, round 2): a
+    # failed fetch leaves the trial merge running against a stale ref, so the
+    # probe answers a question about the past while looking like an answer
+    # about now. Same failure direction as the two defects above — an
+    # unusable probe must not produce a verdict.
+    rc, _, err = _run(["git", "fetch", "origin", branch, "--quiet"], timeout=120)
+    if rc != 0:
+        sys.stderr.write(
+            f"fleet_dashboard: fetch failed for #{pr['number']} ({branch}): "
+            f"rc={rc} {err.strip()[:200]}\n"
+        )
+        return "unknown"
     rc, sha, err = _run(["git", "rev-parse", f"origin/{branch}"])
     if rc != 0:
         return "unknown"
@@ -245,25 +328,47 @@ def merged_today() -> list[dict[str, Any]]:
     )
     if rc != 0 or not out.strip():
         return []
-    today = dt.datetime.now(dt.timezone.utc).date()
+    # "Today" is WITA, not UTC. The page prints a WITA clock for a reader in
+    # Bali, and a UTC cutoff silently drops everything merged between midnight
+    # and 08:00 local — the exact hours an overnight autonomous run lands in.
+    # Reported by adversarial review, 2026-09-01.
+    today = (dt.datetime.now(dt.timezone.utc) + WITA).date()
     rows = []
     for m in json.loads(out):
         when = dt.datetime.fromisoformat(m["mergedAt"].replace("Z", "+00:00"))
-        if when.date() == today:
+        if (when + WITA).date() == today:
             rows.append(m)
     return rows
 
 
 def collect() -> dict[str, Any]:
+    # If THIS fetch fails, every trial merge below compares against a stale
+    # origin/main and the whole conflict section becomes fiction. It is the one
+    # probe whose failure poisons every other, so it aborts rather than
+    # degrades: a page that does not render is recoverable, a page that renders
+    # yesterday's answer as today's is not.
+    rc, _, err = _run(["git", "fetch", "origin", "main", "--quiet"], timeout=120)
+    if rc != 0:
+        raise SystemExit(
+            f"fleet_dashboard: could not fetch origin/main (rc={rc}): {err.strip()[:300]}\n"
+            "Refusing to render — every conflict verdict on the page would be "
+            "computed against a stale base."
+        )
     prs = fetch_open_prs()
-    _run(["git", "fetch", "origin", "main", "--quiet"], timeout=120)
 
     live = [p for p in prs if not p["isDraft"]]
     queued = [p for p in prs if p["mergeQueueEntry"]]
+
+    # One query per RED PR, and only red ones — the rollup state already says
+    # which those are, and a green PR has no failing check to name. Computed
+    # once here and read twice below; the first version called it once per
+    # caller and paid for every PR twice.
+    red = [p for p in live if rollup_state(p) == "FAILURE"]
+    fail_map = {p["number"]: failing_checks(p["number"]) for p in red}
     causes: dict[str, list[int]] = defaultdict(list)
-    for p in live:
-        for name in failing_checks(p):
-            causes[name].append(p["number"])
+    for number, names in fail_map.items():
+        for name in names:
+            causes[name].append(number)
 
     conflicts = {p["number"]: conflict_kind(p) for p in prs if p["mergeable"] == "CONFLICTING"}
     phantom = [n for n, k in conflicts.items() if k == "phantom"]
@@ -273,7 +378,6 @@ def collect() -> dict[str, Any]:
     # Kept as its own bucket and kept OUT of `ready`: "not known" is not "fine".
     unknown_merge = [p["number"] for p in live if p["mergeable"] == "UNKNOWN"]
 
-    red = [p for p in live if rollup_state(p) == "FAILURE"]
     green = [p for p in live if rollup_state(p) == "SUCCESS"]
     # ready = green AND known-mergeable AND not queued: the pile that would move
     # with no work at all. `mergeable == "MERGEABLE"` is asserted positively,
@@ -296,9 +400,18 @@ def collect() -> dict[str, Any]:
             key=lambda d: d["pos"] or 999,
         ),
         "red": [{"n": p["number"], "title": p["title"],
-                 "why": failing_checks(p)} for p in red],
+                 "why": fail_map.get(p["number"], [])} for p in red],
         "green": [p["number"] for p in green],
-        "ready": [{"n": p["number"], "title": p["title"]} for p in ready],
+        "ready": [
+            {"n": p["number"], "title": p["title"],
+             # The ENTITY, not a substring of its name. A first cut tested
+             # `login.endswith("[bot]")` and returned False for every real
+             # Dependabot PR: GraphQL's Bot type has login `dependabot`, and the
+             # `[bot]` suffix only appears in REST/`gh pr view` renderings.
+             # Scar family #3, judged on the type GitHub actually declares.
+             "bot": (p.get("author") or {}).get("__typename") == "Bot"}
+            for p in ready
+        ],
         "phantom_conflicts": sorted(phantom),
         "real_conflicts": sorted(real),
         "unprobeable_conflicts": sorted(unprobeable),
@@ -463,7 +576,8 @@ def render(d: dict[str, Any]) -> str:
     ) or '<tr><td colspan="3">Nessun controllo rosso.</td></tr>'
 
     queue_rows = "\n".join(
-        f'<tr><td class="num">{q["pos"]}</td><td class="num">{prlink(q["n"])}</td>'
+        f'<tr><td class="num">{esc(q["pos"]) if q["pos"] is not None else "—"}</td>'
+        f'<td class="num">{prlink(q["n"])}</td>'
         f'<td>{esc(q["title"])}</td></tr>'
         for q in d["queued"]
     ) or '<tr><td colspan="3">La coda è vuota.</td></tr>'
@@ -479,7 +593,16 @@ def render(d: dict[str, Any]) -> str:
     # share a lockfile invalidate each other the moment the first one lands, so
     # arming them together burns a queue cycle per PR. Saying so here is the
     # difference between a page that informs and a page that misleads.
-    bumps = [r for r in d["ready"] if r["title"].lower().startswith("chore(deps")]
+    # Identify bumps by AUTHOR first and title only as a fallback. Measured on
+    # this repo's history, the title prefix caught 245/245 with no false
+    # positives — but that is this repo's convention, not a property of
+    # Dependabot: GitHub's default title carries no prefix at all, so a config
+    # change would silently switch this note off. The author login is already
+    # paid for by the query; use it.
+    bumps = [
+        r for r in d["ready"]
+        if r.get("bot") or r["title"].lower().startswith("chore(deps")
+    ]
     ready_note = ""
     if len(bumps) >= 2:
         ready_note = (
@@ -623,6 +746,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--json", dest="json_out", help="also dump the raw measurements")
     args = ap.parse_args(argv)
 
+    _warn_if_main_checkout()
     data = collect()
     Path(args.out).write_text(render(data), encoding="utf-8")
     if args.json_out:
