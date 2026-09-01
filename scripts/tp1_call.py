@@ -143,13 +143,29 @@ MEASURED_DEFAULT_EFFORT = {
 }
 
 # How long the seat may stay SILENT before we call it dead, in seconds. This is
-# not the task budget (--timeout is); it is the gap between two bytes. Measured
-# on qwen3.8-max over a 13-minute, 9315-chunk generation: first byte at 1.5s,
-# largest gap between consecutive chunks 1.5s. 90s is 60x the observed worst
-# gap — generous enough that a slow network hiccup is not a verdict, tight
-# enough that a genuinely dead socket is named in under two minutes instead of
-# being indistinguishable from a long think.
-SILENCE_TIMEOUT_SECONDS = 90.0
+# not the task budget (--timeout is); it is the gap between two bytes.
+#
+# In normal operation the gap is tiny: measured on qwen3.8-max over a 13-minute,
+# 9315-chunk generation, first byte at 1.5s and largest gap between consecutive
+# chunks 1.5s. But a threshold sized from the happy path is a threshold that
+# has never met the unhappy one — this started at 90s (60x the observed gap)
+# and killed one real 3-minute call out of five while the generation was still
+# healthy: the stream went quiet ~82s in and did not speak again inside 90s.
+# The stall's true length was never captured, so 300 is NOT a measured value,
+# it is a deliberately loose one, and the honest reasoning is:
+#
+#   - being wrong in the "too tight" direction throws away an entire multi-
+#     minute generation that was going to succeed;
+#   - being wrong in the "too loose" direction only delays naming a dead
+#     socket, and --timeout already bounds the whole call, so a dead seat is
+#     still named — just later;
+#   - so the asymmetry says: err loose, and let the wall-clock budget be the
+#     thing with the tight, measured number.
+#
+# Clamped to the budget so it can never be the binding limit on a short call.
+# Calibrating this properly needs stall-length data this repo does not yet
+# collect — tracked in PENDING-ARMS rather than guessed at a second time.
+SILENCE_TIMEOUT_SECONDS = 300.0
 
 
 class StillGenerating(Exception):
@@ -235,12 +251,28 @@ def stream_chat_completion(
     started = time.monotonic()
 
     try:
-        with urllib.request.urlopen(req, timeout=SILENCE_TIMEOUT_SECONDS) as resp:
+        silence_limit = min(SILENCE_TIMEOUT_SECONDS, budget)
+        with urllib.request.urlopen(req, timeout=silence_limit) as resp:
             if resp.status != 200:  # pragma: no cover — urllib raises HTTPError first
                 raw = resp.read().decode("utf-8", errors="replace")
                 full, tail = _scrub(raw)
                 return resp.status, full, tail
-            for raw_line in resp:
+            # Read in blocks and split frames here rather than iterating
+            # `for line in resp`. Iteration calls readline(), which blocks until
+            # it finds a newline: a server trickling bytes without one keeps
+            # every individual recv() inside SILENCE_TIMEOUT_SECONDS while
+            # readline never returns, so the budget check below — which can only
+            # run between lines — would never execute. --timeout is documented
+            # as a wall-clock budget, so it has to be one. read1() returns as
+            # soon as ANY bytes are available, which bounds the gap between two
+            # deadline checks by a single recv instead of by a whole frame.
+            # Buffering also makes frame reassembly explicit: a `data:` line
+            # split across two blocks is rejoined here rather than relying on
+            # readline's guarantee.
+            buffer = b""
+            saw_done = False
+            eof = False
+            while not (saw_done or eof):
                 elapsed = time.monotonic() - started
                 if elapsed > budget:
                     if chunks == 0:
@@ -259,37 +291,56 @@ def stream_chat_completion(
                     raise StillGenerating(
                         elapsed, chunks, len("".join(content)), len("".join(reasoning))
                     )
-                line = raw_line.decode("utf-8", errors="replace").strip()
-                # Skip blank separators, SSE comments (":..."), and non-data
-                # fields ("event:", "id:", "retry:") — only `data:` carries payload.
-                if not line.startswith("data:"):
-                    continue
-                payload = line[len("data:") :].strip()
-                if payload == "[DONE]":
-                    break
-                try:
-                    chunk = json.loads(payload)
-                except ValueError:
-                    # One malformed frame must not discard a generation that is
-                    # otherwise arriving fine; a truly broken stream ends with
-                    # no content and is reported by the caller as exit 3.
-                    continue
-                chunks += 1
-                # `choices` is [] on the terminal usage-only frame that some
-                # OpenAI-compatible gateways emit. Indexing it blindly raises
-                # IndexError at the very last chunk, discarding a COMPLETE
-                # answer — measured live while building this, and the reason
-                # this expression is written the long way.
-                choice = (chunk.get("choices") or [{}])[0]
-                delta = choice.get("delta") or {}
-                piece = delta.get("content")
-                if isinstance(piece, str):
-                    content.append(piece)
-                think = delta.get("reasoning_content")
-                if isinstance(think, str):
-                    reasoning.append(think)
-                if choice.get("finish_reason"):
-                    finish_reason = choice["finish_reason"]
+                block = resp.read1(65536)
+                if not block:
+                    # EOF. Anything left in the buffer is a final frame the
+                    # server sent without a trailing newline.
+                    eof = True
+                    if buffer:
+                        buffer += b"\n"
+                buffer += block
+
+                while b"\n" in buffer:
+                    raw_line, buffer = buffer.split(b"\n", 1)
+                    line = raw_line.decode("utf-8", errors="replace").strip()
+                    # Skip blank separators, SSE comments (":..."), and non-data
+                    # fields ("event:", "id:", "retry:") — only `data:` carries payload.
+                    if not line.startswith("data:"):
+                        continue
+                    payload = line[len("data:") :].strip()
+                    if payload == "[DONE]":
+                        saw_done = True
+                        break
+                    try:
+                        chunk = json.loads(payload)
+                    except ValueError:
+                        # One malformed frame must not discard a generation that
+                        # is otherwise arriving fine; a truly broken stream ends
+                        # with no content and is reported by the caller as exit 3.
+                        continue
+                    chunks += 1
+                    # `choices` is [] on the terminal usage-only frame that
+                    # some OpenAI-compatible gateways emit. Indexing it blindly
+                    # raises IndexError at the very last chunk, discarding a
+                    # COMPLETE answer — measured live while building this, and
+                    # the reason this expression is written the long way.
+                    #
+                    # Only choices[0] is read, exactly as the non-streaming
+                    # extract_answer() has always done (`parsed["choices"][0]`).
+                    # build_body never sets `n`, so a second candidate can only
+                    # come from a server-side setting; matching the existing
+                    # path is better than having the two transports disagree
+                    # about what a response means.
+                    choice = (chunk.get("choices") or [{}])[0]
+                    delta = choice.get("delta") or {}
+                    piece = delta.get("content")
+                    if isinstance(piece, str):
+                        content.append(piece)
+                    think = delta.get("reasoning_content")
+                    if isinstance(think, str):
+                        reasoning.append(think)
+                    if choice.get("finish_reason"):
+                        finish_reason = choice["finish_reason"]
     except StillGenerating:
         raise
     except urllib.error.HTTPError as e:
@@ -303,17 +354,37 @@ def stream_chat_completion(
         # Distinguishable by construction: with a streamed response this can
         # only mean SILENCE_TIMEOUT_SECONDS elapsed between two bytes, which
         # is a statement about the seat, not about the task's length.
-        return (
-            None,
-            (
-                f"no data for {SILENCE_TIMEOUT_SECONDS:.0f}s after {chunks} chunks "
-                f"— the seat stopped responding mid-stream"
-            ),
-            "silent mid-stream",
+        msg = (
+            f"no data for {silence_limit:.0f}s after {chunks} chunks "
+            f"and {len(''.join(content))} chars of answer, "
+            f"{time.monotonic() - started:.0f}s into the call "
+            f"— the seat stopped responding mid-stream"
         )
+        # Both slots carry the full text: main() prints the TAIL, so putting the
+        # diagnosis only in `full` would throw away the chunk count that says
+        # whether this was a dead socket or a seat that went quiet mid-answer.
+        return None, msg, msg
     except Exception as e:  # never crash a caller that only wanted an answer
         full, tail = _scrub(f"{type(e).__name__}: {e}")
         return None, full, tail
+
+    if not saw_done and finish_reason is None:
+        # The stream stopped without the server ever declaring it finished:
+        # no `[DONE]` sentinel and no finish_reason on any frame. That is a
+        # dropped connection (pod killed, LB reset), and whatever content
+        # arrived is a partial answer. Returning it as HTTP 200 would hand the
+        # caller a truncated review that looks complete — precisely what this
+        # script's exit-3 contract says must never happen silently, and a
+        # failure mode the non-streaming path cannot have (a cut body fails
+        # json.loads). Found by the qwen3.8-max seat reviewing this very diff.
+        partial = len("".join(content))
+        return (
+            None,
+            f"stream ended without [DONE] or a finish_reason after {chunks} chunks "
+            f"({partial} chars of answer received) — the connection dropped "
+            f"mid-generation and the answer is truncated",
+            "truncated stream",
+        )
 
     reassembled = {
         "choices": [
