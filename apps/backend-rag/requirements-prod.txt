@@ -18,7 +18,7 @@ anyio>=4.14.2
 qdrant-client>=1.19.0,<1.20.0  # Match Qdrant server 1.12.x; avoid client/server minor-drift warnings.
 
 # AI API Clients (optimized for resolution speed)
-openai>=2.53.0  # Upgraded for httpx 0.28+ (proxies parameter removed)
+openai>=3.6.0  # Upgraded for httpx 0.28+ (proxies parameter removed)
 anthropic>=0.122.0  # Updated for httpx 0.28+ compatibility
 google-genai>=2.18.1  # Unified SDK (replaces google-generativeai)
 google-api-python-client>=2.198.0
