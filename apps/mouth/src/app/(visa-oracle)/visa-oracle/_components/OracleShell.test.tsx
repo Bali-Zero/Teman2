@@ -209,16 +209,37 @@ describe("OracleShell authoritative evaluate integration", () => {
     expect(global.fetch).toHaveBeenCalledOnce();
   });
 
-  it("fails closed for a CURATED response in ENGINE mode", async () => {
+  it("fails closed for a CURATED response in ENGINE mode, and says so honestly", async () => {
     global.fetch = engineFetch("SUPPORTED_CANDIDATES", "CURATED");
     render(<OracleShell />);
 
+    // The load-bearing assertion, unchanged: a CURATED decision never
+    // becomes visible authority. This is what "fails closed" means and it
+    // is what the internal-preview test below cites as its innocence case.
+    expect(screen.queryByText("Visit Visa C1")).toBeNull();
+
+    // What DID change: this visitor used to be told "No evaluation was
+    // submitted", which is false -- the server evaluated, sealed and
+    // persisted a real decision, and only declined to render it as
+    // authority because public enforcement is off. That is the identical
+    // situation the SHADOW-mode test directly above covers, so it now
+    // shows the identical, true headline.
     expect(
       await screen.findByRole("heading", {
-        name: translate("en", "verdict.provenance_headline.CLIENT_GUARD"),
+        name: translate("en", "verdict.provenance_headline.SHADOW"),
       }),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Visit Visa C1")).toBeNull();
+
+    // Guard against regressing to the accusatory copy. Asserted on the
+    // literal sentence rather than on the provenance label, so a future
+    // refactor that reroutes this back into the client-guard bucket fails
+    // here even if it renames the label.
+    expect(screen.queryByText(/No evaluation was submitted/i)).toBeNull();
+    expect(
+      screen.queryByRole("heading", {
+        name: translate("en", "verdict.provenance_headline.CLIENT_GUARD"),
+      }),
+    ).toBeNull();
   });
 
   // The PIN-gated internal preview. Its innocence case is the test directly
