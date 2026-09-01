@@ -46,8 +46,13 @@ done
 [ -f "$PULLER" ] || { echo "FATAL: puller not found: $PULLER" >&2; exit 3; }
 
 # The path every cell is built around, and a second path that keeps the parent dir alive.
-P="area/subject.md"
+# Root-level and capitalised: the case-only axis renames Subject.md -> subject.md, and on a
+# case-insensitive filesystem the DIRECTION decides which spelling the resolver meets first.
+# The body is deliberately long: git only PAIRS a rename above a similarity threshold, and a
+# five-byte file is reported as delete+add, which is a different cell entirely.
+P="Subject.md"
 SIBLING="area/bystander.md"
+BODY="body long enough for git to pair this as a rename rather than a delete plus an add"
 
 fatal() { echo "FATAL fixture ($CELL): $1" >&2; exit 3; }
 
@@ -61,7 +66,7 @@ build_origin_action() {
   case "$action" in
     modify)       # doubles as ADD when the base never tracked P (the untracked row)
                   mkdir -p "$tmp/w/$(dirname "$P")"
-                  printf 'ORIGIN-V2\n' > "$tmp/w/$P"; git -C "$tmp/w" add "$P" ;;
+                  printf 'ORIGIN-V2 %s\n' "$BODY" > "$tmp/w/$P"; git -C "$tmp/w" add "$P" ;;
     delete)       git -C "$tmp/w" rm -q "$P" ;;
     rename_away)  mkdir -p "$tmp/w/moved"; git -C "$tmp/w" mv "$P" "moved/subject.md" ;;
     tree_at_path) # the shape the existence-based guard cannot see: a DIRECTORY takes the name.
@@ -80,6 +85,16 @@ build_origin_action() {
                   mkdir -p "$tmp/w/moved"; git -C "$tmp/w" mv "$P" "moved/subject.md"
                   mkdir -p "$tmp/w/$P"; printf 'panel\n' > "$tmp/w/$P/panel.json"
                   git -C "$tmp/w" add "$P/panel.json" ;;
+    rename_case_only)
+                  # THE SECOND REGRESSION, found 2026-09-01 while chasing the gap list. On a
+                  # case-INSENSITIVE filesystem (APFS, and this repo lives on one) --no-renames
+                  # puts BOTH spellings of a case-only rename into the same tick. The old
+                  # spelling is not in the index, so it takes the untracked arm, where
+                  # `[ -e "$REPO/$f" ]` is TRUE because it matches the file just restored under
+                  # the NEW spelling -- and `mv -n` into $BACKUP_ROOT then declines, because the
+                  # backup directory inherits the same case-insensitivity and the destination
+                  # already exists. Not hypothetical: qwen.md -> QWEN.md landed on main in #5371.
+                  git -C "$tmp/w" mv -f "$P" "subject.md" ;;
     typechange)   git -C "$tmp/w" rm -q "$P"
                   ln -s "bystander.md" "$tmp/w/$P"; git -C "$tmp/w" add "$P" ;;
     *) rm -rf "$tmp"; echo "UNCONSTRUCTIBLE"; return 1 ;;
@@ -93,7 +108,7 @@ build_origin_action() {
 apply_local_state() {
   case "$1" in
     clean)            : ;;                                   # tracked, untouched
-    modified)         printf 'PRO-LOCAL-EDIT\n' > "$LOCAL/$P" ;;
+    modified)         printf 'PRO-LOCAL-EDIT %s\n' "$BODY" > "$LOCAL/$P" ;;
     del_unstaged)     rm "$LOCAL/$P" ;;                       # index still holds it
     del_staged)       git -C "$LOCAL" rm -q --cached "$P" >/dev/null 2>&1; rm -f "$LOCAL/$P" ;;
     dir_at_path)      rm "$LOCAL/$P"; mkdir -p "$LOCAL/$P"; printf 'x\n' > "$LOCAL/$P/inner" ;;
@@ -122,7 +137,7 @@ run_cell() {
   # reported rc=1 for all ten of them, which was the fixture committing a local removal and
   # diverging HEAD, not the puller refusing anything. A row that is uniformly red is a claim
   # about the fixture until proven otherwise.
-  if [ "$1" != untracked ]; then printf 'BASE\n' > "$LOCAL/$P"; fi
+  if [ "$1" != untracked ]; then printf '%s\n' "$BODY" > "$LOCAL/$P"; fi
   printf 'bystander\n' > "$LOCAL/$SIBLING"
   echo base > "$LOCAL/README.md"
   git -C "$LOCAL" add -A && git -C "$LOCAL" commit -qm base >/dev/null || fatal "base commit"
@@ -149,10 +164,12 @@ run_cell() {
   after="$(git -C "$LOCAL" rev-parse HEAD)"
   [ "$before" != "$after" ] && moved=ff || moved=stuck
   # what survived where the local machine's content was
-  if   [ -d "$LOCAL/$P" ];                 then outcome=dir
+  local present
+  present="$(ls -1 "$LOCAL/$(dirname "$P")" 2>/dev/null | grep -Fx "$(basename "$P")" || true)"
+  if   [ -z "$present" ];                  then outcome=absent
+  elif [ -d "$LOCAL/$P" ];                 then outcome=dir
   elif [ -L "$LOCAL/$P" ];                 then outcome=symlink
-  elif [ -f "$LOCAL/$P" ];                 then outcome="file:$(head -c 20 "$LOCAL/$P" | tr -d '\n' | tr ' ' '_')"
-  else                                          outcome=absent
+  else                                          outcome="file:$(head -c 14 "$LOCAL/$P" | tr -d '\n' | tr ' ' '_')"
   fi
   local backed=no; [ -d "$SANDBOX/backup" ] && backed=yes
   printf '%s\t%s\t%s\trc=%s\t%s\t%s\tbackup=%s\n' "$A" "$B" "$C" "$rc" "$moved" "$outcome" "$backed" >> "$MEASURED"
@@ -160,7 +177,7 @@ run_cell() {
 }
 
 LOCAL_STATES="clean modified del_unstaged del_staged dir_at_path dangling_symlink untracked"
-ORIGIN_ACTIONS="modify delete rename_away rename_away_and_tree tree_at_path typechange"
+ORIGIN_ACTIONS="modify delete rename_away rename_away_and_tree rename_case_only tree_at_path typechange"
 ALLOWLIST="ordinary keeplocal"
 
 MEASURED="$(mktemp)"

@@ -29,13 +29,19 @@ defects has been one mistake repeated: reading **one** coordinate and inferring 
   `dir_at_path`, `dangling_symlink`, `untracked`.
 - **B — what the incoming change does to it.** `modify`, `delete`, `rename_away`,
   `rename_away_and_tree` (paired R100 rename whose old name a directory then takes),
-  `tree_at_path`, `typechange`.
+  `rename_case_only` (`Subject.md` → `subject.md`), `tree_at_path`, `typechange`.
 - **C — whether the path is allowlisted** Pro-authoritative runtime state. `ordinary`,
   `keeplocal`.
 
-76 of the 84 combinations are constructible; the 8 that are not are an untracked local file
+88 of the 98 combinations are constructible; the 10 that are not are an untracked local file
 meeting an incoming action on a path the base never tracked, and the runner skips them by
 construction rather than recording a cell that did not run.
+
+Two properties of the fixtures are load-bearing and easy to get wrong. The body of the file is
+long, because git only PAIRS a rename above a similarity threshold and a five-byte file is
+reported as delete+add — a different cell. And the path is at the repo ROOT with a capitalised
+basename, because on the case-only axis the DIRECTION of the rename decides which spelling the
+resolver meets first in a sorted change set.
 
 ## The design rule
 
@@ -46,7 +52,7 @@ future guard on this surface that asks an existence question is the same defect 
 
 ## The register, as measured on `origin/main` at `5f174b4126`
 
-42 cells behave correctly. 34 do not, in five named classes — only the first of which is the
+54 cells behave correctly. 34 do not, in five named classes — only the first of which is the
 defect the `--no-renames` work set out to fix:
 
 | cells | class                                                                                                                                                                                            |
@@ -76,15 +82,26 @@ in the same diff, which is what makes the cure reviewable.
 
 ## What this instrument does NOT cover
 
-Stated so the fourth "shape nobody asked about" has somewhere to be found:
+Stated so the fifth "shape nobody asked about" has somewhere to be found. This list is not
+decoration: the `rename_case_only` axis was ON it as prose until someone measured it, and the
+measurement produced a live regression the previous pass's cure did not reach.
 
-- **Concurrency.** Every cell is a single tick against a quiet origin. Nothing here exercises
-  two pullers, a lock contention, or origin advancing mid-tick.
+- **The case-only axis is only PARTLY closed.** Measured: `Subject.md → subject.md` at the
+  repo root, against all seven local states. Not measured: a case-only rename whose source is
+  **allowlisted keep-local**, and a case-only rename of a **directory**.
+- **Object types at a removed path other than blob/tree.** A **submodule / gitlink** (`commit`
+  object) standing at a renamed-away name is unmeasured, and it is the same clause that
+  produced two of the three regressions on record.
+- **Local-state values at a rename source that the `A` axis does not name**: a mode-only change
+  (exec bit), an unreadable file, and staged content differing from BOTH `HEAD` and the
+  worktree — the `.staged` backup branch of the tracked arm has no cell at all.
+- **`restore_kept_local()` beyond what a cell's final on-disk state reveals.** Its
+  announcement branch also asks an existence question; no cell here discriminates a fix
+  there, which is a gap, not a clean bill.
+- **Concurrency.** Every cell is a single tick against a quiet origin — no second puller, no
+  lock contention, no origin advancing mid-tick.
 - **The allowlist's own failure modes** — unparseable file, a path listed for another machine,
   a glob. `C` only distinguishes listed from not-listed for this machine.
-- **`restore_kept_local()` beyond what a cell's final on-disk state reveals.** Its
-  announcement branch also asked an existence question; no cell in this matrix discriminates
-  a fix there, which is a gap, not a clean bill.
-- **Path shapes**: spaces, newlines, non-UTF-8, `.gitignore` interaction, nested submodules.
-- **Multi-path ticks.** Every cell moves exactly one path; real pulls move many, and an
-  early abort hides the behaviour of every later path in the same set.
+- **Multi-path ticks.** Every cell moves exactly one path; real pulls move many, and an early
+  abort hides the behaviour of every later path in the same set.
+- **Path shapes**: spaces, newlines, non-UTF-8, `.gitignore` interaction.
