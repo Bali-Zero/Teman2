@@ -115,6 +115,82 @@ async def _post_document(
     )
 
 
+#: Boundary for the hand-built multipart bodies below. Distinct from anything
+#: httpx's own `files=` helper would pick, purely so a diff is unambiguous
+#: about which code path built a given body.
+_RAW_BOUNDARY = "garudarawtestboundary00000000000000"
+
+
+def _build_raw_multipart_body(
+    *,
+    document_kind: str,
+    file_bytes: bytes,
+    filename: str = "passport.png",
+    content_type: str = "image/png",
+) -> bytes:
+    """Hand-builds the multipart/form-data wire format directly. httpx's
+    `files=`/`data=` helper (used by `_post_document` above) always computes
+    an accurate `Content-Length` from the fully-buffered body — exactly the
+    shape that lets `_parse_upload_request`'s cheap header pre-check answer
+    first and never reach the streaming path. The two tests below need a
+    body they can send with NO `Content-Length` (streamed) or with a LYING
+    one, which requires building the wire bytes by hand instead."""
+    parts = [
+        f"--{_RAW_BOUNDARY}\r\n".encode(),
+        b'Content-Disposition: form-data; name="document_kind"\r\n\r\n',
+        document_kind.encode() + b"\r\n",
+        f"--{_RAW_BOUNDARY}\r\n".encode(),
+        (
+            f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'
+            f"Content-Type: {content_type}\r\n\r\n"
+        ).encode(),
+        file_bytes,
+        b"\r\n",
+        f"--{_RAW_BOUNDARY}--\r\n".encode(),
+    ]
+    return b"".join(parts)
+
+
+async def _chunked_body(body: bytes, chunk_size: int = 4096):
+    """An async generator, never a `bytes` object — this is what makes httpx
+    emit `Transfer-Encoding: chunked` instead of computing `Content-Length`
+    (`httpx._content.encode_content`: `AsyncIterable` -> chunked, always)."""
+    for i in range(0, len(body), chunk_size):
+        yield body[i : i + chunk_size]
+
+
+async def _post_raw_multipart(
+    client: AsyncClient,
+    *,
+    result_id: str = _ACTOR,
+    idempotency_key: str = "idem-key-0000000000001",
+    cookie: str | None = "cookie",
+    body: bytes,
+    content_length_header: str | None = None,
+    streamed: bool = True,
+):
+    """Posts a hand-built multipart body. `streamed=True` (default) sends it
+    as an async generator so no `Content-Length` is ever computed — the
+    no-Content-Length ("chunked") case. `streamed=False` sends the body as
+    plain `bytes` (httpx would normally compute an accurate `Content-Length`
+    for that), letting the caller override it via `content_length_header` to
+    build the understated-`Content-Length` case.
+    """
+    headers = {"Content-Type": f"multipart/form-data; boundary={_RAW_BOUNDARY}"}
+    if idempotency_key is not None:
+        headers["Idempotency-Key"] = idempotency_key
+    if content_length_header is not None:
+        headers["Content-Length"] = content_length_header
+    cookies = {_SESSION_COOKIE: cookie} if cookie is not None else None
+    content = _chunked_body(body) if streamed else body
+    return await client.post(
+        f"/api/visa/voa/eligibility-checks/{result_id}/documents",
+        headers=headers,
+        cookies=cookies,
+        content=content,
+    )
+
+
 def _assert_privacy_headers(headers) -> None:
     assert headers.get("cache-control") == "no-store, private"
     assert headers.get("referrer-policy") == "no-referrer"
@@ -364,6 +440,91 @@ class TestUpload413DocumentTooLarge:
 
         assert resp.status_code == 413, resp.text
         assert resp.json()["code"] == "DOCUMENT_TOO_LARGE"
+
+    async def test_oversized_upload_with_no_content_length_is_still_413(
+        self, monkeypatch
+    ):
+        """The sibling test above never reaches the streaming path: httpx's
+        `files=` helper always computes an accurate `Content-Length`, so the
+        cheap header pre-check answers first every time. This sends the exact
+        same oversized body with NO `Content-Length` at all (a genuinely
+        streamed/chunked request) — the shape the pre-check cannot see coming.
+        """
+        monkeypatch.setattr(
+            garuda_documents_router.byte_validation, "MAX_UPLOAD_BYTES", 10
+        )
+        app = _app(
+            garuda_magic_session_verifier=_verifier_returns_fixed_actor,
+            garuda_document_store=_NeverCalledStore(),
+        )
+        body = _build_raw_multipart_body(
+            document_kind="PASSPORT_BIODATA", file_bytes=b"x" * 200
+        )
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://t") as client:
+            resp = await _post_raw_multipart(client, body=body, streamed=True)
+
+        # Degenerate-test guard: if this ever carries a Content-Length again
+        # (e.g. someone "fixes" `_post_raw_multipart` to stop streaming), this
+        # test silently stops proving anything beyond the sibling above.
+        assert "content-length" not in resp.request.headers
+        assert resp.status_code == 413, resp.text
+        assert resp.json()["code"] == "DOCUMENT_TOO_LARGE"
+
+    async def test_understated_content_length_is_still_413(self, monkeypatch):
+        """Same shape as the no-Content-Length test above, but this time the
+        header IS present and LIES — declares a body far smaller than what
+        actually follows. A pre-check that trusts the declared value alone
+        would wave this through; the streaming/post-parse enforcement must
+        not."""
+        monkeypatch.setattr(
+            garuda_documents_router.byte_validation, "MAX_UPLOAD_BYTES", 10
+        )
+        app = _app(
+            garuda_magic_session_verifier=_verifier_returns_fixed_actor,
+            garuda_document_store=_NeverCalledStore(),
+        )
+        body = _build_raw_multipart_body(
+            document_kind="PASSPORT_BIODATA", file_bytes=b"x" * 200
+        )
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://t") as client:
+            resp = await _post_raw_multipart(
+                client, body=body, streamed=False, content_length_header="5"
+            )
+
+        assert resp.request.headers.get("content-length") == "5"
+        assert resp.status_code == 413, resp.text
+        assert resp.json()["code"] == "DOCUMENT_TOO_LARGE"
+
+    async def test_upload_at_the_bound_with_no_content_length_still_succeeds(
+        self, monkeypatch
+    ):
+        """Innocence control: a legitimately max-sized upload, streamed with
+        no `Content-Length`, must NOT be rejected. This is what catches a
+        framing allowance (`_MULTIPART_FRAMING_ALLOWANCE_BYTES`) sized too
+        small — the failure mode a naive fix for the two tests above could
+        introduce by shrinking the body bound to exactly `MAX_UPLOAD_BYTES`
+        with no slack for multipart's own boundary/header overhead."""
+        png = _valid_png_bytes()
+        monkeypatch.setattr(
+            garuda_documents_router.byte_validation, "MAX_UPLOAD_BYTES", len(png)
+        )
+        _patch_ocr(monkeypatch, (_pass(_CONFIDENT_FIELDS), _pass(_CONFIDENT_FIELDS)))
+        app = _app(
+            garuda_magic_session_verifier=_verifier_returns_fixed_actor,
+            garuda_document_store=InMemoryDocumentStore(),
+        )
+        body = _build_raw_multipart_body(
+            document_kind="PASSPORT_BIODATA", file_bytes=png
+        )
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://t") as client:
+            resp = await _post_raw_multipart(client, body=body, streamed=True)
+
+        assert "content-length" not in resp.request.headers
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["processing_state"] == "READY_FOR_REVIEW"
 
 
 class TestUpload415UnsupportedMediaType:

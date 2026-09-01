@@ -40,12 +40,12 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncGenerator, Awaitable, Callable
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
-from starlette.formparsers import MultiPartException
+from starlette.formparsers import MultiPartException, MultiPartParser
 
 from backend.services.garuda_documents import byte_validation
 from backend.services.garuda_documents.errors import (
@@ -290,16 +290,68 @@ def _scoped_key(*, actor: str, result_id: str, raw_key: str) -> str:
     return digest.hexdigest()
 
 
+class _RequestBodyTooLarge(Exception):
+    """Raised by `_bounded_body_stream` the instant the running total of bytes
+    read from the raw ASGI request stream would exceed the configured limit —
+    BEFORE the chunk that would push it over is ever yielded downstream. This
+    is what actually bounds memory here: measured empirically against the
+    installed Starlette (1.3.1), `MultiPartParser`'s own `max_part_size` only
+    bounds a non-file form FIELD (`formparsers.py::on_part_data`, the
+    `self._current_part.file is None` branch) — for a FILE part it writes
+    every chunk straight to a `SpooledTemporaryFile` with no size check
+    whatsoever. So `max_part_size` alone would never reject an oversized
+    upload; this exception is the real backstop.
+    """
+
+
+# Multipart framing (boundary lines, per-part `Content-Disposition`/`Content-Type`
+# headers, trailing CRLFs) makes the RAW BODY of a legitimately
+# MAX_UPLOAD_BYTES-sized upload a little larger than the file it carries. This
+# allowance is sized generously above that framing overhead for a single-file
+# upload specifically so a legal max-size upload is never rejected by the body
+# bound below — it is not itself a size limit on anything.
+_MULTIPART_FRAMING_ALLOWANCE_BYTES = 64 * 1024  # 64 KiB
+
+
+async def _bounded_body_stream(request: Request, limit: int) -> AsyncGenerator[bytes, None]:
+    """Wraps `request.stream()`, counting bytes as they arrive from the ASGI
+    receive channel and raising `_RequestBodyTooLarge` the moment the running
+    total would exceed `limit` — without yielding the chunk that pushes it
+    over. Memory stays bounded by construction: this never lets more than
+    `limit` bytes of the body reach the multipart parser (and, transitively,
+    its `SpooledTemporaryFile`), regardless of `Content-Length`.
+    """
+    total = 0
+    async for chunk in request.stream():
+        total += len(chunk)
+        if total > limit:
+            raise _RequestBodyTooLarge()
+        yield chunk
+
+
 async def _parse_upload_request(request: Request) -> tuple[DocumentKind, bytes, str]:
     """Parses the multipart body with the size bound enforced DURING streaming.
 
-    Starlette's `MultiPartParser` checks each part's cumulative byte count as
-    chunks arrive from the ASGI receive channel and raises `MultiPartException`
-    the moment one part exceeds `max_part_size` (`formparsers.py::on_part_data`)
-    — it does not finish reading an oversized part first. Passing
-    `max_part_size=byte_validation.MAX_UPLOAD_BYTES` (the parser's own default is
-    1 MiB, well under our 15 MiB bound) means a 413 never requires buffering an
-    over-limit upload into memory, per this lane's hard rule.
+    Deliberately does NOT call `request.form()`. Starlette 1.3.1's
+    `Request._get_form` wraps its own parser call in
+    `except MultiPartException as exc: if "app" in self.scope: raise
+    HTTPException(status_code=400, detail=exc.message)` — every real request
+    through this (or any) ASGI app has `"app"` in scope, so a
+    `MultiPartException` raised inside `request.form()` NEVER reaches this
+    function as itself; it always surfaces as a plain Starlette
+    `HTTPException(400, detail=<human-facing string>)` instead. Classifying
+    that would mean pattern-matching a message string — guard-over/under-match
+    (repo scar family #3) — instead of an exception TYPE. Driving
+    `MultiPartParser` directly (bypassing `request.form()`/`_get_form`
+    entirely) keeps `MultiPartException` a real, catchable type here.
+
+    The actual size bound is `_bounded_body_stream` above, not
+    `MultiPartParser`'s own `max_part_size` — see `_RequestBodyTooLarge`'s
+    docstring: `max_part_size` never bounds the FILE part on this Starlette
+    version. `max_part_size` is still passed, set to the same body limit, so
+    it cannot reject anything `_bounded_body_stream` wouldn't already have
+    rejected first, and it still catches a pathologically oversized non-file
+    field (e.g. `document_kind`).
     """
     content_length = request.headers.get("content-length")
     if content_length is not None:
@@ -310,13 +362,24 @@ async def _parse_upload_request(request: Request) -> tuple[DocumentKind, bytes, 
         if declared_length is not None and declared_length > byte_validation.MAX_UPLOAD_BYTES:
             raise HTTPException(status_code=413, detail={"code": "DOCUMENT_TOO_LARGE", "retryable": False})
 
+    # Read the file bound fresh on every call (never cache/close over it as a
+    # module-level constant) — tests monkeypatch `byte_validation.MAX_UPLOAD_BYTES`
+    # per-case, and a frozen constant would go stale the moment it did.
+    body_limit = byte_validation.MAX_UPLOAD_BYTES + _MULTIPART_FRAMING_ALLOWANCE_BYTES
+
     try:
-        form = await request.form(max_part_size=byte_validation.MAX_UPLOAD_BYTES)
+        parser = MultiPartParser(
+            request.headers,
+            _bounded_body_stream(request, body_limit),
+            max_part_size=body_limit,
+        )
+        form = await parser.parse()
+    except _RequestBodyTooLarge:
+        raise HTTPException(status_code=413, detail={"code": "DOCUMENT_TOO_LARGE", "retryable": False})
     except MultiPartException as exc:
-        if "exceeded maximum size" in str(exc):
-            raise HTTPException(
-                status_code=413, detail={"code": "DOCUMENT_TOO_LARGE", "retryable": False}
-            ) from exc
+        # Malformed body (missing boundary, no Content-Disposition `name`, an
+        # oversized non-file field, ...) — genuinely un-wrapped here, unlike
+        # `request.form()` (see this function's docstring).
         raise HTTPException(status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False}) from exc
 
     raw_kind = form.get("document_kind")
@@ -329,6 +392,14 @@ async def _parse_upload_request(request: Request) -> tuple[DocumentKind, bytes, 
         raise HTTPException(status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False}) from exc
 
     raw_bytes = await upload.read()
+    # Safe to buffer the whole file here without a fresh unbounded-memory risk:
+    # `_bounded_body_stream` already capped the ENTIRE raw body (this file's
+    # bytes included) at `body_limit`, so `raw_bytes` can never be larger than
+    # that regardless of what happens below. This check enforces the tighter,
+    # precise per-FILE rule (`MAX_UPLOAD_BYTES`) that `body_limit` deliberately
+    # leaves slack for — see `_MULTIPART_FRAMING_ALLOWANCE_BYTES`.
+    if len(raw_bytes) > byte_validation.MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail={"code": "DOCUMENT_TOO_LARGE", "retryable": False})
     declared_media_type = upload.content_type or ""
     return document_kind, raw_bytes, declared_media_type
 
