@@ -218,6 +218,17 @@ resolve_collisions() {
 "
           n=$((n + 1)); [ -z "$first" ] && first="$f (runtime-state, kept local)"
           log "  colliding Pro-authoritative runtime-state — will KEEP LOCAL (deferred clear): $f"
+          # ...unless the incoming change REMOVES this path (origin deleted it, or renamed it
+          # away and --no-renames is now showing us the source). Keeping it local is still the
+          # right call — Pro-authoritative content is never traded for tidiness — but after the
+          # ff the restored file is an UNTRACKED orphan at a path git no longer knows, while
+          # the pipeline keeps writing it and origin's copy lives elsewhere. That divergence is
+          # silent by construction, so it is announced here rather than discovered later.
+          if ! git cat-file -e "$REMOTE:$f" 2>/dev/null; then
+            log "  WARNING: kept-local $f is REMOVED by the incoming change — it will survive as an UNTRACKED orphan"
+            telegram_alert "keep-local-path-removed" \
+              "Pro pull: kept-local runtime-state '$f' is deleted/renamed away by origin. Local content is preserved but becomes an UNTRACKED orphan; git and the pipeline now disagree about where this file lives. Repoint the writer, then remove the orphan."
+          fi
         else
           log "  ERROR: keep-local stage failed for $f — aborting tick (fail-safe)"; return 1
         fi

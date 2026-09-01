@@ -193,6 +193,43 @@ BK=$(find "$SANDBOX/backup" -path '*old/corpus.md' 2>/dev/null | head -1)
 [ "$(cat "$LOCAL/sibling.md")" = "sibling LOCAL EDIT" ] && ok "J innocence: non-colliding tracked mod NOT reset" || bad "J innocence broken: --no-renames widened the reset blast radius"
 rm -rf "$SANDBOX"
 
+# ── K: origin REMOVES a keep-local allowlisted path → kept local, but LOUD ──
+# The edge --no-renames introduces: a Pro-authoritative runtime-state file that origin
+# renames away is now VISIBLE, takes the keep-local branch, and survives the ff as an
+# UNTRACKED orphan while origin's copy lives at the new path. Keeping it is correct —
+# Pro-authoritative content is never traded for tidiness — but the divergence is silent
+# by construction, so the script must announce it. Innocence in the same case: an
+# allowlisted file origin merely MODIFIES must NOT be announced.
+echo "[K] keep-local path removed by incoming → kept local + announced (renamed only)"
+setup_case K
+mkdir -p "$LOCAL/data" "$LOCAL/state"
+printf '%s' 'pub-base'  > "$LOCAL/data/pub.json"
+printf '%s' 'keep-base' > "$LOCAL/state/keep.jsonl"
+git -C "$LOCAL" add data/pub.json state/keep.jsonl && git -C "$LOCAL" commit -qm 'add two runtime-state' \
+  && git -C "$LOCAL" push -q origin HEAD:main || fatal "K base"
+tmp="$(mktemp -d)"; git clone -q "$ORIGIN" "$tmp/w"; git -C "$tmp/w" config user.email t@t; git -C "$tmp/w" config user.name t
+git -C "$tmp/w" mv data/pub.json data/pub_v2.json || fatal "K mv"          # origin RENAMES one away
+printf '%s' 'keep-origin' > "$tmp/w/state/keep.jsonl"                      # origin MODIFIES the other
+git -C "$tmp/w" add -A && git -C "$tmp/w" commit -qm 'rename one, modify other' \
+  && git -C "$tmp/w" push -q origin HEAD:main || fatal "K origin"
+rm -rf "$tmp"
+printf '%s' 'pub-LOCAL'  > "$LOCAL/data/pub.json"      # both dirty locally
+printf '%s' 'keep-LOCAL' > "$LOCAL/state/keep.jsonl"
+write_allowlist "$SANDBOX/allowlist.json" "data/pub.json" "state/keep.jsonl"
+git -C "$LOCAL" fetch -q origin main
+TEST_ALLOWLIST="$SANDBOX/allowlist.json"; RC=$(run_puller); unset TEST_ALLOWLIST
+eq_ne "$RC" "0" "K rc=0"
+eq_ne "$(head_of)" "$(remote_head)" "K HEAD advanced"
+[ "$(cat "$LOCAL/data/pub.json" 2>/dev/null)" = 'pub-LOCAL' ] && ok "K removed keep-local path kept its LOCAL content" || bad "K keep-local content lost on a removed path"
+[ "$(cat "$LOCAL/state/keep.jsonl")" = 'keep-LOCAL' ] && ok "K surviving keep-local path kept its LOCAL content" || bad "K keep-local content reset to origin"
+WARN=$(grep -c 'REMOVED by the incoming change' "$SANDBOX/pull.log" 2>/dev/null || true); WARN=${WARN:-0}
+[ "$WARN" -ge 1 ] && ok "K the orphaning WAS announced (not silent)" || bad "K silent orphan: no warning logged"
+grep 'REMOVED by the incoming change' "$SANDBOX/pull.log" 2>/dev/null | grep -q 'data/pub.json' \
+  && ok "K the warning names the renamed-away path" || bad "K warning does not name data/pub.json"
+grep 'REMOVED by the incoming change' "$SANDBOX/pull.log" 2>/dev/null | grep -q 'state/keep.jsonl' \
+  && bad "K innocence broken: warned about a path origin only MODIFIED" || ok "K innocence: the merely-modified keep-local path was NOT announced"
+rm -rf "$SANDBOX"
+
 # ── E: up to date → no-op ──
 echo "[E] up-to-date → no-op"
 setup_case E; git -C "$LOCAL" fetch -q origin main
