@@ -45,8 +45,8 @@ seat_diversity_note: >-
   carrying a 403 weekly-limit error in its output, which is a non-judgement, not a clean one.
 
 diff:
-  files: 26
-  net_lines: 677
+  files: 29
+  net_lines: 729
   measured_at: >-
     counted with `git diff --numstat <merge-base>...HEAD` (three-dot: two-dot on this branch
     accuses it of deleting main's later additions, W102) immediately before this commit. Above the
@@ -54,6 +54,20 @@ diff:
     been mutually blocked for nine days, which is the cost the guideline exists to avoid.
 
 residual_risks:
+  - >-
+    ONE cross-family seat judged this PR, not two. codex-gpt-5.6-sol reviewed and returned BLOCK;
+    kimi-code/k3 exited 0 carrying a 403 weekly-limit error and tp1-qwen3.8-max exited 0 carrying
+    "tp1_call: timed out". Both are non-judgements and neither is counted — the pack's council_run
+    NOTICE is left standing rather than satisfied with a seat that never spoke.
+  - >-
+    try_claude()'s internals were checked by READING the function body, not by executing it — the
+    grader said so in its own words rather than letting it pass as run. It is the one place a slot
+    could in principle be attempted twice; the outer loop was verified by execution, the inner body
+    was not. Recorded as unverified rather than as clean.
+  - >-
+    The exhaustive sweep invoked each affected file directly with pytest/bash, which is the same
+    assertion surface as CI but NOT the identical invocation (it did not replay immune-enforcement.yml's
+    own job steps). The sweep declared this limit itself.
   - >-
     MERGING THIS DOES NOT MAKE IT LIVE, and the reason is not the usual one. `~/scripts/claude-cascade.sh`
     on Pro and Mini is a SYMLINK into the main checkout (the HOME-fork for this file was cured
@@ -229,3 +243,22 @@ receipts:
     exit: 0
     ts: 2026-09-01T12:20Z
     seat: session (Pro)
+  - claim: >-
+      THE DEFECT CLASS IS CLOSED BY AN EXHAUSTIVE SWEEP, not by a sample — four files, found one
+      at a time, each only after the previous was cured
+    cmd: >-
+      for every test file repo-wide that touches CLAUDE_CODE_OAUTH_TOKEN (20+ candidates, found by
+      content not by filename convention): pytest with `env -u CLAUDE_CODE_OAUTH_TOKEN_6` vs
+      `CLAUDE_CODE_OAUTH_TOKEN_6=<dummy>`, counts and FAILED-name lists diffed; INTRODUCED vs
+      INHERITED decided against a real origin/main tree built with `git archive | tar -x`
+    result: >-
+      COMPLETE LIST IS 4 FILES — test_vision_circuit_breaker.py, zantara-gateway/test_claude_client.py,
+      test_t4_monitor.py, test_claude_oauth_runtime_fallback.py — all four cured on this branch, each
+      verified to report identical counts AND identical FAILED sets with and without the slot. The
+      previously "ruled out" files were re-run rather than trusted (wr3 fleet pair, wr2_html_render_apply,
+      meta_agent, claude_cli_enricher_cascade, arsenal_probe — 0 delta each). Four false positives that
+      matched the `range(1, 6)` grep were excluded by reading context, which is why the grep was never
+      the instrument.
+    exit: 0
+    ts: 2026-09-01T12:50Z
+    seat: general-purpose subagent (independent sweep)
