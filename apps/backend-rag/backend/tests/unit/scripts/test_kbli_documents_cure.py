@@ -3,7 +3,8 @@
 No DB, no network — `plan_cure`, `build_cured_content`, `build_cured_metadata`,
 `quarantined_codes`, and `archive_params` take plain dicts/lists and return
 plain dicts/dataclasses. These tests pin the 4th-consumer-surface cure
-(2026-07-19): `chat_kbli` injects `kbli_documents.content` verbatim into the
+(2026-07-19): `chat_kbli` injected `kbli_documents.content` verbatim (until v34,
+2026-08-15 — its direct path now reads only the PMA tuple off `metadata`) into the
 LLM context (see module docstring in
 `backend/scripts/kbli_documents_cure.py`), and this script must never
 synthesize a new licensing/risk/capital assertion for a code the canonical
@@ -1209,7 +1210,7 @@ def test_a_hand_added_section_is_still_refused():
 
 
 def test_the_obligations_are_actually_wired_into_the_document_the_channel_reads():
-    """`chat_kbli` injects `content` verbatim — so the section being CORRECT is
+    """`chat_kbli` injected `content` verbatim (until v34) — so the section being CORRECT is
     worth nothing unless `build_cured_content` emits it.
 
     Added because mutation testing killed five of six mutants and this one
@@ -2279,4 +2280,82 @@ def test_main_summary_states_n_of_m(monkeypatch, caplog):
     assert not rc
     assert len(conn.updates()) == 1
     messages = [r.getMessage() for r in caplog.records]
-    assert any("APPLIED: 1 of 2 code(s) cured | 1 skipped" in m for m in messages), messages
+    assert any(
+        "APPLIED: 1 of 2 code(s) asked cured | 1 skipped | 0 narrowed out" in m for m in messages
+    ), messages
+
+
+# --- refuter round 2 (Codex sol, 2026-09-01): folded ---------------------------
+
+
+@pytest.mark.parametrize("falsey", ["", {}, 0], ids=["empty-str", "empty-dict", "zero"])
+def test_licensing_only_names_a_falsey_non_list_as_malformed_not_as_a_gap(falsey):
+    """Round-2 surviving mutant: `bool(rows) and not isinstance(...)` would
+    have filed `""`/`{}`/`0` under "honest gap" (is_gap True). A wrong TYPE is
+    a shape defect whatever its truthiness."""
+    record = {**RECORD_85510_SOURCED, "per_skala": falsey}
+    plan = plan_licensing_only("85510", record, HAND_WRITTEN_ROW_85510)
+    assert plan.update_row is False
+    assert plan.is_gap is None
+    assert "not a list" in (plan.skip_reason or "")
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [[1], ["NIB"], [{"skala": "Mikro"}, "NIB"]],
+    ids=["int-entries", "str-entries", "mixed"],
+)
+def test_licensing_only_refuses_a_row_set_with_non_object_entries(rows):
+    """Round-2 MINOR 3: a list of primitives passes `jsonb_array_length` at
+    the detector and crashes every renderer that does `entry.get(...)`."""
+    record = {**RECORD_85510_SOURCED, "per_skala": rows}
+    plan = plan_licensing_only("85510", record, HAND_WRITTEN_ROW_85510)
+    assert plan.update_row is False
+    assert plan.new_metadata is None
+    assert plan.is_gap is None
+    assert "non-object entries" in (plan.skip_reason or "")
+
+
+def test_main_licensing_only_non_object_entries_bind_nothing(monkeypatch, caplog):
+    record = {**RECORD_85510_SOURCED, "per_skala": [1, 2]}
+    with caplog.at_level(_logging.INFO, logger=_cure.logger.name):
+        rc, conn, archive_calls = _drive_apply(
+            monkeypatch, _LICENSING_ONLY_APPLY_ARGV, [_ROW_85510_IN_TABLE], [record]
+        )
+    assert not rc
+    assert conn.updates() == [] and archive_calls == []
+    assert any("non-object entries" in r.getMessage() for r in caplog.records)
+
+
+def test_main_summary_keeps_the_pre_gate_denominator_under_a_gated_sweep(monkeypatch, caplog):
+    """Round-2 MAJOR 2 (W97). The `--all-*` gates narrow `codes` BEFORE the
+    plans are built, so a summary that counts plans would say `1 of 1` for a
+    run that was asked about 2 and dropped one. The denominator is taken
+    before the gate; the narrowed-out count is stated."""
+    seed_row = {
+        "kode_kbli": "74191",
+        "created_at": None,
+        "updated_at": None,
+        "judul": "Aktivitas Konsultasi",
+        "content": _MACHINE_SEED,
+        "metadata": {"kode_kbli_2025": "74191", "per_skala": [], "licensing_status": "N/A"},
+    }
+    record_74191 = {
+        "kode_kbli_2025": "74191",
+        "judul": "Aktivitas Konsultasi",
+        "uraian": "Kelompok ini mencakup konsultasi.",
+        "per_skala": [],
+    }
+    argv = ["cure", "--all-machine-template", "--apply", "--cure-run", "kbli_cure:2026-09-01-mt"]
+    with caplog.at_level(_logging.INFO, logger=_cure.logger.name):
+        rc, conn, _ = _drive_apply(
+            monkeypatch, argv, [seed_row, _ROW_85510_IN_TABLE], [record_74191, RECORD_85510_SOURCED]
+        )
+    assert not rc
+    updates = conn.updates()
+    assert [a[0] for _, a in updates] == ["74191"]  # the hand-written row is never rebuilt
+    messages = [r.getMessage() for r in caplog.records]
+    assert any(
+        "APPLIED: 1 of 2 code(s) asked cured | 0 skipped | 1 narrowed out by the scope gate" in m
+        for m in messages
+    ), messages

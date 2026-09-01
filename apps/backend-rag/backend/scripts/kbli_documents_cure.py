@@ -11,7 +11,9 @@ anywhere in the repo — a datastore entirely outside the canonical dataset's
 cure pathway (Fase 1 collision detach, `kg_kbli_license_fix.py`,
 `kbli_qdrant_risk_clear.py`, the gold cure). `chat_kbli`
 (`POST /api/v1/kbli-notebook/chat`, `backend/app/routers/kbli_notebook_chat.py`)
-injects `kbli_documents.content` VERBATIM into the LLM context — via the
+injected `kbli_documents.content` VERBATIM into the LLM context until v34
+(2026-08-15 — since then its direct path selects `judul, metadata` only and
+reads just the PMA tuple; see TWO NARROW MODES below) — via the
 direct 5-digit-code lookup path (`kbli_notebook_chat.py:699`) and via
 `_fetch_parent_documents_from_kbli_table()` (`kbli_notebook_chat.py:635`,
 used for every result the search/explanation step returns). For a
@@ -118,9 +120,10 @@ and no `pma_official_basis` does NOT, and curing it merely propagates an
 unsourced verdict to a second surface (2026-08-01: `02101` and `03120` were
 held back for exactly this reason, while six sibling divergences were cured).
 
-SIZE IS PART OF SCOPE on this table, unlike the others: `chat_kbli` injects
-`content` VERBATIM into the LLM context, so a code with a large `per_skala`
-renders a document that competes for that context. Measured on the live table
+SIZE IS PART OF SCOPE on this table, unlike the others: `chat_kbli` injected
+`content` VERBATIM into the LLM context until v34 (the row is still stored,
+archived and served whole to any future reader), so a code with a large
+`per_skala` renders a document that competes for that context. Measured on the live table
 2026-08-01: median 2,458 chars, p99 13,272, max 25,483. `03110` (69 canonical
 rows) computes to 48,008 — ~2x the largest row that has ever existed there —
 and was held back pending a channel-appropriate rendering. Read the dry-run's
@@ -1033,24 +1036,28 @@ def plan_licensing_only(
             licensing_only=True,
         )
     canonical_rows = record.get("per_skala")
-    if not isinstance(canonical_rows, list) or not canonical_rows:
-        # Shape is checked, not just truthiness: a non-empty string or object
-        # under `per_skala` is truthy, would be written as the row-set, and
-        # would then fail `jsonb_array_length` at the detector — refuse it.
-        malformed = canonical_rows is not None and not isinstance(canonical_rows, list)
+    # Shape is checked, not just truthiness: a non-empty string or object
+    # under `per_skala` is truthy and would be written as the row-set; a list
+    # of primitives would pass `jsonb_array_length` at the detector and then
+    # crash every renderer that does `entry.get(...)`. Both are refused, named.
+    shape_defect: str | None = None
+    if canonical_rows is not None and not isinstance(canonical_rows, list):
+        shape_defect = f"canonical per_skala is a {type(canonical_rows).__name__}, not a list"
+    elif canonical_rows and not all(isinstance(entry, dict) for entry in canonical_rows):
+        shape_defect = "canonical per_skala holds non-object entries"
+    if shape_defect or not canonical_rows:
         return DocumentCurePlan(
             code=code,
             found_in_canonical=True,
             found_in_table=True,
-            is_gap=None if malformed else True,
+            is_gap=None if shape_defect else True,
             new_judul=None,
             new_content=None,
             new_metadata=None,
             update_row=False,
             skip_reason=(
-                f"canonical per_skala is a {type(canonical_rows).__name__}, not a list — "
-                "refusing to write a malformed row-set"
-                if malformed
+                f"{shape_defect} — refusing to write a malformed row-set"
+                if shape_defect
                 else "canonical holds no licensing rows for this code — refusing to empty the "
                 "stored row-set under --licensing-only (a detached row-set is the "
                 "--all-quarantined class)"
@@ -1392,6 +1399,10 @@ async def main() -> int | None:
             )
         }
 
+        # W97 denominator for the final summary: taken BEFORE any gate narrows
+        # `codes`, so "N of M" keeps the M the operator actually asked about.
+        asked = len(codes)
+
         # Content-preservation gate — state-selected scope ONLY. The quarantine
         # population is deliberately exempt: there the stored content is
         # FABRICATED by definition (invented risk tiers, a capital figure from a
@@ -1572,10 +1583,17 @@ async def main() -> int | None:
     mode = "APPLIED" if args.apply else "DRY-RUN"
     acted = [p for p in plans if p.update_row]
     skipped = [p for p in plans if not p.update_row]
-    # N of M (W97): the denominator is every code the run was asked about, so
-    # "23 cured" can never be read as "all of them".
+    # N of M (W97): the denominator is every code the run was asked about —
+    # BEFORE the scope gates narrowed the list — so "23 cured" can never be
+    # read as "all of them", and a gate that dropped rows shows up here too,
+    # not only in its own earlier log line.
     logger.info(
-        "%s: %d of %d code(s) cured | %d skipped", mode, len(acted), len(plans), len(skipped)
+        "%s: %d of %d code(s) asked cured | %d skipped | %d narrowed out by the scope gate",
+        mode,
+        len(acted),
+        asked,
+        len(skipped),
+        asked - len(plans),
     )
     for p in skipped:
         logger.info("  skipped %s: %s", p.code, p.skip_reason)
