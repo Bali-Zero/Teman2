@@ -49,7 +49,7 @@ price:
     The price is whatever PricingTool returns for the case's exact catalogue key.
     It is never computed, never a formula, and never a literal in code.
   keys:
-    issuance: "B1 Visa on Arrival (VOA)" # 790.000 IDR as of 2026-08-24
+    issuance: "B1 Visa on Arrival (VOA)" # 750.000 IDR as of 2026-08-31 (owner ruling; was 790.000 from 2026-07-24)
     extension: "B1 Visa on Arrival Extension" # 850.000 IDR as of 2026-08-24
   resolver: apps/backend-rag/backend/services/garuda_flow/pricing.py::price_for_case
   fail_closed: >
@@ -130,7 +130,7 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     # strategy into a VOA funnel that has no ticket above Rp 850k:
     #   (a) small tickets (<= ~Rp 3jt) -> card in checkout, fee ABSORBED into the one
     #       all-inclusive price, never a separate line. GARUDA VOA is entirely this tier
-    #       (issuance 790k, extension 850k). BUILD THIS.
+    #       (issuance 750k, extension 850k). BUILD THIS.
     #   (b) heavy T2 tickets (10-30jt) -> contained card deposit in checkout, balance by
     #       international transfer/Wise in the consultant thread. NO SUCH TICKET EXISTS in
     #       this product. Recorded for the sibling products; do NOT build it here.
@@ -355,7 +355,10 @@ owner_decisions: # §3 switchboard — filled with prepared proposals, signed at
     decision: price_catalogue_currency
     state: ratified-7b-open-7a-scope
     # ── 2026-08-25, 7(b) RATIFIED. Zero, verbatim: "il prezzo include il PNBP". ──
-    # The 790.000 / 850.000 catalogue rows are ALL-INCLUSIVE: the traveller pays nothing
+    # The catalogue rows are ALL-INCLUSIVE: the traveller pays nothing
+    # (the issuance figure this ratification named was 790.000; the owner ruled it back to
+    # 750.000 on 2026-08-31 — the all-inclusive PROPERTY is what was ratified here, not the
+    # amount, and it survives the change)
     # further to the government. This is now a fact of record, not an inference — which is
     # the whole point of having asked, since the session's own earlier claim to the same
     # effect was an inference wearing a citation (see the self-correction at the top of
