@@ -222,6 +222,9 @@ jobs:
               scripts/test_fly_credential.sh|\
               scripts/ci/lint_queue_field_verdict.py|\
               scripts/tests/test_lint_queue_field_verdict.py|\
+              scripts/lint_arm_probe.py|\
+              scripts/tests/test_lint_arm_probe.py|\
+              scripts/queue_baseline_probe.py|\
               scripts/lib/offsite_verify.sh|\
               scripts/test_offsite_verify.sh|\
               scripts/fly-pg-backup.sh|\
@@ -480,6 +483,7 @@ jobs:
             scripts/tests/test_arsenal_probe.py \
             scripts/tests/test_adversarial_review_gate.py \
             scripts/tests/test_lint_queue_field_verdict.py \
+            scripts/tests/test_lint_arm_probe.py \
             scripts/tests/test_nb_curator_artifact_gate.py \
             scripts/tests/test_jules_dispatch.py \
             scripts/tests/test_codex_autofix_selector.py \
@@ -660,6 +664,26 @@ jobs:
         run: |
           python3 scripts/ci/lint_queue_field_verdict.py --selftest
           python3 scripts/ci/lint_queue_field_verdict.py
+
+      - name: Arm-probe lint — prove the guard, then scan every tracked file
+        # DELIBERATELY UNCONDITIONAL — no `steps.paths.outputs.relevant` gate,
+        # same reasoning as the queue-field verdict lint right above: this
+        # scans the WHOLE tree for the autoMergeRequest null-ambiguity trap
+        # (a decision-position read of the field with no mergeQueueEntry/
+        # isInMergeQueue/mergeQueue( co-occurrence anywhere in the same
+        # file), so the file that introduces it is by definition one nobody
+        # has listed in a sentinel yet (W108). Sibling to, not a replacement
+        # for, lint_queue_field_verdict.py above — narrower pattern set,
+        # simpler file-level (not alias-tracking) co-occurrence check, its
+        # own ALLOWLIST for the handful of real files that match by text
+        # alone without ever deriving a verdict from the field.
+        #
+        # --selftest FIRST, always: proves the guard (plus its ALLOWLIST
+        # mechanism) can still fail before trusting a clean verdict from the
+        # real scan.
+        run: |
+          python3 scripts/lint_arm_probe.py --selftest
+          python3 scripts/lint_arm_probe.py
 
       - name: Off-site artifact gate corpus (guilt + innocence)
         if: steps.paths.outputs.relevant == 'true'
