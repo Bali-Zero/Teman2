@@ -33,10 +33,18 @@ class Settings(BaseSettings):
     # does. On 2026-08-31 a fix for a real defect (two halves of the price
     # list naming different numbers) resolved the tie toward SUPPORT_WHATSAPP
     # and shipped the bot's inbound number to clients; the owner reversed it
-    # on 2026-09-01. It is NOT yet used everywhere it should be: eleven other
-    # client-facing surfaces (email footers, the chat CTA, the website-widget
-    # prompt) still emit SUPPORT_WHATSAPP, ledgered in PENDING-ARMS as an owner
-    # decision. Kept in sync with the price-list generator's
+    # on 2026-09-01. AMENDED 2026-09-01: this comment used to end "It is NOT yet
+    # used everywhere it should be: eleven other client-facing surfaces still
+    # emit SUPPORT_WHATSAPP". That is no longer true, and leaving it would be
+    # worse than saying nothing — the next maintainer reads an authoritative
+    # comment and puts the bot's number back. Every client-facing emission in
+    # backend/ now reads THIS field; SUPPORT_WHATSAPP is read by exactly one
+    # module, whatsapp_chat.py, where it is inbound routing rather than an
+    # invitation. Both halves are enforced:
+    # test_no_backend_module_hands_a_client_the_bots_inbound_number (nobody
+    # writes the digits) and
+    # test_only_the_meta_webhook_router_reads_the_bots_inbound_number (nobody
+    # reads the setting). Kept in sync with the price-list generator's
     # _CANONICAL_WHATSAPP_DIGITS (scripts/pricelist_2026/schema.py) by
     # test_client_contact_whatsapp_matches_the_price_list_generator.
     CLIENT_CONTACT_WHATSAPP: str = "+62 821 3454 721"

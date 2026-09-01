@@ -12,6 +12,7 @@ from typing import Any
 import asyncpg
 import httpx
 
+from backend.app.core.config import settings
 from backend.app.utils.logging_utils import get_logger
 from backend.services.common.cache import cache_invalidating
 from backend.services.integrations.zoho_email_service import ZohoEmailService
@@ -196,7 +197,7 @@ Zantara — Bali Zero Team
 P.S. Keep an eye on your WhatsApp—we'll be sending you updates there too! 😊
 
 ---
-💬 Questions? Reply to this email or WhatsApp us at +62 821 3465 159
+💬 Questions? Reply to this email or WhatsApp us at {settings.CLIENT_CONTACT_WHATSAPP}
 🌐 Visit us at www.balizero.com
 """
 

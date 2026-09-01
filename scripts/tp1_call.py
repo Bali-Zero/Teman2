@@ -13,20 +13,53 @@ verdict taxonomy (LIVE/AUTH_DEAD/...) rather than the answer text itself. This
 script is the missing door: give it a real task, get the model's text back.
 
 REUSE, NOT DUPLICATION: this module imports arsenal_probe.py's credential
-loader and HTTP helper (both are stdlib-only with no import-time side effects
-— safe to import, unlike scripts/ai-dispatch.sh which changes directory and
-dispatches at top level, the documented reason scripts/lib/seat_watchdog.sh
-duplicates instead of importing). A future fix to credential redaction or to
-the thinking-model response shape (content vs reasoning_content vs a
-finish_reason="length" truncation — see arsenal_probe.py's
-_tp1_has_live_answer docstring) lands in one place, not two drifting copies.
+loader, secret scrubber and HTTP helper (all stdlib-only with no import-time
+side effects — safe to import, unlike scripts/ai-dispatch.sh which changes
+directory and dispatches at top level, the documented reason
+scripts/lib/seat_watchdog.sh duplicates instead of importing). A future fix to
+credential redaction or to the thinking-model response shape (content vs
+reasoning_content vs a finish_reason="length" truncation — see
+arsenal_probe.py's _tp1_has_live_answer docstring) lands in one place, not two
+drifting copies. The ONE deliberate exception is stream_chat_completion below:
+it lives here and not in arsenal_probe.py because the liveness probe is a
+256-token 1-shot that has no use for streaming, and adding a second transport
+to that module would put the fleet-wide liveness path at risk to serve a
+caller it does not have. It still funnels its result through extract_answer,
+so exactly one parser decides what counts as an answer.
 
-EFFORT PASSTHROUGH IS UNVERIFIED PROVIDER BEHAVIOR: MODEL_ROSTER.md's TP1
-section is explicit that its effort column is "an orchestration-routing
-recommendation, not a claim that this door accepts a provider-side
-reasoning_effort parameter". --effort therefore only adds a `reasoning_effort`
-field when the caller opts in; it is never invented on this script's own
-initiative.
+WHY IT STREAMS BY DEFAULT (measured 2026-09-01 against qwen3.8-max, the live
+TP1 gateway, on the real 3196-prompt-token refuter task that had been failing):
+
+  transport   effort   TTFB    max silence   total     outcome
+  no-stream   medium   --      --            193.9s    9020 completion tokens
+  no-stream   (unset)  --      --            180.0s    TIMED OUT at the old default
+  stream      (unset)  1.5s    1.5s          805.4s    finish=stop, 9315 chunks
+
+The old default (--timeout 180.0, non-streaming) is BELOW the measured cost of
+one real task at its cheapest usable setting, so the seat timed out on work it
+was perfectly capable of. Worse, it timed out INVISIBLY: urlopen's timeout is
+per-socket-operation, and with a non-streaming request the gateway sends
+nothing at all until generation completes, so the very first recv() blocks for
+the whole generation and raises. The resulting `tp1_call: timed out` is
+byte-identical to what a genuinely dead gateway produces — which is exactly
+how this seat came to be journalled ok:false in PR #5494's evidence pack while
+being fully alive. Streaming removes the ambiguity at the root: the seat's
+first byte arrives in 1.5s and it never goes quiet for longer than 1.5s across
+a 13-minute generation, so "has not answered in 90 seconds" becomes a claim
+about the SEAT rather than about the task's length.
+
+TWO MEASURED FACTS THAT CONTRADICT THE OBVIOUS GUESS, recorded because both
+cost a wrong inference during the investigation:
+
+  1. reasoning_effort is NOT a token budget; it scales with task difficulty.
+     On a toy prompt, medium spent 540 completion tokens. On the real task,
+     medium spent 9020 — 16.7x. Do not size a timeout by measuring a small
+     prompt and multiplying.
+  2. Omitting reasoning_effort on qwen3.8-max is strictly worse on EVERY axis,
+     not merely more expensive. On the real task, unset took 805.4s and
+     returned 1388 chars of answer; medium took 193.9s and returned 2446 chars
+     of a sharper answer. That is why MEASURED_DEFAULT_EFFORT exists and why
+     it holds exactly one entry: the model that was actually measured.
 
 Exit codes:
   0 = got a usable answer (written to stdout, newline-terminated)
@@ -34,6 +67,10 @@ Exit codes:
   2 = TP1 credential unavailable (see load_tp1_settings_key in arsenal_probe.py)
   3 = HTTP 200 but no usable content (thinking budget exhausted before an
       answer, or the answer never arrived — never SILENTLY treated as success)
+  4 = the seat was ALIVE and still generating when the budget ran out. Split
+      out of exit 1 deliberately: a caller that folds "slow" into "dead" writes
+      ok:false into a council journal for a seat that simply needed longer, and
+      a quorum gate then under-counts the seats it actually has.
 
 Usage:
     python3 scripts/tp1_call.py --model deepseek-v4-flash-0731 -p "task text"
@@ -46,6 +83,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Optional
 
@@ -55,6 +95,7 @@ from arsenal_probe import (  # noqa: E402  (sibling import, see module docstring
     TP1_SEAT_MODELS,
     http_post_json,
     load_tp1_settings_key,
+    scrub,
 )
 
 TP1_LIVE_SLUGS = frozenset(TP1_SEAT_MODELS.values())
@@ -76,6 +117,288 @@ EFFORT_TO_REASONING_EFFORT = {
     "xhigh": "xhigh",
     "max": "xhigh",  # clamp: the provider's ceiling, not a distinct level
 }
+
+
+# MEASURED, not guessed, and deliberately one entry per model actually probed.
+#
+# Omitting `reasoning_effort` is not a neutral default on a thinking model: on
+# qwen3.8-max it is the WORST cell measured, losing on both axes at once. On
+# the real 3196-prompt-token refuter task (2026-09-01, live gateway):
+#
+#     unset  -> 805.4s, answer 1388 chars
+#     medium -> 193.9s, answer 2446 chars, and the sharper review of the two
+#
+# so the caller who passes nothing gets 4.2x the wall time for a shorter, worse
+# answer. A default that only ever costs the caller is worth fixing.
+#
+# It stays a per-model table with a single row because a single row is what was
+# measured. The other six TP1 slugs were never probed for this, and sending
+# them a field their backend might reject would trade a known-slow seat for a
+# newly-broken one (the gateway answers HTTP 400 on a value it dislikes — see
+# EFFORT_TO_REASONING_EFFORT above, learned exactly that way). Add a row here
+# when, and only when, a model has been measured; an explicit --effort always
+# wins over this table.
+MEASURED_DEFAULT_EFFORT = {
+    "qwen3.8-max": "medium",
+}
+
+# How long the seat may stay SILENT before we call it dead, in seconds. This is
+# not the task budget (--timeout is); it is the gap between two bytes.
+#
+# In normal operation the gap is tiny: measured on qwen3.8-max over a 13-minute,
+# 9315-chunk generation, first byte at 1.5s and largest gap between consecutive
+# chunks 1.5s. But a threshold sized from the happy path is a threshold that
+# has never met the unhappy one — this started at 90s (60x the observed gap)
+# and killed one real 3-minute call out of five while the generation was still
+# healthy: the stream went quiet ~82s in and did not speak again inside 90s.
+# The stall's true length was never captured, so 300 is NOT a measured value,
+# it is a deliberately loose one, and the honest reasoning is:
+#
+#   - being wrong in the "too tight" direction throws away an entire multi-
+#     minute generation that was going to succeed;
+#   - being wrong in the "too loose" direction only delays naming a dead
+#     socket, and --timeout already bounds the whole call, so a dead seat is
+#     still named — just later;
+#   - so the asymmetry says: err loose, and let the wall-clock budget be the
+#     thing with the tight, measured number.
+#
+# Clamped to the budget so it can never be the binding limit on a short call.
+# Calibrating this properly needs stall-length data this repo does not yet
+# collect — tracked in PENDING-ARMS rather than guessed at a second time.
+SILENCE_TIMEOUT_SECONDS = 300.0
+
+
+class StillGenerating(Exception):
+    """The budget ran out while the seat was demonstrably alive and streaming.
+
+    Carries the evidence that distinguishes this from a dead seat, because that
+    distinction is the entire reason this class exists: a caller that cannot
+    tell "slow" from "dead" journals ok:false for a working seat, and a council
+    quorum gate then under-counts the seats it has. That is not hypothetical —
+    it is what happened to this seat in PR #5494."""
+
+    def __init__(
+        self, elapsed: float, chunks: int, content_len: int, reasoning_len: int
+    ):
+        self.elapsed = elapsed
+        self.chunks = chunks
+        self.content_len = content_len
+        self.reasoning_len = reasoning_len
+        super().__init__(
+            f"seat ALIVE but still generating when the {elapsed:.0f}s budget ran out "
+            f"({chunks} chunks received, {reasoning_len} chars of reasoning, "
+            f"{content_len} chars of answer so far). This is NOT a dead seat: raise "
+            f"--timeout, or pass --effort medium (measured 4.2x faster than unset "
+            f"on qwen3.8-max)."
+        )
+
+
+def resolve_effort(model: str, explicit: Optional[str]) -> Optional[str]:
+    """Pick the reasoning_effort to send: the caller's choice, else the measured
+    default for THIS model, else nothing.
+
+    A function rather than an inline `or` so the precedence is testable without
+    standing up a transport, and so the "unmeasured models are left alone" rule
+    has somewhere to be asserted."""
+    if explicit:
+        return explicit
+    return MEASURED_DEFAULT_EFFORT.get(model)
+
+
+def stream_chat_completion(
+    url: str, headers: dict, body: dict, budget: float, secret_values: list[str]
+) -> tuple[Optional[int], str, str]:
+    """Stream a chat completion and re-assemble it into the SAME response shape
+    the non-streaming path returns, so extract_answer stays the single judge of
+    what counts as an answer. Returns http_post_json's contract exactly —
+    (status_code_or_None, full_body, evidence_tail) — so main() does not branch
+    on transport.
+
+    Raises StillGenerating if the wall-clock budget expires while chunks are
+    still arriving. Every other failure is folded into the (None, msg, msg)
+    shape, scrubbed, never raised past this boundary.
+
+    The socket timeout here is SILENCE_TIMEOUT_SECONDS, not the budget: with a
+    streamed response urlopen's per-read timeout finally measures what its name
+    suggests. That is the whole point of streaming this call — see the module
+    docstring's table.
+
+    WHY A THIRD SSE PARSER AND NOT A REUSED ONE: this repo already parses
+    OpenAI-style SSE in two places — openrouter_client.py's stream() and
+    llm/providers/mlx.py — and the framing logic below is deliberately the same
+    shape as theirs (strip `data:`, honour the `[DONE]` sentinel, tolerate a
+    malformed frame, read `choices[0].delta`). Neither is importable here: both
+    are `async` generators built on `httpx.AsyncClient.stream`, living in the
+    backend service package, while this is a synchronous stdlib-only CLI whose
+    whole reuse contract (module docstring) is that it imports nothing that has
+    import-time side effects. Porting ~20 lines of framing was the smaller debt
+    than making a one-shot script async or dragging httpx into it — recorded
+    here so the next reader knows the duplication was measured, not missed."""
+
+    def _scrub(raw: str) -> tuple[str, str]:
+        full = scrub((raw or "").strip().replace("\n", " "), secret_values)
+        return full, full[-160:]
+
+    streamed = dict(body)
+    streamed["stream"] = True
+    data = json.dumps(streamed).encode("utf-8")
+    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+
+    content: list[str] = []
+    reasoning: list[str] = []
+    finish_reason: Optional[str] = None
+    chunks = 0
+    started = time.monotonic()
+
+    try:
+        silence_limit = min(SILENCE_TIMEOUT_SECONDS, budget)
+        with urllib.request.urlopen(req, timeout=silence_limit) as resp:
+            if resp.status != 200:  # pragma: no cover — urllib raises HTTPError first
+                raw = resp.read().decode("utf-8", errors="replace")
+                full, tail = _scrub(raw)
+                return resp.status, full, tail
+            # Read in blocks and split frames here rather than iterating
+            # `for line in resp`. Iteration calls readline(), which blocks until
+            # it finds a newline: a server trickling bytes without one keeps
+            # every individual recv() inside SILENCE_TIMEOUT_SECONDS while
+            # readline never returns, so the budget check below — which can only
+            # run between lines — would never execute. --timeout is documented
+            # as a wall-clock budget, so it has to be one. read1() returns as
+            # soon as ANY bytes are available, which bounds the gap between two
+            # deadline checks by a single recv instead of by a whole frame.
+            # Buffering also makes frame reassembly explicit: a `data:` line
+            # split across two blocks is rejoined here rather than relying on
+            # readline's guarantee.
+            buffer = b""
+            saw_done = False
+            eof = False
+            while not (saw_done or eof):
+                elapsed = time.monotonic() - started
+                if elapsed > budget:
+                    if chunks == 0:
+                        # No frame has arrived, so there is NO evidence of life
+                        # and StillGenerating would assert one. Claiming a dead
+                        # seat is alive is the same conflation as claiming a
+                        # live one is dead, only pointed the other way — it
+                        # would keep a broken seat in the dispatch rotation.
+                        # Report it the way any other transport failure is.
+                        return (
+                            None,
+                            f"no data at all within the {budget:.0f}s budget "
+                            f"— the seat never started responding",
+                            "never responded",
+                        )
+                    raise StillGenerating(
+                        elapsed, chunks, len("".join(content)), len("".join(reasoning))
+                    )
+                block = resp.read1(65536)
+                if not block:
+                    # EOF. Anything left in the buffer is a final frame the
+                    # server sent without a trailing newline.
+                    eof = True
+                    if buffer:
+                        buffer += b"\n"
+                buffer += block
+
+                while b"\n" in buffer:
+                    raw_line, buffer = buffer.split(b"\n", 1)
+                    line = raw_line.decode("utf-8", errors="replace").strip()
+                    # Skip blank separators, SSE comments (":..."), and non-data
+                    # fields ("event:", "id:", "retry:") — only `data:` carries payload.
+                    if not line.startswith("data:"):
+                        continue
+                    payload = line[len("data:") :].strip()
+                    if payload == "[DONE]":
+                        saw_done = True
+                        break
+                    try:
+                        chunk = json.loads(payload)
+                    except ValueError:
+                        # One malformed frame must not discard a generation that
+                        # is otherwise arriving fine; a truly broken stream ends
+                        # with no content and is reported by the caller as exit 3.
+                        continue
+                    chunks += 1
+                    # `choices` is [] on the terminal usage-only frame that
+                    # some OpenAI-compatible gateways emit. Indexing it blindly
+                    # raises IndexError at the very last chunk, discarding a
+                    # COMPLETE answer — measured live while building this, and
+                    # the reason this expression is written the long way.
+                    #
+                    # Only choices[0] is read, exactly as the non-streaming
+                    # extract_answer() has always done (`parsed["choices"][0]`).
+                    # build_body never sets `n`, so a second candidate can only
+                    # come from a server-side setting; matching the existing
+                    # path is better than having the two transports disagree
+                    # about what a response means.
+                    choice = (chunk.get("choices") or [{}])[0]
+                    delta = choice.get("delta") or {}
+                    piece = delta.get("content")
+                    if isinstance(piece, str):
+                        content.append(piece)
+                    think = delta.get("reasoning_content")
+                    if isinstance(think, str):
+                        reasoning.append(think)
+                    if choice.get("finish_reason"):
+                        finish_reason = choice["finish_reason"]
+    except StillGenerating:
+        raise
+    except urllib.error.HTTPError as e:
+        raw = e.read().decode("utf-8", errors="replace") if e.fp else ""
+        full, tail = _scrub(raw)
+        return e.code, full, tail
+    except urllib.error.URLError as e:
+        full, tail = _scrub(f"{type(e).__name__}: {e.reason}")
+        return None, full, tail
+    except TimeoutError:
+        # Distinguishable by construction: with a streamed response this can
+        # only mean SILENCE_TIMEOUT_SECONDS elapsed between two bytes, which
+        # is a statement about the seat, not about the task's length.
+        msg = (
+            f"no data for {silence_limit:.0f}s after {chunks} chunks "
+            f"and {len(''.join(content))} chars of answer, "
+            f"{time.monotonic() - started:.0f}s into the call "
+            f"— the seat stopped responding mid-stream"
+        )
+        # Both slots carry the full text: main() prints the TAIL, so putting the
+        # diagnosis only in `full` would throw away the chunk count that says
+        # whether this was a dead socket or a seat that went quiet mid-answer.
+        return None, msg, msg
+    except Exception as e:  # never crash a caller that only wanted an answer
+        full, tail = _scrub(f"{type(e).__name__}: {e}")
+        return None, full, tail
+
+    if not saw_done and finish_reason is None:
+        # The stream stopped without the server ever declaring it finished:
+        # no `[DONE]` sentinel and no finish_reason on any frame. That is a
+        # dropped connection (pod killed, LB reset), and whatever content
+        # arrived is a partial answer. Returning it as HTTP 200 would hand the
+        # caller a truncated review that looks complete — precisely what this
+        # script's exit-3 contract says must never happen silently, and a
+        # failure mode the non-streaming path cannot have (a cut body fails
+        # json.loads). Found by the qwen3.8-max seat reviewing this very diff.
+        partial = len("".join(content))
+        return (
+            None,
+            f"stream ended without [DONE] or a finish_reason after {chunks} chunks "
+            f"({partial} chars of answer received) — the connection dropped "
+            f"mid-generation and the answer is truncated",
+            "truncated stream",
+        )
+
+    reassembled = {
+        "choices": [
+            {
+                "message": {
+                    "content": "".join(content),
+                    "reasoning_content": "".join(reasoning),
+                },
+                "finish_reason": finish_reason,
+            }
+        ]
+    }
+    full = scrub(json.dumps(reassembled), secret_values)
+    return 200, full, full[-160:]
 
 
 def build_body(model: str, prompt: str, max_tokens: int, effort: Optional[str]) -> dict:
@@ -107,7 +430,11 @@ def extract_answer(
         choice = parsed["choices"][0]
         message = choice["message"]
     except (json.JSONDecodeError, KeyError, IndexError, TypeError) as e:
-        return None, None, f"unparseable response ({type(e).__name__}): {full_body[-200:]}"
+        return (
+            None,
+            None,
+            f"unparseable response ({type(e).__name__}): {full_body[-200:]}",
+        )
     content = message.get("content")
     if isinstance(content, str) and content.strip():
         return content, None, None
@@ -130,9 +457,15 @@ def extract_answer(
 
 
 def main(argv: Optional[list[str]] = None) -> int:
-    ap = argparse.ArgumentParser(description="One-shot TP1 chat completion (see module docstring).")
-    ap.add_argument("--model", required=True, help="TP1 model slug, e.g. deepseek-v4-flash-0731")
-    ap.add_argument("-p", "--prompt", help="task text (mutually exclusive with --task-file)")
+    ap = argparse.ArgumentParser(
+        description="One-shot TP1 chat completion (see module docstring)."
+    )
+    ap.add_argument(
+        "--model", required=True, help="TP1 model slug, e.g. deepseek-v4-flash-0731"
+    )
+    ap.add_argument(
+        "-p", "--prompt", help="task text (mutually exclusive with --task-file)"
+    )
     ap.add_argument("--task-file", help="read task text from this file")
     ap.add_argument(
         "--effort",
@@ -143,13 +476,45 @@ def main(argv: Optional[list[str]] = None) -> int:
         "literally with HTTP 400, confirmed live 2026-08-27). Accepted here so seat_build.sh's "
         "global --effort set (low|medium|high|xhigh|max, PR #5044) never breaks this seat.",
     )
-    ap.add_argument("--max-tokens", type=int, default=4096)
-    ap.add_argument("--timeout", type=float, default=180.0)
+    ap.add_argument(
+        "--max-tokens",
+        type=int,
+        default=4096,
+        help="upper bound on generated tokens. NOTE, measured 2026-09-01: on "
+        "qwen3.8-max this does NOT bound the reasoning stream — a call with "
+        "max_tokens=8000 emitted ~125k characters of reasoning_content and still "
+        "finished with finish_reason='stop', not 'length'. Size --timeout for "
+        "the task; do not expect this flag to cap it.",
+    )
+    ap.add_argument(
+        "--timeout",
+        type=float,
+        default=900.0,
+        help="total wall-clock budget for the whole call, in seconds. Raised from "
+        "180.0 on 2026-09-01: 180 was BELOW the measured cost of one real refuter "
+        "task at its cheapest usable setting (193.9s), so the seat timed out on "
+        "work it could do. Silence between bytes is a separate, internal limit "
+        "(SILENCE_TIMEOUT_SECONDS) — this flag never has to absorb a long think.",
+    )
+    ap.add_argument(
+        "--no-stream",
+        dest="stream",
+        action="store_false",
+        default=True,
+        help="use the single-shot non-streaming transport instead of SSE. Streaming "
+        "is the default because it is what makes a slow seat distinguishable from a "
+        "dead one (module docstring). Kept as an escape hatch for any TP1 model whose "
+        "backend rejects `stream: true` — only qwen3.8-max was measured.",
+    )
     args = ap.parse_args(argv)
 
     if bool(args.prompt) == bool(args.task_file):
         ap.error("pass exactly one of -p/--prompt or --task-file")
-    prompt = args.prompt if args.prompt is not None else Path(args.task_file).read_text(encoding="utf-8")
+    prompt = (
+        args.prompt
+        if args.prompt is not None
+        else Path(args.task_file).read_text(encoding="utf-8")
+    )
     if not prompt.strip():
         sys.stderr.write("tp1_call: empty task text\n")
         return 1
@@ -166,11 +531,24 @@ def main(argv: Optional[list[str]] = None) -> int:
         sys.stderr.write(f"tp1_call: credential unavailable: {cred_note}\n")
         return 2
 
+    # An explicit --effort always wins; the table only fills a silence that
+    # would otherwise cost the caller 4.2x the wall time for a worse answer.
+    effort = resolve_effort(args.model, args.effort)
+
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    body = build_body(args.model, prompt, args.max_tokens, args.effort)
-    status_code, full_body, ev = http_post_json(
-        TP1_CHAT_COMPLETIONS_URL, headers, body, args.timeout, [token]
-    )
+    body = build_body(args.model, prompt, args.max_tokens, effort)
+    try:
+        if args.stream:
+            status_code, full_body, ev = stream_chat_completion(
+                TP1_CHAT_COMPLETIONS_URL, headers, body, args.timeout, [token]
+            )
+        else:
+            status_code, full_body, ev = http_post_json(
+                TP1_CHAT_COMPLETIONS_URL, headers, body, args.timeout, [token]
+            )
+    except StillGenerating as e:
+        sys.stderr.write(f"tp1_call: {e}\n")
+        return 4
     if status_code is None:
         sys.stderr.write(f"tp1_call: {ev}\n")
         return 1
