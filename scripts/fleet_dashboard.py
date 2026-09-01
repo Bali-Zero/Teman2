@@ -177,11 +177,17 @@ def resolve_mergeable(number: int, attempts: int = 3, delay: float = 2.0) -> tup
 
 
 def fetch_open_prs() -> list[dict[str, Any]]:
-    # This query is heavy — 100 PRs each with up to 100 check contexts — and
-    # GitHub answers "We couldn't respond to your request in time" often enough
-    # that a single attempt fails roughly half the time. Measured on 2026-09-01:
-    # attempt 1 timed out, attempt 2 succeeded. A one-shot version is unusable
-    # from cron, so the retry is a requirement of the use case, not polish.
+    # The retry is now BELT-AND-BRACES, and the comment that used to live here
+    # was wrong about why. It justified the retry by this query being heavy —
+    # "100 PRs each with up to 100 check contexts" — but the commit that added
+    # that sentence is the same one that removed `contexts` from this query
+    # (it now asks only for `statusCheckRollup { state }`; per-check contexts
+    # moved to CONTEXTS_ONE, fetched one red PR at a time). So the sentence
+    # described the query as it was BEFORE the diff it was attached to.
+    # The real history: the heavy version timed out on 3 of 3 runs even WITH
+    # three attempts — a retry on a too-heavy query makes it fail more slowly,
+    # it does not make it succeed. Lightening the query is what fixed it.
+    # The retry stays only for ordinary transient network failure.
     prs = None
     for attempt in range(3):
         rc, out, err = _run(["gh", "api", "graphql", "-f", f"query={GRAPHQL}"], timeout=120)
@@ -409,7 +415,15 @@ def collect() -> dict[str, Any]:
              # Dependabot PR: GraphQL's Bot type has login `dependabot`, and the
              # `[bot]` suffix only appears in REST/`gh pr view` renderings.
              # Scar family #3, judged on the type GitHub actually declares.
-             "bot": (p.get("author") or {}).get("__typename") == "Bot"}
+             # Narrowed after review: `__typename == "Bot"` answers "is ANY bot"
+             # (Renovate, github-actions, Copilot all share that concrete type)
+             # where this flag means "is Dependabot" — it drives a note about
+             # arming lockfile PRs one at a time. Measured today, 13/13 Bot
+             # authors in the last 100 PRs are `dependabot`, so there is no live
+             # counter-example; the pair is required so the flag stops being
+             # right by luck the day a second bot integration opens a PR.
+             "bot": ((p.get("author") or {}).get("__typename") == "Bot"
+                     and (p.get("author") or {}).get("login") == "dependabot")}
             for p in ready
         ],
         "phantom_conflicts": sorted(phantom),
