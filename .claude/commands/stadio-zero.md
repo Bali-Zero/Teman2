@@ -31,11 +31,11 @@ Il context buffer NON è autoritativo. Interroga la memoria reale e le cicatrici
 # MOS personale (se presente nel PATH) — decisioni/scoperte sul dominio:
 command -v mem >/dev/null 2>&1 && mem query "<keyword-del-task>" && mem recent 10
 # Cicatrici del repo (SEMPRE disponibili, versionate):
-grep -niE "<keyword-del-task>" .claude/rules/cicatrix-scars.md
+grep -niE "<keyword-del-task>" docs/scars/cicatrix-scars.md
 ```
 
 > `mem` è il Memory Operating System personale dell'operatore (non versionato nel repo). Se non è nel
-> PATH **non è un errore** — usa le cicatrici versionate (`.claude/rules/cicatrix-scars.md`) +
+> PATH **non è un errore** — usa le cicatrici versionate (`docs/scars/cicatrix-scars.md`) +
 > `git log`/`git blame` sul dominio come memoria condivisa.
 
 Sintetizza in 2-4 righe cosa la memoria dice di rilevante per QUESTO task + cita le cicatrici che si
@@ -67,7 +67,7 @@ Il task tocca dati cliente (KTP / passport / NPWP / akta / WhatsApp / CRM / OSIN
   report, memorie, skill, log, alert, prompt salvati per riuso e artefatti condivisi devono usare
   `client_id`, hash, placeholder o redazione. Primitive di redazione: `scripts/_redact_pii.py` —
   ATTENZIONE: ha bug noti documentati, non fidarti ciecamente; verifica lo stato corrente in
-  `.claude/rules/cicatrix-scars.md`. Aggiungi il criterio "zero PII/OSINT in chiaro negli output".
+  `docs/scars/cicatrix-scars.md`. Aggiungi il criterio "zero PII/OSINT in chiaro negli output".
 - **No** → dichiaralo esplicito ("STADIO-0 PII: nessuno — task non tocca dati cliente"). Scope-vuoto è
   una risposta valida, ma va detta, non assunta.
 

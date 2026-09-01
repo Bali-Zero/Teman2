@@ -16,7 +16,7 @@
 | Dettagli tecnici di un'app?                   | `apps/<nome>/README.md` o `apps/<nome>/CLAUDE.md`                                   | File locali all'app                                                      |
 | Quando X è stato fatto?                       | `git log` + MOS (`~/.claude/scripts/mem query "X"`)                                 | Git + memoria persistente                                                |
 | Policy AI dispatch / federazione?             | [docs/AI_DISPATCH_REFERENCE.md](docs/AI_DISPATCH_REFERENCE.md)                      | Dispatch, fallback, timeout                                              |
-| Cicatrici / bug ricorrenti?                   | [.claude/rules/cicatrix-scars.md](.claude/rules/cicatrix-scars.md)                  | Trauma + antibody per file chiave                                        |
+| Cicatrici / bug ricorrenti?                   | [docs/scars/cicatrix-scars.md](docs/scars/cicatrix-scars.md)                  | Trauma + antibody per file chiave                                        |
 | Stato della documentazione (live/stale)?      | [docs/DOCS_INVENTORY.md](docs/DOCS_INVENTORY.md)                                    | Puntatore all'artifact CI; generabile localmente                         |
 
 ## Organi principali (top of mind)
@@ -138,7 +138,7 @@ Runbook operativi: indice auto-generato in [docs/runbooks/README.md](docs/runboo
 | **VADEMECUM.md**                  | Procedura (il _come_)   | Quando costruisci X                          |
 | **INDEX.md** (questo)             | Mappa (il _cosa/dove_)  | Quando cerchi X                              |
 | **CLAUDE.md**                     | Context + golden rules  | Caricato automaticamente ogni sessione       |
-| `.claude/rules/cicatrix-scars.md` | Memoria delle ferite    | Prima di modificare file che hanno cicatrici |
+| `docs/scars/cicatrix-scars.md` | Memoria delle ferite    | Prima di modificare file che hanno cicatrici |
 
 **Regola:** se una domanda non trova risposta in questi 5 libri + MOS (`mem query`) + NLM NB-14, c'è un gap — aggiorna il libro giusto.
 

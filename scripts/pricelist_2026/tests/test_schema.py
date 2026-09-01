@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from scripts.pricelist_2026 import schema
+from scripts.pricelist_2026.schema import CANONICAL_CONTACT
 
 FIXTURE = Path(__file__).parent / "fixtures" / "minimal_prices.json"
 
@@ -105,7 +106,13 @@ def test_canonical_contact_whatsapp_and_wa_link_share_the_same_digits():
 
 def test_contact_wa_link_must_match_canonical():
     data = _load_fixture()
-    data["metadata"]["contact"]["wa_link"] = "https://wa.me/628213454721"
+    # Derive the wrong value from the right one. A hard-coded "other number"
+    # here silently stops being a mutation the day that number becomes
+    # canonical — which is exactly what happened on 2026-09-01, when the
+    # literal this line used to carry was ruled the client-facing number.
+    data["metadata"]["contact"]["wa_link"] = (
+        CANONICAL_CONTACT["wa_link"][:-1] + ("0" if CANONICAL_CONTACT["wa_link"][-1] != "0" else "1")
+    )
     result = schema.validate(data)
     assert not result.ok
     assert any("wa_link" in e for e in result.errors)

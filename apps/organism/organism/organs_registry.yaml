@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: cc472b7932d5c31f409bce065f02b8a49ddb047fbc979b0ef465832669ee73b9
+checksum: 88ee800ce53c07dba4c6213a8bb11dda00e2c4e331962ec1addc27b22be6118d
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -497,6 +497,8 @@ organs:
 - id: wr2.supervisor
   runtime: pro_launchd
   type: daemon
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 300
   owner_module: scripts/wr2_supervisor.py
   dependencies:
@@ -514,6 +516,8 @@ organs:
 - id: wr2.oracle
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 1209600
   owner_module: backend.services.cognitive.oracle_cli
   dependencies:
@@ -640,6 +644,8 @@ organs:
 - id: mata_garuda.wr2_bridge_hourly.pro
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 7200
   owner_module: apps/mata-garuda/scripts/run_wr2_bridge.py
   dependencies:
@@ -873,6 +879,8 @@ organs:
 - id: wr2.connector
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 90000
   owner_module: apps/war-room/scripts/wr2_connector.py
   dependencies:
@@ -888,6 +896,8 @@ organs:
 - id: wr2.dossier_compiler
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 90000
   owner_module: apps/war-room/scripts/wr2_dossier_compiler.py
   dependencies:
@@ -902,6 +912,8 @@ organs:
 - id: wr2.draft_generator
   runtime: pro_launchd
   type: daemon
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 600
   owner_module: scripts/wr2_draft_generator.py
   dependencies:
@@ -917,6 +929,8 @@ organs:
 - id: wr2.hardening
   runtime: pro_launchd
   type: daemon
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 600
   owner_module: apps/war-room/scripts/wr2_hardening.py
   dependencies:
@@ -932,6 +946,8 @@ organs:
 - id: wr2.image_generator
   runtime: pro_launchd
   type: daemon
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 600
   owner_module: scripts/wr2_image_generator.py
   dependencies:
@@ -945,6 +961,8 @@ organs:
 - id: wr2.learner_nightly
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 90000
   owner_module: apps/war-room/scripts/wr2_learner_nightly.py
   dependencies:
@@ -960,6 +978,8 @@ organs:
 - id: wr2.measurer
   runtime: pro_launchd
   type: daemon
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 600
   owner_module: apps/war-room/scripts/wr2_measurer.py
   dependencies:
@@ -989,6 +1009,8 @@ organs:
 - id: wr2.sla_worker
   runtime: pro_launchd
   type: daemon
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 600
   owner_module: apps/war-room/scripts/wr2_sla_worker.py
   dependencies:
@@ -1003,6 +1025,8 @@ organs:
 - id: wr2.strategos
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 691200
   owner_module: apps/war-room/scripts/wr2_strategos.py
   dependencies:
@@ -1018,6 +1042,8 @@ organs:
 - id: wr2.topic_selector
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 90000
   owner_module: scripts/wr2_topic_selector.py
   dependencies:
@@ -1033,6 +1059,8 @@ organs:
 - id: wr2.trend_hunter
   runtime: pro_launchd
   type: daemon
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 600
   owner_module: apps/war-room/scripts/wr2_trend_hunter.py
   dependencies:
@@ -1273,6 +1301,8 @@ organs:
 - id: wr2.canva_oauth_watchdog
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 3600
   owner_module: scripts/wr2-canva-oauth-watchdog.sh
   dependencies:
@@ -1286,6 +1316,8 @@ organs:
 - id: wr2.deploy_puller
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   # 7200 = 2x this organ's own 3600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
   expected_hb_seconds: 7200
   owner_module: scripts/wr2-deploy-pull.sh
@@ -1299,6 +1331,8 @@ organs:
 - id: wr2.fact_checker
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 1800
   owner_module: scripts/wr2_fact_checker.py
   starved_after_periods: 2
@@ -1315,6 +1349,8 @@ organs:
 - id: wr2.fact_extractor
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 1800
   owner_module: scripts/wr2_fact_extractor.py
   starved_after_periods: 2
@@ -1331,6 +1367,8 @@ organs:
 - id: wr2.ig_scraper_daily
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 90000
   owner_module: skills/bali-zero-brand/_ig-metrics-scraper.py
   dependencies:
@@ -1344,6 +1382,8 @@ organs:
 - id: wr2.queue_server
   runtime: pro_launchd
   type: daemon
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 300
   owner_module: skills/bali-zero-brand/_damar-queue-server.py
   dependencies:
@@ -1357,6 +1397,8 @@ organs:
 - id: wr2.reflexion_weekly
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 691200
   owner_module: .claude/skills/bali-zero-brand/_reflexion-synthesis.py
   dependencies:
@@ -1370,6 +1412,8 @@ organs:
 - id: wr2.ig_metrics_analyst_weekly
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 691200
   owner_module: infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh
   dependencies:
@@ -1383,6 +1427,8 @@ organs:
 - id: wr2.external_bench_monthly
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 2764800
   owner_module: infra/launchagents/wrappers/wr2-external-bench-run.sh
   dependencies:
@@ -1396,6 +1442,8 @@ organs:
 - id: wr2.supervisor_watchdog
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 600
   owner_module: scripts/wr2_supervisor_watchdog.py
   dependencies:
@@ -1409,6 +1457,8 @@ organs:
 - id: wr2.voyager_weekly
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 691200
   owner_module: skills/bali-zero-brand/_voyager-curriculum.py
   dependencies:
@@ -2085,6 +2135,8 @@ organs:
 - id: pro.wr2_daily_carousel
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 64800
   owner_module: scripts/wr2_daily_reconciler.py
   dependencies:
@@ -2102,6 +2154,8 @@ organs:
 - id: pro.wr2_worktree_gc
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 129600
   owner_module: scripts/wr2_worktree_gc.py
   dependencies: []

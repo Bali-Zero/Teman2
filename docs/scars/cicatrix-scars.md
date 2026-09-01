@@ -3,6 +3,14 @@
 Living document of "scars" — past bugs/issues auto-extracted from development history.
 Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and GOTCHA (edge cases).
 
+This file lives in `docs/scars/`, NOT in `.claude/rules/`, and the location is load-bearing: everything under
+`.claude/rules/` is injected into every session and every subagent, and this corpus was 296,243 bytes of that
+bill for a body almost nobody read in full. It is reached on demand instead — `scar query "<theme>"`,
+`scar query --list`, or grep. The bridge that stays injected is `.claude/rules/cicatrix-superscar.md`; it
+carries the ten families in ~14 KB and points here for the bodies. Moving this file back into an auto-loaded
+directory re-creates the exact cost this move removed, and
+`scripts/tests/test_injected_surface_budget.py` will go red if anyone tries.
+
 ---
 
 ### 🐛 W121 (P1 STRUCTURAL): il mutation testing girava su BYTECODE AVVELENATO — lo strumento che misura se il corpus morde stava giudicando una versione del codice diversa da quella sul disco

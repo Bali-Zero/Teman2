@@ -42,34 +42,48 @@ from pathlib import Path
 
 
 # --- corpus location --------------------------------------------------------
-# Resolve the rules dir relative to this script so it works from any worktree
-# AND when installed as ~/.claude/scripts/scar (which is outside the repo): in
-# the latter case we fall back to the canonical checkout paths.
-def _candidate_rules_dirs() -> list[Path]:
+# The corpus and the bridge no longer live together. The two scar BODIES moved
+# to `docs/scars/` so they leave the auto-injected `.claude/rules/` directory
+# (L02-PR1: the read side was costing every session and every subagent ~693 KB
+# it never asked for); the 14 KB superscar BRIDGE stays in `.claude/rules/`
+# because staying injected is its whole job. So this CLI resolves two dirs, and
+# a caller that overrides one must be able to override it without the other.
+#
+# Resolution is relative to this script so it works from any worktree AND when
+# installed as ~/.claude/scripts/scar (outside the repo): in that case we fall
+# back to the canonical checkout paths.
+def _candidate_dirs(*parts: str) -> list[Path]:
     here = Path(__file__).resolve()
-    candidates: list[Path] = []
-    # repo layout: <repo>/scripts/scar_query.py -> <repo>/.claude/rules
-    candidates.append(here.parent.parent / ".claude" / "rules")
-    # installed CLI: fall back to the known checkouts (M5 then Pro/Mini home)
-    candidates.append(Path.home() / "Desktop" / "nuzantara" / ".claude" / "rules")
-    return candidates
+    return [
+        # repo layout: <repo>/scripts/scar_query.py -> <repo>/<parts...>
+        here.parent.parent.joinpath(*parts),
+        # installed CLI: fall back to the known checkouts (M5 then Pro/Mini home)
+        Path.home() / "nuzantara" / Path(*parts),
+        Path.home() / "Desktop" / "nuzantara" / Path(*parts),
+    ]
 
 
 CORPUS_FILES = ("cicatrix-scars.md", "cicatrix-scars-archive.md")
 BRIDGE_FILE = "cicatrix-superscar.md"
 
 
-def _resolve_rules_dir(explicit: str | None) -> Path:
+def _resolve_dir(explicit: str | None, parts: tuple[str, ...], sentinel: str) -> Path:
+    """First candidate that actually CONTAINS `sentinel`.
+
+    Judged by the file being there, never by the directory existing: an empty
+    `docs/scars/` on a stale checkout must read as "not found here, keep
+    looking", not as a resolved corpus that silently yields zero scars.
+    """
     if explicit:
         p = Path(explicit).expanduser().resolve()
-        if (p / CORPUS_FILES[0]).is_file():
+        if (p / sentinel).is_file():
             return p
-        sys.exit(f"scar: --rules-dir {p} has no {CORPUS_FILES[0]}")
-    for d in _candidate_rules_dirs():
-        if (d / CORPUS_FILES[0]).is_file():
+        sys.exit(f"scar: {p} has no {sentinel}")
+    for d in _candidate_dirs(*parts):
+        if (d / sentinel).is_file():
             return d
     sys.exit(
-        "scar: could not locate cicatrix-scars.md — pass --rules-dir <path/to/.claude/rules>"
+        f"scar: could not locate {sentinel} — pass --corpus-dir/--bridge-dir explicitly"
     )
 
 
@@ -96,10 +110,10 @@ class Scar:
         return "•"
 
 
-def parse_corpus(rules_dir: Path) -> list[Scar]:
+def parse_corpus(corpus_dir: Path) -> list[Scar]:
     scars: list[Scar] = []
     for fname in CORPUS_FILES:
-        path = rules_dir / fname
+        path = corpus_dir / fname
         if not path.is_file():
             continue
         lines = path.read_text(encoding="utf-8").splitlines()
@@ -176,10 +190,10 @@ def render_hit(scar: Scar, score: int, titles_only: bool) -> str:
     return f"{head}\n{loc}\n\n{scar.body}\n\n{'─' * 78}"
 
 
-def render_family(rules_dir: Path, family: str) -> int:
-    bridge = rules_dir / BRIDGE_FILE
+def render_family(bridge_dir: Path, family: str) -> int:
+    bridge = bridge_dir / BRIDGE_FILE
     if not bridge.is_file():
-        sys.exit(f"scar: {BRIDGE_FILE} not found in {rules_dir}")
+        sys.exit(f"scar: {BRIDGE_FILE} not found in {bridge_dir}")
     text = bridge.read_text(encoding="utf-8")
     fam = family.lstrip("#")
     # match "## #N — ..." up to the next "## " header
@@ -207,16 +221,38 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--titles", action="store_true", help="one line per hit, no body")
     ap.add_argument("--list", action="store_true", help="list every scar header (W-number + title)")
     ap.add_argument("--family", metavar="N", help="render superscar family #N from the bridge (1-10 or 'orfane')")
-    ap.add_argument("--rules-dir", help="override path to .claude/rules")
+    ap.add_argument("--corpus-dir", help="override path to docs/scars (the scar bodies)")
+    ap.add_argument("--bridge-dir", help="override path to .claude/rules (the superscar bridge)")
+    ap.add_argument(
+        "--rules-dir",
+        help="deprecated alias kept so muscle memory and older wrappers still work; "
+        "it sets --bridge-dir, because that is the directory that kept its name",
+    )
     ap.add_argument("--limit", type=int, default=0, help="max hits to print (0 = all)")
     args = ap.parse_args(argv)
 
-    rules_dir = _resolve_rules_dir(args.rules_dir)
+    # `--rules-dir` predates the split and a caller using it means "look here";
+    # honouring it for the bridge only would silently ignore half the request, so
+    # it stands in for EITHER dir — but only when that dir actually holds the
+    # sentinel, so pointing it at a bridge-only dir still finds the real corpus.
+    legacy = args.rules_dir
+    # The legacy alias stands in for the bridge dir ONLY when the directory it
+    # names actually holds the corpus instead — i.e. the caller meant the other
+    # half of the split. A `--rules-dir /typo` must still be a hard error:
+    # swallowing it would silently answer from the default corpus, which is an
+    # explicit override ignored without a word (superscar #2, at the CLI).
+    legacy_holds_corpus = bool(legacy) and (Path(legacy).expanduser() / CORPUS_FILES[0]).is_file()
+    bridge_arg = args.bridge_dir or (None if legacy_holds_corpus else legacy)
+    bridge_dir = _resolve_dir(bridge_arg, (".claude", "rules"), BRIDGE_FILE)
 
     if args.family:
-        return render_family(rules_dir, args.family)
+        return render_family(bridge_dir, args.family)
 
-    scars = parse_corpus(rules_dir)
+    corpus_override = args.corpus_dir
+    if corpus_override is None and legacy_holds_corpus:
+        corpus_override = legacy
+    corpus_dir = _resolve_dir(corpus_override, ("docs", "scars"), CORPUS_FILES[0])
+    scars = parse_corpus(corpus_dir)
 
     if args.list:
         for s in scars:

@@ -1416,3 +1416,43 @@ class TestGuardConformance:
             '   type="number" and text-overflow: ellipsis on a price */\n'
         )
         assert hits(tmp_path, "notes.ts", src) == set()
+
+
+class TestCssStringRegexIsLinear:
+    """CodeQL py/redos, found on the PR that shipped this lint.
+
+    `_CSS_STRING_RE` was `(['"])((?:\\\\.|(?!\\1).)*)\\1`. A backslash matched BOTH
+    branches, so every escape doubled the parses the engine had to try and an
+    unterminated string of a few dozen escapes never returned. A linter reads
+    whatever file it is pointed at, so this is reachable by ordinary content.
+    """
+
+    def test_pathological_unterminated_string_returns_promptly(self) -> None:
+        """GUILT: the exact shape that hung. Measured: 38 pairs did not finish in
+        6s against the old pattern; the cured one answers in microseconds."""
+        import time
+
+        pathological = '"' + "\\a" * 38
+        start = time.monotonic()
+        lint._CSS_STRING_RE.search(pathological)
+        elapsed = time.monotonic() - start
+        # ~5 orders of magnitude of headroom: this asserts the COMPLEXITY CLASS,
+        # not the speed of the machine it happens to run on.
+        assert elapsed < 1.0, f"_CSS_STRING_RE took {elapsed:.2f}s — backtracking is back"
+
+    def test_escapes_still_match_exactly_as_before(self) -> None:
+        """INNOCENCE: the fix removes a redundant parse, never a reachable one —
+        `\\\\.` already owned every escape, so what matches must be unchanged."""
+        cases = [
+            (r'"a\"b"', r"a\"b"),
+            (r"'it\'s'", r"it\'s"),
+            ('"plain"', "plain"),
+            (r'"back\\slash"', r"back\\slash"),
+            ('"multi\nline"', "multi\nline"),
+        ]
+        for source, expected_body in cases:
+            match = lint._CSS_STRING_RE.search(source)
+            assert match is not None, f"no match for {source!r}"
+            assert match.group(2) == expected_body, (
+                f"{source!r} -> {match.group(2)!r}, expected {expected_body!r}"
+            )

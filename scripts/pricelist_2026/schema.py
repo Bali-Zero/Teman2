@@ -8,15 +8,28 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
-# Single source of truth for the digits — matches SUPPORT_WHATSAPP in
-# apps/backend-rag/backend/app/core/config.py and CANONICAL_WHATSAPP in
-# scripts/patch_pricing_contact_block.py (Meta-verified Bali Zero number).
+# Single source of truth for the digits the CLIENT-FACING price list shows.
+#
+# This is deliberately NOT `settings.SUPPORT_WHATSAPP`
+# (apps/backend-rag/backend/app/core/config.py). They are different things:
+# SUPPORT_WHATSAPP is the Meta-verified number the BOT RECEIVES on — its
+# inbound identity, which no human answers — while these digits are the line
+# a client is invited to write to. On 2026-08-31 a fix for a real defect
+# resolved the two toward SUPPORT_WHATSAPP and put the bot's inbound number
+# on the price list; the owner reversed it on 2026-09-01. The lead-capture and
+# document surfaces (the IT/ID notification templates, the lead-capture
+# deeplink, the welcome-practice and welcome-email services, the Canva renderer,
+# the rendered price list, the whole frontend) already used these digits —
+# among those, this sheet was the only dissenter. A separate set of email
+# footers and the chat CTA still carry the bot's inbound number; that is
+# ledgered as an owner decision, not silently corrected here.
+#
 # `whatsapp` (human-readable) and `wa_link` (wa.me href) are both derived
-# from these digits below so they cannot disagree — a prior hand-typed
-# duplication let `wa_link` drift to a different number's digits while
-# `whatsapp` was updated (see docs/pricing/Bali_Zero_Price_List_2026.md
-# WhatsApp link mismatch, fixed 2026-08-31).
-_CANONICAL_WHATSAPP_DIGITS = "628213465159"
+# from this one string below so they cannot disagree — that was the 2026-08-31
+# defect: a hand-typed duplication let `wa_link` drift to different digits
+# while `whatsapp` was edited (docs/pricing/Bali_Zero_Price_List_2026.md).
+# Keep them derived; never hand-edit either half, here or in the sheet.
+_CANONICAL_WHATSAPP_DIGITS = "628213454721"
 
 CANONICAL_CONTACT = {
     "email": "zero@balizero.com",

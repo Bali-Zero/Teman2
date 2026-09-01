@@ -26,6 +26,10 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RULES_DIR = REPO_ROOT / ".claude" / "rules"
+# The two scar BODIES moved out of the auto-injected rules dir (L02-PR1); the
+# superscar BRIDGE stayed, because being injected is its job. This guard reads
+# both, so it needs both directories, not one.
+SCARS_DIR = REPO_ROOT / "docs" / "scars"
 
 # Segment file-labels this guard verifies bodies for. "inline-only" and any
 # other free-text label (dates, `scar query "..."` commands) make no
@@ -164,8 +168,8 @@ class TestTheRealLedgerIsClean:
     def test_every_real_dettaglio_pointer_resolves(self) -> None:
         bridge_text = (RULES_DIR / "cicatrix-superscar.md").read_text()
         bodies = {
-            "cicatrix-scars.md": (RULES_DIR / "cicatrix-scars.md").read_text(),
-            "cicatrix-scars-archive.md": (RULES_DIR / "cicatrix-scars-archive.md").read_text(),
+            "cicatrix-scars.md": (SCARS_DIR / "cicatrix-scars.md").read_text(),
+            "cicatrix-scars-archive.md": (SCARS_DIR / "cicatrix-scars-archive.md").read_text(),
         }
         violations = find_pointer_violations(bridge_text, bodies)
         assert violations == [], "\n".join(violations)

@@ -133,9 +133,14 @@ const mastheadHeadingStyle: React.CSSProperties = {
  *  sees it here. */
 const mastheadLabelStyle: React.CSSProperties = {
   margin: 0,
-  fontFamily: "var(--font-serif, Georgia, serif)",
+  // R4 §3 24px floor: at 1.05rem (16.8px) Cormorant would sit below the
+  // display-only floor — low-DPI Android antialiasing shreds the serif — so
+  // this demoted label uses the UI/body face at Inter 600 instead, per R4
+  // §3's own remedy ("smaller headings are Inter 600"). Size/hierarchy
+  // unchanged — only the face and weight move.
+  fontFamily: "var(--font-sans, ui-sans-serif, system-ui, sans-serif)",
   fontSize: "1.05rem",
-  fontWeight: 500,
+  fontWeight: 600,
   letterSpacing: "-0.01em",
   color: "var(--text-secondary, var(--color-text-muted))",
 };
