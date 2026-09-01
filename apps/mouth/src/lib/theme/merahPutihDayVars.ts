@@ -151,8 +151,20 @@ export const MERAH_PUTIH_DAY_VARS = {
   "--state-error": "#a83a44",
   "--color-error": "#a83a44",
 
-  // WhatsApp is the ICON of the human exit — never a green button with white
-  // text on it (white on #25d366 measures 1.98). The ink is what carries text.
+  // WhatsApp is the ICON of the human exit — never a green button, and
+  // never a green TEXT surface even at a passing ratio (R4 §3/§4: the
+  // 2026-08-24 ink-on-green cure measured AA-passing at ~6.45:1 and was
+  // superseded anyway, because it answered "what ink passes on a green
+  // button" when the real defect was the button SHAPE — a solid-green pill
+  // reads as the WhatsApp app icon, breaking the platform's mental model).
+  // The call sites (SecondHomeLanding.tsx, WhatsAppHandoff.tsx) now render
+  // the card-with-icon component instead: elevated surface + border-input
+  // boundary + ink label, with `--accent-whatsapp` confined to the Phone
+  // glyph alone (icon-only, ~1.98:1 on `--surface-raised` — spec-sanctioned
+  // because the adjacent ink label carries the meaning independently).
+  // `--accent-whatsapp-ink` is kept as a token — some other surface may
+  // still legitimately need ink-on-green — but no consumer in this lane's
+  // perimeter uses it for label text any more.
   "--accent-whatsapp": "#25d366",
   "--accent-whatsapp-ink": "#0d3a1f",
 
