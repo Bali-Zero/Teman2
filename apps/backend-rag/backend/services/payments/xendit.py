@@ -1,7 +1,7 @@
 """Xendit sandbox adapter — owner decision 1 (ratified 2026-08-25), tier (a) only.
 
 Tier (a): small tickets (<= ~Rp 3jt), card in checkout, provider fee ABSORBED
-into the one all-inclusive `price_idr` (GARUDA VOA: 790.000 / 850.000 IDR).
+into the one all-inclusive `price_idr` (GARUDA VOA: 750.000 / 850.000 IDR).
 Never builds tier (b) (deposit+wire) or tier (c) (Virtual Account) — those
 are out of scope for this product (DECISIONS.md owner decision 1).
 

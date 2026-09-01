@@ -836,6 +836,14 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           MERGE_GROUP_HEAD_REF: ${{ github.event.merge_group.head_ref }}
           PACK_PATH: ${{ steps.evpaths.outputs.pack }}
+          # Rule 12's input. Step 2b already resolved this and Step 4 already
+          # reads it (to attribute the `gear:` declaration to THIS PR's brief),
+          # so nothing new is being computed here — the value was simply never
+          # handed to the lint, which is precisely why the BRIEF half of the
+          # root-path deprecation stayed unenforced while the PACK half
+          # shipped. Same resolution, same failure modes, passed one step
+          # further.
+          BRIEF_PATH: ${{ steps.evpaths.outputs.brief }}
         run: |
           set -u
           # Same corrected reasoning as Step 3 (Kimi K3 finding #3):
@@ -983,6 +991,22 @@ jobs:
             EXTRA_ARGS+=(--source-path "$PACK_PATH")
           else
             echo "::notice::the evidence_pack_lint.py copy in use (checked out from base) does not support --source-path yet — Rule 9 (evidence root deprecation) will judge the staged canonical path instead of this PR's real per-PR path this run; self-consistent once this PR merges and base's copy is updated"
+          fi
+          # Rule 12 (the BRIEF half). Same capability-probe shape as the pack
+          # flag above and for the same reason: this job checks out BASE, so
+          # the copy running here is the one on main, not the one this PR adds
+          # — the flag only exists after this PR merges. Probed with the exact
+          # flag string rather than a version number, because a version is a
+          # proxy for a capability and this is the capability itself.
+          # Deliberately NOT defaulted to the staged canonical path when the
+          # flag is missing: staging always names the file evidence/brief.yml,
+          # so falling back would make EVERY pack look guilty of the very
+          # thing this rule forbids — a false positive on the whole fleet.
+          # Absent flag => rule inert, stated in the notice.
+          if python3 scripts/evidence_pack_lint.py --help 2>&1 | grep -q -- '--brief-source-path'; then
+            EXTRA_ARGS+=(--brief-source-path "$BRIEF_PATH")
+          else
+            echo "::notice::the evidence_pack_lint.py copy in use (checked out from base) does not support --brief-source-path yet — Rule 12 (root BRIEF deprecation) is inert this run rather than judging the staged canonical name, which would falsely accuse every pack; self-consistent once this PR merges and base's copy is updated"
           fi
           python3 scripts/evidence_pack_lint.py \
             /tmp/evidence-check/evidence/pack.yml \
