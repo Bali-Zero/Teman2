@@ -1,0 +1,91 @@
+task_id: cron-hb-margin
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Give self-reporting cron organs (type:cron, write their OWN heartbeat once
+  per run, NOT fed by scripts/launchagent-state-bridge.py's 300s poller) a
+  real heartbeat margin in apps/organism/organism/organs_registry.yaml,
+  sibling of #5431/#5440's fix for bridge-fed organs. 28 organs raised from
+  a margin ranging 0x-1.5x of their own plist StartInterval to a
+  severity-tiered floor (1.5x for severity_on_silence in {critical, error},
+  2.0x otherwise), each change is a checked, measured multiple of the
+  organ's OWN plist StartInterval — not an eyeballed number. Adds two new
+  pytest guards (test_self_reporting_cron_own_plist_margin.py — the
+  arithmetic rule itself, with guilt+innocence units independent of the
+  registry's current contents; test_self_reporting_cron_workflow_wiring.py
+  — proves organ-conformance.yml actually runs the arithmetic guard) and
+  wires both into organ-conformance.yml's push.paths, in-job pathspec, and
+  a new gated step requiring >=9 pytest passes.
+
+  Gear is 3 DETERMINISTICALLY, sourced from PATH: the diff edits
+  .github/workflows/organ-conformance.yml, a hardcoded hot-zone pattern.
+  Reproduced against this PR's own final diff (merge-base
+  190c0860449aa9e0b5038b5bada23e1ff45b30aa): `--print-floor` -> 3,
+  `--print-floor-source` -> path.
+
+  This Evidence Pack was built post-hoc by a ceremony session (team-lead
+  mandate, 2026-09-02) because the PR (opened, auto-merge armed) had never
+  received one and mergeStateStatus was BLOCKED on the missing pack.
+  Auto-merge was disarmed (`gh pr merge --disable-auto`) before this work
+  began; mergeQueueEntry was already null (never entered the queue).
+
+acceptance:
+  - text: >-
+      WHEN a self-reporting cron organ's expected_hb_seconds is below the
+      severity-tiered floor (1.5x own StartInterval for critical/error,
+      2.0x otherwise), the registry-wide scan test SHALL fail, naming the
+      organ, its ratio, and the required floor.
+    probe: test_self_reporting_cron_organs_declare_a_safe_multiple_of_their_own_plist_interval
+  - text: >-
+      The violation predicate itself SHALL be correct at both tier
+      boundaries (guilt just below each floor, innocence exactly at each
+      floor, and the ratio==1.0 case flagged for every severity),
+      independent of whatever the registry currently contains.
+    probe: test_violation_math_guilt_below_the_fast_tier_floor,
+      test_violation_math_guilt_below_the_default_floor,
+      test_violation_math_innocence_at_the_fast_tier_floor,
+      test_violation_math_innocence_at_the_default_floor,
+      test_violation_math_innocence_ratio_exactly_one_is_still_flagged_for_every_tier
+  - text: >-
+      WHEN a push touches either guard's own test file, organ-conformance.yml
+      SHALL run a named, gated step that invokes pytest against BOTH guard
+      files (a mere mention of a filename does not count) — closing the
+      "corpus named by no workflow gates nothing" trap (cicatrix family #2)
+      that #5431/#5440 hit for the sibling guard.
+    probe: test_push_paths_cover_the_guard_read_set,
+      test_injob_pathspec_covers_the_guard_read_set,
+      test_a_step_actually_executes_the_guard_file
+  - text: >-
+      IF pytest exits non-zero, OR the run's own executor (this very test
+      file) is silently dropped from the step's invocation, the wiring
+      proof SHALL fail — not silently stay green because a sibling guard's
+      filename alone was still present.
+    probe: test_a_step_actually_executes_the_guard_file (strengthened this
+      round — see dissent[] below)
+  - text: IF the workflow YAML is malformed or unlintable, CI SHALL reject it.
+    probe: actionlint
+
+assumptions:
+  - text: >-
+      organs_registry.yaml's checksum is computed over PARSED structured
+      data (organism.tools.validate_organs_registry.compute_checksum), not
+      raw file bytes — so a comment-only correction (this ceremony's fix 2,
+      see dissent[]) does not require a checksum bump.
+    status: verified
+    probe: "PYTHONPATH=apps/organism python3 -m organism.tools.validate_organs_registry apps/organism/organism/organs_registry.yaml"
+      before and after the comment-only edit; both '✓ ... valid'.
+  - text: >-
+      The severity_on_silence field driving the 1.5x/2.0x tier split is
+      pre-existing registry data this diff does not touch (only
+      expected_hb_seconds values changed) — whether any individual organ's
+      severity_on_silence is itself mis-classified is a separate,
+      out-of-scope policy question (scar-family-8 "cura ciò che il diff
+      introduce, manda a spec ciò che eredita").
+    status: verified
+    probe: "git diff --numstat shows severity_on_silence lines unchanged;
+      confirmed no organs_registry.yaml hunk touches that key"
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 2
