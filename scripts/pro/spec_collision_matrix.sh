@@ -144,14 +144,29 @@ assert_local_state() {
 # incoming side is not what its label says. Note git's object store is case-SENSITIVE even when
 # the filesystem is not, which is what makes the case-only assertion meaningful.
 assert_origin_action() {
-  local wt ent
+  local wt src dst low
   wt="$1"
-  ent="$(git -C "$wt" ls-tree HEAD -- "$P" 2>/dev/null | awk '{print $1" "$2}')"
+  # THREE probes, not one. The first version asked a single question -- what stands at $P --
+  # and `delete`, `rename_away` and `rename_case_only` all answer it identically ("nothing"),
+  # while `tree_at_path` and `rename_away_and_tree` both answer "a tree". Two independent
+  # reviewers found the same consequence: an arm that DEGENERATES into its neighbour passes.
+  # One of them carried it further and showed the whole instrument can go silent -- sabotage
+  # `rename_away` into a plain delete, then align the baseline to the values a human would
+  # plausibly re-measure, and the run reports MATRIX STABLE, exit 0. Assertion blind AND
+  # comparator blind. The cure is the same one the A axis needed: give every action a UNIQUE
+  # signature, so no arm can wear another's clothes. Source, destination, and the lowercase
+  # spelling are read separately and all three are asserted, including their ABSENCE.
+  src="$(git -C "$wt" ls-tree HEAD -- "$P"                | awk '{print $1" "$2}')"
+  dst="$(git -C "$wt" ls-tree HEAD -- "moved/subject.md"  | awk '{print $1" "$2}')"
+  low="$(git -C "$wt" ls-tree HEAD -- "subject.md"        | awk '{print $1" "$2}')"
   case "$2" in
-    modify)                              [ "$ent" = "100644 blob" ] ;;
-    delete|rename_away|rename_case_only) [ -z "$ent" ] ;;
-    rename_away_and_tree|tree_at_path)   [ "$ent" = "040000 tree" ] ;;
-    typechange)                          [ "$ent" = "120000 blob" ] ;;
+    modify)               [ "$src" = "100644 blob" ] && [ -z "$dst" ]                && [ -z "$low" ] ;;
+    delete)               [ -z "$src" ]              && [ -z "$dst" ]                && [ -z "$low" ] ;;
+    rename_away)          [ -z "$src" ]              && [ "$dst" = "100644 blob" ]   && [ -z "$low" ] ;;
+    rename_away_and_tree) [ "$src" = "040000 tree" ] && [ "$dst" = "100644 blob" ]   && [ -z "$low" ] ;;
+    rename_case_only)     [ -z "$src" ]              && [ -z "$dst" ]                && [ "$low" = "100644 blob" ] ;;
+    tree_at_path)         [ "$src" = "040000 tree" ] && [ -z "$dst" ]                && [ -z "$low" ] ;;
+    typechange)           [ "$src" = "120000 blob" ] && [ -z "$dst" ]                && [ -z "$low" ] ;;
     *) return 1 ;;
   esac
 }
