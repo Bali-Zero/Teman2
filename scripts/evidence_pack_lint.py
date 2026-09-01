@@ -563,7 +563,28 @@ def workflow_paths_exempt_from_path_term(patch: str) -> set[str]:
                 current = b_side
                 per_file.setdefault(current, {"minus": [], "plus": [], "clean": True})
             continue
-        if raw.startswith("+++ "):
+        if raw.startswith("+++ ") and not in_hunk:
+            # `and not in_hunk` is load-bearing, not defensive tidiness. A diff
+            # ADDS a single "+", so a workflow line that itself begins "++ " is
+            # emitted as "+++ …" — indistinguishable, by prefix alone, from a
+            # new-file header. Reading it as a header reassigned `current` to a
+            # phantom path AND set in_hunk=False, after which every remaining
+            # line of that hunk was SILENTLY SKIPPED: a `+permissions:
+            # write-all` following the forged line never reached the parser, so
+            # a privilege escalation rode along inside a diff the floor scored
+            # as a pure version pin. Found 2026-09-01 by the independent gate.
+            #
+            # It also falsified this function's own comment ("one non-conforming
+            # changed line re-arms the path term for the whole file") — a
+            # non-conforming ADDED line did not re-arm. Inside a hunk these
+            # bytes are CONTENT: they fall through to the +/- branch below,
+            # fail to parse as a `uses:` line, and set clean=False, which is
+            # what the comment always claimed.
+            #
+            # `diff --git ` needs no such guard: git prefixes every content line
+            # with " ", "+", "-" or "\\", so column 0 can never be "d" inside a
+            # hunk. `--- ` needs none either — in a hunk it is already read as a
+            # removed line whose body "-- …" does not parse.
             candidate = raw[4:].split("\t", 1)[0]
             if candidate.startswith("b/"):
                 candidate = candidate[2:]

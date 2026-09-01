@@ -3870,3 +3870,64 @@ def test_read_patch_file_fails_closed_on_a_missing_file(tmp_path, capsys):
     assert "fail-closed" in capsys.readouterr().err
     assert _read_patch_file(None) is None
     assert capsys.readouterr().err == ""
+
+
+def test_path_term_exemption_guilt_a_forged_plus_plus_plus_header_hides_the_rest_of_the_hunk():
+    """The independent gate's one successful bypass, 2026-09-01. The fixture is a
+    REAL `git diff -U0` — the whole attack depends on what git actually emits.
+
+    A diff prefixes an added line with ONE "+". So a workflow line that itself
+    begins `++ ` is emitted as `+++ …`, which by prefix alone is indistinguishable
+    from a new-file header. The parser read it as one: it reassigned the current
+    path to a phantom file AND set in_hunk=False, after which every remaining line
+    of that hunk was SILENTLY SKIPPED. The `+permissions: write-all` that followed
+    never reached the parser, and a privilege escalation rode along inside a diff
+    the floor scored as a pure version pin — floor 1.
+
+    It also falsified the function's own comment: a non-conforming ADDED line did
+    NOT re-arm the path term. Header recognition is now gated on `not in_hunk`, so
+    inside a hunk these bytes are content, fail to parse, and set clean=False.
+
+    (The gate judged this unreachable-to-merge because every payload is an invalid
+    workflow that required actionlint rejects. That is true and it is the reason
+    this was not a merge blocker — but it made the floor's non-gameability
+    CONDITIONAL on another gate's strictness, and CLAUDE.md leans on the floor
+    being non-gameable on its own. Hence the cure rather than a ledger entry.)"""
+    forged = (
+        "diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml\n"
+        "index aacf948..9f4aa46 100644\n"
+        "--- a/.github/workflows/ci.yml\n"
+        "+++ b/.github/workflows/ci.yml\n"
+        "@@ -7 +7,3 @@ jobs:\n"
+        "-      - uses: actions/checkout@v4\n"
+        "+      - uses: actions/checkout@v5\n"
+        '+++ b/zzz: "x"\n'
+        "+permissions: write-all\n"
+    )
+    assert workflow_paths_exempt_from_path_term(forged) == set()
+    assert compute_floor([_WF], None, forged) == 3
+
+
+def test_path_term_exemption_innocence_a_real_new_file_header_is_still_a_header():
+    """The innocence twin of the guard above, and the one that matters: gating
+    header recognition on `not in_hunk` must not stop the parser reading the REAL
+    `+++ b/<path>` header, or it would lose track of the file and exempt nothing
+    ever — a guard that passes its guilt test by breaking everything."""
+    two_files = (
+        "diff --git a/.github/workflows/a.yml b/.github/workflows/a.yml\n"
+        "--- a/.github/workflows/a.yml\n"
+        "+++ b/.github/workflows/a.yml\n"
+        "@@ -1 +1 @@\n"
+        "-      - uses: actions/checkout@v4\n"
+        "+      - uses: actions/checkout@v5\n"
+        "diff --git a/.github/workflows/b.yml b/.github/workflows/b.yml\n"
+        "--- a/.github/workflows/b.yml\n"
+        "+++ b/.github/workflows/b.yml\n"
+        "@@ -1 +1 @@\n"
+        "-      - uses: actions/setup-node@v3\n"
+        "+      - uses: actions/setup-node@v4\n"
+    )
+    assert workflow_paths_exempt_from_path_term(two_files) == {
+        ".github/workflows/a.yml",
+        ".github/workflows/b.yml",
+    }

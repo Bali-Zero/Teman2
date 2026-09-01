@@ -92,6 +92,21 @@ pii_scan: clean
 
 receipts:
   - claim: >-
+      The gate's forged-header bypass reproduced, then closed, then the closure proved to
+      discriminate — and the real header path proved NOT broken by the fix
+    cmd: >-
+      scratch `git init`; head adds `++ b/zzz: \"x\"` and `permissions: write-all` alongside a pin
+      bump; `git diff -U0` into compute_floor. Then mutate `and not in_hunk` away and re-run.
+    result: >-
+      before: exempt={ci.yml}, floor 1 — the `+permissions: write-all` line invisible. after:
+      exempt=set(), floor 3. Removing `and not in_hunk` reddens the forged-header guilt test and
+      leaves its innocence twin (a two-file patch whose REAL `+++ b/<path>` headers must still be
+      read) GREEN — so the guard is not passing by breaking header parsing outright. Suite 336
+      passed; all three real blocked PR diffs still 3 -> 1.
+    exit: 0
+    ts: 2026-09-01T20:55Z
+    seat: session (Pro), on the independent gate's finding
+  - claim: >-
       Every attack the reviewer tried and FAILED to break — recorded because a review that lists
       only its hits is indistinguishable from one that stopped early
     cmd: "reviewer-constructed patches through compute_floor / workflow_paths_exempt_from_path_term"
@@ -241,6 +256,22 @@ receipts:
     seat: session (Pro)
 
 dissent:
+  - seat: claude-opus-5 (independent Gear-3 gate)
+    status: CONFIRMED
+    objection: >-
+      The gate's ONE successful bypass, built as a real `git diff`: a diff prefixes an added line
+      with a single "+", so a workflow line beginning `++ ` is emitted as `+++ …` and was read as a
+      NEW-FILE header — reassigning the current path to a phantom file and setting in_hunk=False,
+      after which every remaining line of the hunk was SILENTLY SKIPPED. A `+permissions:
+      write-all` following the forged line never reached the parser: floor 1 on a diff carrying a
+      privilege escalation. It also falsified this function's own comment — a non-conforming ADDED
+      line did NOT re-arm the path term. The gate returned PASS anyway, correctly, because every
+      triggering payload is an INVALID workflow (column-0 `++ …` is not a legal top-level key) and
+      required actionlint rejects all of them — verified end to end against main's branch
+      protection. CURED ANYWAY: header recognition is now gated on `not in_hunk`. The reason is the
+      COUPLING the gate itself named — the floor's non-gameability had become conditional on
+      another gate's schema strictness, and CLAUDE.md leans on the floor being the one classifier a
+      task cannot be talked out of. A ledger entry would have left that coupling standing.
   - seat: claude-sonnet-5 subagent (spalla-review), fresh context
     status: CONFIRMED
     objection: >-
