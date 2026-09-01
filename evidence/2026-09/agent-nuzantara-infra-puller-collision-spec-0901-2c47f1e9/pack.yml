@@ -88,7 +88,7 @@ seat_diversity_note: >-
 
 diff:
   files: 8
-  net_lines: 1860
+  net_lines: 1875
   measured_at: >-
     counted with `git diff --numstat --cached $(git merge-base origin/main HEAD)` — the CACHED
     form, not the three-dot one, and the difference is the whole point: the three files under
@@ -119,8 +119,23 @@ residual_risks:
     GUI-only operator surface; tagging it `operator[github-settings]` would have parked a session's
     own decision behind a human who was never needed — a phantom operator lane in all but the
     literal spelling the CI gate greps for. It is DEFERRED BY THIS SESSION, deliberately, and the
-    deferral is argued: arming a blocking gate whose instrument carries 56 documented KNOWN_BAD
-    cells imposes a known-wrong measurement on every PR in the repo. An earlier revision of this
+    deferral is argued — THOUGH THE FIRST ARGUMENT GIVEN WAS WRONG AND IS RETRACTED HERE RATHER
+    THAN SWAPPED. It read: arming a blocking gate whose instrument carries 56 documented KNOWN_BAD
+    cells would impose a known-wrong measurement on every PR in the repo. The Gear-3 gate refuted it
+    and the refutation is verifiable in the harness itself: a KNOWN_BAD cell yields `MATRIX STABLE`,
+    exit 0 (`spec_collision_matrix.sh:505-506`), and the ONLY failure is `MATRIX MOVED` (`:509`) — a
+    cell CHANGING. The verdict column never enters the pass/fail decision, so arming would turn no
+    unrelated PR red; every one would go green across all 102 cells. The 56 are a register of
+    documented behaviour, not a source of red. A cross-family seat had AGREED with the deferral when
+    asked, and that assent is withdrawn as evidence rather than cited: it was agreeing with the
+    framing it was handed, which is what asking a reviewer to validate your own reason buys you.
+    THE REAL REASONS, stated now: COST — no job-level `if:` and no `paths:` filter, deliberately, so
+    a 10x-billed macOS runner starts on every PR and merge_group in the repo (1m55s measured), and
+    requiring it makes that cost mandatory rather than merely incurred; and BLAST RADIUS — a flake
+    there would block every lane rather than this one, which on the night this was written was not
+    hypothetical: the already-required `E2E Tests (Playwright)` went red on this PR from a webServer
+    startup timeout with no test executed, while an adjacent unrelated PR passed the same job in an
+    overlapping window. Neither reason is about correctness, and neither is about the 56. An earlier revision of this
     PR's own `Bites:`
     line said "two required-check jobs" and was FALSE; it has been corrected.
   - >-
