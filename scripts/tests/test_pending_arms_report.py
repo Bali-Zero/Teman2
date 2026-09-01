@@ -1773,7 +1773,7 @@ def operator_secret_entries(operator_secret_ledger_path: Path):
 
 
 def test_innocence_selects_exactly_the_open_secret_rows(operator_secret_entries):
-    rows = par.build_operator_secret_digest(operator_secret_entries)
+    rows = par.build_operator_rotation_digest(operator_secret_entries)
     assert len(rows) == 3
     for r in rows:
         assert set(r.keys()) == {"fingerprint", "age_days", "overdue", "class"}
@@ -1781,13 +1781,13 @@ def test_innocence_selects_exactly_the_open_secret_rows(operator_secret_entries)
 
 
 def test_guilt_non_secret_operator_row_excluded(operator_secret_entries):
-    selected = [e for e in operator_secret_entries if par.is_operator_secret_entry(e)]
+    selected = [e for e in operator_secret_entries if par.is_operator_rotation_entry(e)]
     selected_artifacts = {e.artifact for e in selected}
     assert "non-secret operator artifact" not in selected_artifacts
 
 
 def test_guilt_phantom_and_tech_debt_and_closed_rows_excluded(operator_secret_entries):
-    selected = [e for e in operator_secret_entries if par.is_operator_secret_entry(e)]
+    selected = [e for e in operator_secret_entries if par.is_operator_rotation_entry(e)]
     artifacts = {e.artifact for e in selected}
     assert "phantom operator artifact" not in artifacts
     assert "ordinary tech debt artifact" not in artifacts
@@ -1796,7 +1796,7 @@ def test_guilt_phantom_and_tech_debt_and_closed_rows_excluded(operator_secret_en
 
 def test_guilt_rendered_digest_never_leaks_ledger_prose(operator_secret_entries):
     now = par._parse_now(NOW)
-    text = par.render_operator_secret_digest(operator_secret_entries, now)
+    text = par.render_operator_rotation_digest(operator_secret_entries, now)
     for sentinel in (
         "SENTINEL-ENDPOINT-A",
         "SENTINEL-ENDPOINT-B",
@@ -1816,7 +1816,7 @@ def test_guilt_rendered_digest_never_leaks_ledger_prose(operator_secret_entries)
 def test_guilt_json_digest_never_leaks_ledger_prose_and_excludes_closed(operator_secret_ledger_path):
     now = par._parse_now(NOW)
     entries = par.load_entries(operator_secret_ledger_path, now)
-    payload = par.build_operator_secret_digest_json(entries, now)
+    payload = par.build_operator_rotation_digest_json(entries, now)
     dumped = json.dumps(payload)
     for sentinel in (
         "SENTINEL-ENDPOINT-A",
@@ -1839,14 +1839,14 @@ def test_guilt_json_digest_never_leaks_ledger_prose_and_excludes_closed(operator
 
 
 def test_fingerprint_is_stable_nonreversible_and_distinct(operator_secret_entries):
-    selected = [e for e in operator_secret_entries if par.is_operator_secret_entry(e)]
-    fps = [par.operator_secret_fingerprint(e) for e in selected]
+    selected = [e for e in operator_secret_entries if par.is_operator_rotation_entry(e)]
+    fps = [par.operator_rotation_fingerprint(e) for e in selected]
     assert len(fps) == len(set(fps))  # distinct rows -> distinct fingerprints
     for fp in fps:
         assert len(fp) == 16
         int(fp, 16)  # must be valid hex
     # stable across repeated calls on the same entry
-    assert par.operator_secret_fingerprint(selected[0]) == fps[0]
+    assert par.operator_rotation_fingerprint(selected[0]) == fps[0]
     # never merely a slice of the row's own text (the "never reversible" bar)
     for e, fp in zip(selected, fps):
         assert fp not in e.artifact
@@ -1854,13 +1854,13 @@ def test_fingerprint_is_stable_nonreversible_and_distinct(operator_secret_entrie
 
 
 def test_digest_ordering_oldest_first_fingerprint_tiebreak(operator_secret_entries):
-    rows = par.build_operator_secret_digest(operator_secret_entries)
+    rows = par.build_operator_rotation_digest(operator_secret_entries)
     ages = [r["age_days"] for r in rows]
     assert ages == sorted(ages, reverse=True)
 
 
 def test_multi_tag_owner_still_selected(operator_secret_entries):
-    selected = [e for e in operator_secret_entries if par.is_operator_secret_entry(e)]
+    selected = [e for e in operator_secret_entries if par.is_operator_rotation_entry(e)]
     assert any("business" in e.owner and "secret" in e.owner for e in selected)
 
 
@@ -1885,7 +1885,7 @@ def test_innocence_unrecognized_second_tag_correctly_excluded_as_phantom(tmp_pat
         "| operator[secret] operator[typo] | some proof",
     )
     assert e.cls == par.CLASS_PHANTOM_OPERATOR
-    assert not par.is_operator_secret_entry(e)
+    assert not par.is_operator_rotation_entry(e)
 
 
 # ---------------------------------------------------------------------------
